@@ -1,0 +1,17 @@
+harnessApiVersion: '1.0'
+type: AZURE
+clientId: baca1841-c593-407b-8793-98d3781f4fbf
+key: gcpkms:BvDsx1DtQ7C8zicfLqKnVA
+tenantId: b229b2bb-5f33-4d22-bce0-730f6474e906
+usageRestrictions:
+  appEnvRestrictions:
+  - appFilter:
+      filterType: ALL
+    envFilter:
+      filterTypes:
+      - PROD
+  - appFilter:
+      filterType: ALL
+    envFilter:
+      filterTypes:
+      - NON_PROD

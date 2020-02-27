@@ -1,0 +1,18 @@
+harnessApiVersion: '1.0'
+type: AWS
+accessKey: AKIA2VKZZO4K6JD3SI57
+assumeCrossAccountRole: false
+secretKey: gcpkms:AuT_Mp4qTM22qeqL59OFIQ
+usageRestrictions:
+  appEnvRestrictions:
+  - appFilter:
+      filterType: ALL
+    envFilter:
+      filterTypes:
+      - PROD
+  - appFilter:
+      filterType: ALL
+    envFilter:
+      filterTypes:
+      - NON_PROD
+useEc2IamCredentials: false

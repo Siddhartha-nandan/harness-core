@@ -1,0 +1,17 @@
+harnessApiVersion: '1.0'
+type: DOCKER
+password: gcpkms:TiVHdqwdTtuVT6gJ1seJEg
+url: https://index.docker.io/v2/
+usageRestrictions:
+  appEnvRestrictions:
+  - appFilter:
+      filterType: ALL
+    envFilter:
+      filterTypes:
+      - PROD
+  - appFilter:
+      filterType: ALL
+    envFilter:
+      filterTypes:
+      - NON_PROD
+username: harnessrd2

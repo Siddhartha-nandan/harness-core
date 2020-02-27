@@ -1,0 +1,8 @@
+harnessApiVersion: '1.0'
+type: TAG
+tag:
+- allowedValues:
+  - new
+  - abc
+  name: hek
+- name: type
