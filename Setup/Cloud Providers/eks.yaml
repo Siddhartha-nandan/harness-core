@@ -1,0 +1,21 @@
+harnessApiVersion: '1.0'
+type: KUBERNETES_CLUSTER
+continuousEfficiencyConfig:
+  continuousEfficiencyEnabled: true
+delegateName: eks
+password: amazonkms:uldE2YbWTIm2gFKlQRH5tQ
+skipValidation: false
+usageRestrictions:
+  appEnvRestrictions:
+  - appFilter:
+      filterType: ALL
+    envFilter:
+      filterTypes:
+      - PROD
+  - appFilter:
+      filterType: ALL
+    envFilter:
+      filterTypes:
+      - NON_PROD
+useKubernetesDelegate: true
+username: meghna.chhabria@harness.io
