@@ -1,0 +1,20 @@
+harnessApiVersion: '1.0'
+type: KUBERNETES_CLUSTER
+continuousEfficiencyConfig:
+  continuousEfficiencyEnabled: false
+masterUrl: https://34.67.13.218/
+serviceAccountToken: amazonkms:4NM8HV8SThW1MVaX4G8EVg
+skipValidation: false
+usageRestrictions:
+  appEnvRestrictions:
+  - appFilter:
+      filterType: ALL
+    envFilter:
+      filterTypes:
+      - PROD
+  - appFilter:
+      filterType: ALL
+    envFilter:
+      filterTypes:
+      - NON_PROD
+useKubernetesDelegate: false
