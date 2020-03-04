@@ -1,6 +1,6 @@
 harnessApiVersion: '1.0'
 type: AWS
-accessKey: AKIA2VKZZO4K6JD3SI57
+accessKey: AKIA2VKZZO4KZTQ6U4PI
 assumeCrossAccountRole: false
 secretKey: gcpkms:AuT_Mp4qTM22qeqL59OFIQ
 usageRestrictions:
