@@ -1,2 +1,5 @@
 harnessApiVersion: '1.0'
 type: ACCOUNT_DEFAULTS
+defaults:
+- name: foo
+  value: bar
