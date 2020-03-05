@@ -3,3 +3,5 @@ type: ACCOUNT_DEFAULTS
 defaults:
 - name: foo
   value: bar
+- name: hello
+  value: world
