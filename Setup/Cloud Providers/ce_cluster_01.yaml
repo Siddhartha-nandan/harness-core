@@ -1,9 +1,8 @@
 harnessApiVersion: '1.0'
 type: KUBERNETES_CLUSTER
 continuousEfficiencyConfig:
-  continuousEfficiencyEnabled: true
+  continuousEfficiencyEnabled: false
 delegateName: meg
-password: amazonkms:AekMbyakTeOHDP-KadNDWg
 skipValidation: false
 usageRestrictions:
   appEnvRestrictions:
