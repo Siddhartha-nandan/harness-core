@@ -3,7 +3,6 @@ type: KUBERNETES_CLUSTER
 continuousEfficiencyConfig:
   continuousEfficiencyEnabled: false
 delegateName: meg-aks
-password: amazonkms:mFD5udsVRc6fP6QlI7lHrQ
 skipValidation: false
 usageRestrictions:
   appEnvRestrictions:
