@@ -2,6 +2,7 @@ harnessApiVersion: '1.0'
 type: TAG
 tag:
 - name: artifactType
+- name: deploymentType
 - allowedValues:
   - new
   - abc
