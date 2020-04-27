@@ -3,7 +3,7 @@ type: KUBERNETES_CLUSTER
 continuousEfficiencyConfig:
   continuousEfficiencyEnabled: true
 delegateName: hitesh-test-delegate
-password: amazonkms:ekn865cwROGg44Mne3jgBA
+password: gcpkms:ekn865cwROGg44Mne3jgBA
 skipValidation: false
 usageRestrictions:
   appEnvRestrictions:

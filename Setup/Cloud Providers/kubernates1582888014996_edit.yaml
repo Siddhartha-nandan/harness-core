@@ -3,7 +3,7 @@ type: KUBERNETES_CLUSTER
 continuousEfficiencyConfig:
   continuousEfficiencyEnabled: false
 masterUrl: https://34.67.13.218/
-serviceAccountToken: amazonkms:Xv80yM5SQ7ylHZ6fc4roQw
+serviceAccountToken: gcpkms:Xv80yM5SQ7ylHZ6fc4roQw
 skipValidation: false
 usageRestrictions:
   appEnvRestrictions:
