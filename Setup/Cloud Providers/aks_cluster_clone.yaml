@@ -1,7 +1,7 @@
 harnessApiVersion: '1.0'
 type: KUBERNETES_CLUSTER
 continuousEfficiencyConfig:
-  continuousEfficiencyEnabled: false
+  continuousEfficiencyEnabled: true
 delegateName: meg-aks
 skipValidation: false
 usageRestrictions:
@@ -12,4 +12,3 @@ usageRestrictions:
       filterTypes:
       - PROD
 useKubernetesDelegate: true
-username: meghna.chhabria@harness.io
