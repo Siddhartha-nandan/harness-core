@@ -3,16 +3,4 @@ type: AWS
 accessKey: AKIAR5UJZHJJIZEYP2KL
 assumeCrossAccountRole: false
 secretKey: gcpkms:NOx1-iQvRNSjVHz36vSWVw
-usageRestrictions:
-  appEnvRestrictions:
-  - appFilter:
-      filterType: ALL
-    envFilter:
-      filterTypes:
-      - PROD
-  - appFilter:
-      filterType: ALL
-    envFilter:
-      filterTypes:
-      - NON_PROD
 useEc2IamCredentials: false

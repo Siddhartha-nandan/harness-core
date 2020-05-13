@@ -5,16 +5,4 @@ continuousEfficiencyConfig:
 masterUrl: https://34.67.13.218/
 serviceAccountToken: gcpkms:Xv80yM5SQ7ylHZ6fc4roQw
 skipValidation: false
-usageRestrictions:
-  appEnvRestrictions:
-  - appFilter:
-      filterType: ALL
-    envFilter:
-      filterTypes:
-      - PROD
-  - appFilter:
-      filterType: ALL
-    envFilter:
-      filterTypes:
-      - NON_PROD
 useKubernetesDelegate: false
