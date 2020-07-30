@@ -3,4 +3,5 @@ type: GIT
 keyAuth: false
 password: gcpkms:IcTOYkktTGy1K574YdXk1w
 url: https://github.com/wings-software/hitesh-yaml-test.git
+urlType: REPO
 username: hitesharinga
