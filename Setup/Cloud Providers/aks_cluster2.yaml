@@ -1,8 +1,0 @@
-harnessApiVersion: '1.0'
-type: KUBERNETES_CLUSTER
-continuousEfficiencyConfig:
-  continuousEfficiencyEnabled: true
-masterUrl: https://ce-cluster2-dns-0758c886.hcp.centralus.azmk8s.io:443
-serviceAccountToken: gcpkms:Vi42P9znRgSs1SeWLILoyw
-skipValidation: false
-useKubernetesDelegate: false
