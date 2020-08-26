@@ -2,7 +2,7 @@ harnessApiVersion: '1.0'
 type: KUBERNETES_CLUSTER
 authType: SERVICE_ACCOUNT
 continuousEfficiencyConfig:
-  continuousEfficiencyEnabled: false
+  continuousEfficiencyEnabled: true
 masterUrl: https://34.67.13.218/
 serviceAccountToken: gcpkms:pt5Pc5akRD-1fRAtNeUN7A
 skipValidation: false
