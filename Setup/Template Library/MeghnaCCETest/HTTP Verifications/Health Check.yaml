@@ -1,7 +1,9 @@
 harnessApiVersion: '1.0'
 type: HTTP
 assertion: ${httpResponseCode}==${ResponseCode}
-header: 'content-type: application/json'
+headers:
+- key: content-type
+  value: application/json
 method: GET
 timeoutMillis: 0
 url: ${Url}
