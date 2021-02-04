@@ -3,6 +3,8 @@ type: KUBERNETES_CLUSTER
 continuousEfficiencyConfig:
   continuousEfficiencyEnabled: true
 delegateName: k8s14oct
+delegateSelectors:
+- k8s14oct
 skipValidation: true
 usageRestrictions:
   appEnvRestrictions:

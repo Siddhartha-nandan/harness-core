@@ -3,6 +3,8 @@ type: KUBERNETES_CLUSTER
 continuousEfficiencyConfig:
   continuousEfficiencyEnabled: true
 delegateName: meg-aks
+delegateSelectors:
+- meg-aks
 password: gcpkms:mFD5udsVRc6fP6QlI7lHrQ
 skipValidation: false
 usageRestrictions:

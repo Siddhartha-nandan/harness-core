@@ -3,6 +3,8 @@ type: KUBERNETES_CLUSTER
 continuousEfficiencyConfig:
   continuousEfficiencyEnabled: true
 delegateName: harness-sample-k8s-delegate
+delegateSelectors:
+- harness-sample-k8s-delegate
 skipValidation: true
 usageRestrictions:
   appEnvRestrictions:

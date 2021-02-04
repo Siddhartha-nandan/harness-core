@@ -3,6 +3,8 @@ type: KUBERNETES_CLUSTER
 continuousEfficiencyConfig:
   continuousEfficiencyEnabled: true
 delegateName: eks
+delegateSelectors:
+- eks
 password: gcpkms:uldE2YbWTIm2gFKlQRH5tQ
 skipValidation: false
 usageRestrictions:

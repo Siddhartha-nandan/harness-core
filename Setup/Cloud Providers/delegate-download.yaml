@@ -3,6 +3,8 @@ type: KUBERNETES_CLUSTER
 continuousEfficiencyConfig:
   continuousEfficiencyEnabled: true
 delegateName: delegate-download
+delegateSelectors:
+- delegate-download
 skipValidation: true
 usageRestrictions:
   appEnvRestrictions:

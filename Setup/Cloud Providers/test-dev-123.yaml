@@ -3,6 +3,8 @@ type: KUBERNETES_CLUSTER
 continuousEfficiencyConfig:
   continuousEfficiencyEnabled: true
 delegateName: test-dev-123
+delegateSelectors:
+- test-dev-123
 skipValidation: true
 usageRestrictions:
   appEnvRestrictions:
