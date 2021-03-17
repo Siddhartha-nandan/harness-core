@@ -4,3 +4,4 @@ accessKey: AKIA2VKZZO4KZTQ6U4PI
 assumeCrossAccountRole: false
 secretKey: gcpkms:AuT_Mp4qTM22qeqL59OFIQ
 useEc2IamCredentials: false
+useIRSA: false

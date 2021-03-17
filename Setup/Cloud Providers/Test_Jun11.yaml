@@ -15,3 +15,4 @@ usageRestrictions:
       filterTypes:
       - NON_PROD
 useEc2IamCredentials: true
+useIRSA: false
