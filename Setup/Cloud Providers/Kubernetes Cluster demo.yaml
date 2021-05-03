@@ -1,9 +1,0 @@
-harnessApiVersion: '1.0'
-type: KUBERNETES_CLUSTER
-authType: SERVICE_ACCOUNT
-continuousEfficiencyConfig:
-  continuousEfficiencyEnabled: false
-masterUrl: https://ce-dev-cluster-dns-08096d22.hcp.eastus.azmk8s.io
-serviceAccountToken: gcpkms:4YMEmAROSl-kdHFjBR8KQg
-skipValidation: false
-useKubernetesDelegate: false
