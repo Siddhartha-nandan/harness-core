@@ -4,7 +4,7 @@ continuousEfficiencyConfig:
   continuousEfficiencyEnabled: true
 delegateName: meg-aks
 delegateSelectors:
-- aks-new-cd-ddbksb-0
+- aks-ce
 skipValidation: false
 usageRestrictions:
   appEnvRestrictions:
