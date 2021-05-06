@@ -3,7 +3,7 @@ type: KUBERNETES_CLUSTER
 continuousEfficiencyConfig:
   continuousEfficiencyEnabled: true
 delegateSelectors:
-- aks-ce
+- aks-cd
 skipValidation: false
 usageRestrictions:
   appEnvRestrictions:
