@@ -2,7 +2,7 @@ harnessApiVersion: '1.0'
 type: KUBERNETES_CLUSTER
 authType: SERVICE_ACCOUNT
 continuousEfficiencyConfig:
-  continuousEfficiencyEnabled: true
+  continuousEfficiencyEnabled: false
 masterUrl: https://ce-test-dontdelete-dns-de7a6168.hcp.eastus.azmk8s.io:443
 serviceAccountToken: gcpkms:pmxSHHT8QmutnCNIrbmK-g
 skipValidation: false
