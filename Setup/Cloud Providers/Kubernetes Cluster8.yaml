@@ -1,7 +1,7 @@
 harnessApiVersion: '1.0'
 type: KUBERNETES_CLUSTER
 continuousEfficiencyConfig:
-  continuousEfficiencyEnabled: false
+  continuousEfficiencyEnabled: true
 delegateSelectors:
 - aks-cd
 skipValidation: false
