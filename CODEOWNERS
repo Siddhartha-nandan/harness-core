@@ -1,6 +1,6 @@
 
-Setup/Tagss.yaml johannes.batzill@harness.io
+Setup/* johannes.batzill@harness.io
 
-Setup/TestFile.txt johannes.batzill@harness.io abhinav.singh@harness.io
+Setup/  abhinav.singh@harness.io
 
-
+Setup/TestFile.txt  enver.bisevac@harness.io
