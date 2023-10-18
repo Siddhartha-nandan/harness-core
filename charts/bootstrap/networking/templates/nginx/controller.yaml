@@ -21,7 +21,7 @@ metadata:
 spec:
   selector:
     app: harness-ingress-controller
-  {{- if .Values.global.ggIngress.enabled }}
+  {{- if .Values.global.globalIngress.enabled }}
   type: 'ClusterIP'
   {{- else if .Values.nginx.loadBalancerEnabled }}
   type: 'LoadBalancer'
