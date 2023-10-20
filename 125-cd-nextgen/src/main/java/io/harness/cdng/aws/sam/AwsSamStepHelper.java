@@ -138,15 +138,15 @@ public class AwsSamStepHelper {
         && stepStatusTaskResponseData.getStepStatus().getStepExecutionStatus() == StepExecutionStatus.SUCCESS) {
       StepOutput stepOutput = stepStatusTaskResponseData.getStepStatus().getOutput();
 
-      if (stepOutput instanceof StepMapOutput) {
-        StepMapOutput stepMapOutput = (StepMapOutput) stepOutput;
-        String instancesByte64 = stepMapOutput.getMap().get("instances");
-        log.info(String.format("AWS SAM Deploy instances byte64 %s", instancesByte64));
-        instances = new String(Base64.getDecoder().decode(instancesByte64));
-        log.info(String.format("AWS SAM Deploy instances %s", instances));
-      }
-
       try {
+        if (stepOutput instanceof StepMapOutput) {
+          StepMapOutput stepMapOutput = (StepMapOutput) stepOutput;
+          String instancesByte64 = stepMapOutput.getMap().get("instances");
+          log.info(String.format("AWS SAM Deploy instances byte64 %s", instancesByte64));
+          instances = new String(Base64.getDecoder().decode(instancesByte64));
+          log.info(String.format("AWS SAM Deploy instances %s", instances));
+        }
+
         log.info(String.format("AWS SAM Deploy: Parsing instances from JSON %s", instances));
         serverInstanceInfoList = Arrays.asList(objectMapper.readValue(instances, AwsSamServerInstanceInfo[].class));
       } catch (Exception e) {
