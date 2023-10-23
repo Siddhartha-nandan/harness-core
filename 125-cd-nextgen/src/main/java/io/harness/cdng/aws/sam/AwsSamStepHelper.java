@@ -51,10 +51,10 @@ import io.harness.tasks.ResponseData;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -123,7 +123,7 @@ public class AwsSamStepHelper {
     StepStatusTaskResponseData stepStatusTaskResponseData =
         containerStepExecutionResponseHelper.filterK8StepResponse(responseDataMap);
 
-    List<ServerInstanceInfo> serverInstanceInfoList = Collections.emptyList();
+    List<ServerInstanceInfo> serverInstanceInfoList = new ArrayList<>();
 
     if (stepStatusTaskResponseData == null) {
       log.info("Aws Sam Deploy :  Received stepStatusTaskResponseData as null");
