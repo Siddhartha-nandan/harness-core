@@ -54,6 +54,7 @@ import com.google.inject.Inject;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -124,7 +125,7 @@ public class AwsSamStepHelper {
     StepStatusTaskResponseData stepStatusTaskResponseData =
         containerStepExecutionResponseHelper.filterK8StepResponse(responseDataMap);
 
-    List<ServerInstanceInfo> serverInstanceInfoList = null;
+    List<ServerInstanceInfo> serverInstanceInfoList = Collections.emptyList();
 
     if (stepStatusTaskResponseData == null) {
       log.info("Aws Sam Deploy :  Received stepStatusTaskResponseData as null");

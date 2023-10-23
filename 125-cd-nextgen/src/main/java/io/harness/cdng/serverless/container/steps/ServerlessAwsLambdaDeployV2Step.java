@@ -127,7 +127,7 @@ public class ServerlessAwsLambdaDeployV2Step extends AbstractContainerStepV2<Ste
         && StepExecutionStatus.SUCCESS == stepStatusTaskResponseData.getStepStatus().getStepExecutionStatus()) {
       StepOutput stepOutput = stepStatusTaskResponseData.getStepStatus().getOutput();
 
-      List<ServerInstanceInfo> serverInstanceInfoList = null;
+      List<ServerInstanceInfo> serverInstanceInfoList = Collections.emptyList();
       try {
         if (stepOutput instanceof StepMapOutput) {
           StepMapOutput stepMapOutput = (StepMapOutput) stepOutput;
