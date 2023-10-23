@@ -120,8 +120,6 @@ public class AwsSamStepHelper {
 
   public List<ServerInstanceInfo> fetchServerInstanceInfoFromDelegateResponse(
       Map<String, ResponseData> responseDataMap) {
-    String instances = null;
-
     StepStatusTaskResponseData stepStatusTaskResponseData =
         containerStepExecutionResponseHelper.filterK8StepResponse(responseDataMap);
 
@@ -135,20 +133,21 @@ public class AwsSamStepHelper {
           stepStatusTaskResponseData.getStepStatus().getStepExecutionStatus()));
     }
 
-    if (stepStatusTaskResponseData != null
-        && stepStatusTaskResponseData.getStepStatus().getStepExecutionStatus() == StepExecutionStatus.SUCCESS) {
+    if (stepStatusTaskResponseData.getStepStatus().getStepExecutionStatus() == StepExecutionStatus.SUCCESS) {
       StepOutput stepOutput = stepStatusTaskResponseData.getStepStatus().getOutput();
+      String instances = null;
 
-      try {
-        if (stepOutput instanceof StepMapOutput) {
-          StepMapOutput stepMapOutput = (StepMapOutput) stepOutput;
-          String instancesByte64 = stepMapOutput.getMap().get("instances");
-          log.info(String.format("AWS SAM Deploy instances byte64 %s", instancesByte64));
-          instances = new String(Base64.getDecoder().decode(instancesByte64));
-          log.info(String.format("AWS SAM Deploy instances %s", instances));
+      if (stepOutput instanceof StepMapOutput) {
+        StepMapOutput stepMapOutput = (StepMapOutput) stepOutput;
+        String instancesByte64 = stepMapOutput.getMap().get("instances");
+        if (EmptyPredicate.isEmpty(instancesByte64)) {
+          log.info("No AWS SAM Deploy instances found");
+          return serverInstanceInfoList;
         }
-
-        log.info(String.format("AWS SAM Deploy: Parsing instances from JSON %s", instances));
+        instances = new String(Base64.getDecoder().decode(instancesByte64));
+        log.info(String.format("AWS SAM Deploy instances %s", instances));
+      }
+      try {
         serverInstanceInfoList = Arrays.asList(objectMapper.readValue(instances, AwsSamServerInstanceInfo[].class));
       } catch (Exception e) {
         log.error(String.format("Error while parsing AWS SAM instances %s", instances), e);
