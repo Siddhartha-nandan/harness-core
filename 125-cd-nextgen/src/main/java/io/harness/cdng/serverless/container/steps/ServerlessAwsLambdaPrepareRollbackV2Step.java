@@ -24,8 +24,10 @@ import io.harness.delegate.task.stepstatus.StepStatusTaskResponseData;
 import io.harness.executions.steps.ExecutionNodeType;
 import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
+import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
+import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
 import io.harness.pms.sdk.core.plugin.AbstractContainerStepV2;
 import io.harness.pms.sdk.core.plugin.ContainerStepExecutionResponseHelper;
@@ -83,8 +85,8 @@ public class ServerlessAwsLambdaPrepareRollbackV2Step extends AbstractContainerS
         serverlessAwsLambdaPrepareRollbackV2StepParameters.getImage());
 
     Map<String, String> envVarMap = new HashMap<>();
-    serverlessStepCommonHelper.putValuesYamlEnvVars(
-        ambiance, serverlessAwsLambdaPrepareRollbackV2StepParameters, envVarMap);
+    //    serverlessStepCommonHelper.putValuesYamlEnvVars(
+    //        ambiance, serverlessAwsLambdaPrepareRollbackV2StepParameters, envVarMap);
 
     return getUnitStep(ambiance, stepElementParameters, accountId, logKey, parkedTaskId,
         serverlessAwsLambdaPrepareRollbackV2StepParameters, envVarMap);
@@ -94,11 +96,25 @@ public class ServerlessAwsLambdaPrepareRollbackV2Step extends AbstractContainerS
       String logKey, String parkedTaskId,
       ServerlessAwsLambdaPrepareRollbackV2StepParameters serverlessAwsLambdaPrepareRollbackV2StepParameters,
       Map envVarMap) {
-    return ContainerUnitStepUtils.serializeStepWithStepParameters(
-        getPort(ambiance, stepElementParameters.getIdentifier()), parkedTaskId, logKey,
-        stepElementParameters.getIdentifier(), getTimeout(ambiance, stepElementParameters), accountId,
+    String stepIdentifier = AmbianceUtils.obtainStepIdentifier(ambiance);
+    String completeStepIdentifier = getCompleteStepIdentifier(ambiance, stepIdentifier);
+
+    return ContainerUnitStepUtils.serializeStepWithStepParameters(getPort(ambiance, stepIdentifier), parkedTaskId,
+        logKey, completeStepIdentifier, getTimeout(ambiance, stepElementParameters), accountId,
         stepElementParameters.getName(), delegateCallbackTokenSupplier, ambiance, envVarMap,
         serverlessAwsLambdaPrepareRollbackV2StepParameters.getImage().getValue(), Collections.EMPTY_LIST);
+  }
+
+  public String getCompleteStepIdentifier(Ambiance ambiance, String stepIdentifier) {
+    StringBuilder identifier = new StringBuilder();
+    for (Level level : ambiance.getLevelsList()) {
+      if (level.getStepType().getType().equals("STEP_GROUP")) {
+        identifier.append(level.getIdentifier());
+        identifier.append('_');
+      }
+    }
+    identifier.append(stepIdentifier);
+    return identifier.toString();
   }
 
   @Override

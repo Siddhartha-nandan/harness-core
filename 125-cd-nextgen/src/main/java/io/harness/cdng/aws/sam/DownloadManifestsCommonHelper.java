@@ -16,10 +16,13 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.steps.nodes.GitCloneStepNode;
 import io.harness.beans.steps.stepinfo.GitCloneStepInfo;
+import io.harness.beans.yaml.extended.ImagePullPolicy;
 import io.harness.cdng.manifest.steps.outcome.ManifestsOutcome;
 import io.harness.cdng.manifest.yaml.GitStoreConfig;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
 import io.harness.cdng.pipeline.steps.CdAbstractStepNode;
+import io.harness.cdng.serverless.container.steps.ServerlessAwsLambdaPrepareRollbackV2StepInfo;
+import io.harness.cdng.serverless.container.steps.ServerlessAwsLambdaPrepareRollbackV2StepParameters;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
 import io.harness.data.structure.UUIDGenerator;
 import io.harness.delegate.beans.storeconfig.FetchType;
@@ -115,6 +118,22 @@ public class DownloadManifestsCommonHelper {
   }
 
   public StepElementParameters getGitStepElementParameters(
+      ManifestOutcome gitManifestOutcome, ServerlessAwsLambdaPrepareRollbackV2StepInfo gitCloneStepInfo) {
+    ServerlessAwsLambdaPrepareRollbackV2StepParameters serverlessAwsLambdaPrepareRollbackV2StepParameters =
+        ServerlessAwsLambdaPrepareRollbackV2StepParameters.infoBuilder()
+            .connectorRef(gitCloneStepInfo.getConnectorRef())
+            .image(ParameterField.createValueField("harnessdev/testing:1.1.1"))
+            .imagePullPolicy(ParameterField.createValueField(ImagePullPolicy.ALWAYS))
+            .build();
+    return StepElementParameters.builder()
+        .name(gitManifestOutcome.getIdentifier())
+        .identifier(gitManifestOutcome.getIdentifier())
+        .timeout(ParameterField.createValueField("10m"))
+        .spec(serverlessAwsLambdaPrepareRollbackV2StepParameters)
+        .build();
+  }
+
+  public StepElementParameters getGitStepElementParameters(
       ManifestOutcome gitManifestOutcome, GitCloneStepInfo gitCloneStepInfo) {
     return StepElementParameters.builder()
         .name(gitManifestOutcome.getIdentifier())
@@ -138,5 +157,9 @@ public class DownloadManifestsCommonHelper {
 
   public String getGitCloneStepIdentifier(ManifestOutcome gitManifestOutcome) {
     return GIT_CLONE_STEP_ID + gitManifestOutcome.getIdentifier();
+  }
+
+  public String getDownloadS3StepIdentifier(ManifestOutcome gitManifestOutcome) {
+    return gitManifestOutcome.getIdentifier();
   }
 }
