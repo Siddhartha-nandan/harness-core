@@ -33,6 +33,7 @@ import io.harness.cdng.manifest.ManifestType;
 import io.harness.cdng.manifest.steps.outcome.ManifestsOutcome;
 import io.harness.cdng.manifest.yaml.GitStoreConfig;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
+import io.harness.cdng.manifest.yaml.S3StoreConfig;
 import io.harness.cdng.manifest.yaml.ServerlessAwsLambdaManifestOutcome;
 import io.harness.cdng.manifest.yaml.ValuesManifestOutcome;
 import io.harness.cdng.manifest.yaml.storeConfig.StoreConfig;
@@ -144,9 +145,59 @@ public class ServerlessV2PluginInfoProviderHelper {
     ManifestOutcome serverlessManifestOutcome = pluginInfoProviderUtils.getServerlessManifestOutcome(
         manifestsOutcome.values(), ManifestType.ServerlessAwsLambda);
     StoreConfig storeConfig = serverlessManifestOutcome.getStore();
-    if (!ManifestStoreType.isInGitSubset(storeConfig.getKind())) {
-      throw new InvalidRequestException("Invalid kind of storeConfig for Serverless step", USER);
+
+    if (storeConfig instanceof S3StoreConfig) {
+      S3StoreConfig s3StoreConfig = (S3StoreConfig) storeConfig;
+      HashMap<String, String> environmentVariablesMap = new HashMap<>();
+      environmentVariablesMap.put("S3_BUCKET", s3StoreConfig.getBucketName().getValue());
+      environmentVariablesMap.put("S3_PATH", s3StoreConfig.getPaths().getValue().get(0));
+
+      NGAccess ngAccess = getNgAccess(ambiance);
+
+      IdentifierRef identifierRef = getIdentifierRef(s3StoreConfig.getConnectorRef().getValue(), ngAccess);
+
+      Optional<ConnectorResponseDTO> connectorDTO = connectorService.get(identifierRef.getAccountIdentifier(),
+          identifierRef.getOrgIdentifier(), identifierRef.getProjectIdentifier(), identifierRef.getIdentifier());
+
+      ConnectorInfoDTO connectorInfoDTO = connectorDTO.get().getConnector();
+      ConnectorConfigDTO connectorConfigDTO = connectorInfoDTO.getConnectorConfig();
+      AwsConnectorDTO awsConnectorDTO = (AwsConnectorDTO) connectorConfigDTO;
+      AwsCredentialDTO awsCredentialDTO = awsConnectorDTO.getCredential();
+      AwsCredentialSpecDTO awsCredentialSpecDTO = awsCredentialDTO.getConfig();
+
+      String crossAccountRoleArn = null;
+      String externalId = null;
+
+      String awsAccessKey = null;
+      String awsSecretKey = null;
+
+      if (awsCredentialSpecDTO instanceof AwsManualConfigSpecDTO) {
+        AwsManualConfigSpecDTO awsManualConfigSpecDTO = (AwsManualConfigSpecDTO) awsCredentialSpecDTO;
+
+        if (!StringUtils.isEmpty(awsManualConfigSpecDTO.getAccessKey())) {
+          awsAccessKey = awsManualConfigSpecDTO.getAccessKey();
+        } else {
+          awsAccessKey = getKey(ambiance, awsManualConfigSpecDTO.getAccessKeyRef());
+        }
+
+        awsSecretKey = getKey(ambiance, awsManualConfigSpecDTO.getSecretKeyRef());
+      }
+
+      if (awsCredentialDTO.getCrossAccountAccess() != null) {
+        crossAccountRoleArn = awsCredentialDTO.getCrossAccountAccess().getCrossAccountRoleArn();
+        externalId = awsCredentialDTO.getCrossAccountAccess().getExternalId();
+      }
+
+      environmentVariablesMap.put("PLUGIN_AWS_ACCESS_KEY", awsAccessKey);
+      environmentVariablesMap.put("PLUGIN_AWS_SECRET_KEY", awsSecretKey);
+
+      if (envVariables != null && envVariables.getValue() != null) {
+        environmentVariablesMap.putAll(envVariables.getValue());
+      }
+
+      return environmentVariablesMap;
     }
+
     String configOverridePath = getConfigOverridePath(serverlessManifestOutcome);
     if (isNull(configOverridePath)) {
       configOverridePath = "";

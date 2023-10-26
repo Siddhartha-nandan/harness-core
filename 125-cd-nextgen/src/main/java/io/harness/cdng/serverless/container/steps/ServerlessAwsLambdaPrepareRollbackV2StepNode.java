@@ -45,6 +45,12 @@ public class ServerlessAwsLambdaPrepareRollbackV2StepNode extends CdAbstractStep
   @JsonTypeInfo(use = NAME, property = "type", include = EXTERNAL_PROPERTY, visible = true)
   ServerlessAwsLambdaPrepareRollbackV2StepInfo serverlessAwsLambdaPrepareRollbackV2StepInfo;
 
+  public ServerlessAwsLambdaPrepareRollbackV2StepNode(
+      StepType type, ServerlessAwsLambdaPrepareRollbackV2StepInfo serverlessAwsLambdaPrepareRollbackV2StepInfo) {
+    this.type = type;
+    this.serverlessAwsLambdaPrepareRollbackV2StepInfo = serverlessAwsLambdaPrepareRollbackV2StepInfo;
+  }
+
   @Override
   public String getType() {
     return StepSpecTypeConstants.SERVERLESS_AWS_LAMBDA_PREPARE_ROLLBACK_V2;
