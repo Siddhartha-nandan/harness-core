@@ -71,6 +71,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -344,11 +345,14 @@ public class ServerlessDownloadManifestsStepHelper {
       ValuesManifestOutcome valuesManifestOutcome) {
     if (valuesManifestOutcome.getStore() instanceof S3StoreConfig) {
       S3StoreConfig s3StoreConfig = (S3StoreConfig) valuesManifestOutcome.getStore();
+      Map<String, String> map = new HashMap<>();
+      map.put("MANIFEST_PATH", valuesManifestOutcome.getIdentifier());
       ServerlessAwsLambdaPrepareRollbackV2StepInfo serverlessAwsLambdaPrepareRollbackV2StepInfo =
           ServerlessAwsLambdaPrepareRollbackV2StepInfo.infoBuilder()
               .connectorRef(ParameterField.createValueField("newCOnnector"))
               .image(ParameterField.createValueField("harnessdev/testing:1.1.1"))
               .imagePullPolicy(ParameterField.createValueField(ImagePullPolicy.ALWAYS))
+              .envVariables(ParameterField.createValueField(map))
               .build();
 
       ServerlessAwsLambdaPrepareRollbackV2StepNode serverlessAwsLambdaPrepareRollbackV2StepNode =
@@ -390,11 +394,14 @@ public class ServerlessDownloadManifestsStepHelper {
 
     if (serverlessAwsLambdaManifestOutcome.getStore() instanceof S3StoreConfig) {
       S3StoreConfig s3StoreConfig = (S3StoreConfig) serverlessAwsLambdaManifestOutcome.getStore();
+      Map<String, String> map = new HashMap<>();
+      map.put("MANIFEST_PATH", serverlessAwsLambdaManifestOutcome.getIdentifier());
       ServerlessAwsLambdaPrepareRollbackV2StepInfo serverlessAwsLambdaPrepareRollbackV2StepInfo =
           ServerlessAwsLambdaPrepareRollbackV2StepInfo.infoBuilder()
               .connectorRef(ParameterField.createValueField("newCOnnector"))
               .image(ParameterField.createValueField("harnessdev/testing:1.1.1"))
               .imagePullPolicy(ParameterField.createValueField(ImagePullPolicy.ALWAYS))
+              .envVariables(ParameterField.createValueField(map))
               .build();
 
       ServerlessAwsLambdaPrepareRollbackV2StepNode serverlessAwsLambdaPrepareRollbackV2StepNode =

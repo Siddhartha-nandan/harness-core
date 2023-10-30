@@ -121,12 +121,20 @@ public class ServerlessV2PluginInfoProviderHelper {
 
   public String getServerlessAwsLambdaDirectoryPathFromManifestOutcome(
       ServerlessAwsLambdaManifestOutcome serverlessAwsLambdaManifestOutcome) {
-    GitStoreConfig gitStoreConfig = (GitStoreConfig) serverlessAwsLambdaManifestOutcome.getStore();
-
-    String path = String.format("/%s/%s/%s", PLUGIN_PATH_PREFIX,
-        removeExtraSlashesInString(serverlessAwsLambdaManifestOutcome.getIdentifier()),
-        removeExtraSlashesInString(gitStoreConfig.getPaths().getValue().get(0)));
-    return removeTrailingSlashesInString(path);
+    if (serverlessAwsLambdaManifestOutcome.getStore() instanceof GitStoreConfig) {
+      GitStoreConfig gitStoreConfig = (GitStoreConfig) serverlessAwsLambdaManifestOutcome.getStore();
+      String path = String.format("/%s/%s/%s", PLUGIN_PATH_PREFIX,
+          removeExtraSlashesInString(serverlessAwsLambdaManifestOutcome.getIdentifier()),
+          removeExtraSlashesInString(gitStoreConfig.getPaths().getValue().get(0)));
+      return removeTrailingSlashesInString(path);
+    } else if (serverlessAwsLambdaManifestOutcome.getStore() instanceof S3StoreConfig) {
+      S3StoreConfig valuesManifestOutcomeStore = (S3StoreConfig) serverlessAwsLambdaManifestOutcome.getStore();
+      String path = String.format("/%s/%s/%s", PLUGIN_PATH_PREFIX,
+          removeExtraSlashesInString(serverlessAwsLambdaManifestOutcome.getIdentifier()),
+          removeExtraSlashesInString(valuesManifestOutcomeStore.getPaths().getValue().get(0)));
+      return removeTrailingSlashesInString(path);
+    }
+    return null;
   }
 
   public String removeExtraSlashesInString(String path) {
@@ -305,11 +313,20 @@ public class ServerlessV2PluginInfoProviderHelper {
   }
 
   public String getValuesPathFromValuesManifestOutcome(ValuesManifestOutcome valuesManifestOutcome) {
-    GitStoreConfig gitStoreConfig = (GitStoreConfig) valuesManifestOutcome.getStore();
-    String path = String.format("/%s/%s/%s", PLUGIN_PATH_PREFIX,
-        removeExtraSlashesInString(valuesManifestOutcome.getIdentifier()),
-        removeExtraSlashesInString(gitStoreConfig.getPaths().getValue().get(0)));
-    return removeTrailingSlashesInString(path);
+    if (valuesManifestOutcome.getStore() instanceof GitStoreConfig) {
+      GitStoreConfig gitStoreConfig = (GitStoreConfig) valuesManifestOutcome.getStore();
+      String path = String.format("/%s/%s/%s", PLUGIN_PATH_PREFIX,
+          removeExtraSlashesInString(valuesManifestOutcome.getIdentifier()),
+          removeExtraSlashesInString(gitStoreConfig.getPaths().getValue().get(0)));
+      return removeTrailingSlashesInString(path);
+    } else if (valuesManifestOutcome.getStore() instanceof S3StoreConfig) {
+      S3StoreConfig valuesManifestOutcomeStore = (S3StoreConfig) valuesManifestOutcome.getStore();
+      String path = String.format("/%s/%s/%s", PLUGIN_PATH_PREFIX,
+          removeExtraSlashesInString(valuesManifestOutcome.getIdentifier()),
+          removeExtraSlashesInString(valuesManifestOutcomeStore.getPaths().getValue().get(0)));
+      return removeTrailingSlashesInString(path);
+    }
+    return null;
   }
 
   public void populateCommandOptions(Ambiance ambiance,
