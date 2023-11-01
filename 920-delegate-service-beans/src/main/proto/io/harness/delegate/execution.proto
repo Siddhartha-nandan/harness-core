@@ -16,6 +16,7 @@ message Execution {
   }
   string infra_ref_id = 2;  // execution infra reference id created by calling SetupExecutionInfrastructureRequest
   string step_log_key = 3;
+  string step_id = 4;
 }
 
 message K8sExecutionSpec {
