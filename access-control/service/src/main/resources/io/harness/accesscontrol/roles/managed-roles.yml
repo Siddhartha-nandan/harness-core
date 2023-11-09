@@ -1,6 +1,6 @@
 # Any edit in this file should accompany an increment in version.
 name: rolesConfiguration
-version: 60
+version: 62
 roles:
     - identifier: _project_admin
       name: Project Admin
@@ -1085,6 +1085,7 @@ roles:
       name: SEI Admin
       description: Can create, edit, and view SEI resources
       permissions:
+        - sei_seiconfigurationsettings_create
         - sei_seiconfigurationsettings_view
         - sei_seiconfigurationsettings_edit
         - sei_seiconfigurationsettings_delete
@@ -1119,6 +1120,7 @@ roles:
       description: Can view SEI resources
       permissions:
         - sei_seiinsights_view
+        - sei_seicollections_view
       managed: true
       isPublic: false
       internal: true

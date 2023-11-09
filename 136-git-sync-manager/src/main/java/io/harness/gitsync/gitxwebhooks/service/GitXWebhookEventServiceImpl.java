@@ -180,6 +180,9 @@ public class GitXWebhookEventServiceImpl implements GitXWebhookEventService {
     if (isNotEmpty(gitXEventsListRequestDTO.getRepoName())) {
       criteria.and(GitXWebhookEventKeys.repo).is(gitXEventsListRequestDTO.getRepoName());
     }
+    if (isNotEmpty(gitXEventsListRequestDTO.getEventIdentifier())) {
+      criteria.and(GitXWebhookEventKeys.eventIdentifier).is(gitXEventsListRequestDTO.getEventIdentifier());
+    }
     return criteria;
   }
 
@@ -229,7 +232,10 @@ public class GitXWebhookEventServiceImpl implements GitXWebhookEventService {
                                              .accountIdentifier(gitXWebhook.getAccountIdentifier())
                                              .webhookIdentifier(gitXWebhook.getIdentifier())
                                              .build(),
-        UpdateGitXWebhookRequestDTO.builder().lastEventTriggerTime(triggerEventTime).build());
+        UpdateGitXWebhookRequestDTO.builder()
+            .lastEventTriggerTime(triggerEventTime)
+            .folderPaths(gitXWebhook.getFolderPaths())
+            .build());
   }
 
   private void enqueueWebhookEvents(WebhookDTO webhookDTO) {
