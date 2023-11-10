@@ -74,6 +74,7 @@ public class OwnerRule implements TestRule {
   public static final String CET = "CET";
   public static final String CI = "CI";
   public static final String CIT = "CIT";
+  public static final String CF = "CF";
   public static final String CV = "CV";
   public static final String DEL = "DEL";
   public static final String DX = "DX";
@@ -87,6 +88,7 @@ public class OwnerRule implements TestRule {
   public static final String IDP = "IDP";
 
   public static final String AADITI = "aaditi.joag";
+  public static final String AASHRIT = "aashrit.garg";
   public static final String ABHIJEET = "abhijeet.sharma";
   public static final String ABHIJITH = "abhijith.pradeep";
   public static final String ABHINAV = "abhinav.singh";
@@ -341,8 +343,10 @@ public class OwnerRule implements TestRule {
   public static final String SHOBHIT_SINGH = "shobhit.singh";
   public static final String RAKSHIT_AGARWAL = "rakshit.agarwal";
   public static final String VINIT_KUMAR = "vinit.kumar";
-
+  public static final String SHUBHENDU = "shubhendu.patidar";
   public static final String EOIN_MCAFEE = "eoin.mcafee";
+
+  public static final String DMACK = "daniel.mack";
 
   @Deprecated public static final String UNKNOWN = "unknown";
 
@@ -353,8 +357,10 @@ public class OwnerRule implements TestRule {
   private static final Map<String, UserInfo> active =
       ImmutableMap.<String, UserInfo>builder()
           .put(AADITI, defaultUserInfo(AADITI).slack("UCFPUNRAQ").team(CDC).build())
+          .put(AASHRIT, defaultUserInfo(AASHRIT).slack("U05GY78UG1J").team(IDP).build())
           .put(ABHIJEET, defaultUserInfo(ABHIJEET).slack("U0395DJBXS7").team(CE).build())
           .put(ABHIJITH, defaultUserInfo(ABHIJITH).slack("U0270PE0T24").team(CV).build())
+          .put(SHUBHENDU, defaultUserInfo(SHUBHENDU).slack("U05R38YQ8J3").team(CV).build())
           .put(ABHINAV, defaultUserInfo(ABHINAV).slack("UQQPR8M6Y").team(DX).build())
           .put(AKHIL_PANDEY, defaultUserInfo(AKHIL_PANDEY).slack("U0141LFM478").team(CDP).build())
           .put(ABHISHEK, defaultUserInfo(ABHISHEK).slack("U03F6BDAKTN").team(CDC).build())
@@ -492,6 +498,7 @@ public class OwnerRule implements TestRule {
           .put(VOJIN, defaultUserInfo(VOJIN).slack("U015TFFL83G").team(PL).build())
           .put(VISTAAR, defaultUserInfo(VISTAAR).slack("U0138Q1JEHM").team(CI).build())
           .put(EOIN_MCAFEE, defaultUserInfo(EOIN_MCAFEE).slack("U020990GT0R").team(CI).build())
+          .put(DMACK, defaultUserInfo(DMACK).slack("U03UPSVNG48").team(CF).build())
           .put(VUK, defaultUserInfo(VUK).slack("U0115RT3EQL").team(DEL).build())
           .put(XIN, defaultUserInfo(XIN).slack("U01R3KSP3M1").team(DEL).build())
           .put(YOGESH, defaultUserInfo(YOGESH).slack("UJVLUUXAT").team(CDP).build())

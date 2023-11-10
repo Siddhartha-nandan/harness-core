@@ -7,6 +7,7 @@
 
 package io.harness.ng.core.refresh.helper;
 
+import static io.harness.connector.ConnectorModule.DEFAULT_CONNECTOR_SERVICE;
 import static io.harness.rule.OwnerRule.INDER;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,10 +25,12 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.cdng.customdeployment.helper.CustomDeploymentEntitySetupHelper;
 import io.harness.cdng.gitops.service.ClusterService;
+import io.harness.connector.services.ConnectorService;
 import io.harness.eventsframework.api.Producer;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.entitysetupusage.service.EntitySetupUsageService;
+import io.harness.ng.core.environment.mappers.EnvironmentFilterHelper;
 import io.harness.ng.core.environment.services.impl.EnvironmentServiceImpl;
 import io.harness.ng.core.infrastructure.dto.NoInputMergeInputAction;
 import io.harness.ng.core.infrastructure.services.impl.InfrastructureEntityServiceImpl;
@@ -52,6 +55,7 @@ import io.harness.setupusage.InfrastructureEntitySetupUsageHelper;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.io.Resources;
+import com.google.inject.name.Named;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -98,18 +102,22 @@ public class RefreshInputsHelperTest extends NgManagerTestBase {
   @Mock ServiceOverrideV2ValidationHelper overrideV2ValidationHelper;
   @Mock private Call<ResponseDTO<SettingValueResponseDTO>> request;
   @Mock private Call<RestResponse<Boolean>> restRequest;
+  @Mock io.harness.utils.NGFeatureFlagHelperService ngFeatureFlagHelperService;
+  @Mock @Named(DEFAULT_CONNECTOR_SERVICE) private ConnectorService connectorService;
+  @Mock EnvironmentFilterHelper environmentFilterHelper;
 
   @Before
   public void setup() throws IOException {
     serviceEntityService = spy(new ServiceEntityServiceImpl(serviceRepository, entitySetupUsageService, eventProducer,
-        outboxService, transactionTemplate, serviceOverrideService, serviceOverridesServiceV2, entitySetupUsageHelper));
+        outboxService, transactionTemplate, serviceOverrideService, serviceOverridesServiceV2, entitySetupUsageHelper,
+        ngFeatureFlagHelperService, connectorService));
     infrastructureEntityService = spy(new InfrastructureEntityServiceImpl(infrastructureRepository, transactionTemplate,
         outboxService, customDeploymentEntitySetupHelper, infrastructureEntitySetupUsageHelper, hPersistence,
-        serviceOverridesServiceV2, overrideV2ValidationHelper));
+        serviceOverridesServiceV2, overrideV2ValidationHelper, null));
     environmentService = spy(new EnvironmentServiceImpl(environmentRepository, entitySetupUsageService, eventProducer,
         outboxService, transactionTemplate, infrastructureEntityService, clusterService, serviceOverrideService,
         serviceOverridesServiceV2, serviceEntityService, accountClient, settingsClient,
-        environmentEntitySetupUsageHelper, overrideV2ValidationHelper));
+        environmentEntitySetupUsageHelper, overrideV2ValidationHelper, environmentFilterHelper));
     environmentRefreshHelper = spy(new EnvironmentRefreshHelper(environmentService, infrastructureEntityService,
         serviceOverrideService, serviceOverridesServiceV2, accountClient, overrideV2ValidationHelper));
     on(entityFetchHelper).set("serviceEntityService", serviceEntityService);
@@ -145,7 +153,9 @@ public class RefreshInputsHelperTest extends NgManagerTestBase {
 
     when(serviceEntityService.get(ACCOUNT_ID, ORG_ID, PROJECT_ID, "serverless", false))
         .thenReturn(Optional.of(ServiceEntity.builder().yaml(serviceYaml).build()));
-    doReturn(null).when(environmentService).createEnvironmentInputsYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv");
+    doReturn(null)
+        .when(environmentService)
+        .createEnvironmentInputsYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null);
     doReturn("infrastructureDefinitions:\n"
         + "  - identifier: \"infra2\"\n")
         .when(infrastructureEntityService)
@@ -281,7 +291,9 @@ public class RefreshInputsHelperTest extends NgManagerTestBase {
 
     when(serviceEntityService.get(ACCOUNT_ID, ORG_ID, PROJECT_ID, "serverless", false))
         .thenReturn(Optional.of(ServiceEntity.builder().yaml(serviceYaml).build()));
-    doReturn(null).when(environmentService).createEnvironmentInputsYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv");
+    doReturn(null)
+        .when(environmentService)
+        .createEnvironmentInputsYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null);
     doReturn("infrastructureDefinitions:\n"
         + "- identifier: \"infra2\"")
         .when(infrastructureEntityService)
@@ -303,7 +315,9 @@ public class RefreshInputsHelperTest extends NgManagerTestBase {
 
     when(serviceEntityService.get(ACCOUNT_ID, ORG_ID, PROJECT_ID, "serverless", false))
         .thenReturn(Optional.of(ServiceEntity.builder().yaml(serviceYaml).build()));
-    doReturn(null).when(environmentService).createEnvironmentInputsYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv");
+    doReturn(null)
+        .when(environmentService)
+        .createEnvironmentInputsYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null);
     doReturn("infrastructureDefinitions:\n"
         + "- identifier: \"IDENTIFIER\"")
         .when(infrastructureEntityService)

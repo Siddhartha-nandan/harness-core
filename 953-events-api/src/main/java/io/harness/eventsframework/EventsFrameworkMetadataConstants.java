@@ -125,4 +125,10 @@ public final class EventsFrameworkMetadataConstants {
   public static final String SEI_CONFIGURATION_SETTINGS = "seiconfigurationsettings";
   public static final String SEI_COLLECTIONS = "seicollections";
   public static final String SEI_INSIGHTS = "seiinsights";
+
+  // FF
+  public static final String FEATUREFLAG_ENTITY = "featureflag";
+
+  // CODE
+  public static final String CODE_REPOSITORY = "codeRepository";
 }

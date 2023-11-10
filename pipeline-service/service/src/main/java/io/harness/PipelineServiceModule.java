@@ -108,6 +108,7 @@ import io.harness.pms.events.base.PmsMessageListener;
 import io.harness.pms.expressions.PMSExpressionEvaluatorProvider;
 import io.harness.pms.health.HealthResource;
 import io.harness.pms.health.HealthResourceImpl;
+import io.harness.pms.inputset.mappers.InputSetFilterPropertiesMapper;
 import io.harness.pms.jira.JiraStepHelperServiceImpl;
 import io.harness.pms.ngpipeline.inputs.api.InputsApiImpl;
 import io.harness.pms.ngpipeline.inputs.service.PMSInputsService;
@@ -194,6 +195,8 @@ import io.harness.redis.RedissonClientFactory;
 import io.harness.reflection.HarnessReflections;
 import io.harness.remote.client.ClientMode;
 import io.harness.secrets.SecretNGManagerClientModule;
+import io.harness.secretusage.SecretRuntimeUsageService;
+import io.harness.secretusage.SecretRuntimeUsageServiceImpl;
 import io.harness.serializer.KryoRegistrar;
 import io.harness.serializer.NGTriggerRegistrars;
 import io.harness.serializer.OrchestrationStepsModuleRegistrars;
@@ -238,6 +241,7 @@ import io.harness.yaml.core.StepSpecType;
 import io.harness.yaml.schema.beans.YamlSchemaRootClass;
 import io.harness.yaml.schema.client.YamlSchemaClientModule;
 
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableList;
@@ -279,17 +283,19 @@ import org.springframework.core.convert.converter.Converter;
 @Slf4j
 public class PipelineServiceModule extends AbstractModule {
   private final PipelineServiceConfiguration configuration;
-
+  private final MetricRegistry threadPoolMetricRegistry;
   private static PipelineServiceModule instance;
   // TODO: Take this from application.
 
-  private PipelineServiceModule(PipelineServiceConfiguration configuration) {
+  private PipelineServiceModule(PipelineServiceConfiguration configuration, MetricRegistry threadPoolMetricRegistry) {
     this.configuration = configuration;
+    this.threadPoolMetricRegistry = threadPoolMetricRegistry;
   }
 
-  public static PipelineServiceModule getInstance(PipelineServiceConfiguration appConfig) {
+  public static PipelineServiceModule getInstance(
+      PipelineServiceConfiguration appConfig, MetricRegistry threadPoolMetricRegistry) {
     if (instance == null) {
-      instance = new PipelineServiceModule(appConfig);
+      instance = new PipelineServiceModule(appConfig, threadPoolMetricRegistry);
     }
     return instance;
   }
@@ -337,13 +343,14 @@ public class PipelineServiceModule extends AbstractModule {
             .licenseClientConfig(configuration.getNgManagerServiceHttpClientConfig())
             .licenseClientId(PIPELINE_SERVICE.getServiceId())
             .expandedJsonLockConfig(configuration.getExpandedJsonLockConfig())
-            .build()));
+            .build(),
+        threadPoolMetricRegistry));
     install(OrchestrationStepsModule.getInstance(configuration.getOrchestrationStepConfig()));
     install(FeatureFlagModule.getInstance());
     install(OrchestrationVisualizationModule.getInstance(configuration.getEventsFrameworkConfiguration(),
-        configuration.getOrchestrationVisualizationThreadPoolConfig(),
-        configuration.getGraphConsumerSleepIntervalMs()));
-    install(PodCleanUpModule.getInstance(configuration.getPodCleanUpThreadPoolConfig()));
+        configuration.getOrchestrationVisualizationThreadPoolConfig(), configuration.getGraphConsumerSleepIntervalMs(),
+        threadPoolMetricRegistry));
+    install(PodCleanUpModule.getInstance(configuration.getPodCleanUpThreadPoolConfig(), threadPoolMetricRegistry));
     install(PrimaryVersionManagerModule.getInstance());
     install(new DelegateServiceDriverGrpcClientModule(configuration.getManagerServiceSecret(),
         configuration.getManagerTarget(), configuration.getManagerAuthority(), true));
@@ -474,6 +481,7 @@ public class PipelineServiceModule extends AbstractModule {
     MapBinder<String, FilterPropertiesMapper> filterPropertiesMapper =
         MapBinder.newMapBinder(binder(), String.class, FilterPropertiesMapper.class);
     filterPropertiesMapper.addBinding(FilterType.PIPELINESETUP.toString()).to(PipelineFilterPropertiesMapper.class);
+    filterPropertiesMapper.addBinding(FilterType.INPUTSET.toString()).to(InputSetFilterPropertiesMapper.class);
     filterPropertiesMapper.addBinding(FilterType.PIPELINEEXECUTION.toString())
         .to(PipelineExecutionFilterPropertiesMapper.class);
 
@@ -512,6 +520,7 @@ public class PipelineServiceModule extends AbstractModule {
     bind(ServiceNowStepHelperService.class).to(ServiceNowStepHelperServiceImpl.class);
     bind(GithubService.class).to(GithubServiceImpl.class);
     bind(ContainerStepV2PluginProvider.class).to(ContainerStepV2PluginProviderImpl.class);
+    bind(SecretRuntimeUsageService.class).to(SecretRuntimeUsageServiceImpl.class);
     try {
       bind(TimeScaleDBService.class)
           .toConstructor(TimeScaleDBServiceImpl.class.getConstructor(TimeScaleDBConfig.class));
@@ -587,15 +596,14 @@ public class PipelineServiceModule extends AbstractModule {
 
   @Provides
   @Singleton
-  @Named("logStreamingClientThreadPool")
-  public ThreadPoolExecutor logStreamingClientThreadPool() {
+  @Named("logStreamingDelayExecutor")
+  public ScheduledExecutorService logStreamingDelayExecutor() {
     ThreadPoolConfig threadPoolConfig = configuration != null && configuration.getLogStreamingServiceConfig() != null
             && configuration.getLogStreamingServiceConfig().getThreadPoolConfig() != null
         ? configuration.getLogStreamingServiceConfig().getThreadPoolConfig()
-        : ThreadPoolConfig.builder().corePoolSize(1).maxPoolSize(50).idleTime(30).timeUnit(TimeUnit.SECONDS).build();
-    return ThreadPool.create(threadPoolConfig.getCorePoolSize(), threadPoolConfig.getMaxPoolSize(),
-        threadPoolConfig.getIdleTime(), threadPoolConfig.getTimeUnit(),
-        new ThreadFactoryBuilder().setNameFormat("log-client-pool-%d").build());
+        : ThreadPoolConfig.builder().corePoolSize(10).build();
+    return new ScheduledThreadPoolExecutor(threadPoolConfig.getCorePoolSize(),
+        new ThreadFactoryBuilder().setNameFormat("log-client-pool-%d").setPriority(Thread.NORM_PRIORITY).build());
   }
 
   @Provides
@@ -753,11 +761,8 @@ public class PipelineServiceModule extends AbstractModule {
   @Singleton
   @Named("PipelineExecutorService")
   public ExecutorService pipelineExecutorService() {
-    return ThreadPool.create(configuration.getPipelineExecutionPoolConfig().getCorePoolSize(),
-        configuration.getPipelineExecutionPoolConfig().getMaxPoolSize(),
-        configuration.getPipelineExecutionPoolConfig().getIdleTime(),
-        configuration.getPipelineExecutionPoolConfig().getTimeUnit(),
-        new ThreadFactoryBuilder().setNameFormat("PipelineExecutorService-%d").build());
+    return ThreadPool.getInstrumentedExecutorService(
+        configuration.getPipelineExecutionPoolConfig(), "PipelineExecutorService", threadPoolMetricRegistry);
   }
 
   @Provides
@@ -775,11 +780,8 @@ public class PipelineServiceModule extends AbstractModule {
   @Singleton
   @Named("PlanCreatorMergeExecutorService")
   public Executor planCreatorMergeExecutorService() {
-    return ThreadPool.create(configuration.getPlanCreatorMergeServicePoolConfig().getCorePoolSize(),
-        configuration.getPlanCreatorMergeServicePoolConfig().getMaxPoolSize(),
-        configuration.getPlanCreatorMergeServicePoolConfig().getIdleTime(),
-        configuration.getPlanCreatorMergeServicePoolConfig().getTimeUnit(),
-        new ThreadFactoryBuilder().setNameFormat("PipelineMergeCreatorExecutorService-%d").build());
+    return ThreadPool.getInstrumentedExecutorService(configuration.getPlanCreatorMergeServicePoolConfig(),
+        "PipelineMergeCreatorExecutorService", threadPoolMetricRegistry);
   }
 
   @Provides
@@ -885,13 +887,6 @@ public class PipelineServiceModule extends AbstractModule {
     return harnessCacheManager.getCache("partialSchemaCache", SchemaCacheKey.class, PartialSchemaDTOWrapperValue.class,
         CreatedExpiryPolicy.factoryOf(new Duration(TimeUnit.HOURS, 1)),
         versionInfoManager.getVersionInfo().getBuildNo());
-  }
-
-  @Provides
-  @Singleton
-  @Named("allowedParallelStages")
-  public Integer getAllowedParallelStages() {
-    return configuration.getAllowedParallelStages();
   }
 
   @Provides

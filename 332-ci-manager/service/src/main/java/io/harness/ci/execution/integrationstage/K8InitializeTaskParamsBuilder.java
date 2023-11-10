@@ -229,8 +229,10 @@ public class K8InitializeTaskParamsBuilder {
 
     LiteEngineSecretEvaluator liteEngineSecretEvaluator =
         LiteEngineSecretEvaluator.builder().secretUtils(secretUtils).build();
-    List<SecretVariableDetails> secretVariableDetails =
+    List<SecretVariableDetails> resolveSecretVariableDetails =
         liteEngineSecretEvaluator.resolve(initializeStepInfo, ngAccess, ambiance.getExpressionFunctorToken());
+    List<SecretVariableDetails> secretVariableDetails =
+        k8InitializeTaskUtils.deDupSecrets(resolveSecretVariableDetails);
     k8InitializeTaskUtils.checkSecretAccess(ambiance, secretVariableDetails, accountId,
         AmbianceUtils.getProjectIdentifier(ambiance), AmbianceUtils.getOrgIdentifier(ambiance));
 
@@ -458,7 +460,7 @@ public class K8InitializeTaskParamsBuilder {
     OptionalSweepingOutput optionalSweepingOutput = executionSweepingOutputResolver.resolveOptional(
         ambiance, RefObjectUtils.getSweepingOutputRefObject(ContextElement.stageDetails));
     if (!optionalSweepingOutput.isFound()) {
-      throw new CIStageExecutionException("Stage details sweeping output cannot be empty");
+      throw new CIStageExecutionException("Unable to fetch stage details. Please retry or verify pipeline yaml");
     }
     return (StageDetails) optionalSweepingOutput.getOutput();
   }

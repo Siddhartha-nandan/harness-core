@@ -9,8 +9,6 @@ package io.harness.pms.pipeline.service;
 
 import static io.harness.pms.yaml.YAMLFieldNameConstants.PIPELINE;
 import static io.harness.pms.yaml.YAMLFieldNameConstants.TRIGGER;
-import static io.harness.yaml.schema.beans.SchemaConstants.PIPELINE_NODE;
-import static io.harness.yaml.schema.beans.SchemaConstants.STAGES_NODE;
 
 import static java.lang.String.format;
 
@@ -29,10 +27,10 @@ import io.harness.pms.merger.YamlConfig;
 import io.harness.pms.merger.helpers.FQNMapGenerator;
 import io.harness.pms.pipeline.service.yamlschema.PmsYamlSchemaHelper;
 import io.harness.pms.pipeline.service.yamlschema.SchemaFetcher;
-import io.harness.pms.plan.execution.preprocess.PipelinePreprocessor;
-import io.harness.pms.plan.execution.preprocess.PipelinePreprocessorFactory;
 import io.harness.pms.yaml.NGYamlHelper;
 import io.harness.pms.yaml.YamlUtils;
+import io.harness.pms.yaml.preprocess.YamlPreProcessor;
+import io.harness.pms.yaml.preprocess.YamlPreProcessorFactory;
 import io.harness.utils.PipelineVersionConstants;
 import io.harness.yaml.individualschema.PipelineSchemaMetadata;
 import io.harness.yaml.individualschema.PipelineSchemaParserFactory;
@@ -73,20 +71,18 @@ public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
   private ExecutorService yamlSchemaExecutor;
 
   @Inject PipelineSchemaParserFactory pipelineSchemaParserFactory;
-  @Inject PipelinePreprocessorFactory pipelinePreprocessorFactory;
-  Integer allowedParallelStages;
+  @Inject YamlPreProcessorFactory yamlPreProcessorFactory;
 
   private final String PIPELINE_VERSION_V0 = "v0";
   private final String PIPELINE_VERSION_V1 = "v1";
 
   @Inject
   public PMSYamlSchemaServiceImpl(YamlSchemaValidator yamlSchemaValidator, PmsYamlSchemaHelper pmsYamlSchemaHelper,
-      SchemaFetcher schemaFetcher, @Named("allowedParallelStages") Integer allowedParallelStages,
-      @Named("YamlSchemaExecutorService") ExecutorService executor, InputsSchemaServiceImpl inputsSchemaService) {
+      SchemaFetcher schemaFetcher, @Named("YamlSchemaExecutorService") ExecutorService executor,
+      InputsSchemaServiceImpl inputsSchemaService) {
     this.yamlSchemaValidator = yamlSchemaValidator;
     this.pmsYamlSchemaHelper = pmsYamlSchemaHelper;
     this.schemaFetcher = schemaFetcher;
-    this.allowedParallelStages = allowedParallelStages;
     this.yamlSchemaExecutor = executor;
     this.inputsSchemaService = inputsSchemaService;
   }
@@ -102,8 +98,8 @@ public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
                new AccountLogContext(accountId, AutoLogContext.OverrideBehavior.OVERRIDE_NESTS)) {
         return future.get(SCHEMA_TIMEOUT, TimeUnit.SECONDS);
       } catch (ExecutionException e) {
-        // If e.getCause() instance of InvalidYamlException then it means we got some legit schema-validation errors and
-        // it has error info according to the schema-error-experience.
+        // If e.getCause() instance of InvalidYamlException then it means we got some legit schema-validation errors
+        // and it has error info according to the schema-error-experience.
         if (e.getCause() != null && e.getCause() instanceof io.harness.yaml.validator.InvalidYamlException) {
           throw(io.harness.yaml.validator.InvalidYamlException) e.getCause();
         }
@@ -127,9 +123,7 @@ public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
       JsonNode schema = schemaFetcher.fetchPipelineStaticYamlSchema(PIPELINE_VERSION_V0);
 
       String schemaString = JsonPipelineUtils.writeJsonString(schema);
-      yamlSchemaValidator.validate(jsonNode, schemaString,
-          pmsYamlSchemaHelper.isFeatureFlagEnabled(FeatureName.DONT_RESTRICT_PARALLEL_STAGE_COUNT, accountIdentifier),
-          allowedParallelStages, PIPELINE_NODE + "/" + STAGES_NODE);
+      yamlSchemaValidator.validate(jsonNode, schemaString);
       return true;
     } catch (io.harness.yaml.validator.InvalidYamlException e) {
       log.info("[PMS_SCHEMA] Schema validation took total time {}ms", System.currentTimeMillis() - start);
@@ -189,9 +183,9 @@ public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
   @Override
   @SneakyThrows
   public List<YamlInputDetails> getInputSchemaDetails(String yaml) {
-    PipelinePreprocessor preprocessor = pipelinePreprocessorFactory.getProcessorInstance(NGYamlHelper.getVersion(yaml));
+    YamlPreProcessor preProcessor = yamlPreProcessorFactory.getProcessorInstance(NGYamlHelper.getVersion(yaml));
     // Preprocessing the YAML to add the id fields at the required places if not already present.
-    yaml = preprocessor.preProcess(yaml);
+    yaml = YamlUtils.writeYamlString(preProcessor.preProcess(yaml).getPreprocessedJsonNode());
     YamlConfig yamlConfig = new YamlConfig(yaml);
     SchemaParserInterface staticSchemaParser = getStaticSchemaParser(yamlConfig);
     return inputsSchemaService.getInputsSchemaRelations(staticSchemaParser, yaml);

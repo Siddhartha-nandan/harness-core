@@ -45,8 +45,10 @@ public class PipelineExecutionSummaryDtoMapper {
     String startingNodeId = pipelineExecutionSummaryEntity.getStartingNodeId();
     StagesExecutionMetadata stagesExecutionMetadata = pipelineExecutionSummaryEntity.getStagesExecutionMetadata();
     boolean isStagesExecution = stagesExecutionMetadata != null && stagesExecutionMetadata.isStagesExecution();
-    List<String> stageIdentifiers =
-        stagesExecutionMetadata == null ? null : stagesExecutionMetadata.getStageIdentifiers();
+    List<String> stageIdentifiers = stagesExecutionMetadata == null
+            || ExecutionModeUtils.isRollbackMode(pipelineExecutionSummaryEntity.getExecutionMode())
+        ? null
+        : stagesExecutionMetadata.getStageIdentifiers();
     Map<String, String> stagesExecutedNames = null;
     if (EmptyPredicate.isNotEmpty(stageIdentifiers)) {
       stagesExecutedNames = getStageNames(stageIdentifiers, stagesExecutionMetadata.getFullPipelineYaml());
@@ -96,12 +98,20 @@ public class PipelineExecutionSummaryDtoMapper {
         .executionMode(pipelineExecutionSummaryEntity.getExecutionMode())
         .notesExistForPlanExecutionId(checkNotesExistForPlanExecutionId(pipelineExecutionSummaryEntity))
         .yamlVersion(pipelineExecutionSummaryEntity.getPipelineVersion())
+        .shouldUseSimplifiedKey(checkShouldUseSimplifiedLogBaseKey(pipelineExecutionSummaryEntity))
         .build();
   }
 
   public boolean checkNotesExistForPlanExecutionId(PipelineExecutionSummaryEntity pipelineExecutionSummaryEntity) {
     if (null != pipelineExecutionSummaryEntity.getNotesExistForPlanExecutionId()) {
       return pipelineExecutionSummaryEntity.getNotesExistForPlanExecutionId();
+    }
+    return false;
+  }
+
+  public boolean checkShouldUseSimplifiedLogBaseKey(PipelineExecutionSummaryEntity pipelineExecutionSummaryEntity) {
+    if (null != pipelineExecutionSummaryEntity.getShouldUseSimplifiedLogBaseKey()) {
+      return pipelineExecutionSummaryEntity.getShouldUseSimplifiedLogBaseKey();
     }
     return false;
   }

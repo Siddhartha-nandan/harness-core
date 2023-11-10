@@ -88,6 +88,12 @@ public class ResourceTypeConstants {
   public static final String IDP_CONFIG_ENV_VARIABLES = "IDP_CONFIG_ENV_VARIABLES";
   public static final String IDP_PROXY_HOST = "IDP_PROXY_HOST";
 
+  public static final String IDP_SCORECARDS = "IDP_SCORECARDS";
+  public static final String IDP_CHECKS = "IDP_CHECKS";
+  public static final String IDP_ALLOW_LIST = "IDP_ALLOW_LIST";
+
+  public static final String IDP_OAUTH_CONFIG = "IDP_OAUTH_CONFIG";
+
   public static final String IDP_CATALOG_CONNECTOR = "IDP_CATALOG_CONNECTOR";
   public static final String GITOPS_REPOSITORY = "GITOPS_REPOSITORY";
   public static final String GITOPS_CLUSTER = "GITOPS_CLUSTER";
@@ -97,4 +103,6 @@ public class ResourceTypeConstants {
   public static final String GITOPS_AGENT = "GITOPS_AGENT";
   public static final String GITOPS_PROJECT_MAPPING = "GITOPS_PROJECT_MAPPING";
   public static final String GITOPS_APPLICATION = "GITOPS_APPLICATION";
+
+  public static final String CODE_REPOSITORY = "CODE_REPOSITORY";
 }

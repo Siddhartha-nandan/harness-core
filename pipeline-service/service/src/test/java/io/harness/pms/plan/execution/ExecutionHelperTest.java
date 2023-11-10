@@ -71,6 +71,7 @@ import io.harness.pms.merger.helpers.InputSetMergeHelper;
 import io.harness.pms.pipeline.PipelineEntity;
 import io.harness.pms.pipeline.governance.service.PipelineGovernanceService;
 import io.harness.pms.pipeline.service.PMSPipelineService;
+import io.harness.pms.pipeline.service.PMSPipelineServiceHelper;
 import io.harness.pms.pipeline.service.PMSPipelineTemplateHelper;
 import io.harness.pms.pipeline.service.PMSYamlSchemaService;
 import io.harness.pms.pipeline.service.PipelineEnforcementService;
@@ -78,8 +79,6 @@ import io.harness.pms.pipeline.service.PipelineMetadataService;
 import io.harness.pms.plan.creation.PlanCreatorMergeService;
 import io.harness.pms.plan.execution.beans.ExecArgs;
 import io.harness.pms.plan.execution.beans.ProcessStageExecutionInfoResult;
-import io.harness.pms.plan.execution.preprocess.PipelinePreprocessorFactory;
-import io.harness.pms.plan.execution.preprocess.PipelineV1Preprocessor;
 import io.harness.pms.rbac.validator.PipelineRbacService;
 import io.harness.pms.utils.NGPipelineSettingsConstant;
 import io.harness.pms.yaml.HarnessYamlVersion;
@@ -136,8 +135,7 @@ public class ExecutionHelperTest extends CategoryTest {
   @Mock RollbackModeExecutionHelper rollbackModeExecutionHelper;
   @Mock PlanService planService;
   @Mock NGSettingsClient settingsClient;
-  @Mock PipelinePreprocessorFactory pipelinePreprocessorFactory;
-  @Mock PipelineV1Preprocessor preprocessor;
+  @Mock PMSPipelineServiceHelper pmsPipelineServiceHelper;
 
   String accountId = "accountId";
   String orgId = "orgId";
@@ -946,8 +944,7 @@ public class ExecutionHelperTest extends CategoryTest {
     doReturn(executionPrincipalInfo).when(principalInfoHelper).getPrincipalInfoFromSecurityContext();
     pipelineEntity.setYaml(pipelineYamlV1);
     pipelineEntity.setHarnessVersion(HarnessYamlVersion.V1);
-    doReturn(preprocessor).when(pipelinePreprocessorFactory).getProcessorInstance(HarnessYamlVersion.V1);
-    doReturn(pipelineYamlV1).when(preprocessor).preProcess(pipelineYamlV1);
+    doReturn(pipelineYamlV1).when(pmsPipelineServiceHelper).preProcessPipelineYaml(pipelineYamlV1);
     ExecArgs execArgs = executionHelper.buildExecutionArgs(pipelineEntity, moduleType, Collections.emptyList(), null,
         executionTriggerInfo, null, RetryExecutionParameters.builder().isRetry(false).build(), false, false, null,
         null);

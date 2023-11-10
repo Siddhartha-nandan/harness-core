@@ -26,6 +26,7 @@ public enum PredefinedTemplate {
   EMAIL_INVITE("templates/email_invite.txt", "email_invite"),
   EMAIL_NOTIFY("templates/email_notify.txt", "email_notify"),
   NG_RESET_PASSWORD("templates/ng_reset_password.txt", "ng_reset_password"),
+  NG_RESET_2FA("templates/reset_2fa.txt", "reset_2fa"),
   EMAIL_VERIFY("templates/email_verify.txt", "default_email_verify"),
   SIGNUP_CONFIRMATION("templates/signup_confirmation.txt", "default_signup_confirmation"),
   EMAIL_TEST_WITH_USER("templates/email_test2.txt", "email_test2"),
@@ -79,6 +80,7 @@ public enum PredefinedTemplate {
   CVNG_SLO_COMPOSITE_ACCOUNT_MSTEAMS(
       "cvng_notification_templates/cvng_slo_composite_account_msteams.txt", "cvng_slo_composite_account_msteams"),
   CVNG_FIREHYDRANT_SLACK("cvng_notification_templates/cvng_firehydrant_slack.txt", "cvng_firehydrant_slack"),
+  CVNG_FIREHYDRANT_WEBHOOK("cvng_notification_templates/cvng_firehydrant_webhook.txt", "cvng_firehydrant_webhook"),
   CVNG_MONITOREDSERVICE_SLACK(
       "cvng_notification_templates/cvng_monitoredservice_slack.txt", "cvng_monitoredservice_slack"),
   CVNG_MONITOREDSERVICE_ET_SLACK(
@@ -110,6 +112,11 @@ public enum PredefinedTemplate {
   FREEZE_SLACK_ALERT("notification_templates/slack_test.txt", "freeze_slack_alert"),
   FREEZE_PD_ALERT("notification_templates/pd_test.txt", "freeze_pagerduty_alert"),
   FREEZE_MSTEAMS_ALERT("notification_templates/msteams_test.txt", "freeze_msteams_alert"),
+  FREEZE_ENABLED_EMAIL_ALERT("notification_templates/freeze_enabled_email_test.txt", "freeze_enabled_email_alert"),
+  FREEZE_ENABLED_SLACK_ALERT("notification_templates/freeze_enabled_slack_test.txt", "freeze_enabled_slack_alert"),
+  FREEZE_ENABLED_PD_ALERT("notification_templates/freeze_enabled_pd_test.txt", "freeze_enabled_pagerduty_alert"),
+  FREEZE_ENABLED_MSTEAMS_ALERT(
+      "notification_templates/freeze_enabled_msteams_test.txt", "freeze_enabled_msteams_alert"),
   EMAIL_SMP_LICENSE_ALERT("templates/email_smp_license_alert.txt", "email_smp_license_alert"),
   PIPELINE_REJECTED_EMAIL_ALERT(
       "notification_templates/pipeline_rejected_email_test.txt", "pipeline_rejected_email_alert"),

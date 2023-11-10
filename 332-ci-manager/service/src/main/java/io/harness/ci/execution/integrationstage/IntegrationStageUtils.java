@@ -126,7 +126,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.fabric8.utils.Strings;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -165,7 +164,7 @@ public class IntegrationStageUtils {
     } catch (Exception ex) {
       String errorMessage = "Failed to deserialize ExecutionWrapperConfig step node";
       Throwable throwable = ex.getCause();
-      if (throwable != null && Strings.isNotBlank(throwable.getMessage())) {
+      if (throwable != null && isNotEmpty(throwable.getMessage())) {
         errorMessage = throwable.getMessage();
       }
       throw new CIStageExecutionException(errorMessage, ex);
@@ -576,8 +575,10 @@ public class IntegrationStageUtils {
       config.setParallel(arrayNode);
     } else if (config.getStepGroup() != null && !config.getStepGroup().isNull()) {
       StepGroupElementConfig stepGroupElementConfig = getStepGroupElementConfig(config);
-      for (ExecutionWrapperConfig step : stepGroupElementConfig.getSteps()) {
-        injectLoopEnvVariables(step);
+      if (isNotEmpty(stepGroupElementConfig.getSteps())) {
+        for (ExecutionWrapperConfig step : stepGroupElementConfig.getSteps()) {
+          injectLoopEnvVariables(step);
+        }
       }
       JsonNode stepGroupNode = JsonPipelineUtils.asTree(stepGroupElementConfig);
       config.setStepGroup(stepGroupNode);
@@ -695,6 +696,7 @@ public class IntegrationStageUtils {
         return ManualExecutionSource.builder().prNumber(numberString).build();
       }
     }
+
     return null;
   }
 
@@ -986,8 +988,10 @@ public class IntegrationStageUtils {
             section -> addStepIdentifier(section, stepIdentifiers, parentId));
       } else if (executionWrapper.getStepGroup() != null && !executionWrapper.getStepGroup().isNull()) {
         StepGroupElementConfig stepGroupElementConfig = getStepGroupElementConfig(executionWrapper);
-        for (ExecutionWrapperConfig wrapper : stepGroupElementConfig.getSteps()) {
-          addStepIdentifier(wrapper, stepIdentifiers, parentId + stepGroupElementConfig.getIdentifier() + "_");
+        if (isNotEmpty(stepGroupElementConfig.getSteps())) {
+          for (ExecutionWrapperConfig wrapper : stepGroupElementConfig.getSteps()) {
+            addStepIdentifier(wrapper, stepIdentifiers, parentId + stepGroupElementConfig.getIdentifier() + "_");
+          }
         }
       } else {
         throw new InvalidRequestException("Only Parallel, StepElement and StepGroup are supported");

@@ -290,6 +290,22 @@ public class NGTriggerServiceImplTest extends CategoryTest {
   }
 
   @Test
+  @Owner(developers = MEET)
+  @Category(UnitTests.class)
+  public void testInputSetRefExpression() {
+    TriggerDetails triggerDetails =
+        TriggerDetails.builder()
+            .ngTriggerEntity(NGTriggerEntity.builder().identifier("identifier").name("name").build())
+            .ngTriggerConfigV2(
+                NGTriggerConfigV2.builder().inputSetRefs(Collections.singletonList("<+trigger.payload.input>")).build())
+            .build();
+
+    assertThatThrownBy(() -> ngTriggerServiceImpl.validateTriggerConfig(triggerDetails))
+        .isInstanceOf(InvalidArgumentsException.class)
+        .hasMessage("InputSetRef cannot be an expression");
+  }
+
+  @Test
   @Owner(developers = ADWAIT)
   @Category(UnitTests.class)
   public void testEmptyIdentifierTriggerFailure() {
@@ -606,7 +622,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
         .thenReturn(Collections.emptyList());
     assertThatThrownBy(() -> ngTriggerServiceImpl.fetchTriggerEventHistory(ACCOUNT_ID, "eventId"))
         .isInstanceOf(InvalidRequestException.class)
-        .hasMessage("Trigger event history eventId does not exist");
+        .hasMessage("Trigger event history doesn't exist for event with eventId eventId");
     List<TriggerEventHistory> triggerEventHistories = new ArrayList<>();
     TriggerEventHistory triggerEventHistory1 = TriggerEventHistory.builder()
                                                    .accountId(ACCOUNT_ID)
@@ -801,6 +817,28 @@ public class NGTriggerServiceImplTest extends CategoryTest {
                    ACCOUNT_ID, Collections.singletonList("signature")))
         .isEqualTo(Collections.singletonList(ngTrigger));
   }
+
+  @Test
+  @Owner(developers = MEET)
+  @Category(UnitTests.class)
+  public void testValidateTrigger() {
+    doThrow(new InvalidRequestException("message")).when(triggerValidationHandler).applyValidations(any());
+    when(ngTriggerRepository.updateValidationStatus(any(), any()))
+        .thenReturn(NGTriggerEntity.builder()
+                        .triggerStatus(TriggerStatus.builder()
+                                           .validationStatus(ValidationStatus.builder()
+                                                                 .statusResult(StatusResult.FAILED)
+                                                                 .detailedMessage("message")
+                                                                 .build())
+                                           .build())
+                        .build());
+    ValidationStatus validationStatus = ngTriggerServiceImpl.validateTrigger(NGTriggerEntity.builder().build())
+                                            .getTriggerStatus()
+                                            .getValidationStatus();
+    assertThat(validationStatus.getDetailedMessage()).isEqualTo("message");
+    assertThat(validationStatus.getStatusResult()).isEqualTo(StatusResult.FAILED);
+  }
+
   @Test
   @Owner(developers = MEET)
   @Category(UnitTests.class)
@@ -1220,6 +1258,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
                                                            .build())
                         .build());
     when(ngTriggerRepository.update(any(), any())).thenReturn(ngTriggerEntity);
+    when(ngTriggerRepository.updateValidationStatus(any(), any())).thenReturn(ngTriggerEntity);
     ngTriggerServiceImpl.create(ngTriggerEntity);
     verify(ngTriggerWebhookRegistrationService, times(1)).registerWebhook(any());
     verify(triggerSetupUsageHelper, times(0)).publishSetupUsageEvent(any(), any());
@@ -1410,13 +1449,28 @@ public class NGTriggerServiceImplTest extends CategoryTest {
     when(kryoSerializer.asObject((byte[]) any())).thenReturn(PollingDocument.newBuilder().build());
     Call<ResponseDTO<PollingResponseDTO>> call1 = mock(Call.class);
     when(pollingResourceClient.subscribe(any())).thenReturn(call1);
-    when(call1.execute()).thenReturn(Response.success(ResponseDTO.newResponse(PollingResponseDTO.builder().build())));
+    when(call1.execute())
+        .thenReturn(Response.success(
+            ResponseDTO.newResponse(PollingResponseDTO.builder().isExistingPollingDoc(false).build())));
     ngTriggerServiceImpl.subscribePolling(ngTriggerEntity, true);
     verify(ngTriggerRepository, times(3)).updateValidationStatusAndMetadata(any(), any());
 
     doThrow(new InvalidRequestException("message")).when(call).execute();
     assertThatThrownBy(() -> ngTriggerServiceImpl.subscribePolling(ngTriggerEntity, true))
         .isInstanceOf(InvalidRequestException.class);
+
+    ngTriggerEntity.setType(NGTriggerType.ARTIFACT);
+    when(kryoSerializer.asObject((byte[]) any())).thenReturn(PollingDocument.newBuilder().build());
+    Call<ResponseDTO<PollingResponseDTO>> call2 = mock(Call.class);
+    when(pollingResourceClient.subscribe(any())).thenReturn(call2);
+    when(call2.execute())
+        .thenReturn(Response.success(ResponseDTO.newResponse(PollingResponseDTO.builder()
+                                                                 .isExistingPollingDoc(true)
+                                                                 .lastPolled(Collections.singletonList("1"))
+                                                                 .build())));
+    when(ngTriggerRepository.updateValidationStatus(any(), any())).thenReturn(ngTriggerEntity);
+    ngTriggerServiceImpl.subscribePolling(ngTriggerEntity, false);
+    verify(ngTriggerRepository, times(5)).updateValidationStatusAndMetadata(any(), any());
   }
 
   @Test
@@ -1703,6 +1757,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
   public void testUpdateTriggerStatus() {
     NGTriggerEntity ngTrigger = NGTriggerEntity.builder().build();
     when(ngTriggerRepository.update(any(), any())).thenReturn(ngTrigger);
+    when(ngTriggerRepository.updateValidationStatus(any(), any())).thenReturn(ngTrigger);
     assertThat(ngTriggerServiceImpl.updateTriggerStatus(ngTrigger, false)).isEqualTo(false);
   }
 

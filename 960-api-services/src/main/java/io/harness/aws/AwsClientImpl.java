@@ -74,6 +74,7 @@ import com.amazonaws.services.ec2.model.AmazonEC2Exception;
 import com.amazonaws.services.ecr.AmazonECRClient;
 import com.amazonaws.services.ecr.AmazonECRClientBuilder;
 import com.amazonaws.services.ecr.model.AmazonECRException;
+import com.amazonaws.services.ecr.model.AuthorizationData;
 import com.amazonaws.services.ecr.model.DescribeImagesRequest;
 import com.amazonaws.services.ecr.model.DescribeImagesResult;
 import com.amazonaws.services.ecr.model.DescribeRepositoriesRequest;
@@ -239,14 +240,18 @@ public class AwsClientImpl implements AwsClient {
 
   @Override
   public String getAmazonEcrAuthToken(AwsConfig awsConfig, String account, String region) {
+    return getAmazonEcrAuthData(awsConfig, account, region).getAuthorizationToken();
+  }
+
+  @Override
+  public AuthorizationData getAmazonEcrAuthData(AwsConfig awsConfig, String account, String region) {
     try (CloseableAmazonWebServiceClient<AmazonECRClient> closeableAmazonECRClient =
              new CloseableAmazonWebServiceClient(getAmazonEcrClient(region, awsConfig))) {
       tracker.trackECRCall("Get Auth Token");
       return closeableAmazonECRClient.getClient()
           .getAuthorizationToken(new GetAuthorizationTokenRequest().withRegistryIds(singletonList(account)))
           .getAuthorizationData()
-          .get(0)
-          .getAuthorizationToken();
+          .get(0);
     } catch (AmazonEC2Exception amazonEC2Exception) {
       if (amazonEC2Exception.getStatusCode() == 401) {
         checkCredentials(awsConfig);
@@ -351,6 +356,7 @@ public class AwsClientImpl implements AwsClient {
 
   public AmazonS3Client getAmazonS3Client(AWSCredentialsProvider credentialsProvider, CEProxyConfig ceProxyConfig) {
     if (ceProxyConfig != null && ceProxyConfig.isEnabled()) {
+      log.info("AmazonS3Client client initializing with proxy config");
       return (AmazonS3Client) AmazonS3ClientBuilder.standard()
           .withClientConfiguration(getClientConfiguration(ceProxyConfig))
           .withRegion(DEFAULT_REGION)
@@ -392,6 +398,7 @@ public class AwsClientImpl implements AwsClient {
   protected AmazonIdentityManagement getAwsIAMClient(
       AWSCredentialsProvider credentialsProvider, Regions region, CEProxyConfig ceProxyConfig) {
     if (ceProxyConfig != null && ceProxyConfig.isEnabled()) {
+      log.info("AmazonIdentityManagement client initializing with proxy config");
       return AmazonIdentityManagementClientBuilder.standard()
           .withCredentials(credentialsProvider)
           .withRegion(region)
@@ -409,6 +416,7 @@ public class AwsClientImpl implements AwsClient {
     AWSCostAndUsageReportClientBuilder awsCostAndUsageReportClientBuilder =
         AWSCostAndUsageReportClientBuilder.standard().withRegion(DEFAULT_REGION).withCredentials(credentialsProvider);
     if (ceProxyConfig != null && ceProxyConfig.isEnabled()) {
+      log.info("AWSCostAndUsageReport client initializing with proxy config");
       awsCostAndUsageReportClientBuilder.withClientConfiguration(getClientConfiguration(ceProxyConfig));
     }
     return awsCostAndUsageReportClientBuilder.build();
@@ -530,6 +538,7 @@ public class AwsClientImpl implements AwsClient {
             .build();
     builder.withCredentials(credentialsProvider);
     if (ceProxyConfig != null && ceProxyConfig.isEnabled()) {
+      log.info("AWSOrganizationsClient client initializing with proxy config");
       builder.withClientConfiguration(getClientConfiguration(ceProxyConfig));
     }
     return (AWSOrganizationsClient) builder.build();

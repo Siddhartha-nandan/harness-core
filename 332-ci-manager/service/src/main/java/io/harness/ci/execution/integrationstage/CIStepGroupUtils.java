@@ -245,7 +245,8 @@ public class CIStepGroupUtils {
       throw new CIStageExecutionException("Input infrastructure can not be empty");
     }
 
-    boolean queueEnabled = featureFlagService.isEnabled(QUEUE_CI_EXECUTIONS_CONCURRENCY, accountId);
+    boolean queueEnabled = infrastructure.getType() == Infrastructure.Type.HOSTED_VM
+        && featureFlagService.isEnabled(QUEUE_CI_EXECUTIONS_CONCURRENCY, accountId);
     if (queueEnabled) {
       return ParameterField.createValueField(Timeout.fromString("10h"));
     }
@@ -400,7 +401,7 @@ public class CIStepGroupUtils {
     String uuid = generateUuid();
     // image is not controlled by user
     String restoreCacheImage = ciExecutionServiceConfig.getStepConfig().getCacheGCSConfig().getImage();
-    if (featureFlagService.isEnabled(FeatureName.CI_USE_S3_FOR_CACHE, accountId)) {
+    if (featureFlagService.isEnabled(FeatureName.CI_ENABLE_BARE_METAL, accountId)) {
       restoreCacheImage = ciExecutionServiceConfig.getStepConfig().getCacheS3Config().getImage();
     }
 
@@ -451,7 +452,7 @@ public class CIStepGroupUtils {
     String uuid = generateUuid();
     // image is not controlled by user
     String saveCacheImage = ciExecutionServiceConfig.getStepConfig().getCacheGCSConfig().getImage();
-    if (featureFlagService.isEnabled(FeatureName.CI_USE_S3_FOR_CACHE, accountId)) {
+    if (featureFlagService.isEnabled(FeatureName.CI_ENABLE_BARE_METAL, accountId)) {
       saveCacheImage = ciExecutionServiceConfig.getStepConfig().getCacheS3Config().getImage();
     }
 

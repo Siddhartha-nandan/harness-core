@@ -8,17 +8,23 @@
 package io.harness.ssca.services;
 
 import io.harness.entities.Instance;
+import io.harness.exception.InvalidArgumentsException;
 import io.harness.repositories.CdInstanceSummaryRepo;
+import io.harness.repositories.EnforcementSummaryRepo;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewRequestBody;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.CdInstanceSummary;
 import io.harness.ssca.entities.CdInstanceSummary.CdInstanceSummaryKeys;
+import io.harness.ssca.entities.EnforcementSummaryEntity.EnforcementSummaryEntityKeys;
 
 import com.google.inject.Inject;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +34,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
   @Inject CdInstanceSummaryRepo cdInstanceSummaryRepo;
   @Inject ArtifactService artifactService;
+  @Inject EnforcementSummaryRepo enforcementSummaryRepo;
 
   @Override
   public boolean upsertInstance(Instance instance) {
@@ -55,13 +62,22 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
             "Instance skipped because of missing correlated artifactEntity, {InstanceId: %s}", instance.getId()));
         return true;
       }
-      cdInstanceSummaryRepo.save(createInstanceSummary(instance));
+      CdInstanceSummary newCdInstanceSummary = createInstanceSummary(instance);
+      artifactService.updateArtifactEnvCount(artifact, newCdInstanceSummary.getEnvType(), 1);
+      cdInstanceSummaryRepo.save(newCdInstanceSummary);
     }
     return true;
   }
 
   @Override
   public boolean removeInstance(Instance instance) {
+    if (Objects.isNull(instance.getPrimaryArtifact())
+        || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity())
+        || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity().getImage())) {
+      log.info(
+          String.format("Instance skipped because of missing artifact identity, {InstanceId: %s}", instance.getId()));
+      return true;
+    }
     CdInstanceSummary cdInstanceSummary = getCdInstanceSummary(instance.getAccountIdentifier(),
         instance.getOrgIdentifier(), instance.getProjectIdentifier(),
         instance.getPrimaryArtifact().getArtifactIdentity().getImage(), instance.getEnvIdentifier());
@@ -69,6 +85,10 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
     if (Objects.nonNull(cdInstanceSummary)) {
       cdInstanceSummary.getInstanceIds().remove(instance.getId());
       if (cdInstanceSummary.getInstanceIds().isEmpty()) {
+        ArtifactEntity artifact =
+            artifactService.getArtifactByCorrelationId(instance.getAccountIdentifier(), instance.getOrgIdentifier(),
+                instance.getProjectIdentifier(), instance.getPrimaryArtifact().getArtifactIdentity().getImage());
+        artifactService.updateArtifactEnvCount(artifact, cdInstanceSummary.getEnvType(), -1);
         cdInstanceSummaryRepo.delete(cdInstanceSummary);
       } else {
         cdInstanceSummaryRepo.save(cdInstanceSummary);
@@ -89,6 +109,52 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
                             .is(orgIdentifier)
                             .and(CdInstanceSummaryKeys.projectIdentifier)
                             .is(projectIdentifier);
+
+    if (Objects.nonNull(filterBody)) {
+      if (Objects.nonNull(filterBody.getEnvironment())) {
+        Pattern pattern = Pattern.compile("[.]*" + filterBody.getEnvironment() + "[.]*");
+        criteria.and(CdInstanceSummaryKeys.envName).regex(pattern);
+      }
+      if (Objects.nonNull(filterBody.getEnvironmentType())) {
+        switch (filterBody.getEnvironmentType()) {
+          case PROD:
+            criteria.and(CdInstanceSummaryKeys.envType).is(EnvType.Production);
+            break;
+          case NONPROD:
+            criteria.and(CdInstanceSummaryKeys.envType).is(EnvType.PreProduction);
+            break;
+          default:
+            throw new InvalidArgumentsException(
+                String.format("Unknown environment type filter: %s", filterBody.getEnvironmentType()));
+        }
+      }
+      if (Objects.nonNull(filterBody.getPolicyViolation())) {
+        Criteria enforcementSummaryCriteria = Criteria.where(EnforcementSummaryEntityKeys.accountId)
+                                                  .is(accountId)
+                                                  .and(EnforcementSummaryEntityKeys.orgIdentifier)
+                                                  .is(orgIdentifier)
+                                                  .and(EnforcementSummaryEntityKeys.projectIdentifier)
+                                                  .is(projectIdentifier);
+
+        switch (filterBody.getPolicyViolation()) {
+          case ALLOW:
+            enforcementSummaryCriteria.and(EnforcementSummaryEntityKeys.allowListViolationCount).gt(0);
+            break;
+          case DENY:
+            enforcementSummaryCriteria.and(EnforcementSummaryEntityKeys.denyListViolationCount).gt(0);
+            break;
+          default:
+            throw new InvalidArgumentsException(
+                String.format("Unknown policy type filter: %s", filterBody.getPolicyViolation()));
+        }
+
+        List<String> pipelineExecutionIds = enforcementSummaryRepo.findAll(enforcementSummaryCriteria)
+                                                .stream()
+                                                .map(entity -> entity.getPipelineExecutionId())
+                                                .collect(Collectors.toList());
+        criteria.and(CdInstanceSummaryKeys.lastPipelineExecutionId).in(pipelineExecutionIds);
+      }
+    }
 
     return cdInstanceSummaryRepo.findAll(criteria, pageable);
   }

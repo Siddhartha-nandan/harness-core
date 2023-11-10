@@ -9,8 +9,10 @@ package io.harness.cvng.client;
 
 import io.harness.delegate.beans.NotificationTaskResponse;
 import io.harness.ng.core.dto.ResponseDTO;
+import io.harness.notification.NotificationTriggerRequest;
 import io.harness.notification.Team;
 import io.harness.notification.channeldetails.NotificationChannel;
+import io.harness.notification.model.NotificationRuleReferenceDTO;
 import io.harness.notification.notificationclient.NotificationClient;
 import io.harness.notification.notificationclient.NotificationResult;
 import io.harness.notification.notificationclient.NotificationResultWithoutStatus;
@@ -47,5 +49,22 @@ public class FakeNotificationClient implements NotificationClient {
   @Override
   public Response<ResponseDTO<NotificationTaskResponse>> sendEmail(EmailDTO emailDTO) throws IOException {
     throw new UnsupportedOperationException("mocked method - TODO");
+  }
+
+  @Override
+  public NotificationResult sendNotificationTrigger(NotificationTriggerRequest notificationTriggerRequest) {
+    return null;
+  }
+
+  @Override
+  public List<NotificationResult> sendBulkNotificationTrigger(
+      List<NotificationTriggerRequest> notificationTriggerRequest) {
+    return null;
+  }
+
+  @Override
+  public NotificationRuleReferenceDTO getNotificationRule(String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, String notificationEntity, String notificationEvent) {
+    return null;
   }
 }

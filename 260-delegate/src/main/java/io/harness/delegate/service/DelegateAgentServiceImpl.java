@@ -125,7 +125,6 @@ import io.harness.delegate.configuration.DelegateConfiguration;
 import io.harness.delegate.core.beans.AcquireTasksResponse;
 import io.harness.delegate.core.beans.ExecutionStatusResponse;
 import io.harness.delegate.expression.DelegateExpressionEvaluator;
-import io.harness.delegate.logging.DelegateStackdriverLogAppender;
 import io.harness.delegate.message.Message;
 import io.harness.delegate.message.MessageService;
 import io.harness.delegate.service.common.AcquireTaskHelper;
@@ -535,8 +534,6 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       startTime = clock.millis();
       delegateHealthTimeLimiter = HTimeLimiter.create(healthMonitorExecutor);
       delegateTaskTimeLimiter = HTimeLimiter.create(taskExecutor);
-      DelegateStackdriverLogAppender.setTimeLimiter(delegateHealthTimeLimiter);
-      DelegateStackdriverLogAppender.setManagerClient(delegateAgentManagerClient);
 
       logProxyConfiguration();
 
@@ -646,7 +643,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       delegateId = registerDelegate(builder);
       DelegateAgentCommonVariables.setDelegateId(delegateId);
       log.info("[New] Delegate registered in {} ms", clock.millis() - start);
-      DelegateStackdriverLogAppender.setDelegateId(delegateId);
+
       if (isImmutableDelegate && dynamicRequestHandling) {
         // Enable dynamic throttling of requests only for immutable and FF enabled
         startDynamicHandlingOfTasks();
@@ -1852,7 +1849,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
   }
 
   private void sendHeartbeat(final DelegateParamsBuilder builder) {
-    if (!shouldContactManager() || !acquireTasks.get() || frozen.get()) {
+    if (!shouldContactManager() || frozen.get()) {
       return;
     }
     log.info("Last heartbeat received at {} and sent to manager at {}", lastHeartbeatReceivedAt.get(),
@@ -1908,7 +1905,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
   }
 
   private void sendHttpHeartbeat(DelegateParamsBuilder builder) {
-    if (!shouldContactManager() || !acquireTasks.get() || frozen.get()) {
+    if (!shouldContactManager() || frozen.get()) {
       return;
     }
     try {
@@ -2038,6 +2035,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       currentlyAcquiringTasksCount.getAndDecrement();
     }
 
+    currentlyExecutingTasks.get(delegateTaskEvent.getDelegateTaskId()).getIsAborted().set(true);
     currentlyExecutingTasks.remove(delegateTaskEvent.getDelegateTaskId());
     if (currentlyExecutingFutures.remove(delegateTaskEvent.getDelegateTaskId()) != null) {
       log.info("Removed from executing futures on abort");
@@ -2094,6 +2092,11 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
         if (frozen.get()) {
           log.info(
               "Delegate process with detected time out of sync or with revoked token is running. Won't acquire tasks.");
+          return;
+        }
+
+        if (rejectRequest.get()) {
+          log.info("Delegate running out of resources, dropping this request");
           return;
         }
 
@@ -2611,7 +2614,6 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       finalizeSocket();
     }
 
-    DelegateStackdriverLogAppender.setManagerClient(null);
     if (perpetualTaskWorker != null) {
       perpetualTaskWorker.stop();
     }

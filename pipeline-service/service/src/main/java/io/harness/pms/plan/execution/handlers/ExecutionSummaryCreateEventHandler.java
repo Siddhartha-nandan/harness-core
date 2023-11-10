@@ -204,6 +204,7 @@ public class ExecutionSummaryCreateEventHandler implements OrchestrationStartObs
             .startingNodeId(startingNodeId)
             .planExecutionId(planExecutionId)
             .name(pipelineEntity.get().getName())
+            // TODO: Remove setting this `inputSetYaml` field by Nov 2023
             .inputSetYaml(planExecutionMetadata.getInputSetYaml())
             .pipelineTemplate(getPipelineTemplate(planExecutionMetadata))
             .internalStatus(planExecution.getStatus())
@@ -216,7 +217,7 @@ public class ExecutionSummaryCreateEventHandler implements OrchestrationStartObs
             .executionTriggerInfo(metadata.getTriggerInfo())
             .parentStageInfo(ambiance.getMetadata().getPipelineStageInfo())
             .entityGitDetails(pmsGitSyncHelper.getEntityGitDetailsFromBytes(metadata.getGitSyncBranchContext()))
-            .tags(pipelineEntity.get().getTags())
+            .tags(pipelineEntity.get().getTags() != null ? pipelineEntity.get().getTags() : new ArrayList<>())
             .labels(LabelsHelper.getLabels(planExecutionMetadata.getYaml(), pipelineEntity.get().getHarnessVersion()))
             .modules(new ArrayList<>(modules))
             .isLatestExecution(true)
@@ -233,6 +234,7 @@ public class ExecutionSummaryCreateEventHandler implements OrchestrationStartObs
             .connectorRef(isEmpty(metadata.getPipelineConnectorRef()) ? null : metadata.getPipelineConnectorRef())
             .executionMode(metadata.getExecutionMode())
             .pipelineVersion(NGYamlHelper.getVersion(planExecutionMetadata.getPipelineYaml()))
+            .shouldUseSimplifiedLogBaseKey(AmbianceUtils.shouldSimplifyLogBaseKey(ambiance))
             .build();
     pmsExecutionSummaryService.save(pipelineExecutionSummaryEntity);
     unsetPipelineYamlInPlanExecutionMetadata(planExecutionMetadata);

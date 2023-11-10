@@ -158,6 +158,7 @@ public class GitXWebhookEventServiceImpl implements GitXWebhookEventService {
         .eventTriggerTime(gitXWebhookEvent.getEventTriggeredTime())
         .payload(gitXWebhookEvent.getPayload())
         .eventIdentifier(gitXWebhookEvent.getEventIdentifier())
+        .eventStatus(gitXWebhookEvent.getEventStatus())
         .build();
   }
 
@@ -176,6 +177,15 @@ public class GitXWebhookEventServiceImpl implements GitXWebhookEventService {
       criteria.and(GitXWebhookEventKeys.eventTriggeredTime)
           .gte(gitXEventsListRequestDTO.getEventStartTime())
           .lte(gitXEventsListRequestDTO.getEventEndTime());
+    }
+    if (isNotEmpty(gitXEventsListRequestDTO.getRepoName())) {
+      criteria.and(GitXWebhookEventKeys.repo).is(gitXEventsListRequestDTO.getRepoName());
+    }
+    if (isNotEmpty(gitXEventsListRequestDTO.getEventIdentifier())) {
+      criteria.and(GitXWebhookEventKeys.eventIdentifier).is(gitXEventsListRequestDTO.getEventIdentifier());
+    }
+    if (isNotEmpty(gitXEventsListRequestDTO.getEventStatus())) {
+      criteria.and(GitXWebhookEventKeys.eventStatus).is(gitXEventsListRequestDTO.getEventStatus());
     }
     return criteria;
   }
@@ -208,6 +218,7 @@ public class GitXWebhookEventServiceImpl implements GitXWebhookEventService {
         .afterCommitId(webhookDTO.getParsedResponse().getPush().getAfter())
         .beforeCommitId(webhookDTO.getParsedResponse().getPush().getBefore())
         .branch(getBranch(webhookDTO))
+        .repo(webhookDTO.getParsedResponse().getPush().getRepo().getName())
         .build();
   }
 
@@ -225,7 +236,10 @@ public class GitXWebhookEventServiceImpl implements GitXWebhookEventService {
                                              .accountIdentifier(gitXWebhook.getAccountIdentifier())
                                              .webhookIdentifier(gitXWebhook.getIdentifier())
                                              .build(),
-        UpdateGitXWebhookRequestDTO.builder().lastEventTriggerTime(triggerEventTime).build());
+        UpdateGitXWebhookRequestDTO.builder()
+            .lastEventTriggerTime(triggerEventTime)
+            .folderPaths(gitXWebhook.getFolderPaths())
+            .build());
   }
 
   private void enqueueWebhookEvents(WebhookDTO webhookDTO) {

@@ -70,6 +70,7 @@ import io.harness.core.ci.dashboard.BuildNumberService;
 import io.harness.core.ci.dashboard.BuildNumberServiceImpl;
 import io.harness.core.ci.dashboard.CIOverviewDashboardService;
 import io.harness.core.ci.dashboard.CIOverviewDashboardServiceImpl;
+import io.harness.creditcard.CreditCardClientModule;
 import io.harness.enforcement.client.EnforcementClientModule;
 import io.harness.entitysetupusageclient.EntitySetupUsageClientModule;
 import io.harness.eventsframework.EventsFrameworkConstants;
@@ -375,6 +376,15 @@ public class CIManagerServiceModule extends AbstractModule {
         .annotatedWith(Names.named("taskPollExecutor"))
         .toInstance(new ManagedScheduledExecutorService("TaskPoll-Thread"));
 
+    bind(ScheduledExecutorService.class)
+        .annotatedWith(Names.named("resourceCleanupExecutor"))
+        .toInstance(
+            new ScheduledThreadPoolExecutor(ciManagerConfiguration.getAsyncResourceCleanupPool().getCorePoolSize(),
+                new ThreadFactoryBuilder()
+                    .setNameFormat("Resource-Cleanup-Thread-%d")
+                    .setPriority(Thread.NORM_PRIORITY)
+                    .build()));
+
     install(new CIExecutionServiceModule(
         ciManagerConfiguration.getCiExecutionServiceConfig(), ciManagerConfiguration.getShouldConfigureWithPMS()));
     install(DelegateServiceDriverModule.getInstance(false, true));
@@ -416,6 +426,8 @@ public class CIManagerServiceModule extends AbstractModule {
     install(
         new TransactionOutboxModule(DEFAULT_OUTBOX_POLL_CONFIGURATION, ACCESS_CONTROL_SERVICE.getServiceId(), false));
     install(new ProjectClientModule(ciManagerConfiguration.getNgManagerClientConfig(),
+        ciManagerConfiguration.getNgManagerServiceSecret(), serviceId));
+    install(new CreditCardClientModule(ciManagerConfiguration.getNgManagerClientConfig(),
         ciManagerConfiguration.getNgManagerServiceSecret(), serviceId));
     install(new TIServiceClientModule(ciManagerConfiguration.getTiServiceConfig()));
     install(new STOServiceClientModule(ciManagerConfiguration.getStoServiceConfig()));

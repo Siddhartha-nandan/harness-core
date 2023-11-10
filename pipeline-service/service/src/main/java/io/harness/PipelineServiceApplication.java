@@ -52,6 +52,7 @@ import io.harness.engine.interrupts.InterruptMonitor;
 import io.harness.engine.interrupts.OrchestrationEndInterruptHandler;
 import io.harness.engine.pms.execution.strategy.plan.PlanExecutionStrategy;
 import io.harness.engine.pms.start.NodeStartHelper;
+import io.harness.engine.secrets.ExpressionsObserverFactory;
 import io.harness.engine.timeouts.TimeoutInstanceRemover;
 import io.harness.event.OrchestrationEndGraphHandler;
 import io.harness.event.OrchestrationLogPublisher;
@@ -146,6 +147,7 @@ import io.harness.pms.plan.execution.handlers.ExecutionInfoUpdateEventHandler;
 import io.harness.pms.plan.execution.handlers.ExecutionSummaryCreateEventHandler;
 import io.harness.pms.plan.execution.handlers.PipelineStatusUpdateEventHandler;
 import io.harness.pms.plan.execution.handlers.PlanStatusEventEmitterHandler;
+import io.harness.pms.plan.execution.handlers.SecretResolutionEventHandler;
 import io.harness.pms.sdk.PmsSdkConfiguration;
 import io.harness.pms.sdk.PmsSdkInitHelper;
 import io.harness.pms.sdk.PmsSdkInstanceCacheMonitor;
@@ -217,6 +219,7 @@ import io.harness.waiter.ProgressUpdateService;
 import io.harness.yaml.YamlSdkConfiguration;
 import io.harness.yaml.YamlSdkInitHelper;
 
+import com.codahale.metrics.InstrumentedExecutorService;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -278,6 +281,7 @@ public class PipelineServiceApplication extends Application<PipelineServiceConfi
   private static final String APPLICATION_NAME = "Pipeline Service Application";
 
   private final MetricRegistry metricRegistry = new MetricRegistry();
+  private final MetricRegistry threadPoolMetricRegistry = new MetricRegistry();
   private HarnessMetricRegistry harnessMetricRegistry;
 
   public static void main(String[] args) throws Exception {
@@ -325,10 +329,12 @@ public class PipelineServiceApplication extends Application<PipelineServiceConfi
     log.info("Starting Pipeline Service Application ...");
     MaintenanceController.forceMaintenance(true);
 
-    ExecutorModule.getInstance().setExecutorService(ThreadPool.create(appConfig.getCommonPoolConfig().getCorePoolSize(),
+    ExecutorService mainThreadPoolExecutor = ThreadPool.create(appConfig.getCommonPoolConfig().getCorePoolSize(),
         appConfig.getCommonPoolConfig().getMaxPoolSize(), appConfig.getCommonPoolConfig().getIdleTime(),
         appConfig.getCommonPoolConfig().getTimeUnit(),
-        new ThreadFactoryBuilder().setNameFormat("main-app-pool-%d").build()));
+        new ThreadFactoryBuilder().setNameFormat("main-app-pool-%d").build());
+    ExecutorModule.getInstance().setExecutorService(
+        new InstrumentedExecutorService(mainThreadPoolExecutor, threadPoolMetricRegistry, "main"));
     List<Module> modules = new ArrayList<>();
     modules.add(new ProviderModule() {
       @Provides
@@ -361,14 +367,14 @@ public class PipelineServiceApplication extends Application<PipelineServiceConfi
       }
     });
     modules.add(new NotificationClientModule(appConfig.getNotificationClientConfiguration()));
-    modules.add(PipelineServiceModule.getInstance(appConfig));
+    modules.add(PipelineServiceModule.getInstance(appConfig, threadPoolMetricRegistry));
     modules.add(new AbstractModule() {
       @Override
       protected void configure() {
         bind(MetricRegistry.class).toInstance(metricRegistry);
       }
     });
-    modules.add(new MetricRegistryModule(metricRegistry));
+    modules.add(new MetricRegistryModule(metricRegistry, threadPoolMetricRegistry));
     modules.add(NGMigrationSdkModule.getInstance());
     CacheModule cacheModule = new CacheModule(appConfig.getCacheConfig());
     modules.add(cacheModule);
@@ -398,7 +404,7 @@ public class PipelineServiceApplication extends Application<PipelineServiceConfi
 
     // Pipeline Service Modules
     PmsSdkConfiguration pmsSdkConfiguration = getPmsSdkConfiguration(appConfig);
-    modules.add(PmsSdkModule.getInstance(pmsSdkConfiguration));
+    modules.add(PmsSdkModule.getInstance(pmsSdkConfiguration, threadPoolMetricRegistry));
     modules.add(PipelineServiceUtilityModule.getInstance());
     Injector injector = Guice.createInjector(modules);
     registerStores(appConfig, injector);
@@ -416,7 +422,7 @@ public class PipelineServiceApplication extends Application<PipelineServiceConfi
     registerObservers(appConfig, injector);
     registerRequestContextFilter(environment);
     registerOasResource(appConfig, environment, injector);
-    intializeSdkInstanceCacheSync(injector);
+    initializeSdkInstanceCacheSync(injector);
     initializeEnforcementSdk(injector);
 
     harnessMetricRegistry = injector.getInstance(HarnessMetricRegistry.class);
@@ -475,7 +481,7 @@ public class PipelineServiceApplication extends Application<PipelineServiceConfi
 
     log.info("PipelineServiceApplication DEPLOY_VERSION = " + System.getenv().get(DEPLOY_VERSION));
     if (DeployVariant.isCommunity(System.getenv().get(DEPLOY_VERSION))) {
-      initializePipelineMonitoring(appConfig, injector);
+      initializePipelineMonitoring(injector);
     } else {
       log.info("PipelineServiceApplication DEPLOY_VERSION is not COMMUNITY");
     }
@@ -483,11 +489,11 @@ public class PipelineServiceApplication extends Application<PipelineServiceConfi
     MaintenanceController.forceMaintenance(false);
   }
 
-  private void intializeSdkInstanceCacheSync(Injector injector) {
+  private void initializeSdkInstanceCacheSync(Injector injector) {
     injector.getInstance(PmsSdkInstanceCacheMonitor.class).scheduleCacheSync();
   }
 
-  private void initializePipelineMonitoring(PipelineServiceConfiguration appConfig, Injector injector) {
+  private void initializePipelineMonitoring(Injector injector) {
     log.info("Initializing PipelineMonitoring");
     injector.getInstance(PipelineTelemetryRecordsJob.class).scheduleTasks();
   }
@@ -603,8 +609,6 @@ public class PipelineServiceApplication extends Application<PipelineServiceConfi
         injector.getInstance(Key.get(OrchestrationStartEventHandler.class)));
     planExecutionStrategy.getOrchestrationStartSubject().register(
         injector.getInstance(Key.get(ExecutionSummaryCreateEventHandler.class)));
-    planExecutionStrategy.getOrchestrationStartSubject().register(
-        injector.getInstance(Key.get(PipelineExecutionMetricsObserver.class)));
     // End Observers
     planExecutionStrategy.getOrchestrationEndSubject().register(
         injector.getInstance(Key.get(OrchestrationEndGraphHandler.class)));
@@ -629,6 +633,12 @@ public class PipelineServiceApplication extends Application<PipelineServiceConfi
         injector.getInstance(Key.get(SpawnChildrenRequestProcessor.class));
     spawnChildrenRequestProcessor.getBarrierWithinStrategyExpander().register(
         injector.getInstance(Key.get(BarrierWithinStrategyExpander.class)));
+
+    // Registering SecretResolutionObserver
+    ExpressionsObserverFactory expressionsObserverFactory =
+        injector.getInstance(Key.get(ExpressionsObserverFactory.class));
+    expressionsObserverFactory.getSecretsRuntimeUsagesSubject().register(
+        injector.getInstance(Key.get(SecretResolutionEventHandler.class)));
 
     HMongoTemplate mongoTemplate = (HMongoTemplate) injector.getInstance(MongoTemplate.class);
     mongoTemplate.getTracerSubject().register(injector.getInstance(MongoRedisTracer.class));

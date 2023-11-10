@@ -1,6 +1,6 @@
 # Any edit in this file should accompany an increment in version.
 name: permissionsConfiguration
-version: 61
+version: 63
 permissions:
   - identifier: core_project_delete
     name: Delete Project
@@ -1624,6 +1624,12 @@ permissions:
       - account
       - organization
       - project
+  - identifier: sei_seiconfigurationsettings_create
+    name: SEI create configuration settings
+    status: ACTIVE
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
   - identifier: sei_seiconfigurationsettings_view
     name: SEI view configuration settings
     status: ACTIVE
@@ -1714,6 +1720,18 @@ permissions:
       - account
   - identifier: ccm_recommendations_view
     name: View CCM Recommendations
+    status: ACTIVE
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: ccm_commitmentOrchestrator_edit
+    name: Setup CCM Commitment Orchestration
+    status: ACTIVE
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: ccm_commitmentOrchestrator_view
+    name: View CCM Commitment Orchestration
     status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
