@@ -1,0 +1,14 @@
+inputSet:
+  name: Build_hitesh_yaml_test_1699919147946-push-trigger-input-set
+  identifier: Build_hitesh_yaml_test_1699919147946pushtriggerinputset
+  orgIdentifier: HarnessHCRInternalUAT
+  projectIdentifier: Harness_Code
+  pipeline:
+    identifier: Build_hitesh_yaml_test_1699919147946
+    properties:
+      ci:
+        codebase:
+          build:
+            type: branch
+            spec:
+              branch: <+trigger.branch>
