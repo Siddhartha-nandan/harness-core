@@ -19,7 +19,7 @@ import io.harness.delegate.Secret;
 import io.harness.delegate.Secrets;
 import io.harness.delegate.StepSpec;
 import io.harness.delegate.TaskSelector;
-import io.harness.delegate.beans.InitializeExecutionInfraResponse;
+import io.harness.delegate.beans.scheduler.InitializeExecutionInfraResponse;
 import io.harness.encryption.Scope;
 import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
