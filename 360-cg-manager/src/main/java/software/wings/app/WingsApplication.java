@@ -1278,8 +1278,8 @@ public class WingsApplication extends Application<MainConfiguration> {
     if (configuration.isDisableNotificationTemplateRegister()) {
       return;
     }
-    final ExecutorService notificationTemplateExecutor =
-        Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("notificationTemplateRegister").build());
+    final ExecutorService notificationTemplateExecutor = Executors.newSingleThreadExecutor(
+        new ThreadFactoryBuilder().setNameFormat("notificationTemplateRegister").build());
     notificationTemplateExecutor.execute(injector.getInstance(NotificationTemplateRegistrar.class));
   }
 
