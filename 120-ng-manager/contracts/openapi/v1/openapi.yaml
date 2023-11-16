@@ -1698,6 +1698,7 @@ paths:
   '/v1/orgs/{org}/gitx-webhooks/{gitx-webhook}':
     parameters:
       - $ref: '#/components/parameters/OrgPathParam'
+      - $ref: '#/components/parameters/GitXWebhookIdentifier'
     get:
       summary: Fetch GitX Webhook at org level
       tags:
@@ -1809,7 +1810,7 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/ListGitXWebhookResponse'
-      operationId: get-project-gitx-webhook
+      operationId: list-project-gitx-webhook
       security:
         - x-api-key: []
       parameters:
@@ -1841,11 +1842,7 @@ paths:
     parameters:
       - $ref: '#/components/parameters/OrgPathParam'
       - $ref: '#/components/parameters/ProjectPathParam'
-      - schema:
-          type: string
-        name: gitx-webhook
-        in: path
-        required: true
+      - $ref: '#/components/parameters/GitXWebhookIdentifier'
     get:
       summary: Fetch GitX Webhook at project level
       tags:
