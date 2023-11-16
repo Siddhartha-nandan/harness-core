@@ -119,22 +119,34 @@ public class AwsS3ArtifactDownloadHandler implements ArtifactDownloadHandler {
     String awsSecretKey;
     String awsToken = null;
     if (awsConfigDecrypted.isUseEc2IamCredentials()) {
-      AWSTemporaryCredentials credentials =
-          awsHelperService.getCredentialsForIAMROleOnDelegate(AWS_CREDENTIALS_URL, awsConfigDecrypted);
-      awsAccessKey = credentials.getAccessKeyId();
-      awsSecretKey = credentials.getSecretKey();
-      awsToken = credentials.getToken();
+      if (awsConfigDecrypted.isAssumeCrossAccountRole()) {
+        AWSCredentialsProvider aWSCredentialsProvider = awsHelperService.getAWSCredentialsProvider(awsConfigDecrypted);
+        AWSCredentials awsCredentials = aWSCredentialsProvider.getCredentials();
+        awsAccessKey = awsCredentials.getAWSAccessKeyId();
+        awsSecretKey = awsCredentials.getAWSSecretKey();
+        if (aWSCredentialsProvider.getCredentials() instanceof AWSSessionCredentials) {
+          awsToken = ((AWSSessionCredentials) awsCredentials).getSessionToken();
+        }
+      } else {
+        AWSTemporaryCredentials credentials =
+            awsHelperService.getCredentialsForIAMROleOnDelegate(AWS_CREDENTIALS_URL, awsConfigDecrypted);
+        awsAccessKey = credentials.getAccessKeyId();
+        awsSecretKey = credentials.getSecretKey();
+        awsToken = credentials.getToken();
+      }
+
     } else {
-      awsAccessKey = String.valueOf(awsConfigDecrypted.getAccessKey());
-      awsSecretKey = String.valueOf(awsConfigDecrypted.getSecretKey());
-    }
-    if (awsConfigDecrypted.isAssumeCrossAccountRole() || awsConfigDecrypted.isUseIRSA()) {
-      AWSCredentialsProvider aWSCredentialsProvider = awsHelperService.getAWSCredentialsProvider(awsConfigDecrypted);
-      AWSCredentials awsCredentials = aWSCredentialsProvider.getCredentials();
-      awsAccessKey = awsCredentials.getAWSAccessKeyId();
-      awsSecretKey = awsCredentials.getAWSSecretKey();
-      if (aWSCredentialsProvider.getCredentials() instanceof AWSSessionCredentials) {
-        awsToken = ((AWSSessionCredentials) awsCredentials).getSessionToken();
+      if (awsConfigDecrypted.isAssumeCrossAccountRole() || awsConfigDecrypted.isUseIRSA()) {
+        AWSCredentialsProvider aWSCredentialsProvider = awsHelperService.getAWSCredentialsProvider(awsConfigDecrypted);
+        AWSCredentials awsCredentials = aWSCredentialsProvider.getCredentials();
+        awsAccessKey = awsCredentials.getAWSAccessKeyId();
+        awsSecretKey = awsCredentials.getAWSSecretKey();
+        if (aWSCredentialsProvider.getCredentials() instanceof AWSSessionCredentials) {
+          awsToken = ((AWSSessionCredentials) awsCredentials).getSessionToken();
+        }
+      } else {
+        awsAccessKey = String.valueOf(awsConfigDecrypted.getAccessKey());
+        awsSecretKey = String.valueOf(awsConfigDecrypted.getSecretKey());
       }
     }
 
