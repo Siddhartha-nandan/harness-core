@@ -12,6 +12,8 @@ import javax.ws.rs.container.ContainerRequestContext;
 import org.glassfish.hk2.api.Factory;
 
 public class ScopeInfoFactory implements Factory<ScopeInfo> {
+  public static final String SCOPE_INFO_CONTEXT_PROPERTY = "scopeInfo";
+
   private final ContainerRequestContext context;
 
   @Inject
@@ -21,7 +23,7 @@ public class ScopeInfoFactory implements Factory<ScopeInfo> {
 
   @Override
   public ScopeInfo provide() {
-    return (ScopeInfo) context.getProperty("scopeInfo");
+    return (ScopeInfo) context.getProperty(SCOPE_INFO_CONTEXT_PROPERTY);
   }
 
   @Override

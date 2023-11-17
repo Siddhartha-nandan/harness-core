@@ -963,7 +963,8 @@ public class NextGenModule extends AbstractModule {
         appConfig.getResourceGroupClientConfig().getSecret(), NG_MANAGER.getServiceId()));
     install(NGFileServiceModule.getInstance(appConfig.getFileServiceConfiguration().getFileStorageMode(),
         appConfig.getFileServiceConfiguration().getClusterName()));
-    install(new ScopeInfoClientModule(appConfig.getNgManagerClientConfig(), appConfig.getNextGenConfig().getNgManagerServiceSecret(), NG_MANAGER.getServiceId()));
+    install(new ScopeInfoClientModule(appConfig.getNgManagerClientConfig(),
+        appConfig.getNextGenConfig().getNgManagerServiceSecret(), NG_MANAGER.getServiceId()));
     install(NgFileStoreModule.getInstance());
     install(new GitopsResourceClientModule(appConfig.getGitopsResourceClientConfig(), NG_MANAGER.getServiceId()));
     if (TRUE.equals(appConfig.getAccessControlAdminClientConfiguration().getMockAccessControlService())) {
