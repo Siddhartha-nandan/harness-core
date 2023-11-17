@@ -32,6 +32,7 @@ public enum Currency {
   RUB("RUB", "\u0440\u0443\u0431", "&#x0440;&#x0443;&#x0431;"),
   SGD("SGD", "\u0053\u0024", "&#x0053;&#x0024;"),
   USD("USD", Constants.DOLLAR_SYMBOL, Constants.DOLLAR_UTF8_HEX_SYMBOL),
+  IDR("IDR","\\u0052\\u0070" ,"&#82;&#112;"),
   NONE("NONE", "\u2205", "&#x2205;");
 
   private final String currencyValue;
