@@ -227,11 +227,13 @@ public class AwsS3ArtifactDownloadHandler implements ArtifactDownloadHandler {
         case AwsConstants.INHERIT_FROM_DELEGATE: {
           configBuilder.useEc2IamCredentials(true);
           configBuilder.useIRSA(false);
-          configBuilder.tag(((AwsInheritFromDelegateSpecDTO) awsCredentialDTO.getConfig())
-                                .getDelegateSelectors()
-                                .stream()
-                                .findAny()
-                                .orElse(null));
+          if (awsCredentialDTO.getConfig() != null) {
+            configBuilder.tag(((AwsInheritFromDelegateSpecDTO) awsCredentialDTO.getConfig())
+                                  .getDelegateSelectors()
+                                  .stream()
+                                  .findAny()
+                                  .orElse(null));
+          }
         } break;
         case AwsConstants.MANUAL_CONFIG: {
           configBuilder.useEc2IamCredentials(false);
