@@ -9,6 +9,8 @@ package io.harness.ng.core.remote.licenserestriction;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.enforcement.beans.metadata.StaticLimitRestrictionMetadataDTO;
 import io.harness.enforcement.client.usage.RestrictionUsageInterface;
 import io.harness.ng.core.services.OrganizationService;
@@ -21,6 +23,6 @@ public class OrgRestrictionsUsageImpl implements RestrictionUsageInterface<Stati
 
   @Override
   public long getCurrentValue(String accountIdentifier, StaticLimitRestrictionMetadataDTO restrictionMetadataDTO) {
-    return organizationService.countOrgs(accountIdentifier);
+    return organizationService.countOrgs(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build());
   }
 }

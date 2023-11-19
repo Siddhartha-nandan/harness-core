@@ -187,7 +187,7 @@ public class ProjectServiceImpl implements ProjectService {
     project.setModules(ModuleType.getModules());
     project.setOrgIdentifier(orgIdentifier);
     project.setAccountIdentifier(accountIdentifier);
-    Optional<Organization> parentOrgOptional = organizationService.get(accountIdentifier, orgIdentifier);
+    Optional<Organization> parentOrgOptional = organizationService.get(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), orgIdentifier);
     parentOrgOptional.ifPresent(organization -> {
       if (isNotEmpty(organization.getUniqueId())) {
         project.setParentId(organization.getUniqueId());
@@ -211,47 +211,6 @@ public class ProjectServiceImpl implements ProjectService {
       throw new DuplicateFieldException(
           String.format("A project with identifier [%s] and orgIdentifier [%s] is already present",
               project.getIdentifier(), orgIdentifier),
-          USER_SRE, ex);
-    }
-  }
-
-  @Override
-  @FeatureRestrictionCheck(MULTIPLE_PROJECTS)
-  public Project create(@AccountIdentifier String accountIdentifier, ScopeInfo scope, ProjectDTO projectDTO) {
-//    orgIdentifier = orgIdentifier == null ? DEFAULT_ORG_IDENTIFIER : orgIdentifier;
-//    validateCreateProjectRequest(accountIdentifier, orgIdentifier, projectDTO);
-    Project project = toProject(projectDTO);
-
-    project.setModules(ModuleType.getModules());
-    project.setOrgIdentifier(scope.getOrgIdentifier());
-    project.setAccountIdentifier(accountIdentifier);
-    /* Optional<Organization> parentOrgOptional = organizationService.get(accountIdentifier, scope.getOrgIdentifier());
-    parentOrgOptional.ifPresent(organization -> {
-      if (isNotEmpty(organization.getUniqueId())) {
-        project.setParentId(scope.getUniqueId());
-      }
-    }); */
-    if (isNotEmpty(scope.getUniqueId())) {
-      project.setParentId(scope.getUniqueId());
-    }
-    try {
-      validate(project);
-      Project createdProject = Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
-        Project savedProject = projectRepository.save(project);
-        scopeInfoService.addScopeInfoToCache(accountIdentifier, savedProject.getOrgIdentifier(),
-            savedProject.getIdentifier(), ScopeLevel.PROJECT, savedProject.getUniqueId());
-        outboxService.save(new ProjectCreateEvent(project.getAccountIdentifier(), ProjectMapper.writeDTO(project)));
-        return savedProject;
-      }));
-      setupProject(Scope.of(accountIdentifier, scope.getOrgIdentifier(), projectDTO.getIdentifier()));
-      log.info(String.format("Project with identifier [%s] and orgIdentifier [%s] was successfully created",
-          project.getIdentifier(), projectDTO.getOrgIdentifier()));
-      instrumentationHelper.sendProjectCreateEvent(createdProject, accountIdentifier);
-      return createdProject;
-    } catch (DuplicateKeyException ex) {
-      throw new DuplicateFieldException(
-          String.format("A project with identifier [%s] and orgIdentifier [%s] is already present",
-              project.getIdentifier(), scope.getOrgIdentifier()),
           USER_SRE, ex);
     }
   }
@@ -547,7 +506,7 @@ public class ProjectServiceImpl implements ProjectService {
     if (projectFilterDTO != null && isNotEmpty(projectFilterDTO.getOrgIdentifiers())) {
       orgIdentifiers = projectFilterDTO.getOrgIdentifiers();
     } else {
-      orgIdentifiers = organizationService.getPermittedOrganizations(accountIdentifier, null);
+      orgIdentifiers = organizationService.getPermittedOrganizations(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), null);
     }
     if (isNotEmpty(orgIdentifiers)) {
       for (String orgIdentifier : orgIdentifiers) {
@@ -759,7 +718,7 @@ public class ProjectServiceImpl implements ProjectService {
   }
 
   private void validateParentOrgExists(String accountIdentifier, String orgIdentifier) {
-    if (!organizationService.get(accountIdentifier, orgIdentifier).isPresent()) {
+    if (!organizationService.get(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), orgIdentifier).isPresent()) {
       throw new InvalidArgumentsException(
           String.format("Organization [%s] in Account [%s] does not exist", orgIdentifier, accountIdentifier),
           USER_SRE);

@@ -31,4 +31,5 @@ public interface OrganizationRepository
       String accountIdentifier, String identifier, boolean notDeleted);
 
   Long countByAccountIdentifier(String accountIdentifier);
+  Long countByParentId(String parentId);
 }

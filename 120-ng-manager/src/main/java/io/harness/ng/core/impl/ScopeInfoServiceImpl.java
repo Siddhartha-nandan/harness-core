@@ -72,7 +72,7 @@ public class ScopeInfoServiceImpl implements ScopeInfoService {
     }
 
     if (isEmpty(projectIdentifier)) {
-      Optional<Organization> org = organizationService.get(accountIdentifier, orgIdentifier);
+      Optional<Organization> org = organizationService.get(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), orgIdentifier);
       if (org.isPresent()) {
         Optional<ScopeInfo> optionalOrgScopeInfo =
             populateScopeInfo(ScopeLevel.ORGANIZATION, org.get().getUniqueId(), accountIdentifier, orgIdentifier, null);

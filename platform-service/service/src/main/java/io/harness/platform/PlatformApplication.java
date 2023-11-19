@@ -204,8 +204,8 @@ public class PlatformApplication extends Application<PlatformConfiguration> {
         bindFactory(ScopeInfoFactory.class).to(ScopeInfo.class);
       }
     });
-    environment.jersey().register(
-        new ScopeInfoFilter(godInjector.get(NOTIFICATION_SERVICE).getInstance(Key.get(ScopeInfoClient.class, Names.named("PRIVILEGED")))));
+    environment.jersey().register(new ScopeInfoFilter(
+        godInjector.get(NOTIFICATION_SERVICE).getInstance(Key.get(ScopeInfoClient.class, Names.named("PRIVILEGED")))));
     createConsumerThreadsToListenToEvents(environment, godInjector.get(AUDIT_SERVICE));
     createConsumerThreadsToListenToNotificationEvents(environment, godInjector.get(NOTIFICATION_SERVICE));
     new NotificationServiceSetup().setup(

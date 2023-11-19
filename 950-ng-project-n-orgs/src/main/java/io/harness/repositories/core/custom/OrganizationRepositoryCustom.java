@@ -36,6 +36,7 @@ public interface OrganizationRepositoryCustom {
   List<Organization> findAll(Criteria criteria);
 
   Organization restore(String accountIdentifier, String identifier);
+  Organization restoreFromScopeUniqueId(String uniqueId, String identifier);
 
   List<Scope> findAllOrgs(Criteria criteria);
 

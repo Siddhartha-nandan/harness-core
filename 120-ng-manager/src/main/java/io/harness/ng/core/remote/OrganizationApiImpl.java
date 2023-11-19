@@ -19,6 +19,8 @@ import static io.harness.ng.accesscontrol.PlatformResourceTypes.ORGANIZATION;
 import io.harness.accesscontrol.AccountIdentifier;
 import io.harness.accesscontrol.NGAccessControlCheck;
 import io.harness.accesscontrol.ResourceIdentifier;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.dto.OrganizationFilterDTO;
 import io.harness.ng.core.entities.Organization;
@@ -49,13 +51,13 @@ public class OrganizationApiImpl implements OrganizationApi {
 
   @NGAccessControlCheck(resourceType = ORGANIZATION, permission = CREATE_ORGANIZATION_PERMISSION)
   @Override
-  public Response createOrganization(CreateOrganizationRequest request, @AccountIdentifier String account) {
+  public Response createOrganization(CreateOrganizationRequest request, @AccountIdentifier String accountIdentifier) {
     if (DEFAULT_ORG_IDENTIFIER.equals(request.getOrg().getIdentifier())) {
       throw new InvalidRequestException(
           String.format("%s cannot be used as org identifier", DEFAULT_ORG_IDENTIFIER), USER);
     }
     Organization createdOrganization =
-        organizationService.create(account, organizationApiUtils.getOrganizationDto(request));
+        organizationService.create(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), organizationApiUtils.getOrganizationDto(request));
     return Response.status(Response.Status.CREATED)
         .entity(organizationApiUtils.getOrganizationResponse(createdOrganization))
         .tag(createdOrganization.getVersion().toString())
@@ -64,8 +66,8 @@ public class OrganizationApiImpl implements OrganizationApi {
 
   @NGAccessControlCheck(resourceType = ORGANIZATION, permission = VIEW_ORGANIZATION_PERMISSION)
   @Override
-  public Response getOrganization(@ResourceIdentifier String identifier, @AccountIdentifier String account) {
-    Optional<Organization> organizationOptional = organizationService.get(account, identifier);
+  public Response getOrganization(@ResourceIdentifier String identifier, @AccountIdentifier String accountIdentifier) {
+    Optional<Organization> organizationOptional = organizationService.get(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), identifier);
     if (!organizationOptional.isPresent()) {
       throw new NotFoundException(String.format("Organization with identifier [%s] not found", identifier));
     }
@@ -82,7 +84,7 @@ public class OrganizationApiImpl implements OrganizationApi {
         OrganizationFilterDTO.builder().searchTerm(searchTerm).identifiers(org).ignoreCase(true).build();
 
     Page<Organization> orgPage = organizationService.listPermittedOrgs(
-        account, organizationApiUtils.getPageRequest(page, limit, sort, order), organizationFilterDTO);
+        ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build(), organizationApiUtils.getPageRequest(page, limit, sort, order), organizationFilterDTO);
 
     Page<OrganizationResponse> organizationResponsePage = orgPage.map(organizationApiUtils::getOrganizationResponse);
 
@@ -110,7 +112,7 @@ public class OrganizationApiImpl implements OrganizationApi {
           USER);
     }
     Organization updatedOrganization =
-        organizationService.update(account, identifier, organizationApiUtils.getOrganizationDto(request));
+        organizationService.update(ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build(), identifier, organizationApiUtils.getOrganizationDto(request));
     return Response.ok()
         .entity(organizationApiUtils.getOrganizationResponse(updatedOrganization))
         .tag(updatedOrganization.getVersion().toString())
@@ -126,12 +128,12 @@ public class OrganizationApiImpl implements OrganizationApi {
               "Delete operation not supported for Default Organization (identifier: [%s])", DEFAULT_ORG_IDENTIFIER),
           USER);
     }
-    Optional<Organization> organizationOptional = organizationService.get(account, identifier);
+    Optional<Organization> organizationOptional = organizationService.get(ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build(), identifier);
     if (!organizationOptional.isPresent()) {
       throw new NotFoundException(String.format("Organization with identifier [%s] not found", identifier));
     }
 
-    boolean deleted = organizationService.delete(account, identifier, null);
+    boolean deleted = organizationService.delete(ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build(), identifier, null);
 
     if (!deleted) {
       throw new InvalidRequestException(

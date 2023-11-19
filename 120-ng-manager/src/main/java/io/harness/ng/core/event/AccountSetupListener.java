@@ -21,6 +21,7 @@ import static io.harness.eventsframework.EventsFrameworkMetadataConstants.UPDATE
 
 import io.harness.account.AccountClient;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
 import io.harness.beans.ScopeLevel;
 import io.harness.eventsframework.consumer.Message;
 import io.harness.eventsframework.entity_crud.account.AccountEntityChangeDTO;
@@ -154,7 +155,7 @@ public class AccountSetupListener implements MessageListener {
     List<Organization> organizations = organizationService.list(criteria);
     AtomicBoolean success = new AtomicBoolean(true);
     organizations.forEach(organization -> {
-      if (!organizationService.delete(organization.getAccountIdentifier(), organization.getIdentifier(), null)) {
+      if (!organizationService.delete(ScopeInfo.builder().accountIdentifier(organization.getAccountIdentifier()).scopeType(ScopeLevel.ACCOUNT).uniqueId(organization.getAccountIdentifier()).build(), organization.getIdentifier(), null)) {
         log.error(String.format("Delete operation failed for organization with accountIdentifier %s and identifier %s",
             organization.getAccountIdentifier(), organization.getIdentifier()));
         success.set(false);
@@ -178,7 +179,7 @@ public class AccountSetupListener implements MessageListener {
     List<Organization> organizations = organizationService.list(criteria);
     AtomicBoolean success = new AtomicBoolean(true);
     organizations.forEach(organization -> {
-      if (!organizationService.restore(organization.getAccountIdentifier(), organization.getIdentifier())) {
+      if (!organizationService.restore(ScopeInfo.builder().accountIdentifier(organization.getAccountIdentifier()).scopeType(ScopeLevel.ACCOUNT).uniqueId(organization.getAccountIdentifier()).build(), organization.getIdentifier())) {
         log.error(String.format("Restore operation failed for organization with accountIdentifier %s and identifier %s",
             organization.getAccountIdentifier(), organization.getIdentifier()));
         success.set(false);

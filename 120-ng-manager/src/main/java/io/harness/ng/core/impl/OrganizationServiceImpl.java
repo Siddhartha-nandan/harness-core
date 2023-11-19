@@ -291,8 +291,8 @@ public class OrganizationServiceImpl implements OrganizationService {
 
   @Override
   public Optional<Organization> get(ScopeInfo scope, String identifier) {
-    return organizationRepository.findByAccountIdentifierAndIdentifierIgnoreCaseAndDeletedNot(
-        scope.getAccountIdentifier(), identifier, true);
+    return organizationRepository.findByParentIdAndIdentifierIgnoreCaseAndDeletedNot(
+        scope.getUniqueId(), identifier, true);
   }
 
   @Override
@@ -304,7 +304,7 @@ public class OrganizationServiceImpl implements OrganizationService {
   @Override
   public Organization update(String accountIdentifier, String identifier, OrganizationDTO organizationDTO) {
     validateUpdateOrganizationRequest(identifier, organizationDTO);
-    Optional<Organization> optionalOrganization = get(accountIdentifier, identifier);
+    Optional<Organization> optionalOrganization = get(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), identifier);
 
     if (optionalOrganization.isPresent()) {
       Organization existingOrganization = optionalOrganization.get();
@@ -338,8 +338,7 @@ public class OrganizationServiceImpl implements OrganizationService {
   @Override
   public Organization update(ScopeInfo scope, String identifier, OrganizationDTO organizationDTO) {
     validateUpdateOrganizationRequest(identifier, organizationDTO);
-    final String accountIdentifier = scope.getAccountIdentifier();
-    Optional<Organization> optionalOrganization = get(accountIdentifier, identifier);
+    Optional<Organization> optionalOrganization = get(scope, identifier);
 
     if (optionalOrganization.isPresent()) {
       Organization existingOrganization = optionalOrganization.get();
@@ -349,7 +348,7 @@ public class OrganizationServiceImpl implements OrganizationService {
             WingsException.USER);
       }
       Organization organization = toOrganization(organizationDTO);
-      organization.setAccountIdentifier(accountIdentifier);
+      organization.setAccountIdentifier(existingOrganization.getAccountIdentifier());
       organization.setId(existingOrganization.getId());
       organization.setIdentifier(existingOrganization.getIdentifier());
       if (organization.getVersion() == null) {
@@ -406,9 +405,9 @@ public class OrganizationServiceImpl implements OrganizationService {
   @Override
   public Page<Organization> listPermittedOrgs(
       ScopeInfo scope, Pageable pageable, OrganizationFilterDTO organizationFilterDTO) {
-    final String accountIdentifier = scope.getAccountIdentifier();
-    Criteria criteria = createOrganizationFilterCriteria(Criteria.where(OrganizationKeys.accountIdentifier)
-                                                             .is(accountIdentifier)
+    final String scopeUniqueId = scope.getUniqueId();
+    Criteria criteria = createOrganizationFilterCriteria(Criteria.where(OrganizationKeys.parentId)
+                                                             .is(scopeUniqueId)
                                                              .and(OrganizationKeys.deleted)
                                                              .is(FALSE),
         organizationFilterDTO);
@@ -427,8 +426,8 @@ public class OrganizationServiceImpl implements OrganizationService {
       organizationFilterDTO = OrganizationFilterDTO.builder().identifiers(permittedOrgsIds).build();
     }
     Criteria criteriaForPermittedOrgs =
-        createOrganizationFilterCriteria(Criteria.where(OrganizationKeys.accountIdentifier)
-                                             .is(accountIdentifier)
+        createOrganizationFilterCriteria(Criteria.where(OrganizationKeys.parentId)
+                                             .is(scopeUniqueId)
                                              .and(OrganizationKeys.deleted)
                                              .is(FALSE),
             organizationFilterDTO);
@@ -454,7 +453,7 @@ public class OrganizationServiceImpl implements OrganizationService {
 
   @Override
   public Long countOrgs(ScopeInfo scope) {
-    return organizationRepository.countByAccountIdentifier(scope.getAccountIdentifier());
+    return organizationRepository.countByParentId(scope.getUniqueId());
   }
 
   private Criteria createOrganizationFilterCriteria(Criteria criteria, OrganizationFilterDTO organizationFilterDTO) {
@@ -535,8 +534,9 @@ public class OrganizationServiceImpl implements OrganizationService {
   @Override
   public boolean restore(ScopeInfo scope, String identifier) {
     final String accountIdentifier = scope.getAccountIdentifier();
+    final String scopeUniqueId = scope.getUniqueId();
     return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
-      Organization organization = organizationRepository.restore(accountIdentifier, identifier);
+      Organization organization = organizationRepository.restoreFromScopeUniqueId(scopeUniqueId, identifier);
       boolean success = organization != null;
       if (success) {
         outboxService.save(new OrganizationRestoreEvent(accountIdentifier, OrganizationMapper.writeDto(organization)));
@@ -569,8 +569,8 @@ public class OrganizationServiceImpl implements OrganizationService {
     final String accountIdentifier = scope.getAccountIdentifier();
     List<Scope> organizations;
     if (isEmpty(orgIdentifier)) {
-      Criteria orgCriteria = Criteria.where(OrganizationKeys.accountIdentifier)
-                                 .is(accountIdentifier)
+      Criteria orgCriteria = Criteria.where(OrganizationKeys.parentId)
+                                 .is(scope.getUniqueId())
                                  .and(OrganizationKeys.deleted)
                                  .ne(Boolean.TRUE);
       organizations = organizationRepository.findAllOrgs(orgCriteria);

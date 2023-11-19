@@ -13,6 +13,8 @@ import static io.harness.remote.client.CGRestUtils.getResponse;
 
 import io.harness.account.AccountClient;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
@@ -44,7 +46,7 @@ public class AccountOrgProjectValidator {
         return false;
       }
     } else if (isEmpty(projectIdentifier)) {
-      return organizationService.get(accountIdentifier, orgIdentifier).isPresent();
+      return organizationService.get(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), orgIdentifier).isPresent();
     } else {
       return projectService.get(accountIdentifier, orgIdentifier, projectIdentifier).isPresent();
     }
