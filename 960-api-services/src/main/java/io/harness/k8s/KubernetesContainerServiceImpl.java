@@ -155,7 +155,6 @@ import io.fabric8.openshift.api.model.DeploymentConfigList;
 import io.fabric8.openshift.client.OpenShiftClient;
 import io.fabric8.openshift.client.dsl.DeployableScalableResource;
 import io.github.resilience4j.retry.Retry;
-import io.kubernetes.client.common.KubernetesListObject;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
@@ -400,7 +399,7 @@ public class KubernetesContainerServiceImpl implements KubernetesContainerServic
   }
 
   @Override
-  public V1ObjectMeta getControllerUsingK8sClient(KubernetesConfig kubernetesConfig, String name) {
+  public V1ObjectMeta getControllerUsingK8sClient(KubernetesConfig kubernetesConfig, String fieldSelector) {
     AtomicReference<V1ObjectMeta> controller = new AtomicReference<>();
     if (kubernetesConfig == null) {
       return null;
@@ -409,7 +408,7 @@ public class KubernetesContainerServiceImpl implements KubernetesContainerServic
     try {
       V1ReplicationControllerList v1ReplicationControllerList =
           new CoreV1Api(apiClient).listNamespacedReplicationController(
-              kubernetesConfig.getNamespace(), null, null, null, null, null, null, null, null, null, null);
+              kubernetesConfig.getNamespace(), null, null, null, fieldSelector, null, null, null, null, null, null);
       if (v1ReplicationControllerList != null && isNotEmpty(v1ReplicationControllerList.getItems())) {
         controller.set(v1ReplicationControllerList.getItems().get(0).getMetadata());
       }
@@ -424,7 +423,7 @@ public class KubernetesContainerServiceImpl implements KubernetesContainerServic
     if (controller.get() == null) {
       try {
         V1DeploymentList v1DeploymentList = new AppsV1Api(apiClient).listNamespacedDeployment(
-            kubernetesConfig.getNamespace(), null, null, null, null, null, null, null, null, null, null);
+            kubernetesConfig.getNamespace(), null, null, null, fieldSelector, null, null, null, null, null, null);
         if (v1DeploymentList != null && isNotEmpty(v1DeploymentList.getItems())) {
           controller.set(v1DeploymentList.getItems().get(0).getMetadata());
         }
@@ -440,7 +439,7 @@ public class KubernetesContainerServiceImpl implements KubernetesContainerServic
     if (controller.get() == null) {
       try {
         V1ReplicaSetList v1ReplicaSetList = new AppsV1Api(apiClient).listNamespacedReplicaSet(
-            kubernetesConfig.getNamespace(), null, null, null, null, null, null, null, null, null, null);
+            kubernetesConfig.getNamespace(), null, null, null, fieldSelector, null, null, null, null, null, null);
         if (v1ReplicaSetList != null && isNotEmpty(v1ReplicaSetList.getItems())) {
           controller.set(v1ReplicaSetList.getItems().get(0).getMetadata());
         }
@@ -456,7 +455,7 @@ public class KubernetesContainerServiceImpl implements KubernetesContainerServic
     if (controller.get() == null) {
       try {
         V1StatefulSetList v1StatefulSetList = new AppsV1Api(apiClient).listNamespacedStatefulSet(
-            kubernetesConfig.getNamespace(), null, null, null, null, null, null, null, null, null, null);
+            kubernetesConfig.getNamespace(), null, null, null, fieldSelector, null, null, null, null, null, null);
         if (v1StatefulSetList != null && isNotEmpty(v1StatefulSetList.getItems())) {
           controller.set(v1StatefulSetList.getItems().get(0).getMetadata());
         }
@@ -472,7 +471,7 @@ public class KubernetesContainerServiceImpl implements KubernetesContainerServic
     if (controller.get() == null) {
       try {
         V1DaemonSetList v1DaemonSetList = new AppsV1Api(apiClient).listNamespacedDaemonSet(
-            kubernetesConfig.getNamespace(), null, null, null, null, null, null, null, null, null, null);
+            kubernetesConfig.getNamespace(), null, null, null, fieldSelector, null, null, null, null, null, null);
         if (v1DaemonSetList != null && isNotEmpty(v1DaemonSetList.getItems())) {
           controller.set(v1DaemonSetList.getItems().get(0).getMetadata());
         }
@@ -490,7 +489,7 @@ public class KubernetesContainerServiceImpl implements KubernetesContainerServic
         CustomObjectsApi customObjectsApi = new CustomObjectsApi(apiClient);
         Object deploymentConfigList =
             customObjectsApi.listNamespacedCustomObject("apps.openshift.io", "v1", kubernetesConfig.getNamespace(),
-                "deploymentconfigs", null, null, null, null, null, null, null, null, null, null);
+                "deploymentconfigs", null, null, null, fieldSelector, null, null, null, null, null, null);
         Object v1ObjectMeta = ObjectYamlUtils.getField(deploymentConfigList, "items[0].metadata");
         controller.set(
             customObjectsApi.getApiClient().getJSON().deserialize(v1ObjectMeta.toString(), V1ObjectMeta.class));
@@ -2530,7 +2529,8 @@ public class KubernetesContainerServiceImpl implements KubernetesContainerServic
       KubernetesConfig kubernetesConfig, String containerServiceName, String accountId) {
     K8sServiceMetadata.K8sServiceMetadataBuilder k8sServiceMetadataBuilder = K8sServiceMetadata.builder();
     try {
-      V1ObjectMeta controller = getControllerUsingK8sClient(kubernetesConfig, containerServiceName);
+      String fieldSelector = "metadata.name=" + containerServiceName;
+      V1ObjectMeta controller = getControllerUsingK8sClient(kubernetesConfig, fieldSelector);
       if (controller != null) {
         String controllerName = controller.getName();
         log.debug("Got k8s client controller {} for account {}", controllerName, accountId);

@@ -1855,7 +1855,8 @@ public class KubernetesContainerServiceImplTest extends CategoryTest {
   @Owner(developers = PRATYUSH)
   @Category(UnitTests.class)
   public void testGetControllerWithoutKubeconfig() {
-    V1ObjectMeta controller = kubernetesContainerService.getControllerUsingK8sClient(null, "controllerName");
+    V1ObjectMeta controller =
+        kubernetesContainerService.getControllerUsingK8sClient(null, "metadata.name=controllerName");
     assertThat(controller).isNull();
   }
 
@@ -1870,7 +1871,7 @@ public class KubernetesContainerServiceImplTest extends CategoryTest {
     when(k8sApiClient.execute(k8sApiCall, (new TypeToken<V1ReplicationControllerList>() {}).getType()))
         .thenReturn(new ApiResponse<>(200, emptyMap(), v1ReplicationControllerList));
     V1ObjectMeta controller =
-        kubernetesContainerService.getControllerUsingK8sClient(KUBERNETES_CONFIG, "controllerName");
+        kubernetesContainerService.getControllerUsingK8sClient(KUBERNETES_CONFIG, "metadata.name=controllerName");
     assertThat(controller).isNotNull();
   }
 
@@ -1887,7 +1888,7 @@ public class KubernetesContainerServiceImplTest extends CategoryTest {
     when(k8sApiClient.execute(k8sApiCall, (new TypeToken<V1DeploymentList>() {}).getType()))
         .thenReturn(new ApiResponse<>(200, emptyMap(), v1DeploymentList));
     V1ObjectMeta controller =
-        kubernetesContainerService.getControllerUsingK8sClient(KUBERNETES_CONFIG, "controllerName");
+        kubernetesContainerService.getControllerUsingK8sClient(KUBERNETES_CONFIG, "metadata.name=controllerName");
     assertThat(controller).isNotNull();
   }
 
@@ -1906,7 +1907,7 @@ public class KubernetesContainerServiceImplTest extends CategoryTest {
     when(k8sApiClient.execute(k8sApiCall, (new TypeToken<V1ReplicaSetList>() {}).getType()))
         .thenReturn(new ApiResponse<>(200, emptyMap(), v1ReplicaSetList));
     V1ObjectMeta controller =
-        kubernetesContainerService.getControllerUsingK8sClient(KUBERNETES_CONFIG, "controllerName");
+        kubernetesContainerService.getControllerUsingK8sClient(KUBERNETES_CONFIG, "metadata.name=controllerName");
     assertThat(controller).isNotNull();
   }
 
@@ -1927,7 +1928,7 @@ public class KubernetesContainerServiceImplTest extends CategoryTest {
     when(k8sApiClient.execute(k8sApiCall, (new TypeToken<V1StatefulSetList>() {}).getType()))
         .thenReturn(new ApiResponse<>(200, emptyMap(), v1StatefulSetList));
     V1ObjectMeta controller =
-        kubernetesContainerService.getControllerUsingK8sClient(KUBERNETES_CONFIG, "controllerName");
+        kubernetesContainerService.getControllerUsingK8sClient(KUBERNETES_CONFIG, "metadata.name=controllerName");
     assertThat(controller).isNotNull();
   }
 
@@ -1950,7 +1951,7 @@ public class KubernetesContainerServiceImplTest extends CategoryTest {
     when(k8sApiClient.execute(k8sApiCall, (new TypeToken<V1DaemonSetList>() {}).getType()))
         .thenReturn(new ApiResponse<>(200, emptyMap(), v1DaemonSetList));
     V1ObjectMeta controller =
-        kubernetesContainerService.getControllerUsingK8sClient(KUBERNETES_CONFIG, "controllerName");
+        kubernetesContainerService.getControllerUsingK8sClient(KUBERNETES_CONFIG, "metadata.name=controllerName");
     assertThat(controller).isNotNull();
   }
 
@@ -1991,7 +1992,7 @@ public class KubernetesContainerServiceImplTest extends CategoryTest {
         .thenReturn(new ApiResponse<>(200, emptyMap(), deploymentConfigListObject));
     when(k8sApiClient.getJSON()).thenReturn(new JSON());
     V1ObjectMeta controller =
-        kubernetesContainerService.getControllerUsingK8sClient(KUBERNETES_CONFIG, "controllerName");
+        kubernetesContainerService.getControllerUsingK8sClient(KUBERNETES_CONFIG, "metadata.name=controllerName");
     assertThat(controller).isNotNull();
   }
 
@@ -2011,7 +2012,7 @@ public class KubernetesContainerServiceImplTest extends CategoryTest {
         .thenThrow(new ApiException());
     when(k8sApiClient.execute(k8sApiCall, (new TypeToken<Object>() {}).getType())).thenThrow(new ApiException());
     V1ObjectMeta controller =
-        kubernetesContainerService.getControllerUsingK8sClient(KUBERNETES_CONFIG, "controllerName");
+        kubernetesContainerService.getControllerUsingK8sClient(KUBERNETES_CONFIG, "metadata.name=controllerName");
     assertThat(controller).isNull();
   }
 

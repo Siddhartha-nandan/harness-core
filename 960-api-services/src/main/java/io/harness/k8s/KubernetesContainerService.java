@@ -55,7 +55,7 @@ public interface KubernetesContainerService {
 
   HasMetadata getControllerUsingFabric8Client(KubernetesConfig kubernetesConfig, String name);
 
-  V1ObjectMeta getControllerUsingK8sClient(KubernetesConfig kubernetesConfig, String name);
+  V1ObjectMeta getControllerUsingK8sClient(KubernetesConfig kubernetesConfig, String fieldSelector);
 
   @SuppressWarnings("squid:S1452")
   List<? extends HasMetadata> getControllers(KubernetesConfig kubernetesConfig, Map<String, String> labels);
