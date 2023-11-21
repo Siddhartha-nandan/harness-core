@@ -420,8 +420,7 @@
       "method": "POST",
       "url": "/graphql",
       "headers": {
-        "Content-Type": "application/json",
-        "Authorization": "{BEARER_AUTH}"
+        "Content-Type": "application/json"
       },
       "requestBody": "{\"query\": \"{ repository(owner: \\\"{REPOSITORY_OWNER}\\\", name: \\\"{REPOSITORY_NAME}\\\") { object(expression: \\\"{REPOSITORY_BRANCH}:{FILE_PATH_REPLACER}\\\") { ... on Blob { text } } } }\"}"
     }
