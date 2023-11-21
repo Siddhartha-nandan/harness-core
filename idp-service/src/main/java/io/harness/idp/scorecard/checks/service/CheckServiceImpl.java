@@ -38,7 +38,6 @@ import io.harness.idp.scorecard.checks.mappers.CheckStatsMapper;
 import io.harness.idp.scorecard.checks.repositories.CheckRepository;
 import io.harness.idp.scorecard.checks.repositories.CheckStatusEntityByIdentifier;
 import io.harness.idp.scorecard.checks.repositories.CheckStatusRepository;
-import io.harness.idp.scorecard.datapoints.entity.DataPointEntity;
 import io.harness.idp.scorecard.datapoints.service.DataPointService;
 import io.harness.idp.scorecard.scorecards.service.ScorecardService;
 import io.harness.idp.scorecard.scores.repositories.EntityIdentifierAndCheckStatus;
@@ -62,7 +61,6 @@ import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mongodb.client.result.UpdateResult;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +73,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jooq.tools.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -114,7 +113,7 @@ public class CheckServiceImpl implements CheckService {
   @Override
   public void createCheck(CheckDetails checkDetails, String accountIdentifier) {
     Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
-      generateRuleIdentifiers(checkDetails);
+      generateRuleIdentifiersIfNotPresent(checkDetails);
       validateCheckSaveRequest(checkDetails, accountIdentifier);
 
       if (isCheckAlreadyDeleted(accountIdentifier, checkDetails.getIdentifier())) {
@@ -129,7 +128,7 @@ public class CheckServiceImpl implements CheckService {
   @Override
   public void updateCheck(CheckDetails checkDetails, String accountIdentifier) {
     Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
-      validateRules(checkDetails);
+      generateRuleIdentifiersIfNotPresent(checkDetails);
       validateCheckSaveRequest(checkDetails, accountIdentifier);
 
       CheckEntity oldCheckEntity =
@@ -381,17 +380,11 @@ public class CheckServiceImpl implements CheckService {
     return checkEntity != null;
   }
 
-  private void validateRules(CheckDetails checkDetails) {
+  private void generateRuleIdentifiersIfNotPresent(CheckDetails checkDetails) {
     for (Rule rule : checkDetails.getRules()) {
-      if (rule.getIdentifier().isBlank()) {
-        throw new InvalidRequestException("Rule identifier cannot be empty");
+      if (StringUtils.isBlank(rule.getIdentifier())) {
+        rule.setIdentifier(UUID.randomUUID().toString());
       }
-    }
-  }
-
-  private void generateRuleIdentifiers(CheckDetails checkDetails) {
-    for (Rule rule : checkDetails.getRules()) {
-      rule.setIdentifier(UUID.randomUUID().toString());
     }
   }
 }
