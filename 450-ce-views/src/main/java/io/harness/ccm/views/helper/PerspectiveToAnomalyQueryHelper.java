@@ -361,7 +361,6 @@ public class PerspectiveToAnomalyQueryHelper {
 
   public boolean isEmptyRuleFilter(List<CCMFilter> ccm_ruleFilters) {
     for (CCMFilter ccm_filter : ccm_ruleFilters) {
-      log.info("ccm_filter.getStringFilters() : {}", ccm_filter.getStringFilters());
       if (!(ccm_filter.getStringFilters().isEmpty()) || !(ccm_filter.getNumericFilters().isEmpty())
           || !(ccm_filter.getTimeFilters().isEmpty())) {
         return false;
