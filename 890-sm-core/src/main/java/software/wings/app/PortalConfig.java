@@ -50,11 +50,8 @@ public class PortalConfig {
   private int externalGraphQLRateLimitPerMinute = 500;
   private int customDashGraphQLRateLimitPerMinute = 1000;
   private Long authTokenExpiryInMillis = 24 * 60 * 60 * 1000L;
-  private long optionalDelegateTaskRejectAtLimit;
   private long importantDelegateTaskRejectAtLimit;
-  private long criticalDelegateTaskRejectAtLimit;
   private long parkedDelegateTaskRejectAtLimit;
-
   /**
    * Gets allowed origins.
    * @return the allowed origins

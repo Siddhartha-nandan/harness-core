@@ -133,7 +133,7 @@ public class DelegateTask implements PersistentEntity, UuidAware, CreatedAtAware
   @NotEmpty private String accountId;
   private String driverId;
 
-  private DelegateTaskRank rank;
+  @Deprecated private DelegateTaskRank rank;
 
   private String description;
   private boolean selectionLogsTrackingEnabled;

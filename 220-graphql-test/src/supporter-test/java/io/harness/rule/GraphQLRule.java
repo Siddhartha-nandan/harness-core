@@ -164,9 +164,7 @@ public class GraphQLRule implements MethodRule, InjectorRuleMixin, MongoRuleMixi
     configuration.getPortal().setJwtExternalServiceSecret("JWT_EXTERNAL_SERVICE_SECRET");
     configuration.getPortal().setJwtPasswordSecret("123456789");
     configuration.getPortal().setJwtNextGenManagerSecret("dummy_key");
-    configuration.getPortal().setOptionalDelegateTaskRejectAtLimit(10000);
     configuration.getPortal().setImportantDelegateTaskRejectAtLimit(50000);
-    configuration.getPortal().setCriticalDelegateTaskRejectAtLimit(100000);
     configuration.setApiUrl("http:localhost:8080");
     configuration.setMongoConnectionFactory(
         MongoConfig.builder().uri(getProperty("mongoUri", "mongodb://localhost:27017/" + dbName)).build());

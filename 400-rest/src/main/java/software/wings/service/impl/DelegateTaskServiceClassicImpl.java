@@ -115,8 +115,6 @@ import io.harness.eventframework.manager.ManagerObserverEventProducer;
 import io.harness.exception.CriticalExpressionEvaluationException;
 import io.harness.exception.DelegateNotAvailableException;
 import io.harness.exception.EncryptDecryptException;
-import io.harness.exception.ExceptionUtils;
-import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.WingsException;
 import io.harness.expression.ExpressionEvaluator;
@@ -301,43 +299,17 @@ public class DelegateTaskServiceClassicImpl implements DelegateTaskServiceClassi
   }
 
   private void checkTaskRankRateLimit(DelegateTask task) {
-    if (task.getRank() == null) {
-      task.setRank(DelegateTaskRank.IMPORTANT);
-    }
     String accountId = task.isExecuteOnHarnessHostedDelegates() ? task.getSecondaryAccountId() : task.getAccountId();
-
-    long currentTaskCount;
-    long maxTaskCount;
-    switch (task.getRank()) {
-      case OPTIONAL:
-        currentTaskCount = delegateCache.getTasksCount(accountId, DelegateTaskRank.OPTIONAL);
-        maxTaskCount = getTaskLimit(accountId, DelegateTaskRank.OPTIONAL);
-
-        if (currentTaskCount >= maxTaskCount) {
-          log.error("Rate limit reached for tasks with rank OPTIONAL. Current task count {} and max limit {} ",
-              currentTaskCount, maxTaskCount);
-        }
-        break;
-      case IMPORTANT:
-        currentTaskCount = delegateCache.getTasksCount(accountId, DelegateTaskRank.IMPORTANT);
-        maxTaskCount = getTaskLimit(accountId, DelegateTaskRank.IMPORTANT);
-        if (currentTaskCount >= maxTaskCount) {
-          log.error("Rate limit reached for tasks with rank IMPORTANT. Current task count {} and max limit {} ",
-              currentTaskCount, maxTaskCount);
-        }
-        break;
-      default:
-        throw new InvalidArgumentsException("Unsupported delegate task rank " + task.getRank());
+    long currentTaskCount = delegateCache.getTasksCount(accountId, DelegateTaskRank.OPTIONAL);
+    long maxTaskCount = getTaskLimit(accountId, DelegateTaskRank.OPTIONAL);
+    if (currentTaskCount >= maxTaskCount) {
+      log.error("Rate limit reached for tasks with rank OPTIONAL. Current task count {} and max limit {} ",
+          currentTaskCount, maxTaskCount);
     }
   }
 
   private long getTaskLimit(String accountId, DelegateTaskRank rank) {
     Account account = accountService.getFromCacheWithFallback(accountId);
-    if (rank == DelegateTaskRank.OPTIONAL) {
-      return account.getOptionalDelegateTaskLimit() != null
-          ? account.getOptionalDelegateTaskLimit()
-          : mainConfiguration.getPortal().getOptionalDelegateTaskRejectAtLimit();
-    }
     return account.getImportantDelegateTaskLimit() != null
         ? account.getImportantDelegateTaskLimit()
         : mainConfiguration.getPortal().getImportantDelegateTaskRejectAtLimit();

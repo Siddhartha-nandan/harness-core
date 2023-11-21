@@ -37,7 +37,7 @@ public class DelegateTaskLimitTest extends WingsBaseTest {
     createDelegateTask(DelegateTask.Status.ABORTED, DelegateTaskRank.IMPORTANT);
     createDelegateTask(DelegateTask.Status.PARKED, DelegateTaskRank.IMPORTANT);
     createDelegateTask(DelegateTask.Status.QUEUED, DelegateTaskRank.IMPORTANT);
-    assertThat(delegateCache.populateDelegateTaskCount(ACCOUNT_ID, DelegateTaskRank.IMPORTANT)).isEqualTo(3);
+    assertThat(delegateCache.populateDelegateTaskCount(ACCOUNT_ID)).isEqualTo(3);
   }
 
   @Test
@@ -47,7 +47,7 @@ public class DelegateTaskLimitTest extends WingsBaseTest {
     createDelegateTask(DelegateTask.Status.QUEUED, DelegateTaskRank.OPTIONAL);
     createDelegateTask(DelegateTask.Status.STARTED, DelegateTaskRank.OPTIONAL);
     createDelegateTask(DelegateTask.Status.PARKED, DelegateTaskRank.OPTIONAL);
-    assertThat(delegateCache.populateDelegateTaskCount(ACCOUNT_ID, DelegateTaskRank.OPTIONAL)).isEqualTo(2);
+    assertThat(delegateCache.populateDelegateTaskCount(ACCOUNT_ID)).isEqualTo(2);
   }
 
   private void createDelegateTask(DelegateTask.Status status, DelegateTaskRank delegateTaskRank) {

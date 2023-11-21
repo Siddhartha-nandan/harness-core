@@ -230,7 +230,6 @@ public class DelegateTaskServiceClassicTest extends WingsBaseTest {
     when(mainConfiguration.getLogStreamingServiceConfig()).thenReturn(logSteamingServiceConfig);
 
     PortalConfig portalConfig = new PortalConfig();
-    portalConfig.setOptionalDelegateTaskRejectAtLimit(1000);
     portalConfig.setImportantDelegateTaskRejectAtLimit(1000);
     portalConfig.setJwtNextGenManagerSecret("**********");
     when(mainConfiguration.getPortal()).thenReturn(portalConfig);

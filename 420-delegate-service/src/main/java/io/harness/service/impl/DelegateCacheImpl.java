@@ -148,27 +148,15 @@ public class DelegateCacheImpl implements DelegateCache {
             }
           });
 
-  private LoadingCache<String, Long> optionalDelegateTasksCountCache =
-      CacheBuilder.newBuilder()
-          .maximumSize(10000)
-          .expireAfterWrite(1, TimeUnit.MINUTES)
-          .build(new CacheLoader<String, Long>() {
-            @Override
-            public Long load(@NotNull String accountId) {
-              return populateDelegateTaskCount(accountId, DelegateTaskRank.OPTIONAL);
-            }
-          });
-
-  private LoadingCache<String, Long> importantDelegateTasksCountCache =
-      CacheBuilder.newBuilder()
-          .maximumSize(10000)
-          .expireAfterWrite(1, TimeUnit.MINUTES)
-          .build(new CacheLoader<String, Long>() {
-            @Override
-            public Long load(@NotNull String accountId) {
-              return populateDelegateTaskCount(accountId, DelegateTaskRank.IMPORTANT);
-            }
-          });
+  private LoadingCache<String, Long> delegateTasksCountCache = CacheBuilder.newBuilder()
+                                                                   .maximumSize(10000)
+                                                                   .expireAfterWrite(1, TimeUnit.MINUTES)
+                                                                   .build(new CacheLoader<String, Long>() {
+                                                                     @Override
+                                                                     public Long load(@NotNull String accountId) {
+                                                                       return populateDelegateTaskCount(accountId);
+                                                                     }
+                                                                   });
 
   private LoadingCache<String, Long> parkedDelegateTasksCountCache =
       CacheBuilder.newBuilder()
@@ -287,16 +275,11 @@ public class DelegateCacheImpl implements DelegateCache {
   @Override
   public long getTasksCount(@NotNull String accountId, @NotNull DelegateTaskRank rank) {
     try {
-      if (rank == DelegateTaskRank.OPTIONAL) {
-        return optionalDelegateTasksCountCache.get(accountId);
-      } else if (rank == DelegateTaskRank.IMPORTANT) {
-        return importantDelegateTasksCountCache.get(accountId);
-      }
+      return delegateTasksCountCache.get(accountId);
     } catch (ExecutionException | CacheLoader.InvalidCacheLoadException e) {
       log.warn("Unable to get count of optional delegate tasks from cache based on accountId.");
       return 0;
     }
-    throw new InvalidArgumentsException("Unsupported delegate task rank " + rank);
   }
 
   @Override
@@ -314,7 +297,7 @@ public class DelegateCacheImpl implements DelegateCache {
     if (rank == DelegateTaskRank.OPTIONAL) {
       return optionalDelegateTasksCountCache.asMap();
     } else if (rank == DelegateTaskRank.IMPORTANT) {
-      return importantDelegateTasksCountCache.asMap();
+      return delegateTasksCountCache.asMap();
     }
     throw new InvalidArgumentsException("Unsupported delegate task rank " + rank);
   }
@@ -384,21 +367,15 @@ public class DelegateCacheImpl implements DelegateCache {
   }
 
   @VisibleForTesting
-  protected Long populateDelegateTaskCount(String accountId, DelegateTaskRank rank) {
-    long count = getDelegateTaskCount(accountId, rank, false);
-
-    if (delegateTaskMigrationHelper.isDelegateTaskMigrationEnabled()) {
-      count += getDelegateTaskCount(accountId, rank, true);
-    }
-    return count;
+  protected Long populateDelegateTaskCount(String accountId) {
+    return getDelegateTaskCount(accountId);
   }
 
-  private long getDelegateTaskCount(String accountId, DelegateTaskRank rank, boolean isDelegateTaskMigrationEnabled) {
-    return persistence.createQuery(DelegateTask.class, isDelegateTaskMigrationEnabled)
+  private long getDelegateTaskCount(String accountId) {
+    return persistence.createQuery(DelegateTask.class)
         .filter(DelegateTaskKeys.accountId, accountId)
         .field(DelegateTaskKeys.status)
         .in(runningStatuses())
-        .filter(DelegateTaskKeys.rank, rank)
         .count();
   }
 

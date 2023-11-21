@@ -385,9 +385,7 @@ cg:
     delegateDockerImage: harness/delegate:latest
     externalGraphQLRateLimitPerMinute: 500
     customDashGraphQLRateLimitPerMinute: 1000
-    optionalDelegateTaskRejectAtLimit: 10000
     importantDelegateTaskRejectAtLimit: 50000
-    criticalDelegateTaskRejectAtLimit: 100000
 
   totp:
     secOpsEmail: secops.fake.email@mailnator.com
