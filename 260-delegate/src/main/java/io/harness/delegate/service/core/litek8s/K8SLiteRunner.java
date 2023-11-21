@@ -48,7 +48,6 @@ import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.openapi.models.V1Service;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
-;
 import io.kubernetes.client.util.Yaml;
 import java.time.Duration;
 import java.util.List;
