@@ -134,8 +134,6 @@ public enum FeatureName {
   CDS_K8S_SOCKET_CAPABILITY_CHECK_NG(
       "Replace HTTP capability check for Kubernetes connector with Socket Capability", HarnessTeam.CDP),
   CDS_MULTI_SERVICE_PROPAGATION("FF for enabling multi service propagation for CD", HarnessTeam.CDP),
-  CDS_NG_TRIGGER_EXECUTION_REFACTOR(
-      "Refactor trigger execution to use same logic used in manual execution", HarnessTeam.SPG),
   CDS_NG_SECRET_RUNTIME_USAGE_EVENT_GENERATION(
       "FF to enable secret runtime usage event generation for ng", HarnessTeam.CDC),
   CDS_NG_SERVICE_PRINCIPAL_FOR_CUSTOM_WEBHOOK(
@@ -535,8 +533,6 @@ public enum FeatureName {
       PIPELINE),
   PIE_STATIC_YAML_SCHEMA("Enable support for static schema", PIPELINE),
   PIE_EXPRESSION_PLAYGROUND("Enable support for dynamic expression evaluation", PIPELINE),
-  PIE_STORE_USED_EXPRESSIONS(
-      "FF to use store the expressions used during the pipeline executions", HarnessTeam.PIPELINE),
   PIE_USE_SECRET_FUNCTOR_WITH_RBAC("Perform Rbac on secrets when used in pipeline execution", HarnessTeam.PIPELINE),
   PIPELINE_GOVERNANCE,
   PIPELINE_PER_ENV_DEPLOYMENT_PERMISSION,
@@ -733,6 +729,7 @@ public enum FeatureName {
   SRM_SLO_ANNOTATIONS("Flag to start creating SLO annotations", HarnessTeam.CV),
   SRM_SLO_TOGGLE,
   SRM_ENABLE_ANALYZE_DEPLOYMENT_STEP("This is used to enable analyze deployment step in the pipeline", HarnessTeam.CV),
+  SRM_ENABLE_MS_TEMPLATE_RECONCILIATION("Enable monitored service template reconciliation", HarnessTeam.CV),
   SSCA_ENABLED("FF to enable SSCA on Harness", HarnessTeam.SSCA),
   SSH_JSCH_LOGS,
   STALE_FLAGS_FFM_1510,

@@ -159,7 +159,7 @@ backstageEntitiesFetchLimit: 1000
 provisionModuleConfig:
   triggerPipelineUrl: ""
 
-env: ""
+env: "local"
 prEnvDefaultBackstageNamespace: ""
 
 backstageAppBaseUrl: https://localhost:3000
@@ -228,6 +228,13 @@ tiServiceConfig:
 
 cpu: 2
 scoreComputerThreadsPerCore: 2
+
+allowedOrigins:
+  - "*"
+
+hostname: ${HOSTNAME:-localhost}
+
+basePathPrefix: ${BASE_PATH_PREFIX:-""}
 
 streamPerServiceConfiguration: ${PIE_STREAM_PER_SERVICE:- false}
 
