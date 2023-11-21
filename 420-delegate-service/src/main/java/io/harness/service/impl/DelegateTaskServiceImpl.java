@@ -7,6 +7,7 @@
 
 package io.harness.service.impl;
 
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.delegate.beans.DelegateTaskResponse.ResponseCode;
 import static io.harness.logging.AutoLogContext.OverrideBehavior.OVERRIDE_ERROR;
@@ -81,7 +82,10 @@ public class DelegateTaskServiceImpl implements DelegateTaskService {
   @Override
   public boolean isTaskTypeSupportedByAllDelegates(String accountId, String taskType) {
     Set<String> supportedTaskTypes = delegateCache.getDelegateSupportedTaskTypes(accountId);
-    return supportedTaskTypes.contains(taskType);
+    if (isNotEmpty(supportedTaskTypes)) {
+      return supportedTaskTypes.contains(taskType);
+    }
+    return false;
   }
 
   @Override

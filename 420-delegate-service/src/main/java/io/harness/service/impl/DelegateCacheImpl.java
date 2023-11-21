@@ -280,7 +280,10 @@ public class DelegateCacheImpl implements DelegateCache {
       return activeDelegateSupportedTaskTypesCache.get(accountId);
     } catch (ExecutionException | CacheLoader.InvalidCacheLoadException e) {
       log.warn("Unable to get supported task types from cache based on account id");
-      return null;
+      return Collections.emptySet();
+    } catch (Exception ex) {
+      log.error("Unexpected exception occurred while fetching supportedTaskTypes for accountId {}", accountId, ex);
+      return Collections.emptySet();
     }
   }
 
