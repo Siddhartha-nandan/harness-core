@@ -246,12 +246,11 @@ public class VmInitializeUtils {
     return envVars;
   }
 
-  public Map<String, String> getStageProxyVars(
-      IntegrationStageConfig integrationStageConfig, OSType os, NGAccess ngAccess, ConnectorUtils connectorUtils) {
+  public Map<String, String> getStageProxyVars(IntegrationStageConfig integrationStageConfig, OSType os,
+      NGAccess ngAccess, ConnectorUtils connectorUtils, Infrastructure infra) {
     Map<String, String> envVars = new HashMap<>();
 
-    if ((integrationStageConfig.getInfrastructure().getType() != Infrastructure.Type.HOSTED_VM
-            && integrationStageConfig.getInfrastructure().getType() != Infrastructure.Type.VM)
+    if ((infra.getType() != Infrastructure.Type.HOSTED_VM && infra.getType() != Infrastructure.Type.VM)
         || os != OSType.Linux) {
       return envVars;
     }
