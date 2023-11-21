@@ -7,6 +7,7 @@
 
 package io.harness.plancreator.steps.pluginstep;
 
+import static io.harness.beans.FeatureName.CDS_USE_DELEGATE_BIJOU_API_CONTAINER_STEPS;
 import static io.harness.pms.yaml.YAMLFieldNameConstants.PARALLEL;
 import static io.harness.pms.yaml.YAMLFieldNameConstants.ROLLBACK_STEPS;
 import static io.harness.pms.yaml.YAMLFieldNameConstants.STEP_GROUP;
@@ -102,8 +103,14 @@ public abstract class AbstractContainerStepPlanCreator<T extends PmsAbstractStep
         ((ContainerStepSpec) stepElementParameters.getSpec()).setIdentifier(config.getIdentifier());
       }
     }
-    PlanNode initPlanNode = InitContainerStepPlanCreater.createPlanForK8sInfraField(initStepNodeId, stepParameters,
-        advisorParametersInitStep, StepSpecTypeConstants.INIT_KUBERNETES_INFRA_CONTAINER_STEP);
+    PlanNode initPlanNode;
+    if (featureFlagService.isEnabled(ctx.getAccountIdentifier(), CDS_USE_DELEGATE_BIJOU_API_CONTAINER_STEPS)) {
+      initPlanNode = InitContainerStepPlanCreater.createPlanForK8sInfraField(initStepNodeId, stepParameters,
+          advisorParametersInitStep, StepSpecTypeConstants.INIT_KUBERNETES_INFRA_CONTAINER_STEP);
+    } else {
+      initPlanNode = InitContainerStepPlanCreater.createPlanForK8sInfraField(
+          initStepNodeId, stepParameters, advisorParametersInitStep, StepSpecTypeConstants.INIT_CONTAINER_STEP);
+    }
     PlanNode stepPlanNode = createPlanForStep(stepNodeId, stepParameters, getAdviserObtainmentsForStepNode(ctx));
 
     planCreationResponseMap.put(initPlanNode.getUuid(), PlanCreationResponse.builder().planNode(initPlanNode).build());

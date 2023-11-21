@@ -7,6 +7,7 @@
 
 package io.harness.plancreator.steps.pluginstep;
 
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.plancreator.steps.pluginstep.KubernetesInfraOutcome.KUBERNETES_INFRA_OUTCOME;
 import static io.harness.steps.TaskRequestsUtils.SHELL_SCRIPT_TASK_IDENTIFIER;
 
@@ -64,7 +65,7 @@ public class InitKubernetesInfraContainerStep
   public StepResponse handleTaskResultWithSecurityContext(Ambiance ambiance, StepElementParameters stepParameters,
       ThrowingSupplier<InitializeExecutionInfraResponse> responseDataSupplier) throws Exception {
     InitializeExecutionInfraResponse k8sInfra = responseDataSupplier.get();
-    Status succeeded = Status.SUCCEEDED; // TODO need to check how to get status
+    Status succeeded = isNotEmpty(k8sInfra.getExecutionInfraReferenceId()) ? Status.SUCCEEDED : Status.FAILED;
     return StepResponse.builder()
         .status(succeeded)
         .stepOutcome(
@@ -97,7 +98,7 @@ public class InitKubernetesInfraContainerStep
     for (StepElementParameters stepElementParameters : stepElementParametersList) {
       StepSpec stepSpec =
           StepSpec.newBuilder()
-              .setImage("imijailovic/shell-task-ng-linux-amd64:3.0")
+              .setImage("imijailovic/shell-task-ng-linux-amd64:5.0")
               .setStepId(SHELL_SCRIPT_TASK_IDENTIFIER)
               .setComputeResource(ComputingResource.newBuilder().setCpu("100m").setMemory("100Mi").build())
               .setSecrets(

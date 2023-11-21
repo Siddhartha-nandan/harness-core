@@ -52,7 +52,6 @@ import io.harness.delegate.beans.DelegateTaskPackage;
 import io.harness.delegate.beans.DelegateTaskRank;
 import io.harness.delegate.beans.DelegateTaskResponse;
 import io.harness.delegate.beans.ErrorNotifyResponseData;
-import io.harness.delegate.beans.InitializeExecutionInfraResponse;
 import io.harness.delegate.beans.MailTaskParams;
 import io.harness.delegate.beans.MicrosoftTeamsTaskParams;
 import io.harness.delegate.beans.NoAvailableDelegatesException;
