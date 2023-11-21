@@ -59,7 +59,7 @@ func ExecuteStepOnAddon(ctx context.Context, step *pb.UnitStep, tmpFilePath stri
 	if err != nil {
 		log.Errorw("Execute step RPC failed", "step_id", stepID,
 			"elapsed_time_ms", utils.TimeSince(st), zap.Error(err))
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "Step RPC failed resulting in connection timeout")
 	}
 
 	log.Infow("Successfully executed step", "step_id", stepID,
