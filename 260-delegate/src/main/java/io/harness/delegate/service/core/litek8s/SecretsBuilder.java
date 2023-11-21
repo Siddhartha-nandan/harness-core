@@ -7,7 +7,6 @@
 
 package io.harness.delegate.service.core.litek8s;
 
-import io.harness.beans.IdentifierRef;
 import io.harness.delegate.core.beans.Secret;
 import io.harness.delegate.service.core.k8s.K8SSecret;
 import io.harness.delegate.service.core.util.ApiExceptionLogger;
@@ -64,13 +63,12 @@ public class SecretsBuilder {
     }
   }
 
-  public V1Secret createSecret(
-      final String infraId, final String taskId, String fullyQualifiedSecretId, final char[] value) {
+  public V1Secret createSecret(final String infraId, final String taskId, String scopedSecretId, final char[] value) {
     final var secretName = K8SResourceHelper.getSecretName(taskId);
     try {
       // TODO: create secret file
-      return K8SSecret.secret(secretName + fullyQualifiedSecretId.replace(".", "-"), config.getNamespace(), infraId)
-          .putCharDataItem(K8SResourceHelper.normalizeResourceName(fullyQualifiedSecretId), value)
+      return K8SSecret.secret(secretName, config.getNamespace(), infraId)
+          .putCharDataItem(K8SResourceHelper.normalizeResourceName(scopedSecretId), value)
           .create(coreApi);
     } catch (ApiException e) {
       log.error(ApiExceptionLogger.format(e));
