@@ -27,6 +27,7 @@ import io.harness.delegate.service.core.k8s.K8SSecret;
 import io.harness.delegate.service.core.k8s.K8SService;
 import io.harness.delegate.service.core.util.ApiExceptionLogger;
 import io.harness.delegate.service.core.util.K8SResourceHelper;
+import io.harness.delegate.service.core.util.K8SVolumeUtils;
 import io.harness.delegate.service.handlermapping.context.Context;
 import io.harness.delegate.service.runners.itfc.Runner;
 import io.harness.logging.CommandExecutionStatus;
@@ -47,6 +48,7 @@ import io.kubernetes.client.openapi.models.V1EnvFromSource;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.openapi.models.V1Service;
+import io.kubernetes.client.openapi.models.V1Volume;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
 import io.kubernetes.client.util.Yaml;
 import java.time.Duration;
@@ -67,6 +69,7 @@ public class K8SLiteRunner implements Runner {
   private static final String LOG_SERVICE_TOKEN_VARIABLE = "HARNESS_LOG_SERVICE_TOKEN";
   private static final String LOG_SERVICE_ENDPOINT_VARIABLE = "HARNESS_LOG_SERVICE_ENDPOINT";
   private static final String HARNESS_LOG_PREFIX_VARIABLE = "HARNESS_LOG_PREFIX";
+  private static final String DELEGATE_SECRET_MNT_PATH = "/etc/secret-values";
   private final Duration RETRY_SLEEP_DURATION = Duration.ofSeconds(2);
   private final int MAX_ATTEMPTS = 3;
   private final DelegateConfiguration delegateConfiguration;
@@ -115,6 +118,16 @@ public class K8SLiteRunner implements Runner {
       final var protoVolumes = VolumeBuilder.unpackVolumes(k8sInfra.getResourcesList());
       final var volumes = VolumeBuilder.createVolumes(protoVolumes);
       final var volumeMounts = VolumeBuilder.createVolumeMounts(protoVolumes);
+
+      for (Map.Entry<String, List<V1Secret>> entry : taskSecrets.entrySet()) {
+        List<V1Secret> value = entry.getValue();
+        for (V1Secret secretVal : value) {
+          V1Volume volume = K8SVolumeUtils.fromSecret(secretVal, secretVal.getMetadata().getName());
+          volumes.add(volume);
+          volumeMounts.add(
+              K8SVolumeUtils.volumeMount(volume, DELEGATE_SECRET_MNT_PATH + secretVal.getMetadata().getName()));
+        }
+      }
 
       // Step 3 - create service endpoint for LE communication
       final var namespace = config.getNamespace();
