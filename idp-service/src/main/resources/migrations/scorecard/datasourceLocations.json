@@ -418,7 +418,7 @@
     "type": "DirectHttp",
     "apiRequestDetails": {
       "method": "POST",
-      "url": "{API_BASE_URL}/graphql",
+      "url": "/graphql",
       "headers": {
         "Content-Type": "application/json",
         "Authorization": "{BEARER_AUTH}"

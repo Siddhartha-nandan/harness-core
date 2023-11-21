@@ -486,15 +486,18 @@
     "inputDetails": [
       {
         "key": "branchName",
-        "description": "Branch Name"
+        "description": "Branch Name",
+        "required": true
       },
       {
         "key": "filePath",
-        "description": "File path (e.g. src/index.js)"
+        "description": "File path (e.g. src/index.js)",
+        "required": true
       },
       {
         "key": "pattern",
-        "description": "Regex Pattern to search for in the file"
+        "description": "Regex Pattern to search for in the file",
+        "required": true
       }
     ],
     "description": "Gets the string matching the pattern from given file from the branch.",
@@ -511,15 +514,18 @@
     "inputDetails": [
       {
         "key": "branchName",
-        "description": "Branch Name"
+        "description": "Branch Name",
+        "required": true
       },
       {
         "key": "filePath",
-        "description": "File path (e.g. src/index.js)"
+        "description": "File path (e.g. src/index.js)",
+        "required": true
       },
       {
         "key": "pattern",
-        "description": "Regex Pattern to search for in the file"
+        "description": "Regex Pattern to search for in the file",
+        "required": true
       }
     ],
     "description": "Matches the pattern in the given file from the branch.",
