@@ -18,6 +18,7 @@ import io.harness.delegate.beans.VersionOverride;
 import io.harness.delegate.beans.VersionOverride.VersionOverrideKeys;
 import io.harness.delegate.beans.VersionOverrideType;
 import io.harness.delegate.events.DelegateVersionOverrideEvent;
+import io.harness.delegate.events.DelegateVersionOverrideEvent.DelegateVersionOverrideEventBuilder;
 import io.harness.outbox.api.OutboxService;
 import io.harness.persistence.HPersistence;
 
@@ -77,13 +78,15 @@ public class AdminDelegateVersionService {
       log.info("Setting {} with {} for accountID, will be valid till {} days ", overrideType, overrideValue, validFor);
     }
     String oldVersion = persistence.upsert(filter, updateOperation, HPersistence.upsertReturnOldOptions).getVersion();
+
+    DelegateVersionOverrideEventBuilder delegateVersionOverrideEventBuilder =
+        DelegateVersionOverrideEvent.builder().accountIdentifier(accountId).versionOverride(
+            VersionOverride.auditBuilder(accountId, overrideValue).build());
     if (isNotEmpty(oldVersion)) {
-      outboxService.save(DelegateVersionOverrideEvent.builder()
-                             .accountIdentifier(accountId)
-                             .versionOverride(VersionOverride.auditBuilder(accountId, overrideValue).build())
-                             .versionOverrideOld(VersionOverride.auditBuilder(accountId, oldVersion).build())
-                             .build());
+      delegateVersionOverrideEventBuilder.versionOverrideOld(
+          VersionOverride.auditBuilder(accountId, oldVersion).build());
     }
+    outboxService.save(delegateVersionOverrideEventBuilder.build());
     return overrideValue;
   }
 }
