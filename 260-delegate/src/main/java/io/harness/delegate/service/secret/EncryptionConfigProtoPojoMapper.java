@@ -65,6 +65,10 @@ public class EncryptionConfigProtoPojoMapper {
           .subscription(config.getAzureVaultConfig().getSubscription())
           .useManagedIdentity(config.getAzureVaultConfig().getUseManagedIdentity())
           .managedClientId(config.getAzureVaultConfig().getManagedClientId())
+          .azureEnvironmentType(
+              AzureEnvironmentTypeProtoPojoMapper.map(config.getAzureVaultConfig().getAzureEnvironmentType()))
+          .azureManagedIdentityType(
+              AzureManagedIdentityTypeProtoPojoMapper.map(config.getAzureVaultConfig().getAzureManagedIdentityType()))
           .build();
     }
     return LocalEncryptionConfig.builder()

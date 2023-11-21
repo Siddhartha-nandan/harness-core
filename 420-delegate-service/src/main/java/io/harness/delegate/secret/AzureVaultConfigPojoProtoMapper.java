@@ -11,11 +11,17 @@ import io.harness.delegate.core.beans.EncryptionConfig;
 
 import software.wings.beans.AzureVaultConfig;
 
-import org.mapstruct.*;
+import org.mapstruct.CollectionMappingStrategy;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.NullValueCheckStrategy;
+import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.ReportingPolicy;
 import org.mapstruct.factory.Mappers;
 
 @Mapper(uses = {SecretManagerTypePojoProtoMapper.class, EncryptionTypePojoProtoMapper.class,
-            AzureVaultConfigPojoProtoMapper.class},
+            AzureVaultConfigPojoProtoMapper.class, AzureEnvironmentTypePojoProtoMapper.class,
+            AzureManagedIdentityTypePojoProtoMapper.class},
     nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS, unmappedSourcePolicy = ReportingPolicy.IGNORE,
     collectionMappingStrategy = CollectionMappingStrategy.ADDER_PREFERRED)
 public interface AzureVaultConfigPojoProtoMapper {
