@@ -13,6 +13,7 @@ import static io.harness.outbox.OutboxSDKConstants.DEFAULT_MAX_EVENTS_POLLED;
 import static io.harness.outbox.OutboxSDKConstants.DEFAULT_UNBLOCK_RETRY_INTERVAL_IN_MINUTES;
 import static io.harness.outbox.OutboxSDKConstants.OUTBOX_EVENT_PROCESSING_TIME_METRIC_NAME;
 import static io.harness.outbox.OutboxSDKConstants.OUTBOX_EVENT_WAITING_TIME_METRIC_NAME;
+import static io.harness.outbox.TransactionOutboxModule.EXPORT_OUTBOX_EVENT_TIME_METRICS;
 import static io.harness.outbox.TransactionOutboxModule.SERVICE_ID_FOR_OUTBOX;
 
 import static java.time.Duration.ofMillis;
@@ -50,17 +51,20 @@ public class OutboxEventPollJob implements Runnable {
   private final String outboxLockId;
   private final OutboxMetricsServiceImpl outboxMetricsService;
   private final String serviceId;
+  private boolean exportOutboxEventTimeMetrics;
 
   @Inject
   public OutboxEventPollJob(OutboxService outboxService, OutboxEventHandler outboxEventHandler,
       PersistentLocker persistentLocker, OutboxPollConfiguration outboxPollConfiguration,
-      OutboxMetricsServiceImpl outboxMetricsService, @Named(SERVICE_ID_FOR_OUTBOX) String serviceId) {
+      OutboxMetricsServiceImpl outboxMetricsService, @Named(SERVICE_ID_FOR_OUTBOX) String serviceId,
+      @Named(EXPORT_OUTBOX_EVENT_TIME_METRICS) boolean exportOutboxEventTimeMetrics) {
     this.outboxService = outboxService;
     this.outboxEventHandler = outboxEventHandler;
     this.persistentLocker = persistentLocker;
     this.outboxPollConfiguration = outboxPollConfiguration;
     this.outboxMetricsService = outboxMetricsService;
     this.serviceId = serviceId;
+    this.exportOutboxEventTimeMetrics = exportOutboxEventTimeMetrics;
     this.outboxLockId = OUTBOX_POLL_JOB_LOCK + "_" + this.outboxPollConfiguration.getLockId();
     this.outboxEventFilter = OutboxEventFilter.builder().maximumEventsPolled(DEFAULT_MAX_EVENTS_POLLED).build();
     RetryConfig retryConfig = RetryConfig.custom()
@@ -105,10 +109,13 @@ public class OutboxEventPollJob implements Runnable {
             "[OutboxEventPollJob] id: %s, eventType: %s, resourceType: %s, waitingTime: %d, processingTime: %d",
             outbox.getId(), outbox.getEventType(), outbox.getResource().getType(), outboxEventWaitingTime,
             outboxEventProcessingTime));
-        outboxMetricsService.recordMetricsWithDuration(serviceId, outbox.getEventType(), outbox.getResource().getType(),
-            ofMillis(outboxEventProcessingTime), OUTBOX_EVENT_PROCESSING_TIME_METRIC_NAME);
-        outboxMetricsService.recordMetricsWithDuration(serviceId, outbox.getEventType(), outbox.getResource().getType(),
-            ofMillis(outboxEventWaitingTime), OUTBOX_EVENT_WAITING_TIME_METRIC_NAME);
+        if (exportOutboxEventTimeMetrics) {
+          outboxMetricsService.recordMetricsWithDuration(serviceId, outbox.getEventType(),
+              outbox.getResource().getType(), ofMillis(outboxEventProcessingTime),
+              OUTBOX_EVENT_PROCESSING_TIME_METRIC_NAME);
+          outboxMetricsService.recordMetricsWithDuration(serviceId, outbox.getEventType(),
+              outbox.getResource().getType(), ofMillis(outboxEventWaitingTime), OUTBOX_EVENT_WAITING_TIME_METRIC_NAME);
+        }
         try {
           if (success) {
             outboxService.delete(outbox.getId());
