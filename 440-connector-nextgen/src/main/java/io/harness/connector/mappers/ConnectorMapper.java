@@ -8,11 +8,14 @@
 package io.harness.connector.mappers;
 
 import static io.harness.connector.ConnectivityStatus.UNKNOWN;
+import static io.harness.remote.client.CGRestUtils.getResponse;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
+import io.harness.account.AccountClient;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.FeatureName;
 import io.harness.connector.ConnectorActivityDetails;
 import io.harness.connector.ConnectorConnectivityDetails;
 import io.harness.connector.ConnectorDTO;
@@ -54,6 +57,7 @@ import lombok.AllArgsConstructor;
 public class ConnectorMapper {
   @Inject private Map<String, ConnectorDTOToEntityMapper> connectorDTOToEntityMapperMap;
   @Inject private Map<String, ConnectorEntityToDTOMapper> connectorEntityToDTOMapperMap;
+  @Inject(optional = true) @Nullable AccountClient accountClient;
   @Inject(optional = true) @Nullable private TunnelService tunnelService;
 
   public Connector toConnector(ConnectorDTO connectorRequestDTO, String accountIdentifier) {
@@ -84,6 +88,12 @@ public class ConnectorMapper {
       Boolean executeOnDelegate = ((ManagerExecutable) connectorInfo.getConnectorConfig()).getExecuteOnDelegate();
       connector.setExecuteOnDelegate(executeOnDelegate);
     }
+
+    if (connectorInfo.getConnectorConfig() instanceof WithProxy) {
+      WithProxy withProxy = (WithProxy) connectorInfo.getConnectorConfig();
+      connector.setProxy(Optional.ofNullable(withProxy.getProxy()).orElse(false));
+    }
+
     return connector;
   }
 
@@ -202,11 +212,13 @@ public class ConnectorMapper {
 
     if (connectorDTO instanceof WithProxy) {
       WithProxy withProxy = (WithProxy) connectorDTO;
-      if (tunnelService != null && withProxy.getProxy()) {
+      if (tunnelService != null && Optional.ofNullable(connector.getProxy()).orElse(false)
+          && (accountClient != null
+              && getResponse(accountClient.isFeatureFlagEnabled(
+                  FeatureName.CI_SECURE_TUNNEL.name(), connector.getAccountIdentifier())))) {
         TunnelResponseDTO tunnelResponseDTO = tunnelService.getTunnel(connector.getAccountIdentifier());
-        if (tunnelResponseDTO.getServerUrl().isEmpty() || tunnelResponseDTO.getPort().isEmpty()) {
-          withProxy.setProxyUrl("");
-        } else {
+        if (isNotBlank(tunnelResponseDTO.getServerUrl()) && isNotBlank(tunnelResponseDTO.getPort())) {
+          withProxy.setProxy(true);
           withProxy.setProxyUrl(tunnelResponseDTO.getServerUrl() + ":" + tunnelResponseDTO.getPort());
         }
       }

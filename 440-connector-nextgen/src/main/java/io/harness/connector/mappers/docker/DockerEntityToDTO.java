@@ -48,7 +48,6 @@ public class DockerEntityToDTO implements ConnectorEntityToDTOMapper<DockerConne
         .dockerRegistryUrl(dockerConnector.getUrl())
         .providerType(dockerConnector.getProviderType())
         .auth(dockerAuthenticationDTO)
-        .proxy(dockerConnector.getProxy() != null && dockerConnector.getProxy())
         .build();
   }
 }

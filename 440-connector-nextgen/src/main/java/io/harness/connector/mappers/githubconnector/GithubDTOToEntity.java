@@ -65,7 +65,6 @@ public class GithubDTOToEntity implements ConnectorDTOToEntityMapper<GithubConne
         .githubApiAccess(githubApiAccess)
         .url(configDTO.getUrl())
         .validationRepo(configDTO.getValidationRepo())
-        .proxy(configDTO.getProxy())
         .build();
   }
 
