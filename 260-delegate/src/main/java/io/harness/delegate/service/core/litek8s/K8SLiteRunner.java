@@ -11,13 +11,16 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.delegate.service.core.litek8s.ContainerFactory.RESERVED_ADDON_PORT;
 import static io.harness.delegate.service.core.litek8s.ContainerFactory.RESERVED_LE_PORT;
 import static io.harness.delegate.service.core.util.K8SConstants.DELEGATE_FIELD_MANAGER;
+import static io.harness.threading.Morpheus.sleep;
 
 import static java.lang.String.format;
+import static java.time.Duration.ofMinutes;
 import static java.util.stream.Collectors.flatMapping;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 
 import io.harness.delegate.beans.ci.k8s.K8sTaskExecutionResponse;
+import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
 import io.harness.delegate.configuration.DelegateConfiguration;
 import io.harness.delegate.core.beans.InputData;
 import io.harness.delegate.core.beans.K8SInfra;
@@ -30,11 +33,18 @@ import io.harness.delegate.service.core.util.K8SResourceHelper;
 import io.harness.delegate.service.handlermapping.context.Context;
 import io.harness.delegate.service.runners.itfc.Runner;
 import io.harness.logging.CommandExecutionStatus;
+import io.harness.logging.LogLevel;
+import io.harness.logstreaming.LogLine;
+import io.harness.logstreaming.LogStreamingClient;
+import io.harness.logstreaming.LogStreamingSanitizer;
+import io.harness.logstreaming.LogStreamingTaskClient;
 import io.harness.product.ci.engine.proto.ExecuteStep;
 import io.harness.product.ci.engine.proto.ExecuteStepRequest;
 import io.harness.product.ci.engine.proto.LiteEngineGrpc;
 import io.harness.product.ci.engine.proto.UnitStep;
 import io.harness.utils.TokenUtils;
+
+import software.wings.delegatetasks.DelegateLogService;
 
 import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -50,6 +60,7 @@ import io.kubernetes.client.openapi.models.V1Service;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
 import io.kubernetes.client.util.Yaml;
 import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -76,13 +87,15 @@ public class K8SLiteRunner implements Runner {
   private final SecretsBuilder secretsBuilder;
   private final K8SRunnerConfig config;
   private final InfraCleaner infraCleaner;
+  private final LogStreamingClient logStreamingClient;
+  private final DelegateLogService delegateLogService;
   //  private final K8EventHandler k8EventHandler;
 
   @Override
   public void init(
       final String infraId, final InputData infra, final Map<String, char[]> decrypted, final Context context) {
     log.info("Setting up pod spec");
-
+    ILogStreamingTaskClient logStreamingTaskClient = null;
     try {
       // Step 0 - unpack infra definition. Each runner knows the infra spec it expects
       final var k8sInfra = K8SInfra.parseFrom(infra.getBinaryData());
@@ -105,6 +118,11 @@ public class K8SLiteRunner implements Runner {
           K8SStep::getId, flatMapping(task -> createTaskSecrets(infraId, task, decrypted, context), toList())));
 
       final var loggingToken = k8sInfra.getLogToken();
+
+      // Get logStreamingTaskClient, open stream close stream and write line needs to be handled
+      logStreamingTaskClient = getLogStreamingTaskClient(loggingToken);
+      logStreamingTaskClient.openStream(null);
+
       final V1Secret loggingSecret =
           createLoggingSecret(infraId, config.getLogServiceUrl(), loggingToken, k8sInfra.getLogPrefix());
 
@@ -122,6 +140,10 @@ public class K8SLiteRunner implements Runner {
           K8SService.clusterIp(infraId, namespace, K8SResourceHelper.getPodName(infraId), RESERVED_LE_PORT)
               .create(coreApi);
 
+      streamLogLine(logStreamingTaskClient, LogLevel.INFO, format("Done creating the task pod for %s!!", infraId));
+
+      streamLogLine(logStreamingTaskClient, LogLevel.INFO, format("Done creating the task pod for %s!!", infraId));
+
       // Step 4 - create pod - we don't need to busy wait - maybe LE should send task response as first thing when
       // created?
       final var portMap = new PortMap(RESERVED_ADDON_PORT);
@@ -132,7 +154,9 @@ public class K8SLiteRunner implements Runner {
       log.info("Creating Task Pod with YAML:\n{}", Yaml.dump(pod));
       coreApi.createNamespacedPod(namespace, pod, null, null, DELEGATE_FIELD_MANAGER, "Warn");
 
-      log.info("Done creating the task pod for {}!!", infraId);
+      streamLogLine(logStreamingTaskClient, LogLevel.INFO, format("Done creating the task pod for %s!!", infraId));
+      sleep(ofMinutes(1));
+
       // Step 5 - Watch pod logs - normally stop when init finished, but if LE sends response then that's not possible
       // (e.g. delegate replicaset), but we can stop on watch status
       //    Watch<CoreV1Event> watch =
@@ -147,6 +171,10 @@ public class K8SLiteRunner implements Runner {
     } catch (Exception e) {
       log.error("Failed to create the task {}", infraId, e);
       throw e;
+    } finally {
+      if (logStreamingTaskClient != null) {
+        logStreamingTaskClient.closeStream(null);
+      }
     }
   }
 
@@ -281,5 +309,25 @@ public class K8SLiteRunner implements Runner {
         .withMaxAttempts(MAX_ATTEMPTS)
         .onFailedAttempt(event -> log.info(failedAttemptMessage, event.getAttemptCount(), event.getLastFailure()))
         .onFailure(event -> log.error(failureMessage, event.getAttemptCount(), event.getFailure()));
+  }
+
+  private ILogStreamingTaskClient getLogStreamingTaskClient(String loggingToken) {
+    return LogStreamingTaskClient.builder()
+        .logStreamingClient(logStreamingClient)
+        .accountId(config.getAccountId())
+        .token(loggingToken)
+        .logStreamingSanitizer(LogStreamingSanitizer.builder().build())
+        // client need to send logKey for init task as well, this logKey will be used to create and push logs to stream
+        // from delegate runner.
+        .baseLogKey(
+            "orgId:default/projectId:dummy/pipelineId:shell/runSequence:210/level0:pipeline/level1:stages/level2:shell/level3:spec/level4:execution/level5:steps/level6:ShellScript_1-commandUnit:Execute")
+        .logService(delegateLogService)
+        .build();
+  }
+
+  private void streamLogLine(ILogStreamingTaskClient logStreamingTaskClient, LogLevel logLevel, String message) {
+    LogLine logLine =
+        LogLine.builder().level(logLevel).message(message).timestamp(OffsetDateTime.now().toInstant()).build();
+    logStreamingTaskClient.writeLogLine(logLine, "");
   }
 }
