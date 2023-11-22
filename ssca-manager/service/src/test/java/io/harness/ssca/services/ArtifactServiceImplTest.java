@@ -27,7 +27,6 @@ import io.harness.repositories.SBOMComponentRepo;
 import io.harness.rule.Owner;
 import io.harness.spec.server.ssca.v1.model.ArtifactComponentViewResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewResponse;
-import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewResponse.AttestedStatusEnum;
 import io.harness.spec.server.ssca.v1.model.ArtifactDetailResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingRequestBody.EnvironmentTypeEnum;
@@ -230,7 +229,29 @@ public class ArtifactServiceImplTest extends SSCAManagerTestBase {
   @Test
   @Owner(developers = ARPITJ)
   @Category(UnitTests.class)
-  public void testSaveArtifactAndInvalidateOldArtifact() {}
+  public void testSaveArtifactAndInvalidateOldArtifact() {
+    Mockito.when(artifactRepository.findOne(Mockito.any()))
+        .thenReturn(builderFactory.getArtifactEntityBuilder().build());
+    ArtifactEntity newArtifact = builderFactory.getArtifactEntityBuilder().nonProdEnvCount(0l).prodEnvCount(0l).build();
+    artifactService.saveArtifactAndInvalidateOldArtifact(newArtifact);
+    ArgumentCaptor<ArtifactEntity> argument = ArgumentCaptor.forClass(ArtifactEntity.class);
+    Mockito.verify(artifactRepository).save(argument.capture());
+    assertThat(argument.getValue().getNonProdEnvCount()).isEqualTo(1);
+    assertThat(argument.getValue().getProdEnvCount()).isEqualTo(2);
+  }
+
+  @Test
+  @Owner(developers = ARPITJ)
+  @Category(UnitTests.class)
+  public void testSaveArtifactAndInvalidateOldArtifact_noLastArtifact() {
+    Mockito.when(artifactRepository.findOne(Mockito.any())).thenReturn(null);
+    ArtifactEntity newArtifact = builderFactory.getArtifactEntityBuilder().nonProdEnvCount(0l).prodEnvCount(0l).build();
+    artifactService.saveArtifactAndInvalidateOldArtifact(newArtifact);
+    ArgumentCaptor<ArtifactEntity> argument = ArgumentCaptor.forClass(ArtifactEntity.class);
+    Mockito.verify(artifactRepository).save(argument.capture());
+    assertThat(argument.getValue().getNonProdEnvCount()).isEqualTo(0);
+    assertThat(argument.getValue().getProdEnvCount()).isEqualTo(0);
+  }
 
   @Test
   @Owner(developers = ARPITJ)
@@ -433,7 +454,6 @@ public class ArtifactServiceImplTest extends SSCAManagerTestBase {
     assertThat(responseList.get(0).getPipelineId()).isEqualTo("K8sDeploy");
     assertThat(responseList.get(0).getPipelineExecutionId()).isEqualTo("lastExecutionId");
     assertThat(responseList.get(0).getTriggeredBy()).isEqualTo("username");
-    assertThat(responseList.get(0).getAttestedStatus()).isEqualTo(AttestedStatusEnum.PASS);
   }
 
   @Test

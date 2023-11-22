@@ -40,13 +40,20 @@ public interface CVNextGenConstants {
   int CVNG_TIMELINE_BUCKET_COUNT = 48;
   int SRM_STATEMACHINE_MAX_THREADS = 20;
   int LOG_RECORD_THRESHOLD = 500;
+
+  int SLI_RECORD_BUCKET_SIZE = 5;
+
+  int MAX_NUMBER_OF_POINTS = 2000;
+
   String SLASH_DELIMITER = "/";
   String ACCOUNT_IDENTIFIER_KEY = "accountIdentifier";
   String ORG_IDENTIFIER_KEY = "orgIdentifier";
   String PROJECT_IDENTIFIER_KEY = "projectIdentifier";
   String RESOURCE_IDENTIFIER_KEY = "identifier";
   String ACCOUNT_IDENTIFIER_KEY_PATH = "account/";
+  String ACCOUNT_IDENTIFIER_PREFIX = "account.";
   String ORG_IDENTIFIER_KEY_PATH = "org/";
+  String ORG_IDENTIFIER_PREFIX = "org.";
   String PROJECT_IDENTIFIER_KEY_PATH = "project/";
   String RESOURCE_IDENTIFIER_KEY_PATH = "identifier/";
   String ACCOUNT_PATH = ACCOUNT_IDENTIFIER_KEY_PATH + "{" + ACCOUNT_IDENTIFIER_KEY + "}";

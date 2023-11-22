@@ -10,6 +10,7 @@ package io.harness.audit.remote.v1.api.streaming;
 import static io.harness.beans.SortOrder.Builder.aSortOrder;
 import static io.harness.beans.SortOrder.OrderType.DESC;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.ng.core.mapper.TagMapper.convertToMap;
 import static io.harness.spec.server.audit.v1.model.StreamingDestinationSpecDTO.TypeEnum.AWS_S3;
 
 import io.harness.annotations.dev.HarnessTeam;
@@ -28,6 +29,7 @@ import io.harness.spec.server.audit.v1.model.StreamingDestinationResponse;
 import io.harness.spec.server.audit.v1.model.StreamingDestinationSpecDTO;
 import io.harness.spec.server.audit.v1.model.StreamingDestinationStatus;
 import io.harness.spec.server.audit.v1.model.StreamingDetails;
+import io.harness.utils.ApiUtils;
 import io.harness.utils.PageUtils;
 
 import java.util.List;
@@ -83,8 +85,12 @@ public class StreamingDestinationsApiUtils {
     StreamingDestinationDTO streamingDestinationDTO = new StreamingDestinationDTO();
     streamingDestinationDTO.identifier(streamingDestination.getIdentifier())
         .name(streamingDestination.getName())
+        .description(streamingDestination.getDescription())
+        .tags(ApiUtils.getTags(streamingDestination.getTags()))
         .status(streamingDestination.getStatus())
         .connectorRef(streamingDestination.getConnectorRef())
+        .description(streamingDestination.getDescription())
+        .tags(convertToMap(streamingDestination.getTags()))
         .spec(getStreamingDestinationSpecDTO(streamingDestination));
     return streamingDestinationResponse.streamingDestination(streamingDestinationDTO)
         .created(streamingDestination.getCreatedAt())

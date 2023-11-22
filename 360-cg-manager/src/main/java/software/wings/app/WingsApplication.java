@@ -6,6 +6,7 @@
  */
 
 package software.wings.app;
+
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.beans.FeatureName.GLOBAL_DISABLE_HEALTH_CHECK;
 import static io.harness.data.structure.CollectionUtils.emptyIfNull;
@@ -33,6 +34,7 @@ import static java.time.Duration.ofHours;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 
+import io.harness.accesscontrol.NGAccessDeniedExceptionMapper;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
@@ -65,7 +67,6 @@ import io.harness.delegate.beans.DelegateTaskProgressResponse;
 import io.harness.delegate.beans.StartupMode;
 import io.harness.delegate.event.handler.DelegateProfileEventHandler;
 import io.harness.delegate.eventstream.EntityCRUDConsumer;
-import io.harness.delegate.heartbeat.AccountRingInfoIterator;
 import io.harness.delegate.heartbeat.polling.DelegatePollingHeartbeatService;
 import io.harness.delegate.heartbeat.stream.DelegateStreamHeartbeatService;
 import io.harness.delegate.queueservice.DelegateTaskQueueService;
@@ -1605,7 +1606,6 @@ public class WingsApplication extends Application<MainConfiguration> {
     injector.getInstance(LdapGroupScheduledHandler.class).registerIterator(iteratorExecutionHandler);
     injector.getInstance(EncryptedDataLocalToGcpKmsMigrationHandler.class).registerIterator(iteratorExecutionHandler);
     injector.getInstance(TimeoutEngine.class).registerIterator(iteratorExecutionHandler);
-    injector.getInstance(AccountRingInfoIterator.class).registerIterator(iteratorExecutionHandler);
     if (!configuration.isMoveGitPollingToRunnable()) {
       injector.getInstance(GitSyncPollingIterator.class).registerIterator(iteratorExecutionHandler);
     }
@@ -1642,6 +1642,7 @@ public class WingsApplication extends Application<MainConfiguration> {
     environment.jersey().register(EarlyEofExceptionMapper.class);
     environment.jersey().register(JsonProcessingExceptionMapper.class);
     environment.jersey().register(ConstraintViolationExceptionMapper.class);
+    environment.jersey().register(NGAccessDeniedExceptionMapper.class);
     environment.jersey().register(WingsExceptionMapper.class);
     environment.jersey().register(GenericExceptionMapper.class);
     environment.jersey().register(MongoExecutionTimeoutExceptionMapper.class);

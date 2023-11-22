@@ -25,7 +25,6 @@ import io.harness.spec.server.ssca.v1.model.ArtifactComponentViewRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactComponentViewResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewResponse;
-import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewResponse.AttestedStatusEnum;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewResponse.EnvTypeEnum;
 import io.harness.spec.server.ssca.v1.model.ArtifactDetailResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingRequestBody;
@@ -34,6 +33,7 @@ import io.harness.spec.server.ssca.v1.model.ArtifactListingResponse.ActivityEnum
 import io.harness.spec.server.ssca.v1.model.ComponentFilter;
 import io.harness.spec.server.ssca.v1.model.LicenseFilter;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
+import io.harness.spec.server.ssca.v1.model.Slsa;
 import io.harness.ssca.beans.EnforcementSummaryDBO.EnforcementSummaryDBOKeys;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.beans.SbomDTO;
@@ -80,7 +80,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class ArtifactServiceImpl implements ArtifactService {
   @Inject ArtifactRepository artifactRepository;
   @Inject EnforcementSummaryRepo enforcementSummaryRepo;
-
   @Inject EnforcementSummaryService enforcementSummaryService;
   @Inject NormalisedSbomComponentService normalisedSbomComponentService;
   @Inject CdInstanceSummaryService cdInstanceSummaryService;
@@ -203,8 +202,14 @@ public class ArtifactServiceImpl implements ArtifactService {
   @Override
   @Transactional
   public void saveArtifactAndInvalidateOldArtifact(ArtifactEntity artifact) {
+    ArtifactEntity lastArtifact = getLatestArtifact(artifact.getAccountId(), artifact.getOrgId(),
+        artifact.getProjectId(), artifact.getArtifactId(), artifact.getTag());
     artifactRepository.invalidateOldArtifact(artifact);
     artifact.setLastUpdatedAt(artifact.getCreatedOn().toEpochMilli());
+    if (Objects.nonNull(lastArtifact)) {
+      artifact.setProdEnvCount(lastArtifact.getProdEnvCount());
+      artifact.setNonProdEnvCount(lastArtifact.getNonProdEnvCount());
+    }
     artifactRepository.save(artifact);
   }
 
@@ -221,7 +226,7 @@ public class ArtifactServiceImpl implements ArtifactService {
                             .is(false);
 
     MatchOperation matchOperation = match(criteria);
-    SortOperation sortOperation = sort(Sort.by(Direction.DESC, ArtifactEntityKeys.lastUpdatedAt));
+    SortOperation sortOperation = sort(Sort.by(Direction.DESC, ArtifactEntityKeys.createdOn));
     GroupOperation groupByArtifactId = group(ArtifactEntityKeys.artifactId).first("$$ROOT").as("document");
     Sort.Order customSort = pageable.getSort().get().collect(Collectors.toList()).get(0);
     SortOperation customSortOperation =
@@ -343,18 +348,28 @@ public class ArtifactServiceImpl implements ArtifactService {
               .envId(entity.getEnvIdentifier())
               .envName(entity.getEnvName())
               .envType(entity.getEnvType() == EnvType.Production ? EnvTypeEnum.PROD : EnvTypeEnum.NONPROD)
-              .attestedStatus(artifact.isAttested() ? AttestedStatusEnum.PASS : AttestedStatusEnum.FAIL)
+              .pipelineName(entity.getLastPipelineName())
               .pipelineId(entity.getLastPipelineExecutionName())
               .pipelineExecutionId(entity.getLastPipelineExecutionId())
+              .pipelineSequenceId(entity.getSequenceId())
               .triggeredById(entity.getLastDeployedById())
               .triggeredBy(entity.getLastDeployedByName())
-              .triggeredAt(entity.getLastDeployedAt().toString());
+              .triggeredAt(entity.getLastDeployedAt().toString())
+              .triggeredType(entity.getTriggerType());
 
       if (Objects.nonNull(enforcementSummaryEntity)) {
         response.allowListViolationCount(String.valueOf(enforcementSummaryEntity.getAllowListViolationCount()))
             .denyListViolationCount(String.valueOf(enforcementSummaryEntity.getDenyListViolationCount()))
             .enforcementId(enforcementSummaryEntity.getEnforcementId());
       }
+
+      if (Objects.nonNull(entity.getSlsaVerificationSummary())) {
+        response.slsaVerification(
+            new Slsa()
+                .provenance(entity.getSlsaVerificationSummary().getProvenanceArtifact())
+                .policyOutcomeStatus(entity.getSlsaVerificationSummary().getSlsaPolicyOutcomeStatus()));
+      }
+
       return response;
     });
   }

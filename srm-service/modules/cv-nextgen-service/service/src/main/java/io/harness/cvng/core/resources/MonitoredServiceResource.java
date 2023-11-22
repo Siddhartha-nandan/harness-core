@@ -205,7 +205,7 @@ public class MonitoredServiceResource {
     Preconditions.checkArgument(identifier.equals(monitoredServiceDTO.getIdentifier()),
         String.format(
             "Identifier %s does not match with path identifier %s", monitoredServiceDTO.getIdentifier(), identifier));
-    return new RestResponse<>(monitoredServiceService.update(accountId, monitoredServiceDTO));
+    return new RestResponse<>(monitoredServiceService.update(accountId, monitoredServiceDTO, false));
   }
 
   @PUT
@@ -722,5 +722,33 @@ public class MonitoredServiceResource {
       @Valid @Body String yaml) {
     return new RestResponse<>(
         monitoredServiceService.updateFromYaml(projectParam.getProjectParams(), identifier, yaml));
+  }
+
+  @GET
+  @Path("/{identifier}/resolved-template-inputs")
+  @Timed
+  @ExceptionMetered
+  @ResponseMetered
+  @ApiOperation(
+      value = "get monitored service resolved template inputs", nickname = "getMonitoredServiceResolvedTemplateInputs")
+  @Operation(operationId = "getMonitoredServiceResolvedTemplateInputs",
+      summary = "get monitored service resolved template inputs",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(responseCode = "default", description = "get monitored service resolved template inputs")
+      })
+  @NGAccessControlCheck(resourceType = MONITORED_SERVICE, permission = VIEW_PERMISSION)
+  public ResponseDTO<String>
+  getMonitoredServiceResolvedTemplateInputs(
+      @ApiParam(required = true) @NotNull @BeanParam ProjectScopedProjectParams scopedProjectParams,
+      @Parameter(description = NGCommonEntityConstants.IDENTIFIER_PARAM_MESSAGE) @ApiParam(
+          required = true) @NotNull @PathParam("identifier") String identifier,
+      @Parameter(description = "Template identifier used to create the monitored service") @NotNull @QueryParam(
+          "templateIdentifier") String templateRef,
+      @Parameter(description = "Template version Label") @NotNull @QueryParam(
+          NGCommonEntityConstants.VERSION_LABEL_KEY) String versionLabel) {
+    return ResponseDTO.newResponse(monitoredServiceService.getResolvedTemplateInputs(
+        scopedProjectParams.getProjectParams(), identifier, templateRef, versionLabel));
   }
 }
