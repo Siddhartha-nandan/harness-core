@@ -263,7 +263,8 @@ public class NGModule extends AbstractModule {
     filterPropertiesMapper.addBinding(FilterType.ENVIRONMENTGROUP.toString())
         .to(EnvironmentGroupFilterPropertiesMapper.class);
     filterPropertiesMapper.addBinding(FilterType.ENVIRONMENT.toString()).to(EnvironmentFilterPropertiesMapper.class);
-    filterPropertiesMapper.addBinding(FilterType.OVERRIDE.toString()).to(OverrideFilterPropertiesMapper.class);
+    filterPropertiesMapper.addBinding(FilterType.GLOBAL_ENV_OVERRIDE.toString())
+        .to(OverrideFilterPropertiesMapper.class);
 
     Multibinder<PluginInfoProvider> pluginInfoProviderMultibinder =
         Multibinder.newSetBinder(binder(), new TypeLiteral<>() {});

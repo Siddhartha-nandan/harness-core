@@ -41,6 +41,6 @@ public class OverrideFilterPropertiesDTO extends FilterPropertiesDTO {
 
   @Override
   public FilterType getFilterType() {
-    return FilterType.OVERRIDE;
+    return FilterType.GLOBAL_ENV_OVERRIDE;
   }
 }

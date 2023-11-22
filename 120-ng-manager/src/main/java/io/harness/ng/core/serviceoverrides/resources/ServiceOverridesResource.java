@@ -9,7 +9,7 @@ package io.harness.ng.core.serviceoverrides.resources;
 
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.exception.WingsException.USER;
-import static io.harness.filter.FilterType.OVERRIDE;
+import static io.harness.filter.FilterType.GLOBAL_ENV_OVERRIDE;
 import static io.harness.pms.rbac.NGResourceType.ENVIRONMENT;
 import static io.harness.rbac.CDNGRbacPermissions.ENVIRONMENT_VIEW_PERMISSION;
 import static io.harness.utils.PageUtils.getNGPageResponse;
@@ -662,7 +662,7 @@ public class ServiceOverridesResource {
       return null;
     }
     FilterDTO overrideFilterDTO =
-        filterService.get(accountId, orgIdentifier, projectIdentifier, filterIdentifier, OVERRIDE);
+        filterService.get(accountId, orgIdentifier, projectIdentifier, filterIdentifier, GLOBAL_ENV_OVERRIDE);
     if (overrideFilterDTO == null) {
       throw new InvalidRequestException(String.format("Could not find a override filter with the identifier %s, in %s",
           filterIdentifier, ScopeHelper.getScopeMessageForLogs(accountId, orgIdentifier, projectIdentifier)));
