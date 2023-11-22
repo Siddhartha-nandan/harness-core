@@ -105,7 +105,7 @@ public class OutboxEventPollJob implements Runnable {
             "[OutboxEventPollJob] id: %s, eventType: %s, resourceType: %s, waitingTime: %d, processingTime: %d",
             outbox.getId(), outbox.getEventType(), outbox.getResource().getType(), outboxEventWaitingTime,
             outboxEventProcessingTime));
-        if (outboxPollConfiguration.isExportOutboxEventTimeMetrics()) {
+        if (outboxPollConfiguration.isEnableMetrics()) {
           outboxMetricsService.recordMetricsWithDuration(serviceId, outbox.getEventType(),
               outbox.getResource().getType(), ofMillis(outboxEventProcessingTime),
               OUTBOX_EVENT_PROCESSING_TIME_METRIC_NAME);
