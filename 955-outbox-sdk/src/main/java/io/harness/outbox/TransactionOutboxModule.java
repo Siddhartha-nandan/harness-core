@@ -40,19 +40,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class TransactionOutboxModule extends AbstractModule {
   public static final String OUTBOX_TRANSACTION_TEMPLATE = "OUTBOX_TRANSACTION_TEMPLATE";
   public static final String SERVICE_ID_FOR_OUTBOX = "serviceIdForOutboxMetrics";
-  public static final String EXPORT_OUTBOX_EVENT_TIME_METRICS = "exportOutboxEventTimeMetrics";
   private final OutboxPollConfiguration outboxPollConfiguration;
   private final String serviceId;
   private final boolean exportMetricsToStackDriver;
-  private final boolean exportOutboxEventTimeMetrics;
 
   public TransactionOutboxModule(
       OutboxPollConfiguration outboxPollConfiguration, @NotNull String serviceId, boolean exportMetricsToStackDriver) {
-    this(outboxPollConfiguration, serviceId, exportMetricsToStackDriver, false);
-  }
-
-  public TransactionOutboxModule(OutboxPollConfiguration outboxPollConfiguration, @NotNull String serviceId,
-      boolean exportMetricsToStackDriver, boolean exportOutboxEventTimeMetrics) {
     if (outboxPollConfiguration == null) {
       outboxPollConfiguration = DEFAULT_OUTBOX_POLL_CONFIGURATION;
     }
@@ -62,7 +55,6 @@ public class TransactionOutboxModule extends AbstractModule {
     this.outboxPollConfiguration = outboxPollConfiguration;
     this.serviceId = serviceId;
     this.exportMetricsToStackDriver = exportMetricsToStackDriver;
-    this.exportOutboxEventTimeMetrics = exportOutboxEventTimeMetrics;
   }
 
   @Override
@@ -99,13 +91,6 @@ public class TransactionOutboxModule extends AbstractModule {
   @Named(SERVICE_ID_FOR_OUTBOX)
   public String getServiceIdForOutboxMetrics() {
     return serviceId;
-  }
-
-  @Provides
-  @Singleton
-  @Named(EXPORT_OUTBOX_EVENT_TIME_METRICS)
-  public Boolean getExportOutboxEventTimeMetrics() {
-    return exportOutboxEventTimeMetrics;
   }
 
   private void registerRequiredBindings() {

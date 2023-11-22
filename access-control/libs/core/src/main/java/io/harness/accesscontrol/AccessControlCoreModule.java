@@ -58,7 +58,7 @@ public class AccessControlCoreModule extends AbstractModule {
     install(RoleAssignmentModule.getInstance());
     install(ACLModule.getInstance());
     install(new TransactionOutboxModule(
-        outboxPollConfig, ACCESS_CONTROL_SERVICE.getServiceId(), exportMetricsToStackDriver, true));
+        outboxPollConfig, ACCESS_CONTROL_SERVICE.getServiceId(), exportMetricsToStackDriver));
     registerRequiredBindings();
   }
 
