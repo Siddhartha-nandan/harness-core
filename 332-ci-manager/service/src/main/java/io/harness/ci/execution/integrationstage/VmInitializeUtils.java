@@ -10,6 +10,7 @@ package io.harness.ci.execution.integrationstage;
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveArchType;
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveOSType;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_HTTP_PROXY;
+import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_NO_PROXY;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_ARCH;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_MACHINE;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_NAME;
@@ -70,11 +71,14 @@ import io.harness.beans.yaml.extended.infrastrucutre.VmInfraYaml;
 import io.harness.beans.yaml.extended.infrastrucutre.VmPoolYaml;
 import io.harness.beans.yaml.extended.platform.ArchType;
 import io.harness.beans.yaml.extended.platform.Platform;
+import io.harness.ci.commonconstants.CIExecutionConstants;
 import io.harness.ci.execution.buildstate.ConnectorUtils;
 import io.harness.ci.execution.buildstate.PluginSettingUtils;
 import io.harness.cimanager.stages.IntegrationStageConfig;
 import io.harness.connector.WithProxy;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
+import io.harness.delegate.beans.connector.ConnectorConfigDTO;
+import io.harness.delegate.beans.connector.docker.DockerConnectorDTO;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ngexception.CIStageExecutionException;
 import io.harness.ng.core.NGAccess;
@@ -85,11 +89,14 @@ import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.stoserviceclient.STOServiceUtils;
+import io.harness.utils.ProxyUtils;
 
 import com.google.inject.Singleton;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 
 @Singleton
@@ -249,6 +256,8 @@ public class VmInitializeUtils {
   public Map<String, String> getStageProxyVars(IntegrationStageConfig integrationStageConfig, OSType os,
       NGAccess ngAccess, ConnectorUtils connectorUtils, Infrastructure infra) {
     Map<String, String> envVars = new HashMap<>();
+    Set<String> noProxyVars = new HashSet<String>();
+    Set<String> shouldProxyRegistries = new HashSet<String>();
 
     if ((infra.getType() != Infrastructure.Type.HOSTED_VM && infra.getType() != Infrastructure.Type.VM)
         || os != OSType.Linux) {
@@ -260,13 +269,30 @@ public class VmInitializeUtils {
     for (String connectorRef : connectorsRef) {
       ConnectorDetails connectorDetails = connectorUtils.getConnectorDetails(ngAccess, connectorRef);
 
-      if (connectorDetails != null && connectorDetails.getConnectorConfig() instanceof WithProxy) {
-        WithProxy connectorProxy = (WithProxy) connectorDetails.getConnectorConfig();
-        if (connectorProxy.getProxy() && connectorProxy.getProxyUrl() != null)
-          envVars.put(DRONE_HTTP_PROXY, connectorProxy.getProxyUrl());
+      if (connectorDetails != null) {
+        ConnectorConfigDTO configDTO = connectorDetails.getConnectorConfig();
+        if (connectorDetails != null && configDTO instanceof WithProxy) {
+          WithProxy connectorProxy = (WithProxy) configDTO;
+          if (connectorProxy.getProxy() && connectorProxy.getProxyUrl() != null)
+            envVars.put(DRONE_HTTP_PROXY, connectorProxy.getProxyUrl());
+          if (configDTO instanceof DockerConnectorDTO) {
+            DockerConnectorDTO dockerConfigDTO = (DockerConnectorDTO) configDTO;
+            String registryHost = ProxyUtils.getProxyHost(dockerConfigDTO.getDockerRegistryUrl());
+            if (connectorProxy.getProxy()) {
+              shouldProxyRegistries.add(registryHost);
+              noProxyVars.remove(registryHost);
+            } else if (!shouldProxyRegistries.contains(registryHost)) {
+              noProxyVars.add(registryHost);
+            }
+          }
+        }
       }
     }
 
+    if (envVars.containsKey(DRONE_HTTP_PROXY)) {
+      noProxyVars.addAll(Set.of(CIExecutionConstants.DOCKER_IO, CIExecutionConstants.DOCKER_COM));
+      envVars.put(DRONE_NO_PROXY, String.join(",", noProxyVars));
+    }
     return envVars;
   }
 
