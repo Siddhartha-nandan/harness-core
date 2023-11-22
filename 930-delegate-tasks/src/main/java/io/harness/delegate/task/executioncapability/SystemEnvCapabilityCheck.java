@@ -22,6 +22,11 @@ import lombok.extern.slf4j.Slf4j;
 public class SystemEnvCapabilityCheck implements CapabilityCheck, ProtoCapabilityCheck {
   @Override
   public CapabilityResponse performCapabilityCheck(ExecutionCapability delegateCapability) {
+    if (!(delegateCapability instanceof SystemEnvCheckerCapability)) {
+      log.warn("Delegate capability check for type: {}, cannot be validated",
+          delegateCapability != null ? delegateCapability.getCapabilityType() : null);
+      return CapabilityResponse.builder().validated(false).delegateCapability(delegateCapability).build();
+    }
     SystemEnvCheckerCapability systemEnvCheckerCapability = (SystemEnvCheckerCapability) delegateCapability;
     boolean valid = systemEnvCheckerCapability.getComparate().equals(
         System.getenv().get(systemEnvCheckerCapability.getSystemPropertyName()));
