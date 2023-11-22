@@ -42,7 +42,7 @@ image:
   repository: harness/delegate-proxy-signed
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "81202"
+  tag: "81202_1"
   digest: ""
   imagePullSecrets: []
 
