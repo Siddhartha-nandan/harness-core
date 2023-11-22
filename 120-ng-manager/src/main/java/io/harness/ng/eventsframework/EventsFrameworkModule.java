@@ -24,6 +24,7 @@ import static io.harness.eventsframework.EventsFrameworkConstants.PIPELINE_EXECU
 import static io.harness.eventsframework.EventsFrameworkConstants.PIPELINE_ORCHESTRATION_EVENT_BATCH_SIZE;
 import static io.harness.eventsframework.EventsFrameworkConstants.PIPELINE_ORCHESTRATION_EVENT_TOPIC;
 import static io.harness.eventsframework.EventsFrameworkConstants.WEBHOOK_EVENTS_STREAM;
+import static io.harness.eventsframework.EventsFrameworkConstants.GITX_FF_STREAM;
 import static io.harness.eventsframework.EventsFrameworkConstants.WEBHOOK_EVENTS_STREAM_MAX_TOPIC_SIZE;
 import static io.harness.pms.events.PmsEventFrameworkConstants.MAX_PROCESSING_TIME_SECONDS;
 
@@ -112,6 +113,9 @@ public class EventsFrameworkModule extends AbstractModule {
       bind(Producer.class)
           .annotatedWith(Names.named(WEBHOOK_EVENTS_STREAM))
           .toInstance(NoOpProducer.of(EventsFrameworkConstants.DUMMY_TOPIC_NAME));
+      bind(Producer.class)
+              .annotatedWith(Names.named(GITX_FF_STREAM))
+              .toInstance(NoOpProducer.of(EventsFrameworkConstants.DUMMY_TOPIC_NAME));
       bind(Producer.class)
           .annotatedWith(Names.named(EventsFrameworkConstants.POLLING_EVENTS_STREAM))
           .toInstance(NoOpProducer.of(EventsFrameworkConstants.DUMMY_TOPIC_NAME));

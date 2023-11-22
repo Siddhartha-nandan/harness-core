@@ -31,6 +31,7 @@ public final class EventsFrameworkConstants {
   public static final String HARNESS_TO_GIT_PUSH = "harness_to_git_push";
   public static final String WEBHOOK_REQUEST_PAYLOAD_DETAILS = "webhook_request_payload_data";
   public static final String WEBHOOK_EVENTS_STREAM = "webhook_events_stream";
+  public static final String GITX_FF_STREAM = "gitx_ff_stream";
   public static final String POLLING_EVENTS_STREAM = "polling_events_stream";
   public static final String TRIGGER_EXECUTION_EVENTS_STREAM = "trigger_execution_events_stream";
   public static final String GIT_PUSH_EVENT_STREAM = "git_push_event_stream";
