@@ -15,12 +15,16 @@ import io.harness.exception.WingsException.ReportTarget;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import javax.validation.constraints.NotNull;
 import lombok.experimental.UtilityClass;
 import org.apache.commons.lang3.StringUtils;
 
 @UtilityClass
 public class Validator {
+  public static final Pattern VALID_EMAIL_ADDRESS_PATTERN =
+      Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,6}$", Pattern.CASE_INSENSITIVE);
+
   public static void notNullCheck(String message, Object value) {
     if (value == null) {
       throw new GeneralException(message);
@@ -79,6 +83,12 @@ public class Validator {
   public static void ensureType(Class clazz, Object object, String errorMsg) {
     if (!(clazz.isInstance(object))) {
       throw new InvalidRequestException(errorMsg);
+    }
+  }
+
+  public static void validEmailCheck(String message, String value) {
+    if (!VALID_EMAIL_ADDRESS_PATTERN.matcher(value).matches()) {
+      throw new InvalidRequestException(message);
     }
   }
 }

@@ -17,6 +17,7 @@ import static io.harness.remote.client.CGRestUtils.getResponse;
 import static io.harness.remote.client.CGRestUtils.getRetryPolicy;
 import static io.harness.signup.services.SignupType.COMMUNITY_PROVISION;
 import static io.harness.utils.CryptoUtils.secureRandAlphaNumString;
+import static io.harness.validation.Validator.validEmailCheck;
 
 import static java.lang.Boolean.FALSE;
 import static org.springframework.security.crypto.bcrypt.BCrypt.hashpw;
@@ -282,7 +283,7 @@ public class SignupServiceImpl implements SignupService {
 
     verifyReCaptcha(dto, captchaToken);
     verifySignupDTO(dto);
-
+    validEmailCheck("Error: Provide a valid email for sign-up.", dto.getEmail());
     dto.setEmail(dto.getEmail().toLowerCase());
 
     String passwordHash = hashpw(dto.getPassword(), BCrypt.gensalt());
