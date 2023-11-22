@@ -29,7 +29,6 @@ import io.harness.delegate.beans.DelegateProfile;
 import io.harness.delegate.beans.DelegateProfile.DelegateProfileKeys;
 import io.harness.delegate.beans.DelegateTaskRank;
 import io.harness.delegate.utils.DelegateTaskMigrationHelper;
-import io.harness.exception.InvalidArgumentsException;
 import io.harness.persistence.HPersistence;
 import io.harness.redis.intfc.DelegateRedissonCacheManager;
 import io.harness.service.intfc.DelegateCache;
@@ -294,12 +293,7 @@ public class DelegateCacheImpl implements DelegateCache {
 
   @Override
   public Map<String, Long> getTasksCountPerAccount(@NotNull DelegateTaskRank rank) {
-    if (rank == DelegateTaskRank.OPTIONAL) {
-      return optionalDelegateTasksCountCache.asMap();
-    } else if (rank == DelegateTaskRank.IMPORTANT) {
-      return delegateTasksCountCache.asMap();
-    }
-    throw new InvalidArgumentsException("Unsupported delegate task rank " + rank);
+    return delegateTasksCountCache.asMap();
   }
 
   @Override
