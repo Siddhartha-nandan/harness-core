@@ -78,7 +78,9 @@ public class CheckDetailsMapper {
 
     if (!getLhsOnly) {
       expressionBuilder.append(rule.getOperator());
+      expressionBuilder.append("\"");
       expressionBuilder.append(rule.getValue());
+      expressionBuilder.append("\"");
     }
 
     return expressionBuilder.toString();
