@@ -122,6 +122,7 @@ import io.harness.delegate.beans.DelegateSetupDetails;
 import io.harness.delegate.beans.DelegateSize;
 import io.harness.delegate.beans.DelegateSizeDetails;
 import io.harness.delegate.beans.DelegateTags;
+import io.harness.delegate.beans.DelegateToken;
 import io.harness.delegate.beans.DelegateTokenDetails;
 import io.harness.delegate.beans.DelegateTokenStatus;
 import io.harness.delegate.beans.DelegateUnregisterRequest;
@@ -1706,7 +1707,9 @@ public class DelegateServiceImpl implements DelegateService {
         var tokenDetails =
             delegateNgTokenService.getDelegateToken(inquiry.getAccountId(), inquiry.getDelegateTokenName(), false);
         if (Objects.isNull(tokenDetails) || tokenDetails.getStatus().equals(REVOKED)) {
-          return null;
+          DelegateTokenDetails delegateTokenDetails = delegateNgTokenService.getDefaultTokenOrOldestActiveDelegateToken(
+              account.getUuid(), inquiry.getDelegateEntityOwner());
+          return delegateTokenDetails.getValue();
         }
         return delegateNgTokenService.getDelegateTokenValue(inquiry.getAccountId(), inquiry.getDelegateTokenName());
       } else {
@@ -4160,12 +4163,13 @@ public class DelegateServiceImpl implements DelegateService {
   @Override
   public File generateKubernetesYaml(String accountId, DelegateSetupDetails delegateSetupDetails, String managerHost,
       String verificationServiceUrl, MediaType fileFormat) throws IOException {
+    DelegateEntityOwner owner = null;
     // check uniqueness and k8 name validation
     checkUniquenessOfDelegateName(accountId, delegateSetupDetails.getName(), true);
     checkK8NamingValidation(delegateSetupDetails.getName());
     // If token name is not provided, use default token
     if (StringUtils.isBlank(delegateSetupDetails.getTokenName())) {
-      DelegateEntityOwner owner = DelegateEntityOwnerHelper.buildOwner(
+      owner = DelegateEntityOwnerHelper.buildOwner(
           delegateSetupDetails.getOrgIdentifier(), delegateSetupDetails.getProjectIdentifier());
       delegateSetupDetails.setTokenName(delegateNgTokenService.getDefaultTokenName(owner));
     }
@@ -4228,7 +4232,8 @@ public class DelegateServiceImpl implements DelegateService {
                   .k8sPermissionsType(delegateSetupDetails.getK8sConfigDetails().getK8sPermissionType())
                   .logStreamingServiceBaseUrl(mainConfiguration.getLogStreamingServiceConfig().getExternalUrl())
                   .runAsRoot(delegateSetupDetails.getRunAsRoot() == null || delegateSetupDetails.getRunAsRoot())
-                  .delegateTokenName(delegateSetupDetails.getTokenName())),
+                  .delegateTokenName(delegateSetupDetails.getTokenName())
+                  .delegateEntityOwner(owner)),
           true);
 
       File yaml = File.createTempFile(HARNESS_DELEGATE, YAML);
