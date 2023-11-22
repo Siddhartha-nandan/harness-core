@@ -683,7 +683,10 @@ public enum EntityType {
   @JsonProperty(EntityTypeConstants.IDP_STAGE)
   IDP_STAGE(ModuleType.IDP, EntityTypeConstants.IDP_STAGE, IdentifierRef.class, EntityYamlRootNames.IDP_STAGE),
   @JsonProperty(EntityTypeConstants.CHAOS_HUB)
-  CHAOS_HUB(ModuleType.CHAOS, EntityTypeConstants.CHAOS_HUB, IdentifierRef.class, EntityYamlRootNames.CHAOS_HUB);
+  CHAOS_HUB(ModuleType.CHAOS, EntityTypeConstants.CHAOS_HUB, IdentifierRef.class, EntityYamlRootNames.CHAOS_HUB),
+  @JsonProperty(EntityTypeConstants.DOWNLOAD_AWS_S3)
+  DOWNLOAD_AWS_S3(
+      ModuleType.CD, EntityTypeConstants.DOWNLOAD_AWS_S3, IdentifierRef.class, EntityYamlRootNames.DOWNLOAD_AWS_S3);
 
   private final ModuleType moduleType;
   String yamlName;

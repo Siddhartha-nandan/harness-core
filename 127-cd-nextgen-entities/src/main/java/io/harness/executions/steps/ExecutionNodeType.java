@@ -202,7 +202,8 @@ public enum ExecutionNodeType {
   ECS_BASIC_ROLLBACK("ECS_BASIC_ROLLBACK", YamlTypes.ECS_BASIC_ROLLBACK),
   CUSTOM_STAGE("CUSTOM_STAGE", "custom"),
   CUSTOM_STAGE_V1("CUSTOM_STAGE_V1", "custom"),
-  ASG_SHIFT_TRAFFIC("ASG_SHIFT_TRAFFIC", YamlTypes.ASG_SHIFT_TRAFFIC);
+  ASG_SHIFT_TRAFFIC("ASG_SHIFT_TRAFFIC", YamlTypes.ASG_SHIFT_TRAFFIC),
+  DOWNLOAD_AWS_S3("DOWNLOAD_AWS_S3", YamlTypes.DOWNLOAD_AWS_S3);
 
   private final String name;
   private final String yamlType;

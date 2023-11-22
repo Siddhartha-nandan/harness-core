@@ -281,4 +281,7 @@ public interface EntityTypeConstants {
 
   String IDP_STAGE = "IDPStage";
   String IDP = "IDP";
+
+  // CD Container Step Group Common Steps
+  String DOWNLOAD_AWS_S3 = "DownloadAwsS3";
 }

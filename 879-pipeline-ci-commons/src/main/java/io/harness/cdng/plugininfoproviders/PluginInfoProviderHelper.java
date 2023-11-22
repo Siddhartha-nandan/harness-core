@@ -19,6 +19,7 @@ import io.harness.beans.quantity.unit.StorageQuantityUnit;
 import io.harness.beans.yaml.extended.ImagePullPolicy;
 import io.harness.ci.utils.PortFinder;
 import io.harness.ci.utils.QuantityUtils;
+import io.harness.data.structure.HarnessStringUtils;
 import io.harness.pms.contracts.plan.ConnectorDetails;
 import io.harness.pms.contracts.plan.ImageDetails;
 import io.harness.pms.contracts.plan.ImageInformation;
@@ -103,7 +104,9 @@ public class PluginInfoProviderHelper {
     }
 
     return ImageDetails.newBuilder()
-        .setConnectorDetails(ConnectorDetails.newBuilder().setConnectorRef(connectorRef.getValue()).build())
+        .setConnectorDetails(ConnectorDetails.newBuilder()
+                                 .setConnectorRef(HarnessStringUtils.emptyIfNull(connectorRef.getValue()))
+                                 .build())
         .setImageInformation(ImageInformation.newBuilder()
                                  .setImageName(StringValue.of(image.getValue()))
                                  .setImagePullPolicy(imagePullPolicyStr)
