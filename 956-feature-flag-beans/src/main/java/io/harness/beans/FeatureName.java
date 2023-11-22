@@ -134,6 +134,8 @@ public enum FeatureName {
   CDS_K8S_SOCKET_CAPABILITY_CHECK_NG(
       "Replace HTTP capability check for Kubernetes connector with Socket Capability", HarnessTeam.CDP),
   CDS_MULTI_SERVICE_PROPAGATION("FF for enabling multi service propagation for CD", HarnessTeam.CDP),
+  CDS_NG_ACC_ORG_LEVEL_SERVICE_LICENSING_FIX(
+      "Update license usage calculation queries for services deployed across projects/orgs.", HarnessTeam.CDC),
   CDS_NG_SECRET_RUNTIME_USAGE_EVENT_GENERATION(
       "FF to enable secret runtime usage event generation for ng", HarnessTeam.CDC),
   CDS_NG_SERVICE_PRINCIPAL_FOR_CUSTOM_WEBHOOK(
@@ -893,6 +895,7 @@ public enum FeatureName {
       "Allow the user to specify the region to be used for listing EKS clusters.", HarnessTeam.CDP),
   CDS_SHELL_VARIABLES_EXPORT("Export shell script output variables to different scopes", HarnessTeam.CDC),
   CDS_CUSTOM_STAGE_WITH_ENV_INFRA("Enable optional environment and infrastructure in custom stage", HarnessTeam.CDC),
+  CDS_VALIDATE_INPUT_SET_IDENTIFIER("Enable validation check for InputSet Identifier.", PIPELINE),
   CDS_ECS_BASIC_DEPLOYMENT_STRATEGY(
       "This flag enables the basic deployment strategy in ECS Deployment Swimlane", HarnessTeam.CDP),
   CDS_TF_TG_SKIP_ERROR_LOGS_COLORING(
@@ -935,8 +938,8 @@ public enum FeatureName {
   CDS_APPROVAL_AND_STAGE_NOTIFICATIONS_WITH_CD_METADATA(
       "Improves approval and stage notifications with cd metadata", HarnessTeam.CDC),
   GTM_DEVELOPER_LICENSING("Enable new developer licensing changes", GTM),
-  CDS_ASG_SHIFT_TRAFFIC_STEP_NG("Enable Shift Traffic step for Asg Blue-Green deployments", CDC);
-
+  CDS_ASG_SHIFT_TRAFFIC_STEP_NG("Enable Shift Traffic step for Asg Blue-Green deployments", CDC),
+  CDS_ENABLE_TAS_ARTIFACT_AS_MANIFEST_SOURCE_NG("Artifact Bundle Support for Tas Deployment in NG", HarnessTeam.CDP);
   // keep-sorted end
 
   @Deprecated

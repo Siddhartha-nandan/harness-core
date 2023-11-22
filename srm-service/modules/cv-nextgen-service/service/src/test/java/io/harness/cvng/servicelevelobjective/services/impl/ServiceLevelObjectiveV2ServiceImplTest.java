@@ -860,7 +860,7 @@ public class ServiceLevelObjectiveV2ServiceImplTest extends CvNextGenTestBase {
         (SimpleServiceLevelObjectiveSpec) sloDTO.getSpec();
     assertThatThrownBy(() -> serviceLevelObjectiveV2Service.create(projectParams, sloDTO))
         .isInstanceOf(InvalidRequestException.class)
-        .hasMessage(String.format("Monitored Source Entity with identifier %s is not present",
+        .hasMessage(String.format("Monitored Service entity with identifier %s is not present",
             simpleServiceLevelObjectiveSpec.getMonitoredServiceRef()));
   }
 
@@ -3380,6 +3380,7 @@ public class ServiceLevelObjectiveV2ServiceImplTest extends CvNextGenTestBase {
                               .timeStamp(startTime.plus(Duration.ofMinutes(i)))
                               .badEventCount(badCounts.get(i))
                               .goodEventCount(goodCounts.get(i))
+                              .skipEventCount(0l)
                               .build());
     }
     sliRecordService.create(sliRecordParams, sliId, sliId, 0);
@@ -3401,6 +3402,7 @@ public class ServiceLevelObjectiveV2ServiceImplTest extends CvNextGenTestBase {
                               .timeStamp(startTime.plus(Duration.ofMinutes(i)))
                               .goodEventCount(goodCount)
                               .badEventCount(badCount)
+                              .skipEventCount(0l)
                               .build());
     }
     return sliRecordParams;
