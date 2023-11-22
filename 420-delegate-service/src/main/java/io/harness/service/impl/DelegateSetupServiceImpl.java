@@ -747,7 +747,9 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
           .filter(delegate -> delegateDao.isDelegateHeartBeatUpToDate(delegate))
           .collect(toList());
     }
-    return delegateList;
+    return delegateList.stream()
+        .filter(delegate -> filterProperties.getStatus().equals(delegate.getStatus()))
+        .collect(toList());
   }
 
   @Override
