@@ -2,5 +2,4 @@ name: Access Control Service Metrics Group
 identifier: accessControlServiceMetricsGroup
 labels:
   - namespace
-  - containerName
   - serviceName
