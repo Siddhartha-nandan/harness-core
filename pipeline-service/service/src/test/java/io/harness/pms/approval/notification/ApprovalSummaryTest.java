@@ -53,7 +53,7 @@ public class ApprovalSummaryTest extends CategoryTest {
                                           .pipelineExecutionLink("this.link.executes.io")
                                           .timeRemainingForApproval("6d")
                                           .build();
-    Map<String, String> params = approvalSummary.toParams();
+    Map<String, String> params = approvalSummary.toParams(ApprovalSummary.DEFAULT_STAGE_DELIMITER);
     assertThat(params).hasSize(14);
     assertThat(params.get("pipelineName")).isEqualTo("p1");
     assertThat(params.get("orgName")).isEqualTo("default");

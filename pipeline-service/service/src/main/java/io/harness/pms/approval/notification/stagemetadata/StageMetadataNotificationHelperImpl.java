@@ -7,6 +7,7 @@
 
 package io.harness.pms.approval.notification.stagemetadata;
 
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.remote.client.NGRestUtils.getResponse;
 
 import static java.util.Objects.isNull;
@@ -69,6 +70,8 @@ public class StageMetadataNotificationHelperImpl implements StageMetadataNotific
     if (!finishedStages.isEmpty()) {
       // this isn't expected
       log.error("Unknown error in setFormattedSummaryOfFinishedStages: unable to process [{}] stages", finishedStages);
+      throw new IllegalStateException(
+          String.format("Error while formatting finished stages, unable to process [%s] stages", finishedStages));
     }
   }
 
@@ -78,23 +81,26 @@ public class StageMetadataNotificationHelperImpl implements StageMetadataNotific
    */
   private void handleFinishedStagesWithExecutionIdentifierAbsent(
       @NotNull Set<StageSummary> stages, @NotNull Set<String> formattedFinishedStages) {
-    Set<String> namesForStagesWithoutExecutionIds =
-        stages.stream()
-            .filter(stageSummary -> StringUtils.isBlank(stageSummary.getStageExecutionIdentifier()))
-            .map(stageSummary -> {
-              stages.remove(stageSummary);
-              return stageSummary.getFormattedEntityName();
-            })
-            .collect(Collectors.toSet());
+    Set<String> namesForStagesWithoutExecutionIds = new HashSet<>();
+    Iterator<StageSummary> iterator = stages.iterator();
+    while (iterator.hasNext()) {
+      StageSummary stageSummary = iterator.next();
 
-    log.warn(
-        "Stage Execution ids not found for [{}] stages, defaulting to stage names", namesForStagesWithoutExecutionIds);
-    formattedFinishedStages.addAll(namesForStagesWithoutExecutionIds);
+      if (StringUtils.isBlank(stageSummary.getStageExecutionIdentifier())) {
+        iterator.remove(); // Remove the current element from the iterator
+        namesForStagesWithoutExecutionIds.add(stageSummary.getFormattedEntityName());
+      }
+    }
+
+    if (isNotEmpty(namesForStagesWithoutExecutionIds)) {
+      log.warn("Stage Execution ids not found for [{}] stages, defaulting to stage names",
+          namesForStagesWithoutExecutionIds);
+      formattedFinishedStages.addAll(namesForStagesWithoutExecutionIds);
+    }
   }
 
   /**
    * assumes that each stage in finalStages has a stage execution identifier
-   *
    * removes CD stages from finalStages and adds formatted summary in formattedFinishedStages set
    */
   private void handleCDFinishedStages(
@@ -142,12 +148,16 @@ public class StageMetadataNotificationHelperImpl implements StageMetadataNotific
     // add names for stages without summary
     SetView<String> stageExecutionIdsWithoutSummary =
         Sets.difference(cdStageExecutionIdentifiers, cdFinishedFormattedSummary.keySet());
-    log.warn("Unable to fetch summary for {} via listStageExecutionFormattedSummary", stageExecutionIdsWithoutSummary);
 
-    formattedFinishedStages.addAll(stageExecutionIdsWithoutSummary.stream()
-                                       .map(cdStagesSummaryMap::get)
-                                       .map(StageSummary::getFormattedEntityName)
-                                       .collect(Collectors.toSet()));
+    if (isNotEmpty(stageExecutionIdsWithoutSummary)) {
+      log.warn(
+          "Unable to fetch summary for {} via listStageExecutionFormattedSummary", stageExecutionIdsWithoutSummary);
+
+      formattedFinishedStages.addAll(stageExecutionIdsWithoutSummary.stream()
+                                         .map(cdStagesSummaryMap::get)
+                                         .map(StageSummary::getFormattedEntityName)
+                                         .collect(Collectors.toSet()));
+    }
 
     // add metadata for stages with summary
     SetView<String> stageExecutionIdsWithSummary =
@@ -211,6 +221,8 @@ public class StageMetadataNotificationHelperImpl implements StageMetadataNotific
     if (!upcomingStages.isEmpty()) {
       // this isn't expected
       log.error("Unknown error in setFormattedSummaryOfUpcomingStages: unable to process [{}] stages", upcomingStages);
+      throw new IllegalStateException(
+          String.format("Error while formatting upcoming stages, unable to process [%s] stages", upcomingStages));
     }
   }
 
@@ -263,12 +275,15 @@ public class StageMetadataNotificationHelperImpl implements StageMetadataNotific
 
     // add names for stages without summary
     SetView<String> stageIdsWithoutSummary = Sets.difference(cdStageIdentifiers, cdUpcomingFormattedSummary.keySet());
-    log.warn("Unable to fetch summary for {} via listStagePlanCreationFormattedSummary", stageIdsWithoutSummary);
 
-    formattedUpcomingStages.addAll(stageIdsWithoutSummary.stream()
-                                       .map(cdStagesSummaryMap::get)
-                                       .map(StageSummary::getFormattedEntityName)
-                                       .collect(Collectors.toSet()));
+    if (isNotEmpty(stageIdsWithoutSummary)) {
+      log.warn("Unable to fetch summary for {} via listStagePlanCreationFormattedSummary", stageIdsWithoutSummary);
+
+      formattedUpcomingStages.addAll(stageIdsWithoutSummary.stream()
+                                         .map(cdStagesSummaryMap::get)
+                                         .map(StageSummary::getFormattedEntityName)
+                                         .collect(Collectors.toSet()));
+    }
 
     // add metadata for stages with summary
     SetView<String> stageIdsWithSummary = Sets.intersection(cdStageIdentifiers, cdUpcomingFormattedSummary.keySet());

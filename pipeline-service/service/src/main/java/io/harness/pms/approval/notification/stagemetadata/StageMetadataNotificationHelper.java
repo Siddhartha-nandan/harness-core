@@ -82,9 +82,9 @@ public interface StageMetadataNotificationHelper {
    *
    * example format for single service environment:
    * stage Name :
-   *      Service  :  serviceName
-   *      Environment  :  envName
-   *      Infrastructure Definition  :  infraName
+   *      Service  :  service Name
+   *      Environment  :  env Name
+   *      Infrastructure Definition  :  infra Name
    */
   static String formatCDStageMetadata(
       @Nullable CDStageSummaryResponseDTO cdStageSummaryResponseDTO, @NotNull CDStageSummary cdStageSummary) {
@@ -122,7 +122,7 @@ public interface StageMetadataNotificationHelper {
       @NotNull StagesSummary stagesSummary, @NotNull ApprovalSummary approvalSummary) {
     if (isNull(stagesSummary) || isNull(approvalSummary)) {
       throw new InvalidRequestException(
-          "Stage details and approval summary are required for setting approval formatted stage summary");
+          "Stages details and approval summary are required for setting approval formatted stage summary");
     }
     approvalSummary.getUpcomingStages().addAll(stagesSummary.getUpcomingStages()
                                                    .stream()
