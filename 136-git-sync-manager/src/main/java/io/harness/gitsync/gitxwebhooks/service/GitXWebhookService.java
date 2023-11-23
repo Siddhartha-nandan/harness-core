@@ -45,6 +45,9 @@ public interface GitXWebhookService {
   UpdateGitXWebhookResponseDTO updateGitXWebhook(UpdateGitXWebhookCriteriaDTO updateGitXWebhookCriteriaDTO,
       UpdateGitXWebhookRequestDTO updateGitXWebhookRequestDTO);
 
+  UpdateGitXWebhookResponseDTO updateGitXWebhookTriggerTime(UpdateGitXWebhookCriteriaDTO updateGitXWebhookCriteriaDTO,
+      UpdateGitXWebhookRequestDTO updateGitXWebhookRequestDTO);
+
   ListGitXWebhookResponseDTO listGitXWebhooks(ListGitXWebhookRequestDTO listGitXWebhookRequestDTO);
 
   DeleteGitXWebhookResponseDTO deleteGitXWebhook(DeleteGitXWebhookRequestDTO deleteGitXWebhookRequestDTO);

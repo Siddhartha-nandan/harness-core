@@ -276,11 +276,12 @@ public class GitXWebhookEventServiceImpl implements GitXWebhookEventService {
 
   private void updateGitXWebhook(List<GitXWebhook> gitXWebhookList, long triggerEventTime) {
     gitXWebhookList.forEach(gitXWebhook -> {
-      gitXWebhookService.updateGitXWebhook(UpdateGitXWebhookCriteriaDTO.builder()
-                                               .webhookIdentifier(gitXWebhook.getIdentifier())
-                                               .scope(Scope.of(gitXWebhook.getAccountIdentifier(),
-                                                   gitXWebhook.getOrgIdentifier(), gitXWebhook.getProjectIdentifier()))
-                                               .build(),
+      gitXWebhookService.updateGitXWebhookTriggerTime(
+          UpdateGitXWebhookCriteriaDTO.builder()
+              .webhookIdentifier(gitXWebhook.getIdentifier())
+              .scope(Scope.of(gitXWebhook.getAccountIdentifier(), gitXWebhook.getOrgIdentifier(),
+                  gitXWebhook.getProjectIdentifier()))
+              .build(),
           UpdateGitXWebhookRequestDTO.builder()
               .lastEventTriggerTime(triggerEventTime)
               .folderPaths(gitXWebhook.getFolderPaths())
