@@ -60,7 +60,7 @@ public interface DelegateSetupService {
 
   DelegateGroupListing listDelegateGroupDetailsV2(String accountId, String orgId, String projectId,
       String filterIdentifier, String searchTerm, DelegateFilterPropertiesDTO delegateFilterPropertiesDTO,
-      PageRequest pageRequest);
+      PageRequest pageRequest, boolean applyRbacFilter);
 
   List<DelegateListResponse> listDelegates(
       String accountId, String orgId, String projectId, DelegateFilterPropertiesDTO delegateFilterPropertiesDTO);

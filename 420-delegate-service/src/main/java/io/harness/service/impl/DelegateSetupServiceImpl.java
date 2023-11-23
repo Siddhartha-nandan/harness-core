@@ -102,6 +102,7 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
   @Inject private DelegateDao delegateDao;
   @Inject private FilterService filterService;
   @Inject private OutboxService outboxService;
+  private DelegateRbacHelper delegateRbacHelper;
 
   @Inject private VersionInfoManager versionInfoManager;
 
@@ -536,8 +537,8 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
 
   @Override
   public DelegateGroupListing listDelegateGroupDetailsV2(String accountId, String orgId, String projectId,
-      String filterIdentifier, String searchTerm, DelegateFilterPropertiesDTO filterProperties,
-      PageRequest pageRequest) {
+      String filterIdentifier, String searchTerm, DelegateFilterPropertiesDTO filterProperties, PageRequest pageRequest,
+      boolean applyRbacFilter) {
     if (isNotEmpty(filterIdentifier) && filterProperties != null) {
       throw new InvalidRequestException("Can not apply both filter properties and saved filter together");
     }
@@ -548,6 +549,9 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
     }
 
     List<String> delegateGroupIds = getDelegateGroupIds(accountId, orgId, projectId, filterProperties, searchTerm);
+    if (applyRbacFilter) {
+      delegateGroupIds = delegateRbacHelper.getPermittedIds(delegateGroupIds, accountId, orgId, projectId);
+    }
 
     List<Delegate> delegateList = getFilteredDelegateList(accountId, filterProperties, delegateGroupIds);
 

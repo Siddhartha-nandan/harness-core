@@ -121,12 +121,16 @@ public class DelegateSetupResourceV2 {
       @QueryParam(NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm,
       @Body @RequestBody(description = "Details of the Delegate filter properties to be applied")
       DelegateFilterPropertiesDTO delegateFilterPropertiesDTO, @BeanParam PageRequest pageRequest) {
-    accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountId, orgId, projectId),
-        Resource.of(DELEGATE_RESOURCE_TYPE, null), DELEGATE_VIEW_PERMISSION);
-
+    if (accessControlClient.hasAccess(ResourceScope.of(accountId, orgId, projectId),
+            Resource.of(DELEGATE_RESOURCE_TYPE, null), DELEGATE_VIEW_PERMISSION)) {
+      try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
+        return new RestResponse<>(delegateSetupService.listDelegateGroupDetailsV2(accountId, orgId, projectId,
+            filterIdentifier, searchTerm, delegateFilterPropertiesDTO, pageRequest, false));
+      }
+    }
     try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
       return new RestResponse<>(delegateSetupService.listDelegateGroupDetailsV2(
-          accountId, orgId, projectId, filterIdentifier, searchTerm, delegateFilterPropertiesDTO, pageRequest));
+          accountId, orgId, projectId, filterIdentifier, searchTerm, delegateFilterPropertiesDTO, pageRequest, true));
     }
   }
 
