@@ -94,7 +94,7 @@ scmConnectionConfig:
 
 logServiceConfig:
   internalUrl: ""
-  baseUrl: https://qa.harness.io/log-service/
+  baseUrl: http://b7d2-78-146-39-78.ngrok-free.app
   globalToken: "c76e567a-b341-404d-a8dd-d9738714eb82"
 
 tiServiceConfig:
@@ -448,7 +448,7 @@ pmsGrpcClientConfig:
 
 apiUrl: https://localhost:8181/#/
 
-shouldConfigureWithPMS: ${SHOULD_CONFIGURE_WITH_PMS:-false}
+shouldConfigureWithPMS: true
 
 enableDashboardTimescale: false
 
