@@ -56,13 +56,13 @@ public class NGVariableUtilsTest extends CategoryTest {
     String secretValueInExpression = "<+pipeline.name>";
     String expectedSecretExpression =
         NGVariablesUtils.fetchSecretExpressionWithExpressionToken(secretValueInExpression, expressionToken);
-    assertThat(expectedSecretExpression).isEqualTo("${ngSecretManager.obtain(<+pipeline.name>, 1234)}");
+    assertThat(expectedSecretExpression).isEqualTo("${ngSecretManager.obtain('<+pipeline.name>', 1234)}");
 
     String secretValueConstant = "secretValue";
     expectedSecretExpression =
         NGVariablesUtils.fetchSecretExpressionWithExpressionToken(secretValueConstant, expressionToken);
     assertThat(expectedSecretExpression)
-        .isEqualTo("${ngSecretManager.obtain(\"" + secretValueConstant + "\", " + expressionToken + ")}");
+        .isEqualTo("${ngSecretManager.obtain('" + secretValueConstant + "', " + expressionToken + ")}");
   }
 
   @Test

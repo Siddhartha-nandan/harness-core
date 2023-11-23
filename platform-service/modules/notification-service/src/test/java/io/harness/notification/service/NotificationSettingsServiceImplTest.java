@@ -77,19 +77,19 @@ public class NotificationSettingsServiceImplTest extends CategoryTest {
   private static final String PAGERDUTY_SECRET = "<+secrets.getValue('PagerDutyWebhookUrlSecret')>";
   private static final long EXPRESSION_FUNCTOR_TOKEN_1 = HashGenerator.generateIntegerHash();
   private static final String RESOLVED_SLACK_SECRET_1 =
-      String.format("${ngSecretManager.obtain(\"SlackWebhookUrlSecret1\", %d)}", EXPRESSION_FUNCTOR_TOKEN_1);
+      String.format("${ngSecretManager.obtain('SlackWebhookUrlSecret1', %d)}", EXPRESSION_FUNCTOR_TOKEN_1);
   private static final String RESOLVED_SLACK_SECRET_2 =
-      String.format("${ngSecretManager.obtain(\"SlackWebhookUrlSecret2\", %d)}", EXPRESSION_FUNCTOR_TOKEN_1);
+      String.format("${ngSecretManager.obtain('SlackWebhookUrlSecret2', %d)}", EXPRESSION_FUNCTOR_TOKEN_1);
   private static final String RESOLVED_SLACK_SECRET_3 =
-      String.format("${ngSecretManager.obtain(\"SlackWebhookUrlSecret3\", %d)}", EXPRESSION_FUNCTOR_TOKEN_1);
+      String.format("${ngSecretManager.obtain('SlackWebhookUrlSecret3', %d)}", EXPRESSION_FUNCTOR_TOKEN_1);
   private static final String RESOLVED_PAGER_DUTY_SECRET =
-      String.format("${ngSecretManager.obtain(\"PagerDutyWebhookUrlSecret\", %d)}", EXPRESSION_FUNCTOR_TOKEN_1);
+      String.format("${ngSecretManager.obtain('PagerDutyWebhookUrlSecret', %d)}", EXPRESSION_FUNCTOR_TOKEN_1);
   private static final String RESOLVED_SLACK_ORG_SECRET =
-      String.format("${ngSecretManager.obtain(\"org.SlackWebhookUrlSecret\", %d)}", EXPRESSION_FUNCTOR_TOKEN_1);
+      String.format("${ngSecretManager.obtain('org.SlackWebhookUrlSecret', %d)}", EXPRESSION_FUNCTOR_TOKEN_1);
   private static final String RESOLVED_SLACK_ACCOUNT_SECRET =
-      String.format("${ngSecretManager.obtain(\"account.SlackWebhookUrlSecret\", %d)}", EXPRESSION_FUNCTOR_TOKEN_1);
+      String.format("${ngSecretManager.obtain('account.SlackWebhookUrlSecret', %d)}", EXPRESSION_FUNCTOR_TOKEN_1);
   private static final String RESOLVED_SLACK_SECRET_WITH_FUNCTOR_ZERO =
-      "${ngSecretManager.obtain(\"SlackWebhookUrlSecret1\", 0)}";
+      "${ngSecretManager.obtain('SlackWebhookUrlSecret1', 0)}";
   private static final String RESOLVED_SLACK_SWEEPING_OUTPUT_SECRET_1 =
       "${sweepingOutputSecrets.obtain(\"ovar3\",\"BASE_64\")}";
   private static final String RESOLVED_SLACK_SWEEPING_OUTPUT_SECRET_2 =

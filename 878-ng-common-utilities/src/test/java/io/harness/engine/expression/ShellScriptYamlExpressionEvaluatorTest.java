@@ -112,6 +112,6 @@ public class ShellScriptYamlExpressionEvaluatorTest extends CategoryTest {
     shellScriptBaseDTO = (ShellScriptBaseDTO) shellScriptYamlExpressionEvaluator.resolve(shellScriptBaseDTO, false);
 
     assertThat(shellScriptBaseDTO.getShellScriptSpec().getSource().getSpec().getScript().getValue())
-        .isEqualTo("echo ${ngSecretManager.obtain(\"Token\", 7)}");
+        .isEqualTo("echo ${ngSecretManager.obtain('Token', 7)}");
   }
 }

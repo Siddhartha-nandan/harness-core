@@ -76,9 +76,9 @@ public class SecretFunctorWithRbacTest extends CategoryTest {
         .isInstanceOf(EngineFunctorException.class)
         .hasMessage("could not resolve secret as user doesn't have access permission");
     doNothing().when(pipelineRbacHelper).checkRuntimePermissions(any(), any());
-    assertEquals("${ngSecretManager.obtain(\""
+    assertEquals("${ngSecretManager.obtain('"
             + "secret1"
-            + "\", " + ambiance.getExpressionFunctorToken() + ")}",
+            + "', " + ambiance.getExpressionFunctorToken() + ")}",
         secretFunctorWithRbac.getValue("secret1"));
   }
 }
