@@ -177,8 +177,10 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
         log.info(String.format("Updating Webhook with identifier %s in account %s",
             updateGitXWebhookCriteriaDTO.getWebhookIdentifier(),
             updateGitXWebhookCriteriaDTO.getScope().getAccountIdentifier()));
-        clearCache(
-            updateGitXWebhookCriteriaDTO.getScope().getAccountIdentifier(), updateGitXWebhookRequestDTO.getRepoName());
+        if (updateGitXWebhookRequestDTO.getLastEventTriggerTime() == null) {
+          clearCache(updateGitXWebhookCriteriaDTO.getScope().getAccountIdentifier(),
+              updateGitXWebhookRequestDTO.getRepoName());
+        }
         Criteria criteria =
             buildCriteria(updateGitXWebhookCriteriaDTO.getScope(), updateGitXWebhookCriteriaDTO.getWebhookIdentifier());
         Query query = new Query(criteria);
