@@ -7,6 +7,7 @@ package executor
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
 
@@ -59,7 +60,7 @@ func ExecuteStepOnAddon(ctx context.Context, step *pb.UnitStep, tmpFilePath stri
 	if err != nil {
 		log.Errorw("Execute step RPC failed", "step_id", stepID,
 			"elapsed_time_ms", utils.TimeSince(st), zap.Error(err))
-		return nil, nil, errors.Wrap(err, "Step RPC failed")
+		return nil, nil, fmt.Errorf("Could not connect to addon client after max retries %v", maxAddonRetries)
 	}
 
 	log.Infow("Successfully executed step", "step_id", stepID,

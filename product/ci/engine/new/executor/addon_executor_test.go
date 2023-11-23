@@ -94,7 +94,7 @@ func TestAddonExecuteServerErr(t *testing.T) {
 	}
 
 	_, _, err := ExecuteStepOnAddon(ctx, step, tmpPath, log.Sugar(), new(bytes.Buffer))
-	expectedErr := errors.New("Step RPC failed: server not running")
+	expectedErr := errors.New("Could not connect to addon client after max retries 100")
 	assert.Equal(t, expectedErr.Error(), err.Error())
 }
 
