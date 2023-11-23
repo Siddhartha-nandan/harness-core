@@ -11,7 +11,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.expression.functors.ExpressionFunctor;
 import io.harness.ng.core.NGAccess;
-import io.harness.yaml.utils.FunctorUtils;
+import io.harness.utils.FunctorUtils;
 
 import java.util.HashSet;
 import java.util.Set;

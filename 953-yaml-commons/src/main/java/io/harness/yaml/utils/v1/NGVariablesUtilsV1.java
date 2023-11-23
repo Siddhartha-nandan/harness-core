@@ -17,9 +17,9 @@ import io.harness.encryption.SecretRefData;
 import io.harness.exception.InvalidRequestException;
 import io.harness.expression.EngineExpressionEvaluator;
 import io.harness.pms.yaml.ParameterField;
+import io.harness.utils.FunctorUtils;
 import io.harness.yaml.core.variables.NGVariableV1;
 import io.harness.yaml.core.variables.v1.SecretNGVariableV1;
-import io.harness.yaml.utils.FunctorUtils;
 
 import java.util.HashMap;
 import java.util.HashSet;

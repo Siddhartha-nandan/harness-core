@@ -17,7 +17,7 @@ import io.harness.expression.functors.ExpressionFunctor;
 import io.harness.observer.Subject;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.execution.utils.AmbianceUtils;
-import io.harness.yaml.utils.FunctorUtils;
+import io.harness.utils.FunctorUtils;
 
 import lombok.Value;
 

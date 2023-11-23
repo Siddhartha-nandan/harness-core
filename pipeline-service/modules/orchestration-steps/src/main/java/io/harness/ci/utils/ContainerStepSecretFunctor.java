@@ -17,8 +17,8 @@ import io.harness.exception.FunctorException;
 import io.harness.expression.functors.ExpressionFunctor;
 import io.harness.ng.core.NGAccess;
 import io.harness.pms.yaml.ParameterField;
+import io.harness.utils.FunctorUtils;
 import io.harness.yaml.core.variables.SecretNGVariable;
-import io.harness.yaml.utils.FunctorUtils;
 
 import java.util.ArrayList;
 import java.util.List;

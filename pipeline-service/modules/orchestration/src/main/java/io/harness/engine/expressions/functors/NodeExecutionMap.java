@@ -34,7 +34,7 @@ import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.execution.utils.StatusUtils;
 import io.harness.pms.sdk.core.execution.NodeExecutionUtils;
 import io.harness.pms.sdk.core.resolver.RefObjectUtils;
-import io.harness.yaml.utils.FunctorUtils;
+import io.harness.utils.FunctorUtils;
 
 import java.util.Collections;
 import java.util.HashMap;

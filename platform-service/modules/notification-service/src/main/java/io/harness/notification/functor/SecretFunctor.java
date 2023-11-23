@@ -8,7 +8,7 @@
 package io.harness.notification.functor;
 
 import io.harness.expression.functors.ExpressionFunctor;
-import io.harness.yaml.utils.FunctorUtils;
+import io.harness.utils.FunctorUtils;
 
 import lombok.Value;
 

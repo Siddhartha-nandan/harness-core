@@ -19,7 +19,7 @@ import io.harness.graph.stepDetail.service.NodeExecutionInfoService;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.execution.utils.AmbianceUtils;
-import io.harness.yaml.utils.FunctorUtils;
+import io.harness.utils.FunctorUtils;
 
 import java.util.Arrays;
 import java.util.List;

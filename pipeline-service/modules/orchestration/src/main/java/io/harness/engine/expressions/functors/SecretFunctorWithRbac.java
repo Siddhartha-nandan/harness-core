@@ -26,8 +26,8 @@ import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.rbac.PipelineRbacHelper;
 import io.harness.pms.security.PmsSecurityContextEventGuard;
+import io.harness.utils.FunctorUtils;
 import io.harness.utils.IdentifierRefHelper;
-import io.harness.yaml.utils.FunctorUtils;
 
 import java.util.Set;
 import lombok.SneakyThrows;

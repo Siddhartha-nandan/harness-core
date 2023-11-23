@@ -100,8 +100,8 @@ import io.harness.security.SecurityContextBuilder;
 import io.harness.security.dto.Principal;
 import io.harness.security.dto.ServicePrincipal;
 import io.harness.security.encryption.EncryptedDataDetail;
+import io.harness.utils.FunctorUtils;
 import io.harness.utils.IdentifierRefHelper;
-import io.harness.yaml.utils.FunctorUtils;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;

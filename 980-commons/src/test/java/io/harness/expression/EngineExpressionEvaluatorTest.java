@@ -25,6 +25,7 @@ import io.harness.expression.common.ExpressionMode;
 import io.harness.expression.functors.ExpressionFunctor;
 import io.harness.expression.functors.NGJsonFunctor;
 import io.harness.rule.Owner;
+import io.harness.utils.FunctorUtils;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -380,6 +381,7 @@ public class EngineExpressionEvaluatorTest extends CategoryTest {
     map.put("v16", "<+secret1>");
     map.put("v17", "<+c>");
     map.put("v18", "<+w>.replaceAll(\"-\",\"_\")><+<+w>.replaceAll(\"-\",\"_\").concat(\".py\")>");
+    map.put("v19", "<+secrets.getValue('<+f>')>");
 
     EngineExpressionEvaluator evaluator = prepareEngineExpressionEvaluator(
         new ImmutableMap.Builder<String, Object>()
@@ -415,7 +417,7 @@ public class EngineExpressionEvaluatorTest extends CategoryTest {
 
     assertThat(evaluator.resolve("<+variables>", ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED))
         .isEqualTo(
-            "{\"v6\":\"${ngSecretManager.obtain(\\\"org.v2\\\", 123)}\",\"v7\":\"${ngSecretManager.obtain(\\\"org.v2\\\", 123)}\",\"v8\":\"harness/archit-abc\",\"v9\":\"harness/archit-<+f1>\",\"v10\":\"harness architharness\",\"v12\":\"false\",\"v11\":\"harness architharness\",\"v14\":\"true\",\"v13\":\"harnessabc\",\"v16\":\"${ngSecretManager.obtain(\\\"org.v2\\\", 123)}\",\"v1\":\"abcdef\",\"v15\":\"true\",\"v2\":\"harnessabcdef\",\"v18\":\"false\",\"v3\":\"abcdefharness\",\"v17\":\"29\",\"v4\":\"abcdef\",\"v5\":\"archit-harness\"}");
+            "{\"v6\":\"${ngSecretManager.obtain('org.v2', 123)}\",\"v7\":\"${ngSecretManager.obtain('org.v2', 123)}\",\"v8\":\"harness/archit-abc\",\"v9\":\"harness/archit-<+f1>\",\"v10\":\"harness architharness\",\"v12\":\"false\",\"v11\":\"harness architharness\",\"v14\":\"true\",\"v13\":\"harnessabc\",\"v16\":\"${ngSecretManager.obtain('org.v2', 123)}\",\"v1\":\"abcdef\",\"v15\":\"true\",\"v2\":\"harnessabcdef\",\"v18\":\"false\",\"v3\":\"abcdefharness\",\"v17\":\"29\",\"v4\":\"abcdef\",\"v5\":\"archit-harness\",\"v19\":\"${ngSecretManager.obtain('abc', 123)}\"}");
 
     assertThat(evaluator.evaluateExpression("<+if ((<+j> == null) || (empty(<+j>))) {\"emptyVar\";} else {<+f>;}>   "))
         .isEqualTo("emptyVar");
@@ -517,32 +519,32 @@ public class EngineExpressionEvaluatorTest extends CategoryTest {
         .isEqualTo("\"c\"");
     // Functors having concatenation expressions should work
     assertThat(evaluator.resolve("<+secrets.getValue(\"abc\")>", true))
-        .isEqualTo("${ngSecretManager.obtain(\"abc\", 123)}");
+        .isEqualTo("${ngSecretManager.obtain('abc', 123)}");
     //    assertThat(evaluator.resolve("\"<+secrets.getValue(\\\"abc\\\")>\"", true))
     //        .isEqualTo("\"${ngSecretManager.obtain(\"abc\", 123)}\"");
     assertThat(evaluator.resolve("<+secrets.getValue(\"<+f>\")>", true))
-        .isEqualTo("${ngSecretManager.obtain(\"abc\", 123)}");
+        .isEqualTo("${ngSecretManager.obtain('abc', 123)}");
     //    assertThat(evaluator.resolve("\"<+secrets.getValue(\\\"<+f>\\\")>\"", true))
     //        .isEqualTo("\"${ngSecretManager.obtain(\"abc\", 123)}\"");
     assertThat(evaluator.resolve("<+secrets.getValue(\"harness_<+f>_india\")>", true))
-        .isEqualTo("${ngSecretManager.obtain(\"harness_abc_india\", 123)}");
+        .isEqualTo("${ngSecretManager.obtain('harness_abc_india', 123)}");
     //    assertThat(evaluator.resolve("\"<+secrets.getValue(\\\"harness_<+f>_india\\\")>\"", true))
     //        .isEqualTo("\"${ngSecretManager.obtain(\"harness_abc_india\", 123)}\"");
     assertThat(evaluator.resolve("<+secrets.getValue(\"harness_<+f>_india_<+g>\")>", true))
-        .isEqualTo("${ngSecretManager.obtain(\"harness_abc_india_def\", 123)}");
+        .isEqualTo("${ngSecretManager.obtain('harness_abc_india_def', 123)}");
     //    assertThat(evaluator.resolve("\"<+secrets.getValue(\\\"harness_<+f>_india_<+g>\\\")>\"", true))
     //        .isEqualTo("\"${ngSecretManager.obtain(\"harness_abc_india_def\", 123)}\"");
     assertThat(evaluator.resolve("<+secrets.getValue(\"harness_\" + <+f> + \"_india_\" + <+g>)>", true))
-        .isEqualTo("${ngSecretManager.obtain(\"harness_abc_india_def\", 123)}");
+        .isEqualTo("${ngSecretManager.obtain('harness_abc_india_def', 123)}");
     //    assertThat(evaluator.resolve("\"<+secrets.getValue(\\\"harness_\\\" + <+f> + \\\"_india_\\\" + <+g>)>\"",
     //    true))
     //        .isEqualTo("\"${ngSecretManager.obtain(\"harness_abc_india_def\", 123)}\"");
     assertThat(evaluator.resolve("<+secrets.getValue(<+f> + \"_india_\" + <+g>)>", true))
-        .isEqualTo("${ngSecretManager.obtain(\"abc_india_def\", 123)}");
+        .isEqualTo("${ngSecretManager.obtain('abc_india_def', 123)}");
     //    assertThat(evaluator.resolve("\"<+secrets.getValue(<+f> + \\\"_india_\\\" + <+g>)>\"", true))
     //        .isEqualTo("\"${ngSecretManager.obtain(\"abc_india_def\", 123)}\"");
     assertThat(evaluator.resolve("<+secrets.getValue(\"<+f>_india_<+g>\")>", true))
-        .isEqualTo("${ngSecretManager.obtain(\"abc_india_def\", 123)}");
+        .isEqualTo("${ngSecretManager.obtain('abc_india_def', 123)}");
     //    assertThat(evaluator.resolve("\"<+secrets.getValue(\\\"<+f>_india_<+g>\\\")>\"", true))
     //        .isEqualTo("\"${ngSecretManager.obtain(\"abc_india_def\", 123)}\"");
 
@@ -561,8 +563,8 @@ public class EngineExpressionEvaluatorTest extends CategoryTest {
 
     // Method invocations
     assertThat(evaluator.resolve("<+<+variables.v5>.replace('-','')>", true)).isEqualTo("architharness");
-    assertThat(evaluator.resolve("<+variables.v6>", true)).isEqualTo("${ngSecretManager.obtain(\"org.v2\", 123)}");
-    assertThat(evaluator.resolve("<+variables.v7>", true)).isEqualTo("${ngSecretManager.obtain(\"org.v2\", 123)}");
+    assertThat(evaluator.resolve("<+variables.v6>", true)).isEqualTo("${ngSecretManager.obtain('org.v2', 123)}");
+    assertThat(evaluator.resolve("<+variables.v7>", true)).isEqualTo("${ngSecretManager.obtain('org.v2', 123)}");
     assertThat(evaluator.resolve("<+variables.v10>", true)).isEqualTo("harness architharness");
     assertThat(evaluator.resolve("<+variables.v11>", true)).isEqualTo("harness architharness");
     assertThat(evaluator.resolve("<+variables.v12>", true)).isEqualTo("false");
@@ -711,28 +713,28 @@ public class EngineExpressionEvaluatorTest extends CategoryTest {
 
     // Functors having concatenation expressions should work
     assertThat(evaluator.resolve("<+secrets.getValue(\"<+f>\")>", true))
-        .isEqualTo("${ngSecretManager.obtain(\"abc\", 123)}");
+        .isEqualTo("${ngSecretManager.obtain('abc', 123)}");
     //    assertThat(evaluator.resolve("\"<+secrets.getValue(\\\"<+f>\\\")>\"", true))
     //        .isEqualTo("\"${ngSecretManager.obtain(\"abc\", 123)}\"");
     assertThat(evaluator.resolve("<+secrets.getValue(\"harness_<+f>_india\")>", true))
-        .isEqualTo("${ngSecretManager.obtain(\"harness_abc_india\", 123)}");
+        .isEqualTo("${ngSecretManager.obtain('harness_abc_india', 123)}");
     //    assertThat(evaluator.resolve("\"<+secrets.getValue(\\\"harness_<+f>_india\\\")>\"", true))
     //        .isEqualTo("\"${ngSecretManager.obtain(\"harness_abc_india\", 123)}\"");
     assertThat(evaluator.resolve("<+secrets.getValue(\"harness_<+f>_india_<+g>\")>", true))
-        .isEqualTo("${ngSecretManager.obtain(\"harness_abc_india_def\", 123)}");
+        .isEqualTo("${ngSecretManager.obtain('harness_abc_india_def', 123)}");
     //    assertThat(evaluator.resolve("\"<+secrets.getValue(\\\"harness_<+f>_india_<+g>\\\")>\"", true))
     //        .isEqualTo("\"${ngSecretManager.obtain(\"harness_abc_india_def\", 123)}\"");
     assertThat(evaluator.resolve("<+secrets.getValue(\"harness_\" + <+f> + \"_india_\" + <+g>)>", true))
-        .isEqualTo("${ngSecretManager.obtain(\"harness_abc_india_def\", 123)}");
+        .isEqualTo("${ngSecretManager.obtain('harness_abc_india_def', 123)}");
     //    assertThat(evaluator.resolve("\"<+secrets.getValue(\\\"harness_\\\" + <+f> + \\\"_india_\\\" + <+g>)>\"",
     //    true))
     //        .isEqualTo("\"${ngSecretManager.obtain(\"harness_abc_india_def\", 123)}\"");
     assertThat(evaluator.resolve("<+secrets.getValue(<+f> + \"_india_\" + <+g>)>", true))
-        .isEqualTo("${ngSecretManager.obtain(\"abc_india_def\", 123)}");
+        .isEqualTo("${ngSecretManager.obtain('abc_india_def', 123)}");
     //    assertThat(evaluator.resolve("\"<+secrets.getValue(<+f> + \\\"_india_\\\" + <+g>)>\"", true))
     //        .isEqualTo("\"${ngSecretManager.obtain(\"abc_india_def\", 123)}\"");
     assertThat(evaluator.resolve("<+secrets.getValue(\"<+f>_india_<+g>\")>", true))
-        .isEqualTo("${ngSecretManager.obtain(\"abc_india_def\", 123)}");
+        .isEqualTo("${ngSecretManager.obtain('abc_india_def', 123)}");
     //    assertThat(evaluator.resolve("\"<+secrets.getValue(\\\"<+f>_india_<+g>\\\")>\"", true))
     //        .isEqualTo("\"${ngSecretManager.obtain(\"abc_india_def\", 123)}\"");
 
@@ -797,8 +799,8 @@ public class EngineExpressionEvaluatorTest extends CategoryTest {
 
     // Method invocations
     assertThat(evaluator.resolve("<+<+variables.v5>.replace('-','')>", true)).isEqualTo("architharness");
-    assertThat(evaluator.resolve("<+variables.v6>", true)).isEqualTo("${ngSecretManager.obtain(\"org.v2\", 123)}");
-    assertThat(evaluator.resolve("<+variables.v7>", true)).isEqualTo("${ngSecretManager.obtain(\"org.v2\", 123)}");
+    assertThat(evaluator.resolve("<+variables.v6>", true)).isEqualTo("${ngSecretManager.obtain('org.v2', 123)}");
+    assertThat(evaluator.resolve("<+variables.v7>", true)).isEqualTo("${ngSecretManager.obtain('org.v2', 123)}");
 
     // an expression used in path of existing expression
     assertThat(evaluator.resolve("<+variables.<+h>>", true)).isEqualTo("harnessabcdef");
@@ -1066,7 +1068,7 @@ public class EngineExpressionEvaluatorTest extends CategoryTest {
     }
 
     public Object getValue(String secretIdentifier) {
-      return "${ngSecretManager.obtain(\"" + secretIdentifier + "\", " + expressionFunctorToken + ")}";
+      return FunctorUtils.getSecretExpression(expressionFunctorToken, secretIdentifier);
     }
   }
 }
