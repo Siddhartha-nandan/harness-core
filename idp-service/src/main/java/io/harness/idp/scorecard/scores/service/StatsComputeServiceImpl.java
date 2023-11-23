@@ -30,7 +30,12 @@ import io.harness.idp.scorecard.scores.repositories.ScoreRepository;
 import io.harness.spec.server.idp.v1.model.CheckStatus;
 
 import com.google.inject.Inject;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +58,7 @@ public class StatsComputeServiceImpl implements StatsComputeService {
   public void populateStatsData() {
     List<String> accountIds = namespaceService.getAccountIds();
     accountIds.forEach(accountId -> {
+      log.info("Stats Computation for account - {} started at - {}", accountId, System.currentTimeMillis());
       List<ScorecardEntity> scorecardEntities = scorecardRepository.findByAccountIdentifier(accountId);
       List<ScorecardStatsEntity> scorecardStatsEntities = new ArrayList<>();
       List<CheckStatsEntity> checkStatsEntities = new ArrayList<>();
@@ -83,9 +89,13 @@ public class StatsComputeServiceImpl implements StatsComputeService {
         }
       }
       populateCheckStatus(checkStatusEntityMap, checkStatsEntities);
+      log.info("Total scorecardStats entries - {} for account - {}", scorecardEntities.size(), accountId);
+      log.info("Total checkStats entries - {} for account - {}", checkStatsEntities.size(), accountId);
+      log.info("Total checkStatus entries - {} for account - {}", checkStatusEntityMap.size(), accountId);
       scorecardStatsRepository.saveAll(scorecardStatsEntities);
       checkStatsRepository.saveAll(checkStatsEntities);
       checkStatusRepository.saveAll(new ArrayList<>(checkStatusEntityMap.values()));
+      log.info("Stats Computation for account - {} completed at - {}", accountId, System.currentTimeMillis());
     });
   }
 

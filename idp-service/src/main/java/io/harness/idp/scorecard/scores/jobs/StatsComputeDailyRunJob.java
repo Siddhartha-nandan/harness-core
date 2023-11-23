@@ -42,7 +42,7 @@ public class StatsComputeDailyRunJob implements Managed {
   @Override
   public void start() throws Exception {
     executorService = Executors.newSingleThreadScheduledExecutor(
-        new ThreadFactoryBuilder().setNameFormat("check-status-daily-run-job").build());
+        new ThreadFactoryBuilder().setNameFormat("stats-compute-daily-run-job").build());
     long midnight = LocalDateTime.now().until(LocalDate.now().plusDays(1).atStartOfDay(), ChronoUnit.MINUTES);
     log.info("Scheduling StatsComputeDailyRunJob with initial delay of {} minutes from current time", midnight);
     executorService.scheduleAtFixedRate(this::run, midnight + 10, TimeUnit.DAYS.toMinutes(1), TimeUnit.MINUTES);

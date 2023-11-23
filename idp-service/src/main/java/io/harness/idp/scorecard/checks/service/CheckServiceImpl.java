@@ -12,8 +12,6 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.idp.common.CommonUtils.addGlobalAccountIdentifierAlong;
 import static io.harness.idp.common.Constants.DOT_SEPARATOR;
 import static io.harness.idp.common.Constants.GLOBAL_ACCOUNT_ID;
-import static io.harness.idp.common.DateUtils.getPreviousDay24HourTimeFrame;
-import static io.harness.idp.common.DateUtils.yesterdayInMilliseconds;
 import static io.harness.outbox.TransactionOutboxModule.OUTBOX_TRANSACTION_TEMPLATE;
 import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 
@@ -40,7 +38,6 @@ import io.harness.idp.scorecard.checks.repositories.CheckStatusEntityByIdentifie
 import io.harness.idp.scorecard.checks.repositories.CheckStatusRepository;
 import io.harness.idp.scorecard.datapoints.service.DataPointService;
 import io.harness.idp.scorecard.scorecards.service.ScorecardService;
-import io.harness.idp.scorecard.scores.repositories.EntityIdentifierAndCheckStatus;
 import io.harness.idp.scorecard.scores.service.ScoreComputerService;
 import io.harness.idp.scorecard.scores.service.ScoreService;
 import io.harness.ngsettings.SettingIdentifiers;
@@ -60,7 +57,6 @@ import io.harness.spec.server.idp.v1.model.ScorecardFilter;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mongodb.client.result.UpdateResult;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,7 +68,6 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.apache.commons.lang3.tuple.Pair;
 import org.jooq.tools.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -206,62 +201,6 @@ public class CheckServiceImpl implements CheckService {
     }
     return CheckStatsMapper.toDTO(
         checkStatusRepository.findByAccountIdentifierAndIdentifierAndIsCustom(accountIdentifier, identifier, custom));
-  }
-
-  @Override
-  public void computeCheckStatus() {
-    Pair<Long, Long> previousDay24HourTimeFrame = getPreviousDay24HourTimeFrame();
-    List<String> accountIds = namespaceService.getAccountIds();
-    accountIds.forEach(account -> {
-      List<CheckEntity> checkEntities =
-          checkRepository.findByAccountIdentifierInAndIsDeleted(addGlobalAccountIdentifierAlong(account), false);
-      List<CheckStatusEntity> checkStatusEntities = new ArrayList<>();
-      for (CheckEntity checkEntity : checkEntities) {
-        CheckStatusEntity checkStatusEntity =
-            populateCheckStatusEntity(checkEntity, account, previousDay24HourTimeFrame);
-        if (checkStatusEntity != null) {
-          checkStatusEntities.add(checkStatusEntity);
-        }
-      }
-      checkStatusRepository.saveAll(checkStatusEntities);
-    });
-  }
-
-  private CheckStatusEntity populateCheckStatusEntity(
-      CheckEntity checkEntity, String account, Pair<Long, Long> previousDay24HourTimeFrame) {
-    List<String> scorecardIdentifiers =
-        scorecardService.getScorecardIdentifiers(account, checkEntity.getIdentifier(), checkEntity.isCustom());
-    if (isEmpty(scorecardIdentifiers)) {
-      return null;
-    }
-    List<CheckStatus.StatusEnum> statuses =
-        scoreService
-            .getCheckStatusForEntityIdentifiersAndScorecardIdentifiers(account, null, scorecardIdentifiers,
-                previousDay24HourTimeFrame, checkEntity.getIdentifier(), checkEntity.isCustom())
-            .stream()
-            .map(EntityIdentifierAndCheckStatus::getStatus)
-            .collect(Collectors.toList());
-    if (isEmpty(statuses)) {
-      return null;
-    }
-    int totalPassed = 0;
-    int total = 0;
-    for (CheckStatus.StatusEnum status : statuses) {
-      if (status == null) {
-        continue;
-      }
-      totalPassed += CheckStatus.StatusEnum.PASS.equals(status) ? 1 : 0;
-      total++;
-    }
-    return CheckStatusEntity.builder()
-        .accountIdentifier(account)
-        .identifier(checkEntity.getIdentifier())
-        .name(checkEntity.getName())
-        .isCustom(checkEntity.isCustom())
-        .passCount(totalPassed)
-        .total(total)
-        .timestamp(yesterdayInMilliseconds())
-        .build();
   }
 
   @Override

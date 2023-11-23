@@ -21,7 +21,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -350,25 +349,6 @@ public class CheckServiceImplTest extends CategoryTest {
   @Test
   @Owner(developers = VIGNESWARA)
   @Category(UnitTests.class)
-  public void testComputeCheckStatus() {
-    when(namespaceService.getAccountIds()).thenReturn(List.of(ACCOUNT_ID));
-    when(checkRepository.findByAccountIdentifierInAndIsDeleted(anySet(), anyBoolean())).thenReturn(getCheckEntities());
-    when(scorecardService.getScorecardIdentifiers(any(), any(), any()))
-        .thenReturn(List.of(SERVICE_MATURITY_SCORECARD))
-        .thenReturn(new ArrayList<>());
-    when(scoreService.getCheckStatusForEntityIdentifiersAndScorecardIdentifiers(
-             any(), any(), any(), any(), any(), anyBoolean()))
-        .thenReturn(getEntityIdentifierAndCheckStatus());
-    checkServiceImpl.computeCheckStatus();
-    verify(checkStatusRepository).saveAll(checkStatusEntitiesCaptor.capture());
-    assertEquals(GITHUB_CHECK_ID, checkStatusEntitiesCaptor.getValue().get(0).getIdentifier());
-    assertEquals(1, checkStatusEntitiesCaptor.getValue().get(0).getPassCount());
-    assertEquals(1, checkStatusEntitiesCaptor.getValue().get(0).getTotal());
-  }
-
-  @Test
-  @Owner(developers = VIGNESWARA)
-  @Category(UnitTests.class)
   public void testGetCheckStatusByAccountIdAndIdentifiers() {
     when(checkStatusRepository.findByAccountIdentifierAndIdentifierIn(any(), any()))
         .thenReturn(List.of(CheckStatusEntityByIdentifier.builder()
@@ -567,7 +547,6 @@ public class CheckServiceImplTest extends CategoryTest {
                                               .accountIdentifier(ACCOUNT_ID)
                                               .identifier(GITHUB_CHECK_ID)
                                               .isCustom(true)
-                                              .name(GITHUB_CHECK_NAME)
                                               .total(10)
                                               .passCount(5)
                                               .build();

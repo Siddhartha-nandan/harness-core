@@ -38,7 +38,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Persistent
 @OwnedBy(HarnessTeam.IDP)
 public class CheckStatsEntity implements PersistentEntity, CreatedAtAware {
-
   public static List<MongoIndex> mongoIndexes() {
     return ImmutableList.<MongoIndex>builder()
         .add(CompoundMongoIndex.builder()
