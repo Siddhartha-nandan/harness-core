@@ -706,7 +706,7 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
     }
 
     final EnvironmentYamlV2 finalEnvironmentYamlV2 = ServiceAllInOnePlanCreatorUtils.useFromStage(environment)
-        ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(environment.getUseFromStage(), specField)
+        ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(environment, specField)
         : environment;
 
     PlanNode node = InfrastructurePmsPlanCreator.getInfraTaskExecutableStepV2PlanNode(finalEnvironmentYamlV2,

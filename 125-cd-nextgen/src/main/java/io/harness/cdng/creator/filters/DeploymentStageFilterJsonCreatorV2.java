@@ -321,6 +321,33 @@ public class DeploymentStageFilterJsonCreatorV2 extends GenericStageFilterJsonCr
             "stage identifier should be present in stage [%s] when propagating environment from a different stage. Please add it and try again",
             YamlUtils.getFullyQualifiedName(filterCreationContext.getCurrentField().getNode())));
       }
+      try {
+        YamlField propagatedFromStageConfig =
+            PlanCreatorUtils.getStageConfig(filterCreationContext.getCurrentField(), env.getUseFromStage().getStage());
+        if (propagatedFromStageConfig == null) {
+          return;
+        }
+        DeploymentStageNode stageElementConfig =
+            YamlUtils.read(propagatedFromStageConfig.getNode().toString(), DeploymentStageNode.class);
+
+        if (stageElementConfig == null) {
+          return;
+        }
+        DeploymentStageConfig deploymentStage = stageElementConfig.getDeploymentStageConfig();
+        if (deploymentStage == null) {
+          return;
+        }
+        EnvironmentYamlV2 useFromStageEnvironmentYaml = deploymentStage.getEnvironment();
+        if (useFromStageEnvironmentYaml == null) {
+          return;
+        }
+        stageFilterCreatorHelper.addEnvAndInfraToFilterBuilder(filterCreationContext, filterBuilder, env);
+      } catch (Exception ex) {
+        log.warn(
+            "Exception occurred while saving filters for propagated from stage environment having different infrastructure",
+            ex);
+      }
+
       return;
     }
     final ParameterField<String> environmentRef = env.getEnvironmentRef();

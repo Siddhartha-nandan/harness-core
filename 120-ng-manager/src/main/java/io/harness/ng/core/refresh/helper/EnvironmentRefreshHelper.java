@@ -137,9 +137,8 @@ public class EnvironmentRefreshHelper {
       JsonNode envJsonNode, InputsValidationResponse errorNodeSummary) {
     JsonNode environmentInputs = envJsonNode.get(YamlTypes.ENVIRONMENT_INPUTS);
     JsonNode serviceOverrideInputs = envJsonNode.get(YamlTypes.SERVICE_OVERRIDE_INPUTS);
-    JsonNode infraDefs = envJsonNode.get(YamlTypes.INFRASTRUCTURE_DEFS);
     if (envJsonNode.get(YamlTypes.USE_FROM_STAGE) != null) {
-      if (environmentInputs != null || serviceOverrideInputs != null || infraDefs != null) {
+      if (environmentInputs != null || serviceOverrideInputs != null) {
         errorNodeSummary.setValid(false);
       }
     }
@@ -328,7 +327,6 @@ public class EnvironmentRefreshHelper {
     if (envObjectNode.get(YamlTypes.USE_FROM_STAGE) != null) {
       envObjectNode.remove(YamlTypes.ENVIRONMENT_INPUTS);
       envObjectNode.remove(YamlTypes.SERVICE_OVERRIDE_INPUTS);
-      envObjectNode.remove(YamlTypes.INFRASTRUCTURE_DEFS);
       return true;
     }
     return false;
