@@ -14,21 +14,25 @@ import lombok.Data;
 @Data
 @Builder
 public class TemplateMetadata {
+  String accountId;
+  String orgIdentifier;
+  String projectIdentifier;
   @NotNull String templateIdentifier;
   String versionLabel;
   int templateVersionNumber;
-  String inputSetYaml;
+  String templateInputs;
   boolean isTemplateByReference;
   long lastReconciliationTime;
 
-  public static TemplateMetadata fromTemplateDTO(TemplateDTO templateDTO) {
+  public static TemplateMetadataBuilder fromTemplateDTO(TemplateDTO templateDTO) {
     return TemplateMetadata.builder()
+        .accountId(templateDTO.getAccountId())
+        .orgIdentifier(templateDTO.getOrgIdentifier())
+        .projectIdentifier(templateDTO.getProjectIdentifier())
         .templateIdentifier(templateDTO.getTemplateRef())
         .versionLabel(templateDTO.getVersionLabel())
         .templateVersionNumber(templateDTO.getTemplateVersionNumber())
-        .inputSetYaml(templateDTO.getInputSetYaml())
-        .isTemplateByReference(templateDTO.isTemplateByReference())
-        .lastReconciliationTime(templateDTO.getLastReconciliationTime())
-        .build();
+        .templateInputs(templateDTO.getTemplateInputs())
+        .isTemplateByReference(templateDTO.isTemplateByReference());
   }
 }

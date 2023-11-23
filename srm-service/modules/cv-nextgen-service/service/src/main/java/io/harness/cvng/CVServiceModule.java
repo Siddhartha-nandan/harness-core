@@ -389,8 +389,10 @@ import io.harness.cvng.servicelevelobjective.entities.SimpleServiceLevelObjectiv
 import io.harness.cvng.servicelevelobjective.entities.ThresholdServiceLevelIndicator.ThresholdServiceLevelIndicatorUpdatableEntity;
 import io.harness.cvng.servicelevelobjective.resources.ServiceLevelObjectiveResourceApiImpl;
 import io.harness.cvng.servicelevelobjective.services.api.AnnotationService;
+import io.harness.cvng.servicelevelobjective.services.api.CompositeSLORecordBucketService;
 import io.harness.cvng.servicelevelobjective.services.api.CompositeSLORecordService;
 import io.harness.cvng.servicelevelobjective.services.api.CompositeSLOService;
+import io.harness.cvng.servicelevelobjective.services.api.ErrorBudgetBurnDownService;
 import io.harness.cvng.servicelevelobjective.services.api.GraphDataService;
 import io.harness.cvng.servicelevelobjective.services.api.GraphDataServiceV2;
 import io.harness.cvng.servicelevelobjective.services.api.SLIAnalyserService;
@@ -408,8 +410,10 @@ import io.harness.cvng.servicelevelobjective.services.api.ServiceLevelIndicatorS
 import io.harness.cvng.servicelevelobjective.services.api.ServiceLevelObjectiveV2Service;
 import io.harness.cvng.servicelevelobjective.services.api.UserJourneyService;
 import io.harness.cvng.servicelevelobjective.services.impl.AnnotationServiceImpl;
+import io.harness.cvng.servicelevelobjective.services.impl.CompositeSLORecordBucketServiceImpl;
 import io.harness.cvng.servicelevelobjective.services.impl.CompositeSLORecordServiceImpl;
 import io.harness.cvng.servicelevelobjective.services.impl.CompositeSLOServiceImpl;
+import io.harness.cvng.servicelevelobjective.services.impl.ErrorBudgetBurnDownServiceImpl;
 import io.harness.cvng.servicelevelobjective.services.impl.GraphDataServiceImpl;
 import io.harness.cvng.servicelevelobjective.services.impl.GraphDataServiceV2Impl;
 import io.harness.cvng.servicelevelobjective.services.impl.RatioAnalyserServiceImpl;
@@ -453,6 +457,7 @@ import io.harness.cvng.statemachine.services.api.DeploymentTimeSeriesAnalysisSta
 import io.harness.cvng.statemachine.services.api.OrchestrationService;
 import io.harness.cvng.statemachine.services.api.PreDeploymentLogClusterStateExecutor;
 import io.harness.cvng.statemachine.services.api.SLIMetricAnalysisStateExecutor;
+import io.harness.cvng.statemachine.services.api.SLIMetricLessAnalysisStateExecutor;
 import io.harness.cvng.statemachine.services.api.ServiceGuardLogAnalysisStateExecutor;
 import io.harness.cvng.statemachine.services.api.ServiceGuardLogClusterStateExecutor;
 import io.harness.cvng.statemachine.services.api.ServiceGuardTimeSeriesAnalysisStateExecutor;
@@ -641,6 +646,7 @@ public class CVServiceModule extends AbstractModule {
     bind(SplunkService.class).to(SplunkServiceImpl.class);
     bind(CVConfigService.class).to(CVConfigServiceImpl.class);
     bind(CompositeSLORecordService.class).to(CompositeSLORecordServiceImpl.class);
+    bind(CompositeSLORecordBucketService.class).to(CompositeSLORecordBucketServiceImpl.class);
     bind(TicketServiceRestClientService.class).to(TicketServiceRestClientServiceImpl.class);
     bind(SRMTelemetrySentStatusService.class).to(SRMTelemetrySentStatusServiceImpl.class);
     bind(TicketService.class).to(TicketServiceImpl.class);
@@ -873,6 +879,7 @@ public class CVServiceModule extends AbstractModule {
     bind(DeleteEntityByHandler.class).to(DefaultDeleteEntityByHandler.class);
     bind(TimeSeriesAnomalousPatternsService.class).to(TimeSeriesAnomalousPatternsServiceImpl.class);
     bind(SLOTimeScaleService.class).to(SLOTimeScaleServiceImpl.class);
+    bind(ErrorBudgetBurnDownService.class).to(ErrorBudgetBurnDownServiceImpl.class);
     try {
       bind(TimeScaleDBService.class)
           .toConstructor(TimeScaleDBServiceImpl.class.getConstructor(TimeScaleDBConfig.class));
@@ -1500,6 +1507,9 @@ public class CVServiceModule extends AbstractModule {
         .in(Scopes.SINGLETON);
     stateTypeAnalysisStateExecutorMap.addBinding(StateType.SLI_METRIC_ANALYSIS)
         .to(SLIMetricAnalysisStateExecutor.class)
+        .in(Scopes.SINGLETON);
+    stateTypeAnalysisStateExecutorMap.addBinding(StateType.SLI_METRIC_ANALYSIS_STATE)
+        .to(SLIMetricLessAnalysisStateExecutor.class)
         .in(Scopes.SINGLETON);
     stateTypeAnalysisStateExecutorMap.addBinding(StateType.COMPOSOITE_SLO_METRIC_ANALYSIS)
         .to(CompositeSLOMetricAnalysisStateExecutor.class)

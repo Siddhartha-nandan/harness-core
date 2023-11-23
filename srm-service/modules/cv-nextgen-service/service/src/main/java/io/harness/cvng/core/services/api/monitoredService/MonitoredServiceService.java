@@ -55,7 +55,7 @@ public interface MonitoredServiceService extends DeleteEntityByHandler<Monitored
   MonitoredServiceResponse create(String accountId, MonitoredServiceDTO monitoredServiceDTO);
   MonitoredServiceResponse createFromYaml(ProjectParams projectParams, String yaml);
   MonitoredServiceResponse updateFromYaml(ProjectParams projectParams, String identifier, String yaml);
-  MonitoredServiceResponse update(String accountId, MonitoredServiceDTO monitoredServiceDTO);
+  MonitoredServiceResponse update(String accountId, MonitoredServiceDTO monitoredServiceDTO, boolean isUpdatedFromYaml);
   boolean delete(ProjectParams projectParams, String identifier);
   List<MonitoredServiceResponse> get(ProjectParams projectParams, Set<String> identifier);
 
@@ -82,6 +82,8 @@ public interface MonitoredServiceService extends DeleteEntityByHandler<Monitored
 
   MonitoredServiceDTO getExpandedMonitoredServiceFromYamlWithPipelineVariables(
       ProjectParams projectParams, String yaml, Ambiance ambiance);
+  String getResolvedTemplateInputs(
+      ProjectParams projectParams, String identifier, String templateRef, String versionLabel);
 
   Optional<MonitoredService> getApplicationMonitoredService(ServiceEnvironmentParams serviceEnvironmentParams);
 

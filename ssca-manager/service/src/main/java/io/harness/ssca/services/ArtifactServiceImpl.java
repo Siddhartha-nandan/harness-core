@@ -25,7 +25,6 @@ import io.harness.spec.server.ssca.v1.model.ArtifactComponentViewRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactComponentViewResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewResponse;
-import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewResponse.AttestedStatusEnum;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewResponse.EnvTypeEnum;
 import io.harness.spec.server.ssca.v1.model.ArtifactDetailResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingRequestBody;
@@ -34,6 +33,7 @@ import io.harness.spec.server.ssca.v1.model.ArtifactListingResponse.ActivityEnum
 import io.harness.spec.server.ssca.v1.model.ComponentFilter;
 import io.harness.spec.server.ssca.v1.model.LicenseFilter;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
+import io.harness.spec.server.ssca.v1.model.Slsa;
 import io.harness.ssca.beans.EnforcementSummaryDBO.EnforcementSummaryDBOKeys;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.beans.SbomDTO;
@@ -206,8 +206,10 @@ public class ArtifactServiceImpl implements ArtifactService {
         artifact.getProjectId(), artifact.getArtifactId(), artifact.getTag());
     artifactRepository.invalidateOldArtifact(artifact);
     artifact.setLastUpdatedAt(artifact.getCreatedOn().toEpochMilli());
-    artifact.setProdEnvCount(lastArtifact.getProdEnvCount());
-    artifact.setNonProdEnvCount(lastArtifact.getNonProdEnvCount());
+    if (Objects.nonNull(lastArtifact)) {
+      artifact.setProdEnvCount(lastArtifact.getProdEnvCount());
+      artifact.setNonProdEnvCount(lastArtifact.getNonProdEnvCount());
+    }
     artifactRepository.save(artifact);
   }
 
@@ -346,7 +348,6 @@ public class ArtifactServiceImpl implements ArtifactService {
               .envId(entity.getEnvIdentifier())
               .envName(entity.getEnvName())
               .envType(entity.getEnvType() == EnvType.Production ? EnvTypeEnum.PROD : EnvTypeEnum.NONPROD)
-              .attestedStatus(artifact.isAttested() ? AttestedStatusEnum.PASS : AttestedStatusEnum.FAIL)
               .pipelineName(entity.getLastPipelineName())
               .pipelineId(entity.getLastPipelineExecutionName())
               .pipelineExecutionId(entity.getLastPipelineExecutionId())
@@ -363,8 +364,10 @@ public class ArtifactServiceImpl implements ArtifactService {
       }
 
       if (Objects.nonNull(entity.getSlsaVerificationSummary())) {
-        response.slsaPolicyOutcomeStatus(entity.getSlsaVerificationSummary().getSlsaPolicyOutcomeStatus())
-            .provenanceArtifact(entity.getSlsaVerificationSummary().getProvenanceArtifact());
+        response.slsaVerification(
+            new Slsa()
+                .provenance(entity.getSlsaVerificationSummary().getProvenanceArtifact())
+                .policyOutcomeStatus(entity.getSlsaVerificationSummary().getSlsaPolicyOutcomeStatus()));
       }
 
       return response;

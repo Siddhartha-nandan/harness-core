@@ -25,6 +25,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 
 @OwnedBy(PL)
 public interface OrganizationService {
+  String ORG_SCOPE_INFO_DATA_CACHE_KEY = "orgScopeInfoDataCache";
   Organization create(String accountIdentifier, OrganizationDTO organization);
   Organization create(ScopeInfo scope, OrganizationDTO organization);
 
@@ -68,4 +69,5 @@ public interface OrganizationService {
 
   Set<String> getPermittedOrganizations(@NotNull String accountIdentifier, String orgIdentifier);
   Set<String> getPermittedOrganizations(@NotNull ScopeInfo scope, String orgIdentifier);
+  Optional<ScopeInfo> getScopeInfo(String accountIdentifier, String orgIdentifier);
 }

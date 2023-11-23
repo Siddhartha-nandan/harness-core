@@ -86,7 +86,6 @@ import io.harness.ng.core.remote.ProjectMapper;
 import io.harness.ng.core.remote.utils.ScopeAccessHelper;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
-import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ng.core.user.entities.UserMembership;
 import io.harness.ng.core.user.entities.UserMembership.UserMembershipKeys;
 import io.harness.ng.core.user.service.NgUserService;
@@ -117,6 +116,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import javax.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import org.apache.commons.lang3.BooleanUtils;
@@ -152,7 +152,8 @@ public class ProjectServiceImpl implements ProjectService {
   private final DefaultUserGroupService defaultUserGroupService;
   private final FavoritesService favoritesService;
   private final UserHelperService userHelperService;
-  private final ScopeInfoService scopeInfoService;
+  private final Cache<String, ScopeInfo> scopeInfoCache;
+  private final ScopeInfoHelper scopeInfoHelper;
 
   @Inject
   public ProjectServiceImpl(ProjectRepository projectRepository, OrganizationService organizationService,
@@ -160,7 +161,9 @@ public class ProjectServiceImpl implements ProjectService {
       NgUserService ngUserService, AccessControlClient accessControlClient, ScopeAccessHelper scopeAccessHelper,
       ProjectInstrumentationHelper instrumentationHelper, YamlGitConfigService yamlGitConfigService,
       FeatureFlagService featureFlagService, DefaultUserGroupService defaultUserGroupService,
-      FavoritesService favoritesService, UserHelperService userHelperService, ScopeInfoService scopeInfoService) {
+      FavoritesService favoritesService, UserHelperService userHelperService,
+      @Named(ProjectService.PROJECT_SCOPE_INFO_DATA_CACHE_KEY) Cache<String, ScopeInfo> scopeInfoCache,
+      ScopeInfoHelper scopeInfoHelper) {
     this.projectRepository = projectRepository;
     this.organizationService = organizationService;
     this.transactionTemplate = transactionTemplate;
@@ -174,21 +177,30 @@ public class ProjectServiceImpl implements ProjectService {
     this.defaultUserGroupService = defaultUserGroupService;
     this.favoritesService = favoritesService;
     this.userHelperService = userHelperService;
-    this.scopeInfoService = scopeInfoService;
+    this.scopeInfoCache = scopeInfoCache;
+    this.scopeInfoHelper = scopeInfoHelper;
   }
 
   @Override
   @FeatureRestrictionCheck(MULTIPLE_PROJECTS)
   public Project create(@AccountIdentifier String accountIdentifier, String orgIdentifier, ProjectDTO projectDTO) {
     orgIdentifier = orgIdentifier == null ? DEFAULT_ORG_IDENTIFIER : orgIdentifier;
+
+    // First check if an organization with given orgIdentifier exists or not.
+    Optional<Organization> organizationOptional = organizationService.get(accountIdentifier, orgIdentifier);
+    if (!organizationOptional.isPresent()) {
+      throw new EntityNotFoundException(String.format("Organization with identifier [%s] not found", orgIdentifier));
+    }
+
+    // Use the identifier of the organization from Mongo Doc as it ensure case insensitivity.
+    orgIdentifier = organizationOptional.get().getIdentifier();
     validateCreateProjectRequest(accountIdentifier, orgIdentifier, projectDTO);
     Project project = toProject(projectDTO);
 
     project.setModules(ModuleType.getModules());
     project.setOrgIdentifier(orgIdentifier);
     project.setAccountIdentifier(accountIdentifier);
-    Optional<Organization> parentOrgOptional = organizationService.get(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), orgIdentifier);
-    parentOrgOptional.ifPresent(organization -> {
+    organizationOptional.ifPresent(organization -> {
       if (isNotEmpty(organization.getUniqueId())) {
         project.setParentId(organization.getUniqueId());
       }
@@ -197,8 +209,7 @@ public class ProjectServiceImpl implements ProjectService {
       validate(project);
       Project createdProject = Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
         Project savedProject = projectRepository.save(project);
-        scopeInfoService.addScopeInfoToCache(accountIdentifier, savedProject.getOrgIdentifier(),
-            savedProject.getIdentifier(), ScopeLevel.PROJECT, savedProject.getUniqueId());
+        addToScopeInfoCache(savedProject);
         outboxService.save(new ProjectCreateEvent(project.getAccountIdentifier(), ProjectMapper.writeDTO(project)));
         return savedProject;
       }));
@@ -463,6 +474,7 @@ public class ProjectServiceImpl implements ProjectService {
       validate(project);
       return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
         Project updatedProject = projectRepository.save(project);
+        addToScopeInfoCache(updatedProject);
         log.info(String.format(
             "Project with identifier [%s] and orgIdentifier [%s] was successfully updated", identifier, orgIdentifier));
         outboxService.save(new ProjectUpdateEvent(project.getAccountIdentifier(),
@@ -473,6 +485,14 @@ public class ProjectServiceImpl implements ProjectService {
     throw new InvalidRequestException(
         String.format("Project with identifier [%s] and orgIdentifier [%s] not found", identifier, orgIdentifier),
         USER);
+  }
+
+  private void addToScopeInfoCache(Project project) {
+    String scopeInfoCacheKey = scopeInfoHelper.getScopeInfoCacheKey(
+        project.getAccountIdentifier(), project.getOrgIdentifier(), project.getIdentifier());
+    ScopeInfo scopeInfo = scopeInfoHelper.populateScopeInfo(ScopeLevel.PROJECT, project.getUniqueId(),
+        project.getAccountIdentifier(), project.getOrgIdentifier(), project.getIdentifier());
+    scopeInfoCache.put(scopeInfoCacheKey, scopeInfo);
   }
 
   private List<ModuleType> verifyModulesNotRemoved(List<ModuleType> oldList, List<ModuleType> newList) {
@@ -495,7 +515,7 @@ public class ProjectServiceImpl implements ProjectService {
     if (criteria == null) {
       return Page.empty();
     }
-    return projectRepository.findAll(criteria, pageable);
+    return projectRepository.findAllWithCollation(criteria, pageable);
   }
 
   @Override
@@ -562,38 +582,16 @@ public class ProjectServiceImpl implements ProjectService {
 
   public ActiveProjectsCountDTO permittedProjectsCount(
       String accountIdentifier, ProjectFilterDTO projectFilterDTO, long startInterval, long endInterval) {
-    Criteria criteria = createProjectFilterCriteria(
-        Criteria.where(ProjectKeys.accountIdentifier).is(accountIdentifier).and(ProjectKeys.deleted).is(FALSE),
+    Criteria criteria = createProjectFilterCriteria(Criteria.where(ProjectKeys.accountIdentifier)
+                                                        .is(accountIdentifier)
+                                                        .and(ProjectKeys.deleted)
+                                                        .is(FALSE)
+                                                        .and(ProjectKeys.createdAt)
+                                                        .gt(startInterval)
+                                                        .lt(endInterval),
         projectFilterDTO);
     List<Scope> projects = projectRepository.findAllProjects(criteria);
-    List<Scope> permittedProjects = scopeAccessHelper.getPermittedScopes(projects);
-
-    if (permittedProjects.isEmpty()) {
-      return ActiveProjectsCountDTO.builder().count(0).build();
-    }
-
-    criteria = Criteria.where(ProjectKeys.accountIdentifier).is(accountIdentifier);
-    Criteria[] subCriteria = permittedProjects.stream()
-                                 .map(project
-                                     -> Criteria.where(ProjectKeys.orgIdentifier)
-                                            .is(project.getOrgIdentifier())
-                                            .and(ProjectKeys.identifier)
-                                            .is(project.getProjectIdentifier()))
-                                 .toArray(Criteria[] ::new);
-    Criteria accessibleProjectCriteria = criteria.orOperator(subCriteria);
-    Criteria deletedFalseCriteria = Criteria.where(ProjectKeys.createdAt)
-                                        .gt(startInterval)
-                                        .lt(endInterval)
-                                        .andOperator(Criteria.where(ProjectKeys.deleted).is(false));
-    Criteria deletedTrueCriteria =
-        Criteria.where(ProjectKeys.createdAt)
-            .lt(startInterval)
-            .andOperator(new Criteria().andOperator(Criteria.where(ProjectKeys.deleted).is(true)),
-                Criteria.where(ProjectKeys.lastModifiedAt).gt(startInterval).lt(endInterval));
-    return ActiveProjectsCountDTO.builder()
-        .count(projectRepository.count(new Criteria().andOperator(accessibleProjectCriteria, deletedFalseCriteria))
-            - projectRepository.count(new Criteria().andOperator(accessibleProjectCriteria, deletedTrueCriteria)))
-        .build();
+    return ActiveProjectsCountDTO.builder().count(scopeAccessHelper.getPermittedScopes(projects).size()).build();
   }
 
   @Override
@@ -640,10 +638,11 @@ public class ProjectServiceImpl implements ProjectService {
       @ProjectIdentifier String projectIdentifier, Long version) {
     try (AutoLogContext ignore1 =
              new NgAutoLogContext(projectIdentifier, orgIdentifier, accountIdentifier, OVERRIDE_ERROR)) {
-      scopeInfoService.removeScopeInfoFromCache(accountIdentifier, orgIdentifier, projectIdentifier);
       return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
         Project deletedProject =
             projectRepository.hardDelete(accountIdentifier, orgIdentifier, projectIdentifier, version);
+        scopeInfoCache.remove(
+            scopeInfoHelper.getScopeInfoCacheKey(accountIdentifier, orgIdentifier, projectIdentifier));
         if (isNull(deletedProject)) {
           log.error(String.format("Project with identifier [%s] could not be deleted as it does not exist",
               projectIdentifier, orgIdentifier));
@@ -750,5 +749,23 @@ public class ProjectServiceImpl implements ProjectService {
             -> result.put(projectsPerAccountCount.getAccountIdentifier(), projectsPerAccountCount.getCount()));
 
     return result;
+  }
+
+  public Optional<ScopeInfo> getScopeInfo(String accountIdentifier, String orgIdentifier, String projectIdentifier) {
+    final String cacheKey = scopeInfoHelper.getScopeInfoCacheKey(accountIdentifier, orgIdentifier, projectIdentifier);
+    if (scopeInfoCache.containsKey(cacheKey)) {
+      return Optional.of(scopeInfoCache.get(cacheKey));
+    }
+    Optional<Project> project = get(accountIdentifier, orgIdentifier, projectIdentifier);
+    if (project.isPresent()) {
+      ScopeInfo projectScopeInfo = scopeInfoHelper.populateScopeInfo(
+          ScopeLevel.PROJECT, project.get().getUniqueId(), accountIdentifier, orgIdentifier, projectIdentifier);
+      scopeInfoCache.put(cacheKey, projectScopeInfo);
+      return Optional.of(projectScopeInfo);
+    } else {
+      log.warn(String.format("Project with identifier [%s] in Account: [%s] and Organization: [%s] does not exist",
+          projectIdentifier, accountIdentifier, orgIdentifier));
+      return Optional.empty();
+    }
   }
 }
