@@ -159,7 +159,7 @@ public class DownloadManifestsCommonHelper {
     return GIT_CLONE_STEP_ID + gitManifestOutcome.getIdentifier();
   }
 
-  public String getDownloadS3StepIdentifier(ManifestOutcome gitManifestOutcome) {
-    return gitManifestOutcome.getIdentifier();
+  public String getDownloadS3StepIdentifier(ManifestOutcome manifestOutcome) {
+    return manifestOutcome.getIdentifier();
   }
 }

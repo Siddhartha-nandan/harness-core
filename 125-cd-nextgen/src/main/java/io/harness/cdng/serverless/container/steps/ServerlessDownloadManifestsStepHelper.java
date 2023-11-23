@@ -21,11 +21,14 @@ import io.harness.beans.steps.nodes.GitCloneStepNode;
 import io.harness.beans.steps.stepinfo.GitCloneStepInfo;
 import io.harness.beans.yaml.extended.ImagePullPolicy;
 import io.harness.cdng.aws.sam.DownloadManifestsCommonHelper;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepNode;
 import io.harness.cdng.manifest.steps.outcome.ManifestsOutcome;
 import io.harness.cdng.manifest.yaml.S3StoreConfig;
 import io.harness.cdng.manifest.yaml.ServerlessAwsLambdaManifestOutcome;
 import io.harness.cdng.manifest.yaml.ValuesManifestOutcome;
 import io.harness.cdng.pipeline.steps.CdAbstractStepNode;
+import io.harness.cdng.plugininfoproviders.DownloadAwsS3PluginInfoProvider;
 import io.harness.cdng.plugininfoproviders.GitClonePluginInfoProvider;
 import io.harness.cdng.plugininfoproviders.ServerlessPrepareRollbackPluginInfoProvider;
 import io.harness.cdng.plugininfoproviders.ServerlessV2PluginInfoProviderHelper;
@@ -90,6 +93,8 @@ public class ServerlessDownloadManifestsStepHelper {
   @Inject private EngineExpressionService engineExpressionService;
 
   @Inject private ServerlessPrepareRollbackPluginInfoProvider serverlessPrepareRollbackPluginInfoProvider;
+
+  @Inject private DownloadAwsS3PluginInfoProvider downloadAwsS3PluginInfoProvider;
 
   @Inject private ServerlessAwsLambdaPrepareRollbackV2Step serverlessAwsLambdaPrepareRollbackV2Step;
 
@@ -345,29 +350,29 @@ public class ServerlessDownloadManifestsStepHelper {
       ValuesManifestOutcome valuesManifestOutcome) {
     if (valuesManifestOutcome.getStore() instanceof S3StoreConfig) {
       S3StoreConfig s3StoreConfig = (S3StoreConfig) valuesManifestOutcome.getStore();
-      Map<String, String> map = new HashMap<>();
-      map.put("MANIFEST_PATH", valuesManifestOutcome.getIdentifier());
-      ServerlessAwsLambdaPrepareRollbackV2StepInfo serverlessAwsLambdaPrepareRollbackV2StepInfo =
-          ServerlessAwsLambdaPrepareRollbackV2StepInfo.infoBuilder()
-              .connectorRef(ParameterField.createValueField("newCOnnector"))
-              .image(ParameterField.createValueField("harnessdev/testing:1.1.1"))
-              .imagePullPolicy(ParameterField.createValueField(ImagePullPolicy.ALWAYS))
-              .envVariables(ParameterField.createValueField(map))
+      DownloadAwsS3StepInfo downloadAwsS3StepInfo =
+          DownloadAwsS3StepInfo.infoBuilder()
+              .connectorRef(s3StoreConfig.getConnectorRef())
+              .bucketName(s3StoreConfig.getBucketName())
+              .region(s3StoreConfig.getRegion())
+              .paths(s3StoreConfig.getPaths())
+              .downloadPath(ParameterField.createValueField("/harness/" + valuesManifestOutcome.getIdentifier()))
+              .outputFilePathsContent(ParameterField.createValueField(Collections.singletonList(
+                  serverlessV2PluginInfoProviderHelper.getValuesPathFromValuesManifestOutcome(valuesManifestOutcome))))
               .build();
 
-      ServerlessAwsLambdaPrepareRollbackV2StepNode serverlessAwsLambdaPrepareRollbackV2StepNode =
-          new ServerlessAwsLambdaPrepareRollbackV2StepNode(
-              StepType.ServerlessAwsLambdaPrepareRollbackV2, serverlessAwsLambdaPrepareRollbackV2StepInfo);
-      serverlessAwsLambdaPrepareRollbackV2StepNode.setFailureStrategies(cdAbstractStepNode.getFailureStrategies());
-      serverlessAwsLambdaPrepareRollbackV2StepNode.setTimeout(cdAbstractStepNode.getTimeout());
-      serverlessAwsLambdaPrepareRollbackV2StepNode.setIdentifier(
+      DownloadAwsS3StepNode downloadAwsS3StepNode = new DownloadAwsS3StepNode();
+      downloadAwsS3StepNode.setDownloadAwsS3StepInfo(downloadAwsS3StepInfo);
+      downloadAwsS3StepNode.setFailureStrategies(cdAbstractStepNode.getFailureStrategies());
+      downloadAwsS3StepNode.setTimeout(cdAbstractStepNode.getTimeout());
+      downloadAwsS3StepNode.setIdentifier(
           downloadManifestsCommonHelper.getDownloadS3StepIdentifier(valuesManifestOutcome));
-      serverlessAwsLambdaPrepareRollbackV2StepNode.setName(valuesManifestOutcome.getIdentifier());
-      serverlessAwsLambdaPrepareRollbackV2StepNode.setUuid(valuesManifestOutcome.getIdentifier());
+      downloadAwsS3StepNode.setName(valuesManifestOutcome.getIdentifier());
+      downloadAwsS3StepNode.setUuid(valuesManifestOutcome.getIdentifier());
 
       PluginCreationRequest pluginCreationRequest =
-          request.toBuilder().setStepJsonNode(getStepJsonNode(serverlessAwsLambdaPrepareRollbackV2StepNode)).build();
-      return serverlessPrepareRollbackPluginInfoProvider.getPluginInfo(pluginCreationRequest, usedPorts, ambiance);
+          request.toBuilder().setStepJsonNode(getStepJsonNode(downloadAwsS3StepNode)).build();
+      return downloadAwsS3PluginInfoProvider.getPluginInfo(pluginCreationRequest, usedPorts, ambiance);
     }
 
     GitCloneStepInfo valuesGitCloneStepInfo =
@@ -394,29 +399,28 @@ public class ServerlessDownloadManifestsStepHelper {
 
     if (serverlessAwsLambdaManifestOutcome.getStore() instanceof S3StoreConfig) {
       S3StoreConfig s3StoreConfig = (S3StoreConfig) serverlessAwsLambdaManifestOutcome.getStore();
-      Map<String, String> map = new HashMap<>();
-      map.put("MANIFEST_PATH", serverlessAwsLambdaManifestOutcome.getIdentifier());
-      ServerlessAwsLambdaPrepareRollbackV2StepInfo serverlessAwsLambdaPrepareRollbackV2StepInfo =
-          ServerlessAwsLambdaPrepareRollbackV2StepInfo.infoBuilder()
-              .connectorRef(ParameterField.createValueField("newCOnnector"))
-              .image(ParameterField.createValueField("harnessdev/testing:1.1.1"))
-              .imagePullPolicy(ParameterField.createValueField(ImagePullPolicy.ALWAYS))
-              .envVariables(ParameterField.createValueField(map))
-              .build();
+      DownloadAwsS3StepInfo downloadAwsS3StepInfo = DownloadAwsS3StepInfo.infoBuilder()
+                                                        .connectorRef(s3StoreConfig.getConnectorRef())
+                                                        .bucketName(s3StoreConfig.getBucketName())
+                                                        .region(s3StoreConfig.getRegion())
+                                                        .paths(s3StoreConfig.getPaths())
+                                                        .downloadPath(ParameterField.createValueField("/harness/"
+                                                            + serverlessAwsLambdaManifestOutcome.getIdentifier()))
+                                                        .build();
 
-      ServerlessAwsLambdaPrepareRollbackV2StepNode serverlessAwsLambdaPrepareRollbackV2StepNode =
-          new ServerlessAwsLambdaPrepareRollbackV2StepNode(
-              StepType.ServerlessAwsLambdaPrepareRollbackV2, serverlessAwsLambdaPrepareRollbackV2StepInfo);
-      serverlessAwsLambdaPrepareRollbackV2StepNode.setFailureStrategies(cdAbstractStepNode.getFailureStrategies());
-      serverlessAwsLambdaPrepareRollbackV2StepNode.setTimeout(cdAbstractStepNode.getTimeout());
-      serverlessAwsLambdaPrepareRollbackV2StepNode.setIdentifier(
+      DownloadAwsS3StepNode downloadAwsS3StepNode = new DownloadAwsS3StepNode();
+      downloadAwsS3StepNode.setDownloadAwsS3StepInfo(downloadAwsS3StepInfo);
+
+      downloadAwsS3StepNode.setFailureStrategies(cdAbstractStepNode.getFailureStrategies());
+      downloadAwsS3StepNode.setTimeout(cdAbstractStepNode.getTimeout());
+      downloadAwsS3StepNode.setIdentifier(
           downloadManifestsCommonHelper.getDownloadS3StepIdentifier(serverlessAwsLambdaManifestOutcome));
-      serverlessAwsLambdaPrepareRollbackV2StepNode.setName(serverlessAwsLambdaManifestOutcome.getIdentifier());
-      serverlessAwsLambdaPrepareRollbackV2StepNode.setUuid(serverlessAwsLambdaManifestOutcome.getIdentifier());
+      downloadAwsS3StepNode.setName(serverlessAwsLambdaManifestOutcome.getIdentifier());
+      downloadAwsS3StepNode.setUuid(serverlessAwsLambdaManifestOutcome.getIdentifier());
 
       PluginCreationRequest pluginCreationRequest =
-          request.toBuilder().setStepJsonNode(getStepJsonNode(serverlessAwsLambdaPrepareRollbackV2StepNode)).build();
-      return serverlessPrepareRollbackPluginInfoProvider.getPluginInfo(pluginCreationRequest, usedPorts, ambiance);
+          request.toBuilder().setStepJsonNode(getStepJsonNode(downloadAwsS3StepNode)).build();
+      return downloadAwsS3PluginInfoProvider.getPluginInfo(pluginCreationRequest, usedPorts, ambiance);
     }
 
     GitCloneStepInfo gitCloneStepInfo =
@@ -443,7 +447,7 @@ public class ServerlessDownloadManifestsStepHelper {
     return YamlUtils.writeYamlString(gitCloneStepNode);
   }
 
-  public String getStepJsonNode(ServerlessAwsLambdaPrepareRollbackV2StepNode gitCloneStepNode) {
-    return YamlUtils.writeYamlString(gitCloneStepNode);
+  public String getStepJsonNode(DownloadAwsS3StepNode downloadAwsS3StepNode) {
+    return YamlUtils.writeYamlString(downloadAwsS3StepNode);
   }
 }
