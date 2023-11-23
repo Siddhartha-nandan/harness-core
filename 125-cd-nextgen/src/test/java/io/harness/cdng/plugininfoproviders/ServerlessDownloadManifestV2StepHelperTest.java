@@ -257,7 +257,7 @@ public class ServerlessDownloadManifestV2StepHelperTest extends CategoryTest {
     doReturn(identifier).when(downloadManifestsCommonHelper).getGitCloneStepIdentifier(any());
 
     Ambiance ambiance1 = mock(Ambiance.class);
-    doReturn(ambiance1).when(downloadManifestsCommonHelper).buildAmbianceForGitClone(any(), any());
+    doReturn(ambiance1).when(downloadManifestsCommonHelper).buildAmbiance(any(), any());
 
     AsyncExecutableResponse asyncExecutableResponse = mock(AsyncExecutableResponse.class);
     doReturn(Status.SUCCEEDED).when(asyncExecutableResponse).getStatus();
@@ -312,7 +312,7 @@ public class ServerlessDownloadManifestV2StepHelperTest extends CategoryTest {
     doReturn(identifier).when(downloadManifestsCommonHelper).getGitCloneStepIdentifier(any());
 
     Ambiance ambiance1 = mock(Ambiance.class);
-    doReturn(ambiance1).when(downloadManifestsCommonHelper).buildAmbianceForGitClone(any(), any());
+    doReturn(ambiance1).when(downloadManifestsCommonHelper).buildAmbiance(any(), any());
 
     AsyncExecutableResponse asyncExecutableResponse = mock(AsyncExecutableResponse.class);
     doReturn(Status.SUCCEEDED).when(asyncExecutableResponse).getStatus();

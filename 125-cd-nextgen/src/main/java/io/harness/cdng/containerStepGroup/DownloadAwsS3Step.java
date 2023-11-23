@@ -41,6 +41,7 @@ import io.harness.helper.SerializedResponseDataHelper;
 import io.harness.ng.core.NGAccess;
 import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
+import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.execution.utils.AmbianceUtils;
@@ -104,11 +105,25 @@ public class DownloadAwsS3Step extends AbstractContainerStepV2<StepElementParame
     downloadAwsS3StepHelper.removeAllEnvVarsWithSecretRef(envVars);
     downloadAwsS3StepHelper.validateEnvVariables(envVars);
 
-    return ContainerUnitStepUtils.serializeStepWithStepParameters(
-        getPort(ambiance, stepElementParameters.getIdentifier()), parkedTaskId, logKey,
-        stepElementParameters.getIdentifier(), getTimeout(ambiance, stepElementParameters), accountId,
+    String stepIdentifier = AmbianceUtils.obtainStepIdentifier(ambiance);
+    String completeStepIdentifier = getCompleteStepIdentifier(ambiance, stepIdentifier);
+
+    return ContainerUnitStepUtils.serializeStepWithStepParameters(getPort(ambiance, stepIdentifier), parkedTaskId,
+        logKey, completeStepIdentifier, getTimeout(ambiance, stepElementParameters), accountId,
         stepElementParameters.getName(), delegateCallbackTokenSupplier, ambiance, envVars,
         pluginExecutionConfig.getDownloadAwsS3Config().getImage(), Collections.EMPTY_LIST);
+  }
+
+  public String getCompleteStepIdentifier(Ambiance ambiance, String stepIdentifier) {
+    StringBuilder identifier = new StringBuilder();
+    for (Level level : ambiance.getLevelsList()) {
+      if (level.getStepType().getType().equals("STEP_GROUP")) {
+        identifier.append(level.getIdentifier());
+        identifier.append('_');
+      }
+    }
+    identifier.append(stepIdentifier);
+    return identifier.toString();
   }
 
   @Override

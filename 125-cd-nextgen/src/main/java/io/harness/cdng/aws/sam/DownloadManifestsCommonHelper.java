@@ -17,6 +17,8 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.steps.nodes.GitCloneStepNode;
 import io.harness.beans.steps.stepinfo.GitCloneStepInfo;
 import io.harness.beans.yaml.extended.ImagePullPolicy;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepParameters;
 import io.harness.cdng.manifest.steps.outcome.ManifestsOutcome;
 import io.harness.cdng.manifest.yaml.GitStoreConfig;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
@@ -66,7 +68,7 @@ public class DownloadManifestsCommonHelper {
     return (ManifestsOutcome) manifestsOutcome.getOutcome();
   }
 
-  public Ambiance buildAmbianceForGitClone(Ambiance ambiance, String identifier) {
+  public Ambiance buildAmbiance(Ambiance ambiance, String identifier) {
     Level level = Level.newBuilder()
                       .setIdentifier(identifier)
                       .setSkipExpressionChain(true)
@@ -117,19 +119,14 @@ public class DownloadManifestsCommonHelper {
         .build();
   }
 
-  public StepElementParameters getGitStepElementParameters(
-      ManifestOutcome gitManifestOutcome, ServerlessAwsLambdaPrepareRollbackV2StepInfo gitCloneStepInfo) {
-    ServerlessAwsLambdaPrepareRollbackV2StepParameters serverlessAwsLambdaPrepareRollbackV2StepParameters =
-        ServerlessAwsLambdaPrepareRollbackV2StepParameters.infoBuilder()
-            .connectorRef(gitCloneStepInfo.getConnectorRef())
-            .image(ParameterField.createValueField("harnessdev/testing:1.1.1"))
-            .imagePullPolicy(ParameterField.createValueField(ImagePullPolicy.ALWAYS))
-            .build();
+  public StepElementParameters getDownloadS3StepElementParameters(
+      ManifestOutcome gitManifestOutcome, DownloadAwsS3StepInfo downloadAwsS3StepInfo) {
+    DownloadAwsS3StepParameters downloadAwsS3StepParameters =
+        (DownloadAwsS3StepParameters) downloadAwsS3StepInfo.getSpecParameters();
     return StepElementParameters.builder()
         .name(gitManifestOutcome.getIdentifier())
         .identifier(gitManifestOutcome.getIdentifier())
-        .timeout(ParameterField.createValueField("10m"))
-        .spec(serverlessAwsLambdaPrepareRollbackV2StepParameters)
+        .spec(downloadAwsS3StepParameters)
         .build();
   }
 
