@@ -212,32 +212,23 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
   public UpdateGitXWebhookResponseDTO updateGitXWebhookTriggerTime(
       UpdateGitXWebhookCriteriaDTO updateGitXWebhookCriteriaDTO,
       UpdateGitXWebhookRequestDTO updateGitXWebhookRequestDTO) {
-    try (GitXWebhookLogContext context =
-             new GitXWebhookLogContext(updateGitXWebhookCriteriaDTO, updateGitXWebhookRequestDTO)) {
-      try {
-        log.info(String.format("Updating Webhook tigger time with identifier %s in account %s",
-            updateGitXWebhookCriteriaDTO.getWebhookIdentifier(),
-            updateGitXWebhookCriteriaDTO.getScope().getAccountIdentifier()));
-        Criteria criteria =
-            buildCriteria(updateGitXWebhookCriteriaDTO.getScope(), updateGitXWebhookCriteriaDTO.getWebhookIdentifier());
-        Query query = new Query(criteria);
-        Update update = buildUpdate(updateGitXWebhookRequestDTO);
-        GitXWebhook updatedGitXWebhook = gitXWebhookRepository.update(query, update);
-        if (updatedGitXWebhook == null) {
-          log.error(String.format(
-              "Error while updating webhook [%s] in DB", updateGitXWebhookCriteriaDTO.getWebhookIdentifier()));
-          throw new InternalServerErrorException(String.format(
-              "Error while updating webhook [%s] in DB", updateGitXWebhookCriteriaDTO.getWebhookIdentifier()));
-        }
-        return UpdateGitXWebhookResponseDTO.builder().webhookIdentifier(updatedGitXWebhook.getIdentifier()).build();
-      } catch (InternalServerErrorException exception) {
-        log.error("Unexpected error occurred while updating the GitX webhook {}",
-            updateGitXWebhookCriteriaDTO.getWebhookIdentifier(), exception);
-        throw exception;
-      } catch (Exception exception) {
-        log.error(String.format(WEBHOOK_FAILURE_ERROR_MESSAGE, UPDATING), exception);
-        throw new InternalServerErrorException(String.format(WEBHOOK_FAILURE_ERROR_MESSAGE, UPDATING));
-      }
+    try {
+      log.info(String.format("Updating Webhook tigger time with identifier %s in account %s",
+          updateGitXWebhookCriteriaDTO.getWebhookIdentifier(),
+          updateGitXWebhookCriteriaDTO.getScope().getAccountIdentifier()));
+      Criteria criteria =
+          buildCriteria(updateGitXWebhookCriteriaDTO.getScope(), updateGitXWebhookCriteriaDTO.getWebhookIdentifier());
+      Query query = new Query(criteria);
+      Update update = buildUpdate(updateGitXWebhookRequestDTO);
+      GitXWebhook updatedGitXWebhook = gitXWebhookRepository.update(query, update);
+      return UpdateGitXWebhookResponseDTO.builder().webhookIdentifier(updatedGitXWebhook.getIdentifier()).build();
+    } catch (InternalServerErrorException exception) {
+      log.error("Unexpected error occurred while updating the GitX webhook {}",
+          updateGitXWebhookCriteriaDTO.getWebhookIdentifier(), exception);
+      throw exception;
+    } catch (Exception exception) {
+      log.error(String.format(WEBHOOK_FAILURE_ERROR_MESSAGE, UPDATING), exception);
+      throw new InternalServerErrorException(String.format(WEBHOOK_FAILURE_ERROR_MESSAGE, UPDATING));
     }
   }
 
@@ -350,7 +341,9 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
   private Update buildUpdate(UpdateGitXWebhookRequestDTO updateGitXWebhookRequestDTO) {
     long currentTimeInMilliseconds = System.currentTimeMillis();
     Update update = new Update();
-    update.set(GitXWebhookKeys.folderPaths, updateGitXWebhookRequestDTO.getFolderPaths());
+    if (isNotEmpty(updateGitXWebhookRequestDTO.getFolderPaths())) {
+      update.set(GitXWebhookKeys.folderPaths, updateGitXWebhookRequestDTO.getFolderPaths());
+    }
     if (isNotEmpty(updateGitXWebhookRequestDTO.getRepoName())) {
       update.set(GitXWebhookKeys.repoName, updateGitXWebhookRequestDTO.getRepoName());
     }
