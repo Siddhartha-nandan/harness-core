@@ -11,8 +11,10 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.cdng.aws.sam.AwsSamDeployStepNode;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepNode;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepParameters;
 import io.harness.cdng.creator.plan.steps.CDPMSStepPlanCreatorV2;
 import io.harness.executions.steps.StepSpecTypeConstants;
+import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.sdk.core.steps.io.StepParameters;
@@ -39,6 +41,10 @@ public class DownloadAwsS3StepPlanCreator extends CDPMSStepPlanCreatorV2<Downloa
 
   @Override
   protected StepParameters getStepParameters(PlanCreationContext ctx, DownloadAwsS3StepNode stepNode) {
-    return super.getStepParameters(ctx, stepNode);
+    final StepParameters stepParameters = super.getStepParameters(ctx, stepNode);
+    DownloadAwsS3StepParameters downloadAwsS3StepParameters =
+        (DownloadAwsS3StepParameters) ((StepElementParameters) stepParameters).getSpec();
+    downloadAwsS3StepParameters.setDelegateSelectors(stepNode.getDownloadAwsS3StepInfo().getDelegateSelectors());
+    return stepParameters;
   }
 }

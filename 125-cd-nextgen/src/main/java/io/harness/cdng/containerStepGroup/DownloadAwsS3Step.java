@@ -24,6 +24,7 @@ import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.instance.info.InstanceInfoService;
 import io.harness.cdng.manifest.steps.outcome.ManifestsOutcome;
 import io.harness.cdng.manifest.yaml.AwsSamDirectoryManifestOutcome;
+import io.harness.cdng.plugininfoproviders.PluginExecutionConfig;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.connector.ConnectorResponseDTO;
@@ -73,18 +74,9 @@ import org.apache.commons.lang3.StringUtils;
 public class DownloadAwsS3Step extends AbstractContainerStepV2<StepElementParameters> {
   @Inject Supplier<DelegateCallbackToken> delegateCallbackTokenSupplier;
 
-  @Inject CDExpressionResolver cdExpressionResolver;
+  @Inject DownloadAwsS3StepHelper downloadAwsS3StepHelper;
 
-  @Inject AwsSamStepHelper awsSamStepHelper;
-
-  @Inject private InstanceInfoService instanceInfoService;
-
-  @Inject private SerializedResponseDataHelper serializedResponseDataHelper;
-
-  @Inject private KryoSerializer referenceFalseKryoSerializer;
-  @Inject private OutcomeService outcomeService;
-
-  @Named(DEFAULT_CONNECTOR_SERVICE) @Inject private ConnectorService connectorService;
+  @Inject PluginExecutionConfig pluginExecutionConfig;
 
   public static final StepType STEP_TYPE = StepType.newBuilder()
                                                .setType(ExecutionNodeType.DOWNLOAD_AWS_S3.getYamlType())
@@ -104,176 +96,25 @@ public class DownloadAwsS3Step extends AbstractContainerStepV2<StepElementParame
   @Override
   public UnitStep getSerialisedStep(Ambiance ambiance, StepElementParameters stepElementParameters, String accountId,
       String logKey, long timeout, String parkedTaskId) {
-    AwsSamDeployStepParameters awsSamDeployStepParameters =
-        (AwsSamDeployStepParameters) stepElementParameters.getSpec();
+    DownloadAwsS3StepParameters downloadAwsS3StepParameters =
+        (DownloadAwsS3StepParameters) stepElementParameters.getSpec();
 
-    Map<String, String> samDeployEnvironmentVariablesMap = new HashMap<>();
-
-    //    Map<String, String> envVars = getEnvironmentVariables(ambiance, awsSamDeployStepParameters);
-    //    awsSamStepHelper.removeAllEnvVarsWithSecretRef(envVars);
-    //    samDeployEnvironmentVariablesMap.putAll(awsSamStepHelper.validateEnvVariables(envVars));
-
-    Map<String, String> envVars = new HashMap<>();
+    Map<String, String> envVars = downloadAwsS3StepHelper.getEnvironmentVariables(
+        ambiance, downloadAwsS3StepParameters, stepElementParameters.getIdentifier());
+    downloadAwsS3StepHelper.removeAllEnvVarsWithSecretRef(envVars);
+    downloadAwsS3StepHelper.validateEnvVariables(envVars);
 
     return ContainerUnitStepUtils.serializeStepWithStepParameters(
         getPort(ambiance, stepElementParameters.getIdentifier()), parkedTaskId, logKey,
         stepElementParameters.getIdentifier(), getTimeout(ambiance, stepElementParameters), accountId,
-        stepElementParameters.getName(), delegateCallbackTokenSupplier, ambiance, samDeployEnvironmentVariablesMap,
-        awsSamStepHelper.getImage(awsSamDeployStepParameters).getValue(), Collections.EMPTY_LIST);
+        stepElementParameters.getName(), delegateCallbackTokenSupplier, ambiance, envVars,
+        pluginExecutionConfig.getDownloadAwsS3Config().getImage(), Collections.EMPTY_LIST);
   }
 
   @Override
   public StepResponse.StepOutcome getAnyOutComeForStep(
       Ambiance ambiance, StepElementParameters stepParameters, Map<String, ResponseData> responseDataMap) {
-    // If any of the responses are in serialized format, deserialize them
-    for (Map.Entry<String, ResponseData> entry : responseDataMap.entrySet()) {
-      log.info(String.format("AWS SAM Deploy: ResponseData with class %s received", entry.getValue().getClass()));
-      entry.setValue(serializedResponseDataHelper.deserialize(entry.getValue()));
-      if (entry.getValue() instanceof BinaryResponseData) {
-        entry.setValue((ResponseData) referenceFalseKryoSerializer.asInflatedObject(
-            ((BinaryResponseData) entry.getValue()).getData()));
-      }
-    }
-
-    StepResponse.StepOutcome stepOutcome = null;
-
-    List<ServerInstanceInfo> serverInstanceInfoList =
-        awsSamStepHelper.fetchServerInstanceInfoFromDelegateResponse(responseDataMap);
-
-    if (serverInstanceInfoList != null) {
-      InfrastructureOutcome infrastructureOutcome = awsSamStepHelper.getInfrastructureOutcome(ambiance);
-
-      awsSamStepHelper.updateServerInstanceInfoList(serverInstanceInfoList, infrastructureOutcome);
-      log.info("Saving AWS SAM server instances into sweeping output");
-      stepOutcome = instanceInfoService.saveServerInstancesIntoSweepingOutput(ambiance, serverInstanceInfoList);
-    } else {
-      log.info("No instances were received in SAM Deploy Response");
-    }
-
-    return stepOutcome;
-  }
-
-  public Map<String, String> getEnvironmentVariables(
-      Ambiance ambiance, AwsSamDeployStepParameters awsSamDeployStepParameters) {
-    ParameterField<Map<String, String>> envVariables = awsSamDeployStepParameters.getEnvVariables();
-    ParameterField<List<String>> deployCommandOptions = awsSamDeployStepParameters.getDeployCommandOptions();
-    ParameterField<String> stackName = awsSamDeployStepParameters.getStackName();
-
-    // Resolve Expressions
-    cdExpressionResolver.updateExpressions(ambiance, deployCommandOptions);
-
-    AwsSamInfrastructureOutcome awsSamInfrastructureOutcome = getAwsSamInfrastructureOutcome(ambiance);
-
-    String awsConnectorRef = awsSamInfrastructureOutcome.getConnectorRef();
-    String crossAccountRoleArn = null;
-    String externalId = null;
-
-    String awsAccessKey = null;
-    String awsSecretKey = null;
-    String region = awsSamInfrastructureOutcome.getRegion();
-
-    if (awsConnectorRef != null) {
-      NGAccess ngAccess = AmbianceUtils.getNgAccess(ambiance);
-
-      Optional<ConnectorResponseDTO> connectorDTO = getOptionalConnectorResponseDTO(awsConnectorRef, ngAccess);
-
-      if (connectorDTO.isEmpty()) {
-        String errorMessage = "Aws connector configured in SAM Infrastructure is empty";
-        throw new InvalidRequestException(errorMessage);
-      }
-      ConnectorInfoDTO connectorInfoDTO = connectorDTO.get().getConnector();
-      ConnectorConfigDTO connectorConfigDTO = connectorInfoDTO.getConnectorConfig();
-      AwsConnectorDTO awsConnectorDTO = (AwsConnectorDTO) connectorConfigDTO;
-      AwsCredentialDTO awsCredentialDTO = awsConnectorDTO.getCredential();
-      AwsCredentialSpecDTO awsCredentialSpecDTO = awsCredentialDTO.getConfig();
-
-      if (awsCredentialSpecDTO instanceof AwsManualConfigSpecDTO) {
-        AwsManualConfigSpecDTO awsManualConfigSpecDTO = (AwsManualConfigSpecDTO) awsCredentialSpecDTO;
-
-        if (!StringUtils.isEmpty(awsManualConfigSpecDTO.getAccessKey())) {
-          awsAccessKey = awsManualConfigSpecDTO.getAccessKey();
-        } else {
-          awsAccessKey = NGVariablesUtils.fetchSecretExpressionWithExpressionToken(
-              awsManualConfigSpecDTO.getAccessKeyRef().toSecretRefStringValue(), ambiance.getExpressionFunctorToken());
-        }
-
-        awsSecretKey = NGVariablesUtils.fetchSecretExpressionWithExpressionToken(
-            awsManualConfigSpecDTO.getSecretKeyRef().toSecretRefStringValue(), ambiance.getExpressionFunctorToken());
-      }
-
-      if (awsCredentialDTO.getCrossAccountAccess() != null) {
-        crossAccountRoleArn = awsCredentialDTO.getCrossAccountAccess().getCrossAccountRoleArn();
-        externalId = awsCredentialDTO.getCrossAccountAccess().getExternalId();
-      }
-    }
-
-    HashMap<String, String> samDeployEnvironmentVariablesMap = new HashMap<>();
-
-    ManifestsOutcome manifestsOutcome =
-        (ManifestsOutcome) outcomeService
-            .resolveOptional(ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.MANIFESTS))
-            .getOutcome();
-
-    AwsSamDirectoryManifestOutcome awsSamDirectoryManifestOutcome =
-        (AwsSamDirectoryManifestOutcome) awsSamStepHelper.getAwsSamDirectoryManifestOutcome(manifestsOutcome.values());
-
-    String samDir =
-        awsSamStepHelper.getSamDirectoryPathFromAwsSamDirectoryManifestOutcome(awsSamDirectoryManifestOutcome);
-
-    samDeployEnvironmentVariablesMap.put("PLUGIN_SAM_DIR", samDir);
-
-    if (ParameterField.isNotNull(deployCommandOptions)) {
-      samDeployEnvironmentVariablesMap.put(
-          "PLUGIN_DEPLOY_COMMAND_OPTIONS", String.join(" ", deployCommandOptions.getValue()));
-    }
-
-    samDeployEnvironmentVariablesMap.put("PLUGIN_STACK_NAME", stackName.getValue());
-
-    if (awsAccessKey != null) {
-      samDeployEnvironmentVariablesMap.put("PLUGIN_AWS_ACCESS_KEY", awsAccessKey);
-    }
-
-    if (awsSecretKey != null) {
-      samDeployEnvironmentVariablesMap.put("PLUGIN_AWS_SECRET_KEY", awsSecretKey);
-    }
-
-    if (crossAccountRoleArn != null) {
-      samDeployEnvironmentVariablesMap.put("PLUGIN_AWS_ROLE_ARN", crossAccountRoleArn);
-    }
-
-    if (externalId != null) {
-      samDeployEnvironmentVariablesMap.put("PLUGIN_AWS_STS_EXTERNAL_ID", externalId);
-    }
-
-    if (region != null) {
-      samDeployEnvironmentVariablesMap.put("PLUGIN_REGION", region);
-    }
-
-    if (envVariables != null && envVariables.getValue() != null) {
-      samDeployEnvironmentVariablesMap.putAll(envVariables.getValue());
-    }
-
-    return samDeployEnvironmentVariablesMap;
-  }
-
-  private Optional<ConnectorResponseDTO> getOptionalConnectorResponseDTO(String awsConnectorRef, NGAccess ngAccess) {
-    IdentifierRef identifierRef = IdentifierRefHelper.getIdentifierRef(
-        awsConnectorRef, ngAccess.getAccountIdentifier(), ngAccess.getOrgIdentifier(), ngAccess.getProjectIdentifier());
-
-    return connectorService.get(identifierRef.getAccountIdentifier(), identifierRef.getOrgIdentifier(),
-        identifierRef.getProjectIdentifier(), identifierRef.getIdentifier());
-  }
-
-  private AwsSamInfrastructureOutcome getAwsSamInfrastructureOutcome(Ambiance ambiance) {
-    InfrastructureOutcome infrastructureOutcome = (InfrastructureOutcome) outcomeService.resolve(
-        ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME));
-
-    if (!(infrastructureOutcome instanceof AwsSamInfrastructureOutcome)) {
-      String errorMessage = "Only AWS_SAM Infrastructure is supported in AWS SAM Deploy Step";
-      throw new InvalidRequestException(errorMessage);
-    }
-
-    return (AwsSamInfrastructureOutcome) infrastructureOutcome;
+    return null;
   }
 
   @Override

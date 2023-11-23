@@ -543,7 +543,7 @@ pluginExecutionConfig:
     image: harness/drone-git:1.4.1-rootless
     entrypoint:
       - /usr/local/bin/clone
-  downloadS3Config:
+  downloadAwsS3Config:
     # Use rootless image only for K8 git clone
     image: harnessdev/testing:1.1.2
     entrypoint:

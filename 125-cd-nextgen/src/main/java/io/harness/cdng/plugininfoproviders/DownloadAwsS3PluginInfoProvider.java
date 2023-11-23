@@ -21,7 +21,9 @@ import io.harness.cdng.aws.sam.AwsSamDeployStep;
 import io.harness.cdng.aws.sam.AwsSamDeployStepInfo;
 import io.harness.cdng.aws.sam.AwsSamDeployStepParameters;
 import io.harness.cdng.aws.sam.AwsSamStepHelper;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepHelper;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepParameters;
 import io.harness.cdng.expressions.CDExpressionResolver;
 import io.harness.cdng.pipeline.executions.CDPluginInfoProvider;
 import io.harness.cdng.pipeline.steps.CdAbstractStepNode;
@@ -49,16 +51,8 @@ import java.util.Set;
 
 @OwnedBy(HarnessTeam.CDP)
 public class DownloadAwsS3PluginInfoProvider implements CDPluginInfoProvider {
-  @Inject private CDExpressionResolver cdExpressionResolver;
-  @Inject private OutcomeService outcomeService;
-
   @Inject PluginExecutionConfig pluginExecutionConfig;
-
-  @Named(DEFAULT_CONNECTOR_SERVICE) @Inject private ConnectorService connectorService;
-
-  @Inject private AwsSamStepHelper awsSamStepHelper;
-
-  @Inject private AwsSamDeployStep awsSamDeployStep;
+  @Inject private DownloadAwsS3StepHelper downloadAwsS3StepHelper;
 
   @Override
   public PluginCreationResponseWrapper getPluginInfo(
@@ -81,19 +75,18 @@ public class DownloadAwsS3PluginInfoProvider implements CDPluginInfoProvider {
     ImageDetails imageDetails = null;
 
     imageDetails = PluginInfoProviderHelper.getImageDetails(ParameterField.ofNull(),
-        ParameterField.createValueField(pluginExecutionConfig.getDownloadS3Config().getImage()),
+        ParameterField.createValueField(pluginExecutionConfig.getDownloadAwsS3Config().getImage()),
         ParameterField.ofNull());
 
     pluginDetailsBuilder.setImageDetails(imageDetails);
 
-    Map<String, String> envVars;
     // We cannot provide secret environment variables to the container at runtime. So during  initialize phase, we pass
     // these secrets variables
-    //    envVars = awsSamStepHelper.getEnvVarsWithSecretRef(awsSamDeployStep.getEnvironmentVariables(
-    //        ambiance, (AwsSamDeployStepParameters) awsSamDeployStepInfo.getSpecParameters()));
+    Map<String, String> envVars =
+        downloadAwsS3StepHelper.getEnvVarsWithSecretRef(downloadAwsS3StepHelper.getEnvironmentVariables(
+            ambiance, (DownloadAwsS3StepParameters) downloadAwsS3StepInfo.getSpecParameters(), null));
 
-    envVars = new HashMap<>();
-    pluginDetailsBuilder.putAllEnvVariables(awsSamStepHelper.validateEnvVariables(envVars));
+    pluginDetailsBuilder.putAllEnvVariables(downloadAwsS3StepHelper.validateEnvVariables(envVars));
 
     PluginCreationResponse response =
         PluginCreationResponse.newBuilder().setPluginDetails(pluginDetailsBuilder.build()).build();

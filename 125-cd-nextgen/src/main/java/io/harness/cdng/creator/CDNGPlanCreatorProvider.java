@@ -1608,7 +1608,7 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
             .build();
 
     StepInfo downloadAwsS3 = StepInfo.newBuilder()
-                                 .setName("Download AWS S3")
+                                 .setName("DOWNLOAD AWS S3")
                                  .setType(StepSpecTypeConstants.DOWNLOAD_AWS_S3)
                                  .setStepMetaData(StepMetaData.newBuilder()
                                                       .addAllCategory(CD_CONTAINER_STEP_GROUP_COMMON_STEPS_CATEGORY)

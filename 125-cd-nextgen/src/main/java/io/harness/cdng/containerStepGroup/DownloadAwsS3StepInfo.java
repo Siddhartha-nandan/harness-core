@@ -72,8 +72,6 @@ public class DownloadAwsS3StepInfo extends ContainerStepGroupBaseStepInfo implem
 
   @ApiModelProperty(dataType = STRING_CLASSPATH) private ParameterField<String> connectorRef;
 
-  @YamlSchemaTypes({string}) @ApiModelProperty(dataType = INTEGER_CLASSPATH) private ParameterField<Integer> runAsUser;
-
   @ApiModelProperty(dataType = STRING_CLASSPATH) ParameterField<String> downloadPath;
 
   @ApiModelProperty(dataType = STRING_LIST_CLASSPATH) ParameterField<List<String>> outputFilePathsContent;
@@ -85,8 +83,6 @@ public class DownloadAwsS3StepInfo extends ContainerStepGroupBaseStepInfo implem
   @YamlSchemaTypes(value = {runtime})
   @ApiModelProperty(dataType = SwaggerConstants.STRING_LIST_CLASSPATH)
   private ParameterField<List<String>> paths;
-
-  private ContainerResource resources;
 
   @Builder(builderMethodName = "infoBuilder")
   public DownloadAwsS3StepInfo(ParameterField<List<TaskSelectorYaml>> delegateSelectors,
