@@ -21,6 +21,7 @@ import io.harness.beans.steps.nodes.GitCloneStepNode;
 import io.harness.beans.steps.stepinfo.GitCloneStepInfo;
 import io.harness.beans.yaml.extended.ImagePullPolicy;
 import io.harness.cdng.aws.sam.DownloadManifestsCommonHelper;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3Step;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepNode;
 import io.harness.cdng.manifest.steps.outcome.ManifestsOutcome;
@@ -96,7 +97,7 @@ public class ServerlessDownloadManifestsStepHelper {
 
   @Inject private DownloadAwsS3PluginInfoProvider downloadAwsS3PluginInfoProvider;
 
-  @Inject private ServerlessAwsLambdaPrepareRollbackV2Step serverlessAwsLambdaPrepareRollbackV2Step;
+  @Inject private DownloadAwsS3Step downloadAwsS3Step;
 
   @Inject private ServerlessV2PluginInfoProviderHelper serverlessV2PluginInfoProviderHelper;
 
@@ -155,7 +156,7 @@ public class ServerlessDownloadManifestsStepHelper {
           serverlessAwsLambdaDirectoryManifestOutcome, downloadAwsS3StepInfo);
       Ambiance ambianceForServerlessAwsLambdaManifest = downloadManifestsCommonHelper.buildAmbiance(ambiance,
           downloadManifestsCommonHelper.getDownloadS3StepIdentifier(serverlessAwsLambdaDirectoryManifestOutcome));
-      return serverlessAwsLambdaPrepareRollbackV2Step.executeAsyncAfterRbac(
+      return downloadAwsS3Step.executeAsyncAfterRbac(
           ambianceForServerlessAwsLambdaManifest, stepElementParameters, inputPackage);
     }
 
@@ -202,7 +203,7 @@ public class ServerlessDownloadManifestsStepHelper {
           valuesManifestOutcome, downloadAwsS3StepInfo);
       Ambiance ambianceForServerlessAwsLambdaManifest = downloadManifestsCommonHelper.buildAmbiance(
           ambiance, downloadManifestsCommonHelper.getDownloadS3StepIdentifier(valuesManifestOutcome));
-      return serverlessAwsLambdaPrepareRollbackV2Step.executeAsyncAfterRbac(
+      return downloadAwsS3Step.executeAsyncAfterRbac(
           ambianceForServerlessAwsLambdaManifest, stepElementParameters, inputPackage);
     }
 

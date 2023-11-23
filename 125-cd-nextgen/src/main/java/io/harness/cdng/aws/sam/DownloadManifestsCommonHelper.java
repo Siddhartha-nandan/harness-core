@@ -127,6 +127,7 @@ public class DownloadManifestsCommonHelper {
         .name(gitManifestOutcome.getIdentifier())
         .identifier(gitManifestOutcome.getIdentifier())
         .spec(downloadAwsS3StepParameters)
+        .timeout(ParameterField.createValueField("10m"))
         .build();
   }
 
