@@ -26,7 +26,7 @@ import lombok.experimental.FieldNameConstants;
 @OwnedBy(CDC)
 @Data
 @Builder
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @FieldNameConstants(innerTypeName = "CDStageSummaryKeys")
 public class CDStageSummary extends StageSummary {
