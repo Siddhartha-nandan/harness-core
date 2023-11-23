@@ -17,6 +17,8 @@ import io.harness.spec.server.ssca.v1.model.ArtifactComponentViewRequestBody;
 import io.harness.spec.server.ssca.v1.model.ComponentFilter;
 import io.harness.spec.server.ssca.v1.model.LicenseFilter;
 import io.harness.spec.server.ssca.v1.model.NormalizedSbomComponentDTO;
+import io.harness.spec.server.ssca.v1.model.Operator;
+import io.harness.ssca.enforcement.executors.mongo.filter.denylist.fields.VersionField;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityKeys;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
@@ -32,12 +34,14 @@ import java.util.regex.Pattern;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
 
+@Slf4j
 public class NormalisedSbomComponentServiceImpl implements NormalisedSbomComponentService {
   @Inject SBOMComponentRepo sbomComponentRepo;
 
@@ -114,6 +118,42 @@ public class NormalisedSbomComponentServiceImpl implements NormalisedSbomCompone
     }
     return componentCriteria;
   }
+
+  private Criteria getComponentNameCriteria(ComponentFilter filter) {
+    String fieldName = componentFilterToFieldNameMap.get(filter.getFieldName());
+    if (fieldName != NormalizedSBOMEntityKeys.packageName) {
+      log.error("fieldName is not Package Name");
+      return new Criteria();
+    }
+    switch (filter.getOperator()) {
+      case EQUALS:
+        return Criteria.where(fieldName).is(filter.getValue());
+      case CONTAINS:
+        return Criteria.where(fieldName).regex(filter.getValue());
+      case STARTSWITH:
+        return Criteria.where(fieldName).regex(Pattern.compile("^".concat(filter.getValue())));
+      default:
+        throw new InvalidRequestException("Invalid component filter operator");
+    }
+  }
+
+  private Criteria getComponentVersionCriteria(ComponentFilter filter) {
+    String fieldName = componentFilterToFieldNameMap.get(filter.getFieldName());
+    if (fieldName != NormalizedSBOMEntityKeys.packageVersion) {
+      log.error("fieldName is not Package Version");
+      return new Criteria();
+    }
+    List<Integer> versions = new VersionField().getVersion(filter.getValue());
+    if (versions.size() != 3 || versions.get(0) == -1) {
+      return new Criteria();
+    }
+    Criteria mainCriteria = new Criteria();
+    if (filter.getOperator() == Operator.EQUALS) {
+      return Criteria.where()
+    }
+    return null;
+  }
+
   public Page<NormalizedSBOMComponentEntity> getNormalizedSbomComponents(String accountId, String orgIdentifier,
       String projectIdentifier, ArtifactEntity artifact, ArtifactComponentViewRequestBody filterBody,
       Pageable pageable) {
