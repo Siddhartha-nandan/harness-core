@@ -282,10 +282,7 @@ public class GitXWebhookEventServiceImpl implements GitXWebhookEventService {
               .scope(Scope.of(gitXWebhook.getAccountIdentifier(), gitXWebhook.getOrgIdentifier(),
                   gitXWebhook.getProjectIdentifier()))
               .build(),
-          UpdateGitXWebhookRequestDTO.builder()
-              .lastEventTriggerTime(triggerEventTime)
-              .folderPaths(gitXWebhook.getFolderPaths())
-              .build());
+          UpdateGitXWebhookRequestDTO.builder().lastEventTriggerTime(triggerEventTime).build());
     });
   }
 
