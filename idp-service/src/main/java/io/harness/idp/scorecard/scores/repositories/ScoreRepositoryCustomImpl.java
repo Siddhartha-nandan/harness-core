@@ -150,6 +150,31 @@ public class ScoreRepositoryCustomImpl implements ScoreRepositoryCustom {
   }
 
   @Override
+  public List<ScoreEntityByEntityIdentifier> getLatestScoresForScorecard(
+      String accountIdentifier, String scorecardIdentifier) {
+    Criteria criteria = Criteria.where(ScoreEntity.ScoreKeys.accountIdentifier)
+                            .is(accountIdentifier)
+                            .and(ScoreEntity.ScoreKeys.scorecardIdentifier)
+                            .is(scorecardIdentifier);
+
+    ProjectionOperation projectionOperation = Aggregation.project()
+                                                  .andExpression(Constants.ID_KEY)
+                                                  .as(ScoreEntity.ScoreKeys.entityIdentifier)
+                                                  .andExpression(Constants.SCORE_ENTITY_KEY)
+                                                  .as(Constants.SCORE_ENTITY_KEY);
+
+    Aggregation aggregation = Aggregation.newAggregation(Aggregation.match(criteria),
+        Aggregation.sort(Sort.Direction.DESC, ScoreEntity.ScoreKeys.lastComputedTimestamp),
+        Aggregation.group(ScoreEntity.ScoreKeys.entityIdentifier)
+            .push(ScoreEntity.ScoreKeys.entityIdentifier)
+            .as(ScoreEntity.ScoreKeys.entityIdentifier)
+            .first(Aggregation.ROOT)
+            .as(Constants.SCORE_ENTITY_KEY),
+        projectionOperation);
+    return mongoTemplate.aggregate(aggregation, Constants.SCORE_COLLECTION_NAME, ScoreEntityByEntityIdentifier.class).getMappedResults();
+  }
+
+  @Override
   public AggregationResults<EntityIdentifierAndCheckStatus> getCheckStatusForLatestComputedScores(
       String accountIdentifier, List<String> entityIdentifiers, List<String> scorecardIdentifiers,
       Pair<Long, Long> previousDay24HourTimeFrame, String checkIdentifier, boolean custom) {

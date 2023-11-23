@@ -172,12 +172,7 @@ import io.harness.idp.scorecard.scorecards.service.ScorecardService;
 import io.harness.idp.scorecard.scorecards.service.ScorecardServiceImpl;
 import io.harness.idp.scorecard.scores.resources.ScoreApiImpl;
 import io.harness.idp.scorecard.scores.resources.ScoresV2ApiImpl;
-import io.harness.idp.scorecard.scores.service.AsyncScoreComputationService;
-import io.harness.idp.scorecard.scores.service.AsyncScoreComputationServiceImpl;
-import io.harness.idp.scorecard.scores.service.ScoreComputerService;
-import io.harness.idp.scorecard.scores.service.ScoreComputerServiceImpl;
-import io.harness.idp.scorecard.scores.service.ScoreService;
-import io.harness.idp.scorecard.scores.service.ScoreServiceImpl;
+import io.harness.idp.scorecard.scores.service.*;
 import io.harness.idp.serializer.IdpServiceRegistrars;
 import io.harness.idp.settings.resources.BackstagePermissionsApiImpl;
 import io.harness.idp.settings.service.BackstagePermissionsService;
@@ -511,6 +506,7 @@ public class IdpModule extends AbstractModule {
     bind(DataSourceLocationService.class).to(DataSourceLocationServiceImpl.class);
     bind(ScoreService.class).to(ScoreServiceImpl.class);
     bind(ScoreComputerService.class).to(ScoreComputerServiceImpl.class);
+    bind(StatsComputeService.class).to(StatsComputeServiceImpl.class);
     bind(AsyncScoreComputationService.class).to(AsyncScoreComputationServiceImpl.class);
     bind(DataPointService.class).to(DataPointServiceImpl.class);
     bind(HarnessDataPointsApi.class).to(HarnessDataPointsApiImpl.class);
@@ -577,8 +573,8 @@ public class IdpModule extends AbstractModule {
         .annotatedWith(Names.named("licenseUsageDailyCountJob"))
         .toInstance(new ManagedScheduledExecutorService("licenseUsageDailyCountJob"));
     bind(ScheduledExecutorService.class)
-        .annotatedWith(Names.named("checkStatusDailyRunJob"))
-        .toInstance(new ManagedScheduledExecutorService("checkStatusDailyRunJob"));
+        .annotatedWith(Names.named("statsComputeDailyRunJob"))
+        .toInstance(new ManagedScheduledExecutorService("statsComputeDailyRunJob"));
     install(new AbstractTelemetryModule() {
       @Override
       public TelemetryConfiguration telemetryConfiguration() {

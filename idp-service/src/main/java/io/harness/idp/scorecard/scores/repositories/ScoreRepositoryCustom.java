@@ -29,6 +29,9 @@ public interface ScoreRepositoryCustom {
   AggregationResults<EntityIdentifierAndScore> getScoresForEntityIdentifiersAndScorecardIdentifiers(
       String accountIdentifier, List<String> entityIdentifiers, List<String> scorecardIdentifiers);
 
+  List<ScoreEntityByEntityIdentifier> getLatestScoresForScorecard(
+      String accountIdentifier, String scorecardIdentifier);
+
   AggregationResults<EntityIdentifierAndCheckStatus> getCheckStatusForLatestComputedScores(String accountIdentifier,
       List<String> entityIdentifiers, List<String> scorecardIdentifiers, Pair<Long, Long> previousDay24HourTimeFrame,
       String checkIdentifier, boolean custom);
