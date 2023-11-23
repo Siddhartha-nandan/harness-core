@@ -22,7 +22,6 @@ import io.harness.engine.pms.data.OutcomeException;
 import io.harness.engine.pms.data.PmsOutcomeService;
 import io.harness.engine.pms.data.PmsSweepingOutputService;
 import io.harness.engine.pms.data.SweepingOutputException;
-import io.harness.engine.utils.FunctorUtils;
 import io.harness.engine.utils.OrchestrationUtils;
 import io.harness.execution.NodeExecution;
 import io.harness.expression.ExpressionEvaluatorUtils;
@@ -35,6 +34,7 @@ import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.execution.utils.StatusUtils;
 import io.harness.pms.sdk.core.execution.NodeExecutionUtils;
 import io.harness.pms.sdk.core.resolver.RefObjectUtils;
+import io.harness.yaml.utils.FunctorUtils;
 
 import java.util.Collections;
 import java.util.HashMap;

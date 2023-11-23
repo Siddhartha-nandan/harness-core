@@ -14,12 +14,12 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.engine.expressions.NodeExecutionsCache;
 import io.harness.engine.expressions.OrchestrationConstants;
-import io.harness.engine.utils.FunctorUtils;
 import io.harness.expression.LateBindingMap;
 import io.harness.graph.stepDetail.service.NodeExecutionInfoService;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.execution.utils.AmbianceUtils;
+import io.harness.yaml.utils.FunctorUtils;
 
 import java.util.Arrays;
 import java.util.List;

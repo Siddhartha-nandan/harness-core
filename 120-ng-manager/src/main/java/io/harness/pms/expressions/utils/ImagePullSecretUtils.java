@@ -6,6 +6,7 @@
  */
 
 package io.harness.pms.expressions.utils;
+
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.authorization.AuthorizationServiceHeader.NG_MANAGER;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
@@ -100,6 +101,7 @@ import io.harness.security.dto.Principal;
 import io.harness.security.dto.ServicePrincipal;
 import io.harness.security.encryption.EncryptedDataDetail;
 import io.harness.utils.IdentifierRefHelper;
+import io.harness.yaml.utils.FunctorUtils;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -602,6 +604,6 @@ public class ImagePullSecretUtils {
   }
 
   private String getPasswordExpression(String passwordRef, Ambiance ambiance) {
-    return "${ngSecretManager.obtain(\"" + passwordRef + "\", " + ambiance.getExpressionFunctorToken() + ")}";
+    return FunctorUtils.getSecretExpression(ambiance.getExpressionFunctorToken(), passwordRef);
   }
 }

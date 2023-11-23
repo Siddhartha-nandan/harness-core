@@ -16,7 +16,6 @@ import io.harness.beans.IdentifierRef;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.engine.observers.SecretObserverInfo;
 import io.harness.engine.observers.SecretResolutionObserver;
-import io.harness.engine.utils.FunctorUtils;
 import io.harness.eventsframework.protohelper.IdentifierRefProtoDTOHelper;
 import io.harness.eventsframework.schemas.entity.EntityDetailProtoDTO;
 import io.harness.eventsframework.schemas.entity.EntityTypeProtoEnum;
@@ -28,6 +27,7 @@ import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.rbac.PipelineRbacHelper;
 import io.harness.pms.security.PmsSecurityContextEventGuard;
 import io.harness.utils.IdentifierRefHelper;
+import io.harness.yaml.utils.FunctorUtils;
 
 import java.util.Set;
 import lombok.SneakyThrows;

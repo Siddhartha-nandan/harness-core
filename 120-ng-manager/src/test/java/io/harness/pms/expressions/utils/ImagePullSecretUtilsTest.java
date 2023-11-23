@@ -210,9 +210,9 @@ public class ImagePullSecretUtilsTest extends CategoryTest {
 
     when(connectorService.get(any(), any(), any(), any())).thenReturn(connectorResponseDTO);
     assertEquals(imagePullSecretUtils.getImagePullSecret(artifactOutcome, ambiance),
-        "${imageSecret.create(\"us.gcr.io/test-image\", \"_json_key\", ${ngSecretManager.obtain(\"null\", 0)})}");
+        "${imageSecret.create(\"us.gcr.io/test-image\", \"_json_key\", ${ngSecretManager.obtain('null', 0)})}");
     assertEquals(imagePullSecretUtils.getDockerConfigJson(artifactOutcome, ambiance),
-        "${dockerConfigJsonSecretFunc.create(\"us.gcr.io/test-image\", \"_json_key\", ${ngSecretManager.obtain(\"null\", 0)})}");
+        "${dockerConfigJsonSecretFunc.create(\"us.gcr.io/test-image\", \"_json_key\", ${ngSecretManager.obtain('null', 0)})}");
   }
 
   @Test
@@ -247,9 +247,9 @@ public class ImagePullSecretUtilsTest extends CategoryTest {
 
     when(connectorService.get(any(), any(), any(), any())).thenReturn(connectorResponseDTO);
     assertEquals(imagePullSecretUtils.getImagePullSecret(artifactOutcome, ambiance),
-        "${imageSecret.create(\"index.docker.io\", ${ngSecretManager.obtain(\"null\", 0)}, ${ngSecretManager.obtain(\"null\", 0)})}");
+        "${imageSecret.create(\"index.docker.io\", ${ngSecretManager.obtain('null', 0)}, ${ngSecretManager.obtain('null', 0)})}");
     assertEquals(imagePullSecretUtils.getDockerConfigJson(artifactOutcome, ambiance),
-        "${dockerConfigJsonSecretFunc.create(\"index.docker.io\", ${ngSecretManager.obtain(\"null\", 0)}, ${ngSecretManager.obtain(\"null\", 0)})}");
+        "${dockerConfigJsonSecretFunc.create(\"index.docker.io\", ${ngSecretManager.obtain('null', 0)}, ${ngSecretManager.obtain('null', 0)})}");
   }
 
   @Test
@@ -283,9 +283,9 @@ public class ImagePullSecretUtilsTest extends CategoryTest {
 
     when(connectorService.get(any(), any(), any(), any())).thenReturn(connectorResponseDTO);
     assertEquals(imagePullSecretUtils.getImagePullSecret(artifactOutcome, ambiance),
-        "${imageSecret.create(\"nexus.harness.io\", ${ngSecretManager.obtain(\"null\", 0)}, ${ngSecretManager.obtain(\"null\", 0)})}");
+        "${imageSecret.create(\"nexus.harness.io\", ${ngSecretManager.obtain('null', 0)}, ${ngSecretManager.obtain('null', 0)})}");
     assertEquals(imagePullSecretUtils.getDockerConfigJson(artifactOutcome, ambiance),
-        "${dockerConfigJsonSecretFunc.create(\"nexus.harness.io\", ${ngSecretManager.obtain(\"null\", 0)}, ${ngSecretManager.obtain(\"null\", 0)})}");
+        "${dockerConfigJsonSecretFunc.create(\"nexus.harness.io\", ${ngSecretManager.obtain('null', 0)}, ${ngSecretManager.obtain('null', 0)})}");
   }
 
   @Test
@@ -320,9 +320,9 @@ public class ImagePullSecretUtilsTest extends CategoryTest {
 
     when(connectorService.get(any(), any(), any(), any())).thenReturn(connectorResponseDTO);
     assertEquals(imagePullSecretUtils.getImagePullSecret(artifactOutcome, ambiance),
-        "${imageSecret.create(\"harness.jfrog.io\", ${ngSecretManager.obtain(\"null\", 0)}, ${ngSecretManager.obtain(\"null\", 0)})}");
+        "${imageSecret.create(\"harness.jfrog.io\", ${ngSecretManager.obtain('null', 0)}, ${ngSecretManager.obtain('null', 0)})}");
     assertEquals(imagePullSecretUtils.getDockerConfigJson(artifactOutcome, ambiance),
-        "${dockerConfigJsonSecretFunc.create(\"harness.jfrog.io\", ${ngSecretManager.obtain(\"null\", 0)}, ${ngSecretManager.obtain(\"null\", 0)})}");
+        "${dockerConfigJsonSecretFunc.create(\"harness.jfrog.io\", ${ngSecretManager.obtain('null', 0)}, ${ngSecretManager.obtain('null', 0)})}");
   }
 
   @Test
@@ -350,11 +350,11 @@ public class ImagePullSecretUtilsTest extends CategoryTest {
 
     when(connectorService.get(any(), any(), any(), any())).thenReturn(connectorResponseDTO);
     assertEquals(imagePullSecretUtils.getImagePullSecret(artifactOutcome, ambiance),
-        format("${imageSecret.create(\"%s\", \"%s\", ${ngSecretManager.obtain(\"%s\", 0)})}", ACR_REGISTRY,
-            ACR_CLIENT_ID, "null"));
+        format("${imageSecret.create(\"%s\", \"%s\", ${ngSecretManager.obtain('%s', 0)})}", ACR_REGISTRY, ACR_CLIENT_ID,
+            "null"));
     assertEquals(imagePullSecretUtils.getDockerConfigJson(artifactOutcome, ambiance),
-        format("${dockerConfigJsonSecretFunc.create(\"%s\", \"%s\", ${ngSecretManager.obtain(\"%s\", 0)})}",
-            ACR_REGISTRY, ACR_CLIENT_ID, "null"));
+        format("${dockerConfigJsonSecretFunc.create(\"%s\", \"%s\", ${ngSecretManager.obtain('%s', 0)})}", ACR_REGISTRY,
+            ACR_CLIENT_ID, "null"));
   }
 
   @Test
@@ -508,7 +508,7 @@ public class ImagePullSecretUtilsTest extends CategoryTest {
 
     when(connectorService.get(any(), any(), any(), any())).thenReturn(connectorResponseDTO);
     assertEquals(imagePullSecretUtils.getImagePullSecret(githubPackagesArtifactOutcome, ambiance),
-        format("${imageSecret.create(\"%s\", \"%s\", ${ngSecretManager.obtain(\"%s\", 0)})}", "https://ghcr.io",
+        format("${imageSecret.create(\"%s\", \"%s\", ${ngSecretManager.obtain('%s', 0)})}", "https://ghcr.io",
             "username", "account.accountLevelConnector"));
   }
 

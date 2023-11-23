@@ -5,7 +5,9 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.engine.utils;
+package io.harness.yaml.utils;
+
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
@@ -21,10 +23,10 @@ import lombok.experimental.UtilityClass;
 @OwnedBy(HarnessTeam.PIPELINE)
 public class FunctorUtils {
   public String getSecretExpression(long expressionFunctorToken, String secretIdentifier) {
-    if (secretIdentifier.startsWith("${ngSecretManager.obtain(")) {
+    if (isNotEmpty(secretIdentifier) && secretIdentifier.startsWith("${ngSecretManager.obtain(")) {
       throw new InvalidRequestException("Secret referencing inside a secret is not supported.");
     }
-    return "${ngSecretManager.obtain(\"" + secretIdentifier + "\", " + expressionFunctorToken + ")}";
+    return "${ngSecretManager.obtain('" + secretIdentifier + "', " + expressionFunctorToken + ")}";
   }
 
   public Object fetchFirst(List<Function<String, Optional<Object>>> fns, String key) {

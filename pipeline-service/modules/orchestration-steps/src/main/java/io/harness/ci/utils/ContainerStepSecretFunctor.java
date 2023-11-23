@@ -18,6 +18,7 @@ import io.harness.expression.functors.ExpressionFunctor;
 import io.harness.ng.core.NGAccess;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.yaml.core.variables.SecretNGVariable;
+import io.harness.yaml.utils.FunctorUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,7 +48,7 @@ public class ContainerStepSecretFunctor implements ExpressionFunctor {
                                               .build();
 
       secretVariableDetails.add(secretUtils.getSecretVariableDetailsWithScope(ngAccess, secretNGVariable));
-      return "${ngSecretManager.obtain(\"" + secretIdentifier + "\", " + expressionFunctorToken + ")}";
+      return FunctorUtils.getSecretExpression(expressionFunctorToken, secretIdentifier);
     } catch (Exception ex) {
       throw new FunctorException("Error occurred while evaluating the secret [" + secretIdentifier + "]", ex);
     }

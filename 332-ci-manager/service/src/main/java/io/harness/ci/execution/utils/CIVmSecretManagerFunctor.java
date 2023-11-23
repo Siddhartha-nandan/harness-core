@@ -11,6 +11,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.expression.functors.ExpressionFunctor;
 import io.harness.ng.core.NGAccess;
+import io.harness.yaml.utils.FunctorUtils;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -31,7 +32,7 @@ public class CIVmSecretManagerFunctor implements ExpressionFunctor {
   }
 
   public Object obtain(String secretIdentifier, int token) {
-    String expr = "${ngSecretManager.obtain(\"" + secretIdentifier + "\", " + expressionFunctorToken + ")}";
+    String expr = FunctorUtils.getSecretExpression(expressionFunctorToken, secretIdentifier);
     secrets.add(expr);
     return expr;
   }

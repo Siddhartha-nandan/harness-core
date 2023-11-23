@@ -11,6 +11,7 @@ import static io.harness.annotations.dev.HarnessTeam.CDC;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.expression.functors.ExpressionFunctor;
+import io.harness.yaml.utils.FunctorUtils;
 
 import lombok.Value;
 
@@ -24,6 +25,6 @@ public class CustomSecretFunctor implements ExpressionFunctor {
   }
 
   public Object getValue(String secretIdentifier) {
-    return "${ngSecretManager.obtain(\"" + secretIdentifier + "\", " + expressionFunctorToken + ")}";
+    return FunctorUtils.getSecretExpression(expressionFunctorToken, secretIdentifier);
   }
 }

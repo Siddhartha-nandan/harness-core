@@ -6,6 +6,7 @@
  */
 
 package io.harness.yaml.utils;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
@@ -157,13 +158,7 @@ public class NGVariablesUtils {
   }
 
   public String fetchSecretExpressionWithExpressionToken(String secretValue, long expressionFunctorToken) {
-    /*
-    if secretValue is a string, then add it with quotes else add it as a variable
-     */
-    if (EngineExpressionEvaluator.hasExpressions(secretValue)) {
-      return "${ngSecretManager.obtain(" + secretValue + ", " + expressionFunctorToken + ")}";
-    }
-    return "${ngSecretManager.obtain(\"" + secretValue + "\", " + expressionFunctorToken + ")}";
+    return FunctorUtils.getSecretExpression(expressionFunctorToken, secretValue);
   }
 
   private String getSecretValue(SecretNGVariable variable) {
