@@ -13,6 +13,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.DecryptableEntity;
 import io.harness.connector.DelegateSelectable;
 import io.harness.connector.ManagerExecutable;
+import io.harness.connector.WithProxy;
 import io.harness.delegate.beans.connector.ConnectorConfigDTO;
 import io.harness.delegate.beans.connector.ConnectorConfigOutcomeDTO;
 import io.harness.delegate.beans.connector.ConnectorType;
@@ -49,7 +50,8 @@ import org.hibernate.validator.constraints.NotBlank;
 @OwnedBy(HarnessTeam.DX)
 @Schema(name = "GitConfig", description = "This contains details of the Generic Git connector")
 @RecasterAlias("io.harness.delegate.beans.connector.scm.genericgitconnector.GitConfigDTO")
-public class GitConfigDTO extends ConnectorConfigDTO implements ScmConnector, DelegateSelectable, ManagerExecutable {
+public class GitConfigDTO
+    extends ConnectorConfigDTO implements ScmConnector, DelegateSelectable, ManagerExecutable, WithProxy {
   @NotNull @JsonProperty("type") private GitAuthType gitAuthType;
   @NotNull @JsonProperty("connectionType") private GitConnectionType gitConnectionType;
   @NotNull @NotBlank String url;
@@ -59,6 +61,7 @@ public class GitConfigDTO extends ConnectorConfigDTO implements ScmConnector, De
   private Boolean executeOnDelegate;
   private String proxyUrl;
   private String gitConnectionUrl;
+  Boolean proxy;
 
   @JsonProperty("spec")
   @JsonTypeInfo(
@@ -70,7 +73,7 @@ public class GitConfigDTO extends ConnectorConfigDTO implements ScmConnector, De
   @Builder
   public GitConfigDTO(GitAuthType gitAuthType, GitAuthenticationDTO gitAuth, GitConnectionType gitConnectionType,
       String url, String validationRepo, String branchName, Set<String> delegateSelectors, Boolean executeOnDelegate,
-      String proxyUrl) {
+      String proxyUrl, boolean proxy) {
     this.gitAuthType = gitAuthType;
     this.gitAuth = gitAuth;
     this.gitConnectionType = gitConnectionType;
@@ -80,6 +83,7 @@ public class GitConfigDTO extends ConnectorConfigDTO implements ScmConnector, De
     this.delegateSelectors = delegateSelectors;
     this.executeOnDelegate = executeOnDelegate;
     this.proxyUrl = proxyUrl;
+    this.proxy = proxy;
   }
 
   @Override
