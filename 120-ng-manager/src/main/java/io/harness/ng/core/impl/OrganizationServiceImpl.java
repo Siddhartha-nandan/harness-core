@@ -82,6 +82,8 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.cache.Cache;
 import javax.validation.constraints.NotNull;
+import javax.ws.rs.NotFoundException;
+
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import org.apache.commons.lang3.tuple.Pair;
@@ -158,6 +160,7 @@ public class OrganizationServiceImpl implements OrganizationService {
 
   @Override
   public Organization create(ScopeInfo scopeInfo, OrganizationDTO organizationDTO) {
+    checkScopeInfo(scopeInfo, "CREATE");
     final String accountIdentifier = scopeInfo.getAccountIdentifier();
     Organization organization = toOrganization(organizationDTO);
     organization.setAccountIdentifier(accountIdentifier);
@@ -165,8 +168,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     try {
       validate(organization);
       Organization savedOrganization = saveOrganization(organization);
-      scopeInfoService.addScopeInfoToCache(accountIdentifier, savedOrganization.getIdentifier(), null,
-          ScopeLevel.ORGANIZATION, savedOrganization.getUniqueId());
+      addToScopeInfoCache(savedOrganization);
       setupOrganization(Scope.of(scopeInfo));
       log.info(String.format(
           "Organization with identifier [%s], uniqueId [%s] was successfully created at scope level [%s], scope uniqueId [%s]",
@@ -301,6 +303,7 @@ public class OrganizationServiceImpl implements OrganizationService {
 
   @Override
   public Optional<Organization> get(ScopeInfo scope, String identifier) {
+    checkScopeInfo(scope, "GET");
     return organizationRepository.findByParentIdAndIdentifierIgnoreCaseAndDeletedNot(
         scope.getUniqueId(), identifier, true);
   }
@@ -511,7 +514,7 @@ public class OrganizationServiceImpl implements OrganizationService {
   public boolean delete(ScopeInfo scope, String identifier, Long version) {
     final String accountIdentifier = scope.getAccountIdentifier();
     try (AutoLogContext ignore0 = new AccountLogContext(accountIdentifier, OVERRIDE_ERROR)) {
-      scopeInfoService.removeScopeInfoFromCache(accountIdentifier, identifier, null);
+      scopeInfoCache.remove(scopeInfoHelper.getScopeInfoCacheKey(accountIdentifier, identifier, null));
       return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
         Organization organization = organizationRepository.hardDelete(accountIdentifier, identifier, version);
 
@@ -614,6 +617,12 @@ public class OrganizationServiceImpl implements OrganizationService {
       log.warn(
           String.format("Org with identifier [%s] in Account: [%s] does not exist", orgIdentifier, accountIdentifier));
       return Optional.empty();
+    }
+  }
+
+  private void checkScopeInfo(ScopeInfo scopeInfo, final String action) {
+    if (scopeInfo == null || scopeInfo.getScopeType() == null || isEmpty(scopeInfo.getUniqueId())) {
+      throw new NotFoundException(String.format("Scope info not found for Organization {} request", action));
     }
   }
 }

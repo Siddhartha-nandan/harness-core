@@ -63,6 +63,7 @@ public class OrganizationInstrumentationHelper extends InstrumentationHelper {
     }
     return null;
   }
+
   public CompletableFuture sendOrganizationDeleteEvent(Organization organization, String accountId) {
     try {
       if (EmptyPredicate.isNotEmpty(accountId) || !accountId.equals(GLOBAL_ACCOUNT_ID)) {

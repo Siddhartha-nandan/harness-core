@@ -72,6 +72,19 @@ public class OrganizationRepositoryCustomImpl implements OrganizationRepositoryC
   }
 
   @Override
+  public Organization restoreFromScopeUniqueId(String scopeUniqueId, String identifier) {
+    Criteria criteria = Criteria.where(OrganizationKeys.parentId)
+        .is(scopeUniqueId)
+        .and(OrganizationKeys.identifier)
+        .is(identifier)
+        .and(OrganizationKeys.deleted)
+        .is(Boolean.TRUE);
+    Query query = new Query(criteria);
+    Update update = new Update().set(OrganizationKeys.deleted, Boolean.FALSE);
+    return mongoTemplate.findAndModify(query, update, Organization.class);
+  }
+
+  @Override
   public List<Scope> findAllOrgs(Criteria criteria) {
     Query query = new Query(criteria);
     query.fields().include(OrganizationKeys.identifier);

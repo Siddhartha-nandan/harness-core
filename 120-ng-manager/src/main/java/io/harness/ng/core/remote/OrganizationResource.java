@@ -139,7 +139,7 @@ public class OrganizationResource {
       throw new InvalidRequestException(
           String.format("%s cannot be used as org identifier", DEFAULT_ORG_IDENTIFIER), USER);
     }
-    Organization createdOrganization = organizationService.create(scopeInfo, organizationDTO.getOrganization()); /*organizationService.create(accountIdentifier, organizationDTO.getOrganization());*/
+    Organization createdOrganization = organizationService.create(scopeInfo, organizationDTO.getOrganization());
     return ResponseDTO.newResponse(createdOrganization.getVersion().toString(), toResponseWrapper(createdOrganization));
   }
 
