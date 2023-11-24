@@ -7,10 +7,8 @@
 
 package io.harness.cdng.creator.filters;
 
-import static io.harness.data.structure.EmptyPredicate.isEmpty;
-
-import static java.lang.String.format;
-
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
@@ -27,12 +25,13 @@ import io.harness.pms.cdng.sample.cd.creator.filters.CdFilter.CdFilterBuilder;
 import io.harness.pms.sdk.core.filter.creation.beans.FilterCreationContext;
 import io.harness.pms.yaml.ParameterField;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static java.lang.String.format;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
     components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
@@ -57,11 +56,12 @@ public class StageFilterCreatorHelper {
     environmentEntityOptional.ifPresent(environment -> {
       filterBuilder.environmentName(environmentRef.getValue());
       final List<InfraStructureDefinitionYaml> infraList = getInfraStructureDefinitionYamlsList(env);
-      addFiltersForInfraYamlList(filterCreationContext, filterBuilder, environment, infraList);
+      String envEntityIdentifier = environment.getIdentifier();
+      addFiltersForInfraYamlList(filterCreationContext, filterBuilder, envEntityIdentifier, infraList);
     });
   }
 
-  private List<InfraStructureDefinitionYaml> getInfraStructureDefinitionYamlsList(EnvironmentYamlV2 env) {
+  public List<InfraStructureDefinitionYaml> getInfraStructureDefinitionYamlsList(EnvironmentYamlV2 env) {
     List<InfraStructureDefinitionYaml> infraList = new ArrayList<>();
     if (ParameterField.isNotNull(env.getInfrastructureDefinitions())) {
       if (!env.getInfrastructureDefinitions().isExpression()) {
@@ -75,14 +75,14 @@ public class StageFilterCreatorHelper {
     return infraList;
   }
 
-  private void addFiltersForInfraYamlList(FilterCreationContext filterCreationContext, CdFilterBuilder filterBuilder,
-      Environment entity, List<InfraStructureDefinitionYaml> infraList) {
+  public void addFiltersForInfraYamlList(FilterCreationContext filterCreationContext, CdFilterBuilder filterBuilder,
+      String envEntityIdentifier, List<InfraStructureDefinitionYaml> infraList) {
     if (isEmpty(infraList)) {
       return;
     }
     List<InfrastructureEntity> infrastructureEntities = infraService.getAllInfrastructureFromIdentifierList(
         filterCreationContext.getSetupMetadata().getAccountId(), filterCreationContext.getSetupMetadata().getOrgId(),
-        filterCreationContext.getSetupMetadata().getProjectId(), entity.getIdentifier(),
+        filterCreationContext.getSetupMetadata().getProjectId(), envEntityIdentifier,
         infraList.stream()
             .map(InfraStructureDefinitionYaml::getIdentifier)
             .filter(field -> !field.isExpression())

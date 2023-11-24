@@ -7,17 +7,7 @@
 
 package io.harness.cdng.creator.filters;
 
-import static io.harness.data.structure.EmptyPredicate.isEmpty;
-import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
-import static io.harness.executions.steps.StepSpecTypeConstants.AZURE_CREATE_ARM_RESOURCE;
-import static io.harness.executions.steps.StepSpecTypeConstants.CLOUDFORMATION_CREATE_STACK;
-import static io.harness.executions.steps.StepSpecTypeConstants.SHELL_SCRIPT_PROVISION;
-import static io.harness.executions.steps.StepSpecTypeConstants.TERRAFORM_APPLY;
-import static io.harness.executions.steps.StepSpecTypeConstants.TERRAGRUNT_APPLY;
-
-import static java.lang.String.format;
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
-
+import com.google.inject.Inject;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
@@ -64,8 +54,11 @@ import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.utils.IdentifierRefHelper;
 import io.harness.utils.NGFeatureFlagHelperService;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 
-import com.google.inject.Inject;
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -76,10 +69,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
+
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+import static io.harness.executions.steps.StepSpecTypeConstants.AZURE_CREATE_ARM_RESOURCE;
+import static io.harness.executions.steps.StepSpecTypeConstants.CLOUDFORMATION_CREATE_STACK;
+import static io.harness.executions.steps.StepSpecTypeConstants.SHELL_SCRIPT_PROVISION;
+import static io.harness.executions.steps.StepSpecTypeConstants.TERRAFORM_APPLY;
+import static io.harness.executions.steps.StepSpecTypeConstants.TERRAGRUNT_APPLY;
+import static java.lang.String.format;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
     components = {HarnessModuleComponent.CDS_PIPELINE, HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
@@ -309,11 +308,6 @@ public class DeploymentStageFilterJsonCreatorV2 extends GenericStageFilterJsonCr
 
   private void addFiltersFromEnvironment(FilterCreationContext filterCreationContext, CdFilterBuilder filterBuilder,
       EnvironmentYamlV2 env, boolean gitOpsEnabled) {
-    if (env.getEnvironmentRef() != null && isNotBlank(env.getEnvironmentRef().getValue())
-        && env.getUseFromStage() != null) {
-      throw new InvalidRequestException(
-          "Only one of environmentRef and useFromStage fields are allowed in environment. Please remove one and try again");
-    }
 
     if (env.getUseFromStage() != null) {
       if (isEmpty(env.getUseFromStage().getStage())) {
@@ -322,6 +316,11 @@ public class DeploymentStageFilterJsonCreatorV2 extends GenericStageFilterJsonCr
             YamlUtils.getFullyQualifiedName(filterCreationContext.getCurrentField().getNode())));
       }
       try {
+
+        ParameterField<String> environmentRef = env.getEnvironmentRef();
+        /*
+
+         TODO: Add validation for both env refs. to be exact same
         YamlField propagatedFromStageConfig =
             PlanCreatorUtils.getStageConfig(filterCreationContext.getCurrentField(), env.getUseFromStage().getStage());
         if (propagatedFromStageConfig == null) {
@@ -341,7 +340,19 @@ public class DeploymentStageFilterJsonCreatorV2 extends GenericStageFilterJsonCr
         if (useFromStageEnvironmentYaml == null) {
           return;
         }
-        stageFilterCreatorHelper.addEnvAndInfraToFilterBuilder(filterCreationContext, filterBuilder, env);
+        */
+        if(environmentRef.getValue()==null)
+        {
+          return;
+        }
+        Optional<Environment> environmentEntityOptional = environmentService.getMetadata(
+                filterCreationContext.getSetupMetadata().getAccountId(), filterCreationContext.getSetupMetadata().getOrgId(),
+                filterCreationContext.getSetupMetadata().getProjectId(), environmentRef.getValue(), false);
+        environmentEntityOptional.ifPresent(environment -> {
+          final List<InfraStructureDefinitionYaml> infraList = stageFilterCreatorHelper.getInfraStructureDefinitionYamlsList(env);
+          String envEntityIdentifier = environment.getIdentifier();
+          stageFilterCreatorHelper.addFiltersForInfraYamlList(filterCreationContext, filterBuilder, envEntityIdentifier, infraList);
+        });
       } catch (Exception ex) {
         log.warn(
             "Exception occurred while saving filters for propagated from stage environment having different infrastructure",

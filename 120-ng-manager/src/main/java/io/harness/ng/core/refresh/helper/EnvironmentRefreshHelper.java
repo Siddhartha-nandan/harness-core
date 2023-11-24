@@ -7,8 +7,10 @@
 
 package io.harness.ng.core.refresh.helper;
 
-import static io.harness.template.resources.beans.NGTemplateConstants.GIT_BRANCH;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.inject.Inject;
 import io.harness.account.AccountClient;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -36,18 +38,16 @@ import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.pms.yaml.YamlNodeUtils;
 import io.harness.pms.yaml.YamlUtils;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+
+import static io.harness.template.resources.beans.NGTemplateConstants.GIT_BRANCH;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
     components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
@@ -327,6 +327,7 @@ public class EnvironmentRefreshHelper {
     if (envObjectNode.get(YamlTypes.USE_FROM_STAGE) != null) {
       envObjectNode.remove(YamlTypes.ENVIRONMENT_INPUTS);
       envObjectNode.remove(YamlTypes.SERVICE_OVERRIDE_INPUTS);
+
       return true;
     }
     return false;
