@@ -88,8 +88,10 @@ import io.harness.cvng.core.beans.monitoredService.MonitoredServiceDTO.ServiceDe
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceDTO.Sources;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceListItemDTO;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServicePlatformResponse;
+import io.harness.cvng.core.beans.monitoredService.MonitoredServiceReference;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceResponse;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceWithHealthSources;
+import io.harness.cvng.core.beans.monitoredService.ReconciliationStatus;
 import io.harness.cvng.core.beans.monitoredService.RiskData;
 import io.harness.cvng.core.beans.monitoredService.SloHealthIndicatorDTO;
 import io.harness.cvng.core.beans.monitoredService.healthSouceSpec.AppDynamicsHealthSourceSpec;
@@ -496,6 +498,83 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
   }
 
   @Test
+  @Owner(developers = NAVEEN)
+  @Category(UnitTests.class)
+  public void testGetMonitoredServiceReconciliationStatuses_noReconciliationRequired() {
+    String yaml = "monitoredService:\n"
+        + "  template:\n"
+        + "   templateRef: templateRef123\n"
+        + "   versionLabel: versionLabel123\n"
+        + "   templateVersionNumber: 1\n"
+        + "   isTemplateByReference: true\n"
+        + "   inputSetYaml: \"\"\n"
+        + "  type: Application\n"
+        + "  description: description\n"
+        + "  identifier: id1\n"
+        + "  name: monitored_service_name\n"
+        + "  serviceRef: service1\n"
+        + "  environmentRef: env1\n"
+        + "  sources:\n"
+        + "      healthSources:\n"
+        + "      changeSources: \n"
+        + "  tags: {}\n"
+        + "  variables:\n"
+        + "    -   name: environmentIdentifier\n"
+        + "        type: String\n"
+        + "        value: env3";
+    when(featureFlagService.isFeatureFlagEnabled(accountId, FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION))
+        .thenReturn(true);
+    monitoredServiceService.createFromYaml(builderFactory.getProjectParams(), yaml);
+    PageResponse<MonitoredServiceReference> monitoredServiceReferences =
+        monitoredServiceService.getMonitoredServiceReconciliationStatuses(builderFactory.getProjectParams(),
+            "templateRef123", "versionLabel123", PageParams.builder().page(0).size(10).build());
+    assertThat(monitoredServiceReferences.getContent().size()).isEqualTo(1);
+    List<MonitoredServiceReference> monitoredServiceReferencesList = monitoredServiceReferences.getContent();
+    assertThat(monitoredServiceReferencesList.get(0).getReconciliationStatus())
+        .isEqualTo(ReconciliationStatus.NO_RECONCILIATION_REQUIRED);
+  }
+
+  @Test
+  @Owner(developers = NAVEEN)
+  @Category(UnitTests.class)
+  public void testGetMonitoredServiceReconciliationStatuses_noInputRequired() {
+    String yaml = "monitoredService:\n"
+        + "  template:\n"
+        + "   templateRef: templateRef123\n"
+        + "   versionLabel: versionLabel123\n"
+        + "   templateVersionNumber: 2\n"
+        + "   isTemplateByReference: true\n"
+        + "   templateInputs:\n"
+        + "      type: Application\n"
+        + "      serviceRef: testservice\n"
+        + "      environmentRef: applied\n"
+        + "  type: Application\n"
+        + "  description: description\n"
+        + "  identifier: id1\n"
+        + "  name: monitored_service_name\n"
+        + "  serviceRef: service1\n"
+        + "  environmentRef: env1\n"
+        + "  sources:\n"
+        + "      healthSources:\n"
+        + "      changeSources: \n"
+        + "  tags: {}\n"
+        + "  variables:\n"
+        + "    -   name: environmentIdentifier\n"
+        + "        type: String\n"
+        + "        value: env3";
+    when(featureFlagService.isFeatureFlagEnabled(accountId, FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION))
+        .thenReturn(true);
+    monitoredServiceService.createFromYaml(builderFactory.getProjectParams(), yaml);
+    PageResponse<MonitoredServiceReference> monitoredServiceReferences =
+        monitoredServiceService.getMonitoredServiceReconciliationStatuses(builderFactory.getProjectParams(),
+            "templateRef123", "versionLabel123", PageParams.builder().page(0).size(10).build());
+    assertThat(monitoredServiceReferences.getContent().size()).isEqualTo(1);
+    List<MonitoredServiceReference> monitoredServiceReferencesList = monitoredServiceReferences.getContent();
+    assertThat(monitoredServiceReferencesList.get(0).getReconciliationStatus())
+        .isEqualTo(ReconciliationStatus.NO_INPUT_REQUIRED_FOR_RECONCILIATION);
+  }
+
+  @Test
   @Owner(developers = ARPITJ)
   @Category(UnitTests.class)
   public void testCreateFromYaml_WithValidJsonMetricDefinitionString() {
@@ -568,8 +647,8 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
         + "  description: description\n"
         + "  identifier: testms\n"
         + "  name: test\n"
-        + "  serviceRef: service1\n"
         + "  environmentRef: test\n"
+        + "  serviceRef: service1\n"
         + "  sources:\n"
         + "      changeSources: \n"
         + "      healthSources:\n"
@@ -1202,11 +1281,12 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
   @Owner(developers = KANHAIYA)
   @Category(UnitTests.class)
   public void testGet_IdentifierNotPresent() {
-    assertThatThrownBy(
-        () -> monitoredServiceService.get(builderFactory.getContext().getProjectParams(), monitoredServiceIdentifier))
+    assertThatThrownBy(() -> monitoredServiceService.get(projectParams, monitoredServiceIdentifier))
         .isInstanceOf(InvalidRequestException.class)
-        .hasMessage(
-            String.format("Monitored Service entity with identifier %s is not present", monitoredServiceIdentifier));
+        .hasMessage(String.format(
+            "Monitored Service entity with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s is not present",
+            monitoredServiceIdentifier, projectParams.getAccountIdentifier(), projectParams.getOrgIdentifier(),
+            projectParams.getProjectIdentifier()));
   }
 
   @Test
@@ -2307,7 +2387,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
   @Test
   @Owner(developers = KARAN_SARASWAT)
   @Category(UnitTests.class)
-  public void testAreTemplateReferencedMSsReconciliationRequired() {
+  public void testIsReconciliationRequiredForMonitoredServices() {
     MonitoredServiceDTO monitoredServiceDTO =
         builderFactory.monitoredServiceDTOBuilder()
             .identifier("ms2")
@@ -2338,12 +2418,50 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
     monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
 
     boolean isReconciliationRequired =
-        monitoredServiceService.isReconciliationRequiredForMonitoredServices(projectParams, "template1", "v1", 1);
+        monitoredServiceService.isReconciliationRequiredForMonitoredServices(projectParams, "template1", "v1", null, 1);
     assertThat(isReconciliationRequired).isFalse();
 
     isReconciliationRequired =
-        monitoredServiceService.isReconciliationRequiredForMonitoredServices(projectParams, "template1", "v1", 2);
+        monitoredServiceService.isReconciliationRequiredForMonitoredServices(projectParams, "template1", "v1", null, 2);
     assertThat(isReconciliationRequired).isTrue();
+
+    // check for template with no referring monitored services
+    isReconciliationRequired =
+        monitoredServiceService.isReconciliationRequiredForMonitoredServices(projectParams, "template2", "v1", null, 1);
+    assertThat(isReconciliationRequired).isFalse();
+
+    // check with monitored service identifier filter
+    isReconciliationRequired = monitoredServiceService.isReconciliationRequiredForMonitoredServices(
+        projectParams, "template1", "v1", "ms3", 2);
+    assertThat(isReconciliationRequired).isTrue();
+  }
+
+  @Test
+  @Owner(developers = KARAN_SARASWAT)
+  @Category(UnitTests.class)
+  public void testDetachMonitoredServiceFromTemplate() {
+    MonitoredServiceDTO monitoredServiceDTO =
+        builderFactory.monitoredServiceDTOBuilder()
+            .identifier("ms2")
+            .serviceRef("test1")
+            .template(TemplateDTO.builder()
+                          .templateRef("template1")
+                          .versionLabel("v1")
+                          .templateVersionNumber(1)
+                          .isTemplateByReference(true)
+                          .templateInputs("type: Application\nserviceRef: test1\n")
+                          .build())
+            .build();
+    when(featureFlagService.isFeatureFlagEnabled(accountId, FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION))
+        .thenReturn(true);
+    monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
+
+    boolean isTemplateDetached =
+        monitoredServiceService.detachMonitoredServiceFromTemplate(projectParams, monitoredServiceDTO.getIdentifier());
+    assertThat(isTemplateDetached).isTrue();
+    MonitoredService monitoredService =
+        monitoredServiceService.getMonitoredService(projectParams, monitoredServiceDTO.getIdentifier());
+    assertThat(monitoredService.isTemplateByReference()).isFalse();
   }
 
   @Test

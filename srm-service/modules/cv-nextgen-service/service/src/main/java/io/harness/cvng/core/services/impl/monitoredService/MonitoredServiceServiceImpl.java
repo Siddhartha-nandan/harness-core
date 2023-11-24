@@ -48,10 +48,13 @@ import io.harness.cvng.core.beans.monitoredService.MonitoredServiceDTO.Sources;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceListItemDTO;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceListItemDTO.MonitoredServiceListItemDTOBuilder;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServicePlatformResponse;
+import io.harness.cvng.core.beans.monitoredService.MonitoredServiceReference;
+import io.harness.cvng.core.beans.monitoredService.MonitoredServiceReference.MonitoredServiceReferenceBuilder;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceResponse;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceWithHealthSources;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceWithHealthSources.HealthSourceSummary;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceYamlDTO;
+import io.harness.cvng.core.beans.monitoredService.ReconciliationStatus;
 import io.harness.cvng.core.beans.monitoredService.RiskData;
 import io.harness.cvng.core.beans.monitoredService.SloHealthIndicatorDTO;
 import io.harness.cvng.core.beans.monitoredService.changeSourceSpec.ChangeSourceWithConnectorSpec;
@@ -68,6 +71,7 @@ import io.harness.cvng.core.beans.params.logsFilterParams.LiveMonitoringLogsFilt
 import io.harness.cvng.core.beans.template.TemplateDTO;
 import io.harness.cvng.core.beans.template.TemplateDTO.TemplateDTOBuilder;
 import io.harness.cvng.core.beans.template.TemplateMetadata;
+import io.harness.cvng.core.beans.template.TemplateMetadata.TemplateMetadataKeys;
 import io.harness.cvng.core.entities.CVConfig;
 import io.harness.cvng.core.entities.EntityDisableTime;
 import io.harness.cvng.core.entities.MonitoredService;
@@ -335,7 +339,7 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
   @Override
   public String getResolvedTemplateInputs(
       ProjectParams projectParams, String identifier, String templateIdentifier, String versionLabel) {
-    MonitoredService monitoredService = getMonitoredService(projectParams, identifier);
+    MonitoredService monitoredService = getAndValidateMonitoredService(projectParams, identifier);
     if (monitoredService.getTemplateMetadata() == null
         || (!monitoredService.getTemplateIdentifier().equals(templateIdentifier)
             || !monitoredService.getTemplateVersionLabel().equals(versionLabel))) {
@@ -347,8 +351,8 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
   }
 
   @Override
-  public boolean isReconciliationRequiredForMonitoredServices(
-      ProjectParams templateProjectParams, String templateIdentifier, String versionLabel, int templateVersionNumber) {
+  public boolean isReconciliationRequiredForMonitoredServices(ProjectParams templateProjectParams,
+      String templateIdentifier, String versionLabel, String monitoredServiceIdentifier, int templateVersionNumber) {
     Query<MonitoredService> query =
         hPersistence.createQuery(MonitoredService.class)
             .filter(MonitoredServiceKeys.accountId, templateProjectParams.getAccountIdentifier())
@@ -361,14 +365,39 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
     if (templateProjectParams.getProjectIdentifier() != null) {
       query = query.filter(MonitoredServiceKeys.projectIdentifier, templateProjectParams.getProjectIdentifier());
     }
-    // all template referenced monitored services count
-    long allTemplateReferencedMonitoredServices = query.count();
+    if (monitoredServiceIdentifier != null) {
+      query = query.filter(MonitoredServiceKeys.identifier, monitoredServiceIdentifier);
+    }
 
-    // get already reconciled Monitored services count
+    // template referenced monitored services count
+    long allTemplateReferencedMonitoredServices = query.count();
+    if (allTemplateReferencedMonitoredServices == 0) {
+      return false;
+    }
+
+    // get already reconciled monitored services count
     query = query.filter(MonitoredServiceKeys.templateMetadata + ".templateVersionNumber", templateVersionNumber);
     long alreadyReconciledMonitoredServices = query.count();
 
     return allTemplateReferencedMonitoredServices != alreadyReconciledMonitoredServices;
+  }
+
+  @Override
+  public boolean detachMonitoredServiceFromTemplate(ProjectParams projectParams, String identifier) {
+    MonitoredService monitoredService = getAndValidateMonitoredService(projectParams, identifier);
+    if (monitoredService.getTemplateMetadata() == null || !monitoredService.isTemplateByReference()) {
+      throw new InvalidRequestException(String.format(
+          "Monitored Service entity with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s is not referring to any template",
+          monitoredService.getIdentifier(), projectParams.getAccountIdentifier(), projectParams.getOrgIdentifier(),
+          projectParams.getProjectIdentifier()));
+    }
+
+    UpdateOperations<MonitoredService> updateOperations = hPersistence.createUpdateOperations(MonitoredService.class);
+    updateOperations.set(
+        MonitoredServiceKeys.templateMetadata + "." + TemplateMetadataKeys.isTemplateByReference, false);
+    hPersistence.update(monitoredService, updateOperations);
+    setupUsageEventService.sendTemplateDeleteEventForMonitoredService(projectParams, monitoredService, null);
+    return true;
   }
 
   private void validateDependencyMetadata(ProjectParams projectParams, Set<ServiceDependencyDTO> dependencyDTOs) {
@@ -578,12 +607,7 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
 
   @Override
   public boolean delete(ProjectParams projectParams, String identifier) {
-    MonitoredService monitoredService = getMonitoredService(projectParams, identifier);
-    if (monitoredService == null) {
-      throw new InvalidRequestException(
-          String.format("Monitored Service entity with identifier %s and accountId %s is not present", identifier,
-              projectParams.getAccountIdentifier()));
-    }
+    MonitoredService monitoredService = getAndValidateMonitoredService(projectParams, identifier);
     ServiceEnvironmentParams environmentParams = builderWithProjectParams(projectParams)
                                                      .serviceIdentifier(monitoredService.getServiceIdentifier())
                                                      .environmentIdentifier(monitoredService.getEnvironmentIdentifier())
@@ -721,17 +745,13 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
   }
   @Override
   public MonitoredServiceResponse get(ProjectParams projectParams, String identifier) {
-    MonitoredService monitoredServiceEntity = getMonitoredService(projectParams, identifier);
-    if (monitoredServiceEntity == null) {
-      throw new InvalidRequestException(
-          String.format("Monitored Service entity with identifier %s is not present", identifier));
-    }
+    MonitoredService monitoredServiceEntity = getAndValidateMonitoredService(projectParams, identifier);
+
     ServiceEnvironmentParams environmentParams =
         builderWithProjectParams(projectParams)
             .serviceIdentifier(monitoredServiceEntity.getServiceIdentifier())
             .environmentIdentifier(monitoredServiceEntity.getEnvironmentIdentifier())
             .build();
-
     return createMonitoredServiceDTOFromEntity(monitoredServiceEntity, environmentParams);
   }
 
@@ -984,6 +1004,18 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
         .filter(MonitoredServiceKeys.identifier, identifier)
         .get();
   }
+
+  private MonitoredService getAndValidateMonitoredService(ProjectParams projectParams, String identifier) {
+    MonitoredService monitoredService = getMonitoredService(projectParams, identifier);
+    if (monitoredService == null) {
+      throw new InvalidRequestException(String.format(
+          "Monitored Service entity with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s is not present",
+          identifier, projectParams.getAccountIdentifier(), projectParams.getOrgIdentifier(),
+          projectParams.getProjectIdentifier()));
+    }
+    return monitoredService;
+  }
+
   @Override
   public Optional<MonitoredService> getApplicationMonitoredService(ServiceEnvironmentParams serviceEnvironmentParams) {
     return Optional.ofNullable(
@@ -1816,11 +1848,8 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
   @Override
   public AnomaliesSummaryDTO getAnomaliesSummary(
       ProjectParams projectParams, String monitoredServiceIdentifier, TimeRangeParams timeRangeParams) {
-    MonitoredService monitoredService = getMonitoredService(projectParams, monitoredServiceIdentifier);
-    if (monitoredService == null) {
-      throw new InvalidRequestException(
-          String.format("Monitored Service not found for identifier %s", monitoredServiceIdentifier));
-    }
+    MonitoredService monitoredService = getAndValidateMonitoredService(projectParams, monitoredServiceIdentifier);
+
     ServiceEnvironmentParams serviceEnvironmentParams =
         ServiceEnvironmentParams.builderWithProjectParams(projectParams)
             .serviceIdentifier(monitoredService.getServiceIdentifier())
@@ -2360,6 +2389,46 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
     }
 
     return activeServiceDTOList;
+  }
+
+  @Override
+  public PageResponse<MonitoredServiceReference> getMonitoredServiceReconciliationStatuses(
+      ProjectParams projectParams, String templateIdentifier, String templateVersionLabel, PageParams pageParams) {
+    List<MonitoredService> monitoredServiceList =
+        hPersistence.createQuery(MonitoredService.class)
+            .disableValidation()
+            .filter(MonitoredServiceKeys.accountId, projectParams.getAccountIdentifier())
+            .filter(MonitoredServiceKeys.orgIdentifier, projectParams.getOrgIdentifier())
+            .filter(MonitoredServiceKeys.projectIdentifier, projectParams.getProjectIdentifier())
+            .filter(MonitoredServiceKeys.templateMetadata + "." + TemplateMetadataKeys.isTemplateByReference, true)
+            .filter(MonitoredServiceKeys.templateMetadata + "." + TemplateMetadataKeys.templateIdentifier,
+                templateIdentifier)
+            .filter(
+                MonitoredServiceKeys.templateMetadata + "." + TemplateMetadataKeys.versionLabel, templateVersionLabel)
+            .asList();
+
+    String templateInputs = templateFacade.getTemplateInputs(projectParams, templateIdentifier, templateVersionLabel);
+
+    Long versionNumber =
+        templateFacade.getTemplateVersionNumber(projectParams, templateIdentifier, templateVersionLabel);
+
+    List<MonitoredServiceReference> monitoredServiceReferences =
+        monitoredServiceList.stream()
+            .map(monitoredService -> {
+              MonitoredServiceReferenceBuilder monitoredServiceReferenceBuilder =
+                  MonitoredServiceReference.builder()
+                      .accountIdentifier(monitoredService.getAccountId())
+                      .projectIdentifier(monitoredService.getProjectIdentifier())
+                      .serviceIdentifier(monitoredService.getServiceIdentifier())
+                      .orgIdentifier(monitoredService.getOrgIdentifier())
+                      .environmentIdentifier(monitoredService.getEnvironmentIdentifier())
+                      .lastReconciledTimestamp(monitoredService.getTemplateMetadata().getLastReconciliationTime());
+              monitoredServiceReferenceBuilder.reconciliationStatus(
+                  ReconciliationStatus.determineStatus(monitoredService, versionNumber, templateInputs));
+              return monitoredServiceReferenceBuilder.build();
+            })
+            .collect(Collectors.toList());
+    return PageUtils.offsetAndLimit(monitoredServiceReferences, pageParams.getPage(), pageParams.getSize());
   }
 
   private ServiceParams getServiceParams(MonitoredService ms) {
