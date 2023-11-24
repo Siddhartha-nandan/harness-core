@@ -6,6 +6,7 @@
  */
 
 package io.harness.ng.gitxwebhook;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import javax.validation.constraints.Max;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,8 +47,8 @@ public class ProjectGitXWebhookEventsApiImpl implements ProjectGitxWebhooksEvent
 
     Page<GitXWebhookEventResponse> gitXWebhookEvents =
         GitXWebhookMapper.buildListGitXWebhookEventResponse(gitXEventsListResponseDTO, page, limit);
-    Response.ResponseBuilder responseBuilder = Response.ok();
-    Response.ResponseBuilder responseBuilderWithLinks =
+    ResponseBuilder responseBuilder = Response.ok();
+    ResponseBuilder responseBuilderWithLinks =
         ApiUtils.addLinksHeader(responseBuilder, gitXWebhookEvents.getTotalElements(), page, limit);
     return responseBuilderWithLinks
         .entity(gitXWebhookEvents.getContent()
