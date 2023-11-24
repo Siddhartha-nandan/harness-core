@@ -27,6 +27,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.beans.SortOrder;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.DuplicateFieldException;
@@ -205,7 +207,7 @@ public class VariableServiceImplTest extends CategoryTest {
     when(variableMapper.writeDTO(variable)).thenReturn(variableDTO);
     when(variableRepository.save(variable)).thenReturn(variable);
     when(projectService.get(accountIdentifier, orgIdentifier, projectIdentifier)).thenReturn(Optional.of(project));
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(organization));
+    when(organizationService.get(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), orgIdentifier)).thenReturn(Optional.of(organization));
     when(transactionTemplate.execute(any()))
         .thenAnswer(invocationOnMock
             -> invocationOnMock.getArgument(0, TransactionCallback.class)
@@ -234,7 +236,7 @@ public class VariableServiceImplTest extends CategoryTest {
     when(variableMapper.toVariable(accountIdentifier, variableDTO)).thenReturn(variable);
     when(variableRepository.save(variable)).thenThrow(new DuplicateKeyException(""));
     when(projectService.get(accountIdentifier, orgIdentifier, projectIdentifier)).thenReturn(Optional.of(project));
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(organization));
+    when(organizationService.get(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), orgIdentifier)).thenReturn(Optional.of(organization));
     when(transactionTemplate.execute(any()))
         .thenAnswer(invocationOnMock
             -> invocationOnMock.getArgument(0, TransactionCallback.class)
@@ -423,7 +425,7 @@ public class VariableServiceImplTest extends CategoryTest {
              accountIdentifier, orgIdentifier, projectIdentifier, identifier))
         .thenReturn(Optional.of(variable));
     when(projectService.get(accountIdentifier, orgIdentifier, projectIdentifier)).thenReturn(Optional.of(project));
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(organization));
+    when(organizationService.get(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), orgIdentifier)).thenReturn(Optional.of(organization));
     when(transactionTemplate.execute(any()))
         .thenAnswer(invocationOnMock
             -> invocationOnMock.getArgument(0, TransactionCallback.class)

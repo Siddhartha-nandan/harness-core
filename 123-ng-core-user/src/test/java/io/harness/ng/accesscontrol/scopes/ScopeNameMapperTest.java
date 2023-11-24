@@ -21,6 +21,8 @@ import static org.mockito.MockitoAnnotations.initMocks;
 import io.harness.CategoryTest;
 import io.harness.accesscontrol.scopes.ScopeDTO;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.entities.Organization;
@@ -65,7 +67,7 @@ public class ScopeNameMapperTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testToScopeNameDTOWhenOrgWhenExists() throws IOException {
     ScopeDTO scopeDTO = ScopeDTO.builder().accountIdentifier(ACCOUNT_IDENTIFIER).orgIdentifier(ORG_IDENTIFIER).build();
-    doReturn(organizationResponse).when(organizationService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
+    doReturn(organizationResponse).when(organizationService).get(ScopeInfo.builder().accountIdentifier(ACCOUNT_IDENTIFIER).scopeType(ScopeLevel.ACCOUNT).uniqueId(ACCOUNT_IDENTIFIER).build(), ORG_IDENTIFIER);
     ScopeNameDTO result = scopeNameMapper.toScopeNameDTO(scopeDTO);
     verify(organizationService, times(1)).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
     verifyNoMoreInteractions(organizationService);
@@ -82,7 +84,7 @@ public class ScopeNameMapperTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testToScopeNameDTOWhenOrgWhenNotExists() throws IOException {
     ScopeDTO scopeDTO = ScopeDTO.builder().accountIdentifier(ACCOUNT_IDENTIFIER).orgIdentifier(ORG_IDENTIFIER).build();
-    doReturn(Optional.empty()).when(organizationService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
+    doReturn(Optional.empty()).when(organizationService).get(ScopeInfo.builder().accountIdentifier(ACCOUNT_IDENTIFIER).scopeType(ScopeLevel.ACCOUNT).uniqueId(ACCOUNT_IDENTIFIER).build(), ORG_IDENTIFIER);
     try {
       scopeNameMapper.toScopeNameDTO(scopeDTO);
       fail("Expected failure as org does not exists");
@@ -101,7 +103,7 @@ public class ScopeNameMapperTest extends CategoryTest {
                             .orgIdentifier(ORG_IDENTIFIER)
                             .projectIdentifier(PROJECT_IDENTIFIER)
                             .build();
-    doReturn(Optional.empty()).when(organizationService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
+    doReturn(Optional.empty()).when(organizationService).get(ScopeInfo.builder().accountIdentifier(ACCOUNT_IDENTIFIER).scopeType(ScopeLevel.ACCOUNT).uniqueId(ACCOUNT_IDENTIFIER).build(), ORG_IDENTIFIER);
     try {
       scopeNameMapper.toScopeNameDTO(scopeDTO);
       fail("Expected failure as org does not exists");
@@ -120,7 +122,7 @@ public class ScopeNameMapperTest extends CategoryTest {
                             .orgIdentifier(ORG_IDENTIFIER)
                             .projectIdentifier(PROJECT_IDENTIFIER)
                             .build();
-    doReturn(organizationResponse).when(organizationService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
+    doReturn(organizationResponse).when(organizationService).get(ScopeInfo.builder().accountIdentifier(ACCOUNT_IDENTIFIER).scopeType(ScopeLevel.ACCOUNT).uniqueId(ACCOUNT_IDENTIFIER).build(), ORG_IDENTIFIER);
 
     doReturn(Optional.empty()).when(projectService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER);
     try {
@@ -141,7 +143,7 @@ public class ScopeNameMapperTest extends CategoryTest {
                             .orgIdentifier(ORG_IDENTIFIER)
                             .projectIdentifier(PROJECT_IDENTIFIER)
                             .build();
-    doReturn(organizationResponse).when(organizationService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
+    doReturn(organizationResponse).when(organizationService).get(ScopeInfo.builder().accountIdentifier(ACCOUNT_IDENTIFIER).scopeType(ScopeLevel.ACCOUNT).uniqueId(ACCOUNT_IDENTIFIER).build(), ORG_IDENTIFIER);
     doReturn(projectResponse).when(projectService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER);
 
     ScopeNameDTO result = scopeNameMapper.toScopeNameDTO(scopeDTO);

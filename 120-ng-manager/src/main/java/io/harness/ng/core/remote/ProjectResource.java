@@ -36,6 +36,8 @@ import io.harness.accesscontrol.NGAccessControlCheck;
 import io.harness.accesscontrol.OrgIdentifier;
 import io.harness.accesscontrol.ResourceIdentifier;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.beans.SortOrder;
 import io.harness.exception.EntityNotFoundException;
 import io.harness.favorites.ResourceType;
@@ -363,7 +365,7 @@ public class ProjectResource {
           NGResourceFilterConstants.MODULE_TYPE_KEY) ModuleType moduleType,
       @Parameter(description = "Search Term") @QueryParam(
           NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm) {
-    Set<String> permittedOrgIds = organizationService.getPermittedOrganizations(accountIdentifier, orgIdentifier);
+    Set<String> permittedOrgIds = organizationService.getPermittedOrganizations(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), orgIdentifier);
     ProjectFilterDTO projectFilterDTO = getProjectFilterDTO(searchTerm, permittedOrgIds, hasModule, moduleType);
     return ResponseDTO.newResponse(projectService.listPermittedProjects(accountIdentifier, projectFilterDTO));
   }
@@ -393,7 +395,7 @@ public class ProjectResource {
       @Parameter(description = "Start time") @NotNull @QueryParam(
           NGResourceFilterConstants.START_TIME) long startInterval,
       @Parameter(description = "End time") @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval) {
-    Set<String> permittedOrgIds = organizationService.getPermittedOrganizations(accountIdentifier, orgIdentifier);
+    Set<String> permittedOrgIds = organizationService.getPermittedOrganizations(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), orgIdentifier);
     ProjectFilterDTO projectFilterDTO = getProjectFilterDTO(searchTerm, permittedOrgIds, hasModule, moduleType);
     return ResponseDTO.newResponse(
         projectService.permittedProjectsCount(accountIdentifier, projectFilterDTO, startInterval, endInterval));

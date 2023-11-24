@@ -24,6 +24,8 @@ import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.connector.services.ConnectorService;
 import io.harness.ng.core.api.DelegateDetailsService;
@@ -94,7 +96,7 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
     String orgIdentifier = randomAlphabetic(10);
 
     Organization organization = getOrganization(accountIdentifier, orgIdentifier);
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(organization));
+    when(organizationService.get(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), orgIdentifier)).thenReturn(Optional.of(organization));
 
     Map<String, Integer> projectsCount = singletonMap(organization.getIdentifier(), 3);
     when(projectService.getProjectsCountPerOrganization(eq(accountIdentifier), any())).thenReturn(projectsCount);
@@ -164,7 +166,7 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
     String accountIdentifier = randomAlphabetic(10);
 
     List<Organization> organizations = getOrganizations(accountIdentifier, 3);
-    when(organizationService.listPermittedOrgs(accountIdentifier, Pageable.unpaged(), null))
+    when(organizationService.listPermittedOrgs(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), Pageable.unpaged(), null))
         .thenReturn(getPage(organizations, 3));
 
     Map<String, Integer> projectsCount = new HashMap<>();
@@ -197,7 +199,7 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
     String accountIdentifier = randomAlphabetic(10);
 
     List<Organization> organizations = getOrganizations(accountIdentifier, 3);
-    when(organizationService.listPermittedOrgs(accountIdentifier, Pageable.unpaged(), null))
+    when(organizationService.listPermittedOrgs(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), Pageable.unpaged(), null))
         .thenReturn(getPage(organizations, 3));
 
     when(projectService.getProjectsCountPerOrganization(eq(accountIdentifier), any())).thenReturn(emptyMap());

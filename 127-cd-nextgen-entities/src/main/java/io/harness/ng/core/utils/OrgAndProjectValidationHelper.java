@@ -11,6 +11,8 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.ng.core.entities.Organization;
 import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.services.OrganizationService;
@@ -32,7 +34,7 @@ public class OrgAndProjectValidationHelper {
     if (isNotEmpty(orgIdentifier)) {
       // Needed since NG entities are considered unique with case-sensitive identifiers unlike org, project
       final Optional<Organization> organization =
-          organizationService.getConsideringCase(accountIdentifier, orgIdentifier);
+          organizationService.getConsideringCase(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), orgIdentifier);
       if (organization.isEmpty()) {
         throw new NotFoundException(String.format("org [%s] not found.", orgIdentifier));
       }

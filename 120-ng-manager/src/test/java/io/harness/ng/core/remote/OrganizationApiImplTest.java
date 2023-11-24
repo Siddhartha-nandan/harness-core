@@ -29,6 +29,8 @@ import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.dto.OrganizationDTO;
@@ -93,7 +95,7 @@ public class OrganizationApiImplTest extends CategoryTest {
     Organization organization = toOrganization(organizationDTO);
     organization.setVersion(0L);
 
-    when(organizationService.create(account, organizationDTO)).thenReturn(organization);
+    when(organizationService.create(ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build(), organizationDTO)).thenReturn(organization);
 
     Response response = organizationApi.createOrganization(organizationRequest, account);
     assertEquals(201, response.getStatus());
@@ -168,12 +170,12 @@ public class OrganizationApiImplTest extends CategoryTest {
 
     ArgumentCaptor<OrganizationFilterDTO> argumentCaptor = ArgumentCaptor.forClass(OrganizationFilterDTO.class);
 
-    when(organizationService.listPermittedOrgs(eq(account), any(), any()))
+    when(organizationService.listPermittedOrgs(eq(ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build()), any(), any()))
         .thenReturn(getPage(singletonList(organization), 1));
 
     Response response = organizationApi.getOrganizations(EMPTY_LIST, searchTerm, 0, 10, account, null, null);
 
-    verify(organizationService, times(1)).listPermittedOrgs(eq(account), any(), argumentCaptor.capture());
+    verify(organizationService, times(1)).listPermittedOrgs(eq(ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build()), any(), argumentCaptor.capture());
     OrganizationFilterDTO organizationFilterDTO = argumentCaptor.getValue();
 
     assertEquals(searchTerm, organizationFilterDTO.getSearchTerm());
@@ -196,7 +198,7 @@ public class OrganizationApiImplTest extends CategoryTest {
     Organization organization = toOrganization(organizationDTO);
     organization.setVersion(0L);
 
-    when(organizationService.update(account, identifier, organizationDTO)).thenReturn(organization);
+    when(organizationService.update(ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build(), identifier, organizationDTO)).thenReturn(organization);
 
     Response response = organizationApi.updateOrganization(request, identifier, account);
 
@@ -249,8 +251,8 @@ public class OrganizationApiImplTest extends CategoryTest {
     Organization organization = toOrganization(organizationDTO);
     organization.setVersion(0L);
 
-    when(organizationService.get(account, identifier)).thenReturn(Optional.of(organization));
-    when(organizationService.delete(account, identifier, null)).thenReturn(true);
+    when(organizationService.get(ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build(), identifier)).thenReturn(Optional.of(organization));
+    when(organizationService.delete(ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build(), identifier, null)).thenReturn(true);
 
     Response response = organizationApi.deleteOrganization(identifier, account);
 

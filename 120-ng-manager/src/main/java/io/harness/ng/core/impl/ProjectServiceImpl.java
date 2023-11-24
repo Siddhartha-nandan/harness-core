@@ -187,7 +187,8 @@ public class ProjectServiceImpl implements ProjectService {
     orgIdentifier = orgIdentifier == null ? DEFAULT_ORG_IDENTIFIER : orgIdentifier;
 
     // First check if an organization with given orgIdentifier exists or not.
-    Optional<Organization> organizationOptional = organizationService.get(accountIdentifier, orgIdentifier);
+    // Here ScopeInfo will come from context through ProjectResource
+    Optional<Organization> organizationOptional = organizationService.get(ScopeInfo.builder().accountIdentifier(accountIdentifier).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountIdentifier).build(), orgIdentifier);
     if (!organizationOptional.isPresent()) {
       throw new EntityNotFoundException(String.format("Organization with identifier [%s] not found", orgIdentifier));
     }

@@ -159,7 +159,7 @@ public class OrganizationResource {
           NGCommonEntityConstants.IDENTIFIER_KEY) @ResourceIdentifier String identifier,
       @Parameter(description = ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
           NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier, @Context ScopeInfo scopeInfo) {
-    Optional<Organization> organizationOptional = organizationService.get(scopeInfo, identifier); /*organizationService.get(accountIdentifier, identifier);*/
+    Optional<Organization> organizationOptional = organizationService.get(scopeInfo, identifier);
     if (!organizationOptional.isPresent()) {
       throw new NotFoundException(String.format("Organization with identifier [%s] not found", identifier));
     }

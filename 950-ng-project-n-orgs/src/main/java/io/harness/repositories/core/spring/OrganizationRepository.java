@@ -27,8 +27,8 @@ public interface OrganizationRepository
   Optional<Organization> findByParentIdAndIdentifierIgnoreCaseAndDeletedNot(
       String parentId, String identifier, boolean notDeleted);
 
-  Optional<Organization> findByAccountIdentifierAndIdentifierAndDeletedNot(
-      String accountIdentifier, String identifier, boolean notDeleted);
+  Optional<Organization> findByParentIdAndIdentifierAndDeletedNot(
+      String parentId, String identifier, boolean notDeleted);
 
   Long countByAccountIdentifier(String accountIdentifier);
   Long countByParentId(String parentId);
