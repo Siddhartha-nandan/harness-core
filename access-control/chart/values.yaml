@@ -266,10 +266,10 @@ pdb:
 # --image.pullPolicy Image pull policy
 # --image.imagePullSecrets Specify docker-registry secret names as an array
 image:
-  registry: us.gcr.io
-  repository: platform-205701/access-control
+  registry: us.gcr.io/platform-205701
+  repository: access-control
   pullPolicy: IfNotPresent
-  tag: "1.23.0"
+  tag: "1.23.1"
   digest: ""
   imagePullSecrets: []
 # -- Wait-For-App initContainers details
