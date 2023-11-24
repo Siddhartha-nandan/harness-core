@@ -7,6 +7,7 @@
 
 package io.harness.delegate.task.citasks.cik8handler;
 import static io.harness.annotations.dev.HarnessTeam.CI;
+import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import io.harness.annotations.dev.CodePulse;
@@ -26,6 +27,7 @@ import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.models.CoreV1Event;
+import io.kubernetes.client.util.ClientBuilder;
 import io.kubernetes.client.util.Watch;
 import java.io.IOException;
 import java.time.OffsetDateTime;
@@ -44,11 +46,11 @@ public class K8EventHandler {
 
   private static Integer watchTimeout = 8 * 60;
 
-  public Watch<CoreV1Event> startAsyncPodEventWatch(
-      KubernetesConfig kubernetesConfig, String namespace, String pod, ILogStreamingTaskClient logStreamingTaskClient) {
+  public Watch<CoreV1Event> startAsyncPodEventWatch(KubernetesConfig kubernetesConfig, String namespace, String pod,
+      ILogStreamingTaskClient logStreamingTaskClient, CoreV1Api coreV1ApiInput) {
     String fieldSelector = String.format("involvedObject.name=%s,involvedObject.kind=Pod", pod);
     try {
-      Watch<CoreV1Event> watch = createWatch(kubernetesConfig, namespace, fieldSelector);
+      Watch<CoreV1Event> watch = createWatch(kubernetesConfig, namespace, fieldSelector, coreV1ApiInput);
       new Thread(() -> {
         try {
           logWatchEvents(watch, logStreamingTaskClient);
@@ -62,6 +64,9 @@ public class K8EventHandler {
       streamLogLine(
           logStreamingTaskClient, LogLevel.ERROR, String.format("failed to watch pod event: %s", e.getMessage()));
       log.error("failed to create watch on pod events", e);
+      return null;
+    } catch (IOException ex) {
+      log.error("failed to create watch on pod events", ex);
       return null;
     }
   }
@@ -83,10 +88,11 @@ public class K8EventHandler {
     }
   }
 
-  private Watch<CoreV1Event> createWatch(KubernetesConfig kubernetesConfig, String namespace, String fieldSelector)
-      throws ApiException {
-    ApiClient apiClient = apiClientFactory.getClient(kubernetesConfig);
-    CoreV1Api coreV1Api = new CoreV1Api(apiClient);
+  private Watch<CoreV1Event> createWatch(KubernetesConfig kubernetesConfig, String namespace, String fieldSelector,
+      CoreV1Api coreV1ApiInput) throws ApiException, IOException {
+    ApiClient apiClient =
+        coreV1ApiInput != null ? coreV1ApiInput.getApiClient() : apiClientFactory.getClient(kubernetesConfig);
+    CoreV1Api coreV1Api = coreV1ApiInput != null ? coreV1ApiInput : new CoreV1Api(apiClient);
     return Watch.createWatch(apiClient,
         coreV1Api.listNamespacedEventCall(
             namespace, null, false, null, fieldSelector, null, null, null, null, watchTimeout, Boolean.TRUE, null),
@@ -103,6 +109,8 @@ public class K8EventHandler {
               "{}: Event- {}, Reason - {}", item.object.getType(), item.object.getMessage(), item.object.getReason());
         }
       }
+    } catch (Exception ex) {
+      log.info("Exception is ", ex);
     } finally {
       watch.close();
     }

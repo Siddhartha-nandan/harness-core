@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"fmt"
 
 	"github.com/harness/harness-core/product/log-service/logger"
 	"github.com/harness/harness-core/product/log-service/store"
@@ -21,7 +22,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var pingInterval = time.Second * 30
+var pingInterval = time.Second * 10
 var tailMaxTime = time.Hour * 1
 
 // BufioWriterCloser combines a bufio Writer with a Closer
@@ -248,8 +249,13 @@ func HandleTail(s stream.Stream) http.HandlerFunc {
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 
+		fmt.Println("Reached here 1")
+
 		enc := json.NewEncoder(w)
 		linec, errc := s.Tail(ctx, key)
+
+		fmt.Println("Reached here 2")
+
 		if errc == nil {
 			io.WriteString(w, "event: error\ndata: eof\n")
 			return
@@ -261,6 +267,7 @@ func HandleTail(s stream.Stream) http.HandlerFunc {
 
 	L:
 		for {
+		    fmt.Println("Reaching for loop")
 			msgDelayTimer.Reset(pingInterval)
 			select {
 			case <-ctx.Done():
@@ -270,6 +277,7 @@ func HandleTail(s stream.Stream) http.HandlerFunc {
 			case <-tailMaxTimeTimer:
 				break L
 			case <-msgDelayTimer.C:
+			    fmt.Println("Msg delay timer ")
 				io.WriteString(w, ": ping\n")
 				f.Flush()
 			case line := <-linec:
@@ -279,6 +287,7 @@ func HandleTail(s stream.Stream) http.HandlerFunc {
 				f.Flush()
 			}
 		}
+		fmt.Println("Reached here 3")
 
 		io.WriteString(w, "event: error\ndata: eof\n")
 		f.Flush()

@@ -521,7 +521,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
         //      DELEGATE_GROUP_NAME = "localDelegate";
         // Setting delegate type as kubernetes, as NG doesn't allow shell delegates.
         DELEGATE_TYPE = KUBERNETES;
-        DELEGATE_NAME = "LocalDelegatessaa";
+        DELEGATE_NAME = "LocalDelegatessaaaas";
       }
       accountId = delegateConfiguration.getAccountId();
       if (perpetualTaskWorker != null) {

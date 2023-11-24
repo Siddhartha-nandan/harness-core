@@ -109,7 +109,7 @@ public class ContainerFactory {
         .withCommand(getAddonCmd())
         .withArgs(getAddonArgs())
         .withImagePullPolicy("Always")
-        .withResources(getResources("100m", "100Mi"))
+        .withResources(getResources("500m", "500Mi"))
         .withWorkingDir("/opt/harness");
   }
 

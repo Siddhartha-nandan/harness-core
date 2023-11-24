@@ -185,7 +185,7 @@ public class CIK8InitializeTaskHandler implements CIInitializeTaskHandler {
 
         cik8JavaClientHandler.createOrReplacePodWithRetries(coreV1Api, pod, namespace);
         Watch<CoreV1Event> watch =
-            k8EventHandler.startAsyncPodEventWatch(kubernetesConfig, namespace, podName, logStreamingTaskClient);
+            k8EventHandler.startAsyncPodEventWatch(kubernetesConfig, namespace, podName, logStreamingTaskClient, null);
         PodStatus podStatus = cik8JavaClientHandler.waitUntilPodIsReady(
             coreV1Api, podName, namespace, cik8InitializeTaskParams.getPodMaxWaitUntilReadySecs());
         if (watch != null) {

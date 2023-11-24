@@ -15,6 +15,7 @@ import static io.harness.threading.Morpheus.sleep;
 
 import static java.lang.String.format;
 import static java.time.Duration.ofMinutes;
+import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.flatMapping;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
@@ -32,6 +33,7 @@ import io.harness.delegate.service.core.util.ApiExceptionLogger;
 import io.harness.delegate.service.core.util.K8SResourceHelper;
 import io.harness.delegate.service.handlermapping.context.Context;
 import io.harness.delegate.service.runners.itfc.Runner;
+import io.harness.delegate.task.citasks.cik8handler.K8EventHandler;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.LogLevel;
 import io.harness.logstreaming.LogLine;
@@ -52,12 +54,14 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
+import io.kubernetes.client.openapi.models.CoreV1Event;
 import io.kubernetes.client.openapi.models.V1Container;
 import io.kubernetes.client.openapi.models.V1EnvFromSource;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.openapi.models.V1Service;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
+import io.kubernetes.client.util.Watch;
 import io.kubernetes.client.util.Yaml;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -89,7 +93,7 @@ public class K8SLiteRunner implements Runner {
   private final InfraCleaner infraCleaner;
   private final LogStreamingClient logStreamingClient;
   private final DelegateLogService delegateLogService;
-  //  private final K8EventHandler k8EventHandler;
+  private final K8EventHandler k8EventHandler;
 
   @Override
   public void init(
@@ -152,16 +156,21 @@ public class K8SLiteRunner implements Runner {
                             .buildPod(k8sInfra, volumes, loggingSecret, portMap);
 
       log.info("Creating Task Pod with YAML:\n{}", Yaml.dump(pod));
-      coreApi.createNamespacedPod(namespace, pod, null, null, DELEGATE_FIELD_MANAGER, "Warn");
-
-      streamLogLine(logStreamingTaskClient, LogLevel.INFO, format("Done creating the task pod for %s!!", infraId));
-      sleep(ofMinutes(1));
 
       // Step 5 - Watch pod logs - normally stop when init finished, but if LE sends response then that's not possible
       // (e.g. delegate replicaset), but we can stop on watch status
-      //    Watch<CoreV1Event> watch =
-      //            k8EventHandler.startAsyncPodEventWatch(kubernetesConfig, namespace, podName,
-      //            logStreamingTaskClient);
+      Watch<CoreV1Event> watch = k8EventHandler.startAsyncPodEventWatch(
+          null, namespace, pod.getMetadata().getName(), logStreamingTaskClient, coreApi);
+
+      coreApi.createNamespacedPod(namespace, pod, null, null, DELEGATE_FIELD_MANAGER, "Warn");
+
+      streamLogLine(logStreamingTaskClient, LogLevel.INFO, format("Done creating the task pod for %s!!", infraId));
+      //  sleep(ofSeconds(5));
+
+      if (watch != null) {
+        // k8EventHandler.stopEventWatch(watch);
+        sleep(ofMinutes(1));
+      }
 
       // Step 6 - send response to SaaS
     } catch (ApiException e) {
@@ -173,7 +182,7 @@ public class K8SLiteRunner implements Runner {
       throw e;
     } finally {
       if (logStreamingTaskClient != null) {
-        logStreamingTaskClient.closeStream(null);
+        //  logStreamingTaskClient.closeStream(null);
       }
     }
   }
@@ -320,7 +329,7 @@ public class K8SLiteRunner implements Runner {
         // client need to send logKey for init task as well, this logKey will be used to create and push logs to stream
         // from delegate runner.
         .baseLogKey(
-            "orgId:default/projectId:dummy/pipelineId:shell/runSequence:210/level0:pipeline/level1:stages/level2:shell/level3:spec/level4:execution/level5:steps/level6:ShellScript_1-commandUnit:Execute")
+            "accountId:kmpySmUISimoRrJL6NL73w/orgId:default/projectId:dummy/pipelineId:shell/runSequence:231/level0:pipeline/level1:stages/level2:shell/level3:spec/level4:execution/level5:steps/level6:ShellScript_1-commandUnit:Execute")
         .logService(delegateLogService)
         .build();
   }

@@ -130,7 +130,7 @@ public class NgDelegate2TaskExecutor implements TaskExecutor {
 
     LogConfig logConfig = LogConfig.newBuilder().setLogPrefix("asdsadasd").build();
 
-    ComputingResource computingResource = ComputingResource.newBuilder().setCpu("100m").setMemory("100Mi").build();
+    ComputingResource computingResource = ComputingResource.newBuilder().setCpu("500m").setMemory("500Mi").build();
 
     List<Long> ports = new ArrayList<>();
     ports.add(Long.valueOf(20002));
