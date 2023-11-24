@@ -25,7 +25,17 @@ public enum NotificationEvent {
   DELEGATE_ABOUT_TO_EXPIRE(NotificationEntity.DELEGATE, NotificationModule.PLATFORM, "DelegateAboutToExpire"),
 
   // connector events
-  CONNECTOR_DOWN(NotificationEntity.CONNECTOR, NotificationModule.PLATFORM, "ConnectorDown");
+  CONNECTOR_DOWN(NotificationEntity.CONNECTOR, NotificationModule.PLATFORM, "ConnectorDown"),
+
+  //  Chaos Fault events
+  FAULT_STARTED(NotificationEntity.CHAOS_FAULT, NotificationModule.CHAOS, "FaultStarted"),
+  FAULT_FAILED(NotificationEntity.CHAOS_FAULT, NotificationModule.CHAOS, "FaultFailed"),
+  FAULT_STOPPED(NotificationEntity.CHAOS_FAULT, NotificationModule.CHAOS, "FaultStopped"),
+
+  //  Chaos Experiment events
+  EXPERIMENT_STARTED(NotificationEntity.CHAOS_EXPERIMENT, NotificationModule.CHAOS, "ExperimentStarted"),
+  EXPERIMENT_FAILED(NotificationEntity.CHAOS_EXPERIMENT, NotificationModule.CHAOS, "ExperimentFailed"),
+  EXPERIMENT_STOPPED(NotificationEntity.CHAOS_EXPERIMENT, NotificationModule.CHAOS, "ExperimentStopped");
 
   private final NotificationEntity notificationEntity;
   private final NotificationModule notificationModule;

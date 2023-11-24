@@ -10,7 +10,9 @@ package io.harness.notification.entities;
 public enum NotificationEntity {
   PIPELINE(NotificationModule.PLATFORM, "Pipeline"),
   DELEGATE(NotificationModule.PLATFORM, "Delegate"),
-  CONNECTOR(NotificationModule.PLATFORM, "Connector");
+  CONNECTOR(NotificationModule.PLATFORM, "Connector"),
+  CHAOS_FAULT(NotificationModule.CHAOS, "ChaosFault"),
+  CHAOS_EXPERIMENT(NotificationModule.CHAOS, "ChaosExperiment");
 
   private final NotificationModule notificationModule;
   private final String displayName;
