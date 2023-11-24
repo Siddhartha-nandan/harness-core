@@ -7,27 +7,15 @@
 
 package io.harness.cdng.plugininfoproviders;
 
-import static io.harness.connector.ConnectorModule.DEFAULT_CONNECTOR_SERVICE;
-import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
-
 import static java.lang.String.format;
 
-import io.harness.annotations.dev.CodePulse;
-import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.annotations.dev.ProductModule;
-import io.harness.cdng.aws.sam.AwsSamDeployStep;
-import io.harness.cdng.aws.sam.AwsSamDeployStepInfo;
-import io.harness.cdng.aws.sam.AwsSamDeployStepParameters;
-import io.harness.cdng.aws.sam.AwsSamStepHelper;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepHelper;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepParameters;
-import io.harness.cdng.expressions.CDExpressionResolver;
 import io.harness.cdng.pipeline.executions.CDPluginInfoProvider;
 import io.harness.cdng.pipeline.steps.CdAbstractStepNode;
-import io.harness.connector.services.ConnectorService;
 import io.harness.executions.steps.StepSpecTypeConstants;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.plan.ImageDetails;
@@ -37,15 +25,11 @@ import io.harness.pms.contracts.plan.PluginCreationResponseWrapper;
 import io.harness.pms.contracts.plan.PluginDetails;
 import io.harness.pms.contracts.plan.StepInfoProto;
 import io.harness.pms.sdk.core.plugin.ContainerPluginParseException;
-import io.harness.pms.sdk.core.resolver.outcome.OutcomeService;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YamlUtils;
-import io.harness.steps.container.execution.plugin.StepImageConfig;
 
 import com.google.inject.Inject;
-import com.google.inject.name.Named;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 

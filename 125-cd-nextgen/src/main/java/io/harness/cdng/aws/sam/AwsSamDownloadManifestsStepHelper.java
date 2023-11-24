@@ -114,7 +114,7 @@ public class AwsSamDownloadManifestsStepHelper {
     StepElementParameters valuesStepElementParameters =
         downloadManifestsCommonHelper.getGitStepElementParameters(valuesManifestOutcome, valuesGitCloneStepInfo);
 
-    Ambiance ambianceForValuesManifest = downloadManifestsCommonHelper.buildAmbiance(
+    Ambiance ambianceForValuesManifest = downloadManifestsCommonHelper.buildAmbianceForGitClone(
         ambiance, downloadManifestsCommonHelper.getGitCloneStepIdentifier(valuesManifestOutcome));
 
     return gitCloneStep.executeAsyncAfterRbac(ambianceForValuesManifest, valuesStepElementParameters, inputPackage);
@@ -131,7 +131,7 @@ public class AwsSamDownloadManifestsStepHelper {
     StepElementParameters stepElementParameters =
         downloadManifestsCommonHelper.getGitStepElementParameters(awsSamDirectoryManifestOutcome, gitCloneStepInfo);
 
-    Ambiance ambianceForAwsSamDirectoryManifest = downloadManifestsCommonHelper.buildAmbiance(
+    Ambiance ambianceForAwsSamDirectoryManifest = downloadManifestsCommonHelper.buildAmbianceForGitClone(
         ambiance, downloadManifestsCommonHelper.getGitCloneStepIdentifier(awsSamDirectoryManifestOutcome));
     return gitCloneStep.executeAsyncAfterRbac(ambianceForAwsSamDirectoryManifest, stepElementParameters, inputPackage);
   }

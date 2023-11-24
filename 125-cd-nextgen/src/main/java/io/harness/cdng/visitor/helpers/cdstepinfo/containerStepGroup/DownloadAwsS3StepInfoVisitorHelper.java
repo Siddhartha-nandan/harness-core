@@ -7,7 +7,6 @@
 
 package io.harness.cdng.visitor.helpers.cdstepinfo.containerStepGroup;
 
-import io.harness.cdng.aws.sam.AwsSamDeployStepInfo;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo;
 import io.harness.walktree.visitor.validation.ConfigValidator;
 import io.harness.walktree.visitor.validation.ValidationVisitor;

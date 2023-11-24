@@ -7,38 +7,11 @@
 
 package io.harness.cdng.containerStepGroup;
 
-import static io.harness.connector.ConnectorModule.DEFAULT_CONNECTOR_SERVICE;
-
-import io.harness.annotations.dev.CodePulse;
-import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.annotations.dev.ProductModule;
-import io.harness.beans.IdentifierRef;
 import io.harness.callback.DelegateCallbackToken;
-import io.harness.cdng.aws.sam.AwsSamDeployStepParameters;
-import io.harness.cdng.aws.sam.AwsSamStepHelper;
-import io.harness.cdng.expressions.CDExpressionResolver;
-import io.harness.cdng.infra.beans.AwsSamInfrastructureOutcome;
-import io.harness.cdng.infra.beans.InfrastructureOutcome;
-import io.harness.cdng.instance.info.InstanceInfoService;
-import io.harness.cdng.manifest.steps.outcome.ManifestsOutcome;
-import io.harness.cdng.manifest.yaml.AwsSamDirectoryManifestOutcome;
 import io.harness.cdng.plugininfoproviders.PluginExecutionConfig;
-import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
-import io.harness.connector.ConnectorInfoDTO;
-import io.harness.connector.ConnectorResponseDTO;
-import io.harness.connector.services.ConnectorService;
-import io.harness.delegate.beans.connector.ConnectorConfigDTO;
-import io.harness.delegate.beans.connector.awsconnector.AwsConnectorDTO;
-import io.harness.delegate.beans.connector.awsconnector.AwsCredentialDTO;
-import io.harness.delegate.beans.connector.awsconnector.AwsCredentialSpecDTO;
-import io.harness.delegate.beans.connector.awsconnector.AwsManualConfigSpecDTO;
-import io.harness.delegate.beans.instancesync.ServerInstanceInfo;
-import io.harness.exception.InvalidRequestException;
 import io.harness.executions.steps.ExecutionNodeType;
-import io.harness.helper.SerializedResponseDataHelper;
-import io.harness.ng.core.NGAccess;
 import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
@@ -47,28 +20,16 @@ import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.sdk.core.plugin.AbstractContainerStepV2;
 import io.harness.pms.sdk.core.plugin.ContainerUnitStepUtils;
-import io.harness.pms.sdk.core.resolver.RefObjectUtils;
-import io.harness.pms.sdk.core.resolver.outcome.OutcomeService;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
-import io.harness.pms.yaml.ParameterField;
 import io.harness.product.ci.engine.proto.UnitStep;
-import io.harness.serializer.KryoSerializer;
-import io.harness.tasks.BinaryResponseData;
 import io.harness.tasks.ResponseData;
-import io.harness.utils.IdentifierRefHelper;
 import io.harness.yaml.core.timeout.Timeout;
-import io.harness.yaml.utils.NGVariablesUtils;
 
 import com.google.inject.Inject;
-import com.google.inject.name.Named;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 
 @OwnedBy(HarnessTeam.CDP)
 @Slf4j

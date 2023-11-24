@@ -8,7 +8,6 @@
 package io.harness.cdng.containerStepGroup;
 
 import static io.harness.ci.commonconstants.CIExecutionConstants.PATH_SEPARATOR;
-import static io.harness.ci.commonconstants.ContainerExecutionConstants.PLUGIN_OUTPUT_FILE_PATHS_CONTENT;
 import static io.harness.ci.commonconstants.ContainerExecutionConstants.STEP_MOUNT_PATH;
 import static io.harness.connector.ConnectorModule.DEFAULT_CONNECTOR_SERVICE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;

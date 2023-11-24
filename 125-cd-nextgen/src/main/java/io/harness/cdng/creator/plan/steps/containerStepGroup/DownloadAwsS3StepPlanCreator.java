@@ -9,7 +9,6 @@ package io.harness.cdng.creator.plan.steps.containerStepGroup;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.cdng.aws.sam.AwsSamDeployStepNode;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepNode;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepParameters;
 import io.harness.cdng.creator.plan.steps.CDPMSStepPlanCreatorV2;

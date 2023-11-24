@@ -16,15 +16,10 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.steps.nodes.GitCloneStepNode;
 import io.harness.beans.steps.stepinfo.GitCloneStepInfo;
-import io.harness.beans.yaml.extended.ImagePullPolicy;
-import io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo;
-import io.harness.cdng.containerStepGroup.DownloadAwsS3StepParameters;
 import io.harness.cdng.manifest.steps.outcome.ManifestsOutcome;
 import io.harness.cdng.manifest.yaml.GitStoreConfig;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
 import io.harness.cdng.pipeline.steps.CdAbstractStepNode;
-import io.harness.cdng.serverless.container.steps.ServerlessAwsLambdaPrepareRollbackV2StepInfo;
-import io.harness.cdng.serverless.container.steps.ServerlessAwsLambdaPrepareRollbackV2StepParameters;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
 import io.harness.data.structure.UUIDGenerator;
 import io.harness.delegate.beans.storeconfig.FetchType;
@@ -68,7 +63,7 @@ public class DownloadManifestsCommonHelper {
     return (ManifestsOutcome) manifestsOutcome.getOutcome();
   }
 
-  public Ambiance buildAmbiance(Ambiance ambiance, String identifier) {
+  public Ambiance buildAmbianceForGitClone(Ambiance ambiance, String identifier) {
     Level level = Level.newBuilder()
                       .setIdentifier(identifier)
                       .setSkipExpressionChain(true)
@@ -119,18 +114,6 @@ public class DownloadManifestsCommonHelper {
         .build();
   }
 
-  public StepElementParameters getDownloadS3StepElementParameters(
-      ManifestOutcome gitManifestOutcome, DownloadAwsS3StepInfo downloadAwsS3StepInfo) {
-    DownloadAwsS3StepParameters downloadAwsS3StepParameters =
-        (DownloadAwsS3StepParameters) downloadAwsS3StepInfo.getSpecParameters();
-    return StepElementParameters.builder()
-        .name(gitManifestOutcome.getIdentifier())
-        .identifier(gitManifestOutcome.getIdentifier())
-        .spec(downloadAwsS3StepParameters)
-        .timeout(ParameterField.createValueField("10m"))
-        .build();
-  }
-
   public StepElementParameters getGitStepElementParameters(
       ManifestOutcome gitManifestOutcome, GitCloneStepInfo gitCloneStepInfo) {
     return StepElementParameters.builder()
@@ -155,9 +138,5 @@ public class DownloadManifestsCommonHelper {
 
   public String getGitCloneStepIdentifier(ManifestOutcome gitManifestOutcome) {
     return GIT_CLONE_STEP_ID + gitManifestOutcome.getIdentifier();
-  }
-
-  public String getDownloadS3StepIdentifier(ManifestOutcome manifestOutcome) {
-    return manifestOutcome.getIdentifier();
   }
 }
