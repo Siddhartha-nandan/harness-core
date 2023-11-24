@@ -287,7 +287,7 @@ pmsGrpcClientConfig:
   target: localhost:12011
   authority: localhost
 
-shouldConfigureWithPMS: ${SHOULD_CONFIGURE_WITH_PMS:-true}
+shouldConfigureWithPMS: ${SHOULD_CONFIGURE_WITH_PMS:-false}
 
 ceAwsSetupConfig:
   accessKey: ce_aws_accessKey_placeholder
@@ -545,7 +545,7 @@ pluginExecutionConfig:
       - /usr/local/bin/clone
   downloadAwsS3Config:
     # Use rootless image only for K8 git clone
-    image: harnessdev/testing:1.1.2
+    image: harnessdev/download-aws-s3:1.0.0-rootless-linux
     entrypoint:
       - /usr/local/bin/download
   apiUrl: https://localhost:8181/#/
