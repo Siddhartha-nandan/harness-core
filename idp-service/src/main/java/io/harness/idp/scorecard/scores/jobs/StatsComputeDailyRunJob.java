@@ -9,6 +9,7 @@ package io.harness.idp.scorecard.scores.jobs;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.idp.scorecard.scores.service.StatsComputeService;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.Inject;
@@ -21,8 +22,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import io.harness.idp.scorecard.scores.service.StatsComputeService;
 import lombok.extern.slf4j.Slf4j;
 
 @Singleton
@@ -33,8 +32,8 @@ public class StatsComputeDailyRunJob implements Managed {
   private final StatsComputeService statsComputeService;
 
   @Inject
-  public StatsComputeDailyRunJob(
-      @Named("statsComputeDailyRunJob") ScheduledExecutorService executorService, StatsComputeService statsComputeService) {
+  public StatsComputeDailyRunJob(@Named("statsComputeDailyRunJob") ScheduledExecutorService executorService,
+      StatsComputeService statsComputeService) {
     this.executorService = executorService;
     this.statsComputeService = statsComputeService;
   }
@@ -45,7 +44,7 @@ public class StatsComputeDailyRunJob implements Managed {
         new ThreadFactoryBuilder().setNameFormat("stats-compute-daily-run-job").build());
     long midnight = LocalDateTime.now().until(LocalDate.now().plusDays(1).atStartOfDay(), ChronoUnit.MINUTES);
     log.info("Scheduling StatsComputeDailyRunJob with initial delay of {} minutes from current time", midnight);
-    executorService.scheduleAtFixedRate(this::run, midnight + 10, TimeUnit.DAYS.toMinutes(1), TimeUnit.MINUTES);
+    executorService.scheduleAtFixedRate(this::run,  3, TimeUnit.DAYS.toMinutes(1), TimeUnit.MINUTES);
   }
 
   @Override

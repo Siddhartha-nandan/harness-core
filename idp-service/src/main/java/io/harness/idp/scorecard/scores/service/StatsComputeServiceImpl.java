@@ -69,11 +69,18 @@ public class StatsComputeServiceImpl implements StatsComputeService {
             scoreComputerService.getAllEntities(accountId, null, List.of(scorecardEntity.getFilter()));
         Map<String, BackstageCatalogEntity> backstageCatalogMap = backstageCatalogs.stream().collect(
             Collectors.toMap(catalog -> catalog.getMetadata().getUid(), catalog -> catalog));
+        String scorecardId = scorecardEntity.getIdentifier();
+        log.info("{} - Backstage catalogs matching filter for scorecard - {} for account - {}",
+            backstageCatalogs.size(), scorecardId, accountId);
         List<ScoreEntityByEntityIdentifier> scoreByEntityIds =
-            scoreRepository.getLatestScoresForScorecard(accountId, scorecardEntity.getIdentifier());
+            scoreRepository.getLatestScoresForScorecard(accountId, scorecardId);
         for (ScoreEntityByEntityIdentifier scoreByEntity : scoreByEntityIds) {
           String entityIdentifier = scoreByEntity.getEntityIdentifier();
           ScoreEntity scoreEntity = scoreByEntity.getScoreEntity();
+          if (!backstageCatalogMap.containsKey(entityIdentifier)) {
+            log.info("Could not find entityId - {} in backstage catalogs map", entityIdentifier);
+            continue;
+          }
           scorecardStatsEntities.add(
               scorecardStatsRepository.saveOrUpdate(scoreEntity, backstageCatalogMap.get(entityIdentifier)));
           for (CheckStatus checkStatus : scoreEntity.getCheckStatus()) {

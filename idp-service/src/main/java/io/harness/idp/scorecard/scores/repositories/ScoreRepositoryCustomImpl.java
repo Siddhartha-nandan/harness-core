@@ -171,7 +171,8 @@ public class ScoreRepositoryCustomImpl implements ScoreRepositoryCustom {
             .first(Aggregation.ROOT)
             .as(Constants.SCORE_ENTITY_KEY),
         projectionOperation);
-    return mongoTemplate.aggregate(aggregation, Constants.SCORE_COLLECTION_NAME, ScoreEntityByEntityIdentifier.class).getMappedResults();
+    return mongoTemplate.aggregate(aggregation, Constants.SCORE_COLLECTION_NAME, ScoreEntityByEntityIdentifier.class)
+        .getMappedResults();
   }
 
   @Override
