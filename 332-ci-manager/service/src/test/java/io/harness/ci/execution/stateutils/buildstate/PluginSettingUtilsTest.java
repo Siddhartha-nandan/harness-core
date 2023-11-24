@@ -1154,7 +1154,7 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
     expected.put("PLUGIN_TYPE", "Enforce");
     expected.put("POLICY_FILE_IDENTIFIER", "file");
     expected.put("SSCA_MANAGER_ENABLED", "false");
-    expected.put("COSIGN_PUBLIC_KEY", "${ngSecretManager.obtain(\"publicKey\", 12345)}");
+    expected.put("COSIGN_PUBLIC_KEY", "${ngSecretManager.obtain('publicKey', 12345)}");
     Map<String, String> actual = pluginSettingUtils.getPluginCompatibleEnvVariables(
         sscaEnforcementStepInfo, "identifier", 100, ambiance, Type.VM, false, true);
     assertThat(actual).isEqualTo(expected);
