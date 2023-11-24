@@ -19,6 +19,7 @@ import io.harness.cvng.core.beans.monitoredService.MonitoredServiceChangeDetailS
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceDTO;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceListItemDTO;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServicePlatformResponse;
+import io.harness.cvng.core.beans.monitoredService.MonitoredServiceReference;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceResponse;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceWithHealthSources;
 import io.harness.cvng.core.beans.monitoredService.healthSouceSpec.HealthSourceDTO;
@@ -55,7 +56,7 @@ public interface MonitoredServiceService extends DeleteEntityByHandler<Monitored
   MonitoredServiceResponse create(String accountId, MonitoredServiceDTO monitoredServiceDTO);
   MonitoredServiceResponse createFromYaml(ProjectParams projectParams, String yaml);
   MonitoredServiceResponse updateFromYaml(ProjectParams projectParams, String identifier, String yaml);
-  MonitoredServiceResponse update(String accountId, MonitoredServiceDTO monitoredServiceDTO);
+  MonitoredServiceResponse update(String accountId, MonitoredServiceDTO monitoredServiceDTO, boolean isUpdatedFromYaml);
   boolean delete(ProjectParams projectParams, String identifier);
   List<MonitoredServiceResponse> get(ProjectParams projectParams, Set<String> identifier);
 
@@ -82,6 +83,11 @@ public interface MonitoredServiceService extends DeleteEntityByHandler<Monitored
 
   MonitoredServiceDTO getExpandedMonitoredServiceFromYamlWithPipelineVariables(
       ProjectParams projectParams, String yaml, Ambiance ambiance);
+  String getResolvedTemplateInputs(
+      ProjectParams projectParams, String identifier, String templateIdentifier, String versionLabel);
+  boolean isReconciliationRequiredForMonitoredServices(ProjectParams templateProjectParams, String templateIdentifier,
+      String versionLabel, String monitoredServiceIdentifier, int templateVersionNumber);
+  boolean detachMonitoredServiceFromTemplate(ProjectParams projectParams, String identifier);
 
   Optional<MonitoredService> getApplicationMonitoredService(ServiceEnvironmentParams serviceEnvironmentParams);
 
@@ -152,4 +158,7 @@ public interface MonitoredServiceService extends DeleteEntityByHandler<Monitored
   List<ActiveServiceMonitoredDTO> listActiveServiceMonitored(ProjectParams projectParams);
 
   List<ActiveServiceDTO> listActiveMonitoredServices(ProjectParams projectParams, String serviceIdentifier);
+
+  PageResponse<MonitoredServiceReference> getMonitoredServiceReconciliationStatuses(
+      ProjectParams projectParams, String templateIdentifier, String templateVersionLabel, PageParams pageParams);
 }

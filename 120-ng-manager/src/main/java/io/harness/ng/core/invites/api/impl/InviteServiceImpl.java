@@ -286,7 +286,7 @@ public class InviteServiceImpl implements InviteService {
   @Override
   public PageResponse<Invite> getInvites(Criteria criteria, PageRequest pageRequest) {
     Pageable pageable = PageUtils.getPageRequest(pageRequest);
-    return PageUtils.getNGPageResponse(inviteRepository.findAll(criteria, pageable));
+    return PageUtils.getNGPageResponse(inviteRepository.findAllWithCollation(criteria, pageable));
   }
 
   @Override
@@ -478,7 +478,7 @@ public class InviteServiceImpl implements InviteService {
       checkPermissions(newInvite.getAccountIdentifier(), newInvite.getOrgIdentifier(), newInvite.getProjectIdentifier(),
           INVITE_PERMISSION_IDENTIFIER);
       Update update = new Update()
-                          .set(InviteKeys.createdAt, new Date())
+                          .set(InviteKeys.createdAt, Instant.now().toEpochMilli())
                           .set(InviteKeys.validUntil,
                               Date.from(OffsetDateTime.now().plusDays(INVITATION_VALIDITY_IN_DAYS).toInstant()))
                           .set(InviteKeys.roleBindings, newInvite.getRoleBindings())
@@ -680,7 +680,7 @@ public class InviteServiceImpl implements InviteService {
       }
 
       if (isPLNoEmailForSamlAccountInvitesEnabled && !twoFactorAuthSettingsInfo.isTwoFactorAuthenticationEnabled()) {
-        return InviteOperationResponse.USER_INVITE_NOT_REQUIRED;
+        return InviteOperationResponse.USER_ADDED_SUCCESSFULLY_TO_ACCOUNT;
       } else {
         ngAuditUserInviteCreateEvent(savedInvite);
       }

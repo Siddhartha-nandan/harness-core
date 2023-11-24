@@ -194,6 +194,7 @@ import io.harness.delegate.service.K8sGlobalConfigServiceImpl;
 import io.harness.delegate.service.LogAnalysisStoreServiceImpl;
 import io.harness.delegate.service.MetricDataStoreServiceImpl;
 import io.harness.delegate.service.tasklogging.DelegateLogServiceImpl;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleFetchTask;
 import io.harness.delegate.task.artifactory.ArtifactoryDelegateTask;
 import io.harness.delegate.task.artifacts.ArtifactSourceDelegateRequest;
 import io.harness.delegate.task.artifacts.DelegateArtifactTaskHandler;
@@ -2294,6 +2295,7 @@ public class DelegateModule extends AbstractModule {
 
     // TAS NG
     mapBinder.addBinding(TaskType.TAS_BG_SETUP).toInstance(TasBGSetupTask.class);
+    mapBinder.addBinding(TaskType.TAS_BG_SETUP_SUPPORT_2_APPS_V2).toInstance(TasBGSetupTask.class);
     mapBinder.addBinding(TaskType.TAS_BASIC_SETUP).toInstance(TasBasicSetupTask.class);
     mapBinder.addBinding(TaskType.TAS_SWAP_ROUTES).toInstance(TasSwapRouteTask.class);
     mapBinder.addBinding(TaskType.TAS_APP_RESIZE).toInstance(TasAppResizeTask.class);
@@ -2336,6 +2338,9 @@ public class DelegateModule extends AbstractModule {
 
     mapBinder.addBinding(TaskType.SERVERLESS_ROLLBACK_V2_TASK)
         .toInstance(ServerlessAwsLambdaRollbackV2CommandTask.class);
+
+    // Artifact Bundle NG
+    mapBinder.addBinding(TaskType.ARTIFACT_BUNDLE_FETCH_TASK).toInstance(ArtifactBundleFetchTask.class);
   }
 
   private void registerSecretManagementBindings() {

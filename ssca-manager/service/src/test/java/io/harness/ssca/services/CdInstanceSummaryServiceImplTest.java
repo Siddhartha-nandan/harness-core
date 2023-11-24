@@ -19,6 +19,8 @@ import io.harness.entities.ArtifactDetails;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.repositories.CdInstanceSummaryRepo;
 import io.harness.rule.Owner;
+import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewRequestBody;
+import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewRequestBody.PolicyViolationEnum;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.CdInstanceSummary;
@@ -45,6 +47,8 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 
 public class CdInstanceSummaryServiceImplTest extends SSCAManagerTestBase {
   @Inject CdInstanceSummaryService cdInstanceSummaryService;
@@ -162,8 +166,9 @@ public class CdInstanceSummaryServiceImplTest extends SSCAManagerTestBase {
     assertThat(cdInstanceSummary.getSequenceId()).isEqualTo("5");
     assertThat(cdInstanceSummary.getSlsaVerificationSummary().getSlsaPolicyOutcomeStatus()).isEqualTo("warning");
     assertThat(cdInstanceSummary.getSlsaVerificationSummary().getProvenanceArtifact()).isNotNull();
-    assertThat(cdInstanceSummary.getSlsaVerificationSummary().getProvenanceArtifact().get("predicateType").asText())
-        .isEqualTo("https://slsa.dev/provenance/v1");
+    assertThat(cdInstanceSummary.getSlsaVerificationSummary().getProvenanceArtifact())
+        .isEqualTo(
+            "{\"predicateType\":\"https://slsa.dev/provenance/v1\",\"predicate\":{\"buildDefinition\":{\"buildType\":\"https://developer.harness.io/docs/continuous-integration\",\"externalParameters\":{\"codeMetadata\":{\"repositoryURL\":\"https://github.com/nginxinc/docker-nginx\",\"branch\":\"master\"},\"triggerMetadata\":{\"triggerType\":\"MANUAL\",\"triggeredBy\":\"inderpreet.chera@harness.io\"},\"buildMetadata\":{\"image\":\"autosscauser/autosscauser-auto\",\"dockerFile\":\"./stable/alpine/Dockerfile\"}},\"internalParameters\":{\"pipelineExecutionId\":\"jnz3-IB1Q_KlmLAaiS3Guw\",\"accountId\":\"ppbLW9YpRharzPs_JtWT7g\",\"pipelineIdentifier\":\"SLSA_attestation_and_verification\"}},\"runDetails\":{\"builder\":{\"id\":\"https://developer.harness.io/docs/continuous-integration\",\"version\":{\"ci-manager\":\"1.0.6402-000\",\"plugins/kaniko\":\"1.8.0\"}},\"runDetailsMetadata\":{\"invocationId\":\"TCfWZ3j8QSSvN3x3KnxZJA\",\"startedOn\":\"2023-10-26T07:35:21.438Z\",\"finishedOn\":\"2023-10-26T07:36:02.733Z\"}}}}");
   }
 
   @Test
@@ -197,8 +202,7 @@ public class CdInstanceSummaryServiceImplTest extends SSCAManagerTestBase {
     assertThat(cdInstanceSummary.getLastDeployedById()).isEqualTo("userId");
     assertThat(cdInstanceSummary.getTriggerType()).isEqualTo("MANUAL");
     assertThat(cdInstanceSummary.getSequenceId()).isEqualTo("5");
-    assertThat(cdInstanceSummary.getSlsaVerificationSummary().getSlsaPolicyOutcomeStatus()).isNull();
-    assertThat(cdInstanceSummary.getSlsaVerificationSummary().getProvenanceArtifact()).isNull();
+    assertThat(cdInstanceSummary.getSlsaVerificationSummary()).isNull();
   }
 
   @Test
@@ -232,7 +236,37 @@ public class CdInstanceSummaryServiceImplTest extends SSCAManagerTestBase {
     assertThat(cdInstanceSummary.getLastDeployedById()).isEqualTo("userId");
     assertThat(cdInstanceSummary.getTriggerType()).isEqualTo("MANUAL");
     assertThat(cdInstanceSummary.getSequenceId()).isEqualTo("5");
-    assertThat(cdInstanceSummary.getSlsaVerificationSummary().getSlsaPolicyOutcomeStatus()).isNull();
-    assertThat(cdInstanceSummary.getSlsaVerificationSummary().getProvenanceArtifact()).isNull();
+    assertThat(cdInstanceSummary.getSlsaVerificationSummary()).isNull();
+  }
+
+  @Test
+  @Owner(developers = ARPITJ)
+  @Category(UnitTests.class)
+  public void testGetPolicyViolationEnforcementCriteria() {
+    ArtifactDeploymentViewRequestBody body = new ArtifactDeploymentViewRequestBody();
+    body.setPolicyViolation(PolicyViolationEnum.ALLOW);
+    Criteria criteria = new CdInstanceSummaryServiceImpl().getPolicyViolationEnforcementCriteria(
+        "accountId", "orgId", "projectId", body);
+    assertThat(new Query(criteria).toString())
+        .isEqualTo(
+            "Query: { \"accountId\" : \"accountId\", \"orgIdentifier\" : \"orgId\", \"projectIdentifier\" : \"projectId\", \"allowListViolationCount\" : { \"$gt\" : 0}}, Fields: {}, Sort: {}");
+    body.setPolicyViolation(PolicyViolationEnum.DENY);
+    criteria = new CdInstanceSummaryServiceImpl().getPolicyViolationEnforcementCriteria(
+        "accountId", "orgId", "projectId", body);
+    assertThat(new Query(criteria).toString())
+        .isEqualTo(
+            "Query: { \"accountId\" : \"accountId\", \"orgIdentifier\" : \"orgId\", \"projectIdentifier\" : \"projectId\", \"denyListViolationCount\" : { \"$gt\" : 0}}, Fields: {}, Sort: {}");
+    body.setPolicyViolation(PolicyViolationEnum.ANY);
+    criteria = new CdInstanceSummaryServiceImpl().getPolicyViolationEnforcementCriteria(
+        "accountId", "orgId", "projectId", body);
+    assertThat(new Query(criteria).toString())
+        .isEqualTo(
+            "Query: { \"$and\" : [{ \"accountId\" : \"accountId\", \"orgIdentifier\" : \"orgId\", \"projectIdentifier\" : \"projectId\"}, { \"$or\" : [{ \"allowListViolationCount\" : { \"$gt\" : 0}}, { \"denyListViolationCount\" : { \"$gt\" : 0}}]}]}, Fields: {}, Sort: {}");
+    body.setPolicyViolation(PolicyViolationEnum.NONE);
+    criteria = new CdInstanceSummaryServiceImpl().getPolicyViolationEnforcementCriteria(
+        "accountId", "orgId", "projectId", body);
+    assertThat(new Query(criteria).toString())
+        .isEqualTo(
+            "Query: { \"accountId\" : \"accountId\", \"orgIdentifier\" : \"orgId\", \"projectIdentifier\" : \"projectId\", \"denyListViolationCount\" : 0, \"allowListViolationCount\" : 0}, Fields: {}, Sort: {}");
   }
 }

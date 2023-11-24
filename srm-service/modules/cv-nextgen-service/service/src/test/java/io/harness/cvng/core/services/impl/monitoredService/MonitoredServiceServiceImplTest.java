@@ -88,8 +88,10 @@ import io.harness.cvng.core.beans.monitoredService.MonitoredServiceDTO.ServiceDe
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceDTO.Sources;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceListItemDTO;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServicePlatformResponse;
+import io.harness.cvng.core.beans.monitoredService.MonitoredServiceReference;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceResponse;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceWithHealthSources;
+import io.harness.cvng.core.beans.monitoredService.ReconciliationStatus;
 import io.harness.cvng.core.beans.monitoredService.RiskData;
 import io.harness.cvng.core.beans.monitoredService.SloHealthIndicatorDTO;
 import io.harness.cvng.core.beans.monitoredService.healthSouceSpec.AppDynamicsHealthSourceSpec;
@@ -102,6 +104,7 @@ import io.harness.cvng.core.beans.params.ProjectParams;
 import io.harness.cvng.core.beans.params.ServiceEnvironmentParams;
 import io.harness.cvng.core.beans.params.logsFilterParams.LiveMonitoringLogsFilter;
 import io.harness.cvng.core.beans.sidekick.RetryChangeSourceHandleDeleteSideKickData;
+import io.harness.cvng.core.beans.template.TemplateDTO;
 import io.harness.cvng.core.entities.AnalysisInfo.SLI;
 import io.harness.cvng.core.entities.AppDynamicsCVConfig;
 import io.harness.cvng.core.entities.CVConfig;
@@ -130,6 +133,7 @@ import io.harness.cvng.core.services.api.monitoredService.ServiceDependencyServi
 import io.harness.cvng.core.services.impl.ChangeSourceUpdateHandler;
 import io.harness.cvng.core.services.impl.PagerdutyChangeSourceUpdateHandler;
 import io.harness.cvng.core.services.impl.sidekickexecutors.RetryChangeSourceHandleDeleteSideKickExecutor;
+import io.harness.cvng.core.utils.FeatureFlagNames;
 import io.harness.cvng.dashboard.entities.HeatMap;
 import io.harness.cvng.dashboard.entities.HeatMap.HeatMapRisk;
 import io.harness.cvng.dashboard.services.api.HeatMapService;
@@ -421,6 +425,46 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
   }
 
   @Test
+  @Owner(developers = NAVEEN)
+  @Category(UnitTests.class)
+  public void testCreateFromYaml_isTemplateByReferenceTrue_validationSuccess() {
+    String yaml = "monitoredService:\n"
+        + "  template:\n"
+        + "   templateRef: templateRef123\n"
+        + "   versionLabel: versionLabel123\n"
+        + "   templateVersionNumber: 4\n"
+        + "   isTemplateByReference: true\n"
+        + "  type: Application\n"
+        + "  description: description\n"
+        + "  identifier: <+monitoredService.serviceRef>\n"
+        + "  name: <+monitoredService.identifier>\n"
+        + "  serviceRef: service1\n"
+        + "  environmentRef: <+monitoredService.variables.environmentIdentifier>\n"
+        + "  sources:\n"
+        + "      healthSources:\n"
+        + "      changeSources: \n"
+        + "  tags: {}\n"
+        + "  variables:\n"
+        + "    -   name: environmentIdentifier\n"
+        + "        type: String\n"
+        + "        value: env3";
+    when(featureFlagService.isFeatureFlagEnabled(accountId, FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION))
+        .thenReturn(true);
+    MonitoredServiceResponse monitoredServiceResponse =
+        monitoredServiceService.createFromYaml(builderFactory.getProjectParams(), yaml);
+    MonitoredServiceDTO monitoredServiceDTO = monitoredServiceResponse.getMonitoredServiceDTO();
+    assertThat(monitoredServiceDTO).isNotNull();
+    assertThat(monitoredServiceDTO.getServiceRef()).isEqualTo("service1");
+    assertThat(monitoredServiceDTO.getEnvironmentRef()).isEqualTo("env3");
+    assertThat(monitoredServiceDTO.getIdentifier()).isEqualTo("service1_env3");
+    assertThat(monitoredServiceDTO.getTemplate()).isNotNull();
+    TemplateDTO templateDTO = monitoredServiceDTO.getTemplate();
+    assertThat(templateDTO.getTemplateRef()).isEqualTo("templateRef123");
+    assertThat(templateDTO.getVersionLabel()).isEqualTo("versionLabel123");
+    assertThat(templateDTO.getTemplateVersionNumber()).isEqualTo(4);
+  }
+
+  @Test
   @Owner(developers = ABHIJITH)
   @Category(UnitTests.class)
   public void testCreateFromYaml() {
@@ -444,8 +488,6 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
         + "        value: env3";
     MonitoredServiceResponse monitoredServiceResponse =
         monitoredServiceService.createFromYaml(builderFactory.getProjectParams(), yaml);
-    MonitoredServiceResponse monitoredServiceResponseFromDb =
-        monitoredServiceService.get(builderFactory.getProjectParams(), "service1_env3");
     assertThat(monitoredServiceResponse.getMonitoredServiceDTO()).isNotNull();
     assertThat(monitoredServiceResponse.getMonitoredServiceDTO().getName()).isEqualTo("service1_env3");
     assertThat(monitoredServiceResponse.getMonitoredServiceDTO().getEnvironmentRef()).isEqualTo("env3");
@@ -453,6 +495,83 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
         .isEqualTo("templateRef123");
     assertThat(monitoredServiceResponse.getMonitoredServiceDTO().getTemplate().getVersionLabel())
         .isEqualTo("versionLabel123");
+  }
+
+  @Test
+  @Owner(developers = NAVEEN)
+  @Category(UnitTests.class)
+  public void testGetMonitoredServiceReconciliationStatuses_noReconciliationRequired() {
+    String yaml = "monitoredService:\n"
+        + "  template:\n"
+        + "   templateRef: templateRef123\n"
+        + "   versionLabel: versionLabel123\n"
+        + "   templateVersionNumber: 1\n"
+        + "   isTemplateByReference: true\n"
+        + "   inputSetYaml: \"\"\n"
+        + "  type: Application\n"
+        + "  description: description\n"
+        + "  identifier: id1\n"
+        + "  name: monitored_service_name\n"
+        + "  serviceRef: service1\n"
+        + "  environmentRef: env1\n"
+        + "  sources:\n"
+        + "      healthSources:\n"
+        + "      changeSources: \n"
+        + "  tags: {}\n"
+        + "  variables:\n"
+        + "    -   name: environmentIdentifier\n"
+        + "        type: String\n"
+        + "        value: env3";
+    when(featureFlagService.isFeatureFlagEnabled(accountId, FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION))
+        .thenReturn(true);
+    monitoredServiceService.createFromYaml(builderFactory.getProjectParams(), yaml);
+    PageResponse<MonitoredServiceReference> monitoredServiceReferences =
+        monitoredServiceService.getMonitoredServiceReconciliationStatuses(builderFactory.getProjectParams(),
+            "templateRef123", "versionLabel123", PageParams.builder().page(0).size(10).build());
+    assertThat(monitoredServiceReferences.getContent().size()).isEqualTo(1);
+    List<MonitoredServiceReference> monitoredServiceReferencesList = monitoredServiceReferences.getContent();
+    assertThat(monitoredServiceReferencesList.get(0).getReconciliationStatus())
+        .isEqualTo(ReconciliationStatus.NO_RECONCILIATION_REQUIRED);
+  }
+
+  @Test
+  @Owner(developers = NAVEEN)
+  @Category(UnitTests.class)
+  public void testGetMonitoredServiceReconciliationStatuses_noInputRequired() {
+    String yaml = "monitoredService:\n"
+        + "  template:\n"
+        + "   templateRef: templateRef123\n"
+        + "   versionLabel: versionLabel123\n"
+        + "   templateVersionNumber: 2\n"
+        + "   isTemplateByReference: true\n"
+        + "   templateInputs:\n"
+        + "      type: Application\n"
+        + "      serviceRef: testservice\n"
+        + "      environmentRef: applied\n"
+        + "  type: Application\n"
+        + "  description: description\n"
+        + "  identifier: id1\n"
+        + "  name: monitored_service_name\n"
+        + "  serviceRef: service1\n"
+        + "  environmentRef: env1\n"
+        + "  sources:\n"
+        + "      healthSources:\n"
+        + "      changeSources: \n"
+        + "  tags: {}\n"
+        + "  variables:\n"
+        + "    -   name: environmentIdentifier\n"
+        + "        type: String\n"
+        + "        value: env3";
+    when(featureFlagService.isFeatureFlagEnabled(accountId, FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION))
+        .thenReturn(true);
+    monitoredServiceService.createFromYaml(builderFactory.getProjectParams(), yaml);
+    PageResponse<MonitoredServiceReference> monitoredServiceReferences =
+        monitoredServiceService.getMonitoredServiceReconciliationStatuses(builderFactory.getProjectParams(),
+            "templateRef123", "versionLabel123", PageParams.builder().page(0).size(10).build());
+    assertThat(monitoredServiceReferences.getContent().size()).isEqualTo(1);
+    List<MonitoredServiceReference> monitoredServiceReferencesList = monitoredServiceReferences.getContent();
+    assertThat(monitoredServiceReferencesList.get(0).getReconciliationStatus())
+        .isEqualTo(ReconciliationStatus.NO_INPUT_REQUIRED_FOR_RECONCILIATION);
   }
 
   @Test
@@ -507,8 +626,6 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
         + "                    enabled: true";
     MonitoredServiceResponse monitoredServiceResponse =
         monitoredServiceService.createFromYaml(builderFactory.getProjectParams(), yaml);
-    MonitoredServiceResponse monitoredServiceResponseFromDb =
-        monitoredServiceService.get(builderFactory.getProjectParams(), "service1_test");
     assertThat(monitoredServiceResponse.getMonitoredServiceDTO()).isNotNull();
     assertThat(monitoredServiceResponse.getMonitoredServiceDTO().getName()).isEqualTo("service1_test");
     assertThat(monitoredServiceResponse.getMonitoredServiceDTO().getEnvironmentRef()).isEqualTo("test");
@@ -530,8 +647,8 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
         + "  description: description\n"
         + "  identifier: testms\n"
         + "  name: test\n"
-        + "  serviceRef: service1\n"
         + "  environmentRef: test\n"
+        + "  serviceRef: service1\n"
         + "  sources:\n"
         + "      changeSources: \n"
         + "      healthSources:\n"
@@ -579,8 +696,6 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
         + "                    enabled: true";
     MonitoredServiceResponse monitoredServiceResponse =
         monitoredServiceService.createFromYaml(builderFactory.getProjectParams(), yaml);
-    MonitoredServiceResponse monitoredServiceResponseFromDb =
-        monitoredServiceService.get(builderFactory.getProjectParams(), "service1_test");
     assertThat(monitoredServiceResponse.getMonitoredServiceDTO()).isNotNull();
     assertThat(monitoredServiceResponse.getMonitoredServiceDTO().getName()).isEqualTo("service1_test");
     assertThat(monitoredServiceResponse.getMonitoredServiceDTO().getEnvironmentRef()).isEqualTo("test");
@@ -667,8 +782,6 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
         + "        value: env3";
     MonitoredServiceResponse monitoredServiceResponse =
         monitoredServiceService.createFromYaml(builderFactory.getProjectParams(), yaml);
-    MonitoredServiceResponse monitoredServiceResponseFromDb =
-        monitoredServiceService.get(builderFactory.getProjectParams(), "service1_env3");
     assertThat(monitoredServiceResponse.getMonitoredServiceDTO()).isNotNull();
     assertThat(monitoredServiceResponse.getMonitoredServiceDTO().getName()).isEqualTo("service1_env3");
     assertThat(monitoredServiceResponse.getMonitoredServiceDTO().getEnvironmentRef()).isEqualTo("env3");
@@ -681,7 +794,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
   @Test
   @Owner(developers = ABHIJITH)
   @Category(UnitTests.class)
-  public void testCreateFromYaml_expressionEvaluvationError() {
+  public void testCreateFromYaml_expressionEvaluationError() {
     String yaml = "monitoredService:\n"
         + "  identifier: <+monitoredService.serviceRef>\n"
         + "  type: Application\n"
@@ -743,7 +856,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
         () -> monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO))
         .isInstanceOf(DuplicateFieldException.class)
         .hasMessage(String.format(
-            "Monitored Source Entity  with identifier %s and orgIdentifier %s and projectIdentifier %s is already present",
+            "Monitored Service entity with identifier %s and orgIdentifier %s and projectIdentifier %s is already present",
             monitoredServiceDTO.getIdentifier(), monitoredServiceDTO.getOrgIdentifier(),
             monitoredServiceDTO.getProjectIdentifier()));
   }
@@ -759,7 +872,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
         () -> monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO))
         .isInstanceOf(DuplicateFieldException.class)
         .hasMessage(String.format(
-            "Monitored Source Entity  with duplicate service ref %s, environmentRef %s having identifier %s and orgIdentifier %s and projectIdentifier %s is already present",
+            "Monitored Service entity with duplicate service ref %s, environmentRef %s having identifier %s and orgIdentifier %s and projectIdentifier %s is already present",
             monitoredServiceDTO.getServiceRef(), monitoredServiceDTO.getEnvironmentRef(),
             monitoredServiceDTO.getIdentifier(), monitoredServiceDTO.getOrgIdentifier(),
             monitoredServiceDTO.getProjectIdentifier()));
@@ -1017,7 +1130,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
                          .build())
             .build();
     MonitoredServiceDTO updatedMonitoredServiceDTO =
-        monitoredServiceService.update(builderFactory.getContext().getAccountId(), toUpdateMonitoredServiceDTO)
+        monitoredServiceService.update(builderFactory.getContext().getAccountId(), toUpdateMonitoredServiceDTO, false)
             .getMonitoredServiceDTO();
 
     assertThat(updatedMonitoredServiceDTO).isEqualTo(toUpdateMonitoredServiceDTO);
@@ -1086,8 +1199,9 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
     serviceLevelIndicatorService.create(builderFactory.getProjectParams(),
         Arrays.asList(builderFactory.getServiceLevelIndicatorDTO()), "sloIdentifier",
         existingMonitoredService.getIdentifier(), "healthSourceIdentifier");
-    assertThatThrownBy(
-        () -> monitoredServiceService.update(builderFactory.getContext().getAccountId(), updatingMonitoredService))
+    assertThatThrownBy(()
+                           -> monitoredServiceService.update(
+                               builderFactory.getContext().getAccountId(), updatingMonitoredService, false))
         .hasMessage(
             "Deleting metrics are used in SLIs, Please delete the SLIs before deleting metrics. SLIs : sloIdentifier_metric1");
   }
@@ -1167,11 +1281,12 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
   @Owner(developers = KANHAIYA)
   @Category(UnitTests.class)
   public void testGet_IdentifierNotPresent() {
-    assertThatThrownBy(
-        () -> monitoredServiceService.get(builderFactory.getContext().getProjectParams(), monitoredServiceIdentifier))
+    assertThatThrownBy(() -> monitoredServiceService.get(projectParams, monitoredServiceIdentifier))
         .isInstanceOf(InvalidRequestException.class)
-        .hasMessage(
-            String.format("Monitored Source Entity with identifier %s is not present", monitoredServiceIdentifier));
+        .hasMessage(String.format(
+            "Monitored Service entity with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s is not present",
+            monitoredServiceIdentifier, projectParams.getAccountIdentifier(), projectParams.getOrgIdentifier(),
+            projectParams.getProjectIdentifier()));
   }
 
   @Test
@@ -1313,7 +1428,6 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
             .changeSources(new HashSet<>(List.of(builderFactory.getPagerDutyChangeSourceDTOBuilder().build())))
             .build());
     monitoredServiceService.create(accountId, monitoredServiceDTO);
-
     MonitoredServiceParams monitoredServiceParams = MonitoredServiceParams.builderWithProjectParams(projectParams)
                                                         .monitoredServiceIdentifier(monitoredServiceDTO.getIdentifier())
                                                         .build();
@@ -1382,7 +1496,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
     monitoredServiceOneDTO = createMonitoredServiceDTOWithCustomDependencies(
         monitoredServiceIdentifier, environmentParams.getServiceIdentifier(), Sets.newHashSet("service_2_local"));
     monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceOneDTO);
-    monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceTwoDTO);
+    monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceTwoDTO, false);
     PageResponse<MonitoredServiceListItemDTO> monitoredServiceListDTOPageResponse =
         monitoredServiceService.list(projectParams, null, null, 0, 10, null, null, false);
     assertThat(monitoredServiceListDTOPageResponse.getTotalPages()).isEqualTo(1);
@@ -1769,13 +1883,13 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
   @Test
   @Owner(developers = KANHAIYA)
   @Category(UnitTests.class)
-  public void testUpdate_monitoredServiceDoesNotExists() {
+  public void testUpdate_monitoredServiceDoesNotExist() {
     MonitoredServiceDTO monitoredServiceDTO = createMonitoredServiceDTO();
     assertThatThrownBy(
-        () -> monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO))
+        () -> monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO, false))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage(String.format(
-            "Monitored Source Entity  with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s  is not present",
+            "Monitored Service entity with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s is not present",
             monitoredServiceIdentifier, accountId, orgIdentifier, projectIdentifier));
   }
 
@@ -1788,7 +1902,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
 
     monitoredServiceDTO.setSources(null);
     MonitoredServiceDTO updatedMonitoredServiceDTO =
-        monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO)
+        monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO, false)
             .getMonitoredServiceDTO();
     assertThat(updatedMonitoredServiceDTO.getSources().getHealthSources().size()).isEqualTo(0);
     assertThat(updatedMonitoredServiceDTO.getSources().getChangeSources().size()).isEqualTo(0);
@@ -1802,7 +1916,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
     monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
     monitoredServiceDTO.setServiceRef("new-service-ref");
     assertThatThrownBy(
-        () -> monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO))
+        () -> monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("serviceRef update is not allowed");
   }
@@ -1815,7 +1929,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
     monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
     monitoredServiceDTO.setEnvironmentRef("new-environement-ref");
     assertThatThrownBy(
-        () -> monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO))
+        () -> monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("environmentRef update is not allowed");
   }
@@ -1829,7 +1943,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
     monitoredServiceDTO.setName("new-name");
     monitoredServiceDTO.setDescription("new-description");
     MonitoredServiceDTO savedMonitoredServiceDTO =
-        monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO)
+        monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO, false)
             .getMonitoredServiceDTO();
     assertThat(savedMonitoredServiceDTO).isEqualTo(monitoredServiceDTO);
     MonitoredService monitoredService = getMonitoredService(monitoredServiceIdentifier);
@@ -1863,7 +1977,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
     assertThat(cvConfigs.size()).isEqualTo(1);
     monitoredServiceDTO.getSources().setHealthSources(null);
     MonitoredServiceDTO savedMonitoredServiceDTO =
-        monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO)
+        monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO, false)
             .getMonitoredServiceDTO();
     assertThat(savedMonitoredServiceDTO).isEqualTo(monitoredServiceDTO);
     monitoredService = getMonitoredService(monitoredServiceDTO.getIdentifier());
@@ -1891,7 +2005,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
     healthSource.setIdentifier("new-healthSource-identifier");
     monitoredServiceDTO.getSources().getHealthSources().add(healthSource);
     MonitoredServiceDTO savedMonitoredServiceDTO =
-        monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO)
+        monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO, false)
             .getMonitoredServiceDTO();
     assertThat(savedMonitoredServiceDTO).isEqualTo(monitoredServiceDTO);
     monitoredService = getMonitoredService(monitoredServiceDTO.getIdentifier());
@@ -1927,7 +2041,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
     monitoredServiceDTO.getSources().getHealthSources().iterator().next().setSpec(healthSourceSpec);
 
     MonitoredServiceDTO savedMonitoredServiceDTO =
-        monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO)
+        monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO, false)
             .getMonitoredServiceDTO();
     assertThat(savedMonitoredServiceDTO).isEqualTo(monitoredServiceDTO);
     monitoredService = getMonitoredService(monitoredServiceDTO.getIdentifier());
@@ -2246,6 +2360,111 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
   }
 
   @Test
+  @Owner(developers = KARAN_SARASWAT)
+  @Category(UnitTests.class)
+  public void testGetResolvedTemplateInputs() {
+    MonitoredServiceDTO monitoredServiceDTO =
+        builderFactory.monitoredServiceDTOBuilder()
+            .identifier("ms2")
+            .serviceRef("test1")
+            .template(TemplateDTO.builder()
+                          .templateRef("template1")
+                          .versionLabel("v1")
+                          .templateVersionNumber(1)
+                          .isTemplateByReference(true)
+                          .templateInputs("type: Application\nserviceRef: test1\n")
+                          .build())
+            .build();
+    when(featureFlagService.isFeatureFlagEnabled(accountId, FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION))
+        .thenReturn(true);
+    monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
+
+    String resolvedTemplateInputs = monitoredServiceService.getResolvedTemplateInputs(
+        projectParams, monitoredServiceDTO.getIdentifier(), "template1", "v1");
+    assertThat(resolvedTemplateInputs).isEqualTo("type: Application\nserviceRef: test1\n");
+  }
+
+  @Test
+  @Owner(developers = KARAN_SARASWAT)
+  @Category(UnitTests.class)
+  public void testIsReconciliationRequiredForMonitoredServices() {
+    MonitoredServiceDTO monitoredServiceDTO =
+        builderFactory.monitoredServiceDTOBuilder()
+            .identifier("ms2")
+            .serviceRef("test1")
+            .template(TemplateDTO.builder()
+                          .templateRef("template1")
+                          .versionLabel("v1")
+                          .templateVersionNumber(1)
+                          .isTemplateByReference(true)
+                          .templateInputs("type: Application\nserviceRef: test1\n")
+                          .build())
+            .build();
+    when(featureFlagService.isFeatureFlagEnabled(accountId, FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION))
+        .thenReturn(true);
+    monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
+
+    monitoredServiceDTO = builderFactory.monitoredServiceDTOBuilder()
+                              .identifier("ms3")
+                              .serviceRef("test2")
+                              .template(TemplateDTO.builder()
+                                            .templateRef("template1")
+                                            .versionLabel("v1")
+                                            .templateVersionNumber(1)
+                                            .isTemplateByReference(true)
+                                            .templateInputs("type: Application\nserviceRef: test2\n")
+                                            .build())
+                              .build();
+    monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
+
+    boolean isReconciliationRequired =
+        monitoredServiceService.isReconciliationRequiredForMonitoredServices(projectParams, "template1", "v1", null, 1);
+    assertThat(isReconciliationRequired).isFalse();
+
+    isReconciliationRequired =
+        monitoredServiceService.isReconciliationRequiredForMonitoredServices(projectParams, "template1", "v1", null, 2);
+    assertThat(isReconciliationRequired).isTrue();
+
+    // check for template with no referring monitored services
+    isReconciliationRequired =
+        monitoredServiceService.isReconciliationRequiredForMonitoredServices(projectParams, "template2", "v1", null, 1);
+    assertThat(isReconciliationRequired).isFalse();
+
+    // check with monitored service identifier filter
+    isReconciliationRequired = monitoredServiceService.isReconciliationRequiredForMonitoredServices(
+        projectParams, "template1", "v1", "ms3", 2);
+    assertThat(isReconciliationRequired).isTrue();
+  }
+
+  @Test
+  @Owner(developers = KARAN_SARASWAT)
+  @Category(UnitTests.class)
+  public void testDetachMonitoredServiceFromTemplate() {
+    MonitoredServiceDTO monitoredServiceDTO =
+        builderFactory.monitoredServiceDTOBuilder()
+            .identifier("ms2")
+            .serviceRef("test1")
+            .template(TemplateDTO.builder()
+                          .templateRef("template1")
+                          .versionLabel("v1")
+                          .templateVersionNumber(1)
+                          .isTemplateByReference(true)
+                          .templateInputs("type: Application\nserviceRef: test1\n")
+                          .build())
+            .build();
+    when(featureFlagService.isFeatureFlagEnabled(accountId, FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION))
+        .thenReturn(true);
+    monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
+
+    boolean isTemplateDetached =
+        monitoredServiceService.detachMonitoredServiceFromTemplate(projectParams, monitoredServiceDTO.getIdentifier());
+    assertThat(isTemplateDetached).isTrue();
+    MonitoredService monitoredService =
+        monitoredServiceService.getMonitoredService(projectParams, monitoredServiceDTO.getIdentifier());
+    assertThat(monitoredService.isTemplateByReference()).isFalse();
+  }
+
+  @Test
   @Owner(developers = ANJAN)
   @Category(UnitTests.class)
   public void testListOfMonitoredServices() {
@@ -2403,7 +2622,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
 
     monitoredServiceDTO.setDependencies(null);
 
-    monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
+    monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO, false);
     response = monitoredServiceService.get(projectParams, monitoredServiceDTO.getIdentifier());
     assertThat(response.getMonitoredServiceDTO().getDependencies()).isNullOrEmpty();
   }
@@ -3598,7 +3817,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
     MonitoredServiceDTO monitoredServiceDTO = createMonitoredServiceDTO();
     monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
     monitoredServiceDTO.setName("new-name");
-    monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
+    monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO, false);
     List<OutboxEvent> outboxEvents = outboxService.list(OutboxEventFilter.builder().maximumEventsPolled(10).build());
     OutboxEvent outboxEvent = outboxEvents.get(outboxEvents.size() - 1);
     assertThat(outboxEvent.getEventType()).isEqualTo(MonitoredServiceUpdateEvent.builder().build().getEventType());
@@ -3657,7 +3876,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
                           .build()));
     monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
     monitoredServiceDTO.setNotificationRuleRefs(null);
-    monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
+    monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO, false);
     NotificationRule notificationRule = notificationRuleService.getEntity(
         builderFactory.getContext().getProjectParams(), notificationRuleDTO.getIdentifier());
 

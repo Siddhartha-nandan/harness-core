@@ -20,6 +20,7 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.exception.WingsException.USER;
 import static io.harness.mongo.MongoConfig.NO_LIMIT;
 import static io.harness.mongo.MongoUtils.setUnset;
+import static io.harness.ng.core.account.AuthenticationMechanism.SAML;
 import static io.harness.ng.core.account.AuthenticationMechanism.USER_PASSWORD;
 import static io.harness.ng.core.common.beans.Generation.CG;
 import static io.harness.ng.core.common.beans.Generation.NG;
@@ -32,10 +33,10 @@ import static io.harness.ng.core.invites.dto.InviteOperationResponse.ACCOUNT_INV
 import static io.harness.ng.core.invites.dto.InviteOperationResponse.FAIL;
 import static io.harness.ng.core.invites.dto.InviteOperationResponse.INVITE_EXPIRED;
 import static io.harness.ng.core.invites.dto.InviteOperationResponse.INVITE_INVALID;
+import static io.harness.ng.core.invites.dto.InviteOperationResponse.USER_ADDED_SUCCESSFULLY_TO_ACCOUNT;
 import static io.harness.ng.core.invites.dto.InviteOperationResponse.USER_ALREADY_ADDED;
 import static io.harness.ng.core.invites.dto.InviteOperationResponse.USER_ALREADY_INVITED;
 import static io.harness.ng.core.invites.dto.InviteOperationResponse.USER_INVITED_SUCCESSFULLY;
-import static io.harness.ng.core.invites.dto.InviteOperationResponse.USER_INVITE_NOT_REQUIRED;
 import static io.harness.persistence.AccountAccess.ACCOUNT_ID_KEY;
 import static io.harness.persistence.HQuery.excludeAuthority;
 
@@ -1066,6 +1067,10 @@ public class UserServiceImpl implements UserService {
       updateOperations.set(UserKeys.accounts, newAccounts);
     }
 
+    if (user.isDisabled()) {
+      updateOperations.set(UserKeys.disabled, false);
+      updateOperations.set(UserKeys.defaultAccountId, account.getUuid());
+    }
     if (featureFlagService.isEnabled(FeatureName.PL_USER_ACCOUNT_LEVEL_DATA_FLOW, accountId)) {
       userServiceHelper.populateAccountToUserMapping(user, accountId, NG, userSource);
       updateOperations.set(UserKeys.userAccountLevelDataMap, user.getUserAccountLevelDataMap());
@@ -1683,7 +1688,7 @@ public class UserServiceImpl implements UserService {
         -> auditServiceHelper.reportForAuditingUsingAccountId(accountId, null, userGroupAdded, Type.ADD));
 
     if (isPLNoEmailForSamlAccountInvitesEnabled && !user.isTwoFactorAuthenticationEnabled()) {
-      return USER_INVITE_NOT_REQUIRED;
+      return USER_ADDED_SUCCESSFULLY_TO_ACCOUNT;
     } else {
       eventPublishHelper.publishUserInviteFromAccountEvent(accountId, userInvite.getEmail());
     }
@@ -2747,11 +2752,19 @@ public class UserServiceImpl implements UserService {
   public LogoutResponse logout(String accountId, String userId) {
     LogoutResponse logoutResponse = new LogoutResponse();
     log.info("Sending logout response from manager for user {} in account {}", userId, accountId);
-    SamlSettings samlSettings = ssoSettingService.getSamlSettingsByAccountId(accountId);
-    log.info("Samlsettings from accountId is {}", samlSettings);
-    if (samlSettings != null && samlSettings.getLogoutUrl() != null) {
-      logoutResponse.setLogoutUrl(samlSettings.getLogoutUrl());
-      log.info("Logout URL from accountId is {}", samlSettings.getLogoutUrl());
+    Account account = null;
+    try {
+      account = authenticationUtils.getAccount(accountId);
+    } catch (Exception ex) {
+      log.error("Error while fetching account details for accountId {}", accountId, ex);
+    }
+    if (account != null && account.getAuthenticationMechanism() == SAML) {
+      SamlSettings samlSettings = ssoSettingService.getSamlSettingsByAccountId(accountId);
+      log.info("Samlsettings Id for accountId {} is {}", accountId, samlSettings.getUuid());
+      if (samlSettings != null && isNotEmpty(samlSettings.getLogoutUrl())) {
+        logoutResponse.setLogoutUrl(samlSettings.getLogoutUrl());
+        log.info("Logout URL from accountId is {}", samlSettings.getLogoutUrl());
+      }
     }
     try {
       User user = get(accountId, userId);
@@ -4333,6 +4346,10 @@ public class UserServiceImpl implements UserService {
       query = getListUserQuery(accountId, includeUsersPendingInviteAcceptance, includeDisabled);
     }
 
+    if (filterForGeneration) {
+      queryFilterOnlyCGUsers(accountId, query);
+    }
+
     applySortFilter(pageRequest, query);
     FindOptions findOptions = new FindOptions().skip(offset).limit(pageSize);
     List<User> userList = query.asList(findOptions);
@@ -4530,6 +4547,10 @@ public class UserServiceImpl implements UserService {
     updateOperations.set(UserKeys.accounts, newAccountsList);
     updateOperations.set(UserKeys.pendingAccounts, newPendingAccountsList);
     updateOperations.set(UserKeys.emailVerified, markEmailVerified);
+    if (existingUser.getDisabled()) {
+      updateOperations.set(UserKeys.disabled, false);
+      updateOperations.set(UserKeys.defaultAccountId, invitationAccount.getUuid());
+    }
     updateUser(existingUser.getUuid(), updateOperations);
   }
 

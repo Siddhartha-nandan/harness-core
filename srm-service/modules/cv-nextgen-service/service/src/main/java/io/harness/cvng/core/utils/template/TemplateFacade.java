@@ -7,6 +7,8 @@
 
 package io.harness.cvng.core.utils.template;
 
+import static io.harness.cvng.core.services.CVNextGenConstants.ACCOUNT_IDENTIFIER_PREFIX;
+import static io.harness.cvng.core.services.CVNextGenConstants.ORG_IDENTIFIER_PREFIX;
 import static io.harness.gitcaching.GitCachingConstants.BOOLEAN_FALSE_VALUE;
 
 import io.harness.cvng.core.beans.params.ProjectParams;
@@ -49,5 +51,28 @@ public class TemplateFacade {
       monitoredServiceData.put(TEMPLATE_KEY, inputMonitoredServiceData.get(TEMPLATE_KEY));
     }
     return yamlObject.dump(data);
+  }
+
+  public Long getTemplateVersionNumber(ProjectParams projectParams, String templateRef, String versionLabel) {
+    return NGRestUtils
+        .getResponse(templateResourceClient.get(
+            templateRef, projectParams.getAccountIdentifier(), null, null, versionLabel, false))
+        .getVersion();
+  }
+
+  public String getTemplateInputs(ProjectParams projectParams, String templateRef, String versionLabel) {
+    String templateAccountIdentifier = projectParams.getAccountIdentifier();
+    String templateOrgIdentifier = projectParams.getOrgIdentifier();
+    String templateProjectIdentifier = projectParams.getProjectIdentifier();
+    if (templateRef.contains(ACCOUNT_IDENTIFIER_PREFIX)) {
+      templateRef = templateRef.replace(ACCOUNT_IDENTIFIER_PREFIX, "");
+      templateOrgIdentifier = null;
+      templateProjectIdentifier = null;
+    } else if (templateRef.contains(ORG_IDENTIFIER_PREFIX)) {
+      templateRef = templateRef.replace(ORG_IDENTIFIER_PREFIX, "");
+      templateProjectIdentifier = null;
+    }
+    return NGRestUtils.getResponse(templateResourceClient.getTemplateInputsYaml(
+        templateRef, templateAccountIdentifier, templateOrgIdentifier, templateProjectIdentifier, versionLabel, false));
   }
 }
