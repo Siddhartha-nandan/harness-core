@@ -24,6 +24,10 @@ import org.apache.commons.lang3.StringUtils;
 @OwnedBy(HarnessTeam.IDP)
 @UtilityClass
 public class CheckDetailsMapper {
+  private static final String IN_OR_MATCH_OPERATOR = "=~";
+  private static final String NOT_IN_OR_NOT_MATCH_OPERATOR = "!~";
+  public static final List<String> OPERATORS_WITH_ARRAYS = List.of(IN_OR_MATCH_OPERATOR, NOT_IN_OR_NOT_MATCH_OPERATOR);
+
   public CheckDetails toDTO(CheckEntity checkEntity) {
     CheckDetails checkDetails = new CheckDetails();
     checkDetails.setName(checkEntity.getName());
@@ -78,7 +82,17 @@ public class CheckDetailsMapper {
 
     if (!getLhsOnly) {
       expressionBuilder.append(rule.getOperator());
-      expressionBuilder.append(rule.getValue());
+
+      // Do not escape value with quotes for IN/NOT_IN operator as the items inside values will be escaped.
+      // Example value : [\"3.0.0\",\"3.0.1\",\"3.0.3\"]
+      if (OPERATORS_WITH_ARRAYS.contains(rule.getOperator()) && rule.getValue().startsWith("[")
+          && rule.getValue().endsWith("]")) {
+        expressionBuilder.append(rule.getValue());
+      } else {
+        expressionBuilder.append("\"");
+        expressionBuilder.append(rule.getValue());
+        expressionBuilder.append("\"");
+      }
     }
 
     return expressionBuilder.toString();
@@ -92,7 +106,17 @@ public class CheckDetailsMapper {
   }
 
   private static String getDisplayExpression(Rule rule) {
-    return rule.getDataSourceIdentifier() + DOT_SEPARATOR + rule.getDataPointIdentifier() + rule.getOperator()
-        + rule.getValue();
+    StringBuilder expressionBuilder =
+        new StringBuilder(rule.getDataSourceIdentifier()).append(DOT_SEPARATOR).append(rule.getDataPointIdentifier());
+
+    rule.getInputValues().forEach(inputValue -> {
+      String inputValueReplaced = inputValue.getValue().replace("\"", "");
+      expressionBuilder.append(DOT_SEPARATOR);
+      expressionBuilder.append(inputValueReplaced);
+    });
+
+    expressionBuilder.append(rule.getOperator());
+    expressionBuilder.append(rule.getValue());
+    return expressionBuilder.toString();
   }
 }

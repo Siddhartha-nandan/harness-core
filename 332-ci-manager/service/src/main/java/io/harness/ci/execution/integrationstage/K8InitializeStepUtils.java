@@ -324,10 +324,9 @@ public class K8InitializeStepUtils {
       case GIT_CLONE:
       case SSCA_ORCHESTRATION:
       case SSCA_ENFORCEMENT:
-      case IACM_TERRAFORM_PLUGIN:
-      case IACM_APPROVAL:
       case PROVENANCE:
       case SLSA_VERIFICATION:
+      case IDP_COOKIECUTTER:
         return createPluginCompatibleStepContainerDefinition((PluginCompatibleStep) ciStepInfo, stageNode,
             ciExecutionArgs, portFinder, stepIndex, stepElement.getIdentifier(), stepElement.getName(),
             stepElement.getType(), timeout, accountId, os, ambiance, extraMemoryPerStep, extraCPUPerStep);
@@ -339,6 +338,21 @@ public class K8InitializeStepUtils {
         return createRunTestsStepContainerDefinition((RunTestsStepInfo) ciStepInfo, stageNode, ciExecutionArgs,
             portFinder, stepIndex, stepElement.getIdentifier(), stepElement.getName(), accountId, os,
             extraMemoryPerStep, extraCPUPerStep);
+      case IACM_TERRAFORM_PLUGIN:
+      case IACM_APPROVAL:
+        PluginCompatibleStep pluginCompatibleStep = (PluginCompatibleStep) ciStepInfo;
+        ContainerDefinitionInfo containerDefinitionInfo =
+            createPluginCompatibleStepContainerDefinition(pluginCompatibleStep, stageNode, ciExecutionArgs, portFinder,
+                stepIndex, stepElement.getIdentifier(), stepElement.getName(), stepElement.getType(), timeout,
+                accountId, os, ambiance, extraMemoryPerStep, extraCPUPerStep);
+        if (pluginCompatibleStep.getConnectorRef() != null
+            && !pluginCompatibleStep.getConnectorRef().getValue().isEmpty()) {
+          containerDefinitionInfo.getContainerImageDetails().setConnectorIdentifier(
+              pluginCompatibleStep.getConnectorRef().getValue());
+          containerDefinitionInfo.setHarnessManagedImage(false);
+        }
+
+        return containerDefinitionInfo;
       default:
         return null;
     }
@@ -1099,6 +1113,7 @@ public class K8InitializeStepUtils {
       case IACM_APPROVAL:
       case PROVENANCE:
       case SLSA_VERIFICATION:
+      case IDP_COOKIECUTTER:
         return ((PluginCompatibleStep) ciStepInfo).getResources();
       default:
         throw new CIStageExecutionException(

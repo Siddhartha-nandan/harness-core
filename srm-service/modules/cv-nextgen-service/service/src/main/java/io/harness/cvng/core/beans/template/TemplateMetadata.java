@@ -9,26 +9,26 @@ package io.harness.cvng.core.beans.template;
 
 import javax.validation.constraints.NotNull;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Value;
+import lombok.experimental.FieldNameConstants;
 
-@Data
+@Value
 @Builder
+@FieldNameConstants(innerTypeName = "TemplateMetadataKeys")
 public class TemplateMetadata {
   @NotNull String templateIdentifier;
   String versionLabel;
   int templateVersionNumber;
-  String inputSetYaml;
+  String templateInputs;
   boolean isTemplateByReference;
   long lastReconciliationTime;
 
-  public static TemplateMetadata fromTemplateDTO(TemplateDTO templateDTO) {
+  public static TemplateMetadataBuilder fromTemplateDTO(TemplateDTO templateDTO) {
     return TemplateMetadata.builder()
         .templateIdentifier(templateDTO.getTemplateRef())
         .versionLabel(templateDTO.getVersionLabel())
         .templateVersionNumber(templateDTO.getTemplateVersionNumber())
-        .inputSetYaml(templateDTO.getInputSetYaml())
-        .isTemplateByReference(templateDTO.isTemplateByReference())
-        .lastReconciliationTime(templateDTO.getLastReconciliationTime())
-        .build();
+        .templateInputs(templateDTO.getTemplateInputs())
+        .isTemplateByReference(templateDTO.isTemplateByReference());
   }
 }

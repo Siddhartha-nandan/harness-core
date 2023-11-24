@@ -9,6 +9,8 @@ package io.harness.cvng.core.services.impl;
 
 import static io.harness.NGConstants.ENTITY_REFERENCE_LOG_PREFIX;
 import static io.harness.annotations.dev.HarnessTeam.CV;
+import static io.harness.cvng.core.services.CVNextGenConstants.ACCOUNT_IDENTIFIER_PREFIX;
+import static io.harness.cvng.core.services.CVNextGenConstants.ORG_IDENTIFIER_PREFIX;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.eventsframework.EventsFrameworkConstants.SETUP_USAGE;
 import static io.harness.eventsframework.schemas.entity.EntityTypeProtoEnum.CONNECTORS;
@@ -58,8 +60,6 @@ import lombok.extern.slf4j.Slf4j;
 public class SetupUsageEventServiceImpl implements SetupUsageEventService {
   @Inject @Named(SETUP_USAGE) private Producer eventProducer;
   @Inject private IdentifierRefProtoDTOHelper identifierRefProtoDTOHelper;
-  private static final String ACCOUNT_IDENTIFIER_PREFIX = "account.";
-  private static final String ORG_IDENTIFIER_PREFIX = "org.";
   public static final String STABLE_VERSION = "__STABLE__";
 
   @Override
@@ -107,8 +107,24 @@ public class SetupUsageEventServiceImpl implements SetupUsageEventService {
     sendEvents(projectParams.getAccountIdentifier(), referredByEntity, new ArrayList<>(), SERVICE);
     sendEvents(projectParams.getAccountIdentifier(), referredByEntity, new ArrayList<>(), ENVIRONMENT);
     if (monitoredService.isTemplateByReference()) {
-      sendEvents(projectParams.getAccountIdentifier(), referredByEntity, new ArrayList<>(), TEMPLATE);
+      sendTemplateDeleteEventForMonitoredService(projectParams, monitoredService, referredByEntity);
     }
+  }
+
+  @Override
+  public void sendTemplateDeleteEventForMonitoredService(
+      ProjectParams projectParams, MonitoredService monitoredService, EntityDetailProtoDTO referredByEntity) {
+    if (referredByEntity == null) {
+      IdentifierRefProtoDTO referredByIdentifier =
+          identifierRefProtoDTOHelper.createIdentifierRefProtoDTO(projectParams.getAccountIdentifier(),
+              projectParams.getOrgIdentifier(), projectParams.getProjectIdentifier(), monitoredService.getIdentifier());
+      referredByEntity = EntityDetailProtoDTO.newBuilder()
+                             .setIdentifierRef(referredByIdentifier)
+                             .setName(monitoredService.getName())
+                             .setType(MONITORED_SERVICE)
+                             .build();
+    }
+    sendEvents(projectParams.getAccountIdentifier(), referredByEntity, new ArrayList<>(), TEMPLATE);
   }
 
   @Override
@@ -158,14 +174,13 @@ public class SetupUsageEventServiceImpl implements SetupUsageEventService {
 
   private List<EntityDetailProtoDTO> getReferredServiceEntities(
       ProjectParams projectParams, MonitoredServiceDTO monitoredServiceDTO) {
-    Set<String> serviceRefs = new HashSet<>();
-    serviceRefs.add(monitoredServiceDTO.getServiceRef());
+    Set<String> serviceRefs = Sets.newHashSet(monitoredServiceDTO.getServiceRef());
     return getEntityDetailProtoDTOList(projectParams, serviceRefs, SERVICE);
   }
 
   private List<EntityDetailProtoDTO> getReferredEnvironmentEntities(
       ProjectParams projectParams, MonitoredServiceDTO monitoredServiceDTO) {
-    Set<String> environmentRefs = Sets.newHashSet(monitoredServiceDTO.getEnvironmentRef());
+    Set<String> environmentRefs = new HashSet<>(monitoredServiceDTO.getEnvironmentRefList());
     return getEntityDetailProtoDTOList(projectParams, environmentRefs, ENVIRONMENT);
   }
 

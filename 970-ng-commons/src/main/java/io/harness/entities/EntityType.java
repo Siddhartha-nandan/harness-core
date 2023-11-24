@@ -14,6 +14,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.EntityReference;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.InfraDefReference;
 import io.harness.beans.InputSetReference;
 import io.harness.beans.NGTemplateReference;
 import io.harness.beans.TriggerReference;
@@ -346,7 +347,7 @@ public enum EntityType {
       IdentifierRef.class, EntityYamlRootNames.CLOUDFORMATION_ROLLBACK_STACK_STEP),
   @JsonProperty(EntityTypeConstants.INFRASTRUCTURE)
   INFRASTRUCTURE(
-      ModuleType.CORE, EntityTypeConstants.INFRASTRUCTURE, IdentifierRef.class, EntityYamlRootNames.INFRASTRUCTURE),
+      ModuleType.CORE, EntityTypeConstants.INFRASTRUCTURE, InfraDefReference.class, EntityYamlRootNames.INFRASTRUCTURE),
   @JsonProperty(EntityTypeConstants.COMMAND)
   COMMAND_STEP(ModuleType.CD, EntityTypeConstants.COMMAND, IdentifierRef.class, EntityYamlRootNames.COMMAND),
   @JsonProperty(EntityTypeConstants.STRATEGY_NODE)
@@ -684,6 +685,9 @@ public enum EntityType {
   IDP_STAGE(ModuleType.IDP, EntityTypeConstants.IDP_STAGE, IdentifierRef.class, EntityYamlRootNames.IDP_STAGE),
   @JsonProperty(EntityTypeConstants.CHAOS_HUB)
   CHAOS_HUB(ModuleType.CHAOS, EntityTypeConstants.CHAOS_HUB, IdentifierRef.class, EntityYamlRootNames.CHAOS_HUB),
+  @JsonProperty(EntityTypeConstants.IDP_COOKIECUTTER)
+  IDP_COOKIECUTTER(
+      ModuleType.IDP, EntityTypeConstants.IDP_COOKIECUTTER, IdentifierRef.class, EntityYamlRootNames.IDP_COOKIECUTTER),
   @JsonProperty(EntityTypeConstants.DOWNLOAD_AWS_S3)
   DOWNLOAD_AWS_S3(
       ModuleType.CD, EntityTypeConstants.DOWNLOAD_AWS_S3, IdentifierRef.class, EntityYamlRootNames.DOWNLOAD_AWS_S3);
