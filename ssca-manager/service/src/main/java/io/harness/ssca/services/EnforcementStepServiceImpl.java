@@ -7,6 +7,7 @@
 
 package io.harness.ssca.services;
 
+import io.harness.repositories.EnforcementResultRepo;
 import io.harness.repositories.SBOMComponentRepo;
 import io.harness.serializer.JsonUtils;
 import io.harness.spec.server.ssca.v1.model.Artifact;
@@ -25,17 +26,21 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -49,6 +54,7 @@ public class EnforcementStepServiceImpl implements EnforcementStepService {
   @Inject EnforcementSummaryService enforcementSummaryService;
   @Inject EnforcementResultService enforcementResultService;
   @Inject SBOMComponentRepo sbomComponentRepo;
+  @Inject EnforcementResultRepo enforcementResultRepo;
 
   @Override
   public EnforceSbomResponseBody enforceSbom(
@@ -64,8 +70,183 @@ public class EnforcementStepServiceImpl implements EnforcementStepService {
                                  String.format("Artifact with image name [%s] and registry Url [%s] is not found",
                                      body.getArtifact().getName(), body.getArtifact().getRegistryUrl())));
 
-    String regoPolicy =
-        ruleEngineService.getPolicy(accountId, orgIdentifier, projectIdentifier, body.getPolicyFileId());
+    String regoPolicy = "package sbom\n"
+        + "\n"
+        + "import future.keywords.if\n"
+        + "import future.keywords.in\n"
+        + "\n"
+        + "# Define a set of licenses that are denied\n"
+        + "deny_list := fill_defaults([{\"name\": {\"value\": \"d.*\", \"operator\": \"~\"}},{\"name\": {\"value\": \"hyuiyuiuyuiuyuiuyui.*\", \"operator\": \"~\"}}])\n"
+        + "\n"
+        + "# Define a set of licenses that are allowed\n"
+        + "allow_list := {\n"
+        + "\t\"licenses\": [\n"
+        + "\t\t{\"license\": {\n"
+        + "\t\t\t\"value\": \"GPL-29999.0-only\",\n"
+        + "\t\t\t\"operator\": \"==\",\n"
+        + "\t\t}},\n"
+        + "\t\t{\"license\": {\n"
+        + "\t\t\t\"value\": \"GPL-299.0-only\",\n"
+        + "\t\t\t\"operator\": \"==\",\n"
+        + "\t\t}},\n"
+        + "\t],\n"
+        + "\t\"purls\": [{\"purl\": {\n"
+        + "\t\t\"value\": \"golang\",\n"
+        + "\t\t\"operator\": \"~\",\n"
+        + "\t}}],\n"
+        + "}\n"
+        + "\n"
+        + "# deny_rule_violations(deny_rule) :=violating_packages {\n"
+        + "# \tsome pkg in input\n"
+        + "# \tviolating_packages := [x |\n"
+        + "# \t\tx := pkg.uuid\n"
+        + "# \t\tdeny_compare(pkg, deny_rule)\n"
+        + "# \t]\n"
+        + "# \tcount(violating_packages) > 0\n"
+        + "# }\n"
+        + "\n"
+        + "deny_list_violations[violations] {\n"
+        + "\tsome deny_rule in deny_list\n"
+        + "\tviolations := [x |\n"
+        + "\t\tx := {\n"
+        + "\t\t\t\"type\": \"deny\",\n"
+        + "\t\t\t\"rule\": deny_rule,\n"
+        + "\t\t\t\"violations\": [violating_id |\n"
+        + "\t\t\t\tsome pkg in input\n"
+        + "\t\t\t\tviolating_id := pkg.uuid\n"
+        + "\t\t\t\tdeny_compare(pkg, deny_rule)\n"
+        + "\t\t\t],\n"
+        + "\t\t}\n"
+        + "\t]\n"
+        + "\tcount(violations) > 0\n"
+        + "}\n"
+        + "\n"
+        + "does_violate_license(pkg, rule) if {\n"
+        + "\tlicense_match := [x |\n"
+        + "\t\tx := true\n"
+        + "\t\tsome license, package_license in pkg.packageLicense\n"
+        + "\t\tstr_compare(package_license, rule.license.operator, rule.license.value)\n"
+        + "\t]\n"
+        + "\tcount(license_match) == 0\n"
+        + "}\n"
+        + "\n"
+        + "does_violate_purl(pkg, rule) if {\n"
+        + "\tnot str_compare(pkg.purl, rule.purl.operator, rule.purl.value)\n"
+        + "}\n"
+        + "\n"
+        + "is_empty(myList) if count(myList) == 0\n"
+        + "\n"
+        + "allow_rules_licenses_violations(allow_rules_licenses) := violating_packages if {\n"
+        + "\tviolating_packages := {result |\n"
+        + "\t\tsome pkg in input\n"
+        + "\t\tsome allow_rules_license in allow_rules_licenses\n"
+        + "\t\tdoes_violate_license(pkg, allow_rules_license)\n"
+        + "\t\tresult = pkg.uuid\n"
+        + "\t}\n"
+        + "\tcount(violating_packages) > 0\n"
+        + "}\n"
+        + "\n"
+        + "allow_rules_purls_violations(allow_rules_purls) := violating_packages if {\n"
+        + "\tviolating_packages := {result |\n"
+        + "\t\tsome pkg in input\n"
+        + "\t\tsome allow_rules_purl in allow_rules_purls\n"
+        + "\t\tdoes_violate_purl(pkg, allow_rules_purl)\n"
+        + "\t\tresult = pkg.uuid\n"
+        + "\t}\n"
+        + "\tcount(violating_packages) > 0\n"
+        + "}\n"
+        + "\n"
+        + "allow_list_violations[violations] {\n"
+        + "\tallow_rules_licenses := object.get(allow_list, \"licenses\", [])\n"
+        + "\tcount(allow_rules_licenses) > 0\n"
+        + "\tviolations := [x |\n"
+        + "\t\tx := {\n"
+        + "\t\t\t\"type\": \"allow\",\n"
+        + "\t\t\t\"rule\": allow_rules_licenses,\n"
+        + "\t\t\t\"violations\": allow_rules_licenses_violations(allow_rules_licenses),\n"
+        + "\t\t}\n"
+        + "\t]\n"
+        + "\tcount(violations) > 0\n"
+        + "}\n"
+        + "\n"
+        + "allow_list_violations[violations] {\n"
+        + "\tallow_rules_purls := object.get(allow_list, \"purls\", [])\n"
+        + "\tcount(allow_rules_purls) > 0\n"
+        + "\tviolations := [x |\n"
+        + "\t\tx := {\n"
+        + "\t\t\t\"type\": \"allow\",\n"
+        + "\t\t\t\"rule\": allow_rules_purls,\n"
+        + "\t\t\t\"violations\": allow_rules_purls_violations(allow_rules_purls),\n"
+        + "\t\t}\n"
+        + "\t]\n"
+        + "\tcount(violations) > 0\n"
+        + "}\n"
+        + "\n"
+        + "deny_compare(pkg, rule) if {\n"
+        + "\tlicense_match := [x |\n"
+        + "\t\tx := true\n"
+        + "\t\tsome license, package_license in pkg.packageLicense\n"
+        + "\t\tstr_compare(package_license, rule.license.operator, rule.license.value)\n"
+        + "\t]\n"
+        + "\tcount(license_match) != 0\n"
+        + "\tstr_compare(pkg.packageName, rule.name.operator, rule.name.value)\n"
+        + "\tstr_compare(pkg.purl, rule.purl.operator, rule.purl.value)\n"
+        + "\tsemver_compare(pkg.packageVersion, rule.version.operator, rule.version.value)\n"
+        + "}\n"
+        + "\n"
+        + "str_compare(a, \"==\", b) := a == b\n"
+        + "\n"
+        + "str_compare(a, \"!\", b) := a != b\n"
+        + "\n"
+        + "str_compare(a, \"~\", b) := regex.match(b, a)\n"
+        + "\n"
+        + "str_compare(a, null, b) := a == b if b != null\n"
+        + "\n"
+        + "str_compare(a, null, null) := true\n"
+        + "\n"
+        + "semver_compare(a, \"<=\", b) := semver.compare(b, a) <= 0\n"
+        + "\n"
+        + "semver_compare(a, \"<\", b) := semver.compare(b, a) < 0\n"
+        + "\n"
+        + "semver_compare(a, \"==\", b) := semver.compare(b, a) == 0\n"
+        + "\n"
+        + "semver_compare(a, \">\", b) := semver.compare(b, a) > 0\n"
+        + "\n"
+        + "semver_compare(a, \">=\", b) := semver.compare(b, a) >= 0\n"
+        + "\n"
+        + "semver_compare(a, \"!\", b) := semver.compare(b, a) == 0\n"
+        + "\n"
+        + "semver_compare(a, \"~\", b) := regex.match(b, a)\n"
+        + "\n"
+        + "semver_compare(a, null, b) := semver.compare(b, a) == 0 if b != null\n"
+        + "\n"
+        + "semver_compare(a, null, null) := true\n"
+        + "\n"
+        + "remove_null(obj) := {x |\n"
+        + "\tsome x in obj\n"
+        + "\tx.value != null\n"
+        + "}\n"
+        + "\n"
+        + "fill_default_allow_rules(obj) := standard_obj if {\n"
+        + "\tdefaults := {\n"
+        + "\t\t\"licenses\": [],\n"
+        + "\t\t\"suppliers\": [],\n"
+        + "\t\t\"purls\": [],\n"
+        + "\t}\n"
+        + "\tstandard_obj := object.union(defaults, obj[_])\n"
+        + "}\n"
+        + "\n"
+        + "fill_defaults(obj) := list if {\n"
+        + "\tdefaults := {\n"
+        + "\t\t\"name\": {\"value\": null, \"operator\": null},\n"
+        + "\t\t\"license\": {\"value\": null, \"operator\": null},\n"
+        + "\t\t\"version\": {\"value\": null, \"operator\": null},\n"
+        + "\t\t\"supplier\": {\"value\": null, \"operator\": null},\n"
+        + "\t\t\"purl\": {\"value\": null, \"operator\": null},\n"
+        + "\t}\n"
+        + "\tlist := [x | x := object.union(defaults, obj[_])]\n"
+        + "}\n";
+    //        ruleEngineService.getPolicy(accountId, orgIdentifier, projectIdentifier, body.getPolicyFileId());
     log.info("RegoPolicyLength {}", regoPolicy.length());
     Page<NormalizedSBOMComponentEntity> entities =
         sbomComponentRepo.findByAccountIdAndOrgIdentifierAndProjectIdentifierAndOrchestrationId(accountId,
@@ -74,8 +255,14 @@ public class EnforcementStepServiceImpl implements EnforcementStepService {
     log.info("NumberOfEntities {}", entities.getTotalElements());
     Map<String, Object> requestMap = new HashMap<>();
     requestMap.put("rego", regoPolicy);
-    requestMap.put("input", entities.get().collect(Collectors.toList()));
+
+    List<NormalizedSBOMComponentEntity> s = entities.get().collect(Collectors.toList());
+    Map<String, NormalizedSBOMComponentEntity> artifactMap =
+        s.stream().collect(Collectors.toMap(NormalizedSBOMComponentEntity::getUuid, en -> en, (u, v) -> v));
+    requestMap.put("input", s);
     String requestBody = JsonUtils.asJson(requestMap);
+    log.info("RequestBody {}", requestBody);
+    log.info("RequestBody size{}", requestBody.length());
     String response = getHttpResponse(requestBody);
     log.info("Response {}", response);
     Map<String, Object> responseMap1 = JsonUtils.asMap(response);
@@ -90,12 +277,25 @@ public class EnforcementStepServiceImpl implements EnforcementStepService {
     List<EnforcementResultEntity> denyListResult = new ArrayList<>();
     List<EnforcementResultEntity> allowListResult = new ArrayList<>();
     for (List violations : allowListViolationsList) {
-      Violation current = getViolation((Map<String, Object>) violations.get(0));
-      current.violations.forEach(currentArtifactId -> {
+      Map<String, Object> currentViolation = (Map<String, Object>) violations.get(0);
+      if (CollectionUtils.isEmpty((List<String>) currentViolation.get("violations"))) {
+        continue;
+      }
+      Violation current = getViolation(currentViolation);
+      current.violations.forEach(uuid -> {
         EnforcementResultEntity currentResult = EnforcementResultEntity.builder()
-                                                    .artifactId(currentArtifactId)
+                                                    .artifactId(artifactMap.get(uuid).getArtifactId())
                                                     .enforcementID(body.getEnforcementId())
                                                     .accountId(accountId)
+                                                    .projectIdentifier(projectIdentifier)
+                                                    .orgIdentifier(orgIdentifier)
+                                                    .imageName(artifactMap.get(uuid).getPackageName())
+                                                    .supplierType(artifactMap.get(uuid).getPackageSourceInfo())
+                                                    .supplier(artifactMap.get(uuid).getPackageSourceInfo())
+                                                    .name(artifactMap.get(uuid).getPackageName())
+                                                    .packageManager(artifactMap.get(uuid).getPackageManager())
+                                                    .purl(artifactMap.get(uuid).getPurl())
+                                                    .license(artifactMap.get(uuid).getPackageLicense())
                                                     .violationType(current.type)
                                                     .violationDetails(current.rule.toString())
                                                     .build();
@@ -104,10 +304,19 @@ public class EnforcementStepServiceImpl implements EnforcementStepService {
     }
     for (List<Violation> violations : denyListViolationsList) {
       Violation current = getViolation((Map<String, Object>) violations.get(0));
-      current.violations.forEach(currentArtifactId -> {
+      current.violations.forEach(uuid -> {
         EnforcementResultEntity currentResult = EnforcementResultEntity.builder()
-                                                    .artifactId(currentArtifactId)
+                                                    .artifactId(artifactMap.get(uuid).getArtifactId())
                                                     .enforcementID(body.getEnforcementId())
+                                                    .projectIdentifier(projectIdentifier)
+                                                    .orgIdentifier(orgIdentifier)
+                                                    .imageName(artifactMap.get(uuid).getPackageName())
+                                                    .supplierType(artifactMap.get(uuid).getPackageSourceInfo())
+                                                    .supplier(artifactMap.get(uuid).getPackageSourceInfo())
+                                                    .name(artifactMap.get(uuid).getPackageName())
+                                                    .packageManager(artifactMap.get(uuid).getPackageManager())
+                                                    .purl(artifactMap.get(uuid).getPurl())
+                                                    .license(artifactMap.get(uuid).getPackageLicense())
                                                     .accountId(accountId)
                                                     .violationType(current.type)
                                                     .violationDetails(current.rule.toString())
@@ -116,12 +325,8 @@ public class EnforcementStepServiceImpl implements EnforcementStepService {
       });
     }
 
-    //    HttpClient.
-    //    List<EnforcementResultEntity> denyListResult = engine.executeRules();
-    //
-    //    engine.setRules(ruleDTO.getAllowList());
-    //    List<EnforcementResultEntity> allowListResult = engine.executeRules();
-    //
+    enforcementResultRepo.saveAll(allowListResult);
+    enforcementResultRepo.saveAll(denyListResult);
     String status = enforcementSummaryService.persistEnforcementSummary(
         body.getEnforcementId(), denyListResult, allowListResult, artifactEntity, body.getPipelineExecutionId());
 
@@ -195,8 +400,11 @@ public class EnforcementStepServiceImpl implements EnforcementStepService {
               .header("X-API-KEY", harnessAPIKey)
               .POST(HttpRequest.BodyPublishers.ofString(requestPayload))
               .build();
+      Instant start = Instant.now();
       HttpResponse<String> response =
           HttpClient.newBuilder().build().send(request2, HttpResponse.BodyHandlers.ofString());
+      log.info("Duration {} content {}", Duration.between(start, Instant.now()).toMillis(),
+          request2.bodyPublisher().get().contentLength());
       return response.body();
     } catch (Exception ex) {
     }

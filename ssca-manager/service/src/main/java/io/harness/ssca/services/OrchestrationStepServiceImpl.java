@@ -68,14 +68,14 @@ public class OrchestrationStepServiceImpl implements OrchestrationStepService {
     artifactEntity = artifactService.getArtifactFromSbomPayload(
         accountId, orgIdentifier, projectIdentifier, sbomProcessRequestBody, sbomDTO);
 
-    try {
-      s3StoreService.uploadSBOM(sbomDumpFile, artifactEntity);
-    } catch (Exception e) {
-      log.error(String.format("Upload SBOM Failed with exception: %s", e));
-      throw new RuntimeException("Upload SBOM Failed");
-    } finally {
-      sbomDumpFile.delete();
-    }
+    //    try {
+    //      s3StoreService.uploadSBOM(sbomDumpFile, artifactEntity);
+    //    } catch (Exception e) {
+    //      log.error(String.format("Upload SBOM Failed with exception: %s", e));
+    //      throw new RuntimeException("Upload SBOM Failed");
+    //    } finally {
+    //      sbomDumpFile.delete();
+    //    }
 
     SettingsDTO settingsDTO =
         getSettingsDTO(accountId, orgIdentifier, projectIdentifier, sbomProcessRequestBody, artifactEntity);
