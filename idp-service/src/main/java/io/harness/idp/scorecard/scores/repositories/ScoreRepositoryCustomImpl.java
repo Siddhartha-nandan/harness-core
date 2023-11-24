@@ -8,6 +8,7 @@ package io.harness.idp.scorecard.scores.repositories;
 
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.idp.common.Constants.DOT_SEPARATOR;
+import static io.harness.idp.common.DateUtils.getPreviousDay24HourTimeFrame;
 import static io.harness.idp.common.DateUtils.yesterdayInMilliseconds;
 
 import io.harness.annotations.dev.HarnessTeam;
@@ -152,10 +153,14 @@ public class ScoreRepositoryCustomImpl implements ScoreRepositoryCustom {
   @Override
   public List<ScoreEntityByEntityIdentifier> getLatestScoresForScorecard(
       String accountIdentifier, String scorecardIdentifier) {
+    Pair<Long, Long> previousDay24HourTimeFrame = getPreviousDay24HourTimeFrame();
     Criteria criteria = Criteria.where(ScoreEntity.ScoreKeys.accountIdentifier)
                             .is(accountIdentifier)
                             .and(ScoreEntity.ScoreKeys.scorecardIdentifier)
-                            .is(scorecardIdentifier);
+                            .is(scorecardIdentifier)
+                            .and(ScoreEntity.ScoreKeys.lastComputedTimestamp)
+                            .gt(previousDay24HourTimeFrame.getLeft())
+                            .lt(previousDay24HourTimeFrame.getRight());
 
     ProjectionOperation projectionOperation = Aggregation.project()
                                                   .andExpression(Constants.ID_KEY)

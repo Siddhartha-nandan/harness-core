@@ -9,6 +9,7 @@ package io.harness.idp.scorecard.scorecards.repositories;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.exception.InvalidRequestException;
 import io.harness.idp.backstagebeans.BackstageCatalogEntity;
 import io.harness.idp.backstagebeans.BackstageCatalogEntityTypes;
 import io.harness.idp.scorecard.scorecards.entity.ScorecardStatsEntity.ScorecardStatsKeys;
@@ -46,6 +47,10 @@ public class ScorecardStatsRepositoryCustomImpl implements ScorecardStatsReposit
               .score(scoreEntity.getScore())
               .metadata(buildMetadata(backstageCatalog))
               .build();
+    }
+    if (entity.getLastUpdatedAt() == yesterdayInMilliseconds()){
+      // Throwing exception on purpose to avoid DB writes by multiple pods
+      throw new InvalidRequestException("Scorecard stats already computed for yesterday");
     }
     entity.setScore(scoreEntity.getScore());
     entity.setMetadata(buildMetadata(backstageCatalog));
