@@ -53,17 +53,28 @@ public class TemplateFacade {
     return yamlObject.dump(data);
   }
 
-  public Long getTemplateVersionNumber(ProjectParams projectParams, String templateRef, String versionLabel) {
+  public Long getTemplateVersionNumber(ProjectParams templateProjectParams, String templateRef, String versionLabel) {
+    String templateAccountIdentifier = templateProjectParams.getAccountIdentifier();
+    String templateOrgIdentifier = templateProjectParams.getOrgIdentifier();
+    String templateProjectIdentifier = templateProjectParams.getProjectIdentifier();
+    if (templateRef.contains(ACCOUNT_IDENTIFIER_PREFIX)) {
+      templateRef = templateRef.replace(ACCOUNT_IDENTIFIER_PREFIX, "");
+      templateOrgIdentifier = null;
+      templateProjectIdentifier = null;
+    } else if (templateRef.contains(ORG_IDENTIFIER_PREFIX)) {
+      templateRef = templateRef.replace(ORG_IDENTIFIER_PREFIX, "");
+      templateProjectIdentifier = null;
+    }
     return NGRestUtils
         .getResponse(templateResourceClient.get(
-            templateRef, projectParams.getAccountIdentifier(), null, null, versionLabel, false))
+            templateRef, templateAccountIdentifier, templateOrgIdentifier, templateProjectIdentifier, versionLabel, false))
         .getVersion();
   }
 
-  public String getTemplateInputs(ProjectParams projectParams, String templateRef, String versionLabel) {
-    String templateAccountIdentifier = projectParams.getAccountIdentifier();
-    String templateOrgIdentifier = projectParams.getOrgIdentifier();
-    String templateProjectIdentifier = projectParams.getProjectIdentifier();
+  public String getTemplateInputs(ProjectParams templateProjectParams, String templateRef, String versionLabel) {
+    String templateAccountIdentifier = templateProjectParams.getAccountIdentifier();
+    String templateOrgIdentifier = templateProjectParams.getOrgIdentifier();
+    String templateProjectIdentifier = templateProjectParams.getProjectIdentifier();
     if (templateRef.contains(ACCOUNT_IDENTIFIER_PREFIX)) {
       templateRef = templateRef.replace(ACCOUNT_IDENTIFIER_PREFIX, "");
       templateOrgIdentifier = null;

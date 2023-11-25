@@ -364,8 +364,7 @@ public class MonitoredServiceResource {
           NGCommonEntityConstants.VERSION_LABEL_KEY) String versionLabel,
       @Parameter(description = "Template version number") @NotNull @QueryParam(
           "templateVersionNumber") int templateVersionNumber,
-      @Parameter(description = "filter to check if reconciliation required for a particular monitored service") @NotNull
-      @QueryParam("monitoredServiceIdentifier") String monitoredServiceIdentifier) {
+      @Parameter(description = "filter to check if reconciliation required for a particular monitored service") @QueryParam("monitoredServiceIdentifier") String monitoredServiceIdentifier) {
     return ResponseDTO.newResponse(monitoredServiceService.isReconciliationRequiredForMonitoredServices(
         scopedTemplateProjectParams.getProjectParams(), templateIdentifier, versionLabel, monitoredServiceIdentifier,
         templateVersionNumber));
@@ -818,7 +817,7 @@ public class MonitoredServiceResource {
       @ApiParam(required = true) @NotNull @BeanParam ProjectScopedProjectParams scopedTemplateProjectParams,
       @Parameter(description = "Scoped template identifier used to create the monitored service") @NotNull @QueryParam(
           "templateIdentifier") String templateIdentifier,
-      @Parameter(description = "Template version Label") @NotNull @QueryParam("templateVersionLabel")
+      @Parameter(description = "Template version Label") @NotNull @QueryParam(NGCommonEntityConstants.VERSION_LABEL_KEY)
       String templateVersionLabel, @BeanParam PageParams pageParams) {
     return new RestResponse<>(monitoredServiceService.getMonitoredServiceReconciliationStatuses(
         scopedTemplateProjectParams.getProjectParams(), templateIdentifier, templateVersionLabel, pageParams));
