@@ -113,7 +113,7 @@ public class LogStreamingTaskClient implements ILogStreamingTaskClient {
     // close the stream. In our case, all logs are flushed but stream call is being made late hence, delegate will not
     // wait (all logs flushed) and  it will close the stream immediately.
     synchronized (logCache) {
-      while (logCache.containsKey(logKey) && currentTimeMillis() < startTime + TimeUnit.MINUTES.toMillis(5)) {
+      while (logCache.containsKey(logKey) && currentTimeMillis() < startTime + TimeUnit.SECONDS.toMillis(5)) {
         log.debug("For {} the logs are not drained yet. sleeping...", logKey);
         try {
           logCache.wait(100);

@@ -123,7 +123,6 @@ public class K8SLiteRunner implements Runner {
 
       final var loggingToken = k8sInfra.getLogToken();
 
-      // Get logStreamingTaskClient, open stream close stream and write line needs to be handled
       logStreamingTaskClient = getLogStreamingTaskClient(loggingToken);
       logStreamingTaskClient.openStream(null);
 
@@ -140,13 +139,13 @@ public class K8SLiteRunner implements Runner {
 
       // Step 3 - create service endpoint for LE communication
       final var namespace = config.getNamespace();
+
+      streamLogLine(
+          logStreamingTaskClient, LogLevel.INFO, format("Starting job to create pod on %s namespace", namespace));
+
       V1Service v1Service =
           K8SService.clusterIp(infraId, namespace, K8SResourceHelper.getPodName(infraId), RESERVED_LE_PORT)
               .create(coreApi);
-
-      streamLogLine(logStreamingTaskClient, LogLevel.INFO, format("Done creating the task pod for %s!!", infraId));
-
-      streamLogLine(logStreamingTaskClient, LogLevel.INFO, format("Done creating the task pod for %s!!", infraId));
 
       // Step 4 - create pod - we don't need to busy wait - maybe LE should send task response as first thing when
       // created?
@@ -164,12 +163,13 @@ public class K8SLiteRunner implements Runner {
 
       coreApi.createNamespacedPod(namespace, pod, null, null, DELEGATE_FIELD_MANAGER, "Warn");
 
-      streamLogLine(logStreamingTaskClient, LogLevel.INFO, format("Done creating the task pod for %s!!", infraId));
+      streamLogLine(logStreamingTaskClient, LogLevel.INFO,
+          format("Done creating the task pod %s for %s!!", pod.getMetadata().getName(), infraId));
       //  sleep(ofSeconds(5));
 
       if (watch != null) {
-        // k8EventHandler.stopEventWatch(watch);
-        sleep(ofMinutes(1));
+        k8EventHandler.stopEventWatch(watch);
+        // sleep(ofMinutes(1));
       }
 
       // Step 6 - send response to SaaS
@@ -182,7 +182,7 @@ public class K8SLiteRunner implements Runner {
       throw e;
     } finally {
       if (logStreamingTaskClient != null) {
-        //  logStreamingTaskClient.closeStream(null);
+        logStreamingTaskClient.closeStream(null);
       }
     }
   }
