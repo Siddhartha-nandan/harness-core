@@ -17,6 +17,7 @@ enum Team {
   PL = 6;
   GTM = 7;
   IDP = 8;
+  CHAOS = 9;
 }
 
 message NotificationRequest {
