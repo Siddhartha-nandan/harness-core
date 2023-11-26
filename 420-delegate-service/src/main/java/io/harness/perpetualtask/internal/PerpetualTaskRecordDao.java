@@ -294,6 +294,15 @@ public class PerpetualTaskRecordDao {
     return Optional.ofNullable(perpetualTaskRecordQuery.get());
   }
 
+  public List<PerpetualTaskRecord> getExistingPerpetualTasks(String accountId, String perpetualTaskType) {
+    return persistence.createQuery(PerpetualTaskRecord.class)
+        .field(PerpetualTaskRecordKeys.accountId)
+        .equal(accountId)
+        .field(PerpetualTaskRecordKeys.perpetualTaskType)
+        .equal(perpetualTaskType)
+        .asList();
+  }
+
   public boolean saveHeartbeat(String taskId, long heartbeatMillis, long failedExecutionCount) {
     // TODO: make sure that the heartbeat is coming from the right assignment. There is a race
     //       that could register heartbeat comming from wrong assignment

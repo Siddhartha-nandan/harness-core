@@ -21,6 +21,7 @@ import static io.harness.perpetualtask.PerpetualTaskState.TASK_UNASSIGNED;
 
 import static java.lang.System.currentTimeMillis;
 
+import dev.morphia.query.Query;
 import io.harness.annotations.dev.HarnessModule;
 import io.harness.annotations.dev.TargetModule;
 import io.harness.delegate.beans.Delegate;
@@ -72,7 +73,6 @@ public class PerpetualTaskServiceImpl implements PerpetualTaskService, DelegateO
   private PerpetualTaskRecordDao perpetualTaskRecordDao;
   private PerpetualTaskServiceClientRegistry clientRegistry;
   private final BroadcasterFactory broadcasterFactory;
-  private final PerpetualTaskScheduleService perpetualTaskScheduleService;
   private static final int TASK_FAILED_EXECUTION_LIMIT = 5;
   public static final int MAX_FIBONACCI_INDEX_FOR_TASK_ASSIGNMENT = 5;
 
@@ -82,8 +82,7 @@ public class PerpetualTaskServiceImpl implements PerpetualTaskService, DelegateO
 
   @Inject
   public PerpetualTaskServiceImpl(PerpetualTaskRecordDao perpetualTaskRecordDao,
-      PerpetualTaskServiceClientRegistry clientRegistry, BroadcasterFactory broadcasterFactory,
-      PerpetualTaskScheduleService perpetualTaskScheduleService) {
+      PerpetualTaskServiceClientRegistry clientRegistry, BroadcasterFactory broadcasterFactory) {
     this.perpetualTaskRecordDao = perpetualTaskRecordDao;
     this.clientRegistry = clientRegistry;
     this.broadcasterFactory = broadcasterFactory;
@@ -173,6 +172,10 @@ public class PerpetualTaskServiceImpl implements PerpetualTaskService, DelegateO
       delegateMetricsService.recordPerpetualTaskMetrics(accountId, perpetualTaskType, PERPETUAL_TASK_CREATE);
       return taskId;
     }
+  }
+
+  @Override
+  public void disablePerpetualTask(String accountId, PerpetualTaskType perpetualTaskType) {
   }
 
   @Override
@@ -419,15 +422,10 @@ public class PerpetualTaskServiceImpl implements PerpetualTaskService, DelegateO
   @VisibleForTesting
   long getTaskTimeInterval(PerpetualTaskSchedule schedule, String accountId, String perpetualTaskType) {
     long intervalSeconds = schedule.getInterval().getSeconds();
-
-    PerpetualTaskScheduleConfig perpetualTaskScheduleConfig =
-        perpetualTaskScheduleService.getByAccountIdAndPerpetualTaskType(accountId, perpetualTaskType);
-    if (perpetualTaskScheduleConfig != null) {
-      intervalSeconds = perpetualTaskScheduleConfig.getTimeIntervalInMillis() / 1000;
-      log.info("Creating new perpetual task with custom time interval : {} for task type : {}",
-          perpetualTaskScheduleConfig.getTimeIntervalInMillis(), perpetualTaskScheduleConfig.getPerpetualTaskType());
-    }
-
     return intervalSeconds;
   }
+
+
+  
+  
 }

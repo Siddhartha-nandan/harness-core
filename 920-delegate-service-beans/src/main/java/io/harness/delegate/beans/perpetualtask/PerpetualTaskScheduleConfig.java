@@ -26,6 +26,7 @@ import lombok.Data;
 import lombok.experimental.FieldNameConstants;
 
 @Data
+@Deprecated
 @Builder
 @FieldNameConstants(innerTypeName = "PerpetualTaskScheduleConfigKeys")
 @StoreIn(DbAliases.HARNESS)

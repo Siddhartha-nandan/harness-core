@@ -23,6 +23,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.delegate.beans.DelegateListResponse;
 import io.harness.delegate.beans.DelegateSetupDetails;
 import io.harness.delegate.beans.SupportedDelegateVersion;
+import io.harness.delegate.beans.perpetualtask.PerpetualTaskConfig;
 import io.harness.delegate.filter.DelegateFilterPropertiesDTO;
 import io.harness.delegate.utilities.DelegateDeleteResponse;
 import io.harness.delegate.utilities.DelegateGroupDeleteResponse;
@@ -265,5 +266,26 @@ public class DelegateSetupNgResource {
 
     return new RestResponse<>(CGRestUtils.getResponse(delegateNgManagerCgManagerClient.getDelegates(
         accountIdentifier, orgIdentifier, projectIdentifier, delegateFilterPropertiesDTO)));
+  }
+
+  @POST
+  @Path("/disable-background-jobs")
+  @ApiOperation(value = "Disable background jobs running in the account", nickname = "disablePerpetualTask")
+  @Timed
+  @ExceptionMetered
+  @Operation(operationId = "disablePerpetualTask",
+      summary = "Disable background jobs or perpetual task running in the account",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(responseCode = "default", description = "Delegate Image Tag")
+      })
+  public RestResponse<String>
+  disablePerpetualTask(@NotEmpty @QueryParam("accountIdentifier") final String accountId,
+      @RequestBody(required = true, description = "Perpetual Task Config") PerpetualTaskConfig perpetualTaskConfig) {
+    accessControlClient.checkForAccessOrThrow(
+        ResourceScope.of(accountId, null, null), Resource.of(DELEGATE_RESOURCE_TYPE, null), DELEGATE_EDIT_PERMISSION);
+
+    return new RestResponse<>("");
   }
 }

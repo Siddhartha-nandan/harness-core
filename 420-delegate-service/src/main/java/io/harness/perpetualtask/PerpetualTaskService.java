@@ -55,4 +55,6 @@ public interface PerpetualTaskService {
   String createPerpetualTaskInternal(String perpetualTaskType, String accountId,
       PerpetualTaskClientContext clientContext, PerpetualTaskSchedule schedule, boolean allowDuplicate,
       String taskDescription);
+
+  void disablePerpetualTask(String accountId, PerpetualTaskType perpetualTaskType);
 }

@@ -19,6 +19,7 @@ import io.harness.delegate.beans.DelegateSetupDetails;
 import io.harness.delegate.beans.DelegateTokenDetails;
 import io.harness.delegate.beans.DelegateTokenStatus;
 import io.harness.delegate.beans.SupportedDelegateVersion;
+import io.harness.delegate.beans.perpetualtask.PerpetualTaskConfig;
 import io.harness.delegate.filter.DelegateFilterPropertiesDTO;
 import io.harness.delegate.utilities.DelegateGroupDeleteResponse;
 import io.harness.rest.RestResponse;
@@ -182,4 +183,10 @@ public interface DelegateNgManagerCgManagerClient {
   @GET("version/supportedDelegate")
   Call<RestResponse<SupportedDelegateVersion>> getPublishedDelegateVersion(
       @Query(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier);
+
+
+  @POST("disable-background-jobs")
+  Call<RestResponse<String>> disablePerpetualTask(
+          @Query(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
+          @Body @NotNull PerpetualTaskConfig perpetualTaskConfig);
 }
