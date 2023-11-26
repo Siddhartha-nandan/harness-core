@@ -1,0 +1,4 @@
+summary: "Harness Chaos Experiment ${EXPERIMENT_ID} has started on ${START_TIME}. Read more about how chaos experiments work at https://developer.harness.io/docs/category/chaos-experiments-/."
+link:
+    href: harness.io
+    text: Harness

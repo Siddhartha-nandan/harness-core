@@ -1,0 +1,3 @@
+{
+    "text": "Harness Chaos Experiment ${EXPERIMENT_ID} has been stopped on ${END_TIME}. Read more about how chaos experiments work at https://developer.harness.io/docs/category/chaos-experiments-/."
+}
