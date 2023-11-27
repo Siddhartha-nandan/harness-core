@@ -1228,6 +1228,7 @@ components:
       title: Operator
       x-stoplight:
         id: qws1tll6rnsys
+      type: string
       enum:
         - Equals
         - StartsWith
