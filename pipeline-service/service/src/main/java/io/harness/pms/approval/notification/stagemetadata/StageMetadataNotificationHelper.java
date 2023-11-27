@@ -33,6 +33,7 @@ import org.apache.commons.lang3.StringUtils;
     module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_APPROVALS})
 @OwnedBy(CDC)
 public interface StageMetadataNotificationHelper {
+  String STAGE_NODE_TYPE = "STAGE";
   String CD_MODULE_TYPE = "cd";
   String DEPLOYMENT_STAGE_TYPE = "Deployment";
   String CD_STAGE_METADATA_ROW_FORMAT = "     %s  :  %s";
@@ -48,7 +49,8 @@ public interface StageMetadataNotificationHelper {
       @NotNull Set<String> formattedUpcomingStages, @NotNull Scope scope, @NotNull String planExecutionId);
 
   static boolean isGraphNodeOfCDDeploymentStageType(@NotNull GraphLayoutNodeDTO node) {
-    return DEPLOYMENT_STAGE_TYPE.equals(node.getNodeType()) && CD_MODULE_TYPE.equals(node.getModule());
+    return STAGE_NODE_TYPE.equals(node.getNodeGroup()) && DEPLOYMENT_STAGE_TYPE.equals(node.getNodeType())
+        && CD_MODULE_TYPE.equals(node.getModule());
   }
 
   /**
