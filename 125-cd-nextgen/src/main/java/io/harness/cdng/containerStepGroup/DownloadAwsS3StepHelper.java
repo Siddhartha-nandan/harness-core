@@ -10,10 +10,6 @@ package io.harness.cdng.containerStepGroup;
 import static io.harness.ci.commonconstants.CIExecutionConstants.PATH_SEPARATOR;
 import static io.harness.ci.commonconstants.ContainerExecutionConstants.STEP_MOUNT_PATH;
 import static io.harness.connector.ConnectorModule.DEFAULT_CONNECTOR_SERVICE;
-import static io.harness.data.structure.EmptyPredicate.isEmpty;
-import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
-
-import static java.lang.String.format;
 
 import io.harness.beans.IdentifierRef;
 import io.harness.connector.ConnectorInfoDTO;
@@ -25,7 +21,6 @@ import io.harness.delegate.beans.connector.awsconnector.AwsConnectorDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsCredentialDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsCredentialSpecDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsManualConfigSpecDTO;
-import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.NGAccess;
 import io.harness.pms.contracts.ambiance.Ambiance;
@@ -36,47 +31,12 @@ import io.harness.yaml.utils.NGVariablesUtils;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 
 public class DownloadAwsS3StepHelper {
   @Named(DEFAULT_CONNECTOR_SERVICE) @Inject private ConnectorService connectorService;
-  private static final String NG_SECRET_MANAGER = "ngSecretManager";
-
-  public Map<String, String> validateEnvVariables(Map<String, String> environmentVariables) {
-    if (isEmpty(environmentVariables)) {
-      return environmentVariables;
-    }
-
-    List<String> envVarsWithNullValue = environmentVariables.entrySet()
-                                            .stream()
-                                            .filter(entry -> entry.getValue() == null)
-                                            .map(Map.Entry::getKey)
-                                            .collect(Collectors.toList());
-    if (isNotEmpty(envVarsWithNullValue)) {
-      throw new InvalidArgumentsException(format("Not found value for environment variable%s: %s",
-          envVarsWithNullValue.size() == 1 ? "" : "s", String.join(",", envVarsWithNullValue)));
-    }
-
-    return environmentVariables;
-  }
-
-  public Map<String, String> getEnvVarsWithSecretRef(Map<String, String> envVars) {
-    return envVars.entrySet()
-        .stream()
-        .filter(entry -> entry.getValue() != null && entry.getValue().contains(NG_SECRET_MANAGER))
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-  }
-
-  public Map<String, String> removeAllEnvVarsWithSecretRef(Map<String, String> envVars) {
-    final Map<String, String> secretEnvVariables = getEnvVarsWithSecretRef(envVars);
-    envVars.entrySet().removeAll(secretEnvVariables.entrySet());
-
-    return secretEnvVariables;
-  }
 
   public Map<String, String> getEnvironmentVariables(
       Ambiance ambiance, DownloadAwsS3StepParameters downloadAwsS3StepParameters, String stepIdentifier) {

@@ -22,6 +22,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.IdentifierRef;
 import io.harness.category.element.UnitTests;
+import io.harness.cdng.containerStepGroup.ContainerStepGroupHelper;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepHelper;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo;
 import io.harness.cdng.pipeline.steps.CdAbstractStepNode;
@@ -60,6 +61,8 @@ public class DownloadAwsS3PluginInfoProviderTest extends CategoryTest {
 
   @Mock private PluginExecutionConfig pluginExecutionConfig;
   @Mock private DownloadAwsS3StepHelper downloadAwsS3StepHelper;
+
+  @Mock ContainerStepGroupHelper containerStepGroupHelper;
   @InjectMocks @Spy private DownloadAwsS3PluginInfoProvider downloadAwsS3PluginInfoProvider;
 
   @Test
@@ -117,8 +120,8 @@ public class DownloadAwsS3PluginInfoProviderTest extends CategoryTest {
         .getDownloadAwsS3Config();
 
     doReturn(new HashMap<>()).when(downloadAwsS3StepHelper).getEnvironmentVariables(any(), any(), any());
-    doReturn(new HashMap<>()).when(downloadAwsS3StepHelper).getEnvVarsWithSecretRef(any());
-    doReturn(new HashMap<>()).when(downloadAwsS3StepHelper).validateEnvVariables(any());
+    doReturn(new HashMap<>()).when(containerStepGroupHelper).getEnvVarsWithSecretRef(any());
+    doReturn(new HashMap<>()).when(containerStepGroupHelper).validateEnvVariables(any());
 
     PluginCreationResponseWrapper pluginCreationResponseWrapper =
         downloadAwsS3PluginInfoProvider.getPluginInfo(pluginCreationRequest, Collections.emptySet(), ambiance);

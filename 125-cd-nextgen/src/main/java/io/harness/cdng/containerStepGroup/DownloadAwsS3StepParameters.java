@@ -30,7 +30,7 @@ import org.springframework.data.annotation.TypeAlias;
 @TypeAlias("downloadAwsS3StepParameters")
 @RecasterAlias("io.harness.cdng.containerStepGroup.DownloadAwsS3StepParameters")
 public class DownloadAwsS3StepParameters
-    extends ContainerStepGroupBaseStepInfo implements SpecParameters, StepParameters {
+    extends StepGroupContainerBaseStepInfo implements SpecParameters, StepParameters {
   ParameterField<String> connectorRef;
 
   ParameterField<String> downloadPath;

@@ -14,7 +14,6 @@ import io.harness.cdng.plugininfoproviders.PluginExecutionConfig;
 import io.harness.executions.steps.ExecutionNodeType;
 import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
-import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.execution.utils.AmbianceUtils;
@@ -34,11 +33,13 @@ import lombok.extern.slf4j.Slf4j;
 @OwnedBy(HarnessTeam.CDP)
 @Slf4j
 public class DownloadAwsS3Step extends AbstractContainerStepV2<StepElementParameters> {
-  @Inject Supplier<DelegateCallbackToken> delegateCallbackTokenSupplier;
+  @Inject private Supplier<DelegateCallbackToken> delegateCallbackTokenSupplier;
 
-  @Inject DownloadAwsS3StepHelper downloadAwsS3StepHelper;
+  @Inject private DownloadAwsS3StepHelper downloadAwsS3StepHelper;
 
-  @Inject PluginExecutionConfig pluginExecutionConfig;
+  @Inject private ContainerStepGroupHelper containerStepGroupHelper;
+
+  @Inject private PluginExecutionConfig pluginExecutionConfig;
 
   public static final StepType STEP_TYPE = StepType.newBuilder()
                                                .setType(ExecutionNodeType.DOWNLOAD_AWS_S3.getYamlType())
@@ -63,28 +64,16 @@ public class DownloadAwsS3Step extends AbstractContainerStepV2<StepElementParame
 
     Map<String, String> envVars = downloadAwsS3StepHelper.getEnvironmentVariables(
         ambiance, downloadAwsS3StepParameters, stepElementParameters.getIdentifier());
-    downloadAwsS3StepHelper.removeAllEnvVarsWithSecretRef(envVars);
-    downloadAwsS3StepHelper.validateEnvVariables(envVars);
+    containerStepGroupHelper.removeAllEnvVarsWithSecretRef(envVars);
+    containerStepGroupHelper.validateEnvVariables(envVars);
 
     String stepIdentifier = AmbianceUtils.obtainStepIdentifier(ambiance);
-    String completeStepIdentifier = getCompleteStepIdentifier(ambiance, stepIdentifier);
+    String completeStepIdentifier = containerStepGroupHelper.getCompleteStepIdentifier(ambiance, stepIdentifier);
 
     return ContainerUnitStepUtils.serializeStepWithStepParameters(getPort(ambiance, stepIdentifier), parkedTaskId,
         logKey, completeStepIdentifier, getTimeout(ambiance, stepElementParameters), accountId,
         stepElementParameters.getName(), delegateCallbackTokenSupplier, ambiance, envVars,
         pluginExecutionConfig.getDownloadAwsS3Config().getImage(), Collections.EMPTY_LIST);
-  }
-
-  public String getCompleteStepIdentifier(Ambiance ambiance, String stepIdentifier) {
-    StringBuilder identifier = new StringBuilder();
-    for (Level level : ambiance.getLevelsList()) {
-      if (level.getStepType().getType().equals("STEP_GROUP")) {
-        identifier.append(level.getIdentifier());
-        identifier.append('_');
-      }
-    }
-    identifier.append(stepIdentifier);
-    return identifier.toString();
   }
 
   @Override

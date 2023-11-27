@@ -66,6 +66,8 @@ public class DownloadAwsS3StepTest extends CategoryTest {
 
   @Mock PluginExecutionConfig pluginExecutionConfig;
 
+  @Mock private ContainerStepGroupHelper containerStepGroupHelper;
+
   @InjectMocks @Spy private DownloadAwsS3Step downloadAwsS3Step;
 
   @Before
@@ -107,8 +109,8 @@ public class DownloadAwsS3StepTest extends CategoryTest {
         .getDownloadAwsS3Config();
 
     doReturn(new HashMap<>()).when(downloadAwsS3StepHelper).getEnvironmentVariables(any(), any(), any());
-    doReturn(new HashMap<>()).when(downloadAwsS3StepHelper).removeAllEnvVarsWithSecretRef(any());
-    doReturn(new HashMap<>()).when(downloadAwsS3StepHelper).validateEnvVariables(any());
+    doReturn(new HashMap<>()).when(containerStepGroupHelper).removeAllEnvVarsWithSecretRef(any());
+    doReturn(new HashMap<>()).when(containerStepGroupHelper).validateEnvVariables(any());
 
     UnitStep unitStep = mock(UnitStep.class);
     doReturn(accountId).when(unitStep).getAccountId();

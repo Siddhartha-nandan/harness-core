@@ -11,6 +11,7 @@ import static java.lang.String.format;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.cdng.containerStepGroup.ContainerStepGroupHelper;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepHelper;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepParameters;
@@ -36,6 +37,8 @@ import java.util.Set;
 @OwnedBy(HarnessTeam.CDP)
 public class DownloadAwsS3PluginInfoProvider implements CDPluginInfoProvider {
   @Inject PluginExecutionConfig pluginExecutionConfig;
+
+  @Inject ContainerStepGroupHelper containerStepGroupHelper;
   @Inject private DownloadAwsS3StepHelper downloadAwsS3StepHelper;
 
   @Override
@@ -56,9 +59,7 @@ public class DownloadAwsS3PluginInfoProvider implements CDPluginInfoProvider {
     PluginDetails.Builder pluginDetailsBuilder = PluginInfoProviderHelper.buildPluginDetails(
         downloadAwsS3StepInfo.getResources(), downloadAwsS3StepInfo.getRunAsUser(), usedPorts, true);
 
-    ImageDetails imageDetails = null;
-
-    imageDetails = PluginInfoProviderHelper.getImageDetails(ParameterField.ofNull(),
+    ImageDetails imageDetails = PluginInfoProviderHelper.getImageDetails(ParameterField.ofNull(),
         ParameterField.createValueField(pluginExecutionConfig.getDownloadAwsS3Config().getImage()),
         ParameterField.ofNull());
 
@@ -66,11 +67,11 @@ public class DownloadAwsS3PluginInfoProvider implements CDPluginInfoProvider {
 
     // We cannot provide secret environment variables to the container at runtime. So during  initialize phase, we pass
     // these secrets variables
-    Map<String, String> envVars =
-        downloadAwsS3StepHelper.getEnvVarsWithSecretRef(downloadAwsS3StepHelper.getEnvironmentVariables(
+    Map<String, String> envVarsWithSecretRef =
+        containerStepGroupHelper.getEnvVarsWithSecretRef(downloadAwsS3StepHelper.getEnvironmentVariables(
             ambiance, (DownloadAwsS3StepParameters) downloadAwsS3StepInfo.getSpecParameters(), null));
 
-    pluginDetailsBuilder.putAllEnvVariables(downloadAwsS3StepHelper.validateEnvVariables(envVars));
+    pluginDetailsBuilder.putAllEnvVariables(containerStepGroupHelper.validateEnvVariables(envVarsWithSecretRef));
 
     PluginCreationResponse response =
         PluginCreationResponse.newBuilder().setPluginDetails(pluginDetailsBuilder.build()).build();

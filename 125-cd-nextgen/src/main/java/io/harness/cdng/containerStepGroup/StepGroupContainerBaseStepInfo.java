@@ -33,7 +33,7 @@ import org.springframework.data.annotation.TypeAlias;
 @AllArgsConstructor
 @TypeAlias("containerStepGroupBaseStepInfo")
 @FieldNameConstants(innerTypeName = "ContainerStepGroupBaseStepInfoKeys")
-public class ContainerStepGroupBaseStepInfo {
+public class StepGroupContainerBaseStepInfo {
   @YamlSchemaTypes({expression})
   @ApiModelProperty(dataType = SwaggerConstants.STRING_LIST_CLASSPATH)
   ParameterField<List<TaskSelectorYaml>> delegateSelectors;

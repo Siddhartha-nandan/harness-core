@@ -48,7 +48,7 @@ import org.springframework.data.annotation.TypeAlias;
 @JsonTypeName(StepSpecTypeConstants.DOWNLOAD_AWS_S3)
 @TypeAlias("downloadAwsS3StepInfo")
 @RecasterAlias("io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo")
-public class DownloadAwsS3StepInfo extends ContainerStepGroupBaseStepInfo implements CDAbstractStepInfo, Visitable {
+public class DownloadAwsS3StepInfo extends StepGroupContainerBaseStepInfo implements CDAbstractStepInfo, Visitable {
   @JsonProperty(YamlNode.UUID_FIELD_NAME)
   @Getter(onMethod_ = { @ApiModelProperty(hidden = true) })
   @ApiModelProperty(hidden = true)
