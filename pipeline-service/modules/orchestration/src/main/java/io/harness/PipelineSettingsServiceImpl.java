@@ -197,9 +197,6 @@ public class PipelineSettingsServiceImpl implements PipelineSettingsService {
 
   @VisibleForTesting
   protected PlanExecutionSettingResponse shouldQueueInternal(long maxCount, long runningExecutionsForGivenPipeline) {
-    if (maxCount <= 0) {
-      return PlanExecutionSettingResponse.builder().shouldQueue(false).useNewFlow(true).build();
-    }
     if (runningExecutionsForGivenPipeline >= maxCount) {
       return PlanExecutionSettingResponse.builder().shouldQueue(true).useNewFlow(true).build();
     }
