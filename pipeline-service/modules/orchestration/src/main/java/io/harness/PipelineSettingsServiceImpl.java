@@ -10,8 +10,6 @@ import static io.harness.licensing.Edition.ENTERPRISE;
 import static io.harness.licensing.Edition.FREE;
 import static io.harness.licensing.Edition.TEAM;
 
-import io.harness.data.structure.EmptyPredicate;
-import io.harness.data.structure.EmptyPredicate.IsEmpty;
 import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.exception.InvalidRequestException;
 import io.harness.licensing.Edition;
