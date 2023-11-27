@@ -49,43 +49,47 @@ public class ScopeInfoFilter implements ContainerRequestFilter {
 
   @Override
   public void filter(ContainerRequestContext requestContext) {
-    Optional<String> accountIdentifierOptional = getAccountIdentifierFrom(requestContext);
-    if (accountIdentifierOptional.isEmpty() || accountIdentifierOptional.get().isEmpty()) {
-      // there can be cases when account identifier may actually be not present in API,
-      // they would continue to be handled by upstream as is
-      log.warn(format("%s No accountId present in the request", SCOPE_INFO_FILTER_LOG));
-      return;
-    }
-
-    if (!isScopeInfoResolutionExemptedRequest(resourceInfo, requestContext)) {
-      String accountIdentifier = accountIdentifierOptional.get();
-      String orgIdentifier =
-          getOrgIdentifierFrom(requestContext).isPresent() ? getOrgIdentifierFrom(requestContext).get() : null;
-      String projectIdentifier =
-          getProjectIdentifierFrom(requestContext).isPresent() ? getProjectIdentifierFrom(requestContext).get() : null;
-      Optional<ScopeInfo> optionalScopeInfo =
-          NGRestUtils.getResponse(scopeInfoClient.getScopeInfo(accountIdentifier, orgIdentifier, projectIdentifier));
-      if (optionalScopeInfo.isEmpty()) {
-        log.warn(format(
-            "%s No Scope with given identifiers - accountIdentifier: [%s], orgIdentifier: [%s], projectIdentifier: [%s] present",
-            SCOPE_INFO_FILTER_LOG, accountIdentifier, orgIdentifier, projectIdentifier));
-        // Set a ScopeInfo which will be acted upon at respective Resource layers so error handling should remain as is
-        requestContext.setProperty(SCOPE_INFO_CONTEXT_PROPERTY,
-            ScopeInfo.builder()
-                .accountIdentifier(accountIdentifier)
-                .orgIdentifier(orgIdentifier)
-                .projectIdentifier(projectIdentifier)
-                .build());
+    if (isOnlyHandledResourceRequest(requestContext)) {
+      Optional<String> accountIdentifierOptional = getAccountIdentifierFrom(requestContext);
+      if (accountIdentifierOptional.isEmpty() || accountIdentifierOptional.get().isEmpty()) {
+        // there can be cases when account identifier may actually be not present in API,
+        // they would continue to be handled by upstream as is
+        log.warn(format("%s No accountId present in the request", SCOPE_INFO_FILTER_LOG));
         return;
       }
-      ScopeInfo scopeInfo = ScopeInfo.builder()
-                                .accountIdentifier(accountIdentifier)
-                                .orgIdentifier(optionalScopeInfo.get().getOrgIdentifier())
-                                .projectIdentifier(optionalScopeInfo.get().getProjectIdentifier())
-                                .scopeType(optionalScopeInfo.get().getScopeType())
-                                .uniqueId(optionalScopeInfo.get().getUniqueId())
-                                .build();
-      requestContext.setProperty(SCOPE_INFO_CONTEXT_PROPERTY, scopeInfo);
+
+      if (!isScopeInfoResolutionExemptedRequest(resourceInfo, requestContext)) {
+        String accountIdentifier = accountIdentifierOptional.get();
+        String orgIdentifier =
+            getOrgIdentifierFrom(requestContext).isPresent() ? getOrgIdentifierFrom(requestContext).get() : null;
+        String projectIdentifier = getProjectIdentifierFrom(requestContext).isPresent()
+            ? getProjectIdentifierFrom(requestContext).get()
+            : null;
+        Optional<ScopeInfo> optionalScopeInfo =
+            NGRestUtils.getResponse(scopeInfoClient.getScopeInfo(accountIdentifier, orgIdentifier, projectIdentifier));
+        if (optionalScopeInfo.isEmpty()) {
+          log.warn(format(
+              "%s No Scope with given identifiers - accountIdentifier: [%s], orgIdentifier: [%s], projectIdentifier: [%s] present",
+              SCOPE_INFO_FILTER_LOG, accountIdentifier, orgIdentifier, projectIdentifier));
+          // Set a ScopeInfo which will be acted upon at respective Resource layers so error handling should remain as
+          // is
+          requestContext.setProperty(SCOPE_INFO_CONTEXT_PROPERTY,
+              ScopeInfo.builder()
+                  .accountIdentifier(accountIdentifier)
+                  .orgIdentifier(orgIdentifier)
+                  .projectIdentifier(projectIdentifier)
+                  .build());
+          return;
+        }
+        ScopeInfo scopeInfo = ScopeInfo.builder()
+                                  .accountIdentifier(accountIdentifier)
+                                  .orgIdentifier(optionalScopeInfo.get().getOrgIdentifier())
+                                  .projectIdentifier(optionalScopeInfo.get().getProjectIdentifier())
+                                  .scopeType(optionalScopeInfo.get().getScopeType())
+                                  .uniqueId(optionalScopeInfo.get().getUniqueId())
+                                  .build();
+        requestContext.setProperty(SCOPE_INFO_CONTEXT_PROPERTY, scopeInfo);
+      }
     }
   }
 
@@ -139,5 +143,11 @@ public class ScopeInfoFilter implements ContainerRequestFilter {
   private boolean isScopeInfoResolutionExemptedRequest(
       ResourceInfo requestResourceInfo, ContainerRequestContext requestContext) {
     return ScopeInfoClient.SCOPE_INFO.equals(requestContext.getUriInfo().getPath());
+  }
+
+  private boolean isOnlyHandledResourceRequest(ContainerRequestContext requestContext) {
+    return requestContext != null && requestContext.getUriInfo() != null
+        && requestContext.getUriInfo().getPath() != null
+        && requestContext.getUriInfo().getPath().contains("organizations");
   }
 }
