@@ -2277,27 +2277,39 @@ public class TasStepHelper {
 
   private void validateArtifactBundleManifestStore(List<ManifestOutcome> orderedManifestOutcomes) {
     TasManifestOutcome artifactBundleStoreManifestOutcome = null;
-    List<TasManifestOutcome> tasManifestTypeOutcomeList = new ArrayList<>();
+    Map<String, List<TasManifestOutcome>> tasManifestTypeOutcomeMap = new HashMap<>();
     AutoScalerManifestOutcome autoScalerManifestOutcome = null;
     for (ManifestOutcome manifestOutcome : orderedManifestOutcomes) {
       if (manifestOutcome.getType().equals(TAS_MANIFEST)) {
         if (manifestOutcome.getStore().getKind().equals(ManifestStoreType.ARTIFACT_BUNDLE)) {
           artifactBundleStoreManifestOutcome = (TasManifestOutcome) manifestOutcome;
         }
-        tasManifestTypeOutcomeList.add((TasManifestOutcome) manifestOutcome);
+        TasManifestOutcome tasManifestOutcome = (TasManifestOutcome) manifestOutcome;
+        if (tasManifestTypeOutcomeMap.get(String.valueOf(tasManifestOutcome.getOrder())).isEmpty()) {
+          tasManifestTypeOutcomeMap.put(String.valueOf(tasManifestOutcome.getOrder()), List.of(tasManifestOutcome));
+        } else {
+          List<TasManifestOutcome> tasManifestOutcomeList =
+              tasManifestTypeOutcomeMap.get(String.valueOf(tasManifestOutcome.getOrder()));
+          tasManifestOutcomeList.add(tasManifestOutcome);
+          tasManifestTypeOutcomeMap.put(String.valueOf(tasManifestOutcome.getOrder()), tasManifestOutcomeList);
+        }
       }
       if (manifestOutcome.getType().equals(TAS_AUTOSCALER) && (manifestOutcome instanceof AutoScalerManifestOutcome)) {
         autoScalerManifestOutcome = (AutoScalerManifestOutcome) manifestOutcome;
       }
     }
     if (artifactBundleStoreManifestOutcome != null) {
-      if (tasManifestTypeOutcomeList.size() > 1) {
-        throw new InvalidRequestException(
-            format(
-                "Tas Manifest of Artifact Bundle Store type doesn't support Additional Manifest of type Tas Manifest.Expected count of Tas Manifest is 1 but found : %s",
-                tasManifestTypeOutcomeList.size()),
-            USER);
+      for (Map.Entry<String, List<TasManifestOutcome>> entry : tasManifestTypeOutcomeMap.entrySet()) {
+        List<TasManifestOutcome> tasManifestTypeOutcomeList = entry.getValue();
+        if (tasManifestTypeOutcomeList.size() > 1) {
+          throw new InvalidRequestException(
+              format(
+                  "Tas Manifest of Artifact Bundle Store type doesn't support Additional Manifest of type Tas Manifest. Expected count of Tas Manifest is 1 but found : %s",
+                  tasManifestTypeOutcomeList.size()),
+              USER);
+        }
       }
+
       if (!isEmpty(getParameterFieldValue(artifactBundleStoreManifestOutcome.getAutoScalerPath()))
           && (autoScalerManifestOutcome != null)) {
         throw new InvalidRequestException(
