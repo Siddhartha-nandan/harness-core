@@ -341,7 +341,7 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
   private static final String CLOUDFORMATION_STEP_METADATA = "Cloudformation";
   private static final String AWS_CDK_STEP_METADATA = "AWS CDK";
 
-  private static final String CD_CONTAINER_STEP_GROUP_METADATA = "CD Common Steps";
+  private static final String CD_STEP_GROUP_CONTAINER_STEPS_METADATA = "CD Common Steps";
   private static final String AZURE = "Azure";
   private static final String HELM = "Helm";
   private static final String PROVISIONER = "Provisioner";
@@ -368,8 +368,8 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
       COMMANDS, SERVERLESS_AWS_LAMBDA, ASG, GOOGLE_CLOUD_FUNCTIONS, ServiceSpecType.AWS_LAMBDA);
   private static final String BUILD_STEP = "Builds";
 
-  private static final List<String> CD_CONTAINER_STEP_GROUP_COMMON_STEPS_CATEGORY =
-      Arrays.asList(CD_CONTAINER_STEP_GROUP_METADATA, PLUGIN);
+  private static final List<String> CD_STEP_GROUP_CONTAINER_STEPS_CATEGORY =
+      Arrays.asList(CD_STEP_GROUP_CONTAINER_STEPS_METADATA, PLUGIN);
 
   private static final List<String> AZURE_RESOURCE_CATEGORY =
       Arrays.asList(KUBERNETES, PROVISIONER, AZURE, HELM, AZURE_WEBAPP, COMMANDS);
@@ -1611,8 +1611,8 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
                                  .setName("DOWNLOAD AWS S3")
                                  .setType(StepSpecTypeConstants.DOWNLOAD_AWS_S3)
                                  .setStepMetaData(StepMetaData.newBuilder()
-                                                      .addAllCategory(CD_CONTAINER_STEP_GROUP_COMMON_STEPS_CATEGORY)
-                                                      .setFolderPath(CD_CONTAINER_STEP_GROUP_METADATA)
+                                                      .addAllCategory(CD_STEP_GROUP_CONTAINER_STEPS_CATEGORY)
+                                                      .setFolderPath(CD_STEP_GROUP_CONTAINER_STEPS_METADATA)
                                                       .build())
                                  .setFeatureFlag(FeatureName.CDS_CONTAINER_STEP_GROUP.name())
                                  .build();
