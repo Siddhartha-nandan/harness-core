@@ -126,9 +126,12 @@ public class NgDelegate2TaskExecutor implements TaskExecutor {
   }
 
   private SetupExecutionInfrastructureRequest buildK8sInfraReq(SubmitTaskRequest submitTaskRequest) {
+    String logKey =
+        "accountId:kmpySmUISimoRrJL6NL73w/orgId:default/projectId:dummy/pipelineId:shell/runSequence:239/level0:pipeline/level1:stages/level2:shell/level3:spec/level4:execution/level5:steps/level6:ShellScript_1-commandUnit:Execute";
+
     SchedulingConfig schedulingConfig = buildK8sSchedulingConfig(submitTaskRequest);
 
-    LogConfig logConfig = LogConfig.newBuilder().setLogPrefix("asdsadasd").build();
+    LogConfig logConfig = LogConfig.newBuilder().setLogPrefix("asdsadasd").setLogKey(logKey).build();
 
     ComputingResource computingResource = ComputingResource.newBuilder().setCpu("500m").setMemory("500Mi").build();
 

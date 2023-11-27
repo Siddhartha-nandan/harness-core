@@ -165,7 +165,7 @@ public class K8SLiteRunner implements Runner {
       //  sleep(ofSeconds(5));
 
       if (watch != null) {
-        k8EventHandler.stopEventWatch(watch);
+        // k8EventHandler.stopEventWatch(watch);
         // sleep(ofMinutes(1));
       }
 
@@ -179,7 +179,7 @@ public class K8SLiteRunner implements Runner {
       throw e;
     } finally {
       if (logStreamingTaskClient != null) {
-        logStreamingTaskClient.closeStream(null);
+        //   logStreamingTaskClient.closeStream(null);
       }
     }
   }
