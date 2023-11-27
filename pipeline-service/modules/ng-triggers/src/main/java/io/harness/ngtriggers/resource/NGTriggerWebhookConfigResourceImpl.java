@@ -237,4 +237,22 @@ public class NGTriggerWebhookConfigResourceImpl implements NGTriggerWebhookConfi
                                        .executionDetails(executionDetails)
                                        .build());
   }
+
+  public ResponseDTO<WebhookExecutionDetails> fetchWebhookExecutionDetailsV2(
+      @NotNull String eventId, @NotNull String accountIdentifier) {
+    WebhookEventProcessingDetails webhookProcessingDetails =
+        ngTriggerService.fetchTriggerEventHistoryV2(accountIdentifier, eventId);
+    Object executionDetails = null;
+    try {
+      executionDetails =
+          ngTriggerService.fetchExecutionSummaryV2(webhookProcessingDetails.getPipelineExecutionId(), accountIdentifier,
+              webhookProcessingDetails.getOrgIdentifier(), webhookProcessingDetails.getProjectIdentifier());
+    } catch (Exception e) {
+      log.error(String.format("Unable to find execution details for trigger with eventCorrelationId %s", eventId), e);
+    }
+    return ResponseDTO.newResponse(WebhookExecutionDetails.builder()
+                                       .webhookProcessingDetails(webhookProcessingDetails)
+                                       .executionDetails(executionDetails)
+                                       .build());
+  }
 }

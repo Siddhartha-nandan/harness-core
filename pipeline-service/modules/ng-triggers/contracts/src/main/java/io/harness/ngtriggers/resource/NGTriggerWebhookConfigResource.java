@@ -331,4 +331,19 @@ public interface NGTriggerWebhookConfigResource {
   ResponseDTO<WebhookExecutionDetails>
   fetchWebhookExecutionDetails(@NotNull @PathParam("eventId") String eventId,
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier);
+
+  @GET
+  @Operation(operationId = "fetchWebhookExecutionDetailsV2",
+          summary = "Gets webhook event processing details for input eventId V2.",
+          responses =
+                  {
+                          @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                                  responseCode = "default", description = "Returns webhook event processing details for input eventId V2.")
+                  })
+  @Path("/v2/triggerExecutionDetails/{eventId}")
+  @ApiOperation(value = "fetch webhook event details with execution summary V2", nickname = "triggerExecutionDetailsV2")
+  @PublicApi
+  ResponseDTO<WebhookExecutionDetails>
+  fetchWebhookExecutionDetailsV2(@NotNull @PathParam("eventId") String eventId,
+                               @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier);
 }

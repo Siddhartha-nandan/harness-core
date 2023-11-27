@@ -830,6 +830,45 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   }
 
   @Override
+  public WebhookEventProcessingDetails fetchTriggerEventHistoryV2(String accountId, String eventId) {
+    List<TriggerEventHistory> triggerEventHistoryList =
+            triggerEventHistoryRepository.findByAccountIdAndEventCorrelationId(accountId, eventId);
+    if (triggerEventHistoryList.size() == 0) {
+      return WebhookEventProcessingDetails.builder().eventId(eventId).accountIdentifier(accountId).message("").build();
+    }
+    TriggerEventHistory triggerEventHistory = triggerEventHistoryList.get(0);
+    String warningMsg = null;
+    if (triggerEventHistoryList.size() > 1) {
+      warningMsg =
+              "There are multiple trigger events generated from this eventId. This response contains only one of them.";
+    }
+    WebhookEventProcessingDetailsBuilder builder =
+            WebhookEventProcessingDetails.builder().eventId(eventId).accountIdentifier(accountId);
+    if (triggerEventHistory == null) {
+      builder.eventFound(false);
+    } else {
+      builder.eventFound(true)
+              .orgIdentifier(triggerEventHistory.getOrgIdentifier())
+              .projectIdentifier(triggerEventHistory.getProjectIdentifier())
+              .triggerIdentifier(triggerEventHistory.getTriggerIdentifier())
+              .pipelineIdentifier(triggerEventHistory.getTargetIdentifier())
+              .exceptionOccured(triggerEventHistory.isExceptionOccurred())
+              .status(triggerEventHistory.getFinalStatus())
+              .message(triggerEventHistory.getMessage())
+              .payload(triggerEventHistory.getPayload())
+              .eventCreatedAt(triggerEventHistory.getCreatedAt())
+              .warningMsg(warningMsg);
+
+      if (triggerEventHistory.getTargetExecutionSummary() != null) {
+        builder.pipelineExecutionId(triggerEventHistory.getTargetExecutionSummary().getPlanExecutionId())
+                .runtimeInput(triggerEventHistory.getTargetExecutionSummary().getRuntimeInput());
+      }
+    }
+
+    return builder.build();
+  }
+
+  @Override
   public TriggerWebhookEvent addEventToQueue(TriggerWebhookEvent webhookEventQueueRecord) {
     try {
       return webhookEventQueueRepository.save(webhookEventQueueRecord);
