@@ -24,6 +24,7 @@ public enum Currency {
   CNY("CNY", "\u00a5", "&#x00a5;"),
   EUR("EUR", "\u20ac", "&#x20ac;"),
   GBP("GBP", "\u00a3", "&#x00a3;"),
+  IDR("IDR","\\u0052\\u0070" ,"&#82;&#112;"),
   INR("INR", "\u20b9", "&#x20b9;"),
   JPY("JPY", "\u00a5", "&#x00a5;"),
   MXN("MXN", Constants.DOLLAR_SYMBOL, Constants.DOLLAR_UTF8_HEX_SYMBOL),
@@ -32,7 +33,6 @@ public enum Currency {
   RUB("RUB", "\u0440\u0443\u0431", "&#x0440;&#x0443;&#x0431;"),
   SGD("SGD", "\u0053\u0024", "&#x0053;&#x0024;"),
   USD("USD", Constants.DOLLAR_SYMBOL, Constants.DOLLAR_UTF8_HEX_SYMBOL),
-  IDR("IDR","\\u0052\\u0070" ,"&#82;&#112;"),
   NONE("NONE", "\u2205", "&#x2205;");
 
   private final String currencyValue;
