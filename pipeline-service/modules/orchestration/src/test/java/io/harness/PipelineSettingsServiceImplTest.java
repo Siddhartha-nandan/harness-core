@@ -16,7 +16,9 @@ import static io.harness.rule.OwnerRule.AYUSHI_TIWARI;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
@@ -26,9 +28,16 @@ import io.harness.licensing.Edition;
 import io.harness.licensing.beans.modules.CDModuleLicenseDTO;
 import io.harness.licensing.beans.modules.ModuleLicenseDTO;
 import io.harness.licensing.remote.NgLicenseHttpClient;
+import io.harness.ng.core.dto.ResponseDTO;
+import io.harness.ngsettings.SettingValueType;
+import io.harness.ngsettings.client.remote.NGSettingsClient;
+import io.harness.ngsettings.dto.SettingValueResponseDTO;
+import io.harness.pms.utils.NGPipelineSettingsConstant;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.rule.Owner;
 
+import com.google.inject.Inject;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +48,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import retrofit2.Call;
+import retrofit2.Response;
 
 @OwnedBy(PIPELINE)
 
@@ -46,12 +57,15 @@ public class PipelineSettingsServiceImplTest extends OrchestrationTestBase {
   public static final String ACCOUNT_ID = "ACCOUNT_ID";
   public static final String PIPELINE_IDENTIFIER = "PIPELINE_IDENTIFIER";
   @Mock NgLicenseHttpClient ngLicenseHttpClient;
+  @Mock private Call<ResponseDTO<SettingValueResponseDTO>> request;
 
   @Mock OrchestrationRestrictionConfiguration orchestrationRestrictionConfiguration;
 
   @Mock PlanExecutionService planExecutionService;
 
   @InjectMocks PipelineSettingsServiceImpl pipelineSettingsService;
+
+  @Mock NGSettingsClient ngSettingsClient;
 
   @Test
   @Owner(developers = AYUSHI_TIWARI)
@@ -100,14 +114,30 @@ public class PipelineSettingsServiceImplTest extends OrchestrationTestBase {
   @Test
   @Owner(developers = AYUSHI_TIWARI)
   @Category(UnitTests.class)
-  public void testShouldQueuePlanExecutionFree() {
+  public void testShouldQueuePlanExecutionFree() throws IOException {
     // editon == FREE && orchestrationRestrictionConfiguration.isUseRestrictionForFree() == True
     // runningExecutionsForGivenPipeline >= maxCount == False
     MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class);
     PlanExecutionRestrictionConfig planExecutionRestrictionConfig = new PlanExecutionRestrictionConfig(1, 2, 3);
     List<ModuleLicenseDTO> moduleLicenseDTOS = new ArrayList<>();
     moduleLicenseDTOS.add(CDModuleLicenseDTO.builder().edition(Edition.FREE).build());
-    mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(moduleLicenseDTOS);
+    mockRestStatic.when(() -> NGRestUtils.getResponse(ngLicenseHttpClient.getModuleLicenses(anyString())))
+        .thenReturn(moduleLicenseDTOS);
+    mockRestStatic
+        .when(()
+                  -> ngSettingsClient.getSetting(
+                      NGPipelineSettingsConstant.CONCURRENT_ACTIVE_PIPELINE_EXECUTIONS.getName(), "ACCOUNT_ID", null,
+                      null))
+        .thenReturn(request);
+    SettingValueResponseDTO settingValueResponseDTO =
+        SettingValueResponseDTO.builder().value("600").valueType(SettingValueType.STRING).build();
+    when(request.execute()).thenReturn(Response.success(ResponseDTO.newResponse(settingValueResponseDTO)));
+    mockRestStatic
+        .when(()
+                  -> NGRestUtils.getResponse(ngSettingsClient.getSetting(
+                      NGPipelineSettingsConstant.CONCURRENT_ACTIVE_PIPELINE_EXECUTIONS.getName(), "ACCOUNT_ID", null,
+                      null)))
+        .thenReturn(settingValueResponseDTO);
     doReturn(true).when(orchestrationRestrictionConfiguration).isUseRestrictionForFree();
     doReturn(planExecutionRestrictionConfig).when(orchestrationRestrictionConfiguration).getPlanExecutionRestriction();
     doReturn(0L)
@@ -146,7 +176,22 @@ public class PipelineSettingsServiceImplTest extends OrchestrationTestBase {
     PlanExecutionRestrictionConfig planExecutionRestrictionConfig = new PlanExecutionRestrictionConfig(1, 2, 3);
     List<ModuleLicenseDTO> moduleLicenseDTOS = new ArrayList<>();
     moduleLicenseDTOS.add(CDModuleLicenseDTO.builder().edition(Edition.TEAM).build());
-    mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(moduleLicenseDTOS);
+    mockRestStatic.when(() -> NGRestUtils.getResponse(ngLicenseHttpClient.getModuleLicenses(anyString())))
+        .thenReturn(moduleLicenseDTOS);
+    mockRestStatic
+        .when(()
+                  -> ngSettingsClient.getSetting(
+                      NGPipelineSettingsConstant.CONCURRENT_ACTIVE_PIPELINE_EXECUTIONS.getName(), "ACCOUNT_ID", null,
+                      null))
+        .thenReturn(request);
+    SettingValueResponseDTO settingValueResponseDTO =
+        SettingValueResponseDTO.builder().value("50").valueType(SettingValueType.STRING).build();
+    mockRestStatic
+        .when(()
+                  -> NGRestUtils.getResponse(ngSettingsClient.getSetting(
+                      NGPipelineSettingsConstant.CONCURRENT_ACTIVE_PIPELINE_EXECUTIONS.getName(), "ACCOUNT_ID", null,
+                      null)))
+        .thenReturn(settingValueResponseDTO);
     doReturn(true).when(orchestrationRestrictionConfiguration).isUseRestrictionForTeam();
     doReturn(planExecutionRestrictionConfig).when(orchestrationRestrictionConfiguration).getPlanExecutionRestriction();
     doReturn(100L)
@@ -169,7 +214,22 @@ public class PipelineSettingsServiceImplTest extends OrchestrationTestBase {
     PlanExecutionRestrictionConfig planExecutionRestrictionConfig = new PlanExecutionRestrictionConfig(1, 2, 3);
     List<ModuleLicenseDTO> moduleLicenseDTOS = new ArrayList<>();
     moduleLicenseDTOS.add(CDModuleLicenseDTO.builder().edition(Edition.TEAM).build());
-    mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(moduleLicenseDTOS);
+    mockRestStatic.when(() -> NGRestUtils.getResponse(ngLicenseHttpClient.getModuleLicenses(anyString())))
+        .thenReturn(moduleLicenseDTOS);
+    mockRestStatic
+        .when(()
+                  -> ngSettingsClient.getSetting(
+                      NGPipelineSettingsConstant.CONCURRENT_ACTIVE_PIPELINE_EXECUTIONS.getName(), "ACCOUNT_ID", null,
+                      null))
+        .thenReturn(request);
+    SettingValueResponseDTO settingValueResponseDTO =
+        SettingValueResponseDTO.builder().value("600").valueType(SettingValueType.STRING).build();
+    mockRestStatic
+        .when(()
+                  -> NGRestUtils.getResponse(ngSettingsClient.getSetting(
+                      NGPipelineSettingsConstant.CONCURRENT_ACTIVE_PIPELINE_EXECUTIONS.getName(), "ACCOUNT_ID", null,
+                      null)))
+        .thenReturn(settingValueResponseDTO);
     doReturn(true).when(orchestrationRestrictionConfiguration).isUseRestrictionForTeam();
     doReturn(planExecutionRestrictionConfig).when(orchestrationRestrictionConfiguration).getPlanExecutionRestriction();
     doReturn(0L)
@@ -209,6 +269,22 @@ public class PipelineSettingsServiceImplTest extends OrchestrationTestBase {
     List<ModuleLicenseDTO> moduleLicenseDTOS = new ArrayList<>();
     moduleLicenseDTOS.add(CDModuleLicenseDTO.builder().edition(Edition.ENTERPRISE).build());
     mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(moduleLicenseDTOS);
+    mockRestStatic.when(() -> NGRestUtils.getResponse(ngLicenseHttpClient.getModuleLicenses(anyString())))
+        .thenReturn(moduleLicenseDTOS);
+    mockRestStatic
+        .when(()
+                  -> ngSettingsClient.getSetting(
+                      NGPipelineSettingsConstant.CONCURRENT_ACTIVE_PIPELINE_EXECUTIONS.getName(), "ACCOUNT_ID", null,
+                      null))
+        .thenReturn(request);
+    SettingValueResponseDTO settingValueResponseDTO =
+        SettingValueResponseDTO.builder().value("50").valueType(SettingValueType.STRING).build();
+    mockRestStatic
+        .when(()
+                  -> NGRestUtils.getResponse(ngSettingsClient.getSetting(
+                      NGPipelineSettingsConstant.CONCURRENT_ACTIVE_PIPELINE_EXECUTIONS.getName(), "ACCOUNT_ID", null,
+                      null)))
+        .thenReturn(settingValueResponseDTO);
     doReturn(true).when(orchestrationRestrictionConfiguration).isUseRestrictionForEnterprise();
     doReturn(planExecutionRestrictionConfig).when(orchestrationRestrictionConfiguration).getPlanExecutionRestriction();
     doReturn(100L)
@@ -231,7 +307,22 @@ public class PipelineSettingsServiceImplTest extends OrchestrationTestBase {
     PlanExecutionRestrictionConfig planExecutionRestrictionConfig = new PlanExecutionRestrictionConfig(1, 2, 3);
     List<ModuleLicenseDTO> moduleLicenseDTOS = new ArrayList<>();
     moduleLicenseDTOS.add(CDModuleLicenseDTO.builder().edition(ENTERPRISE).build());
-    mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(moduleLicenseDTOS);
+    mockRestStatic.when(() -> NGRestUtils.getResponse(ngLicenseHttpClient.getModuleLicenses(anyString())))
+        .thenReturn(moduleLicenseDTOS);
+    mockRestStatic
+        .when(()
+                  -> ngSettingsClient.getSetting(
+                      NGPipelineSettingsConstant.CONCURRENT_ACTIVE_PIPELINE_EXECUTIONS.getName(), "ACCOUNT_ID", null,
+                      null))
+        .thenReturn(request);
+    SettingValueResponseDTO settingValueResponseDTO =
+        SettingValueResponseDTO.builder().value("600").valueType(SettingValueType.STRING).build();
+    mockRestStatic
+        .when(()
+                  -> NGRestUtils.getResponse(ngSettingsClient.getSetting(
+                      NGPipelineSettingsConstant.CONCURRENT_ACTIVE_PIPELINE_EXECUTIONS.getName(), "ACCOUNT_ID", null,
+                      null)))
+        .thenReturn(settingValueResponseDTO);
     doReturn(true).when(orchestrationRestrictionConfiguration).isUseRestrictionForEnterprise();
     doReturn(planExecutionRestrictionConfig).when(orchestrationRestrictionConfiguration).getPlanExecutionRestriction();
     doReturn(0L)
