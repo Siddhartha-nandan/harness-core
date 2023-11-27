@@ -19,6 +19,8 @@ import static io.harness.ng.accesscontrol.PlatformResourceTypes.ORGANIZATION;
 import io.harness.accesscontrol.AccountIdentifier;
 import io.harness.accesscontrol.NGAccessControlCheck;
 import io.harness.accesscontrol.ResourceIdentifier;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.dto.OrganizationFilterDTO;
 import io.harness.ng.core.entities.Organization;
@@ -54,8 +56,9 @@ public class OrganizationApiImpl implements OrganizationApi {
       throw new InvalidRequestException(
           String.format("%s cannot be used as org identifier", DEFAULT_ORG_IDENTIFIER), USER);
     }
-    Organization createdOrganization =
-        organizationService.create(account, organizationApiUtils.getOrganizationDto(request));
+    Organization createdOrganization = organizationService.create(account,
+        ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build(),
+        organizationApiUtils.getOrganizationDto(request));
     return Response.status(Response.Status.CREATED)
         .entity(organizationApiUtils.getOrganizationResponse(createdOrganization))
         .tag(createdOrganization.getVersion().toString())
@@ -131,7 +134,9 @@ public class OrganizationApiImpl implements OrganizationApi {
       throw new NotFoundException(String.format("Organization with identifier [%s] not found", identifier));
     }
 
-    boolean deleted = organizationService.delete(account, identifier, null);
+    boolean deleted = organizationService.delete(
+        ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build(),
+        identifier, null);
 
     if (!deleted) {
       throw new InvalidRequestException(

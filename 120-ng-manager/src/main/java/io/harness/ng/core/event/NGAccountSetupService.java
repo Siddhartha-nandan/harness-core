@@ -28,6 +28,8 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.FeatureName;
 import io.harness.beans.PageResponse;
 import io.harness.beans.Scope;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.exception.DuplicateFieldException;
 import io.harness.exception.GeneralException;
 import io.harness.ff.FeatureFlagService;
@@ -162,7 +164,13 @@ public class NGAccountSetupService {
     createOrganizationDTO.setTags(emptyMap());
     createOrganizationDTO.setDescription("Default Organization");
     createOrganizationDTO.setHarnessManaged(true);
-    Organization defaultOrganization = organizationService.create(accountIdentifier, createOrganizationDTO);
+    Organization defaultOrganization = organizationService.create(accountIdentifier,
+        ScopeInfo.builder()
+            .accountIdentifier(accountIdentifier)
+            .scopeType(ScopeLevel.ACCOUNT)
+            .uniqueId(accountIdentifier)
+            .build(),
+        createOrganizationDTO);
     log.info(String.format("[NGAccountSetupService]: Created default org for account %s", accountIdentifier));
     return defaultOrganization;
   }

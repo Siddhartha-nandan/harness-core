@@ -69,13 +69,22 @@ public class ScopeInfoFilter implements ContainerRequestFilter {
         log.warn(format(
             "%s No Scope with given identifiers - accountIdentifier: [%s], orgIdentifier: [%s], projectIdentifier: [%s] present",
             SCOPE_INFO_FILTER_LOG, accountIdentifier, orgIdentifier, projectIdentifier));
+        // Set a ScopeInfo which will be acted upon at respective Resource layers so error handling should remain as is
+        requestContext.setProperty(SCOPE_INFO_CONTEXT_PROPERTY,
+            ScopeInfo.builder()
+                .accountIdentifier(accountIdentifier)
+                .orgIdentifier(orgIdentifier)
+                .projectIdentifier(projectIdentifier)
+                .build());
         return;
       }
-      ScopeInfo scopeInfo = ScopeInfo.builder().accountIdentifier(accountIdentifier).build();
-      scopeInfo.setOrgIdentifier(optionalScopeInfo.get().getOrgIdentifier());
-      scopeInfo.setProjectIdentifier(optionalScopeInfo.get().getProjectIdentifier());
-      scopeInfo.setScopeType(optionalScopeInfo.get().getScopeType());
-      scopeInfo.setUniqueId(optionalScopeInfo.get().getUniqueId());
+      ScopeInfo scopeInfo = ScopeInfo.builder()
+                                .accountIdentifier(accountIdentifier)
+                                .orgIdentifier(optionalScopeInfo.get().getOrgIdentifier())
+                                .projectIdentifier(optionalScopeInfo.get().getProjectIdentifier())
+                                .scopeType(optionalScopeInfo.get().getScopeType())
+                                .uniqueId(optionalScopeInfo.get().getUniqueId())
+                                .build();
       requestContext.setProperty(SCOPE_INFO_CONTEXT_PROPERTY, scopeInfo);
     }
   }

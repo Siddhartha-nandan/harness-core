@@ -39,6 +39,7 @@ import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.Scope;
 import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.context.GlobalContext;
 import io.harness.exception.EntityNotFoundException;
@@ -127,9 +128,13 @@ public class OrganizationServiceImplTest extends CategoryTest {
     when(organizationRepository.save(organization)).thenReturn(organization);
     when(outboxService.save(any())).thenReturn(OutboxEvent.builder().build());
     when(transactionTemplate.execute(any())).thenReturn(organization);
-
-    Organization createdOrganization = organizationService.create(accountIdentifier, organizationDTO);
-
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(accountIdentifier)
+                              .build();
+    Organization createdOrganization = organizationService.create(accountIdentifier, scopeInfo, organizationDTO);
+    scopeInfo.setOrgIdentifier(organizationDTO.getIdentifier());
     verify(transactionTemplate, times(1)).execute(any());
     Scope scope = Scope.of(accountIdentifier, organizationDTO.getIdentifier(), null);
     verify(defaultUserGroupService, times(1)).create(scope, emptyList());
@@ -290,7 +295,12 @@ public class OrganizationServiceImplTest extends CategoryTest {
                    .doInTransaction(new SimpleTransactionStatus()));
     when(organizationRepository.hardDelete(any(), any(), any())).thenReturn(organization);
 
-    organizationService.delete(accountIdentifier, identifier, version);
+    organizationService.delete(ScopeInfo.builder()
+                                   .accountIdentifier(accountIdentifier)
+                                   .scopeType(ScopeLevel.ACCOUNT)
+                                   .uniqueId(accountIdentifier)
+                                   .build(),
+        identifier, version);
     verify(organizationRepository, times(1)).hardDelete(any(), argumentCaptor.capture(), any());
     assertEquals(identifier, argumentCaptor.getValue());
     verify(transactionTemplate, times(1)).execute(any());
@@ -311,7 +321,12 @@ public class OrganizationServiceImplTest extends CategoryTest {
                    .doInTransaction(new SimpleTransactionStatus()));
     when(organizationRepository.hardDelete(any(), any(), any())).thenReturn(null);
 
-    organizationService.delete(accountIdentifier, identifier, version);
+    organizationService.delete(ScopeInfo.builder()
+                                   .accountIdentifier(accountIdentifier)
+                                   .scopeType(ScopeLevel.ACCOUNT)
+                                   .uniqueId(accountIdentifier)
+                                   .build(),
+        identifier, version);
   }
 
   @Test

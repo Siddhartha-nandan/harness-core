@@ -26,7 +26,8 @@ import org.springframework.data.mongodb.core.query.Criteria;
 @OwnedBy(PL)
 public interface OrganizationService {
   String ORG_SCOPE_INFO_DATA_CACHE_KEY = "orgScopeInfoDataCache";
-  Organization create(String accountIdentifier, OrganizationDTO organization);
+
+  Organization create(String accountIdentifier, ScopeInfo scopeInfo, OrganizationDTO organization);
 
   List<String> getDistinctAccounts();
 
@@ -52,12 +53,13 @@ public interface OrganizationService {
    */
   List<Organization> list(Criteria criteria);
 
-  boolean delete(String accountIdentifier, String identifier, Long version);
+  boolean delete(ScopeInfo scopeInfo, String identifier, Long version);
 
-  boolean restore(String accountIdentifier, String identifier);
+  boolean restore(ScopeInfo scopeInfo, String identifier);
 
   Long countOrgs(String accountIdentifier);
 
   Set<String> getPermittedOrganizations(@NotNull String accountIdentifier, String orgIdentifier);
+
   Optional<ScopeInfo> getScopeInfo(String accountIdentifier, String orgIdentifier);
 }

@@ -59,9 +59,9 @@ public class OrganizationRepositoryCustomImpl implements OrganizationRepositoryC
   }
 
   @Override
-  public Organization restore(String accountIdentifier, String identifier) {
-    Criteria criteria = Criteria.where(OrganizationKeys.accountIdentifier)
-                            .is(accountIdentifier)
+  public Organization restoreFromParentIdAndIdentifier(String parentId, String identifier) {
+    Criteria criteria = Criteria.where(OrganizationKeys.parentId)
+                            .is(parentId)
                             .and(OrganizationKeys.identifier)
                             .is(identifier)
                             .and(OrganizationKeys.deleted)
@@ -89,27 +89,9 @@ public class OrganizationRepositoryCustomImpl implements OrganizationRepositoryC
   }
 
   @Override
-  public Organization delete(String accountIdentifier, String identifier, Long version) {
-    Criteria criteria = Criteria.where(OrganizationKeys.accountIdentifier)
-                            .is(accountIdentifier)
-                            .and(OrganizationKeys.identifier)
-                            .is(identifier)
-                            .and(OrganizationKeys.deleted)
-                            .ne(Boolean.TRUE);
-    if (version != null) {
-      criteria.and(OrganizationKeys.version).is(version);
-    }
-    Query query = new Query(criteria);
-    Update update = new Update().set(OrganizationKeys.deleted, Boolean.TRUE);
-    return mongoTemplate.findAndModify(query, update, Organization.class);
-  }
-
-  @Override
-  public Organization hardDelete(String accountIdentifier, String identifier, Long version) {
-    Criteria criteria = Criteria.where(OrganizationKeys.accountIdentifier)
-                            .is(accountIdentifier)
-                            .and(OrganizationKeys.identifier)
-                            .is(identifier);
+  public Organization hardDelete(String parentId, String identifier, Long version) {
+    Criteria criteria =
+        Criteria.where(OrganizationKeys.parentId).is(parentId).and(OrganizationKeys.identifier).is(identifier);
     if (version != null) {
       criteria.and(OrganizationKeys.version).is(version);
     }

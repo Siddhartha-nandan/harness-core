@@ -32,6 +32,7 @@ import io.harness.accesscontrol.AccountIdentifier;
 import io.harness.accesscontrol.NGAccessControlCheck;
 import io.harness.accesscontrol.ResourceIdentifier;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
 import io.harness.beans.SortOrder;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.beans.PageRequest;
@@ -79,6 +80,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -130,13 +132,14 @@ public class OrganizationResource {
   public ResponseDTO<OrganizationResponse>
   create(@Parameter(description = ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
              NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
-      @RequestBody(required = true,
-          description = "Details of the Organization to create") @NotNull @Valid OrganizationRequest organizationDTO) {
+      @RequestBody(required = true, description = "Details of the Organization to create") @NotNull
+      @Valid OrganizationRequest organizationDTO, @Context ScopeInfo scopeInfo) {
     if (DEFAULT_ORG_IDENTIFIER.equals(organizationDTO.getOrganization().getIdentifier())) {
       throw new InvalidRequestException(
           String.format("%s cannot be used as org identifier", DEFAULT_ORG_IDENTIFIER), USER);
     }
-    Organization updatedOrganization = organizationService.create(accountIdentifier, organizationDTO.getOrganization());
+    Organization updatedOrganization =
+        organizationService.create(accountIdentifier, scopeInfo, organizationDTO.getOrganization());
     return ResponseDTO.newResponse(updatedOrganization.getVersion().toString(), toResponseWrapper(updatedOrganization));
   }
 
@@ -265,8 +268,8 @@ public class OrganizationResource {
   delete(@Parameter(description = "Version number of the Organization") @HeaderParam(IF_MATCH) String ifMatch,
       @Parameter(description = ORG_PARAM_MESSAGE) @NotNull @PathParam(
           NGCommonEntityConstants.IDENTIFIER_KEY) @ResourceIdentifier String identifier,
-      @Parameter(description = ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
-          NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier) {
+      @Parameter(description = ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY)
+      @AccountIdentifier String accountIdentifier, @Context ScopeInfo scopeInfo) {
     if (DEFAULT_ORG_IDENTIFIER.equals(identifier)) {
       throw new InvalidRequestException(
           String.format(
@@ -274,6 +277,6 @@ public class OrganizationResource {
           USER);
     }
     return ResponseDTO.newResponse(
-        organizationService.delete(accountIdentifier, identifier, isNumeric(ifMatch) ? parseLong(ifMatch) : null));
+        organizationService.delete(scopeInfo, identifier, isNumeric(ifMatch) ? parseLong(ifMatch) : null));
   }
 }

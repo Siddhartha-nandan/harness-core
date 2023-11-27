@@ -29,6 +29,8 @@ import static org.mockito.Mockito.when;
 import io.harness.CategoryTest;
 import io.harness.NGCommonEntityConstants;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.ng.beans.PageRequest;
 import io.harness.ng.beans.PageResponse;
@@ -73,16 +75,21 @@ public class OrganizationResourceTest extends CategoryTest {
   @Owner(developers = KARAN)
   @Category(UnitTests.class)
   public void testCreate() {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(accountIdentifier)
+                              .build();
     OrganizationDTO organizationDTO = getOrganizationDTO(identifier, name);
     OrganizationRequest organizationRequestWrapper =
         OrganizationRequest.builder().organization(organizationDTO).build();
     Organization organization = toOrganization(organizationDTO);
     organization.setVersion((long) 0);
 
-    when(organizationService.create(accountIdentifier, organizationDTO)).thenReturn(organization);
+    when(organizationService.create(accountIdentifier, scopeInfo, organizationDTO)).thenReturn(organization);
 
     ResponseDTO<OrganizationResponse> responseDTO =
-        organizationResource.create(accountIdentifier, organizationRequestWrapper);
+        organizationResource.create(accountIdentifier, organizationRequestWrapper, scopeInfo);
 
     assertEquals(organization.getVersion().toString(), responseDTO.getEntityTag());
     assertEquals(identifier, responseDTO.getData().getOrganization().getIdentifier());
@@ -196,11 +203,19 @@ public class OrganizationResourceTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testDelete() {
     String ifMatch = "0";
-
-    when(organizationService.delete(accountIdentifier, identifier, Long.valueOf(ifMatch))).thenReturn(true);
-
-    ResponseDTO<Boolean> response = organizationResource.delete(ifMatch, identifier, accountIdentifier);
-
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(accountIdentifier)
+                              .build();
+    when(organizationService.delete(ScopeInfo.builder()
+                                        .accountIdentifier(accountIdentifier)
+                                        .scopeType(ScopeLevel.ACCOUNT)
+                                        .uniqueId(accountIdentifier)
+                                        .build(),
+             identifier, Long.valueOf(ifMatch)))
+        .thenReturn(true);
+    ResponseDTO<Boolean> response = organizationResource.delete(ifMatch, identifier, accountIdentifier, scopeInfo);
     assertNull(response.getEntityTag());
     assertTrue(response.getData());
   }

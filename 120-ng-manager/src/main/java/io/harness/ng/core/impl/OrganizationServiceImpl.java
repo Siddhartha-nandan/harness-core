@@ -128,17 +128,19 @@ public class OrganizationServiceImpl implements OrganizationService {
 
   @Override
   @FeatureRestrictionCheck(MULTIPLE_ORGANIZATIONS)
-  public Organization create(@AccountIdentifier String accountIdentifier, OrganizationDTO organizationDTO) {
+  public Organization create(
+      @AccountIdentifier String accountIdentifier, ScopeInfo scopeInfo, OrganizationDTO organizationDTO) {
     Organization organization = toOrganization(organizationDTO);
     organization.setAccountIdentifier(accountIdentifier);
-    organization.setParentId(accountIdentifier);
+    organization.setParentId(scopeInfo.getUniqueId());
     try {
       validate(organization);
       Organization savedOrganization = saveOrganization(organization);
       addToScopeInfoCache(savedOrganization);
-      setupOrganization(Scope.of(accountIdentifier, organizationDTO.getIdentifier(), null));
-      log.info(
-          String.format("Organization with identifier [%s] was successfully created", organization.getIdentifier()));
+      setupOrganization(Scope.of(accountIdentifier, savedOrganization.getIdentifier(), null));
+      log.info(String.format(
+          "Organization with identifier [%s], uniqueId [%s] was successfully created with scope uniqueId [%s]",
+          organization.getIdentifier(), organization.getUniqueId(), scopeInfo.getUniqueId()));
       instrumentationHelper.sendOrganizationCreateEvent(organization, accountIdentifier);
       return savedOrganization;
     } catch (DuplicateKeyException ex) {
@@ -382,21 +384,22 @@ public class OrganizationServiceImpl implements OrganizationService {
   }
 
   @Override
-  public boolean delete(String accountIdentifier, String organizationIdentifier, Long version) {
+  public boolean delete(ScopeInfo scopeInfo, String identifier, Long version) {
+    final String accountIdentifier = scopeInfo.getAccountIdentifier();
     try (AutoLogContext ignore0 = new AccountLogContext(accountIdentifier, OVERRIDE_ERROR)) {
+      scopeInfoCache.remove(scopeInfoHelper.getScopeInfoCacheKey(accountIdentifier, identifier, null));
       return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
-        Organization organization =
-            organizationRepository.hardDelete(accountIdentifier, organizationIdentifier, version);
-        scopeInfoCache.remove(scopeInfoHelper.getScopeInfoCacheKey(accountIdentifier, organizationIdentifier, null));
-
+        Organization organization = organizationRepository.hardDelete(scopeInfo.getUniqueId(), identifier, version);
         if (isNull(organization)) {
           log.error(String.format(
-              "Organization with identifier [%s] could not be deleted as it does not exist", organizationIdentifier));
-          throw new EntityNotFoundException(String.format(
-              "Organization with identifier [%s] does not exist in the specified scope", organizationIdentifier));
+              "Organization with identifier [%s], scope uniqueId [%s] could not be deleted as it does not exist",
+              identifier, scopeInfo.getUniqueId()));
+          throw new EntityNotFoundException(
+              String.format("Organization with identifier [%s] does not exist in the specified scope", identifier));
         }
 
-        log.info(String.format("Organization with identifier [%s] was successfully deleted", organizationIdentifier));
+        log.info(String.format("Organization with identifier [%s], scope uniqueId [%s] was successfully deleted",
+            identifier, scopeInfo.getUniqueId()));
         outboxService.save(new OrganizationDeleteEvent(accountIdentifier, OrganizationMapper.writeDto(organization)));
         instrumentationHelper.sendOrganizationDeleteEvent(organization, accountIdentifier);
         return true;
@@ -405,12 +408,14 @@ public class OrganizationServiceImpl implements OrganizationService {
   }
 
   @Override
-  public boolean restore(String accountIdentifier, String identifier) {
+  public boolean restore(ScopeInfo scopeInfo, String identifier) {
     return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
-      Organization organization = organizationRepository.restore(accountIdentifier, identifier);
+      Organization organization =
+          organizationRepository.restoreFromParentIdAndIdentifier(scopeInfo.getUniqueId(), identifier);
       boolean success = organization != null;
       if (success) {
-        outboxService.save(new OrganizationRestoreEvent(accountIdentifier, OrganizationMapper.writeDto(organization)));
+        outboxService.save(
+            new OrganizationRestoreEvent(scopeInfo.getAccountIdentifier(), OrganizationMapper.writeDto(organization)));
       }
       return success;
     }));

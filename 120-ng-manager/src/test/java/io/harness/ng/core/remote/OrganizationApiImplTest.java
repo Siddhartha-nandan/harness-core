@@ -29,6 +29,8 @@ import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.dto.OrganizationDTO;
@@ -93,7 +95,10 @@ public class OrganizationApiImplTest extends CategoryTest {
     Organization organization = toOrganization(organizationDTO);
     organization.setVersion(0L);
 
-    when(organizationService.create(account, organizationDTO)).thenReturn(organization);
+    when(organizationService.create(account,
+             ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build(),
+             organizationDTO))
+        .thenReturn(organization);
 
     Response response = organizationApi.createOrganization(organizationRequest, account);
     assertEquals(201, response.getStatus());
@@ -250,7 +255,10 @@ public class OrganizationApiImplTest extends CategoryTest {
     organization.setVersion(0L);
 
     when(organizationService.get(account, identifier)).thenReturn(Optional.of(organization));
-    when(organizationService.delete(account, identifier, null)).thenReturn(true);
+    when(organizationService.delete(
+             ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build(),
+             identifier, null))
+        .thenReturn(true);
 
     Response response = organizationApi.deleteOrganization(identifier, account);
 
