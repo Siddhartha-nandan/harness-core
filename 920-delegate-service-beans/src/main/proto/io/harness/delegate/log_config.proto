@@ -12,4 +12,6 @@ option go_package = "920_delegate_service_beans";
 message LogConfig {
   // log base key for sending logs
   string log_prefix = 1;
+  // This log key is used for streaming init Task logs
+  string log_key = 2;
 }

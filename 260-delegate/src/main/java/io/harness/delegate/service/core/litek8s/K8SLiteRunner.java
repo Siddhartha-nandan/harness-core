@@ -11,11 +11,8 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.delegate.service.core.litek8s.ContainerFactory.RESERVED_ADDON_PORT;
 import static io.harness.delegate.service.core.litek8s.ContainerFactory.RESERVED_LE_PORT;
 import static io.harness.delegate.service.core.util.K8SConstants.DELEGATE_FIELD_MANAGER;
-import static io.harness.threading.Morpheus.sleep;
 
 import static java.lang.String.format;
-import static java.time.Duration.ofMinutes;
-import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.flatMapping;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
@@ -96,8 +93,8 @@ public class K8SLiteRunner implements Runner {
   private final K8EventHandler k8EventHandler;
 
   @Override
-  public void init(
-      final String infraId, final InputData infra, final Map<String, char[]> decrypted, final Context context) {
+  public void init(final String infraId, final InputData infra, final String logKey,
+      final Map<String, char[]> decrypted, final Context context) {
     log.info("Setting up pod spec");
     ILogStreamingTaskClient logStreamingTaskClient = null;
     try {
@@ -123,7 +120,7 @@ public class K8SLiteRunner implements Runner {
 
       final var loggingToken = k8sInfra.getLogToken();
 
-      logStreamingTaskClient = getLogStreamingTaskClient(loggingToken);
+      logStreamingTaskClient = getLogStreamingTaskClient(loggingToken, logKey);
       logStreamingTaskClient.openStream(null);
 
       final V1Secret loggingSecret =
@@ -320,7 +317,7 @@ public class K8SLiteRunner implements Runner {
         .onFailure(event -> log.error(failureMessage, event.getAttemptCount(), event.getFailure()));
   }
 
-  private ILogStreamingTaskClient getLogStreamingTaskClient(String loggingToken) {
+  private ILogStreamingTaskClient getLogStreamingTaskClient(String loggingToken, String logKey) {
     return LogStreamingTaskClient.builder()
         .logStreamingClient(logStreamingClient)
         .accountId(config.getAccountId())
@@ -328,8 +325,7 @@ public class K8SLiteRunner implements Runner {
         .logStreamingSanitizer(LogStreamingSanitizer.builder().build())
         // client need to send logKey for init task as well, this logKey will be used to create and push logs to stream
         // from delegate runner.
-        .baseLogKey(
-            "accountId:kmpySmUISimoRrJL6NL73w/orgId:default/projectId:dummy/pipelineId:shell/runSequence:231/level0:pipeline/level1:stages/level2:shell/level3:spec/level4:execution/level5:steps/level6:ShellScript_1-commandUnit:Execute")
+        .baseLogKey(logKey)
         .logService(delegateLogService)
         .build();
   }

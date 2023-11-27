@@ -141,8 +141,8 @@ public class ScheduleTaskServiceGrpcImpl extends ScheduleTaskServiceImplBase {
     final var capabilities = mapSelectorCapability(config);
     capabilities.add(mapRunnerCapability(config));
 
-    sendTask(config, null, k8SInfra.toByteArray(), SchedulingTaskEvent.EventType.SETUP, taskId, null, taskId,
-        capabilities, getSecretsFromK8sInfraSpec(infra));
+    sendTask(config, null, k8SInfra.toByteArray(), SchedulingTaskEvent.EventType.SETUP, taskId, logConfig.getLogKey(),
+        taskId, capabilities, getSecretsFromK8sInfraSpec(infra));
 
     return SetupExecutionInfrastructureResponse.newBuilder()
         .setTaskId(TaskId.newBuilder().setId(taskId).build())

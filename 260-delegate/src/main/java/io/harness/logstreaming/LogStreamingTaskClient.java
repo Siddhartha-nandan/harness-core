@@ -108,10 +108,6 @@ public class LogStreamingTaskClient implements ILogStreamingTaskClient {
   private void closeStreamAsync(String logKey) {
     // Waiting for finite time allow log upload to finish.
     long startTime = currentTimeMillis();
-    log.info("About to close log at {}", startTime);
-    // If delegate has not flushed all logs, it will wait for 5s for flusing remaining logs from logCache then it will
-    // close the stream. In our case, all logs are flushed but stream call is being made late hence, delegate will not
-    // wait (all logs flushed) and  it will close the stream immediately.
     synchronized (logCache) {
       while (logCache.containsKey(logKey) && currentTimeMillis() < startTime + TimeUnit.SECONDS.toMillis(5)) {
         log.debug("For {} the logs are not drained yet. sleeping...", logKey);
@@ -122,7 +118,6 @@ public class LogStreamingTaskClient implements ILogStreamingTaskClient {
         }
       }
     }
-    log.info("Actually closing log stream at {} and diff is ", currentTimeMillis());
     if (logCache.containsKey(logKey)) {
       log.warn("log cache was not drained for {}. num of keys in map {}. This will result in missing logs", logKey,
           logCache.size());

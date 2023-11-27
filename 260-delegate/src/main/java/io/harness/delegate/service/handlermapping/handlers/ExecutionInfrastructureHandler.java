@@ -38,7 +38,7 @@ public class ExecutionInfrastructureHandler implements Handler {
     Runner runner = runnersFactory.get(runnerType);
     SetupInfraResponse response;
     try {
-      runner.init(taskPayload.getId(), taskPayload.getInfraData(), decryptedSecrets, context);
+      runner.init(taskPayload.getId(), taskPayload.getInfraData(), taskPayload.getLogKey(), decryptedSecrets, context);
       response = SetupInfraResponse.newBuilder()
                      .setResponseCode(ResponseCode.RESPONSE_OK)
                      .setLocation(ExecutionInfraInfo.newBuilder()
