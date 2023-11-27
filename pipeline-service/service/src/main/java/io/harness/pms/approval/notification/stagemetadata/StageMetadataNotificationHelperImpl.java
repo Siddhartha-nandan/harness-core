@@ -28,10 +28,12 @@ import com.google.common.collect.Sets.SetView;
 import com.google.inject.Inject;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
@@ -60,51 +62,66 @@ public class StageMetadataNotificationHelperImpl implements StageMetadataNotific
       throw new InvalidRequestException("Formatted finished stages and scope is required");
     }
     // IMP: changing the reference, as we will be removing stages from finishedStages
-    finishedStages = new HashSet<>(finishedStages);
+    Set<StageSummary> finishedStagesInternal = new LinkedHashSet<>(finishedStages);
+    Map<String, String> formattedFinishedStagesIdentifierMap = new HashMap<>();
 
-    handleFinishedStagesWithExecutionIdentifierAbsent(finishedStages, formattedFinishedStages);
+    handleFinishedStagesWithExecutionIdentifierAbsent(finishedStagesInternal, formattedFinishedStagesIdentifierMap);
     // now we have stages with stage execution identifiers
-    handleCDFinishedStages(finishedStages, formattedFinishedStages, scope);
-    handleGenericStages(finishedStages, formattedFinishedStages);
+    handleCDFinishedStages(finishedStagesInternal, formattedFinishedStagesIdentifierMap, scope);
+    handleGenericStages(finishedStagesInternal, formattedFinishedStagesIdentifierMap);
 
-    if (!finishedStages.isEmpty()) {
+    if (!finishedStagesInternal.isEmpty()) {
       // this isn't expected
-      log.error("Unknown error in setFormattedSummaryOfFinishedStages: unable to process [{}] stages", finishedStages);
-      throw new IllegalStateException(
-          String.format("Error while formatting finished stages, unable to process [%s] stages", finishedStages));
+      log.error("Unknown error in setFormattedSummaryOfFinishedStages: unable to process [{}] stages",
+          finishedStagesInternal);
+      throw new IllegalStateException(String.format(
+          "Error while formatting finished stages, unable to process [%s] stages", finishedStagesInternal));
     }
+    finishedStages.forEach(stageSummary -> {
+      Optional<String> optionalFormattedStage =
+          Optional.ofNullable(formattedFinishedStagesIdentifierMap.get(stageSummary.getStageIdentifier()));
+
+      formattedFinishedStages.add(optionalFormattedStage.orElseThrow(
+          ()
+              -> new IllegalStateException(
+                  String.format("Error while formatting finished stages, unable to process %s stage",
+                      stageSummary.getStageIdentifier()))));
+    });
   }
 
   /**
-   * removes stages with execution identifiers missing from stages and adds name or else identifier in formattedStages
-   * set
+   * removes stages with execution identifiers missing from stages set and
+   * adds stage identifier to name or else identifier mapping in formattedFinishedStagesIdentifierMap
    */
   private void handleFinishedStagesWithExecutionIdentifierAbsent(
-      @NotNull Set<StageSummary> stages, @NotNull Set<String> formattedFinishedStages) {
-    Set<String> namesForStagesWithoutExecutionIds = new HashSet<>();
+      @NotNull Set<StageSummary> stages, @NotNull Map<String, String> formattedFinishedStagesIdentifierMap) {
+    Map<String, String> namesMapForStagesWithoutExecutionIds = new HashMap<>();
     Iterator<StageSummary> iterator = stages.iterator();
     while (iterator.hasNext()) {
       StageSummary stageSummary = iterator.next();
 
       if (StringUtils.isBlank(stageSummary.getStageExecutionIdentifier())) {
         iterator.remove(); // Remove the current element from the iterator
-        namesForStagesWithoutExecutionIds.add(stageSummary.getFormattedEntityName());
+        namesMapForStagesWithoutExecutionIds.put(
+            stageSummary.getStageIdentifier(), stageSummary.getFormattedEntityName());
       }
     }
 
-    if (isNotEmpty(namesForStagesWithoutExecutionIds)) {
+    if (isNotEmpty(namesMapForStagesWithoutExecutionIds)) {
       log.warn("Stage Execution ids not found for [{}] stages, defaulting to stage names",
-          namesForStagesWithoutExecutionIds);
-      formattedFinishedStages.addAll(namesForStagesWithoutExecutionIds);
+          namesMapForStagesWithoutExecutionIds.keySet());
+      formattedFinishedStagesIdentifierMap.putAll(namesMapForStagesWithoutExecutionIds);
     }
   }
 
   /**
    * assumes that each stage in finalStages has a stage execution identifier
-   * removes CD stages from finalStages and adds formatted summary in formattedFinishedStages set
+   * removes CD stages from finalStages and adds stage identifier to formatted summary mapping in
+   * formattedFinishedStagesIdentifierMap
    */
-  private void handleCDFinishedStages(
-      @NotNull Set<StageSummary> finalStages, @NotNull Set<String> formattedFinishedStages, @NotNull Scope scope) {
+  private void handleCDFinishedStages(@NotNull Set<StageSummary> finalStages,
+      @NotNull Map<String, String> formattedFinishedStagesIdentifierMap, @NotNull Scope scope) {
+    // execution identifier to cd stage summary map
     Map<String, CDStageSummary> cdStagesSummaryMap = new HashMap<>();
     Iterator<StageSummary> iterator = finalStages.iterator();
 
@@ -153,28 +170,31 @@ public class StageMetadataNotificationHelperImpl implements StageMetadataNotific
       log.warn(
           "Unable to fetch summary for {} via listStageExecutionFormattedSummary", stageExecutionIdsWithoutSummary);
 
-      formattedFinishedStages.addAll(stageExecutionIdsWithoutSummary.stream()
-                                         .map(cdStagesSummaryMap::get)
-                                         .map(StageSummary::getFormattedEntityName)
-                                         .collect(Collectors.toSet()));
+      formattedFinishedStagesIdentifierMap.putAll(
+          stageExecutionIdsWithoutSummary.stream()
+              .map(cdStagesSummaryMap::get)
+              .collect(Collectors.toMap(StageSummary::getStageIdentifier, StageSummary::getFormattedEntityName)));
     }
 
     // add metadata for stages with summary
     SetView<String> stageExecutionIdsWithSummary =
         Sets.intersection(cdStageExecutionIdentifiers, cdFinishedFormattedSummary.keySet());
     Map<String, CDStageSummaryResponseDTO> finalCdFinishedFormattedSummary = cdFinishedFormattedSummary;
-    formattedFinishedStages.addAll(
-        stageExecutionIdsWithSummary.stream()
-            .map(idWithSummary
-                -> StageMetadataNotificationHelper.formatCDStageMetadata(
-                    finalCdFinishedFormattedSummary.get(idWithSummary), cdStagesSummaryMap.get(idWithSummary)))
-            .collect(Collectors.toSet()));
+
+    formattedFinishedStagesIdentifierMap.putAll(
+        stageExecutionIdsWithSummary.stream().collect(Collectors.toMap(idWithSummary
+            -> cdStagesSummaryMap.get(idWithSummary).getStageIdentifier(),
+            idWithSummary
+            -> StageMetadataNotificationHelper.formatCDStageMetadata(
+                finalCdFinishedFormattedSummary.get(idWithSummary), cdStagesSummaryMap.get(idWithSummary)))));
   }
 
   /**
-   * removes common/generic stages from stages and adds names in formattedStages set
+   * removes common/generic stages from stages set and adds identifier to names mapping in
+   * formattedFinishedStagesIdentifierMap
    */
-  private void handleGenericStages(@NotNull Set<StageSummary> stages, @NotNull Set<String> formattedStages) {
+  private void handleGenericStages(
+      @NotNull Set<StageSummary> stages, @NotNull Map<String, String> formattedFinishedStagesIdentifierMap) {
     Iterator<StageSummary> iterator = stages.iterator();
 
     while (iterator.hasNext()) {
@@ -183,7 +203,8 @@ public class StageMetadataNotificationHelperImpl implements StageMetadataNotific
       if (stageSummary instanceof GenericStageSummary) {
         iterator.remove(); // Remove the current element from the iterator
         GenericStageSummary genericStageSummary = (GenericStageSummary) stageSummary;
-        formattedStages.add(genericStageSummary.getFormattedEntityName());
+        formattedFinishedStagesIdentifierMap.put(
+            genericStageSummary.getStageIdentifier(), genericStageSummary.getFormattedEntityName());
       }
     }
   }
@@ -214,24 +235,42 @@ public class StageMetadataNotificationHelperImpl implements StageMetadataNotific
     }
 
     // IMP: changing the reference, as we will be removing stages from stagesSummary
-    upcomingStages = new HashSet<>(upcomingStages);
-    handleCDUpcomingFormattedStages(upcomingStages, formattedUpcomingStages, scope, planExecutionId);
-    handleGenericStages(upcomingStages, formattedUpcomingStages);
+    Set<StageSummary> upcomingStagesInternal = new LinkedHashSet<>(upcomingStages);
+    Map<String, String> formattedUpcomingStagesIdentifierMap = new HashMap<>();
 
-    if (!upcomingStages.isEmpty()) {
+    handleCDUpcomingFormattedStages(
+        upcomingStagesInternal, formattedUpcomingStagesIdentifierMap, scope, planExecutionId);
+    handleGenericStages(upcomingStagesInternal, formattedUpcomingStagesIdentifierMap);
+
+    if (!upcomingStagesInternal.isEmpty()) {
       // this isn't expected
-      log.error("Unknown error in setFormattedSummaryOfUpcomingStages: unable to process [{}] stages", upcomingStages);
-      throw new IllegalStateException(
-          String.format("Error while formatting upcoming stages, unable to process [%s] stages", upcomingStages));
+      log.error("Unknown error in setFormattedSummaryOfUpcomingStages: unable to process [{}] stages",
+          upcomingStagesInternal);
+      throw new IllegalStateException(String.format(
+          "Error while formatting upcoming stages, unable to process [%s] stages", upcomingStagesInternal));
     }
+
+    upcomingStages.forEach(stageSummary -> {
+      Optional<String> optionalFormattedStage =
+          Optional.ofNullable(formattedUpcomingStagesIdentifierMap.get(stageSummary.getStageIdentifier()));
+
+      formattedUpcomingStages.add(optionalFormattedStage.orElseThrow(
+          ()
+              -> new IllegalStateException(
+                  String.format("Error while formatting upcoming stages, unable to process %s stage",
+                      stageSummary.getStageIdentifier()))));
+    });
   }
 
   /**
    *
-   * removes CD stages from upcomingStages and adds formatted summary in formattedUpcomingStages set
+   * removes CD stages from upcomingStages set and
+   * adds identifier to formatted summary mapping in formattedUpcomingStagesIdentifierMap
    */
   private void handleCDUpcomingFormattedStages(@NotNull Set<StageSummary> upcomingStages,
-      @NotNull Set<String> formattedUpcomingStages, @NotNull Scope scope, @NotBlank String planExecutionId) {
+      @NotNull Map<String, String> formattedUpcomingStagesIdentifierMap, @NotNull Scope scope,
+      @NotBlank String planExecutionId) {
+    // stage identifier to cd stage summary map
     Map<String, CDStageSummary> cdStagesSummaryMap = new HashMap<>();
     Iterator<StageSummary> iterator = upcomingStages.iterator();
 
@@ -279,20 +318,20 @@ public class StageMetadataNotificationHelperImpl implements StageMetadataNotific
     if (isNotEmpty(stageIdsWithoutSummary)) {
       log.warn("Unable to fetch summary for {} via listStagePlanCreationFormattedSummary", stageIdsWithoutSummary);
 
-      formattedUpcomingStages.addAll(stageIdsWithoutSummary.stream()
-                                         .map(cdStagesSummaryMap::get)
-                                         .map(StageSummary::getFormattedEntityName)
-                                         .collect(Collectors.toSet()));
+      formattedUpcomingStagesIdentifierMap.putAll(
+          stageIdsWithoutSummary.stream()
+              .map(cdStagesSummaryMap::get)
+              .collect(Collectors.toMap(StageSummary::getStageIdentifier, StageSummary::getFormattedEntityName)));
     }
 
     // add metadata for stages with summary
     SetView<String> stageIdsWithSummary = Sets.intersection(cdStageIdentifiers, cdUpcomingFormattedSummary.keySet());
     Map<String, CDStageSummaryResponseDTO> finalCdUpcomingFormattedSummary = cdUpcomingFormattedSummary;
-    formattedUpcomingStages.addAll(
-        stageIdsWithSummary.stream()
-            .map(idWithSummary
-                -> StageMetadataNotificationHelper.formatCDStageMetadata(
-                    finalCdUpcomingFormattedSummary.get(idWithSummary), cdStagesSummaryMap.get(idWithSummary)))
-            .collect(Collectors.toSet()));
+
+    formattedUpcomingStagesIdentifierMap.putAll(
+        stageIdsWithSummary.stream().collect(Collectors.toMap(Function.identity(),
+            idWithSummary
+            -> StageMetadataNotificationHelper.formatCDStageMetadata(
+                finalCdUpcomingFormattedSummary.get(idWithSummary), cdStagesSummaryMap.get(idWithSummary)))));
   }
 }

@@ -14,7 +14,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.Builder;
 import lombok.Value;
@@ -27,7 +27,7 @@ import lombok.experimental.FieldNameConstants;
 @Builder
 @FieldNameConstants(innerTypeName = "StagesSummaryKeys")
 public class StagesSummary {
-  @Builder.Default Set<StageSummary> finishedStages = new HashSet<>();
-  @Builder.Default Set<StageSummary> runningStages = new HashSet<>();
-  @Builder.Default Set<StageSummary> upcomingStages = new HashSet<>();
+  @Builder.Default Set<StageSummary> finishedStages = new LinkedHashSet<>();
+  @Builder.Default Set<StageSummary> runningStages = new LinkedHashSet<>();
+  @Builder.Default Set<StageSummary> upcomingStages = new LinkedHashSet<>();
 }

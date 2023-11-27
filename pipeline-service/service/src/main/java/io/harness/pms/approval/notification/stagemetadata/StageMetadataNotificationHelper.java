@@ -23,6 +23,7 @@ import io.harness.pms.approval.notification.ApprovalSummary;
 import io.harness.pms.plan.execution.beans.dto.GraphLayoutNodeDTO;
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -39,12 +40,21 @@ public interface StageMetadataNotificationHelper {
   String CD_STAGE_METADATA_ROW_FORMAT = "     %s  :  %s";
   String CD_STAGE_HEADER_FORMAT = "%s : ";
 
+  /**
+   * if finishedStages set is ordered, then guarantees same insertion order in formattedFinishedStages
+   * */
   void setFormattedSummaryOfFinishedStages(
       @NotNull Set<StageSummary> finishedStages, @NotNull Set<String> formattedFinishedStages, @NotNull Scope scope);
 
+  /**
+   * if runningStages set is ordered, then guarantees same insertion order in formattedRunningStages
+   * */
   void setFormattedSummaryOfRunningStages(@NotNull Set<StageSummary> runningStages,
       @NotNull Set<String> formattedRunningStages, @NotNull Scope scope, @NotNull String planExecutionId);
 
+  /**
+   * if upcomingStages set is ordered, then guarantees same insertion order in formattedUpcomingStages
+   * */
   void setFormattedSummaryOfUpcomingStages(@NotNull Set<StageSummary> upcomingStages,
       @NotNull Set<String> formattedUpcomingStages, @NotNull Scope scope, @NotNull String planExecutionId);
 
@@ -120,6 +130,11 @@ public interface StageMetadataNotificationHelper {
     return String.join("\n", formattedHeader, formattedMetadata);
   }
 
+  /**
+   * assumes approvalSummary stages sets are instantiated with ordered set.
+   * assuming input sets in stagesSummary are ordered,
+   * then guarantees to maintain the input order in formatted stage metadata
+   */
   static void addStageMetadataWhenFFOff(
       @NotNull StagesSummary stagesSummary, @NotNull ApprovalSummary approvalSummary) {
     if (isNull(stagesSummary) || isNull(approvalSummary)) {
@@ -129,14 +144,14 @@ public interface StageMetadataNotificationHelper {
     approvalSummary.getUpcomingStages().addAll(stagesSummary.getUpcomingStages()
                                                    .stream()
                                                    .map(StageSummary::getFormattedEntityName)
-                                                   .collect(Collectors.toSet()));
+                                                   .collect(Collectors.toCollection(LinkedHashSet::new)));
     approvalSummary.getFinishedStages().addAll(stagesSummary.getFinishedStages()
                                                    .stream()
                                                    .map(StageSummary::getFormattedEntityName)
-                                                   .collect(Collectors.toSet()));
+                                                   .collect(Collectors.toCollection(LinkedHashSet::new)));
     approvalSummary.getRunningStages().addAll(stagesSummary.getRunningStages()
                                                   .stream()
                                                   .map(StageSummary::getFormattedEntityName)
-                                                  .collect(Collectors.toSet()));
+                                                  .collect(Collectors.toCollection(LinkedHashSet::new)));
   }
 }

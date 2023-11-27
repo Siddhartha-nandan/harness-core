@@ -31,6 +31,7 @@ import io.harness.rule.Owner;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -127,8 +128,9 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testSetFormattedSummaryOfFinishedStages() throws IOException {
     // upcoming added to finished set to check cases where finished stages doesn't have execution identifiers
-    Set<StageSummary> finishedStages = Set.of(
-        cdStageSummaryFinished1, cdStageSummaryFinished2, genericStageSummaryFinished, genericStageSummaryUpcoming);
+    Set<StageSummary> finishedStages = new LinkedHashSet<>(List.of(
+        cdStageSummaryFinished1, cdStageSummaryFinished2, genericStageSummaryFinished, genericStageSummaryUpcoming));
+
     // A: edge cases
     stageMetadataNotificationHelper.setFormattedSummaryOfFinishedStages(new HashSet<>(), new HashSet<>(), scope);
 
@@ -143,7 +145,7 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("Formatted finished stages and scope is required");
 
-    Set<String> formattedFinishedStages = new HashSet<>();
+    Set<String> formattedFinishedStages = new LinkedHashSet<>();
     when(cdngStageSummaryResourceClient.listStageExecutionFormattedSummary(
              accountId, orgIdentifier, projectIdentifier, List.of("s1_ex_id", "s2_ex_id")))
         .thenReturn(mockExecutionCall);
@@ -161,16 +163,16 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
 
     assertThat(formattedFinishedStages)
         .hasSize(4)
-        .contains("g1 name",
+        .containsExactly("s1 name : \n"
+                + "     Service  :  s1 s name\n"
+                + "     Environment  :  s1 e name\n"
+                + "     Infrastructure Definition  :  s1 i name",
             "s2_id : \n"
                 + "     Service  :  s2 s name\n"
                 + "     Infrastructure Definition  :  s2 i name\n"
                 + "     Environment  :  s2 e name",
-            "s1 name : \n"
-                + "     Service  :  s1 s name\n"
-                + "     Environment  :  s1 e name\n"
-                + "     Infrastructure Definition  :  s1 i name",
-            "g2_id");
+            "g2_id", "g1 name");
+
     // original set shouldn't be modified
     assertThat(finishedStages).hasSize(4);
     formattedFinishedStages.clear();
@@ -184,45 +186,48 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
 
     assertThat(formattedFinishedStages)
         .hasSize(4)
-        .contains("g1 name", "s2_id", "g2_id",
-            "s1 name : \n"
+        .containsExactly("s1 name : \n"
                 + "     Service  :  s1 s name\n"
                 + "     Environment  :  s1 e name\n"
-                + "     Infrastructure Definition  :  s1 i name");
+                + "     Infrastructure Definition  :  s1 i name",
+            "s2_id", "g2_id", "g1 name");
+
     // original set shouldn't be modified
     assertThat(finishedStages).hasSize(4);
     formattedFinishedStages.clear();
 
     // D: when no CD stages
-    Set<StageSummary> finishedStagesWithoutCDStages = Set.of(genericStageSummaryFinished, genericStageSummaryUpcoming);
+    Set<StageSummary> finishedStagesWithoutCDStages =
+        new LinkedHashSet<>(List.of(genericStageSummaryFinished, genericStageSummaryUpcoming));
 
     stageMetadataNotificationHelper.setFormattedSummaryOfFinishedStages(
         finishedStagesWithoutCDStages, formattedFinishedStages, scope);
 
-    assertThat(formattedFinishedStages).hasSize(2).contains("g1 name", "g2_id");
+    assertThat(formattedFinishedStages).hasSize(2).containsExactly("g2_id", "g1 name");
     // original set shouldn't be modified
     assertThat(finishedStagesWithoutCDStages).hasSize(2);
     formattedFinishedStages.clear();
 
     // E: when only CD stages
-    Set<StageSummary> finishedStagesWithOnlyCDStages = Set.of(cdStageSummaryFinished1, cdStageSummaryFinished2);
+    Set<StageSummary> finishedStagesWithOnlyCDStages =
+        new LinkedHashSet<>(List.of(cdStageSummaryFinished1, cdStageSummaryFinished2));
 
     stageMetadataNotificationHelper.setFormattedSummaryOfFinishedStages(
         finishedStagesWithOnlyCDStages, formattedFinishedStages, scope);
 
     assertThat(formattedFinishedStages)
         .hasSize(2)
-        .contains("s2_id",
-            "s1 name : \n"
+        .containsExactly("s1 name : \n"
                 + "     Service  :  s1 s name\n"
                 + "     Environment  :  s1 e name\n"
-                + "     Infrastructure Definition  :  s1 i name");
+                + "     Infrastructure Definition  :  s1 i name",
+            "s2_id");
     // original set shouldn't be modified
     assertThat(finishedStagesWithOnlyCDStages).hasSize(2);
     formattedFinishedStages.clear();
 
     // F: unprocessed stages left
-    Set<StageSummary> finishedStagesWithUnknownStages = Set.of(testStageSummary);
+    Set<StageSummary> finishedStagesWithUnknownStages = new LinkedHashSet<>(List.of(testStageSummary));
 
     assertThatThrownBy(()
                            -> stageMetadataNotificationHelper.setFormattedSummaryOfFinishedStages(
@@ -246,7 +251,7 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
 
     stageMetadataNotificationHelper.setFormattedSummaryOfFinishedStages(finishedStages, formattedFinishedStages, scope);
 
-    assertThat(formattedFinishedStages).hasSize(4).contains("g1 name", "s2_id", "g2_id", "s1 name");
+    assertThat(formattedFinishedStages).hasSize(4).containsExactly("s1 name", "s2_id", "g2_id", "g1 name");
     // original set shouldn't be modified
     assertThat(finishedStages).hasSize(4);
     formattedFinishedStages.clear();
@@ -257,7 +262,8 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testSetFormattedSummaryOfUpcomingStages() throws IOException {
     Set<StageSummary> upcomingStages =
-        Set.of(cdStageSummaryUpcoming1, cdStageSummaryUpcoming2, genericStageSummaryUpcoming);
+        new LinkedHashSet<>(List.of(cdStageSummaryUpcoming1, cdStageSummaryUpcoming2, genericStageSummaryUpcoming));
+
     // A: edge cases
     stageMetadataNotificationHelper.setFormattedSummaryOfUpcomingStages(
         new HashSet<>(), new HashSet<>(), scope, planExIdentifier);
@@ -280,7 +286,7 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("Formatted Upcoming stages and scope and plan id is required");
 
-    Set<String> formattedUpcomingStages = new HashSet<>();
+    Set<String> formattedUpcomingStages = new LinkedHashSet<>();
     when(cdngStageSummaryResourceClient.listStagePlanCreationFormattedSummary(
              accountId, orgIdentifier, projectIdentifier, planExIdentifier, List.of("s3_id", "s4_id")))
         .thenReturn(mockExecutionCall);
@@ -299,15 +305,15 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
 
     assertThat(formattedUpcomingStages)
         .hasSize(3)
-        .contains("g1 name",
-            "s3 name : \n"
+        .containsExactly("s3 name : \n"
                 + "     Environment  :  s3 e name\n"
                 + "     Service  :  s3 s name\n"
                 + "     Infrastructure Definition  :  s3 i name",
             "s4_id : \n"
                 + "     Service  :  s4 s name\n"
                 + "     Environment  :  s4 e name\n"
-                + "     Infrastructure Definition  :  s4 i name");
+                + "     Infrastructure Definition  :  s4 i name",
+            "g1 name");
     // original set shouldn't be modified
     assertThat(upcomingStages).hasSize(3);
     formattedUpcomingStages.clear();
@@ -322,36 +328,36 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
 
     assertThat(formattedUpcomingStages)
         .hasSize(3)
-        .contains("g1 name",
-            "s3 name : \n"
+        .containsExactly("s3 name : \n"
                 + "     Environment  :  s3 e name\n"
                 + "     Service  :  s3 s name\n"
                 + "     Infrastructure Definition  :  s3 i name",
-            "s4_id");
+            "s4_id", "g1 name");
     // original set shouldn't be modified
     assertThat(upcomingStages).hasSize(3);
     formattedUpcomingStages.clear();
 
     // D: when no CD stages
-    Set<StageSummary> upcomingStagesWithoutCDStages = Set.of(genericStageSummaryUpcoming);
+    Set<StageSummary> upcomingStagesWithoutCDStages = new LinkedHashSet<>(List.of(genericStageSummaryUpcoming));
 
     stageMetadataNotificationHelper.setFormattedSummaryOfUpcomingStages(
         upcomingStagesWithoutCDStages, formattedUpcomingStages, scope, planExIdentifier);
 
-    assertThat(formattedUpcomingStages).hasSize(1).contains("g1 name");
+    assertThat(formattedUpcomingStages).hasSize(1).containsExactly("g1 name");
     // original set shouldn't be modified
     assertThat(upcomingStagesWithoutCDStages).hasSize(1);
     formattedUpcomingStages.clear();
 
     // E: when only CD stages
-    Set<StageSummary> upcomingStagesWithOnlyCDStages = Set.of(cdStageSummaryUpcoming1, cdStageSummaryUpcoming2);
+    Set<StageSummary> upcomingStagesWithOnlyCDStages =
+        new LinkedHashSet<>(List.of(cdStageSummaryUpcoming1, cdStageSummaryUpcoming2));
 
     stageMetadataNotificationHelper.setFormattedSummaryOfUpcomingStages(
         upcomingStagesWithOnlyCDStages, formattedUpcomingStages, scope, planExIdentifier);
 
     assertThat(formattedUpcomingStages)
         .hasSize(2)
-        .contains("s3 name : \n"
+        .containsExactly("s3 name : \n"
                 + "     Environment  :  s3 e name\n"
                 + "     Service  :  s3 s name\n"
                 + "     Infrastructure Definition  :  s3 i name",
@@ -361,7 +367,7 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
     formattedUpcomingStages.clear();
 
     // F: unprocessed stages left
-    Set<StageSummary> upcomingStagesWithUnknownStages = Set.of(testStageSummary);
+    Set<StageSummary> upcomingStagesWithUnknownStages = new LinkedHashSet<>(List.of(testStageSummary));
 
     assertThatThrownBy(()
                            -> stageMetadataNotificationHelper.setFormattedSummaryOfUpcomingStages(
@@ -386,7 +392,7 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
     stageMetadataNotificationHelper.setFormattedSummaryOfUpcomingStages(
         upcomingStages, formattedUpcomingStages, scope, planExIdentifier);
 
-    assertThat(formattedUpcomingStages).hasSize(3).contains("g1 name", "s4_id", "s3 name");
+    assertThat(formattedUpcomingStages).hasSize(3).containsExactly("s3 name", "s4_id", "g1 name");
     // original set shouldn't be modified
     assertThat(upcomingStages).hasSize(3);
     formattedUpcomingStages.clear();
@@ -397,7 +403,7 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testSetFormattedSummaryOfRunningStages() throws IOException {
     Set<StageSummary> runningStages =
-        Set.of(cdStageSummaryUpcoming1, cdStageSummaryUpcoming2, genericStageSummaryUpcoming);
+        new LinkedHashSet<>(List.of(cdStageSummaryUpcoming1, cdStageSummaryUpcoming2, genericStageSummaryUpcoming));
     // A: edge cases
     stageMetadataNotificationHelper.setFormattedSummaryOfRunningStages(
         new HashSet<>(), new HashSet<>(), scope, planExIdentifier);
@@ -420,7 +426,7 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("Formatted running stages and scope and planExecutionId is required");
 
-    Set<String> formattedRunningStages = new HashSet<>();
+    Set<String> formattedRunningStages = new LinkedHashSet<>();
     when(cdngStageSummaryResourceClient.listStagePlanCreationFormattedSummary(
              accountId, orgIdentifier, projectIdentifier, planExIdentifier, List.of("s3_id", "s4_id")))
         .thenReturn(mockExecutionCall);
@@ -439,15 +445,15 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
 
     assertThat(formattedRunningStages)
         .hasSize(3)
-        .contains("g1 name",
-            "s3 name : \n"
+        .containsExactly("s3 name : \n"
                 + "     Environment  :  s3 e name\n"
                 + "     Service  :  s3 s name\n"
                 + "     Infrastructure Definition  :  s3 i name",
             "s4_id : \n"
                 + "     Service  :  s4 s name\n"
                 + "     Environment  :  s4 e name\n"
-                + "     Infrastructure Definition  :  s4 i name");
+                + "     Infrastructure Definition  :  s4 i name",
+            "g1 name");
     // original set shouldn't be modified
     assertThat(runningStages).hasSize(3);
     formattedRunningStages.clear();
@@ -462,12 +468,11 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
 
     assertThat(formattedRunningStages)
         .hasSize(3)
-        .contains("g1 name",
-            "s3 name : \n"
+        .contains("s3 name : \n"
                 + "     Environment  :  s3 e name\n"
                 + "     Service  :  s3 s name\n"
                 + "     Infrastructure Definition  :  s3 i name",
-            "s4_id");
+            "s4_id", "g1 name");
     // original set shouldn't be modified
     assertThat(runningStages).hasSize(3);
     formattedRunningStages.clear();
@@ -478,20 +483,21 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
     stageMetadataNotificationHelper.setFormattedSummaryOfRunningStages(
         runningStagesWithoutCDStages, formattedRunningStages, scope, planExIdentifier);
 
-    assertThat(formattedRunningStages).hasSize(1).contains("g1 name");
+    assertThat(formattedRunningStages).hasSize(1).containsExactly("g1 name");
     // original set shouldn't be modified
     assertThat(runningStagesWithoutCDStages).hasSize(1);
     formattedRunningStages.clear();
 
     // E: when only CD stages
-    Set<StageSummary> runningStagesWithOnlyCDStages = Set.of(cdStageSummaryUpcoming1, cdStageSummaryUpcoming2);
+    Set<StageSummary> runningStagesWithOnlyCDStages =
+        new LinkedHashSet<>(List.of(cdStageSummaryUpcoming1, cdStageSummaryUpcoming2));
 
     stageMetadataNotificationHelper.setFormattedSummaryOfRunningStages(
         runningStagesWithOnlyCDStages, formattedRunningStages, scope, planExIdentifier);
 
     assertThat(formattedRunningStages)
         .hasSize(2)
-        .contains("s3 name : \n"
+        .containsExactly("s3 name : \n"
                 + "     Environment  :  s3 e name\n"
                 + "     Service  :  s3 s name\n"
                 + "     Infrastructure Definition  :  s3 i name",
@@ -526,7 +532,7 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
     stageMetadataNotificationHelper.setFormattedSummaryOfRunningStages(
         runningStages, formattedRunningStages, scope, planExIdentifier);
 
-    assertThat(formattedRunningStages).hasSize(3).contains("g1 name", "s4_id", "s3 name");
+    assertThat(formattedRunningStages).hasSize(3).containsExactly("s3 name", "s4_id", "g1 name");
     // original set shouldn't be modified
     assertThat(runningStages).hasSize(3);
     formattedRunningStages.clear();
@@ -587,7 +593,7 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
     Set<StageSummary> stages = new HashSet<>();
     StageMetadataNotificationHelper.addStageNodeToStagesSummary(stages, customNode);
     StageMetadataNotificationHelper.addStageNodeToStagesSummary(stages, cdNode);
-    assertThat(stages).hasSize(2).contains(cdStageSummary, genericStageSummary);
+    assertThat(stages).hasSize(2).containsExactly(genericStageSummary, cdStageSummary);
   }
 
   @Test
@@ -634,16 +640,19 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testAddStageMetadataWhenFFOff() {
     ApprovalSummary approvalSummary = ApprovalSummary.builder()
-                                          .upcomingStages(new HashSet<>())
-                                          .runningStages(new HashSet<>())
-                                          .finishedStages(new HashSet<>())
+                                          .upcomingStages(new LinkedHashSet<>())
+                                          .runningStages(new LinkedHashSet<>())
+                                          .finishedStages(new LinkedHashSet<>())
                                           .build();
 
     StagesSummary stagesSummary =
         StagesSummary.builder()
-            .upcomingStages(Set.of(cdStageSummaryUpcoming1, cdStageSummaryUpcoming2, genericStageSummaryUpcoming))
-            .runningStages(Set.of(cdStageSummaryUpcoming1, cdStageSummaryUpcoming2, genericStageSummaryUpcoming))
-            .finishedStages(Set.of(cdStageSummaryFinished1, cdStageSummaryFinished2, genericStageSummaryFinished))
+            .upcomingStages(new LinkedHashSet<>(
+                List.of(cdStageSummaryUpcoming1, cdStageSummaryUpcoming2, genericStageSummaryUpcoming)))
+            .runningStages(new LinkedHashSet<>(
+                List.of(cdStageSummaryUpcoming1, cdStageSummaryUpcoming2, genericStageSummaryUpcoming)))
+            .finishedStages(new LinkedHashSet<>(
+                List.of(cdStageSummaryFinished1, cdStageSummaryFinished2, genericStageSummaryFinished)))
             .build();
 
     // edge cases
@@ -657,9 +666,9 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
 
     // normal case
     StageMetadataNotificationHelper.addStageMetadataWhenFFOff(stagesSummary, approvalSummary);
-    assertThat(approvalSummary.getUpcomingStages()).contains("s3 name", "s4_id", "g1 name");
-    assertThat(approvalSummary.getRunningStages()).contains("s3 name", "s4_id", "g1 name");
-    assertThat(approvalSummary.getFinishedStages()).contains("s1 name", "s2_id", "g2_id");
+    assertThat(approvalSummary.getUpcomingStages()).containsExactly("s3 name", "s4_id", "g1 name");
+    assertThat(approvalSummary.getRunningStages()).containsExactly("s3 name", "s4_id", "g1 name");
+    assertThat(approvalSummary.getFinishedStages()).containsExactly("s1 name", "s2_id", "g2_id");
   }
 
   private Response<ResponseDTO<Map<String, CDStageSummaryResponseDTO> > > getWrappedExecutionResponse(
