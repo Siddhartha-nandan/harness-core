@@ -282,6 +282,7 @@ public interface EntityTypeConstants {
   String IDP_STAGE = "IDPStage";
   String IDP = "IDP";
   String IDP_COOKIECUTTER = "IdpCookieCutter";
+  String IDP_CREATE_REPO = "IdpCreateRepo";
 
   // CD Container Step Group Common Steps
   String DOWNLOAD_AWS_S3 = "DownloadAwsS3";

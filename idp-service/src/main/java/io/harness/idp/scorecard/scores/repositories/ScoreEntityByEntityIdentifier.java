@@ -9,7 +9,7 @@ package io.harness.idp.scorecard.scores.repositories;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.spec.server.idp.v1.model.CheckStatus;
+import io.harness.idp.scorecard.scores.entity.ScoreEntity;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -17,7 +17,7 @@ import lombok.Getter;
 @Getter
 @Builder
 @OwnedBy(HarnessTeam.IDP)
-public class EntityIdentifierAndCheckStatus {
+public class ScoreEntityByEntityIdentifier {
   private String entityIdentifier;
-  private CheckStatus.StatusEnum status;
+  private ScoreEntity scoreEntity;
 }
