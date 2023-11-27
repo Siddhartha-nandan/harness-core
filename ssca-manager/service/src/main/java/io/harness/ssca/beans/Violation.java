@@ -7,15 +7,34 @@
 
 package io.harness.ssca.beans;
 
+import io.harness.ssca.enforcement.constants.ViolationType;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
+import lombok.AccessLevel;
 import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
+import lombok.Getter;
 
-@Value
+@Data
 @Builder
 public class Violation {
   List<String> artifactUuids;
   JsonNode rule;
-  String type;
+  @Getter(AccessLevel.NONE) String type;
+  @Getter(AccessLevel.NONE) String violationDetail;
+  public String getViolationDetail() {
+    // TODO: Make this more readable
+    return rule.toString();
+  }
+
+  public String getType() {
+    if (type.equals("allow")) {
+      return ViolationType.ALLOWLIST_VIOLATION.getViolation();
+    } else if (type.equals("deny")) {
+      return ViolationType.DENYLIST_VIOLATION.getViolation();
+    } else {
+      return ViolationType.UNKNOWN_VIOLATION.getViolation();
+    }
+  }
 }

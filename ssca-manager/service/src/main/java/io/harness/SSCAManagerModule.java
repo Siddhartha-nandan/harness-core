@@ -13,6 +13,8 @@ import static io.harness.lock.DistributedLockImplementation.REDIS;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.app.PrimaryVersionManagerModule;
+import io.harness.cf.CfClientModule;
+import io.harness.ff.FeatureFlagModule;
 import io.harness.lock.DistributedLockImplementation;
 import io.harness.lock.PersistentLockModule;
 import io.harness.mongo.AbstractMongoModule;
@@ -131,6 +133,8 @@ public class SSCAManagerModule extends AbstractModule {
         configuration.getPipelineServiceSecret(), SSCA_SERVICE.getServiceId()));
     install(new OpaClientModule(configuration.getPolicyMgmtServiceConfiguration(),
         configuration.getPolicyMgmtServiceSecret(), SSCA_SERVICE.getServiceId()));
+    install(FeatureFlagModule.getInstance());
+    install(CfClientModule.getInstance());
   }
 
   @Provides

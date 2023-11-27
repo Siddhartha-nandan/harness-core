@@ -15,6 +15,7 @@ shared_dependencies = [
     "//ssca-manager/modules/contracts:module",
     "//126-instance:module",
     "//940-primary-version-manager:module",
+    "//940-feature-flag:module",
     "//950-ng-core:module",
     "//950-opa-client:module",
     "//958-debezium-utils:module",
