@@ -65,9 +65,6 @@ public class K8EventHandler {
           logStreamingTaskClient, LogLevel.ERROR, String.format("failed to watch pod event: %s", e.getMessage()));
       log.error("failed to create watch on pod events", e);
       return null;
-    } catch (IOException ex) {
-      log.error("failed to create watch on pod events", ex);
-      return null;
     }
   }
 
@@ -89,7 +86,7 @@ public class K8EventHandler {
   }
 
   private Watch<CoreV1Event> createWatch(KubernetesConfig kubernetesConfig, String namespace, String fieldSelector,
-      CoreV1Api coreV1ApiInput) throws ApiException, IOException {
+      CoreV1Api coreV1ApiInput) throws ApiException {
     ApiClient apiClient =
         coreV1ApiInput != null ? coreV1ApiInput.getApiClient() : apiClientFactory.getClient(kubernetesConfig);
     CoreV1Api coreV1Api = coreV1ApiInput != null ? coreV1ApiInput : new CoreV1Api(apiClient);

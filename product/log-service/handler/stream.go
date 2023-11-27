@@ -250,7 +250,6 @@ func HandleTail(s stream.Stream) http.HandlerFunc {
 
 		enc := json.NewEncoder(w)
 		linec, errc := s.Tail(ctx, key)
-
 		if errc == nil {
 			io.WriteString(w, "event: error\ndata: eof\n")
 			return
