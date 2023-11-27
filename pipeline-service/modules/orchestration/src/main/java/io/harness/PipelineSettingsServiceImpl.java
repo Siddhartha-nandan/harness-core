@@ -10,6 +10,8 @@ import static io.harness.licensing.Edition.ENTERPRISE;
 import static io.harness.licensing.Edition.FREE;
 import static io.harness.licensing.Edition.TEAM;
 
+import io.harness.data.structure.EmptyPredicate;
+import io.harness.data.structure.EmptyPredicate.IsEmpty;
 import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.exception.InvalidRequestException;
 import io.harness.licensing.Edition;
@@ -195,6 +197,9 @@ public class PipelineSettingsServiceImpl implements PipelineSettingsService {
 
   @VisibleForTesting
   protected PlanExecutionSettingResponse shouldQueueInternal(long maxCount, long runningExecutionsForGivenPipeline) {
+    if (maxCount <= 0) {
+      return PlanExecutionSettingResponse.builder().shouldQueue(false).useNewFlow(true).build();
+    }
     if (runningExecutionsForGivenPipeline >= maxCount) {
       return PlanExecutionSettingResponse.builder().shouldQueue(true).useNewFlow(true).build();
     }
