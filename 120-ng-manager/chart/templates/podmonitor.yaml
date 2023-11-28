@@ -1,0 +1,16 @@
+{{- if .Values.global.monitoring.enabled -}}
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: ng-manager
+  namespace:  {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: ng-manager
+  endpoints:
+    - port: 8889
+      interval: 120s
+      path: "/metrics"
+
+{{- end }}
