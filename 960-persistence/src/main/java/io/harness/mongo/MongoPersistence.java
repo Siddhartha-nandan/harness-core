@@ -253,7 +253,9 @@ public class MongoPersistence implements HPersistence {
       if (overrideDelegateMigration) {
         return true;
       }
-      return delegateMigrationFlagCache.get(className);
+      boolean value = delegateMigrationFlagCache.get(className);
+      log.info("Migration flag value is set to {}", value);
+      return value;
     } catch (ExecutionException e) {
       log.error("Exception occurred while checking for delegate migration flag for class {}.", className, e);
       return false;
