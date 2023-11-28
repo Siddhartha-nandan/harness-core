@@ -12,6 +12,7 @@ metadata:
   {{- end }}
 data:
   DEPLOY_MODE: {{ .Values.global.deployMode | quote }}
+  NAMESPACE: {{ .Release.Namespace | quote }}
   MEMORY: {{ .Values.java.memory | quote }}
   REPLICA: {{ .Values.replicaCount | quote }}
   ISOLATED_REPLICA: {{ .Values.isolatedReplica | quote }}

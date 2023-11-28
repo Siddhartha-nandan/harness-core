@@ -19,6 +19,7 @@ import io.harness.ccm.commons.beans.JobConstants;
 import io.harness.ccm.commons.entities.batch.BatchJobScheduledData;
 import io.harness.ccm.config.GcpBillingAccount;
 import io.harness.ccm.config.GcpServiceAccount;
+import io.harness.configuration.DeployMode;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.connector.ConnectorResourceClient;
 import io.harness.connector.ConnectorResponseDTO;
@@ -53,13 +54,21 @@ import com.google.inject.Singleton;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
 import com.google.pubsub.v1.TopicName;
+import io.kubernetes.client.openapi.ApiClient;
+import io.kubernetes.client.openapi.ApiException;
+import io.kubernetes.client.openapi.Configuration;
+import io.kubernetes.client.openapi.apis.BatchV1Api;
+import io.kubernetes.client.openapi.models.*;
+import io.kubernetes.client.util.Config;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import lombok.Value;
@@ -73,6 +82,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Slf4j
 @Singleton
 public class GcpSyncTasklet implements Tasklet {
+  public static final String IS_CLICK_HOUSE_ENABLED = "isClickHouseEnabled";
+  @Autowired private BatchMainConfig config;
   private static final String USER_AGENT_HEADER = "user-agent";
   private static final String USER_AGENT_HEADER_ENVIRONMENT_VARIABLE = "USER_AGENT_HEADER";
   private static final String DEFAULT_USER_AGENT = "default-user-agent";
@@ -88,6 +99,7 @@ public class GcpSyncTasklet implements Tasklet {
       "triggerHistoricalCostUpdateInPreferredCurrency";
   public static final String DEPLOY_MODE = "deployMode";
   public static final String USE_WORKLOAD_IDENTITY = "useWorkloadIdentity";
+  public static final String NAMESPACE = System.getenv("NAMESPACE");
   @Autowired private BatchMainConfig mainConfig;
   @Autowired private ConnectorResourceClient connectorResourceClient;
   @Autowired protected CloudToHarnessMappingService cloudToHarnessMappingService;
@@ -111,7 +123,6 @@ public class GcpSyncTasklet implements Tasklet {
     JobConstants jobConstants = CCMJobConstants.fromContext(chunkContext);
     String accountId = jobConstants.getAccountId();
     Long endTime = jobConstants.getJobEndTime();
-
     boolean firstSync = false;
     BatchJobScheduledData batchJobScheduledData =
         batchJobScheduledDataDao.fetchLastBatchJobScheduledData(accountId, BatchJobType.SYNC_BILLING_REPORT_GCP);
@@ -121,16 +132,6 @@ public class GcpSyncTasklet implements Tasklet {
       firstSync = true;
     }
     BillingDataPipelineConfig billingDataPipelineConfig = mainConfig.getBillingDataPipelineConfig();
-
-    boolean usingWorkloadIdentity = Boolean.parseBoolean(System.getenv("USE_WORKLOAD_IDENTITY"));
-    GoogleCredentials sourceCredentials;
-    if (!usingWorkloadIdentity) {
-      log.info("WI: In execute. using older way");
-      sourceCredentials = getCredentials(GOOGLE_CREDENTIALS_PATH);
-    } else {
-      log.info("WI: In execute. using Google ADC");
-      sourceCredentials = GoogleCredentials.getApplicationDefault();
-    }
 
     if (billingDataPipelineConfig.isGcpSyncEnabled()) {
       List<ConnectorResponseDTO> nextGenGCPConnectorResponses = getNextGenGCPConnectorResponses(accountId);
@@ -153,6 +154,17 @@ public class GcpSyncTasklet implements Tasklet {
           log.error("Exception processing NG GCP Connector: {}", connectorInfo.getIdentifier(), e);
         }
       }
+
+      boolean usingWorkloadIdentity = Boolean.parseBoolean(System.getenv("USE_WORKLOAD_IDENTITY"));
+      GoogleCredentials sourceCredentials;
+      if (!usingWorkloadIdentity) {
+        log.info("WI: In execute. using older way");
+        sourceCredentials = getCredentials(GOOGLE_CREDENTIALS_PATH);
+      } else {
+        log.info("WI: In execute. using Google ADC");
+        sourceCredentials = GoogleCredentials.getApplicationDefault();
+      }
+
       publishMessage(sourceCredentials, billingDataPipelineConfig.getGcpProjectId(),
           billingDataPipelineConfig.getGcpSyncPubSubTopic(), "", "", "", "", accountId, "", "", "True",
           usingWorkloadIdentity);
@@ -179,9 +191,106 @@ public class GcpSyncTasklet implements Tasklet {
     return null;
   }
 
+  private static void createK8SJobWithParameters(ImmutableMap<String, String> customArgsMap) throws IOException {
+    ApiClient client = Config.defaultClient();
+    Configuration.setDefaultApiClient(client);
+
+    /**
+     * apiVersion: batch/v1
+     * kind: Job
+     * metadata:
+     *   name: example-job
+     *   namespace: default  # Change to your namespace
+     * spec:
+     *   template:
+     *     spec:
+     *       containers:
+     *       - name: example-container
+     *         image: example-image
+     *         env:
+     *           # Environment variable from a Secret
+     *           - name: SECRET_ENV_VAR
+     *             valueFrom:
+     *               secretKeyRef:
+     *                 name: your-secret-name  # Replace with your secret's name
+     *                 key: secret-key  # Replace with the key in your secret
+     *                 optional: false
+     *           # Environment variable from a ConfigMap
+     *           - name: CONFIGMAP_ENV_VAR
+     *             valueFrom:
+     *               configMapKeyRef:
+     *                 name: your-configmap-name  # Replace with your ConfigMap's name
+     *                 key: configmap-key  # Replace with the key in your ConfigMap
+     *                 optional: false
+     *       restartPolicy: OnFailure
+     *   backoffLimit: 4
+     */
+
+    ObjectMapper objectMapper = new ObjectMapper();
+    String argsMap = objectMapper.writeValueAsString(customArgsMap);
+
+    V1EnvVar secret_env_var1 =
+        new V1EnvVar()
+            .name("MY_SECRET_NAME")
+            .valueFrom(new V1EnvVarSource().secretKeyRef(new V1SecretKeySelector()
+                                                             .name("your-secret-name") // Replace with your secret name
+                                                             .key("LIGHTWING_DB_CONNECTION")
+                                                             .optional(false)));
+
+    V1EnvVar secret_env_var2 = new V1EnvVar()
+                                   .name("MY_SECRET_NAME_2")
+                                   .valueFrom(new V1EnvVarSource().secretKeyRef(
+                                       new V1SecretKeySelector()
+                                           .name("your-secret-name-2") // Replace with your secret name
+                                           .key("LIGHTWING_DB_CONNECTION-2")
+                                           .optional(false)));
+
+    V1Container container = new V1Container()
+                                .name("python-container")
+                                .image("harnessdev/jobapp") // Replace with your Docker image
+                                .args(Arrays.asList(argsMap))
+                                .env(Arrays.asList(secret_env_var1, secret_env_var2));
+
+    V1PodSpec podSpec = new V1PodSpec().restartPolicy("OnFailure").addContainersItem(container);
+
+    V1PodTemplateSpec template = new V1PodTemplateSpec().spec(podSpec);
+
+    V1JobSpec jobSpec = new V1JobSpec().template(template);
+
+    V1Job job = new V1Job()
+                    .apiVersion("batch/v1")
+                    .kind("Job")
+                    .metadata(new V1ObjectMeta().name("python-job2").namespace(NAMESPACE))
+                    .spec(jobSpec);
+
+    BatchV1Api api = new BatchV1Api();
+    try {
+      api.createNamespacedJob(NAMESPACE, job, null, null, null, null);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling BatchV1Api#createNamespacedJob");
+      e.printStackTrace();
+    }
+  }
+
   private void processGCPConnector(BillingDataPipelineConfig billingDataPipelineConfig, String serviceAccountEmail,
       String datasetId, String projectId, String tableName, String accountId, String connectorId, Long endTime,
       boolean firstSync) throws IOException {
+    if (DeployMode.isOnPrem(config.getDeployMode().name()) && config.isClickHouseEnabled()) {
+      log.info(":::::::::::::::::::::::::::::: Create a new K8S Job ::::::::::::::::::::::::::::::");
+      ImmutableMap<String, String> customAttributes = ImmutableMap.<String, String>builder()
+                                                          .put(SERVICE_ACCOUNT, serviceAccountEmail)
+                                                          .put(SOURCE_DATA_SET_ID, datasetId)
+                                                          .put(SOURCE_GCP_PROJECT_ID, projectId)
+                                                          .put(ACCOUNT_ID, accountId)
+                                                          .put(CONNECTOR_ID, connectorId)
+                                                          .put(TABLE_NAME, tableName)
+                                                          .put(DEPLOY_MODE, mainConfig.getDeployMode().name())
+                                                          .put(IS_CLICK_HOUSE_ENABLED, "True")
+                                                          .build();
+
+      createK8SJobWithParameters(customAttributes);
+      return;
+    }
     boolean usingWorkloadIdentity = Boolean.parseBoolean(System.getenv("USE_WORKLOAD_IDENTITY"));
     GoogleCredentials sourceCredentials;
     if (!usingWorkloadIdentity) {
