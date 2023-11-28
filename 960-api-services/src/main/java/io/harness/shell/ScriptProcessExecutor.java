@@ -78,7 +78,6 @@ import org.zeroturnaround.exec.stream.LogOutputStream;
     module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_COMMON_STEPS})
 @Slf4j
 public class ScriptProcessExecutor extends AbstractScriptExecutor {
-  private static final String HARNESS_SHELL_SCRIPT_ERROR = "HARNESS_SHELL_SCRIPT_ERROR";
   private ShellExecutorConfig config;
   private ScriptType scriptType;
   /**
@@ -318,27 +317,26 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
                 }
               }));
       StringBuilder errorLog = new StringBuilder();
-      ProcessExecutor processExecutor =
-          new ProcessExecutor()
-              .command(commandList)
-              .directory(workingDirectory)
-              .environment(environment)
-              .readOutput(true)
-              .stopper(processStopper)
-              .redirectOutput(new LogOutputStream() {
-                @Override
-                protected void processLine(String line) {
-                  logList.add(new ShellScriptLog(Instant.now(), line));
-                }
-              })
-              .redirectError(new LogOutputStream() {
-                @Override
-                protected void processLine(String line) {
-                  errorLog.append(line);
-                  errorLog.append('\n');
-                  logList.add(new ShellScriptLog(Instant.now(), HARNESS_SHELL_SCRIPT_ERROR + line));
-                }
-              });
+      ProcessExecutor processExecutor = new ProcessExecutor()
+                                            .command(commandList)
+                                            .directory(workingDirectory)
+                                            .environment(environment)
+                                            .readOutput(true)
+                                            .stopper(processStopper)
+                                            .redirectOutput(new LogOutputStream() {
+                                              @Override
+                                              protected void processLine(String line) {
+                                                logList.add(new ShellScriptLog(Instant.now(), line, INFO));
+                                              }
+                                            })
+                                            .redirectError(new LogOutputStream() {
+                                              @Override
+                                              protected void processLine(String line) {
+                                                errorLog.append(line);
+                                                errorLog.append('\n');
+                                                logList.add(new ShellScriptLog(Instant.now(), line, ERROR));
+                                              }
+                                            });
 
       if (timeoutInMillis != null && timeoutInMillis > 0) {
         processExecutor.timeout(timeoutInMillis, TimeUnit.MILLISECONDS);
@@ -354,11 +352,7 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
       logList.sort(Comparator.comparing(ShellScriptLog::getTimeStamp));
 
       for (ShellScriptLog log : logList) {
-        if (log.getText().startsWith(HARNESS_SHELL_SCRIPT_ERROR)) {
-          saveExecutionLog(log.getText().replaceFirst(HARNESS_SHELL_SCRIPT_ERROR, ""), ERROR);
-        } else {
-          saveExecutionLog(log.getText(), INFO);
-        }
+        saveExecutionLog(log.getText(), log.getLevel());
       }
 
       commandExecutionStatus = processResult.getExitValue() == 0 ? SUCCESS : FAILURE;
