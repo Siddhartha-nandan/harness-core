@@ -12,6 +12,7 @@ import static io.harness.licensing.Edition.ENTERPRISE;
 import static io.harness.licensing.Edition.FREE;
 import static io.harness.licensing.Edition.TEAM;
 import static io.harness.rule.OwnerRule.AYUSHI_TIWARI;
+import static io.harness.rule.OwnerRule.SHIVAM;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -21,6 +22,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.FeatureName;
 import io.harness.category.element.UnitTests;
 import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.exception.InvalidRequestException;
@@ -35,8 +37,8 @@ import io.harness.ngsettings.dto.SettingValueResponseDTO;
 import io.harness.pms.utils.NGPipelineSettingsConstant;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.rule.Owner;
+import io.harness.utils.PmsFeatureFlagService;
 
-import com.google.inject.Inject;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -64,9 +66,8 @@ public class PipelineSettingsServiceImplTest extends OrchestrationTestBase {
   @Mock PlanExecutionService planExecutionService;
 
   @InjectMocks PipelineSettingsServiceImpl pipelineSettingsService;
-
+  @Mock PmsFeatureFlagService featureFlagService;
   @Mock NGSettingsClient ngSettingsClient;
-
   @Test
   @Owner(developers = AYUSHI_TIWARI)
   @Category(UnitTests.class)
@@ -608,5 +609,67 @@ public class PipelineSettingsServiceImplTest extends OrchestrationTestBase {
         .isInstanceOf(InvalidRequestException.class)
         .hasMessageContaining(
             "Trying to run more than 3 concurrent stages/steps. Please contact sales if you want to run more");
+  }
+
+  @Test
+  @Owner(developers = SHIVAM)
+  @Category(UnitTests.class)
+  public void testShouldQueuePlanExecutionForDisabledFF() {
+    // edition == FREE && orchestrationRestrictionConfiguration.isUseRestrictionForFree() == False
+    MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class);
+    when(featureFlagService.isEnabled("ACCOUNT_ID", FeatureName.PIE_PIPELINE_SETTINGS_ENFORCEMENT_LIMIT.name()))
+        .thenReturn(false);
+    PlanExecutionRestrictionConfig planExecutionRestrictionConfig = new PlanExecutionRestrictionConfig(1, 2, 3);
+    doReturn(3L).when(planExecutionService).countRunningExecutionsForGivenPipelineInAccount(any(), any());
+    List<ModuleLicenseDTO> moduleLicenseDTOS = new ArrayList<>();
+    moduleLicenseDTOS.add(CDModuleLicenseDTO.builder().edition(Edition.FREE).build());
+    mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(moduleLicenseDTOS);
+    doReturn(false).when(orchestrationRestrictionConfiguration).isUseRestrictionForFree();
+    doReturn(planExecutionRestrictionConfig).when(orchestrationRestrictionConfiguration).getPlanExecutionRestriction();
+    PlanExecutionSettingResponse planExecutionSettingResponse =
+        pipelineSettingsService.shouldQueuePlanExecution("ACCOUNT_ID", "PIPELINE_IDENTIFIER");
+    assertThat(planExecutionSettingResponse.isShouldQueue()).isFalse();
+    assertThat(planExecutionSettingResponse.isUseNewFlow()).isFalse();
+  }
+
+  @Test
+  @Owner(developers = SHIVAM)
+  @Category(UnitTests.class)
+  public void testShouldQueuePlanExecutionForEnabledFF() {
+    // edition == FREE && orchestrationRestrictionConfiguration.isUseRestrictionForFree() == False
+    MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class);
+    when(featureFlagService.isEnabled("ACCOUNT_ID", FeatureName.PIE_PIPELINE_SETTINGS_ENFORCEMENT_LIMIT.name()))
+        .thenReturn(true);
+    PlanExecutionRestrictionConfig planExecutionRestrictionConfig = new PlanExecutionRestrictionConfig(1, 2, 3);
+    doReturn(3L).when(planExecutionService).countRunningExecutionsForGivenPipelineInAccount(any(), any());
+    List<ModuleLicenseDTO> moduleLicenseDTOS = new ArrayList<>();
+    moduleLicenseDTOS.add(CDModuleLicenseDTO.builder().edition(Edition.FREE).build());
+    mockRestStatic.when(() -> NGRestUtils.getResponse(ngLicenseHttpClient.getModuleLicenses(anyString())))
+        .thenReturn(moduleLicenseDTOS);
+    mockRestStatic
+        .when(()
+                  -> ngSettingsClient.getSetting(
+                      NGPipelineSettingsConstant.CONCURRENT_ACTIVE_PIPELINE_EXECUTIONS.getName(), "ACCOUNT_ID", null,
+                      null))
+        .thenReturn(request);
+    SettingValueResponseDTO settingValueResponseDTO =
+        SettingValueResponseDTO.builder().value("600").valueType(SettingValueType.STRING).build();
+    mockRestStatic
+        .when(()
+                  -> NGRestUtils.getResponse(ngSettingsClient.getSetting(
+                      NGPipelineSettingsConstant.CONCURRENT_ACTIVE_PIPELINE_EXECUTIONS.getName(), "ACCOUNT_ID", null,
+                      null)))
+        .thenReturn(settingValueResponseDTO);
+    doReturn(false).when(orchestrationRestrictionConfiguration).isUseRestrictionForFree();
+    doReturn(planExecutionRestrictionConfig).when(orchestrationRestrictionConfiguration).getPlanExecutionRestriction();
+    PlanExecutionSettingResponse planExecutionSettingResponse =
+        pipelineSettingsService.shouldQueuePlanExecution("ACCOUNT_ID", "PIPELINE_IDENTIFIER");
+    assertThat(planExecutionSettingResponse.isShouldQueue()).isFalse();
+    assertThat(planExecutionSettingResponse.isUseNewFlow()).isTrue();
+    doReturn(1000L).when(planExecutionService).countRunningExecutionsForGivenPipelineInAccount(any(), any());
+    planExecutionSettingResponse =
+        pipelineSettingsService.shouldQueuePlanExecution("ACCOUNT_ID", "PIPELINE_IDENTIFIER");
+    assertThat(planExecutionSettingResponse.isShouldQueue()).isTrue();
+    assertThat(planExecutionSettingResponse.isUseNewFlow()).isTrue();
   }
 }
