@@ -49,7 +49,9 @@ import io.harness.cdng.artifact.bean.yaml.DockerHubArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.EcrArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.GcrArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.GoogleArtifactRegistryConfig;
+import io.harness.cdng.artifact.bean.yaml.JenkinsArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.NexusRegistryArtifactConfig;
+import io.harness.cdng.artifact.bean.yaml.nexusartifact.Nexus2RegistryArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.nexusartifact.NexusConstant;
 import io.harness.cdng.artifact.bean.yaml.nexusartifact.NexusRegistryDockerConfig;
 import io.harness.cdng.artifact.resources.acr.dtos.AcrRegistriesDTO;
@@ -79,6 +81,8 @@ import io.harness.cdng.artifact.resources.googleartifactregistry.dtos.GARRespons
 import io.harness.cdng.artifact.resources.googleartifactregistry.dtos.GarRepositoryDTO;
 import io.harness.cdng.artifact.resources.googleartifactregistry.dtos.GarRequestDTO;
 import io.harness.cdng.artifact.resources.googleartifactregistry.service.GARResourceService;
+import io.harness.cdng.artifact.resources.jenkins.dtos.JenkinsJobDetailsDTO;
+import io.harness.cdng.artifact.resources.jenkins.service.JenkinsResourceService;
 import io.harness.cdng.artifact.resources.nexus.dtos.NexusBuildDetailsDTO;
 import io.harness.cdng.artifact.resources.nexus.dtos.NexusRequestDTO;
 import io.harness.cdng.artifact.resources.nexus.service.NexusResourceService;
@@ -88,6 +92,7 @@ import io.harness.cdng.k8s.resources.azure.service.AzureResourceService;
 import io.harness.cdng.manifest.yaml.S3StoreConfig;
 import io.harness.delegate.beans.azure.AcrBuildDetailsDTO;
 import io.harness.delegate.beans.azure.AcrResponseDTO;
+import io.harness.delegate.task.artifacts.ArtifactSourceType;
 import io.harness.evaluators.CDExpressionEvaluator;
 import io.harness.evaluators.CDYamlExpressionEvaluator;
 import io.harness.exception.InvalidRequestException;
@@ -118,6 +123,7 @@ import io.harness.yaml.core.variables.NGVariable;
 import io.harness.yaml.core.variables.StringNGVariable;
 
 import software.wings.helpers.ext.jenkins.BuildDetails;
+import software.wings.helpers.ext.jenkins.JobDetails;
 
 import com.google.common.io.Resources;
 import java.io.IOException;
@@ -162,6 +168,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
   @Mock CDYamlExpressionEvaluator cdYamlExpressionEvaluator;
   @Mock CDExpressionEvaluator cdExpressionEvaluator;
   @Mock S3ResourceService s3ResourceService;
+  @Mock JenkinsResourceService jenkinsResourceService;
   private static final String ACCOUNT_ID = "accountId";
   private static final String ORG_ID = "orgId";
   private static final String PROJECT_ID = "projectId";
@@ -836,6 +843,281 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
   @Test
   @Owner(developers = SARTHAK_KASAT)
   @Category(UnitTests.class)
+  public void testGetJenkinsJobDetails() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig =
+        JenkinsArtifactConfig.builder()
+            .connectorRef(ParameterField.<String>builder().value("connectorref").build())
+            .build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    // Creating IdentifierRef for mock
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    JenkinsJobDetailsDTO buildDetails = JenkinsJobDetailsDTO.builder().build();
+
+    doReturn(buildDetails).when(jenkinsResourceService).getJobDetails(identifierRef, ORG_ID, PROJECT_ID, "");
+
+    assertThat(spyartifactResourceUtils.getJenkinsJobDetails(
+                   CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "", null, FQN, SERVICE_REF, ""))
+        .isEqualTo(buildDetails);
+  }
+
+  @Test
+  @Owner(developers = SARTHAK_KASAT)
+  @Category(UnitTests.class)
+  public void testGetJenkinsJobParameters() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig =
+        JenkinsArtifactConfig.builder()
+            .connectorRef(ParameterField.<String>builder().value("connectorref").build())
+            .build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    // Creating IdentifierRef for mock
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    List<JobDetails> jobDetails = new ArrayList<>();
+    jobDetails.add(new JobDetails("jobName", "", new ArrayList<>()));
+
+    doReturn(jobDetails).when(jenkinsResourceService).getJobParameters(identifierRef, ORG_ID, PROJECT_ID, "jobName");
+
+    assertThat(spyartifactResourceUtils.getJenkinsJobParameters(
+                   CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "jobName", null, FQN, SERVICE_REF, ""))
+        .isEqualTo(jobDetails.get(0).getParameters());
+  }
+
+  @Test
+  @Owner(developers = SARTHAK_KASAT)
+  @Category(UnitTests.class)
+  public void testGetJenkinsBuildJobDetails() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig =
+        JenkinsArtifactConfig.builder()
+            .connectorRef(ParameterField.<String>builder().value("connectorref").build())
+            .build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    // Creating IdentifierRef for mock
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    List<BuildDetails> buildDetails = new ArrayList<>();
+
+    doReturn(buildDetails)
+        .when(jenkinsResourceService)
+        .getBuildForJob(identifierRef, ORG_ID, PROJECT_ID, "", new ArrayList<>());
+
+    assertThat(spyartifactResourceUtils.getJenkinsJobBuildsV2(CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID,
+                   PIPELINE_ID, "jobName", "artifactPath", null, FQN, SERVICE_REF, ""))
+        .isEqualTo(buildDetails);
+  }
+
+  @Test
+  @Owner(developers = SARTHAK_KASAT)
+  @Category(UnitTests.class)
+  public void testGetJenkinsArtifactPaths() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig =
+        JenkinsArtifactConfig.builder()
+            .connectorRef(ParameterField.<String>builder().value("connectorref").build())
+            .build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    // Creating IdentifierRef for mock
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    List<String> artifactPaths = new ArrayList<>();
+
+    doReturn(artifactPaths).when(jenkinsResourceService).getArtifactPath(identifierRef, ORG_ID, PROJECT_ID, "");
+
+    assertThat(spyartifactResourceUtils.getJenkinsArtifactPaths(
+                   CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "jobName", null, FQN, SERVICE_REF, ""))
+        .isEqualTo(artifactPaths);
+  }
+
+  @Test
+  @Owner(developers = SARTHAK_KASAT)
+  @Category(UnitTests.class)
+  public void testGetNexusArtifactIds() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+    ParameterField<String> connectorRef = ParameterField.<String>builder().value(CONNECTOR_REF).build();
+    Nexus2RegistryArtifactConfig nexus2RegistryArtifactConfig =
+        Nexus2RegistryArtifactConfig.builder()
+            .connectorRef(connectorRef)
+            .repositoryFormat(ParameterField.<String>builder().value(NexusConstant.MAVEN).build())
+            .repository(ParameterField.<String>builder().value("test").build())
+            .build();
+
+    GARResponseDTO buildDetails = GARResponseDTO.builder().build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(nexus2RegistryArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(any(), any(), any(), any(), any(), eq("main-patch"));
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    List<String> artifactIDs = new ArrayList<>();
+    artifactIDs.add("artifactId");
+
+    doReturn(artifactIDs)
+        .when(nexusResourceService)
+        .getArtifactIds(ACCOUNT_ID, ORG_ID, PROJECT_ID, identifierRef, NexusConstant.MAVEN, "test", "groupId",
+            ArtifactSourceType.NEXUS2_REGISTRY);
+
+    assertThat(spyartifactResourceUtils.getNexusArtifactIds(CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+                   NexusConstant.MAVEN, "test", "groupId", "Nexus2Registry", null, null, "", SERVICE_REF))
+        .isEqualTo(artifactIDs);
+  }
+
+  @Test
+  @Owner(developers = SARTHAK_KASAT)
+  @Category(UnitTests.class)
+  public void testGetNexusGroupIds() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+    ParameterField<String> connectorRef = ParameterField.<String>builder().value(CONNECTOR_REF).build();
+    Nexus2RegistryArtifactConfig nexus2RegistryArtifactConfig =
+        Nexus2RegistryArtifactConfig.builder()
+            .connectorRef(connectorRef)
+            .repositoryFormat(ParameterField.<String>builder().value(NexusConstant.MAVEN).build())
+            .repository(ParameterField.<String>builder().value("test").build())
+            .build();
+
+    GARResponseDTO buildDetails = GARResponseDTO.builder().build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(nexus2RegistryArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(any(), any(), any(), any(), any(), eq("main-patch"));
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    List<String> artifactIDs = new ArrayList<>();
+    artifactIDs.add("artifactId");
+
+    doReturn(artifactIDs)
+        .when(nexusResourceService)
+        .getGroupIds(ACCOUNT_ID, ORG_ID, PROJECT_ID, identifierRef, NexusConstant.MAVEN, "test",
+            ArtifactSourceType.NEXUS2_REGISTRY);
+
+    assertThat(spyartifactResourceUtils.getNexusGroupIds(CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+                   NexusConstant.MAVEN, "test", null, null, "", SERVICE_REF))
+        .isEqualTo(artifactIDs);
+  }
+
+  @Test
+  @Owner(developers = SARTHAK_KASAT)
+  @Category(UnitTests.class)
   public void testGetBuildDetailsV2GARForRemoteService() {
     // spy for ArtifactResourceUtils
     ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
@@ -1047,7 +1329,6 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     assertThat(modifiedRepositoryDetails).isNotNull();
     assertThat(modifiedRepositoryDetails.getGarPackagesDTO()).hasSize(1);
 
-    // Update the verify statement to match the actual calls in getRepositoriesV2GAR
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
             pipelineYamlWithoutTemplates, REGION, FQN, null, SERVICE_REF,
@@ -1113,7 +1394,6 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     assertThat(modifiedRepositoryDetails).isNotNull();
     assertThat(modifiedRepositoryDetails.getGarPackagesDTO()).hasSize(1);
 
-    // Update the verify statement to match the actual calls in getRepositoriesV2GAR
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
             pipelineYamlWithoutTemplates, REGION, FQN, null, SERVICE_REF,
@@ -1197,7 +1477,6 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     assertThat(modifiedRepositoryDetails).isNotNull();
     assertThat(modifiedRepositoryDetails.getGarPackagesDTO()).hasSize(1);
 
-    // Update the verify statement to match the actual calls in getRepositoriesV2GAR
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
             pipelineYamlWithoutTemplates, REGION_2, FQN, null, SERVICE_REF,
@@ -1522,7 +1801,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     doReturn(artifactoryRegistryArtifactConfig)
         .when(spyartifactResourceUtils)
-        .locateArtifactInService(any(), any(), any(), any(), any());
+        .locateArtifactInService(any(), any(), any(), any(), any(), any());
 
     doReturn(result)
         .when(artifactoryResourceService)
@@ -2845,7 +3124,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     doReturn(nexusRegistryArtifactConfig)
         .when(spyartifactResourceUtils)
-        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN);
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, null);
 
     doReturn(NEXUS_BUILD_DETAILS_DTO)
         .when(nexusResourceService)
@@ -2894,7 +3173,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     doReturn(nexusRegistryArtifactConfig)
         .when(spyartifactResourceUtils)
-        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN);
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, null);
 
     doReturn(NEXUS_BUILD_DETAILS_DTO)
         .when(nexusResourceService)
@@ -2971,7 +3250,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     doReturn(nexusRegistryArtifactConfig)
         .when(spyartifactResourceUtils)
-        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN);
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, null);
 
     assertThatThrownBy(()
                            -> spyartifactResourceUtils.getLastSuccessfulBuildV2Nexus3(null, null, null, null, null,
@@ -2993,7 +3272,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     doReturn(nexusRegistryArtifactConfig)
         .when(spyartifactResourceUtils)
-        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN);
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, null);
 
     doReturn(NEXUS_BUILD_DETAILS_DTO)
         .when(nexusResourceService)
@@ -3046,7 +3325,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     doReturn(artifactoryRegistryArtifactConfig)
         .when(spyartifactResourceUtils)
-        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN);
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, null);
 
     doReturn(ARTIFACTORY_DOCKER_BUILD_DETAILS_DTO)
         .when(artifactoryResourceService)
@@ -3088,7 +3367,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     doReturn(artifactoryRegistryArtifactConfig)
         .when(spyartifactResourceUtils)
-        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN);
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, null);
 
     doReturn(ARTIFACTORY_DOCKER_BUILD_DETAILS_DTO)
         .when(artifactoryResourceService)
@@ -3133,7 +3412,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     doReturn(artifactoryRegistryArtifactConfig)
         .when(spyartifactResourceUtils)
-        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN);
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, null);
 
     doReturn(ARTIFACTORY_DOCKER_BUILD_DETAILS_DTO)
         .when(artifactoryResourceService)
@@ -3831,7 +4110,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GARRepositoryDTOList repositoryDetails = GARRepositoryDTOList.builder()
                                                  .garRepositoryDTOS(List.of(GarRepositoryDTO.builder()
                                                                                 .repository("myRepo/repo1")
-                                                                                .format("format1")
+                                                                                .format("DOCKER")
                                                                                 .createTime("2023-01-01T12:00:00Z")
                                                                                 .updateTime("2023-01-02T12:00:00Z")
                                                                                 .build()))
@@ -3858,9 +4137,47 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GarRepositoryDTO modifiedRepo = modifiedRepositoryDetails.getGarRepositoryDTOS().get(0);
 
     assertThat(modifiedRepo.getRepository().substring(index + 1)).isEqualTo("repo1");
-    assertThat(modifiedRepo.getFormat()).isEqualTo("format1");
+    assertThat(modifiedRepo.getFormat()).isEqualTo("DOCKER");
     assertThat(modifiedRepo.getCreateTime()).isEqualTo("2023-01-01T12:00:00Z");
     assertThat(modifiedRepo.getUpdateTime()).isEqualTo("2023-01-02T12:00:00Z");
+  }
+
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetRepositoriesV2GAR_Empty() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+
+    GoogleArtifactRegistryConfig googleArtifactRegistryConfig =
+        GoogleArtifactRegistryConfig.builder()
+            .connectorRef(ParameterField.<String>builder().value(CONNECTOR_REF).build())
+            .project(ParameterField.<String>builder().value(PROJECT).build())
+            .region(ParameterField.<String>builder().value(REGION).build())
+            .build();
+
+    GARRepositoryDTOList repositoryDetails = GARRepositoryDTOList.builder()
+                                                 .garRepositoryDTOS(List.of(GarRepositoryDTO.builder()
+                                                                                .repository("myRepo/repo1")
+                                                                                .format("format1")
+                                                                                .createTime("2023-01-01T12:00:00Z")
+                                                                                .updateTime("2023-01-02T12:00:00Z")
+                                                                                .build()))
+                                                 .build();
+
+    IdentifierRef identifierRef = IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID);
+
+    doReturn(googleArtifactRegistryConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(any(), any(), any(), any(), any(), any());
+
+    doReturn(repositoryDetails)
+        .when(garResourceService)
+        .getRepositories(identifierRef, REGION, PROJECT, ORG_ID, PROJECT_ID);
+
+    GARRepositoryDTOList modifiedRepositoryDetails = spyartifactResourceUtils.getRepositoriesV2GAR(
+        null, null, PROJECT, ACCOUNT_ID, ORG_ID, PIPELINE_ID, "", SERVICE_REF, "", PROJECT_ID, null);
+
+    assertThat(modifiedRepositoryDetails.getGarRepositoryDTOS()).hasSize(0);
   }
 
   @Test
@@ -3879,7 +4196,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GARRepositoryDTOList repositoryDetails = GARRepositoryDTOList.builder()
                                                  .garRepositoryDTOS(List.of(GarRepositoryDTO.builder()
                                                                                 .repository("myRepo/repo1")
-                                                                                .format("format1")
+                                                                                .format("DOCKER")
                                                                                 .createTime("2023-01-01T12:00:00Z")
                                                                                 .updateTime("2023-01-02T12:00:00Z")
                                                                                 .build()))
@@ -3941,7 +4258,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GARRepositoryDTOList repositoryDetails = GARRepositoryDTOList.builder()
                                                  .garRepositoryDTOS(List.of(GarRepositoryDTO.builder()
                                                                                 .repository("myRepo/repo1")
-                                                                                .format("format1")
+                                                                                .format("DOCKER")
                                                                                 .createTime("2023-01-01T12:00:00Z")
                                                                                 .updateTime("2023-01-02T12:00:00Z")
                                                                                 .build()))
@@ -4003,7 +4320,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GARRepositoryDTOList repositoryDetails = GARRepositoryDTOList.builder()
                                                  .garRepositoryDTOS(List.of(GarRepositoryDTO.builder()
                                                                                 .repository("myRepo/repo1")
-                                                                                .format("format1")
+                                                                                .format("DOCKER")
                                                                                 .createTime("2023-01-01T12:00:00Z")
                                                                                 .updateTime("2023-01-02T12:00:00Z")
                                                                                 .build()))
@@ -4084,7 +4401,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GARRepositoryDTOList repositoryDetails = GARRepositoryDTOList.builder()
                                                  .garRepositoryDTOS(List.of(GarRepositoryDTO.builder()
                                                                                 .repository("myRepo/repo1")
-                                                                                .format("format1")
+                                                                                .format("DOCKER")
                                                                                 .createTime("2023-01-01T12:00:00Z")
                                                                                 .updateTime("2023-01-02T12:00:00Z")
                                                                                 .build()))
@@ -4126,7 +4443,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     GarRepositoryDTO modifiedRepo = modifiedRepositoryDetails.getGarRepositoryDTOS().get(0);
     assertThat(modifiedRepo.getRepository()).isEqualTo("repo1");
-    assertThat(modifiedRepo.getFormat()).isEqualTo("format1");
+    assertThat(modifiedRepo.getFormat()).isEqualTo("DOCKER");
     assertThat(modifiedRepo.getCreateTime()).isEqualTo("2023-01-01T12:00:00Z");
     assertThat(modifiedRepo.getUpdateTime()).isEqualTo("2023-01-02T12:00:00Z");
   }
@@ -4135,6 +4452,39 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
   @Owner(developers = RAKSHIT_AGARWAL)
   @Category(UnitTests.class)
   public void testGetRepositoriesGAR() {
+    ArtifactResourceUtils spyArtifactResourceUtils = spy(artifactResourceUtils);
+
+    GarRepositoryDTO repositoryDTO = GarRepositoryDTO.builder()
+                                         .repository("myRepo/repo1")
+                                         .format("DOCKER")
+                                         .createTime("2023-01-01T12:00:00Z")
+                                         .updateTime("2023-01-02T12:00:00Z")
+                                         .build();
+    GARRepositoryDTOList buildDetails =
+        GARRepositoryDTOList.builder().garRepositoryDTOS(List.of(repositoryDTO)).build();
+    doReturn(buildDetails)
+        .when(garResourceService)
+        .getRepositories(eq(IDENTIFIER_REF), eq(REGION), eq(PROJECT), eq(ORG_ID), eq(PROJECT_ID));
+
+    GARRepositoryDTOList modifiedBuildDetails =
+        spyArtifactResourceUtils.getRepositoriesGAR(IDENTIFIER_REF, REGION, PROJECT, ORG_ID, PROJECT_ID);
+
+    assertThat(modifiedBuildDetails).isNotNull();
+    assertThat(modifiedBuildDetails.getGarRepositoryDTOS()).hasSize(1);
+
+    GarRepositoryDTO modifiedRepo = modifiedBuildDetails.getGarRepositoryDTOS().get(0);
+    assertThat(modifiedRepo.getRepository()).isEqualTo("repo1");
+    assertThat(modifiedRepo.getFormat()).isEqualTo("DOCKER");
+    assertThat(modifiedRepo.getCreateTime()).isEqualTo("2023-01-01T12:00:00Z");
+    assertThat(modifiedRepo.getUpdateTime()).isEqualTo("2023-01-02T12:00:00Z");
+  }
+
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetRepositoriesGAR_Empty() {
+    ArtifactResourceUtils spyArtifactResourceUtils = spy(artifactResourceUtils);
+
     GarRepositoryDTO repositoryDTO = GarRepositoryDTO.builder()
                                          .repository("myRepo/repo1")
                                          .format("format1")
@@ -4148,17 +4498,9 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
         .getRepositories(eq(IDENTIFIER_REF), eq(REGION), eq(PROJECT), eq(ORG_ID), eq(PROJECT_ID));
 
     GARRepositoryDTOList modifiedBuildDetails =
-        garResourceService.getRepositories(IDENTIFIER_REF, REGION, PROJECT, ORG_ID, PROJECT_ID);
+        spyArtifactResourceUtils.getRepositoriesGAR(IDENTIFIER_REF, REGION, PROJECT, ORG_ID, PROJECT_ID);
 
-    int index = modifiedBuildDetails.getGarRepositoryDTOS().get(0).getRepository().lastIndexOf("/");
-    assertThat(modifiedBuildDetails).isNotNull();
-    assertThat(modifiedBuildDetails.getGarRepositoryDTOS()).hasSize(1);
-
-    GarRepositoryDTO modifiedRepo = modifiedBuildDetails.getGarRepositoryDTOS().get(0);
-    assertThat(modifiedRepo.getRepository().substring(index + 1)).isEqualTo("repo1");
-    assertThat(modifiedRepo.getFormat()).isEqualTo("format1");
-    assertThat(modifiedRepo.getCreateTime()).isEqualTo("2023-01-01T12:00:00Z");
-    assertThat(modifiedRepo.getUpdateTime()).isEqualTo("2023-01-02T12:00:00Z");
+    assertThat(modifiedBuildDetails.getGarRepositoryDTOS()).hasSize(0);
   }
 
   private void mockEnvironmentGetCall() {
