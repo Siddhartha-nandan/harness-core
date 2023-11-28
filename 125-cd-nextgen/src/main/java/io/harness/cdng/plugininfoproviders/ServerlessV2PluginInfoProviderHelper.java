@@ -26,6 +26,8 @@ import io.harness.cdng.artifact.outcome.ArtifactoryGenericArtifactOutcome;
 import io.harness.cdng.artifact.outcome.ArtifactsOutcome;
 import io.harness.cdng.artifact.outcome.EcrArtifactOutcome;
 import io.harness.cdng.artifact.outcome.S3ArtifactOutcome;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepHelper;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepParameters;
 import io.harness.cdng.expressions.CDExpressionResolver;
 import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.infra.beans.ServerlessAwsLambdaInfrastructureOutcome;
@@ -94,6 +96,8 @@ public class ServerlessV2PluginInfoProviderHelper {
   @Inject private CDExpressionResolver cdExpressionResolver;
   @Inject private OutcomeService outcomeService;
 
+  @Inject private DownloadAwsS3StepHelper downloadAwsS3StepHelper;
+
   @Inject private ServerlessEntityHelper serverlessEntityHelper;
 
   @Named(DEFAULT_CONNECTOR_SERVICE) @Inject private ConnectorService connectorService;
@@ -159,68 +163,21 @@ public class ServerlessV2PluginInfoProviderHelper {
         manifestsOutcome.values(), ManifestType.ServerlessAwsLambda);
     StoreConfig storeConfig = serverlessManifestOutcome.getStore();
 
-    if (storeConfig instanceof S3StoreConfig) {
-      S3StoreConfig s3StoreConfig = (S3StoreConfig) storeConfig;
-      HashMap<String, String> environmentVariablesMap = new HashMap<>();
-      environmentVariablesMap.put("S3_BUCKET", s3StoreConfig.getBucketName().getValue());
-      environmentVariablesMap.put("S3_PATH", s3StoreConfig.getPaths().getValue().get(0));
-
-      NGAccess ngAccess = getNgAccess(ambiance);
-
-      IdentifierRef identifierRef = getIdentifierRef(s3StoreConfig.getConnectorRef().getValue(), ngAccess);
-
-      Optional<ConnectorResponseDTO> connectorDTO = connectorService.get(identifierRef.getAccountIdentifier(),
-          identifierRef.getOrgIdentifier(), identifierRef.getProjectIdentifier(), identifierRef.getIdentifier());
-
-      ConnectorInfoDTO connectorInfoDTO = connectorDTO.get().getConnector();
-      ConnectorConfigDTO connectorConfigDTO = connectorInfoDTO.getConnectorConfig();
-      AwsConnectorDTO awsConnectorDTO = (AwsConnectorDTO) connectorConfigDTO;
-      AwsCredentialDTO awsCredentialDTO = awsConnectorDTO.getCredential();
-      AwsCredentialSpecDTO awsCredentialSpecDTO = awsCredentialDTO.getConfig();
-
-      String crossAccountRoleArn = null;
-      String externalId = null;
-
-      String awsAccessKey = null;
-      String awsSecretKey = null;
-
-      if (awsCredentialSpecDTO instanceof AwsManualConfigSpecDTO) {
-        AwsManualConfigSpecDTO awsManualConfigSpecDTO = (AwsManualConfigSpecDTO) awsCredentialSpecDTO;
-
-        if (!StringUtils.isEmpty(awsManualConfigSpecDTO.getAccessKey())) {
-          awsAccessKey = awsManualConfigSpecDTO.getAccessKey();
-        } else {
-          awsAccessKey = getKey(ambiance, awsManualConfigSpecDTO.getAccessKeyRef());
-        }
-
-        awsSecretKey = getKey(ambiance, awsManualConfigSpecDTO.getSecretKeyRef());
-      }
-
-      if (awsCredentialDTO.getCrossAccountAccess() != null) {
-        crossAccountRoleArn = awsCredentialDTO.getCrossAccountAccess().getCrossAccountRoleArn();
-        externalId = awsCredentialDTO.getCrossAccountAccess().getExternalId();
-      }
-
-      environmentVariablesMap.put("PLUGIN_AWS_ACCESS_KEY", awsAccessKey);
-      environmentVariablesMap.put("PLUGIN_AWS_SECRET_KEY", awsSecretKey);
-
-      if (envVariables != null && envVariables.getValue() != null) {
-        environmentVariablesMap.putAll(envVariables.getValue());
-      }
-
-      return environmentVariablesMap;
-    }
-
     String configOverridePath = getConfigOverridePath(serverlessManifestOutcome);
     if (isNull(configOverridePath)) {
       configOverridePath = "";
     }
 
-    GitStoreConfig gitStoreConfig = (GitStoreConfig) storeConfig;
-    List<String> gitPaths = getFolderPathsForManifest(gitStoreConfig);
+    if (storeConfig instanceof GitStoreConfig) {
+      GitStoreConfig gitStoreConfig = (GitStoreConfig) storeConfig;
 
-    if (isEmpty(gitPaths)) {
-      throw new InvalidRequestException("Atleast one git path need to be specified", USER);
+      List<String> gitPaths = getFolderPathsForManifest(gitStoreConfig);
+
+      if (isEmpty(gitPaths)) {
+        throw new InvalidRequestException("Atleast one git path need to be specified", USER);
+      }
+    } else if (storeConfig instanceof S3StoreConfig && (isEmpty(((S3StoreConfig) storeConfig).getPaths().getValue()))) {
+      throw new InvalidRequestException("Atleast one s3 store path need to be specified", USER);
     }
 
     String serverlessDirectory = getServerlessAwsLambdaDirectoryPathFromManifestOutcome(
