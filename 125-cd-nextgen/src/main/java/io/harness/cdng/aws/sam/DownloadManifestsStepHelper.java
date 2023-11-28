@@ -6,6 +6,7 @@
  */
 
 package io.harness.cdng.aws.sam;
+
 import static io.harness.exception.WingsException.USER;
 
 import io.harness.annotations.dev.CodePulse;
@@ -108,12 +109,24 @@ public class DownloadManifestsStepHelper {
           "CDP_AWS_SAM FF is not enabled for this account. Please contact harness customer care.",
           ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
     }
+    if (!cdFeatureFlagHelper.isEnabled(
+            AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD)) {
+      throw new AccessDeniedException(
+          "CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD FF is not enabled for this account. Please contact harness customer care.",
+          ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
+    }
   }
 
   public void checkServerlessV2FeatureFlagEnabled(Ambiance ambiance) {
     if (!cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_SERVERLESS_V2)) {
       throw new AccessDeniedException(
           "CDS_SERVERLESS_V2 FF is not enabled for this account. Please contact harness customer care.",
+          ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
+    }
+    if (!cdFeatureFlagHelper.isEnabled(
+            AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD)) {
+      throw new AccessDeniedException(
+          "CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD FF is not enabled for this account. Please contact harness customer care.",
           ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
     }
   }
