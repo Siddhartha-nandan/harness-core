@@ -1,4 +1,4 @@
-{{- if and .Values.global.monitoring.enabled (eq .Values.global.monitoring.managedPlatform "google") -}}
+{{- if and .Values.global.monitoring.enabled (eq (lower .Values.global.monitoring.managedPlatform) "google") -}}
 apiVersion: monitoring.googleapis.com/v1
 kind: PodMonitoring
 metadata:
