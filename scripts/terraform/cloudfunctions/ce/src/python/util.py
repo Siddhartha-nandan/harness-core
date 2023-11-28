@@ -47,7 +47,7 @@ AZUREVMINVENTORYMETRIC = "azureVMInventoryMetric"
 AZURECOSTPREFIX = "azurecost"
 CONNECTORDATASYNCSTATUSTABLE = "connectorDataSyncStatus"
 GCPCONNECTORINFOTABLE = "gcpConnectorInfo"
-CURRENCY_LIST = ["AED", "ARS", "AUD", "BRL", "CAD", "CNY", "EUR", "GBP", "IDR"
+CURRENCY_LIST = ["AED", "ARS", "AUD", "BRL", "CAD", "CNY", "EUR", "GBP", "IDR",
                  "INR", "JPY", "MXN", "NOK", "NZD", "RUB", "SGD", "USD"]
 LABELS_FLATTENING_ENABLED_ACCOUNTS = ["EfOfrUbHTtupeZjUqxlHBg", "JQ3KKI5yRTGe37OrCiZaTA",
                                       "k9C6xngtS06yOSMV7hPGlQ", "l4zWxf3BTs6mEyIMmQjQIg",
