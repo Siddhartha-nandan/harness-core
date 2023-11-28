@@ -442,6 +442,9 @@ public class PerspectiveResource {
   getAll(@Parameter(required = true, description = ACCOUNT_PARAM_MESSAGE) @QueryParam(
              NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier @NotNull @Valid String accountId,
       @Valid @QueryParam("searchKey") @Parameter(description = "Characters in search bar") String searchKey,
+      @Valid @QueryParam("pageNo") @DefaultValue("10000") @Parameter(description = "Page Number") Integer pageNo,
+      @Valid @QueryParam("pageSize") @DefaultValue("0") @Parameter(
+          description = "Number of Perspectives per page") Integer pageSize,
       @Valid @QueryParam("sortType") @DefaultValue("TIME") @Parameter(
           description = " sorting filters in UI") QLCEViewSortType sortType,
       @Valid @QueryParam("sortOrder") @DefaultValue("DESCENDING") @Parameter(
@@ -455,7 +458,8 @@ public class PerspectiveResource {
     perspectiveDataBuilder.totalCount(
         ceViewService.countByAccountIdAndFolderIds(accountId, allowedFolderIds, searchKey, cloudFilters));
     QLCEViewSortCriteria sortCriteria = QLCEViewSortCriteria.builder().sortType(sortType).sortOrder(sortOrder).build();
-    perspectiveDataBuilder.views(ceViewService.getAllViews(accountId, true, sortCriteria));
+    perspectiveDataBuilder.views(ceViewService.getAllPerspectives(
+        accountId, true, sortCriteria, pageSize, pageNo, searchKey, folders, allowedFolderIds, cloudFilters));
     return ResponseDTO.newResponse(perspectiveDataBuilder.build());
   }
 
