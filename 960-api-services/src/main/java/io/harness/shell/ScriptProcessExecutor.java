@@ -349,10 +349,52 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
             LogSanitizerHelper.sanitizeTokens(errorLog.toString()));
       }
 
+      List<ShellScriptLog> originalList = new ArrayList<>(logList);
       logList.sort(Comparator.comparing(ShellScriptLog::getTimeStamp));
+
+      log.error("is size changedd..." + (logList.size() != 27));
+
+      if (!originalList.equals(logList)) {
+        log.error("is order changedd..." + !originalList.equals(logList));
+        log.info("Printing original logs");
+        for (ShellScriptLog l : originalList) {
+          log.info(l.getText());
+        }
+      }
 
       for (ShellScriptLog log : logList) {
         saveExecutionLog(log.getText(), log.getLevel());
+      }
+
+      int size = logList.size();
+      if (!logList.get(size - 1).getText().contains("The Deployment argo-rollouts failed to")) {
+        log.error("failingg...");
+      }
+      if (!logList.get(size - 2).getText().contains("kubectl scale ")) {
+        log.error("failingg...");
+      }
+      if (!logList.get(size - 3).getText().contains("invalid argument")) {
+        log.error("failingg...");
+      }
+
+      if (!logList.get(size - 10).getText().contains("No resources found in cbp-test namespace")) {
+        log.error("failingg...");
+      }
+
+      if (!logList.get(size - 13).getText().contains("No resources found in default namespace")) {
+        log.error("failingg...");
+      }
+
+      if (!logList.get(size - 16).getText().contains("No resources found in flux-system namespace")) {
+        log.error("failingg...");
+      }
+
+      if (!logList.get(size - 19).getText().contains("No resources found in harness-delegate-ng namespace")) {
+        log.error("failingg...");
+      }
+
+      if (!logList.get(size - 22).getText().contains("No resources found in nginx namespace")) {
+        log.error("failingg...");
       }
 
       commandExecutionStatus = processResult.getExitValue() == 0 ? SUCCESS : FAILURE;
