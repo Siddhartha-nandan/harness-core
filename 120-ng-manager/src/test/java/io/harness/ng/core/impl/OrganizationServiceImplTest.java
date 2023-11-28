@@ -295,11 +295,12 @@ public class OrganizationServiceImplTest extends CategoryTest {
                    .doInTransaction(new SimpleTransactionStatus()));
     when(organizationRepository.hardDelete(any(), any(), any(), any())).thenReturn(organization);
 
-    organizationService.delete(accountIdentifier, ScopeInfo.builder()
-                                   .accountIdentifier(accountIdentifier)
-                                   .scopeType(ScopeLevel.ACCOUNT)
-                                   .uniqueId(accountIdentifier)
-                                   .build(),
+    organizationService.delete(accountIdentifier,
+        ScopeInfo.builder()
+            .accountIdentifier(accountIdentifier)
+            .scopeType(ScopeLevel.ACCOUNT)
+            .uniqueId(accountIdentifier)
+            .build(),
         identifier, version);
     verify(organizationRepository, times(1)).hardDelete(any(), any(), argumentCaptor.capture(), any());
     assertEquals(identifier, argumentCaptor.getValue());
@@ -321,11 +322,12 @@ public class OrganizationServiceImplTest extends CategoryTest {
                    .doInTransaction(new SimpleTransactionStatus()));
     when(organizationRepository.hardDelete(any(), any(), any(), any())).thenReturn(null);
 
-    organizationService.delete(accountIdentifier, ScopeInfo.builder()
-                                   .accountIdentifier(accountIdentifier)
-                                   .scopeType(ScopeLevel.ACCOUNT)
-                                   .uniqueId(accountIdentifier)
-                                   .build(),
+    organizationService.delete(accountIdentifier,
+        ScopeInfo.builder()
+            .accountIdentifier(accountIdentifier)
+            .scopeType(ScopeLevel.ACCOUNT)
+            .uniqueId(accountIdentifier)
+            .build(),
         identifier, version);
   }
 
