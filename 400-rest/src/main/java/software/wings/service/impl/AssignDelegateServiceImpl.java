@@ -14,7 +14,6 @@ import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.delegate.beans.NgSetupFields.NG;
-import static io.harness.delegate.task.TaskFailureReason.EXPIRED;
 import static io.harness.delegate.utils.DelegateServiceConstants.HEARTBEAT_EXPIRY_TIME;
 import static io.harness.persistence.HPersistence.upsertReturnNewOptions;
 
@@ -1079,14 +1078,24 @@ public class AssignDelegateServiceImpl implements AssignDelegateService, Delegat
     task.setNonAssignableDelegates(new HashMap<>());
     try {
       List<Delegate> accountDelegates = fetchActiveDelegates(task);
+      if (Objects.isNull(accountDelegates) || accountDelegates.isEmpty()) {
+        log.info("No active delegates found from db");
+      } else {
+        accountDelegates.forEach(delegate -> log.info("Delegate found: {}", delegate.getUuid()));
+      }
       boolean isTaskNg = task.isNGTask(task.getSetupAbstractions());
+      if (isTaskNg) {
+        log.info("Task is marked as NG");
+      }
       accountDelegates = accountDelegates.stream().filter(delegate -> delegate.isNg() == isTaskNg).collect(toList());
       if (isEmpty(accountDelegates)) {
+        log.info("No delegates selected after NG filter");
         return List.of();
       }
 
       List<Delegate> delegates = getDelegatesWithOwnerShipCriteriaMatch(task, accountDelegates);
       if (isEmpty(delegates)) {
+        log.info("No delegates selected after ownership filter");
         task.getNonAssignableDelegates().put(CAN_NOT_ASSIGN_OWNER, Collections.emptyList());
         delegateTaskServiceClassic.addToTaskActivityLog(task, CAN_NOT_ASSIGN_OWNER);
         return List.of();
@@ -1247,6 +1256,7 @@ public class AssignDelegateServiceImpl implements AssignDelegateService, Delegat
   public boolean canAssignTaskV2(String delegateId, DelegateTask task) {
     Delegate delegate = delegateCache.get(task.getAccountId(), delegateId);
     if (delegate == null) {
+      log.info("Could not find delegate in delegate cache");
       return false;
     }
 
@@ -1257,6 +1267,7 @@ public class AssignDelegateServiceImpl implements AssignDelegateService, Delegat
     if (!canAssignTaskToDelegate) {
       final String taskNotAssignedReasonPhrase =
           String.format("%s %s", task.getTaskDataV2().getTaskType(), CAN_NOT_ASSIGN_TASK_GROUP);
+      log.info(taskNotAssignedReasonPhrase);
       task.getNonAssignableDelegates().putIfAbsent(taskNotAssignedReasonPhrase, new ArrayList<>());
       task.getNonAssignableDelegates().get(taskNotAssignedReasonPhrase).add(delegateName);
       log.debug("Delegate {} does not support task {} which is of type {}", delegateId, task.getUuid(),
@@ -1332,6 +1343,7 @@ public class AssignDelegateServiceImpl implements AssignDelegateService, Delegat
     try {
       List<Delegate> accountDelegates = accountDelegatesCache.get(accountId);
       if (accountDelegates.isEmpty()) {
+        log.info("no delegate found in account");
         /* Cache invalidation was added here in order to cover the edge case, when there are no delegates in db for
          * the given account, so that the cache has an opportunity to refresh on a next invocation, instead of waiting
          * for the whole cache validity period to pass and returning empty list.

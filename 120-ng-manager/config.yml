@@ -85,6 +85,8 @@ logging:
       threshold: TRACE
       target: STDOUT
       stackdriverLogEnabled: false
+    - type: file
+      currentLogFilename: /tmp/myApp.log
 
 mongo:
   uri: mongodb://localhost:27017/ng-harness

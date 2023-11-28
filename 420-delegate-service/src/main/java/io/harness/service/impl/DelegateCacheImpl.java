@@ -169,6 +169,7 @@ public class DelegateCacheImpl implements DelegateCache {
   public Delegate get(String accountId, String delegateId, boolean forceRefresh) {
     try {
       if (enableRedisForDelegateService) {
+        log.info("Redis cache enabled for delegate");
         return getDelegateFromRedisCache(delegateId, forceRefresh);
       }
       Delegate delegate = delegateCache.get(delegateId).orElse(null);
