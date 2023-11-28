@@ -436,6 +436,7 @@ import io.harness.delegate.exception.ServerlessNGException;
 import io.harness.delegate.exception.TaskNGDataException;
 import io.harness.delegate.task.ListNotifyResponseData;
 import io.harness.delegate.task.artifactBundle.ArtifactBundleDelegateConfig;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
 import io.harness.delegate.task.artifactBundle.ArtifactBundleFetchRequest;
 import io.harness.delegate.task.artifactBundle.PackageArtifactConfig;
 import io.harness.delegate.task.artifactBundle.response.ArtifactBundleFetchResponse;
@@ -841,6 +842,17 @@ import io.harness.delegate.task.k8s.OpenshiftManifestDelegateConfig;
 import io.harness.delegate.task.k8s.RancherK8sInfraDelegateConfig;
 import io.harness.delegate.task.k8s.ReleaseMetadata;
 import io.harness.delegate.task.k8s.data.K8sCanaryDataException;
+import io.harness.delegate.task.k8s.trafficrouting.HeaderConfig;
+import io.harness.delegate.task.k8s.trafficrouting.IstioProviderConfig;
+import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfig;
+import io.harness.delegate.task.k8s.trafficrouting.MatchType;
+import io.harness.delegate.task.k8s.trafficrouting.ProviderType;
+import io.harness.delegate.task.k8s.trafficrouting.RouteType;
+import io.harness.delegate.task.k8s.trafficrouting.RuleType;
+import io.harness.delegate.task.k8s.trafficrouting.SMIProviderConfig;
+import io.harness.delegate.task.k8s.trafficrouting.TrafficRoute;
+import io.harness.delegate.task.k8s.trafficrouting.TrafficRouteRule;
+import io.harness.delegate.task.k8s.trafficrouting.TrafficRoutingDestination;
 import io.harness.delegate.task.localstore.LocalStoreFetchFilesResult;
 import io.harness.delegate.task.localstore.ManifestFiles;
 import io.harness.delegate.task.manifests.request.CustomManifestFetchConfig;
@@ -2586,6 +2598,19 @@ public class DelegateTasksBeansKryoRegister implements KryoRegistrar {
     kryo.register(RollbackTrigger.class, 20000615);
     kryo.register(Tag.class, 20000616);
 
+    // k8s traffic routing
+    kryo.register(HeaderConfig.class, 20002000);
+    kryo.register(IstioProviderConfig.class, 20002001);
+    kryo.register(K8sTrafficRoutingConfig.class, 20002002);
+    kryo.register(SMIProviderConfig.class, 20002003);
+    kryo.register(TrafficRoute.class, 20002004);
+    kryo.register(TrafficRouteRule.class, 20002005);
+    kryo.register(TrafficRoutingDestination.class, 20002006);
+    kryo.register(MatchType.class, 20002007);
+    kryo.register(ProviderType.class, 20002008);
+    kryo.register(RuleType.class, 20002009);
+    kryo.register(RouteType.class, 20002010);
+
     kryo.register(HelmFetchChartManifestTaskParameters.class, 20000617);
     kryo.register(HelmFetchChartManifestResponse.class, 20000618);
     kryo.register(HelmChartManifest.class, 20000619);
@@ -2595,5 +2620,6 @@ public class DelegateTasksBeansKryoRegister implements KryoRegistrar {
     kryo.register(ArtifactBundleFetchResponse.class, 20001005);
     kryo.register(ArtifactBundleDelegateConfig.class, 20001006);
     kryo.register(PackageArtifactConfig.class, 20001007);
+    kryo.register(ArtifactBundleDetails.class, 20002011);
   }
 }
