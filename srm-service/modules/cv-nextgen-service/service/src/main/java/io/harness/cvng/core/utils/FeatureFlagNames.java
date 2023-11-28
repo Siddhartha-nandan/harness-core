@@ -12,6 +12,8 @@ public class FeatureFlagNames {
 
   public static final String CVNG_LICENSE_ENFORCEMENT = "CVNG_LICENSE_ENFORCEMENT";
 
+  public static final String CVNG_NEWRELIC_NEW_API = "CVNG_NEWRELIC_NEW_API";
+
   public static final String PERSIST_MONITORED_SERVICE_TEMPLATE_STEP = "PERSIST_MONITORED_SERVICE_TEMPLATE_STEP";
 
   public static final String SRM_SLO_TOGGLE = "SRM_SLO_TOGGLE";
