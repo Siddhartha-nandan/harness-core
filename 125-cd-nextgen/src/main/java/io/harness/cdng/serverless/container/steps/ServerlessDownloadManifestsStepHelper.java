@@ -24,7 +24,9 @@ import io.harness.cdng.aws.sam.DownloadManifestsCommonHelper;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3Step;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepNode;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepParameters;
 import io.harness.cdng.manifest.steps.outcome.ManifestsOutcome;
+import io.harness.cdng.manifest.yaml.ManifestOutcome;
 import io.harness.cdng.manifest.yaml.S3StoreConfig;
 import io.harness.cdng.manifest.yaml.ServerlessAwsLambdaManifestOutcome;
 import io.harness.cdng.manifest.yaml.ValuesManifestOutcome;
@@ -170,18 +172,6 @@ public class ServerlessDownloadManifestsStepHelper {
         ambiance, downloadManifestsCommonHelper.getGitCloneStepIdentifier(serverlessAwsLambdaDirectoryManifestOutcome));
     return gitCloneStep.executeAsyncAfterRbac(
         ambianceForServerlessAwsLambdaManifest, stepElementParameters, inputPackage);
-  }
-
-  public String getCompleteStepIdentifier(Ambiance ambiance, String stepIdentifier) {
-    StringBuilder identifier = new StringBuilder();
-    for (Level level : ambiance.getLevelsList()) {
-      if (level.getStepType().getType().equals("STEP_GROUP")) {
-        identifier.append(level.getIdentifier());
-        identifier.append('_');
-      }
-    }
-    identifier.append(stepIdentifier);
-    return identifier.toString();
   }
 
   public AsyncExecutableResponse getAsyncExecutableResponseForValuesManifest(Ambiance ambiance,
