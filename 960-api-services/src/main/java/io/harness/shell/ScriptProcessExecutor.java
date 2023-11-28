@@ -6,7 +6,6 @@
  */
 
 package io.harness.shell;
-
 import static io.harness.azure.model.AzureConstants.AZURE_LOGIN_CONFIG_DIR_PATH;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
@@ -50,7 +49,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -304,7 +302,6 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
 
       String[] commandList = new String[] {"/bin/bash", scriptFilename};
 
-      Map<Instant, String> logsWithTimestampMap = Collections.synchronizedMap(new HashMap<>());
       ProcessStopper processStopper = new ChildProcessStopper(scriptFilename, workingDirectory,
           new ProcessExecutor()
               .environment(environment)
@@ -315,8 +312,8 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
                   log.info(line);
                 }
               }));
-      // map here - write to map with timestamp; for errors write to map with color code. At the end, sort the map once
-      // with timestamp
+
+      List<String> sortedLogsList = new ArrayList<>();
       StringBuilder errorLog = new StringBuilder();
       ProcessExecutor processExecutor = new ProcessExecutor()
                                             .command(commandList)
@@ -327,15 +324,15 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
                                             .redirectOutput(new LogOutputStream() {
                                               @Override
                                               protected void processLine(String line) {
-                                                logsWithTimestampMap.put(Instant.now(), line);
+                                                saveExecutionLog(line, INFO);
+                                                sortedLogsList.add(line);
                                               }
                                             })
                                             .redirectError(new LogOutputStream() {
                                               @Override
                                               protected void processLine(String line) {
-                                                errorLog.append(line);
-                                                errorLog.append('\n');
-                                                logsWithTimestampMap.put(Instant.now(), "HARNESS_ERROR" + line);
+                                                saveExecutionLog(line, ERROR);
+                                                sortedLogsList.add(line);
                                               }
                                             });
 
@@ -350,50 +347,35 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
             LogSanitizerHelper.sanitizeTokens(errorLog.toString()));
       }
 
-      List<Map.Entry<Instant, String>> originalList = new ArrayList<>(logsWithTimestampMap.entrySet());
-
-      List<Map.Entry<Instant, String>> sortedLogsList = new ArrayList<>(logsWithTimestampMap.entrySet());
-      sortedLogsList.sort(Map.Entry.comparingByKey());
-
-      log.error("is order changedd..." + !originalList.equals(sortedLogsList));
-
       int size = sortedLogsList.size();
-      if (!sortedLogsList.get(size - 1).getValue().contains("The Deployment argo-rollouts failed to")) {
+      if (!sortedLogsList.get(size - 1).contains("The Deployment argo-rollouts failed to")) {
         log.error("failingg...");
       }
-      if (!sortedLogsList.get(size - 2).getValue().contains("kubectl scale ")) {
+      if (!sortedLogsList.get(size - 2).contains("kubectl scale ")) {
         log.error("failingg...");
       }
-      if (!sortedLogsList.get(size - 3).getValue().contains("invalid argument")) {
-        log.error("failingg...");
-      }
-
-      if (!sortedLogsList.get(size - 10).getValue().contains("No resources found in cbp-test namespace")) {
+      if (!sortedLogsList.get(size - 3).contains("invalid argument")) {
         log.error("failingg...");
       }
 
-      if (!sortedLogsList.get(size - 13).getValue().contains("No resources found in default namespace")) {
+      if (!sortedLogsList.get(size - 10).contains("No resources found in cbp-test namespace")) {
         log.error("failingg...");
       }
 
-      if (!sortedLogsList.get(size - 16).getValue().contains("No resources found in flux-system namespace")) {
+      if (!sortedLogsList.get(size - 13).contains("No resources found in default namespace")) {
         log.error("failingg...");
       }
 
-      if (!sortedLogsList.get(size - 19).getValue().contains("No resources found in harness-delegate-ng namespace")) {
+      if (!sortedLogsList.get(size - 16).contains("No resources found in flux-system namespace")) {
         log.error("failingg...");
       }
 
-      if (!sortedLogsList.get(size - 22).getValue().contains("No resources found in nginx namespace")) {
+      if (!sortedLogsList.get(size - 19).contains("No resources found in harness-delegate-ng namespace")) {
         log.error("failingg...");
       }
 
-      for (Map.Entry<Instant, String> entry : sortedLogsList) {
-        if (entry.getValue().startsWith("HARNESS_ERROR")) {
-          saveExecutionLog(entry.getValue().replaceFirst("HARNESS_ERROR", ""), ERROR);
-        } else {
-          saveExecutionLog(entry.getValue(), INFO);
-        }
+      if (!sortedLogsList.get(size - 22).contains("No resources found in nginx namespace")) {
+        log.error("failingg...");
       }
 
       commandExecutionStatus = processResult.getExitValue() == 0 ? SUCCESS : FAILURE;
