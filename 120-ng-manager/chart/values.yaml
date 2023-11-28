@@ -24,7 +24,11 @@ global:
         kind:
           externalSecrets: false
           csiSecretDriver: false
-
+  
+  monitoring:
+    enabled: true
+    port: 8889
+    path: /metrics
   useExternalSecrets: false
   loadbalancerURL: ""
   database:
