@@ -102,7 +102,7 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
   @Inject private DelegateDao delegateDao;
   @Inject private FilterService filterService;
   @Inject private OutboxService outboxService;
-  private DelegateRbacHelper delegateRbacHelper;
+  @Inject private DelegateRbacHelper delegateRbacHelper;
 
   @Inject private VersionInfoManager versionInfoManager;
 
