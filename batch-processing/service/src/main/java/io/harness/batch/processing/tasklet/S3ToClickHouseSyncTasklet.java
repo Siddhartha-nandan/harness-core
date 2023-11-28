@@ -385,7 +385,8 @@ public class S3ToClickHouseSyncTasklet implements Tasklet {
     S3Objects s3Objects = awsClient.getIterableS3ObjectSummaries(credentials,
         configuration.getAwsS3SyncConfig().getAwsS3BucketName(), csvFolderPath, configuration.getCeProxyConfig());
     for (S3ObjectSummary objectSummary : s3Objects) {
-      if (objectSummary.getKey().endsWith(".csv.gz")) {
+      if (objectSummary.getKey().endsWith(".csv.gz") || objectSummary.getKey().endsWith(".csv.zip")
+          || objectSummary.getKey().endsWith(".csv")) {
         log.info("Ingesting CSV: {}", objectSummary.getKey());
         try {
           String insertQuery =
