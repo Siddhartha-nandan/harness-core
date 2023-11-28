@@ -271,9 +271,14 @@ public class DelegateAgentResource {
   @Path("register")
   @Timed
   @ExceptionMetered
-  public RestResponse<DelegateRegisterResponse> register(@QueryParam("accountId") @NotEmpty final String accountId,
-      final DelegateParams delegateParams,
+  public RestResponse<DelegateRegisterResponse> register(@Context HttpServletRequest request,
+      @QueryParam("accountId") @NotEmpty final String accountId, final DelegateParams delegateParams,
       @HeaderParam(HEADER_AGENT_MTLS_AUTHORITY) @Nullable String agentMtlsAuthority) {
+    // Retrieve source IP from the request
+    String sourceIp = request.getRemoteAddr();
+    log.info("Delegate registration is originating from IP {}, and delegate host ip is {}", sourceIp,
+        delegateParams.getIp());
+
     try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
       final long startTime = System.currentTimeMillis();
       final boolean isConnectedUsingMtls = isAgentConnectedUsingMtls(agentMtlsAuthority);
