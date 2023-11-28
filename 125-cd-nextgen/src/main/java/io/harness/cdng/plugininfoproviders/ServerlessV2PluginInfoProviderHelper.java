@@ -20,6 +20,7 @@ import static java.util.Objects.isNull;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.FeatureName;
 import io.harness.beans.IdentifierRef;
 import io.harness.cdng.artifact.outcome.ArtifactOutcome;
 import io.harness.cdng.artifact.outcome.ArtifactoryGenericArtifactOutcome;
@@ -29,6 +30,7 @@ import io.harness.cdng.artifact.outcome.S3ArtifactOutcome;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepHelper;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepParameters;
 import io.harness.cdng.expressions.CDExpressionResolver;
+import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.infra.beans.ServerlessAwsLambdaInfrastructureOutcome;
 import io.harness.cdng.manifest.ManifestStoreType;
@@ -62,9 +64,12 @@ import io.harness.delegate.beans.connector.awsconnector.AwsManualConfigSpecDTO;
 import io.harness.delegate.task.serverless.ServerlessAwsLambdaInfraConfig;
 import io.harness.delegate.task.serverless.ServerlessInfraConfig;
 import io.harness.encryption.SecretRefData;
+import io.harness.eraro.ErrorCode;
+import io.harness.exception.AccessDeniedException;
 import io.harness.exception.GeneralException;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.InvalidRequestException;
+import io.harness.exception.WingsException;
 import io.harness.ng.core.NGAccess;
 import io.harness.plancreator.steps.common.SpecParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
@@ -99,6 +104,8 @@ public class ServerlessV2PluginInfoProviderHelper {
   @Inject private DownloadAwsS3StepHelper downloadAwsS3StepHelper;
 
   @Inject private ServerlessEntityHelper serverlessEntityHelper;
+
+  @Inject private CDFeatureFlagHelper cdFeatureFlagHelper;
 
   @Named(DEFAULT_CONNECTOR_SERVICE) @Inject private ConnectorService connectorService;
 
@@ -176,8 +183,17 @@ public class ServerlessV2PluginInfoProviderHelper {
       if (isEmpty(gitPaths)) {
         throw new InvalidRequestException("Atleast one git path need to be specified", USER);
       }
-    } else if (storeConfig instanceof S3StoreConfig && (isEmpty(((S3StoreConfig) storeConfig).getPaths().getValue()))) {
-      throw new InvalidRequestException("Atleast one s3 store path need to be specified", USER);
+    } else if (storeConfig instanceof S3StoreConfig) {
+      if (!cdFeatureFlagHelper.isEnabled(
+              AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD)) {
+        throw new AccessDeniedException(
+            "CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD FF is not enabled for this account. Please contact harness customer care.",
+            ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
+      }
+
+      if (isEmpty(((S3StoreConfig) storeConfig).getPaths().getValue())) {
+        throw new InvalidRequestException("Atleast one s3 store path need to be specified", USER);
+      }
     }
 
     String serverlessDirectory = getServerlessAwsLambdaDirectoryPathFromManifestOutcome(

@@ -17,6 +17,7 @@ import static org.apache.commons.lang3.StringUtils.SPACE;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.FeatureName;
 import io.harness.beans.steps.nodes.GitCloneStepNode;
 import io.harness.beans.steps.stepinfo.GitCloneStepInfo;
 import io.harness.beans.yaml.extended.ImagePullPolicy;
@@ -25,6 +26,7 @@ import io.harness.cdng.containerStepGroup.DownloadAwsS3Step;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepNode;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepParameters;
+import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.manifest.steps.outcome.ManifestsOutcome;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
 import io.harness.cdng.manifest.yaml.S3StoreConfig;
@@ -45,7 +47,10 @@ import io.harness.delegate.task.stepstatus.StepExecutionStatus;
 import io.harness.delegate.task.stepstatus.StepMapOutput;
 import io.harness.delegate.task.stepstatus.StepOutput;
 import io.harness.delegate.task.stepstatus.StepStatusTaskResponseData;
+import io.harness.eraro.ErrorCode;
+import io.harness.exception.AccessDeniedException;
 import io.harness.exception.InvalidRequestException;
+import io.harness.exception.WingsException;
 import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.plugin.GitCloneStep;
 import io.harness.pms.contracts.ambiance.Ambiance;
@@ -57,6 +62,7 @@ import io.harness.pms.contracts.plan.PluginCreationResponseList;
 import io.harness.pms.contracts.plan.PluginCreationResponseWrapper;
 import io.harness.pms.contracts.refobjects.RefObject;
 import io.harness.pms.contracts.steps.StepCategory;
+import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.expression.EngineExpressionService;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
 import io.harness.pms.sdk.core.plugin.ContainerPluginParseException;
@@ -105,6 +111,8 @@ public class ServerlessDownloadManifestsStepHelper {
 
   @Inject private ContainerStepExecutionResponseHelper containerStepExecutionResponseHelper;
 
+  @Inject private CDFeatureFlagHelper cdFeatureFlagHelper;
+
   @Inject DownloadManifestsCommonHelper downloadManifestsCommonHelper;
 
   public AsyncExecutableResponse executeAsyncAfterRbac(
@@ -143,6 +151,13 @@ public class ServerlessDownloadManifestsStepHelper {
             .getServerlessAwsLambdaDirectoryManifestOutcome(manifestsOutcome.values());
 
     if (serverlessAwsLambdaDirectoryManifestOutcome.getStore() instanceof S3StoreConfig) {
+      if (!cdFeatureFlagHelper.isEnabled(
+              AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD)) {
+        throw new AccessDeniedException(
+            "CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD FF is not enabled for this account. Please contact harness customer care.",
+            ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
+      }
+
       S3StoreConfig s3StoreConfig = (S3StoreConfig) serverlessAwsLambdaDirectoryManifestOutcome.getStore();
       DownloadAwsS3StepInfo downloadAwsS3StepInfo =
           DownloadAwsS3StepInfo.infoBuilder()
@@ -177,6 +192,13 @@ public class ServerlessDownloadManifestsStepHelper {
   public AsyncExecutableResponse getAsyncExecutableResponseForValuesManifest(Ambiance ambiance,
       StepInputPackage inputPackage, GitCloneStep gitCloneStep, ValuesManifestOutcome valuesManifestOutcome) {
     if (valuesManifestOutcome.getStore() instanceof S3StoreConfig) {
+      if (!cdFeatureFlagHelper.isEnabled(
+              AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD)) {
+        throw new AccessDeniedException(
+            "CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD FF is not enabled for this account. Please contact harness customer care.",
+            ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
+      }
+
       S3StoreConfig s3StoreConfig = (S3StoreConfig) valuesManifestOutcome.getStore();
       DownloadAwsS3StepInfo downloadAwsS3StepInfo =
           DownloadAwsS3StepInfo.infoBuilder()
@@ -347,6 +369,13 @@ public class ServerlessDownloadManifestsStepHelper {
       Set<Integer> usedPorts, Ambiance ambiance, CdAbstractStepNode cdAbstractStepNode,
       ValuesManifestOutcome valuesManifestOutcome) {
     if (valuesManifestOutcome.getStore() instanceof S3StoreConfig) {
+      if (!cdFeatureFlagHelper.isEnabled(
+              AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD)) {
+        throw new AccessDeniedException(
+            "CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD FF is not enabled for this account. Please contact harness customer care.",
+            ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
+      }
+
       S3StoreConfig s3StoreConfig = (S3StoreConfig) valuesManifestOutcome.getStore();
       DownloadAwsS3StepInfo downloadAwsS3StepInfo =
           DownloadAwsS3StepInfo.infoBuilder()
@@ -396,6 +425,13 @@ public class ServerlessDownloadManifestsStepHelper {
             .getServerlessAwsLambdaDirectoryManifestOutcome(manifestsOutcome.values());
 
     if (serverlessAwsLambdaManifestOutcome.getStore() instanceof S3StoreConfig) {
+      if (!cdFeatureFlagHelper.isEnabled(
+              AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD)) {
+        throw new AccessDeniedException(
+            "CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD FF is not enabled for this account. Please contact harness customer care.",
+            ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
+      }
+
       S3StoreConfig s3StoreConfig = (S3StoreConfig) serverlessAwsLambdaManifestOutcome.getStore();
       DownloadAwsS3StepInfo downloadAwsS3StepInfo = DownloadAwsS3StepInfo.infoBuilder()
                                                         .connectorRef(s3StoreConfig.getConnectorRef())
