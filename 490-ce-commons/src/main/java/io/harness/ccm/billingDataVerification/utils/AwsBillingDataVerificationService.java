@@ -7,6 +7,8 @@
 
 package io.harness.ccm.billingDataVerification.utils;
 
+import static software.wings.service.impl.aws.model.AwsConstants.AWS_DEFAULT_REGION;
+
 import io.harness.ccm.billingDataVerification.dto.CCMBillingDataVerificationCost;
 import io.harness.ccm.billingDataVerification.dto.CCMBillingDataVerificationKey;
 import io.harness.ccm.commons.utils.BigQueryHelper;
@@ -139,8 +141,10 @@ public class AwsBillingDataVerificationService {
             .withGroupBy(new GroupDefinition().withType("DIMENSION").withKey("LINKED_ACCOUNT"));
 
     try {
-      AWSCostExplorer ce =
-          AWSCostExplorerClientBuilder.standard().withCredentials(awsAssumedCredentialsProvider).build();
+      AWSCostExplorer ce = AWSCostExplorerClientBuilder.standard()
+                               .withRegion(AWS_DEFAULT_REGION)
+                               .withCredentials(awsAssumedCredentialsProvider)
+                               .build();
       GetCostAndUsageResult result = ce.getCostAndUsage(awsCERequest);
       result.getResultsByTime().forEach(resultByTime -> {
         resultByTime.getGroups().forEach(group -> {
