@@ -26,7 +26,7 @@ global:
           csiSecretDriver: false
   
   monitoring:
-    enabled: true
+    enabled: false
     port: 8889
     path: /metrics
   useExternalSecrets: false
