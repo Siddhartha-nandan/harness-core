@@ -20,7 +20,6 @@ import io.harness.cvng.core.beans.MetricPackValidationResponse.MetricValidationR
 import io.harness.cvng.core.beans.OnboardingRequestDTO;
 import io.harness.cvng.core.beans.OnboardingResponseDTO;
 import io.harness.cvng.core.beans.params.ProjectParams;
-import io.harness.cvng.core.services.api.FeatureFlagService;
 import io.harness.cvng.core.services.api.NewRelicService;
 import io.harness.cvng.core.services.api.OnboardingService;
 import io.harness.cvng.core.utils.FeatureFlagNames;
