@@ -147,11 +147,12 @@ public class AccountSetupListener implements MessageListener {
     List<Organization> organizations = organizationService.list(criteria);
     AtomicBoolean success = new AtomicBoolean(true);
     organizations.forEach(organization -> {
-      if (!organizationService.delete(ScopeInfo.builder()
-                                          .accountIdentifier(organization.getAccountIdentifier())
-                                          .scopeType(ScopeLevel.ACCOUNT)
-                                          .uniqueId(organization.getAccountIdentifier())
-                                          .build(),
+      if (!organizationService.delete(organization.getAccountIdentifier(),
+              ScopeInfo.builder()
+                  .accountIdentifier(organization.getAccountIdentifier())
+                  .scopeType(ScopeLevel.ACCOUNT)
+                  .uniqueId(organization.getAccountIdentifier())
+                  .build(),
               organization.getIdentifier(), null)) {
         log.error(String.format("Delete operation failed for organization with accountIdentifier %s and identifier %s",
             organization.getAccountIdentifier(), organization.getIdentifier()));
@@ -176,11 +177,12 @@ public class AccountSetupListener implements MessageListener {
     List<Organization> organizations = organizationService.list(criteria);
     AtomicBoolean success = new AtomicBoolean(true);
     organizations.forEach(organization -> {
-      if (!organizationService.restore(ScopeInfo.builder()
-                                           .accountIdentifier(organization.getAccountIdentifier())
-                                           .scopeType(ScopeLevel.ACCOUNT)
-                                           .uniqueId(organization.getAccountIdentifier())
-                                           .build(),
+      if (!organizationService.restore(organization.getAccountIdentifier(),
+              ScopeInfo.builder()
+                  .accountIdentifier(organization.getAccountIdentifier())
+                  .scopeType(ScopeLevel.ACCOUNT)
+                  .uniqueId(organization.getAccountIdentifier())
+                  .build(),
               organization.getIdentifier())) {
         log.error(String.format("Restore operation failed for organization with accountIdentifier %s and identifier %s",
             organization.getAccountIdentifier(), organization.getIdentifier()));

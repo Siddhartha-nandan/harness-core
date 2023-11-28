@@ -293,15 +293,15 @@ public class OrganizationServiceImplTest extends CategoryTest {
         .thenAnswer(invocationOnMock
             -> invocationOnMock.getArgument(0, TransactionCallback.class)
                    .doInTransaction(new SimpleTransactionStatus()));
-    when(organizationRepository.hardDelete(any(), any(), any())).thenReturn(organization);
+    when(organizationRepository.hardDelete(any(), any(), any(), any())).thenReturn(organization);
 
-    organizationService.delete(ScopeInfo.builder()
+    organizationService.delete(accountIdentifier, ScopeInfo.builder()
                                    .accountIdentifier(accountIdentifier)
                                    .scopeType(ScopeLevel.ACCOUNT)
                                    .uniqueId(accountIdentifier)
                                    .build(),
         identifier, version);
-    verify(organizationRepository, times(1)).hardDelete(any(), argumentCaptor.capture(), any());
+    verify(organizationRepository, times(1)).hardDelete(any(), any(), argumentCaptor.capture(), any());
     assertEquals(identifier, argumentCaptor.getValue());
     verify(transactionTemplate, times(1)).execute(any());
     verify(outboxService, times(1)).save(any());
@@ -319,9 +319,9 @@ public class OrganizationServiceImplTest extends CategoryTest {
         .thenAnswer(invocationOnMock
             -> invocationOnMock.getArgument(0, TransactionCallback.class)
                    .doInTransaction(new SimpleTransactionStatus()));
-    when(organizationRepository.hardDelete(any(), any(), any())).thenReturn(null);
+    when(organizationRepository.hardDelete(any(), any(), any(), any())).thenReturn(null);
 
-    organizationService.delete(ScopeInfo.builder()
+    organizationService.delete(accountIdentifier, ScopeInfo.builder()
                                    .accountIdentifier(accountIdentifier)
                                    .scopeType(ScopeLevel.ACCOUNT)
                                    .uniqueId(accountIdentifier)

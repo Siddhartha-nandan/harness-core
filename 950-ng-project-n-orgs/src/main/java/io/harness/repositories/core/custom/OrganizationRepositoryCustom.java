@@ -29,11 +29,12 @@ public interface OrganizationRepositoryCustom {
 
   Organization update(Query query, Update update);
 
-  Organization hardDelete(String parentId, String identifier, Long version);
+  Organization hardDelete(String accountIdentifier, String parentId, String identifier, Long version);
 
   List<Organization> findAll(Criteria criteria);
 
-  Organization restoreFromParentIdAndIdentifier(String parentId, String identifier);
+  Organization restoreFromAccountIdentifierParentIdAndIdentifier(
+      String accountIdentifier, String parentId, String identifier);
 
   List<Scope> findAllOrgs(Criteria criteria);
 

@@ -81,11 +81,14 @@ public class OrganizationRepositoryCustomImplTest extends CategoryTest {
     ArgumentCaptor<Query> queryArgumentCaptor = ArgumentCaptor.forClass(Query.class);
 
     when(mongoTemplate.findAndRemove(any(), eq(Organization.class))).thenReturn(Organization.builder().build());
-    Organization organization = organizationRepository.hardDelete(accountIdentifier, identifier, version);
+    Organization organization =
+        organizationRepository.hardDelete(accountIdentifier, accountIdentifier, identifier, version);
     verify(mongoTemplate, times(1)).findAndRemove(queryArgumentCaptor.capture(), eq(Organization.class));
     Query query = queryArgumentCaptor.getValue();
     assertNotNull(organization);
-    assertEquals(3, query.getQueryObject().size());
+    assertEquals(4, query.getQueryObject().size());
+    assertTrue(query.getQueryObject().containsKey(OrganizationKeys.accountIdentifier));
+    assertEquals(accountIdentifier, query.getQueryObject().get(OrganizationKeys.accountIdentifier));
     assertTrue(query.getQueryObject().containsKey(OrganizationKeys.parentId));
     assertEquals(accountIdentifier, query.getQueryObject().get(OrganizationKeys.parentId));
     assertTrue(query.getQueryObject().containsKey(OrganizationKeys.identifier));
@@ -104,8 +107,8 @@ public class OrganizationRepositoryCustomImplTest extends CategoryTest {
     ArgumentCaptor<Query> queryArgumentCaptor = ArgumentCaptor.forClass(Query.class);
 
     when(mongoTemplate.findAndModify(any(), any(), eq(Organization.class))).thenReturn(null);
-    Organization restoredOrganization =
-        organizationRepository.restoreFromParentIdAndIdentifier(accountIdentifier, identifier);
+    Organization restoredOrganization = organizationRepository.restoreFromAccountIdentifierParentIdAndIdentifier(
+        accountIdentifier, accountIdentifier, identifier);
     boolean deleted = restoredOrganization != null;
     verify(mongoTemplate, times(1))
         .findAndModify(queryArgumentCaptor.capture(), updateArgumentCaptor.capture(), eq(Organization.class));
@@ -113,7 +116,9 @@ public class OrganizationRepositoryCustomImplTest extends CategoryTest {
     Update update = updateArgumentCaptor.getValue();
     assertFalse(deleted);
     assertEquals(1, update.getUpdateObject().size());
-    assertEquals(3, query.getQueryObject().size());
+    assertEquals(4, query.getQueryObject().size());
+    assertTrue(query.getQueryObject().containsKey(OrganizationKeys.accountIdentifier));
+    assertEquals(accountIdentifier, query.getQueryObject().get(OrganizationKeys.accountIdentifier));
     assertTrue(query.getQueryObject().containsKey(OrganizationKeys.parentId));
     assertEquals(accountIdentifier, query.getQueryObject().get(OrganizationKeys.parentId));
     assertTrue(query.getQueryObject().containsKey(OrganizationKeys.identifier));

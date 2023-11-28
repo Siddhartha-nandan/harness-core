@@ -384,12 +384,12 @@ public class OrganizationServiceImpl implements OrganizationService {
   }
 
   @Override
-  public boolean delete(ScopeInfo scopeInfo, String identifier, Long version) {
-    final String accountIdentifier = scopeInfo.getAccountIdentifier();
+  public boolean delete(String accountIdentifier, ScopeInfo scopeInfo, String identifier, Long version) {
     try (AutoLogContext ignore0 = new AccountLogContext(accountIdentifier, OVERRIDE_ERROR)) {
       scopeInfoCache.remove(scopeInfoHelper.getScopeInfoCacheKey(accountIdentifier, identifier, null));
       return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
-        Organization organization = organizationRepository.hardDelete(scopeInfo.getUniqueId(), identifier, version);
+        Organization organization =
+            organizationRepository.hardDelete(accountIdentifier, scopeInfo.getUniqueId(), identifier, version);
         if (isNull(organization)) {
           log.error(String.format(
               "Organization with identifier [%s], scope uniqueId [%s] could not be deleted as it does not exist",
@@ -408,10 +408,10 @@ public class OrganizationServiceImpl implements OrganizationService {
   }
 
   @Override
-  public boolean restore(ScopeInfo scopeInfo, String identifier) {
+  public boolean restore(String accountIdentifier, ScopeInfo scopeInfo, String identifier) {
     return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
-      Organization organization =
-          organizationRepository.restoreFromParentIdAndIdentifier(scopeInfo.getUniqueId(), identifier);
+      Organization organization = organizationRepository.restoreFromAccountIdentifierParentIdAndIdentifier(
+          accountIdentifier, scopeInfo.getUniqueId(), identifier);
       boolean success = organization != null;
       if (success) {
         outboxService.save(

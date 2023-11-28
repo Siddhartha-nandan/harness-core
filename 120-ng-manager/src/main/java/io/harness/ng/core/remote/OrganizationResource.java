@@ -276,7 +276,7 @@ public class OrganizationResource {
               "Delete operation not supported for Default Organization (identifier: [%s])", DEFAULT_ORG_IDENTIFIER),
           USER);
     }
-    return ResponseDTO.newResponse(
-        organizationService.delete(scopeInfo, identifier, isNumeric(ifMatch) ? parseLong(ifMatch) : null));
+    return ResponseDTO.newResponse(organizationService.delete(
+        accountIdentifier, scopeInfo, identifier, isNumeric(ifMatch) ? parseLong(ifMatch) : null));
   }
 }

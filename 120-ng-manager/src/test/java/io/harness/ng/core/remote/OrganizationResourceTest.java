@@ -208,11 +208,12 @@ public class OrganizationResourceTest extends CategoryTest {
                               .scopeType(ScopeLevel.ACCOUNT)
                               .uniqueId(accountIdentifier)
                               .build();
-    when(organizationService.delete(ScopeInfo.builder()
-                                        .accountIdentifier(accountIdentifier)
-                                        .scopeType(ScopeLevel.ACCOUNT)
-                                        .uniqueId(accountIdentifier)
-                                        .build(),
+    when(organizationService.delete(accountIdentifier,
+             ScopeInfo.builder()
+                 .accountIdentifier(accountIdentifier)
+                 .scopeType(ScopeLevel.ACCOUNT)
+                 .uniqueId(accountIdentifier)
+                 .build(),
              identifier, Long.valueOf(ifMatch)))
         .thenReturn(true);
     ResponseDTO<Boolean> response = organizationResource.delete(ifMatch, identifier, accountIdentifier, scopeInfo);

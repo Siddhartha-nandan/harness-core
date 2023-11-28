@@ -53,9 +53,9 @@ public interface OrganizationService {
    */
   List<Organization> list(Criteria criteria);
 
-  boolean delete(ScopeInfo scopeInfo, String identifier, Long version);
+  boolean delete(String accountIdentifier, ScopeInfo scopeInfo, String identifier, Long version);
 
-  boolean restore(ScopeInfo scopeInfo, String identifier);
+  boolean restore(String accountIdentifier, ScopeInfo scopeInfo, String identifier);
 
   Long countOrgs(String accountIdentifier);
 

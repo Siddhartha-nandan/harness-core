@@ -255,7 +255,7 @@ public class OrganizationApiImplTest extends CategoryTest {
     organization.setVersion(0L);
 
     when(organizationService.get(account, identifier)).thenReturn(Optional.of(organization));
-    when(organizationService.delete(
+    when(organizationService.delete(account,
              ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build(),
              identifier, null))
         .thenReturn(true);

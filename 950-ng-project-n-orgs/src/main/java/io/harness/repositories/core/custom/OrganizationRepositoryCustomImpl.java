@@ -59,8 +59,11 @@ public class OrganizationRepositoryCustomImpl implements OrganizationRepositoryC
   }
 
   @Override
-  public Organization restoreFromParentIdAndIdentifier(String parentId, String identifier) {
-    Criteria criteria = Criteria.where(OrganizationKeys.parentId)
+  public Organization restoreFromAccountIdentifierParentIdAndIdentifier(
+      String accountIdentifier, String parentId, String identifier) {
+    Criteria criteria = Criteria.where(OrganizationKeys.accountIdentifier)
+                            .is(accountIdentifier)
+                            .and(OrganizationKeys.parentId)
                             .is(parentId)
                             .and(OrganizationKeys.identifier)
                             .is(identifier)
@@ -89,9 +92,13 @@ public class OrganizationRepositoryCustomImpl implements OrganizationRepositoryC
   }
 
   @Override
-  public Organization hardDelete(String parentId, String identifier, Long version) {
-    Criteria criteria =
-        Criteria.where(OrganizationKeys.parentId).is(parentId).and(OrganizationKeys.identifier).is(identifier);
+  public Organization hardDelete(String accountIdentifier, String parentId, String identifier, Long version) {
+    Criteria criteria = Criteria.where(OrganizationKeys.accountIdentifier)
+                            .is(accountIdentifier)
+                            .and(OrganizationKeys.parentId)
+                            .is(parentId)
+                            .and(OrganizationKeys.identifier)
+                            .is(identifier);
     if (version != null) {
       criteria.and(OrganizationKeys.version).is(version);
     }

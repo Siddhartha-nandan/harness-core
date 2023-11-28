@@ -102,6 +102,19 @@ public class Organization implements PersistentEntity, NGAccountAccess, UniqueId
                  .collation(
                      Collation.builder().locale(CollationLocale.ENGLISH).strength(CollationStrength.PRIMARY).build())
                  .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("accountIdentifierParentIdIdentifierIdx")
+                 .field(OrganizationKeys.accountIdentifier)
+                 .field(OrganizationKeys.parentId)
+                 .field(OrganizationKeys.identifier)
+                 .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("accountIdentifierParentIdIdentifierDeletedIdx")
+                 .field(OrganizationKeys.accountIdentifier)
+                 .field(OrganizationKeys.parentId)
+                 .field(OrganizationKeys.identifier)
+                 .field(OrganizationKeys.deleted)
+                 .build())
         .build();
   }
 

@@ -134,7 +134,7 @@ public class OrganizationApiImpl implements OrganizationApi {
       throw new NotFoundException(String.format("Organization with identifier [%s] not found", identifier));
     }
 
-    boolean deleted = organizationService.delete(
+    boolean deleted = organizationService.delete(account,
         ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build(),
         identifier, null);
 
