@@ -306,8 +306,6 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
 
       String[] commandList = new String[] {"/bin/bash", scriptFilename};
 
-      //      Map<Instant, String> logsWithTimestampMap = new HashMap<>();//Collections.synchronizedMap(new
-      //      HashMap<>());
       List<ShellScriptLog> logList = new ArrayList<>();
       ProcessStopper processStopper = new ChildProcessStopper(scriptFilename, workingDirectory,
           new ProcessExecutor()
@@ -319,8 +317,6 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
                   log.info(line);
                 }
               }));
-      // map here - write to map with timestamp; for errors write to map with color code. At the end, sort the map once
-      // with timestamp
       StringBuilder errorLog = new StringBuilder();
       ProcessExecutor processExecutor =
           new ProcessExecutor()
@@ -355,51 +351,7 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
             LogSanitizerHelper.sanitizeTokens(errorLog.toString()));
       }
 
-      //      List<Map.Entry<Instant, String>> logList = new ArrayList<>(logsWithTimestampMap.entrySet());
-      //      logList.sort(Map.Entry.comparingByKey());
-      List<ShellScriptLog> originalList = new ArrayList<>(logList);
       logList.sort(Comparator.comparing(ShellScriptLog::getTimeStamp));
-
-      log.error("is size changedd..." + (logList.size() != 27));
-
-      if (!originalList.equals(logList)) {
-        log.error("is order changedd..." + !originalList.equals(logList));
-        log.info("Printing original logs");
-        for (ShellScriptLog l : originalList) {
-          log.info(l.getText());
-        }
-      }
-
-      int size = logList.size();
-      if (!logList.get(size - 1).getText().contains("The Deployment argo-rollouts failed to")) {
-        log.error("failingg...");
-      }
-      if (!logList.get(size - 2).getText().contains("kubectl scale ")) {
-        log.error("failingg...");
-      }
-      if (!logList.get(size - 3).getText().contains("invalid argument")) {
-        log.error("failingg...");
-      }
-
-      if (!logList.get(size - 10).getText().contains("No resources found in cbp-test namespace")) {
-        log.error("failingg...");
-      }
-
-      if (!logList.get(size - 13).getText().contains("No resources found in default namespace")) {
-        log.error("failingg...");
-      }
-
-      if (!logList.get(size - 16).getText().contains("No resources found in flux-system namespace")) {
-        log.error("failingg...");
-      }
-
-      if (!logList.get(size - 19).getText().contains("No resources found in harness-delegate-ng namespace")) {
-        log.error("failingg...");
-      }
-
-      if (!logList.get(size - 22).getText().contains("No resources found in nginx namespace")) {
-        log.error("failingg...");
-      }
 
       for (ShellScriptLog log : logList) {
         if (log.getText().startsWith(HARNESS_SHELL_SCRIPT_ERROR)) {
