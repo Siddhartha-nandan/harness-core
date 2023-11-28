@@ -124,10 +124,12 @@ public class DelegateSetupResourceV2 {
     if (accessControlClient.hasAccess(ResourceScope.of(accountId, orgId, projectId),
             Resource.of(DELEGATE_RESOURCE_TYPE, null), DELEGATE_VIEW_PERMISSION)) {
       try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
+        log.info("going to if in resource");
         return new RestResponse<>(delegateSetupService.listDelegateGroupDetailsV2(accountId, orgId, projectId,
             filterIdentifier, searchTerm, delegateFilterPropertiesDTO, pageRequest, false));
       }
     }
+    log.info("did not go into if in resource");
     try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
       return new RestResponse<>(delegateSetupService.listDelegateGroupDetailsV2(
           accountId, orgId, projectId, filterIdentifier, searchTerm, delegateFilterPropertiesDTO, pageRequest, true));
