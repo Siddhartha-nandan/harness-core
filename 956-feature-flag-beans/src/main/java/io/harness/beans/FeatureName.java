@@ -942,7 +942,9 @@ public enum FeatureName {
   PL_READ_ONLY_VAULT_TEST_CONNECTION("Enable to check test connection for Hashicorp read only vault", HarnessTeam.PL),
   CDS_ENABLE_TAS_ARTIFACT_AS_MANIFEST_SOURCE_NG("Artifact Bundle Support for Tas Deployment in NG", HarnessTeam.CDP),
   SSCA_ENFORCEMENT_WITH_BOTH_NATIVE_AND_OPA_POLICIES_ENABLED(
-      "FF to enable use of both native SSCA policies and OPA policies for the SSCA enforcement step", HarnessTeam.SSCA);
+      "FF to enable use of both native SSCA policies and OPA policies for the SSCA enforcement step", HarnessTeam.SSCA),
+  CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD(
+      "Enable to dowmload Aws S3 buckets, folder or object inside container step group", HarnessTeam.CDP);
   // keep-sorted end
 
   @Deprecated

@@ -1614,7 +1614,7 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
                                                       .addAllCategory(CD_STEP_GROUP_CONTAINER_STEPS_CATEGORY)
                                                       .setFolderPath(CD_STEP_GROUP_CONTAINER_STEPS_METADATA)
                                                       .build())
-                                 .setFeatureFlag(FeatureName.CDS_CONTAINER_STEP_GROUP.name())
+                                 .setFeatureFlag(FeatureName.CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD.name())
                                  .build();
 
     List<StepInfo> stepInfos = new ArrayList<>();
