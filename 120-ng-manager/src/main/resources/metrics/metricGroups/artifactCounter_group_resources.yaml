@@ -1,0 +1,5 @@
+name: Artifacts Counter Metrics Group
+identifier: ArtifactsCounterMetricsGroup
+labels:
+  - accountId
+  - status

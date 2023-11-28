@@ -1,0 +1,8 @@
+name: Artifacts Counter Metrics
+identifier: ArtifactsCounterMetrics
+metricGroup: ArtifactsCounterMetricsGroup
+metrics:
+  - metricName: artifacts_counter
+    metricDefinition: Artifact Counter
+    type: Count
+    unit: "1"

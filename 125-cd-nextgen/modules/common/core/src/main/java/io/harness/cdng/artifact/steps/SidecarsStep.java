@@ -13,9 +13,12 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.artifact.outcome.ArtifactOutcome;
 import io.harness.cdng.artifact.outcome.SidecarsOutcome;
+import io.harness.cdng.metrics.NextGenManagerMetricsUtils;
 import io.harness.cdng.service.steps.helpers.ServiceStepsHelper;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.pms.contracts.ambiance.Ambiance;
+import io.harness.pms.contracts.execution.Status;
+import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.sdk.core.data.Outcome;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.sdk.core.steps.io.StepResponse.StepOutcome;
@@ -32,9 +35,24 @@ import java.util.Map;
 @OwnedBy(HarnessTeam.PIPELINE)
 public class SidecarsStep extends NGForkStep {
   @Inject private ServiceStepsHelper serviceStepsHelper;
+  @Inject private NextGenManagerMetricsUtils nextGenManagerMetricsUtils;
 
   @Override
   public StepResponse handleChildrenResponse(
+      Ambiance ambiance, ForkStepParameters stepParameters, Map<String, ResponseData> responseDataMap) {
+    try {
+      StepResponse stepResponse = handleResponseInternal(ambiance, stepParameters, responseDataMap);
+      nextGenManagerMetricsUtils.publishArtifactCounterMetrics(
+          AmbianceUtils.getAccountId(ambiance), stepResponse.getStatus().name());
+      return stepResponse;
+    } catch (Exception e) {
+      nextGenManagerMetricsUtils.publishArtifactCounterMetrics(
+          AmbianceUtils.getAccountId(ambiance), Status.FAILED.name());
+      throw e;
+    }
+  }
+
+  private StepResponse handleResponseInternal(
       Ambiance ambiance, ForkStepParameters stepParameters, Map<String, ResponseData> responseDataMap) {
     List<Outcome> outcomes = serviceStepsHelper.getChildrenOutcomes(responseDataMap);
     SidecarsOutcome sidecarsOutcome = new SidecarsOutcome();

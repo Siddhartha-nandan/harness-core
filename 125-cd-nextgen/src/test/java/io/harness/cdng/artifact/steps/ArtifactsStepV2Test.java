@@ -69,6 +69,7 @@ import io.harness.cdng.common.beans.SetupAbstractionKeys;
 import io.harness.cdng.common.beans.StepDelegateInfo;
 import io.harness.cdng.execution.service.StageExecutionInfoService;
 import io.harness.cdng.expressions.CDExpressionResolver;
+import io.harness.cdng.metrics.NextGenManagerMetricsUtils;
 import io.harness.cdng.service.beans.KubernetesServiceSpec;
 import io.harness.cdng.service.beans.ServiceDefinition;
 import io.harness.cdng.service.beans.ServiceDefinitionType;
@@ -176,6 +177,7 @@ public class ArtifactsStepV2Test extends CDNGTestBase {
   @Mock private SecretRuntimeUsageService secretRuntimeUsageService;
   @Mock private PipelineRbacHelper pipelineRbacHelper;
   @Mock private ArtifactSourceInstrumentationHelper artifactSourceInstrumentationHelper;
+  @Mock private NextGenManagerMetricsUtils nextGenManagerMetricsUtils;
   @InjectMocks private ArtifactsStepV2 step = new ArtifactsStepV2();
   private final ArtifactStepHelper stepHelper = new ArtifactStepHelper();
   @Mock private ConnectorService connectorService;

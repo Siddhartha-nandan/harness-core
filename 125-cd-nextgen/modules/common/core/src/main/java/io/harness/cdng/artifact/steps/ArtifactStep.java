@@ -17,6 +17,7 @@ import io.harness.cdng.artifact.mappers.ArtifactResponseToOutcomeMapper;
 import io.harness.cdng.artifact.steps.beans.ArtifactStepParameters;
 import io.harness.cdng.artifact.utils.ArtifactStepHelper;
 import io.harness.cdng.artifact.utils.ArtifactUtils;
+import io.harness.cdng.metrics.NextGenManagerMetricsUtils;
 import io.harness.cdng.service.steps.helpers.ServiceStepsHelper;
 import io.harness.delegate.TaskSelector;
 import io.harness.delegate.beans.TaskData;
@@ -61,6 +62,7 @@ public class ArtifactStep implements TaskExecutable<ArtifactStepParameters, Arti
   @Inject @Named("referenceFalseKryoSerializer") private KryoSerializer referenceFalseKryoSerializer;
   @Inject private ServiceStepsHelper serviceStepsHelper;
   @Inject private ArtifactSourceInstrumentationHelper artifactSourceInstrumentationHelper;
+  @Inject private NextGenManagerMetricsUtils nextGenManagerMetricsUtils;
   @Override
   public Class<ArtifactStepParameters> getStepParametersClass() {
     return ArtifactStepParameters.class;
@@ -115,6 +117,20 @@ public class ArtifactStep implements TaskExecutable<ArtifactStepParameters, Arti
 
   @Override
   public StepResponse handleTaskResult(Ambiance ambiance, ArtifactStepParameters stepParameters,
+      ThrowingSupplier<ArtifactTaskResponse> responseDataSupplier) throws Exception {
+    try {
+      StepResponse stepResponse = handleTaskResultInternal(ambiance, stepParameters, responseDataSupplier);
+      nextGenManagerMetricsUtils.publishArtifactCounterMetrics(
+          AmbianceUtils.getAccountId(ambiance), stepResponse.getStatus().name());
+      return stepResponse;
+    } catch (Exception e) {
+      nextGenManagerMetricsUtils.publishArtifactCounterMetrics(
+          AmbianceUtils.getAccountId(ambiance), Status.FAILED.name());
+      throw e;
+    }
+  }
+
+  private StepResponse handleTaskResultInternal(Ambiance ambiance, ArtifactStepParameters stepParameters,
       ThrowingSupplier<ArtifactTaskResponse> responseDataSupplier) throws Exception {
     ArtifactConfig finalArtifact = artifactStepHelper.applyArtifactsOverlay(stepParameters);
     ArtifactTaskResponse taskResponse = responseDataSupplier.get();

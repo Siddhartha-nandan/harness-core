@@ -35,6 +35,7 @@ import io.harness.cdng.artifact.utils.ArtifactUtils;
 import io.harness.cdng.artifact.utils.ArtifactsProcessedResponse;
 import io.harness.cdng.common.beans.StepDelegateInfo;
 import io.harness.cdng.expressions.CDExpressionResolver;
+import io.harness.cdng.metrics.NextGenManagerMetricsUtils;
 import io.harness.cdng.service.steps.helpers.ServiceStepsHelper;
 import io.harness.cdng.steps.EmptyStepParameters;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
@@ -141,6 +142,7 @@ public class ArtifactsStepV2 implements AsyncExecutableWithRbac<EmptyStepParamet
 
   @Inject private NGFeatureFlagHelperService featureFlagHelperService;
   @Inject private ArtifactSourceInstrumentationHelper artifactSourceInstrumentationHelper;
+  @Inject private NextGenManagerMetricsUtils nextGenManagerMetricsUtils;
 
   @Override
   public Class<EmptyStepParameters> getStepParametersClass() {
@@ -350,6 +352,19 @@ public class ArtifactsStepV2 implements AsyncExecutableWithRbac<EmptyStepParamet
   @Override
   public StepResponse handleAsyncResponse(
       Ambiance ambiance, EmptyStepParameters stepParameters, Map<String, ResponseData> responseDataMap) {
+    try {
+      StepResponse stepResponse = handleAsyncResponseInternal(ambiance, responseDataMap);
+      nextGenManagerMetricsUtils.publishArtifactCounterMetrics(
+          AmbianceUtils.getAccountId(ambiance), stepResponse.getStatus().name());
+      return stepResponse;
+    } catch (Exception e) {
+      nextGenManagerMetricsUtils.publishArtifactCounterMetrics(
+          AmbianceUtils.getAccountId(ambiance), Status.FAILED.name());
+      throw e;
+    }
+  }
+
+  private StepResponse handleAsyncResponseInternal(Ambiance ambiance, Map<String, ResponseData> responseDataMap) {
     final OptionalSweepingOutput outputOptional =
         sweepingOutputService.resolveOptional(ambiance, RefObjectUtils.getSweepingOutputRefObject(ARTIFACTS_STEP_V_2));
 
