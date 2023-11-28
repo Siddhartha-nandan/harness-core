@@ -49,7 +49,7 @@ public class NewRelicServiceImpl implements NewRelicService {
       "https://insights-api.eu.newrelic.com/", "https://api.newrelic.com/v2/", "https://api.eu.newrelic.com/v2/");
 
   @Inject private OnboardingService onboardingService;
-  @Inject private FeatureFlagService featureFlagService;
+  @Inject private FeatureFlagServiceImpl featureFlagService;
 
   @Override
   public List<String> getNewRelicEndpoints(String accountId) {
