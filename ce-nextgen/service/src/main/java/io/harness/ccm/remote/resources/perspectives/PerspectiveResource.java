@@ -441,10 +441,6 @@ public class PerspectiveResource {
   public ResponseDTO<PerspectiveData>
   getAll(@Parameter(required = true, description = ACCOUNT_PARAM_MESSAGE) @QueryParam(
              NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier @NotNull @Valid String accountId,
-      @NotNull @Valid @QueryParam("pageSize") @DefaultValue("20") @Parameter(
-          required = true, description = "Number of perspectives to be shown") Integer pageSize,
-      @NotNull @Valid @QueryParam("pageNo") @DefaultValue("0") @Parameter(
-          required = true, description = "Number of records to be skipped") Integer pageNo,
       @Valid @QueryParam("searchKey") @Parameter(description = "Characters in search bar") String searchKey,
       @Valid @QueryParam("sortType") @DefaultValue("TIME") @Parameter(
           description = " sorting filters in UI") QLCEViewSortType sortType,
