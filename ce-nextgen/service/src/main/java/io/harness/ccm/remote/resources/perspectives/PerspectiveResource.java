@@ -459,7 +459,7 @@ public class PerspectiveResource {
     perspectiveDataBuilder.totalCount(
         ceViewService.countByAccountIdAndFolderIds(accountId, allowedFolderIds, searchKey, cloudFilters));
     QLCEViewSortCriteria sortCriteria = QLCEViewSortCriteria.builder().sortType(sortType).sortOrder(sortOrder).build();
-    perspectiveDataBuilder.views(ceViewService.getAllViews(accountId,true,sortCriteria));
+    perspectiveDataBuilder.views(ceViewService.getAllViews(accountId, true, sortCriteria));
     return ResponseDTO.newResponse(perspectiveDataBuilder.build());
   }
 
