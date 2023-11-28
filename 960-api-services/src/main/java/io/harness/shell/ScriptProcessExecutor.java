@@ -6,6 +6,7 @@
  */
 
 package io.harness.shell;
+
 import static io.harness.azure.model.AzureConstants.AZURE_LOGIN_CONFIG_DIR_PATH;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
@@ -49,8 +50,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +78,7 @@ import org.zeroturnaround.exec.stream.LogOutputStream;
     module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_COMMON_STEPS})
 @Slf4j
 public class ScriptProcessExecutor extends AbstractScriptExecutor {
+  private static final String HARNESS_SHELL_SCRIPT_ERROR = "HARNESS_SHELL_SCRIPT_ERROR";
   private ShellExecutorConfig config;
   private ScriptType scriptType;
   /**
@@ -302,6 +306,9 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
 
       String[] commandList = new String[] {"/bin/bash", scriptFilename};
 
+      //      Map<Instant, String> logsWithTimestampMap = new HashMap<>();//Collections.synchronizedMap(new
+      //      HashMap<>());
+      List<ShellScriptLog> logList = new ArrayList<>();
       ProcessStopper processStopper = new ChildProcessStopper(scriptFilename, workingDirectory,
           new ProcessExecutor()
               .environment(environment)
@@ -312,29 +319,30 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
                   log.info(line);
                 }
               }));
-
-      List<String> sortedLogsList = new ArrayList<>();
+      // map here - write to map with timestamp; for errors write to map with color code. At the end, sort the map once
+      // with timestamp
       StringBuilder errorLog = new StringBuilder();
-      ProcessExecutor processExecutor = new ProcessExecutor()
-                                            .command(commandList)
-                                            .directory(workingDirectory)
-                                            .environment(environment)
-                                            .readOutput(true)
-                                            .stopper(processStopper)
-                                            .redirectOutput(new LogOutputStream() {
-                                              @Override
-                                              protected void processLine(String line) {
-                                                saveExecutionLog(line, INFO);
-                                                sortedLogsList.add(line);
-                                              }
-                                            })
-                                            .redirectError(new LogOutputStream() {
-                                              @Override
-                                              protected void processLine(String line) {
-                                                saveExecutionLog(line, ERROR);
-                                                sortedLogsList.add(line);
-                                              }
-                                            });
+      ProcessExecutor processExecutor =
+          new ProcessExecutor()
+              .command(commandList)
+              .directory(workingDirectory)
+              .environment(environment)
+              .readOutput(true)
+              .stopper(processStopper)
+              .redirectOutput(new LogOutputStream() {
+                @Override
+                protected void processLine(String line) {
+                  logList.add(new ShellScriptLog(Instant.now(), line));
+                }
+              })
+              .redirectError(new LogOutputStream() {
+                @Override
+                protected void processLine(String line) {
+                  errorLog.append(line);
+                  errorLog.append('\n');
+                  logList.add(new ShellScriptLog(Instant.now(), HARNESS_SHELL_SCRIPT_ERROR + line));
+                }
+              });
 
       if (timeoutInMillis != null && timeoutInMillis > 0) {
         processExecutor.timeout(timeoutInMillis, TimeUnit.MILLISECONDS);
@@ -347,35 +355,58 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
             LogSanitizerHelper.sanitizeTokens(errorLog.toString()));
       }
 
-      int size = sortedLogsList.size();
-      if (!sortedLogsList.get(size - 1).contains("The Deployment argo-rollouts failed to")) {
+      //      List<Map.Entry<Instant, String>> logList = new ArrayList<>(logsWithTimestampMap.entrySet());
+      //      logList.sort(Map.Entry.comparingByKey());
+      List<ShellScriptLog> originalList = new ArrayList<>(logList);
+      logList.sort(Comparator.comparing(ShellScriptLog::getTimeStamp));
+
+      log.error("is size changedd..." + (logList.size() != 27));
+
+      if (!originalList.equals(logList)) {
+        log.error("is order changedd..." + !originalList.equals(logList));
+        log.info("Printing original logs");
+        for (ShellScriptLog l : originalList) {
+          log.info(l.getText());
+        }
+      }
+
+      int size = logList.size();
+      if (!logList.get(size - 1).getText().contains("The Deployment argo-rollouts failed to")) {
         log.error("failingg...");
       }
-      if (!sortedLogsList.get(size - 2).contains("kubectl scale ")) {
+      if (!logList.get(size - 2).getText().contains("kubectl scale ")) {
         log.error("failingg...");
       }
-      if (!sortedLogsList.get(size - 3).contains("invalid argument")) {
+      if (!logList.get(size - 3).getText().contains("invalid argument")) {
         log.error("failingg...");
       }
 
-      if (!sortedLogsList.get(size - 10).contains("No resources found in cbp-test namespace")) {
+      if (!logList.get(size - 10).getText().contains("No resources found in cbp-test namespace")) {
         log.error("failingg...");
       }
 
-      if (!sortedLogsList.get(size - 13).contains("No resources found in default namespace")) {
+      if (!logList.get(size - 13).getText().contains("No resources found in default namespace")) {
         log.error("failingg...");
       }
 
-      if (!sortedLogsList.get(size - 16).contains("No resources found in flux-system namespace")) {
+      if (!logList.get(size - 16).getText().contains("No resources found in flux-system namespace")) {
         log.error("failingg...");
       }
 
-      if (!sortedLogsList.get(size - 19).contains("No resources found in harness-delegate-ng namespace")) {
+      if (!logList.get(size - 19).getText().contains("No resources found in harness-delegate-ng namespace")) {
         log.error("failingg...");
       }
 
-      if (!sortedLogsList.get(size - 22).contains("No resources found in nginx namespace")) {
+      if (!logList.get(size - 22).getText().contains("No resources found in nginx namespace")) {
         log.error("failingg...");
+      }
+
+      for (ShellScriptLog log : logList) {
+        if (log.getText().startsWith(HARNESS_SHELL_SCRIPT_ERROR)) {
+          saveExecutionLog(log.getText().replaceFirst(HARNESS_SHELL_SCRIPT_ERROR, ""), ERROR);
+        } else {
+          saveExecutionLog(log.getText(), INFO);
+        }
       }
 
       commandExecutionStatus = processResult.getExitValue() == 0 ? SUCCESS : FAILURE;
