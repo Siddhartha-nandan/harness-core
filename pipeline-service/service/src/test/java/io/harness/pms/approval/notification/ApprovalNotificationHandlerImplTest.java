@@ -293,8 +293,7 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.orgName)).isEqualTo(orgName);
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.projectName))
           .isEqualTo(projectName);
-      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName))
-          .isEqualTo(null);
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName)).isEqualTo("");
       // get userId in triggeredBy because email is not present
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.triggeredBy)).isEqualTo(userId);
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.pipelineExecutionLink))
@@ -961,8 +960,7 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.status))
           .isEqualTo(ApprovalStatus.APPROVED.toString().toLowerCase(Locale.ROOT));
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.action)).contains("email");
-      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName))
-          .isEqualTo(null);
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName)).isEqualTo("");
 
       // get userId in triggeredBy because email is not present
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.triggeredBy)).isEqualTo(userId);
@@ -1090,8 +1088,7 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.status))
           .isEqualTo(ApprovalStatus.REJECTED.toString().toLowerCase(Locale.ROOT));
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.action)).contains("email");
-      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName))
-          .isEqualTo(null);
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName)).isEqualTo("");
 
       // get userId in triggeredBy because email is not present
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.triggeredBy)).isEqualTo(userId);

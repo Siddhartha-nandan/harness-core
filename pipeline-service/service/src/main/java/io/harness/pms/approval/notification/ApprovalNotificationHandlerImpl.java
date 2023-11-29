@@ -210,7 +210,9 @@ public class ApprovalNotificationHandlerImpl implements ApprovalNotificationHand
             .timeRemainingForApproval(formatDuration(approvalInstance.getDeadline() - System.currentTimeMillis()))
             .currentStageName(approvalInstance.isIncludePipelineExecutionHistory()
                     ? getCurrentStageName(ambiance, pipelineExecutionSummaryEntity)
-                    : null)
+                    // this can't be null else will lead to npe in notification client
+                    // this value is only used when isIncludePipelineExecutionHistory is true
+                    : "")
             .build();
     if (approvalInstance.isIncludePipelineExecutionHistory()) {
       generateModuleSpecificSummary(approvalSummary, pipelineExecutionSummaryEntity);
