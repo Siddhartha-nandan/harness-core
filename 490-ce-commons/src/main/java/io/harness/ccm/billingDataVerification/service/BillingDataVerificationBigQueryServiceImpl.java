@@ -70,8 +70,8 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
       "(harnessAccountId, connectorId, cloudProvider, cloudProviderAccountId, usageStartDate, usageEndDate, costType, costFromCloudProviderAPI, costFromRawBillingTable, costFromUnifiedTable) ",
       "VALUES %s ; ");
 
-  @Autowired BigQueryHelper bigQueryHelper;
-  @Autowired private io.harness.ccm.bigQuery.BigQueryService bigQueryService;
+  @Inject BigQueryHelper bigQueryHelper;
+  @Inject private io.harness.ccm.bigQuery.BigQueryService bigQueryService;
 
   @Override
   public Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> fetchAWSCostsFromAWSBillingTables(

@@ -65,9 +65,9 @@ import org.springframework.stereotype.Service;
 @Singleton
 @Slf4j
 public class AwsBillingDataVerificationService {
-  @Autowired io.harness.aws.AwsClient awsClient;
-  @Autowired BigQueryHelper bigQueryHelper;
-  @Autowired BillingDataVerificationSQLService billingDataVerificationSQLService;
+  @Inject io.harness.aws.AwsClient awsClient;
+  @Inject BigQueryHelper bigQueryHelper;
+  @Inject BillingDataVerificationSQLService billingDataVerificationSQLService;
 
   public void fetchAndUpdateBillingDataForConnector(String accountId, ConnectorResponseDTO connector, String startDate,
       String endDate, AWSCredentialsProvider awsAssumedCredentialsProvider,
