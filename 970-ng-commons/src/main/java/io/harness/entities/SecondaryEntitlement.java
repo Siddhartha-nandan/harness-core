@@ -11,11 +11,11 @@ import io.harness.annotations.dev.OwnedBy;
 
 @OwnedBy(HarnessTeam.GTM)
 public enum SecondaryEntitlement {
-  NUMBER_OF_SERVICES("numberofServices"), // CD, SRM, CHAOS
+  NUMBER_OF_SERVICES("numberOfServices"), // CD service type license, SRM, CHAOS
   NUMBER_OF_COMMITTERS("numberOfCommitters"), // CI
   NUMBER_OF_USERS("numberOfUsers"), // FF
   NUMBER_OF_CLIENT_MAUS("numberOfClientMAUs"), // FF
-  NUMBER_OF_SECURITY_SCANS("numberofSecurityScans"), // STO
+  NUMBER_OF_SECURITY_SCANS("numberOfSecurityScans"), // STO
   NUMBER_OF_AGENTS("numberOfAgents"), // CET
   NUMBER_OF_CONTRIBUTORS("numberOfContributors"), // SEI
 

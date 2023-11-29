@@ -58,8 +58,6 @@ public class CDLicenseObjectMapper implements LicenseObjectMapper<CDModuleLicens
       Integer mappingRatio = 1;
       if (CDLicenseType.SERVICES.equals(cdModuleLicenseDTO.getCdLicenseType())) {
         cdModuleLicenseDTO.setWorkloads(mappingRatio * cdModuleLicenseDTO.getDeveloperLicenseCount());
-      } else if (CDLicenseType.SERVICE_INSTANCES.equals(cdModuleLicenseDTO.getCdLicenseType())) {
-        cdModuleLicenseDTO.setServiceInstances(mappingRatio * cdModuleLicenseDTO.getDeveloperLicenseCount());
       } else {
         throw new InvalidRequestException("CDLicenseType has to be either SERVICES or SERVICE_INSTANCES");
       }
