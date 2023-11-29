@@ -900,7 +900,7 @@ public class TasStepHelper {
     AutoScalerManifestOutcome autoScalerManifestOutcome = null;
     boolean autoScalarManifestFound = false;
     List<VarsManifestOutcome> varsManifestOutcomeList = new ArrayList<>();
-    validateArtifactBundleManifestStore(orderedManifestOutcomes);
+    orderedManifestOutcomes = validateArtifactBundleManifestStore(orderedManifestOutcomes);
     for (ManifestOutcome manifestOutcome : orderedManifestOutcomes) {
       switch (manifestOutcome.getType()) {
         case TAS_AUTOSCALER:
