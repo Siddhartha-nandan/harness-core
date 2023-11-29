@@ -550,7 +550,8 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
 
     List<String> delegateGroupIds = getDelegateGroupIds(accountId, orgId, projectId, filterProperties, searchTerm);
     if (applyRbacFilter) {
-      delegateGroupIds = delegateRbacHelper.getPermittedIds(delegateGroupIds, accountId, orgId, projectId);
+      delegateGroupIds =
+          delegateRbacHelper.getViewPermittedDelegateGroupIds(delegateGroupIds, accountId, orgId, projectId);
     }
 
     List<Delegate> delegateList = getFilteredDelegateList(accountId, filterProperties, delegateGroupIds);

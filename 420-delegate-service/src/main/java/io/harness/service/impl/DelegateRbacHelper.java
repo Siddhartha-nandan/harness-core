@@ -40,7 +40,8 @@ public class DelegateRbacHelper {
   @Inject private AccessControlClient accessControlClient;
   @Inject private HPersistence persistence;
 
-  public List<String> getPermittedIds(List<String> delegateGroupIds, String accountId, String orgId, String projectId) {
+  public List<String> getViewPermittedDelegateGroupIds(
+      List<String> delegateGroupIds, String accountId, String orgId, String projectId) {
     if (isEmpty(delegateGroupIds)) {
       return null;
     }
