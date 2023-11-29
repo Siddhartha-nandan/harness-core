@@ -2292,47 +2292,52 @@ public class TasStepHelper {
     return false;
   }
 
-  private void validateArtifactBundleManifestStore(List<ManifestOutcome> orderedManifestOutcomes) {
-    TasManifestOutcome artifactBundleStoreManifestOutcome = null;
-    Map<String, List<TasManifestOutcome>> tasManifestTypeOutcomeMap = new HashMap<>();
-    AutoScalerManifestOutcome autoScalerManifestOutcome = null;
+  private List<ManifestOutcome> validateArtifactBundleManifestStore(List<ManifestOutcome> orderedManifestOutcomes) {
+    boolean isArtifactBundleStoreManifestPresent = false;
+    boolean isInServiceArtifactBundleManifestIsPresent = false;
+
     for (ManifestOutcome manifestOutcome : orderedManifestOutcomes) {
       if (manifestOutcome.getType().equals(TAS_MANIFEST)) {
         if (manifestOutcome.getStore().getKind().equals(ManifestStoreType.ARTIFACT_BUNDLE)) {
-          artifactBundleStoreManifestOutcome = (TasManifestOutcome) manifestOutcome;
-        }
-        TasManifestOutcome tasManifestOutcome = (TasManifestOutcome) manifestOutcome;
-        if (tasManifestTypeOutcomeMap.get(String.valueOf(tasManifestOutcome.getOrder())).isEmpty()) {
-          tasManifestTypeOutcomeMap.put(String.valueOf(tasManifestOutcome.getOrder()), List.of(tasManifestOutcome));
+          isArtifactBundleStoreManifestPresent = true;
+          isInServiceArtifactBundleManifestIsPresent = true;
         } else {
-          List<TasManifestOutcome> tasManifestOutcomeList =
-              tasManifestTypeOutcomeMap.get(String.valueOf(tasManifestOutcome.getOrder()));
-          tasManifestOutcomeList.add(tasManifestOutcome);
-          tasManifestTypeOutcomeMap.put(String.valueOf(tasManifestOutcome.getOrder()), tasManifestOutcomeList);
+          isInServiceArtifactBundleManifestIsPresent = false;
         }
-      }
-      if (manifestOutcome.getType().equals(TAS_AUTOSCALER) && (manifestOutcome instanceof AutoScalerManifestOutcome)) {
-        autoScalerManifestOutcome = (AutoScalerManifestOutcome) manifestOutcome;
       }
     }
-    if (artifactBundleStoreManifestOutcome != null) {
-      for (Map.Entry<String, List<TasManifestOutcome>> entry : tasManifestTypeOutcomeMap.entrySet()) {
-        List<TasManifestOutcome> tasManifestTypeOutcomeList = entry.getValue();
-        if (tasManifestTypeOutcomeList.size() > 1) {
-          throw new InvalidRequestException(
-              format(
-                  "Tas Manifest of Artifact Bundle Store type doesn't support Additional Manifest of type Tas Manifest. Expected count of Tas Manifest is 1 but found : %s",
-                  tasManifestTypeOutcomeList.size()),
-              USER);
-        }
-      }
 
-      if (!isEmpty(getParameterFieldValue(artifactBundleStoreManifestOutcome.getAutoScalerPath()))
-          && (autoScalerManifestOutcome != null)) {
-        throw new InvalidRequestException(
-            "Tas Manifest of Artifact Bundle Store type having Autoscaler manifest configured doesn't support Autoscaler manifest type Separately.",
-            USER);
+    if (!isArtifactBundleStoreManifestPresent) {
+      return orderedManifestOutcomes;
+    }
+
+    List<ManifestOutcome> updatedOrderedManifestOutcomes = new ArrayList<>();
+
+    for (ManifestOutcome manifestOutcome : orderedManifestOutcomes) {
+      if (manifestOutcome.getType().equals(TAS_MANIFEST)) {
+        // using XNOR operator here so that to handle the cases:
+        // Case 1 : If service Manifest is Artifact Bundle Type then ignore All override manifest which has Store type
+        // other than Artifact Bundle Case 2 : If service Manifest is of Other Store Type then ignore All override
+        // manifest which has Store type Artifact Bundle
+        if ((manifestOutcome.getStore().getKind().equals(ManifestStoreType.ARTIFACT_BUNDLE)
+                == isInServiceArtifactBundleManifestIsPresent)) {
+          updatedOrderedManifestOutcomes.add(manifestOutcome);
+        } else {
+          if (isInServiceArtifactBundleManifestIsPresent) {
+            log.warn(
+                "Ignoring the Override Manifest \"{}\" because Service Manifest is of Artifact Bundle Store Type. ",
+                manifestOutcome.getIdentifier());
+          } else {
+            log.warn(
+                "Ignoring the Override Manifest \"{}\" because Service Manifest is of Non Artifact Bundle Store Type. ",
+                manifestOutcome.getIdentifier());
+          }
+        }
+      } else {
+        updatedOrderedManifestOutcomes.add(manifestOutcome);
       }
     }
+
+    return updatedOrderedManifestOutcomes;
   }
 }
