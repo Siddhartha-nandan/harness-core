@@ -50,6 +50,7 @@ import io.harness.organization.remote.OrganizationClient;
 import io.harness.pms.approval.notification.stagemetadata.StageMetadataNotificationHelper;
 import io.harness.pms.approval.notification.stagemetadata.StagesSummary;
 import io.harness.pms.contracts.ambiance.Ambiance;
+import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.plan.ExecutionTriggerInfo;
 import io.harness.pms.execution.ExecutionStatus;
 import io.harness.pms.execution.utils.AmbianceUtils;
@@ -207,6 +208,9 @@ public class ApprovalNotificationHandlerImpl implements ApprovalNotificationHand
             .status(approvalInstance.getStatus())
             .pipelineExecutionLink(notificationHelper.generateUrl(ambiance))
             .timeRemainingForApproval(formatDuration(approvalInstance.getDeadline() - System.currentTimeMillis()))
+            .currentStageName(approvalInstance.isIncludePipelineExecutionHistory()
+                    ? getCurrentStageName(ambiance, pipelineExecutionSummaryEntity)
+                    : null)
             .build();
     if (approvalInstance.isIncludePipelineExecutionHistory()) {
       generateModuleSpecificSummary(approvalSummary, pipelineExecutionSummaryEntity);
@@ -266,6 +270,28 @@ public class ApprovalNotificationHandlerImpl implements ApprovalNotificationHand
     } else {
       StageMetadataNotificationHelper.addStageMetadataWhenFFOff(stagesSummary, approvalSummary);
     }
+  }
+
+  @VisibleForTesting
+  protected static String getCurrentStageName(
+      Ambiance ambiance, PipelineExecutionSummaryEntity pipelineExecutionSummaryEntity) {
+    Optional<Level> stageLevel = AmbianceUtils.getStageLevelFromAmbiance(ambiance);
+
+    if (stageLevel.isEmpty()) {
+      log.error("Stage level not found in ambiance of harness approval step, failing to send notification");
+      throw new IllegalStateException("Internal error occurred while getting current stage name");
+    }
+
+    Optional<GraphLayoutNodeDTO> currentStageNode =
+        Optional.ofNullable(pipelineExecutionSummaryEntity.getLayoutNodeMap().get(stageLevel.get().getSetupId()));
+
+    if (currentStageNode.isEmpty()) {
+      log.error("Current stage node with id {} not found in execution layout, failing to send notification",
+          stageLevel.get().getSetupId());
+      throw new IllegalStateException("Internal error occurred while getting current stage name");
+    }
+
+    return StringUtils.defaultIfBlank(currentStageNode.get().getName(), currentStageNode.get().getNodeIdentifier());
   }
 
   private void traverseGraph(

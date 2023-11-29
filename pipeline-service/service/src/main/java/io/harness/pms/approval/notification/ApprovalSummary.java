@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 import javax.validation.constraints.NotNull;
 import lombok.Builder;
+import lombok.Setter;
 import lombok.Value;
 import lombok.experimental.FieldNameConstants;
 import lombok.experimental.NonFinal;
@@ -54,6 +55,7 @@ public class ApprovalSummary {
 
   String pipelineExecutionLink;
   String timeRemainingForApproval;
+  @Setter String currentStageName;
 
   public Map<String, String> toParams(@NotNull String stageDelimiter) {
     Map<String, String> params = new HashMap<>();
@@ -71,6 +73,8 @@ public class ApprovalSummary {
     params.put(ApprovalSummaryKeys.pipelineExecutionLink, pipelineExecutionLink);
     params.put(ApprovalSummaryKeys.timeRemainingForApproval, timeRemainingForApproval);
     params.put(ApprovalSummaryKeys.action, action);
+    params.put(ApprovalSummaryKeys.currentStageName, currentStageName);
+
     if (isNull(status)) {
       params.put(ApprovalSummaryKeys.status, "");
     } else {

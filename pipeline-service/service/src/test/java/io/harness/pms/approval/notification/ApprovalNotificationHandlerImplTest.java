@@ -15,6 +15,7 @@ import static io.harness.rule.OwnerRule.SOURABH;
 import static io.harness.rule.OwnerRule.vivekveman;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anySet;
@@ -60,6 +61,7 @@ import io.harness.organization.remote.OrganizationClient;
 import io.harness.pms.approval.notification.ApprovalSummary.ApprovalSummaryKeys;
 import io.harness.pms.approval.notification.stagemetadata.StageMetadataNotificationHelper;
 import io.harness.pms.contracts.ambiance.Ambiance;
+import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.plan.EdgeLayoutList;
 import io.harness.pms.contracts.plan.ExecutionMetadata;
 import io.harness.pms.contracts.plan.ExecutionTriggerInfo;
@@ -164,6 +166,7 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
           .projectIdentifier(projectIdentifier)
           .pipelineIdentifier(pipelineIdentifier)
           .startingNodeId(startingNodeId)
+          .layoutNodeMap(new HashMap<>())
           .build();
 
   @Before
@@ -290,6 +293,8 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.orgName)).isEqualTo(orgName);
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.projectName))
           .isEqualTo(projectName);
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName))
+          .isEqualTo(null);
       // get userId in triggeredBy because email is not present
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.triggeredBy)).isEqualTo(userId);
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.pipelineExecutionLink))
@@ -351,7 +356,7 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
           .getPipelineExecutionSummaryEntity(anyString(), anyString(), anyString(), anyString(), anyBoolean());
 
       mockUserGroupResponse(basicUserGroupDTOS);
-
+      Ambiance ambiance = buildAmbianceWithStageSetupId(startingNodeId);
       doReturn(url).when(notificationHelper).generateUrl(ambiance);
       approvalNotificationHandler.sendNotification(basicApprovalInstance, ambiance);
 
@@ -360,6 +365,12 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
       verify(notificationClient, times(2)).sendNotificationAsync(notificationChannelArgumentCaptor.capture());
       List<NotificationChannel> notificationChannels = notificationChannelArgumentCaptor.getAllValues();
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.runningStages))
+          .isEqualTo("Node name");
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.upcomingStages))
+          .isEqualTo("N/A");
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.finishedStages))
+          .isEqualTo("N/A");
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName))
           .isEqualTo("Node name");
 
       verify(ngLogCallback.constructed().get(0), times(2)).saveExecutionLog(anyString());
@@ -424,6 +435,7 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
 
       mockUserGroupResponse(basicUserGroupDTOS);
 
+      Ambiance ambiance = buildAmbianceWithStageSetupId(thirdNodeId);
       doReturn(url).when(notificationHelper).generateUrl(ambiance);
       approvalNotificationHandler.sendNotification(basicApprovalInstance, ambiance);
 
@@ -437,6 +449,8 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
           .isEqualTo("Third Name");
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.upcomingStages))
           .isEqualTo("N/A");
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName))
+          .isEqualTo("Third Name");
 
       verify(ngLogCallback.constructed().get(0), times(2)).saveExecutionLog(anyString());
       verify(ngLogCallback.constructed().get(0), times(1)).saveExecutionLog(anyString(), eq(LogLevel.WARN));
@@ -500,6 +514,7 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
           .getPipelineExecutionSummaryEntity(anyString(), anyString(), anyString(), anyString(), anyBoolean());
       mockUserGroupResponse(basicUserGroupDTOS);
 
+      Ambiance ambiance = buildAmbianceWithStageSetupId(thirdNodeId);
       doReturn(url).when(notificationHelper).generateUrl(ambiance);
 
       doAnswer(invocationOnMock -> {
@@ -539,6 +554,8 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
           .isEqualTo("Third Name");
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.upcomingStages))
           .isEqualTo("N/A");
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName))
+          .isEqualTo("Third Name");
 
       verify(ngLogCallback.constructed().get(0), times(2)).saveExecutionLog(anyString());
       verify(ngLogCallback.constructed().get(0), times(1)).saveExecutionLog(anyString(), eq(LogLevel.WARN));
@@ -586,6 +603,7 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
 
       mockUserGroupResponse(basicUserGroupDTOS);
 
+      Ambiance ambiance = buildAmbianceWithStageSetupId(startingNodeId);
       doReturn(url).when(notificationHelper).generateUrl(ambiance);
       approvalNotificationHandler.sendNotification(basicApprovalInstance, ambiance);
 
@@ -602,6 +620,8 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
           .isEqualTo("cd stage");
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.upcomingStages))
           .isEqualTo("custom stage");
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName))
+          .isEqualTo("cd stage");
     }
   }
 
@@ -648,6 +668,7 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
 
       mockUserGroupResponse(basicUserGroupDTOS);
 
+      Ambiance ambiance = buildAmbianceWithStageSetupId(startingNodeId);
       doReturn(url).when(notificationHelper).generateUrl(ambiance);
 
       doAnswer(invocationOnMock -> {
@@ -699,6 +720,8 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
               + "     Infrastructure Definition  :  infra name");
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.upcomingStages))
           .isEqualTo("custom stage");
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName))
+          .isEqualTo("cd stage");
     }
   }
 
@@ -745,6 +768,7 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
 
       mockUserGroupResponse(basicUserGroupDTOS);
 
+      Ambiance ambiance = buildAmbianceWithStageSetupId(PlanCreatorConstants.NEXT_ID);
       doReturn(url).when(notificationHelper).generateUrl(ambiance);
 
       doThrow(new IllegalStateException("dummy"))
@@ -937,6 +961,8 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.status))
           .isEqualTo(ApprovalStatus.APPROVED.toString().toLowerCase(Locale.ROOT));
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.action)).contains("email");
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName))
+          .isEqualTo(null);
 
       // get userId in triggeredBy because email is not present
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.triggeredBy)).isEqualTo(userId);
@@ -1064,6 +1090,8 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.status))
           .isEqualTo(ApprovalStatus.REJECTED.toString().toLowerCase(Locale.ROOT));
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.action)).contains("email");
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName))
+          .isEqualTo(null);
 
       // get userId in triggeredBy because email is not present
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.triggeredBy)).isEqualTo(userId);
@@ -1132,6 +1160,7 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
 
       mockUserGroupResponse(basicUserGroupDTOS);
 
+      Ambiance ambiance = buildAmbianceWithStageSetupId(startingNodeId);
       doReturn(url).when(notificationHelper).generateUrl(ambiance);
 
       doAnswer(invocationOnMock -> {
@@ -1195,6 +1224,8 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.status))
           .isEqualTo(ApprovalStatus.APPROVED.toString().toLowerCase(Locale.ROOT));
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.action)).contains("email");
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName))
+          .isEqualTo("cd stage");
 
       // get userId in triggeredBy because email is not present
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.triggeredBy))
@@ -1238,6 +1269,7 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
                               .putSetupAbstractions("projectIdentifier", projectIdentifier)
                               .putSetupAbstractions("pipelineIdentifier", pipelineIdentifier)
                               .setMetadata(executionMetadata)
+                              .addLevels(Level.newBuilder().setGroup("STAGE").setSetupId("stage_approval1").build())
                               .build();
       HarnessApprovalInstance approvalInstance =
           HarnessApprovalInstance.builder()
@@ -1398,6 +1430,8 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.triggeredBy)).isEqualTo(userId);
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.pipelineExecutionLink))
           .isEqualTo(url);
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.currentStageName))
+          .isEqualTo("Approval stage name");
       verify(pmsExecutionService, times(1))
           .getPipelineExecutionSummaryEntity(anyString(), anyString(), anyString(), anyString(), anyBoolean());
     }
@@ -1489,6 +1523,45 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
         .isEqualTo(user_without_name.getEmail());
   }
 
+  @Test
+  @Owner(developers = NAMANG)
+  @Category(UnitTests.class)
+  public void testGetCurrentStageName() {
+    // stage level not found in ambiance
+    assertThatThrownBy(
+        () -> ApprovalNotificationHandlerImpl.getCurrentStageName(ambiance, pipelineExecutionSummaryEntity))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Internal error occurred while getting current stage name");
+
+    Ambiance ambianceWithStage = buildAmbianceWithStageSetupId(startingNodeId);
+
+    // stage node not found in layoutNodeMap
+    assertThatThrownBy(
+        () -> ApprovalNotificationHandlerImpl.getCurrentStageName(ambiance, pipelineExecutionSummaryEntity))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Internal error occurred while getting current stage name");
+
+    Map<String, GraphLayoutNodeDTO> layoutNodeDTOMap = new HashMap<>();
+
+    GraphLayoutNode graphLayoutNode = GraphLayoutNode.newBuilder()
+                                          .setNodeIdentifier("nodeId")
+                                          .setNodeType("ApprovalStage")
+                                          .setNodeUUID(startingNodeId)
+                                          .setName("approval stage")
+                                          .setNodeGroup("STAGE")
+                                          .build();
+    GraphLayoutNodeDTO graphLayoutNodeDTO = GraphLayoutDtoMapper.toDto(graphLayoutNode);
+
+    layoutNodeDTOMap.put(startingNodeId, graphLayoutNodeDTO);
+    pipelineExecutionSummaryEntity.setLayoutNodeMap(layoutNodeDTOMap);
+
+    assertThat(ApprovalNotificationHandlerImpl.getCurrentStageName(ambianceWithStage, pipelineExecutionSummaryEntity))
+        .isEqualTo("approval stage");
+    graphLayoutNodeDTO.setName(" ");
+    assertThat(ApprovalNotificationHandlerImpl.getCurrentStageName(ambianceWithStage, pipelineExecutionSummaryEntity))
+        .isEqualTo("nodeId");
+  }
+
   private void mockUserGroupResponse(List<UserGroupDTO> userGroupDTOS) throws IOException {
     ResponseDTO<List<UserGroupDTO>> restResponse = ResponseDTO.newResponse(userGroupDTOS);
     Response<ResponseDTO<List<UserGroupDTO>>> response = Response.success(restResponse);
@@ -1497,5 +1570,15 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
     when(responseDTOCall.execute()).thenReturn(response);
 
     when(userGroupClient.getFilteredUserGroups(any())).thenReturn(responseDTOCall);
+  }
+
+  private Ambiance buildAmbianceWithStageSetupId(String stageNodeUuid) {
+    return Ambiance.newBuilder()
+        .putSetupAbstractions("accountId", accountId)
+        .putSetupAbstractions("orgIdentifier", orgIdentifier)
+        .putSetupAbstractions("projectIdentifier", projectIdentifier)
+        .putSetupAbstractions("pipelineIdentifier", pipelineIdentifier)
+        .addLevels(Level.newBuilder().setGroup("STAGE").setSetupId(stageNodeUuid).build())
+        .build();
   }
 }
