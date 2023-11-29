@@ -231,23 +231,23 @@ public class GcpSyncTasklet implements Tasklet {
 
     V1EnvVar secret_env_var1 =
         new V1EnvVar()
-            .name("MY_SECRET_NAME")
+            .name("AWS_DESTINATION_BUCKET")
             .valueFrom(new V1EnvVarSource().secretKeyRef(new V1SecretKeySelector()
-                                                             .name("your-secret-name") // Replace with your secret name
-                                                             .key("LIGHTWING_DB_CONNECTION")
+                                                             .name("nextgen-ce") // Replace with your secret name
+                                                             .key("AWS_DESTINATION_BUCKET")
                                                              .optional(false)));
 
-    V1EnvVar secret_env_var2 = new V1EnvVar()
-                                   .name("MY_SECRET_NAME_2")
-                                   .valueFrom(new V1EnvVarSource().secretKeyRef(
-                                       new V1SecretKeySelector()
-                                           .name("your-secret-name-2") // Replace with your secret name
-                                           .key("LIGHTWING_DB_CONNECTION-2")
-                                           .optional(false)));
+    V1EnvVar secret_env_var2 =
+        new V1EnvVar()
+            .name("AWS_ACCOUNT_ID")
+            .valueFrom(new V1EnvVarSource().secretKeyRef(new V1SecretKeySelector()
+                                                             .name("nextgen-ce") // Replace with your secret name
+                                                             .key("AWS_ACCOUNT_ID")
+                                                             .optional(false)));
 
     V1Container container = new V1Container()
                                 .name("python-container")
-                                .image("harnessdev/jobapp") // Replace with your Docker image
+                                .image("harnessdev/pyapp-gcp") // Replace with your Docker image
                                 .args(Arrays.asList(argsMap))
                                 .env(Arrays.asList(secret_env_var1, secret_env_var2));
 
@@ -260,7 +260,7 @@ public class GcpSyncTasklet implements Tasklet {
     V1Job job = new V1Job()
                     .apiVersion("batch/v1")
                     .kind("Job")
-                    .metadata(new V1ObjectMeta().name("python-job2").namespace(NAMESPACE))
+                    .metadata(new V1ObjectMeta().name("python-job-gcp").namespace(NAMESPACE))
                     .spec(jobSpec);
 
     BatchV1Api api = new BatchV1Api();
