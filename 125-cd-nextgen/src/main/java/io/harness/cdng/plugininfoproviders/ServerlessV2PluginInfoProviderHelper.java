@@ -85,6 +85,7 @@ import io.harness.yaml.utils.NGVariablesUtils;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -146,9 +147,8 @@ public class ServerlessV2PluginInfoProviderHelper {
       return removeTrailingSlashesInString(path);
     } else if (serverlessAwsLambdaManifestOutcome.getStore() instanceof S3StoreConfig) {
       S3StoreConfig valuesManifestOutcomeStore = (S3StoreConfig) serverlessAwsLambdaManifestOutcome.getStore();
-      String path = String.format("/%s/%s/%s", PLUGIN_PATH_PREFIX,
-          removeExtraSlashesInString(serverlessAwsLambdaManifestOutcome.getIdentifier()),
-          removeExtraSlashesInString(valuesManifestOutcomeStore.getPaths().getValue().get(0)));
+      String path = String.format(
+          "/%s/%s", PLUGIN_PATH_PREFIX, removeExtraSlashesInString(serverlessAwsLambdaManifestOutcome.getIdentifier()));
       return removeTrailingSlashesInString(path);
     }
     return null;
@@ -347,7 +347,8 @@ public class ServerlessV2PluginInfoProviderHelper {
       S3StoreConfig valuesManifestOutcomeStore = (S3StoreConfig) valuesManifestOutcome.getStore();
       String path = String.format("/%s/%s/%s", PLUGIN_PATH_PREFIX,
           removeExtraSlashesInString(valuesManifestOutcome.getIdentifier()),
-          removeExtraSlashesInString(valuesManifestOutcomeStore.getPaths().getValue().get(0)));
+          removeExtraSlashesInString(
+              Paths.get(valuesManifestOutcomeStore.getPaths().getValue().get(0)).getFileName().toString()));
       return removeTrailingSlashesInString(path);
     }
     return null;
