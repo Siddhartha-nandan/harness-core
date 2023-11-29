@@ -21,9 +21,13 @@ import io.harness.accesscontrol.acl.api.PermissionCheckDTO;
 import io.harness.accesscontrol.acl.api.ResourceScope;
 import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.delegate.beans.DelegateGroup;
+import io.harness.delegate.beans.DelegateGroup.DelegateGroupKeys;
 import io.harness.ng.core.dto.EntityScopeInfo;
+import io.harness.persistence.HPersistence;
 
 import com.google.inject.Inject;
+import dev.morphia.query.Query;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,21 +38,30 @@ import lombok.extern.slf4j.Slf4j;
 @OwnedBy(PL)
 public class DelegateRbacHelper {
   @Inject private AccessControlClient accessControlClient;
+  @Inject private HPersistence persistence;
 
   public List<String> getPermittedIds(List<String> delegateGroupIds, String accountId, String orgId, String projectId) {
     if (isEmpty(delegateGroupIds)) {
       return null;
     }
+    log.info("delegateGroup ids are : {}", delegateGroupIds);
+    Query<DelegateGroup> delegateGroupQuery =
+        persistence.createQuery(DelegateGroup.class).field(DelegateGroupKeys.uuid).in(delegateGroupIds);
+    List<String> delegateGroupIdentifiers =
+        delegateGroupQuery.asList().stream().map(DelegateGroup::getIdentifier).collect(Collectors.toList());
+    log.info("delegateGroup identifiers are : {}", delegateGroupIdentifiers);
 
-    Map<EntityScopeInfo, List<String>> delegateGroupIdMap = delegateGroupIds.stream().collect(groupingBy(delegateGroupId
-        -> DelegateRbacHelper.getEntityScopeInfoFromDelegateGroupId(delegateGroupId, accountId, orgId, projectId)));
+    Map<EntityScopeInfo, List<String>> delegateGroupIdMap =
+        delegateGroupIdentifiers.stream().collect(groupingBy(delegateGroupIdentifier
+            -> DelegateRbacHelper.getEntityScopeInfoFromDelegateGroupId(
+                delegateGroupIdentifier, accountId, orgId, projectId)));
 
     List<PermissionCheckDTO> permissionChecks =
-        delegateGroupIds.stream()
-            .map(delegateGroupId
+        delegateGroupIdentifiers.stream()
+            .map(delegateGroupIdentifier
                 -> PermissionCheckDTO.builder()
                        .permission(DELEGATE_VIEW_PERMISSION)
-                       .resourceIdentifier(delegateGroupId)
+                       .resourceIdentifier(delegateGroupIdentifier)
                        .resourceScope(ResourceScope.of(accountId, orgId, projectId))
                        .resourceType(DELEGATE_RESOURCE_TYPE)
                        .build())
@@ -64,7 +77,15 @@ public class DelegateRbacHelper {
             delegateGroupIdMap.get(DelegateRbacHelper.getEntityScopeInfoFromAccessControlDTO(accessControlDTO)).get(0));
       }
     }
-    return permittedDelegateGroupIds;
+    log.info("permitted delegateGroup identifiers are : {}", delegateGroupIdentifiers);
+    Query<DelegateGroup> delegateGroupQueryToConvertIdentifiersToId =
+        persistence.createQuery(DelegateGroup.class).field(DelegateGroupKeys.identifier).in(permittedDelegateGroupIds);
+    List<String> permittedDelegateIds = delegateGroupQueryToConvertIdentifiersToId.asList()
+                                            .stream()
+                                            .map(DelegateGroup::getUuid)
+                                            .collect(Collectors.toList());
+    log.info("permitted delegateGroup ids are : {}", permittedDelegateIds);
+    return permittedDelegateIds;
   }
 
   private static EntityScopeInfo getEntityScopeInfoFromDelegateGroupId(
