@@ -99,10 +99,10 @@ spec:
             {{- include "harnesscommon.dbconnectionv2.mongoEnv" (dict "ctx" $) | indent 12 }}
             {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $ "passwordVariableName" "TIMESCALE_PASSWORD") | indent 12 }}
             {{- if .Values.global.ccm.enabled }}
-              {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "CE_AWS_ACCESS_KEY" "defaultKubernetesSecretName" "nextgen-ce" "defaultKubernetesSecretKey" AWS_ACCESS_KEY) | indent 12 }}
-              {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "CE_AWS_SECRET_KEY" "defaultKubernetesSecretName" "nextgen-ce" "defaultKubernetesSecretKey" AWS_SECRET_KEY) | indent 12 }}
-              {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "CE_AWS_DESTINATION_BUCKET" "defaultKubernetesSecretName" "nextgen-ce" "defaultKubernetesSecretKey" CE_AWS_DESTINATION_BUCKET) | indent 12 }}
-              {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "CE_AWS_TEMPLATE_URL" "defaultKubernetesSecretName" "nextgen-ce" "defaultKubernetesSecretKey" AWS_TEMPLATE_URL) | indent 12 }}
+              {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "CE_AWS_ACCESS_KEY" "defaultKubernetesSecretName" "nextgen-ce" "defaultKubernetesSecretKey" "AWS_ACCESS_KEY") | indent 12 }}
+              {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "CE_AWS_SECRET_KEY" "defaultKubernetesSecretName" "nextgen-ce" "defaultKubernetesSecretKey" "AWS_SECRET_KEY") | indent 12 }}
+              {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "CE_AWS_DESTINATION_BUCKET" "defaultKubernetesSecretName" "nextgen-ce" "defaultKubernetesSecretKey" "CE_AWS_DESTINATION_BUCKET") | indent 12 }}
+              {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "CE_AWS_TEMPLATE_URL" "defaultKubernetesSecretName" "nextgen-ce" "defaultKubernetesSecretKey" "AWS_TEMPLATE_URL") | indent 12 }}
             {{- end }}
             - name: MONGO_URI
               value: {{ include "harnesscommon.dbconnectionv2.mongoConnection" (dict "ctx" $ "database" "ng-harness" ) }}
