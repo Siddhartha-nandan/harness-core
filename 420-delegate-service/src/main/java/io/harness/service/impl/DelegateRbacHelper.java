@@ -53,7 +53,9 @@ public class DelegateRbacHelper {
                        .resourceType(DELEGATE_RESOURCE_TYPE)
                        .build())
             .collect(Collectors.toList());
+    log.info("checking for permission checks");
     AccessCheckResponseDTO accessCheckResponse = accessControlClient.checkForAccessOrThrow(permissionChecks);
+    log.info("got the check response");
 
     List<String> permittedDelegateGroupIds = new ArrayList<>();
     for (AccessControlDTO accessControlDTO : accessCheckResponse.getAccessControlList()) {
