@@ -37,6 +37,7 @@ import io.harness.ngsettings.dto.SettingRequestDTO;
 import io.harness.ngsettings.dto.SettingResponseDTO;
 import io.harness.ngsettings.dto.SettingUpdateResponseDTO;
 import io.harness.ngsettings.dto.SettingValueResponseDTO;
+import io.harness.ngsettings.entities.AccountSetting;
 import io.harness.ngsettings.entities.Setting;
 import io.harness.ngsettings.entities.Setting.SettingKeys;
 import io.harness.ngsettings.entities.SettingConfiguration;
@@ -120,6 +121,8 @@ public class SettingsServiceImpl implements SettingsService {
     settingConfigurations.forEach((identifier, settingConfiguration) -> {
       Pair<String, Scope> currentScopeSettingKey = new ImmutablePair<>(identifier, scope);
       Setting parentSetting = getSettingFromParentScope(scope, identifier, settingConfiguration, accountEdition);
+      AccountSetting accountSetting = (AccountSetting) parentSetting;
+      accountSetting.
       if (settings.containsKey(currentScopeSettingKey)) {
         settingResponseDTOList.add(settingsMapper.writeSettingResponseDTO(
             settings.get(currentScopeSettingKey), settingConfiguration, true, parentSetting.getValue()));
@@ -207,8 +210,9 @@ public class SettingsServiceImpl implements SettingsService {
         settingRepository.findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(
             accountIdentifier, orgIdentifier, projectIdentifier, identifier);
     String value;
+    AccountSetting existingSettings = (AccountSetting) existingSetting.get();
     if (existingSetting.isPresent()) {
-      value = existingSetting.get().getValue();
+      value = existingSettings.getValue();
     } else {
       value = getSettingFromParentScope(Scope.of(accountIdentifier, orgIdentifier, projectIdentifier), identifier,
           settingConfiguration, accountEdition)

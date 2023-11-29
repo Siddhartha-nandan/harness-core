@@ -26,6 +26,8 @@ import dev.morphia.annotations.Entity;
 import java.util.List;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
+
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldNameConstants;
@@ -42,9 +44,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @StoreIn(DbAliases.NG_MANAGER)
 @Entity(value = "settings", noClassnameStored = true)
 @JsonIgnoreProperties(ignoreUnknown = true)
+@AllArgsConstructor
 @Document("settings")
 @Persistent
-@TypeAlias("NGSetting")
 public class Setting implements PersistentEntity, NGAccountAccess {
   @Id @dev.morphia.annotations.Id String id;
   @NotEmpty @EntityIdentifier String identifier;
@@ -53,9 +55,6 @@ public class Setting implements PersistentEntity, NGAccountAccess {
   @Trimmed String projectIdentifier;
   @NotNull SettingCategory category;
   String groupIdentifier;
-  @NotNull Boolean allowOverrides;
-  @NotNull SettingValueType valueType;
-  @NotNull String value;
   @LastModifiedDate Long lastModifiedAt;
 
   public static List<MongoIndex> mongoIndexes() {

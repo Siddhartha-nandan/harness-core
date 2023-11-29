@@ -12,6 +12,7 @@ import io.harness.ngsettings.dto.SettingDTO;
 import io.harness.ngsettings.dto.SettingRequestDTO;
 import io.harness.ngsettings.dto.SettingResponseDTO;
 import io.harness.ngsettings.dto.SettingUpdateResponseDTO;
+import io.harness.ngsettings.entities.AccountSetting;
 import io.harness.ngsettings.entities.Setting;
 import io.harness.ngsettings.entities.SettingConfiguration;
 import io.harness.ngsettings.utils.SettingUtils;
@@ -155,8 +156,8 @@ public class SettingsMapper {
         .build();
   }
 
-  public Setting toSetting(String accountIdentifier, SettingDTO settingDTO) {
-    return Setting.builder()
+  public AccountSetting toSetting(String accountIdentifier, SettingDTO settingDTO) {
+    return AccountSetting.builder()
         .identifier(settingDTO.getIdentifier())
         .accountIdentifier(accountIdentifier)
         .orgIdentifier(settingDTO.getOrgIdentifier())
