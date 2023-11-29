@@ -177,7 +177,7 @@ awsAccountTagsCollectionJobConfig:
 
 billingDataVerificationJobConfig:
   awsBillingDataVerificationEnabled: true
-  awsMaximumHistoricalMonthsForVerificationJob: 12
+  awsMaximumHistoricalMonthsForVerificationJob: 2
 
 gcpConfig:
   gcpProjectId: "ccm-play"
