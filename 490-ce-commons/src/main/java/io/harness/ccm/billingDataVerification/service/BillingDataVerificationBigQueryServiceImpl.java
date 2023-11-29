@@ -50,17 +50,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Singleton
 public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVerificationSQLService {
   private static final String AWS_UNIFIED_TABLE_COST_VERIFICATION_QUERY_TEMPLATE =
-      String.join(" ", "SELECT DATE_TRUNC(startTime, DAY) as day, awsUsageAccountId as cloudProviderAccountId, ",
+      String.join(" ", "SELECT DATE_TRUNC(DATE(startTime), DAY) as day, awsUsageAccountId as cloudProviderAccountId, ",
           "sum(awsUnblendedCost) as unblendedCost, sum(awsBlendedCost) as blendedCost, ",
           "sum(awsAmortizedcost) as amortizedcost, sum(awsNetamortizedcost) as netamortizedcost ", "FROM `%s` ",
-          "WHERE DATE_TRUNC(startTime, DAY) >= DATE('%s')", "AND DATE_TRUNC(startTime, DAY) < DATE('%s')",
+          "WHERE DATE_TRUNC(DATE(startTime), DAY) >= DATE('%s')", "AND DATE_TRUNC(DATE(startTime), DAY) < DATE('%s')",
           "AND cloudprovider='AWS'", "GROUP BY day, cloudProviderAccountId ;");
 
   private static final String AWS_BILLING_COST_VERIFICATION_QUERY_TEMPLATE =
       String.join(" ", "SELECT DATE_TRUNC(usagestartdate, DAY) as day, usageAccountId as cloudProviderAccountId, ",
           "sum(unblendedCost) as unblendedCost, sum(blendedCost) as blendedCost ", "FROM `%s` ",
-          "WHERE DATE_TRUNC(usagestartdate, DAY) >= DATE('%s')", "AND DATE_TRUNC(usagestartdate, DAY) < DATE('%s')",
-          "GROUP BY day, cloudProviderAccountId ;");
+          "WHERE DATE_TRUNC(DATE(usagestartdate), DAY) >= DATE('%s')",
+          "AND DATE_TRUNC(DATE(usagestartdate), DAY) < DATE('%s')", "GROUP BY day, cloudProviderAccountId ;");
 
   private static final String DELETE_FROM_BILLING_DATA_VERIFICATION_TABLE_QUERY_TEMPLATE =
       String.join(" ", "DELETE FROM %s ", "WHERE harnessAccountId = '%s' AND ", "connectorId IN (%s) ; ");
