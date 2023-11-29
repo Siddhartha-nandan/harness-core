@@ -35,6 +35,7 @@ import io.harness.cimanager.stages.IntegrationStageConfig;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidRequestException;
 import io.harness.plancreator.execution.ExecutionElementConfig;
+import io.harness.plancreator.execution.ExecutionWrapperConfig;
 import io.harness.plancreator.stages.AbstractStagePlanCreator;
 import io.harness.plancreator.steps.common.SpecParameters;
 import io.harness.plancreator.steps.common.StageElementParameters.StageElementParametersBuilder;
@@ -63,6 +64,7 @@ import io.harness.pms.yaml.YamlNode;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.serializer.KryoSerializer;
 import io.harness.timeout.trackers.absolute.AbsoluteTimeoutTrackerFactory;
+import io.harness.utils.CiYamlPreProcessorUtils;
 import io.harness.when.utils.RunInfoUtils;
 import io.harness.yaml.core.variables.NGVariable;
 import io.harness.yaml.extended.ci.codebase.CodeBase;
@@ -93,6 +95,7 @@ public class IntegrationStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<I
   @Inject private CILicenseService ciLicenseService;
   @Inject private CIFeatureFlagService featureFlagService;
   @Inject CIStagePlanCreationUtils ciStagePlanCreationUtils;
+  @Inject CiYamlPreProcessorUtils ciYamlPreProcessorUtils;
 
   @Override
   public String getExecutionInputTemplateAndModifyYamlField(YamlField yamlField) {
@@ -105,6 +108,8 @@ public class IntegrationStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<I
     log.info("Received plan creation request for integration stageV2 {}", stageNode.getIdentifier());
     LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap = new LinkedHashMap<>();
     Map<String, ByteString> metadataMap = new HashMap<>();
+
+    preProcessStageNode(stageNode);
 
     YamlField specField =
         Preconditions.checkNotNull(ctx.getCurrentField().getNode().getField(YAMLFieldNameConstants.SPEC));
@@ -149,6 +154,14 @@ public class IntegrationStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<I
     return planCreationResponseMap;
   }
 
+  private void preProcessStageNode(IntegrationStageNode stageNode) {
+    for (ExecutionWrapperConfig executionWrapperConfig :
+        stageNode.getIntegrationStageConfig().getExecution().getSteps()) {
+      for (JsonNode jsonNode : executionWrapperConfig.getStep()) {
+        ciYamlPreProcessorUtils.replaceInputWithDefaultValue(jsonNode);
+      }
+    }
+  }
   public void addPipelineVariablesToStageNode(PlanCreationContext ctx, IntegrationStageNode stageNode) {
     List<NGVariable> pipelineVariables = fetchPipelineVariables(ctx);
     stageNode.setPipelineVariables(pipelineVariables);
