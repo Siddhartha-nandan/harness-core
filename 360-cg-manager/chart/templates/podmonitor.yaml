@@ -1,0 +1,16 @@
+{{- if and .Values.global.monitoring.enabled (eq (lower .Values.global.monitoring.managedPlatform) "google") -}}
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: harness-manager
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: harness-manager
+  endpoints:
+  - port: 8889
+    interval: 120s
+    path: "/metrics"
+  
+{{- end }}
