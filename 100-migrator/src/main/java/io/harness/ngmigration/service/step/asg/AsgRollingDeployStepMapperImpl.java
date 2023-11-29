@@ -6,6 +6,7 @@
  */
 
 package io.harness.ngmigration.service.step.asg;
+
 import static io.harness.ngmigration.utils.NGMigrationConstants.RUNTIME_FIELD;
 
 import io.harness.annotations.dev.CodePulse;
@@ -29,6 +30,7 @@ import software.wings.beans.GraphNode;
 import software.wings.sm.State;
 import software.wings.sm.states.AwsAmiServiceSetup;
 
+import java.util.Collections;
 import java.util.Map;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_MIGRATOR})
@@ -38,7 +40,7 @@ public class AsgRollingDeployStepMapperImpl extends AsgBaseStepMapper {
     if (state instanceof AwsAmiServiceSetup) {
       AwsAmiServiceSetup asgState = (AwsAmiServiceSetup) state;
       if (asgState.getAutoScalingSteadyStateTimeout() > 0) {
-        return MigratorUtility.getTimeout((long) asgState.getAutoScalingSteadyStateTimeout());
+        return MigratorUtility.getTimeout((long) asgState.getAutoScalingSteadyStateTimeout() * 1000 * 60);
       }
     }
     return MigratorUtility.getTimeout(null);
@@ -72,6 +74,9 @@ public class AsgRollingDeployStepMapperImpl extends AsgBaseStepMapper {
     AsgBlueGreenDeployStepNode node = new AsgBlueGreenDeployStepNode();
     baseSetup(state, node, identifierCaseFormat);
     node.setAsgBlueGreenDeployStepInfo(AsgBlueGreenDeployStepInfo.infoBuilder()
+                                           .asgName(ParameterField.createValueField(state.getAutoScalingGroupName()))
+                                           .instances(getAsgInstancesNode(state))
+                                           .loadBalancers(ParameterField.createValueField(Collections.emptyList()))
                                            .loadBalancer(RUNTIME_FIELD)
                                            .prodListener(RUNTIME_FIELD)
                                            .prodListenerRuleArn(RUNTIME_FIELD)
@@ -87,8 +92,11 @@ public class AsgRollingDeployStepMapperImpl extends AsgBaseStepMapper {
     baseSetup(state, node, identifierCaseFormat);
     node.setAsgRollingDeployStepInfo(
         AsgRollingDeployStepInfo.infoBuilder()
+            .asgName(ParameterField.createValueField(state.getAutoScalingGroupName()))
             .useAlreadyRunningInstances(ParameterField.createValueField(state.isUseCurrentRunningCount()))
+            .instances(getAsgInstancesNode(state))
             .skipMatching(ParameterField.createValueField(true))
+            .minimumHealthyPercentage(ParameterField.createValueField(100))
             .build());
     return node;
   }

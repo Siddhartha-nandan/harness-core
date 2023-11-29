@@ -16,8 +16,6 @@ import static io.harness.yaml.schema.beans.SchemaConstants.TRIGGER_NODE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
@@ -72,8 +70,8 @@ public class PMSYamlSchemaServiceImplTest {
   @Before
   public void setUp() throws ExecutionException, InterruptedException, TimeoutException {
     MockitoAnnotations.initMocks(this);
-    pmsYamlSchemaService = new PMSYamlSchemaServiceImpl(
-        yamlSchemaValidator, pmsYamlSchemaHelper, schemaFetcher, 25, yamlSchemaExecutor, null);
+    pmsYamlSchemaService =
+        new PMSYamlSchemaServiceImpl(yamlSchemaValidator, pmsYamlSchemaHelper, schemaFetcher, yamlSchemaExecutor, null);
   }
 
   @Test
@@ -162,8 +160,8 @@ public class PMSYamlSchemaServiceImplTest {
   public void shouldNotValidateYamlSchema() throws IOException {
     when(pmsYamlSchemaHelper.isFeatureFlagEnabled(FeatureName.DISABLE_PIPELINE_SCHEMA_VALIDATION, ACC_ID))
         .thenReturn(true);
-    pmsYamlSchemaService.validateYamlSchemaInternal(ACC_ID, ORG_ID, PRJ_ID, null);
-    verify(yamlSchemaValidator, never()).validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString());
+    pmsYamlSchemaService.validateYamlSchemaInternal(ACC_ID, ORG_ID, PRJ_ID, null, "0");
+    verify(yamlSchemaValidator, never()).validate(anyString(), anyString());
   }
 
   @Test
@@ -172,20 +170,16 @@ public class PMSYamlSchemaServiceImplTest {
   public void shouldValidateYamlSchema() throws Throwable {
     final String yaml = "yamlContent";
     final String schemaString = "schemaContent";
-    pmsYamlSchemaService.allowedParallelStages = 0;
 
     when(pmsYamlSchemaHelper.isFeatureFlagEnabled(FeatureName.DISABLE_PIPELINE_SCHEMA_VALIDATION, ACC_ID))
-        .thenReturn(false);
-    when(pmsYamlSchemaHelper.isFeatureFlagEnabled(FeatureName.DONT_RESTRICT_PARALLEL_STAGE_COUNT, ACC_ID))
         .thenReturn(false);
 
     MockedStatic<JsonPipelineUtils> pipelineUtils = mockStatic(JsonPipelineUtils.class);
     pipelineUtils.when(() -> JsonPipelineUtils.writeJsonString(any())).thenReturn(schemaString);
 
-    pmsYamlSchemaService.validateYamlSchemaInternal(ACC_ID, ORG_ID, PRJ_ID, YamlUtils.readAsJsonNode(yaml));
+    pmsYamlSchemaService.validateYamlSchemaInternal(ACC_ID, ORG_ID, PRJ_ID, YamlUtils.readAsJsonNode(yaml), "0");
 
-    verify(yamlSchemaValidator)
-        .validate(eq(YamlUtils.readAsJsonNode(yaml)), eq(schemaString), anyBoolean(), anyInt(), anyString());
+    verify(yamlSchemaValidator).validate(eq(YamlUtils.readAsJsonNode(yaml)), eq(schemaString));
   }
 
   private JsonNode readJsonNode(String resourceName) throws IOException {

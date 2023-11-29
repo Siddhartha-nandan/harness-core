@@ -40,6 +40,7 @@ import io.harness.beans.yaml.extended.infrastrucutre.Infrastructure;
 import io.harness.beans.yaml.extended.infrastrucutre.OSType;
 import io.harness.ci.executable.CiAsyncExecutable;
 import io.harness.ci.ff.CIFeatureFlagService;
+import io.harness.ci.metrics.CIManagerMetricsService;
 import io.harness.delegate.TaskSelector;
 import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.TaskData;
@@ -97,7 +98,6 @@ import software.wings.beans.SerializationFormat;
 import software.wings.beans.TaskType;
 
 import com.google.inject.Inject;
-import io.fabric8.utils.Strings;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -113,6 +113,9 @@ public abstract class CommonAbstractStepExecutable extends CiAsyncExecutable {
   public static final String CI_EXECUTE_STEP = "CI_EXECUTE_STEP";
 
   @Inject private CIDelegateTaskExecutor ciDelegateTaskExecutor;
+  @Inject private CIManagerMetricsService ciManagerMetricsService;
+  private static final String STEP_STATUS = "ci_active_step_execution_count";
+  private static final String STEP_TIME_COUNT = "ci_step_execution_time";
   @Inject private SerializedResponseDataHelper serializedResponseDataHelper;
   @Inject private OutcomeService outcomeService;
 
@@ -143,7 +146,7 @@ public abstract class CommonAbstractStepExecutable extends CiAsyncExecutable {
     String stepGroupIdentifier = AmbianceUtils.obtainStepGroupIdentifier(ambiance);
     String stepIdentifier = AmbianceUtils.obtainStepIdentifier(ambiance);
     String completeStepIdentifier = getCompleteStepIdentifier(ambiance, stepIdentifier);
-    if (Strings.isNotBlank(stepGroupIdentifier)) {
+    if (isNotEmpty(stepGroupIdentifier)) {
       stepIdentifier = stepGroupIdentifier + UNDERSCORE_SEPARATOR + stepIdentifier;
     }
     String accountId = AmbianceUtils.getAccountId(ambiance);
@@ -158,7 +161,7 @@ public abstract class CommonAbstractStepExecutable extends CiAsyncExecutable {
     OptionalSweepingOutput optionalSweepingOutput = executionSweepingOutputResolver.resolveOptional(
         ambiance, RefObjectUtils.getSweepingOutputRefObject(ContextElement.stageDetails));
     if (!optionalSweepingOutput.isFound()) {
-      throw new CIStageExecutionException("Stage details sweeping output cannot be empty");
+      throw new CIStageExecutionException("Unable to fetch stage details. Please retry or verify pipeline yaml");
     }
 
     StageDetails stageDetails = (StageDetails) optionalSweepingOutput.getOutput();
@@ -433,7 +436,15 @@ public abstract class CommonAbstractStepExecutable extends CiAsyncExecutable {
 
     StepStatus stepStatus = stepStatusTaskResponseData.getStepStatus();
     StepResponseBuilder stepResponseBuilder = StepResponse.builder();
-
+    try {
+      ciManagerMetricsService.recordStepExecutionCount(stepStatus.getStepExecutionStatus().toString(), STEP_STATUS,
+          AmbianceUtils.getAccountId(ambiance), ((CIStepInfo) stepParameters.getSpec()).getStepType().getType());
+      ciManagerMetricsService.recordStepStatusExecutionTime(stepStatus.getStepExecutionStatus().toString(),
+          (currentTime - startTime) / 1000, STEP_TIME_COUNT, AmbianceUtils.getAccountId(ambiance),
+          ((CIStepInfo) stepParameters.getSpec()).getStepType().getType());
+    } catch (Exception ex) {
+      log.error(ex.getMessage());
+    }
     log.info("Received step {} response {} with type {} in {} milliseconds ", stepIdentifier,
         stepStatus.getStepExecutionStatus(), ((CIStepInfo) stepParameters.getSpec()).getStepType().getType(),
         (currentTime - startTime) / 1000);

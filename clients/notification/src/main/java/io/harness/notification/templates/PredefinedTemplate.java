@@ -26,6 +26,7 @@ public enum PredefinedTemplate {
   EMAIL_INVITE("templates/email_invite.txt", "email_invite"),
   EMAIL_NOTIFY("templates/email_notify.txt", "email_notify"),
   NG_RESET_PASSWORD("templates/ng_reset_password.txt", "ng_reset_password"),
+  NG_RESET_2FA("templates/reset_2fa.txt", "reset_2fa"),
   EMAIL_VERIFY("templates/email_verify.txt", "default_email_verify"),
   SIGNUP_CONFIRMATION("templates/signup_confirmation.txt", "default_signup_confirmation"),
   EMAIL_TEST_WITH_USER("templates/email_test2.txt", "email_test2"),
@@ -79,6 +80,7 @@ public enum PredefinedTemplate {
   CVNG_SLO_COMPOSITE_ACCOUNT_MSTEAMS(
       "cvng_notification_templates/cvng_slo_composite_account_msteams.txt", "cvng_slo_composite_account_msteams"),
   CVNG_FIREHYDRANT_SLACK("cvng_notification_templates/cvng_firehydrant_slack.txt", "cvng_firehydrant_slack"),
+  CVNG_FIREHYDRANT_WEBHOOK("cvng_notification_templates/cvng_firehydrant_webhook.txt", "cvng_firehydrant_webhook"),
   CVNG_MONITOREDSERVICE_SLACK(
       "cvng_notification_templates/cvng_monitoredservice_slack.txt", "cvng_monitoredservice_slack"),
   CVNG_MONITOREDSERVICE_ET_SLACK(
@@ -110,6 +112,11 @@ public enum PredefinedTemplate {
   FREEZE_SLACK_ALERT("notification_templates/slack_test.txt", "freeze_slack_alert"),
   FREEZE_PD_ALERT("notification_templates/pd_test.txt", "freeze_pagerduty_alert"),
   FREEZE_MSTEAMS_ALERT("notification_templates/msteams_test.txt", "freeze_msteams_alert"),
+  FREEZE_ENABLED_EMAIL_ALERT("notification_templates/freeze_enabled_email_test.txt", "freeze_enabled_email_alert"),
+  FREEZE_ENABLED_SLACK_ALERT("notification_templates/freeze_enabled_slack_test.txt", "freeze_enabled_slack_alert"),
+  FREEZE_ENABLED_PD_ALERT("notification_templates/freeze_enabled_pd_test.txt", "freeze_enabled_pagerduty_alert"),
+  FREEZE_ENABLED_MSTEAMS_ALERT(
+      "notification_templates/freeze_enabled_msteams_test.txt", "freeze_enabled_msteams_alert"),
   EMAIL_SMP_LICENSE_ALERT("templates/email_smp_license_alert.txt", "email_smp_license_alert"),
   PIPELINE_REJECTED_EMAIL_ALERT(
       "notification_templates/pipeline_rejected_email_test.txt", "pipeline_rejected_email_alert"),
@@ -140,7 +147,32 @@ public enum PredefinedTemplate {
       "harness_approval_action_execution_msteams"),
   SLACK_CCM_BUDGET_GROUP_ALERT("templates/slack_ccm_budget_group_alert.txt", "slack_ccm_budget_group_alert"),
   IDP_PLUGIN_REQUESTS_NOTIFICATION_SLACK(
-      "notification_templates/slack/plugin_requests.txt", "idp_plugin_requests_notification_slack");
+      "notification_templates/slack/plugin_requests.txt", "idp_plugin_requests_notification_slack"),
+  DELEGATE_DOWN_EMAIL("notificationtemplates/email/delegate_disconnected.txt", "delegate_disconnected_email"),
+  DELEGATE_EXPIRED_EMAIL("notificationtemplates/email/delegate_expired.txt", "delegate_expired_email"),
+  DELEGATE_ABOUT_EXPIRE_EMAIL(
+      "notificationtemplates/email/delegate_about_to_expire.txt", "delegate_about_to_expire_email"),
+
+  DELEGATE_DOWN_SLACK("notificationtemplates/slack/delegate_disconnected.txt", "delegate_disconnected_slack"),
+  DELEGATE_EXPIRED_SLACK("notificationtemplates/slack/delegate_expired.txt", "delegate_expired_slack"),
+  DELEGATE_ABOUT_EXPIRE_SLACK(
+      "notificationtemplates/slack/delegate_about_to_expire.txt", "delegate_about_to_expire_slack"),
+
+  DELEGATE_DOWN_PAGERDUTY(
+      "notificationtemplates/pagerduty/delegate_disconnected.txt", "delegate_disconnected_pagerduty"),
+  DELEGATE_EXPIRED_PAGERDUTY("notificationtemplates/pagerduty/delegate_expired.txt", "delegate_expired_pagerduty"),
+  DELEGATE_ABOUT_EXPIRE_PAGERDUTY(
+      "notificationtemplates/pagerduty/delegate_about_to_expire.txt", "delegate_about_to_expire_pagerduty"),
+
+  DELEGATE_DOWN_MSTEAMS("notificationtemplates/msteams/delegate_disconnected.txt", "delegate_disconnected_msteams"),
+  DELEGATE_EXPIRED_MSTEAMS("notificationtemplates/msteams/delegate_expired.txt", "delegate_expired_msteams"),
+  DELEGATE_ABOUT_EXPIRE_MSTEAMS(
+      "notificationtemplates/msteams/delegate_about_to_expire.txt", "delegate_about_to_expire_msteams"),
+
+  DELEGATE_DOWN_WEBHOOK("notificationtemplates/webhook/delegate_disconnected.txt", "delegate_disconnected_webhook"),
+  DELEGATE_EXPIRED_WEBHOOK("notificationtemplates/webhook/delegate_expired.txt", "delegate_expired_webhook"),
+  DELEGATE_ABOUT_EXPIRE_WEBHOOK(
+      "notificationtemplates/webhook/delegate_about_to_expire.txt", "delegate_about_to_expire_webhook");
 
   private String path;
   private String identifier;

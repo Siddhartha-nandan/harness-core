@@ -13,17 +13,15 @@ import static io.harness.rule.OwnerRule.ARPITJ;
 import static io.harness.rule.OwnerRule.DHRUVX;
 import static io.harness.rule.OwnerRule.KAMAL;
 import static io.harness.rule.OwnerRule.KARAN_SARASWAT;
+import static io.harness.rule.OwnerRule.SHASHWAT_SACHAN;
 import static io.harness.rule.OwnerRule.VARSHA_LALWANI;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.offset;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import io.harness.CvNextGenTestBase;
-import io.harness.beans.FeatureName;
 import io.harness.category.element.UnitTests;
 import io.harness.cvng.BuilderFactory;
 import io.harness.cvng.activity.entities.Activity;
@@ -282,43 +280,26 @@ public class ChangeEventServiceImplTest extends CvNextGenTestBase {
         builderFactory.getCustomChangeEventBuilder(ChangeSourceType.CUSTOM_INCIDENT).build();
     ((CustomChangeEventMetadata) changeEventDTO.getMetadata()).getCustomChangeEvent().setWebhookUrl("webhookurl");
     changeEventService.registerWithHealthReport(
-        changeEventDTO, builderFactory.getContext().getMonitoredServiceIdentifier());
+        changeEventDTO, builderFactory.getContext().getMonitoredServiceIdentifier(), null);
 
     Activity activityFromDb = hPersistence.createQuery(Activity.class).get();
     assertThat(activityFromDb).isNotNull();
   }
 
   @Test
-  @Owner(developers = DHRUVX)
+  @Owner(developers = SHASHWAT_SACHAN)
   @Category(UnitTests.class)
-  public void testGetPaginated_withMetadata() {
-    Activity harnessCDActivity_1 = builderFactory.getDeploymentActivityBuilder()
-                                       .pipelineId("pipelineId")
-                                       .runSequence("23")
-                                       .eventTime(Instant.ofEpochSecond(100))
-                                       .build();
-    Activity harnessCDActivity_2 = builderFactory.getKubernetesClusterActivityBuilder()
-                                       .newYaml("newYaml")
-                                       .oldYaml("oldYaml")
-                                       .eventTime(Instant.ofEpochSecond(200))
-                                       .build();
-    hPersistence.save(Arrays.asList(harnessCDActivity_1, harnessCDActivity_2));
-    when(featureFlagService.isFeatureFlagEnabled(eq(builderFactory.getContext().getAccountId()),
-             eq(FeatureName.SRM_OPTIMISE_CHANGE_EVENTS_API_RESPONSE.name())))
-        .thenReturn(false);
-    PageResponse<ChangeEventDTO> firstPage = changeEventService.getChangeEvents(
-        builderFactory.getContext().getProjectParams(), null, null, null, null, Instant.ofEpochSecond(100),
-        Instant.ofEpochSecond(400), PageRequest.builder().pageIndex(0).pageSize(2).build());
+  public void testRegisterWithHealthReportWithAuthToken() {
+    ChangeEventDTO changeEventDTO =
+        builderFactory.getCustomChangeEventBuilder(ChangeSourceType.CUSTOM_INCIDENT).build();
+    ((CustomChangeEventMetadata) changeEventDTO.getMetadata()).getCustomChangeEvent().setWebhookUrl("webhookurl");
+    ((CustomChangeEventMetadata) changeEventDTO.getMetadata()).getCustomChangeEvent().setChannelId("channelId");
 
-    assertThat(firstPage.getContent().size()).isEqualTo(2);
-    KubernetesChangeEventMetadata kubernetesChangeEventMetadata =
-        (KubernetesChangeEventMetadata) firstPage.getContent().get(0).getMetadata();
-    assertThat(kubernetesChangeEventMetadata.getNewYaml()).isEqualTo("newYaml");
-    assertThat(kubernetesChangeEventMetadata.getOldYaml()).isEqualTo("oldYaml");
-    HarnessCDEventMetadata harnessCDEventMetadata =
-        (HarnessCDEventMetadata) firstPage.getContent().get(1).getMetadata();
-    assertThat(harnessCDEventMetadata.getPipelineId()).isEqualTo("pipelineId");
-    assertThat(harnessCDEventMetadata.getRunSequence()).isEqualTo("23");
+    changeEventService.registerWithHealthReport(
+        changeEventDTO, builderFactory.getContext().getMonitoredServiceIdentifier(), "TestToken");
+
+    Activity activityFromDb = hPersistence.createQuery(Activity.class).get();
+    assertThat(activityFromDb).isNotNull();
   }
 
   @Test
@@ -336,9 +317,7 @@ public class ChangeEventServiceImplTest extends CvNextGenTestBase {
                                        .eventTime(Instant.ofEpochSecond(200))
                                        .build();
     hPersistence.save(Arrays.asList(harnessCDActivity_1, harnessCDActivity_2));
-    when(featureFlagService.isFeatureFlagEnabled(eq(builderFactory.getContext().getAccountId()),
-             eq(FeatureName.SRM_OPTIMISE_CHANGE_EVENTS_API_RESPONSE.name())))
-        .thenReturn(true);
+
     PageResponse<ChangeEventDTO> firstPage = changeEventService.getChangeEvents(
         builderFactory.getContext().getProjectParams(), null, null, null, null, Instant.ofEpochSecond(100),
         Instant.ofEpochSecond(400), PageRequest.builder().pageIndex(0).pageSize(2).build());

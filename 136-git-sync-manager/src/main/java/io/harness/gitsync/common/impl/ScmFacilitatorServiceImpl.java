@@ -47,7 +47,6 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.exception.WingsException;
 import io.harness.gitsync.beans.GitRepositoryDTO;
 import io.harness.gitsync.caching.beans.CacheDetails;
-import io.harness.gitsync.caching.beans.GitFileCacheDeleteResult;
 import io.harness.gitsync.caching.beans.GitFileCacheKey;
 import io.harness.gitsync.caching.beans.GitFileCacheObject;
 import io.harness.gitsync.caching.beans.GitFileCacheResponse;
@@ -725,6 +724,8 @@ public class ScmFacilitatorServiceImpl implements ScmFacilitatorService {
 
   @Override
   public ScmCommitFileResponseDTO updateFile(ScmUpdateFileRequestDTO scmUpdateFileRequestDTO) {
+    validateUpdateFileRequest(scmUpdateFileRequestDTO);
+
     Scope scope = scmUpdateFileRequestDTO.getScope();
     ScmConnector scmConnector = gitSyncConnectorService.getScmConnectorForGivenRepo(scope.getAccountIdentifier(),
         scope.getOrgIdentifier(), scope.getProjectIdentifier(), scmUpdateFileRequestDTO.getConnectorRef(),
@@ -1069,8 +1070,8 @@ public class ScmFacilitatorServiceImpl implements ScmFacilitatorService {
 
   private Optional<ScmGetFileResponseDTO> getFileCacheResponseIfApplicable(
       ScmGetFileByBranchRequestDTO scmGetFileByBranchRequestDTO, ScmConnector scmConnector, String workingBranch) {
-    boolean isSyncEnabled = isBiDirectionalSyncEnabled(scmGetFileByBranchRequestDTO);
-    if (isSyncEnabled || scmGetFileByBranchRequestDTO.isUseCache()) {
+    boolean isBiDirectionalSyncApplicable = isBiDirectionalSyncApplicable(scmGetFileByBranchRequestDTO);
+    if (isBiDirectionalSyncApplicable || scmGetFileByBranchRequestDTO.isUseCache()) {
       GitFileCacheKey cacheKey = getCacheKey(scmGetFileByBranchRequestDTO, scmConnector, workingBranch);
       GitFileCacheResponse gitFileCacheResponse = getFileFromCache(cacheKey);
       if (gitFileCacheResponse != null) {
@@ -1079,26 +1080,24 @@ public class ScmFacilitatorServiceImpl implements ScmFacilitatorService {
             gitFileCacheResponse.getGitFileCacheResponseMetadata().getRef(),
             gitFileCacheResponse.getGitFileCacheObject().getCommitId(),
             gitFileCacheResponse.getGitFileCacheObject().getObjectId(), gitFileCacheResponse.getCacheDetails(),
-            isSyncEnabled));
+            isBiDirectionalSyncApplicable));
       }
     }
     return Optional.empty();
   }
 
   //  TODO: Move this to GitXWebhookService to make it centralised when more use cases arises
-  private boolean isBiDirectionalSyncEnabled(ScmGetFileByBranchRequestDTO scmGetFileByBranchRequestDTO) {
-    List<String> matchingFolderPaths = new ArrayList<>();
+  private boolean isBiDirectionalSyncApplicable(ScmGetFileByBranchRequestDTO scmGetFileByBranchRequestDTO) {
     if (ngFeatureFlagHelperService.isEnabled(
             scmGetFileByBranchRequestDTO.getScope().getAccountIdentifier(), FeatureName.PIE_GIT_BI_DIRECTIONAL_SYNC)) {
-      Optional<GitXWebhook> optionalGitXWebhook =
-          gitXWebhookService.getGitXWebhook(scmGetFileByBranchRequestDTO.getScope().getAccountIdentifier(), null,
-              scmGetFileByBranchRequestDTO.getRepoName());
-      if (optionalGitXWebhook.isPresent()) {
-        matchingFolderPaths = GitXWebhookUtils.compareFolderPaths(optionalGitXWebhook.get().getFolderPaths(),
-            Collections.singletonList(scmGetFileByBranchRequestDTO.getFilePath()));
+      List<GitXWebhook> gitXWebhookList = gitXWebhookService.getGitXWebhookForAllScopes(
+          scmGetFileByBranchRequestDTO.getScope(), scmGetFileByBranchRequestDTO.getRepoName());
+      if (isNotEmpty(gitXWebhookList)) {
+        return GitXWebhookUtils.isBiDirectionalSyncEnabled(
+            scmGetFileByBranchRequestDTO.getScope(), gitXWebhookList, scmGetFileByBranchRequestDTO.getFilePath());
       }
     }
-    return isNotEmpty(matchingFolderPaths);
+    return false;
   }
 
   private GitFileFetchRunnableParams getGitFileFetchRunnableParams(Scope scope, String repoName, String branchName,
@@ -1123,8 +1122,7 @@ public class ScmFacilitatorServiceImpl implements ScmFacilitatorService {
                                      .repoName(repoName)
                                      .ref(branchName)
                                      .build();
-      GitFileCacheDeleteResult gitFileCacheDeleteResult = gitFileCacheService.invalidateCache(cacheKey);
-      log.info("Invalidated cache for key: {} , result: {}", cacheKey, gitFileCacheDeleteResult);
+      gitFileCacheService.invalidateCache(cacheKey);
     } catch (Exception exception) {
       log.error("invalidateGitFileCache Failure, skipping invalidation of cache", exception);
     }
@@ -1410,8 +1408,17 @@ public class ScmFacilitatorServiceImpl implements ScmFacilitatorService {
   }
 
   private void validateCreateFileRequest(ScmCreateFileRequestDTO scmCreateFileRequestDTO, ScmConnector scmConnector) {
+    if (isEmpty(scmCreateFileRequestDTO.getBranchName())) {
+      throw new InvalidRequestException("Branch cannot be empty during create file GIT operation");
+    }
     gitRepoAllowlistHelper.validateRepo(
         scmCreateFileRequestDTO.getScope(), scmConnector, scmCreateFileRequestDTO.getRepoName());
+  }
+
+  private void validateUpdateFileRequest(ScmUpdateFileRequestDTO scmUpdateFileRequestDTO) {
+    if (isEmpty(scmUpdateFileRequestDTO.getBranchName())) {
+      throw new InvalidRequestException("Branch cannot be empty during update file GIT operation");
+    }
   }
 
   private void validateGetFileRequest(

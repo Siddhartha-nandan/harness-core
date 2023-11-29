@@ -6,6 +6,7 @@
  */
 
 package io.harness.steps.shellscript;
+
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static io.harness.authorization.AuthorizationServiceHeader.NG_MANAGER;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
@@ -30,6 +31,7 @@ import io.harness.common.NGTimeConversionHelper;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.delegate.task.TaskParameters;
 import io.harness.delegate.task.k8s.K8sInfraDelegateConfig;
+import io.harness.delegate.task.shell.ShellScriptTaskNG;
 import io.harness.delegate.task.shell.ShellScriptTaskParametersNG;
 import io.harness.delegate.task.shell.ShellScriptTaskParametersNG.ShellScriptTaskParametersNGBuilder;
 import io.harness.delegate.task.shell.WinRmShellScriptTaskParametersNG;
@@ -60,6 +62,7 @@ import io.harness.pms.expression.ParameterFieldResolverFunctor;
 import io.harness.pms.sdk.core.data.OptionalSweepingOutput;
 import io.harness.pms.sdk.core.resolver.RefObjectUtils;
 import io.harness.pms.sdk.core.resolver.outputs.ExecutionSweepingOutputService;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.validation.InputSetValidatorFactory;
@@ -332,9 +335,25 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
                             .getValue());
   }
 
+  private void updateShellScriptStepOnDelegateParameterField(ShellScriptStepParameters shellScriptStepParameters) {
+    if (ParameterField.isNull(shellScriptStepParameters.onDelegate)) {
+      if (shellScriptStepParameters.getExecutionTarget() == null) {
+        shellScriptStepParameters.setOnDelegate(ParameterField.createValueField(true));
+      } else {
+        shellScriptStepParameters.setOnDelegate(ParameterField.createValueField(false));
+      }
+    } else {
+      if (!Boolean.class.isInstance(shellScriptStepParameters.onDelegate.getValue())) {
+        throw new InvalidRequestException(
+            "Provide a valid value for onDelegate as it is a boolean field. Provided onDelegate value is: "
+            + shellScriptStepParameters.onDelegate.getValue());
+      }
+    }
+  }
+
   @Override
-  public TaskParameters buildShellScriptTaskParametersNG(
-      @Nonnull Ambiance ambiance, @Nonnull ShellScriptStepParameters shellScriptStepParameters, String sessionTimeout) {
+  public TaskParameters buildShellScriptTaskParametersNG(@Nonnull Ambiance ambiance,
+      @Nonnull ShellScriptStepParameters shellScriptStepParameters, String sessionTimeout, String commandUnit) {
     SecurityContextBuilder.setContext(new ServicePrincipal(NG_MANAGER.getServiceId()));
     ScriptType scriptType = shellScriptStepParameters.getShell().getScriptType();
     String shellScript = shellScriptHelperService.getShellScript(shellScriptStepParameters, ambiance);
@@ -342,11 +361,15 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
         ? shellScriptStepParameters.getExecutionTarget().getWorkingDirectory()
         : ParameterField.ofNull();
     validateExportVariables(shellScriptStepParameters.getOutputAlias());
+
+    // [TO BE REMOVED]: updating onDelegate Parameter Field in case it's empty
+    updateShellScriptStepOnDelegateParameterField(shellScriptStepParameters);
+
     if (ScriptType.BASH.equals(scriptType)) {
       return buildBashTaskParametersNG(ambiance, shellScriptStepParameters, scriptType, shellScript, workingDirectory);
     } else {
       return getWinRmTaskParametersNG(
-          ambiance, shellScriptStepParameters, scriptType, shellScript, workingDirectory, sessionTimeout);
+          ambiance, shellScriptStepParameters, scriptType, shellScript, workingDirectory, sessionTimeout, commandUnit);
     }
   }
 
@@ -367,12 +390,12 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
   @Override
   public TaskParameters buildShellScriptTaskParametersNG(
       @NotNull Ambiance ambiance, @NotNull ShellScriptStepParameters shellScriptStepParameters) {
-    return buildShellScriptTaskParametersNG(ambiance, shellScriptStepParameters, null);
+    return buildShellScriptTaskParametersNG(ambiance, shellScriptStepParameters, null, ShellScriptTaskNG.COMMAND_UNIT);
   }
 
   private WinRmShellScriptTaskParametersNG getWinRmTaskParametersNG(@NotNull Ambiance ambiance,
       @NotNull ShellScriptStepParameters shellScriptStepParameters, ScriptType scriptType, String shellScript,
-      ParameterField<String> workingDirectory, String sessionTimeout) {
+      ParameterField<String> workingDirectory, String sessionTimeout, String commandUnit) {
     WinRmShellScriptTaskParametersNGBuilder taskParametersNGBuilder = WinRmShellScriptTaskParametersNG.builder();
 
     Boolean includeInfraSelectors = shellScriptStepParameters.includeInfraSelectors != null
@@ -419,6 +442,7 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
         .sessionTimeout(EmptyPredicate.isNotEmpty(sessionTimeout)
                 ? Math.max(NGTimeConversionHelper.convertTimeStringToMilliseconds(sessionTimeout), SESSION_TIMEOUT)
                 : SESSION_TIMEOUT)
+        .commandUnit(commandUnit)
         .build();
   }
 
@@ -468,7 +492,7 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
   }
 
   @Override
-  public ShellScriptOutcome prepareShellScriptOutcome(
+  public ShellScriptBaseOutcome prepareShellScriptOutcome(
       Map<String, String> sweepingOutputEnvVariables, Map<String, Object> outputVariables) {
     if (outputVariables == null || sweepingOutputEnvVariables == null) {
       return null;
@@ -478,7 +502,7 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
       Object value = ((ParameterField<?>) outputVariables.get(name)).getValue();
       resolvedOutputVariables.put(name, sweepingOutputEnvVariables.get(value));
     });
-    return ShellScriptOutcome.builder().outputVariables(resolvedOutputVariables).build();
+    return ShellScriptHelperService.getShellScriptOutcome(resolvedOutputVariables, HarnessYamlVersion.V0);
   }
 
   @Override
@@ -509,7 +533,8 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
 
   @Override
   public void exportOutputVariablesUsingAlias(@Nonnull Ambiance ambiance,
-      @Nonnull ShellScriptStepParameters shellScriptStepParameters, @Nonnull ShellScriptOutcome shellScriptOutcome) {
+      @Nonnull ShellScriptStepParameters shellScriptStepParameters,
+      @Nonnull ShellScriptBaseOutcome shellScriptOutcome) {
     if (isNull(shellScriptStepParameters.getOutputAlias())
         || EmptyPredicate.isEmpty(shellScriptOutcome.getOutputVariables())) {
       log.debug("Skipping exporting output variables as output alias not present or output variables are empty");

@@ -10,6 +10,7 @@ package io.harness.engine.expressions;
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.FeatureName;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.engine.executions.node.NodeExecutionService;
 import io.harness.engine.executions.plan.PlanService;
@@ -18,6 +19,7 @@ import io.harness.plan.Node;
 import io.harness.plan.NodeType;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
+import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.execution.utils.NodeProjectionUtils;
 import io.harness.pms.execution.utils.StatusUtils;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
@@ -67,8 +69,14 @@ public class NodeExecutionsCache {
       return map.get(nodeExecutionId);
     }
 
-    NodeExecution nodeExecution =
-        nodeExecutionService.getWithFieldsIncluded(nodeExecutionId, NodeProjectionUtils.fieldsForExpressionEngine);
+    NodeExecution nodeExecution;
+    if (AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_USE_AMBIANCE_IN_EXPRESSION_ENGINE.name())) {
+      nodeExecution = nodeExecutionService.getWithFieldsIncluded(
+          nodeExecutionId, NodeProjectionUtils.fieldsForExpressionEngineWithAmbiance);
+    } else {
+      nodeExecution =
+          nodeExecutionService.getWithFieldsIncluded(nodeExecutionId, NodeProjectionUtils.fieldsForExpressionEngine);
+    }
     map.put(nodeExecutionId, nodeExecution);
     return nodeExecution;
   }
@@ -95,8 +103,14 @@ public class NodeExecutionsCache {
     }
 
     List<NodeExecution> childExecutions = new LinkedList<>();
+    Set<String> fieldsForExpressionEngine;
+    if (AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_USE_AMBIANCE_IN_EXPRESSION_ENGINE.name())) {
+      fieldsForExpressionEngine = NodeProjectionUtils.fieldsForExpressionEngineWithAmbiance;
+    } else {
+      fieldsForExpressionEngine = NodeProjectionUtils.fieldsForExpressionEngine;
+    }
     try (CloseableIterator<NodeExecution> iterator = nodeExecutionService.fetchChildrenNodeExecutionsIterator(
-             ambiance.getPlanExecutionId(), parentId, NodeProjectionUtils.fieldsForExpressionEngine)) {
+             ambiance.getPlanExecutionId(), parentId, fieldsForExpressionEngine)) {
       while (iterator.hasNext()) {
         childExecutions.add(iterator.next());
       }

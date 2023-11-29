@@ -291,12 +291,10 @@ public class FilterCreatorMergeService {
 
   @VisibleForTesting
   public Optional<EntityDetailProtoDTO> getGitConnectorReference(PipelineEntity pipelineEntity) {
-    GitAwareContextHelper.initDefaultScmGitMetaData();
-    GitEntityInfo gitEntityInfo = GitContextHelper.getGitEntityInfo();
-    if (isGitSimplificationEnabled(pipelineEntity, gitEntityInfo)) {
-      IdentifierRef identifierRef =
-          IdentifierRefHelper.getIdentifierRef(gitEntityInfo.getConnectorRef(), pipelineEntity.getAccountIdentifier(),
-              pipelineEntity.getOrgIdentifier(), pipelineEntity.getProjectIdentifier());
+    if (isGitSimplificationEnabled(pipelineEntity)) {
+      IdentifierRef identifierRef = IdentifierRefHelper.getIdentifierRef(
+          getConnectorRefFromPipelineEntity(pipelineEntity), pipelineEntity.getAccountIdentifier(),
+          pipelineEntity.getOrgIdentifier(), pipelineEntity.getProjectIdentifier());
 
       IdentifierRefProtoDTO connectorReference =
           IdentifierRefProtoDTOHelper.createIdentifierRefProtoDTO(identifierRef.getAccountIdentifier(),
@@ -310,8 +308,17 @@ public class FilterCreatorMergeService {
     return Optional.empty();
   }
 
-  private boolean isGitSimplificationEnabled(PipelineEntity pipelineEntity, GitEntityInfo gitEntityInfo) {
-    return gitEntityInfo != null && StoreType.REMOTE.equals(gitEntityInfo.getStoreType())
+  private String getConnectorRefFromPipelineEntity(PipelineEntity pipelineEntity) {
+    if (isNotEmpty(pipelineEntity.getConnectorRef())) {
+      return pipelineEntity.getConnectorRef();
+    }
+    GitAwareContextHelper.initDefaultScmGitMetaData();
+    GitEntityInfo gitEntityInfo = GitContextHelper.getGitEntityInfo();
+    return gitEntityInfo.getConnectorRef();
+  }
+
+  private boolean isGitSimplificationEnabled(PipelineEntity pipelineEntity) {
+    return StoreType.REMOTE.equals(pipelineEntity.getStoreType())
         && gitSyncSdkService.isGitSimplificationEnabled(pipelineEntity.getAccountIdentifier(),
             pipelineEntity.getOrgIdentifier(), pipelineEntity.getProjectIdentifier());
   }

@@ -62,8 +62,6 @@ import io.harness.pms.sdk.core.plan.PlanNode.PlanNodeBuilder;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
-import io.harness.pms.timeout.SdkTimeoutObtainment;
-import io.harness.pms.utils.StageTimeoutUtils;
 import io.harness.pms.yaml.DependenciesUtils;
 import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.ParameterField;
@@ -92,6 +90,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
+import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -128,6 +127,7 @@ public class IACMStagePMSPlanCreator extends AbstractStagePlanCreator<IACMStageN
       PlanCreationContext ctx, IACMStageNode stageNode) {
     log.info("Received plan creation request for iacm stage {}", stageNode.getIdentifier());
     LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap = new LinkedHashMap<>();
+    Map<String, ByteString> metadataMap = new HashMap<>();
 
     // Spec from the stages/IACM stage
     YamlField specField =
@@ -168,6 +168,10 @@ public class IACMStagePMSPlanCreator extends AbstractStagePlanCreator<IACMStageN
     // the steps from the plan to the level of steps->spec->stageElementConfig->execution->steps. Here, we can inject
     // any step and that step will be available in the InitialTask step in the path:
     // stageElementConfig -> Execution -> Steps -> InjectedSteps
+
+    // Add the strategyFieldDependecy
+    addStrategyFieldDependencyIfPresent(ctx, stageNode, planCreationResponseMap, metadataMap);
+
     putNewExecutionYAMLInResponseMap(
         executionField, planCreationResponseMap, modifiedExecutionPlanWithWorkspace, parentNode);
 
@@ -186,7 +190,7 @@ public class IACMStagePMSPlanCreator extends AbstractStagePlanCreator<IACMStageN
 
   private ExecutionElementConfig addExtraGitCloneSteps(
       ExecutionElementConfig modifiedExecutionPlan, Workspace workspace) {
-    if (workspace.getTf_var_files() == null) {
+    if (workspace.getTerraform_variable_files() == null) {
       return modifiedExecutionPlan;
     }
     List<ExecutionWrapperConfig> steps = modifiedExecutionPlan.getSteps();
@@ -194,16 +198,18 @@ public class IACMStagePMSPlanCreator extends AbstractStagePlanCreator<IACMStageN
     int stepIndex = 0;
     List<String> processedRepos = new ArrayList<>();
     List<ExecutionWrapperConfig> innerSteps = new ArrayList<>();
-    for (VariablesRepo variablesRepo : workspace.getTf_var_files()) {
-      // If the connector is the same as where the main repo is, then it means that we do not need to clone the repo
-      // again
-      if (Objects.equals(variablesRepo.getRepository_connector(), workspace.getRepository_connector())) {
+
+    for (VariablesRepo variablesRepo : workspace.getTerraform_variable_files()) {
+      // if the connector, repo, branch and commit are the same as the workspace repo we can skip
+      if (Objects.equals(variablesRepo.getRepository_connector(), workspace.getRepository_connector())
+          && Objects.equals(variablesRepo.getRepository(), workspace.getRepository())
+          && Objects.equals(
+              variablesRepo.getRepository_branch(), Objects.toString(workspace.getRepository_branch(), ""))
+          && Objects.equals(
+              variablesRepo.getRepository_commit(), Objects.toString(workspace.getRepository_commit(), ""))) {
         continue;
       }
-      // if the connector has been already processed, skip it
-      if (processedRepos.contains(variablesRepo.getRepository_connector())) {
-        continue;
-      }
+
       BuildBuilder buildObject = builder();
       if (!Objects.equals(variablesRepo.getRepository_branch(), "")) {
         buildObject.type(BuildType.BRANCH);
@@ -217,12 +223,18 @@ public class IACMStagePMSPlanCreator extends AbstractStagePlanCreator<IACMStageN
                              .tag(ParameterField.<String>builder().value(variablesRepo.getRepository_commit()).build())
                              .build());
       }
+      String hashedGitRepoInfo = iacmStepsUtils.generateHashedGitRepoInfo(variablesRepo.getRepository(),
+          variablesRepo.getRepository_connector(), variablesRepo.getRepository_branch(),
+          variablesRepo.getRepository_commit(), variablesRepo.getRepository_path());
       GitCloneStepInfo gitCloneStepInfo =
           GitCloneStepInfo.builder()
               .connectorRef(ParameterField.<String>builder().value(variablesRepo.getRepository_connector()).build())
               .depth(ParameterField.<Integer>builder().value(50).build())
               .build(ParameterField.<Build>builder().value(buildObject.build()).build())
               .repoName(ParameterField.<String>builder().value(variablesRepo.getRepository()).build())
+              .cloneDirectory(ParameterField.<String>builder()
+                                  .value(iacmStepsUtils.generateVariableFileBasePath(hashedGitRepoInfo))
+                                  .build())
               .build();
       String uuid = generateUuid();
       try {
@@ -481,8 +493,6 @@ public class IACMStagePMSPlanCreator extends AbstractStagePlanCreator<IACMStageN
                     .setType(FacilitatorType.newBuilder().setType(OrchestrationFacilitatorType.CHILD).build())
                     .build())
             .adviserObtainments(StrategyUtils.getAdviserObtainments(ctx.getCurrentField(), kryoSerializer, true));
-    SdkTimeoutObtainment sdkTimeoutObtainment = StageTimeoutUtils.getStageTimeoutObtainment(stageNode);
-    planNodeBuilder = setStageTimeoutObtainment(sdkTimeoutObtainment, planNodeBuilder);
     return planNodeBuilder.build();
   }
 
@@ -637,15 +647,27 @@ public class IACMStagePMSPlanCreator extends AbstractStagePlanCreator<IACMStageN
         // I could not find a way to get the connector type from the webhook, so I will use the connector type from the
         // workspace and assume that both are the same. This is required because if the connector is an account
         // connector, the repository name can only contain the name and not the full url.
-        if (!Objects.equals(workspace.getRepository_connector(), "") && workspace.getRepository_connector() != null) {
+        if (ctx.getMetadata().getTriggerPayload().getParsedPayload().hasPr()) {
+          if (!Objects.equals(workspace.getRepository_connector(), "") && workspace.getRepository_connector() != null) {
+            iacmCodeBase.repoName(
+                ParameterField.<String>builder()
+                    .value(ctx.getMetadata().getTriggerPayload().getParsedPayload().getPr().getRepo().getName())
+                    .build());
+          } else {
+            iacmCodeBase.repoName(
+                ParameterField.<String>builder()
+                    .value(ctx.getMetadata().getTriggerPayload().getParsedPayload().getPr().getRepo().getClone())
+                    .build());
+          }
+        } else if (ctx.getMetadata().getTriggerPayload().getParsedPayload().hasPush()) {
           iacmCodeBase.repoName(
               ParameterField.<String>builder()
-                  .value(ctx.getMetadata().getTriggerPayload().getParsedPayload().getPr().getRepo().getName())
+                  .value(ctx.getMetadata().getTriggerPayload().getParsedPayload().getPush().getRepo().getName())
                   .build());
-        } else {
+        } else if (ctx.getMetadata().getTriggerPayload().getParsedPayload().hasRelease()) {
           iacmCodeBase.repoName(
               ParameterField.<String>builder()
-                  .value(ctx.getMetadata().getTriggerPayload().getParsedPayload().getPr().getRepo().getClone())
+                  .value(ctx.getMetadata().getTriggerPayload().getParsedPayload().getRelease().getRepo().getName())
                   .build());
         }
         // If getPr is not null the trigger type is a PR trigger, and we want to use the PRBuildSpec.

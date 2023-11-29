@@ -20,9 +20,36 @@ public class Constants {
   public static final String IDP_PREFIX = "idp_";
   public static final String IDP_RESOURCE_TYPE = "IDP_SETTINGS";
   public static final String IDP_PERMISSION = "idp_idpsettings_manage";
-  public static final List<String> pluginIds = List.of("circleci", "confluence", "firehydrant", "github-actions",
-      "github-catalog-discovery", "github-insights", "github-pull-requests", "grafana", "harness-ci-cd",
-      "harness-feature-flags", "jenkins", "jira", "kubernetes", "pager-duty", "sonarqube", "todo");
+
+  // Plugin identifiers
+  public static final String CIRCLE_CI_PLUGIN = "circleci";
+  public static final String CONFLUENCE_PLUGIN = "confluence";
+  public static final String DATADOG_PLUGIN = "datadog";
+  public static final String FIRE_HYDRANT_PLUGIN = "firehydrant";
+  public static final String GITHUB_ACTIONS_PLUGIN = "github-actions";
+  public static final String GITHUB_CATALOG_DISCOVERY_PLUGIN = "github-catalog-discovery";
+  public static final String GITHUB_INSIGHTS_PLUGIN = "github-insights";
+  public static final String GITHUB_PULL_REQUESTS_PLUGIN = "github-pull-requests";
+  public static final String GRAFANA_PLUGIN = "grafana";
+  public static final String HARNESS_CI_CD_PLUGIN = "harness-ci-cd";
+  public static final String HARNESS_FEATURE_FLAGS_PLUGIN = "harness-feature-flags";
+  public static final String JENKINS_PLUGIN = "jenkins";
+  public static final String JIRA_PLUGIN = "jira";
+  public static final String KAFKA_PLUGIN = "kafka";
+  public static final String KUBERNETES_PLUGIN = "kubernetes";
+  public static final String LIGHTHOUSE_PLUGIN = "lighthouse";
+  public static final String PAGER_DUTY_PLUGIN = "pager-duty";
+  public static final String SYNK_SECURITY_PLUGIN = "snyk-security";
+  public static final String SONARQUBE_PLUGIN = "sonarqube";
+  public static final String TODO_PLUGIN = "todo";
+  public static final String OPSGENIE_PLUGIN = "opsgenie";
+  public static final String HARNESS_SRM_PLUGIN = "harness-srm";
+
+  public static final List<String> pluginIds =
+      List.of(CIRCLE_CI_PLUGIN, CONFLUENCE_PLUGIN, DATADOG_PLUGIN, FIRE_HYDRANT_PLUGIN, GITHUB_ACTIONS_PLUGIN,
+          GITHUB_CATALOG_DISCOVERY_PLUGIN, GITHUB_INSIGHTS_PLUGIN, GITHUB_PULL_REQUESTS_PLUGIN, GRAFANA_PLUGIN,
+          HARNESS_CI_CD_PLUGIN, HARNESS_FEATURE_FLAGS_PLUGIN, HARNESS_SRM_PLUGIN, JENKINS_PLUGIN, JIRA_PLUGIN,
+          KUBERNETES_PLUGIN, OPSGENIE_PLUGIN, PAGER_DUTY_PLUGIN, SONARQUBE_PLUGIN, TODO_PLUGIN);
   public static final String GITHUB_TOKEN = "HARNESS_GITHUB_TOKEN";
   public static final String GITHUB_APP_ID = "HARNESS_GITHUB_APP_APPLICATION_ID";
   public static final String GITHUB_APP_PRIVATE_KEY_REF = "HARNESS_GITHUB_APP_PRIVATE_KEY_REF";
@@ -38,7 +65,9 @@ public class Constants {
   public static final String IDP_BACKEND_SECRET = "IDP_BACKEND_SECRET";
   public static final String PROXY_ENV_NAME = "HOST_PROXY_MAP";
   public static final String GITHUB_AUTH = "github-auth";
+  public static final String GITHUB_AUTH_NAME = "GitHub Auth";
   public static final String GOOGLE_AUTH = "google-auth";
+  public static final String GOOGLE_AUTH_NAME = "Google Auth";
   public static final String AUTH_GITHUB_CLIENT_ID = "AUTH_GITHUB_CLIENT_ID";
   public static final String AUTH_GITHUB_CLIENT_SECRET = "AUTH_GITHUB_CLIENT_SECRET";
   public static final String AUTH_GITHUB_ENTERPRISE_INSTANCE_URL = "AUTH_GITHUB_ENTERPRISE_INSTANCE_URL";
@@ -75,11 +104,11 @@ public class Constants {
   public static final String ERRORS = "errors";
   public static final String MESSAGE_KEY = "message";
 
-  public static final String QA_HOST = "qa.harness.io";
-  public static final String PRE_QA_HOST = "stress.harness.io";
-  public static final String PROD_HOST = "app.harness.io";
+  public static final String QA_HOST = "https://qa.harness.io";
+  public static final String PRE_QA_HOST = "https://stress.harness.io";
+  public static final String PROD_HOST = "https://app.harness.io";
 
-  public static final String LOCAL_HOST = "localhost:8181";
+  public static final String LOCAL_HOST = "http://localhost:12003";
 
   public static final String QA_ENV = "qa";
   public static final String PRE_QA_ENV = "stress";
@@ -88,17 +117,9 @@ public class Constants {
 
   public static final String COMPLIANCE_ENV = "compliance";
 
-  public static final String HARNESS_STO_SCAN_SETUP_DSL = "harness_sto_scan_dsl";
-  public static final String HARNESS_POLICY_EVALUATION_DSL = "harness_policy_evaluation_dsl";
-  public static final String HARNESS_CI_SUCCESS_PERCENT_IN_SEVEN_DAYS = "harness_ci_success_percent_in_seven_days";
-
-  public static final String HARNESS_TEST_PASSING_ON_CI_IS_ZERO = "harness_test_passing_on_ci_is_zero";
   public static final String DEFAULT_BRANCH_KEY = "refs/";
   public static final String DEFAULT_BRANCH_KEY_ESCAPED = "\"refs/\"";
 
-  public static final String PAGERDUTY_SERVICE_DIRECTORY = "pagerduty_service_directory";
-  public static final String PAGERDUTY_INCIDENTS = "pagerduty_incidents";
   public static final String KUBERNETES = "kubernetes";
   public static final String HARNESS_ACCOUNT = "Harness-Account";
-  public static final String PAGERDUTY_RESOLVED_INCIDENTS = "pagerduty_resolved_incidents";
 }

@@ -8,6 +8,7 @@
 package io.harness.pms.plan.execution;
 
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
+import static io.harness.beans.FeatureName.CI_YAML_VERSIONING;
 import static io.harness.beans.FeatureName.PIE_GET_FILE_CONTENT_ONLY;
 import static io.harness.rule.OwnerRule.ADITHYA;
 import static io.harness.rule.OwnerRule.NAMAN;
@@ -49,6 +50,7 @@ import io.harness.pms.plan.execution.beans.dto.InterruptDTO;
 import io.harness.pms.plan.execution.beans.dto.RunStageRequestDTO;
 import io.harness.pms.plan.execution.service.PMSExecutionService;
 import io.harness.pms.stages.StageExecutionResponse;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.rule.Owner;
 import io.harness.utils.PmsFeatureFlagService;
 import io.harness.utils.ThreadOperationContextHelper;
@@ -115,6 +117,7 @@ public class PlanExecutionResourceTest extends CategoryTest {
   @Owner(developers = NAMAN)
   @Category(UnitTests.class)
   public void testGetStagesExecutionList() {
+    doReturn(false).when(pmsFeatureFlagService).isEnabled(ACCOUNT_ID, CI_YAML_VERSIONING);
     doReturn(Optional.of(entity))
         .when(pmsPipelineService)
         .getPipeline(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, false);
@@ -137,6 +140,7 @@ public class PlanExecutionResourceTest extends CategoryTest {
   @Owner(developers = UTKARSH_CHOUBEY)
   @Category(UnitTests.class)
   public void testGetStagesExecutionListWhenFfIsOn() {
+    doReturn(false).when(pmsFeatureFlagService).isEnabled(ACCOUNT_ID, CI_YAML_VERSIONING);
     doReturn(Optional.of(entity))
         .when(pmsPipelineService)
         .getPipeline(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, true);
@@ -144,7 +148,8 @@ public class PlanExecutionResourceTest extends CategoryTest {
         TemplateMergeResponseDTO.builder().mergedPipelineYaml(yaml).build();
     doReturn(templateMergeResponseDTO)
         .when(pipelineTemplateHelper)
-        .resolveTemplateRefsInPipeline(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, yaml, "true");
+        .resolveTemplateRefsInPipeline(
+            ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, yaml, "true", HarnessYamlVersion.V0);
     ResponseDTO<List<StageExecutionResponse>> stagesExecutionList = planExecutionResource.getStagesExecutionList(
         ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, null, "true");
     assertThat(stagesExecutionList.getData()).hasSize(2);

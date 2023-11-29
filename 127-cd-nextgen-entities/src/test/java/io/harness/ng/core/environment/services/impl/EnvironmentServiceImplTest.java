@@ -36,6 +36,8 @@ import io.harness.data.structure.UUIDGenerator;
 import io.harness.eventsframework.api.Producer;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ReferencedEntityException;
+import io.harness.gitsync.beans.StoreType;
+import io.harness.gitx.GitXSettingsHelper;
 import io.harness.ng.core.EntityDetail;
 import io.harness.ng.core.entitysetupusage.dto.EntitySetupUsageDTO;
 import io.harness.ng.core.entitysetupusage.service.EntitySetupUsageService;
@@ -108,6 +110,7 @@ public class EnvironmentServiceImplTest extends CDNGEntitiesTestBase {
   @Mock NGSettingsClient settingsClient;
   @Mock NGFeatureFlagHelperService featureFlagHelperService;
   @Mock ServiceOverrideV2ValidationHelper overrideV2ValidationHelper;
+  @Mock GitXSettingsHelper gitXSettingsHelper;
   @InjectMocks private EnvironmentServiceImpl environmentService;
   @InjectMocks private EnvironmentServiceImpl environmentServiceUsingMocks;
 
@@ -123,6 +126,7 @@ public class EnvironmentServiceImplTest extends CDNGEntitiesTestBase {
     Reflect.on(environmentService).set("entitySetupUsageService", entitySetupUsageService);
     Reflect.on(environmentService).set("environmentRepository", environmentRepository);
     Reflect.on(environmentService).set("outboxService", outboxService);
+    Reflect.on(environmentService).set("gitXSettingsHelper", gitXSettingsHelper);
     when(entitySetupUsageService.listAllEntityUsage(anyInt(), anyInt(), anyString(), anyString(), any(), anyString()))
         .thenReturn(new PageImpl<>(Collections.emptyList()));
     MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class);
@@ -460,6 +464,28 @@ public class EnvironmentServiceImplTest extends CDNGEntitiesTestBase {
   }
 
   @Test
+  @Owner(developers = TATHAGAT)
+  @Category(UnitTests.class)
+  public void testGitXSettingForCreate() {
+    Environment createEnvironmentRequest = Environment.builder()
+                                               .accountId("ACCOUNT_ID")
+                                               .identifier(UUIDGenerator.generateUuid())
+                                               .orgIdentifier("ORG_ID")
+                                               .projectIdentifier("PROJECT_ID")
+                                               .storeType(StoreType.REMOTE)
+                                               .connectorRef("githubRepoConnector")
+                                               .fallBackBranch("feature")
+                                               .repo("githubRepoName")
+                                               .build();
+
+    environmentService.create(createEnvironmentRequest);
+    verify(gitXSettingsHelper).enforceGitExperienceIfApplicable(anyString(), anyString(), anyString());
+    verify(gitXSettingsHelper).setDefaultStoreTypeForEntities(anyString(), anyString(), anyString(), any());
+    verify(gitXSettingsHelper).setConnectorRefForRemoteEntity(anyString(), anyString(), anyString());
+    verify(gitXSettingsHelper).setDefaultRepoForRemoteEntity(anyString(), anyString(), anyString());
+  }
+
+  @Test
   @Owner(developers = HINGER)
   @Category(UnitTests.class)
   public void testCreateEnvironmentInputs() {
@@ -476,7 +502,7 @@ public class EnvironmentServiceImplTest extends CDNGEntitiesTestBase {
     environmentService.create(createEnvironmentRequest);
 
     String environmentInputsYaml =
-        environmentService.createEnvironmentInputsYaml("ACCOUNT_ID", "ORG_ID", "PROJECT_ID", "IDENTIFIER");
+        environmentService.createEnvironmentInputsYaml("ACCOUNT_ID", "ORG_ID", "PROJECT_ID", "IDENTIFIER", null);
     String resFile = "env-with-runtime-inputs-res.yaml";
     String resInputs = readFile(resFile);
     assertThat(environmentInputsYaml).isEqualTo(resInputs);
@@ -492,7 +518,7 @@ public class EnvironmentServiceImplTest extends CDNGEntitiesTestBase {
 
     environmentService.update(updateEnvironmentRequest);
     String environmentInputsYaml2 =
-        environmentService.createEnvironmentInputsYaml("ACCOUNT_ID", "ORG_ID", "PROJECT_ID", "IDENTIFIER");
+        environmentService.createEnvironmentInputsYaml("ACCOUNT_ID", "ORG_ID", "PROJECT_ID", "IDENTIFIER", null);
     assertThat(environmentInputsYaml2).isNull();
   }
 
@@ -501,16 +527,17 @@ public class EnvironmentServiceImplTest extends CDNGEntitiesTestBase {
   @Category(UnitTests.class)
   public void testCreateEnvironmentInputsErrorCases() {
     assertThatThrownBy(
-        () -> environmentService.createEnvironmentInputsYaml("ACCOUNT_ID", "ORG_ID", "PROJECT_ID", "IDENTIFIER"))
+        () -> environmentService.createEnvironmentInputsYaml("ACCOUNT_ID", "ORG_ID", "PROJECT_ID", "IDENTIFIER", null))
         .isInstanceOf(NotFoundException.class)
         .hasMessage(
             "Environment with identifier [IDENTIFIER] in project [PROJECT_ID], org [ORG_ID], account [ACCOUNT_ID] scope not found");
 
-    assertThatThrownBy(() -> environmentService.createEnvironmentInputsYaml("ACCOUNT_ID", "ORG_ID", "", "IDENTIFIER"))
+    assertThatThrownBy(
+        () -> environmentService.createEnvironmentInputsYaml("ACCOUNT_ID", "ORG_ID", "", "IDENTIFIER", null))
         .isInstanceOf(NotFoundException.class)
         .hasMessage("Environment with identifier [IDENTIFIER] in org [ORG_ID], account [ACCOUNT_ID] scope not found");
 
-    assertThatThrownBy(() -> environmentService.createEnvironmentInputsYaml("ACCOUNT_ID", null, "", "IDENTIFIER"))
+    assertThatThrownBy(() -> environmentService.createEnvironmentInputsYaml("ACCOUNT_ID", null, "", "IDENTIFIER", null))
         .isInstanceOf(NotFoundException.class)
         .hasMessage("Environment with identifier [IDENTIFIER] in account [ACCOUNT_ID] scope not found");
   }

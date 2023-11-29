@@ -7,6 +7,8 @@
 
 package io.harness.pms.sdk.core.plan.creation.beans;
 
+import static io.harness.pms.utils.PmsConstants.DEFAULT_TIMEOUT;
+
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.async.AsyncCreatorContext;
@@ -100,10 +102,7 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (metadata == null) {
       return "";
     }
-    if (metadata.hasExecutionContext()) {
-      return metadata.getExecutionContext().getPipelineIdentifier();
-    }
-    return metadata.getMetadata().getPipelineIdentifier();
+    return metadata.getExecutionContext().getPipelineIdentifier();
   }
 
   public String getExecutionUuid() {
@@ -111,10 +110,7 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (metadata == null) {
       return "";
     }
-    if (metadata.hasExecutionContext()) {
-      return metadata.getExecutionContext().getExecutionUuid();
-    }
-    return metadata.getMetadata().getExecutionUuid();
+    return metadata.getExecutionContext().getExecutionUuid();
   }
 
   public TriggerPayload getTriggerPayload() {
@@ -130,10 +126,7 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (metadata == null) {
       return null;
     }
-    if (metadata.hasExecutionContext()) {
-      return metadata.getExecutionContext().getTriggerInfo();
-    }
-    return metadata.getMetadata().getTriggerInfo();
+    return metadata.getExecutionContext().getTriggerInfo();
   }
 
   public int getRunSequence() {
@@ -141,10 +134,7 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (metadata == null) {
       return -1;
     }
-    if (metadata.hasExecutionContext()) {
-      return metadata.getExecutionContext().getRunSequence();
-    }
-    return metadata.getMetadata().getRunSequence();
+    return metadata.getExecutionContext().getRunSequence();
   }
 
   public String getPipelineConnectorRef() {
@@ -152,10 +142,7 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (metadata == null) {
       return "";
     }
-    if (metadata.hasExecutionContext()) {
-      return metadata.getExecutionContext().getPipelineConnectorRef();
-    }
-    return metadata.getMetadata().getPipelineConnectorRef();
+    return metadata.getExecutionContext().getPipelineConnectorRef();
   }
 
   @Override
@@ -164,10 +151,7 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (value == null) {
       return null;
     }
-    if (value.hasExecutionContext()) {
-      return value.getExecutionContext().getGitSyncBranchContext();
-    }
-    return getMetadata().getMetadata().getGitSyncBranchContext();
+    return value.getExecutionContext().getGitSyncBranchContext();
   }
 
   public List<YamlField> getStepYamlFields() {
@@ -219,19 +203,11 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (value == null) {
       return PipelineStoreType.UNDEFINED;
     }
-    if (value.hasExecutionContext()) {
-      return value.getExecutionContext().getPipelineStoreType();
-    }
-    return value.getMetadata().getPipelineStoreType();
+    return value.getExecutionContext().getPipelineStoreType();
   }
 
   public String getYamlVersion() {
-    String harnessVersion = "";
-    if (getMetadata().hasExecutionContext()) {
-      harnessVersion = getMetadata().getExecutionContext().getHarnessVersion();
-    } else {
-      harnessVersion = getMetadata().getMetadata().getHarnessVersion();
-    }
+    String harnessVersion = getMetadata().getExecutionContext().getHarnessVersion();
     return StringUtils.isEmpty(harnessVersion) ? HarnessYamlVersion.V0 : harnessVersion;
   }
 
@@ -240,10 +216,7 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (value == null) {
       return null;
     }
-    if (value.hasExecutionContext()) {
-      return value.getExecutionContext().getPrincipalInfo();
-    }
-    return value.getMetadata().getPrincipalInfo();
+    return value.getExecutionContext().getPrincipalInfo();
   }
 
   public ExecutionMode getExecutionMode() {
@@ -251,9 +224,20 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (value == null) {
       return null;
     }
-    if (value.hasExecutionContext()) {
-      return value.getExecutionContext().getExecutionMode();
-    }
-    return value.getMetadata().getExecutionMode();
+    return value.getExecutionContext().getExecutionMode();
+  }
+
+  /*
+  Method will get the Max timeout from SettingsValueMap if existed,
+  Otherwise will return Default timeout '8w'
+   */
+  public String getTimeoutDuration(String timeoutIdentifier) {
+    PlanCreationContextValue value = getMetadata();
+    return value.getExecutionContext().getSettingToValueMapOrDefault(timeoutIdentifier, DEFAULT_TIMEOUT);
+  }
+
+  public boolean getFeatureFlagValue(String featureName) {
+    PlanCreationContextValue value = getMetadata();
+    return value.getExecutionContext().getFeatureFlagToValueMapOrDefault(featureName, false);
   }
 }

@@ -116,7 +116,9 @@ public class PipelineExecutionSummaryEntity implements PersistentEntity, UuidAwa
   ExecutionStatus status;
   AbortedBy abortedBy;
 
-  String inputSetYaml;
+  // If you need to use raw inputSetYaml (no expressions resolved), use from PlanExecutionMetadata.
+  @Deprecated String inputSetYaml;
+  String resolvedUserInputSetYaml;
   String pipelineTemplate; // saving the template here because after an execution, the pipeline can be updated
   Boolean executionInputConfigured;
 
@@ -153,6 +155,7 @@ public class PipelineExecutionSummaryEntity implements PersistentEntity, UuidAwa
   ExecutionMode executionMode; // this is used to filter out rollback mode executions from executions list API
   RollbackExecutionInfo rollbackExecutionInfo;
   Boolean notesExistForPlanExecutionId;
+  Boolean shouldUseSimplifiedLogBaseKey;
 
   // TTL index
   @Builder.Default @FdTtlIndex Date validUntil = Date.from(OffsetDateTime.now().plusMonths(TTL_MONTHS).toInstant());

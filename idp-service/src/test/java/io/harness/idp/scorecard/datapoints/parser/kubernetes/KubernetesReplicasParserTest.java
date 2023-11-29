@@ -24,9 +24,9 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.idp.scorecard.datapoints.entity.DataPointEntity;
+import io.harness.idp.scorecard.scores.beans.DataFetchDTO;
 import io.harness.rule.Owner;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.junit.Before;
@@ -37,6 +37,7 @@ import org.mockito.MockitoAnnotations;
 
 @OwnedBy(HarnessTeam.IDP)
 public class KubernetesReplicasParserTest extends CategoryTest {
+  public static final String RULE_IDENTIFIER = "rule1";
   AutoCloseable openMocks;
   @InjectMocks KubernetesReplicasParser parser;
 
@@ -71,10 +72,10 @@ public class KubernetesReplicasParserTest extends CategoryTest {
                              .identifier(REPLICAS)
                              .outcomeExpression("kubernetes.workload.spec.replicas")
                              .build();
-    Map<String, Object> data =
-        Map.of(DSL_RESPONSE, Map.of("cluster", List.of("workload", Map.of("spec", Map.of("replicas", 2.0)))));
-    Map<String, Object> response = (Map<String, Object>) parser.parseDataPoint(data, dp, Collections.emptySet());
-    assertEquals(2, response.get(DATA_POINT_VALUE_KEY));
+    Map<String, Object> data = Map.of(getDataFetchDTO(dp).getRuleIdentifier(),
+        Map.of(DSL_RESPONSE, Map.of("cluster", List.of("workload", Map.of("spec", Map.of("replicas", 2.0))))));
+    Map<String, Object> response = (Map<String, Object>) parser.parseDataPoint(data, getDataFetchDTO(dp));
+    assertEquals("2", ((Map<String, Object>) response.get(RULE_IDENTIFIER)).get(DATA_POINT_VALUE_KEY));
   }
 
   @Test
@@ -83,9 +84,10 @@ public class KubernetesReplicasParserTest extends CategoryTest {
   public void testParseDataPointUnAuthorized() {
     String errorMessage = "401 Unauthorized";
     DataPointEntity dp = DataPointEntity.builder().build();
-    Map<String, Object> data = Map.of(DSL_RESPONSE, Map.of(ERROR_MESSAGE_KEY, errorMessage));
-    Map<String, Object> response = (Map<String, Object>) parser.parseDataPoint(data, dp, Collections.emptySet());
-    assertEquals(errorMessage, response.get(ERROR_MESSAGE_KEY));
+    Map<String, Object> data =
+        Map.of(getDataFetchDTO(dp).getRuleIdentifier(), Map.of(DSL_RESPONSE, Map.of(ERROR_MESSAGE_KEY, errorMessage)));
+    Map<String, Object> response = (Map<String, Object>) parser.parseDataPoint(data, getDataFetchDTO(dp));
+    assertEquals(errorMessage, ((Map<String, Object>) response.get(RULE_IDENTIFIER)).get(ERROR_MESSAGE_KEY));
   }
 
   @Test
@@ -94,9 +96,10 @@ public class KubernetesReplicasParserTest extends CategoryTest {
   public void testParseDataPointMissingData() {
     String errorMessage = "Missing Data";
     DataPointEntity dp = DataPointEntity.builder().build();
-    Map<String, Object> data = Map.of(DSL_RESPONSE, Map.of(ERROR_MESSAGE_KEY, errorMessage));
-    Map<String, Object> response = (Map<String, Object>) parser.parseDataPoint(data, dp, Collections.emptySet());
-    assertEquals(errorMessage, response.get(ERROR_MESSAGE_KEY));
+    Map<String, Object> data =
+        Map.of(getDataFetchDTO(dp).getRuleIdentifier(), Map.of(DSL_RESPONSE, Map.of(ERROR_MESSAGE_KEY, errorMessage)));
+    Map<String, Object> response = (Map<String, Object>) parser.parseDataPoint(data, getDataFetchDTO(dp));
+    assertEquals(errorMessage, ((Map<String, Object>) response.get(RULE_IDENTIFIER)).get(ERROR_MESSAGE_KEY));
   }
 
   @Test
@@ -105,9 +108,9 @@ public class KubernetesReplicasParserTest extends CategoryTest {
   public void testParseDataPointMissingResponseData() {
     String errorMessage = "Missing Data";
     DataPointEntity dp = DataPointEntity.builder().build();
-    Map<String, Object> data = Map.of(ERROR_MESSAGE_KEY, errorMessage);
-    Map<String, Object> response = (Map<String, Object>) parser.parseDataPoint(data, dp, Collections.emptySet());
-    assertEquals(errorMessage, response.get(ERROR_MESSAGE_KEY));
+    Map<String, Object> data = Map.of(getDataFetchDTO(dp).getRuleIdentifier(), Map.of(ERROR_MESSAGE_KEY, errorMessage));
+    Map<String, Object> response = (Map<String, Object>) parser.parseDataPoint(data, getDataFetchDTO(dp));
+    assertEquals(errorMessage, ((Map<String, Object>) response.get(RULE_IDENTIFIER)).get(ERROR_MESSAGE_KEY));
   }
 
   @Test
@@ -119,8 +122,14 @@ public class KubernetesReplicasParserTest extends CategoryTest {
                              .identifier(REPLICAS)
                              .outcomeExpression("kubernetes.workload.spec.replicas")
                              .build();
-    Map<String, Object> data = Map.of(DSL_RESPONSE, Map.of("abc", List.of("workload", Map.of("replicas", 2.0))));
-    Map<String, Object> response = (Map<String, Object>) parser.parseDataPoint(data, dp, Collections.emptySet());
-    assertEquals("Missing Data for cluster: abc", response.get(ERROR_MESSAGE_KEY));
+    Map<String, Object> data = Map.of(getDataFetchDTO(dp).getRuleIdentifier(),
+        Map.of(DSL_RESPONSE, Map.of("abc", List.of("workload", Map.of("replicas", 2.0)))));
+    Map<String, Object> response = (Map<String, Object>) parser.parseDataPoint(data, getDataFetchDTO(dp));
+    assertEquals(
+        "Missing Data for cluster: abc", ((Map<String, Object>) response.get(RULE_IDENTIFIER)).get(ERROR_MESSAGE_KEY));
+  }
+
+  private DataFetchDTO getDataFetchDTO(DataPointEntity dataPointEntity) {
+    return DataFetchDTO.builder().ruleIdentifier(RULE_IDENTIFIER).dataPoint(dataPointEntity).build();
   }
 }

@@ -37,6 +37,7 @@ import io.harness.cvng.core.beans.monitoredService.MonitoredServiceChangeDetailS
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceDTO;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceListItemDTO;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServicePlatformResponse;
+import io.harness.cvng.core.beans.monitoredService.MonitoredServiceReference;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceResponse;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceWithHealthSources;
 import io.harness.cvng.core.beans.monitoredService.healthSouceSpec.HealthSourceDTO;
@@ -58,6 +59,7 @@ import io.harness.ng.core.dto.ErrorDTO;
 import io.harness.ng.core.dto.FailureDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.environment.dto.EnvironmentResponse;
+import io.harness.ng.core.service.dto.ServiceResponse;
 import io.harness.rest.RestResponse;
 import io.harness.security.annotations.NextGenManagerAuth;
 
@@ -204,7 +206,7 @@ public class MonitoredServiceResource {
     Preconditions.checkArgument(identifier.equals(monitoredServiceDTO.getIdentifier()),
         String.format(
             "Identifier %s does not match with path identifier %s", monitoredServiceDTO.getIdentifier(), identifier));
-    return new RestResponse<>(monitoredServiceService.update(accountId, monitoredServiceDTO));
+    return new RestResponse<>(monitoredServiceService.update(accountId, monitoredServiceDTO, false));
   }
 
   @PUT
@@ -225,6 +227,7 @@ public class MonitoredServiceResource {
   @PUT
   @Timed
   @ExceptionMetered
+  @ResponseMetered
   @Path("{identifier}/health-monitoring-flag")
   @ApiOperation(value = "updates monitored service data", nickname = "setHealthMonitoringFlag")
   @NGAccessControlCheck(resourceType = MONITORED_SERVICE, permission = TOGGLE_PERMISSION)
@@ -239,6 +242,7 @@ public class MonitoredServiceResource {
   @GET
   @Timed
   @ExceptionMetered
+  @ResponseMetered
   @Path("{identifier}/overall-health-score")
   @ApiOperation(
       value = "get monitored service overall health score data ", nickname = "getMonitoredServiceOverAllHealthScore")
@@ -266,15 +270,16 @@ public class MonitoredServiceResource {
       @NotNull @Valid @BeanParam ProjectScopedProjectParams projectParams,
       @QueryParam("environmentIdentifier") String environmentIdentifier,
       @QueryParam("environmentIdentifiers") List<String> environmentIdentifiers,
-      @QueryParam("offset") @NotNull Integer offset, @QueryParam("pageSize") @NotNull Integer pageSize,
-      @QueryParam("filter") String filter,
+      @QueryParam("serviceIdentifier") String serviceIdentifier, @QueryParam("offset") @NotNull Integer offset,
+      @QueryParam("pageSize") @NotNull Integer pageSize, @QueryParam("filter") String filter,
       @QueryParam("monitoredServiceType") MonitoredServiceType monitoredServiceType,
       @NotNull @QueryParam("servicesAtRiskFilter") @ApiParam(defaultValue = "false") boolean servicesAtRiskFilter) {
     if (isNotEmpty(environmentIdentifier)) {
       environmentIdentifiers = Collections.singletonList(environmentIdentifier);
     }
-    return ResponseDTO.newResponse(monitoredServiceService.list(projectParams.getProjectParams(),
-        environmentIdentifiers, offset, pageSize, filter, monitoredServiceType, servicesAtRiskFilter));
+    return ResponseDTO.newResponse(
+        monitoredServiceService.list(projectParams.getProjectParams(), environmentIdentifiers, serviceIdentifier,
+            offset, pageSize, filter, monitoredServiceType, servicesAtRiskFilter));
   }
 
   @GET
@@ -336,8 +341,40 @@ public class MonitoredServiceResource {
   }
 
   @GET
+  @Path("/reconciliation-required")
   @Timed
   @ExceptionMetered
+  @ResponseMetered
+  @ApiOperation(value = "check if a template referenced monitored service(s) require reconciliation",
+      nickname = "isReconciliationRequiredForMonitoredServices")
+  @Operation(operationId = "isReconciliationRequiredForMonitoredServices",
+      summary = "check if a template referenced monitored service(s) require reconciliation",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "default",
+            description = "check if a template referenced monitored service(s) require reconciliation")
+      })
+  @NGAccessControlCheck(resourceType = MONITORED_SERVICE, permission = VIEW_PERMISSION)
+  public ResponseDTO<Boolean>
+  isReconciliationRequiredForMonitoredServices(
+      @ApiParam(required = true) @NotNull @BeanParam ProjectScopedProjectParams scopedTemplateProjectParams,
+      @Parameter(description = "Scoped template identifier used to create the monitored service") @NotNull @QueryParam(
+          "templateIdentifier") String templateIdentifier,
+      @Parameter(description = "Template version Label") @NotNull @QueryParam(
+          NGCommonEntityConstants.VERSION_LABEL_KEY) String versionLabel,
+      @Parameter(description = "Template version number") @NotNull @QueryParam(
+          "templateVersionNumber") int templateVersionNumber,
+      @Parameter(description = "filter to check if reconciliation required for a particular monitored service")
+      @QueryParam("monitoredServiceIdentifier") String monitoredServiceIdentifier) {
+    return ResponseDTO.newResponse(monitoredServiceService.isReconciliationRequiredForMonitoredServices(
+        scopedTemplateProjectParams.getProjectParams(), templateIdentifier, versionLabel, monitoredServiceIdentifier,
+        templateVersionNumber));
+  }
+
+  @GET
+  @Timed
+  @ExceptionMetered
+  @ResponseMetered
   @Path("/all/time-series-health-sources")
   @ApiOperation(value = "get all of monitored service data with time series health sources",
       nickname = "getAllMonitoredServicesWithTimeSeriesHealthSources")
@@ -373,6 +410,7 @@ public class MonitoredServiceResource {
 
   @GET
   @Timed
+  @ResponseMetered
   @ExceptionMetered
   @Path("{identifier}/scores")
   @ApiOperation(value = "get monitored service scores", nickname = "getMonitoredServiceScores")
@@ -392,6 +430,7 @@ public class MonitoredServiceResource {
 
   @GET
   @Timed
+  @ResponseMetered
   @ExceptionMetered
   @Path("{identifier}/secondary-events")
   @ApiOperation(value = "get monitored service secondary events", nickname = "getMSSecondaryEvents")
@@ -406,6 +445,7 @@ public class MonitoredServiceResource {
 
   @GET
   @Timed
+  @ResponseMetered
   @ExceptionMetered
   @Path("/secondary-events-details")
   @ApiOperation(value = "get monitored service secondary events details", nickname = "getMSSecondaryEventsDetails")
@@ -442,16 +482,31 @@ public class MonitoredServiceResource {
   @Timed
   @ExceptionMetered
   @ResponseMetered
+  @Path("/services")
+  @ApiOperation(value = "get monitored service list services data", nickname = "getMonitoredServiceListServices")
+  @NGAccessControlCheck(resourceType = MONITORED_SERVICE, permission = VIEW_PERMISSION)
+  public ResponseDTO<List<ServiceResponse>> getServices(
+      @NotNull @QueryParam("accountId") @AccountIdentifier String accountId,
+      @NotNull @QueryParam("orgIdentifier") @OrgIdentifier String orgIdentifier,
+      @NotNull @QueryParam("projectIdentifier") @ProjectIdentifier String projectIdentifier) {
+    return ResponseDTO.newResponse(
+        monitoredServiceService.getUniqueServices(accountId, orgIdentifier, projectIdentifier));
+  }
+
+  @GET
+  @Timed
+  @ExceptionMetered
+  @ResponseMetered
   @Path("/environments")
   @ApiOperation(
-      value = "get monitored service list environments data ", nickname = "getMonitoredServiceListEnvironments")
+      value = "get monitored service list environments data", nickname = "getMonitoredServiceListEnvironments")
   @NGAccessControlCheck(resourceType = MONITORED_SERVICE, permission = VIEW_PERMISSION)
   public ResponseDTO<List<EnvironmentResponse>>
   getEnvironments(@NotNull @QueryParam("accountId") @AccountIdentifier String accountId,
       @NotNull @QueryParam("orgIdentifier") @OrgIdentifier String orgIdentifier,
       @NotNull @QueryParam("projectIdentifier") @ProjectIdentifier String projectIdentifier) {
     return ResponseDTO.newResponse(
-        monitoredServiceService.listEnvironments(accountId, orgIdentifier, projectIdentifier));
+        monitoredServiceService.getUniqueEnvironments(accountId, orgIdentifier, projectIdentifier));
   }
 
   @GET
@@ -491,6 +546,7 @@ public class MonitoredServiceResource {
 
   @GET
   @Timed
+  @ResponseMetered
   @ExceptionMetered
   @Path("{monitoredServiceIdentifier}/health-sources")
   @ApiOperation(value = "get all health sources for service and environment",
@@ -505,6 +561,7 @@ public class MonitoredServiceResource {
 
   @GET
   @Timed
+  @ResponseMetered
   @Path("{identifier}/anomaliesCount")
   @ExceptionMetered
   @ApiOperation(value = "get anomalies summary details", nickname = "getAnomaliesSummary")
@@ -524,6 +581,7 @@ public class MonitoredServiceResource {
 
   @GET
   @Timed
+  @ResponseMetered
   @ExceptionMetered
   @Path("/count-of-services")
   @ApiOperation(value = "get count of types of services like Monitored Service, Services at Risk ",
@@ -552,6 +610,7 @@ public class MonitoredServiceResource {
 
   @GET
   @Timed
+  @ResponseMetered
   @ExceptionMetered
   @Path("{monitoredServiceIdentifier}/service-details")
   @ApiOperation(value = "get details of a monitored service present in the Service Dependency Graph",
@@ -568,6 +627,7 @@ public class MonitoredServiceResource {
 
   @GET
   @Timed
+  @ResponseMetered
   @ExceptionMetered
   @Path("/service-details")
   @ApiOperation(value = "get details of a monitored service present in the Service Dependency Graph",
@@ -694,5 +754,83 @@ public class MonitoredServiceResource {
       @Valid @Body String yaml) {
     return new RestResponse<>(
         monitoredServiceService.updateFromYaml(projectParam.getProjectParams(), identifier, yaml));
+  }
+
+  @GET
+  @Path("/{identifier}/resolved-template-inputs")
+  @Timed
+  @ExceptionMetered
+  @ResponseMetered
+  @ApiOperation(
+      value = "get monitored service resolved template inputs", nickname = "getMonitoredServiceResolvedTemplateInputs")
+  @Operation(operationId = "getMonitoredServiceResolvedTemplateInputs",
+      summary = "get monitored service resolved template inputs",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(responseCode = "default", description = "get monitored service resolved template inputs")
+      })
+  @NGAccessControlCheck(resourceType = MONITORED_SERVICE, permission = VIEW_PERMISSION)
+  public ResponseDTO<String>
+  getMonitoredServiceResolvedTemplateInputs(
+      @ApiParam(required = true) @NotNull @BeanParam ProjectScopedProjectParams scopedProjectParams,
+      @Parameter(description = NGCommonEntityConstants.IDENTIFIER_PARAM_MESSAGE) @ApiParam(
+          required = true) @NotNull @PathParam("identifier") String identifier,
+      @Parameter(description = "Scoped template identifier used to create the monitored service") @NotNull @QueryParam(
+          "templateIdentifier") String templateIdentifier,
+      @Parameter(description = "Template version Label") @NotNull @QueryParam(
+          NGCommonEntityConstants.VERSION_LABEL_KEY) String versionLabel) {
+    return ResponseDTO.newResponse(monitoredServiceService.getResolvedTemplateInputs(
+        scopedProjectParams.getProjectParams(), identifier, templateIdentifier, versionLabel));
+  }
+
+  @PUT
+  @Path("/{identifier}/detach-template")
+  @Timed
+  @ExceptionMetered
+  @ResponseMetered
+  @ApiOperation(
+      value = "delete template reference from monitored service", nickname = "detachMonitoredServiceFromTemplate")
+  @Operation(operationId = "detachMonitoredServiceFromTemplate",
+      summary = "delete template reference from monitored service",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(responseCode = "default", description = "delete template reference from monitored service")
+      })
+  @NGAccessControlCheck(resourceType = MONITORED_SERVICE, permission = EDIT_PERMISSION)
+  public ResponseDTO<Boolean>
+  detachMonitoredServiceFromTemplate(
+      @ApiParam(required = true) @NotNull @BeanParam ProjectScopedProjectParams scopedProjectParams,
+      @Parameter(description = NGCommonEntityConstants.IDENTIFIER_PARAM_MESSAGE) @ApiParam(
+          required = true) @NotNull @PathParam("identifier") String identifier) {
+    return ResponseDTO.newResponse(
+        monitoredServiceService.detachMonitoredServiceFromTemplate(scopedProjectParams.getProjectParams(), identifier));
+  }
+
+  @GET
+  @Path("/reconciliation-status")
+  @Timed
+  @ExceptionMetered
+  @ResponseMetered
+  @ApiOperation(value = "fetch reconciliation status for template referenced monitored services",
+      nickname = "getMonitoredServiceReconciliationStatuses")
+  @Operation(operationId = "getMonitoredServiceReconciliationStatuses",
+      summary = "fetch reconciliation status for template referenced monitored services",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "default",
+            description = "fetch reconciliation status for template referenced monitored services")
+      })
+  @NGAccessControlCheck(resourceType = MONITORED_SERVICE, permission = VIEW_PERMISSION)
+  public RestResponse<PageResponse<MonitoredServiceReference>>
+  getMonitoredServiceReconciliationStatuses(
+      @ApiParam(required = true) @NotNull @BeanParam ProjectScopedProjectParams scopedTemplateProjectParams,
+      @Parameter(description = "Scoped template identifier used to create the monitored service") @NotNull @QueryParam(
+          "templateIdentifier") String templateIdentifier,
+      @Parameter(description = "Template version Label") @NotNull @QueryParam(NGCommonEntityConstants.VERSION_LABEL_KEY)
+      String templateVersionLabel, @BeanParam PageParams pageParams) {
+    return new RestResponse<>(monitoredServiceService.getMonitoredServiceReconciliationStatuses(
+        scopedTemplateProjectParams.getProjectParams(), templateIdentifier, templateVersionLabel, pageParams));
   }
 }

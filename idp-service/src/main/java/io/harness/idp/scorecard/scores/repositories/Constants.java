@@ -9,6 +9,5 @@ package io.harness.idp.scorecard.scores.repositories;
 public class Constants {
   public static final String ID_KEY = "_id";
   public static final String SCORE_ENTITY_KEY = "scoreEntity";
-
   public static final String SCORE_COLLECTION_NAME = "scores";
 }

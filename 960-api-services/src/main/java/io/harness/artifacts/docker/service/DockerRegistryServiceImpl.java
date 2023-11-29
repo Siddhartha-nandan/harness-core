@@ -6,10 +6,11 @@
  */
 
 package io.harness.artifacts.docker.service;
+
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.exception.WingsException.USER;
-import static io.harness.network.Http.connectableHttpUrl;
+import static io.harness.network.Http.connectableHttpUrlWithProxy;
 
 import static java.util.stream.Collectors.toList;
 
@@ -366,7 +367,8 @@ public class DockerRegistryServiceImpl implements DockerRegistryService {
   public boolean validateCredentials(DockerInternalConfig dockerConfig) {
     String connectableHttpUrl =
         generateConnectivityUrl(dockerConfig.getDockerRegistryUrl(), dockerConfig.getProviderType());
-    if (!connectableHttpUrl(connectableHttpUrl, false)) {
+    if (!connectableHttpUrlWithProxy(
+            connectableHttpUrl, dockerConfig.getProxyHost(), dockerConfig.getProxyPort(), false)) {
       throw NestedExceptionUtils.hintWithExplanationException(
           "Check if the Docker Registry URL is correct & reachable from your delegate(s)",
           "The given Docker Registry URL may be incorrect or not reachable from your delegate(s)",
@@ -401,7 +403,8 @@ public class DockerRegistryServiceImpl implements DockerRegistryService {
             response = registryRestClient.getApiVersion(BEARER + token).execute();
           }
         }
-        if (response.code() == 404) { // https://harness.atlassian.net/browse/CDC-11979
+        if (response.code()
+            >= 400) { // https://harness.atlassian.net/browse/CDC-11979 https://harness.atlassian.net/browse/CDS-82616
           return handleValidateCredentialsEndingWithSlash(registryRestClient, dockerConfig);
         }
         return isSuccessful(response);

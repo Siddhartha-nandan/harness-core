@@ -27,6 +27,7 @@ import io.harness.batch.processing.tasklet.util.ClusterHelperImpl;
 import io.harness.batch.processing.tasklet.util.CurrencyPreferenceHelper;
 import io.harness.batch.processing.tasklet.util.CurrencyPreferenceHelperImpl;
 import io.harness.ccm.CENGGraphQLModule;
+import io.harness.ccm.LightwingClientModule;
 import io.harness.ccm.anomaly.service.impl.AnomalyServiceImpl;
 import io.harness.ccm.anomaly.service.itfc.AnomalyService;
 import io.harness.ccm.azurevmpricing.AzureVmPricingClientModule;
@@ -65,6 +66,7 @@ import io.harness.ccm.msp.service.intf.ManagedAccountService;
 import io.harness.ccm.msp.service.intf.MarginDetailsBqService;
 import io.harness.ccm.msp.service.intf.MarginDetailsService;
 import io.harness.ccm.msp.service.intf.MspValidationService;
+import io.harness.ccm.scheduler.SchedulerClientModule;
 import io.harness.ccm.service.impl.AWSOrganizationHelperServiceImpl;
 import io.harness.ccm.service.intf.AWSOrganizationHelperService;
 import io.harness.ccm.serviceNow.CCMServiceNowHelper;
@@ -99,6 +101,7 @@ import io.harness.ccm.views.service.impl.ViewCustomFieldServiceImpl;
 import io.harness.ccm.views.service.impl.ViewsBillingServiceImpl;
 import io.harness.connector.ConnectorResourceClientModule;
 import io.harness.event.handler.segment.SegmentConfig;
+import io.harness.exception.InvalidRequestException;
 import io.harness.ff.FeatureFlagService;
 import io.harness.ff.FeatureFlagServiceImpl;
 import io.harness.govern.ProviderMethodInterceptor;
@@ -139,6 +142,7 @@ import software.wings.service.intfc.security.EncryptedSettingAttributes;
 import software.wings.service.intfc.security.SecretManager;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.io.Resources;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
@@ -146,6 +150,9 @@ import com.google.inject.Singleton;
 import com.google.inject.matcher.Matchers;
 import com.google.inject.multibindings.OptionalBinder;
 import com.google.inject.name.Named;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.Executors;
 import lombok.extern.slf4j.Slf4j;
@@ -197,6 +204,22 @@ public class BatchProcessingModule extends AbstractModule {
     return batchMainConfig.getGovernanceConfig();
   }
 
+  @Provides
+  @Named("governance-schema")
+  @Singleton
+  public String getGovernanceSchema() {
+    try {
+      URL url = getClass().getClassLoader().getResource("governance_rule/rule_schema.json");
+      if (url == null) {
+        throw new InvalidRequestException("Rule schema doesn't exist");
+      }
+      byte[] bytes = Resources.toByteArray(url);
+      return new String(bytes, StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      throw new InvalidRequestException("Failed to generate schema file", e);
+    }
+  }
+
   @Override
   protected void configure() {
     bind(SecretManager.class).to(NoOpSecretManagerImpl.class);
@@ -240,6 +263,10 @@ public class BatchProcessingModule extends AbstractModule {
     install(new NGSettingsClientModule(batchMainConfig.getNgManagerServiceHttpClientConfig(),
         batchMainConfig.getNgManagerServiceSecret(), BATCH_PROCESSING.getServiceId()));
     install(new AzureVmPricingClientModule(batchMainConfig.getAzureVmPricingConfig()));
+    install(new LightwingClientModule(batchMainConfig.getLightwingAutoCUDClientConfig(),
+        batchMainConfig.getNgManagerServiceSecret(), BATCH_PROCESSING.getServiceId(), ClientMode.PRIVILEGED));
+    install(new SchedulerClientModule(batchMainConfig.getDkronClientConfig(),
+        batchMainConfig.getNgManagerServiceSecret(), BATCH_PROCESSING.getServiceId(), ClientMode.PRIVILEGED));
     install(new AbstractTelemetryModule() {
       @Override
       public TelemetryConfiguration telemetryConfiguration() {

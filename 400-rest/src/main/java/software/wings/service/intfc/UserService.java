@@ -26,6 +26,8 @@ import io.harness.ng.core.invites.dto.InviteOperationResponse;
 import io.harness.ng.core.switchaccount.RestrictedSwitchAccountInfo;
 import io.harness.ng.core.user.PasswordChangeDTO;
 import io.harness.ng.core.user.PasswordChangeResponse;
+import io.harness.notification.NotificationRequest;
+import io.harness.notification.Team;
 import io.harness.signup.dto.SignupInviteDTO;
 import io.harness.validation.Create;
 import io.harness.validation.Update;
@@ -717,4 +719,12 @@ public interface UserService extends OwnedByAccount {
   void updateUserAccountLevelDataForThisGen(String accountId, User user, Generation generation, UserSource userSource);
 
   boolean updateExternallyManaged(String userId, Generation generation, boolean externallyManaged);
+
+  String getClaimsFromJWTToken(String jwtToken, JWT_CATEGORY category, String claim);
+
+  void sendNotificationEmailNG(String accountId, List<NotificationRequest.UserGroup> userGroups, String templateId,
+      Map<String, String> templateData, Team team, List<String> recipients);
+
+  boolean sendNotificationEmailCG(String accountId, List<String> to, List<String> cc, List<String> bcc, String subject,
+      String body, String templateName, Map<String, String> templateModel, int retries);
 }

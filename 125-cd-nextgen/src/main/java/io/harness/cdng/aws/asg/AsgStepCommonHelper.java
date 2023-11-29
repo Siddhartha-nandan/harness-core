@@ -26,6 +26,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.aws.asg.AsgCommandUnitConstants;
 import io.harness.aws.beans.AsgCapacityConfig;
+import io.harness.aws.beans.AsgLoadBalancerConfig;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.artifact.outcome.AMIArtifactOutcome;
 import io.harness.cdng.artifact.outcome.ArtifactOutcome;
@@ -65,6 +66,8 @@ import io.harness.delegate.task.aws.asg.AsgRollingDeployResponse;
 import io.harness.delegate.task.aws.asg.AsgRollingDeployResult;
 import io.harness.delegate.task.aws.asg.AsgRollingRollbackResponse;
 import io.harness.delegate.task.aws.asg.AsgRollingRollbackResult;
+import io.harness.delegate.task.aws.asg.AsgShiftTrafficResponse;
+import io.harness.delegate.task.aws.asg.AsgShiftTrafficResult;
 import io.harness.delegate.task.git.GitFetchFilesConfig;
 import io.harness.delegate.task.git.GitFetchRequest;
 import io.harness.delegate.task.git.GitFetchResponse;
@@ -113,6 +116,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -129,7 +133,7 @@ public class AsgStepCommonHelper extends CDStepHelper {
   @Inject @Named("referenceFalseKryoSerializer") private KryoSerializer referenceFalseKryoSerializer;
   private final LogWrapper logger = new LogWrapper(log);
   private static final String EXEC_STRATEGY_CANARY = "canary";
-  private static final String EXEC_STRATEGY_BLUEGREEN = "blue-green";
+  public static final String EXEC_STRATEGY_BLUEGREEN = "blue-green";
   private static final String EXEC_STRATEGY_ROLLING = "rolling";
   static final String VERSION_DELIMITER = "__";
 
@@ -138,8 +142,7 @@ public class AsgStepCommonHelper extends CDStepHelper {
     LogCallback logCallback = getLogCallback(AsgCommandUnitConstants.fetchManifests.toString(), ambiance, true);
 
     // Get InfrastructureOutcome
-    InfrastructureOutcome infrastructureOutcome = (InfrastructureOutcome) outcomeService.resolve(
-        ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME));
+    InfrastructureOutcome infrastructureOutcome = getInfrastructureOutcomeWithUpdatedExpressions(ambiance);
 
     boolean isBaseAsg = isBaseAsgDeployment(ambiance, infrastructureOutcome, stepElementParameters);
 
@@ -732,6 +735,20 @@ public class AsgStepCommonHelper extends CDStepHelper {
       return serverInstanceInfoList;
     }
 
+    else if (asgCommandResponse instanceof AsgShiftTrafficResponse) {
+      AsgShiftTrafficResult asgShiftTrafficResult = ((AsgShiftTrafficResponse) asgCommandResponse).getResult();
+      String prodAsgName = asgShiftTrafficResult.getProdAutoScalingGroupContainer().getAutoScalingGroupName();
+      String asgNameWithoutSuffix = prodAsgName.substring(0, prodAsgName.length() - VERSION_DELIMITER.length() - 1);
+      List<ServerInstanceInfo> serverInstanceInfoList = new ArrayList<>();
+      serverInstanceInfoList.addAll(AutoScalingGroupContainerToServerInstanceInfoMapper.toServerInstanceInfoList(
+          asgShiftTrafficResult.getProdAutoScalingGroupContainer(), infrastructureKey, region, EXEC_STRATEGY_BLUEGREEN,
+          asgNameWithoutSuffix, true));
+      serverInstanceInfoList.addAll(AutoScalingGroupContainerToServerInstanceInfoMapper.toServerInstanceInfoList(
+          asgShiftTrafficResult.getStageAutoScalingGroupContainer(), infrastructureKey, region, EXEC_STRATEGY_BLUEGREEN,
+          asgNameWithoutSuffix, false));
+      return serverInstanceInfoList;
+    }
+
     else if (asgCommandResponse instanceof AsgBlueGreenRollbackResponse) {
       AsgBlueGreenRollbackResult asgBlueGreenRollbackResult =
           ((AsgBlueGreenRollbackResponse) asgCommandResponse).getAsgBlueGreenRollbackResult();
@@ -802,5 +819,87 @@ public class AsgStepCommonHelper extends CDStepHelper {
     }
 
     return isNotEmpty(baseAsg);
+  }
+
+  public boolean isShiftTrafficFeature(List<AwsAsgLoadBalancerConfigYaml> loadBalancers) {
+    if (isEmpty(loadBalancers)) {
+      return false;
+    }
+
+    // use classic iteration in order to break early
+    for (AwsAsgLoadBalancerConfigYaml lb : loadBalancers) {
+      String stageListener = getParameterFieldValue(lb.getStageListener());
+      String stageListenerRule = getParameterFieldValue(lb.getStageListenerRuleArn());
+
+      if (isEmpty(stageListener) && isEmpty(stageListenerRule)) {
+        return true;
+      }
+
+      if (isEmpty(stageListener) || isEmpty(stageListenerRule)) {
+        throw new InvalidRequestException("stageListener and stageListenerRuleArn both or none should be provided");
+      }
+    }
+
+    return false;
+  }
+
+  public static List<AsgLoadBalancerConfig> getLoadBalancers(
+      AsgBlueGreenPrepareRollbackDataOutcome asgBlueGreenPrepareRollbackDataOutcome, Boolean usedForShiftTraffic) {
+    if (isEmpty(asgBlueGreenPrepareRollbackDataOutcome.getLoadBalancerConfigs())) {
+      return null;
+    }
+
+    Predicate<AwsAsgLoadBalancerConfigYaml> filterPredicate;
+    if (usedForShiftTraffic == null) {
+      filterPredicate = lb -> true;
+    } else if (usedForShiftTraffic) {
+      filterPredicate = lb -> lb.getStageListener() == null || isEmpty(lb.getStageListener().getValue());
+    } else {
+      filterPredicate = lb -> lb.getStageListener() != null && isNotEmpty(lb.getStageListener().getValue());
+    }
+
+    return asgBlueGreenPrepareRollbackDataOutcome.getLoadBalancerConfigs()
+        .stream()
+        .filter(filterPredicate)
+        .map(lb
+            -> AsgLoadBalancerConfig.builder()
+                   .loadBalancer(getParameterFieldValue(lb.getLoadBalancer()))
+                   .prodListenerArn(getParameterFieldValue(lb.getProdListener()))
+                   .prodListenerRuleArn(getParameterFieldValue(lb.getProdListenerRuleArn()))
+                   .stageListenerArn(getParameterFieldValue(lb.getStageListener()))
+                   .stageListenerRuleArn(getParameterFieldValue(lb.getStageListenerRuleArn()))
+                   .prodTargetGroupArnsList(getProdTargetGroupArnListForLoadBalancer(
+                       asgBlueGreenPrepareRollbackDataOutcome, getParameterFieldValue(lb.getLoadBalancer())))
+                   .stageTargetGroupArnsList(getStageTargetGroupArnListForLoadBalancer(
+                       asgBlueGreenPrepareRollbackDataOutcome, getParameterFieldValue(lb.getLoadBalancer())))
+                   .build())
+        .collect(Collectors.toList());
+  }
+
+  public static List<String> getProdTargetGroupArnListForLoadBalancer(
+      AsgBlueGreenPrepareRollbackDataOutcome asgBlueGreenPrepareRollbackDataOutcome, String loadBalancer) {
+    if (isEmpty(asgBlueGreenPrepareRollbackDataOutcome.getProdTargetGroupArnListForLoadBalancer())) {
+      return null;
+    }
+
+    return asgBlueGreenPrepareRollbackDataOutcome.getProdTargetGroupArnListForLoadBalancer().get(loadBalancer);
+  }
+
+  public static List<String> getStageTargetGroupArnListForLoadBalancer(
+      AsgBlueGreenPrepareRollbackDataOutcome asgBlueGreenPrepareRollbackDataOutcome, String loadBalancer) {
+    if (isEmpty(asgBlueGreenPrepareRollbackDataOutcome.getStageTargetGroupArnListForLoadBalancer())) {
+      return null;
+    }
+
+    return asgBlueGreenPrepareRollbackDataOutcome.getStageTargetGroupArnListForLoadBalancer().get(loadBalancer);
+  }
+
+  public InfrastructureOutcome getInfrastructureOutcomeWithUpdatedExpressions(Ambiance ambiance) {
+    InfrastructureOutcome infrastructureOutcome = (InfrastructureOutcome) outcomeService.resolve(
+        ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME));
+
+    cdExpressionResolver.updateExpressions(ambiance, infrastructureOutcome);
+
+    return infrastructureOutcome;
   }
 }

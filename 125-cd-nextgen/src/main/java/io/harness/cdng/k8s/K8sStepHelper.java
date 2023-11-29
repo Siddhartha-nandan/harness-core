@@ -54,6 +54,7 @@ import io.harness.cdng.manifest.yaml.KustomizePatchesManifestOutcome;
 import io.harness.cdng.manifest.yaml.ManifestConfig;
 import io.harness.cdng.manifest.yaml.ManifestConfigWrapper;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
+import io.harness.cdng.manifest.yaml.ManifestSourceWrapper;
 import io.harness.cdng.manifest.yaml.OpenshiftManifestOutcome;
 import io.harness.cdng.manifest.yaml.OpenshiftManifestOutcome.OpenshiftManifestOutcomeKeys;
 import io.harness.cdng.manifest.yaml.OpenshiftParamManifestOutcome;
@@ -151,7 +152,6 @@ public class K8sStepHelper extends K8sHelmCommonStepHelper {
   @Inject private EncryptionHelper encryptionHelper;
   @Inject private SdkGraphVisualizationDataService sdkGraphVisualizationDataService;
   @Inject private AccountClient accountClient;
-
   public TaskChainResponse queueK8sTask(StepBaseParameters stepElementParameters, K8sDeployRequest k8sDeployRequest,
       Ambiance ambiance, K8sExecutionPassThroughData executionPassThroughData, TaskType taskType) {
     TaskData taskData = TaskData.builder()
@@ -181,6 +181,9 @@ public class K8sStepHelper extends K8sHelmCommonStepHelper {
   }
 
   private TaskType getK8sTaskType(K8sDeployRequest k8sDeployRequest, Ambiance ambiance) {
+    if (k8sDeployRequest.hasTrafficRoutingConfig()) {
+      return TaskType.K8S_COMMAND_TASK_NG_TRAFFIC_ROUTING;
+    }
     ManifestDelegateConfig manifestDelegateConfig = k8sDeployRequest.getManifestDelegateConfig();
     if (manifestDelegateConfig != null && manifestDelegateConfig.getStoreDelegateConfig() != null
         && OCI_HELM.equals(manifestDelegateConfig.getStoreDelegateConfig().getType())
@@ -463,6 +466,10 @@ public class K8sStepHelper extends K8sHelmCommonStepHelper {
     cdExpressionResolver.updateExpressions(ambiance, configs);
   }
 
+  public void resolveManifestsSourceExpressions(Ambiance ambiance, ManifestSourceWrapper manifestSource) {
+    cdExpressionResolver.updateExpressions(ambiance, manifestSource);
+  }
+
   public TaskChainResponse startChainLink(
       K8sStepExecutor k8sStepExecutor, Ambiance ambiance, StepBaseParameters stepElementParameters) {
     ManifestsOutcome manifestsOutcome = resolveManifestsOutcome(ambiance);
@@ -471,13 +478,18 @@ public class K8sStepHelper extends K8sHelmCommonStepHelper {
     cdExpressionResolver.updateExpressions(ambiance, manifestsOutcome);
     cdStepHelper.validateManifestsOutcome(ambiance, manifestsOutcome);
 
-    ManifestOutcome k8sManifestOutcome = getK8sSupportedManifestOutcome(manifestsOutcome.values());
+    Optional<ManifestOutcome> manifestSourceOutcome = getStepLevelSourceOutcome(stepElementParameters);
+    ManifestOutcome k8sManifestOutcome =
+        manifestSourceOutcome.orElseGet(() -> getK8sSupportedManifestOutcome(manifestsOutcome.values()));
     K8sStepPassThroughData k8sStepPassThroughData = K8sStepPassThroughData.builder()
                                                         .manifestOutcome(k8sManifestOutcome)
                                                         .infrastructure(infrastructureOutcome)
                                                         .build();
 
-    List<ManifestOutcome> orderedManifestOutcomes = getOrderedManifestOutcome(manifestsOutcome.values());
+    List<ManifestOutcome> orderedManifestOutcomes = new ArrayList<>();
+    if (!k8sManifestOutcome.getIdentifier().equals(MANIFEST_SOURCE_IDENTIFIER)) {
+      orderedManifestOutcomes = getOrderedManifestOutcome(manifestsOutcome.values());
+    }
     orderedManifestOutcomes.addAll(getStepLevelManifestOutcomes(stepElementParameters));
 
     if (ManifestType.Kustomize.equals(k8sManifestOutcome.getType())) {

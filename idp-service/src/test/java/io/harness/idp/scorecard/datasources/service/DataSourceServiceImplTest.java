@@ -19,7 +19,8 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.idp.scorecard.datapoints.entity.DataPointEntity;
 import io.harness.idp.scorecard.datapoints.service.DataPointService;
-import io.harness.idp.scorecard.datasources.beans.entity.DataSourceEntity;
+import io.harness.idp.scorecard.datasources.entity.DataSourceEntity;
+import io.harness.idp.scorecard.datasources.entity.HttpDataSourceEntity;
 import io.harness.idp.scorecard.datasources.repositories.DataSourceRepository;
 import io.harness.rule.Owner;
 import io.harness.spec.server.idp.v1.model.DataPoint;
@@ -67,7 +68,7 @@ public class DataSourceServiceImplTest extends CategoryTest {
   @Owner(developers = DEVESH)
   @Category(UnitTests.class)
   public void testGetAllDataSourcesDetailsForAnAccount() {
-    DataSourceEntity dataSourceEntity = DataSourceEntity.builder()
+    DataSourceEntity dataSourceEntity = HttpDataSourceEntity.builder()
                                             .name(TEST_DATA_SOURCE_NAME)
                                             .description(TEST_DATA_SOURCE_DESCRIPTION)
                                             .identifier(TEST_DATA_SOURCE_IDENTIFIER)
@@ -91,8 +92,6 @@ public class DataSourceServiceImplTest extends CategoryTest {
     dataPoint.setType(TEST_DATA_POINT_TYPE);
     dataPoint.setDescription(TEST_DATA_POINT_DESCRIPTION);
     dataPoint.setDetailedDescription(TEST_DATAPOINT_DETAILED_DESCRIPTION);
-    dataPoint.setIsConditional(TEST_DATA_POINT_IS_CONDITIONAL_VALUE);
-    dataPoint.setConditionalInputDescription(TEST_CONDITIONAL_INPUT_DESCRIPTION);
 
     when(dataPointService.getAllDataPointsDetailsForAccountAndDataSource(
              TEST_ACCOUNT_IDENTIFIER, TEST_DATA_SOURCE_IDENTIFIER))
@@ -119,7 +118,7 @@ public class DataSourceServiceImplTest extends CategoryTest {
                                           .dataSourceLocationIdentifier(TEST_DATA_SOURCE_LOCATION_IDENTIFIER)
                                           .type(DataPointEntity.Type.NUMBER)
                                           .build();
-    DataSourceEntity dataSourceEntity = DataSourceEntity.builder()
+    DataSourceEntity dataSourceEntity = HttpDataSourceEntity.builder()
                                             .name(TEST_DATA_SOURCE_NAME)
                                             .description(TEST_DATA_SOURCE_DESCRIPTION)
                                             .accountIdentifier(TEST_DATA_SOURCE_IDENTIFIER)

@@ -69,6 +69,7 @@ import io.harness.steps.approval.step.harness.beans.HarnessApprovalActivity;
 import io.harness.steps.approval.step.harness.beans.ScheduledDeadline;
 import io.harness.steps.approval.step.harness.entities.HarnessApprovalInstance;
 import io.harness.steps.approval.step.harness.outcomes.HarnessApprovalStepOutcome;
+import io.harness.telemetry.helpers.ApprovalInstrumentationHelper;
 import io.harness.user.remote.UserClient;
 import io.harness.utils.PmsFeatureFlagHelper;
 
@@ -104,6 +105,7 @@ public class HarnessApprovalStepTest {
   @Mock ExecutionSweepingOutputService sweepingOutputService;
   @Mock private UserClient userClient;
   @Mock private PmsFeatureFlagHelper pmsFeatureFlagHelper;
+  @Mock private ApprovalInstrumentationHelper instrumentationHelper;
   @InjectMocks private HarnessApprovalStep harnessApprovalStep;
   private ILogStreamingStepClient logStreamingStepClient;
 
@@ -255,7 +257,10 @@ public class HarnessApprovalStepTest {
     AutoApprovalParams autoApprovalParams =
         AutoApprovalParams.builder()
             .action(AutoApprovalAction.APPROVE)
-            .scheduledDeadline(ScheduledDeadline.builder().time("time").timeZone("timezone").build())
+            .scheduledDeadline(ScheduledDeadline.builder()
+                                   .time(ParameterField.createValueField("time"))
+                                   .timeZone(ParameterField.createValueField("timezone"))
+                                   .build())
             .comments(ParameterField.<String>builder().value("comments").build())
             .build();
     specParameters.setAutoApproval(autoApprovalParams);
@@ -300,7 +305,10 @@ public class HarnessApprovalStepTest {
     AutoApprovalParams autoApprovalParams =
         AutoApprovalParams.builder()
             .action(AutoApprovalAction.APPROVE)
-            .scheduledDeadline(ScheduledDeadline.builder().time("time").timeZone("timezone").build())
+            .scheduledDeadline(ScheduledDeadline.builder()
+                                   .time(ParameterField.createValueField("time"))
+                                   .timeZone(ParameterField.createValueField("timezone"))
+                                   .build())
             .comments(ParameterField.<String>builder().value("comments").build())
             .build();
     specParameters.setAutoApproval(autoApprovalParams);
@@ -368,6 +376,14 @@ public class HarnessApprovalStepTest {
                         .minimumCount(ParameterField.<Integer>builder().value(1).build())
                         .disallowPipelineExecutor(ParameterField.<Boolean>builder().value(false).build())
                         .build())
+                .autoApproval(AutoApprovalParams.builder()
+                                  .action(AutoApprovalAction.APPROVE)
+                                  .scheduledDeadline(ScheduledDeadline.builder()
+                                                         .time(ParameterField.createValueField("2040-05-05 04:24 am"))
+                                                         .timeZone(ParameterField.createValueField("Asia/Kolkata"))
+                                                         .build())
+                                  .comments(ParameterField.<String>builder().value("comments").build())
+                                  .build())
                 .isAutoRejectEnabled(ParameterField.<Boolean>builder().value(false).build())
                 .build())
         .build();

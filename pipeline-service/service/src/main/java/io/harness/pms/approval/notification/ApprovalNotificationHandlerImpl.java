@@ -55,6 +55,7 @@ import io.harness.pms.plan.execution.service.PMSExecutionService;
 import io.harness.project.remote.ProjectClient;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.steps.approval.ApprovalNotificationHandler;
+import io.harness.steps.approval.ApprovalUtils;
 import io.harness.steps.approval.step.beans.ApprovalStatus;
 import io.harness.steps.approval.step.harness.beans.HarnessApprovalAction;
 import io.harness.steps.approval.step.harness.beans.HarnessApprovalActivity;
@@ -62,6 +63,7 @@ import io.harness.steps.approval.step.harness.entities.HarnessApprovalInstance;
 import io.harness.usergroups.UserGroupClient;
 import io.harness.utils.IdentifierRefHelper;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
@@ -72,6 +74,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -134,7 +137,8 @@ public class ApprovalNotificationHandlerImpl implements ApprovalNotificationHand
     }
   }
 
-  private void sendNotificationInternal(
+  @VisibleForTesting
+  protected void sendNotificationInternal(
       HarnessApprovalInstance approvalInstance, Ambiance ambiance, NGLogCallback logCallback) {
     try {
       log.info("Sending notification to user groups for harness approval");
@@ -189,7 +193,8 @@ public class ApprovalNotificationHandlerImpl implements ApprovalNotificationHand
     return approvalSummary;
   }
 
-  private List<String> findInvalidInputUserGroups(
+  @VisibleForTesting
+  protected List<String> findInvalidInputUserGroups(
       List<UserGroupDTO> validatedUserGroups, List<String> inputUserGroups) {
     if (isEmpty(inputUserGroups)) {
       return null;
@@ -271,7 +276,8 @@ public class ApprovalNotificationHandlerImpl implements ApprovalNotificationHand
     }
   }
 
-  private NotificationChannel getNotificationChannel(HarnessApprovalInstance instance,
+  @VisibleForTesting
+  protected NotificationChannel getNotificationChannel(HarnessApprovalInstance instance,
       NotificationSettingConfigDTO notificationSettingConfig, UserGroupDTO userGroup,
       Map<String, String> templateData) {
     if (isNull(userGroup)) {
@@ -314,12 +320,14 @@ public class ApprovalNotificationHandlerImpl implements ApprovalNotificationHand
         String emailTemplateId = instance.isIncludePipelineExecutionHistory()
             ? PredefinedTemplate.HARNESS_APPROVAL_EXECUTION_NOTIFICATION_EMAIL.getIdentifier()
             : PredefinedTemplate.HARNESS_APPROVAL_NOTIFICATION_EMAIL.getIdentifier();
+        Map<String, String> htmlTemplateData = ApprovalUtils.escapeHTMLForTextFields(
+            new HashMap<>(templateData), ApprovalSummary.TEXT_FIELDS_IN_APPROVAL_SUMMARY);
         return EmailChannel.builder()
             .accountId(userGroup.getAccountIdentifier())
             .userGroups(new ArrayList<>(Collections.singleton(notifyUserGroupBuilder.build())))
             .team(Team.PIPELINE)
             .templateId(emailTemplateId)
-            .templateData(templateData)
+            .templateData(htmlTemplateData)
             .recipients(Collections.emptyList())
             .build();
 
@@ -363,13 +371,14 @@ public class ApprovalNotificationHandlerImpl implements ApprovalNotificationHand
         String emailTemplateId = instance.isIncludePipelineExecutionHistory()
             ? PredefinedTemplate.HARNESS_APPROVAL_ACTION_EXECUTION_NOTIFICATION_EMAIL.getIdentifier()
             : PredefinedTemplate.HARNESS_APPROVAL_ACTION_NOTIFICATION_EMAIL.getIdentifier();
-        templateData.put("action", templateData.get("action").replace("\\n", "<br>"));
+        Map<String, String> htmlTemplateData = ApprovalUtils.escapeHTMLForTextFields(
+            new HashMap<>(templateData), ApprovalSummary.TEXT_FIELDS_IN_APPROVAL_SUMMARY);
         return EmailChannel.builder()
             .accountId(userGroup.getAccountIdentifier())
             .userGroups(new ArrayList<>(Collections.singleton(notifyUserGroupBuilder.build())))
             .team(Team.PIPELINE)
             .templateId(emailTemplateId)
-            .templateData(templateData)
+            .templateData(htmlTemplateData)
             .recipients(Collections.emptyList())
             .build();
 
@@ -401,11 +410,11 @@ public class ApprovalNotificationHandlerImpl implements ApprovalNotificationHand
         for (HarnessApprovalActivity harnessApprovalActivity : harnessApprovalActivities) {
           String userIdentification = getUserIdentification(harnessApprovalActivity.getUser());
           action = action
-              + (userIdentification + " approved on " + formatTime(harnessApprovalActivity.getApprovedAt()) + "   \\n");
+              + (userIdentification + " approved on " + formatTime(harnessApprovalActivity.getApprovedAt()) + "   \n");
         }
         if (!isEmpty(action)) {
           // removing last redundant new line character
-          action = action.substring(0, action.length() - 2);
+          action = action.substring(0, action.length() - 1);
         }
       } else if (HarnessApprovalAction.REJECT.equals(lastApprovalActivity.getAction())) {
         String userIdentification = getUserIdentification(lastApprovalActivity.getUser());
@@ -416,7 +425,8 @@ public class ApprovalNotificationHandlerImpl implements ApprovalNotificationHand
     return action;
   }
 
-  private String getUserIdentification(EmbeddedUser user) {
+  @VisibleForTesting
+  protected String getUserIdentification(EmbeddedUser user) {
     if (isEmpty(user.getEmail()) && isEmpty(user.getName())) {
       return "Unknown";
     } else if (isEmpty(user.getEmail())) {

@@ -36,12 +36,10 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.query.Criteria;
 
 @OwnedBy(PL)
-@AllArgsConstructor(onConstructor = @__({ @Inject }))
 @Slf4j
 @Singleton
 public class AccountSetupListener implements MessageListener {
@@ -50,6 +48,15 @@ public class AccountSetupListener implements MessageListener {
   private final AccountClient accountClient;
 
   private final IPAllowlistRepositoryCustom ipAllowlistRepositoryCustom;
+
+  @Inject
+  public AccountSetupListener(OrganizationService organizationService, NGAccountSetupService ngAccountSetupService,
+      AccountClient accountClient, IPAllowlistRepositoryCustom ipAllowlistRepositoryCustom) {
+    this.organizationService = organizationService;
+    this.ngAccountSetupService = ngAccountSetupService;
+    this.accountClient = accountClient;
+    this.ipAllowlistRepositoryCustom = ipAllowlistRepositoryCustom;
+  }
 
   @Override
   public boolean handleMessage(Message message) {

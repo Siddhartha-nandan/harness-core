@@ -7,6 +7,7 @@
 
 package software.wings.service.impl.instance;
 
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.rule.OwnerRule.ROHIT_KUMAR;
 
 import static software.wings.beans.instance.dashboard.InstanceStatsByArtifact.Builder.anInstanceStatsByArtifact;
@@ -68,7 +69,6 @@ import com.google.inject.Inject;
 import dev.morphia.aggregation.AggregationPipeline;
 import dev.morphia.query.MorphiaIterator;
 import dev.morphia.query.Query;
-import io.fabric8.utils.Maps;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
@@ -149,7 +149,7 @@ public class ServerlessDashboardServiceImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void test_getAppInstanceSummaryStats_error() {
     final Mocks mocks = setup_AggregationPipeline();
-    doThrow(NoResultFoundException.newBuilder().message("").build())
+    doThrow(NoResultFoundException.newBuilder().message("some message").build())
         .when(serverlessDashboardService)
         .getServerlessInstanceQueryAtTime(anyString(), anyList(), anyLong());
 
@@ -158,7 +158,7 @@ public class ServerlessDashboardServiceImplTest extends CategoryTest {
         Arrays.asList(EntityType.SERVICE.name(), SettingCategory.CLOUD_PROVIDER.name(), SERVERLESS_FUNCTION_INVOCATION),
         0);
     assertThat(appInstanceSummaryStats.getTotalCount()).isEqualTo(0);
-    assertThat(Maps.isNullOrEmpty(appInstanceSummaryStats.getCountMap())).isTrue();
+    assertThat(isEmpty(appInstanceSummaryStats.getCountMap())).isTrue();
   }
 
   @Test
@@ -174,7 +174,7 @@ public class ServerlessDashboardServiceImplTest extends CategoryTest {
         Arrays.asList(EntityType.SERVICE.name(), SettingCategory.CLOUD_PROVIDER.name(), SERVERLESS_FUNCTION_INVOCATION),
         0);
     assertThat(appInstanceSummaryStats.getTotalCount()).isEqualTo(0);
-    assertThat(Maps.isNullOrEmpty(appInstanceSummaryStats.getCountMap())).isTrue();
+    assertThat(isEmpty(appInstanceSummaryStats.getCountMap())).isTrue();
   }
 
   private void setup_getInstanceQueryAtTime() {
@@ -215,7 +215,7 @@ public class ServerlessDashboardServiceImplTest extends CategoryTest {
   @Owner(developers = ROHIT_KUMAR)
   @Category(UnitTests.class)
   public void test_getAppInstanceSummaryStatsByService_error() {
-    doThrow(NoResultFoundException.newBuilder().message("").build())
+    doThrow(NoResultFoundException.newBuilder().message("some message").build())
         .when(serverlessDashboardService)
         .getServerlessInstanceQueryAtTime(anyString(), anyList(), anyLong());
 

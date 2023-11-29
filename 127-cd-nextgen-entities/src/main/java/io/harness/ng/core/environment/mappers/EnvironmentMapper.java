@@ -32,6 +32,7 @@ import io.harness.ng.core.environment.beans.NGEnvironmentGlobalOverride;
 import io.harness.ng.core.environment.dto.EnvironmentRequestDTO;
 import io.harness.ng.core.environment.dto.EnvironmentResponse;
 import io.harness.ng.core.environment.dto.EnvironmentResponseDTO;
+import io.harness.ng.core.environment.dto.ScopedEnvironmentResponseDTO;
 import io.harness.ng.core.environment.yaml.NGEnvironmentConfig;
 import io.harness.ng.core.environment.yaml.NGEnvironmentInfoConfig;
 import io.harness.ng.core.template.CacheResponseMetadataDTO;
@@ -153,10 +154,11 @@ public class EnvironmentMapper {
         .storeType(environment.getStoreType())
         .connectorRef(environment.getConnectorRef())
         .cacheResponseMetadataDTO(getCacheResponse(environment))
+        .fallbackBranch(environment.getFallBackBranch())
         .build();
   }
 
-  private EntityGitDetails getEntityGitDetails(Environment environment) {
+  public EntityGitDetails getEntityGitDetails(Environment environment) {
     if (environment.getStoreType() == StoreType.REMOTE) {
       EntityGitDetails entityGitDetails = GitAwareContextHelper.getEntityGitDetails(environment);
 
@@ -183,12 +185,26 @@ public class EnvironmentMapper {
         .cacheState(cacheResponse.getCacheState())
         .ttlLeft(cacheResponse.getTtlLeft())
         .lastUpdatedAt(cacheResponse.getLastUpdatedAt())
+        .isSyncEnabled(cacheResponse.isSyncEnabled())
         .build();
   }
 
   public EnvironmentResponse toResponseWrapper(Environment environment) {
     return EnvironmentResponse.builder()
         .environment(writeDTO(environment))
+        .createdAt(environment.getCreatedAt())
+        .lastModifiedAt(environment.getLastModifiedAt())
+        .build();
+  }
+  public ScopedEnvironmentResponseDTO toScopedResponseWrapper(Environment environment) {
+    return ScopedEnvironmentResponseDTO.builder()
+        .orgIdentifier(environment.getOrgIdentifier())
+        .projectIdentifier(environment.getProjectIdentifier())
+        .identifier(environment.getIdentifier())
+        .tags(convertToMap(environment.getTags()))
+        .name(environment.getName())
+        .description(environment.getDescription())
+        .type(environment.getType())
         .createdAt(environment.getCreatedAt())
         .lastModifiedAt(environment.getLastModifiedAt())
         .build();

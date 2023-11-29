@@ -21,11 +21,16 @@ metadata:
 spec:
   selector:
     app: harness-ingress-controller
-  {{- if .Values.global.ggIngress.enabled }}
+  {{- if or .Values.global.globalIngress.enabled .Values.nginx.clusterIPEnabled }}
   type: 'ClusterIP'
+  {{- if not (empty .Values.nginx.clusterIP) }}
+  clusterIP: {{ .Values.nginx.clusterIP }}
+  {{- end }}
   {{- else if .Values.nginx.loadBalancerEnabled }}
   type: 'LoadBalancer'
+  {{- if not (empty .Values.nginx.loadBalancerIP) }}
   loadBalancerIP: {{ .Values.nginx.loadBalancerIP }}
+  {{- end }}
   {{- else }}
   type: 'NodePort'
   {{- end }}
@@ -82,6 +87,27 @@ metadata:
   name: harness-role
   namespace: {{ .Release.Namespace }}
 rules:
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - list
+  - watch
+  - create
+  - delete
+  - get 
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - get
+  - list
+  - update
+  - delete
+  - watch
 - apiGroups:
   - ""
   resources:
@@ -183,7 +209,7 @@ metadata:
   annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
   {{- end }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.nginx.replicaCount }}
   selector:
     matchLabels:
       app: harness-ingress-controller
@@ -274,4 +300,5 @@ spec:
         - --https-port=8443
         - --default-ssl-certificate=$(POD_NAMESPACE)/{{ .Values.global.ingress.tls.secretName }}
         - --publish-service=$(POD_NAMESPACE)/harness-ingress-controller
+        - --watch-ingress-without-class=true
 {{- end }}

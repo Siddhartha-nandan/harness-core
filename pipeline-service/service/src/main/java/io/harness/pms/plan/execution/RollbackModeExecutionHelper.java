@@ -79,15 +79,6 @@ public class RollbackModeExecutionHelper {
       newMetadata = newMetadata.setPipelineStageInfo(parentStageInfo);
     }
 
-    // TODO(archit): remove after one release to handle rollback of service
-    if (EmptyPredicate.isNotEmpty(stageNodeExecutionIds)) {
-      List<NodeExecution> rollbackStageNodeExecutions = nodeExecutionService.getAllWithFieldIncluded(
-          new HashSet<>(stageNodeExecutionIds), NodeProjectionUtils.fieldsForRollbackTransformer);
-      newMetadata.addAllPostExecutionRollbackInfo(rollbackStageNodeExecutions.stream()
-                                                      .map(ne -> createPostExecutionRollbackInfo(ne.getAmbiance()))
-                                                      .collect(Collectors.toList()));
-    }
-
     return newMetadata.build();
   }
 
@@ -234,7 +225,7 @@ public class RollbackModeExecutionHelper {
         }
       }
       List<AdviserObtainment> adviserObtainments = planNode.getAdvisorObtainmentsForExecutionMode().get(executionMode);
-      if (EmptyPredicate.isNotEmpty(adviserObtainments)) {
+      if (planNode.getAdvisorObtainmentsForExecutionMode().containsKey(executionMode)) {
         IdentityPlanNode updatedNode = (IdentityPlanNode) planNodeIDToUpdatedPlanNodes.get(planNode.getUuid());
         if (updatedNode == null) {
           // this means that the stage had failed before the node could start in the previous execution
@@ -264,6 +255,7 @@ public class RollbackModeExecutionHelper {
     // parallel nodes and strategy nodes need to be plan nodes so that we don't take the advisor response from the
     // previous execution. Previous execution's advisor response would be setting next step as something we dont want in
     // rollback mode. We want the new advisors set in the Plan Node to be used
+    // This will be removed post the change in PR#53874 is available in all sdks
     return false;
   }
 

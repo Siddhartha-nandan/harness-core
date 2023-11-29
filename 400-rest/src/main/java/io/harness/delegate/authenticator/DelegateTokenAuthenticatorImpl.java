@@ -43,6 +43,7 @@ import io.harness.manage.GlobalContextManager;
 import io.harness.metrics.intfc.DelegateMetricsService;
 import io.harness.persistence.HIterator;
 import io.harness.persistence.HPersistence;
+import io.harness.security.AccountCheckAndCleanupService;
 import io.harness.security.DelegateTokenAuthenticator;
 
 import software.wings.beans.Account;
@@ -84,7 +85,9 @@ public class DelegateTokenAuthenticatorImpl implements DelegateTokenAuthenticato
   @Inject private DelegateJWTCache delegateJWTCache;
   @Inject private DelegateMetricsService delegateMetricsService;
   @Inject private AgentMtlsVerifier agentMtlsVerifier;
-  @Inject private DelegateSecretManager delegateSecretManager;
+  @Inject private io.harness.delegate.authenticator.DelegateSecretManager delegateSecretManager;
+
+  @Inject private AccountCheckAndCleanupService accountService;
 
   private final LoadingCache<String, String> keyCache =
       Caffeine.newBuilder()
@@ -162,6 +165,10 @@ public class DelegateTokenAuthenticatorImpl implements DelegateTokenAuthenticato
     if (!decryptedWithTokenFromCache && !decryptedWithActiveTokenFromDB) {
       decryptWithAccountKey(accountId, encryptedJWT);
     }
+
+    // If we are reaching here that means, we have successfully decrypted jwt.
+    // If account is deleted or not present in database, fail auth and delete delegate data.
+    accountService.ensureAccountIsNotDeleted(accountId);
 
     try {
       JWTClaimsSet jwtClaimsSet = encryptedJWT.getJWTClaimsSet();

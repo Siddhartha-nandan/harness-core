@@ -40,6 +40,8 @@ import io.harness.cvng.analysis.entities.TimeSeriesLearningEngineTask;
 import io.harness.cvng.analysis.entities.TimeSeriesLoadTestLearningEngineTask;
 import io.harness.cvng.analysis.entities.TimeSeriesRiskSummary;
 import io.harness.cvng.analysis.entities.TimeSeriesShortTermHistory;
+import io.harness.cvng.autodiscovery.entities.AsyncAutoDiscoveryReImport;
+import io.harness.cvng.autodiscovery.entities.AutoDiscoveryAgent;
 import io.harness.cvng.cdng.entities.CVNGStepTask;
 import io.harness.cvng.core.entities.AppDynamicsCVConfig;
 import io.harness.cvng.core.entities.AwsPrometheusCVConfig;
@@ -103,7 +105,10 @@ import io.harness.cvng.notification.entities.SLONotificationRule;
 import io.harness.cvng.servicelevelobjective.entities.AbstractServiceLevelObjective;
 import io.harness.cvng.servicelevelobjective.entities.Annotation;
 import io.harness.cvng.servicelevelobjective.entities.CompositeSLORecord;
+import io.harness.cvng.servicelevelobjective.entities.CompositeSLORecordBucket;
 import io.harness.cvng.servicelevelobjective.entities.CompositeServiceLevelObjective;
+import io.harness.cvng.servicelevelobjective.entities.ErrorBudgetBurnDown;
+import io.harness.cvng.servicelevelobjective.entities.MetricLessServiceLevelIndicator;
 import io.harness.cvng.servicelevelobjective.entities.RatioServiceLevelIndicator;
 import io.harness.cvng.servicelevelobjective.entities.RequestServiceLevelIndicator;
 import io.harness.cvng.servicelevelobjective.entities.SLIRecord;
@@ -258,6 +263,11 @@ public class CVNextGenMorphiaRegister implements MorphiaRegistrar {
     set.add(SLIRecordBucket.class);
     set.add(SimpleVerificationJob.class);
     set.add(SRMAnalysisStepExecutionDetail.class);
+    set.add(AutoDiscoveryAgent.class);
+    set.add(AsyncAutoDiscoveryReImport.class);
+    set.add(MetricLessServiceLevelIndicator.class);
+    set.add(CompositeSLORecordBucket.class);
+    set.add(ErrorBudgetBurnDown.class);
   }
 
   @Override

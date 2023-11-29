@@ -228,7 +228,10 @@ public class VmInitializeTaskParamsBuilder {
     Map<String, String> envVars = new HashMap<>();
     Map<String, String> stageEnvVars =
         vmInitializeUtils.getStageEnvVars(integrationStageConfig.getPlatform(), os, workDir, poolId, infrastructure);
+    Map<String, String> proxyEnvVars =
+        vmInitializeUtils.getStageProxyVars(integrationStageConfig, os, ngAccess, connectorUtils, infrastructure);
     envVars.putAll(stageEnvVars);
+    envVars.putAll(proxyEnvVars);
     envVars.putAll(codebaseEnvVars);
     envVars.putAll(gitEnvVars);
 
@@ -285,6 +288,7 @@ public class VmInitializeTaskParamsBuilder {
         .serviceDependencies(getServiceDependencies(ambiance, integrationStageConfig))
         .tags(vmInitializeUtils.getBuildTags(ambiance, stageDetails))
         .infraInfo(infraInfo)
+        .tty(featureFlagService.isEnabled(FeatureName.CI_ENABLE_TTY_LOGS, accountID))
         .build();
   }
 
@@ -404,7 +408,7 @@ public class VmInitializeTaskParamsBuilder {
     OptionalSweepingOutput optionalSweepingOutput = executionSweepingOutputResolver.resolveOptional(
         ambiance, RefObjectUtils.getSweepingOutputRefObject(ContextElement.stageDetails));
     if (!optionalSweepingOutput.isFound()) {
-      throw new CIStageExecutionException("Stage details sweeping output cannot be empty");
+      throw new CIStageExecutionException("Unable to fetch stage details. Please retry or verify pipeline yaml");
     }
 
     return (StageDetails) optionalSweepingOutput.getOutput();
@@ -700,6 +704,9 @@ public class VmInitializeTaskParamsBuilder {
       }
     }
 
+    // If the tty logs feature flag is enabled
+    boolean enableTTY = featureFlagService.isEnabled(FeatureName.CI_ENABLE_TTY_LOGS, params.getAccountID());
+
     SetupVmRequest.Config config = SetupVmRequest.Config.builder()
                                        .envs(env)
                                        .secrets(secrets)
@@ -711,6 +718,7 @@ public class VmInitializeTaskParamsBuilder {
                                                       .indirectUpload(params.isLogSvcIndirectUpload())
                                                       .build())
                                        .tiConfig(getTIConfig(params, env))
+                                       .tty(enableTTY)
                                        .volumes(getVolumes(params.getVolToMountPath()))
                                        .build();
     return SetupVmRequest.builder()

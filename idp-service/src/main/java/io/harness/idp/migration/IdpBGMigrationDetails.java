@@ -67,6 +67,20 @@ public class IdpBGMigrationDetails implements MigrationDetails {
         .add(Pair.of(33, ScorecardMigration.class))
         .add(Pair.of(34, ScorecardMigration.class))
         .add(Pair.of(35, ScorecardMigration.class))
+        .add(Pair.of(36, ScorecardMigration.class))
+        .add(Pair.of(37, ScorecardMigration.class))
+        .add(Pair.of(38, MultipleInputValuesMigration.class))
+        .add(Pair.of(39, ScorecardMigration.class))
+        .add(Pair.of(40, AddRuleIdentifierMigration.class))
+        .add(Pair.of(41, ScorecardMigration.class))
+        .add(Pair.of(42, AddCheckIdentifierMigration.class))
+        .add(Pair.of(43, PluginInfoMigration.class))
+        .add(Pair.of(44, ScorecardMigration.class))
+        .add(Pair.of(45, PluginInfoMigration.class))
+        .add(Pair.of(46, ScorecardMigration.class))
+        .add(Pair.of(47, ScorecardMigration.class))
+        .add(Pair.of(48, PluginInfoMigration.class))
+        .add(Pair.of(49, ScorecardMigration.class))
         .build();
   }
 }

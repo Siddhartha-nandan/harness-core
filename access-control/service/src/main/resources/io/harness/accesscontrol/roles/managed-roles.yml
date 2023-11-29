@@ -1,6 +1,6 @@
 # Any edit in this file should accompany an increment in version.
 name: rolesConfiguration
-version: 60
+version: 66
 roles:
     - identifier: _project_admin
       name: Project Admin
@@ -165,6 +165,16 @@ roles:
         - cet_criticalevent_view
         - cet_criticalevent_create
         - cet_criticalevent_delete
+        - iac_workspace_accessstate
+        - iac_workspace_approve
+        - iac_workspace_delete
+        - iac_workspace_deletevariable
+        - iac_workspace_edit
+        - iac_workspace_editvariable
+        - iac_workspace_view
+        - core_inputset_edit
+        - core_inputset_delete
+        - core_inputset_view
       allowedScopeLevels:
         - project
       managed: true
@@ -178,6 +188,7 @@ roles:
         - core_delegate_view
         - core_delegateconfiguration_view
         - core_pipeline_view
+        - core_inputset_view
         - core_service_view
         - core_environment_view
         - core_environmentgroup_view
@@ -223,6 +234,7 @@ roles:
         - cet_agents_view
         - cet_token_view
         - cet_criticalevent_view
+        - iac_workspace_view
       allowedScopeLevels:
         - project
       managed: true
@@ -296,6 +308,9 @@ roles:
         - core_pipeline_delete
         - core_pipeline_execute
         - core_pipeline_view
+        - core_inputset_edit
+        - core_inputset_delete
+        - core_inputset_view
         - chi_monitoredservice_view
         - chi_monitoredservice_edit
         - chi_monitoredservice_delete
@@ -395,6 +410,13 @@ roles:
         - cet_criticalevent_view
         - cet_criticalevent_create
         - cet_criticalevent_delete
+        - iac_workspace_accessstate
+        - iac_workspace_approve
+        - iac_workspace_delete
+        - iac_workspace_deletevariable
+        - iac_workspace_edit
+        - iac_workspace_editvariable
+        - iac_workspace_view
       allowedScopeLevels:
         - organization
       managed: true
@@ -422,6 +444,7 @@ roles:
         - core_governancePolicySets_view
         - core_project_view
         - core_pipeline_view
+        - core_inputset_view
         - chi_monitoredservice_view
         - chi_slo_view
         - chi_downtime_view
@@ -455,6 +478,7 @@ roles:
         - cet_agents_view
         - cet_token_view
         - cet_criticalevent_view
+        - iac_workspace_view
       allowedScopeLevels:
         - organization
       managed: true
@@ -544,6 +568,9 @@ roles:
         - core_pipeline_delete
         - core_pipeline_execute
         - core_pipeline_view
+        - core_inputset_edit
+        - core_inputset_delete
+        - core_inputset_view
         - chi_monitoredservice_view
         - chi_monitoredservice_edit
         - chi_monitoredservice_delete
@@ -654,6 +681,26 @@ roles:
         - ccm_cloudAssetGovernanceEnforcement_view
         - ccm_cloudAssetGovernanceEnforcement_delete
         - idp_idpsettings_manage
+        - idp_plugin_view
+        - idp_plugin_edit
+        - idp_plugin_toggle
+        - idp_plugin_delete
+        - idp_scorecard_view
+        - idp_scorecard_edit
+        - idp_scorecard_delete
+        - idp_layout_view
+        - idp_layout_edit
+        - idp_catalogaccesspolicy_view
+        - idp_catalogaccesspolicy_create
+        - idp_catalogaccesspolicy_edit
+        - idp_catalogaccesspolicy_delete
+        - idp_integration_view
+        - idp_integration_create
+        - idp_integration_edit
+        - idp_integration_delete
+        - idp_advancedconfiguration_view
+        - idp_advancedconfiguration_edit
+        - idp_advancedconfiguration_delete
         - code_repo_view
         - code_repo_edit
         - code_repo_delete
@@ -675,6 +722,15 @@ roles:
         - cet_criticalevent_delete
         - ccm_anomalies_view
         - ccm_recommendations_view
+        - ccm_commitmentOrchestrator_view
+        - ccm_commitmentOrchestrator_edit
+        - iac_workspace_accessstate
+        - iac_workspace_approve
+        - iac_workspace_delete
+        - iac_workspace_deletevariable
+        - iac_workspace_edit
+        - iac_workspace_editvariable
+        - iac_workspace_view
       allowedScopeLevels:
         - account
       managed: true
@@ -707,6 +763,7 @@ roles:
         - core_project_view
         - core_organization_view
         - core_pipeline_view
+        - core_inputset_view
         - chi_monitoredservice_view
         - chi_slo_view
         - chi_downtime_view
@@ -753,6 +810,8 @@ roles:
         - cet_criticalevent_view
         - ccm_anomalies_view
         - ccm_recommendations_view
+        - ccm_commitmentOrchestrator_view
+        - iac_workspace_view
       allowedScopeLevels:
         - account
       managed: true
@@ -766,6 +825,7 @@ roles:
         - core_connector_view
         - core_connector_access
         - core_pipeline_view
+        - core_inputset_view
         - core_pipeline_execute
         - core_service_view
         - core_service_access
@@ -993,6 +1053,8 @@ roles:
         - ccm_cloudAssetGovernanceEnforcement_delete
         - ccm_anomalies_view
         - ccm_recommendations_view
+        - ccm_commitmentOrchestrator_edit
+        - ccm_commitmentOrchestrator_view
       managed: true
       allowedScopeLevels:
         - account
@@ -1013,6 +1075,7 @@ roles:
         - ccm_cloudAssetGovernanceRule_view
         - ccm_anomalies_view
         - ccm_recommendations_view
+        - ccm_commitmentOrchestrator_view
       managed: true
       allowedScopeLevels:
         - account
@@ -1085,6 +1148,7 @@ roles:
       name: SEI Admin
       description: Can create, edit, and view SEI resources
       permissions:
+        - sei_seiconfigurationsettings_create
         - sei_seiconfigurationsettings_view
         - sei_seiconfigurationsettings_edit
         - sei_seiconfigurationsettings_delete
@@ -1119,6 +1183,7 @@ roles:
       description: Can view SEI resources
       permissions:
         - sei_seiinsights_view
+        - sei_seicollections_view
       managed: true
       isPublic: false
       internal: true
@@ -1140,3 +1205,48 @@ roles:
         - account
         - organization
         - project
+    - identifier: _idp_admin
+      name: IDP Admin
+      description: Can create, edit, delete and view IDP Resources
+      permissions:
+        - idp_idpsettings_manage
+        - idp_plugin_view
+        - idp_plugin_edit
+        - idp_plugin_toggle
+        - idp_plugin_delete
+        - idp_scorecard_view
+        - idp_scorecard_edit
+        - idp_scorecard_delete
+        - idp_layout_view
+        - idp_layout_edit
+        - idp_catalogaccesspolicy_view
+        - idp_catalogaccesspolicy_create
+        - idp_catalogaccesspolicy_edit
+        - idp_catalogaccesspolicy_delete
+        - idp_integration_view
+        - idp_integration_create
+        - idp_integration_edit
+        - idp_integration_delete
+        - idp_advancedconfiguration_view
+        - idp_advancedconfiguration_edit
+        - idp_advancedconfiguration_delete
+      managed: true
+      allowedScopeLevels:
+        - account
+    - identifier: _idp_platform_engineer
+      name: IDP Platform Engineer
+      description: Can create, edit, delete and view IDP Plugins, Scorecards, Advanced configuration Resources
+      permissions:
+        - idp_plugin_view
+        - idp_plugin_edit
+        - idp_plugin_toggle
+        - idp_plugin_delete
+        - idp_scorecard_view
+        - idp_scorecard_edit
+        - idp_scorecard_delete
+        - idp_advancedconfiguration_view
+        - idp_advancedconfiguration_edit
+        - idp_advancedconfiguration_delete
+      managed: true
+      allowedScopeLevels:
+        - account

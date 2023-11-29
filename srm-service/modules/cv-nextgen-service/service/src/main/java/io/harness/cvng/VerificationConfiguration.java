@@ -118,6 +118,9 @@ public class VerificationConfiguration extends Configuration {
   @JsonProperty("basePathPrefix") String basePathPrefix = "";
   @JsonProperty(value = "enableOpentelemetry") private Boolean enableOpentelemetry;
   public static final String RESOURCE_PACKAGE = "io.harness.cvng";
+
+  public static final String SERVER_STUB = "io.harness.spec.server.cvng.v1";
+
   @JsonProperty("enableDashboardTimescale") private Boolean enableDashboardTimescale;
   @JsonProperty("timescaledb") private TimeScaleDBConfig timeScaleDBConfig;
   @JsonProperty("segmentConfiguration") private SegmentConfiguration segmentConfiguration;
@@ -128,6 +131,10 @@ public class VerificationConfiguration extends Configuration {
   private ServiceHttpClientConfig opaClientConfig;
 
   private String policyManagerSecret;
+
+  private ServiceHttpClientConfig serviceDiscoveryServiceClientConfig;
+
+  private String serviceDiscoveryServiceSecret;
 
   /**
    * Instantiates a new Main configuration.
@@ -223,7 +230,7 @@ public class VerificationConfiguration extends Configuration {
   }
 
   public static Collection<Class<?>> getResourceClasses() {
-    Reflections reflections = new Reflections(RESOURCE_PACKAGE);
+    Reflections reflections = new Reflections(RESOURCE_PACKAGE, SERVER_STUB);
     return reflections.getTypesAnnotatedWith(Path.class);
   }
 

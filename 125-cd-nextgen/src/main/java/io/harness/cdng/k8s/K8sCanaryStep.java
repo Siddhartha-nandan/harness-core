@@ -29,9 +29,11 @@ import io.harness.cdng.k8s.beans.HelmValuesFetchResponsePassThroughData;
 import io.harness.cdng.k8s.beans.K8sCanaryExecutionOutput;
 import io.harness.cdng.k8s.beans.K8sExecutionPassThroughData;
 import io.harness.cdng.k8s.beans.StepExceptionPassThroughData;
+import io.harness.cdng.k8s.trafficrouting.K8sTrafficRoutingHelper;
 import io.harness.cdng.manifest.ManifestType;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
+import io.harness.delegate.beans.instancesync.K8sDeploymentOutcomeMetadata;
 import io.harness.delegate.beans.instancesync.mapper.K8sPodToServiceInstanceInfoMapper;
 import io.harness.delegate.beans.logstreaming.UnitProgressData;
 import io.harness.delegate.beans.logstreaming.UnitProgressDataMapper;
@@ -86,6 +88,7 @@ public class K8sCanaryStep extends CdTaskChainExecutable implements K8sStepExecu
   @Inject private InstanceInfoService instanceInfoService;
   @Inject private CDFeatureFlagHelper cdFeatureFlagHelper;
   @Inject private ReleaseMetadataFactory releaseMetadataFactory;
+  @Inject private K8sTrafficRoutingHelper trafficRoutingHelper;
 
   @Override
   public void validateResources(Ambiance ambiance, StepBaseParameters stepParameters) {
@@ -156,6 +159,11 @@ public class K8sCanaryStep extends CdTaskChainExecutable implements K8sStepExecu
     }
     if (cdStepHelper.shouldPassReleaseMetadata(accountId)) {
       canaryRequestBuilder.releaseMetadata(releaseMetadataFactory.createReleaseMetadata(infrastructure, ambiance));
+    }
+    if (cdFeatureFlagHelper.isEnabled(accountId, FeatureName.CDS_K8S_TRAFFIC_ROUTING_NG)) {
+      canaryRequestBuilder.trafficRoutingConfig(
+          trafficRoutingHelper.validateAndGetTrafficRoutingConfig(canaryStepParameters.getTrafficRouting())
+              .orElse(null));
     }
     Map<String, String> k8sCommandFlag =
         k8sStepHelper.getDelegateK8sCommandFlag(canaryStepParameters.getCommandFlags(), ambiance);
@@ -243,9 +251,10 @@ public class K8sCanaryStep extends CdTaskChainExecutable implements K8sStepExecu
     }
     HelmChartInfo helmChartInfo = k8sCanaryDeployResponse.getHelmChartInfo();
     ReleaseHelmChartOutcome releaseHelmChartOutcome = k8sStepHelper.getHelmChartOutcome(helmChartInfo);
-    instanceInfoService.saveServerInstancesIntoSweepingOutput(ambiance,
+    StepResponse.StepOutcome deploymentInfoOutcome = instanceInfoService.saveServerInstancesIntoSweepingOutput(ambiance,
         K8sPodToServiceInstanceInfoMapper.toServerInstanceInfoList(
-            k8sCanaryDeployResponse.getK8sPodList(), helmChartInfo));
+            k8sCanaryDeployResponse.getK8sPodList(), helmChartInfo),
+        K8sDeploymentOutcomeMetadata.builder().canary(true).build());
     return responseBuilder.status(Status.SUCCEEDED)
         .stepOutcome(StepResponse.StepOutcome.builder()
                          .name(OutcomeExpressionConstants.OUTPUT)
@@ -255,6 +264,7 @@ public class K8sCanaryStep extends CdTaskChainExecutable implements K8sStepExecu
                          .name(OutcomeExpressionConstants.RELEASE_HELM_CHART_OUTCOME)
                          .outcome(releaseHelmChartOutcome)
                          .build())
+        .stepOutcome(deploymentInfoOutcome)
         .build();
   }
 

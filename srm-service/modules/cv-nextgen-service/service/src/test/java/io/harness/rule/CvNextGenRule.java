@@ -26,10 +26,12 @@ import io.harness.cvng.CVNextGenCommonsServiceModule;
 import io.harness.cvng.CVServiceModule;
 import io.harness.cvng.EventsFrameworkModule;
 import io.harness.cvng.VerificationConfiguration;
+import io.harness.cvng.autodiscovery.services.AutoDiscoveryClient;
 import io.harness.cvng.client.ErrorTrackingClient;
 import io.harness.cvng.client.ErrorTrackingService;
 import io.harness.cvng.client.FakeAccessControlClient;
 import io.harness.cvng.client.FakeAccountClient;
+import io.harness.cvng.client.FakeAutoDiscoveryClient;
 import io.harness.cvng.client.FakeNextGenService;
 import io.harness.cvng.client.FakeNotificationClient;
 import io.harness.cvng.client.MockedVerificationManagerService;
@@ -55,6 +57,7 @@ import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.template.TemplateApplyRequestDTO;
 import io.harness.ng.core.template.TemplateMergeResponseDTO;
 import io.harness.ng.core.template.TemplateReferenceSummary;
+import io.harness.ng.core.template.TemplateResponseDTO;
 import io.harness.notification.MongoBackendConfiguration;
 import io.harness.notification.NotificationClientConfiguration;
 import io.harness.notification.constant.NotificationClientSecrets;
@@ -200,6 +203,7 @@ public class CvNextGenRule implements MethodRule, InjectorRuleMixin, MongoRuleMi
       binder.bind(AccountClient.class).to(FakeAccountClient.class);
       binder.bind(EnforcementClientService.class).toInstance(Mockito.mock(EnforcementClientService.class));
       binder.bind(OpaServiceClient.class).toInstance(Mockito.mock(OpaServiceClient.class));
+      binder.bind(AutoDiscoveryClient.class).to(FakeAutoDiscoveryClient.class);
       binder.bind(EngineGrpcExpressionService.class).toInstance(getMockedEngineGrpcExpressionService());
     }));
     MongoBackendConfiguration mongoBackendConfiguration =
@@ -313,6 +317,29 @@ public class CvNextGenRule implements MethodRule, InjectorRuleMixin, MongoRuleMi
                       .build())));
           return call;
         });
+
+    Mockito
+        .when(templateResourceClient.get(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.anyBoolean()))
+        .thenAnswer((Answer<Call<ResponseDTO<TemplateResponseDTO>>>) invocation -> {
+          Call<ResponseDTO<TemplateResponseDTO>> call = Mockito.mock(Call.class);
+          Mockito.when(call.execute())
+              .thenReturn(Response.success(ResponseDTO.newResponse(TemplateResponseDTO.builder().version(1L).build())));
+          return call;
+        });
+
+    Mockito
+        .when(templateResourceClient.getTemplateInputsYaml(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.anyBoolean()))
+        .thenAnswer((Answer<Call<ResponseDTO<String>>>) invocation -> {
+          Call<ResponseDTO<String>> call = Mockito.mock(Call.class);
+          String data = "type: Application\n"
+              + "serviceRef: testservice\n"
+              + "environmentRef: applied";
+          Mockito.when(call.execute()).thenReturn(Response.success(ResponseDTO.newResponse(data)));
+          return call;
+        });
+
     return templateResourceClient;
   }
 

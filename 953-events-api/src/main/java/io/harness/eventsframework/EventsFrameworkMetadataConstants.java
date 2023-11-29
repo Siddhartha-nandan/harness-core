@@ -46,6 +46,7 @@ public final class EventsFrameworkMetadataConstants {
   public static final String VARIABLE_ENTITY = "variable";
   public static final String USER_ENTITY = "user";
   public static final String PIPELINE_ENTITY = "pipeline";
+  public static final String INPUTSET_ENTITY = "inputset";
   public static final String DELEGATE_ENTITY = "delegate";
   public static final String DELEGATE_CONFIGURATION_ENTITY = "delegateconfiguration";
   public static final String FILE_ENTITY = "file";
@@ -114,6 +115,7 @@ public final class EventsFrameworkMetadataConstants {
 
   // IDP
   public static final String ASYNC_CATALOG_IMPORT_ENTITY = "asyncCatalogImport";
+  public static final String ASYNC_SCORE_COMPUTATION_ENTITY = "asyncScoreComputation";
 
   public static final String CD_ACCOUNT_EXECUTION_METADATA = "cdAccountExecutionMetadata";
   public static final String DEPLOYMENT_SUMMARY_NG = "deploymentSummaryNG";
@@ -125,4 +127,10 @@ public final class EventsFrameworkMetadataConstants {
   public static final String SEI_CONFIGURATION_SETTINGS = "seiconfigurationsettings";
   public static final String SEI_COLLECTIONS = "seicollections";
   public static final String SEI_INSIGHTS = "seiinsights";
+
+  // FF
+  public static final String FEATUREFLAG_ENTITY = "featureflag";
+
+  // CODE
+  public static final String CODE_REPOSITORY = "codeRepository";
 }

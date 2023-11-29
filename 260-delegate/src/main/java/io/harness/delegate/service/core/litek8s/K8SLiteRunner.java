@@ -18,6 +18,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 
 import io.harness.delegate.beans.ci.k8s.K8sTaskExecutionResponse;
+import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
 import io.harness.delegate.configuration.DelegateConfiguration;
 import io.harness.delegate.core.beans.InputData;
 import io.harness.delegate.core.beans.K8SInfra;
@@ -30,25 +31,31 @@ import io.harness.delegate.service.core.util.K8SResourceHelper;
 import io.harness.delegate.service.handlermapping.context.Context;
 import io.harness.delegate.service.runners.itfc.Runner;
 import io.harness.logging.CommandExecutionStatus;
+import io.harness.logging.LogLevel;
+import io.harness.logstreaming.LogStreamingClient;
+import io.harness.logstreaming.LogStreamingTaskClient;
 import io.harness.product.ci.engine.proto.ExecuteStep;
 import io.harness.product.ci.engine.proto.ExecuteStepRequest;
 import io.harness.product.ci.engine.proto.LiteEngineGrpc;
 import io.harness.product.ci.engine.proto.UnitStep;
 import io.harness.utils.TokenUtils;
 
-import com.google.common.collect.Streams;
+import software.wings.delegatetasks.DelegateLogService;
+
 import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
+import io.kubernetes.client.openapi.models.CoreV1Event;
 import io.kubernetes.client.openapi.models.V1Container;
 import io.kubernetes.client.openapi.models.V1EnvFromSource;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.openapi.models.V1Service;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
+import io.kubernetes.client.util.Watch;
 import io.kubernetes.client.util.Yaml;
 import java.time.Duration;
 import java.util.List;
@@ -77,35 +84,44 @@ public class K8SLiteRunner implements Runner {
   private final SecretsBuilder secretsBuilder;
   private final K8SRunnerConfig config;
   private final InfraCleaner infraCleaner;
-  //  private final K8EventHandler k8EventHandler;
+  private final LogStreamingClient logStreamingClient;
+  private final DelegateLogService delegateLogService;
+  private final RunnerK8EventHandler k8EventHandler;
 
   @Override
-  public void init(final String taskGroupId, final InputData infra, final Context context) {
+  public void init(
+      final String infraId, final InputData infra, final Map<String, char[]> decrypted, final Context context) {
     log.info("Setting up pod spec");
-
+    ILogStreamingTaskClient logStreamingTaskClient = null;
     try {
       // Step 0 - unpack infra definition. Each runner knows the infra spec it expects
       final var k8sInfra = K8SInfra.parseFrom(infra.getBinaryData());
 
+      // TODO: add image pull secrets support
       // Step 1 - decrypt image pull secrets and create secret resources.
       // pullSecrets need to be decrypted by component which is configured during startup (e.g. runner or core),
       // otherwise we will have chicken & egg problem. E.g. delegate creates pod/container to decrypt secret, but image
       // for it needs secret itself.
       // I think other task secrets are known in advance for entire stage for both CI & CD (I think no real secret
       // expressions or dynamic secrets), this means we can do them during init here or execute step later
-      final var imageSecrets =
-          Streams
-              .mapWithIndex(k8sInfra.getInfraSecretsList().stream(),
-                  (secret, index) -> secretsBuilder.createImagePullSecrets(taskGroupId, secret, index))
-              .collect(toList());
+      // final var imageSecrets =
+      //     Streams
+      //         .mapWithIndex(k8sInfra.getInfraSecretsList().stream(),
+      //             (secret, index) -> secretsBuilder.createImagePullSecrets(infraId, secret, index))
+      //         .collect(toList());
 
       // Step 1a - Should we decrypt other step secrets here and create resources?
-      final var taskSecrets = k8sInfra.getStepsList().stream().collect(
-          groupingBy(K8SStep::getId, flatMapping(task -> createTaskSecrets(taskGroupId, task), toList())));
+      final var taskSecrets = k8sInfra.getStepsList().stream().collect(groupingBy(
+          K8SStep::getId, flatMapping(task -> createTaskSecrets(infraId, task, decrypted, context), toList())));
 
       final var loggingToken = k8sInfra.getLogToken();
+
+      logStreamingTaskClient = LogStreamingTaskClient.getInstance(
+          loggingToken, k8sInfra.getLogPrefix(), logStreamingClient, config.getAccountId(), delegateLogService);
+      logStreamingTaskClient.openStream(null);
+
       final V1Secret loggingSecret =
-          createLoggingSecret(taskGroupId, config.getLogServiceUrl(), loggingToken, k8sInfra.getLogPrefix());
+          createLoggingSecret(infraId, config.getLogServiceUrl(), loggingToken, k8sInfra.getLogPrefix());
 
       // Step 1c - TODO: Support certs (i.e. secret files that get mounted as secret volume).
       // Right now these are copied from delegate using special syntax and env vars (complicated)
@@ -117,41 +133,55 @@ public class K8SLiteRunner implements Runner {
 
       // Step 3 - create service endpoint for LE communication
       final var namespace = config.getNamespace();
+
+      logStreamingTaskClient.log(LogLevel.INFO,
+          format("Starting job to create pod %s on %s namespace", K8SResourceHelper.getPodName(infraId), namespace));
+
       V1Service v1Service =
-          K8SService.clusterIp(taskGroupId, namespace, K8SResourceHelper.getPodName(taskGroupId), RESERVED_LE_PORT)
+          K8SService.clusterIp(infraId, namespace, K8SResourceHelper.getPodName(infraId), RESERVED_LE_PORT)
               .create(coreApi);
 
       // Step 4 - create pod - we don't need to busy wait - maybe LE should send task response as first thing when
       // created?
       final var portMap = new PortMap(RESERVED_ADDON_PORT);
-      final V1Pod pod = PodBuilder.createSpec(containerFactory, config, taskGroupId)
-                            .withImagePullSecrets(imageSecrets)
+      final V1Pod pod = PodBuilder.createSpec(containerFactory, config, infraId)
                             .withTasks(createContainers(k8sInfra, taskSecrets, loggingSecret, volumeMounts, portMap))
                             .buildPod(k8sInfra, volumes, loggingSecret, portMap);
 
       log.info("Creating Task Pod with YAML:\n{}", Yaml.dump(pod));
-      coreApi.createNamespacedPod(namespace, pod, null, null, DELEGATE_FIELD_MANAGER, "Warn");
 
-      log.info("Done creating the task pod for {}!!", taskGroupId);
       // Step 5 - Watch pod logs - normally stop when init finished, but if LE sends response then that's not possible
       // (e.g. delegate replicaset), but we can stop on watch status
-      //    Watch<CoreV1Event> watch =
-      //            k8EventHandler.startAsyncPodEventWatch(kubernetesConfig, namespace, podName,
-      //            logStreamingTaskClient);
+      Watch<CoreV1Event> watch =
+          k8EventHandler.startAsyncPodEventWatch(namespace, pod.getMetadata().getName(), logStreamingTaskClient);
+
+      coreApi.createNamespacedPod(namespace, pod, null, null, DELEGATE_FIELD_MANAGER, "Warn");
+
+      logStreamingTaskClient.log(
+          LogLevel.INFO, format("Done creating the task pod %s for %s!!", pod.getMetadata().getName(), infraId));
+
+      if (watch != null) {
+        k8EventHandler.stopEventWatch(watch);
+      }
 
       // Step 6 - send response to SaaS
     } catch (ApiException e) {
-      log.error("Failed to create the task {}. {}", taskGroupId, ApiExceptionLogger.format(e), e);
+      log.error("Failed to create the task {}. {}", infraId, ApiExceptionLogger.format(e), e);
     } catch (InvalidProtocolBufferException e) {
-      log.error("Failed to parse protobuf data {}", taskGroupId, e);
+      log.error("Failed to parse protobuf data {}", infraId, e);
     } catch (Exception e) {
-      log.error("Failed to create the task {}", taskGroupId, e);
+      log.error("Failed to create the task {}", infraId, e);
       throw e;
+    } finally {
+      if (logStreamingTaskClient != null) {
+        logStreamingTaskClient.closeStream(null);
+      }
     }
   }
 
   @Override
-  public void execute(final String taskGroupId, final InputData tasks, final Context context) {
+  public void execute(final String taskGroupId, final String logKey, final InputData tasks,
+      Map<String, char[]> decrypted, final Context context) {
     ExecuteStep executeStep = ExecuteStep.newBuilder()
                                   .setTaskParameters(tasks.getBinaryData())
                                   .addAllExecuteCommand(List.of("./start.sh"))
@@ -160,6 +190,7 @@ public class K8SLiteRunner implements Runner {
     UnitStep unitStep = UnitStep.newBuilder()
                             .setId(taskGroupId)
                             .setExecuteTask(executeStep)
+                            .setLogKey(logKey)
                             .setCallbackToken(config.getDelegateToken())
                             .setTaskId(context.get(Context.TASK_ID))
                             .setAccountId(config.getAccountId())
@@ -215,24 +246,24 @@ public class K8SLiteRunner implements Runner {
   }
 
   @Override
-  public void cleanup(final String taskGroupId, final Context context) {
+  public void cleanup(final String infraId, final Context context) {
     try {
-      infraCleaner.deletePod(taskGroupId, config.getNamespace());
-      infraCleaner.deleteSecrets(taskGroupId, config.getNamespace());
-      infraCleaner.deleteServiceEndpoint(taskGroupId, config.getNamespace());
+      infraCleaner.deletePod(infraId, config.getNamespace());
+      infraCleaner.deleteSecrets(infraId, config.getNamespace());
+      infraCleaner.deleteServiceEndpoint(infraId, config.getNamespace());
     } catch (ApiException e) {
-      log.error("Failed to cleanup the task {}. {}", taskGroupId, ApiExceptionLogger.format(e), e);
+      log.error("Failed to cleanup the task {}. {}", infraId, ApiExceptionLogger.format(e), e);
     } catch (Exception e) {
-      log.error("Failed to cleanup the task {}", taskGroupId, e);
+      log.error("Failed to cleanup the task {}", infraId, e);
       throw e;
     }
   }
 
-  private V1Secret createLoggingSecret(final String taskGroupId, final String logServiceUri, final String loggingToken,
+  private V1Secret createLoggingSecret(final String infraId, final String logServiceUri, final String loggingToken,
       final String loggingPrefix) throws ApiException {
-    final var secretName = K8SResourceHelper.getSecretName(taskGroupId + "-logging");
+    final var secretName = K8SResourceHelper.getSecretName(infraId + "-logging");
     final var namespace = config.getNamespace();
-    return K8SSecret.secret(secretName, namespace, taskGroupId)
+    return K8SSecret.secret(secretName, namespace, infraId)
         .putStringDataItem(LOG_SERVICE_ENDPOINT_VARIABLE, logServiceUri)
         .putStringDataItem(LOG_SERVICE_TOKEN_VARIABLE, loggingToken)
         .putStringDataItem(HARNESS_LOG_PREFIX_VARIABLE, loggingPrefix)
@@ -240,9 +271,12 @@ public class K8SLiteRunner implements Runner {
   }
 
   @NonNull
-  private Stream<V1Secret> createTaskSecrets(final String taskGroupId, final K8SStep task) {
-    return task.getInputSecretsList().stream().map(
-        secret -> secretsBuilder.createSecret(taskGroupId, task.getId(), secret));
+  private Stream<V1Secret> createTaskSecrets(
+      final String infraId, final K8SStep task, final Map<String, char[]> decrypted, final Context context) {
+    return task.getInputSecretsList().stream().map(secret -> {
+      return secretsBuilder.createSecret(
+          infraId, task.getId(), secret.getScopedSecretId(), decrypted.get(secret.getScopedSecretId()));
+    });
   }
 
   private List<V1Container> createContainers(final K8SInfra k8SInfra, final Map<String, List<V1Secret>> taskSecrets,

@@ -24,6 +24,7 @@ import static io.harness.rule.OwnerRule.UTKARSH_CHOUBEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
@@ -44,7 +45,7 @@ import io.harness.event.OrchestrationLogPublisher;
 import io.harness.exception.InvalidRequestException;
 import io.harness.execution.NodeExecution;
 import io.harness.execution.NodeExecution.NodeExecutionKeys;
-import io.harness.monitoring.ExecutionCountWithAccountResult;
+import io.harness.monitoring.ExecutionStatistics;
 import io.harness.observer.Subject;
 import io.harness.plan.Node;
 import io.harness.plan.PlanNode;
@@ -80,7 +81,7 @@ import org.joor.Reflect;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.mockito.ArgumentMatchers;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -854,11 +855,16 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
     Reflect.on(nodeExecutionService).set("nodeDeleteObserverSubject", nodeDeleteObserverSubject);
 
     List<NodeExecution> nodeExecutionList = new LinkedList<>();
-    Set<String> batchNodeExecutionIds = new HashSet<>();
-    for (int i = 0; i < 1200; i++) {
+    Set<String> firstBatchNodeExecutionIds = new HashSet<>();
+    Set<String> secondBatchNodeExecutionIds = new HashSet<>();
+    for (int i = 0; i < 900; i++) {
       String uuid = generateUuid();
       nodeExecutionList.add(NodeExecution.builder().uuid(uuid).build());
-      batchNodeExecutionIds.add(uuid);
+      if (i < 500) {
+        firstBatchNodeExecutionIds.add(uuid);
+      } else {
+        secondBatchNodeExecutionIds.add(uuid);
+      }
     }
     CloseableIterator<NodeExecution> iterator =
         OrchestrationTestHelper.createCloseableIterator(nodeExecutionList.iterator());
@@ -866,11 +872,14 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
         .when(nodeExecutionService)
         .fetchNodeExecutionsFromAnalytics(
             new HashSet<>(Arrays.asList("EXECUTION_1")), NodeProjectionUtils.fieldsForNodeExecutionDelete);
+    ArgumentCaptor<Query> queryArgumentCaptor = ArgumentCaptor.forClass(Query.class);
     nodeExecutionService.deleteAllNodeExecutionAndMetadata(new HashSet<>(Arrays.asList("EXECUTION_1")));
     verify(nodeDeleteObserverSubject, times(2)).fireInform(any(), any());
 
-    verify(mongoTemplateMock, times(1))
-        .remove(query(where(NodeExecutionKeys.id).in(batchNodeExecutionIds)), NodeExecution.class);
+    verify(mongoTemplateMock, times(2)).remove(queryArgumentCaptor.capture(), eq(NodeExecution.class));
+    assertThat(queryArgumentCaptor.getAllValues().size()).isEqualTo(2);
+    assertThat(queryArgumentCaptor.getAllValues().get(1))
+        .isEqualTo(query(where(NodeExecutionKeys.id).in(secondBatchNodeExecutionIds)));
   }
 
   @Test
@@ -1126,9 +1135,7 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
     MongoTemplate mongoTemplateMock = Mockito.mock(MongoTemplate.class);
     Reflect.on(nodeExecutionService).set("mongoTemplate", mongoTemplateMock);
     UpdateResult updated = UpdateResult.acknowledged(1, null, null);
-    doReturn(updated)
-        .when(mongoTemplateMock)
-        .updateMulti(any(Query.class), any(Update.class), ArgumentMatchers.eq(NodeExecution.class));
+    doReturn(updated).when(mongoTemplateMock).updateMulti(any(Query.class), any(Update.class), eq(NodeExecution.class));
     boolean result = nodeExecutionService.updateRelationShipsForRetryNode(any(), any());
     assertThat(result).isFalse();
   }
@@ -1140,9 +1147,7 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
     MongoTemplate mongoTemplateMock = Mockito.mock(MongoTemplate.class);
     Reflect.on(nodeExecutionService).set("mongoTemplate", mongoTemplateMock);
     UpdateResult updated = UpdateResult.unacknowledged();
-    doReturn(updated)
-        .when(mongoTemplateMock)
-        .updateMulti(any(Query.class), any(Update.class), ArgumentMatchers.eq(NodeExecution.class));
+    doReturn(updated).when(mongoTemplateMock).updateMulti(any(Query.class), any(Update.class), eq(NodeExecution.class));
     boolean result = nodeExecutionService.updateRelationShipsForRetryNode(any(), any());
     assertThat(result).isTrue();
   }
@@ -1273,7 +1278,13 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
     nodeExecutionService.save(nodeExecution1);
     nodeExecutionService.save(nodeExecution2);
 
-    List<ExecutionCountWithAccountResult> accountResults = nodeExecutionService.aggregateRunningNodesCountPerAccount();
-    assertThat(accountResults.size()).isEqualTo(2);
+    ExecutionStatistics executionStatistics = nodeExecutionService.aggregateRunningNodeExecutionsCount();
+    assertThat(executionStatistics.getAccountStats().size()).isEqualTo(2);
+    assertThat(executionStatistics.getModuleStats().size()).isEqualTo(1);
+    assertThat(executionStatistics.getStepTypeStats().size()).isEqualTo(1);
+    assertThat(executionStatistics.getAccountStats().get(0).getCount()).isEqualTo(1);
+    assertThat(executionStatistics.getAccountStats().get(1).getCount()).isEqualTo(1);
+    assertThat(executionStatistics.getModuleStats().get(0).getCount()).isEqualTo(2);
+    assertThat(executionStatistics.getStepTypeStats().get(0).getCount()).isEqualTo(2);
   }
 }

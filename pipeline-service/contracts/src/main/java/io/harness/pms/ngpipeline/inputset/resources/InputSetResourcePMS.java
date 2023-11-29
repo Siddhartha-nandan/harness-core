@@ -30,6 +30,7 @@ import io.harness.ng.beans.PageResponse;
 import io.harness.ng.core.dto.ErrorDTO;
 import io.harness.ng.core.dto.FailureDTO;
 import io.harness.ng.core.dto.ResponseDTO;
+import io.harness.pms.inputset.InputSetFilterPropertiesDto;
 import io.harness.pms.inputset.InputSetSchemaConstants;
 import io.harness.pms.inputset.MergeInputSetForRerunRequestDTO;
 import io.harness.pms.inputset.MergeInputSetRequestDTOPMS;
@@ -54,6 +55,8 @@ import io.harness.pms.pipeline.PipelineResourceConstants;
 import io.harness.pms.pipeline.ResolveInputYamlType;
 import io.harness.pms.rbac.PipelineRbacPermissions;
 
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -120,6 +123,8 @@ public interface InputSetResourcePMS {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns Input Set if exists for the given Identifier.")
       })
+  @Timed
+  @ResponseMetered
   ResponseDTO<InputSetResponseDTOPMS>
   getInputSet(@PathParam(NGCommonEntityConstants.INPUT_SET_IDENTIFIER_KEY) @Parameter(
                   description = PipelineResourceConstants.INPUT_SET_ID_PARAM_MESSAGE) String inputSetIdentifier,
@@ -150,7 +155,6 @@ public interface InputSetResourcePMS {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "default",
             description = "The Overlay Input Set that corresponds to the given Overlay Input Set Identifier")
       })
-  @Hidden
   ResponseDTO<OverlayInputSetResponseDTOPMS>
   getOverlayInputSet(
       @PathParam(NGCommonEntityConstants.INPUT_SET_IDENTIFIER_KEY) @Parameter(
@@ -183,6 +187,8 @@ public interface InputSetResourcePMS {
             description =
                 "If the YAML is valid, returns created Input Set. If not, it sends what is wrong with the YAML")
       })
+  @Timed
+  @ResponseMetered
   ResponseDTO<InputSetResponseDTOPMS>
   createInputSet(@NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier @Parameter(
                      description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE) String accountId,
@@ -217,7 +223,6 @@ public interface InputSetResourcePMS {
             description =
                 "If the YAML is valid, returns created Overlay Input Set. If not, it sends what is wrong with the YAML")
       })
-  @Hidden
   ResponseDTO<OverlayInputSetResponseDTOPMS>
   createOverlayInputSet(
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @Parameter(
@@ -245,6 +250,8 @@ public interface InputSetResourcePMS {
             description =
                 "If the YAML is valid, returns the updated Input Set. If not, it sends what is wrong with the YAML")
       })
+  @Timed
+  @ResponseMetered
   ResponseDTO<InputSetResponseDTOPMS>
   updateInputSet(
       @Parameter(description = PipelineResourceConstants.IF_MATCH_PARAM_MESSAGE) @HeaderParam(IF_MATCH) String ifMatch,
@@ -285,7 +292,6 @@ public interface InputSetResourcePMS {
             description =
                 "If the YAML is valid, returns the updated Overlay Input Set. If not, it sends what is wrong with the YAML")
       })
-  @Hidden
   ResponseDTO<OverlayInputSetResponseDTOPMS>
   updateOverlayInputSet(
       @Parameter(description = PipelineResourceConstants.IF_MATCH_PARAM_MESSAGE) @HeaderParam(IF_MATCH) String ifMatch,
@@ -316,6 +322,8 @@ public interface InputSetResourcePMS {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Return the Deleted Input Set")
       })
+  @Timed
+  @ResponseMetered
   ResponseDTO<Boolean>
   delete(
       @Parameter(description = PipelineResourceConstants.IF_MATCH_PARAM_MESSAGE) @HeaderParam(IF_MATCH) String ifMatch,
@@ -341,6 +349,8 @@ public interface InputSetResourcePMS {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "default",
             description = "Fetch all the Input Sets for a Pipeline, including Overlay Input Sets.")
       })
+  @Timed
+  @ResponseMetered
   ResponseDTO<PageResponse<InputSetSummaryResponseDTOPMS>>
   listInputSetsForPipeline(@QueryParam(NGResourceFilterConstants.PAGE_KEY) @DefaultValue("0") @Parameter(
                                description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) int page,
@@ -374,6 +384,8 @@ public interface InputSetResourcePMS {
             description =
                 "Fetch Runtime Input Template for a Pipeline, along with any expressions whose value is needed for running specific Stages")
       })
+  @Timed
+  @ResponseMetered
   ResponseDTO<InputSetTemplateResponseDTOPMS>
   getTemplateFromPipeline(@NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier @Parameter(
                               description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE) String accountId,
@@ -667,7 +679,7 @@ public interface InputSetResourcePMS {
           NGCommonEntityConstants.INPUT_SET_IDENTIFIER_KEY) @ResourceIdentifier String inputSetIdentifier,
       @BeanParam GitMetadataUpdateRequestInfoDTO gitMetadataUpdateRequestInfo);
 
-  @GET
+  @POST
   @Hidden
   @Path("/list")
   @ApiOperation(value = "Gets InputSets list for a project", nickname = "getInputSetsListForProject")
@@ -682,7 +694,7 @@ public interface InputSetResourcePMS {
   ResponseDTO<PageResponse<InputSetListResponseDTO>>
   listInputSetsForProject(@QueryParam(NGResourceFilterConstants.PAGE_KEY) @DefaultValue("0") @Parameter(
                               description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) int page,
-      @QueryParam(NGResourceFilterConstants.SIZE_KEY) @DefaultValue("100") @Parameter(
+      @QueryParam(NGResourceFilterConstants.SIZE_KEY) @DefaultValue("25") @Parameter(
           description = NGCommonEntityConstants.SIZE_PARAM_MESSAGE) int size,
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @Parameter(
           description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE) @AccountIdentifier String accountId,
@@ -690,6 +702,13 @@ public interface InputSetResourcePMS {
           description = PipelineResourceConstants.ORG_PARAM_MESSAGE) @OrgIdentifier String orgIdentifier,
       @NotNull @QueryParam(NGCommonEntityConstants.PROJECT_KEY) @Parameter(
           description = PipelineResourceConstants.PROJECT_PARAM_MESSAGE) @ProjectIdentifier String projectIdentifier,
-      @Parameter(description = InputSetSchemaConstants.INPUT_SET_TYPE_MESSAGE) @QueryParam("inputSetType")
-      @DefaultValue("ALL") InputSetListTypePMS inputSetListType, @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo);
+      @Parameter(description = InputSetSchemaConstants.INPUT_SET_TYPE_MESSAGE) @QueryParam(
+          "inputSetType") @DefaultValue("ALL") InputSetListTypePMS inputSetListType,
+      @QueryParam(NGResourceFilterConstants.SEARCH_TERM_KEY) @Parameter(
+          description = PipelineResourceConstants.INPUT_SET_SEARCH_TERM_PARAM_MESSAGE) String searchTerm,
+      @QueryParam(NGResourceFilterConstants.SORT_KEY) @Parameter(
+          description = NGCommonEntityConstants.SORT_PARAM_MESSAGE) List<String> sort,
+      @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo,
+      @RequestBody(description = "This is the body for the filter properties for listing InputSets.")
+      InputSetFilterPropertiesDto filterProperties);
 }

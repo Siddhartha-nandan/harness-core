@@ -1,6 +1,6 @@
 # Any edit in this file should accompany an increment in version.
 name: permissionsConfiguration
-version: 61
+version: 66
 permissions:
   - identifier: core_project_delete
     name: Delete Project
@@ -1424,6 +1424,126 @@ permissions:
     includedInAllRoles: false
     allowedScopeLevels:
       - account
+  - identifier: idp_plugin_view
+    name: View IDP custom plugins
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_plugin_edit
+    name: Create or Edit IDP custom plugins
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_plugin_toggle
+    name: Enable or Disable an IDP Plugin
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_plugin_delete
+    name: Delete IDP custom plugins
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_scorecard_view
+    name: View IDP Scorecards
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_scorecard_edit
+    name: Create or Edit IDP Scorecards
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_scorecard_delete
+    name: Delete IDP Scorecards
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_layout_view
+    name: View IDP Layout Configurations
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_layout_edit
+    name: Create or Edit IDP Layout Configurations
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_catalogaccesspolicy_view
+    name: View IDP Catalog Access Control Policies
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_catalogaccesspolicy_create
+    name: Create IDP Catalog Access Control Policies
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_catalogaccesspolicy_edit
+    name: Edit IDP Catalog Access Control Policies
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_catalogaccesspolicy_delete
+    name: Delete IDP Catalog Access Control Policies
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_integration_view
+    name: View IDP Integrations
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_integration_create
+    name: Create IDP Integrations
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_integration_edit
+    name: Edit IDP Integrations
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_integration_delete
+    name: Delete IDP Integrations
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_advancedconfiguration_view
+    name: View IDP Advanced Configurations
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_advancedconfiguration_edit
+    name: Create or Edit IDP Advanced Configurations
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: idp_advancedconfiguration_delete
+    name: Delete IDP Advanced Configurations
+    status: EXPERIMENTAL
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
   - identifier: code_repo_view
     name: View a Code Repository
     status: ACTIVE
@@ -1577,53 +1697,59 @@ permissions:
       - project
   - identifier: iac_workspace_view
     name: View Infrastructure Workspace
-    status: STAGING
+    status: ACTIVE
     allowedScopeLevels:
       - account
       - organization
       - project
   - identifier: iac_workspace_edit
     name: Create/Edit Infrastructure Workspace
-    status: STAGING
+    status: ACTIVE
     allowedScopeLevels:
       - account
       - organization
       - project
   - identifier: iac_workspace_delete
     name: Delete Infrastructure Workspace
-    status: STAGING
+    status: ACTIVE
     allowedScopeLevels:
       - account
       - organization
       - project
   - identifier: iac_workspace_editvariable
     name: Create/Edit Infrastructure Workspace Variable
-    status: STAGING
+    status: ACTIVE
     allowedScopeLevels:
       - account
       - organization
       - project
   - identifier: iac_workspace_deletevariable
     name: Delete Infrastructure Workspace Variable
-    status: STAGING
+    status: ACTIVE
     allowedScopeLevels:
       - account
       - organization
       - project
   - identifier: iac_workspace_approve
     name: Approve Infrastructure Workspace
-    status: STAGING
+    status: ACTIVE
     allowedScopeLevels:
       - account
       - organization
       - project
   - identifier: iac_workspace_accessstate
     name: Access Infrastructure Workspace State
-    status: STAGING
+    status: ACTIVE
     allowedScopeLevels:
       - account
       - organization
       - project
+  - identifier: sei_seiconfigurationsettings_create
+    name: SEI create configuration settings
+    status: ACTIVE
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
   - identifier: sei_seiconfigurationsettings_view
     name: SEI view configuration settings
     status: ACTIVE
@@ -1718,3 +1844,39 @@ permissions:
     includedInAllRoles: false
     allowedScopeLevels:
       - account
+  - identifier: ccm_commitmentOrchestrator_edit
+    name: Setup CCM Commitment Orchestration
+    status: ACTIVE
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: ccm_commitmentOrchestrator_view
+    name: View CCM Commitment Orchestration
+    status: ACTIVE
+    includedInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: core_inputset_edit
+    name: Create or Edit InputSet
+    status: ACTIVE
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
+  - identifier: core_inputset_delete
+    name: Delete InputSet
+    status: ACTIVE
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
+  - identifier: core_inputset_view
+    name: View InputSet
+    status: ACTIVE
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project

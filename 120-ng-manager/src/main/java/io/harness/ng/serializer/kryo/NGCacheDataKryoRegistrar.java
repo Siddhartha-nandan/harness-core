@@ -7,6 +7,7 @@
 
 package io.harness.ng.serializer.kryo;
 
+import io.harness.beans.ScopeInfo;
 import io.harness.beans.ScopeLevel;
 import io.harness.ng.core.api.cache.JwtTokenPublicKeysJsonData;
 import io.harness.ng.core.api.cache.JwtTokenScimAccountSettingsData;
@@ -32,5 +33,6 @@ public class NGCacheDataKryoRegistrar implements KryoRegistrar {
     kryo.register(SettingCategory.class, 10000224);
     kryo.register(SettingValueType.class, 10000225);
     kryo.register(SettingSource.class, 10000226);
+    kryo.register(ScopeInfo.class, 10000227);
   }
 }

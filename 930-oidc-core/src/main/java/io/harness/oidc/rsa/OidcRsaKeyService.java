@@ -8,6 +8,7 @@
 package io.harness.oidc.rsa;
 
 import static io.harness.NGConstants.HARNESS_SECRET_MANAGER_IDENTIFIER;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import static java.util.Objects.isNull;
@@ -19,8 +20,6 @@ import io.harness.encryption.SecretRefHelper;
 import io.harness.ng.core.dto.secrets.SecretDTOV2;
 import io.harness.ng.core.dto.secrets.SecretRequestWrapper;
 import io.harness.ng.core.dto.secrets.SecretTextSpecDTO;
-import io.harness.oidc.entities.OidcJwks;
-import io.harness.oidc.jwks.OidcJwksUtility;
 import io.harness.rsa.RSAKeyPairPEM;
 import io.harness.rsa.RSAKeysUtils;
 import io.harness.rsa.RsaKeyPair;
@@ -29,27 +28,25 @@ import io.harness.secretmanagerclient.ValueType;
 import io.harness.secretmanagerclient.services.api.SecretManagerClientService;
 
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.google.inject.name.Named;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
+@Singleton
 public class OidcRsaKeyService {
   @Inject @Named("PRIVILEGED") private SecretManagerClientService ngSecretService;
   @Inject RSAKeysUtils rsaKeysUtils;
-  @Inject OidcJwksUtility oidcJwksUtility;
 
-  public String getOicJwksPrivateKeyPEM(String accountId) {
-    OidcJwks oidcJwks = oidcJwksUtility.getJwksKeys(accountId);
-
-    if (isNull(oidcJwks)) {
-      oidcJwks = generateOidcJwks(accountId);
-      oidcJwksUtility.saveOidcJwks(oidcJwks);
+  public String getDecryptedJwksPrivateKeyPem(String accountId, RsaKeyPair rsaKeyPair) {
+    if (isNull(rsaKeyPair)) {
+      log.error("RSA key pair not present for Oidc JWKS config for account - {}", accountId);
+      return null;
     }
 
-    RsaKeyPair rsaKeyPair = oidcJwks.getRsaKeyPair();
-
-    if (isNull(rsaKeyPair)) {
-      log.error("RSA key pair not present for Oidc JWKS config for account- {}", accountId);
+    if (isEmpty(rsaKeyPair.getPrivateKeyRef())) {
+      log.error("RSA private key ref is empty for account - {}", accountId);
       return null;
     }
 
@@ -68,8 +65,14 @@ public class OidcRsaKeyService {
     return null;
   }
 
+  public RsaKeyPair generateRsaKeyPair(String accountId) {
+    RSAKeyPairPEM rsaKeyPairPEM = rsaKeysUtils.generateKeyPairPEM();
+    String privateKeyRef = encryptPrivateKey(accountId, rsaKeyPairPEM.getPrivateKeyPem());
+    return RsaKeyPair.builder().publicKey(rsaKeyPairPEM.getPublicKeyPem()).privateKeyRef(privateKeyRef).build();
+  }
+
   private String encryptPrivateKey(String accountId, String privateKeyPem) {
-    String privateKeyIdentifier = "__INTERNAL_" + accountId + "_oidc_privateKey_PEM__";
+    String privateKeyIdentifier = "__INTERNAL_" + getIdentifierForEncryptedRecord(accountId) + "_oidc_privateKey_PEM__";
     SecretRequestWrapper secretRequestWrapper =
         SecretRequestWrapper.builder()
             .secret(SecretDTOV2.builder()
@@ -92,13 +95,20 @@ public class OidcRsaKeyService {
         SecretRefData.builder().identifier(privateKeyIdentifier).scope(Scope.ACCOUNT).build());
   }
 
-  private OidcJwks generateOidcJwks(String accountId) {
-    return OidcJwks.builder().accountId(accountId).rsaKeyPair(generateRsaKeyPair(accountId)).build();
-  }
+  private String getIdentifierForEncryptedRecord(String baseId) {
+    // Define the regex pattern that contains only alphanumeric, underscore and $ characters
+    // and does not start with a number or $
+    String regex = "[^a-zA-Z0-9_\\$]";
 
-  private RsaKeyPair generateRsaKeyPair(String accountId) {
-    RSAKeyPairPEM rsaKeyPairPEM = rsaKeysUtils.generateKeyPairPEM();
-    String privateKeyRef = encryptPrivateKey(accountId, rsaKeyPairPEM.getPrivateKeyPem());
-    return RsaKeyPair.builder().publicKey(rsaKeyPairPEM.getPublicKeyPem()).privateKeyRef(privateKeyRef).build();
+    // Replace invalid characters with "_"
+    String replacedString = baseId.replaceAll(regex, "_");
+
+    // Check and replace the first character if it's a number or "$"
+    if (replacedString.length() > 0
+        && (Character.isDigit(replacedString.charAt(0)) || replacedString.charAt(0) == '$')) {
+      replacedString = "_" + replacedString.substring(1);
+    }
+
+    return replacedString;
   }
 }

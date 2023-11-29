@@ -16,10 +16,16 @@ import io.harness.entities.Instance.InstanceBuilder;
 import io.harness.ng.core.environment.beans.EnvironmentType;
 import io.harness.spec.server.ssca.v1.model.Artifact;
 import io.harness.spec.server.ssca.v1.model.Attestation;
+import io.harness.spec.server.ssca.v1.model.EnforcementResultDTO;
+import io.harness.spec.server.ssca.v1.model.EnforcementSummaryDTO;
+import io.harness.spec.server.ssca.v1.model.NormalizedSbomComponentDTO;
+import io.harness.spec.server.ssca.v1.model.SbomDetailsForScorecard;
 import io.harness.spec.server.ssca.v1.model.SbomMetadata;
 import io.harness.spec.server.ssca.v1.model.SbomProcess;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
-import io.harness.ssca.beans.Activity;
+import io.harness.spec.server.ssca.v1.model.SbomScorecardRequestBody;
+import io.harness.spec.server.ssca.v1.model.Score;
+import io.harness.spec.server.ssca.v1.model.ScorecardInfo;
 import io.harness.ssca.beans.CyclonedxDTO;
 import io.harness.ssca.beans.CyclonedxDTO.CyclonedxDTOBuilder;
 import io.harness.ssca.beans.EnvType;
@@ -29,18 +35,27 @@ import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityBuilder;
 import io.harness.ssca.entities.CdInstanceSummary;
 import io.harness.ssca.entities.CdInstanceSummary.CdInstanceSummaryBuilder;
+import io.harness.ssca.entities.ConfigEntity;
+import io.harness.ssca.entities.ConfigEntity.ConfigEntityBuilder;
+import io.harness.ssca.entities.ConfigEntity.ConfigInfo;
+import io.harness.ssca.entities.EnforcementResultEntity;
+import io.harness.ssca.entities.EnforcementResultEntity.EnforcementResultEntityBuilder;
 import io.harness.ssca.entities.EnforcementSummaryEntity;
 import io.harness.ssca.entities.EnforcementSummaryEntity.EnforcementSummaryEntityBuilder;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity.NormalizedSBOMComponentEntityBuilder;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -176,14 +191,19 @@ public class BuilderFactory {
         .sbom(ArtifactEntity.Sbom.builder().sbomVersion("3.0").toolVersion("2.0").tool("syft").build())
         .invalid(false)
         .lastUpdatedAt(Instant.now().toEpochMilli())
-        .componentsCount(35)
-        .activity(Activity.NON_DEPLOYED);
+        .componentsCount(35l)
+        .nonProdEnvCount(1l)
+        .prodEnvCount(2l);
   }
 
   public EnforcementSummaryEntityBuilder getEnforcementSummaryBuilder() {
     return EnforcementSummaryEntity.builder()
+        .accountId(context.accountId)
+        .orgIdentifier(context.orgIdentifier)
+        .projectIdentifier(context.projectIdentifier)
+        .pipelineExecutionId("pipelineExecutionId")
         .enforcementId("enforcementId")
-        .createdAt(clock.millis())
+        .createdAt(1000l)
         .denyListViolationCount(1)
         .allowListViolationCount(5)
         .artifact(io.harness.ssca.beans.Artifact.builder()
@@ -195,6 +215,26 @@ public class BuilderFactory {
                       .build())
         .orchestrationId("orchestrationId")
         .status("Failed");
+  }
+
+  public EnforcementSummaryDTO getEnforcementSummaryDTO() {
+    return new EnforcementSummaryDTO()
+        .accountId(context.accountId)
+        .orgIdentifier(context.orgIdentifier)
+        .projectIdentifier(context.projectIdentifier)
+        .pipelineExecutionId("pipelineExecutionId")
+        .created(new BigDecimal(1000))
+        .enforcementId("enforcementId")
+        .allowListViolationCount(new BigDecimal(5))
+        .denyListViolationCount(new BigDecimal(1))
+        .orchestrationId("orchestrationId")
+        .status("Failed")
+        .artifact(new io.harness.spec.server.ssca.v1.model.Artifact()
+                      .id("artifactId")
+                      .name("test/image")
+                      .tag("tag")
+                      .type("image/repo")
+                      .registryUrl("https://index.docker.com/v2/"));
   }
 
   public CdInstanceSummaryBuilder getCdInstanceSummaryBuilder() {
@@ -254,6 +294,43 @@ public class BuilderFactory {
         .sequenceId("1");
   }
 
+  public NormalizedSbomComponentDTO getNormalizedSbomComponentDTO() {
+    return new NormalizedSbomComponentDTO()
+        .packageManager("packageManager")
+        .packageNamespace("packageNamespace")
+        .purl("purl")
+        .patchVersion(new BigDecimal(1))
+        .minorVersion(new BigDecimal(2))
+        .majorVersion(new BigDecimal(1))
+        .artifactUrl("https://index.docker.com/v2/")
+        .accountId(context.accountId)
+        .orgIdentifier(context.orgIdentifier)
+        .projectIdentifier(context.projectIdentifier)
+        .artifactId("artifactId")
+        .artifactName("test/image")
+        .created(new BigDecimal(clock.millis()))
+        .orchestrationId("orchestrationId")
+        .originatorType("originatorType")
+        .packageCpe("packageCpe")
+        .packageDescription("packageDescription")
+        .packageId("packageId")
+        .packageLicense(Arrays.asList("license1", "license2"))
+        .packageName("packageName")
+        .packageOriginatorName("packageOriginatorName")
+        .packageProperties("packageProperties")
+        .packageSourceInfo("packageSourceInfo")
+        .packageSupplierName("packageSupplierName")
+        .packageType("packageType")
+        .packageVersion("packageVersion")
+        .sbomVersion("3.9")
+        .pipelineIdentifier("pipelineIdentifier")
+        .sequenceId("1")
+        .tags(List.of("tag"))
+        .toolName("syft")
+        .toolVendor("syft.org")
+        .toolVersion("2.0");
+  }
+
   public InstanceBuilder getInstanceNGEntityBuilder() {
     return Instance.builder()
         .id("instanceId")
@@ -271,10 +348,122 @@ public class BuilderFactory {
         .primaryArtifact(
             ArtifactDetails.builder()
                 .artifactId("artifactId")
-                .displayName("image")
-                .tag("tag")
+                .displayName("autosscauser/autosscauser-auto:5")
+                .tag("5")
                 .artifactIdentity(ArtifactCorrelationDetails.builder().image("artifactCorrelationId").build())
                 .build())
         .isDeleted(false);
+  }
+
+  public EnforcementResultEntityBuilder getEnforcementResultEntityBuilder() {
+    return EnforcementResultEntity.builder()
+        .accountId("accountId")
+        .purl("purl")
+        .enforcementID("enforcementId")
+        .artifactId("artifactId")
+        .imageName("imageName")
+        .license(Arrays.asList("license1", "license2"))
+        .name("name")
+        .orchestrationID("orchestrationId")
+        .orgIdentifier("orgIdentifier")
+        .packageManager("packageManager")
+        .projectIdentifier("projectIdentifier")
+        .supplier("supplier")
+        .supplierType("supplierType")
+        .tag("tag")
+        .version("version")
+        .violationDetails("violationDetails")
+        .violationType("violationType");
+  }
+
+  public EnforcementResultDTO getEnforcementResultDTO() {
+    return new EnforcementResultDTO()
+        .accountId("accountId")
+        .purl("purl")
+        .enforcementId("enforcementId")
+        .artifactId("artifactId")
+        .imageName("imageName")
+        .license(Arrays.asList("license1", "license2"))
+        .name("name")
+        .orchestrationId("orchestrationId")
+        .orgIdentifier("orgIdentifier")
+        .packageManager("packageManager")
+        .projectIdentifier("projectIdentifier")
+        .supplier("supplier")
+        .supplierType("supplierType")
+        .tag("tag")
+        .version("version")
+        .violationDetails("violationDetails")
+        .violationType("violationType");
+  }
+
+  public ConfigEntityBuilder getConfigEntityBuilder() {
+    return ConfigEntity.builder()
+        .accountId(context.accountId)
+        .orgId(context.getOrgIdentifier())
+        .projectId(context.getProjectIdentifier())
+        .configId("configId")
+        .name("sbomqs")
+        .type("scorecard")
+        .creationOn("2023-10-17T16:00:54+00:00")
+        .userId("example user")
+        .configInfos(getConfigInfoList());
+  }
+
+  private List<ConfigInfo> getConfigInfoList() {
+    List<ConfigInfo> configInfoList = new ArrayList<>();
+
+    Map<String, String> config = new HashMap<>();
+    config.put("key1", "value1");
+    config.put("key2", "value2");
+    configInfoList.add(ConfigEntity.ConfigInfo.builder()
+                           .id("example id")
+                           .categoryName("example category name")
+                           .config(config)
+                           .build());
+
+    return configInfoList;
+  }
+
+  public SbomScorecardRequestBody getSbomScorecardRequestBody() {
+    return new SbomScorecardRequestBody()
+        .accountId(context.accountId)
+        .orgId(context.getOrgIdentifier())
+        .projectId(context.getProjectIdentifier())
+        .orchestrationId("orchestrationId")
+        .avgScore("8.0")
+        .creationOn(clock.instant().toString())
+        .sbomDetails(getSbomScorecardDetails())
+        .scoreCardInfo(new ScorecardInfo().toolName("sbomqs").toolVersion("v0.0.25"))
+        .scores(getScores());
+  }
+
+  private SbomDetailsForScorecard getSbomScorecardDetails() {
+    return new SbomDetailsForScorecard()
+        .toolName("trivy")
+        .toolVersion("0.46.0")
+        .sbomFileName("working_sbom.json")
+        .sbomFormat("cyclonedx")
+        .sbomVersion("1.5")
+        .fileFormat("json");
+  }
+
+  private List<Score> getScores() {
+    List<Score> scores = new ArrayList<>();
+    scores.add(new Score()
+                   .score("10")
+                   .maxScore("10")
+                   .category("Structural")
+                   .feature("sbom_spec")
+                   .description("provided sbom is in a supported sbom format of spdx,cyclonedx")
+                   .ignored("false"));
+    scores.add(new Score()
+                   .score("3.82")
+                   .maxScore("10")
+                   .category("NTIA-minimum-elements")
+                   .feature("comp_with_supplier")
+                   .description("160/418 have supplier names")
+                   .ignored("false"));
+    return scores;
   }
 }

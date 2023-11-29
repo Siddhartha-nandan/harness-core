@@ -28,6 +28,8 @@ import io.harness.ngmigration.beans.NGYamlFile;
 import io.harness.ngmigration.utils.MigratorUtility;
 import io.harness.ngtriggers.beans.source.artifact.ArtifactType;
 import io.harness.ngtriggers.beans.source.artifact.ArtifactTypeSpec;
+import io.harness.ngtriggers.beans.source.artifact.CustomArtifactSpec;
+import io.harness.ngtriggers.beans.source.webhook.v2.TriggerEventDataCondition;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.steps.shellscript.ShellType;
 import io.harness.template.resources.beans.yaml.NGTemplateConfig;
@@ -40,6 +42,7 @@ import software.wings.beans.Variable;
 import software.wings.beans.artifact.ArtifactStream;
 import software.wings.beans.artifact.CustomArtifactStream;
 import software.wings.beans.template.Template;
+import software.wings.beans.template.artifactsource.CustomRepositoryMapping;
 import software.wings.beans.trigger.Trigger;
 import software.wings.ngmigration.CgEntityId;
 import software.wings.ngmigration.CgEntityNode;
@@ -52,6 +55,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.collections4.ListUtils;
@@ -98,22 +103,25 @@ public class CustomArtifactStreamMapper implements ArtifactStreamMapper {
                                  .fetchAllArtifacts(
                                      FetchAllArtifacts.builder()
                                          .artifactsArrayPath(ParameterField.createValueField(
-                                             primaryScript.getCustomRepositoryMapping().getArtifactRoot()))
+                                             Optional.ofNullable(primaryScript.getCustomRepositoryMapping())
+                                                 .map(CustomRepositoryMapping::getArtifactRoot)
+                                                 .orElse(RUNTIME_INPUT)))
                                          .versionPath(ParameterField.createValueField(
-                                             primaryScript.getCustomRepositoryMapping().getBuildNoPath()))
-                                         .attributes(
-                                             ListUtils
-                                                 .emptyIfNull(
-                                                     primaryScript.getCustomRepositoryMapping().getArtifactAttributes())
-                                                 .stream()
-                                                 .map(attribute
-                                                     -> StringNGVariable.builder()
-                                                            .name(attribute.getMappedAttribute())
-                                                            .type(NGVariableType.STRING)
-                                                            .value(ParameterField.createValueField(
-                                                                attribute.getRelativePath()))
-                                                            .build())
-                                                 .collect(Collectors.toList()))
+                                             Optional.ofNullable(primaryScript.getCustomRepositoryMapping())
+                                                 .map(CustomRepositoryMapping::getBuildNoPath)
+                                                 .orElse(RUNTIME_INPUT)))
+                                         .attributes(Optional.ofNullable(primaryScript.getCustomRepositoryMapping())
+                                                         .map(CustomRepositoryMapping::getArtifactAttributes)
+                                                         .orElse(Collections.emptyList())
+                                                         .stream()
+                                                         .map(attribute
+                                                             -> StringNGVariable.builder()
+                                                                    .name(attribute.getMappedAttribute())
+                                                                    .type(NGVariableType.STRING)
+                                                                    .value(ParameterField.createValueField(
+                                                                        attribute.getRelativePath()))
+                                                                    .build())
+                                                         .collect(Collectors.toList()))
                                          .shellScriptBaseStepInfo(
                                              CustomArtifactScriptInfo.builder()
                                                  .shell(ShellType.Bash)
@@ -143,7 +151,26 @@ public class CustomArtifactStreamMapper implements ArtifactStreamMapper {
   @Override
   public ArtifactTypeSpec getTriggerSpec(Map<CgEntityId, CgEntityNode> entities, ArtifactStream artifactStream,
       Map<CgEntityId, NGYamlFile> migratedEntities, Trigger trigger) {
-    return null;
+    CustomArtifactStream customArtifactStream = (CustomArtifactStream) artifactStream;
+    List<TriggerEventDataCondition> eventConditions = getEventConditions(trigger);
+    if (isNotEmpty(customArtifactStream.getScripts())) {
+      return CustomArtifactSpec.builder()
+          .script(customArtifactStream.getScripts().get(0).getScriptString())
+          .eventConditions(eventConditions)
+          .versionPath(Optional.ofNullable(customArtifactStream.getScripts().get(0).getCustomRepositoryMapping())
+                           .map(CustomRepositoryMapping::getBuildNoPath)
+                           .orElse(RUNTIME_INPUT))
+          .artifactsArrayPath(Optional.ofNullable(customArtifactStream.getScripts().get(0).getCustomRepositoryMapping())
+                                  .map(CustomRepositoryMapping::getArtifactRoot)
+                                  .orElse(RUNTIME_INPUT))
+          .build();
+    }
+    return CustomArtifactSpec.builder()
+        .script(RUNTIME_INPUT)
+        .eventConditions(Collections.emptyList())
+        .versionPath(RUNTIME_INPUT)
+        .artifactsArrayPath(RUNTIME_INPUT)
+        .build();
   }
 
   private JsonNode generateInput(Map<CgEntityId, CgEntityNode> entities, CustomArtifactStream customArtifactStream) {
@@ -155,6 +182,7 @@ public class CustomArtifactStreamMapper implements ArtifactStreamMapper {
     List<Variable> variables = ListUtils.emptyIfNull(customArtifactStream.getTemplateVariables());
     Map<String, String> varMap =
         variables.stream()
+            .filter(Objects::nonNull)
             .filter(variable -> StringUtils.isNoneBlank(variable.getName(), variable.getValue()))
             .collect(Collectors.toMap(Variable::getName, Variable::getValue));
 
@@ -162,19 +190,20 @@ public class CustomArtifactStreamMapper implements ArtifactStreamMapper {
     ObjectMapper mapper = new ObjectMapper();
 
     ArrayNode inputs = mapper.createArrayNode();
-    List<Variable> customArtifactTemplateVariables = template.getVariables();
-    if (isNotEmpty(customArtifactTemplateVariables)) {
-      Map<String, String> templateVariableMap =
-          customArtifactTemplateVariables.stream().collect(Collectors.toMap(Variable::getName, Variable::getValue));
+    List<Variable> customArtifactTemplateVariables = ListUtils.emptyIfNull(template.getVariables());
+    Map<String, String> templateVariableMap =
+        customArtifactTemplateVariables.stream()
+            .filter(Objects::nonNull)
+            .filter(variable -> StringUtils.isNoneBlank(variable.getName(), variable.getValue()))
+            .collect(Collectors.toMap(Variable::getName, Variable::getValue));
 
-      customArtifactTemplateVariables.forEach(v -> {
-        ObjectNode variable = mapper.createObjectNode();
-        variable.put("name", v.getName());
-        variable.put("type", "String");
-        variable.put("value", varMap.getOrDefault(v.getName(), getDefaultValueFromTemplate(v, templateVariableMap)));
-        inputs.add(variable);
-      });
-    }
+    customArtifactTemplateVariables.forEach(v -> {
+      ObjectNode variable = mapper.createObjectNode();
+      variable.put("name", v.getName());
+      variable.put("type", "String");
+      variable.put("value", varMap.getOrDefault(v.getName(), getDefaultValueFromTemplate(v, templateVariableMap)));
+      inputs.add(variable);
+    });
     ObjectNode spec = mapper.createObjectNode();
     spec.put("version", RUNTIME_INPUT);
     spec.set("inputs", inputs);

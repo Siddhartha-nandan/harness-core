@@ -20,6 +20,7 @@ import static io.harness.audit.ResourceTypeConstants.PERSPECTIVE_REPORT;
 import static io.harness.authorization.AuthorizationServiceHeader.CE_NEXT_GEN;
 import static io.harness.authorization.AuthorizationServiceHeader.NG_MANAGER;
 import static io.harness.eventsframework.EventsFrameworkConstants.ENTITY_CRUD;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ACCOUNT_ENTITY;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.CCM_BUDGET;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.CCM_RULE;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.CONNECTOR_ENTITY;
@@ -64,6 +65,7 @@ import io.harness.ccm.commons.service.impl.InstanceDataServiceImpl;
 import io.harness.ccm.commons.service.intf.ClusterRecordService;
 import io.harness.ccm.commons.service.intf.EntityMetadataService;
 import io.harness.ccm.commons.service.intf.InstanceDataService;
+import io.harness.ccm.eventframework.AccountEntityCRUDStreamListener;
 import io.harness.ccm.eventframework.BudgetCRUDStreamListener;
 import io.harness.ccm.eventframework.CCMSettingsCRUDStreamListener;
 import io.harness.ccm.eventframework.ConnectorEntityCRUDStreamListener;
@@ -166,6 +168,7 @@ import io.harness.delegate.beans.DelegateAsyncTaskResponse;
 import io.harness.delegate.beans.DelegateSyncTaskResponse;
 import io.harness.delegate.beans.DelegateTaskProgressResponse;
 import io.harness.enforcement.client.EnforcementClientModule;
+import io.harness.exception.InvalidRequestException;
 import io.harness.ff.FeatureFlagModule;
 import io.harness.filter.FilterType;
 import io.harness.filter.FiltersModule;
@@ -222,6 +225,7 @@ import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Resources;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
@@ -231,6 +235,9 @@ import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 import dev.morphia.converters.TypeConverter;
 import io.dropwizard.jackson.Jackson;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -596,6 +603,9 @@ public class CENextGenModule extends AbstractModule {
     bind(MessageListener.class)
         .annotatedWith(Names.named(CCM_RULE + ENTITY_CRUD))
         .to(GovernanceRuleCRUDStreamListener.class);
+    bind(MessageListener.class)
+        .annotatedWith(Names.named(ACCOUNT_ENTITY + ENTITY_CRUD))
+        .to(AccountEntityCRUDStreamListener.class);
   }
 
   @Provides
@@ -617,5 +627,21 @@ public class CENextGenModule extends AbstractModule {
   @Singleton
   public ObjectMapper getYamlSchemaObjectMapperWithoutNamed() {
     return Jackson.newObjectMapper();
+  }
+
+  @Provides
+  @Named("governance-schema")
+  @Singleton
+  public String getGovernanceSchema() {
+    try {
+      URL url = getClass().getClassLoader().getResource("governance_rule/rule_schema.json");
+      if (url == null) {
+        throw new InvalidRequestException("Rule schema doesn't exist");
+      }
+      byte[] bytes = Resources.toByteArray(url);
+      return new String(bytes, StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      throw new InvalidRequestException("Failed to generate schema file", e);
+    }
   }
 }

@@ -268,6 +268,7 @@ io.harness.steps.jira.update.JiraUpdateStepInfo
 io.harness.steps.shellscript.ShellScriptStepParameters
 io.harness.yaml.core.failurestrategy.ProceedWithDefaultValuesFailureActionConfig
 io.harness.plancreator.customDeployment.StepTemplateRef
+io.harness.plancreator.customDeployment.v1.StepTemplateRefV1
 io.harness.beans.yaml.extended.TIDotNetVersion
 io.harness.steps.plugin.ContainerStepParameters
 io.harness.beans.environment.pod.container.ContainerImageDetails
@@ -455,6 +456,19 @@ io.harness.delegate.beans.connector.azureconnector.outcome.AzureConnectorOutcome
 io.harness.slsa.beans.SlsaConfig
 io.harness.delegate.beans.instancesync.CustomDeploymentOutcomeMetadata
 io.harness.delegate.beans.instancesync.NativeHelmDeploymentOutcomeMetadata
+io.harness.delegate.beans.instancesync.K8sDeploymentOutcomeMetadata
 io.harness.beans.yaml.extended.cache.CachePolicy
 io.harness.beans.steps.stepinfo.GARStepInfo
 io.harness.steps.servicenow.beans.ServiceNowCreateType
+io.harness.steps.shellscript.v1.OutputAliasV1
+io.harness.steps.shellscript.v1.ShellTypeV1
+io.harness.steps.shellscript.v1.ExecutionTargetV1
+io.harness.steps.shellscript.v1.ShellScriptStepParameters
+io.harness.steps.shellscript.v1.HarnessFileStoreSourceV1
+io.harness.steps.shellscript.v1.ShellScriptInlineSourceV1
+io.harness.steps.shellscript.v1.ShellScriptSourceWrapperV1
+io.harness.steps.shellscript.v1.ShellScriptOutcome
+io.harness.steps.shellscript.v1.ExportScopeV1
+io.harness.steps.http.v1.HttpStepParameters
+io.harness.steps.http.v1.HttpOutcome
+io.harness.plancreator.steps.common.v1.StageElementParametersV1

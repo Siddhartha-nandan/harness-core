@@ -24,6 +24,7 @@ import static io.harness.ci.commonconstants.CIExecutionConstants.STEP_MOUNT_PATH
 import static io.harness.ci.execution.buildstate.PluginSettingUtils.TAG_BUILD_EVENT;
 import static io.harness.ci.execution.buildstate.PluginSettingUtils.getRepoNameFromRepoUrl;
 import static io.harness.rule.OwnerRule.ALEKSANDAR;
+import static io.harness.rule.OwnerRule.DEVESH;
 import static io.harness.rule.OwnerRule.INDER;
 import static io.harness.rule.OwnerRule.JAMES_RICKS;
 import static io.harness.rule.OwnerRule.RAGHAV_GUPTA;
@@ -67,10 +68,14 @@ import io.harness.encryption.SecretRefData;
 import io.harness.encryption.SecretRefHelper;
 import io.harness.exception.ngexception.CIStageExecutionException;
 import io.harness.exception.ngexception.CIStageExecutionUserException;
+import io.harness.idp.steps.beans.stepinfo.IdpCookieCutterStepInfo;
+import io.harness.idp.steps.beans.stepinfo.IdpCreateRepoStepInfo;
+import io.harness.idp.utils.IDPStepUtils;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.slsa.beans.verification.source.SlsaDockerSourceSpec;
+import io.harness.slsa.beans.verification.source.SlsaGcrSourceSpec;
 import io.harness.slsa.beans.verification.source.SlsaVerificationSource;
 import io.harness.slsa.beans.verification.source.SlsaVerificationSourceType;
 import io.harness.slsa.beans.verification.verify.CosignSlsaVerifyAttestation;
@@ -98,6 +103,8 @@ import io.harness.yaml.extended.ci.codebase.impl.BranchBuildSpec;
 import io.harness.yaml.extended.ci.codebase.impl.PRBuildSpec;
 import io.harness.yaml.extended.ci.codebase.impl.TagBuildSpec;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -118,6 +125,8 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
 
   @Mock private ConnectorUtils connectorUtils;
   @Mock private SscaOrchestrationPluginUtils sscaOrchestrationPluginUtils;
+
+  @Mock private IDPStepUtils idpStepUtils;
 
   @Before
   public void setUp() {
@@ -1206,6 +1215,26 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
     expected.put("PLUGIN_REPO", "image");
     expected.put("PLUGIN_TYPE", "verify");
     expected.put("STEP_EXECUTION_ID", null);
+    expected.put("PLUGIN_REGISTRY_TYPE", "docker");
+    Ambiance ambiance = Ambiance.newBuilder().build();
+    Map<String, String> actual = pluginSettingUtils.getPluginCompatibleEnvVariables(
+        slsaVerificationStepInfo, "identifier", 100, ambiance, Type.K8, false, true);
+    assertThat(actual).isEqualTo(expected);
+  }
+
+  @Test
+  @Owner(developers = INDER)
+  @Category(UnitTests.class)
+  public void testSlsaVerificationGcrStepEnvVariables() {
+    SlsaVerificationStepInfo slsaVerificationStepInfo = getSlsaVerificationGcrStep();
+
+    Map<String, String> expected = new HashMap<>();
+    expected.put("PLUGIN_TAG", "tag");
+    expected.put("PLUGIN_REPO", "image");
+    expected.put("PLUGIN_REGISTRY", "us.gcr.io/projectId");
+    expected.put("PLUGIN_TYPE", "verify");
+    expected.put("PLUGIN_REGISTRY_TYPE", "gcr");
+    expected.put("STEP_EXECUTION_ID", null);
     Ambiance ambiance = Ambiance.newBuilder().build();
     Map<String, String> actual = pluginSettingUtils.getPluginCompatibleEnvVariables(
         slsaVerificationStepInfo, "identifier", 100, ambiance, Type.K8, false, true);
@@ -1232,6 +1261,70 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
     assertThat(actual).isEqualTo(expected);
   }
 
+  @Test
+  @Owner(developers = DEVESH)
+  @Category(UnitTests.class)
+  public void testIdpCookieCutterStepEnvVariables() {
+    String testName = "test-name";
+    String testIdentifier = "test-identifier";
+    String testIsPublicTemplate = "false";
+    String testPath = "test-path";
+    String testCookieCutterVarName = "testVarName";
+    String testCookieCutterVarValue = "testVarValue";
+    Map<String, JsonNode> cookiecutterVariables = new HashMap<>();
+    cookiecutterVariables.put(testCookieCutterVarName, JsonNodeFactory.instance.textNode(testCookieCutterVarValue));
+
+    IdpCookieCutterStepInfo idpCookieCutterStepInfo =
+        IdpCookieCutterStepInfo.builder()
+            .cookieCutterVariables(ParameterField.createValueField(cookiecutterVariables))
+            .isPublicTemplate(ParameterField.createValueField(testIsPublicTemplate))
+            .pathForTemplate(ParameterField.createValueField(testPath))
+            .name(testName)
+            .identifier(testIdentifier)
+            .build();
+
+    Map<String, String> expected = new HashMap<>();
+    expected.put("IDP_COOKIECUTTER_" + testCookieCutterVarName, testCookieCutterVarValue);
+    expected.put("IS_PUBLIC_TEMPLATE", "false");
+    expected.put("PATH_FOR_TEMPLATE", testPath);
+
+    Ambiance ambiance = Ambiance.newBuilder().build();
+    Map<String, String> actual = pluginSettingUtils.getPluginCompatibleEnvVariables(
+        idpCookieCutterStepInfo, "identifier", 100, ambiance, Type.K8, false, true);
+
+    assertThat(actual).isEqualTo(expected);
+  }
+
+  @Test
+  @Owner(developers = DEVESH)
+  @Category(UnitTests.class)
+  public void testIdpCreateRepoStepEnvVariables() {
+    String testName = "test-name";
+
+    String isPrivateRepo = "true";
+    String repoName = "test-repo-name";
+    String orgName = "test-org-name";
+
+    IdpCreateRepoStepInfo idpCreateRepoStepInfo = IdpCreateRepoStepInfo.builder()
+                                                      .isPrivateRepo(ParameterField.createValueField(isPrivateRepo))
+                                                      .repoName(ParameterField.createValueField(repoName))
+                                                      .name(testName)
+                                                      .orgName(ParameterField.createValueField(orgName))
+                                                      .connectorRef(ParameterField.createValueField("myConnectorRef"))
+                                                      .build();
+
+    Map<String, String> expected = new HashMap<>();
+    expected.put("IDP_ORG_NAME", orgName);
+    expected.put("IS_PRIVATE_REPO", isPrivateRepo);
+    expected.put("IDP_REPO_NAME", repoName);
+
+    Ambiance ambiance = Ambiance.newBuilder().build();
+    Map<String, String> actual = pluginSettingUtils.getPluginCompatibleEnvVariables(
+        idpCreateRepoStepInfo, "identifier", 100, ambiance, Type.K8, false, true);
+
+    assertThat(actual).isEqualTo(expected);
+  }
+
   private SlsaVerificationStepInfo getSlsaVerificationStep() {
     return SlsaVerificationStepInfo.builder()
         .source(SlsaVerificationSource.builder()
@@ -1240,6 +1333,28 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
                               .connector(ParameterField.createValueField("conn1"))
                               .image_path(ParameterField.createValueField("image"))
                               .tag(ParameterField.createValueField("tag"))
+                              .build())
+                    .build())
+        .slsaVerifyAttestation(
+            SlsaVerifyAttestation.builder()
+                .type(AttestationType.COSIGN)
+                .slsaVerifyAttestationSpec(CosignSlsaVerifyAttestation.builder()
+                                               .publicKey(ParameterField.createValueField("public_key"))
+                                               .build())
+                .build())
+        .build();
+  }
+
+  private SlsaVerificationStepInfo getSlsaVerificationGcrStep() {
+    return SlsaVerificationStepInfo.builder()
+        .source(SlsaVerificationSource.builder()
+                    .type(SlsaVerificationSourceType.GCR)
+                    .spec(SlsaGcrSourceSpec.builder()
+                              .connector(ParameterField.createValueField("conn1"))
+                              .image_name(ParameterField.createValueField("image"))
+                              .tag(ParameterField.createValueField("tag"))
+                              .host(ParameterField.createValueField("us.gcr.io"))
+                              .project_id(ParameterField.createValueField("projectId"))
                               .build())
                     .build())
         .slsaVerifyAttestation(

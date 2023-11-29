@@ -72,6 +72,8 @@ public class NGCommonEntityConstants {
   public static final String PLAN_KEY = "planExecutionId";
   public static final String NODE_KEY = "nodeExecutionId";
   public static final String STAGE_KEY = "stageExecutionId";
+
+  public static final String STAGE_NODE_KEY = "stageNodeId";
   public static final String STEP_KEY = "stepExecutionId";
   public static final String TYPE_KEY = "type";
   public static final String TOKEN_KEY = "tokenId";
@@ -228,4 +230,7 @@ public class NGCommonEntityConstants {
   public static final String APPLY_GITX_REPO_ALLOW_LIST_FILTER = "applyGitXRepoAllowListFilter";
   public static final String ACTIVITY_TYPES = "activityTypes";
   public static final String SCOPE_FILTER = "scopeFilter";
+
+  public static final String NOTIFICATION_ENTITY = "notificationEntity";
+  public static final String NOTIFICATION_EVENT = "notificationEvent";
 }

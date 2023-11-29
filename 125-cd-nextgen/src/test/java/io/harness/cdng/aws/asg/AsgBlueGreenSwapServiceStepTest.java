@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import io.harness.CategoryTest;
@@ -25,6 +26,7 @@ import io.harness.category.element.UnitTests;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.common.beans.SetupAbstractionKeys;
 import io.harness.cdng.infra.beans.AsgInfrastructureOutcome;
+import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.instance.info.InstanceInfoService;
 import io.harness.cdng.instance.outcome.DeploymentInfoOutcome;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
@@ -168,6 +170,10 @@ public class AsgBlueGreenSwapServiceStepTest extends CategoryTest {
         .when(instanceInfoService)
         .saveServerInstancesIntoSweepingOutput(any(), any());
 
+    doReturn(mock(InfrastructureOutcome.class))
+        .when(asgStepCommonHelper)
+        .getInfrastructureOutcomeWithUpdatedExpressions(any());
+
     StepResponse stepResponse = asgBlueGreenSwapServiceStep.handleTaskResultWithSecurityContext(
         ambiance, stepElementParameters, () -> (AsgCommandResponse) responseData);
 
@@ -219,6 +225,9 @@ public class AsgBlueGreenSwapServiceStepTest extends CategoryTest {
 
     doReturn(asgInfrastructureOutcome1).when(outcomeService).resolve(any(), any());
     doReturn(asgInfraConfig).when(asgStepCommonHelper).getAsgInfraConfig(any(), any());
+    doReturn(mock(InfrastructureOutcome.class))
+        .when(asgStepCommonHelper)
+        .getInfrastructureOutcomeWithUpdatedExpressions(any());
 
     AsgExecutionPassThroughData asgExecutionPassThroughData =
         AsgExecutionPassThroughData.builder().infrastructure(asgInfrastructureOutcome1).build();
@@ -284,46 +293,5 @@ public class AsgBlueGreenSwapServiceStepTest extends CategoryTest {
     assertThat(ret.getStageListenerArn()).isEqualTo(stageListenerArn);
     assertThat(ret.getStageListenerRuleArn()).isEqualTo(stageListenerRuleArn);
     assertThat(ret.getStageTargetGroupArnsList()).isEqualTo(stageTargetGroupArnsList);
-  }
-
-  @Test
-  @Owner(developers = VITALIE)
-  @Category(UnitTests.class)
-  public void getLoadBalancersTest() {
-    String loadBalancer = "loadBalancer";
-    String prodListenerArn = "prodListenerArn";
-    String prodListenerRuleArn = "prodListenerRuleArn";
-    String stageListenerArn = "stageListenerArn";
-    String stageListenerRuleArn = "stageListenerRuleArn";
-    List<String> prodTargetGroupArnsList = List.of("p_gr1", "p_gr2");
-    List<String> stageTargetGroupArnsList = List.of("s_gr1", "s_gr2");
-
-    AwsAsgLoadBalancerConfigYaml awsAsgLoadBalancerConfigYaml =
-        AwsAsgLoadBalancerConfigYaml.builder()
-            .loadBalancer(ParameterField.createValueField(loadBalancer))
-            .prodListener(ParameterField.createValueField(prodListenerArn))
-            .prodListenerRuleArn(ParameterField.createValueField(prodListenerRuleArn))
-            .stageListener(ParameterField.createValueField(stageListenerArn))
-            .stageListenerRuleArn(ParameterField.createValueField(stageListenerRuleArn))
-            .build();
-
-    AsgBlueGreenPrepareRollbackDataOutcome asgBlueGreenPrepareRollbackDataOutcome =
-        AsgBlueGreenPrepareRollbackDataOutcome.builder()
-            .loadBalancerConfigs(List.of(awsAsgLoadBalancerConfigYaml))
-            .prodTargetGroupArnListForLoadBalancer(Map.of(loadBalancer, prodTargetGroupArnsList))
-            .stageTargetGroupArnListForLoadBalancer(Map.of(loadBalancer, stageTargetGroupArnsList))
-            .build();
-
-    List<AsgLoadBalancerConfig> ret =
-        AsgBlueGreenSwapServiceStep.getLoadBalancers(asgBlueGreenPrepareRollbackDataOutcome);
-    assertThat(ret.size()).isEqualTo(1);
-    AsgLoadBalancerConfig asgLoadBalancerConfig = ret.get(0);
-    assertThat(asgLoadBalancerConfig.getLoadBalancer()).isEqualTo(loadBalancer);
-    assertThat(asgLoadBalancerConfig.getProdListenerArn()).isEqualTo(prodListenerArn);
-    assertThat(asgLoadBalancerConfig.getProdListenerRuleArn()).isEqualTo(prodListenerRuleArn);
-    assertThat(asgLoadBalancerConfig.getProdTargetGroupArnsList()).isEqualTo(prodTargetGroupArnsList);
-    assertThat(asgLoadBalancerConfig.getStageListenerArn()).isEqualTo(stageListenerArn);
-    assertThat(asgLoadBalancerConfig.getStageListenerRuleArn()).isEqualTo(stageListenerRuleArn);
-    assertThat(asgLoadBalancerConfig.getStageTargetGroupArnsList()).isEqualTo(stageTargetGroupArnsList);
   }
 }

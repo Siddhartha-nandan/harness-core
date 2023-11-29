@@ -63,12 +63,16 @@ import io.harness.delegate.task.k8s.K8sInfraDelegateConfig;
 import io.harness.delegate.task.ssh.SshInfraDelegateConfig;
 import io.harness.delegate.task.ssh.WinRmInfraDelegateConfig;
 import io.harness.eraro.Level;
+import io.harness.eventsframework.protohelper.IdentifierRefProtoDTOHelper;
 import io.harness.eventsframework.schemas.entity.EntityDetailProtoDTO;
+import io.harness.eventsframework.schemas.entity.EntityTypeProtoEnum;
 import io.harness.eventsframework.schemas.entity.EntityUsageDetailProto;
 import io.harness.eventsframework.schemas.entity.PipelineExecutionUsageDataProto;
 import io.harness.exception.ExceptionUtils;
 import io.harness.exception.InvalidRequestException;
 import io.harness.executions.steps.ExecutionNodeType;
+import io.harness.gitsync.interceptor.GitEntityInfo;
+import io.harness.gitx.EntityGitDetailsGuard;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.LogLevel;
 import io.harness.logging.UnitProgress;
@@ -80,6 +84,7 @@ import io.harness.ng.core.dto.secrets.SSHKeySpecDTO;
 import io.harness.ng.core.dto.secrets.SecretDTOV2;
 import io.harness.ng.core.dto.secrets.WinRmCredentialsSpecDTO;
 import io.harness.ng.core.entitydetail.EntityDetailProtoToRestMapper;
+import io.harness.ng.core.environment.services.EnvironmentService;
 import io.harness.ng.core.infrastructure.InfrastructureKind;
 import io.harness.ng.core.infrastructure.entity.InfrastructureEntity;
 import io.harness.ng.core.infrastructure.services.InfrastructureEntityService;
@@ -159,6 +164,7 @@ public class InfrastructureTaskExecutableStepV2 extends AbstractInfrastructureTa
   @Inject private InfrastructureYamlSchemaHelper infrastructureYamlSchemaHelper;
   @Inject private InfrastructureProvisionerHelper infrastructureProvisionerHelper;
   @Inject private SecretRuntimeUsageService secretRuntimeUsageService;
+  @Inject private EnvironmentService environmentService;
 
   @Override
   public Class<InfrastructureTaskExecutableStepV2Params> getStepParametersClass() {
@@ -176,7 +182,8 @@ public class InfrastructureTaskExecutableStepV2 extends AbstractInfrastructureTa
       Ambiance ambiance, InfrastructureTaskExecutableStepV2Params stepParameters, StepInputPackage inputPackage) {
     validateStepParameters(stepParameters);
 
-    final InfrastructureConfig infrastructureConfig = fetchInfraConfigFromDBorThrow(ambiance, stepParameters);
+    final InfrastructureConfig infrastructureConfig =
+        fetchInfraConfigFromOrThrow(ambiance, stepParameters, stepParameters.getGitBranch());
     final Infrastructure infraSpec = infrastructureConfig.getInfrastructureDefinitionConfig().getSpec();
     boolean skipInstances = ParameterFieldHelper.getBooleanParameterFieldValue(stepParameters.getSkipInstances());
 
@@ -379,6 +386,10 @@ public class InfrastructureTaskExecutableStepV2 extends AbstractInfrastructureTa
                                                .setStageExecutionId(ambiance.getStageExecutionId())
                                                .build())
             .setUsageType(PIPELINE_EXECUTION)
+            .setEntityType(EntityTypeProtoEnum.PIPELINES)
+            .setIdentifierRef(IdentifierRefProtoDTOHelper.createIdentifierRefProtoDTO(
+                AmbianceUtils.getAccountId(ambiance), AmbianceUtils.getOrgIdentifier(ambiance),
+                AmbianceUtils.getProjectIdentifier(ambiance), AmbianceUtils.getPipelineIdentifier(ambiance)))
             .build());
   }
 
@@ -396,12 +407,20 @@ public class InfrastructureTaskExecutableStepV2 extends AbstractInfrastructureTa
     return InfrastructureKind.SSH_WINRM_AZURE.equals(infraKind) || InfrastructureKind.SSH_WINRM_AWS.equals(infraKind);
   }
 
-  private InfrastructureConfig fetchInfraConfigFromDBorThrow(
-      Ambiance ambiance, InfrastructureTaskExecutableStepV2Params stepParameters) {
-    Optional<InfrastructureEntity> infrastructureEntityOpt =
-        infrastructureEntityService.get(AmbianceUtils.getAccountId(ambiance), AmbianceUtils.getOrgIdentifier(ambiance),
-            AmbianceUtils.getProjectIdentifier(ambiance), stepParameters.getEnvRef().getValue(),
-            stepParameters.getInfraRef().getValue());
+  private InfrastructureConfig fetchInfraConfigFromOrThrow(
+      Ambiance ambiance, InfrastructureTaskExecutableStepV2Params stepParameters, String envGitBranch) {
+    GitEntityInfo gitContextForInfra = infrastructureEntityService.getGitDetailsForInfrastructure(
+        AmbianceUtils.getAccountId(ambiance), AmbianceUtils.getOrgIdentifier(ambiance),
+        AmbianceUtils.getProjectIdentifier(ambiance), stepParameters.getEnvRef().getValue(), envGitBranch);
+
+    Optional<InfrastructureEntity> infrastructureEntityOpt;
+
+    try (EntityGitDetailsGuard ignore = new EntityGitDetailsGuard(gitContextForInfra)) {
+      infrastructureEntityOpt = infrastructureEntityService.get(AmbianceUtils.getAccountId(ambiance),
+          AmbianceUtils.getOrgIdentifier(ambiance), AmbianceUtils.getProjectIdentifier(ambiance),
+          stepParameters.getEnvRef().getValue(), stepParameters.getInfraRef().getValue());
+    }
+
     if (infrastructureEntityOpt.isEmpty()) {
       throw new InvalidRequestException(String.format("Infrastructure definition %s not found in environment %s",
           stepParameters.getInfraRef().getValue(), stepParameters.getEnvRef().getValue()));

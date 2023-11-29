@@ -7,7 +7,6 @@
 
 package io.harness.polling.service.impl;
 import static io.harness.polling.bean.PollingType.ARTIFACT;
-import static io.harness.polling.bean.PollingType.MANIFEST;
 import static io.harness.remote.client.NGRestUtils.getResponse;
 
 import io.harness.annotations.dev.CodePulse;
@@ -200,31 +199,33 @@ public class PollingServiceImpl implements PollingService {
     if (pollingDocument.getPolledResponse() == null) {
       return Collections.emptyList();
     }
-    if (ARTIFACT.equals(pollingDocument.getPollingType())) {
-      if (((ArtifactPolledResponse) pollingDocument.getPolledResponse()).getAllPolledKeys() == null) {
-        return Collections.emptyList();
-      }
-      if (((ArtifactPolledResponse) pollingDocument.getPolledResponse()).getAllPolledKeys().size()
-          > MAX_COLLECTED_VERSIONS_FOR_TRIGGER_STATUS) {
-        return new ArrayList<>(((ArtifactPolledResponse) pollingDocument.getPolledResponse()).getAllPolledKeys())
-            .subList(0, MAX_COLLECTED_VERSIONS_FOR_TRIGGER_STATUS);
-      } else {
+    int polledKeyCount = 0;
+    switch (pollingDocument.getPollingType()) {
+      case ARTIFACT:
+        if (((ArtifactPolledResponse) pollingDocument.getPolledResponse()).getAllPolledKeys() == null) {
+          return Collections.emptyList();
+        }
+        polledKeyCount = ((ArtifactPolledResponse) pollingDocument.getPolledResponse()).getAllPolledKeys().size();
+        if (polledKeyCount > MAX_COLLECTED_VERSIONS_FOR_TRIGGER_STATUS) {
+          return new ArrayList<>(((ArtifactPolledResponse) pollingDocument.getPolledResponse()).getAllPolledKeys())
+              .subList(polledKeyCount - MAX_COLLECTED_VERSIONS_FOR_TRIGGER_STATUS, polledKeyCount);
+        }
         return new ArrayList<>(((ArtifactPolledResponse) pollingDocument.getPolledResponse()).getAllPolledKeys());
-      }
-    }
-    if (MANIFEST.equals(pollingDocument.getPollingType())) {
-      if (((ManifestPolledResponse) pollingDocument.getPolledResponse()).getAllPolledKeys() == null) {
-        return Collections.emptyList();
-      }
-      if (((ManifestPolledResponse) pollingDocument.getPolledResponse()).getAllPolledKeys().size()
-          > MAX_COLLECTED_VERSIONS_FOR_TRIGGER_STATUS) {
-        return new ArrayList<>(((ManifestPolledResponse) pollingDocument.getPolledResponse()).getAllPolledKeys())
-            .subList(0, MAX_COLLECTED_VERSIONS_FOR_TRIGGER_STATUS);
-      } else {
+
+      case MANIFEST:
+        if (((ManifestPolledResponse) pollingDocument.getPolledResponse()).getAllPolledKeys() == null) {
+          return Collections.emptyList();
+        }
+        polledKeyCount = ((ManifestPolledResponse) pollingDocument.getPolledResponse()).getAllPolledKeys().size();
+        if (polledKeyCount > MAX_COLLECTED_VERSIONS_FOR_TRIGGER_STATUS) {
+          return new ArrayList<>(((ManifestPolledResponse) pollingDocument.getPolledResponse()).getAllPolledKeys())
+              .subList(polledKeyCount - MAX_COLLECTED_VERSIONS_FOR_TRIGGER_STATUS, polledKeyCount);
+        }
         return new ArrayList<>(((ManifestPolledResponse) pollingDocument.getPolledResponse()).getAllPolledKeys());
-      }
+
+      default:
+        return Collections.emptyList();
     }
-    return Collections.emptyList();
   }
 
   @Override
@@ -315,17 +316,21 @@ public class PollingServiceImpl implements PollingService {
 
   @Override
   public boolean updateTriggerPollingStatus(String accountId, List<String> signatures, boolean success,
-      String errorMessage, List<String> lastCollectedVersions) {
+      String errorMessage, List<String> lastCollectedVersions, Long validityIntervalForErrorStatusMillis) {
     // Truncate `lastCollectedVersions` list to at most 10 items, in order to avoid large payloads.
     if (lastCollectedVersions != null && lastCollectedVersions.size() > MAX_COLLECTED_VERSIONS_FOR_TRIGGER_STATUS) {
       lastCollectedVersions = lastCollectedVersions.subList(0, MAX_COLLECTED_VERSIONS_FOR_TRIGGER_STATUS);
     }
+    long currentTime = System.currentTimeMillis();
     PollingTriggerStatusUpdateDTO statusUpdate = PollingTriggerStatusUpdateDTO.builder()
                                                      .signatures(signatures)
                                                      .success(success)
                                                      .errorMessage(errorMessage)
                                                      .lastCollectedVersions(lastCollectedVersions)
-                                                     .lastCollectedTime(System.currentTimeMillis())
+                                                     .lastCollectedTime(currentTime)
+                                                     .errorStatusValidUntil(validityIntervalForErrorStatusMillis != null
+                                                             ? currentTime + validityIntervalForErrorStatusMillis
+                                                             : null)
                                                      .build();
     try {
       return getResponse(triggersClient.updateTriggerPollingStatus(accountId, statusUpdate));

@@ -9,6 +9,7 @@ package io.harness.pms.approval.notification;
 
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.rule.OwnerRule.BRIJESH;
+import static io.harness.rule.OwnerRule.SANDESH_SALUNKHE;
 import static io.harness.rule.OwnerRule.SOURABH;
 import static io.harness.rule.OwnerRule.vivekveman;
 
@@ -20,6 +21,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,7 +29,9 @@ import static org.mockito.Mockito.when;
 import io.harness.CategoryTest;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.EmbeddedUser;
+import io.harness.beans.IdentifierRef;
 import io.harness.category.element.UnitTests;
+import io.harness.encryption.Scope;
 import io.harness.logging.LogLevel;
 import io.harness.logstreaming.ILogStreamingStepClient;
 import io.harness.logstreaming.LogStreamingStepClientFactory;
@@ -38,6 +42,7 @@ import io.harness.ng.core.dto.ProjectDTO;
 import io.harness.ng.core.dto.ProjectResponse;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.dto.UserGroupDTO;
+import io.harness.ng.core.dto.UserGroupFilterDTO;
 import io.harness.ng.core.notification.EmailConfigDTO;
 import io.harness.ng.core.notification.MicrosoftTeamsConfigDTO;
 import io.harness.ng.core.notification.NotificationSettingConfigDTO;
@@ -58,10 +63,12 @@ import io.harness.pms.execution.ExecutionStatus;
 import io.harness.pms.notification.NotificationHelper;
 import io.harness.pms.pipeline.mappers.GraphLayoutDtoMapper;
 import io.harness.pms.plan.creation.PlanCreatorConstants;
+import io.harness.pms.plan.execution.SetupAbstractionKeys;
 import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity;
 import io.harness.pms.plan.execution.beans.dto.GraphLayoutNodeDTO;
 import io.harness.pms.plan.execution.service.PMSExecutionService;
 import io.harness.project.remote.ProjectClient;
+import io.harness.remote.client.NGRestUtils;
 import io.harness.rule.Owner;
 import io.harness.steps.approval.step.beans.ApprovalStatus;
 import io.harness.steps.approval.step.beans.ApprovalType;
@@ -71,6 +78,7 @@ import io.harness.steps.approval.step.harness.beans.HarnessApprovalAction;
 import io.harness.steps.approval.step.harness.beans.HarnessApprovalActivity;
 import io.harness.steps.approval.step.harness.entities.HarnessApprovalInstance;
 import io.harness.usergroups.UserGroupClient;
+import io.harness.utils.IdentifierRefHelper;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -79,6 +87,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.junit.Before;
@@ -167,6 +176,7 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
                       .userGroups(new ArrayList<>(Arrays.asList("proj_faulty", "proj_right", "org.org_faulty",
                           "org.org_right", "account.acc_faulty", "account.acc_right", "proj_faulty", "proj_right")))
                       .build())
+              .approvalMessage("this is first line \n this is second line")
               .build();
       approvalInstance.setAmbiance(ambiance);
       approvalInstance.setCreatedAt(System.currentTimeMillis());
@@ -234,6 +244,12 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.triggeredBy)).isEqualTo(userId);
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.pipelineExecutionLink))
           .isEqualTo(url);
+      // testing whether approval message has lin breaks added in case of email but in other channels
+      assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.approvalMessage))
+          .isEqualTo("this is first line \n this is second line");
+      assertThat(notificationChannels.get(1).getTemplateData().get(ApprovalSummaryKeys.approvalMessage))
+          .isEqualTo("this is first line <br> this is second line");
+
       assertThat(notificationChannels.get(8).getTemplateId())
           .isEqualTo(PredefinedTemplate.HARNESS_APPROVAL_NOTIFICATION_MSTEAMS.getIdentifier());
       assertThat(notificationChannels.get(8).getTeam()).isEqualTo(Team.PIPELINE);
@@ -564,6 +580,63 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
   }
 
   @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testSendNotificationException() {
+    HarnessApprovalInstance approvalInstance = mock(HarnessApprovalInstance.class);
+    Ambiance ambiance = mock(Ambiance.class);
+    ILogStreamingStepClient iLogStreamingStepClient = mock(ILogStreamingStepClient.class);
+    when(logStreamingStepClientFactory.getLogStreamingStepClient(ambiance)).thenReturn(iLogStreamingStepClient);
+    doReturn(ApprovalStatus.APPROVED).when(approvalInstance).getStatus();
+    approvalNotificationHandler.sendNotification(approvalInstance, ambiance);
+    verify(iLogStreamingStepClient, times(1)).writeLogLine(any(), any());
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testSendNotificationInternalException() {
+    HarnessApprovalInstance approvalInstance = mock(HarnessApprovalInstance.class);
+    Ambiance ambiance = mock(Ambiance.class);
+    NGLogCallback ngLogCallback = mock(NGLogCallback.class);
+    approvalNotificationHandler.sendNotificationInternal(approvalInstance, ambiance, ngLogCallback);
+    verify(ngLogCallback, times(3)).saveExecutionLog(any());
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testFindInvalidInputUserGroupsEmptyInputUserGroups() {
+    UserGroupDTO userGroupDTO = UserGroupDTO.builder().build();
+    List<UserGroupDTO> validatedUserGroups = Collections.singletonList(userGroupDTO);
+    List<String> inputUserGroups = Collections.emptyList();
+    assertThat(approvalNotificationHandler.findInvalidInputUserGroups(validatedUserGroups, inputUserGroups)).isNull();
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testFindInvalidInputUserGroupsEmptyValidatedUserGroups() {
+    List<UserGroupDTO> validatedUserGroups = Collections.emptyList();
+    List<String> inputUserGroups = Collections.singletonList("UserGroup1");
+    List<String> userGroups =
+        approvalNotificationHandler.findInvalidInputUserGroups(validatedUserGroups, inputUserGroups);
+    assertThat(userGroups).isNotEmpty().containsExactly("UserGroup1");
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetNotificationChannelWithoutUserGroupReturnsNull() {
+    HarnessApprovalInstance instance = HarnessApprovalInstance.builder().build();
+    NotificationSettingConfigDTO notificationSettingConfig = mock(NotificationSettingConfigDTO.class);
+    Map<String, String> templateData = Collections.singletonMap("key", "value");
+    assertThat(
+        approvalNotificationHandler.getNotificationChannel(instance, notificationSettingConfig, null, templateData))
+        .isNull();
+  }
+
+  @Test
   @Owner(developers = SOURABH)
   @Category(UnitTests.class)
   public void testSendNotificationForApprovalAction() throws Exception {
@@ -587,11 +660,16 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
                       .userGroups(new ArrayList<>(Arrays.asList("proj_faulty", "proj_right", "org.org_faulty",
                           "org.org_right", "account.acc_faulty", "account.acc_right", "proj_faulty", "proj_right")))
                       .build())
-              .approvalActivities(Collections.singletonList(HarnessApprovalActivity.builder()
-                                                                .user(EmbeddedUser.builder().email("email").build())
-                                                                .approvedAt(20000000)
-                                                                .action(HarnessApprovalAction.APPROVE)
-                                                                .build())
+              .approvalActivities(Arrays.asList(HarnessApprovalActivity.builder()
+                                                    .user(EmbeddedUser.builder().email("email").build())
+                                                    .approvedAt(20000000)
+                                                    .action(HarnessApprovalAction.APPROVE)
+                                                    .build(),
+                  HarnessApprovalActivity.builder()
+                      .user(EmbeddedUser.builder().email("email2").build())
+                      .approvedAt(20000020)
+                      .action(HarnessApprovalAction.APPROVE)
+                      .build())
 
                       )
               .build();
@@ -667,6 +745,21 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.triggeredBy)).isEqualTo(userId);
       assertThat(notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.pipelineExecutionLink))
           .isEqualTo(url);
+      // checking whether line breaks are added properly in case of multiple approval activities for email only
+      // two comparisons are made to prevent flakiness depend on system's locale
+      String actionNonEmail = notificationChannels.get(0).getTemplateData().get(ApprovalSummaryKeys.action);
+      assertThat(
+          actionNonEmail.equals("email approved on Jan 01, 05:33 AM GMT   \nemail2 approved on Jan 01, 05:33 AM GMT   ")
+          || actionNonEmail.equals(
+              "email approved on Jan 01, 05:33 am GMT   \nemail2 approved on Jan 01, 05:33 am GMT   "))
+          .isTrue();
+      String actionEmail = notificationChannels.get(1).getTemplateData().get(ApprovalSummaryKeys.action);
+      assertThat(
+          actionEmail.equals("email approved on Jan 01, 05:33 AM GMT   <br>email2 approved on Jan 01, 05:33 AM GMT   ")
+          || actionEmail.equals(
+              "email approved on Jan 01, 05:33 am GMT   <br>email2 approved on Jan 01, 05:33 am GMT   "))
+          .isTrue();
+
       assertThat(notificationChannels.get(8).getTemplateId())
           .isEqualTo(PredefinedTemplate.HARNESS_APPROVAL_ACTION_NOTIFICATION_MSTEAMS.getIdentifier());
       assertThat(notificationChannels.get(8).getTeam()).isEqualTo(Team.PIPELINE);
@@ -966,5 +1059,95 @@ public class ApprovalNotificationHandlerImplTest extends CategoryTest {
       verify(pmsExecutionService, times(1))
           .getPipelineExecutionSummaryEntity(anyString(), anyString(), anyString(), anyString(), anyBoolean());
     }
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetUserGroupsWithUserGroupFilters() {
+    mockStatic(IdentifierRefHelper.class);
+    mockStatic(NGRestUtils.class);
+    List<String> userGroupIds = Collections.singletonList("UserGroup1");
+    ApproversDTO approversDTO = ApproversDTO.builder().userGroups(userGroupIds).build();
+    Ambiance ambiance = Ambiance.newBuilder()
+                            .putSetupAbstractions(SetupAbstractionKeys.accountId, accountId)
+                            .putSetupAbstractions(SetupAbstractionKeys.orgIdentifier, orgIdentifier)
+                            .putSetupAbstractions(SetupAbstractionKeys.projectIdentifier, projectIdentifier)
+                            .build();
+    ApprovalInstance instance = HarnessApprovalInstance.builder().approvers(approversDTO).build();
+    instance.setAmbiance(ambiance);
+    IdentifierRef identifierRef = IdentifierRef.builder()
+                                      .identifier("identifier")
+                                      .accountIdentifier(accountId)
+                                      .orgIdentifier(orgIdentifier)
+                                      .scope(Scope.ACCOUNT)
+                                      .build();
+    UserGroupFilterDTO userGroupFilterDTO = UserGroupFilterDTO.builder()
+                                                .accountIdentifier(accountId)
+                                                .orgIdentifier(orgIdentifier)
+                                                .projectIdentifier(projectIdentifier)
+                                                .build();
+    UserGroupDTO userGroupDTO = UserGroupDTO.builder().users(userGroupIds).build();
+    List<UserGroupDTO> userGroupFilterDTOList = List.of(userGroupDTO);
+    Call<ResponseDTO<List<UserGroupDTO>>> userGroupResponse = mock(Call.class);
+    doReturn(userGroupResponse).when(userGroupClient).getFilteredUserGroups(userGroupFilterDTO);
+    when(NGRestUtils.getResponse(userGroupResponse)).thenReturn(userGroupFilterDTOList);
+    when(IdentifierRefHelper.getIdentifierRef(userGroupIds.get(0), accountId, orgIdentifier, projectIdentifier))
+        .thenReturn(identifierRef);
+    assertThat(approvalNotificationHandler.getUserGroups((HarnessApprovalInstance) instance)).isEmpty();
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetUserGroupsNoUserGroupFilters() {
+    mockStatic(IdentifierRefHelper.class);
+    List<String> userGroupIds = Collections.singletonList("UserGroup1");
+    ApproversDTO approversDTO = ApproversDTO.builder().userGroups(userGroupIds).build();
+    Ambiance ambiance = Ambiance.newBuilder()
+                            .putSetupAbstractions(SetupAbstractionKeys.accountId, accountId)
+                            .putSetupAbstractions(SetupAbstractionKeys.orgIdentifier, orgIdentifier)
+                            .putSetupAbstractions(SetupAbstractionKeys.projectIdentifier, projectIdentifier)
+                            .build();
+    ApprovalInstance instance = HarnessApprovalInstance.builder().approvers(approversDTO).build();
+    instance.setAmbiance(ambiance);
+    IdentifierRef identifierRef = IdentifierRef.builder().build();
+    when(IdentifierRefHelper.getIdentifierRef(userGroupIds.get(0), accountId, orgIdentifier, projectIdentifier))
+        .thenReturn(identifierRef);
+    assertThat(approvalNotificationHandler.getUserGroups((HarnessApprovalInstance) instance)).isEmpty();
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetUserGroupsEmptyUserGroups() {
+    ApproversDTO approversDTO = ApproversDTO.builder().userGroups(Collections.emptyList()).build();
+    HarnessApprovalInstance instance = HarnessApprovalInstance.builder().approvers(approversDTO).build();
+    assertThat(approvalNotificationHandler.getUserGroups(instance)).isEmpty();
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testFormatDuration() {
+    assertThat(ApprovalNotificationHandlerImpl.formatDuration(1L)).isEqualTo("0s");
+    assertThat(ApprovalNotificationHandlerImpl.formatDuration(60000L)).isEqualTo("1m");
+    assertThat(ApprovalNotificationHandlerImpl.formatDuration(3600000L)).isEqualTo("1h");
+    assertThat(ApprovalNotificationHandlerImpl.formatDuration(86400000L)).isEqualTo("1d");
+    assertThat(ApprovalNotificationHandlerImpl.formatDuration(99999000L)).isEqualTo("1d 3h 46m 39s");
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetUserIdentification() {
+    EmbeddedUser user_without_name_email = EmbeddedUser.builder().build();
+    assertThat(approvalNotificationHandler.getUserIdentification(user_without_name_email)).isEqualTo("Unknown");
+    EmbeddedUser user_without_email = EmbeddedUser.builder().name("name").build();
+    assertThat(approvalNotificationHandler.getUserIdentification(user_without_email))
+        .isEqualTo(user_without_email.getName());
+    EmbeddedUser user_without_name = EmbeddedUser.builder().email("email@email.com").build();
+    assertThat(approvalNotificationHandler.getUserIdentification(user_without_name))
+        .isEqualTo(user_without_name.getEmail());
   }
 }

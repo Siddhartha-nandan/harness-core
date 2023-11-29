@@ -14,6 +14,7 @@ import static io.harness.ccm.commons.constants.ViewFieldLowerCaseConstants.AWS_U
 import static io.harness.ccm.commons.constants.ViewFieldLowerCaseConstants.AZURE_METER_CATEGORY;
 import static io.harness.ccm.commons.constants.ViewFieldLowerCaseConstants.AZURE_RESOURCE_GROUP;
 import static io.harness.ccm.commons.constants.ViewFieldLowerCaseConstants.AZURE_SUBSCRIPTION_GUID;
+import static io.harness.ccm.commons.constants.ViewFieldLowerCaseConstants.CLOUD_PROVIDER_FIELD_ID;
 import static io.harness.ccm.commons.constants.ViewFieldLowerCaseConstants.CLUSTER_NAME_FIELD_ID;
 import static io.harness.ccm.commons.constants.ViewFieldLowerCaseConstants.GCP_PRODUCT_FIELD_ID;
 import static io.harness.ccm.commons.constants.ViewFieldLowerCaseConstants.GCP_PROJECT_FIELD_ID;
@@ -198,6 +199,10 @@ public class PerspectiveToAnomalyQueryHelper {
             stringFilters.add(buildStringFilter(
                 CCMField.REGION, filter.getIdFilter().getValues(), filter.getIdFilter().getOperator()));
             break;
+          case CLOUD_PROVIDER_FIELD_ID:
+            stringFilters.add(buildStringFilter(
+                CCMField.CLOUD_PROVIDER, filter.getIdFilter().getValues(), filter.getIdFilter().getOperator()));
+            break;
           default:
             if (filter.getIdFilter().getField().getIdentifier() == BUSINESS_MAPPING) {
               List<ViewRule> businessMappingRules = new ArrayList<>();
@@ -343,6 +348,26 @@ public class PerspectiveToAnomalyQueryHelper {
     return true;
   }
 
+  public CCMFilter addIdNullFilter() {
+    List<CCMStringFilter> ccm_stringFilters = new ArrayList<>();
+    String[] emptyArray = new String[0];
+    ccm_stringFilters.add(buildStringFilter(CCMField.ANOMALY_ID, emptyArray, QLCEViewFilterOperator.NULL));
+    return CCMFilter.builder()
+        .stringFilters(ccm_stringFilters)
+        .numericFilters(Collections.emptyList())
+        .timeFilters(Collections.emptyList())
+        .build();
+  }
+
+  public boolean isEmptyRuleFilter(List<CCMFilter> ccm_ruleFilters) {
+    for (CCMFilter ccm_filter : ccm_ruleFilters) {
+      if (!(ccm_filter.getStringFilters().isEmpty()) || !(ccm_filter.getNumericFilters().isEmpty())
+          || !(ccm_filter.getTimeFilters().isEmpty())) {
+        return false;
+      }
+    }
+    return true;
+  }
   private CCMFilter combineFilters(List<CCMFilter> filters) {
     List<CCMStringFilter> stringFilters = new ArrayList<>();
     List<CCMNumberFilter> numberFilters = new ArrayList<>();
@@ -391,7 +416,7 @@ public class PerspectiveToAnomalyQueryHelper {
     return defaultFilters;
   }
 
-  private CCMStringFilter buildStringFilter(CCMField field, String[] values, QLCEViewFilterOperator operator) {
+  public CCMStringFilter buildStringFilter(CCMField field, String[] values, QLCEViewFilterOperator operator) {
     return CCMStringFilter.builder()
         .field(field)
         .values(Arrays.asList(values))

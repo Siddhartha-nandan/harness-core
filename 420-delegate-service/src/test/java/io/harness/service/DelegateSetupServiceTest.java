@@ -28,6 +28,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.SortOrder;
 import io.harness.category.element.UnitTests;
+import io.harness.data.structure.ListUtils;
 import io.harness.delegate.beans.AutoUpgrade;
 import io.harness.delegate.beans.Delegate;
 import io.harness.delegate.beans.Delegate.DelegateBuilder;
@@ -65,7 +66,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
-import io.fabric8.utils.Lists;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -281,6 +281,19 @@ public class DelegateSetupServiceTest extends DelegateServiceTestBase {
 
     List<DelegateListResponse> delegateListResponses = delegateSetupService.listDelegates(TEST_ACCOUNT_ID, null, null,
         DelegateFilterPropertiesDTO.builder().delegateTags(new HashSet<>(List.of("taggroup1"))).build());
+
+    assertThat(delegateListResponses).hasSize(1);
+    assertThat(delegateListResponses.get(0).getName()).isEqualTo("grp1");
+  }
+
+  @Test
+  @Owner(developers = ANUPAM)
+  @Category(UnitTests.class)
+  public void listDelegateShouldReturnDelegateGroupsFilteredByTagSameAsGroupName() {
+    prepareInitialData();
+
+    List<DelegateListResponse> delegateListResponses = delegateSetupService.listDelegates(TEST_ACCOUNT_ID, null, null,
+        DelegateFilterPropertiesDTO.builder().delegateTags(new HashSet<>(List.of("grp1"))).build());
 
     assertThat(delegateListResponses).hasSize(1);
     assertThat(delegateListResponses.get(0).getName()).isEqualTo("grp1");
@@ -1228,7 +1241,7 @@ public class DelegateSetupServiceTest extends DelegateServiceTestBase {
                             .uuid("delegateId")
                             .accountId(TEST_ACCOUNT_ID)
                             .ng(true)
-                            .tags(Lists.newArrayList("tag123", "tag456", "commonTag"))
+                            .tags(ListUtils.newArrayList("tag123", "tag456", "commonTag"))
                             .delegateType(KUBERNETES)
                             .delegateName("delegate")
                             .delegateGroupName("grp")
@@ -1350,7 +1363,7 @@ public class DelegateSetupServiceTest extends DelegateServiceTestBase {
                              .uuid("delegateId1")
                              .accountId(TEST_ACCOUNT_ID)
                              .ng(true)
-                             .tags(Lists.newArrayList("tag123", "tag456", "commonTag"))
+                             .tags(ListUtils.newArrayList("tag123", "tag456", "commonTag"))
                              .delegateType(KUBERNETES)
                              .delegateName("delegate1")
                              .delegateGroupName("grp1")
@@ -1366,7 +1379,7 @@ public class DelegateSetupServiceTest extends DelegateServiceTestBase {
                              .uuid("delegateId2")
                              .accountId(TEST_ACCOUNT_ID)
                              .ng(true)
-                             .tags(Lists.newArrayList("tagdel2"))
+                             .tags(ListUtils.newArrayList("tagdel2"))
                              .delegateType(KUBERNETES)
                              .delegateName("delegate2")
                              .delegateGroupName("grp1")
@@ -1385,7 +1398,7 @@ public class DelegateSetupServiceTest extends DelegateServiceTestBase {
                              .ng(true)
                              .delegateName("delegate3")
                              .delegateGroupName("grp2")
-                             .tags(Lists.newArrayList("tagdel3"))
+                             .tags(ListUtils.newArrayList("tagdel3"))
                              .sizeDetails(DelegateSizeDetails.builder().replicas(1).build())
                              .hostName("kube-3")
                              .delegateGroupId(TEST_DELEGATE_GROUP_ID_2)
@@ -1403,7 +1416,7 @@ public class DelegateSetupServiceTest extends DelegateServiceTestBase {
                                .owner(DelegateEntityOwner.builder().identifier(generateUuid()).build())
                                .build();
 
-    return Lists.newArrayList(delegate1, delegate2, delegate3, deletedDelegate, orgDelegate);
+    return ListUtils.newArrayList(delegate1, delegate2, delegate3, deletedDelegate, orgDelegate);
   }
 
   private List<DelegateGroup> prepareDelegateGroups() {
@@ -1450,6 +1463,6 @@ public class DelegateSetupServiceTest extends DelegateServiceTestBase {
                                        .status(DelegateGroupStatus.ENABLED)
                                        .tags(Sets.newHashSet("taggroup4"))
                                        .build();
-    return Lists.newArrayList(delegateGroup1, delegateGroup2, delegateGroup3, delegateGroup4);
+    return ListUtils.newArrayList(delegateGroup1, delegateGroup2, delegateGroup3, delegateGroup4);
   }
 }

@@ -50,6 +50,8 @@ import io.harness.cdng.buckets.resources.s3.S3ResourceService;
 import io.harness.cdng.buckets.resources.s3.S3ResourceServiceImpl;
 import io.harness.cdng.buckets.resources.service.GcsResourceService;
 import io.harness.cdng.buckets.resources.service.GcsResourceServiceImpl;
+import io.harness.cdng.creator.plan.stage.service.DeploymentStagePlanCreationInfoService;
+import io.harness.cdng.creator.plan.stage.service.DeploymentStagePlanCreationInfoServiceImpl;
 import io.harness.cdng.envGroup.mappers.EnvironmentGroupFilterPropertiesMapper;
 import io.harness.cdng.envGroup.services.EnvironmentGroupService;
 import io.harness.cdng.envGroup.services.EnvironmentGroupServiceImpl;
@@ -105,6 +107,7 @@ import io.harness.cdng.provision.terraformcloud.executiondetails.TerraformCloudP
 import io.harness.cdng.provision.terraformcloud.executiondetails.TerraformCloudPlanExecutionDetailsServiceImpl;
 import io.harness.cdng.provision.terraformcloud.resources.service.TerraformCloudResourceService;
 import io.harness.cdng.provision.terraformcloud.resources.service.TerraformCloudResourceServiceImpl;
+import io.harness.cdng.service.steps.helpers.serviceoverridesv2.OverrideFilterPropertiesMapper;
 import io.harness.cdng.service.steps.helpers.serviceoverridesv2.services.ServiceOverrideV2MigrationService;
 import io.harness.cdng.service.steps.helpers.serviceoverridesv2.services.ServiceOverrideV2MigrationServiceImpl;
 import io.harness.cdng.service.steps.helpers.serviceoverridesv2.services.ServiceOverrideV2SettingsUpdateService;
@@ -143,6 +146,8 @@ import io.harness.ng.core.service.services.impl.ServiceSequenceServiceImpl;
 import io.harness.ng.core.serviceoverride.services.ServiceOverrideService;
 import io.harness.ng.core.serviceoverride.services.impl.ServiceOverrideServiceImpl;
 import io.harness.ng.core.serviceoverridev2.service.ServiceOverridesServiceV2;
+import io.harness.ng.core.utils.CDGitXService;
+import io.harness.ng.core.utils.CDGitXServiceImpl;
 import io.harness.pms.sdk.core.plugin.PluginInfoProvider;
 import io.harness.secretusage.SecretRuntimeUsageService;
 import io.harness.secretusage.SecretRuntimeUsageServiceImpl;
@@ -151,6 +156,7 @@ import io.harness.service.instance.InstanceServiceImpl;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.AbstractModule;
+import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.MapBinder;
 import com.google.inject.multibindings.Multibinder;
@@ -203,6 +209,7 @@ public class NGModule extends AbstractModule {
     bind(StageExecutionInstanceInfoService.class).to(StageExecutionInstanceInfoServiceImpl.class);
     bind(LicenseUsageInterface.class).to(CDLicenseUsageImpl.class);
     bind(InstanceService.class).to(InstanceServiceImpl.class);
+    bind(CDGitXService.class).to(CDGitXServiceImpl.class).in(Singleton.class);
     bind(ServiceEntityService.class).to(ServiceEntityServiceImpl.class);
     bind(EnvironmentService.class).to(EnvironmentServiceImpl.class);
     bind(ServiceNowResourceService.class).to(ServiceNowResourceServiceImpl.class);
@@ -249,12 +256,14 @@ public class NGModule extends AbstractModule {
     bind(ManifestTaskService.class).to(ManifestTaskServiceImpl.class);
     bind(GitRestraintInstanceService.class).to(GitRestraintInstanceServiceImpl.class);
     bind(SecretRuntimeUsageService.class).to(SecretRuntimeUsageServiceImpl.class);
+    bind(DeploymentStagePlanCreationInfoService.class).to(DeploymentStagePlanCreationInfoServiceImpl.class);
 
     MapBinder<String, FilterPropertiesMapper> filterPropertiesMapper =
         MapBinder.newMapBinder(binder(), String.class, FilterPropertiesMapper.class);
     filterPropertiesMapper.addBinding(FilterType.ENVIRONMENTGROUP.toString())
         .to(EnvironmentGroupFilterPropertiesMapper.class);
     filterPropertiesMapper.addBinding(FilterType.ENVIRONMENT.toString()).to(EnvironmentFilterPropertiesMapper.class);
+    filterPropertiesMapper.addBinding(FilterType.OVERRIDE.toString()).to(OverrideFilterPropertiesMapper.class);
 
     Multibinder<PluginInfoProvider> pluginInfoProviderMultibinder =
         Multibinder.newSetBinder(binder(), new TypeLiteral<>() {});

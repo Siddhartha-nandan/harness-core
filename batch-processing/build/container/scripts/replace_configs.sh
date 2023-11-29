@@ -372,6 +372,7 @@ replace_key_value deployMode "$DEPLOY_MODE"
 replace_key_value clickHouseConfig.url "$CLICKHOUSE_URL"
 replace_key_value clickHouseConfig.username "$CLICKHOUSE_USERNAME"
 replace_key_value clickHouseConfig.password "$CLICKHOUSE_PASSWORD"
+replace_key_value clickHouseConfig.socketTimeout "$CLICKHOUSE_SOCKET_TIMEOUT"
 
 replace_key_value isClickHouseEnabled "$CLICKHOUSE_ENABLED"
 
@@ -403,3 +404,9 @@ replace_key_value awsServiceEndpointUrls.endPointRegion "$AWS_SERVICE_ENDPOINT_U
 replace_key_value awsServiceEndpointUrls.stsEndPointUrl "$AWS_SERVICE_ENDPOINT_URLS_STS_ENDPOINT_URL"
 replace_key_value awsServiceEndpointUrls.ecsEndPointUrl "$AWS_SERVICE_ENDPOINT_URLS_ECS_ENDPOINT_URL"
 replace_key_value awsServiceEndpointUrls.cloudwatchEndPointUrl "$AWS_SERVICE_ENDPOINT_URLS_CLOUDWATCH_ENDPOINT_URL"
+
+replace_key_value dkronClientConfig.baseUrl "$DKRON_CLIENT_BASEURL"
+replace_key_value dkronClientConfig.connectTimeOutSeconds "$DKRON_CLIENT_CONNECTTIMEOUT"
+replace_key_value dkronClientConfig.readTimeOutSeconds "$DKRON_CLIENT_READTIMEOUT"
+
+replace_key_value lightwingAutoCUDClientConfig.baseUrl "$LIGHTWING_AUTOCUD_CLIENT_CONFIG_BASEURL"

@@ -7,6 +7,7 @@
 
 package io.harness.data.structure;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -52,5 +53,13 @@ public class HarnessStringUtils {
       sanitisedList.add(elem.trim());
     }
     return sanitisedList;
+  }
+
+  public static String defaultIfEmpty(String value, String defaultValue) {
+    return isNotEmpty(value) ? value : defaultValue;
+  }
+
+  public static boolean isStringValueMatching(String value1, String value2) {
+    return isNotEmpty(value1) && isNotEmpty(value2) && value1.equals(value2);
   }
 }

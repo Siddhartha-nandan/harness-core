@@ -13,9 +13,9 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.callback.DelegateCallbackToken;
-import io.harness.cdng.aws.sam.AwsSamStepHelper;
 import io.harness.cdng.infra.beans.ServerlessAwsLambdaInfrastructureOutcome;
 import io.harness.cdng.instance.info.InstanceInfoService;
+import io.harness.cdng.plugininfoproviders.ServerlessV2PluginInfoProviderHelper;
 import io.harness.cdng.serverless.ServerlessStepCommonHelper;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.delegate.beans.instancesync.ServerInstanceInfo;
@@ -40,8 +40,8 @@ import io.harness.tasks.ResponseData;
 import io.harness.yaml.core.timeout.Timeout;
 
 import com.google.inject.Inject;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -56,7 +56,7 @@ public class ServerlessAwsLambdaDeployV2Step extends AbstractContainerStepV2<Ste
 
   @Inject ServerlessStepCommonHelper serverlessStepCommonHelper;
 
-  @Inject AwsSamStepHelper awsSamStepHelper;
+  @Inject ServerlessV2PluginInfoProviderHelper serverlessV2PluginInfoProviderHelper;
   @Inject private ExecutionSweepingOutputService executionSweepingOutputService;
 
   @Inject private InstanceInfoService instanceInfoService;
@@ -85,8 +85,12 @@ public class ServerlessAwsLambdaDeployV2Step extends AbstractContainerStepV2<Ste
 
     // Check if image exists
     serverlessStepCommonHelper.verifyPluginImageIsProvider(serverlessAwsLambdaDeployV2StepParameters.getImage());
-    Map<String, String> envVarMap = new HashMap<>();
+    Map<String, String> envVarMap = serverlessV2PluginInfoProviderHelper.getEnvironmentVariables(
+        ambiance, serverlessAwsLambdaDeployV2StepParameters);
     serverlessStepCommonHelper.putValuesYamlEnvVars(ambiance, serverlessAwsLambdaDeployV2StepParameters, envVarMap);
+
+    serverlessV2PluginInfoProviderHelper.removeAllEnvVarsWithSecretRef(envVarMap);
+    serverlessV2PluginInfoProviderHelper.validateEnvVariables(envVarMap);
 
     return getUnitStep(ambiance, stepElementParameters, accountId, logKey, parkedTaskId,
         serverlessAwsLambdaDeployV2StepParameters, envVarMap);
@@ -105,7 +109,6 @@ public class ServerlessAwsLambdaDeployV2Step extends AbstractContainerStepV2<Ste
   @Override
   public StepResponse.StepOutcome getAnyOutComeForStep(
       Ambiance ambiance, StepElementParameters stepParameters, Map<String, ResponseData> responseDataMap) {
-    String instances = null;
     String serviceName = null;
 
     // If any of the responses are in serialized format, deserialize them
@@ -127,20 +130,20 @@ public class ServerlessAwsLambdaDeployV2Step extends AbstractContainerStepV2<Ste
         && StepExecutionStatus.SUCCESS == stepStatusTaskResponseData.getStepStatus().getStepExecutionStatus()) {
       StepOutput stepOutput = stepStatusTaskResponseData.getStepStatus().getOutput();
 
-      if (stepOutput instanceof StepMapOutput) {
-        StepMapOutput stepMapOutput = (StepMapOutput) stepOutput;
-        String instancesByte64 = stepMapOutput.getMap().get("serverlessInstances");
-        if (EmptyPredicate.isEmpty(instancesByte64)) {
-          log.info("No instances were received in Serverless Aws Lambda Deploy V2 Response");
-          return stepOutcome;
-        }
-        log.info(String.format("Serverless Aws Lambda Deploy V2 instances byte64 %s", instancesByte64));
-        instances = serverlessStepCommonHelper.convertByte64ToString(instancesByte64);
-        log.info(String.format("Serverless Aws Lambda Deploy V2 instances %s", instances));
-      }
-
-      List<ServerInstanceInfo> serverInstanceInfoList = null;
+      List<ServerInstanceInfo> serverInstanceInfoList = new ArrayList<>();
       try {
+        String instances = null;
+        if (stepOutput instanceof StepMapOutput) {
+          StepMapOutput stepMapOutput = (StepMapOutput) stepOutput;
+          String instancesByte64 = stepMapOutput.getMap().get("serverlessInstances");
+          if (EmptyPredicate.isEmpty(instancesByte64)) {
+            log.info("No instances were received in Serverless Aws Lambda Deploy V2 Response");
+          }
+          log.info(String.format("Serverless Aws Lambda Deploy V2 instances byte64 %s", instancesByte64));
+          instances = serverlessStepCommonHelper.convertByte64ToString(instancesByte64);
+          log.info(String.format("Serverless Aws Lambda Deploy V2 instances %s", instances));
+        }
+
         log.info(String.format("Serverless Aws Lambda Deploy V2: Parsing instances from JSON %s", instances));
         ServerlessAwsLambdaFunctionsWithServiceName serverlessAwsLambdaFunctionsWithServiceName =
             serverlessStepCommonHelper.getServerlessAwsLambdaFunctionsWithServiceName(instances);

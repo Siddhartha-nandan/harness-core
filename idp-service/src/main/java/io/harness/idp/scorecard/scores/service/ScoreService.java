@@ -39,4 +39,6 @@ public interface ScoreService {
   ScorecardSummaryInfo getScorecardRecalibratedScoreInfoForAnEntityAndScorecard(
       String accountIdentifier, String entityIdentifier, String scorecardIdentifier);
   List<EntityScores> getEntityScores(String harnessAccount, ScorecardFilter filter);
+
+  void migrateScoresWithCheckIdentifier();
 }

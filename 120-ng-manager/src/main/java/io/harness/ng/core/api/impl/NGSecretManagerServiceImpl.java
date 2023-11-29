@@ -19,6 +19,7 @@ import static io.harness.security.encryption.EncryptionType.GCP_SECRETS_MANAGER;
 import static io.harness.security.encryption.EncryptionType.VAULT;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.FeatureName;
 import io.harness.connector.ConnectivityStatus;
 import io.harness.connector.ConnectorValidationResult;
 import io.harness.connector.helper.CustomSecretManagerHelper;
@@ -132,7 +133,9 @@ public class NGSecretManagerServiceImpl implements NGSecretManagerService {
               if (APP_ROLE.equals(vaultConfig.getAccessType())) {
                 vaultConfig.setRenewAppRoleToken(false);
               }
-              if (!vaultConfig.isReadOnly()) {
+              if (vaultConfig.isReadOnly() && !isReadOnlyVaultTestConnectionFFEnabled(vaultConfig.getAccountId())) {
+                validationResultWithTaskId = Pair.of("", true);
+              } else {
                 VaultEncryptor vaultEncryptor = vaultEncryptorsRegistry.getVaultEncryptor(VAULT);
                 if (vaultEncryptor instanceof NgCgManagerVaultEncryptor) {
                   validationResultWithTaskId =
@@ -142,8 +145,6 @@ public class NGSecretManagerServiceImpl implements NGSecretManagerService {
                   validationResultWithTaskId = Pair.of(NO_TASK_ID,
                       vaultEncryptor.validateSecretManagerConfiguration(accountIdentifier, encryptionConfig));
                 }
-              } else {
-                validationResultWithTaskId = Pair.of("", true);
               }
             }
             break;
@@ -188,6 +189,10 @@ public class NGSecretManagerServiceImpl implements NGSecretManagerService {
       }
     }
     return validationResultWithTaskId;
+  }
+
+  private boolean isReadOnlyVaultTestConnectionFFEnabled(String accountId) {
+    return ngFeatureFlagHelperService.isEnabled(accountId, FeatureName.PL_READ_ONLY_VAULT_TEST_CONNECTION);
   }
 
   @Override
