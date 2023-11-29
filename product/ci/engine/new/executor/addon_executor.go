@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
@@ -58,9 +59,13 @@ func ExecuteStepOnAddon(ctx context.Context, step *pb.UnitStep, tmpFilePath stri
 	}
 	ret, err := c.ExecuteStep(ctx, arg, grpc_retry.WithMax(maxAddonRetries))
 	if err != nil {
-		log.Errorw("Execute step RPC failed", "step_id", stepID,
-			"elapsed_time_ms", utils.TimeSince(st), zap.Error(err))
-		return nil, nil, fmt.Errorf("Could not connect to addon client after max retries %v", maxAddonRetries)
+		if strings.Contains(err.Error(), "Error while dialing: dial tcp") {
+			err = fmt.Errorf("Could not connect to addon client after max retries %v", maxAddonRetries)
+		} else {
+			log.Errorw("Execute step RPC failed", "step_id", stepID,
+				"elapsed_time_ms", utils.TimeSince(st), zap.Error(err))
+		}
+		return nil, nil, err
 	}
 
 	log.Infow("Successfully executed step", "step_id", stepID,
