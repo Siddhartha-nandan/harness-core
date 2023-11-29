@@ -24,6 +24,7 @@ import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -1271,6 +1272,20 @@ public class ArtifactsStepV2Test extends CDNGTestBase {
     StepResponse stepResponse = step.handleAsyncResponse(ambiance, stepParameters, new HashMap<>());
 
     assertThat(stepResponse.getStatus()).isEqualTo(Status.SKIPPED);
+
+    verify(nextGenManagerMetricsUtils).publishArtifactCounterMetrics(eq(ACCOUNT_ID), eq("SKIPPED"));
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.TMACARI)
+  @Category(UnitTests.class)
+  public void handleAsyncResponseExceptionThrown() {
+    doThrow(new InvalidRequestException("message")).when(mockSweepingOutputService).resolveOptional(any(), any());
+
+    assertThatThrownBy(() -> step.handleAsyncResponse(ambiance, stepParameters, new HashMap<>()))
+        .isInstanceOf(InvalidRequestException.class);
+
+    verify(nextGenManagerMetricsUtils).publishArtifactCounterMetrics(eq(ACCOUNT_ID), eq("FAILED"));
   }
 
   @Test
@@ -1295,6 +1310,7 @@ public class ArtifactsStepV2Test extends CDNGTestBase {
 
     final ArtifactsOutcome outcome = captor.getValue();
 
+    verify(nextGenManagerMetricsUtils).publishArtifactCounterMetrics(eq(ACCOUNT_ID), eq("SUCCEEDED"));
     assertThat(stepResponse.getStatus()).isEqualTo(Status.SUCCEEDED);
     assertThat(outcome.getPrimary()).isNotNull();
     assertThat(outcome.getSidecars()).isEmpty();
