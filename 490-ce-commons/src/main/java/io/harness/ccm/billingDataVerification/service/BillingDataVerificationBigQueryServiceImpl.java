@@ -34,6 +34,7 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,6 +47,7 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
+@Singleton
 public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVerificationSQLService {
   private static final String AWS_UNIFIED_TABLE_COST_VERIFICATION_QUERY_TEMPLATE =
       String.join(" ", "SELECT DATE_TRUNC(startTime, DAY) as day, awsUsageAccountId as cloudProviderAccountId, ",
