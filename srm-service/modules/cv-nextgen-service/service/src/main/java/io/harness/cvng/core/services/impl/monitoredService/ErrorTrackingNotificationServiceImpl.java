@@ -67,82 +67,82 @@ public class ErrorTrackingNotificationServiceImpl implements ErrorTrackingNotifi
 
   @Override
   public void handleNotification(MonitoredService monitoredService) {
-    log.info("HANDLE NOTIFICATION FOR ERROR TRACKING AND DO NOTHING");
-//    boolean errorTrackingNotificationsEnabled =
-//        featureFlagService.isFeatureFlagEnabled(monitoredService.getAccountId(), SRM_CODE_ERROR_NOTIFICATIONS);
-//    boolean errorTrackingSavedSearchNotificationsEnabled =
-//        featureFlagService.isFeatureFlagEnabled(monitoredService.getAccountId(), CET_SAVED_SEARCH_NOTIFICATION);
-//    boolean errorTrackingSingleNotificationsEnabled =
-//        featureFlagService.isFeatureFlagEnabled(monitoredService.getAccountId(), CET_SINGLE_NOTIFICATION);
-//
-//    log.info("errorTrackingNotificationsEnabled = " + errorTrackingNotificationsEnabled);
-//    log.info("errorTrackingSavedSearchNotificationsEnabled = " + errorTrackingSavedSearchNotificationsEnabled);
-//    log.info("errorTrackingSingleNotificationsEnabled = " + errorTrackingSingleNotificationsEnabled);
-//
-//    if (errorTrackingNotificationsEnabled) {
-//      ProjectParams projectParams = ProjectParams.builder()
-//                                        .accountIdentifier(monitoredService.getAccountId())
-//                                        .orgIdentifier(monitoredService.getOrgIdentifier())
-//                                        .projectIdentifier(monitoredService.getProjectIdentifier())
-//                                        .build();
-//
-//      final NotificationRuleTemplateDataGenerator notificationRuleTemplateDataGenerator =
-//          notificationRuleConditionTypeTemplateDataGeneratorMap.get(CODE_ERRORS);
-//
-//      Set<String> notificationRuleRefsWithChange = new HashSet<>();
-//      final Optional<String> environmentId = getSingleEnvironmentId(monitoredService);
-//      if (environmentId.isPresent()) {
-//        log.info("EnvironmentId = " + environmentId.get());
-//        for (NotificationRuleRef notificationRuleRef : monitoredService.getNotificationRuleRefs()) {
-//          if (notificationRuleRef.isEnabled()) {
-//            MonitoredServiceNotificationRule notificationRule =
-//                (MonitoredServiceNotificationRule) notificationRuleService.getEntity(
-//                    projectParams, notificationRuleRef.getNotificationRuleRef());
-//            for (MonitoredServiceNotificationRuleCondition condition : notificationRule.getConditions()) {
-//              if (CODE_ERRORS == condition.getType()) {
-//                MonitoredServiceCodeErrorCondition codeErrorCondition = (MonitoredServiceCodeErrorCondition) condition;
-//                // if aggregated is null is for backwards compatibility when aggregated wasn't set
-//                if (codeErrorCondition.getAggregated() == null || codeErrorCondition.getAggregated()) {
-//                  final Integer thresholdMinutes = codeErrorCondition.getVolumeThresholdMinutes();
-//                  // check and send the message if there are no threshold minutes
-//                  // OR check the eligibility against a defined threshold minutes
-//                  if (thresholdMinutes == null
-//                      || notificationRuleRef.isEligible(clock.instant(), Duration.ofMinutes(thresholdMinutes))) {
-//                    NotificationData notification = getAggregatedNotificationData(monitoredService, environmentId.get(),
-//                        codeErrorCondition, notificationRule, errorTrackingSavedSearchNotificationsEnabled);
-//                    sendNotification(notification, monitoredService, notificationRule,
-//                        notificationRuleTemplateDataGenerator, projectParams, codeErrorCondition,
-//                        notificationRuleRefsWithChange);
-//
-//                    // when we don't send notification, and we had an eligible threshold minutes
-//                    if (!notification.shouldSendNotification() && thresholdMinutes != null) {
-//                      // add it to the refs with change list which will update the lastSuccessfullNotificationTime, even
-//                      // though we don't send the notification, we want to update this time to delay the next check to
-//                      // not check again until the threshold duration has been met against the last time we checked.
-//                      notificationRuleRefsWithChange.add(notificationRule.getIdentifier());
-//                    }
-//                  }
-//                } else if (errorTrackingSingleNotificationsEnabled) {
-//                  List<NotificationData> notifications;
-//                  notifications =
-//                      getStackTraceNotificationsData(monitoredService, environmentId.get(), notificationRule);
-//                  for (NotificationData notification : notifications) {
-//                    sendNotification(notification, monitoredService, notificationRule,
-//                        notificationRuleTemplateDataGenerator, projectParams, codeErrorCondition,
-//                        notificationRuleRefsWithChange);
-//                  }
-//                }
-//              }
-//            }
-//            updateNotificationRuleRefInMonitoredService(
-//                projectParams, monitoredService, new ArrayList<>(notificationRuleRefsWithChange));
-//          }
-//        }
-//      }
-//      else {
-//        log.info("EnvironmentId is not present");
-//      }
-//    }
+    log.info("HANDLE NOTIFICATION FOR ERROR TRACKING DO SOMETHING AND LOG");
+    boolean errorTrackingNotificationsEnabled =
+        featureFlagService.isFeatureFlagEnabled(monitoredService.getAccountId(), SRM_CODE_ERROR_NOTIFICATIONS);
+    boolean errorTrackingSavedSearchNotificationsEnabled =
+        featureFlagService.isFeatureFlagEnabled(monitoredService.getAccountId(), CET_SAVED_SEARCH_NOTIFICATION);
+    boolean errorTrackingSingleNotificationsEnabled =
+        featureFlagService.isFeatureFlagEnabled(monitoredService.getAccountId(), CET_SINGLE_NOTIFICATION);
+
+    log.info("errorTrackingNotificationsEnabled = " + errorTrackingNotificationsEnabled);
+    log.info("errorTrackingSavedSearchNotificationsEnabled = " + errorTrackingSavedSearchNotificationsEnabled);
+    log.info("errorTrackingSingleNotificationsEnabled = " + errorTrackingSingleNotificationsEnabled);
+
+    if (errorTrackingNotificationsEnabled) {
+      ProjectParams projectParams = ProjectParams.builder()
+                                        .accountIdentifier(monitoredService.getAccountId())
+                                        .orgIdentifier(monitoredService.getOrgIdentifier())
+                                        .projectIdentifier(monitoredService.getProjectIdentifier())
+                                        .build();
+
+      final NotificationRuleTemplateDataGenerator notificationRuleTemplateDataGenerator =
+          notificationRuleConditionTypeTemplateDataGeneratorMap.get(CODE_ERRORS);
+
+      Set<String> notificationRuleRefsWithChange = new HashSet<>();
+      final Optional<String> environmentId = getSingleEnvironmentId(monitoredService);
+      if (environmentId.isPresent()) {
+        log.info("EnvironmentId = " + environmentId.get());
+        for (NotificationRuleRef notificationRuleRef : monitoredService.getNotificationRuleRefs()) {
+          if (notificationRuleRef.isEnabled()) {
+            MonitoredServiceNotificationRule notificationRule =
+                (MonitoredServiceNotificationRule) notificationRuleService.getEntity(
+                    projectParams, notificationRuleRef.getNotificationRuleRef());
+            for (MonitoredServiceNotificationRuleCondition condition : notificationRule.getConditions()) {
+              if (CODE_ERRORS == condition.getType()) {
+                MonitoredServiceCodeErrorCondition codeErrorCondition = (MonitoredServiceCodeErrorCondition) condition;
+                // if aggregated is null is for backwards compatibility when aggregated wasn't set
+                if (codeErrorCondition.getAggregated() == null || codeErrorCondition.getAggregated()) {
+                  final Integer thresholdMinutes = codeErrorCondition.getVolumeThresholdMinutes();
+                  // check and send the message if there are no threshold minutes
+                  // OR check the eligibility against a defined threshold minutes
+                  if (thresholdMinutes == null
+                      || notificationRuleRef.isEligible(clock.instant(), Duration.ofMinutes(thresholdMinutes))) {
+                    NotificationData notification = getAggregatedNotificationData(monitoredService, environmentId.get(),
+                        codeErrorCondition, notificationRule, errorTrackingSavedSearchNotificationsEnabled);
+                    sendNotification(notification, monitoredService, notificationRule,
+                        notificationRuleTemplateDataGenerator, projectParams, codeErrorCondition,
+                        notificationRuleRefsWithChange);
+
+                    // when we don't send notification, and we had an eligible threshold minutes
+                    if (!notification.shouldSendNotification() && thresholdMinutes != null) {
+                      // add it to the refs with change list which will update the lastSuccessfullNotificationTime, even
+                      // though we don't send the notification, we want to update this time to delay the next check to
+                      // not check again until the threshold duration has been met against the last time we checked.
+                      notificationRuleRefsWithChange.add(notificationRule.getIdentifier());
+                    }
+                  }
+                } else if (errorTrackingSingleNotificationsEnabled) {
+                  List<NotificationData> notifications;
+                  notifications =
+                      getStackTraceNotificationsData(monitoredService, environmentId.get(), notificationRule);
+                  for (NotificationData notification : notifications) {
+                    sendNotification(notification, monitoredService, notificationRule,
+                        notificationRuleTemplateDataGenerator, projectParams, codeErrorCondition,
+                        notificationRuleRefsWithChange);
+                  }
+                }
+              }
+            }
+            updateNotificationRuleRefInMonitoredService(
+                projectParams, monitoredService, new ArrayList<>(notificationRuleRefsWithChange));
+          }
+        }
+      }
+      else {
+        log.info("EnvironmentId is not present");
+      }
+    }
   }
 
   private void sendNotification(NotificationData notification, MonitoredService monitoredService,
