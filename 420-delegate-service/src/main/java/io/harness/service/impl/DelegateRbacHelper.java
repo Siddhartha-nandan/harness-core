@@ -44,12 +44,10 @@ public class DelegateRbacHelper {
     if (isEmpty(delegateGroupIds)) {
       return null;
     }
-    log.info("delegateGroup ids are : {}", delegateGroupIds);
     Query<DelegateGroup> delegateGroupQuery =
         persistence.createQuery(DelegateGroup.class).field(DelegateGroupKeys.uuid).in(delegateGroupIds);
     List<String> delegateGroupIdentifiers =
         delegateGroupQuery.asList().stream().map(DelegateGroup::getIdentifier).collect(Collectors.toList());
-    log.info("delegateGroup identifiers are : {}", delegateGroupIdentifiers);
 
     Map<EntityScopeInfo, List<String>> delegateGroupIdMap =
         delegateGroupIdentifiers.stream().collect(groupingBy(delegateGroupIdentifier
@@ -66,9 +64,7 @@ public class DelegateRbacHelper {
                        .resourceType(DELEGATE_RESOURCE_TYPE)
                        .build())
             .collect(Collectors.toList());
-    log.info("checking for permission checks");
     AccessCheckResponseDTO accessCheckResponse = accessControlClient.checkForAccessOrThrow(permissionChecks);
-    log.info("got the check response");
 
     List<String> permittedDelegateGroupIds = new ArrayList<>();
     for (AccessControlDTO accessControlDTO : accessCheckResponse.getAccessControlList()) {
@@ -77,15 +73,12 @@ public class DelegateRbacHelper {
             delegateGroupIdMap.get(DelegateRbacHelper.getEntityScopeInfoFromAccessControlDTO(accessControlDTO)).get(0));
       }
     }
-    log.info("permitted delegateGroup identifiers are : {}", delegateGroupIdentifiers);
     Query<DelegateGroup> delegateGroupQueryToConvertIdentifiersToId =
         persistence.createQuery(DelegateGroup.class).field(DelegateGroupKeys.identifier).in(permittedDelegateGroupIds);
-    List<String> permittedDelegateIds = delegateGroupQueryToConvertIdentifiersToId.asList()
-                                            .stream()
-                                            .map(DelegateGroup::getUuid)
-                                            .collect(Collectors.toList());
-    log.info("permitted delegateGroup ids are : {}", permittedDelegateIds);
-    return permittedDelegateIds;
+    return delegateGroupQueryToConvertIdentifiersToId.asList()
+        .stream()
+        .map(DelegateGroup::getUuid)
+        .collect(Collectors.toList());
   }
 
   private static EntityScopeInfo getEntityScopeInfoFromDelegateGroupId(
