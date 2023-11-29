@@ -287,7 +287,6 @@ public class GcpSyncTasklet implements Tasklet {
                                                           .put(DEPLOY_MODE, mainConfig.getDeployMode().name())
                                                           .put(IS_CLICK_HOUSE_ENABLED, "True")
                                                           .build();
-
       createK8SJobWithParameters(customAttributes);
       return;
     }
