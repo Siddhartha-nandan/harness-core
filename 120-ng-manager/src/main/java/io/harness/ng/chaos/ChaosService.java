@@ -19,4 +19,6 @@ public interface ChaosService {
   boolean registerChaosHub(ChaosHubRequest chaosHubRequest);
 
   boolean deleteChaosHub(ChaosHubRequest chaosHubRequest);
+
+  void experimentStartedNotificationTrigger(ExperimentNotificationRequest experimentNotificationRequest);
 }

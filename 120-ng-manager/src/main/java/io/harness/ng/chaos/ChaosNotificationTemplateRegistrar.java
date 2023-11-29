@@ -45,7 +45,7 @@ public class ChaosNotificationTemplateRegistrar implements Runnable {
         for (PredefinedTemplate template : templates) {
           log.info("Registering {} with NotificationService", template);
           try {
-            notificationClient.saveNotificationTemplate(Team.CHAOS, template, true);
+            notificationClient.saveNotificationTemplate(Team.OTHER, template, true);
           } catch (Exception ex) {
             log.error(String.format("Unable to register template with id: %s", template.getIdentifier()), ex);
             unprocessedTemplate.add(template);

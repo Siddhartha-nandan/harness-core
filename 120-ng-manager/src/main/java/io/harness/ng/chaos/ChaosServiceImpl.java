@@ -8,10 +8,12 @@
 package io.harness.ng.chaos;
 
 import static io.harness.NGConstants.ENTITY_REFERENCE_LOG_PREFIX;
+import static io.harness.data.structure.UUIDGenerator.generateUuid;
 
 import static software.wings.utils.Utils.emptyIfNull;
 
 import io.harness.cdng.chaos.ChaosStepNotifyData;
+import io.harness.delegate.utils.DelegateEntityOwnerHelper;
 import io.harness.eventsframework.EventsFrameworkConstants;
 import io.harness.eventsframework.EventsFrameworkMetadataConstants;
 import io.harness.eventsframework.api.Producer;
@@ -22,6 +24,10 @@ import io.harness.eventsframework.schemas.entity.EntityTypeProtoEnum;
 import io.harness.eventsframework.schemas.entity.IdentifierRefProtoDTO;
 import io.harness.eventsframework.schemas.entitysetupusage.DeleteSetupUsageDTO;
 import io.harness.eventsframework.schemas.entitysetupusage.EntitySetupUsageCreateV2DTO;
+import io.harness.notification.NotificationTriggerRequest;
+import io.harness.notification.entities.NotificationEntity;
+import io.harness.notification.entities.NotificationEvent;
+import io.harness.notification.notificationclient.NotificationClient;
 import io.harness.utils.FullyQualifiedIdentifierHelper;
 import io.harness.waiter.WaitNotifyEngine;
 
@@ -29,6 +35,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
 @Singleton
@@ -37,6 +45,8 @@ public class ChaosServiceImpl implements ChaosService {
   @Inject private WaitNotifyEngine waitNotifyEngine;
   @Inject @Named(EventsFrameworkConstants.SETUP_USAGE) private Producer eventProducer;
   @Inject private IdentifierRefProtoDTOHelper identifierRefProtoDTOHelper;
+
+  @Inject NotificationClient notificationClient;
 
   @Override
   public void notifyStep(String notifyId, ChaosStepNotifyData data) {
@@ -228,5 +238,29 @@ public class ChaosServiceImpl implements ChaosService {
       return false;
     }
     return true;
+  }
+
+  @Override
+  public void experimentStartedNotificationTrigger(ExperimentNotificationRequest experimentNotificationRequest) {
+    String notificationTriggerRequestId = generateUuid();
+    String accountIdentifier = experimentNotificationRequest.getAccountId();
+    String orgIdentifier = experimentNotificationRequest.getOrgId();
+    String projectIdentifier = experimentNotificationRequest.getProjectId();
+    String experimentName = experimentNotificationRequest.getExperimentName();
+
+    Map<String, String> templateData = new HashMap<>();
+    templateData.put("EXPERIMENT_ID", experimentName);
+    templateData.put("TEMPLATE_IDENTIFIER", "chaos_experiment_started");
+    NotificationTriggerRequest.Builder notificationTriggerRequestBuilder =
+        NotificationTriggerRequest.newBuilder()
+            .setId(notificationTriggerRequestId)
+            .setAccountId(accountIdentifier)
+            .setOrgId(orgIdentifier)
+            .setProjectId(projectIdentifier)
+            .setEventEntity(NotificationEntity.CHAOS_EXPERIMENT.name())
+            .setEvent(NotificationEvent.EXPERIMENT_STARTED.name())
+            .putAllTemplateData(templateData);
+    log.info("Sending chaos experiment started notification for {}", experimentName);
+    notificationClient.sendNotificationTrigger(notificationTriggerRequestBuilder.build());
   }
 }
