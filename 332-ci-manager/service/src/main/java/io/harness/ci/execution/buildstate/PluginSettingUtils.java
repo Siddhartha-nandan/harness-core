@@ -145,6 +145,8 @@ public class PluginSettingUtils extends PluginServiceImpl {
   public static final String ZSTD_ARCHIVE_FORMAT = "zstd";
   public static final String PLUGIN_ARTIFACT_FILE = "PLUGIN_ARTIFACT_FILE";
   public static final String PLUGIN_DAEMON_OFF = "PLUGIN_DAEMON_OFF";
+  public static final String PLUGIN_ACL = "PLUGIN_ACL";
+  public static final String PLUGIN_ACL_PRIVATE = "private";
   public static final String ECR_REGISTRY_PATTERN = "%s.dkr.ecr.%s.amazonaws.com";
   public static final String PLUGIN_DOCKER_REGISTRY = "PLUGIN_DOCKER_REGISTRY";
   public static final String PLUGIN_CACHE_FROM = "PLUGIN_CACHE_FROM";
