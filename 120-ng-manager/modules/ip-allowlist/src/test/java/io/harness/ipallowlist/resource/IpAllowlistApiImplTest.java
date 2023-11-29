@@ -88,7 +88,6 @@ public class IpAllowlistApiImplTest extends CategoryTest {
   @Owner(developers = MEENAKSHI)
   @Category(UnitTests.class)
   public void testCreateIpAllowlistConfig() {
-    mockIPAllowlistFFTrue();
     IPAllowlistConfigRequest request = getIpAllowlistConfigRequest();
     IPAllowlistEntity ipAllowlistEntity = getIPAllowlistEntity();
     when(ipAllowlistService.create(ipAllowlistEntity)).thenReturn(ipAllowlistEntity);
@@ -103,7 +102,6 @@ public class IpAllowlistApiImplTest extends CategoryTest {
   @Owner(developers = MEENAKSHI)
   @Category(UnitTests.class)
   public void testCreateIpAllowlistConfig_FFOFF() {
-    mockIPAllowlistFFFalse();
     IPAllowlistConfigRequest request = getIpAllowlistConfigRequest();
     IPAllowlistEntity ipAllowlistEntity = getIPAllowlistEntity();
     when(ipAllowlistService.create(ipAllowlistEntity)).thenReturn(ipAllowlistEntity);
@@ -116,7 +114,6 @@ public class IpAllowlistApiImplTest extends CategoryTest {
   @Owner(developers = MEENAKSHI)
   @Category(UnitTests.class)
   public void testGetIpAllowlistConfig() {
-    mockIPAllowlistFFTrue();
     IPAllowlistEntity ipAllowlistEntity = getIPAllowlistEntity();
     when(ipAllowlistService.get(ACCOUNT_IDENTIFIER, IDENTIFIER)).thenReturn(ipAllowlistEntity);
     Response result = ipAllowlistApi.getIpAllowlistConfig(IDENTIFIER, ACCOUNT_IDENTIFIER);
@@ -129,7 +126,6 @@ public class IpAllowlistApiImplTest extends CategoryTest {
   @Owner(developers = MEENAKSHI)
   @Category(UnitTests.class)
   public void testUpdateIpAllowlistConfig() {
-    mockIPAllowlistFFTrue();
     IPAllowlistConfigRequest request = getIpAllowlistConfigRequest();
     IPAllowlistEntity ipAllowlistEntity = getIPAllowlistEntity();
     when(ipAllowlistService.update(IDENTIFIER, ipAllowlistEntity)).thenReturn(ipAllowlistEntity);
@@ -143,7 +139,6 @@ public class IpAllowlistApiImplTest extends CategoryTest {
   @Owner(developers = MEENAKSHI)
   @Category(UnitTests.class)
   public void testUpdateIpAllowlistConfig_forDifferentIdentifier() {
-    mockIPAllowlistFFTrue();
     IPAllowlistConfigRequest request = getIpAllowlistConfigRequest();
     exceptionRule.expect(InvalidRequestException.class);
     exceptionRule.expectMessage(DIFFERENT_IDENTIFIER_IN_PAYLOAD_AND_PARAM);
@@ -154,7 +149,6 @@ public class IpAllowlistApiImplTest extends CategoryTest {
   @Owner(developers = MEENAKSHI)
   @Category(UnitTests.class)
   public void testDeleteIpAllowlistConfig() {
-    mockIPAllowlistFFTrue();
     when(ipAllowlistService.delete(ACCOUNT_IDENTIFIER, IDENTIFIER)).thenReturn(true);
     Response result = ipAllowlistApi.deleteIpAllowlistConfig(IDENTIFIER, ACCOUNT_IDENTIFIER);
     assertThat(result).isNotNull();
@@ -166,7 +160,6 @@ public class IpAllowlistApiImplTest extends CategoryTest {
   @Owner(developers = MEENAKSHI)
   @Category(UnitTests.class)
   public void testDeleteIpAllowlistConfig_noAccess() {
-    mockIPAllowlistFFTrue();
     doThrow(NGAccessDeniedException.class).when(accessControlClient).checkForAccessOrThrow(any(), any(), any());
     when(ipAllowlistService.delete(ACCOUNT_IDENTIFIER, IDENTIFIER)).thenReturn(true);
     exceptionRule.expect(NGAccessDeniedException.class);
@@ -190,7 +183,6 @@ public class IpAllowlistApiImplTest extends CategoryTest {
     Page<IPAllowlistEntity> ipAllowlistEntityPage = new PageImpl<>(List.of(getIPAllowlistEntity()));
     Page<IPAllowlistConfigResponse> ipAllowlistConfigResponsePage =
         ipAllowlistEntityPage.map(ipAllowlistResourceUtil::toIPAllowlistConfigResponse);
-    mockIPAllowlistFFTrue();
     when(ipAllowlistService.list(eq(ACCOUNT_IDENTIFIER), eq(pageable), entityArgumentCaptor.capture()))
         .thenReturn(ipAllowlistEntityPage);
     Response response = ipAllowlistApi.getIpAllowlistConfigs(
@@ -245,12 +237,5 @@ public class IpAllowlistApiImplTest extends CategoryTest {
         .lastUpdatedBy(null)
         .createdBy(null)
         .build();
-  }
-
-  private void mockIPAllowlistFFTrue() {
-    when(ngFeatureFlagHelperService.isEnabled(ACCOUNT_IDENTIFIER, FeatureName.PL_IP_ALLOWLIST_NG)).thenReturn(true);
-  }
-  private void mockIPAllowlistFFFalse() {
-    when(ngFeatureFlagHelperService.isEnabled(ACCOUNT_IDENTIFIER, FeatureName.PL_IP_ALLOWLIST_NG)).thenReturn(false);
   }
 }

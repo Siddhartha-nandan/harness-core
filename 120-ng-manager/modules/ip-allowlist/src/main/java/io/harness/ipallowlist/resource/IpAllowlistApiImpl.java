@@ -8,7 +8,6 @@
 package io.harness.ipallowlist.resource;
 
 import static io.harness.NGCommonEntityConstants.DIFFERENT_IDENTIFIER_IN_PAYLOAD_AND_PARAM;
-import static io.harness.beans.FeatureName.PL_IP_ALLOWLIST_NG;
 import static io.harness.exception.WingsException.USER;
 import static io.harness.ng.accesscontrol.PlatformPermissions.DELETE_AUTHSETTING_PERMISSION;
 import static io.harness.ng.accesscontrol.PlatformPermissions.EDIT_AUTHSETTING_PERMISSION;
@@ -52,8 +51,6 @@ public class IpAllowlistApiImpl implements IpAllowlistApi {
   @Override
   public Response createIpAllowlistConfig(
       @Valid IPAllowlistConfigRequest ipAllowlistConfigRequest, String accountIdentifier) {
-    isIPAllowlistFFEnabled(accountIdentifier);
-
     accessControlClient.checkForAccessOrThrow(
         ResourceScope.of(accountIdentifier, null, null), Resource.of(AUTHSETTING, null), EDIT_AUTHSETTING_PERMISSION);
     IPAllowlistEntity ipAllowlistEntity =
@@ -68,7 +65,6 @@ public class IpAllowlistApiImpl implements IpAllowlistApi {
   @Override
   public Response updateIpAllowlistConfig(
       String ipConfigIdentifier, @Valid IPAllowlistConfigRequest ipAllowlistConfigRequest, String harnessAccount) {
-    isIPAllowlistFFEnabled(harnessAccount);
     if (!Objects.equals(ipAllowlistConfigRequest.getIpAllowlistConfig().getIdentifier(), ipConfigIdentifier)) {
       throw new InvalidRequestException(DIFFERENT_IDENTIFIER_IN_PAYLOAD_AND_PARAM, USER);
     }
@@ -86,7 +82,6 @@ public class IpAllowlistApiImpl implements IpAllowlistApi {
   @Override
   public Response validateIpAddressAllowlistedOrNot(
       @NotNull String ipAddress, String harnessAccount, String customIpAddressBlock) {
-    isIPAllowlistFFEnabled(harnessAccount);
     accessControlClient.checkForAccessOrThrow(
         ResourceScope.of(harnessAccount, null, null), Resource.of(AUTHSETTING, null), EDIT_AUTHSETTING_PERMISSION);
     return Response.status(Response.Status.OK)
@@ -96,7 +91,6 @@ public class IpAllowlistApiImpl implements IpAllowlistApi {
 
   @Override
   public Response deleteIpAllowlistConfig(String ipConfigIdentifier, String harnessAccount) {
-    isIPAllowlistFFEnabled(harnessAccount);
     accessControlClient.checkForAccessOrThrow(ResourceScope.of(harnessAccount, null, null),
         Resource.of(AUTHSETTING, ipConfigIdentifier), DELETE_AUTHSETTING_PERMISSION);
 
@@ -106,7 +100,6 @@ public class IpAllowlistApiImpl implements IpAllowlistApi {
 
   @Override
   public Response getIpAllowlistConfig(String ipConfigIdentifier, String harnessAccount) {
-    isIPAllowlistFFEnabled(harnessAccount);
     accessControlClient.checkForAccessOrThrow(ResourceScope.of(harnessAccount, null, null),
         Resource.of(AUTHSETTING, ipConfigIdentifier), VIEW_AUTHSETTING_PERMISSION);
     IPAllowlistEntity ipAllowlistEntity = ipAllowlistService.get(harnessAccount, ipConfigIdentifier);
@@ -119,7 +112,6 @@ public class IpAllowlistApiImpl implements IpAllowlistApi {
   @Override
   public Response getIpAllowlistConfigs(String searchTerm, Integer page, @Max(1000L) Integer limit,
       String harnessAccount, String sort, String order, String allowedSourceType) {
-    isIPAllowlistFFEnabled(harnessAccount);
     accessControlClient.checkForAccessOrThrow(
         ResourceScope.of(harnessAccount, null, null), Resource.of(AUTHSETTING, null), VIEW_AUTHSETTING_PERMISSION);
     IPAllowlistFilterDTO ipAllowlistFilterDTO =
@@ -138,16 +130,9 @@ public class IpAllowlistApiImpl implements IpAllowlistApi {
 
   @Override
   public Response validateUniqueIpAllowlistConfigIdentifier(String ipConfigIdentifier, String harnessAccount) {
-    isIPAllowlistFFEnabled(harnessAccount);
     accessControlClient.checkForAccessOrThrow(ResourceScope.of(harnessAccount, null, null),
         Resource.of(AUTHSETTING, ipConfigIdentifier), EDIT_AUTHSETTING_PERMISSION);
     return Response.ok().entity(ipAllowlistService.validateUniqueness(harnessAccount, ipConfigIdentifier)).build();
   }
 
-  private void isIPAllowlistFFEnabled(String accountIdentifier) {
-    boolean isFFEnabled = ngFeatureFlagHelperService.isEnabled(accountIdentifier, PL_IP_ALLOWLIST_NG);
-    if (!isFFEnabled) {
-      throw new InvalidRequestException("IP Allowlist feature is not enabled for this account.");
-    }
-  }
 }
