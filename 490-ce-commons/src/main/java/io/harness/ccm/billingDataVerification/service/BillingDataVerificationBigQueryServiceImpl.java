@@ -52,7 +52,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
   private static final String AWS_UNIFIED_TABLE_COST_VERIFICATION_QUERY_TEMPLATE =
       String.join(" ", "SELECT DATE_TRUNC(DATE(startTime), DAY) as day, awsUsageAccountId as cloudProviderAccountId, ",
           "sum(awsUnblendedCost) as unblendedCost, sum(awsBlendedCost) as blendedCost, ",
-          "sum(awsAmortizedcost) as amortizedcost, sum(awsNetamortizedcost) as netamortizedcost ", "FROM `%s` ",
+          "sum(awsAmortisedcost) as amortizedcost, sum(awsNetamortisedcost) as netamortizedcost ", "FROM `%s` ",
           "WHERE DATE_TRUNC(DATE(startTime), DAY) >= DATE('%s')", "AND DATE_TRUNC(DATE(startTime), DAY) < DATE('%s')",
           "AND cloudprovider='AWS'", "GROUP BY day, cloudProviderAccountId ;");
 
