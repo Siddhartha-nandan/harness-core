@@ -18,11 +18,11 @@ java_library(
     visibility = ["//visibility:public"],
     deps = [
         "//:lombok",
-        "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/metrics:module",
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng:module",
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/artifact/mappers:module",
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/artifact/steps/beans:module",
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/artifact/utils:module",
+        "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/metrics:module",
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/service/steps/helpers:module",
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/steps:module",
         "//127-cd-nextgen-entities:module",
