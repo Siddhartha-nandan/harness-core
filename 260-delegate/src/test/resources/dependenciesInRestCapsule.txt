@@ -320,7 +320,7 @@ io.netty:netty:jar:3.10.6.Final
 io.opencensus:opencensus-api:jar:0.24.0
 io.opencensus:opencensus-contrib-http-util:jar:0.24.0
 io.perfmark:perfmark-api:jar:0.19.0:runtime
-io.projectreactor.netty:reactor-netty:jar:0.9.10.RELEASE
+io.projectreactor.netty:reactor-netty:jar:1.0.39
 io.projectreactor:reactor-core:jar:3.3.8.RELEASE
 io.prometheus:simpleclient:jar:0.5.0
 io.prometheus:simpleclient_common:jar:0.5.0
