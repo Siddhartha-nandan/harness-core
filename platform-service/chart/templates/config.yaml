@@ -40,6 +40,7 @@ data:
   {{- if .Values.additionalConfigs }}
   {{- toYaml .Values.additionalConfigs | nindent 2 }}
   {{- end }}
+  {{- include "harnesscommon.monitoring.config" . | nindent 2 }}
 
 kind: ConfigMap
 metadata:
