@@ -153,6 +153,7 @@ CodeformatRequired() {
 
 function check_chart_yaml() {
     helm_version=$(helm version)
+    echo -e "Inside helm checks"
     echo $helm_version
     for folder_path_ in "${merge_summary[@]}"; do
         local folder_path=$(dirname "$folder_path_")
