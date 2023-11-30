@@ -2317,8 +2317,9 @@ public class TasStepHelper {
       if (manifestOutcome.getType().equals(TAS_MANIFEST)) {
         // using XNOR operator here so that to handle the cases:
         // Case 1 : If service Manifest is Artifact Bundle Type then ignore All override manifest which has Store type
-        // other than Artifact Bundle Case 2 : If service Manifest is of Other Store Type then ignore All override
-        // manifest which has Store type Artifact Bundle
+        // other than Artifact Bundle
+        // Case 2 : If service Manifest is of Other Store Type then ignore All override manifest which has Store type
+        // Artifact Bundle
         if (manifestOutcome.getStore().getKind().equals(ManifestStoreType.ARTIFACT_BUNDLE)
             == isInServiceArtifactBundleManifestIsPresent) {
           updatedOrderedManifestOutcomes.add(manifestOutcome);
