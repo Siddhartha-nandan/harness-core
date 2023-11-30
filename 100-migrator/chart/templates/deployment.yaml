@@ -26,6 +26,7 @@ spec:
   template:
     metadata:
       annotations:
+        {{- include "harnesscommon.monitoring.annotations" . | nindent 8 }}
         rollme: {{ randAlphaNum 5 | quote }}
       {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
@@ -73,6 +74,7 @@ spec:
           - "-lapp=redis-sentinel"
         {{- end }}
       containers:
+        {{- include "harnesscommon.monitoring.containerPort" . | nindent 8 }}
         - envFrom:
             - configMapRef:
                 name: migrator-config

@@ -6,6 +6,11 @@ global:
   commonLabels: {}
   kubeVersion: ""
   loadbalancerURL: ""
+  monitoring:
+    enabled: false
+    managedPlatform: "google"
+    port: 8889
+    path: /metrics
   database:
     postgres:
       ## - installed = true if installed within cluster
