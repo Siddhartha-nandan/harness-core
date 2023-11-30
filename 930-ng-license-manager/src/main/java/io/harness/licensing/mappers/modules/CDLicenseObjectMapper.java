@@ -52,14 +52,11 @@ public class CDLicenseObjectMapper implements LicenseObjectMapper<CDModuleLicens
       }
     }
 
-    if (cdModuleLicenseDTO.getDeveloperLicenseCount() != null
-        && (cdModuleLicenseDTO.getWorkloads() == null && cdModuleLicenseDTO.getServiceInstances() == null)) {
+    if (cdModuleLicenseDTO.getDeveloperLicenseCount() != null && (cdModuleLicenseDTO.getWorkloads() == null)) {
       // TODO: fetch mapping ratio from DeveloperMapping collection, once that work is complete
       Integer mappingRatio = 1;
       if (CDLicenseType.SERVICES.equals(cdModuleLicenseDTO.getCdLicenseType())) {
         cdModuleLicenseDTO.setWorkloads(mappingRatio * cdModuleLicenseDTO.getDeveloperLicenseCount());
-      } else {
-        throw new InvalidRequestException("CDLicenseType has to be either SERVICES or SERVICE_INSTANCES");
       }
     }
   }
