@@ -27,9 +27,9 @@ import (
 const authHeader = "X-Harness-Token"
 const authAPIKeyHeader = "x-api-key"
 const authTokenHeader = "Authorization"
-const orgIdentifier = "orgIdentifier"
-const projectIdentifier = "projectIdentifier"
-const pipelineIdentifier = "pipelineIdentifier"
+const orgIdentifier = "orgId"
+const projectIdentifier = "projectId"
+const pipelineIdentifier = "pipelineId"
 
 const routingIDparam = "routingId"
 const regexp1 = "runSequence:[\\d+]"
