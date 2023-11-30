@@ -27,6 +27,7 @@ spec:
     metadata:
       {{- if or .Values.global.commonAnnotations .Values.podAnnotations }}
       annotations:
+        {{- include "harnesscommon.monitoring.annotations" . | nindent 8 }} 
         {{- with .Values.podAnnotations }}
           {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -75,6 +76,7 @@ spec:
           - "-lapp=clickhouse"
       {{- end }}
       containers:
+        {{- include "harnesscommon.monitoring.containerPort" . | nindent 8 }}
         - name: nextgen-ce
           securityContext:
             {{- toYaml .Values.securityContext | indent 12 }}
