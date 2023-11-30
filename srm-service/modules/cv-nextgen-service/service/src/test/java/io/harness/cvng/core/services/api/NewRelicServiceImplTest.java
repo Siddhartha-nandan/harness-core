@@ -19,6 +19,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 import io.harness.CvNextGenTestBase;
+import io.harness.beans.FeatureName;
 import io.harness.category.element.UnitTests;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.cvng.BuilderFactory;
@@ -32,8 +33,6 @@ import io.harness.cvng.client.VerificationManagerClient;
 import io.harness.cvng.client.VerificationManagerService;
 import io.harness.cvng.core.beans.MetricPackValidationResponse;
 import io.harness.cvng.core.beans.MetricPackValidationResponse.MetricValidationResponse;
-import io.harness.cvng.core.services.impl.FeatureFlagServiceImpl;
-import io.harness.cvng.core.utils.FeatureFlagNames;
 import io.harness.datacollection.exception.DataCollectionException;
 import io.harness.delegate.beans.connector.newrelic.NewRelicConnectorDTO;
 import io.harness.rule.Owner;
@@ -59,7 +58,7 @@ public class NewRelicServiceImplTest extends CvNextGenTestBase {
   @Mock NextGenService nextGenService;
   @Mock VerificationManagerService verificationManagerService;
   @Mock private RequestExecutor requestExecutor;
-  @Mock FeatureFlagServiceImpl featureFlagService;
+  @Mock FeatureFlagService featureFlagService;
   private String accountId;
   private String connectorIdentifier;
   private BuilderFactory builderFactory;
@@ -82,7 +81,7 @@ public class NewRelicServiceImplTest extends CvNextGenTestBase {
   @Owner(developers = SHUBHENDU)
   @Category(UnitTests.class)
   public void testGetEndpoints_ff_disabled() {
-    doReturn(false).when(featureFlagService).isFeatureFlagEnabled(accountId, FeatureFlagNames.CVNG_NEWRELIC_NEW_API);
+    doReturn(false).when(featureFlagService).isFeatureFlagEnabled(accountId, FeatureName.CV_NEWRELIC_NEW_API.name());
     List<String> endpoints = newRelicService.getNewRelicEndpoints(accountId);
 
     assertThat(endpoints.size()).isEqualTo(2);
@@ -93,7 +92,7 @@ public class NewRelicServiceImplTest extends CvNextGenTestBase {
   @Owner(developers = SHUBHENDU)
   @Category(UnitTests.class)
   public void testGetEndpoints_ff_enabled() {
-    doReturn(true).when(featureFlagService).isFeatureFlagEnabled(any(), any());
+    doReturn(true).when(featureFlagService).isFeatureFlagEnabled(accountId, FeatureName.CV_NEWRELIC_NEW_API.name());
     List<String> endpoints = newRelicService.getNewRelicEndpoints(accountId);
 
     assertThat(endpoints.size()).isEqualTo(4);
