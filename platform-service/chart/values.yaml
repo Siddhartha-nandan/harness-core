@@ -8,6 +8,11 @@ global:
   loadbalancerURL: "http://test/abc"
   imagePullSecrets: []
   stackDriverLoggingEnabled: false
+  monitoring:
+    enabled: false
+    managedPlatform: "google"
+    port: 8889
+    path: /metrics
   smtpCreateSecret:
     enabled: false
     SMTP_USERNAME: ""

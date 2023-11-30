@@ -27,6 +27,7 @@ spec:
   template:
     metadata:
       annotations:
+        {{- include "harnesscommon.monitoring.annotations" . | nindent 8 }} 
         checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
       {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
@@ -58,6 +59,7 @@ spec:
           - "-lapp=mongodb-replicaset"
       {{- end }}
       containers:
+        {{- include "harnesscommon.monitoring.containerPort" . | nindent 6 }}
       - name: platform-service
         image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
