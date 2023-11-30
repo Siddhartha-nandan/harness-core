@@ -8,6 +8,11 @@ global:
   airgap: false
   imagePullSecrets: []
   stackDriverLoggingEnabled: false
+  monitoring:
+    enabled: true
+    managedPlatform: "google"
+    port: 8889
+    path: /metrics
   database:
     postgres:
       ## - installed = true if installed within cluster
