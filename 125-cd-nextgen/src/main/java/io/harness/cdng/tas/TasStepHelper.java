@@ -2316,6 +2316,12 @@ public class TasStepHelper {
       return orderedManifestOutcomes;
     }
 
+    return filterManifestsForArtifactBundleInternal(
+        orderedManifestOutcomes, isInServiceArtifactBundleManifestIsPresent);
+  }
+
+  private List<ManifestOutcome> filterManifestsForArtifactBundleInternal(
+      List<ManifestOutcome> orderedManifestOutcomes, boolean isInServiceArtifactBundleManifestIsPresent) {
     List<ManifestOutcome> updatedOrderedManifestOutcomes = new ArrayList<>();
 
     for (ManifestOutcome manifestOutcome : orderedManifestOutcomes) {
