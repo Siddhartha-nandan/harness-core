@@ -33,9 +33,11 @@ import javax.validation.constraints.NotNull;
 public interface DelegateSetupService {
   long getDelegateGroupCount(String accountId, String orgId, String projectId);
 
-  DelegateGroupListing listDelegateGroupDetails(String accountId, String orgId, String projectId);
+  DelegateGroupListing listDelegateGroupDetails(
+      String accountId, String orgId, String projectId, boolean applyRbacFilter);
 
-  DelegateGroupListing listDelegateGroupDetailsUpTheHierarchy(String accountId, String orgId, String projectId);
+  DelegateGroupListing listDelegateGroupDetailsUpTheHierarchy(
+      String accountId, String orgId, String projectId, boolean applyRbacFilter);
 
   DelegateGroupDetails getDelegateGroupDetails(String accountId, String delegateGroupId);
 
@@ -66,7 +68,7 @@ public interface DelegateSetupService {
       String accountId, String orgId, String projectId, DelegateFilterPropertiesDTO delegateFilterPropertiesDTO);
 
   DelegateGroupListing listDelegateGroupDetails(
-      String accountId, String orgId, String projectId, String delegateTokenName);
+      String accountId, String orgId, String projectId, String delegateTokenName, boolean applyRbacFilter);
 
   DelegateGroup updateDelegateGroupTags_old(
       String accountId, String orgId, String projectId, String delegateGroupName, Set<String> tags);

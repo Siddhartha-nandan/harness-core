@@ -189,7 +189,8 @@ public class DelegateSetupServiceTest extends DelegateServiceTestBase {
 
     persistence.save(Arrays.asList(orgDelegate, deletedDelegate, delegate1, delegate2, delegate3));
 
-    DelegateGroupListing delegateGroupListing = delegateSetupService.listDelegateGroupDetails(accountId, null, null);
+    DelegateGroupListing delegateGroupListing =
+        delegateSetupService.listDelegateGroupDetails(accountId, null, null, false);
 
     assertThat(delegateGroupListing.getDelegateGroupDetails()).hasSize(2);
     assertThat(delegateGroupListing.getDelegateGroupDetails())
@@ -253,10 +254,11 @@ public class DelegateSetupServiceTest extends DelegateServiceTestBase {
                                        .build();
     when(delegateCache.getDelegateGroup(accountId, delegateGroup1.getUuid())).thenReturn(delegateGroup1);
     persistence.save(delegateGroup1);
-    DelegateGroupListing delegateGroupListing = delegateSetupService.listDelegateGroupDetails(accountId, null, null);
+    DelegateGroupListing delegateGroupListing =
+        delegateSetupService.listDelegateGroupDetails(accountId, null, null, false);
     assertThat(delegateGroupListing.getDelegateGroupDetails().size()).isEqualTo(1);
     delegateSetupService.deleteByAccountId(accountId);
-    delegateGroupListing = delegateSetupService.listDelegateGroupDetails(accountId, null, null);
+    delegateGroupListing = delegateSetupService.listDelegateGroupDetails(accountId, null, null, false);
     assertThat(delegateGroupListing.getDelegateGroupDetails().size()).isEqualTo(0);
   }
 
@@ -531,17 +533,18 @@ public class DelegateSetupServiceTest extends DelegateServiceTestBase {
     persistence.save(Arrays.asList(cgAcctDelegate, acctDelegate, orgDelegate, projectDelegate));
 
     DelegateGroupListing delegateGroupListing =
-        delegateSetupService.listDelegateGroupDetailsUpTheHierarchy(accountId, null, null);
+        delegateSetupService.listDelegateGroupDetailsUpTheHierarchy(accountId, null, null, false);
     assertThat(delegateGroupListing.getDelegateGroupDetails()).hasSize(1);
     assertThat(delegateGroupListing.getDelegateGroupDetails().get(0).getGroupId()).isEqualTo(acctGroup.getUuid());
 
-    delegateGroupListing = delegateSetupService.listDelegateGroupDetailsUpTheHierarchy(accountId, orgId, null);
+    delegateGroupListing = delegateSetupService.listDelegateGroupDetailsUpTheHierarchy(accountId, orgId, null, false);
     assertThat(delegateGroupListing.getDelegateGroupDetails()).hasSize(2);
     assertThat(Arrays.asList(delegateGroupListing.getDelegateGroupDetails().get(0).getGroupId(),
                    delegateGroupListing.getDelegateGroupDetails().get(1).getGroupId()))
         .containsExactlyInAnyOrder(acctGroup.getUuid(), orgGroup.getUuid());
 
-    delegateGroupListing = delegateSetupService.listDelegateGroupDetailsUpTheHierarchy(accountId, orgId, projectId);
+    delegateGroupListing =
+        delegateSetupService.listDelegateGroupDetailsUpTheHierarchy(accountId, orgId, projectId, false);
     assertThat(delegateGroupListing.getDelegateGroupDetails()).hasSize(3);
     assertThat(Arrays.asList(delegateGroupListing.getDelegateGroupDetails().get(0).getGroupId(),
                    delegateGroupListing.getDelegateGroupDetails().get(1).getGroupId(),
@@ -1229,7 +1232,7 @@ public class DelegateSetupServiceTest extends DelegateServiceTestBase {
     prepareInitialData();
 
     DelegateGroupListing delegateGroupListing =
-        delegateSetupService.listDelegateGroupDetails(TEST_ACCOUNT_ID, null, null, "test");
+        delegateSetupService.listDelegateGroupDetails(TEST_ACCOUNT_ID, null, null, "test", false);
 
     assertThat(delegateGroupListing.getDelegateGroupDetails()).isEmpty();
   }
@@ -1257,7 +1260,7 @@ public class DelegateSetupServiceTest extends DelegateServiceTestBase {
         DelegateToken.builder().accountId(TEST_ACCOUNT_ID).name("test").status(DelegateTokenStatus.ACTIVE).build());
 
     DelegateGroupListing delegateGroupListing =
-        delegateSetupService.listDelegateGroupDetails(TEST_ACCOUNT_ID, null, null, "test");
+        delegateSetupService.listDelegateGroupDetails(TEST_ACCOUNT_ID, null, null, "test", false);
 
     assertThat(delegateGroupListing.getDelegateGroupDetails()).hasSize(1);
   }

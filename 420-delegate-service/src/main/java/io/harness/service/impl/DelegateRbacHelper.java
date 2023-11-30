@@ -52,8 +52,7 @@ public class DelegateRbacHelper {
 
     Map<EntityScopeInfo, List<String>> delegateGroupIdMap =
         delegateGroupIdentifiers.stream().collect(groupingBy(delegateGroupIdentifier
-            -> DelegateRbacHelper.getEntityScopeInfoFromDelegateGroupId(
-                delegateGroupIdentifier, accountId, orgId, projectId)));
+            -> getEntityScopeInfoFromDelegateGroupId(delegateGroupIdentifier, accountId, orgId, projectId)));
 
     List<PermissionCheckDTO> permissionChecks =
         delegateGroupIdentifiers.stream()
@@ -71,8 +70,11 @@ public class DelegateRbacHelper {
     for (AccessControlDTO accessControlDTO : accessCheckResponse.getAccessControlList()) {
       if (accessControlDTO.isPermitted()) {
         permittedDelegateGroupIds.add(
-            delegateGroupIdMap.get(DelegateRbacHelper.getEntityScopeInfoFromAccessControlDTO(accessControlDTO)).get(0));
+            delegateGroupIdMap.get(getEntityScopeInfoFromAccessControlDTO(accessControlDTO)).get(0));
       }
+    }
+    if (isEmpty(permittedDelegateGroupIds)) {
+      return permittedDelegateGroupIds;
     }
     Query<DelegateGroup> delegateGroupQueryToConvertIdentifiersToId =
         persistence.createQuery(DelegateGroup.class).field(DelegateGroupKeys.identifier).in(permittedDelegateGroupIds);
@@ -82,6 +84,36 @@ public class DelegateRbacHelper {
         .collect(Collectors.toList());
   }
 
+  public List<DelegateGroup> getViewPermittedDelegateGroups(
+      List<DelegateGroup> delegateGroups, String accountId, String orgId, String projectId) {
+    if (isEmpty(delegateGroups)) {
+      return null;
+    }
+    Map<EntityScopeInfo, List<DelegateGroup>> delegateGroupIdMap = delegateGroups.stream().collect(
+        groupingBy(delegateGroup -> getEntityScopeInfoFromDelegateGroup(delegateGroup, accountId, orgId, projectId)));
+
+    List<PermissionCheckDTO> permissionChecks =
+        delegateGroups.stream()
+            .map(delegateGroup
+                -> PermissionCheckDTO.builder()
+                       .permission(DELEGATE_VIEW_PERMISSION)
+                       .resourceIdentifier(delegateGroup.getIdentifier())
+                       .resourceScope(ResourceScope.of(accountId, orgId, projectId))
+                       .resourceType(DELEGATE_RESOURCE_TYPE)
+                       .build())
+            .collect(Collectors.toList());
+    AccessCheckResponseDTO accessCheckResponse = accessControlClient.checkForAccessOrThrow(permissionChecks);
+
+    List<DelegateGroup> permittedDelegateGroups = new ArrayList<>();
+    for (AccessControlDTO accessControlDTO : accessCheckResponse.getAccessControlList()) {
+      if (accessControlDTO.isPermitted()) {
+        permittedDelegateGroups.add(
+            delegateGroupIdMap.get(getEntityScopeInfoFromAccessControlDTO(accessControlDTO)).get(0));
+      }
+    }
+    return permittedDelegateGroups;
+  }
+
   private static EntityScopeInfo getEntityScopeInfoFromDelegateGroupId(
       String delegateGroupId, String accountId, String orgId, String projectId) {
     return EntityScopeInfo.builder()
@@ -89,6 +121,16 @@ public class DelegateRbacHelper {
         .orgIdentifier(orgId)
         .projectIdentifier(projectId)
         .identifier(delegateGroupId)
+        .build();
+  }
+
+  private static EntityScopeInfo getEntityScopeInfoFromDelegateGroup(
+      DelegateGroup delegateGroup, String accountId, String orgId, String projectId) {
+    return EntityScopeInfo.builder()
+        .accountIdentifier(accountId)
+        .orgIdentifier(orgId)
+        .projectIdentifier(projectId)
+        .identifier(delegateGroup.getIdentifier())
         .build();
   }
 

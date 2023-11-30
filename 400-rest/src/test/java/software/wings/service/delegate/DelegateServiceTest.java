@@ -2776,7 +2776,7 @@ public class DelegateServiceTest extends WingsBaseTest {
 
     persistence.saveBatch(Arrays.asList(acctGroup, orgGroup, projectGroup));
 
-    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, null, null);
+    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, null, null, false);
     assertThat(actual).containsExactlyInAnyOrder("acctgrp");
   }
 
@@ -2804,7 +2804,7 @@ public class DelegateServiceTest extends WingsBaseTest {
 
     persistence.saveBatch(Arrays.asList(acctGroup, orgGroup, projectGroup));
 
-    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, null);
+    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, null, false);
     assertThat(actual).containsExactlyInAnyOrder("acctgrp", "orggrp");
   }
 
@@ -2839,7 +2839,8 @@ public class DelegateServiceTest extends WingsBaseTest {
 
     persistence.saveBatch(Arrays.asList(acctGroup, orgGroup, projectGroup));
 
-    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, projectId);
+    final Set<String> actual =
+        delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, projectId, false);
     assertThat(actual).containsExactlyInAnyOrder(
         "acctgrp", "orggrp", "projectgrp", "custom-acct", "custom-org", "custom-proj");
   }
