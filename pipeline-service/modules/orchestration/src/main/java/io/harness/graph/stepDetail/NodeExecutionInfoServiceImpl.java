@@ -6,13 +6,8 @@
  */
 
 package io.harness.graph.stepDetail;
-import static io.harness.plancreator.strategy.StrategyConstants.ITEM;
-import static io.harness.plancreator.strategy.StrategyConstants.ITERATION;
-import static io.harness.plancreator.strategy.StrategyConstants.ITERATIONS;
-import static io.harness.plancreator.strategy.StrategyConstants.MATRIX;
-import static io.harness.plancreator.strategy.StrategyConstants.PARTITION;
-import static io.harness.plancreator.strategy.StrategyConstants.REPEAT;
-import static io.harness.plancreator.strategy.StrategyConstants.TOTAL_ITERATIONS;
+import static io.harness.beans.FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR;
+import static io.harness.plancreator.strategy.StrategyConstants.*;
 import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 
 import io.harness.annotations.dev.CodePulse;
@@ -229,7 +224,7 @@ public class NodeExecutionInfoServiceImpl implements NodeExecutionInfoService {
   }
 
   @Override
-  public Map<String, Object> fetchStrategyObjectMap(String nodeExecutionId, boolean useMatrixFieldName) {
+  public Map<String, Object> fetchStrategyObjectMap(String nodeExecutionId, boolean useMatrixFieldName, Ambiance ambiance) {
     Map<String, StrategyMetadata> strategyMetadataMap =
         fetchStrategyMetadata(Collections.singletonList(nodeExecutionId));
     Map<String, Object> strategyObjectMap = new HashMap<>();
@@ -243,7 +238,7 @@ public class NodeExecutionInfoServiceImpl implements NodeExecutionInfoService {
     Map<String, Object> matrixValuesMap = new HashMap<>();
     Map<String, Object> repeatValuesMap = new HashMap<>();
     strategyObjectMap = getStrategyMapInternal(
-        strategyMetadata, matrixValuesMap, repeatValuesMap, strategyObjectMap, useMatrixFieldName);
+        strategyMetadata, matrixValuesMap, repeatValuesMap, strategyObjectMap, useMatrixFieldName, ambiance);
     strategyObjectMap.put(MATRIX, matrixValuesMap);
     strategyObjectMap.put(REPEAT, repeatValuesMap);
 
@@ -252,7 +247,7 @@ public class NodeExecutionInfoServiceImpl implements NodeExecutionInfoService {
 
   @Override
   public Map<String, Object> fetchStrategyObjectMap(
-      List<Level> levelsWithStrategyMetadata, boolean useMatrixFieldName) {
+      List<Level> levelsWithStrategyMetadata, boolean useMatrixFieldName, Ambiance ambiance) {
     Map<String, Object> strategyObjectMap = new HashMap<>();
     Map<String, Object> matrixValuesMap = new HashMap<>();
     Map<String, Object> repeatValuesMap = new HashMap<>();
@@ -269,7 +264,7 @@ public class NodeExecutionInfoServiceImpl implements NodeExecutionInfoService {
                      .totalIterations(strategyMetadata.getTotalIterations())
                      .build());
       strategyObjectMap = getStrategyMapInternal(
-          strategyMetadata, matrixValuesMap, repeatValuesMap, strategyObjectMap, useMatrixFieldName);
+          strategyMetadata, matrixValuesMap, repeatValuesMap, strategyObjectMap, useMatrixFieldName, ambiance);
       if (LevelUtils.isStepLevel(level)) {
         StrategyUtils.fetchGlobalIterationsVariablesForStrategyObjectMap(strategyObjectMap, levels);
       }
@@ -282,7 +277,7 @@ public class NodeExecutionInfoServiceImpl implements NodeExecutionInfoService {
 
   private Map<String, Object> getStrategyMapInternal(StrategyMetadata strategyMetadata,
       Map<String, Object> matrixValuesMap, Map<String, Object> repeatValuesMap, Map<String, Object> strategyObjectMap,
-      boolean useMatrixFieldName) {
+      boolean useMatrixFieldName, Ambiance ambiance) {
     if (strategyMetadata.hasMatrixMetadata()) {
       // MatrixMapLocal can contain either a string as value or a json as value.
       Map<String, String> matrixMapLocal = strategyMetadata.getMatrixMetadata().getMatrixValuesMap();
@@ -296,8 +291,12 @@ public class NodeExecutionInfoServiceImpl implements NodeExecutionInfoService {
     strategyObjectMap.put(ITERATION, strategyMetadata.getCurrentIteration());
     strategyObjectMap.put(ITERATIONS, strategyMetadata.getTotalIterations());
     strategyObjectMap.put(TOTAL_ITERATIONS, strategyMetadata.getTotalIterations());
-    strategyObjectMap.put(
-        "identifierPostFix", AmbianceUtils.getStrategyPostFixUsingMetadata(strategyMetadata, useMatrixFieldName));
+    if (AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
+      strategyObjectMap.put(IDENTIFIER_POSTFIX, strategyMetadata.getIdentifierPostFix());
+    } else {
+      strategyObjectMap.put(
+              IDENTIFIER_POSTFIX, AmbianceUtils.getStrategyPostFixUsingMetadata(strategyMetadata, useMatrixFieldName));
+    }
     return strategyObjectMap;
   }
 

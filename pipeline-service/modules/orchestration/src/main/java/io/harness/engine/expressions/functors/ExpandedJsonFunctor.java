@@ -46,11 +46,11 @@ public class ExpandedJsonFunctor {
     boolean useMatrixFieldName = AmbianceUtils.shouldUseMatrixFieldName(ambiance);
     if (EmptyPredicate.isNotEmpty(levelsWithStrategyMetadata)) {
       response.put(
-          "strategy", nodeExecutionInfoService.fetchStrategyObjectMap(levelsWithStrategyMetadata, useMatrixFieldName));
+          "strategy", nodeExecutionInfoService.fetchStrategyObjectMap(levelsWithStrategyMetadata, useMatrixFieldName, ambiance));
     } else {
       response.put("strategy",
           nodeExecutionInfoService.fetchStrategyObjectMap(
-              AmbianceUtils.obtainCurrentLevel(ambiance).getRuntimeId(), useMatrixFieldName));
+              AmbianceUtils.obtainCurrentLevel(ambiance).getRuntimeId(), useMatrixFieldName, ambiance));
     }
     return response;
   }

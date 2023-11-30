@@ -7,7 +7,9 @@
 
 package io.harness.plancreator.strategy;
 
+import static io.harness.beans.FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR;
 import static io.harness.plancreator.strategy.StrategyConstants.CURRENT_GLOBAL_ITERATION;
+import static io.harness.plancreator.strategy.StrategyConstants.IDENTIFIER_POSTFIX;
 import static io.harness.plancreator.strategy.StrategyConstants.ITEM;
 import static io.harness.plancreator.strategy.StrategyConstants.ITERATION;
 import static io.harness.plancreator.strategy.StrategyConstants.ITERATIONS;
@@ -35,6 +37,7 @@ import io.harness.plancreator.PlanCreatorUtilsV1;
 import io.harness.plancreator.steps.GenericPlanCreatorUtils;
 import io.harness.pms.contracts.advisers.AdviserObtainment;
 import io.harness.pms.contracts.advisers.AdviserType;
+import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.plan.Dependency;
 import io.harness.pms.contracts.plan.EdgeLayoutList;
@@ -360,7 +363,7 @@ public class StrategyUtils {
   @Deprecated
   // pass flag
   public Map<String, Object> fetchStrategyObjectMap(
-      List<Level> levelsWithStrategyMetadata, boolean useMatrixFieldName) {
+      List<Level> levelsWithStrategyMetadata, boolean useMatrixFieldName, Ambiance ambiance) {
     Map<String, Object> strategyObjectMap = new HashMap<>();
     Map<String, Object> matrixValuesMap = new HashMap<>();
     Map<String, Object> repeatValuesMap = new HashMap<>();
@@ -389,8 +392,12 @@ public class StrategyUtils {
       strategyObjectMap.put(ITERATION, level.getStrategyMetadata().getCurrentIteration());
       strategyObjectMap.put(ITERATIONS, level.getStrategyMetadata().getTotalIterations());
       strategyObjectMap.put(TOTAL_ITERATIONS, level.getStrategyMetadata().getTotalIterations());
-      strategyObjectMap.put("identifierPostFix",
-          AmbianceUtils.getStrategyPostFixUsingMetadata(level.getStrategyMetadata(), useMatrixFieldName));
+      if (AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
+        strategyObjectMap.put(IDENTIFIER_POSTFIX, level.getStrategyMetadata().getIdentifierPostFix());
+    } else {
+        strategyObjectMap.put(IDENTIFIER_POSTFIX,
+                AmbianceUtils.getStrategyPostFixUsingMetadata(level.getStrategyMetadata(), useMatrixFieldName));
+      }
     }
     strategyObjectMap.put(MATRIX, matrixValuesMap);
     strategyObjectMap.put(REPEAT, repeatValuesMap);

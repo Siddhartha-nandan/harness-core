@@ -6,7 +6,11 @@
  */
 
 package io.harness.steps.matrix;
+
+import static io.harness.beans.FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR;
 import static io.harness.yaml.core.MatrixConstants.MATRIX_IDENTIFIER_POSTFIX_FOR_DUPLICATES;
+
+import static java.lang.Math.max;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -69,6 +73,8 @@ public class MatrixConfigServiceHelper {
 
     // map to store Matrix Combination String
     Map<String, Integer> combinationStringMap = new HashMap<>();
+    // map to store Matrix Modified Identifier String
+    Map<String, Integer> modifiedIdentifierStringMap = new HashMap<>();
 
     for (Map<String, String> combination : combinations) {
       // Creating a runtime Map to identify similar combinations and adding a prefix counter if needed. Refer PIE-6426
@@ -105,7 +111,22 @@ public class MatrixConfigServiceHelper {
                                      .setNodeName(isNodeNameSet ? variableName : "")
                                      .build())
               .build();
+
       String modifiedIdentifier = AmbianceUtils.getStrategyPostFixUsingMetadata(strategyMetadata, useMatrixFieldName);
+      if (AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
+        if (modifiedIdentifierStringMap.containsKey(modifiedIdentifier)) {
+         /* If this modifiedIdentifier is a duplicate (it can happen for long identifiers which are truncated),
+         we need deduplicate it by appending a counter at the end: */
+          int cnt = modifiedIdentifierStringMap.getOrDefault(modifiedIdentifier, 0);
+          modifiedIdentifierStringMap.put(modifiedIdentifier, cnt + 1);
+        /* Concatenate identifier with deduplication suffix, but keep the identifier length equal or less
+           than MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX */
+          modifiedIdentifier =
+                  concatWithMaxLength(modifiedIdentifier, "_" + cnt, AmbianceUtils.MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX);
+        }
+        modifiedIdentifierStringMap.putIfAbsent(modifiedIdentifier, 0);
+      }
+
       strategyMetadata = strategyMetadata.toBuilder().setIdentifierPostFix(modifiedIdentifier).build();
       // Setting the nodeName in MatrixMetadata to empty string in case user has not given nodeName while defining
       // matrix This nodeName is used in AmbianceUtils.java to calculate the level identifier for the node based on the
@@ -118,6 +139,14 @@ public class MatrixConfigServiceHelper {
     }
 
     return children;
+  }
+
+  private String concatWithMaxLength(String prefix, String suffix, int maxLength) {
+    int maxLengthForPrefix = max(maxLength - suffix.length(), 0);
+    if (prefix.length() > maxLengthForPrefix) {
+      prefix = prefix.substring(0, maxLengthForPrefix);
+    }
+    return prefix + suffix;
   }
 
   public String resolveNodeName(String nodeName, Set<Map.Entry<String, String>> entries,

@@ -87,7 +87,7 @@ public class RetryHelper {
     int newRetryIndex = currentLevel != null ? currentLevel.getRetryIndex() + 1 : 0;
     Ambiance finalAmbiance = ambiance.toBuilder()
                                  .addLevels(PmsLevelUtils.buildLevelFromNode(newUuid, newRetryIndex, node,
-                                     strategyMetadata, AmbianceUtils.shouldUseMatrixFieldName(ambiance)))
+                                     strategyMetadata, ambiance))
                                  .build();
     // TODO: Move nodeExecution creation to AbstractNodeExecutionStrategy
     // ambiance could be modified by this clone method

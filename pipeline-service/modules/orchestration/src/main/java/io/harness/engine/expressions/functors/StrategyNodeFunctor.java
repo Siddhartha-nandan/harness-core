@@ -109,6 +109,6 @@ public class StrategyNodeFunctor extends LateBindingMap {
       return Collections.emptyMap();
     }
     return nodeExecutionInfoService.fetchStrategyObjectMap(
-        Collections.singletonList(childLevel), AmbianceUtils.shouldUseMatrixFieldName(ambiance));
+        Collections.singletonList(childLevel), AmbianceUtils.shouldUseMatrixFieldName(ambiance), ambiance);
   }
 }

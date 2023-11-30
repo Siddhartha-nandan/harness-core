@@ -8,6 +8,7 @@
 package io.harness.pms.execution.utils;
 
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
+import static io.harness.beans.FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.logging.AutoLogContext.OverrideBehavior.OVERRIDE_NESTS;
@@ -307,13 +308,14 @@ public class AmbianceUtils {
   }
 
   public static String modifyIdentifier(StrategyMetadata metadata, String identifier, Ambiance ambiance) {
-    return modifyIdentifier(metadata, identifier, shouldUseMatrixFieldName(ambiance));
-  }
-
-  public static String modifyIdentifier(
-      StrategyMetadata strategyMetadata, String identifier, boolean useMatrixFieldName) {
+    String strategyPostFix;
+    if (ambiance != null && checkIfFeatureFlagEnabled(ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
+      strategyPostFix = metadata.getIdentifierPostFix();
+    } else {
+      strategyPostFix = getStrategyPostFixUsingMetadata(metadata, ambiance != null && shouldUseMatrixFieldName(ambiance));
+    }
     return identifier.replaceAll(StrategyValidationUtils.STRATEGY_IDENTIFIER_POSTFIX_ESCAPED,
-        getStrategyPostFixUsingMetadata(strategyMetadata, useMatrixFieldName));
+            strategyPostFix);
   }
 
   // Todo: Use metadata.getIdentifierPostfix going forward.

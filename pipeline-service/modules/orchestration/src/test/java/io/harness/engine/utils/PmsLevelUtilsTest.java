@@ -56,7 +56,7 @@ public class PmsLevelUtilsTest extends OrchestrationTestBase {
             .identifier("i2")
             .skipExpressionChain(true)
             .stepType(StepType.newBuilder().setType("st").setStepCategory(StepCategory.STEP).build())
-            .build());
+            .build(), null, null);
     assertThat(level.getSetupId()).isEqualTo("uuid");
     assertThat(level.getRuntimeId()).isEqualTo("rid2");
     assertThat(level.getIdentifier()).isEqualTo("i2");

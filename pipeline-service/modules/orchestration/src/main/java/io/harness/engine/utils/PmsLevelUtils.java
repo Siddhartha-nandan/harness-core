@@ -12,6 +12,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.plan.Node;
+import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.execution.StrategyMetadata;
 import io.harness.pms.execution.utils.AmbianceUtils;
@@ -20,20 +21,16 @@ import io.harness.pms.execution.utils.AmbianceUtils;
 @OwnedBy(HarnessTeam.PIPELINE)
 public class PmsLevelUtils {
   public static Level buildLevelFromNode(String runtimeId, Node node) {
-    return buildLevelFromNode(runtimeId, 0, node, null, false);
-  }
-
-  public static Level buildLevelFromNode(String runtimeId, int retryIndex, Node node) {
-    return buildLevelFromNode(runtimeId, retryIndex, node, null, false);
+    return buildLevelFromNode(runtimeId, 0, node, null, null);
   }
 
   public static Level buildLevelFromNode(
-      String runtimeId, Node node, StrategyMetadata strategyMetadata, boolean useMatrixFieldName) {
-    return buildLevelFromNode(runtimeId, 0, node, strategyMetadata, useMatrixFieldName);
+      String runtimeId, Node node, StrategyMetadata strategyMetadata, Ambiance ambiance) {
+    return buildLevelFromNode(runtimeId, 0, node, strategyMetadata, ambiance);
   }
 
   public static Level buildLevelFromNode(
-      String runtimeId, int retryIndex, Node node, StrategyMetadata strategyMetadata, boolean useMatrixFieldName) {
+      String runtimeId, int retryIndex, Node node, StrategyMetadata strategyMetadata, Ambiance ambiance) {
     Level.Builder levelBuilder = Level.newBuilder()
                                      .setSetupId(node.getUuid())
                                      .setRuntimeId(runtimeId)
@@ -50,7 +47,7 @@ public class PmsLevelUtils {
     if (strategyMetadata != null) {
       levelBuilder.setStrategyMetadata(strategyMetadata);
       levelBuilder.setIdentifier(
-          AmbianceUtils.modifyIdentifier(strategyMetadata, node.getIdentifier(), useMatrixFieldName));
+          AmbianceUtils.modifyIdentifier(strategyMetadata, node.getIdentifier(), ambiance));
     }
     return levelBuilder.build();
   }
