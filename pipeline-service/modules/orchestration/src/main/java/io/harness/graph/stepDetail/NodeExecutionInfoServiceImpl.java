@@ -7,7 +7,14 @@
 
 package io.harness.graph.stepDetail;
 import static io.harness.beans.FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR;
-import static io.harness.plancreator.strategy.StrategyConstants.*;
+import static io.harness.plancreator.strategy.StrategyConstants.IDENTIFIER_POSTFIX;
+import static io.harness.plancreator.strategy.StrategyConstants.ITEM;
+import static io.harness.plancreator.strategy.StrategyConstants.ITERATION;
+import static io.harness.plancreator.strategy.StrategyConstants.ITERATIONS;
+import static io.harness.plancreator.strategy.StrategyConstants.MATRIX;
+import static io.harness.plancreator.strategy.StrategyConstants.PARTITION;
+import static io.harness.plancreator.strategy.StrategyConstants.REPEAT;
+import static io.harness.plancreator.strategy.StrategyConstants.TOTAL_ITERATIONS;
 import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 
 import io.harness.annotations.dev.CodePulse;

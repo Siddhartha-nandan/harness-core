@@ -635,6 +635,24 @@ public class AmbianceUtilsTest extends CategoryTest {
   }
 
   @Test
+  @Owner(developers = VINICIUS)
+  @Category(UnitTests.class)
+  public void testGetStrategyPostfixTruncationWithNodeNamesAndBooleanSettingEnabled() {
+    Map<String, String> values = new HashMap<>();
+    values.put("go", "world");
+    values.put("java", "a".repeat(130));
+    MatrixMetadata matrixMetadata = MatrixMetadata.newBuilder()
+                                        .putAllMatrixValues(values)
+                                        .addAllMatrixCombination(Collections.singletonList(1))
+                                        .build();
+    StrategyMetadata strategyMetadata = StrategyMetadata.newBuilder().setMatrixMetadata(matrixMetadata).build();
+    String identifier = AmbianceUtils.getStrategyPostFixUsingMetadata(strategyMetadata, true);
+    assertThat(identifier)
+        .isEqualTo("_world_"
+            + "a".repeat(120));
+  }
+
+  @Test
   @Owner(developers = VED)
   @Category(UnitTests.class)
   public void testGetStrategyPostfixWithoutNodeNamesAndBooleanSettingDisabled() {

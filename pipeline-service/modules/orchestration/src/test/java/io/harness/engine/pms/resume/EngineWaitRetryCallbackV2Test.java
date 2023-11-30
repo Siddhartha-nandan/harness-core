@@ -58,7 +58,7 @@ public class EngineWaitRetryCallbackV2Test extends OrchestrationTestBase {
         Ambiance.newBuilder()
             .setPlanExecutionId(generateUuid())
             .setPlanId(planExecutionId)
-            .addLevels(PmsLevelUtils.buildLevelFromNode(nodeExecutionId, planNode, strategyMetadata, false))
+            .addLevels(PmsLevelUtils.buildLevelFromNode(nodeExecutionId, planNode, strategyMetadata, null))
             .build();
     EngineWaitRetryCallbackV2 callback = EngineWaitRetryCallbackV2.builder().ambiance(ambiance).build();
     Reflect.on(callback).set("executorService", executorService);

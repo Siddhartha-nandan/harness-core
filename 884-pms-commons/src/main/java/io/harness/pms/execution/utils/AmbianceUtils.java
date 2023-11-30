@@ -374,8 +374,10 @@ public class AmbianceUtils {
           + strategyMetadata.getMatrixMetadata().getMatrixValuesMap().get(MATRIX_IDENTIFIER_POSTFIX_FOR_DUPLICATES);
     }
 
-    String modifiedString =
-        "_" + (levelIdentifier.length() <= 126 ? levelIdentifier : levelIdentifier.substring(0, 126));
+    String modifiedString = "_"
+        + (levelIdentifier.length() <= MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX - 1
+                ? levelIdentifier
+                : levelIdentifier.substring(0, MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX - 1));
 
     return modifiedString.replaceAll(SPECIAL_CHARACTER_REGEX, "_");
   }

@@ -8,7 +8,9 @@
 package io.harness.steps.matrix.v1;
 
 import static io.harness.beans.FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR;
-import static io.harness.rule.OwnerRule.*;
+import static io.harness.rule.OwnerRule.BRIJESH;
+import static io.harness.rule.OwnerRule.VINICIUS;
+import static io.harness.rule.OwnerRule.YUVRAJ;
 import static io.harness.yaml.core.MatrixConstants.MATRIX_IDENTIFIER_POSTFIX_FOR_DUPLICATES;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -203,5 +205,4 @@ public class MatrixConfigServiceV1Test extends CategoryTest {
         .isEqualTo("_true"
             + "e".repeat(120) + "_2");
   }
-}
 }
