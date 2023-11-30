@@ -79,7 +79,8 @@ public class SSCAManagerConfiguration extends Configuration {
   @JsonProperty("basePathPrefix") String basePathPrefix = "";
   @JsonProperty("pipelineServiceClientConfig") private ServiceHttpClientConfig pipelineServiceConfiguration;
   @JsonProperty("pipelineServiceSecret") private String pipelineServiceSecret;
-
+  @JsonProperty("exportMetricsToStackDriver") boolean exportMetricsToStackDriver;
+  @JsonProperty("enableElasticsearch") boolean enableElasticsearch;
   @JsonProperty("s3Config") S3Config s3Config;
   @JsonProperty("policyMgmtServiceClientConfig") private ServiceHttpClientConfig policyMgmtServiceConfiguration;
   @JsonProperty("policyMgmtServiceSecret") private String policyMgmtServiceSecret;
