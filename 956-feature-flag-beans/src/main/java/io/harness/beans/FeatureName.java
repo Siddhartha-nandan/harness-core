@@ -196,8 +196,6 @@ public enum FeatureName {
   CDS_RESOURCE_CONSTRAINT_INSTANCE_OPTIMIZATION(
       "This is to optimize resource constraint Instance read Query In CG", HarnessTeam.CDC),
   CDS_V1_EOL_BANNER("Display EOL banner for v1 CD entities", HarnessTeam.CDC),
-  CD_AI_ENHANCED_REMEDIATIONS(
-      "Enables use of generative AI to provide remediation information in CD step logs", HarnessTeam.CDP),
   CD_GIT_WEBHOOK_POLLING("Used to poll git webhook recent delivery events", HarnessTeam.CDP),
   CD_NG_DYNAMIC_PROVISIONING_ENV_V2(
       "Enable dynamic provisioning support in v2 environment. Epic: CDS-39606", HarnessTeam.CDC),
@@ -534,7 +532,6 @@ public enum FeatureName {
       "To enable Retry Step Group Failure Strategy, under which if a step fails in a step group, the whole group is retried",
       PIPELINE),
   PIE_STATIC_YAML_SCHEMA("Enable support for static schema", PIPELINE),
-  PIE_EXPRESSION_PLAYGROUND("Enable support for dynamic expression evaluation", PIPELINE),
   PIE_USE_SECRET_FUNCTOR_WITH_RBAC("Perform Rbac on secrets when used in pipeline execution", HarnessTeam.PIPELINE),
   PIPELINE_GOVERNANCE,
   PIPELINE_PER_ENV_DEPLOYMENT_PERMISSION,
@@ -734,7 +731,6 @@ public enum FeatureName {
   SRM_ENABLE_MS_TEMPLATE_RECONCILIATION("Enable monitored service template reconciliation", HarnessTeam.CV),
   SSCA_ENABLED("FF to enable SSCA on Harness", HarnessTeam.SSCA),
   SSH_JSCH_LOGS,
-  STALE_FLAGS_FFM_1510,
   STOP_INSTANCE_SYNC_VIA_ITERATOR_FOR_AWS_AMI_DEPLOYMENTS,
   STOP_INSTANCE_SYNC_VIA_ITERATOR_FOR_AWS_AMI_SPOT_INST_DEPLOYMENTS,
   STOP_INSTANCE_SYNC_VIA_ITERATOR_FOR_AWS_CODE_DEPLOY_DEPLOYMENTS,
@@ -949,7 +945,9 @@ public enum FeatureName {
   CDS_ECS_BG_VALIDATION("Enable some conditions, which we will execute before the deployment. "
           + "These conditions are validations around existing load balancer configurations and tags in Blue/Green Service."
           + " We will fail the execution if we found some invalid configurations.",
-      HarnessTeam.CDP);
+      HarnessTeam.CDP),
+  CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD(
+      "Enable to dowmload Aws S3 buckets, folder or object inside container step group", HarnessTeam.CDP);
   // keep-sorted end
 
   @Deprecated
