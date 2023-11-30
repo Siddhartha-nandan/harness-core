@@ -113,16 +113,17 @@ public class MatrixConfigServiceHelper {
               .build();
 
       String modifiedIdentifier = AmbianceUtils.getStrategyPostFixUsingMetadata(strategyMetadata, useMatrixFieldName);
-      if (AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
+      if (AmbianceUtils.checkIfFeatureFlagEnabled(
+              ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
         if (modifiedIdentifierStringMap.containsKey(modifiedIdentifier)) {
-         /* If this modifiedIdentifier is a duplicate (it can happen for long identifiers which are truncated),
-         we need deduplicate it by appending a counter at the end: */
+          /* If this modifiedIdentifier is a duplicate (it can happen for long identifiers which are truncated),
+          we need deduplicate it by appending a counter at the end: */
           int cnt = modifiedIdentifierStringMap.getOrDefault(modifiedIdentifier, 0);
           modifiedIdentifierStringMap.put(modifiedIdentifier, cnt + 1);
-        /* Concatenate identifier with deduplication suffix, but keep the identifier length equal or less
-           than MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX */
+          /* Concatenate identifier with deduplication suffix, but keep the identifier length equal or less
+             than MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX */
           modifiedIdentifier =
-                  concatWithMaxLength(modifiedIdentifier, "_" + cnt, AmbianceUtils.MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX);
+              concatWithMaxLength(modifiedIdentifier, "_" + cnt, AmbianceUtils.MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX);
         }
         modifiedIdentifierStringMap.putIfAbsent(modifiedIdentifier, 0);
       }

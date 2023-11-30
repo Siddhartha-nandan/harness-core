@@ -46,8 +46,7 @@ public class PmsLevelUtils {
     }
     if (strategyMetadata != null) {
       levelBuilder.setStrategyMetadata(strategyMetadata);
-      levelBuilder.setIdentifier(
-          AmbianceUtils.modifyIdentifier(strategyMetadata, node.getIdentifier(), ambiance));
+      levelBuilder.setIdentifier(AmbianceUtils.modifyIdentifier(strategyMetadata, node.getIdentifier(), ambiance));
     }
     return levelBuilder.build();
   }

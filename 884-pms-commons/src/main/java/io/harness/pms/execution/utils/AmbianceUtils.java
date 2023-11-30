@@ -309,13 +309,14 @@ public class AmbianceUtils {
 
   public static String modifyIdentifier(StrategyMetadata metadata, String identifier, Ambiance ambiance) {
     String strategyPostFix;
-    if (ambiance != null && checkIfFeatureFlagEnabled(ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
+    if (ambiance != null
+        && checkIfFeatureFlagEnabled(ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
       strategyPostFix = metadata.getIdentifierPostFix();
     } else {
-      strategyPostFix = getStrategyPostFixUsingMetadata(metadata, ambiance != null && shouldUseMatrixFieldName(ambiance));
+      strategyPostFix =
+          getStrategyPostFixUsingMetadata(metadata, ambiance != null && shouldUseMatrixFieldName(ambiance));
     }
-    return identifier.replaceAll(StrategyValidationUtils.STRATEGY_IDENTIFIER_POSTFIX_ESCAPED,
-            strategyPostFix);
+    return identifier.replaceAll(StrategyValidationUtils.STRATEGY_IDENTIFIER_POSTFIX_ESCAPED, strategyPostFix);
   }
 
   // Todo: Use metadata.getIdentifierPostfix going forward.

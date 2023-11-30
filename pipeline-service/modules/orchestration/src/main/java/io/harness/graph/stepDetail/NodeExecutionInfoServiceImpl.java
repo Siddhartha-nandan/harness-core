@@ -224,7 +224,8 @@ public class NodeExecutionInfoServiceImpl implements NodeExecutionInfoService {
   }
 
   @Override
-  public Map<String, Object> fetchStrategyObjectMap(String nodeExecutionId, boolean useMatrixFieldName, Ambiance ambiance) {
+  public Map<String, Object> fetchStrategyObjectMap(
+      String nodeExecutionId, boolean useMatrixFieldName, Ambiance ambiance) {
     Map<String, StrategyMetadata> strategyMetadataMap =
         fetchStrategyMetadata(Collections.singletonList(nodeExecutionId));
     Map<String, Object> strategyObjectMap = new HashMap<>();
@@ -291,11 +292,12 @@ public class NodeExecutionInfoServiceImpl implements NodeExecutionInfoService {
     strategyObjectMap.put(ITERATION, strategyMetadata.getCurrentIteration());
     strategyObjectMap.put(ITERATIONS, strategyMetadata.getTotalIterations());
     strategyObjectMap.put(TOTAL_ITERATIONS, strategyMetadata.getTotalIterations());
-    if (AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
+    if (AmbianceUtils.checkIfFeatureFlagEnabled(
+            ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
       strategyObjectMap.put(IDENTIFIER_POSTFIX, strategyMetadata.getIdentifierPostFix());
     } else {
       strategyObjectMap.put(
-              IDENTIFIER_POSTFIX, AmbianceUtils.getStrategyPostFixUsingMetadata(strategyMetadata, useMatrixFieldName));
+          IDENTIFIER_POSTFIX, AmbianceUtils.getStrategyPostFixUsingMetadata(strategyMetadata, useMatrixFieldName));
     }
     return strategyObjectMap;
   }

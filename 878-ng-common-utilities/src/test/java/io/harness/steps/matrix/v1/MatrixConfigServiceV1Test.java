@@ -140,15 +140,16 @@ public class MatrixConfigServiceV1Test extends CategoryTest {
     StrategyConfigV1 strategyConfig = YamlUtils.read(strategyField.getNode().toString(), StrategyConfigV1.class);
 
     Ambiance ambiance =
-            Ambiance.newBuilder()
-                    .setMetadata(
-                            ExecutionMetadata.newBuilder()
-                                    .putSettingToValueMap(NGPipelineSettingsConstant.ENABLE_MATRIX_FIELD_NAME_SETTING.getName(), "true")
-                                    .putFeatureFlagToValueMap(CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name(), Boolean.TRUE)
-                                    .build())
-                    .build();
+        Ambiance.newBuilder()
+            .setMetadata(
+                ExecutionMetadata.newBuilder()
+                    .putSettingToValueMap(NGPipelineSettingsConstant.ENABLE_MATRIX_FIELD_NAME_SETTING.getName(), "true")
+                    .putFeatureFlagToValueMap(
+                        CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name(), Boolean.TRUE)
+                    .build())
+            .build();
     List<ChildrenExecutableResponse.Child> children =
-            matrixConfigService.fetchChildren(strategyConfig, "childNodeId", ambiance);
+        matrixConfigService.fetchChildren(strategyConfig, "childNodeId", ambiance);
     assertThat(children.size()).isEqualTo(4);
     assertThat(children.get(0).getStrategyMetadata().getIdentifierPostFix()).isEqualTo("_true_echo_Hi");
     assertThat(children.get(1).getStrategyMetadata().getIdentifierPostFix()).isEqualTo("_true_echo_Hi_0");
@@ -178,28 +179,29 @@ public class MatrixConfigServiceV1Test extends CategoryTest {
     StrategyConfigV1 strategyConfig = YamlUtils.read(strategyField.getNode().toString(), StrategyConfigV1.class);
 
     Ambiance ambiance =
-            Ambiance.newBuilder()
-                    .setMetadata(
-                            ExecutionMetadata.newBuilder()
-                                    .putSettingToValueMap(NGPipelineSettingsConstant.ENABLE_MATRIX_FIELD_NAME_SETTING.getName(), "true")
-                                    .putFeatureFlagToValueMap(CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name(), Boolean.TRUE)
-                                    .build())
-                    .build();
+        Ambiance.newBuilder()
+            .setMetadata(
+                ExecutionMetadata.newBuilder()
+                    .putSettingToValueMap(NGPipelineSettingsConstant.ENABLE_MATRIX_FIELD_NAME_SETTING.getName(), "true")
+                    .putFeatureFlagToValueMap(
+                        CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name(), Boolean.TRUE)
+                    .build())
+            .build();
     List<ChildrenExecutableResponse.Child> children =
-            matrixConfigService.fetchChildren(strategyConfig, "childNodeId", ambiance);
+        matrixConfigService.fetchChildren(strategyConfig, "childNodeId", ambiance);
     assertThat(children.size()).isEqualTo(4);
     assertThat(children.get(0).getStrategyMetadata().getIdentifierPostFix())
-            .isEqualTo("_true"
-                    + "e".repeat(122));
+        .isEqualTo("_true"
+            + "e".repeat(122));
     assertThat(children.get(1).getStrategyMetadata().getIdentifierPostFix())
-            .isEqualTo("_true"
-                    + "e".repeat(120) + "_0");
+        .isEqualTo("_true"
+            + "e".repeat(120) + "_0");
     assertThat(children.get(2).getStrategyMetadata().getIdentifierPostFix())
-            .isEqualTo("_true"
-                    + "e".repeat(120) + "_1");
+        .isEqualTo("_true"
+            + "e".repeat(120) + "_1");
     assertThat(children.get(3).getStrategyMetadata().getIdentifierPostFix())
-            .isEqualTo("_true"
-                    + "e".repeat(120) + "_2");
+        .isEqualTo("_true"
+            + "e".repeat(120) + "_2");
   }
 }
 }

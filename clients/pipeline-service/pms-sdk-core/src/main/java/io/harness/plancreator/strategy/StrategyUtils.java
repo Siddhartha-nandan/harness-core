@@ -392,11 +392,12 @@ public class StrategyUtils {
       strategyObjectMap.put(ITERATION, level.getStrategyMetadata().getCurrentIteration());
       strategyObjectMap.put(ITERATIONS, level.getStrategyMetadata().getTotalIterations());
       strategyObjectMap.put(TOTAL_ITERATIONS, level.getStrategyMetadata().getTotalIterations());
-      if (AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
+      if (AmbianceUtils.checkIfFeatureFlagEnabled(
+              ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
         strategyObjectMap.put(IDENTIFIER_POSTFIX, level.getStrategyMetadata().getIdentifierPostFix());
-    } else {
+      } else {
         strategyObjectMap.put(IDENTIFIER_POSTFIX,
-                AmbianceUtils.getStrategyPostFixUsingMetadata(level.getStrategyMetadata(), useMatrixFieldName));
+            AmbianceUtils.getStrategyPostFixUsingMetadata(level.getStrategyMetadata(), useMatrixFieldName));
       }
     }
     strategyObjectMap.put(MATRIX, matrixValuesMap);

@@ -67,7 +67,8 @@ public interface NodeExecutionInfoService {
 
   Map<String, Object> fetchStrategyObjectMap(String nodeExecutionId, boolean useMatrixFieldName, Ambiance ambiance);
 
-  Map<String, Object> fetchStrategyObjectMap(List<Level> levelsWithStrategyMetadata, boolean useMatrixFieldName, Ambiance ambiance);
+  Map<String, Object> fetchStrategyObjectMap(
+      List<Level> levelsWithStrategyMetadata, boolean useMatrixFieldName, Ambiance ambiance);
 
   Map<String, StrategyMetadata> fetchStrategyMetadata(List<String> nodeExecutionIds);
 
