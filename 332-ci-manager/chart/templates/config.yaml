@@ -99,6 +99,7 @@ data:
   ZAP_IMAGE: harness/zap-job-runner:latest
   WHITE_SOURCE_IMAGE: harness/whitesource-agent-job-runner:latest
   HARNESS_CODE_GIT_URL: '{{ .Values.global.loadbalancerURL }}/code/git'
+  {{- include "harnesscommon.monitoring.config" . | nindent 2 }}
   {{ include "harnesscommon.harnessfunctions.java17flags" (dict "context" $) | nindent 2 }}
 {{- if .Values.additionalConfigs }}
   {{- toYaml .Values.additionalConfigs | nindent 2 }}
