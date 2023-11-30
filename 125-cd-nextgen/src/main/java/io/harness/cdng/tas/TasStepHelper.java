@@ -2296,6 +2296,11 @@ public class TasStepHelper {
     boolean isArtifactBundleStoreManifestPresent = false;
     boolean isInServiceArtifactBundleManifestIsPresent = false;
 
+    // isArtifactBundleStoreManifestPresent this boolean indicate whether Artifact bundle store Type Manifest is Present
+    // in orderedManifestOutcomes or not , if not present we will return the orderedManifestOutcomes as it is.
+
+    // isInServiceArtifactBundleManifestIsPresent this boolean indicate that the Tas Manifest Present in Service has
+    // Store Type Artifact Bundle or Not, Service level Tas Manifest comes at last of this orderedManifestOutcomes
     for (ManifestOutcome manifestOutcome : orderedManifestOutcomes) {
       if (manifestOutcome.getType().equals(TAS_MANIFEST)) {
         if (manifestOutcome.getStore().getKind().equals(ManifestStoreType.ARTIFACT_BUNDLE)) {
@@ -2315,19 +2320,21 @@ public class TasStepHelper {
 
     for (ManifestOutcome manifestOutcome : orderedManifestOutcomes) {
       if (manifestOutcome.getType().equals(TAS_MANIFEST)) {
-        // using XNOR operator here so that to handle the cases:
         // Case 1 : If service Manifest is Artifact Bundle Type then ignore All override manifest which has Store type
         // other than Artifact Bundle
         // Case 2 : If service Manifest is of Other Store Type then ignore All override manifest which has Store type
         // Artifact Bundle
-        if (manifestOutcome.getStore().getKind().equals(ManifestStoreType.ARTIFACT_BUNDLE)
-            == isInServiceArtifactBundleManifestIsPresent) {
-          updatedOrderedManifestOutcomes.add(manifestOutcome);
-        } else {
-          if (isInServiceArtifactBundleManifestIsPresent) {
+        if (isInServiceArtifactBundleManifestIsPresent) {
+          if (manifestOutcome.getStore().getKind().equals(ManifestStoreType.ARTIFACT_BUNDLE)) {
+            updatedOrderedManifestOutcomes.add(manifestOutcome);
+          } else {
             log.warn(
                 "Ignoring the Override Manifest \"{}\" because Service Manifest is of Artifact Bundle Store Type. ",
                 manifestOutcome.getIdentifier());
+          }
+        } else {
+          if (!manifestOutcome.getStore().getKind().equals(ManifestStoreType.ARTIFACT_BUNDLE)) {
+            updatedOrderedManifestOutcomes.add(manifestOutcome);
           } else {
             log.warn(
                 "Ignoring the Override Manifest \"{}\" because Service Manifest is of Non Artifact Bundle Store Type. ",
@@ -2338,6 +2345,9 @@ public class TasStepHelper {
         updatedOrderedManifestOutcomes.add(manifestOutcome);
       }
     }
+    // Sorting on the basis of Order which indicate the Priority
+    Comparator<ManifestOutcome> comparator = Comparator.comparingInt(ManifestOutcome::getOrder).reversed();
+    updatedOrderedManifestOutcomes.sort(comparator);
 
     return updatedOrderedManifestOutcomes;
   }
