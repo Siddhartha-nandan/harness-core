@@ -24,7 +24,7 @@ public enum Currency {
   CNY("CNY", "\u00a5", "&#x00a5;"),
   EUR("EUR", "\u20ac", "&#x20ac;"),
   GBP("GBP", "\u00a3", "&#x00a3;"),
-  IDR("IDR","\\u0052\\u0070" ,"&#82;&#112;"),
+  IDR("IDR","\\u20B1" ,"&#x20B1;"),
   INR("INR", "\u20b9", "&#x20b9;"),
   JPY("JPY", "\u00a5", "&#x00a5;"),
   MXN("MXN", Constants.DOLLAR_SYMBOL, Constants.DOLLAR_UTF8_HEX_SYMBOL),
