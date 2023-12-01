@@ -281,6 +281,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
 import javax.validation.ConstraintViolation;
@@ -1432,11 +1433,19 @@ public class DelegateServiceImpl implements DelegateService {
     final boolean isCiEnabled = isCiEnabled(templateParameters);
 
     String accountSecret = getAccountSecret(templateParameters, isNgDelegate);
-    String base64Secret;
+    String base64Secret = null;
     if (StringUtils.isEmpty(accountSecret)) {
-      accountSecret = String.format(
-          "<No Delegate Token (%s) available, choose a delegate token>", templateParameters.getDelegateTokenName());
-      base64Secret = accountSecret;
+      DelegateTokenDetails delegateTokenDetails = delegateNgTokenService.getDefaultTokenOrOldestActiveDelegateToken(
+          templateParameters.getAccountId(), templateParameters.getDelegateEntityOwner());
+      if (delegateTokenDetails != null) {
+        base64Secret = delegateTokenDetails.getValue();
+        accountSecret = base64Secret;
+      }
+      if (StringUtils.isEmpty(base64Secret)) {
+        accountSecret = String.format(
+            "<No Delegate Token (%s) available, choose a delegate token>", templateParameters.getDelegateTokenName());
+        base64Secret = accountSecret;
+      }
     } else {
       base64Secret = Base64.getEncoder().encodeToString(accountSecret.getBytes());
     }
@@ -4159,10 +4168,13 @@ public class DelegateServiceImpl implements DelegateService {
   @Override
   public File generateKubernetesYaml(String accountId, DelegateSetupDetails delegateSetupDetails, String managerHost,
       String verificationServiceUrl, MediaType fileFormat) throws IOException {
+    // check uniqueness and k8 name validation
+    checkUniquenessOfDelegateName(accountId, delegateSetupDetails.getName(), true);
+    checkK8NamingValidation(delegateSetupDetails.getName());
     // If token name is not provided, use default token
+    DelegateEntityOwner owner = DelegateEntityOwnerHelper.buildOwner(
+        delegateSetupDetails.getOrgIdentifier(), delegateSetupDetails.getProjectIdentifier());
     if (StringUtils.isBlank(delegateSetupDetails.getTokenName())) {
-      DelegateEntityOwner owner = DelegateEntityOwnerHelper.buildOwner(
-          delegateSetupDetails.getOrgIdentifier(), delegateSetupDetails.getProjectIdentifier());
       delegateSetupDetails.setTokenName(delegateNgTokenService.getDefaultTokenName(owner));
     }
     // If size if not provided, use LAPTOP
@@ -4224,7 +4236,8 @@ public class DelegateServiceImpl implements DelegateService {
                   .k8sPermissionsType(delegateSetupDetails.getK8sConfigDetails().getK8sPermissionType())
                   .logStreamingServiceBaseUrl(mainConfiguration.getLogStreamingServiceConfig().getExternalUrl())
                   .runAsRoot(delegateSetupDetails.getRunAsRoot() == null || delegateSetupDetails.getRunAsRoot())
-                  .delegateTokenName(delegateSetupDetails.getTokenName())),
+                  .delegateTokenName(delegateSetupDetails.getTokenName())
+                  .delegateEntityOwner(owner)),
           true);
 
       File yaml = File.createTempFile(HARNESS_DELEGATE, YAML);
@@ -4540,5 +4553,17 @@ public class DelegateServiceImpl implements DelegateService {
           : Optional.empty();
     }
     return Optional.empty();
+  }
+
+  private void checkK8NamingValidation(String delegateName) {
+    Pattern k8NameMatching = Pattern.compile("^[a-z][a-z0-9-]*[a-z]$");
+    if (!k8NameMatching.matcher(delegateName).matches()) {
+      throw new InvalidRequestException(
+          "Delegate name should be lowercase and can include only dash(-) between letters and cannot start or end with a number",
+          USER);
+    }
+    if (delegateName.length() > 63) {
+      throw new InvalidRequestException("Delegate name must be at most 63 characters", USER);
+    }
   }
 }

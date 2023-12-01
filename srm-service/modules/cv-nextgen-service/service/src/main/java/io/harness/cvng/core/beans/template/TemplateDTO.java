@@ -21,8 +21,15 @@ import lombok.experimental.FieldDefaults;
 public class TemplateDTO {
   @NotNull String templateRef;
   String versionLabel;
-  int templateVersionNumber;
-  String inputSetYaml;
-  boolean isTemplateByReference;
-  long lastReconciliationTime;
+  Integer templateVersionNumber;
+  String templateInputs;
+  Boolean isTemplateByReference;
+  Long lastReconciliationTime;
+
+  public boolean getIsTemplateByReference() {
+    if (isTemplateByReference == null) {
+      return false;
+    }
+    return isTemplateByReference;
+  }
 }

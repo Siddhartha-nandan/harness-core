@@ -37,6 +37,7 @@ import io.harness.cache.NoOpCache;
 import io.harness.callback.DelegateCallback;
 import io.harness.callback.DelegateCallbackToken;
 import io.harness.callback.MongoDatabase;
+import io.harness.cdstage.CDStageConfigResourceClientModule;
 import io.harness.ci.CIExecutionServiceModule;
 import io.harness.ci.beans.entities.EncryptedDataDetails;
 import io.harness.ci.beans.entities.LogServiceConfig;
@@ -75,7 +76,6 @@ import io.harness.delegate.beans.DelegateSyncTaskResponse;
 import io.harness.delegate.beans.DelegateTaskProgressResponse;
 import io.harness.enforcement.client.EnforcementClientConfiguration;
 import io.harness.enforcement.client.EnforcementClientModule;
-import io.harness.entitysetupusageclient.EntitySetupUsageClientModule;
 import io.harness.exception.exceptionmanager.ExceptionModule;
 import io.harness.git.GitClientV2;
 import io.harness.git.GitClientV2Impl;
@@ -171,10 +171,15 @@ import io.harness.idp.scorecard.scorecards.resources.ScorecardsApiImpl;
 import io.harness.idp.scorecard.scorecards.service.ScorecardService;
 import io.harness.idp.scorecard.scorecards.service.ScorecardServiceImpl;
 import io.harness.idp.scorecard.scores.resources.ScoreApiImpl;
+import io.harness.idp.scorecard.scores.resources.ScoresV2ApiImpl;
+import io.harness.idp.scorecard.scores.service.AsyncScoreComputationService;
+import io.harness.idp.scorecard.scores.service.AsyncScoreComputationServiceImpl;
 import io.harness.idp.scorecard.scores.service.ScoreComputerService;
 import io.harness.idp.scorecard.scores.service.ScoreComputerServiceImpl;
 import io.harness.idp.scorecard.scores.service.ScoreService;
 import io.harness.idp.scorecard.scores.service.ScoreServiceImpl;
+import io.harness.idp.scorecard.scores.service.StatsComputeService;
+import io.harness.idp.scorecard.scores.service.StatsComputeServiceImpl;
 import io.harness.idp.serializer.IdpServiceRegistrars;
 import io.harness.idp.settings.resources.BackstagePermissionsApiImpl;
 import io.harness.idp.settings.service.BackstagePermissionsService;
@@ -197,7 +202,6 @@ import io.harness.mongo.MongoConfig;
 import io.harness.mongo.MongoPersistence;
 import io.harness.mongo.iterator.IteratorConfig;
 import io.harness.morphia.MorphiaRegistrar;
-import io.harness.ng.core.entitysetupusage.EntitySetupUsageModule;
 import io.harness.ng.core.event.MessageListener;
 import io.harness.ngsettings.client.remote.NGSettingsClientModule;
 import io.harness.opaclient.OpaClientModule;
@@ -244,6 +248,7 @@ import io.harness.spec.server.idp.v1.PluginInfoApi;
 import io.harness.spec.server.idp.v1.ProvisionApi;
 import io.harness.spec.server.idp.v1.ScorecardsApi;
 import io.harness.spec.server.idp.v1.ScoresApi;
+import io.harness.spec.server.idp.v1.ScoresV2Api;
 import io.harness.spec.server.idp.v1.StatusInfoApi;
 import io.harness.spec.server.idp.v1.StatusInfoV2Api;
 import io.harness.ssca.beans.entities.SSCAServiceConfig;
@@ -445,6 +450,8 @@ public class IdpModule extends AbstractModule {
     install(EnforcementClientModule.getInstance(appConfig.getManagerClientConfig(), // Licencing
         appConfig.getNgManagerServiceSecret(), IDP_SERVICE.getServiceId(),
         appConfig.getEnforcementClientConfiguration()));
+    install(new CDStageConfigResourceClientModule(appConfig.getNgManagerServiceHttpClientConfig(),
+        appConfig.getNgManagerServiceSecret(), IDP_SERVICE.getServiceId()));
     // Keeping it to 1 thread to start with. Assuming executor service is used only to
     // serve health checks. If it's being used for other tasks also, max pool size should be increased.
     bind(ExecutorService.class)
@@ -499,12 +506,15 @@ public class IdpModule extends AbstractModule {
     bind(ChecksApi.class).to(ChecksApiImpl.class);
     bind(CheckService.class).to(CheckServiceImpl.class);
     bind(ScoresApi.class).to(ScoreApiImpl.class);
+    bind(ScoresV2Api.class).to(ScoresV2ApiImpl.class);
     bind(DataSourceApi.class).to(DataSourceApiImpl.class);
     bind(DataSourceService.class).to(DataSourceServiceImpl.class);
     bind(DataPointService.class).to(DataPointServiceImpl.class);
     bind(DataSourceLocationService.class).to(DataSourceLocationServiceImpl.class);
     bind(ScoreService.class).to(ScoreServiceImpl.class);
     bind(ScoreComputerService.class).to(ScoreComputerServiceImpl.class);
+    bind(StatsComputeService.class).to(StatsComputeServiceImpl.class);
+    bind(AsyncScoreComputationService.class).to(AsyncScoreComputationServiceImpl.class);
     bind(DataPointService.class).to(DataPointServiceImpl.class);
     bind(HarnessDataPointsApi.class).to(HarnessDataPointsApiImpl.class);
     bind(KubernetesDataPointsApi.class).to(KubernetesDataPointsApiImpl.class);
@@ -570,8 +580,8 @@ public class IdpModule extends AbstractModule {
         .annotatedWith(Names.named("licenseUsageDailyCountJob"))
         .toInstance(new ManagedScheduledExecutorService("licenseUsageDailyCountJob"));
     bind(ScheduledExecutorService.class)
-        .annotatedWith(Names.named("checkStatusDailyRunJob"))
-        .toInstance(new ManagedScheduledExecutorService("checkStatusDailyRunJob"));
+        .annotatedWith(Names.named("statsComputeDailyRunJob"))
+        .toInstance(new ManagedScheduledExecutorService("statsComputeDailyRunJob"));
     install(new AbstractTelemetryModule() {
       @Override
       public TelemetryConfiguration telemetryConfiguration() {
@@ -975,6 +985,13 @@ public class IdpModule extends AbstractModule {
   @Named("internalAccounts")
   public List<String> internalAccounts() {
     return this.appConfig.getInternalAccounts();
+  }
+
+  @Provides
+  @Singleton
+  @Named("enableMetrics")
+  public Boolean enableMetrics() {
+    return this.appConfig.isEnableMetrics();
   }
 
   @Provides

@@ -24,6 +24,9 @@ import retrofit2.Response;
 
 public interface NotificationClient {
   NotificationResult sendNotificationAsync(NotificationChannel notificationChannel);
+  Response<ResponseDTO<NotificationTaskResponse>> sendNotificationSync(NotificationChannel notificationChannel)
+      throws IOException;
+
   List<NotificationResult> sendBulkNotificationAsync(List<NotificationChannel> notificationChannels);
   boolean testNotificationChannel(NotificationSettingDTO notificationSettingDTO);
   TemplateDTO saveNotificationTemplate(Team team, PredefinedTemplate template, Boolean harnessManaged);
@@ -33,4 +36,6 @@ public interface NotificationClient {
   List<NotificationResult> sendBulkNotificationTrigger(List<NotificationTriggerRequest> notificationTriggerRequest);
   NotificationRuleReferenceDTO getNotificationRule(String accountIdentifier, String orgIdentifier,
       String projectIdentifier, String notificationEntity, String notificationEvent);
+
+  boolean isDefaultSMTPPresent(String accountId);
 }

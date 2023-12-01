@@ -60,6 +60,7 @@ import io.harness.freeze.service.FreezeEvaluateService;
 import io.harness.ng.core.environment.services.EnvironmentService;
 import io.harness.ng.core.infrastructure.services.InfrastructureEntityService;
 import io.harness.ng.core.serviceoverride.services.ServiceOverrideService;
+import io.harness.ng.core.telemetry.entity.MultiSvcEnvTelemetryInfo;
 import io.harness.plancreator.stages.AbstractStagePlanCreator;
 import io.harness.plancreator.steps.GenericStepPMSPlanCreator;
 import io.harness.plancreator.steps.common.SpecParameters;
@@ -73,14 +74,11 @@ import io.harness.pms.contracts.plan.Dependencies;
 import io.harness.pms.contracts.plan.Dependency;
 import io.harness.pms.contracts.plan.EdgeLayoutList;
 import io.harness.pms.contracts.plan.GraphLayoutNode;
-import io.harness.pms.contracts.plan.HarnessStruct;
-import io.harness.pms.contracts.plan.HarnessValue;
 import io.harness.pms.contracts.plan.YamlUpdates;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.execution.OrchestrationFacilitatorType;
 import io.harness.pms.execution.utils.SkipInfoUtils;
 import io.harness.pms.merger.helpers.RuntimeInputFormHelper;
-import io.harness.pms.plan.creation.PlanCreatorConstants;
 import io.harness.pms.plan.creation.PlanCreatorUtils;
 import io.harness.pms.sdk.core.plan.PlanNode;
 import io.harness.pms.sdk.core.plan.PlanNode.PlanNodeBuilder;
@@ -98,8 +96,8 @@ import io.harness.pms.yaml.YamlUtils;
 import io.harness.rbac.CDNGRbacUtility;
 import io.harness.serializer.KryoSerializer;
 import io.harness.strategy.StrategyValidationUtils;
+import io.harness.telemetry.helpers.MultiSvcEnvInstrumentationHelper;
 import io.harness.utils.NGFeatureFlagHelperService;
-import io.harness.utils.PlanCreatorUtilsCommon;
 import io.harness.when.utils.RunInfoUtils;
 import io.harness.yaml.core.failurestrategy.FailureStrategyConfig;
 
@@ -176,6 +174,7 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
   @Inject private StagePlanCreatorHelper stagePlanCreatorHelper;
   @Inject private DeploymentStagePlanCreationInfoService deploymentStagePlanCreationInfoService;
   @Inject @Named("deployment-stage-plan-creation-info-executor") private ExecutorService executorService;
+  @Inject private MultiSvcEnvInstrumentationHelper instrumentationHelper;
 
   @Override
   public Set<String> getSupportedStageTypes() {
@@ -457,6 +456,7 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
     }
 
     saveDeploymentStagePlanCreationSummaryForMultiServiceMultiEnvAsync(ctx, stageNode, specField);
+    sendTelemetryEventForMultiSvcEnv(ctx, stageNode);
 
     MultiDeploymentStepParameters stepParameters =
         MultiDeploymentStepParameters.builder()
@@ -807,11 +807,16 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
     executionYamlFieldMap.put(executionField.getNode().getUuid(), executionField);
     planCreationResponseMap.put(executionField.getNode().getUuid(),
         PlanCreationResponse.builder()
-            .dependencies(DependenciesUtils.toDependenciesProto(executionYamlFieldMap)
-                              .toBuilder()
-                              .putDependencyMetadata(executionField.getNode().getUuid(),
-                                  Dependency.newBuilder().setParentInfo(generateParentInfo(ctx, stageNode)).build())
-                              .build())
+            .dependencies(
+                DependenciesUtils.toDependenciesProto(executionYamlFieldMap)
+                    .toBuilder()
+                    .putDependencyMetadata(executionField.getNode().getUuid(),
+                        Dependency.newBuilder()
+                            .setParentInfo(generateParentInfo(ctx, stageNode, getFinalPlanNodeId(ctx, stageNode),
+                                StrategyUtils.isWrappedUnderStrategy(ctx.getCurrentField())
+                                    || MultiDeploymentSpawnerUtils.hasMultiDeploymentConfigured(stageNode)))
+                            .build())
+                    .build())
             .build());
   }
 
@@ -856,24 +861,8 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
     return deploymentStageConfig.getGitOpsEnabled();
   }
 
-  private HarnessStruct generateParentInfo(PlanCreationContext ctx, DeploymentStageNode stageNode) {
-    YamlField field = ctx.getCurrentField();
-    HarnessStruct.Builder parentInfo = HarnessStruct.newBuilder();
-    parentInfo.putData(PlanCreatorConstants.STAGE_ID,
-        HarnessValue.newBuilder().setStringValue(getFinalPlanNodeId(ctx, stageNode)).build());
-    if (StrategyUtils.isWrappedUnderStrategy(field)) {
-      String strategyId = stageNode.getUuid();
-      parentInfo.putData(
-          PlanCreatorConstants.NEAREST_STRATEGY_ID, HarnessValue.newBuilder().setStringValue(strategyId).build());
-      parentInfo.putData(PlanCreatorConstants.ALL_STRATEGY_IDS,
-          PlanCreatorUtilsCommon.appendToParentInfoList(PlanCreatorConstants.ALL_STRATEGY_IDS, strategyId, ctx));
-      parentInfo.putData(PlanCreatorConstants.STRATEGY_NODE_TYPE,
-          HarnessValue.newBuilder().setStringValue(YAMLFieldNameConstants.STAGE).build());
-    }
-    return parentInfo.build();
-  }
-
-  private String getFinalPlanNodeId(PlanCreationContext ctx, DeploymentStageNode stageNode) {
+  @Override
+  protected String getFinalPlanNodeId(PlanCreationContext ctx, DeploymentStageNode stageNode) {
     String uuid = MultiDeploymentSpawnerUtils.getUuidForMultiDeployment(stageNode);
     return StrategyUtils.getSwappedPlanNodeId(ctx, uuid);
   }
@@ -931,6 +920,115 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
             ExceptionUtils.getMessage(ex), ex);
       }
     });
+  }
+
+  private void sendTelemetryEventForMultiSvcEnv(PlanCreationContext ctx, DeploymentStageNode stageNode) {
+    try {
+      DeploymentStageConfig deploymentStageConfig = stageNode.getDeploymentStageConfig();
+      if (deploymentStageConfig == null) {
+        return;
+      }
+      MultiSvcEnvTelemetryInfo multiSvcEnvTelemetryInfo =
+          MultiSvcEnvTelemetryInfo.builder()
+              .accountIdentifier(ctx.getAccountIdentifier())
+              .orgIdentifier(ctx.getOrgIdentifier())
+              .projectIdentifier(ctx.getProjectIdentifier())
+              .pipelineIdentifier(ctx.getPipelineIdentifier())
+              .serviceCount(getServicesCountForMultiSvcEnvDeployment(deploymentStageConfig))
+              .environmentCount(getEnvironmentsCountForMultiSvcEnvDeployment(deploymentStageConfig))
+              .infrastructureCount(getInfrastructuresCountForMultiSvcEnvDeployment(deploymentStageConfig))
+              .deploymentType(deploymentStageConfig.getDeploymentType().toString())
+              .stageIdentifier(StrategyUtils.refineIdentifier(stageNode.getIdentifier()))
+              .multiServiceDeployment(deploymentStageConfig.getServices() != null)
+              .multiEnvironmentDeployment(deploymentStageConfig.getEnvironmentGroup() != null
+                  || deploymentStageConfig.getEnvironments() != null)
+              .environmentGroupPresent(deploymentStageConfig.getEnvironmentGroup() != null)
+              .environmentFilterPresent(
+                  EnvironmentInfraFilterUtils.areFiltersPresent(deploymentStageConfig.getEnvironments())
+                  || EnvironmentInfraFilterUtils.areFiltersPresent(deploymentStageConfig.getEnvironmentGroup()))
+              .build();
+
+      instrumentationHelper.sendMultiSvcEnvEvent(multiSvcEnvTelemetryInfo);
+    } catch (Exception ex) {
+      log.warn("Exception occurred while sending telemetry event for multi deployment stage: {}",
+          ExceptionUtils.getMessage(ex), ex);
+    }
+  }
+
+  private Integer getServicesCountForMultiSvcEnvDeployment(DeploymentStageConfig deploymentStageConfig) {
+    ServicesYaml servicesYaml = deploymentStageConfig.getServices();
+    ServiceYamlV2 serviceYamlV2 = deploymentStageConfig.getService();
+    if (servicesYaml != null) {
+      ParameterField<List<ServiceYamlV2>> servicesList = servicesYaml.getValues();
+      if (ParameterField.isNotNull(servicesList)) {
+        List<ServiceYamlV2> serviceYamlV2List = servicesList.getValue();
+        return serviceYamlV2List.size();
+      }
+    } else if (serviceYamlV2 != null) {
+      return 1;
+    }
+    return 0;
+  }
+
+  private Integer getEnvironmentsCountForMultiSvcEnvDeployment(DeploymentStageConfig deploymentStageConfig) {
+    EnvironmentsYaml environmentsYaml = deploymentStageConfig.getEnvironments();
+    EnvironmentGroupYaml environmentGroupYaml = deploymentStageConfig.getEnvironmentGroup();
+    EnvironmentYamlV2 environmentYamlV2 = deploymentStageConfig.getEnvironment();
+    if (environmentsYaml != null) {
+      ParameterField<List<EnvironmentYamlV2>> environmentsList = environmentsYaml.getValues();
+      if (ParameterField.isNotNull(environmentsList)) {
+        List<EnvironmentYamlV2> environmentYamlV2List = environmentsList.getValue();
+        return environmentYamlV2List.size();
+      }
+    } else if (environmentGroupYaml != null) {
+      ParameterField<List<EnvironmentYamlV2>> environmentsList = environmentGroupYaml.getEnvironments();
+      if (ParameterField.isNotNull(environmentsList)) {
+        List<EnvironmentYamlV2> environmentYamlV2List = environmentsList.getValue();
+        return environmentYamlV2List.size();
+      }
+    } else if (environmentYamlV2 != null) {
+      return 1;
+    }
+    return 0;
+  }
+
+  private Integer getInfrastructuresCountForMultiSvcEnvDeployment(DeploymentStageConfig deploymentStageConfig) {
+    EnvironmentsYaml environmentsYaml = deploymentStageConfig.getEnvironments();
+    EnvironmentGroupYaml environmentGroupYaml = deploymentStageConfig.getEnvironmentGroup();
+    EnvironmentYamlV2 environmentYamlV2 = deploymentStageConfig.getEnvironment();
+    Integer count = 0;
+
+    if (environmentsYaml != null) {
+      ParameterField<List<EnvironmentYamlV2>> environmentsList = environmentsYaml.getValues();
+      count = getInfrastructureCountForEnvironmentsList(count, environmentsList);
+    } else if (environmentGroupYaml != null) {
+      ParameterField<List<EnvironmentYamlV2>> environmentsList = environmentGroupYaml.getEnvironments();
+      count = getInfrastructureCountForEnvironmentsList(count, environmentsList);
+    } else if (environmentYamlV2 != null) {
+      count = 1;
+    }
+    return count;
+  }
+
+  private Integer getInfrastructureCountForEnvironmentsList(
+      Integer count, ParameterField<List<EnvironmentYamlV2>> environmentsList) {
+    if (ParameterField.isNotNull(environmentsList)) {
+      List<EnvironmentYamlV2> environmentYamlV2List = environmentsList.getValue();
+      for (EnvironmentYamlV2 environmentYamlV2 : environmentYamlV2List) {
+        count += getInfrastructureCountForAnEnvironment(environmentYamlV2);
+      }
+    }
+    return count;
+  }
+
+  private Integer getInfrastructureCountForAnEnvironment(EnvironmentYamlV2 environmentYamlV2) {
+    ParameterField<List<InfraStructureDefinitionYaml>> infraDefinitions =
+        environmentYamlV2.getInfrastructureDefinitions();
+    if (ParameterField.isNotNull(infraDefinitions)) {
+      List<InfraStructureDefinitionYaml> infraStructureDefinitionYamls = infraDefinitions.getValue();
+      return infraStructureDefinitionYamls.size();
+    }
+    return 1;
   }
 
   protected void saveDeploymentStagePlanCreationSummaryForMultiServiceMultiEnvAsync(

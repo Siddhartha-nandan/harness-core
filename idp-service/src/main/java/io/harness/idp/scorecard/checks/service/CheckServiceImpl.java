@@ -12,8 +12,6 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.idp.common.CommonUtils.addGlobalAccountIdentifierAlong;
 import static io.harness.idp.common.Constants.DOT_SEPARATOR;
 import static io.harness.idp.common.Constants.GLOBAL_ACCOUNT_ID;
-import static io.harness.idp.common.DateUtils.getPreviousDay24HourTimeFrame;
-import static io.harness.idp.common.DateUtils.yesterdayInMilliseconds;
 import static io.harness.outbox.TransactionOutboxModule.OUTBOX_TRANSACTION_TEMPLATE;
 import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 
@@ -26,9 +24,8 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ReferencedEntityException;
-import io.harness.idp.backstagebeans.BackstageCatalogEntity;
-import io.harness.idp.namespace.service.NamespaceService;
 import io.harness.idp.scorecard.checks.entity.CheckEntity;
+import io.harness.idp.scorecard.checks.entity.CheckStatsEntity;
 import io.harness.idp.scorecard.checks.entity.CheckStatusEntity;
 import io.harness.idp.scorecard.checks.events.CheckCreateEvent;
 import io.harness.idp.scorecard.checks.events.CheckDeleteEvent;
@@ -36,14 +33,11 @@ import io.harness.idp.scorecard.checks.events.CheckUpdateEvent;
 import io.harness.idp.scorecard.checks.mappers.CheckDetailsMapper;
 import io.harness.idp.scorecard.checks.mappers.CheckStatsMapper;
 import io.harness.idp.scorecard.checks.repositories.CheckRepository;
+import io.harness.idp.scorecard.checks.repositories.CheckStatsRepository;
 import io.harness.idp.scorecard.checks.repositories.CheckStatusEntityByIdentifier;
 import io.harness.idp.scorecard.checks.repositories.CheckStatusRepository;
-import io.harness.idp.scorecard.datapoints.entity.DataPointEntity;
 import io.harness.idp.scorecard.datapoints.service.DataPointService;
 import io.harness.idp.scorecard.scorecards.service.ScorecardService;
-import io.harness.idp.scorecard.scores.repositories.EntityIdentifierAndCheckStatus;
-import io.harness.idp.scorecard.scores.service.ScoreComputerService;
-import io.harness.idp.scorecard.scores.service.ScoreService;
 import io.harness.ngsettings.SettingIdentifiers;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.outbox.api.OutboxService;
@@ -51,21 +45,17 @@ import io.harness.remote.client.NGRestUtils;
 import io.harness.spec.server.idp.v1.model.CheckDetails;
 import io.harness.spec.server.idp.v1.model.CheckGraph;
 import io.harness.spec.server.idp.v1.model.CheckStatsResponse;
-import io.harness.spec.server.idp.v1.model.CheckStatus;
 import io.harness.spec.server.idp.v1.model.DataPoint;
 import io.harness.spec.server.idp.v1.model.InputDetails;
 import io.harness.spec.server.idp.v1.model.InputValue;
 import io.harness.spec.server.idp.v1.model.Rule;
-import io.harness.spec.server.idp.v1.model.ScorecardFilter;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mongodb.client.result.UpdateResult;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -73,7 +63,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.apache.commons.lang3.tuple.Pair;
+import org.jooq.tools.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -84,10 +74,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class CheckServiceImpl implements CheckService {
   private final CheckRepository checkRepository;
   private final CheckStatusRepository checkStatusRepository;
+  private final CheckStatsRepository checkStatsRepository;
   private final ScorecardService scorecardService;
-  private final ScoreComputerService scoreComputerService;
-  private final NamespaceService namespaceService;
-  private final ScoreService scoreService;
   private final NGSettingsClient settingsClient;
   private final DataPointService dataPointService;
   @Inject @Named(OUTBOX_TRANSACTION_TEMPLATE) private TransactionTemplate transactionTemplate;
@@ -95,15 +83,12 @@ public class CheckServiceImpl implements CheckService {
   private static final RetryPolicy<Object> transactionRetryPolicy = DEFAULT_RETRY_POLICY;
   @Inject
   public CheckServiceImpl(CheckRepository checkRepository, CheckStatusRepository checkStatusRepository,
-      ScorecardService scorecardService, ScoreComputerService scoreComputerService, NamespaceService namespaceService,
-      ScoreService scoreService, NGSettingsClient settingsClient, DataPointService dataPointService,
-      TransactionTemplate transactionTemplate, OutboxService outboxService) {
+      CheckStatsRepository checkStatsRepository, ScorecardService scorecardService, NGSettingsClient settingsClient,
+      DataPointService dataPointService, TransactionTemplate transactionTemplate, OutboxService outboxService) {
     this.checkRepository = checkRepository;
     this.checkStatusRepository = checkStatusRepository;
+    this.checkStatsRepository = checkStatsRepository;
     this.scorecardService = scorecardService;
-    this.scoreComputerService = scoreComputerService;
-    this.namespaceService = namespaceService;
-    this.scoreService = scoreService;
     this.settingsClient = settingsClient;
     this.dataPointService = dataPointService;
     this.transactionTemplate = transactionTemplate;
@@ -113,11 +98,7 @@ public class CheckServiceImpl implements CheckService {
   @Override
   public void createCheck(CheckDetails checkDetails, String accountIdentifier) {
     Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
-      generateRuleIdentifiers(checkDetails);
-
-      // TODO: To be removed once UI starts sending input values in the new format.
-      copyInputValues(checkDetails, accountIdentifier);
-
+      generateRuleIdentifiersIfNotPresent(checkDetails);
       validateCheckSaveRequest(checkDetails, accountIdentifier);
 
       if (isCheckAlreadyDeleted(accountIdentifier, checkDetails.getIdentifier())) {
@@ -132,12 +113,9 @@ public class CheckServiceImpl implements CheckService {
   @Override
   public void updateCheck(CheckDetails checkDetails, String accountIdentifier) {
     Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
-      validateRules(checkDetails);
-
-      // TODO: To be removed once UI starts sending input values in the new format.
-      copyInputValues(checkDetails, accountIdentifier);
-
+      generateRuleIdentifiersIfNotPresent(checkDetails);
       validateCheckSaveRequest(checkDetails, accountIdentifier);
+
       CheckEntity oldCheckEntity =
           checkRepository.findByAccountIdentifierAndIdentifier(accountIdentifier, checkDetails.getIdentifier());
       CheckEntity updatedCheckEntity =
@@ -191,79 +169,21 @@ public class CheckServiceImpl implements CheckService {
     if (checkEntity == null) {
       throw new InvalidRequestException(String.format("Check stats not found for checkId [%s]", identifier));
     }
-    List<String> scorecardIdentifiers = scorecardService.getScorecardIdentifiers(accountIdentifier, identifier, custom);
-    List<ScorecardFilter> filters = scorecardService.getScorecardFilters(accountIdentifier, scorecardIdentifiers);
-    Set<BackstageCatalogEntity> entities = scoreComputerService.getAllEntities(accountIdentifier, null, filters);
-    Map<String, CheckStatus.StatusEnum> statusMap =
-        scoreService
-            .getCheckStatusForEntityIdentifiersAndScorecardIdentifiers(accountIdentifier,
-                entities.stream().map(entity -> entity.getMetadata().getUid()).collect(Collectors.toList()),
-                scorecardIdentifiers, null, identifier, custom)
-            .stream()
-            .collect(HashMap::new, (m, v) -> m.put(v.getEntityIdentifier(), v.getStatus()), HashMap::putAll);
-    return CheckStatsMapper.toDTO(entities, statusMap, checkEntity.getName());
+    List<CheckStatsEntity> checkStatsEntities =
+        checkStatsRepository.findByAccountIdentifierAndCheckIdentifierAndIsCustom(
+            accountIdentifier, identifier, custom);
+    return CheckStatsMapper.toDTO(checkStatsEntities, checkEntity.getName());
   }
 
   @Override
   public List<CheckGraph> getCheckGraph(String accountIdentifier, String identifier, Boolean custom) {
+    CheckEntity checkEntity = checkRepository.findByAccountIdentifierAndIdentifier(
+        custom ? accountIdentifier : GLOBAL_ACCOUNT_ID, identifier);
+    if (checkEntity == null) {
+      throw new InvalidRequestException(String.format("Check graph not found for checkId [%s]", identifier));
+    }
     return CheckStatsMapper.toDTO(
         checkStatusRepository.findByAccountIdentifierAndIdentifierAndIsCustom(accountIdentifier, identifier, custom));
-  }
-
-  @Override
-  public void computeCheckStatus() {
-    Pair<Long, Long> previousDay24HourTimeFrame = getPreviousDay24HourTimeFrame();
-    List<String> accountIds = namespaceService.getAccountIds();
-    accountIds.forEach(account -> {
-      List<CheckEntity> checkEntities =
-          checkRepository.findByAccountIdentifierInAndIsDeleted(addGlobalAccountIdentifierAlong(account), false);
-      List<CheckStatusEntity> checkStatusEntities = new ArrayList<>();
-      for (CheckEntity checkEntity : checkEntities) {
-        CheckStatusEntity checkStatusEntity =
-            populateCheckStatusEntity(checkEntity, account, previousDay24HourTimeFrame);
-        if (checkStatusEntity != null) {
-          checkStatusEntities.add(checkStatusEntity);
-        }
-      }
-      checkStatusRepository.saveAll(checkStatusEntities);
-    });
-  }
-
-  private CheckStatusEntity populateCheckStatusEntity(
-      CheckEntity checkEntity, String account, Pair<Long, Long> previousDay24HourTimeFrame) {
-    List<String> scorecardIdentifiers =
-        scorecardService.getScorecardIdentifiers(account, checkEntity.getIdentifier(), checkEntity.isCustom());
-    if (isEmpty(scorecardIdentifiers)) {
-      return null;
-    }
-    List<CheckStatus.StatusEnum> statuses =
-        scoreService
-            .getCheckStatusForEntityIdentifiersAndScorecardIdentifiers(account, null, scorecardIdentifiers,
-                previousDay24HourTimeFrame, checkEntity.getIdentifier(), checkEntity.isCustom())
-            .stream()
-            .map(EntityIdentifierAndCheckStatus::getStatus)
-            .collect(Collectors.toList());
-    if (isEmpty(statuses)) {
-      return null;
-    }
-    int totalPassed = 0;
-    int total = 0;
-    for (CheckStatus.StatusEnum status : statuses) {
-      if (status == null) {
-        continue;
-      }
-      totalPassed += CheckStatus.StatusEnum.PASS.equals(status) ? 1 : 0;
-      total++;
-    }
-    return CheckStatusEntity.builder()
-        .accountIdentifier(account)
-        .identifier(checkEntity.getIdentifier())
-        .name(checkEntity.getName())
-        .isCustom(checkEntity.isCustom())
-        .passCount(totalPassed)
-        .total(total)
-        .timestamp(yesterdayInMilliseconds())
-        .build();
   }
 
   @Override
@@ -352,24 +272,31 @@ public class CheckServiceImpl implements CheckService {
         throw new InvalidRequestException(format("Data point not found for dataSource: %s, dataPoint: %s",
             rule.getDataSourceIdentifier(), rule.getDataPointIdentifier()));
       }
-      DataPoint dataPoint = dataPointMap.get(key);
-      if (dataPoint.isIsConditional() && isEmpty(rule.getConditionalInputValue())) {
-        throw new InvalidRequestException("Conditional input value is required");
-      }
 
-      // TODO: Enable this validation once UI sends in new fprmat
-      //      if (dataPoint.isIsConditional()) {
-      //        List<InputValue> inputValues = rule.getInputValues();
-      //        if (inputValues.isEmpty()) {
-      //          throw new InvalidRequestException("Input value(s) is/are required");
-      //        }
-      //        for (InputValue inputValue : inputValues) {
-      //          if (isEmpty(inputValue.getValue())) {
-      //            throw new InvalidRequestException(String.format(
-      //                    "Conditional input value for key %s is required", inputValue.getKey()));
-      //          }
-      //        }
-      //      }
+      // TODO: Remove this condition once UI sends in new format
+      if (rule.getInputValues() != null) {
+        DataPoint dataPoint = dataPointMap.get(key);
+        List<InputValue> inputValues = rule.getInputValues();
+        for (InputValue inputValue : inputValues) {
+          Optional<InputDetails> inputDetailsOpt =
+              dataPoint.getInputDetails()
+                  .stream()
+                  .filter(inputDetails -> inputDetails.getKey().equals(inputValue.getKey()))
+                  .findFirst();
+          if (inputDetailsOpt.isEmpty()) {
+            throw new InvalidRequestException(String.format(
+                "Conditional input value for key %s does not match any data point input details", inputValue.getKey()));
+          }
+          String value = inputValue.getValue();
+          if (value != null && value.startsWith("\"") && value.endsWith("\"")) {
+            value = value.substring(1, value.length() - 1);
+          }
+          if (inputDetailsOpt.get().isRequired() && isEmpty(value)) {
+            throw new InvalidRequestException(
+                String.format("Conditional input value for key %s is required", inputValue.getKey()));
+          }
+        }
+      }
     }
   }
 
@@ -379,31 +306,11 @@ public class CheckServiceImpl implements CheckService {
     return checkEntity != null;
   }
 
-  private void copyInputValues(CheckDetails checkDetails, String accountIdentifier) {
+  private void generateRuleIdentifiersIfNotPresent(CheckDetails checkDetails) {
     for (Rule rule : checkDetails.getRules()) {
-      DataPointEntity dataPoint = dataPointService.getDataPoint(
-          accountIdentifier, rule.getDataSourceIdentifier(), rule.getDataPointIdentifier());
-      List<InputDetails> inputsDetails = dataPoint.getInputDetails();
-      if (inputsDetails != null && inputsDetails.size() == 1) {
-        InputValue inputValue = new InputValue();
-        inputValue.setKey(inputsDetails.get(0).getKey());
-        inputValue.setValue(rule.getConditionalInputValue());
-        rule.setInputValues(Collections.singletonList(inputValue));
+      if (StringUtils.isBlank(rule.getIdentifier())) {
+        rule.setIdentifier(UUID.randomUUID().toString());
       }
-    }
-  }
-
-  private void validateRules(CheckDetails checkDetails) {
-    for (Rule rule : checkDetails.getRules()) {
-      if (rule.getIdentifier().isBlank()) {
-        throw new InvalidRequestException("Rule identifier cannot be empty");
-      }
-    }
-  }
-
-  private void generateRuleIdentifiers(CheckDetails checkDetails) {
-    for (Rule rule : checkDetails.getRules()) {
-      rule.setIdentifier(UUID.randomUUID().toString());
     }
   }
 }

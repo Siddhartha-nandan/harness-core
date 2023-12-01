@@ -7,9 +7,15 @@
 
 package io.harness.idp.scorecard.scores.resources;
 
+import static io.harness.idp.common.RbacConstants.IDP_SCORECARD;
+import static io.harness.idp.common.RbacConstants.IDP_SCORECARD_EDIT;
+
+import io.harness.accesscontrol.AccountIdentifier;
+import io.harness.accesscontrol.NGAccessControlCheck;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.eraro.ResponseMessage;
+import io.harness.idp.scorecard.scores.service.AsyncScoreComputationService;
 import io.harness.idp.scorecard.scores.service.ScoreService;
 import io.harness.security.annotations.NextGenManagerAuth;
 import io.harness.spec.server.idp.v1.ScoresApi;
@@ -18,8 +24,11 @@ import io.harness.spec.server.idp.v1.model.EntityScoresResponse;
 import io.harness.spec.server.idp.v1.model.ScorecardFilter;
 import io.harness.spec.server.idp.v1.model.ScorecardGraphSummaryInfo;
 import io.harness.spec.server.idp.v1.model.ScorecardGraphSummaryInfoResponse;
+import io.harness.spec.server.idp.v1.model.ScorecardRecalibrateIdentifiers;
+import io.harness.spec.server.idp.v1.model.ScorecardRecalibrateInfo;
 import io.harness.spec.server.idp.v1.model.ScorecardRecalibrateRequest;
 import io.harness.spec.server.idp.v1.model.ScorecardRecalibrateResponse;
+import io.harness.spec.server.idp.v1.model.ScorecardRecalibrateResponseV2;
 import io.harness.spec.server.idp.v1.model.ScorecardScore;
 import io.harness.spec.server.idp.v1.model.ScorecardScoreResponse;
 import io.harness.spec.server.idp.v1.model.ScorecardSummaryInfo;
@@ -38,6 +47,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ScoreApiImpl implements ScoresApi {
   private ScoreService scoreService;
+  private AsyncScoreComputationService asyncScoreComputationService;
+
   @Override
   public Response getAllScorecardSummary(String entityIdentifier, String harnessAccount) {
     try {
@@ -56,8 +67,9 @@ public class ScoreApiImpl implements ScoresApi {
   }
 
   @Override
+  @NGAccessControlCheck(resourceType = IDP_SCORECARD, permission = IDP_SCORECARD_EDIT)
   public Response scorecardRecalibrate(
-      @Valid ScorecardRecalibrateRequest scorecardRecalibrateRequest, String harnessAccount) {
+      @Valid ScorecardRecalibrateRequest scorecardRecalibrateRequest, @AccountIdentifier String harnessAccount) {
     try {
       ScorecardSummaryInfo scorecardSummaryInfo = scoreService.getScorecardRecalibratedScoreInfoForAnEntityAndScorecard(
           harnessAccount, scorecardRecalibrateRequest.getIdentifiers().getEntityIdentifier(),
@@ -107,13 +119,33 @@ public class ScoreApiImpl implements ScoresApi {
         overallScore = overallScore + scorecardScore.getScore();
       }
       scorecardScoreResponse.setScorecardScores(scorecardScores);
-      if (scorecardScores.size() > 0) {
+      if (!scorecardScores.isEmpty()) {
         scorecardScoreResponse.setOverallScore(overallScore / scorecardScores.size());
       }
       return Response.status(Response.Status.OK).entity(scorecardScoreResponse).build();
     } catch (Exception e) {
       log.error("Error in getting scores overview for scorecards details for account - {},  entity - {} ,  error = {}",
           harnessAccount, entityIdentifier, e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(ResponseMessage.builder().message(e.getMessage()).build())
+          .build();
+    }
+  }
+
+  @Override
+  public Response getScoresRecalibrateStatus(@Valid ScorecardRecalibrateRequest body, String harnessAccount) {
+    ScorecardRecalibrateIdentifiers identifiers = body.getIdentifiers();
+    String scorecardIdentifier = identifiers.getScorecardIdentifier();
+    String entityIdentifier = identifiers.getEntityIdentifier();
+    try {
+      ScorecardRecalibrateInfo recalibrateInfo =
+          asyncScoreComputationService.getRecalibrateInfo(harnessAccount, scorecardIdentifier, entityIdentifier);
+      ScorecardRecalibrateResponseV2 responseV2 = new ScorecardRecalibrateResponseV2();
+      responseV2.setInfo(recalibrateInfo);
+      return Response.status(Response.Status.OK).entity(responseV2).build();
+    } catch (Exception e) {
+      log.error("Error in getting recalibrate status for account - {}, scorecard - {}, entity - {},  error = {}",
+          harnessAccount, scorecardIdentifier, entityIdentifier, e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(ResponseMessage.builder().message(e.getMessage()).build())
           .build();

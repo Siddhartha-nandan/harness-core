@@ -109,8 +109,8 @@ public class AsgBlueGreenRollbackStep extends CdTaskExecutable<AsgCommandRespons
                                  .build())
                 .build();
       } else {
-        InfrastructureOutcome infrastructureOutcome = (InfrastructureOutcome) outcomeService.resolve(
-            ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME));
+        InfrastructureOutcome infrastructureOutcome =
+            asgStepCommonHelper.getInfrastructureOutcomeWithUpdatedExpressions(ambiance);
 
         List<ServerInstanceInfo> serverInstanceInfos = asgStepCommonHelper.getServerInstanceInfos(
             asgBlueGreenRollbackResponse, infrastructureOutcome.getInfrastructureKey(),
@@ -180,15 +180,8 @@ public class AsgBlueGreenRollbackStep extends CdTaskExecutable<AsgCommandRespons
     AsgBlueGreenDeployOutcome asgBlueGreenDeployOutcome =
         (AsgBlueGreenDeployOutcome) asgBlueGreenDeployOptional.getOutput();
 
-    OptionalSweepingOutput asgBlueGreenSwapServiceOptional = executionSweepingOutputService.resolveOptional(ambiance,
-        RefObjectUtils.getSweepingOutputRefObject(asgBlueGreenDeployStepParameters.getAsgBlueGreenSwapServiceFnq() + "."
-            + OutcomeExpressionConstants.ASG_BLUE_GREEN_SWAP_SERVICE_OUTCOME));
-
-    boolean trafficShifted = asgBlueGreenSwapServiceOptional.isFound()
-        && ((AsgBlueGreenSwapServiceOutcome) asgBlueGreenSwapServiceOptional.getOutput()).isTrafficShifted();
-
-    InfrastructureOutcome infrastructureOutcome = (InfrastructureOutcome) outcomeService.resolve(
-        ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME));
+    InfrastructureOutcome infrastructureOutcome =
+        asgStepCommonHelper.getInfrastructureOutcomeWithUpdatedExpressions(ambiance);
 
     UnitProgressData unitProgressData = cdStepHelper.getCommandUnitProgressData(
         AsgCommandUnitConstants.rollback.toString(), CommandExecutionStatus.RUNNING);
@@ -211,7 +204,6 @@ public class AsgBlueGreenRollbackStep extends CdTaskExecutable<AsgCommandRespons
             .stageAsgName(asgBlueGreenDeployOutcome.getStageAsg().getAutoScalingGroupName())
             .stageAsgManifestsDataForRollback(
                 asgBlueGreenPrepareRollbackDataOutcome.getStageAsgManifestDataForRollback())
-            .servicesSwapped(trafficShifted)
             .build();
 
     TaskType taskType = getTaskType(loadBalancers);
