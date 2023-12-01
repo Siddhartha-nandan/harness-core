@@ -1003,10 +1003,10 @@ public class EnvironmentServiceImpl implements EnvironmentService {
     List<EnvironmentInputSetYamlAndServiceOverridesMetadata> envInputYamlAndServiceOverridesList = new ArrayList<>();
     String envIdentifier = environment.getIdentifier();
     if (isNotEmpty(envIdentifier) && !EngineExpressionEvaluator.hasExpressions(envIdentifier)) {
-      String envRef = IdentifierRefHelper.getRefFromIdentifierOrRef(environment.getAccountId(),
-          environment.getOrgIdentifier(), environment.getProjectIdentifier(), envIdentifier);
       // org level entities need to have compatible ids. Eg. Stage level template will call with only org.env type
       // refs
+      String envRef = IdentifierRefHelper.getRefFromIdentifierOrRef(environment.getAccountId(),
+          environment.getOrgIdentifier(), environment.getProjectIdentifier(), envIdentifier);
 
       boolean overridesV2Enabled =
           isOverridesV2Enabled(accountIdentifier, orgIdentifier, projectIdentifier, isServiceOverrideV2FFEnabled);
