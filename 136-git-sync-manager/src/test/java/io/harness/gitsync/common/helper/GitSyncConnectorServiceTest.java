@@ -65,7 +65,7 @@ public class GitSyncConnectorServiceTest extends GitSyncTestBase {
   public void setup() {
     mocks = MockitoAnnotations.openMocks(this);
     gitSyncConnectorService =
-        new GitSyncConnectorServiceImpl(connectorService, decryptGitApiAccessHelper, yamlGitConfigService);
+        new GitSyncConnectorServiceImpl(connectorService, decryptGitApiAccessHelper, yamlGitConfigService, null, null);
     githubApiAccessDTO =
         GithubApiAccessDTO.builder()
             .type(GithubApiAccessType.OAUTH)
