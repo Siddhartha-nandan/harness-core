@@ -192,6 +192,8 @@ public class NextGenConfiguration extends Configuration {
 
   private static final String OIDC_CORE_RESOURCE = "io.harness.ng.core.oidc";
 
+  private static final String CERTIFICATE_RESOURCE = "io.harness.ng.core.certificates.resource";
+
   public static final Collection<Class<?>> HARNESS_RESOURCE_CLASSES = getResourceClasses();
 
   @JsonProperty("swagger") private SwaggerBundleConfiguration swaggerBundleConfiguration;
@@ -375,7 +377,7 @@ public class NextGenConfiguration extends Configuration {
                 NextGenConfiguration.SUPPORT_PACKAGE, NextGenConfiguration.EULA_PACKAGE,
                 NextGenConfiguration.TERRAGRUNT_RESOURCE_PACKAGE, NextGenConfiguration.GITX_WEBHOOKS_PACKAGE,
                 NextGenConfiguration.K8S_RELEASE_DETAILS_PACKAGE, NextGenConfiguration.OIDC_CORE_RESOURCE,
-                NextGenConfiguration.TUNNEL_RESOURCE_PACKAGE))
+                NextGenConfiguration.TUNNEL_RESOURCE_PACKAGE,NextGenConfiguration.CERTIFICATE_RESOURCE))
         .sorted(Comparator.comparing(Class::getName))
         .collect(Collectors.toList());
   }
