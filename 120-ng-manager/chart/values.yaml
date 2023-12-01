@@ -8,19 +8,18 @@ global:
       external:
         ## if FALSE, Generate all secrets within K8s Namespace
         ## If TRUE, use one of the followings kids to inject
-        enabled: false 
+        enabled: false
         kind:
           # use ExternalSecrets Operator
-          externalSecrets: false 
+          externalSecrets: false
           # Use CSI Driver volume mount
-          csiSecretDriver: false          
+          csiSecretDriver: false
     database:
       external:
         enabled: false
         kind:
           externalSecrets: false
-          csiSecretDriver: false 
-
+          csiSecretDriver: false
   useExternalSecrets: false
   loadbalancerURL: ""
   database:
@@ -95,7 +94,7 @@ global:
       secretName: ''
     # -- add annotations to ingress objects
     objects:
-      annotations: { }
+      annotations: {}
   istio:
     # -- create virtualServices objects
     enabled: false
@@ -109,20 +108,16 @@ global:
 replicaCount: 1
 maxSurge: 1
 maxUnavailable: 0
-
 allowedOrigins: ""
-
 appLogLevel: "INFO"
-
 image:
-  registry: docker.io
-  repository: harness/ng-manager-signed
+  registry: us.gcr.io/platform-205701
+  repository: ng-manager
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "79819"
+  tag: "1.8.0"
   digest: ""
   imagePullSecrets: []
-
 initContainer:
   image:
     registry: docker.io
@@ -130,7 +125,6 @@ initContainer:
     tag: "1.35.0"
     digest: ""
     imagePullSecrets: []
-
 waitForInitContainer:
   image:
     registry: docker.io
@@ -139,7 +133,6 @@ waitForInitContainer:
     tag: "latest"
     digest: ""
     imagePullSecrets: []
-
 mongoSecrets:
   userName:
     name: harness-secrets
@@ -147,7 +140,6 @@ mongoSecrets:
   password:
     name: mongodb-replicaset-chart
     key: mongodb-root-password
-
 ceSecret:
   access_key:
     name: nextgen-ce
@@ -161,20 +153,15 @@ ceSecret:
   template_url:
     name: nextgen-ce
     key: AWS_TEMPLATE_LINK
-
 ceGcpSetupConfigGcpProjectId: "placeHolderGcpProjectId"
-
 timescaleSecret:
   password:
     name: harness-secrets
     key: timescaledbPostgresPassword
-
 java:
   memory: "4096m"
-
 nameOverride: ""
 fullnameOverride: ""
-
 serviceAccount:
   # Specifies whether a service account should be created
   create: false
@@ -183,13 +170,10 @@ serviceAccount:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: "harness-default"
-
 podAnnotations: {}
-
 imagePullSecrets: {}
-
 podSecurityContext: {}
-  # fsGroup: 2000
+# fsGroup: 2000
 
 securityContext:
   runAsUser: 65534
@@ -200,7 +184,6 @@ securityContext:
   # readOnlyRootFilesystem: true
   # runAsNonRoot: true
   # runAsUser: 1000
-
 probes:
   readinessProbe:
     httpGet:
@@ -223,22 +206,18 @@ probes:
     timeoutSeconds: 2
     periodSeconds: 10
     failureThreshold: 25
-
 service:
   type: ClusterIP
   protocol: TCP
   port: 7090
   grpcport: 9979
   gitsyncgrpcport: 13002
-
-
 resources:
   limits:
     memory: 8192Mi
   requests:
     cpu: 2
     memory: 200Mi
-
 autoscaling:
   enabled: false
   minReplicas: 1
@@ -246,25 +225,19 @@ autoscaling:
   targetCPU: ""
   targetMemory: ""
 nodeSelector: {}
-
 tolerations: []
-
 affinity: {}
-
 additionalConfigs: {}
-
 # extraVolumes:
 # - name: volume-test
 #   configMap:
 #     name: test-config
 #     readOnly: true
 extraVolumes: []
-
 # extraVolumeMounts:
 #   - name: test-volume-mount
 #     mountPath: /opt/harness/config
 extraVolumeMounts: []
-
 # lifecycleHooks:
 #   postStart:
 #     exec:
