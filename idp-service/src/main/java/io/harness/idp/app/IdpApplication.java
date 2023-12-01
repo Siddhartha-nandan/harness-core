@@ -15,6 +15,7 @@ import static io.harness.logging.LoggingInitializer.initializeLogging;
 import static io.harness.pms.listener.NgOrchestrationNotifyEventListener.NG_ORCHESTRATION;
 
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toSet;
 
 import io.harness.Microservice;
 import io.harness.ModuleType;
@@ -37,6 +38,8 @@ import io.harness.idp.envvariable.jobs.BackstageEnvVariablesSyncJob;
 import io.harness.idp.events.consumers.EntityCrudStreamConsumer;
 import io.harness.idp.events.consumers.IdpEventConsumerController;
 import io.harness.idp.events.consumers.IdpModuleLicenseUsageCaptureEventConsumer;
+import io.harness.idp.governance.beans.Constants;
+import io.harness.idp.governance.services.ScorecardExpansionHandler;
 import io.harness.idp.license.usage.jobs.IDPTelemetryRecordsJob;
 import io.harness.idp.license.usage.jobs.LicenseUsageDailyCountJob;
 import io.harness.idp.license.usage.resources.IDPLicenseUsageResource;
@@ -46,7 +49,7 @@ import io.harness.idp.pipeline.filter.IdpFilterCreationResponseMerger;
 import io.harness.idp.pipeline.provider.IdpPipelineServiceInfoProvider;
 import io.harness.idp.pipeline.registrar.IdpStepRegistrar;
 import io.harness.idp.scorecard.scores.iteratorhandler.ScoreComputationHandler;
-import io.harness.idp.scorecard.scores.jobs.CheckStatusDailyRunJob;
+import io.harness.idp.scorecard.scores.jobs.StatsComputeDailyRunJob;
 import io.harness.idp.user.jobs.UserSyncJob;
 import io.harness.licensing.usage.resources.LicenseUsageResource;
 import io.harness.maintenance.MaintenanceController;
@@ -69,12 +72,17 @@ import io.harness.notification.notificationclient.NotificationClient;
 import io.harness.notification.templates.PredefinedTemplate;
 import io.harness.outbox.OutboxEventPollService;
 import io.harness.persistence.HPersistence;
+import io.harness.pms.contracts.plan.ExpansionRequestType;
+import io.harness.pms.contracts.plan.JsonExpansionInfo;
+import io.harness.pms.contracts.steps.StepCategory;
+import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.events.base.PipelineEventConsumerController;
 import io.harness.pms.listener.NgOrchestrationNotifyEventListenerNonVersioned;
 import io.harness.pms.sdk.PmsSdkConfiguration;
 import io.harness.pms.sdk.PmsSdkInitHelper;
 import io.harness.pms.sdk.PmsSdkModule;
 import io.harness.pms.sdk.core.SdkDeployMode;
+import io.harness.pms.sdk.core.governance.JsonExpansionHandlerInfo;
 import io.harness.pms.sdk.execution.events.facilitators.FacilitatorEventRedisConsumer;
 import io.harness.pms.sdk.execution.events.facilitators.FacilitatorEventRedisConsumerV2;
 import io.harness.pms.sdk.execution.events.interrupts.InterruptEventRedisConsumer;
@@ -90,6 +98,7 @@ import io.harness.pms.sdk.execution.events.plan.CreatePartialPlanRedisConsumer;
 import io.harness.pms.sdk.execution.events.progress.NodeProgressEventRedisConsumerV2;
 import io.harness.pms.sdk.execution.events.progress.ProgressEventRedisConsumer;
 import io.harness.pms.serializer.json.PmsBeansJacksonModule;
+import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.queue.QueueListenerController;
 import io.harness.queue.QueuePublisher;
 import io.harness.request.RequestContextFilter;
@@ -98,10 +107,10 @@ import io.harness.security.InternalApiAuthFilter;
 import io.harness.security.NextGenAuthenticationFilter;
 import io.harness.security.annotations.InternalApi;
 import io.harness.security.annotations.NextGenManagerAuth;
-import io.harness.serializer.PipelineServiceUtilAdviserRegistrar;
 import io.harness.service.impl.DelegateAsyncServiceImpl;
 import io.harness.service.impl.DelegateProgressServiceImpl;
 import io.harness.service.impl.DelegateSyncServiceImpl;
+import io.harness.swagger.SwaggerBundleConfigurationFactory;
 import io.harness.threading.ExecutorModule;
 import io.harness.threading.ThreadPool;
 import io.harness.token.remote.TokenClient;
@@ -130,16 +139,20 @@ import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
 import io.dropwizard.jersey.setup.JerseyEnvironment;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import io.federecio.dropwizard.swagger.SwaggerBundle;
+import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.serializer.HObjectMapper;
+import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
-import java.util.logging.LogManager;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ResourceInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -183,8 +196,15 @@ public class IdpApplication extends Application<IdpConfiguration> {
   public void initialize(Bootstrap<IdpConfiguration> bootstrap) {
     initializeLogging();
     log.info("bootstrapping ...");
+    bootstrap.addBundle(new SwaggerBundle<IdpConfiguration>() {
+      @Override
+      protected SwaggerBundleConfiguration getSwaggerBundleConfiguration(IdpConfiguration appConfig) {
+        return getSwaggerConfiguration(appConfig);
+      }
+    });
     bootstrap.addCommand(new InspectCommand<>(this));
     bootstrap.addCommand(new ScanClasspathMetadataCommand());
+    bootstrap.addCommand(new GenerateOpenApiSpecCommand());
 
     // Enable variable substitution with environment variables
     bootstrap.setConfigurationSourceProvider(new SubstitutingSourceProvider(
@@ -238,6 +258,7 @@ public class IdpApplication extends Application<IdpConfiguration> {
     registerRequestContextFilter(environment);
     registerIterators(injector, configuration.getScorecardScoreComputationIteratorConfig());
     environment.jersey().register(RequestLoggingFilter.class);
+    registerOasResource(configuration, environment, injector);
     environment.jersey().register(injector.getInstance(IdpServiceRequestInterceptor.class));
     environment.jersey().register(injector.getInstance(IdpServiceResponseInterceptor.class));
     injector.getInstance(IDPTelemetryRecordsJob.class).scheduleTasks();
@@ -257,7 +278,7 @@ public class IdpApplication extends Application<IdpConfiguration> {
     environment.lifecycle().manage(injector.getInstance(PipelineEventConsumerController.class));
     environment.lifecycle().manage(injector.getInstance(OutboxEventPollService.class));
     environment.lifecycle().manage(injector.getInstance(LicenseUsageDailyCountJob.class));
-    environment.lifecycle().manage(injector.getInstance(CheckStatusDailyRunJob.class));
+    environment.lifecycle().manage(injector.getInstance(StatsComputeDailyRunJob.class));
     injector.getInstance(Key.get(ScheduledExecutorService.class, Names.named("taskPollExecutor")))
         .scheduleWithFixedDelay(injector.getInstance(DelegateSyncServiceImpl.class), 0L, 2L, TimeUnit.SECONDS);
     injector.getInstance(Key.get(ScheduledExecutorService.class, Names.named("taskPollExecutor")))
@@ -273,6 +294,12 @@ public class IdpApplication extends Application<IdpConfiguration> {
     QueueListenerController queueListenerController = injector.getInstance(QueueListenerController.class);
     queueListenerController.register(injector.getInstance(NgOrchestrationNotifyEventListenerNonVersioned.class), 1);
     controller.register(injector.getInstance(IdpModuleLicenseUsageCaptureEventConsumer.class), 2);
+  }
+
+  private void registerOasResource(IdpConfiguration config, Environment environment, Injector injector) {
+    OpenApiResource openApiResource = injector.getInstance(OpenApiResource.class);
+    openApiResource.setOpenApiConfiguration(config.getOasConfig());
+    environment.jersey().register(openApiResource);
   }
 
   private void registerIterators(Injector injector, IteratorConfig iteratorConfig) {
@@ -365,6 +392,20 @@ public class IdpApplication extends Application<IdpConfiguration> {
     NGMigrationSdkInitHelper.initialize(injector, config);
   }
 
+  public SwaggerBundleConfiguration getSwaggerConfiguration(IdpConfiguration appConfig) {
+    Collection<Class<?>> classes = HARNESS_RESOURCE_CLASSES;
+    SwaggerBundleConfiguration defaultSwaggerBundleConfiguration =
+        SwaggerBundleConfigurationFactory.buildSwaggerBundleConfiguration(classes);
+    String resourcePackage = String.join(",", getUniquePackages(classes));
+    defaultSwaggerBundleConfiguration.setResourcePackage(resourcePackage);
+    defaultSwaggerBundleConfiguration.setSchemes(new String[] {"https", "http"});
+    defaultSwaggerBundleConfiguration.setHost(appConfig.hostname);
+    defaultSwaggerBundleConfiguration.setUriPrefix(appConfig.basePathPrefix);
+    defaultSwaggerBundleConfiguration.setVersion("1.0");
+    defaultSwaggerBundleConfiguration.setTitle("IDP Service API Reference");
+    return defaultSwaggerBundleConfiguration;
+  }
+
   private NGMigrationConfiguration getMigrationSdkConfiguration() {
     return NGMigrationConfiguration.builder()
         .microservice(Microservice.IDP)
@@ -392,8 +433,25 @@ public class IdpApplication extends Application<IdpConfiguration> {
         .executionPoolConfig(configuration.getPmsSdkExecutionPoolConfig())
         .orchestrationEventPoolConfig(configuration.getPmsSdkOrchestrationEventPoolConfig())
         .executionSummaryModuleInfoProviderClass(CIModuleInfoProvider.class)
-        .eventsFrameworkConfiguration(configuration.getEventsFrameworkConfiguration())
+        .jsonExpansionHandlers(getJsonExpansionHandlers())
         .build();
+  }
+
+  private List<JsonExpansionHandlerInfo> getJsonExpansionHandlers() {
+    List<JsonExpansionHandlerInfo> jsonExpansionHandlers = new ArrayList<>();
+    JsonExpansionInfo scorecardInfo =
+        JsonExpansionInfo.newBuilder()
+            .setExpansionType(ExpansionRequestType.LOCAL_FQN)
+            .setKey(YAMLFieldNameConstants.STAGE)
+            .setExpansionKey(Constants.IDP_SCORECARD_EXPANSION_KEY)
+            .setStageType(StepType.newBuilder().setType("Deployment").setStepCategory(StepCategory.STAGE).build())
+            .build();
+    JsonExpansionHandlerInfo scorecardExpansionHandler = JsonExpansionHandlerInfo.builder()
+                                                             .jsonExpansionInfo(scorecardInfo)
+                                                             .expansionHandler(ScorecardExpansionHandler.class)
+                                                             .build();
+    jsonExpansionHandlers.add(scorecardExpansionHandler);
+    return jsonExpansionHandlers;
   }
 
   private void registerPMSSDK(IdpConfiguration configuration, Injector injector) {
@@ -405,6 +463,10 @@ public class IdpApplication extends Application<IdpConfiguration> {
         log.error("PMS SDK registration failed", e);
       }
     }
+  }
+
+  private static Set<String> getUniquePackages(Collection<Class<?>> classes) {
+    return classes.stream().map(aClass -> aClass.getPackage().getName()).collect(toSet());
   }
 
   private void registerPmsSdkEvents(Injector injector) {

@@ -25,7 +25,6 @@ import io.harness.spec.server.ssca.v1.model.ArtifactComponentViewRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactComponentViewResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewResponse;
-import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewResponse.AttestedStatusEnum;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewResponse.EnvTypeEnum;
 import io.harness.spec.server.ssca.v1.model.ArtifactDetailResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingRequestBody;
@@ -34,6 +33,7 @@ import io.harness.spec.server.ssca.v1.model.ArtifactListingResponse.ActivityEnum
 import io.harness.spec.server.ssca.v1.model.ComponentFilter;
 import io.harness.spec.server.ssca.v1.model.LicenseFilter;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
+import io.harness.spec.server.ssca.v1.model.Slsa;
 import io.harness.ssca.beans.EnforcementSummaryDBO.EnforcementSummaryDBOKeys;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.beans.SbomDTO;
@@ -42,8 +42,11 @@ import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityKeys;
 import io.harness.ssca.entities.CdInstanceSummary;
 import io.harness.ssca.entities.EnforcementSummaryEntity;
 import io.harness.ssca.entities.EnforcementSummaryEntity.EnforcementSummaryEntityKeys;
+import io.harness.ssca.utils.PipelineUtils;
 import io.harness.ssca.utils.SBOMUtils;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import java.net.URI;
 import java.time.Instant;
@@ -52,6 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -61,6 +65,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
@@ -80,10 +85,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class ArtifactServiceImpl implements ArtifactService {
   @Inject ArtifactRepository artifactRepository;
   @Inject EnforcementSummaryRepo enforcementSummaryRepo;
-
   @Inject EnforcementSummaryService enforcementSummaryService;
   @Inject NormalisedSbomComponentService normalisedSbomComponentService;
   @Inject CdInstanceSummaryService cdInstanceSummaryService;
+  @Inject PipelineUtils pipelineUtils;
 
   private final String GCP_REGISTRY_HOST = "grc.io";
 
@@ -140,6 +145,26 @@ public class ArtifactServiceImpl implements ArtifactService {
   }
 
   @Override
+  public String getArtifactName(String accountId, String orgIdentifier, String projectIdentifier, String artifactId) {
+    Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
+                            .is(accountId)
+                            .and(ArtifactEntityKeys.orgId)
+                            .is(orgIdentifier)
+                            .and(ArtifactEntityKeys.projectId)
+                            .is(projectIdentifier)
+                            .and(ArtifactEntityKeys.artifactId)
+                            .is(artifactId)
+                            .and(ArtifactEntityKeys.invalid)
+                            .is(false);
+    Pageable pageable = PageRequest.of(1, 1, Sort.by(Direction.DESC, ArtifactEntityKeys.createdOn.toLowerCase()));
+    ArtifactEntity artifactEntity = artifactRepository.findOne(criteria, pageable, List.of(ArtifactEntityKeys.name));
+    if (artifactEntity == null) {
+      return null;
+    }
+    return artifactEntity.getName();
+  }
+
+  @Override
   public ArtifactEntity getArtifactByCorrelationId(
       String accountId, String orgIdentifier, String projectIdentifier, String artifactCorrelationId) {
     Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
@@ -181,6 +206,8 @@ public class ArtifactServiceImpl implements ArtifactService {
       throw new NotFoundException(
           String.format("Artifact with artifactId [%s] and tag [%s] is not found", artifactId, tag));
     }
+    JsonNode node = pipelineUtils.getPipelineExecutionSummaryResponse(
+        artifact.getPipelineExecutionId(), accountId, orgIdentifier, projectIdentifier);
     return new ArtifactDetailResponse()
         .id(artifact.getArtifactId())
         .name(artifact.getName())
@@ -191,6 +218,7 @@ public class ArtifactServiceImpl implements ArtifactService {
         .prodEnvCount(artifact.getProdEnvCount().intValue())
         .nonProdEnvCount(artifact.getNonProdEnvCount().intValue())
         .buildPipelineId(artifact.getPipelineId())
+        .buildPipelineName(pipelineUtils.parsePipelineName(node))
         .buildPipelineExecutionId(artifact.getPipelineExecutionId())
         .orchestrationId(artifact.getOrchestrationId());
   }
@@ -203,8 +231,14 @@ public class ArtifactServiceImpl implements ArtifactService {
   @Override
   @Transactional
   public void saveArtifactAndInvalidateOldArtifact(ArtifactEntity artifact) {
+    ArtifactEntity lastArtifact = getLatestArtifact(artifact.getAccountId(), artifact.getOrgId(),
+        artifact.getProjectId(), artifact.getArtifactId(), artifact.getTag());
     artifactRepository.invalidateOldArtifact(artifact);
     artifact.setLastUpdatedAt(artifact.getCreatedOn().toEpochMilli());
+    if (Objects.nonNull(lastArtifact)) {
+      artifact.setProdEnvCount(lastArtifact.getProdEnvCount());
+      artifact.setNonProdEnvCount(lastArtifact.getNonProdEnvCount());
+    }
     artifactRepository.save(artifact);
   }
 
@@ -221,7 +255,7 @@ public class ArtifactServiceImpl implements ArtifactService {
                             .is(false);
 
     MatchOperation matchOperation = match(criteria);
-    SortOperation sortOperation = sort(Sort.by(Direction.DESC, ArtifactEntityKeys.lastUpdatedAt));
+    SortOperation sortOperation = sort(Sort.by(Direction.DESC, ArtifactEntityKeys.createdOn));
     GroupOperation groupByArtifactId = group(ArtifactEntityKeys.artifactId).first("$$ROOT").as("document");
     Sort.Order customSort = pageable.getSort().get().collect(Collectors.toList()).get(0);
     SortOperation customSortOperation =
@@ -343,18 +377,28 @@ public class ArtifactServiceImpl implements ArtifactService {
               .envId(entity.getEnvIdentifier())
               .envName(entity.getEnvName())
               .envType(entity.getEnvType() == EnvType.Production ? EnvTypeEnum.PROD : EnvTypeEnum.NONPROD)
-              .attestedStatus(artifact.isAttested() ? AttestedStatusEnum.PASS : AttestedStatusEnum.FAIL)
+              .pipelineName(entity.getLastPipelineName())
               .pipelineId(entity.getLastPipelineExecutionName())
               .pipelineExecutionId(entity.getLastPipelineExecutionId())
+              .pipelineSequenceId(entity.getSequenceId())
               .triggeredById(entity.getLastDeployedById())
               .triggeredBy(entity.getLastDeployedByName())
-              .triggeredAt(entity.getLastDeployedAt().toString());
+              .triggeredAt(entity.getLastDeployedAt().toString())
+              .triggeredType(entity.getTriggerType());
 
       if (Objects.nonNull(enforcementSummaryEntity)) {
         response.allowListViolationCount(String.valueOf(enforcementSummaryEntity.getAllowListViolationCount()))
             .denyListViolationCount(String.valueOf(enforcementSummaryEntity.getDenyListViolationCount()))
             .enforcementId(enforcementSummaryEntity.getEnforcementId());
       }
+
+      if (Objects.nonNull(entity.getSlsaVerificationSummary())) {
+        response.slsaVerification(
+            new Slsa()
+                .provenance(entity.getSlsaVerificationSummary().getProvenanceArtifact())
+                .policyOutcomeStatus(entity.getSlsaVerificationSummary().getSlsaPolicyOutcomeStatus()));
+      }
+
       return response;
     });
   }
@@ -436,6 +480,18 @@ public class ArtifactServiceImpl implements ArtifactService {
     if (Objects.isNull(body) || Objects.isNull(body.getPolicyViolation())) {
       return criteria;
     }
+    Aggregation aggregation = getPolicyViolationEnforcementAggregation(body);
+
+    // { "aggregate" : "__collection__", "pipeline" : [{ "$sort" : { "createdAt" : -1}}, { "$group" : { "_id" :
+    // "$orchestrationId", "document" : { "$first" : "$$ROOT"}}}, { "$unwind" : "$document"}, { "$match" : {
+    // "document.denylistviolationcount" : { "$ne" : 0}}}]}
+    Set<String> orchestrationIds = enforcementSummaryRepo.findAllOrchestrationId(aggregation);
+    criteria.and(ArtifactEntityKeys.orchestrationId).in(orchestrationIds);
+    return criteria;
+  }
+
+  @VisibleForTesting
+  Aggregation getPolicyViolationEnforcementAggregation(ArtifactListingRequestBody body) {
     Criteria enforcementCriteria = new Criteria();
     switch (body.getPolicyViolation()) {
       case DENY:
@@ -450,6 +506,26 @@ public class ArtifactServiceImpl implements ArtifactService {
                                       + EnforcementSummaryEntityKeys.allowListViolationCount.toLowerCase())
                                   .ne(0);
         break;
+      case ANY:
+        Criteria allowCriteria = Criteria
+                                     .where(EnforcementSummaryDBOKeys.document + "."
+                                         + EnforcementSummaryEntityKeys.allowListViolationCount.toLowerCase())
+                                     .ne(0);
+        Criteria denyCriteria = Criteria
+                                    .where(EnforcementSummaryDBOKeys.document + "."
+                                        + EnforcementSummaryEntityKeys.denyListViolationCount.toLowerCase())
+                                    .ne(0);
+        enforcementCriteria = new Criteria().orOperator(allowCriteria, denyCriteria);
+        break;
+      case NONE:
+        enforcementCriteria = Criteria
+                                  .where(EnforcementSummaryDBOKeys.document + "."
+                                      + EnforcementSummaryEntityKeys.allowListViolationCount.toLowerCase())
+                                  .is(0)
+                                  .and(EnforcementSummaryDBOKeys.document + "."
+                                      + EnforcementSummaryEntityKeys.denyListViolationCount.toLowerCase())
+                                  .is(0);
+        break;
       default:
         log.error("Unknown Policy Violation Type");
     }
@@ -459,17 +535,9 @@ public class ArtifactServiceImpl implements ArtifactService {
     GroupOperation groupByOrchestrationId =
         group(EnforcementSummaryEntityKeys.orchestrationId).first("$$ROOT").as(EnforcementSummaryDBOKeys.document);
     UnwindOperation unwindOperation = unwind(EnforcementSummaryDBOKeys.document);
-    Aggregation aggregation = newAggregation(sortOperation, groupByOrchestrationId, unwindOperation, matchOperation);
-
-    // { "aggregate" : "__collection__", "pipeline" : [{ "$sort" : { "createdAt" : -1}}, { "$group" : { "_id" :
-    // "$orchestrationId", "document" : { "$first" : "$$ROOT"}}}, { "$unwind" : "$document"}, { "$match" : {
-    // "document.denylistviolationcount" : { "$ne" : 0}}}]}
-    List<EnforcementSummaryEntity> enforcementSummaryEntities = enforcementSummaryRepo.findAll(aggregation);
-    criteria.and(ArtifactEntityKeys.orchestrationId)
-        .in(enforcementSummaryEntities.stream()
-                .map(EnforcementSummaryEntity::getOrchestrationId)
-                .collect(Collectors.toSet()));
-    return criteria;
+    ProjectionOperation projectionOperation = Aggregation.project(
+        EnforcementSummaryDBOKeys.document + "." + EnforcementSummaryEntityKeys.orchestrationId.toLowerCase());
+    return newAggregation(sortOperation, groupByOrchestrationId, unwindOperation, matchOperation, projectionOperation);
   }
 
   private Criteria getDeploymentFilterCriteria(ArtifactListingRequestBody body) {

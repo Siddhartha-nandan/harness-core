@@ -40,7 +40,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @FieldNameConstants(innerTypeName = "StageExecutionInstanceInfoKeys")
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @StoreIn(DbAliases.NG_MANAGER)
-@Entity(value = "StageExecutionInstanceInfo", noClassnameStored = true)
+@Entity(value = "stageExecutionInstanceInfo", noClassnameStored = true)
 @Document("stageExecutionInstanceInfo")
 @TypeAlias("stageExecutionInstanceInfo")
 @HarnessEntity(exportable = true)
@@ -59,8 +59,7 @@ public class StageExecutionInstanceInfo implements PersistentEntity, UuidAware {
   public static List<MongoIndex> mongoIndexes() {
     return ImmutableList.<MongoIndex>builder()
         .add(CompoundMongoIndex.builder()
-                 .name("unique_idx")
-                 .unique(true)
+                 .name("acc_org_proj_pipelineexecId_stageexecid")
                  .field(StageExecutionInstanceInfoKeys.accountIdentifier)
                  .field(StageExecutionInstanceInfoKeys.orgIdentifier)
                  .field(StageExecutionInstanceInfoKeys.projectIdentifier)

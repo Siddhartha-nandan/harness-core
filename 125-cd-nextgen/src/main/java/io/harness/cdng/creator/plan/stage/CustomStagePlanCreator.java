@@ -21,44 +21,36 @@ import io.harness.cdng.environment.helper.EnvironmentPlanCreatorHelper;
 import io.harness.cdng.environment.helper.beans.CustomStageEnvironmentStepParameters;
 import io.harness.cdng.environment.yaml.EnvironmentYamlV2;
 import io.harness.cdng.pipeline.beans.CustomStageSpecParams;
+import io.harness.cdng.pipeline.steps.CdStepParametersUtils;
 import io.harness.cdng.pipeline.steps.CustomStageStep;
-import io.harness.data.structure.CollectionUtils;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.data.structure.UUIDGenerator;
 import io.harness.exception.InvalidRequestException;
 import io.harness.plancreator.stages.AbstractStagePlanCreator;
 import io.harness.plancreator.steps.common.SpecParameters;
-import io.harness.plancreator.steps.common.StageElementParameters;
 import io.harness.plancreator.steps.common.StageElementParameters.StageElementParametersBuilder;
 import io.harness.plancreator.strategy.StrategyUtils;
 import io.harness.pms.contracts.advisers.AdviserObtainment;
 import io.harness.pms.contracts.facilitators.FacilitatorObtainment;
 import io.harness.pms.contracts.facilitators.FacilitatorType;
 import io.harness.pms.contracts.plan.Dependency;
-import io.harness.pms.contracts.plan.HarnessStruct;
-import io.harness.pms.contracts.plan.HarnessValue;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.execution.OrchestrationFacilitatorType;
 import io.harness.pms.execution.utils.SkipInfoUtils;
 import io.harness.pms.merger.helpers.RuntimeInputFormHelper;
-import io.harness.pms.plan.creation.PlanCreatorConstants;
 import io.harness.pms.sdk.core.adviser.success.OnSuccessAdviserParameters;
 import io.harness.pms.sdk.core.plan.PlanNode;
 import io.harness.pms.sdk.core.plan.PlanNode.PlanNodeBuilder;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
-import io.harness.pms.tags.TagUtils;
 import io.harness.pms.yaml.DependenciesUtils;
 import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
 import io.harness.serializer.KryoSerializer;
-import io.harness.steps.SdkCoreStepUtils;
-import io.harness.utils.PlanCreatorUtilsCommon;
 import io.harness.when.utils.RunInfoUtils;
-import io.harness.yaml.utils.NGVariablesUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.inject.Inject;
@@ -110,7 +102,7 @@ public class CustomStagePlanCreator extends AbstractStagePlanCreator<CustomStage
       PlanCreationContext ctx, CustomStageNode stageNode, List<String> childrenNodeIds) {
     stageNode.setIdentifier(StrategyUtils.getIdentifierWithExpression(ctx, stageNode.getIdentifier()));
     stageNode.setName(StrategyUtils.getIdentifierWithExpression(ctx, stageNode.getName()));
-    StageElementParametersBuilder stageParameters = getStageParameters(stageNode);
+    StageElementParametersBuilder stageParameters = CdStepParametersUtils.getStageParameters(stageNode);
     YamlField specField =
         Preconditions.checkNotNull(ctx.getCurrentField().getNode().getField(YAMLFieldNameConstants.SPEC));
     stageParameters.specConfig(getSpecParameters(specField.getNode().getUuid(), ctx, stageNode));
@@ -161,7 +153,10 @@ public class CustomStagePlanCreator extends AbstractStagePlanCreator<CustomStage
                     .toBuilder()
                     .putDependencyMetadata(field.getUuid(), Dependency.newBuilder().putAllMetadata(metadataMap).build())
                     .putDependencyMetadata(executionField.getNode().getUuid(),
-                        Dependency.newBuilder().setParentInfo(generateParentInfo(ctx, field)).build())
+                        Dependency.newBuilder()
+                            .setParentInfo(generateParentInfo(ctx, field, getFinalPlanNodeId(ctx, field),
+                                StrategyUtils.isWrappedUnderStrategy(ctx.getCurrentField())))
+                            .build())
                     .build())
             .build());
 
@@ -266,47 +261,6 @@ public class CustomStagePlanCreator extends AbstractStagePlanCreator<CustomStage
                               Dependency.newBuilder().putAllMetadata(specDependencyMetadataMap).build())
                           .build())
         .build();
-  }
-
-  public StageElementParametersBuilder getStageParameters(CustomStageNode stageNode) {
-    TagUtils.removeUuidFromTags(stageNode.getTags());
-
-    StageElementParametersBuilder stageBuilder = StageElementParameters.builder();
-    stageBuilder.name(stageNode.getName());
-    stageBuilder.identifier(stageNode.getIdentifier());
-    stageBuilder.description(SdkCoreStepUtils.getParameterFieldHandleValueNull(stageNode.getDescription()));
-    stageBuilder.failureStrategies(
-        stageNode.getFailureStrategies() != null ? stageNode.getFailureStrategies().getValue() : null);
-    stageBuilder.skipCondition(stageNode.getSkipCondition());
-    stageBuilder.when(stageNode.getWhen() != null ? stageNode.getWhen().getValue() : null);
-    stageBuilder.type(stageNode.getType());
-    stageBuilder.uuid(stageNode.getUuid());
-    stageBuilder.variables(
-        ParameterField.createValueField(NGVariablesUtils.getMapOfVariables(stageNode.getVariables())));
-    stageBuilder.tags(CollectionUtils.emptyIfNull(stageNode.getTags()));
-
-    return stageBuilder;
-  }
-
-  private HarnessStruct generateParentInfo(PlanCreationContext ctx, CustomStageNode stageNode) {
-    YamlField field = ctx.getCurrentField();
-    HarnessStruct.Builder parentInfo = HarnessStruct.newBuilder();
-    parentInfo.putData(PlanCreatorConstants.STAGE_ID,
-        HarnessValue.newBuilder().setStringValue(getFinalPlanNodeId(ctx, stageNode)).build());
-    if (StrategyUtils.isWrappedUnderStrategy(field)) {
-      String strategyId = stageNode.getUuid();
-      parentInfo.putData(
-          PlanCreatorConstants.NEAREST_STRATEGY_ID, HarnessValue.newBuilder().setStringValue(strategyId).build());
-      parentInfo.putData(PlanCreatorConstants.ALL_STRATEGY_IDS,
-          PlanCreatorUtilsCommon.appendToParentInfoList(PlanCreatorConstants.ALL_STRATEGY_IDS, strategyId, ctx));
-      parentInfo.putData(PlanCreatorConstants.STRATEGY_NODE_TYPE,
-          HarnessValue.newBuilder().setStringValue(YAMLFieldNameConstants.STAGE).build());
-    }
-    return parentInfo.build();
-  }
-
-  private String getFinalPlanNodeId(PlanCreationContext ctx, CustomStageNode stageNode) {
-    return StrategyUtils.getSwappedPlanNodeId(ctx, stageNode.getUuid());
   }
 
   @Override

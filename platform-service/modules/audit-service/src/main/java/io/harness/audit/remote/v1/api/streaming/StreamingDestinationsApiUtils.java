@@ -28,6 +28,7 @@ import io.harness.spec.server.audit.v1.model.StreamingDestinationResponse;
 import io.harness.spec.server.audit.v1.model.StreamingDestinationSpecDTO;
 import io.harness.spec.server.audit.v1.model.StreamingDestinationStatus;
 import io.harness.spec.server.audit.v1.model.StreamingDetails;
+import io.harness.utils.ApiUtils;
 import io.harness.utils.PageUtils;
 
 import java.util.List;
@@ -83,8 +84,10 @@ public class StreamingDestinationsApiUtils {
     StreamingDestinationDTO streamingDestinationDTO = new StreamingDestinationDTO();
     streamingDestinationDTO.identifier(streamingDestination.getIdentifier())
         .name(streamingDestination.getName())
+        .tags(ApiUtils.getTags(streamingDestination.getTags()))
         .status(streamingDestination.getStatus())
         .connectorRef(streamingDestination.getConnectorRef())
+        .description(streamingDestination.getDescription())
         .spec(getStreamingDestinationSpecDTO(streamingDestination));
     return streamingDestinationResponse.streamingDestination(streamingDestinationDTO)
         .created(streamingDestination.getCreatedAt())

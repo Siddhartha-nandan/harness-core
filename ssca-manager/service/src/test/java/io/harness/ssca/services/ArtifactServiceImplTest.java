@@ -20,6 +20,7 @@ import static org.mockito.Mockito.verify;
 import io.harness.BuilderFactory;
 import io.harness.SSCAManagerTestBase;
 import io.harness.category.element.UnitTests;
+import io.harness.remote.client.NGRestUtils;
 import io.harness.repositories.ArtifactRepository;
 import io.harness.repositories.CdInstanceSummaryRepo;
 import io.harness.repositories.EnforcementSummaryRepo;
@@ -27,7 +28,6 @@ import io.harness.repositories.SBOMComponentRepo;
 import io.harness.rule.Owner;
 import io.harness.spec.server.ssca.v1.model.ArtifactComponentViewResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewResponse;
-import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewResponse.AttestedStatusEnum;
 import io.harness.spec.server.ssca.v1.model.ArtifactDetailResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingRequestBody.EnvironmentTypeEnum;
@@ -43,10 +43,14 @@ import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity.NormalizedSBOMComponentEntityBuilder;
 import io.harness.ssca.utils.PageResponseUtils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -57,6 +61,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Page;
@@ -203,7 +208,13 @@ public class ArtifactServiceImplTest extends SSCAManagerTestBase {
   @Test
   @Owner(developers = ARPITJ)
   @Category(UnitTests.class)
-  public void testGetArtifactDetails() {
+  public void testGetArtifactDetails() throws IOException {
+    ObjectMapper objectMapper = new ObjectMapper();
+    ClassLoader classLoader = this.getClass().getClassLoader();
+    InputStream inputStream = classLoader.getResourceAsStream("pms-execution-response-with-slsa.json");
+    Map<String, Object> pmsJsonResponse = objectMapper.readValue(inputStream, Map.class);
+    MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class);
+    mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(pmsJsonResponse);
     Mockito.when(artifactRepository.findOne(any())).thenReturn(builderFactory.getArtifactEntityBuilder().build());
 
     ArtifactDetailResponse response = artifactService.getArtifactDetails(builderFactory.getContext().getAccountId(),
@@ -216,6 +227,7 @@ public class ArtifactServiceImplTest extends SSCAManagerTestBase {
     assertThat(response.getProdEnvCount()).isEqualTo(2);
     assertThat(response.getNonProdEnvCount()).isEqualTo(1);
     assertThat(response.getBuildPipelineId()).isEqualTo("pipelineId");
+    assertThat(response.getBuildPipelineName()).isEqualTo("SLSA attestation and verification");
     assertThat(response.getBuildPipelineExecutionId()).isEqualTo("pipelineExecutionId");
   }
 
@@ -230,7 +242,29 @@ public class ArtifactServiceImplTest extends SSCAManagerTestBase {
   @Test
   @Owner(developers = ARPITJ)
   @Category(UnitTests.class)
-  public void testSaveArtifactAndInvalidateOldArtifact() {}
+  public void testSaveArtifactAndInvalidateOldArtifact() {
+    Mockito.when(artifactRepository.findOne(Mockito.any()))
+        .thenReturn(builderFactory.getArtifactEntityBuilder().build());
+    ArtifactEntity newArtifact = builderFactory.getArtifactEntityBuilder().nonProdEnvCount(0l).prodEnvCount(0l).build();
+    artifactService.saveArtifactAndInvalidateOldArtifact(newArtifact);
+    ArgumentCaptor<ArtifactEntity> argument = ArgumentCaptor.forClass(ArtifactEntity.class);
+    Mockito.verify(artifactRepository).save(argument.capture());
+    assertThat(argument.getValue().getNonProdEnvCount()).isEqualTo(1);
+    assertThat(argument.getValue().getProdEnvCount()).isEqualTo(2);
+  }
+
+  @Test
+  @Owner(developers = ARPITJ)
+  @Category(UnitTests.class)
+  public void testSaveArtifactAndInvalidateOldArtifact_noLastArtifact() {
+    Mockito.when(artifactRepository.findOne(Mockito.any())).thenReturn(null);
+    ArtifactEntity newArtifact = builderFactory.getArtifactEntityBuilder().nonProdEnvCount(0l).prodEnvCount(0l).build();
+    artifactService.saveArtifactAndInvalidateOldArtifact(newArtifact);
+    ArgumentCaptor<ArtifactEntity> argument = ArgumentCaptor.forClass(ArtifactEntity.class);
+    Mockito.verify(artifactRepository).save(argument.capture());
+    assertThat(argument.getValue().getNonProdEnvCount()).isEqualTo(0);
+    assertThat(argument.getValue().getProdEnvCount()).isEqualTo(0);
+  }
 
   @Test
   @Owner(developers = ARPITJ)
@@ -290,6 +324,38 @@ public class ArtifactServiceImplTest extends SSCAManagerTestBase {
   @Test
   @Owner(developers = ARPITJ)
   @Category(UnitTests.class)
+  public void testListLatestArtifacts_aggregationQuery() {
+    List<ArtifactEntity> artifactEntities = Arrays.asList(builderFactory.getArtifactEntityBuilder()
+                                                              .artifactId("artifactId")
+                                                              .artifactCorrelationId("artifactCorrelationId")
+                                                              .build(),
+        builderFactory.getArtifactEntityBuilder()
+            .artifactId("artifact2")
+            .artifactCorrelationId("artifactCorrelation2")
+            .build());
+    Mockito.when(artifactRepository.findAll(any(Aggregation.class))).thenReturn(artifactEntities);
+
+    Mockito.when(artifactRepository.getCount(any())).thenReturn(3L);
+
+    Mockito.when(enforcementSummaryRepo.findAll(any(Aggregation.class)))
+        .thenReturn(List.of(builderFactory.getEnforcementSummaryBuilder().build()));
+
+    Pageable pageable = PageResponseUtils.getPageable(0, 2, ArtifactApiUtils.getSortFieldMapping("name"), "ASC");
+    artifactService.listLatestArtifacts(builderFactory.getContext().getAccountId(),
+        builderFactory.getContext().getOrgIdentifier(), builderFactory.getContext().getProjectIdentifier(), pageable);
+
+    ArgumentCaptor<Aggregation> argument = ArgumentCaptor.forClass(Aggregation.class);
+    Mockito.verify(artifactRepository).findAll(argument.capture());
+    assertThat(argument.getValue().toString())
+        .isEqualTo(String.format(
+            "{ \"aggregate\" : \"__collection__\", \"pipeline\" : [{ \"$match\" : { \"accountId\" : \"%s\", \"orgId\" : \"%s\", \"projectId\" : \"%s\", \"invalid\" : false}}, { \"$sort\" : { \"createdOn\" : -1}}, { \"$group\" : { \"_id\" : \"$artifactId\", \"document\" : { \"$first\" : \"$$ROOT\"}}}, { \"$sort\" : { \"document.name\" : 1}}, { \"$project\" : { \"_id\" : 0}}, { \"$skip\" : 0}, { \"$limit\" : 2}]}",
+            builderFactory.getContext().getAccountId(), builderFactory.getContext().getOrgIdentifier(),
+            builderFactory.getContext().getProjectIdentifier()));
+  }
+
+  @Test
+  @Owner(developers = ARPITJ)
+  @Category(UnitTests.class)
   public void testListArtifacts() {
     List<ArtifactEntity> artifactEntities = Arrays.asList(builderFactory.getArtifactEntityBuilder()
                                                               .artifactId("artifactId")
@@ -342,6 +408,33 @@ public class ArtifactServiceImplTest extends SSCAManagerTestBase {
     // assertThat(artifactListingResponses.get(0).getSbomUrl()).isEqualTo("artifact1");
     assertThat(artifactListingResponses.get(1).getUpdated())
         .isLessThanOrEqualTo(String.format("%d", Instant.now().toEpochMilli()));
+  }
+
+  @Test
+  @Owner(developers = ARPITJ)
+  @Category(UnitTests.class)
+  public void testPolicyViolationFilter() {
+    ArtifactListingRequestBody body = new ArtifactListingRequestBody();
+    body.setPolicyViolation(PolicyViolationEnum.ALLOW);
+    Aggregation aggregation = new ArtifactServiceImpl().getPolicyViolationEnforcementAggregation(body);
+    assertThat(aggregation.toString())
+        .isEqualTo(
+            "{ \"aggregate\" : \"__collection__\", \"pipeline\" : [{ \"$sort\" : { \"createdAt\" : -1}}, { \"$group\" : { \"_id\" : \"$orchestrationId\", \"document\" : { \"$first\" : \"$$ROOT\"}}}, { \"$unwind\" : \"$document\"}, { \"$match\" : { \"document.allowlistviolationcount\" : { \"$ne\" : 0}}}, { \"$project\" : { \"orchestrationid\" : \"$document.orchestrationid\"}}]}");
+    body.setPolicyViolation(PolicyViolationEnum.DENY);
+    aggregation = new ArtifactServiceImpl().getPolicyViolationEnforcementAggregation(body);
+    assertThat(aggregation.toString())
+        .isEqualTo(
+            "{ \"aggregate\" : \"__collection__\", \"pipeline\" : [{ \"$sort\" : { \"createdAt\" : -1}}, { \"$group\" : { \"_id\" : \"$orchestrationId\", \"document\" : { \"$first\" : \"$$ROOT\"}}}, { \"$unwind\" : \"$document\"}, { \"$match\" : { \"document.denylistviolationcount\" : { \"$ne\" : 0}}}, { \"$project\" : { \"orchestrationid\" : \"$document.orchestrationid\"}}]}");
+    body.setPolicyViolation(PolicyViolationEnum.ANY);
+    aggregation = new ArtifactServiceImpl().getPolicyViolationEnforcementAggregation(body);
+    assertThat(aggregation.toString())
+        .isEqualTo(
+            "{ \"aggregate\" : \"__collection__\", \"pipeline\" : [{ \"$sort\" : { \"createdAt\" : -1}}, { \"$group\" : { \"_id\" : \"$orchestrationId\", \"document\" : { \"$first\" : \"$$ROOT\"}}}, { \"$unwind\" : \"$document\"}, { \"$match\" : { \"$or\" : [{ \"document.allowlistviolationcount\" : { \"$ne\" : 0}}, { \"document.denylistviolationcount\" : { \"$ne\" : 0}}]}}, { \"$project\" : { \"orchestrationid\" : \"$document.orchestrationid\"}}]}");
+    body.setPolicyViolation(PolicyViolationEnum.NONE);
+    aggregation = new ArtifactServiceImpl().getPolicyViolationEnforcementAggregation(body);
+    assertThat(aggregation.toString())
+        .isEqualTo(
+            "{ \"aggregate\" : \"__collection__\", \"pipeline\" : [{ \"$sort\" : { \"createdAt\" : -1}}, { \"$group\" : { \"_id\" : \"$orchestrationId\", \"document\" : { \"$first\" : \"$$ROOT\"}}}, { \"$unwind\" : \"$document\"}, { \"$match\" : { \"document.allowlistviolationcount\" : 0, \"document.denylistviolationcount\" : 0}}, { \"$project\" : { \"orchestrationid\" : \"$document.orchestrationid\"}}]}");
   }
 
   @Test
@@ -433,7 +526,6 @@ public class ArtifactServiceImplTest extends SSCAManagerTestBase {
     assertThat(responseList.get(0).getPipelineId()).isEqualTo("K8sDeploy");
     assertThat(responseList.get(0).getPipelineExecutionId()).isEqualTo("lastExecutionId");
     assertThat(responseList.get(0).getTriggeredBy()).isEqualTo("username");
-    assertThat(responseList.get(0).getAttestedStatus()).isEqualTo(AttestedStatusEnum.PASS);
   }
 
   @Test

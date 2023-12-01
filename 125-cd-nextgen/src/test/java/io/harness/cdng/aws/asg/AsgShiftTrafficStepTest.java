@@ -16,6 +16,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import io.harness.CategoryTest;
@@ -24,6 +25,7 @@ import io.harness.category.element.UnitTests;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.common.beans.SetupAbstractionKeys;
 import io.harness.cdng.infra.beans.AsgInfrastructureOutcome;
+import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.instance.info.InstanceInfoService;
 import io.harness.cdng.instance.outcome.DeploymentInfoOutcome;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
@@ -164,6 +166,10 @@ public class AsgShiftTrafficStepTest extends CategoryTest {
         .when(instanceInfoService)
         .saveServerInstancesIntoSweepingOutput(any(), any());
 
+    doReturn(mock(InfrastructureOutcome.class))
+        .when(asgStepCommonHelper)
+        .getInfrastructureOutcomeWithUpdatedExpressions(any());
+
     StepResponse stepResponse = asgShiftTrafficStep.handleTaskResultWithSecurityContext(
         ambiance, stepElementParameters, () -> (AsgCommandResponse) responseData);
 
@@ -171,6 +177,8 @@ public class AsgShiftTrafficStepTest extends CategoryTest {
         Collectors.toMap(StepResponse.StepOutcome::getName, StepResponse.StepOutcome::getOutcome));
 
     assertThat(outcomeMap.get(OutcomeExpressionConstants.OUTPUT)).isInstanceOf(AsgShiftTrafficOutcome.class);
+    assertThat(outcomeMap.get(OutcomeExpressionConstants.DEPLOYMENT_INFO_OUTCOME))
+        .isInstanceOf(DeploymentInfoOutcome.class);
   }
 
   @Test
@@ -214,6 +222,9 @@ public class AsgShiftTrafficStepTest extends CategoryTest {
 
     doReturn(asgInfrastructureOutcome1).when(outcomeService).resolve(any(), any());
     doReturn(asgInfraConfig).when(asgStepCommonHelper).getAsgInfraConfig(any(), any());
+    doReturn(mock(InfrastructureOutcome.class))
+        .when(asgStepCommonHelper)
+        .getInfrastructureOutcomeWithUpdatedExpressions(any());
 
     AsgExecutionPassThroughData asgExecutionPassThroughData =
         AsgExecutionPassThroughData.builder().infrastructure(asgInfrastructureOutcome1).build();
