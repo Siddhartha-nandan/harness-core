@@ -8,14 +8,17 @@
 package io.harness.gitsync.common.impl;
 
 import static io.harness.annotations.dev.HarnessTeam.DX;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.exception.WingsException.USER;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.authorization.AuthorizationServiceHeader;
 import io.harness.beans.IdentifierRef;
 import io.harness.beans.Scope;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.connector.ConnectorResponseDTO;
 import io.harness.connector.services.ConnectorService;
+import io.harness.connector.utils.HarnessCodeConnectorUtils;
 import io.harness.delegate.beans.connector.ConnectorConfigDTO;
 import io.harness.delegate.beans.connector.scm.ScmConnector;
 import io.harness.delegate.beans.git.YamlGitConfigDTO;
@@ -30,7 +33,10 @@ import io.harness.gitsync.helpers.GitContextHelper;
 import io.harness.gitsync.interceptor.GitEntityInfo;
 import io.harness.gitsync.interceptor.GitSyncBranchContext;
 import io.harness.manage.GlobalContextManager;
+import io.harness.ng.BaseUrls;
+import io.harness.remote.client.ServiceHttpClientConfig;
 import io.harness.security.PrincipalContextData;
+import io.harness.security.ServiceTokenGenerator;
 import io.harness.tasks.DecryptGitApiAccessHelper;
 import io.harness.utils.IdentifierRefHelper;
 
@@ -50,13 +56,19 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
   ConnectorService connectorService;
   DecryptGitApiAccessHelper decryptGitApiAccessHelper;
   YamlGitConfigService yamlGitConfigService;
+  ServiceTokenGenerator tokenGenerator;
+  BaseUrls baseUrls;
 
   @Inject
   public GitSyncConnectorServiceImpl(@Named("connectorDecoratorService") ConnectorService connectorService,
-      DecryptGitApiAccessHelper decryptGitApiAccessHelper, YamlGitConfigService yamlGitConfigService) {
+      DecryptGitApiAccessHelper decryptGitApiAccessHelper, YamlGitConfigService yamlGitConfigService,
+      @Named("harnessCodeClientConfig") ServiceHttpClientConfig harnessCodeClientConfig,
+      ServiceTokenGenerator tokenGenerator, BaseUrls baseUrls) {
     this.connectorService = connectorService;
     this.decryptGitApiAccessHelper = decryptGitApiAccessHelper;
     this.yamlGitConfigService = yamlGitConfigService;
+    this.baseUrls = baseUrls;
+    this.tokenGenerator = tokenGenerator;
   }
 
   @Override
@@ -222,6 +234,9 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
   @Override
   public ScmConnector getScmConnector(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String connectorRef) {
+    if (isEmpty(connectorRef)) {
+      return getHarnessCodeConnector("", projectIdentifier, orgIdentifier, accountIdentifier);
+    }
     Optional<ConnectorResponseDTO> connectorDTO =
         connectorService.getByRef(accountIdentifier, orgIdentifier, projectIdentifier, connectorRef);
     if (connectorDTO.isPresent()) {
@@ -253,6 +268,9 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
   @Override
   public ScmConnector getScmConnectorForGivenRepo(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String connectorRef, String repoName) {
+    if (isEmpty(connectorRef)) {
+      return getHarnessCodeConnector(repoName, projectIdentifier, orgIdentifier, accountIdentifier);
+    }
     ScmConnector scmConnector = getScmConnector(accountIdentifier, orgIdentifier, projectIdentifier, connectorRef);
     scmConnector.setGitConnectionUrl(
         scmConnector.getGitConnectionUrl(GitRepositoryDTO.builder().name(repoName).build()));
@@ -261,6 +279,10 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
 
   @Override
   public ScmConnector getScmConnectorForGivenRepo(Scope scope, String connectorRef, String repoName) {
+    if (isEmpty(connectorRef)) {
+      return getHarnessCodeConnector(
+          repoName, scope.getProjectIdentifier(), scope.getOrgIdentifier(), scope.getAccountIdentifier());
+    }
     ScmConnector scmConnector = getScmConnector(
         scope.getAccountIdentifier(), scope.getOrgIdentifier(), scope.getProjectIdentifier(), connectorRef);
     scmConnector.setGitConnectionUrl(
@@ -271,10 +293,20 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
   @Override
   public ScmConnector getDecryptedConnectorForGivenRepo(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String connectorRef, String repoName) {
+    if (isEmpty(connectorRef)) {
+      return getHarnessCodeConnector(repoName, projectIdentifier, orgIdentifier, accountIdentifier);
+    }
     ScmConnector scmConnector =
         getDecryptedConnectorByRef(accountIdentifier, orgIdentifier, projectIdentifier, connectorRef);
     scmConnector.setGitConnectionUrl(
         scmConnector.getGitConnectionUrl(GitRepositoryDTO.builder().name(repoName).build()));
     return scmConnector;
+  }
+
+  private ScmConnector getHarnessCodeConnector(
+      String repoName, String projectIdentifier, String orgIdentifier, String accountId) {
+    String harnessCodeApiBaseUrl = baseUrls.getScmServiceBaseUrl();
+    return HarnessCodeConnectorUtils.getDummyHarnessCodeConnectorWithJwtAuth(repoName, projectIdentifier, orgIdentifier,
+        accountId, AuthorizationServiceHeader.NG_MANAGER.getServiceId(), harnessCodeApiBaseUrl, tokenGenerator);
   }
 }
