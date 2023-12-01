@@ -9,7 +9,7 @@ global:
   imagePullSecrets: []
   stackDriverLoggingEnabled: false
   monitoring:
-    enabled: true
+    enabled: false
     managedPlatform: "google"
     port: 8889
     path: /metrics
