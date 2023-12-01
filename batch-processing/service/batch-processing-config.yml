@@ -283,3 +283,14 @@ awsServiceEndpointUrls:
   stsEndPointUrl: https://sts.us-east-1.amazonaws.com
   ecsEndPointUrl: https://ecs.us-east-1.amazonaws.com
   cloudwatchEndPointUrl: https://monitoring.us-east-1.amazonaws.com
+
+
+gcpSyncSmpConfig:
+  nextgenCeSecretName: "nextgen-ce"
+  batchProcessingSecretName: "batch-processing"
+  awsDestinationBucketKey: "AWS_DESTINATION_BUCKET"
+  awsAccountIdKey: "AWS_ACCOUNT_ID"
+  k8sJobContainerName: "python-gcp-container"
+  k8sJobName: "python-gcp-job"
+  k8sJobPythonImage: "harnessdev/pyapp-gcp"
+  batchProcessingConfigMapName: "batch-processing"
