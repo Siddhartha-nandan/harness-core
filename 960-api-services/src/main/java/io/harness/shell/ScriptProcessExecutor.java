@@ -6,7 +6,6 @@
  */
 
 package io.harness.shell;
-
 import static io.harness.azure.model.AzureConstants.AZURE_LOGIN_CONFIG_DIR_PATH;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
@@ -50,10 +49,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
-import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -305,7 +301,6 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
 
       String[] commandList = new String[] {"/bin/bash", scriptFilename};
 
-      List<ShellScriptLog> logList = new ArrayList<>();
       ProcessStopper processStopper = new ChildProcessStopper(scriptFilename, workingDirectory,
           new ProcessExecutor()
               .environment(environment)
@@ -316,6 +311,7 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
                   log.info(line);
                 }
               }));
+
       StringBuilder errorLog = new StringBuilder();
       ProcessExecutor processExecutor = new ProcessExecutor()
                                             .command(commandList)
@@ -326,7 +322,7 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
                                             .redirectOutput(new LogOutputStream() {
                                               @Override
                                               protected void processLine(String line) {
-                                                logList.add(new ShellScriptLog(Instant.now(), line, INFO));
+                                                saveExecutionLog(line, INFO);
                                               }
                                             })
                                             .redirectError(new LogOutputStream() {
@@ -334,7 +330,7 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
                                               protected void processLine(String line) {
                                                 errorLog.append(line);
                                                 errorLog.append('\n');
-                                                logList.add(new ShellScriptLog(Instant.now(), line, ERROR));
+                                                saveExecutionLog(line, ERROR);
                                               }
                                             });
 
@@ -347,12 +343,6 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
       if (errorLog.length() > 0) {
         log.error("[ScriptProcessExecutor-03] Error output stream:\n{}",
             LogSanitizerHelper.sanitizeTokens(errorLog.toString()));
-      }
-
-      logList.sort(Comparator.comparing(ShellScriptLog::getTimeStamp));
-
-      for (ShellScriptLog log : logList) {
-        saveExecutionLog(log.getText(), log.getLevel());
       }
 
       commandExecutionStatus = processResult.getExitValue() == 0 ? SUCCESS : FAILURE;
