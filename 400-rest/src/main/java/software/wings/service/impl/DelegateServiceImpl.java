@@ -560,7 +560,7 @@ public class DelegateServiceImpl implements DelegateService {
         delegateGroupQuery.field(DelegateGroupKeys.status).notEqual(DelegateGroupStatus.DELETED).asList();
 
     if (applyRbacFilter) {
-      delegateRbacHelper.getViewPermittedDelegateGroups(delegateGroups, accountId, orgId, projectId);
+      delegateGroups = delegateRbacHelper.getViewPermittedDelegateGroups(delegateGroups, accountId, orgId, projectId);
     }
 
     return delegateGroups.stream()
