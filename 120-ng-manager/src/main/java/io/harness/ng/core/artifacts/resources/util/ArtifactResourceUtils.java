@@ -7,8 +7,6 @@
 
 package io.harness.ng.core.artifacts.resources.util;
 
-import static io.harness.cdng.service.steps.constants.ServiceStepV3Constants.ENV_GIT_BRANCH;
-import static io.harness.cdng.service.steps.constants.ServiceStepV3Constants.SERVICE_GIT_BRANCH;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.gitcaching.GitCachingConstants.BOOLEAN_FALSE_VALUE;
