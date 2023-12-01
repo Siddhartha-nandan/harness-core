@@ -126,6 +126,7 @@ import io.harness.delegate.beans.logstreaming.UnitProgressDataMapper;
 import io.harness.delegate.beans.pcf.artifact.TasArtifactRegistryType;
 import io.harness.delegate.beans.storeconfig.GitStoreDelegateConfig;
 import io.harness.delegate.task.artifactBundle.ArtifactBundleDelegateConfig;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
 import io.harness.delegate.task.artifactBundle.ArtifactBundleFetchRequest;
 import io.harness.delegate.task.artifactBundle.PackageArtifactConfig;
 import io.harness.delegate.task.artifactBundle.response.ArtifactBundleFetchResponse;
@@ -496,6 +497,18 @@ public class TasStepHelper {
     updates.put(String.format(
                     "%s.%s", StageExecutionInfoKeys.executionDetails, TasStageExecutionDetailsKeys.tasManifestsPackage),
         tasManifestsPackage);
+    stageExecutionInfoService.update(scope, ambiance.getStageExecutionId(), updates);
+  }
+
+  public void updateArtifactBundleDetails(
+      Ambiance ambiance, ArtifactBundleDetails artifactBundleDetails, String appName, TasInfraConfig tasInfraConfig) {
+    Scope scope = Scope.of(AmbianceUtils.getAccountId(ambiance), AmbianceUtils.getOrgIdentifier(ambiance),
+        AmbianceUtils.getProjectIdentifier(ambiance));
+    Map<String, Object> updates = new HashMap<>();
+    updates.put(StageExecutionInfoKeys.deploymentIdentifier, getDeploymentIdentifier(tasInfraConfig, appName));
+    updates.put(String.format("%s.%s", StageExecutionInfoKeys.executionDetails,
+                    TasStageExecutionDetailsKeys.artifactBundleDetails),
+        artifactBundleDetails);
     stageExecutionInfoService.update(scope, ambiance.getStageExecutionId(), updates);
   }
 
@@ -887,7 +900,7 @@ public class TasStepHelper {
     AutoScalerManifestOutcome autoScalerManifestOutcome = null;
     boolean autoScalarManifestFound = false;
     List<VarsManifestOutcome> varsManifestOutcomeList = new ArrayList<>();
-    validateArtifactBundleManifestStore(orderedManifestOutcomes);
+    orderedManifestOutcomes = filterManifestsForArtifactBundle(orderedManifestOutcomes);
     for (ManifestOutcome manifestOutcome : orderedManifestOutcomes) {
       switch (manifestOutcome.getType()) {
         case TAS_AUTOSCALER:
@@ -1544,6 +1557,8 @@ public class TasStepHelper {
             .allFilesFetched(allFilesFetched)
             .commandUnits(tasStepPassThroughData.getCommandUnits())
             .rawScript(tasStepPassThroughData.getRawScript())
+            .tasManifestOutcome(
+                tasManifestOutcome.getType().equals(TAS_MANIFEST) ? (TasManifestOutcome) tasManifestOutcome : null)
             .build(),
         tasStepPassThroughData.getShouldOpenFetchFilesStream(),
         UnitProgressData.builder().unitProgresses(tasStepPassThroughData.getUnitProgresses()).build());
@@ -1573,6 +1588,8 @@ public class TasStepHelper {
     tasStepPassThroughData.getUnitProgresses().add(unitProgress.build());
     return tasStepExecutor.executeTasTask(tasManifestOutcome, ambiance, stepElementParameters,
         TasExecutionPassThroughData.builder()
+            .tasManifestOutcome(
+                tasManifestOutcome.getType().equals(TAS_MANIFEST) ? (TasManifestOutcome) tasManifestOutcome : null)
             .applicationName(fetchTasApplicationName(tasManifestsPackage))
             .zippedManifestId(tasStepPassThroughData.getZippedManifestFileId())
             .tasManifestsPackage(tasManifestsPackage)
@@ -2275,35 +2292,63 @@ public class TasStepHelper {
     return false;
   }
 
-  private void validateArtifactBundleManifestStore(List<ManifestOutcome> orderedManifestOutcomes) {
-    TasManifestOutcome artifactBundleStoreManifestOutcome = null;
-    List<TasManifestOutcome> tasManifestTypeOutcomeList = new ArrayList<>();
-    AutoScalerManifestOutcome autoScalerManifestOutcome = null;
+  private List<ManifestOutcome> filterManifestsForArtifactBundle(List<ManifestOutcome> orderedManifestOutcomes) {
+    boolean isArtifactBundleStoreManifestPresent = false;
+    boolean isInServiceArtifactBundleManifestIsPresent = false;
+
+    // isArtifactBundleStoreManifestPresent this boolean indicate whether Artifact bundle store Type Manifest is Present
+    // in orderedManifestOutcomes or not , if not present we will return the orderedManifestOutcomes as it is.
+
+    // isInServiceArtifactBundleManifestIsPresent this boolean indicate that the Tas Manifest Present in Service has
+    // Store Type Artifact Bundle or Not, Service level Tas Manifest comes at last of this orderedManifestOutcomes
     for (ManifestOutcome manifestOutcome : orderedManifestOutcomes) {
       if (manifestOutcome.getType().equals(TAS_MANIFEST)) {
         if (manifestOutcome.getStore().getKind().equals(ManifestStoreType.ARTIFACT_BUNDLE)) {
-          artifactBundleStoreManifestOutcome = (TasManifestOutcome) manifestOutcome;
+          isArtifactBundleStoreManifestPresent = true;
+          isInServiceArtifactBundleManifestIsPresent = true;
+        } else {
+          isInServiceArtifactBundleManifestIsPresent = false;
         }
-        tasManifestTypeOutcomeList.add((TasManifestOutcome) manifestOutcome);
-      }
-      if (manifestOutcome.getType().equals(TAS_AUTOSCALER) && (manifestOutcome instanceof AutoScalerManifestOutcome)) {
-        autoScalerManifestOutcome = (AutoScalerManifestOutcome) manifestOutcome;
       }
     }
-    if (artifactBundleStoreManifestOutcome != null) {
-      if (tasManifestTypeOutcomeList.size() > 1) {
-        throw new InvalidRequestException(
-            format(
-                "Tas Manifest of Artifact Bundle Store type doesn't support Additional Manifest of type Tas Manifest.Expected count of Tas Manifest is 1 but found : %s",
-                tasManifestTypeOutcomeList.size()),
-            USER);
-      }
-      if (!isEmpty(getParameterFieldValue(artifactBundleStoreManifestOutcome.getAutoScalerPath()))
-          && (autoScalerManifestOutcome != null)) {
-        throw new InvalidRequestException(
-            "Tas Manifest of Artifact Bundle Store type having Autoscaler manifest configured doesn't support Autoscaler manifest type Separately.",
-            USER);
+
+    if (!isArtifactBundleStoreManifestPresent) {
+      return orderedManifestOutcomes;
+    }
+
+    List<ManifestOutcome> updatedOrderedManifestOutcomes = new ArrayList<>();
+
+    for (ManifestOutcome manifestOutcome : orderedManifestOutcomes) {
+      if (manifestOutcome.getType().equals(TAS_MANIFEST)) {
+        // Case 1 : If service Manifest is Artifact Bundle Type then ignore All override manifest which has Store type
+        // other than Artifact Bundle
+        // Case 2 : If service Manifest is of Other Store Type then ignore All override manifest which has Store type
+        // Artifact Bundle
+        if (isInServiceArtifactBundleManifestIsPresent) {
+          if (manifestOutcome.getStore().getKind().equals(ManifestStoreType.ARTIFACT_BUNDLE)) {
+            updatedOrderedManifestOutcomes.add(manifestOutcome);
+          } else {
+            log.warn(
+                "Ignoring the Override Manifest \"{}\" because Service Manifest is of Artifact Bundle Store Type. ",
+                manifestOutcome.getIdentifier());
+          }
+        } else {
+          if (!manifestOutcome.getStore().getKind().equals(ManifestStoreType.ARTIFACT_BUNDLE)) {
+            updatedOrderedManifestOutcomes.add(manifestOutcome);
+          } else {
+            log.warn(
+                "Ignoring the Override Manifest \"{}\" because Service Manifest is of Non Artifact Bundle Store Type. ",
+                manifestOutcome.getIdentifier());
+          }
+        }
+      } else {
+        updatedOrderedManifestOutcomes.add(manifestOutcome);
       }
     }
+    // Sorting on the basis of Order which indicate the Priority
+    Comparator<ManifestOutcome> comparator = Comparator.comparingInt(ManifestOutcome::getOrder).reversed();
+    updatedOrderedManifestOutcomes.sort(comparator);
+
+    return updatedOrderedManifestOutcomes;
   }
 }

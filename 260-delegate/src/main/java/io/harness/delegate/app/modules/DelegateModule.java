@@ -523,6 +523,7 @@ import io.harness.googlefunctions.GoogleCloudFunctionGenOneClient;
 import io.harness.googlefunctions.GoogleCloudFunctionGenOneClientImpl;
 import io.harness.googlefunctions.GoogleCloudRunClient;
 import io.harness.googlefunctions.GoogleCloudRunClientImpl;
+import io.harness.helm.HelmCliExecutorFactory;
 import io.harness.helm.HelmClient;
 import io.harness.helm.HelmClientImpl;
 import io.harness.helpers.EncryptDecryptHelperImpl;
@@ -1080,6 +1081,13 @@ public class DelegateModule extends AbstractModule {
   public ExecutorService k8sSteadyStateExecutor() {
     return Executors.newCachedThreadPool(
         new ThreadFactoryBuilder().setNameFormat("k8sSteadyState-%d").setPriority(Thread.MAX_PRIORITY).build());
+  }
+
+  @Provides
+  @Singleton
+  @Named("helmCliExecutor")
+  public ExecutorService helmCliExecutor() {
+    return HelmCliExecutorFactory.create();
   }
 
   @Provides
@@ -2001,6 +2009,7 @@ public class DelegateModule extends AbstractModule {
     mapBinder.addBinding(TaskType.K8S_COMMAND_TASK).toInstance(K8sTask.class);
     mapBinder.addBinding(TaskType.K8S_COMMAND_TASK_NG).toInstance(K8sTaskNG.class);
     mapBinder.addBinding(TaskType.K8S_COMMAND_TASK_NG_V2).toInstance(K8sTaskNG.class);
+    mapBinder.addBinding(TaskType.K8S_COMMAND_TASK_NG_TRAFFIC_ROUTING).toInstance(K8sTaskNG.class);
     mapBinder.addBinding(TaskType.K8S_COMMAND_TASK_NG_RANCHER).toInstance(K8sTaskNG.class);
     mapBinder.addBinding(TaskType.K8S_DRY_RUN_MANIFEST_TASK_NG).toInstance(K8sTaskNG.class);
     mapBinder.addBinding(TaskType.K8S_COMMAND_TASK_NG_OCI_ECR_CONFIG_V2).toInstance(K8sTaskNG.class);
