@@ -60,7 +60,7 @@ public class PolicyResourceImpl implements Resource {
 
   @Override
   public Set<ScopeLevel> getValidScopeLevels() {
-    return EnumSet.of(ScopeLevel.ACCOUNT, ScopeLevel.PROJECT, ScopeLevel.ORGANIZATION);
+    return Collections.emptySet();
   }
 
   @Override
