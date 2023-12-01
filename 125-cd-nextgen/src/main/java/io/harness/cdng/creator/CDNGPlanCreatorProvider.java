@@ -1465,7 +1465,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
             .setType(StepSpecTypeConstants.AWS_SAM_DEPLOY)
             .setStepMetaData(
                 StepMetaData.newBuilder().addCategory(AWS_SAM).addCategory(PLUGIN).setFolderPath("AWS SAM").build())
-            .setFeatureFlag(FeatureName.CDP_AWS_SAM.name())
             .build();
 
     StepInfo downloadManifests =
@@ -1482,7 +1481,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
             .setType(StepSpecTypeConstants.AWS_SAM_BUILD)
             .setStepMetaData(
                 StepMetaData.newBuilder().addCategory(AWS_SAM).addCategory(PLUGIN).setFolderPath("AWS SAM").build())
-            .setFeatureFlag(FeatureName.CDP_AWS_SAM.name())
             .build();
 
     StepInfo awsSamRollback =
@@ -1490,7 +1488,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
             .setName("AWS SAM Rollback")
             .setType(StepSpecTypeConstants.AWS_SAM_ROLLBACK)
             .setStepMetaData(StepMetaData.newBuilder().addCategory("AwsSamRollback").setFolderPath("AWS SAM").build())
-            .setFeatureFlag(FeatureName.CDP_AWS_SAM.name())
             .build();
 
     StepInfo terraformCloudRollback =

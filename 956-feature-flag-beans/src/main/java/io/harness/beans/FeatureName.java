@@ -79,7 +79,6 @@ public enum FeatureName {
       HarnessTeam.CDB),
   CDB_MFE_ENABLED("Feature flag is needed to test/control the microfrontend architecture for CDB UI", HarnessTeam.CDB),
   CDC_SERVICE_DASHBOARD_REVAMP_NG("Service Dashboard Revamp is behind this FF", HarnessTeam.CDC),
-  CDP_AWS_SAM("FF for enabling AWS SAM deployments", HarnessTeam.CDP),
   CDP_SKIP_DEFAULT_VALUES_YAML_CG(
       "Skip adding the default values file as an override if it doesn't contain any expressions in case of helm chart manifest for CG",
       HarnessTeam.CDP),

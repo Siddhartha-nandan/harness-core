@@ -60,7 +60,6 @@ public class DownloadManifestsStepHelper {
         ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.SERVICE));
 
     if (ServiceSpecType.AWS_SAM.equals(serviceOutcome.getType())) {
-      checkSamFeatureFlagEnabled(ambiance);
       return awsSamDownloadManifestsStepHelper.executeAsyncAfterRbac(ambiance, inputPackage, gitCloneStep);
     } else if (ServiceSpecType.SERVERLESS_AWS_LAMBDA.equals(serviceOutcome.getType())) {
       checkServerlessV2FeatureFlagEnabled(ambiance);
@@ -76,7 +75,6 @@ public class DownloadManifestsStepHelper {
         ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.SERVICE));
 
     if (ServiceSpecType.AWS_SAM.equals(serviceOutcome.getType())) {
-      checkSamFeatureFlagEnabled(ambiance);
       return awsSamDownloadManifestsStepHelper.handleAsyncResponse(ambiance, responseDataMap);
     } else if (ServiceSpecType.SERVERLESS_AWS_LAMBDA.equals(serviceOutcome.getType())) {
       checkServerlessV2FeatureFlagEnabled(ambiance);
@@ -92,21 +90,12 @@ public class DownloadManifestsStepHelper {
         ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.SERVICE));
 
     if (ServiceSpecType.AWS_SAM.equals(serviceOutcome.getType())) {
-      checkSamFeatureFlagEnabled(ambiance);
       return awsSamDownloadManifestsStepHelper.getPluginInfoList(request, usedPorts, ambiance);
     } else if (ServiceSpecType.SERVERLESS_AWS_LAMBDA.equals(serviceOutcome.getType())) {
       checkServerlessV2FeatureFlagEnabled(ambiance);
       return serverlessDownloadManifestsStepHelper.getPluginInfoList(request, usedPorts, ambiance);
     } else {
       throw new InvalidRequestException(DEPLOYMENT_TYPE_NOT_SUPPORTED_EXCEPTION_MESSAGE, USER);
-    }
-  }
-
-  public void checkSamFeatureFlagEnabled(Ambiance ambiance) {
-    if (!cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), FeatureName.CDP_AWS_SAM)) {
-      throw new AccessDeniedException(
-          "CDP_AWS_SAM FF is not enabled for this account. Please contact harness customer care.",
-          ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
     }
   }
 
