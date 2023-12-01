@@ -139,8 +139,8 @@ public class OrganizationServiceImpl implements OrganizationService {
       addToScopeInfoCache(savedOrganization);
       setupOrganization(Scope.of(accountIdentifier, savedOrganization.getIdentifier(), null));
       log.info(String.format(
-          "Organization with identifier [%s], uniqueId [%s] was successfully created with scope uniqueId [%s]",
-          organization.getIdentifier(), organization.getUniqueId(), scopeInfo.getUniqueId()));
+          "Scope- [accountIdentifier: %s]. Organization with identifier [%s] and uniqueId [%s] successfully created",
+          accountIdentifier, savedOrganization.getIdentifier(), savedOrganization.getUniqueId()));
       instrumentationHelper.sendOrganizationCreateEvent(organization, accountIdentifier);
       return savedOrganization;
     } catch (DuplicateKeyException ex) {
@@ -304,6 +304,7 @@ public class OrganizationServiceImpl implements OrganizationService {
       }
       organization.setUniqueId(existingOrganization.getUniqueId());
       organization.setParentId(existingOrganization.getParentId());
+      organization.setParentId(existingOrganization.getParentId());
       validate(organization);
       return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
         Organization updatedOrganization = organizationRepository.save(organization);
@@ -392,14 +393,14 @@ public class OrganizationServiceImpl implements OrganizationService {
             organizationRepository.hardDelete(accountIdentifier, scopeInfo.getUniqueId(), identifier, version);
         if (isNull(organization)) {
           log.error(String.format(
-              "Organization with identifier [%s], scope uniqueId [%s] could not be deleted as it does not exist",
-              identifier, scopeInfo.getUniqueId()));
+              "Scope- [accountIdentifier: %s, uniqueId: %s]. Organization with identifier [%s] could not be deleted as it does not exist",
+              accountIdentifier, scopeInfo.getUniqueId(), identifier));
           throw new EntityNotFoundException(
               String.format("Organization with identifier [%s] does not exist in the specified scope", identifier));
         }
-
-        log.info(String.format("Organization with identifier [%s], scope uniqueId [%s] was successfully deleted",
-            identifier, scopeInfo.getUniqueId()));
+        log.info(String.format(
+            "Scope- [accountIdentifier: %s, uniqueId: %s]. Organization with identifier [%s] successfully deleted",
+            accountIdentifier, scopeInfo.getUniqueId(), identifier));
         outboxService.save(new OrganizationDeleteEvent(accountIdentifier, OrganizationMapper.writeDto(organization)));
         instrumentationHelper.sendOrganizationDeleteEvent(organization, accountIdentifier);
         return true;

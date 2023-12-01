@@ -22,7 +22,9 @@ import io.harness.scopeinfoclient.remote.ScopeInfoClient;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import java.util.Optional;
+import java.util.Set;
 import javax.annotation.Priority;
+import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Priorities;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
@@ -39,6 +41,7 @@ import org.apache.commons.lang3.StringUtils;
 @Provider
 public class ScopeInfoFilter implements ContainerRequestFilter {
   private static final String SCOPE_INFO_FILTER_LOG = "SCOPE_INFO_FILTER: ";
+  public static final Set<String> matchingPathRequests = Set.of("organizations");
 
   private final ScopeInfoClient scopeInfoClient;
   @Context private ResourceInfo resourceInfo;
@@ -49,7 +52,7 @@ public class ScopeInfoFilter implements ContainerRequestFilter {
 
   @Override
   public void filter(ContainerRequestContext requestContext) {
-    if (isOnlyHandledResourceRequest(requestContext)) {
+    if (isFilterApplicableOnRequest(requestContext)) {
       Optional<String> accountIdentifierOptional = getAccountIdentifierFrom(requestContext);
       if (accountIdentifierOptional.isEmpty() || accountIdentifierOptional.get().isEmpty()) {
         // there can be cases when account identifier may actually be not present in API,
@@ -68,18 +71,15 @@ public class ScopeInfoFilter implements ContainerRequestFilter {
         Optional<ScopeInfo> optionalScopeInfo =
             NGRestUtils.getResponse(scopeInfoClient.getScopeInfo(accountIdentifier, orgIdentifier, projectIdentifier));
         if (optionalScopeInfo.isEmpty()) {
-          log.warn(format(
-              "%s No Scope with given identifiers - accountIdentifier: [%s], orgIdentifier: [%s], projectIdentifier: [%s] present",
-              SCOPE_INFO_FILTER_LOG, accountIdentifier, orgIdentifier, projectIdentifier));
-          // Set a ScopeInfo which will be acted upon at respective Resource layers so error handling should remain as
-          // is
-          requestContext.setProperty(SCOPE_INFO_CONTEXT_PROPERTY,
-              ScopeInfo.builder()
-                  .accountIdentifier(accountIdentifier)
-                  .orgIdentifier(orgIdentifier)
-                  .projectIdentifier(projectIdentifier)
-                  .build());
-          return;
+          String errorMsg = null;
+          if (StringUtils.isEmpty(orgIdentifier) && StringUtils.isEmpty(projectIdentifier)) {
+            errorMsg = format("Account with identifier [%s] not found", accountIdentifier);
+          } else if (StringUtils.isEmpty(projectIdentifier)) {
+            errorMsg = format("Organization with identifier [%s] not found", orgIdentifier);
+          } else {
+            errorMsg = format("Project with identifier [%s] not found", projectIdentifier);
+          }
+          throw new NotFoundException(errorMsg);
         }
         ScopeInfo scopeInfo = ScopeInfo.builder()
                                   .accountIdentifier(accountIdentifier)
@@ -145,9 +145,9 @@ public class ScopeInfoFilter implements ContainerRequestFilter {
     return ScopeInfoClient.SCOPE_INFO.equals(requestContext.getUriInfo().getPath());
   }
 
-  private boolean isOnlyHandledResourceRequest(ContainerRequestContext requestContext) {
+  private boolean isFilterApplicableOnRequest(ContainerRequestContext requestContext) {
     return requestContext != null && requestContext.getUriInfo() != null
         && requestContext.getUriInfo().getPath() != null
-        && requestContext.getUriInfo().getPath().contains("organizations");
+        && matchingPathRequests.stream().anyMatch(requestContext.getUriInfo().getPath()::contains);
   }
 }
