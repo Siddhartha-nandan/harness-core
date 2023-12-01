@@ -63,8 +63,7 @@ public class MatrixConfigServiceHelper {
     int currentIteration = 0;
     int totalCount = combinations.size();
     if (totalCount == 0) {
-      throw new InvalidRequestException(
-          "Total number of iterations found to be 0 for this strategy. Please check pipeline yaml");
+      return children;
     }
 
     // map to store Matrix Combination String
@@ -341,8 +340,7 @@ public class MatrixConfigServiceHelper {
       List<Integer> indexPath) {
     ExpressionAxisConfig axisValues = expressionAxisConfigMap.get(key);
     if (axisValues.getExpression().getValue() == null) {
-      throw new InvalidYamlException(
-          "Unable to resolve the expression for " + key + ". Please ensure that expression is correct.");
+      return;
     }
     Object value = axisValues.getExpression().getValue();
     if (!(value instanceof List)) {
