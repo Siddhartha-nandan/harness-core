@@ -10,6 +10,7 @@ package io.harness.ng.core.beans;
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.InputsMetadata;
 import io.harness.gitsync.beans.StoreType;
 import io.harness.gitsync.sdk.EntityGitDetails;
 
@@ -17,6 +18,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.annotations.ApiModel;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.Map;
 import javax.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -34,6 +36,7 @@ public class ServiceV2YamlMetadata {
   @NotNull String serviceIdentifier;
   String serviceYaml;
   String inputSetTemplateYaml;
+  Map<String, InputsMetadata> fqnToInputsMetadataMap;
   // scope identifiers
   String orgIdentifier;
   String projectIdentifier;

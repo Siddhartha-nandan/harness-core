@@ -16,6 +16,7 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.InputsMetadata;
 import io.harness.common.NGExpressionUtils;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.data.structure.HarnessStringUtils;
@@ -92,6 +93,66 @@ public class RuntimeInputFormHelper {
 
   private JsonNode createRuntimeInputFormWithDefaultValuesJsonNode(JsonNode jsonNode) {
     return createRuntimeInputFormJsonNode(jsonNode, true, true);
+  }
+
+  public Map<String, InputsMetadata> createRuntimeFqnToInputsMetadataMap(
+          String yaml) {
+    YamlConfig yamlConfig = new YamlConfig(yaml);
+    Map<FQN, Object> fullMap = yamlConfig.getFqnToValueMap();
+    Map<FQN, Object> templateMap = new LinkedHashMap<>();
+    fullMap.keySet().forEach(key -> {
+      String value = HarnessStringUtils.removeLeadingAndTrailingQuotesBothOrNone(fullMap.get(key).toString());
+      // keepInput can be considered always true if value matches executionInputPattern. As the input will be provided
+      // at execution time.
+      if (NGExpressionUtils.matchesExecutionInputPattern(value)
+              || (keepInput && NGExpressionUtils.matchesInputSetPattern(value))
+              || (!keepInput && !NGExpressionUtils.matchesInputSetPattern(value) && !key.isIdentifierOrVariableName()
+              && !key.isType())) {
+        templateMap.put(key, fullMap.get(key));
+      }
+    });
+
+    /* we only want to keep "default" keys if they have a sibling as runtime input
+    For example, over here, the default of v1 should be kept, while v2 should not be kept at all
+    - name: v1
+      type: String
+      default: v1Val
+      value: <+input>
+    - name: v2
+      type: String
+      default: v2Val
+      value: fixedValue
+      This code block goes over all the runtime input fields (all of them are in templateMap). For every runtime input
+    key, it checks if it has a sibling with key "default" in the full pipeline map. If it is there, then the default key
+    is added to the template. In the above example, the "default" key for v2 is not even looped over
+     */
+    if (keepDefaultValues && EmptyPredicate.isNotEmpty(templateMap)) {
+      Map<FQN, Object> defaultKeys = new LinkedHashMap<>();
+      templateMap.keySet().forEach(key -> {
+        FQN parent = key.getParent();
+        FQN defaultSibling = FQN.duplicateAndAddNode(
+                parent, FQNNode.builder().nodeType(FQNNode.NodeType.KEY).key(YAMLFieldNameConstants.DEFAULT).build());
+        if (fullMap.containsKey(defaultSibling)) {
+          defaultKeys.put(defaultSibling, fullMap.get(defaultSibling));
+        }
+      });
+      templateMap.putAll(defaultKeys);
+    }
+
+    return new YamlConfig(templateMap, yamlConfig.getYamlMap());
+  }
+
+  public Map<FQN, String> createExpressionFormYamlConfig(YamlConfig yamlConfig) {
+    Map<FQN, Object> fullMap = yamlConfig.getFqnToValueMap();
+    Map<FQN, String> fqnExpressionMap = new LinkedHashMap<>();
+    fullMap.keySet().forEach(key -> {
+      String value = HarnessStringUtils.removeLeadingAndTrailingQuotesBothOrNone(fullMap.get(key).toString());
+      if (NGExpressionUtils.isExpressionField(value)) {
+        fqnExpressionMap.put(key, fullMap.get(key).toString());
+      }
+    });
+
+    return fqnExpressionMap;
   }
 
   public YamlConfig createRuntimeInputFormYamlConfig(
