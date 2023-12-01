@@ -179,6 +179,8 @@ public class ArtifactResourceUtils {
   @Inject ArtifactSourceInstrumentationHelper artifactSourceInstrumentationHelper;
   @Inject JenkinsResourceService jenkinsResourceService;
 
+  public final String SERVICE_GIT_BRANCH = "serviceGitBranch";
+  public final String ENV_GIT_BRANCH = "envGitBranch";
   public final String DOCKER = "DOCKER";
   public final String FETCH_PACKAGES = "fetch_packages";
   public final String FETCH_REPOSITORIES = "fetch_repositories";
