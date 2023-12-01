@@ -33,7 +33,6 @@ import io.harness.gitsync.helpers.GitContextHelper;
 import io.harness.gitsync.interceptor.GitEntityInfo;
 import io.harness.gitsync.interceptor.GitSyncBranchContext;
 import io.harness.manage.GlobalContextManager;
-import io.harness.ng.BaseUrls;
 import io.harness.remote.client.ServiceHttpClientConfig;
 import io.harness.security.PrincipalContextData;
 import io.harness.security.ServiceTokenGenerator;
@@ -57,17 +56,17 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
   DecryptGitApiAccessHelper decryptGitApiAccessHelper;
   YamlGitConfigService yamlGitConfigService;
   ServiceTokenGenerator tokenGenerator;
-  BaseUrls baseUrls;
+  String scmServiceBaseUrl;
 
   @Inject
   public GitSyncConnectorServiceImpl(@Named("connectorDecoratorService") ConnectorService connectorService,
       DecryptGitApiAccessHelper decryptGitApiAccessHelper, YamlGitConfigService yamlGitConfigService,
       @Named("harnessCodeClientConfig") ServiceHttpClientConfig harnessCodeClientConfig,
-      ServiceTokenGenerator tokenGenerator, BaseUrls baseUrls) {
+      ServiceTokenGenerator tokenGenerator, @Named("scmServiceBaseUrl") String scmServiceBaseUrl) {
     this.connectorService = connectorService;
     this.decryptGitApiAccessHelper = decryptGitApiAccessHelper;
     this.yamlGitConfigService = yamlGitConfigService;
-    this.baseUrls = baseUrls;
+    this.scmServiceBaseUrl = scmServiceBaseUrl;
     this.tokenGenerator = tokenGenerator;
   }
 
@@ -305,8 +304,7 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
 
   private ScmConnector getHarnessCodeConnector(
       String repoName, String projectIdentifier, String orgIdentifier, String accountId) {
-    String harnessCodeApiBaseUrl = baseUrls.getScmServiceBaseUrl();
     return HarnessCodeConnectorUtils.getDummyHarnessCodeConnectorWithJwtAuth(repoName, projectIdentifier, orgIdentifier,
-        accountId, AuthorizationServiceHeader.NG_MANAGER.getServiceId(), harnessCodeApiBaseUrl, tokenGenerator);
+        accountId, AuthorizationServiceHeader.NG_MANAGER.getServiceId(), scmServiceBaseUrl, tokenGenerator);
   }
 }
