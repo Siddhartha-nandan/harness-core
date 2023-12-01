@@ -25,6 +25,7 @@ import io.harness.connector.ConnectorResourceClient;
 import io.harness.connector.ConnectorResponseDTO;
 import io.harness.delegate.beans.connector.CEFeatures;
 import io.harness.delegate.beans.connector.ConnectorType;
+import io.harness.delegate.beans.connector.gcpccm.GcpBillingExportSpecDTO;
 import io.harness.delegate.beans.connector.gcpccm.GcpCloudCostConnectorDTO;
 
 import software.wings.service.intfc.instance.CloudToHarnessMappingService;
@@ -73,6 +74,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.batch.core.StepContribution;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
@@ -100,7 +102,6 @@ public class GcpSyncTasklet implements Tasklet {
   public static final String DEPLOY_MODE = "deployMode";
   public static final String USE_WORKLOAD_IDENTITY = "useWorkloadIdentity";
   public static final String NAMESPACE = System.getenv("NAMESPACE");
-  @Autowired private BatchMainConfig mainConfig;
   @Autowired private ConnectorResourceClient connectorResourceClient;
   @Autowired protected CloudToHarnessMappingService cloudToHarnessMappingService;
   @Autowired private BatchJobScheduledDataDao batchJobScheduledDataDao;
@@ -131,10 +132,12 @@ public class GcpSyncTasklet implements Tasklet {
     } else {
       firstSync = true;
     }
-    BillingDataPipelineConfig billingDataPipelineConfig = mainConfig.getBillingDataPipelineConfig();
+    BillingDataPipelineConfig billingDataPipelineConfig = config.getBillingDataPipelineConfig();
 
     if (billingDataPipelineConfig.isGcpSyncEnabled()) {
-      List<ConnectorResponseDTO> nextGenGCPConnectorResponses = getNextGenGCPConnectorResponses(accountId);
+      //      List<ConnectorResponseDTO> nextGenGCPConnectorResponses = getNextGenGCPConnectorResponses(accountId);
+      List<ConnectorResponseDTO> nextGenGCPConnectorResponses = Arrays.asList(getDummyData());
+
       for (ConnectorResponseDTO connector : nextGenGCPConnectorResponses) {
         ConnectorInfoDTO connectorInfo = connector.getConnector();
         GcpCloudCostConnectorDTO gcpCloudCostConnectorDTO =
@@ -191,7 +194,25 @@ public class GcpSyncTasklet implements Tasklet {
     return null;
   }
 
-  private static void createK8SJobWithParameters(ImmutableMap<String, String> customArgsMap) throws IOException {
+  @NotNull
+  private static ConnectorResponseDTO getDummyData() {
+    ConnectorResponseDTO dto = new ConnectorResponseDTO();
+    ConnectorInfoDTO connectorInfoDTO = new ConnectorInfoDTO();
+    connectorInfoDTO.setIdentifier("connectorIdentifier");
+
+    final GcpCloudCostConnectorDTO.GcpCloudCostConnectorDTOBuilder connectorDTOBuilder =
+        GcpCloudCostConnectorDTO.builder()
+            .featuresEnabled(Arrays.asList(CEFeatures.BILLING))
+            .serviceAccountEmail("mymail@gmail.com")
+            .billingExportSpec(new GcpBillingExportSpecDTO("datasetId", "tableId"))
+            .projectId("projectId");
+
+    connectorInfoDTO.setConnectorConfig(connectorDTOBuilder.build());
+    dto.setConnector(connectorInfoDTO);
+    return dto;
+  }
+
+  private void createK8SJobWithParameters(ImmutableMap<String, String> customArgsMap) throws IOException {
     ApiClient client = Config.defaultClient();
     Configuration.setDefaultApiClient(client);
 
@@ -229,13 +250,32 @@ public class GcpSyncTasklet implements Tasklet {
     ObjectMapper objectMapper = new ObjectMapper();
     String argsMap = objectMapper.writeValueAsString(customArgsMap);
 
-    V1EnvVar secret_env_var1 =
+    V1EnvVar CLICKHOUSE_URL = new V1EnvVar().name("CLICKHOUSE_URL").value(config.getClickHouseConfig().getUrl());
+    V1EnvVar CLICKHOUSE_USERNAME =
+        new V1EnvVar().name("CLICKHOUSE_USERNAME").value(config.getClickHouseConfig().getUsername());
+    V1EnvVar CLICKHOUSE_PASSWORD =
+        new V1EnvVar().name("CLICKHOUSE_PASSWORD").value(config.getClickHouseConfig().getPassword());
+    V1EnvVar CLICKHOUSE_SOCKET_TIMEOUT = new V1EnvVar()
+                                             .name("CLICKHOUSE_SOCKET_TIMEOUT")
+                                             .value(String.valueOf(config.getClickHouseConfig().getSocketTimeout()));
+    V1EnvVar CLICKHOUSE_PORT = createEnvVarFromConfigMap(
+        "CLICKHOUSE_PORT", config.getGcpSyncSmpConfig().getBatchProcessingConfigMapName(), "CLICKHOUSE_PORT_PYTHON");
+
+    V1EnvVar AWS_ACCOUNT_ID = new V1EnvVar()
+                                  .name(config.getGcpSyncSmpConfig().getAwsAccountIdKey())
+                                  .valueFrom(new V1EnvVarSource().secretKeyRef(
+                                      new V1SecretKeySelector()
+                                          .name(config.getGcpSyncSmpConfig().getNextgenCeSecretName())
+                                          .key(config.getGcpSyncSmpConfig().getAwsAccountIdKey())
+                                          .optional(false)));
+    V1EnvVar AWS_DESTINATION_BUCKET =
         new V1EnvVar()
-            .name("AWS_DESTINATION_BUCKET")
-            .valueFrom(new V1EnvVarSource().secretKeyRef(new V1SecretKeySelector()
-                                                             .name("nextgen-ce") // Replace with your secret name
-                                                             .key("AWS_DESTINATION_BUCKET")
-                                                             .optional(false)));
+            .name(config.getGcpSyncSmpConfig().getAwsDestinationBucketKey())
+            .valueFrom(new V1EnvVarSource().secretKeyRef(
+                new V1SecretKeySelector()
+                    .name(config.getGcpSyncSmpConfig().getNextgenCeSecretName()) // Replace with your secret name
+                    .key(config.getGcpSyncSmpConfig().getAwsDestinationBucketKey())
+                    .optional(false)));
 
     V1EnvVar secret_env_var2 =
         new V1EnvVar()
@@ -245,11 +285,13 @@ public class GcpSyncTasklet implements Tasklet {
                                                              .key("AWS_ACCOUNT_ID")
                                                              .optional(false)));
 
-    V1Container container = new V1Container()
-                                .name("python-container")
-                                .image("harnessdev/pyapp-gcp") // Replace with your Docker image
-                                .args(Arrays.asList(argsMap))
-                                .env(Arrays.asList(secret_env_var1, secret_env_var2));
+    V1Container container =
+        new V1Container()
+            .name(config.getGcpSyncSmpConfig().getK8sJobContainerName())
+            .image(mainConfig.getGcpSyncSmpConfig().getK8sJobPythonImage())
+            .args(Arrays.asList(argsMap))
+            .env(Arrays.asList(AWS_ACCOUNT_ID, AWS_DESTINATION_BUCKET, CLICKHOUSE_URL, CLICKHOUSE_USERNAME,
+                CLICKHOUSE_PASSWORD, CLICKHOUSE_SOCKET_TIMEOUT, CLICKHOUSE_PORT));
 
     V1PodSpec podSpec = new V1PodSpec().restartPolicy("OnFailure").addContainersItem(container);
 
@@ -257,26 +299,32 @@ public class GcpSyncTasklet implements Tasklet {
 
     V1JobSpec jobSpec = new V1JobSpec().template(template);
 
-    V1Job job = new V1Job()
-                    .apiVersion("batch/v1")
-                    .kind("Job")
-                    .metadata(new V1ObjectMeta().name("python-job-gcp").namespace(NAMESPACE))
-                    .spec(jobSpec);
+    V1Job job =
+        new V1Job()
+            .apiVersion("batch/v1")
+            .kind("Job")
+            .metadata(new V1ObjectMeta().name("python-job-gcp-" + System.currentTimeMillis()).namespace(NAMESPACE))
+            .spec(jobSpec);
 
     BatchV1Api api = new BatchV1Api();
     try {
-      api.createNamespacedJob(NAMESPACE, job, null, null, null, null);
+      api.createNamespacedJob("harness", job, null, null, null, null);
     } catch (ApiException e) {
       System.err.println("Exception when calling BatchV1Api#createNamespacedJob");
       e.printStackTrace();
     }
   }
 
+  private static V1EnvVar createEnvVarFromConfigMap(String name, String configMapName, String key) {
+    return new V1EnvVar().name(name).valueFrom(
+        new V1EnvVarSource().configMapKeyRef(new V1ConfigMapKeySelector().name(configMapName).key(key)));
+  }
+
   private void processGCPConnector(BillingDataPipelineConfig billingDataPipelineConfig, String serviceAccountEmail,
       String datasetId, String projectId, String tableName, String accountId, String connectorId, Long endTime,
       boolean firstSync) throws IOException {
     if (DeployMode.isOnPrem(config.getDeployMode().name()) && config.isClickHouseEnabled()) {
-      log.info(":::::::::::::::::::::::::::::: Create a new K8S Job ::::::::::::::::::::::::::::::");
+      log.info("Creating a new K8S Job");
       ImmutableMap<String, String> customAttributes = ImmutableMap.<String, String>builder()
                                                           .put(SERVICE_ACCOUNT, serviceAccountEmail)
                                                           .put(SOURCE_DATA_SET_ID, datasetId)
@@ -284,7 +332,7 @@ public class GcpSyncTasklet implements Tasklet {
                                                           .put(ACCOUNT_ID, accountId)
                                                           .put(CONNECTOR_ID, connectorId)
                                                           .put(TABLE_NAME, tableName)
-                                                          .put(DEPLOY_MODE, mainConfig.getDeployMode().name())
+                                                          .put(DEPLOY_MODE, config.getDeployMode().name())
                                                           .put(IS_CLICK_HOUSE_ENABLED, "True")
                                                           .build();
       createK8SJobWithParameters(customAttributes);
@@ -395,7 +443,7 @@ public class GcpSyncTasklet implements Tasklet {
     TopicName topicName = TopicName.of(harnessProjectId, topicId);
     Publisher publisher = null;
 
-    log.info("isDeploymentOnPrem: " + mainConfig.getDeployMode());
+    log.info("isDeploymentOnPrem: " + config.getDeployMode());
     try {
       // Create a publisher instance with default settings bound to the topic
       publisher = Publisher.newBuilder(topicName)
@@ -411,7 +459,7 @@ public class GcpSyncTasklet implements Tasklet {
               .put(CONNECTOR_ID, connectorId)
               .put(TABLE_NAME, tableName)
               .put(TRIGGER_HISTORICAL_COST_UPDATE_IN_PREFERRED_CURRENCY, isHistoricalCostUpdateTriggerRequired)
-              .put(DEPLOY_MODE, mainConfig.getDeployMode().name())
+              .put(DEPLOY_MODE, config.getDeployMode().name())
               .put(USE_WORKLOAD_IDENTITY, usingWorkloadIdentity ? "True" : "False")
               .build();
       ObjectMapper objectMapper = new ObjectMapper();
