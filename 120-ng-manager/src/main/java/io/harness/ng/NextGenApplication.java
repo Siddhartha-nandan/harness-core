@@ -107,6 +107,9 @@ import io.harness.gitsync.core.webhook.createbranchevent.WebhookBranchHookEventQ
 import io.harness.gitsync.core.webhook.pushevent.WebhookPushEventQueueProcessor;
 import io.harness.gitsync.gitxwebhooks.listener.GitXWebhookQueueProcessor;
 import io.harness.gitsync.gitxwebhooks.listener.WebhookGitXPushEventQueueProcessor;
+import io.harness.gitsync.gitxwebhooks.observer.GitXWebhookEventObserverImpl;
+import io.harness.gitsync.gitxwebhooks.service.GitXWebhookEventService;
+import io.harness.gitsync.gitxwebhooks.service.GitXWebhookEventServiceImpl;
 import io.harness.gitsync.migration.GitSyncMigrationProvider;
 import io.harness.gitsync.server.GitSyncGrpcModule;
 import io.harness.gitsync.server.GitSyncServiceConfiguration;
@@ -587,6 +590,11 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     // register Polling Framework Observer
     PollingServiceImpl pollingService = (PollingServiceImpl) injector.getInstance(Key.get(PollingService.class));
     pollingService.getSubject().register(injector.getInstance(Key.get(PollingPerpetualTaskManager.class)));
+
+    GitXWebhookEventServiceImpl gitXWebhookEventService =
+        (GitXWebhookEventServiceImpl) injector.getInstance(Key.get(GitXWebhookEventService.class));
+    gitXWebhookEventService.getGitXWebhookEventUpdateSubject().register(
+        injector.getInstance(Key.get(GitXWebhookEventObserverImpl.class)));
 
     HMongoTemplate mongoTemplate = (HMongoTemplate) injector.getInstance(MongoTemplate.class);
     mongoTemplate.getTracerSubject().register(injector.getInstance(MongoRedisTracer.class));

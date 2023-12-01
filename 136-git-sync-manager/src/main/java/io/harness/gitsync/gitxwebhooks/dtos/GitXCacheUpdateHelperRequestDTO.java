@@ -14,6 +14,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.Scope;
 import io.harness.delegate.beans.connector.scm.ScmConnector;
+import io.harness.eventsframework.webhookpayloads.webhookdata.WebhookDTO;
 
 import java.util.List;
 import lombok.AccessLevel;
@@ -38,4 +39,5 @@ public class GitXCacheUpdateHelperRequestDTO {
   String eventIdentifier;
   List<String> modifiedFilePaths;
   ScmConnector scmConnector;
+  WebhookDTO webhookDTO;
 }
