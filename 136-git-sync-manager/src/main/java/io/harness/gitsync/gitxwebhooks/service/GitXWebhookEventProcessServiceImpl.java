@@ -99,8 +99,8 @@ public class GitXWebhookEventProcessServiceImpl implements GitXWebhookEventProce
               gitXWebhookEvent.getEventIdentifier()));
           gitXWebhookCacheUpdateHelper.submitTask(gitXWebhookEvent.getEventIdentifier(),
               buildGitXWebhookRunnableRequest(processingFilePathResponseDTO.getGitXWebhook(), gitXWebhookEvent,
-                  processingFilePathResponseDTO.getModifiedFilePaths(),
-                  processingFilePathResponseDTO.getScmConnector()));
+                  processingFilePathResponseDTO.getModifiedFilePaths(), processingFilePathResponseDTO.getScmConnector(),
+                  webhookDTO));
           updateEventStatus(gitXWebhookEvent.getAccountIdentifier(), gitXWebhookEvent.getEventIdentifier(),
               GitXWebhookEventStatus.PROCESSING, processingFilePathResponseDTO.getProcessingFilePaths());
         }

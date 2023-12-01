@@ -24,9 +24,9 @@ import io.harness.gitsync.gitxwebhooks.dtos.GitXEventDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.GitXEventUpdateRequestDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.GitXEventsListRequestDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.GitXEventsListResponseDTO;
+import io.harness.gitsync.gitxwebhooks.dtos.GitXWebhookEventUpdateInfo;
 import io.harness.gitsync.gitxwebhooks.dtos.ListGitXWebhookRequestDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.ListGitXWebhookResponseDTO;
-import io.harness.gitsync.gitxwebhooks.dtos.GitXWebhookEventUpdateInfo;
 import io.harness.gitsync.gitxwebhooks.dtos.UpdateGitXWebhookCriteriaDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.UpdateGitXWebhookRequestDTO;
 import io.harness.gitsync.gitxwebhooks.entity.Author;
@@ -65,15 +65,12 @@ public class GitXWebhookEventServiceImpl implements GitXWebhookEventService {
   @Inject GitXWebhookEventsRepository gitXWebhookEventsRepository;
   @Inject GitXWebhookService gitXWebhookService;
   @Inject HsqsClientService hsqsClientService;
-
   @Inject GitXWebhookTriggerHelper gitXWebhookTriggerHelper;
-
   @Inject GitXWebhookHelper gitXWebhookHelper;
 
   private static final String QUEUE_TOPIC_PREFIX = "ng";
   private static final String WEBHOOK_FAILURE_ERROR_MESSAGE =
       "Unexpected error occurred while [%s] git webhook. Please contact Harness Support.";
-
   private static final String LISTING_EVENTS = "listing events";
 
   @Getter private final Subject<GitXWebhookEventUpdateObserver> gitXWebhookEventUpdateSubject = new Subject<>();
