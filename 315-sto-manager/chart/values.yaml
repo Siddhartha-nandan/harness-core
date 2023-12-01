@@ -259,7 +259,7 @@ redis:
               property: ""
 
 mongo:
-  protocol: "mongodb"
+  protocol: ""
   hosts: []
   extraArgs: ""
   secrets:
