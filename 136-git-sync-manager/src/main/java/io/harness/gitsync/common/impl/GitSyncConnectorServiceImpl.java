@@ -33,7 +33,6 @@ import io.harness.gitsync.helpers.GitContextHelper;
 import io.harness.gitsync.interceptor.GitEntityInfo;
 import io.harness.gitsync.interceptor.GitSyncBranchContext;
 import io.harness.manage.GlobalContextManager;
-import io.harness.remote.client.ServiceHttpClientConfig;
 import io.harness.security.PrincipalContextData;
 import io.harness.security.ServiceTokenGenerator;
 import io.harness.tasks.DecryptGitApiAccessHelper;
@@ -61,7 +60,6 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
   @Inject
   public GitSyncConnectorServiceImpl(@Named("connectorDecoratorService") ConnectorService connectorService,
       DecryptGitApiAccessHelper decryptGitApiAccessHelper, YamlGitConfigService yamlGitConfigService,
-      @Named("harnessCodeClientConfig") ServiceHttpClientConfig harnessCodeClientConfig,
       ServiceTokenGenerator tokenGenerator, @Named("scmServiceBaseUrl") String scmServiceBaseUrl) {
     this.connectorService = connectorService;
     this.decryptGitApiAccessHelper = decryptGitApiAccessHelper;
