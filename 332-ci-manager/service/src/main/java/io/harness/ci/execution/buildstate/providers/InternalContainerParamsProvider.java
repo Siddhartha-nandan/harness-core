@@ -158,10 +158,8 @@ public class InternalContainerParamsProvider {
     if (featureFlagService.isEnabled(FeatureName.CI_INDIRECT_LOG_UPLOAD, accountID)) {
       envVars.put(HARNESS_CI_INDIRECT_LOG_UPLOAD_FF, "true");
     }
-    // Check whether FF is enabled to send LE to manager status update via rest
-    if (featureFlagService.isEnabled(FeatureName.CI_LE_STATUS_REST_ENABLED, accountID)) {
-      envVars.put(HARNESS_LE_STATUS_REST_ENABLED, "true");
-    }
+    // send LE to manager status update via rest as default
+    envVars.put(HARNESS_LE_STATUS_REST_ENABLED, "true");
 
     // Add environment variables that need to be used inside the lite engine container
     envVars.put(HARNESS_WORKSPACE, workDirPath);
