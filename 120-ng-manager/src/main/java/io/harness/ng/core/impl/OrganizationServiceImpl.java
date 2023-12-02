@@ -304,7 +304,6 @@ public class OrganizationServiceImpl implements OrganizationService {
       }
       organization.setUniqueId(existingOrganization.getUniqueId());
       organization.setParentId(existingOrganization.getParentId());
-      organization.setParentId(existingOrganization.getParentId());
       validate(organization);
       return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
         Organization updatedOrganization = organizationRepository.save(organization);

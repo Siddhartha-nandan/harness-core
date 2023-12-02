@@ -41,7 +41,7 @@ import org.apache.commons.lang3.StringUtils;
 @Provider
 public class ScopeInfoFilter implements ContainerRequestFilter {
   private static final String SCOPE_INFO_FILTER_LOG = "SCOPE_INFO_FILTER: ";
-  public static final Set<String> matchingPathRequests = Set.of("organizations");
+  public static final Set<String> matchingPathRequests = Set.of("/organizations");
 
   private final ScopeInfoClient scopeInfoClient;
   @Context private ResourceInfo resourceInfo;
@@ -147,7 +147,8 @@ public class ScopeInfoFilter implements ContainerRequestFilter {
 
   private boolean isFilterApplicableOnRequest(ContainerRequestContext requestContext) {
     return requestContext != null && requestContext.getUriInfo() != null
-        && requestContext.getUriInfo().getPath() != null
-        && matchingPathRequests.stream().anyMatch(requestContext.getUriInfo().getPath()::contains);
+        && requestContext.getUriInfo().getRequestUri() != null
+        && requestContext.getUriInfo().getRequestUri().getPath() != null
+        && matchingPathRequests.stream().anyMatch(requestContext.getUriInfo().getRequestUri().getPath()::startsWith);
   }
 }
