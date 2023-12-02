@@ -59,7 +59,7 @@ import retrofit2.http.Body;
 @Path("/ng/accounts")
 @Produces("application/json")
 @Consumes("application/json")
-@NextGenManagerAuth
+//@NextGenManagerAuth
 @AllArgsConstructor(onConstructor = @__({ @Inject }))
 @Slf4j
 @OwnedBy(HarnessTeam.PL)
