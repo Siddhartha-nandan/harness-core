@@ -392,13 +392,12 @@ public class OrganizationServiceImpl implements OrganizationService {
             organizationRepository.hardDelete(accountIdentifier, scopeInfo.getUniqueId(), identifier, version);
         if (isNull(organization)) {
           log.error(String.format(
-              "Scope- [accountIdentifier: %s, uniqueId: %s]. Organization with identifier [%s] could not be deleted as it does not exist",
+              "Scope- [accountIdentifier: %s]. Organization with identifier [%s] could not be deleted as it does not exist",
               accountIdentifier, scopeInfo.getUniqueId(), identifier));
           throw new EntityNotFoundException(
               String.format("Organization with identifier [%s] does not exist in the specified scope", identifier));
         }
-        log.info(String.format(
-            "Scope- [accountIdentifier: %s, uniqueId: %s]. Organization with identifier [%s] successfully deleted",
+        log.info(String.format("Scope- [accountIdentifier: %s]. Organization with identifier [%s] successfully deleted",
             accountIdentifier, scopeInfo.getUniqueId(), identifier));
         outboxService.save(new OrganizationDeleteEvent(accountIdentifier, OrganizationMapper.writeDto(organization)));
         instrumentationHelper.sendOrganizationDeleteEvent(organization, accountIdentifier);
