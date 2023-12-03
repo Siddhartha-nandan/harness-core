@@ -36,7 +36,6 @@ import io.harness.cdng.artifact.bean.yaml.GcrArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.GoogleArtifactRegistryConfig;
 import io.harness.cdng.artifact.bean.yaml.JenkinsArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.NexusRegistryArtifactConfig;
-import io.harness.cdng.artifact.bean.yaml.nexusartifact.BambooArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.nexusartifact.Nexus2RegistryArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.nexusartifact.NexusConstant;
 import io.harness.cdng.artifact.bean.yaml.nexusartifact.NexusRegistryDockerConfig;
@@ -52,8 +51,6 @@ import io.harness.cdng.artifact.resources.artifactory.dtos.ArtifactoryBuildDetai
 import io.harness.cdng.artifact.resources.artifactory.dtos.ArtifactoryImagePathsDTO;
 import io.harness.cdng.artifact.resources.artifactory.dtos.ArtifactoryRequestDTO;
 import io.harness.cdng.artifact.resources.artifactory.service.ArtifactoryResourceService;
-import io.harness.cdng.artifact.resources.bamboo.BambooResourceService;
-import io.harness.cdng.artifact.resources.bamboo.dtos.BambooPlanKeysDTO;
 import io.harness.cdng.artifact.resources.custom.CustomResourceService;
 import io.harness.cdng.artifact.resources.docker.dtos.DockerBuildDetailsDTO;
 import io.harness.cdng.artifact.resources.docker.dtos.DockerRequestDTO;
@@ -179,7 +176,6 @@ public class ArtifactResourceUtils {
   @Inject BucketsResourceUtils bucketsResourceUtils;
   @Inject ArtifactSourceInstrumentationHelper artifactSourceInstrumentationHelper;
   @Inject JenkinsResourceService jenkinsResourceService;
-  @Inject BambooResourceService bambooResourceService;
 
   public final String SERVICE_GIT_BRANCH = "serviceGitBranch";
   public final String ENV_GIT_BRANCH = "envGitBranch";
@@ -1188,115 +1184,6 @@ public class ArtifactResourceUtils {
         connectorRef, imagePath, registryHostname, orgIdentifier, projectIdentifier);
   }
 
-  public BambooPlanKeysDTO getBambooPlanKeys(String bambooConnectorIdentifier, String accountId, String orgIdentifier,
-      String projectIdentifier, String pipelineIdentifier, GitEntityFindInfoDTO gitEntityBasicInfo, String fqnPath,
-      String serviceRef, String runtimeInputYaml) {
-    YamlExpressionEvaluatorWithContext baseEvaluatorWithContext = null;
-
-    // remote services can be linked with a specific branch, so we parse the YAML in one go and store the context data
-    //  has env git branch and service git branch
-    if (isNotEmpty(serviceRef) && isRemoteService(accountId, orgIdentifier, projectIdentifier, serviceRef)) {
-      baseEvaluatorWithContext = getYamlExpressionEvaluatorWithContext(accountId, orgIdentifier, projectIdentifier,
-          pipelineIdentifier, runtimeInputYaml, fqnPath, gitEntityBasicInfo, serviceRef);
-    }
-    if (isNotEmpty(serviceRef)) {
-      final ArtifactConfig artifactSpecFromService = locateArtifactInService(accountId, orgIdentifier,
-          projectIdentifier, serviceRef, fqnPath,
-          baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getContextMap().get(SERVICE_GIT_BRANCH));
-      BambooArtifactConfig bambooArtifactConfig = (BambooArtifactConfig) artifactSpecFromService;
-      if (isEmpty(bambooConnectorIdentifier)) {
-        bambooConnectorIdentifier = bambooArtifactConfig.getConnectorRef().getValue();
-      }
-    }
-    bambooConnectorIdentifier = getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier,
-        projectIdentifier, pipelineIdentifier, runtimeInputYaml, bambooConnectorIdentifier, fqnPath, gitEntityBasicInfo,
-        serviceRef, baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getYamlExpressionEvaluator())
-                                    .getValue();
-    IdentifierRef connectorRef =
-        IdentifierRefHelper.getIdentifierRef(bambooConnectorIdentifier, accountId, orgIdentifier, projectIdentifier);
-    return bambooResourceService.getPlanName(connectorRef, orgIdentifier, projectIdentifier);
-  }
-
-  public List<String> getBambooArtifactPaths(String bambooConnectorIdentifier, String accountId, String orgIdentifier,
-      String projectIdentifier, String pipelineIdentifier, String planName, GitEntityFindInfoDTO gitEntityBasicInfo,
-      String fqnPath, String serviceRef, String runtimeInputYaml) {
-    YamlExpressionEvaluatorWithContext baseEvaluatorWithContext = null;
-
-    // remote services can be linked with a specific branch, so we parse the YAML in one go and store the context data
-    //  has env git branch and service git branch
-    if (isNotEmpty(serviceRef) && isRemoteService(accountId, orgIdentifier, projectIdentifier, serviceRef)) {
-      baseEvaluatorWithContext = getYamlExpressionEvaluatorWithContext(accountId, orgIdentifier, projectIdentifier,
-          pipelineIdentifier, runtimeInputYaml, fqnPath, gitEntityBasicInfo, serviceRef);
-    }
-    if (isNotEmpty(serviceRef)) {
-      final ArtifactConfig artifactSpecFromService = locateArtifactInService(accountId, orgIdentifier,
-          projectIdentifier, serviceRef, fqnPath,
-          baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getContextMap().get(SERVICE_GIT_BRANCH));
-      BambooArtifactConfig bambooArtifactConfig = (BambooArtifactConfig) artifactSpecFromService;
-      if (isEmpty(bambooConnectorIdentifier)) {
-        bambooConnectorIdentifier = bambooArtifactConfig.getConnectorRef().getValue();
-      }
-      if (isEmpty(planName)) {
-        planName = bambooArtifactConfig.getPlanKey().fetchFinalValue().toString();
-      }
-    }
-    CDYamlExpressionEvaluator yamlExpressionEvaluator =
-        baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getYamlExpressionEvaluator();
-    planName = getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
-        pipelineIdentifier, runtimeInputYaml, planName, fqnPath, gitEntityBasicInfo, serviceRef,
-        yamlExpressionEvaluator)
-                   .getValue();
-    bambooConnectorIdentifier = getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier,
-        projectIdentifier, pipelineIdentifier, runtimeInputYaml, bambooConnectorIdentifier, fqnPath, gitEntityBasicInfo,
-        serviceRef, yamlExpressionEvaluator)
-                                    .getValue();
-    IdentifierRef connectorRef =
-        IdentifierRefHelper.getIdentifierRef(bambooConnectorIdentifier, accountId, orgIdentifier, projectIdentifier);
-    return bambooResourceService.getArtifactPath(connectorRef, orgIdentifier, projectIdentifier, planName);
-  }
-
-  public List<BuildDetails> getBambooArtifactBuildDetails(String bambooConnectorIdentifier, String accountId,
-      String orgIdentifier, String projectIdentifier, String pipelineIdentifier, String planName,
-      List<String> artifactPath, GitEntityFindInfoDTO gitEntityBasicInfo, String fqnPath, String serviceRef,
-      String runtimeInputYaml) {
-    YamlExpressionEvaluatorWithContext baseEvaluatorWithContext = null;
-
-    // remote services can be linked with a specific branch, so we parse the YAML in one go and store the context data
-    //  has env git branch and service git branch
-    if (isNotEmpty(serviceRef) && isRemoteService(accountId, orgIdentifier, projectIdentifier, serviceRef)) {
-      baseEvaluatorWithContext = getYamlExpressionEvaluatorWithContext(accountId, orgIdentifier, projectIdentifier,
-          pipelineIdentifier, runtimeInputYaml, fqnPath, gitEntityBasicInfo, serviceRef);
-    }
-    if (isNotEmpty(serviceRef)) {
-      final ArtifactConfig artifactSpecFromService = locateArtifactInService(accountId, orgIdentifier,
-          projectIdentifier, serviceRef, fqnPath,
-          baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getContextMap().get(SERVICE_GIT_BRANCH));
-      BambooArtifactConfig bambooArtifactConfig = (BambooArtifactConfig) artifactSpecFromService;
-      if (isEmpty(bambooConnectorIdentifier)) {
-        bambooConnectorIdentifier = bambooArtifactConfig.getConnectorRef().getValue();
-      }
-      if (isEmpty(planName)) {
-        planName = bambooArtifactConfig.getPlanKey().fetchFinalValue().toString();
-      }
-      if (isEmpty(artifactPath)) {
-        artifactPath = bambooArtifactConfig.getArtifactPaths().getValue();
-      }
-    }
-    CDYamlExpressionEvaluator yamlExpressionEvaluator =
-        baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getYamlExpressionEvaluator();
-    planName = getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
-        pipelineIdentifier, runtimeInputYaml, planName, fqnPath, gitEntityBasicInfo, serviceRef,
-        yamlExpressionEvaluator)
-                   .getValue();
-    bambooConnectorIdentifier = getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier,
-        projectIdentifier, pipelineIdentifier, runtimeInputYaml, bambooConnectorIdentifier, fqnPath, gitEntityBasicInfo,
-        serviceRef, yamlExpressionEvaluator)
-                                    .getValue();
-    IdentifierRef connectorRef =
-        IdentifierRefHelper.getIdentifierRef(bambooConnectorIdentifier, accountId, orgIdentifier, projectIdentifier);
-    return bambooResourceService.getBuilds(connectorRef, orgIdentifier, projectIdentifier, planName, artifactPath);
-  }
-
   public GARResponseDTO getBuildDetailsV2GAR(String gcpConnectorIdentifier, String region, String repositoryName,
       String project, String pkg, String accountId, String orgIdentifier, String projectIdentifier,
       String pipelineIdentifier, String version, String versionRegex, String fqnPath, String runtimeInputYaml,
@@ -1398,6 +1285,9 @@ public class ArtifactResourceUtils {
       if (isBlank(gcpConnectorIdentifier)) {
         gcpConnectorIdentifier = (String) googleArtifactRegistryConfig.getConnectorRef().fetchFinalValue();
       }
+      if (isBlank(project)) {
+        project = (String) googleArtifactRegistryConfig.getProject().fetchFinalValue();
+      }
 
       if (isBlank(region)) {
         region = (String) googleArtifactRegistryConfig.getRegion().fetchFinalValue();
@@ -1415,6 +1305,10 @@ public class ArtifactResourceUtils {
         pipelineIdentifier, runtimeInputYaml, region, fqnPath, gitEntityBasicInfo, serviceRef, yamlExpressionEvaluator)
                  .getValue();
 
+    project = getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
+        pipelineIdentifier, runtimeInputYaml, project, fqnPath, gitEntityBasicInfo, serviceRef, yamlExpressionEvaluator)
+                  .getValue();
+
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(gcpConnectorIdentifier, accountId, orgIdentifier, projectIdentifier);
 
@@ -1428,11 +1322,11 @@ public class ArtifactResourceUtils {
         garResourceService.getRepositories(connectorRef, region, project, orgIdentifier, projectIdentifier);
     long timeTaken = System.currentTimeMillis() - timeStart;
 
-    int index = buildDetails.getGarRepositoryDTOS().get(0).getRepository().lastIndexOf("/");
+    int index = buildDetails.getGarRepositoryDTOList().get(0).getRepository().lastIndexOf("/");
 
     List<GarRepositoryDTO> modifiedBuilds = new ArrayList<>();
 
-    buildDetails.getGarRepositoryDTOS().forEach(repo -> {
+    buildDetails.getGarRepositoryDTOList().forEach(repo -> {
       String repoName = repo.getRepository().substring(index + 1);
       if (DOCKER.equals(repo.getFormat())) {
         GarRepositoryDTO modifiedRepo = GarRepositoryDTO.builder()
@@ -1449,7 +1343,7 @@ public class ArtifactResourceUtils {
     artifactSourceInstrumentationHelper.sendArtifactApiEvent(ArtifactSourceType.GOOGLE_ARTIFACT_REGISTRY, accountId,
         orgIdentifier, projectIdentifier, FETCH_REPOSITORIES, timeTaken, modifiedBuilds.size(), isServiceV2, true);
 
-    return GARRepositoryDTOList.builder().garRepositoryDTOS(modifiedBuilds).build();
+    return GARRepositoryDTOList.builder().garRepositoryDTOList(modifiedBuilds).build();
   }
 
   public GARBuildDetailsDTO getLastSuccessfulBuildV2GAR(String gcpConnectorIdentifier, String region,
@@ -2837,7 +2731,9 @@ public class ArtifactResourceUtils {
       if (isBlank(gcpConnectorIdentifier)) {
         gcpConnectorIdentifier = (String) googleArtifactRegistryConfig.getConnectorRef().fetchFinalValue();
       }
-
+      if (isBlank(project)) {
+        project = (String) googleArtifactRegistryConfig.getProject().fetchFinalValue();
+      }
       if (isBlank(region)) {
         region = (String) googleArtifactRegistryConfig.getRegion().fetchFinalValue();
       }
@@ -2852,6 +2748,10 @@ public class ArtifactResourceUtils {
         projectIdentifier, pipelineIdentifier, runtimeInputYaml, gcpConnectorIdentifier, fqnPath, gitEntityBasicInfo,
         serviceRef, yamlExpressionEvaluator)
                                  .getValue();
+
+    project = getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
+        pipelineIdentifier, runtimeInputYaml, project, fqnPath, gitEntityBasicInfo, serviceRef, yamlExpressionEvaluator)
+                  .getValue();
 
     region = getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
         pipelineIdentifier, runtimeInputYaml, region, fqnPath, gitEntityBasicInfo, serviceRef, yamlExpressionEvaluator)
@@ -2876,11 +2776,11 @@ public class ArtifactResourceUtils {
         garResourceService.getPackages(connectorRef, region, repositoryName, project, orgIdentifier, projectIdentifier);
     long timeTaken = System.currentTimeMillis() - timeStart;
 
-    int index = buildDetails.getGarPackagesDTO().get(0).getPackageName().lastIndexOf("/");
+    int index = buildDetails.getGarPackageDTOList().get(0).getPackageName().lastIndexOf("/");
 
     List<GARPackageDTO> modifiedBuilds = new ArrayList<>();
 
-    buildDetails.getGarPackagesDTO().forEach(repo -> {
+    buildDetails.getGarPackageDTOList().forEach(repo -> {
       String packageName = repo.getPackageName().substring(index + 1);
 
       GARPackageDTO modifiedRepo = GARPackageDTO.builder()
@@ -2895,7 +2795,7 @@ public class ArtifactResourceUtils {
     artifactSourceInstrumentationHelper.sendArtifactApiEvent(ArtifactSourceType.GOOGLE_ARTIFACT_REGISTRY, accountId,
         orgIdentifier, projectIdentifier, FETCH_PACKAGES, timeTaken, modifiedBuilds.size(), isServiceV2, true);
 
-    return GARPackageDTOList.builder().garPackagesDTO(modifiedBuilds).build();
+    return GARPackageDTOList.builder().garPackageDTOList(modifiedBuilds).build();
   }
 
   @Data

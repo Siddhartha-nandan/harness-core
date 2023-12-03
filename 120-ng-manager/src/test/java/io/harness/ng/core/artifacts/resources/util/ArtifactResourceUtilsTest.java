@@ -51,7 +51,6 @@ import io.harness.cdng.artifact.bean.yaml.GcrArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.GoogleArtifactRegistryConfig;
 import io.harness.cdng.artifact.bean.yaml.JenkinsArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.NexusRegistryArtifactConfig;
-import io.harness.cdng.artifact.bean.yaml.nexusartifact.BambooArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.nexusartifact.Nexus2RegistryArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.nexusartifact.NexusConstant;
 import io.harness.cdng.artifact.bean.yaml.nexusartifact.NexusRegistryDockerConfig;
@@ -63,8 +62,6 @@ import io.harness.cdng.artifact.resources.artifactory.dtos.ArtifactoryDockerBuil
 import io.harness.cdng.artifact.resources.artifactory.dtos.ArtifactoryImagePathsDTO;
 import io.harness.cdng.artifact.resources.artifactory.dtos.ArtifactoryRequestDTO;
 import io.harness.cdng.artifact.resources.artifactory.service.ArtifactoryResourceService;
-import io.harness.cdng.artifact.resources.bamboo.BambooResourceService;
-import io.harness.cdng.artifact.resources.bamboo.dtos.BambooPlanKeysDTO;
 import io.harness.cdng.artifact.resources.custom.CustomResourceService;
 import io.harness.cdng.artifact.resources.docker.dtos.DockerBuildDetailsDTO;
 import io.harness.cdng.artifact.resources.docker.dtos.DockerRequestDTO;
@@ -173,7 +170,6 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
   @Mock CDExpressionEvaluator cdExpressionEvaluator;
   @Mock S3ResourceService s3ResourceService;
   @Mock ArtifactSourceInstrumentationHelper artifactSourceInstrumentationHelper;
-  @Mock BambooResourceService bambooResourceService;
   @Mock JenkinsResourceService jenkinsResourceService;
   private static final String ACCOUNT_ID = "accountId";
   private static final String ORG_ID = "orgId";
@@ -1191,11 +1187,11 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
             .build();
 
     GARPackageDTOList packageDetails = GARPackageDTOList.builder()
-                                           .garPackagesDTO(List.of(GARPackageDTO.builder()
-                                                                       .packageName("myRepo/package1")
-                                                                       .createTime("2023-01-01T12:00:00Z")
-                                                                       .updateTime("2023-01-02T12:00:00Z")
-                                                                       .build()))
+                                           .garPackageDTOList(List.of(GARPackageDTO.builder()
+                                                                          .packageName("myRepo/package1")
+                                                                          .createTime("2023-01-01T12:00:00Z")
+                                                                          .updateTime("2023-01-02T12:00:00Z")
+                                                                          .build()))
                                            .build();
 
     IdentifierRef identifierRef = IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID);
@@ -1215,9 +1211,9 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
         ACCOUNT_ID, ORG_ID, PIPELINE_ID, "", SERVICE_REF, "", PROJECT_ID, null, IS_SERVICE_V2);
 
     assertThat(modifiedRepositoryDetails).isNotNull();
-    assertThat(modifiedRepositoryDetails.getGarPackagesDTO()).hasSize(1);
+    assertThat(modifiedRepositoryDetails.getGarPackageDTOList()).hasSize(1);
 
-    GARPackageDTO modifiedRepo = modifiedRepositoryDetails.getGarPackagesDTO().get(0);
+    GARPackageDTO modifiedRepo = modifiedRepositoryDetails.getGarPackageDTOList().get(0);
     assertThat(modifiedRepo.getPackageName()).isEqualTo("package1");
     assertThat(modifiedRepo.getCreateTime()).isEqualTo("2023-01-01T12:00:00Z");
     assertThat(modifiedRepo.getUpdateTime()).isEqualTo("2023-01-02T12:00:00Z");
@@ -1239,11 +1235,11 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
             .build();
 
     GARPackageDTOList repositoryDetails = GARPackageDTOList.builder()
-                                              .garPackagesDTO(List.of(GARPackageDTO.builder()
-                                                                          .packageName("myRepo/package1")
-                                                                          .createTime("2023-01-01T12:00:00Z")
-                                                                          .updateTime("2023-01-02T12:00:00Z")
-                                                                          .build()))
+                                              .garPackageDTOList(List.of(GARPackageDTO.builder()
+                                                                             .packageName("myRepo/package1")
+                                                                             .createTime("2023-01-01T12:00:00Z")
+                                                                             .updateTime("2023-01-02T12:00:00Z")
+                                                                             .build()))
                                               .build();
 
     Map<String, String> contextMap = new HashMap<>();
@@ -1279,9 +1275,9 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
         ACCOUNT_ID, ORG_ID, PIPELINE_ID, "", SERVICE_REF, "", PROJECT_ID, null, IS_SERVICE_V2);
 
     assertThat(modifiedRepositoryDetails).isNotNull();
-    assertThat(modifiedRepositoryDetails.getGarPackagesDTO()).hasSize(1);
+    assertThat(modifiedRepositoryDetails.getGarPackageDTOList()).hasSize(1);
 
-    GARPackageDTO modifiedRepo = modifiedRepositoryDetails.getGarPackagesDTO().get(0);
+    GARPackageDTO modifiedRepo = modifiedRepositoryDetails.getGarPackageDTOList().get(0);
     assertThat(modifiedRepo.getPackageName()).isEqualTo("package1");
     assertThat(modifiedRepo.getCreateTime()).isEqualTo("2023-01-01T12:00:00Z");
     assertThat(modifiedRepo.getUpdateTime()).isEqualTo("2023-01-02T12:00:00Z");
@@ -1297,16 +1293,17 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GoogleArtifactRegistryConfig googleArtifactRegistryConfig =
         GoogleArtifactRegistryConfig.builder()
             .connectorRef(ParameterField.<String>builder().value(CONNECTOR_REF).build())
+            .project(ParameterField.<String>builder().value(PROJECT).build())
             .region(ParameterField.<String>builder().value(REGION).build())
             .repositoryName(ParameterField.<String>builder().value(REPO_NAME).build())
             .build();
 
     GARPackageDTOList packageDetails = GARPackageDTOList.builder()
-                                           .garPackagesDTO(List.of(GARPackageDTO.builder()
-                                                                       .packageName("myRepo/repo1")
-                                                                       .createTime("2023-01-01T12:00:00Z")
-                                                                       .updateTime("2023-01-02T12:00:00Z")
-                                                                       .build()))
+                                           .garPackageDTOList(List.of(GARPackageDTO.builder()
+                                                                          .packageName("myRepo/repo1")
+                                                                          .createTime("2023-01-01T12:00:00Z")
+                                                                          .updateTime("2023-01-02T12:00:00Z")
+                                                                          .build()))
                                            .build();
 
     Map<String, String> contextMap = new HashMap<>();
@@ -1346,11 +1343,15 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     // Perform assertions
     assertThat(modifiedRepositoryDetails).isNotNull();
-    assertThat(modifiedRepositoryDetails.getGarPackagesDTO()).hasSize(1);
+    assertThat(modifiedRepositoryDetails.getGarPackageDTOList()).hasSize(1);
 
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
             pipelineYamlWithoutTemplates, REGION, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, PROJECT, FQN, null, SERVICE_REF,
             yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
@@ -1372,11 +1373,11 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GoogleArtifactRegistryConfig googleArtifactRegistryConfig = GoogleArtifactRegistryConfig.builder().build();
 
     GARPackageDTOList packageDetails = GARPackageDTOList.builder()
-                                           .garPackagesDTO(List.of(GARPackageDTO.builder()
-                                                                       .packageName("myRepo/repo1")
-                                                                       .createTime("2023-01-01T12:00:00Z")
-                                                                       .updateTime("2023-01-02T12:00:00Z")
-                                                                       .build()))
+                                           .garPackageDTOList(List.of(GARPackageDTO.builder()
+                                                                          .packageName("myRepo/repo1")
+                                                                          .createTime("2023-01-01T12:00:00Z")
+                                                                          .updateTime("2023-01-02T12:00:00Z")
+                                                                          .build()))
                                            .build();
 
     Map<String, String> contextMap = new HashMap<>();
@@ -1415,11 +1416,15 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     // Perform assertions
     assertThat(modifiedRepositoryDetails).isNotNull();
-    assertThat(modifiedRepositoryDetails.getGarPackagesDTO()).hasSize(1);
+    assertThat(modifiedRepositoryDetails.getGarPackageDTOList()).hasSize(1);
 
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
             pipelineYamlWithoutTemplates, REGION, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, PROJECT, FQN, null, SERVICE_REF,
             yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
@@ -1440,16 +1445,17 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GoogleArtifactRegistryConfig googleArtifactRegistryConfig =
         GoogleArtifactRegistryConfig.builder()
             .connectorRef(ParameterField.<String>builder().value(CONNECTOR_REF_2).build())
+            .project(ParameterField.<String>builder().value(PROJECT_2).build())
             .region(ParameterField.<String>builder().value(REGION_2).build())
             .repositoryName(ParameterField.<String>builder().value(REPO_NAME).build())
             .build();
 
     GARPackageDTOList repositoryDetails = GARPackageDTOList.builder()
-                                              .garPackagesDTO(List.of(GARPackageDTO.builder()
-                                                                          .packageName("myRepo/repo1")
-                                                                          .createTime("2023-01-01T12:00:00Z")
-                                                                          .updateTime("2023-01-02T12:00:00Z")
-                                                                          .build()))
+                                              .garPackageDTOList(List.of(GARPackageDTO.builder()
+                                                                             .packageName("myRepo/repo1")
+                                                                             .createTime("2023-01-01T12:00:00Z")
+                                                                             .updateTime("2023-01-02T12:00:00Z")
+                                                                             .build()))
                                               .build();
 
     Map<String, String> contextMap = new HashMap<>();
@@ -1480,6 +1486,11 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
             pipelineYamlWithoutTemplates, CONNECTOR_REF_2, FQN, null, SERVICE_REF,
             yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    doReturn(ResolvedFieldValueWithYamlExpressionEvaluator.builder().value(PROJECT).build())
+        .when(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, PROJECT_2, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
     doReturn(ResolvedFieldValueWithYamlExpressionEvaluator.builder().value(REGION).build())
         .when(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
@@ -1498,15 +1509,19 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
         .getPackages(identifierRef, REGION, REPO_NAME, PROJECT, ORG_ID, PROJECT_ID);
 
     GARPackageDTOList modifiedRepositoryDetails =
-        spyArtifactResourceUtils.getPackagesV2GAR(CONNECTOR_REF_2, REGION_2, REPO_NAME_2, PROJECT, ACCOUNT_ID, ORG_ID,
+        spyArtifactResourceUtils.getPackagesV2GAR(CONNECTOR_REF_2, REGION_2, REPO_NAME_2, PROJECT_2, ACCOUNT_ID, ORG_ID,
             PIPELINE_ID, FQN, SERVICE_REF, pipelineYamlWithoutTemplates, PROJECT_ID, null, IS_SERVICE_V2);
 
     assertThat(modifiedRepositoryDetails).isNotNull();
-    assertThat(modifiedRepositoryDetails.getGarPackagesDTO()).hasSize(1);
+    assertThat(modifiedRepositoryDetails.getGarPackageDTOList()).hasSize(1);
 
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
             pipelineYamlWithoutTemplates, REGION_2, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, PROJECT_2, FQN, null, SERVICE_REF,
             yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
@@ -4075,7 +4090,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
                                    .createTime("2023-01-01T12:00:00Z")
                                    .updateTime("2023-01-02T12:00:00Z")
                                    .build();
-    GARPackageDTOList buildDetails = GARPackageDTOList.builder().garPackagesDTO(List.of(packageDTO)).build();
+    GARPackageDTOList buildDetails = GARPackageDTOList.builder().garPackageDTOList(List.of(packageDTO)).build();
     doReturn(buildDetails)
         .when(garResourceService)
         .getPackages(eq(IDENTIFIER_REF), eq(REGION), eq(REPO_NAME), eq(PROJECT), eq(ORG_ID), eq(PROJECT_ID));
@@ -4083,11 +4098,11 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GARPackageDTOList modifiedBuildDetails =
         garResourceService.getPackages(IDENTIFIER_REF, REGION, REPO_NAME, PROJECT, ORG_ID, PROJECT_ID);
 
-    int index = modifiedBuildDetails.getGarPackagesDTO().get(0).getPackageName().lastIndexOf("/");
+    int index = modifiedBuildDetails.getGarPackageDTOList().get(0).getPackageName().lastIndexOf("/");
     assertThat(modifiedBuildDetails).isNotNull();
-    assertThat(modifiedBuildDetails.getGarPackagesDTO()).hasSize(1);
+    assertThat(modifiedBuildDetails.getGarPackageDTOList()).hasSize(1);
 
-    GARPackageDTO modifiedRepo = modifiedBuildDetails.getGarPackagesDTO().get(0);
+    GARPackageDTO modifiedRepo = modifiedBuildDetails.getGarPackageDTOList().get(0);
     assertThat(modifiedRepo.getPackageName().substring(index + 1)).isEqualTo("package1");
     assertThat(modifiedRepo.getCreateTime()).isEqualTo("2023-01-01T12:00:00Z");
     assertThat(modifiedRepo.getUpdateTime()).isEqualTo("2023-01-02T12:00:00Z");
@@ -4135,12 +4150,12 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
             .build();
 
     GARRepositoryDTOList repositoryDetails = GARRepositoryDTOList.builder()
-                                                 .garRepositoryDTOS(List.of(GarRepositoryDTO.builder()
-                                                                                .repository("myRepo/repo1")
-                                                                                .format("DOCKER")
-                                                                                .createTime("2023-01-01T12:00:00Z")
-                                                                                .updateTime("2023-01-02T12:00:00Z")
-                                                                                .build()))
+                                                 .garRepositoryDTOList(List.of(GarRepositoryDTO.builder()
+                                                                                   .repository("myRepo/repo1")
+                                                                                   .format("DOCKER")
+                                                                                   .createTime("2023-01-01T12:00:00Z")
+                                                                                   .updateTime("2023-01-02T12:00:00Z")
+                                                                                   .build()))
                                                  .build();
 
     IdentifierRef identifierRef = IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID);
@@ -4160,12 +4175,12 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GARRepositoryDTOList modifiedRepositoryDetails = spyartifactResourceUtils.getRepositoriesV2GAR(
         null, null, PROJECT, ACCOUNT_ID, ORG_ID, PIPELINE_ID, "", SERVICE_REF, "", PROJECT_ID, null, IS_SERVICE_V2);
 
-    int index = modifiedRepositoryDetails.getGarRepositoryDTOS().get(0).getRepository().lastIndexOf("/");
+    int index = modifiedRepositoryDetails.getGarRepositoryDTOList().get(0).getRepository().lastIndexOf("/");
 
     assertThat(modifiedRepositoryDetails).isNotNull();
-    assertThat(modifiedRepositoryDetails.getGarRepositoryDTOS()).hasSize(1);
+    assertThat(modifiedRepositoryDetails.getGarRepositoryDTOList()).hasSize(1);
 
-    GarRepositoryDTO modifiedRepo = modifiedRepositoryDetails.getGarRepositoryDTOS().get(0);
+    GarRepositoryDTO modifiedRepo = modifiedRepositoryDetails.getGarRepositoryDTOList().get(0);
 
     assertThat(modifiedRepo.getRepository().substring(index + 1)).isEqualTo("repo1");
     assertThat(modifiedRepo.getFormat()).isEqualTo("DOCKER");
@@ -4187,12 +4202,12 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
             .build();
 
     GARRepositoryDTOList repositoryDetails = GARRepositoryDTOList.builder()
-                                                 .garRepositoryDTOS(List.of(GarRepositoryDTO.builder()
-                                                                                .repository("myRepo/repo1")
-                                                                                .format("format1")
-                                                                                .createTime("2023-01-01T12:00:00Z")
-                                                                                .updateTime("2023-01-02T12:00:00Z")
-                                                                                .build()))
+                                                 .garRepositoryDTOList(List.of(GarRepositoryDTO.builder()
+                                                                                   .repository("myRepo/repo1")
+                                                                                   .format("format1")
+                                                                                   .createTime("2023-01-01T12:00:00Z")
+                                                                                   .updateTime("2023-01-02T12:00:00Z")
+                                                                                   .build()))
                                                  .build();
 
     IdentifierRef identifierRef = IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID);
@@ -4212,7 +4227,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GARRepositoryDTOList modifiedRepositoryDetails = spyartifactResourceUtils.getRepositoriesV2GAR(
         null, null, PROJECT, ACCOUNT_ID, ORG_ID, PIPELINE_ID, "", SERVICE_REF, "", PROJECT_ID, null, IS_SERVICE_V2);
 
-    assertThat(modifiedRepositoryDetails.getGarRepositoryDTOS()).hasSize(0);
+    assertThat(modifiedRepositoryDetails.getGarRepositoryDTOList()).hasSize(0);
   }
 
   @Test
@@ -4225,16 +4240,17 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GoogleArtifactRegistryConfig googleArtifactRegistryConfig =
         GoogleArtifactRegistryConfig.builder()
             .connectorRef(ParameterField.<String>builder().value(CONNECTOR_REF).build())
+            .project(ParameterField.<String>builder().value(PROJECT).build())
             .region(ParameterField.<String>builder().value(REGION).build())
             .build();
 
     GARRepositoryDTOList repositoryDetails = GARRepositoryDTOList.builder()
-                                                 .garRepositoryDTOS(List.of(GarRepositoryDTO.builder()
-                                                                                .repository("myRepo/repo1")
-                                                                                .format("DOCKER")
-                                                                                .createTime("2023-01-01T12:00:00Z")
-                                                                                .updateTime("2023-01-02T12:00:00Z")
-                                                                                .build()))
+                                                 .garRepositoryDTOList(List.of(GarRepositoryDTO.builder()
+                                                                                   .repository("myRepo/repo1")
+                                                                                   .format("DOCKER")
+                                                                                   .createTime("2023-01-01T12:00:00Z")
+                                                                                   .updateTime("2023-01-02T12:00:00Z")
+                                                                                   .build()))
                                                  .build();
 
     Map<String, String> contextMap = new HashMap<>();
@@ -4273,12 +4289,16 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     // Perform assertions
     assertThat(modifiedRepositoryDetails).isNotNull();
-    assertThat(modifiedRepositoryDetails.getGarRepositoryDTOS()).hasSize(1);
+    assertThat(modifiedRepositoryDetails.getGarRepositoryDTOList()).hasSize(1);
 
     // Update the verify statement to match the actual calls in getRepositoriesV2GAR
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
             pipelineYamlWithoutTemplates, REGION, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, PROJECT, FQN, null, SERVICE_REF,
             yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
@@ -4296,12 +4316,12 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GoogleArtifactRegistryConfig googleArtifactRegistryConfig = GoogleArtifactRegistryConfig.builder().build();
 
     GARRepositoryDTOList repositoryDetails = GARRepositoryDTOList.builder()
-                                                 .garRepositoryDTOS(List.of(GarRepositoryDTO.builder()
-                                                                                .repository("myRepo/repo1")
-                                                                                .format("DOCKER")
-                                                                                .createTime("2023-01-01T12:00:00Z")
-                                                                                .updateTime("2023-01-02T12:00:00Z")
-                                                                                .build()))
+                                                 .garRepositoryDTOList(List.of(GarRepositoryDTO.builder()
+                                                                                   .repository("myRepo/repo1")
+                                                                                   .format("DOCKER")
+                                                                                   .createTime("2023-01-01T12:00:00Z")
+                                                                                   .updateTime("2023-01-02T12:00:00Z")
+                                                                                   .build()))
                                                  .build();
 
     Map<String, String> contextMap = new HashMap<>();
@@ -4340,12 +4360,16 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     // Perform assertions
     assertThat(modifiedRepositoryDetails).isNotNull();
-    assertThat(modifiedRepositoryDetails.getGarRepositoryDTOS()).hasSize(1);
+    assertThat(modifiedRepositoryDetails.getGarRepositoryDTOList()).hasSize(1);
 
     // Update the verify statement to match the actual calls in getRepositoriesV2GAR
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
             pipelineYamlWithoutTemplates, REGION, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, PROJECT, FQN, null, SERVICE_REF,
             yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
@@ -4362,12 +4386,12 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GoogleArtifactRegistryConfig googleArtifactRegistryConfig = GoogleArtifactRegistryConfig.builder().build();
 
     GARRepositoryDTOList repositoryDetails = GARRepositoryDTOList.builder()
-                                                 .garRepositoryDTOS(List.of(GarRepositoryDTO.builder()
-                                                                                .repository("myRepo/repo1")
-                                                                                .format("DOCKER")
-                                                                                .createTime("2023-01-01T12:00:00Z")
-                                                                                .updateTime("2023-01-02T12:00:00Z")
-                                                                                .build()))
+                                                 .garRepositoryDTOList(List.of(GarRepositoryDTO.builder()
+                                                                                   .repository("myRepo/repo1")
+                                                                                   .format("DOCKER")
+                                                                                   .createTime("2023-01-01T12:00:00Z")
+                                                                                   .updateTime("2023-01-02T12:00:00Z")
+                                                                                   .build()))
                                                  .build();
 
     Map<String, String> contextMap = new HashMap<>();
@@ -4398,6 +4422,11 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
             pipelineYamlWithoutTemplates, CONNECTOR_REF_2, FQN, null, SERVICE_REF,
             yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    doReturn(ResolvedFieldValueWithYamlExpressionEvaluator.builder().value(PROJECT).build())
+        .when(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, PROJECT_2, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
     doReturn(ResolvedFieldValueWithYamlExpressionEvaluator.builder().value(REGION).build())
         .when(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
@@ -4412,17 +4441,21 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     // Call the method you want to test
     GARRepositoryDTOList modifiedRepositoryDetails =
-        spyArtifactResourceUtils.getRepositoriesV2GAR(CONNECTOR_REF_2, REGION_2, PROJECT, ACCOUNT_ID, ORG_ID,
+        spyArtifactResourceUtils.getRepositoriesV2GAR(CONNECTOR_REF_2, REGION_2, PROJECT_2, ACCOUNT_ID, ORG_ID,
             PIPELINE_ID, FQN, SERVICE_REF, pipelineYamlWithoutTemplates, PROJECT_ID, null, IS_SERVICE_V2);
 
     // Perform assertions
     assertThat(modifiedRepositoryDetails).isNotNull();
-    assertThat(modifiedRepositoryDetails.getGarRepositoryDTOS()).hasSize(1);
+    assertThat(modifiedRepositoryDetails.getGarRepositoryDTOList()).hasSize(1);
 
     // Update the verify statement to match the actual calls in getRepositoriesV2GAR
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
             pipelineYamlWithoutTemplates, REGION_2, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, PROJECT_2, FQN, null, SERVICE_REF,
             yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
     verify(spyArtifactResourceUtils)
         .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
@@ -4447,12 +4480,12 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     // Creating GARRepositoryDTOList for mock
     GARRepositoryDTOList repositoryDetails = GARRepositoryDTOList.builder()
-                                                 .garRepositoryDTOS(List.of(GarRepositoryDTO.builder()
-                                                                                .repository("myRepo/repo1")
-                                                                                .format("DOCKER")
-                                                                                .createTime("2023-01-01T12:00:00Z")
-                                                                                .updateTime("2023-01-02T12:00:00Z")
-                                                                                .build()))
+                                                 .garRepositoryDTOList(List.of(GarRepositoryDTO.builder()
+                                                                                   .repository("myRepo/repo1")
+                                                                                   .format("DOCKER")
+                                                                                   .createTime("2023-01-01T12:00:00Z")
+                                                                                   .updateTime("2023-01-02T12:00:00Z")
+                                                                                   .build()))
                                                  .build();
 
     Map<String, String> contextMap = new HashMap<>();
@@ -4480,7 +4513,6 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
         .locateArtifactInService(any(), any(), any(), any(), any(), eq("main-patch"));
 
     doReturn(true).when(spyArtifactResourceUtils).isRemoteService(any(), any(), any(), any());
-
     doReturn(repositoryDetails)
         .when(garResourceService)
         .getRepositories(identifierRef, REGION, PROJECT, ORG_ID, PROJECT_ID);
@@ -4491,9 +4523,9 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     // Perform assertions
     assertThat(modifiedRepositoryDetails).isNotNull();
-    assertThat(modifiedRepositoryDetails.getGarRepositoryDTOS()).hasSize(1);
+    assertThat(modifiedRepositoryDetails.getGarRepositoryDTOList()).hasSize(1);
 
-    GarRepositoryDTO modifiedRepo = modifiedRepositoryDetails.getGarRepositoryDTOS().get(0);
+    GarRepositoryDTO modifiedRepo = modifiedRepositoryDetails.getGarRepositoryDTOList().get(0);
     assertThat(modifiedRepo.getRepository()).isEqualTo("repo1");
     assertThat(modifiedRepo.getFormat()).isEqualTo("DOCKER");
     assertThat(modifiedRepo.getCreateTime()).isEqualTo("2023-01-01T12:00:00Z");
@@ -4516,7 +4548,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
                                          .updateTime("2023-01-02T12:00:00Z")
                                          .build();
     GARRepositoryDTOList buildDetails =
-        GARRepositoryDTOList.builder().garRepositoryDTOS(List.of(repositoryDTO)).build();
+        GARRepositoryDTOList.builder().garRepositoryDTOList(List.of(repositoryDTO)).build();
     doReturn(buildDetails)
         .when(garResourceService)
         .getRepositories(eq(IDENTIFIER_REF), eq(REGION), eq(PROJECT), eq(ORG_ID), eq(PROJECT_ID));
@@ -4525,147 +4557,13 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
         IDENTIFIER_REF, REGION, PROJECT, ACCOUNT_ID, ORG_ID, PROJECT_ID, IS_SERVICE_V2);
 
     assertThat(modifiedBuildDetails).isNotNull();
-    assertThat(modifiedBuildDetails.getGarRepositoryDTOS()).hasSize(1);
+    assertThat(modifiedBuildDetails.getGarRepositoryDTOList()).hasSize(1);
 
-    GarRepositoryDTO modifiedRepo = modifiedBuildDetails.getGarRepositoryDTOS().get(0);
+    GarRepositoryDTO modifiedRepo = modifiedBuildDetails.getGarRepositoryDTOList().get(0);
     assertThat(modifiedRepo.getRepository()).isEqualTo("repo1");
     assertThat(modifiedRepo.getFormat()).isEqualTo("DOCKER");
     assertThat(modifiedRepo.getCreateTime()).isEqualTo("2023-01-01T12:00:00Z");
     assertThat(modifiedRepo.getUpdateTime()).isEqualTo("2023-01-02T12:00:00Z");
-  }
-
-  @Test
-  @Owner(developers = SARTHAK_KASAT)
-  @Category(UnitTests.class)
-  public void testGetBambooPlanKeys() {
-    // spy for ArtifactResourceUtils
-    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
-
-    // Creating GoogleArtifactRegistryConfig for mock
-    BambooArtifactConfig bambooArtifactConfig =
-        BambooArtifactConfig.builder()
-            .connectorRef(ParameterField.<String>builder().value("connectorref").build())
-            .build();
-
-    BambooPlanKeysDTO planKeys = BambooPlanKeysDTO.builder().build();
-
-    Map<String, String> contextMap = new HashMap<>();
-    contextMap.put("serviceGitBranch", "main-patch");
-
-    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
-        YamlExpressionEvaluatorWithContext.builder()
-            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
-            .contextMap(contextMap)
-            .build();
-
-    doReturn(yamlExpressionEvaluatorWithContext)
-        .when(spyartifactResourceUtils)
-        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
-
-    IdentifierRef identifierRef =
-        IdentifierRefHelper.getIdentifierRef("connectorref", "accountId", "orgId", "projectId");
-
-    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
-
-    doReturn(bambooArtifactConfig)
-        .when(spyartifactResourceUtils)
-        .locateArtifactInService(any(), any(), any(), any(), any(), eq("main-patch"));
-
-    doReturn(planKeys).when(bambooResourceService).getPlanName(identifierRef, "orgId", "projectId");
-
-    assertThat(spyartifactResourceUtils.getBambooPlanKeys(
-                   "connectorref", "accountId", "orgId", "projectId", "pipeId", null, "", "serviceref", ""))
-        .isEqualTo(planKeys);
-  }
-
-  @Test
-  @Owner(developers = SARTHAK_KASAT)
-  @Category(UnitTests.class)
-  public void testGetBambooArtifactPaths() {
-    // spy for ArtifactResourceUtils
-    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
-
-    // Creating GoogleArtifactRegistryConfig for mock
-    BambooArtifactConfig bambooArtifactConfig =
-        BambooArtifactConfig.builder()
-            .connectorRef(ParameterField.<String>builder().value("connectorref").build())
-            .build();
-
-    List<String> artifactPaths = new ArrayList<>();
-
-    Map<String, String> contextMap = new HashMap<>();
-    contextMap.put("serviceGitBranch", "main-patch");
-
-    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
-        YamlExpressionEvaluatorWithContext.builder()
-            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
-            .contextMap(contextMap)
-            .build();
-
-    doReturn(yamlExpressionEvaluatorWithContext)
-        .when(spyartifactResourceUtils)
-        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
-
-    IdentifierRef identifierRef =
-        IdentifierRefHelper.getIdentifierRef("connectorref", "accountId", "orgId", "projectId");
-
-    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
-
-    doReturn(bambooArtifactConfig)
-        .when(spyartifactResourceUtils)
-        .locateArtifactInService(any(), any(), any(), any(), any(), eq("main-patch"));
-
-    doReturn(artifactPaths).when(bambooResourceService).getArtifactPath(identifierRef, "orgId", "projectId", "plan");
-
-    assertThat(spyartifactResourceUtils.getBambooArtifactPaths(
-                   "connectorref", "accountId", "orgId", "projectId", "pipeId", "plan", null, "serviceref", "", ""))
-        .isEqualTo(artifactPaths);
-  }
-
-  @Test
-  @Owner(developers = SARTHAK_KASAT)
-  @Category(UnitTests.class)
-  public void testGetBambooArtifactBuildDetails() {
-    // spy for ArtifactResourceUtils
-    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
-
-    // Creating GoogleArtifactRegistryConfig for mock
-    BambooArtifactConfig bambooArtifactConfig =
-        BambooArtifactConfig.builder()
-            .connectorRef(ParameterField.<String>builder().value("connectorref").build())
-            .build();
-
-    List<BuildDetails> buildDetails = new ArrayList<>();
-
-    Map<String, String> contextMap = new HashMap<>();
-    contextMap.put("serviceGitBranch", "main-patch");
-
-    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
-        YamlExpressionEvaluatorWithContext.builder()
-            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
-            .contextMap(contextMap)
-            .build();
-
-    doReturn(yamlExpressionEvaluatorWithContext)
-        .when(spyartifactResourceUtils)
-        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
-
-    IdentifierRef identifierRef =
-        IdentifierRefHelper.getIdentifierRef("connectorref", "accountId", "orgId", "projectId");
-
-    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
-
-    doReturn(bambooArtifactConfig)
-        .when(spyartifactResourceUtils)
-        .locateArtifactInService(any(), any(), any(), any(), any(), eq("main-patch"));
-
-    doReturn(buildDetails)
-        .when(bambooResourceService)
-        .getBuilds(identifierRef, "orgId", "projectId", "plan", Collections.EMPTY_LIST);
-
-    assertThat(spyartifactResourceUtils.getBambooArtifactBuildDetails("connectorref", "accountId", "orgId", "projectId",
-                   "pipeId", "plan", Collections.EMPTY_LIST, null, "serviceref", "", ""))
-        .isEqualTo(buildDetails);
   }
 
   @Test
@@ -4681,10 +4579,12 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
                                          .updateTime("2023-01-02T12:00:00Z")
                                          .build();
     GARRepositoryDTOList buildDetails =
-        GARRepositoryDTOList.builder().garRepositoryDTOS(List.of(repositoryDTO)).build();
+        GARRepositoryDTOList.builder().garRepositoryDTOList(List.of(repositoryDTO)).build();
+
     doReturn(null)
         .when(artifactSourceInstrumentationHelper)
         .sendArtifactApiEvent(any(), any(), any(), any(), any(), anyInt(), anyInt(), anyBoolean(), anyBoolean());
+
     doReturn(buildDetails)
         .when(garResourceService)
         .getRepositories(eq(IDENTIFIER_REF), eq(REGION), eq(PROJECT), eq(ORG_ID), eq(PROJECT_ID));
@@ -4692,7 +4592,7 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     GARRepositoryDTOList modifiedBuildDetails = spyArtifactResourceUtils.getRepositoriesGAR(
         IDENTIFIER_REF, REGION, PROJECT, ACCOUNT_ID, ORG_ID, PROJECT_ID, IS_SERVICE_V2);
 
-    assertThat(modifiedBuildDetails.getGarRepositoryDTOS()).hasSize(0);
+    assertThat(modifiedBuildDetails.getGarRepositoryDTOList()).hasSize(0);
   }
 
   private void mockEnvironmentGetCall() {
