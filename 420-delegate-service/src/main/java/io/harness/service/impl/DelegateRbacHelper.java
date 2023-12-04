@@ -46,9 +46,7 @@ public class DelegateRbacHelper {
   public List<String> getViewPermittedDelegateGroupIds(
       List<String> delegateGroupIds, String accountId, String orgId, String projectId) {
     if (isEmpty(delegateGroupIds)) {
-      throw new NGAccessDeniedException(
-          String.format("Missing permission %s on %s", DELEGATE_VIEW_PERMISSION, DELEGATE_RESOURCE_TYPE), USER,
-          emptyList());
+      return null;
     }
     Query<DelegateGroup> delegateGroupQuery =
         persistence.createQuery(DelegateGroup.class).field(DelegateGroupKeys.uuid).in(delegateGroupIds);
@@ -92,9 +90,7 @@ public class DelegateRbacHelper {
   public List<DelegateGroup> getViewPermittedDelegateGroups(
       List<DelegateGroup> delegateGroups, String accountId, String orgId, String projectId) {
     if (isEmpty(delegateGroups)) {
-      throw new NGAccessDeniedException(
-          String.format("Missing permission %s on %s", DELEGATE_VIEW_PERMISSION, DELEGATE_RESOURCE_TYPE), USER,
-          emptyList());
+      return null;
     }
     Map<EntityScopeInfo, List<DelegateGroup>> delegateGroupIdMap = delegateGroups.stream().collect(
         groupingBy(delegateGroup -> getEntityScopeInfoFromDelegateGroup(delegateGroup, accountId, orgId, projectId)));

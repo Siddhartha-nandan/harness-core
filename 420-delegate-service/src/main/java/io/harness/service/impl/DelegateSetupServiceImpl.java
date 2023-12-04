@@ -396,6 +396,10 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
           delegateRbacHelper.getViewPermittedDelegateGroupIds(delegateGroupIds, accountId, orgId, projectId);
     }
 
+    if (null == delegateGroupIds) {
+      return null;
+    }
+
     Query<Delegate> delegateQuery = persistence.createQuery(Delegate.class)
                                         .filter(DelegateKeys.accountId, accountId)
                                         .field(DelegateKeys.delegateGroupId)
@@ -559,6 +563,10 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
     if (applyRbacFilter) {
       delegateGroupIds =
           delegateRbacHelper.getViewPermittedDelegateGroupIds(delegateGroupIds, accountId, orgId, projectId);
+    }
+
+    if (null == delegateGroupIds) {
+      return null;
     }
 
     List<Delegate> delegateList = getFilteredDelegateList(accountId, filterProperties, delegateGroupIds);

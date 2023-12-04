@@ -60,13 +60,17 @@ public class DelegateRbacHelperTest extends DelegateServiceTestBase {
   @Test
   @Owner(developers = VIKAS_M)
   @Category(UnitTests.class)
-  public void getPermittedDelegateIds_CalledWithEmptyDelegateList_ReturnsNGAccessDeniedException() {
-    try {
-      delegateRbacHelper.getViewPermittedDelegateGroupIds(emptyList(), ACCOUNT_ID, ORG_ID, PROJECT_ID);
-    } catch (NGAccessDeniedException ex) {
-      assertThat(ex.getMessage())
-          .isEqualTo(String.format("Missing permission %s on %s", DELEGATE_VIEW_PERMISSION, DELEGATE_RESOURCE_TYPE));
-    }
+  public void getPermittedDelegateIds_CalledWithEmptyList_ReturnsNull() {
+    assertThat(delegateRbacHelper.getViewPermittedDelegateGroupIds(emptyList(), ACCOUNT_ID, ORG_ID, PROJECT_ID))
+        .isEqualTo(null);
+  }
+
+  @Test
+  @Owner(developers = VIKAS_M)
+  @Category(UnitTests.class)
+  public void getPermittedDelegateGroup_CalledWithEmptyDelegateGroupList_ReturnsNull() {
+    assertThat(delegateRbacHelper.getViewPermittedDelegateGroups(emptyList(), ACCOUNT_ID, ORG_ID, PROJECT_ID))
+        .isEqualTo(null);
   }
 
   @Test

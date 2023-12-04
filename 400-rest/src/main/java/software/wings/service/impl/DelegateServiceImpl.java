@@ -563,6 +563,10 @@ public class DelegateServiceImpl implements DelegateService {
       delegateGroups = delegateRbacHelper.getViewPermittedDelegateGroups(delegateGroups, accountId, orgId, projectId);
     }
 
+    if (null == delegateGroups) {
+      return null;
+    }
+
     return delegateGroups.stream()
         .map(group -> {
           Set<String> groupSelectors =
