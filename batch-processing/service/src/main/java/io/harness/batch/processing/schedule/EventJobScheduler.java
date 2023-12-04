@@ -405,7 +405,8 @@ public class EventJobScheduler {
     }
   }
 
-  @Scheduled(cron = "${scheduler-jobs-config.connectorHealthUpdateJobCron}")
+//  @Scheduled(cron = "${scheduler-jobs-config.connectorHealthUpdateJobCron}")
+  @Scheduled(cron = "0 */15 * * * ?")
   public void runNGConnectorsHealthUpdateJob() {
     try {
       if (!batchMainConfig.getConnectorHealthUpdateJobConfig().isEnabled()) {
