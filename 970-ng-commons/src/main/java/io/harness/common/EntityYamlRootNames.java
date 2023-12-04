@@ -278,4 +278,10 @@ public class EntityYamlRootNames {
 
   public static final String OVERRIDES = "Overrides";
   public static final String IDP_STAGE = "IdpStage";
+  public static final String IDP_COOKIECUTTER = "IdpCookieCutter";
+  public static final String IDP_CREATE_REPO = "IdpCreateRepo";
+  public static final String IDP_CODE_PUSH = "IdpCodePush";
+
+  // CD Container Step Group Common Steps
+  public static final String DOWNLOAD_AWS_S3 = "DownloadAwsS3";
 }

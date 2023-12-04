@@ -34,4 +34,7 @@ public class VmImageConfig {
   String sscaOrchestration;
   String sscaEnforcement;
   String slsaVerification;
+  String idpCookieCutter;
+  String idpCreateRepo;
+  String idpCodePush;
 }

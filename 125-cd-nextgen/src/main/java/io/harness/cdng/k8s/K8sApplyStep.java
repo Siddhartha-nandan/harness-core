@@ -7,6 +7,7 @@
 
 package io.harness.cdng.k8s;
 
+import static io.harness.cdng.manifest.yaml.harness.HarnessStoreConstants.HARNESS_STORE_TYPE;
 import static io.harness.common.ParameterFieldHelper.getParameterFieldValue;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
@@ -37,6 +38,7 @@ import io.harness.delegate.task.k8s.K8sApplyRequest;
 import io.harness.delegate.task.k8s.K8sApplyRequest.K8sApplyRequestBuilder;
 import io.harness.delegate.task.k8s.K8sDeployResponse;
 import io.harness.delegate.task.k8s.K8sTaskType;
+import io.harness.delegate.task.localstore.ManifestFiles;
 import io.harness.eventsframework.protohelper.IdentifierRefProtoDTOHelper;
 import io.harness.eventsframework.schemas.entity.EntityTypeProtoEnum;
 import io.harness.eventsframework.schemas.entity.EntityUsageDetailProto;
@@ -71,7 +73,9 @@ import com.google.inject.Inject;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -109,7 +113,7 @@ public class K8sApplyStep extends CdTaskChainExecutable implements K8sStepExecut
 
     publishSecretRuntimeUsage(ambiance, k8sApplyStepParameters);
     if (k8sApplyStepParameters.getManifestSource() != null) {
-      validateManifestSource(k8sApplyStepParameters);
+      validateManifestSource(ambiance, k8sApplyStepParameters);
     } else {
       validateFilePaths(k8sApplyStepParameters);
     }
@@ -142,12 +146,13 @@ public class K8sApplyStep extends CdTaskChainExecutable implements K8sStepExecut
     }
   }
 
-  private void validateManifestSource(K8sApplyStepParameters k8sApplyStepParameters) {
+  private void validateManifestSource(Ambiance ambiance, K8sApplyStepParameters k8sApplyStepParameters) {
     if (!ManifestType.K8Manifest.equals(k8sApplyStepParameters.getManifestSource().getType().getDisplayName())) {
       throw new UnsupportedOperationException(
           format("K8s Apply step manifest source only supports manifests of type: [%s], and [%s] is provided",
               ManifestType.K8Manifest, k8sApplyStepParameters.getManifestSource().getType()));
     }
+    k8sStepHelper.resolveManifestsSourceExpressions(ambiance, k8sApplyStepParameters.getManifestSource());
   }
   @Override
   public TaskChainResponse executeNextLinkWithSecurityContextAndNodeInfo(Ambiance ambiance,
@@ -199,7 +204,16 @@ public class K8sApplyStep extends CdTaskChainExecutable implements K8sStepExecut
       applyRequestBuilder.serviceHooks(k8sStepHelper.getServiceHooks(ambiance));
     }
 
-    setFilePathsInRequest(k8sApplyStepParameters, applyRequestBuilder, accountId);
+    if (k8sManifestOutcome != null && k8sManifestOutcome.getStore() != null
+        && HARNESS_STORE_TYPE.equals(k8sManifestOutcome.getStore().getKind())
+        && isNotEmpty(getParameterFieldValue(k8sApplyStepParameters.getFilePaths()))) {
+      // if Harness Store has been used for Manifest all specified file paths should be present in the manifestFiles
+      // should only cover if the manifest is specified in the service definition
+      validateFilePathsAgainstManifestFiles(
+          getParameterFieldValue(k8sApplyStepParameters.getFilePaths()), executionPassThroughData.getManifestFiles());
+    }
+
+    setFilePathsInRequest(k8sManifestOutcome, k8sApplyStepParameters, applyRequestBuilder, accountId);
 
     Map<String, String> k8sCommandFlag =
         k8sStepHelper.getDelegateK8sCommandFlag(k8sApplyStepParameters.getCommandFlags(), ambiance);
@@ -284,18 +298,33 @@ public class K8sApplyStep extends CdTaskChainExecutable implements K8sStepExecut
             .build());
   }
 
-  private void setFilePathsInRequest(
-      K8sApplyStepParameters k8sApplyStepParameters, K8sApplyRequestBuilder applyRequestBuilder, String accountId) {
+  private void setFilePathsInRequest(ManifestOutcome k8sManifestOutcome, K8sApplyStepParameters k8sApplyStepParameters,
+      K8sApplyRequestBuilder applyRequestBuilder, String accountId) {
     if (!isEmpty(getParameterFieldValue(k8sApplyStepParameters.getFilePaths()))) {
       applyRequestBuilder.filePaths(k8sApplyStepParameters.getFilePaths().getValue());
     } else if (cdFeatureFlagHelper.isEnabled(accountId, FeatureName.CDS_K8S_APPLY_MANIFEST_WITHOUT_SERVICE_NG)) {
-      applyRequestBuilder.filePaths(
-          k8sApplyStepParameters.getManifestSource().getSpec().getStoreConfig().retrieveFilePaths());
+      applyRequestBuilder.filePaths(k8sManifestOutcome.getStore().retrieveFilePaths());
       applyRequestBuilder.useManifestSource(true);
     } else {
       throw NestedExceptionUtils.hintWithExplanationException(KubernetesExceptionHints.APPLY_NO_FILEPATH_SPECIFIED,
           KubernetesExceptionExplanation.APPLY_NO_FILEPATH_SPECIFIED,
           new KubernetesTaskException(KubernetesExceptionMessages.APPLY_NO_FILEPATH_SPECIFIED));
+    }
+  }
+
+  private void validateFilePathsAgainstManifestFiles(List<String> filePaths, List<ManifestFiles> manifestFiles) {
+    if (manifestFiles != null) {
+      Set<String> manifestPaths =
+          manifestFiles.stream().map(ManifestFiles::getFilePath).filter(Objects::nonNull).collect(Collectors.toSet());
+      Set<String> normalizedFilePaths =
+          filePaths.stream().map(path -> path.charAt(0) == '/' ? path : "/" + path).collect(Collectors.toSet());
+
+      normalizedFilePaths.removeAll(manifestPaths);
+      if (isNotEmpty(normalizedFilePaths)) {
+        throw new KubernetesTaskException(
+            format(KubernetesExceptionMessages.PROVIDED_PATHS_ARE_NOT_PART_OF_THE_MANIFEST,
+                String.join("\n- ", normalizedFilePaths)));
+      }
     }
   }
 }

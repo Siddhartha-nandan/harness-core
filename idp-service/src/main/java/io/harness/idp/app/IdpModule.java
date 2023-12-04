@@ -37,6 +37,7 @@ import io.harness.cache.NoOpCache;
 import io.harness.callback.DelegateCallback;
 import io.harness.callback.DelegateCallbackToken;
 import io.harness.callback.MongoDatabase;
+import io.harness.cdstage.CDStageConfigResourceClientModule;
 import io.harness.ci.CIExecutionServiceModule;
 import io.harness.ci.beans.entities.EncryptedDataDetails;
 import io.harness.ci.beans.entities.LogServiceConfig;
@@ -177,6 +178,8 @@ import io.harness.idp.scorecard.scores.service.ScoreComputerService;
 import io.harness.idp.scorecard.scores.service.ScoreComputerServiceImpl;
 import io.harness.idp.scorecard.scores.service.ScoreService;
 import io.harness.idp.scorecard.scores.service.ScoreServiceImpl;
+import io.harness.idp.scorecard.scores.service.StatsComputeService;
+import io.harness.idp.scorecard.scores.service.StatsComputeServiceImpl;
 import io.harness.idp.serializer.IdpServiceRegistrars;
 import io.harness.idp.settings.resources.BackstagePermissionsApiImpl;
 import io.harness.idp.settings.service.BackstagePermissionsService;
@@ -447,6 +450,8 @@ public class IdpModule extends AbstractModule {
     install(EnforcementClientModule.getInstance(appConfig.getManagerClientConfig(), // Licencing
         appConfig.getNgManagerServiceSecret(), IDP_SERVICE.getServiceId(),
         appConfig.getEnforcementClientConfiguration()));
+    install(new CDStageConfigResourceClientModule(appConfig.getNgManagerServiceHttpClientConfig(),
+        appConfig.getNgManagerServiceSecret(), IDP_SERVICE.getServiceId()));
     // Keeping it to 1 thread to start with. Assuming executor service is used only to
     // serve health checks. If it's being used for other tasks also, max pool size should be increased.
     bind(ExecutorService.class)
@@ -508,6 +513,7 @@ public class IdpModule extends AbstractModule {
     bind(DataSourceLocationService.class).to(DataSourceLocationServiceImpl.class);
     bind(ScoreService.class).to(ScoreServiceImpl.class);
     bind(ScoreComputerService.class).to(ScoreComputerServiceImpl.class);
+    bind(StatsComputeService.class).to(StatsComputeServiceImpl.class);
     bind(AsyncScoreComputationService.class).to(AsyncScoreComputationServiceImpl.class);
     bind(DataPointService.class).to(DataPointServiceImpl.class);
     bind(HarnessDataPointsApi.class).to(HarnessDataPointsApiImpl.class);
@@ -574,8 +580,8 @@ public class IdpModule extends AbstractModule {
         .annotatedWith(Names.named("licenseUsageDailyCountJob"))
         .toInstance(new ManagedScheduledExecutorService("licenseUsageDailyCountJob"));
     bind(ScheduledExecutorService.class)
-        .annotatedWith(Names.named("checkStatusDailyRunJob"))
-        .toInstance(new ManagedScheduledExecutorService("checkStatusDailyRunJob"));
+        .annotatedWith(Names.named("statsComputeDailyRunJob"))
+        .toInstance(new ManagedScheduledExecutorService("statsComputeDailyRunJob"));
     install(new AbstractTelemetryModule() {
       @Override
       public TelemetryConfiguration telemetryConfiguration() {
@@ -979,6 +985,13 @@ public class IdpModule extends AbstractModule {
   @Named("internalAccounts")
   public List<String> internalAccounts() {
     return this.appConfig.getInternalAccounts();
+  }
+
+  @Provides
+  @Singleton
+  @Named("enableMetrics")
+  public Boolean enableMetrics() {
+    return this.appConfig.isEnableMetrics();
   }
 
   @Provides

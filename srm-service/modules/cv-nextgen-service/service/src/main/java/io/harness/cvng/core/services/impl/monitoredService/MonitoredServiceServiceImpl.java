@@ -48,10 +48,12 @@ import io.harness.cvng.core.beans.monitoredService.MonitoredServiceDTO.Sources;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceListItemDTO;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceListItemDTO.MonitoredServiceListItemDTOBuilder;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServicePlatformResponse;
+import io.harness.cvng.core.beans.monitoredService.MonitoredServiceReference;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceResponse;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceWithHealthSources;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceWithHealthSources.HealthSourceSummary;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceYamlDTO;
+import io.harness.cvng.core.beans.monitoredService.ReconciliationStatus;
 import io.harness.cvng.core.beans.monitoredService.RiskData;
 import io.harness.cvng.core.beans.monitoredService.SloHealthIndicatorDTO;
 import io.harness.cvng.core.beans.monitoredService.changeSourceSpec.ChangeSourceWithConnectorSpec;
@@ -66,7 +68,9 @@ import io.harness.cvng.core.beans.params.filterParams.LiveMonitoringLogAnalysisF
 import io.harness.cvng.core.beans.params.filterParams.TimeSeriesAnalysisFilter;
 import io.harness.cvng.core.beans.params.logsFilterParams.LiveMonitoringLogsFilter;
 import io.harness.cvng.core.beans.template.TemplateDTO;
+import io.harness.cvng.core.beans.template.TemplateDTO.TemplateDTOBuilder;
 import io.harness.cvng.core.beans.template.TemplateMetadata;
+import io.harness.cvng.core.beans.template.TemplateMetadata.TemplateMetadataKeys;
 import io.harness.cvng.core.entities.CVConfig;
 import io.harness.cvng.core.entities.EntityDisableTime;
 import io.harness.cvng.core.entities.MonitoredService;
@@ -258,7 +262,9 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
                                                      .environmentIdentifier(monitoredServiceDTO.getEnvironmentRef())
                                                      .build();
 
-    validate(monitoredServiceDTO, accountId);
+    boolean isTemplateByReference =
+        monitoredServiceDTO.getTemplate() != null && monitoredServiceDTO.getTemplate().getIsTemplateByReference();
+    validate(monitoredServiceDTO, accountId, isTemplateByReference, false);
     checkIfAlreadyPresent(accountId, environmentParams, monitoredServiceDTO.getIdentifier(),
         monitoredServiceDTO.getSources(), monitoredServiceDTO.getType());
 
@@ -311,7 +317,7 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
   public MonitoredServiceResponse updateFromYaml(ProjectParams projectParams, String identifier, String yaml) {
     MonitoredServiceDTO monitoredServiceDTO = getExpandedMonitoredServiceFromYaml(projectParams, yaml);
     monitoredServiceDTO.setIdentifier(identifier);
-    return update(projectParams.getAccountIdentifier(), monitoredServiceDTO);
+    return update(projectParams.getAccountIdentifier(), monitoredServiceDTO, true);
   }
 
   @Override
@@ -329,6 +335,61 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
     monitoredServiceDTO.setOrgIdentifier(projectParams.getOrgIdentifier());
     MonitoredServiceValidator.validateMSDTO(monitoredServiceDTO);
     return monitoredServiceDTO;
+  }
+
+  @Override
+  public String getResolvedTemplateInputs(
+      ProjectParams projectParams, String identifier, String templateIdentifier, String versionLabel) {
+    MonitoredService monitoredService = getAndValidateMonitoredService(projectParams, identifier);
+    if (monitoredService.getTemplateMetadata() == null
+        || (!monitoredService.getTemplateIdentifier().equals(templateIdentifier)
+            || !monitoredService.getTemplateVersionLabel().equals(versionLabel))) {
+      throw new InvalidRequestException(String.format(
+          "No resolved template inputs for Monitored Service entity with identifier %s, templateIdentifier %s and versionLabel %s are present",
+          monitoredService.getIdentifier(), templateIdentifier, versionLabel));
+    }
+    return monitoredService.getTemplateMetadata().getTemplateInputs();
+  }
+
+  @Override
+  public boolean isReconciliationRequiredForMonitoredServices(ProjectParams templateProjectParams,
+      String templateIdentifier, String versionLabel, String monitoredServiceIdentifier, int templateVersionNumber) {
+    Query<MonitoredService> query =
+        createQueryForTemplateReferencedMSs(templateProjectParams, templateIdentifier, versionLabel);
+    if (monitoredServiceIdentifier != null) {
+      query = query.filter(MonitoredServiceKeys.identifier, monitoredServiceIdentifier);
+    }
+
+    // template referenced monitored services count
+    long allTemplateReferencedMonitoredServices = query.count();
+    if (allTemplateReferencedMonitoredServices == 0) {
+      return false;
+    }
+
+    // get already reconciled monitored services count
+    query = query.filter(MonitoredServiceKeys.templateMetadata + "." + TemplateMetadataKeys.templateVersionNumber,
+        templateVersionNumber);
+    long alreadyReconciledMonitoredServices = query.count();
+
+    return allTemplateReferencedMonitoredServices != alreadyReconciledMonitoredServices;
+  }
+
+  @Override
+  public boolean detachMonitoredServiceFromTemplate(ProjectParams projectParams, String identifier) {
+    MonitoredService monitoredService = getAndValidateMonitoredService(projectParams, identifier);
+    if (monitoredService.getTemplateMetadata() == null || !monitoredService.isTemplateByReference()) {
+      throw new InvalidRequestException(String.format(
+          "Monitored Service entity with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s is not referring to any template",
+          monitoredService.getIdentifier(), projectParams.getAccountIdentifier(), projectParams.getOrgIdentifier(),
+          projectParams.getProjectIdentifier()));
+    }
+
+    UpdateOperations<MonitoredService> updateOperations = hPersistence.createUpdateOperations(MonitoredService.class);
+    updateOperations.set(
+        MonitoredServiceKeys.templateMetadata + "." + TemplateMetadataKeys.isTemplateByReference, false);
+    hPersistence.update(monitoredService, updateOperations);
+    setupUsageEventService.sendTemplateDeleteEventForMonitoredService(projectParams, monitoredService, null);
+    return true;
   }
 
   private void validateDependencyMetadata(ProjectParams projectParams, Set<ServiceDependencyDTO> dependencyDTOs) {
@@ -369,7 +430,8 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
   }
 
   @Override
-  public MonitoredServiceResponse update(String accountId, MonitoredServiceDTO monitoredServiceDTO) {
+  public MonitoredServiceResponse update(
+      String accountId, MonitoredServiceDTO monitoredServiceDTO, boolean isUpdatedFromYaml) {
     ServiceEnvironmentParams environmentParams = ServiceEnvironmentParams.builder()
                                                      .accountIdentifier(accountId)
                                                      .orgIdentifier(monitoredServiceDTO.getOrgIdentifier())
@@ -380,13 +442,11 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
     MonitoredService monitoredService = getMonitoredService(environmentParams, monitoredServiceDTO.getIdentifier());
     if (monitoredService == null) {
       throw new InvalidRequestException(String.format(
-          "Monitored Source Entity  with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s  is not present",
+          "Monitored Service entity with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s is not present",
           monitoredServiceDTO.getIdentifier(), accountId, monitoredServiceDTO.getOrgIdentifier(),
           monitoredServiceDTO.getProjectIdentifier()));
     }
-    if (featureFlagService.isFeatureFlagEnabled(accountId, FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION)) {
-      validateTemplateMetadata(monitoredServiceDTO);
-    }
+
     Preconditions.checkArgument(monitoredService.getServiceIdentifier().equals(monitoredServiceDTO.getServiceRef()),
         "serviceRef update is not allowed");
     if (monitoredService.getType() == MonitoredServiceType.APPLICATION) {
@@ -401,14 +461,18 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
     monitoredServiceHandlers.forEach(baseMonitoredServiceHandler
         -> baseMonitoredServiceHandler.beforeUpdate(
             environmentParams, existingMonitoredServiceDTO, monitoredServiceDTO));
-    validate(monitoredServiceDTO, accountId);
-
-    updateHealthSources(monitoredService, monitoredServiceDTO);
-    changeSourceService.update(MonitoredServiceParams.builderWithProjectParams(environmentParams)
-                                   .monitoredServiceIdentifier(monitoredService.getIdentifier())
-                                   .build(),
-        monitoredServiceDTO.getSources().getChangeSources());
-    updateMonitoredService(monitoredService, monitoredServiceDTO);
+    boolean isTemplateByReference =
+        monitoredService.getTemplateMetadata() != null && monitoredService.isTemplateByReference();
+    validate(monitoredServiceDTO, accountId, isTemplateByReference, isUpdatedFromYaml);
+    if (this.validateUpdate(accountId, isTemplateByReference, isUpdatedFromYaml, true)) {
+      // health sources and change sources are templatised
+      updateHealthSources(monitoredService, monitoredServiceDTO);
+      changeSourceService.update(MonitoredServiceParams.builderWithProjectParams(environmentParams)
+                                     .monitoredServiceIdentifier(monitoredService.getIdentifier())
+                                     .build(),
+          monitoredServiceDTO.getSources().getChangeSources());
+    }
+    updateMonitoredService(monitoredService, monitoredServiceDTO, isUpdatedFromYaml, isTemplateByReference);
     outboxService.save(
         MonitoredServiceUpdateEvent.builder()
             .resourceName(monitoredServiceDTO.getName())
@@ -425,35 +489,22 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
     return get(environmentParams, monitoredServiceDTO.getIdentifier());
   }
 
-  private void validateTemplateMetadata(MonitoredServiceDTO monitoredServiceDTO) {
-    if (monitoredServiceDTO.getTemplate() != null && monitoredServiceDTO.getTemplate().isTemplateByReference()) {
-      if (monitoredServiceDTO.getSources().getChangeSources() != null
-          && monitoredServiceDTO.getSources().getChangeSources().size() > 0) {
-        throw new InvalidRequestException(
-            String.format("Update of Monitored Source Entity  with service identifier: %s and "
-                    + "environment identifier: %s is not allowed"
-                    + "with change source if it's created through template by reference.",
-                monitoredServiceDTO.getServiceRef(), monitoredServiceDTO.getEnvironmentRef()));
-      }
-      if (monitoredServiceDTO.getNotificationRuleRefs() != null
-          && monitoredServiceDTO.getNotificationRuleRefs().size() > 0) {
-        throw new InvalidRequestException(
-            String.format("Update of Monitored Source Entity  with service identifier: %s and "
-                    + "environment identifier: %s is not allowed"
-                    + "with notification rules if it's created through template by reference.",
-                monitoredServiceDTO.getServiceRef(), monitoredServiceDTO.getEnvironmentRef()));
-      }
-      if (monitoredServiceDTO.getDependencies() != null && monitoredServiceDTO.getDependencies().size() > 0) {
-        throw new InvalidRequestException(
-            String.format("Update of Monitored Source Entity  with service identifier: %s and "
-                    + "environment identifier: %s is not allowed"
-                    + "with notification rules if it's created through template by reference.",
-                monitoredServiceDTO.getServiceRef(), monitoredServiceDTO.getEnvironmentRef()));
+  private boolean validateUpdate(
+      String accountId, boolean isTemplateByReference, boolean isUpdateFromYaml, boolean isTemplatised) {
+    boolean isFeatureEnabled =
+        featureFlagService.isFeatureFlagEnabled(accountId, FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION);
+    if (isTemplatised && isFeatureEnabled) {
+      return !isTemplateByReference || isUpdateFromYaml;
+    } else if (!isTemplatised && isFeatureEnabled) {
+      if (isTemplateByReference && isUpdateFromYaml) {
+        return false;
       }
     }
+    return true;
   }
 
-  private void updateMonitoredService(MonitoredService monitoredService, MonitoredServiceDTO monitoredServiceDTO) {
+  private void updateMonitoredService(MonitoredService monitoredService, MonitoredServiceDTO monitoredServiceDTO,
+      boolean isUpdatedFromYaml, boolean isTemplateByReference) {
     UpdateOperations<MonitoredService> updateOperations = hPersistence.createUpdateOperations(MonitoredService.class);
     updateOperations.set(MonitoredServiceKeys.name, monitoredServiceDTO.getName());
     if (monitoredServiceDTO.getDescription() != null) {
@@ -463,20 +514,22 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
       updateOperations.set(MonitoredServiceKeys.tags, TagMapper.convertToList(monitoredServiceDTO.getTags()));
     }
     if (monitoredServiceDTO.getSources() != null) {
-      List<String> updatedHealthSourceIdentifiers = monitoredServiceDTO.getSources()
-                                                        .getHealthSources()
-                                                        .stream()
-                                                        .map(HealthSource::getIdentifier)
-                                                        .collect(Collectors.toList());
-      updateOperations.set(MonitoredServiceKeys.healthSourceIdentifiers, updatedHealthSourceIdentifiers);
-      List<String> updatedChangeSourceIdentifiers = monitoredServiceDTO.getSources()
-                                                        .getChangeSources()
-                                                        .stream()
-                                                        .map(ChangeSourceDTO::getIdentifier)
-                                                        .collect(Collectors.toList());
-      updateOperations.set(MonitoredServiceKeys.changeSourceIdentifiers, updatedChangeSourceIdentifiers);
+      if (this.validateUpdate(monitoredService.getAccountId(), isTemplateByReference, isUpdatedFromYaml, true)) {
+        List<String> updatedHealthSourceIdentifiers = monitoredServiceDTO.getSources()
+                                                          .getHealthSources()
+                                                          .stream()
+                                                          .map(HealthSource::getIdentifier)
+                                                          .collect(Collectors.toList());
+        updateOperations.set(MonitoredServiceKeys.healthSourceIdentifiers, updatedHealthSourceIdentifiers);
+        List<String> updatedChangeSourceIdentifiers = monitoredServiceDTO.getSources()
+                                                          .getChangeSources()
+                                                          .stream()
+                                                          .map(ChangeSourceDTO::getIdentifier)
+                                                          .collect(Collectors.toList());
+        updateOperations.set(MonitoredServiceKeys.changeSourceIdentifiers, updatedChangeSourceIdentifiers);
+      }
     }
-    if (monitoredServiceDTO.getTemplate() != null) {
+    if (monitoredServiceDTO.getTemplate() != null && isUpdatedFromYaml) {
       updateOperations.set(MonitoredServiceKeys.templateIdentifier, monitoredServiceDTO.getTemplate().getTemplateRef());
       updateOperations.set(
           MonitoredServiceKeys.templateVersionLabel, monitoredServiceDTO.getTemplate().getVersionLabel());
@@ -486,13 +539,24 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
                                       .orgIdentifier(monitoredService.getOrgIdentifier())
                                       .projectIdentifier(monitoredService.getProjectIdentifier())
                                       .build();
-    updateOperations.set(MonitoredServiceKeys.notificationRuleRefs,
-        getNotificationRuleRefs(projectParams, monitoredService, monitoredServiceDTO));
-    updateOperations.set(MonitoredServiceKeys.lastUpdatedAt, clock.millis());
-    validateDependencyMetadata(projectParams, monitoredServiceDTO.getDependencies());
-    serviceDependencyService.updateDependencies(
-        projectParams, monitoredService.getIdentifier(), monitoredServiceDTO.getDependencies());
-
+    long currentTime = clock.millis();
+    if (monitoredServiceDTO.getTemplate() != null
+        && featureFlagService.isFeatureFlagEnabled(
+            projectParams.getAccountIdentifier(), FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION)
+        && monitoredService.isTemplateByReference() && isUpdatedFromYaml) {
+      updateOperations.set(MonitoredServiceKeys.templateMetadata,
+          TemplateMetadata.fromTemplateDTO(monitoredServiceDTO.getTemplate())
+              .lastReconciliationTime(currentTime)
+              .build());
+    }
+    if (this.validateUpdate(monitoredService.getAccountId(), isTemplateByReference, isUpdatedFromYaml, false)) {
+      updateOperations.set(MonitoredServiceKeys.notificationRuleRefs,
+          getNotificationRuleRefs(projectParams, monitoredService, monitoredServiceDTO));
+      validateDependencyMetadata(projectParams, monitoredServiceDTO.getDependencies());
+      serviceDependencyService.updateDependencies(
+          projectParams, monitoredService.getIdentifier(), monitoredServiceDTO.getDependencies());
+    }
+    updateOperations.set(MonitoredServiceKeys.lastUpdatedAt, currentTime);
     hPersistence.update(monitoredService, updateOperations);
   }
 
@@ -531,12 +595,7 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
 
   @Override
   public boolean delete(ProjectParams projectParams, String identifier) {
-    MonitoredService monitoredService = getMonitoredService(projectParams, identifier);
-    if (monitoredService == null) {
-      throw new InvalidRequestException(
-          String.format("Monitored Source Entity  with identifier %s and accountId %s is not present", identifier,
-              projectParams.getAccountIdentifier()));
-    }
+    MonitoredService monitoredService = getAndValidateMonitoredService(projectParams, identifier);
     ServiceEnvironmentParams environmentParams = builderWithProjectParams(projectParams)
                                                      .serviceIdentifier(monitoredService.getServiceIdentifier())
                                                      .environmentIdentifier(monitoredService.getEnvironmentIdentifier())
@@ -674,17 +733,13 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
   }
   @Override
   public MonitoredServiceResponse get(ProjectParams projectParams, String identifier) {
-    MonitoredService monitoredServiceEntity = getMonitoredService(projectParams, identifier);
-    if (monitoredServiceEntity == null) {
-      throw new InvalidRequestException(
-          String.format("Monitored Source Entity with identifier %s is not present", identifier));
-    }
+    MonitoredService monitoredServiceEntity = getAndValidateMonitoredService(projectParams, identifier);
+
     ServiceEnvironmentParams environmentParams =
         builderWithProjectParams(projectParams)
             .serviceIdentifier(monitoredServiceEntity.getServiceIdentifier())
             .environmentIdentifier(monitoredServiceEntity.getEnvironmentIdentifier())
             .build();
-
     return createMonitoredServiceDTOFromEntity(monitoredServiceEntity, environmentParams);
   }
 
@@ -703,10 +758,7 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
             .description(monitoredServiceEntity.getDesc())
             .tags(TagMapper.convertToMap(monitoredServiceEntity.getTags()))
             .template(StringUtils.isNotEmpty(monitoredServiceEntity.getTemplateIdentifier())
-                    ? TemplateDTO.builder()
-                          .templateRef(monitoredServiceEntity.getTemplateIdentifier())
-                          .versionLabel(monitoredServiceEntity.getTemplateVersionLabel())
-                          .build()
+                    ? populateTemplateDTO(monitoredServiceEntity)
                     : null)
             .sources(
                 Sources.builder()
@@ -738,6 +790,20 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
         .lastModifiedAt(monitoredServiceEntity.getLastUpdatedAt())
         .build();
   }
+
+  private TemplateDTO populateTemplateDTO(MonitoredService monitoredService) {
+    TemplateDTOBuilder templateDTOBuilder = TemplateDTO.builder()
+                                                .templateRef(monitoredService.getTemplateIdentifier())
+                                                .versionLabel(monitoredService.getTemplateVersionLabel());
+    if (monitoredService.getTemplateMetadata() != null) {
+      templateDTOBuilder.isTemplateByReference(monitoredService.isTemplateByReference())
+          .templateVersionNumber(monitoredService.getTemplateMetadata().getTemplateVersionNumber())
+          .templateInputs(monitoredService.getTemplateMetadata().getTemplateInputs())
+          .lastReconciliationTime(monitoredService.getTemplateMetadata().getLastReconciliationTime());
+    }
+    return templateDTOBuilder.build();
+  }
+
   @Override
   public MonitoredServiceResponse getApplicationMonitoredServiceResponse(
       ServiceEnvironmentParams serviceEnvironmentParams) {
@@ -926,6 +992,18 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
         .filter(MonitoredServiceKeys.identifier, identifier)
         .get();
   }
+
+  private MonitoredService getAndValidateMonitoredService(ProjectParams projectParams, String identifier) {
+    MonitoredService monitoredService = getMonitoredService(projectParams, identifier);
+    if (monitoredService == null) {
+      throw new InvalidRequestException(String.format(
+          "Monitored Service entity with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s is not present",
+          identifier, projectParams.getAccountIdentifier(), projectParams.getOrgIdentifier(),
+          projectParams.getProjectIdentifier()));
+    }
+    return monitoredService;
+  }
+
   @Override
   public Optional<MonitoredService> getApplicationMonitoredService(ServiceEnvironmentParams serviceEnvironmentParams) {
     return Optional.ofNullable(
@@ -1052,7 +1130,7 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
     MonitoredService monitoredServiceEntity = getMonitoredService(serviceEnvironmentParams, identifier);
     if (monitoredServiceEntity != null) {
       throw new DuplicateFieldException(String.format(
-          "Monitored Source Entity  with identifier %s and orgIdentifier %s and projectIdentifier %s is already present",
+          "Monitored Service entity with identifier %s and orgIdentifier %s and projectIdentifier %s is already present",
           identifier, serviceEnvironmentParams.getOrgIdentifier(), serviceEnvironmentParams.getProjectIdentifier()));
     }
     if (monitoredServiceType == MonitoredServiceType.APPLICATION) {
@@ -1067,7 +1145,7 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
               .get();
       if (monitoredServiceEntity != null) {
         throw new DuplicateFieldException(String.format(
-            "Monitored Source Entity  with duplicate service ref %s, environmentRef %s having identifier %s and orgIdentifier %s and projectIdentifier %s is already present",
+            "Monitored Service entity with duplicate service ref %s, environmentRef %s having identifier %s and orgIdentifier %s and projectIdentifier %s is already present",
             serviceEnvironmentParams.getServiceIdentifier(), serviceEnvironmentParams.getEnvironmentIdentifier(),
             identifier, serviceEnvironmentParams.getOrgIdentifier(), serviceEnvironmentParams.getProjectIdentifier()));
       }
@@ -1107,9 +1185,10 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
     }
     if (monitoredServiceDTO.getTemplate() != null
         && featureFlagService.isFeatureFlagEnabled(
-            projectParams.getAccountIdentifier(), FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION)
-        && monitoredServiceDTO.getTemplate().isTemplateByReference()) {
-      monitoredServiceEntity.setTemplateMetadata(TemplateMetadata.fromTemplateDTO(monitoredServiceDTO.getTemplate()));
+            projectParams.getAccountIdentifier(), FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION)) {
+      monitoredServiceEntity.setTemplateMetadata(TemplateMetadata.fromTemplateDTO(monitoredServiceDTO.getTemplate())
+                                                     .lastReconciliationTime(currentTime)
+                                                     .build());
     }
     if (monitoredServiceDTO.getSources() != null) {
       monitoredServiceEntity.setHealthSourceIdentifiers(monitoredServiceDTO.getSources()
@@ -1359,7 +1438,8 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
             monitoredService.getIdentifier()));
   }
 
-  private void validate(MonitoredServiceDTO monitoredServiceDTO, String accountId) {
+  private void validate(MonitoredServiceDTO monitoredServiceDTO, String accountId, boolean isTemplateByReference,
+      boolean isUpdateFromYaml) {
     ProjectParams projectParams = ProjectParams.builder()
                                       .accountIdentifier(accountId)
                                       .orgIdentifier(monitoredServiceDTO.getOrgIdentifier())
@@ -1376,45 +1456,46 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
       validateEnvironmentList(accountId, monitoredServiceDTO);
 
       List<String> connectorRefs = listConnectorRefs(monitoredServiceDTO);
-      if (connectorRefs != null && connectorRefs.size() > 0) {
+      if (isNotEmpty(connectorRefs)) {
         nextGenService.validateConnectorIdList(accountId, monitoredServiceDTO.getOrgIdentifier(),
             monitoredServiceDTO.getProjectIdentifier(), connectorRefs);
       }
     }
 
     if (featureFlagService.isFeatureFlagEnabled(accountId, FeatureName.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION.name())
-        && monitoredServiceDTO.getTemplate() != null && monitoredServiceDTO.getTemplate().isTemplateByReference()) {
-      if (monitoredServiceDTO.getTemplate().getInputSetYaml() == null) {
-        throw new InvalidRequestException(
-            String.format("Input set yaml cannot be null if the template is used by reference for "
-                    + "monitored service with service identifier: %s and environment identifier: %s ",
-                monitoredServiceDTO.getServiceRef(), monitoredServiceDTO.getEnvironmentRef()));
+        && isTemplateByReference) {
+      if (monitoredServiceDTO.getTemplate().getTemplateInputs() == null) {
+        throw new InvalidRequestException(String.format(
+            "Template inputs cannot be null if the template is used by reference for monitored service with identifier: %s",
+            monitoredServiceDTO.getIdentifier()));
       }
       if (monitoredServiceDTO.getTemplate().getVersionLabel() == null) {
-        throw new InvalidRequestException(
-            String.format("Template version label cannot be null if the template is used by reference for "
-                    + "monitored service with service identifier: %s and environment identifier: %s ",
-                monitoredServiceDTO.getServiceRef(), monitoredServiceDTO.getEnvironmentRef()));
+        throw new InvalidRequestException(String.format(
+            "Template version label cannot be null if the template is used by reference for monitored service with identifier: %s",
+            monitoredServiceDTO.getIdentifier()));
       }
       if (monitoredServiceDTO.getTemplate().getTemplateVersionNumber() == null) {
-        throw new InvalidRequestException(
-            String.format("Template version number cannot be null if the template is used by reference for "
-                    + "monitored service with service identifier: %s and environment identifier: %s ",
-                monitoredServiceDTO.getServiceRef(), monitoredServiceDTO.getEnvironmentRef()));
+        throw new InvalidRequestException(String.format(
+            "Template version number cannot be null if the template is used by reference for monitored service with identifier: %s",
+            monitoredServiceDTO.getIdentifier()));
       }
     }
 
-    if (monitoredServiceDTO.getSources() != null) {
-      Set<String> identifiers = new HashSet<>();
-      monitoredServiceDTO.getSources().getHealthSources().forEach(healthSource -> {
-        if (!identifiers.add(healthSource.getIdentifier())) {
-          throw new InvalidRequestException(String.format(
-              "Multiple Health Sources exists with the same identifier %s", healthSource.getIdentifier()));
-        }
-        healthSource.getSpec().validate();
-      });
+    if (this.validateUpdate(accountId, isTemplateByReference, isUpdateFromYaml, true)) {
+      if (monitoredServiceDTO.getSources() != null) {
+        Set<String> identifiers = new HashSet<>();
+        monitoredServiceDTO.getSources().getHealthSources().forEach(healthSource -> {
+          if (!identifiers.add(healthSource.getIdentifier())) {
+            throw new InvalidRequestException(String.format(
+                "Multiple Health Sources exists with the same identifier %s", healthSource.getIdentifier()));
+          }
+          healthSource.getSpec().validate();
+        });
+      }
     }
-    notificationRuleService.validateNotification(monitoredServiceDTO.getNotificationRuleRefs(), projectParams);
+    if (this.validateUpdate(accountId, isTemplateByReference, isUpdateFromYaml, false)) {
+      notificationRuleService.validateNotification(monitoredServiceDTO.getNotificationRuleRefs(), projectParams);
+    }
     filterOutHarnessCDChangeSource(monitoredServiceDTO);
   }
 
@@ -1537,7 +1618,7 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
     MonitoredService monitoredService = getMonitoredService(projectParams, identifier);
     checkLicenseForMonitoredServiceToggle(projectParams, monitoredService, enable);
 
-    Preconditions.checkNotNull(monitoredService, "Monitored service with identifier %s does not exists", identifier);
+    Preconditions.checkNotNull(monitoredService, "Monitored service with identifier %s does not exist", identifier);
 
     MonitoredServiceParams monitoredServiceParams = MonitoredServiceParams.builder()
                                                         .accountIdentifier(projectParams.getAccountIdentifier())
@@ -1760,11 +1841,8 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
   @Override
   public AnomaliesSummaryDTO getAnomaliesSummary(
       ProjectParams projectParams, String monitoredServiceIdentifier, TimeRangeParams timeRangeParams) {
-    MonitoredService monitoredService = getMonitoredService(projectParams, monitoredServiceIdentifier);
-    if (monitoredService == null) {
-      throw new InvalidRequestException(
-          String.format("Monitored Service not found for identifier %s", monitoredServiceIdentifier));
-    }
+    MonitoredService monitoredService = getAndValidateMonitoredService(projectParams, monitoredServiceIdentifier);
+
     ServiceEnvironmentParams serviceEnvironmentParams =
         ServiceEnvironmentParams.builderWithProjectParams(projectParams)
             .serviceIdentifier(monitoredService.getServiceIdentifier())
@@ -2143,7 +2221,7 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
                                 .build());
     if (monitoredService == null) {
       throw new InvalidRequestException(String.format(
-          "Monitored Service  with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s  is not present",
+          "Monitored Service with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s is not present",
           monitoredServiceIdentifier, projectParams.getAccountIdentifier(), projectParams.getOrgIdentifier(),
           projectParams.getProjectIdentifier()));
     }
@@ -2304,6 +2382,68 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
     }
 
     return activeServiceDTOList;
+  }
+
+  @Override
+  public PageResponse<MonitoredServiceReference> getMonitoredServiceReconciliationStatuses(
+      ProjectParams templateProjectParams, String templateIdentifier, String templateVersionLabel,
+      PageParams pageParams) {
+    List<MonitoredService> monitoredServiceList =
+        createQueryForTemplateReferencedMSs(templateProjectParams, templateIdentifier, templateVersionLabel)
+            .order(MonitoredServiceKeys.templateMetadata + "." + TemplateMetadataKeys.lastReconciliationTime)
+            .asList();
+    PageResponse<MonitoredService> monitoredServicePageResponse =
+        PageUtils.offsetAndLimit(monitoredServiceList, pageParams.getPage(), pageParams.getSize());
+
+    String templateInputs =
+        templateFacade.getTemplateInputs(templateProjectParams, templateIdentifier, templateVersionLabel);
+    Long versionNumber =
+        templateFacade.getTemplateVersionNumber(templateProjectParams, templateIdentifier, templateVersionLabel);
+
+    List<MonitoredServiceReference> monitoredServiceReferences =
+        monitoredServicePageResponse.getContent()
+            .stream()
+            .map(monitoredService
+                -> MonitoredServiceReference.builder()
+                       .accountIdentifier(monitoredService.getAccountId())
+                       .orgIdentifier(monitoredService.getOrgIdentifier())
+                       .projectIdentifier(monitoredService.getProjectIdentifier())
+                       .identifier(monitoredService.getIdentifier())
+                       .serviceIdentifier(monitoredService.getServiceIdentifier())
+                       .environmentIdentifiers(monitoredService.getEnvironmentIdentifierList())
+                       .lastReconciledTimestamp(monitoredService.getTemplateMetadata().getLastReconciliationTime())
+                       .reconciliationStatus(
+                           ReconciliationStatus.determineStatus(monitoredService, versionNumber, templateInputs))
+                       .build())
+            .collect(Collectors.toList());
+
+    return PageResponse.<MonitoredServiceReference>builder()
+        .pageSize(pageParams.getSize())
+        .pageIndex(pageParams.getPage())
+        .totalPages(monitoredServicePageResponse.getTotalPages())
+        .totalItems(monitoredServicePageResponse.getTotalItems())
+        .pageItemCount(monitoredServicePageResponse.getPageItemCount())
+        .content(monitoredServiceReferences)
+        .build();
+  }
+
+  private Query<MonitoredService> createQueryForTemplateReferencedMSs(
+      ProjectParams templateProjectParams, String templateIdentifier, String versionLabel) {
+    Query<MonitoredService> query =
+        hPersistence.createQuery(MonitoredService.class)
+            .disableValidation()
+            .filter(MonitoredServiceKeys.accountId, templateProjectParams.getAccountIdentifier())
+            .filter(MonitoredServiceKeys.templateMetadata + "." + TemplateMetadataKeys.templateIdentifier,
+                templateIdentifier)
+            .filter(MonitoredServiceKeys.templateMetadata + "." + TemplateMetadataKeys.versionLabel, versionLabel)
+            .filter(MonitoredServiceKeys.templateMetadata + "." + TemplateMetadataKeys.isTemplateByReference, true);
+    if (templateProjectParams.getOrgIdentifier() != null) {
+      query = query.filter(MonitoredServiceKeys.orgIdentifier, templateProjectParams.getOrgIdentifier());
+    }
+    if (templateProjectParams.getProjectIdentifier() != null) {
+      query = query.filter(MonitoredServiceKeys.projectIdentifier, templateProjectParams.getProjectIdentifier());
+    }
+    return query;
   }
 
   private ServiceParams getServiceParams(MonitoredService ms) {
