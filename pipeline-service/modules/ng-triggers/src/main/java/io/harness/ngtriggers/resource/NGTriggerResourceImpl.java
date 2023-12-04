@@ -69,6 +69,7 @@ import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.swagger.v3.oas.annotations.Hidden;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -326,6 +327,24 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
 
   public ResponseDTO<BulkTriggersResponseDTO> bulkTriggers(@NotNull @AccountIdentifier String accountIdentifier,
       @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    return null;
+    // action
+    boolean enable = bulkTriggersRequestDTO.getData().isEnable();
+
+    // response initialized
+    List<NGTriggerEntity> bulkTriggersResponseList = new ArrayList<>();
+
+    // fetching the list of triggers as per the filters in the request
+    List<NGTriggerEntity> triggerEntityList = new ArrayList<>();
+
+    // updating the enable/disable boolean for each trigger in the list
+    for (NGTriggerEntity trigger : triggerEntityList) {
+      NGTriggerEntity updatedTrigger = trigger;
+      updatedTrigger.setEnabled(enable);
+
+      bulkTriggersResponseList.add(ngTriggerService.update(updatedTrigger, trigger));
+    }
+
+    // map to response
+    return ResponseDTO.newResponse(BulkTriggersResponseDTO.builder().triggerDetails(null).enable(enable).build());
   }
 }

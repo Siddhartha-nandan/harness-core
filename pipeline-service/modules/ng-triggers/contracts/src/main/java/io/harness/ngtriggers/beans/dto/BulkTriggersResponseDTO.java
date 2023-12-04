@@ -25,6 +25,6 @@ import lombok.experimental.FieldDefaults;
 @ApiModel("BulkTriggersResponse")
 @Schema(name = "BulkTriggersResponse", description = "This contains the details of response of Bulk Triggers API")
 public class BulkTriggersResponseDTO {
-  boolean action;
+  boolean enable;
   List<NGTriggerDetailsResponseDTO> triggerDetails;
 }
