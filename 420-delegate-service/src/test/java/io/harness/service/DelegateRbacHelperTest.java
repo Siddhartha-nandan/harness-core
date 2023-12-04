@@ -8,8 +8,6 @@
 package io.harness.service;
 
 import static io.harness.annotations.dev.HarnessTeam.PL;
-import static io.harness.delegate.utils.RbacConstants.DELEGATE_RESOURCE_TYPE;
-import static io.harness.delegate.utils.RbacConstants.DELEGATE_VIEW_PERMISSION;
 import static io.harness.rule.OwnerRule.VIKAS_M;
 
 import static java.util.Collections.emptyList;
@@ -18,7 +16,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import io.harness.DelegateServiceTestBase;
-import io.harness.accesscontrol.NGAccessDeniedException;
 import io.harness.accesscontrol.acl.api.AccessCheckResponseDTO;
 import io.harness.accesscontrol.acl.api.AccessControlDTO;
 import io.harness.accesscontrol.acl.api.ResourceScope;
