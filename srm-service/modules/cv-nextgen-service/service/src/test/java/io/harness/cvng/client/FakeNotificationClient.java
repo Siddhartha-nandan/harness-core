@@ -60,4 +60,9 @@ public class FakeNotificationClient implements NotificationClient {
       List<NotificationTriggerRequest> notificationTriggerRequest) {
     return null;
   }
+
+  @Override
+  public boolean isDefaultSMTPPresent(String accountId) {
+    return false;
+  }
 }

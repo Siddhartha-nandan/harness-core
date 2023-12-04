@@ -30,4 +30,5 @@ public interface NotificationClient {
 
   NotificationResult sendNotificationTrigger(NotificationTriggerRequest notificationTriggerRequest);
   List<NotificationResult> sendBulkNotificationTrigger(List<NotificationTriggerRequest> notificationTriggerRequest);
+  boolean isDefaultSMTPPresent(String accountId);
 }
