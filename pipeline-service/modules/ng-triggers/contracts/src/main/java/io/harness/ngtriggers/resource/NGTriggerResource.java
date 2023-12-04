@@ -29,6 +29,7 @@ import io.harness.ng.core.dto.PollingTriggerStatusUpdateDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ngtriggers.Constants;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
+import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerCatalogDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerDetailsResponseDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerEventHistoryDTO;
@@ -371,4 +372,10 @@ public interface NGTriggerResource {
           "targetIdentifier") @ResourceIdentifier String targetIdentifier,
       @QueryParam("operationType") GitMoveOperationType operationType,
       @QueryParam("pipelineBranchName") String pipelineBranchName);
+
+  @POST
+  @Path("/bulk")
+  Object bulkTriggers(
+      @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
+      @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO);
 }
