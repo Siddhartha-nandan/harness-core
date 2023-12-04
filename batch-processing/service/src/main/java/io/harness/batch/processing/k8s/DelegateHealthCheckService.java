@@ -9,9 +9,11 @@ package io.harness.batch.processing.k8s;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.batch.processing.svcmetrics.ConnectorHealthContext;
 import io.harness.ccm.health.LastReceivedPublishedMessageDao;
 import io.harness.delegate.beans.Delegate;
 import io.harness.delegate.beans.DelegateInstanceStatus;
+import io.harness.metrics.service.api.MetricService;
 import io.harness.perpetualtask.internal.PerpetualTaskRecord;
 import io.harness.perpetualtask.internal.PerpetualTaskRecordDao;
 
@@ -31,6 +33,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import static io.harness.batch.processing.svcmetrics.BatchProcessingMetricName.CLUSTER_HEALTH;
+
 @OwnedBy(HarnessTeam.CE)
 @Slf4j
 @Singleton
@@ -39,10 +43,13 @@ public class DelegateHealthCheckService {
   @Autowired private PerpetualTaskRecordDao perpetualTaskRecordDao;
   @Autowired private LastReceivedPublishedMessageDao lastReceivedPublishedMessageDao;
   @Autowired private CloudToHarnessMappingService cloudToHarnessMappingService;
+  @Autowired private MetricService metricService;
 
   private static final int BATCH_SIZE = 20;
   private static final long DELAY_IN_MINUTES_FOR_LAST_RECEIVED_MSG = 90;
   private static final long MINUTES_FOR_HEALTHY_DELEGATE_HEARTBEAT = 5;
+  private static final String HEALTHY_STATUS = "HEALTHY";
+  private static final String UNHEALTHY_STATUS = "UNHEALTHY";
 
   public void run(String accountId) {
     Instant now = Instant.now();
@@ -77,10 +84,15 @@ public class DelegateHealthCheckService {
       Map<String, Long> lastReceivedTimeForClusters =
           lastReceivedPublishedMessageDao.getLastReceivedTimeForClusters(accountId, healthyClusters);
       for (String clusterId : healthyClusters) {
+        String healthStatus = HEALTHY_STATUS;
         if (!lastReceivedTimeForClusters.containsKey(clusterId)
             || Instant.ofEpochMilli(lastReceivedTimeForClusters.get(clusterId)).isBefore(allowedTime)) {
           log.info("Delegate health check failed for clusterId: {}, delegateId: {}", clusterId,
               clusterIdToDelegateIdMap.get(clusterId));
+          healthStatus = UNHEALTHY_STATUS;
+        }
+        try (ConnectorHealthContext x = new ConnectorHealthContext(accountId, clusterId, healthStatus)) {
+          metricService.incCounter(CLUSTER_HEALTH);
         }
       }
     }
