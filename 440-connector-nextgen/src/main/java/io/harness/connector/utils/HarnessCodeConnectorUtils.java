@@ -22,9 +22,11 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class HarnessCodeConnectorUtils {
   public HarnessConnectorDTO getDummyHarnessCodeConnectorWithJwtAuth(String repoName, String projectId, String orgId,
-      String accountId, String serviceSecret, String harnessCodeApiBaseUrl, ServiceTokenGenerator tokenGenerator) {
-    SecretRefData token =
-        SecretRefData.builder().decryptedValue(getToken(serviceSecret, tokenGenerator).toCharArray()).build();
+      String accountId, String serviceName, String serviceSecret, String harnessCodeApiBaseUrl,
+      ServiceTokenGenerator tokenGenerator) {
+    SecretRefData token = SecretRefData.builder()
+                              .decryptedValue(getToken(serviceName, serviceSecret, tokenGenerator).toCharArray())
+                              .build();
     HarnessJWTTokenSpecDTO jwtTokenSpecDTO = HarnessJWTTokenSpecDTO.builder().tokenRef(token).build();
     return HarnessConnectorDTO.builder()
         .connectionType(GitConnectionType.REPO)
@@ -36,7 +38,7 @@ public class HarnessCodeConnectorUtils {
         .build();
   }
 
-  private String getToken(String serviceSecret, ServiceTokenGenerator tokenGenerator) {
-    return tokenGenerator.getServiceTokenWithDuration(serviceSecret, Duration.ofHours(1));
+  private String getToken(String serviceName, String serviceSecret, ServiceTokenGenerator tokenGenerator) {
+    return serviceName + " " + tokenGenerator.getServiceTokenWithDuration(serviceSecret, Duration.ofHours(1));
   }
 }

@@ -56,16 +56,19 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
   YamlGitConfigService yamlGitConfigService;
   ServiceTokenGenerator tokenGenerator;
   String scmServiceBaseUrl;
+  String ngServiceSecret;
 
   @Inject
   public GitSyncConnectorServiceImpl(@Named("connectorDecoratorService") ConnectorService connectorService,
       DecryptGitApiAccessHelper decryptGitApiAccessHelper, YamlGitConfigService yamlGitConfigService,
-      ServiceTokenGenerator tokenGenerator, @Named("scmServiceBaseUrl") String scmServiceBaseUrl) {
+      ServiceTokenGenerator tokenGenerator, @Named("scmServiceBaseUrl") String scmServiceBaseUrl,
+      @Named("ngServiceSecret") String ngServiceSecret) {
     this.connectorService = connectorService;
     this.decryptGitApiAccessHelper = decryptGitApiAccessHelper;
     this.yamlGitConfigService = yamlGitConfigService;
     this.scmServiceBaseUrl = scmServiceBaseUrl;
     this.tokenGenerator = tokenGenerator;
+    this.ngServiceSecret = ngServiceSecret;
   }
 
   @Override
@@ -309,6 +312,7 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
   private ScmConnector getHarnessCodeConnector(
       String repoName, String projectIdentifier, String orgIdentifier, String accountId) {
     return HarnessCodeConnectorUtils.getDummyHarnessCodeConnectorWithJwtAuth(repoName, projectIdentifier, orgIdentifier,
-        accountId, AuthorizationServiceHeader.NG_MANAGER.getServiceId(), scmServiceBaseUrl, tokenGenerator);
+        accountId, AuthorizationServiceHeader.NG_MANAGER.getServiceId(), ngServiceSecret, scmServiceBaseUrl,
+        tokenGenerator);
   }
 }
