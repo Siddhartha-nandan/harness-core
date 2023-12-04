@@ -7,30 +7,24 @@
 
 package io.harness.ngtriggers.beans.dto;
 
-import io.harness.ngtriggers.beans.source.NGTriggerType;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.annotations.ApiModel;
-import io.swagger.v3.oas.annotations.media.Schema;
+import javax.validation.constraints.NotNull;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
-@Value
+@Data
 @Builder
+@AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@ApiModel("BulkTriggersResponse")
-@Schema(name = "BulkTriggersResponse", description = "This contains the details of response of Bulk Triggers API")
-public class BulkTriggersResponseDTO {
-  String accountIdentifier;
-  String orgIdentifier;
-  String projectIdentifier;
-  String pipelineIdentifier;
-  String triggerIdentifier;
-  NGTriggerType ngTriggerType;
-  boolean enabled;
+@ApiModel("TriggerDetailsRequest")
+public class TriggerDetailsRequestDTO {
+  @NotNull String orgIdentifier;
+  @NotNull String projectIdentifier;
+  @NotNull String pipelineIdentifier;
+  @NotNull String triggerIdentifier;
 }

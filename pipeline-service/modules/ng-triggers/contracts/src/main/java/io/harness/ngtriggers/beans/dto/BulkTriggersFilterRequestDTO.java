@@ -25,7 +25,7 @@ import lombok.experimental.FieldDefaults;
 public class BulkTriggersFilterRequestDTO {
   String orgIdentifier;
   String projectIdentifier;
+  String pipelineIdentifier;
   String type;
-  String subType;
-  List<String> triggerIds;
+  List<TriggerDetailsRequestDTO> triggerDetails;
 }
