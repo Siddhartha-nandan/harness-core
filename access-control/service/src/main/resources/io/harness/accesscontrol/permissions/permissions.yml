@@ -337,7 +337,6 @@ permissions:
     allowedScopeLevels:
       - account
       - organization
-      - project
   - identifier: core_usergroup_view
     name: View User Groups
     status: ACTIVE

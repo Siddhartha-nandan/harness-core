@@ -37,9 +37,7 @@ public class AuditPermissionValidator {
 
   private void checkPermissions(String accountIdentifier, ResourceScopeDTO resourceScopeDTO) {
     boolean hasAccess = hasAccountLevelPermission(accountIdentifier)
-        || hasOrganizationLevelPermission(accountIdentifier, resourceScopeDTO.getOrgIdentifier())
-        || hasProjectLevelPermission(
-            accountIdentifier, resourceScopeDTO.getOrgIdentifier(), resourceScopeDTO.getProjectIdentifier());
+        || hasOrganizationLevelPermission(accountIdentifier, resourceScopeDTO.getOrgIdentifier());
 
     if (!hasAccess) {
       throw new AccessDeniedException(getAccessDeniedExceptionMessage(accountIdentifier,
@@ -52,35 +50,24 @@ public class AuditPermissionValidator {
     if (isEmpty(accountIdentifier)) {
       return false;
     }
-    return accessControlClient.hasAccess(
-        null, Resource.of(ACCOUNT_RESOURCE_TYPE, accountIdentifier), AUDIT_VIEW_PERMISSION);
+    return accessControlClient.hasAccess(null, Resource.of("AUDIT", null), AUDIT_VIEW_PERMISSION);
   }
 
   private boolean hasOrganizationLevelPermission(String accountIdentifier, String orgIdentifier) {
     if (isEmpty(accountIdentifier) || isEmpty(orgIdentifier)) {
       return false;
     }
-    return accessControlClient.hasAccess(ResourceScope.of(accountIdentifier, null, null),
-        Resource.of(ORGANIZATION_RESOURCE_TYPE, orgIdentifier), AUDIT_VIEW_PERMISSION);
-  }
-
-  private boolean hasProjectLevelPermission(String accountIdentifier, String orgIdentifier, String projectIdentifier) {
-    if (isEmpty(accountIdentifier) || isEmpty(orgIdentifier) || isEmpty(projectIdentifier)) {
-      return false;
-    }
-    return accessControlClient.hasAccess(ResourceScope.of(accountIdentifier, orgIdentifier, null),
-        Resource.of(PROJECT_RESOURCE_TYPE, projectIdentifier), AUDIT_VIEW_PERMISSION);
+    return accessControlClient.hasAccess(
+        ResourceScope.of(accountIdentifier, null, null), Resource.of("AUDIT", null), AUDIT_VIEW_PERMISSION);
   }
 
   private String getAccessDeniedExceptionMessage(
       String accountIdentifier, String orgIdentifier, String projectIdentifier) {
-    String resourceType = ACCOUNT_RESOURCE_TYPE;
+    String resourceType = "AUDIT";
     String resourceIdentifier = accountIdentifier;
     if (isNotEmpty(projectIdentifier)) {
-      resourceType = PROJECT_RESOURCE_TYPE;
       resourceIdentifier = projectIdentifier;
     } else if (isNotEmpty(orgIdentifier)) {
-      resourceType = ORGANIZATION_RESOURCE_TYPE;
       resourceIdentifier = orgIdentifier;
     }
     return String.format("You need %s permission on %s with identifier: %s to perform this action",
