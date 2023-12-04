@@ -23,6 +23,7 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidRequestException;
 import io.harness.filter.dto.FilterDTO;
+import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggersFilterPropertiesDTO;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity.NGTriggerEntityKeys;
@@ -258,6 +259,56 @@ public class TriggerFilterHelper {
     criteria.and(TriggerEventHistoryKeys.targetIdentifier).is(targetIdentifier);
     criteria.and(TriggerEventHistoryKeys.executionNotAttempted).ne(true);
     criteria.and(TriggerEventHistoryKeys.createdAt).gte(startTime);
+
+    return criteria;
+  }
+
+  public Criteria getCriteriaFromFilters(String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
+    String orgIdentifier = bulkTriggersRequestDTO.getFilters().getOrgIdentifier();
+
+    String projectIdentifier = bulkTriggersRequestDTO.getFilters().getProjectIdentifier();
+
+    String pipelineIdentifier = bulkTriggersRequestDTO.getFilters().getPipelineIdentifier();
+
+    String type = bulkTriggersRequestDTO.getFilters().getType();
+
+    Criteria criteria = new Criteria();
+
+    if (isNotEmpty(accountIdentifier)) {
+      criteria.and(NGTriggerEntityKeys.accountId).is(accountIdentifier);
+    }
+
+    if (isNotEmpty(orgIdentifier)) {
+      criteria.and(NGTriggerEntityKeys.orgIdentifier).is(orgIdentifier);
+
+      if (isNotEmpty(projectIdentifier)) {
+        criteria.and(NGTriggerEntityKeys.projectIdentifier).is(projectIdentifier);
+
+        if (isNotEmpty(pipelineIdentifier)) {
+          criteria.and(NGTriggerEntityKeys.targetIdentifier).is(pipelineIdentifier);
+        }
+      } else {
+        if (isNotEmpty(pipelineIdentifier)) {
+          throw new InvalidRequestException(
+              "Please input a valid projectIdentifier for the given pipelineIdentifier [" + pipelineIdentifier + "]");
+        }
+      }
+    } else {
+      if (isNotEmpty(projectIdentifier)) {
+        throw new InvalidRequestException(
+            "Please input a valid orgIdentifier for the given projectIdentifier [" + projectIdentifier + "]");
+      } else if (isNotEmpty(pipelineIdentifier)) {
+        throw new InvalidRequestException(
+            "Please input a valid orgIdentifier and project Identifier for the given pipelineIdentifier ["
+            + pipelineIdentifier + "]");
+      }
+    }
+
+    if (isNotEmpty(type)) {
+      criteria.and(NGTriggerEntityKeys.type).is(type);
+    }
+
+    criteria.and(NGTriggerEntityKeys.deleted).is(false);
 
     return criteria;
   }

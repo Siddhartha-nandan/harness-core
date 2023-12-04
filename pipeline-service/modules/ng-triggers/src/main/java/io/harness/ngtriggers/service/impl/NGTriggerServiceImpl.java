@@ -57,7 +57,9 @@ import io.harness.ng.core.dto.PollingTriggerStatusUpdateDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
+import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
 import io.harness.ngtriggers.beans.dto.TriggerDetails;
+import io.harness.ngtriggers.beans.dto.TriggerDetailsRequestDTO;
 import io.harness.ngtriggers.beans.dto.TriggerYamlDiffDTO;
 import io.harness.ngtriggers.beans.dto.WebhookEventProcessingDetails;
 import io.harness.ngtriggers.beans.dto.WebhookEventProcessingDetails.WebhookEventProcessingDetailsBuilder;
@@ -157,7 +159,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.util.CollectionUtils;
@@ -1476,6 +1480,35 @@ public class NGTriggerServiceImpl implements NGTriggerService {
       log.info("No non-deleted Trigger found to update pipelineBranchName");
       return TriggerUpdateCount.builder().successCount(0).failureCount(0).build();
     }
+  }
+
+  @Override
+  public List<NGTriggerEntity> fetchTriggersList(
+      String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
+    List<NGTriggerEntity> triggersList = new ArrayList<>();
+
+    if (isEmpty(bulkTriggersRequestDTO.getFilters().getTriggerDetails())) {
+      Criteria criteria = TriggerFilterHelper.getCriteriaFromFilters(accountIdentifier, bulkTriggersRequestDTO);
+
+      Pageable pageRequest = PageRequest.of(0, 100000, Sort.by(Sort.Direction.DESC, NGTriggerEntityKeys.createdAt));
+
+      Page<NGTriggerEntity> triggerEntities = list(criteria, pageRequest);
+
+      triggersList = triggerEntities.getContent();
+
+    } else {
+      List<TriggerDetailsRequestDTO> triggerDetailsRequestList =
+          bulkTriggersRequestDTO.getFilters().getTriggerDetails();
+
+      for (TriggerDetailsRequestDTO trigger : triggerDetailsRequestList) {
+        Optional<NGTriggerEntity> ngTriggerEntity = get(accountIdentifier, trigger.getOrgIdentifier(),
+            trigger.getProjectIdentifier(), trigger.getPipelineIdentifier(), trigger.getTriggerIdentifier(), false);
+
+        triggersList.add(ngTriggerEntity.get());
+      }
+    }
+
+    return triggersList;
   }
 
   public boolean checkIfShouldSubscribePolling(NGTriggerEntity ngTriggerEntity) {

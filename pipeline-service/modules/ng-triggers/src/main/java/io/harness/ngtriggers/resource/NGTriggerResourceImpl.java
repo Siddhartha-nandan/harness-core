@@ -7,8 +7,6 @@
 
 package io.harness.ngtriggers.resource;
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
-import static io.harness.data.structure.EmptyPredicate.isEmpty;
-import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.ngtriggers.Constants.MANDATE_CUSTOM_WEBHOOK_AUTHORIZATION;
 import static io.harness.utils.PageUtils.getNGPageResponse;
 
@@ -38,7 +36,15 @@ import io.harness.ng.core.dto.PollingTriggerStatusUpdateDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
-import io.harness.ngtriggers.beans.dto.*;
+import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
+import io.harness.ngtriggers.beans.dto.BulkTriggersResponseDTO;
+import io.harness.ngtriggers.beans.dto.NGTriggerCatalogDTO;
+import io.harness.ngtriggers.beans.dto.NGTriggerDetailsResponseDTO;
+import io.harness.ngtriggers.beans.dto.NGTriggerEventHistoryDTO;
+import io.harness.ngtriggers.beans.dto.NGTriggerResponseDTO;
+import io.harness.ngtriggers.beans.dto.NGTriggersFilterPropertiesDTO;
+import io.harness.ngtriggers.beans.dto.TriggerDetails;
+import io.harness.ngtriggers.beans.dto.TriggerYamlDiffDTO;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity.NGTriggerEntityKeys;
 import io.harness.ngtriggers.beans.entity.metadata.catalog.TriggerCatalogItem;
@@ -321,118 +327,25 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
 
   public ResponseDTO<List<BulkTriggersResponseDTO>> bulkTriggers(@NotNull @AccountIdentifier String accountIdentifier,
       @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    // action
+    // If true, enable the triggers. If false, disable them.
     boolean enable = bulkTriggersRequestDTO.getData().isEnable();
 
-    // response initialized
+    // Fetching the list of Triggers that needs to be enabled/disabled as per the Filters in the RequestBody.
+    List<NGTriggerEntity> triggerEntityList =
+        ngTriggerService.fetchTriggersList(accountIdentifier, bulkTriggersRequestDTO);
+
+    // Updating the Enable/Disable boolean for each trigger as per the request.
     List<NGTriggerEntity> ngTriggerEntityList = new ArrayList<>();
-
-    // fetching the list of triggers as per the filters in the request
-    List<NGTriggerEntity> triggerEntityList = fetchTriggersList(accountIdentifier, bulkTriggersRequestDTO);
-
-    // updating the enable/disable boolean for each trigger in the list
     for (NGTriggerEntity trigger : triggerEntityList) {
       NGTriggerEntity updatedTrigger = trigger;
       updatedTrigger.setEnabled(enable);
-
       ngTriggerEntityList.add(ngTriggerService.update(updatedTrigger, trigger));
     }
 
-    List<BulkTriggersResponseDTO> bulkTriggersResponse = new ArrayList<>();
-
-    // map to response
-    for (NGTriggerEntity ngTriggerEntity : ngTriggerEntityList) {
-      BulkTriggersResponseDTO bulkTriggersResponseDTO = BulkTriggersResponseDTO.builder()
-                                                            .accountIdentifier(ngTriggerEntity.getAccountId())
-                                                            .orgIdentifier(ngTriggerEntity.getOrgIdentifier())
-                                                            .projectIdentifier(ngTriggerEntity.getProjectIdentifier())
-                                                            .pipelineIdentifier(ngTriggerEntity.getTargetIdentifier())
-                                                            .triggerIdentifier(ngTriggerEntity.getIdentifier())
-                                                            .ngTriggerType(ngTriggerEntity.getType())
-                                                            .enabled(ngTriggerEntity.getEnabled())
-                                                            .build();
-
-      bulkTriggersResponse.add(bulkTriggersResponseDTO);
-    }
+    // Mapping the response.
+    List<BulkTriggersResponseDTO> bulkTriggersResponse =
+        ngTriggerElementMapper.toBulkTriggersResponse(ngTriggerEntityList);
 
     return ResponseDTO.newResponse(bulkTriggersResponse);
-  }
-
-  private List<NGTriggerEntity> fetchTriggersList(
-      String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    List<NGTriggerEntity> triggersList = new ArrayList<>();
-
-    if (isEmpty(bulkTriggersRequestDTO.getFilters().getTriggerDetails())) {
-      Criteria criteria = getCriteriaFromFilters(accountIdentifier, bulkTriggersRequestDTO);
-
-      Pageable pageRequest = PageRequest.of(0, 10000, Sort.by(Sort.Direction.DESC, NGTriggerEntityKeys.createdAt));
-
-      Page<NGTriggerEntity> triggerEntities = ngTriggerService.list(criteria, pageRequest);
-
-      triggersList = triggerEntities.getContent();
-
-    } else {
-      List<TriggerDetailsRequestDTO> triggerDetailsRequestList =
-          bulkTriggersRequestDTO.getFilters().getTriggerDetails();
-
-      for (TriggerDetailsRequestDTO trigger : triggerDetailsRequestList) {
-        Optional<NGTriggerEntity> ngTriggerEntity = ngTriggerService.get(accountIdentifier, trigger.getOrgIdentifier(),
-            trigger.getProjectIdentifier(), trigger.getPipelineIdentifier(), trigger.getTriggerIdentifier(), false);
-
-        triggersList.add(ngTriggerEntity.get());
-      }
-    }
-
-    return triggersList;
-  }
-
-  private Criteria getCriteriaFromFilters(String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    String orgIdentifier = bulkTriggersRequestDTO.getFilters().getOrgIdentifier();
-
-    String projectIdentifier = bulkTriggersRequestDTO.getFilters().getProjectIdentifier();
-
-    String pipelineIdentifier = bulkTriggersRequestDTO.getFilters().getPipelineIdentifier();
-
-    String type = bulkTriggersRequestDTO.getFilters().getType();
-
-    Criteria criteria = new Criteria();
-
-    if (isNotEmpty(accountIdentifier)) {
-      criteria.and(NGTriggerEntityKeys.accountId).is(accountIdentifier);
-    }
-
-    if (isNotEmpty(orgIdentifier)) {
-      criteria.and(NGTriggerEntityKeys.orgIdentifier).is(orgIdentifier);
-
-      if (isNotEmpty(projectIdentifier)) {
-        criteria.and(NGTriggerEntityKeys.projectIdentifier).is(projectIdentifier);
-
-        if (isNotEmpty(pipelineIdentifier)) {
-          criteria.and(NGTriggerEntityKeys.targetIdentifier).is(pipelineIdentifier);
-        }
-      } else {
-        if (isNotEmpty(pipelineIdentifier)) {
-          throw new InvalidRequestException(
-              "Please input a valid projectIdentifier for the given pipelineIdentifier [" + pipelineIdentifier + "]");
-        }
-      }
-    } else {
-      if (isNotEmpty(projectIdentifier)) {
-        throw new InvalidRequestException(
-            "Please input a valid orgIdentifier for the given projectIdentifier [" + projectIdentifier + "]");
-      } else if (isNotEmpty(pipelineIdentifier)) {
-        throw new InvalidRequestException(
-            "Please input a valid orgIdentifier and project Identifier for the given pipelineIdentifier ["
-            + pipelineIdentifier + "]");
-      }
-    }
-
-    if (isNotEmpty(type)) {
-      criteria.and(NGTriggerEntityKeys.type).is(type);
-    }
-
-    criteria.and(NGTriggerEntityKeys.deleted).is(false);
-
-    return criteria;
   }
 }
