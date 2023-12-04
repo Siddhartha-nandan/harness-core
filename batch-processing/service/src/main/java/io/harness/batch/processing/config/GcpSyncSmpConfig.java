@@ -16,4 +16,6 @@ public class GcpSyncSmpConfig {
   private String k8sJobName;
   private String k8sJobPythonImage;
   private String batchProcessingConfigMapName;
+  private String hmacAccessKey;
+  private String hmacSecretKey;
 }
