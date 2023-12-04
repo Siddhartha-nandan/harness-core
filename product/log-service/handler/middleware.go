@@ -122,7 +122,11 @@ func AuthMiddleware(config config.Config, ngClient *client.HTTPClient, skipKeyCh
 			if inputApiKey != "" {
 				err := doApiKeyAuthentication(inputApiKey, r.FormValue(accountIDParam), r.FormValue(routingIDparam), ngClient)
 				if err != nil {
-					WriteBadRequest(w, errors.New("apikey in request not authorized for receiving tokens"))
+					logger.FromRequest(r).
+						WithError(err).
+						WithField("accountID", r.FormValue(accountIDParam)).
+						Errorln("middleware: apikey in request not authorized for receiving tokens")
+					writeError(w, errors.New("apikey in request not authorized for receiving tokens"), 403)
 					return
 				}
 			} else {
@@ -283,7 +287,7 @@ func ValidatePrefixRequest() func(handler http.Handler) http.Handler {
 			}
 
 			regex := regexp.MustCompile(regexp2)
-            containRunSequenceForSimplifiedLogBaseKey := regex.MatchString(unescapedUrl)
+			containRunSequenceForSimplifiedLogBaseKey := regex.MatchString(unescapedUrl)
 
 			if containRunSequence || containRunSequenceForSimplifiedLogBaseKey {
 				logger.WithContext(context.Background(), logger.FromRequest(r))
