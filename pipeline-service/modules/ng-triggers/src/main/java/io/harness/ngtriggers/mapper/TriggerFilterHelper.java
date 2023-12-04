@@ -264,13 +264,23 @@ public class TriggerFilterHelper {
   }
 
   public Criteria getCriteriaFromFilters(String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    String orgIdentifier = bulkTriggersRequestDTO.getFilters().getOrgIdentifier();
+    String orgIdentifier = "";
 
-    String projectIdentifier = bulkTriggersRequestDTO.getFilters().getProjectIdentifier();
+    String projectIdentifier = "";
 
-    String pipelineIdentifier = bulkTriggersRequestDTO.getFilters().getPipelineIdentifier();
+    String pipelineIdentifier = "";
 
-    String type = bulkTriggersRequestDTO.getFilters().getType();
+    String type = "";
+
+    if (bulkTriggersRequestDTO.getFilters() != null) {
+      orgIdentifier = bulkTriggersRequestDTO.getFilters().getOrgIdentifier();
+
+      projectIdentifier = bulkTriggersRequestDTO.getFilters().getProjectIdentifier();
+
+      pipelineIdentifier = bulkTriggersRequestDTO.getFilters().getPipelineIdentifier();
+
+      type = bulkTriggersRequestDTO.getFilters().getType();
+    }
 
     Criteria criteria = new Criteria();
 

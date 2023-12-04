@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.annotations.ApiModel;
 import io.swagger.v3.oas.annotations.media.Schema;
+import javax.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,6 +26,6 @@ import lombok.experimental.FieldDefaults;
 @ApiModel("BulkTriggersRequest")
 @Schema(name = "BulkTriggersRequest", description = "This contains details of the Request Body for Bulk Triggers API.")
 public class BulkTriggersRequestDTO {
-  @JsonProperty("filters") BulkTriggersFilterRequestDTO filters;
-  @JsonProperty("data") BulkTriggersDataRequestDTO data;
+  @NotNull @JsonProperty("filters") BulkTriggersFilterRequestDTO filters;
+  @NotNull @JsonProperty("data") BulkTriggersDataRequestDTO data;
 }

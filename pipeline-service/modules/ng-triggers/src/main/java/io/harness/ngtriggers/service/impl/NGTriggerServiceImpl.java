@@ -1487,16 +1487,8 @@ public class NGTriggerServiceImpl implements NGTriggerService {
       String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
     List<NGTriggerEntity> triggersList = new ArrayList<>();
 
-    if (isEmpty(bulkTriggersRequestDTO.getFilters().getTriggerDetails())) {
-      Criteria criteria = TriggerFilterHelper.getCriteriaFromFilters(accountIdentifier, bulkTriggersRequestDTO);
-
-      Pageable pageRequest = PageRequest.of(0, 100000, Sort.by(Sort.Direction.DESC, NGTriggerEntityKeys.createdAt));
-
-      Page<NGTriggerEntity> triggerEntities = list(criteria, pageRequest);
-
-      triggersList = triggerEntities.getContent();
-
-    } else {
+    if (bulkTriggersRequestDTO.getFilters() != null
+        && isNotEmpty(bulkTriggersRequestDTO.getFilters().getTriggerDetails())) {
       List<TriggerDetailsRequestDTO> triggerDetailsRequestList =
           bulkTriggersRequestDTO.getFilters().getTriggerDetails();
 
@@ -1506,6 +1498,15 @@ public class NGTriggerServiceImpl implements NGTriggerService {
 
         triggersList.add(ngTriggerEntity.get());
       }
+
+    } else {
+      Criteria criteria = TriggerFilterHelper.getCriteriaFromFilters(accountIdentifier, bulkTriggersRequestDTO);
+
+      Pageable pageRequest = PageRequest.of(0, 100000, Sort.by(Sort.Direction.DESC, NGTriggerEntityKeys.createdAt));
+
+      Page<NGTriggerEntity> triggerEntities = list(criteria, pageRequest);
+
+      triggersList = triggerEntities.getContent();
     }
 
     return triggersList;
