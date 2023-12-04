@@ -17,6 +17,9 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.ng.beans.PageRequest;
 import io.harness.ng.beans.PageResponse;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -55,7 +58,12 @@ public class PageUtils {
     List<String> sortOrders = new ArrayList<>();
     if (pageRequestDTO.getSortOrders() != null) {
       for (SortOrder sortOrder : pageRequestDTO.getSortOrders()) {
-        sortOrders.add(sortOrder.getFieldName() + COMMA_SEPARATOR + sortOrder.getOrderType());
+        try {
+          sortOrders.add(
+              URLDecoder.decode(sortOrder.getFieldName(), StandardCharsets.UTF_8) + COMMA_SEPARATOR + sortOrder.getOrderType());
+        } catch (Exception exception) {
+          throw new InvalidRequestException(exception.getMessage());
+        }
       }
     }
     return getPageRequest(pageRequestDTO.getPageIndex(), pageRequestDTO.getPageSize(), sortOrders);
