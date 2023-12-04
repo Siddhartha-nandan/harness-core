@@ -9,6 +9,7 @@ package io.harness.repositories.environment.custom;
 
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.eraro.ErrorCode.SCM_BAD_REQUEST;
+import static io.harness.pms.pipeline.MoveConfigOperationType.INLINE_TO_REMOTE;
 
 import io.harness.EntityType;
 import io.harness.annotations.dev.CodePulse;
@@ -21,6 +22,7 @@ import io.harness.exception.HintException;
 import io.harness.exception.InternalServerErrorException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ScmException;
+import io.harness.exception.UnsupportedOperationException;
 import io.harness.exception.WingsException;
 import io.harness.gitaware.dto.GitContextRequestParams;
 import io.harness.gitaware.helper.GitAwareContextHelper;
@@ -30,6 +32,7 @@ import io.harness.gitsync.helpers.GitContextHelper;
 import io.harness.gitsync.interceptor.GitEntityInfo;
 import io.harness.ng.core.environment.beans.Environment;
 import io.harness.ng.core.environment.beans.Environment.EnvironmentKeys;
+import io.harness.ng.core.environment.beans.EnvironmentMoveConfigOperationDTO;
 import io.harness.ng.core.environment.mappers.EnvironmentFilterHelper;
 import io.harness.ng.core.utils.CDGitXService;
 import io.harness.ng.core.utils.GitXUtils;
@@ -283,6 +286,92 @@ public class EnvironmentRepositoryCustomImpl implements EnvironmentRepositoryCus
       throw new InternalServerErrorException(String.format(
           "Unexpected error occurred while retrieving yaml for environment: [%s]", environment.getIdentifier()));
     }
+  }
+
+  @Override
+  public Environment moveEnvironment(String accountIdentifier, String orgIdentifier, String projectIdentifier,
+      String environmentIdentifier, EnvironmentMoveConfigOperationDTO moveConfigOperationDTO, Environment environment) {
+    Criteria criteria = Criteria.where(EnvironmentKeys.accountId)
+                            .is(environment.getAccountId())
+                            .and(EnvironmentKeys.orgIdentifier)
+                            .is(environment.getOrgIdentifier())
+                            .and(EnvironmentKeys.projectIdentifier)
+                            .is(environment.getProjectIdentifier())
+                            .and(EnvironmentKeys.identifier)
+                            .is(environment.getIdentifier())
+                            .and(EnvironmentKeys.deleted)
+                            .is(false);
+
+    if (INLINE_TO_REMOTE.equals(moveConfigOperationDTO.getMoveConfigOperationType())) {
+      // add params to git context
+      setupGitContext(moveConfigOperationDTO);
+
+      Environment environmentToUpdate =
+          environment.withRepo(moveConfigOperationDTO.getRepoName())
+              .withStoreType(StoreType.REMOTE)
+              .withFilePath(moveConfigOperationDTO.getFilePath())
+              .withConnectorRef(moveConfigOperationDTO.getConnectorRef())
+              .withRepoURL(gitAwareEntityHelper.getRepoUrl(accountIdentifier, orgIdentifier, projectIdentifier))
+              .withFallBackBranch(moveConfigOperationDTO.getBranch());
+
+      return moveToRemote(criteria, environmentToUpdate);
+    } else {
+      throw new UnsupportedOperationException(String.format(
+          "Move operation:[%s] not supported for environments", moveConfigOperationDTO.getMoveConfigOperationType()));
+    }
+  }
+
+  private void setupGitContext(EnvironmentMoveConfigOperationDTO moveConfigDTO) {
+    GitAwareContextHelper.populateGitDetails(
+        GitEntityInfo.builder()
+            .branch(moveConfigDTO.getBranch())
+            .filePath(moveConfigDTO.getFilePath())
+            .commitMsg(moveConfigDTO.getCommitMessage())
+            .isNewBranch(isNotEmpty(moveConfigDTO.getBranch()) && isNotEmpty(moveConfigDTO.getBaseBranch()))
+            .baseBranch(moveConfigDTO.getBaseBranch())
+            .connectorRef(moveConfigDTO.getConnectorRef())
+            .storeType(StoreType.REMOTE)
+            .repoName(moveConfigDTO.getRepoName())
+            .build());
+  }
+
+  private Environment moveToRemote(Criteria criteria, Environment environmentToMove) {
+    try {
+      Query query = new Query(criteria);
+      Update update = getUpdateOperationsForMovingStoreType(environmentToMove);
+      RetryPolicy<Object> retryPolicy = getRetryPolicy(
+          "[Retrying]: Failed moving Environment; attempt: {}", "[Failed]: Failed moving Environment; attempt: {}");
+
+      // create remote entity
+      Scope scope = Scope.of(environmentToMove.getAccountIdentifier(), environmentToMove.getOrgIdentifier(),
+          environmentToMove.getProjectIdentifier());
+      String yamlToPush = environmentToMove.getYaml();
+      gitAwareEntityHelper.createEntityOnGit(environmentToMove, yamlToPush, scope);
+
+      // update in db
+      return updateEnvironmentEntityInMongo(query, update, retryPolicy);
+    } catch (ExplanationException | HintException | ScmException e) {
+      log.error(String.format("Error while moving environment [%s]", environmentToMove.getIdentifier()), e);
+      throw e;
+    } catch (Exception e) {
+      log.error(String.format("Unexpected error while moving environment [%s]", environmentToMove.getIdentifier()), e);
+      throw new InternalServerErrorException(String.format("Unexpected error while moving environment [%s]: [%s]",
+                                                 environmentToMove.getIdentifier(), e.getMessage()),
+          e);
+    }
+  }
+
+  private Update getUpdateOperationsForMovingStoreType(Environment environment) {
+    Update update = new Update();
+    update.set(EnvironmentKeys.repo, environment.getRepo());
+    update.set(EnvironmentKeys.storeType, StoreType.REMOTE);
+    update.set(EnvironmentKeys.filePath, environment.getFilePath());
+    update.set(EnvironmentKeys.connectorRef, environment.getConnectorRef());
+    update.set(EnvironmentKeys.repoURL,
+        gitAwareEntityHelper.getRepoUrl(
+            environment.getAccountIdentifier(), environment.getOrgIdentifier(), environment.getProjectIdentifier()));
+    update.set(EnvironmentKeys.fallBackBranch, environment.getBranch());
+    return update;
   }
 
   private Environment fetchRemoteEntity(String accountId, String orgIdentifier, String projectIdentifier,
