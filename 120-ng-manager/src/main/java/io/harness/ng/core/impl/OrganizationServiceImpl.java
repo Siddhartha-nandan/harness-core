@@ -131,7 +131,7 @@ public class OrganizationServiceImpl implements OrganizationService {
   public Organization create(@AccountIdentifier String accountIdentifier, OrganizationDTO organizationDTO) {
     Organization organization = toOrganization(organizationDTO);
     organization.setAccountIdentifier(accountIdentifier);
-    organization.setParentId(accountIdentifier);
+    organization.setParentUniqueId(accountIdentifier);
     try {
       validate(organization);
       Organization savedOrganization = saveOrganization(organization);
@@ -301,7 +301,7 @@ public class OrganizationServiceImpl implements OrganizationService {
         organization.setVersion(existingOrganization.getVersion());
       }
       organization.setUniqueId(existingOrganization.getUniqueId());
-      organization.setParentId(existingOrganization.getParentId());
+      organization.setParentUniqueId(existingOrganization.getParentUniqueId());
       validate(organization);
       return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
         Organization updatedOrganization = organizationRepository.save(organization);

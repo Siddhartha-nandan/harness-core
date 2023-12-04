@@ -103,8 +103,8 @@ public class Project implements PersistentEntity, NGAccountAccess, UniqueIdAware
                  .unique(false)
                  .build())
         .add(CompoundMongoIndex.builder()
-                 .name("parentIdIdentifierIdx")
-                 .field(ProjectKeys.parentId)
+                 .name("parentUniqueIdIdentifierIdx")
+                 .field(ProjectKeys.parentUniqueId)
                  .field(ProjectKeys.identifier)
                  .unique(true)
                  .collation(
@@ -117,7 +117,7 @@ public class Project implements PersistentEntity, NGAccountAccess, UniqueIdAware
   String accountIdentifier;
 
   @FdUniqueIndex String uniqueId;
-  String parentId;
+  String parentUniqueId;
   @EntityIdentifier(allowBlank = false) String identifier;
   @EntityIdentifier(allowBlank = false) String orgIdentifier;
 

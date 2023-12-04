@@ -202,7 +202,7 @@ public class ProjectServiceImpl implements ProjectService {
     project.setAccountIdentifier(accountIdentifier);
     organizationOptional.ifPresent(organization -> {
       if (isNotEmpty(organization.getUniqueId())) {
-        project.setParentId(organization.getUniqueId());
+        project.setParentUniqueId(organization.getUniqueId());
       }
     });
     try {
@@ -464,7 +464,7 @@ public class ProjectServiceImpl implements ProjectService {
       project.setCreatedAt(existingProject.getCreatedAt() == null ? existingProject.getLastModifiedAt()
                                                                   : existingProject.getCreatedAt());
       project.setUniqueId(existingProject.getUniqueId());
-      project.setParentId(existingProject.getParentId());
+      project.setParentUniqueId(existingProject.getParentUniqueId());
       if (project.getVersion() == null) {
         project.setVersion(existingProject.getVersion());
       }

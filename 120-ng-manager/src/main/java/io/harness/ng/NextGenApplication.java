@@ -141,11 +141,7 @@ import io.harness.ng.core.exceptionmappers.WingsExceptionMapperV2;
 import io.harness.ng.core.filter.ApiResponseFilter;
 import io.harness.ng.core.handler.NGVaultSecretManagerRenewalHandler;
 import io.harness.ng.core.handler.freezeHandlers.NgDeploymentFreezeActivationHandler;
-import io.harness.ng.core.migration.AddUniqueIdParentIdToEntitiesJob;
-import io.harness.ng.core.migration.NGBeanMigrationProvider;
-import io.harness.ng.core.migration.ProjectMigrationProvider;
-import io.harness.ng.core.migration.UniqueIdParentIdMigrationProvider;
-import io.harness.ng.core.migration.UserGroupMigrationProvider;
+import io.harness.ng.core.migration.*;
 import io.harness.ng.core.remote.UserGroupRestrictionUsageImpl;
 import io.harness.ng.core.remote.UsersRestrictionUsageImpl;
 import io.harness.ng.core.remote.licenserestriction.ApiKeyRestrictionsUsageImpl;
@@ -597,6 +593,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
           { add(ProjectMigrationProvider.class); }
 
           { add(UniqueIdParentIdMigrationProvider.class); }
+          { add(ParentUniqueIdMigrationProvider.class); }
 
           { add(NGCoreMigrationProvider.class); } // Add all migration provider classes here
 

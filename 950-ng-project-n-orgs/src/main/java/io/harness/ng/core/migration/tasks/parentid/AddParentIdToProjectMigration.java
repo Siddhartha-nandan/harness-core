@@ -69,7 +69,7 @@ public class AddParentIdToProjectMigration implements NGMigration {
       while (iterator.hasNext()) {
         totalCounter++;
         Project nextProject = iterator.next();
-        if (null != nextProject && isEmpty(nextProject.getParentId())) {
+        if (null != nextProject && isEmpty(nextProject.getParentUniqueId())) {
           updateCounter++;
           final String mapKey =
               nextProject.getAccountIdentifier() + LOCAL_MAP_DELIMITER + nextProject.getOrgIdentifier();
@@ -94,7 +94,7 @@ public class AddParentIdToProjectMigration implements NGMigration {
 
           if (isNotEmpty(uniqueIdOfOrg)) {
             batchSizeCounter++;
-            Update update = new Update().set(ProjectKeys.parentId, uniqueIdOfOrg);
+            Update update = new Update().set(ProjectKeys.parentUniqueId, uniqueIdOfOrg);
             bulkOperations.updateOne(new Query(Criteria.where("_id").is(nextProject.getId())), update);
 
             if (batchSizeCounter == BATCH_SIZE) {
