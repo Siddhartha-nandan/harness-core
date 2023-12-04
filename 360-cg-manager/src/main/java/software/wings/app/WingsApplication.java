@@ -1416,7 +1416,7 @@ public class WingsApplication extends Application<MainConfiguration> {
       delegateExecutor.scheduleWithFixedDelay(
           new Schedulable("Failed while auto revoking delegate tokens",
               () -> injector.getInstance(DelegateNgTokenServiceImpl.class).autoRevokeExpiredTokens()),
-          1L, 1L, TimeUnit.HOURS);
+          5L, 5L, TimeUnit.MINUTES);
 
       if (configuration.isEnableRedisForDelegateService()) {
         // Sync HB from redis cache to mongo
