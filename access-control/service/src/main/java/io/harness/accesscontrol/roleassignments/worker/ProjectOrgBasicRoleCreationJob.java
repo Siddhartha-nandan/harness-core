@@ -13,11 +13,13 @@ import static io.harness.accesscontrol.principals.PrincipalType.USER_GROUP;
 import static io.harness.accesscontrol.resources.resourcegroups.HarnessResourceGroupConstants.DEFAULT_ORGANIZATION_LEVEL_RESOURCE_GROUP_IDENTIFIER;
 import static io.harness.accesscontrol.resources.resourcegroups.HarnessResourceGroupConstants.DEFAULT_PROJECT_LEVEL_RESOURCE_GROUP_IDENTIFIER;
 import static io.harness.authorization.AuthorizationServiceHeader.ACCESS_CONTROL_SERVICE;
-import static io.harness.beans.FeatureName.PL_ENABLE_BASIC_ROLE_FOR_PROJECTS_ORGS;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
 import static org.springframework.data.mongodb.core.query.Update.update;
 
+import com.google.inject.name.Named;
+import io.harness.accesscontrol.roleassignments.RoleAssignment;
+import io.harness.accesscontrol.roleassignments.RoleAssignmentService;
 import io.harness.accesscontrol.roleassignments.persistence.RoleAssignmentDBO;
 import io.harness.accesscontrol.roleassignments.persistence.RoleAssignmentDBO.RoleAssignmentDBOKeys;
 import io.harness.accesscontrol.roleassignments.persistence.repositories.RoleAssignmentRepository;
@@ -36,7 +38,6 @@ import io.harness.utils.CryptoUtils;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +56,9 @@ public class ProjectOrgBasicRoleCreationJob implements Runnable {
   private final AccountUtils accountUtils;
   private final ScopeService scopeService;
   private final PersistentLocker persistentLocker;
+  private final RoleAssignmentService roleAssignmentService;
+  private final boolean skipManagedUserViewerRoleAssignmentsDeletion;
+
   private final String DEBUG_MESSAGE = "ProjectOrgBasicRoleCreationJob: ";
   private static final String LOCK_NAME = "ProjectOrgBasicRoleCreationJobLock";
 
@@ -67,12 +71,15 @@ public class ProjectOrgBasicRoleCreationJob implements Runnable {
   @Inject
   public ProjectOrgBasicRoleCreationJob(RoleAssignmentRepository roleAssignmentRepository,
       FeatureFlagService featureFlagService, AccountUtils accountUtils, ScopeService scopeService,
-      PersistentLocker persistentLocker) {
+      PersistentLocker persistentLocker, RoleAssignmentService roleAssignmentService,
+      @Named("skipManagedUserViewerRoleAssignmentsDeletion") boolean skipManagedUserViewerRoleAssignmentsDeletion) {
     this.roleAssignmentRepository = roleAssignmentRepository;
     this.featureFlagService = featureFlagService;
     this.accountUtils = accountUtils;
     this.scopeService = scopeService;
     this.persistentLocker = persistentLocker;
+    this.roleAssignmentService = roleAssignmentService;
+    this.skipManagedUserViewerRoleAssignmentsDeletion = skipManagedUserViewerRoleAssignmentsDeletion;
   }
 
   @Override
@@ -101,7 +108,8 @@ public class ProjectOrgBasicRoleCreationJob implements Runnable {
   }
 
   private void execute() {
-    List<String> targetAccounts = getFFEnabledAccounts();
+
+    List<String> targetAccounts = accountUtils.getAllAccountIds();
     if (isEmpty(targetAccounts)) {
       return;
     }
@@ -143,23 +151,6 @@ public class ProjectOrgBasicRoleCreationJob implements Runnable {
     }
   }
 
-  private List<String> getFFEnabledAccounts() {
-    List<String> accountIds = accountUtils.getAllAccountIds();
-    List<String> targetAccounts = new ArrayList<>();
-    try {
-      for (String accountId : accountIds) {
-        boolean isBasicRoleCreationEnabled =
-            featureFlagService.isEnabled(PL_ENABLE_BASIC_ROLE_FOR_PROJECTS_ORGS, accountId);
-        if (isBasicRoleCreationEnabled) {
-          targetAccounts.add(accountId);
-        }
-      }
-    } catch (Exception ex) {
-      log.error(DEBUG_MESSAGE + "Failed to filter accounts for FF PL_ENABLE_BASIC_ROLE_FOR_PROJECTS_ORGS");
-    }
-    return targetAccounts;
-  }
-
   private void addBasicRoleToDefaultUserGroup(Criteria criteria, String roleIdentifier) {
     int pageSize = 1000;
     int pageIndex = 0;
@@ -175,13 +166,13 @@ public class ProjectOrgBasicRoleCreationJob implements Runnable {
       }
       for (RoleAssignmentDBO roleAssignment : roleAssignmentList) {
         if (roleAssignment.isManaged()) {
-          RoleAssignmentDBO newRoleAssignmentDBO = buildRoleAssignmentDBO(roleAssignment, roleIdentifier);
+          RoleAssignment newRoleAssignment = buildRoleAssignment(roleAssignment, roleIdentifier);
           try {
             try {
-              roleAssignmentRepository.save(newRoleAssignmentDBO);
+              roleAssignmentService.create(newRoleAssignment);
             } catch (DuplicateKeyException e) {
               log.warn("[ProjectOrgBasicRoleCreationJob]: Corresponding basic role assigment was already created {}",
-                  newRoleAssignmentDBO.toString(), e);
+                      newRoleAssignment.toString(), e);
             }
             roleAssignmentRepository.updateById(roleAssignment.getId(), update(RoleAssignmentDBOKeys.managed, false));
           } catch (Exception exception) {
@@ -195,8 +186,8 @@ public class ProjectOrgBasicRoleCreationJob implements Runnable {
     } while (true);
   }
 
-  private RoleAssignmentDBO buildRoleAssignmentDBO(RoleAssignmentDBO roleAssignmentDBO, String roleIdentifier) {
-    return RoleAssignmentDBO.builder()
+  private RoleAssignment buildRoleAssignment(RoleAssignmentDBO roleAssignmentDBO, String roleIdentifier) {
+    return RoleAssignment.builder()
         .identifier("role_assignment_".concat(CryptoUtils.secureRandAlphaNumString(20)))
         .scopeIdentifier(roleAssignmentDBO.getScopeIdentifier())
         .scopeLevel(roleAssignmentDBO.getScopeLevel())

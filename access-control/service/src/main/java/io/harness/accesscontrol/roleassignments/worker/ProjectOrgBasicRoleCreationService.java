@@ -42,7 +42,7 @@ public class ProjectOrgBasicRoleCreationService implements Managed {
     Random random = new Random();
     int delay = random.nextInt(15) + 15;
     projectOrgBasicRoleCreationJobFuture =
-        executorService.scheduleWithFixedDelay(projectOrgBasicRoleCreationJob, delay, 1440, TimeUnit.MINUTES);
+        executorService.scheduleWithFixedDelay(projectOrgBasicRoleCreationJob, delay, 10080, TimeUnit.MINUTES);
   }
 
   @Override

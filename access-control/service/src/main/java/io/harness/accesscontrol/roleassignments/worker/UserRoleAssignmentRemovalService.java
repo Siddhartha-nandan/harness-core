@@ -42,7 +42,7 @@ public class UserRoleAssignmentRemovalService implements Managed {
     Random random = new Random();
     int delay = random.nextInt(15) + 15;
     userRoleAssignmentRemovalJobFuture =
-        executorService.scheduleWithFixedDelay(userRoleAssignmentRemovalMigrationJob, delay, 1440, TimeUnit.MINUTES);
+        executorService.scheduleWithFixedDelay(userRoleAssignmentRemovalMigrationJob, delay, 10080, TimeUnit.MINUTES);
   }
 
   @Override

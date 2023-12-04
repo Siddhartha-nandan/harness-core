@@ -7,6 +7,7 @@
 
 package io.harness.accesscontrol.roleassignments.worker;
 
+import static io.harness.NGConstants.ACCOUNT_VIEWER_ROLE;
 import static io.harness.NGConstants.DEFAULT_ACCOUNT_LEVEL_USER_GROUP_IDENTIFIER;
 import static io.harness.NGConstants.DEFAULT_ORGANIZATION_LEVEL_RESOURCE_GROUP_IDENTIFIER;
 import static io.harness.NGConstants.DEFAULT_PROJECT_LEVEL_RESOURCE_GROUP_IDENTIFIER;
@@ -17,10 +18,13 @@ import static io.harness.accesscontrol.principals.PrincipalType.USER_GROUP;
 import static io.harness.accesscontrol.resources.resourcegroups.HarnessResourceGroupConstants.ALL_RESOURCES_INCLUDING_CHILD_SCOPES_RESOURCE_GROUP_IDENTIFIER;
 import static io.harness.accesscontrol.resources.resourcegroups.HarnessResourceGroupConstants.DEFAULT_ACCOUNT_LEVEL_RESOURCE_GROUP_IDENTIFIER;
 import static io.harness.authorization.AuthorizationServiceHeader.ACCESS_CONTROL_SERVICE;
-import static io.harness.beans.FeatureName.PL_REMOVE_USER_VIEWER_ROLE_ASSIGNMENTS;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
+import com.google.common.collect.Sets;
+import com.google.inject.name.Named;
 import io.harness.NGConstants;
+import io.harness.accesscontrol.roleassignments.RoleAssignment;
+import io.harness.accesscontrol.roleassignments.RoleAssignmentService;
 import io.harness.accesscontrol.roleassignments.persistence.RoleAssignmentDBO;
 import io.harness.accesscontrol.roleassignments.persistence.RoleAssignmentDBO.RoleAssignmentDBOKeys;
 import io.harness.accesscontrol.roleassignments.persistence.repositories.RoleAssignmentRepository;
@@ -30,7 +34,6 @@ import io.harness.accesscontrol.scopes.core.ScopeService;
 import io.harness.account.utils.AccountUtils;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.ff.FeatureFlagService;
 import io.harness.lock.AcquiredLock;
 import io.harness.lock.PersistentLocker;
 import io.harness.security.SecurityContextBuilder;
@@ -45,8 +48,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import io.harness.utils.CryptoUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -56,22 +62,24 @@ import org.springframework.data.mongodb.core.query.Criteria;
 @OwnedBy(HarnessTeam.PL)
 public class UserRoleAssignmentRemovalJob implements Runnable {
   private final RoleAssignmentRepository roleAssignmentRepository;
-  private final FeatureFlagService featureFlagService;
   private final AccountUtils accountUtils;
   private final ScopeService scopeService;
   private final PersistentLocker persistentLocker;
   private final String DEBUG_MESSAGE = "UserRoleAssignmentRemovalJob: ";
   private static final String LOCK_NAME = "UserRoleAssignmentRemovalJobLock";
+  private final boolean skipManagedUserViewerRoleAssignmentsDeletion;
+  private final RoleAssignmentService roleAssignmentService;
 
   @Inject
-  public UserRoleAssignmentRemovalJob(RoleAssignmentRepository roleAssignmentRepository,
-      FeatureFlagService featureFlagService, AccountUtils accountUtils, ScopeService scopeService,
-      PersistentLocker persistentLocker) {
+  public UserRoleAssignmentRemovalJob(RoleAssignmentRepository roleAssignmentRepository, AccountUtils accountUtils, ScopeService scopeService,
+                                      PersistentLocker persistentLocker, RoleAssignmentService roleAssignmentService,
+                                      @Named("skipManagedUserViewerRoleAssignmentsDeletion") boolean skipManagedUserViewerRoleAssignmentsDeletion) {
     this.roleAssignmentRepository = roleAssignmentRepository;
-    this.featureFlagService = featureFlagService;
     this.accountUtils = accountUtils;
     this.scopeService = scopeService;
     this.persistentLocker = persistentLocker;
+    this.roleAssignmentService = roleAssignmentService;
+    this.skipManagedUserViewerRoleAssignmentsDeletion = skipManagedUserViewerRoleAssignmentsDeletion;
   }
 
   @Override
@@ -88,7 +96,7 @@ public class UserRoleAssignmentRemovalJob implements Runnable {
         log.info(DEBUG_MESSAGE + "Setting SecurityContext completed.");
         execute();
       } catch (Exception ex) {
-        log.error(DEBUG_MESSAGE + " unexpected error occurred while Setting SecurityContext", ex);
+        log.error(DEBUG_MESSAGE + " unexpected error occurred", ex);
       } finally {
         SecurityContextBuilder.unsetCompleteContext();
         log.info(DEBUG_MESSAGE + "Unsetting SecurityContext completed.");
@@ -101,7 +109,10 @@ public class UserRoleAssignmentRemovalJob implements Runnable {
 
   @VisibleForTesting
   void execute() {
-    List<String> targetAccounts = getAccountsForFFEnabled();
+    if (skipManagedUserViewerRoleAssignmentsDeletion) {
+      return;
+    }
+    List<String> targetAccounts = accountUtils.getAllAccountIds();
 
     if (isEmpty(targetAccounts)) {
       return;
@@ -109,8 +120,14 @@ public class UserRoleAssignmentRemovalJob implements Runnable {
     try {
       HashSet<String> filteredAccountIds =
           new HashSet<>(filterAccountsWhereDefaultUserGroupHaveViewerRoleAssignment(targetAccounts));
+      HashSet<String> accounts =  Sets.newHashSet(targetAccounts);
+      Set<String> accountsToAddViewerRoleAssignment = Sets.difference(accounts, filteredAccountIds);
       for (String accountId : targetAccounts) {
-        if (filteredAccountIds.contains(accountId)) {
+        boolean processDeletion = true;
+        if (accountsToAddViewerRoleAssignment.contains(accountId)) {
+          processDeletion = assignAccountViewerRoleAssignment(accountId);
+        }
+        if (processDeletion) {
           deleteAccountScopeRoleAssignments(accountId);
         }
         deleteOrganizationScopeRoleAssignments(accountId);
@@ -122,23 +139,6 @@ public class UserRoleAssignmentRemovalJob implements Runnable {
     }
   }
 
-  private List<String> getAccountsForFFEnabled() {
-    List<String> accountIds = accountUtils.getAllAccountIds();
-    List<String> targetAccounts = new ArrayList<>();
-    try {
-      for (String accountId : accountIds) {
-        boolean isRemoveUserViewerRoleAssignment =
-            featureFlagService.isEnabled(PL_REMOVE_USER_VIEWER_ROLE_ASSIGNMENTS, accountId);
-        if (isRemoveUserViewerRoleAssignment) {
-          targetAccounts.add(accountId);
-        }
-      }
-    } catch (Exception ex) {
-      log.error(DEBUG_MESSAGE + "Failed to filter accounts for FF PL_REMOVE_USER_VIEWER_ROLE_ASSIGNMENTS");
-    }
-    return targetAccounts;
-  }
-
   private void deleteAccountScopeRoleAssignments(String accountId) {
     try {
       String scopeIdentifier = "/ACCOUNT/" + accountId;
@@ -147,7 +147,7 @@ public class UserRoleAssignmentRemovalJob implements Runnable {
                               .and(RoleAssignmentDBOKeys.resourceGroupIdentifier)
                               .is(DEFAULT_ACCOUNT_LEVEL_RESOURCE_GROUP_IDENTIFIER)
                               .and(RoleAssignmentDBOKeys.roleIdentifier)
-                              .in(NGConstants.ACCOUNT_BASIC_ROLE, NGConstants.ACCOUNT_VIEWER_ROLE)
+                              .in(NGConstants.ACCOUNT_BASIC_ROLE, ACCOUNT_VIEWER_ROLE)
                               .and(RoleAssignmentDBOKeys.principalType)
                               .is(USER)
                               .and(RoleAssignmentDBOKeys.scopeLevel)
@@ -237,7 +237,7 @@ public class UserRoleAssignmentRemovalJob implements Runnable {
                               .in(DEFAULT_ACCOUNT_LEVEL_RESOURCE_GROUP_IDENTIFIER,
                                   ALL_RESOURCES_INCLUDING_CHILD_SCOPES_RESOURCE_GROUP_IDENTIFIER)
                               .and(RoleAssignmentDBOKeys.roleIdentifier)
-                              .is(NGConstants.ACCOUNT_VIEWER_ROLE)
+                              .is(ACCOUNT_VIEWER_ROLE)
                               .and(RoleAssignmentDBOKeys.principalScopeLevel)
                               .is(HarnessScopeLevel.ACCOUNT.getName())
                               .and(RoleAssignmentDBOKeys.scopeLevel)
@@ -245,8 +245,7 @@ public class UserRoleAssignmentRemovalJob implements Runnable {
 
       Pageable pageable = Pageable.unpaged();
       List<RoleAssignmentDBO> roleAssignmentDBOList = roleAssignmentRepository.findAll(criteria, pageable).getContent();
-      // If role assignment doesn't exist on Default User Group at account then skip removing User assigned role
-      // assignment. So this list will contain AccountIds only having Default User Group.
+
       for (RoleAssignmentDBO roleAssignmentDBO : roleAssignmentDBOList) {
         Scope accountScope = scopeService.buildScopeFromScopeIdentifier(roleAssignmentDBO.getScopeIdentifier());
         filteredAccounts.add(accountScope.getInstanceId());
@@ -257,5 +256,35 @@ public class UserRoleAssignmentRemovalJob implements Runnable {
           + String.format("Failed to query role assignments of default user group for accounts %s", accountIds));
     }
     return filteredAccounts;
+  }
+
+  private boolean assignAccountViewerRoleAssignment(String accountId) {
+    // If role assignment doesn't exist on Default User Group at account then we need create.
+    try {
+      String scopeIdentifier = "/ACCOUNT/" + accountId;
+      RoleAssignment roleAssignment = buildRolAssignment(scopeIdentifier);
+      roleAssignmentService.create(roleAssignment);
+      return true;
+    }
+    catch (Exception ex) {
+      log.error(DEBUG_MESSAGE + String.format("Failed to create role assignments for account %s", accountId));
+    }
+    return false;
+  }
+
+  private RoleAssignment buildRolAssignment(String scopeIdentifier) {
+    return RoleAssignment.builder()
+            .identifier("role_assignment_".concat(CryptoUtils.secureRandAlphaNumString(20)))
+            .principalIdentifier(DEFAULT_ACCOUNT_LEVEL_USER_GROUP_IDENTIFIER)
+            .principalType(USER_GROUP)
+            .roleIdentifier(ACCOUNT_VIEWER_ROLE)
+            .resourceGroupIdentifier(DEFAULT_ACCOUNT_LEVEL_RESOURCE_GROUP_IDENTIFIER)
+            .scopeIdentifier(scopeIdentifier)
+            .scopeLevel(HarnessScopeLevel.ACCOUNT.toString())
+            .principalScopeLevel(HarnessScopeLevel.ACCOUNT.toString())
+            .managed(false)
+            .internal(false)
+            .disabled(false)
+            .build();
   }
 }

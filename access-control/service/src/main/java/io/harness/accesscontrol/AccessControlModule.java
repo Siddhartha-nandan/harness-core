@@ -431,5 +431,8 @@ public class AccessControlModule extends AbstractModule {
     bind(Integer.class)
         .annotatedWith(Names.named("batchSizeForACLCreation"))
         .toInstance(config.getBatchSizeForACLCreation());
+    bind(boolean.class)
+            .annotatedWith(Names.named("skipManagedUserViewerRoleAssignmentsDeletion"))
+            .toInstance(config.isSkipManagedUserViewerRoleAssignmentsDeletion());
   }
 }
