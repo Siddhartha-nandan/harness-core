@@ -18,6 +18,7 @@ import io.harness.delegate.beans.DelegateEntityOwner;
 import io.harness.delegate.beans.DelegateGroupListing;
 import io.harness.delegate.beans.DelegateTokenDetails;
 import io.harness.delegate.beans.DelegateTokenStatus;
+import io.harness.delegate.events.DelegateNgTokenRevokeEvent;
 import io.harness.delegate.service.intfc.DelegateNgTokenService;
 import io.harness.delegate.utils.DelegateEntityOwnerHelper;
 import io.harness.exception.InvalidRequestException;
@@ -79,7 +80,10 @@ public class DelegateNgTokenInternalResource {
       @Parameter(description = "Time after which delegate token will be auto revoked") @QueryParam(
           "revokeAfter") Long revokeAfter) {
     DelegateEntityOwner owner = DelegateEntityOwnerHelper.buildOwner(orgIdentifier, projectIdentifier);
-    return new RestResponse<>(delegateTokenService.createToken(accountIdentifier, owner, tokenName, revokeAfter));
+    final DelegateTokenDetails tokenDetails =
+        delegateTokenService.createToken(accountIdentifier, owner, tokenName, revokeAfter);
+    delegateTokenService.publishCreateTokenAuditEvent(tokenDetails);
+    return new RestResponse<>(tokenDetails);
   }
 
   @PUT
@@ -95,7 +99,9 @@ public class DelegateNgTokenInternalResource {
           NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
       @Parameter(description = "Delegate Token name") @QueryParam("tokenName") @NotNull String tokenName) {
     DelegateEntityOwner owner = DelegateEntityOwnerHelper.buildOwner(orgIdentifier, projectIdentifier);
-    return new RestResponse<>(delegateTokenService.revokeDelegateToken(accountIdentifier, tokenName));
+    final DelegateTokenDetails tokenDetails = delegateTokenService.revokeDelegateToken(accountIdentifier, tokenName);
+    delegateTokenService.publishRevokeTokenAuditEvent(tokenDetails, DelegateNgTokenRevokeEvent.Source.MANUAL);
+    return new RestResponse<>(tokenDetails);
   }
 
   @GET

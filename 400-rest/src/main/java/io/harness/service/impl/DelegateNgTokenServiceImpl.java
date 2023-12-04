@@ -113,7 +113,6 @@ public class DelegateNgTokenServiceImpl implements DelegateNgTokenService, Accou
           format("Token with given name %s already exists for given account.", tokenName));
     }
 
-    publishCreateTokenAuditEvent(delegateToken);
     return getDelegateTokenDetails(delegateToken, true);
   }
 
@@ -133,8 +132,6 @@ public class DelegateNgTokenServiceImpl implements DelegateNgTokenService, Accou
 
     // we are not removing token from delegateTokenCache in DelegateTokenCacheHelper, since the cache has an expiry of 3
     // mins.
-
-    publishRevokeTokenAuditEvent(updatedDelegateToken);
     List<Delegate> delegates = persistence.createQuery(Delegate.class)
                                    .filter(DelegateKeys.accountId, accountId)
                                    .filter(DelegateKeys.delegateTokenName, tokenName)
@@ -303,8 +300,10 @@ public class DelegateNgTokenServiceImpl implements DelegateNgTokenService, Accou
                                                 .project(DelegateTokenKeys.accountId, true)
                                                 .project(DelegateTokenKeys.name, true)
                                                 .asList();
-    delegateTokenList.forEach(
-        delegateToken -> revokeDelegateToken(delegateToken.getAccountId(), delegateToken.getName()));
+    delegateTokenList.forEach(delegateToken -> {
+      var token = revokeDelegateToken(delegateToken.getAccountId(), delegateToken.getName());
+      publishRevokeTokenAuditEvent(token, DelegateNgTokenRevokeEvent.Source.AUTO);
+    });
   }
 
   private Query<DelegateToken> matchNameTokenQuery(String accountId, String tokenName) {
@@ -338,14 +337,16 @@ public class DelegateNgTokenServiceImpl implements DelegateNgTokenService, Accou
     return delegateTokenDetailsBuilder.build();
   }
 
-  private void publishCreateTokenAuditEvent(DelegateToken delegateToken) {
+  public void publishCreateTokenAuditEvent(DelegateTokenDetails delegateToken) {
     DelegateNgTokenDTO token = convert(delegateToken);
     outboxService.save(DelegateNgTokenCreateEvent.builder().token(token).build());
   }
 
-  private void publishRevokeTokenAuditEvent(DelegateToken delegateToken) {
+  @Override
+  public void publishRevokeTokenAuditEvent(
+      DelegateTokenDetails delegateToken, DelegateNgTokenRevokeEvent.Source source) {
     DelegateNgTokenDTO token = convert(delegateToken);
-    outboxService.save(DelegateNgTokenRevokeEvent.builder().token(token).build());
+    outboxService.save(DelegateNgTokenRevokeEvent.builder().token(token).sourceOfAction(source).build());
   }
 
   private void validateTokenToBeRevoked(DelegateToken delegateToken) {
@@ -367,13 +368,13 @@ public class DelegateNgTokenServiceImpl implements DelegateNgTokenService, Accou
                          : StringUtils.EMPTY;
   }
 
-  private DelegateNgTokenDTO convert(DelegateToken delegateToken) {
+  private DelegateNgTokenDTO convert(DelegateTokenDetails delegateToken) {
     return DelegateNgTokenDTO.builder()
         .accountIdentifier(delegateToken.getAccountId())
         .orgIdentifier(DelegateEntityOwnerHelper.extractOrgIdFromOwnerIdentifier(
-            delegateToken.getOwner() != null ? delegateToken.getOwner().getIdentifier() : null))
+            delegateToken.getOwnerIdentifier() != null ? delegateToken.getOwnerIdentifier() : null))
         .projectIdentifier(DelegateEntityOwnerHelper.extractProjectIdFromOwnerIdentifier(
-            delegateToken.getOwner() != null ? delegateToken.getOwner().getIdentifier() : null))
+            delegateToken.getOwnerIdentifier() != null ? delegateToken.getOwnerIdentifier() : null))
         .name(delegateToken.getName())
         .identifier(delegateToken.getUuid())
         .build();

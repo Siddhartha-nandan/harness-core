@@ -10,6 +10,7 @@ package io.harness.delegate.service.intfc;
 import io.harness.delegate.beans.DelegateEntityOwner;
 import io.harness.delegate.beans.DelegateTokenDetails;
 import io.harness.delegate.beans.DelegateTokenStatus;
+import io.harness.delegate.events.DelegateNgTokenRevokeEvent;
 
 import software.wings.service.intfc.ownership.OwnedByAccount;
 
@@ -60,4 +61,7 @@ public interface DelegateNgTokenService extends OwnedByAccount {
   Map<String, Boolean> isDelegateTokenActive(String accountId, List<String> tokensNameList);
 
   boolean doesDelegateTokenExist(String accountId, String delegateTokenName);
+
+  void publishRevokeTokenAuditEvent(DelegateTokenDetails delegateToken, DelegateNgTokenRevokeEvent.Source source);
+  void publishCreateTokenAuditEvent(DelegateTokenDetails delegateToken);
 }

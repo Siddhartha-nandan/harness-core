@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.codehaus.jackson.annotate.JsonProperty;
 
 @OwnedBy(HarnessTeam.DEL)
 @Getter
@@ -31,6 +32,10 @@ import lombok.experimental.SuperBuilder;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DelegateNgTokenRevokeEvent extends AbstractDelegateConfigurationEvent {
   private DelegateNgTokenDTO token;
+  private Source sourceOfAction;
+
+  public enum Source { @JsonProperty("auto-revoked") AUTO, @JsonProperty("manually-revoked") MANUAL }
+  ;
 
   @Override
   public Resource getResource() {
