@@ -105,7 +105,7 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
-import org.springframework.scheduling.support.CronSequenceGenerator;
+import org.springframework.scheduling.support.CronExpression;
 import org.springframework.transaction.support.TransactionTemplate;
 import retrofit2.Response;
 
@@ -251,9 +251,7 @@ public class GovernanceRuleEnforcementResource {
     }
 
     try {
-      CronSequenceGenerator cronSequenceGenerator = new CronSequenceGenerator(
-          ruleEnforcement.getExecutionSchedule(), TimeZone.getTimeZone(ruleEnforcement.getExecutionTimezone()));
-      CronSequenceGenerator.isValidExpression(String.valueOf(cronSequenceGenerator));
+      CronExpression.isValidExpression(ruleEnforcement.getExecutionSchedule());
       // TO DO: Timezone and Cron validation needs to be moved to a non deprecated method
     } catch (Exception e) {
       throw new InvalidRequestException("cron is not valid");

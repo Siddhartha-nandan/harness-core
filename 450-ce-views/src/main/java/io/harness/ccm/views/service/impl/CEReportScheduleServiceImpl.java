@@ -17,13 +17,14 @@ import io.harness.ccm.views.entities.CEReportSchedule;
 import io.harness.ccm.views.service.CEReportScheduleService;
 
 import com.google.inject.Inject;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
-import java.util.TimeZone;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.support.CronSequenceGenerator;
+import org.springframework.scheduling.support.CronExpression;
 
 @CodePulse(
     module = ProductModule.CCM, unitCoverageRequired = true, components = {HarnessModuleComponent.CCM_PERSPECTIVE})
@@ -60,10 +61,9 @@ public class CEReportScheduleServiceImpl implements CEReportScheduleService {
       // Default to UTC
       cronTimeZone = "UTC";
     }
-    CronSequenceGenerator cronTrigger =
-        new CronSequenceGenerator(schedule.getUserCron(), TimeZone.getTimeZone(cronTimeZone));
+    CronExpression cronTrigger = CronExpression.parse(schedule.getUserCron());
     if (entry == null) {
-      Date next = cronTrigger.next(new Date());
+      Date next = Date.from(cronTrigger.next(LocalDateTime.now()).toInstant(ZoneOffset.of(cronTimeZone)));
       log.info("Next Execution Time in user timezone: " + next);
       schedule.setNextExecution(next);
       schedule.setAccountId(accountId);
@@ -87,9 +87,8 @@ public class CEReportScheduleServiceImpl implements CEReportScheduleService {
       // Default to UTC
       cronTimeZone = "UTC";
     }
-    CronSequenceGenerator cronSequenceGenerator =
-        new CronSequenceGenerator(schedule.getUserCron(), TimeZone.getTimeZone(cronTimeZone));
-    Date next = cronSequenceGenerator.next(new Date());
+    CronExpression cronExpression = CronExpression.parse(schedule.getUserCron());
+    Date next = Date.from(cronExpression.next(LocalDateTime.now()).toInstant(ZoneOffset.of(cronTimeZone)));
     log.info("Updated next Execution Time: " + next);
     schedule.setNextExecution(next);
     if (schedule.getDescription() == null) {
@@ -128,9 +127,8 @@ public class CEReportScheduleServiceImpl implements CEReportScheduleService {
       // Default to UTC
       cronTimeZone = "UTC";
     }
-    CronSequenceGenerator cronSequenceGenerator =
-        new CronSequenceGenerator(schedule.getUserCron(), TimeZone.getTimeZone(cronTimeZone));
-    Date next = cronSequenceGenerator.next(new Date());
+    CronExpression cronExpression = CronExpression.parse(schedule.getUserCron());
+    Date next = Date.from(cronExpression.next(LocalDateTime.now()).toInstant(ZoneOffset.of(cronTimeZone)));
     log.info("Updated next Execution Time: " + next);
     schedule.setNextExecution(next);
     return ceReportScheduleDao.updateNextExecution(accountId, schedule);
