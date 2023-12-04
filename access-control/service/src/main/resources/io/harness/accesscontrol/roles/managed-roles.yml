@@ -40,7 +40,6 @@ roles:
         - core_environmentgroup_edit
         - core_environmentgroup_delete
         - core_environmentgroup_access
-        - core_audit_view
         - core_usergroup_view
         - core_usergroup_manage
         - core_user_view
@@ -192,7 +191,6 @@ roles:
         - core_service_view
         - core_environment_view
         - core_environmentgroup_view
-        - core_audit_view
         - core_usergroup_view
         - core_user_view
         - core_role_view
@@ -833,7 +831,6 @@ roles:
         - core_environment_access
         - core_environmentgroup_view
         - core_environmentgroup_access
-        - core_audit_view
         - core_usergroup_view
         - core_user_view
         - core_role_view
