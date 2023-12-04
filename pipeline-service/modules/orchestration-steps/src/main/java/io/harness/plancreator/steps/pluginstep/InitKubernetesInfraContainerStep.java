@@ -65,15 +65,14 @@ public class InitKubernetesInfraContainerStep
   public StepResponse handleTaskResultWithSecurityContext(Ambiance ambiance, StepElementParameters stepParameters,
       ThrowingSupplier<InitializeExecutionInfraResponse> responseDataSupplier) throws Exception {
     InitializeExecutionInfraResponse k8sInfra = responseDataSupplier.get();
-    Status succeeded = isNotEmpty(k8sInfra.getExecutionInfraReferenceId()) ? Status.SUCCEEDED : Status.FAILED;
+    Status succeeded = isNotEmpty(k8sInfra.getInfraRefId()) ? Status.SUCCEEDED : Status.FAILED;
     return StepResponse.builder()
         .status(succeeded)
-        .stepOutcome(
-            StepResponse.StepOutcome.builder()
-                .name(KUBERNETES_INFRA_OUTCOME)
-                .outcome(KubernetesInfraOutcome.builder().infraRefId(k8sInfra.getExecutionInfraReferenceId()).build())
-                .group(StepCategory.STEP_GROUP.name())
-                .build())
+        .stepOutcome(StepResponse.StepOutcome.builder()
+                         .name(KUBERNETES_INFRA_OUTCOME)
+                         .outcome(KubernetesInfraOutcome.builder().infraRefId(k8sInfra.getInfraRefId()).build())
+                         .group(StepCategory.STEP_GROUP.name())
+                         .build())
         .build();
   }
 
@@ -98,7 +97,7 @@ public class InitKubernetesInfraContainerStep
     for (StepElementParameters stepElementParameters : stepElementParametersList) {
       StepSpec stepSpec =
           StepSpec.newBuilder()
-              .setImage("imijailovic/shell-task-ng-linux-amd64:5.0")
+              .setImage("imijailovic/shell-task-ng-linux-amd64:6.0")
               .setStepId(SHELL_SCRIPT_TASK_IDENTIFIER)
               .setComputeResource(ComputingResource.newBuilder().setCpu("100m").setMemory("100Mi").build())
               .setSecrets(

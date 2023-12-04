@@ -285,7 +285,6 @@ public class TaskRequestsUtils {
         SchedulingConfig.newBuilder()
             .addAllSelectors(CollectionUtils.emptyIfNull(selectors))
             .setRunnerType(RunnerType.RUNNER_TYPE_K8S)
-            .setAccountId(accountId)
             .setOrgId(AmbianceUtils.getOrgIdentifier(ambiance))
             .setProjectId(AmbianceUtils.getProjectIdentifier(ambiance))
             .setExecutionTimeout(Duration.newBuilder().setSeconds(timeout / 1000).build())
@@ -295,6 +294,7 @@ public class TaskRequestsUtils {
     SetupExecutionInfrastructureRequest setupExecutionInfrastructureRequest =
         SetupExecutionInfrastructureRequest.newBuilder()
             .setConfig(schedulingConfig)
+            .setAccountId(accountId)
             .setInfra(executionInfrastructure)
             .build();
 
@@ -326,7 +326,6 @@ public class TaskRequestsUtils {
         SchedulingConfig.newBuilder()
             .addAllSelectors(CollectionUtils.emptyIfNull(selectors))
             .setRunnerType(RunnerType.RUNNER_TYPE_K8S)
-            .setAccountId(accountId)
             .setExecutionTimeout(Duration.newBuilder().setSeconds(timeout / 1000).build())
             .setSelectionTrackingLogEnabled(true)
             .build();

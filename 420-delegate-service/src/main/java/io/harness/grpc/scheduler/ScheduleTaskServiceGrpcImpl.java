@@ -12,7 +12,6 @@ import static io.harness.beans.DelegateTask.builder;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.delegate.beans.SchedulingTaskEvent.EventType;
 
-import static java.lang.String.format;
 import static java.util.stream.Collectors.toMap;
 
 import io.harness.delegate.CleanupInfraRequest;
