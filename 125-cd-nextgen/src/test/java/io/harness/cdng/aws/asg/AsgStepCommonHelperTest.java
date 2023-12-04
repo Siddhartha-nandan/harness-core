@@ -7,6 +7,7 @@
 
 package io.harness.cdng.aws.asg;
 
+import static io.harness.cdng.aws.asg.AsgStepCommonHelper.EXEC_STRATEGY_BLUEGREEN;
 import static io.harness.rule.OwnerRule.VITALIE;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,11 +22,19 @@ import io.harness.aws.beans.AsgLoadBalancerConfig;
 import io.harness.category.element.UnitTests;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.expressions.CDExpressionResolver;
+import io.harness.cdng.infra.beans.AsgInfrastructureOutcome;
 import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
 import io.harness.cdng.manifest.yaml.storeConfig.StoreConfig;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
+import io.harness.delegate.beans.instancesync.ServerInstanceInfo;
+import io.harness.delegate.beans.instancesync.info.AsgServerInstanceInfo;
+import io.harness.delegate.task.aws.asg.AsgCommandResponse;
 import io.harness.delegate.task.aws.asg.AsgInfraConfig;
+import io.harness.delegate.task.aws.asg.AsgShiftTrafficResponse;
+import io.harness.delegate.task.aws.asg.AsgShiftTrafficResult;
+import io.harness.delegate.task.aws.asg.AutoScalingGroupContainer;
+import io.harness.delegate.task.aws.asg.AutoScalingGroupInstance;
 import io.harness.delegate.utils.TaskSetupAbstractionHelper;
 import io.harness.exception.InvalidRequestException;
 import io.harness.plancreator.steps.common.StepElementParameters;
@@ -301,5 +310,57 @@ public class AsgStepCommonHelperTest extends CategoryTest {
         AwsAsgLoadBalancerConfigYaml.builder().stageListener(ParameterField.createValueField("stageListener")).build());
     assertThatThrownBy(() -> asgStepCommonHelper.isShiftTrafficFeature(loadBalancers2))
         .isInstanceOf(InvalidRequestException.class);
+  }
+
+  @Test
+  @Owner(developers = VITALIE)
+  @Category(UnitTests.class)
+  public void getInfrastructureOutcomeWithUpdatedExpressions() {
+    AsgInfrastructureOutcome asgInfrastructureOutcome =
+        AsgInfrastructureOutcome.builder().infrastructureKey("infraKey").region("<+expression>").build();
+
+    doReturn(asgInfrastructureOutcome).when(outcomeService).resolve(any(), any());
+
+    Ambiance ambiance = Ambiance.newBuilder().build();
+
+    AsgInfrastructureOutcome result =
+        (AsgInfrastructureOutcome) asgStepCommonHelper.getInfrastructureOutcomeWithUpdatedExpressions(ambiance);
+    assertThat(result.getRegion()).isNotNull();
+  }
+
+  @Test
+  @Owner(developers = VITALIE)
+  @Category(UnitTests.class)
+  public void getServerInstanceInfos() {
+    String infrastructureKey = "infraKey";
+    String region = "us-east1";
+    AsgCommandResponse asgCommandResponse =
+        AsgShiftTrafficResponse.builder()
+            .result(AsgShiftTrafficResult.builder()
+                        .prodAutoScalingGroupContainer(
+                            AutoScalingGroupContainer.builder()
+                                .autoScalingGroupName("testAsg__1")
+                                .autoScalingGroupInstanceList(List.of(
+                                    AutoScalingGroupInstance.builder().autoScalingGroupName("testAsg__1").build()))
+                                .build())
+                        .stageAutoScalingGroupContainer(
+                            AutoScalingGroupContainer.builder()
+                                .autoScalingGroupName("testAsg__2")
+                                .autoScalingGroupInstanceList(List.of(
+                                    AutoScalingGroupInstance.builder().autoScalingGroupName("testAsg__2").build()))
+                                .build())
+                        .build())
+            .build();
+
+    List<ServerInstanceInfo> result =
+        asgStepCommonHelper.getServerInstanceInfos(asgCommandResponse, infrastructureKey, region);
+
+    assertThat(result.size()).isEqualTo(2);
+    assertThat(((AsgServerInstanceInfo) result.get(0)).getAsgName()).isEqualTo("testAsg__1");
+    assertThat(((AsgServerInstanceInfo) result.get(0)).getRegion()).isEqualTo(region);
+    assertThat(((AsgServerInstanceInfo) result.get(0)).getInfrastructureKey()).isEqualTo(infrastructureKey);
+    assertThat(((AsgServerInstanceInfo) result.get(0)).getAsgNameWithoutSuffix()).isEqualTo("testAsg");
+    assertThat(((AsgServerInstanceInfo) result.get(0)).getExecutionStrategy()).isEqualTo(EXEC_STRATEGY_BLUEGREEN);
+    assertThat(((AsgServerInstanceInfo) result.get(1)).getAsgName()).isEqualTo("testAsg__2");
   }
 }

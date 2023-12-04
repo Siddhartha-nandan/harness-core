@@ -76,6 +76,7 @@ import io.harness.git.model.PushResultGit;
 import io.harness.git.model.RevertAndPushRequest;
 import io.harness.git.model.RevertAndPushResult;
 import io.harness.git.model.RevertRequest;
+import io.harness.network.ProxyHttpConnectionFactory;
 
 import software.wings.misc.CustomUserGitConfigSystemReader;
 
@@ -912,7 +913,7 @@ public class GitClientV2Impl implements GitClientV2 {
         case MODIFY:
           try {
             log.info(gitClientHelper.getGitLogMessagePrefix(gitCommitRequest.getRepoType()) + "Adding git file "
-                + gitFileChange.toString());
+                + gitFileChange.toStringWithoutFileContent());
             FileUtils.forceMkdir(file.getParentFile());
             FileUtils.writeStringToFile(file, gitFileChange.getFileContent(), UTF_8);
             filesToAdd.add(gitFileChange.getFilePath());
@@ -961,7 +962,7 @@ public class GitClientV2Impl implements GitClientV2 {
                   format("Exception in deleting file [%s]", gitFileChange.getFilePath()), ADMIN_SRE);
             }
             log.info(gitClientHelper.getGitLogMessagePrefix(gitCommitRequest.getRepoType()) + "Deleting git file "
-                + gitFileChange.toString());
+                + gitFileChange.toStringWithoutFileContent());
           } else {
             log.warn(gitClientHelper.getGitLogMessagePrefix(gitCommitRequest.getRepoType())
                     + "File already deleted. path: [{}]",
@@ -1671,7 +1672,15 @@ public class GitClientV2Impl implements GitClientV2 {
           // option for further improvements is to have a custom connection factory where will use a more granular
           // configuration of these timeouts parameters
           http.setTimeout(SOCKET_CONNECTION_READ_TIMEOUT_SECONDS);
-          http.setHttpConnectionFactory(connectionFactory);
+          if (isNotEmpty(gitBaseRequest.getProxyHost()) && gitBaseRequest.getProxyPort() != null) {
+            HttpConnectionFactory httpConnectionFactory = ProxyHttpConnectionFactory.builder()
+                                                              .proxyHost(gitBaseRequest.getProxyHost())
+                                                              .proxyPort(gitBaseRequest.getProxyPort())
+                                                              .build();
+            http.setHttpConnectionFactory(httpConnectionFactory);
+          } else {
+            http.setHttpConnectionFactory(connectionFactory);
+          }
         }
       });
     } else if (gitBaseRequest.getAuthRequest().getAuthType() == AuthInfo.AuthType.SSH_KEY) {

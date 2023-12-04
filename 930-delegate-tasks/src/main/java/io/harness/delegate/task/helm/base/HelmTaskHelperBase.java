@@ -28,12 +28,15 @@ import static io.harness.helm.HelmConstants.HELM_CACHE_HOME_PLACEHOLDER;
 import static io.harness.helm.HelmConstants.HELM_FETCH_OLD_WORKING_DIR_BASE;
 import static io.harness.helm.HelmConstants.HELM_HOME_PATH_FLAG;
 import static io.harness.helm.HelmConstants.HELM_PATH_PLACEHOLDER;
+import static io.harness.helm.HelmConstants.INDEX_FILE_WARN_LOG;
 import static io.harness.helm.HelmConstants.PASSWORD;
 import static io.harness.helm.HelmConstants.REPO_NAME;
 import static io.harness.helm.HelmConstants.REPO_URL;
 import static io.harness.helm.HelmConstants.USERNAME;
 import static io.harness.helm.HelmConstants.V3Commands.HELM_CACHE_HOME;
 import static io.harness.helm.HelmConstants.V3Commands.HELM_CACHE_HOME_PATH;
+import static io.harness.helm.HelmConstants.V3Commands.HELM_CACHE_INDEX_FILE;
+import static io.harness.helm.HelmConstants.V3Commands.HELM_CACHE_INDEX_FILE_FROM_CHART_DIRECTORY;
 import static io.harness.helm.HelmConstants.V3Commands.HELM_REPO_ADD_FORCE_UPDATE;
 import static io.harness.helm.HelmConstants.V3Commands.HELM_REPO_FLAGS;
 import static io.harness.helm.HelmConstants.V3Commands.REGISTRY_CONFIG;
@@ -90,6 +93,7 @@ import io.harness.exception.sanitizer.ExceptionMessageSanitizer;
 import io.harness.filesystem.FileIo;
 import io.harness.helm.HelmCliCommandType;
 import io.harness.helm.HelmCommandFlagsUtils;
+import io.harness.helm.HelmCommandRunner;
 import io.harness.helm.HelmCommandTemplateFactory;
 import io.harness.helm.HelmCommandType;
 import io.harness.helm.HelmSubCommandType;
@@ -162,6 +166,7 @@ public class HelmTaskHelperBase {
   @Inject private SecretDecryptionService decryptionService;
   @Inject private AwsClient awsClient;
   @Inject private AwsNgConfigMapper awsNgConfigMapper;
+  @Inject private HelmCommandRunner helmCommandRunner;
   public static final String RESOURCE_DIR_BASE = "./repository/helm/resources/";
   public static final String VERSION_KEY = "version:";
   public static final String NAME_KEY = "name:";
@@ -177,6 +182,7 @@ public class HelmTaskHelperBase {
   private static final String PATH_DELIMITER = "/";
   private static final String DOT_DELIMITER = "\\.";
   private static final String COLON_DELIMITER = ":";
+  private static final long SAFE_LIMIT_OF_INDEX_FILE = (long) (20 * 1024 * 1024);
   private final LoadingCache<EcrAuthKey, AuthorizationData> cache =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(6, TimeUnit.HOURS).build(new CacheLoader<>() {
         @NotNull
@@ -398,6 +404,7 @@ public class HelmTaskHelperBase {
           exitCode, repoAddCommandForLogging, processOutput);
       throw new HelmClientException(exceptionMessage, USER, HelmCliCommandType.REPO_ADD);
     }
+    checkIndexFile(repoName, tempDir, chartDirectory);
   }
 
   public void addRepo(String repoName, String repoDisplayName, String chartRepoUrl, String username, char[] password,
@@ -521,6 +528,10 @@ public class HelmTaskHelperBase {
 
   public ProcessResult executeCommand(Map<String, String> envVars, String command, String directoryPath,
       String errorMessage, long timeoutInMillis, HelmCliCommandType helmCliCommandType) {
+    if (helmCommandRunner.isEnabled()) {
+      return helmCommandRunner.execute(helmCliCommandType, command, directoryPath, envVars, timeoutInMillis);
+    }
+
     ProcessExecutor processExecutor = createProcessExecutor(command, directoryPath, timeoutInMillis, envVars);
     return executeCommand(processExecutor, errorMessage, helmCliCommandType);
   }
@@ -979,7 +990,6 @@ public class HelmTaskHelperBase {
   public void addChartMuseumRepo(String repoName, String repoDisplayName, int port, String chartDirectory,
       HelmVersion helmVersion, long timeoutInMillis, String cacheDir, HelmCommandFlag helmCommandFlag) {
     String repoAddCommand = getChartMuseumRepoAddCommand(repoName, port, chartDirectory, helmVersion, helmCommandFlag);
-
     Map<String, String> environment = new HashMap<>();
     if (!isEmpty(cacheDir)) {
       environment.putIfAbsent(HELM_CACHE_HOME,
@@ -1001,6 +1011,7 @@ public class HelmTaskHelperBase {
           exitCode, repoAddCommand, processOutput);
       throw new HelmClientException(exceptionMessage, USER, HelmCliCommandType.REPO_ADD);
     }
+    checkIndexFile(repoName, cacheDir, chartDirectory);
 
     if (isEmpty(cacheDir)) {
       return;
@@ -1806,5 +1817,26 @@ public class HelmTaskHelperBase {
 
     log.warn("Chart name not found");
     return "";
+  }
+
+  @VisibleForTesting
+  void checkIndexFile(String repoName, String cacheDir, String chartDirectory) {
+    File indexFile;
+    if (repoName.isEmpty()) {
+      return;
+    }
+    if (!isEmpty(cacheDir)) {
+      indexFile =
+          new File(HELM_CACHE_INDEX_FILE.replace(REPO_NAME, repoName).replace(HELM_CACHE_HOME_PLACEHOLDER, cacheDir));
+    } else if (!isEmpty(chartDirectory)) {
+      indexFile = new File(HELM_CACHE_INDEX_FILE_FROM_CHART_DIRECTORY.replace(REPO_NAME, repoName)
+                               .replace(HELM_CACHE_HOME_PLACEHOLDER, chartDirectory));
+    } else {
+      return;
+    }
+    if (indexFile.exists() && (indexFile.length() > SAFE_LIMIT_OF_INDEX_FILE)) {
+      double megabytes = (double) indexFile.length() / (1024 * 1024);
+      log.warn(String.format(INDEX_FILE_WARN_LOG, repoName, megabytes));
+    }
   }
 }

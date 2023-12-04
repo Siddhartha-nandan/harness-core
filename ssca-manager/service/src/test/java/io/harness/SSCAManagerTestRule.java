@@ -14,13 +14,19 @@ import io.harness.govern.ProviderModule;
 import io.harness.mongo.MongoConfig;
 import io.harness.mongo.MongoPersistence;
 import io.harness.morphia.MorphiaRegistrar;
+import io.harness.outbox.api.OutboxService;
+import io.harness.outbox.api.impl.OutboxServiceImpl;
 import io.harness.persistence.HPersistence;
 import io.harness.pipeline.remote.PipelineServiceClient;
 import io.harness.repositories.ArtifactRepository;
+import io.harness.repositories.BaselineRepository;
 import io.harness.repositories.CdInstanceSummaryRepo;
+import io.harness.repositories.ConfigRepo;
 import io.harness.repositories.EnforcementResultRepo;
 import io.harness.repositories.EnforcementSummaryRepo;
 import io.harness.repositories.SBOMComponentRepo;
+import io.harness.repositories.ScorecardRepo;
+import io.harness.repositories.ScorecardRepoImpl;
 import io.harness.rule.InjectorRuleMixin;
 import io.harness.serializer.KryoModule;
 import io.harness.serializer.KryoRegistrar;
@@ -36,8 +42,12 @@ import io.harness.ssca.api.SbomProcessorApiImpl;
 import io.harness.ssca.api.TokenApiImpl;
 import io.harness.ssca.services.ArtifactService;
 import io.harness.ssca.services.ArtifactServiceImpl;
+import io.harness.ssca.services.BaselineService;
+import io.harness.ssca.services.BaselineServiceImpl;
 import io.harness.ssca.services.CdInstanceSummaryService;
 import io.harness.ssca.services.CdInstanceSummaryServiceImpl;
+import io.harness.ssca.services.ConfigService;
+import io.harness.ssca.services.ConfigServiceImpl;
 import io.harness.ssca.services.EnforcementResultService;
 import io.harness.ssca.services.EnforcementResultServiceImpl;
 import io.harness.ssca.services.EnforcementStepService;
@@ -54,6 +64,8 @@ import io.harness.ssca.services.RuleEngineService;
 import io.harness.ssca.services.RuleEngineServiceImpl;
 import io.harness.ssca.services.S3StoreService;
 import io.harness.ssca.services.S3StoreServiceImpl;
+import io.harness.ssca.services.ScorecardService;
+import io.harness.ssca.services.ScorecardServiceImpl;
 import io.harness.testlib.module.MongoRuleMixin;
 import io.harness.testlib.module.TestMongoModule;
 import io.harness.threading.CurrentThreadExecutor;
@@ -158,6 +170,13 @@ public class SSCAManagerTestRule implements InjectorRuleMixin, MethodRule, Mongo
       public boolean getSerializationForDelegate() {
         return false;
       }
+
+      @Provides
+      @Singleton
+      @Named("isElasticSearchEnabled")
+      public boolean isElasticSearchEnabled() {
+        return false;
+      }
     });
 
     modules.add(new AbstractModule() {
@@ -168,23 +187,30 @@ public class SSCAManagerTestRule implements InjectorRuleMixin, MethodRule, Mongo
         bind(EnforcementApi.class).to(EnforcementApiImpl.class);
         bind(OrchestrationApi.class).to(OrchestrationApiImpl.class);
         bind(ArtifactService.class).to(ArtifactServiceImpl.class);
+        bind(BaselineService.class).to(BaselineServiceImpl.class);
         bind(OrchestrationStepService.class).to(OrchestrationStepServiceImpl.class);
         bind(EnforcementStepService.class).to(EnforcementStepServiceImpl.class);
         bind(RuleEngineService.class).to(RuleEngineServiceImpl.class);
         bind(NormalisedSbomComponentService.class).to(NormalisedSbomComponentServiceImpl.class);
         bind(EnforcementResultService.class).to(EnforcementResultServiceImpl.class);
         bind(EnforcementSummaryService.class).to(EnforcementSummaryServiceImpl.class);
+        bind(ConfigService.class).to(ConfigServiceImpl.class);
         bind(NextGenService.class).toInstance(mock(NextGenServiceImpl.class));
         bind(SBOMComponentRepo.class).toInstance(mock(SBOMComponentRepo.class));
         bind(ArtifactRepository.class).toInstance(mock(ArtifactRepository.class));
         bind(EnforcementResultRepo.class).toInstance(mock(EnforcementResultRepo.class));
+        bind(ConfigRepo.class).toInstance(mock(ConfigRepo.class));
+        bind(BaselineRepository.class).toInstance(mock(BaselineRepository.class));
         bind(EnforcementSummaryRepo.class).toInstance(mock(EnforcementSummaryRepo.class));
         bind(CdInstanceSummaryRepo.class).toInstance(mock(CdInstanceSummaryRepo.class));
         bind(CdInstanceSummaryService.class).to(CdInstanceSummaryServiceImpl.class);
+        bind(ScorecardRepo.class).toInstance(mock(ScorecardRepoImpl.class));
+        bind(ScorecardService.class).to(ScorecardServiceImpl.class);
         bind(S3StoreService.class).to(S3StoreServiceImpl.class);
         bind(TokenApi.class).to(TokenApiImpl.class);
         bind(MongoTemplate.class).toInstance(mock(MongoTemplate.class));
         bind(PipelineServiceClient.class).toInstance(mock(PipelineServiceClient.class));
+        bind(OutboxService.class).toInstance(mock(OutboxServiceImpl.class));
       }
     });
     modules.add(TimeModule.getInstance());

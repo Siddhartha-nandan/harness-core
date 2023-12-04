@@ -185,14 +185,22 @@ public class ProjectServiceImpl implements ProjectService {
   @FeatureRestrictionCheck(MULTIPLE_PROJECTS)
   public Project create(@AccountIdentifier String accountIdentifier, String orgIdentifier, ProjectDTO projectDTO) {
     orgIdentifier = orgIdentifier == null ? DEFAULT_ORG_IDENTIFIER : orgIdentifier;
+
+    // First check if an organization with given orgIdentifier exists or not.
+    Optional<Organization> organizationOptional = organizationService.get(accountIdentifier, orgIdentifier);
+    if (!organizationOptional.isPresent()) {
+      throw new EntityNotFoundException(String.format("Organization with identifier [%s] not found", orgIdentifier));
+    }
+
+    // Use the identifier of the organization from Mongo Doc as it ensure case insensitivity.
+    orgIdentifier = organizationOptional.get().getIdentifier();
     validateCreateProjectRequest(accountIdentifier, orgIdentifier, projectDTO);
     Project project = toProject(projectDTO);
 
     project.setModules(ModuleType.getModules());
     project.setOrgIdentifier(orgIdentifier);
     project.setAccountIdentifier(accountIdentifier);
-    Optional<Organization> parentOrgOptional = organizationService.get(accountIdentifier, orgIdentifier);
-    parentOrgOptional.ifPresent(organization -> {
+    organizationOptional.ifPresent(organization -> {
       if (isNotEmpty(organization.getUniqueId())) {
         project.setParentId(organization.getUniqueId());
       }
@@ -507,7 +515,7 @@ public class ProjectServiceImpl implements ProjectService {
     if (criteria == null) {
       return Page.empty();
     }
-    return projectRepository.findAll(criteria, pageable);
+    return projectRepository.findAllWithCollation(criteria, pageable);
   }
 
   @Override
@@ -574,16 +582,38 @@ public class ProjectServiceImpl implements ProjectService {
 
   public ActiveProjectsCountDTO permittedProjectsCount(
       String accountIdentifier, ProjectFilterDTO projectFilterDTO, long startInterval, long endInterval) {
-    Criteria criteria = createProjectFilterCriteria(Criteria.where(ProjectKeys.accountIdentifier)
-                                                        .is(accountIdentifier)
-                                                        .and(ProjectKeys.deleted)
-                                                        .is(FALSE)
-                                                        .and(ProjectKeys.createdAt)
-                                                        .gt(startInterval)
-                                                        .lt(endInterval),
+    Criteria criteria = createProjectFilterCriteria(
+        Criteria.where(ProjectKeys.accountIdentifier).is(accountIdentifier).and(ProjectKeys.deleted).is(FALSE),
         projectFilterDTO);
     List<Scope> projects = projectRepository.findAllProjects(criteria);
-    return ActiveProjectsCountDTO.builder().count(scopeAccessHelper.getPermittedScopes(projects).size()).build();
+    List<Scope> permittedProjects = scopeAccessHelper.getPermittedScopes(projects);
+
+    if (permittedProjects.isEmpty()) {
+      return ActiveProjectsCountDTO.builder().count(0).build();
+    }
+
+    criteria = Criteria.where(ProjectKeys.accountIdentifier).is(accountIdentifier);
+    Criteria[] subCriteria = permittedProjects.stream()
+                                 .map(project
+                                     -> Criteria.where(ProjectKeys.orgIdentifier)
+                                            .is(project.getOrgIdentifier())
+                                            .and(ProjectKeys.identifier)
+                                            .is(project.getProjectIdentifier()))
+                                 .toArray(Criteria[] ::new);
+    Criteria accessibleProjectCriteria = criteria.orOperator(subCriteria);
+    Criteria deletedFalseCriteria = Criteria.where(ProjectKeys.createdAt)
+                                        .gt(startInterval)
+                                        .lt(endInterval)
+                                        .andOperator(Criteria.where(ProjectKeys.deleted).is(false));
+    Criteria deletedTrueCriteria =
+        Criteria.where(ProjectKeys.createdAt)
+            .lt(startInterval)
+            .andOperator(new Criteria().andOperator(Criteria.where(ProjectKeys.deleted).is(true)),
+                Criteria.where(ProjectKeys.lastModifiedAt).gt(startInterval).lt(endInterval));
+    return ActiveProjectsCountDTO.builder()
+        .count(projectRepository.count(new Criteria().andOperator(accessibleProjectCriteria, deletedFalseCriteria))
+            - projectRepository.count(new Criteria().andOperator(accessibleProjectCriteria, deletedTrueCriteria)))
+        .build();
   }
 
   @Override

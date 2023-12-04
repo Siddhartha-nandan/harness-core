@@ -19,6 +19,8 @@ import io.harness.entities.ArtifactDetails;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.repositories.CdInstanceSummaryRepo;
 import io.harness.rule.Owner;
+import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewRequestBody;
+import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewRequestBody.PolicyViolationEnum;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.CdInstanceSummary;
@@ -45,16 +47,20 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 
 public class CdInstanceSummaryServiceImplTest extends SSCAManagerTestBase {
   @Inject CdInstanceSummaryService cdInstanceSummaryService;
   @Mock CdInstanceSummaryRepo cdInstanceSummaryRepo;
+  @Mock ArtifactService artifactService;
   private BuilderFactory builderFactory;
 
   @Before
   public void setup() throws IllegalAccessException {
     MockitoAnnotations.initMocks(this);
     FieldUtils.writeField(cdInstanceSummaryService, "cdInstanceSummaryRepo", cdInstanceSummaryRepo, true);
+    FieldUtils.writeField(cdInstanceSummaryService, "artifactService", artifactService, true);
     builderFactory = BuilderFactory.getDefault();
   }
 
@@ -88,6 +94,9 @@ public class CdInstanceSummaryServiceImplTest extends SSCAManagerTestBase {
     assertThat(response).isEqualTo(true);
     Mockito.when(cdInstanceSummaryRepo.findOne(Mockito.any()))
         .thenReturn(builderFactory.getCdInstanceSummaryBuilder().build());
+
+    Mockito.when(artifactService.getArtifactByCorrelationId(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any()))
+        .thenReturn(builderFactory.getArtifactEntityBuilder().build());
 
     response = cdInstanceSummaryService.removeInstance(builderFactory.getInstanceNGEntityBuilder().build());
     assertThat(response).isEqualTo(true);
@@ -233,5 +242,36 @@ public class CdInstanceSummaryServiceImplTest extends SSCAManagerTestBase {
     assertThat(cdInstanceSummary.getTriggerType()).isEqualTo("MANUAL");
     assertThat(cdInstanceSummary.getSequenceId()).isEqualTo("5");
     assertThat(cdInstanceSummary.getSlsaVerificationSummary()).isNull();
+  }
+
+  @Test
+  @Owner(developers = ARPITJ)
+  @Category(UnitTests.class)
+  public void testGetPolicyViolationEnforcementCriteria() {
+    ArtifactDeploymentViewRequestBody body = new ArtifactDeploymentViewRequestBody();
+    body.setPolicyViolation(PolicyViolationEnum.ALLOW);
+    Criteria criteria = new CdInstanceSummaryServiceImpl().getPolicyViolationEnforcementCriteria(
+        "accountId", "orgId", "projectId", body);
+    assertThat(new Query(criteria).toString())
+        .isEqualTo(
+            "Query: { \"accountId\" : \"accountId\", \"orgIdentifier\" : \"orgId\", \"projectIdentifier\" : \"projectId\", \"allowListViolationCount\" : { \"$gt\" : 0}}, Fields: {}, Sort: {}");
+    body.setPolicyViolation(PolicyViolationEnum.DENY);
+    criteria = new CdInstanceSummaryServiceImpl().getPolicyViolationEnforcementCriteria(
+        "accountId", "orgId", "projectId", body);
+    assertThat(new Query(criteria).toString())
+        .isEqualTo(
+            "Query: { \"accountId\" : \"accountId\", \"orgIdentifier\" : \"orgId\", \"projectIdentifier\" : \"projectId\", \"denyListViolationCount\" : { \"$gt\" : 0}}, Fields: {}, Sort: {}");
+    body.setPolicyViolation(PolicyViolationEnum.ANY);
+    criteria = new CdInstanceSummaryServiceImpl().getPolicyViolationEnforcementCriteria(
+        "accountId", "orgId", "projectId", body);
+    assertThat(new Query(criteria).toString())
+        .isEqualTo(
+            "Query: { \"$and\" : [{ \"accountId\" : \"accountId\", \"orgIdentifier\" : \"orgId\", \"projectIdentifier\" : \"projectId\"}, { \"$or\" : [{ \"allowListViolationCount\" : { \"$gt\" : 0}}, { \"denyListViolationCount\" : { \"$gt\" : 0}}]}]}, Fields: {}, Sort: {}");
+    body.setPolicyViolation(PolicyViolationEnum.NONE);
+    criteria = new CdInstanceSummaryServiceImpl().getPolicyViolationEnforcementCriteria(
+        "accountId", "orgId", "projectId", body);
+    assertThat(new Query(criteria).toString())
+        .isEqualTo(
+            "Query: { \"accountId\" : \"accountId\", \"orgIdentifier\" : \"orgId\", \"projectIdentifier\" : \"projectId\", \"denyListViolationCount\" : 0, \"allowListViolationCount\" : 0}, Fields: {}, Sort: {}");
   }
 }

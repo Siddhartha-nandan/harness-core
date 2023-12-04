@@ -22,7 +22,14 @@ public class TemplateDTO {
   @NotNull String templateRef;
   String versionLabel;
   Integer templateVersionNumber;
-  String inputSetYaml;
-  boolean isTemplateByReference;
-  long lastReconciliationTime;
+  String templateInputs;
+  Boolean isTemplateByReference;
+  Long lastReconciliationTime;
+
+  public boolean getIsTemplateByReference() {
+    if (isTemplateByReference == null) {
+      return false;
+    }
+    return isTemplateByReference;
+  }
 }
