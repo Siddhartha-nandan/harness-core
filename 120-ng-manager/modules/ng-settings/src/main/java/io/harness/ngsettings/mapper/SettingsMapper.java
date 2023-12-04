@@ -18,28 +18,28 @@ import io.harness.ngsettings.entities.SettingConfiguration;
 import io.harness.ngsettings.utils.SettingUtils;
 
 public class SettingsMapper {
-  public SettingDTO writeSettingDTO(
-      Setting setting, SettingConfiguration settingConfiguration, Boolean isSettingEditable, String defaultValue) {
+  public SettingDTO writeSettingDTO(AccountSetting accountSetting, SettingConfiguration settingConfiguration,
+      Boolean isSettingEditable, String defaultValue) {
     return SettingDTO.builder()
-        .identifier(setting.getIdentifier())
+        .identifier(accountSetting.getIdentifier())
         .name(settingConfiguration.getName())
-        .orgIdentifier(setting.getOrgIdentifier())
-        .projectIdentifier(setting.getProjectIdentifier())
+        .orgIdentifier(accountSetting.getOrgIdentifier())
+        .projectIdentifier(accountSetting.getProjectIdentifier())
         .allowedValues(settingConfiguration.getAllowedValues())
-        .allowOverrides(setting.getAllowOverrides())
+        .allowOverrides(accountSetting.getAllowOverrides())
         .category(settingConfiguration.getCategory())
         .groupIdentifier(settingConfiguration.getGroupIdentifier())
         .valueType(settingConfiguration.getValueType())
         .defaultValue(defaultValue)
-        .value(setting.getValue())
-        .settingSource(SettingUtils.getSettingSource(setting))
+        .value(accountSetting.getValue())
+        .settingSource(SettingUtils.getSettingSource(accountSetting))
         .isSettingEditable(isSettingEditable)
         .allowedScopes(settingConfiguration.getAllowedScopes())
         .build();
   }
 
   public SettingDTO writeSettingDTO(
-      Setting setting, SettingConfiguration settingConfiguration, Boolean isSettingEditable) {
+      AccountSetting setting, SettingConfiguration settingConfiguration, Boolean isSettingEditable) {
     return SettingDTO.builder()
         .identifier(setting.getIdentifier())
         .name(settingConfiguration.getName())
@@ -76,18 +76,18 @@ public class SettingsMapper {
         .build();
   }
 
-  public SettingResponseDTO writeSettingResponseDTO(
-      Setting setting, SettingConfiguration settingConfiguration, Boolean isSettingEditable, String defaultValue) {
+  public SettingResponseDTO writeSettingResponseDTO(AccountSetting accountSetting,
+      SettingConfiguration settingConfiguration, Boolean isSettingEditable, String defaultValue) {
     return SettingResponseDTO.builder()
-        .setting(writeSettingDTO(setting, settingConfiguration, isSettingEditable, defaultValue))
-        .lastModifiedAt(setting.getLastModifiedAt())
+        .setting(writeSettingDTO(accountSetting, settingConfiguration, isSettingEditable, defaultValue))
+        .lastModifiedAt(accountSetting.getLastModifiedAt())
         .build();
   }
 
   public SettingResponseDTO writeSettingResponseDTO(
       Setting setting, SettingConfiguration settingConfiguration, Boolean isSettingEditable) {
     return SettingResponseDTO.builder()
-        .setting(writeSettingDTO(setting, settingConfiguration, isSettingEditable))
+        .setting(writeSettingDTO((AccountSetting) setting, settingConfiguration, isSettingEditable))
         .lastModifiedAt(setting.getLastModifiedAt())
         .build();
   }

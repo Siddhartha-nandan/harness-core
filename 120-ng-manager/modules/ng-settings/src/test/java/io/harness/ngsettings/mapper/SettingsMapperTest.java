@@ -25,6 +25,7 @@ import io.harness.ngsettings.dto.SettingDTO;
 import io.harness.ngsettings.dto.SettingRequestDTO;
 import io.harness.ngsettings.dto.SettingResponseDTO;
 import io.harness.ngsettings.dto.SettingUpdateResponseDTO;
+import io.harness.ngsettings.entities.AccountSetting;
 import io.harness.ngsettings.entities.Setting;
 import io.harness.ngsettings.entities.SettingConfiguration;
 import io.harness.rule.Owner;
@@ -62,17 +63,17 @@ public class SettingsMapperTest extends CategoryTest {
     SettingValueType valueType = SettingValueType.STRING;
     Set<String> allowedValues = new HashSet<>(Arrays.asList("a", "b"));
     String groupIdentifier = randomAlphabetic(10);
-    Setting setting = Setting.builder()
-                          .identifier(identifier)
-                          .accountIdentifier(accountIdentifier)
-                          .orgIdentifier(orgIdentifier)
-                          .projectIdentifier(projectIdentifier)
-                          .category(category)
-                          .value(value)
-                          .valueType(SettingValueType.NUMBER)
-                          .allowOverrides(true)
-                          .groupIdentifier(groupIdentifier)
-                          .build();
+    AccountSetting accountSetting = AccountSetting.builder()
+                                        .identifier(identifier)
+                                        .accountIdentifier(accountIdentifier)
+                                        .orgIdentifier(orgIdentifier)
+                                        .projectIdentifier(projectIdentifier)
+                                        .category(category)
+                                        .value(value)
+                                        .valueType(SettingValueType.NUMBER)
+                                        .allowOverrides(true)
+                                        .groupIdentifier(groupIdentifier)
+                                        .build();
     SettingConfiguration settingConfiguration = SettingConfiguration.builder()
                                                     .identifier(randomAlphabetic(10))
                                                     .name(name)
@@ -82,7 +83,7 @@ public class SettingsMapperTest extends CategoryTest {
                                                     .valueType(valueType)
                                                     .groupIdentifier(groupIdentifier)
                                                     .build();
-    SettingDTO settingDTO = settingsMapper.writeSettingDTO(setting, settingConfiguration, true, defaultValue);
+    SettingDTO settingDTO = settingsMapper.writeSettingDTO(accountSetting, settingConfiguration, true, defaultValue);
     assertSettingDTOPropertiesAndValue(identifier, name, orgIdentifier, projectIdentifier, category, value,
         defaultValue, valueType, allowedValues, true, SettingSource.PROJECT, true, settingDTO,
         settingConfiguration.getAllowedScopes());
@@ -123,9 +124,10 @@ public class SettingsMapperTest extends CategoryTest {
     Setting setting = Setting.builder().identifier(identifier).lastModifiedAt(timestamp).build();
     SettingConfiguration settingConfiguration = SettingConfiguration.builder().identifier(identifier).build();
     SettingDTO settingDTO = SettingDTO.builder().identifier(identifier).build();
-    when(settingsMapper.writeSettingDTO(setting, settingConfiguration, true, defaultValue)).thenReturn(settingDTO);
+    when(settingsMapper.writeSettingDTO((AccountSetting) setting, settingConfiguration, true, defaultValue))
+        .thenReturn(settingDTO);
     SettingResponseDTO settingResponseDTO =
-        settingsMapper.writeSettingResponseDTO(setting, settingConfiguration, true, defaultValue);
+        settingsMapper.writeSettingResponseDTO((AccountSetting) setting, settingConfiguration, true, defaultValue);
     assertThat(settingResponseDTO)
         .hasFieldOrPropertyWithValue("setting", settingDTO)
         .hasFieldOrPropertyWithValue("lastModifiedAt", timestamp);

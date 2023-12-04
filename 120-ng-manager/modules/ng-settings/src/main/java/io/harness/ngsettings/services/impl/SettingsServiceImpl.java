@@ -120,12 +120,12 @@ public class SettingsServiceImpl implements SettingsService {
 
     settingConfigurations.forEach((identifier, settingConfiguration) -> {
       Pair<String, Scope> currentScopeSettingKey = new ImmutablePair<>(identifier, scope);
-      Setting parentSetting = getSettingFromParentScope(scope, identifier, settingConfiguration, accountEdition);
-      AccountSetting accountSetting = (AccountSetting) parentSetting;
-      accountSetting.
+      AccountSetting parentSetting =
+          (AccountSetting) getSettingFromParentScope(scope, identifier, settingConfiguration, accountEdition);
       if (settings.containsKey(currentScopeSettingKey)) {
-        settingResponseDTOList.add(settingsMapper.writeSettingResponseDTO(
-            settings.get(currentScopeSettingKey), settingConfiguration, true, parentSetting.getValue()));
+        settingResponseDTOList.add(
+            settingsMapper.writeSettingResponseDTO((AccountSetting) settings.get(currentScopeSettingKey),
+                settingConfiguration, true, parentSetting.getValue()));
       } else {
         boolean isSettingEditable =
             SettingUtils.isSettingEditableForAccountEdition(accountEdition, settingConfiguration)
@@ -178,7 +178,7 @@ public class SettingsServiceImpl implements SettingsService {
       if (!setting.isPresent()) {
         continue;
       }
-      if (Boolean.FALSE.equals(setting.get().getAllowOverrides())) {
+      if (Boolean.FALSE.equals(((AccountSetting) setting.get()).getAllowOverrides())) {
         throw new InvalidRequestException(
             String.format("Setting- %s cannot be overridden at the current scope", settingRequestDTO.getIdentifier()));
       } else {
@@ -214,14 +214,14 @@ public class SettingsServiceImpl implements SettingsService {
     if (existingSetting.isPresent()) {
       value = existingSettings.getValue();
     } else {
-      value = getSettingFromParentScope(Scope.of(accountIdentifier, orgIdentifier, projectIdentifier), identifier,
-          settingConfiguration, accountEdition)
+      value = ((AccountSetting) getSettingFromParentScope(Scope.of(accountIdentifier, orgIdentifier, projectIdentifier),
+                   identifier, settingConfiguration, accountEdition))
                   .getValue();
     }
     return SettingValueResponseDTO.builder().valueType(settingConfiguration.getValueType()).value(value).build();
   }
 
-  private Setting getSettingFromParentScope(
+  private AccountSetting getSettingFromParentScope(
       Scope currentScope, String identifier, SettingConfiguration settingConfiguration, String defaultValue) {
     while ((currentScope = SettingUtils.getParentScope(currentScope)) != null) {
       Optional<Setting> setting =
@@ -229,7 +229,7 @@ public class SettingsServiceImpl implements SettingsService {
               currentScope.getAccountIdentifier(), currentScope.getOrgIdentifier(), currentScope.getProjectIdentifier(),
               identifier);
       if (setting.isPresent()) {
-        return setting.get();
+        return (AccountSetting) setting.get();
       }
     }
     return settingsMapper.toSetting(null, settingsMapper.writeSettingDTO(settingConfiguration, true, defaultValue));
@@ -389,7 +389,8 @@ public class SettingsServiceImpl implements SettingsService {
     SettingDTO oldSettingDTO;
     String defaultValue = SettingUtils.getDefaultValue(accountEdition, settingConfiguration);
     if (settingOptional.isPresent()) {
-      oldSettingDTO = settingsMapper.writeSettingDTO(settingOptional.get(), settingConfiguration, true, defaultValue);
+      oldSettingDTO = settingsMapper.writeSettingDTO(
+          (AccountSetting) settingOptional.get(), settingConfiguration, true, defaultValue);
       newSettingDTO = settingsMapper.writeNewDTO(
           settingOptional.get(), settingRequestDTO, settingConfiguration, true, defaultValue);
     } else {
@@ -409,10 +410,11 @@ public class SettingsServiceImpl implements SettingsService {
 
     return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
       Setting setting = settingRepository.upsert(settingsMapper.toSetting(accountIdentifier, newSettingDTO));
-      Setting parentSetting =
+      AccountSetting parentSetting =
           getSettingFromParentScope(scope, settingRequestDTO.getIdentifier(), settingConfiguration, defaultValue);
       outboxService.save(new SettingUpdateEvent(accountIdentifier, oldSettingDTO, newSettingDTO));
-      return settingsMapper.writeSettingResponseDTO(setting, settingConfiguration, true, parentSetting.getValue());
+      return settingsMapper.writeSettingResponseDTO(
+          (AccountSetting) setting, settingConfiguration, true, parentSetting.getValue());
     }));
   }
 
@@ -444,7 +446,8 @@ public class SettingsServiceImpl implements SettingsService {
     SettingDTO oldSettingDTO;
     String defaultValue = SettingUtils.getDefaultValue(accountEdition, settingConfiguration);
     if (setting.isPresent()) {
-      oldSettingDTO = settingsMapper.writeSettingDTO(setting.get(), settingConfiguration, true, defaultValue);
+      oldSettingDTO =
+          settingsMapper.writeSettingDTO((AccountSetting) setting.get(), settingConfiguration, true, defaultValue);
       settingDTO =
           settingsMapper.writeNewDTO(setting.get(), settingRequestDTO, settingConfiguration, true, defaultValue);
     } else {
