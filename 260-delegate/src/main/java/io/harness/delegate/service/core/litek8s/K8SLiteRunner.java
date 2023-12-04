@@ -134,6 +134,7 @@ public class K8SLiteRunner implements Runner {
       final var volumes = VolumeBuilder.createVolumes(protoVolumes);
       final var volumeMounts = VolumeBuilder.createVolumeMounts(protoVolumes);
 
+      // add the secrets as a secret volume mounts in the pod
       for (Map.Entry<String, List<V1Secret>> entry : taskSecrets.entrySet()) {
         List<V1Secret> value = entry.getValue();
         for (V1Secret secretVal : value) {

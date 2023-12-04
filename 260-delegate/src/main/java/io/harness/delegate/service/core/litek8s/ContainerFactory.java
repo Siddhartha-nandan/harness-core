@@ -53,6 +53,7 @@ public class ContainerFactory {
   private static final String TASK_DATA_PATH = "TASK_DATA_PATH";
   private static final String DELEGATE_TOKEN = "DELEGATE_TOKEN";
   private static final String TASK_ID = "TASK_ID";
+  private static final String SECRETS_MOUNT_PATH = "SECRETS_MOUNT_PATH";
 
   private static final String WORKING_DIR = "/harness";
   private static final String ADDON_RUN_COMMAND = "/addon/bin/ci-addon";
@@ -69,6 +70,7 @@ public class ContainerFactory {
     envVars.put(DELEGATE_TOKEN, config.getDelegateToken());
     envVars.put(TASK_PARAMETERS_FILE, config.getDelegateTaskParamsFile());
     envVars.put(TASK_DATA_PATH, config.getDelegateTaskParamsFile());
+    envVars.put(SECRETS_MOUNT_PATH, config.getSecretsMountPath());
     envVars.put(TASK_ID, taskId);
     final V1ContainerBuilder containerBuilder = new V1ContainerBuilder()
                                                     .withName(K8SResourceHelper.getContainerName(taskId))

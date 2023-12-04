@@ -24,8 +24,10 @@ public class RunnersModule extends AbstractModule {
     final var delegateName = System.getenv().get("DELEGATE_NAME");
     final var delegateNamespace = System.getenv().get("DELEGATE_NAMESPACE");
     final var delegateTaskParamsFile = Objects.toString(System.getenv().get("DELEGATE_TASK_PATH"), "/harness/taskfile");
-    final var runnerConfig = new K8SRunnerConfig(delegateNamespace, delegateName, configuration.getDelegateToken(),
-        delegateTaskParamsFile, configuration.getAccountId(), configuration.getLogStreamingServiceBaseUrl());
+    final var secretsMountPath = Objects.toString(System.getenv().get("SECRETS_MOUNT_PATH"), "/harness/secrets");
+    final var runnerConfig =
+        new K8SRunnerConfig(delegateNamespace, delegateName, configuration.getDelegateToken(), delegateTaskParamsFile,
+            configuration.getAccountId(), configuration.getLogStreamingServiceBaseUrl(), secretsMountPath);
     install(new K8SRunnerModule(runnerConfig));
   }
 }
