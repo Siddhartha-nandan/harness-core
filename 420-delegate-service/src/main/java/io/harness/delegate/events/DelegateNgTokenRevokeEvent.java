@@ -35,7 +35,6 @@ public class DelegateNgTokenRevokeEvent extends AbstractDelegateConfigurationEve
   private Source sourceOfAction;
 
   public enum Source { @JsonProperty("auto-revoked") AUTO, @JsonProperty("manually-revoked") MANUAL }
-  ;
 
   @Override
   public Resource getResource() {
