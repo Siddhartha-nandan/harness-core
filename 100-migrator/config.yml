@@ -49,11 +49,12 @@ logging:
       stackdriverLogEnabled: false
     - type: file
       threshold: TRACE
-      currentLogFilename: portal.log
+      currentLogFilename: /opt/harness/logs/pod.log
       archive: true
-      archivedFileCount: 5
-      maxFileSize: 150MB
-      archivedLogFilenamePattern: portal.%d.%i.log
+      archivedLogFilenamePattern: pod.%d{yyyy-MM-dd}.%i.log
+      archivedFileCount: 10
+      maxFileSize: 50MB
+      totalSizeCap: 1GB
       logFormat: "%date{ISO8601} %green([%thread]) %highlight(%-5level) %cyan(%logger) - %msg %yellow(%replace(%mdc){'(.+)', '[$1]'}) %n"
 
 cg:

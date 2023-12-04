@@ -54,11 +54,12 @@ logging:
       stackdriverLogEnabled: false
     - type: file
       threshold: TRACE
-      currentLogFilename: verification.log
+      currentLogFilename: /opt/harness/logs/pod.log
       archive: true
-      archivedFileCount: 15
-      maxFileSize: 150MB
-      archivedLogFilenamePattern: verification.%d.%i.log
+      archivedLogFilenamePattern: pod.%d{yyyy-MM-dd}.%i.log
+      archivedFileCount: 10
+      maxFileSize: 50MB
+      totalSizeCap: 1GB
       logFormat: "%date{ISO8601} %green([%thread]) %highlight(%-5level) %cyan(%logger) - %msg %yellow(%replace(%mdc){'(.+)', '[$1]'}) %n"
 
 mongo:

@@ -42,6 +42,16 @@ logging:
       threshold: TRACE
       target: STDOUT
       stackdriverLogEnabled: false
+    - type: file
+      threshold: TRACE
+      currentLogFilename: /opt/harness/logs/pod.log
+      archive: true
+      archivedLogFilenamePattern: pod.%d{yyyy-MM-dd}.%i.log
+      archivedFileCount: 10
+      maxFileSize: 50MB
+      totalSizeCap: 1GB
+      logFormat: "%date{ISO8601} %green([%thread]) %highlight(%-5level) %cyan(%logger) - %msg %yellow(%replace(%mdc){'(.+)', '[$1]'}) %n"
+
 
 segmentConfiguration:
   enabled: true #segmentConfigEnable
