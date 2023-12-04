@@ -331,7 +331,7 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
     boolean enable = bulkTriggersRequestDTO.getData().isEnable();
 
     // response initialized
-    List<NGTriggerEntity> bulkTriggersResponseList = new ArrayList<>();
+    List<NGTriggerEntity> bulkTriggersResponseList = fetchTriggersList(accountIdentifier, bulkTriggersRequestDTO);
 
     // fetching the list of triggers as per the filters in the request
     List<NGTriggerEntity> triggerEntityList = new ArrayList<>();
@@ -346,5 +346,20 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
 
     // map to response
     return ResponseDTO.newResponse(BulkTriggersResponseDTO.builder().triggerDetails(null).enable(enable).build());
+  }
+
+  private List<NGTriggerEntity> fetchTriggersList(
+      String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
+    Criteria criteria = getCriteriaForFilters(accountIdentifier, bulkTriggersRequestDTO);
+
+    Pageable pageRequest = PageRequest.of(0, 10000, Sort.by(Sort.Direction.DESC, NGTriggerEntityKeys.createdAt));
+
+    Page<NGTriggerEntity> triggerEntities = ngTriggerService.list(criteria, pageRequest);
+
+    return triggerEntities.getContent();
+  }
+
+  private Criteria getCriteriaForFilters(String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
+    return new Criteria();
   }
 }
