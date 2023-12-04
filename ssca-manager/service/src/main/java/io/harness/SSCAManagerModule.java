@@ -31,12 +31,14 @@ import io.harness.remote.client.ServiceHttpClientConfig;
 import io.harness.serializer.KryoRegistrar;
 import io.harness.serializer.SSCAManagerModuleRegistrars;
 import io.harness.spec.server.ssca.v1.ArtifactApi;
+import io.harness.spec.server.ssca.v1.BaselineApi;
 import io.harness.spec.server.ssca.v1.EnforcementApi;
 import io.harness.spec.server.ssca.v1.OrchestrationApi;
 import io.harness.spec.server.ssca.v1.SbomProcessorApi;
 import io.harness.spec.server.ssca.v1.TokenApi;
 import io.harness.ssca.S3Config;
 import io.harness.ssca.api.ArtifactApiImpl;
+import io.harness.ssca.api.BaselineApiImpl;
 import io.harness.ssca.api.EnforcementApiImpl;
 import io.harness.ssca.api.OrchestrationApiImpl;
 import io.harness.ssca.api.SbomProcessorApiImpl;
@@ -44,6 +46,8 @@ import io.harness.ssca.api.TokenApiImpl;
 import io.harness.ssca.eventsframework.SSCAEventsFrameworkModule;
 import io.harness.ssca.services.ArtifactService;
 import io.harness.ssca.services.ArtifactServiceImpl;
+import io.harness.ssca.services.BaselineService;
+import io.harness.ssca.services.BaselineServiceImpl;
 import io.harness.ssca.services.CdInstanceSummaryService;
 import io.harness.ssca.services.CdInstanceSummaryServiceImpl;
 import io.harness.ssca.services.EnforcementResultService;
@@ -64,6 +68,8 @@ import io.harness.ssca.services.RuleEngineService;
 import io.harness.ssca.services.RuleEngineServiceImpl;
 import io.harness.ssca.services.S3StoreService;
 import io.harness.ssca.services.S3StoreServiceImpl;
+import io.harness.ssca.services.drift.SbomDriftService;
+import io.harness.ssca.services.drift.SbomDriftServiceImpl;
 import io.harness.time.TimeModule;
 import io.harness.token.TokenClientModule;
 
@@ -109,12 +115,14 @@ public class SSCAManagerModule extends AbstractModule {
     bind(SbomProcessorApi.class).to(SbomProcessorApiImpl.class);
     bind(TokenApi.class).to(TokenApiImpl.class);
     bind(EnforcementApi.class).to(EnforcementApiImpl.class);
+    bind(BaselineApi.class).to(BaselineApiImpl.class);
     bind(OrchestrationApi.class).to(OrchestrationApiImpl.class);
     bind(ArtifactService.class).to(ArtifactServiceImpl.class);
     bind(OrchestrationStepService.class).to(OrchestrationStepServiceImpl.class);
     bind(EnforcementStepService.class).to(EnforcementStepServiceImpl.class);
     bind(RuleEngineService.class).to(RuleEngineServiceImpl.class);
     bind(EnforcementResultService.class).to(EnforcementResultServiceImpl.class);
+    bind(BaselineService.class).to(BaselineServiceImpl.class);
     bind(EnforcementSummaryService.class).to(EnforcementSummaryServiceImpl.class);
     bind(NextGenService.class).to(NextGenServiceImpl.class);
     bind(S3StoreService.class).to(S3StoreServiceImpl.class);
@@ -122,6 +130,7 @@ public class SSCAManagerModule extends AbstractModule {
     bind(ArtifactApi.class).to(ArtifactApiImpl.class);
     bind(CdInstanceSummaryService.class).to(CdInstanceSummaryServiceImpl.class);
     bind(PolicyMgmtService.class).to(PolicyMgmtServiceImpl.class);
+    bind(SbomDriftService.class).to(SbomDriftServiceImpl.class);
     install(new TokenClientModule(this.configuration.getNgManagerServiceHttpClientConfig(),
         this.configuration.getNgManagerServiceSecret(), SSCA_SERVICE.getServiceId()));
     install(new SSCAEventsFrameworkModule(
