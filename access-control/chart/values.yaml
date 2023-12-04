@@ -100,7 +100,6 @@ global:
     enabled: false
     port: 8889
     path: /metrics
-
   ingress:
     # -- create ingress objects
     enabled: false
@@ -127,14 +126,11 @@ global:
       gateways:
       hosts:
   imagePullSecrets: []
-  
 # --mongoHosts List of mongo hosts
 mongoHosts: []
-
 # --replicaCount Number of pods
 ##
 replicaCount: 1
-
 redis:
   protocol: ""
   hosts: []
@@ -159,8 +155,7 @@ redis:
               property: ""
             REDIS_PASSWORD:
               name: ""
-              property: ""                       
-
+              property: ""
 mongo:
   protocol: ""
   hosts: []
@@ -206,47 +201,7 @@ terminationGracePeriodSeconds: "30"
 ## ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
 progressDeadlineSeconds: 720
 # -- Configurations for Harness application
-config:
-  DEPLOY_MODE: KUBERNETES_ONPREM
-  LOGGING_LEVEL: INFO
-  EVENTS_CONFIG_USE_SENTINEL: true
-  EVENTS_CONFIG_SENTINEL_MASTER_NAME: harness-redis
-  EVENTS_CONFIG_REDIS_SENTINELS:
-  LOCK_CONFIG_USE_SENTINEL: true
-  LOCK_CONFIG_SENTINEL_MASTER_NAME: harness-redis
-  LOCK_CONFIG_REDIS_SENTINELS:
-  RESOURCE_GROUP_ITERATOR_ENABLED: true
-  RESOURCE_GROUP_ITERATOR_INTERVAL: 3600
-  USER_GROUP_ITERATOR_ENABLED: true
-  USER_GROUP_ITERATOR_INTERVAL: 3600
-  USER_ITERATOR_ENABLED: true
-  USER_ITERATOR_INTERVAL: 3600
-  SERVICEACCOUNT_ITERATOR_ENABLED: true
-  SERVICEACCOUNT_ITERATOR_INTERVAL: 3600
-  SUPPORTPREFERENCE_ITERATOR_ENABLED: true
-  SUPPORTPREFERENCE_ITERATOR_INTERVAL: 600
-  SCOPE_ITERATOR_ENABLED: true
-  SCOPE_ITERATOR_INTERVAL: 3600
-  RESOURCE_GROUP_CLIENT_BASE_URL:
-  USER_CLIENT_BASE_URL:
-  USER_GROUP_CLIENT_BASE_URL:
-  SERVICEACCOUNT_CLIENT_BASE_URL:
-  ACCOUNT_CLIENT_BASE_URL:
-  FEATURE_FLAG_CLIENT_BASE_URL:
-  PROJECT_CLIENT_BASE_URL:
-  OFFSET_FLUSH_INTERVAL_MS: 10000
-  MONGODB_SSL_ENABLED: false
-  AGGREGATOR_ENABLED: true
-  ENABLE_AUTH: true
-  ACCESS_CONTROL_PREFERENCE_ENABLED: true
-  NOTIFICATION_SLACK_WEBHOOK_URL: ""
-  NOTIFICATION_ENVIRONMENT: ONPREM
-  ENABLE_ACCESS_CONTROL: true
-  ACCESS_CONTROL_SERVICE_BASE_URL:
-  ENABLE_AUDIT: true
-  AUDIT_CLIENT_BASE_URL:
-  DISTRIBUTED_LOCK_IMPLEMENTATION: REDIS
-  GOOGLE_APPLICATION_CREDENTIALS: /opt/harness/monitoring/stackdriver.json
+config: {}
 java:
   memory: 512m
 ## Pod Disruption Budget configuration in HA mode.
@@ -312,7 +267,6 @@ mongoSecrets:
   password:
     name: mongodb-replicaset-chart
     key: mongodb-root-password
-
 # --nameOverride String to partially override common.names.fullname template (will maintain the release name)
 ##
 nameOverride: ""
@@ -329,11 +283,9 @@ serviceAccount:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: "harness-default"
-
 podAnnotations: {}
-
 podSecurityContext: {}
-  # fsGroup: 2000
+# fsGroup: 2000
 
 containerSecurityContext:
   runAsUser: 65534
@@ -344,7 +296,6 @@ containerSecurityContext:
   # readOnlyRootFilesystem: true
   # runAsNonRoot: true
   # runAsUser: 1000
-
 service:
   annotations: {}
   type: ClusterIP
@@ -408,7 +359,6 @@ resources:
 #         echo $(date '+%s') > $loc/end
 #         kill -15
 lifecycleHooks: {}
-
 ## Autoscaling configuration
 # --autoscaling.enabled Enable autoscaling for pods
 # --autoscaling.minReplicas Minimum number of replicas
@@ -422,7 +372,6 @@ autoscaling:
   maxReplicas: 100
   targetCPU: ""
   targetMemory: ""
-
 ## Configure extra options for liveness probe
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
 # -- livenessProbe.enabled Enable livenessProbe
@@ -551,19 +500,15 @@ nodeSelector: {}
 ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
 ##
 tolerations: []
-
 mongoSSL:
   enabled: false
-
 # -- additionalConfigs Additional configurations for the deployment
 additionalConfigs: {}
 java17flags: ""
-
 virtualService:
   annotations: {}
 ingress:
   annotations: {}
-
 secrets:
   default:
     IDENTITY_SERVICE_SECRET: "HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU="
@@ -580,3 +525,6 @@ secrets:
           IDENTITY_SERVICE_SECRET:
             name: ""
             property: ""
+configData:
+  EVENTS_CONFIG_SENTINEL_MASTER_NAME: harness-redis
+  LOCK_CONFIG_SENTINEL_MASTER_NAME: harness-redis
