@@ -294,3 +294,5 @@ gcpSyncSmpConfig:
   k8sJobName: "python-gcp-job"
   k8sJobPythonImage: "harnessdev/pyapp-gcp"
   batchProcessingConfigMapName: "batch-processing"
+  hmacSecretKey : "HMAC_SECRET_KEY"
+  hmacAccessKey : "HMAC_ACCESS_KEY"
