@@ -296,3 +296,5 @@ gcpSyncSmpConfig:
   batchProcessingConfigMapName: "batch-processing"
   hmacSecretKey : "HMAC_SECRET_KEY"
   hmacAccessKey : "HMAC_ACCESS_KEY"
+  batchProcessingMountSecretName: "batch-processing-secret-mount"
+  serviceAccountCredentialKey: "serviceAccountCredential"
