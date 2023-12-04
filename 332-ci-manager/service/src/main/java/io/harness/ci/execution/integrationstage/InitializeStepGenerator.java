@@ -17,8 +17,11 @@ import io.harness.beans.yaml.extended.infrastrucutre.Infrastructure;
 import io.harness.ci.ff.CIFeatureFlagService;
 import io.harness.cimanager.stages.IntegrationStageConfig;
 import io.harness.plancreator.execution.ExecutionElementConfig;
+import io.harness.plancreator.execution.ExecutionWrapperConfig;
+import io.harness.utils.CiYamlPreProcessorUtils;
 import io.harness.yaml.extended.ci.codebase.CodeBase;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
@@ -29,9 +32,20 @@ public class InitializeStepGenerator {
   @Inject private BuildJobEnvInfoBuilder buildJobEnvInfoBuilder;
   @Inject private CIFeatureFlagService featureFlagService;
 
+  @Inject private CiYamlPreProcessorUtils ciYamlPreProcessorUtils;
+
+  private void preProcessStageNode(IntegrationStageNode stageNode) {
+    for (ExecutionWrapperConfig executionWrapperConfig :
+        stageNode.getIntegrationStageConfig().getExecution().getSteps()) {
+      for (JsonNode jsonNode : executionWrapperConfig.getStep()) {
+        ciYamlPreProcessorUtils.replaceInputWithDefaultValue(jsonNode);
+      }
+    }
+  }
   InitializeStepInfo createInitializeStepInfo(ExecutionElementConfig executionElement, CodeBase ciCodebase,
       IntegrationStageNode stageNode, CIExecutionArgs ciExecutionArgs, Infrastructure infrastructure,
       String accountId) {
+    preProcessStageNode(stageNode);
     IntegrationStageConfig integrationStageConfig = IntegrationStageUtils.getIntegrationStageConfig(stageNode);
 
     boolean gitClone = RunTimeInputHandler.resolveGitClone(integrationStageConfig.getCloneCodebase());
