@@ -11,10 +11,13 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.delegate.utils.RbacConstants.DELEGATE_RESOURCE_TYPE;
 import static io.harness.delegate.utils.RbacConstants.DELEGATE_VIEW_PERMISSION;
+import static io.harness.exception.WingsException.USER;
 
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.groupingBy;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
+import io.harness.accesscontrol.NGAccessDeniedException;
 import io.harness.accesscontrol.acl.api.AccessCheckResponseDTO;
 import io.harness.accesscontrol.acl.api.AccessControlDTO;
 import io.harness.accesscontrol.acl.api.PermissionCheckDTO;
@@ -43,7 +46,9 @@ public class DelegateRbacHelper {
   public List<String> getViewPermittedDelegateGroupIds(
       List<String> delegateGroupIds, String accountId, String orgId, String projectId) {
     if (isEmpty(delegateGroupIds)) {
-      return null;
+      throw new NGAccessDeniedException(
+          String.format("Missing permission %s on %s", DELEGATE_VIEW_PERMISSION, DELEGATE_RESOURCE_TYPE), USER,
+          emptyList());
     }
     Query<DelegateGroup> delegateGroupQuery =
         persistence.createQuery(DelegateGroup.class).field(DelegateGroupKeys.uuid).in(delegateGroupIds);
@@ -87,7 +92,9 @@ public class DelegateRbacHelper {
   public List<DelegateGroup> getViewPermittedDelegateGroups(
       List<DelegateGroup> delegateGroups, String accountId, String orgId, String projectId) {
     if (isEmpty(delegateGroups)) {
-      return null;
+      throw new NGAccessDeniedException(
+          String.format("Missing permission %s on %s", DELEGATE_VIEW_PERMISSION, DELEGATE_RESOURCE_TYPE), USER,
+          emptyList());
     }
     Map<EntityScopeInfo, List<DelegateGroup>> delegateGroupIdMap = delegateGroups.stream().collect(
         groupingBy(delegateGroup -> getEntityScopeInfoFromDelegateGroup(delegateGroup, accountId, orgId, projectId)));
