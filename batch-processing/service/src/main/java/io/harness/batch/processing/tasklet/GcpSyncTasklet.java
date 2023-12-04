@@ -141,7 +141,6 @@ public class GcpSyncTasklet implements Tasklet {
       firstSync = true;
     }
     BillingDataPipelineConfig billingDataPipelineConfig = config.getBillingDataPipelineConfig();
-
     if (billingDataPipelineConfig.isGcpSyncEnabled()) {
       List<ConnectorResponseDTO> nextGenGCPConnectorResponses = getNextGenGCPConnectorResponses(accountId);
       for (ConnectorResponseDTO connector : nextGenGCPConnectorResponses) {
@@ -278,9 +277,12 @@ public class GcpSyncTasklet implements Tasklet {
     V1EnvVar HMAC_SECRET_KEY = createEnvVariableFromSecret(gcpSyncSmpConfig.getAwsAccountIdKey(),
         gcpSyncSmpConfig.getBatchProcessingSecretName(), gcpSyncSmpConfig.getAwsAccountIdKey());
 
+    V1EnvVar SERVICE_ACCOUNT_CREDENTIAL = createEnvVariableFromSecret(gcpSyncSmpConfig.getServiceAccountCredentialKey(),
+        gcpSyncSmpConfig.getBatchProcessingMountSecretName(), gcpSyncSmpConfig.getServiceAccountCredentialKey());
+
     List<V1EnvVar> envVariableList =
         Arrays.asList(AWS_ACCOUNT_ID, AWS_DESTINATION_BUCKET, CLICKHOUSE_URL, CLICKHOUSE_USERNAME, CLICKHOUSE_PASSWORD,
-            CLICKHOUSE_SOCKET_TIMEOUT, CLICKHOUSE_PORT, HMAC_ACCESS_KEY, HMAC_SECRET_KEY);
+            CLICKHOUSE_SOCKET_TIMEOUT, CLICKHOUSE_PORT, HMAC_ACCESS_KEY, HMAC_SECRET_KEY, SERVICE_ACCOUNT_CREDENTIAL);
     return envVariableList;
   }
 

@@ -18,4 +18,6 @@ public class GcpSyncSmpConfig {
   private String batchProcessingConfigMapName;
   private String hmacAccessKey;
   private String hmacSecretKey;
+  private String serviceAccountCredentialKey;
+  private String batchProcessingMountSecretName;
 }
