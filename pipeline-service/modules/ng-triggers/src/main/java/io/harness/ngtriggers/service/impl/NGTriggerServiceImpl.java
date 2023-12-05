@@ -1480,7 +1480,7 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   }
 
   @Override
-  public Integer enablingDisablingTriggersInBulk(
+  public TriggerUpdateCount enablingDisablingTriggersInBulk(
       String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
     return ngTriggerRepository.enableDisableTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO);
   }

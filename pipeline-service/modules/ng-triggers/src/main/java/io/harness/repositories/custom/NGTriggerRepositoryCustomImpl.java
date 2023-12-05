@@ -258,7 +258,8 @@ public class NGTriggerRepositoryCustomImpl implements NGTriggerRepositoryCustom 
   }
 
   @Override
-  public Integer enableDisableTriggersInBulk(String accountId, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
+  public TriggerUpdateCount enableDisableTriggersInBulk(
+      String accountId, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
     BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, NGTriggerEntity.class);
 
     Update update = new Update();
@@ -270,7 +271,7 @@ public class NGTriggerRepositoryCustomImpl implements NGTriggerRepositoryCustom 
 
     bulkOperations = bulkOperations.updateMulti(query, update);
 
-    return bulkOperations.execute().getModifiedCount();
+    return TriggerUpdateCount.builder().successCount(bulkOperations.execute().getModifiedCount()).build();
   }
 
   private RetryPolicy<Object> getRetryPolicy(String failedAttemptMessage, String failureMessage) {

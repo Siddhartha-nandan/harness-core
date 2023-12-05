@@ -376,7 +376,7 @@ public interface NGTriggerResource {
 
   @PATCH
   @Path("/bulk")
-  ResponseDTO<Integer> bulkTriggers(
+  ResponseDTO<TriggerUpdateCount> bulkTriggers(
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
       @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO);
 }
