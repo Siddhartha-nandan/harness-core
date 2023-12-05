@@ -5,7 +5,7 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.delegate.secret;
+package io.harness.delegate.service.secret;
 
 import io.harness.delegate.core.beans.EncryptionConfig;
 
@@ -19,49 +19,57 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;
 import org.mapstruct.factory.Mappers;
 
-@Mapper(uses = {SecretManagerTypePojoProtoMapper.class, EncryptionTypePojoProtoMapper.class,
-            VaultConfigPojoProtoMapper.class},
+@Mapper(uses = {VaultConfigProtoPojoMapper.class, EncryptionTypeProtoPojoMapper.class},
     nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS, unmappedSourcePolicy = ReportingPolicy.IGNORE,
     collectionMappingStrategy = CollectionMappingStrategy.ADDER_PREFERRED)
-public interface VaultConfigPojoProtoMapper {
-  VaultConfigPojoProtoMapper INSTANCE = Mappers.getMapper(VaultConfigPojoProtoMapper.class);
+public interface VaultConfigProtoPojoMapper {
+  VaultConfigProtoPojoMapper INSTANCE = Mappers.getMapper(VaultConfigProtoPojoMapper.class);
 
-  @Mapping(target = "vaultConfig.authToken", source = "authToken",
+  @Mapping(target = "uuid", source = "uuid",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_DEFAULT)
-  @Mapping(target = "vaultConfig.secretEngineName", source = "secretEngineName",
+  @Mapping(target = "accountId", source = "accountId",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_DEFAULT)
-  @Mapping(target = "vaultConfig.secretEngineVersion", source = "secretEngineVersion",
+  @Mapping(target = "name", source = "name",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_DEFAULT)
-  @Mapping(target = "vaultConfig.namespace", source = "namespace",
+  @Mapping(target = "vaultUrl", source = "encryptionServiceUrl",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_DEFAULT)
-  @Mapping(target = "vaultConfig.basePath", source = "basePath",
+  @Mapping(target = "authToken", source = "vaultConfig.authToken",
+      nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+  @Mapping(target = "secretEngineName", source = "vaultConfig.secretEngineName",
+      nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+  @Mapping(target = "secretEngineVersion", source = "vaultConfig.secretEngineVersion",
+      nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+  @Mapping(target = "basePath", source = "vaultConfig.basePath",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_DEFAULT)
-  @Mapping(target = "vaultConfig.isReadOnly", source = "readOnly",
+  @Mapping(target = "namespace", source = "vaultConfig.namespace",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  @Mapping(target = "vaultConfig.appRoleId", source = "appRoleId",
+  @Mapping(target = "isReadOnly", source = "vaultConfig.isReadOnly",
+      nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_DEFAULT)
+  @Mapping(target = "appRoleId", source = "vaultConfig.appRoleId",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  @Mapping(target = "vaultConfig.secretId", source = "secretId",
+  @Mapping(target = "secretId", source = "vaultConfig.secretId",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  @Mapping(target = "vaultConfig.useVaultAgent", source = "useVaultAgent",
+  @Mapping(target = "useVaultAgent", source = "vaultConfig.useVaultAgent",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  @Mapping(target = "vaultConfig.sinkPath", source = "sinkPath",
+  @Mapping(target = "sinkPath", source = "vaultConfig.sinkPath",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  @Mapping(target = "vaultConfig.useAwsIam", source = "useAwsIam",
+  @Mapping(target = "useAwsIam", source = "vaultConfig.useAwsIam",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  @Mapping(target = "vaultConfig.vaultAwsIamRole", source = "vaultAwsIamRole",
+  @Mapping(target = "vaultAwsIamRole", source = "vaultConfig.vaultAwsIamRole",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  @Mapping(target = "vaultConfig.awsRegion", source = "awsRegion",
+  @Mapping(target = "awsRegion", source = "vaultConfig.awsRegion",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  @Mapping(target = "vaultConfig.XVaultAwsIamServerId", source = "XVaultAwsIamServerId",
+  @Mapping(target = "xVaultAwsIamServerId", source = "vaultConfig.XVaultAwsIamServerId",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  @Mapping(target = "vaultConfig.useK8SAuth", source = "useK8sAuth",
+  @Mapping(target = "useK8sAuth", source = "vaultConfig.useK8SAuth",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  @Mapping(target = "vaultConfig.vaultK8SAuthRole", source = "vaultK8sAuthRole",
+  @Mapping(target = "vaultK8sAuthRole", source = "vaultConfig.vaultK8SAuthRole",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  @Mapping(target = "vaultConfig.serviceAccountTokenPath", source = "serviceAccountTokenPath",
+  @Mapping(target = "serviceAccountTokenPath", source = "vaultConfig.serviceAccountTokenPath",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  @Mapping(target = "vaultConfig.k8SAuthEndpoint", source = "k8sAuthEndpoint",
+  @Mapping(target = "k8sAuthEndpoint", source = "vaultConfig.k8SAuthEndpoint",
       nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  EncryptionConfig
-  map(VaultConfig config);
+  @Mapping(target = "renewAppRoleToken", expression = "java(false)")
+  VaultConfig
+  map(EncryptionConfig config);
 }
