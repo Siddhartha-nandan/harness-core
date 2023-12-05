@@ -40,6 +40,8 @@ import io.harness.yaml.utils.JsonPipelineUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Singleton;
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -53,6 +55,7 @@ import java.util.stream.Collectors;
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @Singleton
 @OwnedBy(HarnessTeam.PIPELINE)
+@Slf4j
 public class MatrixConfigServiceHelper {
   public List<ChildrenExecutableResponse.Child> fetchChildren(List<String> keys, Map<String, AxisConfig> axes,
       Map<String, ExpressionAxisConfig> expressionAxes, ParameterField<List<ExcludeConfig>> exclude, String childNodeId,
@@ -113,20 +116,24 @@ public class MatrixConfigServiceHelper {
               .build();
 
       String modifiedIdentifier = AmbianceUtils.getStrategyPostFixUsingMetadata(strategyMetadata, useMatrixFieldName);
-      if (AmbianceUtils.checkIfFeatureFlagEnabled(
-              ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
-        if (modifiedIdentifierStringMap.containsKey(modifiedIdentifier)) {
-          /* If this modifiedIdentifier is a duplicate (it can happen for long identifiers which are truncated),
-          we need deduplicate it by appending a counter at the end: */
-          int cnt = modifiedIdentifierStringMap.getOrDefault(modifiedIdentifier, 0);
-          modifiedIdentifierStringMap.put(modifiedIdentifier, cnt + 1);
-          /* Concatenate identifier with deduplication suffix, but keep the identifier length equal or less
-             than MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX */
-          modifiedIdentifier =
-              concatWithMaxLength(modifiedIdentifier, "_" + cnt, AmbianceUtils.MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX);
+      if (modifiedIdentifierStringMap.containsKey(modifiedIdentifier)) {
+        /* If this modifiedIdentifier is a duplicate (it can happen for long identifiers which are truncated),
+         we need deduplicate it by appending a counter at the end: */
+        int cnt = modifiedIdentifierStringMap.getOrDefault(modifiedIdentifier, 0);
+        modifiedIdentifierStringMap.put(modifiedIdentifier, cnt + 1);
+        /* Concatenate identifier with deduplication suffix, but keep the identifier length equal or less
+            than MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX */
+        String modifiedIdentifierWithTruncationFix = concatWithMaxLength(modifiedIdentifier, "_" + cnt, AmbianceUtils.MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX);
+        if (!modifiedIdentifier.equals(modifiedIdentifierWithTruncationFix)) {
+          log.warn(String.format("modifiedIdentifier mismatch for matrix combination: modifiedIdentifier is %s while modifiedIdentifierWithTruncationFix is %s", modifiedIdentifier, modifiedIdentifierWithTruncationFix));
         }
-        modifiedIdentifierStringMap.putIfAbsent(modifiedIdentifier, 0);
+        if (AmbianceUtils.checkIfFeatureFlagEnabled(
+                ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
+          modifiedIdentifier = modifiedIdentifierWithTruncationFix;
+        }
       }
+      modifiedIdentifierStringMap.putIfAbsent(modifiedIdentifier, 0);
+
 
       strategyMetadata = strategyMetadata.toBuilder().setIdentifierPostFix(modifiedIdentifier).build();
       // Setting the nodeName in MatrixMetadata to empty string in case user has not given nodeName while defining
