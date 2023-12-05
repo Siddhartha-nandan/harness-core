@@ -62,17 +62,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import javax.validation.constraints.NotNull;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
 import org.springframework.data.domain.Page;
 import retrofit2.http.Body;
 
@@ -374,9 +364,9 @@ public interface NGTriggerResource {
       @QueryParam("operationType") GitMoveOperationType operationType,
       @QueryParam("pipelineBranchName") String pipelineBranchName);
 
-  @POST
+  @PATCH
   @Path("/bulk")
-  ResponseDTO<List<BulkTriggersResponseDTO>> bulkTriggers(
+  ResponseDTO<Integer> bulkTriggers(
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
       @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO);
 }

@@ -325,7 +325,7 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
     return mandatoryAuth;
   }
 
-  public ResponseDTO<List<BulkTriggersResponseDTO>> bulkTriggers(@NotNull @AccountIdentifier String accountIdentifier,
+  public ResponseDTO<Integer> bulkTriggers(@NotNull @AccountIdentifier String accountIdentifier,
       @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO) {
     // If true, enable the triggers. If false, disable them.
     boolean enable = bulkTriggersRequestDTO.getData().isEnable();
@@ -346,6 +346,6 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
     List<BulkTriggersResponseDTO> bulkTriggersResponse =
         ngTriggerElementMapper.toBulkTriggersResponse(ngTriggerEntityList);
 
-    return ResponseDTO.newResponse(bulkTriggersResponse);
+    return ResponseDTO.newResponse(bulkTriggersResponse.size());
   }
 }

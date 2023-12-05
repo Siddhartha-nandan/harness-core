@@ -9,6 +9,7 @@ package io.harness.ngtriggers.mapper;
 
 import static io.harness.NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS;
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.springdata.SpringDataMongoUtils.populateInFilter;
 
@@ -37,6 +38,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import javax.validation.constraints.NotNull;
 import lombok.experimental.UtilityClass;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Update;
 
@@ -264,61 +266,49 @@ public class TriggerFilterHelper {
   }
 
   public Criteria getCriteriaFromFilters(String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    String orgIdentifier = "";
-
-    String projectIdentifier = "";
-
-    String pipelineIdentifier = "";
-
-    String type = "";
+    String orgIdentifier = null;
+    String projectIdentifier = null;
+    String pipelineIdentifier = null;
+    String type = null;
 
     if (bulkTriggersRequestDTO.getFilters() != null) {
       orgIdentifier = bulkTriggersRequestDTO.getFilters().getOrgIdentifier();
-
       projectIdentifier = bulkTriggersRequestDTO.getFilters().getProjectIdentifier();
-
       pipelineIdentifier = bulkTriggersRequestDTO.getFilters().getPipelineIdentifier();
-
       type = bulkTriggersRequestDTO.getFilters().getType();
     }
 
+    if (StringUtils.isBlank(accountIdentifier)) {
+      throw new InvalidRequestException(
+          "accountIdentifier parameter cannot be null. Please input a valid accountIdentifier.");
+    }
+    if (StringUtils.isBlank(orgIdentifier) && StringUtils.isNotBlank(projectIdentifier)) {
+      throw new InvalidRequestException(
+          "Please input a valid orgIdentifier for the given projectIdentifier [" + projectIdentifier + "]");
+    }
+    if (StringUtils.isAnyBlank(projectIdentifier, orgIdentifier) && StringUtils.isNotBlank(pipelineIdentifier)) {
+      throw new InvalidRequestException(
+          "Please input a valid orgIdentifier and projectIdentifier for the given pipelineIdentifier ["
+          + pipelineIdentifier + "]");
+    }
+
     Criteria criteria = new Criteria();
+    criteria.and(NGTriggerEntityKeys.accountId).is(accountIdentifier);
+    criteria.and(NGTriggerEntityKeys.deleted).is(false);
+    criteria.and(NGTriggerEntityKeys.enabled).is(!bulkTriggersRequestDTO.getData().isEnable());
 
-    if (isNotEmpty(accountIdentifier)) {
-      criteria.and(NGTriggerEntityKeys.accountId).is(accountIdentifier);
-    }
-
-    if (isNotEmpty(orgIdentifier)) {
+    if (StringUtils.isNotBlank(orgIdentifier)) {
       criteria.and(NGTriggerEntityKeys.orgIdentifier).is(orgIdentifier);
-
-      if (isNotEmpty(projectIdentifier)) {
-        criteria.and(NGTriggerEntityKeys.projectIdentifier).is(projectIdentifier);
-
-        if (isNotEmpty(pipelineIdentifier)) {
-          criteria.and(NGTriggerEntityKeys.targetIdentifier).is(pipelineIdentifier);
-        }
-      } else {
-        if (isNotEmpty(pipelineIdentifier)) {
-          throw new InvalidRequestException(
-              "Please input a valid projectIdentifier for the given pipelineIdentifier [" + pipelineIdentifier + "]");
-        }
-      }
-    } else {
-      if (isNotEmpty(projectIdentifier)) {
-        throw new InvalidRequestException(
-            "Please input a valid orgIdentifier for the given projectIdentifier [" + projectIdentifier + "]");
-      } else if (isNotEmpty(pipelineIdentifier)) {
-        throw new InvalidRequestException(
-            "Please input a valid orgIdentifier and project Identifier for the given pipelineIdentifier ["
-            + pipelineIdentifier + "]");
-      }
     }
-
+    if (StringUtils.isNotBlank(projectIdentifier)) {
+      criteria.and(NGTriggerEntityKeys.projectIdentifier).is(projectIdentifier);
+    }
+    if (StringUtils.isNotBlank(pipelineIdentifier)) {
+      criteria.and(NGTriggerEntityKeys.targetIdentifier).is(pipelineIdentifier);
+    }
     if (isNotEmpty(type)) {
       criteria.and(NGTriggerEntityKeys.type).is(type);
     }
-
-    criteria.and(NGTriggerEntityKeys.deleted).is(false);
 
     return criteria;
   }

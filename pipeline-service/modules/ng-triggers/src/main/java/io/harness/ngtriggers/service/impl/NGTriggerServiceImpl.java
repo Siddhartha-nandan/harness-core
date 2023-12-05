@@ -1485,31 +1485,13 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   @Override
   public List<NGTriggerEntity> fetchTriggersList(
       String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    List<NGTriggerEntity> triggersList = new ArrayList<>();
+    Criteria criteria = TriggerFilterHelper.getCriteriaFromFilters(accountIdentifier, bulkTriggersRequestDTO);
 
-    if (bulkTriggersRequestDTO.getFilters() != null
-        && isNotEmpty(bulkTriggersRequestDTO.getFilters().getTriggerDetails())) {
-      List<TriggerDetailsRequestDTO> triggerDetailsRequestList =
-          bulkTriggersRequestDTO.getFilters().getTriggerDetails();
+    Pageable pageRequest = PageRequest.of(0, 100000, Sort.by(Sort.Direction.DESC, NGTriggerEntityKeys.createdAt));
 
-      for (TriggerDetailsRequestDTO trigger : triggerDetailsRequestList) {
-        Optional<NGTriggerEntity> ngTriggerEntity = get(accountIdentifier, trigger.getOrgIdentifier(),
-            trigger.getProjectIdentifier(), trigger.getPipelineIdentifier(), trigger.getTriggerIdentifier(), false);
+    Page<NGTriggerEntity> triggerEntities = list(criteria, pageRequest);
 
-        triggersList.add(ngTriggerEntity.get());
-      }
-
-    } else {
-      Criteria criteria = TriggerFilterHelper.getCriteriaFromFilters(accountIdentifier, bulkTriggersRequestDTO);
-
-      Pageable pageRequest = PageRequest.of(0, 100000, Sort.by(Sort.Direction.DESC, NGTriggerEntityKeys.createdAt));
-
-      Page<NGTriggerEntity> triggerEntities = list(criteria, pageRequest);
-
-      triggersList = triggerEntities.getContent();
-    }
-
-    return triggersList;
+    return triggerEntities.getContent();
   }
 
   public boolean checkIfShouldSubscribePolling(NGTriggerEntity ngTriggerEntity) {
