@@ -1,6 +1,3 @@
-java 17.0.7-tem
-
-
 FROM gitpod/workspace-full
 
 USER gitpod
