@@ -24,7 +24,6 @@ import io.harness.delegate.beans.scheduler.InitializeExecutionInfraResponse;
 import io.harness.encryption.Scope;
 import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
-import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.execution.tasks.TaskCategory;
 import io.harness.pms.contracts.execution.tasks.TaskRequest;
 import io.harness.pms.contracts.steps.StepCategory;
@@ -69,14 +68,14 @@ public class InitKubernetesInfraContainerStep
   public StepResponse handleTaskResultWithSecurityContext(Ambiance ambiance, StepElementParameters stepParameters,
       ThrowingSupplier<InitializeExecutionInfraResponse> responseDataSupplier) throws Exception {
     InitializeExecutionInfraResponse k8sInfra = responseDataSupplier.get();
-    Status succeeded = isNotEmpty(k8sInfra.getInfraRefId()) ? Status.SUCCEEDED : Status.FAILED;
+    PluginStepUtility.validateInitExecutionInfraResponseAndThrow(k8sInfra);
     // it's needed for pod cleanup
     KubernetesInfraOutput kubernetesInfraOutput =
         KubernetesInfraOutput.builder().infraRefId(k8sInfra.getInfraRefId()).build();
     executionSweepingOutputService.consume(
         ambiance, KUBERNETES_INFRA_OUTPUT, kubernetesInfraOutput, StepOutcomeGroup.STAGE.name());
     return StepResponse.builder()
-        .status(succeeded)
+        .status(PluginStepUtility.getStatus(k8sInfra))
         .stepOutcome(StepResponse.StepOutcome.builder()
                          .name(KUBERNETES_INFRA_OUTPUT)
                          .outcome(kubernetesInfraOutput)
@@ -132,6 +131,7 @@ public class InitKubernetesInfraContainerStep
         : new ArrayList<>();
   }
 
+  // move to helper class
   @Override
   public Class<StepElementParameters> getStepParametersClass() {
     return StepElementParameters.class;
