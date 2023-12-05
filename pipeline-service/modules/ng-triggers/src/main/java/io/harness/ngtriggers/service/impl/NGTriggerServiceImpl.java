@@ -158,9 +158,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.util.CollectionUtils;
@@ -1482,15 +1480,11 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   }
 
   @Override
-  public List<NGTriggerEntity> fetchTriggersList(
+  public boolean enablingDisablingTriggersInBulk(
       String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    Criteria criteria = TriggerFilterHelper.getCriteriaFromFilters(accountIdentifier, bulkTriggersRequestDTO);
+    boolean isUpdated = ngTriggerRepository.enableDisableTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO);
 
-    Pageable pageRequest = PageRequest.of(0, 100000, Sort.by(Sort.Direction.DESC, NGTriggerEntityKeys.createdAt));
-
-    Page<NGTriggerEntity> triggerEntities = list(criteria, pageRequest);
-
-    return triggerEntities.getContent();
+    return isUpdated;
   }
 
   public boolean checkIfShouldSubscribePolling(NGTriggerEntity ngTriggerEntity) {

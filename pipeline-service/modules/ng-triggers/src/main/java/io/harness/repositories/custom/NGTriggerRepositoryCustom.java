@@ -12,6 +12,7 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity;
 import io.harness.ngtriggers.beans.source.TriggerUpdateCount;
 
@@ -35,4 +36,5 @@ public interface NGTriggerRepositoryCustom {
   TriggerUpdateCount updateTriggerYaml(List<NGTriggerEntity> ngTriggerEntityList);
   boolean updateManyTriggerPollingSubscriptionStatusBySignatures(String accountId, List<String> signatures,
       boolean status, String errorMessage, List<String> versions, Long timestamp, Long errorStatusValidUntil);
+  boolean enableDisableTriggersInBulk(String accountId, BulkTriggersRequestDTO bulkTriggersRequestDTO);
 }

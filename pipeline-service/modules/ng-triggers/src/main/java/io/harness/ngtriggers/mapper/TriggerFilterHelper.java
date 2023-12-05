@@ -9,7 +9,6 @@ package io.harness.ngtriggers.mapper;
 
 import static io.harness.NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS;
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
-import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.springdata.SpringDataMongoUtils.populateInFilter;
 
@@ -265,7 +264,8 @@ public class TriggerFilterHelper {
     return criteria;
   }
 
-  public Criteria getCriteriaFromFilters(String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
+  public Criteria getCriteriaForEnablingDisablingTriggersInBulk(
+      String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
     String orgIdentifier = null;
     String projectIdentifier = null;
     String pipelineIdentifier = null;

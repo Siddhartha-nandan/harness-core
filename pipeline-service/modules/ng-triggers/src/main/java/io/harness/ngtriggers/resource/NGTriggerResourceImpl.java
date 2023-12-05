@@ -37,7 +37,6 @@ import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
 import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
-import io.harness.ngtriggers.beans.dto.BulkTriggersResponseDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerCatalogDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerDetailsResponseDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerEventHistoryDTO;
@@ -69,7 +68,6 @@ import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.swagger.v3.oas.annotations.Hidden;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -327,25 +325,8 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
 
   public ResponseDTO<Integer> bulkTriggers(@NotNull @AccountIdentifier String accountIdentifier,
       @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    // If true, enable the triggers. If false, disable them.
-    boolean enable = bulkTriggersRequestDTO.getData().isEnable();
+    boolean isUpdated = ngTriggerService.enablingDisablingTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO);
 
-    // Fetching the list of Triggers that needs to be enabled/disabled as per the Filters in the RequestBody.
-    List<NGTriggerEntity> triggerEntityList =
-        ngTriggerService.fetchTriggersList(accountIdentifier, bulkTriggersRequestDTO);
-
-    // Updating the Enable/Disable boolean for each trigger as per the request.
-    List<NGTriggerEntity> ngTriggerEntityList = new ArrayList<>();
-    for (NGTriggerEntity trigger : triggerEntityList) {
-      NGTriggerEntity updatedTrigger = trigger;
-      updatedTrigger.setEnabled(enable);
-      ngTriggerEntityList.add(ngTriggerService.update(updatedTrigger, trigger));
-    }
-
-    // Mapping the response.
-    List<BulkTriggersResponseDTO> bulkTriggersResponse =
-        ngTriggerElementMapper.toBulkTriggersResponse(ngTriggerEntityList);
-
-    return ResponseDTO.newResponse(bulkTriggersResponse.size());
+    return ResponseDTO.newResponse(0);
   }
 }

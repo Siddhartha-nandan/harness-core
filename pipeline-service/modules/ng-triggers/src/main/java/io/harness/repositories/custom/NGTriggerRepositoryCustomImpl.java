@@ -13,6 +13,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.data.structure.EmptyPredicate;
+import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity.NGTriggerEntityKeys;
 import io.harness.ngtriggers.beans.entity.metadata.WebhookRegistrationStatus;
@@ -253,6 +254,22 @@ public class NGTriggerRepositoryCustomImpl implements NGTriggerRepositoryCustom 
     RetryPolicy<Object> retryPolicy = getRetryPolicy(
         "[Retrying]: Failed updating Trigger; attempt: {}", "[Failed]: Failed updating Trigger; attempt: {}");
     Failsafe.with(retryPolicy).get(() -> mongoTemplate.updateMulti(query, update, NGTriggerEntity.class));
+    return true;
+  }
+
+  @Override
+  public boolean enableDisableTriggersInBulk(String accountId, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
+    Update update = new Update();
+    update.set(NGTriggerEntityKeys.enabled, bulkTriggersRequestDTO.getData().isEnable());
+
+    Criteria criteria =
+        TriggerFilterHelper.getCriteriaForEnablingDisablingTriggersInBulk(accountId, bulkTriggersRequestDTO);
+    Query query = new Query(criteria);
+
+    RetryPolicy<Object> retryPolicy = getRetryPolicy(
+        "[Retrying]: Failed updating Trigger; attempt: {}", "[Failed]: Failed updating Trigger; attempt: {}");
+    Failsafe.with(retryPolicy).get(() -> mongoTemplate.updateMulti(query, update, NGTriggerEntity.class));
+
     return true;
   }
 
