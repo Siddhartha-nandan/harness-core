@@ -158,19 +158,6 @@ function copy_delegate_proxy_jars(){
 
 }
 
-function copy_command_library_server_jars(){
-
-  cp ${HOME}/.bazel-dirs/bin/210-command-library-server/module_deploy.jar command-library-app-capsule.jar
-  cp ../../210-command-library-server/keystore.jks .
-  cp ../../210-command-library-server/command-library-server-config.yml .
-  cp ../../dockerization/command-library-server/Dockerfile-command-library-server-cie-jdk ./Dockerfile-cie-jdk
-  cp ../../dockerization/base-images/apm/inject-onprem-apm-bins-into-dockerimage.sh .
-  cp ../../dockerization/base-images/apm/inject-saas-apm-bins-into-dockerimage.sh .
-  cp -R ../../dockerization/command-library-server/scripts/ .
-  copy_common_files
-  cd ../..
-
-}
 
 function copy_event_server_jars(){
 
