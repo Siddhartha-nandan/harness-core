@@ -69,7 +69,7 @@ public class AwsBillingDataVerificationService {
 
   public void fetchAndUpdateBillingDataForConnector(String accountId, ConnectorResponseDTO connector, String startDate,
       String endDate, AWSCredentialsProvider awsAssumedCredentialsProvider,
-      Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) {
+      Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) throws Exception {
     // startDate is inclusive, endDate is exclusive
     ConnectorInfoDTO connectorInfo = connector.getConnector();
     CEAwsConnectorDTO ceAwsConnectorDTO = (CEAwsConnectorDTO) connectorInfo.getConnectorConfig();
@@ -106,14 +106,14 @@ public class AwsBillingDataVerificationService {
   }
 
   public void fetchAWSBillingDataFromUnifiedTable(String accountId, ConnectorResponseDTO connector, String startDate,
-      String endDate, Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) {
+      String endDate, Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) throws Exception {
     Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> awsUnifiedTableResults =
         billingDataVerificationSQLService.fetchAWSCostsFromUnifiedTable(accountId, connector, startDate, endDate);
     mergeResultsIntoBillingData(awsUnifiedTableResults, billingData);
   }
 
   public void fetchBillingDataFromAWSBillingTables(String accountId, ConnectorResponseDTO connector, String startDate,
-      String endDate, Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) {
+      String endDate, Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) throws Exception {
     Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> awsBillingResults =
         billingDataVerificationSQLService.fetchAWSCostsFromAWSBillingTables(accountId, connector, startDate, endDate);
     mergeResultsIntoBillingData(awsBillingResults, billingData);
