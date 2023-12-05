@@ -211,13 +211,13 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
                    .concat(String.format("'%s', ", entry.getKey().getUsageEndDate()))
                    .concat(String.format("'%s', ", entry.getKey().getCostType()))
 
-                   .concat(String.format("'%s', ", entry.getValue().getCostFromCloudProviderAPI()))
-                   .concat(String.format("'%s', ", entry.getValue().getCostFromRawBillingTable()))
-                   .concat(String.format("'%s', ", entry.getValue().getCostFromUnifiedTable()))
+                   .concat(String.format("%s, ", entry.getValue().getCostFromCloudProviderAPI()))
+                   .concat(String.format("%s, ", entry.getValue().getCostFromRawBillingTable()))
+                   .concat(String.format("%s, ", entry.getValue().getCostFromUnifiedTable()))
                    .concat("CURRENT_TIMESTAMP() )"));
     }
     String insertQuery = String.format(INSERT_INTO_BILLING_DATA_VERIFICATION_TABLE_QUERY_TEMPLATE,
-        ccmBillingDataVerificationTableId, String.join(" ", rows));
+        ccmBillingDataVerificationTableId, String.join(", ", rows));
     executeQuery(insertQuery);
   }
 
