@@ -36,8 +36,12 @@ public class AuditPermissionValidator {
   }
 
   private void checkPermissions(String accountIdentifier, ResourceScopeDTO resourceScopeDTO) {
-    boolean hasAccess = hasAccountLevelPermission(accountIdentifier)
-        || hasOrganizationLevelPermission(accountIdentifier, resourceScopeDTO.getOrgIdentifier());
+    boolean hasAccess;
+    if (isNotEmpty(resourceScopeDTO.getAccountIdentifier()) && isEmpty(resourceScopeDTO.getOrgIdentifier())) {
+      hasAccess = hasAccountLevelPermission(accountIdentifier);
+    } else {
+      hasAccess = hasOrganizationLevelPermission(accountIdentifier, resourceScopeDTO.getOrgIdentifier());
+    }
 
     if (!hasAccess) {
       throw new AccessDeniedException(getAccessDeniedExceptionMessage(accountIdentifier,
@@ -50,7 +54,8 @@ public class AuditPermissionValidator {
     if (isEmpty(accountIdentifier)) {
       return false;
     }
-    return accessControlClient.hasAccess(null, Resource.of("AUDIT", null), AUDIT_VIEW_PERMISSION);
+    return accessControlClient.hasAccess(
+        ResourceScope.of(accountIdentifier, null, null), Resource.of("AUDIT", null), AUDIT_VIEW_PERMISSION);
   }
 
   private boolean hasOrganizationLevelPermission(String accountIdentifier, String orgIdentifier) {
@@ -58,7 +63,7 @@ public class AuditPermissionValidator {
       return false;
     }
     return accessControlClient.hasAccess(
-        ResourceScope.of(accountIdentifier, null, null), Resource.of("AUDIT", null), AUDIT_VIEW_PERMISSION);
+        ResourceScope.of(accountIdentifier, orgIdentifier, null), Resource.of("AUDIT", null), AUDIT_VIEW_PERMISSION);
   }
 
   private String getAccessDeniedExceptionMessage(
