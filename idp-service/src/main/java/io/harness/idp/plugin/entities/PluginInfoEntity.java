@@ -5,42 +5,55 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.idp.plugin.beans;
+package io.harness.idp.plugin.entities;
 
 import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.mongo.index.FdUniqueIndex;
+import io.harness.idp.plugin.beans.ExportsData;
+import io.harness.idp.plugin.enums.ExportType;
+import io.harness.mongo.index.CompoundMongoIndex;
+import io.harness.mongo.index.MongoIndex;
 import io.harness.ng.DbAliases;
 import io.harness.persistence.PersistentEntity;
 import io.harness.spec.server.idp.v1.model.PluginInfo;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableList;
 import dev.morphia.annotations.Entity;
 import dev.morphia.annotations.Id;
 import java.util.List;
-import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldNameConstants;
 import org.springframework.data.annotation.Persistent;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Data
-@Builder
 @StoreIn(DbAliases.IDP)
 @FieldNameConstants(innerTypeName = "PluginInfoEntityKeys")
 @Entity(value = "pluginInfo", noClassnameStored = true)
 @Document("pluginInfo")
 @Persistent
 @OwnedBy(HarnessTeam.IDP)
-public class PluginInfoEntity implements PersistentEntity {
+public abstract class PluginInfoEntity implements PersistentEntity {
+  public static List<MongoIndex> mongoIndexes() {
+    return ImmutableList.<MongoIndex>builder()
+        .add(CompoundMongoIndex.builder()
+                 .name("unique_account_identifier")
+                 .unique(true)
+                 .field(PluginInfoEntityKeys.accountIdentifier)
+                 .field(PluginInfoEntityKeys.identifier)
+                 .build())
+        .build();
+  }
+
   @Id @org.mongodb.morphia.annotations.Id private String id;
-  @FdUniqueIndex private String identifier;
+  private String identifier;
+  private String accountIdentifier;
   private String name;
   private String description;
-  private String createdBy;
+  private String creator;
   private String category;
-  @Builder.Default private boolean core = false;
   private String source;
   private String config;
   @JsonProperty("environmentVariables") private List<String> envVariables;
@@ -48,4 +61,13 @@ public class PluginInfoEntity implements PersistentEntity {
   private String imageUrl;
   private String documentation;
   @JsonProperty("exports") private ExportsData exports;
+  private PluginInfo.PluginTypeEnum type;
+
+  public static int getExportTypeCount(PluginInfoEntity pluginInfoEntity, ExportType exportType) {
+    return (int) pluginInfoEntity.getExports()
+        .getExportDetails()
+        .stream()
+        .filter(exportDetails -> exportDetails.getType().equals(exportType))
+        .count();
+  }
 }

@@ -26,7 +26,6 @@ import io.harness.repositories.EnforcementResultRepo;
 import io.harness.repositories.EnforcementSummaryRepo;
 import io.harness.repositories.SBOMComponentRepo;
 import io.harness.repositories.ScorecardRepo;
-import io.harness.repositories.ScorecardRepoImpl;
 import io.harness.rule.InjectorRuleMixin;
 import io.harness.serializer.KryoModule;
 import io.harness.serializer.KryoRegistrar;
@@ -35,6 +34,7 @@ import io.harness.spec.server.ssca.v1.EnforcementApi;
 import io.harness.spec.server.ssca.v1.OrchestrationApi;
 import io.harness.spec.server.ssca.v1.SbomProcessorApi;
 import io.harness.spec.server.ssca.v1.TokenApi;
+import io.harness.springdata.HTransactionTemplate;
 import io.harness.ssca.S3Config;
 import io.harness.ssca.api.EnforcementApiImpl;
 import io.harness.ssca.api.OrchestrationApiImpl;
@@ -91,7 +91,9 @@ import org.junit.rules.MethodRule;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.Statement;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.data.mongodb.MongoTransactionManager;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Slf4j
 public class SSCAManagerTestRule implements InjectorRuleMixin, MethodRule, MongoRuleMixin {
@@ -165,6 +167,12 @@ public class SSCAManagerTestRule implements InjectorRuleMixin, MethodRule, Mongo
       }
 
       @Provides
+      @Singleton
+      TransactionTemplate getTransactionTemplate(MongoTransactionManager mongoTransactionManager) {
+        return new HTransactionTemplate(mongoTransactionManager, false);
+      }
+
+      @Provides
       @Named("disableDeserialization")
       @Singleton
       public boolean getSerializationForDelegate() {
@@ -204,7 +212,7 @@ public class SSCAManagerTestRule implements InjectorRuleMixin, MethodRule, Mongo
         bind(EnforcementSummaryRepo.class).toInstance(mock(EnforcementSummaryRepo.class));
         bind(CdInstanceSummaryRepo.class).toInstance(mock(CdInstanceSummaryRepo.class));
         bind(CdInstanceSummaryService.class).to(CdInstanceSummaryServiceImpl.class);
-        bind(ScorecardRepo.class).toInstance(mock(ScorecardRepoImpl.class));
+        bind(ScorecardRepo.class).toInstance(mock(ScorecardRepo.class));
         bind(ScorecardService.class).to(ScorecardServiceImpl.class);
         bind(S3StoreService.class).to(S3StoreServiceImpl.class);
         bind(TokenApi.class).to(TokenApiImpl.class);
