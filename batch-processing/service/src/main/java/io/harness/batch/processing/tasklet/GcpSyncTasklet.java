@@ -59,7 +59,16 @@ import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.Configuration;
 import io.kubernetes.client.openapi.apis.BatchV1Api;
-import io.kubernetes.client.openapi.models.*;
+import io.kubernetes.client.openapi.models.V1ConfigMapKeySelector;
+import io.kubernetes.client.openapi.models.V1Container;
+import io.kubernetes.client.openapi.models.V1EnvVar;
+import io.kubernetes.client.openapi.models.V1EnvVarSource;
+import io.kubernetes.client.openapi.models.V1Job;
+import io.kubernetes.client.openapi.models.V1JobSpec;
+import io.kubernetes.client.openapi.models.V1ObjectMeta;
+import io.kubernetes.client.openapi.models.V1PodSpec;
+import io.kubernetes.client.openapi.models.V1PodTemplateSpec;
+import io.kubernetes.client.openapi.models.V1SecretKeySelector;
 import io.kubernetes.client.util.Config;
 import java.io.File;
 import java.io.FileInputStream;
@@ -86,14 +95,13 @@ public class GcpSyncTasklet implements Tasklet {
   public static final String K8S_API_VERSION = "batch/v1";
   public static final String K8S_JOB_KIND = "Job";
   public static final String RESTART_POLICY_NEVER = "Never";
-  public static final String PYTHON_JOB_NAME_PREFIX = "gcp-sync-k8s-job-";
+  public static final String PYTHON_JOB_NAME_PREFIX = "gcp-sync-k8s-job-%s";
   public static final String CLICKHOUSE_URL = "CLICKHOUSE_URL";
   public static final String CLICKHOUSE_USERNAME = "CLICKHOUSE_USERNAME";
   public static final String CLICKHOUSE_PASSWORD = "CLICKHOUSE_PASSWORD";
   public static final String CLICKHOUSE_SOCKET_TIMEOUT = "CLICKHOUSE_SOCKET_TIMEOUT";
   public static final String CLICKHOUSE_PORT = "CLICKHOUSE_PORT";
   public static final String CLICKHOUSE_PORT_PYTHON = "CLICKHOUSE_PORT_PYTHON";
-  @Autowired private BatchMainConfig config;
   private static final String USER_AGENT_HEADER = "user-agent";
   private static final String USER_AGENT_HEADER_ENVIRONMENT_VARIABLE = "USER_AGENT_HEADER";
   private static final String DEFAULT_USER_AGENT = "default-user-agent";
@@ -110,6 +118,8 @@ public class GcpSyncTasklet implements Tasklet {
   public static final String DEPLOY_MODE = "deployMode";
   public static final String USE_WORKLOAD_IDENTITY = "useWorkloadIdentity";
   public static final String NAMESPACE = System.getenv("NAMESPACE");
+
+  @Autowired private BatchMainConfig config;
   @Autowired private ConnectorResourceClient connectorResourceClient;
   @Autowired protected CloudToHarnessMappingService cloudToHarnessMappingService;
   @Autowired private BatchJobScheduledDataDao batchJobScheduledDataDao;
@@ -198,6 +208,7 @@ public class GcpSyncTasklet implements Tasklet {
     }
     return null;
   }
+
   private void createK8SJobWithParameters(ImmutableMap<String, String> customArgsMap) throws IOException {
     ApiClient client = Config.defaultClient();
     Configuration.setDefaultApiClient(client);
@@ -235,7 +246,7 @@ public class GcpSyncTasklet implements Tasklet {
 
   @NotNull
   private static String generateJobName() {
-    return PYTHON_JOB_NAME_PREFIX + System.currentTimeMillis();
+    return String.format(PYTHON_JOB_NAME_PREFIX, System.currentTimeMillis());
   }
 
   private V1Container createContainer(String argsMap, List<V1EnvVar> envVariablesToPass) {
@@ -249,40 +260,39 @@ public class GcpSyncTasklet implements Tasklet {
 
   @NotNull
   private List<V1EnvVar> createEnvironmentVariables() {
-    V1EnvVar CLICKHOUSE_URL =
-        new V1EnvVar().name(GcpSyncTasklet.CLICKHOUSE_URL).value(config.getClickHouseConfig().getUrl());
-    V1EnvVar CLICKHOUSE_USERNAME =
-        new V1EnvVar().name(GcpSyncTasklet.CLICKHOUSE_USERNAME).value(config.getClickHouseConfig().getUsername());
-    V1EnvVar CLICKHOUSE_PASSWORD =
-        new V1EnvVar().name(GcpSyncTasklet.CLICKHOUSE_PASSWORD).value(config.getClickHouseConfig().getPassword());
+    V1EnvVar clickhouseUrl = new V1EnvVar().name(CLICKHOUSE_URL).value(config.getClickHouseConfig().getUrl());
+    V1EnvVar clickhouseUsername =
+        new V1EnvVar().name(CLICKHOUSE_USERNAME).value(config.getClickHouseConfig().getUsername());
+    V1EnvVar clickhousePassword =
+        new V1EnvVar().name(CLICKHOUSE_PASSWORD).value(config.getClickHouseConfig().getPassword());
 
-    V1EnvVar CLICKHOUSE_SOCKET_TIMEOUT = new V1EnvVar()
-                                             .name(GcpSyncTasklet.CLICKHOUSE_SOCKET_TIMEOUT)
-                                             .value(String.valueOf(config.getClickHouseConfig().getSocketTimeout()));
+    V1EnvVar clickhouseSocketTimeout = new V1EnvVar()
+                                           .name(CLICKHOUSE_SOCKET_TIMEOUT)
+                                           .value(String.valueOf(config.getClickHouseConfig().getSocketTimeout()));
 
     GcpSyncSmpConfig gcpSyncSmpConfig = config.getGcpSyncSmpConfig();
 
-    V1EnvVar CLICKHOUSE_PORT = createEnvVarFromConfigMap(
-        GcpSyncTasklet.CLICKHOUSE_PORT, gcpSyncSmpConfig.getBatchProcessingConfigMapName(), CLICKHOUSE_PORT_PYTHON);
+    V1EnvVar clickhousePort = createEnvVarFromConfigMap(
+        CLICKHOUSE_PORT, gcpSyncSmpConfig.getBatchProcessingConfigMapName(), CLICKHOUSE_PORT_PYTHON);
 
-    V1EnvVar AWS_ACCOUNT_ID = createEnvVariableFromSecret(gcpSyncSmpConfig.getAwsAccountIdKey(),
+    V1EnvVar awsAccountId = createEnvVariableFromSecret(gcpSyncSmpConfig.getAwsAccountIdKey(),
         gcpSyncSmpConfig.getNextgenCeSecretName(), gcpSyncSmpConfig.getAwsAccountIdKey());
 
-    V1EnvVar AWS_DESTINATION_BUCKET = createEnvVariableFromSecret(gcpSyncSmpConfig.getAwsDestinationBucketKey(),
+    V1EnvVar awsDestinationBucket = createEnvVariableFromSecret(gcpSyncSmpConfig.getAwsDestinationBucketKey(),
         gcpSyncSmpConfig.getNextgenCeSecretName(), gcpSyncSmpConfig.getAwsDestinationBucketKey());
 
-    V1EnvVar HMAC_ACCESS_KEY = createEnvVariableFromSecret(gcpSyncSmpConfig.getAwsAccountIdKey(),
+    V1EnvVar hmacAccessKey = createEnvVariableFromSecret(gcpSyncSmpConfig.getAwsAccountIdKey(),
         gcpSyncSmpConfig.getBatchProcessingSecretName(), gcpSyncSmpConfig.getAwsAccountIdKey());
 
-    V1EnvVar HMAC_SECRET_KEY = createEnvVariableFromSecret(gcpSyncSmpConfig.getAwsAccountIdKey(),
+    V1EnvVar hmacSecretKey = createEnvVariableFromSecret(gcpSyncSmpConfig.getAwsAccountIdKey(),
         gcpSyncSmpConfig.getBatchProcessingSecretName(), gcpSyncSmpConfig.getAwsAccountIdKey());
 
-    V1EnvVar SERVICE_ACCOUNT_CREDENTIAL = createEnvVariableFromSecret(gcpSyncSmpConfig.getServiceAccountCredentialKey(),
+    V1EnvVar serviceAccountCredential = createEnvVariableFromSecret(gcpSyncSmpConfig.getServiceAccountCredentialKey(),
         gcpSyncSmpConfig.getBatchProcessingMountSecretName(), gcpSyncSmpConfig.getServiceAccountCredentialKey());
 
     List<V1EnvVar> envVariableList =
-        Arrays.asList(AWS_ACCOUNT_ID, AWS_DESTINATION_BUCKET, CLICKHOUSE_URL, CLICKHOUSE_USERNAME, CLICKHOUSE_PASSWORD,
-            CLICKHOUSE_SOCKET_TIMEOUT, CLICKHOUSE_PORT, HMAC_ACCESS_KEY, HMAC_SECRET_KEY, SERVICE_ACCOUNT_CREDENTIAL);
+        Arrays.asList(awsAccountId, awsDestinationBucket, clickhouseUrl, clickhouseUsername, clickhousePassword,
+            clickhouseSocketTimeout, clickhousePort, hmacAccessKey, hmacSecretKey, serviceAccountCredential);
     return envVariableList;
   }
 
@@ -301,7 +311,7 @@ public class GcpSyncTasklet implements Tasklet {
   private void processGCPConnector(BillingDataPipelineConfig billingDataPipelineConfig, String serviceAccountEmail,
       String datasetId, String projectId, String tableName, String accountId, String connectorId, Long endTime,
       boolean firstSync) throws IOException {
-    if (DeployMode.isOnPrem(config.getDeployMode().name()) && config.isClickHouseEnabled()) {
+    if (isOnPremAndClickhouseEnabled()) {
       log.info("Creating a new K8S Job");
       ImmutableMap<String, String> customAttributes = ImmutableMap.<String, String>builder()
                                                           .put(SERVICE_ACCOUNT, serviceAccountEmail)
@@ -317,6 +327,8 @@ public class GcpSyncTasklet implements Tasklet {
         createK8SJobWithParameters(customAttributes);
       } catch (IOException e) {
         log.error("IOException occurred: {}", e.getMessage());
+      } catch (Exception e) {
+        log.error("Exception occurred: {}", e.getMessage());
       }
       return;
     }
@@ -377,6 +389,10 @@ public class GcpSyncTasklet implements Tasklet {
                 usingWorkloadIdentity));
       }
     }
+  }
+
+  private boolean isOnPremAndClickhouseEnabled() {
+    return DeployMode.isOnPrem(config.getDeployMode().name()) && config.isClickHouseEnabled();
   }
 
   private HeaderProvider getHeaderProvider() {
