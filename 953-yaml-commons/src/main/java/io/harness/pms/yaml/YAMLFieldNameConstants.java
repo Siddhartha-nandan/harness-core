@@ -135,5 +135,7 @@ public class YAMLFieldNameConstants {
   public final String REGEX = "regex";
   public final String DESC = "desc";
 
+  // yaml v1 schema field names
   public final String DEPLOYMENT_STAGE_V1 = "deployment";
+  public final String INFRA_DEFS = "infra-defs";
 }

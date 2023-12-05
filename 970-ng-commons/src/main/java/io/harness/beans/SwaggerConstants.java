@@ -24,6 +24,9 @@ public interface SwaggerConstants {
   String JSON_NODE_CLASSPATH = "com.fasterxml.jackson.databind.JsonNode";
   String INFRASTRUCTURE_DEFINITION_YAML_NODE_LIST_CLASSPATH =
       "[Lio.harness.cdng.infra.yaml.InfraStructureDefinitionYaml;";
+
+  String INFRASTRUCTURE_DEFINITION_YAML_NODE_LIST_CLASSPATH_V1 =
+      "[Lio.harness.cdng.infra.v1.yaml.SimplifiedInfraDefYaml;";
   String CLUSTER_YAML_NODE_LIST_CLASSPATH = "[Lio.harness.cdng.gitops.yaml.ClusterYaml;";
 
   String USE_FROM_STAGE = "io.harness.cdng.service.beans.ServiceUseFromStageV2";
