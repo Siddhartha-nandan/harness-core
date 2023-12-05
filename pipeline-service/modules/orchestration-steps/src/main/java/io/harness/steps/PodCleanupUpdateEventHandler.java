@@ -7,6 +7,8 @@
 
 package io.harness.steps;
 
+import static io.harness.beans.FeatureName.CDS_USE_DELEGATE_BIJOU_API_CONTAINER_STEPS;
+
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.engine.observers.NodeStatusUpdateObserver;
@@ -16,6 +18,8 @@ import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.execution.utils.StatusUtils;
 import io.harness.steps.common.steps.stepgroup.StepGroupStep;
 import io.harness.steps.container.execution.ContainerStepCleanupHelper;
+import io.harness.steps.container.execution.K8sInfraCleanupHelper;
+import io.harness.utils.PmsFeatureFlagService;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -26,6 +30,8 @@ import java.util.concurrent.ExecutorService;
 @OwnedBy(HarnessTeam.PIPELINE)
 public class PodCleanupUpdateEventHandler implements NodeStatusUpdateObserver, AsyncInformObserver {
   @Inject ContainerStepCleanupHelper containerStepCleanupHelper;
+  @Inject private PmsFeatureFlagService featureFlagService;
+  @Inject private K8sInfraCleanupHelper k8sInfraCleanupHelper;
 
   @Inject @Named("PodCleanUpExecutorService") private ExecutorService podCleanUpExecutorService;
 
@@ -34,7 +40,12 @@ public class PodCleanupUpdateEventHandler implements NodeStatusUpdateObserver, A
     if (StepGroupStep.STEP_TYPE.getType().equals(
             AmbianceUtils.getCurrentStepType(nodeUpdateInfo.getNodeExecution().getAmbiance()).getType())
         && StatusUtils.isFinalStatus(nodeUpdateInfo.getStatus())) {
-      containerStepCleanupHelper.sendCleanupRequest(nodeUpdateInfo.getNodeExecution().getAmbiance());
+      String accountId = AmbianceUtils.getAccountId(nodeUpdateInfo.getNodeExecution().getAmbiance());
+      if (featureFlagService.isEnabled(accountId, CDS_USE_DELEGATE_BIJOU_API_CONTAINER_STEPS)) {
+        k8sInfraCleanupHelper.cleanupInfra(nodeUpdateInfo.getNodeExecution().getAmbiance());
+      } else {
+        containerStepCleanupHelper.sendCleanupRequest(nodeUpdateInfo.getNodeExecution().getAmbiance());
+      }
     }
   }
 

@@ -7,10 +7,12 @@
 
 package io.harness.plancreator.steps.pluginstep;
 
+import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.annotations.dev.HarnessTeam.CI;
 
 import io.harness.annotation.RecasterAlias;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.pms.sdk.core.data.ExecutionSweepingOutput;
 import io.harness.pms.sdk.core.data.Outcome;
 import io.harness.validation.Update;
 
@@ -24,12 +26,12 @@ import org.springframework.data.annotation.TypeAlias;
 
 @Value
 @Builder
-@TypeAlias("KubernetesInfraOutcome")
-@JsonTypeName("KubernetesInfraOutcome")
-@OwnedBy(CI)
-@RecasterAlias("io.harness.plancreator.steps.pluginstep.KubernetesInfraOutcome")
-public class KubernetesInfraOutcome implements Outcome {
-  public static final String KUBERNETES_INFRA_OUTCOME = "KubernetesInfraOutcome";
+@TypeAlias("KubernetesInfraOutput")
+@JsonTypeName("KubernetesInfraOutput")
+@OwnedBy(CDP)
+@RecasterAlias("io.harness.plancreator.steps.pluginstep.KubernetesInfraOutput")
+public class KubernetesInfraOutput implements ExecutionSweepingOutput, Outcome {
+  public static final String KUBERNETES_INFRA_OUTPUT = "KubernetesInfraOutput";
   @Id @NotNull(groups = {Update.class}) @SchemaIgnore String uuid;
   String infraRefId;
 }

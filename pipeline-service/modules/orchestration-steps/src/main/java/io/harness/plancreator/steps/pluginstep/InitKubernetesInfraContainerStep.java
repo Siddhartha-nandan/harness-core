@@ -8,7 +8,7 @@
 package io.harness.plancreator.steps.pluginstep;
 
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
-import static io.harness.plancreator.steps.pluginstep.KubernetesInfraOutcome.KUBERNETES_INFRA_OUTCOME;
+import static io.harness.plancreator.steps.pluginstep.KubernetesInfraOutput.KUBERNETES_INFRA_OUTPUT;
 import static io.harness.steps.TaskRequestsUtils.SHELL_SCRIPT_TASK_IDENTIFIER;
 
 import io.harness.beans.FeatureName;
@@ -30,6 +30,8 @@ import io.harness.pms.contracts.execution.tasks.TaskRequest;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.execution.utils.AmbianceUtils;
+import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
+import io.harness.pms.sdk.core.resolver.outputs.ExecutionSweepingOutputService;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.steps.StepSpecTypeConstants;
@@ -55,6 +57,8 @@ public class InitKubernetesInfraContainerStep
   @Inject private InitialiseTaskUtils initialiseTaskUtils;
   @Inject private PmsFeatureFlagService featureFlagService;
 
+  @Inject private ExecutionSweepingOutputService executionSweepingOutputService;
+
   @Override
   public void validateResources(Ambiance ambiance, StepElementParameters stepParameters) {
     ContainerStepSpec stepParameter = (ContainerStepSpec) stepParameters.getSpec();
@@ -66,11 +70,16 @@ public class InitKubernetesInfraContainerStep
       ThrowingSupplier<InitializeExecutionInfraResponse> responseDataSupplier) throws Exception {
     InitializeExecutionInfraResponse k8sInfra = responseDataSupplier.get();
     Status succeeded = isNotEmpty(k8sInfra.getInfraRefId()) ? Status.SUCCEEDED : Status.FAILED;
+    // it's needed for pod cleanup
+    KubernetesInfraOutput kubernetesInfraOutput =
+        KubernetesInfraOutput.builder().infraRefId(k8sInfra.getInfraRefId()).build();
+    executionSweepingOutputService.consume(
+        ambiance, KUBERNETES_INFRA_OUTPUT, kubernetesInfraOutput, StepOutcomeGroup.STAGE.name());
     return StepResponse.builder()
         .status(succeeded)
         .stepOutcome(StepResponse.StepOutcome.builder()
-                         .name(KUBERNETES_INFRA_OUTCOME)
-                         .outcome(KubernetesInfraOutcome.builder().infraRefId(k8sInfra.getInfraRefId()).build())
+                         .name(KUBERNETES_INFRA_OUTPUT)
+                         .outcome(kubernetesInfraOutput)
                          .group(StepCategory.STEP_GROUP.name())
                          .build())
         .build();

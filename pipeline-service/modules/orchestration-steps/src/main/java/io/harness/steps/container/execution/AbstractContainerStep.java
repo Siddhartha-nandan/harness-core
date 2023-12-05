@@ -10,7 +10,7 @@ package io.harness.steps.container.execution;
 
 import static io.harness.beans.FeatureName.CDS_USE_DELEGATE_BIJOU_API_CONTAINER_STEPS;
 import static io.harness.plancreator.NGCommonUtilPlanCreationConstants.STEP_GROUP;
-import static io.harness.plancreator.steps.pluginstep.KubernetesInfraOutcome.KUBERNETES_INFRA_OUTCOME;
+import static io.harness.plancreator.steps.pluginstep.KubernetesInfraOutput.KUBERNETES_INFRA_OUTPUT;
 import static io.harness.steps.TaskRequestsUtils.SHELL_SCRIPT_TASK_IDENTIFIER;
 import static io.harness.steps.TaskRequestsUtils.prepareExecuteTaskRequest;
 
@@ -38,7 +38,7 @@ import io.harness.helper.SerializedResponseDataHelper;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.logstreaming.LogStreamingStepClientFactory;
 import io.harness.plancreator.steps.common.StepElementParameters;
-import io.harness.plancreator.steps.pluginstep.KubernetesInfraOutcome;
+import io.harness.plancreator.steps.pluginstep.KubernetesInfraOutput;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.execution.AsyncExecutableResponse;
@@ -46,9 +46,11 @@ import io.harness.pms.contracts.execution.tasks.TaskCategory;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.sdk.core.data.OptionalOutcome;
+import io.harness.pms.sdk.core.data.OptionalSweepingOutput;
 import io.harness.pms.sdk.core.plugin.ContainerStepExecutionResponseHelper;
 import io.harness.pms.sdk.core.resolver.RefObjectUtils;
 import io.harness.pms.sdk.core.resolver.outcome.OutcomeService;
+import io.harness.pms.sdk.core.resolver.outputs.ExecutionSweepingOutputService;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.serializer.KryoSerializer;
@@ -94,7 +96,7 @@ public abstract class AbstractContainerStep implements AsyncExecutableWithRbac<S
   @Inject private Map<TaskCategory, TaskExecutor> taskExecutorMap;
   @Inject private PmsSweepingOutputService pmsSweepingOutputService;
   @Inject private ShellScriptHelperService shellScriptHelperService;
-  @Inject private OutcomeService outcomeService;
+  @Inject private ExecutionSweepingOutputService executionSweepingOutputService;
 
   @Override
   public void validateResources(Ambiance ambiance, StepElementParameters stepParameters) {
@@ -135,12 +137,12 @@ public abstract class AbstractContainerStep implements AsyncExecutableWithRbac<S
     if (featureFlagService.isEnabled(
             AmbianceUtils.getAccountId(ambiance), CDS_USE_DELEGATE_BIJOU_API_CONTAINER_STEPS)) {
       TaskExecutor taskExecutor = taskExecutorMap.get(TaskCategory.DELEGATE_TASK_V2);
-      OptionalOutcome optionalOutcome =
-          outcomeService.resolveOptional(ambiance, RefObjectUtils.getOutcomeRefObject(KUBERNETES_INFRA_OUTCOME));
-      if (!optionalOutcome.isFound()) {
+      OptionalSweepingOutput optionalCleanupSweepingOutput = executionSweepingOutputService.resolveOptional(
+          ambiance, RefObjectUtils.getSweepingOutputRefObject(KUBERNETES_INFRA_OUTPUT));
+      if (!optionalCleanupSweepingOutput.isFound()) {
         throw new InvalidRequestException("Not found k8sInfra infraRefId");
       }
-      KubernetesInfraOutcome k8sInfra = (KubernetesInfraOutcome) optionalOutcome.getOutcome();
+      KubernetesInfraOutput k8sInfra = (KubernetesInfraOutput) optionalCleanupSweepingOutput.getOutput();
       String queueExecuteTaskId = taskExecutor.queueExecuteTask(
           prepareExecuteTaskRequest(ambiance, SHELL_SCRIPT_TASK_IDENTIFIER, getTaskData(ambiance),
               referenceFalseKryoSerializer, timeout, TaskCategory.DELEGATE_TASK_V2, true, delegateSelectors,
