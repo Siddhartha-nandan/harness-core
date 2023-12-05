@@ -202,6 +202,7 @@ func HandleWrite(s stream.Stream, metrics *metric.Metrics) http.HandlerFunc {
 				return
 			}
 			if err != nil {
+				metrics.StreamWriteErrorCount.Inc()
 				WriteInternalError(w, err)
 				logger.FromRequest(r).
 					WithError(err).
@@ -256,6 +257,7 @@ func HandleTail(s stream.Stream, metrics *metric.Metrics) http.HandlerFunc {
 		enc := json.NewEncoder(w)
 		linec, errc := s.Tail(ctx, key)
 		if errc == nil {
+			metrics.StreamTailErrorCount.Inc()
 			io.WriteString(w, "event: error\ndata: eof\n")
 			return
 		}

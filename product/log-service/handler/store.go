@@ -49,6 +49,7 @@ func HandleUpload(store store.Store, metrics *metric.Metrics) http.HandlerFunc {
 		accountID := r.FormValue(accountIDParam)
 		key := CreateAccountSeparatedKey(accountID, r.FormValue(keyParam))
 		if err := store.Upload(ctx, key, r.Body); err != nil {
+			metrics.BlobUploadErrorCount.Inc()
 			WriteInternalError(w, err)
 			logger.FromRequest(r).
 				WithError(err).
@@ -118,6 +119,7 @@ func HandleDownload(store store.Store, metrics *metric.Metrics) http.HandlerFunc
 			defer out.Close()
 		}
 		if err != nil {
+			metrics.BlobDownloadErrorCount.Inc()
 			WriteNotFound(w, err)
 			logger.FromRequest(r).
 				WithError(err).
@@ -151,6 +153,7 @@ func HandleDownloadLink(store store.Store, metrics *metric.Metrics) http.Handler
 		expires := time.Hour
 		link, err := store.DownloadLink(ctx, key, expires)
 		if err != nil {
+			metrics.BlobZipDownloadErrorCount.Inc()
 			WriteInternalError(w, err)
 			logger.FromRequest(r).
 				WithError(err).

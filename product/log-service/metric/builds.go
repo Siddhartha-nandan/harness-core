@@ -9,28 +9,33 @@ import "github.com/prometheus/client_golang/prometheus"
 
 // Metrics represents the metrics for the log service.
 type Metrics struct {
-	StreamWriteCount       prometheus.Counter
-	StreamTailCount        prometheus.Counter
-	StreamWriteLatency     prometheus.Gauge
-	BlobUploadLatency      prometheus.Gauge
-	BlobDownloadLatency    prometheus.Gauge
-	BlobZipDownloadLatency prometheus.Gauge
-	BlobUploadCount        prometheus.Counter
-	BlobDownloadCount      prometheus.Counter
-	BlobZipDownloadCount   prometheus.Counter
+	StreamWriteCount          prometheus.Counter
+	StreamTailCount           prometheus.Counter
+	StreamWriteLatency        prometheus.Gauge
+	BlobUploadLatency         prometheus.Gauge
+	BlobDownloadLatency       prometheus.Gauge
+	BlobZipDownloadLatency    prometheus.Gauge
+	BlobUploadCount           prometheus.Counter
+	BlobDownloadCount         prometheus.Counter
+	BlobZipDownloadCount      prometheus.Counter
+	BlobUploadErrorCount      prometheus.Counter
+	BlobDownloadErrorCount    prometheus.Counter
+	BlobZipDownloadErrorCount prometheus.Counter
+	StreamWriteErrorCount     prometheus.Counter
+	StreamTailErrorCount      prometheus.Counter
 }
 
 // RegisterMetrics registers the metrics with Prometheus and returns the Metrics object.
 func RegisterMetrics() *Metrics {
 	metrics := &Metrics{
-	    // Total request count (Failed + Successful)
+		// Total request count (Failed + Successful)
 		StreamWriteCount: prometheus.NewCounter(
 			prometheus.CounterOpts{
 				Name: "log_service_stream_write_count",
 				Help: "Total number of put requests to write stream ",
 			},
 		),
-	    // Total request count (Failed + Successful)
+		// Total request count (Failed + Successful)
 		StreamTailCount: prometheus.NewCounter(
 			prometheus.CounterOpts{
 				Name: "log_service_stream_tail_count",
@@ -61,30 +66,65 @@ func RegisterMetrics() *Metrics {
 				Help: "latency to download logs in a zip file",
 			},
 		),
-	    // Total request count (Failed + Successful)
+		// Total request count (Failed + Successful)
 		BlobUploadCount: prometheus.NewCounter(
 			prometheus.CounterOpts{
 				Name: "log_service_blob_upload_count",
 				Help: "Number of request for blob uploads",
 			},
 		),
-	    // Total request count (Failed + Successful)
+		// Total request count (Failed + Successful)
 		BlobDownloadCount: prometheus.NewCounter(
 			prometheus.CounterOpts{
 				Name: "log_service_blob_download_count",
 				Help: "Number of requests for blob downloads",
 			},
 		),
-	    // Total request count (Failed + Successful)
+		// Total request count (Failed + Successful)
 		BlobZipDownloadCount: prometheus.NewCounter(
 			prometheus.CounterOpts{
 				Name: "log_service_blob_zip_downloads",
 				Help: "Number of requests for blob zip downloads",
 			},
 		),
+		// Total Error count for Blob upload
+		BlobUploadErrorCount: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "log_service_blob_upload_error_count",
+				Help: "Number of error requests for blob uploads",
+			},
+		),
+		// Total Error Count for Blob Download
+		BlobDownloadErrorCount: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "log_service_blob_download_error_count",
+				Help: "Number of error requests for blob downloads",
+			},
+		),
+		// Total Error Count for Blob Zip Download
+		BlobZipDownloadErrorCount: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "log_service_blob_zip_downlods_error_count",
+				Help: "Number of error requests for blob zip downloads",
+			},
+		),
+		// Total Error Count for Stream Write Error Count
+		StreamWriteErrorCount: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "log_service_stream_write_error_count",
+				Help: "Number of error requests for stream write count",
+			},
+		),
+		// Total Error Count for Stream Tail Error Count
+		StreamTailErrorCount: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "log_service_stream_tail_error_count",
+				Help: "Total number of error requests to tail stream",
+			},
+		),
 	}
 
-	prometheus.MustRegister(metrics.StreamWriteCount, metrics.StreamTailCount, metrics.StreamWriteLatency, metrics.BlobUploadLatency, metrics.BlobDownloadLatency, metrics.BlobZipDownloadLatency, metrics.BlobUploadCount, metrics.BlobDownloadCount, metrics.BlobZipDownloadCount)
+	prometheus.MustRegister(metrics.StreamTailErrorCount, metrics.StreamWriteErrorCount, metrics.BlobZipDownloadErrorCount, metrics.BlobDownloadErrorCount, metrics.BlobUploadErrorCount, metrics.StreamWriteCount, metrics.StreamTailCount, metrics.StreamWriteLatency, metrics.BlobUploadLatency, metrics.BlobDownloadLatency, metrics.BlobZipDownloadLatency, metrics.BlobUploadCount, metrics.BlobDownloadCount, metrics.BlobZipDownloadCount)
 
 	return metrics
 }
