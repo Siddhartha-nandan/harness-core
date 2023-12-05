@@ -1132,7 +1132,7 @@ public class JiraTaskNGHandlerTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testJsonUserData() throws Exception {
     ClassLoader classLoader = this.getClass().getClassLoader();
-    JsonNode jsonNode = getJsonNodeResponseFromJsonFileFailure("servicenow/JiraUserData.json", classLoader);
+    JsonNode jsonNode = getJsonNodeResponseFromJiraJsonFile("servicenow/JiraUserData.json", classLoader);
     JiraUserData a = new JiraUserData(jsonNode);
     assertThat(a.getEmailAddress()).isNull();
   }
@@ -1169,7 +1169,7 @@ public class JiraTaskNGHandlerTest extends CategoryTest {
             .build();
     return JiraTaskNGParameters.builder().jiraConnectorDTO(jiraConnectorDTO);
   }
-  private JsonNode getJsonNodeResponseFromJsonFileFailure(String filePath, ClassLoader classLoader) throws Exception {
+  private JsonNode getJsonNodeResponseFromJiraJsonFile(String filePath, ClassLoader classLoader) throws Exception {
     URL jsonFile = classLoader.getResource(filePath);
     ObjectMapper mapper = new ObjectMapper();
     return mapper.readTree(jsonFile);
