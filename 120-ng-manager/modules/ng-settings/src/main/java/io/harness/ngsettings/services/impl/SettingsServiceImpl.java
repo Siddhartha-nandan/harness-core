@@ -38,6 +38,7 @@ import io.harness.ngsettings.dto.SettingResponseDTO;
 import io.harness.ngsettings.dto.SettingUpdateResponseDTO;
 import io.harness.ngsettings.dto.SettingValueResponseDTO;
 import io.harness.ngsettings.entities.AccountSetting;
+import io.harness.ngsettings.entities.AccountSettingConfiguration;
 import io.harness.ngsettings.entities.Setting;
 import io.harness.ngsettings.entities.Setting.SettingKeys;
 import io.harness.ngsettings.entities.SettingConfiguration;
@@ -190,11 +191,11 @@ public class SettingsServiceImpl implements SettingsService {
     if (settingConfiguration.isEmpty()) {
       throw new InvalidRequestException(String.format("Setting- %s does not exist", settingRequestDTO.getIdentifier()));
     }
-    if (SettingUtils.getHighestScopeForSetting(settingConfiguration.get().getAllowedScopes())
+    if (SettingUtils.getHighestScopeForSetting(((AccountSettingConfiguration)settingConfiguration.get()).getAllowedScopes())
             .equals(currentScopeLevel)) {
       return;
     }
-    if (Boolean.FALSE.equals(settingConfiguration.get().getAllowOverrides())) {
+    if (Boolean.FALSE.equals(((AccountSettingConfiguration)settingConfiguration.get()).getAllowOverrides())) {
       throw new InvalidRequestException(
           String.format("Setting- %s cannot be overridden at the current scope", settingRequestDTO.getIdentifier()));
     }
@@ -204,7 +205,7 @@ public class SettingsServiceImpl implements SettingsService {
   public SettingValueResponseDTO get(
       String identifier, String accountIdentifier, String orgIdentifier, String projectIdentifier) {
     Edition accountEdition = getEditionForAccount(accountIdentifier);
-    SettingConfiguration settingConfiguration =
+   AccountSettingConfiguration settingConfiguration =
         getSettingConfiguration(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
     Optional<Setting> existingSetting =
         settingRepository.findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(
@@ -418,7 +419,7 @@ public class SettingsServiceImpl implements SettingsService {
     }));
   }
 
-  private SettingConfiguration getSettingConfiguration(
+  private AccountSettingConfiguration getSettingConfiguration(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier) {
     Scope scope = Scope.of(accountIdentifier, orgIdentifier, projectIdentifier);
     Optional<SettingConfiguration> settingConfigurationOptional =
@@ -428,7 +429,7 @@ public class SettingsServiceImpl implements SettingsService {
       throw new EntityNotFoundException(String.format(
           "Setting [%s] is either invalid or is not applicable in scope [%s]", identifier, ScopeLevel.of(scope)));
     }
-    return settingConfigurationOptional.get();
+    return (AccountSettingConfiguration)settingConfigurationOptional.get();
   }
 
   private SettingResponseDTO restoreSetting(

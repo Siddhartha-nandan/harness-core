@@ -23,7 +23,7 @@ import javax.validation.constraints.NotNull;
 
 @OwnedBy(HarnessTeam.PL)
 @Data
-@FieldNameConstants(innerTypeName = "SettingKeys")
+@FieldNameConstants(innerTypeName = "AccountSettingKeys")
 @StoreIn(DbAliases.NG_MANAGER)
 @Entity(value = "settings", noClassnameStored = true)
 @JsonIgnoreProperties(ignoreUnknown = true)
