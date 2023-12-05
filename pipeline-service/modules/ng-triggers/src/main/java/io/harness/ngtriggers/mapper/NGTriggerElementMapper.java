@@ -57,7 +57,6 @@ import io.harness.ng.core.mapper.TagMapper;
 import io.harness.ngtriggers.beans.config.NGTriggerConfig;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
 import io.harness.ngtriggers.beans.dto.BuildDetails;
-import io.harness.ngtriggers.beans.dto.BulkTriggersResponseDTO;
 import io.harness.ngtriggers.beans.dto.LastTriggerExecutionDetails;
 import io.harness.ngtriggers.beans.dto.NGTriggerCatalogDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerDetailsResponseDTO;
@@ -870,25 +869,5 @@ public class NGTriggerElementMapper {
                     .append(TriggerHelper.getTriggerRef(ngTriggerEntity))
                     .toString());
     }
-  }
-
-  public List<BulkTriggersResponseDTO> toBulkTriggersResponse(List<NGTriggerEntity> ngTriggerEntityList) {
-    List<BulkTriggersResponseDTO> bulkTriggersResponse = new ArrayList<>();
-
-    for (NGTriggerEntity ngTriggerEntity : ngTriggerEntityList) {
-      BulkTriggersResponseDTO bulkTriggersResponseDTO = BulkTriggersResponseDTO.builder()
-                                                            .accountIdentifier(ngTriggerEntity.getAccountId())
-                                                            .orgIdentifier(ngTriggerEntity.getOrgIdentifier())
-                                                            .projectIdentifier(ngTriggerEntity.getProjectIdentifier())
-                                                            .pipelineIdentifier(ngTriggerEntity.getTargetIdentifier())
-                                                            .triggerIdentifier(ngTriggerEntity.getIdentifier())
-                                                            .ngTriggerType(ngTriggerEntity.getType())
-                                                            .enabled(ngTriggerEntity.getEnabled())
-                                                            .build();
-
-      bulkTriggersResponse.add(bulkTriggersResponseDTO);
-    }
-
-    return bulkTriggersResponse;
   }
 }
