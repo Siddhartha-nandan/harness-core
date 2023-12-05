@@ -790,7 +790,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
         StepInfo.newBuilder()
             .setName("Update GitOps App")
             .setType(StepSpecTypeConstants.UPDATE_GITOPS_APP)
-            .setFeatureFlag(FeatureName.GITOPS_UPDATE_APP_STEP.name())
             .setStepMetaData(StepMetaData.newBuilder().addCategory("Kubernetes").setFolderPath("GitOps").build())
             .build();
 
@@ -1528,7 +1527,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
                                  .addCategory(PLUGIN)
                                  .setFolderPath("Serverless Lambda")
                                  .build())
-            .setFeatureFlag(FeatureName.CDS_SERVERLESS_V2.name())
             .build();
 
     StepInfo serverlessAwsLambdaRollbackV2 = StepInfo.newBuilder()
@@ -1539,7 +1537,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
                                                                       .addCategory(PLUGIN)
                                                                       .setFolderPath("Serverless Lambda")
                                                                       .build())
-                                                 .setFeatureFlag(FeatureName.CDS_SERVERLESS_V2.name())
                                                  .build();
 
     StepInfo serverlessAwsLambdaDeployV2 = StepInfo.newBuilder()
@@ -1550,7 +1547,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
                                                                     .addCategory(PLUGIN)
                                                                     .setFolderPath("Serverless Lambda")
                                                                     .build())
-                                               .setFeatureFlag(FeatureName.CDS_SERVERLESS_V2.name())
                                                .build();
 
     StepInfo serverlessAwsLambdaPackageV2 = StepInfo.newBuilder()
@@ -1561,7 +1557,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
                                                                      .addCategory(PLUGIN)
                                                                      .setFolderPath("Serverless Lambda")
                                                                      .build())
-                                                .setFeatureFlag(FeatureName.CDS_SERVERLESS_V2.name())
                                                 .build();
 
     StepInfo awsCdkBootstrap =

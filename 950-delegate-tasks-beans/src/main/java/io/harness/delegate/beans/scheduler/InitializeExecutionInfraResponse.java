@@ -9,10 +9,10 @@ package io.harness.delegate.beans.scheduler;
 
 import io.harness.delegate.beans.DelegateResponseData;
 
-import lombok.Builder;
+import lombok.RequiredArgsConstructor;
 
 // TODO: should be proto
-@Builder
+@RequiredArgsConstructor
 public class InitializeExecutionInfraResponse implements DelegateResponseData {
-  private final String executionInfraReferenceId;
+  private final String infraRefId;
 }
