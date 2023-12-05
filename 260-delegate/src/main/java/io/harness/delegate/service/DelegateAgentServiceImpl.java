@@ -73,6 +73,8 @@ import static io.harness.network.SafeHttpCall.execute;
 import static io.harness.threading.Morpheus.sleep;
 import static io.harness.utils.SecretUtils.isBase64SecretIdentifier;
 
+import static software.wings.beans.TaskType.CI_CLEANUP;
+import static software.wings.beans.TaskType.INITIALIZATION_PHASE;
 import static software.wings.beans.TaskType.SCRIPT;
 import static software.wings.beans.TaskType.SHELL_SCRIPT_TASK_NG;
 
@@ -297,6 +299,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
   private static final String HEARTBEAT_RESPONSE = "{\"eventType\":\"DelegateHeartbeatResponseStreaming\"";
 
   private static final String HOST_NAME = getLocalHostName();
+  private static final int DEFAULT_MAX_CAPACITY = 100000;
   private static String DELEGATE_NAME =
       isNotBlank(System.getenv().get("DELEGATE_NAME")) ? System.getenv().get("DELEGATE_NAME") : "";
 
@@ -323,6 +326,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
   private final boolean dynamicRequestHandling = isNotBlank(System.getenv().get("DYNAMIC_REQUEST_HANDLING"))
       && Boolean.parseBoolean(System.getenv().get("DYNAMIC_REQUEST_HANDLING"));
   private final Optional<Integer> delegateTaskCapacity = getDelegateTaskCapacity();
+  private final int delegatePodCapacity = getDelegatePodCapacity();
   private String MANAGER_PROXY_CURL = System.getenv().get("MANAGER_PROXY_CURL");
   private String MANAGER_HOST_AND_PORT = System.getenv().get("MANAGER_HOST_AND_PORT");
   private static final String DEFAULT_PATCH_VERSION = "000";
@@ -332,7 +336,6 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
 
   private static volatile String delegateId;
   private static final String delegateInstanceId = generateUuid();
-  private final int MAX_ATTEMPTS = 3;
 
   @Inject
   @Getter(value = PACKAGE, onMethod = @__({ @VisibleForTesting }))
@@ -377,6 +380,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
   private final AtomicBoolean waiter = new AtomicBoolean(true);
 
   private final Set<String> currentlyAcquiringTasks = ConcurrentHashMap.newKeySet();
+  private final Set<String> currentlyRunningPods = ConcurrentHashMap.newKeySet();
   private final Map<String, DelegateTaskPackage> currentlyValidatingTasks = new ConcurrentHashMap<>();
   private final Map<String, DelegateTaskPackage> currentlyExecutingTasks = new ConcurrentHashMap<>();
   private final Map<String, DelegateTaskExecutionData> currentlyExecutingFutures = new ConcurrentHashMap<>();
@@ -386,7 +390,6 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
   private final AtomicInteger maxExecutingFuturesCount = new AtomicInteger();
   private final AtomicInteger heartbeatSuccessCalls = new AtomicInteger();
   private final AtomicInteger currentlyAcquiringTasksCount = new AtomicInteger();
-
   private final AtomicLong lastHeartbeatSentAt = new AtomicLong(System.currentTimeMillis());
   private final AtomicLong frozenAt = new AtomicLong(-1);
   private final AtomicLong lastHeartbeatReceivedAt = new AtomicLong(System.currentTimeMillis());
@@ -2012,6 +2015,8 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
     builder.put("maxValidatingTasksCount", Integer.toString(maxValidatingTasksCount.getAndSet(0)));
     builder.put("maxExecutingTasksCount", Integer.toString(maxExecutingTasksCount.getAndSet(0)));
     builder.put("maxExecutingFuturesCount", Integer.toString(maxExecutingFuturesCount.getAndSet(0)));
+    builder.put("currentlyAcquiringTasks", Integer.toString(currentlyAcquiringTasksCount.get()));
+    builder.put("currentlyRunningPods", Integer.toString(currentlyRunningPods.size()));
 
     for (Entry<String, ThreadPoolExecutor> executorEntry : getLogExecutors().entrySet()) {
       builder.put(executorEntry.getKey(), Integer.toString(executorEntry.getValue().getActiveCount()));
@@ -2043,10 +2048,12 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
 
     Optional.ofNullable(currentlyExecutingFutures.get(delegateTaskEvent.getDelegateTaskId()).getTaskFuture())
         .ifPresent(future -> future.cancel(true));
-    boolean isRemoved = currentlyAcquiringTasks.remove(delegateTaskEvent.getDelegateTaskId());
-    if (isRemoved) {
+
+    if (currentlyAcquiringTasks.remove(delegateTaskEvent.getDelegateTaskId())) {
       currentlyAcquiringTasksCount.getAndDecrement();
     }
+
+    currentlyRunningPods.remove(delegateTaskEvent.getDelegateTaskId());
 
     currentlyExecutingTasks.get(delegateTaskEvent.getDelegateTaskId()).getIsAborted().set(true);
     currentlyExecutingTasks.remove(delegateTaskEvent.getDelegateTaskId());
@@ -2141,6 +2148,19 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
           }
         }
 
+        // Note we can't make a distinction between K8S vs VM or other types of init infra tasks, but that shouldn't
+        // matter as one delegate is usually in charge of a single type of infrastructure
+        if (INITIALIZATION_PHASE.name().equals(delegateTaskEvent.getTaskType())) {
+          final var runningPods = currentlyRunningPods.size();
+          if (runningPods >= delegatePodCapacity) {
+            log.info("Not acquiring task - currently running {} pods and can't create new one. Max pod capacity is {}",
+                runningPods, delegatePodCapacity);
+            return;
+          } else {
+            currentlyRunningPods.add(delegateTaskId);
+          }
+        }
+
         log.debug("Try to acquire DelegateTask - accountId: {}", accountId);
         Call<DelegateTaskPackage> acquireCall =
             delegateAgentManagerClient.acquireTask(delegateId, delegateTaskId, accountId, delegateInstanceId);
@@ -2155,7 +2175,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
           } else {
             log.info("task has been already acquired, executed or timed out");
           }
-          return;
+          throw new IllegalArgumentException("Delegate task package is null");
         } else {
           log.debug("received task package {} for delegateInstance {}", delegateTaskPackage, delegateInstanceId);
         }
@@ -2164,7 +2184,6 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
           // Not whitelisted. Perform validation.
           // TODO: Remove this once TaskValidation does not use secrets
 
-          // applyDelegateSecretFunctor(delegatePackage);
           DelegateValidateTask delegateValidateTask = getDelegateValidateTask(delegateTaskEvent, delegateTaskPackage);
           injector.injectMembers(delegateValidateTask);
           currentlyValidatingTasks.put(delegateTaskPackage.getDelegateTaskId(), delegateTaskPackage);
@@ -2179,7 +2198,8 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
         }
 
       } catch (Exception e) {
-        log.error("Unable to get task for validation", e);
+        // If we failed to acquire the task to create a pod, we should remove it from the list of running pods
+        currentlyRunningPods.remove(delegateTaskId);
       } finally {
         boolean isRemoved = currentlyAcquiringTasks.remove(delegateTaskId);
         if (isRemoved) {
@@ -2259,11 +2279,12 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
         injector, delegateTaskPackage.getAccountId(), delegateTaskPackage.getData().getExpressionFunctorToken());
     applyDelegateExpressionEvaluator(delegateTaskPackage, delegateExpressionEvaluator);
 
-    DelegateRunnableTask delegateRunnableTask = delegateTaskFactory.getDelegateRunnableTask(
-        TaskType.valueOf(taskData.getTaskType()), delegateTaskPackage, logStreamingTaskClient,
-        getPostExecutionFunction(delegateTaskPackage.getDelegateTaskId(), sanitizer.orElse(null),
-            logStreamingTaskClient, delegateExpressionEvaluator, delegateTaskPackage.isShouldSkipOpenStream()),
-        getPreExecutionFunction(delegateTaskPackage, sanitizer.orElse(null), logStreamingTaskClient));
+    final var taskType = TaskType.valueOf(taskData.getTaskType());
+    DelegateRunnableTask delegateRunnableTask =
+        delegateTaskFactory.getDelegateRunnableTask(taskType, delegateTaskPackage, logStreamingTaskClient,
+            getPostExecutionFunction(taskType, delegateTaskPackage.getDelegateTaskId(), sanitizer.orElse(null),
+                logStreamingTaskClient, delegateExpressionEvaluator, delegateTaskPackage.isShouldSkipOpenStream()),
+            getPreExecutionFunction(delegateTaskPackage, sanitizer.orElse(null), logStreamingTaskClient));
     if (delegateRunnableTask instanceof AbstractDelegateRunnableTask) {
       ((AbstractDelegateRunnableTask) delegateRunnableTask).setDelegateHostname(HOST_NAME);
     }
@@ -2461,11 +2482,26 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       try {
         taskCapacity = Optional.of(Integer.parseInt(val));
       } catch (NumberFormatException ex) {
-        log.error("Unable to parse DELEGATE_TASK_CAPACITY env variable {} ", ex);
+        log.error("Unable to parse DELEGATE_TASK_CAPACITY env variable", ex);
       }
     }
 
     return taskCapacity;
+  }
+
+  private static int getDelegatePodCapacity() {
+    final var capacity = System.getenv().get("DELEGATE_POD_CAPACITY");
+    if (StringUtils.isNotEmpty(capacity)) {
+      try {
+        final var parsed = Integer.parseInt(capacity);
+        log.info("Pod capacity set to {}", parsed);
+        return parsed;
+      } catch (NumberFormatException ex) {
+        log.error("Unable to parse DELEGATE_POD_CAPACITY env variable", ex);
+        return DEFAULT_MAX_CAPACITY;
+      }
+    }
+    return DEFAULT_MAX_CAPACITY;
   }
 
   private BooleanSupplier getPreExecutionFunction(@NotNull DelegateTaskPackage delegateTaskPackage,
@@ -2503,9 +2539,9 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
     counter.updateAndGet(value -> Math.max(value, current));
   }
 
-  private Consumer<DelegateTaskResponse> getPostExecutionFunction(String taskId, LogSanitizer sanitizer,
-      ILogStreamingTaskClient logStreamingTaskClient, DelegateExpressionEvaluator delegateExpressionEvaluator,
-      boolean shouldSkipCloseStream) {
+  private Consumer<DelegateTaskResponse> getPostExecutionFunction(final TaskType taskType, String taskId,
+      LogSanitizer sanitizer, ILogStreamingTaskClient logStreamingTaskClient,
+      DelegateExpressionEvaluator delegateExpressionEvaluator, boolean shouldSkipCloseStream) {
     return taskResponse -> {
       if (logStreamingTaskClient != null) {
         try {
@@ -2521,6 +2557,15 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       try {
         sendTaskResponse(taskId, taskResponse);
       } finally {
+        // Note we can't make a distinction between K8S vs VM or other types of cleanup infra tasks, but that shouldn't
+        // matter as one delegate is usually in charge of a single type of infrastructure.
+        // Also, we remove the taskId even if cleanup fails because there will be no new attempt to cleanup. This means
+        // that we would stop tracking a Pod, but it could technically still be running in K8S. Nothing we can do in this
+        // scenario though. The pod would eventually get deleted regardless.
+        if (CI_CLEANUP == taskType) {
+          currentlyRunningPods.remove(taskId);
+        }
+
         if (sanitizer != null) {
           delegateLogService.unregisterLogSanitizer(sanitizer);
         }
