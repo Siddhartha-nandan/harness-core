@@ -59,7 +59,6 @@ import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
 import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
 import io.harness.ngtriggers.beans.dto.TriggerDetails;
-import io.harness.ngtriggers.beans.dto.TriggerDetailsRequestDTO;
 import io.harness.ngtriggers.beans.dto.TriggerYamlDiffDTO;
 import io.harness.ngtriggers.beans.dto.WebhookEventProcessingDetails;
 import io.harness.ngtriggers.beans.dto.WebhookEventProcessingDetails.WebhookEventProcessingDetailsBuilder;

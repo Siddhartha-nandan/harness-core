@@ -27,5 +27,4 @@ public class BulkTriggersFilterRequestDTO {
   String projectIdentifier;
   String pipelineIdentifier;
   String type;
-  List<TriggerDetailsRequestDTO> triggerDetails;
 }
