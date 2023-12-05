@@ -138,7 +138,7 @@ public class PluginInfoServiceImplTest {
     String schema = "identifier: github-pull-requests-board\n"
         + "name: GitHub Pull Requests Board\n"
         + "description: View all open GitHub pull requests owned by your team in Backstage.\n"
-        + "createdBy: DAZN\n"
+        + "creator: DAZN\n"
         + "category: Source Control Mgmt\n"
         + "source: https://github.com/backstage/backstage/tree/master/plugins/github-pull-requests-board";
     PluginInfoEntity pluginInfoEntity = PluginInfoEntity.builder().build();
@@ -146,7 +146,7 @@ public class PluginInfoServiceImplTest {
     when(FileUtils.readFile(any(), any(), any())).thenReturn(schema);
     when(pluginInfoRepository.saveOrUpdate(any(PluginInfoEntity.class))).thenReturn(pluginInfoEntity);
     pluginInfoServiceImpl.saveAllPluginInfo();
-    verify(pluginInfoRepository, times(18)).saveOrUpdate(any(PluginInfoEntity.class));
+    verify(pluginInfoRepository, times(19)).saveOrUpdate(any(PluginInfoEntity.class));
   }
 
   @Test

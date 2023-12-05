@@ -48,7 +48,7 @@ public class SLODashboardApiFilter {
   SLIEvaluationType evaluationType;
   @Parameter(description = "For filtering on the basis of SLI Evaluation types")
   @QueryParam("evaluationTypes")
-  SLIEvaluationType evaluationTypes;
+  List<SLIEvaluationType> evaluationTypes;
   @Parameter(description = "For filtering the simple slo's on the basis of accountId") boolean childResource;
   @Parameter(description = "For Filtering on the basis of environment identifiers")
   @QueryParam("envIdentifiers")

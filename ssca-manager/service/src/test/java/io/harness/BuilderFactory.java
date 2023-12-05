@@ -16,6 +16,8 @@ import io.harness.entities.Instance.InstanceBuilder;
 import io.harness.ng.core.environment.beans.EnvironmentType;
 import io.harness.spec.server.ssca.v1.model.Artifact;
 import io.harness.spec.server.ssca.v1.model.Attestation;
+import io.harness.spec.server.ssca.v1.model.CategoryScorecard;
+import io.harness.spec.server.ssca.v1.model.CategoryScorecardChecks;
 import io.harness.spec.server.ssca.v1.model.EnforcementResultDTO;
 import io.harness.spec.server.ssca.v1.model.EnforcementSummaryDTO;
 import io.harness.spec.server.ssca.v1.model.NormalizedSbomComponentDTO;
@@ -24,7 +26,6 @@ import io.harness.spec.server.ssca.v1.model.SbomMetadata;
 import io.harness.spec.server.ssca.v1.model.SbomProcess;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
 import io.harness.spec.server.ssca.v1.model.SbomScorecardRequestBody;
-import io.harness.spec.server.ssca.v1.model.Score;
 import io.harness.spec.server.ssca.v1.model.ScorecardInfo;
 import io.harness.ssca.beans.CyclonedxDTO;
 import io.harness.ssca.beans.CyclonedxDTO.CyclonedxDTOBuilder;
@@ -33,8 +34,13 @@ import io.harness.ssca.beans.SpdxDTO;
 import io.harness.ssca.beans.SpdxDTO.SpdxDTOBuilder;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityBuilder;
+import io.harness.ssca.entities.BaselineEntity;
+import io.harness.ssca.entities.BaselineEntity.BaselineEntityBuilder;
 import io.harness.ssca.entities.CdInstanceSummary;
 import io.harness.ssca.entities.CdInstanceSummary.CdInstanceSummaryBuilder;
+import io.harness.ssca.entities.ConfigEntity;
+import io.harness.ssca.entities.ConfigEntity.ConfigEntityBuilder;
+import io.harness.ssca.entities.ConfigEntity.ConfigInfo;
 import io.harness.ssca.entities.EnforcementResultEntity;
 import io.harness.ssca.entities.EnforcementResultEntity.EnforcementResultEntityBuilder;
 import io.harness.ssca.entities.EnforcementSummaryEntity;
@@ -49,8 +55,10 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -392,6 +400,43 @@ public class BuilderFactory {
         .violationType("violationType");
   }
 
+  public BaselineEntityBuilder getBaselineEntityBuilder() {
+    return BaselineEntity.builder()
+        .accountIdentifier(context.getAccountId())
+        .orgIdentifier(context.orgIdentifier)
+        .projectIdentifier(context.projectIdentifier)
+        .artifactId("artifact")
+        .tag("tag");
+  }
+
+  public ConfigEntityBuilder getConfigEntityBuilder() {
+    return ConfigEntity.builder()
+        .accountId(context.accountId)
+        .orgId(context.getOrgIdentifier())
+        .projectId(context.getProjectIdentifier())
+        .configId("configId")
+        .name("sbomqs")
+        .type("scorecard")
+        .creationOn("2023-10-17T16:00:54+00:00")
+        .userId("example user")
+        .configInfos(getConfigInfoList());
+  }
+
+  private List<ConfigInfo> getConfigInfoList() {
+    List<ConfigInfo> configInfoList = new ArrayList<>();
+
+    Map<String, String> config = new HashMap<>();
+    config.put("key1", "value1");
+    config.put("key2", "value2");
+    configInfoList.add(ConfigEntity.ConfigInfo.builder()
+                           .id("example id")
+                           .categoryName("example category name")
+                           .config(config)
+                           .build());
+
+    return configInfoList;
+  }
+
   public SbomScorecardRequestBody getSbomScorecardRequestBody() {
     return new SbomScorecardRequestBody()
         .accountId(context.accountId)
@@ -399,10 +444,11 @@ public class BuilderFactory {
         .projectId(context.getProjectIdentifier())
         .orchestrationId("orchestrationId")
         .avgScore("8.0")
+        .maxScore("10.0")
         .creationOn(clock.instant().toString())
         .sbomDetails(getSbomScorecardDetails())
         .scoreCardInfo(new ScorecardInfo().toolName("sbomqs").toolVersion("v0.0.25"))
-        .scores(getScores());
+        .category(getScorecardCategories());
   }
 
   private SbomDetailsForScorecard getSbomScorecardDetails() {
@@ -415,22 +461,26 @@ public class BuilderFactory {
         .fileFormat("json");
   }
 
-  private List<Score> getScores() {
-    List<Score> scores = new ArrayList<>();
-    scores.add(new Score()
-                   .score("10")
-                   .maxScore("10")
-                   .category("Structural")
-                   .feature("sbom_spec")
-                   .description("provided sbom is in a supported sbom format of spdx,cyclonedx")
-                   .ignored("false"));
-    scores.add(new Score()
-                   .score("3.82")
-                   .maxScore("10")
-                   .category("NTIA-minimum-elements")
-                   .feature("comp_with_supplier")
-                   .description("160/418 have supplier names")
-                   .ignored("false"));
-    return scores;
+  private List<CategoryScorecard> getScorecardCategories() {
+    List<CategoryScorecard> categories = new ArrayList<>();
+
+    List<CategoryScorecardChecks> checkList = new ArrayList<>();
+
+    checkList.add(new CategoryScorecardChecks()
+                      .name("sbom_spec")
+                      .isEnabled("true")
+                      .score("10")
+                      .maxScore("10")
+                      .description("provided sbom is in a supported sbom format of spdx,cyclonedx"));
+
+    categories.add(new CategoryScorecard()
+                       .name("Structural")
+                       .score("9.0")
+                       .maxScore("10.0")
+                       .isEnabled("true")
+                       .weightage("0")
+                       .checks(checkList));
+
+    return categories;
   }
 }

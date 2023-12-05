@@ -265,6 +265,7 @@ import io.harness.timescaledb.TimeScaleDBConfig;
 import io.harness.timescaledb.TimeScaleDBService;
 import io.harness.timescaledb.TimeScaleDBServiceImpl;
 import io.harness.token.TokenClientModule;
+import io.harness.tunnel.TunnelResourceClientModule;
 import io.harness.user.UserClientModule;
 import io.harness.version.VersionModule;
 import io.harness.waiter.AsyncWaitEngineImpl;
@@ -452,6 +453,8 @@ public class IdpModule extends AbstractModule {
         appConfig.getEnforcementClientConfiguration()));
     install(new CDStageConfigResourceClientModule(appConfig.getNgManagerServiceHttpClientConfig(),
         appConfig.getNgManagerServiceSecret(), IDP_SERVICE.getServiceId()));
+    install(new TunnelResourceClientModule(appConfig.getNgManagerServiceHttpClientConfig(),
+        appConfig.getNgManagerServiceSecret(), IDP_SERVICE.getServiceId()));
     // Keeping it to 1 thread to start with. Assuming executor service is used only to
     // serve health checks. If it's being used for other tasks also, max pool size should be increased.
     bind(ExecutorService.class)
@@ -531,7 +534,7 @@ public class IdpModule extends AbstractModule {
         .annotatedWith(Names.named("AppConfigPurger"))
         .toInstance(new ManagedScheduledExecutorService("AppConfigPurger"));
     bind(ExecutorService.class)
-        .annotatedWith(Names.named("DefaultPREnvAccountIdToNamespaceMappingCreator"))
+        .annotatedWith(Names.named("DefaultDevSpaceEnvProvisioner"))
         .toInstance(new ManagedExecutorService(Executors.newSingleThreadExecutor()));
     bind(ExecutorService.class)
         .annotatedWith(Names.named("ScoreComputer"))
@@ -734,9 +737,16 @@ public class IdpModule extends AbstractModule {
 
   @Provides
   @Singleton
-  @Named("prEnvDefaultBackstageNamespace")
-  public String prEnvDefaultBackstageNamespace() {
-    return this.appConfig.getPrEnvDefaultBackstageNamespace();
+  @Named("devSpaceDefaultBackstageNamespace")
+  public String devSpaceDefaultBackstageNamespace() {
+    return this.appConfig.getDevSpaceDefaultBackstageNamespace();
+  }
+
+  @Provides
+  @Singleton
+  @Named("devSpaceDefaultAccountId")
+  public String devSpaceDefaultAccountId() {
+    return this.appConfig.getDevSpaceDefaultAccountId();
   }
 
   @Provides
@@ -985,6 +995,13 @@ public class IdpModule extends AbstractModule {
   @Named("internalAccounts")
   public List<String> internalAccounts() {
     return this.appConfig.getInternalAccounts();
+  }
+
+  @Provides
+  @Singleton
+  @Named("enableMetrics")
+  public Boolean enableMetrics() {
+    return this.appConfig.isEnableMetrics();
   }
 
   @Provides

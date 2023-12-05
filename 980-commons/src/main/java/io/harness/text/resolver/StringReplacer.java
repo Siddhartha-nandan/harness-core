@@ -302,17 +302,16 @@ public class StringReplacer {
 
   private boolean checkConditionalOrLoopOperators(StringBuffer s, int currentPos) {
     String leftSubString = s.substring(0, currentPos + 1);
-    Set<String> jexlKeywordOperators = Set.of("if", "else", "for", "while", "do");
-    int minLength = 2;
-    int maxLength = 5;
+    Set<String> jexlKeywordOperators =
+        Set.of("if (", "if(", "else {", "else{", "for(", "for (", "while (", "while(", "do {", "do{");
+    int minLength = 3;
+    int maxLength = 7;
     // checking if any of the jexl operators are present in the left substring as the whole word
     for (int i = 0; i < leftSubString.length(); i++) {
       for (int j = minLength; j <= maxLength; j++) {
         if (i + j <= leftSubString.length()) {
           String substring = leftSubString.substring(i, i + j);
-          if (jexlKeywordOperators.contains(substring)
-              && (i == 0 || !StringUtils.isAlphanumeric(String.valueOf(s.charAt(i - 1))))
-              && (i + j == leftSubString.length() || !(StringUtils.isAlphanumeric(String.valueOf(s.charAt(i + j)))))) {
+          if (jexlKeywordOperators.contains(substring) && (i == 0 || s.charAt(i - 1) == ' ')) {
             return true;
           }
         }
@@ -331,8 +330,7 @@ public class StringReplacer {
     // =~ and !~ regex match and its negate jexl operators
     // =^ and !^ startsWith and its negate operator
     // =$ and !$ endsWith and its negate operator
-    return c == '+' || c == '=' || c == '?' || c == '&' || c == '|' || c == '!' || c == '~' || c == '^' || c == '$'
-        || c == '>';
+    return c == '+' || c == '=' || c == '?' || c == '&' || c == '|' || c == '!' || c == '~' || c == '^' || c == '$';
   }
 
   private boolean checkIfCommaIsInMethodInvocationInLeftSubstring(StringBuffer buf, int currentPos) {

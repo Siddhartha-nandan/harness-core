@@ -14,7 +14,6 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.EntityReference;
 import io.harness.beans.IdentifierRef;
-import io.harness.beans.InfraDefReference;
 import io.harness.beans.InputSetReference;
 import io.harness.beans.NGTemplateReference;
 import io.harness.beans.TriggerReference;
@@ -347,7 +346,7 @@ public enum EntityType {
       IdentifierRef.class, EntityYamlRootNames.CLOUDFORMATION_ROLLBACK_STACK_STEP),
   @JsonProperty(EntityTypeConstants.INFRASTRUCTURE)
   INFRASTRUCTURE(
-      ModuleType.CORE, EntityTypeConstants.INFRASTRUCTURE, InfraDefReference.class, EntityYamlRootNames.INFRASTRUCTURE),
+      ModuleType.CORE, EntityTypeConstants.INFRASTRUCTURE, IdentifierRef.class, EntityYamlRootNames.INFRASTRUCTURE),
   @JsonProperty(EntityTypeConstants.COMMAND)
   COMMAND_STEP(ModuleType.CD, EntityTypeConstants.COMMAND, IdentifierRef.class, EntityYamlRootNames.COMMAND),
   @JsonProperty(EntityTypeConstants.STRATEGY_NODE)
@@ -690,7 +689,13 @@ public enum EntityType {
       ModuleType.IDP, EntityTypeConstants.IDP_COOKIECUTTER, IdentifierRef.class, EntityYamlRootNames.IDP_COOKIECUTTER),
   @JsonProperty(EntityTypeConstants.IDP_CREATE_REPO)
   IDP_CREATE_REPO(
-      ModuleType.IDP, EntityTypeConstants.IDP_CREATE_REPO, IdentifierRef.class, EntityYamlRootNames.IDP_CREATE_REPO);
+      ModuleType.IDP, EntityTypeConstants.IDP_CREATE_REPO, IdentifierRef.class, EntityYamlRootNames.IDP_CREATE_REPO),
+  @JsonProperty(EntityTypeConstants.DOWNLOAD_AWS_S3)
+  DOWNLOAD_AWS_S3(
+      ModuleType.CD, EntityTypeConstants.DOWNLOAD_AWS_S3, IdentifierRef.class, EntityYamlRootNames.DOWNLOAD_AWS_S3),
+  @JsonProperty(EntityTypeConstants.IDP_CODE_PUSH)
+  IDP_CODE_PUSH(
+      ModuleType.IDP, EntityTypeConstants.IDP_CODE_PUSH, IdentifierRef.class, EntityYamlRootNames.IDP_CODE_PUSH);
 
   private final ModuleType moduleType;
   String yamlName;

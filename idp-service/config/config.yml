@@ -160,7 +160,8 @@ provisionModuleConfig:
   triggerPipelineUrl: ""
 
 env: "local"
-prEnvDefaultBackstageNamespace: ""
+devSpaceDefaultBackstageNamespace: "laxmiharness"
+devSpaceDefaultAccountId: "VVfCEh_ZRTm7pJWtAH-PrA"
 
 backstageAppBaseUrl: https://localhost:3000
 backstagePostgresHost: ""
@@ -410,6 +411,8 @@ ciExecutionServiceConfig:
       image: deveshharness2306/cookiecutter:latest
     idpCreateRepo:
       image: deveshharness2306/createrepo:latest
+    idpCodePush:
+      image: deveshharness2306/codepush:latest
     vmImageConfig:
       # Use root image for VM git clone
       gitClone: harness/drone-git:1.2.7
@@ -426,6 +429,7 @@ ciExecutionServiceConfig:
       iacmTerraform: plugins/harness_terraform:dev
       idpCookieCutter: deveshharness2306/cookiecutter:latest
       idpCreateRepo: deveshharness2306/createrepo:latest
+      idpCodePush: deveshharness2306/codepush:latest
 
 
 iacmServiceConfig:
@@ -437,3 +441,4 @@ enforcementClientConfiguration:
   enforcementCheckEnabled: false
 
 harnessCodeGitUrl: ${HARNESS_CODE_GIT_URL:- http://localhost:3000/git}
+enableMetrics: false
