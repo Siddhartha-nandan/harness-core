@@ -380,7 +380,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
   private final AtomicBoolean waiter = new AtomicBoolean(true);
 
   private final Set<String> currentlyAcquiringTasks = ConcurrentHashMap.newKeySet();
-  private final Set<String> currentlyRunningPods = ConcurrentHashMap.newKeySet();
+  private final AtomicInteger currentlyRunningPodsCnt = new AtomicInteger();
   private final Map<String, DelegateTaskPackage> currentlyValidatingTasks = new ConcurrentHashMap<>();
   private final Map<String, DelegateTaskPackage> currentlyExecutingTasks = new ConcurrentHashMap<>();
   private final Map<String, DelegateTaskExecutionData> currentlyExecutingFutures = new ConcurrentHashMap<>();
@@ -2016,7 +2016,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
     builder.put("maxExecutingTasksCount", Integer.toString(maxExecutingTasksCount.getAndSet(0)));
     builder.put("maxExecutingFuturesCount", Integer.toString(maxExecutingFuturesCount.getAndSet(0)));
     builder.put("currentlyAcquiringTasks", Integer.toString(currentlyAcquiringTasksCount.get()));
-    builder.put("currentlyRunningPods", Integer.toString(currentlyRunningPods.size()));
+    builder.put("currentlyRunningPods", Integer.toString(currentlyRunningPodsCnt.get()));
 
     for (Entry<String, ThreadPoolExecutor> executorEntry : getLogExecutors().entrySet()) {
       builder.put(executorEntry.getKey(), Integer.toString(executorEntry.getValue().getActiveCount()));
@@ -2053,7 +2053,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       currentlyAcquiringTasksCount.getAndDecrement();
     }
 
-    currentlyRunningPods.remove(delegateTaskEvent.getDelegateTaskId());
+    currentlyRunningPodsCnt.decrementAndGet();
 
     currentlyExecutingTasks.get(delegateTaskEvent.getDelegateTaskId()).getIsAborted().set(true);
     currentlyExecutingTasks.remove(delegateTaskEvent.getDelegateTaskId());
@@ -2151,13 +2151,14 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
         // Note we can't make a distinction between K8S vs VM or other types of init infra tasks, but that shouldn't
         // matter as one delegate is usually in charge of a single type of infrastructure
         if (INITIALIZATION_PHASE.name().equals(delegateTaskEvent.getTaskType())) {
-          final var runningPods = currentlyRunningPods.size();
+          final var runningPods = currentlyRunningPodsCnt.get();
           if (runningPods >= delegatePodCapacity) {
-            log.info("Not acquiring task - currently running {} pods and can't create new one. Max pod capacity is {}",
-                runningPods, delegatePodCapacity);
+            log.info(
+                "Not acquiring task {} - currently running {} pods and can't create new one. Max pod capacity is {}",
+                delegateTaskId, runningPods, delegatePodCapacity);
             return;
           } else {
-            currentlyRunningPods.add(delegateTaskId);
+            currentlyRunningPodsCnt.incrementAndGet();
           }
         }
 
@@ -2199,7 +2200,8 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
 
       } catch (Exception e) {
         // If we failed to acquire the task to create a pod, we should remove it from the list of running pods
-        currentlyRunningPods.remove(delegateTaskId);
+        final var newCnt = currentlyRunningPodsCnt.decrementAndGet();
+        log.error("Problem acquiring task {}, removing running pod. Now have {}", delegateTaskId, newCnt, e);
       } finally {
         boolean isRemoved = currentlyAcquiringTasks.remove(delegateTaskId);
         if (isRemoved) {
@@ -2560,10 +2562,10 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
         // Note we can't make a distinction between K8S vs VM or other types of cleanup infra tasks, but that shouldn't
         // matter as one delegate is usually in charge of a single type of infrastructure.
         // Also, we remove the taskId even if cleanup fails because there will be no new attempt to cleanup. This means
-        // that we would stop tracking a Pod, but it could technically still be running in K8S. Nothing we can do in this
-        // scenario though. The pod would eventually get deleted regardless.
+        // that we would stop tracking a Pod, but it could technically still be running in K8S. Nothing we can do in
+        // this scenario though. The pod would eventually get deleted regardless.
         if (CI_CLEANUP == taskType) {
-          currentlyRunningPods.remove(taskId);
+          currentlyRunningPodsCnt.decrementAndGet();
         }
 
         if (sanitizer != null) {
