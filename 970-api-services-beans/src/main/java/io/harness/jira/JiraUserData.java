@@ -35,7 +35,7 @@ public class JiraUserData {
     }
     this.displayName = JsonNodeUtils.mustGetString(node, "displayName");
     this.active = JsonNodeUtils.mustGetBoolean(node, "active");
-    this.emailAddress = JsonNodeUtils.mustGetString(node, "emailAddress");
+    this.emailAddress = JsonNodeUtils.getString(node, "emailAddress");
   }
 
   public JiraUserData(String accountId, String displayName, boolean active, String emailAddress) {

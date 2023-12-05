@@ -1,0 +1,15 @@
+{
+  "self": "https://harness.atlassian.net/rest/api/2/user?accountId=5cc21ecdf345850e7270f649",
+  "accountId": "5cc21ecdf345850e7270f649",
+  "accountType": "atlassian",
+  "avatarUrls": {
+    "48x48": "https://secure.gravatar.com/avatar/426b975154afbf6969bcc910da4820c5?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAU-2.png",
+    "24x24": "https://secure.gravatar.com/avatar/426b975154afbf6969bcc910da4820c5?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAU-2.png",
+    "16x16": "https://secure.gravatar.com/avatar/426b975154afbf6969bcc910da4820c5?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAU-2.png",
+    "32x32": "https://secure.gravatar.com/avatar/426b975154afbf6969bcc910da4820c5?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAU-2.png"
+  },
+  "displayName": "auto user",
+  "active": true,
+  "timeZone": "America/Los_Angeles",
+  "locale": "en_GB"
+}

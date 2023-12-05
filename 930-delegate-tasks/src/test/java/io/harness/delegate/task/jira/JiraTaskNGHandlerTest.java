@@ -52,8 +52,10 @@ import io.harness.jira.JiraIssueNG;
 import io.harness.jira.JiraIssueTransitionNG;
 import io.harness.jira.JiraProjectBasicNG;
 import io.harness.jira.JiraStatusNG;
+import io.harness.jira.JiraUserData;
 import io.harness.rule.Owner;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.tomakehurst.wiremock.core.Options;
@@ -61,6 +63,7 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1098,7 +1101,7 @@ public class JiraTaskNGHandlerTest extends CategoryTest {
   @Test
   @Owner(developers = YUVRAJ)
   @Category(UnitTests.class)
-  public void testUpdateIssueForException() {
+  public void testUpdateIssueForException() throws Exception {
     Map<String, String> fields = new HashMap<>();
     fields.put("QE Assignee", "your-jira-account-id");
     fields.put("Test Summary", "No test added");
@@ -1122,6 +1125,16 @@ public class JiraTaskNGHandlerTest extends CategoryTest {
       assertThatExceptionOfType(JiraClientException.class)
           .isThrownBy(() -> jiraTaskNGHandler.updateIssue(jiraTaskNGParameters));
     }
+  }
+
+  @Test
+  @Owner(developers = vivekveman)
+  @Category(UnitTests.class)
+  public void testJsonUserData() throws Exception {
+    ClassLoader classLoader = this.getClass().getClassLoader();
+    JsonNode jsonNode = getJsonNodeResponseFromJsonFileFailure("servicenow/JiraUserData.json", classLoader);
+    JiraUserData a = new JiraUserData(jsonNode);
+    assertThat(a.getEmailAddress()).isNull();
   }
 
   private JiraTaskNGParametersBuilder createJiraTaskParametersBuilder() {
@@ -1155,5 +1168,10 @@ public class JiraTaskNGHandlerTest extends CategoryTest {
                       .build())
             .build();
     return JiraTaskNGParameters.builder().jiraConnectorDTO(jiraConnectorDTO);
+  }
+  private JsonNode getJsonNodeResponseFromJsonFileFailure(String filePath, ClassLoader classLoader) throws Exception {
+    URL jsonFile = classLoader.getResource(filePath);
+    ObjectMapper mapper = new ObjectMapper();
+    return mapper.readTree(jsonFile);
   }
 }
