@@ -268,9 +268,7 @@ public class NGTriggerRepositoryCustomImpl implements NGTriggerRepositoryCustom 
         TriggerFilterHelper.getCriteriaForEnablingDisablingTriggersInBulk(accountId, bulkTriggersRequestDTO);
     Query query = new Query(criteria);
 
-    RetryPolicy<Object> retryPolicy = getRetryPolicy(
-        "[Retrying]: Failed updating Trigger; attempt: {}", "[Failed]: Failed updating Trigger; attempt: {}");
-    Failsafe.with(retryPolicy).get(() -> mongoTemplate.updateMulti(query, update, NGTriggerEntity.class));
+    bulkOperations = bulkOperations.updateMulti(query, update);
 
     return bulkOperations.execute().getModifiedCount();
   }
