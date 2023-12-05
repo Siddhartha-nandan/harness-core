@@ -203,18 +203,21 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
 
     List<String> rows = new ArrayList<>();
     for (var entry : billingData.entrySet()) {
-      rows.add(String.format("('%s', ", accountId)
-                   .concat(String.format("'%s', ", entry.getKey().getConnectorId()))
-                   .concat(String.format("'%s', ", "AWS"))
-                   .concat(String.format("'%s', ", entry.getKey().getCloudProviderAccountId()))
-                   .concat(String.format("'%s', ", entry.getKey().getUsageStartDate()))
-                   .concat(String.format("'%s', ", entry.getKey().getUsageEndDate()))
-                   .concat(String.format("'%s', ", entry.getKey().getCostType()))
+      if (entry.getValue().getCostFromRawBillingTable() != null) {
+        // process data only if costs from corresponding billing table is present, else ignore
+        rows.add(String.format("('%s', ", accountId)
+                     .concat(String.format("'%s', ", entry.getKey().getConnectorId()))
+                     .concat(String.format("'%s', ", "AWS"))
+                     .concat(String.format("'%s', ", entry.getKey().getCloudProviderAccountId()))
+                     .concat(String.format("'%s', ", entry.getKey().getUsageStartDate()))
+                     .concat(String.format("'%s', ", entry.getKey().getUsageEndDate()))
+                     .concat(String.format("'%s', ", entry.getKey().getCostType()))
 
-                   .concat(String.format("%s, ", entry.getValue().getCostFromCloudProviderAPI()))
-                   .concat(String.format("%s, ", entry.getValue().getCostFromRawBillingTable()))
-                   .concat(String.format("%s, ", entry.getValue().getCostFromUnifiedTable()))
-                   .concat("CURRENT_TIMESTAMP() )"));
+                     .concat(String.format("%s, ", entry.getValue().getCostFromCloudProviderAPI()))
+                     .concat(String.format("%s, ", entry.getValue().getCostFromRawBillingTable()))
+                     .concat(String.format("%s, ", entry.getValue().getCostFromUnifiedTable()))
+                     .concat("CURRENT_TIMESTAMP() )"));
+      }
     }
     String insertQuery = String.format(INSERT_INTO_BILLING_DATA_VERIFICATION_TABLE_QUERY_TEMPLATE,
         ccmBillingDataVerificationTableId, String.join(", ", rows));
