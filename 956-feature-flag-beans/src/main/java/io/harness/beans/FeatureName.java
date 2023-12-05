@@ -159,7 +159,6 @@ public enum FeatureName {
       HarnessTeam.CDP),
   CDS_RESOLVE_OBJECTS_VIA_JSON_SELECT(
       "Support resolution of Objects via JSON Select Command in HTTP Step", HarnessTeam.CDC),
-  CDS_SERVERLESS_V2("FF for enabling Serverless 2.0 deployments", HarnessTeam.CDP),
   CDS_SERVICENOW_USE_METADATA_V2(
       "Using METADATA_V2 in /metadata (create update) and /createMetadata (approval) API in Servicenow Steps NG; and changing /metadata parsing to manager",
       HarnessTeam.CDC),
@@ -188,12 +187,9 @@ public enum FeatureName {
   CDS_USE_HTTP_CHECK_IGNORE_RESPONSE_INSTEAD_OF_SOCKET_NG(
       "This is to diable checking for the HTTP status code and instead just check for a valid response",
       HarnessTeam.CDP),
-  CDS_USE_OLD_SERVICE_V1("Feature flag to use service v1. NG_SVC_ENV_REDESIGN will be deprecated", HarnessTeam.CDC),
-  CDS_WEBAPP_ENABLE_CLEAN_OPTION("Feature flag to enable clean option for slot deployment step", HarnessTeam.CDP),
   CDS_GITHUB_APP_AUTHENTICATION("This flag enables the github app authentication fo github connector", HarnessTeam.CDP),
   CDS_RESOURCE_CONSTRAINT_INSTANCE_OPTIMIZATION(
       "This is to optimize resource constraint Instance read Query In CG", HarnessTeam.CDC),
-  CDS_V1_EOL_BANNER("Display EOL banner for v1 CD entities", HarnessTeam.CDC),
   CD_GIT_WEBHOOK_POLLING("Used to poll git webhook recent delivery events", HarnessTeam.CDP),
   CD_NG_DYNAMIC_PROVISIONING_ENV_V2(
       "Enable dynamic provisioning support in v2 environment. Epic: CDS-39606", HarnessTeam.CDC),
@@ -828,7 +824,6 @@ public enum FeatureName {
           + "sending task progress event via log streaming client which will be received and handled by handleProgress handler in the ng-manager step class",
       HarnessTeam.CDP),
   CDS_BASIC_ASG("FF for using CG Basic Asg configs in NG Asg deployments", HarnessTeam.CDP),
-  CDS_ASG_V2("FF for enabling ASG V2 features like userData, instances, loadBalancers, baseAsg", HarnessTeam.CDP),
   CDS_ENABLE_SHELL_SCRITPT_FILE_REFERENCE(
       "Used for ShellScript step in order to support scripts from Harness File Store", PIPELINE),
 
