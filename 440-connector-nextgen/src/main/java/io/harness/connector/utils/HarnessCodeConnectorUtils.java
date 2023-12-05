@@ -21,8 +21,8 @@ import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class HarnessCodeConnectorUtils {
-  public HarnessConnectorDTO getDummyHarnessCodeConnectorWithJwtAuth(String repoName, String projectId, String orgId,
-      String accountId, String serviceName, String serviceSecret, String harnessCodeApiBaseUrl,
+  public HarnessConnectorDTO getDummyHarnessCodeConnectorWithJwtAuth(String repoName, String accountId, String orgId,
+      String projectId, , String serviceName, String serviceSecret, String harnessCodeApiBaseUrl,
       ServiceTokenGenerator tokenGenerator) {
     SecretRefData token = SecretRefData.builder()
                               .decryptedValue(getToken(serviceName, serviceSecret, tokenGenerator).toCharArray())

@@ -311,8 +311,8 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
 
   private ScmConnector getHarnessCodeConnector(
       String repoName, String projectIdentifier, String orgIdentifier, String accountId) {
-    return HarnessCodeConnectorUtils.getDummyHarnessCodeConnectorWithJwtAuth(repoName, projectIdentifier, orgIdentifier,
-        accountId, AuthorizationServiceHeader.NG_MANAGER.getServiceId(), ngServiceSecret, scmServiceBaseUrl,
+    return HarnessCodeConnectorUtils.getDummyHarnessCodeConnectorWithJwtAuth(repoName, accountId, orgIdentifier,
+        projectIdentifier, AuthorizationServiceHeader.NG_MANAGER.getServiceId(), ngServiceSecret, scmServiceBaseUrl,
         tokenGenerator);
   }
 }
