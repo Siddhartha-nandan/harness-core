@@ -95,12 +95,16 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- else }}
           lifecycle:
             preStop:
               exec:
                 command:
                   - touch
                   - shutdown
+          {{- end }}
           livenessProbe:
             failureThreshold: 20
             httpGet:
@@ -143,9 +147,6 @@ spec:
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- if .Values.lifecycleHooks }}
-          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
-          {{- end }}
       volumes:
         - name: dynamic-iterator-config
           configMap:

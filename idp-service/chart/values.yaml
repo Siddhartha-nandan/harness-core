@@ -11,7 +11,7 @@ global:
   istio:
     enabled: false
     gateway:
-      create: true
+      create: false
       port: 443
       protocol: HTTPS
     hosts:
@@ -126,6 +126,7 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: "harness-default"
 podAnnotations: {}
+podLabels: {}
 podSecurityContext: {}
 # fsGroup: 2000
 

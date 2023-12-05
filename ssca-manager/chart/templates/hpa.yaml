@@ -19,5 +19,5 @@ spec:
     name: ssca-manager
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
-  {{ include "harnesscommon.hpa.metrics.apiVersion" . | nindent 2 }}
+  {{ include "harnesscommon.hpa.metrics.apiVersion" . }}
 {{- end }}

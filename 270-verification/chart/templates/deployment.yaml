@@ -99,10 +99,18 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 1
-          {{ if .Values.global.mongoSSL }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          {{ if or .Values.global.mongoSSL .Values.extraVolumeMounts }}
           volumeMounts:
+            {{ if or .Values.global.mongoSSL }}
             - name: mongo-ssl-certs
               mountPath: /mongo
+            {{ end }}
+            {{- if .Values.extraVolumeMounts }}
+            {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+            {{- end }}
           {{ end }}
       dnsPolicy: ClusterFirst
       restartPolicy: Always
@@ -128,9 +136,14 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{ if .Values.global.mongoSSL }}
+      {{ if or .Values.global.mongoSSL .Values.extraVolumeMounts }}
       volumes:
+      {{ if .Values.global.mongoSSL }}
       - name: mongo-ssl-certs
         secret:
           secretName: mongodb-replicaset-ssl-cert
       {{ end }}
+      {{- if .Values.extraVolumes }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+      {{- end }}
+      {{- end }}

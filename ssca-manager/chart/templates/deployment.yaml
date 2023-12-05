@@ -12,6 +12,9 @@ metadata:
     {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.global.commonAnnotations "context" $) | nindent 4 }}
     {{- end }}
 spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "ssca-manager.selectorLabels" . | nindent 6 }}
@@ -67,6 +70,8 @@ spec:
         - name: ssca-manager
           image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
           imagePullPolicy: Always
+          securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
@@ -122,6 +127,13 @@ spec:
             periodSeconds: 5
           resources:
           {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.extraVolumeMounts }}
+          volumeMounts:
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+          {{- end }}
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

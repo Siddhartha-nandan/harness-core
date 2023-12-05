@@ -3,6 +3,7 @@ apiVersion: {{ include "harnesscommon.capabilities.hpa.apiVersion" ( dict "conte
 kind: HorizontalPodAutoscaler
 metadata:
   name: {{ include "verification-svc.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "verification-svc.labels" . | nindent 4 }}
     {{- if .Values.global.commonLabels }}

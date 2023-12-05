@@ -130,11 +130,7 @@ spec:
           {{- if .Values.extraEnvVarsSecret }}
           - secretRef:
               name: {{ include "harnesscommon.tplvalues.render" (dict "value" .Values.extraEnvVarsSecret "context" $) }}
-            {{- end }}
-          {{- if .Values.extraVolumeMounts }}
-          volumeMounts:
-            {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
-            {{- end }}
+          {{- end }}
           {{- if .Values.resources }}
           resources:
             {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.resources "context" $) | nindent 12 }}
@@ -182,7 +178,6 @@ spec:
         {{- if .Values.sidecars }}
         {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.sidecars "context" $) | nindent 8 }}
         {{- end }}
-        
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
