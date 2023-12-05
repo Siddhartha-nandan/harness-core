@@ -379,6 +379,7 @@ import io.harness.delegate.beans.polling.ArtifactPollingDelegateResponse;
 import io.harness.delegate.beans.polling.GitPollingDelegateResponse;
 import io.harness.delegate.beans.polling.ManifestPollingDelegateResponse;
 import io.harness.delegate.beans.polling.PollingDelegateResponse;
+import io.harness.delegate.beans.scheduler.CleanupInfraResponse;
 import io.harness.delegate.beans.scheduler.InitializeExecutionInfraResponse;
 import io.harness.delegate.beans.secrets.SSHConfigValidationTaskResponse;
 import io.harness.delegate.beans.secrets.WinRmConfigValidationTaskResponse;
@@ -436,6 +437,7 @@ import io.harness.delegate.exception.ServerlessNGException;
 import io.harness.delegate.exception.TaskNGDataException;
 import io.harness.delegate.task.ListNotifyResponseData;
 import io.harness.delegate.task.artifactBundle.ArtifactBundleDelegateConfig;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
 import io.harness.delegate.task.artifactBundle.ArtifactBundleFetchRequest;
 import io.harness.delegate.task.artifactBundle.PackageArtifactConfig;
 import io.harness.delegate.task.artifactBundle.response.ArtifactBundleFetchResponse;
@@ -1582,6 +1584,7 @@ public class DelegateTasksBeansKryoRegister implements KryoRegistrar {
     kryo.register(VmInfraInfo.class, 25003);
     kryo.register(DliteVmInfraInfo.class, 25004);
     kryo.register(InitializeExecutionInfraResponse.class, 25005);
+    kryo.register(CleanupInfraResponse.class, 25006);
 
     kryo.register(DeploymentSlotData.class, 19457);
     kryo.register(ShellScriptTaskParametersNG.class, 19463);
@@ -2619,5 +2622,6 @@ public class DelegateTasksBeansKryoRegister implements KryoRegistrar {
     kryo.register(ArtifactBundleFetchResponse.class, 20001005);
     kryo.register(ArtifactBundleDelegateConfig.class, 20001006);
     kryo.register(PackageArtifactConfig.class, 20001007);
+    kryo.register(ArtifactBundleDetails.class, 20002011);
   }
 }

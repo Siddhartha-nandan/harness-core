@@ -53,6 +53,7 @@ import io.harness.product.ci.scm.proto.Provider;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.io.File;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.NotImplementedException;
 
@@ -97,7 +98,10 @@ public class ScmGitProviderMapper {
     } else {
       builder.setBitbucketServer(createBitbucketServerProvider(bitbucketConnector));
     }
-    return builder.setSkipVerify(skipVerify).setAdditionalCertsPath(getAdditionalCertsPath()).build();
+    return builder.setSkipVerify(skipVerify)
+        .setAdditionalCertsPath(getAdditionalCertsPath())
+        .setProxy(Optional.ofNullable(bitbucketConnector.getProxyUrl()).orElse(""))
+        .build();
   }
 
   private Provider mapToAzureRepoProvider(AzureRepoConnectorDTO azureRepoConnector, boolean debug) {
@@ -213,6 +217,7 @@ public class ScmGitProviderMapper {
         .setEndpoint(GitClientHelper.getGitlabApiURL(gitlabConnector.getUrl(), getGitlabApiUrl(gitlabConnector)))
         .setSkipVerify(skipVerify)
         .setAdditionalCertsPath(getAdditionalCertsPath())
+        .setProxy(Optional.ofNullable(gitlabConnector.getProxyUrl()).orElse(""))
         .build();
   }
 
@@ -244,6 +249,7 @@ public class ScmGitProviderMapper {
         .setEndpoint(GitClientHelper.getGithubApiURL(githubConnector.getUrl()))
         .setSkipVerify(skipVerify)
         .setAdditionalCertsPath(getAdditionalCertsPath())
+        .setProxy(Optional.ofNullable(githubConnector.getProxyUrl()).orElse(""))
         .build();
   }
 

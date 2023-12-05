@@ -73,6 +73,7 @@ import io.harness.delegate.beans.ci.pod.EnvVariableEnum;
 import io.harness.delegate.beans.connector.ConnectorType;
 import io.harness.delegate.beans.connector.docker.DockerConnectorDTO;
 import io.harness.iacm.execution.IACMStepsUtils;
+import io.harness.idp.steps.beans.stepinfo.IdpCodePushStepInfo;
 import io.harness.idp.steps.beans.stepinfo.IdpCookieCutterStepInfo;
 import io.harness.idp.steps.beans.stepinfo.IdpCreateRepoStepInfo;
 import io.harness.idp.utils.IDPStepUtils;
@@ -145,6 +146,8 @@ public class PluginSettingUtils extends PluginServiceImpl {
   public static final String PLUGIN_BACKEND = "PLUGIN_BACKEND";
   public static final String PLUGIN_OVERRIDE = "PLUGIN_OVERRIDE";
   public static final String PLUGIN_ARCHIVE_FORMAT = "PLUGIN_ARCHIVE_FORMAT";
+  public static final String PLUGIN_ACL = "PLUGIN_ACL";
+  public static final String PLUGIN_ACL_PRIVATE = "private";
   public static final String ZSTD_ARCHIVE_FORMAT = "zstd";
   public static final String PLUGIN_ARTIFACT_FILE = "PLUGIN_ARTIFACT_FILE";
   public static final String PLUGIN_DAEMON_OFF = "PLUGIN_DAEMON_OFF";
@@ -229,6 +232,13 @@ public class PluginSettingUtils extends PluginServiceImpl {
             idpNgAccess, idpConnectorRef, ambiance, ((IdpCreateRepoStepInfo) stepInfo).getRepoName().getValue());
         return idpStepUtils.getIDPCreateRepoStepInfoEnvVariables(
             (IdpCreateRepoStepInfo) stepInfo, idpGitConnector, identifier);
+      case IDP_CODE_PUSH:
+        final String idpCodePushConnectorRef = stepInfo.getConnectorRef().getValue();
+        final NGAccess idpCodePushNgAccess = AmbianceUtils.getNgAccess(ambiance);
+        final ConnectorDetails idpCodePushGitConnector = codebaseUtils.getGitConnector(idpCodePushNgAccess,
+            idpCodePushConnectorRef, ambiance, ((IdpCodePushStepInfo) stepInfo).getRepoName().getValue());
+        return idpStepUtils.getIDPCodePushStepInfoEnvVariables(
+            (IdpCodePushStepInfo) stepInfo, idpCodePushGitConnector, identifier);
       default:
         throw new IllegalStateException(
             "Unexpected value in getPluginCompatibleEnvVariables: " + stepInfo.getNonYamlInfo().getStepInfoType());
@@ -315,6 +325,7 @@ public class PluginSettingUtils extends PluginServiceImpl {
         return map;
       case GIT_CLONE:
       case IDP_CREATE_REPO:
+      case IDP_CODE_PUSH:
         return map;
       case IACM_TERRAFORM_PLUGIN:
         map.put(EnvVariableEnum.AWS_ACCESS_KEY, PLUGIN_ACCESS_KEY);
@@ -353,12 +364,12 @@ public class PluginSettingUtils extends PluginServiceImpl {
 
     String dockerfile =
         resolveStringParameter("dockerfile", "BuildAndPushGCR", identifier, stepInfo.getDockerfile(), false);
-    if (dockerfile != null && !dockerfile.equals(UNRESOLVED_PARAMETER)) {
+    if (dockerfile != null && !dockerfile.equals(UNRESOLVED_PARAMETER) && !dockerfile.equals(NULL_STR)) {
       PluginServiceImpl.setOptionalEnvironmentVariable(map, PLUGIN_DOCKERFILE, dockerfile);
     }
 
     String context = resolveStringParameter("context", "BuildAndPushGCR", identifier, stepInfo.getContext(), false);
-    if (context != null && !context.equals(UNRESOLVED_PARAMETER)) {
+    if (context != null && !context.equals(UNRESOLVED_PARAMETER) && !context.equals(NULL_STR)) {
       PluginServiceImpl.setOptionalEnvironmentVariable(map, PLUGIN_CONTEXT, context);
     }
 
@@ -439,12 +450,12 @@ public class PluginSettingUtils extends PluginServiceImpl {
 
     String dockerfile =
         resolveStringParameter("dockerfile", "BuildAndPushGAR", identifier, stepInfo.getDockerfile(), false);
-    if (dockerfile != null && !dockerfile.equals(UNRESOLVED_PARAMETER)) {
+    if (dockerfile != null && !dockerfile.equals(UNRESOLVED_PARAMETER) && !dockerfile.equals(NULL_STR)) {
       PluginServiceImpl.setOptionalEnvironmentVariable(map, PLUGIN_DOCKERFILE, dockerfile);
     }
 
     String context = resolveStringParameter("context", "BuildAndPushGAR", identifier, stepInfo.getContext(), false);
-    if (context != null && !context.equals(UNRESOLVED_PARAMETER)) {
+    if (context != null && !context.equals(UNRESOLVED_PARAMETER) && !context.equals(NULL_STR)) {
       PluginServiceImpl.setOptionalEnvironmentVariable(map, PLUGIN_CONTEXT, context);
     }
 
@@ -555,12 +566,12 @@ public class PluginSettingUtils extends PluginServiceImpl {
 
     String dockerfile =
         resolveStringParameter("dockerfile", "BuildAndPushACR", identifier, stepInfo.getDockerfile(), false);
-    if (dockerfile != null && !dockerfile.equals(UNRESOLVED_PARAMETER)) {
+    if (dockerfile != null && !dockerfile.equals(UNRESOLVED_PARAMETER) && !dockerfile.equals(NULL_STR)) {
       PluginServiceImpl.setOptionalEnvironmentVariable(map, PLUGIN_DOCKERFILE, dockerfile);
     }
 
     String context = resolveStringParameter("context", "BuildAndPushACR", identifier, stepInfo.getContext(), false);
-    if (context != null && !context.equals(UNRESOLVED_PARAMETER)) {
+    if (context != null && !context.equals(UNRESOLVED_PARAMETER) && !context.equals(NULL_STR)) {
       PluginServiceImpl.setOptionalEnvironmentVariable(map, PLUGIN_CONTEXT, context);
     }
 
@@ -647,12 +658,12 @@ public class PluginSettingUtils extends PluginServiceImpl {
 
     String dockerfile =
         resolveStringParameter("dockerfile", "BuildAndPushECR", identifier, stepInfo.getDockerfile(), false);
-    if (dockerfile != null && !dockerfile.equals(UNRESOLVED_PARAMETER)) {
+    if (dockerfile != null && !dockerfile.equals(UNRESOLVED_PARAMETER) && !dockerfile.equals(NULL_STR)) {
       PluginServiceImpl.setOptionalEnvironmentVariable(map, PLUGIN_DOCKERFILE, dockerfile);
     }
 
     String context = resolveStringParameter("context", "BuildAndPushECR", identifier, stepInfo.getContext(), false);
-    if (context != null && !context.equals(UNRESOLVED_PARAMETER)) {
+    if (context != null && !context.equals(UNRESOLVED_PARAMETER) && !context.equals(NULL_STR)) {
       PluginServiceImpl.setOptionalEnvironmentVariable(map, PLUGIN_CONTEXT, context);
     }
 
@@ -746,7 +757,7 @@ public class PluginSettingUtils extends PluginServiceImpl {
 
     String context =
         resolveStringParameter("context", "BuildAndPushDockerRegistry", identifier, stepInfo.getContext(), false);
-    if (context != null && !context.equals(UNRESOLVED_PARAMETER)) {
+    if (context != null && !context.equals(UNRESOLVED_PARAMETER) && !context.equals(NULL_STR)) {
       PluginServiceImpl.setOptionalEnvironmentVariable(map, PLUGIN_CONTEXT, context);
     }
 
