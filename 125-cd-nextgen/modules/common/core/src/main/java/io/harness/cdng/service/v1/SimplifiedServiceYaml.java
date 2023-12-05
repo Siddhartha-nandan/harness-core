@@ -63,6 +63,4 @@ public class SimplifiedServiceYaml implements Visitable {
 
   // For Visitor Framework Impl
   @Getter(onMethod_ = { @ApiModelProperty(hidden = true) }) @ApiModelProperty(hidden = true) String metadata;
-
-  // TODO: Add visitor helper, useFromStage
 }
