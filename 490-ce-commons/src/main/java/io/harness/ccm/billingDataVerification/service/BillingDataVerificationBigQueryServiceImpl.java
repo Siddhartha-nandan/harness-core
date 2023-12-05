@@ -73,7 +73,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
 
   @Override
   public Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> fetchAWSCostsFromAWSBillingTables(
-      String accountId, ConnectorResponseDTO connector, String startDate, String endDate) {
+      String accountId, ConnectorResponseDTO connector, String startDate, String endDate) throws Exception {
     String awsBillingTableId = bigQueryHelper.getCloudProviderTableName(
         accountId, String.format(AWS_BILLING_RAW_TABLE, connector.getConnector().getIdentifier(), "*"));
     String selectQuery =
@@ -118,7 +118,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
 
   @Override
   public Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> fetchAWSCostsFromUnifiedTable(
-      String accountId, ConnectorResponseDTO connector, String startDate, String endDate) {
+      String accountId, ConnectorResponseDTO connector, String startDate, String endDate) throws Exception {
     String unifiedTableId = bigQueryHelper.getCloudProviderTableName(accountId, UNIFIED_TABLE);
     String selectQuery =
         String.format(AWS_UNIFIED_TABLE_COST_VERIFICATION_QUERY_TEMPLATE, unifiedTableId, startDate, endDate);

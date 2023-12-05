@@ -27,9 +27,9 @@ import java.util.Map;
 @OwnedBy(HarnessTeam.CE)
 public interface BillingDataVerificationSQLService {
   Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> fetchAWSCostsFromAWSBillingTables(
-      String accountId, ConnectorResponseDTO connector, String startDate, String endDate);
+      String accountId, ConnectorResponseDTO connector, String startDate, String endDate) throws Exception;
   Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> fetchAWSCostsFromUnifiedTable(
-      String accountId, ConnectorResponseDTO connector, String startDate, String endDate);
+      String accountId, ConnectorResponseDTO connector, String startDate, String endDate) throws Exception;
   void ingestAWSCostsIntoBillingDataVerificationTable(String accountId,
       Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) throws Exception;
 }
