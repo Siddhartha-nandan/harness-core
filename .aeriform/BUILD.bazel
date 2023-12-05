@@ -45,10 +45,6 @@ aeriform("//200-functional-test:module")
 
 aeriform("//200-functional-test:tests")
 
-aeriform("//210-command-library-server:module")
-
-aeriform("//210-command-library-server:tests")
-
 aeriform("//220-graphql-test:supporter-test")
 
 aeriform("//220-graphql-test:tests")

@@ -13,7 +13,6 @@ directories:
   -160-stress-tester
   -190-deployment-functional-tests
   -200-functional-test
-  -210-command-library-server
   -270-verification
   -280-batch-processing
   -310-iacm-manager
