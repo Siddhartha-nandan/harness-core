@@ -67,6 +67,7 @@ public class BillingDataVerificationService {
             .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
     String endDate =
         LocalDate.now(ZoneOffset.UTC).plusMonths(1).withDayOfMonth(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+    log.info("Identified from config - startDate: {}, endDate: {}", startDate, endDate);
     Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData = new HashMap<>();
     List<ConnectorResponseDTO> awsBillingConnectors = ngConnectorHelper.getNextGenConnectors(
         accountId, Arrays.asList(ConnectorType.CE_AWS), Arrays.asList(CEFeatures.BILLING), Collections.emptyList());
@@ -81,7 +82,7 @@ public class BillingDataVerificationService {
             awsBillingConnector.getConnector().getIdentifier(), ex);
       }
     }
-    // delete & re-insert billingData in BQ/CH for this date-range and these connectors & csp='AWS'
+    // insert billingData in ccmBillingDataVerificationTable in BQ/CH
     try {
       billingDataVerificationSQLService.ingestAWSCostsIntoBillingDataVerificationTable(accountId, billingData);
       log.info(

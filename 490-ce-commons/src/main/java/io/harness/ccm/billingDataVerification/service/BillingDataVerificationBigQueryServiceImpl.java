@@ -49,26 +49,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Slf4j
 @Singleton
 public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVerificationSQLService {
-  private static final String AWS_UNIFIED_TABLE_COST_VERIFICATION_QUERY_TEMPLATE =
-      String.join(" ", "SELECT DATE_TRUNC(DATE(startTime), DAY) as day, awsUsageAccountId as cloudProviderAccountId, ",
-          "sum(IFNULL(awsUnblendedCost, 0)) as unblendedCost, sum(IFNULL(awsBlendedCost, 0)) as blendedCost, ",
-          "sum(IFNULL(awsAmortisedcost, 0)) as amortizedcost, sum(IFNULL(awsNetamortisedcost, 0)) as netamortizedcost ",
-          "FROM `%s` ", "WHERE DATE_TRUNC(DATE(startTime), DAY) >= DATE('%s')",
-          "AND DATE_TRUNC(DATE(startTime), DAY) < DATE('%s')", "AND cloudprovider='AWS'",
-          "GROUP BY day, cloudProviderAccountId ;");
+  private static final String AWS_UNIFIED_TABLE_COST_VERIFICATION_QUERY_TEMPLATE = String.join(" ",
+      "SELECT DATE_TRUNC(DATE(startTime), MONTH) as day, awsUsageAccountId as cloudProviderAccountId, ",
+      "sum(IFNULL(awsUnblendedCost, 0)) as unblendedCost, sum(IFNULL(awsBlendedCost, 0)) as blendedCost, ",
+      "sum(IFNULL(awsAmortisedcost, 0)) as amortizedcost, sum(IFNULL(awsNetamortisedcost, 0)) as netamortizedcost ",
+      "FROM `%s` ", "WHERE DATE_TRUNC(DATE(startTime), DAY) >= DATE('%s')",
+      "AND DATE_TRUNC(DATE(startTime), DAY) < DATE('%s')", "AND cloudprovider='AWS'",
+      "GROUP BY day, cloudProviderAccountId ;");
 
   private static final String AWS_BILLING_COST_VERIFICATION_QUERY_TEMPLATE = String.join(" ",
-      "SELECT DATE_TRUNC(DATE(usagestartdate), DAY) as day, usageAccountId as cloudProviderAccountId, ",
+      "SELECT DATE_TRUNC(DATE(usagestartdate), MONTH) as day, usageAccountId as cloudProviderAccountId, ",
       "sum(IFNULL(unblendedCost, 0)) as unblendedCost, sum(IFNULL(blendedCost, 0)) as blendedCost ", "FROM `%s` ",
       "WHERE DATE_TRUNC(DATE(usagestartdate), DAY) >= DATE('%s')",
       "AND DATE_TRUNC(DATE(usagestartdate), DAY) < DATE('%s')", "GROUP BY day, cloudProviderAccountId ;");
 
-  private static final String DELETE_FROM_BILLING_DATA_VERIFICATION_TABLE_QUERY_TEMPLATE =
-      String.join(" ", "DELETE FROM %s ", "WHERE harnessAccountId = '%s' AND ", "connectorId IN (%s) ; ");
-
   private static final String INSERT_INTO_BILLING_DATA_VERIFICATION_TABLE_QUERY_TEMPLATE = String.join(" ",
       "INSERT INTO %s ",
-      "(harnessAccountId, connectorId, cloudProvider, cloudProviderAccountId, usageStartDate, usageEndDate, costType, costFromCloudProviderAPI, costFromRawBillingTable, costFromUnifiedTable) ",
+      "(harnessAccountId, connectorId, cloudProvider, cloudProviderAccountId, usageStartDate, usageEndDate, costType, costFromCloudProviderAPI, costFromRawBillingTable, costFromUnifiedTable, lastUpdatedAt) ",
       "VALUES %s ; ");
 
   @Inject BigQueryHelper bigQueryHelper;
@@ -92,7 +89,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
               .cloudProvider("AWS")
               .cloudProviderAccountId(row.get("cloudProviderAccountId").getStringValue())
               .usageStartDate(LocalDate.parse(row.get("day").getStringValue()))
-              .usageEndDate(LocalDate.parse(row.get("day").getStringValue()).plusDays(1))
+              .usageEndDate(LocalDate.parse(row.get("day").getStringValue()).plusMonths(1))
               .costType("AWSUnblendedCost")
               .build();
       awsBillingResults.put(unblendedCostKey,
@@ -108,7 +105,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
               .cloudProvider("AWS")
               .cloudProviderAccountId(row.get("cloudProviderAccountId").getStringValue())
               .usageStartDate(LocalDate.parse(row.get("day").getStringValue()))
-              .usageEndDate(LocalDate.parse(row.get("day").getStringValue()).plusDays(1))
+              .usageEndDate(LocalDate.parse(row.get("day").getStringValue()).plusMonths(1))
               .costType("AWSBlendedCost")
               .build();
       awsBillingResults.put(blendedCostKey,
@@ -136,7 +133,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
               .cloudProvider("AWS")
               .cloudProviderAccountId(row.get("cloudProviderAccountId").getStringValue())
               .usageStartDate(LocalDate.parse(row.get("day").getStringValue()))
-              .usageEndDate(LocalDate.parse(row.get("day").getStringValue()).plusDays(1))
+              .usageEndDate(LocalDate.parse(row.get("day").getStringValue()).plusMonths(1))
               .costType("AWSUnblendedCost")
               .build();
       awsUnifiedTableResults.put(unblendedCostKey,
@@ -152,7 +149,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
               .cloudProvider("AWS")
               .cloudProviderAccountId(row.get("cloudProviderAccountId").getStringValue())
               .usageStartDate(LocalDate.parse(row.get("day").getStringValue()))
-              .usageEndDate(LocalDate.parse(row.get("day").getStringValue()).plusDays(1))
+              .usageEndDate(LocalDate.parse(row.get("day").getStringValue()).plusMonths(1))
               .costType("AWSBlendedCost")
               .build();
       awsUnifiedTableResults.put(blendedCostKey,
@@ -168,7 +165,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
               .cloudProvider("AWS")
               .cloudProviderAccountId(row.get("cloudProviderAccountId").getStringValue())
               .usageStartDate(LocalDate.parse(row.get("day").getStringValue()))
-              .usageEndDate(LocalDate.parse(row.get("day").getStringValue()).plusDays(1))
+              .usageEndDate(LocalDate.parse(row.get("day").getStringValue()).plusMonths(1))
               .costType("AWSAmortizedCost")
               .build();
       awsUnifiedTableResults.put(amortizedCostKey,
@@ -184,7 +181,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
               .cloudProvider("AWS")
               .cloudProviderAccountId(row.get("cloudProviderAccountId").getStringValue())
               .usageStartDate(LocalDate.parse(row.get("day").getStringValue()))
-              .usageEndDate(LocalDate.parse(row.get("day").getStringValue()).plusDays(1))
+              .usageEndDate(LocalDate.parse(row.get("day").getStringValue()).plusMonths(1))
               .costType("AWSNetAmortizedCost")
               .build();
       awsUnifiedTableResults.put(netAmortizedCostKey,
@@ -196,21 +193,13 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
   }
 
   @Override
-  public void ingestAWSCostsIntoBillingDataVerificationTable(
-      String accountId, Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) {
-    if (billingData.isEmpty())
+  public void ingestAWSCostsIntoBillingDataVerificationTable(String accountId,
+      Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) throws Exception {
+    if (billingData.isEmpty()) {
       return;
+    }
     String ccmBillingDataVerificationTableId =
         bigQueryHelper.getCEInternalDatasetTable(CCM_BILLING_DATA_VERIFICATION_TABLE);
-
-    List<String> connectorIds = billingData.keySet()
-                                    .stream()
-                                    .map(billingVerificationKey -> "'" + billingVerificationKey.getConnectorId() + "'")
-                                    .distinct()
-                                    .collect(Collectors.toList());
-    String deleteQuery = String.format(DELETE_FROM_BILLING_DATA_VERIFICATION_TABLE_QUERY_TEMPLATE,
-        ccmBillingDataVerificationTableId, accountId, String.join(",", connectorIds));
-    executeQuery(deleteQuery);
 
     List<String> rows = new ArrayList<>();
     for (var entry : billingData.entrySet()) {
@@ -224,14 +213,15 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
 
                    .concat(String.format("'%s', ", entry.getValue().getCostFromCloudProviderAPI()))
                    .concat(String.format("'%s', ", entry.getValue().getCostFromRawBillingTable()))
-                   .concat(String.format("'%s')", entry.getValue().getCostFromUnifiedTable())));
+                   .concat(String.format("'%s', ", entry.getValue().getCostFromUnifiedTable()))
+                   .concat("CURRENT_TIMESTAMP() )"));
     }
     String insertQuery = String.format(INSERT_INTO_BILLING_DATA_VERIFICATION_TABLE_QUERY_TEMPLATE,
         ccmBillingDataVerificationTableId, String.join(" ", rows));
     executeQuery(insertQuery);
   }
 
-  private TableResult executeQuery(final String query) {
+  private TableResult executeQuery(final String query) throws Exception {
     final BigQuery bigQuery = bigQueryService.get();
     QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(query).build();
     TableResult result;
@@ -241,7 +231,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
     } catch (final InterruptedException e) {
       log.error("Failed to execute query: {}", queryConfig, e);
       Thread.currentThread().interrupt();
-      return null;
+      throw new Exception();
     }
     return result;
   }

@@ -30,6 +30,6 @@ public interface BillingDataVerificationSQLService {
       String accountId, ConnectorResponseDTO connector, String startDate, String endDate);
   Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> fetchAWSCostsFromUnifiedTable(
       String accountId, ConnectorResponseDTO connector, String startDate, String endDate);
-  void ingestAWSCostsIntoBillingDataVerificationTable(
-      String accountId, Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData);
+  void ingestAWSCostsIntoBillingDataVerificationTable(String accountId,
+      Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) throws Exception;
 }

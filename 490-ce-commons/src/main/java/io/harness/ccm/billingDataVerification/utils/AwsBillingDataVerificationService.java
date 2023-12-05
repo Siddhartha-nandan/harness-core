@@ -74,7 +74,7 @@ public class AwsBillingDataVerificationService {
     ConnectorInfoDTO connectorInfo = connector.getConnector();
     CEAwsConnectorDTO ceAwsConnectorDTO = (CEAwsConnectorDTO) connectorInfo.getConnectorConfig();
     if (ceAwsConnectorDTO != null && ceAwsConnectorDTO.getCrossAccountAccess() != null) {
-      // for the connector, try calling the CostExplorer API in a try-catch: update results in the Map
+      // for the connector, calling the CostExplorer API in a try-catch: update results in billingData Map
       fetchBillingDataFromAWSCostExplorerAPI(
           accountId, connector, startDate, endDate, awsAssumedCredentialsProvider, billingData);
 
@@ -134,7 +134,7 @@ public class AwsBillingDataVerificationService {
     final GetCostAndUsageRequest awsCERequest =
         new GetCostAndUsageRequest()
             .withTimePeriod(new DateInterval().withStart(startDate).withEnd(endDate))
-            .withGranularity(Granularity.DAILY)
+            .withGranularity(Granularity.MONTHLY)
             .withMetrics(new String[] {"UnblendedCost", "BlendedCost", "AmortizedCost", "NetAmortizedCost"})
             .withGroupBy(new GroupDefinition().withType("DIMENSION").withKey("LINKED_ACCOUNT"));
 
@@ -219,7 +219,8 @@ public class AwsBillingDataVerificationService {
       });
       ce.shutdown();
     } catch (final Exception e) {
-      log.error("Exception while fetching billing-data from AWS Cost Explorer", e);
+      log.error("Exception while fetching billing-data from AWS Cost Explorer (accountId: {}, connectorId: {})",
+          accountId, connector.getConnector().getIdentifier(), e);
     }
   }
 }
