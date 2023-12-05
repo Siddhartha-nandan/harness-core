@@ -138,4 +138,5 @@ public class YAMLFieldNameConstants {
   // yaml v1 schema field names
   public final String DEPLOYMENT_STAGE_V1 = "deployment";
   public final String INFRA_DEFS = "infra-defs";
+  public final String ROLLBACK_STEPS_V1 = "rollback_steps";
 }
