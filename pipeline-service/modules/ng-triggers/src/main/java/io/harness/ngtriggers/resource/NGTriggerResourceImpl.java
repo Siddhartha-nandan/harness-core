@@ -325,8 +325,7 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
 
   public ResponseDTO<Integer> bulkTriggers(@NotNull @AccountIdentifier String accountIdentifier,
       @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    boolean isUpdated = ngTriggerService.enablingDisablingTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO);
-
-    return ResponseDTO.newResponse(0);
+    return ResponseDTO.newResponse(
+        ngTriggerService.enablingDisablingTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO));
   }
 }

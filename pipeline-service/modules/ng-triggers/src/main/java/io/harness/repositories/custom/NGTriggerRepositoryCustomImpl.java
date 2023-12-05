@@ -258,7 +258,9 @@ public class NGTriggerRepositoryCustomImpl implements NGTriggerRepositoryCustom 
   }
 
   @Override
-  public boolean enableDisableTriggersInBulk(String accountId, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
+  public Integer enableDisableTriggersInBulk(String accountId, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
+    BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, NGTriggerEntity.class);
+
     Update update = new Update();
     update.set(NGTriggerEntityKeys.enabled, bulkTriggersRequestDTO.getData().isEnable());
 
@@ -270,7 +272,7 @@ public class NGTriggerRepositoryCustomImpl implements NGTriggerRepositoryCustom 
         "[Retrying]: Failed updating Trigger; attempt: {}", "[Failed]: Failed updating Trigger; attempt: {}");
     Failsafe.with(retryPolicy).get(() -> mongoTemplate.updateMulti(query, update, NGTriggerEntity.class));
 
-    return true;
+    return bulkOperations.execute().getModifiedCount();
   }
 
   private RetryPolicy<Object> getRetryPolicy(String failedAttemptMessage, String failureMessage) {
