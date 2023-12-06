@@ -16,17 +16,18 @@ import io.harness.encryption.SecretRefData;
 import io.harness.git.GitClientHelper;
 import io.harness.security.ServiceTokenGenerator;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import java.time.Duration;
-import lombok.experimental.UtilityClass;
 
-@UtilityClass
+@Singleton
 public class HarnessCodeConnectorUtils {
+  @Inject ServiceTokenGenerator tokenGenerator;
+
   public HarnessConnectorDTO getDummyHarnessCodeConnectorWithJwtAuth(String repoName, String accountId, String orgId,
-      String projectId, String serviceName, String serviceSecret, String harnessCodeApiBaseUrl,
-      ServiceTokenGenerator tokenGenerator) {
-    SecretRefData token = SecretRefData.builder()
-                              .decryptedValue(getToken(serviceName, serviceSecret, tokenGenerator).toCharArray())
-                              .build();
+      String projectId, String serviceName, String serviceSecret, String harnessCodeApiBaseUrl) {
+    SecretRefData token =
+        SecretRefData.builder().decryptedValue(getToken(serviceName, serviceSecret).toCharArray()).build();
     HarnessJWTTokenSpecDTO jwtTokenSpecDTO = HarnessJWTTokenSpecDTO.builder().tokenRef(token).build();
     return HarnessConnectorDTO.builder()
         .connectionType(GitConnectionType.REPO)
@@ -38,7 +39,7 @@ public class HarnessCodeConnectorUtils {
         .build();
   }
 
-  private String getToken(String serviceName, String serviceSecret, ServiceTokenGenerator tokenGenerator) {
+  private String getToken(String serviceName, String serviceSecret) {
     return serviceName + " " + tokenGenerator.getServiceTokenWithDuration(serviceSecret, Duration.ofHours(1));
   }
 }
