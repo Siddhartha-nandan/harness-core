@@ -30,6 +30,7 @@ import io.harness.cache.HarnessCacheManager;
 import io.harness.callback.DelegateCallback;
 import io.harness.callback.DelegateCallbackToken;
 import io.harness.callback.MongoDatabase;
+import io.harness.cdstage.CDNGStageSummaryResourceClientModule;
 import io.harness.ci.CiServiceResourceClientModule;
 import io.harness.cistatus.service.GithubService;
 import io.harness.cistatus.service.GithubServiceImpl;
@@ -84,6 +85,8 @@ import io.harness.pms.approval.api.ApprovalsApiImpl;
 import io.harness.pms.approval.custom.CustomApprovalHelperServiceImpl;
 import io.harness.pms.approval.jira.JiraApprovalHelperServiceImpl;
 import io.harness.pms.approval.notification.ApprovalNotificationHandlerImpl;
+import io.harness.pms.approval.notification.stagemetadata.StageMetadataNotificationHelper;
+import io.harness.pms.approval.notification.stagemetadata.StageMetadataNotificationHelperImpl;
 import io.harness.pms.approval.resources.ApprovalResource;
 import io.harness.pms.approval.resources.ApprovalResourceImpl;
 import io.harness.pms.approval.servicenow.ServiceNowApprovalHelperServiceImpl;
@@ -216,6 +219,8 @@ import io.harness.steps.jira.JiraStepHelperService;
 import io.harness.steps.servicenow.ServiceNowStepHelperService;
 import io.harness.steps.shellscript.ShellScriptHelperService;
 import io.harness.steps.shellscript.ShellScriptHelperServiceImpl;
+import io.harness.steps.shellscript.ShellScriptHelperServiceImplOld;
+import io.harness.steps.shellscript.ShellScriptHelperServiceOld;
 import io.harness.steps.wait.WaitStepService;
 import io.harness.steps.wait.WaitStepServiceImpl;
 import io.harness.telemetry.AbstractTelemetryModule;
@@ -424,6 +429,8 @@ public class PipelineServiceModule extends AbstractModule {
 
     install(new FileStoreClientModule(configuration.getNgManagerServiceHttpClientConfig(),
         configuration.getManagerServiceSecret(), PIPELINE_SERVICE.getServiceId()));
+    install(new CDNGStageSummaryResourceClientModule(configuration.getNgManagerServiceHttpClientConfig(),
+        configuration.getNgManagerServiceSecret(), PIPELINE_SERVICE.getServiceId()));
 
     registerOutboxEventHandlers();
     bind(OutboxEventHandler.class).to(PMSOutboxEventHandler.class);
@@ -445,6 +452,7 @@ public class PipelineServiceModule extends AbstractModule {
     bind(PMSYamlSchemaService.class).to(PMSYamlSchemaServiceImpl.class);
     bind(ApprovalNotificationHandler.class).to(ApprovalNotificationHandlerImpl.class);
     bind(PMSOpaService.class).to(PMSOpaServiceImpl.class);
+    bind(ShellScriptHelperServiceOld.class).to(ShellScriptHelperServiceImplOld.class);
     bind(ShellScriptHelperService.class).to(ShellScriptHelperServiceImpl.class);
     bind(ApprovalYamlSchemaService.class).to(ApprovalYamlSchemaServiceImpl.class).in(Singleton.class);
     bind(CustomStageYamlSchemaService.class).to(CustomStageYamlSchemaServiceImpl.class).in(Singleton.class);
@@ -477,6 +485,7 @@ public class PipelineServiceModule extends AbstractModule {
                 .setNameFormat("pipeline-telemetry-publisher-Thread-%d")
                 .setPriority(Thread.NORM_PRIORITY)
                 .build()));
+    bind(StageMetadataNotificationHelper.class).to(StageMetadataNotificationHelperImpl.class);
 
     MapBinder<String, FilterPropertiesMapper> filterPropertiesMapper =
         MapBinder.newMapBinder(binder(), String.class, FilterPropertiesMapper.class);

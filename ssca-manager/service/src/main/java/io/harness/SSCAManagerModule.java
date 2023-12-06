@@ -8,8 +8,10 @@
 package io.harness;
 
 import static io.harness.annotations.dev.HarnessTeam.SSCA;
+import static io.harness.audit.ResourceTypeConstants.SSCA_ARTIFACT;
 import static io.harness.authorization.AuthorizationServiceHeader.SSCA_SERVICE;
 import static io.harness.lock.DistributedLockImplementation.REDIS;
+import static io.harness.outbox.OutboxSDKConstants.DEFAULT_OUTBOX_POLL_CONFIGURATION;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.app.PrimaryVersionManagerModule;
@@ -20,6 +22,8 @@ import io.harness.mongo.MongoConfig;
 import io.harness.mongo.MongoPersistence;
 import io.harness.morphia.MorphiaRegistrar;
 import io.harness.opaclient.OpaClientModule;
+import io.harness.outbox.TransactionOutboxModule;
+import io.harness.outbox.api.OutboxEventHandler;
 import io.harness.persistence.HPersistence;
 import io.harness.persistence.NoopUserProvider;
 import io.harness.persistence.UserProvider;
@@ -29,21 +33,33 @@ import io.harness.remote.client.ServiceHttpClientConfig;
 import io.harness.serializer.KryoRegistrar;
 import io.harness.serializer.SSCAManagerModuleRegistrars;
 import io.harness.spec.server.ssca.v1.ArtifactApi;
+import io.harness.spec.server.ssca.v1.BaselineApi;
+import io.harness.spec.server.ssca.v1.ConfigApi;
 import io.harness.spec.server.ssca.v1.EnforcementApi;
 import io.harness.spec.server.ssca.v1.OrchestrationApi;
 import io.harness.spec.server.ssca.v1.SbomProcessorApi;
+import io.harness.spec.server.ssca.v1.ScorecardApi;
 import io.harness.spec.server.ssca.v1.TokenApi;
 import io.harness.ssca.S3Config;
 import io.harness.ssca.api.ArtifactApiImpl;
+import io.harness.ssca.api.BaselineApiImpl;
+import io.harness.ssca.api.ConfigApiImpl;
 import io.harness.ssca.api.EnforcementApiImpl;
 import io.harness.ssca.api.OrchestrationApiImpl;
 import io.harness.ssca.api.SbomProcessorApiImpl;
+import io.harness.ssca.api.ScorecardApiImpl;
 import io.harness.ssca.api.TokenApiImpl;
+import io.harness.ssca.events.handler.SSCAArtifactEventHandler;
+import io.harness.ssca.events.handler.SSCAOutboxEventHandler;
 import io.harness.ssca.eventsframework.SSCAEventsFrameworkModule;
 import io.harness.ssca.services.ArtifactService;
 import io.harness.ssca.services.ArtifactServiceImpl;
+import io.harness.ssca.services.BaselineService;
+import io.harness.ssca.services.BaselineServiceImpl;
 import io.harness.ssca.services.CdInstanceSummaryService;
 import io.harness.ssca.services.CdInstanceSummaryServiceImpl;
+import io.harness.ssca.services.ConfigService;
+import io.harness.ssca.services.ConfigServiceImpl;
 import io.harness.ssca.services.EnforcementResultService;
 import io.harness.ssca.services.EnforcementResultServiceImpl;
 import io.harness.ssca.services.EnforcementStepService;
@@ -62,9 +78,17 @@ import io.harness.ssca.services.RuleEngineService;
 import io.harness.ssca.services.RuleEngineServiceImpl;
 import io.harness.ssca.services.S3StoreService;
 import io.harness.ssca.services.S3StoreServiceImpl;
+import io.harness.ssca.services.ScorecardService;
+import io.harness.ssca.services.ScorecardServiceImpl;
+import io.harness.ssca.services.drift.SbomDriftService;
+import io.harness.ssca.services.drift.SbomDriftServiceImpl;
 import io.harness.time.TimeModule;
 import io.harness.token.TokenClientModule;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import co.elastic.clients.transport.ElasticsearchTransport;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder;
@@ -75,6 +99,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.multibindings.MapBinder;
 import com.google.inject.name.Named;
 import dev.morphia.converters.TypeConverter;
 import java.util.Collections;
@@ -82,6 +107,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.HttpHost;
+import org.elasticsearch.client.RestClient;
 import org.springframework.core.convert.converter.Converter;
 
 @Slf4j
@@ -102,17 +129,25 @@ public class SSCAManagerModule extends AbstractModule {
         return new NoopUserProvider();
       }
     });
+    registerOutboxEventHandlers();
+    bind(OutboxEventHandler.class).to(SSCAOutboxEventHandler.class);
     install(new io.harness.SSCAManagerModulePersistence());
+    bind(ScorecardApi.class).to(ScorecardApiImpl.class);
+    bind(ConfigApi.class).to(ConfigApiImpl.class);
+    bind(ConfigService.class).to(ConfigServiceImpl.class);
+    bind(ScorecardService.class).to(ScorecardServiceImpl.class);
     bind(HPersistence.class).to(MongoPersistence.class);
     bind(SbomProcessorApi.class).to(SbomProcessorApiImpl.class);
     bind(TokenApi.class).to(TokenApiImpl.class);
     bind(EnforcementApi.class).to(EnforcementApiImpl.class);
+    bind(BaselineApi.class).to(BaselineApiImpl.class);
     bind(OrchestrationApi.class).to(OrchestrationApiImpl.class);
     bind(ArtifactService.class).to(ArtifactServiceImpl.class);
     bind(OrchestrationStepService.class).to(OrchestrationStepServiceImpl.class);
     bind(EnforcementStepService.class).to(EnforcementStepServiceImpl.class);
     bind(RuleEngineService.class).to(RuleEngineServiceImpl.class);
     bind(EnforcementResultService.class).to(EnforcementResultServiceImpl.class);
+    bind(BaselineService.class).to(BaselineServiceImpl.class);
     bind(EnforcementSummaryService.class).to(EnforcementSummaryServiceImpl.class);
     bind(NextGenService.class).to(NextGenServiceImpl.class);
     bind(S3StoreService.class).to(S3StoreServiceImpl.class);
@@ -120,6 +155,7 @@ public class SSCAManagerModule extends AbstractModule {
     bind(ArtifactApi.class).to(ArtifactApiImpl.class);
     bind(CdInstanceSummaryService.class).to(CdInstanceSummaryServiceImpl.class);
     bind(PolicyMgmtService.class).to(PolicyMgmtServiceImpl.class);
+    bind(SbomDriftService.class).to(SbomDriftServiceImpl.class);
     install(new TokenClientModule(this.configuration.getNgManagerServiceHttpClientConfig(),
         this.configuration.getNgManagerServiceSecret(), SSCA_SERVICE.getServiceId()));
     install(new SSCAEventsFrameworkModule(
@@ -131,6 +167,8 @@ public class SSCAManagerModule extends AbstractModule {
         configuration.getPipelineServiceSecret(), SSCA_SERVICE.getServiceId()));
     install(new OpaClientModule(configuration.getPolicyMgmtServiceConfiguration(),
         configuration.getPolicyMgmtServiceSecret(), SSCA_SERVICE.getServiceId()));
+    install(new TransactionOutboxModule(
+        DEFAULT_OUTBOX_POLL_CONFIGURATION, SSCA_SERVICE.getServiceId(), configuration.isExportMetricsToStackDriver()));
   }
 
   @Provides
@@ -169,6 +207,13 @@ public class SSCAManagerModule extends AbstractModule {
 
   @Provides
   @Singleton
+  @Named("isElasticSearchEnabled")
+  public boolean isElasticSearchEnabled() {
+    return this.configuration.isEnableElasticsearch();
+  }
+
+  @Provides
+  @Singleton
   @Named("jwtAuthSecret")
   public String jwtAuthSecret() {
     return this.configuration.getJwtAuthSecret();
@@ -195,6 +240,19 @@ public class SSCAManagerModule extends AbstractModule {
          */
         .withPathStyleAccessEnabled(Boolean.TRUE)
         .build();
+  }
+
+  @Provides
+  @Singleton
+  public ElasticsearchClient elasticsearchClient() {
+    RestClient restClient =
+        RestClient.builder(HttpHost.create(configuration.getElasticSearchConfig().getUrl())).build();
+
+    // Create the transport with a Jackson mapper
+    ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+
+    // And create the API client
+    return new ElasticsearchClient(transport);
   }
 
   @Provides
@@ -268,5 +326,11 @@ public class SSCAManagerModule extends AbstractModule {
       return new SSCAManagerModule(sscaManagerConfiguration);
     }
     return sscaManagerModule;
+  }
+
+  private void registerOutboxEventHandlers() {
+    MapBinder<String, OutboxEventHandler> outboxEventHandlerMapBinder =
+        MapBinder.newMapBinder(binder(), String.class, OutboxEventHandler.class);
+    outboxEventHandlerMapBinder.addBinding(SSCA_ARTIFACT).to(SSCAArtifactEventHandler.class);
   }
 }

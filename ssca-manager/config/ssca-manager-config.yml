@@ -51,6 +51,11 @@ hostname: ${HOSTNAME:-localhost}
 basePathPrefix: ${BASE_PATH_PREFIX:-""}
 
 enableAuth: true
+exportMetricsToStackDriver: false
+enableElasticsearch: false
+
+elasticsearch:
+  url: "https://localhost:9200"
 
 s3Config:
   accessKeyId: "access-key-id"

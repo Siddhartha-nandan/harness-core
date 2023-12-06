@@ -39,6 +39,7 @@ import org.springframework.data.annotation.TypeAlias;
 @NoArgsConstructor
 @AllArgsConstructor
 @TypeAlias("ShellScriptBaseStepInfo")
+@Deprecated
 public class ShellScriptBaseStepInfo {
   @JsonProperty(YamlNode.UUID_FIELD_NAME)
   @Getter(onMethod_ = { @ApiModelProperty(hidden = true) })
