@@ -371,6 +371,7 @@ public class EnvironmentRepositoryCustomImpl implements EnvironmentRepositoryCus
         gitAwareEntityHelper.getRepoUrl(
             environment.getAccountIdentifier(), environment.getOrgIdentifier(), environment.getProjectIdentifier()));
     update.set(EnvironmentKeys.fallBackBranch, environment.getBranch());
+    update.set(EnvironmentKeys.lastModifiedAt, System.currentTimeMillis());
     return update;
   }
 
