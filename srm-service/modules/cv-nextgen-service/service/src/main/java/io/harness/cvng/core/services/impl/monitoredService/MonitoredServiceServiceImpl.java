@@ -251,6 +251,7 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
 
   private static final String SERVICE_ACCOUNT_CHECK = "account";
   private static final String SERVICE_ORG_CHECK = "org";
+  private static final String INPUT_REGEX = "^[a-zA-Z0-9._-]+$";
 
   @Override
   public MonitoredServiceResponse create(String accountId, MonitoredServiceDTO monitoredServiceDTO) {
@@ -544,9 +545,14 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
         && featureFlagService.isFeatureFlagEnabled(
             projectParams.getAccountIdentifier(), FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION)
         && monitoredService.isTemplateByReference() && isUpdatedFromYaml) {
+      TemplateDTO templateDTO = monitoredServiceDTO.getTemplate();
       updateOperations.set(MonitoredServiceKeys.templateMetadata,
           TemplateMetadata.fromTemplateDTO(monitoredServiceDTO.getTemplate())
               .lastReconciliationTime(currentTime)
+              .templateVersionNumber(templateFacade
+                                         .getTemplateVersionNumber(
+                                             projectParams, templateDTO.getTemplateRef(), templateDTO.getVersionLabel())
+                                         .intValue())
               .build());
     }
     if (this.validateUpdate(monitoredService.getAccountId(), isTemplateByReference, isUpdatedFromYaml, false)) {
@@ -797,7 +803,6 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
                                                 .versionLabel(monitoredService.getTemplateVersionLabel());
     if (monitoredService.getTemplateMetadata() != null) {
       templateDTOBuilder.isTemplateByReference(monitoredService.isTemplateByReference())
-          .templateVersionNumber(monitoredService.getTemplateMetadata().getTemplateVersionNumber())
           .templateInputs(monitoredService.getTemplateMetadata().getTemplateInputs())
           .lastReconciliationTime(monitoredService.getTemplateMetadata().getLastReconciliationTime());
     }
@@ -1186,9 +1191,15 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
     if (monitoredServiceDTO.getTemplate() != null
         && featureFlagService.isFeatureFlagEnabled(
             projectParams.getAccountIdentifier(), FeatureFlagNames.SRM_ENABLE_MS_TEMPLATE_RECONCILIATION)) {
-      monitoredServiceEntity.setTemplateMetadata(TemplateMetadata.fromTemplateDTO(monitoredServiceDTO.getTemplate())
-                                                     .lastReconciliationTime(currentTime)
-                                                     .build());
+      TemplateDTO templateDTO = monitoredServiceDTO.getTemplate();
+      monitoredServiceEntity.setTemplateMetadata(
+          TemplateMetadata.fromTemplateDTO(templateDTO)
+              .lastReconciliationTime(currentTime)
+              .templateVersionNumber(templateFacade
+                                         .getTemplateVersionNumber(
+                                             projectParams, templateDTO.getTemplateRef(), templateDTO.getVersionLabel())
+                                         .intValue())
+              .build());
     }
     if (monitoredServiceDTO.getSources() != null) {
       monitoredServiceEntity.setHealthSourceIdentifiers(monitoredServiceDTO.getSources()
@@ -1449,6 +1460,15 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
       Preconditions.checkState(monitoredServiceDTO.getEnvironmentRefList().size() == 1,
           "Application monitored service cannot be attached to more than one environment");
     }
+    if (!monitoredServiceDTO.getServiceRef().matches(INPUT_REGEX)) {
+      throw new InvalidRequestException("Only alphanumerics, . - and _ "
+          + "are allowed in service identifier");
+    }
+
+    if (!monitoredServiceDTO.getEnvironmentRef().matches(INPUT_REGEX)) {
+      throw new InvalidRequestException("Only alphanumerics, . - and _ are "
+          + "allowed in environment identifier");
+    }
 
     if (featureFlagService.isFeatureFlagEnabled(accountId, FeatureName.SRM_MONITORED_SERVICE_VALIDATION.name())) {
       nextGenService.getService(accountId, monitoredServiceDTO.getOrgIdentifier(),
@@ -1472,11 +1492,6 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
       if (monitoredServiceDTO.getTemplate().getVersionLabel() == null) {
         throw new InvalidRequestException(String.format(
             "Template version label cannot be null if the template is used by reference for monitored service with identifier: %s",
-            monitoredServiceDTO.getIdentifier()));
-      }
-      if (monitoredServiceDTO.getTemplate().getTemplateVersionNumber() == null) {
-        throw new InvalidRequestException(String.format(
-            "Template version number cannot be null if the template is used by reference for monitored service with identifier: %s",
             monitoredServiceDTO.getIdentifier()));
       }
     }
