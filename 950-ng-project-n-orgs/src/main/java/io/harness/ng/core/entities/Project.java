@@ -110,6 +110,19 @@ public class Project implements PersistentEntity, NGAccountAccess, UniqueIdAware
                  .collation(
                      Collation.builder().locale(CollationLocale.ENGLISH).strength(CollationStrength.PRIMARY).build())
                  .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("accountIdentifierParentIdIdentifierIdx")
+                 .field(ProjectKeys.accountIdentifier)
+                 .field(ProjectKeys.parentId)
+                 .field(ProjectKeys.identifier)
+                 .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("accountIdentifierParentIdIdentifierDeletedIdx")
+                 .field(ProjectKeys.accountIdentifier)
+                 .field(ProjectKeys.parentId)
+                 .field(ProjectKeys.identifier)
+                 .field(ProjectKeys.deleted)
+                 .build())
         .build();
   }
 
