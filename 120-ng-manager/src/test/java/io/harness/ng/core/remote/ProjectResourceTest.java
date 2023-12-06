@@ -255,10 +255,26 @@ public class ProjectResourceTest extends CategoryTest {
     Project project = toProject(projectDTO);
     project.setVersion(parseLong(ifMatch) + 1);
 
-    when(projectService.update(accountIdentifier, orgIdentifier, identifier, projectDTO)).thenReturn(project);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+    when(projectService.update(accountIdentifier, orgIdentifier, identifier, scopeInfo, projectDTO))
+        .thenReturn(project);
 
     ResponseDTO<ProjectResponse> response =
-        projectResource.update(ifMatch, identifier, accountIdentifier, orgIdentifier, projectRequestWrapper);
+        projectResource.update(ifMatch, identifier, accountIdentifier, orgIdentifier, projectRequestWrapper, scopeInfo);
+
+    ArgumentCaptor<ScopeInfo> captor = ArgumentCaptor.forClass(ScopeInfo.class);
+    verify(projectService, times(1))
+        .update(eq(accountIdentifier), eq(orgIdentifier), eq(identifier), captor.capture(), eq(projectDTO));
+    ScopeInfo actualScopeInfo = captor.getValue();
+    assertEquals(scopeInfo.getScopeType(), actualScopeInfo.getScopeType());
+    assertEquals(scopeInfo.getAccountIdentifier(), actualScopeInfo.getAccountIdentifier());
+    assertEquals(scopeInfo.getOrgIdentifier(), actualScopeInfo.getOrgIdentifier());
+    assertEquals(scopeInfo.getUniqueId(), actualScopeInfo.getUniqueId());
 
     assertEquals("1", response.getEntityTag());
     assertEquals(orgIdentifier, response.getData().getProject().getOrgIdentifier());

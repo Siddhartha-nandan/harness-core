@@ -120,8 +120,9 @@ public class OrgProjectApiImpl implements OrgProjectApi {
 
   private Response updateProject(
       String identifier, UpdateProjectRequest updateProjectRequest, String account, String org) {
-    Project updatedProject =
-        projectService.update(account, org, identifier, projectApiUtils.getProjectDto(updateProjectRequest));
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
+    Project updatedProject = projectService.update(
+        account, org, identifier, scopeInfo.orElseThrow(), projectApiUtils.getProjectDto(updateProjectRequest));
     ProjectResponse projectResponse = projectApiUtils.getProjectResponse(updatedProject);
 
     return Response.ok().entity(projectResponse).tag(updatedProject.getVersion().toString()).build();

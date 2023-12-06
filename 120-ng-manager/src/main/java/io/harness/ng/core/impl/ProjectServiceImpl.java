@@ -437,15 +437,15 @@ public class ProjectServiceImpl implements ProjectService {
   @Override
   @DefaultOrganization
   public Project update(String accountIdentifier, @OrgIdentifier String orgIdentifier,
-      @ProjectIdentifier String identifier, ProjectDTO projectDTO) {
-    validateUpdateProjectRequest(accountIdentifier, orgIdentifier, identifier, projectDTO);
-    Optional<Project> optionalProject = get(accountIdentifier, orgIdentifier, identifier);
+      @ProjectIdentifier String identifier, ScopeInfo scopeInfo, ProjectDTO projectDTO) {
+    validateUpdateProjectRequest(accountIdentifier, scopeInfo.getOrgIdentifier(), identifier, projectDTO);
+    Optional<Project> optionalProject = get(accountIdentifier, scopeInfo.getOrgIdentifier(), identifier);
 
     if (optionalProject.isPresent()) {
       Project existingProject = optionalProject.get();
       Project project = toProject(projectDTO);
       project.setAccountIdentifier(accountIdentifier);
-      project.setOrgIdentifier(orgIdentifier);
+      project.setOrgIdentifier(scopeInfo.getOrgIdentifier());
       project.setId(existingProject.getId());
       project.setIdentifier(existingProject.getIdentifier());
       project.setCreatedAt(existingProject.getCreatedAt() == null ? existingProject.getLastModifiedAt()
@@ -463,15 +463,15 @@ public class ProjectServiceImpl implements ProjectService {
       return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
         Project updatedProject = projectRepository.save(project);
         addToScopeInfoCache(updatedProject);
-        log.info(String.format(
-            "Project with identifier [%s] and orgIdentifier [%s] was successfully updated", identifier, orgIdentifier));
+        log.info(String.format("Project with identifier [%s] and orgIdentifier [%s] was successfully updated",
+            identifier, scopeInfo.getOrgIdentifier()));
         outboxService.save(new ProjectUpdateEvent(project.getAccountIdentifier(),
             ProjectMapper.writeDTO(updatedProject), ProjectMapper.writeDTO(existingProject)));
         return updatedProject;
       }));
     }
-    throw new InvalidRequestException(
-        String.format("Project with identifier [%s] and orgIdentifier [%s] not found", identifier, orgIdentifier),
+    throw new InvalidRequestException(String.format("Project with identifier [%s] and orgIdentifier [%s] not found",
+                                          identifier, scopeInfo.getOrgIdentifier()),
         USER);
   }
 

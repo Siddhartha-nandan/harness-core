@@ -222,9 +222,24 @@ public class OrgProjectApiImplTest extends CategoryTest {
     project.setVersion(0L);
     project.setOrgIdentifier(org);
 
-    when(projectService.update(account, org, identifier, projectDTO)).thenReturn(project);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(account)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(org)
+                              .uniqueId(orgUniqueId)
+                              .build();
+    when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
+    when(projectService.update(eq(account), eq(org), eq(identifier), any(), eq(projectDTO))).thenReturn(project);
 
     Response response = orgProjectApi.updateOrgScopedProject(request, org, identifier, account);
+
+    ArgumentCaptor<ScopeInfo> captor = ArgumentCaptor.forClass(ScopeInfo.class);
+    verify(projectService, times(1)).update(eq(account), eq(org), eq(identifier), captor.capture(), eq(projectDTO));
+    ScopeInfo actualScopeInfo = captor.getValue();
+    assertEquals(scopeInfo.getScopeType(), actualScopeInfo.getScopeType());
+    assertEquals(scopeInfo.getAccountIdentifier(), actualScopeInfo.getAccountIdentifier());
+    assertEquals(scopeInfo.getOrgIdentifier(), actualScopeInfo.getOrgIdentifier());
+    assertEquals(scopeInfo.getUniqueId(), actualScopeInfo.getUniqueId());
 
     ProjectResponse entity = (ProjectResponse) response.getEntity();
 

@@ -248,6 +248,7 @@ public class ProjectServiceImplTest extends CategoryTest {
   public void testUpdateExistentProject() {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
+    String orgUniqueIdentifier = randomAlphabetic(10);
     String identifier = randomAlphabetic(10);
     String id = randomAlphabetic(10);
     ProjectDTO projectDTO = createProjectDTO(orgIdentifier, identifier);
@@ -256,46 +257,66 @@ public class ProjectServiceImplTest extends CategoryTest {
     project.setOrgIdentifier(orgIdentifier);
     project.setIdentifier(identifier);
     project.setId(id);
+    project.setParentId(orgUniqueIdentifier);
+    project.setParentUniqueId(orgUniqueIdentifier);
+
     when(projectRepository.save(any())).thenReturn(project);
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
     when(projectService.get(accountIdentifier, orgIdentifier, identifier)).thenReturn(Optional.of(project));
-    projectService.update(accountIdentifier, orgIdentifier, identifier, projectDTO);
 
-    try {
-      verify(transactionTemplate, times(1)).execute(any());
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+    projectService.update(accountIdentifier, orgIdentifier, identifier, scopeInfo, projectDTO);
+
+    ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
+    verify(projectRepository, times(1)).save(captor.capture());
+    Project actualUpdatedProject = captor.getValue();
+    assertThat(actualUpdatedProject.getAccountIdentifier()).isEqualTo(accountIdentifier);
+    assertThat(actualUpdatedProject.getOrgIdentifier()).isEqualTo(orgIdentifier);
+    assertThat(actualUpdatedProject.getIdentifier()).isEqualTo(identifier);
+    assertThat(actualUpdatedProject.getParentId()).isEqualTo(orgUniqueIdentifier);
+    assertThat(actualUpdatedProject.getParentUniqueId()).isEqualTo(orgUniqueIdentifier);
   }
 
   @Test
   @Owner(developers = MEENAKSHI)
   @Category(UnitTests.class)
-  public void testUpdateProject_exitingCreatedAtAsNull() {
+  public void testUpdateProject_existingCreatedAtAsNull() {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
+    String orgUniqueIdentifier = randomAlphabetic(10);
     String identifier = randomAlphabetic(10);
     long lastModifiedTime = 1234567890;
 
     ProjectDTO projectDTO = createProjectDTO(orgIdentifier, identifier);
     Project newProject = toProject(projectDTO);
-    Project exitingProject = newProject;
-    exitingProject.setAccountIdentifier(accountIdentifier);
-    exitingProject.setOrgIdentifier(orgIdentifier);
-    exitingProject.setIdentifier(identifier);
-    exitingProject.setId(exitingProject.getId());
-    exitingProject.setCreatedAt(null);
-    exitingProject.setLastModifiedAt(lastModifiedTime);
-    exitingProject.setDescription("description");
+    Project existingProject = newProject;
+    existingProject.setAccountIdentifier(accountIdentifier);
+    existingProject.setOrgIdentifier(orgIdentifier);
+    existingProject.setIdentifier(identifier);
+    existingProject.setId(existingProject.getId());
+    existingProject.setCreatedAt(null);
+    existingProject.setLastModifiedAt(lastModifiedTime);
+    existingProject.setDescription("description");
     setContextData(accountIdentifier);
 
     when(projectRepository.save(any())).thenReturn(newProject);
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
-    when(projectService.get(accountIdentifier, orgIdentifier, identifier)).thenReturn(Optional.of(exitingProject));
+    when(projectService.get(accountIdentifier, orgIdentifier, identifier)).thenReturn(Optional.of(existingProject));
+
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+    projectService.update(accountIdentifier, orgIdentifier, identifier, scopeInfo, projectDTO);
+
     ArgumentCaptor<Project> updatedProjectCapture = ArgumentCaptor.forClass(Project.class);
-
-    projectService.update(accountIdentifier, orgIdentifier, identifier, projectDTO);
-
     verify(projectRepository, times(1)).save(updatedProjectCapture.capture());
 
     Project updatedProject = updatedProjectCapture.getValue();
@@ -309,29 +330,38 @@ public class ProjectServiceImplTest extends CategoryTest {
   public void testUpdateProject_withValidExistingCreatedAt() {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
+    String orgUniqueIdentifier = randomAlphabetic(10);
     String identifier = randomAlphabetic(10);
     long lastModifiedTime = 23456789;
     long createdAtTime = 1234567890;
 
     ProjectDTO projectDTO = createProjectDTO(orgIdentifier, identifier);
     Project newProject = toProject(projectDTO);
-    Project exitingProject = newProject;
-    exitingProject.setAccountIdentifier(accountIdentifier);
-    exitingProject.setOrgIdentifier(orgIdentifier);
-    exitingProject.setIdentifier(identifier);
-    exitingProject.setId(exitingProject.getId());
-    exitingProject.setCreatedAt(createdAtTime);
-    exitingProject.setLastModifiedAt(lastModifiedTime);
-    exitingProject.setDescription("description");
+    Project existingProject = newProject;
+    existingProject.setAccountIdentifier(accountIdentifier);
+    existingProject.setOrgIdentifier(orgIdentifier);
+    existingProject.setIdentifier(identifier);
+    existingProject.setId(existingProject.getId());
+    existingProject.setCreatedAt(createdAtTime);
+    existingProject.setLastModifiedAt(lastModifiedTime);
+    existingProject.setDescription("description");
+    existingProject.setParentId(orgUniqueIdentifier);
+    existingProject.setParentUniqueId(orgUniqueIdentifier);
     setContextData(accountIdentifier);
 
     when(projectRepository.save(any())).thenReturn(newProject);
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
-    when(projectService.get(accountIdentifier, orgIdentifier, identifier)).thenReturn(Optional.of(exitingProject));
+    when(projectService.get(accountIdentifier, orgIdentifier, identifier)).thenReturn(Optional.of(existingProject));
+
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+    projectService.update(accountIdentifier, orgIdentifier, identifier, scopeInfo, projectDTO);
+
     ArgumentCaptor<Project> updatedProjectCapture = ArgumentCaptor.forClass(Project.class);
-
-    projectService.update(accountIdentifier, orgIdentifier, identifier, projectDTO);
-
     verify(projectRepository, times(1)).save(updatedProjectCapture.capture());
 
     Project updatedProject = updatedProjectCapture.getValue();
@@ -345,6 +375,7 @@ public class ProjectServiceImplTest extends CategoryTest {
   public void testUpdateProject_IncorrectPayload() {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
+    String orgUniqueIdentifier = randomAlphabetic(10);
     String identifier = randomAlphabetic(10);
     ProjectDTO projectDTO = createProjectDTO(orgIdentifier, identifier);
     projectDTO.setName("");
@@ -355,7 +386,14 @@ public class ProjectServiceImplTest extends CategoryTest {
     project.setId(randomAlphabetic(10));
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
     when(projectService.get(accountIdentifier, orgIdentifier, identifier)).thenReturn(Optional.of(project));
-    projectService.update(accountIdentifier, orgIdentifier, identifier, projectDTO);
+
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+    projectService.update(accountIdentifier, orgIdentifier, identifier, scopeInfo, projectDTO);
   }
 
   @Test(expected = InvalidRequestException.class)
@@ -364,6 +402,7 @@ public class ProjectServiceImplTest extends CategoryTest {
   public void testUpdateNonExistentProject() {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
+    String orgUniqueIdentifier = randomAlphabetic(10);
     String identifier = randomAlphabetic(10);
     ProjectDTO projectDTO = createProjectDTO(orgIdentifier, identifier);
     Project project = toProject(projectDTO);
@@ -374,7 +413,14 @@ public class ProjectServiceImplTest extends CategoryTest {
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
     when(projectService.get(accountIdentifier, orgIdentifier, identifier)).thenReturn(Optional.empty());
 
-    Project updatedProject = projectService.update(accountIdentifier, orgIdentifier, identifier, projectDTO);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+
+    Project updatedProject = projectService.update(accountIdentifier, orgIdentifier, identifier, scopeInfo, projectDTO);
 
     assertNull(updatedProject);
   }
@@ -385,6 +431,7 @@ public class ProjectServiceImplTest extends CategoryTest {
   public void update_onlyIdentifierChanged_noop() {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
+    String orgUniqueIdentifier = randomAlphabetic(10);
     String identifier = "identifier";
     ProjectDTO projectDTO = createProjectDTO(orgIdentifier, identifier);
     Project project = toProject(projectDTO);
@@ -395,14 +442,22 @@ public class ProjectServiceImplTest extends CategoryTest {
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
     when(projectService.get(accountIdentifier, orgIdentifier, identifier.toUpperCase()))
         .thenReturn(Optional.of(project));
-    when(transactionTemplate.execute(any())).thenReturn(project);
 
     projectDTO.setIdentifier(identifier.toUpperCase());
-    Project updatedProject =
-        projectService.update(accountIdentifier, orgIdentifier, identifier.toUpperCase(), projectDTO);
+    when(projectRepository.save(any())).thenReturn(project);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+    projectService.update(accountIdentifier, orgIdentifier, identifier.toUpperCase(), scopeInfo, projectDTO);
 
-    assertNotNull(updatedProject);
-    assertThat(updatedProject.getIdentifier()).isEqualTo(identifier);
+    ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
+    verify(projectRepository, times(1)).save(captor.capture());
+    Project actualUpdatedProject = captor.getValue();
+    assertNotNull(actualUpdatedProject);
+    assertThat(actualUpdatedProject.getIdentifier()).isEqualTo(identifier);
   }
 
   @Test
@@ -412,12 +467,15 @@ public class ProjectServiceImplTest extends CategoryTest {
     String accountIdentifier = randomAlphabetic(10);
     String identifier = "identifier";
     String orgIdentifier = randomAlphabetic(10);
+    String orgUniqueIdentifier = randomAlphabetic(10);
     Project existingProject = Project.builder()
                                   .accountIdentifier(accountIdentifier)
                                   .orgIdentifier(orgIdentifier)
                                   .identifier(identifier)
                                   .name("test")
                                   .description("desc")
+                                  .parentId(orgUniqueIdentifier)
+                                  .parentUniqueId(orgUniqueIdentifier)
                                   .build();
 
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
@@ -432,14 +490,29 @@ public class ProjectServiceImplTest extends CategoryTest {
     Project expectedProject = existingProject;
     expectedProject.setDescription("updatedDesc");
     expectedProject.setName("updatedTest");
-    when(transactionTemplate.execute(any())).thenReturn(expectedProject);
-    Project updatedProject =
-        projectService.update(accountIdentifier, orgIdentifier, identifier.toUpperCase(), updateDTO);
+    when(projectRepository.save(any())).thenReturn(expectedProject);
 
-    assertNotNull(updatedProject);
-    assertThat(updatedProject.getIdentifier()).isEqualTo(identifier);
-    assertThat(updatedProject.getName()).isEqualTo(expectedProject.getName());
-    assertThat(updatedProject.getDescription()).isEqualTo(expectedProject.getDescription());
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+
+    projectService.update(accountIdentifier, orgIdentifier, identifier.toUpperCase(), scopeInfo, updateDTO);
+
+    ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
+    verify(projectRepository, times(1)).save(captor.capture());
+    Project actualUpdatedProject = captor.getValue();
+
+    assertNotNull(actualUpdatedProject);
+    assertThat(actualUpdatedProject.getAccountIdentifier()).isEqualTo(accountIdentifier);
+    assertThat(actualUpdatedProject.getOrgIdentifier()).isEqualTo(orgIdentifier);
+    assertThat(actualUpdatedProject.getIdentifier()).isEqualTo(identifier);
+    assertThat(actualUpdatedProject.getName()).isEqualTo(expectedProject.getName());
+    assertThat(actualUpdatedProject.getDescription()).isEqualTo(expectedProject.getDescription());
+    assertThat(actualUpdatedProject.getParentId()).isEqualTo(orgUniqueIdentifier);
+    assertThat(actualUpdatedProject.getParentUniqueId()).isEqualTo(orgUniqueIdentifier);
   }
 
   @Test

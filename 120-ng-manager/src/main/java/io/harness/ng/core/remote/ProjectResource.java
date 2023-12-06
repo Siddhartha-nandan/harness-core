@@ -307,10 +307,11 @@ public class ProjectResource {
       @RequestBody(required = true,
           description =
               "This is the updated Project. Please provide values for all fields, not just the fields you are updating")
-      @NotNull @Valid ProjectRequest projectDTO) {
+      @NotNull @Valid ProjectRequest projectDTO,
+      @Context ScopeInfo scopeInfo) {
     projectDTO.getProject().setVersion(isNumeric(ifMatch) ? parseLong(ifMatch) : null);
     Project updatedProject =
-        projectService.update(accountIdentifier, orgIdentifier, identifier, projectDTO.getProject());
+        projectService.update(accountIdentifier, orgIdentifier, identifier, scopeInfo, projectDTO.getProject());
     return ResponseDTO.newResponse(updatedProject.getVersion().toString(),
         ProjectMapper.toProjectResponseBuilder(updatedProject)
             .isFavorite(projectService.isFavorite(updatedProject, userHelperService.getUserId()))
