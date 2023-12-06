@@ -12,6 +12,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.InputSetValidatorType;
 import io.harness.common.NGExpressionUtils;
+import io.harness.data.structure.EmptyPredicate;
 import io.harness.expression.EngineExpressionEvaluator;
 import io.harness.jackson.JsonNodeUtils;
 import io.harness.pms.yaml.ParameterField;
@@ -37,7 +38,9 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 public class ParameterFieldDeserializer extends StdDeserializer<ParameterField<?>> implements ContextualDeserializer {
   private static final long serialVersionUID = 1L;
@@ -95,6 +98,14 @@ public class ParameterFieldDeserializer extends StdDeserializer<ParameterField<?
     boolean isTypeString = this.referenceType.getRawClass().equals(String.class);
 
     InputSetValidator inputSetValidator = getInputSetValidator(text);
+
+    if (EmptyPredicate.isNotEmpty(text) && text.contains("null.")) {
+      String defaultValue = NGRuntimeInputUtils.extractDefaultValueFromNullInput(text);
+      log.info("Text containing null with default is {} and extracted default value is {} test", text, defaultValue);
+      //      return ParameterField.createFieldWithDefaultValue(
+      //          false, false, NGExpressionUtils.DEFAULT_INPUT_SET_EXPRESSION, defaultValue, inputSetValidator,
+      //          isTypeString);
+    }
 
     if (NGExpressionUtils.matchesInputSetPattern(text)) {
       String defaultValue = NGRuntimeInputUtils.extractParameters(text, "default");
