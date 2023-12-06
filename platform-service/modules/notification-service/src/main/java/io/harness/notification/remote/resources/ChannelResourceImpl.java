@@ -13,9 +13,15 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.delegate.beans.NotificationTaskResponse;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.notification.NotificationRequest;
+import io.harness.notification.entities.NotificationEntity;
+import io.harness.notification.entities.NotificationEvent;
+import io.harness.notification.entities.NotificationRule;
+import io.harness.notification.entities.eventmetadata.NotificationEventParameters;
+import io.harness.notification.model.NotificationRuleReferenceDTO;
 import io.harness.notification.remote.dto.NotificationRequestDTO;
 import io.harness.notification.remote.dto.NotificationSettingDTO;
 import io.harness.notification.service.api.ChannelService;
+import io.harness.notification.service.api.NotificationRuleManagementService;
 
 import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -28,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ChannelResourceImpl implements ChannelResource {
   private final ChannelService channelService;
+  private final NotificationRuleManagementService notificationRuleManagementService;
 
   public ResponseDTO<Boolean> testNotificationSetting(NotificationSettingDTO notificationSettingDTO) {
     log.info("Received test notification request for {} - notificationId: {}", notificationSettingDTO.getType(),
@@ -43,5 +50,22 @@ public class ChannelResourceImpl implements ChannelResource {
         notificationRequest.getId());
     NotificationTaskResponse taskResponse = channelService.sendSync(notificationRequest);
     return ResponseDTO.newResponse(taskResponse);
+  }
+
+  @Override
+  public ResponseDTO<NotificationRuleReferenceDTO> notificationRule(String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, String notificationEntity, String notificationEvent) {
+    NotificationEntity notificationEntityEnum = Enum.valueOf(NotificationEntity.class, notificationEntity);
+    NotificationEvent notificationEventEnum = Enum.valueOf(NotificationEvent.class, notificationEvent);
+    NotificationRule notificationRule = notificationRuleManagementService.get(
+        accountIdentifier, orgIdentifier, projectIdentifier, notificationEntityEnum, notificationEventEnum);
+    NotificationEventParameters notificationEventParameters =
+        notificationRule.getNotificationEventConfigs(notificationEventEnum).get(0).getNotificationEventParameters();
+    return ResponseDTO.newResponse(NotificationRuleReferenceDTO.builder()
+                                       .accountIdentifier(accountIdentifier)
+                                       .orgIdentifier(orgIdentifier)
+                                       .projectIdentifier(projectIdentifier)
+                                       .notificationEventParameters(notificationEventParameters)
+                                       .build());
   }
 }

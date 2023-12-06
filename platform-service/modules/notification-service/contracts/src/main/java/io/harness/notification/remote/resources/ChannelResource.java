@@ -14,6 +14,7 @@ import io.harness.delegate.beans.NotificationTaskResponse;
 import io.harness.ng.core.dto.ErrorDTO;
 import io.harness.ng.core.dto.FailureDTO;
 import io.harness.ng.core.dto.ResponseDTO;
+import io.harness.notification.model.NotificationRuleReferenceDTO;
 import io.harness.notification.remote.dto.NotificationRequestDTO;
 import io.harness.notification.remote.dto.NotificationSettingDTO;
 
@@ -24,9 +25,11 @@ import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import retrofit2.http.Query;
 
 @OwnedBy(PL)
 @Api("channels")
@@ -48,4 +51,11 @@ public interface ChannelResource {
   @ApiOperation(value = "Send notification", nickname = "sendNotification")
   ResponseDTO<NotificationTaskResponse> sendNotification(@NotNull NotificationRequestDTO notificationRequestDTO)
       throws InvalidProtocolBufferException;
+
+  @GET
+  @Path("/notification-rule")
+  @ApiOperation(value = "Notification Rule", nickname = "notificationRule")
+  ResponseDTO<NotificationRuleReferenceDTO> notificationRule(@Query("accountIdentifier") String accountIdentifier,
+      @Query("orgIdentifier") String orgIdentifier, @Query("projectIdentifier") String projectIdentifier,
+      @Query("notificationEntity") String notificationEntity, @Query("notificationEvent") String notificationEvent);
 }
