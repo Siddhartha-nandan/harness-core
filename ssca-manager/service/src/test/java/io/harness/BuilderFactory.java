@@ -34,6 +34,8 @@ import io.harness.ssca.beans.SpdxDTO;
 import io.harness.ssca.beans.SpdxDTO.SpdxDTOBuilder;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityBuilder;
+import io.harness.ssca.entities.BaselineEntity;
+import io.harness.ssca.entities.BaselineEntity.BaselineEntityBuilder;
 import io.harness.ssca.entities.CdInstanceSummary;
 import io.harness.ssca.entities.CdInstanceSummary.CdInstanceSummaryBuilder;
 import io.harness.ssca.entities.ConfigEntity;
@@ -398,6 +400,15 @@ public class BuilderFactory {
         .violationType("violationType");
   }
 
+  public BaselineEntityBuilder getBaselineEntityBuilder() {
+    return BaselineEntity.builder()
+        .accountIdentifier(context.getAccountId())
+        .orgIdentifier(context.orgIdentifier)
+        .projectIdentifier(context.projectIdentifier)
+        .artifactId("artifact")
+        .tag("tag");
+  }
+
   public ConfigEntityBuilder getConfigEntityBuilder() {
     return ConfigEntity.builder()
         .accountId(context.accountId)
@@ -417,11 +428,7 @@ public class BuilderFactory {
     Map<String, String> config = new HashMap<>();
     config.put("key1", "value1");
     config.put("key2", "value2");
-    configInfoList.add(ConfigEntity.ConfigInfo.builder()
-                           .id("example id")
-                           .categoryName("example category name")
-                           .config(config)
-                           .build());
+    configInfoList.add(ConfigEntity.ConfigInfo.builder().categoryName("example category name").config(config).build());
 
     return configInfoList;
   }

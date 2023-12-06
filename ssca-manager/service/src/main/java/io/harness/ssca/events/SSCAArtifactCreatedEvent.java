@@ -8,6 +8,7 @@
 package io.harness.ssca.events;
 
 import static io.harness.annotations.dev.HarnessTeam.SSCA;
+import static io.harness.audit.ResourceTypeConstants.SSCA_ARTIFACT;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.event.Event;
@@ -43,7 +44,7 @@ public class SSCAArtifactCreatedEvent implements Event {
   public Resource getResource() {
     Map<String, String> labels = new HashMap<>();
     labels.put(ResourceConstants.LABEL_KEY_RESOURCE_NAME, artifact.getName());
-    return Resource.builder().identifier(artifact.getArtifactId()).type("SSCA").labels(labels).build();
+    return Resource.builder().identifier(artifact.getArtifactId()).type(SSCA_ARTIFACT).labels(labels).build();
   }
 
   @JsonIgnore
