@@ -11,6 +11,7 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.eraro.ErrorCode.SECRET_MANAGEMENT_ERROR;
 import static io.harness.exception.WingsException.USER;
+import static io.harness.security.encryption.EncryptionType.CUSTOM_NG;
 import static io.harness.utils.DelegateOwner.NG_DELEGATE_ENABLED_CONSTANT;
 import static io.harness.utils.DelegateOwner.NG_DELEGATE_OWNER_CONSTANT;
 
@@ -42,6 +43,8 @@ import io.harness.ng.core.NGAccess;
 import io.harness.security.encryption.EncryptedRecord;
 import io.harness.security.encryption.EncryptionConfig;
 import io.harness.service.DelegateGrpcClientWrapper;
+
+import software.wings.beans.CustomSecretNGManagerConfig;
 
 import com.google.inject.Inject;
 import java.time.Duration;
@@ -90,11 +93,15 @@ public class NGManagerEncryptorHelper {
   public char[] fetchSecretValue(String accountId, EncryptedRecord encryptedRecord, EncryptionConfig encryptionConfig) {
     FetchSecretTaskParameters parameters =
         FetchSecretTaskParameters.builder().encryptedRecord(encryptedRecord).encryptionConfig(encryptionConfig).build();
+    Long timeout = TaskData.DEFAULT_SYNC_CALL_TIMEOUT;
+    if (CUSTOM_NG.equals(encryptionConfig.getEncryptionType())) {
+      timeout = ((CustomSecretNGManagerConfig) encryptionConfig).getTimeout() * 1000 * 3L;
+    }
     DelegateTaskRequest delegateTaskRequest =
         DelegateTaskRequest.builder()
             .taskType(FETCH_SECRET.name())
             .taskParameters(parameters)
-            .executionTimeout(Duration.ofMillis(TaskData.DEFAULT_SYNC_CALL_TIMEOUT))
+            .executionTimeout(Duration.ofMillis(timeout))
             .accountId(accountId)
             .taskSetupAbstractions(buildAbstractions(parameters.getEncryptionConfig()))
             .build();

@@ -18,6 +18,7 @@ import static software.wings.service.impl.security.customsecretsmanager.CustomSe
 
 import static java.lang.String.format;
 import static java.time.Duration.ofMillis;
+import static java.util.Objects.isNull;
 
 import io.harness.concurrent.HTimeLimiter;
 import io.harness.delegate.task.shell.ShellScriptTaskParametersNG;
@@ -66,7 +67,8 @@ public class NGCustomSecretManagerEncryptor implements CustomEncryptor {
     int failedAttempts = 0;
     while (true) {
       try {
-        return HTimeLimiter.callInterruptible21(timeLimiter, Duration.ofSeconds(20),
+        long timeout = isNull(customSecretsManagerConfig.getTimeout()) ? 20 : customSecretsManagerConfig.getTimeout();
+        return HTimeLimiter.callInterruptible21(timeLimiter, Duration.ofSeconds(timeout),
             () -> fetchSecretValueInternal(accountId, encryptedRecord, customSecretsManagerConfig));
       } catch (SecretManagementDelegateException e) {
         throw e;

@@ -38,7 +38,8 @@ public class CustomSecretManagerConfigDTOMapper {
             .connectorRef(SecretRefHelper.getSecretConfigString(connectorDTO.getConnectorRef()))
             .host(connectorDTO.getHost())
             .workingDirectory(connectorDTO.getWorkingDirectory())
-            .template(connectorDTO.getTemplate());
+            .template(connectorDTO.getTemplate())
+            .timeout(connectorDTO.getTimeout());
 
     if (null != connectorDTO.getConnectorRef() && null != connectorDTO.getConnectorRef().getDecryptedValue()) {
       builder.connectorRef(String.valueOf(connectorDTO.getConnectorRef().getDecryptedValue()));

@@ -61,6 +61,7 @@ public class CustomSecretNGManagerConfig extends SecretManagerConfig {
   private String workingDirectory;
   private TemplateLinkConfigForCustomSecretManager template;
   private String script;
+  private Long timeout;
 
   @Override
   public void maskSecrets() {

@@ -45,4 +45,5 @@ public class CustomSecretManagerConnector extends Connector {
   private String workingDirectory;
   private TemplateLinkConfigForCustomSecretManager template;
   @Builder.Default private Boolean onDelegate = Boolean.FALSE;
+  @Builder.Default private Long timeout = 20L;
 }

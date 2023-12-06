@@ -40,4 +40,5 @@ public class CustomSecretManagerConfigDTO extends SecretManagerConfigDTO impleme
   private String workingDirectory;
   @NotNull private TemplateLinkConfigForCustomSecretManager template;
   private String script;
+  private Long timeout;
 }

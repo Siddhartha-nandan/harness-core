@@ -45,4 +45,5 @@ public class CustomSecretManagerConnectorOutcomeDTO extends ConnectorConfigOutco
   private String host;
   private String workingDirectory;
   @NotNull private TemplateLinkConfigForCustomSecretManager template;
+  private Long timeout;
 }

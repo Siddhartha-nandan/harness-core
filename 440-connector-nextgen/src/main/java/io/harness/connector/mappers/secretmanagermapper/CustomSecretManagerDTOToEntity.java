@@ -24,6 +24,7 @@ public class CustomSecretManagerDTOToEntity
         .host(connectorDTO.getHost())
         .workingDirectory(connectorDTO.getWorkingDirectory())
         .onDelegate(onDelegate)
+        .timeout(connectorDTO.getTimeout())
         .build();
   }
 }
