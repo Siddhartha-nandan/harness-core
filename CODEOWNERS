@@ -1,3 +1,5 @@
+.gitleaksignore pranay.shah@harness.io jyoti.raval@harness.io
+DockerFile* marc.batchelor@harness.io ivan.leon@harness.io vishal.bhatia@harness.io christopher.ham@harness.io anshu.singla@harness.io krishika.singh@harness.io
 .bazel* marc.batchelor@harness.io ivan.leon@harness.io vishal.bhatia@harness.io christopher.ham@harness.io anshu.singla@harness.io krishika.singh@harness.io
 bazel* marc.batchelor@harness.io ivan.leon@harness.io vishal.bhatia@harness.io christopher.ham@harness.io anshu.singla@harness.io krishika.singh@harness.io
 project/bazelproject-config marc.batchelor@harness.io ivan.leon@harness.io vishal.bhatia@harness.io christopher.ham@harness.io anshu.singla@harness.io krishika.singh@harness.io
