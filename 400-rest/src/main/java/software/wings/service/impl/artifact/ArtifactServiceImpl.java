@@ -952,6 +952,8 @@ public class ArtifactServiceImpl implements ArtifactService {
             .hasAnyOf(asList(QUEUED, RUNNING, REJECTED, WAITING, READY, APPROVED, FAILED, ERROR))
             .disableValidation();
 
+    artifactQuery.project("_id", false);
+
     if (AMI.name().equals(artifactStream.getArtifactStreamType())) {
       artifactQuery.project(ArtifactKeys.revision, true);
     } else {
