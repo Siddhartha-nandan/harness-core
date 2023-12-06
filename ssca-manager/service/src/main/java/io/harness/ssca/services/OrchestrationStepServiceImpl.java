@@ -12,6 +12,7 @@ import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 import io.harness.outbox.api.OutboxService;
 import io.harness.repositories.SBOMComponentRepo;
 import io.harness.spec.server.ssca.v1.model.Artifact;
+import io.harness.spec.server.ssca.v1.model.ArtifactScorecard;
 import io.harness.spec.server.ssca.v1.model.OrchestrationSummaryResponse;
 import io.harness.spec.server.ssca.v1.model.SbomDetails;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
@@ -112,13 +113,21 @@ public class OrchestrationStepServiceImpl implements OrchestrationStepService {
                              -> new NotFoundException(String.format(
                                  "Artifact with orchestrationIdentifier [%s] is not found", orchestrationId)));
 
+    Artifact artifactResponse = new Artifact()
+                                    .name(artifact.getName())
+                                    .type(artifact.getName())
+                                    .registryUrl(artifact.getUrl())
+                                    .id(artifact.getId())
+                                    .tag(artifact.getTag());
+
+    if (artifact.getScorecard() != null) {
+      artifactResponse.setScorecard(new ArtifactScorecard()
+                                        .avgScore(artifact.getScorecard().getAvgScore())
+                                        .maxScore(artifact.getScorecard().getMaxScore()));
+    }
+
     return new OrchestrationSummaryResponse()
-        .artifact(new Artifact()
-                      .name(artifact.getName())
-                      .type(artifact.getName())
-                      .registryUrl(artifact.getUrl())
-                      .id(artifact.getId())
-                      .tag(artifact.getTag()))
+        .artifact(artifactResponse)
         .stepExecutionId(artifact.getOrchestrationId())
         .isAttested(artifact.isAttested())
         .sbom(new SbomDetails().name(artifact.getSbomName()));
