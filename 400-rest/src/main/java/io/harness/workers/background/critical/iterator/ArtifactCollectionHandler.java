@@ -20,9 +20,11 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.annotations.dev.TargetModule;
+import io.harness.beans.FeatureName;
 import io.harness.exception.ExceptionLogger;
 import io.harness.exception.FunctorException;
 import io.harness.exception.WingsException;
+import io.harness.ff.FeatureFlagService;
 import io.harness.iterator.IteratorExecutionHandler;
 import io.harness.iterator.IteratorPumpAndRedisModeHandler;
 import io.harness.iterator.PersistenceIteratorFactory;
@@ -68,6 +70,7 @@ public class ArtifactCollectionHandler extends IteratorPumpAndRedisModeHandler i
   @Inject @Named("AsyncArtifactCollectionService") private ArtifactCollectionService artifactCollectionServiceAsync;
   @Inject private ArtifactCollectionUtils artifactCollectionUtils;
   @Inject private MorphiaPersistenceRequiredProvider<ArtifactStream> persistenceProvider;
+  @Inject private FeatureFlagService featureFlagService;
 
   @Override
   public void createAndStartIterator(
@@ -120,7 +123,9 @@ public class ArtifactCollectionHandler extends IteratorPumpAndRedisModeHandler i
   public void handle(ArtifactStream artifactStream) {
     try (AutoLogContext ignore2 = new ArtifactStreamLogContext(
              artifactStream.getUuid(), artifactStream.getArtifactStreamType(), OVERRIDE_ERROR)) {
-      executeInternal(artifactStream);
+      if (featureFlagService.isEnabled(FeatureName.CDS_CG_ITERATORS_ENABLED, artifactStream.getAccountId())) {
+        executeInternal(artifactStream);
+      }
     }
   }
 

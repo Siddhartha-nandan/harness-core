@@ -13,6 +13,7 @@ import static io.harness.mongo.iterator.MongoPersistenceIterator.SchedulingType.
 import static java.time.Duration.ofMinutes;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.FeatureName;
 import io.harness.ff.FeatureFlagService;
 import io.harness.iterator.IteratorExecutionHandler;
 import io.harness.iterator.IteratorPumpAndRedisModeHandler;
@@ -89,7 +90,9 @@ public class GitSyncPollingIterator
 
   @Override
   public void handle(YamlGitConfig entity) {
-    yamlChangeSetService.pushYamlChangeSetForGitToHarness(entity.getAccountId(), entity.getBranchName(),
-        entity.getGitConnectorId(), entity.getRepositoryName(), entity.getAppId());
+    if (featureFlagService.isEnabled(FeatureName.CDS_CG_ITERATORS_ENABLED, entity.getAccountId())) {
+      yamlChangeSetService.pushYamlChangeSetForGitToHarness(entity.getAccountId(), entity.getBranchName(),
+          entity.getGitConnectorId(), entity.getRepositoryName(), entity.getAppId());
+    }
   }
 }
