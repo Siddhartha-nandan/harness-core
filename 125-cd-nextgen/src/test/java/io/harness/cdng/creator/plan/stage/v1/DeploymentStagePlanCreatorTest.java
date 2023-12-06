@@ -289,48 +289,48 @@ public class DeploymentStagePlanCreatorTest extends CDNGTestBase {
     final DeploymentStageNodeV1 node1 = buildNode(
         DeploymentStageConfigV1.builder()
             .uuid("stageUuid")
-            .service(
+            .serviceV0(
                 ServiceYamlV2.builder().uuid("serviceuuid").serviceRef(ParameterField.createValueField(svcId)).build())
-            .environment(EnvironmentYamlV2.builder()
-                             .uuid("envuuid")
-                             .environmentRef(ParameterField.<String>builder().value(envId).build())
-                             .deployToAll(ParameterField.createValueField(false))
-                             .provisioner(ExecutionElementConfig.builder()
-                                              .uuid("provuuid")
-                                              .steps(List.of(ExecutionWrapperConfig.builder()
-                                                                 .uuid("provstepuuid")
-                                                                 .step(mapper.valueToTree(provisionStep))
-                                                                 .build()))
-                                              .build())
-                             .infrastructureDefinitions(ParameterField.createValueField(
-                                 asList(InfraStructureDefinitionYaml.builder()
-                                            .identifier(ParameterField.createValueField("infra"))
-                                            .build())))
-                             .build())
+            .environmentV0(EnvironmentYamlV2.builder()
+                               .uuid("envuuid")
+                               .environmentRef(ParameterField.<String>builder().value(envId).build())
+                               .deployToAll(ParameterField.createValueField(false))
+                               .provisioner(ExecutionElementConfig.builder()
+                                                .uuid("provuuid")
+                                                .steps(List.of(ExecutionWrapperConfig.builder()
+                                                                   .uuid("provstepuuid")
+                                                                   .step(mapper.valueToTree(provisionStep))
+                                                                   .build()))
+                                                .build())
+                               .infrastructureDefinitions(ParameterField.createValueField(
+                                   asList(InfraStructureDefinitionYaml.builder()
+                                              .identifier(ParameterField.createValueField("infra"))
+                                              .build())))
+                               .build())
             .steps(List.of(mapper.valueToTree(step)))
             .build());
 
     final DeploymentStageNodeV1 node2 = buildNode(
         DeploymentStageConfigV1.builder()
             .uuid("stageUuid")
-            .service(
+            .serviceV0(
                 ServiceYamlV2.builder().uuid("serviceuuid").serviceRef(ParameterField.createValueField(svcId)).build())
-            .environment(EnvironmentYamlV2.builder()
-                             .uuid("envuuid")
-                             .environmentRef(ParameterField.<String>builder().value(envId).build())
-                             .deployToAll(ParameterField.createValueField(false))
-                             .provisioner(ExecutionElementConfig.builder()
-                                              .uuid("provuuid")
-                                              .steps(List.of(ExecutionWrapperConfig.builder()
-                                                                 .uuid("provstepuuid")
-                                                                 .step(mapper.valueToTree(provisionStep))
-                                                                 .build()))
-                                              .build())
-                             .infrastructureDefinition(ParameterField.createValueField(
-                                 InfraStructureDefinitionYaml.builder()
-                                     .identifier(ParameterField.createValueField("infra"))
-                                     .build()))
-                             .build())
+            .environmentV0(EnvironmentYamlV2.builder()
+                               .uuid("envuuid")
+                               .environmentRef(ParameterField.<String>builder().value(envId).build())
+                               .deployToAll(ParameterField.createValueField(false))
+                               .provisioner(ExecutionElementConfig.builder()
+                                                .uuid("provuuid")
+                                                .steps(List.of(ExecutionWrapperConfig.builder()
+                                                                   .uuid("provstepuuid")
+                                                                   .step(mapper.valueToTree(provisionStep))
+                                                                   .build()))
+                                                .build())
+                               .infrastructureDefinition(ParameterField.createValueField(
+                                   InfraStructureDefinitionYaml.builder()
+                                       .identifier(ParameterField.createValueField("infra"))
+                                       .build()))
+                               .build())
             .steps(List.of(mapper.valueToTree(step)))
             .build());
 
@@ -345,7 +345,7 @@ public class DeploymentStagePlanCreatorTest extends CDNGTestBase {
     final DeploymentStageNodeV1 nodeEnvsFilters = buildNode(
         DeploymentStageConfigV1.builder()
             .uuid("stageUuid")
-            .service(
+            .serviceV0(
                 ServiceYamlV2.builder().uuid("serviceuuid").serviceRef(ParameterField.createValueField(svcId)).build())
             .environments(EnvironmentsYaml.builder()
                               .uuid("environments-uuid")
@@ -443,15 +443,15 @@ public class DeploymentStagePlanCreatorTest extends CDNGTestBase {
                                                           .serviceRef(ParameterField.createValueField(svcId))
                                                           .build())))
                                     .build())
-                      .environment(EnvironmentYamlV2.builder()
-                                       .uuid("envuuid")
-                                       .environmentRef(ParameterField.<String>builder().value(envId).build())
-                                       .deployToAll(ParameterField.createValueField(false))
-                                       .infrastructureDefinitions(ParameterField.createValueField(
-                                           asList(InfraStructureDefinitionYaml.builder()
-                                                      .identifier(ParameterField.createValueField("infra"))
-                                                      .build())))
-                                       .build())
+                      .environmentV0(EnvironmentYamlV2.builder()
+                                         .uuid("envuuid")
+                                         .environmentRef(ParameterField.<String>builder().value(envId).build())
+                                         .deployToAll(ParameterField.createValueField(false))
+                                         .infrastructureDefinitions(ParameterField.createValueField(
+                                             asList(InfraStructureDefinitionYaml.builder()
+                                                        .identifier(ParameterField.createValueField("infra"))
+                                                        .build())))
+                                         .build())
                       .steps(List.of(mapper.valueToTree(step)))
                       .build());
 

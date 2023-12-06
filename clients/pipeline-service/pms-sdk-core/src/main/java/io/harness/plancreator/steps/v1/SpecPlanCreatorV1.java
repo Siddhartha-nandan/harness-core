@@ -7,6 +7,8 @@
 
 package io.harness.plancreator.steps.v1;
 
+import static software.amazon.awssdk.utils.StringUtils.isBlank;
+
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.pms.contracts.facilitators.FacilitatorObtainment;
@@ -24,9 +26,12 @@ import io.harness.pms.yaml.DependenciesUtils;
 import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
+import io.harness.serializer.KryoSerializer;
 import io.harness.steps.common.NGSectionStep;
 import io.harness.steps.common.NGSectionStepParameters;
 
+import com.google.inject.Inject;
+import com.google.protobuf.ByteString;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -36,6 +41,7 @@ import java.util.Set;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 public class SpecPlanCreatorV1 extends ChildrenPlanCreator<YamlField> {
+  @Inject KryoSerializer kryoSerializer;
   @Override
   public LinkedHashMap<String, PlanCreationResponse> createPlanForChildrenNodes(
       PlanCreationContext ctx, YamlField config) {
@@ -70,7 +76,18 @@ public class SpecPlanCreatorV1 extends ChildrenPlanCreator<YamlField> {
 
   @Override
   public PlanNode createPlanForParentNode(PlanCreationContext ctx, YamlField config, List<String> childrenNodeIds) {
-    StepParameters stepParameters = NGSectionStepParameters.builder().childNodeId(childrenNodeIds.get(0)).build();
+    String childNodeId = null;
+
+    ByteString bytes = ctx.getDependency().getMetadataMap().get(YAMLFieldNameConstants.CHILD_NODE_OF_SPEC);
+    if (bytes != null) {
+      childNodeId = (String) kryoSerializer.asInflatedObject(
+          ctx.getDependency().getMetadataMap().get(YAMLFieldNameConstants.CHILD_NODE_OF_SPEC).toByteArray());
+    }
+
+    StepParameters stepParameters = NGSectionStepParameters.builder()
+                                        .childNodeId(isBlank(childNodeId) ? childrenNodeIds.get(0) : childNodeId)
+                                        .build();
+
     return PlanNode.builder()
         .uuid(config.getUuid())
         .identifier(YAMLFieldNameConstants.SPEC)

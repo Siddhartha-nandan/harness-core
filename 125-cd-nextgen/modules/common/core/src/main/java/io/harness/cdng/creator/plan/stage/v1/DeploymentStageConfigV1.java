@@ -45,11 +45,11 @@ public class DeploymentStageConfigV1 implements Visitable {
   @JsonProperty("gitops_enabled") Boolean gitOpsEnabled;
   @NotNull @Size(min = 1) List<JsonNode> steps;
   @JsonProperty("rollback_steps") List<JsonNode> rollbackSteps;
-  ServiceYamlV2 service;
-  SimplifiedServiceYaml serviceV1;
+  ServiceYamlV2 serviceV0;
+  SimplifiedServiceYaml service;
   ServicesYaml services;
-  EnvironmentYamlV2 environment;
-  SimplifiedEnvironmentYaml environmentV1;
+  EnvironmentYamlV2 environmentV0;
+  SimplifiedEnvironmentYaml environment;
   EnvironmentsYaml environments;
   EnvironmentGroupYaml environmentGroup;
   String desc;
@@ -61,14 +61,11 @@ public class DeploymentStageConfigV1 implements Visitable {
   @Override
   public VisitableChildren getChildrenToWalk() {
     List<VisitableChild> children = new ArrayList<>();
-    if (serviceV1 != null) {
-      children.add(VisitableChild.builder().value(serviceV1).fieldName("serviceV1").build());
-    }
     if (service != null) {
       children.add(VisitableChild.builder().value(service).fieldName("service").build());
     }
     if (environment != null) {
-      children.add(VisitableChild.builder().value(environment).fieldName("environment").build());
+      children.add(VisitableChild.builder().value(environmentV0).fieldName("environment").build());
     }
     if (environmentGroup != null) {
       children.add(VisitableChild.builder().value(environmentGroup).fieldName("environmentGroup").build());

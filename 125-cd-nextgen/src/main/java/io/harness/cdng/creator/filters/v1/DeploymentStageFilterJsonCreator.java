@@ -127,7 +127,7 @@ public class DeploymentStageFilterJsonCreator extends GenericStageFilterJsonCrea
   // This validation is added due to limitations of oneof wherein it introduces strict yaml checking breaking old
   // pipelines with extra fields
   private void validate(FilterCreationContext filterCreationContext, DeploymentStageConfigV1 deploymentStageConfig) {
-    if (deploymentStageConfig.getService() != null) {
+    if (deploymentStageConfig.getServiceV0() != null) {
       validateSingleService(filterCreationContext, deploymentStageConfig);
     }
     if (deploymentStageConfig.getServices() != null) {
@@ -163,7 +163,7 @@ public class DeploymentStageFilterJsonCreator extends GenericStageFilterJsonCrea
         throw new InvalidYamlRuntimeException(
             "Stage template that propagates service from another stage cannot be saved. Please remove useFromStage and set the serviceRef to fixed value, runtime or an expression and try again");
       }
-      String useFromStageIdentifier = deploymentStageConfig.getService().getUseFromStage().getStage();
+      String useFromStageIdentifier = deploymentStageConfig.getServiceV0().getUseFromStage().getStage();
       if (referredStageForPropagationDoesNotExist(filterCreationContext.getCurrentField(), useFromStageIdentifier)) {
         throw new InvalidYamlRuntimeException(String.format(
             "Stage with identifier [%s] given for service propagation does not exist. Please add it and try again.",
@@ -176,7 +176,7 @@ public class DeploymentStageFilterJsonCreator extends GenericStageFilterJsonCrea
         throw new InvalidYamlRuntimeException(
             "Stage template that propagates environment from another stage cannot be saved. Please remove useFromStage and set the environmentRef to fixed value, runtime or an expression and try again");
       }
-      String useFromStageIdentifier = deploymentStageConfig.getEnvironment().getUseFromStage().getStage();
+      String useFromStageIdentifier = deploymentStageConfig.getEnvironmentV0().getUseFromStage().getStage();
       if (referredStageForPropagationDoesNotExist(filterCreationContext.getCurrentField(), useFromStageIdentifier)) {
         throw new InvalidYamlRuntimeException(String.format(
             "Stage with identifier [%s] given for environment propagation does not exist. Please add it and try again.",
@@ -184,8 +184,8 @@ public class DeploymentStageFilterJsonCreator extends GenericStageFilterJsonCrea
       }
     }
 
-    if (deploymentStageConfig.getEnvironment() != null) {
-      validateInfraProvisioners(filterCreationContext, deploymentStageConfig.getEnvironment());
+    if (deploymentStageConfig.getEnvironmentV0() != null) {
+      validateInfraProvisioners(filterCreationContext, deploymentStageConfig.getEnvironmentV0());
     }
   }
 
@@ -206,20 +206,21 @@ public class DeploymentStageFilterJsonCreator extends GenericStageFilterJsonCrea
   }
 
   private boolean usesServiceFromAnotherStage(DeploymentStageConfigV1 deploymentStageConfig) {
-    return deploymentStageConfig.getService() != null && deploymentStageConfig.getService().getUseFromStage() != null
-        && isNotEmpty(deploymentStageConfig.getService().getUseFromStage().getStage());
+    return deploymentStageConfig.getServiceV0() != null
+        && deploymentStageConfig.getServiceV0().getUseFromStage() != null
+        && isNotEmpty(deploymentStageConfig.getServiceV0().getUseFromStage().getStage());
   }
 
   private boolean usesEnvironmentFromAnotherStage(DeploymentStageConfigV1 deploymentStageConfig) {
-    return deploymentStageConfig.getEnvironment() != null
-        && deploymentStageConfig.getEnvironment().getUseFromStage() != null
-        && isNotEmpty(deploymentStageConfig.getEnvironment().getUseFromStage().getStage());
+    return deploymentStageConfig.getEnvironmentV0() != null
+        && deploymentStageConfig.getEnvironmentV0().getUseFromStage() != null
+        && isNotEmpty(deploymentStageConfig.getEnvironmentV0().getUseFromStage().getStage());
   }
 
   private void addServiceFilters(FilterCreationContext filterCreationContext, CdFilterBuilder filterBuilder,
       DeploymentStageConfigV1 deploymentStageConfig) {
-    if (deploymentStageConfig.getService() != null) {
-      addFiltersForSingleService(filterCreationContext, filterBuilder, deploymentStageConfig.getService());
+    if (deploymentStageConfig.getServiceV0() != null) {
+      addFiltersForSingleService(filterCreationContext, filterBuilder, deploymentStageConfig.getServiceV0());
     } else if (deploymentStageConfig.getServices() != null) {
       addFiltersForServices(filterCreationContext, filterBuilder, deploymentStageConfig.getServices());
     } else {
@@ -231,8 +232,8 @@ public class DeploymentStageFilterJsonCreator extends GenericStageFilterJsonCrea
 
   private void addInfraFilters(FilterCreationContext filterCreationContext, CdFilterBuilder filterBuilder,
       DeploymentStageConfigV1 deploymentStageConfig) {
-    if (deploymentStageConfig.getEnvironment() != null) {
-      addFiltersFromEnvironment(filterCreationContext, filterBuilder, deploymentStageConfig.getEnvironment(),
+    if (deploymentStageConfig.getEnvironmentV0() != null) {
+      addFiltersFromEnvironment(filterCreationContext, filterBuilder, deploymentStageConfig.getEnvironmentV0(),
           deploymentStageConfig.getGitOpsEnabled());
       validateInfraScopedToServices(deploymentStageConfig, filterCreationContext);
     } else if (deploymentStageConfig.getEnvironmentGroup() != null) {
@@ -338,14 +339,14 @@ public class DeploymentStageFilterJsonCreator extends GenericStageFilterJsonCrea
 
     List<String> serviceRefs = new ArrayList<>();
     Map<String, List<String>> envInfraMap = new HashMap<>();
-    if (deploymentStageConfig.getService() != null) {
-      addServiceRef(deploymentStageConfig.getService(), serviceRefs);
+    if (deploymentStageConfig.getServiceV0() != null) {
+      addServiceRef(deploymentStageConfig.getServiceV0(), serviceRefs);
     }
     if (deploymentStageConfig.getServices() != null) {
       addMultiServiceRef(deploymentStageConfig.getServices(), serviceRefs);
     }
-    if (deploymentStageConfig.getEnvironment() != null) {
-      addEnvRef(deploymentStageConfig.getEnvironment(), envInfraMap);
+    if (deploymentStageConfig.getEnvironmentV0() != null) {
+      addEnvRef(deploymentStageConfig.getEnvironmentV0(), envInfraMap);
     }
     if (deploymentStageConfig.getEnvironments() != null) {
       addMultiEnvRef(deploymentStageConfig.getEnvironments(), envInfraMap);

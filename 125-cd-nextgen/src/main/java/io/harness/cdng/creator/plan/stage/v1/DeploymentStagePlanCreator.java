@@ -434,9 +434,9 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
       }
     }
     List<ServiceOverrideInputsYaml> servicesOverrides = null;
-    if (stageConfig.getEnvironment() != null
-        && EmptyPredicate.isNotEmpty(stageConfig.getEnvironment().getServicesOverrides())) {
-      servicesOverrides = stageConfig.getEnvironment().getServicesOverrides();
+    if (stageConfig.getEnvironmentV0() != null
+        && EmptyPredicate.isNotEmpty(stageConfig.getEnvironmentV0().getServicesOverrides())) {
+      servicesOverrides = stageConfig.getEnvironmentV0().getServicesOverrides();
     }
 
     saveDeploymentStagePlanCreationSummaryForMultiServiceMultiEnvAsync(ctx, stageNode, specField);
@@ -519,12 +519,13 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
   }
 
   private ServiceYamlV2 getServiceYaml(YamlField specField, DeploymentStageConfigV1 stageConfig) {
-    if (stageConfig.getService() != null && ServiceAllInOnePlanCreatorUtils.useFromStage(stageConfig.getService())) {
+    if (stageConfig.getServiceV0() != null
+        && ServiceAllInOnePlanCreatorUtils.useFromStage(stageConfig.getServiceV0())) {
       return ServiceAllInOnePlanCreatorUtils.useServiceYamlFromStage(
-          stageConfig.getService().getUseFromStage(), specField);
+          stageConfig.getServiceV0().getUseFromStage(), specField);
     }
 
-    return stageConfig.getService();
+    return stageConfig.getServiceV0();
   }
 
   /**
@@ -584,8 +585,8 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
     // Adding service child by resolving the serviceField
     // TODO: Add support for use from stage
     // TODO: Add support for environment group and multi environment
-    SimplifiedServiceYaml service = stageNode.getSpec().getServiceV1();
-    SimplifiedEnvironmentYaml environment = stageNode.getSpec().getEnvironmentV1();
+    SimplifiedServiceYaml service = stageNode.getSpec().getService();
+    SimplifiedEnvironmentYaml environment = stageNode.getSpec().getEnvironment();
 
     String serviceNodeId = service.getUuid();
     ServiceDefinitionType serviceType = serviceEntityHelper.getServiceDefinitionTypeFromService(ctx, service);
@@ -602,7 +603,7 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
     if (stageNode.getSpec().getServices() != null) {
       service = MultiDeploymentSpawnerUtils.getServiceYamlV2Node();
     } else {
-      service = stageNode.getSpec().getService();
+      service = stageNode.getSpec().getServiceV0();
     }
 
     EnvironmentGroupYaml environmentGroupYaml = stageNode.getSpec().getEnvironmentGroup();
@@ -615,9 +616,10 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
     } else if (stageNode.getSpec().getEnvironments() != null) {
       planCreationResponseMap.putAll(ServiceAllInOnePlanCreatorUtils.addServiceNodeForGitOpsEnvironments(specField,
           kryoSerializer, service, stageNode.getSpec().getEnvironments(), serviceNodeId, nextNodeId, serviceType, ctx));
-    } else if (stageNode.getSpec().getEnvironment() != null) {
+    } else if (stageNode.getSpec().getEnvironmentV0() != null) {
       planCreationResponseMap.putAll(ServiceAllInOnePlanCreatorUtils.addServiceNode(specField, kryoSerializer, service,
-          stageNode.getSpec().getEnvironment(), serviceNodeId, nextNodeId, serviceType, ParameterField.ofNull(), ctx));
+          stageNode.getSpec().getEnvironmentV0(), serviceNodeId, nextNodeId, serviceType, ParameterField.ofNull(),
+          ctx));
     }
 
     return serviceNodeId;
@@ -625,7 +627,7 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
 
   private String addInfrastructureNode(LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap,
       DeploymentStageNodeV1 stageNode, List<AdviserObtainment> adviserObtainments) {
-    SimplifiedEnvironmentYaml environment = stageNode.getSpec().getEnvironmentV1();
+    SimplifiedEnvironmentYaml environment = stageNode.getSpec().getEnvironment();
     // TODO: add support for multi env and environment group
     // TODO: Add support for use from stage
 
@@ -641,12 +643,12 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
   private Optional<String> addProvisionerNodeIfNeeded(YamlField specField,
       LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap, DeploymentStageNodeV1 stageNode,
       String infraNodeId) {
-    if (stageNode.getSpec().getEnvironment() == null || stageNode.getSpec().getEnvironment().getProvisioner() == null) {
+    if (stageNode.getSpec().getEnvironmentV0() == null
+        || stageNode.getSpec().getEnvironmentV0().getProvisioner() == null) {
       return Optional.empty();
     }
 
-    if (stageNode.getSpec().getEnvironmentV1() == null
-        || stageNode.getSpec().getEnvironmentV1().getProvisioner() == null) {
+    if (stageNode.getSpec().getEnvironment() == null || stageNode.getSpec().getEnvironment().getProvisioner() == null) {
       return Optional.empty();
     }
 
@@ -682,16 +684,16 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
 
       gitopsNode = InfrastructurePmsPlanCreator.createPlanForGitopsClusters_V1(
           executionUuid, postServiceStepUuid, environmentsPlanCreatorConfig, kryoSerializer);
-    } else if (stageNode.getSpec().getEnvironment() != null) {
+    } else if (stageNode.getSpec().getEnvironmentV0() != null) {
       String serviceRef;
 
       if (stageNode.getSpec().getServices() != null) {
         serviceRef = MultiDeploymentSpawnerUtils.getServiceYamlV2Node().getServiceRef().getValue();
       } else {
-        serviceRef = stageNode.getSpec().getService().getServiceRef().getValue();
+        serviceRef = stageNode.getSpec().getServiceV0().getServiceRef().getValue();
       }
       EnvironmentPlanCreatorConfig environmentPlanCreatorConfig =
-          EnvironmentPlanCreatorHelper.getResolvedEnvRefs(ctx, stageNode.getSpec().getEnvironment(), true, serviceRef,
+          EnvironmentPlanCreatorHelper.getResolvedEnvRefs(ctx, stageNode.getSpec().getEnvironmentV0(), true, serviceRef,
               serviceOverrideService, environmentService, infrastructure);
       gitopsNode = InfrastructurePmsPlanCreator.createPlanForGitopsClusters_V1(
           executionUuid, postServiceStepUuid, environmentPlanCreatorConfig, kryoSerializer);
@@ -1014,9 +1016,9 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
   }
 
   private EnvironmentYamlV2 getEnvironmentYaml(YamlField specField, DeploymentStageConfigV1 deploymentStageConfig) {
-    return ServiceAllInOnePlanCreatorUtils.useFromStage(deploymentStageConfig.getEnvironment())
+    return ServiceAllInOnePlanCreatorUtils.useFromStage(deploymentStageConfig.getEnvironmentV0())
         ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(
-            deploymentStageConfig.getEnvironment().getUseFromStage(), specField)
-        : deploymentStageConfig.getEnvironment();
+            deploymentStageConfig.getEnvironmentV0().getUseFromStage(), specField)
+        : deploymentStageConfig.getEnvironmentV0();
   }
 }

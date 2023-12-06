@@ -343,10 +343,10 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node2 =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .useFromStage(ServiceUseFromStageV2.builder().stage("stage1").build())
-                                   .build())
-                      .environment(
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .useFromStage(ServiceUseFromStageV2.builder().stage("stage1").build())
+                                     .build())
+                      .environmentV0(
                           EnvironmentYamlV2.builder()
                               .environmentRef(ParameterField.<String>builder().value(envEntity.getIdentifier()).build())
                               // default to false
@@ -388,7 +388,7 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
                 DeploymentStageConfigV1.builder()
                     .services(
                         ServicesYaml.builder().values(ParameterField.createValueField(Collections.emptyList())).build())
-                    .environment(
+                    .environmentV0(
                         EnvironmentYamlV2.builder()
                             .environmentRef(ParameterField.<String>builder().value(envEntity.getIdentifier()).build())
                             .deployToAll(ParameterField.createValueField(false))
@@ -421,10 +421,10 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .useFromStage(ServiceUseFromStageV2.builder().stage("stageId").build())
-                                   .build())
-                      .environment(
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .useFromStage(ServiceUseFromStageV2.builder().stage("stageId").build())
+                                     .build())
+                      .environmentV0(
                           EnvironmentYamlV2.builder()
                               .environmentRef(ParameterField.<String>builder().value(envEntity.getIdentifier()).build())
                               .deployToAll(ParameterField.createValueField(false))
@@ -461,7 +461,7 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
                       .services(ServicesYaml.builder()
                                     .useFromStage(ServiceUseFromStageV2.builder().stage("stageId").build())
                                     .build())
-                      .environment(
+                      .environmentV0(
                           EnvironmentYamlV2.builder()
                               .environmentRef(ParameterField.<String>builder().value(envEntity.getIdentifier()).build())
                               .deployToAll(ParameterField.createValueField(false))
@@ -495,13 +495,13 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(
+                      .serviceV0(
                           ServiceYamlV2.builder()
                               .serviceRef(ParameterField.<String>builder().value(serviceEntity.getIdentifier()).build())
                               .build())
-                      .environment(EnvironmentYamlV2.builder()
-                                       .useFromStage(EnvironmentInfraUseFromStage.builder().stage("stageId").build())
-                                       .build())
+                      .environmentV0(EnvironmentYamlV2.builder()
+                                         .useFromStage(EnvironmentInfraUseFromStage.builder().stage("stageId").build())
+                                         .build())
                       .build())
             .build();
     YamlField fullYamlField =
@@ -572,10 +572,10 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .useFromStage(ServiceUseFromStageV2.builder().stage("s1").build())
-                                   .build())
-                      .environment(EnvironmentYamlV2.builder().build())
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .useFromStage(ServiceUseFromStageV2.builder().stage("s1").build())
+                                     .build())
+                      .environmentV0(EnvironmentYamlV2.builder().build())
                       .build())
             .build();
     YamlField fullYamlField =
@@ -605,10 +605,10 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .useFromStage(ServiceUseFromStageV2.builder().stage("s1").build())
-                                   .build())
-                      .environment(EnvironmentYamlV2.builder().build())
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .useFromStage(ServiceUseFromStageV2.builder().stage("s1").build())
+                                     .build())
+                      .environmentV0(EnvironmentYamlV2.builder().build())
                       .build())
             .build();
     YamlField fullYamlField = new YamlField(
@@ -638,14 +638,14 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .useFromStage(ServiceUseFromStageV2.builder().stage("s1").build())
-                                   .build())
-                      .environment(EnvironmentYamlV2.builder()
-                                       .environmentRef(ParameterField.createValueField("env"))
-                                       .infrastructureDefinition(ParameterField.createValueField(
-                                           InfraStructureDefinitionYaml.builder().build()))
-                                       .build())
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .useFromStage(ServiceUseFromStageV2.builder().stage("s1").build())
+                                     .build())
+                      .environmentV0(EnvironmentYamlV2.builder()
+                                         .environmentRef(ParameterField.createValueField("env"))
+                                         .infrastructureDefinition(ParameterField.createValueField(
+                                             InfraStructureDefinitionYaml.builder().build()))
+                                         .build())
                       .build())
             .build();
     YamlField fullYamlField = new YamlField(
@@ -671,10 +671,10 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .useFromStage(ServiceUseFromStageV2.builder().stage("s1").build())
-                                   .build())
-                      .environment(EnvironmentYamlV2.builder().build())
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .useFromStage(ServiceUseFromStageV2.builder().stage("s1").build())
+                                     .build())
+                      .environmentV0(EnvironmentYamlV2.builder().build())
                       .build())
             .build();
     YamlField fullYamlField = new YamlField(
@@ -704,14 +704,14 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .useFromStage(ServiceUseFromStageV2.builder().stage("s1").build())
-                                   .build())
-                      .environment(EnvironmentYamlV2.builder()
-                                       .environmentRef(ParameterField.createValueField("env"))
-                                       .infrastructureDefinition(ParameterField.createValueField(
-                                           InfraStructureDefinitionYaml.builder().build()))
-                                       .build())
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .useFromStage(ServiceUseFromStageV2.builder().stage("s1").build())
+                                     .build())
+                      .environmentV0(EnvironmentYamlV2.builder()
+                                         .environmentRef(ParameterField.createValueField("env"))
+                                         .infrastructureDefinition(ParameterField.createValueField(
+                                             InfraStructureDefinitionYaml.builder().build()))
+                                         .build())
                       .build())
             .build();
     YamlField fullYamlField = new YamlField(
@@ -737,14 +737,14 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .useFromStage(ServiceUseFromStageV2.builder().stage("s5").build())
-                                   .build())
-                      .environment(EnvironmentYamlV2.builder()
-                                       .environmentRef(ParameterField.createValueField("env"))
-                                       .infrastructureDefinition(ParameterField.createValueField(
-                                           InfraStructureDefinitionYaml.builder().build()))
-                                       .build())
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .useFromStage(ServiceUseFromStageV2.builder().stage("s5").build())
+                                     .build())
+                      .environmentV0(EnvironmentYamlV2.builder()
+                                         .environmentRef(ParameterField.createValueField("env"))
+                                         .infrastructureDefinition(ParameterField.createValueField(
+                                             InfraStructureDefinitionYaml.builder().build()))
+                                         .build())
                       .build())
             .build();
     YamlField fullYamlField = new YamlField(
@@ -772,7 +772,7 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
                       .services(ServicesYaml.builder()
                                     .useFromStage(ServiceUseFromStageV2.builder().stage("s1").build())
                                     .build())
-                      .environment(EnvironmentYamlV2.builder().build())
+                      .environmentV0(EnvironmentYamlV2.builder().build())
                       .build())
             .build();
     YamlField fullYamlField = new YamlField(
@@ -801,10 +801,10 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder().build())
-                      .environment(EnvironmentYamlV2.builder()
-                                       .useFromStage(EnvironmentInfraUseFromStage.builder().stage("s1").build())
-                                       .build())
+                      .serviceV0(ServiceYamlV2.builder().build())
+                      .environmentV0(EnvironmentYamlV2.builder()
+                                         .useFromStage(EnvironmentInfraUseFromStage.builder().stage("s1").build())
+                                         .build())
                       .build())
             .build();
     YamlField fullYamlField = new YamlField(
@@ -836,10 +836,10 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node3 =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .serviceRef(ParameterField.createValueField(serviceEntity.getIdentifier()))
-                                   .build())
-                      .environment(
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .serviceRef(ParameterField.createValueField(serviceEntity.getIdentifier()))
+                                     .build())
+                      .environmentV0(
                           EnvironmentYamlV2.builder()
                               .environmentRef(ParameterField.<String>builder().value(envEntity.getIdentifier()).build())
                               // default to false
@@ -855,10 +855,10 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node4 =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .serviceRef(ParameterField.createValueField(serviceEntity.getIdentifier()))
-                                   .build())
-                      .environment(
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .serviceRef(ParameterField.createValueField(serviceEntity.getIdentifier()))
+                                     .build())
+                      .environmentV0(
                           EnvironmentYamlV2.builder()
                               .environmentRef(ParameterField.<String>builder().value(envEntity.getIdentifier()).build())
                               .deployToAll(ParameterField.createValueField(false))
@@ -876,11 +876,11 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node1 =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .serviceRef(ParameterField.createValueField(serviceEntity.getIdentifier()))
-                                   .useFromStage(ServiceUseFromStageV2.builder().stage("stage1").build())
-                                   .build())
-                      .environment(
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .serviceRef(ParameterField.createValueField(serviceEntity.getIdentifier()))
+                                     .useFromStage(ServiceUseFromStageV2.builder().stage("stage1").build())
+                                     .build())
+                      .environmentV0(
                           EnvironmentYamlV2.builder()
                               .environmentRef(ParameterField.<String>builder().value(envEntity.getIdentifier()).build())
                               .deployToAll(ParameterField.createValueField(false))
@@ -899,10 +899,10 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node1 =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .serviceRef(ParameterField.createValueField(serviceEntity.getIdentifier()))
-                                   .build())
-                      .environment(
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .serviceRef(ParameterField.createValueField(serviceEntity.getIdentifier()))
+                                     .build())
+                      .environmentV0(
                           EnvironmentYamlV2.builder()
                               .useFromStage(EnvironmentInfraUseFromStage.builder().stage("stage1").build())
                               .environmentRef(ParameterField.<String>builder().value(envEntity.getIdentifier()).build())
@@ -924,7 +924,7 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
                                                     .build())))
                                     .useFromStage(ServiceUseFromStageV2.builder().stage("stage1").build())
                                     .build())
-                      .environment(
+                      .environmentV0(
                           EnvironmentYamlV2.builder()
                               .useFromStage(EnvironmentInfraUseFromStage.builder().stage("stage1").build())
                               .environmentRef(ParameterField.<String>builder().value(envEntity.getIdentifier()).build())
@@ -939,10 +939,10 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node1 =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .serviceRef(ParameterField.createValueField(serviceEntity.getIdentifier()))
-                                   .build())
-                      .environment(
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .serviceRef(ParameterField.createValueField(serviceEntity.getIdentifier()))
+                                     .build())
+                      .environmentV0(
                           EnvironmentYamlV2.builder()
                               .environmentRef(ParameterField.<String>builder().value(envEntity.getIdentifier()).build())
                               .deployToAll(ParameterField.createValueField(true))
@@ -954,10 +954,10 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node2 =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .serviceRef(ParameterField.createValueField(serviceEntity.getIdentifier()))
-                                   .build())
-                      .environment(
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .serviceRef(ParameterField.createValueField(serviceEntity.getIdentifier()))
+                                     .build())
+                      .environmentV0(
                           EnvironmentYamlV2.builder()
                               .environmentRef(ParameterField.<String>builder().value(envEntity.getIdentifier()).build())
                               .deployToAll(ParameterField.createValueField(false))
@@ -971,10 +971,10 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node3 =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .serviceRef(ParameterField.createValueField(serviceEntity.getIdentifier()))
-                                   .build())
-                      .environment(
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .serviceRef(ParameterField.createValueField(serviceEntity.getIdentifier()))
+                                     .build())
+                      .environmentV0(
                           EnvironmentYamlV2.builder()
                               .environmentRef(ParameterField.<String>builder().value(envEntity.getIdentifier()).build())
                               .deployToAll(ParameterField.createValueField(false))
@@ -994,15 +994,15 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node6 =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .serviceRef(ParameterField.<String>builder().value("svc").build())
-                                   .build())
-                      .environment(EnvironmentYamlV2.builder()
-                                       .environmentRef(ParameterField.<String>builder().value("env").build())
-                                       // default to false
-                                       .deployToAll(ParameterField.createValueField(null))
-                                       .gitOpsClusters(ParameterField.createValueField(null))
-                                       .build())
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .serviceRef(ParameterField.<String>builder().value("svc").build())
+                                     .build())
+                      .environmentV0(EnvironmentYamlV2.builder()
+                                         .environmentRef(ParameterField.<String>builder().value("env").build())
+                                         // default to false
+                                         .deployToAll(ParameterField.createValueField(null))
+                                         .gitOpsClusters(ParameterField.createValueField(null))
+                                         .build())
                       .gitOpsEnabled(Boolean.TRUE)
                       .build())
             .build();
@@ -1010,15 +1010,15 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node7 =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(ServiceYamlV2.builder()
-                                   .serviceRef(ParameterField.<String>builder().value("svc").build())
-                                   .build())
-                      .environment(EnvironmentYamlV2.builder()
-                                       .environmentRef(ParameterField.<String>builder().value("env").build())
-                                       // default to false
-                                       .deployToAll(ParameterField.createValueField(false))
-                                       .gitOpsClusters(ParameterField.createValueField(null))
-                                       .build())
+                      .serviceV0(ServiceYamlV2.builder()
+                                     .serviceRef(ParameterField.<String>builder().value("svc").build())
+                                     .build())
+                      .environmentV0(EnvironmentYamlV2.builder()
+                                         .environmentRef(ParameterField.<String>builder().value("env").build())
+                                         // default to false
+                                         .deployToAll(ParameterField.createValueField(false))
+                                         .gitOpsClusters(ParameterField.createValueField(null))
+                                         .build())
                       .gitOpsEnabled(Boolean.TRUE)
                       .build())
             .build();
@@ -1033,12 +1033,12 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
                                                     .serviceRef(ParameterField.createValueField("service_1"))
                                                     .build())))
                                     .build())
-                      .environment(EnvironmentYamlV2.builder()
-                                       .environmentRef(ParameterField.<String>builder().value("env").build())
-                                       // default to false
-                                       .deployToAll(ParameterField.createValueField(false))
-                                       .gitOpsClusters(ParameterField.createValueField(null))
-                                       .build())
+                      .environmentV0(EnvironmentYamlV2.builder()
+                                         .environmentRef(ParameterField.<String>builder().value("env").build())
+                                         // default to false
+                                         .deployToAll(ParameterField.createValueField(false))
+                                         .gitOpsClusters(ParameterField.createValueField(null))
+                                         .build())
                       .gitOpsEnabled(Boolean.TRUE)
                       .build())
             .build();
@@ -1053,11 +1053,11 @@ public class DeploymentStageFilterJsonCreatorTest extends CategoryTest {
     final DeploymentStageNodeV1 node9 =
         DeploymentStageNodeV1.builder()
             .spec(DeploymentStageConfigV1.builder()
-                      .service(
+                      .serviceV0(
                           ServiceYamlV2.builder()
                               .serviceRef(ParameterField.<String>builder().value(serviceEntity.getIdentifier()).build())
                               .build())
-                      .environment(
+                      .environmentV0(
                           EnvironmentYamlV2.builder()
                               .environmentRef(ParameterField.<String>builder().value(envEntity.getIdentifier()).build())
                               .build())

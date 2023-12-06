@@ -17,6 +17,7 @@ import io.harness.cdng.k8s.K8sRollingStep;
 import io.harness.cdng.k8s.K8sRollingStepNode;
 import io.harness.cdng.k8s.K8sRollingStepParameters;
 import io.harness.cdng.k8s.asyncsteps.K8sRollingStepV2;
+import io.harness.exception.InvalidYamlException;
 import io.harness.executions.steps.StepSpecTypeConstants;
 import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.steps.StepType;
@@ -24,9 +25,12 @@ import io.harness.pms.execution.OrchestrationFacilitatorType;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.sdk.core.steps.io.StepParameters;
+import io.harness.pms.yaml.YamlField;
+import io.harness.pms.yaml.YamlUtils;
 
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
+import java.io.IOException;
 import java.util.Set;
 
 @OwnedBy(CDP)
@@ -46,6 +50,16 @@ public class K8sRollingStepPlanCreator extends CDPMSStepPlanCreatorV2<K8sRolling
   @Override
   public PlanCreationResponse createPlanForField(PlanCreationContext ctx, K8sRollingStepNode stepElement) {
     return super.createPlanForField(ctx, stepElement);
+  }
+
+  @Override
+  public K8sRollingStepNode getFieldObject(YamlField field) {
+    try {
+      return YamlUtils.read(field.getNode().toString(), K8sRollingStepNode.class);
+    } catch (IOException e) {
+      throw new InvalidYamlException(
+          "Unable to parse deployment stage yaml. Please ensure that it is in correct format", e);
+    }
   }
 
   @Override
