@@ -21,4 +21,5 @@ public class Inputs {
   public static final String ACCOUNT_NAME = "accountName";
   public static final String JQL = "jql";
   public static final String PATTERN = "pattern";
+  public static final String EXPRESSION = "expression";
 }

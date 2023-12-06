@@ -61,6 +61,18 @@ public abstract class BackstageCatalogEntity {
     private List<String> tags;
     private String uid;
     @JsonInclude(JsonInclude.Include.NON_EMPTY) private Map<String, String> annotations;
+    private List<Link> links;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Link {
+      private String title;
+      private String url;
+      private String icon;
+      private String type;
+    }
 
     public void setMetadata(String identifier, String absoluteIdentifier, String name, String title, String description,
         List<String> tags, Map<String, String> annotations) {

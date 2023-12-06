@@ -35,11 +35,13 @@ public class DataPoints {
       "Invalid or missing source-location annotation in the catalog info YAML";
   public static final String INVALID_BRANCH_NAME_ERROR = "Invalid branch name provided";
   public static final String INVALID_PATTERN = "Invalid pattern provided";
+  public static final String INVALID_EXPRESSION = "Invalid expression provided";
 
   // Catalog
   public static final String CATALOG_TECH_DOCS = "techDocsAnnotationExists";
   public static final String CATALOG_PAGERDUTY = "pagerdutyAnnotationExists";
   public static final String CATALOG_SPEC_OWNER = "specOwnerExists";
+  public static final String CATALOG_EVALUATE_EXPRESSION = "evaluateExpression";
 
   // Harness
   public static final String STO_ADDED_IN_PIPELINE = "stoStageAdded";

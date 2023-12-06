@@ -30,6 +30,24 @@
     "detailedDescription": "**How it's calculated:** The catalog YAML is inspected to check if the pagerduty.com/service-id is present under the metadata field.\n\n**Prerequisites:** The PagerDuty plugin needs to be configured and enabled in the admin section. Refer: [Link](https://developer.harness.io/docs/internal-developer-portal/plugins/available-plugins/pagerduty/)"
   },
   {
+    "id": "65682d55b123768b42833764",
+    "accountIdentifier": "__GLOBAL_ACCOUNT_ID__",
+    "identifier": "evaluateExpression",
+    "name": "Evaluate expression (JEXL)",
+    "type": "STRING",
+    "dataSourceIdentifier": "catalog",
+    "dataSourceLocationIdentifier": "catalog",
+    "inputDetails": [
+      {
+        "key": "expression",
+        "description":  "JEXL",
+        "required": true
+      }
+    ],
+    "description": "Calculates the average time taken to resolve issues for the given JQL query",
+    "detailedDescription": "**How it's calculated:** Fetches annotations from catalog YAML file to find project details and calculates average time. Make sure to provide JQL expression in the conditional input field.  \nMean time to resolve bugs:  issuetype = Bug AND priority in (P0,P1) AND resolved >= -90d  \nMake sure to wrap words within single quotes. Eg: 'New Feature''\n\n**Prerequisites:** Provide annotations like jira/project-key(required) and jira/component(optional) in the catalog YAML file."
+  },
+  {
     "id": "64d5f2bc387ee61486eed6f6",
     "accountIdentifier": "__GLOBAL_ACCOUNT_ID__",
     "identifier": "isBranchProtected",

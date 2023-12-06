@@ -10,6 +10,7 @@ package io.harness.idp.scorecard.datapoints.parser.factory;
 import static io.harness.idp.scorecard.datapoints.constants.DataPoints.CATALOG_PAGERDUTY;
 import static io.harness.idp.scorecard.datapoints.constants.DataPoints.CATALOG_SPEC_OWNER;
 import static io.harness.idp.scorecard.datapoints.constants.DataPoints.CATALOG_TECH_DOCS;
+import static io.harness.idp.scorecard.datapoints.constants.DataPoints.CATALOG_EVALUATE_EXPRESSION;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
@@ -29,6 +30,7 @@ public class CatalogDataPointParserFactory implements DataPointParserFactory {
       case CATALOG_TECH_DOCS:
       case CATALOG_PAGERDUTY:
       case CATALOG_SPEC_OWNER:
+      case CATALOG_EVALUATE_EXPRESSION:
         return genericExpressionParser;
       default:
         throw new UnsupportedOperationException(String.format("Could not find DataPoint parser for %s", identifier));
