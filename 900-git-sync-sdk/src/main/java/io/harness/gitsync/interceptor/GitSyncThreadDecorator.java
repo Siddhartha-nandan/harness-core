@@ -60,8 +60,11 @@ public class GitSyncThreadDecorator implements ContainerRequestFilter, Container
         getRequestParamFromContext(GitSyncApiConstants.BASE_BRANCH, pathParameters, queryParameters);
     final String resolvedConflictCommitId =
         getRequestParamFromContext(GitSyncApiConstants.RESOLVED_CONFLICT_COMMIT_ID, pathParameters, queryParameters);
-    final String connectorRef =
-        getRequestParamFromContextWithNull(GitSyncApiConstants.CONNECTOR_REF, pathParameters, queryParameters);
+    String connectorRef =
+        getRequestParamFromContext(GitSyncApiConstants.CONNECTOR_REF, pathParameters, queryParameters);
+    if (DEFAULT.equals(connectorRef)) {
+      connectorRef = "";
+    }
     final String storeType =
         getRequestParamFromContext(GitSyncApiConstants.STORE_TYPE, pathParameters, queryParameters);
     final String repoName = getRequestParamFromContext(GitSyncApiConstants.REPO_NAME, pathParameters, queryParameters);
@@ -118,27 +121,8 @@ public class GitSyncThreadDecorator implements ContainerRequestFilter, Container
   }
 
   @VisibleForTesting
-  String getRequestParamFromContextWithNull(
-      String key, MultivaluedMap<String, String> pathParameters, MultivaluedMap<String, String> queryParameters) {
-    try {
-      // browser converts the query param like 'testing/abc' to 'testing%20abc',
-      // we use decode to convert the string back to 'testing/abc'
-      return URLDecoder.decode(
-          getRequestParamFromContextWithoutDecodingWithNull(key, queryParameters), Charsets.UTF_8.name());
-    } catch (UnsupportedEncodingException e) {
-      log.error("Error in setting request param for {}", key);
-    }
-    return DEFAULT;
-  }
-
-  @VisibleForTesting
   String getRequestParamFromContextWithoutDecoding(String key, MultivaluedMap<String, String> queryParameters) {
     return queryParameters.getFirst(key) != null ? queryParameters.getFirst(key) : DEFAULT;
-  }
-
-  @VisibleForTesting
-  String getRequestParamFromContextWithoutDecodingWithNull(String key, MultivaluedMap<String, String> queryParameters) {
-    return queryParameters.getFirst(key);
   }
 
   @Override
