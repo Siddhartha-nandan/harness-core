@@ -310,5 +310,4 @@ config:
   PIPELINE_SERVICE_CLIENT_BASEURL: http://pipeline-service:12001/api/
   TEMPLATE_SERVICE_CLIENT_BASEURL: http://template-service:15002/api/
   TEMPLATE_SERVICE_BASE_URL: http://template-service:15002/api/
-  name: platform-service
-  labels: ""
+
