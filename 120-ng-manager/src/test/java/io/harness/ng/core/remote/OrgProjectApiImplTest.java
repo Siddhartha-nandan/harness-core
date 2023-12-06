@@ -33,6 +33,8 @@ import io.harness.accesscontrol.acl.api.AccessControlDTO;
 import io.harness.accesscontrol.acl.api.ResourceScope;
 import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.dto.ProjectDTO;
@@ -40,6 +42,7 @@ import io.harness.ng.core.dto.ProjectFilterDTO;
 import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.rule.Owner;
 import io.harness.spec.server.ng.v1.model.CreateProjectRequest;
 import io.harness.spec.server.ng.v1.model.ProjectResponse;
@@ -66,9 +69,11 @@ public class OrgProjectApiImplTest extends CategoryTest {
   private OrgProjectApiImpl orgProjectApi;
   private Validator validator;
   private ProjectApiUtils projectApiUtils;
+  private ScopeInfoService scopeResolverService;
 
   String account = randomAlphabetic(10);
   String org = randomAlphabetic(10);
+  String orgUniqueId = randomAlphabetic(10);
   String identifier = randomAlphabetic(10);
   String name = randomAlphabetic(10);
   int page = 0;
@@ -77,6 +82,7 @@ public class OrgProjectApiImplTest extends CategoryTest {
   @Before
   public void setup() {
     projectService = mock(ProjectService.class);
+    scopeResolverService = mock(ScopeInfoService.class);
     organizationService = mock(OrganizationService.class);
     accessControlClient = mock(AccessControlClient.class);
 
@@ -84,7 +90,7 @@ public class OrgProjectApiImplTest extends CategoryTest {
     validator = factory.getValidator();
     projectApiUtils = new ProjectApiUtils(validator);
 
-    orgProjectApi = new OrgProjectApiImpl(projectService, projectApiUtils);
+    orgProjectApi = new OrgProjectApiImpl(projectService, projectApiUtils, scopeResolverService);
   }
 
   private ProjectDTO getProjectDTO(String orgIdentifier, String identifier, String name) {
@@ -109,9 +115,25 @@ public class OrgProjectApiImplTest extends CategoryTest {
     project.setUniqueId(randomAlphabetic(10));
     project.setParentId(parentId);
 
-    when(projectService.create(account, org, projectDTO)).thenReturn(project);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(account)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(org)
+                              .uniqueId(orgUniqueId)
+                              .build();
+    when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
+    when(projectService.create(eq(account), eq(org), any(), eq(projectDTO))).thenReturn(project);
 
     Response response = orgProjectApi.createOrgScopedProject(request, org, account);
+
+    ArgumentCaptor<ScopeInfo> captor = ArgumentCaptor.forClass(ScopeInfo.class);
+    verify(projectService, times(1)).create(eq(account), eq(org), captor.capture(), eq(projectDTO));
+    ScopeInfo actualScopeInfo = captor.getValue();
+    assertEquals(scopeInfo.getScopeType(), actualScopeInfo.getScopeType());
+    assertEquals(scopeInfo.getAccountIdentifier(), actualScopeInfo.getAccountIdentifier());
+    assertEquals(scopeInfo.getOrgIdentifier(), actualScopeInfo.getOrgIdentifier());
+    assertEquals(scopeInfo.getUniqueId(), actualScopeInfo.getUniqueId());
+
     assertEquals(201, response.getStatus());
 
     assertEquals(project.getVersion().toString(), response.getEntityTag().getValue());

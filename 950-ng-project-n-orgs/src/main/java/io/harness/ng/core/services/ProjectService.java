@@ -30,7 +30,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 public interface ProjectService {
   String PROJECT_SCOPE_INFO_DATA_CACHE_KEY = "projectScopeInfoDataCache";
 
-  Project create(String accountIdentifier, String orgIdentifier, ProjectDTO project);
+  Project create(String accountIdentifier, String orgIdentifier, ScopeInfo scopeInfo, ProjectDTO project);
 
   Optional<Project> get(String accountIdentifier, String orgIdentifier, String identifier);
 

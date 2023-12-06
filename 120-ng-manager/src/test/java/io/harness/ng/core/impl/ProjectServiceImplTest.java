@@ -12,6 +12,7 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.ng.core.remote.ProjectMapper.toProject;
 import static io.harness.rule.OwnerRule.ARVIND;
+import static io.harness.rule.OwnerRule.ASHISHSANODIA;
 import static io.harness.rule.OwnerRule.BHAVYA;
 import static io.harness.rule.OwnerRule.BOOPESH;
 import static io.harness.rule.OwnerRule.KARAN;
@@ -47,6 +48,7 @@ import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.Scope;
 import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.context.GlobalContext;
 import io.harness.exception.DuplicateFieldException;
@@ -80,6 +82,7 @@ import io.harness.security.SourcePrincipalContextData;
 import io.harness.security.dto.Principal;
 import io.harness.security.dto.PrincipalType;
 import io.harness.security.dto.UserPrincipal;
+import io.harness.springdata.HTransactionTemplate;
 import io.harness.telemetry.helpers.ProjectInstrumentationHelper;
 import io.harness.utils.UserHelperService;
 
@@ -109,6 +112,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.MongoTransactionManager;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
@@ -126,7 +130,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class ProjectServiceImplTest extends CategoryTest {
   @Mock private ProjectRepository projectRepository;
   @Mock private OrganizationService organizationService;
-  @Mock private TransactionTemplate transactionTemplate;
+  private TransactionTemplate transactionTemplate;
   @Mock private OutboxService outboxService;
   @Mock private NgUserService ngUserService;
   @Mock private AccessControlClient accessControlClient;
@@ -146,6 +150,7 @@ public class ProjectServiceImplTest extends CategoryTest {
   @Before
   public void setup() {
     MockitoAnnotations.initMocks(this);
+    transactionTemplate = new HTransactionTemplate(new MongoTransactionManager(), false);
     projectService = spy(new ProjectServiceImpl(projectRepository, organizationService, transactionTemplate,
         outboxService, ngUserService, accessControlClient, scopeAccessHelper, instrumentationHelper,
         yamlGitConfigService, featureFlagService, defaultUserGroupService, favoritesService, userHelperService,
@@ -163,30 +168,41 @@ public class ProjectServiceImplTest extends CategoryTest {
   }
 
   @Test
-  @Owner(developers = KARAN)
+  @Owner(developers = {KARAN, ASHISHSANODIA})
   @Category(UnitTests.class)
   public void testCreateProject_CorrectPayload() {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
+    String orgUniqueIdentifier = randomAlphabetic(10);
     ProjectDTO projectDTO = createProjectDTO(orgIdentifier, randomAlphabetic(10));
     Project project = toProject(projectDTO);
     project.setAccountIdentifier(accountIdentifier);
     project.setOrgIdentifier(orgIdentifier);
+    project.setParentId(orgUniqueIdentifier);
     setContextData(accountIdentifier);
 
-    when(projectRepository.save(project)).thenReturn(project);
-    Optional<Organization> organizationOptional = Optional.of(random(Organization.class));
-    organizationOptional.get().setIdentifier(orgIdentifier);
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(organizationOptional);
+    when(projectRepository.save(any())).thenReturn(project);
 
-    projectService.create(accountIdentifier, orgIdentifier, projectDTO);
-    try {
-      verify(transactionTemplate, times(1)).execute(any());
-      Scope scope = Scope.of(accountIdentifier, orgIdentifier, projectDTO.getIdentifier());
-      verify(defaultUserGroupService, times(1)).create(scope, emptyList());
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+
+    projectService.create(accountIdentifier, orgIdentifier, scopeInfo, projectDTO);
+
+    ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
+
+    verify(projectRepository, times(1)).save(captor.capture());
+    Project actualSavedProject = captor.getValue();
+    assertThat(actualSavedProject.getAccountIdentifier()).isEqualTo(project.getAccountIdentifier());
+    assertThat(actualSavedProject.getIdentifier()).isEqualTo(project.getIdentifier());
+    assertThat(actualSavedProject.getOrgIdentifier()).isEqualTo(project.getOrgIdentifier());
+    assertThat(actualSavedProject.getParentId()).isEqualTo(project.getParentId());
+
+    Scope scope = Scope.of(accountIdentifier, orgIdentifier, projectDTO.getIdentifier());
+    verify(defaultUserGroupService, times(1)).create(scope, emptyList());
   }
 
   private void setContextData(String accountIdentifier) {
@@ -199,46 +215,33 @@ public class ProjectServiceImplTest extends CategoryTest {
     GlobalContextManager.set(globalContext);
   }
 
-  @Test(expected = EntityNotFoundException.class)
-  @Owner(developers = KARAN)
-  @Category(UnitTests.class)
-  public void testCreateProject_IncorrectPayload() {
-    String accountIdentifier = randomAlphabetic(10);
-    String orgIdentifier = randomAlphabetic(10);
-    ProjectDTO projectDTO = createProjectDTO(orgIdentifier, randomAlphabetic(10));
-    Project project = toProject(projectDTO);
-    project.setAccountIdentifier(accountIdentifier);
-    project.setOrgIdentifier(orgIdentifier);
-    setContextData(accountIdentifier);
-
-    projectService.create(accountIdentifier, orgIdentifier + randomAlphabetic(1), projectDTO);
-  }
-
   @Test
-  @Owner(developers = NISHANT)
+  @Owner(developers = {NISHANT, ASHISHSANODIA})
   @Category(UnitTests.class)
   public void testCreateProject_Duplicate() {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
+    String orgUniqueIdentifier = randomAlphabetic(10);
     ProjectDTO projectDTO = createProjectDTO(orgIdentifier, randomAlphabetic(10));
     Project project = toProject(projectDTO);
     project.setAccountIdentifier(accountIdentifier);
     project.setOrgIdentifier(orgIdentifier);
+    project.setParentId(orgUniqueIdentifier);
     setContextData(accountIdentifier);
     exceptionRule.expect(DuplicateFieldException.class);
     exceptionRule.expectMessage(
         String.format("A project with identifier [%s] and orgIdentifier [%s] is already present",
             project.getIdentifier(), orgIdentifier));
-    Optional<Organization> organizationOptional = Optional.of(random(Organization.class));
-    organizationOptional.get().setIdentifier(orgIdentifier);
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(organizationOptional);
-    when(transactionTemplate.execute(any()))
-        .thenAnswer(invocationOnMock
-            -> invocationOnMock.getArgument(0, TransactionCallback.class)
-                   .doInTransaction(new SimpleTransactionStatus()));
     when(projectRepository.save(any())).thenThrow(new DuplicateKeyException("Key already exists"));
 
-    projectService.create(accountIdentifier, orgIdentifier, projectDTO);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+
+    projectService.create(accountIdentifier, orgIdentifier, scopeInfo, projectDTO);
   }
 
   @Test

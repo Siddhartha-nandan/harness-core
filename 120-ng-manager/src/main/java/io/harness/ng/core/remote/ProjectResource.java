@@ -36,6 +36,7 @@ import io.harness.accesscontrol.NGAccessControlCheck;
 import io.harness.accesscontrol.OrgIdentifier;
 import io.harness.accesscontrol.ResourceIdentifier;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
 import io.harness.beans.SortOrder;
 import io.harness.exception.EntityNotFoundException;
 import io.harness.favorites.ResourceType;
@@ -90,6 +91,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -149,9 +151,10 @@ public class ProjectResource {
               "Organization identifier for the Project. If left empty, the Project is created under Default Organization")
       @QueryParam(NGCommonEntityConstants.ORG_KEY) @DefaultValue(
           DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier,
-      @RequestBody(required = true,
-          description = "Details of the Project to create") @NotNull @Valid ProjectRequest projectDTO) {
-    Project createdProject = projectService.create(accountIdentifier, orgIdentifier, projectDTO.getProject());
+      @RequestBody(required = true, description = "Details of the Project to create") @NotNull
+      @Valid ProjectRequest projectDTO, @Context ScopeInfo scopeInfo) {
+    Project createdProject =
+        projectService.create(accountIdentifier, orgIdentifier, scopeInfo, projectDTO.getProject());
     return ResponseDTO.newResponse(createdProject.getVersion().toString(),
         ProjectMapper.toProjectResponseBuilder(createdProject)
             .isFavorite(projectService.isFavorite(createdProject, userHelperService.getUserId()))

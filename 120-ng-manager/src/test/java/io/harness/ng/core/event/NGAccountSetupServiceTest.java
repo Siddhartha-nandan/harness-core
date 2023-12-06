@@ -41,6 +41,7 @@ import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.manifests.SampleManifestFileService;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ng.core.user.UserInfo;
 import io.harness.ng.core.user.remote.dto.UserMetadataDTO;
 import io.harness.ng.core.user.service.NgUserService;
@@ -82,6 +83,7 @@ public class NGAccountSetupServiceTest extends CategoryTest {
   @Mock private FeatureFlagService featureFlagService;
   @Mock private DefaultUserGroupService defaultUserGroupService;
   @Mock private SampleManifestFileService sampleManifestFileService;
+  @Mock private ScopeInfoService scopeResolverService;
 
   @Before
   public void setup() throws IOException {
@@ -132,7 +134,7 @@ public class NGAccountSetupServiceTest extends CategoryTest {
     ngAccountSetupService = new NGAccountSetupService(organizationService, accountOrgProjectValidator,
         accessControlAdminClient, ngUserService, userClient, harnessSMManager, ciDefaultEntityManager,
         nextGenConfiguration, accountSettingService, projectService, featureFlagService, sampleManifestFileService,
-        defaultUserGroupService);
+        defaultUserGroupService, scopeResolverService);
   }
 
   @Test

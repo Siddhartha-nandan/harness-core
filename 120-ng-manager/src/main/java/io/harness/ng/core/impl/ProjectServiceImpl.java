@@ -8,7 +8,6 @@
 package io.harness.ng.core.impl;
 
 import static io.harness.NGCommonEntityConstants.MONGODB_ID;
-import static io.harness.NGConstants.DEFAULT_ORG_IDENTIFIER;
 import static io.harness.NGConstants.DEFAULT_PROJECT_IDENTIFIER;
 import static io.harness.NGConstants.DEFAULT_PROJECT_LEVEL_RESOURCE_GROUP_IDENTIFIER;
 import static io.harness.annotations.dev.HarnessTeam.PL;
@@ -72,7 +71,6 @@ import io.harness.ng.core.common.beans.NGTag.NGTagKeys;
 import io.harness.ng.core.dto.ActiveProjectsCountDTO;
 import io.harness.ng.core.dto.ProjectDTO;
 import io.harness.ng.core.dto.ProjectFilterDTO;
-import io.harness.ng.core.entities.Organization;
 import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.entities.Project.ProjectKeys;
 import io.harness.ng.core.entities.metrics.ProjectsPerAccountCount;
@@ -183,28 +181,17 @@ public class ProjectServiceImpl implements ProjectService {
 
   @Override
   @FeatureRestrictionCheck(MULTIPLE_PROJECTS)
-  public Project create(@AccountIdentifier String accountIdentifier, String orgIdentifier, ProjectDTO projectDTO) {
-    orgIdentifier = orgIdentifier == null ? DEFAULT_ORG_IDENTIFIER : orgIdentifier;
-
-    // First check if an organization with given orgIdentifier exists or not.
-    Optional<Organization> organizationOptional = organizationService.get(accountIdentifier, orgIdentifier);
-    if (!organizationOptional.isPresent()) {
-      throw new EntityNotFoundException(String.format("Organization with identifier [%s] not found", orgIdentifier));
-    }
-
-    // Use the identifier of the organization from Mongo Doc as it ensure case insensitivity.
-    orgIdentifier = organizationOptional.get().getIdentifier();
-    validateCreateProjectRequest(accountIdentifier, orgIdentifier, projectDTO);
+  public Project create(
+      @AccountIdentifier String accountIdentifier, String orgIdentifier, ScopeInfo scopeInfo, ProjectDTO projectDTO) {
+    verifyValuesNotChanged(
+        Lists.newArrayList(Pair.of(scopeInfo.getOrgIdentifier(), projectDTO.getOrgIdentifier())), true);
     Project project = toProject(projectDTO);
 
     project.setModules(ModuleType.getModules());
-    project.setOrgIdentifier(orgIdentifier);
+    project.setOrgIdentifier(scopeInfo.getOrgIdentifier());
     project.setAccountIdentifier(accountIdentifier);
-    organizationOptional.ifPresent(organization -> {
-      if (isNotEmpty(organization.getUniqueId())) {
-        project.setParentId(organization.getUniqueId());
-      }
-    });
+    project.setParentId(scopeInfo.getUniqueId());
+
     try {
       validate(project);
       Project createdProject = Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
@@ -213,7 +200,7 @@ public class ProjectServiceImpl implements ProjectService {
         outboxService.save(new ProjectCreateEvent(project.getAccountIdentifier(), ProjectMapper.writeDTO(project)));
         return savedProject;
       }));
-      setupProject(Scope.of(accountIdentifier, orgIdentifier, projectDTO.getIdentifier()));
+      setupProject(Scope.of(accountIdentifier, scopeInfo.getOrgIdentifier(), projectDTO.getIdentifier()));
       log.info(String.format("Project with identifier [%s] and orgIdentifier [%s] was successfully created",
           project.getIdentifier(), projectDTO.getOrgIdentifier()));
       instrumentationHelper.sendProjectCreateEvent(createdProject, accountIdentifier);
@@ -221,7 +208,7 @@ public class ProjectServiceImpl implements ProjectService {
     } catch (DuplicateKeyException ex) {
       throw new DuplicateFieldException(
           String.format("A project with identifier [%s] and orgIdentifier [%s] is already present",
-              project.getIdentifier(), orgIdentifier),
+              project.getIdentifier(), scopeInfo.getOrgIdentifier()),
           USER_SRE, ex);
     }
   }

@@ -24,10 +24,12 @@ import io.harness.accesscontrol.NGAccessControlCheck;
 import io.harness.accesscontrol.OrgIdentifier;
 import io.harness.accesscontrol.ResourceIdentifier;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.dto.ProjectFilterDTO;
 import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.services.ProjectService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.security.annotations.NextGenManagerAuth;
 import io.harness.spec.server.ng.v1.OrgProjectApi;
 import io.harness.spec.server.ng.v1.model.CreateProjectRequest;
@@ -55,6 +57,7 @@ import org.springframework.data.domain.Page;
 public class OrgProjectApiImpl implements OrgProjectApi {
   private final ProjectService projectService;
   private final ProjectApiUtils projectApiUtils;
+  private final ScopeInfoService scopeResolverService;
 
   @NGAccessControlCheck(resourceType = PROJECT, permission = CREATE_PROJECT_PERMISSION)
   @Override
@@ -104,7 +107,9 @@ public class OrgProjectApiImpl implements OrgProjectApi {
   }
 
   private Response createProject(CreateProjectRequest createProjectRequest, String account, String org) {
-    Project createdProject = projectService.create(account, org, projectApiUtils.getProjectDto(createProjectRequest));
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
+    Project createdProject = projectService.create(
+        account, org, scopeInfo.orElseThrow(), projectApiUtils.getProjectDto(createProjectRequest));
     ProjectResponse projectResponse = projectApiUtils.getProjectResponse(createdProject);
 
     return Response.status(Response.Status.CREATED)

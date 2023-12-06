@@ -35,6 +35,8 @@ import io.harness.accesscontrol.acl.api.AccessControlDTO;
 import io.harness.accesscontrol.acl.api.ResourceScope;
 import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.EntityNotFoundException;
 import io.harness.favorites.ResourceType;
@@ -93,19 +95,34 @@ public class ProjectResourceTest extends CategoryTest {
   @Owner(developers = KARAN)
   @Category(UnitTests.class)
   public void testCreate() {
-    String parentId = randomAlphabetic(10);
+    String orgUniqueIdentifier = randomAlphabetic(10);
     ProjectDTO projectDTO = getProjectDTO(orgIdentifier, identifier, name);
     ProjectRequest projectRequestWrapper = ProjectRequest.builder().project(projectDTO).build();
     Project project = toProject(projectDTO);
     project.setVersion((long) 0);
-    project.setParentId(parentId);
+    project.setParentId(orgUniqueIdentifier);
 
-    when(projectService.create(accountIdentifier, orgIdentifier, projectDTO)).thenReturn(project);
+    when(projectService.create(eq(accountIdentifier), eq(orgIdentifier), any(), eq(projectDTO))).thenReturn(project);
     when(favoritesService.getFavorites(anyString(), any(), any(), anyString(), anyString()))
         .thenReturn(Collections.emptyList());
 
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+
     ResponseDTO<ProjectResponse> responseDTO =
-        projectResource.create(accountIdentifier, orgIdentifier, projectRequestWrapper);
+        projectResource.create(accountIdentifier, orgIdentifier, projectRequestWrapper, scopeInfo);
+
+    ArgumentCaptor<ScopeInfo> captor = ArgumentCaptor.forClass(ScopeInfo.class);
+    verify(projectService, times(1)).create(eq(accountIdentifier), eq(orgIdentifier), captor.capture(), eq(projectDTO));
+    ScopeInfo actualScopeInfo = captor.getValue();
+    assertEquals(scopeInfo.getScopeType(), actualScopeInfo.getScopeType());
+    assertEquals(scopeInfo.getAccountIdentifier(), actualScopeInfo.getAccountIdentifier());
+    assertEquals(scopeInfo.getOrgIdentifier(), actualScopeInfo.getOrgIdentifier());
+    assertEquals(scopeInfo.getUniqueId(), actualScopeInfo.getUniqueId());
 
     assertEquals(project.getVersion().toString(), responseDTO.getEntityTag());
     assertEquals(orgIdentifier, responseDTO.getData().getProject().getOrgIdentifier());
