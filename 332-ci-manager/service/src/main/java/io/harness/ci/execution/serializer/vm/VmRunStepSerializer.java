@@ -17,7 +17,6 @@ import io.harness.beans.serializer.RunTimeInputHandler;
 import io.harness.beans.steps.CIRegistry;
 import io.harness.beans.steps.stepinfo.RunStepInfo;
 import io.harness.beans.sweepingoutputs.StageInfraDetails;
-import io.harness.beans.yaml.extended.CIShellType;
 import io.harness.beans.yaml.extended.reports.JUnitTestReport;
 import io.harness.beans.yaml.extended.reports.UnitTestReportType;
 import io.harness.ci.config.CIExecutionServiceConfig;
@@ -99,21 +98,18 @@ public class VmRunStepSerializer {
 
     String earlyExitCommand = SerializerUtils.getEarlyExitCommand(runStepInfo.getShell());
     NGAccess ngAccess = AmbianceUtils.getNgAccess(ambiance);
-    if (ambiance.hasMetadata() && ambiance.getMetadata().getIsDebug()
-        && featureFlagService.isEnabled(FeatureName.CI_REMOTE_DEBUG, ngAccess.getAccountIdentifier())) {
-      command = earlyExitCommand + System.lineSeparator()
-          + SerializerUtils.getVmDebugCommand(ngAccess.getAccountIdentifier(),
-              ciExecutionServiceConfig.getRemoteDebugTimeout(), runStepInfo, stageInfraDetails,
-              envVars.get("TMATE_PATH"), ciExecutionServiceConfig.getTmateEndpoint())
-          + System.lineSeparator() + command;
-    } else {
-      command = earlyExitCommand + command;
-    }
-
-    // do not pass commands if shell type is none
-    CIShellType shellType = RunTimeInputHandler.resolveShellType(runStepInfo.getShell());
-    if (shellType == CIShellType.NONE || true) { // TODO REMOVE TRUE BEFORE SUBMITTING
-      command = null;
+    // only set up early exit command if we have a command.
+    if (StringUtils.isNotEmpty(command)) {
+      if (ambiance.hasMetadata() && ambiance.getMetadata().getIsDebug()
+          && featureFlagService.isEnabled(FeatureName.CI_REMOTE_DEBUG, ngAccess.getAccountIdentifier())) {
+        command = earlyExitCommand + System.lineSeparator()
+            + SerializerUtils.getVmDebugCommand(ngAccess.getAccountIdentifier(),
+                ciExecutionServiceConfig.getRemoteDebugTimeout(), runStepInfo, stageInfraDetails,
+                envVars.get("TMATE_PATH"), ciExecutionServiceConfig.getTmateEndpoint())
+            + System.lineSeparator() + command;
+      } else {
+        command = earlyExitCommand + command;
+      }
     }
 
     VmRunStepBuilder runStepBuilder = VmRunStep.builder()
