@@ -946,7 +946,8 @@ public enum FeatureName {
   CDS_ECS_BG_VALIDATION("Enable some conditions, which we will execute before the deployment. "
           + "These conditions are validations around existing load balancer configurations and tags in Blue/Green Service."
           + " We will fail the execution if we found some invalid configurations.",
-      HarnessTeam.CDP);
+      HarnessTeam.CDP),
+  CDS_USER_CD_LICENSE_VIEW("Enable to show Users CD License usage on UI", HarnessTeam.CDP);
   // keep-sorted end
 
   @Deprecated
