@@ -529,4 +529,4 @@ config:
   HARNESS_ENABLE_NG_AUTH_UI_PLACEHOLDER: "true"
   ENABLE_ITERATORS: "true"
   ITERATOR_CONFIG_PATH: /opt/harness/config
-config2: {}
+iteratorConfig: {}

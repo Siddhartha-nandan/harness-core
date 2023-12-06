@@ -208,7 +208,11 @@ waitForInitContainer:
     runAsUser: 65534
     runAsNonRoot: true
 # -- Configurations for Harness application
-config: {}
+config:
+  DEPLOY_MODE: "KUBERNETES"
+  MEMORY: 2048
+  MONGO_TAG_NAME: "none"
+  MONGO_TAG_VALUE: "none"
 ## -- mongo secrets reference passed to the application
 ##
 mongoSecrets:

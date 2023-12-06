@@ -326,8 +326,51 @@ initContainer:
     tag: latest
     digest: ""
 config:
-  REDIS_MASTER_NAME: harness-redis
+  REDIS_MASTER_NAME: "harness-redis"
   ENABLE_AUDIT: "true"
+  LOG_STREAMING_SERVICE_BASEURL: "http://log-service:8079/"
+  ATMOSPHERE_BACKEND: "REDIS"
+  BACKGROUND_SCHEDULER_CLUSTERED: "true"
+  CACHE_BACKEND: "REDIS"
+  CAPSULE_JAR: "migrator-capsule.jar"
+  DELEGATE_SERVICE_TARGET: "harness-manager:9879"
+  DELEGATE_SERVICE_AUTHORITY: "harness-manager:9879"
+  DISTRIBUTED_LOCK_IMPLEMENTATION: "REDIS"
+  DEPLOY_MODE: "KUBERNETES_ONPREM"
+  DISABLE_NEW_RELIC: "true"
+  ENABLE_G1GC: "true"
+  EXTERNAL_GRAPHQL_RATE_LIMIT: "500"
+  GITOPS_SERVICE_CLIENT_BASEURL: "http://gitops:7908/api/v1/"
+  HAZELCAST_SERVICE: "harness-manager"
+  HZ_CLUSTER_NAME: "harness-manager"
+  LOGGING_LEVEL: "INFO"
+  MEMORY: "2048"
+  REDIS_SENTINEL: "true"
+  REDIS_MASTER_NAME: 'harness-redis'
+  SERVER_PORT: "9080"
+  SERVICE_ACC: /opt/harness/svc/service_acc.json
+  VERSION: "1.0.100440"
+  NG_MANAGER_BASE_URL: "http://ng-manager:7090/"
+  AUDIT_CLIENT_BASEURL: "http://platform-service:9005/api/"
+  TEMPLATE_SERVICE_ENDPOINT: "http://template-service:15002/api/"
+  PIPELINE_SERVICE_CLIENT_BASEURL: "http://pipeline-service:12001/api/"
+  NG_MANAGER_CLIENT_BASEURL: "http://ng-manager:7090/"
+  ACCESS_CONTROL_ENABLED: "true"
+  ACCESS_CONTROL_BASE_URL: "http://access-control:9006/api/"
+  EVENTS_FRAMEWORK_SENTINEL_MASTER_NAME: 'harness-redis'
+  EVENTS_FRAMEWORK_AVAILABLE_IN_ONPREM: "true"
+  HARNESS_ENABLE_NG_AUTH_UI_PLACEHOLDER: "true"
+  MONGO_SSL_CONFIG: "false"
+  ENABLE_ITERATORS: "true"
+  ITERATOR_CONFIG_PATH: "/opt/harness/config"
+overrideDefaultConfigs:
+  ALLOWED_ORIGINS: ""
+  API_URL: ""
+  DELEGATE_METADATA_URL: ""
+  WATCHER_METADATA_URL: ""
+  UI_SERVER_URL: ""
+  LOG_STREAMING_SERVICE_EXTERNAL_URL: ""
+  HAZELCAST_NAMESPACE: ""
 iteratorConfig:
   alertReconciliation:
     enabled: true
@@ -710,4 +753,4 @@ secrets:
           VERIFICATION_SERVICE_SECRET:
             name: ""
             property: ""
-config2: {}
+iteratorConfigs: {}
