@@ -30,8 +30,8 @@ import java.util.Map;
 import java.util.Set;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
-import lombok.Builder;
-import lombok.Data;
+
+import lombok.*;
 import lombok.experimental.FieldNameConstants;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Persistent;
@@ -39,13 +39,14 @@ import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @OwnedBy(HarnessTeam.PL)
-@Data
-@Builder
+@Getter
+@Setter
 @FieldNameConstants(innerTypeName = "SettingConfigurationKeys")
 @StoreIn(DbAliases.NG_MANAGER)
 @Entity(value = "settingConfigurations", noClassnameStored = true)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Document("settingConfigurations")
+@AllArgsConstructor
 @Persistent
 public class SettingConfiguration implements PersistentEntity {
   @Id @dev.morphia.annotations.Id String id;

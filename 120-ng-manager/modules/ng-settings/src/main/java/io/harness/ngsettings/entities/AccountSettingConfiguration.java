@@ -12,10 +12,7 @@ import io.harness.ng.DbAliases;
 import io.harness.ngsettings.SettingCategory;
 import io.harness.ngsettings.SettingPlanConfig;
 import io.harness.ngsettings.SettingValueType;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.*;
 import lombok.experimental.FieldNameConstants;
 import org.springframework.data.annotation.Persistent;
 import org.springframework.data.annotation.TypeAlias;
@@ -26,7 +23,8 @@ import java.util.Map;
 import java.util.Set;
 
 @OwnedBy(HarnessTeam.PL)
-@Data
+@Getter
+@Setter
 @FieldNameConstants(innerTypeName = "AccountSettingConfigurationKeys")
 @StoreIn(DbAliases.NG_MANAGER)
 @Entity(value = "settingConfigurations", noClassnameStored = true)
@@ -35,8 +33,6 @@ import java.util.Set;
 @Persistent
 @TypeAlias("NGSettingConfiguration")
 @EqualsAndHashCode(callSuper = true)
-@AllArgsConstructor(onConstructor = @__({ @Inject}))
-
 public class AccountSettingConfiguration extends  SettingConfiguration {
 
     String defaultValue;

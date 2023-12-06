@@ -233,7 +233,7 @@ public class SettingsServiceImpl implements SettingsService {
         return (AccountSetting) setting.get();
       }
     }
-    return settingsMapper.toSetting(null, settingsMapper.writeSettingDTO(settingConfiguration, true, defaultValue));
+    return settingsMapper.toSetting(null, settingsMapper.writeSettingDTO((AccountSettingConfiguration) settingConfiguration, true, defaultValue));
   }
 
   private Setting getSettingFromParentScope(
@@ -243,10 +243,10 @@ public class SettingsServiceImpl implements SettingsService {
   }
 
   @Override
-  public List<SettingConfiguration> listDefaultSettings() {
-    List<SettingConfiguration> settingConfigurationList = new ArrayList<>();
+  public List<AccountSettingConfiguration> listDefaultSettings() {
+    List<AccountSettingConfiguration> settingConfigurationList = new ArrayList<>();
     for (SettingConfiguration settingConfiguration : settingConfigurationRepository.findAll()) {
-      settingConfigurationList.add(settingConfiguration);
+      settingConfigurationList.add((AccountSettingConfiguration)settingConfiguration);
     }
     return settingConfigurationList;
   }
@@ -264,7 +264,7 @@ public class SettingsServiceImpl implements SettingsService {
 
   @Override
   public SettingConfiguration upsertSettingConfiguration(SettingConfiguration settingConfiguration) {
-    SettingUtils.validate(settingConfiguration);
+    SettingUtils.validate((AccountSettingConfiguration) settingConfiguration);
     return settingConfigurationRepository.save(settingConfiguration);
   }
 
@@ -378,7 +378,7 @@ public class SettingsServiceImpl implements SettingsService {
       String accountIdentifier, String orgIdentifier, String projectIdentifier, SettingRequestDTO settingRequestDTO) {
     Edition accountEdition = getEditionForAccount(accountIdentifier);
     Scope scope = Scope.of(accountIdentifier, orgIdentifier, projectIdentifier);
-    SettingConfiguration settingConfiguration =
+    AccountSettingConfiguration settingConfiguration =
         getSettingConfiguration(accountIdentifier, orgIdentifier, projectIdentifier, settingRequestDTO.getIdentifier());
 
     checkIfAccountPlanAllowsSettingEdit(accountEdition, settingConfiguration);
@@ -393,7 +393,7 @@ public class SettingsServiceImpl implements SettingsService {
       oldSettingDTO = settingsMapper.writeSettingDTO(
           (AccountSetting) settingOptional.get(), settingConfiguration, true, defaultValue);
       newSettingDTO = settingsMapper.writeNewDTO(
-          settingOptional.get(), settingRequestDTO, settingConfiguration, true, defaultValue);
+              (AccountSetting) settingOptional.get(), settingRequestDTO, settingConfiguration, true, defaultValue);
     } else {
       oldSettingDTO = settingsMapper.writeSettingDTO(settingConfiguration, true, defaultValue);
       newSettingDTO = settingsMapper.writeNewDTO(
@@ -435,7 +435,7 @@ public class SettingsServiceImpl implements SettingsService {
   private SettingResponseDTO restoreSetting(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, SettingRequestDTO settingRequestDTO) {
     Edition accountEdition = getEditionForAccount(accountIdentifier);
-    SettingConfiguration settingConfiguration =
+    AccountSettingConfiguration settingConfiguration =
         getSettingConfiguration(accountIdentifier, orgIdentifier, projectIdentifier, settingRequestDTO.getIdentifier());
 
     checkIfAccountPlanAllowsSettingEdit(accountEdition, settingConfiguration);
@@ -450,7 +450,7 @@ public class SettingsServiceImpl implements SettingsService {
       oldSettingDTO =
           settingsMapper.writeSettingDTO((AccountSetting) setting.get(), settingConfiguration, true, defaultValue);
       settingDTO =
-          settingsMapper.writeNewDTO(setting.get(), settingRequestDTO, settingConfiguration, true, defaultValue);
+          settingsMapper.writeNewDTO((AccountSetting)setting.get(), settingRequestDTO, settingConfiguration, true, defaultValue);
     } else {
       oldSettingDTO = settingsMapper.writeSettingDTO(settingConfiguration, true, defaultValue);
       settingDTO = settingsMapper.writeNewDTO(

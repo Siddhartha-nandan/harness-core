@@ -15,6 +15,7 @@ import io.harness.beans.ScopeLevel;
 import io.harness.exception.InvalidRequestException;
 import io.harness.lock.AcquiredLock;
 import io.harness.lock.PersistentLocker;
+import io.harness.ngsettings.entities.AccountSettingConfiguration;
 import io.harness.ngsettings.entities.SettingConfiguration;
 import io.harness.ngsettings.entities.SettingsConfigurationState;
 import io.harness.ngsettings.services.SettingsService;
@@ -74,8 +75,8 @@ public class SettingsCreationJob {
   private void populateDefaultConfigs(SettingsConfig settingsConfig) {
     if (settingsConfig.getSettings() != null) {
       settingsConfig.getSettings().forEach(settingConfiguration -> {
-        if (settingConfiguration.getAllowOverrides() == null) {
-          settingConfiguration.setAllowOverrides(true);
+        if (((AccountSettingConfiguration)settingConfiguration).getAllowOverrides() == null) {
+          ((AccountSettingConfiguration)settingConfiguration).setAllowOverrides(true);
         }
       });
     }
