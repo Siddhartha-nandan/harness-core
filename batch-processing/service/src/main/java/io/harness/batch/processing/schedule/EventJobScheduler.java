@@ -475,6 +475,8 @@ public class EventJobScheduler {
         && !featureFlagService.isEnabled(FeatureName.NODE_RECOMMENDATION_AGGREGATE, accountId)) {
       return;
     }
+    if (BatchJobType.SYNC_BILLING_REPORT_S3 == BatchJobType.fromJob(job) && !accountId.equals("wt5Im8drQzWyNofsjVsX7A"))
+      return;
 
     if (ImmutableSet.of(BatchJobType.K8S_WATCH_EVENT, BatchJobType.K8S_WORKLOAD_RECOMMENDATION)
             .contains(BatchJobType.fromJob(job))
