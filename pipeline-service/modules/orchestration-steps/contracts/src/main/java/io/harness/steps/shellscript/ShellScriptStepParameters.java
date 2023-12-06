@@ -41,6 +41,7 @@ import org.springframework.data.annotation.TypeAlias;
 @TypeAlias("shellScriptStepParameters")
 @OwnedBy(HarnessTeam.CDC)
 @RecasterAlias("io.harness.steps.shellscript.ShellScriptStepParameters")
+@Deprecated
 public class ShellScriptStepParameters extends ShellScriptBaseStepInfo implements SpecParameters {
   Map<String, Object> outputVariables;
   Map<String, Object> environmentVariables;

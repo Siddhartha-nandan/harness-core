@@ -129,7 +129,6 @@ public enum FeatureName {
       "Enable jira select fields for Jira update step using project and issue Type", HarnessTeam.CDC),
   CDS_K8S_HELM_INSTANCE_SYNC_V2_NG(
       "FF for enabling Instance Sync V2 for K8s and Native Helm swimlanes in NG", HarnessTeam.CDP),
-  CDS_K8S_SERVICE_HOOKS_NG("Enables Service hooks support for K8s/Native Helm Services", HarnessTeam.CDP),
   CDS_K8S_SOCKET_CAPABILITY_CHECK_NG(
       "Replace HTTP capability check for Kubernetes connector with Socket Capability", HarnessTeam.CDP),
   CDS_MULTI_SERVICE_PROPAGATION("FF for enabling multi service propagation for CD", HarnessTeam.CDP),
@@ -164,6 +163,7 @@ public enum FeatureName {
       HarnessTeam.CDC),
 
   CDS_SERVICE_OVERRIDES_2_0("Revamped experience service and environment overrides in NG", HarnessTeam.CDC),
+  CDS_CF_TOKEN_AUTH("Support refresh token in Tanzu Connector", HarnessTeam.CDP),
   CDS_SSH_CLIENT("Enable SSH new implementation via SSH Client", HarnessTeam.CDP),
   CDS_SSH_SSHJ("Enable SSH for Vault flow via SSHJ", HarnessTeam.CDP),
   CDS_SUPPORT_HPA_AND_PDB_NG(
@@ -732,23 +732,13 @@ public enum FeatureName {
   STOP_INSTANCE_SYNC_VIA_ITERATOR_FOR_PCF_DEPLOYMENTS,
   STOP_INSTANCE_SYNC_VIA_ITERATOR_FOR_PDC_DEPLOYMENTS,
   STOP_SHOWING_RUNNING_EXECUTIONS,
-  STO_AI_ENHANCED_REMEDIATIONS(
-      "Enable STO to enhance security issues with remediation information using generative AI", HarnessTeam.STO),
   STO_ALL_ISSUES_PAGE("Enable all issues page for STO", HarnessTeam.STO),
-  STO_DROPDOWN_FILTERS("Enable dropdown filters for STO", HarnessTeam.STO),
-  STO_EXEMPTION_DETAILS("Enable exemption details for STO", HarnessTeam.STO),
   STO_JIRA_INTEGRATION("Enable Jira integration for STO", HarnessTeam.STO),
   STO_STEPS_TEST_MODE(
       "Enable the rest of STO Steps Q3 2023 and beyond, NOT READY for use in PRODUCTION", HarnessTeam.STO),
   STO_STEP_PALETTE_ANCHORE_ENTERPRISE("Enable Anchor Enterprise step for STO", HarnessTeam.STO),
   STO_STEP_PALETTE_AQUASEC("Enable Aquasec step for STO", HarnessTeam.STO),
-  STO_STEP_PALETTE_BURP_ENTERPRISE("Enable Burp Enterprise step for STO", HarnessTeam.STO),
-  STO_STEP_PALETTE_CODEQL("Enable CodeQL step for STO", HarnessTeam.STO),
   STO_STEP_PALETTE_COVERITY("Enable Coverity step for STO", HarnessTeam.STO),
-  STO_STEP_PALETTE_FOSSA("Enable Fossa step for STO", HarnessTeam.STO),
-  STO_STEP_PALETTE_GIT_LEAKS("Enable Gitleaks step for STO", HarnessTeam.STO),
-  STO_STEP_PALETTE_SEMGREP("Enable Semgrep step for STO", HarnessTeam.STO),
-  STO_STEP_PALETTE_SYSDIG("Enable Sysdig step for STO", HarnessTeam.STO),
   STO_TIMEBOUND_EXEMPTIONS("Enable timebound exemptions for STO", HarnessTeam.STO),
   SUPERVISED_TS_THRESHOLD,
   SYNC_GIT_CLONE_AND_COPY_TO_DEST_DIR(
@@ -923,6 +913,8 @@ public enum FeatureName {
   CDS_PRESERVE_WINRM_WORKING_DIR_FOR_COMMAND_UNITS("Use the correct working directory for WinRm deployments", CDC),
   CDS_K8S_APPLY_MANIFEST_WITHOUT_SERVICE_NG(
       "Allows users to apply manifests from sources that are not related to the service", HarnessTeam.CDP),
+  CDS_NG_USE_SCM_FOR_PR_DETAILS_ON_ISSUE_COMMENT_TRIGGER(
+      "Use scm for fetching PR details on Github issue comment trigger filter", HarnessTeam.CDC),
   CDS_APPROVAL_AND_STAGE_NOTIFICATIONS_WITH_CD_METADATA(
       "Improves approval and stage notifications with cd metadata", HarnessTeam.CDC),
   GTM_DEVELOPER_LICENSING("Enable new developer licensing changes", GTM),
@@ -937,7 +929,8 @@ public enum FeatureName {
           + " We will fail the execution if we found some invalid configurations.",
       HarnessTeam.CDP),
   CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD(
-      "Enable to dowmload Aws S3 buckets, folder or object inside container step group", HarnessTeam.CDP);
+      "Enable to dowmload Aws S3 buckets, folder or object inside container step group", HarnessTeam.CDP),
+  CDS_USER_CD_LICENSE_VIEW("Enable to show Users CD License usage on UI", HarnessTeam.CDP);
   // keep-sorted end
 
   @Deprecated
