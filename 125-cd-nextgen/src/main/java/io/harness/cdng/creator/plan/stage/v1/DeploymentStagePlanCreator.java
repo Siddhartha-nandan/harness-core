@@ -210,7 +210,7 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
 
     Dependency strategyDependency = getDependencyForStrategy(dependenciesNodeMap, deploymentStageNode, ctx);
 
-    planCreationResponseMap.put(specField.getNode().getUuid(),
+    planCreationResponseMap.put(deploymentStageNode.getUuid(),
         PlanCreationResponse.builder()
             .dependencies(
                 DependenciesUtils.toDependenciesProto(dependenciesNodeMap)
