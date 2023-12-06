@@ -35,6 +35,7 @@ import io.harness.spec.server.ng.v1.model.AllowedSourceType;
 import io.harness.spec.server.ng.v1.model.IPAllowlistConfigValidateResponse;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.gson.Gson;
 import com.google.inject.Inject;
 import io.fabric8.kubernetes.client.utils.IpAddressMatcher;
 import java.util.ArrayList;
@@ -208,6 +209,7 @@ public class IPAllowlistServiceImpl implements IPAllowlistService {
     response.allowlistedConfigs(totalIpConfigsAllowed.stream()
                                     .map(ipAllowlistResourceUtil::toIPAllowlistConfigResponse)
                                     .collect(Collectors.toList()));
+    log.error("validateIpAddressAllowlistedOrNot response: {}", new Gson().toJson(response));
     return response;
   }
 
@@ -233,6 +235,18 @@ public class IPAllowlistServiceImpl implements IPAllowlistService {
       allowlistedConfigs.addAll(matchedAllowlistedConfigs);
       pageIndex++;
     } while (true);
+  }
+
+  public boolean ipAllowlistEnabled(String accountIdentifier) {
+    log.info("ipAllowlistEnabled for account {}", accountIdentifier);
+    IPAllowlistFilterDTO ipAllowlistFilterDTO = ipAllowlistResourceUtil.getEnabledFilter();
+    Pageable pageable = ipAllowlistResourceUtil.getPageRequest(0, 1, "", "");
+    Page<IPAllowlistEntity> ipAllowlistEntityPage = list(accountIdentifier, pageable, ipAllowlistFilterDTO);
+    log.info("ipAllowlistEntityPage {}", new Gson().toJson(ipAllowlistEntityPage));
+    log.info("ipAllowlistEntityPage.getTotalElements {}", ipAllowlistEntityPage.getTotalElements());
+    boolean isEnabled = ipAllowlistEntityPage.getTotalElements() > 0;
+    log.info("ipAllowlistEnabled {}", isEnabled);
+    return isEnabled;
   }
 
   private boolean validateInRange(String ipAddress, String ipAddressBlock) {

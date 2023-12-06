@@ -91,6 +91,7 @@ import software.wings.service.intfc.DelegateTaskServiceClassic;
 
 import com.codahale.metrics.annotation.ExceptionMetered;
 import com.codahale.metrics.annotation.Timed;
+import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.google.protobuf.Any;
@@ -287,8 +288,7 @@ public class DelegateAgentResource {
     log.info("Checking if delegate source ip {} is allow listed", sourceIp);
     IPAllowlistConfigValidateResponse response;
     try {
-      response =
-          NGRestUtils.getGeneralResponse(ipAllowListClient.validateIpAddressAllowlistedOrNot(accountId, sourceIp, ""));
+      response = NGRestUtils.getGeneralResponse(ipAllowListClient.allowedIpAddress(accountId, sourceIp));
     } catch (Exception e) {
       log.error("Exception while validating delegate ip: ", e);
       return null;

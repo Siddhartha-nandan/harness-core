@@ -19,7 +19,7 @@ import retrofit2.http.*;
 public interface IPAllowListClient {
   String IP_ALLOW_LIST_BASEURL = "/v1/ip-allowlist";
 
-  @GET(IP_ALLOW_LIST_BASEURL + "/validate/ip-address")
-  Call<IPAllowlistConfigValidateResponse> validateIpAddressAllowlistedOrNot(@Header("Harness-Account") String accountId,
-      @Query("ip_address") String ipAddress, @Query("custom_ip_address_block") String customIpAddressBlock);
+  @GET(IP_ALLOW_LIST_BASEURL + "/allowed/ip-address")
+  Call<IPAllowlistConfigValidateResponse> allowedIpAddress(
+      @Header("Harness-Account") String accountId, @Query("ip_address") String ipAddress);
 }

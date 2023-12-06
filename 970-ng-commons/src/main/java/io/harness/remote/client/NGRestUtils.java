@@ -6,7 +6,6 @@
  */
 
 package io.harness.remote.client;
-
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.eraro.ErrorCode;
@@ -19,6 +18,7 @@ import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.serializer.JsonUtils;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -79,6 +79,7 @@ public class NGRestUtils {
     } catch (IOException ioException) {
       String url = Optional.ofNullable(request.request()).map(x -> x.url().encodedPath()).orElse(null);
       log.error("IO error while connecting to the service: {}", url, ioException);
+      log.error("IO error request: {}, {}", new Gson().toJson(request), ioException);
       throw ioException;
     }
   }
