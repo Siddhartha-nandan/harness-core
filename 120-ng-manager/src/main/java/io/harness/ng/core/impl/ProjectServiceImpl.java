@@ -191,7 +191,7 @@ public class ProjectServiceImpl implements ProjectService {
     project.setOrgIdentifier(scopeInfo.getOrgIdentifier());
     project.setAccountIdentifier(accountIdentifier);
     project.setParentId(scopeInfo.getUniqueId());
-
+    project.setParentUniqueId(scopeInfo.getUniqueId());
     try {
       validate(project);
       Project createdProject = Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
@@ -452,6 +452,7 @@ public class ProjectServiceImpl implements ProjectService {
                                                                   : existingProject.getCreatedAt());
       project.setUniqueId(existingProject.getUniqueId());
       project.setParentId(existingProject.getParentId());
+      project.setParentUniqueId(existingProject.getParentUniqueId());
       if (project.getVersion() == null) {
         project.setVersion(existingProject.getVersion());
       }
