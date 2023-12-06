@@ -37,10 +37,20 @@ if [[ "${ENABLE_REMOTE_DEBUG}" == "true" ]]; then
   echo "Enabled remote debug"
 fi
 
-if [[ "${ENABLE_ERROR_TRACKING}" == "true" ]] ; then
-    echo "Error Tracking is enabled"
-    JAVA_OPTS=$JAVA_OPTS" -Xshare:off -XX:-UseTypeSpeculation -XX:ReservedCodeCacheSize=512m -agentpath:/opt/harness/harness/lib/libETAgent.so"
-    echo "Using Error Tracking Java Agent"
+if [[ "${ENABLE_ET}" == "true" ]]; then
+    echo "Installing error-tracking agent"
+    mkdir -p /opt/harness/agents/
+    mv /opt/harness/harness /opt/harness/agents/et-agent
+
+    export ET_USER_ENV=/opt/harness/agents/et-agent
+    if [[ "${ENABLE_ET_WITH_DEBUG}" == "true" ]]; then
+        et_opts="-agentpath:/opt/harness/agents/et-agent/lib/libETAgent.so=debug.logconsole  -XX:-UseTypeSpeculation -Xshare:off"
+    else
+        et_opts="-agentpath:/opt/harness/agents/et-agent/lib/libETAgent.so -XX:-UseTypeSpeculation -Xshare:off"
+    fi
+
+    JAVA_OPTS="$JAVA_OPTS $et_opts"
+    echo "Using Error Tracking agent"
 fi
 
 if [[ "${ENABLE_MONITORING}" == "true" ]] ; then

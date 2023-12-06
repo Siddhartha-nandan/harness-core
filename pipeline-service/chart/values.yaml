@@ -212,7 +212,7 @@ database:
             keys:
               MONGO_USER: ""
               MONGO_PASSWORD: ""
-        secretManagement: 
+        secretManagement:
           externalSecretsOperator:
             - secretStore:
                 name: ""
@@ -235,7 +235,7 @@ database:
             keys:
               MONGO_USER: ""
               MONGO_PASSWORD: ""
-        secretManagement: 
+        secretManagement:
           externalSecretsOperator:
             - secretStore:
                 name: ""
@@ -346,6 +346,9 @@ affinity: {}
 imagePullSecrets: {}
 additionalConfigs: {}
 java17flags: ""
+errorTracking:
+  enabled: false
+  collectorURL: ''
 # extraVolumes:
 # - name: volume-test
 #   configMap:
@@ -391,10 +394,12 @@ ssca_images:
       imagePullSecrets: []
 secrets:
   default:
+    ET_AGENT_TOKEN: "DUMMY"
     OPA_SERVER_SECRET: "dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq"
   kubernetesSecrets:
     - secretName: ""
       keys:
+        ET_AGENT_TOKEN: ""
         OPA_SERVER_SECRET: ""
   secretManagement:
     externalSecretsOperator:
@@ -402,6 +407,9 @@ secrets:
           name: ""
           kind: ""
         remoteKeys:
+          ET_AGENT_TOKEN:
+            name: ""
+            property: ""
           OPA_SERVER_SECRET:
             name: ""
             property: ""

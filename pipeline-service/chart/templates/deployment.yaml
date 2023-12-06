@@ -58,8 +58,8 @@ spec:
         args:
           - "pod"
           - "-lapp=mongodb-replicaset"
-      {{- end }}   
-      {{- if .Values.global.database.timescaledb.installed }}    
+      {{- end }}
+      {{- if .Values.global.database.timescaledb.installed }}
       - name: wait-for-timescale
         image: {{ include "common.images.image" (dict "imageRoot" .Values.waitForInitContainer.image "global" .Values.global) }}
         imagePullPolicy: IfNotPresent
@@ -87,6 +87,9 @@ spec:
         resources:
           {{- toYaml .Values.resources | nindent 12 }}
         env:
+          {{- if .Values.errorTracking.enabled }}
+          {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "ET_AGENT_TOKEN" "overrideEnvName" "ET_TOKEN" "defaultKubernetesSecretName" "pipeline-service" "defaultKubernetesSecretKey" "ET_AGENT_TOKEN") | indent 10 }}
+          {{- end }}
           {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "OPA_SERVER_SECRET" "defaultKubernetesSecretName" "pipeline-service" "defaultKubernetesSecretKey" "OPA_SERVER_SECRET") | indent 10 }}
           {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD") | indent 10 }}
           {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "CACHE_CONFIG_REDIS_USERNAME" "passwordVariableName" "CACHE_CONFIG_REDIS_PASSWORD") | indent 10 }}
@@ -107,7 +110,7 @@ spec:
         {{- if .Values.extraVolumeMounts }}
         volumeMounts:
         {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 10 }}
-        {{- end }} 
+        {{- end }}
         envFrom:
         - configMapRef:
             name: pipeline-service

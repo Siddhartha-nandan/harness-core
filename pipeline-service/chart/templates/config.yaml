@@ -78,6 +78,13 @@ data:
   SSCA_ORCHESTRATION_IMAGE: '{{ .Values.ssca_images.ssca_plugin.image.repository }}:{{ .Values.ssca_images.ssca_plugin.image.tag }}'
   SSCA_ENFORCEMENT_IMAGE: '{{ .Values.ssca_images.ssca_plugin.image.repository }}:{{ .Values.ssca_images.ssca_plugin.image.tag }}'
   {{- end }}
+  {{- if .Values.errorTracking.enabled }}
+  ENABLE_ET: "true"
+  ET_COLLECTOR_URL: {{ .Values.errorTracking.collectorURL | quote }}
+  ET_APPLICATION_NAME: pipelineservice
+  ET_ENV_ID: {{ .Release.Namespace }}
+  ET_DEPLOYMENT_NAME: {{ .Values.image.tag | quote }}
+  {{- end }}
   {{ include "harnesscommon.harnessfunctions.java17flags" (dict "context" $) | nindent 2 }}
   {{- if .Values.additionalConfigs }}
   {{- toYaml .Values.additionalConfigs | nindent 2 }}
