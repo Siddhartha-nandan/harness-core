@@ -9,6 +9,7 @@ package io.harness.ssca.services;
 
 import static io.harness.rule.OwnerRule.ARPITJ;
 import static io.harness.rule.OwnerRule.REETIKA;
+import static io.harness.rule.OwnerRule.VARSHA_LALWANI;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
@@ -33,6 +34,7 @@ import io.harness.spec.server.ssca.v1.model.ArtifactListingRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingRequestBody.EnvironmentTypeEnum;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingRequestBody.PolicyViolationEnum;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingResponse;
+import io.harness.spec.server.ssca.v1.model.UniqueArtifactListingResponse;
 import io.harness.ssca.api.ArtifactApiUtils;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.entities.ArtifactEntity;
@@ -322,6 +324,43 @@ public class ArtifactServiceImplTest extends SSCAManagerTestBase {
   }
 
   @Test
+  @Owner(developers = VARSHA_LALWANI)
+  @Category(UnitTests.class)
+  public void testListUniqueArtifacts() {
+    List<ArtifactEntity> artifactEntities = Arrays.asList(builderFactory.getArtifactEntityBuilder()
+                                                              .artifactId("artifactId")
+                                                              .artifactCorrelationId("artifactCorrelationId")
+                                                              .build(),
+        builderFactory.getArtifactEntityBuilder()
+            .artifactId("artifact2")
+            .artifactCorrelationId("artifactCorrelation2")
+            .build());
+    Mockito.when(artifactRepository.findAll(any(Aggregation.class))).thenReturn(artifactEntities);
+
+    Mockito.when(artifactRepository.getCount(any())).thenReturn(3L);
+
+    Pageable pageable = PageResponseUtils.getPageable(0, 2);
+    ArtifactListingRequestBody filterBody = new ArtifactListingRequestBody();
+    Page<UniqueArtifactListingResponse> artifactEntityPage = artifactService.listUniqueArtifacts(
+        builderFactory.getContext().getAccountId(), builderFactory.getContext().getOrgIdentifier(),
+        builderFactory.getContext().getProjectIdentifier(), filterBody, pageable);
+
+    List<UniqueArtifactListingResponse> artifactListingResponses = artifactEntityPage.toList();
+
+    assertThat(artifactEntityPage.getTotalElements()).isEqualTo(3);
+    assertThat(artifactEntityPage.getTotalPages()).isEqualTo(2);
+    assertThat(artifactListingResponses.size()).isEqualTo(2);
+
+    assertThat(artifactListingResponses.get(0).getId()).isEqualTo("artifactId");
+    assertThat(artifactListingResponses.get(0).getName()).isEqualTo("test/image");
+    assertThat(artifactListingResponses.get(0).getUrl()).isEqualTo("testUrl");
+
+    assertThat(artifactListingResponses.get(1).getId()).isEqualTo("artifact2");
+    assertThat(artifactListingResponses.get(1).getName()).isEqualTo("test/image");
+    assertThat(artifactListingResponses.get(1).getUrl()).isEqualTo("testUrl");
+  }
+
+  @Test
   @Owner(developers = ARPITJ)
   @Category(UnitTests.class)
   public void testListLatestArtifacts_aggregationQuery() {
@@ -349,6 +388,36 @@ public class ArtifactServiceImplTest extends SSCAManagerTestBase {
     assertThat(argument.getValue().toString())
         .isEqualTo(String.format(
             "{ \"aggregate\" : \"__collection__\", \"pipeline\" : [{ \"$match\" : { \"accountId\" : \"%s\", \"orgId\" : \"%s\", \"projectId\" : \"%s\", \"invalid\" : false}}, { \"$sort\" : { \"createdOn\" : -1}}, { \"$group\" : { \"_id\" : \"$artifactId\", \"document\" : { \"$first\" : \"$$ROOT\"}}}, { \"$sort\" : { \"document.name\" : 1}}, { \"$project\" : { \"_id\" : 0}}, { \"$skip\" : 0}, { \"$limit\" : 2}]}",
+            builderFactory.getContext().getAccountId(), builderFactory.getContext().getOrgIdentifier(),
+            builderFactory.getContext().getProjectIdentifier()));
+  }
+
+  @Test
+  @Owner(developers = VARSHA_LALWANI)
+  @Category(UnitTests.class)
+  public void testListUniqueArtifacts_aggregationQuery() {
+    List<ArtifactEntity> artifactEntities = Arrays.asList(builderFactory.getArtifactEntityBuilder()
+                                                              .artifactId("artifactId")
+                                                              .artifactCorrelationId("artifactCorrelationId")
+                                                              .build(),
+        builderFactory.getArtifactEntityBuilder()
+            .artifactId("artifact2")
+            .artifactCorrelationId("artifactCorrelation2")
+            .build());
+    Mockito.when(artifactRepository.findAll(any(Aggregation.class))).thenReturn(artifactEntities);
+
+    Mockito.when(artifactRepository.getCount(any())).thenReturn(3L);
+    ArtifactListingRequestBody filterBody = new ArtifactListingRequestBody();
+    Pageable pageable = PageResponseUtils.getPageable(0, 2);
+    artifactService.listUniqueArtifacts(builderFactory.getContext().getAccountId(),
+        builderFactory.getContext().getOrgIdentifier(), builderFactory.getContext().getProjectIdentifier(), filterBody,
+        pageable);
+
+    ArgumentCaptor<Aggregation> argument = ArgumentCaptor.forClass(Aggregation.class);
+    Mockito.verify(artifactRepository).findAll(argument.capture());
+    assertThat(argument.getValue().toString())
+        .isEqualTo(String.format(
+            "{ \"aggregate\" : \"__collection__\", \"pipeline\" : [{ \"$match\" : { \"accountId\" : \"RNxffTMmwiDMPDGsJDvs\", \"orgId\" : \"bsIaLXPayjtYFccwHafg\", \"projectId\" : \"beIhfYykUCqcQkRaqEcQ\", \"invalid\" : false, \"$and\" : [{}, {}, {}]}}, { \"$sort\" : { \"name\" : 1}}, { \"$group\" : { \"_id\" : \"$artifactId\", \"document\" : { \"$first\" : \"$$ROOT\"}}}, { \"$skip\" : 0}, { \"$limit\" : 2}]}",
             builderFactory.getContext().getAccountId(), builderFactory.getContext().getOrgIdentifier(),
             builderFactory.getContext().getProjectIdentifier()));
   }

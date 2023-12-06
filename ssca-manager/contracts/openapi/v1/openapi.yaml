@@ -754,6 +754,41 @@ paths:
         $ref: '#/components/requestBodies/BaselineRequestBody'
       tags:
         - Baseline
+  '/v1/org/{org}/project/{project}/unique-artifacts':
+    parameters:
+      - schema:
+          type: string
+        name: org
+        in: path
+        required: true
+      - schema:
+          type: string
+        name: project
+        in: path
+        required: true
+    post:
+      summary: List Unique Artifacts
+      tags:
+        - artifact
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '500':
+          description: Internal Server Error
+      operationId: listUniqueArtifacts
+      x-stoplight:
+        id: mkyhx1182y4yc
+      description: List all unique artifacts. This exclude the tags information.
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Page'
+      requestBody:
+        $ref: '#/components/requestBodies/ArtifactListingRequestBody'
 components:
   schemas:
     Artifact:
@@ -2005,6 +2040,22 @@ components:
           x-stoplight:
             id: op84zw6fnkzg9
           description: Version of the artifact
+    UniqueArtifactListingResponse:
+      title: UniqueArtifactListingResponse
+      x-stoplight:
+        id: bbvewfzzfg3fh
+      type: object
+      x-examples: {}
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        url:
+          type: string
+      required:
+        - id
+        - name
   parameters:
     OrgParam:
       name: org
@@ -2325,3 +2376,24 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/BaselineResponseBody'
+    ArtifactUniqueListingResponseBody:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/UniqueArtifactListingResponse'
+      headers:
+        X-Total-Elements:
+          schema:
+            type: integer
+          description: Total number of elements returned in Paginated response.
+        X-Page-Number:
+          schema:
+            type: integer
+          description: Page number in Paginated response.
+        X-Page-Size:
+          schema:
+            type: integer
+          description: Maximum page size in Paginated response.

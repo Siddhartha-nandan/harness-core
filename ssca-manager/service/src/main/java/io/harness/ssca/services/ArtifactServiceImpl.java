@@ -34,6 +34,7 @@ import io.harness.spec.server.ssca.v1.model.ComponentFilter;
 import io.harness.spec.server.ssca.v1.model.LicenseFilter;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
 import io.harness.spec.server.ssca.v1.model.Slsa;
+import io.harness.spec.server.ssca.v1.model.UniqueArtifactListingResponse;
 import io.harness.ssca.beans.EnforcementSummaryDBO.EnforcementSummaryDBOKeys;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.beans.SbomDTO;
@@ -68,6 +69,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.CountOperation;
 import org.springframework.data.mongodb.core.aggregation.GroupOperation;
@@ -88,6 +90,8 @@ public class ArtifactServiceImpl implements ArtifactService {
   @Inject NormalisedSbomComponentService normalisedSbomComponentService;
   @Inject CdInstanceSummaryService cdInstanceSummaryService;
   @Inject PipelineUtils pipelineUtils;
+
+  @Inject MongoTemplate mongoTemplate;
 
   private final String GCP_REGISTRY_HOST = "grc.io";
 
@@ -283,6 +287,47 @@ public class ArtifactServiceImpl implements ArtifactService {
   @Override
   public Page<ArtifactListingResponse> listArtifacts(String accountId, String orgIdentifier, String projectIdentifier,
       ArtifactListingRequestBody body, Pageable pageable) {
+    Criteria criteria = getCriteriaForFilter(accountId, orgIdentifier, projectIdentifier, body);
+    if (criteria == null) {
+      return Page.empty();
+    }
+
+    Page<ArtifactEntity> artifactEntities = artifactRepository.findAll(criteria, pageable);
+
+    List<ArtifactListingResponse> artifactListingResponses =
+        getArtifactListingResponses(accountId, orgIdentifier, projectIdentifier, artifactEntities.toList());
+
+    return new PageImpl<>(artifactListingResponses, pageable, artifactEntities.getTotalElements());
+  }
+
+  @Override
+  public Page<UniqueArtifactListingResponse> listUniqueArtifacts(String accountId, String orgIdentifier,
+      String projectIdentifier, ArtifactListingRequestBody body, Pageable pageable) {
+    Criteria criteria = getCriteriaForFilter(accountId, orgIdentifier, projectIdentifier, body);
+    if (criteria == null) {
+      return Page.empty();
+    }
+
+    MatchOperation matchOperation = match(criteria);
+    SortOperation sortOperation = sort(Sort.by(Direction.ASC, ArtifactEntityKeys.name));
+    GroupOperation groupByArtifactId = group(ArtifactEntityKeys.artifactId).first("$$ROOT").as("document");
+    SkipOperation skipOperation = skip(pageable.getOffset());
+    LimitOperation limitOperation = limit(pageable.getPageSize());
+    Aggregation aggregation =
+        Aggregation.newAggregation(matchOperation, sortOperation, groupByArtifactId, skipOperation, limitOperation);
+
+    List<ArtifactEntity> artifactEntities = artifactRepository.findAll(aggregation);
+    CountOperation countOperation = count().as("count");
+    aggregation = Aggregation.newAggregation(matchOperation, groupByArtifactId, countOperation);
+    long total = artifactRepository.getCount(aggregation);
+    List<UniqueArtifactListingResponse> artifactListingResponses =
+        getUniqueArtifactListingResponses(accountId, orgIdentifier, projectIdentifier, artifactEntities);
+
+    return new PageImpl<>(artifactListingResponses, pageable, total);
+  }
+
+  private Criteria getCriteriaForFilter(
+      String accountId, String orgIdentifier, String projectIdentifier, ArtifactListingRequestBody body) {
     Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
                             .is(accountId)
                             .and(ArtifactEntityKeys.orgId)
@@ -305,18 +350,12 @@ public class ArtifactServiceImpl implements ArtifactService {
       if (isNotEmpty(orchestrationIds)) {
         filterCriteria = Criteria.where(ArtifactEntityKeys.orchestrationId).in(orchestrationIds);
       } else {
-        return Page.empty();
+        return null;
       }
     }
 
     criteria.andOperator(getPolicyFilterCriteria(body), getDeploymentFilterCriteria(body), filterCriteria);
-
-    Page<ArtifactEntity> artifactEntities = artifactRepository.findAll(criteria, pageable);
-
-    List<ArtifactListingResponse> artifactListingResponses =
-        getArtifactListingResponses(accountId, orgIdentifier, projectIdentifier, artifactEntities.toList());
-
-    return new PageImpl<>(artifactListingResponses, pageable, artifactEntities.getTotalElements());
+    return criteria;
   }
 
   @Override
@@ -460,6 +499,18 @@ public class ArtifactServiceImpl implements ArtifactService {
               .orchestrationId(artifact.getOrchestrationId())
               .buildPipelineId(artifact.getPipelineId())
               .buildPipelineExecutionId(artifact.getPipelineExecutionId()));
+    }
+    return responses;
+  }
+
+  private List<UniqueArtifactListingResponse> getUniqueArtifactListingResponses(
+      String accountId, String orgIdentifier, String projectIdentifier, List<ArtifactEntity> artifactEntities) {
+    List<UniqueArtifactListingResponse> responses = new ArrayList<>();
+    for (ArtifactEntity artifact : artifactEntities) {
+      responses.add(new UniqueArtifactListingResponse()
+                        .id(artifact.getArtifactId())
+                        .name(artifact.getName())
+                        .url(artifact.getUrl()));
     }
     return responses;
   }

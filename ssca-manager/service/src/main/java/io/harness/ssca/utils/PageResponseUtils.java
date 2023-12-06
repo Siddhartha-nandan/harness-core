@@ -13,6 +13,7 @@ import io.harness.utils.ApiUtils;
 import io.harness.utils.PageUtils;
 
 import java.util.Arrays;
+import java.util.Collections;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 import org.springframework.data.domain.Page;
@@ -24,6 +25,10 @@ public class PageResponseUtils {
     sortOrder.setFieldName(sort);
     sortOrder.setOrderType(SortOrder.OrderType.valueOf(order));
     return PageUtils.getPageRequest(new PageRequest(page, limit, Arrays.asList(sortOrder)));
+  }
+
+  public static Pageable getPageable(Integer page, Integer limit) {
+    return PageUtils.getPageRequest(new PageRequest(page, limit, Collections.emptyList()));
   }
 
   public static <T> Response getPagedResponse(Page<T> entities) {

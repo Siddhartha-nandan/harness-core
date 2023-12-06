@@ -15,6 +15,7 @@ import io.harness.spec.server.ssca.v1.model.ArtifactDetailResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingResponse;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
+import io.harness.spec.server.ssca.v1.model.UniqueArtifactListingResponse;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.beans.SbomDTO;
 import io.harness.ssca.entities.ArtifactEntity;
@@ -56,6 +57,8 @@ public interface ArtifactService {
   Page<ArtifactListingResponse> listArtifacts(String accountId, String orgIdentifier, String projectIdentifier,
       ArtifactListingRequestBody body, Pageable pageable);
 
+  Page<UniqueArtifactListingResponse> listUniqueArtifacts(String accountId, String orgIdentifier,
+      String projectIdentifier, ArtifactListingRequestBody body, Pageable pageable);
   Page<ArtifactComponentViewResponse> getArtifactComponentView(String accountId, String orgIdentifier,
       String projectIdentifier, String artifactId, String tag, ArtifactComponentViewRequestBody filterBody,
       Pageable pageable);
