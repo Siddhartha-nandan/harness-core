@@ -12,6 +12,7 @@ import static io.harness.ng.core.entityusageactivity.EntityUsageTypes.PIPELINE_E
 import static io.harness.rule.OwnerRule.ABOSII;
 import static io.harness.rule.OwnerRule.ACASIAN;
 import static io.harness.rule.OwnerRule.ACHYUTH;
+import static io.harness.rule.OwnerRule.BUHA;
 import static io.harness.rule.OwnerRule.NAMAN_TALAYCHA;
 import static io.harness.rule.OwnerRule.TARUN_UBA;
 
@@ -43,6 +44,7 @@ import io.harness.cdng.manifest.yaml.K8sManifestOutcome;
 import io.harness.cdng.manifest.yaml.K8sStepCommandFlag;
 import io.harness.cdng.manifest.yaml.ManifestConfig;
 import io.harness.cdng.manifest.yaml.ManifestConfigWrapper;
+import io.harness.cdng.manifest.yaml.ManifestOutcome;
 import io.harness.cdng.manifest.yaml.ManifestSourceWrapper;
 import io.harness.cdng.manifest.yaml.OpenshiftManifestOutcome;
 import io.harness.cdng.manifest.yaml.kinds.HelmChartManifest;
@@ -52,9 +54,11 @@ import io.harness.delegate.beans.logstreaming.UnitProgressData;
 import io.harness.delegate.task.k8s.K8sApplyRequest;
 import io.harness.delegate.task.k8s.K8sDeployResponse;
 import io.harness.delegate.task.k8s.K8sTaskType;
+import io.harness.delegate.task.localstore.ManifestFiles;
 import io.harness.eventsframework.schemas.entity.EntityUsageDetailProto;
 import io.harness.exception.GeneralException;
 import io.harness.exception.InvalidRequestException;
+import io.harness.exception.KubernetesTaskException;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.execution.Status;
@@ -125,7 +129,7 @@ public class K8sApplyStepTest extends AbstractK8sStepExecutorTestBase {
     GitStore gitStoreStepLevelSource =
         GitStore.builder()
             .branch(ParameterField.createValueField("master"))
-            .paths(ParameterField.createValueField(asList("deployment.yaml", "service.yaml")))
+            .paths(ParameterField.createValueField(asList("<+pipeline.variable.file1>", "<+pipeline.variable.file2>")))
             .connectorRef(ParameterField.createValueField("git-connector"))
             .build();
     StoreConfigWrapper storeConfigWrapper = StoreConfigWrapper.builder().spec(gitStoreStepLevelSource).build();
@@ -150,7 +154,14 @@ public class K8sApplyStepTest extends AbstractK8sStepExecutorTestBase {
     when(cdFeatureFlagHelper.isEnabled(any(), any())).thenReturn(true);
     final StepElementParameters stepElementParameters =
         StepElementParameters.builder().spec(stepParameters).timeout(ParameterField.createValueField("30m")).build();
-    K8sApplyRequest request = executeTask(stepElementParameters, K8sApplyRequest.class);
+    ManifestOutcome k8sManifestOutcome =
+        K8sManifestOutcome.builder()
+            .store(GitStore.builder()
+                       .paths(ParameterField.createValueField(asList("deployment.yaml", "service.yaml")))
+                       .build())
+            .build();
+
+    K8sApplyRequest request = executeTask(k8sManifestOutcome, stepElementParameters, K8sApplyRequest.class);
     assertThat(request.getAccountId()).isEqualTo(accountId);
     assertThat(request.getFilePaths()).containsExactlyInAnyOrder("deployment.yaml", "service.yaml");
     assertThat(request.getTaskType()).isEqualTo(K8sTaskType.APPLY);
@@ -159,7 +170,6 @@ public class K8sApplyStepTest extends AbstractK8sStepExecutorTestBase {
     assertThat(request.getTimeoutIntervalInMin()).isEqualTo(30);
     assertThat(request.getK8sCommandFlags()).isEqualTo(k8sCommandFlag);
     assertThat(request.isUseManifestSource()).isTrue();
-
     ArgumentCaptor<String> releaseNameCaptor = ArgumentCaptor.forClass(String.class);
     verify(k8sStepHelper, times(1)).publishReleaseNameStepDetails(eq(ambiance), releaseNameCaptor.capture());
     assertThat(releaseNameCaptor.getValue()).isEqualTo(releaseName);
@@ -251,7 +261,7 @@ public class K8sApplyStepTest extends AbstractK8sStepExecutorTestBase {
         StepElementParameters.builder().spec(stepParameters).timeout(ParameterField.ofNull()).build();
     k8sApplyStep.startChainLink(ambiance, stepElementParameters, StepInputPackage.builder().build());
     verify(k8sStepHelper, times(1)).resolveManifestsConfigExpressions(eq(ambiance), eq(stepParameters.overrides));
-
+    verify(k8sStepHelper, times(1)).resolveManifestsSourceExpressions(eq(ambiance), eq(stepParameters.manifestSource));
     verify(k8sStepHelper, times(1)).startChainLink(eq(k8sApplyStep), eq(ambiance), eq(stepElementParameters));
     gitStoreStepLevelSource.setPaths(ParameterField.createValueField(asList("path/to/k8s/manifest/templates")));
     storeConfigWrapper = StoreConfigWrapper.builder().spec(gitStoreStepLevelSource).build();
@@ -430,6 +440,28 @@ public class K8sApplyStepTest extends AbstractK8sStepExecutorTestBase {
     stepParameters.setFilePaths(ParameterField.createValueField(Arrays.asList("file1.yaml", "file2.yaml")));
 
     testPublishSecretRuntimeUsage(stepParameters, manifestSourceWrapper);
+  }
+
+  @Test
+  @Owner(developers = BUHA)
+  @Category(UnitTests.class)
+  public void testFilePathsAreNotPartOfTheManifest() {
+    doReturn("Harness").when(storeConfig).getKind();
+    manifestFiles = List.of(ManifestFiles.builder().filePath("/k8s/firstPath.yaml").build(),
+        ManifestFiles.builder().filePath("/k8s/secondPath.yaml").build());
+
+    K8sApplyStepParameters stepParameters = new K8sApplyStepParameters();
+    stepParameters.setFilePaths(
+        ParameterField.createValueField(asList("/k8s/firstPath.yaml", "k8s/secondPath.yaml", "notExistingPath.yaml")));
+    final StepElementParameters stepElementParameters =
+        StepElementParameters.builder().spec(stepParameters).timeout(ParameterField.createValueField("30m")).build();
+
+    assertThatThrownBy(() -> executeTask(stepElementParameters, K8sApplyRequest.class))
+        .isInstanceOf(KubernetesTaskException.class)
+        .hasMessage("Please check specified file paths. \n"
+            + "All files should be part of the manifest specified in the service definition. \n"
+            + "The following files could not be found in the manifest: \n"
+            + "- /notExistingPath.yaml \n");
   }
 
   private void testPublishSecretRuntimeUsage(K8sApplyStepParameters applyStepParameters, Object visitable) {

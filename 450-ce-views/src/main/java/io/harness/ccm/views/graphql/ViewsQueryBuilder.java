@@ -147,6 +147,7 @@ public class ViewsQueryBuilder {
   private static final String searchFilter = "REGEXP_CONTAINS( LOWER(%s), LOWER('%s') )";
   private static final String searchFilterClickHouse = "%s LIKE %s";
   private static final String regexFilter = "REGEXP_CONTAINS( %s, r'%s' )";
+  private static final String regexFilterClickhouse = "match( %s, '%s' )";
   private static final String labelsSubQuery = "(SELECT value FROM UNNEST(labels) WHERE KEY='%s')";
   private static final String leftJoinLabels = " LEFT JOIN UNNEST(labels) as labelsUnnested";
   private static final String leftJoinSelectiveLabels =
@@ -163,7 +164,7 @@ public class ViewsQueryBuilder {
   private static final String MULTI_IF_STATEMENT_OPENING = "multiIf(";
   private static final String CLICKHOUSE_DISTINCT = "distinct %s";
   private static final String CLICKHOUSE_LABEL_KEYS = "arrayJoin(labels.keys)";
-  private static final String CLICKHOUSE_LABEL_VALUES = "arrayJoin(labels.values)";
+  private static final String CLICKHOUSE_LABEL_VALUES = "labels['%s']";
   private static final Double DEFAULT_MARKUP = 1.0;
   private static final String[] EMPTY_ARRAY = new String[0];
 
@@ -539,7 +540,12 @@ public class ViewsQueryBuilder {
   // Query to get columns of a bq table
   public SelectQuery getInformationSchemaQueryForColumns(String informationSchemaView, String table) {
     SelectQuery selectQuery = new SelectQuery();
-    selectQuery.addCustomFromTable(informationSchemaView);
+    if (isClickHouseEnabled) {
+      selectQuery.addCustomFromTable("INFORMATION_SCHEMA.COLUMNS");
+      selectQuery.addCondition(BinaryCondition.equalTo(new CustomSql("table_schema"), "ccm"));
+    } else {
+      selectQuery.addCustomFromTable(informationSchemaView);
+    }
 
     // Adding group by column
     selectQuery.addCustomColumns(new CustomSql("column_name"));
@@ -991,10 +997,9 @@ public class ViewsQueryBuilder {
                   LABEL_VALUE_UN_NESTED.getAlias());
             } else {
               if (isClickHouseQuery()) {
-                query.addCondition(
-                    getCondition(getLabelKeyFilter(new String[] {viewFieldInput.getFieldName()}, CLICKHOUSE_LABEL_KEYS),
-                        tableIdentifier, viewLabelsFlattened));
-                query.addAliasedColumn(new CustomSql(String.format(CLICKHOUSE_DISTINCT, CLICKHOUSE_LABEL_VALUES)),
+                String labelKey = viewFieldInput.getFieldName();
+                query.addAliasedColumn(
+                    new CustomSql(String.format(CLICKHOUSE_DISTINCT, String.format(CLICKHOUSE_LABEL_VALUES, labelKey))),
                     LABEL_VALUE_UN_NESTED.getAlias());
                 query.addCondition(
                     BinaryCondition.notEqualTo(new CustomSql(LABEL_VALUE_UN_NESTED.getAlias()), EMPTY_STRING));
@@ -1921,8 +1926,8 @@ public class ViewsQueryBuilder {
         }
         break;
       case LIKE:
-        condition =
-            new CustomCondition(String.format(regexFilter, conditionKey, handleSingleQuotes(filter.getValues()[0])));
+        condition = new CustomCondition(String.format(isClickHouseQuery() ? regexFilterClickhouse : regexFilter,
+            conditionKey, handleSingleQuotes(filter.getValues()[0])));
         break;
       case SEARCH:
         // Searching capability for idFilters only

@@ -165,6 +165,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.input.NullInputStream;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -915,7 +916,8 @@ public class TerraformBaseHelperImpl implements TerraformBaseHelper {
           Exception sanitizeException = ExceptionMessageSanitizer.sanitizeException(e);
           log.error("Error Occurred while getting aws auth variables for terraform task. {} at {}",
               sanitizeException.getMessage(), sanitizeException.getStackTrace());
-          throw new InvalidRequestException(sanitizeException.getMessage());
+          throw new InvalidRequestException(
+              "Error Occurred while getting aws auth variables for terraform task. " + sanitizeException.getMessage());
         }
       }
     }
@@ -1043,7 +1045,7 @@ public class TerraformBaseHelperImpl implements TerraformBaseHelper {
   }
 
   public String getBaseDir(String entityId) {
-    return TF_WORKING_DIR + entityId;
+    return TF_WORKING_DIR + entityId + RandomStringUtils.randomAlphanumeric(8);
   }
 
   public void fetchConfigFileAndCloneLocally(GitBaseRequest gitBaseRequestForConfigFile, LogCallback logCallback) {
@@ -1414,9 +1416,9 @@ public class TerraformBaseHelperImpl implements TerraformBaseHelper {
     logCallback.saveExecutionLog(color("\n   Successfully Exported SSH Key:", White), INFO);
   }
 
-  public void performCleanupOfTfDirs(TerraformTaskNGParameters parameters, LogCallback logCallback) {
+  public void performCleanupOfTfDirs(TerraformTaskNGParameters parameters, LogCallback logCallback, String baseDir) {
     {
-      FileUtils.deleteQuietly(new File(getBaseDir(parameters.getEntityId())));
+      FileUtils.deleteQuietly(new File(baseDir));
       if (parameters.getEncryptedTfPlan() != null) {
         try {
           boolean isSafelyDeleted = encryptDecryptHelper.deleteEncryptedRecord(

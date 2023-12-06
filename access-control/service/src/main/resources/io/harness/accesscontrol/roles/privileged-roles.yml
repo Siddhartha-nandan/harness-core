@@ -75,3 +75,10 @@ roles:
       - ccm_recommendations_view
       - ccm_commitmentOrchestrator_view
       - iac_workspace_view
+      - core_inputset_view
+      - idp_plugin_view
+      - idp_scorecard_view
+      - idp_layout_view
+      - idp_catalogaccesspolicy_view
+      - idp_integration_view
+      - idp_advancedconfiguration_view

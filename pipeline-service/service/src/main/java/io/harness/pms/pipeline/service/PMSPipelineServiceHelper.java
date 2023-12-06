@@ -10,6 +10,7 @@ package io.harness.pms.pipeline.service;
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+import static io.harness.exception.WingsException.USER;
 import static io.harness.telemetry.Destination.AMPLITUDE;
 
 import static java.lang.String.format;
@@ -28,6 +29,7 @@ import io.harness.data.structure.HarnessStringUtils;
 import io.harness.engine.governance.PolicyEvaluationFailureException;
 import io.harness.eventsframework.schemas.entity.EntityDetailProtoDTO;
 import io.harness.exception.DuplicateFileImportException;
+import io.harness.exception.ExceptionUtils;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.NestedExceptionUtils;
 import io.harness.exception.ngexception.InvalidFieldsDTO;
@@ -93,6 +95,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import javax.validation.constraints.NotNull;
 import lombok.AccessLevel;
@@ -330,8 +333,11 @@ public class PMSPipelineServiceHelper {
     try {
       GitEntityInfo gitEntityInfo = GitContextHelper.getGitEntityInfo();
       if (HarnessYamlVersion.isV1(pipelineEntity.getHarnessVersion())) {
+        // preprocessedYaml with ids is needed for template resolution
         String yaml = preProcessPipelineYaml(pipelineEntity.getYaml());
-        pipelineEntity.setYaml(yaml);
+        // withYaml() will return a new object of pipelineEntity and will not modify yaml in existing pipelineEntity
+        // so while saving/updating, yaml will be saved without preprocessing only.
+        pipelineEntity = pipelineEntity.withYaml(yaml);
       }
       if (gitEntityInfo != null && gitEntityInfo.isNewBranch()) {
         GitSyncBranchContext gitSyncBranchContext =
@@ -477,13 +483,20 @@ public class PMSPipelineServiceHelper {
 
     Criteria searchCriteria = new Criteria();
     if (EmptyPredicate.isNotEmpty(searchTerm)) {
-      searchCriteria.orOperator(where(PipelineEntityKeys.identifier)
-                                    .regex(searchTerm, NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS),
-          where(PipelineEntityKeys.name).regex(searchTerm, NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS),
-          where(PipelineEntityKeys.tags + "." + NGTagKeys.key)
-              .regex(searchTerm, NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS),
-          where(PipelineEntityKeys.tags + "." + NGTagKeys.value)
-              .regex(searchTerm, NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS));
+      try {
+        searchCriteria.orOperator(where(PipelineEntityKeys.identifier)
+                                      .regex(searchTerm, NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS),
+            where(PipelineEntityKeys.name).regex(searchTerm, NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS),
+            where(PipelineEntityKeys.tags + "." + NGTagKeys.key)
+                .regex(searchTerm, NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS),
+            where(PipelineEntityKeys.tags + "." + NGTagKeys.value)
+                .regex(searchTerm, NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS));
+      } catch (PatternSyntaxException exception) {
+        throw NestedExceptionUtils.hintWithExplanationException("Special characters are not supported in search regex",
+            "Special characters are not supported in search regex. In order to support special characters,"
+                + " please add escape `\\` in special character prefix.",
+            new InvalidRequestException(ExceptionUtils.getMessage(exception), exception, USER));
+      }
     }
 
     criteriaList.add(moduleCriteria);
@@ -492,7 +505,6 @@ public class PMSPipelineServiceHelper {
 
     return criteria;
   }
-
   public void sendPipelineSaveTelemetryEvent(PipelineEntity entity, String actionType) {
     executorService.submit(() -> {
       try {

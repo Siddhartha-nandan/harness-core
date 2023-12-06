@@ -164,7 +164,7 @@
     "type": "DirectHttp",
     "apiRequestDetails": {
       "method": "GET",
-      "url": "/2.0/repositories/{WORKSPACE}/{REPOSITORY_NAME}/pullrequests?q=state=\"MERGED\"",
+      "url": "/2.0/repositories/{REPOSITORY_OWNER}/{REPOSITORY_NAME}/pullrequests?q=state=\"MERGED\"",
       "headers": {
         "Content-Type": "application/json"
       }
@@ -178,7 +178,7 @@
     "type": "DirectHttp",
     "apiRequestDetails": {
       "method": "GET",
-      "url": "/2.0/repositories/{WORKSPACE}/{REPOSITORY_NAME}/branch-restrictions?pattern={BRANCH_NAME_REPLACER}",
+      "url": "/2.0/repositories/{REPOSITORY_OWNER}/{REPOSITORY_NAME}/branch-restrictions?pattern={BRANCH_NAME_REPLACER}",
       "headers": {
         "Content-Type": "application/json"
       }
@@ -256,7 +256,7 @@
       "headers": {
         "Content-Type": "application/json"
       },
-      "requestBody": "{\"query\":\"{\\n  project(fullPath: \\\"{PROJECT_PATH}\\\") {\\n    mergeRequests(state: merged, last: 100{REPOSITORY_BRANCH_NAME_REPLACER}) {\\n      nodes {\\n        title\\n        createdAt\\n        mergedAt\\n      }\\n    }\\n  }\\n}\",\"variables\":{}}"
+      "requestBody": "{\"query\":\"{\\n  project(fullPath: \\\"{REPOSITORY_OWNER}/{REPOSITORY_NAME}\\\") {\\n    mergeRequests(state: merged, last: 100{REPOSITORY_BRANCH_NAME_REPLACER}) {\\n      nodes {\\n        title\\n        createdAt\\n        mergedAt\\n      }\\n    }\\n  }\\n}\",\"variables\":{}}"
     }
   },
   {
@@ -271,7 +271,7 @@
       "headers": {
         "Content-Type": "application/json"
       },
-      "requestBody": "{\"query\":\"{\\n  project(fullPath: \\\"{PROJECT_PATH}\\\") {\\n    branchRules {\\n      nodes {\\n        name\\n        branchProtection {\\n          allowForcePush\\n        }\\n        approvalRules {\\n          nodes {\\n            approvalsRequired\\n          }\\n        }\\n        isDefault\\n        isProtected\\n      }\\n    }\\n  }\\n}\\n\",\"variables\":{}}"
+      "requestBody": "{\"query\":\"{\\n  project(fullPath: \\\"{REPOSITORY_OWNER}/{REPOSITORY_NAME}\\\") {\\n    branchRules {\\n      nodes {\\n        name\\n        branchProtection {\\n          allowForcePush\\n        }\\n        approvalRules {\\n          nodes {\\n            approvalsRequired\\n          }\\n        }\\n        isDefault\\n        isProtected\\n      }\\n    }\\n  }\\n}\\n\",\"variables\":{}}"
     }
   },
   {
@@ -286,7 +286,7 @@
       "headers": {
         "Content-Type": "application/json"
       },
-      "requestBody": "{\"query\":\"{\\n  project(fullPath: \\\"{PROJECT_PATH}\\\") {\\n    repository {\\n      tree(ref: \\\"HEAD\\\", path: \\\"{FILE_PATH_REPLACER}\\\") {\\n        blobs {\\n          nodes {\\n            name\\n            path\\n          }\\n        }\\n      }\\n    }\\n  }\\n}\",\"variables\":{}}"
+      "requestBody": "{\"query\":\"{\\n  project(fullPath: \\\"{REPOSITORY_OWNER}/{REPOSITORY_NAME}\\\") {\\n    repository {\\n      tree(ref: \\\"HEAD\\\", path: \\\"{FILE_PATH_REPLACER}\\\") {\\n        blobs {\\n          nodes {\\n            name\\n            path\\n          }\\n        }\\n      }\\n    }\\n  }\\n}\",\"variables\":{}}"
     }
   },
   {
@@ -418,12 +418,40 @@
     "type": "DirectHttp",
     "apiRequestDetails": {
       "method": "POST",
-      "url": "{API_BASE_URL}/graphql",
+      "url": "/graphql",
       "headers": {
-        "Content-Type": "application/json",
-        "Authorization": "{BEARER_AUTH}"
+        "Content-Type": "application/json"
       },
-      "requestBody": "{\"query\": \"{ repository(owner: \\\"{REPOSITORY_OWNER}\\\", name: \\\"{REPOSITORY_NAME}\\\") { object(expression: \\\"{REPOSITORY_BRANCH}:{FILE_PATH_REPLACER}\\\") { ... on Blob { text } } } }\"}"
+      "requestBody": "{\"query\": \"{ repository(owner: \\\"{REPOSITORY_OWNER}\\\", name: \\\"{REPOSITORY_NAME}\\\") { object(expression: \\\"{REPOSITORY_BRANCH}:{REPOSITORY_SUB_FOLDER}{FILE_PATH_REPLACER}\\\") { ... on Blob { text } } } }\"}"
+    }
+  },
+  {
+    "id": "6562addf80634fccaacfd852",
+    "accountIdentifier": "__GLOBAL_ACCOUNT_ID__",
+    "identifier": "gitlab_file_contents",
+    "dataSourceIdentifier": "gitlab",
+    "type": "DirectHttp",
+    "apiRequestDetails": {
+      "method": "POST",
+      "url": "/api/graphql",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "requestBody": "{\"query\":\"{\\n  project(fullPath: \\\"{REPOSITORY_OWNER}/{REPOSITORY_NAME}\\\") {\\n    repository {\\n      blobs(ref: \\\"{REPOSITORY_BRANCH}\\\", paths: \\\"{REPOSITORY_SUB_FOLDER}{FILE_PATH_REPLACER}\\\") {\\n        nodes {\\n          rawTextBlob\\n        }\\n      }\\n    }\\n  }\\n}\\n\",\"variables\":{}}"
+    }
+  },
+  {
+    "id": "6565714a131ebd82a2ba0962",
+    "accountIdentifier": "__GLOBAL_ACCOUNT_ID__",
+    "identifier": "bitbucket_file_contents",
+    "dataSourceIdentifier": "bitbucket",
+    "type": "DirectHttp",
+    "apiRequestDetails": {
+      "method": "GET",
+      "url": "/2.0/repositories/{REPOSITORY_OWNER}/{REPOSITORY_NAME}/src/{REPOSITORY_BRANCH}/{REPOSITORY_SUB_FOLDER}{FILE_PATH_REPLACER}",
+      "headers": {
+        "Content-Type": "application/json"
+      }
     }
   }
 ]

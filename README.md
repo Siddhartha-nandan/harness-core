@@ -1,6 +1,6 @@
 This repo contains code used in the [Harness CD Community Edition](https://github.com/harness/harness-cd-community) which is licensed under the [PolyForm Shield License 1.0.0](./licenses/PolyForm-Shield-1.0.0.txt). This repo also contains code belonging to Harness CD Enterprise Plan which is licensed under the [PolyForm Free Trial License 1.0.0](./licenses/PolyForm-Free-Trial-1.0.0.txt). You may obtain a copy of these licenses in the [licenses](./licenses/) directory at the root of this repository. 
 
-harness-core Project Dev environment setup instructions
+harness-core Project Dev environment setup instructions 
 ======================================================
 ## On MacOS
 
@@ -10,6 +10,7 @@ harness-core Project Dev environment setup instructions
 ```
 https://harness.atlassian.net/wiki/spaces/BT/pages/21101969665/How+to+setup+local+system+to+build+and+run+backend+code+harness-core+using+Bazel.
 ```
+
 
 ### Prerequisities
 1. Install Homebrew:

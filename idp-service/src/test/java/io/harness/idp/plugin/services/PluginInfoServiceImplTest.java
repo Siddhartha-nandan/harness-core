@@ -26,17 +26,23 @@ import static org.mockito.Mockito.when;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.EmbeddedUser;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InvalidRequestException;
 import io.harness.idp.common.FileUtils;
 import io.harness.idp.common.IdpCommonService;
+import io.harness.idp.configmanager.service.ConfigEnvVariablesService;
 import io.harness.idp.configmanager.service.ConfigManagerService;
 import io.harness.idp.configmanager.service.PluginsProxyInfoService;
 import io.harness.idp.configmanager.utils.ConfigType;
+import io.harness.idp.envvariable.service.BackstageEnvVariableService;
 import io.harness.idp.plugin.beans.ExportsData;
-import io.harness.idp.plugin.beans.PluginInfoEntity;
-import io.harness.idp.plugin.beans.PluginRequestEntity;
+import io.harness.idp.plugin.entities.DefaultPluginInfoEntity;
+import io.harness.idp.plugin.entities.PluginInfoEntity;
+import io.harness.idp.plugin.entities.PluginRequestEntity;
 import io.harness.idp.plugin.enums.ExportType;
+import io.harness.idp.plugin.mappers.DefaultPluginDetailedInfoMapper;
+import io.harness.idp.plugin.mappers.PluginDetailedInfoMapper;
 import io.harness.idp.plugin.repositories.PluginInfoRepository;
 import io.harness.idp.plugin.repositories.PluginRequestRepository;
 import io.harness.rule.Owner;
@@ -46,6 +52,7 @@ import io.harness.spec.server.idp.v1.model.RequestPlugin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +60,6 @@ import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Page;
@@ -61,16 +67,19 @@ import org.springframework.data.domain.PageImpl;
 
 @OwnedBy(HarnessTeam.IDP)
 public class PluginInfoServiceImplTest {
-  @InjectMocks private PluginInfoServiceImpl pluginInfoServiceImpl;
+  private PluginInfoServiceImpl pluginInfoServiceImpl;
   @Mock private PluginInfoRepository pluginInfoRepository;
   @Mock private PluginRequestRepository pluginRequestRepository;
   @Mock private ConfigManagerService configManagerService;
+  @Mock private ConfigEnvVariablesService configEnvVariablesService;
+  @Mock private BackstageEnvVariableService backstageEnvVariableService;
   @Mock private PluginsProxyInfoService pluginsProxyInfoService;
   @Mock private IdpCommonService idpCommonService;
   @Mock private HashMap<String, String> notificationConfigs = new HashMap<>();
+  private Map<PluginInfo.PluginTypeEnum, PluginDetailedInfoMapper> mapBinder;
   private final ObjectMapper objectMapper = mock(ObjectMapper.class);
 
-  private static final String ACCOUNT_ID = "123";
+  private static final String ACCOUNT_ID = "__GLOBAL_ACCOUNT_ID__";
   private static final String PAGER_DUTY_NAME = "PagerDuty";
   private static final String PAGER_DUTY_ID = "pager-duty";
   private static final String HARNESS_CI_CD_NAME = "Harnes CI/CD";
@@ -85,6 +94,11 @@ public class PluginInfoServiceImplTest {
   @Before
   public void setUp() {
     MockitoAnnotations.initMocks(this);
+    PluginDetailedInfoMapper<?, ?> pluginDetailedInfoMapper = new DefaultPluginDetailedInfoMapper();
+    mapBinder = Map.of(PluginInfo.PluginTypeEnum.DEFAULT, pluginDetailedInfoMapper);
+    pluginInfoServiceImpl = new PluginInfoServiceImpl(pluginInfoRepository, pluginRequestRepository,
+        configManagerService, configEnvVariablesService, backstageEnvVariableService, pluginsProxyInfoService,
+        idpCommonService, "", notificationConfigs, mapBinder);
   }
 
   @Test
@@ -94,7 +108,9 @@ public class PluginInfoServiceImplTest {
     List<PluginInfoEntity> pluginInfoEntityList = new ArrayList<>();
     pluginInfoEntityList.add(getPagerDutyInfoEntity());
     pluginInfoEntityList.add(getHarnessCICDInfoEntity());
-    when(pluginInfoRepository.findByIdentifierIn(any())).thenReturn(pluginInfoEntityList);
+    when(pluginInfoRepository.findByIdentifierInAndAccountIdentifierOrTypeAndAccountIdentifier(
+             any(), any(), any(), any()))
+        .thenReturn(pluginInfoEntityList);
     Map<String, Boolean> map = new HashMap<>();
     map.put(PAGER_DUTY_ID, false);
     map.put(HARNESS_CI_CD_ID, true);
@@ -109,12 +125,13 @@ public class PluginInfoServiceImplTest {
   @Owner(developers = VIGNESWARA)
   @Category(UnitTests.class)
   public void testGetPluginDetailedInfo() {
-    when(pluginInfoRepository.findByIdentifier(PAGER_DUTY_ID))
+    when(pluginInfoRepository.findByIdentifierAndAccountIdentifierIn(PAGER_DUTY_ID, Collections.singleton(ACCOUNT_ID)))
         .thenReturn(Optional.ofNullable(getPagerDutyInfoEntity()));
     when(configManagerService.getAppConfig(ACCOUNT_ID, PAGER_DUTY_ID, ConfigType.PLUGIN)).thenReturn(null);
     when(pluginsProxyInfoService.getProxyHostDetailsForPluginId(ACCOUNT_ID, PAGER_DUTY_ID))
         .thenReturn(new ArrayList<>());
-    PluginDetailedInfo pluginDetailedInfo = pluginInfoServiceImpl.getPluginDetailedInfo(PAGER_DUTY_ID, ACCOUNT_ID);
+    PluginDetailedInfo pluginDetailedInfo =
+        pluginInfoServiceImpl.getPluginDetailedInfo(PAGER_DUTY_ID, ACCOUNT_ID, false);
     assertNotNull(pluginDetailedInfo);
     assertFalse(pluginDetailedInfo.getPluginDetails().isEnabled());
     assertEquals(1, (int) pluginDetailedInfo.getExports().getCards());
@@ -127,7 +144,7 @@ public class PluginInfoServiceImplTest {
   @Category(UnitTests.class)
   public void testGetPluginDetailedInfoThrowsException() {
     when(pluginInfoRepository.findByIdentifier(INVALID_PLUGIN_ID)).thenReturn(Optional.empty());
-    pluginInfoServiceImpl.getPluginDetailedInfo(INVALID_PLUGIN_ID, ACCOUNT_ID);
+    pluginInfoServiceImpl.getPluginDetailedInfo(INVALID_PLUGIN_ID, ACCOUNT_ID, false);
   }
 
   @Test
@@ -137,15 +154,15 @@ public class PluginInfoServiceImplTest {
     String schema = "identifier: github-pull-requests-board\n"
         + "name: GitHub Pull Requests Board\n"
         + "description: View all open GitHub pull requests owned by your team in Backstage.\n"
-        + "createdBy: DAZN\n"
+        + "creator: DAZN\n"
         + "category: Source Control Mgmt\n"
         + "source: https://github.com/backstage/backstage/tree/master/plugins/github-pull-requests-board";
-    PluginInfoEntity pluginInfoEntity = PluginInfoEntity.builder().build();
+    PluginInfoEntity pluginInfoEntity = DefaultPluginInfoEntity.builder().build();
     mockStatic(FileUtils.class);
     when(FileUtils.readFile(any(), any(), any())).thenReturn(schema);
     when(pluginInfoRepository.saveOrUpdate(any(PluginInfoEntity.class))).thenReturn(pluginInfoEntity);
     pluginInfoServiceImpl.saveAllPluginInfo();
-    verify(pluginInfoRepository, times(17)).saveOrUpdate(any(PluginInfoEntity.class));
+    verify(pluginInfoRepository, times(19)).saveOrUpdate(any(PluginInfoEntity.class));
   }
 
   @Test
@@ -161,7 +178,8 @@ public class PluginInfoServiceImplTest {
   @Owner(developers = SATHISH)
   @Category(UnitTests.class)
   public void testSavePluginRequest() {
-    PluginRequestEntity pluginRequestEntity = PluginRequestEntity.builder().build();
+    PluginRequestEntity pluginRequestEntity =
+        PluginRequestEntity.builder().createdBy(EmbeddedUser.builder().build()).build();
     when(pluginRequestRepository.save(any(PluginRequestEntity.class))).thenReturn(pluginRequestEntity);
     when(notificationConfigs.get(PLUGIN_REQUEST_NOTIFICATION_SLACK_WEBHOOK)).thenReturn("");
     doNothing().when(idpCommonService).sendSlackNotification(any());
@@ -191,21 +209,20 @@ public class PluginInfoServiceImplTest {
     exportDetails.add(export);
     ExportsData exportsData = new ExportsData();
     exportsData.setExportDetails(exportDetails);
-    return PluginInfoEntity.builder()
-        .name(PAGER_DUTY_NAME)
-        .identifier(PAGER_DUTY_ID)
-        .exports(exportsData)
-        .core(false)
-        .build();
+    DefaultPluginInfoEntity entity = DefaultPluginInfoEntity.builder().core(false).build();
+    entity.setName(PAGER_DUTY_NAME);
+    entity.setIdentifier(PAGER_DUTY_ID);
+    entity.setExports(exportsData);
+    entity.setType(PluginInfo.PluginTypeEnum.DEFAULT);
+    return entity;
   }
 
   private PluginInfoEntity getHarnessCICDInfoEntity() {
-    return PluginInfoEntity.builder()
-        .name(HARNESS_CI_CD_NAME)
-        .identifier(HARNESS_CI_CD_ID)
-        .exports(new ExportsData())
-        .core(true)
-        .build();
+    DefaultPluginInfoEntity entity = DefaultPluginInfoEntity.builder().core(false).build();
+    entity.setName(HARNESS_CI_CD_NAME);
+    entity.setIdentifier(HARNESS_CI_CD_ID);
+    entity.setExports(new ExportsData());
+    return entity;
   }
 
   private RequestPlugin getRequestPlugin() {

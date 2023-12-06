@@ -404,6 +404,29 @@ public class K8sStepHelperTest extends CDNGTestBase {
   }
 
   @Test
+  @Owner(developers = TARUN_UBA)
+  @Category(UnitTests.class)
+  public void testResolveManifestsSourceExpressions() {
+    ManifestSourceWrapper manifestSourceWrapper =
+        ManifestSourceWrapper.builder()
+            .type(ManifestConfigType.K8_MANIFEST)
+            .spec(K8sManifest.builder()
+                      .store(ParameterField.createValueField(
+                          StoreConfigWrapper.builder()
+                              .spec(GithubStore.builder()
+                                        .paths(ParameterField.createValueField(
+                                            Arrays.asList("k8s/<+pipeline.variables.sample>/values.yaml")))
+                                        .build())
+                              .build()))
+                      .build())
+            .build();
+    k8sStepHelper.resolveManifestsSourceExpressions(ambiance, manifestSourceWrapper);
+    verify(engineExpressionService)
+        .renderExpression(eq(ambiance), eq("k8s/<+pipeline.variables.sample>/values.yaml"),
+            eq(ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED));
+  }
+
+  @Test
   @Owner(developers = ABOSII)
   @Category(UnitTests.class)
   public void testGetHelmChartManifestsOutcome() {
@@ -4859,7 +4882,7 @@ public class K8sStepHelperTest extends CDNGTestBase {
   @Category(UnitTests.class)
   public void testK8sTaskType() {
     K8sInfraDelegateConfig k8sInfraDelegateConfig = DirectK8sInfraDelegateConfig.builder().build();
-    checkTaskType(k8sInfraDelegateConfig, TaskType.K8S_COMMAND_TASK_NG, null);
+    checkTaskType(k8sInfraDelegateConfig, TaskType.K8S_COMMAND_TASK_NG_V2, null);
   }
 
   private void checkTaskType(K8sInfraDelegateConfig k8sInfraDelegateConfig, TaskType expectedTaskType,

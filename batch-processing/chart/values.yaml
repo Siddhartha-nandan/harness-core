@@ -180,31 +180,54 @@ java:
   memory: "7168"
 
 
-mongo:
-  protocol: ""
-  hosts: []
-  secretName: ""
-  userKey: ""
-  passwordKey: ""
-  extraArgs: ""
-  secrets:
-    kubernetesSecrets:
-      - secretName: ""
-        keys:
-          MONGO_USER: ""
-          MONGO_PASSWORD: ""
-    secretManagement:
-      externalSecretsOperator:
-        - secretStore:
-            name: ""
-            kind: ""
-          remoteKeys:
-            MONGO_USER:
-              name: ""
-              property: ""
-            MONGO_PASSWORD:
-              name: ""
-              property: ""
+database:
+  mongo:
+    harness:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement: 
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    events:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement: 
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
 
 timescaledb:
   # -- TimescaleDB host names
@@ -253,6 +276,14 @@ imageClickhouseEnabled:
   tag: "81103-000"
   digest: ""
 # image pull secrets to use for batch-processing image
+  imagePullSecrets: []
+
+imageAzureDataPipeline:
+  registry: docker.io
+  repository: harness/ccm-azure-smp-signed
+  pullPolicy: Always
+  tag: "10010"
+  digest: ""
   imagePullSecrets: []
 
 waitForInitContainer:
@@ -330,11 +361,21 @@ cloudProviderConfig:
   S3_SYNC_CONFIG_BUCKET_NAME: "ccm-service-data-bucket"
   S3_SYNC_CONFIG_REGION: "us-east-1"
 
+azureConfig:
+  AZURE_SMP_ENABLED: false
+  AZURE_SMP_REPORT_RETRIES: 5
+  AZURE_SMP_HISTORY_TIME_DELTA: 1
+  HARNESS_CE_AZURE_CONTAINER_NAME: ""
+  HARNESS_CE_AZURE_STORAGE_NAME: ""
+  HARNESS_CE_AZURE_IS_SYNC_JOB_DISABLED: ""
+
 awsAccountTagsCollectionJobConfig:
   enabled: true
 
 clickhouse:
+  sendReceiveTimeout: "86400"
   socketTimeout: "86400000"
+  queryRetries: "3"
   username: "default"
   password:
     name: clickhouse
@@ -357,6 +398,13 @@ resources:
   requests:
     cpu: "1024m"
     memory: "10Gi"
+
+azureCronJobResources:
+  limits:
+    memory: "2Gi"
+  requests:
+    cpu: "1"
+    memory: "2Gi"
 
 additionalConfigs: {}
 java17flags: ""
@@ -389,6 +437,12 @@ secrets:
   default:
     NEXT_GEN_MANAGER_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
     CE_NG_SERVICE_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_CE_AZURE_CLIENTSECRET: ""
+    HARNESS_CE_AZURE_SAS: ""
+    HARNESS_CE_AZURE_CLIENTID: ""
+    HARNESS_CE_AZURE_TENANTID: ""
+    HMAC_ACCESS_KEY: ""
+    HMAC_SECRET_KEY: ""
   kubernetesSecrets:
     - secretName: ""
       keys:
@@ -396,6 +450,12 @@ secrets:
         CE_NG_SERVICE_SECRET: ""
         S3_SYNC_CONFIG_ACCESSKEY: ""
         S3_SYNC_CONFIG_SECRETKEY: ""
+        HARNESS_CE_AZURE_CLIENTSECRET: ""
+        HARNESS_CE_AZURE_SAS: ""
+        HARNESS_CE_AZURE_CLIENTID: ""
+        HARNESS_CE_AZURE_TENANTID: ""
+        HMAC_ACCESS_KEY: ""
+        HMAC_SECRET_KEY: ""
   secretManagement:
     externalSecretsOperator:
       - secretStore:
@@ -414,3 +474,22 @@ secrets:
           S3_SYNC_CONFIG_SECRETKEY:
             name: ""
             property: ""
+          HARNESS_CE_AZURE_CLIENTSECRET:
+            name: ""
+            property: ""
+          HARNESS_CE_AZURE_SAS:
+            name: ""
+            property: ""
+          HARNESS_CE_AZURE_CLIENTID:
+            name: ""
+            property: ""
+          HARNESS_CE_AZURE_TENANTID:
+            name: ""
+            property: ""
+          HMAC_ACCESS_KEY:
+            name: ""
+            property: ""
+          HMAC_SECRET_KEY:
+            name: ""
+            property: ""
+

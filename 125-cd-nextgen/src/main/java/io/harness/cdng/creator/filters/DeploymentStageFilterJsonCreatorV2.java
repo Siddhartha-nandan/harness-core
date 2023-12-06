@@ -42,12 +42,14 @@ import io.harness.cdng.service.beans.ServiceYamlV2;
 import io.harness.cdng.service.beans.ServicesYaml;
 import io.harness.common.ParameterFieldHelper;
 import io.harness.data.structure.HarnessStringUtils;
+import io.harness.exception.InternalServerErrorException;
 import io.harness.exception.InvalidRequestException;
+import io.harness.exception.WingsException;
 import io.harness.filters.GenericStageFilterJsonCreatorV2;
 import io.harness.ng.core.environment.beans.Environment;
 import io.harness.ng.core.environment.services.EnvironmentService;
-import io.harness.ng.core.infrastructure.entity.InfrastructureEntity;
 import io.harness.ng.core.infrastructure.services.InfrastructureEntityService;
+import io.harness.ng.core.security.NgManagerSourcePrincipalGuard;
 import io.harness.ng.core.service.entity.ServiceEntity;
 import io.harness.ng.core.service.services.ServiceEntityService;
 import io.harness.plancreator.execution.ExecutionWrapperConfig;
@@ -94,6 +96,7 @@ public class DeploymentStageFilterJsonCreatorV2 extends GenericStageFilterJsonCr
   @Inject private EnvironmentService environmentService;
   @Inject private InfrastructureEntityService infraService;
   @Inject private NGFeatureFlagHelperService ngFeatureFlagHelperService;
+  @Inject private StageFilterCreatorHelper stageFilterCreatorHelper;
 
   @Override
   public Set<String> getSupportedStageTypes() {
@@ -109,16 +112,25 @@ public class DeploymentStageFilterJsonCreatorV2 extends GenericStageFilterJsonCr
   public PipelineFilter getFilter(
       FilterCreationContext filterCreationContext, DeploymentStageNode deploymentStageNode) {
     CdFilterBuilder filterBuilder = CdFilter.builder();
+    try (NgManagerSourcePrincipalGuard ignore =
+             new NgManagerSourcePrincipalGuard(filterCreationContext.getSetupMetadata())) {
+      validateStrategy(deploymentStageNode);
 
-    validateStrategy(deploymentStageNode);
+      final DeploymentStageConfig deploymentStageConfig = deploymentStageNode.getDeploymentStageConfig();
 
-    final DeploymentStageConfig deploymentStageConfig = deploymentStageNode.getDeploymentStageConfig();
+      validate(filterCreationContext, deploymentStageConfig);
+      addServiceFilters(filterCreationContext, filterBuilder, deploymentStageConfig);
+      addInfraFilters(filterCreationContext, filterBuilder, deploymentStageConfig);
 
-    validate(filterCreationContext, deploymentStageConfig);
-    addServiceFilters(filterCreationContext, filterBuilder, deploymentStageConfig);
-    addInfraFilters(filterCreationContext, filterBuilder, deploymentStageConfig);
-
-    return filterBuilder.build();
+      return filterBuilder.build();
+    } catch (WingsException | InvalidYamlRuntimeException ex) {
+      log.error("Error while adding filters in DeploymentStageFilterJsonCreatorV2", ex);
+      throw ex;
+    } catch (Exception ex) {
+      log.error("Unexpected error while adding filters in DeploymentStageFilterJsonCreatorV2", ex);
+      throw new InternalServerErrorException(
+          "Unexpected error while adding filters in DeploymentStageFilterJsonCreatorV2", ex);
+    }
   }
 
   private void validateStrategy(DeploymentStageNode stageNode) {
@@ -354,14 +366,7 @@ public class DeploymentStageFilterJsonCreatorV2 extends GenericStageFilterJsonCr
             "infrastructureDefinitions or infrastructureDefinition should be present in stage [%s]. Please add it and try again",
             YamlUtils.getFullyQualifiedName(filterCreationContext.getCurrentField().getNode())));
       }
-      Optional<Environment> environmentEntityOptional = environmentService.getMetadata(
-          filterCreationContext.getSetupMetadata().getAccountId(), filterCreationContext.getSetupMetadata().getOrgId(),
-          filterCreationContext.getSetupMetadata().getProjectId(), environmentRef.getValue(), false);
-      environmentEntityOptional.ifPresent(environment -> {
-        filterBuilder.environmentName(environmentRef.getValue());
-        final List<InfraStructureDefinitionYaml> infraList = getInfraStructureDefinitionYamlsList(env);
-        addFiltersForInfraYamlList(filterCreationContext, filterBuilder, environment, infraList);
-      });
+      stageFilterCreatorHelper.addEnvAndInfraToFilterBuilder(filterCreationContext, filterBuilder, env);
     }
 
     final ParameterField<Boolean> deployToAll = env.getDeployToAll();
@@ -377,43 +382,6 @@ public class DeploymentStageFilterJsonCreatorV2 extends GenericStageFilterJsonCr
             "When deploy to all is false, list of gitops clusters or filters must be provided  in stage [%s].  Please specify the gitOpsClusters property and try again",
             YamlUtils.getFullyQualifiedName(filterCreationContext.getCurrentField().getNode())));
       }
-    }
-  }
-
-  private List<InfraStructureDefinitionYaml> getInfraStructureDefinitionYamlsList(EnvironmentYamlV2 env) {
-    List<InfraStructureDefinitionYaml> infraList = new ArrayList<>();
-    if (ParameterField.isNotNull(env.getInfrastructureDefinitions())) {
-      if (!env.getInfrastructureDefinitions().isExpression()) {
-        infraList.addAll(env.getInfrastructureDefinitions().getValue());
-      }
-    } else if (ParameterField.isNotNull(env.getInfrastructureDefinition())) {
-      if (!env.getInfrastructureDefinition().isExpression()) {
-        infraList.add(env.getInfrastructureDefinition().getValue());
-      }
-    }
-    return infraList;
-  }
-
-  private void addFiltersForInfraYamlList(FilterCreationContext filterCreationContext, CdFilterBuilder filterBuilder,
-      Environment entity, List<InfraStructureDefinitionYaml> infraList) {
-    if (isEmpty(infraList)) {
-      return;
-    }
-    List<InfrastructureEntity> infrastructureEntities = infraService.getAllInfrastructureFromIdentifierList(
-        filterCreationContext.getSetupMetadata().getAccountId(), filterCreationContext.getSetupMetadata().getOrgId(),
-        filterCreationContext.getSetupMetadata().getProjectId(), entity.getIdentifier(),
-        infraList.stream()
-            .map(InfraStructureDefinitionYaml::getIdentifier)
-            .filter(field -> !field.isExpression())
-            .map(ParameterField::getValue)
-            .collect(Collectors.toList()));
-    for (InfrastructureEntity infrastructureEntity : infrastructureEntities) {
-      if (infrastructureEntity.getType() == null) {
-        throw new InvalidRequestException(format(
-            "Infrastructure Definition [%s] in environment [%s] does not have an associated type. Please select a type for the infrastructure and try again",
-            infrastructureEntity.getIdentifier(), infrastructureEntity.getEnvIdentifier()));
-      }
-      filterBuilder.infrastructureType(infrastructureEntity.getType().getDisplayName());
     }
   }
 
