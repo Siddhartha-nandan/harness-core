@@ -690,7 +690,7 @@ public class EnvironmentServiceImplTest extends CDNGEntitiesTestBase {
     EnvironmentMoveConfigOperationDTO moveConfigOperationDTO =
         EnvironmentMoveConfigOperationDTO.builder()
             .repoName("test_repo")
-            .branch("main")
+            .branch("feature")
             .moveConfigOperationType(
                 MoveConfigOperationType.getMoveConfigType(MoveConfigOperationType.INLINE_TO_REMOTE))
             .connectorRef("test_github_connector")
@@ -707,7 +707,9 @@ public class EnvironmentServiceImplTest extends CDNGEntitiesTestBase {
         environmentService.getMetadata("ACCOUNT_ID", "default", "neo", "prod", false);
     assertThat(optionalEnvironment.isPresent()).isTrue();
     assertThat(optionalEnvironment.get().getStoreType()).isEqualTo(StoreType.REMOTE);
+    assertThat(optionalEnvironment.get().getConnectorRef()).isEqualTo("test_github_connector");
     assertThat(optionalEnvironment.get().getRepo()).isEqualTo("test_repo");
+    assertThat(optionalEnvironment.get().getFallBackBranch()).isEqualTo("feature");
   }
 
   private Object[][] data() {
