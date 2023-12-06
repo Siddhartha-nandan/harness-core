@@ -47,12 +47,10 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @TypeAlias("stepexecutionparameters")
 @RecasterAlias("io.harness.app.beans.entities.StepExecutionParameters")
 @HarnessEntity(exportable = true)
-public class StepExecutionParameters implements UuidAware, PersistentEntity, CreatedAtAware, UpdatedAtAware {
+public class StepExecutionParameters implements UuidAware, PersistentEntity {
   @Id @dev.morphia.annotations.Id String uuid;
   @NotBlank String stepParameters;
   String accountId;
-  long createdAt;
-  long lastUpdatedAt;
   String runTimeId;
   String stageRunTimeId;
 

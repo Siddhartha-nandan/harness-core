@@ -36,11 +36,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @HarnessEntity(exportable = true)
 @TypeAlias("executionqueuelimit")
 @RecasterAlias("io.harness.app.beans.entities.ExecutionQueueLimit")
-public class ExecutionQueueLimit implements UuidAware, PersistentEntity, CreatedAtAware, UpdatedAtAware {
+public class ExecutionQueueLimit implements UuidAware, PersistentEntity {
   @Id @dev.morphia.annotations.Id String uuid;
   @NotBlank @FdIndex String accountIdentifier;
-  long createdAt;
-  long lastUpdatedAt;
   String macExecLimit;
   String totalExecLimit;
 }
