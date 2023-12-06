@@ -47,6 +47,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Document("settingConfigurations")
 @AllArgsConstructor
+@NoArgsConstructor
 @Persistent
 public class SettingConfiguration implements PersistentEntity {
   @Id @dev.morphia.annotations.Id String id;

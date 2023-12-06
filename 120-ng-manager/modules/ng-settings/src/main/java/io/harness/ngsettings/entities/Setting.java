@@ -28,6 +28,7 @@ import javax.validation.constraints.NotNull;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.FieldNameConstants;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -36,6 +37,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 @OwnedBy(HarnessTeam.PL)
 @Getter
+@Setter
 @FieldNameConstants(innerTypeName = "SettingKeys")
 @StoreIn(DbAliases.NG_MANAGER)
 @Entity(value = "settings", noClassnameStored = true)

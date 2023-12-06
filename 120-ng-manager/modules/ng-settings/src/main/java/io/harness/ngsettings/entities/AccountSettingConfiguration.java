@@ -33,6 +33,8 @@ import java.util.Set;
 @Persistent
 @TypeAlias("NGSettingConfiguration")
 @EqualsAndHashCode(callSuper = true)
+@AllArgsConstructor
+@NoArgsConstructor
 public class AccountSettingConfiguration extends  SettingConfiguration {
 
     String defaultValue;

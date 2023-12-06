@@ -75,8 +75,8 @@ public class SettingsCreationJob {
   private void populateDefaultConfigs(SettingsConfig settingsConfig) {
     if (settingsConfig.getSettings() != null) {
       settingsConfig.getSettings().forEach(settingConfiguration -> {
-        if (((AccountSettingConfiguration)settingConfiguration).getAllowOverrides() == null) {
-          ((AccountSettingConfiguration)settingConfiguration).setAllowOverrides(true);
+        if (settingConfiguration.getAllowOverrides() == null) {
+          settingConfiguration.setAllowOverrides(true);
         }
       });
     }
@@ -126,7 +126,7 @@ public class SettingsCreationJob {
         return;
       }
       log.info("Updating settings in the database");
-      Set<SettingConfiguration> latestSettings =
+      Set<AccountSettingConfiguration> latestSettings =
           isNotEmpty(settingsConfig.getSettings()) ? settingsConfig.getSettings() : new HashSet<>();
       Set<SettingConfiguration> currentSettings = new HashSet<>(settingsService.listDefaultSettings());
 
