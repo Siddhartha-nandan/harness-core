@@ -97,6 +97,5 @@ public interface NGTriggerService {
   TriggerUpdateCount updateBranchName(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       String pipelineIdentifier, GitMoveOperationType operationType, String pipelineBranchName);
 
-  TriggerUpdateCount enablingDisablingTriggersInBulk(
-      String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO);
+  TriggerUpdateCount ToggleTriggersInBulk(String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO);
 }

@@ -36,5 +36,5 @@ public interface NGTriggerRepositoryCustom {
   TriggerUpdateCount updateTriggerYaml(List<NGTriggerEntity> ngTriggerEntityList);
   boolean updateManyTriggerPollingSubscriptionStatusBySignatures(String accountId, List<String> signatures,
       boolean status, String errorMessage, List<String> versions, Long timestamp, Long errorStatusValidUntil);
-  TriggerUpdateCount enableDisableTriggersInBulk(String accountId, BulkTriggersRequestDTO bulkTriggersRequestDTO);
+  TriggerUpdateCount toggleTriggersInBulk(String accountId, BulkTriggersRequestDTO bulkTriggersRequestDTO);
 }

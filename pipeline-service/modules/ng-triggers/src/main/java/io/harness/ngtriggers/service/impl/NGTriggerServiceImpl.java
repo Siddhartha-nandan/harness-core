@@ -1480,9 +1480,9 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   }
 
   @Override
-  public TriggerUpdateCount enablingDisablingTriggersInBulk(
+  public TriggerUpdateCount ToggleTriggersInBulk(
       String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    return ngTriggerRepository.enableDisableTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO);
+    return ngTriggerRepository.toggleTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO);
   }
 
   public boolean checkIfShouldSubscribePolling(NGTriggerEntity ngTriggerEntity) {

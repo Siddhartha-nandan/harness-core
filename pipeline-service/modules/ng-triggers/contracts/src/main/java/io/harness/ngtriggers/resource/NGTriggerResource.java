@@ -375,8 +375,8 @@ public interface NGTriggerResource {
       @QueryParam("pipelineBranchName") String pipelineBranchName);
 
   @PATCH
-  @Path("/bulk")
-  ResponseDTO<TriggerUpdateCount> bulkTriggers(
+  @Path("/bulk-toggle")
+  ResponseDTO<TriggerUpdateCount> bulkToggleTriggers(
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
       @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO);
 }

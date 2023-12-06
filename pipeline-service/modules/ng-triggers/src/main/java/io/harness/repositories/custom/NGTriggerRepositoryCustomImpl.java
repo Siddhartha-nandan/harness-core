@@ -258,15 +258,13 @@ public class NGTriggerRepositoryCustomImpl implements NGTriggerRepositoryCustom 
   }
 
   @Override
-  public TriggerUpdateCount enableDisableTriggersInBulk(
-      String accountId, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
+  public TriggerUpdateCount toggleTriggersInBulk(String accountId, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
     BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, NGTriggerEntity.class);
 
     Update update = new Update();
     update.set(NGTriggerEntityKeys.enabled, bulkTriggersRequestDTO.getData().isEnable());
 
-    Criteria criteria =
-        TriggerFilterHelper.getCriteriaForEnablingDisablingTriggersInBulk(accountId, bulkTriggersRequestDTO);
+    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(accountId, bulkTriggersRequestDTO);
     Query query = new Query(criteria);
 
     bulkOperations = bulkOperations.updateMulti(query, update);

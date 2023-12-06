@@ -264,7 +264,7 @@ public class TriggerFilterHelper {
     return criteria;
   }
 
-  public Criteria getCriteriaForEnablingDisablingTriggersInBulk(
+  public Criteria getCriteriaForTogglingTriggersInBulk(
       String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
     String orgIdentifier = null;
     String projectIdentifier = null;

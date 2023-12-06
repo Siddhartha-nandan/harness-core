@@ -323,9 +323,8 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
     return mandatoryAuth;
   }
 
-  public ResponseDTO<TriggerUpdateCount> bulkTriggers(@NotNull @AccountIdentifier String accountIdentifier,
+  public ResponseDTO<TriggerUpdateCount> bulkToggleTriggers(@NotNull @AccountIdentifier String accountIdentifier,
       @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    return ResponseDTO.newResponse(
-        ngTriggerService.enablingDisablingTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO));
+    return ResponseDTO.newResponse(ngTriggerService.ToggleTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO));
   }
 }
