@@ -18,7 +18,6 @@ import io.harness.persistence.UuidAware;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import dev.morphia.annotations.Entity;
-import javax.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldNameConstants;
@@ -40,8 +39,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class ExecutionQueueLimit implements UuidAware, PersistentEntity, CreatedAtAware, UpdatedAtAware {
   @Id @dev.morphia.annotations.Id String uuid;
   @NotBlank @FdIndex String accountIdentifier;
-  @NotNull long createdAt;
-  @NotNull long lastUpdatedAt;
+  long createdAt;
+  long lastUpdatedAt;
   String macExecLimit;
   String totalExecLimit;
 }

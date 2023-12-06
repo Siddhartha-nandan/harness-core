@@ -51,8 +51,8 @@ public class StepExecutionParameters implements UuidAware, PersistentEntity, Cre
   @Id @dev.morphia.annotations.Id String uuid;
   @NotBlank String stepParameters;
   String accountId;
-  @NotNull long createdAt;
-  @NotNull long lastUpdatedAt;
+  long createdAt;
+  long lastUpdatedAt;
   String runTimeId;
   String stageRunTimeId;
 
