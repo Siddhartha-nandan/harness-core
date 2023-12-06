@@ -12,7 +12,6 @@ import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.exception.WingsException.USER;
 
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.authorization.AuthorizationServiceHeader;
 import io.harness.beans.IdentifierRef;
 import io.harness.beans.Scope;
 import io.harness.connector.ConnectorInfoDTO;
@@ -310,7 +309,7 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
 
   private ScmConnector getHarnessCodeConnector(
       String repoName, String accountId, String orgIdentifier, String projectIdentifier) {
-    return harnessCodeConnectorUtils.getDummyHarnessCodeConnectorWithJwtAuth(repoName, accountId, orgIdentifier,
-        projectIdentifier, AuthorizationServiceHeader.NG_MANAGER.getServiceId(), ngServiceSecret, scmServiceBaseUrl);
+    return harnessCodeConnectorUtils.getDummyHarnessCodeConnectorWithJwtAuth(
+        repoName, accountId, orgIdentifier, projectIdentifier, ngServiceSecret, scmServiceBaseUrl);
   }
 }

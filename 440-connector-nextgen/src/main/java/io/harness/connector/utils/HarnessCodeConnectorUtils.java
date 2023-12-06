@@ -25,9 +25,8 @@ public class HarnessCodeConnectorUtils {
   @Inject ServiceTokenGenerator tokenGenerator;
 
   public HarnessConnectorDTO getDummyHarnessCodeConnectorWithJwtAuth(String repoName, String accountId, String orgId,
-      String projectId, String serviceName, String serviceSecret, String harnessCodeApiBaseUrl) {
-    SecretRefData token =
-        SecretRefData.builder().decryptedValue(getToken(serviceName, serviceSecret).toCharArray()).build();
+      String projectId, String serviceSecret, String harnessCodeApiBaseUrl) {
+    SecretRefData token = SecretRefData.builder().decryptedValue(getToken(serviceSecret).toCharArray()).build();
     HarnessJWTTokenSpecDTO jwtTokenSpecDTO = HarnessJWTTokenSpecDTO.builder().tokenRef(token).build();
     return HarnessConnectorDTO.builder()
         .connectionType(GitConnectionType.REPO)
@@ -39,7 +38,7 @@ public class HarnessCodeConnectorUtils {
         .build();
   }
 
-  private String getToken(String serviceName, String serviceSecret) {
-    return serviceName + " " + tokenGenerator.getServiceTokenWithDuration(serviceSecret, Duration.ofHours(1));
+  private String getToken(String serviceSecret) {
+    return tokenGenerator.getServiceTokenWithDuration(serviceSecret, Duration.ofHours(1));
   }
 }
