@@ -61,7 +61,6 @@ import io.harness.ci.executable.CiAsyncExecutable;
 import io.harness.ci.execution.buildstate.BuildSetupUtils;
 import io.harness.ci.execution.buildstate.ConnectorUtils;
 import io.harness.ci.execution.execution.BackgroundTaskUtility;
-import io.harness.ci.execution.execution.CIExecutionMetadata;
 import io.harness.ci.execution.execution.QueueExecutionUtils;
 import io.harness.ci.execution.integrationstage.DockerInitializeTaskParamsBuilder;
 import io.harness.ci.execution.integrationstage.IntegrationStageUtils;
@@ -265,13 +264,8 @@ public class InitializeTaskStepV2 extends CiAsyncExecutable {
             AmbianceUtils.getStageRuntimeIdAmbiance(ambiance)));
       }
     } else {
-      CIExecutionMetadata ciExecutionMetadata = ciExecutionRepository.updateExecutionStatus(
+      ciExecutionRepository.updateExecutionStatus(
           AmbianceUtils.getAccountId(ambiance), ambiance.getStageExecutionId(), Status.RUNNING.toString());
-      if (ciExecutionMetadata == null) {
-        throw new CIStageExecutionException(format(
-            "Failed to process execution as ciExecutionMetadata is null for stageExecutionId Id: %s , It generally happens for aborted executions",
-            ambiance.getStageExecutionId()));
-      }
       taskId = executeBuild(ambiance, stepParameters);
     }
 
@@ -838,11 +832,7 @@ public class InitializeTaskStepV2 extends CiAsyncExecutable {
     if (((K8sDirectInfraYaml) infrastructure).getSpec() == null) {
       throw new CIStageExecutionException("Input infrastructure can not be empty");
     }
-    K8sDirectInfraYaml k8sDirectInfraYaml = (K8sDirectInfraYaml) infrastructure;
-    String infraConnectorRef = k8sDirectInfraYaml.getSpec().getConnectorRef().getValue();
-    if (isEmpty(infraConnectorRef)) {
-      throw new CIStageExecutionException("Kubernetes connector identifier cannot be empty for the stage.");
-    }
+    String infraConnectorRef = ((K8sDirectInfraYaml) infrastructure).getSpec().getConnectorRef().getValue();
     entityDetails.add(createEntityDetails(infraConnectorRef, accountIdentifier, projectIdentifier, orgIdentifier));
 
     entityDetails.addAll(connectorRefs.stream()

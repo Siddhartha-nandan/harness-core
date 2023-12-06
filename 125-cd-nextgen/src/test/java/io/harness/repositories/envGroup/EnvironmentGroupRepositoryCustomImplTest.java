@@ -21,7 +21,6 @@ import io.harness.cdng.envGroup.beans.EnvironmentGroupEntity.EnvironmentGroupKey
 import io.harness.data.structure.UUIDGenerator;
 import io.harness.exception.InvalidRequestException;
 import io.harness.gitsync.persistance.GitAwarePersistence;
-import io.harness.gitx.GitXSettingsHelper;
 import io.harness.ng.core.environment.beans.Environment;
 import io.harness.ng.core.environment.services.EnvironmentService;
 import io.harness.outbox.api.OutboxService;
@@ -53,8 +52,6 @@ public class EnvironmentGroupRepositoryCustomImplTest extends CDNGTestBase {
   @Mock private GitAwarePersistence gitAwarePersistence;
   @Mock private OutboxService outboxService;
 
-  @Mock GitXSettingsHelper gitXSettingsHelper;
-
   @Inject private MongoTemplate mongoTemplate;
   @Inject private EnvironmentService environmentService;
 
@@ -67,7 +64,6 @@ public class EnvironmentGroupRepositoryCustomImplTest extends CDNGTestBase {
     Reflect.on(environmentGroupRepositoryCustom).set("mongoTemplate", mongoTemplate);
     Reflect.on(environmentRepositoryCustom).set("mongoTemplate", mongoTemplate);
     Reflect.on(environmentGroupRepositoryCustom).set("environmentService", environmentService);
-    Reflect.on(environmentService).set("gitXSettingsHelper", gitXSettingsHelper);
 
     environmentService.create(Environment.builder()
                                   .accountId(ACC_ID)

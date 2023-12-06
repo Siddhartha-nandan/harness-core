@@ -46,7 +46,6 @@ public class DatadogLogSampleDataRequest extends DatadogRequest {
   public Map<String, Object> fetchDslEnvVariables() {
     Map<String, Object> dslEnvVariables = super.fetchDslEnvVariables();
     dslEnvVariables.put(DatadogLogSampleDataRequestKeys.query, query);
-    dslEnvVariables.put(DatadogLogSampleDataRequestKeys.indexes, indexes);
     dslEnvVariables.put(DatadogLogSampleDataRequestKeys.from, from);
     dslEnvVariables.put(DatadogLogSampleDataRequestKeys.to, to);
     dslEnvVariables.put(DatadogLogSampleDataRequestKeys.limit, limit);

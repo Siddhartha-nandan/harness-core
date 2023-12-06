@@ -11,7 +11,6 @@ import static io.harness.annotations.dev.HarnessTeam.CDP;
 
 import io.harness.annotation.RecasterAlias;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.cdng.k8s.trafficrouting.K8sTrafficRouting;
 import io.harness.cdng.manifest.yaml.K8sStepCommandFlag;
 import io.harness.plancreator.steps.TaskSelectorYaml;
 import io.harness.pms.yaml.ParameterField;
@@ -30,8 +29,7 @@ import org.springframework.data.annotation.TypeAlias;
 public class K8sCanaryStepParameters extends K8sCanaryBaseStepInfo implements K8sSpecParameters {
   @Builder(builderMethodName = "infoBuilder")
   public K8sCanaryStepParameters(InstanceSelectionWrapper instanceSelection, ParameterField<Boolean> skipDryRun,
-      ParameterField<List<TaskSelectorYaml>> delegateSelectors, List<K8sStepCommandFlag> commandFlags,
-      K8sTrafficRouting trafficRouting) {
-    super(instanceSelection, skipDryRun, delegateSelectors, commandFlags, trafficRouting);
+      ParameterField<List<TaskSelectorYaml>> delegateSelectors, List<K8sStepCommandFlag> commandFlags) {
+    super(instanceSelection, skipDryRun, delegateSelectors, commandFlags);
   }
 }

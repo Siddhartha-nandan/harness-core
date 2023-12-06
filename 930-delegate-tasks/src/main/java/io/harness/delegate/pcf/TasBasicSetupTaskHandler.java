@@ -50,7 +50,6 @@ import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
 import io.harness.delegate.beans.pcf.TasApplicationInfo;
 import io.harness.delegate.cf.PcfCommandTaskBaseHelper;
-import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
 import io.harness.delegate.task.cf.CfCommandTaskHelperNG;
 import io.harness.delegate.task.cf.TasArtifactDownloadContext;
 import io.harness.delegate.task.cf.TasArtifactDownloadResponse;
@@ -162,11 +161,6 @@ public class TasBasicSetupTaskHandler extends CfCommandTaskNGHandler {
 
       artifactFile = downloadArtifactFile(basicSetupRequestNG, workingDirectory, logCallback);
 
-      ArtifactBundleDetails artifactBundleDetails = basicSetupRequestNG.getArtifactBundleDetails();
-
-      String artifactPath =
-          tasTaskHelperBase.getArtifactPath(artifactBundleDetails, artifactFile, workingDirectory, logCallback);
-
       deleteOlderApplications(previousReleases, cfRequestConfig, basicSetupRequestNG, cfAppAutoscalarRequestData,
           logCallback, currentProdInfo);
 
@@ -180,7 +174,7 @@ public class TasBasicSetupTaskHandler extends CfCommandTaskNGHandler {
                                    .applicationName(basicSetupRequestNG.getReleaseNamePrefix())
                                    .routeMaps(basicSetupRequestNG.getRouteMaps())
                                    .build())
-              .artifactPath(artifactPath)
+              .artifactPath(artifactFile == null ? null : artifactFile.getAbsolutePath())
               .configPathVar(workingDirectory.getAbsolutePath())
               .newReleaseName(basicSetupRequestNG.getReleaseNamePrefix())
               .pcfManifestFileData(pcfManifestFileData)
@@ -283,7 +277,6 @@ public class TasBasicSetupTaskHandler extends CfCommandTaskNGHandler {
         .spaceName(cfRequestConfig.getSpaceName())
         .userName(cfRequestConfig.getUserName())
         .password(cfRequestConfig.getPassword())
-        .refreshToken(cfRequestConfig.getRefreshToken())
         .endpointUrl(cfRequestConfig.getEndpointUrl())
         .manifestYaml(cfRequestConfig.getManifestYaml())
         .desiredCount(cfRequestConfig.getDesiredCount())
@@ -431,7 +424,6 @@ public class TasBasicSetupTaskHandler extends CfCommandTaskNGHandler {
     return CfRequestConfig.builder()
         .userName(String.valueOf(cfConfig.getUserName()))
         .password(String.valueOf(cfConfig.getPassword()))
-        .refreshToken(cfConfig.getRefreshToken() != null ? String.valueOf(cfConfig.getRefreshToken()) : null)
         .endpointUrl(cfConfig.getEndpointUrl())
         .orgName(basicSetupRequestNG.getTasInfraConfig().getOrganization())
         .spaceName(basicSetupRequestNG.getTasInfraConfig().getSpace())

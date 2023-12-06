@@ -8,7 +8,6 @@
 package io.harness.cvng.core.utils.template;
 
 import static io.harness.cvng.core.constant.MonitoredServiceConstants.REGULAR_EXPRESSION;
-import static io.harness.template.resources.beans.NGTemplateConstants.TEMPLATE_INPUTS;
 
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceDTO;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceYamlDTO;
@@ -56,10 +55,6 @@ public class MonitoredServiceExpressionResolver {
     ObjectNode monitoredService = (ObjectNode) rootNode.get("monitoredService");
     monitoredService.put("identifier", REGULAR_EXPRESSION);
     monitoredService.put("name", REGULAR_EXPRESSION);
-    ObjectNode template = (ObjectNode) monitoredService.get("template");
-    if (template != null && template.get(TEMPLATE_INPUTS) != null) {
-      template.put(TEMPLATE_INPUTS, YamlUtils.writeYamlString(template.get(TEMPLATE_INPUTS)));
-    }
     return YamlUtils.writeYamlString(rootYamlNode);
   }
 }

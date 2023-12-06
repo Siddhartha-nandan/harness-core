@@ -6,7 +6,6 @@
  */
 
 package io.harness.cdng.creator.plan.stage;
-
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static io.harness.pms.yaml.YAMLFieldNameConstants.CUSTOM;
 
@@ -39,7 +38,7 @@ import org.springframework.data.annotation.TypeAlias;
 @TypeAlias("CustomStageNode")
 @OwnedBy(CDC)
 @RecasterAlias("io.harness.cdng.creator.plan.stage.CustomStageNode")
-public class CustomStageNode extends AbstractStageNodeWithFailureInfo {
+public class CustomStageNode extends CustomAbstractStageNode {
   @JsonProperty("type") @NotNull StepType type = StepType.Custom;
 
   @JsonProperty("spec")

@@ -379,16 +379,11 @@ public class DelegateSetupResource {
   public RestResponse<Set<String>> delegateSelectorsUpTheHierarchy(@Context HttpServletRequest request,
       @QueryParam("accountId") @NotEmpty String accountId, @QueryParam("orgId") String orgId,
       @QueryParam("projectId") String projectId) {
-    if (accessControlClient.hasAccess(ResourceScope.of(accountId, orgId, projectId),
-            Resource.of(DELEGATE_RESOURCE_TYPE, null), DELEGATE_VIEW_PERMISSION)) {
-      try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
-        return new RestResponse<>(
-            delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, projectId, false));
-      }
-    }
+    accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountId, orgId, projectId),
+        Resource.of(DELEGATE_RESOURCE_TYPE, null), DELEGATE_VIEW_PERMISSION);
+
     try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
-      return new RestResponse<>(
-          delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, projectId, true));
+      return new RestResponse<>(delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, projectId));
     }
   }
 

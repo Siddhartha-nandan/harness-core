@@ -9,20 +9,15 @@ package io.harness.licensing.mappers.modules;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.exception.InvalidRequestException;
 import io.harness.licensing.beans.modules.ChaosModuleLicenseDTO;
 import io.harness.licensing.entities.modules.ChaosModuleLicense;
-import io.harness.licensing.helpers.ModuleLicenseHelper;
 import io.harness.licensing.mappers.LicenseObjectMapper;
 
-import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
 @OwnedBy(HarnessTeam.CHAOS)
 @Singleton
 public class ChaosLicenseObjectMapper implements LicenseObjectMapper<ChaosModuleLicense, ChaosModuleLicenseDTO> {
-  @Inject private ModuleLicenseHelper moduleLicenseHelper;
-
   @Override
   public ChaosModuleLicenseDTO toDTO(ChaosModuleLicense entity) {
     return ChaosModuleLicenseDTO.builder()
@@ -32,32 +27,10 @@ public class ChaosLicenseObjectMapper implements LicenseObjectMapper<ChaosModule
   }
 
   @Override
-  public ChaosModuleLicense toEntity(ChaosModuleLicenseDTO chaosModuleLicenseDTO) {
-    validateModuleLicenseDTO(chaosModuleLicenseDTO);
-
+  public ChaosModuleLicense toEntity(ChaosModuleLicenseDTO dto) {
     return ChaosModuleLicense.builder()
-        .totalChaosExperimentRuns(chaosModuleLicenseDTO.getTotalChaosExperimentRuns())
-        .totalChaosInfrastructures(chaosModuleLicenseDTO.getTotalChaosInfrastructures())
+        .totalChaosExperimentRuns(dto.getTotalChaosExperimentRuns())
+        .totalChaosInfrastructures(dto.getTotalChaosInfrastructures())
         .build();
-  }
-
-  @Override
-  public void validateModuleLicenseDTO(ChaosModuleLicenseDTO chaosModuleLicenseDTO) {
-    if (!moduleLicenseHelper.isDeveloperLicensingFeatureEnabled(chaosModuleLicenseDTO.getAccountIdentifier())) {
-      if (chaosModuleLicenseDTO.getDeveloperLicenseCount() != null) {
-        throw new InvalidRequestException("New Developer Licensing feature is not enabled for this account!");
-      }
-    }
-
-    if (chaosModuleLicenseDTO.getDeveloperLicenseCount() != null
-        && (chaosModuleLicenseDTO.getTotalChaosExperimentRuns() == null
-            && chaosModuleLicenseDTO.getTotalChaosInfrastructures() == null)) {
-      // TODO: fetch mapping ratio from DeveloperMapping collection, once that work is complete
-      Integer mappingRatio = 1;
-      chaosModuleLicenseDTO.setTotalChaosExperimentRuns(
-          mappingRatio * chaosModuleLicenseDTO.getDeveloperLicenseCount());
-      chaosModuleLicenseDTO.setTotalChaosExperimentRuns(
-          mappingRatio * chaosModuleLicenseDTO.getDeveloperLicenseCount());
-    }
   }
 }

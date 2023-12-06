@@ -39,7 +39,6 @@ import static org.mockito.Mockito.when;
 
 import io.harness.PipelineServiceTestBase;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.beans.FeatureName;
 import io.harness.category.element.UnitTests;
 import io.harness.context.GlobalContext;
 import io.harness.eraro.ErrorCode;
@@ -83,7 +82,6 @@ import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.repositories.inputset.PMSInputSetRepository;
 import io.harness.rule.Owner;
 import io.harness.utils.PageUtils;
-import io.harness.utils.PmsFeatureFlagHelper;
 import io.harness.yaml.validator.InvalidYamlException;
 
 import com.google.common.collect.ImmutableList;
@@ -126,7 +124,6 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   @Mock private GitAwareEntityHelper gitAwareEntityHelper;
   @Mock private PMSPipelineService pipelineService;
   @Mock private InputSetsApiUtils inputSetsApiUtils;
-  @Mock PmsFeatureFlagHelper pmsFeatureFlagHelper;
 
   String ACCOUNT_ID = "account_id";
   String ORG_IDENTIFIER = "orgId";
@@ -802,23 +799,9 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   @Test
   @Owner(developers = NAMAN)
   @Category(UnitTests.class)
-  public void testCreateForOldGitSyncWithFFDisabled() {
+  public void testCreateForOldGitSync() {
     MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
     doReturn(true).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
-    doReturn(false).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
-    pmsInputSetServiceMock.create(inputSetEntity, false);
-    verify(inputSetRepository, times(1)).saveForOldGitSync(inputSetEntity, InputSetYamlDTOMapper.toDTO(inputSetEntity));
-    verify(inputSetRepository, times(0)).save(any());
-    mockSettings.close();
-  }
-
-  @Test
-  @Owner(developers = SANDESH_SALUNKHE)
-  @Category(UnitTests.class)
-  public void testCreateForOldGitSyncWithFFEnabled() {
-    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
-    doReturn(true).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
-    doReturn(true).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
     pmsInputSetServiceMock.create(inputSetEntity, false);
     verify(inputSetRepository, times(1)).saveForOldGitSync(inputSetEntity, InputSetYamlDTOMapper.toDTO(inputSetEntity));
     verify(inputSetRepository, times(0)).save(any());
@@ -828,36 +811,9 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   @Test
   @Owner(developers = NAMAN)
   @Category(UnitTests.class)
-  public void testCreateWithExceptionsWithFFDisabled() {
+  public void testCreateWithExceptions() {
     MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
     doReturn(false).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
-    doReturn(false).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
-    doThrow(new DuplicateKeyException("msg")).when(inputSetRepository).save(inputSetEntity);
-    assertThatThrownBy(() -> pmsInputSetServiceMock.create(inputSetEntity, false))
-        .isInstanceOf(DuplicateFieldException.class);
-
-    doThrow(new ExplanationException("msg", null)).when(inputSetRepository).save(inputSetEntity);
-    assertThatThrownBy(() -> pmsInputSetServiceMock.create(inputSetEntity, false))
-        .isInstanceOf(ExplanationException.class);
-    doThrow(new HintException("msg", null)).when(inputSetRepository).save(inputSetEntity);
-    assertThatThrownBy(() -> pmsInputSetServiceMock.create(inputSetEntity, false)).isInstanceOf(HintException.class);
-    doThrow(new ScmException(ErrorCode.DEFAULT_ERROR_CODE)).when(inputSetRepository).save(inputSetEntity);
-    assertThatThrownBy(() -> pmsInputSetServiceMock.create(inputSetEntity, false)).isInstanceOf(ScmException.class);
-
-    doThrow(new NullPointerException()).when(inputSetRepository).save(inputSetEntity);
-    assertThatThrownBy(() -> pmsInputSetServiceMock.create(inputSetEntity, false))
-        .isInstanceOf(InvalidRequestException.class);
-
-    mockSettings.close();
-  }
-
-  @Test
-  @Owner(developers = NAMAN)
-  @Category(UnitTests.class)
-  public void testCreateWithExceptionsWithFFEnabled() {
-    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
-    doReturn(false).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
-    doReturn(true).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
     doThrow(new DuplicateKeyException("msg")).when(inputSetRepository).save(inputSetEntity);
     assertThatThrownBy(() -> pmsInputSetServiceMock.create(inputSetEntity, false))
         .isInstanceOf(DuplicateFieldException.class);
@@ -1230,26 +1186,10 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   @Test
   @Owner(developers = RAGHAV_GUPTA)
   @Category(UnitTests.class)
-  public void testCreateInputSetV1WithFFDisabled() {
+  public void testCreateInputSetV1() {
     doReturn(false).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
     MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
     doReturn(inputSetEntityV1).when(inputSetRepository).save(inputSetEntityV1);
-    doReturn(false).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
-    InputSetEntity inputSetEntity = pmsInputSetServiceMock.create(inputSetEntityV1, false);
-    assertThat(inputSetEntity).isNotNull();
-    assertThat(inputSetEntityV1.getYaml()).isEqualTo(YAMLV1);
-    assertThat(inputSetEntityV1.getHarnessVersion()).isEqualTo(HarnessYamlVersion.V1);
-    mockSettings.close();
-  }
-
-  @Test
-  @Owner(developers = SANDESH_SALUNKHE)
-  @Category(UnitTests.class)
-  public void testCreateInputSetV1WithFFEnabled() {
-    doReturn(false).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
-    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
-    doReturn(inputSetEntityV1).when(inputSetRepository).save(inputSetEntityV1);
-    doReturn(true).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
     InputSetEntity inputSetEntity = pmsInputSetServiceMock.create(inputSetEntityV1, false);
     assertThat(inputSetEntity).isNotNull();
     assertThat(inputSetEntityV1.getYaml()).isEqualTo(YAMLV1);
@@ -1260,22 +1200,8 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   @Test
   @Owner(developers = RAGHAV_GUPTA)
   @Category(UnitTests.class)
-  public void testUpdateInputSetV1WithFFDisabled() {
+  public void testUpdateInputSetV1() {
     doReturn(false).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
-    doReturn(false).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
-    doReturn(inputSetEntityV1).when(inputSetRepository).update(inputSetEntityV1);
-    InputSetEntity inputSetEntity = pmsInputSetServiceMock.update(ChangeType.MODIFY, inputSetEntityV1, false);
-    assertThat(inputSetEntity).isNotNull();
-    assertThat(inputSetEntityV1.getYaml()).isEqualTo(YAMLV1);
-    assertThat(inputSetEntityV1.getHarnessVersion()).isEqualTo(HarnessYamlVersion.V1);
-  }
-
-  @Test
-  @Owner(developers = RAGHAV_GUPTA)
-  @Category(UnitTests.class)
-  public void testUpdateInputSetV1WithFFEnabled() {
-    doReturn(false).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
-    doReturn(true).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
     doReturn(inputSetEntityV1).when(inputSetRepository).update(inputSetEntityV1);
     InputSetEntity inputSetEntity = pmsInputSetServiceMock.update(ChangeType.MODIFY, inputSetEntityV1, false);
     assertThat(inputSetEntity).isNotNull();
@@ -1386,7 +1312,6 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
 
     Assertions.assertDoesNotThrow(() -> pmsInputSetServiceMock.validateInputSetSetting(inputSet, pipeline));
   }
-
   @Test
   @Owner(developers = ADITHYA)
   @Category(UnitTests.class)

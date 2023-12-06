@@ -9,7 +9,6 @@ package io.harness.delegate.task.pcf.request;
 
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.delegate.capability.EncryptedDataDetailsCapabilityHelper.fetchExecutionCapabilitiesForEncryptedDataDetails;
-import static io.harness.expression.Expression.ALLOW_SECRETS;
 
 import static java.lang.String.format;
 
@@ -23,7 +22,6 @@ import io.harness.delegate.task.ActivityAccess;
 import io.harness.delegate.task.Cd1ApplicationAccess;
 import io.harness.delegate.task.TaskParameters;
 import io.harness.delegate.task.pcf.CfCommandRequest;
-import io.harness.expression.Expression;
 import io.harness.expression.ExpressionEvaluator;
 import io.harness.pcf.model.CfCliVersion;
 import io.harness.security.encryption.EncryptedDataDetail;
@@ -38,7 +36,7 @@ import lombok.Value;
 @OwnedBy(CDP)
 public class CfCommandTaskParameters
     implements TaskParameters, ActivityAccess, Cd1ApplicationAccess, ExecutionCapabilityDemander {
-  @Expression(ALLOW_SECRETS) private CfCommandRequest pcfCommandRequest;
+  private CfCommandRequest pcfCommandRequest;
   private List<EncryptedDataDetail> encryptedDataDetails;
 
   @Override

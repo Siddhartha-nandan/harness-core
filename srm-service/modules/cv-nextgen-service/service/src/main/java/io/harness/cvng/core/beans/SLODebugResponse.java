@@ -12,7 +12,6 @@ import static io.harness.annotations.dev.HarnessTeam.CV;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.cvng.core.beans.params.ProjectParams;
 import io.harness.cvng.core.entities.DataCollectionTask;
-import io.harness.cvng.core.entities.MonitoringSourcePerpetualTask;
 import io.harness.cvng.core.entities.TimeSeriesRecord;
 import io.harness.cvng.core.entities.VerificationTask;
 import io.harness.cvng.servicelevelobjective.entities.SLIRecord;
@@ -56,6 +55,4 @@ public class SLODebugResponse {
   Map<String, List<TimeSeriesRecord>> sliIdentifierToTimeSeriesRecords;
 
   Map<String, AnalysisOrchestrator> sliIdentifierToAnalysisOrchestrator;
-
-  Map<String, MonitoringSourcePerpetualTask> sliIdentifierToMonitoringSourcePerpetualTaskMap;
 }

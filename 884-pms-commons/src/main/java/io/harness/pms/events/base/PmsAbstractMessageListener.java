@@ -15,7 +15,6 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.eventsframework.consumer.Message;
-import io.harness.pms.events.PmsEventMonitoringConstants;
 import io.harness.pms.sdk.execution.events.PmsCommonsBaseEventHandler;
 import io.harness.serializer.ProtoUtils;
 
@@ -47,12 +46,11 @@ public abstract class PmsAbstractMessageListener<T extends com.google.protobuf.M
    */
 
   @Override
-  public boolean handleMessage(Message message, Map<String, Object> metricInfo) {
+  public boolean handleMessage(Message message, Long readTs) {
     try {
       T entity = extractEntity(message.getMessage().getData());
       Long issueTimestamp = ProtoUtils.timestampToUnixMillis(message.getTimestamp());
-      metricInfo.put(PmsEventMonitoringConstants.EVENT_SEND_TS, issueTimestamp);
-      processMessage(entity, message.getMessage().getMetadataMap(), metricInfo);
+      processMessage(entity, message.getMessage().getMetadataMap(), issueTimestamp, readTs);
     } catch (InvalidProtocolBufferException ex) {
       log.error(String.format("Cannot decode bytes into object, messageId %s", message.getId()), ex);
     }
@@ -72,7 +70,7 @@ public abstract class PmsAbstractMessageListener<T extends com.google.protobuf.M
   /**
    * The boolean that we are returning here is just for logging purposes we should infer nothing from the responses
    */
-  public void processMessage(T event, Map<String, String> metadataMap, Map<String, Object> metricInfo) {
-    handler.handleEvent(event, metadataMap, metricInfo);
+  public void processMessage(T event, Map<String, String> metadataMap, Long messageTimeStamp, Long readTs) {
+    handler.handleEvent(event, metadataMap, messageTimeStamp, readTs);
   }
 }

@@ -85,7 +85,6 @@ import io.harness.testlib.module.TestMongoModule;
 import io.harness.threading.CurrentThreadExecutor;
 import io.harness.threading.ExecutorModule;
 import io.harness.time.TimeModule;
-import io.harness.tunnel.TunnelResourceClient;
 
 import com.google.common.base.Suppliers;
 import com.google.inject.AbstractModule;
@@ -158,7 +157,6 @@ public class CIExecutionRule implements MethodRule, InjectorRuleMixin, MongoRule
         bind(AccountClient.class).toInstance(mock(AccountClient.class));
         bind(AccountClient.class).annotatedWith(Names.named("PRIVILEGED")).toInstance(mock(AccountClient.class));
         bind(CodeResourceClient.class).toInstance(mock(CodeResourceClient.class));
-        bind(TunnelResourceClient.class).toInstance(mock(TunnelResourceClient.class));
       }
     });
 

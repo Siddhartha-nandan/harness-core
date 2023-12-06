@@ -10,7 +10,6 @@ package io.harness.pms.filter.utils;
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.rule.OwnerRule.NAMAN;
 import static io.harness.rule.OwnerRule.ROHITKARELIA;
-import static io.harness.rule.OwnerRule.SANDESH_SALUNKHE;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,7 +21,6 @@ import io.harness.pms.yaml.YamlUtils;
 import io.harness.rule.Owner;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.bson.Document;
@@ -37,17 +35,15 @@ public class ModuleInfoFilterUtilsTest extends CategoryTest {
   @Category(UnitTests.class)
   public void processNode() throws IOException {
     String json =
-        "{\"ci\":{},\"cd\":{\"identifier\": 1, \"name\": \"test\", \"serviceDefinitionTypes\":[[{\"label\":\"Kubernetes\",\"value\":\"Kubernetes\"}]]}}";
+        "{\"ci\":{},\"cd\":{\"identifier\": \"p1\", \"serviceDefinitionTypes\":[[{\"label\":\"Kubernetes\",\"value\":\"Kubernetes\"}]]}}";
     YamlField yamlField = YamlUtils.readTree(json);
     assertThat(yamlField).isNotNull();
     Criteria criteria = new Criteria();
     ModuleInfoFilterUtils.processNode(yamlField.getNode().getCurrJsonNode(), "topKey", criteria);
     Document criteriaObject = criteria.getCriteriaObject();
-    assertThat(criteriaObject)
-        .hasSize(3)
-        .containsEntry("topKey.cd.identifier", 1)
-        .containsEntry("topKey.cd.name", "test")
-        .containsKey("topKey.cd.serviceDefinitionTypes");
+    assertThat(criteriaObject).hasSize(2);
+    assertThat(criteriaObject.get("topKey.cd.identifier")).isEqualTo("p1");
+    assertThat(criteriaObject.containsKey("topKey.cd.serviceDefinitionTypes")).isTrue();
   }
 
   @Test
@@ -62,32 +58,8 @@ public class ModuleInfoFilterUtilsTest extends CategoryTest {
     Document criteriaObject = criteria.getCriteriaObject();
     assertThat(criteriaObject).hasSize(1);
     assertThat(criteriaObject.containsKey("topKey.cd.serviceIdentifiers")).isFalse();
-    assertThat((List<?>) ((Map<?, ?>) criteriaObject.get("topKey.cd.envIdentifiers")).get("$in")).hasSize(1);
+    assertThat(((List<?>) ((Map<?, ?>) criteriaObject.get("topKey.cd.envIdentifiers")).get("$in")).size()).isEqualTo(1);
     assertThat(((List<?>) ((Map<?, ?>) criteriaObject.get("topKey.cd.envIdentifiers")).get("$in")).get(0))
         .isEqualTo("testcluster");
-  }
-
-  @Test
-  @Owner(developers = SANDESH_SALUNKHE)
-  @Category(UnitTests.class)
-  public void testProcessNodeOROperator() throws IOException {
-    String json =
-        "{\"ci\":{\"ciEditionType\": \"ENTERPRISE\",\"ciLicenseType\": \"PAID\",\"isPrivateRepo\": false},\"cd\":{\"identifier\": 1, \"name\": \"test\", \"serviceDefinitionTypes\":[[{\"label\":\"Kubernetes\",\"value\":\"Kubernetes\"}]]}}";
-    YamlField yamlField = YamlUtils.readTree(json);
-    assertThat(yamlField).isNotNull();
-    List<Criteria> criteriaList = new ArrayList<>();
-    ModuleInfoFilterUtils.processNodeOROperator(yamlField.getNode().getCurrJsonNode(), "topKey", criteriaList);
-    Document criteriaObject1 = criteriaList.get(0).getCriteriaObject();
-    Document criteriaObject2 = criteriaList.get(1).getCriteriaObject();
-    assertThat(criteriaObject2)
-        .hasSize(3)
-        .containsEntry("topKey.cd.identifier", 1)
-        .containsEntry("topKey.cd.name", "test")
-        .containsKey("topKey.cd.serviceDefinitionTypes");
-    assertThat(criteriaObject1)
-        .hasSize(3)
-        .containsEntry("topKey.ci.ciEditionType", "ENTERPRISE")
-        .containsEntry("topKey.ci.ciLicenseType", "PAID")
-        .containsEntry("topKey.ci.isPrivateRepo", "false");
   }
 }

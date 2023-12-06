@@ -18,7 +18,6 @@ import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.AsyncExecutableResponse;
 import io.harness.pms.contracts.interrupts.InterruptEvent;
 import io.harness.pms.contracts.interrupts.InterruptType;
-import io.harness.pms.events.PmsEventMonitoringConstants;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.sdk.core.AmbianceTestUtils;
 import io.harness.pms.sdk.core.PmsSdkCoreTestBase;
@@ -90,12 +89,7 @@ public class InterruptEventHandlerTest extends PmsSdkCoreTestBase {
                                .setType(InterruptType.ABORT_ALL)
                                .setInterruptUuid("interruptUuid")
                                .build();
-    assertThat(interruptEventHandler.extractMetricContext(new HashMap<>(), event, "RANDOM_STREAM"))
-        .isEqualTo(ImmutableMap.<String, String>builder()
-                       .put(PmsEventMonitoringConstants.MODULE, "pms")
-                       .put(PmsEventMonitoringConstants.EVENT_TYPE, "interrupt_event")
-                       .put(PmsEventMonitoringConstants.STREAM_NAME, "RANDOM_STREAM")
-                       .build());
+    assertThat(interruptEventHandler.extractMetricContext(new HashMap<>(), event)).isEqualTo(ImmutableMap.of());
   }
 
   @Test
@@ -108,7 +102,7 @@ public class InterruptEventHandlerTest extends PmsSdkCoreTestBase {
                                .setType(InterruptType.ABORT_ALL)
                                .setInterruptUuid("interruptUuid")
                                .build();
-    assertThat(interruptEventHandler.getEventType(event)).isEqualTo("interrupt_event");
+    assertThat(interruptEventHandler.getMetricPrefix(event)).isNull();
   }
 
   @Test

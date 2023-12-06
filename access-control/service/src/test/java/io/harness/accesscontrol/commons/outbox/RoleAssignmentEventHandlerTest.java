@@ -23,10 +23,7 @@ import static junit.framework.TestCase.assertNull;
 import static junit.framework.TestCase.fail;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.apache.commons.lang3.RandomStringUtils.randomNumeric;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -337,14 +334,11 @@ public class RoleAssignmentEventHandlerTest extends CategoryTest {
         accountIdentifier, orgIdentifier, principalIdentifier, auditEntry, outboxEvent, ROLE_ASSIGNMENT_UPDATED);
     assertNotNull(auditEntry.getOldYaml());
     assertNotNull(auditEntry.getNewYaml());
-
-    ArgumentCaptor<RoleAssignmentChangeEventData> captor = ArgumentCaptor.forClass(RoleAssignmentChangeEventData.class);
-    verify(roleAssignmentChangeConsumer, times(1)).consumeEvent(eq(UPDATE_ACTION), isNull(), captor.capture());
-
-    RoleAssignmentChangeEventData actualChangeEventData = captor.getValue();
-    assertThat(actualChangeEventData.getNewRoleAssignment()).isEqualTo(newRoleAssignment);
-    assertThat(actualChangeEventData.getUpdatedRoleAssignment()).isEqualTo(oldRoleAssignment);
-    assertThat(actualChangeEventData.getScope()).isNotEmpty();
+    RoleAssignmentChangeEventData roleAssignmentChangeEventData = RoleAssignmentChangeEventData.builder()
+                                                                      .newRoleAssignment(newRoleAssignment)
+                                                                      .updatedRoleAssignment(oldRoleAssignment)
+                                                                      .build();
+    verify(roleAssignmentChangeConsumer, times(1)).consumeEvent(UPDATE_ACTION, null, roleAssignmentChangeEventData);
   }
 
   @Test
@@ -435,14 +429,11 @@ public class RoleAssignmentEventHandlerTest extends CategoryTest {
         accountIdentifier, orgIdentifier, principalIdentifier, auditEntry, outboxEvent, ROLE_ASSIGNMENT_UPDATED);
     assertNotNull(auditEntry.getOldYaml());
     assertNotNull(auditEntry.getNewYaml());
-
-    ArgumentCaptor<RoleAssignmentChangeEventData> captor = ArgumentCaptor.forClass(RoleAssignmentChangeEventData.class);
-    verify(roleAssignmentChangeConsumer, times(1)).consumeEvent(eq(UPDATE_ACTION), isNull(), captor.capture());
-
-    RoleAssignmentChangeEventData actualChangeEventData = captor.getValue();
-    assertThat(actualChangeEventData.getNewRoleAssignment()).isEqualTo(newRoleAssignment);
-    assertThat(actualChangeEventData.getUpdatedRoleAssignment()).isEqualTo(oldRoleAssignment);
-    assertThat(actualChangeEventData.getScope()).isNotEmpty();
+    RoleAssignmentChangeEventData roleAssignmentChangeEventData = RoleAssignmentChangeEventData.builder()
+                                                                      .newRoleAssignment(newRoleAssignment)
+                                                                      .updatedRoleAssignment(oldRoleAssignment)
+                                                                      .build();
+    verify(roleAssignmentChangeConsumer, times(1)).consumeEvent(UPDATE_ACTION, null, roleAssignmentChangeEventData);
   }
 
   @Test

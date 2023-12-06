@@ -23,8 +23,7 @@
           "passwordRef": "account.dockerPassword"
         }
       },
-      "executeOnDelegate": true,
-      "proxy": false
+      "executeOnDelegate": true
     }
   }
 }

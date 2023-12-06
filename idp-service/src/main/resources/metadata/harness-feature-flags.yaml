@@ -1,8 +1,7 @@
 identifier: harness-feature-flags
 name: Harness Feature Flags
 description: This plugin lets you view Harness Feature Flags created in your project inside Backstage.
-accountIdentifier: __GLOBAL_ACCOUNT_ID__
-creator: harness.io
+createdBy: harness.io
 category: Feature Flags
 core: true
 source: https://github.com/harness/backstage-plugins/tree/main/plugins/harness-feature-flags

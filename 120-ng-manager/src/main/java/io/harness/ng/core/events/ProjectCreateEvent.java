@@ -39,8 +39,7 @@ public class ProjectCreateEvent implements Event {
   @JsonIgnore
   @Override
   public ResourceScope getResourceScope() {
-    return new ProjectScope(
-        accountIdentifier, project.getOrgIdentifier(), project.getIdentifier(), project.getParentUniqueId());
+    return new ProjectScope(accountIdentifier, project.getOrgIdentifier(), project.getIdentifier());
   }
 
   @JsonIgnore

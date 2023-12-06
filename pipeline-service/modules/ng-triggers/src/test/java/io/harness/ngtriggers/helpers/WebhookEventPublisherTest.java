@@ -63,6 +63,7 @@ public class WebhookEventPublisherTest extends CategoryTest {
     WebhookDTO webhookDTO = WebhookDTO.newBuilder()
                                 .setWebhookEventType(eventType)
                                 .setWebhookTriggerType(GIT)
+                                .setJsonPayload(webhookPayloadData.getOriginalEvent().getPayload())
                                 .setParsedResponse(webhookPayloadData.getParseWebhookResponse())
                                 .build();
     Message expectedMessage =

@@ -10,6 +10,7 @@ package io.harness.ng.core.event;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ACCOUNT_ENTITY;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ACTION;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.CREATE_ACTION;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.DELETE_ACTION;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.DISABLE_IP_ALLOWLIST;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ENTITY_TYPE;
@@ -20,6 +21,7 @@ import static io.harness.eventsframework.EventsFrameworkMetadataConstants.UPDATE
 
 import io.harness.account.AccountClient;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeLevel;
 import io.harness.eventsframework.consumer.Message;
 import io.harness.eventsframework.entity_crud.account.AccountEntityChangeDTO;
 import io.harness.exception.InvalidRequestException;
@@ -27,6 +29,7 @@ import io.harness.ng.core.dto.AccountDTO;
 import io.harness.ng.core.entities.Organization;
 import io.harness.ng.core.entities.Organization.OrganizationKeys;
 import io.harness.ng.core.services.OrganizationService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.remote.client.CGRestUtils;
 import io.harness.repositories.ipallowlist.custom.IPAllowlistRepositoryCustom;
 
@@ -48,14 +51,17 @@ public class AccountSetupListener implements MessageListener {
   private final AccountClient accountClient;
 
   private final IPAllowlistRepositoryCustom ipAllowlistRepositoryCustom;
+  private final ScopeInfoService scopeInfoService;
 
   @Inject
   public AccountSetupListener(OrganizationService organizationService, NGAccountSetupService ngAccountSetupService,
-      AccountClient accountClient, IPAllowlistRepositoryCustom ipAllowlistRepositoryCustom) {
+      AccountClient accountClient, IPAllowlistRepositoryCustom ipAllowlistRepositoryCustom,
+      ScopeInfoService scopeInfoService) {
     this.organizationService = organizationService;
     this.ngAccountSetupService = ngAccountSetupService;
     this.accountClient = accountClient;
     this.ipAllowlistRepositoryCustom = ipAllowlistRepositoryCustom;
+    this.scopeInfoService = scopeInfoService;
   }
 
   @Override
@@ -98,6 +104,8 @@ public class AccountSetupListener implements MessageListener {
         return processNGUserCleanupEvent(accountEntityChangeDTO);
       case DISABLE_IP_ALLOWLIST:
         return processDisableIpAllowListEvent(accountEntityChangeDTO);
+      case CREATE_ACTION:
+        return processAccountCreateEvent(accountEntityChangeDTO);
       default:
     }
     return true;
@@ -138,6 +146,7 @@ public class AccountSetupListener implements MessageListener {
     log.info(String.format(
         "[AccountSetupListener]: Received account delete event for account %s", accountEntityChangeDTO.getAccountId()));
     String accountIdentifier = accountEntityChangeDTO.getAccountId();
+    scopeInfoService.removeScopeInfoFromCache(accountIdentifier, null, null);
     Criteria criteria = Criteria.where(OrganizationKeys.accountIdentifier)
                             .is(accountIdentifier)
                             .and(OrganizationKeys.deleted)
@@ -180,5 +189,13 @@ public class AccountSetupListener implements MessageListener {
           "Successfully completed restoration for organizations in account with identifier %s", accountIdentifier));
     }
     return success.get();
+  }
+
+  private boolean processAccountCreateEvent(AccountEntityChangeDTO accountEntityChangeDTO) {
+    log.info(String.format(
+        "[AccountSetupListener]: Received create event for account: %s", accountEntityChangeDTO.getAccountId()));
+    scopeInfoService.addScopeInfoToCache(
+        accountEntityChangeDTO.getAccountId(), null, null, ScopeLevel.ACCOUNT, accountEntityChangeDTO.getAccountId());
+    return true;
   }
 }

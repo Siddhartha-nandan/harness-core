@@ -20,10 +20,8 @@ import io.harness.cvng.servicelevelobjective.beans.secondaryevents.SecondaryEven
 import io.harness.cvng.servicelevelobjective.beans.secondaryevents.SecondaryEventsResponse;
 import io.harness.cvng.servicelevelobjective.beans.secondaryevents.SecondaryEventsType;
 import io.harness.ng.beans.PageResponse;
-import io.harness.spec.server.cvng.v1.model.MetricGraph;
 
 import java.util.List;
-import java.util.Map;
 
 public interface SLODashboardService {
   PageResponse<SLOHealthListView> getSloHealthListView(
@@ -32,9 +30,6 @@ public interface SLODashboardService {
       ProjectParams projectParams, String compositeSLOIdentifier, Long startTime, Long endTime);
 
   SLODashboardDetail getSloDashboardDetail(
-      ProjectParams projectParams, String sloIdentifier, Long startTime, Long endTime);
-
-  Map<String, MetricGraph> getMetricGraphs(
       ProjectParams projectParams, String sloIdentifier, Long startTime, Long endTime);
 
   SLORiskCountResponse getRiskCount(ProjectParams projectParams, SLODashboardApiFilter serviceLevelObjectiveFilter);

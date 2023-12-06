@@ -58,12 +58,12 @@ public class GcpKmsSecretMigrator implements io.harness.ngmigration.secrets.Secr
 
   @Override
   public String getEncryptionKey(EncryptedData encryptedData, SecretManagerConfig secretManagerConfig) {
-    return encryptedData.getEncryptionKey();
+    return null;
   }
 
   @Override
   public String getEncryptionValue(EncryptedData encryptedData, SecretManagerConfig secretManagerConfig) {
-    return new String(encryptedData.getEncryptedValue());
+    return null;
   }
 
   @Override

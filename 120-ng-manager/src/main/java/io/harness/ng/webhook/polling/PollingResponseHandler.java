@@ -38,7 +38,6 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.FeatureName;
-import io.harness.cdng.gitpolling.bean.GitPollingConfig;
 import io.harness.cdng.manifest.ManifestType;
 import io.harness.cdng.manifest.yaml.GcsStoreConfig;
 import io.harness.cdng.manifest.yaml.HttpStoreConfig;
@@ -62,14 +61,12 @@ import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.polling.artifact.ArtifactCollectionUtilsNg;
 import io.harness.polling.bean.ArtifactInfo;
 import io.harness.polling.bean.ArtifactPolledResponse;
-import io.harness.polling.bean.GitPollingInfo;
 import io.harness.polling.bean.GitPollingPolledResponse;
 import io.harness.polling.bean.HelmChartManifestInfo;
 import io.harness.polling.bean.ManifestInfo;
 import io.harness.polling.bean.ManifestPolledResponse;
 import io.harness.polling.bean.PolledResponseResult;
 import io.harness.polling.bean.PolledResponseResult.PolledResponseResultBuilder;
-import io.harness.polling.bean.PollingConstants;
 import io.harness.polling.bean.PollingDocument;
 import io.harness.polling.bean.PollingType;
 import io.harness.polling.bean.artifact.AMIArtifactInfo;
@@ -162,7 +159,7 @@ public class PollingResponseHandler {
     if (pollingDocument.getFailedAttempts() > 0) {
       pollingService.updateFailedAttempts(accountId, pollDocId, 0);
       pollingService.updateTriggerPollingStatus(
-          pollingDocument.getAccountId(), pollingDocument.getSignatures(), true, null, Collections.emptyList(), null);
+          pollingDocument.getAccountId(), pollingDocument.getSignatures(), true, null, Collections.emptyList());
     }
 
     switch (pollingDocument.getPollingType()) {
@@ -199,7 +196,7 @@ public class PollingResponseHandler {
       pollingService.updatePolledResponse(accountId, pollDocId,
           ArtifactPolledResponse.builder().allPolledKeys(new HashSet<>(unpublishedArtifactKeys)).build());
       pollingService.updateTriggerPollingStatus(
-          pollingDocument.getAccountId(), pollingDocument.getSignatures(), true, null, unpublishedArtifactKeys, null);
+          pollingDocument.getAccountId(), pollingDocument.getSignatures(), true, null, unpublishedArtifactKeys);
       return;
     }
 
@@ -274,7 +271,7 @@ public class PollingResponseHandler {
                                                  .build());
     }
     pollingService.updateTriggerPollingStatus(
-        pollingDocument.getAccountId(), pollingDocument.getSignatures(), true, null, newVersions, null);
+        pollingDocument.getAccountId(), pollingDocument.getSignatures(), true, null, newVersions);
   }
 
   private void handleGitPollingResponse(PollingDocument pollingDocument, PollingResponseInfc pollingResponseInfc) {
@@ -296,8 +293,8 @@ public class PollingResponseHandler {
 
       pollingService.updatePolledResponse(accountId, pollDocId,
           GitPollingPolledResponse.builder().allPolledKeys(new HashSet<>(unpublishedWebhookDeliveryIds)).build());
-      pollingService.updateTriggerPollingStatus(pollingDocument.getAccountId(), pollingDocument.getSignatures(), true,
-          null, unpublishedWebhookDeliveryIds, null);
+      pollingService.updateTriggerPollingStatus(
+          pollingDocument.getAccountId(), pollingDocument.getSignatures(), true, null, unpublishedWebhookDeliveryIds);
       return;
     }
 
@@ -338,7 +335,7 @@ public class PollingResponseHandler {
       String accountId, List<GitPollingWebhookData> redeliveries, List<String> signatures) {
     polledItemPublisher.sendWebhookRequest(accountId, redeliveries);
     pollingService.updateTriggerPollingStatus(accountId, signatures, true, null,
-        redeliveries.stream().map(GitPollingWebhookData::getDeliveryId).collect(Collectors.toList()), null);
+        redeliveries.stream().map(GitPollingWebhookData::getDeliveryId).collect(Collectors.toList()));
   }
 
   private void handleFailureResponse(PollingDocument pollingDocument, String errorMessage) {
@@ -350,39 +347,9 @@ public class PollingResponseHandler {
           pollingDocument.getUuid(), failedCount, errorMessage);
     }
     pollingService.updateFailedAttempts(pollingDocument.getAccountId(), pollingDocument.getUuid(), failedCount);
+    pollingService.updateTriggerPollingStatus(
+        pollingDocument.getAccountId(), pollingDocument.getSignatures(), false, errorMessage, Collections.emptyList());
 
-    Long validityIntervalForErrorStatus = null;
-    switch (pollingDocument.getPollingType()) {
-      case MANIFEST:
-        validityIntervalForErrorStatus = Duration
-                                             .ofMinutes(PollingConstants.MANIFEST_COLLECTION_NG_INTERVAL_MINUTES
-                                                 + PollingConstants.MANIFEST_COLLECTION_NG_TIMEOUT_MINUTES)
-                                             .toMillis();
-        break;
-      case ARTIFACT:
-        validityIntervalForErrorStatus = Duration
-                                             .ofMinutes(PollingConstants.ARTIFACT_COLLECTION_NG_INTERVAL_MINUTES
-                                                 + PollingConstants.ARTIFACT_COLLECTION_NG_TIMEOUT_MINUTES)
-                                             .toMillis();
-        break;
-      case WEBHOOK_POLLING:
-        try {
-          GitPollingConfig gitPollingConfig = ((GitPollingInfo) pollingDocument.getPollingInfo()).toGitPollingConfig();
-          long pollInterval = gitPollingConfig.getPollInterval();
-          validityIntervalForErrorStatus =
-              Duration.ofMinutes(PollingConstants.WEBHOOK_POLLING_VALIDITY_INTERVAL_MULTIPLIER * pollInterval)
-                  .toMillis();
-        } catch (Exception ex) {
-          log.warn("Impossible to set validityIntervalForErrorStatus on GitPolling Trigger for pollingDocId: {}",
-              pollingDocument.getUuid());
-        }
-        break;
-      default:
-        break;
-    }
-
-    pollingService.updateTriggerPollingStatus(pollingDocument.getAccountId(), pollingDocument.getSignatures(), false,
-        errorMessage, Collections.emptyList(), validityIntervalForErrorStatus);
     if (failedCount >= MAX_FAILED_ATTEMPTS) {
       log.warn(
           "Failed count {} from polling delegate perpetual task for pollingDocId {} is above MAX_FAILED_ATTEMPTS ({}). Deleting the perpetual task.",
@@ -408,7 +375,7 @@ public class PollingResponseHandler {
       pollingService.updatePolledResponse(accountId, pollDocId,
           ManifestPolledResponse.builder().allPolledKeys(new HashSet<>(unpublishedManifests)).build());
       pollingService.updateTriggerPollingStatus(
-          pollingDocument.getAccountId(), pollingDocument.getSignatures(), true, null, unpublishedManifests, null);
+          pollingDocument.getAccountId(), pollingDocument.getSignatures(), true, null, unpublishedManifests);
       return;
     }
 
@@ -682,7 +649,7 @@ public class PollingResponseHandler {
         }
       }
       pollingService.updateTriggerPollingStatus(
-          accountId, signaturesWithLock, success, errorMsg, unpublishedArtifactKeys, null);
+          accountId, signaturesWithLock, success, errorMsg, unpublishedArtifactKeys);
     }
     // After publishing event, update database as well.
     // if delegate rebalancing happened, unpublishedArtifactKeys are now the new versions. We might have to delete few

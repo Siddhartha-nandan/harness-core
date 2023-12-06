@@ -12,7 +12,6 @@ import static io.harness.annotations.dev.HarnessTeam.DEL;
 import io.harness.annotations.dev.HarnessModule;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.TargetModule;
-import io.harness.delegate.AccountCheckAndCleanupServiceImpl;
 import io.harness.delegate.DelegateServiceGrpc;
 import io.harness.delegate.ScheduleTaskServiceGrpc;
 import io.harness.delegate.authenticator.DelegateTokenAuthenticatorImpl;
@@ -28,7 +27,6 @@ import io.harness.grpc.server.GrpcServerConfig;
 import io.harness.grpc.server.GrpcServerExceptionHandler;
 import io.harness.grpc.server.GrpcServerModule;
 import io.harness.perpetualtask.grpc.PerpetualTaskServiceGrpc;
-import io.harness.security.AccountCheckAndCleanupService;
 import io.harness.security.DelegateTokenAuthenticator;
 
 import com.google.common.util.concurrent.Service;
@@ -69,7 +67,6 @@ public class GrpcServiceConfigurationModule extends AbstractModule {
   @Override
   protected void configure() {
     bind(DelegateTokenAuthenticator.class).to(DelegateTokenAuthenticatorImpl.class).in(Singleton.class);
-    bind(AccountCheckAndCleanupService.class).to(AccountCheckAndCleanupServiceImpl.class);
     Multibinder<BindableService> bindableServiceMultibinder = Multibinder.newSetBinder(binder(), BindableService.class);
     bindableServiceMultibinder.addBinding().to(DelegateServiceGrpcImpl.class);
     bindableServiceMultibinder.addBinding().to(ScheduleTaskServiceGrpcImpl.class);

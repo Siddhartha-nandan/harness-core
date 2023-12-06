@@ -48,7 +48,6 @@ public class TasNgConfigMapper {
       cfConfig.setUserName(
           getValueFromPlainTextOrSecretRef(tasManualDetailsDTO.getUsername(), tasManualDetailsDTO.getUsernameRef()));
       cfConfig.setPassword(getDecryptedValueWithNullCheck(tasManualDetailsDTO.getPasswordRef()));
-      cfConfig.setRefreshToken(getDecryptedValueWithNullCheck(tasManualDetailsDTO.getRefreshTokenRef()));
     } else {
       throw new IllegalStateException("Unexpected Tas credential type : " + credentialType);
     }

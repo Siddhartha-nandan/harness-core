@@ -16,7 +16,6 @@ import io.harness.cdng.environment.yaml.EnvironmentsYaml;
 import io.harness.cdng.service.beans.ServiceYamlV2;
 import io.harness.cdng.service.beans.ServicesYaml;
 import io.harness.plancreator.customDeployment.v1.StepTemplateRefV1;
-import io.harness.pms.yaml.YamlNode;
 import io.harness.walktree.beans.VisitableChild;
 import io.harness.walktree.beans.VisitableChildren;
 import io.harness.walktree.visitor.SimpleVisitorHelper;
@@ -38,7 +37,7 @@ import org.springframework.data.annotation.TypeAlias;
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_PIPELINE})
 @SimpleVisitorHelper(helperClass = DeploymentStageVisitorHelperV1.class)
 public class DeploymentStageConfigV1 implements Visitable {
-  @JsonProperty(YamlNode.UUID_FIELD_NAME) String uuid;
+  String uuid;
   @JsonProperty("deployment_template") StepTemplateRefV1 deploymentTemplate;
   @JsonProperty("gitops_enabled") Boolean gitOpsEnabled;
   @NotNull @Size(min = 1) List<JsonNode> steps;
@@ -49,10 +48,6 @@ public class DeploymentStageConfigV1 implements Visitable {
   EnvironmentsYaml environments;
   EnvironmentGroupYaml environmentGroup;
   String desc;
-
-  public boolean getGitOpsEnabled() {
-    return gitOpsEnabled == Boolean.TRUE;
-  }
 
   @Override
   public VisitableChildren getChildrenToWalk() {

@@ -10,13 +10,11 @@ package io.harness.repositories;
 import static io.harness.annotations.dev.HarnessTeam.SSCA;
 
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.data.structure.EmptyPredicate;
 import io.harness.ssca.beans.ArtifactDBO;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityKeys;
 
 import com.google.inject.Inject;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -25,7 +23,6 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
@@ -61,20 +58,7 @@ public class ArtifactRepositoryCustomImpl implements ArtifactRepositoryCustom {
 
   @Override
   public ArtifactEntity findOne(Criteria criteria) {
-    return findOne(criteria, null, Collections.emptyList());
-  }
-
-  @Override
-  public ArtifactEntity findOne(Criteria criteria, Sort sort, List<String> projectionFields) {
     Query query = new Query(criteria);
-    if (sort != null) {
-      query.with(sort);
-    }
-    if (EmptyPredicate.isNotEmpty(projectionFields)) {
-      for (String projection : projectionFields) {
-        query.fields().include(projection);
-      }
-    }
     return mongoTemplate.findOne(query, ArtifactEntity.class);
   }
 

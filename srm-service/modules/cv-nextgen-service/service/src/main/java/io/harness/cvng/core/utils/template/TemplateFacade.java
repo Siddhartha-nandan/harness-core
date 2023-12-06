@@ -7,8 +7,6 @@
 
 package io.harness.cvng.core.utils.template;
 
-import static io.harness.cvng.core.services.CVNextGenConstants.ACCOUNT_IDENTIFIER_PREFIX;
-import static io.harness.cvng.core.services.CVNextGenConstants.ORG_IDENTIFIER_PREFIX;
 import static io.harness.gitcaching.GitCachingConstants.BOOLEAN_FALSE_VALUE;
 
 import io.harness.cvng.core.beans.params.ProjectParams;
@@ -51,30 +49,5 @@ public class TemplateFacade {
       monitoredServiceData.put(TEMPLATE_KEY, inputMonitoredServiceData.get(TEMPLATE_KEY));
     }
     return yamlObject.dump(data);
-  }
-
-  public Long getTemplateVersionNumber(ProjectParams templateProjectParams, String templateRef, String versionLabel) {
-    templateRef = extractTemplateRef(templateRef);
-    return NGRestUtils
-        .getResponse(templateResourceClient.get(templateRef, templateProjectParams.getAccountIdentifier(),
-            templateProjectParams.getOrgIdentifier(), templateProjectParams.getProjectIdentifier(), versionLabel,
-            false))
-        .getVersion();
-  }
-
-  public String getTemplateInputs(ProjectParams templateProjectParams, String templateRef, String versionLabel) {
-    templateRef = extractTemplateRef(templateRef);
-    return NGRestUtils.getResponse(templateResourceClient.getTemplateInputsYaml(templateRef,
-        templateProjectParams.getAccountIdentifier(), templateProjectParams.getOrgIdentifier(),
-        templateProjectParams.getProjectIdentifier(), versionLabel, false));
-  }
-
-  private String extractTemplateRef(String templateRef) {
-    if (templateRef.contains(ACCOUNT_IDENTIFIER_PREFIX)) {
-      templateRef = templateRef.replace(ACCOUNT_IDENTIFIER_PREFIX, "");
-    } else if (templateRef.contains(ORG_IDENTIFIER_PREFIX)) {
-      templateRef = templateRef.replace(ORG_IDENTIFIER_PREFIX, "");
-    }
-    return templateRef;
   }
 }

@@ -14,7 +14,6 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.CDStepHelper;
-import io.harness.cdng.k8s.trafficrouting.K8sTrafficRouting;
 import io.harness.cdng.manifest.yaml.K8sStepCommandFlag;
 import io.harness.executions.steps.ExecutionNodeType;
 import io.harness.k8s.K8sCommandUnitConstants;
@@ -38,8 +37,8 @@ public class K8sBlueGreenStepParameters extends K8sBlueGreenBaseStepInfo impleme
   @Builder(builderMethodName = "infoBuilder")
   public K8sBlueGreenStepParameters(ParameterField<Boolean> skipDryRun, ParameterField<Boolean> pruningEnabled,
       ParameterField<List<TaskSelectorYaml>> delegateSelectors, List<K8sStepCommandFlag> commandFlags,
-      ParameterField<Boolean> skipUnchangedManifest, K8sTrafficRouting trafficRouting) {
-    super(skipDryRun, pruningEnabled, delegateSelectors, commandFlags, skipUnchangedManifest, trafficRouting);
+      ParameterField<Boolean> skipUnchangedManifest) {
+    super(skipDryRun, pruningEnabled, delegateSelectors, commandFlags, skipUnchangedManifest);
   }
   @NotNull
   @Override

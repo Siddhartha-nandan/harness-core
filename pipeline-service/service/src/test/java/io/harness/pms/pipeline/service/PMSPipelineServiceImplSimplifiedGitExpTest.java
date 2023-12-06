@@ -352,7 +352,7 @@ public class PMSPipelineServiceImplSimplifiedGitExpTest extends CategoryTest {
                                         .orgIdentifier(orgIdentifier)
                                         .projectIdentifier(projectIdentifier)
                                         .identifier(pipelineId)
-                                        .harnessVersion("0")
+                                        .harnessVersion("V0")
                                         .yaml(pipelineYaml)
                                         .build();
     doReturn(Optional.of(pipelineEntity))
@@ -381,7 +381,7 @@ public class PMSPipelineServiceImplSimplifiedGitExpTest extends CategoryTest {
                                         .orgIdentifier(orgIdentifier)
                                         .projectIdentifier(projectIdentifier)
                                         .identifier(pipelineId)
-                                        .harnessVersion("0")
+                                        .harnessVersion("V0")
                                         .yaml(pipelineYaml)
                                         .build();
     doReturn(Optional.of(pipelineEntity))
@@ -407,7 +407,7 @@ public class PMSPipelineServiceImplSimplifiedGitExpTest extends CategoryTest {
                                         .orgIdentifier(orgIdentifier)
                                         .projectIdentifier(projectIdentifier)
                                         .identifier(pipelineId)
-                                        .harnessVersion("0")
+                                        .harnessVersion("V0")
                                         .storeType(StoreType.REMOTE)
                                         .yaml(pipelineYaml)
                                         .build();

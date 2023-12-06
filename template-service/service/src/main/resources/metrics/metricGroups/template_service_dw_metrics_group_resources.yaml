@@ -1,7 +1,0 @@
-name: Template Service DW Metrics Group per Resource Method
-identifier: TemplateServiceDwMetricsResourceGroup
-labels:
-  - method
-  - resource
-  - namespace
-  - serviceName

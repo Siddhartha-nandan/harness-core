@@ -163,15 +163,8 @@ public class PmsExecutionSummaryServiceImpl implements PmsExecutionSummaryServic
     for (NodeExecution stageNodeExecution : childrenNodeExecution) {
       // If the child already exists in graph then ignore.
       if (!alreadyAddedAsChild(graphLayoutNode, nodeExecution.getNodeId(), stageNodeExecution.getUuid())) {
-        GraphLayoutNodeDTO graphLayoutNodeDTO = graphLayoutNode.get(stageSetupId);
-        if (graphLayoutNodeDTO == null) {
-          log.warn(String.format("[CLONE_GRAPH_NODE] NodeExecutionId: %s", nodeExecution.getNodeId()));
-          graphLayoutNode.forEach(
-              (k, v) -> log.warn(String.format("[CLONE_GRAPH_NODE] key %s: value %s", k, v.getNodeIdentifier())));
-          log.warn(String.format("[CLONE_GRAPH_NODE] Clone GraphLayoutNode with stageSetupId: %s", stageSetupId));
-        }
         cloneGraphLayoutNodeDTO(
-            graphLayoutNodeDTO, stageNodeExecution.getUuid(), update, stageNodeExecution.getNodeId());
+            graphLayoutNode.get(stageSetupId), stageNodeExecution.getUuid(), update, stageNodeExecution.getNodeId());
       }
     }
 

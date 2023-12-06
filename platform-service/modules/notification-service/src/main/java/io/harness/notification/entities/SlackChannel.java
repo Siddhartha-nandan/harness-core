@@ -8,14 +8,12 @@
 package io.harness.notification.entities;
 
 import static io.harness.annotations.dev.HarnessTeam.PL;
-import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.notification.NotificationRequest.Slack;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.notification.NotificationChannelType;
 import io.harness.notification.dtos.UserGroup;
 import io.harness.notification.mapper.NotificationUserGroupMapper;
-import io.harness.spec.server.notification.v1.model.ChannelDTO;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeName;
@@ -34,17 +32,13 @@ public class SlackChannel implements Channel {
   List<String> slackWebHookUrls;
   List<UserGroup> userGroups;
   Map<String, String> templateData;
-  String message;
   @Override
   public Object toObjectofProtoSchema() {
-    Slack.Builder builder = Slack.newBuilder()
-                                .addAllSlackWebHookUrls(slackWebHookUrls)
-                                .putAllTemplateData(templateData)
-                                .addAllUserGroup(NotificationUserGroupMapper.toProto(userGroups));
-    if (isNotEmpty(message)) {
-      builder.setMessage(message);
-    }
-    return builder.build();
+    return Slack.newBuilder()
+        .addAllSlackWebHookUrls(slackWebHookUrls)
+        .putAllTemplateData(templateData)
+        .addAllUserGroup(NotificationUserGroupMapper.toProto(userGroups))
+        .build();
   }
 
   @Override
@@ -53,17 +47,11 @@ public class SlackChannel implements Channel {
     return NotificationChannelType.SLACK;
   }
 
-  @Override
-  public ChannelDTO dto() {
-    return new ChannelDTO().slackWebhookUrls(slackWebHookUrls);
-  }
-
   public static SlackChannel toSlackEntity(Slack slackDetails) {
     return SlackChannel.builder()
         .slackWebHookUrls(slackDetails.getSlackWebHookUrlsList())
         .templateData(slackDetails.getTemplateDataMap())
         .userGroups(NotificationUserGroupMapper.toEntity(slackDetails.getUserGroupList()))
-        .message(slackDetails.getMessage())
         .build();
   }
 }

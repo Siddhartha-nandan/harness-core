@@ -18,6 +18,4 @@ public class SLIRecordParam {
   private Instant timeStamp;
   private Long goodEventCount;
   private Long badEventCount;
-
-  private Long skipEventCount;
 }

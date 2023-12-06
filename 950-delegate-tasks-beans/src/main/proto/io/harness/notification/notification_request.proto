@@ -41,7 +41,6 @@ message NotificationRequest {
     string projectIdentifier = 11;
     int64 expressionFunctorToken = 12;
     string templateId = 3;
-    string message = 13;
   }
 
   message Email {
@@ -50,9 +49,6 @@ message NotificationRequest {
     repeated UserGroup userGroup = 9;
     map<string, string> templateData = 4;
     string templateId = 3;
-    repeated string ccEmailIds = 10;
-    string subject = 11;
-    string body = 12;
   }
 
   message PagerDuty {
@@ -64,8 +60,6 @@ message NotificationRequest {
     string projectIdentifier = 11;
     int64 expressionFunctorToken = 12;
     string templateId = 3;
-    string summary = 13;
-    map<string, string> links = 14;
   }
 
   message MSTeam {
@@ -77,7 +71,6 @@ message NotificationRequest {
     string projectIdentifier = 11;
     int64 expressionFunctorToken = 12;
     string templateId = 3;
-    string message = 13;
   }
 
   message Webhook {
@@ -89,7 +82,6 @@ message NotificationRequest {
     int64 expressionFunctorToken = 11;
     string templateId = 3;
     map<string, string> headers = 13;
-    string message = 14;
   }
 
   message UserGroup {

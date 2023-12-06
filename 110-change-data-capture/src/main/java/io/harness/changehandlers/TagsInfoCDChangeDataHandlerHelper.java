@@ -6,11 +6,8 @@
  */
 
 package io.harness.changehandlers;
-import static io.harness.annotations.dev.HarnessTeam.CDC;
-
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
-import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.execution.StageExecutionInfo;
 import io.harness.cdng.execution.StageExecutionInfo.StageExecutionInfoKeys;
@@ -38,7 +35,6 @@ import lombok.experimental.UtilityClass;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_DASHBOARD})
 @UtilityClass
-@OwnedBy(CDC)
 public class TagsInfoCDChangeDataHandlerHelper {
   // REGEX pattern is used to escape the quotes " present in the tag key or value
   // otherwise it creates issues while saving to timescale

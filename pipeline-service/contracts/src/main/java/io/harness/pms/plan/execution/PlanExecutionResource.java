@@ -6,7 +6,6 @@
  */
 
 package io.harness.pms.plan.execution;
-
 import static io.harness.pms.pipeline.PipelineResourceConstants.NOTES_FOR_PLAN_EXECUTION_PARAM_MESSAGE;
 
 import io.harness.NGCommonEntityConstants;
@@ -201,8 +200,7 @@ public interface PlanExecutionResource {
 
   @POST
   @Path("/{identifier}/stages")
-  @ApiOperation(value = "Execute given Stages of a Pipeline with inputSet pipeline yaml",
-      nickname = "runStagesWithRuntimeInputYaml")
+  @ApiOperation(value = "Execute a pipeline with inputSet pipeline yaml", nickname = "runStagesWithRuntimeInputYaml")
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_EXECUTE)
   @Operation(operationId = "postExecuteStages", summary = "Execute given Stages of a Pipeline",
       responses =
@@ -210,6 +208,7 @@ public interface PlanExecutionResource {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "default", description = "Execute given Stages of a Pipeline with Runtime Input Yaml")
       })
+  @Hidden
   ResponseDTO<PlanExecutionResponseDto>
   runStagesWithRuntimeInputYaml(@NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier @Parameter(
                                     description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE) String accountId,

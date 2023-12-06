@@ -33,7 +33,6 @@ import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.helm.ReleaseHelmChartOutcome;
 import io.harness.cdng.instance.info.InstanceInfoService;
 import io.harness.cdng.k8s.beans.K8sExecutionPassThroughData;
-import io.harness.cdng.k8s.trafficrouting.K8sTrafficRoutingHelper;
 import io.harness.cdng.manifest.yaml.K8sCommandFlagType;
 import io.harness.cdng.manifest.yaml.K8sStepCommandFlag;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
@@ -80,7 +79,6 @@ public class K8sCanaryStepTest extends AbstractK8sStepExecutorTestBase {
   @Mock InstanceInfoService instanceInfoService;
   @InjectMocks private K8sCanaryStep k8sCanaryStep;
   @Mock private CDFeatureFlagHelper cdFeatureFlagHelper;
-  @Mock private K8sTrafficRoutingHelper k8sTrafficRoutingHelper;
   @Mock StageExecutionInstanceInfoService stageExecutionInstanceInfoService;
 
   @Test

@@ -13,7 +13,6 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
-import io.harness.common.NGExpressionUtils;
 import io.harness.filters.WithSecretRef;
 import io.harness.plancreator.steps.TaskSelectorYaml;
 import io.harness.plancreator.steps.common.SpecParameters;
@@ -51,14 +50,13 @@ import org.springframework.data.annotation.TypeAlias;
 @OwnedBy(HarnessTeam.CDC)
 @RecasterAlias("io.harness.cdng.pipeline.stepinfo.ShellScriptStepInfo")
 public class ShellScriptStepInfo
-    extends ShellScriptBaseStepInfoV0 implements PMSStepInfo, Visitable, WithDelegateSelector, WithSecretRef {
+    extends ShellScriptBaseStepInfo implements PMSStepInfo, Visitable, WithDelegateSelector, WithSecretRef {
   @VariableExpression(skipVariableExpression = true) List<NGVariable> outputVariables;
   List<NGVariable> environmentVariables;
 
   @Builder(builderMethodName = "infoBuilder")
-  public ShellScriptStepInfo(ShellType shell, ShellScriptSourceWrapper source,
-      ParameterField<ExecutionTarget> executionTarget, ParameterField<Boolean> onDelegate,
-      List<NGVariable> outputVariables, List<NGVariable> environmentVariables,
+  public ShellScriptStepInfo(ShellType shell, ShellScriptSourceWrapper source, ExecutionTarget executionTarget,
+      ParameterField<Boolean> onDelegate, List<NGVariable> outputVariables, List<NGVariable> environmentVariables,
       ParameterField<List<TaskSelectorYaml>> delegateSelectors, String uuid,
       ParameterField<Boolean> includeInfraSelectors, OutputAlias outputAlias) {
     super(uuid, shell, source, executionTarget, onDelegate, delegateSelectors, includeInfraSelectors, outputAlias);
@@ -80,7 +78,7 @@ public class ShellScriptStepInfo
 
   @Override
   public SpecParameters getSpecParameters() {
-    return ShellScriptStepParametersV0.infoBuilder()
+    return ShellScriptStepParameters.infoBuilder()
         .executionTarget(getExecutionTarget())
         .onDelegate(getOnDelegate())
         .outputVariables(NGVariablesUtils.getMapOfVariablesWithoutSecretExpression(outputVariables))
@@ -102,10 +100,8 @@ public class ShellScriptStepInfo
   @Override
   public Map<String, ParameterField<String>> extractSecretRefs() {
     Map<String, ParameterField<String>> secretRefMap = new HashMap<>();
-    if (ParameterField.isNotNull(executionTarget)
-        && !NGExpressionUtils.matchesInputSetPattern(executionTarget.getExpressionValue())
-        && !ParameterField.isBlank(executionTarget.getValue().getConnectorRef())) {
-      secretRefMap.put("executionTarget.connectorRef", executionTarget.getValue().getConnectorRef());
+    if (executionTarget != null && executionTarget.getConnectorRef() != null) {
+      secretRefMap.put("executionTarget.connectorRef", executionTarget.getConnectorRef());
     }
 
     return secretRefMap;

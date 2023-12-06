@@ -9,20 +9,15 @@ package io.harness.licensing.mappers.modules;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.exception.InvalidRequestException;
 import io.harness.licensing.beans.modules.CIModuleLicenseDTO;
 import io.harness.licensing.entities.modules.CIModuleLicense;
-import io.harness.licensing.helpers.ModuleLicenseHelper;
 import io.harness.licensing.mappers.LicenseObjectMapper;
 
-import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
 @OwnedBy(HarnessTeam.GTM)
 @Singleton
 public class CILicenseObjectMapper implements LicenseObjectMapper<CIModuleLicense, CIModuleLicenseDTO> {
-  @Inject private ModuleLicenseHelper moduleLicenseHelper;
-
   @Override
   public CIModuleLicenseDTO toDTO(CIModuleLicense entity) {
     return CIModuleLicenseDTO.builder()
@@ -33,28 +28,11 @@ public class CILicenseObjectMapper implements LicenseObjectMapper<CIModuleLicens
   }
 
   @Override
-  public CIModuleLicense toEntity(CIModuleLicenseDTO ciModuleLicenseDTO) {
-    validateModuleLicenseDTO(ciModuleLicenseDTO);
-
+  public CIModuleLicense toEntity(CIModuleLicenseDTO dto) {
     return CIModuleLicense.builder()
-        .numberOfCommitters(ciModuleLicenseDTO.getNumberOfCommitters())
-        .cacheAllowance(ciModuleLicenseDTO.getCacheAllowance())
-        .hostingCredits(ciModuleLicenseDTO.getHostingCredits())
+        .numberOfCommitters(dto.getNumberOfCommitters())
+        .cacheAllowance(dto.getCacheAllowance())
+        .hostingCredits(dto.getHostingCredits())
         .build();
-  }
-
-  @Override
-  public void validateModuleLicenseDTO(CIModuleLicenseDTO ciModuleLicenseDTO) {
-    if (!moduleLicenseHelper.isDeveloperLicensingFeatureEnabled(ciModuleLicenseDTO.getAccountIdentifier())) {
-      if (ciModuleLicenseDTO.getDeveloperLicenseCount() != null) {
-        throw new InvalidRequestException("New Developer Licensing feature is not enabled for this account!");
-      }
-    }
-
-    if (ciModuleLicenseDTO.getDeveloperLicenseCount() != null && ciModuleLicenseDTO.getNumberOfCommitters() == null) {
-      // TODO: fetch mapping ratio from DeveloperMapping collection, once that work is complete
-      Integer mappingRatio = 1;
-      ciModuleLicenseDTO.setNumberOfCommitters(mappingRatio * ciModuleLicenseDTO.getDeveloperLicenseCount());
-    }
   }
 }

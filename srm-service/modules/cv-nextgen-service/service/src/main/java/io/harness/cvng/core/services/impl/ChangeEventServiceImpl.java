@@ -21,6 +21,7 @@ import static dev.morphia.aggregation.Accumulator.accumulator;
 import static dev.morphia.aggregation.Group.grouping;
 import static dev.morphia.aggregation.Group.id;
 
+import io.harness.beans.FeatureName;
 import io.harness.cvng.activity.entities.Activity;
 import io.harness.cvng.activity.entities.Activity.ActivityKeys;
 import io.harness.cvng.activity.entities.ActivityBucket;
@@ -255,12 +256,20 @@ public class ChangeEventServiceImpl implements ChangeEventService {
     Query<Activity> query = createQuery(startTime, endTime, projectParams, monitoredServiceIdentifiers,
         changeCategories, changeSourceTypes, isMonitoredServiceIdentifierScoped)
                                 .order(Sort.descending(ActivityKeys.eventTime));
-    long count = query.count();
-    query = setProjectionsToFetchNecessaryFields(query)
-                .offset(pageRequest.getPageIndex() * pageRequest.getPageSize())
-                .limit(pageRequest.getPageSize());
-    return PageUtils.offsetAndLimit(query.asList().stream().map(transformer::getDto).collect(Collectors.toList()),
-        count, pageRequest.getPageIndex(), pageRequest.getPageSize());
+    List<Activity> activities;
+    if (featureFlagService.isFeatureFlagEnabled(
+            projectParams.getAccountIdentifier(), FeatureName.SRM_OPTIMISE_CHANGE_EVENTS_API_RESPONSE.name())) {
+      long count = query.count();
+      query = setProjectionsToFetchNecessaryFields(query)
+                  .offset(pageRequest.getPageIndex() * pageRequest.getPageSize())
+                  .limit(pageRequest.getPageSize());
+      activities = query.asList();
+      return PageUtils.offsetAndLimit(activities.stream().map(transformer::getDto).collect(Collectors.toList()), count,
+          pageRequest.getPageIndex(), pageRequest.getPageSize());
+    }
+    activities = query.asList();
+    return PageUtils.offsetAndLimit(activities.stream().map(transformer::getDto).collect(Collectors.toList()),
+        pageRequest.getPageIndex(), pageRequest.getPageSize());
   }
 
   private static Query<Activity> setProjectionsToFetchNecessaryFields(Query<Activity> query) {

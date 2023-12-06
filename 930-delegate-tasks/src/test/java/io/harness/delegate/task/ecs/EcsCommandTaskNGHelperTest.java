@@ -893,8 +893,8 @@ public class EcsCommandTaskNGHelperTest extends CategoryTest {
     String ecsServiceDefinitionManifestContent = "grpArnKey";
     String taskDefinitionArn = "taskArn";
 
-    List<String> ecsScalableTargetManifestContentList = new ArrayList<>();
-    List<String> ecsScalingPolicyManifestContentList = new ArrayList<>();
+    List<String> ecsScalableTargetManifestContentList = Arrays.asList("content");
+    List<String> ecsScalingPolicyManifestContentList = Arrays.asList("content");
     EcsBlueGreenCreateServiceRequest ecsBlueGreenCreateServiceRequest =
         EcsBlueGreenCreateServiceRequest.builder().targetGroupArnKey(ecsServiceDefinitionManifestContent).build();
 
@@ -910,7 +910,7 @@ public class EcsCommandTaskNGHelperTest extends CategoryTest {
                           .clusterArn("arn")
                           .serviceArn("arn")
                           .events(ServiceEvent.builder().build())
-                          .serviceName(serviceName + "__1")
+                          .serviceName(serviceName)
                           .build();
     DescribeServicesResponse describeServicesResponse = DescribeServicesResponse.builder().services(service).build();
 
@@ -919,12 +919,12 @@ public class EcsCommandTaskNGHelperTest extends CategoryTest {
         .when(ecsV2Client)
         .describeServices(eq(awsInternalConfig), any(), eq(ecsInfraConfig.getRegion()));
     String stageServiceName =
-        ecsCommandTaskNGHelper.getNonBlueVersionServiceName(trim(service.serviceName() + DELIMITER), ecsInfraConfig)
-        + "__1";
+        ecsCommandTaskNGHelper.getNonBlueVersionServiceName(trim(service.serviceName() + DELIMITER), ecsInfraConfig);
 
     doReturn(Optional.of(describeServicesResponse.services().get(0)))
         .when(ecsCommandTaskNGHelper)
-        .describeService(any(), any(), any(), any());
+        .describeService(ecsInfraConfig.getCluster(), stageServiceName, ecsInfraConfig.getRegion(),
+            ecsInfraConfig.getAwsConnectorDTO());
 
     WaiterResponse<Object> describeServicesResponseWaiterResponse =
         DefaultWaiterResponse.builder().response(describeServicesResponse).attemptsExecuted(1).build();
@@ -963,9 +963,9 @@ public class EcsCommandTaskNGHelperTest extends CategoryTest {
     String serviceNameOutput = ecsCommandTaskNGHelper.createStageService(ecsServiceDefinitionManifestContent,
         ecsScalableTargetManifestContentList, ecsScalingPolicyManifestContentList, ecsInfraConfig, logCallback,
         timeoutInMillis, ecsBlueGreenCreateServiceRequest.getTargetGroupArnKey(), taskDefinitionArn, targetGroupArn,
-        false, false, false);
+        false, false);
 
-    assertThat(serviceNameOutput).isEqualTo(serviceName + "__1");
+    assertThat(serviceNameOutput).isEqualTo(createServiceRequestBuilder.build().serviceName());
     verify(ecsCommandTaskNGHelper)
         .ecsServiceInactiveStateCheck(logCallback, ecsInfraConfig.getAwsConnectorDTO(), ecsInfraConfig.getCluster(),
             service.serviceName(), ecsInfraConfig.getRegion(), (int) TimeUnit.MILLISECONDS.toMinutes(timeoutInMillis));

@@ -101,7 +101,7 @@ public class VersionField implements Field {
     return Operator.UNKNOWN;
   }
 
-  public static List<Integer> getVersion(String version) {
+  List<Integer> getVersion(String version) {
     if (EmptyPredicate.isEmpty(version)) {
       return Arrays.asList(-1, -1, -1);
     }
@@ -120,7 +120,7 @@ public class VersionField implements Field {
     }
   }
 
-  private static Integer parseVersion(String version) {
+  private Integer parseVersion(String version) {
     try {
       return Integer.parseInt(version);
     } catch (NumberFormatException ex) {

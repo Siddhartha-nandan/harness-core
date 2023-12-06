@@ -27,7 +27,7 @@ public class OrgScope extends ResourceScope {
   @NotEmpty String orgIdentifier;
 
   public OrgScope(String accountIdentifier, String orgIdentifier) {
-    super("org", accountIdentifier);
+    super("org");
     this.accountIdentifier = accountIdentifier;
     this.orgIdentifier = orgIdentifier;
   }

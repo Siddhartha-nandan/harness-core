@@ -41,6 +41,4 @@ public interface ProjectRepositoryCustom {
   <T> AggregationResults<T> aggregate(Aggregation aggregation, Class<T> classToFillResultIn);
 
   long count(Criteria criteria);
-
-  Page<Project> findAllWithCollation(Criteria criteria, Pageable pageable);
 }

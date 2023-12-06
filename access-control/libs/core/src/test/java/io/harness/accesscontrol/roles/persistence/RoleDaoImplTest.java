@@ -19,7 +19,10 @@ import static junit.framework.TestCase.assertNull;
 import static junit.framework.TestCase.assertTrue;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -70,7 +73,7 @@ public class RoleDaoImplTest extends AccessControlCoreTestBase {
   public void setup() {
     roleRepository = mock(RoleRepository.class);
     scopeService = mock(ScopeService.class);
-    roleDao = new RoleDaoImpl(roleRepository, scopeService);
+    roleDao = spy(new RoleDaoImpl(roleRepository, scopeService));
   }
 
   private Role getRole(int count) {
@@ -354,10 +357,11 @@ public class RoleDaoImplTest extends AccessControlCoreTestBase {
     ArgumentCaptor<Criteria> criteriaArgumentCaptor = ArgumentCaptor.forClass(Criteria.class);
     ArgumentCaptor<Update> updateArgumentCaptor = ArgumentCaptor.forClass(Update.class);
     when(roleRepository.updateMulti(any(), any())).thenReturn(UpdateResult.acknowledged(17L, 17L, null));
+    doReturn(new Criteria()).when(roleDao).createCriteriaFromFilter(any(), eq(false));
 
-    roleDao.addPermissionToRoles(
-        permissionIdentifier, RoleFilter.builder().managedFilter(ManagedFilter.NO_FILTER).build());
+    roleDao.addPermissionToRoles(permissionIdentifier, RoleFilter.builder().build());
 
+    verify(roleDao, times(1)).createCriteriaFromFilter(any(), eq(false));
     verify(roleRepository, times(1)).updateMulti(criteriaArgumentCaptor.capture(), updateArgumentCaptor.capture());
     Criteria criteria = criteriaArgumentCaptor.getValue();
     Document criteriaDocument = criteria.getCriteriaObject();
@@ -380,16 +384,15 @@ public class RoleDaoImplTest extends AccessControlCoreTestBase {
     ArgumentCaptor<Criteria> criteriaArgumentCaptor = ArgumentCaptor.forClass(Criteria.class);
     ArgumentCaptor<Update> updateArgumentCaptor = ArgumentCaptor.forClass(Update.class);
     when(roleRepository.updateMulti(any(), any())).thenReturn(UpdateResult.acknowledged(17L, 17L, null));
+    doReturn(new Criteria()).when(roleDao).createCriteriaFromFilter(any(), eq(false));
 
-    roleDao.removePermissionFromRoles(
-        permissionIdentifier, RoleFilter.builder().managedFilter(ManagedFilter.NO_FILTER).build());
+    roleDao.removePermissionFromRoles(permissionIdentifier, RoleFilter.builder().build());
 
+    verify(roleDao, times(1)).createCriteriaFromFilter(any(), eq(false));
     verify(roleRepository, times(1)).updateMulti(criteriaArgumentCaptor.capture(), updateArgumentCaptor.capture());
     Criteria criteria = criteriaArgumentCaptor.getValue();
     Document criteriaDocument = criteria.getCriteriaObject();
     assertEquals(permissionIdentifier, criteriaDocument.get(RoleDBOKeys.permissions));
-    Document scopeDocument = (Document) criteriaDocument.get(RoleDBOKeys.scopeIdentifier);
-    assertNull(scopeDocument);
     Update update = updateArgumentCaptor.getValue();
     Document updateDocument = update.getUpdateObject();
     Document pullPermissionDocument = (Document) updateDocument.get("$pull");

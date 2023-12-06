@@ -15,6 +15,7 @@ import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.exception.WingsException.USER_SRE;
 import static io.harness.ngtriggers.Constants.MANDATE_CUSTOM_WEBHOOK_AUTHORIZATION;
 import static io.harness.ngtriggers.Constants.MANDATE_CUSTOM_WEBHOOK_TRUE_VALUE;
+import static io.harness.ngtriggers.Constants.MAX_MULTI_ARTIFACT_TRIGGER_SOURCES;
 import static io.harness.ngtriggers.beans.source.NGTriggerType.ARTIFACT;
 import static io.harness.ngtriggers.beans.source.NGTriggerType.MANIFEST;
 import static io.harness.ngtriggers.beans.source.NGTriggerType.MULTI_REGION_ARTIFACT;
@@ -94,7 +95,6 @@ import io.harness.ngtriggers.mapper.TriggerFilterHelper;
 import io.harness.ngtriggers.service.NGTriggerService;
 import io.harness.ngtriggers.service.NGTriggerWebhookRegistrationService;
 import io.harness.ngtriggers.service.NGTriggerYamlSchemaService;
-import io.harness.ngtriggers.utils.MaxMultiArtifactTriggerSourcesProvider;
 import io.harness.ngtriggers.utils.PollingSubscriptionHelper;
 import io.harness.ngtriggers.utils.TriggerReferenceHelper;
 import io.harness.ngtriggers.validations.TriggerValidationHandler;
@@ -106,7 +106,6 @@ import io.harness.pms.merger.fqn.FQN;
 import io.harness.pms.merger.helpers.YamlSubMapExtractor;
 import io.harness.pms.pipeline.PMSPipelineResponseDTO;
 import io.harness.pms.rbac.PipelineRbacPermissions;
-import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.pms.yaml.YamlUtils;
@@ -195,7 +194,6 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   private final NGTriggerYamlSchemaService ngTriggerYamlSchemaService;
   private final TriggerReferenceHelper triggerReferenceHelper;
   private final TriggerSetupUsageHelper triggerSetupUsageHelper;
-  private final MaxMultiArtifactTriggerSourcesProvider maxMultiArtifactTriggerSourcesProvider;
   private static final String TRIGGER = "trigger";
   private static final String INPUT_YAML = "inputYaml";
 
@@ -653,8 +651,7 @@ public class NGTriggerServiceImpl implements NGTriggerService {
     }
     return ngTriggerRepository.updateManyTriggerPollingSubscriptionStatusBySignatures(accountId,
         statusUpdate.getSignatures(), statusUpdate.isSuccess(), statusUpdate.getErrorMessage(),
-        statusUpdate.getLastCollectedVersions(), statusUpdate.getLastCollectedTime(),
-        statusUpdate.getErrorStatusValidUntil());
+        statusUpdate.getLastCollectedVersions(), statusUpdate.getLastCollectedTime());
   }
 
   @Override
@@ -1177,9 +1174,9 @@ public class NGTriggerServiceImpl implements NGTriggerService {
           break;
         }
       }
-      if (triggerConfig.getSources().size() > maxMultiArtifactTriggerSourcesProvider.get()) {
+      if (triggerConfig.getSources().size() > MAX_MULTI_ARTIFACT_TRIGGER_SOURCES) {
         msg.append("The maximum number of sources for Multi-Artifact trigger is ")
-            .append(maxMultiArtifactTriggerSourcesProvider.get())
+            .append(MAX_MULTI_ARTIFACT_TRIGGER_SOURCES)
             .append(".\n");
         validationFailed = true;
       }
@@ -1238,15 +1235,9 @@ public class NGTriggerServiceImpl implements NGTriggerService {
 
   public NGTriggerEntity validateTrigger(NGTriggerEntity ngTriggerEntity) {
     try {
-      ValidationResult validationResult;
-      if (HarnessYamlVersion.V0.equals(ngTriggerEntity.getHarnessVersion())) {
-        validationResult = triggerValidationHandler.applyValidations(
-            ngTriggerElementMapper.toTriggerDetails(ngTriggerEntity.getAccountId(), ngTriggerEntity.getOrgIdentifier(),
-                ngTriggerEntity.getProjectIdentifier(), ngTriggerEntity.getYaml(), ngTriggerEntity.getWithServiceV2()));
-      } else {
-        validationResult =
-            triggerValidationHandler.applyValidations(ngTriggerElementMapper.toTriggerDetails(ngTriggerEntity));
-      }
+      ValidationResult validationResult = triggerValidationHandler.applyValidations(
+          ngTriggerElementMapper.toTriggerDetails(ngTriggerEntity.getAccountId(), ngTriggerEntity.getOrgIdentifier(),
+              ngTriggerEntity.getProjectIdentifier(), ngTriggerEntity.getYaml(), ngTriggerEntity.getWithServiceV2()));
       if (!validationResult.isSuccess()) {
         ngTriggerEntity.setEnabled(false);
       }
@@ -1306,17 +1297,6 @@ public class NGTriggerServiceImpl implements NGTriggerService {
     }
 
     return ngTriggerEntity;
-  }
-
-  @Override
-  public TriggerDetails fetchTriggerEntityV1(String accountId, String orgId, String projectId, String pipelineId,
-      String triggerId, NGTriggerConfigV2 config, NGTriggerEntity entity, boolean withServiceV2) {
-    Optional<NGTriggerEntity> existingEntity = get(accountId, orgId, projectId, pipelineId, triggerId, false);
-    if (existingEntity.isPresent()) {
-      ngTriggerElementMapper.copyEntityFieldsOutsideOfYml(existingEntity.get(), entity);
-    }
-
-    return TriggerDetails.builder().ngTriggerConfigV2(config).ngTriggerEntity(entity).build();
   }
 
   @Override

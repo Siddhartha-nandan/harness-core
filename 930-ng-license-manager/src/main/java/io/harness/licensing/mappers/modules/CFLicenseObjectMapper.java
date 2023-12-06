@@ -9,20 +9,15 @@ package io.harness.licensing.mappers.modules;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.exception.InvalidRequestException;
 import io.harness.licensing.beans.modules.CFModuleLicenseDTO;
 import io.harness.licensing.entities.modules.CFModuleLicense;
-import io.harness.licensing.helpers.ModuleLicenseHelper;
 import io.harness.licensing.mappers.LicenseObjectMapper;
 
-import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
 @OwnedBy(HarnessTeam.GTM)
 @Singleton
 public class CFLicenseObjectMapper implements LicenseObjectMapper<CFModuleLicense, CFModuleLicenseDTO> {
-  @Inject private ModuleLicenseHelper moduleLicenseHelper;
-
   @Override
   public CFModuleLicenseDTO toDTO(CFModuleLicense entity) {
     return CFModuleLicenseDTO.builder()
@@ -32,29 +27,10 @@ public class CFLicenseObjectMapper implements LicenseObjectMapper<CFModuleLicens
   }
 
   @Override
-  public CFModuleLicense toEntity(CFModuleLicenseDTO cfModuleLicenseDTO) {
-    validateModuleLicenseDTO(cfModuleLicenseDTO);
-
+  public CFModuleLicense toEntity(CFModuleLicenseDTO dto) {
     return CFModuleLicense.builder()
-        .numberOfClientMAUs(cfModuleLicenseDTO.getNumberOfClientMAUs())
-        .numberOfUsers(cfModuleLicenseDTO.getNumberOfUsers())
+        .numberOfClientMAUs(dto.getNumberOfClientMAUs())
+        .numberOfUsers(dto.getNumberOfUsers())
         .build();
-  }
-
-  @Override
-  public void validateModuleLicenseDTO(CFModuleLicenseDTO cfModuleLicenseDTO) {
-    if (!moduleLicenseHelper.isDeveloperLicensingFeatureEnabled(cfModuleLicenseDTO.getAccountIdentifier())) {
-      if (cfModuleLicenseDTO.getDeveloperLicenseCount() != null) {
-        throw new InvalidRequestException("New Developer Licensing feature is not enabled for this account!");
-      }
-    }
-
-    if (cfModuleLicenseDTO.getDeveloperLicenseCount() != null
-        && (cfModuleLicenseDTO.getNumberOfUsers() == null && cfModuleLicenseDTO.getNumberOfClientMAUs() == null)) {
-      // TODO: fetch mapping ratio from DeveloperMapping collection, once that work is complete
-      Integer mappingRatio = 1;
-      cfModuleLicenseDTO.setNumberOfUsers(mappingRatio * cfModuleLicenseDTO.getDeveloperLicenseCount());
-      cfModuleLicenseDTO.setNumberOfClientMAUs((long) mappingRatio * cfModuleLicenseDTO.getDeveloperLicenseCount());
-    }
   }
 }

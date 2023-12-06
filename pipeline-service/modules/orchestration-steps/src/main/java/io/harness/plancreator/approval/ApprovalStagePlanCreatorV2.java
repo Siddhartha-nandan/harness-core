@@ -13,7 +13,6 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.plancreator.stages.AbstractPmsStagePlanCreator;
 import io.harness.plancreator.stages.PmsAbstractStageNode;
 import io.harness.plancreator.steps.common.SpecParameters;
-import io.harness.plancreator.strategy.StrategyUtils;
 import io.harness.pms.contracts.plan.Dependency;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.sdk.core.plan.PlanNode;
@@ -92,11 +91,6 @@ public class ApprovalStagePlanCreatorV2 extends AbstractPmsStagePlanCreator<PmsA
                 DependenciesUtils.toDependenciesProto(dependenciesNodeMap)
                     .toBuilder()
                     .putDependencyMetadata(field.getUuid(), Dependency.newBuilder().putAllMetadata(metadataMap).build())
-                    .putDependencyMetadata(executionField.getNode().getUuid(),
-                        Dependency.newBuilder()
-                            .setParentInfo(generateParentInfo(ctx, field, getFinalPlanNodeId(ctx, field),
-                                StrategyUtils.isWrappedUnderStrategy(ctx.getCurrentField())))
-                            .build())
                     .build())
             .build());
     return planCreationResponseMap;

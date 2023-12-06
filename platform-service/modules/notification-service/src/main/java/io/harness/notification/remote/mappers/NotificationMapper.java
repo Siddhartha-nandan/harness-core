@@ -45,10 +45,10 @@ public class NotificationMapper {
   }
 
   public static Notification toNotification(
-      NotificationRule notificationRule, NotificationChannel notificationChannel, String notificationRequestId) {
+      NotificationRule notificationRule, NotificationChannel notificationChannel) {
     try {
       return Notification.builder()
-          .id(notificationRequestId)
+          .id(notificationRule.getUuid())
           .accountIdentifier(notificationRule.getAccountIdentifier())
           .channel(notificationChannel)
           .build();
@@ -62,13 +62,12 @@ public class NotificationMapper {
       NotificationRule notificationRule, NotificationChannel notificationChannel, Map<String, String> templateData) {
     NotificationRequest.Builder notificationRequestBuilder =
         NotificationRequest.newBuilder().setAccountId(notificationRule.getAccountIdentifier());
-    String channelType = notificationChannel.getNotificationChannelType().getDisplayName();
     switch (notificationChannel.getNotificationChannelType()) {
       case EMAIL:
         EmailChannel emailChannel = (EmailChannel) notificationChannel.getChannel();
         emailChannel.setTemplateData(templateData);
         String templateId = templateData != null && templateData.get(TEMPLATE_IDENTIFIER) != null
-            ? String.format("%s_%s", templateData.get(TEMPLATE_IDENTIFIER), channelType)
+            ? templateData.get(TEMPLATE_IDENTIFIER)
             : "templateId";
         emailChannel.setTemplateData(templateData);
         emailChannel.setTemplateId(templateId);
@@ -76,14 +75,13 @@ public class NotificationMapper {
         break;
       case SLACK:
         SlackChannel slackChannel = (SlackChannel) notificationChannel.getChannel();
-        slackChannel.setTemplateData(templateData);
         notificationRequestBuilder.setSlack((NotificationRequest.Slack) slackChannel.toObjectofProtoSchema());
         break;
       case PAGERDUTY:
         PagerDutyChannel pagerDutyChannel = (PagerDutyChannel) notificationChannel.getChannel();
         pagerDutyChannel.setTemplateData(templateData);
         String pagerTemplateId = templateData != null && templateData.get(TEMPLATE_IDENTIFIER) != null
-            ? String.format("%s_%s", templateData.get(TEMPLATE_IDENTIFIER), channelType)
+            ? templateData.get(TEMPLATE_IDENTIFIER)
             : "templateId";
         pagerDutyChannel.setTemplateId(pagerTemplateId);
         notificationRequestBuilder.setPagerDuty(
@@ -93,7 +91,7 @@ public class NotificationMapper {
         MicrosoftTeamsChannel msTeamChannel = (MicrosoftTeamsChannel) notificationChannel.getChannel();
         msTeamChannel.setTemplateData(templateData);
         String msTeamTemplateId = templateData != null && templateData.get(TEMPLATE_IDENTIFIER) != null
-            ? String.format("%s_%s", templateData.get(TEMPLATE_IDENTIFIER), channelType)
+            ? templateData.get(TEMPLATE_IDENTIFIER)
             : "templateId";
         msTeamChannel.setTemplateId(msTeamTemplateId);
         notificationRequestBuilder.setMsTeam((NotificationRequest.MSTeam) msTeamChannel.toObjectofProtoSchema());

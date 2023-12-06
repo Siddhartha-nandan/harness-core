@@ -8,10 +8,7 @@
 package io.harness.notification.channeldetails;
 
 import static io.harness.annotations.dev.HarnessTeam.PL;
-import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
-
-import static java.util.Collections.emptyMap;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.data.structure.CollectionUtils;
@@ -34,47 +31,26 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode(callSuper = true)
 public class EmailChannel extends NotificationChannel {
   List<String> recipients;
-  List<String> ccEmailIds;
-  String subject;
-  String body;
 
   @Builder
   public EmailChannel(String accountId, List<NotificationRequest.UserGroup> userGroups, String templateId,
-      Map<String, String> templateData, Team team, List<String> recipients, List<String> ccEmailIds, String subject,
-      String body) {
+      Map<String, String> templateData, Team team, List<String> recipients) {
     super(accountId, userGroups, templateId, templateData, team);
     this.recipients = recipients;
-    this.ccEmailIds = ccEmailIds;
-    this.subject = subject;
-    this.body = body;
   }
 
   @Override
   public NotificationRequest buildNotificationRequest() {
     NotificationRequest.Builder builder = NotificationRequest.newBuilder();
     String notificationId = generateUuid();
-    return builder.setId(notificationId).setAccountId(accountId).setTeam(team).setEmail(buildEmail(builder)).build();
-  }
-
-  private NotificationRequest.Email.Builder buildEmail(NotificationRequest.Builder builder) {
-    NotificationRequest.Email.Builder emailBuilder =
-        builder.getEmailBuilder()
-            .addAllEmailIds(recipients)
-            .putAllTemplateData(isNotEmpty(templateData) ? templateData : emptyMap())
-            .addAllUserGroup(CollectionUtils.emptyIfNull(userGroups));
-
-    if (isNotEmpty(ccEmailIds)) {
-      emailBuilder.addAllCcEmailIds(ccEmailIds);
-    }
-    if (isNotEmpty(subject)) {
-      emailBuilder.setSubject(subject);
-    }
-    if (isNotEmpty(body)) {
-      emailBuilder.setBody(body);
-    }
-    if (isNotEmpty(templateId)) {
-      emailBuilder.setTemplateId(templateId);
-    }
-    return emailBuilder;
+    return builder.setId(notificationId)
+        .setAccountId(accountId)
+        .setTeam(team)
+        .setEmail(builder.getEmailBuilder()
+                      .addAllEmailIds(recipients)
+                      .setTemplateId(templateId)
+                      .putAllTemplateData(templateData)
+                      .addAllUserGroup(CollectionUtils.emptyIfNull(userGroups)))
+        .build();
   }
 }

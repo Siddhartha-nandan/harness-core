@@ -179,7 +179,6 @@ public class DelegateMetricsPublisher implements MetricsPublisher {
     }
   }
 
-  @SuppressWarnings("ForbidCertainMethodCheck")
   private void recordDelegateTasks() {
     Query<DelegateTask> query = persistence.createAnalyticsQuery(DelegateTask.class);
 

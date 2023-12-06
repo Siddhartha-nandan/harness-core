@@ -19,9 +19,6 @@ import io.harness.beans.FeatureName;
 import io.harness.beans.plugin.compatible.PluginCompatibleStep;
 import io.harness.beans.steps.CIRegistry;
 import io.harness.beans.steps.CIStepInfoType;
-import io.harness.beans.steps.stepinfo.GitCloneStepInfo;
-import io.harness.beans.steps.stepinfo.IACMApprovalInfo;
-import io.harness.beans.steps.stepinfo.IACMTerraformPluginInfo;
 import io.harness.beans.steps.stepinfo.SecurityStepInfo;
 import io.harness.beans.steps.stepinfo.security.shared.STOGenericStepInfo;
 import io.harness.beans.sweepingoutputs.StageInfraDetails;
@@ -33,7 +30,6 @@ import io.harness.ci.config.StepImageConfig;
 import io.harness.ci.execution.execution.CIExecutionConfigService;
 import io.harness.ci.ff.CIFeatureFlagService;
 import io.harness.common.NGExpressionUtils;
-import io.harness.common.ParameterFieldHelper;
 import io.harness.delegate.beans.connector.ConnectorType;
 import io.harness.exception.ngexception.CIStageExecutionException;
 import io.harness.pms.contracts.ambiance.Ambiance;
@@ -79,9 +75,6 @@ public class CIStepInfoUtils {
     switch (step.getNonYamlInfo().getStepInfoType()) {
       case SECURITY:
         return ((SecurityStepInfo) step).getPrivileged();
-      case GIT_CLONE:
-        return ParameterField.createValueField(
-            ParameterFieldHelper.getBooleanParameterFieldValue(((GitCloneStepInfo) step).getPrivileged()));
       default:
         return null;
     }
@@ -213,24 +206,6 @@ public class CIStepInfoUtils {
     StepImageConfig defaultImageConfig = ciExecutionConfigService.getPluginVersionForK8(stepInfoType, accountId);
     if (stepInfoType == CIStepInfoType.SECURITY) {
       return getSecurityStepImageConfig(step, ciExecutionConfigService, defaultImageConfig);
-    } else if (stepInfoType == CIStepInfoType.IACM_TERRAFORM_PLUGIN) {
-      if (((IACMTerraformPluginInfo) step).getImage().getValue() != null
-          && isNotEmpty(((IACMTerraformPluginInfo) step).getImage().getValue())) {
-        return StepImageConfig.builder()
-            .image(((IACMTerraformPluginInfo) step).getImage().getValue())
-            .entrypoint(defaultImageConfig.getEntrypoint())
-            .windowsEntrypoint(defaultImageConfig.getWindowsEntrypoint())
-            .build();
-      }
-    } else if (stepInfoType == CIStepInfoType.IACM_APPROVAL) {
-      if (((IACMApprovalInfo) step).getImage().getValue() != null
-          && isNotEmpty(((IACMApprovalInfo) step).getImage().getValue())) {
-        return StepImageConfig.builder()
-            .image(((IACMApprovalInfo) step).getImage().getValue())
-            .entrypoint(defaultImageConfig.getEntrypoint())
-            .windowsEntrypoint(defaultImageConfig.getWindowsEntrypoint())
-            .build();
-      }
     }
     return defaultImageConfig;
   }

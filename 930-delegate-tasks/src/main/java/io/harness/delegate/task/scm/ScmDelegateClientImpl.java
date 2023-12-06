@@ -48,7 +48,6 @@ public class ScmDelegateClientImpl implements ScmDelegateClient {
       while (retryCount <= 20) {
         try {
           channel = scmUnixManager.getChannel();
-          Thread.sleep(100);
           return functor.apply(channel);
         } catch (StatusRuntimeException e) {
           log.error("Error while communicating with the scm service. Retry count is {}", retryCount, e);
@@ -69,7 +68,7 @@ public class ScmDelegateClientImpl implements ScmDelegateClient {
           if (++retryCount > 20) {
             throw new UnexpectedException("Faced Internal Server Error. Please contact Harness Support Team", ex);
           }
-          Thread.sleep(500);
+          Thread.sleep(100);
         } catch (SCMRuntimeException ex) {
           if (++retryCount > 0) {
             throw ex;

@@ -45,7 +45,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 @Slf4j
@@ -59,7 +58,7 @@ public class ACLGeneratorServiceImpl implements ACLGeneratorService {
   private final Map<Pair<ScopeLevel, Boolean>, Set<String>> implicitPermissionsByScope;
   private final ACLRepository aclRepository;
   private final InMemoryPermissionRepository inMemoryPermissionRepository;
-  private final int batchSizeForACLCreation;
+  private int batchSizeForACLCreation;
 
   public ACLGeneratorServiceImpl(RoleService roleService, UserGroupService userGroupService,
       ResourceGroupService resourceGroupService, ScopeService scopeService,
@@ -119,26 +118,21 @@ public class ACLGeneratorServiceImpl implements ACLGeneratorService {
                      -> addedUsers.contains(acl.getPrincipalIdentifier()) && USER.name().equals(acl.getPrincipalType()))
                  .collect(Collectors.toList());
     }
-    return createImplicitACLs(acls);
+    return aclRepository.insertAllIgnoringDuplicates(acls);
   }
 
   @Override
   public long createImplicitACLsFromPermissions(RoleAssignmentDBO roleAssignment, Set<String> permissions) {
     Set<String> principals = getPrincipalsFromRoleAssignment(roleAssignment);
     List<ACL> acls = getImplicitACLsForRoleAssignment(roleAssignment, principals, permissions);
-    return createImplicitACLs(acls);
+    return aclRepository.insertAllIgnoringDuplicates(acls);
   }
 
   @Override
   public long createImplicitACLs(RoleAssignmentDBO roleAssignment, Set<String> addedUsers) {
     Set<String> permissions = getPermissionsFromRole(roleAssignment);
     List<ACL> acls = getImplicitACLsForRoleAssignment(roleAssignment, addedUsers, permissions);
-    return createImplicitACLs(acls);
-  }
-
-  private long createImplicitACLs(List<ACL> acls) {
-    List<List<ACL>> listOfSublists = ListUtils.partition(acls, batchSizeForACLCreation);
-    return listOfSublists.stream().mapToLong(aclRepository::insertAllIgnoringDuplicates).sum();
+    return aclRepository.insertAllIgnoringDuplicates(acls);
   }
 
   @Override

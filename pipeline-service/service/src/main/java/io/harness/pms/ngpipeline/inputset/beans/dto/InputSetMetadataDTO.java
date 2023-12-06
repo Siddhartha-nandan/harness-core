@@ -23,5 +23,4 @@ public class InputSetMetadataDTO {
   List<JsonNode> inputSetJsonNodeList;
   Set<String> inputSetVersions;
   JsonNode pipelineTemplate;
-  String pipelineVersion;
 }

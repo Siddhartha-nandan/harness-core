@@ -10,13 +10,8 @@ import static io.harness.accesscontrol.common.AccessControlTestUtils.getRandomSt
 import static io.harness.accesscontrol.principals.PrincipalType.USER;
 import static io.harness.accesscontrol.resources.resourcegroups.ResourceGroupTestUtils.buildResourceGroup;
 import static io.harness.accesscontrol.roles.RoleTestUtils.buildRoleRBO;
-import static io.harness.aggregator.ACLEventProcessingConstants.UPDATE_ACTION;
-import static io.harness.rule.OwnerRule.ASHISHSANODIA;
 import static io.harness.rule.OwnerRule.JIMIT_GANDHI;
 
-import static java.util.Collections.emptySet;
-import static java.util.Optional.of;
-import static java.util.Optional.ofNullable;
 import static junit.framework.TestCase.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -37,10 +32,7 @@ import io.harness.accesscontrol.roleassignments.persistence.repositories.RoleAss
 import io.harness.accesscontrol.roles.RoleService;
 import io.harness.accesscontrol.roles.persistence.RoleDBO;
 import io.harness.accesscontrol.roles.persistence.RoleDBOMapper;
-import io.harness.accesscontrol.scopes.TestScopeLevels;
-import io.harness.accesscontrol.scopes.core.Scope;
 import io.harness.accesscontrol.scopes.core.ScopeService;
-import io.harness.aggregator.AccessControlAdminService;
 import io.harness.aggregator.AggregatorTestBase;
 import io.harness.aggregator.models.RoleChangeEventData;
 import io.harness.category.element.UnitTests;
@@ -51,9 +43,11 @@ import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import io.serializer.HObjectMapper;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import org.junit.Before;
@@ -66,7 +60,6 @@ public class RoleChangeConsumerTest extends AggregatorTestBase {
   @Inject @Named(ACL.PRIMARY_COLLECTION) private ACLRepository aclRepository;
   private RoleAssignmentRepository roleAssignmentRepository;
   private ACLGeneratorService aclGeneratorService;
-  private AccessControlAdminService accessControlAdminService;
   private RoleService roleService;
   private ScopeService scopeService;
   private String scopeIdentifier;
@@ -85,23 +78,20 @@ public class RoleChangeConsumerTest extends AggregatorTestBase {
     resourceGroupService = mock(ResourceGroupService.class);
     userGroupService = mock(UserGroupService.class);
     scopeService = mock(ScopeService.class);
-    accessControlAdminService = mock(AccessControlAdminService.class);
     inMemoryPermissionRepository = mock(InMemoryPermissionRepository.class);
     when(inMemoryPermissionRepository.isPermissionCompatibleWithResourceSelector(any(), any())).thenReturn(true);
     aclRepository.cleanCollection();
     scopeIdentifier = getRandomString(20);
     role = buildRoleRBO(scopeIdentifier, ThreadLocalRandom.current().nextInt(1, 4));
     when(roleService.get(role.getIdentifier(), role.getScopeIdentifier(), ManagedFilter.NO_FILTER))
-        .thenReturn(of(RoleDBOMapper.fromDBO(role)));
+        .thenReturn(Optional.of(RoleDBOMapper.fromDBO(role)));
     resourceGroup = buildResourceGroup(scopeIdentifier);
     aclGeneratorService = new ACLGeneratorServiceImpl(roleService, userGroupService, resourceGroupService, scopeService,
         new HashMap<>(), aclRepository, inMemoryPermissionRepository, batchSizeForACLCreation);
-    roleChangeConsumer =
-        new RoleChangeConsumer(aclRepository, roleAssignmentRepository, aclGeneratorService, accessControlAdminService);
+    roleChangeConsumer = new RoleChangeConsumer(aclRepository, roleAssignmentRepository, aclGeneratorService);
     when(resourceGroupService.get(
              resourceGroup.getIdentifier(), resourceGroup.getScopeIdentifier(), ManagedFilter.NO_FILTER))
-        .thenReturn(of(resourceGroup));
-    when(accessControlAdminService.isBlocked(any())).thenReturn(false);
+        .thenReturn(Optional.of(resourceGroup));
   }
 
   private List<RoleAssignmentDBO> createACLsForRoleAssignments(int count, RoleDBO roleDBO) {
@@ -113,9 +103,9 @@ public class RoleChangeConsumerTest extends AggregatorTestBase {
           Principal.builder().principalType(USER).principalIdentifier(getRandomString(20)).build());
       when(roleAssignmentRepository.findByIdentifierAndScopeIdentifier(
                roleAssignmentDBO.getIdentifier(), roleAssignmentDBO.getScopeIdentifier()))
-          .thenReturn(of(roleAssignmentDBO));
+          .thenReturn(Optional.of(roleAssignmentDBO));
       when(roleService.get(roleDBO.getIdentifier(), roleDBO.getScopeIdentifier(), ManagedFilter.NO_FILTER))
-          .thenReturn(of(RoleDBOMapper.fromDBO(roleDBO)));
+          .thenReturn(Optional.of(RoleDBOMapper.fromDBO(roleDBO)));
       aclGeneratorService.createACLsForRoleAssignment(roleAssignmentDBO);
       roleAssignmentDBOS.add(roleAssignmentDBO);
       remaining--;
@@ -148,7 +138,7 @@ public class RoleChangeConsumerTest extends AggregatorTestBase {
                                                   .permissionsAdded(permissionsAdded)
                                                   .permissionsRemoved(permissionsRemoved)
                                                   .build();
-    roleChangeConsumer.consumeEvent(UPDATE_ACTION, null, roleChangeEventData);
+    roleChangeConsumer.consumeUpdateEvent(null, roleChangeEventData);
     verifyACLs(roleAssignments, updatedRole.getPermissions().size(), 1, resourceGroup.getResourceSelectors().size());
   }
 
@@ -171,7 +161,7 @@ public class RoleChangeConsumerTest extends AggregatorTestBase {
 
     updatedRole.getPermissions().addAll(permissionsAdded);
 
-    roleChangeConsumer.consumeEvent(UPDATE_ACTION, null, roleChangeEventData);
+    roleChangeConsumer.consumeUpdateEvent(null, roleChangeEventData);
     verifyACLs(roleAssignments, updatedRole.getPermissions().size(), 1, resourceGroup.getResourceSelectors().size());
   }
 
@@ -191,41 +181,11 @@ public class RoleChangeConsumerTest extends AggregatorTestBase {
     RoleChangeEventData roleChangeEventData = RoleChangeEventData.builder()
                                                   .updatedRole(RoleDBOMapper.fromDBO(updatedRole))
                                                   .permissionsRemoved(permissionsRemoved)
-                                                  .permissionsAdded(emptySet())
+                                                  .permissionsAdded(Collections.emptySet())
                                                   .build();
 
-    roleChangeConsumer.consumeEvent(UPDATE_ACTION, null, roleChangeEventData);
+    roleChangeConsumer.consumeUpdateEvent(null, roleChangeEventData);
     verifyACLs(roleAssignments, updatedRole.getPermissions().size(), 0, 0);
-  }
-
-  @Test
-  @Owner(developers = ASHISHSANODIA)
-  @Category(UnitTests.class)
-  public void roleUpdateShouldNotProcessACLIfAccountIsBlocked() {
-    int numRoleAssignments = ThreadLocalRandom.current().nextInt(1, 10);
-    List<RoleAssignmentDBO> roleAssignments = createACLsForRoleAssignments(numRoleAssignments, role);
-    verifyACLs(roleAssignments, role.getPermissions().size(), 1, resourceGroup.getResourceSelectors().size());
-
-    RoleDBO updatedRole = (RoleDBO) HObjectMapper.clone(role);
-
-    String permissionAdded = getRandomString(10);
-    Set<String> permissionsAdded = new HashSet<>(List.of(permissionAdded));
-    updatedRole.getPermissions().add(permissionAdded);
-
-    Scope scope =
-        Scope.builder().level(TestScopeLevels.TEST_SCOPE).parentScope(null).instanceId(getRandomString(10)).build();
-
-    RoleChangeEventData roleChangeEventData = RoleChangeEventData.builder()
-                                                  .scope(ofNullable(scope))
-                                                  .updatedRole(RoleDBOMapper.fromDBO(updatedRole))
-                                                  .permissionsAdded(permissionsAdded)
-                                                  .permissionsRemoved(emptySet())
-                                                  .build();
-    when(accessControlAdminService.isBlocked(any())).thenReturn(true);
-
-    roleChangeConsumer.consumeEvent(UPDATE_ACTION, null, roleChangeEventData);
-
-    verifyACLs(roleAssignments, role.getPermissions().size(), 1, resourceGroup.getResourceSelectors().size());
   }
 
   private void verifyACLs(List<RoleAssignmentDBO> roleAssignments, int distinctPermissions, int distinctPrincipals,

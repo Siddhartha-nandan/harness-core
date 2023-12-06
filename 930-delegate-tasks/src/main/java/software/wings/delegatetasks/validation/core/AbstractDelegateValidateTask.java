@@ -6,8 +6,6 @@
  */
 
 package software.wings.delegatetasks.validation.core;
-
-import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.logging.AutoLogContext.OverrideBehavior.OVERRIDE_ERROR;
 import static io.harness.network.Http.connectableHttpUrl;
 
@@ -66,9 +64,6 @@ public abstract class AbstractDelegateValidateTask implements DelegateValidateTa
         long startTime = System.currentTimeMillis();
         results = validate();
         long duration = System.currentTimeMillis() - startTime;
-        if (isEmpty(results)) {
-          return emptyList();
-        }
         for (DelegateConnectionResultDetail result : results) {
           result.setAccountId(accountId);
           result.setDelegateId(delegateId);

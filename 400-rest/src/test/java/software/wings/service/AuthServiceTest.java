@@ -11,7 +11,6 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.rule.OwnerRule.ADITYA;
 import static io.harness.rule.OwnerRule.ANUBHAW;
-import static io.harness.rule.OwnerRule.BHAVYA;
 import static io.harness.rule.OwnerRule.HINGER;
 import static io.harness.rule.OwnerRule.KAPIL;
 import static io.harness.rule.OwnerRule.RAMA;
@@ -517,13 +516,6 @@ public class AuthServiceTest extends WingsBaseTest {
     assertThatThrownBy(() -> authService.validateToken(INVALID_TOKEN))
         .isInstanceOf(WingsException.class)
         .hasMessage(ErrorCode.INVALID_TOKEN.name());
-  }
-
-  @Test
-  @Owner(developers = BHAVYA)
-  @Category(UnitTests.class)
-  public void shouldReturnNullvalueForNullToken() {
-    assertThat(authService.validateToken(null)).isEqualTo(null);
   }
 
   /**

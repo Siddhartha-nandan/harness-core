@@ -37,6 +37,4 @@ public interface MonitoringSourcePerpetualTaskService extends DeleteEntityByHand
       String connectorIdentifier, String monitoringSourceIdentifier);
 
   Optional<CVNGPerpetualTaskDTO> getPerpetualTaskStatus(String dataCollectionWorkerId);
-
-  MonitoringSourcePerpetualTask getPerpetualTask(String dataCollectionWorkerId);
 }

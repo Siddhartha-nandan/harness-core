@@ -6,7 +6,6 @@
  */
 
 package io.harness.delegate.task.ecs.request;
-
 import static io.harness.expression.Expression.ALLOW_SECRETS;
 
 import io.harness.annotations.dev.CodePulse;
@@ -46,5 +45,4 @@ public class EcsBlueGreenCreateServiceRequest
   String targetGroupArnKey;
   @NonFinal @Expression(ALLOW_SECRETS) boolean sameAsAlreadyRunningInstances;
   boolean removeAutoScalingFromBlueService;
-  boolean updateGreenService;
 }

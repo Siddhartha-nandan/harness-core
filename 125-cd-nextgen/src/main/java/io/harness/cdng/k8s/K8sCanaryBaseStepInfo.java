@@ -15,7 +15,6 @@ import static io.harness.yaml.schema.beans.SupportedPossibleFieldTypes.string;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.SwaggerConstants;
-import io.harness.cdng.k8s.trafficrouting.K8sTrafficRouting;
 import io.harness.cdng.manifest.yaml.K8sStepCommandFlag;
 import io.harness.plancreator.steps.TaskSelectorYaml;
 import io.harness.pms.yaml.ParameterField;
@@ -43,5 +42,4 @@ public class K8sCanaryBaseStepInfo {
   @ApiModelProperty(dataType = SwaggerConstants.STRING_LIST_CLASSPATH)
   ParameterField<List<TaskSelectorYaml>> delegateSelectors;
   @YamlSchemaTypes({runtime}) List<K8sStepCommandFlag> commandFlags;
-  K8sTrafficRouting trafficRouting;
 }

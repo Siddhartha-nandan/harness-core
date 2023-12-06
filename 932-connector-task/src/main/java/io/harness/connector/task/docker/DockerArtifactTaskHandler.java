@@ -19,7 +19,6 @@ import io.harness.delegate.beans.connector.docker.DockerUserNamePasswordDTO;
 import io.harness.delegate.task.artifacts.docker.DockerArtifactDelegateRequest;
 import io.harness.delegate.task.artifacts.response.ArtifactTaskExecutionResponse;
 import io.harness.encryption.FieldWithPlainTextOrSecretValueHelper;
-import io.harness.utils.ProxyUtils;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -65,8 +64,6 @@ public class DockerArtifactTaskHandler {
         .dockerRegistryUrl(request.getDockerConnectorDTO().getDockerRegistryUrl())
         .username(username)
         .password(password)
-        .proxyHost(ProxyUtils.getProxyHost(request.getDockerConnectorDTO().getProxyUrl()))
-        .proxyPort(ProxyUtils.getProxyPort(request.getDockerConnectorDTO().getProxyUrl()))
         .build();
   }
 }

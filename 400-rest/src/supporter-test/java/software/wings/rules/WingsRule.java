@@ -37,7 +37,6 @@ import io.harness.cf.CfClientConfig;
 import io.harness.cf.CfMigrationConfig;
 import io.harness.commandlibrary.client.CommandLibraryServiceHttpClient;
 import io.harness.config.PublisherConfiguration;
-import io.harness.delegate.AccountCheckAndCleanupServiceImpl;
 import io.harness.delegate.authenticator.DelegateTokenAuthenticatorImpl;
 import io.harness.delegate.beans.Delegate;
 import io.harness.delegate.beans.DelegateGroup;
@@ -79,7 +78,6 @@ import io.harness.redis.intfc.DelegateRedissonCacheManager;
 import io.harness.remote.client.ServiceHttpClientConfig;
 import io.harness.rule.Cache;
 import io.harness.rule.InjectorRuleMixin;
-import io.harness.security.AccountCheckAndCleanupService;
 import io.harness.security.DelegateTokenAuthenticator;
 import io.harness.serializer.KryoModule;
 import io.harness.serializer.KryoRegistrar;
@@ -501,7 +499,6 @@ public class WingsRule implements MethodRule, InjectorRuleMixin, MongoRuleMixin 
       @Override
       protected void configure() {
         bind(DelegateTokenAuthenticator.class).to(DelegateTokenAuthenticatorImpl.class).in(Singleton.class);
-        bind(AccountCheckAndCleanupService.class).to(AccountCheckAndCleanupServiceImpl.class);
         bind(DelegateCache.class).to(DelegateCacheImpl.class).in(Singleton.class);
       }
     });

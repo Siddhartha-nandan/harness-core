@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mockStatic;
@@ -135,9 +136,10 @@ public class WinRmExecutorHelperTest extends CategoryTest {
                                     .port(1234)
                                     .environment(ImmutableMap.of("CUSTOM", "value"))
                                     .build();
+    doThrow(new RuntimeException()).when(winRmSession).checkConnectivity();
     doReturn(0).when(winRmSession).executeCommandString(anyString(), any(), any(), anyBoolean());
-    WinRmExecutorHelper.cleanupFilesInNewSession(
-        "test", "powershell", false, Collections.emptyList(), config, logCallback);
+    WinRmExecutorHelper.cleanupFiles(
+        winRmSession, "test", "powershell", false, Collections.emptyList(), config, logCallback);
     verify(winRmSession, times(0)).executeCommandString(anyString(), any(), any(), anyBoolean());
   }
 
@@ -146,8 +148,10 @@ public class WinRmExecutorHelperTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testCleanupFilesWithSameSession() {
     WinRmSessionConfig config = WinRmSessionConfig.builder().build();
+    doNothing().when(winRmSession).checkConnectivity();
     doReturn(0).when(winRmSession).executeCommandString(anyString(), any(), any(), anyBoolean());
-    WinRmExecutorHelper.cleanupFiles(winRmSession, "test", "powershell", false, Collections.emptyList());
+    WinRmExecutorHelper.cleanupFiles(
+        winRmSession, "test", "powershell", false, Collections.emptyList(), config, logCallback);
     verify(winRmSession, times(1)).executeCommandString(anyString(), any(), any(), anyBoolean());
   }
 

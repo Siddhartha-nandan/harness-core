@@ -324,11 +324,10 @@ public class K8InitializeStepUtils {
       case GIT_CLONE:
       case SSCA_ORCHESTRATION:
       case SSCA_ENFORCEMENT:
+      case IACM_TERRAFORM_PLUGIN:
+      case IACM_APPROVAL:
       case PROVENANCE:
       case SLSA_VERIFICATION:
-      case IDP_COOKIECUTTER:
-      case IDP_CREATE_REPO:
-      case IDP_CODE_PUSH:
         return createPluginCompatibleStepContainerDefinition((PluginCompatibleStep) ciStepInfo, stageNode,
             ciExecutionArgs, portFinder, stepIndex, stepElement.getIdentifier(), stepElement.getName(),
             stepElement.getType(), timeout, accountId, os, ambiance, extraMemoryPerStep, extraCPUPerStep);
@@ -340,21 +339,6 @@ public class K8InitializeStepUtils {
         return createRunTestsStepContainerDefinition((RunTestsStepInfo) ciStepInfo, stageNode, ciExecutionArgs,
             portFinder, stepIndex, stepElement.getIdentifier(), stepElement.getName(), accountId, os,
             extraMemoryPerStep, extraCPUPerStep);
-      case IACM_TERRAFORM_PLUGIN:
-      case IACM_APPROVAL:
-        PluginCompatibleStep pluginCompatibleStep = (PluginCompatibleStep) ciStepInfo;
-        ContainerDefinitionInfo containerDefinitionInfo =
-            createPluginCompatibleStepContainerDefinition(pluginCompatibleStep, stageNode, ciExecutionArgs, portFinder,
-                stepIndex, stepElement.getIdentifier(), stepElement.getName(), stepElement.getType(), timeout,
-                accountId, os, ambiance, extraMemoryPerStep, extraCPUPerStep);
-        if (pluginCompatibleStep.getConnectorRef() != null
-            && !pluginCompatibleStep.getConnectorRef().getValue().isEmpty()) {
-          containerDefinitionInfo.getContainerImageDetails().setConnectorIdentifier(
-              pluginCompatibleStep.getConnectorRef().getValue());
-          containerDefinitionInfo.setHarnessManagedImage(false);
-        }
-
-        return containerDefinitionInfo;
       default:
         return null;
     }
@@ -940,8 +924,7 @@ public class K8InitializeStepUtils {
     if (resource != null && resource.getLimits() != null && resource.getLimits().getMemory() != null) {
       String memoryLimitMemoryQuantity =
           resolveStringParameter("memory", stepType, stepId, resource.getLimits().getMemory(), false);
-      if (isNotEmpty(memoryLimitMemoryQuantity) && !UNRESOLVED_PARAMETER.equals(memoryLimitMemoryQuantity)
-          && !memoryLimitMemoryQuantity.equals(NULL_STR)) {
+      if (isNotEmpty(memoryLimitMemoryQuantity) && !UNRESOLVED_PARAMETER.equals(memoryLimitMemoryQuantity)) {
         memoryLimit = QuantityUtils.getStorageQuantityValueInUnit(memoryLimitMemoryQuantity, StorageQuantityUnit.Mi);
       }
     }
@@ -1079,8 +1062,7 @@ public class K8InitializeStepUtils {
 
     if (resource != null && resource.getLimits() != null && resource.getLimits().getCpu() != null) {
       String cpuLimitQuantity = resolveStringParameter("cpu", stepType, stepId, resource.getLimits().getCpu(), false);
-      if (isNotEmpty(cpuLimitQuantity) && !UNRESOLVED_PARAMETER.equals(cpuLimitQuantity)
-          && !cpuLimitQuantity.equals(NULL_STR)) {
+      if (isNotEmpty(cpuLimitQuantity) && !UNRESOLVED_PARAMETER.equals(cpuLimitQuantity)) {
         cpuLimit = QuantityUtils.getCpuQuantityValueInUnit(cpuLimitQuantity, DecimalQuantityUnit.m);
       }
     }
@@ -1117,9 +1099,6 @@ public class K8InitializeStepUtils {
       case IACM_APPROVAL:
       case PROVENANCE:
       case SLSA_VERIFICATION:
-      case IDP_COOKIECUTTER:
-      case IDP_CREATE_REPO:
-      case IDP_CODE_PUSH:
         return ((PluginCompatibleStep) ciStepInfo).getResources();
       default:
         throw new CIStageExecutionException(

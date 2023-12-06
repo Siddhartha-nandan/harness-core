@@ -7,10 +7,8 @@
 
 package io.harness.ng;
 
-import static io.harness.NGConstants.HARNESS_SECRET_MANAGER_IDENTIFIER;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.rule.OwnerRule.BOOPESH;
-import static io.harness.rule.OwnerRule.NISHANT;
 import static io.harness.rule.OwnerRule.PHOENIKX;
 import static io.harness.rule.OwnerRule.VIKAS_M;
 
@@ -21,10 +19,8 @@ import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,8 +30,6 @@ import io.harness.category.element.UnitTests;
 import io.harness.connector.ConnectorDTO;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.connector.ConnectorResponseDTO;
-import io.harness.connector.entities.embedded.vaultconnector.VaultConnector.VaultConnectorKeys;
-import io.harness.connector.impl.ConnectorErrorMessagesHelper;
 import io.harness.connector.services.ConnectorService;
 import io.harness.connector.services.NGVaultService;
 import io.harness.delegate.beans.connector.ConnectorType;
@@ -46,7 +40,6 @@ import io.harness.encryption.SecretRefData;
 import io.harness.enforcement.client.services.EnforcementClientService;
 import io.harness.exception.DuplicateFieldException;
 import io.harness.exception.InvalidRequestException;
-import io.harness.git.model.ChangeType;
 import io.harness.ng.core.api.NGSecretManagerService;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.remote.client.NGRestUtils;
@@ -70,8 +63,6 @@ import org.junit.experimental.categories.Category;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Update;
 import retrofit2.Call;
 
 @OwnedBy(PL)
@@ -93,7 +84,6 @@ public class SecretManagerConnectorServiceImplTest extends CategoryTest {
   private NGVaultService ngVaultService;
   private EnforcementClientService enforcementClientService;
   private TemplateResourceClient templateResourceClient;
-  private ConnectorErrorMessagesHelper connectorErrorMessagesHelper;
 
   @Before
   public void setup() {
@@ -103,9 +93,8 @@ public class SecretManagerConnectorServiceImplTest extends CategoryTest {
     ngVaultService = mock(NGVaultService.class);
     enforcementClientService = mock(EnforcementClientService.class);
     templateResourceClient = mock(TemplateResourceClient.class);
-    connectorErrorMessagesHelper = mock(ConnectorErrorMessagesHelper.class);
-    secretManagerConnectorService = new SecretManagerConnectorServiceImpl(defaultConnectorService, connectorRepository,
-        ngVaultService, enforcementClientService, templateResourceClient, connectorErrorMessagesHelper);
+    secretManagerConnectorService = new SecretManagerConnectorServiceImpl(
+        defaultConnectorService, connectorRepository, ngVaultService, enforcementClientService, templateResourceClient);
   }
 
   private InvalidRequestException getInvalidRequestException() {
@@ -231,57 +220,57 @@ public class SecretManagerConnectorServiceImplTest extends CategoryTest {
   @Owner(developers = VIKAS_M)
   @Category(UnitTests.class)
   public void testCreateCustomSM_withCorrectTemplateInputs() throws IOException {
-    try (MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class)) {
-      when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.empty());
-      when(defaultConnectorService.create(any(), any())).thenReturn(null);
-      ConnectorDTO requestDTO = ConnectorDTO.builder().connectorInfo(nonDuplicateEntries_template()).build();
-      String templateInputs = "type: \"ShellScript\"\n"
-          + "spec:\n"
-          + "  source:\n"
-          + "    type: \"Inline\"\n"
-          + "    spec:\n"
-          + "      script: \"<+input>\"\n"
-          + "environmentVariables:\n"
-          + "  - name: var1\n"
-          + "  - name: var2\n"
-          + "  - name: var3\n"
-          + "timeout: \"<+input>\"\n";
-      Call<ResponseDTO<String>> request = mock(Call.class);
-      doReturn(request)
-          .when(templateResourceClient)
-          .getTemplateInputsYaml(
-              PROJECT_TEMPLATE_REF, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, VERSION, false);
-      mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(templateInputs);
-      ConnectorResponseDTO connectorDTO = secretManagerConnectorService.create(requestDTO, ACCOUNT_IDENTIFIER);
-      assertThat(connectorDTO).isEqualTo(null);
-    }
+    when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.empty());
+    when(defaultConnectorService.create(any(), any())).thenReturn(null);
+    ConnectorDTO requestDTO = ConnectorDTO.builder().connectorInfo(nonDuplicateEntries_template()).build();
+    String templateInputs = "type: \"ShellScript\"\n"
+        + "spec:\n"
+        + "  source:\n"
+        + "    type: \"Inline\"\n"
+        + "    spec:\n"
+        + "      script: \"<+input>\"\n"
+        + "environmentVariables:\n"
+        + "  - name: var1\n"
+        + "  - name: var2\n"
+        + "  - name: var3\n"
+        + "timeout: \"<+input>\"\n";
+    Call<ResponseDTO<String>> request = mock(Call.class);
+    doReturn(request)
+        .when(templateResourceClient)
+        .getTemplateInputsYaml(
+            PROJECT_TEMPLATE_REF, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, VERSION, false);
+    MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class);
+    mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(templateInputs);
+    ConnectorResponseDTO connectorDTO = secretManagerConnectorService.create(requestDTO, ACCOUNT_IDENTIFIER);
+    assertThat(connectorDTO).isEqualTo(null);
   }
 
   @Test
   @Owner(developers = VIKAS_M)
   @Category(UnitTests.class)
   public void testCreateCustomSM_withDuplicateInput_shouldThrowError() throws IOException {
-    try (MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class)) {
-      when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.empty());
-      when(defaultConnectorService.create(any(), any())).thenReturn(null);
-      ConnectorDTO requestDTO = ConnectorDTO.builder().connectorInfo(duplicateEntries_template()).build();
-      String templateInputs = "type: \"ShellScript\"\n"
-          + "spec:\n"
-          + "  source:\n"
-          + "    type: \"Inline\"\n"
-          + "    spec:\n"
-          + "      script: \"<+input>\"\n"
-          + "environmentVariables:\n"
-          + "  - name: var1\n"
-          + "  - name: var2\n"
-          + "  - name: var3\n"
-          + "timeout: \"<+input>\"\n";
-      Call<ResponseDTO<String>> request = mock(Call.class);
-      doReturn(request)
-          .when(templateResourceClient)
-          .getTemplateInputsYaml(
-              PROJECT_TEMPLATE_REF, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, VERSION, false);
-      mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(templateInputs);
+    when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.empty());
+    when(defaultConnectorService.create(any(), any())).thenReturn(null);
+    ConnectorDTO requestDTO = ConnectorDTO.builder().connectorInfo(duplicateEntries_template()).build();
+    String templateInputs = "type: \"ShellScript\"\n"
+        + "spec:\n"
+        + "  source:\n"
+        + "    type: \"Inline\"\n"
+        + "    spec:\n"
+        + "      script: \"<+input>\"\n"
+        + "environmentVariables:\n"
+        + "  - name: var1\n"
+        + "  - name: var2\n"
+        + "  - name: var3\n"
+        + "timeout: \"<+input>\"\n";
+    Call<ResponseDTO<String>> request = mock(Call.class);
+    doReturn(request)
+        .when(templateResourceClient)
+        .getTemplateInputsYaml(
+            PROJECT_TEMPLATE_REF, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, VERSION, false);
+    MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class);
+    mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(templateInputs);
+    try {
       ConnectorResponseDTO connectorDTO = secretManagerConnectorService.create(requestDTO, ACCOUNT_IDENTIFIER);
     } catch (Exception ex) {
       assertThat(ex).isInstanceOf(InvalidRequestException.class);
@@ -293,28 +282,29 @@ public class SecretManagerConnectorServiceImplTest extends CategoryTest {
   @Owner(developers = VIKAS_M)
   @Category(UnitTests.class)
   public void testCreateCustomSM_withSomeRunTimeParametersMissing_shouldThrowError() throws IOException {
-    try (MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class)) {
-      when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.empty());
-      when(defaultConnectorService.create(any(), any())).thenReturn(null);
-      ConnectorDTO requestDTO = ConnectorDTO.builder().connectorInfo(nonDuplicateEntries_template()).build();
-      String templateInputs = "type: \"ShellScript\"\n"
-          + "spec:\n"
-          + "  source:\n"
-          + "    type: \"Inline\"\n"
-          + "    spec:\n"
-          + "      script: \"<+input>\"\n"
-          + "environmentVariables:\n"
-          + "  - name: var1\n"
-          + "  - name: var2\n"
-          + "  - name: var3\n"
-          + "  - name: var4\n"
-          + "timeout: \"<+input>\"\n";
-      Call<ResponseDTO<String>> request = mock(Call.class);
-      doReturn(request)
-          .when(templateResourceClient)
-          .getTemplateInputsYaml(
-              PROJECT_TEMPLATE_REF, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, VERSION, false);
-      mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(templateInputs);
+    when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.empty());
+    when(defaultConnectorService.create(any(), any())).thenReturn(null);
+    ConnectorDTO requestDTO = ConnectorDTO.builder().connectorInfo(nonDuplicateEntries_template()).build();
+    String templateInputs = "type: \"ShellScript\"\n"
+        + "spec:\n"
+        + "  source:\n"
+        + "    type: \"Inline\"\n"
+        + "    spec:\n"
+        + "      script: \"<+input>\"\n"
+        + "environmentVariables:\n"
+        + "  - name: var1\n"
+        + "  - name: var2\n"
+        + "  - name: var3\n"
+        + "  - name: var4\n"
+        + "timeout: \"<+input>\"\n";
+    Call<ResponseDTO<String>> request = mock(Call.class);
+    doReturn(request)
+        .when(templateResourceClient)
+        .getTemplateInputsYaml(
+            PROJECT_TEMPLATE_REF, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, VERSION, false);
+    MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class);
+    mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(templateInputs);
+    try {
       ConnectorResponseDTO connectorDTO = secretManagerConnectorService.create(requestDTO, ACCOUNT_IDENTIFIER);
     } catch (Exception ex) {
       assertThat(ex).isInstanceOf(InvalidRequestException.class);
@@ -326,108 +316,105 @@ public class SecretManagerConnectorServiceImplTest extends CategoryTest {
   @Owner(developers = VIKAS_M)
   @Category(UnitTests.class)
   public void testCreateCustomSM_withAccountLevelTemplate_inProjectScope() {
-    try (MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class)) {
-      when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.empty());
-      when(defaultConnectorService.create(any(), any())).thenReturn(null);
-      ConnectorInfoDTO infoDTO = ConnectorInfoDTO.builder()
-                                     .connectorType(ConnectorType.CUSTOM_SECRET_MANAGER)
-                                     .name("customSM")
-                                     .identifier(CONNECTOR_IDENTIFIER)
-                                     .projectIdentifier(PROJECT_IDENTIFIER)
-                                     .orgIdentifier(ORG_IDENTIFIER)
-                                     .connectorConfig(CustomSecretManagerConnectorDTO.builder()
-                                                          .template(TemplateLinkConfigForCustomSecretManager.builder()
-                                                                        .templateRef(ACCOUNT_TEMPLATE_REF)
-                                                                        .versionLabel(VERSION)
-                                                                        .build())
-                                                          .build())
-                                     .build();
-      ConnectorDTO requestDTO = ConnectorDTO.builder().connectorInfo(infoDTO).build();
-      Call<ResponseDTO<String>> request = mock(Call.class);
-      ArgumentCaptor<String> argumentCaptorAccountId = ArgumentCaptor.forClass(String.class);
-      ArgumentCaptor<String> argumentCaptorOrgId = ArgumentCaptor.forClass(String.class);
-      ArgumentCaptor<String> argumentCaptorProjectId = ArgumentCaptor.forClass(String.class);
-      when(templateResourceClient.getTemplateInputsYaml(any(), argumentCaptorAccountId.capture(),
-               argumentCaptorOrgId.capture(), argumentCaptorProjectId.capture(), any(), anyBoolean()))
-          .thenReturn(request);
-      mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(null);
-      ConnectorResponseDTO connectorDTO = secretManagerConnectorService.create(requestDTO, ACCOUNT_IDENTIFIER);
-      assertThat(argumentCaptorAccountId.getValue()).isEqualTo(ACCOUNT_IDENTIFIER);
-      assertThat(argumentCaptorOrgId.getValue()).isEqualTo(null);
-      assertThat(argumentCaptorProjectId.getValue()).isEqualTo(null);
-    }
+    when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.empty());
+    when(defaultConnectorService.create(any(), any())).thenReturn(null);
+    ConnectorInfoDTO infoDTO = ConnectorInfoDTO.builder()
+                                   .connectorType(ConnectorType.CUSTOM_SECRET_MANAGER)
+                                   .name("customSM")
+                                   .identifier(CONNECTOR_IDENTIFIER)
+                                   .projectIdentifier(PROJECT_IDENTIFIER)
+                                   .orgIdentifier(ORG_IDENTIFIER)
+                                   .connectorConfig(CustomSecretManagerConnectorDTO.builder()
+                                                        .template(TemplateLinkConfigForCustomSecretManager.builder()
+                                                                      .templateRef(ACCOUNT_TEMPLATE_REF)
+                                                                      .versionLabel(VERSION)
+                                                                      .build())
+                                                        .build())
+                                   .build();
+    ConnectorDTO requestDTO = ConnectorDTO.builder().connectorInfo(infoDTO).build();
+    Call<ResponseDTO<String>> request = mock(Call.class);
+    ArgumentCaptor<String> argumentCaptorAccountId = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> argumentCaptorOrgId = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> argumentCaptorProjectId = ArgumentCaptor.forClass(String.class);
+    when(templateResourceClient.getTemplateInputsYaml(any(), argumentCaptorAccountId.capture(),
+             argumentCaptorOrgId.capture(), argumentCaptorProjectId.capture(), any(), anyBoolean()))
+        .thenReturn(request);
+    MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class);
+    mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(null);
+    ConnectorResponseDTO connectorDTO = secretManagerConnectorService.create(requestDTO, ACCOUNT_IDENTIFIER);
+    assertThat(argumentCaptorAccountId.getValue()).isEqualTo(ACCOUNT_IDENTIFIER);
+    assertThat(argumentCaptorOrgId.getValue()).isEqualTo(null);
+    assertThat(argumentCaptorProjectId.getValue()).isEqualTo(null);
   }
 
   @Test
   @Owner(developers = VIKAS_M)
   @Category(UnitTests.class)
   public void testCreateCustomSM_withOrgLevelTemplate_inProjectScope() {
-    try (MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class)) {
-      when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.empty());
-      when(defaultConnectorService.create(any(), any())).thenReturn(null);
-      ConnectorInfoDTO infoDTO = ConnectorInfoDTO.builder()
-                                     .connectorType(ConnectorType.CUSTOM_SECRET_MANAGER)
-                                     .name("customSM")
-                                     .identifier(CONNECTOR_IDENTIFIER)
-                                     .projectIdentifier(PROJECT_IDENTIFIER)
-                                     .orgIdentifier(ORG_IDENTIFIER)
-                                     .connectorConfig(CustomSecretManagerConnectorDTO.builder()
-                                                          .template(TemplateLinkConfigForCustomSecretManager.builder()
-                                                                        .templateRef(ORG_TEMPLATE_REF)
-                                                                        .versionLabel(VERSION)
-                                                                        .build())
-                                                          .build())
-                                     .build();
-      ConnectorDTO requestDTO = ConnectorDTO.builder().connectorInfo(infoDTO).build();
-      Call<ResponseDTO<String>> request = mock(Call.class);
-      ArgumentCaptor<String> argumentCaptorAccountId = ArgumentCaptor.forClass(String.class);
-      ArgumentCaptor<String> argumentCaptorOrgId = ArgumentCaptor.forClass(String.class);
-      ArgumentCaptor<String> argumentCaptorProjectId = ArgumentCaptor.forClass(String.class);
-      when(templateResourceClient.getTemplateInputsYaml(any(), argumentCaptorAccountId.capture(),
-               argumentCaptorOrgId.capture(), argumentCaptorProjectId.capture(), any(), anyBoolean()))
-          .thenReturn(request);
-      mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(null);
-      ConnectorResponseDTO connectorDTO = secretManagerConnectorService.create(requestDTO, ACCOUNT_IDENTIFIER);
-      assertThat(argumentCaptorAccountId.getValue()).isEqualTo(ACCOUNT_IDENTIFIER);
-      assertThat(argumentCaptorOrgId.getValue()).isEqualTo(ORG_IDENTIFIER);
-      assertThat(argumentCaptorProjectId.getValue()).isEqualTo(null);
-    }
+    when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.empty());
+    when(defaultConnectorService.create(any(), any())).thenReturn(null);
+    ConnectorInfoDTO infoDTO = ConnectorInfoDTO.builder()
+                                   .connectorType(ConnectorType.CUSTOM_SECRET_MANAGER)
+                                   .name("customSM")
+                                   .identifier(CONNECTOR_IDENTIFIER)
+                                   .projectIdentifier(PROJECT_IDENTIFIER)
+                                   .orgIdentifier(ORG_IDENTIFIER)
+                                   .connectorConfig(CustomSecretManagerConnectorDTO.builder()
+                                                        .template(TemplateLinkConfigForCustomSecretManager.builder()
+                                                                      .templateRef(ORG_TEMPLATE_REF)
+                                                                      .versionLabel(VERSION)
+                                                                      .build())
+                                                        .build())
+                                   .build();
+    ConnectorDTO requestDTO = ConnectorDTO.builder().connectorInfo(infoDTO).build();
+    Call<ResponseDTO<String>> request = mock(Call.class);
+    ArgumentCaptor<String> argumentCaptorAccountId = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> argumentCaptorOrgId = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> argumentCaptorProjectId = ArgumentCaptor.forClass(String.class);
+    when(templateResourceClient.getTemplateInputsYaml(any(), argumentCaptorAccountId.capture(),
+             argumentCaptorOrgId.capture(), argumentCaptorProjectId.capture(), any(), anyBoolean()))
+        .thenReturn(request);
+    MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class);
+    mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(null);
+    ConnectorResponseDTO connectorDTO = secretManagerConnectorService.create(requestDTO, ACCOUNT_IDENTIFIER);
+    assertThat(argumentCaptorAccountId.getValue()).isEqualTo(ACCOUNT_IDENTIFIER);
+    assertThat(argumentCaptorOrgId.getValue()).isEqualTo(ORG_IDENTIFIER);
+    assertThat(argumentCaptorProjectId.getValue()).isEqualTo(null);
   }
 
   @Test
   @Owner(developers = VIKAS_M)
   @Category(UnitTests.class)
   public void testCreateCustomSM_withProjectLevelTemplate_inProjectScope() {
-    try (MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class)) {
-      when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.empty());
-      when(defaultConnectorService.create(any(), any())).thenReturn(null);
-      ConnectorInfoDTO infoDTO = ConnectorInfoDTO.builder()
-                                     .connectorType(ConnectorType.CUSTOM_SECRET_MANAGER)
-                                     .name("customSM")
-                                     .identifier(CONNECTOR_IDENTIFIER)
-                                     .projectIdentifier(PROJECT_IDENTIFIER)
-                                     .orgIdentifier(ORG_IDENTIFIER)
-                                     .connectorConfig(CustomSecretManagerConnectorDTO.builder()
-                                                          .template(TemplateLinkConfigForCustomSecretManager.builder()
-                                                                        .templateRef(PROJECT_TEMPLATE_REF)
-                                                                        .versionLabel(VERSION)
-                                                                        .build())
-                                                          .build())
-                                     .build();
-      ConnectorDTO requestDTO = ConnectorDTO.builder().connectorInfo(infoDTO).build();
-      Call<ResponseDTO<String>> request = mock(Call.class);
-      ArgumentCaptor<String> argumentCaptorAccountId = ArgumentCaptor.forClass(String.class);
-      ArgumentCaptor<String> argumentCaptorOrgId = ArgumentCaptor.forClass(String.class);
-      ArgumentCaptor<String> argumentCaptorProjectId = ArgumentCaptor.forClass(String.class);
-      when(templateResourceClient.getTemplateInputsYaml(any(), argumentCaptorAccountId.capture(),
-               argumentCaptorOrgId.capture(), argumentCaptorProjectId.capture(), any(), anyBoolean()))
-          .thenReturn(request);
-      mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(null);
-      ConnectorResponseDTO connectorDTO = secretManagerConnectorService.create(requestDTO, ACCOUNT_IDENTIFIER);
-      assertThat(argumentCaptorAccountId.getValue()).isEqualTo(ACCOUNT_IDENTIFIER);
-      assertThat(argumentCaptorOrgId.getValue()).isEqualTo(ORG_IDENTIFIER);
-      assertThat(argumentCaptorProjectId.getValue()).isEqualTo(PROJECT_IDENTIFIER);
-    }
+    when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.empty());
+    when(defaultConnectorService.create(any(), any())).thenReturn(null);
+    ConnectorInfoDTO infoDTO = ConnectorInfoDTO.builder()
+                                   .connectorType(ConnectorType.CUSTOM_SECRET_MANAGER)
+                                   .name("customSM")
+                                   .identifier(CONNECTOR_IDENTIFIER)
+                                   .projectIdentifier(PROJECT_IDENTIFIER)
+                                   .orgIdentifier(ORG_IDENTIFIER)
+                                   .connectorConfig(CustomSecretManagerConnectorDTO.builder()
+                                                        .template(TemplateLinkConfigForCustomSecretManager.builder()
+                                                                      .templateRef(PROJECT_TEMPLATE_REF)
+                                                                      .versionLabel(VERSION)
+                                                                      .build())
+                                                        .build())
+                                   .build();
+    ConnectorDTO requestDTO = ConnectorDTO.builder().connectorInfo(infoDTO).build();
+    Call<ResponseDTO<String>> request = mock(Call.class);
+    ArgumentCaptor<String> argumentCaptorAccountId = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> argumentCaptorOrgId = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> argumentCaptorProjectId = ArgumentCaptor.forClass(String.class);
+    when(templateResourceClient.getTemplateInputsYaml(any(), argumentCaptorAccountId.capture(),
+             argumentCaptorOrgId.capture(), argumentCaptorProjectId.capture(), any(), anyBoolean()))
+        .thenReturn(request);
+    MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class);
+    mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(null);
+    ConnectorResponseDTO connectorDTO = secretManagerConnectorService.create(requestDTO, ACCOUNT_IDENTIFIER);
+    assertThat(argumentCaptorAccountId.getValue()).isEqualTo(ACCOUNT_IDENTIFIER);
+    assertThat(argumentCaptorOrgId.getValue()).isEqualTo(ORG_IDENTIFIER);
+    assertThat(argumentCaptorProjectId.getValue()).isEqualTo(PROJECT_IDENTIFIER);
   }
 
   @Test
@@ -476,97 +463,7 @@ public class SecretManagerConnectorServiceImplTest extends CategoryTest {
   public void testDeleteSecretManager() {
     when(ngSecretManagerService.getSecretManager(any(), any(), any(), any(), eq(true))).thenReturn(null);
     when(defaultConnectorService.delete(any(), any(), any(), any(), any(), eq(false))).thenReturn(true);
-
-    ConnectorInfoDTO connectorInfo = ConnectorInfoDTO.builder().build();
-    connectorInfo.setConnectorType(ConnectorType.VAULT);
-    connectorInfo.setConnectorConfig(VaultConnectorDTO.builder().isDefault(true).build());
-    ConnectorResponseDTO connectorResponseDTO = ConnectorResponseDTO.builder().connector(connectorInfo).build();
-    when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.of(connectorResponseDTO));
-
     boolean success = secretManagerConnectorService.delete(ACCOUNT, null, null, "identifier", false);
     assertThat(success).isEqualTo(true);
-  }
-
-  @Test
-  @Owner(developers = NISHANT)
-  @Category(UnitTests.class)
-  public void testDeleteResetsDefaultSecretManager() {
-    ConnectorInfoDTO connectorInfoDTO = ConnectorInfoDTO.builder()
-                                            .connectorType(ConnectorType.VAULT)
-                                            .connectorConfig(VaultConnectorDTO.builder().isDefault(true).build())
-                                            .build();
-    ConnectorResponseDTO connectorResponseDTO = ConnectorResponseDTO.builder().connector(connectorInfoDTO).build();
-    when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.ofNullable(connectorResponseDTO));
-    when(defaultConnectorService.delete(any(), any(), any(), any(), any(), eq(false))).thenReturn(true);
-    boolean success = secretManagerConnectorService.delete(ACCOUNT, null, null, "identifier", false);
-    assertThat(success).isTrue();
-    validateDefaultResetCall();
-  }
-
-  @Test
-  @Owner(developers = NISHANT)
-  @Category(UnitTests.class)
-  public void testDeleteShouldNotResetsDefaultSecretManager() {
-    ConnectorInfoDTO connectorInfoDTO = ConnectorInfoDTO.builder()
-                                            .connectorType(ConnectorType.VAULT)
-                                            .connectorConfig(VaultConnectorDTO.builder().isDefault(false).build())
-                                            .build();
-    ConnectorResponseDTO connectorResponseDTO = ConnectorResponseDTO.builder().connector(connectorInfoDTO).build();
-    when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.ofNullable(connectorResponseDTO));
-    when(defaultConnectorService.delete(any(), any(), any(), any(), any(), eq(false))).thenReturn(true);
-    boolean success = secretManagerConnectorService.delete(ACCOUNT, null, null, "identifier", false);
-    assertThat(success).isTrue();
-    verify(connectorRepository, times(0)).update(any(), any(), any(), any(), any(), eq(ACCOUNT));
-  }
-
-  @Test
-  @Owner(developers = NISHANT)
-  @Category(UnitTests.class)
-  public void testDeleteWithChangeTypeResetsDefaultSecretManager() {
-    ConnectorInfoDTO connectorInfoDTO = ConnectorInfoDTO.builder()
-                                            .connectorType(ConnectorType.VAULT)
-                                            .connectorConfig(VaultConnectorDTO.builder().isDefault(true).build())
-                                            .build();
-    ConnectorResponseDTO connectorResponseDTO = ConnectorResponseDTO.builder().connector(connectorInfoDTO).build();
-    when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.ofNullable(connectorResponseDTO));
-    when(defaultConnectorService.delete(any(), any(), any(), any(), any(), eq(false))).thenReturn(true);
-    boolean success = secretManagerConnectorService.delete(ACCOUNT, null, null, "identifier", ChangeType.DELETE, false);
-    assertThat(success).isTrue();
-    validateDefaultResetCall();
-  }
-  @Test
-  @Owner(developers = NISHANT)
-  @Category(UnitTests.class)
-  public void testDeleteWithChangeTypeShouldNotResetsDefaultSecretManager() {
-    ConnectorInfoDTO connectorInfoDTO = ConnectorInfoDTO.builder()
-                                            .connectorType(ConnectorType.VAULT)
-                                            .connectorConfig(VaultConnectorDTO.builder().isDefault(false).build())
-                                            .build();
-    ConnectorResponseDTO connectorResponseDTO = ConnectorResponseDTO.builder().connector(connectorInfoDTO).build();
-    when(defaultConnectorService.get(any(), any(), any(), any())).thenReturn(Optional.ofNullable(connectorResponseDTO));
-    when(defaultConnectorService.delete(any(), any(), any(), any(), any(), eq(false))).thenReturn(true);
-    boolean success = secretManagerConnectorService.delete(ACCOUNT, null, null, "identifier", ChangeType.DELETE, false);
-    assertThat(success).isTrue();
-    verify(connectorRepository, times(0)).update(any(), any(), any(), any(), any(), eq(ACCOUNT));
-  }
-
-  private void validateDefaultResetCall() {
-    ArgumentCaptor<Criteria> criteriaArgumentCaptor = ArgumentCaptor.forClass(Criteria.class);
-    ArgumentCaptor<Update> updateArgumentCaptor = ArgumentCaptor.forClass(Update.class);
-    verify(connectorRepository, times(1))
-        .update(criteriaArgumentCaptor.capture(), updateArgumentCaptor.capture(), eq(ChangeType.NONE), isNull(),
-            isNull(), eq(ACCOUNT));
-    assertThat(criteriaArgumentCaptor.getValue())
-        .isEqualTo(Criteria.where("accountIdentifier")
-                       .is(ACCOUNT)
-                       .and("orgIdentifier")
-                       .is(null)
-                       .and("projectIdentifier")
-                       .is(null)
-                       .and("deleted")
-                       .ne(Boolean.TRUE)
-                       .and("identifier")
-                       .is(HARNESS_SECRET_MANAGER_IDENTIFIER));
-    assertThat(updateArgumentCaptor.getValue()).isEqualTo(new Update().set(VaultConnectorKeys.isDefault, Boolean.TRUE));
   }
 }

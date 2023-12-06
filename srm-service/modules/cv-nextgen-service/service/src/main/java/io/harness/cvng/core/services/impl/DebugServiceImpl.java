@@ -38,7 +38,6 @@ import io.harness.cvng.core.services.api.CVNGLogService;
 import io.harness.cvng.core.services.api.ChangeEventService;
 import io.harness.cvng.core.services.api.DataCollectionTaskService;
 import io.harness.cvng.core.services.api.DebugService;
-import io.harness.cvng.core.services.api.MonitoringSourcePerpetualTaskService;
 import io.harness.cvng.core.services.api.SideKickService;
 import io.harness.cvng.core.services.api.TimeSeriesRecordService;
 import io.harness.cvng.core.services.api.VerificationTaskService;
@@ -97,8 +96,6 @@ public class DebugServiceImpl implements DebugService {
   @Inject SLOHealthIndicatorService sloHealthIndicatorService;
   @Inject VerificationTaskService verificationTaskService;
   @Inject DataCollectionTaskService dataCollectionTaskService;
-
-  @Inject MonitoringSourcePerpetualTaskService monitoringSourcePerpetualTaskService;
   @Inject SLIRecordService sliRecordService;
   @Inject CompositeSLORecordService sloRecordService;
   @Inject AnalysisStateMachineService analysisStateMachineService;
@@ -165,8 +162,6 @@ public class DebugServiceImpl implements DebugService {
 
     Map<String, AnalysisOrchestrator> sliIdentifierToAnalysisOrchestrator = new HashMap<>();
 
-    Map<String, MonitoringSourcePerpetualTask> sliIdentifierToMonitoringSourcePerpetualTaskMap = new HashMap<>();
-
     for (ServiceLevelIndicator serviceLevelIndicator : serviceLevelIndicatorList) {
       sliIdentifierToVerificationTaskMap.put(serviceLevelIndicator.getIdentifier(),
           verificationTaskService.getSLITask(projectParams.getAccountIdentifier(), serviceLevelIndicator.getUuid()));
@@ -174,14 +169,6 @@ public class DebugServiceImpl implements DebugService {
       sliIdentifierToDataCollectionTaskMap.put(serviceLevelIndicator.getIdentifier(),
           dataCollectionTaskService.getLatestDataCollectionTasks(
               projectParams.getAccountIdentifier(), serviceLevelIndicator.getUuid(), 3));
-
-      if (!sliIdentifierToDataCollectionTaskMap.get(serviceLevelIndicator.getIdentifier()).isEmpty()) {
-        sliIdentifierToMonitoringSourcePerpetualTaskMap.put(serviceLevelIndicator.getIdentifier(),
-            monitoringSourcePerpetualTaskService.getPerpetualTask(
-                sliIdentifierToDataCollectionTaskMap.get(serviceLevelIndicator.getIdentifier())
-                    .get(0)
-                    .getDataCollectionWorkerId()));
-      }
 
       sliIdentifierToSLIRecordMap.put(serviceLevelIndicator.getIdentifier(),
           sliRecordService.getLatestCountSLIRecords(serviceLevelIndicator.getUuid(), 100));
@@ -212,7 +199,6 @@ public class DebugServiceImpl implements DebugService {
         .sliIdentifierToAnalysisStateMachineMap(sliIdentifierToAnalysisStateMachineMap)
         .sliIdentifierToTimeSeriesRecords(sliIdentifierToTimeSeriesRecords)
         .sliIdentifierToAnalysisOrchestrator(sliIdentifierToAnalysisOrchestrator)
-        .sliIdentifierToMonitoringSourcePerpetualTaskMap(sliIdentifierToMonitoringSourcePerpetualTaskMap)
         .build();
   }
 

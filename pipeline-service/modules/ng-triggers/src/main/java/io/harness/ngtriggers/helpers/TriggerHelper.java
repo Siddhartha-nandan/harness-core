@@ -229,9 +229,7 @@ public class TriggerHelper {
   }
 
   public List<String> getAllTriggerExpressions() {
-    return Arrays.asList("trigger.targetBranch", "trigger.sourceBranch", "trigger.gitUser", "trigger.repoUrl",
-        "trigger.commitSha", "trigger.baseCommitSha", "trigger.event", "trigger.prNumber", "trigger.prTitle",
-        "trigger.artifact.build", "trigger.manifest.version", "lastPublished.tag");
+    return Arrays.asList("trigger.targetBranch", "trigger.sourceBranch", "trigger.prNumber", "trigger.prTitle");
   }
 
   public static void stampWebhookRegistrationInfo(

@@ -34,6 +34,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.FeatureName;
 import io.harness.beans.Scope;
 import io.harness.category.element.UnitTests;
 import io.harness.cdng.CDNGTestBase;
@@ -517,9 +518,10 @@ public class AzureWebAppSlotDeploymentStepTest extends CDNGTestBase {
   @Category(UnitTests.class)
   public void testQueueSlotDeploymentWithCleanOptionFFDisabled() {
     StepElementParameters stepElementParameters = createTestStepElementParameters(true);
+    doReturn(false).when(cdFeatureFlagHelper).isEnabled(anyString(), eq(FeatureName.CDS_WEBAPP_ENABLE_CLEAN_OPTION));
     AzureWebAppSlotDeploymentRequest queuedRequest =
         runExecuteNextLinkToQueueDeploymentTask(null, stepElementParameters);
-    assertThat(queuedRequest.isCleanDeployment()).isTrue();
+    assertThat(queuedRequest.isCleanDeployment()).isFalse();
   }
 
   @Test
@@ -528,6 +530,7 @@ public class AzureWebAppSlotDeploymentStepTest extends CDNGTestBase {
   @Category(UnitTests.class)
   public void testQueueSlotDeploymentWithCleanOptionDisabledAndFFDisabled() {
     StepElementParameters stepElementParameters = createTestStepElementParameters(false);
+    doReturn(false).when(cdFeatureFlagHelper).isEnabled(anyString(), eq(FeatureName.CDS_WEBAPP_ENABLE_CLEAN_OPTION));
     AzureWebAppSlotDeploymentRequest queuedRequest =
         runExecuteNextLinkToQueueDeploymentTask(null, stepElementParameters);
     assertThat(queuedRequest.isCleanDeployment()).isFalse();
@@ -539,6 +542,7 @@ public class AzureWebAppSlotDeploymentStepTest extends CDNGTestBase {
   @Category(UnitTests.class)
   public void testQueueSlotDeploymentWithCleanOptionFFEnabled() {
     StepElementParameters stepElementParameters = createTestStepElementParameters(true);
+    doReturn(true).when(cdFeatureFlagHelper).isEnabled(anyString(), eq(FeatureName.CDS_WEBAPP_ENABLE_CLEAN_OPTION));
     AzureWebAppSlotDeploymentRequest queuedRequest =
         runExecuteNextLinkToQueueDeploymentTask(null, stepElementParameters);
     assertThat(queuedRequest.isCleanDeployment()).isTrue();
@@ -550,6 +554,7 @@ public class AzureWebAppSlotDeploymentStepTest extends CDNGTestBase {
   @Category(UnitTests.class)
   public void testQueueSlotDeploymentWithCleanOptionDisabledAndFFEnabled() {
     StepElementParameters stepElementParameters = createTestStepElementParameters(false);
+    doReturn(true).when(cdFeatureFlagHelper).isEnabled(anyString(), eq(FeatureName.CDS_WEBAPP_ENABLE_CLEAN_OPTION));
     AzureWebAppSlotDeploymentRequest queuedRequest =
         runExecuteNextLinkToQueueDeploymentTask(null, stepElementParameters);
     assertThat(queuedRequest.isCleanDeployment()).isFalse();

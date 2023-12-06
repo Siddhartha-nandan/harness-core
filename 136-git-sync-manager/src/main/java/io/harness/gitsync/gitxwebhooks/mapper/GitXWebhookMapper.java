@@ -14,7 +14,6 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
-import io.harness.beans.Scope;
 import io.harness.exception.InvalidRequestException;
 import io.harness.gitsync.gitxwebhooks.dtos.CreateGitXWebhookRequestDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.CreateGitXWebhookResponseDTO;
@@ -30,7 +29,6 @@ import io.harness.gitsync.gitxwebhooks.dtos.UpdateGitXWebhookResponseDTO;
 import io.harness.spec.server.ng.v1.model.CreateGitXWebhookRequest;
 import io.harness.spec.server.ng.v1.model.CreateGitXWebhookResponse;
 import io.harness.spec.server.ng.v1.model.GitXWebhookEventResponse;
-import io.harness.spec.server.ng.v1.model.GitXWebhookEventResponse.EventStatusEnum;
 import io.harness.spec.server.ng.v1.model.GitXWebhookResponse;
 import io.harness.spec.server.ng.v1.model.UpdateGitXWebhookRequest;
 import io.harness.spec.server.ng.v1.model.UpdateGitXWebhookResponse;
@@ -46,12 +44,13 @@ import org.springframework.data.domain.Page;
 @UtilityClass
 @OwnedBy(HarnessTeam.PIPELINE)
 public class GitXWebhookMapper {
-  public CreateGitXWebhookRequestDTO buildCreateGitXWebhookRequestDTO(Scope scope, CreateGitXWebhookRequest body) {
+  public CreateGitXWebhookRequestDTO buildCreateGitXWebhookRequestDTO(
+      String harnessAccount, CreateGitXWebhookRequest body) {
     if (body == null) {
-      return CreateGitXWebhookRequestDTO.builder().scope(scope).build();
+      return CreateGitXWebhookRequestDTO.builder().accountIdentifier(harnessAccount).build();
     }
     return CreateGitXWebhookRequestDTO.builder()
-        .scope(scope)
+        .accountIdentifier(harnessAccount)
         .webhookIdentifier(body.getWebhookIdentifier())
         .connectorRef(body.getConnectorRef())
         .folderPaths(body.getFolderPaths())
@@ -68,8 +67,11 @@ public class GitXWebhookMapper {
     return responseBody;
   }
 
-  public GetGitXWebhookRequestDTO buildGetGitXWebhookRequestDTO(Scope scope, String gitXWebhookIdentifier) {
-    return GetGitXWebhookRequestDTO.builder().webhookIdentifier(gitXWebhookIdentifier).scope(scope).build();
+  public GetGitXWebhookRequestDTO buildGetGitXWebhookRequestDTO(String harnessAccount, String gitXWebhookIdentifier) {
+    return GetGitXWebhookRequestDTO.builder()
+        .webhookIdentifier(gitXWebhookIdentifier)
+        .accountIdentifier(harnessAccount)
+        .build();
   }
 
   public GitXWebhookResponse buildGetGitXWebhookResponseDTO(GetGitXWebhookResponseDTO getGitXWebhookResponseDTO) {
@@ -103,12 +105,19 @@ public class GitXWebhookMapper {
     return responseBody;
   }
 
-  public DeleteGitXWebhookRequestDTO buildDeleteGitXWebhookRequestDTO(Scope scope, String gitXWebhookIdentifier) {
-    return DeleteGitXWebhookRequestDTO.builder().webhookIdentifier(gitXWebhookIdentifier).scope(scope).build();
+  public DeleteGitXWebhookRequestDTO buildDeleteGitXWebhookRequestDTO(
+      String harnessAccount, String gitXWebhookIdentifier) {
+    return DeleteGitXWebhookRequestDTO.builder()
+        .accountIdentifier(harnessAccount)
+        .webhookIdentifier(gitXWebhookIdentifier)
+        .build();
   }
 
-  public ListGitXWebhookRequestDTO buildListGitXWebhookRequestDTO(Scope scope, String webhookIdentifier) {
-    return ListGitXWebhookRequestDTO.builder().scope(scope).webhookIdentifier(webhookIdentifier).build();
+  public ListGitXWebhookRequestDTO buildListGitXWebhookRequestDTO(String harnessAccount, String webhookIdentifier) {
+    return ListGitXWebhookRequestDTO.builder()
+        .accountIdentifier(harnessAccount)
+        .webhookIdentifier(webhookIdentifier)
+        .build();
   }
 
   public Page<GitXWebhookResponse> buildListGitXWebhookResponse(
@@ -143,15 +152,15 @@ public class GitXWebhookMapper {
     return responseBody;
   }
 
-  public GitXEventsListRequestDTO buildEventsListGitXWebhookRequestDTO(Scope scope, String webhookIdentifier,
-      Long eventStartTime, Long eventEndTime, String repoName, String filePath, String eventIdentifier,
-      List<String> eventStatus) {
+  public GitXEventsListRequestDTO buildEventsListGitXWebhookRequestDTO(String accountIdentifier,
+      String webhookIdentifier, Long eventStartTime, Long eventEndTime, String repoName, String filePath,
+      String eventIdentifier, String eventStatus) {
     if ((eventStartTime == null && eventEndTime != null) || (eventStartTime != null && eventEndTime == null)) {
       throw new InvalidRequestException(String.format(
           "Either the Event start time [%d] or the Event end time [%d] not provided.", eventStartTime, eventEndTime));
     }
     return GitXEventsListRequestDTO.builder()
-        .scope(scope)
+        .accountIdentifier(accountIdentifier)
         .webhookIdentifier(webhookIdentifier)
         .eventStartTime(eventStartTime)
         .eventEndTime(eventEndTime)
@@ -174,7 +183,7 @@ public class GitXWebhookMapper {
               gitXWebhookEventResponse.setEventTriggerTime(gitXEventDTO.getEventTriggerTime());
               gitXWebhookEventResponse.setPayload(gitXEventDTO.getPayload());
               gitXWebhookEventResponse.setAuthorName(gitXEventDTO.getAuthorName());
-              gitXWebhookEventResponse.setEventStatus(getEventStatus(gitXEventDTO.getEventStatus()));
+              gitXWebhookEventResponse.setEventStatus(gitXEventDTO.getEventStatus());
               return gitXWebhookEventResponse;
             })
             .collect(Collectors.toList());
@@ -190,23 +199,6 @@ public class GitXWebhookMapper {
     responseBody.setAuthorName(gitXWebhookEventResponse.getAuthorName());
     responseBody.setEventStatus(gitXWebhookEventResponse.getEventStatus());
     return responseBody;
-  }
-
-  private EventStatusEnum getEventStatus(String eventStatus) {
-    switch (eventStatus) {
-      case "FAILED":
-        return EventStatusEnum.FAILED;
-      case "SKIPPED":
-        return EventStatusEnum.SKIPPED;
-      case "SUCCESSFUL":
-        return EventStatusEnum.SUCCESSFUL;
-      case "QUEUED":
-        return EventStatusEnum.QUEUED;
-      case "PROCESSING":
-        return EventStatusEnum.PROCESSING;
-      default:
-        return EventStatusEnum.UNKNOWN;
-    }
   }
 
   private List<String> getFolderPaths(List<String> folderPaths) {

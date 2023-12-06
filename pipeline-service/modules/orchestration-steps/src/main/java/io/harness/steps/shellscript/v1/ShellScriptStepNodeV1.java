@@ -29,7 +29,6 @@ import io.harness.yaml.utils.v1.NGVariablesUtilsV1;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import lombok.Builder;
-import lombok.Getter;
 
 @CodePulse(
     module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_COMMON_STEPS})
@@ -39,12 +38,9 @@ import lombok.Getter;
 public class ShellScriptStepNodeV1 extends PmsAbstractStepNodeV1 {
   String type = StepSpecTypeConstantsV1.SHELL_SCRIPT;
 
-  @Getter
-  @JsonTypeInfo(use = NAME, property = "type", include = EXTERNAL_PROPERTY, visible = true)
-  ShellScriptStepInfoV1 spec;
+  @JsonTypeInfo(use = NAME, property = "type", include = EXTERNAL_PROPERTY, visible = true) ShellScriptStepInfoV1 spec;
 
   // TODO: set rollback parameters
-  @Override
   public StepElementParametersV1 getStepParameters(PlanCreationContext ctx) {
     StepElementParametersV1Builder stepBuilder = StepParametersUtilsV1.getStepParameters(this);
     stepBuilder.spec(getSpecParameters());

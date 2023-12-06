@@ -15,7 +15,6 @@ import io.harness.cvng.core.constant.MonitoredServiceConstants;
 import io.harness.cvng.core.entities.CVConfig;
 import io.harness.cvng.core.entities.MetricPack;
 import io.harness.cvng.core.entities.NewRelicCVConfig;
-import io.harness.cvng.core.entities.NewRelicCVConfig.NewRelicCVConfigBuilder;
 import io.harness.cvng.core.services.api.MetricPackService;
 import io.harness.cvng.core.validators.UniqueIdentifierCheck;
 
@@ -37,7 +36,6 @@ import lombok.Value;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
 import org.apache.commons.collections4.CollectionUtils;
-import org.jooq.tools.StringUtils;
 
 @Data
 @SuperBuilder
@@ -110,22 +108,21 @@ public class NewRelicHealthSourceSpec extends MetricHealthSourceSpec {
         .forEach(metricPack -> {
           MetricPack metricPackFromDb =
               metricPack.toMetricPack(accountId, orgIdentifier, projectIdentifier, getType(), metricPackService);
-          NewRelicCVConfigBuilder newRelicCVConfigBuilder = NewRelicCVConfig.builder()
-                                                                .accountId(accountId)
-                                                                .orgIdentifier(orgIdentifier)
-                                                                .projectIdentifier(projectIdentifier)
-                                                                .identifier(identifier)
-                                                                .connectorIdentifier(getConnectorRef())
-                                                                .monitoringSourceName(name)
-                                                                .applicationName(applicationName)
-                                                                .metricPack(metricPackFromDb)
-                                                                .category(metricPackFromDb.getCategory())
-                                                                .productName(feature)
-                                                                .monitoredServiceIdentifier(monitoredServiceIdentifier);
-          if (!StringUtils.isEmpty(applicationId)) {
-            newRelicCVConfigBuilder.applicationId(Long.valueOf(applicationId));
-          }
-          cvConfigs.add(newRelicCVConfigBuilder.build());
+          NewRelicCVConfig newRelicCVConfig = NewRelicCVConfig.builder()
+                                                  .accountId(accountId)
+                                                  .orgIdentifier(orgIdentifier)
+                                                  .projectIdentifier(projectIdentifier)
+                                                  .identifier(identifier)
+                                                  .connectorIdentifier(getConnectorRef())
+                                                  .monitoringSourceName(name)
+                                                  .applicationName(applicationName)
+                                                  .applicationId(Long.valueOf(applicationId))
+                                                  .metricPack(metricPackFromDb)
+                                                  .category(metricPackFromDb.getCategory())
+                                                  .productName(feature)
+                                                  .monitoredServiceIdentifier(monitoredServiceIdentifier)
+                                                  .build();
+          cvConfigs.add(newRelicCVConfig);
         });
 
     // cvConfigs for the custom metrics
@@ -134,27 +131,21 @@ public class NewRelicHealthSourceSpec extends MetricHealthSourceSpec {
             .stream()
             .collect(Collectors.groupingBy(md -> MetricDefinitionKey.fromMetricDefinition(applicationId, md)));
     metricDefinitionMap.forEach((key, definitionList) -> {
-      NewRelicCVConfigBuilder newRelicCVConfigBuilder =
-          NewRelicCVConfig.builder()
-              .accountId(accountId)
-              .orgIdentifier(orgIdentifier)
-              .projectIdentifier(projectIdentifier)
-              .identifier(identifier)
-              .connectorIdentifier(getConnectorRef())
-              .monitoringSourceName(name)
-              .productName(feature)
-              .applicationName(applicationName)
-              .groupName(definitionList.get(0).getGroupName())
-              .category(definitionList.get(0).getRiskProfile().getCategory())
-              .monitoredServiceIdentifier(monitoredServiceIdentifier)
-              .customQuery(true);
-
-      if (!StringUtils.isEmpty(applicationId)) {
-        newRelicCVConfigBuilder.applicationId(Long.valueOf(applicationId));
-      }
-
-      NewRelicCVConfig newRelicCVConfig = newRelicCVConfigBuilder.build();
-
+      NewRelicCVConfig newRelicCVConfig = NewRelicCVConfig.builder()
+                                              .accountId(accountId)
+                                              .orgIdentifier(orgIdentifier)
+                                              .projectIdentifier(projectIdentifier)
+                                              .identifier(identifier)
+                                              .connectorIdentifier(getConnectorRef())
+                                              .monitoringSourceName(name)
+                                              .productName(feature)
+                                              .applicationName(applicationName)
+                                              .applicationId(Long.valueOf(applicationId))
+                                              .groupName(definitionList.get(0).getGroupName())
+                                              .category(definitionList.get(0).getRiskProfile().getCategory())
+                                              .monitoredServiceIdentifier(monitoredServiceIdentifier)
+                                              .customQuery(true)
+                                              .build();
       newRelicCVConfig.populateFromMetricDefinitions(
           newRelicMetricDefinitions, newRelicMetricDefinitions.get(0).getRiskProfile().getCategory());
       cvConfigs.add(newRelicCVConfig);
@@ -192,7 +183,7 @@ public class NewRelicHealthSourceSpec extends MetricHealthSourceSpec {
   @Builder
   private static class Key {
     private String applicationName;
-    private Long applicationId;
+    private long applicationId;
     private String monitoredServiceIdentifier;
     MetricPack metricPack;
   }

@@ -300,8 +300,6 @@ public interface AccountService {
   Account updateCrossGenerationAccessEnabled(
       String accountIdentifier, boolean isCrossGenerationAccessEnabled, boolean isNextGen);
 
-  Account updateCannyUsernameAbbreviationEnabled(String accountIdentifier, boolean isCannyUsernameAbbreviationEnabled);
-
   boolean getPublicAccessEnabled(String accountId);
 
   void setPublicAccessEnabled(String accountId, boolean publicAccessEnabled);
@@ -309,6 +307,4 @@ public interface AccountService {
   Account updateDefaultExperience(String accountIdentifier, DefaultExperience defaultExperience);
 
   List<Account> listAccountsMarkedForDeletion(int limit);
-
-  List<Account> getAccountsUpdatedSinceTimestamp(long timestamp);
 }

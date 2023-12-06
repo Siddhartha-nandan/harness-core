@@ -279,20 +279,17 @@ public class SLIConsecutiveMinutesProcessorServiceImplTest extends CvNextGenTest
       SLIState sliState = sliStates.get(i);
       long goodCount = 0;
       long badCount = 0;
-      long skipDataCount = 0;
       if (sliState == GOOD) {
-        goodCount++;
-      } else if (sliState == BAD) {
-        badCount++;
-      } else if (sliState == SKIP_DATA) {
-        skipDataCount++;
+        goodCount += 1;
+      }
+      if (sliState == BAD) {
+        badCount += 1;
       }
       sliRecordParams.add(SLIRecordParam.builder()
                               .sliState(sliState)
                               .timeStamp(startTime.plus(Duration.ofMinutes(i)))
                               .goodEventCount(goodCount)
                               .badEventCount(badCount)
-                              .skipEventCount(skipDataCount)
                               .build());
     }
     return sliRecordParams;

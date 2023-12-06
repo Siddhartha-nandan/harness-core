@@ -148,7 +148,6 @@ import io.harness.cdng.tas.TasSwapRollbackStepInfo;
 import io.harness.cdng.tas.TasSwapRollbackStepParameters;
 import io.harness.cdng.tas.TasSwapRoutesStepInfo;
 import io.harness.cdng.tas.TasSwapRoutesStepParameters;
-import io.harness.cdng.tas.beans.ArtifactBundleFetchResponsePassThroughData;
 import io.harness.cdng.tasks.manifestFetch.step.ManifestFetchOutcome;
 import io.harness.cdng.tasks.manifestFetch.step.ManifestFetchParameters;
 import io.harness.gitops.models.Application;
@@ -324,6 +323,5 @@ public class NGKryoRegistrar implements KryoRegistrar {
 
     kryo.register(K8sBGStageScaleDownStepInfo.class, 12647);
     kryo.register(K8sBGStageScaleDownStepParameters.class, 12648);
-    kryo.register(ArtifactBundleFetchResponsePassThroughData.class, 12649);
   }
 }

@@ -1399,8 +1399,7 @@ public class NGTemplateServiceImpl implements NGTemplateService {
     }
   }
 
-  @VisibleForTesting
-  protected TemplateEntity getAndValidateOldTemplateEntity(
+  private TemplateEntity getAndValidateOldTemplateEntity(
       TemplateEntity templateEntity, String oldOrgIdentifier, String oldProjectIdentifier) {
     TemplateUtils.setupGitParentEntityDetails(
         templateEntity.getAccountIdentifier(), oldOrgIdentifier, oldProjectIdentifier, null, null);
@@ -1430,9 +1429,9 @@ public class NGTemplateServiceImpl implements NGTemplateService {
     if (!((oldTemplateEntity.getChildType() == null && templateEntity.getChildType() == null)
             || oldTemplateEntity.getChildType().equals(templateEntity.getChildType()))) {
       throw new InvalidRequestException(format(
-          "Template with identifier [%s] and versionLabel [%s] under Project[%s], Organization [%s] cannot update the internal template type, current type is [%s] and the requested type is [%s].",
+          "Template with identifier [%s] and versionLabel [%s] under Project[%s], Organization [%s] cannot update the internal template type, type is [%s].",
           templateEntity.getIdentifier(), templateEntity.getVersionLabel(), templateEntity.getProjectIdentifier(),
-          templateEntity.getOrgIdentifier(), oldTemplateEntity.getChildType(), templateEntity.getChildType()));
+          templateEntity.getOrgIdentifier(), oldTemplateEntity.getChildType()));
     }
     return oldTemplateEntity;
   }
@@ -1516,7 +1515,7 @@ public class NGTemplateServiceImpl implements NGTemplateService {
             templateIdentifier, versionLabel));
       }
 
-      if (StoreType.REMOTE.equals(templateEntityOptional.get().getStoreType())) {
+      if (templateEntityOptional.get().getStoreType().equals(StoreType.REMOTE)) {
         throw new InvalidRequestException(String.format(
             "Template with the given Identifier: %s and versionLabel %s cannot be moved to Git as it is already Remote Type",
             templateIdentifier, versionLabel));

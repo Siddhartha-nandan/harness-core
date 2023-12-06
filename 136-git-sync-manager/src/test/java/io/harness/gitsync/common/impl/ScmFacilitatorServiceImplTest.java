@@ -85,7 +85,7 @@ import io.harness.gitsync.common.helper.GitRepoHelper;
 import io.harness.gitsync.common.service.GitSyncConnectorService;
 import io.harness.gitsync.common.service.ScmOrchestratorService;
 import io.harness.gitsync.core.runnable.GitBackgroundCacheRefreshHelper;
-import io.harness.gitsync.gitxwebhooks.helper.GitXWebhookHelper;
+import io.harness.gitsync.gitxwebhooks.service.GitXWebhookService;
 import io.harness.gitx.GitXSettingsHelper;
 import io.harness.grpc.DelegateServiceGrpcClient;
 import io.harness.ng.beans.PageRequest;
@@ -156,8 +156,8 @@ public class ScmFacilitatorServiceImplTest extends GitSyncTestBase {
   @Mock GitDefaultBranchCacheHelper gitDefaultBranchCacheHelper;
   @Mock GitXSettingsHelper gitXSettingsHelper;
   @Mock GitRepoHelper gitRepoHelper;
+  @Mock GitXWebhookService gitXWebhookService;
   @Spy @InjectMocks GitRepoAllowlistHelper gitRepoAllowlistHelper;
-  @Mock GitXWebhookHelper gitXWebhookHelper;
 
   String fileUrl = "https://github.com/harness/repoName/blob/branch/filePath";
 
@@ -169,7 +169,7 @@ public class ScmFacilitatorServiceImplTest extends GitSyncTestBase {
     scmFacilitatorService = new ScmFacilitatorServiceImpl(gitSyncConnectorService, connectorService,
         scmOrchestratorService, ngFeatureFlagHelperService, gitClientEnabledHelper, gitFileCacheService,
         gitFilePathHelper, delegateServiceGrpcClient, gitBackgroundCacheRefreshHelper, gitDefaultBranchCacheHelper,
-        gitRepoHelper, gitRepoAllowlistHelper, gitXWebhookHelper);
+        gitRepoHelper, gitRepoAllowlistHelper, gitXWebhookService);
     pageRequest = PageRequest.builder().build();
     GithubConnectorDTO githubConnector = GithubConnectorDTO.builder()
                                              .connectionType(GitConnectionType.ACCOUNT)
@@ -376,8 +376,8 @@ public class ScmFacilitatorServiceImplTest extends GitSyncTestBase {
     when(gitClientEnabledHelper.isGitClientEnabledInSettings(scope.getAccountIdentifier())).thenReturn(false);
     doNothing().when(gitRepoAllowlistHelper).validateRepo(any(), any(), any());
 
-    ScmCommitFileResponseDTO scmCommitFileResponseDTO = scmFacilitatorService.createFile(
-        ScmCreateFileRequestDTO.builder().branchName("branch").scope(Scope.builder().build()).build());
+    ScmCommitFileResponseDTO scmCommitFileResponseDTO =
+        scmFacilitatorService.createFile(ScmCreateFileRequestDTO.builder().scope(Scope.builder().build()).build());
     assertThat(scmCommitFileResponseDTO.getCommitId()).isEqualTo(commitId);
     assertThat(scmCommitFileResponseDTO.getBlobId()).isEqualTo(blobId);
   }
@@ -400,31 +400,13 @@ public class ScmFacilitatorServiceImplTest extends GitSyncTestBase {
   @Test
   @Owner(developers = MOHIT_GARG)
   @Category(UnitTests.class)
-  public void testCreateFileValidation() {
-    CreateFileResponse createFileResponse =
-        CreateFileResponse.newBuilder().setBlobId(blobId).setCommitId(commitId).build();
-    when(scmOrchestratorService.processScmRequestUsingConnectorSettings(any(), any())).thenReturn(createFileResponse);
-    when(gitClientEnabledHelper.isGitClientEnabledInSettings(scope.getAccountIdentifier())).thenReturn(false);
-    doNothing().when(gitRepoAllowlistHelper).validateRepo(any(), any(), any());
-
-    ScmCommitFileResponseDTO scmCommitFileResponseDTO = scmFacilitatorService.createFile(
-        ScmCreateFileRequestDTO.builder().branchName("branch").scope(Scope.builder().build()).build());
-    assertThatThrownBy(()
-                           -> scmFacilitatorService.createFile(
-                               ScmCreateFileRequestDTO.builder().scope(Scope.builder().build()).build()))
-        .isInstanceOf(InvalidRequestException.class);
-  }
-
-  @Test
-  @Owner(developers = MOHIT_GARG)
-  @Category(UnitTests.class)
   public void testUpdateFileWhenSCMAPIsucceeds() {
     UpdateFileResponse updateFileResponse =
         UpdateFileResponse.newBuilder().setBlobId(blobId).setCommitId(commitId).build();
     when(scmOrchestratorService.processScmRequestUsingConnectorSettings(any(), any())).thenReturn(updateFileResponse);
     when(gitClientEnabledHelper.isGitClientEnabledInSettings(scope.getAccountIdentifier())).thenReturn(false);
-    ScmCommitFileResponseDTO scmCommitFileResponseDTO = scmFacilitatorService.updateFile(
-        ScmUpdateFileRequestDTO.builder().branchName("branch").scope(getDefaultScope()).build());
+    ScmCommitFileResponseDTO scmCommitFileResponseDTO =
+        scmFacilitatorService.updateFile(ScmUpdateFileRequestDTO.builder().scope(getDefaultScope()).build());
     assertThat(scmCommitFileResponseDTO.getCommitId()).isEqualTo(commitId);
     assertThat(scmCommitFileResponseDTO.getBlobId()).isEqualTo(blobId);
   }
@@ -439,14 +421,6 @@ public class ScmFacilitatorServiceImplTest extends GitSyncTestBase {
     assertThatThrownBy(
         () -> scmFacilitatorService.updateFile(ScmUpdateFileRequestDTO.builder().scope(getDefaultScope()).build()))
         .isInstanceOf(WingsException.class);
-  }
-
-  @Test
-  @Owner(developers = MOHIT_GARG)
-  @Category(UnitTests.class)
-  public void testUpdateFileValidation() {
-    assertThatThrownBy(() -> scmFacilitatorService.updateFile(ScmUpdateFileRequestDTO.builder().build()))
-        .isInstanceOf(InvalidRequestException.class);
   }
 
   @Test

@@ -98,7 +98,7 @@ public interface TerraformBaseHelper {
 
   String getPlanName(TerraformCommand terraformCommand);
 
-  void performCleanupOfTfDirs(TerraformTaskNGParameters parameters, LogCallback logCallback, String baseDir);
+  void performCleanupOfTfDirs(TerraformTaskNGParameters parameters, LogCallback logCallback);
 
   String getBaseDir(String entityId);
 

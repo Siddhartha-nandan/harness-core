@@ -11,8 +11,6 @@ import static io.harness.beans.SortOrder.Builder.aSortOrder;
 import static io.harness.beans.SortOrder.OrderType.DESC;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
-import static io.harness.ng.core.mapper.TagMapper.convertToList;
-import static io.harness.ng.core.mapper.TagMapper.convertToMap;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
@@ -54,7 +52,6 @@ public class IPAllowlistResourceUtils {
                                                             .description(config.getDescription())
                                                             .accountIdentifier(accountIdentifier)
                                                             .enabled(config.isEnabled())
-                                                            .tags(convertToList(config.getTags()))
                                                             .ipAddress(config.getIpAddress());
 
     if (config.getAllowedSourceType() != null && isNotEmpty(config.getAllowedSourceType())) {
@@ -72,7 +69,6 @@ public class IPAllowlistResourceUtils {
     ipAllowlistConfig.allowedSourceType(entity.getAllowedSourceType());
     ipAllowlistConfig.ipAddress(entity.getIpAddress());
     ipAllowlistConfig.enabled(entity.getEnabled());
-    ipAllowlistConfig.tags(convertToMap(entity.getTags()));
     return ipAllowlistConfig;
   }
   public IPAllowlistEntity toIPAllowlistDTO(IPAllowlistConfig config, String accountIdentifier) {

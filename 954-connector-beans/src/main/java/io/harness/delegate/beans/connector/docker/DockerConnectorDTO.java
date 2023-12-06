@@ -14,14 +14,12 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.DecryptableEntity;
 import io.harness.connector.DelegateSelectable;
 import io.harness.connector.ManagerExecutable;
-import io.harness.connector.WithProxy;
 import io.harness.delegate.beans.connector.ConnectorConfigDTO;
 import io.harness.delegate.beans.connector.ConnectorConfigOutcomeDTO;
 import io.harness.delegate.beans.connector.docker.outcome.DockerAuthenticationOutcomeDTO;
 import io.harness.delegate.beans.connector.docker.outcome.DockerConnectorOutcomeDTO;
 import io.harness.exception.InvalidRequestException;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Collections;
@@ -48,14 +46,12 @@ import org.hibernate.validator.constraints.URL;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Schema(name = "DockerConnector", description = "Docker Connector details.")
-public class DockerConnectorDTO extends ConnectorConfigDTO implements DelegateSelectable, ManagerExecutable, WithProxy {
+public class DockerConnectorDTO extends ConnectorConfigDTO implements DelegateSelectable, ManagerExecutable {
   @URL @NotNull @NotBlank String dockerRegistryUrl;
   @NotNull DockerRegistryProviderType providerType;
   @Valid DockerAuthenticationDTO auth;
   Set<String> delegateSelectors;
   @Builder.Default Boolean executeOnDelegate = true;
-  @Builder.Default Boolean proxy = false;
-  @JsonIgnore String proxyUrl;
 
   @Override
   public List<DecryptableEntity> getDecryptableEntities() {

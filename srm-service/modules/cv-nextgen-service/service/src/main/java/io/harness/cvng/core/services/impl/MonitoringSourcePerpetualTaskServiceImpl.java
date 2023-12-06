@@ -191,7 +191,10 @@ public class MonitoringSourcePerpetualTaskServiceImpl
   }
   @Override
   public Optional<CVNGPerpetualTaskDTO> getPerpetualTaskStatus(String dataCollectionWorkerId) {
-    MonitoringSourcePerpetualTask monitoringSourcePerpetualTask = getPerpetualTask(dataCollectionWorkerId);
+    MonitoringSourcePerpetualTask monitoringSourcePerpetualTask =
+        hPersistence.createQuery(MonitoringSourcePerpetualTask.class, excludeAuthority)
+            .filter(MonitoringSourcePerpetualTaskKeys.dataCollectionWorkerId, dataCollectionWorkerId)
+            .get();
     Preconditions.checkNotNull(monitoringSourcePerpetualTask,
         "No Monitoring Source Perpetual Task exists with dataCollectionWorkerId:" + dataCollectionWorkerId);
     CVNGPerpetualTaskDTO cvngPerpetualTaskDTO;
@@ -202,12 +205,6 @@ public class MonitoringSourcePerpetualTaskServiceImpl
         verificationManagerService.getPerpetualTaskStatus(monitoringSourcePerpetualTask.getPerpetualTaskId()));
   }
 
-  @Override
-  public MonitoringSourcePerpetualTask getPerpetualTask(String dataCollectionWorkerId) {
-    return hPersistence.createQuery(MonitoringSourcePerpetualTask.class, excludeAuthority)
-        .filter(MonitoringSourcePerpetualTaskKeys.dataCollectionWorkerId, dataCollectionWorkerId)
-        .get();
-  }
   private String getWorkerId(MonitoringSourcePerpetualTask monitoringSourcePerpetualTask) {
     return getWorkerId(monitoringSourcePerpetualTask.getAccountId(), monitoringSourcePerpetualTask.getOrgIdentifier(),
         monitoringSourcePerpetualTask.getProjectIdentifier(), monitoringSourcePerpetualTask.getConnectorIdentifier(),

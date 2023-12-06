@@ -70,7 +70,7 @@ public class RunInfoUtilsV1 {
     return getStageWhenCondition(stageWhenConditionParameterField);
   }
 
-  public String getStageWhenCondition(ParameterField<String> stageWhenCondition) {
+  private String getStageWhenCondition(ParameterField<String> stageWhenCondition) {
     return getStageWhenCondition(stageWhenCondition, NORMAL);
   }
 

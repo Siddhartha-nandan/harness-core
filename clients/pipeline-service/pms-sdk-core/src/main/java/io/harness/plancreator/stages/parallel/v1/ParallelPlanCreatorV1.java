@@ -54,8 +54,8 @@ public class ParallelPlanCreatorV1 extends ChildrenPlanCreator<YamlField> {
   @Inject private KryoSerializer kryoSerializer;
 
   @Override
-  public YamlField getFieldObject(YamlField field) {
-    return field;
+  public Class<YamlField> getFieldClass() {
+    return YamlField.class;
   }
 
   @Override

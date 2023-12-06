@@ -107,7 +107,6 @@ public class YAMLFieldNameConstants {
   public final String ENVIRONMENT_REF = "environmentRef";
   public final String GROUP = "group";
   public static final String OUTPUTS = "outputs";
-  public static final String EXPORTS = "exports";
 
   public final String OPTIONS = "options";
   public final String REPOSITORY = "repository";
@@ -136,5 +135,4 @@ public class YAMLFieldNameConstants {
   public final String DESC = "desc";
 
   public final String DEPLOYMENT_STAGE_V1 = "deployment";
-  public final String ROLLBACK_STEPS_V1 = "rollback_steps";
 }

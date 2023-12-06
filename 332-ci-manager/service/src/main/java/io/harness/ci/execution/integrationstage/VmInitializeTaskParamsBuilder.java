@@ -92,7 +92,6 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -229,10 +228,7 @@ public class VmInitializeTaskParamsBuilder {
     Map<String, String> envVars = new HashMap<>();
     Map<String, String> stageEnvVars =
         vmInitializeUtils.getStageEnvVars(integrationStageConfig.getPlatform(), os, workDir, poolId, infrastructure);
-    Map<String, String> proxyEnvVars =
-        vmInitializeUtils.getStageProxyVars(integrationStageConfig, os, ngAccess, connectorUtils, infrastructure);
     envVars.putAll(stageEnvVars);
-    envVars.putAll(proxyEnvVars);
     envVars.putAll(codebaseEnvVars);
     envVars.putAll(gitEnvVars);
 
@@ -262,9 +258,6 @@ public class VmInitializeTaskParamsBuilder {
     CIVmSecretEvaluator ciVmSecretEvaluator = CIVmSecretEvaluator.builder().build();
     Set<String> secrets = ciVmSecretEvaluator.resolve(stageVars, ngAccess, ambiance.getExpressionFunctorToken());
     envVars.putAll(stageVars);
-    String tiSvcToken = getTISvcToken(accountID);
-    secrets.add(Base64.getEncoder().encodeToString(tiSvcToken.getBytes()));
-    secrets.add(envVars.get("HARNESS_STO_SERVICE_TOKEN"));
 
     return CIVmInitializeTaskParams.builder()
         .poolID(poolId)
@@ -284,7 +277,7 @@ public class VmInitializeTaskParamsBuilder {
         .logSvcToken(getLogSvcToken(accountID))
         .logSvcIndirectUpload(featureFlagService.isEnabled(FeatureName.CI_INDIRECT_LOG_UPLOAD, accountID))
         .tiUrl(tiServiceUtils.getTiServiceConfig().getBaseUrl())
-        .tiSvcToken(tiSvcToken)
+        .tiSvcToken(getTISvcToken(accountID))
         .stoUrl(stoServiceUtils.getStoServiceConfig().getBaseUrl())
         .stoSvcToken(getSTOSvcToken(accountID))
         .secrets(new ArrayList<>(secrets))

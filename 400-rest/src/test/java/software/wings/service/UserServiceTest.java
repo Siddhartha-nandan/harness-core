@@ -1812,7 +1812,6 @@ public class UserServiceTest extends WingsBaseTest {
     when(ssoSettingService.getSamlSettingsByAccountId(account.getUuid())).thenReturn(samlSettings);
     when(wingsPersistence.get(User.class, user.getUuid())).thenReturn(user);
     when(userGroupService.list(anyString(), any(), anyBoolean(), any(), any(), anyBoolean())).thenReturn(val);
-    when(authenticationUtils.getAccount(any())).thenReturn(account);
 
     LogoutResponse logoutResponse = userService.logout(account.getUuid(), user.getUuid());
     assertThat(logoutResponse.getLogoutUrl()).isNotNull();
@@ -2027,7 +2026,7 @@ public class UserServiceTest extends WingsBaseTest {
 
     List<InviteOperationResponse> inviteOperationResponses = userService.inviteUsers(userInvite);
 
-    assertThat(inviteOperationResponses.get(0)).isEqualTo(InviteOperationResponse.USER_ADDED_SUCCESSFULLY_TO_ACCOUNT);
+    assertThat(inviteOperationResponses.get(0)).isEqualTo(InviteOperationResponse.USER_INVITE_NOT_REQUIRED);
     verify(emailDataNotificationService, times(0)).send(any());
   }
 

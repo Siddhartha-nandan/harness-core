@@ -69,14 +69,8 @@ BEGIN
                         -- List all deployed services during specific day or month from service_infra_info table
                         (
                             SELECT
-                                CASE
-                                    WHEN service_id LIKE 'account.%' THEN NULL
-                                    ELSE orgIdentifier
-                                END AS orgIdentifier,
-                                CASE
-                                    WHEN service_id LIKE 'account.%' OR service_id LIKE 'org.%' THEN NULL
-                                    ELSE projectIdentifier
-                                END AS projectIdentifier,
+                                orgidentifier AS orgIdentifier,
+                                projectidentifier AS projectIdentifier,
                                 service_id AS serviceIdentifier
                             FROM
                                 service_infra_info
@@ -89,14 +83,8 @@ BEGIN
                                 AND service_startts >= EXTRACT(EPOCH FROM DATE (v_interim_begin_date - INTERVAL '29 day')) * 1000
                                 AND service_startts < EXTRACT(EPOCH FROM DATE (v_interim_end_date::timestamp)) * 1000
                             GROUP BY
-                                CASE
-                                    WHEN service_id LIKE 'account.%' THEN NULL
-                                    ELSE orgidentifier
-                                END,
-                                CASE
-                                    WHEN service_id LIKE 'account.%' OR service_id LIKE 'org.%' THEN NULL
-                                    ELSE projectidentifier
-                                END,
+                                orgidentifier,
+                                projectidentifier,
                                 service_id
                         ) activeServices
                         LEFT JOIN
@@ -111,14 +99,8 @@ BEGIN
                                 (
                                     SELECT
                                         DATE_TRUNC('minute', reportedat) AS reportedat,
-                                        CASE
-                                            WHEN serviceid LIKE 'account.%' THEN NULL
-                                            ELSE orgid
-                                        END AS orgid,
-                                        CASE
-                                            WHEN serviceid LIKE 'account.%' OR serviceid LIKE 'org.%' THEN NULL
-                                            ELSE projectid
-                                        END AS projectid,
+                                        orgid,
+                                        projectid,
                                         serviceid,
                                         SUM(instancecount) AS instanceCount
                                     FROM
@@ -132,14 +114,8 @@ BEGIN
                                         AND reportedat >= v_interim_begin_date - INTERVAL '29 day'
                                         AND reportedat < v_interim_end_date
                                     GROUP BY
-                                        CASE
-                                            WHEN serviceid LIKE 'account.%' THEN NULL
-                                            ELSE orgid
-                                        END,
-                                        CASE
-                                            WHEN serviceid LIKE 'account.%' OR serviceid LIKE 'org.%' THEN NULL
-                                            ELSE projectid
-                                        END,
+                                        orgid,
+                                        projectid,
                                         serviceid,
                                         DATE_TRUNC('minute', reportedat)
                                 ) instancesPerServicesReportedAt
@@ -147,11 +123,8 @@ BEGIN
                                 orgid,
                                 projectid,
                                 serviceid
-                        ) instancesPerServices
-                        ON (activeServices.orgIdentifier = instancesPerServices.orgid
-                                OR (activeServices.orgIdentifier IS NULL AND instancesPerServices.orgid IS NULL))
-                            AND (activeServices.projectIdentifier = instancesPerServices.projectid
-                                OR (activeServices.projectIdentifier IS NULL AND instancesPerServices.projectid IS NULL))
+                        ) instancesPerServices ON activeServices.orgIdentifier = instancesPerServices.orgid
+                            AND activeServices.projectIdentifier = instancesPerServices.projectid
                             AND activeServices.serviceIdentifier = instancesPerServices.serviceid
                 ) servicesLicenses;
 

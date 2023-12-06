@@ -163,7 +163,7 @@ func TestStopAddonServerErr(t *testing.T) {
 	log, _ := logs.GetObservedLogger(zap.InfoLevel)
 
 	c := &mockClient{
-		err: errors.New("transport: Error while dialing: dial tcp :20005: connect: connection refused"),
+		err: errors.New("server not running"),
 	}
 	mClient := amgrpc.NewMockAddonClient(ctrl)
 	mClient.EXPECT().CloseConn().Return(nil)

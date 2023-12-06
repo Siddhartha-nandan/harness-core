@@ -24,5 +24,4 @@ public class OpaPolicyEvaluationResponse {
   PolicyData policy;
   List<String> deny_messages;
   String error;
-  Object output;
 }

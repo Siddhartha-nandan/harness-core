@@ -12,21 +12,16 @@ import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.delegate.task.k8s.ManifestType.KUSTOMIZE;
 import static io.harness.logging.CommandExecutionStatus.FAILURE;
 
-import io.harness.annotations.dev.CodePulse;
-import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.annotations.dev.ProductModule;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.delegate.beans.logstreaming.CommandUnitProgress;
 import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
 import io.harness.delegate.beans.logstreaming.NGDelegateLogCallback;
 import io.harness.delegate.k8s.evaluator.KubernetesPlaceholderEvaluator;
-import io.harness.delegate.k8s.utils.K8sTaskCleaner;
 import io.harness.delegate.task.k8s.K8sDeployRequest;
 import io.harness.delegate.task.k8s.K8sDeployResponse;
 import io.harness.delegate.task.k8s.K8sNGTaskResponse;
-import io.harness.delegate.task.k8s.K8sTaskCleanupDTO;
 import io.harness.exception.ExceptionUtils;
 import io.harness.exception.ExplanationException;
 import io.harness.exception.HintException;
@@ -36,7 +31,6 @@ import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.LogCallback;
 import io.harness.logging.LogLevel;
 
-import com.google.inject.Inject;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,10 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @OwnedBy(CDP)
 @Slf4j
-@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 public abstract class K8sRequestHandler {
-  @Inject K8sTaskCleaner k8sTaskCleaner;
-
   public K8sDeployResponse executeTask(K8sDeployRequest k8sDeployRequest, K8sDelegateTaskParams k8SDelegateTaskParams,
       ILogStreamingTaskClient logStreamingTaskClient, CommandUnitsProgress commandUnitsProgress) throws Exception {
     if (isErrorFrameworkSupported()) {
@@ -191,9 +182,5 @@ public abstract class K8sRequestHandler {
     }
 
     return getFirstNonHintOrExplanationThrowable(throwable.getCause());
-  }
-
-  public void performCleanup(K8sTaskCleanupDTO cleanupDTO) {
-    k8sTaskCleaner.cleanup(cleanupDTO);
   }
 }

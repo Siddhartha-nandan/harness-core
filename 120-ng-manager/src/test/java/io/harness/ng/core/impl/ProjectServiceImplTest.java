@@ -46,7 +46,6 @@ import io.harness.CategoryTest;
 import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.Scope;
-import io.harness.beans.ScopeInfo;
 import io.harness.category.element.UnitTests;
 import io.harness.context.GlobalContext;
 import io.harness.exception.DuplicateFieldException;
@@ -70,6 +69,7 @@ import io.harness.ng.core.entities.Project.ProjectKeys;
 import io.harness.ng.core.remote.ProjectMapper;
 import io.harness.ng.core.remote.utils.ScopeAccessHelper;
 import io.harness.ng.core.services.OrganizationService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ng.core.user.entities.UserMembership;
 import io.harness.ng.core.user.service.NgUserService;
 import io.harness.outbox.api.OutboxService;
@@ -94,7 +94,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.cache.Cache;
 import org.bson.Document;
 import org.junit.Before;
 import org.junit.Rule;
@@ -138,18 +137,17 @@ public class ProjectServiceImplTest extends CategoryTest {
   @Mock private DefaultUserGroupService defaultUserGroupService;
   @Mock private FavoritesService favoritesService;
   @Mock private UserHelperService userHelperService;
-  @Mock private Cache<String, ScopeInfo> scopeInfoCache;
-  @Mock private ScopeInfoHelper scopeInfoHelper;
+  @Mock private ScopeInfoService scopeInfoService;
 
   @Rule public ExpectedException exceptionRule = ExpectedException.none();
 
   @Before
   public void setup() {
     MockitoAnnotations.initMocks(this);
-    projectService = spy(new ProjectServiceImpl(projectRepository, organizationService, transactionTemplate,
-        outboxService, ngUserService, accessControlClient, scopeAccessHelper, instrumentationHelper,
-        yamlGitConfigService, featureFlagService, defaultUserGroupService, favoritesService, userHelperService,
-        scopeInfoCache, scopeInfoHelper));
+    projectService =
+        spy(new ProjectServiceImpl(projectRepository, organizationService, transactionTemplate, outboxService,
+            ngUserService, accessControlClient, scopeAccessHelper, instrumentationHelper, yamlGitConfigService,
+            featureFlagService, defaultUserGroupService, favoritesService, userHelperService, scopeInfoService));
     when(scopeAccessHelper.getPermittedScopes(any())).then(returnsFirstArg());
   }
 
@@ -175,9 +173,7 @@ public class ProjectServiceImplTest extends CategoryTest {
     setContextData(accountIdentifier);
 
     when(projectRepository.save(project)).thenReturn(project);
-    Optional<Organization> organizationOptional = Optional.of(random(Organization.class));
-    organizationOptional.get().setIdentifier(orgIdentifier);
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(organizationOptional);
+    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
 
     projectService.create(accountIdentifier, orgIdentifier, projectDTO);
     try {
@@ -199,7 +195,7 @@ public class ProjectServiceImplTest extends CategoryTest {
     GlobalContextManager.set(globalContext);
   }
 
-  @Test(expected = EntityNotFoundException.class)
+  @Test(expected = InvalidRequestException.class)
   @Owner(developers = KARAN)
   @Category(UnitTests.class)
   public void testCreateProject_IncorrectPayload() {
@@ -229,9 +225,7 @@ public class ProjectServiceImplTest extends CategoryTest {
     exceptionRule.expectMessage(
         String.format("A project with identifier [%s] and orgIdentifier [%s] is already present",
             project.getIdentifier(), orgIdentifier));
-    Optional<Organization> organizationOptional = Optional.of(random(Organization.class));
-    organizationOptional.get().setIdentifier(orgIdentifier);
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(organizationOptional);
+    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
     when(transactionTemplate.execute(any()))
         .thenAnswer(invocationOnMock
             -> invocationOnMock.getArgument(0, TransactionCallback.class)
@@ -498,8 +492,7 @@ public class ProjectServiceImplTest extends CategoryTest {
                       .build();
     ArgumentCaptor<Criteria> criteriaArgumentCaptor = ArgumentCaptor.forClass(Criteria.class);
     when(projectRepository.findAll(any(Criteria.class))).thenReturn(List.of(project));
-    when(projectRepository.findAllWithCollation(any(Criteria.class), any(Pageable.class)))
-        .thenReturn(getPage(List.of(project), 1));
+    when(projectRepository.findAll(any(Criteria.class), any(Pageable.class))).thenReturn(getPage(List.of(project), 1));
     when(scopeAccessHelper.getPermittedScopes(any())).thenReturn(List.of(scope));
 
     Set<String> orgIdentifiers = Collections.singleton(orgIdentifier);
@@ -508,7 +501,7 @@ public class ProjectServiceImplTest extends CategoryTest {
         Boolean.FALSE);
 
     verify(projectRepository, times(1)).findAll(any(Criteria.class));
-    verify(projectRepository, times(1)).findAllWithCollation(criteriaArgumentCaptor.capture(), any(Pageable.class));
+    verify(projectRepository, times(1)).findAll(criteriaArgumentCaptor.capture(), any(Pageable.class));
 
     Criteria criteria = criteriaArgumentCaptor.getValue();
     Document criteriaObject = criteria.getCriteriaObject();
@@ -546,8 +539,7 @@ public class ProjectServiceImplTest extends CategoryTest {
                       .build();
     ArgumentCaptor<Criteria> criteriaArgumentCaptor = ArgumentCaptor.forClass(Criteria.class);
     when(projectRepository.findAll(any(Criteria.class))).thenReturn(List.of(project, project2));
-    when(projectRepository.findAllWithCollation(any(Criteria.class), any(Pageable.class)))
-        .thenReturn(getPage(List.of(project2), 1));
+    when(projectRepository.findAll(any(Criteria.class), any(Pageable.class))).thenReturn(getPage(List.of(project2), 1));
     when(scopeAccessHelper.getPermittedScopes(any())).thenReturn(List.of(scope));
     when(favoritesService.getFavorites(accountIdentifier, null, null, null, ResourceType.PROJECT.toString()))
         .thenReturn(List.of(Favorite.builder()
@@ -559,7 +551,7 @@ public class ProjectServiceImplTest extends CategoryTest {
         ProjectFilterDTO.builder().orgIdentifiers(orgIdentifiers).searchTerm(searchTerm).moduleType(CD).build(),
         Boolean.TRUE);
     verify(projectRepository, times(1)).findAll(any(Criteria.class));
-    verify(projectRepository, times(1)).findAllWithCollation(criteriaArgumentCaptor.capture(), any(Pageable.class));
+    verify(projectRepository, times(1)).findAll(criteriaArgumentCaptor.capture(), any(Pageable.class));
 
     Criteria criteria = criteriaArgumentCaptor.getValue();
     Document criteriaObject = criteria.getCriteriaObject();

@@ -127,7 +127,6 @@ import software.wings.utils.RepositoryType;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import dev.morphia.query.FindOptions;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -830,12 +829,8 @@ public class ArtifactCollectionUtils {
     String artifactStreamType = artifactStream.getArtifactStreamType();
     Function<Artifact, String> keyFn = getArtifactKeyFn(artifactStreamType, artifactStreamAttributes);
     Set<String> artifactKeys = new HashSet<>();
-    FindOptions findOptions = new FindOptions();
-    findOptions.batchSize(1000);
-    try (HIterator<Artifact> artifacts =
-             new HIterator<>(artifactService.prepareArtifactWithMetadataQuery(artifactStream, true)
-                                 .limit(NO_LIMIT)
-                                 .fetch(findOptions))) {
+    try (HIterator<Artifact> artifacts = new HIterator<>(
+             artifactService.prepareArtifactWithMetadataQuery(artifactStream, true).limit(NO_LIMIT).fetch())) {
       for (Artifact artifact : artifacts) {
         String key = keyFn.apply(artifact);
         if (key != null) {

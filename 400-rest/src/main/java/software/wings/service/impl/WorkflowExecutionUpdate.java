@@ -814,7 +814,7 @@ public class WorkflowExecutionUpdate implements StateMachineExecutionCallback {
       EmbeddedUser triggeredBy = workflowExecution.getTriggeredBy();
       String userId = null;
       if (triggeredBy != null) {
-        userId = triggeredBy.getEmail() != null ? triggeredBy.getEmail() : triggeredBy.getUuid();
+        userId = triggeredBy.getUuid();
       }
 
       String deploymentEvent = getSegmentDeploymentEvent(workflowExecution);

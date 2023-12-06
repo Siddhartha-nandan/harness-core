@@ -15,7 +15,6 @@ import static io.harness.notification.NotificationServiceConstants.SLACKSERVICE;
 import static io.harness.notification.NotificationServiceConstants.WEBHOOKSERVICE;
 
 import io.harness.delegate.beans.NotificationProcessingResponse;
-import io.harness.delegate.beans.NotificationTaskResponse;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ngsettings.SettingIdentifiers;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
@@ -78,17 +77,6 @@ public class ChannelServiceImpl implements ChannelService {
       return protoImplementationMapping.get(notificationRequest.getChannelCase()).send(notificationRequest);
     }
     return NotificationProcessingResponse.trivialResponseWithNoRetries;
-  }
-
-  @Override
-  public NotificationTaskResponse sendSync(NotificationRequest notificationRequest) {
-    String enableChannelSettingId = protoSettingsMap.get(notificationRequest.getChannelCase());
-    if (isChannelTypeEnabled(enableChannelSettingId, notificationRequest.getAccountId())) {
-      return protoImplementationMapping.get(notificationRequest.getChannelCase()).sendSync(notificationRequest);
-    }
-    return NotificationTaskResponse.builder()
-        .processingResponse(NotificationProcessingResponse.trivialResponseWithNoRetries)
-        .build();
   }
 
   @Override

@@ -101,7 +101,9 @@ import io.harness.gitsync.common.service.ScmOrchestratorService;
 import io.harness.gitsync.core.beans.GitBatchFileFetchRunnableParams;
 import io.harness.gitsync.core.beans.GitFileFetchRunnableParams;
 import io.harness.gitsync.core.runnable.GitBackgroundCacheRefreshHelper;
-import io.harness.gitsync.gitxwebhooks.helper.GitXWebhookHelper;
+import io.harness.gitsync.gitxwebhooks.entity.GitXWebhook;
+import io.harness.gitsync.gitxwebhooks.service.GitXWebhookService;
+import io.harness.gitsync.gitxwebhooks.utils.GitXWebhookUtils;
 import io.harness.gitsync.utils.GitProviderUtils;
 import io.harness.grpc.DelegateServiceGrpcClient;
 import io.harness.ng.beans.PageRequest;
@@ -161,7 +163,7 @@ public class ScmFacilitatorServiceImpl implements ScmFacilitatorService {
   GitDefaultBranchCacheHelper gitDefaultBranchCacheHelper;
   GitRepoHelper gitRepoHelper;
   GitRepoAllowlistHelper gitRepoAllowlistHelper;
-  GitXWebhookHelper gitXWebhookHelper;
+  GitXWebhookService gitXWebhookService;
 
   @Inject
   public ScmFacilitatorServiceImpl(GitSyncConnectorService gitSyncConnectorService,
@@ -171,7 +173,7 @@ public class ScmFacilitatorServiceImpl implements ScmFacilitatorService {
       GitFilePathHelper gitFilePathHelper, DelegateServiceGrpcClient delegateServiceGrpcClient,
       GitBackgroundCacheRefreshHelper gitBackgroundCacheRefreshHelper,
       GitDefaultBranchCacheHelper gitDefaultBranchCacheHelper, GitRepoHelper gitRepoHelper,
-      GitRepoAllowlistHelper gitRepoAllowlistHelper, GitXWebhookHelper gitXWebhookHelper) {
+      GitRepoAllowlistHelper gitRepoAllowlistHelper, GitXWebhookService gitXWebhookService) {
     this.gitSyncConnectorService = gitSyncConnectorService;
     this.connectorService = connectorService;
     this.scmOrchestratorService = scmOrchestratorService;
@@ -184,7 +186,7 @@ public class ScmFacilitatorServiceImpl implements ScmFacilitatorService {
     this.gitDefaultBranchCacheHelper = gitDefaultBranchCacheHelper;
     this.gitRepoHelper = gitRepoHelper;
     this.gitRepoAllowlistHelper = gitRepoAllowlistHelper;
-    this.gitXWebhookHelper = gitXWebhookHelper;
+    this.gitXWebhookService = gitXWebhookService;
   }
 
   @Override
@@ -722,8 +724,6 @@ public class ScmFacilitatorServiceImpl implements ScmFacilitatorService {
 
   @Override
   public ScmCommitFileResponseDTO updateFile(ScmUpdateFileRequestDTO scmUpdateFileRequestDTO) {
-    validateUpdateFileRequest(scmUpdateFileRequestDTO);
-
     Scope scope = scmUpdateFileRequestDTO.getScope();
     ScmConnector scmConnector = gitSyncConnectorService.getScmConnectorForGivenRepo(scope.getAccountIdentifier(),
         scope.getOrgIdentifier(), scope.getProjectIdentifier(), scmUpdateFileRequestDTO.getConnectorRef(),
@@ -1068,9 +1068,7 @@ public class ScmFacilitatorServiceImpl implements ScmFacilitatorService {
 
   private Optional<ScmGetFileResponseDTO> getFileCacheResponseIfApplicable(
       ScmGetFileByBranchRequestDTO scmGetFileByBranchRequestDTO, ScmConnector scmConnector, String workingBranch) {
-    boolean isBiDirectionalSyncApplicable =
-        gitXWebhookHelper.isBiDirectionalSyncApplicable(scmGetFileByBranchRequestDTO.getScope(),
-            scmGetFileByBranchRequestDTO.getRepoName(), scmGetFileByBranchRequestDTO.getFilePath());
+    boolean isBiDirectionalSyncApplicable = isBiDirectionalSyncApplicable(scmGetFileByBranchRequestDTO);
     if (isBiDirectionalSyncApplicable || scmGetFileByBranchRequestDTO.isUseCache()) {
       GitFileCacheKey cacheKey = getCacheKey(scmGetFileByBranchRequestDTO, scmConnector, workingBranch);
       GitFileCacheResponse gitFileCacheResponse = getFileFromCache(cacheKey);
@@ -1084,6 +1082,26 @@ public class ScmFacilitatorServiceImpl implements ScmFacilitatorService {
       }
     }
     return Optional.empty();
+  }
+
+  //  TODO: Move this to GitXWebhookService to make it centralised when more use cases arises
+  private boolean isBiDirectionalSyncApplicable(ScmGetFileByBranchRequestDTO scmGetFileByBranchRequestDTO) {
+    List<String> matchingFolderPaths = new ArrayList<>();
+    if (ngFeatureFlagHelperService.isEnabled(
+            scmGetFileByBranchRequestDTO.getScope().getAccountIdentifier(), FeatureName.PIE_GIT_BI_DIRECTIONAL_SYNC)) {
+      Optional<GitXWebhook> optionalGitXWebhook =
+          gitXWebhookService.getGitXWebhook(scmGetFileByBranchRequestDTO.getScope().getAccountIdentifier(), null,
+              scmGetFileByBranchRequestDTO.getRepoName());
+      if (optionalGitXWebhook.isPresent() && optionalGitXWebhook.get().getIsEnabled()) {
+        if (isEmpty(optionalGitXWebhook.get().getFolderPaths())) {
+          return true;
+        } else {
+          matchingFolderPaths = GitXWebhookUtils.compareFolderPaths(optionalGitXWebhook.get().getFolderPaths(),
+              Collections.singletonList(scmGetFileByBranchRequestDTO.getFilePath()));
+        }
+      }
+    }
+    return isNotEmpty(matchingFolderPaths);
   }
 
   private GitFileFetchRunnableParams getGitFileFetchRunnableParams(Scope scope, String repoName, String branchName,
@@ -1394,17 +1412,8 @@ public class ScmFacilitatorServiceImpl implements ScmFacilitatorService {
   }
 
   private void validateCreateFileRequest(ScmCreateFileRequestDTO scmCreateFileRequestDTO, ScmConnector scmConnector) {
-    if (isEmpty(scmCreateFileRequestDTO.getBranchName())) {
-      throw new InvalidRequestException("Branch cannot be empty during create file GIT operation");
-    }
     gitRepoAllowlistHelper.validateRepo(
         scmCreateFileRequestDTO.getScope(), scmConnector, scmCreateFileRequestDTO.getRepoName());
-  }
-
-  private void validateUpdateFileRequest(ScmUpdateFileRequestDTO scmUpdateFileRequestDTO) {
-    if (isEmpty(scmUpdateFileRequestDTO.getBranchName())) {
-      throw new InvalidRequestException("Branch cannot be empty during update file GIT operation");
-    }
   }
 
   private void validateGetFileRequest(

@@ -66,8 +66,6 @@ import io.harness.delegate.task.aws.asg.AsgRollingDeployResponse;
 import io.harness.delegate.task.aws.asg.AsgRollingDeployResult;
 import io.harness.delegate.task.aws.asg.AsgRollingRollbackResponse;
 import io.harness.delegate.task.aws.asg.AsgRollingRollbackResult;
-import io.harness.delegate.task.aws.asg.AsgShiftTrafficResponse;
-import io.harness.delegate.task.aws.asg.AsgShiftTrafficResult;
 import io.harness.delegate.task.git.GitFetchFilesConfig;
 import io.harness.delegate.task.git.GitFetchRequest;
 import io.harness.delegate.task.git.GitFetchResponse;
@@ -133,7 +131,7 @@ public class AsgStepCommonHelper extends CDStepHelper {
   @Inject @Named("referenceFalseKryoSerializer") private KryoSerializer referenceFalseKryoSerializer;
   private final LogWrapper logger = new LogWrapper(log);
   private static final String EXEC_STRATEGY_CANARY = "canary";
-  public static final String EXEC_STRATEGY_BLUEGREEN = "blue-green";
+  private static final String EXEC_STRATEGY_BLUEGREEN = "blue-green";
   private static final String EXEC_STRATEGY_ROLLING = "rolling";
   static final String VERSION_DELIMITER = "__";
 
@@ -142,7 +140,8 @@ public class AsgStepCommonHelper extends CDStepHelper {
     LogCallback logCallback = getLogCallback(AsgCommandUnitConstants.fetchManifests.toString(), ambiance, true);
 
     // Get InfrastructureOutcome
-    InfrastructureOutcome infrastructureOutcome = getInfrastructureOutcomeWithUpdatedExpressions(ambiance);
+    InfrastructureOutcome infrastructureOutcome = (InfrastructureOutcome) outcomeService.resolve(
+        ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME));
 
     boolean isBaseAsg = isBaseAsgDeployment(ambiance, infrastructureOutcome, stepElementParameters);
 
@@ -735,20 +734,6 @@ public class AsgStepCommonHelper extends CDStepHelper {
       return serverInstanceInfoList;
     }
 
-    else if (asgCommandResponse instanceof AsgShiftTrafficResponse) {
-      AsgShiftTrafficResult asgShiftTrafficResult = ((AsgShiftTrafficResponse) asgCommandResponse).getResult();
-      String prodAsgName = asgShiftTrafficResult.getProdAutoScalingGroupContainer().getAutoScalingGroupName();
-      String asgNameWithoutSuffix = prodAsgName.substring(0, prodAsgName.length() - VERSION_DELIMITER.length() - 1);
-      List<ServerInstanceInfo> serverInstanceInfoList = new ArrayList<>();
-      serverInstanceInfoList.addAll(AutoScalingGroupContainerToServerInstanceInfoMapper.toServerInstanceInfoList(
-          asgShiftTrafficResult.getProdAutoScalingGroupContainer(), infrastructureKey, region, EXEC_STRATEGY_BLUEGREEN,
-          asgNameWithoutSuffix, true));
-      serverInstanceInfoList.addAll(AutoScalingGroupContainerToServerInstanceInfoMapper.toServerInstanceInfoList(
-          asgShiftTrafficResult.getStageAutoScalingGroupContainer(), infrastructureKey, region, EXEC_STRATEGY_BLUEGREEN,
-          asgNameWithoutSuffix, false));
-      return serverInstanceInfoList;
-    }
-
     else if (asgCommandResponse instanceof AsgBlueGreenRollbackResponse) {
       AsgBlueGreenRollbackResult asgBlueGreenRollbackResult =
           ((AsgBlueGreenRollbackResponse) asgCommandResponse).getAsgBlueGreenRollbackResult();
@@ -892,14 +877,5 @@ public class AsgStepCommonHelper extends CDStepHelper {
     }
 
     return asgBlueGreenPrepareRollbackDataOutcome.getStageTargetGroupArnListForLoadBalancer().get(loadBalancer);
-  }
-
-  public InfrastructureOutcome getInfrastructureOutcomeWithUpdatedExpressions(Ambiance ambiance) {
-    InfrastructureOutcome infrastructureOutcome = (InfrastructureOutcome) outcomeService.resolve(
-        ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME));
-
-    cdExpressionResolver.updateExpressions(ambiance, infrastructureOutcome);
-
-    return infrastructureOutcome;
   }
 }

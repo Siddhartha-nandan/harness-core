@@ -24,8 +24,6 @@ import java.util.List;
 @OwnedBy(HarnessTeam.CDC)
 public interface GarApiService {
   List<BuildDetailsInternal> getBuilds(GarInternalConfig garinternalConfig, String versionRegex, int maxNumberOfBuilds);
-  List<BuildDetailsInternal> getRepository(GarInternalConfig garInternalConfig, String region);
-  List<BuildDetailsInternal> getPackages(GarInternalConfig garinternalConfig, String region, String repository);
   BuildDetailsInternal getLastSuccessfulBuildFromRegex(GarInternalConfig garinternalConfig, String versionRegex);
 
   BuildDetailsInternal verifyBuildNumber(GarInternalConfig garInternalConfig, String version);

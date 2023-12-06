@@ -10,20 +10,16 @@ package io.harness.delegate.pcf;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.delegate.cf.apprenaming.AppRenamingOperator.NamingTransition.ROLLBACK_OPERATOR;
-import static io.harness.delegate.cf.apprenaming.AppRenamingOperator.NamingTransition.ROLLBACK_OPERATOR_BG_NON_VERSION_TO_NON_VERSION;
 import static io.harness.logging.CommandExecutionStatus.FAILURE;
 import static io.harness.logging.CommandExecutionStatus.SUCCESS;
 import static io.harness.logging.LogLevel.INFO;
-import static io.harness.logging.LogLevel.WARN;
 import static io.harness.pcf.CfCommandUnitConstants.Downsize;
 import static io.harness.pcf.CfCommandUnitConstants.Wrapup;
 import static io.harness.pcf.PcfUtils.encodeColor;
 
 import static software.wings.beans.LogColor.White;
-import static software.wings.beans.LogColor.Yellow;
 import static software.wings.beans.LogHelper.color;
 import static software.wings.beans.LogWeight.Bold;
-import static software.wings.beans.LogWeight.Normal;
 
 import static java.util.Objects.isNull;
 import static java.util.stream.Collectors.toList;
@@ -70,9 +66,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -119,23 +113,19 @@ public class CfSwapRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandler {
       ExceptionMessageSanitizer.storeAllSecretsForSanitizing(
           tasInfraConfig.getTasConnectorDTO(), tasInfraConfig.getEncryptionDataDetails());
 
-      CfRequestConfig cfRequestConfig =
-          CfRequestConfig.builder()
-              .userName(String.valueOf(cfConfig.getUserName()))
-              .endpointUrl(cfConfig.getEndpointUrl())
-              .password(String.valueOf(cfConfig.getPassword()))
-              .refreshToken(cfConfig.getRefreshToken() != null ? String.valueOf(cfConfig.getRefreshToken()) : null)
-              .orgName(tasInfraConfig.getOrganization())
-              .spaceName(tasInfraConfig.getSpace())
-              .timeOutIntervalInMins(cfRollbackCommandRequestNG.getTimeoutIntervalInMin())
-              .cfHomeDirPath(workingDirectory.getAbsolutePath())
-              .cfCliPath(
-                  cfCommandTaskHelperNG.getCfCliPathOnDelegate(true, cfRollbackCommandRequestNG.getCfCliVersion()))
-              .cfCliVersion(cfRollbackCommandRequestNG.getCfCliVersion())
-              .useCFCLI(true)
-              .build();
-
-      boolean isBGWithOnly2Apps = isBGWithOnly2Apps(cfRollbackCommandRequestNG);
+      CfRequestConfig cfRequestConfig = CfRequestConfig.builder()
+                                            .userName(String.valueOf(cfConfig.getUserName()))
+                                            .endpointUrl(cfConfig.getEndpointUrl())
+                                            .password(String.valueOf(cfConfig.getPassword()))
+                                            .orgName(tasInfraConfig.getOrganization())
+                                            .spaceName(tasInfraConfig.getSpace())
+                                            .timeOutIntervalInMins(cfRollbackCommandRequestNG.getTimeoutIntervalInMin())
+                                            .cfHomeDirPath(workingDirectory.getAbsolutePath())
+                                            .cfCliPath(cfCommandTaskHelperNG.getCfCliPathOnDelegate(
+                                                true, cfRollbackCommandRequestNG.getCfCliVersion()))
+                                            .cfCliVersion(cfRollbackCommandRequestNG.getCfCliVersion())
+                                            .useCFCLI(true)
+                                            .build();
 
       TasApplicationInfo activeApplicationDetails = cfRollbackCommandRequestNG.getActiveApplicationDetails();
       CfRouteUpdateRequestConfigData pcfRouteUpdateConfigData =
@@ -160,7 +150,6 @@ public class CfSwapRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandler {
               .newApplicationName(cfRollbackCommandRequestNG.getNewApplicationDetails().getApplicationName())
               .finalRoutes(cfRollbackCommandRequestNG.getRouteMaps())
               .isMapRoutesOperation(false)
-              .isBGWithOnly2Apps(isBGWithOnly2Apps)
               .build();
 
       List<CfInternalInstanceElement> cfInstanceElements = new ArrayList<>();
@@ -188,11 +177,6 @@ public class CfSwapRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandler {
 
       executionLogCallback = tasTaskHelperBase.getLogCallback(
           iLogStreamingTaskClient, CfCommandUnitConstants.Upsize, true, commandUnitsProgress);
-
-      if (isBGWithOnly2Apps) {
-        updateDesiredCountForApps(pcfRouteUpdateConfigData, cfRollbackCommandRequestNG);
-      }
-
       // get Upsize Instance data
       List<CfServiceData> upsizeList = cfCommandTaskHelperNG.getUpsizeListForRollback(
           cfRollbackCommandRequestNG.getInstanceData(), cfRollbackCommandRequestNG.getNewApplicationDetails());
@@ -224,17 +208,14 @@ public class CfSwapRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandler {
 
       executionLogCallback =
           tasTaskHelperBase.getLogCallback(iLogStreamingTaskClient, Downsize, true, commandUnitsProgress);
-
-      //  Downsizing
+      // Downsizing
       cfCommandTaskHelperNG.downSizeListOfInstances(executionLogCallback, cfServiceDataUpdated, cfRequestConfig,
           updateNewAppName(cfRequestConfig, cfRollbackCommandRequestNG, downSizeList),
           cfRollbackCommandRequestNG.isUseAppAutoScalar(), autoscalarRequestData);
 
       // Deleting
-      if (!isBGWithOnly2Apps) {
-        cfCommandTaskHelperNG.deleteNewApp(cfRequestConfig, cfRollbackCommandRequestNG.getCfAppNamePrefix(),
-            cfRollbackCommandRequestNG.getNewApplicationDetails(), executionLogCallback);
-      }
+      cfCommandTaskHelperNG.deleteNewApp(cfRequestConfig, cfRollbackCommandRequestNG.getCfAppNamePrefix(),
+          cfRollbackCommandRequestNG.getNewApplicationDetails(), executionLogCallback);
 
       executionLogCallback.saveExecutionLog("#---------- Downsizing Successfully Completed", INFO, SUCCESS);
 
@@ -320,11 +301,8 @@ public class CfSwapRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandler {
       File workingDirectory, CfSwapRollbackCommandRequestNG cfRollbackCommandRequestNG, CfRequestConfig cfRequestConfig,
       CfRouteUpdateRequestConfigData cfRouteUpdateRequestConfigData, CfRollbackCommandResult cfRollbackCommandResult)
       throws PivotalClientApiException {
-    CfInBuiltVariablesUpdateValues updateValues = null;
-    if (!cfRouteUpdateRequestConfigData.isBGWithOnly2Apps()) {
-      updateValues =
-          performAppRenaming(ROLLBACK_OPERATOR, cfRouteUpdateRequestConfigData, cfRequestConfig, executionLogCallback);
-    }
+    CfInBuiltVariablesUpdateValues updateValues =
+        performAppRenaming(ROLLBACK_OPERATOR, cfRouteUpdateRequestConfigData, cfRequestConfig, executionLogCallback);
     executionLogCallback.saveExecutionLog(color("# No Route Update Required for Active app", White, Bold));
     restoreInActiveAppForFailureBeforeSwapRouteStep(executionLogCallback, cfRollbackCommandRequestNG,
         cfRouteUpdateRequestConfigData, cfRequestConfig, workingDirectory.getAbsolutePath(), cfRollbackCommandResult);
@@ -336,10 +314,7 @@ public class CfSwapRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandler {
       CfSwapRollbackCommandRequestNG cfRollbackCommandRequestNG, CfRouteUpdateRequestConfigData routeUpdateConfigData,
       CfRequestConfig cfRequestConfig, String configVarPath, CfRollbackCommandResult cfRollbackCommandResult)
       throws PivotalClientApiException {
-    if (routeUpdateConfigData.isBGWithOnly2Apps()) {
-      updateRoutesForInActiveApplication(
-          cfRequestConfig, executionLogCallback, routeUpdateConfigData, cfRollbackCommandResult);
-    } else if (routeUpdateConfigData.isUpSizeInActiveApp()) {
+    if (routeUpdateConfigData.isUpSizeInActiveApp()) {
       upSizeInActiveApp(
           cfRollbackCommandRequestNG, cfRequestConfig, routeUpdateConfigData, executionLogCallback, configVarPath);
       updateRoutesForInActiveApplication(
@@ -350,43 +325,22 @@ public class CfSwapRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandler {
         cfRequestConfig, routeUpdateConfigData.getCfAppNamePrefix(), newApplicationDetails.getApplicationGuid());
     routeUpdateConfigData.setNewApplicationName(
         isEmpty(newApps) ? routeUpdateConfigData.getNewApplicationName() : newApps.get(0));
-    if (routeUpdateConfigData.isBGWithOnly2Apps()) {
-      // If Random route is created at CF push, we want to make sure the new Random route is cleared and only previous
-      // routes are mapped
-      List<String> routesToClear = routesFromNewAppToClear(
-          newApplicationDetails.getUrls(), routeUpdateConfigData.getExistingInActiveApplicationDetails().getUrls());
-      clearRoutesForNewApplication(
-          cfRequestConfig, executionLogCallback, routeUpdateConfigData.getNewApplicationName(), routesToClear);
-    } else {
-      clearRoutesAndEnvVariablesForNewApplication(cfRequestConfig, executionLogCallback,
-          routeUpdateConfigData.getNewApplicationName(), routeUpdateConfigData.getTempRoutes());
-    }
+    clearRoutesAndEnvVariablesForNewApplication(cfRequestConfig, executionLogCallback,
+        routeUpdateConfigData.getNewApplicationName(), routeUpdateConfigData.getTempRoutes());
   }
 
   @VisibleForTesting
   CfInBuiltVariablesUpdateValues restoreAppsDuringRollback(LogCallback executionLogCallback,
       CfSwapRollbackCommandRequestNG cfRollbackCommandRequestNG, CfRequestConfig cfRequestConfig,
       CfRouteUpdateRequestConfigData pcfRouteUpdateConfigData, String configVarPath) throws PivotalClientApiException {
-    NamingTransition namingTransition = pcfRouteUpdateConfigData.isBGWithOnly2Apps()
-        ? ROLLBACK_OPERATOR_BG_NON_VERSION_TO_NON_VERSION
-        : ROLLBACK_OPERATOR;
     CfInBuiltVariablesUpdateValues updateValues =
-        performAppRenaming(namingTransition, pcfRouteUpdateConfigData, cfRequestConfig, executionLogCallback);
+        performAppRenaming(ROLLBACK_OPERATOR, pcfRouteUpdateConfigData, cfRequestConfig, executionLogCallback);
 
     if (pcfRouteUpdateConfigData.isDownsizeOldApplication()) {
       resizeOldApplications(
           cfRollbackCommandRequestNG, cfRequestConfig, pcfRouteUpdateConfigData, executionLogCallback, configVarPath);
     }
-
-    if (cfRollbackCommandRequestNG.isUpsizeInActiveApp() && pcfRouteUpdateConfigData.isBGWithOnly2Apps()) {
-      executionLogCallback.saveExecutionLog(
-          color(
-              "--------- Skipping UpSize Inactive Service setting from Rollback Step as Existing Versions To Keep in BG App Setup was set to 0\n",
-              Yellow, Normal),
-          WARN);
-    }
-
-    if (pcfRouteUpdateConfigData.isUpSizeInActiveApp() && !pcfRouteUpdateConfigData.isBGWithOnly2Apps()) {
+    if (pcfRouteUpdateConfigData.isUpSizeInActiveApp()) {
       upSizeInActiveApp(
           cfRollbackCommandRequestNG, cfRequestConfig, pcfRouteUpdateConfigData, executionLogCallback, configVarPath);
     }
@@ -549,16 +503,11 @@ public class CfSwapRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandler {
     data.setNewApplicationName(isEmpty(newApps) ? data.getNewApplicationName() : newApps.get(0));
 
     updateRoutesForExistingApplication(cfRequestConfig, executionLogCallback, data, cfRollbackCommandResult);
-    if (data.isUpSizeInActiveApp() && !data.isBGWithOnly2Apps()) {
+    if (data.isUpSizeInActiveApp()) {
       updateRoutesForInActiveApplication(cfRequestConfig, executionLogCallback, data, cfRollbackCommandResult);
     }
-
-    if (data.isBGWithOnly2Apps()) {
-      updateRoutesForNewApplication(cfRequestConfig, executionLogCallback, data);
-    } else {
-      clearRoutesAndEnvVariablesForNewApplication(
-          cfRequestConfig, executionLogCallback, data.getNewApplicationName(), data.getFinalRoutes());
-    }
+    clearRoutesAndEnvVariablesForNewApplication(
+        cfRequestConfig, executionLogCallback, data.getNewApplicationName(), data.getFinalRoutes());
     executionLogCallback.saveExecutionLog("#---------- Successfully Completed", INFO, SUCCESS);
   }
 
@@ -605,14 +554,7 @@ public class CfSwapRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandler {
       CfRouteUpdateRequestConfigData data, CfRollbackCommandResult cfRollbackCommandResult)
       throws PivotalClientApiException {
     if (isNotEmpty(data.getExistingApplicationNames())) {
-      List<String> mapRouteForExistingApp;
-      if (data.isBGWithOnly2Apps()) {
-        mapRouteForExistingApp = data.getExistingApplicationDetails().get(0) != null
-            ? data.getExistingApplicationDetails().get(0).getUrls()
-            : data.getFinalRoutes();
-      } else {
-        mapRouteForExistingApp = data.getFinalRoutes();
-      }
+      List<String> mapRouteForExistingApp = data.getFinalRoutes();
       List<String> unmapRouteForExistingApp = data.getTempRoutes();
       cfRollbackCommandResult.setActiveAppAttachedRoutes(mapRouteForExistingApp);
       for (String existingAppName : data.getExistingApplicationNames()) {
@@ -639,62 +581,5 @@ public class CfSwapRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandler {
       LogCallback executionLogCallback) throws PivotalClientApiException {
     return cfCommandTaskHelperNG.performAppRenaming(
         transition, cfRouteUpdateConfigData, cfRequestConfig, executionLogCallback);
-  }
-
-  private void updateRoutesForNewApplication(CfRequestConfig cfRequestConfig, LogCallback executionLogCallback,
-      CfRouteUpdateRequestConfigData data) throws PivotalClientApiException {
-    List<String> mapRouteForNewApp = data.getTempRoutes();
-    List<String> unmapRouteForNewApp = data.getFinalRoutes();
-    cfCommandTaskHelperNG.mapRouteMaps(
-        data.getNewApplicationName(), mapRouteForNewApp, cfRequestConfig, executionLogCallback);
-    cfCommandTaskHelperNG.unmapRouteMaps(
-        data.getNewApplicationName(), unmapRouteForNewApp, cfRequestConfig, executionLogCallback);
-    // In swap rollback for BG with only 2 Apps, New App = Inactive app we need to set it to ENV VAR to INACTIVE
-    updateEnvVariableForApplication(cfRequestConfig, executionLogCallback, data.getNewApplicationName(), false);
-  }
-
-  private Map<String, Integer> getCountOfInitialInstancesForApps(CfRouteUpdateRequestConfigData data) {
-    Map<String, Integer> initialInstanceForApps = new HashMap<>();
-    if (data.getExistingApplicationDetails().get(0) != null) {
-      initialInstanceForApps.put(data.getExistingApplicationDetails().get(0).getApplicationGuid(),
-          data.getExistingApplicationDetails().get(0).getInitialInstanceCount());
-    }
-    if (data.getExistingInActiveApplicationDetails() != null) {
-      initialInstanceForApps.put(data.getExistingInActiveApplicationDetails().getApplicationGuid(),
-          data.getExistingInActiveApplicationDetails().getInitialInstanceCount());
-    }
-    return initialInstanceForApps;
-  }
-
-  private void updateDesiredCountForApps(CfRouteUpdateRequestConfigData pcfRouteUpdateConfigData,
-      CfSwapRollbackCommandRequestNG cfRollbackCommandRequestNG) {
-    Map<String, Integer> initialInstanceForApps = getCountOfInitialInstancesForApps(pcfRouteUpdateConfigData);
-    if (!initialInstanceForApps.isEmpty()) {
-      cfRollbackCommandRequestNG.getInstanceData().forEach(cfServiceData -> {
-        Integer initialDesiredCount = initialInstanceForApps.get(cfServiceData.getId());
-        cfServiceData.setDesiredCount(initialDesiredCount);
-      });
-    }
-  }
-
-  private void clearRoutesForNewApplication(CfRequestConfig cfRequestConfig, LogCallback executionLogCallback,
-      String appName, List<String> routeList) throws PivotalClientApiException {
-    if (!routeList.isEmpty()) {
-      cfCommandTaskHelperNG.unmapRouteMaps(appName, routeList, cfRequestConfig, executionLogCallback);
-    }
-  }
-
-  private boolean isBGWithOnly2Apps(CfSwapRollbackCommandRequestNG cfSwapRollbackRequest) {
-    return cfSwapRollbackRequest.getOlderActiveVersionCountToKeep() != null
-        && cfSwapRollbackRequest.getOlderActiveVersionCountToKeep() == 0
-        && cfSwapRollbackRequest.getActiveApplicationDetails() != null
-        && cfSwapRollbackRequest.getInActiveApplicationDetails() != null
-        && cfSwapRollbackRequest.getNewApplicationDetails() != null;
-  }
-
-  private List<String> routesFromNewAppToClear(List<String> newTempRoutes, List<String> previousInactiveRoutes) {
-    return newTempRoutes.stream()
-        .filter(tempRoute -> !previousInactiveRoutes.contains(tempRoute))
-        .collect(Collectors.toList());
   }
 }

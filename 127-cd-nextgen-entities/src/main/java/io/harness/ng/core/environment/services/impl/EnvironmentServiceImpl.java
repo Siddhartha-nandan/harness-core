@@ -49,10 +49,8 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ReferencedEntityException;
 import io.harness.exception.ScmException;
 import io.harness.exception.UnexpectedException;
-import io.harness.exception.WingsException;
 import io.harness.expression.EngineExpressionEvaluator;
 import io.harness.gitsync.beans.StoreType;
-import io.harness.gitx.GitXSettingsHelper;
 import io.harness.gitx.GitXTransientBranchGuard;
 import io.harness.ng.core.EntityDetail;
 import io.harness.ng.core.entitysetupusage.dto.EntitySetupUsageDTO;
@@ -94,6 +92,7 @@ import io.harness.utils.IdentifierRefHelper;
 import io.harness.utils.YamlPipelineUtils;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.inject.Inject;
@@ -110,7 +109,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
@@ -140,6 +144,7 @@ public class EnvironmentServiceImpl implements EnvironmentService {
   private final OutboxService outboxService;
   private final RetryPolicy<Object> transactionRetryPolicy = DEFAULT_RETRY_POLICY;
   @Inject @Named(OUTBOX_TRANSACTION_TEMPLATE) private final TransactionTemplate transactionTemplate;
+  @Inject @Named("environment-gitx-executor") private ExecutorService executorService;
   private static final String DUP_KEY_EXP_FORMAT_STRING_FOR_PROJECT =
       "Environment [%s] under Project[%s], Organization [%s] in Account [%s] already exists";
   private static final String DUP_KEY_EXP_FORMAT_STRING_FOR_ORG =
@@ -157,7 +162,6 @@ public class EnvironmentServiceImpl implements EnvironmentService {
   private final ServiceOverrideV2ValidationHelper overrideV2ValidationHelper;
   private final EnvironmentEntitySetupUsageHelper environmentEntitySetupUsageHelper;
   private final EnvironmentFilterHelper environmentFilterHelper;
-  private final GitXSettingsHelper gitXSettingsHelper;
 
   @Inject
   public EnvironmentServiceImpl(EnvironmentRepository environmentRepository,
@@ -167,8 +171,7 @@ public class EnvironmentServiceImpl implements EnvironmentService {
       ServiceOverrideService serviceOverrideService, ServiceOverridesServiceV2 serviceOverridesServiceV2,
       ServiceEntityService serviceEntityService, AccountClient accountClient, NGSettingsClient settingsClient,
       EnvironmentEntitySetupUsageHelper environmentEntitySetupUsageHelper,
-      ServiceOverrideV2ValidationHelper overrideV2ValidationHelper, EnvironmentFilterHelper environmentFilterHelper,
-      GitXSettingsHelper gitXSettingsHelper) {
+      ServiceOverrideV2ValidationHelper overrideV2ValidationHelper, EnvironmentFilterHelper environmentFilterHelper) {
     this.environmentRepository = environmentRepository;
     this.entitySetupUsageService = entitySetupUsageService;
     this.eventProducer = eventProducer;
@@ -184,7 +187,6 @@ public class EnvironmentServiceImpl implements EnvironmentService {
     this.environmentEntitySetupUsageHelper = environmentEntitySetupUsageHelper;
     this.overrideV2ValidationHelper = overrideV2ValidationHelper;
     this.environmentFilterHelper = environmentFilterHelper;
-    this.gitXSettingsHelper = gitXSettingsHelper;
   }
 
   @Override
@@ -196,10 +198,6 @@ public class EnvironmentServiceImpl implements EnvironmentService {
       modifyEnvironmentRequest(environment);
 
       Set<EntityDetailProtoDTO> referredEntities = getAndValidateReferredEntities(environment);
-      if (StoreType.REMOTE.equals(environment.getStoreType())) {
-        applyGitXSettingsIfApplicable(
-            environment.getAccountId(), environment.getOrgIdentifier(), environment.getProjectIdentifier());
-      }
       Environment createdEnvironment =
           Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
             Environment tempEnvironment = environmentRepository.saveGitAware(environment);
@@ -945,18 +943,15 @@ public class EnvironmentServiceImpl implements EnvironmentService {
       responseDTO = getEnvironmentsInputYamlAndServiceOverridesMetadataInternal(accountIdentifier, orgIdentifier,
           projectIdentifier, envRefs, environmentRefBranchMap, serviceRefs, isServiceOverrideV2FFEnabled,
           loadFromCache);
-    } catch (WingsException ex) {
-      log.error(
-          String.format("Error while getting environment inputs for envs: %s and services: %s", envRefs, serviceRefs),
-          ex);
-      throw ex;
+    } catch (CompletionException ex) {
+      // internal method always wraps the CompletionException, so we will have a cause
+      log.error(String.format("Error while getting environment inputs: %s", envRefs), ex);
+      Throwables.throwIfUnchecked(ex.getCause());
     } catch (Exception ex) {
-      log.error(String.format("Unexpected error while getting environment inputs for envs: %s and services: %s",
-                    envRefs, serviceRefs),
-          ex);
+      log.error(String.format("Unexpected error occurred while getting environment inputs: %s", envRefs), ex);
       throw new InternalServerErrorException(
-          String.format("Unexpected error occurred while getting environment inputs for envs: %s: [%s]", envRefs,
-              ex.getMessage()),
+          String.format(
+              "Unexpected error occurred while getting environment inputs: %s: [%s]", envRefs, ex.getMessage()),
           ex);
     }
 
@@ -967,34 +962,76 @@ public class EnvironmentServiceImpl implements EnvironmentService {
   getEnvironmentsInputYamlAndServiceOverridesMetadataInternal(String accountIdentifier, String orgIdentifier,
       String projectIdentifier, List<String> envRefs, Map<String, String> environmentRefBranchMap,
       List<String> serviceRefs, boolean isServiceOverrideV2FFEnabled, boolean loadFromCache) {
-    List<EnvironmentInputSetYamlAndServiceOverridesMetadata> envInputYamlAndServiceOverridesMetadata =
-        new ArrayList<>();
+    // Using SynchronousQueue to avoid ConcurrentModification Issues.
+    Queue<EnvironmentInputSetYamlAndServiceOverridesMetadata> envInputYamlAndServiceOverridesQueue =
+        new ConcurrentLinkedQueue<>();
     List<Environment> environmentEntities =
         fetchesNonDeletedEnvironmentFromListOfRefs(accountIdentifier, orgIdentifier, projectIdentifier, envRefs);
 
-    for (Environment env : environmentEntities) {
-      if (StoreType.REMOTE.equals(env.getStoreType())) {
-        String envRef = IdentifierRefHelper.getRefFromIdentifierOrRef(
-            env.getAccountId(), env.getOrgIdentifier(), env.getProjectIdentifier(), env.getIdentifier());
-        String branchInfo = environmentRefBranchMap.get(envRef);
+    // Sorting List so that git calls are made parallelly at the earliest.
+    List<Environment> sortedEnvironmentEntities = sortByStoreType(environmentEntities);
+    for (int i = 0; i < sortedEnvironmentEntities.size(); i += REMOTE_ENVIRONMENTS_BATCH_SIZE) {
+      List<Environment> batch = getBatch(sortedEnvironmentEntities, i);
+      List<CompletableFuture<Void>> batchFutures = new ArrayList<>();
 
-        try (GitXTransientBranchGuard ignore = new GitXTransientBranchGuard(branchInfo)) {
-          Environment environmentFromRemote =
-              environmentRepository.getRemoteEnvironmentWithYaml(env, loadFromCache, false);
+      for (Environment env : batch) {
+        if (StoreType.REMOTE.equals(env.getStoreType())) {
+          String envRef = IdentifierRefHelper.getRefFromIdentifierOrRef(
+              env.getAccountId(), env.getOrgIdentifier(), env.getProjectIdentifier(), env.getIdentifier());
+          String branchInfo = environmentRefBranchMap.get(envRef);
 
-          envInputYamlAndServiceOverridesMetadata.addAll(fetchEnvInputYamlAndServiceOverrides(accountIdentifier,
-              orgIdentifier, projectIdentifier, serviceRefs, isServiceOverrideV2FFEnabled, environmentFromRemote));
+          CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+            try (GitXTransientBranchGuard ignore = new GitXTransientBranchGuard(branchInfo)) {
+              Environment environmentFromRemote =
+                  environmentRepository.getRemoteEnvironmentWithYaml(env, loadFromCache, false);
+
+              envInputYamlAndServiceOverridesQueue.addAll(fetchEnvInputYamlAndServiceOverrides(accountIdentifier,
+                  orgIdentifier, projectIdentifier, serviceRefs, isServiceOverrideV2FFEnabled, environmentFromRemote));
+            }
+          }, executorService);
+
+          batchFutures.add(future);
+        } else {
+          envInputYamlAndServiceOverridesQueue.addAll(fetchEnvInputYamlAndServiceOverrides(
+              accountIdentifier, orgIdentifier, projectIdentifier, serviceRefs, isServiceOverrideV2FFEnabled, env));
         }
-
-      } else {
-        envInputYamlAndServiceOverridesMetadata.addAll(fetchEnvInputYamlAndServiceOverrides(
-            accountIdentifier, orgIdentifier, projectIdentifier, serviceRefs, isServiceOverrideV2FFEnabled, env));
       }
+
+      // Wait for the batch to complete
+      CompletableFuture<Void> allOf = CompletableFuture.allOf(batchFutures.toArray(new CompletableFuture[0]));
+      allOf.join();
     }
 
     return EnvironmentInputSetYamlAndServiceOverridesMetadataDTO.builder()
-        .environmentsInputYamlAndServiceOverrides(envInputYamlAndServiceOverridesMetadata)
+        .environmentsInputYamlAndServiceOverrides(fetchResponsesInListFromQueue(envInputYamlAndServiceOverridesQueue))
         .build();
+  }
+
+  private List<Environment> sortByStoreType(List<Environment> environmentEntities) {
+    List<Environment> sortedEnvironmentEntities = new ArrayList<>();
+    for (Environment env : environmentEntities) {
+      if (StoreType.REMOTE.equals(env.getStoreType())) {
+        sortedEnvironmentEntities.add(env);
+      }
+    }
+
+    for (Environment env : environmentEntities) {
+      // StoreType can be null.
+      if (!StoreType.REMOTE.equals(env.getStoreType())) {
+        sortedEnvironmentEntities.add(env);
+      }
+    }
+    return sortedEnvironmentEntities;
+  }
+
+  private static List<EnvironmentInputSetYamlAndServiceOverridesMetadata> fetchResponsesInListFromQueue(
+      Queue<EnvironmentInputSetYamlAndServiceOverridesMetadata> envInputYamlAndServiceOverridesQueue) {
+    List<EnvironmentInputSetYamlAndServiceOverridesMetadata> envInputYamlAndServiceOverridesList = new ArrayList<>();
+    while (!envInputYamlAndServiceOverridesQueue.isEmpty()) {
+      EnvironmentInputSetYamlAndServiceOverridesMetadata element = envInputYamlAndServiceOverridesQueue.poll();
+      envInputYamlAndServiceOverridesList.add(element);
+    }
+    return envInputYamlAndServiceOverridesList;
   }
 
   private List<EnvironmentInputSetYamlAndServiceOverridesMetadata> fetchEnvInputYamlAndServiceOverrides(
@@ -1005,15 +1042,15 @@ public class EnvironmentServiceImpl implements EnvironmentService {
     if (isNotEmpty(envIdentifier) && !EngineExpressionEvaluator.hasExpressions(envIdentifier)) {
       // org level entities need to have compatible ids. Eg. Stage level template will call with only org.env type
       // refs
-      String envRef = IdentifierRefHelper.getRefFromIdentifierOrRef(environment.getAccountId(),
-          environment.getOrgIdentifier(), environment.getProjectIdentifier(), envIdentifier);
+      IdentifierRef envIdentifierRef =
+          IdentifierRefHelper.getIdentifierRef(envIdentifier, accountIdentifier, orgIdentifier, projectIdentifier);
 
       boolean overridesV2Enabled =
           isOverridesV2Enabled(accountIdentifier, orgIdentifier, projectIdentifier, isServiceOverrideV2FFEnabled);
 
       String envInputYaml = overridesV2Enabled
-          ? createEnvironmentInputYamlFromOverride(accountIdentifier, orgIdentifier, projectIdentifier, envRef)
-          : createEnvironmentInputsYaml(envRef, environment.getYaml());
+          ? createEnvironmentInputYamlFromOverride(accountIdentifier, orgIdentifier, projectIdentifier, envIdentifier)
+          : createEnvironmentInputsYaml(envIdentifier, environment.getYaml());
 
       List<ServiceOverridesMetadata> serviceOverridesMetadataList = new ArrayList<>();
       for (String serviceRef : serviceRefs) {
@@ -1029,9 +1066,10 @@ public class EnvironmentServiceImpl implements EnvironmentService {
             // overrides will be at same level of envRef, this can be different from service
             String serviceOverridesInputsYaml = overridesV2Enabled
                 ? serviceOverridesServiceV2.createServiceOverrideInputsYaml(
-                    accountIdentifier, orgIdentifier, projectIdentifier, envRef, serviceRef)
-                : serviceOverrideService.createServiceOverrideInputsYaml(environment.getAccountIdentifier(),
-                    environment.getOrgIdentifier(), environment.getProjectIdentifier(), envRef, serviceRef);
+                    accountIdentifier, orgIdentifier, projectIdentifier, envIdentifier, serviceRef)
+                : serviceOverrideService.createServiceOverrideInputsYaml(envIdentifierRef.getAccountIdentifier(),
+                    envIdentifierRef.getOrgIdentifier(), envIdentifierRef.getProjectIdentifier(), envIdentifier,
+                    serviceRef);
             serviceOverridesMetadataList.add(ServiceOverridesMetadata.builder()
                                                  .serviceRef(serviceRef)
                                                  .serviceOverridesYaml(serviceOverridesInputsYaml)
@@ -1043,7 +1081,7 @@ public class EnvironmentServiceImpl implements EnvironmentService {
         }
       }
       envInputYamlAndServiceOverridesList.add(EnvironmentInputSetYamlAndServiceOverridesMetadata.builder()
-                                                  .envRef(envRef)
+                                                  .envRef(envIdentifier)
                                                   .orgIdentifier(environment.getOrgIdentifier())
                                                   .projectIdentifier(environment.getProjectIdentifier())
                                                   .envRuntimeInputYaml(envInputYaml)
@@ -1168,13 +1206,5 @@ public class EnvironmentServiceImpl implements EnvironmentService {
           getDuplicateEnvironmentExistsErrorMessage(accountId, orgIdentifier, projectIdentifier, environmentIdentifier),
           USER_SRE);
     }
-  }
-
-  private void applyGitXSettingsIfApplicable(String accountIdentifier, String orgIdentifier, String projIdentifier) {
-    gitXSettingsHelper.enforceGitExperienceIfApplicable(accountIdentifier, orgIdentifier, projIdentifier);
-    gitXSettingsHelper.setDefaultStoreTypeForEntities(
-        accountIdentifier, orgIdentifier, projIdentifier, EntityType.ENVIRONMENT);
-    gitXSettingsHelper.setConnectorRefForRemoteEntity(accountIdentifier, orgIdentifier, projIdentifier);
-    gitXSettingsHelper.setDefaultRepoForRemoteEntity(accountIdentifier, orgIdentifier, projIdentifier);
   }
 }

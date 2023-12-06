@@ -6,7 +6,6 @@
  */
 
 package io.harness.steps.customstage;
-
 import static io.harness.steps.SdkCoreStepUtils.createStepResponseFromChildResponse;
 
 import io.harness.OrchestrationStepTypes;
@@ -52,6 +51,7 @@ public class CustomStageStep implements ChildExecutable<StageElementParameters> 
   @Override
   public ChildExecutableResponse obtainChild(
       Ambiance ambiance, StageElementParameters stepParameters, StepInputPackage inputPackage) {
+    log.info("Executing custom stage with params [{}]", stepParameters);
     CustomStageSpecParams specParameters = (CustomStageSpecParams) stepParameters.getSpecConfig();
     String executionNodeId = specParameters.getChildNodeID();
     dashboardExecutorService.submit(()
@@ -63,6 +63,7 @@ public class CustomStageStep implements ChildExecutable<StageElementParameters> 
   @Override
   public StepResponse handleChildResponse(
       Ambiance ambiance, StageElementParameters stepParameters, Map<String, ResponseData> responseDataMap) {
+    log.info("Executed custom stage [{}]", stepParameters);
     StepResponse stepResponse = createStepResponseFromChildResponse(responseDataMap);
     dashboardExecutorService.submit(()
                                         -> stageExecutionEntityService.updateStageExecutionEntity(ambiance,

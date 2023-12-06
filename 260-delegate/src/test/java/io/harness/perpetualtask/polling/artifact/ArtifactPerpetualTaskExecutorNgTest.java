@@ -152,7 +152,7 @@ public class ArtifactPerpetualTaskExecutorNgTest extends DelegateTestBase {
     PollingDelegateResponse pollingDelegateResponse =
         (PollingDelegateResponse) kryoSerializer.asObject(bufferedSink.readByteArray());
     assertThat(pollingDelegateResponse.getCommandExecutionStatus()).isEqualTo(CommandExecutionStatus.FAILURE);
-    assertThat(pollingDelegateResponse.getErrorMessage()).isEqualTo("mock fail");
+    assertThat(pollingDelegateResponse.getErrorMessage()).isEqualTo("");
   }
 
   @Test
@@ -258,8 +258,7 @@ public class ArtifactPerpetualTaskExecutorNgTest extends DelegateTestBase {
                                                  .build();
 
     if (throwErrorWhileCollection) {
-      when(artifactRepositoryService.collectBuilds(artifactTaskParameters))
-          .thenThrow(new InvalidRequestException("mock fail"));
+      when(artifactRepositoryService.collectBuilds(artifactTaskParameters)).thenThrow(new InvalidRequestException(""));
     } else {
       when(artifactRepositoryService.collectBuilds(artifactTaskParameters)).thenReturn(response);
     }

@@ -17,18 +17,14 @@ import io.harness.beans.yaml.extended.reports.JUnitTestReport;
 import io.harness.beans.yaml.extended.reports.UnitTestReport;
 import io.harness.ci.execution.integrationstage.V1.CIPlanCreatorUtils;
 import io.harness.ci.plan.creator.step.CIPMSStepPlanCreatorV2;
-import io.harness.exception.InvalidYamlException;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.utils.IdentifierGeneratorUtils;
 import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.ParameterField;
-import io.harness.pms.yaml.YamlField;
-import io.harness.pms.yaml.YamlUtils;
 import io.harness.yaml.core.variables.OutputNGVariable;
 
 import com.google.common.collect.Sets;
-import java.io.IOException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -39,12 +35,8 @@ public class RunStepPlanCreatorV1 extends CIPMSStepPlanCreatorV2<ScriptStepNode>
   }
 
   @Override
-  public ScriptStepNode getFieldObject(YamlField field) {
-    try {
-      return YamlUtils.read(field.getNode().toString(), ScriptStepNode.class);
-    } catch (IOException e) {
-      throw new InvalidYamlException("Unable to parse run step yaml. Please ensure that it is in correct format", e);
-    }
+  public Class<ScriptStepNode> getFieldClass() {
+    return ScriptStepNode.class;
   }
 
   @Override

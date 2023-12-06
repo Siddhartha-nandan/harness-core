@@ -350,7 +350,9 @@ public class AzureWebAppSlotDeploymentStep extends TaskChainExecutableWithRollba
     AzureWebAppsStageExecutionDetails prevExecutionDetails =
         azureWebAppStepHelper.findLastSuccessfulStageExecutionDetails(ambiance, infraDelegateConfig);
 
-    boolean cleanDeployment = getBooleanParameterFieldValue(azureWebAppSlotDeploymentStepParameters.getClean());
+    boolean cleanDeployment =
+        cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_WEBAPP_ENABLE_CLEAN_OPTION)
+        && getBooleanParameterFieldValue(azureWebAppSlotDeploymentStepParameters.getClean());
 
     AzureWebAppSlotDeploymentRequest slotDeploymentRequest =
         AzureWebAppSlotDeploymentRequest.builder()

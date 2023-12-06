@@ -328,10 +328,9 @@ public class AwsHelperServiceTest extends WingsBaseTest {
                               .accessKey("accessKey".toCharArray())
                               .secretKey("secret".toCharArray())
                               .build();
-    AwsHelperService service = spy(new AwsHelperService());
-    Reflect.on(service).set("awsApiHelperService", awsApiHelperService);
-    doCallRealMethod().when(awsApiHelperService).getAwsCredentialsProvider(any());
-    AWSCredentialsProvider awsCredentialsProvider = service.getAWSCredentialsProvider(awsConfig);
+
+    AwsHelperService service = new AwsHelperService();
+    AWSCredentialsProvider awsCredentialsProvider = service.getCredentialsForIRSAonDelegate(awsConfig);
     assertThat(awsCredentialsProvider).isNotNull().isInstanceOf(STSAssumeRoleSessionCredentialsProvider.class);
   }
 
@@ -346,11 +345,9 @@ public class AwsHelperServiceTest extends WingsBaseTest {
                               .accessKey("accessKey".toCharArray())
                               .secretKey("secret".toCharArray())
                               .build();
-    AwsHelperService service = spy(new AwsHelperService());
-    Reflect.on(service).set("awsApiHelperService", awsApiHelperService);
-    doCallRealMethod().when(awsApiHelperService).getAwsCredentialsProvider(any());
-    doCallRealMethod().when(awsApiHelperService).getAwsCredentialsProvider(any());
-    AWSCredentialsProvider awsCredentialsProvider = service.getAWSCredentialsProvider(awsConfig);
+
+    AwsHelperService service = new AwsHelperService();
+    AWSCredentialsProvider awsCredentialsProvider = service.getCredentialsForIRSAonDelegate(awsConfig);
     assertThat(awsCredentialsProvider).isNotNull().isInstanceOf(WebIdentityTokenCredentialsProvider.class);
   }
 

@@ -33,9 +33,7 @@ import io.harness.cf.CfClientConfig;
 import io.harness.cf.CfMigrationConfig;
 import io.harness.controller.PrimaryVersionChangeScheduler;
 import io.harness.cvng.core.services.api.VerificationServiceSecretManager;
-import io.harness.delegate.AccountCheckAndCleanupServiceNoOp;
 import io.harness.delegate.authenticator.DelegateSecretManager;
-import io.harness.delegate.authenticator.DelegateTokenAuthenticatorImpl;
 import io.harness.delegate.beans.DelegateAsyncTaskResponse;
 import io.harness.delegate.beans.DelegateSyncTaskResponse;
 import io.harness.delegate.beans.DelegateTaskProgressResponse;
@@ -78,8 +76,6 @@ import io.harness.resource.VersionInfoResource;
 import io.harness.resources.LogVerificationResource;
 import io.harness.scheduler.ServiceGuardAccountPoller;
 import io.harness.scheduler.WorkflowVerificationTaskPoller;
-import io.harness.security.AccountCheckAndCleanupService;
-import io.harness.security.DelegateTokenAuthenticator;
 import io.harness.serializer.JsonSubtypeResolver;
 import io.harness.serializer.KryoRegistrar;
 import io.harness.serializer.ManagerRegistrars;
@@ -92,6 +88,7 @@ import software.wings.app.CharsetResponseFilter;
 import software.wings.beans.Account;
 import software.wings.beans.Account.AccountKeys;
 import software.wings.beans.AccountType;
+import software.wings.beans.LicenseInfo.LicenseInfoKeys;
 import software.wings.beans.account.AccountStatus;
 import software.wings.beans.alert.Alert;
 import software.wings.beans.alert.AlertType;
@@ -334,8 +331,6 @@ public class VerificationServiceApplication extends Application<VerificationServ
       protected void configure() {
         // verification service only needs reading capabilities for datapath authority validation
         bind(AgentMtlsEndpointService.class).to(AgentMtlsEndpointServiceReadOnlyImpl.class);
-        bind(DelegateTokenAuthenticator.class).to(DelegateTokenAuthenticatorImpl.class).in(Singleton.class);
-        bind(AccountCheckAndCleanupService.class).to(AccountCheckAndCleanupServiceNoOp.class);
         bind(DelegateSecretManager.class).to(DelegateSecretManagerImpl.class);
       }
     });
@@ -622,9 +617,10 @@ public class VerificationServiceApplication extends Application<VerificationServ
             .handler(handler)
             .schedulingType(REGULAR)
             .filterExpander(query
-                -> query.or(query.criteria(AccountKeys.accountStatusKey).doesNotExist(),
-                    query.and(query.criteria(AccountKeys.accountStatusKey).equal(AccountStatus.ACTIVE),
-                        query.criteria(AccountKeys.accountType)
+                -> query.or(query.criteria(AccountKeys.licenseInfo).doesNotExist(),
+                    query.and(query.criteria(AccountKeys.licenseInfo + "." + LicenseInfoKeys.accountStatus)
+                                  .equal(AccountStatus.ACTIVE),
+                        query.criteria(AccountKeys.licenseInfo + "." + LicenseInfoKeys.accountType)
                             .in(Sets.newHashSet(AccountType.TRIAL, AccountType.PAID)))))
             .persistenceProvider(injector.getInstance(MorphiaPersistenceProvider.class))
             .redistribute(true)

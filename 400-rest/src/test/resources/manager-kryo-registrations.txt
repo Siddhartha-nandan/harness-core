@@ -1901,9 +1901,7 @@
 25002:io.harness.delegate.beans.ci.DockerInfraInfo
 25003:io.harness.delegate.beans.ci.VmInfraInfo
 25004:io.harness.delegate.beans.ci.DliteVmInfraInfo
-25005:io.harness.delegate.beans.scheduler.ExecutionStatus
-25006:io.harness.delegate.beans.scheduler.InitializeExecutionInfraResponse
-25007:io.harness.delegate.beans.scheduler.CleanupInfraResponse
+25005:io.harness.delegate.beans.scheduler.InitializeExecutionInfraResponse
 26001:io.harness.connector.ConnectorDTO
 26002:io.harness.connector.ConnectorInfoDTO
 29112:io.harness.delegate.beans.connector.jenkins.JenkinsAuthCredentialsDTO
@@ -3161,9 +3159,6 @@
 5731609:io.harness.delegate.task.aws.asg.AsgBlueGreenDeployResult
 5731610:io.harness.delegate.beans.instancesync.info.NativeHelmServerInstanceInfo
 5731611:io.harness.aws.beans.AsgCapacityConfig
-5731612:io.harness.delegate.task.aws.asg.AsgShiftTrafficRequest
-5731613:io.harness.delegate.task.aws.asg.AsgShiftTrafficResponse
-5731614:io.harness.delegate.task.aws.asg.AsgShiftTrafficResult
 
 9000312:software.wings.helpers.ext.nexus.NexusRepositories
 9000313:io.harness.provision.model.TfConfigInspectVersion
@@ -3335,19 +3330,3 @@
 20001001:io.harness.delegate.beans.connector.gcpconnector.GcpOidcDetailsDTO
 20001002:io.harness.delegate.task.k8s.ReleaseMetadata
 20001003:java.util.concurrent.atomic.AtomicBoolean
-20001004:io.harness.delegate.task.artifactBundle.ArtifactBundleFetchRequest
-20001005:io.harness.delegate.task.artifactBundle.response.ArtifactBundleFetchResponse
-20001006:io.harness.delegate.task.artifactBundle.ArtifactBundleDelegateConfig
-20001007:io.harness.delegate.task.artifactBundle.PackageArtifactConfig
-20002000:io.harness.delegate.task.k8s.trafficrouting.HeaderConfig
-20002001:io.harness.delegate.task.k8s.trafficrouting.IstioProviderConfig
-20002002:io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfig
-20002003:io.harness.delegate.task.k8s.trafficrouting.SMIProviderConfig
-20002004:io.harness.delegate.task.k8s.trafficrouting.TrafficRoute
-20002005:io.harness.delegate.task.k8s.trafficrouting.TrafficRouteRule
-20002006:io.harness.delegate.task.k8s.trafficrouting.TrafficRoutingDestination
-20002007:io.harness.delegate.task.k8s.trafficrouting.MatchType
-20002008:io.harness.delegate.task.k8s.trafficrouting.ProviderType
-20002009:io.harness.delegate.task.k8s.trafficrouting.RuleType
-20002010:io.harness.delegate.task.k8s.trafficrouting.RouteType
-20002011:io.harness.delegate.task.artifactBundle.ArtifactBundleDetails

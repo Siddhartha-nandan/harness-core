@@ -27,9 +27,8 @@ public class DelegateRestUtils {
         return response.body();
       }
     } catch (Exception e) {
-      throw new IOException(
-          String.format("Exception occurred while making rest call %s with %s", call.request().url(), e.getMessage()),
-          e.getCause());
+      log.error("error executing rest call", e);
+      throw e;
     } finally {
       if (response != null && !response.isSuccessful()) {
         String errorResponse = response.errorBody().string();

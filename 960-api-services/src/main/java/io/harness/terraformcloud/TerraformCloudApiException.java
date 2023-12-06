@@ -18,11 +18,9 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class TerraformCloudApiException extends RuntimeException {
   private int statusCode;
-  private String url;
-  public TerraformCloudApiException(String message, int statusCode, String url) {
+  public TerraformCloudApiException(String message, int statusCode) {
     super(message);
     this.statusCode = statusCode;
-    this.url = url;
   }
 
   public TerraformCloudApiException(String message, Throwable throwable) {

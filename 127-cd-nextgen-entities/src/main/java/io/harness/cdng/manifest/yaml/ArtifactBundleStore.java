@@ -17,8 +17,8 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.SwaggerConstants;
 import io.harness.cdng.manifest.ManifestStoreType;
 import io.harness.cdng.manifest.yaml.storeConfig.StoreConfig;
-import io.harness.cdng.visitor.helpers.store.ArtifactBundleStoreVisitorHelper;
-import io.harness.delegate.task.artifactBundle.ArtifactBundledArtifactType;
+import io.harness.cdng.visitor.helpers.SecretConnectorRefExtractorHelper;
+import io.harness.delegate.task.pcf.artifact.TasArtifactBundledArtifactType;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.walktree.beans.VisitableChildren;
@@ -44,7 +44,7 @@ import org.springframework.data.annotation.TypeAlias;
 @Builder
 @EqualsAndHashCode(callSuper = false)
 @JsonTypeName(ManifestStoreType.ARTIFACT_BUNDLE)
-@SimpleVisitorHelper(helperClass = ArtifactBundleStoreVisitorHelper.class)
+@SimpleVisitorHelper(helperClass = SecretConnectorRefExtractorHelper.class)
 @TypeAlias("artifactBundleStore")
 @OwnedBy(CDP)
 @RecasterAlias("io.harness.cdng.manifest.yaml.ArtifactBundleStore")
@@ -65,7 +65,7 @@ public class ArtifactBundleStore implements ArtifactBundleStoreConfig, Visitable
   @Wither
   private ParameterField<String> deployableUnitPath; // it's the artifact deployable unit
 
-  @NotNull @Wither private ArtifactBundledArtifactType artifactBundleType;
+  @NotNull @Wither private TasArtifactBundledArtifactType artifactBundleType;
   // For Visitor Framework Impl
   @Override
   public String getKind() {
@@ -111,9 +111,8 @@ public class ArtifactBundleStore implements ArtifactBundleStoreConfig, Visitable
       invalidParameters.add(ArtifactBundleStoreConfigKeys.deployableUnitPath);
     }
     if (artifactBundleType == null
-        || (!artifactBundleType.equals(ArtifactBundledArtifactType.ZIP)
-            && !artifactBundleType.equals(ArtifactBundledArtifactType.TAR)
-            && !artifactBundleType.equals(ArtifactBundledArtifactType.TAR_GZIP))) {
+        || (!artifactBundleType.equals(TasArtifactBundledArtifactType.ZIP)
+            && !artifactBundleType.equals(TasArtifactBundledArtifactType.TAR))) {
       invalidParameters.add(ArtifactBundleStoreConfigKeys.artifactBundleType);
     }
 

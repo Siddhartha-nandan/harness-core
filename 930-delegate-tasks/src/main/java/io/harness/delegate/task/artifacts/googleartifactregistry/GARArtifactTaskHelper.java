@@ -53,13 +53,6 @@ public class GARArtifactTaskHelper {
               "Fetched " + artifactTaskResponse.getArtifactTaskExecutionResponse().getArtifactDelegateResponses().size()
                   + " artifacts");
           break;
-        case GET_GAR_PACKAGES:
-          saveLogs(executionLogCallback, "Fetching artifact details");
-          artifactTaskResponse = getSuccessTaskResponse(garArtifactTaskHandler.getPackages(attributes));
-          saveLogs(executionLogCallback,
-              "Fetched " + artifactTaskResponse.getArtifactTaskExecutionResponse().getArtifactDelegateResponses().size()
-                  + " artifacts");
-          break;
         case GET_LAST_SUCCESSFUL_BUILD:
           saveLogs(executionLogCallback, "Fetching Artifact details");
           artifactTaskResponse = getSuccessTaskResponse(garArtifactTaskHandler.getLastSuccessfulBuild(attributes));
@@ -73,13 +66,6 @@ public class GARArtifactTaskHelper {
           saveLogs(executionLogCallback,
               "Fetched Artifact details \n  type: Google Artifact Registry \n  Version: "
                   + garDelegateResponse.getVersion());
-          break;
-        case GET_GAR_REPOSITORIES:
-          saveLogs(executionLogCallback, "Fetching artifact details");
-          artifactTaskResponse = getSuccessTaskResponse(garArtifactTaskHandler.getRepositories(attributes));
-          saveLogs(executionLogCallback,
-              "Fetched " + artifactTaskResponse.getArtifactTaskExecutionResponse().getArtifactDelegateResponses().size()
-                  + " artifacts");
           break;
         default:
           saveLogs(executionLogCallback,

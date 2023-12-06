@@ -154,5 +154,4 @@ public interface StepSpecTypeConstants {
   String AWS_CDK_DEPLOY = "AwsCdkDeploy";
   String AWS_CDK_DESTROY = "AwsCdkDestroy";
   String AWS_CDK_ROLLBACK = "AwsCdkRollback";
-  String DOWNLOAD_AWS_S3 = "DownloadAwsS3";
 }

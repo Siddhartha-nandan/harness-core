@@ -23,7 +23,6 @@ import io.harness.cdng.instance.info.InstanceInfoService;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
 import io.harness.cdng.tas.outcome.TasAppResizeDataOutcome;
 import io.harness.cdng.tas.outcome.TasSetupDataOutcome;
-import io.harness.cdng.tas.outcome.TasSwapRouteDataOutcome;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.delegate.beans.TaskData;
 import io.harness.delegate.beans.connector.tasconnector.TasConnectorDTO;
@@ -142,30 +141,6 @@ public class TasSwapRollbackStep extends CdTaskExecutable<CfCommandResponseNG> {
       });
     }
 
-    boolean isBGWith2Apps = tasSetupDataOutcome.getOlderActiveVersionCountToKeep() != null
-        && tasSetupDataOutcome.getOlderActiveVersionCountToKeep() == 0
-        && tasSetupDataOutcome.getInActiveApplicationDetails() != null
-        && tasSetupDataOutcome.getActiveApplicationDetails() != null
-        && tasSetupDataOutcome.getNewApplicationDetails() != null;
-
-    boolean swapRouteOccurredSweepingOutput = true;
-
-    if (isBGWith2Apps) {
-      OptionalSweepingOutput tasSwapRouteDataOptional = OptionalSweepingOutput.builder().found(false).build();
-      if (!isNull(tasSwapRollbackStepParameters.getTasSwapRoutesFqn())) {
-        tasSwapRouteDataOptional = executionSweepingOutputService.resolveOptional(ambiance,
-            RefObjectUtils.getSweepingOutputRefObject(tasSwapRollbackStepParameters.getTasSwapRoutesFqn() + "."
-                + OutcomeExpressionConstants.TAS_SWAP_ROUTES_OUTCOME));
-      }
-      if (tasSwapRouteDataOptional.isFound()) {
-        TasSwapRouteDataOutcome tasSwapRouteDataOutcome =
-            (TasSwapRouteDataOutcome) tasSwapRouteDataOptional.getOutput();
-        swapRouteOccurredSweepingOutput = tasSwapRouteDataOutcome.isSwapRouteOccurred();
-      } else {
-        swapRouteOccurredSweepingOutput = false;
-      }
-    }
-
     CfSwapRollbackCommandRequestNG cfRollbackCommandRequestNG =
         CfSwapRollbackCommandRequestNG.builder()
             .accountId(accountId)
@@ -179,7 +154,7 @@ public class TasSwapRollbackStep extends CdTaskExecutable<CfCommandResponseNG> {
             .timeoutIntervalInMin(tasSetupDataOutcome.getTimeoutIntervalInMinutes())
             .downsizeOldApplication(true)
             .timeoutIntervalInMin(10)
-            .swapRouteOccurred(!isBGWith2Apps || swapRouteOccurredSweepingOutput)
+            .swapRouteOccurred(true)
             .useAppAutoScalar(tasSetupDataOutcome.isUseAppAutoScalar())
             .activeApplicationDetails(tasSetupDataOutcome.getActiveApplicationDetails() == null
                     ? null
@@ -194,7 +169,6 @@ public class TasSwapRollbackStep extends CdTaskExecutable<CfCommandResponseNG> {
             .routeMaps(tasSetupDataOutcome.getRouteMaps())
             .instanceData(instanceData)
             .upsizeInActiveApp(tasSwapRollbackStepParameters.getUpsizeInActiveApp().getValue())
-            .olderActiveVersionCountToKeep(tasSetupDataOutcome.getOlderActiveVersionCountToKeep())
             .build();
 
     final TaskData taskData = TaskData.builder()

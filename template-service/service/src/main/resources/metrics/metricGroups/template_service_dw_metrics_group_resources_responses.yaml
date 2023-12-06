@@ -1,8 +1,0 @@
-name: Template Service DW Metrics Group per Resource Method per Status Codes
-identifier: TemplateServiceDwMetricsResourceStatusCodeGroup
-labels:
-  - method
-  - resource
-  - statusCode
-  - namespace
-  - serviceName

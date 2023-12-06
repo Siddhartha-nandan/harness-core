@@ -21,7 +21,6 @@ import io.harness.cvng.servicelevelobjective.entities.CompositeServiceLevelObjec
 import io.harness.cvng.servicelevelobjective.entities.CompositeServiceLevelObjective.ServiceLevelObjectivesDetail;
 import io.harness.cvng.servicelevelobjective.entities.SLIRecord;
 import io.harness.cvng.servicelevelobjective.entities.SLIState;
-import io.harness.cvng.servicelevelobjective.services.api.CompositeSLORecordBucketService;
 import io.harness.cvng.servicelevelobjective.services.api.CompositeSLORecordService;
 import io.harness.cvng.servicelevelobjective.services.api.SLIRecordService;
 import io.harness.cvng.servicelevelobjective.services.api.SLOHealthIndicatorService;
@@ -49,10 +48,11 @@ import org.apache.commons.math3.util.Pair;
 public class CompositeSLORecordServiceImpl implements CompositeSLORecordService {
   private static final int RETRY_COUNT = 3;
   @Inject private SRMPersistence hPersistence;
-  @Inject CompositeSLORecordBucketService compositeSLORecordBucketService;
+
   @Inject ServiceLevelObjectiveV2Service serviceLevelObjectiveV2Service;
 
   @Inject SLIRecordService sliRecordService;
+
   @Inject SLOHealthIndicatorService sloHealthIndicatorService;
 
   @Inject Map<CompositeSLOFormulaType, CompositeSLOEvaluator> formulaTypeCompositeSLOEvaluatorMap;
@@ -75,6 +75,7 @@ public class CompositeSLORecordServiceImpl implements CompositeSLORecordService 
       if (isEmpty(serviceLevelObjectivesDetailCompositeSLORecordMap)) {
         return;
       }
+
       double runningGoodCount = 0;
       double runningBadCount = 0;
       CompositeSLORecord lastCompositeSLORecord = getLastCompositeSLORecord(compositeSLOId, startTime);
@@ -96,12 +97,6 @@ public class CompositeSLORecordServiceImpl implements CompositeSLORecordService 
         hPersistence.saveBatch(compositeSLORecords);
       }
       sloHealthIndicatorService.upsert(compositeServiceLevelObjective);
-    }
-    try {
-      compositeSLORecordBucketService.create(compositeServiceLevelObjective, startTime, endTime, verificationTaskId);
-    } catch (Exception ignored) {
-      log.error("Couldn't write compositeSLORecordBucket for id {} for window {} , {}",
-          compositeServiceLevelObjective.getUuid(), startTime, endTime);
     }
   }
 

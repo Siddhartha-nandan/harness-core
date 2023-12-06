@@ -10,9 +10,7 @@ package io.harness.plancreator.steps.internal.v1;
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.plancreator.steps.common.v1.StepElementParametersV1;
 import io.harness.plancreator.steps.v1.AbstractStepNodeV1;
-import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.yaml.core.failurestrategy.v1.FailureConfigV1;
 import io.harness.yaml.core.timeout.Timeout;
@@ -26,6 +24,4 @@ import lombok.Data;
 public abstract class PmsAbstractStepNodeV1 extends AbstractStepNodeV1 {
   @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY) ParameterField<List<FailureConfigV1>> failure;
   ParameterField<Timeout> timeout;
-
-  public abstract StepElementParametersV1 getStepParameters(PlanCreationContext ctx);
 }

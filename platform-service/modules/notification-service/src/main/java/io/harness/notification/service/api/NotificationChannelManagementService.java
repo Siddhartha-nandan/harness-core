@@ -8,13 +8,10 @@
 package io.harness.notification.service.api;
 
 import io.harness.notification.entities.NotificationChannel;
-import io.harness.notification.utils.NotificationChannelFilterProperties;
 
 import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 public interface NotificationChannelManagementService {
   NotificationChannel create(@Valid NotificationChannel notificationChannel);
@@ -28,7 +25,4 @@ public interface NotificationChannelManagementService {
       String accountIdentifier, String orgIdentifier, String projectIdentifier);
 
   boolean delete(@Valid NotificationChannel notificationChannel);
-
-  Page<NotificationChannel> list(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      Pageable pageable, NotificationChannelFilterProperties notificationManagementServiceFilterProperties);
 }

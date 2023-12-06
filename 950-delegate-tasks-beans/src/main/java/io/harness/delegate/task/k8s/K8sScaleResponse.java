@@ -17,15 +17,4 @@ import lombok.Value;
 @Builder
 public class K8sScaleResponse implements K8sNGTaskResponse {
   List<K8sPod> k8sPodList;
-  List<K8sPod> previousK8sPodList;
-
-  @Override
-  public List<K8sPod> getPreviousK8sPodList() {
-    return previousK8sPodList;
-  }
-
-  @Override
-  public List<K8sPod> getTotalK8sPodList() {
-    return k8sPodList;
-  }
 }

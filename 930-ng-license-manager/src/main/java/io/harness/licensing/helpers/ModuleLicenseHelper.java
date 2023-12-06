@@ -10,9 +10,7 @@ package io.harness.licensing.helpers;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
 import io.harness.ModuleType;
-import io.harness.beans.FeatureName;
 import io.harness.exception.InvalidRequestException;
-import io.harness.ff.FeatureFlagService;
 import io.harness.licensing.Edition;
 import io.harness.licensing.LicenseType;
 import io.harness.licensing.beans.modules.ModuleLicenseDTO;
@@ -30,7 +28,6 @@ import io.harness.licensing.entities.modules.SRMModuleLicense;
 import io.harness.licensing.entities.modules.STOModuleLicense;
 import io.harness.subscription.params.UsageKey;
 
-import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.time.Duration;
 import java.time.Instant;
@@ -38,11 +35,12 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 @Singleton
 public class ModuleLicenseHelper {
-  @Inject FeatureFlagService featureFlagService;
-  private static final String MODULE_NOT_SUPPORTED_ERROR = "Module %s is not supported for recommendations.";
+  private final String MODULE_NOT_SUPPORTED_ERROR = "Module %s is not supported for recommendations.";
 
   public static Map<ModuleType, ModuleLicense> getLastExpiredLicenseForEachModuleType(
       List<ModuleLicense> allModuleLicenses) {
@@ -233,11 +231,6 @@ public class ModuleLicenseHelper {
       current.setSelfService(update.isSelfService());
     }
 
-    if (update.getDeveloperLicenseCount() != null
-        && !update.getDeveloperLicenseCount().equals(current.getDeveloperLicenseCount())) {
-      current.setDeveloperLicenseCount(update.getDeveloperLicenseCount());
-    }
-
     switch (update.getModuleType()) {
       case CD:
         CDModuleLicense cdLicense = (CDModuleLicense) update;
@@ -352,9 +345,5 @@ public class ModuleLicenseHelper {
         break;
     }
     return current;
-  }
-
-  public boolean isDeveloperLicensingFeatureEnabled(String accountIdentifier) {
-    return featureFlagService.isEnabled(FeatureName.GTM_DEVELOPER_LICENSING, accountIdentifier);
   }
 }

@@ -172,8 +172,8 @@ public class AsgCanaryDeleteStep extends CdTaskExecutable<AsgCommandResponse> {
 
     AsgCanaryDeployOutcome asgCanaryDeployOutcome = (AsgCanaryDeployOutcome) asgCanaryDeployOptionalOutput.getOutput();
 
-    InfrastructureOutcome infrastructureOutcome =
-        asgStepCommonHelper.getInfrastructureOutcomeWithUpdatedExpressions(ambiance);
+    InfrastructureOutcome infrastructureOutcome = (InfrastructureOutcome) outcomeService.resolve(
+        ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME));
 
     AsgCanaryDeleteRequest asgCanaryDeleteRequest =
         AsgCanaryDeleteRequest.builder()

@@ -341,8 +341,8 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
       ProcessResult processResult = processExecutor.execute();
 
       if (errorLog.length() > 0) {
-        log.error("[ScriptProcessExecutor-03] Error output stream:\n{}",
-            LogSanitizerHelper.sanitizeTokens(errorLog.toString()));
+        log.error(
+            "[ScriptProcessExecutor-03] Error output stream:\n{}", LogSanitizerHelper.sanitizeJWT(errorLog.toString()));
       }
 
       commandExecutionStatus = processResult.getExitValue() == 0 ? SUCCESS : FAILURE;
@@ -377,8 +377,7 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
 
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      handleException(executionDataBuilder, envVariablesMap, e,
-          "Script execution interrupted, possibly due to a timeout or pipeline abort.");
+      handleException(executionDataBuilder, envVariablesMap, e, "Script execution interrupted");
     } catch (TimeoutException e) {
       executionDataBuilder.expired(true);
       handleException(executionDataBuilder, envVariablesMap, e, "Script execution timed out");
@@ -416,7 +415,7 @@ public class ScriptProcessExecutor extends AbstractScriptExecutor {
       Exception e, String message) {
     executionDataBuilder.sweepingOutputEnvVariables(envVariablesMap);
     saveExecutionLog(message, ERROR);
-    log.error(message, e);
+    log.error("Exception in script execution ", e);
   }
 
   private void saveExecutionLog(String line, LogLevel level) {

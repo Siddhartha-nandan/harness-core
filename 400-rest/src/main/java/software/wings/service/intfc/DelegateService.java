@@ -64,8 +64,7 @@ public interface DelegateService extends OwnedByAccount {
 
   Set<String> getAllDelegateSelectors(String accountId);
 
-  Set<String> getAllDelegateSelectorsUpTheHierarchy(
-      String accountId, String orgId, String projectId, boolean applyRbacFilter);
+  Set<String> getAllDelegateSelectorsUpTheHierarchy(String accountId, String orgId, String projectId);
 
   List<DelegateSelector> getAllDelegateSelectorsUpTheHierarchyV2(String accountId, String orgId, String projectId);
 

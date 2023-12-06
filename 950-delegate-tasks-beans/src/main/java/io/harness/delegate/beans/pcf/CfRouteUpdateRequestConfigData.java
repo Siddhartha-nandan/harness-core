@@ -36,5 +36,4 @@ public class CfRouteUpdateRequestConfigData {
   private CfAppSetupTimeDetails newApplicationDetails;
   private String cfAppNamePrefix;
   private String existingAppNamingStrategy;
-  private boolean isBGWithOnly2Apps;
 }

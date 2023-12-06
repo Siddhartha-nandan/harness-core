@@ -15,7 +15,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.engine.executions.retry.RetryStageInfo;
 import io.harness.execution.NodeExecution;
-import io.harness.monitoring.ExecutionStatistics;
+import io.harness.monitoring.ExecutionCountWithAccountResult;
 import io.harness.plan.Node;
 import io.harness.pms.contracts.execution.Status;
 
@@ -388,5 +388,9 @@ public interface NodeExecutionService {
   CloseableIterator<NodeExecution> fetchAllLeavesUsingPlanExecutionId(
       String planExecutionId, Set<String> fieldsToBeIncluded);
 
-  ExecutionStatistics aggregateRunningNodeExecutionsCount();
+  /**
+   * Fetches aggregated running nodes count per account from analytics node
+   * @return
+   */
+  List<ExecutionCountWithAccountResult> aggregateRunningNodesCountPerAccount();
 }

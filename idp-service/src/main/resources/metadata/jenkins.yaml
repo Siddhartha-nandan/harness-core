@@ -1,8 +1,7 @@
 identifier: jenkins
 name: Jenkins
 description: Jenkins offers a simple way to set up a continuous integration and continuous delivery environment.
-accountIdentifier: __GLOBAL_ACCOUNT_ID__
-creator: '@timja'
+createdBy: '@timja'
 category: CI/CD
 source: https://github.com/backstage/backstage/tree/master/plugins/jenkins
 iconUrl: https://img.icons8.com/color/1600/jenkins.png

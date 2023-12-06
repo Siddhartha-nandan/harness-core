@@ -12,7 +12,6 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import io.harness.ModuleType;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.beans.EmbeddedUser;
 import io.harness.licensing.Edition;
 import io.harness.licensing.LicenseStatus;
 import io.harness.licensing.LicenseType;
@@ -64,10 +63,7 @@ public abstract class ModuleLicenseDTO {
   long expiryTime;
   boolean premiumSupport;
   boolean selfService;
-  EmbeddedUser createdBy;
-  EmbeddedUser lastUpdatedBy;
   Long createdAt;
   Long lastModifiedAt;
   Boolean trialExtended;
-  Integer developerLicenseCount;
 }

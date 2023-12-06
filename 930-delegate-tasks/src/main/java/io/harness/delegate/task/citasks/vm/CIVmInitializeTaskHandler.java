@@ -93,11 +93,7 @@ public class CIVmInitializeTaskHandler implements CIInitializeTaskHandler {
             .commandExecutionStatus(CommandExecutionStatus.SUCCESS)
             .build();
       } else {
-        if (response.errorBody() != null) {
-          errMessage = format("failed with code: %d, message: %s", response.code(), response.errorBody().string());
-        } else {
-          errMessage = format("failed with code: %d, message: %s", response.code(), response.errorBody());
-        }
+        errMessage = format("failed with code: %d, message: %s", response.code(), response.errorBody());
       }
     } catch (Exception e) {
       log.error("Failed to setup VM in runner", e);

@@ -32,7 +32,7 @@ global:
     tls:
       enabled: false
       secretName: harness-cert
-  stackDriverLoggingEnabled: "true"
+  stackDriverLoggingEnabled: true
   database:
     postgres:
       ## - installed = true if installed within cluster
@@ -60,7 +60,7 @@ global:
       passwordKey: ""
       extraArgs: ""
     redis:
-      installed: "true"
+      installed: true
       protocol: "redis"
       # --  provide default values if redis.installed is set to false
       hosts:
@@ -230,19 +230,19 @@ proxyAllowListConfigServices:
   manager:
     proxyPath: v1/idp-proxy-service/manager
     clientConfig:
-      baseUrl: 'http://harness-manager:9090/api/'
+      baseUrl: envSpecific
       connectTimeOutSeconds: 15
       readTimeOutSeconds: 15
-    secret: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    secret: envSpecific
     allowList:
       - /users/validate-support-user
   ng-manager:
     proxyPath: v1/idp-proxy-service/ng-manager
     clientConfig:
-      baseUrl: 'http://ng-manager:7090/'
+      baseUrl: envSpecific
       connectTimeOutSeconds: 15
       readTimeOutSeconds: 15
-    secret: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    secret: envSpecific
     allowList:
       - /user/aggregate
       - /aggregate/acl/usergroups
@@ -251,33 +251,7 @@ name: idp-service
 
 internalAccounts: kmpySmUISimoRrJL6NL73w
 
-segmentEnabled: "false"
+segmentEnabled: false
 segmentUrl: "segment_url_place_holder"
 segmentApikey: "segment_api_key"
-segmentVerifyCert: "false"
-
-secrets:
-  default:
-    BACKSTAGE_CA_CERT_SECRET: ""
-    BACKSTAGE_SA_TOKEN_SECRET: ""
-  kubernetesSecrets:
-    - secretName: ""
-      keys:
-        BACKSTAGE_CA_CERT: ""
-        BACKSTAGE_SA_TOKEN: ""
-  secretManagement:
-    externalSecretsOperator:
-      - secretStore:
-          name: ""
-          kind: ""
-        remoteKeys:
-          BACKSTAGE_CA_CERT_SECRET:
-            name: ""
-            property: ""
-          BACKSTAGE_SA_TOKEN_SECRET:
-            name: ""
-            property: ""
-
-devSpaceDefaultBackstageNamespace: "laxmiharness"
-devSpaceDefaultAccountId: "VVfCEh_ZRTm7pJWtAH-PrA"
-
+segmentVerifyCert: false

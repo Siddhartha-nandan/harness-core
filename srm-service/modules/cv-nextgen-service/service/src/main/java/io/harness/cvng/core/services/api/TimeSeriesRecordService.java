@@ -40,7 +40,6 @@ public interface TimeSeriesRecordService {
    */
   List<TimeSeriesRecordDTO> getTimeSeriesRecordDTOs(String verificationTaskId, Instant startTime, Instant endTime);
 
-  List<TimeSeriesRecord> getTimeSeriesRecords(String verificationTaskId, List<Instant> startTimes);
   List<TimeSeriesRecord> getLatestTimeSeriesRecords(String verificationTaskId, int count);
   List<TimeSeriesRecordDTO> getDeploymentMetricTimeSeriesRecordDTOs(
       String verificationTaskId, Instant startTime, Instant endTime, Set<String> hosts);

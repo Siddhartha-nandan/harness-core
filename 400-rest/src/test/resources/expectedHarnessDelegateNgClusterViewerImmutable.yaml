@@ -124,6 +124,7 @@ spec:
         - name: DYNAMIC_REQUEST_HANDLING
           value: "false"
 
+
 ---
 
 apiVersion: autoscaling/v1

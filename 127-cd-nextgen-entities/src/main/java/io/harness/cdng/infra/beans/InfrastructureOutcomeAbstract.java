@@ -34,6 +34,4 @@ public abstract class InfrastructureOutcomeAbstract implements InfrastructureOut
   private Connector connector;
 
   Map<String, String> tags;
-
-  String description;
 }

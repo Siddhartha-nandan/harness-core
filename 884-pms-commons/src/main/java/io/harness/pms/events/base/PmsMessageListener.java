@@ -12,9 +12,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.eventsframework.consumer.Message;
 
-import java.util.Map;
-
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_PIPELINE})
 public interface PmsMessageListener {
-  boolean handleMessage(Message message, Map<String, Object> metricInfo);
+  boolean handleMessage(Message message, Long readTs);
 }

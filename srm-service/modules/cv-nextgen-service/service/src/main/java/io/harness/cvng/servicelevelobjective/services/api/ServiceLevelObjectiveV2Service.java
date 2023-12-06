@@ -15,8 +15,6 @@ import io.harness.cvng.core.beans.params.logsFilterParams.SLILogsFilter;
 import io.harness.cvng.core.services.api.DeleteEntityByHandler;
 import io.harness.cvng.notification.beans.NotificationRuleResponse;
 import io.harness.cvng.servicelevelobjective.SLORiskCountResponse;
-import io.harness.cvng.servicelevelobjective.beans.ErrorBudgetBurnDownDTO;
-import io.harness.cvng.servicelevelobjective.beans.ErrorBudgetBurnDownResponse;
 import io.harness.cvng.servicelevelobjective.beans.SLIEvaluationType;
 import io.harness.cvng.servicelevelobjective.beans.SLODashboardApiFilter;
 import io.harness.cvng.servicelevelobjective.beans.SLOErrorBudgetResetDTO;
@@ -121,8 +119,4 @@ public interface ServiceLevelObjectiveV2Service extends DeleteEntityByHandler<Ab
 
   List<SLOErrorBudgetResetDTO> getErrorBudgetResetHistory(ProjectParams projectParams, String sloIdentifier);
   SLOErrorBudgetResetDTO resetErrorBudget(ProjectParams projectParams, SLOErrorBudgetResetDTO resetDTO);
-  ErrorBudgetBurnDownResponse saveErrorBudgetBurnDown(
-      ProjectParams projectParams, ErrorBudgetBurnDownDTO errorBudgetBurnDownDTO);
-
-  PageResponse<ErrorBudgetBurnDownDTO> get(ProjectParams projectParams, String identifier, PageParams pageParams);
 }

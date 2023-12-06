@@ -16,7 +16,6 @@ import io.harness.accesscontrol.resources.resourcegroups.ResourceGroup;
 import io.harness.accesscontrol.roleassignments.persistence.RoleAssignmentDBO;
 import io.harness.accesscontrol.roleassignments.persistence.RoleAssignmentDBO.RoleAssignmentDBOKeys;
 import io.harness.accesscontrol.roleassignments.persistence.repositories.RoleAssignmentRepository;
-import io.harness.aggregator.AccessControlAdminService;
 import io.harness.aggregator.models.ResourceGroupChangeEventData;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.exception.GeneralException;
@@ -40,7 +39,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 @OwnedBy(PL)
 @Singleton
 @Slf4j
-public class ResourceGroupChangeConsumer extends AbstractAccessControlChangeConsumer<ResourceGroupChangeEventData> {
+public class ResourceGroupChangeConsumer implements AccessControlChangeConsumer<ResourceGroupChangeEventData> {
   private final ACLRepository aclRepository;
   private final RoleAssignmentRepository roleAssignmentRepository;
   private final ExecutorService executorService;
@@ -48,9 +47,7 @@ public class ResourceGroupChangeConsumer extends AbstractAccessControlChangeCons
 
   @Inject
   public ResourceGroupChangeConsumer(@Named(ACL.PRIMARY_COLLECTION) ACLRepository aclRepository,
-      RoleAssignmentRepository roleAssignmentRepository, ACLGeneratorService aclGeneratorService,
-      AccessControlAdminService accessControlAdminService) {
-    super(accessControlAdminService);
+      RoleAssignmentRepository roleAssignmentRepository, ACLGeneratorService aclGeneratorService) {
     this.aclRepository = aclRepository;
     this.roleAssignmentRepository = roleAssignmentRepository;
     this.aclGeneratorService = aclGeneratorService;

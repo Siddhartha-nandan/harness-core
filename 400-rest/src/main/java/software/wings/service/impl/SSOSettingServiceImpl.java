@@ -639,14 +639,8 @@ public class SSOSettingServiceImpl implements SSOSettingService {
     }
     checkForLinkedSSOGroupsOnNG(settings.getAccountId(), settings.getUuid());
     if (LdapConnectionSettings.INLINE_SECRET.equals(settings.getConnectionSettings().getPasswordType())) {
-      try {
-        secretManager.deleteSecret(settings.getAccountId(), settings.getConnectionSettings().getEncryptedBindPassword(),
-            new HashMap<>(), false);
-      } catch (Exception ex) {
-        throw new InvalidRequestException(
-            String.format("Failed to delete the LDAP settings as the bind password could not be deleted. Error: {}",
-                ex.getMessage()));
-      }
+      secretManager.deleteSecret(
+          settings.getAccountId(), settings.getConnectionSettings().getEncryptedBindPassword(), new HashMap<>(), false);
     }
     wingsPersistence.delete(settings);
     auditServiceHelper.reportDeleteForAuditingUsingAccountId(settings.getAccountId(), settings);

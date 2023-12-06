@@ -25,7 +25,6 @@ from util import create_dataset, TABLE_NAME_FORMAT, if_tbl_exists, print_, creat
 }
 """
 
-PROJECTID_SECONDARY = os.environ.get('GCP_PROJECT_SECONDARY', 'ccm-play')
 
 def get_zones(project_id, credentials):
     print(f"Getting zones for project_id: {project_id}")
@@ -219,15 +218,15 @@ def main(event, context):
 
     # This is available only in runtime python 3.7, go 1.11
     jsonData["projectName"] = os.environ.get('GCP_PROJECT', 'ccm-play')
-    client = bigquery.Client(PROJECTID_SECONDARY)
-
+    client = bigquery.Client(jsonData["projectName"])
 
     # Set the accountId for GCP logging
     util.ACCOUNTID_LOG = jsonData.get("accountId")
 
     jsonData["accountIdBQ"] = re.sub('[^0-9a-z]', '_', jsonData.get("accountId").lower())
     jsonData["datasetName"] = "BillingReport_%s" % jsonData["accountIdBQ"]
-    dataset = create_dataset(client, jsonData["datasetName"])
+    create_dataset(client, jsonData["datasetName"])
+    dataset = client.dataset(jsonData["datasetName"])
 
     # Setting table names for main and temp tables
     gcp_disks_inventory_table_ref = dataset.table("gcpDiskInventory")

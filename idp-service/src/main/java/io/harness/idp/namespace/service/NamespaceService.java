@@ -19,5 +19,5 @@ public interface NamespaceService {
   List<String> getAccountIds();
   Boolean getAccountIdpStatus(String accountIdentifier);
 
-  NamespaceEntity createDevSpaceEnvDefaultMappingEntry(String accountIdentifier, String namespace);
+  NamespaceEntity createPREnvDefaultMappingEntry(String accountIdentifier, String namespace);
 }

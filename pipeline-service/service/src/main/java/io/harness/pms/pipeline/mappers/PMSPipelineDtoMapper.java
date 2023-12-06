@@ -164,7 +164,6 @@ public class PMSPipelineDtoMapper {
         .harnessVersion(HarnessYamlVersion.V1)
         .yamlHash(getYamlHash(yaml))
         .description(desc)
-        .allowStageExecutions(true)
         .build();
   }
 

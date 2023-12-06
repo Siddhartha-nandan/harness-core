@@ -348,26 +348,6 @@ public class PerspectiveToAnomalyQueryHelper {
     return true;
   }
 
-  public CCMFilter addIdNullFilter() {
-    List<CCMStringFilter> ccm_stringFilters = new ArrayList<>();
-    String[] emptyArray = new String[0];
-    ccm_stringFilters.add(buildStringFilter(CCMField.ANOMALY_ID, emptyArray, QLCEViewFilterOperator.NULL));
-    return CCMFilter.builder()
-        .stringFilters(ccm_stringFilters)
-        .numericFilters(Collections.emptyList())
-        .timeFilters(Collections.emptyList())
-        .build();
-  }
-
-  public boolean isEmptyRuleFilter(List<CCMFilter> ccm_ruleFilters) {
-    for (CCMFilter ccm_filter : ccm_ruleFilters) {
-      if (!(ccm_filter.getStringFilters().isEmpty()) || !(ccm_filter.getNumericFilters().isEmpty())
-          || !(ccm_filter.getTimeFilters().isEmpty())) {
-        return false;
-      }
-    }
-    return true;
-  }
   private CCMFilter combineFilters(List<CCMFilter> filters) {
     List<CCMStringFilter> stringFilters = new ArrayList<>();
     List<CCMNumberFilter> numberFilters = new ArrayList<>();
@@ -416,7 +396,7 @@ public class PerspectiveToAnomalyQueryHelper {
     return defaultFilters;
   }
 
-  public CCMStringFilter buildStringFilter(CCMField field, String[] values, QLCEViewFilterOperator operator) {
+  private CCMStringFilter buildStringFilter(CCMField field, String[] values, QLCEViewFilterOperator operator) {
     return CCMStringFilter.builder()
         .field(field)
         .values(Arrays.asList(values))

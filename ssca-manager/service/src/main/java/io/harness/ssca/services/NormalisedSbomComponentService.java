@@ -18,7 +18,6 @@ import java.util.List;
 import javax.ws.rs.core.Response;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.mongodb.core.aggregation.Aggregation;
 
 public interface NormalisedSbomComponentService {
   Response listNormalizedSbomComponent(
@@ -30,6 +29,4 @@ public interface NormalisedSbomComponentService {
 
   List<String> getOrchestrationIds(String accountId, String orgIdentifier, String projectIdentifier,
       LicenseFilter licenseFilter, List<ComponentFilter> componentFilter);
-
-  <T> List<T> getComponentsByAggregation(Aggregation aggregation, Class<T> resultClass);
 }

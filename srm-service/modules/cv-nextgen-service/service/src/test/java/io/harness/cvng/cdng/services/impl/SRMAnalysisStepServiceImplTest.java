@@ -205,7 +205,7 @@ public class SRMAnalysisStepServiceImplTest extends CvNextGenTestBase {
                           .notificationRuleRef(notificationRuleResponse.getNotificationRule().getIdentifier())
                           .enabled(true)
                           .build()));
-    monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO, false);
+    monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
 
     SRMAnalysisStepExecutionDetail stepExecutionDetail =
         srmAnalysisStepService.getSRMAnalysisStepExecutionDetail(analysisExecutionDetailsId);

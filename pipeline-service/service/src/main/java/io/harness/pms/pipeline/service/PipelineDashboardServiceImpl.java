@@ -9,11 +9,8 @@ package io.harness.pms.pipeline.service;
 
 import static io.harness.NGDateUtils.DAY_IN_MS;
 
-import io.harness.annotations.dev.CodePulse;
-import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.annotations.dev.ProductModule;
 import io.harness.pms.dashboard.DashboardPipelineExecutionInfo;
 import io.harness.pms.dashboard.DashboardPipelineHealthInfo;
 import io.harness.pms.dashboard.MeanAndMedian;
@@ -37,7 +34,6 @@ import lombok.extern.slf4j.Slf4j;
 @OwnedBy(HarnessTeam.CDC)
 @Singleton
 @Slf4j
-@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_DASHBOARD})
 public class PipelineDashboardServiceImpl implements PipelineDashboardService {
   @Inject PipelineDashboardQueryService pipelineDashboardQueryService;
 

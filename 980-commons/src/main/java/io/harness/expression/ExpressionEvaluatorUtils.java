@@ -6,7 +6,6 @@
  */
 
 package io.harness.expression;
-
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 
 import static java.lang.String.format;
@@ -219,7 +218,8 @@ public class ExpressionEvaluatorUtils {
     return updateExpressionsInternal(obj, functor, 250, new HashSet<>());
   }
 
-  static Object updateExpressionsInternal(Object obj, ExpressionResolveFunctor functor, int depth, Set<Integer> cache) {
+  private static Object updateExpressionsInternal(
+      Object obj, ExpressionResolveFunctor functor, int depth, Set<Integer> cache) {
     if (depth <= 0) {
       throw new CriticalExpressionEvaluationException("Recursion or too deep hierarchy in property interpretation");
     }

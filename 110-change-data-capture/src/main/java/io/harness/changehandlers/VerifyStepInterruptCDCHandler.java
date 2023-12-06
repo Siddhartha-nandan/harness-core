@@ -67,10 +67,6 @@ public class VerifyStepInterruptCDCHandler extends AbstractChangeDataHandler {
   }
 
   @Override
-  public boolean shouldUpdateOnConflict() {
-    return true;
-  }
-  @Override
   public List<String> getPrimaryKeys() {
     return List.of("id");
   }

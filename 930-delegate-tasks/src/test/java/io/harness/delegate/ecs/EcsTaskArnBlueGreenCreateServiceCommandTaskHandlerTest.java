@@ -122,8 +122,7 @@ public class EcsTaskArnBlueGreenCreateServiceCommandTaskHandlerTest extends Cate
     doReturn(ecsBlueGreenCreateServiceResponse)
         .when(ecsDeploymentHelper)
         .deployStageService(eq(createServiceLogCallback), eq(ecsCommandRequest), anyList(), anyList(), eq(null),
-            anyString(), eq("testArn"), eq(ecsLoadBalancerConfig), anyString(), anyBoolean(), anyBoolean(),
-            anyBoolean());
+            anyString(), eq("testArn"), eq(ecsLoadBalancerConfig), anyString(), anyBoolean(), anyBoolean());
 
     EcsBlueGreenCreateServiceResponse actualEcsBlueGreenCreateServiceResponse =
         (EcsBlueGreenCreateServiceResponse) ecsTaskArnBlueGreenCreateServiceCommandTaskHandler.executeTaskInternal(

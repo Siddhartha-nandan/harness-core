@@ -78,10 +78,8 @@ public class ServerlessAwsLambdaDeployV2PluginInfoProvider implements CDPluginIn
 
     pluginDetailsBuilder.setImageDetails(imageDetails);
 
-    pluginDetailsBuilder.putAllEnvVariables(serverlessV2PluginInfoProviderHelper.validateEnvVariables(
-        serverlessV2PluginInfoProviderHelper.getEnvVarsWithSecretRef(
-            serverlessV2PluginInfoProviderHelper.getEnvironmentVariables(
-                ambiance, serverlessAwsLambdaDeployV2StepInfo.getSpecParameters()))));
+    pluginDetailsBuilder.putAllEnvVariables(
+        serverlessV2PluginInfoProviderHelper.getEnvironmentVariables(ambiance, serverlessAwsLambdaDeployV2StepInfo));
     PluginCreationResponse response = getPluginCreationResponse(pluginDetailsBuilder);
     StepInfoProto stepInfoProto = StepInfoProto.newBuilder()
                                       .setIdentifier(cdAbstractStepNode.getIdentifier())

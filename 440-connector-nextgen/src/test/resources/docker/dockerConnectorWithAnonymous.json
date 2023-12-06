@@ -18,8 +18,7 @@
       "auth": {
         "type": "Anonymous"
       },
-      "executeOnDelegate": true,
-      "proxy": false
+      "executeOnDelegate": true
     }
   }
 }

@@ -7,8 +7,6 @@
 
 package io.harness.cvng.servicelevelobjective.entities;
 
-import static io.harness.cvng.CVConstants.SLO_RECORDS_TTL_DAYS;
-
 import io.harness.annotation.HarnessEntity;
 import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.HarnessTeam;
@@ -81,7 +79,5 @@ public class CompositeSLORecord extends VerificationTaskBase implements Persiste
   private Map<String, SLIRecord> scopedIdentifierSLIRecordMap;
 
   private int sloVersion;
-  @Builder.Default
-  @FdTtlIndex
-  private Date validUntil = Date.from(OffsetDateTime.now().plusDays(SLO_RECORDS_TTL_DAYS).toInstant());
+  @Builder.Default @FdTtlIndex private Date validUntil = Date.from(OffsetDateTime.now().plusDays(180).toInstant());
 }

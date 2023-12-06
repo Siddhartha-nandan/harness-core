@@ -11,41 +11,59 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.idp.backstagebeans.BackstageCatalogEntity;
 import io.harness.idp.common.GsonUtils;
+import io.harness.idp.scorecard.common.beans.DataSourceConfig;
+import io.harness.idp.scorecard.common.beans.HttpConfig;
 import io.harness.idp.scorecard.datapoints.entity.DataPointEntity;
+import io.harness.idp.scorecard.datasourcelocations.beans.ApiRequestDetails;
+import io.harness.idp.scorecard.datasourcelocations.client.DslClient;
+import io.harness.idp.scorecard.datasourcelocations.client.DslClientFactory;
+import io.harness.idp.scorecard.datasourcelocations.entity.DataSourceLocationEntity;
+import io.harness.idp.scorecard.datasourcelocations.entity.HttpDataSourceLocationEntity;
 import io.harness.idp.scorecard.scores.beans.DataFetchDTO;
 import io.harness.spec.server.idp.v1.model.InputValue;
 
+import com.google.inject.Inject;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @OwnedBy(HarnessTeam.IDP)
-public class ProxyThroughDsl extends DataSourceLocationNoLoop {
+@Slf4j
+@AllArgsConstructor(onConstructor = @__({ @Inject }))
+public class ProxyThroughDsl implements DataSourceLocation {
+  DslClientFactory dslClientFactory;
   @Override
-  protected String replaceInputValuePlaceholdersIfAnyInRequestUrl(
-      String url, DataPointEntity dataPoint, List<InputValue> inputValues) {
-    return url;
-  }
+  public Map<String, Object> fetchData(String accountIdentifier, BackstageCatalogEntity backstageCatalogEntity,
+      DataSourceLocationEntity dataSourceLocationEntity, List<DataFetchDTO> dataPointsAndInputValues,
+      Map<String, String> replaceableHeaders, Map<String, String> possibleReplaceableRequestBodyPairs,
+      Map<String, String> possibleReplaceableUrlPairs, DataSourceConfig dataSourceConfig)
+      throws NoSuchAlgorithmException, KeyManagementException {
+    ApiRequestDetails apiRequestDetails =
+        ((HttpDataSourceLocationEntity) dataSourceLocationEntity).getApiRequestDetails();
+    String apiUrl = apiRequestDetails.getUrl();
+    String requestBody = apiRequestDetails.getRequestBody();
 
-  @Override
-  protected boolean validate(DataFetchDTO dataFetchDTO, Map<String, Object> data,
-      Map<String, String> replaceableHeaders, Map<String, String> possibleReplaceableRequestBodyPairs) {
-    return true;
-  }
+    matchAndReplaceHeaders(apiRequestDetails.getHeaders(), replaceableHeaders);
+    HttpConfig httpConfig = (HttpConfig) dataSourceConfig;
+    apiRequestDetails.getHeaders().putAll(httpConfig.getHeaders());
+    requestBody = replaceRequestBodyPlaceholdersIfAny(possibleReplaceableRequestBodyPairs, requestBody);
+    apiUrl = constructUrl(httpConfig.getTarget(), apiUrl, possibleReplaceableUrlPairs);
 
-  @Override
-  public String replaceInputValuePlaceholdersIfAnyInRequestBody(String requestBody, DataPointEntity dataPoint,
-      List<InputValue> inputValues, BackstageCatalogEntity backstageCatalogEntity) {
-    return requestBody;
-  }
+    apiRequestDetails.setRequestBody(requestBody);
+    apiRequestDetails.setUrl(apiUrl);
+    DslClient dslClient = dslClientFactory.getClient(accountIdentifier, null);
+    Response response = getResponse(apiRequestDetails, dslClient, accountIdentifier);
 
-  @Override
-  protected String getHost(Map<String, String> data) {
-    return null;
-  }
-
-  @Override
-  protected Map<String, Object> processResponse(Response response) {
     return GsonUtils.convertJsonStringToObject(response.getEntity().toString(), Map.class);
+  }
+
+  @Override
+  public String replaceInputValuePlaceholdersIfAny(
+      String requestBody, DataPointEntity dataPoint, List<InputValue> inputValues) {
+    return null;
   }
 }

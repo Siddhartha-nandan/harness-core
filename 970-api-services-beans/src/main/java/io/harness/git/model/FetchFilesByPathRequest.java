@@ -22,6 +22,4 @@ public class FetchFilesByPathRequest extends GitBaseRequest {
   private List<String> fileExtensions;
   private boolean recursive;
   private boolean optionalFiles;
-
-  private boolean cloneWithCheckout;
 }

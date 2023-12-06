@@ -41,11 +41,6 @@ message SetupInfraResponse {
   ExecutionInfraInfo location = 3;
 }
 
-message CleanupInfraResponse {
-  ResponseCode responseCode = 1;
-  string errorMessage = 2;
-}
-
 message ExecutionInfraInfo {
   string delegateName = 1;
   string runnerType = 2;

@@ -296,18 +296,17 @@ public class WorkflowMigrationService extends NgMigrationService {
             .build();
       }
       yamlDTO = PipelineConfig.builder()
-                    .pipelineInfoConfig(
-                        PipelineInfoConfig.builder()
-                            .identifier(identifier)
-                            .name(name)
-                            .description(ParameterField.createValueField(description))
-                            .projectIdentifier(projectIdentifier)
-                            .orgIdentifier(orgIdentifier)
-                            .stages(stages)
-                            .allowStageExecutions(true)
-                            .tags(MigratorUtility.getTags(workflow.getTagLinks()))
-                            .variables(workflowHandler.getVariables(migrationContext, workflow, stages, false))
-                            .build())
+                    .pipelineInfoConfig(PipelineInfoConfig.builder()
+                                            .identifier(identifier)
+                                            .name(name)
+                                            .description(ParameterField.createValueField(description))
+                                            .projectIdentifier(projectIdentifier)
+                                            .orgIdentifier(orgIdentifier)
+                                            .stages(stages)
+                                            .allowStageExecutions(true)
+                                            .tags(MigratorUtility.getTags(workflow.getTagLinks()))
+                                            .variables(workflowHandler.getVariables(migrationContext, workflow, stages))
+                                            .build())
                     .build();
       ngType = PIPELINE;
     } else {
@@ -408,7 +407,7 @@ public class WorkflowMigrationService extends NgMigrationService {
       Response<ResponseDTO<TemplateWrapperResponseDTO>> resp =
           templateClient
               .createTemplate(inputDTO.getDestinationAuthToken(), inputDTO.getDestinationAccountIdentifier(),
-                  yamlFile.getNgEntityDetail().getOrgIdentifier(), yamlFile.getNgEntityDetail().getProjectIdentifier(),
+                  inputDTO.getOrgIdentifier(), inputDTO.getProjectIdentifier(),
                   RequestBody.create(MediaType.parse("application/yaml"), yaml), StoreType.INLINE)
               .execute();
 
@@ -416,8 +415,7 @@ public class WorkflowMigrationService extends NgMigrationService {
         yaml = getYamlStringV2(yamlFile);
         resp = templateClient
                    .createTemplate(inputDTO.getDestinationAuthToken(), inputDTO.getDestinationAccountIdentifier(),
-                       yamlFile.getNgEntityDetail().getOrgIdentifier(),
-                       yamlFile.getNgEntityDetail().getProjectIdentifier(),
+                       inputDTO.getOrgIdentifier(), inputDTO.getProjectIdentifier(),
                        RequestBody.create(MediaType.parse("application/yaml"), yaml), StoreType.INLINE)
                    .execute();
       }

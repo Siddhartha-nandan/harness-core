@@ -56,7 +56,6 @@ public class SLIDataUnavailabilityInstancesHandlerServiceImpl implements SLIData
         sliRecord.setSliState(SLIState.SKIP_DATA);
         sliRecord.setBadEventCount(0l);
         sliRecord.setGoodEventCount(0l);
-        sliRecord.setSkipEventCount(1l);
       }
       updatedRecords.add(sliRecord);
     }

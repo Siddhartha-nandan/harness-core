@@ -26,7 +26,6 @@ import io.harness.rule.Owner;
 
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
-import java.util.Collections;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -74,7 +73,7 @@ public class KubernetesClusterActivityUpdateHandlerTest extends CvNextGenTestBas
                         builderFactory.getContext().getMonitoredServiceParams().getMonitoredServiceIdentifier())
                     .dependencyMetadata(KubernetesDependencyMetadata.builder()
                                             .namespace(clusterActivity.getNamespace())
-                                            .workloads(Collections.singletonList(clusterActivity.getWorkload()))
+                                            .workload(clusterActivity.getWorkload())
                                             .build())
                     .build()))
             .build();

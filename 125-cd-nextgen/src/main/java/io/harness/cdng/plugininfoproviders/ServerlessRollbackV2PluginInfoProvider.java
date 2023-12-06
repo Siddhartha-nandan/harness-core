@@ -76,10 +76,8 @@ public class ServerlessRollbackV2PluginInfoProvider implements CDPluginInfoProvi
 
     pluginDetailsBuilder.setImageDetails(imageDetails);
 
-    pluginDetailsBuilder.putAllEnvVariables(serverlessV2PluginInfoProviderHelper.validateEnvVariables(
-        serverlessV2PluginInfoProviderHelper.getEnvVarsWithSecretRef(
-            serverlessV2PluginInfoProviderHelper.getEnvironmentVariables(
-                ambiance, serverlessAwsLambdaRollbackV2StepInfo.getSpecParameters()))));
+    pluginDetailsBuilder.putAllEnvVariables(
+        serverlessV2PluginInfoProviderHelper.getEnvironmentVariables(ambiance, serverlessAwsLambdaRollbackV2StepInfo));
     PluginCreationResponse response = getPluginCreationResponse(pluginDetailsBuilder);
     StepInfoProto stepInfoProto = StepInfoProto.newBuilder()
                                       .setIdentifier(cdAbstractStepNode.getIdentifier())

@@ -7,7 +7,6 @@
 
 package io.harness.idp.scorecard.datasources.providers;
 
-import static io.harness.idp.common.CommonUtils.getHarnessHostForEnv;
 import static io.harness.idp.common.Constants.HARNESS_ACCOUNT;
 import static io.harness.idp.common.Constants.HARNESS_IDENTIFIER;
 
@@ -22,15 +21,16 @@ import io.harness.idp.scorecard.datasourcelocations.repositories.DataSourceLocat
 import io.harness.idp.scorecard.datasources.repositories.DataSourceRepository;
 import io.harness.idp.scorecard.scores.beans.DataFetchDTO;
 
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 
 @OwnedBy(HarnessTeam.IDP)
+@Slf4j
 public class HarnessProvider extends HttpDataSourceProvider {
-  String env;
-  final IdpAuthInterceptor idpAuthInterceptor;
-
   protected HarnessProvider(DataPointService dataPointService, DataSourceLocationFactory dataSourceLocationFactory,
       DataSourceLocationRepository dataSourceLocationRepository, DataPointParserFactory dataPointParserFactory,
       IdpAuthInterceptor idpAuthInterceptor, String env, DataSourceRepository dataSourceRepository) {
@@ -40,22 +40,20 @@ public class HarnessProvider extends HttpDataSourceProvider {
     this.env = env;
   }
 
+  final IdpAuthInterceptor idpAuthInterceptor;
+  String env;
+
   @Override
   public Map<String, Map<String, Object>> fetchData(String accountIdentifier, BackstageCatalogEntity entity,
-      List<DataFetchDTO> dataPointsAndInputValues, String configs) {
+      List<DataFetchDTO> dataPointsAndInputValues, String configs)
+      throws NoSuchAlgorithmException, KeyManagementException {
     Map<String, String> replaceableHeaders = new HashMap<>();
     Map<String, String> authHeaders = this.getAuthHeaders(accountIdentifier, null);
     replaceableHeaders.put(HARNESS_ACCOUNT, accountIdentifier);
     replaceableHeaders.putAll(authHeaders);
 
     return processOut(accountIdentifier, HARNESS_IDENTIFIER, entity, replaceableHeaders, new HashMap<>(),
-        prepareUrlReplaceablePairs(), dataPointsAndInputValues);
-  }
-
-  @Override
-  protected Map<String, String> prepareUrlReplaceablePairs(String... keysValues) {
-    String harnessHost = getHarnessHostForEnv(env);
-    return Map.of(HOST, harnessHost);
+        prepareUrlReplaceablePairs(env), dataPointsAndInputValues);
   }
 
   @Override

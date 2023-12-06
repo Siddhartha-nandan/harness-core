@@ -46,7 +46,6 @@ import io.harness.delegate.beans.connector.ConnectorType;
 import io.harness.delegate.beans.connector.ceawsconnector.CEAwsConnectorDTO;
 import io.harness.delegate.beans.connector.ceazure.CEAzureConnectorDTO;
 import io.harness.exception.InvalidRequestException;
-import io.harness.exception.ngexception.beans.yamlschema.YamlSchemaErrorWrapperDTO;
 import io.harness.faktory.FaktoryProducer;
 import io.harness.filter.FilterType;
 import io.harness.ng.beans.PageResponse;
@@ -54,17 +53,20 @@ import io.harness.pms.yaml.YamlUtils;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.telemetry.Category;
 import io.harness.telemetry.TelemetryReporter;
-import io.harness.yaml.validator.InvalidYamlException;
 import io.harness.yaml.validator.YamlSchemaValidator;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.reinert.jjschema.Nullable;
+import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -75,9 +77,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.yaml.snakeyaml.Yaml;
 import org.zeroturnaround.exec.ProcessExecutor;
 
@@ -86,8 +88,6 @@ import org.zeroturnaround.exec.ProcessExecutor;
 @OwnedBy(CE)
 public class GovernanceRuleServiceImpl implements GovernanceRuleService {
   @Inject private RuleDAO ruleDAO;
-
-  @Inject @Named("governance-schema") private String ruleSchema;
   @Inject private YamlSchemaValidator yamlSchemaValidator;
   @Inject private ConnectorResourceClient connectorResourceClient;
   @Inject private RuleExecutionService ruleExecutionService;
@@ -157,27 +157,36 @@ public class GovernanceRuleServiceImpl implements GovernanceRuleService {
   public void custodianValidate(Rule rule) {
     validateSchema(rule);
     try {
-      yamlSchemaValidator.validate(rule.getRulesYaml(), getSchema());
-    } catch (InvalidYamlException yamlException) {
-      throw new InvalidRequestException(getYAMLError(yamlException));
-    } catch (IOException e) {
-      throw new InvalidRequestException("Invalid input", e);
-    }
-  }
+      String fileName = String.join("/", "/tmp", String.join("_", rule.getName(), rule.getAccountId() + ".yaml"));
+      File file = new File(fileName);
+      FileWriter fw = new FileWriter(file, true);
+      BufferedWriter bw = new BufferedWriter(fw);
+      bw.write(rule.getRulesYaml());
+      bw.newLine();
+      bw.close();
 
-  private String getYAMLError(final InvalidYamlException yamlException) {
-    String defaultMessage = "Policy YAML is malformed";
-    if (yamlException == null || yamlException.getMetadata() == null) {
-      return defaultMessage;
+      log.info("rule yaml: \n{}\n", rule.getRulesYaml());
+      final ArrayList<String> Validatecmd = Lists.newArrayList("custodian", "validate", fileName);
+      String processResult = getProcessExecutor().command(Validatecmd).readOutput(true).execute().outputString();
+
+      file.delete();
+
+      if (processResult.contains("Configuration invalid")) {
+        processResult =
+            processResult.substring(processResult.indexOf("Configuration invalid"), processResult.lastIndexOf('\n'));
+        if (processResult.indexOf("custodian.commands:ERROR")
+            != processResult.lastIndexOf("custodian.commands:ERROR")) {
+          throw new InvalidRequestException(processResult.substring(
+              processResult.indexOf("custodian.commands:ERROR") + 24, processResult.lastIndexOf('\n')));
+        } else {
+          throw new InvalidRequestException(
+              processResult.substring(processResult.indexOf("custodian.commands:ERROR") + 24));
+        }
+      }
+
+    } catch (IOException | InterruptedException | TimeoutException e) {
+      throw new InvalidRequestException("Policy YAML is malformed");
     }
-    if (!(yamlException.getMetadata() instanceof YamlSchemaErrorWrapperDTO)) {
-      return defaultMessage;
-    }
-    YamlSchemaErrorWrapperDTO errorWrapperDTO = (YamlSchemaErrorWrapperDTO) yamlException.getMetadata();
-    if (CollectionUtils.isEmpty(errorWrapperDTO.getSchemaErrors())) {
-      return defaultMessage;
-    }
-    return errorWrapperDTO.getSchemaErrors().get(0).getMessage();
   }
 
   @Override
@@ -429,7 +438,6 @@ public class GovernanceRuleServiceImpl implements GovernanceRuleService {
             .policy(governanceJobEnqueueDTO.getPolicy())
             .isOOTB(governanceJobEnqueueDTO.getIsOOTB())
             .executionType(governanceJobEnqueueDTO.getExecutionType())
-            .cloudConnectorID(governanceJobEnqueueDTO.getTargetAccountDetails().getCloudConnectorId())
             .build();
 
     Gson gson = new GsonBuilder().create();
@@ -597,9 +605,15 @@ public class GovernanceRuleServiceImpl implements GovernanceRuleService {
     String accountId;
     String targetAccount;
   }
-
   @Override
   public String getSchema() {
-    return ruleSchema;
+    try {
+      final ArrayList<String> schema = Lists.newArrayList("custodian", "schema", "--json");
+      return getProcessExecutor().command(schema).readOutput(true).execute().outputString();
+    } catch (IOException | TimeoutException e) {
+      throw new InvalidRequestException("Can not get schema");
+    } catch (InterruptedException e) {
+      throw new InvalidRequestException("InterruptedException", e);
+    }
   }
 }

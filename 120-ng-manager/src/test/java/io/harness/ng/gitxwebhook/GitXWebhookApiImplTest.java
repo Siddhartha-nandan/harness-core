@@ -32,7 +32,6 @@ import io.harness.rule.Owner;
 import io.harness.spec.server.ng.v1.model.CreateGitXWebhookRequest;
 import io.harness.spec.server.ng.v1.model.CreateGitXWebhookResponse;
 import io.harness.spec.server.ng.v1.model.GitXWebhookEventResponse;
-import io.harness.spec.server.ng.v1.model.GitXWebhookEventResponse.EventStatusEnum;
 import io.harness.spec.server.ng.v1.model.GitXWebhookResponse;
 import io.harness.spec.server.ng.v1.model.UpdateGitXWebhookRequest;
 import io.harness.spec.server.ng.v1.model.UpdateGitXWebhookResponse;
@@ -168,13 +167,11 @@ public class GitXWebhookApiImplTest extends CategoryTest {
                                      .authorName("author1")
                                      .webhookIdentifier(WEBHOOK_IDENTIFIER)
                                      .eventIdentifier("event123")
-                                     .eventStatus("FAILED")
                                      .build();
     GitXEventDTO gitXEventDTO2 = GitXEventDTO.builder()
                                      .authorName("author2")
                                      .webhookIdentifier(WEBHOOK_IDENTIFIER2)
                                      .eventIdentifier("event234")
-                                     .eventStatus("SUCCESSFUL")
                                      .build();
     List<GitXEventDTO> gitXEventDTOList = new ArrayList<>();
     gitXEventDTOList.add(gitXEventDTO1);
@@ -188,10 +185,8 @@ public class GitXWebhookApiImplTest extends CategoryTest {
     assertEquals(2, eventResponseList.size());
     assertEquals(WEBHOOK_IDENTIFIER, eventResponseList.get(0).getWebhookIdentifier());
     assertEquals("event123", eventResponseList.get(0).getEventIdentifier());
-    assertEquals(EventStatusEnum.FAILED, eventResponseList.get(0).getEventStatus());
 
     assertEquals(WEBHOOK_IDENTIFIER2, eventResponseList.get(1).getWebhookIdentifier());
     assertEquals("event234", eventResponseList.get(1).getEventIdentifier());
-    assertEquals(EventStatusEnum.SUCCESSFUL, eventResponseList.get(1).getEventStatus());
   }
 }

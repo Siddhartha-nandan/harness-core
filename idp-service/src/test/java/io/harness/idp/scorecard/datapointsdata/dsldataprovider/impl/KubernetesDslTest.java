@@ -22,7 +22,6 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.eraro.ResponseMessage;
-import io.harness.exception.UnexpectedException;
 import io.harness.idp.scorecard.datasourcelocations.beans.ApiRequestDetails;
 import io.harness.idp.scorecard.datasourcelocations.client.DslClient;
 import io.harness.idp.scorecard.datasourcelocations.client.DslClientFactory;
@@ -30,6 +29,8 @@ import io.harness.rule.Owner;
 import io.harness.spec.server.idp.v1.model.ClusterConfig;
 import io.harness.spec.server.idp.v1.model.KubernetesConfig;
 
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +61,7 @@ public class KubernetesDslTest extends CategoryTest {
   @Test
   @Owner(developers = VIKYATH_HAREKAL)
   @Category(UnitTests.class)
-  public void testGetDslData() {
+  public void testGetDslData() throws NoSuchAlgorithmException, KeyManagementException {
     KubernetesConfig kubernetesConfig = new KubernetesConfig();
     kubernetesConfig.setLabelSelector(TEST_LABEL_SELECTOR);
     ClusterConfig clusterConfig = new ClusterConfig();
@@ -77,13 +78,13 @@ public class KubernetesDslTest extends CategoryTest {
     Map<String, Object> dslData = kubernetesDsl.getDslData(TEST_ACCOUNT, kubernetesConfig);
 
     assertTrue(dslData.containsKey(TEST_CLUSTER));
-    assertEquals("b", ((Map<?, ?>) ((ArrayList<?>) dslData.get(TEST_CLUSTER)).get(0)).get("a"));
+    assertEquals("b", ((Map) ((ArrayList) dslData.get(TEST_CLUSTER)).get(0)).get("a"));
   }
 
   @Test
   @Owner(developers = VIKYATH_HAREKAL)
   @Category(UnitTests.class)
-  public void testGetDslDataError() {
+  public void testGetDslDataError() throws NoSuchAlgorithmException, KeyManagementException {
     KubernetesConfig kubernetesConfig = new KubernetesConfig();
     kubernetesConfig.setLabelSelector(TEST_LABEL_SELECTOR);
     ClusterConfig clusterConfig = new ClusterConfig();
@@ -108,7 +109,7 @@ public class KubernetesDslTest extends CategoryTest {
   @Test
   @Owner(developers = VIKYATH_HAREKAL)
   @Category(UnitTests.class)
-  public void testGetDslDataUnauthorized() {
+  public void testGetDslDataUnauthorized() throws NoSuchAlgorithmException, KeyManagementException {
     KubernetesConfig kubernetesConfig = new KubernetesConfig();
     kubernetesConfig.setLabelSelector(TEST_LABEL_SELECTOR);
     ClusterConfig clusterConfig = new ClusterConfig();
@@ -149,7 +150,7 @@ public class KubernetesDslTest extends CategoryTest {
   @Test
   @Owner(developers = VIKYATH_HAREKAL)
   @Category(UnitTests.class)
-  public void testGetDslDataKeyManagementException() {
+  public void testGetDslDataKeyManagementException() throws NoSuchAlgorithmException, KeyManagementException {
     String errorMessage = "KeyManagementException";
     KubernetesConfig kubernetesConfig = new KubernetesConfig();
     kubernetesConfig.setLabelSelector(TEST_LABEL_SELECTOR);
@@ -162,7 +163,7 @@ public class KubernetesDslTest extends CategoryTest {
 
     when(dslClientFactory.getClient(eq(TEST_ACCOUNT), anyString())).thenReturn(dslClient);
     when(dslClient.call(eq(TEST_ACCOUNT), any(ApiRequestDetails.class)))
-        .thenThrow(new UnexpectedException(errorMessage));
+        .thenThrow(new KeyManagementException(errorMessage));
 
     Map<String, Object> dslData = kubernetesDsl.getDslData(TEST_ACCOUNT, kubernetesConfig);
 

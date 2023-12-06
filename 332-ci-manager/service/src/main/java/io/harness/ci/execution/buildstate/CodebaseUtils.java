@@ -160,7 +160,6 @@ public class CodebaseUtils {
 
     return envVarMap;
   }
-
   public Map<String, String> getRuntimeCodebaseVars(Ambiance ambiance, ConnectorDetails gitConnectorDetails) {
     Map<String, String> codebaseRuntimeVars = new HashMap<>();
 

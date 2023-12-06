@@ -14,13 +14,13 @@ import io.harness.aggregator.consumers.AccessControlChangeEventData;
 import io.harness.annotations.dev.OwnedBy;
 
 import java.util.Set;
+import lombok.Builder;
 import lombok.Data;
-import lombok.experimental.SuperBuilder;
 
 @Data
-@SuperBuilder
+@Builder
 @OwnedBy(PL)
-public class UserGroupUpdateEventData extends AccessControlChangeEventData {
+public class UserGroupUpdateEventData implements AccessControlChangeEventData {
   Set<String> usersAdded;
   Set<String> usersRemoved;
   UserGroup updatedUserGroup;

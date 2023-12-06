@@ -20,7 +20,6 @@ import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.gitcaching.GitCachingConstants.BOOLEAN_FALSE_VALUE;
-import static io.harness.ngsettings.SettingIdentifiers.SKIP_FAIL_FAST_VALIDATION_CHECKS_FOR_PIPELINE_EXECUTE;
 import static io.harness.pms.contracts.plan.TriggerType.MANUAL;
 import static io.harness.utils.ExecutionModeUtils.isRollbackMode;
 
@@ -259,13 +258,9 @@ public class ExecutionHelper {
       String pipelineYamlWithTemplateRef = pipelineMetadataInternalDTO.getPipelineYamlWithTemplateRef();
       List<NotificationRules> notificationRules = new ArrayList<>();
       boolean allowedStageExecution = false;
-      if (HarnessYamlVersion.V0.equals(pipelineEntity.getHarnessVersion())) {
-        if (basicPipeline != null) {
-          notificationRules = basicPipeline.getNotificationRules();
-          allowedStageExecution = pipelineMetadataInternalDTO.getBasicPipeline().isAllowStageExecutions();
-        }
-      } else {
-        allowedStageExecution = true;
+      if (basicPipeline != null) {
+        notificationRules = basicPipeline.getNotificationRules();
+        allowedStageExecution = pipelineMetadataInternalDTO.getBasicPipeline().isAllowStageExecutions();
       }
 
       // TODO(Shalini): Change these methods to use jsonNode instead of yaml in processing.
@@ -353,14 +348,11 @@ public class ExecutionHelper {
       RetryExecutionInfo retryExecutionInfo) throws Exception {
     Builder planExecutionMetadataBuilder = obtainPlanExecutionMetadata(mergedRuntimeInputYaml, executionId,
         stagesExecutionInfo, originalExecutionId, retryExecutionParameters, notifyOnlyUser, notes, pipelineEntity);
-    // TODO - @utkarsh @brijesh - CDS-85458 - Add Enforcement Check for V1 Pipelines
-    if (HarnessYamlVersion.V0.equals(pipelineEntity.getHarnessVersion())) {
-      if (stagesExecutionInfo.isStagesExecution()) {
-        pipelineEnforcementService.validateExecutionEnforcementsBasedOnStage(pipelineEntity.getAccountId(),
-            YamlUtils.extractPipelineField(planExecutionMetadataBuilder.build().getProcessedYaml()));
-      } else {
-        pipelineEnforcementService.validateExecutionEnforcementsBasedOnStage(pipelineEntity);
-      }
+    if (stagesExecutionInfo.isStagesExecution()) {
+      pipelineEnforcementService.validateExecutionEnforcementsBasedOnStage(pipelineEntity.getAccountId(),
+          YamlUtils.extractPipelineField(planExecutionMetadataBuilder.build().getProcessedYaml()));
+    } else {
+      pipelineEnforcementService.validateExecutionEnforcementsBasedOnStage(pipelineEntity);
     }
 
     String branch = GitAwareContextHelper.getBranchInRequestOrFromSCMGitMetadata();
@@ -460,19 +452,6 @@ public class ExecutionHelper {
     }
     return getPipelineYamlAndValidateStaticallyReferredEntities(pipelineJsonNode, pipelineEntity, start);
   }
-  public boolean isSkipFailFastValidationEnabled(PipelineEntity pipelineEntity) {
-    String isSkipFailFastValidationEnabled = "false";
-    try {
-      isSkipFailFastValidationEnabled =
-          NGRestUtils
-              .getResponse(settingsClient.getSetting(
-                  SKIP_FAIL_FAST_VALIDATION_CHECKS_FOR_PIPELINE_EXECUTE, pipelineEntity.getAccountId(), null, null))
-              .getValue();
-    } catch (Exception ex) {
-      log.error("Failed to fetch setting value for {}", SKIP_FAIL_FAST_VALIDATION_CHECKS_FOR_PIPELINE_EXECUTE, ex);
-    }
-    return Boolean.TRUE.equals(Boolean.valueOf(isSkipFailFastValidationEnabled));
-  }
 
   TemplateMergeResponseDTO getPipelineYamlAndValidateStaticallyReferredEntities(
       JsonNode pipelineJsonNode, PipelineEntity pipelineEntity, long start) {
@@ -496,8 +475,7 @@ public class ExecutionHelper {
           : templateMergeResponseDTO.getMergedPipelineYamlWithTemplateRef();
       processedYamlVersion = templateMergeResponseDTO.getProcessedYamlVersion();
     }
-    if ((pipelineEntity.getStoreType() == null || pipelineEntity.getStoreType() == StoreType.INLINE)
-        && !isSkipFailFastValidationEnabled(pipelineEntity)) {
+    if (pipelineEntity.getStoreType() == null || pipelineEntity.getStoreType() == StoreType.INLINE) {
       // For REMOTE Pipelines, entity setup usage framework cannot be relied upon. That is because the setup usages can
       // be outdated wrt the YAML we find on Git during execution. This means the fail fast approach that we have for
       // RBAC checks can't be provided for remote pipelines

@@ -24,7 +24,6 @@ import io.harness.pms.plan.execution.beans.dto.PipelineExecutionIdentifierSummar
 import io.harness.pms.plan.execution.beans.dto.PipelineExecutionSummaryDTO;
 import io.harness.pms.stages.BasicStageInfo;
 import io.harness.pms.stages.StageExecutionSelectorHelper;
-import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.utils.ExecutionModeUtils;
 
 import java.util.ArrayList;
@@ -52,8 +51,7 @@ public class PipelineExecutionSummaryDtoMapper {
         : stagesExecutionMetadata.getStageIdentifiers();
     Map<String, String> stagesExecutedNames = null;
     if (EmptyPredicate.isNotEmpty(stageIdentifiers)) {
-      stagesExecutedNames = getStageNames(stageIdentifiers, stagesExecutionMetadata.getFullPipelineYaml(),
-          pipelineExecutionSummaryEntity.getPipelineVersion());
+      stagesExecutedNames = getStageNames(stageIdentifiers, stagesExecutionMetadata.getFullPipelineYaml());
     }
     return PipelineExecutionSummaryDTO.builder()
         .name(pipelineExecutionSummaryEntity.getName())
@@ -130,15 +128,9 @@ public class PipelineExecutionSummaryDtoMapper {
         .build();
   }
 
-  private Map<String, String> getStageNames(
-      List<String> stageIdentifiers, String pipelineYaml, String pipelineVersion) {
+  private Map<String, String> getStageNames(List<String> stageIdentifiers, String pipelineYaml) {
     Map<String, String> identifierToNames = new LinkedHashMap<>();
-    List<BasicStageInfo> stageInfoList;
-    if (HarnessYamlVersion.V0.equals(pipelineVersion)) {
-      { stageInfoList = StageExecutionSelectorHelper.getStageInfoList(pipelineYaml); }
-    } else {
-      stageInfoList = StageExecutionSelectorHelper.getStageInfoListV1(pipelineYaml);
-    }
+    List<BasicStageInfo> stageInfoList = StageExecutionSelectorHelper.getStageInfoList(pipelineYaml);
     stageInfoList.forEach(stageInfo -> {
       String identifier = stageInfo.getIdentifier();
       if (stageIdentifiers.contains(identifier)) {

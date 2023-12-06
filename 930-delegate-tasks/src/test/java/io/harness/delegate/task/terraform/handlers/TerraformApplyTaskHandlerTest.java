@@ -107,12 +107,12 @@ public class TerraformApplyTaskHandlerTest extends CategoryTest {
       EncryptedRecordData.builder().name("planName").encryptedValue("encryptedPlan".toCharArray()).build();
   private static final String gitUsername = "username";
   private static final String gitPasswordRefId = "git_password";
-  private static final String baseDir = "./some/dir/entityId";
 
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     doReturn(GitConfigDTO.builder().build()).when(scmConnectorMapperDelegate).toGitConfigDTO(any(), any());
+    when(terraformBaseHelper.getBaseDir(any())).thenReturn("./some/dir/entityId");
   }
 
   @Test
@@ -136,7 +136,7 @@ public class TerraformApplyTaskHandlerTest extends CategoryTest {
                 .cliResponse(CliResponse.builder().commandExecutionStatus(CommandExecutionStatus.SUCCESS).build())
                 .build());
     TerraformTaskNGResponse response = terraformApplyTaskHandler.executeTaskInternal(
-        getTerraformTaskParameters(), "delegateId", "taskId", logCallback, baseDir, new AtomicBoolean());
+        getTerraformTaskParameters(), "delegateId", "taskId", logCallback, new AtomicBoolean());
     assertThat(response).isNotNull();
     assertThat(response.getCommandExecutionStatus()).isEqualTo(CommandExecutionStatus.SUCCESS);
     verify(terraformBaseHelper)
@@ -173,7 +173,7 @@ public class TerraformApplyTaskHandlerTest extends CategoryTest {
 
     assertThatThrownBy(()
                            -> terraformApplyTaskHandler.executeTaskInternal(
-                               tfTaskParams, "delegateId", "taskId", logCallback, baseDir, isAborted))
+                               tfTaskParams, "delegateId", "taskId", logCallback, isAborted))
         .isInstanceOf(InterruptedException.class);
 
     verify(terraformBaseHelper)
@@ -205,7 +205,7 @@ public class TerraformApplyTaskHandlerTest extends CategoryTest {
     TerraformTaskNGParameters taskNGParameters = getTerraformTaskParametersBuilder().skipStateStorage(true).build();
 
     TerraformTaskNGResponse response = terraformApplyTaskHandler.executeTaskInternal(
-        taskNGParameters, "delegateId", "taskId", logCallback, baseDir, new AtomicBoolean());
+        taskNGParameters, "delegateId", "taskId", logCallback, new AtomicBoolean());
     assertThat(response).isNotNull();
     assertThat(response.getCommandExecutionStatus()).isEqualTo(CommandExecutionStatus.SUCCESS);
     Files.deleteIfExists(Paths.get(outputFile.getPath()));
@@ -232,9 +232,8 @@ public class TerraformApplyTaskHandlerTest extends CategoryTest {
             TerraformStepResponse.builder()
                 .cliResponse(CliResponse.builder().commandExecutionStatus(CommandExecutionStatus.SUCCESS).build())
                 .build());
-    TerraformTaskNGResponse response =
-        terraformApplyTaskHandler.executeTaskInternal(getTerraformTaskParametersWithArtifactoryConfig(), "delegateId",
-            "taskId", logCallback, baseDir, new AtomicBoolean());
+    TerraformTaskNGResponse response = terraformApplyTaskHandler.executeTaskInternal(
+        getTerraformTaskParametersWithArtifactoryConfig(), "delegateId", "taskId", logCallback, new AtomicBoolean());
     assertThat(response).isNotNull();
     assertThat(response.getCommandExecutionStatus()).isEqualTo(CommandExecutionStatus.SUCCESS);
     Files.deleteIfExists(Paths.get(outputFile.getPath()));
@@ -266,7 +265,7 @@ public class TerraformApplyTaskHandlerTest extends CategoryTest {
                 .build());
 
     TerraformTaskNGResponse response = terraformApplyTaskHandler.executeTaskInternal(
-        getTerraformTaskParameters(), "delegateId", "taskId", logCallback, baseDir, new AtomicBoolean());
+        getTerraformTaskParameters(), "delegateId", "taskId", logCallback, new AtomicBoolean());
     assertThat(response).isNotNull();
     assertThat(response.getCommandExecutionStatus()).isEqualTo(CommandExecutionStatus.SUCCESS);
     verify(terraformBaseHelper)
@@ -303,7 +302,7 @@ public class TerraformApplyTaskHandlerTest extends CategoryTest {
     TerraformTaskNGParameters tfTaskParams = getTerraformTaskParametersBuilder().encryptedTfPlan(null).build();
 
     TerraformTaskNGResponse response = terraformApplyTaskHandler.executeTaskInternal(
-        tfTaskParams, "delegateId", "taskId", logCallback, baseDir, new AtomicBoolean());
+        tfTaskParams, "delegateId", "taskId", logCallback, new AtomicBoolean());
     assertThat(response).isNotNull();
     assertThat(response.getCommandExecutionStatus()).isEqualTo(CommandExecutionStatus.SUCCESS);
     verify(terraformBaseHelper)
@@ -333,7 +332,7 @@ public class TerraformApplyTaskHandlerTest extends CategoryTest {
                 .cliResponse(CliResponse.builder().commandExecutionStatus(CommandExecutionStatus.SUCCESS).build())
                 .build());
     TerraformTaskNGResponse response = terraformApplyTaskHandler.executeTaskInternal(
-        getTerraformTaskParametersWithS3Config(), "delegateId", "taskId", logCallback, baseDir, new AtomicBoolean());
+        getTerraformTaskParametersWithS3Config(), "delegateId", "taskId", logCallback, new AtomicBoolean());
     assertThat(response).isNotNull();
     assertThat(response.getCommandExecutionStatus()).isEqualTo(CommandExecutionStatus.SUCCESS);
     verify(terraformBaseHelper, times(1))

@@ -69,7 +69,6 @@ import io.harness.steps.approval.step.harness.beans.HarnessApprovalActivity;
 import io.harness.steps.approval.step.harness.beans.ScheduledDeadline;
 import io.harness.steps.approval.step.harness.entities.HarnessApprovalInstance;
 import io.harness.steps.approval.step.harness.outcomes.HarnessApprovalStepOutcome;
-import io.harness.telemetry.helpers.ApprovalInstrumentationHelper;
 import io.harness.user.remote.UserClient;
 import io.harness.utils.PmsFeatureFlagHelper;
 
@@ -105,7 +104,6 @@ public class HarnessApprovalStepTest {
   @Mock ExecutionSweepingOutputService sweepingOutputService;
   @Mock private UserClient userClient;
   @Mock private PmsFeatureFlagHelper pmsFeatureFlagHelper;
-  @Mock private ApprovalInstrumentationHelper instrumentationHelper;
   @InjectMocks private HarnessApprovalStep harnessApprovalStep;
   private ILogStreamingStepClient logStreamingStepClient;
 
@@ -173,13 +171,11 @@ public class HarnessApprovalStepTest {
   @Category(UnitTests.class)
   public void testExecuteAsyncAfterRbacWithNoUserGroup() {
     Ambiance ambiance = buildAmbiance();
-    StepElementParameters parameters = getStepElementParametersWithIncorrectUserGroup();
+    StepElementParameters parameters = getStepElementParametersWithNoUserGroup();
     try {
       harnessApprovalStep.executeAsyncAfterRbac(ambiance, parameters, null);
     } catch (InvalidRequestException e) {
-      assertThat(e.getMessage())
-          .isEqualTo(
-              "At least 1 valid user group is required in [incorrectUserGroup], Please check scope of the user group's provided");
+      assertThat(e.getMessage()).isEqualTo("At least 1 user group is required");
     }
   }
 
@@ -421,24 +417,6 @@ public class HarnessApprovalStepTest {
                           .minimumCount(ParameterField.<Integer>builder().value(1).build())
                           .disallowPipelineExecutor(ParameterField.<Boolean>builder().value(false).build())
                           .build())
-                  .isAutoRejectEnabled(ParameterField.<Boolean>builder().value(false).build())
-                  .build())
-        .build();
-  }
-  private StepElementParameters getStepElementParametersWithIncorrectUserGroup() {
-    return StepElementParameters.builder()
-        .identifier("_id")
-        .type("HARNESS_APPROVAL")
-        .spec(HarnessApprovalSpecParameters.builder()
-                  .approvalMessage(ParameterField.<String>builder().value(APPROVAL_MESSAGE).build())
-                  .includePipelineExecutionHistory(ParameterField.<Boolean>builder().value(false).build())
-                  .approvers(Approvers.builder()
-                                 .userGroups(ParameterField.<List<String>>builder()
-                                                 .value(Collections.singletonList("incorrectUserGroup"))
-                                                 .build())
-                                 .minimumCount(ParameterField.<Integer>builder().value(1).build())
-                                 .disallowPipelineExecutor(ParameterField.<Boolean>builder().value(false).build())
-                                 .build())
                   .isAutoRejectEnabled(ParameterField.<Boolean>builder().value(false).build())
                   .build())
         .build();

@@ -27,5 +27,4 @@ public class OutboxPollConfiguration {
   int pollingIntervalInSeconds;
   int maximumRetryAttemptsForAnEvent;
   String lockId;
-  boolean enableMetrics;
 }

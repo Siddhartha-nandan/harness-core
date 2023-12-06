@@ -6,7 +6,6 @@
  */
 
 package io.harness.delegate.task.helm;
-
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.delegate.beans.storeconfig.StoreDelegateConfigType.CUSTOM_REMOTE;
@@ -75,7 +74,6 @@ import io.harness.delegate.task.git.ScmFetchFilesHelperNG;
 import io.harness.delegate.task.helm.steadystate.HelmSteadyStateService;
 import io.harness.delegate.task.k8s.ContainerDeploymentDelegateBaseHelper;
 import io.harness.delegate.task.k8s.HelmChartManifestDelegateConfig;
-import io.harness.delegate.task.k8s.HelmTaskDTO;
 import io.harness.delegate.task.k8s.K8sTaskHelperBase;
 import io.harness.delegate.task.k8s.ManifestDelegateConfig;
 import io.harness.delegate.task.localstore.ManifestFiles;
@@ -204,8 +202,7 @@ public class HelmDeployServiceImplNG implements HelmDeployServiceNG {
   }
 
   @Override
-  public HelmCommandResponseNG deploy(HelmInstallCommandRequestNG commandRequest, HelmTaskDTO taskData)
-      throws Exception {
+  public HelmCommandResponseNG deploy(HelmInstallCommandRequestNG commandRequest) throws Exception {
     LogCallback logCallback = commandRequest.getLogCallback();
     HelmChartInfo helmChartInfo = null;
     int prevVersion = -1;
@@ -215,12 +212,8 @@ public class HelmDeployServiceImplNG implements HelmDeployServiceNG {
     ReleaseHistory releaseHistory = null;
     boolean isImprovedHelmTracking = commandRequest.isImprovedHelmTracking();
     try {
-      kubernetesConfig = taskData.getKubernetesConfig();
-      if (kubernetesConfig == null) {
-        log.warn("Kubernetes config passed to task is NULL. Creating it again...");
-        kubernetesConfig = containerDeploymentDelegateBaseHelper.createKubernetesConfig(
-            commandRequest.getK8sInfraDelegateConfig(), commandRequest.getWorkingDir(), logCallback);
-      }
+      kubernetesConfig = containerDeploymentDelegateBaseHelper.createKubernetesConfig(
+          commandRequest.getK8sInfraDelegateConfig(), commandRequest.getWorkingDir(), logCallback);
 
       List<K8sPod> existingPodList = Collections.emptyList();
       HelmInstallCmdResponseNG commandResponse;
@@ -651,16 +644,11 @@ public class HelmDeployServiceImplNG implements HelmDeployServiceNG {
   }
 
   @Override
-  public HelmCommandResponseNG rollback(HelmRollbackCommandRequestNG commandRequest, HelmTaskDTO taskData)
-      throws Exception {
+  public HelmCommandResponseNG rollback(HelmRollbackCommandRequestNG commandRequest) throws Exception {
     LogCallback logCallback = commandRequest.getLogCallback();
-    kubernetesConfig = taskData.getKubernetesConfig();
+    kubernetesConfig = containerDeploymentDelegateBaseHelper.createKubernetesConfig(
+        commandRequest.getK8sInfraDelegateConfig(), commandRequest.getWorkingDir(), logCallback);
     try {
-      if (kubernetesConfig == null) {
-        log.warn("Kubernetes config passed to task is NULL. Creating it again...");
-        kubernetesConfig = containerDeploymentDelegateBaseHelper.createKubernetesConfig(
-            commandRequest.getK8sInfraDelegateConfig(), commandRequest.getWorkingDir(), logCallback);
-      }
       List<KubernetesResource> existingManifest = commandRequest.isImprovedHelmTracking()
           ? helmSteadyStateService.readManifestFromHelmRelease(HelmCommandDataMapperNG.getHelmCmdDataNG(commandRequest))
           : Collections.emptyList();
@@ -1149,7 +1137,8 @@ public class HelmDeployServiceImplNG implements HelmDeployServiceNG {
   }
 
   @VisibleForTesting
-  public List<KubernetesResource> printHelmChartKubernetesResources(HelmInstallCommandRequestNG commandRequest) {
+  public List<KubernetesResource> printHelmChartKubernetesResources(HelmInstallCommandRequestNG commandRequest)
+      throws Exception {
     ManifestDelegateConfig manifestDelegateConfig = commandRequest.getManifestDelegateConfig();
 
     Optional<StoreDelegateConfigType> storeTypeOpt =
@@ -1181,11 +1170,12 @@ public class HelmDeployServiceImplNG implements HelmDeployServiceNG {
           helmKubernetesResources, commandRequest.getReleaseName(), executionLogCallback);
       executionLogCallback.saveExecutionLog(ManifestHelper.toYamlForLogs(helmKubernetesResources));
 
-    } catch (Exception e) {
-      log.warn("Failed to print Helm chart kubernetes resources", ExceptionMessageSanitizer.sanitizeException(e));
-      executionLogCallback.saveExecutionLog(
-          "Failed to print Helm chart kubernetes resources", LogLevel.WARN, CommandExecutionStatus.RUNNING);
-      return Collections.emptyList();
+    } catch (InterruptedException e) {
+      log.error("Failed to get k8s resources from Helm chart", ExceptionMessageSanitizer.sanitizeException(e));
+      Thread.currentThread().interrupt();
+      throw new HelmClientRuntimeException(
+          new HelmClientException(ExceptionUtils.getMessage(ExceptionMessageSanitizer.sanitizeException(e)), USER,
+              HelmCliCommandType.RENDER_CHART));
     }
     return helmKubernetesResources;
   }

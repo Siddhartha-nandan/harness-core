@@ -20,7 +20,6 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.exception.WingsException.USER;
 import static io.harness.mongo.MongoConfig.NO_LIMIT;
 import static io.harness.mongo.MongoUtils.setUnset;
-import static io.harness.ng.core.account.AuthenticationMechanism.SAML;
 import static io.harness.ng.core.account.AuthenticationMechanism.USER_PASSWORD;
 import static io.harness.ng.core.common.beans.Generation.CG;
 import static io.harness.ng.core.common.beans.Generation.NG;
@@ -33,10 +32,10 @@ import static io.harness.ng.core.invites.dto.InviteOperationResponse.ACCOUNT_INV
 import static io.harness.ng.core.invites.dto.InviteOperationResponse.FAIL;
 import static io.harness.ng.core.invites.dto.InviteOperationResponse.INVITE_EXPIRED;
 import static io.harness.ng.core.invites.dto.InviteOperationResponse.INVITE_INVALID;
-import static io.harness.ng.core.invites.dto.InviteOperationResponse.USER_ADDED_SUCCESSFULLY_TO_ACCOUNT;
 import static io.harness.ng.core.invites.dto.InviteOperationResponse.USER_ALREADY_ADDED;
 import static io.harness.ng.core.invites.dto.InviteOperationResponse.USER_ALREADY_INVITED;
 import static io.harness.ng.core.invites.dto.InviteOperationResponse.USER_INVITED_SUCCESSFULLY;
+import static io.harness.ng.core.invites.dto.InviteOperationResponse.USER_INVITE_NOT_REQUIRED;
 import static io.harness.persistence.AccountAccess.ACCOUNT_ID_KEY;
 import static io.harness.persistence.HQuery.excludeAuthority;
 
@@ -144,7 +143,6 @@ import io.harness.ng.core.user.PasswordChangeResponse;
 import io.harness.ng.core.user.UserAccountLevelData.UserAccountLevelDataKeys;
 import io.harness.ng.core.user.UserInfo;
 import io.harness.ng.core.user.remote.dto.UserMetadataDTO;
-import io.harness.notification.NotificationRequest;
 import io.harness.notification.Team;
 import io.harness.notification.channeldetails.EmailChannel;
 import io.harness.notification.channeldetails.EmailChannel.EmailChannelBuilder;
@@ -1068,10 +1066,6 @@ public class UserServiceImpl implements UserService {
       updateOperations.set(UserKeys.accounts, newAccounts);
     }
 
-    if (user.isDisabled()) {
-      updateOperations.set(UserKeys.disabled, false);
-      updateOperations.set(UserKeys.defaultAccountId, account.getUuid());
-    }
     if (featureFlagService.isEnabled(FeatureName.PL_USER_ACCOUNT_LEVEL_DATA_FLOW, accountId)) {
       userServiceHelper.populateAccountToUserMapping(user, accountId, NG, userSource);
       updateOperations.set(UserKeys.userAccountLevelDataMap, user.getUserAccountLevelDataMap());
@@ -1689,7 +1683,7 @@ public class UserServiceImpl implements UserService {
         -> auditServiceHelper.reportForAuditingUsingAccountId(accountId, null, userGroupAdded, Type.ADD));
 
     if (isPLNoEmailForSamlAccountInvitesEnabled && !user.isTwoFactorAuthenticationEnabled()) {
-      return USER_ADDED_SUCCESSFULLY_TO_ACCOUNT;
+      return USER_INVITE_NOT_REQUIRED;
     } else {
       eventPublishHelper.publishUserInviteFromAccountEvent(accountId, userInvite.getEmail());
     }
@@ -2753,19 +2747,11 @@ public class UserServiceImpl implements UserService {
   public LogoutResponse logout(String accountId, String userId) {
     LogoutResponse logoutResponse = new LogoutResponse();
     log.info("Sending logout response from manager for user {} in account {}", userId, accountId);
-    Account account = null;
-    try {
-      account = authenticationUtils.getAccount(accountId);
-    } catch (Exception ex) {
-      log.error("Error while fetching account details for accountId {}", accountId, ex);
-    }
-    if (account != null && account.getAuthenticationMechanism() == SAML) {
-      SamlSettings samlSettings = ssoSettingService.getSamlSettingsByAccountId(accountId);
-      log.info("Samlsettings Id for accountId {} is {}", accountId, samlSettings.getUuid());
-      if (samlSettings != null && isNotEmpty(samlSettings.getLogoutUrl())) {
-        logoutResponse.setLogoutUrl(samlSettings.getLogoutUrl());
-        log.info("Logout URL from accountId is {}", samlSettings.getLogoutUrl());
-      }
+    SamlSettings samlSettings = ssoSettingService.getSamlSettingsByAccountId(accountId);
+    log.info("Samlsettings from accountId is {}", samlSettings);
+    if (samlSettings != null && samlSettings.getLogoutUrl() != null) {
+      logoutResponse.setLogoutUrl(samlSettings.getLogoutUrl());
+      log.info("Logout URL from accountId is {}", samlSettings.getLogoutUrl());
     }
     try {
       User user = get(accountId, userId);
@@ -3737,39 +3723,6 @@ public class UserServiceImpl implements UserService {
     return CannySsoLoginResponse.builder().redirectUrl(redirectUrl).userId(user.getUuid()).build();
   }
 
-  @Override
-  public void sendNotificationEmailNG(String accountId, List<NotificationRequest.UserGroup> userGroups,
-      String templateId, Map<String, String> templateData, Team team, List<String> recipients) {
-    log.info("Sending Notification email through NG: templateId: {}  recipients: {} ", templateId, recipients);
-    notificationClient.sendNotificationAsync(EmailChannel.builder()
-                                                 .recipients(recipients)
-                                                 .accountId(accountId)
-                                                 .templateId(templateId)
-                                                 .templateData(templateData)
-                                                 .team(team)
-                                                 .userGroups(userGroups)
-                                                 .build());
-  }
-
-  @Override
-  public boolean sendNotificationEmailCG(String accountId, List<String> to, List<String> cc, List<String> bcc,
-      String subject, String body, String templateName, Map<String, String> templateModel, int retries) {
-    EmailData emailData = EmailData.builder()
-                              .accountId(accountId)
-                              .to(to)
-                              .cc(cc)
-                              .bcc(bcc)
-                              .subject(subject)
-                              .body(body)
-                              .templateName(templateName)
-                              .templateModel(templateModel)
-
-                              .build();
-    emailData.setRetries(2);
-    log.info("Sending Notification email through CG templateId: {}  recipients: {} ", templateName, to);
-    return emailNotificationService.send(emailData);
-  }
-
   private String createCannyToken(User user) {
     String jwtCannySecret = configuration.getPortal().getJwtCannySecret();
 
@@ -4380,14 +4333,11 @@ public class UserServiceImpl implements UserService {
       query = getListUserQuery(accountId, includeUsersPendingInviteAcceptance, includeDisabled);
     }
 
-    if (filterForGeneration) {
-      queryFilterOnlyCGUsers(accountId, query);
-    }
-
     applySortFilter(pageRequest, query);
     FindOptions findOptions = new FindOptions().skip(offset).limit(pageSize);
     List<User> userList = query.asList(findOptions);
     if (filterForGeneration) {
+      filterListForGeneration(accountId, userList, CG);
       userServiceHelper.processForSCIMUsers(accountId, userList, CG);
     }
     if (loadUserGroups) {
@@ -4580,10 +4530,6 @@ public class UserServiceImpl implements UserService {
     updateOperations.set(UserKeys.accounts, newAccountsList);
     updateOperations.set(UserKeys.pendingAccounts, newPendingAccountsList);
     updateOperations.set(UserKeys.emailVerified, markEmailVerified);
-    if (existingUser.getDisabled()) {
-      updateOperations.set(UserKeys.disabled, false);
-      updateOperations.set(UserKeys.defaultAccountId, invitationAccount.getUuid());
-    }
     updateUser(existingUser.getUuid(), updateOperations);
   }
 

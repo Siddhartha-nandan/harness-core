@@ -6,7 +6,6 @@
  */
 
 package io.harness.pms.plan.execution.entity;
-
 import static io.harness.filter.FilterConstants.PIPELINE_SETUP_FILTER;
 
 import io.harness.annotations.dev.CodePulse;
@@ -18,7 +17,6 @@ import io.harness.ng.core.common.beans.NGTag;
 import io.harness.pms.contracts.plan.TriggerType;
 import io.harness.pms.execution.ExecutionStatus;
 import io.harness.pms.execution.TimeRange;
-import io.harness.pms.plan.execution.beans.dto.ExecutionModeFilter;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonTypeName;
@@ -47,12 +45,11 @@ public class PipelineExecutionFilterProperties extends FilterProperties {
   private org.bson.Document moduleProperties;
   private List<TriggerType> triggerTypes;
   private List<String> triggerIdentifiers;
-  private ExecutionModeFilter executionModeFilter;
 
   @Builder
   public PipelineExecutionFilterProperties(List<NGTag> tags, FilterType type, List<NGTag> pipelineTags,
       List<ExecutionStatus> status, TimeRange timeRange, String pipelineName, Document moduleProperties,
-      List<TriggerType> triggerTypes, List<String> triggerIdentifiers, ExecutionModeFilter executionModeFilter) {
+      List<TriggerType> triggerTypes, List<String> triggerIdentifiers) {
     super(tags, type);
     this.pipelineTags = pipelineTags;
     this.status = status;
@@ -61,6 +58,5 @@ public class PipelineExecutionFilterProperties extends FilterProperties {
     this.moduleProperties = moduleProperties;
     this.triggerTypes = triggerTypes;
     this.triggerIdentifiers = triggerIdentifiers;
-    this.executionModeFilter = executionModeFilter;
   }
 }

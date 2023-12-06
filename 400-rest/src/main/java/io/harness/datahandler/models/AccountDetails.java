@@ -32,7 +32,6 @@ public class AccountDetails {
   private boolean createdFromNG;
   private DefaultExperience defaultExperience;
   private boolean isCrossGenerationAccessEnabled;
-  private boolean isCannyUsernameAbbreviationEnabled;
   private LicenseInfo licenseInfo;
   private CeLicenseInfo ceLicenseInfo;
   private int activeServiceCount;

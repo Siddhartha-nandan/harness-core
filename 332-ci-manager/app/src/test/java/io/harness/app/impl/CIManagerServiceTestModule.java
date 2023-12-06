@@ -62,9 +62,6 @@ import io.harness.concurrent.HTimeLimiter;
 import io.harness.connector.ConnectorResourceClientModule;
 import io.harness.core.ci.dashboard.BuildNumberService;
 import io.harness.core.ci.dashboard.BuildNumberServiceImpl;
-import io.harness.core.ci.dashboard.CIOverviewDashboardService;
-import io.harness.core.ci.dashboard.CIOverviewDashboardServiceImpl;
-import io.harness.creditcard.CreditCardClientModule;
 import io.harness.enforcement.client.EnforcementClientModule;
 import io.harness.entitysetupusageclient.EntitySetupUsageClientModule;
 import io.harness.eventsframework.EventsFrameworkConstants;
@@ -106,10 +103,7 @@ import io.harness.telemetry.AbstractTelemetryModule;
 import io.harness.telemetry.TelemetryConfiguration;
 import io.harness.threading.ThreadPool;
 import io.harness.timescaledb.TimeScaleDBConfig;
-import io.harness.timescaledb.TimeScaleDBService;
-import io.harness.timescaledb.TimeScaleDBServiceImpl;
 import io.harness.token.TokenClientModule;
-import io.harness.tunnel.TunnelResourceClient;
 import io.harness.user.UserClientModule;
 import io.harness.version.VersionInfoManager;
 import io.harness.waiter.AsyncWaitEngineImpl;
@@ -274,15 +268,13 @@ public class CIManagerServiceTestModule extends AbstractModule {
     bind(GitlabService.class).to(GitlabServiceImpl.class);
     bind(BitbucketService.class).to(BitbucketServiceImpl.class);
     bind(AzureRepoService.class).to(AzureRepoServiceImpl.class);
-    bind(CIOverviewDashboardService.class).to(CIOverviewDashboardServiceImpl.class);
     bind(SecretDecryptor.class).to(io.harness.ci.execution.buildstate.SecretDecryptorViaNg.class);
     bind(CIYAMLSanitizationService.class).to(CIYAMLSanitizationServiceImpl.class).in(Singleton.class);
     bind(CIAccountValidationService.class).to(CIAccountValidationServiceImpl.class).in(Singleton.class);
     bind(CodeResourceClient.class).toInstance(mock(CodeResourceClient.class));
-    bind(TunnelResourceClient.class).toInstance(mock(TunnelResourceClient.class));
     install(NgLicenseHttpClientModule.getInstance(ciManagerConfiguration.getNgManagerClientConfig(),
         ciManagerConfiguration.getNgManagerServiceSecret(), serviceId));
-    bind(TimeScaleDBService.class).toInstance(new TimeScaleDBServiceImpl(null));
+
     bind(ExecutorService.class)
         .annotatedWith(Names.named("ciInitTaskExecutor"))
         .toInstance(ThreadPool.create(
@@ -388,8 +380,6 @@ public class CIManagerServiceTestModule extends AbstractModule {
     install(new SSCAServiceClientModuleV2(ciManagerConfiguration.getSscaServiceConfig(), serviceId));
     install(new IACMServiceClientModule(ciManagerConfiguration.getIacmServiceConfig()));
     install(new AccountClientModule(ciManagerConfiguration.getManagerClientConfig(),
-        ciManagerConfiguration.getNgManagerServiceSecret(), this.configurationOverride.getServiceHeader().toString()));
-    install(new CreditCardClientModule(ciManagerConfiguration.getNgManagerClientConfig(),
         ciManagerConfiguration.getNgManagerServiceSecret(), this.configurationOverride.getServiceHeader().toString()));
     install(EnforcementClientModule.getInstance(ciManagerConfiguration.getNgManagerClientConfig(),
         ciManagerConfiguration.getNgManagerServiceSecret(), serviceId,

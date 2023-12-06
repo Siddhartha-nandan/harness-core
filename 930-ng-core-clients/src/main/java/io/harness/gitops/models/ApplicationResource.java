@@ -126,8 +126,8 @@ public class ApplicationResource {
     @JsonProperty("commonAnnotations") Object commonAnnotations;
     @JsonProperty("commonAnnotationsEnvsubst") boolean commonAnnotationsEnvsubst;
     @JsonProperty("commonLabels") Object commonLabels;
-    @JsonProperty("forceCommonAnnotations") Boolean forceCommonAnnotations;
-    @JsonProperty("forceCommonLabels") Boolean forceCommonLabels;
+    @JsonProperty("forceCommonAnnotations") boolean forceCommonAnnotations;
+    @JsonProperty("forceCommonLabels") boolean forceCommonLabels;
     @JsonProperty("images") List<String> images;
     @JsonProperty("namePrefix") String namePrefix;
     @JsonProperty("nameSuffix") String nameSuffix;

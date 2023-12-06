@@ -59,7 +59,7 @@ public class AuditServiceSetup {
     registerCharsetResponseFilter(environment, injector);
     registerCorrelationFilter(environment, injector);
     registerHealthCheck(environment, injector);
-    registerManagedBeans(environment, injector, appConfig);
+    registerManagedBeans(environment, injector);
     registerIterators(injector);
     registerOasResource(appConfig, environment, injector);
     initializeMonitoring(appConfig, injector);
@@ -95,11 +95,10 @@ public class AuditServiceSetup {
     environment.jersey().register(injector.getInstance(TraceFilter.class));
   }
 
-  private void registerManagedBeans(Environment environment, Injector injector, AuditServiceConfiguration appConfig) {
+  private void registerManagedBeans(Environment environment, Injector injector) {
     environment.lifecycle().manage(injector.getInstance(AuditAccountSyncService.class));
-    if (appConfig.isPublishAccountActivityMetrics()) {
-      environment.lifecycle().manage(injector.getInstance(AccountActivityMetricsPublisherService.class));
-    }
+
+    environment.lifecycle().manage(injector.getInstance(AccountActivityMetricsPublisherService.class));
   }
 
   private void registerIterators(Injector injector) {

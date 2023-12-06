@@ -15,6 +15,7 @@ import static io.harness.pms.contracts.execution.Status.ABORTED;
 import static io.harness.pms.contracts.execution.Status.DISCONTINUING;
 import static io.harness.pms.contracts.execution.Status.ERRORED;
 import static io.harness.pms.contracts.execution.Status.EXPIRED;
+import static io.harness.pms.contracts.execution.Status.SKIPPED;
 import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 import static io.harness.springdata.SpringDataMongoUtils.returnNewOptions;
 
@@ -45,7 +46,7 @@ import io.harness.execution.NodeExecution.NodeExecutionKeys;
 import io.harness.execution.PlanExecutionMetadata;
 import io.harness.execution.expansion.PlanExpansionService;
 import io.harness.interrupts.InterruptEffect;
-import io.harness.monitoring.ExecutionStatistics;
+import io.harness.monitoring.ExecutionCountWithAccountResult;
 import io.harness.observer.Subject;
 import io.harness.plan.Node;
 import io.harness.plan.NodeType;
@@ -61,6 +62,7 @@ import io.harness.pms.execution.ExecutionStatus;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.execution.utils.NodeProjectionUtils;
 import io.harness.pms.execution.utils.StatusUtils;
+import io.harness.springdata.PersistenceModule;
 import io.harness.springdata.TransactionHelper;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -100,7 +102,7 @@ import org.springframework.data.util.CloseableIterator;
 @Slf4j
 @OwnedBy(PIPELINE)
 public class NodeExecutionServiceImpl implements NodeExecutionService {
-  private static final int MAX_BATCH_SIZE = 500;
+  private static final int MAX_BATCH_SIZE = PersistenceModule.MAX_BATCH_SIZE;
 
   private static final Set<String> GRAPH_FIELDS = Set.of(NodeExecutionKeys.mode, NodeExecutionKeys.progressData,
       NodeExecutionKeys.unitProgresses, NodeExecutionKeys.executableResponses, NodeExecutionKeys.interruptHistories,
@@ -925,12 +927,12 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   public List<NodeExecution> fetchStageExecutionsWithEndTsAndStatusProjection(String planExecutionId) {
     Query query =
         query(where(NodeExecutionKeys.planExecutionId).is(planExecutionId))
+            .addCriteria(where(NodeExecutionKeys.status).ne(SKIPPED))
             .addCriteria(
                 where(NodeExecutionKeys.stepCategory).in(Arrays.asList(StepCategory.STAGE, StepCategory.STRATEGY)));
     query.fields()
         .include(NodeExecutionKeys.uuid)
         .include(NodeExecutionKeys.status)
-        .include(NodeExecutionKeys.startTs)
         .include(NodeExecutionKeys.endTs)
         .include(NodeExecutionKeys.createdAt)
         .include(NodeExecutionKeys.mode)
@@ -941,7 +943,6 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
         .include(NodeExecutionKeys.oldRetry)
         .include(NodeExecutionKeys.ambiance)
         .include(NodeExecutionKeys.resolvedParams)
-        .include(NodeExecutionKeys.failureInfo)
         .include(NodeExecutionKeys.executableResponses);
 
     query.with(by(NodeExecutionKeys.createdAt));
@@ -1134,7 +1135,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   }
 
   @Override
-  public ExecutionStatistics aggregateRunningNodeExecutionsCount() {
-    return nodeExecutionReadHelper.aggregateRunningExecutionCount();
+  public List<ExecutionCountWithAccountResult> aggregateRunningNodesCountPerAccount() {
+    return nodeExecutionReadHelper.aggregateRunningExecutionCountPerAccount();
   }
 }

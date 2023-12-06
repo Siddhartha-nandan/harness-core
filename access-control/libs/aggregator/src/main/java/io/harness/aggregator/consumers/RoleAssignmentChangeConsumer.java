@@ -16,7 +16,6 @@ import io.harness.accesscontrol.acl.persistence.repositories.ACLRepository;
 import io.harness.accesscontrol.roleassignments.RoleAssignment;
 import io.harness.accesscontrol.roleassignments.persistence.RoleAssignmentDBO;
 import io.harness.accesscontrol.roleassignments.persistence.repositories.RoleAssignmentRepository;
-import io.harness.aggregator.AccessControlAdminService;
 import io.harness.aggregator.models.RoleAssignmentChangeEventData;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.logging.DelayLogContext;
@@ -31,16 +30,14 @@ import org.apache.commons.lang3.StringUtils;
 @OwnedBy(PL)
 @Singleton
 @Slf4j
-public class RoleAssignmentChangeConsumer extends AbstractAccessControlChangeConsumer<RoleAssignmentChangeEventData> {
+public class RoleAssignmentChangeConsumer implements AccessControlChangeConsumer<RoleAssignmentChangeEventData> {
   private final ACLRepository aclRepository;
   private final RoleAssignmentRepository roleAssignmentRepository;
   private final ACLGeneratorService aclGeneratorService;
 
   @Inject
   public RoleAssignmentChangeConsumer(@Named(ACL.PRIMARY_COLLECTION) ACLRepository aclRepository,
-      RoleAssignmentRepository roleAssignmentRepository, ACLGeneratorService aclGeneratorService,
-      AccessControlAdminService accessControlAdminService) {
-    super(accessControlAdminService);
+      RoleAssignmentRepository roleAssignmentRepository, ACLGeneratorService aclGeneratorService) {
     this.aclRepository = aclRepository;
     this.roleAssignmentRepository = roleAssignmentRepository;
     this.aclGeneratorService = aclGeneratorService;

@@ -485,13 +485,13 @@ public class CompositeSLORecordServiceImplTest extends CvNextGenTestBase {
   public void testCreate_SkipData_request() {
     List<SLIState> sliStateList1 =
         Arrays.asList(SLIState.GOOD, SLIState.GOOD, SLIState.SKIP_DATA, SLIState.GOOD, SLIState.GOOD);
-    List<Long> goodCounts1 = Arrays.asList(100L, 200L, 0L, 0L, 100L);
-    List<Long> badCounts1 = Arrays.asList(10L, 20L, 0L, 0L, 10L);
+    List<Long> goodCounts1 = Arrays.asList(100l, 200l, 0l, 0l, 100l);
+    List<Long> badCounts1 = Arrays.asList(10l, 20l, 0l, 0l, 10l);
 
     List<SLIState> sliStateList2 =
         Arrays.asList(SLIState.GOOD, SLIState.GOOD, SLIState.GOOD, SLIState.GOOD, SLIState.SKIP_DATA);
-    List<Long> goodCounts2 = Arrays.asList(100L, 200L, 300L, 0L, 0L);
-    List<Long> badCounts2 = Arrays.asList(0L, 0L, 10L, 0L, 0L);
+    List<Long> goodCounts2 = Arrays.asList(100l, 200l, 300l, 0l, 0l);
+    List<Long> badCounts2 = Arrays.asList(0l, 0l, 10l, 0l, 0l);
 
     String sliId1 = serviceLevelIndicatorService
                         .getServiceLevelIndicator(builderFactory.getProjectParams(),
@@ -715,22 +715,6 @@ public class CompositeSLORecordServiceImplTest extends CvNextGenTestBase {
                        requestCompositeServiceLevelObjective.getServiceLevelObjectivesDetails().get(0)))
                    .getRunningGoodCount())
         .isEqualTo(300);
-
-    assertThat(sloRecords1.get(4).getRunningBadCount()).isEqualTo(0);
-    assertThat(sloRecords1.get(4).getRunningGoodCount()).isEqualTo(0);
-    assertThat(sloRecords1.get(4).getScopedIdentifierSLIRecordMap().size()).isEqualTo(2);
-    assertThat(sloRecords1.get(4)
-                   .getScopedIdentifierSLIRecordMap()
-                   .get(serviceLevelObjectiveV2Service.getScopedIdentifier(
-                       requestCompositeServiceLevelObjective.getServiceLevelObjectivesDetails().get(0)))
-                   .getSliId())
-        .isEqualTo(sliId1);
-    assertThat(sloRecords1.get(4)
-                   .getScopedIdentifierSLIRecordMap()
-                   .get(serviceLevelObjectiveV2Service.getScopedIdentifier(
-                       requestCompositeServiceLevelObjective.getServiceLevelObjectivesDetails().get(0)))
-                   .getRunningGoodCount())
-        .isEqualTo(400);
   }
 
   @Test

@@ -13,7 +13,6 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.DecryptableEntity;
 import io.harness.connector.DelegateSelectable;
 import io.harness.connector.ManagerExecutable;
-import io.harness.connector.WithProxy;
 import io.harness.delegate.beans.connector.ConnectorConfigDTO;
 import io.harness.delegate.beans.connector.ConnectorConfigOutcomeDTO;
 import io.harness.delegate.beans.connector.ConnectorType;
@@ -50,8 +49,7 @@ import org.hibernate.validator.constraints.NotBlank;
 @OwnedBy(HarnessTeam.DX)
 @Schema(name = "GitConfig", description = "This contains details of the Generic Git connector")
 @RecasterAlias("io.harness.delegate.beans.connector.scm.genericgitconnector.GitConfigDTO")
-public class GitConfigDTO
-    extends ConnectorConfigDTO implements ScmConnector, DelegateSelectable, ManagerExecutable, WithProxy {
+public class GitConfigDTO extends ConnectorConfigDTO implements ScmConnector, DelegateSelectable, ManagerExecutable {
   @NotNull @JsonProperty("type") private GitAuthType gitAuthType;
   @NotNull @JsonProperty("connectionType") private GitConnectionType gitConnectionType;
   @NotNull @NotBlank String url;
@@ -59,8 +57,6 @@ public class GitConfigDTO
   private String branchName;
   private Set<String> delegateSelectors;
   private Boolean executeOnDelegate;
-  Boolean proxy;
-  @JsonIgnore private String proxyUrl;
   private String gitConnectionUrl;
 
   @JsonProperty("spec")
@@ -72,8 +68,7 @@ public class GitConfigDTO
 
   @Builder
   public GitConfigDTO(GitAuthType gitAuthType, GitAuthenticationDTO gitAuth, GitConnectionType gitConnectionType,
-      String url, String validationRepo, String branchName, Set<String> delegateSelectors, Boolean executeOnDelegate,
-      String proxyUrl, boolean proxy) {
+      String url, String validationRepo, String branchName, Set<String> delegateSelectors, Boolean executeOnDelegate) {
     this.gitAuthType = gitAuthType;
     this.gitAuth = gitAuth;
     this.gitConnectionType = gitConnectionType;
@@ -82,8 +77,6 @@ public class GitConfigDTO
     this.branchName = branchName;
     this.delegateSelectors = delegateSelectors;
     this.executeOnDelegate = executeOnDelegate;
-    this.proxy = proxy;
-    this.proxyUrl = proxyUrl;
   }
 
   @Override

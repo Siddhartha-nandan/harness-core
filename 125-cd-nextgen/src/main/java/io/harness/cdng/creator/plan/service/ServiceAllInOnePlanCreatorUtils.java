@@ -305,7 +305,7 @@ public class ServiceAllInOnePlanCreatorUtils {
         serviceHooksNode.getUuid(), PlanCreationResponse.builder().planNode(serviceHooksNode).build());
 
     // Add Azure settings node
-    if (ServiceDefinitionType.AZURE_WEBAPP == serviceType) {
+    if (serviceType == ServiceDefinitionType.AZURE_WEBAPP) {
       PlanNode azureSettingsNode =
           PlanNode.builder()
               .uuid("azure-settings-" + UUIDGenerator.generateUuid())
@@ -325,7 +325,7 @@ public class ServiceAllInOnePlanCreatorUtils {
     }
 
     // Add Elastigroup settings node
-    if (ServiceDefinitionType.ELASTIGROUP == serviceType) {
+    if (serviceType == ServiceDefinitionType.ELASTIGROUP) {
       PlanNode elastigroupSettingsNode =
           PlanNode.builder()
               .uuid("elastigroup-settings-" + UUIDGenerator.generateUuid())
@@ -345,7 +345,7 @@ public class ServiceAllInOnePlanCreatorUtils {
     }
 
     // Add ASG settings node
-    if (ServiceDefinitionType.ASG == serviceType) {
+    if (serviceType == ServiceDefinitionType.ASG) {
       PlanNode asgSettingsNode =
           PlanNode.builder()
               .uuid("asg-settings-" + UUIDGenerator.generateUuid())

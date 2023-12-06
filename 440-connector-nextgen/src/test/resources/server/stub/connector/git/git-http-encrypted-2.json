@@ -16,7 +16,6 @@
       "branchName" : "example_branch",
       "delegateSelectors" : [ ],
       "executeOnDelegate" : false,
-      "proxy" : false,
       "type" : "Http",
       "connectionType" : "Repo",
       "spec" : {

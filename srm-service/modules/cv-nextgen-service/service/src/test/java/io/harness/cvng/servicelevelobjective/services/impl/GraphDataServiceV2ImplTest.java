@@ -8,12 +8,11 @@
 package io.harness.cvng.servicelevelobjective.services.impl;
 
 import static io.harness.cvng.CVNGTestConstants.TIME_FOR_TESTS;
-import static io.harness.cvng.core.services.CVNextGenConstants.MAX_NUMBER_OF_POINTS;
-import static io.harness.cvng.core.services.CVNextGenConstants.SLI_RECORD_BUCKET_SIZE;
 import static io.harness.cvng.servicelevelobjective.entities.SLIState.BAD;
 import static io.harness.cvng.servicelevelobjective.entities.SLIState.GOOD;
 import static io.harness.cvng.servicelevelobjective.entities.SLIState.NO_DATA;
 import static io.harness.cvng.servicelevelobjective.entities.SLIState.SKIP_DATA;
+import static io.harness.cvng.servicelevelobjective.services.impl.SLIRecordBucketServiceImpl.SLI_RECORD_BUCKET_SIZE;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.rule.OwnerRule.ANSUMAN;
 import static io.harness.rule.OwnerRule.ARPITJ;
@@ -223,20 +222,16 @@ public class GraphDataServiceV2ImplTest extends CvNextGenTestBase {
       SLIState sliState = sliStates.get(i);
       long goodCount = 0;
       long badCount = 0;
-      long skipDataCount = 0;
       if (sliState == GOOD) {
         goodCount++;
       } else if (sliState == BAD) {
         badCount++;
-      } else if (sliState == SKIP_DATA) {
-        skipDataCount++;
       }
       sliRecordParams.add(SLIRecordParam.builder()
                               .sliState(sliState)
                               .timeStamp(startTime.plus(Duration.ofMinutes(i)))
                               .goodEventCount(goodCount)
                               .badEventCount(badCount)
-                              .skipEventCount(skipDataCount)
                               .build());
     }
     return sliRecordParams;
@@ -254,7 +249,6 @@ public class GraphDataServiceV2ImplTest extends CvNextGenTestBase {
                               .timeStamp(startTime.plus(Duration.ofMinutes(i)))
                               .goodEventCount(goodCount)
                               .badEventCount(badCount)
-                              .skipEventCount(0l)
                               .build());
     }
     return sliRecordParams;
@@ -270,7 +264,7 @@ public class GraphDataServiceV2ImplTest extends CvNextGenTestBase {
     Instant currentTimeMinute = DateTimeUtils.roundDownTo1MinBoundary(clock.instant());
     SLODashboardWidget.SLOGraphData sloGraphData = graphDataServiceV2.getGraphData(simpleServiceLevelObjective1,
         timePeriod.getStartTime(simpleServiceLevelObjective1.getZoneOffset()), currentTimeMinute, 14400, null);
-    assertThat(sloGraphData.isCalculatingSLI()).isFalse();
+    assertThat(sloGraphData.isCalculatingSLI()).isEqualTo(false);
   }
 
   @Test
@@ -289,8 +283,8 @@ public class GraphDataServiceV2ImplTest extends CvNextGenTestBase {
     Instant currentTimeMinute = DateTimeUtils.roundDownTo1MinBoundary(clock.instant());
     SLODashboardWidget.SLOGraphData sloGraphData = graphDataServiceV2.getGraphData(simpleServiceLevelObjective1,
         timePeriod.getStartTime(simpleServiceLevelObjective1.getZoneOffset()), currentTimeMinute, 14400, null);
-    assertThat(sloGraphData.isCalculatingSLI()).isTrue();
-    assertThat(sloGraphData.isRecalculatingSLI()).isFalse();
+    assertThat(sloGraphData.isCalculatingSLI()).isEqualTo(true);
+    assertThat(sloGraphData.isRecalculatingSLI()).isEqualTo(false);
   }
 
   @Test
@@ -489,7 +483,7 @@ public class GraphDataServiceV2ImplTest extends CvNextGenTestBase {
     SLODashboardWidget.SLOGraphData sloGraphData = graphDataServiceV2.getGraphDataForSimpleSLO(serviceLevelIndicator,
         startTime, startTime.plus(Duration.ofMinutes(sliStates.size() + 1)), 100,
         TimeRangeParams.builder().startTime(customStartTime).endTime(customEndTime).build(), null,
-        MAX_NUMBER_OF_POINTS);
+        graphDataServiceV2.MAX_NUMBER_OF_POINTS);
     Duration duration = Duration.between(customStartTime, customEndTime);
     if (customMinutesEnd == 0) {
       assertThat(sloGraphData.getSloPerformanceTrend()).hasSize((int) (duration.toMinutes() - 1) / 5);
@@ -538,7 +532,7 @@ public class GraphDataServiceV2ImplTest extends CvNextGenTestBase {
     SLODashboardWidget.SLOGraphData sloGraphData = graphDataServiceV2.getGraphDataForSimpleSLO(
         requestServiceLevelIndicator, startTime, startTime.plus(Duration.ofMinutes(sliStates.size() + 1)), 100,
         TimeRangeParams.builder().startTime(customStartTime).endTime(customEndTime).build(),
-        simpleRequestServiceLevelObjective, MAX_NUMBER_OF_POINTS);
+        simpleRequestServiceLevelObjective, graphDataServiceV2.MAX_NUMBER_OF_POINTS);
     Duration duration = Duration.between(customStartTime, customEndTime);
     if (customMinutesEnd == 0) {
       assertThat(sloGraphData.getSloPerformanceTrend()).hasSize((int) (duration.toMinutes() - 1) / 5);
@@ -573,3 +567,17 @@ public class GraphDataServiceV2ImplTest extends CvNextGenTestBase {
     assertThat(sloGraphData.getTotalErrorBudgetFromGraph()).isEqualTo(expectedErrorBudget);
   }
 }
+
+/*
+   5000 Buckets
+
+   2000 Buckets
+
+
+   T1   T2
+
+
+   total mins 5000 * 5
+   total mins / 5  = diff
+
+ */

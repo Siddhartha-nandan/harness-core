@@ -9,7 +9,6 @@ package io.harness.idp.scorecard.scores.mappers;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.idp.scorecard.scores.entity.ScoreEntity;
-import io.harness.spec.server.idp.v1.model.ScorecardRecalibrateInfo;
 import io.harness.spec.server.idp.v1.model.ScorecardSummaryInfo;
 
 import lombok.experimental.UtilityClass;
@@ -17,8 +16,8 @@ import lombok.experimental.UtilityClass;
 @OwnedBy(HarnessTeam.IDP)
 @UtilityClass
 public class ScorecardSummaryInfoMapper {
-  public ScorecardSummaryInfo toDTO(ScoreEntity scoreEntity, String scoreCardName, String scoreCardDescription,
-      String scoreCardIdentifier, ScorecardRecalibrateInfo scorecardRecalibrateInfo) {
+  public ScorecardSummaryInfo toDTO(
+      ScoreEntity scoreEntity, String scoreCardName, String scoreCardDescription, String scoreCardIdentifier) {
     ScorecardSummaryInfo scorecardSummaryInfo = new ScorecardSummaryInfo();
     scorecardSummaryInfo.setScore(0);
     if (scoreEntity != null) {
@@ -26,7 +25,6 @@ public class ScorecardSummaryInfoMapper {
       scorecardSummaryInfo.setTimestamp(scoreEntity.getLastComputedTimestamp());
       scorecardSummaryInfo.setChecksStatuses(scoreEntity.getCheckStatus());
     }
-    scorecardSummaryInfo.setRecalibrateInfo(scorecardRecalibrateInfo);
     scorecardSummaryInfo.setScorecardIdentifier(scoreCardIdentifier);
     scorecardSummaryInfo.setScorecardName(scoreCardName);
     scorecardSummaryInfo.setDescription(scoreCardDescription);

@@ -10,9 +10,6 @@ package io.harness.resourcegroup.resourceclient.project;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.remote.client.NGRestUtils.getResponse;
-import static io.harness.resourcegroup.beans.ValidatorType.BY_RESOURCE_IDENTIFIER;
-import static io.harness.resourcegroup.beans.ValidatorType.BY_RESOURCE_TYPE;
-import static io.harness.resourcegroup.beans.ValidatorType.BY_RESOURCE_TYPE_INCLUDING_CHILD_SCOPES;
 
 import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.stripToNull;
@@ -32,7 +29,6 @@ import io.harness.resourcegroup.framework.v1.service.Resource;
 import io.harness.resourcegroup.framework.v1.service.ResourceInfo;
 import io.harness.resourcegroup.v2.model.AttributeFilter;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -68,15 +64,14 @@ public class ProjectResourceImpl implements Resource {
         getResponse(projectClient.listProjects(scope.getAccountIdentifier(), scope.getOrgIdentifier(), resourceIds));
     Set<String> validResourceIds =
         projects.getContent().stream().map(e -> e.getProject().getIdentifier()).collect(Collectors.toSet());
-    return resourceIds.stream().map(validResourceIds::contains).collect(toList());
+    return resourceIds.stream()
+        .map(resourceId -> validResourceIds.contains(resourceId) && scope.getProjectIdentifier().equals(resourceId))
+        .collect(toList());
   }
 
   @Override
   public Map<ScopeLevel, EnumSet<ValidatorType>> getSelectorKind() {
-    return ImmutableMap.of(ScopeLevel.ACCOUNT,
-        EnumSet.of(BY_RESOURCE_IDENTIFIER, BY_RESOURCE_TYPE, BY_RESOURCE_TYPE_INCLUDING_CHILD_SCOPES),
-        ScopeLevel.ORGANIZATION,
-        EnumSet.of(BY_RESOURCE_IDENTIFIER, BY_RESOURCE_TYPE, BY_RESOURCE_TYPE_INCLUDING_CHILD_SCOPES));
+    return Collections.emptyMap();
   }
 
   @Override
@@ -86,7 +81,7 @@ public class ProjectResourceImpl implements Resource {
 
   @Override
   public Set<ScopeLevel> getValidScopeLevels() {
-    return EnumSet.of(ScopeLevel.ACCOUNT, ScopeLevel.ORGANIZATION);
+    return Collections.emptySet();
   }
 
   @Override

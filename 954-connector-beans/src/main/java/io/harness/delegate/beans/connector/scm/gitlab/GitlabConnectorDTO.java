@@ -16,7 +16,6 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.DecryptableEntity;
 import io.harness.connector.DelegateSelectable;
 import io.harness.connector.ManagerExecutable;
-import io.harness.connector.WithProxy;
 import io.harness.delegate.beans.connector.ConnectorConfigDTO;
 import io.harness.delegate.beans.connector.ConnectorConfigOutcomeDTO;
 import io.harness.delegate.beans.connector.ConnectorType;
@@ -58,7 +57,7 @@ import org.hibernate.validator.constraints.NotBlank;
 @OwnedBy(HarnessTeam.DX)
 @Schema(name = "GitlabConnector", description = "This contains details of Gitlab connectors")
 public class GitlabConnectorDTO
-    extends ConnectorConfigDTO implements ScmConnector, DelegateSelectable, ManagerExecutable, WithProxy {
+    extends ConnectorConfigDTO implements ScmConnector, DelegateSelectable, ManagerExecutable {
   @NotNull @JsonProperty("type") GitConnectionType connectionType;
   @NotNull @NotBlank String url;
   private String validationRepo;
@@ -67,13 +66,11 @@ public class GitlabConnectorDTO
   Set<String> delegateSelectors;
   Boolean executeOnDelegate = true;
   String gitConnectionUrl;
-  Boolean proxy;
-  @JsonIgnore String proxyUrl;
 
   @Builder
   public GitlabConnectorDTO(GitConnectionType connectionType, String url, String validationRepo,
       GitlabAuthenticationDTO authentication, GitlabApiAccessDTO apiAccess, Set<String> delegateSelectors,
-      Boolean executeOnDelegate, boolean proxy) {
+      Boolean executeOnDelegate) {
     this.connectionType = connectionType;
     this.url = url;
     this.validationRepo = validationRepo;
@@ -81,7 +78,6 @@ public class GitlabConnectorDTO
     this.apiAccess = apiAccess;
     this.delegateSelectors = delegateSelectors;
     this.executeOnDelegate = executeOnDelegate;
-    this.proxy = proxy;
   }
 
   @Override

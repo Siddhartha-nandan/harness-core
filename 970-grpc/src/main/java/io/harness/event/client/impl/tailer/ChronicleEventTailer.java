@@ -10,6 +10,7 @@ package io.harness.event.client.impl.tailer;
 import static com.google.common.base.Verify.verify;
 import static java.util.Objects.requireNonNull;
 
+import io.harness.event.EventPublisherGrpc.EventPublisherBlockingStub;
 import io.harness.event.PublishMessage;
 import io.harness.event.PublishRequest;
 import io.harness.event.PublishResponse;
@@ -25,6 +26,8 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
+import javax.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.queue.impl.RollingChronicleQueue;
@@ -52,6 +55,8 @@ public class ChronicleEventTailer extends AbstractScheduledService {
   private final BackoffScheduler scheduler;
   private final Sampler sampler;
 
+  private final EventPublisherBlockingStub blockingStub;
+
   private final RollingChronicleQueue queue;
 
   private final EventPublisherClient eventPublisherClient;
@@ -59,8 +64,10 @@ public class ChronicleEventTailer extends AbstractScheduledService {
   private String accountId;
 
   @Inject
-  ChronicleEventTailer(EventPublisherClient eventPublisherClient, @Named("tailer") RollingChronicleQueue chronicleQueue,
-      FileDeletionManager fileDeletionManager, @Named("tailer") BackoffScheduler backoffScheduler) {
+  ChronicleEventTailer(@Nullable EventPublisherBlockingStub blockingStub, EventPublisherClient eventPublisherClient,
+      @Named("tailer") RollingChronicleQueue chronicleQueue, FileDeletionManager fileDeletionManager,
+      @Named("tailer") BackoffScheduler backoffScheduler) {
+    this.blockingStub = blockingStub;
     this.eventPublisherClient = eventPublisherClient;
     this.queue = chronicleQueue;
     this.readTailer = chronicleQueue.createTailer(READ_TAILER);
@@ -163,10 +170,23 @@ public class ChronicleEventTailer extends AbstractScheduledService {
           fileDeletionManager.setSentIndex(readTailer.index());
           scheduler.recordSuccess();
           log.info("Published {} messages successfully over rest", batchToSend.size());
-        } catch (Exception err) {
-          log.warn("Exception during message publish", err);
-          QueueUtils.moveToIndex(readTailer, fileDeletionManager.getSentIndex());
-          scheduler.recordFailure();
+        } catch (IOException e) {
+          log.error("Something wrong with publishing over rest", e);
+          try {
+            if (blockingStub == null) {
+              log.info("::: blockingStub is not initialized :::: ");
+              return;
+            }
+            log.info("Trying to publish over GRPC");
+            blockingStub.withDeadlineAfter(30, TimeUnit.SECONDS).publish(publishRequest);
+            log.info("Published {} messages successfully over grpc", batchToSend.size());
+            fileDeletionManager.setSentIndex(readTailer.index());
+            scheduler.recordSuccess();
+          } catch (Exception err) {
+            log.warn("Exception during message publish", err);
+            QueueUtils.moveToIndex(readTailer, fileDeletionManager.getSentIndex());
+            scheduler.recordFailure();
+          }
         }
       } else {
         fileDeletionManager.setSentIndex(readTailer.index());
@@ -187,7 +207,7 @@ public class ChronicleEventTailer extends AbstractScheduledService {
   private void publishMessagesOverRest(PublishRequest publishRequest) throws IOException {
     try {
       Call<PublishResponse> call = eventPublisherClient.publish(accountId, publishRequest);
-      EventServiceRestUtils.executeRestCallWithRetry(call);
+      EventServiceRestUtils.executeRestCall(call);
     } catch (Exception e) {
       log.error("Error while publishing messages over rest ", e);
       throw new IOException(e);

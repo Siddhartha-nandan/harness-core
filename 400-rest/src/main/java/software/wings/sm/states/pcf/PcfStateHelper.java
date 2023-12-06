@@ -71,7 +71,6 @@ import io.harness.beans.SweepingOutputInstance;
 import io.harness.beans.SweepingOutputInstance.Scope;
 import io.harness.beans.TriggeredBy;
 import io.harness.context.ContextElementType;
-import io.harness.data.algorithm.HashGenerator;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.delegate.beans.DelegateTaskDetails;
 import io.harness.delegate.beans.FileBucket;
@@ -107,7 +106,6 @@ import io.harness.pcf.PcfFileTypeChecker;
 import io.harness.pcf.model.CfCliVersion;
 import io.harness.pcf.model.ManifestType;
 import io.harness.pcf.model.PcfConstants;
-import io.harness.reflection.ExpressionReflectionUtils;
 
 import software.wings.api.HostElement;
 import software.wings.api.InstanceElement;
@@ -165,8 +163,6 @@ import software.wings.service.mappers.artifact.CfConfigToInternalMapper;
 import software.wings.sm.ExecutionContext;
 import software.wings.sm.ExecutionContextImpl;
 import software.wings.sm.ExecutionResponse;
-import software.wings.sm.StateExecutionContext;
-import software.wings.sm.StateExecutionData;
 import software.wings.sm.StateExecutionInstance;
 import software.wings.sm.WorkflowStandardParams;
 import software.wings.sm.rollback.RollbackStateMachineGenerator;
@@ -329,7 +325,7 @@ public class PcfStateHelper {
 
   public ExecutionResponse queueDelegateTaskForRouteUpdate(PcfRouteUpdateQueueRequestData queueRequestData,
       SetupSweepingOutputPcf setupSweepingOutputPcf, String stateExecutionInstanceId, boolean selectionLogsEnabled,
-      List<String> renderedTags, ExecutionContext context) {
+      List<String> renderedTags) {
     Integer timeoutIntervalInMinutes = queueRequestData.getTimeoutIntervalInMinutes() == null
         ? Integer.valueOf(DEFAULT_PCF_TASK_TIMEOUT_MIN)
         : queueRequestData.getTimeoutIntervalInMinutes();
@@ -361,8 +357,6 @@ public class PcfStateHelper {
         getRouteUpdateStateExecutionData(activityId, app.getUuid(), app.getAccountId(), cfCommandRequest,
             queueRequestData.getCommandName(), queueRequestData.getRequestConfigData(), renderedTags);
 
-    int expressionFunctorToken = HashGenerator.generateIntegerHash();
-
     DelegateTask delegateTask =
         getDelegateTask(PcfDelegateTaskCreationData.builder()
                             .waitId(queueRequestData.getActivityId())
@@ -380,9 +374,6 @@ public class PcfStateHelper {
                             .tagList(renderedTags)
                             .build());
 
-    delegateTask.getData().setExpressionFunctorToken(expressionFunctorToken);
-    renderDelegateTask(context, delegateTask, stateExecutionData, expressionFunctorToken);
-
     delegateService.queueTaskV2(delegateTask);
     appendDelegateTaskDetails(delegateTask, stateExecutionInstanceId);
 
@@ -391,22 +382,6 @@ public class PcfStateHelper {
         .stateExecutionData(stateExecutionData)
         .async(true)
         .build();
-  }
-
-  protected void renderDelegateTask(
-      ExecutionContext context, DelegateTask task, StateExecutionData stateExecutionData, int expressionFunctorToken) {
-    StateExecutionContext stateExecutionContext = StateExecutionContext.builder()
-                                                      .stateExecutionData(stateExecutionData)
-                                                      .adoptDelegateDecryption(true)
-                                                      .expressionFunctorToken(expressionFunctorToken)
-                                                      .build();
-
-    context.resetPreparedCache();
-    if (task.getData().getParameters() != null && task.getData().getParameters()[0] instanceof CfCommandRequest) {
-      task.setWorkflowExecutionId(context.getWorkflowExecutionId());
-      ExpressionReflectionUtils.applyExpression(task.getData().getParameters()[0],
-          (secretMode, value) -> context.renderExpression(value, stateExecutionContext));
-    }
   }
 
   private void appendDelegateTaskDetails(DelegateTask delegateTask, String stateExecutionInstanceId) {

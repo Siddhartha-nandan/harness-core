@@ -92,19 +92,14 @@ public class LogStreamingStepClientImpl implements ILogStreamingStepClient {
 
   @Override
   public void closeAllOpenStreamsWithPrefix(String prefix) {
-    closeLogStreamsWithPrefix(prefix, true);
-  }
-
-  @Override
-  public void closeLogStreamsWithPrefix(String logKey, boolean prefix) {
     // we don't want steps to hang because of any log reasons.
     logStreamingDelayExecutor.schedule(() -> {
       try {
         SafeHttpCall.executeWithExceptions(
-            logStreamingClient.closeLogStreamWithPrefix(token, accountId, logKey, true, prefix));
+            logStreamingClient.closeLogStreamWithPrefix(token, accountId, prefix, true, true));
       } catch (Exception ex) {
         log.warn(
-            String.format("Unable to close log stream for account %s and logKeySuffix %s ", accountId, logKey), ex);
+            String.format("Unable to close log stream for account %s and logKeySuffix %s ", accountId, prefix), ex);
       }
     }, delayToClosePrefixLogStream, TimeUnit.SECONDS);
   }

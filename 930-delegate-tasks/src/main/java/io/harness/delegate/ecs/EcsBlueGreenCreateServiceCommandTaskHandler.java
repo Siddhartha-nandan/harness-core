@@ -66,8 +66,7 @@ public class EcsBlueGreenCreateServiceCommandTaskHandler extends EcsCommandTaskN
           ecsBlueGreenCreateServiceRequest.getEcsLoadBalancerConfig(),
           ecsBlueGreenCreateServiceRequest.getTargetGroupArnKey(),
           ecsBlueGreenCreateServiceRequest.isSameAsAlreadyRunningInstances(),
-          ecsBlueGreenCreateServiceRequest.isRemoveAutoScalingFromBlueService(),
-          ecsBlueGreenCreateServiceRequest.isUpdateGreenService());
+          ecsBlueGreenCreateServiceRequest.isRemoveAutoScalingFromBlueService());
     } catch (Exception e) {
       deployLogCallback.saveExecutionLog(color(format("%n Deployment Failed."), LogColor.Red, LogWeight.Bold),
           LogLevel.ERROR, CommandExecutionStatus.FAILURE);

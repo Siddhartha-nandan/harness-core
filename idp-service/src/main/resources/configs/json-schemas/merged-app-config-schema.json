@@ -18,8 +18,7 @@
     "confluence",
     "catalog",
     "grafana",
-    "sonarqube",
-    "opsgenie"
+    "sonarqube"
   ],
   "properties": {
     "app": {
@@ -73,10 +72,6 @@
     "sonarqube": {
       "$id": "#root/sonarqube",
       "title": "Sonarqube"
-    },
-    "opsgenie": {
-      "$id": "#root/opsgenie",
-      "title": "OpsGenie"
     }
   }
 }

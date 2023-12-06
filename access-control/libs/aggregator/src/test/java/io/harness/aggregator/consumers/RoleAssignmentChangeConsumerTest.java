@@ -11,10 +11,7 @@ import static io.harness.accesscontrol.common.AccessControlTestUtils.getRandomSt
 import static io.harness.accesscontrol.principals.PrincipalType.USER;
 import static io.harness.accesscontrol.principals.PrincipalType.USER_GROUP;
 import static io.harness.accesscontrol.roleassignments.persistence.RoleAssignmentDBOMapper.fromDBO;
-import static io.harness.aggregator.ACLEventProcessingConstants.CREATE_ACTION;
-import static io.harness.aggregator.ACLEventProcessingConstants.DELETE_ACTION;
 import static io.harness.annotations.dev.HarnessTeam.PL;
-import static io.harness.rule.OwnerRule.ASHISHSANODIA;
 import static io.harness.rule.OwnerRule.JIMIT_GANDHI;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,7 +19,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.harness.accesscontrol.acl.persistence.ACL;
@@ -47,7 +43,6 @@ import io.harness.accesscontrol.roles.RoleTestUtils;
 import io.harness.accesscontrol.scopes.TestScopeLevels;
 import io.harness.accesscontrol.scopes.core.Scope;
 import io.harness.accesscontrol.scopes.core.ScopeService;
-import io.harness.aggregator.AccessControlAdminService;
 import io.harness.aggregator.AggregatorTestBase;
 import io.harness.aggregator.models.RoleAssignmentChangeEventData;
 import io.harness.annotations.dev.OwnedBy;
@@ -82,7 +77,6 @@ public class RoleAssignmentChangeConsumerTest extends AggregatorTestBase {
   private UserGroup userGroup;
   private String user;
   private InMemoryPermissionRepository inMemoryPermissionRepository;
-  private AccessControlAdminService accessControlAdminService;
 
   @Before
   public void setup() {
@@ -92,12 +86,11 @@ public class RoleAssignmentChangeConsumerTest extends AggregatorTestBase {
     scopeService = mock(ScopeService.class);
     roleAssignmentRepository = mock(RoleAssignmentRepository.class);
     inMemoryPermissionRepository = mock(InMemoryPermissionRepository.class);
-    accessControlAdminService = mock(AccessControlAdminService.class);
     when(inMemoryPermissionRepository.isPermissionCompatibleWithResourceSelector(any(), any())).thenReturn(true);
     ACLGeneratorService aclGeneratorService = new ACLGeneratorServiceImpl(roleService, userGroupService,
         resourceGroupService, scopeService, new HashMap<>(), aclRepository, inMemoryPermissionRepository, 50000);
-    roleAssignmentChangeConsumer = new RoleAssignmentChangeConsumer(
-        aclRepository, roleAssignmentRepository, aclGeneratorService, accessControlAdminService);
+    roleAssignmentChangeConsumer =
+        new RoleAssignmentChangeConsumer(aclRepository, roleAssignmentRepository, aclGeneratorService);
     scope = Scope.builder().level(TestScopeLevels.TEST_SCOPE).instanceId(getRandomString(10)).build();
     scopeIdentifier = scope.toString();
     role = RoleTestUtils.buildRole(scopeIdentifier);
@@ -120,11 +113,9 @@ public class RoleAssignmentChangeConsumerTest extends AggregatorTestBase {
              roleAssignmentDBO.getIdentifier(), roleAssignmentDBO.getScopeIdentifier()))
         .thenReturn(Optional.of(roleAssignmentDBO));
     RoleAssignment roleAssignment = fromDBO(roleAssignmentDBO);
-    RoleAssignmentChangeEventData roleAssignmentChangeEventData = RoleAssignmentChangeEventData.builder()
-                                                                      .scope(Optional.ofNullable(scope))
-                                                                      .newRoleAssignment(roleAssignment)
-                                                                      .build();
-    roleAssignmentChangeConsumer.consumeEvent(CREATE_ACTION, roleAssignmentDBO.getId(), roleAssignmentChangeEventData);
+    RoleAssignmentChangeEventData roleAssignmentChangeEventData =
+        RoleAssignmentChangeEventData.builder().newRoleAssignment(roleAssignment).build();
+    roleAssignmentChangeConsumer.consumeCreateEvent(roleAssignmentDBO.getId(), roleAssignmentChangeEventData);
     when(scopeService.buildScopeFromScopeIdentifier(roleAssignmentDBO.getScopeIdentifier())).thenReturn(scope);
     return roleAssignmentDBO;
   }
@@ -137,24 +128,6 @@ public class RoleAssignmentChangeConsumerTest extends AggregatorTestBase {
         Principal.builder().principalIdentifier(userGroup.getIdentifier()).principalType(USER_GROUP).build());
     verifyACLs(roleAssignmentDBO);
     verifyInvocations(roleAssignmentDBO);
-  }
-
-  @Test
-  @Owner(developers = ASHISHSANODIA)
-  @Category(UnitTests.class)
-  public void testRoleAssignmentCreation_withUserGroup_shouldNotCreateACLs_WhenAccountIsBlocked() {
-    when(accessControlAdminService.isBlocked(any())).thenReturn(true);
-    RoleAssignmentDBO roleAssignmentDBO = createACLsForRoleAssignment(
-        Principal.builder().principalIdentifier(userGroup.getIdentifier()).principalType(USER_GROUP).build());
-    assertThat(new HashSet<>(aclRepository.getDistinctPermissionsInACLsForRoleAssignment(roleAssignmentDBO.getId())))
-        .isEmpty();
-    assertThat(new HashSet<>(aclRepository.getDistinctPrincipalsInACLsForRoleAssignment(roleAssignmentDBO.getId())))
-        .isEmpty();
-    assertThat(new HashSet<>(aclRepository.getDistinctResourceSelectorsInACLs(roleAssignmentDBO.getId()))).isEmpty();
-    verifyNoInteractions(roleAssignmentRepository);
-    verifyNoInteractions(roleService);
-    verifyNoInteractions(resourceGroupService);
-    verifyNoInteractions(userGroupService);
   }
 
   @Test
@@ -216,25 +189,6 @@ public class RoleAssignmentChangeConsumerTest extends AggregatorTestBase {
     RoleAssignmentChangeEventData roleAssignmentChangeEventData =
         RoleAssignmentChangeEventData.builder().deletedRoleAssignment(roleAssignment).build();
     roleAssignmentChangeConsumer.consumeDeleteEvent(roleAssignmentDBO.getId(), roleAssignmentChangeEventData);
-    verifyNoACLs(roleAssignmentDBO);
-  }
-
-  @Test
-  @Owner(developers = ASHISHSANODIA)
-  @Category(UnitTests.class)
-  public void testRoleAssignmentDeletion_shouldDeleteACLs_EvenWhenAccountIsBlocked() {
-    RoleAssignmentDBO roleAssignmentDBO =
-        createACLsForRoleAssignment(Principal.builder().principalIdentifier(user).principalType(USER).build());
-    verifyACLs(roleAssignmentDBO);
-
-    when(accessControlAdminService.isBlocked(any())).thenReturn(true);
-
-    RoleAssignment roleAssignment = fromDBO(roleAssignmentDBO);
-    RoleAssignmentChangeEventData roleAssignmentChangeEventData = RoleAssignmentChangeEventData.builder()
-                                                                      .scope(Optional.ofNullable(scope))
-                                                                      .deletedRoleAssignment(roleAssignment)
-                                                                      .build();
-    roleAssignmentChangeConsumer.consumeEvent(DELETE_ACTION, roleAssignmentDBO.getId(), roleAssignmentChangeEventData);
     verifyNoACLs(roleAssignmentDBO);
   }
 

@@ -12,7 +12,6 @@ import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.notification.Team;
 import io.harness.notification.model.NotificationRuleReferenceDTO;
 import io.harness.notification.remote.dto.EmailDTO;
-import io.harness.notification.remote.dto.NotificationRequestDTO;
 import io.harness.notification.remote.dto.NotificationSettingDTO;
 import io.harness.notification.remote.dto.TemplateDTO;
 
@@ -42,10 +41,4 @@ public interface NotificationHTTPClient {
       @Query("accountIdentifier") String accountIdentifier, @Query("orgIdentifier") String orgIdentifier,
       @Query("projectIdentifier") String projectIdentifier, @Query("notificationEntity") String notificationEntity,
       @Query("notificationEvent") String notificationEvent);
-
-  @GET("channels/is-default-smtp-present")
-  Call<ResponseDTO<Boolean>> isDefaultSMTPPresent(@Query(value = "accountId") String accountId);
-
-  @POST("channels/send")
-  Call<ResponseDTO<NotificationTaskResponse>> sendNotificationSync(@Body NotificationRequestDTO notificationRequestDTO);
 }

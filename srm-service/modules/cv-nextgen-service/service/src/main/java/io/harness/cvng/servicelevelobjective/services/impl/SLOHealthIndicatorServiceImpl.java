@@ -227,8 +227,7 @@ public class SLOHealthIndicatorServiceImpl implements SLOHealthIndicatorService 
     TimePeriod timePeriod = serviceLevelObjective.getCurrentTimeRange(currentLocalDate);
     Instant currentTimeMinute = DateTimeUtils.roundDownTo1MinBoundary(clock.instant());
     SLOGraphData sloGraphData;
-    if (featureFlagService.isFeatureFlagEnabled(
-            projectParams.getAccountIdentifier(), FeatureName.SRM_ENABLE_SLI_BUCKET.toString())) {
+    if (featureFlagService.isGlobalFlagEnabled(FeatureName.SRM_ENABLE_SLI_BUCKET.toString())) {
       sloGraphData = graphDataServiceV2.getGraphData(serviceLevelObjective,
           timePeriod.getStartTime(serviceLevelObjective.getZoneOffset()), currentTimeMinute, totalErrorBudgetMinutes,
           filter, 0L);

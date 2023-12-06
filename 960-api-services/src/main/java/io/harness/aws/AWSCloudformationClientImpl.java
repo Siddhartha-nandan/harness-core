@@ -493,8 +493,7 @@ public class AWSCloudformationClientImpl implements AWSCloudformationClient {
         List<StackEvent> stackEvents = getAllStackEvents(region,
             new DescribeStackEventsRequest().withStackName(describeStacksRequest.getStackName()), awsConfig,
             lastStackEventsTs);
-        lastStackEventsTs =
-            awsCloudformationPrintHelper.printStackEventsInReverseOrder(stackEvents, lastStackEventsTs, logCallback);
+        lastStackEventsTs = awsCloudformationPrintHelper.printStackEvents(stackEvents, lastStackEventsTs, logCallback);
       }
       future.get();
       List<StackResource> stackResources = getAllStackResources(

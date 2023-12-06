@@ -11,21 +11,16 @@ import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
 import static java.util.Arrays.asList;
 
-import io.harness.annotations.dev.CodePulse;
-import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.annotations.dev.ProductModule;
 import io.harness.changestreamsframework.ChangeEvent;
 import io.harness.ng.core.service.entity.ServiceEntity.ServiceEntityKeys;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.mongodb.DBObject;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @OwnedBy(PIPELINE)
-@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_DASHBOARD})
 public class ServicesChangeDataHandler extends AbstractChangeDataHandler {
   @Override
   public Map<String, String> getColumnValueMapping(ChangeEvent<?> changeEvent, String[] fields) {
@@ -55,7 +50,6 @@ public class ServicesChangeDataHandler extends AbstractChangeDataHandler {
 
     if (dbObject.get(ServiceEntityKeys.identifier) != null) {
       columnValueMapping.put("identifier", dbObject.get(ServiceEntityKeys.identifier).toString());
-      columnValueMapping.put("fully_qualified_identifier", getFullyQualifiedIdentifier(dbObject));
     }
 
     if (dbObject.get(ServiceEntityKeys.name) != null) {
@@ -75,18 +69,6 @@ public class ServicesChangeDataHandler extends AbstractChangeDataHandler {
     }
 
     return columnValueMapping;
-  }
-
-  @VisibleForTesting
-  static String getFullyQualifiedIdentifier(DBObject dbObject) {
-    if (dbObject.get(ServiceEntityKeys.orgIdentifier) == null
-        && dbObject.get(ServiceEntityKeys.projectIdentifier) == null) {
-      return "account." + dbObject.get(ServiceEntityKeys.identifier).toString();
-    } else if (dbObject.get(ServiceEntityKeys.projectIdentifier) == null) {
-      return "org." + dbObject.get(ServiceEntityKeys.identifier).toString();
-    } else {
-      return dbObject.get(ServiceEntityKeys.identifier).toString();
-    }
   }
 
   public boolean shouldDelete() {

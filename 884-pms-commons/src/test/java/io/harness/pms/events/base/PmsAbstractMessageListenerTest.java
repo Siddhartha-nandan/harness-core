@@ -14,8 +14,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.jooq.tools.reflect.Reflect.on;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
 import io.harness.PmsCommonsTestBase;
@@ -31,16 +29,13 @@ import io.harness.pms.contracts.interrupts.InterruptType;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.events.PmsEventFrameworkConstants;
-import io.harness.pms.events.PmsEventMonitoringConstants;
 import io.harness.pms.gitsync.PmsGitSyncBranchContextGuard;
 import io.harness.pms.gitsync.PmsGitSyncHelper;
 import io.harness.rule.Owner;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import lombok.SneakyThrows;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -109,7 +104,6 @@ public class PmsAbstractMessageListenerTest extends PmsCommonsTestBase {
     NoopPmsEventHandler eventHandler = new NoopPmsEventHandler();
     on(eventHandler).set("pmsGitSyncHelper", pmsGitSyncHelper);
     on(eventHandler).set("eventMonitoringService", eventMonitoringService);
-    doNothing().when(eventMonitoringService).sendMetric(any(), anyLong());
     NoopPmsMessageListener noopListener = new NoopPmsMessageListener("RANDOM_SERVICE", eventHandler);
     boolean handled = noopListener.handleMessage(
         Message.newBuilder()
@@ -118,7 +112,7 @@ public class PmsAbstractMessageListenerTest extends PmsCommonsTestBase {
                             .setData(InterruptEvent.newBuilder().setType(InterruptType.ABORT).build().toByteString())
                             .build())
             .build(),
-        getMetricInfo());
+        System.currentTimeMillis());
     assertThat(handled).isTrue();
   }
 
@@ -131,7 +125,6 @@ public class PmsAbstractMessageListenerTest extends PmsCommonsTestBase {
     on(eventHandler).set("eventMonitoringService", eventMonitoringService);
     when(pmsGitSyncHelper.createGitSyncBranchContextGuard(any(), anyBoolean()))
         .thenReturn(new PmsGitSyncBranchContextGuard(null, false));
-    doNothing().when(eventMonitoringService).sendMetric(any(), anyLong());
     NoopPmsMessageListener noopListener = new NoopPmsMessageListener("RANDOM_SERVICE", eventHandler);
     boolean handled = noopListener.handleMessage(
         Message.newBuilder()
@@ -144,15 +137,8 @@ public class PmsAbstractMessageListenerTest extends PmsCommonsTestBase {
                                          .toByteString())
                             .build())
             .build(),
-        getMetricInfo());
+        System.currentTimeMillis());
     assertThat(handled).isTrue();
-  }
-
-  private Map<String, Object> getMetricInfo() {
-    Map<String, Object> metricInfo = new HashMap<>();
-    metricInfo.put(PmsEventMonitoringConstants.EVENT_SEND_TS, System.currentTimeMillis());
-    metricInfo.put(PmsEventMonitoringConstants.EVENT_RECEIVE_TS, System.currentTimeMillis());
-    return metricInfo;
   }
 
   public static Ambiance buildAmbiance() {

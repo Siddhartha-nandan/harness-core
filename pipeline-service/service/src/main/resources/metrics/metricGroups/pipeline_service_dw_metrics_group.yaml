@@ -2,4 +2,5 @@ name: Pipeline Service DW Metrics Group
 identifier: PipelineServiceDwMetricsGroup
 labels:
   - namespace
+  - containerName
   - serviceName

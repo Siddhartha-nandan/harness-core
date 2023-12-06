@@ -12,7 +12,6 @@ import io.harness.cvng.servicelevelobjective.beans.SLIMetricType;
 import io.harness.exception.InvalidArgumentsException;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
-import dev.morphia.query.UpdateOperations;
 import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -60,14 +59,5 @@ public class MetricLessServiceLevelIndicator extends ServiceLevelIndicator {
   @Override
   public boolean shouldReAnalysis(ServiceLevelIndicator serviceLevelIndicator) {
     return false;
-  }
-
-  public static class MetricLessServiceLevelIndicatorUpdatableEntity
-      extends ServiceLevelIndicatorUpdatableEntity<MetricLessServiceLevelIndicator, MetricLessServiceLevelIndicator> {
-    @Override
-    public void setUpdateOperations(UpdateOperations<MetricLessServiceLevelIndicator> updateOperations,
-        MetricLessServiceLevelIndicator metricLessServiceLevelIndicator) {
-      setCommonOperations(updateOperations, metricLessServiceLevelIndicator);
-    }
   }
 }

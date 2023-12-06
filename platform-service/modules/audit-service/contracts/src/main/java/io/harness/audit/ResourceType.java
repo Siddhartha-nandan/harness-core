@@ -83,8 +83,7 @@ public enum ResourceType {
   GITOPS_GNUPG_KEY(ResourceTypeConstants.GITOPS_GNUPG_KEY),
   GITOPS_PROJECT_MAPPING(ResourceTypeConstants.GITOPS_PROJECT_MAPPING),
   GITOPS_APPLICATION(ResourceTypeConstants.GITOPS_APPLICATION),
-  CODE_REPOSITORY(ResourceTypeConstants.CODE_REPOSITORY),
-  MODULE_LICENSE(ResourceTypeConstants.MODULE_LICENSE);
+  CODE_REPOSITORY(ResourceTypeConstants.CODE_REPOSITORY);
 
   ResourceType(String resourceType) {
     if (!this.name().equals(resourceType)) {

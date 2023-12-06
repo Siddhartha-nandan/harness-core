@@ -92,7 +92,7 @@ public class NgManagerRule implements MethodRule, InjectorRuleMixinNew, MongoRul
     modules.add(new OASModule() {
       @Override
       public Collection<Class<?>> getResourceClasses() {
-        return new HashSet<>(NextGenConfiguration.getResourceClasses());
+        return NextGenConfiguration.getResourceClasses();
       }
     });
     modules.add(new AbstractModule() {

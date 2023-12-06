@@ -11,7 +11,6 @@ import io.harness.cvng.servicelevelobjective.beans.ServiceLevelObjectiveType;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import dev.morphia.query.UpdateOperations;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
@@ -44,12 +43,11 @@ public class SimpleServiceLevelObjective extends AbstractServiceLevelObjective {
     public void setUpdateOperations(UpdateOperations<SimpleServiceLevelObjective> updateOperations,
         SimpleServiceLevelObjective simpleServiceLevelObjective) {
       setCommonOperations(updateOperations, simpleServiceLevelObjective);
-      if (!Objects.isNull(simpleServiceLevelObjective.getHealthSourceIdentifier())) {
-        updateOperations.set(SimpleServiceLevelObjectiveKeys.healthSourceIdentifier,
-            simpleServiceLevelObjective.getHealthSourceIdentifier());
-      }
-      updateOperations.set(SimpleServiceLevelObjectiveKeys.monitoredServiceIdentifier,
-          simpleServiceLevelObjective.getMonitoredServiceIdentifier());
+      updateOperations
+          .set(SimpleServiceLevelObjectiveKeys.healthSourceIdentifier,
+              simpleServiceLevelObjective.getHealthSourceIdentifier())
+          .set(SimpleServiceLevelObjectiveKeys.monitoredServiceIdentifier,
+              simpleServiceLevelObjective.getMonitoredServiceIdentifier());
     }
   }
 }

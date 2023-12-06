@@ -62,7 +62,6 @@ import software.wings.beans.LogWeight;
 import software.wings.service.impl.AwsUtils;
 
 import com.amazonaws.services.autoscaling.model.AutoScalingGroup;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -107,7 +106,13 @@ public class AsgBlueGreenDeployCommandTaskHandler extends AsgCommandTaskNGHandle
         ? asgBlueGreenDeployRequest.getLoadBalancers()
         : Arrays.asList(asgBlueGreenDeployRequest.getAsgLoadBalancerConfig());
 
-    List<String> targetGroupArnsList = getTargetGroupArnsList(lbConfigs, isFirstDeployment);
+    List<String> targetGroupArnsList =
+        lbConfigs.stream()
+            .map(lbConfig
+                -> isFirstDeployment ? lbConfig.getProdTargetGroupArnsList() : lbConfig.getStageTargetGroupArnsList())
+            .flatMap(List::stream)
+            .distinct()
+            .collect(Collectors.toList());
 
     LogCallback logCallback = asgTaskHelper.getLogCallback(
         iLogStreamingTaskClient, AsgCommandUnitConstants.deploy.toString(), true, commandUnitsProgress);
@@ -224,19 +229,5 @@ public class AsgBlueGreenDeployCommandTaskHandler extends AsgCommandTaskNGHandle
     asgSdkManager.info("Set tag %s=%s for asg %s", AsgSdkManager.BG_VERSION, bgTagValue, asgName);
 
     return asgTaskHelper.mapToAutoScalingGroupContainer(autoScalingGroup);
-  }
-
-  @VisibleForTesting
-  List<String> getTargetGroupArnsList(List<AsgLoadBalancerConfig> lbConfigs, boolean isFirstDeployment) {
-    return lbConfigs.stream()
-        .map(lbConfig -> {
-          if (!isFirstDeployment || asgTaskHelper.isShiftTrafficFeature(lbConfig)) {
-            return lbConfig.getStageTargetGroupArnsList();
-          }
-          return lbConfig.getProdTargetGroupArnsList();
-        })
-        .flatMap(List::stream)
-        .distinct()
-        .collect(Collectors.toList());
   }
 }

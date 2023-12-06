@@ -46,6 +46,7 @@ import io.harness.rule.Owner;
 import software.wings.WingsBaseTest;
 import software.wings.beans.Account;
 import software.wings.beans.TaskType;
+import software.wings.service.impl.DelegateTaskServiceClassicImpl;
 import software.wings.service.intfc.AssignDelegateService;
 
 import com.google.common.collect.ImmutableSet;
@@ -72,6 +73,7 @@ public class FailDelegateTaskIteratorTest extends WingsBaseTest {
   @InjectMocks @Inject private FailDelegateTaskIteratorOnDMS failDelegateTaskIteratorOnDMS;
   @InjectMocks @Inject private FailDelegateTaskIteratorHelper failDelegateTaskIteratorHelper;
   @Mock private AssignDelegateService assignDelegateService;
+  @InjectMocks @Inject private DelegateTaskServiceClassicImpl delegateTaskServiceClassic;
   @Inject private HPersistence persistence;
   @Inject private Clock clock;
 
@@ -391,7 +393,7 @@ public class FailDelegateTaskIteratorTest extends WingsBaseTest {
             .status(STARTED)
             .build();
     persistence.save(delegateTask);
-    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask);
+    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask, false);
     assertThat(persistence.createQuery(DelegateTask.class).get()).isNotNull();
   }
 
@@ -418,7 +420,7 @@ public class FailDelegateTaskIteratorTest extends WingsBaseTest {
             .validationCompleteDelegateIds(ImmutableSet.of("del1", "del2"))
             .build();
     persistence.save(delegateTask);
-    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask);
+    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask, false);
     assertThat(persistence.createQuery(DelegateTask.class).get()).isNotNull();
   }
 
@@ -448,7 +450,7 @@ public class FailDelegateTaskIteratorTest extends WingsBaseTest {
             .build();
     persistence.save(delegateTask);
     when(assignDelegateService.connectedWhitelistedDelegates(delegateTask)).thenReturn(Arrays.asList("del1"));
-    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask);
+    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask, false);
     assertThat(persistence.createQuery(DelegateTask.class).get()).isNotNull();
   }
 
@@ -477,7 +479,7 @@ public class FailDelegateTaskIteratorTest extends WingsBaseTest {
             .validationCompleteDelegateIds(ImmutableSet.of("del1", "del2", "del3"))
             .build();
     persistence.save(delegateTask);
-    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask);
+    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask, false);
     assertThat(persistence.createQuery(DelegateTask.class).get()).isNull();
   }
 
@@ -507,7 +509,7 @@ public class FailDelegateTaskIteratorTest extends WingsBaseTest {
             .validationCompleteDelegateIds(ImmutableSet.of("del1", "del2", "del3"))
             .build();
     persistence.save(delegateTask);
-    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask);
+    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask, false);
     assertThat(persistence.createQuery(DelegateTask.class).get()).isNull();
   }
 
@@ -537,7 +539,7 @@ public class FailDelegateTaskIteratorTest extends WingsBaseTest {
             .build();
     persistence.save(delegateTask);
     when(assignDelegateService.connectedWhitelistedDelegates(delegateTask)).thenReturn(Arrays.asList("del1"));
-    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask);
+    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask, false);
     assertThat(persistence.createQuery(DelegateTask.class).get()).isNotNull();
   }
 
@@ -566,7 +568,7 @@ public class FailDelegateTaskIteratorTest extends WingsBaseTest {
             .validationStartedAt(validationStarted)
             .build();
     persistence.save(delegateTask);
-    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask);
+    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask, false);
     assertThat(persistence.createQuery(DelegateTask.class).get()).isNotNull();
   }
 
@@ -595,7 +597,7 @@ public class FailDelegateTaskIteratorTest extends WingsBaseTest {
             .validationCompleteDelegateIds(ImmutableSet.of("del1", "del2", "del3"))
             .build();
     persistence.save(delegateTask);
-    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask);
+    failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask, false);
     assertThat(persistence.createQuery(DelegateTask.class).get()).isNotNull();
   }
 
@@ -625,7 +627,7 @@ public class FailDelegateTaskIteratorTest extends WingsBaseTest {
             .build();
     persistence.save(delegateTask);
     final Thread iteratorThread =
-        new Thread(() -> { failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask); });
+        new Thread(() -> { failDelegateTaskIteratorHelper.failValidationCompletedQueuedTask(delegateTask, false); });
     final Thread acquireThread = new Thread(() -> {
       delegateTask.setStatus(STARTED);
       persistence.save(delegateTask);

@@ -450,7 +450,6 @@ public class EnvironmentFilterHelper {
     // for service override v2
     update.set(NGServiceOverridesEntityKeys.identifier, identifier);
     update.set(NGServiceOverridesEntityKeys.type, type);
-    update.set(NGServiceOverridesEntityKeys.yamlV2, serviceOverridesEntity.getYamlV2());
     return update;
   }
 

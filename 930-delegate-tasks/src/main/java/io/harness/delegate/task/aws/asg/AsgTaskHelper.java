@@ -30,7 +30,6 @@ import io.harness.aws.asg.manifest.request.AsgInstanceCapacity;
 import io.harness.aws.asg.manifest.request.AsgScalingPolicyManifestRequest;
 import io.harness.aws.asg.manifest.request.AsgScheduledActionManifestRequest;
 import io.harness.aws.beans.AsgCapacityConfig;
-import io.harness.aws.beans.AsgLoadBalancerConfig;
 import io.harness.aws.beans.AwsInternalConfig;
 import io.harness.aws.v2.ecs.ElbV2Client;
 import io.harness.delegate.beans.instancesync.ServerInstanceInfo;
@@ -81,7 +80,6 @@ public class AsgTaskHelper {
   private static final String EXEC_STRATEGY_BLUEGREEN = "blue-green";
   private static final String BG_GREEN = "GREEN";
   private static final String BG_BLUE = "BLUE";
-
   public LogCallback getLogCallback(ILogStreamingTaskClient logStreamingTaskClient, String commandUnitName,
       boolean shouldOpenStream, CommandUnitsProgress commandUnitsProgress) {
     return new NGDelegateLogCallback(logStreamingTaskClient, commandUnitName, shouldOpenStream, commandUnitsProgress);
@@ -415,9 +413,5 @@ public class AsgTaskHelper {
 
   private int getMaxCapacityValue(Integer value) {
     return getDesiredCapacityValue(value);
-  }
-
-  public boolean isShiftTrafficFeature(AsgLoadBalancerConfig lbCfg) {
-    return isEmpty(lbCfg.getStageListenerRuleArn());
   }
 }

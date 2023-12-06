@@ -67,8 +67,6 @@ public class ArtifactEntity implements PersistentEntity {
   @Setter @NonFinal Long prodEnvCount;
   @Setter @NonFinal Long nonProdEnvCount;
 
-  @Setter @NonFinal Scorecard scorecard;
-
   @Value
   @Builder
   public static class Sbom {
@@ -76,12 +74,5 @@ public class ArtifactEntity implements PersistentEntity {
     @Field("toolversion") String toolVersion;
     @Field("sbomformat") String sbomFormat;
     @Field("sbomversion") String sbomVersion;
-  }
-
-  @Value
-  @Builder
-  public static class Scorecard {
-    @Field("avgScore") String avgScore;
-    @Field("maxScore") String maxScore;
   }
 }

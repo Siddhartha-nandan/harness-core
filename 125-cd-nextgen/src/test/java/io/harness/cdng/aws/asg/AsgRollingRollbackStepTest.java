@@ -128,8 +128,6 @@ public class AsgRollingRollbackStepTest extends CategoryTest {
     doReturn(List.of(asgServerInstanceInfo)).when(asgStepCommonHelper).getServerInstanceInfos(any(), any(), any());
 
     doReturn(asgInfrastructureOutcome).when(outcomeService).resolve(any(), any());
-    doReturn(asgInfrastructureOutcome).when(asgStepCommonHelper).getInfrastructureOutcomeWithUpdatedExpressions(any());
-
     StepResponse stepResponse =
         asgRollingRollbackStep.handleTaskResultWithSecurityContext(ambiance, stepElementParameters, () -> responseData);
 
@@ -237,7 +235,6 @@ public class AsgRollingRollbackStepTest extends CategoryTest {
     doReturn(taskChainResponse1)
         .when(asgStepCommonHelper)
         .queueAsgTask(any(), any(), any(), any(), anyBoolean(), any(TaskType.class));
-    doReturn(infrastructureOutcome).when(asgStepCommonHelper).getInfrastructureOutcomeWithUpdatedExpressions(any());
 
     TaskRequest taskRequest = asgRollingRollbackStep.obtainTaskAfterRbac(ambiance, stepElementParameters, inputPackage);
     assertThat(taskRequest).isEqualTo(TaskRequest.newBuilder().build());

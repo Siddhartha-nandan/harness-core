@@ -17,6 +17,4 @@ import org.springframework.data.mongodb.core.query.Criteria;
 public interface VariableRepositoryCustom {
   Page<Variable> findAll(Criteria criteria, Pageable pageable);
   List<Variable> findAll(Criteria criteria);
-
-  Page<Variable> findAllWithCollation(Criteria criteria, Pageable pageable);
 }

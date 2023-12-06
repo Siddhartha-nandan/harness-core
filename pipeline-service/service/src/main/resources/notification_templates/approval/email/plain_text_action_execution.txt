@@ -1,7 +1,7 @@
-subject: "Pipeline ${pipelineName} ${status} for stage: ${currentStageName}."
+subject: "Pipeline ${pipelineName} ${status} for stage: ${runningStages}."
 body: "
 <html>
-<b>Pipeline  <a href=\"${pipelineExecutionLink}\">${pipelineName}</a>  ${status} for stage: ${currentStageName}.</b><br><br>
+<b>Pipeline  <a href=\"${pipelineExecutionLink}\">${pipelineName}</a>  ${status} for stage: ${runningStages}.</b><br><br>
 
 <b>Actions:</b><br>
 <b>${action}</b><br><br>
@@ -11,12 +11,9 @@ body: "
 <b>Triggered by:</b> ${triggeredBy}<br><br>
 
 <b>Pipeline execution summary:</b><br>
-<b>Upcoming Stages:</b><br>
-${upcomingStages}<br>
-<b>Completed Stages:</b><br>
-${finishedStages}<br>
-<b>Running Stages:</b><br>
-${runningStages}<br><br>
+Upcoming Stages: ${upcomingStages}<br>
+Completed Stages: ${finishedStages}<br>
+Running Stages: ${runningStages}<br><br>
 
 <i>Pipeline started on ${startedAt} </i><br>
 </html>

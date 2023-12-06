@@ -9,11 +9,6 @@ package io.harness.changehandlers;
 
 import static java.util.Arrays.asList;
 
-import io.harness.annotations.dev.CodePulse;
-import io.harness.annotations.dev.HarnessModuleComponent;
-import io.harness.annotations.dev.HarnessTeam;
-import io.harness.annotations.dev.OwnedBy;
-import io.harness.annotations.dev.ProductModule;
 import io.harness.changestreamsframework.ChangeEvent;
 import io.harness.ng.core.entities.Project.ProjectKeys;
 
@@ -22,8 +17,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_DASHBOARD})
-@OwnedBy(HarnessTeam.CDC)
 public class ProjectsChangeDataHandler extends AbstractChangeDataHandler {
   @Override
   public Map<String, String> getColumnValueMapping(ChangeEvent<?> changeEvent, String[] fields) {

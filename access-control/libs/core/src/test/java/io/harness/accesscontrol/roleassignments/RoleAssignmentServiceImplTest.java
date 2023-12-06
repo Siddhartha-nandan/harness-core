@@ -29,9 +29,10 @@ import static org.mockito.Mockito.when;
 import io.harness.accesscontrol.AccessControlCoreTestBase;
 import io.harness.accesscontrol.common.validation.ValidationResult;
 import io.harness.accesscontrol.principals.PrincipalType;
-import io.harness.accesscontrol.roleassignments.events.RoleAssignmentCreateEventV2;
-import io.harness.accesscontrol.roleassignments.events.RoleAssignmentDeleteEventV2;
-import io.harness.accesscontrol.roleassignments.events.RoleAssignmentUpdateEventV2;
+import io.harness.accesscontrol.roleassignments.api.RoleAssignmentDTO;
+import io.harness.accesscontrol.roleassignments.events.RoleAssignmentCreateEvent;
+import io.harness.accesscontrol.roleassignments.events.RoleAssignmentDeleteEvent;
+import io.harness.accesscontrol.roleassignments.events.RoleAssignmentUpdateEvent;
 import io.harness.accesscontrol.roleassignments.persistence.RoleAssignmentDao;
 import io.harness.accesscontrol.roleassignments.validator.RoleAssignmentValidationRequest;
 import io.harness.accesscontrol.roleassignments.validator.RoleAssignmentValidationResult;
@@ -120,17 +121,17 @@ public class RoleAssignmentServiceImplTest extends AccessControlCoreTestBase {
             -> invocationOnMock.getArgument(0, TransactionCallback.class)
                    .doInTransaction(new SimpleTransactionStatus()));
     when(outboxService.save(any())).thenReturn(null);
-    ArgumentCaptor<RoleAssignmentCreateEventV2> argumentCaptor =
-        ArgumentCaptor.forClass(RoleAssignmentCreateEventV2.class);
+    ArgumentCaptor<RoleAssignmentCreateEvent> argumentCaptor = ArgumentCaptor.forClass(RoleAssignmentCreateEvent.class);
     when(roleAssignmentDao.create(any())).thenReturn(roleAssignment);
     when(scopeService.buildScopeFromScopeIdentifier(any())).thenReturn(scope);
     when(roleAssignmentValidator.validate(any())).thenReturn(roleAssignmentValidationResult);
     RoleAssignment result = roleAssignmentService.create(roleAssignment);
     verify(roleAssignmentValidator, times(1)).validate(roleAssignmentValidationRequestArgumentCaptor.capture());
     verify(outboxService, times(1)).save(argumentCaptor.capture());
-    RoleAssignmentCreateEventV2 roleAssignmentCreateEvent = argumentCaptor.getValue();
-    assertEquals(scope.toString(), roleAssignmentCreateEvent.getScope());
-    assertEquals(roleAssignment, roleAssignmentCreateEvent.getRoleAssignment());
+    RoleAssignmentCreateEvent roleAssignmentCreateEvent = argumentCaptor.getValue();
+    assertEquals(scopeDTO, roleAssignmentCreateEvent.getScope());
+    assertEquals(scopeDTO.getAccountIdentifier(), roleAssignmentCreateEvent.getAccountIdentifier());
+    assertEquals(RoleAssignmentDTOMapper.toDTO(roleAssignment), roleAssignmentCreateEvent.getRoleAssignment());
     assertEquals(roleAssignmentClone, result);
   }
 
@@ -216,8 +217,7 @@ public class RoleAssignmentServiceImplTest extends AccessControlCoreTestBase {
             -> invocationOnMock.getArgument(0, TransactionCallback.class)
                    .doInTransaction(new SimpleTransactionStatus()));
     when(outboxService.save(any())).thenReturn(null);
-    ArgumentCaptor<RoleAssignmentUpdateEventV2> argumentCaptor =
-        ArgumentCaptor.forClass(RoleAssignmentUpdateEventV2.class);
+    ArgumentCaptor<RoleAssignmentUpdateEvent> argumentCaptor = ArgumentCaptor.forClass(RoleAssignmentUpdateEvent.class);
     when(roleAssignmentDao.update(any())).thenReturn(updatedRoleAssignment);
     when(scopeService.buildScopeFromScopeIdentifier(any())).thenReturn(scope);
 
@@ -228,10 +228,13 @@ public class RoleAssignmentServiceImplTest extends AccessControlCoreTestBase {
     verify(outboxTransactionTemplate, times(1)).execute(any());
 
     verify(outboxService, times(1)).save(argumentCaptor.capture());
-    RoleAssignmentUpdateEventV2 roleAssignmentUpdateEvent = argumentCaptor.getValue();
-    assertEquals(scope.toString(), roleAssignmentUpdateEvent.getScope());
-    assertEquals(updatedRoleAssignment, roleAssignmentUpdateEvent.getNewRoleAssignment());
-    assertEquals(currentRoleAssignment, roleAssignmentUpdateEvent.getOldRoleAssignment());
+    RoleAssignmentUpdateEvent roleAssignmentUpdateEvent = argumentCaptor.getValue();
+    assertEquals(scopeDTO, roleAssignmentUpdateEvent.getScope());
+    assertEquals(scopeDTO.getAccountIdentifier(), roleAssignmentUpdateEvent.getAccountIdentifier());
+    assertEquals(
+        RoleAssignmentDTOMapper.toDTO(updatedRoleAssignment), roleAssignmentUpdateEvent.getNewRoleAssignment());
+    assertEquals(
+        RoleAssignmentDTOMapper.toDTO(currentRoleAssignment), roleAssignmentUpdateEvent.getOldRoleAssignment());
   }
 
   @Test(expected = InvalidRequestException.class)
@@ -326,13 +329,14 @@ public class RoleAssignmentServiceImplTest extends AccessControlCoreTestBase {
     assertEquals(scopeIdentifier, deletedRoleAssignment.get().getScopeIdentifier());
     assertEquals(roleIdentifier, deletedRoleAssignment.get().getRoleIdentifier());
     verify(roleAssignmentDao, times(1)).delete(identifier, scopeIdentifier);
-    ArgumentCaptor<RoleAssignmentDeleteEventV2> deleteEventArgumentCaptor =
-        ArgumentCaptor.forClass(RoleAssignmentDeleteEventV2.class);
+    ArgumentCaptor<RoleAssignmentDeleteEvent> deleteEventArgumentCaptor =
+        ArgumentCaptor.forClass(RoleAssignmentDeleteEvent.class);
     verify(outboxService, times(1)).save(deleteEventArgumentCaptor.capture());
-    RoleAssignmentDeleteEventV2 roleAssignmentDeleteEvent = deleteEventArgumentCaptor.getValue();
-    assertFalse(roleAssignmentDeleteEvent.isSkipAudit());
-    assertEquals(scope.toString(), roleAssignmentDeleteEvent.getScope());
-    assertEquals(deletedRoleAssignment.get(), roleAssignmentDeleteEvent.getRoleAssignment());
+    RoleAssignmentDeleteEvent roleAssignmentDeleteEvent = deleteEventArgumentCaptor.getValue();
+    assertFalse(roleAssignmentDeleteEvent.getSkipAudit());
+    assertEquals(scopeDTO, roleAssignmentDeleteEvent.getScope());
+    RoleAssignmentDTO roleAssignmentDTO = RoleAssignmentDTOMapper.toDTO(deletedRoleAssignment.get());
+    assertEquals(roleAssignmentDTO, roleAssignmentDeleteEvent.getRoleAssignment());
   }
 
   @Test
@@ -354,11 +358,11 @@ public class RoleAssignmentServiceImplTest extends AccessControlCoreTestBase {
         List.of(RoleAssignment.builder().build(), RoleAssignment.builder().build(), RoleAssignment.builder().build());
     when(roleAssignmentDao.findAndRemove(roleAssignmentFilter)).thenReturn(roleAssingmentsDeleted);
     long deletedRoleAssignmentsCount = roleAssignmentService.deleteMulti(roleAssignmentFilter);
-    ArgumentCaptor<RoleAssignmentDeleteEventV2> deleteEventArgumentCaptor =
-        ArgumentCaptor.forClass(RoleAssignmentDeleteEventV2.class);
+    ArgumentCaptor<RoleAssignmentDeleteEvent> deleteEventArgumentCaptor =
+        ArgumentCaptor.forClass(RoleAssignmentDeleteEvent.class);
     verify(outboxService, times(roleAssingmentsDeleted.size())).save(deleteEventArgumentCaptor.capture());
-    RoleAssignmentDeleteEventV2 roleAssignmentDeleteEvent = deleteEventArgumentCaptor.getValue();
-    assertTrue(roleAssignmentDeleteEvent.isSkipAudit());
+    RoleAssignmentDeleteEvent roleAssignmentDeleteEvent = deleteEventArgumentCaptor.getValue();
+    assertFalse(roleAssignmentDeleteEvent.getSkipAudit());
     assertEquals(3L, deletedRoleAssignmentsCount);
     verify(roleAssignmentDao, times(1)).findAndRemove(roleAssignmentFilter);
   }

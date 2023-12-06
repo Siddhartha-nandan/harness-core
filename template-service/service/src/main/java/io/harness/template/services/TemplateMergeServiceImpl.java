@@ -150,6 +150,7 @@ public class TemplateMergeServiceImpl implements TemplateMergeService {
     MergeTemplateInputsInObject mergeTemplateInputsInObject = null;
     String processedYamlVersion;
     Set<String> idsValuesSet = new HashSet<>();
+    Map<String, Integer> idsSuffixMap = new HashMap<>();
     if (HarnessYamlVersion.isV1(yamlVersion)) {
       // Collect ids set and Ids Suffix map from pipeline yaml
       YamlV1PreProcessor yamlV1PreProcessor =
@@ -157,16 +158,17 @@ public class TemplateMergeServiceImpl implements TemplateMergeService {
       YamlPreprocessorResponseDTO yamlPreprocessorResponseDTO =
           yamlV1PreProcessor.preProcess(entityYamlNode.getCurrJsonNode());
       idsValuesSet = yamlPreprocessorResponseDTO.getIdsValuesSet();
+      idsSuffixMap = yamlPreprocessorResponseDTO.getIdsSuffixMap();
     }
     if (!getMergedYamlWithTemplateField) {
       mergeTemplateInputsInObject =
           templateMergeServiceHelper.mergeTemplateInputsInObjectWithVersion(accountId, orgId, projectId, entityYamlNode,
-              templateCacheMap, 0, loadFromCache, appendInputSetValidator, yamlVersion, idsValuesSet);
+              templateCacheMap, 0, loadFromCache, appendInputSetValidator, yamlVersion, idsValuesSet, idsSuffixMap);
 
     } else {
-      mergeTemplateInputsInObject =
-          templateMergeServiceHelper.mergeTemplateInputsInObjectAlongWithOpaPolicy(accountId, orgId, projectId,
-              entityYamlNode, templateCacheMap, 0, loadFromCache, appendInputSetValidator, yamlVersion, idsValuesSet);
+      mergeTemplateInputsInObject = templateMergeServiceHelper.mergeTemplateInputsInObjectAlongWithOpaPolicy(accountId,
+          orgId, projectId, entityYamlNode, templateCacheMap, 0, loadFromCache, appendInputSetValidator, yamlVersion,
+          idsValuesSet, idsSuffixMap);
     }
     resMap = mergeTemplateInputsInObject.getResMap();
     processedYamlVersion = mergeTemplateInputsInObject.getProcessedYamlVersion();

@@ -6,9 +6,6 @@
  */
 
 package io.harness.ngmigration.service.step.verification;
-
-import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
-
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
@@ -39,14 +36,10 @@ import io.harness.plancreator.steps.AbstractStepNode;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YamlUtils;
 
-import software.wings.beans.CanaryOrchestrationWorkflow;
 import software.wings.beans.GraphNode;
-import software.wings.beans.PhaseStep;
 import software.wings.beans.Workflow;
-import software.wings.beans.WorkflowPhase;
 import software.wings.ngmigration.CgEntityId;
 import software.wings.ngmigration.NGMigrationEntityType;
-import software.wings.service.intfc.WorkflowService;
 import software.wings.sm.State;
 import software.wings.sm.states.AbstractLogAnalysisState;
 import software.wings.sm.states.AbstractMetricAnalysisState;
@@ -56,10 +49,8 @@ import com.google.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.Nullable;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_MIGRATOR})
 @OwnedBy(HarnessTeam.CDC)
@@ -76,7 +67,6 @@ public abstract class VerificationBaseService extends StepMapper {
       + "      connectorRef: \"{$hsConnectorRef}\"";
   @Inject MonitoredServiceEntityToMonitoredServiceMapper monitoredServiceEntityToMonitoredServiceMapper;
   @Inject HealthSourceGeneratorFactory healthSourceGeneratorFactory;
-  @Inject WorkflowService workflowService;
 
   @Override
   public SupportStatus stepSupportStatus(GraphNode graphNode) {
@@ -93,7 +83,8 @@ public abstract class VerificationBaseService extends StepMapper {
     List<CgEntityId> referencedEntities =
         new ArrayList<>(super.getReferencedEntities(accountId, workflow, graphNode, stepIdToServiceIdMap));
     if (monitoredServiceEntityToMonitoredServiceMapper.isMigrationSupported(graphNode)) {
-      CGMonitoredServiceEntity cgMonitoredServiceEntity = getMonitoredServiceEntity(graphNode, workflow);
+      CGMonitoredServiceEntity cgMonitoredServiceEntity =
+          CGMonitoredServiceEntity.builder().stepNode(graphNode).workflow(workflow).build();
       referencedEntities.add(CgEntityId.builder()
                                  .id(cgMonitoredServiceEntity.getId())
                                  .type(NGMigrationEntityType.MONITORED_SERVICE_TEMPLATE)
@@ -148,12 +139,8 @@ public abstract class VerificationBaseService extends StepMapper {
       if (graphNode.getProperties() != null && graphNode.getProperties().get("analysisServerConfigId") != null) {
         connectorId = graphNode.getProperties().get("analysisServerConfigId").toString();
       }
-
-      // Need from DB as phases are modified
-      Workflow workflow =
-          workflowService.readWorkflow(context.getWorkflow().getAppId(), context.getWorkflow().getUuid());
-      CGMonitoredServiceEntity cgMonitoredServiceEntity = getMonitoredServiceEntity(graphNode, workflow);
-
+      CGMonitoredServiceEntity cgMonitoredServiceEntity =
+          CGMonitoredServiceEntity.builder().workflow(context.getWorkflow()).stepNode(graphNode).build();
       NgEntityDetail ngEntityDetail = migrationContext.getMigratedEntities()
                                           .get(CgEntityId.builder()
                                                    .type(NGMigrationEntityType.MONITORED_SERVICE_TEMPLATE)
@@ -184,41 +171,5 @@ public abstract class VerificationBaseService extends StepMapper {
           .spec(DefaultMonitoredServiceSpec.builder().build())
           .build();
     }
-  }
-
-  @Nullable
-  public static CGMonitoredServiceEntity getMonitoredServiceEntity(GraphNode graphNode, Workflow workflow) {
-    CanaryOrchestrationWorkflow orchestrationWorkflow =
-        (CanaryOrchestrationWorkflow) workflow.getOrchestrationWorkflow();
-    if (orchestrationWorkflow != null) {
-      List<WorkflowPhase> phases = orchestrationWorkflow.getWorkflowPhases();
-      if (isNotEmpty(phases)) {
-        for (WorkflowPhase phase : phases) {
-          List<PhaseStep> phaseSteps = phase.getPhaseSteps();
-          for (PhaseStep phaseStep : phaseSteps) {
-            List<GraphNode> steps = phaseStep.getSteps();
-            if (isNotEmpty(steps)) {
-              Optional<GraphNode> first = steps.stream().filter(gn -> gn.getId().equals(graphNode.getId())).findFirst();
-              if (first.isPresent()) {
-                return CGMonitoredServiceEntity.builder()
-                    .workflow(workflow)
-                    .stepNode(first.get())
-                    .phase(phase)
-                    .phaseStep(phaseStep)
-                    .build();
-              }
-            }
-          }
-        }
-      }
-    }
-    return null;
-  }
-
-  @Nullable
-  public static CGMonitoredServiceEntity getMonitoredServiceEntity(String entityId, Workflow workflow) {
-    List<GraphNode> steps = MigratorUtility.getSteps(workflow);
-    GraphNode graphNode = steps.stream().filter(node -> node.getId().equals(entityId)).findFirst().get();
-    return getMonitoredServiceEntity(graphNode, workflow);
   }
 }

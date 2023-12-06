@@ -124,7 +124,7 @@ public class TriggerWebhookEventExecutionServiceImpl implements TriggerWebhookEv
 
   @Override
   public void handleEvent(
-      TriggerExecutionDTO triggerExecutionDTO, Map<String, String> metadataMap, Map<String, Object> metricInfo) {
+      TriggerExecutionDTO triggerExecutionDTO, Map<String, String> metadataMap, long messageTimeStamp, long readTs) {
     SecurityContextBuilder.setContext(new ServicePrincipal(PIPELINE_SERVICE.getServiceId()));
     if (triggerExecutionDTO == null) {
       return;

@@ -35,7 +35,7 @@ public class NewRelicDataCollectionInfo extends TimeSeriesDataCollectionInfo<New
   private static final String METRIC_NAMES_KEY = "metricNames";
 
   private String applicationName;
-  private Long applicationId;
+  private long applicationId;
   private String groupName;
   private List<NewRelicMetricInfoDTO> metricInfoList;
   private MetricPackDTO metricPack;

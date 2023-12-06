@@ -3,4 +3,5 @@ identifier: PipelineServiceDwMetricsHttpMethodGroup
 labels:
   - method
   - namespace
+  - containerName
   - serviceName

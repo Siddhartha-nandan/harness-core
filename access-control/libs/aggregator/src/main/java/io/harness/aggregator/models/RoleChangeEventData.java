@@ -14,13 +14,13 @@ import io.harness.aggregator.consumers.AccessControlChangeEventData;
 import io.harness.annotations.dev.OwnedBy;
 
 import java.util.Set;
+import lombok.Builder;
 import lombok.Data;
-import lombok.experimental.SuperBuilder;
 
 @Data
-@SuperBuilder
+@Builder
 @OwnedBy(PL)
-public class RoleChangeEventData extends AccessControlChangeEventData {
+public class RoleChangeEventData implements AccessControlChangeEventData {
   Set<String> permissionsAdded;
   Set<String> permissionsRemoved;
   Role updatedRole;

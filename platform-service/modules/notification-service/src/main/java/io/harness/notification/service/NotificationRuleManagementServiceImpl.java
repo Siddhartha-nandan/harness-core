@@ -9,8 +9,7 @@ package io.harness.notification.service;
 
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
-
-import static java.lang.String.format;
+import static io.harness.exception.WingsException.USER;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.exception.DuplicateFieldException;
@@ -20,15 +19,12 @@ import io.harness.notification.entities.NotificationRule;
 import io.harness.notification.entities.NotificationRule.NotificationRuleKeys;
 import io.harness.notification.repositories.NotificationRuleRepository;
 import io.harness.notification.service.api.NotificationRuleManagementService;
-import io.harness.notification.utils.NotificationRuleFilterProperties;
 
 import com.google.inject.Inject;
-import com.mongodb.DuplicateKeyException;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.query.Criteria;
 
 @AllArgsConstructor(onConstructor = @__({ @Inject }))
@@ -43,7 +39,7 @@ public class NotificationRuleManagementServiceImpl implements NotificationRuleMa
       return notificationRuleRepository.save(notificationRule);
     } catch (DuplicateKeyException duplicateKeyException) {
       throw new DuplicateFieldException(
-          format("Notification Rule exists with same name %s exists", notificationRule.getIdentifier()));
+          "Duplicate identifier, please try again with a new identifier", USER, duplicateKeyException);
     }
   }
 
@@ -53,7 +49,7 @@ public class NotificationRuleManagementServiceImpl implements NotificationRuleMa
       return notificationRuleRepository.save(notificationRule);
     } catch (DuplicateKeyException duplicateKeyException) {
       throw new DuplicateFieldException(
-          format("Notification Rule exists with same name %s exists", notificationRule.getIdentifier()));
+          "Duplicate identifier, please try again with a new identifier", USER, duplicateKeyException);
     }
   }
 
@@ -84,18 +80,6 @@ public class NotificationRuleManagementServiceImpl implements NotificationRuleMa
   public boolean delete(NotificationRule notificationRule) {
     notificationRuleRepository.delete(notificationRule);
     return true;
-  }
-
-  @Override
-  public Page<NotificationRule> list(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      Pageable pageable, NotificationRuleFilterProperties notificationRuleFilterProperties) {
-    Criteria criteria = createNotificationRuleScopeCriteria(accountIdentifier, orgIdentifier, projectIdentifier);
-    criteria.and(notificationRuleFilterProperties.getSearchTerm());
-    criteria.and(NotificationRuleKeys.notificationEntity)
-        .is(notificationRuleFilterProperties.getNotificationEntity().name());
-    criteria.and(NotificationRuleKeys.notificationEvent)
-        .is(notificationRuleFilterProperties.getNotificationEvent().name());
-    return notificationRuleRepository.findAll(criteria, pageable);
   }
 
   private Criteria createNotificationRuleFetchCriteria(

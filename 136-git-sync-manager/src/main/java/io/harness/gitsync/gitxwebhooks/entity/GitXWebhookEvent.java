@@ -62,6 +62,7 @@ public class GitXWebhookEvent implements PersistentEntity, UuidAccess {
   @Wither @Id @dev.morphia.annotations.Id String uuid;
   String accountIdentifier;
   String eventIdentifier;
+  String webhookIdentifier;
   String payload;
   String eventStatus;
   Long eventTriggeredTime;
@@ -71,7 +72,6 @@ public class GitXWebhookEvent implements PersistentEntity, UuidAccess {
   String repo;
   Author author;
   List<String> processedFilePaths;
-  List<String> webhookIdentifierList;
   @Setter @NonFinal @SchemaIgnore @FdIndex @CreatedDate @Builder.Default Long createdAt = 0L;
   @FdTtlIndex @Default Date validUntil = Date.from(OffsetDateTime.now().plusDays(15).toInstant());
 

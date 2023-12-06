@@ -15,7 +15,6 @@ import io.harness.delegate.beans.connector.ConnectorConfigOutcomeDTO;
 import io.harness.delegate.beans.connector.scm.GitAuthType;
 import io.harness.delegate.beans.connector.scm.GitConnectionType;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.Set;
@@ -44,8 +43,6 @@ public class GitConfigOutcomeDTO extends ConnectorConfigOutcomeDTO implements De
   private Set<String> delegateSelectors;
   private Boolean executeOnDelegate;
   private String gitConnectionUrl;
-  private Boolean proxy;
-  @JsonIgnore private String proxyUrl;
 
   @JsonTypeInfo(
       use = JsonTypeInfo.Id.NAME, property = "type", include = JsonTypeInfo.As.EXTERNAL_PROPERTY, visible = true)

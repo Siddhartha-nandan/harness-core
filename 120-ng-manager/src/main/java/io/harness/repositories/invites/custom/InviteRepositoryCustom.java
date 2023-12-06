@@ -25,6 +25,4 @@ public interface InviteRepositoryCustom {
   Invite updateInvite(String inviteId, Update update);
 
   DeleteResult deleteAll(Criteria criteria);
-
-  Page<Invite> findAllWithCollation(Criteria criteria, Pageable pageable);
 }

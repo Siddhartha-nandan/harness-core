@@ -14,12 +14,10 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.expression.common.ExpressionMode;
-import io.harness.plancreator.exports.ExportConfig;
 import io.harness.pms.contracts.advisers.AdviserObtainment;
 import io.harness.pms.contracts.advisers.AdvisorObtainmentList;
 import io.harness.pms.contracts.facilitators.FacilitatorObtainment;
 import io.harness.pms.contracts.plan.ExecutionMode;
-import io.harness.pms.contracts.plan.ExportValue;
 import io.harness.pms.contracts.plan.PlanNodeProto;
 import io.harness.pms.contracts.refobjects.RefObject;
 import io.harness.pms.contracts.steps.SkipType;
@@ -31,7 +29,6 @@ import io.harness.timeout.contracts.TimeoutObtainment;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import javax.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Singular;
@@ -68,7 +65,6 @@ public class PlanNode implements Node {
   Map<ExecutionMode, List<AdviserObtainment>> advisorObtainmentsForExecutionMode;
   @Singular List<FacilitatorObtainment> facilitatorObtainments;
   @Singular List<TimeoutObtainment> timeoutObtainments;
-  Map<String, ExportConfig> exports;
 
   @Deprecated String serviceName;
 
@@ -113,12 +109,6 @@ public class PlanNode implements Node {
         .serviceName(planNodeProto.getServiceName())
         .excludedKeysFromStepInputs(planNodeProto.getStepInputsKeyExcludeList())
         .executionInputTemplate(planNodeProto.getExecutionInputTemplate())
-        .exports(planNodeProto.getExportsMap().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-            val
-            -> ExportConfig.builder()
-                   .desc(val.getValue().getDesc())
-                   .value(getValueFromExportValueProto(val.getValue().getValue()))
-                   .build())))
         .build();
   }
 
@@ -147,16 +137,5 @@ public class PlanNode implements Node {
       return false;
     }
     return preserveInRollbackMode;
-  }
-
-  private static Object getValueFromExportValueProto(ExportValue exportValue) {
-    if (exportValue.hasStringValue()) {
-      return exportValue.getStringValue();
-    } else if (exportValue.hasNumberValue()) {
-      return exportValue.getNumberValue();
-    } else if (exportValue.hasBoolValue()) {
-      return exportValue.getBoolValue();
-    }
-    return null;
   }
 }

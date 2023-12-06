@@ -239,7 +239,6 @@ outboxPollConfig:
   pollingIntervalInSeconds: 5
   maximumRetryAttemptsForAnEvent: 7
   lockId: NextGenCE
-  enableMetrics: ${ENABLE_OUTBOX_EVENT_METRICS:-false}
 
 exportMetricsToStackDriver: false
 

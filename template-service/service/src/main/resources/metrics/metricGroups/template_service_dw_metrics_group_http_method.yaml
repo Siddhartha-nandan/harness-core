@@ -1,6 +1,0 @@
-name: Template Service DW Metrics Group per Http Method
-identifier: TemplateServiceDwMetricsHttpMethodGroup
-labels:
-  - method
-  - namespace
-  - serviceName

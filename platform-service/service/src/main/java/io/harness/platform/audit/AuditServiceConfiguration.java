@@ -33,5 +33,4 @@ public class AuditServiceConfiguration {
   @JsonProperty("exportMetricsToStackDriver") boolean exportMetricsToStackDriver;
   @JsonProperty(value = "enableAudit") boolean enableAudit;
   @JsonProperty(value = "enableOpentelemetry") private Boolean enableOpentelemetry;
-  @JsonProperty("publishAccountActivityMetrics") @ConfigSecret private boolean publishAccountActivityMetrics;
 }

@@ -51,7 +51,7 @@ import io.harness.steps.approval.step.custom.entities.CustomApprovalInstance;
 import io.harness.steps.approval.step.entities.ApprovalInstance;
 import io.harness.steps.approval.step.entities.ApprovalInstance.ApprovalInstanceKeys;
 import io.harness.steps.shellscript.ShellScriptHelperService;
-import io.harness.steps.shellscript.ShellScriptStepParametersV0;
+import io.harness.steps.shellscript.ShellScriptStepParameters;
 import io.harness.steps.shellscript.ShellType;
 import io.harness.waiter.NotifyCallback;
 import io.harness.waiter.WaitNotifyEngine;
@@ -150,12 +150,14 @@ public class CustomApprovalHelperServiceImpl implements CustomApprovalHelperServ
   }
 
   private NGLogCallback getLogCallback(Ambiance ambiance, CustomApprovalInstance instance) {
-    return new NGLogCallback(logStreamingStepClientFactory, ambiance, ShellScriptTaskNG.COMMAND_UNIT, false);
+    final String unit = ShellType.Bash.equals(instance.getShellType()) ? ShellScriptTaskNG.COMMAND_UNIT
+                                                                       : WinRmShellScriptTaskNG.INIT_UNIT;
+    return new NGLogCallback(logStreamingStepClientFactory, ambiance, unit, false);
   }
 
   private TaskParameters buildShellScriptTaskParametersNG(
       @Nonnull Ambiance ambiance, @Nonnull CustomApprovalInstance customApprovalInstance) {
-    ShellScriptStepParametersV0 shellScriptStepParameters = customApprovalInstance.toShellScriptStepParameters();
+    ShellScriptStepParameters shellScriptStepParameters = customApprovalInstance.toShellScriptStepParameters();
     return shellScriptHelperService.buildShellScriptTaskParametersNG(ambiance, shellScriptStepParameters);
   }
 
@@ -207,8 +209,8 @@ public class CustomApprovalHelperServiceImpl implements CustomApprovalHelperServ
     List<TaskSelector> selectors = TaskSelectorYaml.toTaskSelector(instance.getDelegateSelectors());
 
     return TaskRequestsUtils.prepareCDTaskRequest(ambiance, taskData, kryoSerializer,
-        Arrays.asList(WinRmShellScriptTaskNG.COMMAND_UNIT), getCustomApprovalTaskName(instance), selectors,
-        stepHelper.getEnvironmentType(ambiance));
+        Arrays.asList(WinRmShellScriptTaskNG.INIT_UNIT, WinRmShellScriptTaskNG.COMMAND_UNIT),
+        getCustomApprovalTaskName(instance), selectors, stepHelper.getEnvironmentType(ambiance));
   }
 
   private void validateField(String name, String value) {

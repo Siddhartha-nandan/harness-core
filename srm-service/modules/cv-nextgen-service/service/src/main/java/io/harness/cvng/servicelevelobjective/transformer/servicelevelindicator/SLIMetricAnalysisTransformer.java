@@ -40,7 +40,6 @@ public class SLIMetricAnalysisTransformer {
                    .timeStamp(sliAnalyseResponse.getTimeStamp())
                    .goodEventCount(sliAnalyseResponse.getGoodEventCount())
                    .badEventCount(sliAnalyseResponse.getBadEventCount())
-                   .skipEventCount(0l)
                    .build())
         .collect(Collectors.toList());
   }

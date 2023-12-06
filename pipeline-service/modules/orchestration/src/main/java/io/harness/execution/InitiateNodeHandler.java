@@ -29,9 +29,13 @@ public class InitiateNodeHandler extends PmsBaseEventHandler<InitiateNodeEvent> 
   @Inject private PmsFeatureFlagService pmsFeatureFlagService;
 
   @Inject private InterruptService interruptService;
+  @Override
+  protected Map<String, String> extractMetricContext(Map<String, String> metadataMap, InitiateNodeEvent event) {
+    return ImmutableMap.of("eventType", "TRIGGER_NODE");
+  }
 
   @Override
-  protected String getEventType(InitiateNodeEvent message) {
+  protected String getMetricPrefix(InitiateNodeEvent message) {
     return "trigger_node_event";
   }
 

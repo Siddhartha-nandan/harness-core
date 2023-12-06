@@ -6,7 +6,6 @@
  */
 
 package io.harness.ngmigration.monitoredservice.healthsource;
-
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
@@ -132,9 +131,7 @@ public class PrometheusHealthSourceGenerator extends HealthSourceGenerator {
       return noSpaceQuery;
     }
     int startIndex = noSpaceQuery.indexOf(CG_HOSTNAME_PLACEHOLDER);
-
-    // To handle if user provides wow{a=~"$hostName.*"} or wow{a=~"$hostName"}
-    int endIndex = noSpaceQuery.indexOf('\"', startIndex);
+    int endIndex = startIndex + CG_HOSTNAME_PLACEHOLDER.length();
     if (endIndex < noSpaceQuery.length() && noSpaceQuery.charAt(endIndex) == '"') {
       endIndex++;
     }
@@ -144,8 +141,6 @@ public class PrometheusHealthSourceGenerator extends HealthSourceGenerator {
       }
       if (noSpaceQuery.charAt(startIndex) == '{') {
         startIndex++;
-        // To handle cases like `wow{a=~"$hostName.*",z=y}`
-        endIndex++;
         break;
       }
     }
@@ -156,15 +151,6 @@ public class PrometheusHealthSourceGenerator extends HealthSourceGenerator {
     return StringUtils.substring(noSpaceQuery, 0, startIndex) + StringUtils.substring(noSpaceQuery, endIndex);
   }
 
-  public int findIndexOfCharRev(String input, int startIndex, char c) {
-    for (int i = startIndex; i > 0; i--) {
-      if (input.charAt(i) == c) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
   public String getNGServiceInstanceIdentifier(String cgQuery) {
     // remove all empty characters
     String noSpaceQuery = cgQuery.replaceAll("[\n\t ]", "");
@@ -172,8 +158,8 @@ public class PrometheusHealthSourceGenerator extends HealthSourceGenerator {
       return "FIX_ME";
     }
     int endIndex = noSpaceQuery.indexOf(CG_HOSTNAME_PLACEHOLDER);
-    endIndex = findIndexOfCharRev(noSpaceQuery, endIndex, '=');
-    if (endIndex == -1 || noSpaceQuery.charAt(endIndex) != '=') {
+    endIndex = endIndex - 2;
+    if (noSpaceQuery.charAt(endIndex) != '=') {
       return "FIX_ME";
     }
     int startIndex = endIndex - 1;

@@ -8,12 +8,10 @@
 package io.harness.notification.service.api;
 
 import io.harness.delegate.beans.NotificationProcessingResponse;
-import io.harness.delegate.beans.NotificationTaskResponse;
 import io.harness.notification.NotificationRequest;
 import io.harness.notification.remote.dto.NotificationSettingDTO;
 
 public interface ChannelService {
   NotificationProcessingResponse send(NotificationRequest notificationRequest);
-  NotificationTaskResponse sendSync(NotificationRequest notificationRequest);
   boolean sendTestNotification(NotificationSettingDTO notificationSettingDTO);
 }

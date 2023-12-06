@@ -1,8 +1,7 @@
 identifier: grafana
 name: Grafana
 description: Associate alerts and dashboards to components.
-accountIdentifier: __GLOBAL_ACCOUNT_ID__
-creator: K-Phoen
+createdBy: K-Phoen
 category: Monitoring
 source: https://github.com/K-Phoen/backstage-plugin-grafana/
 iconUrl: https://avatars.githubusercontent.com/u/7195757?s=200&v=4

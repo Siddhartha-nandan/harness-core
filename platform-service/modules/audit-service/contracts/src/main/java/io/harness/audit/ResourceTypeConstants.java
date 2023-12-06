@@ -105,7 +105,4 @@ public class ResourceTypeConstants {
   public static final String GITOPS_APPLICATION = "GITOPS_APPLICATION";
 
   public static final String CODE_REPOSITORY = "CODE_REPOSITORY";
-  public static final String MODULE_LICENSE = "MODULE_LICENSE";
-
-  public static final String SSCA_ARTIFACT = "SSCA_ARTIFACT";
 }

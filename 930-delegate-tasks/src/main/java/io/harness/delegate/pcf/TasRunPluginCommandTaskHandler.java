@@ -183,7 +183,6 @@ public class TasRunPluginCommandTaskHandler extends CfCommandTaskNGHandler {
     return CfRequestConfig.builder()
         .userName(String.valueOf(cfConfig.getUserName()))
         .password(String.valueOf(cfConfig.getPassword()))
-        .refreshToken(cfConfig.getRefreshToken() != null ? String.valueOf(cfConfig.getRefreshToken()) : null)
         .endpointUrl(cfConfig.getEndpointUrl())
         .orgName(pluginCommandRequest.getTasInfraConfig().getOrganization())
         .spaceName(pluginCommandRequest.getTasInfraConfig().getSpace())

@@ -7,8 +7,6 @@
 
 package io.harness.cvng.servicelevelobjective.entities;
 
-import static io.harness.cvng.CVConstants.SLO_RECORDS_TTL_DAYS;
-
 import io.harness.annotation.HarnessEntity;
 import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.HarnessTeam;
@@ -30,7 +28,6 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -39,7 +36,6 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.FieldNameConstants;
-import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
@@ -79,9 +75,7 @@ public class SLIRecordBucket extends VerificationTaskBase implements PersistentE
     bsonDocument.append(SLIRecordBucketKeys.runningBadCount, new BsonInt64(runningBadCount));
     bsonDocument.append(SLIRecordBucketKeys.runningGoodCount, new BsonInt64(runningGoodCount));
     bsonDocument.append(SLIRecordBucketKeys.sliVersion, new BsonInt32(sliVersion));
-    List<BsonString> sliStatesAsbsonStrings =
-        sliStates.stream().map(sliState -> new BsonString(sliState.toString())).collect(Collectors.toList());
-    bsonDocument.append(SLIRecordBucketKeys.sliStates, new BsonArray(sliStatesAsbsonStrings));
+    bsonDocument.append(SLIRecordBucketKeys.sliStates, new BsonString(sliStates.toString()));
     return bsonDocument;
   }
   @Id private String uuid;
@@ -91,13 +85,9 @@ public class SLIRecordBucket extends VerificationTaskBase implements PersistentE
   private long runningBadCount; // will store badCount till the bucket end time
   private long runningGoodCount; // will store goodCount till the bucket end time
 
-  private long runningSkipDataCount;
-
   private int sliVersion;
 
-  @Builder.Default
-  @FdTtlIndex
-  private Date validUntil = Date.from(OffsetDateTime.now().plusDays(SLO_RECORDS_TTL_DAYS).toInstant());
+  @Builder.Default @FdTtlIndex private Date validUntil = Date.from(OffsetDateTime.now().plusDays(90).toInstant());
 
   public static SLIRecordBucket getSLIRecordBucketFromSLIRecords(List<SLIRecord> sliRecords) {
     Preconditions.checkArgument(sliRecords.size() == 5);

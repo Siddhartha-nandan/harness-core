@@ -11,7 +11,6 @@ import static io.harness.annotations.dev.HarnessTeam.CDP;
 
 import io.harness.annotations.dev.OwnedBy;
 
-import javax.annotation.Nullable;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -31,6 +30,6 @@ import lombok.experimental.SuperBuilder;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ActiveService extends ActiveServiceBase {
   String name;
-  @Nullable String orgName;
-  @Nullable String projectName;
+  String orgName;
+  String projectName;
 }

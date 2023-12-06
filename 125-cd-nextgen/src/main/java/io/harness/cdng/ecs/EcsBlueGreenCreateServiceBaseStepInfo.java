@@ -6,7 +6,6 @@
  */
 
 package io.harness.cdng.ecs;
-
 import static io.harness.yaml.schema.beans.SupportedPossibleFieldTypes.expression;
 import static io.harness.yaml.schema.beans.SupportedPossibleFieldTypes.runtime;
 
@@ -58,8 +57,4 @@ public class EcsBlueGreenCreateServiceBaseStepInfo {
   @YamlSchemaTypes({runtime})
   @ApiModelProperty(dataType = SwaggerConstants.BOOLEAN_CLASSPATH)
   ParameterField<Boolean> enableAutoScalingInSwapStep;
-
-  @YamlSchemaTypes({runtime})
-  @ApiModelProperty(dataType = SwaggerConstants.BOOLEAN_CLASSPATH)
-  ParameterField<Boolean> updateGreenService;
 }

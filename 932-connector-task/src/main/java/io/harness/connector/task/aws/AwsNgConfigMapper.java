@@ -72,7 +72,6 @@ public class AwsNgConfigMapper {
                                                         config.getAccessKey(), config.getAccessKeyRef()))
                                                     .secretKey(getDecryptedValueWithNullCheck(secretKeyRef))
                                                     .build())
-                        .proxyUrl(awsConnectorDTO.getProxyUrl())
                         .build();
         break;
       case INHERIT_FROM_DELEGATE:

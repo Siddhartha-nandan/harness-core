@@ -31,7 +31,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.harness.PipelineServiceTestBase;
-import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InvalidRequestException;
@@ -108,7 +107,6 @@ public class InputSetResourcePMSTest extends PipelineServiceTestBase {
   @Mock InputSetsApiUtils inputSetsApiUtils;
   @Mock PMSExecutionService executionService;
   @Mock PmsFeatureFlagService pmsFeatureFlagService;
-  @Mock AccessControlClient accessControlClient;
 
   private static final String ACCOUNT_ID = "accountId";
   private static final String ORG_IDENTIFIER = "orgId";
@@ -145,7 +143,7 @@ public class InputSetResourcePMSTest extends PipelineServiceTestBase {
   public void setUp() throws IOException {
     MockitoAnnotations.initMocks(this);
     inputSetResourcePMSImpl = new InputSetResourcePMSImpl(pmsInputSetService, pipelineService, gitSyncSdkService,
-        validateAndMergeHelper, inputSetsApiUtils, executionService, pmsFeatureFlagService, accessControlClient);
+        validateAndMergeHelper, inputSetsApiUtils, executionService, pmsFeatureFlagService);
 
     String inputSetFilename = "inputSet1.yml";
     inputSetYaml = readFile(inputSetFilename);

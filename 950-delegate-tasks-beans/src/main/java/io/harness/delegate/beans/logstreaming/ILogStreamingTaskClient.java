@@ -14,7 +14,6 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.delegate.beans.taskprogress.ITaskProgressClient;
 import io.harness.logging.LogCallback;
-import io.harness.logging.LogLevel;
 import io.harness.logstreaming.LogLine;
 
 import java.util.Set;
@@ -63,6 +62,4 @@ public interface ILogStreamingTaskClient {
   default void dispatchLogs() {}
 
   Set<String> getMarkers();
-
-  void log(LogLevel logLevel, String message);
 }

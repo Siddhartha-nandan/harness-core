@@ -10,7 +10,6 @@ package io.harness.cdng.pipeline.helpers;
 import static io.harness.rule.OwnerRule.ACASIAN;
 import static io.harness.rule.OwnerRule.SAHIL;
 import static io.harness.rule.OwnerRule.VAIBHAV_SI;
-import static io.harness.rule.OwnerRule.VITALIE;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -20,7 +19,6 @@ import io.harness.category.element.UnitTests;
 import io.harness.cdng.pipeline.StepCategory;
 import io.harness.cdng.service.beans.ServiceDefinitionType;
 import io.harness.rule.Owner;
-import io.harness.steps.matrix.StrategyParameters;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -50,7 +48,7 @@ public class CDNGPipelineConfigurationHelperTest extends CategoryTest {
     StepCategory result = cdngPipelineConfigurationHelper.getSteps(ServiceDefinitionType.KUBERNETES);
     assertThat(result.getName()).isEqualTo(CDNGPipelineConfigurationHelper.LIBRARY);
     assertThat(result.getStepsData()).isEqualTo(new ArrayList<>());
-    assertThat(result.getStepCategories().size()).isEqualTo(8);
+    assertThat(result.getStepCategories().size()).isEqualTo(7);
   }
 
   @Test
@@ -60,7 +58,7 @@ public class CDNGPipelineConfigurationHelperTest extends CategoryTest {
     StepCategory result = cdngPipelineConfigurationHelper.getSteps(ServiceDefinitionType.SSH);
     assertThat(result.getName()).isEqualTo(CDNGPipelineConfigurationHelper.LIBRARY);
     assertThat(result.getStepsData()).isEqualTo(new ArrayList<>());
-    assertThat(result.getStepCategories().size()).isEqualTo(8);
+    assertThat(result.getStepCategories().size()).isEqualTo(7);
   }
 
   @Test
@@ -70,7 +68,7 @@ public class CDNGPipelineConfigurationHelperTest extends CategoryTest {
     StepCategory result = cdngPipelineConfigurationHelper.getSteps(ServiceDefinitionType.WINRM);
     assertThat(result.getName()).isEqualTo(CDNGPipelineConfigurationHelper.LIBRARY);
     assertThat(result.getStepsData()).isEqualTo(new ArrayList<>());
-    assertThat(result.getStepCategories().size()).isEqualTo(8);
+    assertThat(result.getStepCategories().size()).isEqualTo(7);
   }
 
   @Test
@@ -80,22 +78,5 @@ public class CDNGPipelineConfigurationHelperTest extends CategoryTest {
     String yaml = cdngPipelineConfigurationHelper.getExecutionStrategyYaml(
         ServiceDefinitionType.KUBERNETES, ExecutionStrategyType.GITOPS, false, "", "id");
     assertThat(yaml).contains("GitOpsFetchLinkedApps");
-  }
-
-  @Test
-  @Owner(developers = VITALIE)
-  @Category(UnitTests.class)
-  public void generateAsgExecutionStrategyYaml() throws IOException {
-    String accountId = "accountId";
-
-    StrategyParameters strategyParameters = StrategyParameters.builder().build();
-    String yaml = cdngPipelineConfigurationHelper.generateExecutionStrategyYaml(
-        accountId, ServiceDefinitionType.ASG, ExecutionStrategyType.BLUE_GREEN, false, strategyParameters);
-    assertThat(yaml).isEqualTo("asg-blue-green");
-
-    strategyParameters = StrategyParameters.builder().shiftTraffic(true).build();
-    yaml = cdngPipelineConfigurationHelper.generateExecutionStrategyYaml(
-        accountId, ServiceDefinitionType.ASG, ExecutionStrategyType.BLUE_GREEN, false, strategyParameters);
-    assertThat(yaml).isEqualTo("asg-blue-green-shift-traffic");
   }
 }

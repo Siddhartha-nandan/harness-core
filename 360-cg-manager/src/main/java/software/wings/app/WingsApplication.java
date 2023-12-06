@@ -6,7 +6,6 @@
  */
 
 package software.wings.app;
-
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.beans.FeatureName.GLOBAL_DISABLE_HEALTH_CHECK;
 import static io.harness.data.structure.CollectionUtils.emptyIfNull;
@@ -34,7 +33,6 @@ import static java.time.Duration.ofHours;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 
-import io.harness.accesscontrol.NGAccessDeniedExceptionMapper;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
@@ -120,7 +118,6 @@ import io.harness.mongo.tracing.TraceMode;
 import io.harness.morphia.MorphiaRegistrar;
 import io.harness.ng.core.CorrelationFilter;
 import io.harness.ng.core.TraceFilter;
-import io.harness.notifications.NotificationTemplateRegistrar;
 import io.harness.observer.NoOpRemoteObserverInformerImpl;
 import io.harness.observer.RemoteObserver;
 import io.harness.observer.RemoteObserverInformer;
@@ -679,6 +676,8 @@ public class WingsApplication extends Application<MainConfiguration> {
       registerAtmosphereStreams(environment, injector);
     }
 
+    initializeFeatureFlags(configuration, injector);
+
     if (isManager()) {
       registerHealthChecksManager(environment, injector);
     }
@@ -688,9 +687,6 @@ public class WingsApplication extends Application<MainConfiguration> {
 
     registerStores(configuration, injector);
     registerDataStores(injector);
-
-    initializeFeatureFlags(configuration, injector);
-
     if (configuration.getMongoConnectionFactory().getTraceMode() == TraceMode.ENABLED) {
       registerQueryTracer(injector);
     }
@@ -711,7 +707,6 @@ public class WingsApplication extends Application<MainConfiguration> {
     registerCorrelationFilter(environment, injector);
     registerRequestContextFilter(environment);
     registerDisableFirstGenFilter(environment, injector);
-    registerNotificationTemplates(configuration, injector);
 
     if (BooleanUtils.isTrue(configuration.getEnableOpentelemetry())) {
       registerTraceFilter(environment, injector);
@@ -1275,15 +1270,6 @@ public class WingsApplication extends Application<MainConfiguration> {
     }
   }
 
-  private void registerNotificationTemplates(MainConfiguration configuration, Injector injector) {
-    if (configuration.isDisableNotificationTemplateRegister()) {
-      return;
-    }
-    final ExecutorService notificationTemplateExecutor = Executors.newSingleThreadExecutor(
-        new ThreadFactoryBuilder().setNameFormat("notificationTemplateRegister").build());
-    notificationTemplateExecutor.execute(injector.getInstance(NotificationTemplateRegistrar.class));
-  }
-
   private void registerQueueListeners(MainConfiguration configuration, Injector injector) {
     log.info("Initializing queue listeners...");
 
@@ -1654,7 +1640,6 @@ public class WingsApplication extends Application<MainConfiguration> {
     environment.jersey().register(EarlyEofExceptionMapper.class);
     environment.jersey().register(JsonProcessingExceptionMapper.class);
     environment.jersey().register(ConstraintViolationExceptionMapper.class);
-    environment.jersey().register(NGAccessDeniedExceptionMapper.class);
     environment.jersey().register(WingsExceptionMapper.class);
     environment.jersey().register(GenericExceptionMapper.class);
     environment.jersey().register(MongoExecutionTimeoutExceptionMapper.class);

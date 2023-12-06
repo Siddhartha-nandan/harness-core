@@ -27,5 +27,4 @@ public class TasManualCredential implements TasCredential {
   String endpointUrl;
   String userNameRef;
   String passwordRef;
-  String refreshTokenRef;
 }

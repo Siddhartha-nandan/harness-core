@@ -190,8 +190,8 @@ public class StagesPlanCreatorV1 extends ChildrenPlanCreator<YamlField> {
   }
 
   @Override
-  public YamlField getFieldObject(YamlField field) {
-    return field;
+  public Class<YamlField> getFieldClass() {
+    return YamlField.class;
   }
 
   @Override
@@ -214,10 +214,5 @@ public class StagesPlanCreatorV1 extends ChildrenPlanCreator<YamlField> {
     Optional<Object> value = PlanCreatorUtilsV1.getDeserializedObjectFromDependency(
         ctx.getDependency(), kryoSerializer, PlanCreatorConstants.IS_INSIDE_PARALLEL_NODE, false);
     return value.isPresent() && (boolean) value.get();
-  }
-
-  @Override
-  public Set<String> getSupportedYamlVersions() {
-    return Set.of(HarnessYamlVersion.V1);
   }
 }

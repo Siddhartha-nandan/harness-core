@@ -7,7 +7,6 @@
 
 package software.wings.service.impl;
 
-import io.harness.delegate.beans.DelegateEntityOwner;
 import io.harness.delegate.beans.K8sPermissionType;
 
 import lombok.Builder;
@@ -43,5 +42,4 @@ public class TemplateParameters {
   private final boolean watcher;
   private final boolean mtlsEnabled;
   private final boolean runAsRoot;
-  private final DelegateEntityOwner delegateEntityOwner;
 }

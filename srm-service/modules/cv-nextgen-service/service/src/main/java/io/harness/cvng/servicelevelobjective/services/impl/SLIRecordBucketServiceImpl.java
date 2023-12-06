@@ -7,29 +7,21 @@
 
 package io.harness.cvng.servicelevelobjective.services.impl;
 
-import static io.harness.cvng.core.services.CVNextGenConstants.SLI_RECORD_BUCKET_SIZE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.persistence.HQuery.excludeAuthorityCount;
 
 import io.harness.SRMPersistence;
 import io.harness.annotations.retry.RetryOnException;
-import io.harness.cvng.core.beans.params.ProjectParams;
 import io.harness.cvng.core.beans.params.TimeRangeParams;
-import io.harness.cvng.core.utils.DateTimeUtils;
 import io.harness.cvng.servicelevelobjective.beans.SLIEvaluationType;
 import io.harness.cvng.servicelevelobjective.beans.SLIMissingDataType;
 import io.harness.cvng.servicelevelobjective.beans.SLIValue;
-import io.harness.cvng.servicelevelobjective.entities.CompositeServiceLevelObjective;
 import io.harness.cvng.servicelevelobjective.entities.SLIRecordBucket;
 import io.harness.cvng.servicelevelobjective.entities.SLIRecordBucket.SLIRecordBucketKeys;
-import io.harness.cvng.servicelevelobjective.entities.SLIRecordCount;
 import io.harness.cvng.servicelevelobjective.entities.SLIRecordParam;
 import io.harness.cvng.servicelevelobjective.entities.SLIState;
 import io.harness.cvng.servicelevelobjective.entities.ServiceLevelIndicator;
-import io.harness.cvng.servicelevelobjective.entities.SimpleServiceLevelObjective;
 import io.harness.cvng.servicelevelobjective.services.api.SLIRecordBucketService;
-import io.harness.cvng.servicelevelobjective.services.api.ServiceLevelIndicatorService;
-import io.harness.cvng.servicelevelobjective.services.api.ServiceLevelObjectiveV2Service;
 import io.harness.cvng.utils.SLOGraphUtils;
 
 import com.google.common.base.Preconditions;
@@ -43,7 +35,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.ConcurrentModificationException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -56,8 +47,8 @@ import org.apache.commons.lang3.tuple.Pair;
 @Slf4j
 public class SLIRecordBucketServiceImpl implements SLIRecordBucketService {
   private static final int RETRY_COUNT = 3;
-  @Inject private ServiceLevelObjectiveV2Service serviceLevelObjectiveV2Service;
-  @Inject private ServiceLevelIndicatorService serviceLevelIndicatorService;
+  public static final int SLI_RECORD_BUCKET_SIZE = 5;
+
   @Inject SRMPersistence hPersistence;
   @Override
   public void create(List<SLIRecordParam> sliRecordParamList, String sliId, int sliVersion) {
@@ -74,26 +65,24 @@ public class SLIRecordBucketServiceImpl implements SLIRecordBucketService {
     SLIRecordParam lastSLIRecordParam = sliRecordParamList.get(sliRecordParamList.size() - 1);
     long runningGoodCount = 0L;
     long runningBadCount = 0L;
-    long runningSkipDataCount = 0L;
     SLIRecordBucket lastSLIRecord = getLastSLIRecord(sliId, firstSLIRecordParam.getTimeStamp());
     SLIRecordBucket latestSLIRecord = getLatestSLIRecord(sliId);
     if (Objects.nonNull(lastSLIRecord)) {
       runningGoodCount = lastSLIRecord.getRunningGoodCount();
       runningBadCount = lastSLIRecord.getRunningBadCount();
-      runningSkipDataCount = lastSLIRecord.getRunningSkipDataCount();
     }
     if (Objects.nonNull(latestSLIRecord)
         && !latestSLIRecord.getBucketStartTime().isBefore(firstSLIRecordParam.getTimeStamp())) {
       // Update flow: fetch SLI Records to be updated
       updateSLIRecords(sliRecordParamList, sliId, sliVersion, firstSLIRecordParam, lastSLIRecordParam, runningGoodCount,
-          runningBadCount, runningSkipDataCount);
+          runningBadCount);
     } else {
-      createSLIRecords(sliRecordParamList, sliId, sliVersion, runningGoodCount, runningBadCount, runningSkipDataCount);
+      createSLIRecords(sliRecordParamList, sliId, sliVersion, runningGoodCount, runningBadCount);
     }
   }
 
   private void createSLIRecords(List<SLIRecordParam> sliRecordParamList, String sliId, int sliVersion,
-      long runningGoodCount, long runningBadCount, long runningSkipDataCount) {
+      long runningGoodCount, long runningBadCount) {
     // Need to remove this check later, adding that now just to get the idea if we have any such cases, which we
     // shouldn't have
     List<SLIRecordBucket> sliRecordBuckets = new ArrayList<>();
@@ -102,7 +91,6 @@ public class SLIRecordBucketServiceImpl implements SLIRecordBucketService {
       for (int bucketIdx = idx; bucketIdx < idx + 5; bucketIdx++) {
         runningBadCount += sliRecordParamList.get(bucketIdx).getBadEventCount();
         runningGoodCount += sliRecordParamList.get(bucketIdx).getGoodEventCount();
-        runningSkipDataCount += sliRecordParamList.get(bucketIdx).getSkipEventCount();
         sliStates.add(sliRecordParamList.get(bucketIdx).getSliState());
       }
       sliRecordBuckets.add(SLIRecordBucket.builder()
@@ -111,7 +99,6 @@ public class SLIRecordBucketServiceImpl implements SLIRecordBucketService {
                                .sliVersion(sliVersion)
                                .runningBadCount(runningBadCount)
                                .runningGoodCount(runningGoodCount)
-                               .runningSkipDataCount(runningSkipDataCount)
                                .sliStates(sliStates)
                                .build());
     }
@@ -121,7 +108,7 @@ public class SLIRecordBucketServiceImpl implements SLIRecordBucketService {
   @RetryOnException(retryCount = RETRY_COUNT, retryOn = ConcurrentModificationException.class)
   public void updateSLIRecords(List<SLIRecordParam> sliRecordParamList, String sliId, int sliVersion,
       SLIRecordParam firstSLIRecordParam, SLIRecordParam lastSLIRecordParam, long runningGoodCount,
-      long runningBadCount, long runningSkipDataCount) {
+      long runningBadCount) {
     List<SLIRecordBucket> toBeUpdatedSLIRecords = getSLIRecords(
         sliId, firstSLIRecordParam.getTimeStamp(), lastSLIRecordParam.getTimeStamp().plus(1, ChronoUnit.MINUTES));
     Map<Instant, SLIRecordBucket> sliRecordMap = toBeUpdatedSLIRecords.stream().collect(Collectors.toMap(
@@ -135,13 +122,11 @@ public class SLIRecordBucketServiceImpl implements SLIRecordBucketService {
       for (int bucketIdx = idx; bucketIdx < idx + 5; bucketIdx++) {
         runningBadCount += sliRecordParamList.get(bucketIdx).getBadEventCount();
         runningGoodCount += sliRecordParamList.get(bucketIdx).getGoodEventCount();
-        runningSkipDataCount += sliRecordParamList.get(bucketIdx).getSkipEventCount();
         sliStates.add(sliRecordParamList.get(bucketIdx).getSliState());
       }
       if (Objects.nonNull(sliRecord)) {
         sliRecord.setRunningGoodCount(runningGoodCount);
         sliRecord.setRunningBadCount(runningBadCount);
-        sliRecord.setRunningSkipDataCount(runningSkipDataCount);
         sliRecord.setSliStates(sliStates);
         sliRecord.setSliVersion(sliVersion);
         updateOrCreateSLIRecords.add(sliRecord);
@@ -152,7 +137,6 @@ public class SLIRecordBucketServiceImpl implements SLIRecordBucketService {
                                          .sliVersion(sliVersion)
                                          .runningBadCount(runningBadCount)
                                          .runningGoodCount(runningGoodCount)
-                                         .runningSkipDataCount(runningSkipDataCount)
                                          .sliStates(sliStates)
                                          .build());
       }
@@ -297,20 +281,18 @@ public class SLIRecordBucketServiceImpl implements SLIRecordBucketService {
 
   @Override
   public SLIValue calculateSLIValue(SLIEvaluationType sliEvaluationType, SLIMissingDataType sliMissingDataType,
-      SLIRecordBucket sliRecordBucket, SLIRecordCount baselineRunningCountPair, long beginningMinute,
-      long disabledMinutesFromStart) {
-    long lastRecordBeforeStartGoodCount = baselineRunningCountPair.getGoodCount();
-    long lastRecordBeforeStartBadCount = baselineRunningCountPair.getBadCount();
-    long lastRecordBeforeStartSkipDataCount = baselineRunningCountPair.getSkipDataCount();
+      SLIRecordBucket sliRecordBucket, Pair<Long, Long> baselineRunningCountPair, long beginningMinute,
+      long skipRecordCount, long disabledMinutesFromStart) {
+    long lastRecordBeforeStartGoodCount = baselineRunningCountPair.getLeft();
+    long lastRecordBeforeStartBadCount = baselineRunningCountPair.getRight();
     long goodCountFromStart = sliRecordBucket.getRunningGoodCount() - lastRecordBeforeStartGoodCount;
     long badCountFromStart = sliRecordBucket.getRunningBadCount() - lastRecordBeforeStartBadCount;
-    long skipDataCountFromStart = sliRecordBucket.getRunningSkipDataCount() - lastRecordBeforeStartSkipDataCount;
     SLIValue sliValue;
     if (sliEvaluationType == SLIEvaluationType.WINDOW) {
       long bucketEndTime = (sliRecordBucket.getBucketStartTime().getEpochSecond() / 60) + SLI_RECORD_BUCKET_SIZE;
       long minutesFromStart = bucketEndTime - beginningMinute; // TODO we removed a + 1 think about it.
       sliValue = sliMissingDataType.calculateSLIValue(
-          goodCountFromStart + skipDataCountFromStart, badCountFromStart, minutesFromStart, disabledMinutesFromStart);
+          goodCountFromStart + skipRecordCount, badCountFromStart, minutesFromStart, disabledMinutesFromStart);
     } else {
       sliValue = SLIValue.builder()
                      .goodCount(goodCountFromStart)
@@ -322,97 +304,26 @@ public class SLIRecordBucketServiceImpl implements SLIRecordBucketService {
   }
 
   @Override
-  public SLIRecordCount getPreviousBucketRunningCount(
+  public Pair<Long, Long> getPreviousBucketRunningCount(
       SLIRecordBucket sliRecordBucket, ServiceLevelIndicator serviceLevelIndicator) {
     if (serviceLevelIndicator.getSLIEvaluationType() == SLIEvaluationType.WINDOW) {
       long runningBadCount = sliRecordBucket.getRunningBadCount();
       long runningGoodCount = sliRecordBucket.getRunningGoodCount();
-      long runningSkipDataCount = sliRecordBucket.getRunningSkipDataCount();
       for (SLIState sliState : sliRecordBucket.getSliStates()) {
         if (sliState == SLIState.GOOD) {
           runningGoodCount--;
         } else if (sliState == SLIState.BAD) {
           runningBadCount--;
-        } else if (sliState == SLIState.SKIP_DATA) {
-          runningSkipDataCount--;
         }
       }
-      return SLIRecordCount.builder()
-          .goodCount(runningGoodCount)
-          .badCount(runningBadCount)
-          .skipDataCount(runningSkipDataCount)
-          .build();
+      return Pair.of(runningGoodCount, runningBadCount);
     } else {
       SLIRecordBucket baselineSLIRecordBucket =
           getLastSLIRecord(serviceLevelIndicator.getUuid(), sliRecordBucket.getBucketStartTime());
       if (Objects.isNull(baselineSLIRecordBucket)) {
-        return SLIRecordCount.builder().goodCount(0).badCount(0).skipDataCount(0).build();
+        return Pair.of(0L, 0L);
       }
-      return SLIRecordCount.builder()
-          .goodCount(baselineSLIRecordBucket.getRunningGoodCount())
-          .badCount(baselineSLIRecordBucket.getRunningBadCount())
-          .skipDataCount(baselineSLIRecordBucket.getRunningSkipDataCount())
-          .build();
+      return Pair.of(baselineSLIRecordBucket.getRunningGoodCount(), baselineSLIRecordBucket.getRunningBadCount());
     }
-  }
-
-  @Override
-  public Pair<Map<CompositeServiceLevelObjective.ServiceLevelObjectivesDetail, List<SLIRecordBucket>>,
-      Map<CompositeServiceLevelObjective.ServiceLevelObjectivesDetail, SLIMissingDataType>>
-  getSLODetailsSLIRecordsAndSLIMissingDataType(
-      List<CompositeServiceLevelObjective.ServiceLevelObjectivesDetail> serviceLevelObjectivesDetailList,
-      Instant startTime, Instant endTime) {
-    Map<CompositeServiceLevelObjective.ServiceLevelObjectivesDetail, List<SLIRecordBucket>>
-        serviceLevelObjectivesDetailSLIRecordMap = new HashMap<>();
-    Map<CompositeServiceLevelObjective.ServiceLevelObjectivesDetail, SLIMissingDataType>
-        objectivesDetailSLIMissingDataTypeMap = new HashMap<>();
-    for (CompositeServiceLevelObjective.ServiceLevelObjectivesDetail objectivesDetail :
-        serviceLevelObjectivesDetailList) {
-      ProjectParams projectParams = ProjectParams.builder()
-                                        .projectIdentifier(objectivesDetail.getProjectIdentifier())
-                                        .orgIdentifier(objectivesDetail.getOrgIdentifier())
-                                        .accountIdentifier(objectivesDetail.getAccountId())
-                                        .build();
-      SimpleServiceLevelObjective simpleServiceLevelObjective =
-          (SimpleServiceLevelObjective) serviceLevelObjectiveV2Service.getEntity(
-              projectParams, objectivesDetail.getServiceLevelObjectiveRef());
-      Preconditions.checkState(simpleServiceLevelObjective.getServiceLevelIndicators().size() == 1,
-          "Only one service level indicator is supported");
-      ServiceLevelIndicator serviceLevelIndicator = serviceLevelIndicatorService.getServiceLevelIndicator(
-          ProjectParams.builder()
-              .accountIdentifier(simpleServiceLevelObjective.getAccountId())
-              .orgIdentifier(simpleServiceLevelObjective.getOrgIdentifier())
-              .projectIdentifier(simpleServiceLevelObjective.getProjectIdentifier())
-              .build(),
-          simpleServiceLevelObjective.getServiceLevelIndicators().get(0));
-      String sliId = serviceLevelIndicator.getUuid();
-      int sliVersion = serviceLevelIndicator.getVersion();
-      if (serviceLevelIndicator.getSLIEvaluationType().equals(SLIEvaluationType.WINDOW)
-          && serviceLevelIndicator.getConsiderConsecutiveMinutes() != null
-          && serviceLevelIndicator.getConsiderConsecutiveMinutes() > 1) {
-        SLIRecordBucket lastSLIRecordBucket = getLatestSLIRecordSLIVersion(sliId, sliVersion);
-        if (lastSLIRecordBucket != null) {
-          Instant timeOfLastRecordWhichIsFixed =
-              DateTimeUtils.roundDownTo5MinBoundary(lastSLIRecordBucket.getBucketStartTime().minus(
-                  serviceLevelIndicator.getConsiderConsecutiveMinutes() - 2, ChronoUnit.MINUTES));
-          endTime = timeOfLastRecordWhichIsFixed.isBefore(endTime) ? timeOfLastRecordWhichIsFixed : endTime;
-        }
-      }
-      List<SLIRecordBucket> sliRecordBuckets = getSLIRecordsWithSLIVersion(sliId, startTime, endTime, sliVersion);
-      if (!sliRecordBuckets.isEmpty()) {
-        serviceLevelObjectivesDetailSLIRecordMap.put(objectivesDetail, sliRecordBuckets);
-        objectivesDetailSLIMissingDataTypeMap.put(objectivesDetail, serviceLevelIndicator.getSliMissingDataType());
-      }
-    }
-    return Pair.of(serviceLevelObjectivesDetailSLIRecordMap, objectivesDetailSLIMissingDataTypeMap);
-  }
-
-  private SLIRecordBucket getLatestSLIRecordSLIVersion(String sliId, int sliVersion) {
-    return hPersistence.createQuery(SLIRecordBucket.class, excludeAuthorityCount)
-        .filter(SLIRecordBucketKeys.sliId, sliId)
-        .field(SLIRecordBucketKeys.sliVersion)
-        .equal(sliVersion)
-        .order(Sort.descending(SLIRecordBucketKeys.bucketStartTime))
-        .get();
   }
 }

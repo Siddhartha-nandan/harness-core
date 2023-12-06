@@ -11,8 +11,6 @@ import static io.harness.aggregator.ACLEventProcessingConstants.UPDATE_ACTION;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
-import static java.util.Optional.of;
-
 import io.harness.accesscontrol.scopes.core.Scope;
 import io.harness.accesscontrol.scopes.harness.HarnessScopeParams;
 import io.harness.accesscontrol.scopes.harness.ScopeMapper;
@@ -79,7 +77,6 @@ public class HarnessUserGroupServiceImpl implements HarnessUserGroupService {
                   isEmpty(existingUserGroup.getUsers()) ? Collections.emptySet() : existingUserGroup.getUsers(),
                   isEmpty(userGroup.getUsers()) ? Collections.emptySet() : userGroup.getUsers());
               UserGroupUpdateEventData userGroupUpdateEventData = UserGroupUpdateEventData.builder()
-                                                                      .scope(of(scope))
                                                                       .usersAdded(usersAddedToUserGroup)
                                                                       .usersRemoved(usersRemovedFromUserGroup)
                                                                       .updatedUserGroup(userGroup)

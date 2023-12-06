@@ -18,24 +18,9 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @OwnedBy(PL)
 public class NextGenMetricsContext extends AutoMetricContext {
-  public NextGenMetricsContext(String namespace, String serviceName) {
+  public NextGenMetricsContext(String namespace, String containerName, String serviceName) {
     put("namespace", namespace);
-    put("serviceName", serviceName);
-  }
-
-  public NextGenMetricsContext(String namespace, String serviceName, String resource, String method) {
-    put("resource", resource);
-    put("method", method);
-    put("namespace", namespace);
-    put("serviceName", serviceName);
-  }
-
-  public NextGenMetricsContext(
-      String namespace, String serviceName, String resource, String method, String statusCode) {
-    put("resource", resource);
-    put("method", method);
-    put("statusCode", statusCode);
-    put("namespace", namespace);
+    put("containerName", containerName);
     put("serviceName", serviceName);
   }
 }

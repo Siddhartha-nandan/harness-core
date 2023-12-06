@@ -19,7 +19,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import io.harness.CategoryTest;
@@ -29,7 +28,6 @@ import io.harness.category.element.UnitTests;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.common.beans.SetupAbstractionKeys;
 import io.harness.cdng.infra.beans.AsgInfrastructureOutcome;
-import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.instance.info.InstanceInfoService;
 import io.harness.cdng.instance.outcome.DeploymentInfoOutcome;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
@@ -183,11 +181,6 @@ public class AsgBlueGreenRollbackStepTest extends CategoryTest {
 
     doReturn(AccountDTO.builder().name("abcd").build()).when(accountService).getAccount(any());
     doReturn(asgStoreManifestsContent).when(stepHelper).sendRollbackTelemetryEvent(any(), any(), any());
-
-    doReturn(mock(InfrastructureOutcome.class))
-        .when(asgStepCommonHelper)
-        .getInfrastructureOutcomeWithUpdatedExpressions(any());
-
     StepResponse stepResponse = asgBlueGreenRollbackStep.handleTaskResultWithSecurityContext(
         ambiance, stepElementParameters, () -> (AsgCommandResponse) responseData);
 
@@ -268,10 +261,6 @@ public class AsgBlueGreenRollbackStepTest extends CategoryTest {
     doReturn(taskChainResponse)
         .when(asgStepCommonHelper)
         .queueAsgTask(any(), any(), any(), any(), anyBoolean(), any(TaskType.class));
-
-    doReturn(mock(InfrastructureOutcome.class))
-        .when(asgStepCommonHelper)
-        .getInfrastructureOutcomeWithUpdatedExpressions(any());
 
     asgBlueGreenRollbackStep.obtainTaskAfterRbac(ambiance, stepElementParameters, inputPackage);
 

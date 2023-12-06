@@ -13,13 +13,13 @@ import io.harness.accesscontrol.roleassignments.RoleAssignment;
 import io.harness.aggregator.consumers.AccessControlChangeEventData;
 import io.harness.annotations.dev.OwnedBy;
 
+import lombok.Builder;
 import lombok.Data;
-import lombok.experimental.SuperBuilder;
 
 @Data
-@SuperBuilder
+@Builder
 @OwnedBy(PL)
-public class RoleAssignmentChangeEventData extends AccessControlChangeEventData {
+public class RoleAssignmentChangeEventData implements AccessControlChangeEventData {
   RoleAssignment newRoleAssignment;
   RoleAssignment deletedRoleAssignment;
   RoleAssignment updatedRoleAssignment;

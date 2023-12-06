@@ -13,7 +13,6 @@ import static io.harness.idp.common.Constants.MESSAGE_KEY;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.eraro.ResponseMessage;
-import io.harness.exception.UnexpectedException;
 import io.harness.idp.common.GsonUtils;
 import io.harness.idp.scorecard.datapointsdata.dsldataprovider.base.DslDataProvider;
 import io.harness.idp.scorecard.datasourcelocations.beans.ApiRequestDetails;
@@ -23,6 +22,8 @@ import io.harness.spec.server.idp.v1.model.ClusterConfig;
 import io.harness.spec.server.idp.v1.model.KubernetesConfig;
 
 import com.google.inject.Inject;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,9 +33,9 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.xerces.util.URI;
 
-@AllArgsConstructor(onConstructor = @__({ @Inject }))
-@Slf4j
 @OwnedBy(HarnessTeam.IDP)
+@Slf4j
+@AllArgsConstructor(onConstructor = @__({ @Inject }))
 public class KubernetesDsl implements DslDataProvider {
   DslClientFactory dslClientFactory;
   public static final Map<String, String> WORKLOAD_API_PATHS =
@@ -79,7 +80,7 @@ public class KubernetesDsl implements DslDataProvider {
             returnData.put(ERROR_MESSAGE_KEY,
                 GsonUtils.convertJsonStringToObject(response.getEntity().toString(), Map.class).get(MESSAGE_KEY));
           }
-        } catch (UnexpectedException e) {
+        } catch (NoSuchAlgorithmException | KeyManagementException e) {
           log.error("Could not make a call to {}", client);
           returnData.put(ERROR_MESSAGE_KEY, e.getMessage());
         }

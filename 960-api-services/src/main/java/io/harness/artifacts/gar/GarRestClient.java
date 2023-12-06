@@ -11,9 +11,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
-import io.harness.artifacts.gar.beans.GARPackageResponse;
 import io.harness.artifacts.gar.beans.GarPackageVersionResponse;
-import io.harness.artifacts.gar.beans.GarRepositoryResponse;
 import io.harness.artifacts.gar.beans.GarTags;
 
 import retrofit2.Call;
@@ -39,16 +37,4 @@ public interface GarRestClient {
       @Path(value = "project", encoded = true) String project, @Path(value = "region", encoded = true) String region,
       @Path(value = "repositories", encoded = true) String repositories, @Path(value = "package") String pkg,
       @Path(value = "tag", encoded = true) String version);
-
-  @GET("/v1/projects/{project}/locations/{region}/repositories")
-  Call<GarRepositoryResponse> getRepository(@Header("Authorization") String bearerAuthHeader,
-      @Path(value = "project", encoded = true) String project, @Path(value = "region", encoded = true) String region,
-      @Query(value = "pageSize", encoded = true) int pageSize,
-      @Query(value = "pageToken", encoded = true) String pageToken);
-  @GET("/v1/projects/{project}/locations/{region}/repositories/{repositories}/packages")
-  Call<GARPackageResponse> getPackage(@Header("Authorization") String bearerAuthHeader,
-      @Path(value = "project", encoded = true) String project, @Path(value = "region", encoded = true) String region,
-      @Path(value = "repositories", encoded = true) String repositories,
-      @Query(value = "pageSize", encoded = true) int pageSize,
-      @Query(value = "pageToken", encoded = true) String pageToken);
 }

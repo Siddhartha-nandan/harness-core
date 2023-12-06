@@ -13,11 +13,7 @@ public enum ErrorTrackingEventType {
   @JsonProperty("LogErrors") LOG("Log Errors"),
   @JsonProperty("HttpErrors") HTTP("Http Errors"),
   @JsonProperty("CustomErrors") CUSTOM("Custom Errors"),
-  @JsonProperty("TimeoutErrors") TIMER("Timeout Errors"),
-  @JsonProperty("SwallowedExceptions") SWALLOWED_EXCEPTION("Swallowed Exceptions"),
-  @JsonProperty("CaughtExceptions") CAUGHT_EXCEPTION("Caught Exceptions"),
-  @JsonProperty("UncaughtExceptions") UNCAUGHT_EXCEPTION("Uncaught Exceptions"),
-  @JsonProperty("LogWarnings") LOG_WARNING("Log Warnings");
+  @JsonProperty("TimeoutErrors") TIMER("Timeout Errors");
 
   private final String displayName;
 

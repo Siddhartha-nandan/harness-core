@@ -9,10 +9,8 @@ package io.harness.ssca.services;
 
 import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 
-import io.harness.outbox.api.OutboxService;
 import io.harness.repositories.SBOMComponentRepo;
 import io.harness.spec.server.ssca.v1.model.Artifact;
-import io.harness.spec.server.ssca.v1.model.ArtifactScorecard;
 import io.harness.spec.server.ssca.v1.model.OrchestrationSummaryResponse;
 import io.harness.spec.server.ssca.v1.model.SbomDetails;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
@@ -20,13 +18,11 @@ import io.harness.ssca.beans.SbomDTO;
 import io.harness.ssca.beans.SettingsDTO;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
-import io.harness.ssca.events.SSCAArtifactCreatedEvent;
 import io.harness.ssca.normalize.Normalizer;
 import io.harness.ssca.normalize.NormalizerRegistry;
 import io.harness.ssca.utils.SBOMUtils;
 
 import com.google.inject.Inject;
-import com.google.inject.name.Named;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -49,9 +45,6 @@ public class OrchestrationStepServiceImpl implements OrchestrationStepService {
   @Inject SBOMComponentRepo SBOMComponentRepo;
   @Inject NormalizerRegistry normalizerRegistry;
   @Inject S3StoreService s3StoreService;
-  @Inject OutboxService outboxService;
-
-  @Inject @Named("isElasticSearchEnabled") boolean isElasticSearchEnabled;
   private static final RetryPolicy<Object> transactionRetryPolicy = DEFAULT_RETRY_POLICY;
 
   @Override
@@ -75,7 +68,14 @@ public class OrchestrationStepServiceImpl implements OrchestrationStepService {
     artifactEntity = artifactService.getArtifactFromSbomPayload(
         accountId, orgIdentifier, projectIdentifier, sbomProcessRequestBody, sbomDTO);
 
-    uploadSbomAndDeleteLocalFile(sbomDumpFile, artifactEntity);
+    try {
+      s3StoreService.uploadSBOM(sbomDumpFile, artifactEntity);
+    } catch (Exception e) {
+      log.error(String.format("Upload SBOM Failed with exception: %s", e));
+      throw new RuntimeException("Upload SBOM Failed");
+    } finally {
+      sbomDumpFile.delete();
+    }
 
     SettingsDTO settingsDTO =
         getSettingsDTO(accountId, orgIdentifier, projectIdentifier, sbomProcessRequestBody, artifactEntity);
@@ -85,23 +85,14 @@ public class OrchestrationStepServiceImpl implements OrchestrationStepService {
 
     artifactEntity.setComponentsCount(sbomEntityList.stream().count());
 
-    return Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
+    Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
       artifactService.saveArtifactAndInvalidateOldArtifact(artifactEntity);
-      SBOMComponentRepo.saveAll(sbomEntityList);
-      if (isElasticSearchEnabled) {
-        outboxService.save(new SSCAArtifactCreatedEvent(accountId, orgIdentifier, projectIdentifier, artifactEntity));
-      }
-      log.info(String.format("SBOM Processed Successfully, Artifact ID: %s", artifactEntity.getArtifactId()));
-      return artifactEntity.getArtifactId();
+      return null;
     }));
-  }
+    SBOMComponentRepo.saveAll(sbomEntityList);
 
-  private void uploadSbomAndDeleteLocalFile(File sbomDumpFile, ArtifactEntity artifactEntity) {
-    try {
-      s3StoreService.uploadSBOM(sbomDumpFile, artifactEntity);
-    } finally {
-      sbomDumpFile.delete();
-    }
+    log.info(String.format("SBOM Processed Successfully, Artifact ID: %s", artifactEntity.getArtifactId()));
+    return artifactEntity.getArtifactId();
   }
 
   @Override
@@ -113,21 +104,13 @@ public class OrchestrationStepServiceImpl implements OrchestrationStepService {
                              -> new NotFoundException(String.format(
                                  "Artifact with orchestrationIdentifier [%s] is not found", orchestrationId)));
 
-    Artifact artifactResponse = new Artifact()
-                                    .name(artifact.getName())
-                                    .type(artifact.getName())
-                                    .registryUrl(artifact.getUrl())
-                                    .id(artifact.getId())
-                                    .tag(artifact.getTag());
-
-    if (artifact.getScorecard() != null) {
-      artifactResponse.setScorecard(new ArtifactScorecard()
-                                        .avgScore(artifact.getScorecard().getAvgScore())
-                                        .maxScore(artifact.getScorecard().getMaxScore()));
-    }
-
     return new OrchestrationSummaryResponse()
-        .artifact(artifactResponse)
+        .artifact(new Artifact()
+                      .name(artifact.getName())
+                      .type(artifact.getName())
+                      .registryUrl(artifact.getUrl())
+                      .id(artifact.getId())
+                      .tag(artifact.getTag()))
         .stepExecutionId(artifact.getOrchestrationId())
         .isAttested(artifact.isAttested())
         .sbom(new SbomDetails().name(artifact.getSbomName()));

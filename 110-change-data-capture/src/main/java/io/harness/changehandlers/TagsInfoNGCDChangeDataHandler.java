@@ -6,7 +6,6 @@
  */
 
 package io.harness.changehandlers;
-import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
@@ -14,7 +13,6 @@ import static java.util.Arrays.asList;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
-import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.execution.StageExecutionInfo;
 import io.harness.changestreamsframework.ChangeEvent;
@@ -33,7 +31,6 @@ import lombok.extern.slf4j.Slf4j;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_DASHBOARD})
 @Slf4j
-@OwnedBy(CDC)
 public class TagsInfoNGCDChangeDataHandler extends AbstractChangeDataHandler {
   private static final String TAGS = "tags";
   private static final String PARENT_TYPE = "parent_type";

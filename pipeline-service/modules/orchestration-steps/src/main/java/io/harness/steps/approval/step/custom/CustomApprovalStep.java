@@ -18,6 +18,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.data.structure.CollectionUtils;
 import io.harness.delegate.task.shell.ShellScriptTaskNG;
+import io.harness.delegate.task.shell.WinRmShellScriptTaskNG;
 import io.harness.engine.executions.step.StepExecutionEntityService;
 import io.harness.eraro.Level;
 import io.harness.exception.ApprovalStepNGException;
@@ -42,11 +43,12 @@ import io.harness.steps.approval.step.beans.ApprovalStatus;
 import io.harness.steps.approval.step.custom.beans.CustomApprovalResponseData;
 import io.harness.steps.approval.step.custom.entities.CustomApprovalInstance;
 import io.harness.steps.executables.PipelineAsyncExecutable;
+import io.harness.steps.shellscript.ShellType;
 import io.harness.tasks.ResponseData;
-import io.harness.telemetry.helpers.ApprovalInstrumentationHelper;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -64,13 +66,11 @@ public class CustomApprovalStep extends PipelineAsyncExecutable {
   @Inject private LogStreamingStepClientFactory logStreamingStepClientFactory;
   @Inject private StepExecutionEntityService stepExecutionEntityService;
   @Inject @Named("DashboardExecutorService") ExecutorService dashboardExecutorService;
-  @Inject ApprovalInstrumentationHelper instrumentationHelper;
 
   @Override
   public AsyncExecutableResponse executeAsyncAfterRbac(
       Ambiance ambiance, StepBaseParameters stepParameters, StepInputPackage inputPackage) {
     CustomApprovalInstance approvalInstance = CustomApprovalInstance.fromStepParameters(ambiance, stepParameters);
-    instrumentationHelper.sendApprovalEvent(approvalInstance);
     openLogStream(ambiance, approvalInstance);
     approvalInstance = (CustomApprovalInstance) approvalInstanceService.save(approvalInstance);
     irregularApprovalInstanceHandler.wakeup();
@@ -83,8 +83,12 @@ public class CustomApprovalStep extends PipelineAsyncExecutable {
 
   private void openLogStream(Ambiance ambiance, CustomApprovalInstance approvalInstance) {
     ILogStreamingStepClient logStreamingStepClient = logStreamingStepClientFactory.getLogStreamingStepClient(ambiance);
-
-    List<String> units = Collections.singletonList(ShellScriptTaskNG.COMMAND_UNIT);
+    List<String> units;
+    if (ShellType.Bash.equals(approvalInstance.getShellType())) {
+      units = Collections.singletonList(ShellScriptTaskNG.COMMAND_UNIT);
+    } else {
+      units = Arrays.asList(WinRmShellScriptTaskNG.INIT_UNIT, WinRmShellScriptTaskNG.COMMAND_UNIT);
+    }
 
     for (String unit : units) {
       logStreamingStepClient.openStream(unit);

@@ -156,8 +156,8 @@ public class DelegateTaskServiceImpl implements DelegateTaskService {
             .filter(DelegateTaskKeys.uuid, taskId);
 
     DelegateTask delegateTask = taskQuery.get();
+    copyTaskDataV2ToTaskData(delegateTask);
     if (delegateTask != null) {
-      copyTaskDataV2ToTaskData(delegateTask);
       try (AutoLogContext ignore = DelegateLogContextHelper.getLogContext(delegateTask)) {
         if (response.getResponseCode() == ResponseCode.RETRY_ON_OTHER_DELEGATE) {
           RetryDelegate retryDelegate =
@@ -171,7 +171,7 @@ public class DelegateTaskServiceImpl implements DelegateTaskService {
           }
         }
         log.info("Response received for task: {} from Delegate: {}", taskId, delegateId);
-        handleResponseV2(delegateTask, response);
+        handleResponse(delegateTask, taskQuery, response);
 
         retryObserverSubject.fireInform(DelegateTaskRetryObserver::onTaskResponseProcessed, delegateTask, delegateId);
         remoteObserverInformer.sendEvent(ReflectionUtils.getMethod(DelegateTaskRetryObserver.class,
@@ -223,8 +223,18 @@ public class DelegateTaskServiceImpl implements DelegateTaskService {
     }
   }
 
+  private String getVersion() {
+    return versionInfoManager.getVersionInfo().getVersion();
+  }
+
   @Override
-  public void handleResponseV2(final DelegateTask delegateTask, final DelegateTaskResponse response) {
+  public void handleResponse(DelegateTask delegateTask, Query<DelegateTask> taskQuery, DelegateTaskResponse response) {
+    handleResponseV2(delegateTask, taskQuery, response);
+  }
+
+  @Override
+  public void handleResponseV2(
+      DelegateTask delegateTask, Query<DelegateTask> taskQuery, DelegateTaskResponse response) {
     copyTaskDataToTaskDataV2(delegateTask);
     if (delegateTask.getDriverId() == null) {
       handleInprocResponseV2(delegateTask, response);
@@ -232,15 +242,10 @@ public class DelegateTaskServiceImpl implements DelegateTaskService {
       handleDriverResponseV2(delegateTask, response);
     }
 
-    final Query<DelegateTask> taskQuery =
-        persistence
-            .createQuery(
-                DelegateTask.class, delegateTaskMigrationHelper.isMigrationEnabledForTask(delegateTask.getUuid()))
-            .filter(DelegateTaskKeys.accountId, delegateTask.getAccountId())
-            .filter(DelegateTaskKeys.uuid, delegateTask.getUuid());
-
-    persistence.deleteOnServer(
-        taskQuery, delegateTaskMigrationHelper.isMigrationEnabledForTask(delegateTask.getUuid()));
+    if (taskQuery != null) {
+      persistence.deleteOnServer(
+          taskQuery, delegateTaskMigrationHelper.isMigrationEnabledForTask(delegateTask.getUuid()));
+    }
 
     delegateMetricsService.recordDelegateTaskResponseMetrics(delegateTask, response, DELEGATE_TASK_RESPONSE);
   }
@@ -302,13 +307,8 @@ public class DelegateTaskServiceImpl implements DelegateTaskService {
   }
 
   private void handleInprocResponseV2(DelegateTask delegateTask, DelegateTaskResponse response) {
-    boolean async = delegateTask.isAsync();
-    if (delegateTask.getTaskDataV2() != null) {
-      async = delegateTask.getTaskDataV2().isAsync();
-    } else if (delegateTask.getData() != null) {
-      async = delegateTask.getData().isAsync();
-    }
-
+    boolean async = delegateTask.getTaskDataV2() != null ? delegateTask.getTaskDataV2().isAsync()
+                                                         : delegateTask.getData().isAsync();
     if (async) {
       String waitId = delegateTask.getWaitId();
       if (waitId != null) {

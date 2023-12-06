@@ -32,7 +32,6 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.Collections;
 import java.util.stream.Collectors;
 import lombok.Builder;
-import lombok.Getter;
 
 @OwnedBy(PIPELINE)
 @JsonTypeName(StepSpecTypeConstantsV1.HTTP)
@@ -40,10 +39,9 @@ import lombok.Getter;
 public class HttpStepNodeV1 extends PmsAbstractStepNodeV1 {
   String type = StepSpecTypeConstantsV1.HTTP;
 
-  @Getter @JsonTypeInfo(use = NAME, property = "type", include = EXTERNAL_PROPERTY, visible = true) HttpStepInfoV1 spec;
+  @JsonTypeInfo(use = NAME, property = "type", include = EXTERNAL_PROPERTY, visible = true) HttpStepInfoV1 spec;
 
   // TODO: set rollback parameters
-  @Override
   public StepElementParametersV1 getStepParameters(PlanCreationContext ctx) {
     StepElementParametersV1Builder stepBuilder = StepParametersUtilsV1.getStepParameters(this);
     stepBuilder.spec(getSpecParameters());

@@ -106,7 +106,6 @@ import io.harness.ngtriggers.helpers.TriggerCatalogHelper;
 import io.harness.ngtriggers.helpers.TriggerSetupUsageHelper;
 import io.harness.ngtriggers.mapper.NGTriggerElementMapper;
 import io.harness.ngtriggers.service.impl.NGTriggerServiceImpl;
-import io.harness.ngtriggers.utils.MaxMultiArtifactTriggerSourcesProvider;
 import io.harness.ngtriggers.utils.PollingSubscriptionHelper;
 import io.harness.ngtriggers.utils.TriggerReferenceHelper;
 import io.harness.ngtriggers.validations.TriggerValidationHandler;
@@ -190,7 +189,6 @@ public class NGTriggerServiceImplTest extends CategoryTest {
   @Mock TriggerSetupUsageHelper triggerSetupUsageHelper;
   @Mock TriggerWebhookEventRepository webhookEventQueueRepository;
   @Mock OutboxService outboxService;
-  @Mock MaxMultiArtifactTriggerSourcesProvider maxMultiArtifactTriggerSourcesProvider;
   @Mock ExecutorService executorService;
   @Mock PollingSubscriptionHelper pollingSubscriptionHelper;
 
@@ -476,7 +474,6 @@ public class NGTriggerServiceImplTest extends CategoryTest {
   @Owner(developers = MEET)
   @Category(UnitTests.class)
   public void testValidateTriggerConfig() {
-    when(maxMultiArtifactTriggerSourcesProvider.get()).thenReturn(10);
     NGTriggerEntity ngTriggerEntity = NGTriggerEntity.builder()
                                           .accountId(ACCOUNT_ID)
                                           .orgIdentifier(ORG_IDENTIFIER)
@@ -2090,18 +2087,17 @@ public class NGTriggerServiceImplTest extends CategoryTest {
                                                      .errorMessage("")
                                                      .lastCollectedVersions(Collections.singletonList("1.0"))
                                                      .lastCollectedTime(123L)
-                                                     .errorStatusValidUntil(null)
                                                      .build();
     when(ngTriggerRepository.updateManyTriggerPollingSubscriptionStatusBySignatures("account",
              statusUpdate.getSignatures(), statusUpdate.isSuccess(), statusUpdate.getErrorMessage(),
-             statusUpdate.getLastCollectedVersions(), statusUpdate.getLastCollectedTime(), null))
+             statusUpdate.getLastCollectedVersions(), statusUpdate.getLastCollectedTime()))
         .thenReturn(true);
     boolean result = ngTriggerServiceImpl.updateTriggerPollingStatus("account", statusUpdate);
     assertThat(result).isTrue();
     verify(ngTriggerRepository, times(1))
         .updateManyTriggerPollingSubscriptionStatusBySignatures("account", statusUpdate.getSignatures(),
             statusUpdate.isSuccess(), statusUpdate.getErrorMessage(), statusUpdate.getLastCollectedVersions(),
-            statusUpdate.getLastCollectedTime(), null);
+            statusUpdate.getLastCollectedTime());
   }
 
   @Test
@@ -2114,12 +2110,10 @@ public class NGTriggerServiceImplTest extends CategoryTest {
                                                      .errorMessage("")
                                                      .lastCollectedVersions(Collections.singletonList("1.0"))
                                                      .lastCollectedTime(123L)
-                                                     .errorStatusValidUntil(100L)
                                                      .build();
     when(ngTriggerRepository.updateManyTriggerPollingSubscriptionStatusBySignatures("account",
              statusUpdate.getSignatures(), statusUpdate.isSuccess(), statusUpdate.getErrorMessage(),
-             statusUpdate.getLastCollectedVersions(), statusUpdate.getLastCollectedTime(),
-             statusUpdate.getErrorStatusValidUntil()))
+             statusUpdate.getLastCollectedVersions(), statusUpdate.getLastCollectedTime()))
         .thenReturn(true);
     assertThatThrownBy(() -> ngTriggerServiceImpl.updateTriggerPollingStatus("account", statusUpdate))
         .isInstanceOf(InvalidRequestException.class)

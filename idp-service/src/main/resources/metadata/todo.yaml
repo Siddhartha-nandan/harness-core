@@ -1,8 +1,7 @@
 identifier: todo
 name: TODO
 description: Browse TODO comments in your project's source code.
-accountIdentifier: __GLOBAL_ACCOUNT_ID__
-creator: Spotify
+createdBy: Spotify
 category: Discovery
 source: https://github.com/backstage/backstage/tree/master/plugins/todo
 iconUrl: https://backstage.io/img/todo-logo.png

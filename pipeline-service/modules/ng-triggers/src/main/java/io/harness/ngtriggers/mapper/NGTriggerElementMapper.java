@@ -100,7 +100,6 @@ import io.harness.ngtriggers.exceptions.InvalidTriggerYamlException;
 import io.harness.ngtriggers.helpers.TriggerHelper;
 import io.harness.ngtriggers.helpers.WebhookConfigHelper;
 import io.harness.ngtriggers.utils.WebhookEventPayloadParser;
-import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.pms.yaml.YamlUtils;
@@ -158,25 +157,6 @@ public class NGTriggerElementMapper {
     }
   }
 
-  public NGTriggerConfigV2 toTriggerConfigV2ForYamlSimplification(NGTriggerEntity entity) {
-    return NGTriggerConfigV2.builder()
-        .pipelineIdentifier(entity.getTargetIdentifier())
-        .identifier(entity.getIdentifier())
-        .projectIdentifier(entity.getProjectIdentifier())
-        .orgIdentifier(entity.getOrgIdentifier())
-        .encryptedWebhookSecretIdentifier(entity.getEncryptedWebhookSecretIdentifier())
-        .enabled(entity.getEnabled())
-        .description(entity.getDescription())
-        .inputYaml(entity.getTriggerConfigWrapper().getInputYaml())
-        .inputSetRefs(entity.getTriggerConfigWrapper().getInputSetRefs())
-        .name(entity.getName())
-        .pipelineBranchName(entity.getTriggerConfigWrapper().getPipelineBranchName())
-        .tags(TagMapper.convertToMap(entity.getTags()))
-        .source(entity.getTriggerConfigWrapper().getSource())
-        .stagesToExecute(entity.getStagesToExecute())
-        .build();
-  }
-
   public String generateNgTriggerConfigV2Yaml(
       NGTriggerEntity ngTriggerEntity, boolean throwExceptionIfYamlConversionFails) {
     String yaml = ngTriggerEntity.getYaml();
@@ -205,9 +185,6 @@ public class NGTriggerElementMapper {
   }
 
   public NGTriggerConfigV2 toTriggerConfigV2(NGTriggerEntity ngTriggerEntity) {
-    if (HarnessYamlVersion.V1.equals(ngTriggerEntity.getHarnessVersion())) {
-      return toTriggerConfigV2ForYamlSimplification(ngTriggerEntity);
-    }
     try {
       if (ngTriggerEntity.getYmlVersion() == null || ngTriggerEntity.getYmlVersion() < 2) {
         NGTriggerConfig ngTriggerConfig = YamlPipelineUtils.read(ngTriggerEntity.getYaml(), NGTriggerConfig.class);
@@ -229,12 +206,7 @@ public class NGTriggerElementMapper {
   }
 
   public TriggerDetails toTriggerDetails(NGTriggerEntity ngTriggerEntity) {
-    NGTriggerConfigV2 config;
-    if (HarnessYamlVersion.V0.equals(ngTriggerEntity.getHarnessVersion())) {
-      config = toTriggerConfigV2(ngTriggerEntity.getYaml());
-    } else {
-      config = toTriggerConfigV2ForYamlSimplification(ngTriggerEntity);
-    }
+    NGTriggerConfigV2 config = toTriggerConfigV2(ngTriggerEntity.getYaml());
     return TriggerDetails.builder().ngTriggerConfigV2(config).ngTriggerEntity(ngTriggerEntity).build();
   }
 
@@ -362,7 +334,7 @@ public class NGTriggerElementMapper {
     return entity;
   }
 
-  public NGTriggerMetadata toMetadata(NGTriggerSourceV2 triggerSource, String accountIdentifier) {
+  NGTriggerMetadata toMetadata(NGTriggerSourceV2 triggerSource, String accountIdentifier) {
     switch (triggerSource.getType()) {
       case WEBHOOK:
         WebhookTriggerConfigV2 webhookTriggerConfig = (WebhookTriggerConfigV2) triggerSource.getSpec();

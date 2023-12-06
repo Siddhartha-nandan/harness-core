@@ -295,9 +295,7 @@ public class BarrierServiceImpl implements BarrierService, ForceProctor {
             Criteria.where(position.concat(".").concat(BarrierPositionKeys.stepGroupSetupId)).is(positionSetupId);
         if (isNewBarrierUpdateFlow) {
           stepGroupCriteria = stepGroupCriteria.and(position.concat(".").concat(BarrierPositionKeys.strategyNodeType))
-                                  .in(BarrierPositionType.STAGE, null)
-                                  .and(position.concat(".").concat(BarrierPositionKeys.stageRuntimeId))
-                                  .is(stageExecutionId);
+                                  .in(BarrierPositionType.STAGE, null);
         }
         update = new Update()
                      .set(positions.concat(BarrierPositionKeys.stepGroupRuntimeId), positionExecutionId)

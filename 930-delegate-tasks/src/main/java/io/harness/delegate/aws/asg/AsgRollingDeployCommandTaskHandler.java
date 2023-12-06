@@ -151,8 +151,8 @@ public class AsgRollingDeployCommandTaskHandler extends AsgCommandTaskNGHandler 
     }
 
     // Chain factory code to handle each manifest one by one in a chain
-    AsgManifestHandlerChainFactory asgManifestHandlerChainFactory =
-        (AsgManifestHandlerChainFactory) AsgManifestHandlerChainFactory.builder()
+    AsgManifestHandlerChainState chainState =
+        AsgManifestHandlerChainFactory.builder()
             .initialChainState(AsgManifestHandlerChainState.builder().asgName(asgName).build())
             .asgSdkManager(asgSdkManager)
             .build()
@@ -174,22 +174,16 @@ public class AsgRollingDeployCommandTaskHandler extends AsgCommandTaskNGHandler 
             .addHandler(
                 AsgScalingPolicy, AsgScalingPolicyManifestRequest.builder().manifests(asgScalingPolicyContent).build())
             .addHandler(AsgScheduledUpdateGroupAction,
-                AsgScheduledActionManifestRequest.builder().manifests(asgScheduledActionContent).build());
+                AsgScheduledActionManifestRequest.builder().manifests(asgScheduledActionContent).build())
+            .addHandler(AsgInstanceRefresh,
+                AsgInstanceRefreshManifestRequest.builder()
+                    .skipMatching(skipMatching)
+                    .instanceWarmup(instanceWarmup)
+                    .minimumHealthyPercentage(minimumHealthyPercentage)
+                    .build())
+            .executeUpsert();
 
-    // make instance refresh if is not first deployment
-    AutoScalingGroup autoScalingGroup = asgSdkManager.getASG(asgName);
-    if (autoScalingGroup != null) {
-      asgManifestHandlerChainFactory.addHandler(AsgInstanceRefresh,
-          AsgInstanceRefreshManifestRequest.builder()
-              .skipMatching(skipMatching)
-              .instanceWarmup(instanceWarmup)
-              .minimumHealthyPercentage(minimumHealthyPercentage)
-              .build());
-    }
-
-    AsgManifestHandlerChainState chainState = asgManifestHandlerChainFactory.executeUpsert();
-
-    autoScalingGroup = chainState.getAutoScalingGroup();
+    AutoScalingGroup autoScalingGroup = chainState.getAutoScalingGroup();
 
     return asgTaskHelper.mapToAutoScalingGroupContainer(autoScalingGroup);
   }

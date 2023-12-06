@@ -94,14 +94,11 @@ public class DelegateSetupResourceV2 {
           "orgId") String orgId,
       @Parameter(description = "Project Id. If lefty empty all Delegate Groups will be listed for organization")
       @QueryParam("projectId") String projectId) {
-    if (accessControlClient.hasAccess(ResourceScope.of(accountId, orgId, projectId),
-            Resource.of(DELEGATE_RESOURCE_TYPE, null), DELEGATE_VIEW_PERMISSION)) {
-      try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
-        return new RestResponse<>(delegateSetupService.listDelegateGroupDetails(accountId, orgId, projectId, false));
-      }
-    }
+    accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountId, orgId, projectId),
+        Resource.of(DELEGATE_RESOURCE_TYPE, null), DELEGATE_VIEW_PERMISSION);
+
     try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
-      return new RestResponse<>(delegateSetupService.listDelegateGroupDetails(accountId, orgId, projectId, true));
+      return new RestResponse<>(delegateSetupService.listDelegateGroupDetails(accountId, orgId, projectId));
     }
   }
 
@@ -124,16 +121,12 @@ public class DelegateSetupResourceV2 {
       @QueryParam(NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm,
       @Body @RequestBody(description = "Details of the Delegate filter properties to be applied")
       DelegateFilterPropertiesDTO delegateFilterPropertiesDTO, @BeanParam PageRequest pageRequest) {
-    if (accessControlClient.hasAccess(ResourceScope.of(accountId, orgId, projectId),
-            Resource.of(DELEGATE_RESOURCE_TYPE, null), DELEGATE_VIEW_PERMISSION)) {
-      try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
-        return new RestResponse<>(delegateSetupService.listDelegateGroupDetailsV2(accountId, orgId, projectId,
-            filterIdentifier, searchTerm, delegateFilterPropertiesDTO, pageRequest, false));
-      }
-    }
+    accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountId, orgId, projectId),
+        Resource.of(DELEGATE_RESOURCE_TYPE, null), DELEGATE_VIEW_PERMISSION);
+
     try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
       return new RestResponse<>(delegateSetupService.listDelegateGroupDetailsV2(
-          accountId, orgId, projectId, filterIdentifier, searchTerm, delegateFilterPropertiesDTO, pageRequest, true));
+          accountId, orgId, projectId, filterIdentifier, searchTerm, delegateFilterPropertiesDTO, pageRequest));
     }
   }
 
@@ -153,16 +146,12 @@ public class DelegateSetupResourceV2 {
       @QueryParam("orgId") String orgId,
       @Parameter(description = "Project Id. If left empty Delegate groups with no project will be listed") @QueryParam(
           "projectId") String projectId) {
-    if (accessControlClient.hasAccess(ResourceScope.of(accountId, orgId, projectId),
-            Resource.of(DELEGATE_RESOURCE_TYPE, null), DELEGATE_VIEW_PERMISSION)) {
-      try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
-        return new RestResponse<>(
-            delegateSetupService.listDelegateGroupDetailsUpTheHierarchy(accountId, orgId, projectId, false));
-      }
-    }
+    accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountId, orgId, projectId),
+        Resource.of(DELEGATE_RESOURCE_TYPE, null), DELEGATE_VIEW_PERMISSION);
+
     try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
       return new RestResponse<>(
-          delegateSetupService.listDelegateGroupDetailsUpTheHierarchy(accountId, orgId, projectId, true));
+          delegateSetupService.listDelegateGroupDetailsUpTheHierarchy(accountId, orgId, projectId));
     }
   }
 

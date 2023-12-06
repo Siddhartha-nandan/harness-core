@@ -108,8 +108,8 @@ public class AsgRollingRollbackStep extends CdTaskExecutable<AsgCommandResponse>
                                .build())
               .build();
     } else {
-      InfrastructureOutcome infrastructureOutcome =
-          asgStepCommonHelper.getInfrastructureOutcomeWithUpdatedExpressions(ambiance);
+      InfrastructureOutcome infrastructureOutcome = (InfrastructureOutcome) outcomeService.resolve(
+          ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME));
 
       List<ServerInstanceInfo> serverInstanceInfos = asgStepCommonHelper.getServerInstanceInfos(
           asgRollingRollbackResponse, infrastructureOutcome.getInfrastructureKey(),
@@ -167,8 +167,8 @@ public class AsgRollingRollbackStep extends CdTaskExecutable<AsgCommandResponse>
     AsgRollingPrepareRollbackDataOutcome asgRollingPrepareRollbackDataOutcome =
         (AsgRollingPrepareRollbackDataOutcome) asgRollingPrepareRollbackDataOptionalOutput.getOutput();
 
-    InfrastructureOutcome infrastructureOutcome =
-        asgStepCommonHelper.getInfrastructureOutcomeWithUpdatedExpressions(ambiance);
+    InfrastructureOutcome infrastructureOutcome = (InfrastructureOutcome) outcomeService.resolve(
+        ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME));
 
     final String accountId = AmbianceUtils.getAccountId(ambiance);
 

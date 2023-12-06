@@ -7,8 +7,7 @@
 
 package io.harness.cvng.servicelevelobjective.services.impl;
 
-import static io.harness.cvng.core.services.CVNextGenConstants.MAX_NUMBER_OF_POINTS;
-import static io.harness.cvng.core.services.CVNextGenConstants.SLI_RECORD_BUCKET_SIZE;
+import static io.harness.cvng.servicelevelobjective.services.impl.SLIRecordBucketServiceImpl.SLI_RECORD_BUCKET_SIZE;
 
 import io.harness.cvng.core.beans.params.MonitoredServiceParams;
 import io.harness.cvng.core.beans.params.ProjectParams;
@@ -26,13 +25,14 @@ import io.harness.cvng.servicelevelobjective.beans.ServiceLevelObjectiveType;
 import io.harness.cvng.servicelevelobjective.entities.AbstractServiceLevelObjective;
 import io.harness.cvng.servicelevelobjective.entities.CompositeServiceLevelObjective;
 import io.harness.cvng.servicelevelobjective.entities.SLIRecordBucket;
-import io.harness.cvng.servicelevelobjective.entities.SLIRecordCount;
+import io.harness.cvng.servicelevelobjective.entities.SLIState;
 import io.harness.cvng.servicelevelobjective.entities.ServiceLevelIndicator;
 import io.harness.cvng.servicelevelobjective.entities.SimpleServiceLevelObjective;
 import io.harness.cvng.servicelevelobjective.services.api.GraphDataServiceV2;
 import io.harness.cvng.servicelevelobjective.services.api.SLIRecordBucketService;
 import io.harness.cvng.servicelevelobjective.services.api.ServiceLevelIndicatorService;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.inject.Inject;
 import java.time.Clock;
@@ -54,6 +54,7 @@ public class GraphDataServiceV2Impl implements GraphDataServiceV2 {
   @Inject EntityDisabledTimeService entityDisabledTimeService;
   @Inject GraphDataServiceImpl graphDataServiceImpl;
   @Inject Clock clock;
+  @VisibleForTesting public static final int MAX_NUMBER_OF_POINTS = 2000;
 
   @Override
   public SLODashboardWidget.SLOGraphData getGraphData(AbstractServiceLevelObjective serviceLevelObjective,
@@ -110,6 +111,7 @@ public class GraphDataServiceV2Impl implements GraphDataServiceV2 {
     boolean isCalculatingSLI = false;
     if (!sliRecordBuckets.isEmpty()) {
       long disabledMinutesFromStart = 0;
+      long skippedRecordFromStart = 0;
       long badCountTillRangeEndTime = 0L;
       long badCountTillRangeStartTime = -1L;
       int currentDisabledRangeIndex = 0;
@@ -117,7 +119,7 @@ public class GraphDataServiceV2Impl implements GraphDataServiceV2 {
       List<EntityDisableTime> disableTimes = getEntityDisableTimes(serviceLevelIndicator);
       SLIRecordBucket firstSLIRecord = sliRecordBuckets.get(0);
       SLIValue lastSLIValue = SLIValue.builder().build();
-      SLIRecordCount sliBaselineRunningCountPair =
+      Pair<Long, Long> sliBaselineRunningCountPair =
           sliRecordBucketService.getPreviousBucketRunningCount(firstSLIRecord, serviceLevelIndicator);
       for (int currentSLIBucketIndex = 0; currentSLIBucketIndex < sliRecordBuckets.size(); currentSLIBucketIndex++) {
         SLIRecordBucket currentSLIRecordBucket = sliRecordBuckets.get(currentSLIBucketIndex);
@@ -139,10 +141,12 @@ public class GraphDataServiceV2Impl implements GraphDataServiceV2 {
           return getSloGraphDataForVersionMismatch(serviceLevelIndicator, errorBudgetRemaining, totalErrorBudget,
               errorBudgetRemainingPercentage, errorBudgetBurndowns, sliTrends, sliStatusPercentage, errorBudgetBurned);
         }
+        skippedRecordFromStart +=
+            currentSLIRecordBucket.getSliStates().stream().filter(sliState -> sliState == SLIState.SKIP_DATA).count();
 
-        SLIValue currentSLIValue =
-            sliRecordBucketService.calculateSLIValue(serviceLevelIndicator.getSLIEvaluationType(), sliMissingDataType,
-                currentSLIRecordBucket, sliBaselineRunningCountPair, sliBeginningMinute, disabledMinutesFromStart);
+        SLIValue currentSLIValue = sliRecordBucketService.calculateSLIValue(
+            serviceLevelIndicator.getSLIEvaluationType(), sliMissingDataType, currentSLIRecordBucket,
+            sliBaselineRunningCountPair, sliBeginningMinute, skippedRecordFromStart, disabledMinutesFromStart);
 
         if (currentSLIBucketIndex == sliRecordBuckets.size() - 1) {
           lastSLIValue = currentSLIValue;
@@ -198,7 +202,7 @@ public class GraphDataServiceV2Impl implements GraphDataServiceV2 {
         && !sliRecordBucket.getBucketStartTime().isBefore(
             DateTimeUtils.roundDownTo1MinBoundary(filter.getStartTime()))) {
       Long previousBadRunningCount =
-          sliRecordBucketService.getPreviousBucketRunningCount(sliRecordBucket, serviceLevelIndicator).getBadCount();
+          sliRecordBucketService.getPreviousBucketRunningCount(sliRecordBucket, serviceLevelIndicator).getRight();
       badCountTillRangeStartTime = sliRecordBucketService.getBadCountTillRangeStartTime(
           serviceLevelIndicator, sliMissingDataType, sliValue, sliRecordBucket, previousBadRunningCount);
     }

@@ -6,7 +6,6 @@
  */
 
 package io.harness.eventsframework.api;
-
 import static io.harness.annotations.dev.HarnessTeam.PL;
 
 import io.harness.annotations.dev.CodePulse;
@@ -26,5 +25,4 @@ public interface Consumer {
   void shutdown();
 
   int getBatchSize();
-  String getTopicName();
 }

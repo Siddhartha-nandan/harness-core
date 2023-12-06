@@ -11,15 +11,12 @@ import io.harness.cvng.core.beans.params.TimeRangeParams;
 import io.harness.cvng.servicelevelobjective.beans.SLIEvaluationType;
 import io.harness.cvng.servicelevelobjective.beans.SLIMissingDataType;
 import io.harness.cvng.servicelevelobjective.beans.SLIValue;
-import io.harness.cvng.servicelevelobjective.entities.CompositeServiceLevelObjective;
 import io.harness.cvng.servicelevelobjective.entities.SLIRecordBucket;
-import io.harness.cvng.servicelevelobjective.entities.SLIRecordCount;
 import io.harness.cvng.servicelevelobjective.entities.SLIRecordParam;
 import io.harness.cvng.servicelevelobjective.entities.ServiceLevelIndicator;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import org.apache.commons.lang3.tuple.Pair;
 
 public interface SLIRecordBucketService {
@@ -44,15 +41,9 @@ public interface SLIRecordBucketService {
       SLIValue sliValue, SLIRecordBucket sliRecordBucket, long previousRunningCount);
 
   SLIValue calculateSLIValue(SLIEvaluationType sliEvaluationType, SLIMissingDataType sliMissingDataType,
-      SLIRecordBucket sliRecordBucket, SLIRecordCount baselineRunningCountPair, long beginningMinute,
-      long disabledMinutesFromStart);
+      SLIRecordBucket sliRecordBucket, Pair<Long, Long> baselineRunningCountPair, long beginningMinute,
+      long skipRecordCount, long disabledMinutesFromStart);
 
-  SLIRecordCount getPreviousBucketRunningCount(
+  Pair<Long, Long> getPreviousBucketRunningCount(
       SLIRecordBucket sliRecordBucket, ServiceLevelIndicator serviceLevelIndicator);
-
-  Pair<Map<CompositeServiceLevelObjective.ServiceLevelObjectivesDetail, List<SLIRecordBucket>>,
-      Map<CompositeServiceLevelObjective.ServiceLevelObjectivesDetail, SLIMissingDataType>>
-  getSLODetailsSLIRecordsAndSLIMissingDataType(
-      List<CompositeServiceLevelObjective.ServiceLevelObjectivesDetail> serviceLevelObjectivesDetailList,
-      Instant startTime, Instant endTime);
 }

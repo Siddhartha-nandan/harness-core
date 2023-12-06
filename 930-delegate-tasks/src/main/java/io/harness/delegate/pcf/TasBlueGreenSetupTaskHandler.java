@@ -55,7 +55,6 @@ import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
 import io.harness.delegate.beans.pcf.TasApplicationInfo;
 import io.harness.delegate.cf.PcfCommandTaskBaseHelper;
-import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
 import io.harness.delegate.task.cf.CfCommandTaskHelperNG;
 import io.harness.delegate.task.cf.TasArtifactDownloadContext;
 import io.harness.delegate.task.cf.TasArtifactDownloadResponse;
@@ -174,11 +173,6 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
 
       artifactFile = downloadArtifactFile(blueGreenSetupRequestNG, workingDirectory, logCallback);
 
-      ArtifactBundleDetails artifactBundleDetails = blueGreenSetupRequestNG.getArtifactBundleDetails();
-
-      String artifactPath =
-          tasTaskHelperBase.getArtifactPath(artifactBundleDetails, artifactFile, workingDirectory, logCallback);
-
       deleteOlderApplications(previousReleases, cfRequestConfig, blueGreenSetupRequestNG, cfAppAutoscalarRequestData,
           logCallback, activeApplicationInfo, inActiveApplicationInfo);
 
@@ -190,7 +184,7 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
           CfCreateApplicationRequestData.builder()
               .cfRequestConfig(updatePcfRequestConfig(blueGreenSetupRequestNG, cfRequestConfig,
                   blueGreenSetupRequestNG.getReleaseNamePrefix() + INACTIVE_APP_NAME_SUFFIX))
-              .artifactPath(artifactPath)
+              .artifactPath(artifactFile == null ? null : artifactFile.getAbsolutePath())
               .configPathVar(workingDirectory.getAbsolutePath())
               .newReleaseName(blueGreenSetupRequestNG.getReleaseNamePrefix() + INACTIVE_APP_NAME_SUFFIX)
               .pcfManifestFileData(pcfManifestFileData)
@@ -299,7 +293,6 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
         .spaceName(cfRequestConfig.getSpaceName())
         .userName(cfRequestConfig.getUserName())
         .password(cfRequestConfig.getPassword())
-        .refreshToken(cfRequestConfig.getRefreshToken())
         .endpointUrl(cfRequestConfig.getEndpointUrl())
         .manifestYaml(cfRequestConfig.getManifestYaml())
         .desiredCount(cfRequestConfig.getDesiredCount())
@@ -321,7 +314,6 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
     return CfRequestConfig.builder()
         .userName(String.valueOf(cfConfig.getUserName()))
         .password(String.valueOf(cfConfig.getPassword()))
-        .refreshToken(cfConfig.getRefreshToken() != null ? String.valueOf(cfConfig.getRefreshToken()) : null)
         .endpointUrl(cfConfig.getEndpointUrl())
         .orgName(blueGreenSetupRequest.getTasInfraConfig().getOrganization())
         .spaceName(blueGreenSetupRequest.getTasInfraConfig().getSpace())
@@ -630,9 +622,6 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
       CfBlueGreenSetupRequestNG blueGreenSetupRequestNG, CfRequestConfig cfRequestConfig, LogCallback logCallback,
       TasApplicationInfo activeApplicationInfo, TasApplicationInfo inActiveApplicationInfo)
       throws PivotalClientApiException {
-    if (!shouldRenameInactiveApp(blueGreenSetupRequestNG.getOlderActiveVersionCountToKeep())) {
-      return null;
-    }
     if (inActiveApplicationInfo == null || isEmpty(inActiveApplicationInfo.getApplicationGuid())
         || previousReleases.size() == 1) {
       return Collections.emptyList();
@@ -836,12 +825,5 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
     executionLogCallback.saveExecutionLog("# App Details: ");
     pcfCommandTaskBaseHelper.printApplicationDetail(newApplication, executionLogCallback);
     return newApplication;
-  }
-
-  private boolean shouldRenameInactiveApp(Integer olderActiveVersionsCountToKeep) {
-    if (olderActiveVersionsCountToKeep == null) {
-      return true;
-    }
-    return olderActiveVersionsCountToKeep != 0;
   }
 }

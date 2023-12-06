@@ -204,9 +204,6 @@ public class AuthServiceImpl implements AuthService {
 
   @Override
   public AuthToken validateToken(String tokenString) {
-    if (isEmpty(tokenString)) {
-      return null;
-    }
     if (tokenString.length() <= 32) {
       AuthToken authToken = getAuthToken(tokenString);
       if (authToken == null) {

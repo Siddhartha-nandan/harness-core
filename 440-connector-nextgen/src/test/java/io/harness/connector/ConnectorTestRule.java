@@ -65,7 +65,6 @@ import io.harness.serializer.ConnectorNextGenRegistrars;
 import io.harness.serializer.KryoModule;
 import io.harness.serializer.KryoRegistrar;
 import io.harness.serializer.PersistenceRegistrars;
-import io.harness.services.TunnelService;
 import io.harness.springdata.HTransactionTemplate;
 import io.harness.template.remote.TemplateResourceClient;
 import io.harness.testlib.module.MongoRuleMixin;
@@ -158,7 +157,6 @@ public class ConnectorTestRule implements InjectorRuleMixin, MethodRule, MongoRu
         bind(EntitySetupUsageService.class).toInstance(mock(EntitySetupUsageService.class));
         bind(FavoritesService.class).toInstance(mock(FavoritesService.class));
         bind(NgConnectorManagerClient.class).toInstance(mock(NgConnectorManagerClient.class));
-        bind(TunnelService.class).toInstance(mock(TunnelService.class));
       }
     });
     modules.add(mongoTypeModule(annotations));

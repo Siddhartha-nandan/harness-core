@@ -18,7 +18,6 @@ import static io.serializer.HObjectMapper.NG_DEFAULT_OBJECT_MAPPER;
 import io.harness.accesscontrol.resources.resourcegroups.ResourceGroup;
 import io.harness.accesscontrol.resources.resourcegroups.ResourceSelector;
 import io.harness.accesscontrol.resources.resourcegroups.events.ResourceGroupUpdateEvent;
-import io.harness.accesscontrol.scopes.core.ScopeService;
 import io.harness.aggregator.consumers.AccessControlChangeConsumer;
 import io.harness.aggregator.models.ResourceGroupChangeEventData;
 import io.harness.annotations.dev.OwnedBy;
@@ -29,8 +28,6 @@ import io.harness.outbox.api.OutboxEventHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,13 +37,11 @@ public class ResourceGroupEventHandler implements OutboxEventHandler {
   private final ObjectMapper objectMapper;
   private final AccessControlChangeConsumer<ResourceGroupChangeEventData> resourceGroupChangeConsumer;
   private final boolean enableAclProcessingThroughOutbox;
-  private final ScopeService scopeService;
 
   @Inject
   public ResourceGroupEventHandler(
       AccessControlChangeConsumer<ResourceGroupChangeEventData> resourceGroupChangeConsumer,
-      @Named("enableAclProcessingThroughOutbox") boolean enableAclProcessingThroughOutbox, ScopeService scopeService) {
-    this.scopeService = scopeService;
+      @Named("enableAclProcessingThroughOutbox") boolean enableAclProcessingThroughOutbox) {
     this.objectMapper = NG_DEFAULT_OBJECT_MAPPER;
     this.resourceGroupChangeConsumer = resourceGroupChangeConsumer;
     this.enableAclProcessingThroughOutbox = enableAclProcessingThroughOutbox;
@@ -80,10 +75,6 @@ public class ResourceGroupEventHandler implements OutboxEventHandler {
             resourceGroupUpdateEvent.getOldResourceGroup(), resourceGroupUpdateEvent.getNewResourceGroup());
         ResourceGroupChangeEventData resourceGroupChangeEventData =
             ResourceGroupChangeEventData.builder()
-                .scope(Objects.isNull(resourceGroupUpdateEvent.getScope())
-                        ? Optional.empty()
-                        : Optional.ofNullable(
-                            scopeService.buildScopeFromScopeIdentifier(resourceGroupUpdateEvent.getScope())))
                 .addedResourceSelectors(resourceSelectorsAdded)
                 .removedResourceSelectors(resourceSelectorsDeleted)
                 .updatedResourceGroup(resourceGroupUpdateEvent.getNewResourceGroup())

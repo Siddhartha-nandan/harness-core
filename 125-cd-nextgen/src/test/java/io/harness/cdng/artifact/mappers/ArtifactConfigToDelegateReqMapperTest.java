@@ -18,9 +18,6 @@ import static io.harness.rule.OwnerRule.vivekveman;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
 import io.harness.annotations.dev.HarnessTeam;
@@ -51,7 +48,6 @@ import io.harness.cdng.artifact.bean.yaml.customartifact.FetchAllArtifacts;
 import io.harness.cdng.artifact.bean.yaml.nexusartifact.BambooArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.nexusartifact.Nexus2RegistryArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.nexusartifact.NexusRegistryDockerConfig;
-import io.harness.cdng.artifact.bean.yaml.nexusartifact.NexusRegistryMavenConfig;
 import io.harness.cdng.artifact.bean.yaml.nexusartifact.NexusRegistryNpmConfig;
 import io.harness.delegate.beans.connector.artifactoryconnector.ArtifactoryConnectorDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsConnectorDTO;
@@ -88,14 +84,12 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.exception.exceptionmanager.ExceptionManager;
 import io.harness.metrics.intfc.DelegateMetricsService;
 import io.harness.pms.contracts.ambiance.Ambiance;
-import io.harness.pms.plan.execution.SetupAbstractionKeys;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.validation.InputSetValidator;
 import io.harness.rule.Owner;
 import io.harness.secretmanagerclient.services.api.SecretManagerClientService;
 import io.harness.security.encryption.EncryptedDataDetail;
 import io.harness.service.DelegateGrpcClientWrapper;
-import io.harness.telemetry.helpers.ArtifactSourceInstrumentationHelper;
 import io.harness.yaml.core.timeout.Timeout;
 
 import software.wings.utils.RepositoryFormat;
@@ -103,11 +97,9 @@ import software.wings.utils.RepositoryFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
@@ -116,28 +108,14 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
   private static final String LAST_PUBLISHED_EXPRESSION = "<+lastPublished.tag>";
   private static final String TAG = "tag";
   private static final String CONNECTOR_REF = "connectorRef";
-  private static final String ACCOUNT = "account";
-  private static final String ORG = "org";
-  private static final String PROJECT = "project";
   private static final ParameterField LAST_PUBLISHED_EXPRESSION_REGEX = ParameterField.createExpressionField(
       true, LAST_PUBLISHED_EXPRESSION, new InputSetValidator(InputSetValidatorType.REGEX, TAG), true);
   private static final ParameterField LAST_PUBLISHED_EXPRESSION_PARAMETER =
       ParameterField.createExpressionField(true, LAST_PUBLISHED_EXPRESSION, null, true);
-  private ArtifactConfigToDelegateReqMapper artifactConfigToDelegateReqMapper;
-  private final Ambiance ambiance = getAmbiance();
   @Mock DelegateGrpcClientWrapper delegateGrpcClientWrapper;
   @Mock DelegateMetricsService delegateMetricsService;
   @Mock SecretManagerClientService ngSecretService;
   @Mock ExceptionManager exceptionManager;
-  @Mock ArtifactSourceInstrumentationHelper instrumentationHelper;
-
-  @Before
-  public void setUp() {
-    MockitoAnnotations.openMocks(this);
-    when(instrumentationHelper.sendLastPublishedTagExpressionEvent(any(), any(), any(), any())).thenReturn(null);
-    artifactConfigToDelegateReqMapper = spy(new ArtifactConfigToDelegateReqMapper(instrumentationHelper));
-  }
-
   @Test
   @Owner(developers = ARCHIT)
   @Category(UnitTests.class)
@@ -147,8 +125,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     DockerConnectorDTO connectorDTO = DockerConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    DockerArtifactDelegateRequest dockerDelegateRequest = artifactConfigToDelegateReqMapper.getDockerDelegateRequest(
-        dockerHubArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    DockerArtifactDelegateRequest dockerDelegateRequest = ArtifactConfigToDelegateReqMapper.getDockerDelegateRequest(
+        dockerHubArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(dockerDelegateRequest.getDockerConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(dockerDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -171,8 +149,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     DockerConnectorDTO connectorDTO = DockerConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    DockerArtifactDelegateRequest dockerDelegateRequest = artifactConfigToDelegateReqMapper.getDockerDelegateRequest(
-        dockerHubArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    DockerArtifactDelegateRequest dockerDelegateRequest = ArtifactConfigToDelegateReqMapper.getDockerDelegateRequest(
+        dockerHubArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(dockerDelegateRequest.getDockerConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(dockerDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -197,8 +175,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     JenkinsArtifactDelegateRequest jenkinsArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getJenkinsDelegateRequest(
-            jenkinsArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        ArtifactConfigToDelegateReqMapper.getJenkinsDelegateRequest(
+            jenkinsArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(jenkinsArtifactDelegateRequest.getJenkinsConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(jenkinsArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -230,8 +208,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     NexusConnectorDTO connectorDTO = NexusConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    NexusArtifactDelegateRequest delegateRequest = artifactConfigToDelegateReqMapper.getNexusArtifactDelegateRequest(
-        artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    NexusArtifactDelegateRequest delegateRequest = ArtifactConfigToDelegateReqMapper.getNexusArtifactDelegateRequest(
+        artifactConfig, connectorDTO, encryptedDataDetailList, "");
     nexusRegistryDockerConfig = (NexusRegistryDockerConfig) artifactConfig.getNexusRegistryConfigSpec();
 
     assertThat(delegateRequest.getNexusConnectorDTO()).isEqualTo(connectorDTO);
@@ -262,8 +240,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     NexusConnectorDTO connectorDTO = NexusConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    NexusArtifactDelegateRequest delegateRequest = artifactConfigToDelegateReqMapper.getNexusArtifactDelegateRequest(
-        artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    NexusArtifactDelegateRequest delegateRequest = ArtifactConfigToDelegateReqMapper.getNexusArtifactDelegateRequest(
+        artifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getNexusConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getRepositoryName()).isEqualTo(artifactConfig.getRepository().getValue());
@@ -294,8 +272,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     ArtifactoryArtifactDelegateRequest delegateRequest =
-        (ArtifactoryArtifactDelegateRequest) artifactConfigToDelegateReqMapper.getArtifactoryArtifactDelegateRequest(
-            artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (ArtifactoryArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper.getArtifactoryArtifactDelegateRequest(
+            artifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getArtifactoryConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getRepositoryName()).isEqualTo(artifactConfig.getRepository().getValue());
@@ -324,8 +302,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     ArtifactoryGenericArtifactDelegateRequest delegateRequest =
-        (ArtifactoryGenericArtifactDelegateRequest) artifactConfigToDelegateReqMapper
-            .getArtifactoryArtifactDelegateRequest(artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (ArtifactoryGenericArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper
+            .getArtifactoryArtifactDelegateRequest(artifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getArtifactoryConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getRepositoryName()).isEqualTo(artifactConfig.getRepository().getValue());
@@ -351,8 +329,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     ArtifactoryGenericArtifactDelegateRequest delegateRequest =
-        (ArtifactoryGenericArtifactDelegateRequest) artifactConfigToDelegateReqMapper
-            .getArtifactoryArtifactDelegateRequest(artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (ArtifactoryGenericArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper
+            .getArtifactoryArtifactDelegateRequest(artifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getArtifactoryConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getRepositoryName()).isEqualTo(artifactConfig.getRepository().getValue());
@@ -379,8 +357,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     ArtifactoryArtifactDelegateRequest delegateRequest =
-        (ArtifactoryArtifactDelegateRequest) artifactConfigToDelegateReqMapper.getArtifactoryArtifactDelegateRequest(
-            artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (ArtifactoryArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper.getArtifactoryArtifactDelegateRequest(
+            artifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getArtifactoryConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getRepositoryName()).isEqualTo(artifactConfig.getRepository().getValue());
@@ -409,8 +387,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     AcrArtifactDelegateRequest acrDelegateRequest =
-        (AcrArtifactDelegateRequest) artifactConfigToDelegateReqMapper.getAcrDelegateRequest(
-            acrArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (AcrArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper.getAcrDelegateRequest(
+            acrArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(acrDelegateRequest.getAzureConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(acrDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -438,8 +416,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     AcrArtifactDelegateRequest acrDelegateRequest =
-        (AcrArtifactDelegateRequest) artifactConfigToDelegateReqMapper.getAcrDelegateRequest(
-            acrArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (AcrArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper.getAcrDelegateRequest(
+            acrArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(acrDelegateRequest.getAzureConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(acrDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -466,8 +444,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     AcrArtifactDelegateRequest acrDelegateRequest =
-        (AcrArtifactDelegateRequest) artifactConfigToDelegateReqMapper.getAcrDelegateRequest(
-            acrArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (AcrArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper.getAcrDelegateRequest(
+            acrArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(acrDelegateRequest.getAzureConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(acrDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -509,7 +487,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
             .build();
 
     CustomArtifactDelegateRequest customArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
+        ArtifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
     assertThat(customArtifactDelegateRequest.getArtifactsArrayPath()).isEqualTo("results");
     assertThat(customArtifactDelegateRequest.getVersionPath()).isEqualTo("version");
     assertThat(customArtifactDelegateRequest.getScript()).isEqualTo("echo test");
@@ -541,12 +519,12 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
             .build();
 
     customArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
+        ArtifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
     assertThat(customArtifactDelegateRequest.getArtifactsArrayPath()).isEqualTo("results");
     assertThat(customArtifactDelegateRequest.getVersionPath()).isEqualTo("version");
     assertThat(customArtifactDelegateRequest.getScript()).isEqualTo("echo test");
 
-    customArtifactDelegateRequest = artifactConfigToDelegateReqMapper.getCustomDelegateRequest(
+    customArtifactDelegateRequest = ArtifactConfigToDelegateReqMapper.getCustomDelegateRequest(
         customArtifactConfig, Ambiance.newBuilder().build(), delegateMetricsService, ngSecretService);
     assertThat(customArtifactDelegateRequest.getArtifactsArrayPath()).isEqualTo("results");
     assertThat(customArtifactDelegateRequest.getVersionPath()).isEqualTo("version");
@@ -556,7 +534,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
 
     // Validate for Triggers
     customArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
+        ArtifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
     assertThat(customArtifactDelegateRequest.getTimeout()).isEqualTo(700000L);
   }
 
@@ -572,7 +550,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
                                                     .version(ParameterField.createValueField("build-x"))
                                                     .build();
     try {
-      artifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
+      ArtifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
     } catch (Exception ex) {
       assertThat(ex).isInstanceOf(InvalidArtifactServerException.class);
       assertThat(ex.getMessage()).isEqualTo("INVALID_ARTIFACT_SERVER");
@@ -590,7 +568,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
             .build();
 
     try {
-      artifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
+      ArtifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
     } catch (Exception ex) {
       assertThat(ex).isInstanceOf(InvalidArtifactServerException.class);
       assertThat(ex.getMessage()).isEqualTo("INVALID_ARTIFACT_SERVER");
@@ -613,7 +591,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
             .build();
 
     try {
-      artifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
+      ArtifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
     } catch (Exception ex) {
       assertThat(ex).isInstanceOf(InvalidArtifactServerException.class);
       assertThat(ex.getMessage()).isEqualTo("INVALID_ARTIFACT_SERVER");
@@ -636,7 +614,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
             .version(ParameterField.createValueField("build-x"))
             .build();
     try {
-      artifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
+      ArtifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
     } catch (Exception ex) {
       assertThat(ex).isInstanceOf(InvalidArtifactServerException.class);
       assertThat(ex.getMessage()).isEqualTo("INVALID_ARTIFACT_SERVER");
@@ -659,7 +637,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
             .version(ParameterField.createValueField("build-x"))
             .build();
     try {
-      artifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
+      ArtifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
     } catch (Exception ex) {
       assertThat(ex).isInstanceOf(InvalidArtifactServerException.class);
       assertThat(ex.getMessage()).isEqualTo("INVALID_ARTIFACT_SERVER");
@@ -690,7 +668,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
             .version(ParameterField.createValueField("build-x"))
             .build();
     try {
-      artifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
+      ArtifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
     } catch (Exception ex) {
       assertThat(ex).isInstanceOf(InvalidArtifactServerException.class);
       assertThat(ex.getMessage()).isEqualTo("INVALID_ARTIFACT_SERVER");
@@ -721,7 +699,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
             .version(ParameterField.createValueField("build-x"))
             .build();
     try {
-      artifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
+      ArtifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
     } catch (Exception ex) {
       assertThat(ex).isInstanceOf(InvalidArtifactServerException.class);
       assertThat(ex.getMessage()).isEqualTo("INVALID_ARTIFACT_SERVER");
@@ -739,8 +717,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     DockerConnectorDTO connectorDTO = DockerConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    DockerArtifactDelegateRequest dockerDelegateRequest = artifactConfigToDelegateReqMapper.getDockerDelegateRequest(
-        dockerHubArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    DockerArtifactDelegateRequest dockerDelegateRequest = ArtifactConfigToDelegateReqMapper.getDockerDelegateRequest(
+        dockerHubArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(dockerDelegateRequest.getDockerConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(dockerDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -762,8 +740,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     DockerConnectorDTO connectorDTO = DockerConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    DockerArtifactDelegateRequest dockerDelegateRequest = artifactConfigToDelegateReqMapper.getDockerDelegateRequest(
-        dockerHubArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    DockerArtifactDelegateRequest dockerDelegateRequest = ArtifactConfigToDelegateReqMapper.getDockerDelegateRequest(
+        dockerHubArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(dockerDelegateRequest.getDockerConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(dockerDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -784,8 +762,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     DockerConnectorDTO connectorDTO = DockerConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    DockerArtifactDelegateRequest dockerDelegateRequest = artifactConfigToDelegateReqMapper.getDockerDelegateRequest(
-        dockerHubArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    DockerArtifactDelegateRequest dockerDelegateRequest = ArtifactConfigToDelegateReqMapper.getDockerDelegateRequest(
+        dockerHubArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(dockerDelegateRequest.getDockerConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(dockerDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -810,8 +788,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     GithubPackagesArtifactDelegateRequest githubPackagesArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getGithubPackagesDelegateRequest(
-            githubPackagesArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        ArtifactConfigToDelegateReqMapper.getGithubPackagesDelegateRequest(
+            githubPackagesArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(githubPackagesArtifactDelegateRequest.getGithubConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(githubPackagesArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -838,8 +816,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     GithubPackagesArtifactDelegateRequest githubPackagesArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getGithubPackagesDelegateRequest(
-            githubPackagesArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        ArtifactConfigToDelegateReqMapper.getGithubPackagesDelegateRequest(
+            githubPackagesArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(githubPackagesArtifactDelegateRequest.getGithubConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(githubPackagesArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -867,8 +845,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     GithubPackagesArtifactDelegateRequest githubPackagesArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getGithubPackagesDelegateRequest(
-            githubPackagesArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        ArtifactConfigToDelegateReqMapper.getGithubPackagesDelegateRequest(
+            githubPackagesArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(githubPackagesArtifactDelegateRequest.getGithubConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(githubPackagesArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -894,8 +872,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     GithubPackagesArtifactDelegateRequest githubPackagesArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getGithubPackagesDelegateRequest(
-            githubPackagesArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        ArtifactConfigToDelegateReqMapper.getGithubPackagesDelegateRequest(
+            githubPackagesArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(githubPackagesArtifactDelegateRequest.getGithubConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(githubPackagesArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -923,8 +901,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     AzureArtifactsDelegateRequest azureArtifactsDelegateRequest =
-        artifactConfigToDelegateReqMapper.getAzureArtifactsDelegateRequest(
-            azureArtifactsConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        ArtifactConfigToDelegateReqMapper.getAzureArtifactsDelegateRequest(
+            azureArtifactsConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(azureArtifactsDelegateRequest.getAzureArtifactsConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(azureArtifactsDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -951,8 +929,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     AzureArtifactsDelegateRequest azureArtifactsDelegateRequest =
-        artifactConfigToDelegateReqMapper.getAzureArtifactsDelegateRequest(
-            azureArtifactsConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        ArtifactConfigToDelegateReqMapper.getAzureArtifactsDelegateRequest(
+            azureArtifactsConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(azureArtifactsDelegateRequest.getAzureArtifactsConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(azureArtifactsDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -979,8 +957,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     AzureArtifactsDelegateRequest azureArtifactsDelegateRequest =
-        artifactConfigToDelegateReqMapper.getAzureArtifactsDelegateRequest(
-            azureArtifactsConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        ArtifactConfigToDelegateReqMapper.getAzureArtifactsDelegateRequest(
+            azureArtifactsConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(azureArtifactsDelegateRequest.getAzureArtifactsConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(azureArtifactsDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1008,8 +986,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     AwsConnectorDTO connectorDTO = AwsConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    AMIArtifactDelegateRequest amiArtifactDelegateRequest = artifactConfigToDelegateReqMapper.getAMIDelegateRequest(
-        amiArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    AMIArtifactDelegateRequest amiArtifactDelegateRequest = ArtifactConfigToDelegateReqMapper.getAMIDelegateRequest(
+        amiArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(amiArtifactDelegateRequest.getAwsConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(amiArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1035,8 +1013,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     AwsConnectorDTO connectorDTO = AwsConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    AMIArtifactDelegateRequest amiArtifactDelegateRequest = artifactConfigToDelegateReqMapper.getAMIDelegateRequest(
-        amiArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    AMIArtifactDelegateRequest amiArtifactDelegateRequest = ArtifactConfigToDelegateReqMapper.getAMIDelegateRequest(
+        amiArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(amiArtifactDelegateRequest.getAwsConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(amiArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1061,8 +1039,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     AwsConnectorDTO connectorDTO = AwsConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    AMIArtifactDelegateRequest amiArtifactDelegateRequest = artifactConfigToDelegateReqMapper.getAMIDelegateRequest(
-        amiArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    AMIArtifactDelegateRequest amiArtifactDelegateRequest = ArtifactConfigToDelegateReqMapper.getAMIDelegateRequest(
+        amiArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(amiArtifactDelegateRequest.getAwsConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(amiArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1085,8 +1063,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     JenkinsArtifactDelegateRequest jenkinsArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getJenkinsDelegateRequest(
-            jenkinsArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        ArtifactConfigToDelegateReqMapper.getJenkinsDelegateRequest(
+            jenkinsArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(jenkinsArtifactDelegateRequest.getJenkinsConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(jenkinsArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1112,8 +1090,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     JenkinsArtifactDelegateRequest jenkinsArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getJenkinsDelegateRequest(
-            jenkinsArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        ArtifactConfigToDelegateReqMapper.getJenkinsDelegateRequest(
+            jenkinsArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(jenkinsArtifactDelegateRequest.getJenkinsConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(jenkinsArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1137,8 +1115,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     JenkinsArtifactDelegateRequest jenkinsArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getJenkinsDelegateRequest(
-            jenkinsArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        ArtifactConfigToDelegateReqMapper.getJenkinsDelegateRequest(
+            jenkinsArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(jenkinsArtifactDelegateRequest.getJenkinsConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(jenkinsArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1164,8 +1142,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     BambooArtifactDelegateRequest bambooArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getBambooDelegateRequest(
-            bambooArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        ArtifactConfigToDelegateReqMapper.getBambooDelegateRequest(
+            bambooArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(bambooArtifactDelegateRequest.getBambooConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(bambooArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1192,8 +1170,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     BambooArtifactDelegateRequest bambooArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getBambooDelegateRequest(
-            bambooArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        ArtifactConfigToDelegateReqMapper.getBambooDelegateRequest(
+            bambooArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(bambooArtifactDelegateRequest.getBambooConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(bambooArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1220,8 +1198,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     BambooArtifactDelegateRequest bambooArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getBambooDelegateRequest(
-            bambooArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        ArtifactConfigToDelegateReqMapper.getBambooDelegateRequest(
+            bambooArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(bambooArtifactDelegateRequest.getBambooConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(bambooArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1263,7 +1241,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
             .build();
 
     CustomArtifactDelegateRequest customArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
+        ArtifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
     assertThat(customArtifactDelegateRequest.getArtifactsArrayPath()).isEqualTo("results");
     assertThat(customArtifactDelegateRequest.getVersionPath()).isEqualTo("version");
     assertThat(customArtifactDelegateRequest.getScript()).isEqualTo("echo test");
@@ -1299,7 +1277,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
             .build();
 
     CustomArtifactDelegateRequest customArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
+        ArtifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
     assertThat(customArtifactDelegateRequest.getArtifactsArrayPath()).isEqualTo("results");
     assertThat(customArtifactDelegateRequest.getVersionPath()).isEqualTo("version");
     assertThat(customArtifactDelegateRequest.getScript()).isEqualTo("echo test");
@@ -1335,7 +1313,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
             .build();
 
     CustomArtifactDelegateRequest customArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
+        ArtifactConfigToDelegateReqMapper.getCustomDelegateRequest(customArtifactConfig, Ambiance.newBuilder().build());
     assertThat(customArtifactDelegateRequest.getArtifactsArrayPath()).isEqualTo("results");
     assertThat(customArtifactDelegateRequest.getVersionPath()).isEqualTo("version");
     assertThat(customArtifactDelegateRequest.getScript()).isEqualTo("echo test");
@@ -1355,8 +1333,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     GcpConnectorDTO connectorDTO = GcpConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    GcrArtifactDelegateRequest gcrDelegateRequest = artifactConfigToDelegateReqMapper.getGcrDelegateRequest(
-        gcrArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    GcrArtifactDelegateRequest gcrDelegateRequest = ArtifactConfigToDelegateReqMapper.getGcrDelegateRequest(
+        gcrArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(gcrDelegateRequest.getGcpConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(gcrDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1377,8 +1355,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     GcpConnectorDTO connectorDTO = GcpConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    GcrArtifactDelegateRequest gcrDelegateRequest = artifactConfigToDelegateReqMapper.getGcrDelegateRequest(
-        gcrArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    GcrArtifactDelegateRequest gcrDelegateRequest = ArtifactConfigToDelegateReqMapper.getGcrDelegateRequest(
+        gcrArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(gcrDelegateRequest.getGcpConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(gcrDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1400,8 +1378,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     GcpConnectorDTO connectorDTO = GcpConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    GcrArtifactDelegateRequest gcrDelegateRequest = artifactConfigToDelegateReqMapper.getGcrDelegateRequest(
-        gcrArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    GcrArtifactDelegateRequest gcrDelegateRequest = ArtifactConfigToDelegateReqMapper.getGcrDelegateRequest(
+        gcrArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(gcrDelegateRequest.getGcpConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(gcrDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1425,8 +1403,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     GcpConnectorDTO connectorDTO = GcpConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    GarDelegateRequest amiArtifactDelegateRequest = artifactConfigToDelegateReqMapper.getGarDelegateRequest(
-        garArtifactInfo, connectorDTO, encryptedDataDetailList, "", ambiance);
+    GarDelegateRequest amiArtifactDelegateRequest = ArtifactConfigToDelegateReqMapper.getGarDelegateRequest(
+        garArtifactInfo, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(amiArtifactDelegateRequest.getGcpConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(amiArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1449,8 +1427,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     GcpConnectorDTO connectorDTO = GcpConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    GarDelegateRequest amiArtifactDelegateRequest = artifactConfigToDelegateReqMapper.getGarDelegateRequest(
-        garArtifactInfo, connectorDTO, encryptedDataDetailList, "", ambiance);
+    GarDelegateRequest amiArtifactDelegateRequest = ArtifactConfigToDelegateReqMapper.getGarDelegateRequest(
+        garArtifactInfo, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(amiArtifactDelegateRequest.getGcpConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(amiArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1473,8 +1451,9 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     GcpConnectorDTO connectorDTO = GcpConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    GarDelegateRequest amiArtifactDelegateRequest = artifactConfigToDelegateReqMapper.getGarDelegateRequest(
-        garArtifactInfo, connectorDTO, encryptedDataDetailList, "", ambiance);
+    GarDelegateRequest amiArtifactDelegateRequest = ArtifactConfigToDelegateReqMapper.getGarDelegateRequest(
+        garArtifactInfo, connectorDTO, encryptedDataDetailList, "");
+
     assertThat(amiArtifactDelegateRequest.getGcpConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(amiArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
     assertThat(amiArtifactDelegateRequest.getSourceType()).isEqualTo(ArtifactSourceType.GOOGLE_ARTIFACT_REGISTRY);
@@ -1494,8 +1473,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     AwsConnectorDTO connectorDTO = AwsConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    EcrArtifactDelegateRequest delegateRequest = artifactConfigToDelegateReqMapper.getEcrDelegateRequest(
-        ecrArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    EcrArtifactDelegateRequest delegateRequest = ArtifactConfigToDelegateReqMapper.getEcrDelegateRequest(
+        ecrArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getAwsConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1516,8 +1495,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     AwsConnectorDTO connectorDTO = AwsConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    EcrArtifactDelegateRequest delegateRequest = artifactConfigToDelegateReqMapper.getEcrDelegateRequest(
-        ecrArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    EcrArtifactDelegateRequest delegateRequest = ArtifactConfigToDelegateReqMapper.getEcrDelegateRequest(
+        ecrArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getAwsConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1538,8 +1517,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     AwsConnectorDTO connectorDTO = AwsConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    EcrArtifactDelegateRequest delegateRequest = artifactConfigToDelegateReqMapper.getEcrDelegateRequest(
-        ecrArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    EcrArtifactDelegateRequest delegateRequest = ArtifactConfigToDelegateReqMapper.getEcrDelegateRequest(
+        ecrArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getAwsConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1568,8 +1547,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     NexusConnectorDTO connectorDTO = NexusConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    NexusArtifactDelegateRequest delegateRequest = artifactConfigToDelegateReqMapper.getNexusArtifactDelegateRequest(
-        artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    NexusArtifactDelegateRequest delegateRequest = ArtifactConfigToDelegateReqMapper.getNexusArtifactDelegateRequest(
+        artifactConfig, connectorDTO, encryptedDataDetailList, "");
     nexusRegistryDockerConfig = (NexusRegistryDockerConfig) artifactConfig.getNexusRegistryConfigSpec();
 
     assertThat(delegateRequest.getNexusConnectorDTO()).isEqualTo(connectorDTO);
@@ -1605,8 +1584,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     NexusConnectorDTO connectorDTO = NexusConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    NexusArtifactDelegateRequest delegateRequest = artifactConfigToDelegateReqMapper.getNexusArtifactDelegateRequest(
-        artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    NexusArtifactDelegateRequest delegateRequest = ArtifactConfigToDelegateReqMapper.getNexusArtifactDelegateRequest(
+        artifactConfig, connectorDTO, encryptedDataDetailList, "");
     nexusRegistryDockerConfig = (NexusRegistryDockerConfig) artifactConfig.getNexusRegistryConfigSpec();
 
     assertThat(delegateRequest.getNexusConnectorDTO()).isEqualTo(connectorDTO);
@@ -1642,8 +1621,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     NexusConnectorDTO connectorDTO = NexusConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    NexusArtifactDelegateRequest delegateRequest = artifactConfigToDelegateReqMapper.getNexusArtifactDelegateRequest(
-        artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    NexusArtifactDelegateRequest delegateRequest = ArtifactConfigToDelegateReqMapper.getNexusArtifactDelegateRequest(
+        artifactConfig, connectorDTO, encryptedDataDetailList, "");
     nexusRegistryDockerConfig = (NexusRegistryDockerConfig) artifactConfig.getNexusRegistryConfigSpec();
 
     assertThat(delegateRequest.getNexusConnectorDTO()).isEqualTo(connectorDTO);
@@ -1653,43 +1632,6 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     assertThat(delegateRequest.getArtifactRepositoryUrl()).isNull();
     assertThat(delegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
     assertThat(delegateRequest.getArtifactPath()).isEqualTo(nexusRegistryDockerConfig.getArtifactPath().getValue());
-    assertThat(delegateRequest.getSourceType()).isEqualTo(ArtifactSourceType.NEXUS3_REGISTRY);
-    assertThat(delegateRequest.getConnectorRef()).isEqualTo("");
-    assertThat(delegateRequest.getTagRegex()).isEqualTo(TAG);
-    assertThat(delegateRequest.getTag()).isEqualTo(LAST_PUBLISHED_EXPRESSION);
-  }
-
-  @Test
-  @Owner(developers = vivekveman)
-  @Category(UnitTests.class)
-  public void testGetNexusDelegateRequestWithBlankClassifier() {
-    NexusRegistryMavenConfig nexusRegistryDockerConfig = NexusRegistryMavenConfig.builder()
-                                                             .artifactId(ParameterField.createValueField("artifactId"))
-                                                             .groupId(ParameterField.createValueField("groupId"))
-                                                             .extension(ParameterField.createValueField(""))
-                                                             .classifier(ParameterField.createValueField(""))
-                                                             .build();
-
-    NexusRegistryArtifactConfig artifactConfig =
-        NexusRegistryArtifactConfig.builder()
-            .repository(ParameterField.createValueField("TEST_REPO"))
-            .repositoryFormat(ParameterField.createValueField(RepositoryFormat.maven.name()))
-            .nexusRegistryConfigSpec(nexusRegistryDockerConfig)
-            .tag(LAST_PUBLISHED_EXPRESSION_REGEX)
-            .build();
-    NexusConnectorDTO connectorDTO = NexusConnectorDTO.builder().build();
-    List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
-
-    NexusArtifactDelegateRequest delegateRequest = artifactConfigToDelegateReqMapper.getNexusArtifactDelegateRequest(
-        artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
-
-    assertThat(delegateRequest.getNexusConnectorDTO()).isEqualTo(connectorDTO);
-    assertThat(delegateRequest.getRepositoryName()).isEqualTo(artifactConfig.getRepository().getValue());
-    assertThat(delegateRequest.getRepositoryFormat()).isEqualTo(RepositoryFormat.maven.name());
-    assertThat(delegateRequest.getArtifactRepositoryUrl()).isNull();
-    assertThat(delegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
-    assertThat(delegateRequest.getClassifier()).isNull();
-    assertThat(delegateRequest.getExtension()).isNull();
     assertThat(delegateRequest.getSourceType()).isEqualTo(ArtifactSourceType.NEXUS3_REGISTRY);
     assertThat(delegateRequest.getConnectorRef()).isEqualTo("");
     assertThat(delegateRequest.getTagRegex()).isEqualTo(TAG);
@@ -1713,8 +1655,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     NexusConnectorDTO connectorDTO = NexusConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    NexusArtifactDelegateRequest delegateRequest = artifactConfigToDelegateReqMapper.getNexus2ArtifactDelegateRequest(
-        artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    NexusArtifactDelegateRequest delegateRequest = ArtifactConfigToDelegateReqMapper.getNexus2ArtifactDelegateRequest(
+        artifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getNexusConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getRepositoryName()).isEqualTo(artifactConfig.getRepository().getValue());
@@ -1744,8 +1686,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     NexusConnectorDTO connectorDTO = NexusConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    NexusArtifactDelegateRequest delegateRequest = artifactConfigToDelegateReqMapper.getNexus2ArtifactDelegateRequest(
-        artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    NexusArtifactDelegateRequest delegateRequest = ArtifactConfigToDelegateReqMapper.getNexus2ArtifactDelegateRequest(
+        artifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getNexusConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getRepositoryName()).isEqualTo(artifactConfig.getRepository().getValue());
@@ -1775,8 +1717,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     NexusConnectorDTO connectorDTO = NexusConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    NexusArtifactDelegateRequest delegateRequest = artifactConfigToDelegateReqMapper.getNexus2ArtifactDelegateRequest(
-        artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+    NexusArtifactDelegateRequest delegateRequest = ArtifactConfigToDelegateReqMapper.getNexus2ArtifactDelegateRequest(
+        artifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getNexusConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getRepositoryName()).isEqualTo(artifactConfig.getRepository().getValue());
@@ -1805,8 +1747,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     ArtifactoryArtifactDelegateRequest delegateRequest =
-        (ArtifactoryArtifactDelegateRequest) artifactConfigToDelegateReqMapper.getArtifactoryArtifactDelegateRequest(
-            artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (ArtifactoryArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper.getArtifactoryArtifactDelegateRequest(
+            artifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getArtifactoryConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getRepositoryName()).isEqualTo(artifactConfig.getRepository().getValue());
@@ -1836,8 +1778,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     ArtifactoryArtifactDelegateRequest delegateRequest =
-        (ArtifactoryArtifactDelegateRequest) artifactConfigToDelegateReqMapper.getArtifactoryArtifactDelegateRequest(
-            artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (ArtifactoryArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper.getArtifactoryArtifactDelegateRequest(
+            artifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getArtifactoryConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getRepositoryName()).isEqualTo(artifactConfig.getRepository().getValue());
@@ -1867,8 +1809,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     ArtifactoryArtifactDelegateRequest delegateRequest =
-        (ArtifactoryArtifactDelegateRequest) artifactConfigToDelegateReqMapper.getArtifactoryArtifactDelegateRequest(
-            artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (ArtifactoryArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper.getArtifactoryArtifactDelegateRequest(
+            artifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getArtifactoryConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getRepositoryName()).isEqualTo(artifactConfig.getRepository().getValue());
@@ -1897,8 +1839,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     AcrArtifactDelegateRequest acrDelegateRequest =
-        (AcrArtifactDelegateRequest) artifactConfigToDelegateReqMapper.getAcrDelegateRequest(
-            acrArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (AcrArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper.getAcrDelegateRequest(
+            acrArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(acrDelegateRequest.getAzureConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(acrDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1925,8 +1867,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     AcrArtifactDelegateRequest acrDelegateRequest =
-        (AcrArtifactDelegateRequest) artifactConfigToDelegateReqMapper.getAcrDelegateRequest(
-            acrArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (AcrArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper.getAcrDelegateRequest(
+            acrArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(acrDelegateRequest.getAzureConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(acrDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1953,8 +1895,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     AcrArtifactDelegateRequest acrDelegateRequest =
-        (AcrArtifactDelegateRequest) artifactConfigToDelegateReqMapper.getAcrDelegateRequest(
-            acrArtifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (AcrArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper.getAcrDelegateRequest(
+            acrArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(acrDelegateRequest.getAzureConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(acrDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -1980,8 +1922,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     GoogleCloudStorageArtifactDelegateRequest googleCloudStorageArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getGoogleCloudStorageArtifactDelegateRequest(
-            googleCloudStorageArtifactConfig, connectorDTO, encryptedDataDetailList, CONNECTOR_REF, ambiance);
+        ArtifactConfigToDelegateReqMapper.getGoogleCloudStorageArtifactDelegateRequest(
+            googleCloudStorageArtifactConfig, connectorDTO, encryptedDataDetailList, CONNECTOR_REF);
 
     assertThat(googleCloudStorageArtifactDelegateRequest.getGcpConnectorDTO()).isSameAs(connectorDTO);
     assertThat(googleCloudStorageArtifactDelegateRequest.getEncryptedDataDetails()).isSameAs(encryptedDataDetailList);
@@ -2011,8 +1953,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     GoogleCloudStorageArtifactDelegateRequest googleCloudStorageArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getGoogleCloudStorageArtifactDelegateRequest(
-            googleCloudStorageArtifactConfig, connectorDTO, encryptedDataDetailList, CONNECTOR_REF, ambiance);
+        ArtifactConfigToDelegateReqMapper.getGoogleCloudStorageArtifactDelegateRequest(
+            googleCloudStorageArtifactConfig, connectorDTO, encryptedDataDetailList, CONNECTOR_REF);
 
     assertThat(googleCloudStorageArtifactDelegateRequest.getGcpConnectorDTO()).isSameAs(connectorDTO);
     assertThat(googleCloudStorageArtifactDelegateRequest.getEncryptedDataDetails()).isSameAs(encryptedDataDetailList);
@@ -2041,8 +1983,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     GoogleCloudStorageArtifactDelegateRequest googleCloudStorageArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getGoogleCloudStorageArtifactDelegateRequest(
-            googleCloudStorageArtifactConfig, connectorDTO, encryptedDataDetailList, CONNECTOR_REF, ambiance);
+        ArtifactConfigToDelegateReqMapper.getGoogleCloudStorageArtifactDelegateRequest(
+            googleCloudStorageArtifactConfig, connectorDTO, encryptedDataDetailList, CONNECTOR_REF);
 
     assertThat(googleCloudStorageArtifactDelegateRequest.getGcpConnectorDTO()).isSameAs(connectorDTO);
     assertThat(googleCloudStorageArtifactDelegateRequest.getEncryptedDataDetails()).isSameAs(encryptedDataDetailList);
@@ -2070,10 +2012,9 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     GcpConnectorDTO connectorDTO = GcpConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    assertThatThrownBy(
-        ()
-            -> artifactConfigToDelegateReqMapper.getGoogleCloudStorageArtifactDelegateRequest(
-                googleCloudStorageArtifactConfig, connectorDTO, encryptedDataDetailList, CONNECTOR_REF, ambiance))
+    assertThatThrownBy(()
+                           -> ArtifactConfigToDelegateReqMapper.getGoogleCloudStorageArtifactDelegateRequest(
+                               googleCloudStorageArtifactConfig, connectorDTO, encryptedDataDetailList, CONNECTOR_REF))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("Please input bucket name.");
   }
@@ -2091,10 +2032,9 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     GcpConnectorDTO connectorDTO = GcpConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    assertThatThrownBy(
-        ()
-            -> artifactConfigToDelegateReqMapper.getGoogleCloudStorageArtifactDelegateRequest(
-                googleCloudStorageArtifactConfig, connectorDTO, encryptedDataDetailList, CONNECTOR_REF, ambiance))
+    assertThatThrownBy(()
+                           -> ArtifactConfigToDelegateReqMapper.getGoogleCloudStorageArtifactDelegateRequest(
+                               googleCloudStorageArtifactConfig, connectorDTO, encryptedDataDetailList, CONNECTOR_REF))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("Please input project name.");
   }
@@ -2115,7 +2055,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     GoogleCloudSourceArtifactDelegateRequest googleCloudSourceArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getGoogleCloudSourceArtifactDelegateRequest(
+        ArtifactConfigToDelegateReqMapper.getGoogleCloudSourceArtifactDelegateRequest(
             googleCloudSourceArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(googleCloudSourceArtifactDelegateRequest.getGcpConnectorDTO()).isEqualTo(connectorDTO);
@@ -2148,7 +2088,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     GoogleCloudSourceArtifactDelegateRequest googleCloudSourceArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getGoogleCloudSourceArtifactDelegateRequest(
+        ArtifactConfigToDelegateReqMapper.getGoogleCloudSourceArtifactDelegateRequest(
             googleCloudSourceArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(googleCloudSourceArtifactDelegateRequest.getGcpConnectorDTO()).isEqualTo(connectorDTO);
@@ -2181,7 +2121,7 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     GoogleCloudSourceArtifactDelegateRequest googleCloudSourceArtifactDelegateRequest =
-        artifactConfigToDelegateReqMapper.getGoogleCloudSourceArtifactDelegateRequest(
+        ArtifactConfigToDelegateReqMapper.getGoogleCloudSourceArtifactDelegateRequest(
             googleCloudSourceArtifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(googleCloudSourceArtifactDelegateRequest.getGcpConnectorDTO()).isEqualTo(connectorDTO);
@@ -2210,8 +2150,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     AwsConnectorDTO awsConnectorDTO = AwsConnectorDTO.builder().build();
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
-    S3ArtifactDelegateRequest s3ArtifactDelegateRequest = artifactConfigToDelegateReqMapper.getAmazonS3DelegateRequest(
-        amazonS3ArtifactConfig, awsConnectorDTO, encryptedDataDetailList, "", ambiance);
+    S3ArtifactDelegateRequest s3ArtifactDelegateRequest = ArtifactConfigToDelegateReqMapper.getAmazonS3DelegateRequest(
+        amazonS3ArtifactConfig, awsConnectorDTO, encryptedDataDetailList, "");
 
     assertThat(s3ArtifactDelegateRequest.getAwsConnectorDTO()).isEqualTo(awsConnectorDTO);
     assertThat(s3ArtifactDelegateRequest.getEncryptedDataDetails()).isEqualTo(encryptedDataDetailList);
@@ -2234,8 +2174,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     ArtifactoryGenericArtifactDelegateRequest delegateRequest =
-        (ArtifactoryGenericArtifactDelegateRequest) artifactConfigToDelegateReqMapper
-            .getArtifactoryArtifactDelegateRequest(artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (ArtifactoryGenericArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper
+            .getArtifactoryArtifactDelegateRequest(artifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getArtifactoryConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getRepositoryName()).isEqualTo(artifactConfig.getRepository().getValue());
@@ -2263,8 +2203,8 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     List<EncryptedDataDetail> encryptedDataDetailList = Collections.emptyList();
 
     ArtifactoryGenericArtifactDelegateRequest delegateRequest =
-        (ArtifactoryGenericArtifactDelegateRequest) artifactConfigToDelegateReqMapper
-            .getArtifactoryArtifactDelegateRequest(artifactConfig, connectorDTO, encryptedDataDetailList, "", ambiance);
+        (ArtifactoryGenericArtifactDelegateRequest) ArtifactConfigToDelegateReqMapper
+            .getArtifactoryArtifactDelegateRequest(artifactConfig, connectorDTO, encryptedDataDetailList, "");
 
     assertThat(delegateRequest.getArtifactoryConnectorDTO()).isEqualTo(connectorDTO);
     assertThat(delegateRequest.getRepositoryName()).isEqualTo(artifactConfig.getRepository().getValue());
@@ -2276,13 +2216,5 @@ public class ArtifactConfigToDelegateReqMapperTest extends CategoryTest {
     assertThat(delegateRequest.getConnectorRef()).isEqualTo("");
     assertThat(delegateRequest.getArtifactPathFilter()).isEqualTo(TAG);
     assertThat(delegateRequest.getArtifactFilter()).isNull();
-  }
-
-  private Ambiance getAmbiance() {
-    return Ambiance.newBuilder()
-        .putSetupAbstractions(SetupAbstractionKeys.accountId, ACCOUNT)
-        .putSetupAbstractions(SetupAbstractionKeys.orgIdentifier, ORG)
-        .putSetupAbstractions(SetupAbstractionKeys.projectIdentifier, PROJECT)
-        .build();
   }
 }

@@ -102,7 +102,7 @@ public class NodeResumeEventHandlerTest extends PmsSdkCoreTestBase {
   @Owner(developers = SAHIL)
   @Category(UnitTests.class)
   public void testMetricPrefix() {
-    assertThat(nodeResumeEventHandler.getEventType(nodeResumeEvent)).isEqualTo("resume_event");
+    assertThat(nodeResumeEventHandler.getMetricPrefix(nodeResumeEvent)).isEqualTo("resume_event");
   }
 
   @Test

@@ -12,7 +12,6 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.http.HttpHeaderConfig;
 import io.harness.plancreator.steps.TaskSelectorYaml;
 import io.harness.plancreator.steps.internal.PMSStepInfo;
-import io.harness.pms.contracts.plan.ExpressionMode;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.execution.OrchestrationFacilitatorType;
 import io.harness.pms.yaml.ParameterField;
@@ -43,10 +42,5 @@ public class HttpStepInfoV1 extends HttpBaseStepInfoV1 implements Visitable, PMS
   @Override
   public String getFacilitatorType() {
     return OrchestrationFacilitatorType.TASK;
-  }
-
-  @Override
-  public ExpressionMode getExpressionMode() {
-    return ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED;
   }
 }

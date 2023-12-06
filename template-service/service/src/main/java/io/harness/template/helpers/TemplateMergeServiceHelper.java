@@ -269,7 +269,7 @@ public class TemplateMergeServiceHelper {
       YamlNode yamlNode, Map<String, TemplateEntity> templateCacheMap, int depth, boolean loadFromCache,
       boolean appendInputSetValidator, String yamlVersion) {
     return mergeTemplateInputsInObjectWithVersion(accountId, orgId, projectId, yamlNode, templateCacheMap, depth,
-        loadFromCache, appendInputSetValidator, yamlVersion, null)
+        loadFromCache, appendInputSetValidator, yamlVersion, null, null)
         .getResMap();
   }
 
@@ -279,7 +279,8 @@ public class TemplateMergeServiceHelper {
    */
   public MergeTemplateInputsInObject mergeTemplateInputsInObjectWithVersion(String accountId, String orgId,
       String projectId, YamlNode currentYamlNode, Map<String, TemplateEntity> templateCacheMap, int depth,
-      boolean loadFromCache, boolean appendInputSetValidator, String currentYamlVersion, Set<String> idsValuesSet) {
+      boolean loadFromCache, boolean appendInputSetValidator, String currentYamlVersion, Set<String> idsValuesSet,
+      Map<String, Integer> idsSuffixMap) {
     Map<String, Object> resMap = new LinkedHashMap<>();
     TemplateEntity templateEntity = null;
     for (YamlField childYamlField : currentYamlNode.fields()) {
@@ -299,7 +300,7 @@ public class TemplateMergeServiceHelper {
       } else if (value.isArray()) {
         resMap.put(fieldName,
             mergeTemplateInputsInArray(accountId, orgId, projectId, childYamlField.getNode(), templateCacheMap, depth,
-                loadFromCache, appendInputSetValidator, currentYamlVersion, idsValuesSet));
+                loadFromCache, appendInputSetValidator, currentYamlVersion, idsValuesSet, idsSuffixMap));
       } else {
         // If it was template key in yaml, we have replace it with the fields in template.spec in template yaml.
         // Hence, we directly put all the keys returned in map, after iterating over them.
@@ -310,24 +311,25 @@ public class TemplateMergeServiceHelper {
           }
           Map<String, Object> temp = mergeTemplateInputsInObjectWithVersion(accountId, orgId, projectId,
               new YamlNode(fieldName, value, childYamlField.getNode().getParentNode()), templateCacheMap, depth,
-              loadFromCache, appendInputSetValidator, templateEntity.getHarnessVersion(), idsValuesSet)
+              loadFromCache, appendInputSetValidator, templateEntity.getHarnessVersion(), idsValuesSet, idsSuffixMap)
                                          .getResMap();
           resMap.putAll(temp);
           depth--;
         } else {
           resMap.put(fieldName,
               mergeTemplateInputsInObjectWithVersion(accountId, orgId, projectId, childYamlField.getNode(),
-                  templateCacheMap, depth, loadFromCache, appendInputSetValidator, currentYamlVersion, idsValuesSet)
+                  templateCacheMap, depth, loadFromCache, appendInputSetValidator, currentYamlVersion, idsValuesSet,
+                  idsSuffixMap)
                   .getResMap());
         }
       }
     }
-    return getMergeTemplateInputsInObject(currentYamlVersion, templateEntity, resMap, null, idsValuesSet);
+    return getMergeTemplateInputsInObject(currentYamlVersion, templateEntity, resMap, null, idsValuesSet, idsSuffixMap);
   }
 
   private MergeTemplateInputsInObject getMergeTemplateInputsInObject(String currentYamlVersion,
       TemplateEntity templateEntity, Map<String, Object> resMap, Map<String, Object> resMapWithTemplateRef,
-      Set<String> idsValuesSet) {
+      Set<String> idsValuesSet, Map<String, Integer> idsSuffixMap) {
     // If current yaml version is v0 then we can directly return the resMap
     if (templateEntity == null || !HarnessYamlVersion.isV1(currentYamlVersion)) {
       return MergeTemplateInputsInObject.builder()
@@ -337,7 +339,7 @@ public class TemplateMergeServiceHelper {
           .build();
     }
     // Preprocess the yaml to add ids in the step and stage nodes
-    resMap = templatePreprocessorHelper.preProcessResMap(templateEntity, resMap, idsValuesSet);
+    resMap = templatePreprocessorHelper.preProcessResMap(templateEntity, resMap, idsValuesSet, idsSuffixMap);
     if (templateEntity.getTemplateEntityType() == TemplateEntityType.PIPELINE_TEMPLATE) {
       return getMergedYamlForPipelineTemplate(resMap, resMapWithTemplateRef, templateEntity);
     } else if (templateEntity.getTemplateEntityType() == TemplateEntityType.STEPGROUP_TEMPLATE) {
@@ -639,17 +641,17 @@ public class TemplateMergeServiceHelper {
 
   private List<Object> mergeTemplateInputsInArray(String accountId, String orgId, String projectId, YamlNode yamlNode,
       Map<String, TemplateEntity> templateCacheMap, int depth, boolean loadFromCache, boolean appendInputSetValidator,
-      String yamlVersion, Set<String> idsValuesSet) {
+      String yamlVersion, Set<String> idsValuesSet, Map<String, Integer> idsSuffixMap) {
     List<Object> arrayList = new ArrayList<>();
     for (YamlNode arrayElement : yamlNode.asArray()) {
       if (yamlNode.getCurrJsonNode().isValueNode()) {
         arrayList.add(arrayElement);
       } else if (arrayElement.isArray()) {
         arrayList.add(mergeTemplateInputsInArray(accountId, orgId, projectId, arrayElement, templateCacheMap, depth,
-            loadFromCache, appendInputSetValidator, yamlVersion, idsValuesSet));
+            loadFromCache, appendInputSetValidator, yamlVersion, idsValuesSet, idsSuffixMap));
       } else {
         arrayList.add(mergeTemplateInputsInObjectWithVersion(accountId, orgId, projectId, arrayElement,
-            templateCacheMap, depth, loadFromCache, appendInputSetValidator, yamlVersion, idsValuesSet)
+            templateCacheMap, depth, loadFromCache, appendInputSetValidator, yamlVersion, idsValuesSet, idsSuffixMap)
                           .getResMap());
       }
     }
@@ -661,7 +663,8 @@ public class TemplateMergeServiceHelper {
    */
   public MergeTemplateInputsInObject mergeTemplateInputsInObjectAlongWithOpaPolicy(String accountId, String orgId,
       String projectId, YamlNode currentYamlNode, Map<String, TemplateEntity> templateCacheMap, int depth,
-      boolean loadFromCache, boolean appendInputSetValidator, String currentYamlVersion, Set<String> idsValuesSet) {
+      boolean loadFromCache, boolean appendInputSetValidator, String currentYamlVersion, Set<String> idsValuesSet,
+      Map<String, Integer> idsSuffixMap) {
     Map<String, Object> resMap = new LinkedHashMap<>();
     Map<String, Object> resMapWithTemplateRef = new LinkedHashMap<>();
     TemplateEntity templateEntity = null;
@@ -682,9 +685,9 @@ public class TemplateMergeServiceHelper {
         resMap.put(fieldName, value);
         resMapWithTemplateRef.put(fieldName, value);
       } else if (value.isArray()) {
-        ArrayListForMergedTemplateRef arrayLists =
-            mergeTemplateInputsInArrayWithOpaPolicy(accountId, orgId, projectId, childYamlField.getNode(),
-                templateCacheMap, depth, loadFromCache, appendInputSetValidator, currentYamlVersion, idsValuesSet);
+        ArrayListForMergedTemplateRef arrayLists = mergeTemplateInputsInArrayWithOpaPolicy(accountId, orgId, projectId,
+            childYamlField.getNode(), templateCacheMap, depth, loadFromCache, appendInputSetValidator,
+            currentYamlVersion, idsValuesSet, idsSuffixMap);
         resMap.put(fieldName, arrayLists.getArrayList());
         resMapWithTemplateRef.put(fieldName, arrayLists.getArrayListWithTemplateRef());
       } else {
@@ -697,14 +700,14 @@ public class TemplateMergeServiceHelper {
           }
           MergeTemplateInputsInObject temp = mergeTemplateInputsInObjectAlongWithOpaPolicy(accountId, orgId, projectId,
               new YamlNode(fieldName, value, childYamlField.getNode().getParentNode()), templateCacheMap, depth,
-              loadFromCache, appendInputSetValidator, templateEntity.getHarnessVersion(), idsValuesSet);
+              loadFromCache, appendInputSetValidator, templateEntity.getHarnessVersion(), idsValuesSet, idsSuffixMap);
           resMap.putAll(temp.getResMap());
           resMapWithTemplateRef.putAll(temp.getResMapWithOpaResponse());
           depth--;
         } else {
-          MergeTemplateInputsInObject temp =
-              mergeTemplateInputsInObjectAlongWithOpaPolicy(accountId, orgId, projectId, childYamlField.getNode(),
-                  templateCacheMap, depth, loadFromCache, appendInputSetValidator, currentYamlVersion, idsValuesSet);
+          MergeTemplateInputsInObject temp = mergeTemplateInputsInObjectAlongWithOpaPolicy(accountId, orgId, projectId,
+              childYamlField.getNode(), templateCacheMap, depth, loadFromCache, appendInputSetValidator,
+              currentYamlVersion, idsValuesSet, idsSuffixMap);
           resMap.put(fieldName, temp.getResMap());
           resMapWithTemplateRef.put(fieldName, temp.getResMapWithOpaResponse());
         }
@@ -712,7 +715,7 @@ public class TemplateMergeServiceHelper {
     }
 
     return getMergeTemplateInputsInObject(
-        currentYamlVersion, templateEntity, resMap, resMapWithTemplateRef, idsValuesSet);
+        currentYamlVersion, templateEntity, resMap, resMapWithTemplateRef, idsValuesSet, idsSuffixMap);
   }
 
   private JsonNode getTemplateJsonNode(
@@ -726,7 +729,8 @@ public class TemplateMergeServiceHelper {
 
   private ArrayListForMergedTemplateRef mergeTemplateInputsInArrayWithOpaPolicy(String accountId, String orgId,
       String projectId, YamlNode yamlNode, Map<String, TemplateEntity> templateCacheMap, int depth,
-      boolean loadFromCache, boolean appendInputSetValidator, String yamlVersion, Set<String> idsValuesSet) {
+      boolean loadFromCache, boolean appendInputSetValidator, String yamlVersion, Set<String> idsValuesSet,
+      Map<String, Integer> idsSuffixMap) {
     List<Object> arrayList = new ArrayList<>();
     List<Object> arrayListWithTemplateRef = new ArrayList<>();
     for (YamlNode arrayElement : yamlNode.asArray()) {
@@ -736,12 +740,13 @@ public class TemplateMergeServiceHelper {
       } else if (arrayElement.isArray()) {
         ArrayListForMergedTemplateRef arrayListForMergedTemplateRef =
             mergeTemplateInputsInArrayWithOpaPolicy(accountId, orgId, projectId, arrayElement, templateCacheMap, depth,
-                loadFromCache, appendInputSetValidator, yamlVersion, idsValuesSet);
+                loadFromCache, appendInputSetValidator, yamlVersion, idsValuesSet, idsSuffixMap);
         arrayList.add(arrayListForMergedTemplateRef.getArrayList());
         arrayListWithTemplateRef.add(arrayListForMergedTemplateRef.getArrayListWithTemplateRef());
       } else {
-        MergeTemplateInputsInObject temp = mergeTemplateInputsInObjectAlongWithOpaPolicy(accountId, orgId, projectId,
-            arrayElement, templateCacheMap, depth, loadFromCache, appendInputSetValidator, yamlVersion, idsValuesSet);
+        MergeTemplateInputsInObject temp =
+            mergeTemplateInputsInObjectAlongWithOpaPolicy(accountId, orgId, projectId, arrayElement, templateCacheMap,
+                depth, loadFromCache, appendInputSetValidator, yamlVersion, idsValuesSet, idsSuffixMap);
         arrayList.add(temp.getResMap());
         arrayListWithTemplateRef.add(temp.getResMapWithOpaResponse());
       }

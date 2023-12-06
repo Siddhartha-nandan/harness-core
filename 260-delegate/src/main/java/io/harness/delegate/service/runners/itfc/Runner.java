@@ -23,12 +23,10 @@ public interface Runner {
   /**
    * Execute a task
    * @param infraId  The execution infra to execute the task on
-   * @param taskData  Input data for the task
-   * @param runnerData Runner's execution parameters
+   * @param tasks  Input data for the task
    * @param context  Context of this task, including delegate information, task id, or decrypted secrets
    */
-  void execute(String infraId, String logKey, InputData taskData, InputData runnerData, Map<String, char[]> decrypted,
-      Context context);
+  void execute(String infraId, String logKey, InputData tasks, Map<String, char[]> decrypted, Context context);
   /**
    * Clean up an execution infra
    * @param infraId  The execution infra to clean up

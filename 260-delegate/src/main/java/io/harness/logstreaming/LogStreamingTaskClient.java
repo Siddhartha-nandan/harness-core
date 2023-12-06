@@ -7,8 +7,6 @@
 
 package io.harness.logstreaming;
 
-import static io.harness.data.structure.EmptyPredicate.isEmpty;
-
 import static software.wings.beans.LogColor.Red;
 import static software.wings.beans.LogColor.Yellow;
 import static software.wings.beans.LogHelper.COMMAND_UNIT_PLACEHOLDER;
@@ -35,7 +33,6 @@ import software.wings.beans.command.ExecutionLogCallback;
 import software.wings.delegatetasks.DelegateLogService;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -89,10 +86,7 @@ public class LogStreamingTaskClient implements ILogStreamingTaskClient {
   @Override
   public void openStream(String baseLogKeySuffix) {
     String logKey = getLogKey(baseLogKeySuffix);
-    if (isEmpty(token)) {
-      log.warn("Unable to open log stream for account {} due to empty token", accountId);
-      return;
-    }
+
     try {
       SafeHttpCall.executeWithExceptions(logStreamingClient.openLogStream(token, accountId, logKey));
     } catch (Exception ex) {
@@ -221,24 +215,5 @@ public class LogStreamingTaskClient implements ILogStreamingTaskClient {
       markers = new HashSet<>();
     }
     return markers;
-  }
-
-  @Override
-  public void log(LogLevel logLevel, String message) {
-    LogLine logLine =
-        LogLine.builder().level(logLevel).message(message).timestamp(OffsetDateTime.now().toInstant()).build();
-    this.writeLogLine(logLine, "");
-  }
-
-  public static ILogStreamingTaskClient getInstance(String loggingToken, String logKey,
-      LogStreamingClient logStreamingClient, String accountId, DelegateLogService delegateLogService) {
-    return LogStreamingTaskClient.builder()
-        .logStreamingClient(logStreamingClient)
-        .accountId(accountId)
-        .token(loggingToken)
-        .logStreamingSanitizer(LogStreamingSanitizer.builder().build())
-        .baseLogKey(logKey)
-        .logService(delegateLogService)
-        .build();
   }
 }

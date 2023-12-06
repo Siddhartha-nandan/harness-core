@@ -27,6 +27,7 @@ import com.amazonaws.services.autoscaling.model.AutoScalingGroup;
 import com.amazonaws.services.autoscaling.model.CreateAutoScalingGroupRequest;
 import com.amazonaws.services.autoscaling.model.Instance;
 import com.amazonaws.services.autoscaling.model.LifecycleHookSpecification;
+import com.amazonaws.services.autoscaling.model.Tag;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -119,11 +120,7 @@ public class AsgConfigurationManifestHandler extends AsgManifestHandler<CreateAu
       asgSdkManager.createASG(asgName, chainState.getLaunchTemplateName(), chainState.getLaunchTemplateVersion(),
           createAutoScalingGroupRequest);
       asgSdkManager.info("Waiting for Asg %s to reach steady state", asgName);
-      if (Integer.valueOf(0).equals(createAutoScalingGroupRequest.getDesiredCapacity())) {
-        asgSdkManager.waitReadyState(asgName, asgSdkManager::checkAsgDownsizedToZero, operationName);
-      } else {
-        asgSdkManager.waitReadyState(asgName, asgSdkManager::checkAllInstancesInReadyState, operationName);
-      }
+      asgSdkManager.waitReadyState(asgName, asgSdkManager::checkAllInstancesInReadyState, operationName);
       asgSdkManager.infoBold("Created Asg %s successfully", asgName);
     } else {
       asgSdkManager.info("Updating Asg %s", asgName);
@@ -219,5 +216,15 @@ public class AsgConfigurationManifestHandler extends AsgManifestHandler<CreateAu
   void prepareCreateAutoScalingGroupRequest(CreateAutoScalingGroupRequest req, String asgName) {
     req.setAutoScalingGroupName(asgName);
     req.setLaunchTemplate(null);
+    req.setTags(prepareTags(req.getTags()));
+  }
+
+  List<Tag> prepareTags(Collection<Tag> tags) {
+    if (tags == null) {
+      return null;
+    }
+
+    // keep only key, value properties. For Base deploy resourceId also is provided that leads to error
+    return tags.stream().map(t -> new Tag().withKey(t.getKey()).withValue(t.getValue())).collect(Collectors.toList());
   }
 }

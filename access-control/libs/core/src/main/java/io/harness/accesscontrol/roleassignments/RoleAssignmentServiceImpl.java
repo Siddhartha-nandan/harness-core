@@ -12,14 +12,17 @@ import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 import static lombok.AccessLevel.PRIVATE;
 
 import io.harness.accesscontrol.publicaccess.PublicAccessUtils;
-import io.harness.accesscontrol.roleassignments.events.RoleAssignmentCreateEventV2;
-import io.harness.accesscontrol.roleassignments.events.RoleAssignmentDeleteEventV2;
-import io.harness.accesscontrol.roleassignments.events.RoleAssignmentUpdateEventV2;
+import io.harness.accesscontrol.roleassignments.api.RoleAssignmentDTO;
+import io.harness.accesscontrol.roleassignments.events.RoleAssignmentCreateEvent;
+import io.harness.accesscontrol.roleassignments.events.RoleAssignmentDeleteEvent;
+import io.harness.accesscontrol.roleassignments.events.RoleAssignmentUpdateEvent;
 import io.harness.accesscontrol.roleassignments.persistence.RoleAssignmentDao;
 import io.harness.accesscontrol.roleassignments.validator.RoleAssignmentValidationRequest;
 import io.harness.accesscontrol.roleassignments.validator.RoleAssignmentValidationResult;
 import io.harness.accesscontrol.roleassignments.validator.RoleAssignmentValidator;
+import io.harness.accesscontrol.scopes.ScopeDTO;
 import io.harness.accesscontrol.scopes.core.Scope;
+import io.harness.accesscontrol.scopes.core.ScopeDTOMapper;
 import io.harness.accesscontrol.scopes.core.ScopeService;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
@@ -79,7 +82,10 @@ public class RoleAssignmentServiceImpl implements RoleAssignmentService {
     return Failsafe.with(transactionRetryPolicy).get(() -> outboxTransactionTemplate.execute(status -> {
       RoleAssignment createdRoleAssignment = roleAssignmentDao.create(roleAssignment);
       Scope scope = scopeService.buildScopeFromScopeIdentifier(roleAssignment.getScopeIdentifier());
-      outboxService.save(new RoleAssignmentCreateEventV2(createdRoleAssignment, scope.toString()));
+      ScopeDTO scopeDTO = ScopeDTOMapper.toDTO(scope);
+      RoleAssignmentDTO createdRoleAssignmentDTO = RoleAssignmentDTOMapper.toDTO(createdRoleAssignment);
+      outboxService.save(new RoleAssignmentCreateEvent(
+          scopeDTO.getAccountIdentifier(), createdRoleAssignmentDTO, scopeDTO, createdRoleAssignment.getId()));
       return createdRoleAssignment;
     }));
   }
@@ -128,7 +134,11 @@ public class RoleAssignmentServiceImpl implements RoleAssignmentService {
       return Failsafe.with(transactionRetryPolicy).get(() -> outboxTransactionTemplate.execute(status -> {
         RoleAssignment updatedRoleAssignment = roleAssignmentDao.update(roleAssignmentUpdate);
         Scope scope = scopeService.buildScopeFromScopeIdentifier(roleAssignment.getScopeIdentifier());
-        outboxService.save(new RoleAssignmentUpdateEventV2(roleAssignment, updatedRoleAssignment, scope.toString()));
+        ScopeDTO scopeDTO = ScopeDTOMapper.toDTO(scope);
+        RoleAssignmentDTO updatedRoleAssignmentDTO = RoleAssignmentDTOMapper.toDTO(updatedRoleAssignment);
+        RoleAssignmentDTO oldRoleAssignmentDTO = RoleAssignmentDTOMapper.toDTO(roleAssignment);
+        outboxService.save(new RoleAssignmentUpdateEvent(scopeDTO.getAccountIdentifier(), updatedRoleAssignmentDTO,
+            oldRoleAssignmentDTO, scopeDTO, updatedRoleAssignment.getId()));
         return updatedRoleAssignment;
       }));
     }
@@ -142,8 +152,10 @@ public class RoleAssignmentServiceImpl implements RoleAssignmentService {
       Optional<RoleAssignment> deletedRoleAssignmentOptional = roleAssignmentDao.delete(identifier, scopeIdentifier);
       deletedRoleAssignmentOptional.ifPresent(roleAssignment -> {
         Scope scope = scopeService.buildScopeFromScopeIdentifier(roleAssignment.getScopeIdentifier());
-        outboxService.save(
-            new RoleAssignmentDeleteEventV2(deletedRoleAssignmentOptional.get(), scope.toString(), false));
+        ScopeDTO scopeDTO = ScopeDTOMapper.toDTO(scope);
+        RoleAssignmentDTO roleAssignmentDTO = RoleAssignmentDTOMapper.toDTO(roleAssignment);
+        outboxService.save(new RoleAssignmentDeleteEvent(
+            scopeDTO.getAccountIdentifier(), roleAssignmentDTO, scopeDTO, false, roleAssignment.getId()));
       });
       return deletedRoleAssignmentOptional;
     });
@@ -155,7 +167,10 @@ public class RoleAssignmentServiceImpl implements RoleAssignmentService {
       List<RoleAssignment> roleAssignmentsDeleted = roleAssignmentDao.findAndRemove(roleAssignmentFilter);
       for (RoleAssignment roleAssignment : roleAssignmentsDeleted) {
         Scope scope = scopeService.buildScopeFromScopeIdentifier(roleAssignment.getScopeIdentifier());
-        outboxService.save(new RoleAssignmentDeleteEventV2(roleAssignment, scope.toString(), true));
+        ScopeDTO scopeDTO = ScopeDTOMapper.toDTO(scope);
+        RoleAssignmentDTO roleAssignmentDTO = RoleAssignmentDTOMapper.toDTO(roleAssignment);
+        outboxService.save(new RoleAssignmentDeleteEvent(
+            scopeDTO.getAccountIdentifier(), roleAssignmentDTO, scopeDTO, false, roleAssignment.getId()));
       }
       return roleAssignmentsDeleted.size();
     }));
@@ -167,7 +182,10 @@ public class RoleAssignmentServiceImpl implements RoleAssignmentService {
       List<RoleAssignment> roleAssignmentsDeleted = roleAssignmentDao.findAndRemove(scopeIdentifier, identifiers);
       for (RoleAssignment roleAssignment : roleAssignmentsDeleted) {
         Scope scope = scopeService.buildScopeFromScopeIdentifier(roleAssignment.getScopeIdentifier());
-        outboxService.save(new RoleAssignmentDeleteEventV2(roleAssignment, scope.toString(), false));
+        ScopeDTO scopeDTO = ScopeDTOMapper.toDTO(scope);
+        RoleAssignmentDTO roleAssignmentDTO = RoleAssignmentDTOMapper.toDTO(roleAssignment);
+        outboxService.save(new RoleAssignmentDeleteEvent(
+            scopeDTO.getAccountIdentifier(), roleAssignmentDTO, scopeDTO, true, roleAssignment.getId()));
       }
       return roleAssignmentsDeleted;
     }));

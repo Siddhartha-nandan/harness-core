@@ -47,7 +47,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.NotImplementedException;
-import org.apache.commons.lang3.StringUtils;
 
 @CodePulse(
     module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_TRADITIONAL})
@@ -110,12 +109,10 @@ public class WinRmShellScriptTaskNG extends AbstractDelegateRunnableTask {
 
   private ShellScriptTaskResponseNG executeInitOnDelegate(
       WinRmShellScriptTaskParametersNG taskParameters, CommandUnitsProgress commandUnitsProgress) {
-    String commandUnit = StringUtils.defaultIfBlank(taskParameters.getCommandUnit(), INIT_UNIT);
-
     final ShellExecutorConfig config = ShellExecutorConfig.builder()
                                            .accountId(taskParameters.getAccountId())
                                            .executionId(taskParameters.getExecutionId())
-                                           .commandUnitName(commandUnit)
+                                           .commandUnitName(INIT_UNIT)
                                            .workingDirectory("/tmp")
                                            .environment(taskParameters.getEnvironmentVariables())
                                            .scriptType(ScriptType.POWERSHELL)
@@ -128,7 +125,7 @@ public class WinRmShellScriptTaskNG extends AbstractDelegateRunnableTask {
       ExecuteCommandResponse executeCommandResponse =
           executor.executeCommandString(getInitCommand(taskParameters.getWorkingDirectory()), Collections.emptyList());
 
-      updateStatus(commandUnitsProgress, commandUnit, executeCommandResponse);
+      updateStatus(commandUnitsProgress, INIT_UNIT, executeCommandResponse);
 
       return ShellScriptTaskResponseNG.builder()
           .executeCommandResponse(executeCommandResponse)
@@ -137,26 +134,18 @@ public class WinRmShellScriptTaskNG extends AbstractDelegateRunnableTask {
           .unitProgressData(UnitProgressDataMapper.toUnitProgressData(commandUnitsProgress))
           .build();
     } catch (Exception e) {
-      if (StringUtils.isNotBlank(taskParameters.getCommandUnit())) {
-        executor.getLogCallback().saveExecutionLog(
-            "Command finished with status " + CommandExecutionStatus.FAILURE, LogLevel.ERROR);
-      } else {
-        executor.getLogCallback().saveExecutionLog("Command finished with status " + CommandExecutionStatus.FAILURE,
-            LogLevel.ERROR, CommandExecutionStatus.FAILURE);
-      }
-
+      executor.getLogCallback().saveExecutionLog("Command finished with status " + CommandExecutionStatus.FAILURE,
+          LogLevel.ERROR, CommandExecutionStatus.FAILURE);
       throw e;
     }
   }
 
   private ShellScriptTaskResponseNG executeCommandOnDelegate(
       WinRmShellScriptTaskParametersNG taskParameters, CommandUnitsProgress commandUnitsProgress) {
-    String commandUnit = StringUtils.defaultIfBlank(taskParameters.getCommandUnit(), COMMAND_UNIT);
-
     final ShellExecutorConfig config = ShellExecutorConfig.builder()
                                            .accountId(taskParameters.getAccountId())
                                            .executionId(taskParameters.getExecutionId())
-                                           .commandUnitName(commandUnit)
+                                           .commandUnitName(COMMAND_UNIT)
                                            .workingDirectory(taskParameters.getWorkingDirectory())
                                            .environment(taskParameters.getEnvironmentVariables())
                                            .scriptType(ScriptType.POWERSHELL)
@@ -169,7 +158,7 @@ public class WinRmShellScriptTaskNG extends AbstractDelegateRunnableTask {
       ExecuteCommandResponse executeCommandResponse = executor.executeCommandString(
           taskParameters.getScript(), taskParameters.getOutputVars(), taskParameters.getSecretOutputVars(), null);
 
-      updateStatus(commandUnitsProgress, commandUnit, executeCommandResponse);
+      updateStatus(commandUnitsProgress, COMMAND_UNIT, executeCommandResponse);
 
       return ShellScriptTaskResponseNG.builder()
           .executeCommandResponse(executeCommandResponse)
@@ -178,14 +167,8 @@ public class WinRmShellScriptTaskNG extends AbstractDelegateRunnableTask {
           .unitProgressData(UnitProgressDataMapper.toUnitProgressData(commandUnitsProgress))
           .build();
     } catch (Exception e) {
-      if (StringUtils.isNotBlank(taskParameters.getCommandUnit())) {
-        executor.getLogCallback().saveExecutionLog(
-            "Command finished with status " + CommandExecutionStatus.FAILURE, LogLevel.ERROR);
-      } else {
-        executor.getLogCallback().saveExecutionLog("Command finished with status " + CommandExecutionStatus.FAILURE,
-            LogLevel.ERROR, CommandExecutionStatus.FAILURE);
-      }
-
+      executor.getLogCallback().saveExecutionLog("Command finished with status " + CommandExecutionStatus.FAILURE,
+          LogLevel.ERROR, CommandExecutionStatus.FAILURE);
       throw e;
     }
   }

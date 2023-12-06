@@ -180,8 +180,7 @@ public class PipelineServiceDwMetricsPublisher implements MetricsPublisher {
 
   private boolean checkIfResourceMetrics(String metricName, String additionalMetricNameCheck) {
     List<String> resourcesList =
-        List.of("PipelineResource", "InputSetResourcePMS", "PlanExecutionResource", "ExecutionDetailsResource",
-            "NGTriggerResource", "NGTriggerEventHistoryResource", "NGTriggerWebhookConfigResource");
+        List.of("PipelineResource", "InputSetResourcePMS", "PlanExecutionResource", "ExecutionDetailsResource");
     for (String resourceName : resourcesList) {
       // Logging only total metrics as we want to find total time spent for each api
       if (metricName.contains(resourceName) && metricName.contains(additionalMetricNameCheck)) {

@@ -44,7 +44,7 @@ import org.springframework.data.annotation.TypeAlias;
 @OwnedBy(IDP)
 @RecasterAlias("io.harness.idp.pipeline.stages.node.IDPStageNode")
 public class IDPStageNode extends AbstractStageNode {
-  @JsonProperty("type") @NotNull StepType type = StepType.IDP;
+  @JsonProperty("type") @NotNull StepType type = StepType.IDPStage;
 
   @JsonProperty("spec")
   @JsonTypeInfo(use = NAME, property = "type", include = EXTERNAL_PROPERTY, visible = true)
@@ -60,7 +60,7 @@ public class IDPStageNode extends AbstractStageNode {
   }
 
   public enum StepType {
-    IDP(IDPStageSpecTypeConstants.IDP_STAGE);
+    IDPStage(IDPStageSpecTypeConstants.IDP_STAGE);
     @Getter String name;
     StepType(String name) {
       this.name = name;

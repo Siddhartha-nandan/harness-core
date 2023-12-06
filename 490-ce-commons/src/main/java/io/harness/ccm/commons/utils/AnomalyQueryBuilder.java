@@ -217,8 +217,6 @@ public class AnomalyQueryBuilder {
     switch (field) {
       case ANOMALY_TIME:
         return ANOMALIES.ANOMALYTIME;
-      case ANOMALY_ID:
-        return ANOMALIES.ID;
       case ACTUAL_COST:
         return ANOMALIES.ACTUALCOST;
       case WORKLOAD:

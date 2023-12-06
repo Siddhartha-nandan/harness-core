@@ -86,7 +86,6 @@ public class ProvisionServiceImpl implements ProvisionService {
     makeTriggerApi(accountIdentifier, namespace);
   }
 
-  @Override
   public void createDefaultPermissions(String accountIdentifier) {
     try {
       BackstagePermissions backstagePermissions = new BackstagePermissions();
@@ -102,7 +101,6 @@ public class ProvisionServiceImpl implements ProvisionService {
     }
   }
 
-  @Override
   public void createBackstageBackendSecret(String accountIdentifier) {
     String actualSecret = generateEncodedSecret();
     SecretRequestWrapper secretRequestWrapper =
@@ -212,8 +210,7 @@ public class ProvisionServiceImpl implements ProvisionService {
     return exponentialRetry;
   }
 
-  @Override
-  public void createBackstageOverrideConfig(String accountIdentifier) {
+  private void createBackstageOverrideConfig(String accountIdentifier) {
     try {
       configManagerService.mergeAndSaveAppConfig(accountIdentifier);
     } catch (Exception e) {

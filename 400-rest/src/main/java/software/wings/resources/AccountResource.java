@@ -36,7 +36,6 @@ import io.harness.eraro.ResponseMessage;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.WingsException;
 import io.harness.licensing.beans.modules.AccountLicenseDTO;
-import io.harness.licensing.beans.modules.DeveloperMappingDTO;
 import io.harness.licensing.beans.modules.ModuleLicenseDTO;
 import io.harness.licensing.beans.modules.SMPEncLicenseDTO;
 import io.harness.licensing.beans.modules.SMPLicenseRequestDTO;
@@ -378,33 +377,6 @@ public class AccountResource {
         accountService.updateCrossGenerationAccessEnabled(accountId, isCrossGenerationAccessEnabled, false));
   }
 
-  @PUT
-  @Path("{accountId}/canny-username-abbreviation-enabled")
-  @Timed
-  @ExceptionMetered
-  public RestResponse<Account> updateCannyUsernameAbbreviationEnabled(
-      @PathParam("accountId") @NotEmpty String accountId,
-      @QueryParam("clientAccountId") @NotNull String clientAccountId,
-      @QueryParam("cannyUsernameAbbreviationEnabled") @DefaultValue(
-          "false") boolean isCannyUsernameAbbreviationEnabled) {
-    User existingUser = UserThreadLocal.get();
-    if (existingUser == null) {
-      throw new InvalidRequestException("Invalid User");
-    }
-
-    if (harnessUserGroupService.isHarnessSupportUser(existingUser.getUuid())) {
-      return new RestResponse<>(
-          accountService.updateCannyUsernameAbbreviationEnabled(clientAccountId, isCannyUsernameAbbreviationEnabled));
-    } else {
-      return RestResponse.Builder.aRestResponse()
-          .withResponseMessages(Lists.newArrayList(
-              ResponseMessage.builder()
-                  .message("User not allowed to update account isCannyUsernameAbbreviationEnabled field")
-                  .build()))
-          .build();
-    }
-  }
-
   @POST
   @Path("/createSampleApplication")
   @Timed
@@ -731,45 +703,6 @@ public class AccountResource {
       return RestResponse.Builder.aRestResponse()
           .withResponseMessages(
               Lists.newArrayList(ResponseMessage.builder().message("User not allowed to query licenses").build()))
-          .build();
-    }
-  }
-
-  @POST
-  @Path("{accountId}/ng/developer-license-mapping")
-  public RestResponse<DeveloperMappingDTO> createDeveloperMapping(@PathParam("accountId") String accountId,
-      @QueryParam("clientAccountId") @NotNull String clientAccountId, @Body DeveloperMappingDTO developerMappingDTO) {
-    validateAccountExistence(clientAccountId);
-    User existingUser = UserThreadLocal.get();
-    if (existingUser == null) {
-      throw new InvalidRequestException("Invalid User");
-    }
-    if (harnessUserGroupService.isHarnessSupportUser(existingUser.getUuid())) {
-      return new RestResponse<>(
-          getResponse(adminLicenseHttpClient.createAccountLevelDeveloperMapping(clientAccountId, developerMappingDTO)));
-    } else {
-      return RestResponse.Builder.aRestResponse()
-          .withResponseMessages(Lists.newArrayList(
-              ResponseMessage.builder().message("User not allowed to create developer mapping").build()))
-          .build();
-    }
-  }
-
-  @GET
-  @Path("{accountId}/ng/developer-license-mapping")
-  public RestResponse<List<DeveloperMappingDTO>> getDeveloperMapping(
-      @PathParam("accountId") String accountId, @QueryParam("clientAccountId") @NotNull String clientAccountId) {
-    validateAccountExistence(clientAccountId);
-    User existingUser = UserThreadLocal.get();
-    if (existingUser == null) {
-      throw new InvalidRequestException("Invalid User");
-    }
-    if (harnessUserGroupService.isHarnessSupportUser(existingUser.getUuid())) {
-      return new RestResponse<>(getResponse(adminLicenseHttpClient.getAccountLevelDeveloperMapping(clientAccountId)));
-    } else {
-      return RestResponse.Builder.aRestResponse()
-          .withResponseMessages(Lists.newArrayList(
-              ResponseMessage.builder().message("User not allowed to get developer mapping").build()))
           .build();
     }
   }

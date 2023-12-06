@@ -29,5 +29,4 @@ public class PollingSubscriptionStatus {
   String detailedMessage;
   List<String> lastPolled;
   Long lastPollingUpdate;
-  Long errorStatusValidUntil;
 }

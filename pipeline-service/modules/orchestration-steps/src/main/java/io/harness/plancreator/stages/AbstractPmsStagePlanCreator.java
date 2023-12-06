@@ -99,4 +99,8 @@ public abstract class AbstractPmsStagePlanCreator<T extends PmsAbstractStageNode
     }
     return planNodeBuilder.build();
   }
+
+  protected String getFinalPlanNodeId(PlanCreationContext ctx, T stageNode) {
+    return StrategyUtils.getSwappedPlanNodeId(ctx, stageNode.getUuid());
+  }
 }

@@ -27,7 +27,6 @@ import io.harness.cdng.instance.info.InstanceInfoService;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
 import io.harness.common.ParameterFieldHelper;
 import io.harness.data.structure.EmptyPredicate;
-import io.harness.delegate.beans.instancesync.ServerInstanceInfo;
 import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.task.aws.asg.AsgCommandResponse;
 import io.harness.delegate.task.aws.asg.AsgShiftTrafficRequest;
@@ -40,6 +39,7 @@ import io.harness.logging.CommandExecutionStatus;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.execution.failure.FailureInfo;
+import io.harness.pms.contracts.execution.tasks.SkipTaskRequest;
 import io.harness.pms.contracts.execution.tasks.TaskRequest;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
@@ -69,7 +69,7 @@ public class AsgShiftTrafficStep extends CdTaskExecutable<AsgCommandResponse> {
                                                .build();
 
   private static final String ASG_BLUE_GREEN_DEPLOY_STEP_MISSING = "Blue Green Deploy step is not configured.";
-  public static final String COMMAND_NAME = "AsgShiftTraffic";
+  private static final String COMMAND_NAME = "AsgShiftTraffic";
 
   @Inject private AsgStepCommonHelper asgStepCommonHelper;
   @Inject private AsgStepHelper asgStepHelper;
@@ -132,8 +132,16 @@ public class AsgShiftTrafficStep extends CdTaskExecutable<AsgCommandResponse> {
     AsgBlueGreenDeployOutcome asgBlueGreenDeployDataOutcome =
         (AsgBlueGreenDeployOutcome) asgBlueGreenDeployDataOptional.getOutput();
 
-    InfrastructureOutcome infrastructureOutcome =
-        asgStepCommonHelper.getInfrastructureOutcomeWithUpdatedExpressions(ambiance);
+    // first deploy and skip swapping
+    if (asgBlueGreenPrepareRollbackDataOutcome.getProdAsgName() == null) {
+      return TaskRequest.newBuilder()
+          .setSkipTaskRequest(
+              SkipTaskRequest.newBuilder().setMessage("Skipping shift traffic as this is first deployment").build())
+          .build();
+    }
+
+    InfrastructureOutcome infrastructureOutcome = (InfrastructureOutcome) outcomeService.resolve(
+        ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME));
 
     List<AsgLoadBalancerConfig> loadBalancers = getLoadBalancers(asgBlueGreenPrepareRollbackDataOutcome, true);
 
@@ -186,22 +194,13 @@ public class AsgShiftTrafficStep extends CdTaskExecutable<AsgCommandResponse> {
       executionSweepingOutputService.consume(ambiance, OutcomeExpressionConstants.ASG_SHIFT_TRAFFIC_OUTCOME,
           asgShiftTrafficOutcome, StepOutcomeGroup.STEP.name());
 
-      InfrastructureOutcome infrastructureOutcome =
-          asgStepCommonHelper.getInfrastructureOutcomeWithUpdatedExpressions(ambiance);
-
-      List<ServerInstanceInfo> serverInstanceInfos = asgStepCommonHelper.getServerInstanceInfos(asgShiftTrafficResponse,
-          infrastructureOutcome.getInfrastructureKey(),
-          asgStepCommonHelper.getAsgInfraConfig(infrastructureOutcome, ambiance).getRegion());
-
-      StepResponse.StepOutcome stepOutcome =
-          instanceInfoService.saveServerInstancesIntoSweepingOutput(ambiance, serverInstanceInfos);
+      // TODO instance sync
 
       stepResponse = stepResponseBuilder.status(Status.SUCCEEDED)
                          .stepOutcome(StepResponse.StepOutcome.builder()
                                           .name(OutcomeExpressionConstants.OUTPUT)
                                           .outcome(asgShiftTrafficOutcome)
                                           .build())
-                         .stepOutcome(stepOutcome)
                          .build();
     }
 

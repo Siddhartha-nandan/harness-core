@@ -11,12 +11,9 @@ ${approvalMessage}<br><br>
 <b>Triggered by:</b> ${triggeredBy}<br><br>
 
 <b>Pipeline execution summary:</b><br>
-<b>Upcoming Stages:</b><br>
-${upcomingStages}<br>
-<b>Completed Stages:</b><br>
-${finishedStages}<br>
-<b>Running Stages:</b><br>
-${runningStages}<br><br>
+Upcoming Stages: ${upcomingStages}<br>
+Completed Stages: ${finishedStages}<br>
+Running Stages: ${runningStages}<br><br>
 
 <i>Pipeline started on ${startedAt} and approval expires on ${expiresAt}</i><br>
 <div>

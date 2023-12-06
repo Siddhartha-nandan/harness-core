@@ -213,9 +213,6 @@ public class NodeExecution implements PersistentEntity, UuidAccess, PmsNodeExecu
 
     public static final String planId = NodeExecutionKeys.ambiance + "."
         + "planId";
-
-    public static final String type = NodeExecutionKeys.stepType + "."
-        + "type";
   }
 
   public static List<MongoIndex> mongoIndexes() {

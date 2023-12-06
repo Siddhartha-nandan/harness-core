@@ -10,12 +10,9 @@ package io.harness.notification.service.api;
 import io.harness.notification.entities.NotificationEntity;
 import io.harness.notification.entities.NotificationEvent;
 import io.harness.notification.entities.NotificationRule;
-import io.harness.notification.utils.NotificationRuleFilterProperties;
 
 import java.util.List;
 import javax.validation.Valid;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 public interface NotificationRuleManagementService {
   NotificationRule create(@Valid NotificationRule notificationRule);
@@ -31,7 +28,4 @@ public interface NotificationRuleManagementService {
   List<NotificationRule> list(String accountIdentifier, String orgIdentifier, String projectIdentifier);
 
   boolean delete(@Valid NotificationRule notificationRule);
-
-  Page<NotificationRule> list(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      Pageable pageable, NotificationRuleFilterProperties notificationRuleFilterProperties);
 }

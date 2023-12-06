@@ -6,7 +6,6 @@
  */
 
 package io.harness.pms.event.pollingevent;
-
 import static io.harness.authorization.AuthorizationServiceHeader.PIPELINE_SERVICE;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.logging.AutoLogContext.OverrideBehavior.OVERRIDE_ERROR;
@@ -39,7 +38,8 @@ public class PollingResponseHandler implements PmsCommonsBaseEventHandler<Pollin
   @Inject private TriggerEventHistoryRepository triggerEventHistoryRepository;
 
   @Override
-  public void handleEvent(PollingResponse response, Map<String, String> metadataMap, Map<String, Object> metricInfo) {
+  public void handleEvent(
+      PollingResponse response, Map<String, String> metadataMap, long messageTimeStamp, long readTs) {
     SecurityContextBuilder.setContext(new ServicePrincipal(PIPELINE_SERVICE.getServiceId()));
 
     if (response == null) {

@@ -11,6 +11,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.Scope;
 import io.harness.gitsync.common.beans.GitXWebhookEventStatus;
 import io.harness.gitsync.common.dtos.ScmGetBatchFileRequestIdentifier;
 import io.harness.gitsync.common.dtos.ScmGetFileByBranchRequestDTO;
@@ -48,20 +49,18 @@ public class GitXWebhookCacheUpdateRunnable implements Runnable {
          GitXWebhookCacheUpdateLogContext context =
              new GitXWebhookCacheUpdateLogContext(gitXCacheUpdateRunnableRequestDTO)) {
       log.info(String.format("In the account %s, updating the git cache for the event %s.",
-          gitXCacheUpdateRunnableRequestDTO.getScope().getAccountIdentifier(),
+          gitXCacheUpdateRunnableRequestDTO.getAccountIdentifier(),
           gitXCacheUpdateRunnableRequestDTO.getEventIdentifier()));
       scmFacilitatorService.updateGitCache(buildScmUpdateGitCacheRequestDTO(gitXCacheUpdateRunnableRequestDTO));
-      gitXWebhookEventService.updateEvent(gitXCacheUpdateRunnableRequestDTO.getScope().getAccountIdentifier(),
-          eventIdentifier,
+      gitXWebhookEventService.updateEvent(gitXCacheUpdateRunnableRequestDTO.getAccountIdentifier(), eventIdentifier,
           GitXEventUpdateRequestDTO.builder().gitXWebhookEventStatus(GitXWebhookEventStatus.SUCCESSFUL).build());
       log.info(String.format("In the account %s, successfully updated the git cache for the event %s",
-          gitXCacheUpdateRunnableRequestDTO.getScope().getAccountIdentifier(),
+          gitXCacheUpdateRunnableRequestDTO.getAccountIdentifier(),
           gitXCacheUpdateRunnableRequestDTO.getEventIdentifier()));
     } catch (Exception exception) {
       log.error("Faced exception while submitting background task for updating the git cache for event: {} ",
           eventIdentifier, exception);
-      gitXWebhookEventService.updateEvent(gitXCacheUpdateRunnableRequestDTO.getScope().getAccountIdentifier(),
-          eventIdentifier,
+      gitXWebhookEventService.updateEvent(gitXCacheUpdateRunnableRequestDTO.getAccountIdentifier(), eventIdentifier,
           GitXEventUpdateRequestDTO.builder().gitXWebhookEventStatus(GitXWebhookEventStatus.FAILED).build());
     }
   }
@@ -69,7 +68,7 @@ public class GitXWebhookCacheUpdateRunnable implements Runnable {
   private ScmUpdateGitCacheRequestDTO buildScmUpdateGitCacheRequestDTO(
       GitXCacheUpdateRunnableRequestDTO gitXCacheUpdateRunnableRequestDTO) {
     return ScmUpdateGitCacheRequestDTO.builder()
-        .accountIdentifier(gitXCacheUpdateRunnableRequestDTO.getScope().getAccountIdentifier())
+        .accountIdentifier(gitXCacheUpdateRunnableRequestDTO.getAccountIdentifier())
         .scmGetFileByBranchRequestDTOMap(buildScmGetFileByBranchRequestDTOMap(gitXCacheUpdateRunnableRequestDTO))
         .build();
   }
@@ -84,7 +83,7 @@ public class GitXWebhookCacheUpdateRunnable implements Runnable {
           ScmGetBatchFileRequestIdentifier.builder().identifier(uniqueIdentifier).build();
       ScmGetFileByBranchRequestDTO scmGetFileByBranchRequestDTO =
           ScmGetFileByBranchRequestDTO.builder()
-              .scope(gitXCacheUpdateRunnableRequestDTO.getScope())
+              .scope(Scope.of(gitXCacheUpdateRunnableRequestDTO.getAccountIdentifier()))
               .scmConnector(gitXCacheUpdateRunnableRequestDTO.getScmConnector())
               .repoName(gitXCacheUpdateRunnableRequestDTO.getRepoName())
               .branchName(gitXCacheUpdateRunnableRequestDTO.getBranch())
@@ -99,7 +98,7 @@ public class GitXWebhookCacheUpdateRunnable implements Runnable {
 
   private String buildUniqueIdentifier(
       GitXCacheUpdateRunnableRequestDTO gitXCacheUpdateRunnableRequestDTO, String modifiedFilePath) {
-    return gitXCacheUpdateRunnableRequestDTO.getScope().getAccountIdentifier() + "/"
+    return gitXCacheUpdateRunnableRequestDTO.getAccountIdentifier() + "/"
         + gitXCacheUpdateRunnableRequestDTO.getEventIdentifier() + "/" + modifiedFilePath;
   }
 }

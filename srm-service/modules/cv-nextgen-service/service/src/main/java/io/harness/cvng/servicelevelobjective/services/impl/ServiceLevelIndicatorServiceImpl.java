@@ -403,7 +403,36 @@ public class ServiceLevelIndicatorServiceImpl implements ServiceLevelIndicatorSe
       // And we need to update SLI before queuing analysis so that queued analysis when executed takes the updated SLI.
       updateOperations.inc(ServiceLevelIndicatorKeys.version);
       hPersistence.update(serviceLevelIndicator, updateOperations);
-      recalculate(serviceLevelIndicator, timePeriod);
+      Instant startTime = timePeriod.getStartTime(ZoneOffset.UTC).minus(INTERVAL_HOURS, ChronoUnit.HOURS);
+      SLIRecord firstSLIRecord = sliRecordService.getFirstSLIRecord(serviceLevelIndicator.getUuid(), startTime);
+      Instant endTime = DateTimeUtils.roundDownTo5MinBoundary(clock.instant());
+      if (firstSLIRecord != null) {
+        startTime = startTime.isBefore(firstSLIRecord.getTimestamp()) ? firstSLIRecord.getTimestamp() : startTime;
+      } else {
+        startTime = endTime;
+      }
+      startTime = DateTimeUtils.roundDownTo5MinBoundary(startTime);
+      for (Instant intervalStartTime = startTime; intervalStartTime.isBefore(endTime);) {
+        Instant intervalEndTime = intervalStartTime.plus(INTERVAL_HOURS, ChronoUnit.HOURS);
+        if (intervalEndTime.isAfter(endTime)) {
+          intervalEndTime = endTime;
+        }
+        Optional<String> sliVerificationTaskId = verificationTaskService.getSLIVerificationTaskId(
+            serviceLevelIndicator.getAccountId(), serviceLevelIndicator.getUuid());
+        if (sliVerificationTaskId.isPresent()) {
+          AnalysisInput analysisInput = AnalysisInput.builder()
+                                            .verificationTaskId(sliVerificationTaskId.get())
+                                            .startTime(intervalStartTime)
+                                            .endTime(intervalEndTime)
+                                            .build();
+          if (intervalStartTime.equals(startTime)) {
+            orchestrationService.queueAnalysis(analysisInput);
+          } else {
+            orchestrationService.queueAnalysisWithoutEventPublish(serviceLevelIndicator.getAccountId(), analysisInput);
+          }
+          intervalStartTime = intervalEndTime;
+        }
+      }
     } else {
       hPersistence.update(serviceLevelIndicator, updateOperations);
     }
@@ -412,40 +441,6 @@ public class ServiceLevelIndicatorServiceImpl implements ServiceLevelIndicatorSe
           compositeSLOService.getReferencedCompositeSLOs(projectParams, serviceLevelObjectiveIdentifier);
       for (CompositeServiceLevelObjective compositeServiceLevelObjective : referencedCompositeSLOs) {
         compositeSLOService.recalculate(compositeServiceLevelObjective);
-      }
-    }
-  }
-
-  @Override
-  public void recalculate(ServiceLevelIndicator serviceLevelIndicator, TimePeriod timePeriod) {
-    Instant startTime = timePeriod.getStartTime(ZoneOffset.UTC).minus(INTERVAL_HOURS, ChronoUnit.HOURS);
-    SLIRecord firstSLIRecord = sliRecordService.getFirstSLIRecord(serviceLevelIndicator.getUuid(), startTime);
-    Instant endTime = DateTimeUtils.roundDownTo5MinBoundary(clock.instant());
-    if (firstSLIRecord != null) {
-      startTime = startTime.isBefore(firstSLIRecord.getTimestamp()) ? firstSLIRecord.getTimestamp() : startTime;
-    } else {
-      startTime = endTime;
-    }
-    startTime = DateTimeUtils.roundDownTo5MinBoundary(startTime);
-    for (Instant intervalStartTime = startTime; intervalStartTime.isBefore(endTime);) {
-      Instant intervalEndTime = intervalStartTime.plus(INTERVAL_HOURS, ChronoUnit.HOURS);
-      if (intervalEndTime.isAfter(endTime)) {
-        intervalEndTime = endTime;
-      }
-      Optional<String> sliVerificationTaskId = verificationTaskService.getSLIVerificationTaskId(
-          serviceLevelIndicator.getAccountId(), serviceLevelIndicator.getUuid());
-      if (sliVerificationTaskId.isPresent()) {
-        AnalysisInput analysisInput = AnalysisInput.builder()
-                                          .verificationTaskId(sliVerificationTaskId.get())
-                                          .startTime(intervalStartTime)
-                                          .endTime(intervalEndTime)
-                                          .build();
-        if (intervalStartTime.equals(startTime)) {
-          orchestrationService.queueAnalysis(analysisInput);
-        } else {
-          orchestrationService.queueAnalysisWithoutEventPublish(serviceLevelIndicator.getAccountId(), analysisInput);
-        }
-        intervalStartTime = intervalEndTime;
       }
     }
   }

@@ -41,7 +41,6 @@ import io.harness.scim.ScimListResponse;
 import io.harness.scim.ScimMultiValuedObject;
 import io.harness.scim.service.ScimGroupService;
 import io.harness.serializer.JsonUtils;
-import io.harness.utils.UuidAndIdentifierUtils;
 import io.harness.utils.featureflaghelper.NGFeatureFlagHelperService;
 
 import com.google.inject.Inject;
@@ -415,11 +414,10 @@ public class NGScimGroupServiceImpl implements ScimGroupService {
     log.info("NGSCIM: Creating group in account {} where name {} with call: {}", accountId, groupQuery.getDisplayName(),
         groupQuery);
     String userGroupIdentifier = isNotEmpty(groupQuery.getDisplayName())
-        ? UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier(groupQuery.getDisplayName())
+        ? groupQuery.getDisplayName().replaceAll("\\.", "_").replaceAll("-", "_").replaceAll(" ", "_")
         : groupQuery.getDisplayName();
-    String userGroupName = UuidAndIdentifierUtils.generateHarnessUIFormatName(groupQuery.getDisplayName());
     UserGroupDTOBuilder userGroupDTOBuilder = UserGroupDTO.builder()
-                                                  .name(userGroupName)
+                                                  .name(groupQuery.getDisplayName())
                                                   .users(fetchMembersOfUserGroup(groupQuery))
                                                   .accountIdentifier(accountId)
                                                   .identifier(userGroupIdentifier)

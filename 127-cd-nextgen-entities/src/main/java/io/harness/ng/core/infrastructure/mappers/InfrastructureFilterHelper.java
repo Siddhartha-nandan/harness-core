@@ -53,8 +53,6 @@ public class InfrastructureFilterHelper {
       } else {
         IdentifierRef envIdentifierRef =
             IdentifierRefHelper.getIdentifierRef(envIdentifier, accountId, orgIdentifier, projectIdentifier);
-        criteria = CoreCriteriaUtils.createCriteriaForGetList(envIdentifierRef.getAccountIdentifier(),
-            envIdentifierRef.getOrgIdentifier(), envIdentifierRef.getProjectIdentifier());
         criteria.and(InfrastructureEntityKeys.envIdentifier).is(envIdentifierRef.getIdentifier());
       }
     }
@@ -109,15 +107,11 @@ public class InfrastructureFilterHelper {
     Criteria orgCriteria = Criteria.where(InfrastructureEntityKeys.orgIdentifier)
                                .is(orgIdentifier)
                                .and(InfrastructureEntityKeys.projectIdentifier)
-                               .is(null)
-                               .and(InfrastructureEntityKeys.accountId)
-                               .is(accountId);
+                               .is(null);
     Criteria projectCriteria = Criteria.where(InfrastructureEntityKeys.orgIdentifier)
                                    .is(orgIdentifier)
                                    .and(InfrastructureEntityKeys.projectIdentifier)
-                                   .is(projectIdentifier)
-                                   .and(InfrastructureEntityKeys.accountId)
-                                   .is(accountId);
+                                   .is(projectIdentifier);
 
     if (isNotBlank(projectIdentifier)) {
       criteria.orOperator(projectCriteria, orgCriteria, accountCriteria);

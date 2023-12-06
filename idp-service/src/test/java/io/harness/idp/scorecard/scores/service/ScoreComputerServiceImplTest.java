@@ -17,14 +17,12 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
-import io.harness.account.AccountClient;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
@@ -38,12 +36,11 @@ import io.harness.idp.scorecard.datapoints.repositories.DataPointsRepository;
 import io.harness.idp.scorecard.datasources.providers.DataSourceProvider;
 import io.harness.idp.scorecard.datasources.providers.DataSourceProviderFactory;
 import io.harness.idp.scorecard.datasources.utils.ConfigReader;
-import io.harness.idp.scorecard.scorecards.beans.ScorecardAndChecks;
 import io.harness.idp.scorecard.scorecards.entity.ScorecardEntity;
 import io.harness.idp.scorecard.scorecards.service.ScorecardService;
+import io.harness.idp.scorecard.scores.beans.ScorecardAndChecks;
 import io.harness.idp.scorecard.scores.entity.ScoreEntity;
 import io.harness.idp.scorecard.scores.repositories.ScoreRepository;
-import io.harness.remote.client.CGRestUtils;
 import io.harness.rule.Owner;
 import io.harness.spec.server.idp.v1.model.CheckDetails;
 import io.harness.spec.server.idp.v1.model.InputValue;
@@ -69,7 +66,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 import org.mockito.stubbing.Answer;
 import retrofit2.Call;
@@ -111,14 +107,11 @@ public class ScoreComputerServiceImplTest extends CategoryTest {
   AutoCloseable openMocks;
   static Gson gson = new Gson();
   @Captor private ArgumentCaptor<ScoreEntity> scoreCaptor;
-  @Mock AccountClient accountClient;
 
   @Before
   public void setUp() {
     openMocks = MockitoAnnotations.openMocks(this);
     call = mock(Call.class);
-    MockedStatic<CGRestUtils> mockRestUtils = mockStatic(CGRestUtils.class);
-    mockRestUtils.when(() -> CGRestUtils.getResponse(any())).thenReturn(false);
   }
 
   @Test
@@ -286,6 +279,7 @@ public class ScoreComputerServiceImplTest extends CategoryTest {
     rule2.setDataPointIdentifier(DATA_POINT_IDENTIFIER2);
     rule2.setOperator(OPERATOR2);
     rule2.setValue(VALUE);
+    rule2.setConditionalInputValue(INPUT_VALUE);
     rule2.setInputValues(List.of(inputValue));
     CheckEntity check2 = CheckEntity.builder()
                              .accountIdentifier(ACCOUNT_ID)

@@ -52,7 +52,7 @@ public class BackstageCatalogComponentEntity extends BackstageCatalogEntity {
     private String type;
     private String lifecycle;
     private String owner;
-    private String domain;
+    @JsonIgnore private String domain;
     private String system;
     @JsonIgnore private String harnessSystem;
   }

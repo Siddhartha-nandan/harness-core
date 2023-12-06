@@ -31,6 +31,7 @@ public class WebhookEventPublisher {
     WebhookDTO webhookDTO = WebhookDTO.newBuilder()
                                 .setWebhookEventType(webhookEventType)
                                 .setWebhookTriggerType(GIT)
+                                .setJsonPayload(webhookPayloadData.getOriginalEvent().getPayload())
                                 .setParsedResponse(webhookPayloadData.getParseWebhookResponse())
                                 .build();
 

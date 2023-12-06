@@ -99,8 +99,8 @@ public class PipelinePlanCreatorV1 extends ChildrenPlanCreator<YamlField> {
   }
 
   @Override
-  public YamlField getFieldObject(YamlField field) {
-    return field;
+  public Class<YamlField> getFieldClass() {
+    return YamlField.class;
   }
 
   @Override

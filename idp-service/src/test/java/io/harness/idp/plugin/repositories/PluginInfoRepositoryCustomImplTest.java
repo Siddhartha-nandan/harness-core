@@ -17,8 +17,7 @@ import static org.mockito.Mockito.when;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
-import io.harness.idp.plugin.entities.DefaultPluginInfoEntity;
-import io.harness.idp.plugin.entities.PluginInfoEntity;
+import io.harness.idp.plugin.beans.PluginInfoEntity;
 import io.harness.rule.Owner;
 
 import org.junit.Before;
@@ -60,9 +59,6 @@ public class PluginInfoRepositoryCustomImplTest {
   }
 
   private PluginInfoEntity initializePluginInfoEntity() {
-    DefaultPluginInfoEntity plugin = DefaultPluginInfoEntity.builder().build();
-    plugin.setName("PagerDuty");
-    plugin.setIdentifier("pager-duty");
-    return plugin;
+    return PluginInfoEntity.builder().name("PagerDuty").identifier("pager-duty").build();
   }
 }

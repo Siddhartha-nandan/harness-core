@@ -210,7 +210,7 @@ public class TerraformCloudCleanupTaskNGTest {
         .when(terraformCloudConfigMapper)
         .mapTerraformCloudConfigWithDecryption(eq(terraformCloudConnectorDTO), eq(encryptionDetails));
     when(terraformCloudTaskHelper.getRun(any(), any(), any())).thenReturn(initialRunData);
-    doThrow(new TerraformCloudApiException("Failed to discard", 404, "url"))
+    doThrow(new TerraformCloudApiException("Failed to discard", 404))
         .when(terraformCloudTaskHelper)
         .discardRun(eq(url), eq(token), eq(runId), any());
 

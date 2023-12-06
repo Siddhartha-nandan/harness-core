@@ -146,10 +146,8 @@ public class K8sScaleRequestHandler extends K8sRequestHandler {
     List<K8sPod> afterPodList = k8sTaskHelperBase.getPodDetails(kubernetesConfig, resourceIdToScale.getNamespace(),
         k8sScaleRequest.getReleaseName(), steadyStateTimeoutInMillis);
 
-    K8sScaleResponse k8sScaleResponse = K8sScaleResponse.builder()
-                                            .previousK8sPodList(beforePodList)
-                                            .k8sPodList(k8sTaskHelperBase.tagNewPods(afterPodList, beforePodList))
-                                            .build();
+    K8sScaleResponse k8sScaleResponse =
+        K8sScaleResponse.builder().k8sPodList(k8sTaskHelperBase.tagNewPods(afterPodList, beforePodList)).build();
 
     wrapUpLogCallback.saveExecutionLog("\nDone.", INFO, SUCCESS);
 

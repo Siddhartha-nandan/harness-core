@@ -27,5 +27,4 @@ public class AwsConfig {
   boolean isIRSA;
   CrossAccountAccess crossAccountAccess;
   AwsAccessKeyCredential awsAccessKeyCredential;
-  String proxyUrl;
 }

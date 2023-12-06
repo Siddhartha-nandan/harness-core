@@ -196,8 +196,6 @@ public class ViewFieldsDataFetcher extends AbstractFieldsDataFetcher<QLCEViewFie
     String informationSchemaView = cloudBillingHelper.getInformationSchemaViewForDataset(accountId, columnView);
     String tableName = cloudBillingHelper.getTableName("AZURE");
     List<String> supportedFields = viewsBillingService.getColumnsForTable(informationSchemaView, tableName);
-    Set<String> lowerCaseSupportedFields =
-        supportedFields.stream().map(String::toLowerCase).collect(Collectors.toSet());
 
     // Adding fields which are common across all account types of azure
     supportedAzureFields.addAll(ViewFieldUtils.getAzureFields());
@@ -205,7 +203,7 @@ public class ViewFieldsDataFetcher extends AbstractFieldsDataFetcher<QLCEViewFie
     // Adding other fields which are supported
     List<QLCEViewField> variableAzureFields = ViewFieldUtils.getVariableAzureFields();
     variableAzureFields.forEach(field -> {
-      if (lowerCaseSupportedFields.contains(getFieldNameWithoutAzurePrefix(field.getFieldId()))) {
+      if (supportedFields.contains(getFieldNameWithoutAzurePrefix(field.getFieldId()))) {
         supportedAzureFields.add(field);
       }
     });
@@ -214,6 +212,6 @@ public class ViewFieldsDataFetcher extends AbstractFieldsDataFetcher<QLCEViewFie
   }
 
   private String getFieldNameWithoutAzurePrefix(String field) {
-    return field.substring(5).toLowerCase();
+    return field.substring(5);
   }
 }

@@ -12,8 +12,10 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.FeatureName;
 import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.provision.terraform.TerraformRollbackStepNode;
+import io.harness.cdng.provision.terraform.steps.rolllback.TerraformRollbackStep;
 import io.harness.cdng.provision.terraform.steps.rolllback.TerraformRollbackStepV2;
 import io.harness.executions.steps.StepSpecTypeConstants;
 import io.harness.pms.contracts.steps.StepType;
@@ -48,11 +50,21 @@ public class TerraformRollbackStepPlanCreator extends CDPMSStepPlanCreatorV2<Ter
 
   @Override
   public StepType getStepSpecType(PlanCreationContext ctx, TerraformRollbackStepNode stepElement) {
-    return TerraformRollbackStepV2.STEP_TYPE;
+    if (featureFlagService.isEnabled(ctx.getMetadata().getAccountIdentifier(),
+            FeatureName.CDS_SUPPORT_EXPRESSION_REMOTE_TERRAFORM_VAR_FILES_NG)) {
+      return TerraformRollbackStepV2.STEP_TYPE;
+    } else {
+      return TerraformRollbackStep.STEP_TYPE;
+    }
   }
 
   @Override
   public String getFacilitatorType(PlanCreationContext ctx, TerraformRollbackStepNode stepElement) {
-    return OrchestrationFacilitatorType.TASK_CHAIN;
+    if (featureFlagService.isEnabled(ctx.getMetadata().getAccountIdentifier(),
+            FeatureName.CDS_SUPPORT_EXPRESSION_REMOTE_TERRAFORM_VAR_FILES_NG)) {
+      return OrchestrationFacilitatorType.TASK_CHAIN;
+    } else {
+      return OrchestrationFacilitatorType.TASK;
+    }
   }
 }

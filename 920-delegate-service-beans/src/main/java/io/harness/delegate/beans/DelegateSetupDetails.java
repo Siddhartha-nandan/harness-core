@@ -45,5 +45,4 @@ public class DelegateSetupDetails implements YamlDTO {
   @Schema(description = "Currently KUBERNETES and HELM_DELEGATE are supported.") @NotNull private String delegateType;
   private String tokenName;
   private Boolean runAsRoot;
-  private String version;
 }

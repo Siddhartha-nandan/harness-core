@@ -20,8 +20,6 @@ import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
 import io.harness.delegate.beans.logstreaming.NGDelegateLogCallback;
 import io.harness.delegate.beans.pcf.mappers.TasInstanceIndexToServerInstanceInfoMapper;
-import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
-import io.harness.delegate.task.artifactBundle.ArtifactBundleFetchTaskHelper;
 import io.harness.delegate.task.pcf.response.TasInfraConfig;
 import io.harness.logging.LogCallback;
 import io.harness.pcf.CfDeploymentManager;
@@ -30,8 +28,6 @@ import io.harness.pcf.model.CloudFoundryConfig;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import java.io.File;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -45,24 +41,10 @@ import org.cloudfoundry.operations.applications.InstanceDetail;
 public class TasTaskHelperBase {
   @Inject private TasNgConfigMapper ngConfigMapper;
   @Inject protected CfDeploymentManager pcfDeploymentManager;
-  @Inject private ArtifactBundleFetchTaskHelper artifactBundleFetchTaskHelper;
 
   public LogCallback getLogCallback(ILogStreamingTaskClient logStreamingTaskClient, String commandUnitName,
       boolean shouldOpenStream, CommandUnitsProgress commandUnitsProgress) {
     return new NGDelegateLogCallback(logStreamingTaskClient, commandUnitName, shouldOpenStream, commandUnitsProgress);
-  }
-
-  public String getArtifactPath(ArtifactBundleDetails artifactBundleDetails, File artifactFile, File workingDirectory,
-      LogCallback logCallback) throws Exception {
-    String artifactPath = artifactFile == null ? null : artifactFile.getAbsolutePath();
-    if (artifactBundleDetails != null) {
-      if (artifactFile == null) {
-        throw new IOException("Failed to download Artifact Bundle from the Artifact source");
-      }
-      artifactPath = artifactBundleFetchTaskHelper.getArtifactPathOfArtifactBundle(
-          artifactBundleDetails, artifactFile, workingDirectory, logCallback);
-    }
-    return artifactPath;
   }
 
   public List<ServerInstanceInfo> getTasServerInstanceInfos(TasDeploymentReleaseData deploymentReleaseData) {
@@ -70,17 +52,15 @@ public class TasTaskHelperBase {
     CloudFoundryConfig cfConfig = ngConfigMapper.mapTasConfigWithDecryption(
         tasInfraConfig.getTasConnectorDTO(), tasInfraConfig.getEncryptionDataDetails());
     try {
-      CfRequestConfig cfRequestConfig =
-          CfRequestConfig.builder()
-              .timeOutIntervalInMins(5)
-              .applicationName(deploymentReleaseData.getApplicationName())
-              .userName(String.valueOf(cfConfig.getUserName()))
-              .password(String.valueOf(cfConfig.getPassword()))
-              .refreshToken(cfConfig.getRefreshToken() != null ? String.valueOf(cfConfig.getRefreshToken()) : null)
-              .endpointUrl(cfConfig.getEndpointUrl())
-              .orgName(tasInfraConfig.getOrganization())
-              .spaceName(tasInfraConfig.getSpace())
-              .build();
+      CfRequestConfig cfRequestConfig = CfRequestConfig.builder()
+                                            .timeOutIntervalInMins(5)
+                                            .applicationName(deploymentReleaseData.getApplicationName())
+                                            .userName(String.valueOf(cfConfig.getUserName()))
+                                            .password(String.valueOf(cfConfig.getPassword()))
+                                            .endpointUrl(cfConfig.getEndpointUrl())
+                                            .orgName(tasInfraConfig.getOrganization())
+                                            .spaceName(tasInfraConfig.getSpace())
+                                            .build();
 
       ApplicationDetail applicationDetail = pcfDeploymentManager.getApplicationByName(cfRequestConfig);
       List<String> instanceIndices =

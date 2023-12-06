@@ -7,6 +7,7 @@
 
 package io.harness.idp.scorecard.datapoints.parser.kubernetes;
 
+import static io.harness.idp.common.Constants.DATA_POINT_VALUE_KEY;
 import static io.harness.idp.common.Constants.DSL_RESPONSE;
 import static io.harness.idp.common.Constants.ERROR_MESSAGE_KEY;
 
@@ -23,14 +24,13 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @OwnedBy(HarnessTeam.IDP)
+@Slf4j
 public abstract class KubernetesExpressionParser implements DataPointParser {
   public static final String WORKLOAD_PREFIX = "workload";
 
   @Override
   public Object parseDataPoint(Map<String, Object> data, DataFetchDTO dataFetchDTO) {
-    data = (Map<String, Object>) data.get(dataFetchDTO.getRuleIdentifier());
     if (!data.containsKey(DSL_RESPONSE) && data.containsKey(ERROR_MESSAGE_KEY)) {
       return constructDataPointInfo(dataFetchDTO, null, String.valueOf(data.get(ERROR_MESSAGE_KEY)));
     }

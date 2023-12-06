@@ -55,6 +55,7 @@ public class AddRuleIdentifierMigration implements NGMigration {
         updatedRule.setDataSourceIdentifier(rule.getDataSourceIdentifier());
         updatedRule.setOperator(rule.getOperator());
         updatedRule.setValue(rule.getValue());
+        updatedRule.setConditionalInputValue(rule.getConditionalInputValue());
         updatedRule.setInputValues(rule.getInputValues());
         updatedRule.setIdentifier(UUID.randomUUID().toString());
         rules.add(updatedRule);

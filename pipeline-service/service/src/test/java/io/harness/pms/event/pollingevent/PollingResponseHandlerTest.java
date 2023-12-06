@@ -73,7 +73,7 @@ public class PollingResponseHandlerTest extends CategoryTest {
 
     doReturn(mappingResponse).when(mapper).consumeBuildTriggerEvent(pollingResponse);
 
-    handler.handleEvent(pollingResponse, new HashMap<>(), new HashMap<>());
+    handler.handleEvent(pollingResponse, new HashMap<>(), System.currentTimeMillis(), System.currentTimeMillis());
     verify(triggerEventExecutionHelper).processTriggersForActivation(any(), any());
   }
 }

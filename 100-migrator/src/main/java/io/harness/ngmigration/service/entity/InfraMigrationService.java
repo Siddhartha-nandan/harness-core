@@ -6,7 +6,6 @@
  */
 
 package io.harness.ngmigration.service.entity;
-
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.ngmigration.beans.MigrationInputSettingsType.SIMULTANEOUS_DEPLOYMENT_ON_SAME_INFRA;
 
@@ -52,7 +51,6 @@ import io.harness.ngmigration.client.TemplateClient;
 import io.harness.ngmigration.dto.ImportError;
 import io.harness.ngmigration.dto.MigrationImportSummaryDTO;
 import io.harness.ngmigration.expressions.MigratorExpressionUtils;
-import io.harness.ngmigration.service.MigrationHelperService;
 import io.harness.ngmigration.service.MigratorMappingService;
 import io.harness.ngmigration.service.NgMigrationService;
 import io.harness.ngmigration.service.infra.InfraDefMapper;
@@ -73,7 +71,6 @@ import software.wings.ngmigration.DiscoveryNode;
 import software.wings.ngmigration.NGMigrationEntity;
 import software.wings.ngmigration.NGMigrationEntityType;
 import software.wings.service.intfc.InfrastructureDefinitionService;
-import software.wings.service.intfc.WorkflowService;
 
 import com.google.inject.Inject;
 import java.io.IOException;
@@ -95,8 +92,6 @@ public class InfraMigrationService extends NgMigrationService {
   @Inject private InfrastructureDefinitionService infrastructureDefinitionService;
   @Inject private ElastigroupConfigurationMigrationService elastigroupConfigurationMigrationService;
   @Inject InfrastructureResourceClient infrastructureResourceClient;
-  @Inject private WorkflowService workflowService;
-  @Inject private MigrationHelperService migrationHelperService;
 
   @Override
   public MigratedEntityMapping generateMappingEntity(NGYamlFile yamlFile) {
@@ -270,9 +265,6 @@ public class InfraMigrationService extends NgMigrationService {
         elastigroupConfigurationMigrationService.getElastigroupConfigurations(migrationContext, infraSpecIds);
 
     Infrastructure infraSpec = infraDefMapper.getSpec(migrationContext, infra, elastigroupConfigurations);
-    Map<String, Object> custom = migrationHelperService.updateContextVariables(migrationContext, entities, infra);
-    MigratorExpressionUtils.render(migrationContext, infraSpec, custom);
-
     if (infraSpec == null) {
       log.error(String.format("We could not migrate the infra %s", infra.getUuid()));
       return YamlGenerationDetails.builder()

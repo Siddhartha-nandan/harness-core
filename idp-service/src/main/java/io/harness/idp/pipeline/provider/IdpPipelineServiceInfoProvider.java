@@ -10,18 +10,20 @@ package io.harness.idp.pipeline.provider;
 import static io.harness.pms.yaml.YAMLFieldNameConstants.STEP;
 import static io.harness.steps.plugin.ContainerStepConstants.PLUGIN;
 
+import io.harness.ci.execution.creator.variables.GitCloneStepVariableCreator;
+import io.harness.ci.execution.creator.variables.PluginStepVariableCreator;
+import io.harness.ci.execution.creator.variables.RunStepVariableCreator;
+import io.harness.ci.plancreator.GitCloneStepPlanCreator;
 import io.harness.ci.plancreator.InitializeStepPlanCreator;
+import io.harness.ci.plancreator.PluginStepPlanCreator;
+import io.harness.ci.plancreator.RunStepPlanCreator;
 import io.harness.idp.pipeline.stages.filtercreator.IDPStageFilterCreator;
+import io.harness.idp.pipeline.stages.filtercreator.IDPStepFilterJsonCreator;
 import io.harness.idp.pipeline.stages.plancreator.IDPStagePlanCreator;
 import io.harness.idp.pipeline.stages.plancreator.IDPStepPlanCreator;
 import io.harness.idp.pipeline.stages.variablecreator.IDPStageVariableCreator;
-import io.harness.idp.steps.Constants;
-import io.harness.idp.steps.StepSpecTypeConstants;
-import io.harness.idp.steps.execution.filter.IDPStepFilterJsonCreator;
-import io.harness.idp.steps.execution.plan.IdpCodePushStepPlanCreator;
-import io.harness.idp.steps.execution.plan.IdpCookieCutterStepPlanCreator;
-import io.harness.idp.steps.execution.plan.IdpCreateRepoStepPlanCreator;
-import io.harness.idp.steps.execution.variable.IDPStepVariableCreator;
+import io.harness.idp.pipeline.stages.variablecreator.IDPStepVariableCreator;
+import io.harness.idp.pipeline.step.StepSpecTypeConstants;
 import io.harness.pms.contracts.steps.StepInfo;
 import io.harness.pms.contracts.steps.StepMetaData;
 import io.harness.pms.sdk.core.pipeline.filters.FilterJsonCreator;
@@ -47,9 +49,9 @@ public class IdpPipelineServiceInfoProvider implements PipelineServiceInfoProvid
     List<PartialPlanCreator<?>> planCreators = new LinkedList<>();
     planCreators.add(new IDPStagePlanCreator());
     planCreators.add(new IDPStepPlanCreator());
-    planCreators.add(new IdpCookieCutterStepPlanCreator());
-    planCreators.add(new IdpCreateRepoStepPlanCreator());
-    planCreators.add(new IdpCodePushStepPlanCreator());
+    //    planCreators.add(new RunStepPlanCreator());
+    //    planCreators.add(new PluginStepPlanCreator());
+    //    planCreators.add(new GitCloneStepPlanCreator());
     planCreators.add(new InitializeStepPlanCreator());
     injectorUtils.injectMembers(planCreators);
     return planCreators;
@@ -82,51 +84,26 @@ public class IdpPipelineServiceInfoProvider implements PipelineServiceInfoProvid
     StepInfo runStepInfo = StepInfo.newBuilder()
                                .setName("Run")
                                .setType(StepSpecTypeConstants.RUN)
-                               .setStepMetaData(StepMetaData.newBuilder().addFolderPaths("Miscellaneous").build())
+                               .setStepMetaData(StepMetaData.newBuilder().addFolderPaths("Build").build())
                                .build();
 
     StepInfo pluginStepInfo = StepInfo.newBuilder()
                                   .setName("Plugin")
                                   .setType(StepSpecTypeConstants.PLUGIN)
-                                  .setStepMetaData(StepMetaData.newBuilder().addFolderPaths("Miscellaneous").build())
+                                  .setStepMetaData(StepMetaData.newBuilder().addFolderPaths("Build").build())
                                   .build();
 
     StepInfo gitCloneStepInfo =
         StepInfo.newBuilder()
             .setName("Git Clone")
             .setType(StepSpecTypeConstants.GIT_CLONE)
-            .setStepMetaData(StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Miscellaneous").build())
-            .build();
-    StepInfo cookicutterStepInfo =
-        StepInfo.newBuilder()
-            .setName("Cookiecutter")
-            .setType(Constants.IDP_COOKIECUTTER)
-            .setStepMetaData(StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Code Generators").build())
-            .build();
-
-    StepInfo createRepoStepInfo =
-        StepInfo.newBuilder()
-            .setName("Create Repo")
-            .setType(Constants.IDP_CREATE_REPO)
-            .setStepMetaData(
-                StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Git Repository Setup").build())
-            .build();
-
-    StepInfo codePushStepInfo =
-        StepInfo.newBuilder()
-            .setName("Code Push")
-            .setType(Constants.IDP_CODE_PUSH)
-            .setStepMetaData(
-                StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Git Repository Setup").build())
+            .setStepMetaData(StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Build").build())
             .build();
 
     ArrayList<StepInfo> stepInfos = new ArrayList<>();
     stepInfos.add(runStepInfo);
     stepInfos.add(pluginStepInfo);
     stepInfos.add(gitCloneStepInfo);
-    stepInfos.add(cookicutterStepInfo);
-    stepInfos.add(createRepoStepInfo);
-    stepInfos.add(codePushStepInfo);
     return stepInfos;
   }
 }

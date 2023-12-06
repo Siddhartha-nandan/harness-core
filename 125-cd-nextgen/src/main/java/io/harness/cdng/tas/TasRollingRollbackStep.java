@@ -181,8 +181,6 @@ public class TasRollingRollbackStep extends CdTaskExecutable<CfCommandResponseNG
             .desiredCount(tasStageExecutionDetails == null ? 0 : tasStageExecutionDetails.getDesiredCount())
             .routeMaps(tasStageExecutionDetails == null ? null : tasStageExecutionDetails.getRouteMaps())
             .cfCliVersion(tasStepHelper.cfCliVersionNGMapper(tasRollingDeployOutcome.getCfCliVersion()))
-            .artifactBundleDetails(
-                tasStageExecutionDetails == null ? null : tasStageExecutionDetails.getArtifactBundleDetails())
             .build();
 
     final TaskData taskData = TaskData.builder()

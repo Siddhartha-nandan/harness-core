@@ -20,5 +20,4 @@ public interface AsgManifestType {
   String AsgInstanceRefresh = "AsgInstanceRefresh";
   String AsgSwapService = "AsgSwapService";
   String AsgUserData = "userData";
-  String AsgShiftTraffic = "AsgShiftTraffic";
 }

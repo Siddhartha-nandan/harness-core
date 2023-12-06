@@ -140,12 +140,6 @@ public class EcsBlueGreenPrepareRollbackCommandTaskHandler extends EcsCommandTas
               .stageTargetGroupArn(stageTargetGroupArn)
               .build();
 
-      if (ecsBlueGreenPrepareRollbackRequest.isValidateBlueGreenService()) {
-        ecsCommandTaskHelper.validateTagsInService(ecsLoadBalancerConfig,
-            createServiceRequest.serviceName() + EcsCommandTaskNGHelper.DELIMITER, ecsInfraConfig,
-            prepareRollbackDataLogCallback);
-      }
-
       Optional<String> optionalServiceName = ecsCommandTaskHelper.getBlueVersionServiceName(
           createServiceRequest.serviceName() + EcsCommandTaskNGHelper.DELIMITER, ecsInfraConfig);
       if (!optionalServiceName.isPresent() || EmptyPredicate.isEmpty(optionalServiceName.get())) {

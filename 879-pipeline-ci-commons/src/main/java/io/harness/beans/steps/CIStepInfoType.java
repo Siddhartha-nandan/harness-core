@@ -95,10 +95,7 @@ public enum CIStepInfoType {
   PROVENANCE(CI_LITE_ENGINE, "provenance"),
   SLSA_VERIFICATION(CI_LITE_ENGINE, "SlsaVerification"),
   PROVENANCE_GCR(CI_LITE_ENGINE, "provenanceGcr"),
-  SLSA_VERIFICATION_GCR(CI_LITE_ENGINE, "SlsaVerificationGcr"),
-  IDP_COOKIECUTTER(CI_LITE_ENGINE, "IdpCookieCutter"),
-  IDP_CREATE_REPO(CI_LITE_ENGINE, "IdpCreateRepo"),
-  IDP_CODE_PUSH(CI_LITE_ENGINE, "IdpCodePush");
+  SLSA_VERIFICATION_GCR(CI_LITE_ENGINE, "SlsaVerificationGcr");
 
   @Getter private final CIStepExecEnvironment ciStepExecEnvironment;
   private final String displayName;

@@ -37,7 +37,6 @@ import io.harness.accesscontrol.OrgIdentifier;
 import io.harness.accesscontrol.ResourceIdentifier;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.SortOrder;
-import io.harness.exception.EntityNotFoundException;
 import io.harness.favorites.ResourceType;
 import io.harness.favorites.entities.Favorite;
 import io.harness.favorites.services.FavoritesService;
@@ -84,6 +83,7 @@ import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
+import javax.ws.rs.NotFoundException;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -180,7 +180,7 @@ public class ProjectResource {
           DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier) {
     Optional<Project> projectOptional = projectService.get(accountIdentifier, orgIdentifier, identifier);
     if (!projectOptional.isPresent()) {
-      throw new EntityNotFoundException(
+      throw new NotFoundException(
           String.format("Project with orgIdentifier [%s] and identifier [%s] not found", orgIdentifier, identifier));
     }
     return ResponseDTO.newResponse(projectOptional.get().getVersion().toString(),

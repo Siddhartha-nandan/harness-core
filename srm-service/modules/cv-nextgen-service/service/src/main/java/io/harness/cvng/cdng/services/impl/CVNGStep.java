@@ -156,7 +156,7 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
                       })
                       .collect(Collectors.toList());
     }
-    if (CollectionUtils.isEmpty(cvConfigs) || hasInvalidCVConfig(cvConfigs)) {
+    if (CollectionUtils.isEmpty(cvConfigs)) {
       CVNGStepTaskBuilder cvngStepTaskBuilder = CVNGStepTask.builder();
       cvngStepTaskBuilder.skip(true);
       cvngStepTaskBuilder.callbackId(UUID.randomUUID().toString());
@@ -400,14 +400,6 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
     return deploymentActivity;
   }
 
-  public boolean hasInvalidCVConfig(List<CVConfig> cvConfigs) {
-    for (CVConfig cvConfig : cvConfigs) {
-      if (cvConfig.isDeploymentVerificationEnabled()) {
-        return false;
-      }
-    }
-    return true;
-  }
   private void validate(CVNGStepParameter stepParameters) {
     Preconditions.checkNotNull(stepParameters.getDeploymentTag().getValue(),
         "Could not resolve expression for deployment tag. Please check your expression.");

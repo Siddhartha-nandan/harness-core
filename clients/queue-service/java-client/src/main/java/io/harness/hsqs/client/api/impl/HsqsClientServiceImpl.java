@@ -29,7 +29,6 @@ import io.harness.remote.client.NGRestUtils;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import java.util.List;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 @OwnedBy(HarnessTeam.PIPELINE)
@@ -53,12 +52,7 @@ public class HsqsClientServiceImpl implements HsqsClientService {
     DequeueRequest modifiedRequest = dequeueRequest.withTopic(getTopicName(dequeueRequest.getTopic()));
     try (DequeueRequestLogContext context = new DequeueRequestLogContext(modifiedRequest)) {
       List<DequeueResponse> dequeueResponses = NGRestUtils.getGeneralResponse(hsqsClient.dequeue(modifiedRequest));
-      List<String> dequeueResponseMessageIds =
-          dequeueResponses.stream().map(DequeueResponse::getItemId).collect(Collectors.toList());
-      if (dequeueResponseMessageIds.size() > 0) {
-        log.info("Dequeue response received for messageList of size: {} with messageIds [{}]", dequeueResponses.size(),
-            dequeueResponseMessageIds);
-      }
+      log.info("Dequeue response received for messageList of size: {}", dequeueResponses.size());
       return dequeueResponses;
     }
   }

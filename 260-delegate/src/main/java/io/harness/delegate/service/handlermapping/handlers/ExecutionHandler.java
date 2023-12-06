@@ -25,10 +25,10 @@ public class ExecutionHandler implements Handler {
   private final RunnersFactory runnersFactory;
 
   @Override
-  public void handle(final String runnerType, final TaskPayload taskPayload, final Map<String, char[]> decryptedSecrets,
-      final Context context) {
-    final Runner runner = runnersFactory.get(runnerType);
+  public void handle(
+      String runnerType, TaskPayload taskPayload, Map<String, char[]> decryptedSecrets, Context context) {
+    Runner runner = runnersFactory.get(runnerType);
     runner.execute(taskPayload.getExecutionInfraId(), taskPayload.getLogKey(), taskPayload.getTaskData(),
-        taskPayload.getInfraData(), decryptedSecrets, context);
+        decryptedSecrets, context);
   }
 }

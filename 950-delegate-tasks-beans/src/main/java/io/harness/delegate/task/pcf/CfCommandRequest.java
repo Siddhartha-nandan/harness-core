@@ -12,7 +12,6 @@ import static io.harness.annotations.dev.HarnessTeam.CDP;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.delegate.beans.pcf.CfInternalConfig;
 import io.harness.pcf.model.CfCliVersion;
-import io.harness.reflection.ExpressionReflectionUtils;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -21,7 +20,7 @@ import org.hibernate.validator.constraints.NotEmpty;
 @Data
 @AllArgsConstructor
 @OwnedBy(CDP)
-public class CfCommandRequest implements ExpressionReflectionUtils.NestedAnnotationResolver {
+public class CfCommandRequest {
   private String accountId;
   private String appId;
   private String commandName;

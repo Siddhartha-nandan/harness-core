@@ -6,7 +6,6 @@
  */
 
 package io.harness.cdng.artifact.steps;
-
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
@@ -38,7 +37,6 @@ import io.harness.pms.sdk.core.steps.io.StepResponse.StepOutcome;
 import io.harness.serializer.KryoSerializer;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
-import io.harness.telemetry.helpers.ArtifactSourceInstrumentationHelper;
 
 import software.wings.beans.LogColor;
 import software.wings.beans.LogHelper;
@@ -60,7 +58,7 @@ public class ArtifactStep implements TaskExecutable<ArtifactStepParameters, Arti
   @Inject private ArtifactStepHelper artifactStepHelper;
   @Inject @Named("referenceFalseKryoSerializer") private KryoSerializer referenceFalseKryoSerializer;
   @Inject private ServiceStepsHelper serviceStepsHelper;
-  @Inject private ArtifactSourceInstrumentationHelper artifactSourceInstrumentationHelper;
+
   @Override
   public Class<ArtifactStepParameters> getStepParametersClass() {
     return ArtifactStepParameters.class;
@@ -107,8 +105,6 @@ public class ArtifactStep implements TaskExecutable<ArtifactStepParameters, Arti
               LogColor.Cyan, LogWeight.Bold));
     }
     List<TaskSelector> delegateSelectors = artifactStepHelper.getDelegateSelectors(finalArtifact, ambiance);
-    artifactSourceInstrumentationHelper.sendArtifactDeploymentEvent(finalArtifact, AmbianceUtils.getAccountId(ambiance),
-        AmbianceUtils.getOrgIdentifier(ambiance), AmbianceUtils.getProjectIdentifier(ambiance), "", false);
     return TaskRequestsUtils.prepareTaskRequestWithTaskSelector(ambiance, taskData, referenceFalseKryoSerializer,
         TaskCategory.DELEGATE_TASK_V2, Collections.emptyList(), false, taskName, delegateSelectors);
   }

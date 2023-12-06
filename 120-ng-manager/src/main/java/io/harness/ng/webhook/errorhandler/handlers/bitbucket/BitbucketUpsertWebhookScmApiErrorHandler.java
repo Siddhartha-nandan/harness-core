@@ -32,8 +32,7 @@ public class BitbucketUpsertWebhookScmApiErrorHandler implements ScmApiErrorHand
             + errorMessage);
       case 403:
         throw new ScmBadRequestException(
-            "Please check if webhook read-write permissions are given both to the token used in the connector as well as to the user to whom the token belongs."
-            + errorMessage);
+            "Please check if webhook read write permissions are given to the token used in connector." + errorMessage);
       case 404:
         throw new ScmBadRequestException("Please check if repository provided is correct. " + errorMessage);
       default:

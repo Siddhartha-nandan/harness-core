@@ -94,13 +94,4 @@ public class TimeoutUtils {
       return ParameterField.createValueField(timeout.getValue().getTimeoutString());
     }
   }
-
-  public ParameterField<String> getParameterTimeoutString(ParameterField<Timeout> timeout) {
-    if (timeout.isExpression()) {
-      return ParameterField.createExpressionField(
-          true, timeout.getExpressionValue(), timeout.getInputSetValidator(), true);
-    } else {
-      return ParameterField.createValueField(timeout.getValue().getTimeoutString());
-    }
-  }
 }

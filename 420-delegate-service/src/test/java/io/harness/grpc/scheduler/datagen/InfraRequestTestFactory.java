@@ -97,6 +97,7 @@ public class InfraRequestTestFactory {
                                               .setK8S(infraSpec)
                                               .build();
     final var config = SchedulingConfig.newBuilder()
+                           .setAccountId("accountId")
                            .setCallbackToken(DelegateCallbackToken.newBuilder().setToken("callbackToken").build())
                            .setExecutionTimeout(Duration.newBuilder().setSeconds(100).build())
                            .addSelectors(TaskSelector.newBuilder().build())
@@ -104,11 +105,7 @@ public class InfraRequestTestFactory {
                            .setRunnerType(RunnerType.RUNNER_TYPE_K8S)
                            .build();
 
-    return SetupExecutionInfrastructureRequest.newBuilder()
-        .setAccountId("accountId")
-        .setInfra(infra)
-        .setConfig(config)
-        .build();
+    return SetupExecutionInfrastructureRequest.newBuilder().setInfra(infra).setConfig(config).build();
   }
 
   private static Resource createEmptyDir() {

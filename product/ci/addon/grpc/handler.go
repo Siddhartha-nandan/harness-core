@@ -108,14 +108,12 @@ func (h *handler) ExecuteStep(ctx context.Context, in *pb.ExecuteStepRequest) (*
 		h.log.Infow("closed the stream after Plugin step execution", "step_id", in.GetStep().GetId())
 		return response, err
 	case *enginepb.UnitStep_ExecuteTask:
-		stepOutput, err := newExecuteStep(in.GetStep(), in.GetTmpFilePath(), rl.BaseLogger, rl.Writer, false, h.log).Run(ctx)
+		_, err := newExecuteStep(in.GetStep(), rl.BaseLogger, rl.Writer, false, h.log).Run(ctx)
 		response := &pb.ExecuteStepResponse{
-			Output:     stepOutput,
+			Output:     nil,
 			NumRetries: 1,
 		}
-		h.log.Infow("closing the stream after Execute step execution", "step_id", in.GetStep().GetId())
 		err = close(rl.Writer, err)
-		h.log.Infow("closed the stream after Execute step execution", "step_id", in.GetStep().GetId())
 		return response, err
 	case nil:
 		return &pb.ExecuteStepResponse{}, fmt.Errorf("UnitStep is not set")
@@ -137,7 +135,8 @@ func close(w logs.StreamWriter, err error) error {
 		if err != nil {
 			// Wrap error with log upload error
 			err = fmt.Errorf("%w\n%s", err, logErr)
-			fmt.Println("Error while uploading the logs :", err)
+		} else {
+			err = logErr
 		}
 	}
 	return err

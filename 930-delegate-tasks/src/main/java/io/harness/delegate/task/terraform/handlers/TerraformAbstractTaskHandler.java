@@ -28,21 +28,20 @@ import lombok.extern.slf4j.Slf4j;
 @OwnedBy(CDP)
 public abstract class TerraformAbstractTaskHandler {
   public abstract TerraformTaskNGResponse executeTaskInternal(TerraformTaskNGParameters taskParameters,
-      String delegateId, String taskId, LogCallback logCallback, String baseDir, AtomicBoolean isAborted)
+      String delegateId, String taskId, LogCallback logCallback, AtomicBoolean isAborted)
       throws IOException, TimeoutException, InterruptedException;
   @Inject TerraformBaseHelper terraformBaseHelper;
 
   public TerraformTaskNGResponse executeTask(TerraformTaskNGParameters taskParameters, String delegateId, String taskId,
       LogCallback logCallback, AtomicBoolean isAborted) throws Exception {
-    String baseDir = terraformBaseHelper.getBaseDir(taskParameters.getEntityId());
     try {
-      return executeTaskInternal(taskParameters, delegateId, taskId, logCallback, baseDir, isAborted);
+      return executeTaskInternal(taskParameters, delegateId, taskId, logCallback, isAborted);
     } catch (InterruptedRuntimeException | InterruptedException ex) {
       log.error("Interrupted Exception received: {}", ex.getMessage());
       logCallback.saveExecutionLog("Interrupt received.", ERROR, CommandExecutionStatus.RUNNING);
       throw ex;
     } finally {
-      terraformBaseHelper.performCleanupOfTfDirs(taskParameters, logCallback, baseDir);
+      terraformBaseHelper.performCleanupOfTfDirs(taskParameters, logCallback);
     }
   }
 

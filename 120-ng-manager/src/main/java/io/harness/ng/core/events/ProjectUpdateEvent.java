@@ -42,8 +42,7 @@ public class ProjectUpdateEvent implements Event {
   @JsonIgnore
   @Override
   public ResourceScope getResourceScope() {
-    return new ProjectScope(
-        accountIdentifier, newProject.getOrgIdentifier(), newProject.getIdentifier(), newProject.getParentUniqueId());
+    return new ProjectScope(accountIdentifier, newProject.getOrgIdentifier(), newProject.getIdentifier());
   }
 
   @JsonIgnore
@@ -51,12 +50,7 @@ public class ProjectUpdateEvent implements Event {
   public Resource getResource() {
     Map<String, String> labels = new HashMap<>();
     labels.put(ResourceConstants.LABEL_KEY_RESOURCE_NAME, newProject.getName());
-    return Resource.builder()
-        .identifier(oldProject.getIdentifier())
-        .uniqueId(oldProject.getUniqueId())
-        .type(PROJECT)
-        .labels(labels)
-        .build();
+    return Resource.builder().identifier(oldProject.getIdentifier()).type(PROJECT).labels(labels).build();
   }
 
   @JsonIgnore

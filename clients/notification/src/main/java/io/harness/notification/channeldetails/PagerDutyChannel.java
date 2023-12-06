@@ -8,10 +8,7 @@
 package io.harness.notification.channeldetails;
 
 import static io.harness.annotations.dev.HarnessTeam.PL;
-import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
-
-import static java.util.Collections.emptyMap;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.data.structure.CollectionUtils;
@@ -37,20 +34,16 @@ public class PagerDutyChannel extends NotificationChannel {
   String orgIdentifier;
   String projectIdentifier;
   long expressionFunctorToken;
-  String summary;
-  Map<String, String> links;
 
   @Builder
   public PagerDutyChannel(String accountId, List<NotificationRequest.UserGroup> userGroups, String templateId,
       Map<String, String> templateData, Team team, List<String> integrationKeys, String orgIdentifier,
-      String projectIdentifier, long expressionFunctorToken, String summary, Map<String, String> links) {
+      String projectIdentifier, long expressionFunctorToken) {
     super(accountId, userGroups, templateId, templateData, team);
     this.integrationKeys = integrationKeys;
     this.orgIdentifier = orgIdentifier;
     this.projectIdentifier = projectIdentifier;
     this.expressionFunctorToken = expressionFunctorToken;
-    this.summary = summary;
-    this.links = links;
   }
 
   @Override
@@ -68,22 +61,14 @@ public class PagerDutyChannel extends NotificationChannel {
     NotificationRequest.PagerDuty.Builder pagerDutyBuilder =
         builder.getPagerDutyBuilder()
             .addAllPagerDutyIntegrationKeys(integrationKeys)
-            .putAllTemplateData(isNotEmpty(templateData) ? templateData : emptyMap())
+            .setTemplateId(templateId)
+            .putAllTemplateData(templateData)
             .addAllUserGroup(CollectionUtils.emptyIfNull(userGroups));
     if (orgIdentifier != null) {
       pagerDutyBuilder.setOrgIdentifier(orgIdentifier);
     }
     if (projectIdentifier != null) {
       pagerDutyBuilder.setProjectIdentifier(projectIdentifier);
-    }
-    if (isNotEmpty(summary)) {
-      pagerDutyBuilder.setSummary(summary);
-    }
-    if (isNotEmpty(links)) {
-      pagerDutyBuilder.putAllLinks(links);
-    }
-    if (isNotEmpty(templateId)) {
-      pagerDutyBuilder.setTemplateId(templateId);
     }
     pagerDutyBuilder.setExpressionFunctorToken(expressionFunctorToken);
     return pagerDutyBuilder.build();

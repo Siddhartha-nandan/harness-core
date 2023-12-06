@@ -11,7 +11,10 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.idp.scorecard.datapoints.parser.DataPointParser;
 
+import lombok.extern.slf4j.Slf4j;
+
 @OwnedBy(HarnessTeam.IDP)
+@Slf4j
 public class KubernetesReplicasParser extends KubernetesExpressionParser implements DataPointParser {
   @Override
   Object parseValue(Object value) {

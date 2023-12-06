@@ -22,7 +22,6 @@ import io.harness.mongo.iterator.MongoPersistenceIterator.Handler;
 import io.harness.mongo.iterator.filter.MorphiaFilterExpander;
 import io.harness.mongo.iterator.provider.MorphiaPersistenceProvider;
 
-import software.wings.app.MainConfiguration;
 import software.wings.beans.DeletedEntity;
 import software.wings.beans.DeletedEntity.DeletedEntityKeys;
 import software.wings.beans.DeletedEntity.DeletedEntityType;
@@ -40,8 +39,6 @@ public class DeletedEntityHandler extends IteratorPumpAndRedisModeHandler implem
   @Inject private PersistenceIteratorFactory persistenceIteratorFactory;
   @Inject private MorphiaPersistenceProvider<DeletedEntity> persistenceProvider;
   @Inject private DeleteAccountHelper deleteAccountHelper;
-
-  @Inject private MainConfiguration mainConfiguration;
 
   @Override
   protected void createAndStartIterator(
@@ -88,7 +85,7 @@ public class DeletedEntityHandler extends IteratorPumpAndRedisModeHandler implem
   @Override
   public void handle(DeletedEntity entity) {
     // handle deleted entities only on weekend
-    if (isWeekend() || mainConfiguration.isRunAccountDeletionOnWeekdays()) {
+    if (isWeekend()) {
       DeletedEntityType entityType = entity.getEntityType();
       if (entityType.equals(DeletedEntityType.ACCOUNT)) {
         deleteAccountHelper.handleDeletedAccount(entity);

@@ -45,7 +45,6 @@ import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
 import io.harness.delegate.beans.pcf.CfInternalInstanceElement;
 import io.harness.delegate.beans.pcf.TasApplicationInfo;
 import io.harness.delegate.cf.PcfCommandTaskBaseHelper;
-import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
 import io.harness.delegate.task.cf.CfCommandTaskHelperNG;
 import io.harness.delegate.task.cf.TasArtifactDownloadContext;
 import io.harness.delegate.task.cf.TasArtifactDownloadResponse;
@@ -170,11 +169,6 @@ public class CfRollingRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandle
 
       artifactFile = downloadArtifactFile(cfRollingRollbackRequestNG, workingDirectory, logCallback);
 
-      ArtifactBundleDetails artifactBundleDetails = cfRollingRollbackRequestNG.getArtifactBundleDetails();
-
-      String artifactPath =
-          tasTaskHelperBase.getArtifactPath(artifactBundleDetails, artifactFile, workingDirectory, logCallback);
-
       boolean varsYmlPresent = checkIfVarsFilePresent(cfRollingRollbackRequestNG);
       CfCreateApplicationRequestData requestData =
           CfCreateApplicationRequestData.builder()
@@ -182,7 +176,7 @@ public class CfRollingRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandle
                                    .applicationName(cfRollingRollbackRequestNG.getApplicationName())
                                    .routeMaps(cfRollingRollbackRequestNG.getRouteMaps())
                                    .build())
-              .artifactPath(artifactPath)
+              .artifactPath(artifactFile == null ? null : artifactFile.getAbsolutePath())
               .configPathVar(workingDirectory.getAbsolutePath())
               .newReleaseName(cfRollingRollbackRequestNG.getApplicationName())
               .pcfManifestFileData(pcfManifestFileData)
@@ -502,7 +496,6 @@ public class CfRollingRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandle
         .spaceName(cfRequestConfig.getSpaceName())
         .userName(cfRequestConfig.getUserName())
         .password(cfRequestConfig.getPassword())
-        .refreshToken(cfRequestConfig.getRefreshToken())
         .endpointUrl(cfRequestConfig.getEndpointUrl())
         .manifestYaml(cfRequestConfig.getManifestYaml())
         .desiredCount(cfRequestConfig.getDesiredCount())
@@ -571,7 +564,6 @@ public class CfRollingRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandle
     return CfRequestConfig.builder()
         .userName(String.valueOf(cfConfig.getUserName()))
         .password(String.valueOf(cfConfig.getPassword()))
-        .refreshToken(cfConfig.getRefreshToken() != null ? String.valueOf(cfConfig.getRefreshToken()) : null)
         .endpointUrl(cfConfig.getEndpointUrl())
         .orgName(cfRollingRollbackRequestNG.getTasInfraConfig().getOrganization())
         .spaceName(cfRollingRollbackRequestNG.getTasInfraConfig().getSpace())

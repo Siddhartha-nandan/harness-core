@@ -6,7 +6,6 @@
  */
 
 package io.harness.ngtriggers.service;
-
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
 import io.harness.annotations.dev.CodePulse;
@@ -16,7 +15,6 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.HeaderConfig;
 import io.harness.connector.ConnectorResponseDTO;
 import io.harness.ng.core.dto.PollingTriggerStatusUpdateDTO;
-import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
 import io.harness.ngtriggers.beans.dto.TriggerDetails;
 import io.harness.ngtriggers.beans.dto.TriggerYamlDiffDTO;
 import io.harness.ngtriggers.beans.dto.WebhookEventProcessingDetails;
@@ -77,10 +75,6 @@ public interface NGTriggerService {
   WebhookEventProcessingDetails fetchTriggerEventHistory(String accountId, String eventId);
   NGTriggerEntity updateTriggerWithValidationStatus(
       NGTriggerEntity ngTriggerEntity, ValidationResult validationResult, boolean whileExecution);
-
-  TriggerDetails fetchTriggerEntityV1(String accountId, String orgId, String projectId, String pipelineId,
-      String triggerId, NGTriggerConfigV2 config, NGTriggerEntity entity, boolean withServiceV2);
-
   TriggerDetails fetchTriggerEntity(String accountId, String orgId, String projectId, String pipelineId,
       String triggerId, String newYaml, boolean withServiceV2);
   Object fetchExecutionSummaryV2(String planExecutionId, String accountId, String orgId, String projectId);

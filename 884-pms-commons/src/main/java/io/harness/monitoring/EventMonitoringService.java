@@ -7,6 +7,10 @@
 
 package io.harness.monitoring;
 
+import com.google.protobuf.Message;
+import java.util.Map;
+
 public interface EventMonitoringService {
-  void sendMetric(String metricName, Long metricValue);
+  <T extends Message> void sendMetric(
+      String metricName, MonitoringInfo monitoringInfo, Map<String, String> metadataMap);
 }

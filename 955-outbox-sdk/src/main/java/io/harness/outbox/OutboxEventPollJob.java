@@ -84,7 +84,7 @@ public class OutboxEventPollJob implements Runnable {
   private void pollAndHandleOutboxEvents() {
     try (AcquiredLock<?> lock = persistentLocker.tryToAcquireLock(outboxLockId, Duration.ofMinutes(2))) {
       if (lock == null) {
-        log.debug("Could not acquire lock for outbox poll job");
+        log.warn("Could not acquire lock for outbox poll job");
         return;
       }
       List<OutboxEvent> outboxEvents;
@@ -105,13 +105,10 @@ public class OutboxEventPollJob implements Runnable {
             "[OutboxEventPollJob] id: %s, eventType: %s, resourceType: %s, waitingTime: %d, processingTime: %d",
             outbox.getId(), outbox.getEventType(), outbox.getResource().getType(), outboxEventWaitingTime,
             outboxEventProcessingTime));
-        if (outboxPollConfiguration.isEnableMetrics()) {
-          outboxMetricsService.recordMetricsWithDuration(serviceId, outbox.getEventType(),
-              outbox.getResource().getType(), ofMillis(outboxEventProcessingTime),
-              OUTBOX_EVENT_PROCESSING_TIME_METRIC_NAME);
-          outboxMetricsService.recordMetricsWithDuration(serviceId, outbox.getEventType(),
-              outbox.getResource().getType(), ofMillis(outboxEventWaitingTime), OUTBOX_EVENT_WAITING_TIME_METRIC_NAME);
-        }
+        outboxMetricsService.recordMetricsWithDuration(serviceId, outbox.getEventType(), outbox.getResource().getType(),
+            ofMillis(outboxEventProcessingTime), OUTBOX_EVENT_PROCESSING_TIME_METRIC_NAME);
+        outboxMetricsService.recordMetricsWithDuration(serviceId, outbox.getEventType(), outbox.getResource().getType(),
+            ofMillis(outboxEventWaitingTime), OUTBOX_EVENT_WAITING_TIME_METRIC_NAME);
         try {
           if (success) {
             outboxService.delete(outbox.getId());

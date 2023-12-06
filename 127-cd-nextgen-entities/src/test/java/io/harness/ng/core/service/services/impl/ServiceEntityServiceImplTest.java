@@ -18,7 +18,6 @@ import static io.harness.rule.OwnerRule.MOHIT_GARG;
 import static io.harness.rule.OwnerRule.NAMANG;
 import static io.harness.rule.OwnerRule.PRABU;
 import static io.harness.rule.OwnerRule.PRATYUSH;
-import static io.harness.rule.OwnerRule.TATHAGAT;
 import static io.harness.rule.OwnerRule.VED;
 import static io.harness.rule.OwnerRule.YOGESH;
 import static io.harness.rule.OwnerRule.vivekveman;
@@ -51,7 +50,6 @@ import io.harness.exception.ReferencedEntityException;
 import io.harness.exception.UnsupportedOperationException;
 import io.harness.exception.YamlException;
 import io.harness.gitsync.beans.StoreType;
-import io.harness.gitx.GitXSettingsHelper;
 import io.harness.ng.core.EntityDetail;
 import io.harness.ng.core.beans.ServiceV2YamlMetadata;
 import io.harness.ng.core.beans.ServicesV2YamlMetadataDTO;
@@ -75,7 +73,6 @@ import io.harness.ng.core.template.TemplateMergeResponseDTO;
 import io.harness.ng.core.template.exception.NGTemplateResolveExceptionV2;
 import io.harness.ng.core.template.refresh.ErrorNodeSummary;
 import io.harness.ng.core.template.refresh.ValidateTemplateInputsResponseDTO;
-import io.harness.ng.core.utils.CDGitXService;
 import io.harness.ng.core.utils.CoreCriteriaUtils;
 import io.harness.ng.core.utils.ServiceOverrideV2ValidationHelper;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
@@ -138,8 +135,6 @@ public class ServiceEntityServiceImplTest extends CDNGEntitiesTestBase {
   @Mock NGFeatureFlagHelperService featureFlagService;
   @Mock ServiceOverrideV2ValidationHelper overrideV2ValidationHelper;
   @Mock @Named(DEFAULT_CONNECTOR_SERVICE) private ConnectorService connectorService;
-  @Mock private CDGitXService cdGitXService;
-  @Mock GitXSettingsHelper gitXSettingsHelper;
 
   @Inject @InjectMocks private ServiceEntityServiceImpl serviceEntityService;
   private static final String ACCOUNT_ID = "ACCOUNT_ID";
@@ -160,8 +155,6 @@ public class ServiceEntityServiceImplTest extends CDNGEntitiesTestBase {
     when(serviceEntityValidatorFactory.getServiceEntityValidator(any())).thenReturn(noOpServiceEntityValidator);
     Reflect.on(serviceEntityService).set("connectorService", connectorService);
     Reflect.on(serviceEntityService).set("featureFlagService", featureFlagService);
-    Reflect.on(serviceEntityService).set("cdGitXService", cdGitXService);
-    Reflect.on(serviceEntityService).set("gitXSettingsHelper", gitXSettingsHelper);
   }
 
   private Object[][] data() {
@@ -1333,31 +1326,6 @@ public class ServiceEntityServiceImplTest extends CDNGEntitiesTestBase {
         serviceEntityService.getListOfRepos("ACCOUNT_ID", "ORG_ID", "PROJECT_ID", false);
     assertThat(repoListResponseDTO).isNotNull();
     assertThat(repoListResponseDTO.getRepositories().get(0)).isEqualTo("githubRepoName");
-  }
-
-  @Test
-  @Owner(developers = TATHAGAT)
-  @Category(UnitTests.class)
-  public void testGitXSettingsWithRemoteServices() {
-    ServiceEntity serviceEntity = ServiceEntity.builder()
-                                      .accountId("ACCOUNT_ID")
-                                      .identifier("IDENTIFIER")
-                                      .orgIdentifier("ORG_ID")
-                                      .projectIdentifier("PROJECT_ID")
-                                      .name("Service")
-                                      .type(ServiceDefinitionType.NATIVE_HELM)
-                                      .gitOpsEnabled(true)
-                                      .storeType(StoreType.REMOTE)
-                                      .connectorRef("githubRepoConnector")
-                                      .fallBackBranch("feature")
-                                      .repo("githubRepoName")
-                                      .build();
-
-    serviceEntityService.create(serviceEntity);
-    verify(gitXSettingsHelper).enforceGitExperienceIfApplicable(anyString(), anyString(), anyString());
-    verify(gitXSettingsHelper).setDefaultStoreTypeForEntities(anyString(), anyString(), anyString(), any());
-    verify(gitXSettingsHelper).setConnectorRefForRemoteEntity(anyString(), anyString(), anyString());
-    verify(gitXSettingsHelper).setDefaultRepoForRemoteEntity(anyString(), anyString(), anyString());
   }
 
   @Test

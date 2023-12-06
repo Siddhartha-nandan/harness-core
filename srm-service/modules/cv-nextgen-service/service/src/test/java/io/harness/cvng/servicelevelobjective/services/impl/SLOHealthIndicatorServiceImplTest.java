@@ -243,7 +243,6 @@ public class SLOHealthIndicatorServiceImplTest extends CvNextGenTestBase {
                               .timeStamp(startTime)
                               .goodEventCount(goodCount)
                               .badEventCount(badCount)
-                              .skipEventCount(0l)
                               .build());
       startTime = startTime.plus(increment.toMinutes(), ChronoUnit.MINUTES);
     }
