@@ -13,7 +13,6 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.data.structure.EmptyPredicate;
-import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity.NGTriggerEntityKeys;
 import io.harness.ngtriggers.beans.entity.metadata.WebhookRegistrationStatus;
@@ -258,18 +257,17 @@ public class NGTriggerRepositoryCustomImpl implements NGTriggerRepositoryCustom 
   }
 
   @Override
-  public TriggerUpdateCount toggleTriggersInBulk(String accountId, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
+  public long toggleTriggersInBulk(String accountId, boolean enable, Criteria criteria) {
     BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, NGTriggerEntity.class);
 
     Update update = new Update();
-    update.set(NGTriggerEntityKeys.enabled, bulkTriggersRequestDTO.getData().isEnable());
+    update.set(NGTriggerEntityKeys.enabled, enable);
 
-    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(accountId, bulkTriggersRequestDTO);
     Query query = new Query(criteria);
 
     bulkOperations = bulkOperations.updateMulti(query, update);
 
-    return TriggerUpdateCount.builder().successCount(bulkOperations.execute().getModifiedCount()).build();
+    return bulkOperations.execute().getModifiedCount();
   }
 
   private RetryPolicy<Object> getRetryPolicy(String failedAttemptMessage, String failureMessage) {

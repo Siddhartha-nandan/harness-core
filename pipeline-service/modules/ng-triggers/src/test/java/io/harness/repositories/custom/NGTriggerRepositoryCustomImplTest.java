@@ -643,10 +643,10 @@ public class NGTriggerRepositoryCustomImplTest extends CategoryTest {
     when(bulkOperations.execute()).thenReturn(bulkWriteResult);
     when(bulkWriteResult.getModifiedCount()).thenReturn(ngTriggerEntityList.size());
 
-    TriggerUpdateCount result = ngTriggerRepositoryCustom.toggleTriggersInBulk(ACCOUNT_ID, bulkTriggersRequestDTO);
+    long result = ngTriggerRepositoryCustom.toggleTriggersInBulk(
+        ACCOUNT_ID, bulkTriggersRequestDTO.getData().isEnable(), criteria);
 
-    assertEquals(ngTriggerEntityList.size(), result.getSuccessCount());
-    assertEquals(0, result.getFailureCount());
+    assertEquals(ngTriggerEntityList.size(), result);
 
     verify(mongoTemplate, times(1)).bulkOps(BulkOperations.BulkMode.UNORDERED, NGTriggerEntity.class);
     verify(bulkOperations, times(1)).updateMulti(query, update);
@@ -734,10 +734,10 @@ public class NGTriggerRepositoryCustomImplTest extends CategoryTest {
     when(bulkOperations.execute()).thenReturn(bulkWriteResult);
     when(bulkWriteResult.getModifiedCount()).thenReturn(ngTriggerEntityList.size());
 
-    TriggerUpdateCount result = ngTriggerRepositoryCustom.toggleTriggersInBulk(ACCOUNT_ID, bulkTriggersRequestDTO);
+    long result = ngTriggerRepositoryCustom.toggleTriggersInBulk(
+        ACCOUNT_ID, bulkTriggersRequestDTO.getData().isEnable(), criteria);
 
-    assertEquals(ngTriggerEntityList.size(), result.getSuccessCount());
-    assertEquals(0, result.getFailureCount());
+    assertEquals(ngTriggerEntityList.size(), result);
 
     verify(mongoTemplate, times(1)).bulkOps(BulkOperations.BulkMode.UNORDERED, NGTriggerEntity.class);
     verify(bulkOperations, times(1)).updateMulti(query, update);
@@ -826,10 +826,10 @@ public class NGTriggerRepositoryCustomImplTest extends CategoryTest {
     when(bulkOperations.execute()).thenReturn(bulkWriteResult);
     when(bulkWriteResult.getModifiedCount()).thenReturn(4);
 
-    TriggerUpdateCount result = ngTriggerRepositoryCustom.toggleTriggersInBulk(ACCOUNT_ID, bulkTriggersRequestDTO);
+    long result = ngTriggerRepositoryCustom.toggleTriggersInBulk(
+        ACCOUNT_ID, bulkTriggersRequestDTO.getData().isEnable(), criteria);
 
-    assertEquals(4, result.getSuccessCount());
-    assertEquals(0, result.getFailureCount());
+    assertEquals(4, result);
 
     verify(mongoTemplate, times(1)).bulkOps(BulkOperations.BulkMode.UNORDERED, NGTriggerEntity.class);
     verify(bulkOperations, times(1)).updateMulti(query, update);
@@ -923,10 +923,10 @@ public class NGTriggerRepositoryCustomImplTest extends CategoryTest {
     when(bulkOperations.execute()).thenReturn(bulkWriteResult);
     when(bulkWriteResult.getModifiedCount()).thenReturn(3);
 
-    TriggerUpdateCount result = ngTriggerRepositoryCustom.toggleTriggersInBulk(ACCOUNT_ID, bulkTriggersRequestDTO);
+    long result = ngTriggerRepositoryCustom.toggleTriggersInBulk(
+        ACCOUNT_ID, bulkTriggersRequestDTO.getData().isEnable(), criteria);
 
-    assertEquals(3, result.getSuccessCount());
-    assertEquals(0, result.getFailureCount());
+    assertEquals(3, result);
 
     verify(mongoTemplate, times(1)).bulkOps(BulkOperations.BulkMode.UNORDERED, NGTriggerEntity.class);
     verify(bulkOperations, times(1)).updateMulti(query, update);
@@ -1013,10 +1013,10 @@ public class NGTriggerRepositoryCustomImplTest extends CategoryTest {
     when(bulkOperations.execute()).thenReturn(bulkWriteResult);
     when(bulkWriteResult.getModifiedCount()).thenReturn(4);
 
-    TriggerUpdateCount result = ngTriggerRepositoryCustom.toggleTriggersInBulk(ACCOUNT_ID, bulkTriggersRequestDTO);
+    long result = ngTriggerRepositoryCustom.toggleTriggersInBulk(
+        ACCOUNT_ID, bulkTriggersRequestDTO.getData().isEnable(), criteria);
 
-    assertEquals(4, result.getSuccessCount());
-    assertEquals(0, result.getFailureCount());
+    assertEquals(4, result);
 
     verify(mongoTemplate, times(1)).bulkOps(BulkOperations.BulkMode.UNORDERED, NGTriggerEntity.class);
     verify(bulkOperations, times(1)).updateMulti(query, update);

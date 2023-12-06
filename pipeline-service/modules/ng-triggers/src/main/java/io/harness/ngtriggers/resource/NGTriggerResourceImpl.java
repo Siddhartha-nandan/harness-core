@@ -37,6 +37,7 @@ import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
 import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
+import io.harness.ngtriggers.beans.dto.BulkTriggersResponseDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerCatalogDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerDetailsResponseDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerEventHistoryDTO;
@@ -323,7 +324,7 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
     return mandatoryAuth;
   }
 
-  public ResponseDTO<TriggerUpdateCount> bulkToggleTriggers(@NotNull @AccountIdentifier String accountIdentifier,
+  public ResponseDTO<BulkTriggersResponseDTO> bulkToggleTriggers(@NotNull @AccountIdentifier String accountIdentifier,
       @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO) {
     return ResponseDTO.newResponse(ngTriggerService.ToggleTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO));
   }
