@@ -59,6 +59,7 @@ import io.harness.ccm.views.service.CEReportScheduleService;
 import io.harness.ccm.views.service.CEViewFolderService;
 import io.harness.ccm.views.service.CEViewService;
 import io.harness.ccm.views.service.ViewCustomFieldService;
+import io.harness.ccm.views.service.impl.CEViewServiceImpl;
 import io.harness.enforcement.client.annotation.FeatureRestrictionCheck;
 import io.harness.enforcement.constants.FeatureRestrictionName;
 import io.harness.exception.InvalidRequestException;
@@ -443,7 +444,7 @@ public class PerspectiveResource {
              NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier @NotNull @Valid String accountId,
       @Valid @QueryParam("searchKey") @Parameter(description = "Characters in search bar") String searchKey,
       @Valid @QueryParam("pageNo") @DefaultValue("0") @Parameter(description = "Page Number") Integer pageNo,
-      @Valid @QueryParam("pageSize") @DefaultValue("10000") @Parameter(
+      @Valid @QueryParam("pageSize") @DefaultValue("" + CEViewServiceImpl.VIEW_COUNT) @Parameter(
           description = "Number of Perspectives per page") Integer pageSize,
       @Valid @QueryParam("sortType") @DefaultValue("TIME") @Parameter(
           description = " sorting filters in UI") QLCEViewSortType sortType,
