@@ -35,8 +35,8 @@ public interface ScmContentsDsl {
     inputValueOpt = inputValues.stream().filter(inputValue -> inputValue.getKey().equals(BRANCH_NAME)).findFirst();
     if (inputValueOpt.isPresent()) {
       String inputValue = inputValueOpt.get().getValue();
+      inputValue = inputValue.replace("\"", "");
       if (!inputValue.isEmpty()) {
-        inputValue = inputValue.replace("\"", "");
         requestBody = requestBody.replace(REPOSITORY_BRANCH, inputValue);
       }
     }

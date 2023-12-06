@@ -737,6 +737,13 @@ public class IdpModule extends AbstractModule {
 
   @Provides
   @Singleton
+  @Named("base")
+  public String base() {
+    return this.appConfig.getBase();
+  }
+
+  @Provides
+  @Singleton
   @Named("devSpaceDefaultBackstageNamespace")
   public String devSpaceDefaultBackstageNamespace() {
     return this.appConfig.getDevSpaceDefaultBackstageNamespace();
