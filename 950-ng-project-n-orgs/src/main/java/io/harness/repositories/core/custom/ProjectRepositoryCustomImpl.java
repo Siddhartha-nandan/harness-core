@@ -87,11 +87,11 @@ public class ProjectRepositoryCustomImpl implements ProjectRepositoryCustom {
     return mongoTemplate.findAndModify(query, update, new FindAndModifyOptions().returnNew(true), Project.class);
   }
 
-  public Project hardDelete(String accountIdentifier, String orgIdentifier, String identifier, Long version) {
+  public Project hardDelete(String accountIdentifier, String parentUniqueIdentifier, String identifier, Long version) {
     Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
                             .is(accountIdentifier)
-                            .and(ProjectKeys.orgIdentifier)
-                            .is(orgIdentifier)
+                            .and(ProjectKeys.parentId)
+                            .is(parentUniqueIdentifier)
                             .and(ProjectKeys.identifier)
                             .is(identifier);
     if (version != null) {

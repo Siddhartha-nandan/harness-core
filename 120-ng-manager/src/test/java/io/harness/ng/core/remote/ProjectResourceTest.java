@@ -74,6 +74,7 @@ public class ProjectResourceTest extends CategoryTest {
 
   String accountIdentifier = randomAlphabetic(10);
   String orgIdentifier = randomAlphabetic(10);
+  String orgUniqueIdentifier = randomAlphabetic(10);
   String identifier = randomAlphabetic(10);
   String name = randomAlphabetic(10);
 
@@ -271,11 +272,21 @@ public class ProjectResourceTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testDelete() {
     String ifMatch = "0";
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
 
-    when(projectService.delete(accountIdentifier, orgIdentifier, identifier, Long.valueOf(ifMatch))).thenReturn(true);
+    when(projectService.delete(accountIdentifier, orgIdentifier, identifier, scopeInfo, Long.valueOf(ifMatch)))
+        .thenReturn(true);
 
-    ResponseDTO<Boolean> response = projectResource.delete(ifMatch, identifier, accountIdentifier, orgIdentifier);
+    ResponseDTO<Boolean> response =
+        projectResource.delete(ifMatch, identifier, accountIdentifier, orgIdentifier, scopeInfo);
 
+    verify(projectService, times(1))
+        .delete(accountIdentifier, orgIdentifier, identifier, scopeInfo, Long.valueOf(ifMatch));
     assertNull(response.getEntityTag());
     assertTrue(response.getData());
   }

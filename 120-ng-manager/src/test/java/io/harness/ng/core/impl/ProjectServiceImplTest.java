@@ -122,8 +122,6 @@ import org.springframework.data.mongodb.core.aggregation.ProjectionOperation;
 import org.springframework.data.mongodb.core.aggregation.SortOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.util.CloseableIterator;
-import org.springframework.transaction.support.SimpleTransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @OwnedBy(PL)
@@ -294,10 +292,6 @@ public class ProjectServiceImplTest extends CategoryTest {
     when(projectRepository.save(any())).thenReturn(newProject);
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
     when(projectService.get(accountIdentifier, orgIdentifier, identifier)).thenReturn(Optional.of(exitingProject));
-    when(transactionTemplate.execute(any()))
-        .thenAnswer(invocationOnMock
-            -> invocationOnMock.getArgument(0, TransactionCallback.class)
-                   .doInTransaction(new SimpleTransactionStatus()));
     ArgumentCaptor<Project> updatedProjectCapture = ArgumentCaptor.forClass(Project.class);
 
     projectService.update(accountIdentifier, orgIdentifier, identifier, projectDTO);
@@ -334,10 +328,6 @@ public class ProjectServiceImplTest extends CategoryTest {
     when(projectRepository.save(any())).thenReturn(newProject);
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
     when(projectService.get(accountIdentifier, orgIdentifier, identifier)).thenReturn(Optional.of(exitingProject));
-    when(transactionTemplate.execute(any()))
-        .thenAnswer(invocationOnMock
-            -> invocationOnMock.getArgument(0, TransactionCallback.class)
-                   .doInTransaction(new SimpleTransactionStatus()));
     ArgumentCaptor<Project> updatedProjectCapture = ArgumentCaptor.forClass(Project.class);
 
     projectService.update(accountIdentifier, orgIdentifier, identifier, projectDTO);
@@ -348,6 +338,7 @@ public class ProjectServiceImplTest extends CategoryTest {
     assertThat(updatedProject.getCreatedAt()).isNotNull();
     assertThat(updatedProject.getCreatedAt()).isEqualTo(createdAtTime);
   }
+
   @Test(expected = JerseyViolationException.class)
   @Owner(developers = KARAN)
   @Category(UnitTests.class)
@@ -675,6 +666,7 @@ public class ProjectServiceImplTest extends CategoryTest {
   public void testHardDelete() {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
+    String orgUniqueIdentifier = randomAlphabetic(10);
     String projectIdentifier = randomAlphabetic(10);
     Long version = 0L;
     Project project = Project.builder()
@@ -683,19 +675,20 @@ public class ProjectServiceImplTest extends CategoryTest {
                           .orgIdentifier(orgIdentifier)
                           .identifier(projectIdentifier)
                           .build();
-    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
 
     when(yamlGitConfigService.deleteAll(any(), any(), any())).thenReturn(true);
-    when(transactionTemplate.execute(any()))
-        .thenAnswer(invocationOnMock
-            -> invocationOnMock.getArgument(0, TransactionCallback.class)
-                   .doInTransaction(new SimpleTransactionStatus()));
     when(projectRepository.hardDelete(any(), any(), any(), any())).thenReturn(project);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
 
-    projectService.delete(accountIdentifier, orgIdentifier, projectIdentifier, version);
-    verify(projectRepository, times(1)).hardDelete(any(), any(), argumentCaptor.capture(), any());
-    assertEquals(projectIdentifier, argumentCaptor.getValue());
-    verify(transactionTemplate, times(1)).execute(any());
+    projectService.delete(accountIdentifier, orgIdentifier, projectIdentifier, scopeInfo, version);
+
+    verify(projectRepository, times(1))
+        .hardDelete(eq(accountIdentifier), eq(orgUniqueIdentifier), eq(projectIdentifier), any());
     verify(outboxService, times(1)).save(any());
     verify(favoritesService, times(1))
         .deleteFavorites(accountIdentifier, orgIdentifier, null, ResourceType.PROJECT.toString(), projectIdentifier);
@@ -707,16 +700,19 @@ public class ProjectServiceImplTest extends CategoryTest {
   public void testHardDeleteInvalidIdentifier() {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
+    String orgUniqueIdentifier = randomAlphabetic(10);
     String projectIdentifier = randomAlphabetic(10);
     Long version = 0L;
 
-    when(transactionTemplate.execute(any()))
-        .thenAnswer(invocationOnMock
-            -> invocationOnMock.getArgument(0, TransactionCallback.class)
-                   .doInTransaction(new SimpleTransactionStatus()));
     when(projectRepository.hardDelete(any(), any(), any(), any())).thenReturn(null);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
 
-    projectService.delete(accountIdentifier, orgIdentifier, projectIdentifier, version);
+    projectService.delete(accountIdentifier, orgIdentifier, projectIdentifier, scopeInfo, version);
   }
 
   @Test

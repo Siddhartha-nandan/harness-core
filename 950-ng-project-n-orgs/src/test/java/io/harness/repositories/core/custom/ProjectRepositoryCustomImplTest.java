@@ -7,6 +7,7 @@
 
 package io.harness.repositories.core.custom;
 
+import static io.harness.rule.OwnerRule.ASHISHSANODIA;
 import static io.harness.rule.OwnerRule.KARAN;
 import static io.harness.rule.OwnerRule.VIKAS_M;
 
@@ -74,26 +75,26 @@ public class ProjectRepositoryCustomImplTest extends CategoryTest {
   }
 
   @Test
-  @Owner(developers = VIKAS_M)
+  @Owner(developers = {VIKAS_M, ASHISHSANODIA})
   @Category(UnitTests.class)
   public void testHardDelete() {
     String accountIdentifier = randomAlphabetic(10);
-    String orgIdentifier = randomAlphabetic(10);
+    String parentUniqueIdentifier = randomAlphabetic(10);
     String identifier = randomAlphabetic(10);
     Long version = 0L;
 
     ArgumentCaptor<Query> queryArgumentCaptor = ArgumentCaptor.forClass(Query.class);
 
     when(mongoTemplate.findAndRemove(any(), eq(Project.class))).thenReturn(Project.builder().build());
-    Project project = projectRepository.hardDelete(accountIdentifier, orgIdentifier, identifier, version);
+    Project project = projectRepository.hardDelete(accountIdentifier, parentUniqueIdentifier, identifier, version);
     verify(mongoTemplate, times(1)).findAndRemove(queryArgumentCaptor.capture(), eq(Project.class));
     Query query = queryArgumentCaptor.getValue();
     assertNotNull(project);
     assertEquals(4, query.getQueryObject().size());
     assertTrue(query.getQueryObject().containsKey(ProjectKeys.accountIdentifier));
     assertEquals(accountIdentifier, query.getQueryObject().get(ProjectKeys.accountIdentifier));
-    assertTrue(query.getQueryObject().containsKey(ProjectKeys.orgIdentifier));
-    assertEquals(orgIdentifier, query.getQueryObject().get(ProjectKeys.orgIdentifier));
+    assertTrue(query.getQueryObject().containsKey(ProjectKeys.parentId));
+    assertEquals(parentUniqueIdentifier, query.getQueryObject().get(ProjectKeys.parentId));
     assertTrue(query.getQueryObject().containsKey(ProjectKeys.identifier));
     assertEquals(identifier, query.getQueryObject().get(ProjectKeys.identifier));
     assertTrue(query.getQueryObject().containsKey(ProjectKeys.version));

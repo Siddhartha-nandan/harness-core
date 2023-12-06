@@ -158,7 +158,8 @@ public class OrgProjectApiImpl implements OrgProjectApi {
     if (!projectOptional.isPresent()) {
       throw new NotFoundException(format("Project with org [%s] and identifier [%s] not found", org, identifier));
     }
-    boolean deleted = projectService.delete(account, org, identifier, null);
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
+    boolean deleted = projectService.delete(account, org, identifier, scopeInfo.orElseThrow(), null);
     if (!deleted) {
       throw new NotFoundException(format("Project with identifier [%s] could not be deleted", identifier));
     }

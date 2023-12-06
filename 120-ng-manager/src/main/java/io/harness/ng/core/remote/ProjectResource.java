@@ -339,9 +339,10 @@ public class ProjectResource {
           description =
               "This is the Organization Identifier for the Project. By default, the Default Organization's Identifier is considered.")
       @QueryParam(NGCommonEntityConstants.ORG_KEY) @DefaultValue(
-          DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier) {
+          DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier,
+      @Context ScopeInfo scopeInfo) {
     return ResponseDTO.newResponse(projectService.delete(
-        accountIdentifier, orgIdentifier, identifier, isNumeric(ifMatch) ? parseLong(ifMatch) : null));
+        accountIdentifier, orgIdentifier, identifier, scopeInfo, isNumeric(ifMatch) ? parseLong(ifMatch) : null));
   }
 
   @GET
