@@ -11,10 +11,12 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.envgroup.yaml.EnvironmentGroupYaml;
+import io.harness.cdng.environment.v1.yaml.SimplifiedEnvironmentYaml;
 import io.harness.cdng.environment.yaml.EnvironmentYamlV2;
 import io.harness.cdng.environment.yaml.EnvironmentsYaml;
 import io.harness.cdng.service.beans.ServiceYamlV2;
 import io.harness.cdng.service.beans.ServicesYaml;
+import io.harness.cdng.service.v1.beans.SimplifiedServiceYaml;
 import io.harness.plancreator.customDeployment.v1.StepTemplateRefV1;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.walktree.beans.VisitableChild;
@@ -44,8 +46,10 @@ public class DeploymentStageConfigV1 implements Visitable {
   @NotNull @Size(min = 1) List<JsonNode> steps;
   @JsonProperty("rollback_steps") List<JsonNode> rollbackSteps;
   ServiceYamlV2 service;
+  SimplifiedServiceYaml serviceV1;
   ServicesYaml services;
   EnvironmentYamlV2 environment;
+  SimplifiedEnvironmentYaml environmentV1;
   EnvironmentsYaml environments;
   EnvironmentGroupYaml environmentGroup;
   String desc;
@@ -57,6 +61,9 @@ public class DeploymentStageConfigV1 implements Visitable {
   @Override
   public VisitableChildren getChildrenToWalk() {
     List<VisitableChild> children = new ArrayList<>();
+    if (serviceV1 != null) {
+      children.add(VisitableChild.builder().value(serviceV1).fieldName("serviceV1").build());
+    }
     if (service != null) {
       children.add(VisitableChild.builder().value(service).fieldName("service").build());
     }

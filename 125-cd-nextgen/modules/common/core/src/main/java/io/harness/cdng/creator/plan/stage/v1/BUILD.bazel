@@ -21,6 +21,7 @@ java_library(
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/creator/plan/stage:module",
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/pipeline:module",
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/service/beans:module",
+        "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/service/v1/beans:module",
         "//127-cd-nextgen-entities:module",
         "//953-yaml-commons:module",
         "//970-ng-commons:module",

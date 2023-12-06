@@ -27,6 +27,7 @@ import io.harness.cdng.creator.plan.stage.DeploymentStageNode;
 import io.harness.cdng.elastigroup.ElastigroupServiceSettingsStep;
 import io.harness.cdng.envgroup.yaml.EnvironmentGroupYaml;
 import io.harness.cdng.environment.helper.EnvironmentInfraFilterUtils;
+import io.harness.cdng.environment.v1.yaml.SimplifiedEnvironmentYaml;
 import io.harness.cdng.environment.yaml.EnvironmentInfraUseFromStage;
 import io.harness.cdng.environment.yaml.EnvironmentYamlV2;
 import io.harness.cdng.environment.yaml.EnvironmentsYaml;
@@ -38,6 +39,7 @@ import io.harness.cdng.service.beans.ServiceYamlV2;
 import io.harness.cdng.service.steps.constants.ServiceStepV3Constants;
 import io.harness.cdng.service.steps.helpers.beans.ServiceStepV3Parameters;
 import io.harness.cdng.service.steps.helpers.beans.ServiceStepV3Parameters.ServiceStepV3ParametersBuilder;
+import io.harness.cdng.service.v1.beans.SimplifiedServiceYaml;
 import io.harness.cdng.steps.EmptyStepParameters;
 import io.harness.cdng.visitor.YamlTypes;
 import io.harness.common.NGExpressionUtils;
@@ -135,6 +137,54 @@ public class ServiceAllInOnePlanCreatorUtils {
                                                               .envRef(finalEnvironmentYamlV2.getEnvironmentRef())
                                                               .envGitBranch(finalEnvironmentYamlV2.getGitBranch())
                                                               .envInputs(finalEnvironmentYamlV2.getEnvironmentInputs())
+                                                              .envGroupRef(envGroupRef);
+
+    return createPlanNode(kryoSerializer, serviceNodeId, nextNodeId, planCreationResponseMap, stepParameters.build());
+  }
+
+  public LinkedHashMap<String, PlanCreationResponse> addServiceNode(KryoSerializer kryoSerializer,
+      SimplifiedServiceYaml serviceYaml, SimplifiedEnvironmentYaml environmentYaml, String serviceNodeId,
+      String nextNodeId, ServiceDefinitionType serviceType, ParameterField<String> envGroupRef,
+      PlanCreationContext ctx) {
+    if (isConcreteServiceRefUnavailable(serviceYaml) && serviceYaml.getUseFromStage() == null) {
+      throw new InvalidRequestException("At least one of serviceRef and useFromStage fields is required.");
+    }
+
+    if (serviceYaml.getRef() != null && isNotBlank(serviceYaml.getRef().getValue())
+        && serviceYaml.getUseFromStage() != null) {
+      throw new InvalidRequestException("Only one of serviceRef and useFromStage fields are allowed.");
+    }
+
+    // TODO : Add support for use form stage in service and environment
+
+    final LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap = new LinkedHashMap<>();
+
+    // add nodes for artifacts/manifests/files
+    final List<String> childrenNodeIds = addChildrenNodes(planCreationResponseMap, serviceType, ctx);
+    ParameterField<Map<String, Object>> serviceOverrideInputs = environmentYaml.getServiceOverrideInputs();
+    if (serviceYaml.getRef().isExpression()
+        && serviceYaml.getRef().getExpressionValue().equals(SERVICE_REF_EXPRESSION)) {
+      serviceOverrideInputs =
+          ParameterField.createExpressionField(true, SERVICE_OVERRIDE_INPUTS_EXPRESSION, null, false);
+    }
+
+    ParameterField<String> infraRef = ParameterField.createValueField(null);
+    if (ParameterField.isNotNull(environmentYaml.getInfrastructureDefinitions())
+        && isNotEmpty(environmentYaml.getInfrastructureDefinitions().getValue())) {
+      infraRef = environmentYaml.getInfrastructureDefinitions().getValue().get(0).getId();
+    }
+
+    final ServiceStepV3ParametersBuilder stepParameters = ServiceStepV3Parameters.builder()
+                                                              .serviceRef(serviceYaml.getRef())
+                                                              .serviceGitBranch(serviceYaml.getGitBranch())
+                                                              .inputs(serviceYaml.getInputs())
+                                                              .infraId(infraRef)
+                                                              .childrenNodeIds(childrenNodeIds)
+                                                              .serviceOverrideInputs(serviceOverrideInputs)
+                                                              .deploymentType(serviceType)
+                                                              .envRef(environmentYaml.getRef())
+                                                              .envGitBranch(environmentYaml.getGitBranch())
+                                                              .envInputs(environmentYaml.getInputs())
                                                               .envGroupRef(envGroupRef);
 
     return createPlanNode(kryoSerializer, serviceNodeId, nextNodeId, planCreationResponseMap, stepParameters.build());
@@ -451,6 +501,17 @@ public class ServiceAllInOnePlanCreatorUtils {
         return NGExpressionUtils.matchesRawInputSetPatternV2(serviceYamlV2.getServiceRef().getExpressionValue());
       } else {
         return isBlank(serviceYamlV2.getServiceRef().getValue());
+      }
+    }
+    return true;
+  }
+
+  private boolean isConcreteServiceRefUnavailable(@NonNull SimplifiedServiceYaml serviceYaml) {
+    if (serviceYaml.getRef() != null) {
+      if (serviceYaml.getRef().isExpression()) {
+        return NGExpressionUtils.matchesRawInputSetPatternV2(serviceYaml.getRef().getExpressionValue());
+      } else {
+        return isBlank(serviceYaml.getRef().getValue());
       }
     }
     return true;

@@ -32,6 +32,7 @@ java_library(
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/service/beans:module",
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/service/steps/constants:module",
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/service/steps/helpers:module",
+        "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/service/v1/beans:module",
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/rbac:module",
         "//125-cd-nextgen/modules/gitops/core/src/main/java/io/harness/cdng/gitops/steps:module",
         "//125-freeze:module",

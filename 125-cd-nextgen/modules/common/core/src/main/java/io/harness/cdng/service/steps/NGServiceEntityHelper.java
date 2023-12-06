@@ -18,6 +18,7 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.service.beans.ServiceDefinitionType;
 import io.harness.cdng.service.beans.ServiceYamlV2;
 import io.harness.cdng.service.beans.ServicesYaml;
+import io.harness.cdng.service.v1.beans.SimplifiedServiceYaml;
 import io.harness.ng.core.common.beans.NGTag;
 import io.harness.ng.core.service.entity.ServiceEntity;
 import io.harness.ng.core.service.services.ServiceEntityService;
@@ -98,5 +99,24 @@ public class NGServiceEntityHelper {
       return optionalServiceEntity.get().getType();
     }
     return null;
+  }
+
+  public ServiceDefinitionType getServiceDefinitionTypeFromService(
+      PlanCreationContext ctx, SimplifiedServiceYaml service) {
+    Optional<ServiceEntity> optionalServiceEntity = getServiceEntityByRef(ctx, service);
+    if (optionalServiceEntity.isPresent()) {
+      return optionalServiceEntity.get().getType();
+    }
+    return null;
+  }
+
+  public Optional<ServiceEntity> getServiceEntityByRef(PlanCreationContext ctx, SimplifiedServiceYaml service) {
+    if (service == null || ParameterField.isNull(service.getRef()) || isEmpty(service.getRef().getValue())) {
+      return Optional.empty();
+    }
+
+    String serviceRef = service.getRef().getValue();
+    return serviceEntityService.getMetadata(
+        ctx.getAccountIdentifier(), ctx.getOrgIdentifier(), ctx.getProjectIdentifier(), serviceRef, false);
   }
 }

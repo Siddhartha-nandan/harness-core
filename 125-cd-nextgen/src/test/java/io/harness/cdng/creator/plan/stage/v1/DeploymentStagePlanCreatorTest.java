@@ -57,6 +57,7 @@ import io.harness.cdng.service.beans.ServicesMetadata;
 import io.harness.cdng.service.beans.ServicesYaml;
 import io.harness.cdng.service.steps.ServiceStepParameters;
 import io.harness.cdng.service.steps.helpers.beans.ServiceStepV3Parameters;
+import io.harness.cdng.service.v1.beans.SimplifiedServiceYaml;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ngexception.NGFreezeException;
@@ -182,7 +183,11 @@ public class DeploymentStagePlanCreatorTest extends CDNGTestBase {
          MockedStatic<NGRestUtils> ngRestUtilsMockedStatic = mockStatic(NGRestUtils.class)) {
       SettingValueResponseDTO settingValueResponseDTO =
           SettingValueResponseDTO.builder().value("true").valueType(SettingValueType.BOOLEAN).build();
-      when(serviceEntityHelper.getServiceDefinitionTypeFromService(any(), any())).thenReturn(KUBERNETES);
+      when(serviceEntityHelper.getServiceDefinitionTypeFromService(any(), any(ServiceYamlV2.class)))
+          .thenReturn(KUBERNETES);
+      when(serviceEntityHelper.getServiceDefinitionTypeFromService(any(), any(SimplifiedServiceYaml.class)))
+          .thenReturn(KUBERNETES);
+
       when(YamlUtils.getGivenYamlNodeFromParentPath(any(), any()))
           .thenReturn(new YamlNode(YAMLFieldNameConstants.SPEC, jsonNode));
       when(NGRestUtils.getResponse(any())).thenReturn(settingValueResponseDTO);

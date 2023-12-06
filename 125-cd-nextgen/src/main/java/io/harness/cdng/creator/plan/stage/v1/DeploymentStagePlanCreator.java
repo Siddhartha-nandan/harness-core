@@ -33,6 +33,7 @@ import io.harness.cdng.envgroup.yaml.EnvironmentGroupYaml;
 import io.harness.cdng.environment.helper.EnvironmentInfraFilterUtils;
 import io.harness.cdng.environment.helper.EnvironmentPlanCreatorHelper;
 import io.harness.cdng.environment.helper.EnvironmentsPlanCreatorHelper;
+import io.harness.cdng.environment.v1.yaml.SimplifiedEnvironmentYaml;
 import io.harness.cdng.environment.yaml.EnvironmentPlanCreatorConfig;
 import io.harness.cdng.environment.yaml.EnvironmentYamlV2;
 import io.harness.cdng.environment.yaml.EnvironmentsPlanCreatorConfig;
@@ -50,6 +51,7 @@ import io.harness.cdng.service.beans.ServiceYamlV2;
 import io.harness.cdng.service.beans.ServicesMetadata;
 import io.harness.cdng.service.beans.ServicesYaml;
 import io.harness.cdng.service.steps.helpers.beans.ServiceStepV3Parameters;
+import io.harness.cdng.service.v1.beans.SimplifiedServiceYaml;
 import io.harness.cdng.visitor.YamlTypes;
 import io.harness.common.ParameterFieldHelper;
 import io.harness.data.structure.EmptyPredicate;
@@ -194,13 +196,11 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
         stagePlanCreatorHelper.addResourceConstraintDependencyWithWhenConditionForV1Schema(
             planCreationResponseMap, specField, ctx, isProjectScopedResourceConstraintQueue);
 
-    String infraNodeId =
-        addInfrastructureNode(planCreationResponseMap, deploymentStageNode, adviserObtainments, specField);
+    String infraNodeId = addInfrastructureNode(planCreationResponseMap, deploymentStageNode, adviserObtainments);
     Optional<String> provisionerIdOptional =
         addProvisionerNodeIfNeeded(specField, planCreationResponseMap, deploymentStageNode, infraNodeId);
     String serviceNextNodeId = provisionerIdOptional.orElse(infraNodeId);
-    String serviceNodeId =
-        addServiceNode(ctx, specField, planCreationResponseMap, deploymentStageNode, serviceNextNodeId);
+    String serviceNodeId = addServiceNode(ctx, planCreationResponseMap, deploymentStageNode, serviceNextNodeId);
     saveSingleServiceEnvDeploymentStagePlanCreationSummary(
         planCreationResponseMap.get(serviceNodeId), ctx, deploymentStageNode);
     addSpecNode(planCreationResponseMap, specField, serviceNodeId);
@@ -578,31 +578,19 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
     planCreationResponseMap.put(UUIDGenerator.generateUuid(), PlanCreationResponse.builder().planNode(node).build());
   }
 
-  private String addServiceNode(PlanCreationContext ctx, YamlField specField,
+  private String addServiceNode(PlanCreationContext ctx,
       LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap, DeploymentStageNodeV1 stageNode,
       String nextNodeId) {
     // Adding service child by resolving the serviceField
-    ServiceYamlV2 service;
-    if (stageNode.getSpec().getServices() != null) {
-      service = MultiDeploymentSpawnerUtils.getServiceYamlV2Node();
-    } else {
-      service = stageNode.getSpec().getService();
-    }
+    // TODO: Add support for use from stage
+    // TODO: Add support for environment group and multi environment
+    SimplifiedServiceYaml service = stageNode.getSpec().getServiceV1();
+    SimplifiedEnvironmentYaml environment = stageNode.getSpec().getEnvironmentV1();
 
-    ParameterField<String> envGroupRef = ParameterField.ofNull();
-    EnvironmentYamlV2 environment;
-    if (stageNode.getSpec().getEnvironmentGroup() != null) {
-      environment = MultiDeploymentSpawnerUtils.getEnvironmentYamlV2Node();
-      envGroupRef = stageNode.getSpec().getEnvironmentGroup().getEnvGroupRef();
-    } else if (stageNode.getSpec().getEnvironments() != null) {
-      environment = MultiDeploymentSpawnerUtils.getEnvironmentYamlV2Node();
-    } else {
-      environment = stageNode.getSpec().getEnvironment();
-    }
     String serviceNodeId = service.getUuid();
     ServiceDefinitionType serviceType = serviceEntityHelper.getServiceDefinitionTypeFromService(ctx, service);
     planCreationResponseMap.putAll(ServiceAllInOnePlanCreatorUtils.addServiceNode(
-        specField, kryoSerializer, service, environment, serviceNodeId, nextNodeId, serviceType, envGroupRef, ctx));
+        kryoSerializer, service, environment, serviceNodeId, nextNodeId, serviceType, null, ctx));
     return serviceNodeId;
   }
 
@@ -634,24 +622,18 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
 
     return serviceNodeId;
   }
-  private String addInfrastructureNode(LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap,
-      DeploymentStageNodeV1 stageNode, List<AdviserObtainment> adviserObtainments, YamlField specField) {
-    EnvironmentYamlV2 environment;
-    if (stageNode.getSpec().getEnvironments() != null || stageNode.getSpec().getEnvironmentGroup() != null) {
-      environment = MultiDeploymentSpawnerUtils.getEnvironmentYamlV2Node();
-    } else {
-      environment = stageNode.getSpec().getEnvironment();
-    }
 
-    final EnvironmentYamlV2 finalEnvironmentYamlV2 = ServiceAllInOnePlanCreatorUtils.useFromStage(environment)
-        ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(environment.getUseFromStage(), specField)
-        : environment;
+  private String addInfrastructureNode(LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap,
+      DeploymentStageNodeV1 stageNode, List<AdviserObtainment> adviserObtainments) {
+    SimplifiedEnvironmentYaml environment = stageNode.getSpec().getEnvironmentV1();
+    // TODO: add support for multi env and environment group
+    // TODO: Add support for use from stage
 
     ServiceDefinitionType serviceType =
         ServiceDefinitionType.KUBERNETES; // somehow get the service type from service or infra?
 
     PlanNode node = InfrastructurePmsPlanCreator.getInfraTaskExecutableStepV2PlanNode(
-        finalEnvironmentYamlV2, adviserObtainments, serviceType, stageNode.skipInstances);
+        environment, adviserObtainments, serviceType, stageNode.skipInstances);
     planCreationResponseMap.put(node.getUuid(), PlanCreationResponse.builder().planNode(node).build());
     return node.getUuid();
   }
@@ -660,6 +642,11 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
       LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap, DeploymentStageNodeV1 stageNode,
       String infraNodeId) {
     if (stageNode.getSpec().getEnvironment() == null || stageNode.getSpec().getEnvironment().getProvisioner() == null) {
+      return Optional.empty();
+    }
+
+    if (stageNode.getSpec().getEnvironmentV1() == null
+        || stageNode.getSpec().getEnvironmentV1().getProvisioner() == null) {
       return Optional.empty();
     }
 
@@ -948,7 +935,7 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<DeploymentSt
       }
       return new HashSet<>();
     } else {
-      // Making sure useFromStages are handled
+      // TODO: Making sure useFromStages are handled
       ServiceYamlV2 serviceYamlV2 = getServiceYaml(specField, deploymentStageConfig);
       return Arrays
           .asList(ParameterFieldHelper.getParameterFieldFinalValueStringOrNullIfBlank(serviceYamlV2.getServiceRef()))

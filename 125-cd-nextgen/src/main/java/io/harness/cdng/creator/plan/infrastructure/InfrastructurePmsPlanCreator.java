@@ -18,6 +18,7 @@ import io.harness.cdng.advisers.RollbackCustomAdviser;
 import io.harness.cdng.creator.plan.PlanCreatorConstants;
 import io.harness.cdng.creator.plan.gitops.ClusterPlanCreatorUtils;
 import io.harness.cdng.envGroup.yaml.EnvGroupPlanCreatorConfig;
+import io.harness.cdng.environment.v1.yaml.SimplifiedEnvironmentYaml;
 import io.harness.cdng.environment.yaml.EnvironmentPlanCreatorConfig;
 import io.harness.cdng.environment.yaml.EnvironmentYamlV2;
 import io.harness.cdng.environment.yaml.EnvironmentsPlanCreatorConfig;
@@ -123,6 +124,46 @@ public class InfrastructurePmsPlanCreator {
     InfrastructureTaskExecutableStepV2Params params = InfrastructureTaskExecutableStepV2Params.builder()
                                                           .envRef(environmentYamlV2.getEnvironmentRef())
                                                           .infraRef(infraRef)
+                                                          .infraInputs(infraInputs)
+                                                          .deploymentType(deploymentType)
+                                                          .skipInstances(skipInstances)
+                                                          .gitBranch(envGitBranch)
+                                                          .build();
+    return PlanNode.builder()
+        .uuid(UUIDGenerator.generateUuid())
+        .expressionMode(ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED)
+        .name(PlanCreatorConstants.INFRA_NODE_NAME)
+        .identifier(PlanCreatorConstants.INFRA_SECTION_NODE_IDENTIFIER)
+        .stepType(InfrastructureTaskExecutableStepV2.STEP_TYPE)
+        .group(OutcomeExpressionConstants.INFRASTRUCTURE_GROUP)
+        .stepParameters(params)
+        .facilitatorObtainment(
+            FacilitatorObtainment.newBuilder()
+                .setType(FacilitatorType.newBuilder().setType(OrchestrationFacilitatorType.ASYNC).build())
+                .build())
+        .adviserObtainments(adviserObtainments)
+        .build();
+  }
+
+  public PlanNode getInfraTaskExecutableStepV2PlanNode(SimplifiedEnvironmentYaml environmentYaml,
+      List<AdviserObtainment> adviserObtainments, ServiceDefinitionType deploymentType,
+      ParameterField<Boolean> skipInstances) {
+    ParameterField<String> infraId;
+    ParameterField<Map<String, Object>> infraInputs;
+
+    if (ParameterField.isNotNull(environmentYaml.getInfrastructureDefinitions())
+        && isNotEmpty(environmentYaml.getInfrastructureDefinitions().getValue())) {
+      infraId = environmentYaml.getInfrastructureDefinitions().getValue().get(0).getId();
+      infraInputs = environmentYaml.getInfrastructureDefinitions().getValue().get(0).getInputs();
+    } else {
+      infraId = ParameterField.createValueField(null);
+      infraInputs = ParameterField.createValueField(null);
+    }
+
+    String envGitBranch = GitXUtils.getBranchIfNotEmpty(environmentYaml.getGitBranch());
+    InfrastructureTaskExecutableStepV2Params params = InfrastructureTaskExecutableStepV2Params.builder()
+                                                          .envRef(environmentYaml.getRef())
+                                                          .infraRef(infraId)
                                                           .infraInputs(infraInputs)
                                                           .deploymentType(deploymentType)
                                                           .skipInstances(skipInstances)
