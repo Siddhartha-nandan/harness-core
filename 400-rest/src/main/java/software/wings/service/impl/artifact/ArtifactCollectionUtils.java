@@ -831,7 +831,7 @@ public class ArtifactCollectionUtils {
     Function<Artifact, String> keyFn = getArtifactKeyFn(artifactStreamType, artifactStreamAttributes);
     Set<String> artifactKeys = new HashSet<>();
     FindOptions findOptions = new FindOptions();
-    findOptions.batchSize(1000);
+    findOptions.batchSize(5000);
     try (HIterator<Artifact> artifacts =
              new HIterator<>(artifactService.prepareArtifactWithMetadataQuery(artifactStream, true)
                                  .limit(NO_LIMIT)

@@ -69,6 +69,7 @@ import io.harness.queue.QueuePublisher;
 import io.harness.validation.Create;
 import io.harness.validation.Update;
 
+import software.wings.beans.artifact.ArtifactMetadataKeys;
 import software.wings.beans.artifact.ArtifactStream;
 import software.wings.beans.artifact.ArtifactStream.ArtifactStreamKeys;
 import software.wings.beans.artifact.ArtifactStreamAttributes;
@@ -954,7 +955,8 @@ public class ArtifactServiceImpl implements ArtifactService {
     if (AMI.name().equals(artifactStream.getArtifactStreamType())) {
       artifactQuery.project(ArtifactKeys.revision, true);
     } else {
-      artifactQuery.project(ArtifactKeys.metadata, true);
+      artifactQuery.project(String.format("%s.%s", ArtifactKeys.metadata, ArtifactMetadataKeys.artifactPath), true);
+      artifactQuery.project(String.format("%s.%s", ArtifactKeys.metadata, ArtifactMetadataKeys.buildNo), true);
       artifactQuery.project(ArtifactKeys.revision, true);
     }
 
