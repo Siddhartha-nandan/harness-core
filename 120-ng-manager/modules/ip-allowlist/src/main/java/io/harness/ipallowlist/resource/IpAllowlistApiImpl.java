@@ -134,5 +134,4 @@ public class IpAllowlistApiImpl implements IpAllowlistApi {
         Resource.of(AUTHSETTING, ipConfigIdentifier), EDIT_AUTHSETTING_PERMISSION);
     return Response.ok().entity(ipAllowlistService.validateUniqueness(harnessAccount, ipConfigIdentifier)).build();
   }
-
 }
