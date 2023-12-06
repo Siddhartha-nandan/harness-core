@@ -129,7 +129,6 @@ public enum FeatureName {
       "Enable jira select fields for Jira update step using project and issue Type", HarnessTeam.CDC),
   CDS_K8S_HELM_INSTANCE_SYNC_V2_NG(
       "FF for enabling Instance Sync V2 for K8s and Native Helm swimlanes in NG", HarnessTeam.CDP),
-  CDS_K8S_SERVICE_HOOKS_NG("Enables Service hooks support for K8s/Native Helm Services", HarnessTeam.CDP),
   CDS_K8S_SOCKET_CAPABILITY_CHECK_NG(
       "Replace HTTP capability check for Kubernetes connector with Socket Capability", HarnessTeam.CDP),
   CDS_MULTI_SERVICE_PROPAGATION("FF for enabling multi service propagation for CD", HarnessTeam.CDP),
@@ -915,6 +914,8 @@ public enum FeatureName {
   CDS_PRESERVE_WINRM_WORKING_DIR_FOR_COMMAND_UNITS("Use the correct working directory for WinRm deployments", CDC),
   CDS_K8S_APPLY_MANIFEST_WITHOUT_SERVICE_NG(
       "Allows users to apply manifests from sources that are not related to the service", HarnessTeam.CDP),
+  CDS_NG_USE_SCM_FOR_PR_DETAILS_ON_ISSUE_COMMENT_TRIGGER(
+      "Use scm for fetching PR details on Github issue comment trigger filter", HarnessTeam.CDC),
   CDS_APPROVAL_AND_STAGE_NOTIFICATIONS_WITH_CD_METADATA(
       "Improves approval and stage notifications with cd metadata", HarnessTeam.CDC),
   GTM_DEVELOPER_LICENSING("Enable new developer licensing changes", GTM),
@@ -929,7 +930,8 @@ public enum FeatureName {
           + " We will fail the execution if we found some invalid configurations.",
       HarnessTeam.CDP),
   CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD(
-      "Enable to dowmload Aws S3 buckets, folder or object inside container step group", HarnessTeam.CDP);
+      "Enable to dowmload Aws S3 buckets, folder or object inside container step group", HarnessTeam.CDP),
+  CDS_USER_CD_LICENSE_VIEW("Enable to show Users CD License usage on UI", HarnessTeam.CDP);
   // keep-sorted end
 
   @Deprecated
