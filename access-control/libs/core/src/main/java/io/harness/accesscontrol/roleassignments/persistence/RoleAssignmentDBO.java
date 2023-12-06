@@ -13,13 +13,16 @@ import static io.harness.ng.DbAliases.ACCESS_CONTROL;
 
 import static java.util.Optional.ofNullable;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.harness.accesscontrol.AccessControlEntity;
 import io.harness.accesscontrol.principals.PrincipalType;
 import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.EmbeddedUser;
 import io.harness.data.validator.EntityIdentifier;
+import io.harness.iterator.PersistentRegularIterable;
 import io.harness.mongo.index.CompoundMongoIndex;
+import io.harness.mongo.index.FdIndex;
 import io.harness.mongo.index.MongoIndex;
 import io.harness.persistence.PersistentEntity;
 
@@ -60,7 +63,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Entity(value = "roleassignments", noClassnameStored = true)
 @Document("roleassignments")
 @TypeAlias("roleassignments")
-public class RoleAssignmentDBO implements PersistentEntity, AccessControlEntity {
+public class RoleAssignmentDBO implements PersistentEntity, AccessControlEntity, PersistentRegularIterable {
   @JsonProperty("_id") @Setter @Id @dev.morphia.annotations.Id String id;
   @EntityIdentifier final String identifier;
   @NotEmpty final String scopeIdentifier;
@@ -99,6 +102,7 @@ public class RoleAssignmentDBO implements PersistentEntity, AccessControlEntity 
   @Setter @CreatedBy EmbeddedUser createdBy;
   @Setter @LastModifiedBy EmbeddedUser lastUpdatedBy;
   @Setter @Version Long version;
+  @FdIndex @Setter Long nextReconciliationIterationAt;
 
   public static List<MongoIndex> mongoIndexes() {
     return ImmutableList.<MongoIndex>builder()
@@ -158,5 +162,23 @@ public class RoleAssignmentDBO implements PersistentEntity, AccessControlEntity 
   @Override
   public Optional<String> getAccountId() {
     return ofNullable(getAccountFromScopeIdentifier(scopeIdentifier));
+  }
+
+  @Override
+  public Long obtainNextIteration(String fieldName) {
+    return nextReconciliationIterationAt;
+  }
+
+  @Override
+  public void updateNextIteration(String fieldName, long nextIteration) {
+    if (RoleAssignmentDBO.RoleAssignmentDBOKeys.nextReconciliationIterationAt.equals(fieldName)) {
+      nextReconciliationIterationAt = nextIteration;
+    }
+  }
+
+  @Override
+  @JsonIgnore
+  public String getUuid() {
+    return id;
   }
 }

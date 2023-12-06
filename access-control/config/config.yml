@@ -117,6 +117,9 @@ iteratorsConfig:
   scopeIteratorConfig:
     enabled: ${SCOPE_ITERATOR_ENABLED:-true}
     targetIntervalInSeconds: ${SCOPE_ITERATOR_INTERVAL:-6000}
+  aclIteratorConfig:
+    enabled: ${ACL_ITERATOR_ENABLED:-true}
+    targetIntervalInSeconds: ${ACL_ITERATOR_INTERVAL:- 6000}
 
 accountClient:
   accountServiceConfig:

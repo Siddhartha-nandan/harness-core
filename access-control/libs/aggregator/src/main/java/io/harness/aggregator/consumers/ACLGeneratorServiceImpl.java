@@ -276,4 +276,8 @@ public class ACLGeneratorServiceImpl implements ACLGeneratorService {
     Set<String> permissions = implicitPermissionsByScope.get(Pair.of(scope.getLevel(), givePermissionOnChildScopes));
     return permissions.stream().filter(permissionsFilter::contains).collect(Collectors.toSet());
   }
+
+  public void syncACLs(RoleAssignmentDBO roleAssignmentDBO) {
+
+  }
 }
