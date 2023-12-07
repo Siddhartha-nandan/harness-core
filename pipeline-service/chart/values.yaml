@@ -148,28 +148,7 @@ global:
       hosts:
   opa:
     enabled: false
-redis:
-  protocol: ""
-  hosts: []
-  extraArgs: ""
-  secrets:
-    kubernetesSecrets:
-      - secretName: ""
-        keys:
-          REDIS_USERNAME: ""
-          REDIS_PASSWORD: ""
-    secretManagement:
-      externalSecretsOperator:
-        - secretStore:
-            name: ""
-            kind: ""
-          remoteKeys:
-            REDIS_USERNAME:
-              name: ""
-              property: ""
-            REDIS_PASSWORD:
-              name: ""
-              property: ""
+
 timescaledb:
   # -- TimescaleDB host names
   hosts: []
@@ -245,6 +224,76 @@ database:
                   name: ""
                   property: ""
                 MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+  redis:
+    eventsFramework:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    cacheConfig:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    lockConfig:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
                   name: ""
                   property: ""
 
