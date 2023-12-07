@@ -45,12 +45,8 @@ public interface NGTriggerService {
 
   NGTriggerEntity update(NGTriggerEntity ngTriggerEntity, NGTriggerEntity oldNgTriggerEntity);
 
-  TriggerUpdateCount toggleTriggers(
-      boolean enable, String accountIdentifier, String orgIdentifier, String projectIdentifier);
-
-  TriggerUpdateCount toggleTriggers(boolean enable, String accountIdentifier, String orgIdentifier,
-      String projectIdentifier, String pipelineIdentifier, String type, Criteria criteria,
-      List<NGTriggerEntity> triggerEntities);
+  BulkTriggersResponseDTO toggleTriggers(boolean enable, String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, String pipelineIdentifier, String type);
 
   boolean updateTriggerStatus(NGTriggerEntity ngTriggerEntity, boolean status);
 

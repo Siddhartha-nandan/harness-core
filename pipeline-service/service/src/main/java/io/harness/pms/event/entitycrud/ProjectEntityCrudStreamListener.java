@@ -70,7 +70,7 @@ public class ProjectEntityCrudStreamListener implements MessageListener {
 
   private void processTriggerDisableEvent(ProjectEntityChangeDTO entityChangeDTO) {
     ngTriggerService.toggleTriggers(false, entityChangeDTO.getAccountIdentifier(), entityChangeDTO.getOrgIdentifier(),
-        entityChangeDTO.getIdentifier());
+        entityChangeDTO.getIdentifier(), null, null);
   }
 
   private void processDeleteEvent(ProjectEntityChangeDTO entityChangeDTO) {

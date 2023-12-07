@@ -63,6 +63,7 @@ import io.harness.ngsettings.SettingValueType;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.ngsettings.dto.SettingValueResponseDTO;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
+import io.harness.ngtriggers.beans.dto.BulkTriggersResponseDTO;
 import io.harness.ngtriggers.beans.dto.PollingConfig;
 import io.harness.ngtriggers.beans.dto.TriggerDetails;
 import io.harness.ngtriggers.beans.dto.TriggerYamlDiffDTO;
@@ -106,7 +107,6 @@ import io.harness.ngtriggers.buildtriggers.helpers.BuildTriggerHelper;
 import io.harness.ngtriggers.helpers.TriggerCatalogHelper;
 import io.harness.ngtriggers.helpers.TriggerSetupUsageHelper;
 import io.harness.ngtriggers.mapper.NGTriggerElementMapper;
-import io.harness.ngtriggers.mapper.TriggerFilterHelper;
 import io.harness.ngtriggers.service.impl.NGTriggerServiceImpl;
 import io.harness.ngtriggers.utils.MaxMultiArtifactTriggerSourcesProvider;
 import io.harness.ngtriggers.utils.PollingSubscriptionHelper;
@@ -1998,8 +1998,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
 
     TriggerUpdateCount triggerUpdateCount = TriggerUpdateCount.builder().successCount(5l).failureCount(0l).build();
 
-    Criteria criteria =
-        TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(enable, ACCOUNT_ID, null, null, null, null);
+    CloseableIterator<NGTriggerEntity> iterator = createCloseableIterator(ngTriggerEntityList.iterator());
 
     // Mock the behavior of ngTriggerElementMapper.updateEntityYmlWithEnabledValue
     doNothing().when(ngTriggerElementMapper).updateEntityYmlWithEnabledValue(any(NGTriggerEntity.class));
@@ -2007,13 +2006,15 @@ public class NGTriggerServiceImplTest extends CategoryTest {
     // Mock the behavior of ngTriggerRepository.updateTriggerEnabled
     when(ngTriggerRepository.toggleTriggerInBulk(anyList(), anyBoolean())).thenReturn(triggerUpdateCount);
 
-    TriggerUpdateCount result =
-        ngTriggerServiceImpl.toggleTriggers(enable, ACCOUNT_ID, null, null, null, null, criteria, ngTriggerEntityList);
+    // Mock the behavior of ngTriggerRepository.findAll
+    when(ngTriggerRepository.findAll(any(Criteria.class))).thenReturn(iterator);
+
+    BulkTriggersResponseDTO result = ngTriggerServiceImpl.toggleTriggers(enable, ACCOUNT_ID, null, null, null, null);
 
     verify(ngTriggerElementMapper, times(ngTriggerEntityList.size())).updateEntityYmlWithEnabledValue(any());
     verify(ngTriggerRepository).toggleTriggerInBulk(anyList(), anyBoolean());
 
-    assertEquals(triggerUpdateCount, result);
+    assertEquals(result.getBulkTriggerDetailDTOList().size(), ngTriggerEntityList.size());
   }
 
   @Test
@@ -2084,8 +2085,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
 
     TriggerUpdateCount triggerUpdateCount = TriggerUpdateCount.builder().successCount(5l).failureCount(0l).build();
 
-    Criteria criteria =
-        TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(enable, ACCOUNT_ID, ORG_ID, null, null, null);
+    CloseableIterator<NGTriggerEntity> iterator = createCloseableIterator(ngTriggerEntityList.iterator());
 
     // Mock the behavior of ngTriggerElementMapper.updateEntityYmlWithEnabledValue
     doNothing().when(ngTriggerElementMapper).updateEntityYmlWithEnabledValue(any(NGTriggerEntity.class));
@@ -2093,13 +2093,15 @@ public class NGTriggerServiceImplTest extends CategoryTest {
     // Mock the behavior of ngTriggerRepository.updateTriggerEnabled
     when(ngTriggerRepository.toggleTriggerInBulk(anyList(), anyBoolean())).thenReturn(triggerUpdateCount);
 
-    TriggerUpdateCount result = ngTriggerServiceImpl.toggleTriggers(
-        enable, ACCOUNT_ID, ORG_ID, null, null, null, criteria, ngTriggerEntityList);
+    // Mock the behavior of ngTriggerRepository.findAll
+    when(ngTriggerRepository.findAll(any(Criteria.class))).thenReturn(iterator);
+
+    BulkTriggersResponseDTO result = ngTriggerServiceImpl.toggleTriggers(enable, ACCOUNT_ID, ORG_ID, null, null, null);
 
     verify(ngTriggerElementMapper, times(ngTriggerEntityList.size())).updateEntityYmlWithEnabledValue(any());
     verify(ngTriggerRepository).toggleTriggerInBulk(anyList(), anyBoolean());
 
-    assertEquals(triggerUpdateCount, result);
+    assertEquals(ngTriggerEntityList.size(), result.getBulkTriggerDetailDTOList().size());
   }
 
   @Test
@@ -2171,8 +2173,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
 
     TriggerUpdateCount triggerUpdateCount = TriggerUpdateCount.builder().successCount(5l).failureCount(0l).build();
 
-    Criteria criteria =
-        TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(enable, ACCOUNT_ID, ORG_ID, PROJECT_ID, null, null);
+    CloseableIterator<NGTriggerEntity> iterator = createCloseableIterator(ngTriggerEntityList.iterator());
 
     // Mock the behavior of ngTriggerElementMapper.updateEntityYmlWithEnabledValue
     doNothing().when(ngTriggerElementMapper).updateEntityYmlWithEnabledValue(any(NGTriggerEntity.class));
@@ -2180,13 +2181,16 @@ public class NGTriggerServiceImplTest extends CategoryTest {
     // Mock the behavior of ngTriggerRepository.updateTriggerEnabled
     when(ngTriggerRepository.toggleTriggerInBulk(anyList(), anyBoolean())).thenReturn(triggerUpdateCount);
 
-    TriggerUpdateCount result = ngTriggerServiceImpl.toggleTriggers(
-        enable, ACCOUNT_ID, ORG_ID, PROJECT_ID, null, null, criteria, ngTriggerEntityList);
+    // Mock the behavior of ngTriggerRepository.findAll
+    when(ngTriggerRepository.findAll(any(Criteria.class))).thenReturn(iterator);
+
+    BulkTriggersResponseDTO result =
+        ngTriggerServiceImpl.toggleTriggers(enable, ACCOUNT_ID, ORG_ID, PROJECT_ID, null, null);
 
     verify(ngTriggerElementMapper, times(ngTriggerEntityList.size())).updateEntityYmlWithEnabledValue(any());
     verify(ngTriggerRepository).toggleTriggerInBulk(anyList(), anyBoolean());
 
-    assertEquals(triggerUpdateCount, result);
+    assertEquals(ngTriggerEntityList.size(), result.getBulkTriggerDetailDTOList().size());
   }
 
   @Test
@@ -2259,8 +2263,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
 
     TriggerUpdateCount triggerUpdateCount = TriggerUpdateCount.builder().successCount(5l).failureCount(0l).build();
 
-    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(
-        enable, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, null);
+    CloseableIterator<NGTriggerEntity> iterator = createCloseableIterator(ngTriggerEntityList.iterator());
 
     // Mock the behavior of ngTriggerElementMapper.updateEntityYmlWithEnabledValue
     doNothing().when(ngTriggerElementMapper).updateEntityYmlWithEnabledValue(any(NGTriggerEntity.class));
@@ -2268,13 +2271,16 @@ public class NGTriggerServiceImplTest extends CategoryTest {
     // Mock the behavior of ngTriggerRepository.updateTriggerEnabled
     when(ngTriggerRepository.toggleTriggerInBulk(anyList(), anyBoolean())).thenReturn(triggerUpdateCount);
 
-    TriggerUpdateCount result = ngTriggerServiceImpl.toggleTriggers(
-        enable, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, null, criteria, ngTriggerEntityList);
+    // Mock the behavior of ngTriggerRepository.findAll
+    when(ngTriggerRepository.findAll(any(Criteria.class))).thenReturn(iterator);
+
+    BulkTriggersResponseDTO result =
+        ngTriggerServiceImpl.toggleTriggers(enable, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, null);
 
     verify(ngTriggerElementMapper, times(ngTriggerEntityList.size())).updateEntityYmlWithEnabledValue(any());
     verify(ngTriggerRepository).toggleTriggerInBulk(anyList(), anyBoolean());
 
-    assertEquals(triggerUpdateCount, result);
+    assertEquals(ngTriggerEntityList.size(), result.getBulkTriggerDetailDTOList().size());
   }
 
   @Test
@@ -2347,8 +2353,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
 
     TriggerUpdateCount triggerUpdateCount = TriggerUpdateCount.builder().successCount(5l).failureCount(0l).build();
 
-    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(
-        enable, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, null);
+    CloseableIterator<NGTriggerEntity> iterator = createCloseableIterator(ngTriggerEntityList.iterator());
 
     // Mock the behavior of ngTriggerElementMapper.updateEntityYmlWithEnabledValue
     doNothing().when(ngTriggerElementMapper).updateEntityYmlWithEnabledValue(any(NGTriggerEntity.class));
@@ -2356,13 +2361,16 @@ public class NGTriggerServiceImplTest extends CategoryTest {
     // Mock the behavior of ngTriggerRepository.updateTriggerEnabled
     when(ngTriggerRepository.toggleTriggerInBulk(anyList(), anyBoolean())).thenReturn(triggerUpdateCount);
 
-    TriggerUpdateCount result = ngTriggerServiceImpl.toggleTriggers(
-        enable, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, null, criteria, ngTriggerEntityList);
+    // Mock the behavior of ngTriggerRepository.findAll
+    when(ngTriggerRepository.findAll(any(Criteria.class))).thenReturn(iterator);
+
+    BulkTriggersResponseDTO result =
+        ngTriggerServiceImpl.toggleTriggers(enable, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, null);
 
     verify(ngTriggerElementMapper, times(ngTriggerEntityList.size())).updateEntityYmlWithEnabledValue(any());
     verify(ngTriggerRepository).toggleTriggerInBulk(anyList(), anyBoolean());
 
-    assertEquals(triggerUpdateCount, result);
+    assertEquals(ngTriggerEntityList.size(), result.getBulkTriggerDetailDTOList().size());
   }
 
   @Test

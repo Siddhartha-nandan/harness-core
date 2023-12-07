@@ -160,10 +160,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.util.CloseableIterator;
 import org.springframework.util.CollectionUtils;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_TRIGGERS})
@@ -585,32 +584,25 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   }
 
   @Override
-  public TriggerUpdateCount toggleTriggers(
-      boolean enable, String accountIdentifier, String orgIdentifier, String projectIdentifier) {
+  public BulkTriggersResponseDTO toggleTriggers(boolean enable, String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, String pipelineIdentifier, String type) {
     Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(
-        enable, accountIdentifier, orgIdentifier, projectIdentifier, null, null);
+        enable, accountIdentifier, orgIdentifier, projectIdentifier, pipelineIdentifier, type);
 
-    List<NGTriggerEntity> triggerEntities =
-        list(criteria, PageRequest.of(0, 100000, Sort.by(Sort.Direction.DESC, NGTriggerEntityKeys.createdAt)))
-            .getContent();
-
-    return toggleTriggers(
-        enable, accountIdentifier, orgIdentifier, projectIdentifier, null, null, criteria, triggerEntities);
-  }
-
-  @Override
-  public TriggerUpdateCount toggleTriggers(boolean enable, String accountIdentifier, String orgIdentifier,
-      String projectIdentifier, String pipelineIdentifier, String type, Criteria criteria,
-      List<NGTriggerEntity> triggerEntities) {
     List<NGTriggerEntity> toBeToggledTriggers = new ArrayList<>();
+    List<NGTriggerEntity> triggersToggled = new ArrayList<>();
 
     long successfullyUpdated = 0;
     long failedToUpdate = 0;
 
-    for (NGTriggerEntity ngTriggerEntity : triggerEntities) {
+    CloseableIterator<NGTriggerEntity> iterator = ngTriggerRepository.findAll(criteria);
+
+    while (iterator.hasNext()) {
+      NGTriggerEntity ngTriggerEntity = iterator.next();
       ngTriggerEntity.setEnabled(enable);
       ngTriggerElementMapper.updateEntityYmlWithEnabledValue(ngTriggerEntity);
       toBeToggledTriggers.add(ngTriggerEntity);
+      triggersToggled.add(ngTriggerEntity);
 
       if (toBeToggledTriggers.size() >= MAX_DISABLE_BATCH_SIZE) {
         TriggerUpdateCount triggerUpdateCount = ngTriggerRepository.toggleTriggerInBulk(toBeToggledTriggers, enable);
@@ -626,15 +618,17 @@ public class NGTriggerServiceImpl implements NGTriggerService {
       failedToUpdate = failedToUpdate + triggerUpdateCount.getFailureCount();
     }
 
-    TriggerUpdateCount triggerUpdateCount =
-        TriggerUpdateCount.builder().successCount(successfullyUpdated).failureCount(failedToUpdate).build();
-
     log.info(
         "Successfully disabled {} and failed to disable {} triggers in account {}, org {}, project {}, pipeline {}",
-        triggerUpdateCount.getSuccessCount(), triggerUpdateCount.getFailureCount(), accountIdentifier, orgIdentifier,
-        projectIdentifier, pipelineIdentifier);
+        successfullyUpdated, failedToUpdate, accountIdentifier, orgIdentifier, projectIdentifier, pipelineIdentifier);
 
-    return triggerUpdateCount;
+    // mapping the response
+    List<BulkTriggerDetailDTO> bulkTriggerDetails = toBulkTriggerDetails(triggersToggled);
+
+    return BulkTriggersResponseDTO.builder()
+        .count(successfullyUpdated)
+        .bulkTriggerDetailDTOList(bulkTriggerDetails)
+        .build();
   }
 
   @NotNull
@@ -1514,28 +1508,10 @@ public class NGTriggerServiceImpl implements NGTriggerService {
       enable = bulkTriggersRequestDTO.getData().isEnable();
     }
 
-    // Creating criteria
-    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(
-        enable, accountIdentifier, orgIdentifier, projectIdentifier, pipelineIdentifier, type);
-    Pageable pageRequest = PageRequest.of(0, 100000, Sort.by(Sort.Direction.DESC, NGTriggerEntityKeys.createdAt));
-
-    // Fetching details for the response
-    Page<NGTriggerEntity> triggerEntities = list(criteria, pageRequest);
-
-    // Toggling the triggers and updating the YAML
-    TriggerUpdateCount modifiedCount = toggleTriggers(enable, accountIdentifier, orgIdentifier, projectIdentifier,
-        pipelineIdentifier, type, criteria, triggerEntities.getContent());
-
-    // mapping the response
-    List<BulkTriggerDetailDTO> bulkTriggerDetails = toBulkTriggerDetails(triggerEntities);
-
-    return BulkTriggersResponseDTO.builder()
-        .bulkTriggerDetailDTOList(bulkTriggerDetails)
-        .count(modifiedCount.getSuccessCount())
-        .build();
+    return toggleTriggers(enable, accountIdentifier, orgIdentifier, projectIdentifier, pipelineIdentifier, type);
   }
 
-  private List<BulkTriggerDetailDTO> toBulkTriggerDetails(Page<NGTriggerEntity> triggerEntities) {
+  private List<BulkTriggerDetailDTO> toBulkTriggerDetails(List<NGTriggerEntity> triggerEntities) {
     List<BulkTriggerDetailDTO> bulkTriggerDetails = new ArrayList<>();
 
     for (NGTriggerEntity trigger : triggerEntities) {
