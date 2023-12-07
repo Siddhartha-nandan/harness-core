@@ -13,14 +13,14 @@ metadata:
 data:
   DEPLOY_MODE: '{{ .Values.config.DEPLOY_MODE }}'
   LOGGING_LEVEL: '{{ .Values.config.LOGGING_LEVEL }}'
-  EVENTS_CONFIG_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  EVENTS_CONFIG_USE_SENTINEL: {{ include "harnesscommon.dbv3.useRedisSentinels"  (dict "ctx" $ "database" "eventsConfig") }}
   EVENTS_CONFIG_SENTINEL_MASTER_NAME: 'harness-redis'
-  EVENTS_CONFIG_REDIS_SENTINELS: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
-  EVENTS_CONFIG_REDIS_URL: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
-  LOCK_CONFIG_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  EVENTS_CONFIG_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "eventsConfig") }}'
+  EVENTS_CONFIG_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "eventsConfig") }}'
+  LOCK_CONFIG_USE_SENTINEL: {{ include "harnesscommon.dbv3.useRedisSentinels"  (dict "ctx" $ "database" "lockConfig") }}
   LOCK_CONFIG_SENTINEL_MASTER_NAME: 'harness-redis'
-  LOCK_CONFIG_REDIS_SENTINELS: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
-  LOCK_CONFIG_REDIS_URL: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
+  LOCK_CONFIG_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lockConfig") }}'
+  LOCK_CONFIG_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lockConfig") }}'
   RESOURCE_GROUP_ITERATOR_ENABLED: '{{ .Values.config.RESOURCE_GROUP_ITERATOR_ENABLED }}'
   RESOURCE_GROUP_ITERATOR_INTERVAL: '{{ .Values.config.RESOURCE_GROUP_ITERATOR_INTERVAL }}'
   USER_GROUP_ITERATOR_ENABLED: '{{ .Values.config.USER_GROUP_ITERATOR_ENABLED }}'
