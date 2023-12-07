@@ -606,6 +606,33 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
         .isInstanceOf(InvalidRequestException.class);
   }
 
+  @Test
+  @Owner(developers = PRATEEK)
+  @Category(UnitTests.class)
+  public void updateLDAPSettingWithInlinePasswordToNGSecretRef() {
+    final String testNgBindSecret = "account.testNgBindSecretValue";
+    LdapSettings ldapSettings = createLDAPSSOProvider();
+    ldapSettings.setCronExpression("0 0/15 * 1/1 * ? *");
+    EncryptedDataDetail encryptedDataDetail = mock(EncryptedDataDetail.class);
+    List<EncryptedDataDetail> encryptedDataDetails = Arrays.asList(encryptedDataDetail);
+    when(secretManager.getEncryptionDetails(any(), any(), any())).thenReturn(encryptedDataDetails);
+    ldapSettings.getConnectionSettings().setEncryptedBindPassword("EncryptedBindPassword");
+    when(encryptionService.decrypt(any(EncryptableSetting.class), anyList(), eq(false))).thenReturn(null);
+    LdapSettings createdLdapSetting = ssoSettingService.createLdapSettings(ldapSettings);
+    assertThat(createdLdapSetting.getConnectionSettings().getBindPassword()).isEqualTo(LdapConstants.MASKED_STRING);
+    assertThat(createdLdapSetting.getConnectionSettings().getNgBindSecret()).isNull();
+    assertThat(createdLdapSetting.getConnectionSettings().getPasswordType())
+        .isEqualTo(LdapConnectionSettings.INLINE_SECRET);
+
+    ldapSettings.getConnectionSettings().setPasswordType(LdapConnectionSettings.NG_SECRET);
+    ldapSettings.getConnectionSettings().setNgBindSecret(testNgBindSecret);
+    ldapSettings.getConnectionSettings().setBindPassword(null);
+    LdapSettings updateLdapSetting = ssoSettingService.updateLdapSettings(ldapSettings);
+    assertThat(updateLdapSetting.getConnectionSettings().getBindPassword().isEmpty()).isTrue();
+    assertThat(updateLdapSetting.getConnectionSettings().getPasswordType()).isEqualTo(LdapConnectionSettings.NG_SECRET);
+    assertThat(updateLdapSetting.getConnectionSettings().getNgBindSecret()).isEqualTo(testNgBindSecret);
+  }
+
   public LdapSettings createLDAPSSOProvider() {
     LdapConnectionSettings connectionSettings = new LdapConnectionSettings();
     connectionSettings.setBindDN("testBindDN");
