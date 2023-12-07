@@ -17,5 +17,5 @@ import java.util.List;
 @OwnedBy(HarnessTeam.SSCA)
 public interface PolicyMgmtService {
   OpaPolicyEvaluationResult evaluate(String accountId, String orgIdentifier, String projectIdentifier,
-      String policySetRef, List<NormalizedSBOMComponentEntity> normalizedSBOMComponentEntities);
+      List<String> policySetRef, List<NormalizedSBOMComponentEntity> normalizedSBOMComponentEntities);
 }
