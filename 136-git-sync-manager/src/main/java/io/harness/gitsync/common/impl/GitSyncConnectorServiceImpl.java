@@ -239,7 +239,7 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
   public ScmConnector getScmConnector(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String connectorRef) {
     if (isEmpty(connectorRef)) {
-      return getHarnessCodeConnector("", accountIdentifier, orgIdentifier, projectIdentifier);
+      return getHarnessCodeConnector(accountIdentifier, orgIdentifier, projectIdentifier, "");
     }
     Optional<ConnectorResponseDTO> connectorDTO =
         connectorService.getByRef(accountIdentifier, orgIdentifier, projectIdentifier, connectorRef);
@@ -273,7 +273,7 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
   public ScmConnector getScmConnectorForGivenRepo(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String connectorRef, String repoName) {
     if (isEmpty(connectorRef)) {
-      return getHarnessCodeConnector(repoName, accountIdentifier, orgIdentifier, projectIdentifier);
+      return getHarnessCodeConnector(accountIdentifier, orgIdentifier, projectIdentifier, repoName);
     }
     ScmConnector scmConnector = getScmConnector(accountIdentifier, orgIdentifier, projectIdentifier, connectorRef);
     scmConnector.setGitConnectionUrl(
@@ -285,7 +285,7 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
   public ScmConnector getScmConnectorForGivenRepo(Scope scope, String connectorRef, String repoName) {
     if (isEmpty(connectorRef)) {
       return getHarnessCodeConnector(
-          repoName, scope.getAccountIdentifier(), scope.getOrgIdentifier(), scope.getProjectIdentifier());
+          scope.getAccountIdentifier(), scope.getOrgIdentifier(), scope.getProjectIdentifier(), repoName);
     }
     ScmConnector scmConnector = getScmConnector(
         scope.getAccountIdentifier(), scope.getOrgIdentifier(), scope.getProjectIdentifier(), connectorRef);
@@ -298,7 +298,7 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
   public ScmConnector getDecryptedConnectorForGivenRepo(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String connectorRef, String repoName) {
     if (isEmpty(connectorRef)) {
-      return getHarnessCodeConnector(repoName, accountIdentifier, orgIdentifier, projectIdentifier);
+      return getHarnessCodeConnector(accountIdentifier, orgIdentifier, projectIdentifier, repoName);
     }
     ScmConnector scmConnector =
         getDecryptedConnectorByRef(accountIdentifier, orgIdentifier, projectIdentifier, connectorRef);
@@ -308,8 +308,8 @@ public class GitSyncConnectorServiceImpl implements GitSyncConnectorService {
   }
 
   private ScmConnector getHarnessCodeConnector(
-      String repoName, String accountId, String orgIdentifier, String projectIdentifier) {
+      String accountId, String orgIdentifier, String projectIdentifier, String repoName) {
     return harnessCodeConnectorUtils.getDummyHarnessCodeConnectorWithJwtAuth(
-        repoName, accountId, orgIdentifier, projectIdentifier, ngServiceSecret, scmServiceBaseUrl);
+        accountId, orgIdentifier, projectIdentifier, repoName, ngServiceSecret, scmServiceBaseUrl);
   }
 }

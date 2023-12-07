@@ -27,8 +27,8 @@ import java.time.Duration;
 public class HarnessCodeConnectorUtils {
   @Inject ServiceTokenGenerator tokenGenerator;
 
-  public HarnessConnectorDTO getDummyHarnessCodeConnectorWithJwtAuth(String repoName, String accountId, String orgId,
-      String projectId, String serviceSecret, String harnessCodeApiBaseUrl) {
+  public HarnessConnectorDTO getDummyHarnessCodeConnectorWithJwtAuth(String accountId, String orgId, String projectId,
+      String repoName, String serviceSecret, String harnessCodeApiBaseUrl) {
     SecretRefData token = SecretRefData.builder().decryptedValue(getToken(serviceSecret).toCharArray()).build();
     HarnessJWTTokenSpecDTO jwtTokenSpecDTO = HarnessJWTTokenSpecDTO.builder().tokenRef(token).build();
     HarnessConnectorDTOBuilder harnessConnectorDTOBuilder =
