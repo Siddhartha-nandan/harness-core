@@ -9,6 +9,7 @@ package io.harness.idp.plugin.repositories;
 
 import io.harness.idp.plugin.entities.PluginInfoEntity;
 import io.harness.idp.plugin.entities.PluginInfoEntity.PluginInfoEntityKeys;
+import io.harness.spec.server.idp.v1.model.PluginInfo;
 
 import com.google.inject.Inject;
 import lombok.AccessLevel;
@@ -60,6 +61,9 @@ public class PluginInfoRepositoryCustomImpl implements PluginInfoRepositoryCusto
   private Update buildUpdateQuery(PluginInfoEntity pluginInfoEntity) {
     Update update = new Update();
     update.set(PluginInfoEntityKeys.name, pluginInfoEntity.getName());
+    if (PluginInfo.PluginTypeEnum.DEFAULT.equals(pluginInfoEntity.getType())) {
+      update.set(PluginInfoEntityKeys.accountIdentifier, pluginInfoEntity.getAccountIdentifier());
+    }
     update.set(PluginInfoEntityKeys.description, pluginInfoEntity.getDescription());
     update.set(PluginInfoEntityKeys.creator, pluginInfoEntity.getCreator());
     update.set(PluginInfoEntityKeys.category, pluginInfoEntity.getCategory());
