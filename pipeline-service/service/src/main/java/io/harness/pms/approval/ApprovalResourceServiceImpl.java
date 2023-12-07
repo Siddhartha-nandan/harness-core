@@ -141,14 +141,16 @@ public class ApprovalResourceServiceImpl implements ApprovalResourceService {
       instrumentationHelper.sendApprovalApiEvent(accountId, orgIdentifier, projectIdentifier, planExecutionId,
           ApprovalApiInstrumentationHelper.FAILURE, ApprovalApiInstrumentationHelper.NO_APPROVALS_FOUND);
       throw new InvalidRequestException(
-          "Found no Harness Approval Instance waiting for the given pipeline execution id");
+          String.format("Found no Harness Approval Instance waiting for pipeline execution id: %s and callback id: %s",
+              planExecutionId, callbackId));
     }
 
     if (approvalInstances.size() > 1) {
       instrumentationHelper.sendApprovalApiEvent(accountId, orgIdentifier, projectIdentifier, planExecutionId,
           ApprovalApiInstrumentationHelper.FAILURE, ApprovalApiInstrumentationHelper.MULTIPLE_APPROVALS_FOUND);
-      throw new InvalidRequestException(
-          "Found more than 1 Harness Approval Instance waiting for the given pipeline execution id");
+      throw new InvalidRequestException(String.format(
+          "Found more than 1 Harness Approval Instance waiting for pipeline execution id: %s and callback id: %s",
+          planExecutionId, callbackId));
     }
 
     return addHarnessApprovalActivity(approvalInstances.get(0).getId(), request);

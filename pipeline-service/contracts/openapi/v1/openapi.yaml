@@ -1080,7 +1080,7 @@ paths:
             type: string
           in: query
           name: module
-          description: 'Module type for the entity. If its from deployments,type will be CD , if its from build type will be CI.'
+          description: Module type for the entity. If its from deployments,type will be CD , if its from build type will be CI.
         - schema:
             type: array
             items:

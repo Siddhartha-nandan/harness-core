@@ -156,13 +156,8 @@ public class HarnessApprovalInstance extends ApprovalInstance {
       stageIdentifier = stageLevel.get().getIdentifier();
     }
     HarnessApprovalSpecParameters specParameters = (HarnessApprovalSpecParameters) stepParameters.getSpec();
-    String callbackId = null;
-    if (specParameters.getCallbackId() != null) {
-      callbackId = (String) specParameters.getCallbackId().fetchFinalValue();
-    }
     HarnessApprovalInstance instance =
         HarnessApprovalInstance.builder()
-            .callbackId(callbackId)
             .approvalMessage((String) specParameters.getApprovalMessage().fetchFinalValue())
             .includePipelineExecutionHistory((boolean) ParameterFieldHelper.getBooleanParameterFieldValue(
                 specParameters.getIncludePipelineExecutionHistory()))
@@ -180,6 +175,9 @@ public class HarnessApprovalInstance extends ApprovalInstance {
             .approvalKey(stageIdentifier + "#" + stepParameters.getIdentifier())
             .autoApproval(fromAutoApprovalParams(specParameters.getAutoApproval()))
             .build();
+    if (specParameters.getCallbackId() != null) {
+      instance.setCallbackId((String) specParameters.getCallbackId().fetchFinalValue());
+    }
     instance.updateFromStepParameters(ambiance, stepParameters);
     return instance;
   }
