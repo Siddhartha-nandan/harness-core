@@ -565,15 +565,20 @@ public class SSOSettingServiceImpl implements SSOSettingService {
     if (getLdapSettingsByAccountId(settings.getAccountId()) != null) {
       throw new InvalidRequestException("Ldap settings already exist for this account.");
     }
-    ssoServiceHelper.encryptLdapSecret(settings.getConnectionSettings(), secretManager, settings.getAccountId());
-
-    settings.encryptLdapInlineSecret(secretManager, false);
+    boolean isCGLdapSecretOrPassword = settings.getConnectionSettings() != null
+        && !LdapConnectionSettings.NG_SECRET.equals(settings.getConnectionSettings().getPasswordType());
+    if (isCGLdapSecretOrPassword) {
+      ssoServiceHelper.encryptLdapSecret(settings.getConnectionSettings(), secretManager, settings.getAccountId());
+      settings.encryptLdapInlineSecret(secretManager, false);
+    }
     if (isEmpty(settings.getCronExpression())) {
       settings.setCronExpression(ldapSyncJobConfig.getDefaultCronExpression());
     }
     updateNextIterations(settings);
     LdapSettings savedSettings = wingsPersistence.saveAndGet(LdapSettings.class, settings);
-    ldapGroupScheduledHandler.handle(savedSettings);
+    if (isCGLdapSecretOrPassword) { // TODO: remove once ldap sync with ng-secret-ref starts working
+      ldapGroupScheduledHandler.handle(savedSettings);
+    }
     auditServiceHelper.reportForAuditingUsingAccountId(settings.getAccountId(), null, settings, Event.Type.CREATE);
     ngAuditLoginSettingsForLdapUpload(savedSettings.getAccountId(), savedSettings);
     log.info("Auditing creation of LDAP Settings for account={}", settings.getAccountId());

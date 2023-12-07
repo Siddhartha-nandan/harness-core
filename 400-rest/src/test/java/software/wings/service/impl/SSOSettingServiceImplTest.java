@@ -39,6 +39,7 @@ import io.harness.alert.AlertData;
 import io.harness.annotations.dev.HarnessModule;
 import io.harness.annotations.dev.TargetModule;
 import io.harness.category.element.UnitTests;
+import io.harness.encryption.SecretRefData;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ff.FeatureFlagService;
 import io.harness.ng.core.account.OauthProviderType;
@@ -625,12 +626,12 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
         .isEqualTo(LdapConnectionSettings.INLINE_SECRET);
 
     ldapSettings.getConnectionSettings().setPasswordType(LdapConnectionSettings.NG_SECRET);
-    ldapSettings.getConnectionSettings().setNgBindSecret(testNgBindSecret);
+    ldapSettings.getConnectionSettings().setNgBindSecret(new SecretRefData(testNgBindSecret));
     ldapSettings.getConnectionSettings().setBindPassword(null);
-    LdapSettings updateLdapSetting = ssoSettingService.updateLdapSettings(ldapSettings);
-    assertThat(updateLdapSetting.getConnectionSettings().getBindPassword().isEmpty()).isTrue();
-    assertThat(updateLdapSetting.getConnectionSettings().getPasswordType()).isEqualTo(LdapConnectionSettings.NG_SECRET);
-    assertThat(updateLdapSetting.getConnectionSettings().getNgBindSecret()).isEqualTo(testNgBindSecret);
+    LdapSettings updatedLdapSetting = ssoSettingService.updateLdapSettings(ldapSettings);
+    assertThat(updatedLdapSetting.getConnectionSettings().getBindPassword().isEmpty()).isTrue();
+    assertThat(updatedLdapSetting.getConnectionSettings().getPasswordType()).isEqualTo(LdapConnectionSettings.NG_SECRET);
+    assertThat(updatedLdapSetting.getConnectionSettings().getNgBindSecret().getIdentifier()).isEqualTo(testNgBindSecret);
   }
 
   public LdapSettings createLDAPSSOProvider() {
