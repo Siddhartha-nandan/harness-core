@@ -64,7 +64,7 @@ public class LdapConnectionSettings implements LdapConnectionConfig, Encryptable
   Boolean useRecursiveGroupMembershipSearch;
   private Set<String> delegateSelectors;
 
-  @AssertTrue(message = "Bind password/Secret/NG-Secret can't be empty if Bind DN is provided.")
+  @AssertTrue(message = "Bind password/Secret can't be empty if Bind DN is provided.")
   private boolean isNonEmptyCredentials() {
     if (StringUtils.isNotBlank(bindDN)) {
       return StringUtils.isNotBlank(bindPassword) || StringUtils.isNotBlank(ngBindSecret)
