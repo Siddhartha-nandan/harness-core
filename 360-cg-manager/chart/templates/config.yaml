@@ -41,19 +41,19 @@ data:
   HZ_CLUSTER_NAME: harness-manager
   LOGGING_LEVEL: '{{ .Values.appLogLevel }}'
   MEMORY: '{{ .Values.java.memory }}'
-  REDIS_SENTINEL: '{{ .Values.global.database.redis.installed }}'
-  REDIS_URL: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
+  REDIS_SENTINEL: {{ include "harnesscommon.dbv3.useRedisSentinels"  (dict "ctx" $ "database" "redis1") }}
+  REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "redis1") }}'
   REDIS_MASTER_NAME: 'harness-redis'
-  REDIS_SENTINELS: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
+  REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "redis1") }}'
   REDIS_NETTY_THREADS: '{{ .Values.redisConfig.nettyThreads }}'
   SERVER_PORT: "9090"
   SERVICE_ACC: /opt/harness/svc/service_acc.json
   VERSION: '{{ .Values.version }}'
   STACK_DRIVER_LOGGING_ENABLED: '{{ .Values.global.stackDriverLoggingEnabled }}'
-  EVENTS_FRAMEWORK_REDIS_SENTINELS: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
+  EVENTS_FRAMEWORK_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "eventsFramework") }}'
   EVENTS_FRAMEWORK_SENTINEL_MASTER_NAME: 'harness-redis'
-  EVENTS_FRAMEWORK_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
-  EVENTS_FRAMEWORK_REDIS_URL: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
+  EVENTS_FRAMEWORK_USE_SENTINEL: {{ include "harnesscommon.dbv3.useRedisSentinels"  (dict "ctx" $ "database" "eventsFramework") }}
+  EVENTS_FRAMEWORK_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "eventsFramework") }}'
   EVENTS_FRAMEWORK_AVAILABLE_IN_ONPREM: "true"
   HARNESS_ENABLE_NG_AUTH_UI_PLACEHOLDER: "true"
   {{- if .Values.global.mongoSSL }}

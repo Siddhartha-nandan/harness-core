@@ -83,8 +83,8 @@ spec:
             {{- include "harnesscommon.secrets.manageEnv" (dict "ctx" $ "variableName" "CG_LICENSE" "overrideEnvName" "LICENSE_INFO" "providedSecretValues" (list "global.license.cg") "extKubernetesSecretCtxs" (list .Values.global.license.secrets.kubernetesSecrets) "esoSecretCtxs" (list (dict "secretCtxIdentifier" $globalLicenseESOSecretIdentifier "secretCtx" .Values.global.license.secrets.secretManagement.externalSecretsOperator))) | indent 12 }}
             {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "LOG_STREAMING_SERVICE_TOKEN" "defaultKubernetesSecretName" "harness-manager" "defaultKubernetesSecretKey" "LOG_STREAMING_SERVICE_TOKEN") | indent 12 }}
             {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "VERIFICATION_SERVICE_SECRET" "defaultKubernetesSecretName" "harness-manager" "defaultKubernetesSecretKey" "VERIFICATION_SERVICE_SECRET") | indent 12 }}
-            {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "REDIS_USERNAME" "passwordVariableName" "REDIS_PASSWORD") | indent 12 }}
-            {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD") | indent 12 }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "redis1" "userVariableName" "REDIS_USERNAME" "passwordVariableName" "REDIS_PASSWORD") | indent 12 }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "eventsFramework" "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD") | indent 12 }}
             {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" .) | indent 12 }}
             {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "dms-harness") | indent 12 }}
             {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "dms-harness" "connectionURIVariableName" "DMS_MONGO_URI") | indent 12 }}
