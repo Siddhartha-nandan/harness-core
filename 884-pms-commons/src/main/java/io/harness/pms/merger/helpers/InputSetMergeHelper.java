@@ -81,7 +81,7 @@ public class InputSetMergeHelper {
       return null;
     }
     JsonNode mergedInputSetNode = getMergedInputSetNodeWithJsonNode(inputSetJsonNodeList);
-    return mergedInputSetNode != null ? mergedInputSetNode.get(YAMLFieldNameConstants.SPEC) : JsonUtils.readTree("{}");
+    return mergedInputSetNode != null ? mergedInputSetNode : JsonUtils.readTree("{}");
   }
 
   private JsonNode getMergedInputSetNodeWithJsonNode(List<JsonNode> inputSetJsonNodeList) {
@@ -120,6 +120,9 @@ public class InputSetMergeHelper {
               JsonNode childStage = iterator.next();
               removeStagesFromJsonNode(iterator, stageIdentifiers, childStage);
             }
+          }
+          if (stage.get(YAMLFieldNameConstants.SPEC).get(YAMLFieldNameConstants.STAGES).isEmpty()) {
+            it.remove();
           }
         } else {
           removeStagesFromJsonNode(it, stageIdentifiers, stage);

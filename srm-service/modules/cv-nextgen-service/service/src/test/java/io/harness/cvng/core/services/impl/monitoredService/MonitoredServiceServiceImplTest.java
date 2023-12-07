@@ -425,6 +425,30 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
   }
 
   @Test
+  @Owner(developers = NAVEEN)
+  @Category(UnitTests.class)
+  public void testCreate_withInvalidServiceIdentifier() {
+    MonitoredServiceDTO monitoredServiceDTO = createMonitoredServiceDTO();
+    monitoredServiceDTO.setServiceRef("$serviceIdentifier");
+    assertThatThrownBy(
+        () -> monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage("Only alphanumerics, . - and _ are allowed in service identifier");
+  }
+
+  @Test
+  @Owner(developers = NAVEEN)
+  @Category(UnitTests.class)
+  public void testCreate_withInvalidEnvironmentIdentifier() {
+    MonitoredServiceDTO monitoredServiceDTO = createMonitoredServiceDTO();
+    monitoredServiceDTO.setEnvironmentRef("$environmentIdentifier");
+    assertThatThrownBy(
+        () -> monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage("Only alphanumerics, . - and _ are allowed in environment identifier");
+  }
+
+  @Test
   @Owner(developers = ABHIJITH)
   @Category(UnitTests.class)
   public void testCreateFromYaml() {
@@ -497,7 +521,6 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
     TemplateDTO templateDTO = monitoredServiceDTO.getTemplate();
     assertThat(templateDTO.getTemplateRef()).isEqualTo("templateRef123");
     assertThat(templateDTO.getVersionLabel()).isEqualTo("versionLabel123");
-    assertThat(templateDTO.getTemplateVersionNumber()).isEqualTo(4);
     assertThat(templateDTO.getIsTemplateByReference()).isFalse();
     assertThat(templateDTO.getTemplateInputs()).isEqualTo("type: Application\nserviceRef: service1\n");
   }
@@ -614,7 +637,6 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
     TemplateDTO templateDTO = monitoredServiceDTO.getTemplate();
     assertThat(templateDTO.getTemplateRef()).isEqualTo("templateRef123");
     assertThat(templateDTO.getVersionLabel()).isEqualTo("versionLabel123");
-    assertThat(templateDTO.getTemplateVersionNumber()).isEqualTo(4);
     assertThat(templateDTO.getIsTemplateByReference()).isTrue();
     assertThat(templateDTO.getTemplateInputs()).isEqualTo("type: Application\nserviceRef: service1\n");
   }
@@ -794,7 +816,6 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
         + "  template:\n"
         + "   templateRef: templateRef123\n"
         + "   versionLabel: versionLabel123\n"
-        + "   templateVersionNumber: 2\n"
         + "   isTemplateByReference: true\n"
         + "   templateInputs:\n"
         + "      type: Application\n"
@@ -823,7 +844,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
     assertThat(monitoredServiceReferences.getContent().size()).isEqualTo(1);
     List<MonitoredServiceReference> monitoredServiceReferencesList = monitoredServiceReferences.getContent();
     assertThat(monitoredServiceReferencesList.get(0).getReconciliationStatus())
-        .isEqualTo(ReconciliationStatus.NO_INPUT_REQUIRED_FOR_RECONCILIATION);
+        .isEqualTo(ReconciliationStatus.NO_RECONCILIATION_REQUIRED);
   }
 
   @Test
@@ -2622,7 +2643,6 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
             .template(TemplateDTO.builder()
                           .templateRef("template1")
                           .versionLabel("v1")
-                          .templateVersionNumber(1)
                           .isTemplateByReference(true)
                           .templateInputs("type: Application\nserviceRef: test1\n")
                           .build())
@@ -2647,7 +2667,6 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
             .template(TemplateDTO.builder()
                           .templateRef("template1")
                           .versionLabel("v1")
-                          .templateVersionNumber(1)
                           .isTemplateByReference(true)
                           .templateInputs("type: Application\nserviceRef: test1\n")
                           .build())
@@ -2662,7 +2681,6 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
                               .template(TemplateDTO.builder()
                                             .templateRef("template1")
                                             .versionLabel("v1")
-                                            .templateVersionNumber(1)
                                             .isTemplateByReference(true)
                                             .templateInputs("type: Application\nserviceRef: test2\n")
                                             .build())
@@ -2699,7 +2717,6 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
             .template(TemplateDTO.builder()
                           .templateRef("template1")
                           .versionLabel("v1")
-                          .templateVersionNumber(1)
                           .isTemplateByReference(true)
                           .templateInputs("type: Application\nserviceRef: test1\n")
                           .build())
