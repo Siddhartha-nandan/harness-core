@@ -222,7 +222,7 @@ virtualService:
 ingress:
   annotations: {}
 ENV: "dev-spaces"
-BACKSTAGE_BASE_URL: "test"
+BACKSTAGE_BASE_URL: "https://34.82.50.247/"
 notificationConfigsPluginRequestsNotificationSlack: "default"
 cpu: 2
 scoreComputerThreadsPerCore: 2
