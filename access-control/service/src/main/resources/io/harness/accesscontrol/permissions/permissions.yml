@@ -1,6 +1,6 @@
 # Any edit in this file should accompany an increment in version.
 name: permissionsConfiguration
-version: 66
+version: 67
 permissions:
   - identifier: core_project_delete
     name: Delete Project
@@ -494,6 +494,21 @@ permissions:
     name: Edit Auth setting
     status: ACTIVE
     includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+  - identifier: ff_proxyapikey_view
+    name: View Feature Flags Proxy API Key
+    status: ACTIVE
+    allowedScopeLevels:
+      - account
+  - identifier: ff_proxyapikey_edit
+    name: Create or edit Feature Flags Proxy API Key
+    status: ACTIVE
+    allowedScopeLevels:
+      - account
+  - identifier: ff_proxyapikey_delete
+    name: Delete Feature Flags Proxy API Key
+    status: ACTIVE
     allowedScopeLevels:
       - account
   - identifier: ff_featureflag_edit

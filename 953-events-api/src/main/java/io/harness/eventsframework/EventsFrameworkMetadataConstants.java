@@ -130,6 +130,7 @@ public final class EventsFrameworkMetadataConstants {
 
   // FF
   public static final String FEATUREFLAG_ENTITY = "featureflag";
+  public static final String PROXYAPIKEY = "proxyApiKey";
 
   // CODE
   public static final String CODE_REPOSITORY = "codeRepository";

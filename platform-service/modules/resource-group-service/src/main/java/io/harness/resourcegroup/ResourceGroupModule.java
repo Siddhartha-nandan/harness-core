@@ -44,6 +44,8 @@ import io.harness.pipeline.remote.PipelineRemoteClientModule;
 import io.harness.pipeline.remote.PipelineServiceClient;
 import io.harness.project.ProjectClientModule;
 import io.harness.project.remote.ProjectClient;
+import io.harness.proxyapikey.ProxyApiKeyClient;
+import io.harness.proxyapikey.ProxyApiKeyClientModule;
 import io.harness.remote.client.ClientMode;
 import io.harness.remote.client.ServiceHttpClientConfig;
 import io.harness.resourcegroup.eventframework.AccountEntityCrudStreamListener;
@@ -135,6 +137,7 @@ public class ResourceGroupModule extends AbstractModule {
     requireBinding(CodeResourceClient.class);
     requireBinding(GovernanceRuleClient.class);
     requireBinding(FeatureFlagResourceClient.class);
+    requireBinding(ProxyApiKeyClient.class);
   }
 
   private void installResourceValidators() {
@@ -183,6 +186,9 @@ public class ResourceGroupModule extends AbstractModule {
     install(new CodeResourceClientModule(
         ServiceHttpClientConfig.builder().baseUrl(resourceClients.getCode().getBaseUrl()).build(),
         resourceClients.getCode().getSecret(), RESOUCE_GROUP_SERVICE.toString(), ClientMode.PRIVILEGED));
+    install(new ProxyApiKeyClientModule(
+        ServiceHttpClientConfig.builder().baseUrl(resourceClients.getFfService().getBaseUrl()).build(),
+        resourceClients.getFfService().getSecret(), RESOUCE_GROUP_SERVICE.toString(), ClientMode.PRIVILEGED));
     install(new GovernanceRuleClientModule(
         ServiceHttpClientConfig.builder().baseUrl(resourceClients.getCeNextGen().getBaseUrl()).build(),
         resourceClients.getCeNextGen().getSecret(), RESOUCE_GROUP_SERVICE.toString(), ClientMode.PRIVILEGED));

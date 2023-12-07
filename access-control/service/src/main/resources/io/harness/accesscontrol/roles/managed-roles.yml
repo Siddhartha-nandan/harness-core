@@ -1,6 +1,6 @@
 # Any edit in this file should accompany an increment in version.
 name: rolesConfiguration
-version: 68
+version: 69
 roles:
     - identifier: _project_admin
       name: Project Admin
@@ -596,6 +596,9 @@ roles:
         - ff_environment_view
         - ff_featureflag_toggle
         - gitops_agent_view
+        - ff_proxyapikey_view
+        - ff_proxyapikey_edit
+        - ff_proxyapikey_delete
         - gitops_agent_edit
         - gitops_agent_delete
         - gitops_application_view
@@ -772,6 +775,7 @@ roles:
         - ff_target_view
         - ff_environment_apiKeyView
         - ff_environment_view
+        - ff_proxyapikey_view
         - core_dashboards_view
         - gitops_agent_view
         - gitops_application_view
