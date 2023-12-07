@@ -1954,7 +1954,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
     doNothing().when(ngTriggerElementMapper).updateEntityYmlWithEnabledValue(any(NGTriggerEntity.class));
 
     // Mock the behavior of ngTriggerRepository.updateTriggerEnabled
-    when(ngTriggerRepository.updateTriggerEnabled(anyList(), anyBoolean())).thenReturn(triggerUpdateCount);
+    when(ngTriggerRepository.toggleTriggerInBulk(anyList(), anyBoolean())).thenReturn(triggerUpdateCount);
 
     // Perform the test
     TriggerUpdateCount result =
@@ -1963,7 +1963,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
     // Verify the mock interactions and assertions
     verify(ngTriggerRepository).findAll(any(Criteria.class));
     verify(ngTriggerElementMapper, times(listOfTriggers.size())).updateEntityYmlWithEnabledValue(any());
-    verify(ngTriggerRepository).updateTriggerEnabled(anyList(), anyBoolean());
+    verify(ngTriggerRepository).toggleTriggerInBulk(anyList(), anyBoolean());
 
     assertEquals(triggerUpdateCount, result);
   }

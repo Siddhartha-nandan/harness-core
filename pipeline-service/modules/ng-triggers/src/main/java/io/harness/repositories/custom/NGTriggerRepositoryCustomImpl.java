@@ -172,7 +172,7 @@ public class NGTriggerRepositoryCustomImpl implements NGTriggerRepositoryCustom 
     return Failsafe.with(retryPolicy).get(() -> mongoTemplate.remove(query, NGTriggerEntity.class));
   }
 
-  public TriggerUpdateCount updateTriggerEnabled(List<NGTriggerEntity> ngTriggerEntityList, boolean enable) {
+  public TriggerUpdateCount toggleTriggerInBulk(List<NGTriggerEntity> ngTriggerEntityList, boolean enable) {
     BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, NGTriggerEntity.class);
     for (NGTriggerEntity triggerEntity : ngTriggerEntityList) {
       Update update = new Update();
@@ -254,20 +254,6 @@ public class NGTriggerRepositoryCustomImpl implements NGTriggerRepositoryCustom 
         "[Retrying]: Failed updating Trigger; attempt: {}", "[Failed]: Failed updating Trigger; attempt: {}");
     Failsafe.with(retryPolicy).get(() -> mongoTemplate.updateMulti(query, update, NGTriggerEntity.class));
     return true;
-  }
-
-  @Override
-  public long toggleTriggersInBulk(String accountId, boolean enable, Criteria criteria) {
-    BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, NGTriggerEntity.class);
-
-    Update update = new Update();
-    update.set(NGTriggerEntityKeys.enabled, enable);
-
-    Query query = new Query(criteria);
-
-    bulkOperations = bulkOperations.updateMulti(query, update);
-
-    return bulkOperations.execute().getModifiedCount();
   }
 
   private RetryPolicy<Object> getRetryPolicy(String failedAttemptMessage, String failureMessage) {

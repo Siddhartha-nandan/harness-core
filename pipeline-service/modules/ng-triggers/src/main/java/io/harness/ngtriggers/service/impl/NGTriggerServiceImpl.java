@@ -164,7 +164,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.util.CloseableIterator;
 import org.springframework.util.CollectionUtils;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_TRIGGERS})
@@ -614,7 +613,7 @@ public class NGTriggerServiceImpl implements NGTriggerService {
       toBeToggledTriggers.add(ngTriggerEntity);
 
       if (toBeToggledTriggers.size() >= MAX_DISABLE_BATCH_SIZE) {
-        TriggerUpdateCount triggerUpdateCount = ngTriggerRepository.updateTriggerEnabled(toBeToggledTriggers, enable);
+        TriggerUpdateCount triggerUpdateCount = ngTriggerRepository.toggleTriggerInBulk(toBeToggledTriggers, enable);
         successfullyUpdated = successfullyUpdated + triggerUpdateCount.getSuccessCount();
         failedToUpdate = failedToUpdate + triggerUpdateCount.getFailureCount();
         toBeToggledTriggers.clear();
@@ -622,7 +621,7 @@ public class NGTriggerServiceImpl implements NGTriggerService {
     }
 
     if (EmptyPredicate.isNotEmpty(toBeToggledTriggers)) {
-      TriggerUpdateCount triggerUpdateCount = ngTriggerRepository.updateTriggerEnabled(toBeToggledTriggers, enable);
+      TriggerUpdateCount triggerUpdateCount = ngTriggerRepository.toggleTriggerInBulk(toBeToggledTriggers, enable);
       successfullyUpdated = successfullyUpdated + triggerUpdateCount.getSuccessCount();
       failedToUpdate = failedToUpdate + triggerUpdateCount.getFailureCount();
     }
