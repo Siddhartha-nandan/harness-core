@@ -12,3 +12,4 @@ echo "alias la='ls -A'">>.bashrc
 echo "alias l='ls -CF'">>.bashrc
 echo "export PYTHON_BIN_PATH=/opt/harness-delegate/google-cloud-sdk/platform/bundledpythonunix/bin">>.bashrc
 echo 'export PATH=$PATH:/opt/harness-delegate/google-cloud-sdk/bin:/opt/harness-delegate/google-cloud-sdk/platform/bundledpythonunix/bin'>>.bashrc
+
