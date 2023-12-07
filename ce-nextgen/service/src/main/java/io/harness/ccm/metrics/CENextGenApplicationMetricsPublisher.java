@@ -106,6 +106,7 @@ public class CENextGenApplicationMetricsPublisher implements MetricsPublisher {
     try (CENextGenApplicationMetricsContext ignore =
              new CENextGenApplicationMetricsContext(NAMESPACE, CONTAINER_NAME, SERVICE_NAME)) {
       recordMetric(metricName + "_mean", snapshot.getMean() * SNAPSHOT_FACTOR);
+      recordMetric(metricName + "_max", snapshot.getMax() * SNAPSHOT_FACTOR);
       recordMetric(metricName + "_95thPercentile", snapshot.get95thPercentile() * SNAPSHOT_FACTOR);
       recordMetric(metricName + "_99thPercentile", snapshot.get99thPercentile() * SNAPSHOT_FACTOR);
       recordMetric(metricName + "_999thPercentile", snapshot.get999thPercentile() * SNAPSHOT_FACTOR);
