@@ -40,17 +40,17 @@ public class CENextGenApplicationMetricsPublisher implements MetricsPublisher {
   private static final String SERVICE_NAME = "ce-nextgen-application";
   private static final MetricFilter meterMetricFilter =
       MetricFilter.startsWith("io.dropwizard.jetty.MutableServletContextHandler");
+  private static final MetricFilter perspectiveMetricFilter = MetricFilter.contains("graphql");
 
   @Override
   public void recordMetrics() {
-    Set<Map.Entry<String, Meter>> meterSet = metricRegistry.getMeters(meterMetricFilter).entrySet();
-    meterSet.forEach(entry -> recordMeter(sanitizeMetricName(entry.getKey()), entry.getValue()));
-    Set<Map.Entry<String, Gauge>> gaugeSet = metricRegistry.getGauges().entrySet();
-    gaugeSet.forEach(entry -> recordGauge(sanitizeMetricName(entry.getKey()), entry.getValue()));
-    Set<Map.Entry<String, Timer>> timerSet = metricRegistry.getTimers().entrySet();
-    timerSet.forEach(entry -> recordTimer(sanitizeMetricName(entry.getKey()), entry.getValue()));
-    Set<Map.Entry<String, Counter>> counterSet = metricRegistry.getCounters().entrySet();
-    counterSet.forEach(entry -> recordCounter(sanitizeMetricName(entry.getKey()), entry.getValue()));
+    metricRegistry.getMeters(meterMetricFilter)
+        .forEach((key1, value1) -> recordMeter(sanitizeMetricName(key1), value1));
+    metricRegistry.getMeters(perspectiveMetricFilter)
+        .forEach((key, value) -> recordMeter(sanitizeMetricName(key), value));
+    metricRegistry.getGauges().forEach((key, value) -> recordGauge(sanitizeMetricName(key), value));
+    metricRegistry.getTimers().forEach((key, value) -> recordTimer(sanitizeMetricName(key), value));
+    metricRegistry.getCounters().forEach((key, value) -> recordCounter(sanitizeMetricName(key), value));
   }
 
   private void recordMeter(String metricName, Meter meter) {
