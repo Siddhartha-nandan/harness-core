@@ -7,7 +7,7 @@
 
 package io.harness.connector.utils;
 
-import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
 import io.harness.delegate.beans.connector.scm.GitConnectionType;
 import io.harness.delegate.beans.connector.scm.harness.HarnessApiAccessDTO;
