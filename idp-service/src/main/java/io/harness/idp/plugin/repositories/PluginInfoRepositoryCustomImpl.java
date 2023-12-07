@@ -61,7 +61,7 @@ public class PluginInfoRepositoryCustomImpl implements PluginInfoRepositoryCusto
   private Update buildUpdateQuery(PluginInfoEntity pluginInfoEntity) {
     Update update = new Update();
     update.set(PluginInfoEntityKeys.name, pluginInfoEntity.getName());
-    if (PluginInfo.PluginTypeEnum.DEFAULT.equals(pluginInfoEntity.getType())) {
+    if (!PluginInfo.PluginTypeEnum.CUSTOM.equals(pluginInfoEntity.getType())) {
       update.set(PluginInfoEntityKeys.accountIdentifier, pluginInfoEntity.getAccountIdentifier());
     }
     update.set(PluginInfoEntityKeys.description, pluginInfoEntity.getDescription());
