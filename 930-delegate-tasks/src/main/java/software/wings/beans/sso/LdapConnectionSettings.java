@@ -9,6 +9,7 @@ package software.wings.beans.sso;
 
 import static io.harness.annotations.dev.HarnessModule._950_NG_AUTHENTICATION_SERVICE;
 import static io.harness.annotations.dev.HarnessTeam.PL;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.TargetModule;
@@ -45,6 +46,7 @@ import org.apache.commons.lang3.StringUtils;
 public class LdapConnectionSettings implements LdapConnectionConfig, EncryptableSetting {
   public static final String INLINE_SECRET = "INLINE";
   public static final String SECRET = "ENCRYPTED_SECRET";
+  public static final String NG_SECRET = "NG_ENCRYPTED_SECRET";
   @NotNull String host;
   int port = LdapConstants.DEFAULT_CONNECTION_PORT;
   boolean sslEnabled = LdapConstants.DEFAULT_SSL_STATE;
@@ -53,20 +55,23 @@ public class LdapConnectionSettings implements LdapConnectionConfig, Encryptable
   String bindDN = "";
   String bindPassword = "";
   String encryptedBindPassword;
-  @Attributes(title = "Bind Password Type", enums = {INLINE_SECRET, SECRET}) String passwordType;
+  @Attributes(title = "Bind Password Type", enums = {INLINE_SECRET, SECRET, NG_SECRET}) String passwordType;
   @Encrypted(fieldName = "bindSecret") private char[] bindSecret;
+  String ngBindSecret; // store ng secret ref here as is: example 'account.ldap_secret'
   @JsonIgnore @JsonView(JsonViews.Internal.class) @SchemaIgnore private String encryptedBindSecret;
   int connectTimeout = LdapConstants.DEFAULT_CONNECT_TIMEOUT;
   int responseTimeout = LdapConstants.DEFAULT_RESPONSE_TIMEOUT;
   Boolean useRecursiveGroupMembershipSearch;
   private Set<String> delegateSelectors;
 
-  @AssertTrue(message = "Bind password/Secret can't be empty if Bind DN is provided.")
+  @AssertTrue(message = "Bind password/Secret/NG-Secret can't be empty if Bind DN is provided.")
   private boolean isNonEmptyCredentials() {
     if (StringUtils.isNotBlank(bindDN)) {
-      return StringUtils.isNotBlank(bindPassword) || StringUtils.isNotBlank(String.valueOf(bindSecret));
+      return StringUtils.isNotBlank(bindPassword) || StringUtils.isNotBlank(ngBindSecret)
+          || StringUtils.isNotBlank(String.valueOf(bindSecret));
     }
-    return StringUtils.isBlank(bindPassword) || StringUtils.isBlank(String.valueOf(bindSecret));
+    return StringUtils.isBlank(bindPassword) || StringUtils.isBlank(ngBindSecret)
+        || StringUtils.isBlank(String.valueOf(bindSecret));
   }
 
   /**
@@ -86,6 +91,16 @@ public class LdapConnectionSettings implements LdapConnectionConfig, Encryptable
   public String fetchPassword() {
     if (encryptedBindPassword != null) {
       return encryptedBindPassword;
+    } else {
+      return encryptedBindSecret;
+    }
+  }
+
+  public String fetchPasswordNG() {
+    if (encryptedBindPassword != null) {
+      return encryptedBindPassword;
+    } else if (isNotEmpty(ngBindSecret)) {
+      return ngBindSecret;
     } else {
       return encryptedBindSecret;
     }
