@@ -26,10 +26,11 @@ data:
 {{/*  {{- $dbContext := deepCopy .Values.global.database.redis }}*/}}
 {{/*  {{- $_ := set $dbContext "protocol" "" }}*/}}
   LOG_SERVICE_REDIS_MASTER_NAME: "harness-redis"
-  LOG_SERVICE_REDIS_SENTINEL_ADDRS: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
-  LOG_SERVICE_REDIS_USE_SENTINEL: {{ .Values.global.database.redis.installed  | quote }}
-  LOG_SERVICE_REDIS_ENDPOINT: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
+  LOG_SERVICE_REDIS_SENTINEL_ADDRS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "logService") }}'
+  LOG_SERVICE_REDIS_USE_SENTINEL: {{ include "harnesscommon.dbv3.useRedisSentinels"  (dict "ctx" $ "database" "logService") }}
+  LOG_SERVICE_REDIS_ENDPOINT: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "logService") }}'
   {{- end -}}
   {{- if .Values.additionalConfigs }}
   {{- toYaml .Values.additionalConfigs | nindent 2 }}
   {{- end }}
+  

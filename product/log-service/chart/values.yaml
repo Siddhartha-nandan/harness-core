@@ -89,30 +89,31 @@ maxUnavailable: 0
 
 redis:
   disableWatcher: false
-  protocol: ""
-  hosts: []
-  secretName: ""
-  userKey: ""
-  passwordKey: ""
-  extraArgs: ""
-  secrets:
-    kubernetesSecrets:
-      - secretName: ""
-        keys:
-          REDIS_USERNAME: ""
-          REDIS_PASSWORD: ""
-    secretManagement:
-      externalSecretsOperator:
-        - secretStore:
-            name: ""
-            kind: ""
-          remoteKeys:
-            REDIS_USERNAME:
-              name: ""
-              property: ""
-            REDIS_PASSWORD:
-              name: ""
-              property: ""
+
+database:
+  redis:
+    logService:
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
 
 image:
   registry: docker.io
