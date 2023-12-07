@@ -176,7 +176,7 @@ public class PerpetualTaskRecordDao {
     UpdateOperations<PerpetualTaskRecord> updateOperations =
         persistence.createUpdateOperations(PerpetualTaskRecord.class)
             .set(PerpetualTaskRecordKeys.delegateId, "")
-            .set(PerpetualTaskRecordKeys.state, PerpetualTaskState.TASK_UNASSIGNED)
+            .set(PerpetualTaskRecordKeys.state, PerpetualTaskState.TASK_PAUSED)
             .set(PerpetualTaskRecordKeys.intervalSeconds, intervalInMillis / 1000)
             .unset(PerpetualTaskRecordKeys.unassignedReason);
 
