@@ -30,6 +30,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.annotations.ApiModelProperty;
 import java.util.List;
 import java.util.Map;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -55,6 +57,8 @@ public class IdpCookieCutterStepInfo implements PluginCompatibleStep {
 
   @Getter(onMethod_ = { @ApiModelProperty(hidden = true) }) @ApiModelProperty(hidden = true) private String identifier;
   @Getter(onMethod_ = { @ApiModelProperty(hidden = true) }) @ApiModelProperty(hidden = true) private String name;
+
+  @VariableExpression(skipVariableExpression = true) @Min(MIN_RETRY) @Max(MAX_RETRY) private int retry;
 
   @ApiModelProperty(dataType = STRING_CLASSPATH) ParameterField<String> isPublicTemplate;
   @ApiModelProperty(dataType = STRING_CLASSPATH) ParameterField<String> publicTemplateUrl;

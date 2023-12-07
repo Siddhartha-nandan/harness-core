@@ -345,12 +345,15 @@ outboxPollConfig:
   pollingIntervalInSeconds: 5
   maximumRetryAttemptsForAnEvent: 7
   lockId: NextGenManager
+  enableMetrics: ${ENABLE_OUTBOX_EVENT_METRICS:-false}
 
 segmentConfiguration:
   enabled: false
   url: "segment_url_place_holder"
   apiKey: "segment_api_key"
   certValidationRequired: false
+  flushQueueSize: 250
+  flushInterval: 1
 
 subscriptionConfig:
   stripeApiKey: dummy
@@ -543,6 +546,11 @@ pluginExecutionConfig:
     image: harness/drone-git:1.4.1-rootless
     entrypoint:
       - /usr/local/bin/clone
+  downloadAwsS3Config:
+    # Use rootless image only for K8 download aws s3
+    image: harnessdev/download-aws-s3:1.0.0-rootless-linux
+    entrypoint:
+      - /usr/local/bin/download
   apiUrl: https://localhost:8181/#/
 
 signupDomainDenylistConfig:
@@ -612,3 +620,6 @@ deploymentStagePlanCreationInfoThreadConfig:
     maxPoolSize: ${DEPLOY_STAGE_PLAN_INFO_SAVE_POOL_MAX_SIZE:-10}
     idleTime: ${DEPLOY_STAGE_PLAN_INFO_SAVE_POOL_IDLE_TIME:-30}
     timeUnit: ${DEPLOY_STAGE_PLAN_INFO_SAVE_POOL_TIME_UNIT:-SECONDS}
+
+frpsTunnel:
+  host: ${FRPS_TUNNEL_HOST:-http://localhost}

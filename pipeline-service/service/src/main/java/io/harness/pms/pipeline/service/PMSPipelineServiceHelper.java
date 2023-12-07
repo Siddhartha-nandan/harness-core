@@ -495,7 +495,6 @@ public class PMSPipelineServiceHelper {
 
     return criteria;
   }
-
   public void sendPipelineSaveTelemetryEvent(PipelineEntity entity, String actionType) {
     executorService.submit(() -> {
       try {
@@ -694,6 +693,10 @@ public class PMSPipelineServiceHelper {
                                            .isGitDefaultBranch(true)
                                            .build())
             .build());
+  }
+
+  public void deletePipelineReferences(PipelineEntity pipelineEntity) {
+    filterCreatorMergeService.deleteSetupReferences(pipelineEntity);
   }
 
   public void setPermittedPipelines(

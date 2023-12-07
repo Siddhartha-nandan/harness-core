@@ -15,6 +15,7 @@ import io.harness.delegate.beans.connector.ConnectorConfigOutcomeDTO;
 import io.harness.delegate.beans.connector.scm.GitConnectionType;
 import io.harness.delegate.beans.connector.scm.bitbucket.BitbucketApiAccessDTO;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Set;
@@ -46,11 +47,13 @@ public class BitbucketConnectorOutcomeDTO
   private Set<String> delegateSelectors;
   Boolean executeOnDelegate = true;
   private String gitConnectionUrl;
+  Boolean proxy = false;
+  @JsonIgnore String proxyUrl;
 
   @Builder
   public BitbucketConnectorOutcomeDTO(GitConnectionType type, String url, String validationRepo,
       BitbucketAuthenticationOutcomeDTO authentication, BitbucketApiAccessDTO apiAccess, Set<String> delegateSelectors,
-      Boolean executeOnDelegate) {
+      Boolean executeOnDelegate, Boolean proxy) {
     this.type = type;
     this.url = url;
     this.validationRepo = validationRepo;
@@ -58,5 +61,6 @@ public class BitbucketConnectorOutcomeDTO
     this.apiAccess = apiAccess;
     this.delegateSelectors = delegateSelectors;
     this.executeOnDelegate = executeOnDelegate;
+    this.proxy = proxy;
   }
 }

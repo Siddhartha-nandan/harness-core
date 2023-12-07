@@ -44,12 +44,12 @@ import io.harness.idp.license.usage.jobs.IDPTelemetryRecordsJob;
 import io.harness.idp.license.usage.jobs.LicenseUsageDailyCountJob;
 import io.harness.idp.license.usage.resources.IDPLicenseUsageResource;
 import io.harness.idp.migration.IdpMigrationProvider;
-import io.harness.idp.namespace.jobs.DefaultAccountIdToNamespaceMappingForPrEnv;
 import io.harness.idp.pipeline.filter.IdpFilterCreationResponseMerger;
 import io.harness.idp.pipeline.provider.IdpPipelineServiceInfoProvider;
 import io.harness.idp.pipeline.registrar.IdpStepRegistrar;
+import io.harness.idp.provision.jobs.DefaultProvisioningForDevSpaces;
 import io.harness.idp.scorecard.scores.iteratorhandler.ScoreComputationHandler;
-import io.harness.idp.scorecard.scores.jobs.CheckStatusDailyRunJob;
+import io.harness.idp.scorecard.scores.jobs.StatsComputeDailyRunJob;
 import io.harness.idp.user.jobs.UserSyncJob;
 import io.harness.licensing.usage.resources.LicenseUsageResource;
 import io.harness.maintenance.MaintenanceController;
@@ -274,11 +274,11 @@ public class IdpApplication extends Application<IdpConfiguration> {
     environment.lifecycle().manage(injector.getInstance(BackstageEnvVariablesSyncJob.class));
     environment.lifecycle().manage(injector.getInstance(UserSyncJob.class));
     environment.lifecycle().manage(injector.getInstance(ConfigPurgeJob.class));
-    environment.lifecycle().manage(injector.getInstance(DefaultAccountIdToNamespaceMappingForPrEnv.class));
+    environment.lifecycle().manage(injector.getInstance(DefaultProvisioningForDevSpaces.class));
     environment.lifecycle().manage(injector.getInstance(PipelineEventConsumerController.class));
     environment.lifecycle().manage(injector.getInstance(OutboxEventPollService.class));
     environment.lifecycle().manage(injector.getInstance(LicenseUsageDailyCountJob.class));
-    environment.lifecycle().manage(injector.getInstance(CheckStatusDailyRunJob.class));
+    environment.lifecycle().manage(injector.getInstance(StatsComputeDailyRunJob.class));
     injector.getInstance(Key.get(ScheduledExecutorService.class, Names.named("taskPollExecutor")))
         .scheduleWithFixedDelay(injector.getInstance(DelegateSyncServiceImpl.class), 0L, 2L, TimeUnit.SECONDS);
     injector.getInstance(Key.get(ScheduledExecutorService.class, Names.named("taskPollExecutor")))

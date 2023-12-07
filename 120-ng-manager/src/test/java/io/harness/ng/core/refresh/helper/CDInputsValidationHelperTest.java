@@ -172,7 +172,7 @@ public class CDInputsValidationHelperTest extends NgManagerTestBase {
     doReturn("infrastructureDefinitions:\n"
         + "  - identifier: \"infra2\"\n")
         .when(infrastructureEntityService)
-        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv",
+        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null,
             Collections.singletonList("infra2"), false, NoInputMergeInputAction.ADD_IDENTIFIER_NODE);
 
     InputsValidationResponse validationResponse =
@@ -313,7 +313,7 @@ public class CDInputsValidationHelperTest extends NgManagerTestBase {
     InputsValidationResponse validationResponse =
         CDInputsValidationHelper.validateInputsForYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, pipelineYmlWithService, null);
     assertThat(validationResponse).isNotNull();
-    assertThat(validationResponse.isValid()).isFalse();
+    assertThat(validationResponse.isValid()).isTrue();
     assertThat(validationResponse.getChildrenErrorNodes()).isNullOrEmpty();
   }
 
@@ -369,7 +369,7 @@ public class CDInputsValidationHelperTest extends NgManagerTestBase {
     doReturn("infrastructureDefinitions:\n"
         + "- identifier: \"IDENTIFIER\"")
         .when(infrastructureEntityService)
-        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv",
+        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null,
             Collections.singletonList("IDENTIFIER"), false, NoInputMergeInputAction.ADD_IDENTIFIER_NODE);
 
     InputsValidationResponse validationResponse =
@@ -389,7 +389,7 @@ public class CDInputsValidationHelperTest extends NgManagerTestBase {
     doReturn("infrastructureDefinitions:\n"
         + "- identifier: \"infra1\"")
         .when(infrastructureEntityService)
-        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv",
+        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null,
             Collections.singletonList("infra1"), false, NoInputMergeInputAction.ADD_IDENTIFIER_NODE);
 
     InputsValidationResponse validationResponse = CDInputsValidationHelper.validateInputsForYaml(

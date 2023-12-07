@@ -42,8 +42,11 @@ import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityKeys;
 import io.harness.ssca.entities.CdInstanceSummary;
 import io.harness.ssca.entities.EnforcementSummaryEntity;
 import io.harness.ssca.entities.EnforcementSummaryEntity.EnforcementSummaryEntityKeys;
+import io.harness.ssca.utils.PipelineUtils;
 import io.harness.ssca.utils.SBOMUtils;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import java.net.URI;
 import java.time.Instant;
@@ -52,6 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -83,6 +87,7 @@ public class ArtifactServiceImpl implements ArtifactService {
   @Inject EnforcementSummaryService enforcementSummaryService;
   @Inject NormalisedSbomComponentService normalisedSbomComponentService;
   @Inject CdInstanceSummaryService cdInstanceSummaryService;
+  @Inject PipelineUtils pipelineUtils;
 
   private final String GCP_REGISTRY_HOST = "grc.io";
 
@@ -139,6 +144,27 @@ public class ArtifactServiceImpl implements ArtifactService {
   }
 
   @Override
+  public String getArtifactName(String accountId, String orgIdentifier, String projectIdentifier, String artifactId) {
+    Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
+                            .is(accountId)
+                            .and(ArtifactEntityKeys.orgId)
+                            .is(orgIdentifier)
+                            .and(ArtifactEntityKeys.projectId)
+                            .is(projectIdentifier)
+                            .and(ArtifactEntityKeys.artifactId)
+                            .is(artifactId)
+                            .and(ArtifactEntityKeys.invalid)
+                            .is(false);
+    ArtifactEntity artifactEntity =
+        artifactRepository.findOne(criteria, Sort.by(Direction.DESC, ArtifactEntityKeys.createdOn.toLowerCase()),
+            List.of(ArtifactEntityKeys.name, ArtifactEntityKeys.isAttested.toLowerCase()));
+    if (artifactEntity == null) {
+      return null;
+    }
+    return artifactEntity.getName();
+  }
+
+  @Override
   public ArtifactEntity getArtifactByCorrelationId(
       String accountId, String orgIdentifier, String projectIdentifier, String artifactCorrelationId) {
     Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
@@ -180,6 +206,8 @@ public class ArtifactServiceImpl implements ArtifactService {
       throw new NotFoundException(
           String.format("Artifact with artifactId [%s] and tag [%s] is not found", artifactId, tag));
     }
+    JsonNode node = pipelineUtils.getPipelineExecutionSummaryResponse(
+        artifact.getPipelineExecutionId(), accountId, orgIdentifier, projectIdentifier);
     return new ArtifactDetailResponse()
         .id(artifact.getArtifactId())
         .name(artifact.getName())
@@ -190,6 +218,7 @@ public class ArtifactServiceImpl implements ArtifactService {
         .prodEnvCount(artifact.getProdEnvCount().intValue())
         .nonProdEnvCount(artifact.getNonProdEnvCount().intValue())
         .buildPipelineId(artifact.getPipelineId())
+        .buildPipelineName(pipelineUtils.parsePipelineName(node))
         .buildPipelineExecutionId(artifact.getPipelineExecutionId())
         .orchestrationId(artifact.getOrchestrationId());
   }
@@ -451,6 +480,18 @@ public class ArtifactServiceImpl implements ArtifactService {
     if (Objects.isNull(body) || Objects.isNull(body.getPolicyViolation())) {
       return criteria;
     }
+    Aggregation aggregation = getPolicyViolationEnforcementAggregation(body);
+
+    // { "aggregate" : "__collection__", "pipeline" : [{ "$sort" : { "createdAt" : -1}}, { "$group" : { "_id" :
+    // "$orchestrationId", "document" : { "$first" : "$$ROOT"}}}, { "$unwind" : "$document"}, { "$match" : {
+    // "document.denylistviolationcount" : { "$ne" : 0}}}]}
+    Set<String> orchestrationIds = enforcementSummaryRepo.findAllOrchestrationId(aggregation);
+    criteria.and(ArtifactEntityKeys.orchestrationId).in(orchestrationIds);
+    return criteria;
+  }
+
+  @VisibleForTesting
+  Aggregation getPolicyViolationEnforcementAggregation(ArtifactListingRequestBody body) {
     Criteria enforcementCriteria = new Criteria();
     switch (body.getPolicyViolation()) {
       case DENY:
@@ -465,6 +506,26 @@ public class ArtifactServiceImpl implements ArtifactService {
                                       + EnforcementSummaryEntityKeys.allowListViolationCount.toLowerCase())
                                   .ne(0);
         break;
+      case ANY:
+        Criteria allowCriteria = Criteria
+                                     .where(EnforcementSummaryDBOKeys.document + "."
+                                         + EnforcementSummaryEntityKeys.allowListViolationCount.toLowerCase())
+                                     .ne(0);
+        Criteria denyCriteria = Criteria
+                                    .where(EnforcementSummaryDBOKeys.document + "."
+                                        + EnforcementSummaryEntityKeys.denyListViolationCount.toLowerCase())
+                                    .ne(0);
+        enforcementCriteria = new Criteria().orOperator(allowCriteria, denyCriteria);
+        break;
+      case NONE:
+        enforcementCriteria = Criteria
+                                  .where(EnforcementSummaryDBOKeys.document + "."
+                                      + EnforcementSummaryEntityKeys.allowListViolationCount.toLowerCase())
+                                  .is(0)
+                                  .and(EnforcementSummaryDBOKeys.document + "."
+                                      + EnforcementSummaryEntityKeys.denyListViolationCount.toLowerCase())
+                                  .is(0);
+        break;
       default:
         log.error("Unknown Policy Violation Type");
     }
@@ -474,17 +535,9 @@ public class ArtifactServiceImpl implements ArtifactService {
     GroupOperation groupByOrchestrationId =
         group(EnforcementSummaryEntityKeys.orchestrationId).first("$$ROOT").as(EnforcementSummaryDBOKeys.document);
     UnwindOperation unwindOperation = unwind(EnforcementSummaryDBOKeys.document);
-    Aggregation aggregation = newAggregation(sortOperation, groupByOrchestrationId, unwindOperation, matchOperation);
-
-    // { "aggregate" : "__collection__", "pipeline" : [{ "$sort" : { "createdAt" : -1}}, { "$group" : { "_id" :
-    // "$orchestrationId", "document" : { "$first" : "$$ROOT"}}}, { "$unwind" : "$document"}, { "$match" : {
-    // "document.denylistviolationcount" : { "$ne" : 0}}}]}
-    List<EnforcementSummaryEntity> enforcementSummaryEntities = enforcementSummaryRepo.findAll(aggregation);
-    criteria.and(ArtifactEntityKeys.orchestrationId)
-        .in(enforcementSummaryEntities.stream()
-                .map(EnforcementSummaryEntity::getOrchestrationId)
-                .collect(Collectors.toSet()));
-    return criteria;
+    ProjectionOperation projectionOperation = Aggregation.project(
+        EnforcementSummaryDBOKeys.document + "." + EnforcementSummaryEntityKeys.orchestrationId.toLowerCase());
+    return newAggregation(sortOperation, groupByOrchestrationId, unwindOperation, matchOperation, projectionOperation);
   }
 
   private Criteria getDeploymentFilterCriteria(ArtifactListingRequestBody body) {

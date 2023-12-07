@@ -19,13 +19,16 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class TemplateDTO {
-  String accountId;
-  String orgIdentifier;
-  String projectIdentifier;
   @NotNull String templateRef;
   String versionLabel;
-  Integer templateVersionNumber;
   String templateInputs;
-  boolean isTemplateByReference;
-  long lastReconciliationTime;
+  Boolean isTemplateByReference;
+  Long lastReconciliationTime;
+
+  public boolean getIsTemplateByReference() {
+    if (isTemplateByReference == null) {
+      return false;
+    }
+    return isTemplateByReference;
+  }
 }

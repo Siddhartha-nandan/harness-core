@@ -31,6 +31,7 @@ import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.usage.pojos.ActiveServiceBase;
 import io.harness.cdng.usage.pojos.ActiveServiceFetchData;
 import io.harness.cdng.usage.pojos.LicenseDateUsageFetchData;
+import io.harness.entities.InstanceType;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.licensing.usage.params.filter.LicenseDateUsageReportType;
 import io.harness.rule.Owner;
@@ -202,6 +203,7 @@ public class CDLicenseUsageDALTest extends CategoryTest {
                                                                  .projectIdentifier(projectIdentifier)
                                                                  .identifier(serviceIdentifier)
                                                                  .instanceCount(2)
+                                                                 .instanceType(InstanceType.K8S_INSTANCE.toString())
                                                                  .lastDeployed(1L)
                                                                  .build());
     cdLicenseUsageDAL.fetchActiveServicesNameOrgAndProjectName(
@@ -214,27 +216,30 @@ public class CDLicenseUsageDALTest extends CategoryTest {
     assertThat(sqlQuery).isNotBlank();
     assertThat(sqlQuery).isEqualTo(""
         + "SELECT DISTINCT\n"
-        + "    t.orgIdentifier, t.projectIdentifier, t.serviceIdentifier AS identifier, t.lastDeployed, t.instanceCount,\n"
+        + "    t.orgIdentifier, t.projectIdentifier, t.serviceIdentifier AS identifier, t.lastDeployed, t.instanceCount, t.instanceType,\n"
         + "    COALESCE(organizations.name, 'Deleted') AS orgName,\n"
         + "    COALESCE(projects.name, 'Deleted') AS projectName,\n"
         + "    COALESCE(services.name, 'Deleted') AS name\n"
         + "FROM \n"
         + "    (\n"
-        + "        VALUES ('orgIdentifier','projectIdentifier','serviceIdentifier',1,2)\n"
+        + "        VALUES ('orgIdentifier','projectIdentifier','serviceIdentifier',1,2,'K8S_INSTANCE')\n"
         + "    )\n"
-        + "    AS t (orgIdentifier, projectIdentifier, serviceIdentifier, lastDeployed, instanceCount)\n"
+        + "    AS t (orgIdentifier, projectIdentifier, serviceIdentifier, lastDeployed, instanceCount, instanceType)\n"
         + "LEFT JOIN services ON\n"
         + "    services.account_id = ?\n"
         + "    AND t.orgidentifier = services.org_identifier\n"
         + "    AND t.projectidentifier = services.project_identifier\n"
-        + "    AND t.serviceIdentifier = services.identifier\n"
+        + "    AND t.serviceIdentifier = services.fully_qualified_identifier\n"
+        + "    AND services.deleted = false\n"
         + " LEFT JOIN projects ON\n"
         + "    projects.account_identifier = ?\n"
         + "    AND t.orgidentifier = projects.org_identifier\n"
         + "    AND t.projectidentifier = projects.identifier\n"
+        + "    AND projects.deleted = false\n"
         + " LEFT JOIN organizations ON\n"
         + "    organizations.account_identifier = ?\n"
         + "    AND t.orgidentifier = organizations.identifier\n"
+        + "    AND organizations.deleted = false\n"
         + "ORDER BY lastDeployed DESC NULLS LAST");
   }
 
@@ -257,6 +262,7 @@ public class CDLicenseUsageDALTest extends CategoryTest {
                                                                  .projectIdentifier(projectIdentifier)
                                                                  .identifier(serviceIdentifier)
                                                                  .instanceCount(2)
+                                                                 .instanceType(InstanceType.K8S_INSTANCE.toString())
                                                                  .lastDeployed(1L)
                                                                  .build());
     cdLicenseUsageDAL.fetchActiveServicesNameOrgAndProjectName(
@@ -268,7 +274,7 @@ public class CDLicenseUsageDALTest extends CategoryTest {
     String sqlQuery = queryArgumentCaptor.getValue();
     assertThat(sqlQuery).isNotBlank();
     assertThat(sqlQuery).isEqualTo("SELECT DISTINCT\n"
-        + "    t.orgIdentifier, t.projectIdentifier, t.serviceIdentifier AS identifier, t.lastDeployed, t.instanceCount,\n"
+        + "    t.orgIdentifier, t.projectIdentifier, t.serviceIdentifier AS identifier, t.lastDeployed, t.instanceCount, t.instanceType,\n"
         + "    CASE\n"
         + "        WHEN t.serviceIdentifier LIKE 'account.%' THEN NULL\n"
         + "        ELSE COALESCE(organizations.name, 'Deleted')\n"
@@ -279,21 +285,24 @@ public class CDLicenseUsageDALTest extends CategoryTest {
         + "    COALESCE(services.name, 'Deleted') AS name\n"
         + "FROM \n"
         + "    (\n"
-        + "        VALUES ('orgIdentifier','projectIdentifier','serviceIdentifier',1,2)\n"
+        + "        VALUES ('orgIdentifier','projectIdentifier','serviceIdentifier',1,2,'K8S_INSTANCE')\n"
         + "    )\n"
-        + "    AS t (orgIdentifier, projectIdentifier, serviceIdentifier, lastDeployed, instanceCount)\n"
+        + "    AS t (orgIdentifier, projectIdentifier, serviceIdentifier, lastDeployed, instanceCount, instanceType)\n"
         + "LEFT JOIN services ON\n"
         + "    services.account_id = ?\n"
-        + "    AND t.orgidentifier = services.org_identifier\n"
-        + "    AND t.projectidentifier = services.project_identifier\n"
-        + "    AND t.serviceIdentifier = services.identifier\n"
+        + "    AND (t.orgidentifier = services.org_identifier OR (t.orgidentifier IS NULL AND services.org_identifier IS NULL))\n"
+        + "    AND (t.projectidentifier = services.project_identifier OR (t.projectidentifier IS NULL AND services.project_identifier IS NULL))\n"
+        + "    AND t.serviceIdentifier = services.fully_qualified_identifier\n"
+        + "    AND services.deleted = false\n"
         + " LEFT JOIN projects ON\n"
         + "    projects.account_identifier = ?\n"
         + "    AND t.orgidentifier = projects.org_identifier\n"
         + "    AND t.projectidentifier = projects.identifier\n"
+        + "    AND projects.deleted = false\n"
         + " LEFT JOIN organizations ON\n"
         + "    organizations.account_identifier = ?\n"
         + "    AND t.orgidentifier = organizations.identifier\n"
+        + "    AND organizations.deleted = false\n"
         + "ORDER BY lastDeployed DESC NULLS LAST");
   }
 
@@ -327,12 +336,12 @@ public class CDLicenseUsageDALTest extends CategoryTest {
 
     String sqlQuery = queryArgumentCaptor.getValue();
     assertThat(sqlQuery).isNotBlank();
-    assertThat(sqlQuery).isEqualTo(""
-        + "SELECT activeServices.orgIdentifier,\n"
+    assertThat(sqlQuery).isEqualTo("SELECT activeServices.orgIdentifier,\n"
         + "       activeServices.projectIdentifier,\n"
         + "       activeServices.serviceIdentifier AS identifier,\n"
         + "       activeServices.lastDeployedServiceTime AS lastDeployed,\n"
         + "       activeServices.totalCount,\n"
+        + "       percentileInstancesPerServices.instancetype AS instanceType,\n"
         + "       COALESCE(percentileInstancesPerServices.instanceCount, 0) AS instanceCount\n"
         + "FROM\n"
         + "-- List services deployed in last 30 days from service_infra_info table. 'Group by' is needed for lastDeployedServiceTime calculation\n"
@@ -350,6 +359,7 @@ public class CDLicenseUsageDALTest extends CategoryTest {
         + "-- List services percentile instances count from ng_instance_stats table\n"
         + "    (\n"
         + "        SELECT PERCENTILE_DISC(?) WITHIN GROUP (ORDER BY instancesPerService.instanceCount) AS instanceCount,\n"
+        + "            instancetype,\n"
         + "               orgid,\n"
         + "               projectid,\n"
         + "               serviceid\n"
@@ -359,15 +369,17 @@ public class CDLicenseUsageDALTest extends CategoryTest {
         + "                       orgid,\n"
         + "                       projectid,\n"
         + "                       serviceid,\n"
+        + "                       instancetype,\n"
         + "                       SUM(instancecount) AS instanceCount\n"
         + "                FROM ng_instance_stats\n"
         + "                WHERE accountid = ? AND reportedat > NOW() - INTERVAL '30 day' AND orgid = ? AND projectid = ? AND serviceid = ?\n"
         + "                GROUP BY orgid,\n"
         + "                         projectid,\n"
         + "                         serviceid,\n"
+        + "                         instancetype,\n"
         + "                         DATE_TRUNC('minute', reportedat)\n"
         + "            ) instancesPerService\n"
-        + "        GROUP BY orgid,projectid,serviceid\n"
+        + "        GROUP BY orgid,projectid,serviceid,instancetype\n"
         + "    ) percentileInstancesPerServices\n"
         + "ON activeServices.orgIdentifier = percentileInstancesPerServices.orgid\n"
         + "    AND activeServices.projectIdentifier = percentileInstancesPerServices.projectid\n"
@@ -412,6 +424,7 @@ public class CDLicenseUsageDALTest extends CategoryTest {
         + "       activeServices.serviceIdentifier AS identifier,\n"
         + "       activeServices.lastDeployedServiceTime AS lastDeployed,\n"
         + "       activeServices.totalCount,\n"
+        + "       percentileInstancesPerServices.instancetype AS instanceType,\n"
         + "       COALESCE(percentileInstancesPerServices.instanceCount, 0) AS instanceCount\n"
         + "FROM\n"
         + "-- List services deployed in last 30 days from service_infra_info table. 'Group by' is needed for lastDeployedServiceTime calculation\n"
@@ -443,6 +456,7 @@ public class CDLicenseUsageDALTest extends CategoryTest {
         + "-- List services percentile instances count from ng_instance_stats table\n"
         + "    (\n"
         + "        SELECT PERCENTILE_DISC(?) WITHIN GROUP (ORDER BY instancesPerService.instanceCount) AS instanceCount,\n"
+        + "            instancetype,\n"
         + "            orgid,\n"
         + "            projectid,\n"
         + "            serviceid\n"
@@ -458,6 +472,7 @@ public class CDLicenseUsageDALTest extends CategoryTest {
         + "                        ELSE projectid\n"
         + "                    END AS projectid,\n"
         + "                    serviceid,\n"
+        + "                    instancetype,\n"
         + "                    SUM(instancecount) AS instanceCount\n"
         + "                FROM ng_instance_stats\n"
         + "                WHERE accountid = ? AND reportedat > NOW() - INTERVAL '30 day' AND orgid = ? AND projectid = ? AND serviceid = ?\n"
@@ -471,12 +486,15 @@ public class CDLicenseUsageDALTest extends CategoryTest {
         + "                        ELSE projectid\n"
         + "                    END,\n"
         + "                         serviceid,\n"
+        + "                         instancetype,\n"
         + "                         DATE_TRUNC('minute', reportedat)\n"
         + "            ) instancesPerService\n"
-        + "        GROUP BY orgid,projectid,serviceid\n"
+        + "        GROUP BY orgid,projectid,serviceid,instancetype\n"
         + "    ) percentileInstancesPerServices\n"
-        + "ON activeServices.orgIdentifier = percentileInstancesPerServices.orgid\n"
-        + "    AND activeServices.projectIdentifier = percentileInstancesPerServices.projectid\n"
+        + "ON (activeServices.orgIdentifier = percentileInstancesPerServices.orgid\n"
+        + "        OR (activeServices.orgIdentifier IS NULL AND percentileInstancesPerServices.orgid IS NULL))\n"
+        + "    AND (activeServices.projectIdentifier = percentileInstancesPerServices.projectid\n"
+        + "        OR (activeServices.projectIdentifier IS NULL AND percentileInstancesPerServices.projectid IS NULL))\n"
         + "    AND activeServices.serviceIdentifier = percentileInstancesPerServices.serviceid\n"
         + "ORDER BY lastDeployed DESC NULLS LAST\n"
         + "LIMIT ?\n"
@@ -513,12 +531,12 @@ public class CDLicenseUsageDALTest extends CategoryTest {
 
     String sqlQuery = queryArgumentCaptor.getValue();
     assertThat(sqlQuery).isNotBlank();
-    assertThat(sqlQuery).isEqualTo(""
-        + "SELECT activeServices.orgIdentifier,\n"
+    assertThat(sqlQuery).isEqualTo("SELECT activeServices.orgIdentifier,\n"
         + "       activeServices.projectIdentifier,\n"
         + "       activeServices.serviceIdentifier AS identifier,\n"
         + "       activeServices.lastDeployedServiceTime AS lastDeployed,\n"
         + "       activeServices.totalCount,\n"
+        + "       percentileInstancesPerServices.instancetype AS instanceType,\n"
         + "       COALESCE(percentileInstancesPerServices.instanceCount, 0) AS instanceCount\n"
         + "FROM\n"
         + "-- List services deployed in last 30 days from service_infra_info table. 'Group by' is needed for lastDeployedServiceTime calculation\n"
@@ -536,6 +554,7 @@ public class CDLicenseUsageDALTest extends CategoryTest {
         + "-- List services percentile instances count from ng_instance_stats table\n"
         + "    (\n"
         + "        SELECT PERCENTILE_DISC(?) WITHIN GROUP (ORDER BY instancesPerService.instanceCount) AS instanceCount,\n"
+        + "            instancetype,\n"
         + "               orgid,\n"
         + "               projectid,\n"
         + "               serviceid\n"
@@ -545,15 +564,17 @@ public class CDLicenseUsageDALTest extends CategoryTest {
         + "                       orgid,\n"
         + "                       projectid,\n"
         + "                       serviceid,\n"
+        + "                       instancetype,\n"
         + "                       SUM(instancecount) AS instanceCount\n"
         + "                FROM ng_instance_stats\n"
         + "                WHERE accountid = ? AND reportedat > NOW() - INTERVAL '30 day' AND serviceid = ?\n"
         + "                GROUP BY orgid,\n"
         + "                         projectid,\n"
         + "                         serviceid,\n"
+        + "                         instancetype,\n"
         + "                         DATE_TRUNC('minute', reportedat)\n"
         + "            ) instancesPerService\n"
-        + "        GROUP BY orgid,projectid,serviceid\n"
+        + "        GROUP BY orgid,projectid,serviceid,instancetype\n"
         + "    ) percentileInstancesPerServices\n"
         + "ON activeServices.orgIdentifier = percentileInstancesPerServices.orgid\n"
         + "    AND activeServices.projectIdentifier = percentileInstancesPerServices.projectid\n"

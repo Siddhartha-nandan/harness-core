@@ -472,6 +472,8 @@ public abstract class AbstractStepExecutable extends CommonAbstractStepExecutabl
       case IACM_APPROVAL:
       case PROVENANCE:
       case IDP_COOKIECUTTER:
+      case IDP_CREATE_REPO:
+      case IDP_CODE_PUSH:
       case SLSA_VERIFICATION:
         return pluginCompatibleStepSerializer.serializeStepWithStepParameters((PluginCompatibleStep) ciStepInfo, port,
             taskId, logKey, stepIdentifier, ParameterField.createValueField(Timeout.fromString(timeout)), accountId,

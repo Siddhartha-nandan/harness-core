@@ -54,6 +54,7 @@ import io.harness.cdng.manifest.yaml.KustomizePatchesManifestOutcome;
 import io.harness.cdng.manifest.yaml.ManifestConfig;
 import io.harness.cdng.manifest.yaml.ManifestConfigWrapper;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
+import io.harness.cdng.manifest.yaml.ManifestSourceWrapper;
 import io.harness.cdng.manifest.yaml.OpenshiftManifestOutcome;
 import io.harness.cdng.manifest.yaml.OpenshiftManifestOutcome.OpenshiftManifestOutcomeKeys;
 import io.harness.cdng.manifest.yaml.OpenshiftParamManifestOutcome;
@@ -180,6 +181,9 @@ public class K8sStepHelper extends K8sHelmCommonStepHelper {
   }
 
   private TaskType getK8sTaskType(K8sDeployRequest k8sDeployRequest, Ambiance ambiance) {
+    if (k8sDeployRequest.hasTrafficRoutingConfig()) {
+      return TaskType.K8S_COMMAND_TASK_NG_TRAFFIC_ROUTING;
+    }
     ManifestDelegateConfig manifestDelegateConfig = k8sDeployRequest.getManifestDelegateConfig();
     if (manifestDelegateConfig != null && manifestDelegateConfig.getStoreDelegateConfig() != null
         && OCI_HELM.equals(manifestDelegateConfig.getStoreDelegateConfig().getType())
@@ -192,8 +196,7 @@ public class K8sStepHelper extends K8sHelmCommonStepHelper {
       return TaskType.K8S_COMMAND_TASK_NG_RANCHER;
     }
 
-    if (cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_K8S_SERVICE_HOOKS_NG)
-        && isNotEmpty(k8sDeployRequest.getServiceHooks())) {
+    if (isNotEmpty(k8sDeployRequest.getServiceHooks())) {
       return TaskType.K8S_COMMAND_TASK_NG_V2;
     }
 
@@ -460,6 +463,10 @@ public class K8sStepHelper extends K8sHelmCommonStepHelper {
     List<ManifestConfig> configs =
         manifestConfigWrappers.stream().map(ManifestConfigWrapper::getManifest).collect(Collectors.toList());
     cdExpressionResolver.updateExpressions(ambiance, configs);
+  }
+
+  public void resolveManifestsSourceExpressions(Ambiance ambiance, ManifestSourceWrapper manifestSource) {
+    cdExpressionResolver.updateExpressions(ambiance, manifestSource);
   }
 
   public TaskChainResponse startChainLink(

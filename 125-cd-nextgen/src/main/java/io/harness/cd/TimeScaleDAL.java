@@ -64,8 +64,8 @@ import org.jooq.SelectOrderByStep;
 import org.jooq.Table;
 import org.jooq.impl.DSL;
 
-@CodePulse(
-    module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PLG_LICENSING})
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
+    components = {HarnessModuleComponent.CDS_PLG_LICENSING, HarnessModuleComponent.CDS_DASHBOARD})
 @Slf4j
 @OwnedBy(PIPELINE)
 public class TimeScaleDAL {
@@ -213,7 +213,8 @@ public class TimeScaleDAL {
                   .where(
                       SERVICES.ORG_IDENTIFIER.eq((Field<String>) orgProjectServiceTable.field(ORG_ID))
                           .and(SERVICES.PROJECT_IDENTIFIER.eq((Field<String>) orgProjectServiceTable.field(PROJECT_ID)))
-                          .and(SERVICES.IDENTIFIER.eq((Field<String>) orgProjectServiceTable.field(SERVICE_ID)))))
+                          .and(SERVICES.IDENTIFIER.eq((Field<String>) orgProjectServiceTable.field(SERVICE_ID)))
+                          .and(SERVICES.DELETED.eq(false))))
           .fetchInto(Services.class);
     } catch (Exception e) {
       log.error("Exception while fetching services for account {}", accountIdentifier, e);

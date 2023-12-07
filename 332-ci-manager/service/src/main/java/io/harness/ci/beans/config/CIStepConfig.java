@@ -38,6 +38,8 @@ public class CIStepConfig {
   StepImageConfig slsaVerificationGcrConfig;
   StepImageConfig iacmTerraform;
   StepImageConfig idpCookieCutter;
+  StepImageConfig idpCreateRepo;
+  StepImageConfig idpCodePush;
   VmImageConfig vmImageConfig;
   VmContainerlessStepConfig vmContainerlessStepConfig;
 }

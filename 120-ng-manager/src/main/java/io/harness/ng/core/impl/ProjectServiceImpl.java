@@ -203,6 +203,7 @@ public class ProjectServiceImpl implements ProjectService {
     organizationOptional.ifPresent(organization -> {
       if (isNotEmpty(organization.getUniqueId())) {
         project.setParentId(organization.getUniqueId());
+        project.setParentUniqueId(organization.getUniqueId());
       }
     });
     try {
@@ -465,6 +466,7 @@ public class ProjectServiceImpl implements ProjectService {
                                                                   : existingProject.getCreatedAt());
       project.setUniqueId(existingProject.getUniqueId());
       project.setParentId(existingProject.getParentId());
+      project.setParentUniqueId(existingProject.getParentUniqueId());
       if (project.getVersion() == null) {
         project.setVersion(existingProject.getVersion());
       }
@@ -582,16 +584,38 @@ public class ProjectServiceImpl implements ProjectService {
 
   public ActiveProjectsCountDTO permittedProjectsCount(
       String accountIdentifier, ProjectFilterDTO projectFilterDTO, long startInterval, long endInterval) {
-    Criteria criteria = createProjectFilterCriteria(Criteria.where(ProjectKeys.accountIdentifier)
-                                                        .is(accountIdentifier)
-                                                        .and(ProjectKeys.deleted)
-                                                        .is(FALSE)
-                                                        .and(ProjectKeys.createdAt)
-                                                        .gt(startInterval)
-                                                        .lt(endInterval),
+    Criteria criteria = createProjectFilterCriteria(
+        Criteria.where(ProjectKeys.accountIdentifier).is(accountIdentifier).and(ProjectKeys.deleted).is(FALSE),
         projectFilterDTO);
     List<Scope> projects = projectRepository.findAllProjects(criteria);
-    return ActiveProjectsCountDTO.builder().count(scopeAccessHelper.getPermittedScopes(projects).size()).build();
+    List<Scope> permittedProjects = scopeAccessHelper.getPermittedScopes(projects);
+
+    if (permittedProjects.isEmpty()) {
+      return ActiveProjectsCountDTO.builder().count(0).build();
+    }
+
+    criteria = Criteria.where(ProjectKeys.accountIdentifier).is(accountIdentifier);
+    Criteria[] subCriteria = permittedProjects.stream()
+                                 .map(project
+                                     -> Criteria.where(ProjectKeys.orgIdentifier)
+                                            .is(project.getOrgIdentifier())
+                                            .and(ProjectKeys.identifier)
+                                            .is(project.getProjectIdentifier()))
+                                 .toArray(Criteria[] ::new);
+    Criteria accessibleProjectCriteria = criteria.orOperator(subCriteria);
+    Criteria deletedFalseCriteria = Criteria.where(ProjectKeys.createdAt)
+                                        .gt(startInterval)
+                                        .lt(endInterval)
+                                        .andOperator(Criteria.where(ProjectKeys.deleted).is(false));
+    Criteria deletedTrueCriteria =
+        Criteria.where(ProjectKeys.createdAt)
+            .lt(startInterval)
+            .andOperator(new Criteria().andOperator(Criteria.where(ProjectKeys.deleted).is(true)),
+                Criteria.where(ProjectKeys.lastModifiedAt).gt(startInterval).lt(endInterval));
+    return ActiveProjectsCountDTO.builder()
+        .count(projectRepository.count(new Criteria().andOperator(accessibleProjectCriteria, deletedFalseCriteria))
+            - projectRepository.count(new Criteria().andOperator(accessibleProjectCriteria, deletedTrueCriteria)))
+        .build();
   }
 
   @Override

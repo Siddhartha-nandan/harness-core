@@ -53,14 +53,28 @@ public class TemplateFacade {
     return yamlObject.dump(data);
   }
 
-  public String getTemplateInputs(ProjectParams projectParams, String templateRef, String versionLabel) {
+  public Long getTemplateVersionNumber(ProjectParams templateProjectParams, String templateRef, String versionLabel) {
+    templateRef = extractTemplateRef(templateRef);
+    return NGRestUtils
+        .getResponse(templateResourceClient.get(templateRef, templateProjectParams.getAccountIdentifier(),
+            templateProjectParams.getOrgIdentifier(), templateProjectParams.getProjectIdentifier(), versionLabel,
+            false))
+        .getVersion();
+  }
+
+  public String getTemplateInputs(ProjectParams templateProjectParams, String templateRef, String versionLabel) {
+    templateRef = extractTemplateRef(templateRef);
+    return NGRestUtils.getResponse(templateResourceClient.getTemplateInputsYaml(templateRef,
+        templateProjectParams.getAccountIdentifier(), templateProjectParams.getOrgIdentifier(),
+        templateProjectParams.getProjectIdentifier(), versionLabel, false));
+  }
+
+  private String extractTemplateRef(String templateRef) {
     if (templateRef.contains(ACCOUNT_IDENTIFIER_PREFIX)) {
       templateRef = templateRef.replace(ACCOUNT_IDENTIFIER_PREFIX, "");
     } else if (templateRef.contains(ORG_IDENTIFIER_PREFIX)) {
       templateRef = templateRef.replace(ORG_IDENTIFIER_PREFIX, "");
     }
-    return NGRestUtils.getResponse(
-        templateResourceClient.getTemplateInputsYaml(templateRef, projectParams.getAccountIdentifier(),
-            projectParams.getOrgIdentifier(), projectParams.getProjectIdentifier(), versionLabel, false));
+    return templateRef;
   }
 }
