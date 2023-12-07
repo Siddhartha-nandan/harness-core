@@ -35,7 +35,9 @@ public class JiraUserData {
     }
     this.displayName = JsonNodeUtils.mustGetString(node, "displayName");
     this.active = JsonNodeUtils.mustGetBoolean(node, "active");
-    this.emailAddress = JsonNodeUtils.getString(node, "emailAddress");
+    this.emailAddress = JsonNodeUtils.getString(
+        node, "emailAddress"); // EmailAddress field might not be present in api when user set privacy settings
+                               // https://support.atlassian.com/confluence-cloud/docs/configure-user-email-visibility/
   }
 
   public JiraUserData(String accountId, String displayName, boolean active, String emailAddress) {
