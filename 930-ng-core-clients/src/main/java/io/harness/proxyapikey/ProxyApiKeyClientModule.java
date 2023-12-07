@@ -23,29 +23,29 @@ import com.google.inject.Singleton;
 
 @OwnedBy(CF)
 public class ProxyApiKeyClientModule extends AbstractModule {
-    private final ServiceHttpClientConfig httpClientConfig;
-    private final String serviceSecret;
-    private final String clientId;
-    private final ClientMode clientMode;
+  private final ServiceHttpClientConfig httpClientConfig;
+  private final String serviceSecret;
+  private final String clientId;
+  private final ClientMode clientMode;
 
-    @Inject
-    public ProxyApiKeyClientModule(
-            ServiceHttpClientConfig httpClientConfig, String serviceSecret, String clientId, ClientMode clientMode) {
-        this.httpClientConfig = httpClientConfig;
-        this.serviceSecret = serviceSecret;
-        this.clientId = clientId;
-        this.clientMode = clientMode;
-    }
+  @Inject
+  public ProxyApiKeyClientModule(
+      ServiceHttpClientConfig httpClientConfig, String serviceSecret, String clientId, ClientMode clientMode) {
+    this.httpClientConfig = httpClientConfig;
+    this.serviceSecret = serviceSecret;
+    this.clientId = clientId;
+    this.clientMode = clientMode;
+  }
 
-    @Provides
-    @Singleton
-    private ProxyApiKeyHttpClientFactory secretManagerHttpClientFactory(KryoConverterFactory kryoConverterFactory) {
-        return new ProxyApiKeyHttpClientFactory(this.httpClientConfig, this.serviceSecret, new ServiceTokenGenerator(),
-                kryoConverterFactory, clientId, clientMode);
-    }
+  @Provides
+  @Singleton
+  private ProxyApiKeyHttpClientFactory secretManagerHttpClientFactory(KryoConverterFactory kryoConverterFactory) {
+    return new ProxyApiKeyHttpClientFactory(this.httpClientConfig, this.serviceSecret, new ServiceTokenGenerator(),
+        kryoConverterFactory, clientId, clientMode);
+  }
 
-    @Override
-    protected void configure() {
-        this.bind(ProxyApiKeyClient.class).toProvider(ProxyApiKeyHttpClientFactory.class).in(Scopes.SINGLETON);
-    }
+  @Override
+  protected void configure() {
+    this.bind(ProxyApiKeyClient.class).toProvider(ProxyApiKeyHttpClientFactory.class).in(Scopes.SINGLETON);
+  }
 }

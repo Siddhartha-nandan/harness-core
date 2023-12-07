@@ -14,10 +14,10 @@ import lombok.Data;
 @Data
 @Builder
 public class ProxyApiKeyResponseDTO {
-    String uuid;
-    String accountId;
-    String name;
-    boolean pinned;
-    List<String> tags;
-    String description;
+  String uuid;
+  String accountId;
+  String name;
+  boolean pinned;
+  List<String> tags;
+  String description;
 }

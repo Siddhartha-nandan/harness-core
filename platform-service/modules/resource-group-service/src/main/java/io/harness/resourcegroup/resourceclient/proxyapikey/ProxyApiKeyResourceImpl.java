@@ -51,62 +51,62 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @OwnedBy(CF)
 public class ProxyApiKeyResourceImpl implements Resource {
-    ProxyApiKeyClient proxyApiKeyClient;
+  ProxyApiKeyClient proxyApiKeyClient;
 
-    @Override
-    public String getType() {
-        return "FF_PROXYAPIKEY";
+  @Override
+  public String getType() {
+    return "FF_PROXYAPIKEY";
+  }
+
+  @Override
+  public Set<ScopeLevel> getValidScopeLevels() {
+    return EnumSet.of(ScopeLevel.ACCOUNT);
+  }
+
+  @Override
+  public Optional<String> getEventFrameworkEntityType() {
+    return Optional.of(EventsFrameworkMetadataConstants.PROXYAPIKEY);
+  }
+
+  @Override
+  public ResourceInfo getResourceInfoFromEvent(Message message) {
+    EntityChangeDTO entityChangeDTO = null;
+    try {
+      entityChangeDTO = EntityChangeDTO.parseFrom(message.getMessage().getData());
+    } catch (InvalidProtocolBufferException e) {
+      log.error("Exception in unpacking EntityChangeDTO for key {}", message.getId(), e);
+    }
+    if (Objects.isNull(entityChangeDTO)) {
+      return null;
+    }
+    return ResourceInfo.builder()
+        .accountIdentifier(stripToNull(entityChangeDTO.getAccountIdentifier().getValue()))
+        .resourceType(getType())
+        .resourceIdentifier(entityChangeDTO.getIdentifier().getValue())
+        .build();
+  }
+
+  @Override
+  public List<Boolean> validate(List<String> resourceIds, Scope scope) {
+    if (isEmpty(resourceIds)) {
+      return Collections.emptyList();
     }
 
-    @Override
-    public Set<ScopeLevel> getValidScopeLevels() {
-        return EnumSet.of(ScopeLevel.ACCOUNT);
-    }
+    List<ProxyApiKeyResponseDTO> proxyApiKeys =
+        NGRestUtils.getResponse(proxyApiKeyClient.getApiKeys(scope.getAccountIdentifier()));
+    Set<Object> validResourceIds = proxyApiKeys.stream().map(e -> e.getUuid()).collect(Collectors.toSet());
 
-    @Override
-    public Optional<String> getEventFrameworkEntityType() {
-        return Optional.of(EventsFrameworkMetadataConstants.PROXYAPIKEY);
-    }
+    return resourceIds.stream().map(validResourceIds::contains).collect(toList());
+  }
 
-    @Override
-    public ResourceInfo getResourceInfoFromEvent(Message message) {
-        EntityChangeDTO entityChangeDTO = null;
-        try {
-            entityChangeDTO = EntityChangeDTO.parseFrom(message.getMessage().getData());
-        } catch (InvalidProtocolBufferException e) {
-            log.error("Exception in unpacking EntityChangeDTO for key {}", message.getId(), e);
-        }
-        if (Objects.isNull(entityChangeDTO)) {
-            return null;
-        }
-        return ResourceInfo.builder()
-                .accountIdentifier(stripToNull(entityChangeDTO.getAccountIdentifier().getValue()))
-                .resourceType(getType())
-                .resourceIdentifier(entityChangeDTO.getIdentifier().getValue())
-                .build();
-    }
+  @Override
+  public Map<ScopeLevel, EnumSet<ValidatorType>> getSelectorKind() {
+    return ImmutableMap.of(ScopeLevel.ACCOUNT,
+        EnumSet.of(BY_RESOURCE_IDENTIFIER, BY_RESOURCE_TYPE, BY_RESOURCE_TYPE_INCLUDING_CHILD_SCOPES));
+  }
 
-    @Override
-    public List<Boolean> validate(List<String> resourceIds, Scope scope) {
-        if (isEmpty(resourceIds)) {
-            return Collections.emptyList();
-        }
-
-        List<ProxyApiKeyResponseDTO> proxyApiKeys =
-                NGRestUtils.getResponse(proxyApiKeyClient.getApiKeys(scope.getAccountIdentifier()));
-        Set<Object> validResourceIds = proxyApiKeys.stream().map(e -> e.getUuid()).collect(Collectors.toSet());
-
-        return resourceIds.stream().map(validResourceIds::contains).collect(toList());
-    }
-
-    @Override
-    public Map<ScopeLevel, EnumSet<ValidatorType>> getSelectorKind() {
-        return ImmutableMap.of(ScopeLevel.ACCOUNT,
-                EnumSet.of(BY_RESOURCE_IDENTIFIER, BY_RESOURCE_TYPE, BY_RESOURCE_TYPE_INCLUDING_CHILD_SCOPES));
-    }
-
-    @Override
-    public boolean isValidAttributeFilter(AttributeFilter attributeFilter) {
-        return false;
-    }
+  @Override
+  public boolean isValidAttributeFilter(AttributeFilter attributeFilter) {
+    return false;
+  }
 }

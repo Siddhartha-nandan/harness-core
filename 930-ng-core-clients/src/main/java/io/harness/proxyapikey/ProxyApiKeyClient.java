@@ -21,7 +21,7 @@ import retrofit2.http.Query;
 
 @OwnedBy(CF)
 public interface ProxyApiKeyClient {
-    @GET("proxyApiKeys")
-    Call<ResponseDTO<List<ProxyApiKeyResponseDTO>>> getApiKeys(
-            @NotEmpty @Query(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier);
+  @GET("proxyApiKeys")
+  Call<ResponseDTO<List<ProxyApiKeyResponseDTO>>> getApiKeys(
+      @NotEmpty @Query(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier);
 }

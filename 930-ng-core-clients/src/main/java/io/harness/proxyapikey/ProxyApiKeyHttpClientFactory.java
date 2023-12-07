@@ -27,14 +27,14 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @OwnedBy(CF)
 public class ProxyApiKeyHttpClientFactory extends AbstractHttpClientFactory implements Provider<ProxyApiKeyClient> {
-    public ProxyApiKeyHttpClientFactory(ServiceHttpClientConfig httpClientConfig, String serviceSecret,
-                                        ServiceTokenGenerator tokenGenerator, KryoConverterFactory kryoConverterFactory, String clientId,
-                                        ClientMode clientMode) {
-        super(httpClientConfig, serviceSecret, tokenGenerator, kryoConverterFactory, clientId, false, clientMode);
-    }
+  public ProxyApiKeyHttpClientFactory(ServiceHttpClientConfig httpClientConfig, String serviceSecret,
+      ServiceTokenGenerator tokenGenerator, KryoConverterFactory kryoConverterFactory, String clientId,
+      ClientMode clientMode) {
+    super(httpClientConfig, serviceSecret, tokenGenerator, kryoConverterFactory, clientId, false, clientMode);
+  }
 
-    @Override
-    public ProxyApiKeyClient get() {
-        return getRetrofit().create(ProxyApiKeyClient.class);
-    }
+  @Override
+  public ProxyApiKeyClient get() {
+    return getRetrofit().create(ProxyApiKeyClient.class);
+  }
 }
