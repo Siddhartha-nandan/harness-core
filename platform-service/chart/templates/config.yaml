@@ -8,14 +8,14 @@ data:
   AUDIT_ENABLED: 'true'
   ENABLE_RESOURCE_GROUP: 'true'
   STACK_DRIVER_LOGGING_ENABLED: {{ .Values.global.stackDriverLoggingEnabled | quote }}
-  EVENTS_FRAMEWORK_USE_SENTINEL: {{ .Values.global.database.redis.installed | quote }}
+  EVENTS_FRAMEWORK_USE_SENTINEL: {{ include "harnesscommon.dbv3.useRedisSentinels"  (dict "ctx" $ "database" "eventsFramework") }}
   EVENTS_FRAMEWORK_SENTINEL_MASTER_NAME: 'harness-redis'
-  EVENTS_FRAMEWORK_REDIS_SENTINELS: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
-  EVENTS_FRAMEWORK_REDIS_URL: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
-  LOCK_CONFIG_USE_SENTINEL: {{ .Values.global.database.redis.installed | quote }}
+  EVENTS_FRAMEWORK_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "eventsFramework") }}'
+  EVENTS_FRAMEWORK_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "eventsFramework") }}'
+  LOCK_CONFIG_USE_SENTINEL: {{ include "harnesscommon.dbv3.useRedisSentinels"  (dict "ctx" $ "database" "lockConfig") }}
   LOCK_CONFIG_SENTINEL_MASTER_NAME: 'harness-redis'
-  LOCK_CONFIG_REDIS_SENTINELS: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
-  LOCK_CONFIG_REDIS_URL: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
+  LOCK_CONFIG_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lockConfig") }}'
+  LOCK_CONFIG_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lockConfig") }}'
   ACCESS_CONTROL_ENABLED: 'true'
   LOGGING_LEVEL: {{ .Values.appLogLevel }}
   DISTRIBUTED_LOCK_IMPLEMENTATION: REDIS
