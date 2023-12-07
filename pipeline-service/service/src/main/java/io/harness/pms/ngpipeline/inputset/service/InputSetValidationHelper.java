@@ -87,13 +87,17 @@ public class InputSetValidationHelper {
     String inputSetIdentifier = inputSetEntity.getIdentifier();
     if (validateInputSetIdentifier) {
       if (EmptyPredicate.isEmpty(inputSetIdentifier)) {
-        throw new InvalidRequestException("InputSet Identifier cannot contain be empty.");
+        throw new InvalidRequestException("InputSet Identifier cannot be empty.");
       } else if (!inputSetIdentifier.matches(NGRegexValidatorConstants.IDENTIFIER_PATTERN)) {
         throw new InvalidRequestException(
             format("InputSet Identifier cannot contain special characters or spaces: [%s]", inputSetIdentifier));
       }
     } else {
-      log.warn(format("InputSet Identifier cannot contain special characters or spaces: [%s]", inputSetIdentifier));
+      if (EmptyPredicate.isEmpty(inputSetIdentifier)) {
+        log.warn("InputSet Identifier cannot be empty.");
+      } else if (!inputSetIdentifier.matches(NGRegexValidatorConstants.IDENTIFIER_PATTERN)) {
+        log.warn(format("InputSet Identifier cannot contain special characters or spaces: [%s]", inputSetIdentifier));
+      }
     }
   }
 
