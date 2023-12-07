@@ -235,31 +235,6 @@ global:
     stsEndPointUrl: https://sts.us-east-2.amazonaws.com
     ecsEndPointUrl: https://ecs.us-east-2.amazonaws.com
     cloudwatchEndPointUrl: https://monitoring.us-east-2.amazonaws.com
-redis:
-  protocol: ""
-  hosts: []
-  secretName: ""
-  userKey: ""
-  passwordKey: ""
-  extraArgs: ""
-  secrets:
-    kubernetesSecrets:
-      - secretName: ""
-        keys:
-          REDIS_USERNAME: ""
-          REDIS_PASSWORD: ""
-    secretManagement:
-      externalSecretsOperator:
-        - secretStore:
-            name: ""
-            kind: ""
-          remoteKeys:
-            REDIS_USERNAME:
-              name: ""
-              property: ""
-            REDIS_PASSWORD:
-              name: ""
-              property: ""
 
 timescaledb:
   # -- TimescaleDB host names
@@ -361,6 +336,54 @@ database:
                 MONGO_PASSWORD:
                   name: ""
                   property: ""
+  redis:
+    eventsFramework:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    lockConfig:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+
 
 replicaCount: 1
 maxSurge: 1
