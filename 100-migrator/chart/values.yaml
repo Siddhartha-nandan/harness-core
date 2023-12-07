@@ -224,32 +224,6 @@ global:
                 property: ""
   ha: false
 
-redis:
-  protocol: ""
-  hosts: []
-  secretName: ""
-  userKey: ""
-  passwordKey: ""
-  extraArgs: ""
-  secrets:
-    kubernetesSecrets:
-      - secretName: ""
-        keys:
-          REDIS_USERNAME: ""
-          REDIS_PASSWORD: ""
-    secretManagement: 
-      externalSecretsOperator:
-        - secretStore:
-            name: ""
-            kind: ""
-          remoteKeys:
-            REDIS_USERNAME:
-              name: ""
-              property: ""
-            REDIS_PASSWORD:
-              name: ""
-              property: ""
-
 timescaledb:
   # -- TimescaleDB host names
   hosts: []
@@ -303,6 +277,54 @@ database:
                 MONGO_PASSWORD:
                   name: ""
                   property: ""
+  redis:
+    redis1:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    eventsFramework:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+
 
 replicaCount: 1
 maxSurge: 1
