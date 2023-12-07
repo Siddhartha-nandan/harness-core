@@ -60,8 +60,9 @@ spec:
           securityContext:
               {{- toYaml .Values.securityContext | nindent 12 }}
           env:
-            {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "LOCK_CONFIG_REDIS_USERNAME" "passwordVariableName" "LOCK_CONFIG_REDIS_PASSWORD") | indent 12 }}
-            {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD") | indent 12 }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "eventsFramework" "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD") | indent 12 }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "lockConfig" "userVariableName" "LOCK_CONFIG_REDIS_USERNAME" "passwordVariableName" "LOCK_CONFIG_REDIS_PASSWORD") | indent 12 }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "cacheConfig" "userVariableName" "CACHE_CONFIG_REDIS_USERNAME" "passwordVariableName" "CACHE_CONFIG_REDIS_PASSWORD") | indent 12 }}
             {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "VERIFICATION_SERVICE_SECRET" "defaultKubernetesSecretName" "cv-nextgen" "defaultKubernetesSecretKey" "VERIFICATION_SERVICE_SECRET") | indent 12 }}
             {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $ "passwordVariableName" "TIMESCALE_PASSWORD") | indent 12 }}
             - name: TIMESCALE_URI
