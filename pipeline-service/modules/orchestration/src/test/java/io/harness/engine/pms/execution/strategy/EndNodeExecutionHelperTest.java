@@ -25,6 +25,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.data.structure.UUIDGenerator;
 import io.harness.engine.executions.node.NodeExecutionService;
+import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.executions.plan.PlanService;
 import io.harness.engine.pms.data.PmsEngineExpressionService;
 import io.harness.engine.pms.data.PmsOutcomeService;
@@ -37,6 +38,7 @@ import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.data.StepOutcomeRef;
 import io.harness.pms.contracts.execution.Status;
+import io.harness.pms.contracts.plan.ExecutionMetadata;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.contracts.steps.io.StepOutcomeProto;
@@ -65,6 +67,7 @@ public class EndNodeExecutionHelperTest extends OrchestrationTestBase {
   @Mock private NodeExecutionService nodeExecutionService;
   @Mock private PlanNodeExecutionStrategy executionStrategy;
   @Mock private PlanService planService;
+  @Mock private PlanExecutionService planExecutionService;
   @Mock private PmsEngineExpressionService pmsEngineExpressionService;
   @InjectMocks @Spy EndNodeExecutionHelper endNodeExecutionHelper;
 
@@ -75,6 +78,9 @@ public class EndNodeExecutionHelperTest extends OrchestrationTestBase {
     doReturn(null)
         .when(endNodeExecutionHelper)
         .processStepResponseWithNoAdvisers(any(Ambiance.class), any(StepResponseProto.class));
+    doReturn(ExecutionMetadata.newBuilder().build())
+        .when(planExecutionService)
+        .getExecutionMetadataFromPlanExecution(any());
     endNodeExecutionHelper.endNodeExecutionWithNoAdvisers(
         Ambiance.newBuilder().build(), StepResponseProto.newBuilder().build());
     verify(executionStrategy, times(0)).endNodeExecution(any(Ambiance.class));

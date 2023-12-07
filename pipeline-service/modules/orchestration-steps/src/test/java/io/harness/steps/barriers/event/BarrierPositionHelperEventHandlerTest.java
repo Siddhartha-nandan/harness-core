@@ -22,6 +22,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.FeatureName;
 import io.harness.category.element.UnitTests;
+import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.observers.NodeUpdateInfo;
 import io.harness.execution.NodeExecution;
 import io.harness.lock.PersistentLocker;
@@ -45,6 +46,7 @@ import org.mockito.MockedStatic;
 public class BarrierPositionHelperEventHandlerTest extends OrchestrationStepsTestBase {
   @Mock BarrierService barrierService;
   @Mock PersistentLocker persistentLocker;
+  @Mock PlanExecutionService planExecutionService;
   @InjectMocks BarrierPositionHelperEventHandler barrierPositionHelperEventHandler;
 
   @Test

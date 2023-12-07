@@ -137,17 +137,6 @@ public class ExecutionSummaryCreateEventHandler implements OrchestrationStartObs
       Update update = new Update();
       update.set(PlanExecutionSummaryKeys.isLatestExecution, false);
       pmsExecutionSummaryService.update(parentExecutionId, update);
-    } else {
-      // remove after next release
-      if (metadata.hasRetryInfo() && metadata.getRetryInfo().getIsRetry()) {
-        rootExecutionId = metadata.getRetryInfo().getRootExecutionId();
-        parentExecutionId = metadata.getRetryInfo().getParentRetryId();
-
-        // updating isLatest and canRetry
-        Update update = new Update();
-        update.set(PlanExecutionSummaryKeys.isLatestExecution, false);
-        pmsExecutionSummaryService.update(parentExecutionId, update);
-      }
     }
 
     recentExecutionsInfoHelper.onExecutionStart(accountId, orgId, projectId, pipelineId, planExecution);

@@ -15,6 +15,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.FeatureName;
+import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.observers.NodeStatusUpdateObserver;
 import io.harness.engine.observers.NodeUpdateInfo;
 import io.harness.execution.NodeExecution;
@@ -44,6 +45,7 @@ import lombok.extern.slf4j.Slf4j;
 public class BarrierPositionHelperEventHandler implements AsyncInformObserver, NodeStatusUpdateObserver {
   @Inject @Named("OrchestrationVisualizationExecutorService") ExecutorService executorService;
   @Inject BarrierService barrierService;
+  @Inject private PlanExecutionService planExecutionService;
   @Inject private PersistentLocker persistentLocker;
 
   @Override
@@ -62,8 +64,11 @@ public class BarrierPositionHelperEventHandler implements AsyncInformObserver, N
         positionType = BarrierPositionType.STEP;
       }
       if (positionType != null) {
-        if (AmbianceUtils.checkIfFeatureFlagEnabled(nodeUpdateInfo.getNodeExecution().getAmbiance(),
-                FeatureName.CDS_NG_BARRIER_STEPS_WITHIN_LOOPING_STRATEGIES.name())) {
+        Ambiance executionAmbiance = AmbianceUtils.getExecutionAmbiance(nodeUpdateInfo.getNodeExecution().getAmbiance(),
+            planExecutionService.getExecutionMetadataFromPlanExecution(
+                nodeUpdateInfo.getNodeExecution().getAmbiance().getPlanExecutionId()));
+        if (AmbianceUtils.checkIfFeatureFlagEnabled(
+                executionAmbiance, FeatureName.CDS_NG_BARRIER_STEPS_WITHIN_LOOPING_STRATEGIES.name())) {
           updatePosition(planExecutionId, positionType, nodeExecution);
         } else {
           updatePositionWithoutFiltersForLoopingStrategy(planExecutionId, positionType, nodeExecution);

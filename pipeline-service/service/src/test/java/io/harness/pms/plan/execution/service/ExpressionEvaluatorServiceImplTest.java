@@ -24,6 +24,7 @@ import io.harness.engine.pms.data.PmsEngineExpressionService;
 import io.harness.execution.NodeExecution;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
+import io.harness.pms.contracts.plan.ExecutionMetadata;
 import io.harness.pms.expressions.YamlExpressionEvaluator;
 import io.harness.pms.plan.execution.beans.dto.ExpressionEvaluationDetail;
 import io.harness.rule.Owner;
@@ -166,12 +167,13 @@ public class ExpressionEvaluatorServiceImplTest extends CategoryTest {
   @Owner(developers = PRASHANTSHARMA)
   @Category(UnitTests.class)
   public void testGetFQNToAmbianceMap() {
-    Ambiance ambiance = Ambiance.newBuilder().addAllLevels(prepareLevel()).build();
+    Ambiance ambiance =
+        Ambiance.newBuilder().addAllLevels(prepareLevel()).setMetadata(ExecutionMetadata.newBuilder().build()).build();
     String expectedFqn = "pipeline.stages.stage1.execution.steps.step1";
     Map<String, Ambiance> fqnToAmbianceMap = expressionEvaluatorService.getFQNToAmbianceMap(
         PipelineServiceTestHelper.createCloseableIterator(
             List.of(NodeExecution.builder().ambiance(ambiance).build()).iterator()),
-        ListUtils.newArrayList(expectedFqn));
+        ListUtils.newArrayList(expectedFqn), ExecutionMetadata.newBuilder().build());
     assertThat(fqnToAmbianceMap.containsKey(expectedFqn)).isTrue();
     assertThat(fqnToAmbianceMap.get(expectedFqn)).isEqualTo(ambiance);
   }

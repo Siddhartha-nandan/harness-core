@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,6 +27,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.engine.OrchestrationEngine;
 import io.harness.engine.executions.node.NodeExecutionService;
+import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.interrupts.AbortInterruptCallback;
 import io.harness.engine.interrupts.handlers.publisher.InterruptEventPublisher;
 import io.harness.exception.InvalidRequestException;
@@ -38,6 +40,7 @@ import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.execution.ExecutionMode;
 import io.harness.pms.contracts.interrupts.InterruptConfig;
 import io.harness.pms.contracts.interrupts.InterruptType;
+import io.harness.pms.contracts.plan.ExecutionMetadata;
 import io.harness.rule.Owner;
 import io.harness.waiter.OldNotifyCallback;
 import io.harness.waiter.WaitNotifyEngine;
@@ -59,6 +62,7 @@ public class AbortHelperTest extends OrchestrationTestBase {
   @Mock private NodeExecutionService nodeExecutionService;
   @Mock private WaitNotifyEngine waitNotifyEngine;
   @Mock private InterruptEventPublisher interruptEventPublisher;
+  @Mock private PlanExecutionService planExecutionService;
   @Inject private MongoTemplate mongoTemplate;
   @Inject @InjectMocks private AbortHelper abortHelper;
 
@@ -123,6 +127,7 @@ public class AbortHelperTest extends OrchestrationTestBase {
     Ambiance ambiance = Ambiance.newBuilder()
                             .setPlanExecutionId(generateUuid())
                             .addLevels(Level.newBuilder().setRuntimeId(nodeExecutionId).build())
+                            .setMetadata(ExecutionMetadata.newBuilder().build())
                             .build();
     NodeExecutionBuilder nodeExecution = NodeExecution.builder()
                                              .uuid(nodeExecutionId)
@@ -132,6 +137,8 @@ public class AbortHelperTest extends OrchestrationTestBase {
 
     when(nodeExecutionService.updateStatusWithOps(eq(nodeExecutionId), eq(ABORTED), any(), any()))
         .thenReturn(nodeExecution.status(ABORTED).endTs(System.currentTimeMillis()).build());
+    when(planExecutionService.getExecutionMetadataFromPlanExecution(any()))
+        .thenReturn(ExecutionMetadata.newBuilder().build());
     abortHelper.discontinueMarkedInstance(nodeExecution.status(DISCONTINUING).build(), interrupt);
 
     ArgumentCaptor<Ambiance> ambianceCaptor = ArgumentCaptor.forClass(Ambiance.class);
@@ -163,6 +170,7 @@ public class AbortHelperTest extends OrchestrationTestBase {
     Ambiance ambiance = Ambiance.newBuilder()
                             .setPlanExecutionId(generateUuid())
                             .addLevels(Level.newBuilder().setRuntimeId(nodeExecutionId).build())
+                            .setMetadata(ExecutionMetadata.newBuilder().build())
                             .build();
     NodeExecutionBuilder nodeExecution = NodeExecution.builder()
                                              .uuid(nodeExecutionId)
@@ -172,6 +180,9 @@ public class AbortHelperTest extends OrchestrationTestBase {
 
     when(nodeExecutionService.updateStatusWithOps(eq(nodeExecutionId), eq(ABORTED), any(), any()))
         .thenReturn(nodeExecution.status(ABORTED).endTs(System.currentTimeMillis()).build());
+    doReturn(ExecutionMetadata.newBuilder().build())
+        .when(planExecutionService)
+        .getExecutionMetadataFromPlanExecution(any());
 
     abortHelper.discontinueMarkedInstance(nodeExecution.status(DISCONTINUING).build(), interrupt);
 

@@ -11,6 +11,7 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.engine.OrchestrationEngine;
+import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.pms.advise.NodeAdviseHelper;
 import io.harness.engine.pms.advise.NodeAdviserUtils;
 import io.harness.engine.pms.execution.SdkResponseProcessorFactory;
@@ -45,6 +46,7 @@ public abstract class AbstractNodeExecutionStrategy<P extends Node, M extends Pm
   @Inject private SdkResponseProcessorFactory sdkResponseProcessorFactory;
   @Inject private NodeAdviseHelper nodeAdviseHelper;
   @Inject private AmbianceModifierFactory ambianceModifierFactory;
+  @Inject private PlanExecutionService planExecutionService;
   @Inject @Named("EngineExecutorService") private ExecutorService executorService;
   @Inject @Named("publishAdviserEventForCustomAdvisers") private boolean publishAdviserEventForCustomAdvisers;
   @Override
@@ -86,7 +88,9 @@ public abstract class AbstractNodeExecutionStrategy<P extends Node, M extends Pm
   NodeExecution createAndRunNodeExecution(
       Ambiance ambiance, P node, M metadata, String notifyId, String parentId, String previousId) {
     NodeExecution savedExecution = createNodeExecution(ambiance, node, metadata, notifyId, parentId, previousId);
-    executorService.submit(() -> orchestrationEngine.startNodeExecution(savedExecution.getAmbiance()));
+    Ambiance executionAmbiance = AmbianceUtils.getExecutionAmbiance(savedExecution.getAmbiance(),
+        planExecutionService.getExecutionMetadataFromPlanExecution(savedExecution.getAmbiance().getPlanExecutionId()));
+    executorService.submit(() -> orchestrationEngine.startNodeExecution(executionAmbiance));
     return savedExecution;
   }
 

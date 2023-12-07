@@ -6,6 +6,7 @@
  */
 
 package io.harness.engine.execution;
+
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.pms.yaml.YAMLFieldNameConstants.NAME;
@@ -23,6 +24,7 @@ import io.harness.common.NGExpressionUtils;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.engine.OrchestrationEngine;
 import io.harness.engine.executions.node.NodeExecutionService;
+import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.pms.data.PmsEngineExpressionService;
 import io.harness.exception.InvalidRequestException;
 import io.harness.execution.ExecutionInputInstance;
@@ -30,6 +32,7 @@ import io.harness.execution.NodeExecution;
 import io.harness.expression.common.ExpressionMode;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
+import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.execution.utils.NodeProjectionUtils;
 import io.harness.pms.merger.fqn.FQN;
 import io.harness.pms.merger.helpers.FQNMapGenerator;
@@ -66,6 +69,7 @@ public class ExecutionInputServiceImpl implements ExecutionInputService {
   @Inject ExecutionInputRepository executionInputRepository;
   @Inject ExecutionInputServiceHelper executionInputServiceHelper;
   @Inject NodeExecutionService nodeExecutionService;
+  @Inject PlanExecutionService planExecutionService;
   @Inject OrchestrationEngine engine;
   @Inject PmsEngineExpressionService pmsEngineExpressionService;
   @Override
@@ -94,7 +98,9 @@ public class ExecutionInputServiceImpl implements ExecutionInputService {
 
     NodeExecution nodeExecution = nodeExecutionService.updateStatusWithOps(
         nodeExecutionId, Status.QUEUED, null, EnumSet.of(Status.INPUT_WAITING));
-    engine.startNodeExecution(nodeExecution.getAmbiance());
+    Ambiance executionAmbiance = AmbianceUtils.getExecutionAmbiance(nodeExecution.getAmbiance(),
+        planExecutionService.getExecutionMetadataFromPlanExecution(nodeExecution.getAmbiance().getPlanExecutionId()));
+    engine.startNodeExecution(executionAmbiance);
     return true;
   }
 
@@ -138,8 +144,10 @@ public class ExecutionInputServiceImpl implements ExecutionInputService {
       Ambiance ambiance =
           nodeExecutionService.getWithFieldsIncluded(nodeExecutionId, NodeProjectionUtils.withAmbianceAndStatus)
               .getAmbiance();
+      Ambiance executionAmbiance = AmbianceUtils.getExecutionAmbiance(
+          ambiance, planExecutionService.getExecutionMetadataFromPlanExecution(ambiance.getPlanExecutionId()));
       userInputJsonNode = (JsonNode) pmsEngineExpressionService.resolve(
-          ambiance, userInputJsonNode, ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED);
+          executionAmbiance, userInputJsonNode, ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED);
 
       JsonNode templateJsonNode = YamlUtils.readAsJsonNode(executionInputInstance.getTemplate());
       Map<FQN, String> invalidFQNsInInputSet = getInvalidFQNsInInputSet(templateJsonNode, userInputJsonNode);

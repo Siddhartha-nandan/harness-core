@@ -25,6 +25,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.engine.OrchestrationEngine;
+import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.pms.advise.NodeAdviseHelper;
 import io.harness.engine.pms.execution.SdkResponseProcessorFactory;
 import io.harness.engine.pms.execution.modifier.ambiance.AmbianceModifierFactory;
@@ -40,6 +41,7 @@ import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.execution.events.InitiateMode;
 import io.harness.pms.contracts.execution.events.SdkResponseEventProto;
 import io.harness.pms.contracts.execution.events.SdkResponseEventType;
+import io.harness.pms.contracts.plan.ExecutionMetadata;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.rule.Owner;
@@ -64,6 +66,7 @@ public class AbstractNodeExecutionStrategyTest extends CategoryTest {
   AbstractNodeExecutionStrategy abstractNodeExecutionStrategy;
   @Mock OrchestrationEngine orchestrationEngine;
   @Mock NodeAdviseHelper nodeAdviseHelper;
+  @Mock PlanExecutionService planExecutionService;
   Ambiance ambiance;
   String accountId = generateUuid();
   Plan node;
@@ -90,6 +93,7 @@ public class AbstractNodeExecutionStrategyTest extends CategoryTest {
     FieldUtils.writeField(abstractNodeExecutionStrategy, "orchestrationEngine", orchestrationEngine, true);
     FieldUtils.writeField(abstractNodeExecutionStrategy, "executorService", executorService, true);
     FieldUtils.writeField(abstractNodeExecutionStrategy, "nodeAdviseHelper", nodeAdviseHelper, true);
+    FieldUtils.writeField(abstractNodeExecutionStrategy, "planExecutionService", planExecutionService, true);
   }
 
   @Test
@@ -132,6 +136,12 @@ public class AbstractNodeExecutionStrategyTest extends CategoryTest {
   @Owner(developers = SHALINI)
   @Category(UnitTests.class)
   public void testCreateAndRunNodeExecution() {
+    doReturn(NodeExecution.builder().ambiance(ambiance).build())
+        .when(abstractNodeExecutionStrategy)
+        .createNodeExecution(any(), any(), any(), any(), any(), any());
+    doReturn(ExecutionMetadata.newBuilder().build())
+        .when(planExecutionService)
+        .getExecutionMetadataFromPlanExecution(any());
     abstractNodeExecutionStrategy.createAndRunNodeExecution(ambiance, planNode, nodeExecutionMetadata, "", "", "");
     verify(executorService, times(1)).submit(any(Runnable.class));
   }
@@ -140,6 +150,12 @@ public class AbstractNodeExecutionStrategyTest extends CategoryTest {
   @Owner(developers = SHALINI)
   @Category(UnitTests.class)
   public void testCreateAndRunNodeExecutionWithEmptyExecutionInputTemplate() {
+    doReturn(NodeExecution.builder().ambiance(ambiance).build())
+        .when(abstractNodeExecutionStrategy)
+        .createNodeExecution(any(), any(), any(), any(), any(), any());
+    doReturn(ExecutionMetadata.newBuilder().build())
+        .when(planExecutionService)
+        .getExecutionMetadataFromPlanExecution(any());
     abstractNodeExecutionStrategy.createAndRunNodeExecution(ambiance, planNode, nodeExecutionMetadata, "", "", "");
     verify(executorService, times(1)).submit(any(Runnable.class));
   }

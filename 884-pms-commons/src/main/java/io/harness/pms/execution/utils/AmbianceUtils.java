@@ -594,4 +594,8 @@ public class AmbianceUtils {
     }
     return false;
   }
+
+  public Ambiance getExecutionAmbiance(Ambiance nodeExecutionAmbiance, ExecutionMetadata executionMetadata) {
+    return nodeExecutionAmbiance.toBuilder().clone().setMetadata(executionMetadata).build();
+  }
 }

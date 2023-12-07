@@ -14,13 +14,16 @@ import static io.harness.interrupts.Interrupt.State.PROCESSED_UNSUCCESSFULLY;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.engine.OrchestrationEngine;
 import io.harness.engine.executions.node.NodeExecutionService;
+import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.interrupts.InterruptService;
 import io.harness.execution.NodeExecution;
 import io.harness.execution.NodeExecution.NodeExecutionKeys;
 import io.harness.interrupts.InterruptEffect;
+import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.interrupts.InterruptConfig;
 import io.harness.pms.contracts.interrupts.InterruptType;
+import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.execution.utils.NodeProjectionUtils;
 import io.harness.tasks.ResponseData;
 import io.harness.waiter.OldNotifyCallback;
@@ -33,6 +36,7 @@ import lombok.Builder;
 @OwnedBy(PIPELINE)
 public class FailureInterruptCallback implements OldNotifyCallback {
   @Inject private NodeExecutionService nodeExecutionService;
+  @Inject private PlanExecutionService planExecutionService;
   @Inject private InterruptService interruptService;
   @Inject private OrchestrationEngine orchestrationEngine;
 
@@ -69,8 +73,11 @@ public class FailureInterruptCallback implements OldNotifyCallback {
       if (originalStatus == null) {
         originalStatus = updatedNodeExecution.getStatus();
       }
+      Ambiance executionAmbiance = AmbianceUtils.getExecutionAmbiance(updatedNodeExecution.getAmbiance(),
+          planExecutionService.getExecutionMetadataFromPlanExecution(
+              updatedNodeExecution.getAmbiance().getPlanExecutionId()));
       orchestrationEngine.concludeNodeExecution(
-          updatedNodeExecution.getAmbiance(), Status.FAILED, originalStatus, EnumSet.noneOf(Status.class));
+          executionAmbiance, Status.FAILED, originalStatus, EnumSet.noneOf(Status.class));
     } catch (Exception ex) {
       interruptService.markProcessed(interruptId, PROCESSED_UNSUCCESSFULLY);
       throw ex;

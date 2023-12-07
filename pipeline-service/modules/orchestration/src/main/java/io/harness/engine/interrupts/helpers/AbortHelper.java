@@ -16,6 +16,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.engine.OrchestrationEngine;
 import io.harness.engine.executions.node.NodeExecutionService;
 import io.harness.engine.executions.node.NodeExecutionUpdateFailedException;
+import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.interrupts.AbortInterruptCallback;
 import io.harness.engine.interrupts.InterruptProcessingFailedException;
 import io.harness.engine.interrupts.handlers.publisher.InterruptEventPublisher;
@@ -27,10 +28,12 @@ import io.harness.interrupts.Interrupt;
 import io.harness.interrupts.InterruptEffect;
 import io.harness.logging.AutoLogContext;
 import io.harness.logging.UnitProgress;
+import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.ExecutionMode;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.interrupts.InterruptConfig;
 import io.harness.pms.contracts.interrupts.InterruptType;
+import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.waiter.WaitNotifyEngine;
 
 import com.google.inject.Inject;
@@ -45,6 +48,7 @@ import lombok.extern.slf4j.Slf4j;
 @OwnedBy(PIPELINE)
 public class AbortHelper {
   @Inject private NodeExecutionService nodeExecutionService;
+  @Inject private PlanExecutionService planExecutionService;
   @Inject @Named(OrchestrationPublisherName.PUBLISHER_NAME) String publisherName;
   @Inject private WaitNotifyEngine waitNotifyEngine;
   @Inject private InterruptHelper interruptHelper;
@@ -101,6 +105,9 @@ public class AbortHelper {
                   .build());
         }, EnumSet.noneOf(Status.class));
     log.info("Updated NodeExecution :{} Status to ABORTED", nodeExecution.getUuid());
-    engine.endNodeExecution(updatedNodeExecution.getAmbiance());
+    Ambiance executionAmbiance = AmbianceUtils.getExecutionAmbiance(updatedNodeExecution.getAmbiance(),
+        planExecutionService.getExecutionMetadataFromPlanExecution(
+            updatedNodeExecution.getAmbiance().getPlanExecutionId()));
+    engine.endNodeExecution(executionAmbiance);
   }
 }
