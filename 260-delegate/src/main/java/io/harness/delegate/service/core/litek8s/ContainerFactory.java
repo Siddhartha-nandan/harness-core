@@ -102,7 +102,7 @@ public class ContainerFactory {
     envVars.put(HARNESS_ACCOUNT_ID_VARIABLE, config.getAccountId());
     return new V1ContainerBuilder()
         .withName(SETUP_ADDON_CONTAINER_NAME)
-        .withImage("raghavendramurali/ci-addon:tag1.6")
+        .withImage("harnessdev/bijou-ci-addon:v0.1")
         .withEnv(K8SEnvVar.fromMap(envVars.build()))
         .withCommand(getAddonCmd())
         .withArgs(getAddonArgs())
@@ -114,7 +114,7 @@ public class ContainerFactory {
   public V1ContainerBuilder createLEContainer(final ResourceRequirements resourceRequirements) {
     return new V1ContainerBuilder()
         .withName(LE_CONTAINER_NAME)
-        .withImage("raghavendramurali/ci-lite-engine:tag1.6")
+        .withImage("harnessdev/bijou-lite-engine:v0.1")
         .withEnv(K8SEnvVar.fromMap(getLeEnvVars()))
         .withImagePullPolicy("Always")
         .withPorts(getPort(RESERVED_LE_PORT))
@@ -148,7 +148,7 @@ public class ContainerFactory {
   @NonNull
   private List<String> getAddonArgs() {
     return List.of(
-        "mkdir -p /addon/bin; mkdir -p /addon/tmp; chmod -R 776 /addon/tmp; if [ -e /usr/local/bin/ci-addon-linux-amd64 ];then cp /usr/local/bin/ci-addon-linux-amd64 /addon/bin/ci-addon;else cp /usr/local/bin/ci-addon-linux /addon/bin/ci-addon;fi; chmod +x /addon/bin/ci-addon; cp /usr/local/bin/tmate /addon/bin/tmate; chmod +x /addon/bin/tmate; cp /usr/local/bin/java-agent.jar /addon/bin/java-agent.jar; chmod +x /addon/bin/java-agent.jar; if [ -e /usr/local/bin/split_tests ];then cp /usr/local/bin/split_tests /addon/bin/split_tests; chmod +x /addon/bin/split_tests; export PATH=$PATH:/addon/bin; fi;");
+        "mkdir -p /addon/bin; mkdir -p /addon/tmp; chmod -R 776 /addon/tmp; if [ -e /usr/local/bin/ci-addon-linux-amd64 ];then cp /usr/local/bin/ci-addon-linux-amd64 /addon/bin/ci-addon;else cp /usr/local/bin/ci-addon-linux /addon/bin/ci-addon;fi; chmod +x /addon/bin/ci-addon; if [ -e /usr/local/bin/split_tests ];then cp /usr/local/bin/split_tests /addon/bin/split_tests; chmod +x /addon/bin/split_tests; export PATH=$PATH:/addon/bin; fi;");
   }
 
   @NonNull
