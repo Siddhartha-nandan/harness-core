@@ -586,43 +586,55 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   }
 
   @Override
-  public TriggerUpdateCount disableTriggers(String accountIdentifier, String orgIdentifier, String projectIdentifier) {
-    Criteria criteria = Criteria.where(NGTriggerEntityKeys.accountId).is(accountIdentifier);
-    if (isNotEmpty(orgIdentifier)) {
-      criteria.and(NGTriggerEntityKeys.orgIdentifier).is(orgIdentifier);
-    }
-    if (isNotEmpty(projectIdentifier)) {
-      criteria.and(NGTriggerEntityKeys.projectIdentifier).is(projectIdentifier);
-    }
-    criteria.and(NGTriggerEntityKeys.deleted).is(false);
-    CloseableIterator<NGTriggerEntity> iterator = ngTriggerRepository.findAll(criteria);
-    List<NGTriggerEntity> toBeDisabledTriggers = new ArrayList<>();
+  public TriggerUpdateCount toggleTriggers(
+      boolean enable, String accountIdentifier, String orgIdentifier, String projectIdentifier) {
+    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(
+        enable, accountIdentifier, orgIdentifier, projectIdentifier, null, null);
+
+    List<NGTriggerEntity> triggerEntities =
+        list(criteria, PageRequest.of(0, 100000, Sort.by(Sort.Direction.DESC, NGTriggerEntityKeys.createdAt)))
+            .getContent();
+
+    return toggleTriggers(
+        enable, accountIdentifier, orgIdentifier, projectIdentifier, null, null, criteria, triggerEntities);
+  }
+
+  @Override
+  public TriggerUpdateCount toggleTriggers(boolean enable, String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, String pipelineIdentifier, String type, Criteria criteria,
+      List<NGTriggerEntity> triggerEntities) {
+    List<NGTriggerEntity> toBeToggledTriggers = new ArrayList<>();
+
     long successfullyUpdated = 0;
     long failedToUpdate = 0;
-    while (iterator.hasNext()) {
-      NGTriggerEntity ngTriggerEntity = iterator.next();
-      ngTriggerEntity.setEnabled(false);
-      ngTriggerElementMapper.updateEntityYmlWithEnabledValue(ngTriggerEntity);
-      toBeDisabledTriggers.add(ngTriggerEntity);
 
-      if (toBeDisabledTriggers.size() >= MAX_DISABLE_BATCH_SIZE) {
-        TriggerUpdateCount triggerUpdateCount = ngTriggerRepository.updateTriggerEnabled(toBeDisabledTriggers);
+    for (NGTriggerEntity ngTriggerEntity : triggerEntities) {
+      ngTriggerEntity.setEnabled(enable);
+      ngTriggerElementMapper.updateEntityYmlWithEnabledValue(ngTriggerEntity);
+      toBeToggledTriggers.add(ngTriggerEntity);
+
+      if (toBeToggledTriggers.size() >= MAX_DISABLE_BATCH_SIZE) {
+        TriggerUpdateCount triggerUpdateCount = ngTriggerRepository.updateTriggerEnabled(toBeToggledTriggers, enable);
         successfullyUpdated = successfullyUpdated + triggerUpdateCount.getSuccessCount();
         failedToUpdate = failedToUpdate + triggerUpdateCount.getFailureCount();
-        toBeDisabledTriggers.clear();
+        toBeToggledTriggers.clear();
       }
     }
-    if (EmptyPredicate.isNotEmpty(toBeDisabledTriggers)) {
-      TriggerUpdateCount triggerUpdateCount = ngTriggerRepository.updateTriggerEnabled(toBeDisabledTriggers);
+
+    if (EmptyPredicate.isNotEmpty(toBeToggledTriggers)) {
+      TriggerUpdateCount triggerUpdateCount = ngTriggerRepository.updateTriggerEnabled(toBeToggledTriggers, enable);
       successfullyUpdated = successfullyUpdated + triggerUpdateCount.getSuccessCount();
       failedToUpdate = failedToUpdate + triggerUpdateCount.getFailureCount();
     }
 
     TriggerUpdateCount triggerUpdateCount =
         TriggerUpdateCount.builder().successCount(successfullyUpdated).failureCount(failedToUpdate).build();
-    log.info("Successfully disabled {} and failed to disable {} triggers in account {}, org {}, project {}",
+
+    log.info(
+        "Successfully disabled {} and failed to disable {} triggers in account {}, org {}, project {}, pipeline {}",
         triggerUpdateCount.getSuccessCount(), triggerUpdateCount.getFailureCount(), accountIdentifier, orgIdentifier,
-        projectIdentifier);
+        projectIdentifier, pipelineIdentifier);
+
     return triggerUpdateCount;
   }
 
@@ -1484,21 +1496,44 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   }
 
   @Override
-  public BulkTriggersResponseDTO ToggleTriggersInBulk(
+  public BulkTriggersResponseDTO toggleTriggersInBulk(
       String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    Criteria criteria =
-        TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO);
+    String orgIdentifier = null;
+    String projectIdentifier = null;
+    String pipelineIdentifier = null;
+    String type = null;
+    boolean enable = false;
+
+    // Filters and Data from the RequestBody
+    if (bulkTriggersRequestDTO.getFilters() != null) {
+      orgIdentifier = bulkTriggersRequestDTO.getFilters().getOrgIdentifier();
+      projectIdentifier = bulkTriggersRequestDTO.getFilters().getProjectIdentifier();
+      pipelineIdentifier = bulkTriggersRequestDTO.getFilters().getPipelineIdentifier();
+      type = bulkTriggersRequestDTO.getFilters().getType();
+    }
+    if (bulkTriggersRequestDTO.getData() != null) {
+      enable = bulkTriggersRequestDTO.getData().isEnable();
+    }
+
+    // Creating criteria
+    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(
+        enable, accountIdentifier, orgIdentifier, projectIdentifier, pipelineIdentifier, type);
     Pageable pageRequest = PageRequest.of(0, 100000, Sort.by(Sort.Direction.DESC, NGTriggerEntityKeys.createdAt));
+
+    // Fetching details for the response
     Page<NGTriggerEntity> triggerEntities = list(criteria, pageRequest);
 
-    // toggling the triggers
-    long modifiedCount = ngTriggerRepository.toggleTriggersInBulk(
-        accountIdentifier, bulkTriggersRequestDTO.getData().isEnable(), criteria);
+    // Toggling the triggers and updating the YAML
+    TriggerUpdateCount modifiedCount = toggleTriggers(enable, accountIdentifier, orgIdentifier, projectIdentifier,
+        pipelineIdentifier, type, criteria, triggerEntities.getContent());
 
     // mapping the response
     List<BulkTriggerDetailDTO> bulkTriggerDetails = toBulkTriggerDetails(triggerEntities);
 
-    return BulkTriggersResponseDTO.builder().bulkTriggerDetailDTOList(bulkTriggerDetails).count(modifiedCount).build();
+    return BulkTriggersResponseDTO.builder()
+        .bulkTriggerDetailDTOList(bulkTriggerDetails)
+        .count(modifiedCount.getSuccessCount())
+        .build();
   }
 
   private List<BulkTriggerDetailDTO> toBulkTriggerDetails(Page<NGTriggerEntity> triggerEntities) {

@@ -223,7 +223,7 @@ public class NGTriggerRepositoryCustomImplTest extends CategoryTest {
     when(bulkOperations.execute()).thenReturn(bulkWriteResult);
     when(bulkWriteResult.getModifiedCount()).thenReturn(2);
 
-    TriggerUpdateCount result = ngTriggerRepositoryCustom.updateTriggerEnabled(ngTriggerEntityList);
+    TriggerUpdateCount result = ngTriggerRepositoryCustom.updateTriggerEnabled(ngTriggerEntityList, false);
 
     assertEquals(2, result.getSuccessCount());
     assertEquals(0, result.getFailureCount());
@@ -632,7 +632,10 @@ public class NGTriggerRepositoryCustomImplTest extends CategoryTest {
 
     List<NGTriggerEntity> ngTriggerEntityList = Arrays.asList(t1, t2, t3, t4, t5);
 
-    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(ACCOUNT_ID, bulkTriggersRequestDTO);
+    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(
+        bulkTriggersRequestDTO.getData().isEnable(), ACCOUNT_ID, bulkTriggersRequestDTO.getFilters().getOrgIdentifier(),
+        bulkTriggersRequestDTO.getFilters().getProjectIdentifier(),
+        bulkTriggersRequestDTO.getFilters().getPipelineIdentifier(), bulkTriggersRequestDTO.getFilters().getType());
     Query query = new Query(criteria);
 
     Update update = new Update();
@@ -723,7 +726,10 @@ public class NGTriggerRepositoryCustomImplTest extends CategoryTest {
 
     List<NGTriggerEntity> ngTriggerEntityList = Arrays.asList(t1, t2, t3, t4, t5);
 
-    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(ACCOUNT_ID, bulkTriggersRequestDTO);
+    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(
+        bulkTriggersRequestDTO.getData().isEnable(), ACCOUNT_ID, bulkTriggersRequestDTO.getFilters().getOrgIdentifier(),
+        bulkTriggersRequestDTO.getFilters().getProjectIdentifier(),
+        bulkTriggersRequestDTO.getFilters().getPipelineIdentifier(), bulkTriggersRequestDTO.getFilters().getType());
     Query query = new Query(criteria);
 
     Update update = new Update();
@@ -815,7 +821,10 @@ public class NGTriggerRepositoryCustomImplTest extends CategoryTest {
 
     List<NGTriggerEntity> ngTriggerEntityList = Arrays.asList(t1, t2, t3, t4, t5);
 
-    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(ACCOUNT_ID, bulkTriggersRequestDTO);
+    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(
+        bulkTriggersRequestDTO.getData().isEnable(), ACCOUNT_ID, bulkTriggersRequestDTO.getFilters().getOrgIdentifier(),
+        bulkTriggersRequestDTO.getFilters().getProjectIdentifier(),
+        bulkTriggersRequestDTO.getFilters().getPipelineIdentifier(), bulkTriggersRequestDTO.getFilters().getType());
     Query query = new Query(criteria);
 
     Update update = new Update();
@@ -912,7 +921,10 @@ public class NGTriggerRepositoryCustomImplTest extends CategoryTest {
 
     List<NGTriggerEntity> ngTriggerEntityList = Arrays.asList(t1, t2, t3, t4, t5);
 
-    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(ACCOUNT_ID, bulkTriggersRequestDTO);
+    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(
+        bulkTriggersRequestDTO.getData().isEnable(), ACCOUNT_ID, bulkTriggersRequestDTO.getFilters().getOrgIdentifier(),
+        bulkTriggersRequestDTO.getFilters().getProjectIdentifier(),
+        bulkTriggersRequestDTO.getFilters().getPipelineIdentifier(), bulkTriggersRequestDTO.getFilters().getType());
     Query query = new Query(criteria);
 
     Update update = new Update();
@@ -1002,7 +1014,10 @@ public class NGTriggerRepositoryCustomImplTest extends CategoryTest {
 
     List<NGTriggerEntity> ngTriggerEntityList = Arrays.asList(t1, t2, t3, t4, t5);
 
-    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(ACCOUNT_ID, bulkTriggersRequestDTO);
+    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(
+        bulkTriggersRequestDTO.getData().isEnable(), ACCOUNT_ID, bulkTriggersRequestDTO.getFilters().getOrgIdentifier(),
+        bulkTriggersRequestDTO.getFilters().getProjectIdentifier(),
+        bulkTriggersRequestDTO.getFilters().getPipelineIdentifier(), bulkTriggersRequestDTO.getFilters().getType());
     Query query = new Query(criteria);
 
     Update update = new Update();

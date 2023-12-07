@@ -326,6 +326,6 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
 
   public ResponseDTO<BulkTriggersResponseDTO> bulkToggleTriggers(@NotNull @AccountIdentifier String accountIdentifier,
       @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    return ResponseDTO.newResponse(ngTriggerService.ToggleTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO));
+    return ResponseDTO.newResponse(ngTriggerService.toggleTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO));
   }
 }

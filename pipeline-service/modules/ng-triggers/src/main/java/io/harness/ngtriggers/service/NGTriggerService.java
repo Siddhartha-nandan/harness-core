@@ -44,7 +44,14 @@ public interface NGTriggerService {
       String targetIdentifier, String identifier, boolean deleted);
 
   NGTriggerEntity update(NGTriggerEntity ngTriggerEntity, NGTriggerEntity oldNgTriggerEntity);
-  TriggerUpdateCount disableTriggers(String accountIdentifier, String orgIdentifier, String projectIdentifier);
+
+  TriggerUpdateCount toggleTriggers(
+      boolean enable, String accountIdentifier, String orgIdentifier, String projectIdentifier);
+
+  TriggerUpdateCount toggleTriggers(boolean enable, String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, String pipelineIdentifier, String type, Criteria criteria,
+      List<NGTriggerEntity> triggerEntities);
+
   boolean updateTriggerStatus(NGTriggerEntity ngTriggerEntity, boolean status);
 
   boolean updateTriggerPollingStatus(String accountId, PollingTriggerStatusUpdateDTO statusUpdate);
@@ -98,5 +105,5 @@ public interface NGTriggerService {
   TriggerUpdateCount updateBranchName(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       String pipelineIdentifier, GitMoveOperationType operationType, String pipelineBranchName);
 
-  BulkTriggersResponseDTO ToggleTriggersInBulk(String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO);
+  BulkTriggersResponseDTO toggleTriggersInBulk(String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO);
 }

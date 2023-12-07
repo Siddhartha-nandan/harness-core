@@ -264,20 +264,8 @@ public class TriggerFilterHelper {
     return criteria;
   }
 
-  public Criteria getCriteriaForTogglingTriggersInBulk(
-      String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
-    String orgIdentifier = null;
-    String projectIdentifier = null;
-    String pipelineIdentifier = null;
-    String type = null;
-
-    if (bulkTriggersRequestDTO.getFilters() != null) {
-      orgIdentifier = bulkTriggersRequestDTO.getFilters().getOrgIdentifier();
-      projectIdentifier = bulkTriggersRequestDTO.getFilters().getProjectIdentifier();
-      pipelineIdentifier = bulkTriggersRequestDTO.getFilters().getPipelineIdentifier();
-      type = bulkTriggersRequestDTO.getFilters().getType();
-    }
-
+  public Criteria getCriteriaForTogglingTriggersInBulk(boolean enable, String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, String pipelineIdentifier, String type) {
     if (StringUtils.isBlank(accountIdentifier)) {
       throw new InvalidRequestException(
           "accountIdentifier parameter cannot be null. Please input a valid accountIdentifier.");
@@ -295,7 +283,7 @@ public class TriggerFilterHelper {
     Criteria criteria = new Criteria();
     criteria.and(NGTriggerEntityKeys.accountId).is(accountIdentifier);
     criteria.and(NGTriggerEntityKeys.deleted).is(false);
-    criteria.and(NGTriggerEntityKeys.enabled).is(!bulkTriggersRequestDTO.getData().isEnable());
+    criteria.and(NGTriggerEntityKeys.enabled).is(!enable);
 
     if (StringUtils.isNotBlank(orgIdentifier)) {
       criteria.and(NGTriggerEntityKeys.orgIdentifier).is(orgIdentifier);
