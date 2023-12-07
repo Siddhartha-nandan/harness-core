@@ -139,14 +139,14 @@ public class ProjectRepositoryCustomImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testRestore() {
     String accountIdentifier = randomAlphabetic(10);
-    String orgIdentifier = randomAlphabetic(10);
+    String parentUniqueIdentifier = randomAlphabetic(10);
     String identifier = randomAlphabetic(10);
     ArgumentCaptor<Update> updateArgumentCaptor = ArgumentCaptor.forClass(Update.class);
     ArgumentCaptor<Query> queryArgumentCaptor = ArgumentCaptor.forClass(Query.class);
 
     when(mongoTemplate.findAndModify(any(), any(), eq(Project.class))).thenReturn(null);
 
-    Project restoredProject = projectRepository.restore(accountIdentifier, orgIdentifier, identifier);
+    Project restoredProject = projectRepository.restore(accountIdentifier, parentUniqueIdentifier, identifier);
 
     boolean deleted = restoredProject != null;
     verify(mongoTemplate, times(1))
@@ -158,8 +158,8 @@ public class ProjectRepositoryCustomImplTest extends CategoryTest {
     assertEquals(4, query.getQueryObject().size());
     assertTrue(query.getQueryObject().containsKey(ProjectKeys.accountIdentifier));
     assertEquals(accountIdentifier, query.getQueryObject().get(ProjectKeys.accountIdentifier));
-    assertTrue(query.getQueryObject().containsKey(ProjectKeys.orgIdentifier));
-    assertEquals(orgIdentifier, query.getQueryObject().get(ProjectKeys.orgIdentifier));
+    assertTrue(query.getQueryObject().containsKey(ProjectKeys.parentId));
+    assertEquals(parentUniqueIdentifier, query.getQueryObject().get(ProjectKeys.parentId));
     assertTrue(query.getQueryObject().containsKey(ProjectKeys.identifier));
     assertEquals(identifier, query.getQueryObject().get(ProjectKeys.identifier));
     assertTrue(query.getQueryObject().containsKey(ProjectKeys.deleted));

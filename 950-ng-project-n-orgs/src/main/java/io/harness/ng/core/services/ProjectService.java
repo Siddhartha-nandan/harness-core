@@ -69,7 +69,7 @@ public interface ProjectService {
 
   boolean delete(String accountIdentifier, String orgIdentifier, String identifier, ScopeInfo scopeInfo, Long version);
 
-  boolean restore(String accountIdentifier, String orgIdentifier, String identifier);
+  boolean restore(String accountIdentifier, String orgIdentifier, String identifier, ScopeInfo scopeInfo);
 
   Map<String, Integer> getProjectsCountPerOrganization(String accountIdentifier, List<String> orgIdentifiers);
 

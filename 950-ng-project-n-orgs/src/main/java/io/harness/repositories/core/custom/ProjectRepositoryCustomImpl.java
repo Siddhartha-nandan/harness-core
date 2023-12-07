@@ -68,11 +68,11 @@ public class ProjectRepositoryCustomImpl implements ProjectRepositoryCustom {
   }
 
   @Override
-  public Project restore(String accountIdentifier, String orgIdentifier, String identifier) {
+  public Project restore(String accountIdentifier, String parentUniqueIdentifier, String identifier) {
     Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
                             .is(accountIdentifier)
-                            .and(ProjectKeys.orgIdentifier)
-                            .is(orgIdentifier)
+                            .and(ProjectKeys.parentId)
+                            .is(parentUniqueIdentifier)
                             .and(ProjectKeys.identifier)
                             .is(identifier)
                             .and(ProjectKeys.deleted)

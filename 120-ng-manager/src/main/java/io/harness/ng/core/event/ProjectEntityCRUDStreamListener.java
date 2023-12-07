@@ -255,6 +255,7 @@ public class ProjectEntityCRUDStreamListener implements MessageListener {
   private boolean processOrganizationRestoreEvent(OrganizationEntityChangeDTO organizationEntityChangeDTO) {
     String accountIdentifier = organizationEntityChangeDTO.getAccountIdentifier();
     String orgIdentifier = organizationEntityChangeDTO.getIdentifier();
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
     Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
                             .is(accountIdentifier)
                             .and(ProjectKeys.orgIdentifier)
@@ -264,8 +265,8 @@ public class ProjectEntityCRUDStreamListener implements MessageListener {
     List<Project> projects = projectService.list(criteria);
     AtomicBoolean success = new AtomicBoolean(true);
     projects.forEach(project -> {
-      if (!projectService.restore(
-              project.getAccountIdentifier(), project.getOrgIdentifier(), project.getIdentifier())) {
+      if (!projectService.restore(project.getAccountIdentifier(), project.getOrgIdentifier(), project.getIdentifier(),
+              scopeInfo.orElseThrow())) {
         log.error(String.format(
             "Restore operation failed for project with accountIdentifier %s, orgIdentifier %s and identifier %s",
             project.getAccountIdentifier(), project.getOrgIdentifier(), project.getIdentifier()));

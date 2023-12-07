@@ -674,10 +674,10 @@ public class ProjectServiceImpl implements ProjectService {
   }
 
   @Override
-  public boolean restore(String accountIdentifier, String orgIdentifier, String identifier) {
-    validateParentOrgExists(accountIdentifier, orgIdentifier);
+  public boolean restore(String accountIdentifier, String orgIdentifier, String identifier, ScopeInfo scopeInfo) {
+    validateParentOrgExists(accountIdentifier, scopeInfo.getOrgIdentifier());
     return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
-      Project restoredProject = projectRepository.restore(accountIdentifier, orgIdentifier, identifier);
+      Project restoredProject = projectRepository.restore(accountIdentifier, scopeInfo.getUniqueId(), identifier);
       boolean success = restoredProject != null;
       if (success) {
         outboxService.save(

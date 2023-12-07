@@ -36,7 +36,7 @@ public interface ProjectRepositoryCustom {
 
   List<Project> findAll(Criteria criteria);
 
-  Project restore(String accountIdentifier, String orgIdentifier, String identifier);
+  Project restore(String accountIdentifier, String parentUniqueIdentifier, String identifier);
 
   <T> AggregationResults<T> aggregate(Aggregation aggregation, Class<T> classToFillResultIn);
 
