@@ -23,7 +23,6 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidRequestException;
 import io.harness.filter.dto.FilterDTO;
-import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggersFilterPropertiesDTO;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity.NGTriggerEntityKeys;
