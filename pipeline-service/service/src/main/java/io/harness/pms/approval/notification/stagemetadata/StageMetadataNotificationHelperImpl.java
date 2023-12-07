@@ -220,7 +220,7 @@ public class StageMetadataNotificationHelperImpl implements StageMetadataNotific
       throw new InvalidRequestException("Formatted running stages and scope and plan id is required");
     }
 
-    // IMP: changing the reference, as we will be removing stages from finishedStages
+    // IMP: changing the reference, as we will be removing stages from runningStages
     Set<StageSummary> runningStagesInternal = new LinkedHashSet<>(runningStages);
     Map<String, String> formattedRunningStagesIdentifierMap = new HashMap<>();
 
