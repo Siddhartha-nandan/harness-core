@@ -142,6 +142,10 @@ public class VmInitializeTaskParamsBuilder {
     vmInitializeUtils.validateDebug(hostedVmInfraYaml, ambiance);
     if (isBareMetalEnabled(accountId, hostedVmInfraYaml.getSpec().getPlatform(), initializeStepInfo)) {
       poolId = getHostedBareMetalPoolId(hostedVmInfraYaml.getSpec().getPlatform());
+      String fallbackPoolId = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true);
+      if (!isEmpty(fallbackPoolId)) {
+        fallbackPoolIds.add(fallbackPoolId);
+      }
       fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, false));
     } else {
       poolId = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, false);
