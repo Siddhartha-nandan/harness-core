@@ -98,25 +98,43 @@ public class AwsBillingDataVerificationService {
     return c1;
   }
 
-  public void mergeResultsIntoBillingData(
+  public void mergeAWSBillingResultsIntoBillingData(
       Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> queryResults,
       Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) {
     queryResults.forEach(
         (key, value) -> { billingData.put(key, mergeCostDTOs(value, billingData.getOrDefault(key, value))); });
   }
 
+  public void mergeUnifiedTableResultsIntoBillingData(
+      Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> queryResults,
+      Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) {
+    billingData.replaceAll((key, value) -> {
+      CCMBillingDataVerificationKey unifiedTableResultsKey =
+          CCMBillingDataVerificationKey.builder()
+              .harnessAccountId(key.getHarnessAccountId())
+              .connectorId(null)
+              .cloudProvider(key.getCloudProvider())
+              .cloudProviderAccountId(key.getCloudProviderAccountId())
+              .usageStartDate(key.getUsageStartDate())
+              .usageEndDate(key.getUsageEndDate())
+              .costType(key.getCostType())
+              .build();
+      return mergeCostDTOs(value, queryResults.getOrDefault(unifiedTableResultsKey, value));
+    });
+  }
+
   public void fetchAWSBillingDataFromUnifiedTable(String accountId, ConnectorResponseDTO connector, String startDate,
       String endDate, Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) throws Exception {
     Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> awsUnifiedTableResults =
         billingDataVerificationSQLService.fetchAWSCostsFromUnifiedTable(accountId, connector, startDate, endDate);
-    mergeResultsIntoBillingData(awsUnifiedTableResults, billingData);
+    mergeUnifiedTableResultsIntoBillingData(awsUnifiedTableResults, billingData);
   }
 
   public void fetchBillingDataFromAWSBillingTables(String accountId, ConnectorResponseDTO connector, String startDate,
       String endDate, Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) throws Exception {
     Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> awsBillingResults =
         billingDataVerificationSQLService.fetchAWSCostsFromAWSBillingTables(accountId, connector, startDate, endDate);
-    mergeResultsIntoBillingData(awsBillingResults, billingData);
+    mergeAWSBillingResultsIntoBillingData(awsBillingResults, billingData);
   }
 
   public CCMBillingDataVerificationCost createNewCCMBillingDataVerificationCost(

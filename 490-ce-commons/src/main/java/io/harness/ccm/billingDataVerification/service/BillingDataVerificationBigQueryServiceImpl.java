@@ -68,6 +68,8 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
       "(harnessAccountId, connectorId, cloudProvider, cloudProviderAccountId, usageStartDate, usageEndDate, costType, costFromCloudProviderAPI, costFromRawBillingTable, costFromUnifiedTable, lastUpdatedAt) ",
       "VALUES %s ; ");
 
+  private static final int INSERT_BATCH_SIZE_FOR_BILLING_DATA_VERIFICATION_TABLE = 10;
+
   @Inject BigQueryHelper bigQueryHelper;
   @Inject private io.harness.ccm.bigQuery.BigQueryService bigQueryService;
 
@@ -129,7 +131,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
       CCMBillingDataVerificationKey unblendedCostKey =
           CCMBillingDataVerificationKey.builder()
               .harnessAccountId(accountId)
-              .connectorId(connector.getConnector().getIdentifier())
+              .connectorId(null)
               .cloudProvider("AWS")
               .cloudProviderAccountId(row.get("cloudProviderAccountId").getStringValue())
               .usageStartDate(LocalDate.parse(row.get("day").getStringValue()))
@@ -145,7 +147,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
       CCMBillingDataVerificationKey blendedCostKey =
           CCMBillingDataVerificationKey.builder()
               .harnessAccountId(accountId)
-              .connectorId(connector.getConnector().getIdentifier())
+              .connectorId(null)
               .cloudProvider("AWS")
               .cloudProviderAccountId(row.get("cloudProviderAccountId").getStringValue())
               .usageStartDate(LocalDate.parse(row.get("day").getStringValue()))
@@ -161,7 +163,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
       CCMBillingDataVerificationKey amortizedCostKey =
           CCMBillingDataVerificationKey.builder()
               .harnessAccountId(accountId)
-              .connectorId(connector.getConnector().getIdentifier())
+              .connectorId(null)
               .cloudProvider("AWS")
               .cloudProviderAccountId(row.get("cloudProviderAccountId").getStringValue())
               .usageStartDate(LocalDate.parse(row.get("day").getStringValue()))
@@ -177,7 +179,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
       CCMBillingDataVerificationKey netAmortizedCostKey =
           CCMBillingDataVerificationKey.builder()
               .harnessAccountId(accountId)
-              .connectorId(connector.getConnector().getIdentifier())
+              .connectorId(null)
               .cloudProvider("AWS")
               .cloudProviderAccountId(row.get("cloudProviderAccountId").getStringValue())
               .usageStartDate(LocalDate.parse(row.get("day").getStringValue()))
@@ -195,33 +197,36 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
   @Override
   public void ingestAWSCostsIntoBillingDataVerificationTable(String accountId,
       Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> billingData) throws Exception {
-    if (billingData.isEmpty()) {
-      return;
-    }
-    String ccmBillingDataVerificationTableId =
-        bigQueryHelper.getCEInternalDatasetTable(CCM_BILLING_DATA_VERIFICATION_TABLE);
-
     List<String> rows = new ArrayList<>();
     for (var entry : billingData.entrySet()) {
-      if (entry.getValue().getCostFromRawBillingTable() != null) {
-        // process data only if costs from corresponding billing table is present, else ignore
-        rows.add(String.format("('%s', ", accountId)
-                     .concat(String.format("'%s', ", entry.getKey().getConnectorId()))
-                     .concat(String.format("'%s', ", "AWS"))
-                     .concat(String.format("'%s', ", entry.getKey().getCloudProviderAccountId()))
-                     .concat(String.format("'%s', ", entry.getKey().getUsageStartDate()))
-                     .concat(String.format("'%s', ", entry.getKey().getUsageEndDate()))
-                     .concat(String.format("'%s', ", entry.getKey().getCostType()))
+      rows.add(String.format("('%s', ", accountId)
+                   .concat(String.format("'%s', ", entry.getKey().getConnectorId()))
+                   .concat(String.format("'%s', ", "AWS"))
+                   .concat(String.format("'%s', ", entry.getKey().getCloudProviderAccountId()))
+                   .concat(String.format("'%s', ", entry.getKey().getUsageStartDate()))
+                   .concat(String.format("'%s', ", entry.getKey().getUsageEndDate()))
+                   .concat(String.format("'%s', ", entry.getKey().getCostType()))
 
-                     .concat(String.format("%s, ", entry.getValue().getCostFromCloudProviderAPI()))
-                     .concat(String.format("%s, ", entry.getValue().getCostFromRawBillingTable()))
-                     .concat(String.format("%s, ", entry.getValue().getCostFromUnifiedTable()))
-                     .concat("CURRENT_TIMESTAMP() )"));
+                   .concat(String.format("%s, ", entry.getValue().getCostFromCloudProviderAPI()))
+                   .concat(String.format("%s, ", entry.getValue().getCostFromRawBillingTable()))
+                   .concat(String.format("%s, ", entry.getValue().getCostFromUnifiedTable()))
+                   .concat("CURRENT_TIMESTAMP() )"));
+      if (rows.size() >= INSERT_BATCH_SIZE_FOR_BILLING_DATA_VERIFICATION_TABLE) {
+        insertRowsIntoBillingDataVerificationTable(rows);
+        rows.clear();
       }
     }
-    String insertQuery = String.format(INSERT_INTO_BILLING_DATA_VERIFICATION_TABLE_QUERY_TEMPLATE,
-        ccmBillingDataVerificationTableId, String.join(", ", rows));
-    executeQuery(insertQuery);
+    insertRowsIntoBillingDataVerificationTable(rows);
+  }
+
+  private void insertRowsIntoBillingDataVerificationTable(List<String> rows) throws Exception {
+    if (!rows.isEmpty()) {
+      String ccmBillingDataVerificationTableId =
+          bigQueryHelper.getCEInternalDatasetTable(CCM_BILLING_DATA_VERIFICATION_TABLE);
+      String insertQuery = String.format(INSERT_INTO_BILLING_DATA_VERIFICATION_TABLE_QUERY_TEMPLATE,
+          ccmBillingDataVerificationTableId, String.join(", ", rows));
+      executeQuery(insertQuery);
+    }
   }
 
   private TableResult executeQuery(final String query) throws Exception {
