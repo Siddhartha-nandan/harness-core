@@ -4,7 +4,7 @@
  * that can be found in the licenses directory at the root of this repository, also available at
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
-
+#test for sast
 package io.harness.ccm.setup.graphql;
 
 import static io.harness.annotations.dev.HarnessTeam.CE;
