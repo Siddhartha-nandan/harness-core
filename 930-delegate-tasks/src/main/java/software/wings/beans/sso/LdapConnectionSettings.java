@@ -68,10 +68,10 @@ public class LdapConnectionSettings implements LdapConnectionConfig, Encryptable
   private boolean isNonEmptyCredentials() {
     if (StringUtils.isNotBlank(bindDN)) {
       return StringUtils.isNotBlank(bindPassword) || StringUtils.isNotBlank(ngBindSecret)
-          || StringUtils.isNotBlank(String.valueOf(bindSecret));
+          || (bindSecret != null && StringUtils.isNotBlank(String.valueOf(bindSecret)));
     }
     return StringUtils.isBlank(bindPassword) || StringUtils.isBlank(ngBindSecret)
-        || StringUtils.isBlank(String.valueOf(bindSecret));
+        || (bindSecret != null && StringUtils.isBlank(String.valueOf(bindSecret)));
   }
 
   /**

@@ -586,14 +586,18 @@ public class SSOSettingServiceImpl implements SSOSettingService {
   public LdapSettings updateLdapSettings(
       @GetAccountId(LdapSettingsAccountIdExtractor.class) @NotNull LdapSettings settings) {
     LdapSettings oldSettings = getLdapSettingsByAccountId(settings.getAccountId());
+    boolean isCGLdapSecretOrPassword = settings.getConnectionSettings() != null
+        && !LdapConnectionSettings.NG_SECRET.equals(settings.getConnectionSettings().getPasswordType());
     if (oldSettings == null) {
       throw new InvalidRequestException("No existing Ldap settings found for this account.");
     }
-    settings.getConnectionSettings().setEncryptedBindPassword(
-        oldSettings.getConnectionSettings().getEncryptedBindPassword());
-    settings.getConnectionSettings().setPasswordType(oldSettings.getConnectionSettings().getPasswordType());
-    settings.getConnectionSettings().setEncryptedBindSecret(
-        oldSettings.getConnectionSettings().getEncryptedBindSecret());
+    if (isCGLdapSecretOrPassword) {
+      settings.getConnectionSettings().setEncryptedBindPassword(
+          oldSettings.getConnectionSettings().getEncryptedBindPassword());
+      settings.getConnectionSettings().setPasswordType(oldSettings.getConnectionSettings().getPasswordType());
+      settings.getConnectionSettings().setEncryptedBindSecret(
+          oldSettings.getConnectionSettings().getEncryptedBindSecret());
+    }
     oldSettings.getConnectionSettings().setAccountId(settings.getAccountId());
     if (null == settings.getConnectionSettings().getDelegateSelectors()) {
       // setting to old value when new value comes as null, this happens from CG UI
@@ -605,9 +609,10 @@ public class SSOSettingServiceImpl implements SSOSettingService {
     oldSettings.setUserSettingsList(settings.getUserSettingsList());
     oldSettings.setGroupSettingsList(settings.getGroupSettingsList());
     oldSettings.setDisabled(settings.isDisabled());
-    ssoServiceHelper.encryptLdapSecret(oldSettings.getConnectionSettings(), secretManager, settings.getAccountId());
-
-    oldSettings.encryptLdapInlineSecret(secretManager, false);
+    if (isCGLdapSecretOrPassword) {
+      ssoServiceHelper.encryptLdapSecret(oldSettings.getConnectionSettings(), secretManager, settings.getAccountId());
+      oldSettings.encryptLdapInlineSecret(secretManager, false);
+    }
     oldSettings.setDefaultCronExpression(ldapSyncJobConfig.getDefaultCronExpression());
     oldSettings.setCronExpression(settings.getCronExpression());
     updateNextIterations(oldSettings);
@@ -617,8 +622,11 @@ public class SSOSettingServiceImpl implements SSOSettingService {
         settings.getAccountId(), oldSettings, savedSettings, Event.Type.UPDATE);
     ngAuditLoginSettingsForLdapUpdate(settings.getAccountId(), currentLdapSettings, savedSettings);
     log.info("Auditing updation of LDAP for account={}", savedSettings.getAccountId());
-    // handle in async manner
-    executorService.submit(() -> ldapGroupScheduledHandler.handle(savedSettings));
+    if (isCGLdapSecretOrPassword) {
+      // currently trigger sync only for existing cases. TODO: for ng-ldap-secret case
+      // handle in async manner
+      executorService.submit(() -> ldapGroupScheduledHandler.handle(savedSettings));
+    }
     return savedSettings;
   }
 
