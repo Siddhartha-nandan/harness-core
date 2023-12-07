@@ -61,10 +61,13 @@ public class SbomDriftMapper {
   }
 
   private ComponentSummary toComponentSummaryResponse(io.harness.ssca.beans.drift.ComponentSummary componentSummary) {
+    if (componentSummary == null) {
+      return null;
+    }
     return new ComponentSummary()
         .packageName(componentSummary.getPackageName())
         .packageVersion(componentSummary.getPackageVersion())
-        .packageLicense(componentSummary.getPackageLicense())
+        .packageLicense(componentSummary.getPackageLicense().toString())
         .purl(componentSummary.getPurl())
         .packageSupplier(componentSummary.getPackageSupplierName())
         .packageManager(componentSummary.getPackageManager());
