@@ -38,6 +38,7 @@ shared_dependencies = [
     "//120-ng-manager/modules/eula/src/main/java/io/harness/serializer:module",
     "//120-ng-manager/modules/ldap:module",
     "//120-ng-manager/modules/ldap/contracts:module",
+    "//120-ng-manager/modules/ng-certificates:module",
     "//120-ng-manager/modules/ng-settings:module",
     "//120-ng-manager/modules/ng-settings/contracts:module",
     "//120-ng-manager/modules/ng-variables:module",

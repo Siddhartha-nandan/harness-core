@@ -175,6 +175,7 @@ public class NextGenConfiguration extends Configuration {
   public static final String FAVORITES_PACKAGE = "io.harness.favorites.remote";
   public static final String EULA_PACKAGE = "io.harness.eula.resource";
   public static final String SETTINGS_RESOURCE_PACKAGE = "io.harness.ngsettings.remote";
+  public static final String NG_CERTIFICATES_RESOURCE_PACKAGE = "io.harness.ngcertificates.remote";
   public static final String FREEZE_RESOURCE_PACKAGE = "io.harness.ng.freeze.resource";
   public static final String MANIFEST_RESOURCE_PACKAGE = "io.harness.ng.core.manifests.resources";
   private static final String REFRESH_RESOURCE_PACKAGE = "io.harness.ng.core.refresh";
@@ -377,7 +378,7 @@ public class NextGenConfiguration extends Configuration {
                 NextGenConfiguration.SUPPORT_PACKAGE, NextGenConfiguration.EULA_PACKAGE,
                 NextGenConfiguration.TERRAGRUNT_RESOURCE_PACKAGE, NextGenConfiguration.GITX_WEBHOOKS_PACKAGE,
                 NextGenConfiguration.K8S_RELEASE_DETAILS_PACKAGE, NextGenConfiguration.OIDC_CORE_RESOURCE,
-                NextGenConfiguration.TUNNEL_RESOURCE_PACKAGE))
+                NextGenConfiguration.NG_CERTIFICATES_RESOURCE_PACKAGE, NextGenConfiguration.TUNNEL_RESOURCE_PACKAGE))
         .sorted(Comparator.comparing(Class::getName))
         .collect(Collectors.toList());
   }

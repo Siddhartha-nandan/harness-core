@@ -56,6 +56,15 @@ tags:
   - name: EULA
     description: This contains APIs for EULA.
     x-displayName: 'EULA [Beta]'
+  - name: Account Certificate
+    description: This contains APIs for account-scoped Certificates
+    x-displayName: 'Account Certificates [Beta]'
+  - name: Org Certificate
+    description: This contains APIs for organization-scoped Certificates
+    x-displayName: 'Account Certificates [Beta]'
+  - name: Project Certificate
+    description: This contains APIs for project-scoped Certificates
+    x-displayName: 'Account Certificates [Beta]'
   - name: IP Allowlist
     description: This contains APIs for IP Allowlist.
     x-displayName: 'IP Allowlist [Beta]'
@@ -2024,6 +2033,97 @@ paths:
         - $ref: '#/components/parameters/AccountHeader'
       requestBody:
         $ref: '#/components/requestBodies/UpdateGitXWebhookEventRequest'
+  /v1/certificates:
+    get:
+      summary: List certificate
+      tags:
+        - Account Certificate
+      responses: {}
+      operationId: get-account-scoped-certificates
+      description: Retrieves the list of certificates in account scope
+    post:
+      summary: ''
+      operationId: create-account-scoped-certificates
+      responses:
+        '201':
+          $ref: '#/components/responses/CertificateResponse'
+      description: Creates a new certificate in account scope
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+      tags:
+        - Account Certificate
+      security:
+        - x-api-key: []
+      requestBody:
+        $ref: '#/components/requestBodies/CreateCertificateRequest'
+      x-internal: true
+  '/v1/org/{org}/certificates':
+    parameters:
+      - schema:
+          type: string
+        name: org
+        in: path
+        required: true
+    get:
+      summary: Your GET endpoint
+      tags:
+        - Org Certificate
+      responses: {}
+      operationId: get-org-scoped-certificates
+      x-internal: true
+      description: Retrieves the list of certificates in organization scope
+    post:
+      summary: ''
+      operationId: create-org-scoped-certificates
+      responses:
+        '201':
+          $ref: '#/components/responses/CertificateResponse'
+      description: Creates a new certificate in organization scope
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+      requestBody:
+        $ref: '#/components/requestBodies/CreateCertificateRequest'
+      x-internal: true
+      tags:
+        - Org Certificate
+  '/v1/org/{org}/project/{project}/certificates':
+    parameters:
+      - schema:
+          type: string
+        name: org
+        in: path
+        required: true
+      - schema:
+          type: string
+        name: project
+        in: path
+        required: true
+    get:
+      summary: Your GET endpoint
+      tags:
+        - Project Certificate
+      responses: {}
+      operationId: get-project-scoped-certificates
+      description: Retrieves the list of certificates in project scope
+      x-internal: true
+    post:
+      summary: ''
+      operationId: create-project-scoped-certificates
+      responses:
+        '201':
+          $ref: '#/components/responses/CertificateResponse'
+      description: Creates a new certificate in project scope
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+      requestBody:
+        $ref: '#/components/requestBodies/CreateCertificateRequest'
+      x-internal: true
+      tags:
+        - Project Certificate
 components:
   schemas:
     Service:
@@ -3354,6 +3454,189 @@ components:
           type: string
           x-stoplight:
             id: nrriy895o9ami
+    CertificateDTO:
+      title: CertificateDTO
+      x-stoplight:
+        id: zfhh1pil05dnf
+      description: This is the request dto to create a Certificate in Harness
+      allOf:
+        - $ref: '#/components/schemas/CertificateInfoDTO'
+        - type: object
+          properties:
+            inputSpec:
+              $ref: '#/components/schemas/CertificateInputSpecDTO'
+    CertificateInfoDTO:
+      title: CertificateInfoDTO
+      x-stoplight:
+        id: 6p0826ulsrwtd
+      type: object
+      description: This is the Certificate Entity in Harness
+      properties:
+        name:
+          type: string
+          x-stoplight:
+            id: gj2z790yvuanb
+          description: Name for the Entity.
+          pattern: '^[0-9a-zA-Z-_ ]{0,127}$'
+          minLength: 1
+          maxLength: 128
+        identifier:
+          type: string
+          x-stoplight:
+            id: p4qt8g2e8rs7w
+          description: Identifier for the Entity.
+          pattern: '^[a-zA-Z_][0-9a-zA-Z_$]{0,127}$'
+          minLength: 1
+          maxLength: 128
+        org:
+          type: string
+          x-stoplight:
+            id: k5d8u96v06nq2
+          description: Organization Identifier for the Entity.
+          pattern: '^[a-zA-Z_][0-9a-zA-Z_$]{0,127}$'
+          minLength: 1
+          maxLength: 128
+        project:
+          type: string
+          x-stoplight:
+            id: l3l5qc3xg12ti
+          description: Project Identifier for the Entity.
+          pattern: '^[a-zA-Z_][0-9a-zA-Z_$]{0,127}$'
+          minLength: 1
+          maxLength: 128
+        certificateValue:
+          type: string
+          x-stoplight:
+            id: rj5ltf1o8cjzl
+          description: Certificate Content
+          readOnly: true
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+          x-stoplight:
+            id: nc3zk5b4umlrc
+          description: Certificate tags
+        description:
+          type: string
+          x-stoplight:
+            id: tcp3v2qvwmtaj
+      required:
+        - name
+        - identifier
+    CertificateInputSpecDTO:
+      title: CertificateInputSpecDTO
+      x-stoplight:
+        id: afp3aq9340zpo
+      type: object
+      discriminator:
+        propertyName: type
+        mapping:
+          TEXT: '#/components/schemas/TextCertificateInputSpecDTO'
+          FILE: '#/components/schemas/FileCertificateInputSpecDTO'
+      properties:
+        type:
+          $ref: '#/components/schemas/CertificateInputSpecType'
+      required:
+        - type
+      description: ''
+    TextCertificateInputSpecDTO:
+      title: TextCertificateInputSpecDTO
+      x-stoplight:
+        id: qi4ofy32l45g2
+      allOf:
+        - $ref: '#/components/schemas/CertificateInputSpecDTO'
+        - type: object
+          x-stoplight:
+            id: fmagg7joe70sg
+          properties:
+            value:
+              type: string
+              x-stoplight:
+                id: o9qlhwwuvpz15
+          required:
+            - value
+      description: This DTO defines the fields required when creating a certificate by passing it as text.
+      x-discriminator-value: TEXT
+    FileCertificateInputSpecDTO:
+      title: FileCertificateInputSpecDTO
+      x-stoplight:
+        id: yd3tryqahooqh
+      allOf:
+        - $ref: '#/components/schemas/CertificateInputSpecDTO'
+      description: This DTO defines the fields required when creating a certificate by passing it as text.
+      x-discriminator-value: FILE
+    CertificateResponseDTO:
+      title: CertificateResponseDTO
+      x-stoplight:
+        id: 6wrym3s17lpag
+      type: object
+      properties:
+        certificate:
+          $ref: '#/components/schemas/CertificateDTO'
+        certificateDetails:
+          $ref: '#/components/schemas/CertificateDetailsDTO'
+        createdAt:
+          type: integer
+          x-stoplight:
+            id: xwyyv6is1tt0d
+          format: int64
+        lastModifiedAt:
+          type: integer
+          x-stoplight:
+            id: mr8wiuq1rpalf
+          format: int64
+    CertificateDetailsDTO:
+      title: CertificateDetailsDTO
+      x-stoplight:
+        id: gvy1mcfyu6eh5
+      type: object
+      properties:
+        issuedTo:
+          $ref: '#/components/schemas/CertificateIssuanceInfo'
+        issuedBy:
+          $ref: '#/components/schemas/CertificateIssuanceInfo'
+        validFrom:
+          type: integer
+          x-stoplight:
+            id: aly0e54frmxb5
+          format: int64
+        validTo:
+          type: integer
+          x-stoplight:
+            id: veroiszk9kr6m
+          format: int64
+        signatureAlgo:
+          type: string
+          x-stoplight:
+            id: vrgcfez9e1hed
+    CertificateInputSpecType:
+      title: CertificateInputSpecType
+      x-stoplight:
+        id: 2wh6gi4mmqtna
+      type: string
+      enum:
+        - TEXT
+        - FILE
+      description: This defines different ways a certificate can be created
+    CertificateIssuanceInfo:
+      title: CertificateIssuanceInfo
+      x-stoplight:
+        id: 0boi3xjtopi3g
+      type: object
+      properties:
+        commonName:
+          type: string
+          x-stoplight:
+            id: pmkisjnl0wz4w
+        organisation:
+          type: string
+          x-stoplight:
+            id: qk5go8wmj37d1
+        organisationUnit:
+          type: string
+          x-stoplight:
+            id: 3te747zr0xli1
   securitySchemes:
     x-api-key:
       name: x-api-key
@@ -4055,6 +4338,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/GitXWebhookEventResponse'
+    CertificateResponse:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CertificateResponseDTO'
   requestBodies:
     ServiceRequest:
       content:
@@ -4642,6 +4931,25 @@ components:
           schema:
             $ref: '#/components/schemas/UpdateGitXWebhookEventRequest'
       description: Update GitX Webhook Event Request
+    CreateCertificateRequest:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CertificateDTO'
+        multipart/form-data:
+          schema:
+            type: object
+            properties:
+              spec:
+                $ref: '#/components/schemas/CertificateDTO'
+              file:
+                type: string
+                x-stoplight:
+                  id: 0oicqmnn2p8ce
+                format: binary
+            required:
+              - spec
+              - file
   parameters:
     Page:
       name: page

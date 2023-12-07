@@ -88,6 +88,7 @@ public class NextGenRegistrars {
           .addAll(NGVariableRegistrars.morphiaRegistrars)
           .addAll(NGSettingRegistrar.morphiaRegistrars)
           .addAll(IpAllowlistRegistrars.morphiaRegistrars)
+          .addAll(NgCertificateRegistrars.morphiaRegistrars)
           .addAll(EulaRegistrar.morphiaRegistrars)
           .addAll(OidcRegistrars.morphiaRegistrars)
           .add(TunnelMorphiaRegistrars.class)
