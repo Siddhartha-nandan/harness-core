@@ -5,15 +5,17 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ssca.beans.drift;
+package io.harness.ssca.beans;
 
-import java.util.Set;
+import io.harness.ssca.entities.EnforcementResultEntity;
+
+import java.util.List;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Value;
 
-@Data
+@Value
 @Builder
-public class ComponentDriftResult {
-  Set<ComponentSummary> addedOrModifiedSet;
-  Set<ComponentSummary> deletedOrModifiedSet;
+public class PolicyEvaluationResult {
+  List<EnforcementResultEntity> denyListViolations;
+  List<EnforcementResultEntity> allowListViolations;
 }
