@@ -72,6 +72,7 @@ public class BackstageRequestInterceptor implements Interceptor {
   private String getBackstageBackendSecret(String harnessAccount) {
     DecryptedSecretValue decryptedValue =
         ngSecretService.getDecryptedSecretValue(harnessAccount, null, null, Constants.IDP_BACKEND_SECRET);
+    log.info("Backstage secret: {}", decryptedValue);
     byte[] decodedSecret = Base64.getDecoder().decode(String.valueOf(decryptedValue.getDecryptedValue()));
     return generateToken(new String(decodedSecret));
   }
