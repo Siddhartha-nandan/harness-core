@@ -23,12 +23,14 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 
+@Slf4j
 public class BackstageRequestInterceptor implements Interceptor {
   private final SecretManagerClientService ngSecretService;
   private final String env;
@@ -44,11 +46,13 @@ public class BackstageRequestInterceptor implements Interceptor {
   public Response intercept(@NotNull Chain chain) throws IOException {
     Request request = chain.request();
     URL url = new URL(chain.request().url().toString());
+    log.info("Backstage API call: {}", url);
     String urlStr = url.toString();
     urlStr = requestUrlModification(urlStr);
     String path = url.getPath();
     String accountIdentifier = path.split("/")[1];
     String token = getBackstageBackendSecret(accountIdentifier);
+    log.info("Backstage token length: {}", token.length());
     return chain.proceed(request.newBuilder().url(urlStr).header("Authorization", "Bearer " + token).build());
   }
 
