@@ -83,7 +83,7 @@ public class UserMembershipStaleScopeMigrationService implements NGMigration {
       Optional<ScopeInfo> scopeInfo =
           scopeResolverService.getScopeInfo(scope.getAccountIdentifier(), scope.getOrgIdentifier(), null);
       isScopeActive =
-          projectService.get(scope.getAccountIdentifier(), scope.getProjectIdentifier(), scopeInfo.orElseThrow())
+          projectService.get(scope.getAccountIdentifier(), scopeInfo.orElseThrow(), scope.getProjectIdentifier())
               .isPresent();
     } else if (StringUtils.isNotBlank(scope.getOrgIdentifier())) {
       isScopeActive = organizationService.get(scope.getAccountIdentifier(), scope.getOrgIdentifier()).isPresent();

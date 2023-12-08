@@ -51,7 +51,7 @@ public class AccountOrgProjectValidator {
       return organizationService.get(accountIdentifier, orgIdentifier).isPresent();
     } else {
       Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
-      return projectService.get(accountIdentifier, projectIdentifier, scopeInfo.orElseThrow()).isPresent();
+      return projectService.get(accountIdentifier, scopeInfo.orElseThrow(), projectIdentifier).isPresent();
     }
   }
 }

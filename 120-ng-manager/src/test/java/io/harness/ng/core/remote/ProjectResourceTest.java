@@ -103,7 +103,7 @@ public class ProjectResourceTest extends CategoryTest {
     project.setVersion((long) 0);
     project.setParentId(orgUniqueIdentifier);
 
-    when(projectService.create(eq(accountIdentifier), eq(orgIdentifier), any(), eq(projectDTO))).thenReturn(project);
+    when(projectService.create(eq(accountIdentifier), any(), eq(orgIdentifier), eq(projectDTO))).thenReturn(project);
     when(favoritesService.getFavorites(anyString(), any(), any(), anyString(), anyString()))
         .thenReturn(Collections.emptyList());
 
@@ -118,7 +118,7 @@ public class ProjectResourceTest extends CategoryTest {
         projectResource.create(accountIdentifier, orgIdentifier, projectRequestWrapper, scopeInfo);
 
     ArgumentCaptor<ScopeInfo> captor = ArgumentCaptor.forClass(ScopeInfo.class);
-    verify(projectService, times(1)).create(eq(accountIdentifier), eq(orgIdentifier), captor.capture(), eq(projectDTO));
+    verify(projectService, times(1)).create(eq(accountIdentifier), captor.capture(), eq(orgIdentifier), eq(projectDTO));
     ScopeInfo actualScopeInfo = captor.getValue();
     assertEquals(scopeInfo.getScopeType(), actualScopeInfo.getScopeType());
     assertEquals(scopeInfo.getAccountIdentifier(), actualScopeInfo.getAccountIdentifier());
@@ -146,7 +146,7 @@ public class ProjectResourceTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
 
-    when(projectService.get(accountIdentifier, identifier, scopeInfo)).thenReturn(Optional.of(project));
+    when(projectService.get(accountIdentifier, scopeInfo, identifier)).thenReturn(Optional.of(project));
     when(favoritesService.getFavorites(anyString(), any(), any(), anyString(), anyString()))
         .thenReturn(Collections.emptyList());
 
@@ -157,7 +157,7 @@ public class ProjectResourceTest extends CategoryTest {
     assertEquals(orgIdentifier, responseDTO.getData().getProject().getOrgIdentifier());
     assertEquals(identifier, responseDTO.getData().getProject().getIdentifier());
 
-    when(projectService.get(accountIdentifier, identifier, scopeInfo)).thenReturn(Optional.empty());
+    when(projectService.get(accountIdentifier, scopeInfo, identifier)).thenReturn(Optional.empty());
 
     boolean exceptionThrown = false;
     try {
@@ -268,7 +268,7 @@ public class ProjectResourceTest extends CategoryTest {
                               .orgIdentifier(orgIdentifier)
                               .uniqueId(orgUniqueIdentifier)
                               .build();
-    when(projectService.update(accountIdentifier, orgIdentifier, identifier, scopeInfo, projectDTO))
+    when(projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier, projectDTO))
         .thenReturn(project);
 
     ResponseDTO<ProjectResponse> response =
@@ -276,7 +276,7 @@ public class ProjectResourceTest extends CategoryTest {
 
     ArgumentCaptor<ScopeInfo> captor = ArgumentCaptor.forClass(ScopeInfo.class);
     verify(projectService, times(1))
-        .update(eq(accountIdentifier), eq(orgIdentifier), eq(identifier), captor.capture(), eq(projectDTO));
+        .update(eq(accountIdentifier), captor.capture(), eq(orgIdentifier), eq(identifier), eq(projectDTO));
     ScopeInfo actualScopeInfo = captor.getValue();
     assertEquals(scopeInfo.getScopeType(), actualScopeInfo.getScopeType());
     assertEquals(scopeInfo.getAccountIdentifier(), actualScopeInfo.getAccountIdentifier());
@@ -302,14 +302,14 @@ public class ProjectResourceTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
 
-    when(projectService.delete(accountIdentifier, orgIdentifier, identifier, scopeInfo, Long.valueOf(ifMatch)))
+    when(projectService.delete(accountIdentifier, scopeInfo, orgIdentifier, identifier, Long.valueOf(ifMatch)))
         .thenReturn(true);
 
     ResponseDTO<Boolean> response =
         projectResource.delete(ifMatch, identifier, accountIdentifier, orgIdentifier, scopeInfo);
 
     verify(projectService, times(1))
-        .delete(accountIdentifier, orgIdentifier, identifier, scopeInfo, Long.valueOf(ifMatch));
+        .delete(accountIdentifier, scopeInfo, orgIdentifier, identifier, Long.valueOf(ifMatch));
     assertNull(response.getEntityTag());
     assertTrue(response.getData());
   }

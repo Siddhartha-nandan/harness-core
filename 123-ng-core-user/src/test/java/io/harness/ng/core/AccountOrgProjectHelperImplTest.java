@@ -72,7 +72,7 @@ public class AccountOrgProjectHelperImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
     when(scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null)).thenReturn(Optional.of(scopeInfo));
-    when(projectService.get(accountIdentifier, projectIdentifier, scopeInfo)).thenReturn(Optional.empty());
+    when(projectService.get(accountIdentifier, scopeInfo, projectIdentifier)).thenReturn(Optional.empty());
     try {
       accountOrgProjectHelper.getProjectName(accountIdentifier, orgIdentifier, projectIdentifier);
       fail();

@@ -297,7 +297,7 @@ public class VariableServiceImpl implements VariableService {
     if (isNotEmpty(orgIdentifier) && isNotEmpty(projectIdentifier)) {
       Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
       final Optional<Project> project =
-          projectService.get(accountIdentifier, projectIdentifier, scopeInfo.orElseThrow());
+          projectService.get(accountIdentifier, scopeInfo.orElseThrow(), projectIdentifier);
       if (!project.isPresent()) {
         throw new NotFoundException(String.format("project [%s] not found.", projectIdentifier));
       }

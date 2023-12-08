@@ -123,12 +123,12 @@ public class OrgProjectApiImplTest extends CategoryTest {
                               .uniqueId(orgUniqueId)
                               .build();
     when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
-    when(projectService.create(eq(account), eq(org), any(), eq(projectDTO))).thenReturn(project);
+    when(projectService.create(eq(account), any(), eq(org), eq(projectDTO))).thenReturn(project);
 
     Response response = orgProjectApi.createOrgScopedProject(request, org, account);
 
     ArgumentCaptor<ScopeInfo> captor = ArgumentCaptor.forClass(ScopeInfo.class);
-    verify(projectService, times(1)).create(eq(account), eq(org), captor.capture(), eq(projectDTO));
+    verify(projectService, times(1)).create(eq(account), captor.capture(), eq(org), eq(projectDTO));
     ScopeInfo actualScopeInfo = captor.getValue();
     assertEquals(scopeInfo.getScopeType(), actualScopeInfo.getScopeType());
     assertEquals(scopeInfo.getAccountIdentifier(), actualScopeInfo.getAccountIdentifier());
@@ -170,7 +170,7 @@ public class OrgProjectApiImplTest extends CategoryTest {
                               .uniqueId(orgUniqueId)
                               .build();
     when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
-    when(projectService.get(account, identifier, scopeInfo)).thenReturn(Optional.of(project));
+    when(projectService.get(account, scopeInfo, identifier)).thenReturn(Optional.of(project));
 
     Response response = orgProjectApi.getOrgScopedProject(org, identifier, account);
 
@@ -243,12 +243,12 @@ public class OrgProjectApiImplTest extends CategoryTest {
                               .uniqueId(orgUniqueId)
                               .build();
     when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
-    when(projectService.update(eq(account), eq(org), eq(identifier), any(), eq(projectDTO))).thenReturn(project);
+    when(projectService.update(eq(account), any(), eq(org), eq(identifier), eq(projectDTO))).thenReturn(project);
 
     Response response = orgProjectApi.updateOrgScopedProject(request, org, identifier, account);
 
     ArgumentCaptor<ScopeInfo> captor = ArgumentCaptor.forClass(ScopeInfo.class);
-    verify(projectService, times(1)).update(eq(account), eq(org), eq(identifier), captor.capture(), eq(projectDTO));
+    verify(projectService, times(1)).update(eq(account), captor.capture(), eq(org), eq(identifier), eq(projectDTO));
     ScopeInfo actualScopeInfo = captor.getValue();
     assertEquals(scopeInfo.getScopeType(), actualScopeInfo.getScopeType());
     assertEquals(scopeInfo.getAccountIdentifier(), actualScopeInfo.getAccountIdentifier());
@@ -294,13 +294,13 @@ public class OrgProjectApiImplTest extends CategoryTest {
                               .uniqueId(orgUniqueId)
                               .build();
     when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
-    when(projectService.delete(eq(account), eq(org), eq(identifier), any(), isNull())).thenReturn(true);
-    when(projectService.get(account, identifier, scopeInfo)).thenReturn(Optional.of(project));
+    when(projectService.delete(eq(account), any(), eq(org), eq(identifier), isNull())).thenReturn(true);
+    when(projectService.get(account, scopeInfo, identifier)).thenReturn(Optional.of(project));
 
     Response response = orgProjectApi.deleteOrgScopedProject(org, identifier, account);
 
     ArgumentCaptor<ScopeInfo> captor = ArgumentCaptor.forClass(ScopeInfo.class);
-    verify(projectService, times(1)).delete(eq(account), eq(org), eq(identifier), captor.capture(), isNull());
+    verify(projectService, times(1)).delete(eq(account), captor.capture(), eq(org), eq(identifier), isNull());
     ScopeInfo actualScopeInfo = captor.getValue();
     assertEquals(scopeInfo.getScopeType(), actualScopeInfo.getScopeType());
     assertEquals(scopeInfo.getAccountIdentifier(), actualScopeInfo.getAccountIdentifier());
@@ -325,8 +325,8 @@ public class OrgProjectApiImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
     when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
-    when(projectService.delete(account, org, identifier, scopeInfo, null)).thenReturn(false);
-    when(projectService.get(account, identifier, scopeInfo)).thenReturn(Optional.of(project));
+    when(projectService.delete(account, scopeInfo, org, identifier, null)).thenReturn(false);
+    when(projectService.get(account, scopeInfo, identifier)).thenReturn(Optional.of(project));
 
     Throwable thrown = catchThrowableOfType(
         () -> orgProjectApi.deleteOrgScopedProject(org, identifier, account), NotFoundException.class);

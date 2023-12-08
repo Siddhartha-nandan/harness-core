@@ -54,7 +54,7 @@ public class ScopeNameMapper {
       Optional<ScopeInfo> scopeInfo =
           scopeResolverService.getScopeInfo(scopeDTO.getAccountIdentifier(), scopeDTO.getOrgIdentifier(), null);
       projectName =
-          projectService.get(scopeDTO.getAccountIdentifier(), scopeDTO.getProjectIdentifier(), scopeInfo.orElseThrow())
+          projectService.get(scopeDTO.getAccountIdentifier(), scopeInfo.orElseThrow(), scopeDTO.getProjectIdentifier())
               .<InvalidRequestException>orElseThrow(() -> {
                 throw new InvalidRequestException(String.format(
                     "Project details not found for project Identifier: [%s]", scopeDTO.getProjectIdentifier()));

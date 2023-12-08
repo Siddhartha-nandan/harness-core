@@ -66,7 +66,7 @@ public class AccountOrgProjectHelperImpl implements AccountOrgProjectHelper {
 
   public String getProjectName(String accountIdentifier, String orgIdentifier, String projectIdentifier) {
     Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
-    Optional<Project> projectOpt = projectService.get(accountIdentifier, projectIdentifier, scopeInfo.orElseThrow());
+    Optional<Project> projectOpt = projectService.get(accountIdentifier, scopeInfo.orElseThrow(), projectIdentifier);
     if (!projectOpt.isPresent()) {
       throw new NotFoundException(String.format("Project with identifier [%s] doesn't exist", projectIdentifier));
     }

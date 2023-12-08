@@ -435,7 +435,7 @@ public class FileStoreServiceImplTest extends CategoryTest {
                               .build();
     when(scopeResolverService.getScopeInfo(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, null))
         .thenReturn(Optional.of(scopeInfo));
-    when(projectService.get(ACCOUNT_IDENTIFIER, PROJECT_IDENTIFIER, scopeInfo))
+    when(projectService.get(ACCOUNT_IDENTIFIER, scopeInfo, PROJECT_IDENTIFIER))
         .thenReturn(Optional.of(Project.builder()
                                     .accountIdentifier(ACCOUNT_IDENTIFIER)
                                     .identifier(ORG_IDENTIFIER)
@@ -1382,7 +1382,7 @@ public class FileStoreServiceImplTest extends CategoryTest {
                               .build();
     when(scopeResolverService.getScopeInfo(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, null))
         .thenReturn(Optional.of(scopeInfo));
-    when(projectService.get(ACCOUNT_IDENTIFIER, PROJECT_IDENTIFIER, scopeInfo)).thenReturn(Optional.empty());
+    when(projectService.get(ACCOUNT_IDENTIFIER, scopeInfo, PROJECT_IDENTIFIER)).thenReturn(Optional.empty());
     givenThatExistsParentFolderButNotFile(PARENT_IDENTIFIER, FILE_IDENTIFIER);
 
     assertThatThrownBy(() -> fileStoreService.create(fileDTO, null))

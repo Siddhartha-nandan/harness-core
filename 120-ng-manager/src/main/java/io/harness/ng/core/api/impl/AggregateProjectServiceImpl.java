@@ -77,7 +77,7 @@ public class AggregateProjectServiceImpl implements AggregateProjectService {
   @Override
   public ProjectAggregateDTO getProjectAggregateDTO(String accountIdentifier, String orgIdentifier, String identifier) {
     Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
-    Optional<Project> projectOptional = projectService.get(accountIdentifier, identifier, scopeInfo.orElseThrow());
+    Optional<Project> projectOptional = projectService.get(accountIdentifier, scopeInfo.orElseThrow(), identifier);
     if (!projectOptional.isPresent()) {
       throw new NotFoundException(
           String.format("Project with orgIdentifier [%s] and identifier [%s] not found", orgIdentifier, identifier));

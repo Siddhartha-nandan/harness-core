@@ -188,7 +188,7 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
 
-    projectService.create(accountIdentifier, orgIdentifier, scopeInfo, projectDTO);
+    projectService.create(accountIdentifier, scopeInfo, orgIdentifier, projectDTO);
 
     ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
 
@@ -239,7 +239,7 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
 
-    projectService.create(accountIdentifier, orgIdentifier, scopeInfo, projectDTO);
+    projectService.create(accountIdentifier, scopeInfo, orgIdentifier, projectDTO);
   }
 
   @Test
@@ -268,8 +268,8 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .build();
     when(projectRepository.save(any())).thenReturn(project);
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
-    when(projectService.get(accountIdentifier, identifier, scopeInfo)).thenReturn(Optional.of(project));
-    projectService.update(accountIdentifier, orgIdentifier, identifier, scopeInfo, projectDTO);
+    when(projectService.get(accountIdentifier, scopeInfo, identifier)).thenReturn(Optional.of(project));
+    projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier, projectDTO);
 
     ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
     verify(projectRepository, times(1)).save(captor.capture());
@@ -311,9 +311,9 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .build();
     when(projectRepository.save(any())).thenReturn(newProject);
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
-    when(projectService.get(accountIdentifier, identifier, scopeInfo)).thenReturn(Optional.of(existingProject));
+    when(projectService.get(accountIdentifier, scopeInfo, identifier)).thenReturn(Optional.of(existingProject));
 
-    projectService.update(accountIdentifier, orgIdentifier, identifier, scopeInfo, projectDTO);
+    projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier, projectDTO);
 
     ArgumentCaptor<Project> updatedProjectCapture = ArgumentCaptor.forClass(Project.class);
     verify(projectRepository, times(1)).save(updatedProjectCapture.capture());
@@ -356,9 +356,9 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .build();
     when(projectRepository.save(any())).thenReturn(newProject);
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
-    when(projectService.get(accountIdentifier, identifier, scopeInfo)).thenReturn(Optional.of(existingProject));
+    when(projectService.get(accountIdentifier, scopeInfo, identifier)).thenReturn(Optional.of(existingProject));
 
-    projectService.update(accountIdentifier, orgIdentifier, identifier, scopeInfo, projectDTO);
+    projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier, projectDTO);
 
     ArgumentCaptor<Project> updatedProjectCapture = ArgumentCaptor.forClass(Project.class);
     verify(projectRepository, times(1)).save(updatedProjectCapture.capture());
@@ -391,9 +391,9 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
-    when(projectService.get(accountIdentifier, identifier, scopeInfo)).thenReturn(Optional.of(project));
+    when(projectService.get(accountIdentifier, scopeInfo, identifier)).thenReturn(Optional.of(project));
 
-    projectService.update(accountIdentifier, orgIdentifier, identifier, scopeInfo, projectDTO);
+    projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier, projectDTO);
   }
 
   @Test(expected = InvalidRequestException.class)
@@ -417,9 +417,9 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
-    when(projectService.get(accountIdentifier, identifier, scopeInfo)).thenReturn(Optional.empty());
+    when(projectService.get(accountIdentifier, scopeInfo, identifier)).thenReturn(Optional.empty());
 
-    Project updatedProject = projectService.update(accountIdentifier, orgIdentifier, identifier, scopeInfo, projectDTO);
+    Project updatedProject = projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier, projectDTO);
 
     assertNull(updatedProject);
   }
@@ -445,12 +445,12 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
-    when(projectService.get(accountIdentifier, identifier.toUpperCase(), scopeInfo)).thenReturn(Optional.of(project));
+    when(projectService.get(accountIdentifier, scopeInfo, identifier.toUpperCase())).thenReturn(Optional.of(project));
 
     projectDTO.setIdentifier(identifier.toUpperCase());
     when(projectRepository.save(any())).thenReturn(project);
 
-    projectService.update(accountIdentifier, orgIdentifier, identifier.toUpperCase(), scopeInfo, projectDTO);
+    projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier.toUpperCase(), projectDTO);
 
     ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
     verify(projectRepository, times(1)).save(captor.capture());
@@ -485,7 +485,7 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .build();
 
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
-    when(projectService.get(accountIdentifier, identifier.toUpperCase(), scopeInfo))
+    when(projectService.get(accountIdentifier, scopeInfo, identifier.toUpperCase()))
         .thenReturn(Optional.of(existingProject));
 
     ProjectDTO updateDTO = ProjectDTO.builder()
@@ -498,7 +498,7 @@ public class ProjectServiceImplTest extends CategoryTest {
     expectedProject.setName("updatedTest");
     when(projectRepository.save(any())).thenReturn(expectedProject);
 
-    projectService.update(accountIdentifier, orgIdentifier, identifier.toUpperCase(), scopeInfo, updateDTO);
+    projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier.toUpperCase(), updateDTO);
 
     ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
     verify(projectRepository, times(1)).save(captor.capture());
@@ -757,7 +757,7 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
 
-    projectService.delete(accountIdentifier, orgIdentifier, projectIdentifier, scopeInfo, version);
+    projectService.delete(accountIdentifier, scopeInfo, orgIdentifier, projectIdentifier, version);
 
     verify(projectRepository, times(1))
         .hardDelete(eq(accountIdentifier), eq(orgUniqueIdentifier), eq(projectIdentifier), any());
@@ -784,7 +784,7 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
 
-    projectService.delete(accountIdentifier, orgIdentifier, projectIdentifier, scopeInfo, version);
+    projectService.delete(accountIdentifier, scopeInfo, orgIdentifier, projectIdentifier, version);
   }
 
   @Test
@@ -803,7 +803,7 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
 
-    projectService.get(accountIdentifier, projectIdentifier, scopeInfo);
+    projectService.get(accountIdentifier, scopeInfo, projectIdentifier);
     verify(projectRepository, times(1))
         .findByAccountIdentifierAndParentUniqueIdAndIdentifierIgnoreCaseAndDeletedNot(
             accountIdentifier, orgUniqueIdentifier, projectIdentifier, true);

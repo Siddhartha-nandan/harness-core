@@ -142,7 +142,7 @@ public class FavoritesValidatorTest extends CategoryTest {
                               .build();
     when(scopeResolverService.getScopeInfo(accountId, orgId, null)).thenReturn(Optional.of(scopeInfo));
     Project project = Project.builder().identifier(resourceId).name(resourceId).build();
-    when(projectService.get(accountId, resourceId, scopeInfo)).thenReturn(of(project));
+    when(projectService.get(accountId, scopeInfo, resourceId)).thenReturn(of(project));
 
     assertDoesNotThrow(() -> favoritesValidator.validateFavoriteEntry(favoriteDTO, accountId));
   }
@@ -163,7 +163,7 @@ public class FavoritesValidatorTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
     when(scopeResolverService.getScopeInfo(accountId, orgId, null)).thenReturn(Optional.of(scopeInfo));
-    when(projectService.get(accountId, resourceId, scopeInfo)).thenReturn(Optional.empty());
+    when(projectService.get(accountId, scopeInfo, resourceId)).thenReturn(Optional.empty());
     assertThatThrownBy(() -> favoritesValidator.validateFavoriteEntry(favoriteDTO, accountId))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage(String.format(errorMessage, favoriteDTO.getResourceId(), favoriteDTO.getResourceType(), accountId));

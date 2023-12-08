@@ -221,8 +221,8 @@ public class ProjectEntityCRUDStreamListener implements MessageListener {
     List<Project> projects = projectService.list(criteria);
     AtomicBoolean success = new AtomicBoolean(true);
     projects.forEach(project -> {
-      if (!projectService.delete(project.getAccountIdentifier(), project.getOrgIdentifier(), project.getIdentifier(),
-              scopeInfo.orElseThrow(), null)) {
+      if (!projectService.delete(project.getAccountIdentifier(), scopeInfo.orElseThrow(), project.getOrgIdentifier(),
+              project.getIdentifier(), null)) {
         log.error(String.format(
             "Delete operation failed for project with accountIdentifier %s, orgIdentifier %s and identifier %s",
             project.getAccountIdentifier(), project.getOrgIdentifier(), project.getIdentifier()));
@@ -265,8 +265,8 @@ public class ProjectEntityCRUDStreamListener implements MessageListener {
     List<Project> projects = projectService.list(criteria);
     AtomicBoolean success = new AtomicBoolean(true);
     projects.forEach(project -> {
-      if (!projectService.restore(project.getAccountIdentifier(), project.getOrgIdentifier(), project.getIdentifier(),
-              scopeInfo.orElseThrow())) {
+      if (!projectService.restore(project.getAccountIdentifier(), scopeInfo.orElseThrow(), project.getOrgIdentifier(),
+              project.getIdentifier())) {
         log.error(String.format(
             "Restore operation failed for project with accountIdentifier %s, orgIdentifier %s and identifier %s",
             project.getAccountIdentifier(), project.getOrgIdentifier(), project.getIdentifier()));

@@ -109,7 +109,7 @@ public class OrgProjectApiImpl implements OrgProjectApi {
   private Response createProject(CreateProjectRequest createProjectRequest, String account, String org) {
     Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
     Project createdProject = projectService.create(
-        account, org, scopeInfo.orElseThrow(), projectApiUtils.getProjectDto(createProjectRequest));
+        account, scopeInfo.orElseThrow(), org, projectApiUtils.getProjectDto(createProjectRequest));
     ProjectResponse projectResponse = projectApiUtils.getProjectResponse(createdProject);
 
     return Response.status(Response.Status.CREATED)
@@ -122,7 +122,7 @@ public class OrgProjectApiImpl implements OrgProjectApi {
       String identifier, UpdateProjectRequest updateProjectRequest, String account, String org) {
     Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
     Project updatedProject = projectService.update(
-        account, org, identifier, scopeInfo.orElseThrow(), projectApiUtils.getProjectDto(updateProjectRequest));
+        account, scopeInfo.orElseThrow(), org, identifier, projectApiUtils.getProjectDto(updateProjectRequest));
     ProjectResponse projectResponse = projectApiUtils.getProjectResponse(updatedProject);
 
     return Response.ok().entity(projectResponse).tag(updatedProject.getVersion().toString()).build();
@@ -130,7 +130,7 @@ public class OrgProjectApiImpl implements OrgProjectApi {
 
   private Response getProject(String identifier, String account, String org) {
     Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
-    Optional<Project> projectOptional = projectService.get(account, identifier, scopeInfo.orElseThrow());
+    Optional<Project> projectOptional = projectService.get(account, scopeInfo.orElseThrow(), identifier);
     if (!projectOptional.isPresent()) {
       throw new NotFoundException(format("Project with org [%s] and identifier [%s] not found", org, identifier));
     }
@@ -157,11 +157,11 @@ public class OrgProjectApiImpl implements OrgProjectApi {
 
   private Response deleteProject(String identifier, String account, String org) {
     Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
-    Optional<Project> projectOptional = projectService.get(account, identifier, scopeInfo.orElseThrow());
+    Optional<Project> projectOptional = projectService.get(account, scopeInfo.orElseThrow(), identifier);
     if (!projectOptional.isPresent()) {
       throw new NotFoundException(format("Project with org [%s] and identifier [%s] not found", org, identifier));
     }
-    boolean deleted = projectService.delete(account, org, identifier, scopeInfo.orElseThrow(), null);
+    boolean deleted = projectService.delete(account, scopeInfo.orElseThrow(), org, identifier, null);
     if (!deleted) {
       throw new NotFoundException(format("Project with identifier [%s] could not be deleted", identifier));
     }

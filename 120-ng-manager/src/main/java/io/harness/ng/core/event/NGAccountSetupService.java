@@ -175,7 +175,7 @@ public class NGAccountSetupService {
   private Project createDefaultProject(String accountIdentifier, String organizationIdentifier) {
     Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, organizationIdentifier, null);
     Optional<Project> project =
-        projectService.get(accountIdentifier, DEFAULT_PROJECT_IDENTIFIER, scopeInfo.orElseThrow());
+        projectService.get(accountIdentifier, scopeInfo.orElseThrow(), DEFAULT_PROJECT_IDENTIFIER);
     if (project.isPresent()) {
       log.info(String.format("[NGAccountSetupService]: Default Project for account %s organization %s already present",
           accountIdentifier, organizationIdentifier));
@@ -185,7 +185,7 @@ public class NGAccountSetupService {
     createProjectDTO.setIdentifier(DEFAULT_PROJECT_IDENTIFIER);
     createProjectDTO.setName(DEFAULT_PROJECT_NAME);
     Project defaultProject =
-        projectService.create(accountIdentifier, organizationIdentifier, scopeInfo.orElseThrow(), createProjectDTO);
+        projectService.create(accountIdentifier, scopeInfo.orElseThrow(), organizationIdentifier, createProjectDTO);
     log.info(String.format("[NGAccountSetupService]: Default project created for account %s", accountIdentifier));
     return defaultProject;
   }

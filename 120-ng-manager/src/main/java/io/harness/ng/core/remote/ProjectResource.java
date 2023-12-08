@@ -154,7 +154,7 @@ public class ProjectResource {
       @RequestBody(required = true, description = "Details of the Project to create") @NotNull
       @Valid ProjectRequest projectDTO, @Context ScopeInfo scopeInfo) {
     Project createdProject =
-        projectService.create(accountIdentifier, orgIdentifier, scopeInfo, projectDTO.getProject());
+        projectService.create(accountIdentifier, scopeInfo, orgIdentifier, projectDTO.getProject());
     return ResponseDTO.newResponse(createdProject.getVersion().toString(),
         ProjectMapper.toProjectResponseBuilder(createdProject)
             .isFavorite(projectService.isFavorite(createdProject, userHelperService.getUserId()))
@@ -182,7 +182,7 @@ public class ProjectResource {
       @QueryParam(NGCommonEntityConstants.ORG_KEY) @DefaultValue(
           DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier,
       @Context ScopeInfo scopeInfo) {
-    Optional<Project> projectOptional = projectService.get(accountIdentifier, identifier, scopeInfo);
+    Optional<Project> projectOptional = projectService.get(accountIdentifier, scopeInfo, identifier);
     if (!projectOptional.isPresent()) {
       throw new EntityNotFoundException(
           String.format("Project with orgIdentifier [%s] and identifier [%s] not found", orgIdentifier, identifier));
@@ -312,7 +312,7 @@ public class ProjectResource {
       @Context ScopeInfo scopeInfo) {
     projectDTO.getProject().setVersion(isNumeric(ifMatch) ? parseLong(ifMatch) : null);
     Project updatedProject =
-        projectService.update(accountIdentifier, orgIdentifier, identifier, scopeInfo, projectDTO.getProject());
+        projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier, projectDTO.getProject());
     return ResponseDTO.newResponse(updatedProject.getVersion().toString(),
         ProjectMapper.toProjectResponseBuilder(updatedProject)
             .isFavorite(projectService.isFavorite(updatedProject, userHelperService.getUserId()))
@@ -344,7 +344,7 @@ public class ProjectResource {
           DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier,
       @Context ScopeInfo scopeInfo) {
     return ResponseDTO.newResponse(projectService.delete(
-        accountIdentifier, orgIdentifier, identifier, scopeInfo, isNumeric(ifMatch) ? parseLong(ifMatch) : null));
+        accountIdentifier, scopeInfo, orgIdentifier, identifier, isNumeric(ifMatch) ? parseLong(ifMatch) : null));
   }
 
   @GET

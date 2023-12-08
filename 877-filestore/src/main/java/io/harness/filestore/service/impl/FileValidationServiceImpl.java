@@ -75,7 +75,7 @@ public class FileValidationServiceImpl implements FileValidationService {
 
     if (isNotEmpty(projectIdentifier)) {
       Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
-      projectService.get(accountIdentifier, projectIdentifier, scopeInfo.orElseThrow())
+      projectService.get(accountIdentifier, scopeInfo.orElseThrow(), projectIdentifier)
           .orElseThrow(()
                            -> new InvalidArgumentsException(format(
                                "Project with identifier [%s] does not exist, orgIdentifier: %s, accountIdentifier: %s",

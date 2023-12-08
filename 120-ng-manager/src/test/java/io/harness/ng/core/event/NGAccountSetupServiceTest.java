@@ -103,7 +103,7 @@ public class NGAccountSetupServiceTest extends CategoryTest {
                            .identifier(DEFAULT_ORG_IDENTIFIER)
                            .name(DEFAULT_ORG_IDENTIFIER)
                            .build()));
-    when(projectService.get(anyString(), anyString(), any(ScopeInfo.class)))
+    when(projectService.get(anyString(), any(ScopeInfo.class), anyString()))
         .thenReturn(of(Project.builder()
                            .accountIdentifier(ACCOUNT_ID)
                            .identifier(DEFAULT_PROJECT_IDENTIFIER)

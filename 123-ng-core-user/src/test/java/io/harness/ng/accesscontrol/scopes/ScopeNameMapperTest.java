@@ -140,7 +140,7 @@ public class ScopeNameMapperTest extends CategoryTest {
                             .build();
     doReturn(organizationResponse).when(organizationService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
 
-    doReturn(Optional.empty()).when(projectService).get(ACCOUNT_IDENTIFIER, PROJECT_IDENTIFIER, scopeInfo);
+    doReturn(Optional.empty()).when(projectService).get(ACCOUNT_IDENTIFIER, scopeInfo, PROJECT_IDENTIFIER);
     try {
       scopeNameMapper.toScopeNameDTO(scopeDTO);
       fail("Expected failure as project does not exists");
@@ -160,11 +160,11 @@ public class ScopeNameMapperTest extends CategoryTest {
                             .projectIdentifier(PROJECT_IDENTIFIER)
                             .build();
     doReturn(organizationResponse).when(organizationService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
-    doReturn(projectResponse).when(projectService).get(ACCOUNT_IDENTIFIER, PROJECT_IDENTIFIER, scopeInfo);
+    doReturn(projectResponse).when(projectService).get(ACCOUNT_IDENTIFIER, scopeInfo, PROJECT_IDENTIFIER);
 
     ScopeNameDTO result = scopeNameMapper.toScopeNameDTO(scopeDTO);
     verify(organizationService, times(1)).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
-    verify(projectService, times(1)).get(ACCOUNT_IDENTIFIER, PROJECT_IDENTIFIER, scopeInfo);
+    verify(projectService, times(1)).get(ACCOUNT_IDENTIFIER, scopeInfo, PROJECT_IDENTIFIER);
     verifyNoMoreInteractions(organizationService);
     verifyNoMoreInteractions(projectService);
     assertThat(result.getAccountIdentifier()).isEqualTo(ACCOUNT_IDENTIFIER);

@@ -182,7 +182,7 @@ public class ProjectServiceImpl implements ProjectService {
   @Override
   @FeatureRestrictionCheck(MULTIPLE_PROJECTS)
   public Project create(
-      @AccountIdentifier String accountIdentifier, String orgIdentifier, ScopeInfo scopeInfo, ProjectDTO projectDTO) {
+      @AccountIdentifier String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier, ProjectDTO projectDTO) {
     verifyValuesNotChanged(
         Lists.newArrayList(Pair.of(scopeInfo.getOrgIdentifier(), projectDTO.getOrgIdentifier())), true);
     Project project = toProject(projectDTO);
@@ -317,7 +317,7 @@ public class ProjectServiceImpl implements ProjectService {
   @Override
   @DefaultOrganization
   public Optional<Project> get(
-      String accountIdentifier, @ProjectIdentifier String projectIdentifier, ScopeInfo scopeInfo) {
+      String accountIdentifier, ScopeInfo scopeInfo, @ProjectIdentifier String projectIdentifier) {
     return projectRepository.findByAccountIdentifierAndParentUniqueIdAndIdentifierIgnoreCaseAndDeletedNot(
         accountIdentifier, scopeInfo.getUniqueId(), projectIdentifier, true);
   }
@@ -444,10 +444,10 @@ public class ProjectServiceImpl implements ProjectService {
 
   @Override
   @DefaultOrganization
-  public Project update(String accountIdentifier, @OrgIdentifier String orgIdentifier,
-      @ProjectIdentifier String identifier, ScopeInfo scopeInfo, ProjectDTO projectDTO) {
+  public Project update(String accountIdentifier, ScopeInfo scopeInfo, @OrgIdentifier String orgIdentifier,
+      @ProjectIdentifier String identifier, ProjectDTO projectDTO) {
     validateUpdateProjectRequest(accountIdentifier, scopeInfo.getOrgIdentifier(), identifier, projectDTO);
-    Optional<Project> optionalProject = get(accountIdentifier, identifier, scopeInfo);
+    Optional<Project> optionalProject = get(accountIdentifier, scopeInfo, identifier);
 
     if (optionalProject.isPresent()) {
       Project existingProject = optionalProject.get();
@@ -652,8 +652,8 @@ public class ProjectServiceImpl implements ProjectService {
 
   @Override
   @DefaultOrganization
-  public boolean delete(String accountIdentifier, @OrgIdentifier String orgIdentifier,
-      @ProjectIdentifier String projectIdentifier, ScopeInfo scopeInfo, Long version) {
+  public boolean delete(String accountIdentifier, ScopeInfo scopeInfo, @OrgIdentifier String orgIdentifier,
+      @ProjectIdentifier String projectIdentifier, Long version) {
     try (AutoLogContext ignore1 =
              new NgAutoLogContext(projectIdentifier, scopeInfo.getOrgIdentifier(), accountIdentifier, OVERRIDE_ERROR)) {
       return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
@@ -682,7 +682,7 @@ public class ProjectServiceImpl implements ProjectService {
   }
 
   @Override
-  public boolean restore(String accountIdentifier, String orgIdentifier, String identifier, ScopeInfo scopeInfo) {
+  public boolean restore(String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier, String identifier) {
     validateParentOrgExists(accountIdentifier, scopeInfo.getOrgIdentifier());
     return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
       Project restoredProject = projectRepository.restore(accountIdentifier, scopeInfo.getUniqueId(), identifier);

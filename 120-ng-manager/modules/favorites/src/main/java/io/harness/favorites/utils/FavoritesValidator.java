@@ -95,7 +95,7 @@ public class FavoritesValidator {
   private boolean doesProjectExit(FavoriteDTO favoriteDTO, String accountIdentifier) {
     Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, favoriteDTO.getOrg(), null);
     Optional<Project> project =
-        projectService.get(accountIdentifier, favoriteDTO.getResourceId(), scopeInfo.orElseThrow());
+        projectService.get(accountIdentifier, scopeInfo.orElseThrow(), favoriteDTO.getResourceId());
     return project.isPresent();
   }
 

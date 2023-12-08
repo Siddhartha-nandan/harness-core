@@ -120,7 +120,7 @@ public class AggregateProjectServiceImplTest extends CategoryTest {
     when(scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null)).thenReturn(Optional.of(scopeInfo));
 
     Project project = getProject(accountIdentifier, orgIdentifier, projectIdentifier);
-    when(projectService.get(accountIdentifier, projectIdentifier, scopeInfo)).thenReturn(Optional.of(project));
+    when(projectService.get(accountIdentifier, scopeInfo, projectIdentifier)).thenReturn(Optional.of(project));
 
     Optional<Organization> organizationOpt = getOrganization(accountIdentifier, orgIdentifier);
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(organizationOpt);
@@ -163,7 +163,7 @@ public class AggregateProjectServiceImplTest extends CategoryTest {
     when(scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null)).thenReturn(Optional.of(scopeInfo));
 
     Project project = getProject(accountIdentifier, orgIdentifier, projectIdentifier);
-    when(projectService.get(accountIdentifier, projectIdentifier, scopeInfo)).thenReturn(Optional.of(project));
+    when(projectService.get(accountIdentifier, scopeInfo, projectIdentifier)).thenReturn(Optional.of(project));
 
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.empty());
 
