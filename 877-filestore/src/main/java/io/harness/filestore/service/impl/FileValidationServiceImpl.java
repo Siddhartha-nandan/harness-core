@@ -15,19 +15,16 @@ import static java.lang.String.format;
 
 import io.harness.account.services.AccountService;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.beans.ScopeInfo;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.filestore.entities.NGFile;
 import io.harness.filestore.service.FileValidationService;
 import io.harness.ng.core.filestore.dto.FileDTO;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
-import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.repositories.spring.FileStoreRepository;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import java.util.Optional;
 import javax.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,7 +36,6 @@ public class FileValidationServiceImpl implements FileValidationService {
   @Inject private AccountService accountService;
   @Inject private OrganizationService organizationService;
   @Inject private ProjectService projectService;
-  @Inject private ScopeInfoService scopeResolverService;
 
   public boolean isFileExistByName(FileDTO fileDto) {
     return fileStoreRepository
@@ -74,8 +70,7 @@ public class FileValidationServiceImpl implements FileValidationService {
     String projectIdentifier = fileDto.getProjectIdentifier();
 
     if (isNotEmpty(projectIdentifier)) {
-      Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
-      projectService.get(accountIdentifier, scopeInfo.orElseThrow(), projectIdentifier)
+      projectService.get(accountIdentifier, orgIdentifier, projectIdentifier)
           .orElseThrow(()
                            -> new InvalidArgumentsException(format(
                                "Project with identifier [%s] does not exist, orgIdentifier: %s, accountIdentifier: %s",
