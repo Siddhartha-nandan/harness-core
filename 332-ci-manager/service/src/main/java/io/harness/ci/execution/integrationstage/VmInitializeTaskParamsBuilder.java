@@ -85,7 +85,6 @@ import io.harness.pms.yaml.ParameterField;
 import io.harness.ssca.client.SSCAServiceUtils;
 import io.harness.stoserviceclient.STOServiceUtils;
 import io.harness.vm.VmExecuteStepUtils;
-import io.harness.yaml.core.variables.NGVariable;
 import io.harness.yaml.utils.NGVariablesUtils;
 
 import com.google.inject.Inject;
