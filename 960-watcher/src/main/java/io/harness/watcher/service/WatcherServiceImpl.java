@@ -230,7 +230,7 @@ public class WatcherServiceImpl implements WatcherService {
 
   private final AtomicBoolean frozen = new AtomicBoolean(false);
 
-  private final String defaultJREVersion = "11.0.19+7";
+  private final String defaultJREVersion = multiVersion ? "11.0.19+7" : "17.0.7+7";
 
   @Override
   public void run(boolean upgrade) {
