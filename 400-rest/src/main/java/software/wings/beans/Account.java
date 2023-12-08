@@ -225,7 +225,7 @@ public class Account extends Base implements PersistentRegularIterable, NGMigrat
 
   @Getter @Setter private boolean immutableDelegateEnabled = true;
 
-  @Deprecated @Getter private Long optionalDelegateTaskLimit;
+  @Getter @Deprecated private Long optionalDelegateTaskLimit;
 
   @Getter private Long importantDelegateTaskLimit;
 
