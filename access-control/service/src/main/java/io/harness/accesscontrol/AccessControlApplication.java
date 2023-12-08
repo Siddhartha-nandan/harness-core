@@ -28,6 +28,7 @@ import static com.google.common.collect.ImmutableMap.of;
 import static io.serializer.HObjectMapper.configureObjectMapperForNG;
 
 import io.harness.Microservice;
+import io.harness.accesscontrol.acl.iterators.ACLReconciliationIterator;
 import io.harness.accesscontrol.acl.worker.RemoveRedundantACLService;
 import io.harness.accesscontrol.commons.bootstrap.AccessControlManagementJob;
 import io.harness.accesscontrol.commons.events.EntityCrudEventListenerService;
@@ -251,6 +252,7 @@ public class AccessControlApplication extends Application<AccessControlConfigura
     injector.getInstance(ServiceAccountReconciliationIterator.class).registerIterators();
     injector.getInstance(SupportPreferenceReconciliationIterator.class).registerIterators();
     injector.getInstance(ScopeReconciliationIterator.class).registerIterators();
+    injector.getInstance(ACLReconciliationIterator.class).registerIterators();
   }
 
   private void registerJerseyFeatures(Environment environment) {
