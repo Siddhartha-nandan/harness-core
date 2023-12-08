@@ -47,6 +47,7 @@ import io.harness.pms.serializer.recaster.RecastOrchestrationUtils;
 import io.harness.repositories.gitxwebhook.GitXWebhookEventsRepository;
 
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -60,6 +61,7 @@ import org.springframework.data.mongodb.core.query.Update;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_GITX})
 @Slf4j
+@Singleton
 @OwnedBy(HarnessTeam.PIPELINE)
 public class GitXWebhookEventServiceImpl implements GitXWebhookEventService {
   @Inject GitXWebhookEventsRepository gitXWebhookEventsRepository;

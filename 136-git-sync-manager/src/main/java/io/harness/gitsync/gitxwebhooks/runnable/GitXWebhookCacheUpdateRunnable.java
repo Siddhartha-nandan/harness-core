@@ -53,7 +53,10 @@ public class GitXWebhookCacheUpdateRunnable implements Runnable {
       scmFacilitatorService.updateGitCache(buildScmUpdateGitCacheRequestDTO(gitXCacheUpdateRunnableRequestDTO));
       gitXWebhookEventService.updateEvent(gitXCacheUpdateRunnableRequestDTO.getScope().getAccountIdentifier(),
           eventIdentifier,
-          GitXEventUpdateRequestDTO.builder().gitXWebhookEventStatus(GitXWebhookEventStatus.SUCCESSFUL).build());
+          GitXEventUpdateRequestDTO.builder()
+              .webhookDTO(gitXCacheUpdateRunnableRequestDTO.getWebhookDTO())
+              .gitXWebhookEventStatus(GitXWebhookEventStatus.SUCCESSFUL)
+              .build());
       log.info(String.format("In the account %s, successfully updated the git cache for the event %s",
           gitXCacheUpdateRunnableRequestDTO.getScope().getAccountIdentifier(),
           gitXCacheUpdateRunnableRequestDTO.getEventIdentifier()));
@@ -62,7 +65,10 @@ public class GitXWebhookCacheUpdateRunnable implements Runnable {
           eventIdentifier, exception);
       gitXWebhookEventService.updateEvent(gitXCacheUpdateRunnableRequestDTO.getScope().getAccountIdentifier(),
           eventIdentifier,
-          GitXEventUpdateRequestDTO.builder().gitXWebhookEventStatus(GitXWebhookEventStatus.FAILED).build());
+          GitXEventUpdateRequestDTO.builder()
+              .webhookDTO(gitXCacheUpdateRunnableRequestDTO.getWebhookDTO())
+              .gitXWebhookEventStatus(GitXWebhookEventStatus.FAILED)
+              .build());
     }
   }
 

@@ -13,9 +13,11 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.FeatureName;
 import io.harness.eventsframework.api.Producer;
 import io.harness.eventsframework.producer.Message;
 import io.harness.eventsframework.webhookpayloads.webhookdata.WebhookDTO;
+import io.harness.utils.NGFeatureFlagHelperService;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -26,13 +28,16 @@ import lombok.extern.slf4j.Slf4j;
 @OwnedBy(HarnessTeam.PIPELINE)
 public class GitXWebhookTriggerHelper {
   @Inject @Named(WEBHOOK_EVENTS_STREAM) private Producer eventProducer;
+  @Inject NGFeatureFlagHelperService ngFeatureFlagHelperService;
 
   public void startTriggerExecution(WebhookDTO webhookDTO) {
     try {
-      log.info(String.format(
-          "Starting the trigger execution after gitx Webhook processing for the event %s", webhookDTO.getEventId()));
-      eventProducer.send(Message.newBuilder().setData(webhookDTO.toByteString()).build());
-
+      if (ngFeatureFlagHelperService.isEnabled(
+              webhookDTO.getAccountId(), FeatureName.PIE_PROCESS_TRIGGER_SEQUENTIALLY)) {
+        log.info(String.format(
+            "Starting the trigger execution after gitx Webhook processing for the event %s", webhookDTO.getEventId()));
+        eventProducer.send(Message.newBuilder().setData(webhookDTO.toByteString()).build());
+      }
     } catch (Exception exception) {
       log.error("Faced exception while sequentially executing the trigger for the event: {} ", webhookDTO.getEventId(),
           exception);

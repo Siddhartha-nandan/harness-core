@@ -12,13 +12,10 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
-import io.harness.beans.FeatureName;
-import io.harness.eventsframework.producer.Message;
 import io.harness.gitsync.common.beans.GitXWebhookEventStatus;
 import io.harness.gitsync.gitxwebhooks.dtos.GitXWebhookEventUpdateInfo;
 import io.harness.gitsync.gitxwebhooks.helper.GitXWebhookTriggerHelper;
 import io.harness.gitsync.gitxwebhooks.loggers.GitXWebhookEventLogContext;
-import io.harness.utils.NGFeatureFlagHelperService;
 
 import com.google.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -27,24 +24,20 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @OwnedBy(PIPELINE)
 public class GitXWebhookEventObserverImpl implements GitXWebhookEventUpdateObserver {
-  @Inject private NGFeatureFlagHelperService ngFeatureFlagHelperService;
   @Inject private GitXWebhookTriggerHelper gitXWebhookTriggerHelper;
 
   @Override
   public void onGitXWebhookEventUpdate(GitXWebhookEventUpdateInfo gitXWebhookEventUpdateInfo) {
     try (GitXWebhookEventLogContext context =
              new GitXWebhookEventLogContext(gitXWebhookEventUpdateInfo.getWebhookDTO())) {
-      if (ngFeatureFlagHelperService.isEnabled(gitXWebhookEventUpdateInfo.getWebhookDTO().getAccountId(),
-              FeatureName.PIE_PROCESS_TRIGGER_SEQUENTIALLY)) {
-        if (shouldStartTriggerExecution(gitXWebhookEventUpdateInfo.getEventStatus())) {
-          try {
-            log.info(String.format(
-                "Starting the trigger execution for event %s", gitXWebhookEventUpdateInfo.getEventStatus()));
-            gitXWebhookTriggerHelper.startTriggerExecution(gitXWebhookEventUpdateInfo.getWebhookDTO());
-          } catch (Exception exception) {
-            log.error("Faced exception while sequentially executing the trigger for the event: {} ",
-                gitXWebhookEventUpdateInfo.getWebhookDTO().getEventId(), exception);
-          }
+      if (shouldStartTriggerExecution(gitXWebhookEventUpdateInfo.getEventStatus())) {
+        try {
+          log.info(String.format(
+              "Starting the trigger execution for event %s", gitXWebhookEventUpdateInfo.getEventStatus()));
+          gitXWebhookTriggerHelper.startTriggerExecution(gitXWebhookEventUpdateInfo.getWebhookDTO());
+        } catch (Exception exception) {
+          log.error("Faced exception while sequentially executing the trigger for the event: {} ",
+              gitXWebhookEventUpdateInfo.getWebhookDTO().getEventId(), exception);
         }
       }
     }

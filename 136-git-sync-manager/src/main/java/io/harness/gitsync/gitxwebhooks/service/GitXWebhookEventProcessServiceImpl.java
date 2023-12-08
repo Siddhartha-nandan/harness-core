@@ -102,7 +102,7 @@ public class GitXWebhookEventProcessServiceImpl implements GitXWebhookEventProce
                   processingFilePathResponseDTO.getModifiedFilePaths(), processingFilePathResponseDTO.getScmConnector(),
                   webhookDTO));
           updateEventStatus(gitXWebhookEvent.getAccountIdentifier(), gitXWebhookEvent.getEventIdentifier(),
-              GitXWebhookEventStatus.PROCESSING, processingFilePathResponseDTO.getProcessingFilePaths());
+              GitXWebhookEventStatus.PROCESSING, processingFilePathResponseDTO.getProcessingFilePaths(), webhookDTO);
         }
       } catch (ConnectorNotFoundException connectorNotFoundException) {
         log.error(String.format("Connector not found for event %s in the account %s.",
@@ -241,11 +241,12 @@ public class GitXWebhookEventProcessServiceImpl implements GitXWebhookEventProce
   }
 
   private void updateEventStatus(String accountIdentifier, String eventIdentifier,
-      GitXWebhookEventStatus gitXWebhookEventStatus, List<String> processingFilePaths) {
+      GitXWebhookEventStatus gitXWebhookEventStatus, List<String> processingFilePaths, WebhookDTO webhookDTO) {
     gitXWebhookEventService.updateEvent(accountIdentifier, eventIdentifier,
         GitXEventUpdateRequestDTO.builder()
             .gitXWebhookEventStatus(gitXWebhookEventStatus)
             .processedFilePaths(processingFilePaths)
+            .webhookDTO(webhookDTO)
             .build());
   }
 
