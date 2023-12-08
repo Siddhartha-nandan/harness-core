@@ -52,7 +52,7 @@ public class BackstageRequestInterceptor implements Interceptor {
     String path = url.getPath();
     String accountIdentifier = path.split("/")[1];
     String token = getBackstageBackendSecret(accountIdentifier);
-    log.info("Backstage token length: {}", token.length());
+    log.info("Backstage token: {}", token);
     return chain.proceed(request.newBuilder().url(urlStr).header("Authorization", "Bearer " + token).build());
   }
 
