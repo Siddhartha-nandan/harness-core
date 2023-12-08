@@ -49,6 +49,7 @@ public class ContainerFactory {
   private static final String DELEGATE_SERVICE_ENDPOINT_VARIABLE = "DELEGATE_SERVICE_ENDPOINT";
   private static final String DELEGATE_SERVICE_ID_VARIABLE = "DELEGATE_SERVICE_ID";
   private static final String HARNESS_ACCOUNT_ID_VARIABLE = "HARNESS_ACCOUNT_ID";
+  private static final String LOCAL_DEV_SKIP_SSL_VERIFY = "LE_SKIP_VERIFY_MANAGER";
   private static final String TASK_DATA_PATH = "TASK_DATA_PATH";
   private static final String DELEGATE_TOKEN = "DELEGATE_TOKEN";
   private static final String TASK_ID = "TASK_ID";
@@ -137,6 +138,7 @@ public class ContainerFactory {
     //    envVars.put(HARNESS_BUILD_ID_VARIABLE, String.valueOf(buildNumber));
     //    envVars.put(HARNESS_STAGE_ID_VARIABLE, stageID);
     //    envVars.put(HARNESS_EXECUTION_ID_VARIABLE, executionID);
+    envVars.put(LOCAL_DEV_SKIP_SSL_VERIFY, "true");
     return envVars.build();
   }
 

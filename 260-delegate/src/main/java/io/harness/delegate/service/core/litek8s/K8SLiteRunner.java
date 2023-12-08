@@ -17,6 +17,9 @@ import static java.util.stream.Collectors.flatMapping;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 
+import static io.kubernetes.client.extended.kubectl.Kubectl.portforward;
+import io.kubernetes.client.extended.kubectl.KubectlPortForward;
+
 import io.harness.delegate.beans.ci.k8s.K8sTaskExecutionResponse;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
 import io.harness.delegate.configuration.DelegateConfiguration;
@@ -123,8 +126,10 @@ public class K8SLiteRunner implements Runner {
           loggingToken, k8sInfra.getLogPrefix(), logStreamingClient, config.getAccountId(), delegateLogService);
       logStreamingTaskClient.openStream(null);
 
+//      final V1Secret loggingSecret =
+//          createLoggingSecret(infraId, config.getLogServiceUrl(), loggingToken, k8sInfra.getLogPrefix());
       final V1Secret loggingSecret =
-          createLoggingSecret(infraId, config.getLogServiceUrl(), loggingToken, k8sInfra.getLogPrefix());
+              createLoggingSecret(infraId, "http://host.docker.internal:8079", loggingToken, k8sInfra.getLogPrefix());
 
       // Step 1c - TODO: Support certs (i.e. secret files that get mounted as secret volume).
       // Right now these are copied from delegate using special syntax and env vars (complicated)
@@ -174,7 +179,6 @@ public class K8SLiteRunner implements Runner {
       log.error("Failed to parse protobuf data {}", infraId, e);
     } catch (Exception e) {
       log.error("Failed to create the task {}", infraId, e);
-      throw e;
     } finally {
       if (logStreamingTaskClient != null) {
         logStreamingTaskClient.closeStream(null);
@@ -185,7 +189,10 @@ public class K8SLiteRunner implements Runner {
   @Override
   public void execute(final String infraId, final String logKey, final InputData taskData, final InputData runnerData,
       Map<String, char[]> decrypted, final Context context) {
-    String target = K8SService.buildK8sServiceUrl(infraId, config.getNamespace(), Integer.toString(RESERVED_LE_PORT));
+    // String target = K8SService.buildK8sServiceUrl(infraId, config.getNamespace(), Integer.toString(RESERVED_LE_PORT));
+    String target = format("%s:%d", "127.0.0.1", RESERVED_LE_PORT);
+
+
     try {
       K8sExecution k8sExecution = K8sExecution.parseFrom(runnerData.getBinaryData());
       var executeStepBuilder = ExecuteStep.newBuilder();
@@ -214,7 +221,9 @@ public class K8SLiteRunner implements Runner {
       ExecuteStepRequest executeStepRequest = ExecuteStepRequest.newBuilder().setStep(unitStep).build();
 
       String accountKey = delegateConfiguration.getDelegateToken();
-      String managerUrl = delegateConfiguration.getManagerUrl();
+      //String managerUrl = delegateConfiguration.getManagerUrl();
+      String managerUrl = "https://host.docker.internal:9090/api/";
+
       String delegateID = context.get(Context.DELEGATE_ID);
       if (isNotEmpty(managerUrl)) {
         managerUrl = managerUrl.replace("/api/", "");
