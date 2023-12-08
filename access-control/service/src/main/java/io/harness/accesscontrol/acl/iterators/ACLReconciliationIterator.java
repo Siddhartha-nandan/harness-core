@@ -54,7 +54,7 @@ public class ACLReconciliationIterator implements MongoPersistenceIterator.Handl
       persistenceIteratorFactory.createPumpIteratorWithDedicatedThreadPool(
           PersistenceIteratorFactory.PumpExecutorOptions.builder()
               .name("ACLReconciliationIterator")
-              .poolSize(5)
+              .poolSize(1)
               .interval(ofSeconds(5))
               .build(),
           RoleAssignmentDBO.class,
