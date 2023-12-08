@@ -142,16 +142,27 @@ public class VmInitializeTaskParamsBuilder {
     vmInitializeUtils.validateDebug(hostedVmInfraYaml, ambiance);
     if (isBareMetalEnabled(accountId, hostedVmInfraYaml.getSpec().getPlatform(), initializeStepInfo)) {
       poolId = getHostedBareMetalPoolId(hostedVmInfraYaml.getSpec().getPlatform());
-      String fallbackPoolId = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true);
-      if (!isEmpty(fallbackPoolId)) {
-        fallbackPoolIds.add(fallbackPoolId);
-      }
-      fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, false));
+      fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "west4"));
+      fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "fallback"));
+      fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "east5"));
+      fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, ""));
     } else {
-      poolId = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, false);
-      String fallbackPoolId = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true);
-      if (!isEmpty(fallbackPoolId)) {
-        fallbackPoolIds.add(fallbackPoolId);
+      poolId = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, false, "west-1");
+
+      String fallbackPoolIdWest4 = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "west4");
+      String fallbackPoolIdEast1 =
+          getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "fallback");
+      String fallbackPoolIdEast5 = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "east5");
+      if (!isEmpty(fallbackPoolIdWest4)) {
+        fallbackPoolIds.add(fallbackPoolIdWest4);
+      }
+
+      if (!isEmpty(fallbackPoolIdEast1)) {
+        fallbackPoolIds.add(fallbackPoolIdEast1);
+      }
+
+      if (!isEmpty(fallbackPoolIdEast5)) {
+        fallbackPoolIds.add(fallbackPoolIdEast5);
       }
     }
     boolean distributed =
@@ -556,7 +567,7 @@ public class VmInitializeTaskParamsBuilder {
   // getHostedPoolId returns a pool ID that can be used for GCP hosted builds. If fallback is set to true,
   // it will try to find a fallback pool value instead. Fallback pools are currently only present for linux
   // amd64 architecture.
-  public String getHostedPoolId(ParameterField<Platform> platform, String accountId, boolean fallback) {
+  public String getHostedPoolId(ParameterField<Platform> platform, String accountId, boolean fallback, String region) {
     OSType os = OSType.Linux;
     ArchType arch = ArchType.Amd64;
     String fallbackSuffix = "-fallback";
@@ -602,7 +613,11 @@ public class VmInitializeTaskParamsBuilder {
 
     if (fallback) {
       if (fallbackEligible) {
-        return pool + fallbackSuffix;
+        if (isNotEmpty(region)) {
+          return format("%s-%s", pool, region);
+        } else {
+          return pool;
+        }
       }
       return "";
     }
@@ -622,54 +637,6 @@ public class VmInitializeTaskParamsBuilder {
 
   public boolean isBareMetalEnabled(
       String accountID, ParameterField<Platform> platform, InitializeStepInfo initializeStepInfo) {
-    if (platform == null || platform.getValue() == null) {
-      return false;
-    }
-    OSType os = resolveOSType(platform.getValue().getOs());
-    ArchType arch = resolveArchType(platform.getValue().getArch());
-    // Bare metal is only enabled for linux/amd64
-    if (os != OSType.Linux || arch != ArchType.Amd64) {
-      return false;
-    }
-
-    LicensesWithSummaryDTO licensesWithSummaryDTO = ciLicenseService.getLicenseSummary(accountID);
-    if (licensesWithSummaryDTO == null) {
-      throw new CIStageExecutionException("Please enable CI free plan or reach out to support.");
-    }
-
-    if (licensesWithSummaryDTO != null && licensesWithSummaryDTO.getEdition() == Edition.FREE) {
-      if (featureFlagService.isEnabled(FeatureName.CI_ENABLE_BARE_METAL_FREE_ACCOUNT, accountID)) {
-        return true;
-      }
-    }
-
-    if (initializeStepInfo != null && initializeStepInfo.getVariables() != null) {
-      for (NGVariable var : initializeStepInfo.getVariables()) {
-        if (var.getName().equals(GCPStandard32)) {
-          return false;
-        }
-      }
-    }
-
-    // If the bare metal feature flag is enabled
-    if (featureFlagService.isEnabled(FeatureName.CI_ENABLE_BARE_METAL, accountID)) {
-      return true;
-    }
-    // If the account is an internal account and has a pipeline variable set for bare metal, return true
-    // TODO: This should be removed once bare metal is GA'ed
-    List<String> internalAccounts = ciExecutionServiceConfig.getHostedVmConfig().getInternalAccounts();
-    if (internalAccounts == null || !internalAccounts.contains(accountID)) {
-      return false;
-    }
-    if (initializeStepInfo == null || initializeStepInfo.getVariables() == null) {
-      return false;
-    }
-    // Check if pipeline variables enable bare metal
-    for (NGVariable var : initializeStepInfo.getVariables()) {
-      if (var.getName().equals(FeatureName.CI_ENABLE_BARE_METAL.toString())) {
-        return true;
-      }
-    }
     return false;
   }
 
