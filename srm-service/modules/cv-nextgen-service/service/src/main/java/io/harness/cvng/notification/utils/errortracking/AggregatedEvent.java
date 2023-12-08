@@ -12,11 +12,13 @@ import static io.harness.cvng.notification.utils.errortracking.interfaces.EmailN
 import static io.harness.cvng.notification.utils.errortracking.interfaces.EmailNotification.EMAIL_LINK_MIDDLE;
 import static io.harness.cvng.notification.utils.errortracking.interfaces.ErrorTrackingNotification.EVENT_VERSION_LABEL;
 
+import io.harness.cvng.beans.errortracking.CriticalEventType;
 import io.harness.cvng.beans.errortracking.ErrorTrackingNotificationData;
 import io.harness.cvng.beans.errortracking.EventStatus;
 import io.harness.cvng.beans.errortracking.SavedFilter;
 import io.harness.cvng.beans.errortracking.Scorecard;
 import io.harness.cvng.notification.beans.ErrorTrackingEventStatus;
+import io.harness.cvng.notification.beans.ErrorTrackingEventType;
 import io.harness.cvng.notification.entities.MonitoredServiceNotificationRule;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -36,6 +38,8 @@ public class AggregatedEvent {
   public static final String CRITICAL_EVENT_LABEL = "Critical Events ";
   public static final String RESURFACED_EVENT_LABEL = "Resurfaced Events ";
   private static final String EVENT_STATUS_PARAM = "&eventStatus=";
+  private static final String EVENT_TYPE_PARAM = "&eventType=";
+
   private static final String FILTER_ID_PARAM = "&filterId=";
   private static final String NEW_EVENT_NAME;
   private static final String CRITICAL_EVENT_NAME;
@@ -96,7 +100,7 @@ public class AggregatedEvent {
           final String eventListUrlWithParameters = buildEventListUrlWithParameters(baseLinkUrl,
               scorecard.getAccountIdentifier(), scorecard.getOrganizationIdentifier(), scorecard.getProjectIdentifier(),
               scorecard.getEnvironmentIdentifier(), scorecard.getServiceIdentifier(), scorecard.getVersionIdentifier(),
-              from, to);
+              codeErrorCondition, from, to);
           List<ErrorTrackingEventStatus> eventStatus = codeErrorCondition.getErrorTrackingEventStatus();
           if (savedFilter != null) {
             eventStatus = savedFilter.getStatuses()
@@ -139,10 +143,51 @@ public class AggregatedEvent {
   }
 
   private static String buildEventListUrlWithParameters(String baseLinkUrl, String account, String org, String project,
-      String env, String service, String deployment, String from, String to) {
-    return String.format(
+      String env, String service, String deployment,
+      MonitoredServiceNotificationRule.MonitoredServiceCodeErrorCondition codeErrorCondition, String from, String to) {
+    String url = String.format(
         "%s/account/%s/%s/orgs/%s/projects/%s/eventsummary/events?env=%s&service=%s&dep=%s&fromTimestamp=%s&toTimestamp=%s",
         baseLinkUrl, account, CET_MODULE_NAME, org, project, env, service, deployment, from, to);
+    List<ErrorTrackingEventType> errorTrackingEventTypes = codeErrorCondition.getErrorTrackingEventTypes();
+    if (errorTrackingEventTypes != null) {
+      List<String> eventTypeNames = new ArrayList<>();
+      for (ErrorTrackingEventType eventType : errorTrackingEventTypes) {
+        switch (eventType) {
+          case CAUGHT_EXCEPTION:
+            eventTypeNames.add(CriticalEventType.CAUGHT_EXCEPTION.name());
+            break;
+          case UNCAUGHT_EXCEPTION:
+            eventTypeNames.add(CriticalEventType.UNCAUGHT_EXCEPTION.name());
+            break;
+          case SWALLOWED_EXCEPTION:
+            eventTypeNames.add(CriticalEventType.SWALLOWED_EXCEPTION.name());
+            break;
+          case LOG:
+            eventTypeNames.add(CriticalEventType.LOGGED_ERROR.name());
+            break;
+          case LOG_WARNING:
+            eventTypeNames.add(CriticalEventType.LOGGED_WARNING.name());
+            break;
+          case HTTP:
+            eventTypeNames.add(CriticalEventType.HTTP_ERROR.name());
+            break;
+          case CUSTOM:
+            eventTypeNames.add(CriticalEventType.CUSTOM_ERROR.name());
+            break;
+          case EXCEPTION:
+            eventTypeNames.add(CriticalEventType.CAUGHT_EXCEPTION.name());
+            eventTypeNames.add(CriticalEventType.UNCAUGHT_EXCEPTION.name());
+            eventTypeNames.add(CriticalEventType.SWALLOWED_EXCEPTION.name());
+            break;
+          default:
+            break;
+        }
+      }
+      if (eventTypeNames.size() > 0) {
+        url += EVENT_TYPE_PARAM + String.join(",", eventTypeNames);
+      }
+    }
+    return url;
   }
 
   public String toSlackString() {
@@ -184,7 +229,7 @@ public class AggregatedEvent {
     if (count == 0 || savedFilterId != null) {
       return textOnly;
     }
-    return "<" + getEventStatusParameterUrl(status) + "|" + textOnly + ">";
+    return "<" + getEventStatusParameterUrl(status) + getEventTypeParametersUrl() + "|" + textOnly + ">";
   }
 
   private String getEmailString(ErrorTrackingEventStatus status) {
