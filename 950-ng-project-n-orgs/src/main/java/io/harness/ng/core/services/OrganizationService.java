@@ -28,17 +28,13 @@ public interface OrganizationService {
   String ORG_SCOPE_INFO_DATA_CACHE_KEY = "orgScopeInfoDataCache";
   Organization create(String accountIdentifier, OrganizationDTO organization);
 
-  Optional<Organization> get(String accountIdentifier, String identifier);
-
-  Organization update(String accountIdentifier, String identifier, OrganizationDTO organization);
-
-  boolean delete(String accountIdentifier, String identifier, Long version);
-
-  boolean restore(String accountIdentifier, String identifier);
-
   List<String> getDistinctAccounts();
 
+  Optional<Organization> get(String accountIdentifier, String identifier);
+
   Optional<Organization> getConsideringCase(String accountIdentifier, String identifier);
+
+  Organization update(String accountIdentifier, String identifier, OrganizationDTO organization);
 
   /**
    * Use this method with caution, verify that the pageable sort is able to make use of the indexes.
