@@ -114,9 +114,6 @@ public enum FeatureName {
   CDS_HELM_FETCH_CHART_METADATA_NG(
       "Enables option to fetch helm chart details from the Chart.yaml and expose this as expressions. Epic: https://harness.atlassian.net/browse/CDS-58036",
       HarnessTeam.CDP),
-  CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG(
-      "Enables multiple manifest support. We will be able to define multiple manifest and set only one as a primary. Epic: https://harness.atlassian.net/browse/CDS-58036",
-      HarnessTeam.CDP),
   CDS_HELM_STEADY_STATE_CHECK_1_16_V2_CG(
       "This FF will use helm get manifest instead of helm template output to find managed workloads for Native Helm steady state check for CG",
       HarnessTeam.CDP),
@@ -193,8 +190,6 @@ public enum FeatureName {
       "Enable dynamic provisioning support in v2 environment. Epic: CDS-39606", HarnessTeam.CDC),
   CD_ONBOARDING_HELP_ENABLED("Enables help panel for CD onboarding ", HarnessTeam.CDP),
   CD_TRIGGERS_REFACTOR("Enable NG Triggers UI refactoring", HarnessTeam.CDP),
-  CD_TRIGGER_CATALOG("Enables UI for Trigger catalog for Nexus ", HarnessTeam.CDC),
-  CD_TRIGGER_CATALOG_API_ENABLED("Enable support for pipeline/api/triggers/catalog API in UI", HarnessTeam.CDC),
   CD_TRIGGER_V2("Enable support for nexus3, nexus2, azure, ami trigger", HarnessTeam.CDC),
   CET_EVENTS_CHART("Enable events chart in UI of Continuous Error Tracking module", HarnessTeam.CET),
   CET_CD_INTEGRATION("Enable Continuous Error Tracking events list in CD pipeline execution tab", HarnessTeam.CET),
@@ -929,7 +924,8 @@ public enum FeatureName {
       HarnessTeam.CDP),
   CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD(
       "Enable to dowmload Aws S3 buckets, folder or object inside container step group", HarnessTeam.CDP),
-  CDS_USER_CD_LICENSE_VIEW("Enable to show Users CD License usage on UI", HarnessTeam.CDP);
+  CDS_USER_CD_LICENSE_VIEW("Enable to show Users CD License usage on UI", HarnessTeam.CDP),
+  SSCA_USE_ELK("Enables ELK search for Artifact listing instead of Mongo", HarnessTeam.SSCA);
   // keep-sorted end
 
   @Deprecated
