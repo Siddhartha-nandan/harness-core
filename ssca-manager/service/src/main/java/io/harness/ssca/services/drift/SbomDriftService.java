@@ -9,17 +9,18 @@ package io.harness.ssca.services.drift;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.ssca.beans.drift.ComponentDrift;
+import io.harness.spec.server.ssca.v1.model.ArtifactSbomDriftRequestBody;
+import io.harness.spec.server.ssca.v1.model.ArtifactSbomDriftResponse;
+import io.harness.ssca.beans.drift.ComponentDriftResults;
 import io.harness.ssca.beans.drift.ComponentDriftStatus;
 
-import java.util.List;
 import org.springframework.data.domain.Pageable;
 
 @OwnedBy(HarnessTeam.SSCA)
 public interface SbomDriftService {
-  void calculateAndStoreComponentDrift(
-      String accountId, String orgId, String projectId, String artifactId, String baseTag, String tag);
+  ArtifactSbomDriftResponse calculateSbomDrift(
+      String accountId, String orgId, String projectId, String artifactId, ArtifactSbomDriftRequestBody requestBody);
 
-  List<ComponentDrift> getComponentDriftsByArtifactId(String accountId, String orgId, String projectId,
+  ComponentDriftResults getComponentDriftsByArtifactId(String accountId, String orgId, String projectId,
       String artifactId, String baseTag, String tag, ComponentDriftStatus status, Pageable pageable);
 }

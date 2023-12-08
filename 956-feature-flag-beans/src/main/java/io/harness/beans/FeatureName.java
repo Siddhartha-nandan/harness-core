@@ -114,9 +114,6 @@ public enum FeatureName {
   CDS_HELM_FETCH_CHART_METADATA_NG(
       "Enables option to fetch helm chart details from the Chart.yaml and expose this as expressions. Epic: https://harness.atlassian.net/browse/CDS-58036",
       HarnessTeam.CDP),
-  CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG(
-      "Enables multiple manifest support. We will be able to define multiple manifest and set only one as a primary. Epic: https://harness.atlassian.net/browse/CDS-58036",
-      HarnessTeam.CDP),
   CDS_HELM_STEADY_STATE_CHECK_1_16_V2_CG(
       "This FF will use helm get manifest instead of helm template output to find managed workloads for Native Helm steady state check for CG",
       HarnessTeam.CDP),
@@ -131,7 +128,6 @@ public enum FeatureName {
       "FF for enabling Instance Sync V2 for K8s and Native Helm swimlanes in NG", HarnessTeam.CDP),
   CDS_K8S_SOCKET_CAPABILITY_CHECK_NG(
       "Replace HTTP capability check for Kubernetes connector with Socket Capability", HarnessTeam.CDP),
-  CDS_MULTI_SERVICE_PROPAGATION("FF for enabling multi service propagation for CD", HarnessTeam.CDP),
   CDS_NG_ACC_ORG_LEVEL_SERVICE_LICENSING_FIX(
       "Update license usage calculation queries for services deployed across projects/orgs.", HarnessTeam.CDC),
   CDS_NG_SECRET_RUNTIME_USAGE_EVENT_GENERATION(
@@ -181,7 +177,6 @@ public enum FeatureName {
       HarnessTeam.CDP),
   CDS_TERRAFORM_SUPPORT_OPTIONAL_VAR_FILE_PATHS_NG(
       "Feature flag to support remote optional var file paths", HarnessTeam.CDP),
-  CDS_TERRAGRUNT_CLI_OPTIONS_NG("Enable terragrunt CLI Options", HarnessTeam.CDP),
   CDS_TERRAGRUNT_USE_UNIQUE_DIRECTORY_BASE_DIR_NG(
       "Enable unique directory to support terragrunt run in parallel", HarnessTeam.CDP),
   CDS_USE_HTTP_CHECK_IGNORE_RESPONSE_INSTEAD_OF_SOCKET_NG(
@@ -931,7 +926,8 @@ public enum FeatureName {
       HarnessTeam.CDP),
   CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD(
       "Enable to dowmload Aws S3 buckets, folder or object inside container step group", HarnessTeam.CDP),
-  CDS_USER_CD_LICENSE_VIEW("Enable to show Users CD License usage on UI", HarnessTeam.CDP);
+  CDS_USER_CD_LICENSE_VIEW("Enable to show Users CD License usage on UI", HarnessTeam.CDP),
+  SSCA_USE_ELK("Enables ELK search for Artifact listing instead of Mongo", HarnessTeam.SSCA);
   // keep-sorted end
 
   @Deprecated
