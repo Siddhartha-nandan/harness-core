@@ -316,6 +316,14 @@ public class ProjectServiceImpl implements ProjectService {
 
   @Override
   @DefaultOrganization
+  public Optional<Project> get(
+      String accountIdentifier, @ProjectIdentifier String projectIdentifier, ScopeInfo scopeInfo) {
+    return projectRepository.findByAccountIdentifierAndParentUniqueIdAndIdentifierIgnoreCaseAndDeletedNot(
+        accountIdentifier, scopeInfo.getUniqueId(), projectIdentifier, true);
+  }
+
+  @Override
+  @DefaultOrganization
   public Optional<Project> getConsideringCase(
       String accountIdentifier, @OrgIdentifier String orgIdentifier, @ProjectIdentifier String projectIdentifier) {
     return projectRepository.findByAccountIdentifierAndOrgIdentifierAndIdentifierAndDeletedNot(
@@ -439,7 +447,7 @@ public class ProjectServiceImpl implements ProjectService {
   public Project update(String accountIdentifier, @OrgIdentifier String orgIdentifier,
       @ProjectIdentifier String identifier, ScopeInfo scopeInfo, ProjectDTO projectDTO) {
     validateUpdateProjectRequest(accountIdentifier, scopeInfo.getOrgIdentifier(), identifier, projectDTO);
-    Optional<Project> optionalProject = get(accountIdentifier, scopeInfo.getOrgIdentifier(), identifier);
+    Optional<Project> optionalProject = get(accountIdentifier, identifier, scopeInfo);
 
     if (optionalProject.isPresent()) {
       Project existingProject = optionalProject.get();

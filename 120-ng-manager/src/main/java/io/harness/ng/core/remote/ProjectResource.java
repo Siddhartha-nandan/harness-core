@@ -180,8 +180,9 @@ public class ProjectResource {
       @Parameter(
           description = "Organization identifier for the project. If left empty, Default Organization is assumed")
       @QueryParam(NGCommonEntityConstants.ORG_KEY) @DefaultValue(
-          DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier) {
-    Optional<Project> projectOptional = projectService.get(accountIdentifier, orgIdentifier, identifier);
+          DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier,
+      @Context ScopeInfo scopeInfo) {
+    Optional<Project> projectOptional = projectService.get(accountIdentifier, identifier, scopeInfo);
     if (!projectOptional.isPresent()) {
       throw new EntityNotFoundException(
           String.format("Project with orgIdentifier [%s] and identifier [%s] not found", orgIdentifier, identifier));

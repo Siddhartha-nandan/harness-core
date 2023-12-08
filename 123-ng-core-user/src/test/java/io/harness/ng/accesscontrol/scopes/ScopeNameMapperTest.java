@@ -10,23 +10,28 @@ package io.harness.ng.accesscontrol.scopes;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.rule.OwnerRule.NAMANG;
 
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
 import io.harness.CategoryTest;
 import io.harness.accesscontrol.scopes.ScopeDTO;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.entities.Organization;
 import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.rule.Owner;
 
 import com.google.inject.Inject;
@@ -43,6 +48,8 @@ import org.mockito.Spy;
 public class ScopeNameMapperTest extends CategoryTest {
   @Mock private OrganizationService organizationService;
   @Mock private ProjectService projectService;
+  @Mock private ScopeInfoService scopeResolverService;
+  ;
   @Spy @Inject @InjectMocks private ScopeNameMapper scopeNameMapper;
 
   private static final String ACCOUNT_IDENTIFIER = "A1";
@@ -54,10 +61,21 @@ public class ScopeNameMapperTest extends CategoryTest {
       Optional.of(Organization.builder().name(ORG_NAME).identifier(ORG_IDENTIFIER).build());
   private static final Optional<Project> projectResponse = Optional.of(
       Project.builder().name(PROJECT_NAME).orgIdentifier(ORG_IDENTIFIER).identifier(PROJECT_IDENTIFIER).build());
+  private ScopeInfo scopeInfo;
 
   @Before
   public void setup() {
     initMocks(this);
+
+    String orgUniqueIdentifier = randomAlphabetic(10);
+    scopeInfo = ScopeInfo.builder()
+                    .accountIdentifier(ACCOUNT_IDENTIFIER)
+                    .scopeType(ScopeLevel.ORGANIZATION)
+                    .orgIdentifier(ORG_IDENTIFIER)
+                    .uniqueId(orgUniqueIdentifier)
+                    .build();
+    when(scopeResolverService.getScopeInfo(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, null))
+        .thenReturn(Optional.of(scopeInfo));
   }
 
   @Test
@@ -122,7 +140,7 @@ public class ScopeNameMapperTest extends CategoryTest {
                             .build();
     doReturn(organizationResponse).when(organizationService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
 
-    doReturn(Optional.empty()).when(projectService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER);
+    doReturn(Optional.empty()).when(projectService).get(ACCOUNT_IDENTIFIER, PROJECT_IDENTIFIER, scopeInfo);
     try {
       scopeNameMapper.toScopeNameDTO(scopeDTO);
       fail("Expected failure as project does not exists");
@@ -142,11 +160,11 @@ public class ScopeNameMapperTest extends CategoryTest {
                             .projectIdentifier(PROJECT_IDENTIFIER)
                             .build();
     doReturn(organizationResponse).when(organizationService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
-    doReturn(projectResponse).when(projectService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER);
+    doReturn(projectResponse).when(projectService).get(ACCOUNT_IDENTIFIER, PROJECT_IDENTIFIER, scopeInfo);
 
     ScopeNameDTO result = scopeNameMapper.toScopeNameDTO(scopeDTO);
     verify(organizationService, times(1)).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
-    verify(projectService, times(1)).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER);
+    verify(projectService, times(1)).get(ACCOUNT_IDENTIFIER, PROJECT_IDENTIFIER, scopeInfo);
     verifyNoMoreInteractions(organizationService);
     verifyNoMoreInteractions(projectService);
     assertThat(result.getAccountIdentifier()).isEqualTo(ACCOUNT_IDENTIFIER);

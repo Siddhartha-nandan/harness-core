@@ -14,9 +14,11 @@ import static io.harness.rule.OwnerRule.ASHISHSANODIA;
 import static io.harness.rule.OwnerRule.SAHIBA;
 
 import static java.util.Optional.of;
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -29,6 +31,8 @@ import io.harness.accesscontrol.roleassignments.api.RoleAssignmentResponseDTO;
 import io.harness.beans.FeatureName;
 import io.harness.beans.PageResponse;
 import io.harness.beans.Scope;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.ff.FeatureFlagService;
 import io.harness.ng.NextGenConfiguration;
@@ -52,6 +56,7 @@ import io.harness.user.remote.UserClient;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -98,7 +103,7 @@ public class NGAccountSetupServiceTest extends CategoryTest {
                            .identifier(DEFAULT_ORG_IDENTIFIER)
                            .name(DEFAULT_ORG_IDENTIFIER)
                            .build()));
-    when(projectService.get(any(), any(), any()))
+    when(projectService.get(anyString(), anyString(), any(ScopeInfo.class)))
         .thenReturn(of(Project.builder()
                            .accountIdentifier(ACCOUNT_ID)
                            .identifier(DEFAULT_PROJECT_IDENTIFIER)
@@ -141,6 +146,15 @@ public class NGAccountSetupServiceTest extends CategoryTest {
   @Owner(developers = ASHISHSANODIA)
   @Category(UnitTests.class)
   public void testDefaultProjectIsEnabledAndAllCGUsersMigratedToNG() {
+    String orgUniqueId = randomAlphabetic(10);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(ACCOUNT_ID)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(DEFAULT_ORG_IDENTIFIER)
+                              .uniqueId(orgUniqueId)
+                              .build();
+    when(scopeResolverService.getScopeInfo(ACCOUNT_ID, DEFAULT_ORG_IDENTIFIER, null))
+        .thenReturn(Optional.of(scopeInfo));
     when(featureFlagService.isGlobalEnabled(FeatureName.CREATE_DEFAULT_PROJECT)).thenReturn(true);
     when(featureFlagService.isNotEnabled(FeatureName.PL_DO_NOT_MIGRATE_NON_ADMIN_CG_USERS_TO_NG, ACCOUNT_ID))
         .thenReturn(true);
@@ -159,6 +173,15 @@ public class NGAccountSetupServiceTest extends CategoryTest {
   @Owner(developers = ASHISHSANODIA)
   @Category(UnitTests.class)
   public void testDefaultProjectIsEnabledAndOnlyCGAdminsMigratedToNG() {
+    String orgUniqueId = randomAlphabetic(10);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(ACCOUNT_ID)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(DEFAULT_ORG_IDENTIFIER)
+                              .uniqueId(orgUniqueId)
+                              .build();
+    when(scopeResolverService.getScopeInfo(ACCOUNT_ID, DEFAULT_ORG_IDENTIFIER, null))
+        .thenReturn(Optional.of(scopeInfo));
     when(featureFlagService.isGlobalEnabled(FeatureName.CREATE_DEFAULT_PROJECT)).thenReturn(true);
     when(featureFlagService.isNotEnabled(FeatureName.PL_DO_NOT_MIGRATE_NON_ADMIN_CG_USERS_TO_NG, ACCOUNT_ID))
         .thenReturn(false);

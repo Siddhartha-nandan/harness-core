@@ -148,6 +148,13 @@ public class OrgProjectApiImplTest extends CategoryTest {
   @Owner(developers = ASHISHSANODIA)
   @Category(UnitTests.class)
   public void testGetOrgScopedProjectNotFoundException() {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(account)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(org)
+                              .uniqueId(orgUniqueId)
+                              .build();
+    when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
     orgProjectApi.getOrgScopedProject(org, identifier, account);
   }
 
@@ -156,7 +163,14 @@ public class OrgProjectApiImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testGetOrgScopedProject() {
     Project project = Project.builder().identifier(identifier).name(name).orgIdentifier(org).version(0L).build();
-    when(projectService.get(account, org, identifier)).thenReturn(Optional.of(project));
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(account)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(org)
+                              .uniqueId(orgUniqueId)
+                              .build();
+    when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
+    when(projectService.get(account, identifier, scopeInfo)).thenReturn(Optional.of(project));
 
     Response response = orgProjectApi.getOrgScopedProject(org, identifier, account);
 
@@ -281,7 +295,7 @@ public class OrgProjectApiImplTest extends CategoryTest {
                               .build();
     when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
     when(projectService.delete(eq(account), eq(org), eq(identifier), any(), isNull())).thenReturn(true);
-    when(projectService.get(account, org, identifier)).thenReturn(Optional.of(project));
+    when(projectService.get(account, identifier, scopeInfo)).thenReturn(Optional.of(project));
 
     Response response = orgProjectApi.deleteOrgScopedProject(org, identifier, account);
 
@@ -312,7 +326,7 @@ public class OrgProjectApiImplTest extends CategoryTest {
                               .build();
     when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
     when(projectService.delete(account, org, identifier, scopeInfo, null)).thenReturn(false);
-    when(projectService.get(account, org, identifier)).thenReturn(Optional.of(project));
+    when(projectService.get(account, identifier, scopeInfo)).thenReturn(Optional.of(project));
 
     Throwable thrown = catchThrowableOfType(
         () -> orgProjectApi.deleteOrgScopedProject(org, identifier, account), NotFoundException.class);
@@ -324,6 +338,14 @@ public class OrgProjectApiImplTest extends CategoryTest {
   @Owner(developers = ASHISHSANODIA)
   @Category(UnitTests.class)
   public void testOrgScopedProjectDeleteNotFoundException() {
+    String orgUniqueIdentifier = randomAlphabetic(10);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(account)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(org)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+    when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
     Throwable thrown = catchThrowableOfType(
         () -> orgProjectApi.deleteOrgScopedProject(org, identifier, account), NotFoundException.class);
 

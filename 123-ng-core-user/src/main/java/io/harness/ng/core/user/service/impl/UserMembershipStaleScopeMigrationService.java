@@ -8,13 +8,16 @@
 package io.harness.ng.core.user.service.impl;
 
 import io.harness.beans.Scope;
+import io.harness.beans.ScopeInfo;
 import io.harness.migration.NGMigration;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ng.core.user.entities.UserMembership;
 
 import com.google.inject.Inject;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -34,13 +37,15 @@ public class UserMembershipStaleScopeMigrationService implements NGMigration {
   ProjectService projectService;
   Set<Scope> deletedScopes;
   Set<Scope> activeScopes;
+  ScopeInfoService scopeResolverService;
 
   @Inject
-  public UserMembershipStaleScopeMigrationService(
-      MongoTemplate mongoTemplate, OrganizationService organizationService, ProjectService projectService) {
+  public UserMembershipStaleScopeMigrationService(MongoTemplate mongoTemplate, OrganizationService organizationService,
+      ProjectService projectService, ScopeInfoService scopeResolverService) {
     this.mongoTemplate = mongoTemplate;
     this.organizationService = organizationService;
     this.projectService = projectService;
+    this.scopeResolverService = scopeResolverService;
     this.deletedScopes = new HashSet<>();
     this.activeScopes = new HashSet<>();
   }
@@ -75,8 +80,10 @@ public class UserMembershipStaleScopeMigrationService implements NGMigration {
 
     boolean isScopeActive = true;
     if (StringUtils.isNotBlank(scope.getProjectIdentifier())) {
+      Optional<ScopeInfo> scopeInfo =
+          scopeResolverService.getScopeInfo(scope.getAccountIdentifier(), scope.getOrgIdentifier(), null);
       isScopeActive =
-          projectService.get(scope.getAccountIdentifier(), scope.getOrgIdentifier(), scope.getProjectIdentifier())
+          projectService.get(scope.getAccountIdentifier(), scope.getProjectIdentifier(), scopeInfo.orElseThrow())
               .isPresent();
     } else if (StringUtils.isNotBlank(scope.getOrgIdentifier())) {
       isScopeActive = organizationService.get(scope.getAccountIdentifier(), scope.getOrgIdentifier()).isPresent();

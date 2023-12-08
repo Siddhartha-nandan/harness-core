@@ -136,25 +136,32 @@ public class ProjectResourceTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testGet() {
     ProjectDTO projectDTO = getProjectDTO(orgIdentifier, identifier, name);
-    ProjectRequest projectRequestWrapper = ProjectRequest.builder().project(projectDTO).build();
     Project project = toProject(projectDTO);
     project.setVersion((long) 0);
 
-    when(projectService.get(accountIdentifier, orgIdentifier, identifier)).thenReturn(Optional.of(project));
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+
+    when(projectService.get(accountIdentifier, identifier, scopeInfo)).thenReturn(Optional.of(project));
     when(favoritesService.getFavorites(anyString(), any(), any(), anyString(), anyString()))
         .thenReturn(Collections.emptyList());
 
-    ResponseDTO<ProjectResponse> responseDTO = projectResource.get(identifier, accountIdentifier, orgIdentifier);
+    ResponseDTO<ProjectResponse> responseDTO =
+        projectResource.get(identifier, accountIdentifier, orgIdentifier, scopeInfo);
 
     assertEquals(project.getVersion().toString(), responseDTO.getEntityTag());
     assertEquals(orgIdentifier, responseDTO.getData().getProject().getOrgIdentifier());
     assertEquals(identifier, responseDTO.getData().getProject().getIdentifier());
 
-    when(projectService.get(accountIdentifier, orgIdentifier, identifier)).thenReturn(Optional.empty());
+    when(projectService.get(accountIdentifier, identifier, scopeInfo)).thenReturn(Optional.empty());
 
     boolean exceptionThrown = false;
     try {
-      projectResource.get(identifier, accountIdentifier, orgIdentifier);
+      projectResource.get(identifier, accountIdentifier, orgIdentifier, scopeInfo);
     } catch (EntityNotFoundException exception) {
       exceptionThrown = true;
     }

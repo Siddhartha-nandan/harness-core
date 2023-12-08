@@ -34,6 +34,8 @@ public interface ProjectService {
 
   Optional<Project> get(String accountIdentifier, String orgIdentifier, String identifier);
 
+  Optional<Project> get(String accountIdentifier, String identifier, ScopeInfo scopeInfo);
+
   Optional<Project> getConsideringCase(String accountIdentifier, String orgIdentifier, String identifier);
 
   Project update(

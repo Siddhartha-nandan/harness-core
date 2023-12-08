@@ -129,7 +129,8 @@ public class OrgProjectApiImpl implements OrgProjectApi {
   }
 
   private Response getProject(String identifier, String account, String org) {
-    Optional<Project> projectOptional = projectService.get(account, org, identifier);
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
+    Optional<Project> projectOptional = projectService.get(account, identifier, scopeInfo.orElseThrow());
     if (!projectOptional.isPresent()) {
       throw new NotFoundException(format("Project with org [%s] and identifier [%s] not found", org, identifier));
     }
@@ -155,11 +156,11 @@ public class OrgProjectApiImpl implements OrgProjectApi {
   }
 
   private Response deleteProject(String identifier, String account, String org) {
-    Optional<Project> projectOptional = projectService.get(account, org, identifier);
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
+    Optional<Project> projectOptional = projectService.get(account, identifier, scopeInfo.orElseThrow());
     if (!projectOptional.isPresent()) {
       throw new NotFoundException(format("Project with org [%s] and identifier [%s] not found", org, identifier));
     }
-    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
     boolean deleted = projectService.delete(account, org, identifier, scopeInfo.orElseThrow(), null);
     if (!deleted) {
       throw new NotFoundException(format("Project with identifier [%s] could not be deleted", identifier));
