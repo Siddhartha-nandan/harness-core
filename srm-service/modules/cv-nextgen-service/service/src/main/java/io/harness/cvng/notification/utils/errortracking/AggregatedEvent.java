@@ -229,7 +229,7 @@ public class AggregatedEvent {
     if (count == 0 || savedFilterId != null) {
       return textOnly;
     }
-    return "<" + getEventStatusParameterUrl(status) + getEventTypeParametersUrl() + "|" + textOnly + ">";
+    return "<" + getEventStatusParameterUrl(status) + "|" + textOnly + ">";
   }
 
   private String getEmailString(ErrorTrackingEventStatus status) {
