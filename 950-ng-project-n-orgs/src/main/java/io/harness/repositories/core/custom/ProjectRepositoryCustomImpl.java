@@ -71,7 +71,7 @@ public class ProjectRepositoryCustomImpl implements ProjectRepositoryCustom {
   public Project restore(String accountIdentifier, String parentUniqueIdentifier, String identifier) {
     Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
                             .is(accountIdentifier)
-                            .and(ProjectKeys.parentId)
+                            .and(ProjectKeys.parentUniqueId)
                             .is(parentUniqueIdentifier)
                             .and(ProjectKeys.identifier)
                             .is(identifier)
@@ -90,7 +90,7 @@ public class ProjectRepositoryCustomImpl implements ProjectRepositoryCustom {
   public Project hardDelete(String accountIdentifier, String parentUniqueIdentifier, String identifier, Long version) {
     Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
                             .is(accountIdentifier)
-                            .and(ProjectKeys.parentId)
+                            .and(ProjectKeys.parentUniqueId)
                             .is(parentUniqueIdentifier)
                             .and(ProjectKeys.identifier)
                             .is(identifier);

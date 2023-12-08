@@ -93,8 +93,8 @@ public class ProjectRepositoryCustomImplTest extends CategoryTest {
     assertEquals(4, query.getQueryObject().size());
     assertTrue(query.getQueryObject().containsKey(ProjectKeys.accountIdentifier));
     assertEquals(accountIdentifier, query.getQueryObject().get(ProjectKeys.accountIdentifier));
-    assertTrue(query.getQueryObject().containsKey(ProjectKeys.parentId));
-    assertEquals(parentUniqueIdentifier, query.getQueryObject().get(ProjectKeys.parentId));
+    assertTrue(query.getQueryObject().containsKey(ProjectKeys.parentUniqueId));
+    assertEquals(parentUniqueIdentifier, query.getQueryObject().get(ProjectKeys.parentUniqueId));
     assertTrue(query.getQueryObject().containsKey(ProjectKeys.identifier));
     assertEquals(identifier, query.getQueryObject().get(ProjectKeys.identifier));
     assertTrue(query.getQueryObject().containsKey(ProjectKeys.version));
@@ -158,8 +158,8 @@ public class ProjectRepositoryCustomImplTest extends CategoryTest {
     assertEquals(4, query.getQueryObject().size());
     assertTrue(query.getQueryObject().containsKey(ProjectKeys.accountIdentifier));
     assertEquals(accountIdentifier, query.getQueryObject().get(ProjectKeys.accountIdentifier));
-    assertTrue(query.getQueryObject().containsKey(ProjectKeys.parentId));
-    assertEquals(parentUniqueIdentifier, query.getQueryObject().get(ProjectKeys.parentId));
+    assertTrue(query.getQueryObject().containsKey(ProjectKeys.parentUniqueId));
+    assertEquals(parentUniqueIdentifier, query.getQueryObject().get(ProjectKeys.parentUniqueId));
     assertTrue(query.getQueryObject().containsKey(ProjectKeys.identifier));
     assertEquals(identifier, query.getQueryObject().get(ProjectKeys.identifier));
     assertTrue(query.getQueryObject().containsKey(ProjectKeys.deleted));

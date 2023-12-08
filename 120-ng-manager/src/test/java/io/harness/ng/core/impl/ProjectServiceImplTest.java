@@ -177,6 +177,7 @@ public class ProjectServiceImplTest extends CategoryTest {
     project.setAccountIdentifier(accountIdentifier);
     project.setOrgIdentifier(orgIdentifier);
     project.setParentId(orgUniqueIdentifier);
+    project.setParentUniqueId(orgUniqueIdentifier);
     setContextData(accountIdentifier);
 
     when(projectRepository.save(any())).thenReturn(project);
@@ -198,6 +199,7 @@ public class ProjectServiceImplTest extends CategoryTest {
     assertThat(actualSavedProject.getIdentifier()).isEqualTo(project.getIdentifier());
     assertThat(actualSavedProject.getOrgIdentifier()).isEqualTo(project.getOrgIdentifier());
     assertThat(actualSavedProject.getParentId()).isEqualTo(project.getParentId());
+    assertThat(actualSavedProject.getParentUniqueId()).isEqualTo(project.getParentUniqueId());
 
     Scope scope = Scope.of(accountIdentifier, orgIdentifier, projectDTO.getIdentifier());
     verify(defaultUserGroupService, times(1)).create(scope, emptyList());
@@ -225,6 +227,7 @@ public class ProjectServiceImplTest extends CategoryTest {
     project.setAccountIdentifier(accountIdentifier);
     project.setOrgIdentifier(orgIdentifier);
     project.setParentId(orgUniqueIdentifier);
+    project.setParentUniqueId(orgUniqueIdentifier);
     setContextData(accountIdentifier);
     exceptionRule.expect(DuplicateFieldException.class);
     exceptionRule.expectMessage(
