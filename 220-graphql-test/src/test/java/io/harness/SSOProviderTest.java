@@ -81,7 +81,7 @@ public class SSOProviderTest extends GraphQLTest {
     groupSettings.setBaseDN("testBaseDN");
     ldapSettings =
         new LdapSettings("testSettings", accountId, connectionSettings, userSettingsList, Arrays.asList(groupSettings));
-    return ssoSettingService.createLdapSettings(ldapSettings);
+    return ssoSettingService.createLdapSettings(ldapSettings, false);
   }
 
   @Test

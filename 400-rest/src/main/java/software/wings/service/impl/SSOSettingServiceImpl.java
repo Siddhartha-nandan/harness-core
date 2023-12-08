@@ -28,12 +28,14 @@ import io.harness.beans.PageRequest.PageRequestBuilder;
 import io.harness.beans.SearchFilter.Operator;
 import io.harness.delegate.beans.Delegate;
 import io.harness.delegate.beans.Delegate.DelegateKeys;
+import io.harness.encryption.SecretRefData;
 import io.harness.event.handler.impl.EventPublishHelper;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ff.FeatureFlagService;
 import io.harness.iterator.PersistentCronIterable;
 import io.harness.ng.core.account.AuthenticationMechanism;
 import io.harness.ng.core.account.OauthProviderType;
+import io.harness.ng.core.common.beans.Generation;
 import io.harness.ng.core.dto.UserGroupDTO;
 import io.harness.outbox.OutboxEvent;
 import io.harness.outbox.api.OutboxService;
@@ -62,6 +64,7 @@ import software.wings.beans.loginSettings.events.LoginSettingsSAMLDeleteEvent;
 import software.wings.beans.loginSettings.events.LoginSettingsSAMLUpdateEvent;
 import software.wings.beans.loginSettings.events.OAuthSettingsYamlDTO;
 import software.wings.beans.loginSettings.events.SamlSettingsYamlDTO;
+import software.wings.beans.sso.LdapConnectionSettingSecretReferences;
 import software.wings.beans.sso.LdapConnectionSettings;
 import software.wings.beans.sso.LdapSettings;
 import software.wings.beans.sso.OauthSettings;
@@ -561,10 +564,19 @@ public class SSOSettingServiceImpl implements SSOSettingService {
   @Override
   @RestrictedApi(LdapFeature.class)
   public LdapSettings createLdapSettings(
-      @GetAccountId(LdapSettingsAccountIdExtractor.class) @NotNull LdapSettings settings) {
-    if (getLdapSettingsByAccountId(settings.getAccountId()) != null) {
+      @GetAccountId(LdapSettingsAccountIdExtractor.class) @NotNull LdapSettings settings, boolean isNG) {
+    if (getLdapSettingsByAccountId(settings.getAccountId(), isNG) != null) {
       throw new InvalidRequestException("Ldap settings already exist for this account.");
     }
+    if (!isNG && settings.getConnectionSettings() != null
+        && LdapConnectionSettings.NG_SECRET.equals(settings.getConnectionSettings().getPasswordType())) {
+      throw new InvalidRequestException("NG secret ref cannot be referenced while creating ldap setting from CG");
+    }
+    if (isNG && settings.getConnectionSettings() != null
+        && LdapConnectionSettings.SECRET.equals(settings.getConnectionSettings().getPasswordType())) {
+      throw new InvalidRequestException("CG secret ref cannot be referenced while creating ldap setting from NG");
+    }
+
     boolean isCGLdapSecretOrPassword = settings.getConnectionSettings() != null
         && !LdapConnectionSettings.NG_SECRET.equals(settings.getConnectionSettings().getPasswordType());
     if (isCGLdapSecretOrPassword) {
@@ -579,6 +591,32 @@ public class SSOSettingServiceImpl implements SSOSettingService {
     if (isCGLdapSecretOrPassword) { // TODO: remove once ldap sync with ng-secret-ref starts working
       ldapGroupScheduledHandler.handle(savedSettings);
     }
+
+    LdapConnectionSettingSecretReferences settingSecretReferences = new LdapConnectionSettingSecretReferences();
+    settingSecretReferences.setAccountId(settings.getAccountId());
+    settingSecretReferences.setLdapSsoId(savedSettings.getUuid());
+    if (isNG) {
+      if (LdapConnectionSettings.INLINE_SECRET.equals(settings.getConnectionSettings().getPasswordType())) {
+        settingSecretReferences.getConnectionSettingSecretReferences().put(
+            Generation.CG, savedSettings.getConnectionSettings().getEncryptedBindPassword());
+        settingSecretReferences.getConnectionSettingSecretReferences().put(
+            Generation.NG, savedSettings.getConnectionSettings().getEncryptedBindPassword());
+      } else if (LdapConnectionSettings.NG_SECRET.equals(settings.getConnectionSettings().getPasswordType())) {
+        settingSecretReferences.getConnectionSettingSecretReferences().put(
+            Generation.NG, savedSettings.getConnectionSettings().getNgBindSecret().getIdentifier());
+      }
+    } else {
+      // to keep backward compatibility
+      String passwordOrSecretString = null;
+      if (LdapConnectionSettings.INLINE_SECRET.equals(settings.getConnectionSettings().getPasswordType())) {
+        passwordOrSecretString = savedSettings.getConnectionSettings().getEncryptedBindPassword();
+      } else if (LdapConnectionSettings.SECRET.equals(settings.getConnectionSettings().getPasswordType())) {
+        passwordOrSecretString = String.valueOf(savedSettings.getConnectionSettings().getBindSecret());
+      }
+      settingSecretReferences.getConnectionSettingSecretReferences().put(Generation.CG, passwordOrSecretString);
+      settingSecretReferences.getConnectionSettingSecretReferences().put(Generation.NG, passwordOrSecretString);
+    }
+    wingsPersistence.save(settingSecretReferences);
     auditServiceHelper.reportForAuditingUsingAccountId(settings.getAccountId(), null, settings, Event.Type.CREATE);
     ngAuditLoginSettingsForLdapUpload(savedSettings.getAccountId(), savedSettings);
     log.info("Auditing creation of LDAP Settings for account={}", settings.getAccountId());
@@ -590,7 +628,7 @@ public class SSOSettingServiceImpl implements SSOSettingService {
   @RestrictedApi(LdapFeature.class)
   public LdapSettings updateLdapSettings(
       @GetAccountId(LdapSettingsAccountIdExtractor.class) @NotNull LdapSettings settings) {
-    LdapSettings oldSettings = getLdapSettingsByAccountId(settings.getAccountId());
+    LdapSettings oldSettings = getLdapSettingsByAccountId(settings.getAccountId(), false);
     boolean isCGLdapSecretOrPassword = settings.getConnectionSettings() != null
         && !LdapConnectionSettings.NG_SECRET.equals(settings.getConnectionSettings().getPasswordType());
     if (oldSettings == null) {
@@ -637,7 +675,7 @@ public class SSOSettingServiceImpl implements SSOSettingService {
 
   @Override
   public LdapSettings deleteLdapSettings(@NotBlank String accountId) {
-    LdapSettings settings = getLdapSettingsByAccountId(accountId);
+    LdapSettings settings = getLdapSettingsByAccountId(accountId, false);
     if (settings == null) {
       throw new InvalidRequestException("No Ldap settings found for this account.");
     }
@@ -661,7 +699,15 @@ public class SSOSettingServiceImpl implements SSOSettingService {
                 ex.getMessage()));
       }
     }
+    LdapConnectionSettingSecretReferences connectionSettingSecretReferences =
+        wingsPersistence.createQuery(LdapConnectionSettingSecretReferences.class)
+            .filter(LdapConnectionSettingSecretReferences.LdapConnectionSettingSecretReferencesKeys.accountId,
+                settings.getAccountId())
+            .filter(LdapConnectionSettingSecretReferences.LdapConnectionSettingSecretReferencesKeys.ldapSsoId,
+                settings.getUuid())
+            .get();
     wingsPersistence.delete(settings);
+    wingsPersistence.delete(connectionSettingSecretReferences);
     auditServiceHelper.reportDeleteForAuditingUsingAccountId(settings.getAccountId(), settings);
     ngAuditLoginSettingsForLdapDelete(settings.getAccountId(), settings);
     log.info("Auditing deletion of LDAP Settings for account={}", settings.getAccountId());
@@ -722,7 +768,7 @@ public class SSOSettingServiceImpl implements SSOSettingService {
   }
 
   @Override
-  public LdapSettings getLdapSettingsByAccountId(@NotBlank String accountId) {
+  public LdapSettings getLdapSettingsByAccountId(@NotBlank String accountId, boolean isNG) {
     if (isEmpty(accountId)) {
       return null;
     }
@@ -752,6 +798,26 @@ public class SSOSettingServiceImpl implements SSOSettingService {
     if (ldapSettings != null && isNotEmpty(ldapSettings.getConnectionSettings().getEncryptedBindSecret())) {
       ldapSettings.getConnectionSettings().setBindSecret(
           ldapSettings.getConnectionSettings().getEncryptedBindSecret().toCharArray());
+    }
+  }
+
+  private void mergeLdapSettingsAndSecretReferences(LdapSettings ldapSettings, boolean isNG) {
+    LdapConnectionSettingSecretReferences connectionSettingSecretReferences =
+        wingsPersistence.createQuery(LdapConnectionSettingSecretReferences.class)
+            .filter(LdapConnectionSettingSecretReferences.LdapConnectionSettingSecretReferencesKeys.accountId,
+                ldapSettings.getAccountId())
+            .filter(LdapConnectionSettingSecretReferences.LdapConnectionSettingSecretReferencesKeys.ldapSsoId,
+                ldapSettings.getUuid())
+            .get();
+
+    if (connectionSettingSecretReferences != null && ldapSettings.getConnectionSettings() != null) {
+      if (isNG && connectionSettingSecretReferences.getConnectionSettingSecretReferences().containsKey(Generation.NG)
+          && !connectionSettingSecretReferences.getConnectionSettingSecretReferences().containsKey(Generation.CG)) {
+        ldapSettings.getConnectionSettings().setBindPassword(null);
+        ldapSettings.getConnectionSettings().setBindSecret(null);
+        ldapSettings.getConnectionSettings().setNgBindSecret(new SecretRefData(
+            connectionSettingSecretReferences.getConnectionSettingSecretReferences().get(Generation.NG)));
+      }
     }
   }
 

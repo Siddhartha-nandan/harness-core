@@ -158,7 +158,7 @@ public class UserGroupTest extends GraphQLTest {
     groupSettings.setBaseDN("testBaseDN");
     ldapSettings =
         new LdapSettings("testSettings", accountId, connectionSettings, userSettingsList, Arrays.asList(groupSettings));
-    return ssoSettingService.createLdapSettings(ldapSettings);
+    return ssoSettingService.createLdapSettings(ldapSettings, false);
   }
 
   private String getCreateUserGroupGQL(String userGroupName, String userId) {

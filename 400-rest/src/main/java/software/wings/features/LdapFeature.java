@@ -69,7 +69,7 @@ public class LdapFeature extends AbstractPremiumFeature implements ComplianceByR
   }
 
   private LdapSettings getLdapSettings(String accountId) {
-    return ssoSettingService.getLdapSettingsByAccountId(accountId);
+    return ssoSettingService.getLdapSettingsByAccountId(accountId, false);
   }
 
   @Override

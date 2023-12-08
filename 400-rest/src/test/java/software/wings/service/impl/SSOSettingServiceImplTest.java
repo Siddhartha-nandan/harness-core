@@ -162,8 +162,8 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
   public void shouldSaveLdapSettingWithCronExpression() {
     LdapSettings ldapSettings = createLDAPSSOProvider();
     ldapSettings.setCronExpression("0 0/15 * 1/1 * ? *");
-    ldapSettings = ssoSettingService.createLdapSettings(ldapSettings);
-    LdapSettings savedLdapSettings = ssoSettingService.getLdapSettingsByAccountId(ldapSettings.getAccountId());
+    ldapSettings = ssoSettingService.createLdapSettings(ldapSettings, false);
+    LdapSettings savedLdapSettings = ssoSettingService.getLdapSettingsByAccountId(ldapSettings.getAccountId(), false);
 
     assertThat(savedLdapSettings.getUuid()).isNotEmpty();
     assertThat(savedLdapSettings.getCronExpression()).isNotEmpty().isEqualTo("0 0/15 * 1/1 * ? *");
@@ -177,8 +177,8 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
   public void shouldSaveLdapSettingWithDefaultCronExpressionFromConfig() {
     when(ldapSyncJobConfig.getDefaultCronExpression()).thenReturn("0 0/15 * 1/1 * ? *");
     LdapSettings ldapSettings = createLDAPSSOProvider();
-    ldapSettings = ssoSettingService.createLdapSettings(ldapSettings);
-    LdapSettings savedLdapSettings = ssoSettingService.getLdapSettingsByAccountId(ldapSettings.getAccountId());
+    ldapSettings = ssoSettingService.createLdapSettings(ldapSettings, false);
+    LdapSettings savedLdapSettings = ssoSettingService.getLdapSettingsByAccountId(ldapSettings.getAccountId(), false);
 
     assertThat(savedLdapSettings.getUuid()).isNotEmpty();
     assertThat(savedLdapSettings.getCronExpression()).isNotEmpty().isEqualTo("0 0/15 * 1/1 * ? *");
@@ -193,7 +193,7 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
   public void shouldNotSaveCronExpressionLessThanMinInterval() {
     LdapSettings ldapSettings = createLDAPSSOProvider();
     ldapSettings.setCronExpression("0 0/14 * 1/1 * ? *");
-    ssoSettingService.createLdapSettings(ldapSettings);
+    ssoSettingService.createLdapSettings(ldapSettings, false);
   }
 
   @Test
@@ -241,7 +241,7 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
   public void shouldNotSaveForWrongCron() {
     LdapSettings ldapSettings = createLDAPSSOProvider();
     ldapSettings.setCronExpression("0 0/A * 1/1 * ? *");
-    ssoSettingService.createLdapSettings(ldapSettings);
+    ssoSettingService.createLdapSettings(ldapSettings, false);
   }
 
   @Test
@@ -288,7 +288,7 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
     ldapSettings.getConnectionSettings().setBindSecret("randomuuid".toCharArray());
     ldapSettings.getConnectionSettings().setEncryptedBindSecret("randomuuid");
     when(encryptionService.decrypt(any(EncryptableSetting.class), anyList(), eq(false))).thenReturn(null);
-    LdapSettings createdLdapSetting = ssoSettingService.createLdapSettings(ldapSettings);
+    LdapSettings createdLdapSetting = ssoSettingService.createLdapSettings(ldapSettings, false);
     assertThat(createdLdapSetting.getConnectionSettings().getPasswordType()).isEqualTo(LdapConnectionSettings.SECRET);
   }
 
@@ -303,7 +303,7 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
     when(secretManager.getEncryptionDetails(any(), any(), any())).thenReturn(encryptedDataDetails);
     ldapSettings.getConnectionSettings().setEncryptedBindPassword("EncryptedBindPassword");
     when(encryptionService.decrypt(any(EncryptableSetting.class), anyList(), eq(false))).thenReturn(null);
-    LdapSettings createdLdapSetting = ssoSettingService.createLdapSettings(ldapSettings);
+    LdapSettings createdLdapSetting = ssoSettingService.createLdapSettings(ldapSettings, false);
     assertThat(createdLdapSetting.getConnectionSettings().getPasswordType())
         .isEqualTo(LdapConnectionSettings.INLINE_SECRET);
   }
@@ -319,7 +319,7 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
     when(secretManager.getEncryptionDetails(any(), any(), any())).thenReturn(encryptedDataDetails);
     ldapSettings.getConnectionSettings().setEncryptedBindPassword("EncryptedBindPassword");
     when(encryptionService.decrypt(any(EncryptableSetting.class), anyList(), eq(false))).thenReturn(null);
-    LdapSettings createdLdapSetting = ssoSettingService.createLdapSettings(ldapSettings);
+    LdapSettings createdLdapSetting = ssoSettingService.createLdapSettings(ldapSettings, false);
     assertThat(createdLdapSetting.getConnectionSettings().getBindPassword()).isEqualTo(LdapConstants.MASKED_STRING);
     ldapSettings.getConnectionSettings().setBindSecret("randomuuid".toCharArray());
     ldapSettings.getConnectionSettings().setEncryptedBindSecret("randomuuid");
@@ -338,7 +338,7 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
     when(secretManager.getEncryptionDetails(any(), any(), any())).thenReturn(encryptedDataDetails);
     ldapSettings.getConnectionSettings().setEncryptedBindPassword("EncryptedBindPassword");
     when(encryptionService.decrypt(any(EncryptableSetting.class), anyList(), eq(false))).thenReturn(null);
-    ssoSettingService.createLdapSettings(ldapSettings);
+    ssoSettingService.createLdapSettings(ldapSettings, false);
     ldapSettings.getConnectionSettings().setBindPassword("randomPassword");
     ldapSettings.getConnectionSettings().setBindSecret("randomuuid".toCharArray());
     ldapSettings.getConnectionSettings().setEncryptedBindSecret("randomuuid");
@@ -358,7 +358,7 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
     ldapSettings.getConnectionSettings().setBindSecret("randomuuid".toCharArray());
     ldapSettings.getConnectionSettings().setEncryptedBindSecret("randomuuid");
     when(encryptionService.decrypt(any(EncryptableSetting.class), anyList(), eq(false))).thenReturn(null);
-    ssoSettingService.createLdapSettings(ldapSettings);
+    ssoSettingService.createLdapSettings(ldapSettings, false);
     ldapSettings.getConnectionSettings().setBindPassword("bindPassword");
     LdapSettings updatedLdapSetting = ssoSettingService.updateLdapSettings(ldapSettings);
     assertThat(updatedLdapSetting.getConnectionSettings().getPasswordType())
@@ -494,7 +494,7 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
     ldapSettings.setCronExpression("0 0/15 * 1/1 * ? *");
     MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class);
     mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(new ArrayList<>());
-    LdapSettings savedLdapSettings = ssoSettingService.createLdapSettings(ldapSettings);
+    LdapSettings savedLdapSettings = ssoSettingService.createLdapSettings(ldapSettings, false);
     List<OutboxEvent> outboxEvents = outboxService.list(OutboxEventFilter.builder().maximumEventsPolled(10).build());
     OutboxEvent outboxEvent = outboxEvents.get(outboxEvents.size() - 1);
 
@@ -548,7 +548,7 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
     // Arrange
     LdapSettings ldapSettings = createLDAPSSOProvider();
     ldapSettings.setCronExpression("0 0/15 * 1/1 * ? *");
-    ldapSettings = ssoSettingService.createLdapSettings(ldapSettings);
+    ldapSettings = ssoSettingService.createLdapSettings(ldapSettings, false);
     when(accountService.isNextGenEnabled(ldapSettings.getAccountId())).thenReturn(false);
 
     // Act
@@ -567,7 +567,7 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
     // Arrange
     LdapSettings ldapSettings = createLDAPSSOProvider();
     ldapSettings.setCronExpression("0 0/15 * 1/1 * ? *");
-    ldapSettings = ssoSettingService.createLdapSettings(ldapSettings);
+    ldapSettings = ssoSettingService.createLdapSettings(ldapSettings, false);
     when(accountService.isNextGenEnabled(ldapSettings.getAccountId())).thenReturn(true);
 
     MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class);
@@ -589,7 +589,7 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
     // Arrange
     LdapSettings ldapSettings = createLDAPSSOProvider();
     ldapSettings.setCronExpression("0 0/15 * 1/1 * ? *");
-    final LdapSettings createdLdapSettings = ssoSettingService.createLdapSettings(ldapSettings);
+    final LdapSettings createdLdapSettings = ssoSettingService.createLdapSettings(ldapSettings, false);
     when(accountService.isNextGenEnabled(ldapSettings.getAccountId())).thenReturn(true);
 
     UserGroupDTO testUGDto = UserGroupDTO.builder()
@@ -619,7 +619,7 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
     when(secretManager.getEncryptionDetails(any(), any(), any())).thenReturn(encryptedDataDetails);
     ldapSettings.getConnectionSettings().setEncryptedBindPassword("EncryptedBindPassword");
     when(encryptionService.decrypt(any(EncryptableSetting.class), anyList(), eq(false))).thenReturn(null);
-    LdapSettings createdLdapSetting = ssoSettingService.createLdapSettings(ldapSettings);
+    LdapSettings createdLdapSetting = ssoSettingService.createLdapSettings(ldapSettings, false);
     assertThat(createdLdapSetting.getConnectionSettings().getBindPassword()).isEqualTo(LdapConstants.MASKED_STRING);
     assertThat(createdLdapSetting.getConnectionSettings().getNgBindSecret()).isNull();
     assertThat(createdLdapSetting.getConnectionSettings().getPasswordType())

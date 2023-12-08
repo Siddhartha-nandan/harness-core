@@ -191,7 +191,7 @@ public class EventPublishHelper {
       }
 
       SamlSettings samlSettings = ssoSettingService.getSamlSettingsByAccountId(accountId);
-      LdapSettings ldapSettings = ssoSettingService.getLdapSettingsByAccountId(accountId);
+      LdapSettings ldapSettings = ssoSettingService.getLdapSettingsByAccountId(accountId, false);
 
       boolean hasSamlSetting = samlSettings != null && samlSettings.getCreatedBy().getEmail().equals(userEmail);
       boolean hasLdapSetting = ldapSettings != null && ldapSettings.getCreatedBy().getEmail().equals(userEmail);

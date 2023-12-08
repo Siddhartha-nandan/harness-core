@@ -91,7 +91,7 @@ public class LdapBasedAuthHandler implements AuthHandler {
     String accountId = isEmpty(credentials[2]) ? user.getDefaultAccountId() : credentials[2];
     Account account = authenticationUtils.getAccount(accountId);
     String uuid = user.getUuid();
-    LdapSettings settings = ssoSettingService.getLdapSettingsByAccountId(accountId);
+    LdapSettings settings = ssoSettingService.getLdapSettingsByAccountId(accountId, false);
     if (null == settings) {
       // log and throw invalid credential error
       log.error("No LDAP sso settings exists for the account id: " + accountId);

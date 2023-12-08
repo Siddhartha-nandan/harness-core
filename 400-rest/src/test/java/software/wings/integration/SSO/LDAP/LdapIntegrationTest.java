@@ -199,7 +199,7 @@ public class LdapIntegrationTest extends IntegrationTestBase implements WingsInt
   }
 
   public void searchGroupByNameTest() {
-    LdapSettings ldapSettings = ssoService.getLdapSettings(ACCOUNT_ID);
+    LdapSettings ldapSettings = ssoService.getLdapSettings(ACCOUNT_ID, false);
     String url = createSearchGroupByNameUrl(ldapSettings.getUuid());
     log.info("Calling url: " + url);
     WebTarget target = client.target(url);
@@ -215,7 +215,7 @@ public class LdapIntegrationTest extends IntegrationTestBase implements WingsInt
   public void linkLdapGroupToHarnessUserGroupTest() {
     enableLdapAsDefaultLoginMechanism();
     loginUsingLdap();
-    LdapSettings ldapSettings = ssoService.getLdapSettings(ACCOUNT_ID);
+    LdapSettings ldapSettings = ssoService.getLdapSettings(ACCOUNT_ID, false);
     String url = createLinkGroupByUrl(ldapSettings.getUuid());
     log.info("Calling url: " + url);
     WebTarget target = client.target(url);
@@ -245,7 +245,7 @@ public class LdapIntegrationTest extends IntegrationTestBase implements WingsInt
   }
 
   private void deleteExistingLdapSettings() {
-    if (ssoService.getLdapSettings(ACCOUNT_ID) != null) {
+    if (ssoService.getLdapSettings(ACCOUNT_ID, false) != null) {
       ssoService.deleteLdapSettings(ACCOUNT_ID);
     }
   }

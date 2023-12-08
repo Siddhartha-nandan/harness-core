@@ -173,7 +173,7 @@ public class LdapBasedAuthHandlerTest extends CategoryTest {
     when(authenticationUtils.getUser(anyString())).thenReturn(user);
     when(userService.getUserByEmail(userEmail)).thenReturn(user);
     when(authenticationUtils.getDefaultAccount(any(User.class))).thenReturn(account);
-    when(ssoSettingService.getLdapSettingsByAccountId(testAccountId)).thenReturn(null);
+    when(ssoSettingService.getLdapSettingsByAccountId(testAccountId, false)).thenReturn(null);
 
     assertThatThrownBy(() -> ldapBasedAuthHandler.authenticate(userEmail, userPwd, account.getUuid()))
         .isInstanceOf(WingsException.class)
@@ -222,7 +222,7 @@ public class LdapBasedAuthHandlerTest extends CategoryTest {
     doReturn(encryptedSecret).when(secretManager).encryptSecret(anyString(), any(), anyBoolean());
 
     when(domainWhitelistCheckerService.isDomainWhitelisted(any())).thenReturn(true);
-    when(ssoSettingService.getLdapSettingsByAccountId(testAccountId)).thenReturn(spyLdapSettings);
+    when(ssoSettingService.getLdapSettingsByAccountId(testAccountId, false)).thenReturn(spyLdapSettings);
     return ldapDelegateService;
   }
 }

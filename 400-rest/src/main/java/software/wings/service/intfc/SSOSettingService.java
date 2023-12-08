@@ -74,7 +74,7 @@ public interface SSOSettingService extends OwnedByAccount {
 
   Iterator<SamlSettings> getSamlSettingsIteratorByAccountId(@NotNull String accountId);
 
-  LdapSettings createLdapSettings(@NotNull LdapSettings settings);
+  LdapSettings createLdapSettings(@NotNull LdapSettings settings, boolean isNG);
 
   LdapSettings updateLdapSettings(@NotNull LdapSettings settings);
 
@@ -82,7 +82,7 @@ public interface SSOSettingService extends OwnedByAccount {
 
   LdapSettings deleteLdapSettings(@NotNull LdapSettings settings);
 
-  LdapSettings getLdapSettingsByAccountId(@NotBlank String accountId);
+  LdapSettings getLdapSettingsByAccountId(@NotBlank String accountId, boolean isNG);
 
   LdapSettings getLdapSettingsByUuid(@NotBlank String uuid);
 

@@ -338,7 +338,7 @@ public class SSOServiceTest extends WingsBaseTest {
     when(SECRET_MANAGER.encryptedDataDetails(anyString(), anyString(), any(), any()))
         .thenReturn(Optional.of(encryptedPwdDetail));
     when(SECRET_MANAGER.deleteSecret(anyString(), anyString(), any(), anyBoolean())).thenReturn(true);
-    when(SSO_SETTING_SERVICE.getLdapSettingsByAccountId(anyString())).thenReturn(ldapSettings);
+    when(SSO_SETTING_SERVICE.getLdapSettingsByAccountId(anyString(), false)).thenReturn(ldapSettings);
 
     LdapSettingsWithEncryptedDataAndPasswordDetail withEncryptedDataAndPasswordDetail =
         ssoService.getLdapSettingsWithEncryptedDataAndPasswordDetail(ACCOUNT_ID, testLdapRecordName);

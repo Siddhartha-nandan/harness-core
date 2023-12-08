@@ -72,11 +72,11 @@ public interface SSOService {
 
   SSOConfig getAccountAccessManagementSettingsV2(@NotNull String accountId);
 
-  LdapSettings createLdapSettings(@NotNull LdapSettings settings);
+  LdapSettings createLdapSettings(@NotNull LdapSettings settings, boolean isNG);
 
   LdapSettings updateLdapSettings(@NotNull LdapSettings settings);
 
-  LdapSettings getLdapSettings(@NotBlank String accountId);
+  LdapSettings getLdapSettings(@NotBlank String accountId, boolean isNG);
 
   LdapSettingsWithEncryptedDataDetail getLdapSettingWithEncryptedDataDetail(
       @NotBlank String accountId, LdapSettings ldapSettings);

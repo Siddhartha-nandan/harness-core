@@ -303,7 +303,7 @@ public class SSOResourceNG {
     if (!settings.getAccountId().equals(accountId)) {
       throw new InvalidRequestException("AccountId in the query parameter and request body don't match");
     }
-    return new RestResponse<>(ssoService.createLdapSettings(settings));
+    return new RestResponse<>(ssoService.createLdapSettings(settings, true));
   }
 
   @PUT
@@ -323,7 +323,7 @@ public class SSOResourceNG {
   @Timed
   @ExceptionMetered
   public RestResponse<LdapSettings> getLdapSettings(@QueryParam("accountId") @NotBlank String accountId) {
-    return new RestResponse<>(ssoService.getLdapSettings(accountId));
+    return new RestResponse<>(ssoService.getLdapSettings(accountId, false));
   }
 
   @DELETE
@@ -340,7 +340,7 @@ public class SSOResourceNG {
   @ExceptionMetered
   public RestResponse<LdapResponse> testLdapAuthentication(@QueryParam("accountId") @NotBlank String accountId,
       @FormDataParam("email") String email, @FormDataParam("password") String password) {
-    LdapSettings settings = ssoService.getLdapSettings(accountId);
+    LdapSettings settings = ssoService.getLdapSettings(accountId, false);
     if (null == settings) {
       throw new InvalidRequestException(
           String.format("No LDAP SSO Provider settings found for account: %s", accountId));

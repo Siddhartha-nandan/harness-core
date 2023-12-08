@@ -249,7 +249,7 @@ public class SSOServiceImpl implements SSOService {
             ? ssoSettingService.getSamlSettingsByAccountId(accountIdentifier)
             : ssoSettingService.getSamlSettingsByAccountIdNotConfiguredFromNG(accountIdentifier);
       } else if (oldAuthMechanism == LDAP) {
-        ssoSettings = ssoSettingService.getLdapSettingsByAccountId(accountIdentifier);
+        ssoSettings = ssoSettingService.getLdapSettingsByAccountId(accountIdentifier, false);
       }
       if (null != ssoSettings) {
         auditServiceHelper.reportForAuditingUsingAccountId(accountIdentifier, null, ssoSettings, Event.Type.DISABLE);
@@ -262,7 +262,7 @@ public class SSOServiceImpl implements SSOService {
               : ssoSettingService.getSamlSettingsByAccountIdNotConfiguredFromNG(accountIdentifier);
           break;
         case LDAP:
-          ssoSettings = ssoSettingService.getLdapSettingsByAccountId(accountIdentifier);
+          ssoSettings = ssoSettingService.getLdapSettingsByAccountId(accountIdentifier, false);
           break;
         case OAUTH:
           ssoSettings = ssoSettingService.getOauthSettingsByAccountId(accountIdentifier);
@@ -412,7 +412,7 @@ public class SSOServiceImpl implements SSOService {
     if (samlSettings != null) {
       settings.add(samlSettings.getPublicSSOSettings());
     }
-    LdapSettings ldapSettings = ssoSettingService.getLdapSettingsByAccountId(account.getUuid());
+    LdapSettings ldapSettings = ssoSettingService.getLdapSettingsByAccountId(account.getUuid(), false);
     if (ldapSettings != null) {
       settings.add(ldapSettings.getPublicSSOSettings());
     }
@@ -429,7 +429,7 @@ public class SSOServiceImpl implements SSOService {
     if (isNotEmpty(samlSettings)) {
       samlSettings.forEach(setting -> settings.add(setting.getPublicSSOSettings()));
     }
-    LdapSettings ldapSettings = ssoSettingService.getLdapSettingsByAccountId(account.getUuid());
+    LdapSettings ldapSettings = ssoSettingService.getLdapSettingsByAccountId(account.getUuid(), false);
     if (ldapSettings != null) {
       settings.add(ldapSettings.getPublicSSOSettings());
     }
@@ -494,8 +494,8 @@ public class SSOServiceImpl implements SSOService {
   }
 
   @Override
-  public LdapSettings createLdapSettings(@NotNull LdapSettings settings) {
-    return ssoSettingService.createLdapSettings(settings);
+  public LdapSettings createLdapSettings(@NotNull LdapSettings settings, boolean isNG) {
+    return ssoSettingService.createLdapSettings(settings, isNG);
   }
 
   @Override
@@ -514,15 +514,15 @@ public class SSOServiceImpl implements SSOService {
   }
 
   @Override
-  public LdapSettings getLdapSettings(@NotBlank String accountId) {
-    return ssoSettingService.getLdapSettingsByAccountId(accountId);
+  public LdapSettings getLdapSettings(@NotBlank String accountId, boolean isNG) {
+    return ssoSettingService.getLdapSettingsByAccountId(accountId, isNG);
   }
 
   @Override
   public LdapSettingsWithEncryptedDataDetail getLdapSettingWithEncryptedDataDetail(
       @NotBlank String accountId, LdapSettings inputLdapSettings) {
     if (null == inputLdapSettings) {
-      LdapSettings ldapSettings = ssoSettingService.getLdapSettingsByAccountId(accountId);
+      LdapSettings ldapSettings = ssoSettingService.getLdapSettingsByAccountId(accountId, true);
       populateEncryptedFields(ldapSettings);
       encryptSecretIfFFisEnabled(ldapSettings);
       ldapSettings.encryptLdapInlineSecret(secretManager, false);

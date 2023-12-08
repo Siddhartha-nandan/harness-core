@@ -149,7 +149,7 @@ public class UserAccountLevelDataMigrationJob implements Managed {
   }
 
   private void provisionLDAP(String accountId) {
-    LdapSettings settings = ssoSettingService.getLdapSettingsByAccountId(accountId);
+    LdapSettings settings = ssoSettingService.getLdapSettingsByAccountId(accountId, false);
     if (null != settings) {
       String ssoId = settings.getUuid();
       processCGUsersLDAP(accountId, ssoId);

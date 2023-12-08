@@ -182,7 +182,7 @@ public class SSOResource {
   @ExceptionMetered
   public RestResponse<SSOConfig> enableLdapAuthMechanism(
       @QueryParam("accountId") String accountId, @NotNull @Valid LDAPTestAuthenticationRequest authenticationRequest) {
-    LdapSettings settings = ssoService.getLdapSettings(accountId);
+    LdapSettings settings = ssoService.getLdapSettings(accountId, false);
     if (null == settings) {
       throw new InvalidRequestException(
           String.format("No LDAP SSO Provider settings found for account: %s", accountId));
@@ -240,7 +240,7 @@ public class SSOResource {
     if (!settings.getAccountId().equals(accountId)) {
       throw new InvalidRequestException("accountId in the query parameter and request body don't match");
     }
-    return new RestResponse<>(ssoService.createLdapSettings(settings));
+    return new RestResponse<>(ssoService.createLdapSettings(settings, false));
   }
 
   @PUT
@@ -260,7 +260,7 @@ public class SSOResource {
   @Timed
   @ExceptionMetered
   public RestResponse<LdapSettings> getLdapSettings(@QueryParam("accountId") @NotBlank String accountId) {
-    return new RestResponse<>(ssoService.getLdapSettings(accountId));
+    return new RestResponse<>(ssoService.getLdapSettings(accountId, false));
   }
 
   @POST
@@ -312,7 +312,7 @@ public class SSOResource {
   @ExceptionMetered
   public RestResponse<LdapResponse> validateLdapAuthentication(@QueryParam("accountId") @NotBlank String accountId,
       @NotNull @Valid LDAPTestAuthenticationRequest authenticationRequest) {
-    LdapSettings settings = ssoService.getLdapSettings(accountId);
+    LdapSettings settings = ssoService.getLdapSettings(accountId, false);
     if (null == settings) {
       throw new InvalidRequestException(
           String.format("No LDAP SSO Provider settings found for account: %s", accountId));

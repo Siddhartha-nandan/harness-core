@@ -388,7 +388,7 @@ public class SSOServiceImplTest extends WingsBaseTest {
     when(secretManager.encryptedDataDetails(any(), any(), any(), any())).thenReturn(Optional.of(encryptedDataDetail));
     ldapSettings.getConnectionSettings().setEncryptedBindPassword("EncryptedBindPassword");
     when(encryptionService.decrypt(any(EncryptableSetting.class), anyList(), eq(false))).thenReturn(null);
-    ssoSettingService.createLdapSettings(ldapSettings);
+    ssoSettingService.createLdapSettings(ldapSettings, false);
 
     LdapSettingsWithEncryptedDataDetail resultDetails =
         ssoService.getLdapSettingWithEncryptedDataDetail(testAccountId, null);
@@ -425,7 +425,7 @@ public class SSOServiceImplTest extends WingsBaseTest {
     when(secretManager.encryptedDataDetails(any(), any(), any(), any())).thenReturn(Optional.of(encryptedDataDetail));
     ldapSettings.getConnectionSettings().setEncryptedBindSecret("EncryptedBindSecret");
     when(encryptionService.decrypt(any(EncryptableSetting.class), anyList(), eq(false))).thenReturn(null);
-    ssoSettingService.createLdapSettings(ldapSettings);
+    ssoSettingService.createLdapSettings(ldapSettings, false);
 
     LdapSettingsWithEncryptedDataDetail resultDetails =
         ssoService.getLdapSettingWithEncryptedDataDetail(testAccountId, null);

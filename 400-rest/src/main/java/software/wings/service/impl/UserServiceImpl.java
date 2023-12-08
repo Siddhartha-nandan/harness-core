@@ -1119,7 +1119,7 @@ public class UserServiceImpl implements UserService {
             .authenticationMechanism(account.getAuthenticationMechanism())
             .isTwoFactorAuthEnabledForAccount(accountService.getTwoFactorEnforceInfo(accountId));
 
-    LdapSettings ldapSettings = ssoService.getLdapSettings(accountId);
+    LdapSettings ldapSettings = ssoService.getLdapSettings(accountId, false);
     if (ldapSettings != null) {
       builder.ldapIdentificationInfo(LdapIdentificationInfo.builder()
                                          .host(ldapSettings.getConnectionSettings().getHost())
@@ -1367,7 +1367,7 @@ public class UserServiceImpl implements UserService {
         return ssoSettingService.getSamlSettingsByAccountId(account.getUuid());
       }
       case LDAP: {
-        return ssoSettingService.getLdapSettingsByAccountId(account.getUuid());
+        return ssoSettingService.getLdapSettingsByAccountId(account.getUuid(), false);
       }
       default: {
         log.error("New authentication mechanism detected. Needs to handle the added role email template flow.");
@@ -1936,7 +1936,7 @@ public class UserServiceImpl implements UserService {
     if (account.getAuthenticationMechanism() == AuthenticationMechanism.SAML) {
       ssoSettings = ssoSettingService.getSamlSettingsByAccountId(account.getUuid());
     } else if (account.getAuthenticationMechanism() == AuthenticationMechanism.LDAP) {
-      ssoSettings = ssoSettingService.getLdapSettingsByAccountId(account.getUuid());
+      ssoSettings = ssoSettingService.getLdapSettingsByAccountId(account.getUuid(), false);
     } else if (account.getAuthenticationMechanism() == AuthenticationMechanism.OAUTH) {
       ssoSettings = ssoSettingService.getOauthSettingsByAccountId(account.getUuid());
     } else {
