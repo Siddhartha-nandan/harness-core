@@ -253,7 +253,7 @@ public class PerpetualTaskServiceImplTest extends WingsBaseTest {
 
     assertThat(updatedRecords).isEqualTo(1L);
     assertThat(record).isNotNull();
-    assertThat(record.getState()).isEqualTo(PerpetualTaskState.TASK_UNASSIGNED);
+    assertThat(record.getState()).isEqualTo(PerpetualTaskState.TASK_PAUSED);
     assertThat(record.getIntervalSeconds()).isEqualTo(intervalInMillis / 1000);
   }
 
