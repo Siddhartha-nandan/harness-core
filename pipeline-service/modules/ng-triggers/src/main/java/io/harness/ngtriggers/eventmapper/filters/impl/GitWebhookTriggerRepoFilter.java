@@ -260,7 +260,7 @@ public class GitWebhookTriggerRepoFilter implements TriggerFilter {
     for (TriggerDetails triggerDetail : filterRequestData.getDetails()) {
       NGTriggerEntity ngTriggerEntity = triggerDetail.getNgTriggerEntity();
       WebhookMetadata webhook = ngTriggerEntity.getMetadata().getWebhook();
-      if (webhook == null || webhook.getGit() == null) {
+      if (webhook == null || webhook.getGit() == null || webhook.getGit().getRepoName() == null) {
         continue;
       }
       if (StringUtil.isBlank(webhook.getGit().getConnectorIdentifier())) {
