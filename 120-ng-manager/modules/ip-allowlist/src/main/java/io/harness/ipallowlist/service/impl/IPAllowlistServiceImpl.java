@@ -242,7 +242,7 @@ public class IPAllowlistServiceImpl implements IPAllowlistService {
     IPAllowlistFilterDTO ipAllowlistFilterDTO = ipAllowlistResourceUtil.getEnabledFilter();
     Pageable pageable = ipAllowlistResourceUtil.getPageRequest(0, 1, "", "");
     Page<IPAllowlistEntity> ipAllowlistEntityPage = list(accountIdentifier, pageable, ipAllowlistFilterDTO);
-    log.info("ipAllowlistEntityPage {}", new Gson().toJson(ipAllowlistEntityPage));
+    // log.info("ipAllowlistEntityPage {}", new Gson().toJson(ipAllowlistEntityPage));
     log.info("ipAllowlistEntityPage.getTotalElements {}", ipAllowlistEntityPage.getTotalElements());
     boolean isEnabled = ipAllowlistEntityPage.getTotalElements() > 0;
     log.info("ipAllowlistEnabled {}", isEnabled);

@@ -9,6 +9,7 @@ package io.harness.ipallowlist.resource;
 
 import static io.harness.NGCommonEntityConstants.DIFFERENT_IDENTIFIER_IN_PAYLOAD_AND_PARAM;
 import static io.harness.annotations.dev.HarnessTeam.PL;
+import static io.harness.rule.OwnerRule.AKSHAY;
 import static io.harness.rule.OwnerRule.MEENAKSHI;
 
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
@@ -34,10 +35,7 @@ import io.harness.ipallowlist.dto.IPAllowlistFilterDTO;
 import io.harness.ipallowlist.entity.IPAllowlistEntity;
 import io.harness.ipallowlist.service.IPAllowlistService;
 import io.harness.rule.Owner;
-import io.harness.spec.server.ng.v1.model.AllowedSourceType;
-import io.harness.spec.server.ng.v1.model.IPAllowlistConfig;
-import io.harness.spec.server.ng.v1.model.IPAllowlistConfigRequest;
-import io.harness.spec.server.ng.v1.model.IPAllowlistConfigResponse;
+import io.harness.spec.server.ng.v1.model.*;
 import io.harness.utils.PageUtils;
 import io.harness.utils.featureflaghelper.NGFeatureFlagHelperService;
 
@@ -137,6 +135,44 @@ public class IpAllowlistApiImplTest extends CategoryTest {
     assertThat(result).isNotNull();
     assertThat(result.getStatus()).isEqualTo(200);
     assertThat(result.getEntity()).isEqualTo(getIpAllowlistConfigResponse());
+  }
+
+  @Test
+  @Owner(developers = AKSHAY)
+  @Category(UnitTests.class)
+  public void testAllowedIpAddress_notEnabled() {
+    mockIPAllowlistFFTrue();
+    IPAllowlistEntity ipAllowlistEntity = getIPAllowlistEntity();
+    when(ipAllowlistService.ipAllowlistEnabled(ACCOUNT_IDENTIFIER)).thenReturn(false);
+    Response response = ipAllowlistApi.allowedIpAddress(ipAllowlistEntity.getIpAddress(), ACCOUNT_IDENTIFIER);
+    IPAllowlistConfigValidateResponse result = (IPAllowlistConfigValidateResponse) response.getEntity();
+
+    assertThat(result).isNotNull();
+    assertThat(response.getStatus()).isEqualTo(200);
+    assertThat(result.isAllowedForApi()).isEqualTo(true);
+    assertThat(result.isAllowedForUi()).isEqualTo(true);
+  }
+
+  @Test
+  @Owner(developers = AKSHAY)
+  @Category(UnitTests.class)
+  public void testAllowedIpAddress_Enabled() {
+    mockIPAllowlistFFTrue();
+    IPAllowlistEntity ipAllowlistEntity = getIPAllowlistEntity();
+    IPAllowlistConfigValidateResponse exp = new IPAllowlistConfigValidateResponse();
+    exp.allowedForUi(false);
+    exp.allowedForApi(false);
+
+    when(ipAllowlistService.ipAllowlistEnabled(ACCOUNT_IDENTIFIER)).thenReturn(true);
+    when(ipAllowlistService.validateIpAddressAllowlistedOrNot(ipAllowlistEntity.getIpAddress(), ACCOUNT_IDENTIFIER, ""))
+        .thenReturn(exp);
+    Response response = ipAllowlistApi.allowedIpAddress(ipAllowlistEntity.getIpAddress(), ACCOUNT_IDENTIFIER);
+    IPAllowlistConfigValidateResponse result = (IPAllowlistConfigValidateResponse) response.getEntity();
+
+    assertThat(result).isNotNull();
+    assertThat(response.getStatus()).isEqualTo(200);
+    assertThat(result.isAllowedForApi()).isEqualTo(false);
+    assertThat(result.isAllowedForUi()).isEqualTo(false);
   }
 
   @Test
