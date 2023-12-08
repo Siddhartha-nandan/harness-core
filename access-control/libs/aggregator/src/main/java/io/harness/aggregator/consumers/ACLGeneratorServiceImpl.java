@@ -277,7 +277,63 @@ public class ACLGeneratorServiceImpl implements ACLGeneratorService {
     return permissions.stream().filter(permissionsFilter::contains).collect(Collectors.toSet());
   }
 
-  public void syncACLs(RoleAssignmentDBO roleAssignmentDBO) {
+  public void reconcileACLs(RoleAssignmentDBO roleAssignmentDBO) {
+    try {
+      Set<String> permissions = getPermissionsFromRole(roleAssignmentDBO);
+      Set<ResourceSelector> resourceSelectors = getResourceSelectorsFromRoleAssignment(roleAssignmentDBO);
+      Set<String> principals = getPrincipalsFromRoleAssignment(roleAssignmentDBO);
 
+      long numberOfACLsCreated = 0;
+      List<ACL> acls = new ArrayList<>();
+      for (String principalIdentifier : principals) {
+        for (String permission : permissions) {
+          for (ResourceSelector resourceSelector : resourceSelectors) {
+            if (!inMemoryPermissionRepository.isPermissionCompatibleWithResourceSelector(
+                    permission, resourceSelector.getSelector())) {
+              continue;
+            }
+            if (SERVICE_ACCOUNT.equals(roleAssignmentDBO.getPrincipalType())) {
+              acls.add(buildACL(permission, Principal.of(SERVICE_ACCOUNT, principalIdentifier), roleAssignmentDBO,
+                  resourceSelector, false, isEnabled(roleAssignmentDBO)));
+            } else {
+              acls.add(buildACL(permission, Principal.of(USER, principalIdentifier), roleAssignmentDBO,
+                  resourceSelector, false, isEnabled(roleAssignmentDBO)));
+            }
+            if (acls.size() >= batchSizeForACLCreation) {
+              List<ACL> missingACLs = getMissingACLs(acls, roleAssignmentDBO);
+              numberOfACLsCreated += missingACLs.size();
+              log.info("Number of missing ACLs created {} for roleAssignment {}", numberOfACLsCreated,
+                  roleAssignmentDBO.getId());
+              // Create missing ACLs.
+              acls.clear();
+            }
+          }
+        }
+      }
+      if (acls.size() > 0) {
+        List<ACL> missingACLs = getMissingACLs(acls, roleAssignmentDBO);
+        numberOfACLsCreated += missingACLs.size();
+        log.info(
+            "Number of missing ACLs created {} for roleAssignment {}", numberOfACLsCreated, roleAssignmentDBO.getId());
+        // Create missing ACLs.
+        acls.clear();
+      }
+    } catch (Exception ex) {
+      log.error(String.format("Reconcile of ACLs failed for roleAssignment %s", roleAssignmentDBO.getId()), ex);
+    }
+  }
+
+  private List<ACL> getMissingACLs(List<ACL> acls, RoleAssignmentDBO roleAssignmentDBO) {
+    Set<String> aclQueryStrings = acls.stream().map(ACL::getAclQueryString).collect(Collectors.toSet());
+    List<ACL> aclsPresentInDB = aclRepository.getByAclQueryStringInAndEnabledAndRoleAssignmentId(
+        aclQueryStrings, true, roleAssignmentDBO.getId());
+    List<ACL> missingACLs = new ArrayList<>();
+    acls.stream().filter(acl -> !aclsPresentInDB.contains(acl)).forEach(acl -> {
+      if (!aclsPresentInDB.contains(acl)) {
+        log.info("Missing ACL {} for roleAssignmentId {}", acl, roleAssignmentDBO.getId());
+        missingACLs.add(acl);
+      }
+    });
+    return missingACLs;
   }
 }

@@ -36,5 +36,5 @@ public interface ACLGeneratorService {
   long createACLs(RoleAssignmentDBO roleAssignmentDBO, Set<String> principals, Set<String> permissions,
       Set<ResourceSelector> resourceSelectors);
 
-  void syncACLs(RoleAssignmentDBO roleAssignmentDBO);
+  void reconcileACLs(RoleAssignmentDBO roleAssignmentDBO);
 }
