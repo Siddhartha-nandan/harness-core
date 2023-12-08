@@ -34,6 +34,7 @@ import io.harness.delegate.beans.connector.scm.azurerepo.AzureRepoConnectorDTO;
 import io.harness.delegate.beans.connector.scm.bitbucket.BitbucketConnectorDTO;
 import io.harness.delegate.beans.connector.scm.github.GithubConnectorDTO;
 import io.harness.delegate.beans.connector.scm.gitlab.GitlabConnectorDTO;
+import io.harness.exception.InvalidRequestException;
 import io.harness.git.GitClientHelper;
 import io.harness.ngtriggers.beans.dto.TriggerDetails;
 import io.harness.ngtriggers.beans.dto.eventmapping.WebhookEventMappingResponse;
@@ -264,10 +265,15 @@ public class GitWebhookTriggerRepoFilter implements TriggerFilter {
         continue;
       }
       if (webhook.getGit().getRepoName() == null) {
-        log.error("Git repository is null for trigger [{}] in pipeline [{}] project [{}], org[{}], account[{}]",
+        log.error(format("Git repository is null for trigger [%s] in pipeline [%s] project [%s], org[%s], account[%s]",
             ngTriggerEntity.getIdentifier(), ngTriggerEntity.getTargetIdentifier(),
-            ngTriggerEntity.getProjectIdentifier(), ngTriggerEntity.getOrgIdentifier(), ngTriggerEntity.getAccountId());
-        continue;
+            ngTriggerEntity.getProjectIdentifier(), ngTriggerEntity.getOrgIdentifier(),
+            ngTriggerEntity.getAccountId()));
+        throw new InvalidRequestException(
+            format("Git repository is null for trigger [%s] in pipeline [%s] project [%s], org[%s], account[%s]",
+                ngTriggerEntity.getIdentifier(), ngTriggerEntity.getTargetIdentifier(),
+                ngTriggerEntity.getProjectIdentifier(), ngTriggerEntity.getOrgIdentifier(),
+                ngTriggerEntity.getAccountId()));
       }
       if (StringUtil.isBlank(webhook.getGit().getConnectorIdentifier())) {
         String completeHarnessRepoName = GitClientHelper.convertToHarnessRepoName(ngTriggerEntity.getAccountId(),

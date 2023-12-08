@@ -16,10 +16,13 @@ import static io.harness.rule.OwnerRule.RAGHAV_GUPTA;
 import static io.harness.rule.OwnerRule.RAJENDRA_BAVISKAR;
 import static io.harness.rule.OwnerRule.SHIVAM;
 import static io.harness.rule.OwnerRule.SOUMYAJIT;
+import static io.harness.rule.OwnerRule.VED;
 import static io.harness.rule.OwnerRule.YUVRAJ;
 
+import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.MockitoAnnotations.initMocks;
@@ -36,6 +39,7 @@ import io.harness.connector.ConnectorResponseDTO;
 import io.harness.delegate.beans.connector.scm.GitConnectionType;
 import io.harness.delegate.beans.connector.scm.bitbucket.BitbucketConnectorDTO;
 import io.harness.delegate.beans.connector.scm.github.GithubConnectorDTO;
+import io.harness.exception.InvalidRequestException;
 import io.harness.ngtriggers.NgTriggersTestHelper;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
 import io.harness.ngtriggers.beans.dto.TriggerDetails;
@@ -935,5 +939,59 @@ public class GitWebhookTriggerRepoFilterTest extends CategoryTest {
             })
             .build());
     assertThat(eligibleTriggers.size()).isEqualTo(1);
+  }
+
+  @Test
+  @Owner(developers = VED)
+  @Category(UnitTests.class)
+  public void testEvaluateWrapperForSCMConnectorWithRepoNull() {
+    NGTriggerEntity ngTriggerEntity = NGTriggerEntity.builder()
+                                          .accountId("kmpySmUISimoRrJL6NL73w")
+                                          .orgIdentifier("CITestDemoOrgnpAUTg9bai")
+                                          .projectIdentifier("CITestDemoProsQQ6BmCDXS")
+                                          .identifier("trigger123")
+                                          .targetIdentifier("pipeline123")
+                                          .metadata(NGTriggerMetadata.builder()
+                                                        .webhook(WebhookMetadata.builder()
+                                                                     .type("HARNESS")
+                                                                     .git(GitMetadata.builder().repoName(null).build())
+                                                                     .build())
+                                                        .build())
+                                          .build();
+
+    Set<String> urls = filter.getUrls(
+        Repository.builder()
+            .httpURL(
+                "https://git.app.harness.io/kmpySmUISimoRrJL6NL73w/CITestDemoOrgnpAUTg9bai/CITestDemoProsQQ6BmCDXS/testprivaterepo.git")
+            .sshURL("")
+            .link("")
+            .build(),
+        "HARNESS");
+    List<TriggerDetails> eligibleTriggers = new ArrayList<>();
+    TriggerDetails harnessTrigger =
+        TriggerDetails.builder()
+            .ngTriggerEntity(ngTriggerEntity)
+            .ngTriggerConfigV2(
+                NGTriggerConfigV2.builder()
+                    .source(NGTriggerSourceV2.builder()
+                                .type(NGTriggerType.WEBHOOK)
+                                .spec(WebhookTriggerConfigV2.builder().type(WebhookTriggerType.HARNESS).build())
+                                .build())
+                    .build())
+            .build();
+    FilterRequestData.builder().details(new ArrayList<>() {}).build();
+    assertThatThrownBy(()
+                           -> filter.evaluateWrapperForSCMConnector(urls, eligibleTriggers,
+                               FilterRequestData.builder()
+                                   .details(new ArrayList<TriggerDetails>() {
+                                     { add(harnessTrigger); }
+                                   })
+                                   .build()))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(
+            format("Git repository is null for trigger [%s] in pipeline [%s] project [%s], org[%s], account[%s]",
+                ngTriggerEntity.getIdentifier(), ngTriggerEntity.getTargetIdentifier(),
+                ngTriggerEntity.getProjectIdentifier(), ngTriggerEntity.getOrgIdentifier(),
+                ngTriggerEntity.getAccountId()));
   }
 }
