@@ -13,11 +13,7 @@ import io.harness.batch.processing.config.BatchMainConfig;
 import io.harness.batch.processing.shard.AccountShardService;
 import io.harness.batch.processing.svcmetrics.BatchProcessingMetricName;
 import io.harness.batch.processing.svcmetrics.ConnectorHealthContext;
-import io.harness.connector.ConnectorFilterPropertiesDTO;
-import io.harness.connector.ConnectorInfoDTO;
-import io.harness.connector.ConnectorResourceClient;
-import io.harness.connector.ConnectorResponseDTO;
-import io.harness.connector.ConnectorValidationResult;
+import io.harness.connector.*;
 import io.harness.delegate.beans.connector.CEFeatures;
 import io.harness.delegate.beans.connector.CcmConnectorFilter;
 import io.harness.delegate.beans.connector.ConnectorType;
@@ -30,6 +26,8 @@ import com.google.inject.Singleton;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -74,9 +72,11 @@ public class ConnectorsHealthUpdateService {
         NGRestUtils.getResponse(connectorResourceClient.testConnectionInternal(
             connector.getConnector().getIdentifier(), accountId, null, null));
     log.info("connectorValidationResult {}", connectorValidationResult);
+    Random random = new Random();
+    String health = random.nextBoolean() ? ConnectivityStatus.SUCCESS.name() : ConnectivityStatus.FAILURE.name();
     // record metric for connector health
     try (ConnectorHealthContext x = new ConnectorHealthContext(
-             accountId, connector.getConnector().getIdentifier(), connectorValidationResult.getStatus().name())) {
+             accountId, connector.getConnector().getIdentifier(), health)) {
       metricService.incCounter(BatchProcessingMetricName.CONNECTOR_HEALTH);
     }
   }
