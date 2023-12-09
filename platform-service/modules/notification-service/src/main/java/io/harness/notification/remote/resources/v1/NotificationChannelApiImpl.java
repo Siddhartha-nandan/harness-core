@@ -47,8 +47,8 @@ public class NotificationChannelApiImpl implements NotificationChannelsApi {
   @Override
   public Response createNotificationChannel(
       String org, String project, @Valid NotificationChannelDTO body, String harnessAccount) {
-    accessControlClient.checkForAccessOrThrow(ResourceScope.of(harnessAccount, org, project),
-        Resource.of(NOTIFICATION_MANAGEMENT, null), EDIT_NOTIFICATION_MANAGEMENT_PERMISSION);
+   /* accessControlClient.checkForAccessOrThrow(ResourceScope.of(harnessAccount, org, project),
+        Resource.of(NOTIFICATION_MANAGEMENT, null), EDIT_NOTIFICATION_MANAGEMENT_PERMISSION);*/
     NotificationChannel notificationChannel = notificationChannelManagementService.create(
         notificationServiceManagementMapper.toNotificationChannelEntity(body, harnessAccount));
     return Response.status(Response.Status.CREATED)
@@ -59,8 +59,8 @@ public class NotificationChannelApiImpl implements NotificationChannelsApi {
   @Override
   public Response getNotificationChannel(
       String notificationChannelIdentifier, String org, String project, String harnessAccount) {
-    accessControlClient.checkForAccessOrThrow(ResourceScope.of(harnessAccount, org, project),
-        Resource.of(NOTIFICATION_MANAGEMENT, null), VIEW_NOTIFICATION_MANAGEMENT_PERMISSION);
+   /* accessControlClient.checkForAccessOrThrow(ResourceScope.of(harnessAccount, org, project),
+        Resource.of(NOTIFICATION_MANAGEMENT, null), VIEW_NOTIFICATION_MANAGEMENT_PERMISSION);*/
     NotificationChannel notificationChannel =
         notificationChannelManagementService.get(harnessAccount, org, project, notificationChannelIdentifier);
     return Response.status(Response.Status.OK)
@@ -85,8 +85,8 @@ public class NotificationChannelApiImpl implements NotificationChannelsApi {
   @Override
   public Response updateNotificationChannel(String notificationChannelIdentifier, String org, String project,
       @Valid NotificationChannelDTO body, String harnessAccount) {
-    accessControlClient.checkForAccessOrThrow(ResourceScope.of(harnessAccount, org, project),
-        Resource.of(NOTIFICATION_MANAGEMENT, null), VIEW_NOTIFICATION_MANAGEMENT_PERMISSION);
+    /*accessControlClient.checkForAccessOrThrow(ResourceScope.of(harnessAccount, org, project),
+        Resource.of(NOTIFICATION_MANAGEMENT, null), VIEW_NOTIFICATION_MANAGEMENT_PERMISSION);*/
     NotificationChannel existingEntity =
         notificationChannelManagementService.get(harnessAccount, org, project, notificationChannelIdentifier);
     NotificationChannel entityToUpdate =
@@ -101,8 +101,8 @@ public class NotificationChannelApiImpl implements NotificationChannelsApi {
   @Override
   public Response deleteNotificationChannel(
       String notificationChannelIdentifier, String org, String project, String harnessAccount) {
-    accessControlClient.checkForAccessOrThrow(ResourceScope.of(harnessAccount, org, project),
-        Resource.of(NOTIFICATION_MANAGEMENT, null), DELETE_NOTIFICATION_MANAGEMENT_PERMISSION);
+   /* accessControlClient.checkForAccessOrThrow(ResourceScope.of(harnessAccount, org, project),
+        Resource.of(NOTIFICATION_MANAGEMENT, null), DELETE_NOTIFICATION_MANAGEMENT_PERMISSION);*/
     NotificationChannel notificationChannel =
         notificationChannelManagementService.get(harnessAccount, org, project, notificationChannelIdentifier);
     boolean deleted = notificationChannelManagementService.delete(notificationChannel);
