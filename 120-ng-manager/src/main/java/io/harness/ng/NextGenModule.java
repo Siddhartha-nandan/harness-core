@@ -951,6 +951,13 @@ public class NextGenModule extends AbstractModule {
 
       @Provides
       @Singleton
+      @Named("scmServiceBaseUrl")
+      String getScmServiceBaseUrl() {
+        return getBaseUrls().getScmServiceBaseUrl();
+      }
+
+      @Provides
+      @Singleton
       BaseUrls getBaseUrls() {
         return appConfig.getBaseUrls();
       }

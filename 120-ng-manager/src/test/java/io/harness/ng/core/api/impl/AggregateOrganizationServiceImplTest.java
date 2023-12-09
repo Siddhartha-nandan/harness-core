@@ -107,9 +107,14 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
     when(scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null)).thenReturn(Optional.of(scopeInfo));
+    ScopeInfo builtScope = ScopeInfo.builder()
+                               .accountIdentifier(accountIdentifier)
+                               .scopeType(ScopeLevel.ACCOUNT)
+                               .uniqueId(accountIdentifier)
+                               .build();
 
     Organization organization = getOrganization(accountIdentifier, orgIdentifier);
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(organization));
+    when(organizationService.get(accountIdentifier, builtScope, orgIdentifier)).thenReturn(Optional.of(organization));
 
     Map<String, Integer> projectsCount = singletonMap(organization.getIdentifier(), 3);
     when(projectService.getProjectsCountPerOrganization(eq(accountIdentifier), any())).thenReturn(projectsCount);
@@ -117,7 +122,7 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
     setupNgUserService();
 
     OrganizationAggregateDTO organizationAggregateDTO =
-        aggregateOrganizationService.getOrganizationAggregateDTO(accountIdentifier, orgIdentifier);
+        aggregateOrganizationService.getOrganizationAggregateDTO(accountIdentifier, builtScope, orgIdentifier);
 
     // organization
     assertEquals(orgIdentifier, organizationAggregateDTO.getOrganizationResponse().getOrganization().getIdentifier());
@@ -146,8 +151,14 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
     when(scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null)).thenReturn(Optional.of(scopeInfo));
+    ScopeInfo builtScope = ScopeInfo.builder()
+                               .accountIdentifier(accountIdentifier)
+                               .scopeType(ScopeLevel.ACCOUNT)
+                               .uniqueId(accountIdentifier)
+                               .build();
+
     Organization organization = getOrganization(accountIdentifier, orgIdentifier);
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(organization));
+    when(organizationService.get(accountIdentifier, builtScope, orgIdentifier)).thenReturn(Optional.of(organization));
 
     when(projectService.getProjectsCountPerOrganization(eq(accountIdentifier), any())).thenReturn(emptyMap());
 
@@ -156,7 +167,7 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
     when(ngUserService.listCurrentGenUsers(any(), any())).thenReturn(emptyList());
 
     OrganizationAggregateDTO organizationAggregateDTO =
-        aggregateOrganizationService.getOrganizationAggregateDTO(accountIdentifier, orgIdentifier);
+        aggregateOrganizationService.getOrganizationAggregateDTO(accountIdentifier, builtScope, orgIdentifier);
 
     // organization
     assertEquals(orgIdentifier, organizationAggregateDTO.getOrganizationResponse().getOrganization().getIdentifier());
@@ -187,8 +198,14 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
     String orgUniqueIdentifier = randomAlphabetic(10);
     when(scopeResolverService.getScopeInfo(eq(accountIdentifier), any(), isNull()))
         .thenReturn(Optional.of(ScopeInfo.builder().uniqueId(orgUniqueIdentifier).build()));
+    ScopeInfo builtScope = ScopeInfo.builder()
+                               .accountIdentifier(accountIdentifier)
+                               .scopeType(ScopeLevel.ACCOUNT)
+                               .uniqueId(accountIdentifier)
+                               .build();
+
     List<Organization> organizations = getOrganizations(accountIdentifier, 3);
-    when(organizationService.listPermittedOrgs(accountIdentifier, Pageable.unpaged(), null))
+    when(organizationService.listPermittedOrgs(accountIdentifier, builtScope, Pageable.unpaged(), null))
         .thenReturn(getPage(organizations, 3));
 
     Map<String, Integer> projectsCount = new HashMap<>();
@@ -198,7 +215,8 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
     setupNgUserService();
 
     Page<OrganizationAggregateDTO> organizationAggregateDTOs =
-        aggregateOrganizationService.listOrganizationAggregateDTO(accountIdentifier, Pageable.unpaged(), null);
+        aggregateOrganizationService.listOrganizationAggregateDTO(
+            accountIdentifier, builtScope, Pageable.unpaged(), null);
 
     // organizations
     assertEquals(3, organizationAggregateDTOs.getContent().size());
@@ -222,19 +240,23 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
     String orgUniqueIdentifier = randomAlphabetic(10);
     when(scopeResolverService.getScopeInfo(eq(accountIdentifier), any(), isNull()))
         .thenReturn(Optional.of(ScopeInfo.builder().uniqueId(orgUniqueIdentifier).build()));
+    ScopeInfo builtScope = ScopeInfo.builder()
+                               .accountIdentifier(accountIdentifier)
+                               .scopeType(ScopeLevel.ACCOUNT)
+                               .uniqueId(accountIdentifier)
+                               .build();
 
     List<Organization> organizations = getOrganizations(accountIdentifier, 3);
-    when(organizationService.listPermittedOrgs(accountIdentifier, Pageable.unpaged(), null))
+    when(organizationService.listPermittedOrgs(accountIdentifier, builtScope, Pageable.unpaged(), null))
         .thenReturn(getPage(organizations, 3));
 
     when(projectService.getProjectsCountPerOrganization(eq(accountIdentifier), any())).thenReturn(emptyMap());
-
     when(ngUserService.listUsers(any())).thenReturn(emptyList());
-
     when(ngUserService.listCurrentGenUsers(any(), any())).thenReturn(emptyList());
 
     Page<OrganizationAggregateDTO> organizationAggregateDTOs =
-        aggregateOrganizationService.listOrganizationAggregateDTO(accountIdentifier, Pageable.unpaged(), null);
+        aggregateOrganizationService.listOrganizationAggregateDTO(
+            accountIdentifier, builtScope, Pageable.unpaged(), null);
 
     // organizations
     assertEquals(3, organizationAggregateDTOs.getContent().size());

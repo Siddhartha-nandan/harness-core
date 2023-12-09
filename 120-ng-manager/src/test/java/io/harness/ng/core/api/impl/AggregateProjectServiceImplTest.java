@@ -123,7 +123,14 @@ public class AggregateProjectServiceImplTest extends CategoryTest {
     when(projectService.get(accountIdentifier, scopeInfo, projectIdentifier)).thenReturn(Optional.of(project));
 
     Optional<Organization> organizationOpt = getOrganization(accountIdentifier, orgIdentifier);
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(organizationOpt);
+    when(organizationService.get(accountIdentifier,
+             ScopeInfo.builder()
+                 .accountIdentifier(accountIdentifier)
+                 .scopeType(ScopeLevel.ACCOUNT)
+                 .uniqueId(accountIdentifier)
+                 .build(),
+             orgIdentifier))
+        .thenReturn(organizationOpt);
     when(favoritesService.getFavorites(anyString(), any(), any(), anyString(), anyString()))
         .thenReturn(Collections.emptyList());
     setupNgUserService();
@@ -216,9 +223,21 @@ public class AggregateProjectServiceImplTest extends CategoryTest {
         .thenReturn(getPage(projects, 5));
     when(favoritesService.getFavorites(anyString(), any(), any(), anyString(), anyString()))
         .thenReturn(Collections.emptyList());
-    when(organizationService.get(accountIdentifier, orgIdentifier1))
+    when(organizationService.get(accountIdentifier,
+             ScopeInfo.builder()
+                 .accountIdentifier(accountIdentifier)
+                 .scopeType(ScopeLevel.ACCOUNT)
+                 .uniqueId(accountIdentifier)
+                 .build(),
+             orgIdentifier1))
         .thenReturn(getOrganization(accountIdentifier, orgIdentifier1));
-    when(organizationService.get(accountIdentifier, orgIdentifier2))
+    when(organizationService.get(accountIdentifier,
+             ScopeInfo.builder()
+                 .accountIdentifier(accountIdentifier)
+                 .scopeType(ScopeLevel.ACCOUNT)
+                 .uniqueId(accountIdentifier)
+                 .build(),
+             orgIdentifier2))
         .thenReturn(getOrganization(accountIdentifier, orgIdentifier2));
     setupNgUserService();
 
@@ -260,9 +279,21 @@ public class AggregateProjectServiceImplTest extends CategoryTest {
         .thenReturn(getPage(projects, 6));
     when(userHelperService.getUserId()).thenReturn(userIdentifier);
     when(projectService.isFavorite(favProject, userIdentifier)).thenReturn(Boolean.TRUE);
-    when(organizationService.get(accountIdentifier, orgIdentifier1))
+    when(organizationService.get(accountIdentifier,
+             ScopeInfo.builder()
+                 .accountIdentifier(accountIdentifier)
+                 .scopeType(ScopeLevel.ACCOUNT)
+                 .uniqueId(accountIdentifier)
+                 .build(),
+             orgIdentifier1))
         .thenReturn(getOrganization(accountIdentifier, orgIdentifier1));
-    when(organizationService.get(accountIdentifier, orgIdentifier2))
+    when(organizationService.get(accountIdentifier,
+             ScopeInfo.builder()
+                 .accountIdentifier(accountIdentifier)
+                 .scopeType(ScopeLevel.ACCOUNT)
+                 .uniqueId(accountIdentifier)
+                 .build(),
+             orgIdentifier2))
         .thenReturn(getOrganization(accountIdentifier, orgIdentifier2));
     setupNgUserService();
 

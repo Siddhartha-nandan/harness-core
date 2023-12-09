@@ -177,8 +177,6 @@ public enum FeatureName {
       HarnessTeam.CDP),
   CDS_TERRAFORM_SUPPORT_OPTIONAL_VAR_FILE_PATHS_NG(
       "Feature flag to support remote optional var file paths", HarnessTeam.CDP),
-  CDS_TERRAGRUNT_USE_UNIQUE_DIRECTORY_BASE_DIR_NG(
-      "Enable unique directory to support terragrunt run in parallel", HarnessTeam.CDP),
   CDS_USE_HTTP_CHECK_IGNORE_RESPONSE_INSTEAD_OF_SOCKET_NG(
       "This is to diable checking for the HTTP status code and instead just check for a valid response",
       HarnessTeam.CDP),
@@ -190,7 +188,6 @@ public enum FeatureName {
       "Enable dynamic provisioning support in v2 environment. Epic: CDS-39606", HarnessTeam.CDC),
   CD_ONBOARDING_HELP_ENABLED("Enables help panel for CD onboarding ", HarnessTeam.CDP),
   CD_TRIGGERS_REFACTOR("Enable NG Triggers UI refactoring", HarnessTeam.CDP),
-  CD_TRIGGER_V2("Enable support for nexus3, nexus2, azure, ami trigger", HarnessTeam.CDC),
   CET_EVENTS_CHART("Enable events chart in UI of Continuous Error Tracking module", HarnessTeam.CET),
   CET_CD_INTEGRATION("Enable Continuous Error Tracking events list in CD pipeline execution tab", HarnessTeam.CET),
   CET_PLATFORM_MONITORED_SERVICE(
@@ -843,6 +840,7 @@ public enum FeatureName {
       "Feature Flag enables improved tracking for Helm deployments that use workloads label selectors to track deployed pods",
       HarnessTeam.CDP),
   SEI_ENABLED("FF to enable SEI for harness platform users", HarnessTeam.SEI),
+  SEI_NEW_ONBOARDING_INTEGRATIONS("FF to enable new onboarding integrations for SEI", HarnessTeam.SEI),
   CDS_EKS_ADD_REGIONAL_PARAM(
       "This flag adds the AWS_STS_REGIONAL_ENDPOINTS=regional environment variable for EKS infrastructure while creating the kubernetes config",
       HarnessTeam.CDP),

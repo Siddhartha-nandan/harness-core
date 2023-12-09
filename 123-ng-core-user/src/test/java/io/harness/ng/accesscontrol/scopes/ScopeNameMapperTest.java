@@ -49,7 +49,6 @@ public class ScopeNameMapperTest extends CategoryTest {
   @Mock private OrganizationService organizationService;
   @Mock private ProjectService projectService;
   @Mock private ScopeInfoService scopeResolverService;
-  ;
   @Spy @Inject @InjectMocks private ScopeNameMapper scopeNameMapper;
 
   private static final String ACCOUNT_IDENTIFIER = "A1";
@@ -61,31 +60,25 @@ public class ScopeNameMapperTest extends CategoryTest {
       Optional.of(Organization.builder().name(ORG_NAME).identifier(ORG_IDENTIFIER).build());
   private static final Optional<Project> projectResponse = Optional.of(
       Project.builder().name(PROJECT_NAME).orgIdentifier(ORG_IDENTIFIER).identifier(PROJECT_IDENTIFIER).build());
-  private ScopeInfo scopeInfo;
 
   @Before
   public void setup() {
     initMocks(this);
-
-    String orgUniqueIdentifier = randomAlphabetic(10);
-    scopeInfo = ScopeInfo.builder()
-                    .accountIdentifier(ACCOUNT_IDENTIFIER)
-                    .scopeType(ScopeLevel.ORGANIZATION)
-                    .orgIdentifier(ORG_IDENTIFIER)
-                    .uniqueId(orgUniqueIdentifier)
-                    .build();
-    when(scopeResolverService.getScopeInfo(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, null))
-        .thenReturn(Optional.of(scopeInfo));
   }
 
   @Test
   @Owner(developers = NAMANG)
   @Category(UnitTests.class)
   public void testToScopeNameDTOWhenOrgWhenExists() throws IOException {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(ACCOUNT_IDENTIFIER)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(ACCOUNT_IDENTIFIER)
+                              .build();
     ScopeDTO scopeDTO = ScopeDTO.builder().accountIdentifier(ACCOUNT_IDENTIFIER).orgIdentifier(ORG_IDENTIFIER).build();
-    doReturn(organizationResponse).when(organizationService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
+    doReturn(organizationResponse).when(organizationService).get(ACCOUNT_IDENTIFIER, scopeInfo, ORG_IDENTIFIER);
     ScopeNameDTO result = scopeNameMapper.toScopeNameDTO(scopeDTO);
-    verify(organizationService, times(1)).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
+    verify(organizationService, times(1)).get(ACCOUNT_IDENTIFIER, scopeInfo, ORG_IDENTIFIER);
     verifyNoMoreInteractions(organizationService);
     verifyNoMoreInteractions(projectService);
     assertThat(result.getAccountIdentifier()).isEqualTo(ACCOUNT_IDENTIFIER);
@@ -138,9 +131,24 @@ public class ScopeNameMapperTest extends CategoryTest {
                             .orgIdentifier(ORG_IDENTIFIER)
                             .projectIdentifier(PROJECT_IDENTIFIER)
                             .build();
-    doReturn(organizationResponse).when(organizationService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
+    String orgUniqueIdentifier = randomAlphabetic(10);
+    ScopeInfo orgScopeInfo = ScopeInfo.builder()
+                                 .accountIdentifier(ACCOUNT_IDENTIFIER)
+                                 .scopeType(ScopeLevel.ORGANIZATION)
+                                 .orgIdentifier(ORG_IDENTIFIER)
+                                 .uniqueId(orgUniqueIdentifier)
+                                 .build();
+    doReturn(organizationResponse)
+        .when(organizationService)
+        .get(ACCOUNT_IDENTIFIER,
+            ScopeInfo.builder()
+                .accountIdentifier(ACCOUNT_IDENTIFIER)
+                .scopeType(ScopeLevel.ACCOUNT)
+                .uniqueId(ACCOUNT_IDENTIFIER)
+                .build(),
+            ORG_IDENTIFIER);
 
-    doReturn(Optional.empty()).when(projectService).get(ACCOUNT_IDENTIFIER, scopeInfo, PROJECT_IDENTIFIER);
+    doReturn(Optional.empty()).when(projectService).get(ACCOUNT_IDENTIFIER, orgScopeInfo, PROJECT_IDENTIFIER);
     try {
       scopeNameMapper.toScopeNameDTO(scopeDTO);
       fail("Expected failure as project does not exists");
@@ -159,12 +167,24 @@ public class ScopeNameMapperTest extends CategoryTest {
                             .orgIdentifier(ORG_IDENTIFIER)
                             .projectIdentifier(PROJECT_IDENTIFIER)
                             .build();
-    doReturn(organizationResponse).when(organizationService).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
-    doReturn(projectResponse).when(projectService).get(ACCOUNT_IDENTIFIER, scopeInfo, PROJECT_IDENTIFIER);
+    String orgUniqueIdentifier = randomAlphabetic(10);
+    ScopeInfo orgScopeInfo = ScopeInfo.builder()
+                                 .accountIdentifier(ACCOUNT_IDENTIFIER)
+                                 .scopeType(ScopeLevel.ORGANIZATION)
+                                 .orgIdentifier(ORG_IDENTIFIER)
+                                 .uniqueId(orgUniqueIdentifier)
+                                 .build();
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(ACCOUNT_IDENTIFIER)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(ACCOUNT_IDENTIFIER)
+                              .build();
+    doReturn(organizationResponse).when(organizationService).get(ACCOUNT_IDENTIFIER, scopeInfo, ORG_IDENTIFIER);
+    doReturn(projectResponse).when(projectService).get(ACCOUNT_IDENTIFIER, orgScopeInfo, PROJECT_IDENTIFIER);
 
     ScopeNameDTO result = scopeNameMapper.toScopeNameDTO(scopeDTO);
-    verify(organizationService, times(1)).get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER);
-    verify(projectService, times(1)).get(ACCOUNT_IDENTIFIER, scopeInfo, PROJECT_IDENTIFIER);
+    verify(organizationService, times(1)).get(ACCOUNT_IDENTIFIER, scopeInfo, ORG_IDENTIFIER);
+    verify(projectService, times(1)).get(ACCOUNT_IDENTIFIER, orgScopeInfo, PROJECT_IDENTIFIER);
     verifyNoMoreInteractions(organizationService);
     verifyNoMoreInteractions(projectService);
     assertThat(result.getAccountIdentifier()).isEqualTo(ACCOUNT_IDENTIFIER);

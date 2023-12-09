@@ -367,9 +367,10 @@ public class ProjectResource {
           "hasModule") @DefaultValue("true") boolean hasModule,
       @Parameter(description = "Module type") @QueryParam(
           NGResourceFilterConstants.MODULE_TYPE_KEY) ModuleType moduleType,
-      @Parameter(description = "Search Term") @QueryParam(
-          NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm) {
-    Set<String> permittedOrgIds = organizationService.getPermittedOrganizations(accountIdentifier, orgIdentifier);
+      @Parameter(description = "Search Term") @QueryParam(NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm,
+      @Context ScopeInfo scopeInfo) {
+    Set<String> permittedOrgIds =
+        organizationService.getPermittedOrganizations(accountIdentifier, scopeInfo, orgIdentifier);
     ProjectFilterDTO projectFilterDTO = getProjectFilterDTO(searchTerm, permittedOrgIds, hasModule, moduleType);
     return ResponseDTO.newResponse(projectService.listPermittedProjects(accountIdentifier, projectFilterDTO));
   }
@@ -398,8 +399,10 @@ public class ProjectResource {
       @Parameter(description = "Search Term") @QueryParam(NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm,
       @Parameter(description = "Start time") @NotNull @QueryParam(
           NGResourceFilterConstants.START_TIME) long startInterval,
-      @Parameter(description = "End time") @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval) {
-    Set<String> permittedOrgIds = organizationService.getPermittedOrganizations(accountIdentifier, orgIdentifier);
+      @Parameter(description = "End time") @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval,
+      @Context ScopeInfo scopeInfo) {
+    Set<String> permittedOrgIds =
+        organizationService.getPermittedOrganizations(accountIdentifier, scopeInfo, orgIdentifier);
     ProjectFilterDTO projectFilterDTO = getProjectFilterDTO(searchTerm, permittedOrgIds, hasModule, moduleType);
     return ResponseDTO.newResponse(
         projectService.permittedProjectsCount(accountIdentifier, projectFilterDTO, startInterval, endInterval));

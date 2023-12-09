@@ -9,6 +9,7 @@ package io.harness.ng.core.user.service.impl;
 
 import io.harness.beans.Scope;
 import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.migration.NGMigration;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
@@ -86,7 +87,15 @@ public class UserMembershipStaleScopeMigrationService implements NGMigration {
           projectService.get(scope.getAccountIdentifier(), scopeInfo.orElseThrow(), scope.getProjectIdentifier())
               .isPresent();
     } else if (StringUtils.isNotBlank(scope.getOrgIdentifier())) {
-      isScopeActive = organizationService.get(scope.getAccountIdentifier(), scope.getOrgIdentifier()).isPresent();
+      isScopeActive = organizationService
+                          .get(scope.getAccountIdentifier(),
+                              ScopeInfo.builder()
+                                  .accountIdentifier(scope.getAccountIdentifier())
+                                  .scopeType(ScopeLevel.ACCOUNT)
+                                  .uniqueId(scope.getAccountIdentifier())
+                                  .build(),
+                              scope.getOrgIdentifier())
+                          .isPresent();
     }
 
     if (isScopeActive) {

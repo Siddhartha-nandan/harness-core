@@ -522,7 +522,13 @@ public class ProjectServiceImpl implements ProjectService {
     if (projectFilterDTO != null && isNotEmpty(projectFilterDTO.getOrgIdentifiers())) {
       orgIdentifiers = projectFilterDTO.getOrgIdentifiers();
     } else {
-      orgIdentifiers = organizationService.getPermittedOrganizations(accountIdentifier, null);
+      orgIdentifiers = organizationService.getPermittedOrganizations(accountIdentifier,
+          ScopeInfo.builder()
+              .accountIdentifier(accountIdentifier)
+              .scopeType(ScopeLevel.ACCOUNT)
+              .uniqueId(accountIdentifier)
+              .build(),
+          null);
     }
     if (isNotEmpty(orgIdentifiers)) {
       for (String orgIdentifier : orgIdentifiers) {
@@ -736,7 +742,15 @@ public class ProjectServiceImpl implements ProjectService {
   }
 
   private void validateParentOrgExists(String accountIdentifier, String orgIdentifier) {
-    if (!organizationService.get(accountIdentifier, orgIdentifier).isPresent()) {
+    if (!organizationService
+             .get(accountIdentifier,
+                 ScopeInfo.builder()
+                     .accountIdentifier(accountIdentifier)
+                     .scopeType(ScopeLevel.ACCOUNT)
+                     .uniqueId(accountIdentifier)
+                     .build(),
+                 orgIdentifier)
+             .isPresent()) {
       throw new InvalidArgumentsException(
           String.format("Organization [%s] in Account [%s] does not exist", orgIdentifier, accountIdentifier),
           USER_SRE);
@@ -775,7 +789,7 @@ public class ProjectServiceImpl implements ProjectService {
     if (scopeInfoCache.containsKey(cacheKey)) {
       return Optional.of(scopeInfoCache.get(cacheKey));
     }
-    Optional<Project> project = get(accountIdentifier, orgIdentifier, projectIdentifier);
+    Optional<Project> project = getConsideringCase(accountIdentifier, orgIdentifier, projectIdentifier);
     if (project.isPresent()) {
       ScopeInfo projectScopeInfo = scopeInfoHelper.populateScopeInfo(
           ScopeLevel.PROJECT, project.get().getUniqueId(), accountIdentifier, orgIdentifier, projectIdentifier);

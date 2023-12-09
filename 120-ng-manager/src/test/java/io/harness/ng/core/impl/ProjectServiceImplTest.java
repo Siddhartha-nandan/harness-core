@@ -270,7 +270,14 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
     when(projectRepository.save(any())).thenReturn(project);
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
+    when(organizationService.get(accountIdentifier,
+             ScopeInfo.builder()
+                 .accountIdentifier(accountIdentifier)
+                 .scopeType(ScopeLevel.ACCOUNT)
+                 .uniqueId(accountIdentifier)
+                 .build(),
+             orgIdentifier))
+        .thenReturn(Optional.of(random(Organization.class)));
     when(projectService.get(accountIdentifier, scopeInfo, identifier)).thenReturn(Optional.of(project));
     projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier, projectDTO);
 
@@ -313,7 +320,14 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
     when(projectRepository.save(any())).thenReturn(newProject);
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
+    when(organizationService.get(accountIdentifier,
+             ScopeInfo.builder()
+                 .accountIdentifier(accountIdentifier)
+                 .scopeType(ScopeLevel.ACCOUNT)
+                 .uniqueId(accountIdentifier)
+                 .build(),
+             orgIdentifier))
+        .thenReturn(Optional.of(random(Organization.class)));
     when(projectService.get(accountIdentifier, scopeInfo, identifier)).thenReturn(Optional.of(existingProject));
 
     projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier, projectDTO);
@@ -358,7 +372,14 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
     when(projectRepository.save(any())).thenReturn(newProject);
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
+    when(organizationService.get(accountIdentifier,
+             ScopeInfo.builder()
+                 .accountIdentifier(accountIdentifier)
+                 .scopeType(ScopeLevel.ACCOUNT)
+                 .uniqueId(accountIdentifier)
+                 .build(),
+             orgIdentifier))
+        .thenReturn(Optional.of(random(Organization.class)));
     when(projectService.get(accountIdentifier, scopeInfo, identifier)).thenReturn(Optional.of(existingProject));
 
     projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier, projectDTO);
@@ -393,7 +414,14 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .orgIdentifier(orgIdentifier)
                               .uniqueId(orgUniqueIdentifier)
                               .build();
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
+    when(organizationService.get(accountIdentifier,
+             ScopeInfo.builder()
+                 .accountIdentifier(accountIdentifier)
+                 .scopeType(ScopeLevel.ACCOUNT)
+                 .uniqueId(accountIdentifier)
+                 .build(),
+             orgIdentifier))
+        .thenReturn(Optional.of(random(Organization.class)));
     when(projectService.get(accountIdentifier, scopeInfo, identifier)).thenReturn(Optional.of(project));
 
     projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier, projectDTO);
@@ -419,7 +447,14 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .orgIdentifier(orgIdentifier)
                               .uniqueId(orgUniqueIdentifier)
                               .build();
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
+    when(organizationService.get(accountIdentifier,
+             ScopeInfo.builder()
+                 .accountIdentifier(accountIdentifier)
+                 .scopeType(ScopeLevel.ACCOUNT)
+                 .uniqueId(accountIdentifier)
+                 .build(),
+             orgIdentifier))
+        .thenReturn(Optional.of(random(Organization.class)));
     when(projectService.get(accountIdentifier, scopeInfo, identifier)).thenReturn(Optional.empty());
 
     Project updatedProject = projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier, projectDTO);
@@ -447,7 +482,14 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .orgIdentifier(orgIdentifier)
                               .uniqueId(orgUniqueIdentifier)
                               .build();
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
+    when(organizationService.get(accountIdentifier,
+             ScopeInfo.builder()
+                 .accountIdentifier(accountIdentifier)
+                 .scopeType(ScopeLevel.ACCOUNT)
+                 .uniqueId(accountIdentifier)
+                 .build(),
+             orgIdentifier))
+        .thenReturn(Optional.of(random(Organization.class)));
     when(projectService.get(accountIdentifier, scopeInfo, identifier.toUpperCase())).thenReturn(Optional.of(project));
 
     projectDTO.setIdentifier(identifier.toUpperCase());
@@ -487,7 +529,14 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
 
-    when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(random(Organization.class)));
+    when(organizationService.get(accountIdentifier,
+             ScopeInfo.builder()
+                 .accountIdentifier(accountIdentifier)
+                 .scopeType(ScopeLevel.ACCOUNT)
+                 .uniqueId(accountIdentifier)
+                 .build(),
+             orgIdentifier))
+        .thenReturn(Optional.of(random(Organization.class)));
     when(projectService.get(accountIdentifier, scopeInfo, identifier.toUpperCase()))
         .thenReturn(Optional.of(existingProject));
 
@@ -826,7 +875,13 @@ public class ProjectServiceImplTest extends CategoryTest {
     project.setOrgIdentifier(orgIdentifier);
     Set<String> permittedOrgs = new HashSet<>();
     permittedOrgs.add(project.getIdentifier());
-    when(organizationService.getPermittedOrganizations(accountIdentifier, null))
+    when(organizationService.getPermittedOrganizations(accountIdentifier,
+             ScopeInfo.builder()
+                 .accountIdentifier(accountIdentifier)
+                 .scopeType(ScopeLevel.ACCOUNT)
+                 .uniqueId(accountIdentifier)
+                 .build(),
+             null))
         .thenReturn(Collections.singleton(orgIdentifier));
     projectService.getProjectFavorites(accountIdentifier, null, userid);
     verify(favoritesService, times(1))
@@ -860,10 +915,15 @@ public class ProjectServiceImplTest extends CategoryTest {
     String orgIdentifier = randomAlphabetic(10);
     String userid = randomAlphabetic(10);
     ProjectFilterDTO projectFilterDTO = ProjectFilterDTO.builder().orgIdentifiers(null).build();
-    when(organizationService.getPermittedOrganizations(accountIdentifier, null))
+    ScopeInfo builtScope = ScopeInfo.builder()
+                               .accountIdentifier(accountIdentifier)
+                               .scopeType(ScopeLevel.ACCOUNT)
+                               .uniqueId(accountIdentifier)
+                               .build();
+    when(organizationService.getPermittedOrganizations(accountIdentifier, builtScope, null))
         .thenReturn(Collections.singleton(orgIdentifier));
     projectService.getProjectFavorites(accountIdentifier, projectFilterDTO, userid);
-    verify(organizationService, times(1)).getPermittedOrganizations(accountIdentifier, null);
+    verify(organizationService, times(1)).getPermittedOrganizations(accountIdentifier, builtScope, null);
     verify(favoritesService, times(1))
         .getFavorites(accountIdentifier, orgIdentifier, null, userid, ResourceType.PROJECT.toString());
   }
