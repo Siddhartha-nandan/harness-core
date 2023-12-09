@@ -407,7 +407,7 @@ public class EventJobScheduler {
     }
   }
 
-  @Scheduled(cron = "0 */15 * * * *")
+  @Scheduled(cron = "0 */5 * * * *")
   public void runNGConnectorsHealthUpdateJob() {
     try {
       if (!batchMainConfig.getConnectorHealthUpdateJobConfig().isEnabled()) {

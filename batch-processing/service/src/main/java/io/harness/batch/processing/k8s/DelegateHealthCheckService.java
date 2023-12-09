@@ -11,7 +11,7 @@ import static io.harness.batch.processing.svcmetrics.BatchProcessingMetricName.C
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.batch.processing.svcmetrics.ConnectorHealthContext;
+import io.harness.batch.processing.svcmetrics.ClusterHealthContext;
 import io.harness.ccm.health.LastReceivedPublishedMessageDao;
 import io.harness.delegate.beans.Delegate;
 import io.harness.delegate.beans.DelegateInstanceStatus;
@@ -48,8 +48,6 @@ public class DelegateHealthCheckService {
   private static final int BATCH_SIZE = 20;
   private static final long DELAY_IN_MINUTES_FOR_LAST_RECEIVED_MSG = 90;
   private static final long MINUTES_FOR_HEALTHY_DELEGATE_HEARTBEAT = 5;
-  private static final String HEALTHY_STATUS = "HEALTHY";
-  private static final String UNHEALTHY_STATUS = "UNHEALTHY";
 
   public void run(String accountId) {
     Instant startTime = Instant.now();
@@ -84,15 +82,15 @@ public class DelegateHealthCheckService {
       Map<String, Long> lastReceivedTimeForClusters =
           lastReceivedPublishedMessageDao.getLastReceivedTimeForClusters(accountId, healthyClusters);
       for (String clusterId : healthyClusters) {
-        String healthStatus = HEALTHY_STATUS;
+        boolean healthy = true;
         if (!lastReceivedTimeForClusters.containsKey(clusterId)
             || Instant.ofEpochMilli(lastReceivedTimeForClusters.get(clusterId)).isBefore(allowedTime)) {
           log.info("Delegate health check failed for clusterId: {}, delegateId: {}", clusterId,
               clusterIdToDelegateIdMap.get(clusterId));
-          healthStatus = UNHEALTHY_STATUS;
+          healthy = false;
         }
-        try (ConnectorHealthContext x = new ConnectorHealthContext(accountId, clusterId, healthStatus)) {
-          metricService.incCounter(CLUSTER_HEALTH);
+        try (ClusterHealthContext x = new ClusterHealthContext(accountId, clusterId)) {
+          metricService.recordMetric(CLUSTER_HEALTH, healthy ? 1.0 : 0.0);
         }
       }
     }

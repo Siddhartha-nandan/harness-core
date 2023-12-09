@@ -72,12 +72,13 @@ public class ConnectorsHealthUpdateService {
         NGRestUtils.getResponse(connectorResourceClient.testConnectionInternal(
             connector.getConnector().getIdentifier(), accountId, null, null));
     log.info("connectorValidationResult {}", connectorValidationResult);
-    Random random = new Random();
-    String health = random.nextBoolean() ? ConnectivityStatus.SUCCESS.name() : ConnectivityStatus.FAILURE.name();
+    Random random;
+    random = new Random();
+    boolean health = random.nextBoolean();
     // record metric for connector health
     try (ConnectorHealthContext x = new ConnectorHealthContext(
-             accountId, connector.getConnector().getIdentifier(), health)) {
-      metricService.incCounter(BatchProcessingMetricName.CONNECTOR_HEALTH);
+             accountId, connector.getConnector().getIdentifier())) {
+      metricService.recordMetric(BatchProcessingMetricName.CONNECTOR_HEALTH, health ? 1.0 : 0.0);
     }
   }
 
