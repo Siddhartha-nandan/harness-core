@@ -63,10 +63,7 @@ import io.harness.exception.SecretManagementException;
 import io.harness.exception.WingsException;
 import io.harness.git.model.ChangeType;
 import io.harness.ng.core.api.SecretCrudService;
-import io.harness.ng.core.dto.secrets.SecretDTOV2;
-import io.harness.ng.core.dto.secrets.SecretFileSpecDTO;
-import io.harness.ng.core.dto.secrets.SecretResponseWrapper;
-import io.harness.ng.core.dto.secrets.SecretTextSpecDTO;
+import io.harness.ng.core.dto.secrets.*;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.repositories.ConnectorRepository;
@@ -266,11 +263,68 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
         Scope scope = secretRefData.getScope();
         String secretOrgIdentifier = null;
         String secretProjectIdentifier = null;
-        if (secretRefData.getScope() == Scope.ORG) {
+        if (scope == Scope.ORG) {
           secretOrgIdentifier = connectorInfoDTO.getOrgIdentifier();
-        } else if (secretRefData.getScope() == Scope.PROJECT) {
+        } else if (scope == Scope.PROJECT) {
           secretOrgIdentifier = connectorInfoDTO.getOrgIdentifier();
           secretProjectIdentifier = connectorInfoDTO.getProjectIdentifier();
+        }
+
+        Optional<SecretResponseWrapper> secretResponseWrapperOptional =
+            ngSecretService.get(accountIdentifier, secretOrgIdentifier, secretProjectIdentifier, secretIdentifier);
+
+        Set<String> secretManagerIdentifiers = new HashSet<>();
+        if (secretResponseWrapperOptional.isPresent()) {
+          SecretDTOV2 secretDTO = secretResponseWrapperOptional.get().getSecret();
+          if (SecretType.SecretText.equals(secretDTO.getType())) {
+            secretManagerIdentifiers.add(((SecretTextSpecDTO) secretDTO.getSpec()).getSecretManagerIdentifier());
+          } else if (SecretType.SecretFile.equals(secretDTO.getType())) {
+            secretManagerIdentifiers.add(((SecretFileSpecDTO) secretDTO.getSpec()).getSecretManagerIdentifier());
+          } else if (SecretType.SSHKey.equals(secretDTO.getType())) {
+            Optional<List<DecryptableEntity>> sshKeyDecryptableEntitiesOptional =
+                ((SSHKeySpecDTO) secretDTO.getSpec()).getDecryptableEntities();
+            if (sshKeyDecryptableEntitiesOptional.isPresent()) {
+              validateSSHKeySecretRefsAreFromHarnessSM(sshKeyDecryptableEntitiesOptional.get(), accountIdentifier,
+                  connectorInfoDTO.getOrgIdentifier(), connectorInfoDTO.getProjectIdentifier(),
+                  connectorInfoDTO.getIdentifier());
+            }
+          }
+
+          Set<String> harnessSecretManagers =
+              Set.of(Scope.ACCOUNT.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER,
+                  Scope.ORG.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER,
+                  HARNESS_SECRET_MANAGER_IDENTIFIER);
+          if (!harnessSecretManagers.contains(secretManagerIdentifiers)) {
+            throw new InvalidRequestException(String.format(
+                "The secret %s is created using the secret manager %s. Please use secrets created using %s",
+                secretIdentifier, secretManagerIdentifiers, HARNESS_SECRET_MANAGER_IDENTIFIER));
+          }
+        }
+      }
+    });
+  }
+
+  private void validateSSHKeySecretRefsAreFromHarnessSM(List<DecryptableEntity> decryptableEntities,
+      String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier) {
+    Map<String, SecretRefData> secrets = secretRefInputValidationHelper.getDecryptableFieldsData(decryptableEntities);
+    if (secrets.isEmpty()) {
+      return;
+    }
+
+    secrets.forEach((key, secretRefData) -> {
+      if (secretRefData == null) {
+        return;
+      }
+      String secretIdentifier = secretRefData.getIdentifier();
+      if (!isNull(secretRefData) && isNotEmpty(secretIdentifier)) {
+        Scope scope = secretRefData.getScope();
+        String secretOrgIdentifier = null;
+        String secretProjectIdentifier = null;
+        if (scope == Scope.ORG) {
+          secretOrgIdentifier = orgIdentifier;
+        } else if (scope == Scope.PROJECT) {
+          secretOrgIdentifier = orgIdentifier;
+          secretProjectIdentifier = projectIdentifier;
         }
 
         Optional<SecretResponseWrapper> secretResponseWrapperOptional =
@@ -284,16 +338,16 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
           } else if (SecretType.SecretFile.equals(secretDTO.getType())) {
             secretManagerIdentifier = ((SecretFileSpecDTO) secretDTO.getSpec()).getSecretManagerIdentifier();
           }
-        }
 
-        Set<String> harnessSecretManagers =
-            Set.of(Scope.ACCOUNT.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER,
-                Scope.ORG.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER,
-                HARNESS_SECRET_MANAGER_IDENTIFIER);
-        if (!harnessSecretManagers.contains(secretManagerIdentifier)) {
-          throw new InvalidRequestException(
-              String.format("The secret %s is created using the secret manager %s. Please use secrets created using %s",
-                  secretIdentifier, secretManagerIdentifier, HARNESS_SECRET_MANAGER_IDENTIFIER));
+          Set<String> harnessSecretManagers =
+              Set.of(Scope.ACCOUNT.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER,
+                  Scope.ORG.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER,
+                  HARNESS_SECRET_MANAGER_IDENTIFIER);
+          if (!harnessSecretManagers.contains(secretManagerIdentifier)) {
+            throw new InvalidRequestException(String.format(
+                "The secret %s is created using the secret manager %s. Please use secrets created using %s",
+                secretIdentifier, secretManagerIdentifier, HARNESS_SECRET_MANAGER_IDENTIFIER));
+          }
         }
       }
     });

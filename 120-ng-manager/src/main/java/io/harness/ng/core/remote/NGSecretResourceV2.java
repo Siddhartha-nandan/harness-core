@@ -100,7 +100,7 @@ import org.glassfish.jersey.media.multipart.FormDataParam;
 import retrofit2.http.Body;
 
 @OwnedBy(PL)
-@Path("/v2/secrets")
+@Path("/@v2/secrets")
 @Api("/v2/secrets")
 @Produces({"application/json", "application/yaml"})
 @Consumes({"application/json", "application/yaml"})
@@ -304,7 +304,8 @@ public class NGSecretResourceV2 {
               + " accessible at the scope. For eg if set as true, at the Project scope we will get"
               + " org and account Secrets also in the response") @QueryParam("includeAllSecretsAccessibleAtScope")
       @DefaultValue("false") boolean includeAllSecretsAccessibleAtScope,
-      @BeanParam PageRequest pageRequest) {
+      @BeanParam PageRequest pageRequest,
+      @QueryParam("secretManagerIdentifiers") Set<String> secretManagerIdentifiers) {
     if (secretType != null) {
       secretTypes.add(secretType);
     }

@@ -59,7 +59,7 @@ public class PipelineRestUtils {
       return response.body().getData();
     }
 
-    log.error("Error response received: {}", response);
+    //    log.error("Error response received: {}", response);
     String errorMessage = "";
     try {
       ErrorDTO restResponse = JsonUtils.asObject(response.errorBody().string(), new TypeReference<ErrorDTO>() {});
