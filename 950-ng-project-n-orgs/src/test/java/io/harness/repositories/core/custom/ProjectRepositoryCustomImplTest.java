@@ -104,39 +104,6 @@ public class ProjectRepositoryCustomImplTest extends CategoryTest {
   @Test
   @Owner(developers = KARAN)
   @Category(UnitTests.class)
-  public void testDelete() {
-    String accountIdentifier = randomAlphabetic(10);
-    String orgIdentifier = randomAlphabetic(10);
-    String identifier = randomAlphabetic(10);
-    Long version = 0L;
-    ArgumentCaptor<Update> updateArgumentCaptor = ArgumentCaptor.forClass(Update.class);
-    ArgumentCaptor<Query> queryArgumentCaptor = ArgumentCaptor.forClass(Query.class);
-
-    when(mongoTemplate.findAndModify(any(), any(), eq(Project.class))).thenReturn(null);
-
-    Project deletedProject = projectRepository.delete(accountIdentifier, orgIdentifier, identifier, version);
-    Boolean deleted = deletedProject != null;
-    verify(mongoTemplate, times(1))
-        .findAndModify(queryArgumentCaptor.capture(), updateArgumentCaptor.capture(), eq(Project.class));
-    Query query = queryArgumentCaptor.getValue();
-    Update update = updateArgumentCaptor.getValue();
-    assertFalse(deleted);
-    assertEquals(1, update.getUpdateObject().size());
-    assertEquals(5, query.getQueryObject().size());
-    assertTrue(query.getQueryObject().containsKey(ProjectKeys.accountIdentifier));
-    assertEquals(accountIdentifier, query.getQueryObject().get(ProjectKeys.accountIdentifier));
-    assertTrue(query.getQueryObject().containsKey(ProjectKeys.orgIdentifier));
-    assertEquals(orgIdentifier, query.getQueryObject().get(ProjectKeys.orgIdentifier));
-    assertTrue(query.getQueryObject().containsKey(ProjectKeys.identifier));
-    assertEquals(identifier, query.getQueryObject().get(ProjectKeys.identifier));
-    assertTrue(query.getQueryObject().containsKey(ProjectKeys.deleted));
-    assertTrue(query.getQueryObject().containsKey(ProjectKeys.version));
-    assertEquals(version, query.getQueryObject().get(ProjectKeys.version));
-  }
-
-  @Test
-  @Owner(developers = KARAN)
-  @Category(UnitTests.class)
   public void testRestore() {
     String accountIdentifier = randomAlphabetic(10);
     String parentUniqueIdentifier = randomAlphabetic(10);

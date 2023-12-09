@@ -102,24 +102,6 @@ public class ProjectRepositoryCustomImpl implements ProjectRepositoryCustom {
   }
 
   @Override
-  public Project delete(String accountIdentifier, String orgIdentifier, String identifier, Long version) {
-    Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
-                            .is(accountIdentifier)
-                            .and(ProjectKeys.orgIdentifier)
-                            .is(orgIdentifier)
-                            .and(ProjectKeys.identifier)
-                            .is(identifier)
-                            .and(ProjectKeys.deleted)
-                            .ne(Boolean.TRUE);
-    if (version != null) {
-      criteria.and(ProjectKeys.version).is(version);
-    }
-    Query query = new Query(criteria);
-    Update update = new Update().set(ProjectKeys.deleted, Boolean.TRUE);
-    return mongoTemplate.findAndModify(query, update, Project.class);
-  }
-
-  @Override
   public <T> AggregationResults<T> aggregate(Aggregation aggregation, Class<T> classToFillResultIn) {
     return mongoTemplate.aggregate(aggregation, Project.class, classToFillResultIn);
   }

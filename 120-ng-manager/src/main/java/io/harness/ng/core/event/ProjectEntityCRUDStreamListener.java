@@ -214,8 +214,8 @@ public class ProjectEntityCRUDStreamListener implements MessageListener {
     Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
     Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
                             .is(accountIdentifier)
-                            .and(ProjectKeys.orgIdentifier)
-                            .is(orgIdentifier)
+                            .and(ProjectKeys.parentUniqueId)
+                            .is(scopeInfo.orElseThrow().getUniqueId())
                             .and(ProjectKeys.deleted)
                             .ne(Boolean.TRUE);
     List<Project> projects = projectService.list(criteria);
@@ -258,8 +258,8 @@ public class ProjectEntityCRUDStreamListener implements MessageListener {
     Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
     Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
                             .is(accountIdentifier)
-                            .and(ProjectKeys.orgIdentifier)
-                            .is(orgIdentifier)
+                            .and(ProjectKeys.parentUniqueId)
+                            .is(scopeInfo.orElseThrow().getUniqueId())
                             .and(ProjectKeys.deleted)
                             .is(Boolean.TRUE);
     List<Project> projects = projectService.list(criteria);

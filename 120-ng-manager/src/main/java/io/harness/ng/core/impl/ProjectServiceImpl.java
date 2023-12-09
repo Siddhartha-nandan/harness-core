@@ -696,11 +696,12 @@ public class ProjectServiceImpl implements ProjectService {
   }
 
   @Override
-  public Map<String, Integer> getProjectsCountPerOrganization(String accountIdentifier, List<String> orgIdentifiers) {
+  public Map<String, Integer> getProjectsCountPerOrganization(
+      String accountIdentifier, List<String> parentUniqueIdentifiers) {
     Criteria criteria =
         Criteria.where(ProjectKeys.accountIdentifier).is(accountIdentifier).and(ProjectKeys.deleted).ne(Boolean.TRUE);
-    if (isNotEmpty(orgIdentifiers)) {
-      criteria.and(ProjectKeys.orgIdentifier).in(orgIdentifiers);
+    if (isNotEmpty(parentUniqueIdentifiers)) {
+      criteria.and(ProjectKeys.parentUniqueId).in(parentUniqueIdentifiers);
     }
     MatchOperation matchStage = Aggregation.match(criteria);
     SortOperation sortStage = sort(Sort.by(ProjectKeys.orgIdentifier));

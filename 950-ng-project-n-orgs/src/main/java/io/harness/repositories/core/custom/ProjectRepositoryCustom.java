@@ -32,8 +32,6 @@ public interface ProjectRepositoryCustom {
 
   Project hardDelete(String accountIdentifier, String parentUniqueIdentifier, String identifier, Long version);
 
-  @Deprecated Project delete(String accountIdentifier, String orgIdentifier, String identifier, Long version);
-
   List<Project> findAll(Criteria criteria);
 
   Project restore(String accountIdentifier, String parentUniqueIdentifier, String identifier);

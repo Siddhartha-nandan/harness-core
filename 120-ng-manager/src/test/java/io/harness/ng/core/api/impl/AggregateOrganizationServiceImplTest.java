@@ -18,12 +18,15 @@ import static junit.framework.TestCase.assertEquals;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.connector.services.ConnectorService;
 import io.harness.ng.core.api.DelegateDetailsService;
@@ -32,6 +35,7 @@ import io.harness.ng.core.dto.OrganizationAggregateDTO;
 import io.harness.ng.core.entities.Organization;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ng.core.user.remote.dto.UserMetadataDTO;
 import io.harness.ng.core.user.service.NgUserService;
 import io.harness.rule.Owner;
@@ -56,18 +60,21 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
   private OrganizationService organizationService;
   private NgUserService ngUserService;
   private AggregateOrganizationServiceImpl aggregateOrganizationService;
+  private ScopeInfoService scopeResolverService;
 
   @Before
   public void setup() {
     projectService = mock(ProjectService.class);
     organizationService = mock(OrganizationService.class);
     ngUserService = mock(NgUserService.class);
+    scopeResolverService = mock(ScopeInfoService.class);
     final NGSecretServiceV2 secretServiceV2 = mock(NGSecretServiceV2.class);
     final ConnectorService defaultConnectorService = mock(ConnectorService.class);
     final DelegateDetailsService delegateDetailsService = mock(DelegateDetailsService.class);
     final ExecutorService executorService = Executors.newFixedThreadPool(1);
-    aggregateOrganizationService = spy(new AggregateOrganizationServiceImpl(organizationService, projectService,
-        secretServiceV2, defaultConnectorService, delegateDetailsService, ngUserService, executorService));
+    aggregateOrganizationService =
+        spy(new AggregateOrganizationServiceImpl(organizationService, projectService, secretServiceV2,
+            defaultConnectorService, delegateDetailsService, ngUserService, executorService, scopeResolverService));
   }
 
   private Organization getOrganization(String accountIdentifier, String orgIdentifier) {
@@ -92,6 +99,14 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
   public void testGet() {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
+    String orgUniqueIdentifier = randomAlphabetic(10);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+    when(scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null)).thenReturn(Optional.of(scopeInfo));
 
     Organization organization = getOrganization(accountIdentifier, orgIdentifier);
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(organization));
@@ -123,7 +138,14 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
   public void testGet_OtherFieldsMissing() {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
-
+    String orgUniqueIdentifier = randomAlphabetic(10);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+    when(scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null)).thenReturn(Optional.of(scopeInfo));
     Organization organization = getOrganization(accountIdentifier, orgIdentifier);
     when(organizationService.get(accountIdentifier, orgIdentifier)).thenReturn(Optional.of(organization));
 
@@ -162,7 +184,9 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testList() {
     String accountIdentifier = randomAlphabetic(10);
-
+    String orgUniqueIdentifier = randomAlphabetic(10);
+    when(scopeResolverService.getScopeInfo(eq(accountIdentifier), any(), isNull()))
+        .thenReturn(Optional.of(ScopeInfo.builder().uniqueId(orgUniqueIdentifier).build()));
     List<Organization> organizations = getOrganizations(accountIdentifier, 3);
     when(organizationService.listPermittedOrgs(accountIdentifier, Pageable.unpaged(), null))
         .thenReturn(getPage(organizations, 3));
@@ -195,6 +219,9 @@ public class AggregateOrganizationServiceImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testList_OtherFieldsMissing() {
     String accountIdentifier = randomAlphabetic(10);
+    String orgUniqueIdentifier = randomAlphabetic(10);
+    when(scopeResolverService.getScopeInfo(eq(accountIdentifier), any(), isNull()))
+        .thenReturn(Optional.of(ScopeInfo.builder().uniqueId(orgUniqueIdentifier).build()));
 
     List<Organization> organizations = getOrganizations(accountIdentifier, 3);
     when(organizationService.listPermittedOrgs(accountIdentifier, Pageable.unpaged(), null))
