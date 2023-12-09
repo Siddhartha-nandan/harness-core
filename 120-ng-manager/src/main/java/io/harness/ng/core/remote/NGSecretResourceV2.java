@@ -100,7 +100,7 @@ import org.glassfish.jersey.media.multipart.FormDataParam;
 import retrofit2.http.Body;
 
 @OwnedBy(PL)
-@Path("/@v2/secrets")
+@Path("/v2/secrets")
 @Api("/v2/secrets")
 @Produces({"application/json", "application/yaml"})
 @Consumes({"application/json", "application/yaml"})

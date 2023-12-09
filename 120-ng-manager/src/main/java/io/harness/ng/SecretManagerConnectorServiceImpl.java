@@ -273,13 +273,13 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
         Optional<SecretResponseWrapper> secretResponseWrapperOptional =
             ngSecretService.get(accountIdentifier, secretOrgIdentifier, secretProjectIdentifier, secretIdentifier);
 
-        Set<String> secretManagerIdentifiers = new HashSet<>();
+        String secretManagerIdentifier = null;;
         if (secretResponseWrapperOptional.isPresent()) {
           SecretDTOV2 secretDTO = secretResponseWrapperOptional.get().getSecret();
           if (SecretType.SecretText.equals(secretDTO.getType())) {
-            secretManagerIdentifiers.add(((SecretTextSpecDTO) secretDTO.getSpec()).getSecretManagerIdentifier());
+            secretManagerIdentifier = ((SecretTextSpecDTO) secretDTO.getSpec()).getSecretManagerIdentifier();
           } else if (SecretType.SecretFile.equals(secretDTO.getType())) {
-            secretManagerIdentifiers.add(((SecretFileSpecDTO) secretDTO.getSpec()).getSecretManagerIdentifier());
+            secretManagerIdentifier = ((SecretFileSpecDTO) secretDTO.getSpec()).getSecretManagerIdentifier();
           } else if (SecretType.SSHKey.equals(secretDTO.getType())) {
             Optional<List<DecryptableEntity>> sshKeyDecryptableEntitiesOptional =
                 ((SSHKeySpecDTO) secretDTO.getSpec()).getDecryptableEntities();
@@ -294,10 +294,10 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
               Set.of(Scope.ACCOUNT.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER,
                   Scope.ORG.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER,
                   HARNESS_SECRET_MANAGER_IDENTIFIER);
-          if (!harnessSecretManagers.contains(secretManagerIdentifiers)) {
+          if (!harnessSecretManagers.contains(secretManagerIdentifier)) {
             throw new InvalidRequestException(String.format(
                 "The secret %s is created using the secret manager %s. Please use secrets created using %s",
-                secretIdentifier, secretManagerIdentifiers, HARNESS_SECRET_MANAGER_IDENTIFIER));
+                secretIdentifier, secretManagerIdentifier, HARNESS_SECRET_MANAGER_IDENTIFIER));
           }
         }
       }
