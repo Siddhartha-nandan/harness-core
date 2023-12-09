@@ -243,6 +243,17 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
     return false;
   }
 
+  private void throwIfNotHarnessSM(String secretManagerIdentifier, String secretIdentifier) {
+    Set<String> harnessSecretManagers = Set.of(
+        Scope.ACCOUNT.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER,
+        Scope.ORG.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER, HARNESS_SECRET_MANAGER_IDENTIFIER);
+    if (!harnessSecretManagers.contains(secretManagerIdentifier)) {
+      throw new InvalidRequestException(
+          String.format("The secret %s is created using the secret manager %s. Please use secrets created using %s",
+              secretIdentifier, secretManagerIdentifier, HARNESS_SECRET_MANAGER_IDENTIFIER));
+    }
+  }
+
   private void validateSecretReferencesAreFromHarnessSM(String accountIdentifier, ConnectorInfoDTO connectorInfoDTO) {
     List<DecryptableEntity> decryptableEntities = connectorInfoDTO.getConnectorConfig().getDecryptableEntities();
     if (isEmpty(decryptableEntities)) {
@@ -250,7 +261,7 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
     }
 
     Map<String, SecretRefData> secrets = secretRefInputValidationHelper.getDecryptableFieldsData(decryptableEntities);
-    if (secrets.isEmpty()) {
+    if (isEmpty(secrets)) {
       return;
     }
 
@@ -273,7 +284,7 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
         Optional<SecretResponseWrapper> secretResponseWrapperOptional =
             ngSecretService.get(accountIdentifier, secretOrgIdentifier, secretProjectIdentifier, secretIdentifier);
 
-        String secretManagerIdentifier = null;;
+        String secretManagerIdentifier = null;
         if (secretResponseWrapperOptional.isPresent()) {
           SecretDTOV2 secretDTO = secretResponseWrapperOptional.get().getSecret();
           if (SecretType.SecretText.equals(secretDTO.getType())) {
@@ -285,29 +296,21 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
                 ((SSHKeySpecDTO) secretDTO.getSpec()).getDecryptableEntities();
             if (sshKeyDecryptableEntitiesOptional.isPresent()) {
               validateSSHKeySecretRefsAreFromHarnessSM(sshKeyDecryptableEntitiesOptional.get(), accountIdentifier,
-                  connectorInfoDTO.getOrgIdentifier(), connectorInfoDTO.getProjectIdentifier(),
-                  connectorInfoDTO.getIdentifier());
+                  connectorInfoDTO.getOrgIdentifier(), connectorInfoDTO.getProjectIdentifier());
+              return;
             }
           }
 
-          Set<String> harnessSecretManagers =
-              Set.of(Scope.ACCOUNT.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER,
-                  Scope.ORG.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER,
-                  HARNESS_SECRET_MANAGER_IDENTIFIER);
-          if (!harnessSecretManagers.contains(secretManagerIdentifier)) {
-            throw new InvalidRequestException(String.format(
-                "The secret %s is created using the secret manager %s. Please use secrets created using %s",
-                secretIdentifier, secretManagerIdentifier, HARNESS_SECRET_MANAGER_IDENTIFIER));
-          }
+          throwIfNotHarnessSM(secretManagerIdentifier, secretIdentifier);
         }
       }
     });
   }
 
   private void validateSSHKeySecretRefsAreFromHarnessSM(List<DecryptableEntity> decryptableEntities,
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier) {
+      String accountIdentifier, String orgIdentifier, String projectIdentifier) {
     Map<String, SecretRefData> secrets = secretRefInputValidationHelper.getDecryptableFieldsData(decryptableEntities);
-    if (secrets.isEmpty()) {
+    if (isEmpty(secrets)) {
       return;
     }
 
@@ -339,15 +342,7 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
             secretManagerIdentifier = ((SecretFileSpecDTO) secretDTO.getSpec()).getSecretManagerIdentifier();
           }
 
-          Set<String> harnessSecretManagers =
-              Set.of(Scope.ACCOUNT.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER,
-                  Scope.ORG.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER,
-                  HARNESS_SECRET_MANAGER_IDENTIFIER);
-          if (!harnessSecretManagers.contains(secretManagerIdentifier)) {
-            throw new InvalidRequestException(String.format(
-                "The secret %s is created using the secret manager %s. Please use secrets created using %s",
-                secretIdentifier, secretManagerIdentifier, HARNESS_SECRET_MANAGER_IDENTIFIER));
-          }
+          throwIfNotHarnessSM(secretManagerIdentifier, secretIdentifier);
         }
       }
     });

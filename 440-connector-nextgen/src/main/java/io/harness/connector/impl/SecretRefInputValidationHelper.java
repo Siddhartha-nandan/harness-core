@@ -7,8 +7,6 @@
 
 package io.harness.connector.impl;
 
-import static io.harness.data.structure.EmptyPredicate.isEmpty;
-
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 import io.harness.beans.DecryptableEntity;
@@ -51,9 +49,6 @@ public class SecretRefInputValidationHelper {
 
   public Map<String, SecretRefData> getDecryptableFieldsData(List<DecryptableEntity> decryptableEntities) {
     Map<String, SecretRefData> secrets = new HashMap<>();
-    if (isEmpty(decryptableEntities)) {
-      return secrets;
-    }
     for (DecryptableEntity decryptableEntity : decryptableEntities) {
       List<Field> secretFields = decryptableEntity.getSecretReferenceFields();
       for (Field secretField : secretFields) {
