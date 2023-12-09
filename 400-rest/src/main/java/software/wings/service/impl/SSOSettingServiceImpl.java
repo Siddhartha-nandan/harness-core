@@ -592,6 +592,16 @@ public class SSOSettingServiceImpl implements SSOSettingService {
       ldapGroupScheduledHandler.handle(savedSettings);
     }
 
+    createAndSaveLdapConnectionSecretReference(settings, isNG, savedSettings);
+
+    auditServiceHelper.reportForAuditingUsingAccountId(settings.getAccountId(), null, settings, Event.Type.CREATE);
+    ngAuditLoginSettingsForLdapUpload(savedSettings.getAccountId(), savedSettings);
+    log.info("Auditing creation of LDAP Settings for account={}", settings.getAccountId());
+    eventPublishHelper.publishSSOEvent(settings.getAccountId());
+    return savedSettings;
+  }
+
+  private void createAndSaveLdapConnectionSecretReference(LdapSettings settings, boolean isNG, LdapSettings savedSettings) {
     LdapConnectionSettingSecretReferences settingSecretReferences = new LdapConnectionSettingSecretReferences();
     settingSecretReferences.setAccountId(settings.getAccountId());
     settingSecretReferences.setLdapSsoId(savedSettings.getUuid());
@@ -617,11 +627,6 @@ public class SSOSettingServiceImpl implements SSOSettingService {
       settingSecretReferences.getConnectionSettingSecretReferences().put(Generation.NG, passwordOrSecretString);
     }
     wingsPersistence.save(settingSecretReferences);
-    auditServiceHelper.reportForAuditingUsingAccountId(settings.getAccountId(), null, settings, Event.Type.CREATE);
-    ngAuditLoginSettingsForLdapUpload(savedSettings.getAccountId(), savedSettings);
-    log.info("Auditing creation of LDAP Settings for account={}", settings.getAccountId());
-    eventPublishHelper.publishSSOEvent(settings.getAccountId());
-    return savedSettings;
   }
 
   @Override
@@ -699,7 +704,7 @@ public class SSOSettingServiceImpl implements SSOSettingService {
                 ex.getMessage()));
       }
     }
-    LdapConnectionSettingSecretReferences connectionSettingSecretReferences =
+    LdapConnectionSettingSecretReferences connectionSettingSecretReference =
         wingsPersistence.createQuery(LdapConnectionSettingSecretReferences.class)
             .filter(LdapConnectionSettingSecretReferences.LdapConnectionSettingSecretReferencesKeys.accountId,
                 settings.getAccountId())
@@ -707,7 +712,9 @@ public class SSOSettingServiceImpl implements SSOSettingService {
                 settings.getUuid())
             .get();
     wingsPersistence.delete(settings);
-    wingsPersistence.delete(connectionSettingSecretReferences);
+    if (null != connectionSettingSecretReference) {
+      wingsPersistence.delete(connectionSettingSecretReference);
+    }
     auditServiceHelper.reportDeleteForAuditingUsingAccountId(settings.getAccountId(), settings);
     ngAuditLoginSettingsForLdapDelete(settings.getAccountId(), settings);
     log.info("Auditing deletion of LDAP Settings for account={}", settings.getAccountId());
