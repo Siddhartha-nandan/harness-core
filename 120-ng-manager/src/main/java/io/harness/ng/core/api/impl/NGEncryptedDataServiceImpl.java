@@ -44,13 +44,7 @@ import io.harness.beans.SecretManagerConfig;
 import io.harness.connector.ConnectorDTO;
 import io.harness.connector.helper.CustomSecretManagerHelper;
 import io.harness.connector.services.NGConnectorSecretManagerService;
-import io.harness.delegate.beans.connector.awskmsconnector.AwsKmsConnectorDTO;
-import io.harness.delegate.beans.connector.awssecretmanager.AwsSecretManagerDTO;
-import io.harness.delegate.beans.connector.azurekeyvaultconnector.AzureKeyVaultConnectorDTO;
 import io.harness.delegate.beans.connector.customsecretmanager.CustomSecretManagerConnectorDTO;
-import io.harness.delegate.beans.connector.gcpkmsconnector.GcpKmsConnectorDTO;
-import io.harness.delegate.beans.connector.gcpsecretmanager.GcpSecretManagerConnectorDTO;
-import io.harness.delegate.beans.connector.vaultconnector.VaultConnectorDTO;
 import io.harness.encryption.Scope;
 import io.harness.encryption.SecretRefData;
 import io.harness.encryption.SecretRefParsedData;
@@ -859,9 +853,6 @@ public class NGEncryptedDataServiceImpl implements NGEncryptedDataService {
     if (object.isDecrypted()) {
       return Collections.emptyList();
     }
-
-    validateSecretManagers(object);
-
     List<EncryptedDataDetail> encryptedDataDetails = new ArrayList<>();
     List<Field> encryptedFields = object.getSecretReferenceFields();
 
@@ -945,18 +936,6 @@ public class NGEncryptedDataServiceImpl implements NGEncryptedDataService {
       }
     }
     return encryptedDataDetails;
-  }
-
-  private void validateSecretManagers(DecryptableEntity object) {
-    if (object instanceof VaultConnectorDTO || object instanceof AwsKmsConnectorDTO
-        || object instanceof AwsSecretManagerDTO || object instanceof GcpKmsConnectorDTO
-        || object instanceof GcpSecretManagerConnectorDTO || object instanceof AzureKeyVaultConnectorDTO) {
-      // fetch secret refs (direct as well as indirect)
-      // verify none of them are from itself
-    } else if (object instanceof CustomSecretManagerConnectorDTO) {
-      // fetch secret refs (direct, indirect as well as from template)
-      // verify none of them are from itself
-    }
   }
 
   private boolean isSecretIdentifierAPathReference(String secretIdentifier) {
