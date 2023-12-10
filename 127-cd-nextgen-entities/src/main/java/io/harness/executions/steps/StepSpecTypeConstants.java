@@ -126,6 +126,7 @@ public interface StepSpecTypeConstants {
   String ASG_ROLLING_ROLLBACK = "AsgRollingRollback";
   String ASG_BLUE_GREEN_DEPLOY = "AsgBlueGreenDeploy";
   String ASG_BLUE_GREEN_ROLLBACK = "AsgBlueGreenRollback";
+  String ASG_SHIFT_TRAFFIC = "AsgShiftTraffic";
 
   String K8S_DRY_RUN_MANIFEST = "K8sDryRun";
   String ASG_BLUE_GREEN_SWAP_SERVICE = "AsgBlueGreenSwapService";
@@ -153,4 +154,5 @@ public interface StepSpecTypeConstants {
   String AWS_CDK_DEPLOY = "AwsCdkDeploy";
   String AWS_CDK_DESTROY = "AwsCdkDestroy";
   String AWS_CDK_ROLLBACK = "AwsCdkRollback";
+  String DOWNLOAD_AWS_S3 = "DownloadAwsS3";
 }

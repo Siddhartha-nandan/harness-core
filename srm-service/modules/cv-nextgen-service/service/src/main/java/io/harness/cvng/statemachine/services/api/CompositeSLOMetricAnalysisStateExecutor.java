@@ -8,6 +8,7 @@
 package io.harness.cvng.statemachine.services.api;
 
 import io.harness.cvng.core.services.api.VerificationTaskService;
+import io.harness.cvng.core.utils.DateTimeUtils;
 import io.harness.cvng.metrics.CVNGMetricsUtils;
 import io.harness.cvng.metrics.beans.SLOMetricContext;
 import io.harness.cvng.servicelevelobjective.entities.CompositeSLORecord;
@@ -30,53 +31,78 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class CompositeSLOMetricAnalysisStateExecutor extends AnalysisStateExecutor<CompositeSLOMetricAnalysisState> {
+  public static final int MAXIMUM_SLO_WINDOW_PROCESSING_HOURS = 12;
   @Inject private ServiceLevelObjectiveV2ServiceImpl serviceLevelObjectiveV2Service;
 
   @Inject private CompositeSLORecordService compositeSLORecordService;
-
   @Inject private VerificationTaskService verificationTaskService;
-
   @Inject private OrchestrationService orchestrationService;
-
   @Inject private Clock clock;
 
   @Inject private MetricService metricService;
   @Override
   public AnalysisState execute(CompositeSLOMetricAnalysisState analysisState) {
+    CompositeServiceLevelObjective compositeServiceLevelObjective = null;
+    String sloId = null;
     try {
       String verificationTaskId = analysisState.getInputs().getVerificationTaskId();
       // here startTime will be the prv Data endTime and endTime will be the current time.
-      String sloId = verificationTaskService.getCompositeSLOId(verificationTaskId);
-      CompositeServiceLevelObjective compositeServiceLevelObjective =
-          (CompositeServiceLevelObjective) serviceLevelObjectiveV2Service.get(sloId);
-      LocalDateTime currentLocalDate =
-          LocalDateTime.ofInstant(clock.instant(), compositeServiceLevelObjective.getZoneOffset());
-      Instant startTimeForCurrentRange = compositeServiceLevelObjective.getCurrentTimeRange(currentLocalDate)
-                                             .getStartTime(compositeServiceLevelObjective.getZoneOffset());
-      Instant startedAtTime = Instant.ofEpochMilli(compositeServiceLevelObjective.getStartedAt());
-      Instant startTime = (startTimeForCurrentRange.isAfter(startedAtTime)) ? startTimeForCurrentRange : startedAtTime;
-      CompositeSLORecord lastSLORecord = compositeSLORecordService.getLatestCompositeSLORecordWithVersion(
-          compositeServiceLevelObjective.getUuid(), startTime, compositeServiceLevelObjective.getVersion());
-      if (lastSLORecord != null) {
-        startTime = Instant.ofEpochSecond(lastSLORecord.getEpochMinute() * 60 + 60);
+      sloId = verificationTaskService.getCompositeSLOId(verificationTaskId);
+      compositeServiceLevelObjective = (CompositeServiceLevelObjective) serviceLevelObjectiveV2Service.get(sloId);
+      Instant startTime = getStartTime(compositeServiceLevelObjective);
+      Instant endTime = getEndtimeWithMaxWindowSize(startTime);
+      if (endTime.isAfter(startTime)) {
+        compositeSLORecordService.create(compositeServiceLevelObjective, startTime, endTime, verificationTaskId);
       }
-      Instant endTime = clock.instant();
-      if (endTime.isAfter(startTime.plus(12, ChronoUnit.HOURS))) {
-        endTime = startTime.plus(12, ChronoUnit.HOURS);
-      }
-      compositeSLORecordService.create(compositeServiceLevelObjective, startTime, endTime, verificationTaskId);
       try (SLOMetricContext sloMetricContext = new SLOMetricContext(compositeServiceLevelObjective)) {
         metricService.recordDuration(CVNGMetricsUtils.SLO_DATA_ANALYSIS_METRIC,
             Duration.between(analysisState.getInputs().getStartTime(), clock.instant()));
       }
       analysisState.setStatus(AnalysisStatus.SUCCESS);
     } catch (Exception exception) {
-      log.warn(String.format("Composite SLO Execute for sloId: {} failed with:",
-                   analysisState.getInputs().getVerificationTaskId()),
-          exception);
-      analysisState.setStatus(AnalysisStatus.RETRY);
+      if (compositeServiceLevelObjective == null) {
+        analysisState.setStatus(AnalysisStatus.TERMINATED);
+        log.info(
+            "The composite slo with id {} has already been deleted, marking current analysisState to be cleaned up : {}",
+            sloId, analysisState.getWorkerTaskId());
+      } else {
+        log.warn(String.format("Composite SLO Execute for sloId: {} failed with:",
+                     analysisState.getInputs().getVerificationTaskId()),
+            exception);
+        analysisState.setStatus(AnalysisStatus.RETRY);
+      }
     }
     return analysisState;
+  }
+
+  private Instant getStartTime(CompositeServiceLevelObjective compositeServiceLevelObjective) {
+    LocalDateTime currentLocalDate =
+        LocalDateTime.ofInstant(clock.instant(), compositeServiceLevelObjective.getZoneOffset());
+    Instant startTimeForCurrentSLOTarget = compositeServiceLevelObjective.getCurrentTimeRange(currentLocalDate)
+                                               .getStartTime(compositeServiceLevelObjective.getZoneOffset());
+    Instant sloStartedAtTime = Instant.ofEpochMilli(compositeServiceLevelObjective.getStartedAt());
+    Instant startTime =
+        (startTimeForCurrentSLOTarget.isAfter(sloStartedAtTime)) ? startTimeForCurrentSLOTarget : sloStartedAtTime;
+    CompositeSLORecord lastSLORecord = compositeSLORecordService.getLatestCompositeSLORecordWithVersion(
+        compositeServiceLevelObjective.getUuid(), startTime,
+        compositeServiceLevelObjective.getVersion()); // We have to have both written parallel without fail.
+    return roundUpTo5MinuteBoundary(lastSLORecord, startTime);
+  }
+
+  private static Instant roundUpTo5MinuteBoundary(CompositeSLORecord lastSLORecord, Instant startTime) {
+    if (lastSLORecord != null) {
+      startTime = Instant.ofEpochSecond(lastSLORecord.getEpochMinute() * 60 + 60);
+    }
+    return DateTimeUtils.roundUpTo5MinBoundary(startTime);
+  }
+
+  private Instant getEndtimeWithMaxWindowSize(Instant startTime) {
+    Instant endTime = clock.instant();
+    if (endTime.isAfter(
+            startTime.plus(MAXIMUM_SLO_WINDOW_PROCESSING_HOURS, ChronoUnit.HOURS))) { // restrict max window to 12 hrs
+      endTime = startTime.plus(MAXIMUM_SLO_WINDOW_PROCESSING_HOURS, ChronoUnit.HOURS);
+    }
+    return DateTimeUtils.roundDownTo5MinBoundary(endTime);
   }
 
   @Override
@@ -117,11 +143,13 @@ public class CompositeSLOMetricAnalysisStateExecutor extends AnalysisStateExecut
     String sloId = verificationTaskService.getCompositeSLOId(verificationTaskId);
     CompositeServiceLevelObjective compositeServiceLevelObjective =
         (CompositeServiceLevelObjective) serviceLevelObjectiveV2Service.get(sloId);
-    orchestrationService.queueAnalysisWithoutEventPublish(compositeServiceLevelObjective.getAccountId(),
-        AnalysisInput.builder()
-            .verificationTaskId(verificationTaskId)
-            .startTime(Instant.now())
-            .endTime(Instant.now())
-            .build());
+    if (compositeServiceLevelObjective != null) {
+      orchestrationService.queueAnalysisWithoutEventPublish(compositeServiceLevelObjective.getAccountId(),
+          AnalysisInput.builder()
+              .verificationTaskId(verificationTaskId)
+              .startTime(Instant.now())
+              .endTime(Instant.now())
+              .build());
+    }
   }
 }

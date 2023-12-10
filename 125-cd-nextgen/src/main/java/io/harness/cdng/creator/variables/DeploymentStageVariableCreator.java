@@ -38,6 +38,8 @@ import io.harness.cdng.visitor.YamlTypes;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.encryption.Scope;
 import io.harness.executions.steps.StepSpecTypeConstants;
+import io.harness.gitx.GitXTransientBranchGuard;
+import io.harness.ng.core.security.NgManagerSourcePrincipalGuard;
 import io.harness.ng.core.service.entity.ServiceEntity;
 import io.harness.ng.core.service.mappers.NGServiceEntityMapper;
 import io.harness.ng.core.service.services.ServiceEntityService;
@@ -194,7 +196,7 @@ public class DeploymentStageVariableCreator extends AbstractStageVariableCreator
   private LinkedHashMap<String, VariableCreationResponse> createVariablesForChildrenNodesPipelineV2Yaml(
       VariableCreationContext ctx, DeploymentStageNode config) {
     LinkedHashMap<String, VariableCreationResponse> responseMap = new LinkedHashMap<>();
-    try {
+    try (NgManagerSourcePrincipalGuard sourcePrincipalGuard = new NgManagerSourcePrincipalGuard()) {
       final ParameterField<String> serviceRef = getServiceRef(config);
       final ServicesYaml services = config.getDeploymentStageConfig().getServices();
       final EnvironmentsYaml environmentsYaml = config.getDeploymentStageConfig().getEnvironments();
@@ -208,10 +210,14 @@ public class DeploymentStageVariableCreator extends AbstractStageVariableCreator
         createVariablesForEnvironments(ctx, responseMap, environmentsYaml, serviceVariables);
       }
       if (environment != null) {
-        stageVariableCreatorHelper.createVariablesForEnvironment(ctx, responseMap, serviceVariables, environment);
+        try (GitXTransientBranchGuard ignore = new GitXTransientBranchGuard(getEnvironmentGitBranch(config))) {
+          stageVariableCreatorHelper.createVariablesForEnvironment(ctx, responseMap, serviceVariables, environment);
+        }
       }
       if (serviceRef != null) {
-        createVariablesForService(ctx, environmentRef, serviceRef, serviceVariables, responseMap, infraIdentifier);
+        try (GitXTransientBranchGuard ignore = new GitXTransientBranchGuard(getServiceGitBranch(config))) {
+          createVariablesForService(ctx, environmentRef, serviceRef, serviceVariables, responseMap, infraIdentifier);
+        }
       }
       if (services != null) {
         createVariablesForServices(ctx, responseMap, services, environmentRef, serviceVariables, infraIdentifier);
@@ -227,8 +233,10 @@ public class DeploymentStageVariableCreator extends AbstractStageVariableCreator
       ParameterField<String> environmentRef, Set<String> serviceVariables, String infraIdentifier) {
     if (!services.getValues().isExpression()) {
       for (ServiceYamlV2 serviceRefValue : services.getValues().getValue()) {
-        createVariablesForService(
-            ctx, environmentRef, serviceRefValue.getServiceRef(), serviceVariables, responseMap, infraIdentifier);
+        try (GitXTransientBranchGuard ignore = new GitXTransientBranchGuard(serviceRefValue.getGitBranch())) {
+          createVariablesForService(
+              ctx, environmentRef, serviceRefValue.getServiceRef(), serviceVariables, responseMap, infraIdentifier);
+        }
       }
     }
   }
@@ -240,8 +248,10 @@ public class DeploymentStageVariableCreator extends AbstractStageVariableCreator
       for (EnvironmentYamlV2 environmentYamlV2 : environmentsYaml.getValues().getValue()) {
         ParameterField<String> envRef = environmentYamlV2.getEnvironmentRef();
         if (envRef != null) {
-          stageVariableCreatorHelper.createVariablesForEnvironment(
-              ctx, responseMap, serviceVariables, environmentYamlV2);
+          try (GitXTransientBranchGuard ignore = new GitXTransientBranchGuard(environmentYamlV2.getGitBranch())) {
+            stageVariableCreatorHelper.createVariablesForEnvironment(
+                ctx, responseMap, serviceVariables, environmentYamlV2);
+          }
         }
       }
     }
@@ -269,8 +279,8 @@ public class DeploymentStageVariableCreator extends AbstractStageVariableCreator
       outputProperties.addAll(handleServiceStepOutcome(serviceField));
 
       // scoped service ref used here
-      Optional<ServiceEntity> optionalService =
-          serviceEntityService.get(accountIdentifier, orgIdentifier, projectIdentifier, serviceRef.getValue(), false);
+      Optional<ServiceEntity> optionalService = serviceEntityService.get(
+          accountIdentifier, orgIdentifier, projectIdentifier, serviceRef.getValue(), false, true, false);
 
       NGServiceConfig ngServiceConfig = null;
       if (optionalService.isPresent()) {
@@ -353,6 +363,22 @@ public class DeploymentStageVariableCreator extends AbstractStageVariableCreator
     ServiceYamlV2 serviceYamlV2 = stageNode.getDeploymentStageConfig().getService();
     if (serviceYamlV2 != null) {
       return serviceYamlV2.getServiceRef();
+    }
+    return null;
+  }
+
+  private String getServiceGitBranch(DeploymentStageNode stageNode) {
+    ServiceYamlV2 serviceYamlV2 = stageNode.getDeploymentStageConfig().getService();
+    if (serviceYamlV2 != null) {
+      return serviceYamlV2.getGitBranch();
+    }
+    return null;
+  }
+
+  private String getEnvironmentGitBranch(DeploymentStageNode stageNode) {
+    EnvironmentYamlV2 environmentYamlV2 = stageNode.getDeploymentStageConfig().getEnvironment();
+    if (environmentYamlV2 != null) {
+      return environmentYamlV2.getGitBranch();
     }
     return null;
   }

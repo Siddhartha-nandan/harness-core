@@ -8,8 +8,13 @@
 package io.harness.cdng.aws.sam;
 
 import static io.harness.beans.sweepingoutputs.StageInfraDetails.STAGE_INFRA_DETAILS;
+import static io.harness.common.ParameterFieldHelper.getParameterFieldValue;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+import static io.harness.exception.WingsException.USER;
 
 import static io.serializer.HObjectMapper.NG_DEFAULT_OBJECT_MAPPER;
+import static java.lang.String.format;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -27,6 +32,7 @@ import io.harness.cdng.manifest.ManifestType;
 import io.harness.cdng.manifest.yaml.AwsSamDirectoryManifestOutcome;
 import io.harness.cdng.manifest.yaml.GitStoreConfig;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
+import io.harness.cdng.manifest.yaml.S3StoreConfig;
 import io.harness.cdng.manifest.yaml.ValuesManifestOutcome;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
 import io.harness.data.structure.EmptyPredicate;
@@ -36,6 +42,7 @@ import io.harness.delegate.task.stepstatus.StepExecutionStatus;
 import io.harness.delegate.task.stepstatus.StepMapOutput;
 import io.harness.delegate.task.stepstatus.StepOutput;
 import io.harness.delegate.task.stepstatus.StepStatusTaskResponseData;
+import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ngexception.CIStageExecutionException;
 import io.harness.pms.contracts.ambiance.Ambiance;
@@ -49,6 +56,8 @@ import io.harness.tasks.ResponseData;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
@@ -68,7 +77,11 @@ public class AwsSamStepHelper {
   @Inject private ContainerStepExecutionResponseHelper containerStepExecutionResponseHelper;
 
   private static String SAM_BUILD_DEFAULT_IMAGE = "harnessdev/sam-build:1.82.0-latest";
+
+  private static String NG_SECRET_MANAGER = "ngSecretManager";
   private static String SAM_DEPLOY_DEFAULT_IMAGE = "harnessdev/sam-deploy:1.82.0-latest";
+
+  private static final String PLUGIN_PATH_PREFIX = "harness";
 
   ObjectMapper objectMapper = NG_DEFAULT_OBJECT_MAPPER;
 
@@ -117,12 +130,10 @@ public class AwsSamStepHelper {
 
   public List<ServerInstanceInfo> fetchServerInstanceInfoFromDelegateResponse(
       Map<String, ResponseData> responseDataMap) {
-    String instances = null;
-
     StepStatusTaskResponseData stepStatusTaskResponseData =
         containerStepExecutionResponseHelper.filterK8StepResponse(responseDataMap);
 
-    List<ServerInstanceInfo> serverInstanceInfoList = null;
+    List<ServerInstanceInfo> serverInstanceInfoList = new ArrayList<>();
 
     if (stepStatusTaskResponseData == null) {
       log.info("Aws Sam Deploy :  Received stepStatusTaskResponseData as null");
@@ -132,20 +143,21 @@ public class AwsSamStepHelper {
           stepStatusTaskResponseData.getStepStatus().getStepExecutionStatus()));
     }
 
-    if (stepStatusTaskResponseData != null
-        && stepStatusTaskResponseData.getStepStatus().getStepExecutionStatus() == StepExecutionStatus.SUCCESS) {
+    if (stepStatusTaskResponseData.getStepStatus().getStepExecutionStatus() == StepExecutionStatus.SUCCESS) {
       StepOutput stepOutput = stepStatusTaskResponseData.getStepStatus().getOutput();
+      String instances = null;
 
       if (stepOutput instanceof StepMapOutput) {
         StepMapOutput stepMapOutput = (StepMapOutput) stepOutput;
         String instancesByte64 = stepMapOutput.getMap().get("instances");
-        log.info(String.format("AWS SAM Deploy instances byte64 %s", instancesByte64));
+        if (EmptyPredicate.isEmpty(instancesByte64)) {
+          log.info("No AWS SAM Deploy instances found");
+          return serverInstanceInfoList;
+        }
         instances = new String(Base64.getDecoder().decode(instancesByte64));
         log.info(String.format("AWS SAM Deploy instances %s", instances));
       }
-
       try {
-        log.info(String.format("AWS SAM Deploy: Parsing instances from JSON %s", instances));
         serverInstanceInfoList = Arrays.asList(objectMapper.readValue(instances, AwsSamServerInstanceInfo[].class));
       } catch (Exception e) {
         log.error(String.format("Error while parsing AWS SAM instances %s", instances), e);
@@ -212,15 +224,56 @@ public class AwsSamStepHelper {
   }
 
   public String getValuesPathFromValuesManifestOutcome(ValuesManifestOutcome valuesManifestOutcome) {
-    GitStoreConfig gitStoreConfig = (GitStoreConfig) valuesManifestOutcome.getStore();
-    return "/harness/" + valuesManifestOutcome.getIdentifier() + "/" + gitStoreConfig.getPaths().getValue().get(0);
+    if (valuesManifestOutcome.getStore() instanceof GitStoreConfig) {
+      GitStoreConfig gitStoreConfig = (GitStoreConfig) valuesManifestOutcome.getStore();
+      if (isEmpty(gitStoreConfig.getPaths().getValue())) {
+        throw new InvalidRequestException("Paths cannot be empty in Values Manifest Git Store Configuration");
+      }
+      return "/harness/" + valuesManifestOutcome.getIdentifier() + "/" + gitStoreConfig.getPaths().getValue().get(0);
+    } else if (valuesManifestOutcome.getStore() instanceof S3StoreConfig) {
+      S3StoreConfig valuesManifestOutcomeStore = (S3StoreConfig) valuesManifestOutcome.getStore();
+      String path = String.format("/%s/%s/%s", PLUGIN_PATH_PREFIX,
+          removeExtraSlashesInString(valuesManifestOutcome.getIdentifier()),
+          removeExtraSlashesInString(
+              Paths.get(valuesManifestOutcomeStore.getPaths().getValue().get(0)).getFileName().toString()));
+      return removeTrailingSlashesInString(path);
+    } else {
+      throw new InvalidRequestException(
+          format("%s store type not supported for Values Manifest", valuesManifestOutcome.getStore().getKind()), USER);
+    }
+  }
+
+  public String removeExtraSlashesInString(String path) {
+    return path.replaceAll("^/|/$", "");
   }
 
   public String getSamDirectoryPathFromAwsSamDirectoryManifestOutcome(
       AwsSamDirectoryManifestOutcome awsSamDirectoryManifestOutcome) {
-    GitStoreConfig gitStoreConfig = (GitStoreConfig) awsSamDirectoryManifestOutcome.getStore();
+    if (awsSamDirectoryManifestOutcome.getStore() instanceof GitStoreConfig) {
+      GitStoreConfig gitStoreConfig = (GitStoreConfig) awsSamDirectoryManifestOutcome.getStore();
+      if (isEmpty(gitStoreConfig.getPaths().getValue())) {
+        throw new InvalidRequestException("Paths cannot be empty in Values Manifest Git Store Configuration");
+      }
 
-    return awsSamDirectoryManifestOutcome.getIdentifier() + "/" + gitStoreConfig.getPaths().getValue().get(0);
+      return awsSamDirectoryManifestOutcome.getIdentifier() + "/" + gitStoreConfig.getPaths().getValue().get(0);
+    } else if (awsSamDirectoryManifestOutcome.getStore() instanceof S3StoreConfig) {
+      return removeTrailingSlashesInString(awsSamDirectoryManifestOutcome.getIdentifier());
+    } else {
+      throw new InvalidRequestException(format("%s store type not supported for Aws SAM Manifest",
+                                            awsSamDirectoryManifestOutcome.getStore().getKind()),
+          USER);
+    }
+  }
+  public String removeTrailingSlashesInString(String path) {
+    return path.replaceAll("/$", "");
+  }
+
+  public String getSamTemplateFilePath(ManifestOutcome manifestOutcome) {
+    if (manifestOutcome instanceof AwsSamDirectoryManifestOutcome) {
+      AwsSamDirectoryManifestOutcome awsSamDirectoryManifestOutcome = (AwsSamDirectoryManifestOutcome) manifestOutcome;
+      return getParameterFieldValue(awsSamDirectoryManifestOutcome.getSamTemplateFile());
+    }
+    throw new UnsupportedOperationException(format("Unsupported sam manifest type: [%s]", manifestOutcome.getType()));
   }
 
   public ParameterField<String> getImage(AwsSamBaseStepInfo awsSamBaseStepInfo) {
@@ -242,5 +295,37 @@ public class AwsSamStepHelper {
     } else {
       throw new InvalidRequestException("Default Images for SAM Build and SAM Deploy Step only supported");
     }
+  }
+
+  public Map<String, String> validateEnvVariables(Map<String, String> environmentVariables) {
+    if (isEmpty(environmentVariables)) {
+      return environmentVariables;
+    }
+
+    List<String> envVarsWithNullValue = environmentVariables.entrySet()
+                                            .stream()
+                                            .filter(entry -> entry.getValue() == null)
+                                            .map(Map.Entry::getKey)
+                                            .collect(Collectors.toList());
+    if (isNotEmpty(envVarsWithNullValue)) {
+      throw new InvalidArgumentsException(format("Not found value for environment variable%s: %s",
+          envVarsWithNullValue.size() == 1 ? "" : "s", String.join(",", envVarsWithNullValue)));
+    }
+
+    return environmentVariables;
+  }
+
+  public Map<String, String> getEnvVarsWithSecretRef(Map<String, String> envVars) {
+    return envVars.entrySet()
+        .stream()
+        .filter(entry -> entry.getValue() != null && entry.getValue().contains(NG_SECRET_MANAGER))
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  public Map<String, String> removeAllEnvVarsWithSecretRef(Map<String, String> envVars) {
+    final Map<String, String> secretEnvVariables = getEnvVarsWithSecretRef(envVars);
+    envVars.entrySet().removeAll(secretEnvVariables.entrySet());
+
+    return secretEnvVariables;
   }
 }

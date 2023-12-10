@@ -28,12 +28,15 @@ import static io.harness.helm.HelmConstants.HELM_CACHE_HOME_PLACEHOLDER;
 import static io.harness.helm.HelmConstants.HELM_FETCH_OLD_WORKING_DIR_BASE;
 import static io.harness.helm.HelmConstants.HELM_HOME_PATH_FLAG;
 import static io.harness.helm.HelmConstants.HELM_PATH_PLACEHOLDER;
+import static io.harness.helm.HelmConstants.INDEX_FILE_WARN_LOG;
 import static io.harness.helm.HelmConstants.PASSWORD;
 import static io.harness.helm.HelmConstants.REPO_NAME;
 import static io.harness.helm.HelmConstants.REPO_URL;
 import static io.harness.helm.HelmConstants.USERNAME;
 import static io.harness.helm.HelmConstants.V3Commands.HELM_CACHE_HOME;
 import static io.harness.helm.HelmConstants.V3Commands.HELM_CACHE_HOME_PATH;
+import static io.harness.helm.HelmConstants.V3Commands.HELM_CACHE_INDEX_FILE;
+import static io.harness.helm.HelmConstants.V3Commands.HELM_CACHE_INDEX_FILE_FROM_CHART_DIRECTORY;
 import static io.harness.helm.HelmConstants.V3Commands.HELM_REPO_ADD_FORCE_UPDATE;
 import static io.harness.helm.HelmConstants.V3Commands.HELM_REPO_FLAGS;
 import static io.harness.helm.HelmConstants.V3Commands.REGISTRY_CONFIG;
@@ -78,6 +81,7 @@ import io.harness.delegate.beans.storeconfig.StoreDelegateConfig;
 import io.harness.delegate.chartmuseum.NgChartmuseumClientFactory;
 import io.harness.delegate.exception.ManifestCollectionException;
 import io.harness.delegate.task.aws.AwsNgConfigMapper;
+import io.harness.delegate.task.ecr.EcrAuthKey;
 import io.harness.delegate.task.k8s.HelmChartManifestDelegateConfig;
 import io.harness.encryption.FieldWithPlainTextOrSecretValueHelper;
 import io.harness.exception.ExceptionUtils;
@@ -89,6 +93,7 @@ import io.harness.exception.sanitizer.ExceptionMessageSanitizer;
 import io.harness.filesystem.FileIo;
 import io.harness.helm.HelmCliCommandType;
 import io.harness.helm.HelmCommandFlagsUtils;
+import io.harness.helm.HelmCommandRunner;
 import io.harness.helm.HelmCommandTemplateFactory;
 import io.harness.helm.HelmCommandType;
 import io.harness.helm.HelmSubCommandType;
@@ -105,9 +110,13 @@ import software.wings.beans.settings.helm.HelmRepoConfig;
 import software.wings.helpers.ext.helm.request.HelmChartConfigParams;
 import software.wings.helpers.ext.helm.response.ReleaseInfo;
 
+import com.amazonaws.services.ecr.model.AuthorizationData;
 import com.amazonaws.util.Base64;
 import com.esotericsoftware.yamlbeans.YamlException;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedTimeoutException;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -130,9 +139,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -150,6 +161,12 @@ import org.zeroturnaround.exec.ProcessResult;
 @Slf4j
 @OwnedBy(CDP)
 public class HelmTaskHelperBase {
+  @Inject private K8sGlobalConfigService k8sGlobalConfigService;
+  @Inject private NgChartmuseumClientFactory ngChartmuseumClientFactory;
+  @Inject private SecretDecryptionService decryptionService;
+  @Inject private AwsClient awsClient;
+  @Inject private AwsNgConfigMapper awsNgConfigMapper;
+  @Inject private HelmCommandRunner helmCommandRunner;
   public static final String RESOURCE_DIR_BASE = "./repository/helm/resources/";
   public static final String VERSION_KEY = "version:";
   public static final String NAME_KEY = "name:";
@@ -165,12 +182,17 @@ public class HelmTaskHelperBase {
   private static final String PATH_DELIMITER = "/";
   private static final String DOT_DELIMITER = "\\.";
   private static final String COLON_DELIMITER = ":";
-
-  @Inject private K8sGlobalConfigService k8sGlobalConfigService;
-  @Inject private NgChartmuseumClientFactory ngChartmuseumClientFactory;
-  @Inject private SecretDecryptionService decryptionService;
-  @Inject private AwsClient awsClient;
-  @Inject private AwsNgConfigMapper awsNgConfigMapper;
+  private static final long SAFE_LIMIT_OF_INDEX_FILE = (long) (20 * 1024 * 1024);
+  private final LoadingCache<EcrAuthKey, AuthorizationData> cache =
+      CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(6, TimeUnit.HOURS).build(new CacheLoader<>() {
+        @NotNull
+        @Override
+        @SneakyThrows
+        public AuthorizationData load(@NotNull EcrAuthKey ecrAuthKey) {
+          return awsClient.getAmazonEcrAuthData(
+              ecrAuthKey.getAwsConfig(), ecrAuthKey.getRegistryId(), ecrAuthKey.getRegion());
+        }
+      });
 
   public void modifyRepoNameToIncludeBucket(HelmChartConfigParams helmChartConfigParams) {
     HelmRepoConfig helmRepoConfig = helmChartConfigParams.getHelmRepoConfig();
@@ -382,6 +404,7 @@ public class HelmTaskHelperBase {
           exitCode, repoAddCommandForLogging, processOutput);
       throw new HelmClientException(exceptionMessage, USER, HelmCliCommandType.REPO_ADD);
     }
+    checkIndexFile(repoName, tempDir, chartDirectory, repoDisplayName);
   }
 
   public void addRepo(String repoName, String repoDisplayName, String chartRepoUrl, String username, char[] password,
@@ -505,6 +528,10 @@ public class HelmTaskHelperBase {
 
   public ProcessResult executeCommand(Map<String, String> envVars, String command, String directoryPath,
       String errorMessage, long timeoutInMillis, HelmCliCommandType helmCliCommandType) {
+    if (helmCommandRunner.isEnabled()) {
+      return helmCommandRunner.execute(helmCliCommandType, command, directoryPath, envVars, timeoutInMillis);
+    }
+
     ProcessExecutor processExecutor = createProcessExecutor(command, directoryPath, timeoutInMillis, envVars);
     return executeCommand(processExecutor, errorMessage, helmCliCommandType);
   }
@@ -759,14 +786,12 @@ public class HelmTaskHelperBase {
 
     String cacheDir = getCacheDir(manifest, storeDelegateConfig.getRepoName(), HelmVersion.V380);
 
-    String registryConfigFilePath = null;
-    if (storeDelegateConfig.getOciHelmConnector() != null) {
-      // create registry-config per deployment and pass this along to getRepoName for generic config case
-      registryConfigFilePath = getRegFileConfigPath();
-    }
+    // create registry-config per deployment and pass this along to getRepoName
+    String registryConfigFilePath = getRegFileConfigPath();
 
     try {
-      String repoName = getRepoName(storeDelegateConfig, timeoutInMillis, destinationDirectory, registryConfigFilePath);
+      String repoName = getRepoName(
+          storeDelegateConfig, manifest.getChartName(), timeoutInMillis, destinationDirectory, registryConfigFilePath);
       fetchChartFromRepo(repoName, storeDelegateConfig.getRepoDisplayName(), manifest.getChartName(),
           manifest.getChartVersion(), destinationDirectory, HelmVersion.V380, manifest.getHelmCommandFlag(),
           timeoutInMillis, cacheDir, registryConfigFilePath);
@@ -780,9 +805,7 @@ public class HelmTaskHelperBase {
         }
       }
       // delete registry-config file
-      if (registryConfigFilePath != null) {
-        FileIo.deleteFileIfExists(registryConfigFilePath);
-      }
+      FileIo.deleteFileIfExists(registryConfigFilePath);
     }
   }
 
@@ -795,15 +818,16 @@ public class HelmTaskHelperBase {
         .toString();
   }
 
-  private String getRepoName(OciHelmStoreDelegateConfig ociHelmStoreDelegateConfig, long timeoutInMillis,
-      String destinationDirectory, String registryConfigFilePath) throws Exception {
+  private String getRepoName(OciHelmStoreDelegateConfig ociHelmStoreDelegateConfig, String chartName,
+      long timeoutInMillis, String destinationDirectory, String registryConfigFilePath) throws Exception {
     if (ociHelmStoreDelegateConfig.getOciHelmConnector() != null) {
       return getOciHelmGenericRepoName(ociHelmStoreDelegateConfig.getOciHelmConnector(),
           ociHelmStoreDelegateConfig.getBasePath(), timeoutInMillis, destinationDirectory, registryConfigFilePath);
     }
 
     if (ociHelmStoreDelegateConfig.getAwsConnectorDTO() != null) {
-      return getOciHelmEcrRepoName(ociHelmStoreDelegateConfig, timeoutInMillis, destinationDirectory);
+      return getOciHelmEcrRepoName(
+          ociHelmStoreDelegateConfig, chartName, timeoutInMillis, destinationDirectory, registryConfigFilePath);
     }
 
     throw new InvalidArgumentsException("Invalid OCI Helm Chart Store Config Type");
@@ -826,39 +850,69 @@ public class HelmTaskHelperBase {
     }
   }
 
-  private String getOciHelmEcrRepoName(
-      OciHelmStoreDelegateConfig ociHelmStoreDelegateConfig, long timeoutInMillis, String destinationDirectory) {
-    String repositoryUrl = getEcrRepoUrl(ociHelmStoreDelegateConfig);
+  private String getOciHelmEcrRepoName(OciHelmStoreDelegateConfig ociHelmStoreDelegateConfig, String chartName,
+      long timeoutInMillis, String destinationDirectory, String registryConfigFilePath) {
+    String repositoryUrl = getEcrRepoUrl(ociHelmStoreDelegateConfig, chartName);
     ociHelmStoreDelegateConfig.setRepoUrl(repositoryUrl);
-    String uri = repositoryUrl.split(PATH_DELIMITER)[0];
-    String[] usernamePassword = getEcrAuthCredentials(ociHelmStoreDelegateConfig.getEncryptedDataDetails(),
+    EcrAuthKey ecrAuthKey = createEcrAuthKey(ociHelmStoreDelegateConfig.getEncryptedDataDetails(),
         ociHelmStoreDelegateConfig.getAwsConnectorDTO(), repositoryUrl.split(DOT_DELIMITER)[0],
         ociHelmStoreDelegateConfig.getRegion());
+    String uri = repositoryUrl.split(PATH_DELIMITER)[0];
+    String authToken = getEcrAuthCredentials(ecrAuthKey);
+    try {
+      loginOciEcrRegistry(authToken, uri, timeoutInMillis, destinationDirectory, registryConfigFilePath);
+    } catch (HelmClientException helmClientException) {
+      String newAuthToken = generateNewAuthData(ecrAuthKey).getAuthorizationToken();
+      loginOciEcrRegistry(newAuthToken, uri, timeoutInMillis, destinationDirectory, registryConfigFilePath);
+    }
+    return format(REGISTRY_URL_PREFIX,
+        ociHelmStoreDelegateConfig.getBasePath() != null ? Paths.get(uri, ociHelmStoreDelegateConfig.getBasePath())
+                                                         : Paths.get(uri));
+  }
+
+  private EcrAuthKey createEcrAuthKey(List<EncryptedDataDetail> encryptedDataDetails, AwsConnectorDTO awsConnectorDTO,
+      String registryId, String region) {
+    AwsConfig awsConfig = awsNgConfigMapper.mapAwsConfigWithDecryption(
+        awsConnectorDTO.getCredential(), awsConnectorDTO.getCredential().getAwsCredentialType(), encryptedDataDetails);
+    return EcrAuthKey.builder().registryId(registryId).region(region).awsConfig(awsConfig).build();
+  }
+
+  private void loginOciEcrRegistry(
+      String authToken, String uri, long timeoutInMillis, String destinationDirectory, String registryConfigFilePath) {
+    String[] usernamePassword = new String(Base64.decode(authToken)).split(COLON_DELIMITER);
     if (usernamePassword.length != 2) {
       throw new InvalidArgumentsException(
           format("ECR auth token must contain only username and password. Found an array of length %d",
               usernamePassword.length));
     }
     loginOciRegistry(uri, usernamePassword[0], usernamePassword[1].toCharArray(), HelmVersion.V380, timeoutInMillis,
-        destinationDirectory, null);
-    return format(REGISTRY_URL_PREFIX,
-        ociHelmStoreDelegateConfig.getBasePath() != null ? Paths.get(uri, ociHelmStoreDelegateConfig.getBasePath())
-                                                         : Paths.get(uri));
+        destinationDirectory, registryConfigFilePath);
   }
 
-  private String getEcrRepoUrl(OciHelmStoreDelegateConfig ociHelmStoreDelegateConfig) {
+  private String getEcrRepoUrl(OciHelmStoreDelegateConfig ociHelmStoreDelegateConfig, String chartName) {
     AwsInternalConfig awsInternalConfig =
         awsNgConfigMapper.createAwsInternalConfig(ociHelmStoreDelegateConfig.getAwsConnectorDTO());
     return awsClient.getEcrImageUrl(awsInternalConfig, ociHelmStoreDelegateConfig.getRegistryId(),
-        ociHelmStoreDelegateConfig.getRegion(), ociHelmStoreDelegateConfig.getRepoName());
+        ociHelmStoreDelegateConfig.getRegion(), chartName);
   }
 
-  private String[] getEcrAuthCredentials(
-      List<EncryptedDataDetail> encryptedDataDetails, AwsConnectorDTO awsConnectorDTO, String account, String region) {
-    AwsConfig awsConfig = awsNgConfigMapper.mapAwsConfigWithDecryption(
-        awsConnectorDTO.getCredential(), awsConnectorDTO.getCredential().getAwsCredentialType(), encryptedDataDetails);
-    return new String(Base64.decode(awsClient.getAmazonEcrAuthToken(awsConfig, account, region)))
-        .split(COLON_DELIMITER);
+  private String getEcrAuthCredentials(EcrAuthKey ecrAuthKey) {
+    AuthorizationData authorizationData;
+    try {
+      authorizationData = cache.get(ecrAuthKey);
+    } catch (ExecutionException executionException) {
+      log.warn("Error reading ECR token from cache.", executionException);
+      authorizationData = generateNewAuthData(ecrAuthKey);
+    }
+    return authorizationData.getAuthorizationToken();
+  }
+
+  private AuthorizationData generateNewAuthData(EcrAuthKey ecrAuthKey) {
+    cache.invalidate(ecrAuthKey);
+    AuthorizationData authorizationData =
+        awsClient.getAmazonEcrAuthData(ecrAuthKey.getAwsConfig(), ecrAuthKey.getRegistryId(), ecrAuthKey.getRegion());
+    cache.put(ecrAuthKey, authorizationData);
+    return authorizationData;
   }
 
   private String getCacheDir(HelmChartManifestDelegateConfig manifest, String repoName, HelmVersion version) {
@@ -936,7 +990,6 @@ public class HelmTaskHelperBase {
   public void addChartMuseumRepo(String repoName, String repoDisplayName, int port, String chartDirectory,
       HelmVersion helmVersion, long timeoutInMillis, String cacheDir, HelmCommandFlag helmCommandFlag) {
     String repoAddCommand = getChartMuseumRepoAddCommand(repoName, port, chartDirectory, helmVersion, helmCommandFlag);
-
     Map<String, String> environment = new HashMap<>();
     if (!isEmpty(cacheDir)) {
       environment.putIfAbsent(HELM_CACHE_HOME,
@@ -958,6 +1011,7 @@ public class HelmTaskHelperBase {
           exitCode, repoAddCommand, processOutput);
       throw new HelmClientException(exceptionMessage, USER, HelmCliCommandType.REPO_ADD);
     }
+    checkIndexFile(repoName, cacheDir, chartDirectory, repoDisplayName);
 
     if (isEmpty(cacheDir)) {
       return;
@@ -1763,5 +1817,26 @@ public class HelmTaskHelperBase {
 
     log.warn("Chart name not found");
     return "";
+  }
+
+  @VisibleForTesting
+  void checkIndexFile(String repoName, String cacheDir, String chartDirectory, String repoDisplayName) {
+    File indexFile;
+    if (repoName.isEmpty() && repoDisplayName.isEmpty()) {
+      return;
+    }
+    if (!isEmpty(cacheDir)) {
+      indexFile =
+          new File(HELM_CACHE_INDEX_FILE.replace(REPO_NAME, repoName).replace(HELM_CACHE_HOME_PLACEHOLDER, cacheDir));
+    } else if (!isEmpty(chartDirectory)) {
+      indexFile = new File(HELM_CACHE_INDEX_FILE_FROM_CHART_DIRECTORY.replace(REPO_NAME, repoName)
+                               .replace(HELM_CACHE_HOME_PLACEHOLDER, chartDirectory));
+    } else {
+      return;
+    }
+    if (indexFile.exists() && (indexFile.length() > SAFE_LIMIT_OF_INDEX_FILE)) {
+      double megabytes = (double) indexFile.length() / (1024 * 1024);
+      log.warn(String.format(INDEX_FILE_WARN_LOG, repoDisplayName, megabytes));
+    }
   }
 }

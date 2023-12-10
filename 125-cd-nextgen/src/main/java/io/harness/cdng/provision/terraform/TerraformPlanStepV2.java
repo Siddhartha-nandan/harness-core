@@ -58,6 +58,7 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.StepUtils;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 import io.harness.utils.IdentifierRefHelper;
 
 import com.google.inject.Inject;
@@ -176,6 +177,12 @@ public class TerraformPlanStepV2 extends CdTaskChainExecutable {
   }
 
   @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
+  }
+
+  @Override
   public StepResponse finalizeExecutionWithSecurityContextAndNodeInfo(Ambiance ambiance,
       StepBaseParameters stepElementParameters, PassThroughData passThroughData,
       ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
@@ -233,10 +240,13 @@ public class TerraformPlanStepV2 extends CdTaskChainExecutable {
 
     if (CommandExecutionStatus.SUCCESS == terraformTaskNGResponse.getCommandExecutionStatus()) {
       TerraformPlanOutcomeBuilder tfPlanOutcomeBuilder = TerraformPlanOutcome.builder();
-      helper.updateParentEntityIdAndVersion(
-          helper.generateFullIdentifier(
-              ParameterFieldHelper.getParameterFieldValue(planStepParameters.getProvisionerIdentifier()), ambiance),
-          terraformTaskNGResponse.getStateFileId());
+      if (!ParameterFieldHelper.getBooleanParameterFieldValue(
+              planStepParameters.getConfiguration().getSkipStateStorage())) {
+        helper.updateParentEntityIdAndVersion(
+            helper.generateFullIdentifier(
+                ParameterFieldHelper.getParameterFieldValue(planStepParameters.getProvisionerIdentifier()), ambiance),
+            terraformTaskNGResponse.getStateFileId());
+      }
       tfPlanOutcomeBuilder.detailedExitCode(terraformTaskNGResponse.getDetailedExitCode());
 
       if (!planStepParameters.getConfiguration().getIsTerraformCloudCli().getValue()) {
@@ -358,7 +368,9 @@ public class TerraformPlanStepV2 extends CdTaskChainExecutable {
         .skipColorLogs(featureFlagHelper.isEnabled(accountId, CDS_TF_TG_SKIP_ERROR_LOGS_COLORING))
         .isTerraformCloudCli(isTerraformCloudCli)
         .providerCredentialDelegateInfo(
-            helper.getProviderCredentialDelegateInfo(configuration.getProviderCredential(), ambiance));
+            helper.getProviderCredentialDelegateInfo(configuration.getProviderCredential(), ambiance))
+        .skipStateStorage(ParameterFieldHelper.getBooleanParameterFieldValue(
+            planStepParameters.getConfiguration().getSkipStateStorage()));
 
     return builder;
   }

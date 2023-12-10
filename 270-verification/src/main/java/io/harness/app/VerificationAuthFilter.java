@@ -49,7 +49,6 @@ public class VerificationAuthFilter extends VerificationServiceAuthenticationFil
       } else {
         throw new IllegalStateException("Invalid header:" + header);
       }
-
       return;
     }
 

@@ -16,6 +16,7 @@ import static io.harness.ngmigration.utils.CaseFormat.LOWER_CASE;
 import static io.harness.ngmigration.utils.CaseFormat.SNAKE_CASE;
 import static io.harness.ngmigration.utils.NGMigrationConstants.PLEASE_FIX_ME;
 import static io.harness.security.NextGenAuthenticationFilter.X_API_KEY;
+import static io.harness.utils.UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier;
 import static io.harness.when.beans.WhenConditionStatus.SUCCESS;
 
 import io.harness.annotations.dev.CodePulse;
@@ -29,6 +30,7 @@ import io.harness.encryption.SecretRefData;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.filestore.FileUsage;
+import io.harness.ng.core.utils.NGYamlUtils;
 import io.harness.ngmigration.beans.BaseProvidedInput;
 import io.harness.ngmigration.beans.FileYamlDTO;
 import io.harness.ngmigration.beans.InputDefaults;
@@ -82,6 +84,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -121,7 +124,7 @@ public class MigratorUtility {
 
   // Choice, GumGum
   public static final List<String> ELASTIC_GROUP_ACCOUNT_IDS =
-      Lists.newArrayList("R7OsqSbNQS69mq74kMNceQ", "EBGrtCo0RE6i_E9yNDdCOg");
+      Lists.newArrayList("R7OsqSbNQS69mq74kMNceQ", "EBGrtCo0RE6i_E9yNDdCOg", "kmpySmUISimoRrJL6NL73w");
 
   private MigratorUtility() {}
 
@@ -198,17 +201,6 @@ public class MigratorUtility {
     return identifier;
   }
 
-  public static String generateHarnessUIFormatIdentifier(String name) {
-    if (StringUtils.isBlank(name)) {
-      return "";
-    }
-    name = StringUtils.stripAccents(name);
-    return name.trim()
-        .replaceAll("^[0-9-$]*", "") // remove starting digits, dashes and $
-        .replaceAll("[^0-9a-zA-Z_$ ]", "") // remove special chars except _ and $
-        .replaceAll("\\s", "_"); // replace spaces with _
-  }
-
   public static String generateCamelCaseIdentifier(String name) {
     if (StringUtils.isBlank(name)) {
       return "";
@@ -239,6 +231,9 @@ public class MigratorUtility {
   public static ParameterField<Timeout> getTimeout(Long timeoutInMillis) {
     if (timeoutInMillis == null) {
       return ParameterField.createValueField(Timeout.builder().timeoutString(DEFAULT_TIMEOUT).build());
+    }
+    if (timeoutInMillis < 10000L) {
+      timeoutInMillis = 10000L;
     }
     String timeOut = convertToHumanReadableTimeFormat(timeoutInMillis);
     return ParameterField.createValueField(Timeout.builder().timeoutString(timeOut).build());
@@ -453,8 +448,15 @@ public class MigratorUtility {
 
   public static List<NGVariable> getVariables(MigrationContext migrationContext, List<Variable> cgVariables) {
     List<NGVariable> variables = new ArrayList<>();
+    Set<String> keySet = new HashSet<>();
     if (EmptyPredicate.isNotEmpty(cgVariables)) {
-      cgVariables.forEach(serviceVariable -> variables.add(getNGVariable(migrationContext, serviceVariable)));
+      cgVariables.forEach(serviceVariable -> {
+        NGVariable ngVariable = getNGVariable(migrationContext, serviceVariable);
+        if (!keySet.contains(ngVariable.getName())) {
+          variables.add(ngVariable);
+          keySet.add(ngVariable.getName());
+        }
+      });
     }
     return variables;
   }
@@ -757,7 +759,7 @@ public class MigratorUtility {
     if (resp.code() >= 200 && resp.code() < 300) {
       return MigrationImportSummaryDTO.builder().success(true).errors(Collections.emptyList()).build();
     }
-    log.info("The Yaml of the generated data was - {}", yamlFile.getYaml());
+    log.info("The Yaml of the generated data was - \n{}", NGYamlUtils.getYamlString(yamlFile.getYaml()));
     Map<String, Object> error = JsonUtils.asObject(
         resp.errorBody() != null ? resp.errorBody().string() : "{}", new TypeReference<Map<String, Object>>() {});
     log.error(String.format("There was error creating the %s. Response from NG - %s with error body errorBody -  %s",
@@ -926,6 +928,7 @@ public class MigratorUtility {
     }
     return defaultValue;
   }
+
   public static boolean isExpression(String str) {
     if (StringUtils.isBlank(str)) {
       return false;

@@ -9,6 +9,7 @@ package io.harness.plancreator.steps.common.v1;
 
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 
+import io.harness.annotation.RecasterAlias;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.plancreator.steps.common.SpecParameters;
 import io.harness.pms.sdk.core.steps.io.StepParameters;
@@ -27,6 +28,7 @@ import lombok.experimental.FieldDefaults;
 @Data
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@RecasterAlias("io.harness.plancreator.steps.common.v1.StageElementParametersV1")
 @OwnedBy(CDC)
 public class StageElementParametersV1 implements StepParameters {
   String uuid;
@@ -42,6 +44,7 @@ public class StageElementParametersV1 implements StepParameters {
   SpecParameters spec;
   ParameterField<String> timeout;
   ParameterField<List<String>> delegate;
+  Boolean skipInstances;
 
   @Override
   public List<String> excludeKeysFromStepInputs() {
@@ -63,6 +66,7 @@ public class StageElementParametersV1 implements StepParameters {
         .variables(this.variables)
         .labels(this.labels)
         .delegate(this.delegate)
+        .skipInstances(this.skipInstances)
         .build();
   }
 }

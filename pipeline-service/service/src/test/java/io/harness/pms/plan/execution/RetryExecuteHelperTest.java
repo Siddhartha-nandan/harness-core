@@ -7,6 +7,7 @@
 
 package io.harness.pms.plan.execution;
 
+import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.rule.OwnerRule.BRIJESH;
 import static io.harness.rule.OwnerRule.NAMAN;
 import static io.harness.rule.OwnerRule.PRASHANTSHARMA;
@@ -26,6 +27,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.engine.executions.node.NodeExecutionServiceImpl;
 import io.harness.engine.executions.plan.PlanExecutionMetadataService;
+import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.executions.retry.RetryGroup;
 import io.harness.engine.executions.retry.RetryHistoryResponseDto;
 import io.harness.engine.executions.retry.RetryInfo;
@@ -87,6 +89,7 @@ public class RetryExecuteHelperTest extends CategoryTest {
   @Mock private PMSPipelineService pipelineService;
   @Mock private PMSExecutionService executionService;
   @Mock private PlanExecutionMetadataService planExecutionMetadataService;
+  @Mock private PlanExecutionService planExecutionService;
 
   String accountId = "acc";
   String orgId = "org";
@@ -612,6 +615,15 @@ public class RetryExecuteHelperTest extends CategoryTest {
     resultProcessedYaml = readFile("retry/result-processed-yaml-with-matrix-1.yaml");
     replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(
         previousYaml, currentYaml, Collections.singletonList("sssss"), new ArrayList<>(), HarnessYamlVersion.V0);
+    assertEquals(replacedProcessedYaml, resultProcessedYaml);
+
+    // Retry failed deployment stage. First run was missing infrastructureDefinitions input. Retry execution is fixed
+    // to provide infrastructureDefinitions.
+    previousYaml = readFile("retry/previous-retry-processed-yaml-without-infraDef.yaml");
+    currentYaml = readFile("retry/current-retry-processed-yaml-without-infraDef.yaml");
+    resultProcessedYaml = readFile("retry/result-retry-processed-yaml-without-infraDef.yaml");
+    replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(
+        previousYaml, currentYaml, Collections.singletonList("stage1"), new ArrayList<>(), HarnessYamlVersion.V0);
     assertEquals(replacedProcessedYaml, resultProcessedYaml);
   }
 
@@ -1300,6 +1312,45 @@ public class RetryExecuteHelperTest extends CategoryTest {
     assertThat(retryInfo.isResumable()).isTrue();
   }
 
+  @Test
+  @Owner(developers = BRIJESH)
+  @Category(UnitTests.class)
+  public void testFetchOnlyFailedStagesFromPlanExecutionId() {
+    String planExecutionId = generateUuid();
+    doReturn(
+        List.of(RetryStageInfo.builder().identifier("stage1").status(ExecutionStatus.FAILED).nextId("nextId1").build(),
+            RetryStageInfo.builder().identifier("stage2").status(ExecutionStatus.SUCCESS).nextId("nextId1").build(),
+            RetryStageInfo.builder().identifier("stage3").status(ExecutionStatus.FAILED).nextId("nextId2").build(),
+            RetryStageInfo.builder().identifier("stage4").status(ExecutionStatus.FAILED).nextId("nextId2").build(),
+            RetryStageInfo.builder().identifier("stage5").status(ExecutionStatus.SUCCESS).nextId("nextId2").build(),
+            RetryStageInfo.builder().identifier("stage6").status(ExecutionStatus.SUCCESS).build(),
+            RetryStageInfo.builder().identifier("stage7").status(ExecutionStatus.SUCCESS).build()))
+        .when(nodeExecutionService)
+        .getStageDetailFromPlanExecutionId(planExecutionId);
+    List<String> failedStagesResponses =
+        retryExecuteHelper.fetchOnlyFailedStages(planExecutionId, List.of("stage1", "stage2"));
+    assertThat(failedStagesResponses.size()).isEqualTo(1);
+    assertThat(failedStagesResponses.get(0)).isEqualTo("stage1");
+
+    assertThatThrownBy(() -> retryExecuteHelper.fetchOnlyFailedStages(planExecutionId, List.of("stage1")))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage("Run only failed stages is applicable only for failed parallel group stages");
+
+    failedStagesResponses =
+        retryExecuteHelper.fetchOnlyFailedStages(planExecutionId, List.of("stage3", "stage4", "stage5"));
+    assertThat(failedStagesResponses.size()).isEqualTo(2);
+    assertThat(failedStagesResponses.contains("stage3")).isTrue();
+    assertThat(failedStagesResponses.contains("stage4")).isTrue();
+
+    assertThatThrownBy(() -> retryExecuteHelper.fetchOnlyFailedStages(planExecutionId, List.of("stage6", "stage7")))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage("No failed stage found in parallel group");
+
+    assertThatThrownBy(() -> retryExecuteHelper.fetchOnlyFailedStages(planExecutionId, List.of("stage8", "stage7")))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(
+            "The execution can not be retried because the retryStagesIdentifier could not be found in any stage Groups. Please provide the correct list of retryStagesIdentifier");
+  }
   private EntityGitDetails buildEntityGitDetails() {
     return EntityGitDetails.builder().branch(branch).repoName(repoName).filePath(filepath).build();
   }

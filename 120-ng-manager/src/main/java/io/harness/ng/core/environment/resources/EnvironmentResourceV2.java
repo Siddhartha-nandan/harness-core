@@ -70,6 +70,8 @@ import io.harness.gitsync.interceptor.GitEntityCreateInfoDTO;
 import io.harness.gitsync.interceptor.GitEntityFindInfoDTO;
 import io.harness.gitsync.interceptor.GitEntityUpdateInfoDTO;
 import io.harness.ng.beans.PageResponse;
+import io.harness.ng.core.beans.EntityWithGitInfo;
+import io.harness.ng.core.beans.EnvironmentAndServiceOverridesMetadataInput;
 import io.harness.ng.core.beans.NGEntityTemplateResponseDTO;
 import io.harness.ng.core.dto.ErrorDTO;
 import io.harness.ng.core.dto.FailureDTO;
@@ -82,6 +84,8 @@ import io.harness.ng.core.environment.beans.EnvironmentInputsMergedResponseDto;
 import io.harness.ng.core.environment.beans.EnvironmentInputsetYamlAndServiceOverridesMetadataInput;
 import io.harness.ng.core.environment.dto.EnvironmentRequestDTO;
 import io.harness.ng.core.environment.dto.EnvironmentResponse;
+import io.harness.ng.core.environment.dto.ScopedEnvironmentRequestDTO;
+import io.harness.ng.core.environment.dto.ScopedEnvironmentResponseDTO;
 import io.harness.ng.core.environment.mappers.EnvironmentFilterHelper;
 import io.harness.ng.core.environment.mappers.EnvironmentMapper;
 import io.harness.ng.core.environment.services.EnvironmentService;
@@ -116,6 +120,8 @@ import io.harness.utils.IdentifierRefHelper;
 import io.harness.utils.NGFeatureFlagHelperService;
 import io.harness.utils.PageUtils;
 
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import com.google.common.base.Preconditions;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -232,6 +238,8 @@ public class EnvironmentResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "The saved Environment")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<EnvironmentResponse>
   get(@Parameter(description = ENVIRONMENT_PARAM_MESSAGE) @PathParam(
           "environmentIdentifier") @ResourceIdentifier String environmentIdentifier,
@@ -275,6 +283,8 @@ public class EnvironmentResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns the created Environment")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<EnvironmentResponse>
   create(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
              NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
@@ -342,6 +352,8 @@ public class EnvironmentResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns true if the Environment is deleted")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<Boolean>
   delete(@HeaderParam(IF_MATCH) String ifMatch,
       @Parameter(description = ENVIRONMENT_PARAM_MESSAGE) @PathParam(
@@ -355,7 +367,7 @@ public class EnvironmentResourceV2 {
       @Parameter(description = FORCE_DELETE_MESSAGE) @QueryParam(NGCommonEntityConstants.FORCE_DELETE) @DefaultValue(
           "false") boolean forceDelete) {
     Optional<Environment> environmentOptional =
-        environmentService.get(accountId, orgIdentifier, projectIdentifier, environmentIdentifier, false);
+        environmentService.getMetadata(accountId, orgIdentifier, projectIdentifier, environmentIdentifier, false);
     if (environmentOptional.isEmpty()) {
       throw new NotFoundException(format("Environment with identifier [%s] in project [%s], org [%s] not found",
           environmentIdentifier, projectIdentifier, orgIdentifier));
@@ -378,6 +390,8 @@ public class EnvironmentResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns the updated Environment")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<EnvironmentResponse>
   update(@HeaderParam(IF_MATCH) String ifMatch,
       @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
@@ -422,6 +436,8 @@ public class EnvironmentResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns the updated Environment")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<EnvironmentResponse>
   upsert(@HeaderParam(IF_MATCH) String ifMatch,
       @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
@@ -465,6 +481,8 @@ public class EnvironmentResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(description = "Returns the list of Environments for a Project")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PageResponse<EnvironmentResponse>>
   listEnvironment(@Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
                       NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
@@ -500,6 +518,29 @@ public class EnvironmentResourceV2 {
     return getEnvironmentsPageByCriteria(criteria, pageRequest);
   }
 
+  @POST
+  @Path("scope-filtered-list")
+  @Hidden
+  @ApiOperation(hidden = true, value = "Get Scope Filtered Environment List", nickname = "getScopedEnvironments")
+  @InternalApi
+  @Timed
+  @ResponseMetered
+  public ResponseDTO<PageResponse<ScopedEnvironmentResponseDTO>> getScopedEnvironments(
+      @Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
+      @Parameter(description = NGCommonEntityConstants.SIZE_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.SIZE) @DefaultValue("100") int size,
+      @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
+          NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
+      @Parameter(description = "Environment Type") @QueryParam("envType") @ResourceIdentifier String envType,
+      @RequestBody(description = "This is the body for filter properties like list of orgIds, projectIds and Scopes.")
+      ScopedEnvironmentRequestDTO scopedEnvironmentRequestDTO) {
+    Page<Environment> environmentEntities =
+        environmentService.list(accountId, envType, scopedEnvironmentRequestDTO, page, size);
+    return ResponseDTO.newResponse(
+        getNGPageResponse(environmentEntities.map(EnvironmentMapper::toScopedResponseWrapper)));
+  }
+
   @GET
   @Path("list/scoped")
   @Hidden
@@ -510,6 +551,8 @@ public class EnvironmentResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(description = "Gets Environment list filtered by scoped env refs")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PageResponse<EnvironmentResponse>>
   getEnvironmentsFilteredByRefs(@Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
                                     NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
@@ -548,6 +591,8 @@ public class EnvironmentResourceV2 {
   @ApiOperation(value = "Get list of instances grouped by service for particular environment",
       nickname = "getActiveServiceInstancesForEnvironment")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<InstanceGroupedByServiceList>
   getActiveServiceInstancesForEnvironment(
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
@@ -570,6 +615,8 @@ public class EnvironmentResourceV2 {
         ApiResponse(description = "Returns the list of Environments for a Project")
       },
       hidden = true)
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PageResponse<EnvironmentResponse>>
   listEnvironmentsV2(@Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
                          NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
@@ -633,6 +680,8 @@ public class EnvironmentResourceV2 {
         ApiResponse(description = "Returns the list of Environments for a Project that are accessible")
       },
       hidden = true)
+  @Timed
+  @ResponseMetered
   public ResponseDTO<List<EnvironmentResponse>>
   listAccessEnvironmentsV2(@Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
                                NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
@@ -690,6 +739,8 @@ public class EnvironmentResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns the list of Environments that are accessible")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<List<EnvironmentResponse>>
   listAccessEnvironment(@Parameter(description = NGCommonEntityConstants.PAGE) @QueryParam(
                             NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
@@ -763,6 +814,8 @@ public class EnvironmentResourceV2 {
   @Path("/mergeEnvironmentInputs/{environmentIdentifier}")
   @ApiOperation(value = "This api merges old and new environment inputs YAML", nickname = "mergeEnvironmentInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<EnvironmentInputsMergedResponseDto> mergeEnvironmentInputs(
       @Parameter(description = ENVIRONMENT_PARAM_MESSAGE) @PathParam(
           NGCommonEntityConstants.ENVIRONMENT_IDENTIFIER_KEY) @ResourceIdentifier String environmentIdentifier,
@@ -786,6 +839,8 @@ public class EnvironmentResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(description = "Upsert ( Create/Update )  a Service Override in an Environment.")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<io.harness.ng.core.serviceoverride.beans.ServiceOverrideResponseDTO>
   upsertServiceOverride(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
                             NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
@@ -847,6 +902,8 @@ public class EnvironmentResourceV2 {
   @ApiOperation(value = "This api returns environments runtime input YAML and serviceOverrides Yaml",
       nickname = "getEnvironmentsInputYamlAndServiceOverrides")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<EnvironmentInputSetYamlAndServiceOverridesMetadataDTO>
   getEnvironmentsInputYamlAndServiceOverrides(
       @Parameter(description = ENVIRONMENT_YAML_METADATA_INPUT_PARAM_MESSAGE) @Valid
@@ -875,6 +932,57 @@ public class EnvironmentResourceV2 {
             isServiceOverrideV2Enabled);
 
     return ResponseDTO.newResponse(environmentInputsetYamlandServiceOverridesMetadataDTO);
+  }
+
+  @POST
+  @Path("v2/env-service-override-metadata")
+  @ApiOperation(value = "This api returns environments runtime input YAML and serviceOverrides Yaml",
+      nickname = "getEnvironmentsInputYamlAndServiceOverridesV2")
+  @Hidden
+  @Timed
+  @ResponseMetered
+  public ResponseDTO<EnvironmentInputSetYamlAndServiceOverridesMetadataDTO>
+  getEnvironmentsInputYamlAndServiceOverridesV2(
+      @Parameter(description = ENVIRONMENT_YAML_METADATA_INPUT_PARAM_MESSAGE) @Valid
+      @NotNull EnvironmentAndServiceOverridesMetadataInput environmentYamlMetadata,
+      @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
+          NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
+      @Parameter(description = NGCommonEntityConstants.ORG_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
+      @Parameter(description = NGCommonEntityConstants.PROJECT_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier,
+      @Parameter(description = "This contains details of Git Entity like Git Branch info for the Base entity")
+      @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo,
+      @Parameter(description = "Specifies whether to load the entity from cache") @HeaderParam(
+          "Load-From-Cache") @DefaultValue("false") String loadFromCache) {
+    // get environment ref-> branch map
+    Map<String, String> environmentRefBranchMap = getEnvironmentBranchMap(
+        accountId, orgIdentifier, projectIdentifier, environmentYamlMetadata.getEntityWithGitInfoList());
+    List<String> envRefs = new ArrayList<>(environmentRefBranchMap.keySet());
+    addEnvRefsFromEnvGroup(environmentYamlMetadata, accountId, orgIdentifier, projectIdentifier, envRefs);
+
+    boolean isServiceOverrideV2Enabled =
+        featureFlagHelperService.isEnabled(accountId, FeatureName.CDS_SERVICE_OVERRIDES_2_0);
+    EnvironmentInputSetYamlAndServiceOverridesMetadataDTO responseDTO =
+        environmentService.getEnvironmentsInputYamlAndServiceOverridesMetadata(accountId, orgIdentifier,
+            projectIdentifier, envRefs, environmentRefBranchMap, environmentYamlMetadata.getServiceIdentifiers(),
+            isServiceOverrideV2Enabled, GitXUtils.parseLoadFromCacheHeaderParam(loadFromCache));
+
+    return ResponseDTO.newResponse(responseDTO);
+  }
+
+  private void addEnvRefsFromEnvGroup(EnvironmentAndServiceOverridesMetadataInput environmentYamlMetadata,
+      String accountId, String orgIdentifier, String projectIdentifier, List<String> envRefs) {
+    if (isNotEmpty(environmentYamlMetadata.getEnvGroupIdentifier())
+        && !EngineExpressionEvaluator.hasExpressions(environmentYamlMetadata.getEnvGroupIdentifier())) {
+      Optional<EnvironmentGroupEntity> environmentGroupEntity = environmentGroupService.get(
+          accountId, orgIdentifier, projectIdentifier, environmentYamlMetadata.getEnvGroupIdentifier(), false);
+
+      if (environmentGroupEntity.isPresent()
+          && EmptyPredicate.isNotEmpty(environmentGroupEntity.get().getEnvIdentifiers())) {
+        envRefs.addAll(environmentGroupEntity.get().getEnvIdentifiers());
+      }
+    }
   }
 
   private void validateServiceOverrides(NGServiceOverridesEntity serviceOverridesEntity) {
@@ -912,6 +1020,8 @@ public class EnvironmentResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(description = "Returns true if the Service Override is deleted")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<Boolean>
   deleteServiceOverride(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
                             NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
@@ -965,11 +1075,13 @@ public class EnvironmentResourceV2 {
         ApiResponse(description = "Returns the list of Service Overrides for an Environment."
                 + "serviceIdentifier, if passed, can be used to get the overrides for that particular Service in the Environment")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PageResponse<ServiceOverrideResponseDTO>>
   listServiceOverrides(@Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
                            NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
       @Parameter(description = NGCommonEntityConstants.SIZE_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.SIZE) @DefaultValue("100") int size,
+          NGCommonEntityConstants.SIZE) @DefaultValue("500") int size,
       @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
           NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
       @Parameter(description = NGCommonEntityConstants.ORG_PARAM_MESSAGE) @QueryParam(
@@ -1019,6 +1131,8 @@ public class EnvironmentResourceV2 {
   @Path("/runtimeInputs")
   @ApiOperation(value = "This api returns Environment inputs YAML", nickname = "getEnvironmentInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<NGEntityTemplateResponseDTO> getEnvironmentInputs(
       @Parameter(description = ENVIRONMENT_PARAM_MESSAGE) @NotNull @QueryParam(
           "environmentIdentifier") @ResourceIdentifier String environmentIdentifier,
@@ -1029,7 +1143,7 @@ public class EnvironmentResourceV2 {
       @Parameter(description = NGCommonEntityConstants.PROJECT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier) {
     String environmentInputsYaml = environmentService.createEnvironmentInputsYaml(
-        accountId, orgIdentifier, projectIdentifier, environmentIdentifier);
+        accountId, orgIdentifier, projectIdentifier, environmentIdentifier, null);
 
     return ResponseDTO.newResponse(
         NGEntityTemplateResponseDTO.builder().inputSetTemplateYaml(environmentInputsYaml).build());
@@ -1039,6 +1153,8 @@ public class EnvironmentResourceV2 {
   @Path("/serviceOverrides/runtimeInputs")
   @ApiOperation(value = "This api returns Service Override inputs YAML", nickname = "getServiceOverrideInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<NGEntityTemplateResponseDTO> getServiceOverrideInputs(
       @Parameter(description = ENVIRONMENT_PARAM_MESSAGE) @NotNull @QueryParam(
           NGCommonEntityConstants.ENVIRONMENT_IDENTIFIER_KEY) @ResourceIdentifier String environmentIdentifier,
@@ -1061,6 +1177,8 @@ public class EnvironmentResourceV2 {
   @Path("/attributes")
   @ApiOperation(hidden = true, value = "Get Environments Attributes", nickname = "getEnvironmentsAttributes")
   @InternalApi
+  @Timed
+  @ResponseMetered
   public ResponseDTO<List<Map<String, String>>> getEnvironmentsAttributes(
       @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
       @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
@@ -1301,5 +1419,22 @@ public class EnvironmentResourceV2 {
       String accountId, String orgId, String projectId, String envIdentifier) {
     String envQualifiedRef = IdentifierRefHelper.getRefFromIdentifierOrRef(accountId, orgId, projectId, envIdentifier);
     return envQualifiedRef.replace(".", "_");
+  }
+
+  private Map<String, String> getEnvironmentBranchMap(String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, List<EntityWithGitInfo> entityWithGitInfo) {
+    Map<String, String> resultMap = new HashMap<>();
+
+    if (isEmpty(entityWithGitInfo)) {
+      return resultMap;
+    }
+
+    for (EntityWithGitInfo input : entityWithGitInfo) {
+      String scopedRef = IdentifierRefHelper.getRefFromIdentifierOrRef(
+          accountIdentifier, orgIdentifier, projectIdentifier, input.getRef());
+      resultMap.put(scopedRef, input.getBranch());
+    }
+
+    return resultMap;
   }
 }

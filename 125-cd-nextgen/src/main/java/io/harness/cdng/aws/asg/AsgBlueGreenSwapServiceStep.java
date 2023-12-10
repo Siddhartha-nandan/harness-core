@@ -7,6 +7,7 @@
 
 package io.harness.cdng.aws.asg;
 
+import static io.harness.cdng.aws.asg.AsgStepCommonHelper.getLoadBalancers;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.exception.WingsException.USER;
 
@@ -54,12 +55,12 @@ import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.sdk.core.steps.io.StepResponse.StepResponseBuilder;
 import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import software.wings.beans.TaskType;
 
 import com.google.inject.Inject;
 import java.util.List;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_AMI_ASG})
@@ -129,8 +130,8 @@ public class AsgBlueGreenSwapServiceStep extends CdTaskExecutable<AsgCommandResp
       executionSweepingOutputService.consume(ambiance, OutcomeExpressionConstants.ASG_BLUE_GREEN_SWAP_SERVICE_OUTCOME,
           asgBlueGreenSwapServiceOutcome, StepOutcomeGroup.STEP.name());
 
-      InfrastructureOutcome infrastructureOutcome = (InfrastructureOutcome) outcomeService.resolve(
-          ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME));
+      InfrastructureOutcome infrastructureOutcome =
+          asgStepCommonHelper.getInfrastructureOutcomeWithUpdatedExpressions(ambiance);
 
       List<ServerInstanceInfo> serverInstanceInfos = asgStepCommonHelper.getServerInstanceInfos(
           asgBlueGreenSwapServiceResponse, infrastructureOutcome.getInfrastructureKey(),
@@ -190,11 +191,15 @@ public class AsgBlueGreenSwapServiceStep extends CdTaskExecutable<AsgCommandResp
           .build();
     }
 
-    InfrastructureOutcome infrastructureOutcome = (InfrastructureOutcome) outcomeService.resolve(
-        ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME));
+    InfrastructureOutcome infrastructureOutcome =
+        asgStepCommonHelper.getInfrastructureOutcomeWithUpdatedExpressions(ambiance);
 
     AsgLoadBalancerConfig asgLoadBalancerConfig = getLoadBalancer(asgBlueGreenPrepareRollbackDataOutcome);
-    List<AsgLoadBalancerConfig> loadBalancers = getLoadBalancers(asgBlueGreenPrepareRollbackDataOutcome);
+    List<AsgLoadBalancerConfig> loadBalancers = getLoadBalancers(asgBlueGreenPrepareRollbackDataOutcome, false);
+
+    if (isEmpty(asgLoadBalancerConfig.getStageListenerArn()) && isEmpty(loadBalancers)) {
+      throw new InvalidRequestException("No loadBalancer provided with stage and prod Listeners", USER);
+    }
 
     AsgBlueGreenSwapServiceRequest asgBlueGreenSwapServiceRequest =
         AsgBlueGreenSwapServiceRequest.builder()
@@ -220,6 +225,12 @@ public class AsgBlueGreenSwapServiceStep extends CdTaskExecutable<AsgCommandResp
         .getTaskRequest();
   }
 
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
+  }
+
   public static AsgLoadBalancerConfig getLoadBalancer(
       AsgBlueGreenPrepareRollbackDataOutcome asgBlueGreenPrepareRollbackDataOutcome) {
     return AsgLoadBalancerConfig.builder()
@@ -231,46 +242,5 @@ public class AsgBlueGreenSwapServiceStep extends CdTaskExecutable<AsgCommandResp
         .stageListenerRuleArn(asgBlueGreenPrepareRollbackDataOutcome.getStageListenerRuleArn())
         .stageTargetGroupArnsList(asgBlueGreenPrepareRollbackDataOutcome.getStageTargetGroupArnsList())
         .build();
-  }
-
-  public static List<AsgLoadBalancerConfig> getLoadBalancers(
-      AsgBlueGreenPrepareRollbackDataOutcome asgBlueGreenPrepareRollbackDataOutcome) {
-    if (isEmpty(asgBlueGreenPrepareRollbackDataOutcome.getLoadBalancerConfigs())) {
-      return null;
-    }
-
-    return asgBlueGreenPrepareRollbackDataOutcome.getLoadBalancerConfigs()
-        .stream()
-        .map(lb
-            -> AsgLoadBalancerConfig.builder()
-                   .loadBalancer(lb.getLoadBalancer().getValue())
-                   .prodListenerArn(lb.getProdListener().getValue())
-                   .prodListenerRuleArn(lb.getProdListenerRuleArn().getValue())
-                   .stageListenerArn(lb.getStageListener().getValue())
-                   .stageListenerRuleArn(lb.getStageListenerRuleArn().getValue())
-                   .prodTargetGroupArnsList(getProdTargetGroupArnListForLoadBalancer(
-                       asgBlueGreenPrepareRollbackDataOutcome, lb.getLoadBalancer().getValue()))
-                   .stageTargetGroupArnsList(getStageTargetGroupArnListForLoadBalancer(
-                       asgBlueGreenPrepareRollbackDataOutcome, lb.getLoadBalancer().getValue()))
-                   .build())
-        .collect(Collectors.toList());
-  }
-
-  public static List<String> getProdTargetGroupArnListForLoadBalancer(
-      AsgBlueGreenPrepareRollbackDataOutcome asgBlueGreenPrepareRollbackDataOutcome, String loadBalancer) {
-    if (isEmpty(asgBlueGreenPrepareRollbackDataOutcome.getProdTargetGroupArnListForLoadBalancer())) {
-      return null;
-    }
-
-    return asgBlueGreenPrepareRollbackDataOutcome.getProdTargetGroupArnListForLoadBalancer().get(loadBalancer);
-  }
-
-  public static List<String> getStageTargetGroupArnListForLoadBalancer(
-      AsgBlueGreenPrepareRollbackDataOutcome asgBlueGreenPrepareRollbackDataOutcome, String loadBalancer) {
-    if (isEmpty(asgBlueGreenPrepareRollbackDataOutcome.getStageTargetGroupArnListForLoadBalancer())) {
-      return null;
-    }
-
-    return asgBlueGreenPrepareRollbackDataOutcome.getStageTargetGroupArnListForLoadBalancer().get(loadBalancer);
   }
 }

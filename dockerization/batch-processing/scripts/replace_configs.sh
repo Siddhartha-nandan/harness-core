@@ -233,6 +233,10 @@ if [[ "" != "$CONNECTOR_HEALTH_UPDATE_CRON" ]]; then
   export CONNECTOR_HEALTH_UPDATE_CRON; yq -i '.scheduler-jobs-config.connectorHealthUpdateJobCron=env(CONNECTOR_HEALTH_UPDATE_CRON)' $CONFIG_FILE
 fi
 
+if [[ "" != "$DELEGATE_HEALTH_UPDATE_CRON" ]]; then
+  export DELEGATE_HEALTH_UPDATE_CRON; yq -i '.scheduler-jobs-config.delegateHealthUpdateJobCron=env(DELEGATE_HEALTH_UPDATE_CRON)' $CONFIG_FILE
+fi
+
 if [[ "" != "$AWS_ACCOUNT_TAGS_COLLECTION_CRON" ]]; then
   export AWS_ACCOUNT_TAGS_COLLECTION_CRON; yq -i '.scheduler-jobs-config.awsAccountTagsCollectionJobCron=env(AWS_ACCOUNT_TAGS_COLLECTION_CRON)' $CONFIG_FILE
 fi
@@ -301,6 +305,10 @@ if [[ "" != "$CONNECTOR_HEALTH_UPDATE_JOB_ENABLED" ]]; then
   export CONNECTOR_HEALTH_UPDATE_JOB_ENABLED; yq -i '.connectorHealthUpdateJobConfig.enabled=env(CONNECTOR_HEALTH_UPDATE_JOB_ENABLED)' $CONFIG_FILE
 fi
 
+if [[ "" != "$DELEGATE_HEALTH_UPDATE_JOB_ENABLED" ]]; then
+  export DELEGATE_HEALTH_UPDATE_JOB_ENABLED; yq -i '.delegateHealthUpdateJobConfig.enabled=env(DELEGATE_HEALTH_UPDATE_JOB_ENABLED)' $CONFIG_FILE
+fi
+
 if [[ "" != "$AWS_ACCOUNT_TAGS_COLLECTION_JOB_ENABLED" ]]; then
   export AWS_ACCOUNT_TAGS_COLLECTION_JOB_ENABLED; yq -i '.awsAccountTagsCollectionJobConfig.enabled=env(AWS_ACCOUNT_TAGS_COLLECTION_JOB_ENABLED)' $CONFIG_FILE
 fi
@@ -348,6 +356,7 @@ replace_key_value deployMode "$DEPLOY_MODE"
 replace_key_value clickHouseConfig.url "$CLICKHOUSE_URL"
 replace_key_value clickHouseConfig.username "$CLICKHOUSE_USERNAME"
 replace_key_value clickHouseConfig.password "$CLICKHOUSE_PASSWORD"
+replace_key_value clickHouseConfig.socketTimeout "$CLICKHOUSE_SOCKET_TIMEOUT"
 
 replace_key_value isClickHouseEnabled "$CLICKHOUSE_ENABLED"
 

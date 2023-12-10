@@ -22,6 +22,8 @@ import static io.harness.ci.commonconstants.CIExecutionConstants.RESTORE_CACHE_S
 import static io.harness.ci.commonconstants.CIExecutionConstants.RESTORE_CACHE_STEP_NAME;
 import static io.harness.ci.commonconstants.CIExecutionConstants.SAVE_CACHE_STEP_ID;
 import static io.harness.ci.commonconstants.CIExecutionConstants.SAVE_CACHE_STEP_NAME;
+import static io.harness.ci.execution.buildstate.PluginSettingUtils.PLUGIN_ACL;
+import static io.harness.ci.execution.buildstate.PluginSettingUtils.PLUGIN_ACL_PRIVATE;
 import static io.harness.ci.execution.buildstate.PluginSettingUtils.PLUGIN_ARCHIVE_FORMAT;
 import static io.harness.ci.execution.buildstate.PluginSettingUtils.PLUGIN_AUTO_CACHE_ACCOUNT_ID;
 import static io.harness.ci.execution.buildstate.PluginSettingUtils.PLUGIN_AUTO_DETECT_CACHE;
@@ -245,7 +247,8 @@ public class CIStepGroupUtils {
       throw new CIStageExecutionException("Input infrastructure can not be empty");
     }
 
-    boolean queueEnabled = featureFlagService.isEnabled(QUEUE_CI_EXECUTIONS_CONCURRENCY, accountId);
+    boolean queueEnabled = infrastructure.getType() == Infrastructure.Type.HOSTED_VM
+        && featureFlagService.isEnabled(QUEUE_CI_EXECUTIONS_CONCURRENCY, accountId);
     if (queueEnabled) {
       return ParameterField.createValueField(Timeout.fromString("10h"));
     }
@@ -400,7 +403,7 @@ public class CIStepGroupUtils {
     String uuid = generateUuid();
     // image is not controlled by user
     String restoreCacheImage = ciExecutionServiceConfig.getStepConfig().getCacheGCSConfig().getImage();
-    if (featureFlagService.isEnabled(FeatureName.CI_USE_S3_FOR_CACHE, accountId)) {
+    if (featureFlagService.isEnabled(FeatureName.CI_ENABLE_BARE_METAL, accountId)) {
       restoreCacheImage = ciExecutionServiceConfig.getStepConfig().getCacheS3Config().getImage();
     }
 
@@ -451,7 +454,7 @@ public class CIStepGroupUtils {
     String uuid = generateUuid();
     // image is not controlled by user
     String saveCacheImage = ciExecutionServiceConfig.getStepConfig().getCacheGCSConfig().getImage();
-    if (featureFlagService.isEnabled(FeatureName.CI_USE_S3_FOR_CACHE, accountId)) {
+    if (featureFlagService.isEnabled(FeatureName.CI_ENABLE_BARE_METAL, accountId)) {
       saveCacheImage = ciExecutionServiceConfig.getStepConfig().getCacheS3Config().getImage();
     }
 
@@ -514,6 +517,7 @@ public class CIStepGroupUtils {
         envVariables.put(PLUGIN_CACHE_KEY, ParameterField.createValueField(cacheKey));
       }
     }
+    envVariables.put(PLUGIN_ACL, ParameterField.createValueField(PLUGIN_ACL_PRIVATE));
     envVariables.put(PLUGIN_ARCHIVE_FORMAT, ParameterField.createValueField(ZSTD_ARCHIVE_FORMAT));
     envVariables.put(PLUGIN_AUTO_DETECT_CACHE, ParameterField.createValueField(STRING_TRUE));
     envVariables.put(PLUGIN_AUTO_CACHE_ACCOUNT_ID, ParameterField.createValueField(accountId));

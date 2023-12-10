@@ -38,6 +38,8 @@ public class OrganizationMapper {
                                           .description(organization.getDescription())
                                           .identifier(organization.getIdentifier())
                                           .name(organization.getName())
+                                          .uniqueId(organization.getUniqueId())
+                                          .parentUniqueId(organization.getParentUniqueId())
                                           .tags(convertToMap(organization.getTags()))
                                           .build();
     organizationDTO.setHarnessManaged(Boolean.TRUE.equals(organization.getHarnessManaged()));

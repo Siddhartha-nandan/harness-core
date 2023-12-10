@@ -39,6 +39,8 @@ public class ResourceTypeConstants {
   public static final String API_KEY = "API_KEY";
   public static final String TOKEN = "TOKEN";
   public static final String DELEGATE_TOKEN = "DELEGATE_TOKEN";
+  public static final String DASHBOARD = "DASHBOARD";
+  public static final String DASHBOARD_FOLDER = "DASHBOARD_FOLDER";
   public static final String GOVERNANCE_POLICY = "GOVERNANCE_POLICY";
   public static final String GOVERNANCE_POLICY_SET = "GOVERNANCE_POLICY_SET";
   public static final String FILE = "FILE";
@@ -86,6 +88,13 @@ public class ResourceTypeConstants {
   public static final String SEI_INSIGHTS = "SEI_INSIGHTS";
   public static final String IDP_APP_CONFIGS = "IDP_APP_CONFIGS";
   public static final String IDP_CONFIG_ENV_VARIABLES = "IDP_CONFIG_ENV_VARIABLES";
+  public static final String IDP_PROXY_HOST = "IDP_PROXY_HOST";
+
+  public static final String IDP_SCORECARDS = "IDP_SCORECARDS";
+  public static final String IDP_CHECKS = "IDP_CHECKS";
+  public static final String IDP_ALLOW_LIST = "IDP_ALLOW_LIST";
+
+  public static final String IDP_OAUTH_CONFIG = "IDP_OAUTH_CONFIG";
 
   public static final String IDP_CATALOG_CONNECTOR = "IDP_CATALOG_CONNECTOR";
   public static final String GITOPS_REPOSITORY = "GITOPS_REPOSITORY";
@@ -96,4 +105,9 @@ public class ResourceTypeConstants {
   public static final String GITOPS_AGENT = "GITOPS_AGENT";
   public static final String GITOPS_PROJECT_MAPPING = "GITOPS_PROJECT_MAPPING";
   public static final String GITOPS_APPLICATION = "GITOPS_APPLICATION";
+
+  public static final String CODE_REPOSITORY = "CODE_REPOSITORY";
+  public static final String MODULE_LICENSE = "MODULE_LICENSE";
+
+  public static final String SSCA_ARTIFACT = "SSCA_ARTIFACT";
 }

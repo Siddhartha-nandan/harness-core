@@ -62,6 +62,8 @@ import io.harness.pms.plan.execution.service.PmsExecutionSummaryService;
 import io.harness.pms.rbac.PipelineRbacPermissions;
 import io.harness.utils.PageUtils;
 
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiModelProperty;
@@ -78,6 +80,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import javax.ws.rs.BeanParam;
@@ -142,6 +145,7 @@ public class ExecutionDetailsResource {
   private final String INVALID_PAGE_REQUEST_EXCEPTION_MESSAGE =
       "Please Verify Executions list parameters for page and size, page should be >= 0 and size should be > 0 and <=1000";
   private final String PIPELINE_RESOURCE_TYPE = "PIPELINE";
+  private final String PERMISSION_MISSING_MESSAGE = "Missing permission %s on %s";
 
   @POST
   @Path("/summary")
@@ -153,6 +157,8 @@ public class ExecutionDetailsResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns all the Executions of pipelines for given filter")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<Page<PipelineExecutionSummaryDTO>>
   getListOfExecutions(@Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true)
                       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
@@ -221,6 +227,8 @@ public class ExecutionDetailsResource {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "default",
             description = "Returns all the Executions Identifier of pipelines for given filter")
       })
+  @Timed
+  @ResponseMetered
   @NGAccessControlCheck(resourceType = PIPELINE_RESOURCE_TYPE, permission = PipelineRbacPermissions.PIPELINE_VIEW)
   public ResponseDTO<Page<PipelineExecutionIdentifierSummaryDTO>>
   getListOfExecutionIdentifier(
@@ -332,6 +340,8 @@ public class ExecutionDetailsResource {
             description =
                 "Return the Pipeline Execution details for given PlanExecution Id without full graph if stageNodeId is null")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PipelineExecutionDetailDTO>
   getExecutionDetailV2(
       @NotNull @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true) @QueryParam(
@@ -383,6 +393,8 @@ public class ExecutionDetailsResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Return Execution subGraph for a Given NodeExecution ID")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<NodeExecutionSubGraphResponse>
   getExecutionSubGraphForNodeExecution(
       @NotNull @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true) @QueryParam(
@@ -445,6 +457,8 @@ public class ExecutionDetailsResource {
             responseCode = "default", description = "Return the Pipeline Execution details for given PlanExecution Id")
       },
       deprecated = true)
+  @Timed
+  @ResponseMetered
   @Deprecated
   public ResponseDTO<PipelineExecutionDetailDTO>
   getExecutionDetail(@NotNull @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true)
@@ -486,7 +500,6 @@ public class ExecutionDetailsResource {
   @GET
   @Path("/{planExecutionId}/metadata")
   @ApiOperation(value = "Get metadata of an execution", nickname = "getExecutionData")
-  @NGAccessControlCheck(resourceType = PIPELINE_RESOURCE_TYPE, permission = PipelineRbacPermissions.PIPELINE_VIEW)
   @Operation(operationId = "getExecutionData", summary = "Get execution metadata of a pipeline execution",
       responses =
       {
@@ -499,6 +512,16 @@ public class ExecutionDetailsResource {
                 @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
       @NotNull @PathParam(NGCommonEntityConstants.PLAN_KEY) @Parameter(
           description = "ExecutionId of the execution for which we want to get Metadata") String planExecutionId) {
+    PipelineExecutionSummaryEntity pipelineExecutionSummaryEntity =
+        pmsExecutionSummaryService.getPipelineExecutionSummaryWithProjections(planExecutionId,
+            Set.of(PlanExecutionSummaryKeys.accountId, PlanExecutionSummaryKeys.orgIdentifier,
+                PlanExecutionSummaryKeys.projectIdentifier, PlanExecutionSummaryKeys.pipelineIdentifier));
+    accessControlClient.checkForAccessOrThrow(
+        ResourceScope.of(accountId, pipelineExecutionSummaryEntity.getOrgIdentifier(),
+            pipelineExecutionSummaryEntity.getProjectIdentifier()),
+        Resource.of(PIPELINE_RESOURCE_TYPE, pipelineExecutionSummaryEntity.getPipelineIdentifier()),
+        PipelineRbacPermissions.PIPELINE_VIEW,
+        String.format(PERMISSION_MISSING_MESSAGE, PipelineRbacPermissions.PIPELINE_VIEW, "pipeline"));
     ExecutionDataResponseDTO executionDetailsResponseDTO = pmsExecutionService.getExecutionData(planExecutionId);
     return ResponseDTO.newResponse(executionDetailsResponseDTO);
   }
@@ -566,6 +589,8 @@ public class ExecutionDetailsResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Return the Input Set YAML used for given Plan Execution")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<InputSetYamlWithTemplateDTO>
   getInputsetYamlV2(@NotNull @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true)
                     @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,

@@ -232,6 +232,10 @@ if [[ "" != "$CONNECTOR_HEALTH_UPDATE_CRON" ]]; then
   export CONNECTOR_HEALTH_UPDATE_CRON; yq -i '.scheduler-jobs-config.connectorHealthUpdateJobCron=env(CONNECTOR_HEALTH_UPDATE_CRON)' $CONFIG_FILE
 fi
 
+if [[ "" != "$DELEGATE_HEALTH_UPDATE_CRON" ]]; then
+  export DELEGATE_HEALTH_UPDATE_CRON; yq -i '.scheduler-jobs-config.delegateHealthUpdateJobCron=env(DELEGATE_HEALTH_UPDATE_CRON)' $CONFIG_FILE
+fi
+
 if [[ "" != "$AWS_ACCOUNT_TAGS_COLLECTION_CRON" ]]; then
   export AWS_ACCOUNT_TAGS_COLLECTION_CRON; yq -i '.scheduler-jobs-config.awsAccountTagsCollectionJobCron=env(AWS_ACCOUNT_TAGS_COLLECTION_CRON)' $CONFIG_FILE
 fi
@@ -324,6 +328,10 @@ if [[ "" != "$CONNECTOR_HEALTH_UPDATE_JOB_ENABLED" ]]; then
   export CONNECTOR_HEALTH_UPDATE_JOB_ENABLED; yq -i '.connectorHealthUpdateJobConfig.enabled=env(CONNECTOR_HEALTH_UPDATE_JOB_ENABLED)' $CONFIG_FILE
 fi
 
+if [[ "" != "$DELEGATE_HEALTH_UPDATE_JOB_ENABLED" ]]; then
+  export DELEGATE_HEALTH_UPDATE_JOB_ENABLED; yq -i '.delegateHealthUpdateJobConfig.enabled=env(DELEGATE_HEALTH_UPDATE_JOB_ENABLED)' $CONFIG_FILE
+fi
+
 if [[ "" != "$AWS_ACCOUNT_TAGS_COLLECTION_JOB_ENABLED" ]]; then
   export AWS_ACCOUNT_TAGS_COLLECTION_JOB_ENABLED; yq -i '.awsAccountTagsCollectionJobConfig.enabled=env(AWS_ACCOUNT_TAGS_COLLECTION_JOB_ENABLED)' $CONFIG_FILE
 fi
@@ -344,6 +352,9 @@ if [[ "" != "$BATCH_JOB_METADATA_RETENTION_PERIOD" ]]; then
   export BATCH_JOB_METADATA_RETENTION_PERIOD; yq -i '.batchJobRepository.dataRetentionPeriodInDays=env(BATCH_JOB_METADATA_RETENTION_PERIOD)' $CONFIG_FILE
 fi
 
+if [[ "" != "$GCP_SYNC_PYTHON_IMAGE_PATH" ]]; then
+  export GCP_SYNC_PYTHON_IMAGE_PATH; yq -i '.gcpSyncSmpConfig.k8sJobPythonImage=env(GCP_SYNC_PYTHON_IMAGE_PATH)' $CONFIG_FILE
+fi
 
 replace_key_value cfClientConfig.apiKey "$CF_CLIENT_API_KEY"
 replace_key_value cfClientConfig.configUrl "$CF_CLIENT_CONFIG_URL"
@@ -372,6 +383,7 @@ replace_key_value deployMode "$DEPLOY_MODE"
 replace_key_value clickHouseConfig.url "$CLICKHOUSE_URL"
 replace_key_value clickHouseConfig.username "$CLICKHOUSE_USERNAME"
 replace_key_value clickHouseConfig.password "$CLICKHOUSE_PASSWORD"
+replace_key_value clickHouseConfig.socketTimeout "$CLICKHOUSE_SOCKET_TIMEOUT"
 
 replace_key_value isClickHouseEnabled "$CLICKHOUSE_ENABLED"
 
@@ -403,3 +415,9 @@ replace_key_value awsServiceEndpointUrls.endPointRegion "$AWS_SERVICE_ENDPOINT_U
 replace_key_value awsServiceEndpointUrls.stsEndPointUrl "$AWS_SERVICE_ENDPOINT_URLS_STS_ENDPOINT_URL"
 replace_key_value awsServiceEndpointUrls.ecsEndPointUrl "$AWS_SERVICE_ENDPOINT_URLS_ECS_ENDPOINT_URL"
 replace_key_value awsServiceEndpointUrls.cloudwatchEndPointUrl "$AWS_SERVICE_ENDPOINT_URLS_CLOUDWATCH_ENDPOINT_URL"
+
+replace_key_value dkronClientConfig.baseUrl "$DKRON_CLIENT_BASEURL"
+replace_key_value dkronClientConfig.connectTimeOutSeconds "$DKRON_CLIENT_CONNECTTIMEOUT"
+replace_key_value dkronClientConfig.readTimeOutSeconds "$DKRON_CLIENT_READTIMEOUT"
+
+replace_key_value lightwingAutoCUDClientConfig.baseUrl "$LIGHTWING_AUTOCUD_CLIENT_CONFIG_BASEURL"

@@ -55,6 +55,7 @@ import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.execution.tasks.DelegateTaskRequest;
 import io.harness.pms.contracts.execution.tasks.TaskCategory;
 import io.harness.pms.contracts.execution.tasks.TaskRequest;
+import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.yaml.ParameterField;
@@ -75,7 +76,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Duration;
-import io.fabric8.utils.Strings;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -100,7 +100,7 @@ public class StepUtils {
 
   public static String PIE_SIMPLIFY_LOG_BASE_KEY = "PIE_SIMPLIFY_LOG_BASE_KEY";
 
-  public static List<String> keysToSkipInLogBaseKey = List.of("spec", "execution");
+  public static List<String> keysToSkipInLogBaseKey = List.of("spec", "execution", "pipeline", "stages", "steps");
 
   public static Task prepareDelegateTaskInput(
       String accountId, TaskData taskData, Map<String, String> setupAbstractions) {
@@ -127,12 +127,19 @@ public class StepUtils {
 
     for (int i = 0; i < ambiance.getLevelsList().size(); i++) {
       Level currentLevel = ambiance.getLevelsList().get(i);
+
+      StepCategory stepCategory = currentLevel.getStepType().getStepCategory();
+
       String retrySuffix = currentLevel.getRetryIndex() > 0 ? String.format("_%s", currentLevel.getRetryIndex()) : "";
 
       String levelValue = currentLevel.getIdentifier() + retrySuffix;
 
       if (AmbianceUtils.shouldSimplifyLogBaseKey(ambiance)) {
         if (keysToSkipInLogBaseKey.contains(levelValue)) {
+          continue;
+        }
+
+        if (stepCategory.equals(StepCategory.FORK) && levelValue.startsWith("parallel")) {
           continue;
         }
       }
@@ -142,10 +149,6 @@ public class StepUtils {
       if (lastGroup != null && lastGroup.equals(currentLevel.getGroup())) {
         break;
       }
-    }
-
-    if (AmbianceUtils.shouldSimplifyLogBaseKey(ambiance)) {
-      logAbstractions.put("planExecutionId", "-" + ambiance.getPlanExecutionId());
     }
 
     return logAbstractions;
@@ -165,6 +168,10 @@ public class StepUtils {
 
     logAbstractions.put("pipelineId", ambiance.getMetadata().getPipelineIdentifier());
     logAbstractions.put("runSequence", String.valueOf(ambiance.getMetadata().getRunSequence()));
+
+    if (AmbianceUtils.shouldSimplifyLogBaseKey(ambiance)) {
+      logAbstractions.put("planExecutionId", "-" + ambiance.getPlanExecutionId());
+    }
 
     if (AmbianceUtils.shouldSimplifyLogBaseKey(ambiance)) {
       logAbstractions.put(IS_SIMPLIFY, "true");
@@ -261,7 +268,7 @@ public class StepUtils {
             .setSetupAbstractions(TaskSetupAbstractions.newBuilder().putAllValues(setupAbstractionsMap).build())
             .setSelectionTrackingLogEnabled(true);
 
-    if (Strings.isNotBlank(stageId)) {
+    if (isNotEmpty(stageId)) {
       requestBuilder.setStageId(stageId);
     }
 
@@ -464,36 +471,60 @@ public class StepUtils {
   }
 
   public static void appendDelegateSelectorsToSpecParameters(StepSpecType stepSpecType, PlanCreationContext ctx) {
+    if (stepSpecType instanceof WithDelegateSelector) {
+      WithDelegateSelector withDelegateSelector = (WithDelegateSelector) stepSpecType;
+      appendDelegateSelectors(withDelegateSelector, ctx);
+    }
+  }
+
+  public static void appendDelegateSelectors(WithDelegateSelector withDelegateSelector, PlanCreationContext ctx) {
     try {
-      if (stepSpecType instanceof WithDelegateSelector) {
-        WithDelegateSelector withDelegateSelector = (WithDelegateSelector) stepSpecType;
-        // Delegate Selector Precedence: 1)Step -> 2)stepGroup -> 3)Stage ->  4)Pipeline
+      // Delegate Selector Precedence: 1)Step -> 2)stepGroup -> 3)Stage ->  4)Pipeline
+      ParameterField<List<TaskSelectorYaml>> delegateSelectors = withDelegateSelector.fetchDelegateSelectors();
+      if (hasDelegateSelectors(delegateSelectors)) {
+        setOriginAndDelegateSelectors(delegateSelectors, withDelegateSelector, STEP);
+        return;
+      }
 
-        ParameterField<List<TaskSelectorYaml>> delegateSelectors = withDelegateSelector.fetchDelegateSelectors();
-        if (hasDelegateSelectors(delegateSelectors)) {
-          setOriginAndDelegateSelectors(delegateSelectors, withDelegateSelector, STEP);
-          return;
-        }
+      delegateSelectors = delegateSelectorsFromFqn(ctx, STEP_GROUP);
+      if (hasDelegateSelectors(delegateSelectors)) {
+        setOriginAndDelegateSelectors(delegateSelectors, withDelegateSelector, STEP_GROUP);
+        return;
+      }
 
-        delegateSelectors = delegateSelectorsFromFqn(ctx, STEP_GROUP);
-        if (hasDelegateSelectors(delegateSelectors)) {
-          setOriginAndDelegateSelectors(delegateSelectors, withDelegateSelector, STEP_GROUP);
-          return;
-        }
+      delegateSelectors = delegateSelectorsFromFqn(ctx, STAGE);
+      if (hasDelegateSelectors(delegateSelectors)) {
+        setOriginAndDelegateSelectors(delegateSelectors, withDelegateSelector, STAGE);
+        return;
+      }
 
-        delegateSelectors = delegateSelectorsFromFqn(ctx, STAGE);
-        if (hasDelegateSelectors(delegateSelectors)) {
-          setOriginAndDelegateSelectors(delegateSelectors, withDelegateSelector, STAGE);
-          return;
-        }
-
-        delegateSelectors = delegateSelectorsFromFqn(ctx, YAMLFieldNameConstants.PIPELINE);
-        if (hasDelegateSelectors(delegateSelectors)) {
-          setOriginAndDelegateSelectors(delegateSelectors, withDelegateSelector, YAMLFieldNameConstants.PIPELINE);
-        }
+      delegateSelectors = delegateSelectorsFromFqn(ctx, YAMLFieldNameConstants.PIPELINE);
+      if (hasDelegateSelectors(delegateSelectors)) {
+        setOriginAndDelegateSelectors(delegateSelectors, withDelegateSelector, YAMLFieldNameConstants.PIPELINE);
       }
     } catch (Exception e) {
       log.error("Error while appending delegate selector to spec params ", e);
+    }
+  }
+
+  public static ParameterField<List<TaskSelectorYaml>> getOriginDelegateSelectors(
+      PlanCreationContext ctx, String origin) {
+    ParameterField<List<TaskSelectorYaml>> delegateSelectors = ParameterField.ofNull();
+    try {
+      delegateSelectors = delegateSelectorsFromFqn(ctx, origin);
+      if (hasDelegateSelectors(delegateSelectors)) {
+        setOriginInDelegateSelectors(delegateSelectors, origin);
+      }
+    } catch (Exception e) {
+      log.error("Error while appending delegate selector to spec params ", e);
+    }
+    return delegateSelectors;
+  }
+
+  private static void setOriginInDelegateSelectors(
+      ParameterField<List<TaskSelectorYaml>> delegateSelectors, String origin) {
+    if (!delegateSelectors.isExpression()) {
+      delegateSelectors.getValue().forEach(selector -> selector.setOrigin(origin));
     }
   }
 

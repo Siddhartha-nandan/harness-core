@@ -16,7 +16,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.artifacts.beans.BuildDetailsInternal;
-import io.harness.artifacts.comparator.BuildDetailsInternalComparatorDescending;
+import io.harness.artifacts.comparator.BuildDetailsInternalTimeComparator;
 import io.harness.artifacts.gar.beans.GarInternalConfig;
 import io.harness.artifacts.gar.service.GarApiService;
 import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorCredentialDTO;
@@ -92,11 +92,45 @@ public class GARArtifactTaskHandler extends DelegateArtifactTaskHandler<GarDeleg
         garInternalConfig, attributesRequest.getVersionRegex(), attributesRequest.getMaxBuilds());
     List<GarDelegateResponse> garArtifactDelegateResponseList =
         builds.stream()
-            .sorted(new BuildDetailsInternalComparatorDescending())
+            .sorted(new BuildDetailsInternalTimeComparator())
             .map(build -> toGarResponse(build, attributesRequest))
             .collect(Collectors.toList());
     return getSuccessTaskExecutionResponse(garArtifactDelegateResponseList);
   }
+
+  public ArtifactTaskExecutionResponse getRepositories(GarDelegateRequest attributesRequest) {
+    List<BuildDetailsInternal> builds;
+    GarInternalConfig garInternalConfig;
+    try {
+      garInternalConfig = getGarInternalConfig(attributesRequest);
+    } catch (IOException e) {
+      log.error("Could not get Bearer Token", e);
+      throw NestedExceptionUtils.hintWithExplanationException("Google Artifact Registry: Could not get Bearer Token",
+          "", new InvalidArtifactServerException(e.getMessage(), USER));
+    }
+    builds = garApiService.getRepository(garInternalConfig, attributesRequest.getRegion());
+    List<GarDelegateResponse> garArtifactDelegateResponseList =
+        builds.stream().map(build -> toGarResponse(build, attributesRequest)).collect(Collectors.toList());
+    return getSuccessTaskExecutionResponse(garArtifactDelegateResponseList);
+  }
+
+  public ArtifactTaskExecutionResponse getPackages(GarDelegateRequest attributesRequest) {
+    List<BuildDetailsInternal> builds;
+    GarInternalConfig garInternalConfig;
+    try {
+      garInternalConfig = getGarInternalConfig(attributesRequest);
+    } catch (IOException e) {
+      log.error("Could not get Bearer Token", e);
+      throw NestedExceptionUtils.hintWithExplanationException("Google Artifact Registry: Could not get Bearer Token",
+          "", new InvalidArtifactServerException(e.getMessage(), USER));
+    }
+    builds = garApiService.getPackages(
+        garInternalConfig, attributesRequest.getRegion(), attributesRequest.getRepositoryName());
+    List<GarDelegateResponse> garArtifactDelegateResponseList =
+        builds.stream().map(build -> toGarResponse(build, attributesRequest)).collect(Collectors.toList());
+    return getSuccessTaskExecutionResponse(garArtifactDelegateResponseList);
+  }
+
   private GarInternalConfig getGarInternalConfig(GarDelegateRequest attributesRequest) throws IOException {
     char[] serviceAccountKeyFileContent = new char[0];
     boolean isUseDelegate = false;

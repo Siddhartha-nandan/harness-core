@@ -57,6 +57,7 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.StepUtils;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 import io.harness.utils.IdentifierRefHelper;
 
 import com.google.inject.Inject;
@@ -90,6 +91,12 @@ public class TerraformPlanStep extends CdTaskExecutable<TerraformTaskNGResponse>
   @Override
   public Class<StepBaseParameters> getStepParametersClass() {
     return StepBaseParameters.class;
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 
   @Override
@@ -202,6 +209,7 @@ public class TerraformPlanStep extends CdTaskExecutable<TerraformTaskNGResponse>
             .skipColorLogs(featureFlagHelper.isEnabled(accountId, CDS_TF_TG_SKIP_ERROR_LOGS_COLORING))
             .providerCredentialDelegateInfo(
                 helper.getProviderCredentialDelegateInfo(configuration.getProviderCredential(), ambiance))
+            .skipStateStorage(ParameterFieldHelper.getBooleanParameterFieldValue(configuration.getSkipStateStorage()))
             .build();
 
     TaskData taskData =
@@ -252,10 +260,14 @@ public class TerraformPlanStep extends CdTaskExecutable<TerraformTaskNGResponse>
 
     if (CommandExecutionStatus.SUCCESS == terraformTaskNGResponse.getCommandExecutionStatus()) {
       TerraformPlanOutcomeBuilder tfPlanOutcomeBuilder = TerraformPlanOutcome.builder();
-      helper.updateParentEntityIdAndVersion(
-          helper.generateFullIdentifier(
-              ParameterFieldHelper.getParameterFieldValue(planStepParameters.getProvisionerIdentifier()), ambiance),
-          terraformTaskNGResponse.getStateFileId());
+
+      if (!ParameterFieldHelper.getBooleanParameterFieldValue(
+              planStepParameters.getConfiguration().getSkipStateStorage())) {
+        helper.updateParentEntityIdAndVersion(
+            helper.generateFullIdentifier(
+                ParameterFieldHelper.getParameterFieldValue(planStepParameters.getProvisionerIdentifier()), ambiance),
+            terraformTaskNGResponse.getStateFileId());
+      }
       tfPlanOutcomeBuilder.detailedExitCode(terraformTaskNGResponse.getDetailedExitCode());
 
       if (!planStepParameters.getConfiguration().getIsTerraformCloudCli().getValue()) {

@@ -6,6 +6,7 @@
  */
 
 package io.harness.cdng.plugininfoproviders;
+
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import io.harness.annotations.dev.CodePulse;
@@ -76,8 +77,10 @@ public class ServerlessPrepareRollbackPluginInfoProvider implements CDPluginInfo
 
     pluginDetailsBuilder.setImageDetails(imageDetails);
 
-    pluginDetailsBuilder.putAllEnvVariables(serverlessV2PluginInfoProviderHelper.getEnvironmentVariables(
-        ambiance, serverlessAwsLambdaPrepareRollbackV2StepInfo));
+    pluginDetailsBuilder.putAllEnvVariables(serverlessV2PluginInfoProviderHelper.validateEnvVariables(
+        serverlessV2PluginInfoProviderHelper.getEnvVarsWithSecretRef(
+            serverlessV2PluginInfoProviderHelper.getEnvironmentVariables(
+                ambiance, serverlessAwsLambdaPrepareRollbackV2StepInfo.getSpecParameters()))));
     PluginCreationResponse response = getPluginCreationResponse(pluginDetailsBuilder);
     StepInfoProto stepInfoProto = StepInfoProto.newBuilder()
                                       .setIdentifier(cdAbstractStepNode.getIdentifier())
@@ -105,7 +108,7 @@ public class ServerlessPrepareRollbackPluginInfoProvider implements CDPluginInfo
 
   public PluginDetails.Builder getPluginDetailsBuilder(
       ContainerResource resources, ParameterField<Integer> runAsUser, Set<Integer> usedPorts) {
-    return PluginInfoProviderHelper.buildPluginDetails(resources, runAsUser, usedPorts, true);
+    return PluginInfoProviderHelper.buildPluginDetails(resources, runAsUser, usedPorts, false);
   }
 
   public CdAbstractStepNode getRead(String stepJsonNode) throws IOException {

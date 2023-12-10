@@ -14,6 +14,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.filter.serializer.FiltersRegistrars;
 import io.harness.gitsync.serializer.GitSyncSdkRegistrar;
 import io.harness.morphia.MorphiaRegistrar;
+import io.harness.oidc.entities.OidcRegistrars;
 import io.harness.serializer.kryo.NGTemplateKryoRegistrar;
 import io.harness.serializer.kryo.NotificationBeansKryoRegistrar;
 import io.harness.serializer.morphia.NGTemplateMorphiaRegistrar;
@@ -45,6 +46,7 @@ public class TemplateServiceModuleRegistrars {
           .addAll(SMCoreRegistrars.kryoRegistrars)
           .addAll(YamlBeansModuleRegistrars.kryoRegistrars)
           .addAll(LicenseBeanRegistrar.kryoRegistrars)
+          .addAll(ProjectAndOrgRegistrars.kryoRegistrars)
           .add(NGTemplateKryoRegistrar.class)
           .addAll(NGCoreRegistrars.kryoRegistrars)
           .addAll(DelegateTaskRegistrars.kryoRegistrars)
@@ -72,6 +74,8 @@ public class TemplateServiceModuleRegistrars {
           .addAll(DelegateTaskRegistrars.morphiaRegistrars)
           .addAll(PmsCommonsModuleRegistrars.morphiaRegistrars)
           .addAll(FeatureFlagBeansRegistrars.morphiaRegistrars)
+          .addAll(OidcRegistrars.morphiaRegistrars)
+          .addAll(ProjectAndOrgRegistrars.morphiaRegistrars)
           .add(NGTemplateMorphiaRegistrar.class)
           .add(NotificationBeansMorphiaRegistrar.class)
           .build();

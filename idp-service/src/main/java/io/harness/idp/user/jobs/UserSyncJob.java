@@ -47,7 +47,7 @@ public class UserSyncJob implements Managed {
   public void start() throws Exception {
     executorService =
         Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("user-sync-job").build());
-    executorService.scheduleWithFixedDelay(this::run, 0, DELAY_IN_MINUTES, TimeUnit.MINUTES);
+    executorService.scheduleWithFixedDelay(this::run, 8, DELAY_IN_MINUTES, TimeUnit.MINUTES);
   }
 
   @Override
@@ -63,10 +63,10 @@ public class UserSyncJob implements Managed {
       String accountIdentifier = userEventEntity.getAccountIdentifier();
       String userGroupIdentifier = userEventEntity.getUserGroupIdentifier();
       try {
-        userEventEntity.setHasEvent(false);
-        userEventRepository.saveOrUpdate(userEventEntity);
         log.info("Processing event for account {} userGroup {}", accountIdentifier, userGroupIdentifier);
         getGeneralResponse(backstageResourceClient.providerRefresh(accountIdentifier, userGroupIdentifier));
+        userEventEntity.setHasEvent(false);
+        userEventRepository.saveOrUpdate(userEventEntity);
       } catch (Exception e) {
         log.error("Could not sync users  for account {} userGroup {}", accountIdentifier, userGroupIdentifier, e);
       }

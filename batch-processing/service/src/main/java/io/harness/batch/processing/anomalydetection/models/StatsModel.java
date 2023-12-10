@@ -78,6 +78,7 @@ public class StatsModel {
                                    .absoluteThreshold(absThreshold)
                                    .probabilisticThreshold(probabilityThreshold)
                                    .reportedBy(AnomalyDetectionModel.STATISTICAL)
+                                   .cloudProvider(data.getCloudProvider())
                                    .build();
       if (currentValue > mean) {
         currentAnomaly.setAnomalyType(AnomalyType.SPIKE);
@@ -105,7 +106,7 @@ public class StatsModel {
     return original > expected + AnomalyDetectionConstants.STATS_MODEL_ABSOLUTE_THRESHOLD;
   }
   private static boolean absoluteThresholdServices(Double original, Double expected) {
-    return original > expected;
+    return original > expected + AnomalyDetectionConstants.STATS_MODEL_ABSOLUTE_THRESHOLD_SERVICES;
   }
 
   private static boolean probabilityThreshold(Double original, Double mean, Double standardDeviation) {

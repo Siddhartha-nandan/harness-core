@@ -27,10 +27,10 @@ description: description here
 managerTarget: localhost:9880
 managerAuthority: localhost
 queueFilePath: ../eventQueue
-grpcServiceEnabled: true
+grpcServiceEnabled: false
 grpcServiceConnectorPort: 8080
 clientToolsDownloadDisabled: true
-installClientToolsInBackground: true
+installClientToolsInBackground: false
 delegateName: local-delegate
 
 # Required for local development as manger uses self-signed cert

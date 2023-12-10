@@ -155,7 +155,6 @@ public class PipelineServiceConfiguration extends Configuration {
   @JsonProperty("pipelineRedisEventsConfig") private PipelineRedisEventsConfig pipelineRedisEventsConfig;
   @JsonProperty("pipelineSdkRedisEventsConfig") private PipelineSdkRedisEventsConfig pipelineSdkRedisEventsConfig;
   @JsonProperty("orchestrationRedisEventsConfig") private OrchestrationRedisEventsConfig orchestrationRedisEventsConfig;
-  @JsonProperty("allowedParallelStages") private int allowedParallelStages;
   @JsonProperty("orchestrationLogConfiguration") private OrchestrationLogConfiguration orchestrationLogConfiguration;
   @JsonProperty("planCreatorMergeServiceDependencyBatch") private Integer planCreatorMergeServiceDependencyBatch;
   @JsonProperty("jsonExpansionPoolConfig") private ThreadPoolConfig jsonExpansionPoolConfig;
@@ -184,10 +183,14 @@ public class PipelineServiceConfiguration extends Configuration {
   @JsonProperty("staticSchemaFileURL") private String staticSchemaFileURL;
   @JsonProperty("timeoutIteratorMode") private String timeoutIteratorMode;
   @JsonProperty("webhookEventHsqsDequeueConfig") private HsqsDequeueConfig webhookEventHsqsDequeueConfig;
+  @JsonProperty("maxMultiArtifactTriggerSources") private Integer maxMultiArtifactTriggerSources;
   @JsonProperty("graphConsumerSleepIntervalMs") private Integer graphConsumerSleepIntervalMs;
   @JsonProperty("asyncFilterCreationConsumerSleepIntervalMs")
   private Integer asyncFilterCreationConsumerSleepIntervalMs;
   @JsonProperty("publishAdviserEventForCustomAdvisers") private Boolean publishAdviserEventForCustomAdvisers;
+  @JsonProperty(value = "disableCustomStageInPipelineService") private Boolean disableCustomStageInPipelineService;
+  @JsonProperty("pipelineExecutionDetailsDeleteMaxBatchSize")
+  private Integer pipelineExecutionDetailsDeleteMaxBatchSize;
   private boolean useQueueServiceForWebhookTriggers;
 
   private String managerServiceSecret;

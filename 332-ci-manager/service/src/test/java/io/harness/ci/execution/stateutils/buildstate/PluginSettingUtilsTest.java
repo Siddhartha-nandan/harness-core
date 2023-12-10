@@ -71,6 +71,7 @@ import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.slsa.beans.verification.source.SlsaDockerSourceSpec;
+import io.harness.slsa.beans.verification.source.SlsaGcrSourceSpec;
 import io.harness.slsa.beans.verification.source.SlsaVerificationSource;
 import io.harness.slsa.beans.verification.source.SlsaVerificationSourceType;
 import io.harness.slsa.beans.verification.verify.CosignSlsaVerifyAttestation;
@@ -1126,6 +1127,7 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
     expected.put("PLUGIN_TYPE", "Enforce");
     expected.put("POLICY_FILE_IDENTIFIER", "file");
     expected.put("SSCA_MANAGER_ENABLED", "false");
+    expected.put("POLICY_SET_REF", "policySet1,policySet2");
     Ambiance ambiance = Ambiance.newBuilder().build();
     Map<String, String> actual = pluginSettingUtils.getPluginCompatibleEnvVariables(
         sscaEnforcementStepInfo, "identifier", 100, ambiance, Type.K8, false, true);
@@ -1146,6 +1148,7 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
     expected.put("POLICY_FILE_IDENTIFIER", "file");
     expected.put("SSCA_MANAGER_ENABLED", "false");
     expected.put("COSIGN_PUBLIC_KEY", "${ngSecretManager.obtain(\"publicKey\", 12345)}");
+    expected.put("POLICY_SET_REF", "policySet1,policySet2");
     Map<String, String> actual = pluginSettingUtils.getPluginCompatibleEnvVariables(
         sscaEnforcementStepInfo, "identifier", 100, ambiance, Type.VM, false, true);
     assertThat(actual).isEqualTo(expected);
@@ -1181,6 +1184,7 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
                                         .build())
                     .build())
         .policy(EnforcementPolicy.builder()
+                    .policySets(ParameterField.createValueField(List.of("policySet1", "policySet2")))
                     .store(PolicyStore.builder()
                                .type(StoreType.HARNESS)
                                .storeSpec(HarnessStore.builder().file(ParameterField.createValueField("file")).build())
@@ -1205,6 +1209,26 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
     expected.put("PLUGIN_TAG", "tag");
     expected.put("PLUGIN_REPO", "image");
     expected.put("PLUGIN_TYPE", "verify");
+    expected.put("STEP_EXECUTION_ID", null);
+    expected.put("PLUGIN_REGISTRY_TYPE", "docker");
+    Ambiance ambiance = Ambiance.newBuilder().build();
+    Map<String, String> actual = pluginSettingUtils.getPluginCompatibleEnvVariables(
+        slsaVerificationStepInfo, "identifier", 100, ambiance, Type.K8, false, true);
+    assertThat(actual).isEqualTo(expected);
+  }
+
+  @Test
+  @Owner(developers = INDER)
+  @Category(UnitTests.class)
+  public void testSlsaVerificationGcrStepEnvVariables() {
+    SlsaVerificationStepInfo slsaVerificationStepInfo = getSlsaVerificationGcrStep();
+
+    Map<String, String> expected = new HashMap<>();
+    expected.put("PLUGIN_TAG", "tag");
+    expected.put("PLUGIN_REPO", "image");
+    expected.put("PLUGIN_REGISTRY", "us.gcr.io/projectId");
+    expected.put("PLUGIN_TYPE", "verify");
+    expected.put("PLUGIN_REGISTRY_TYPE", "gcr");
     expected.put("STEP_EXECUTION_ID", null);
     Ambiance ambiance = Ambiance.newBuilder().build();
     Map<String, String> actual = pluginSettingUtils.getPluginCompatibleEnvVariables(
@@ -1240,6 +1264,28 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
                               .connector(ParameterField.createValueField("conn1"))
                               .image_path(ParameterField.createValueField("image"))
                               .tag(ParameterField.createValueField("tag"))
+                              .build())
+                    .build())
+        .slsaVerifyAttestation(
+            SlsaVerifyAttestation.builder()
+                .type(AttestationType.COSIGN)
+                .slsaVerifyAttestationSpec(CosignSlsaVerifyAttestation.builder()
+                                               .publicKey(ParameterField.createValueField("public_key"))
+                                               .build())
+                .build())
+        .build();
+  }
+
+  private SlsaVerificationStepInfo getSlsaVerificationGcrStep() {
+    return SlsaVerificationStepInfo.builder()
+        .source(SlsaVerificationSource.builder()
+                    .type(SlsaVerificationSourceType.GCR)
+                    .spec(SlsaGcrSourceSpec.builder()
+                              .connector(ParameterField.createValueField("conn1"))
+                              .image_name(ParameterField.createValueField("image"))
+                              .tag(ParameterField.createValueField("tag"))
+                              .host(ParameterField.createValueField("us.gcr.io"))
+                              .project_id(ParameterField.createValueField("projectId"))
                               .build())
                     .build())
         .slsaVerifyAttestation(

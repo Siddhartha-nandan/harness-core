@@ -13,34 +13,28 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/harness/harness-core/product/ci/common/external"
 	pb "github.com/harness/harness-core/product/ci/engine/proto"
+	"github.com/harness/harness-core/product/log-service/client"
 	"github.com/harness/harness-core/product/log-service/stream"
 	"go.uber.org/zap"
 )
 
-var (
-	remoteLogClient = external.GetRemoteHTTPClient
-)
-
 // handler is used to implement EngineServer
 type logProxyHandler struct {
-	log *zap.SugaredLogger
+	log    *zap.SugaredLogger
+	client client.Client
 }
 
 // NewEngineHandler returns a GRPC handler that implements pb.EngineServer
-func NewLogProxyHandler(log *zap.SugaredLogger) pb.LogProxyServer {
-	return &logProxyHandler{log}
+func NewLogProxyHandler(log *zap.SugaredLogger, client client.Client) pb.LogProxyServer {
+	return &logProxyHandler{log, client}
 }
 
 // Write writes to a log stream.
 // Connects to the log service to invoke the write to stream API.
 func (h *logProxyHandler) Write(ctx context.Context, in *pb.WriteRequest) (*pb.WriteResponse, error) {
-	lc, err := remoteLogClient()
-	if err != nil {
-		h.log.Errorw("could not create a client to the log service", zap.Error(err))
-		return &pb.WriteResponse{}, err
-	}
+	var err error
+	h.log.Infow("LogProxy - starting write", "key", in.GetKey())
 	var lines []*stream.Line
 	for _, strLine := range in.GetLines() {
 		l := &stream.Line{}
@@ -51,25 +45,24 @@ func (h *logProxyHandler) Write(ctx context.Context, in *pb.WriteRequest) (*pb.W
 		}
 		lines = append(lines, l)
 	}
-	err = lc.Write(ctx, in.GetKey(), lines)
+	h.log.Infow("LogProxy - starting write API call", "key", in.GetKey())
+	err = h.client.Write(ctx, in.GetKey(), lines)
 	if err != nil {
-		h.log.Errorw("Could not write to the log stream", zap.Error(err))
+		fmt.Println("error while writing to the stream: ", err)
+		h.log.Errorw("Could not write to the log stream", "key", in.GetKey(), zap.Error(err))
 		return &pb.WriteResponse{}, err
 	}
+	h.log.Infow("LogProxy - completed write API call", "key", in.GetKey())
 	return &pb.WriteResponse{}, nil
 }
 
 // UploadLink returns an upload link for the logs.
 // Connects to the log service to invoke the UploadLink to store API.
 func (h *logProxyHandler) UploadLink(ctx context.Context, in *pb.UploadLinkRequest) (*pb.UploadLinkResponse, error) {
-	lc, err := remoteLogClient()
+	link, err := h.client.UploadLink(ctx, in.GetKey())
 	if err != nil {
-		h.log.Errorw("Could not create a client to the log service", zap.Error(err))
-		return &pb.UploadLinkResponse{}, err
-	}
-	link, err := lc.UploadLink(ctx, in.GetKey())
-	if err != nil {
-		h.log.Errorw("Could not generate an upload link for log upload", zap.Error(err))
+		fmt.Println("error while generating an upload link: ", err)
+		h.log.Errorw("Could not generate an upload link for log upload", "key", in.GetKey(), zap.Error(err))
 		return &pb.UploadLinkResponse{}, err
 	}
 	return &pb.UploadLinkResponse{Link: link.Value}, nil
@@ -78,11 +71,6 @@ func (h *logProxyHandler) UploadLink(ctx context.Context, in *pb.UploadLinkReque
 // UploadUsingLink uploads logs to an uploadable link (directly to blob storage).
 func (h *logProxyHandler) UploadUsingLink(stream pb.LogProxy_UploadUsingLinkServer) error {
 	var err error
-	lc, err := remoteLogClient()
-	if err != nil {
-		h.log.Errorw("could not create a client to the log service", zap.Error(err))
-		return err
-	}
 	data := new(bytes.Buffer)
 	link := ""
 	for {
@@ -104,7 +92,7 @@ func (h *logProxyHandler) UploadUsingLink(stream pb.LogProxy_UploadUsingLinkServ
 		return errors.New("no link received from client")
 	}
 
-	err = lc.UploadUsingLink(stream.Context(), link, data)
+	err = h.client.UploadUsingLink(stream.Context(), link, data)
 	if err != nil {
 		h.log.Errorw("could not upload logs using upload link", zap.Error(err))
 		return err
@@ -120,11 +108,6 @@ func (h *logProxyHandler) UploadUsingLink(stream pb.LogProxy_UploadUsingLinkServ
 // Upload uploads logs to log service (which in turn uploads to blob storage).
 func (h *logProxyHandler) Upload(stream pb.LogProxy_UploadServer) error {
 	var err error
-	lc, err := remoteLogClient()
-	if err != nil {
-		h.log.Errorw("could not create a client to the log service", zap.Error(err))
-		return err
-	}
 	data := new(bytes.Buffer)
 	key := ""
 	for {
@@ -142,13 +125,16 @@ func (h *logProxyHandler) Upload(stream pb.LogProxy_UploadServer) error {
 		}
 	}
 
+	h.log.Infow("Start to upload to the log service", key, zap.Error(err))
+
 	if key == "" {
 		return errors.New("no key received from client for UploadRPC")
 	}
 
-	err = lc.Upload(stream.Context(), key, data)
+	err = h.client.Upload(stream.Context(), key, data)
 	if err != nil {
-		h.log.Errorw("could not upload logs using uploadRPC", zap.Error(err))
+		fmt.Println("error while uploading the stream: ", err)
+		h.log.Errorw("could not upload logs using uploadRPC", key, zap.Error(err))
 		return err
 	}
 	err = stream.SendAndClose(&pb.UploadResponse{})
@@ -156,6 +142,7 @@ func (h *logProxyHandler) Upload(stream pb.LogProxy_UploadServer) error {
 		h.log.Errorw("could not close upload protobuf stream", zap.Error(err))
 		return err
 	}
+	h.log.Infow("Finished uploading to the log service", key, zap.Error(err))
 	return nil
 }
 
@@ -163,16 +150,14 @@ func (h *logProxyHandler) Upload(stream pb.LogProxy_UploadServer) error {
 // Connects to the log service to invoke the open stream API.
 func (h *logProxyHandler) Open(ctx context.Context, in *pb.OpenRequest) (*pb.OpenResponse, error) {
 	var err error
-	lc, err := remoteLogClient()
+	h.log.Infow("LogProxy - starting open stream API call", "key", in.GetKey())
+	err = h.client.Open(ctx, in.GetKey())
 	if err != nil {
-		h.log.Errorw("Could not create a client to the log service", zap.Error(err))
+		fmt.Println("error while opening the stream: ", err)
+		h.log.Errorw("Could not open log stream", "key", in.GetKey(), zap.Error(err))
 		return &pb.OpenResponse{}, err
 	}
-	err = lc.Open(ctx, in.GetKey())
-	if err != nil {
-		h.log.Errorw("Could not open log stream", zap.Error(err))
-		return &pb.OpenResponse{}, err
-	}
+	h.log.Infow("LogProxy - completed open stream API call", "key", in.GetKey())
 	return &pb.OpenResponse{}, nil
 }
 
@@ -180,15 +165,13 @@ func (h *logProxyHandler) Open(ctx context.Context, in *pb.OpenRequest) (*pb.Ope
 // Connects to the log service and closes a stream.
 func (h *logProxyHandler) Close(ctx context.Context, in *pb.CloseRequest) (*pb.CloseResponse, error) {
 	var err error
-	lc, err := remoteLogClient()
+	h.log.Infow("LogProxy - starting close stream API call", "key", in.GetKey())
+	err = h.client.Close(ctx, in.GetKey())
 	if err != nil {
-		h.log.Errorw("Could not create a client to the log service", zap.Error(err))
-		return &pb.CloseResponse{}, err
-	}
-	err = lc.Close(ctx, in.GetKey())
-	if err != nil {
+		fmt.Println("error while closing the stream: ", err)
 		h.log.Errorw("Could not close log stream", "key", in.GetKey(), zap.Error(err))
 		return &pb.CloseResponse{}, err
 	}
+	h.log.Infow("LogProxy - completed close stream API call", "key", in.GetKey())
 	return &pb.CloseResponse{}, nil
 }

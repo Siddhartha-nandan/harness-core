@@ -31,9 +31,6 @@ public class SLODashboardApiFilter {
   @Parameter(description = CVConstants.MONITORED_SERVICE_PARAM_MESSAGE)
   @QueryParam("monitoredServiceIdentifier")
   String monitoredServiceIdentifier;
-  @Parameter(description = CVConstants.SLI_TYPE_PARAM_MESSAGE)
-  @QueryParam("sliTypes")
-  List<ServiceLevelIndicatorType> sliTypes;
   @Parameter(description = CVConstants.TARGET_TYPE_PARAM_MESSAGE)
   @QueryParam("targetTypes")
   List<SLOTargetType> targetTypes;
@@ -49,6 +46,9 @@ public class SLODashboardApiFilter {
   @Parameter(description = "For filtering on the basis of SLI Evaluation type")
   @QueryParam("evaluationType")
   SLIEvaluationType evaluationType;
+  @Parameter(description = "For filtering on the basis of SLI Evaluation types")
+  @QueryParam("evaluationTypes")
+  List<SLIEvaluationType> evaluationTypes;
   @Parameter(description = "For filtering the simple slo's on the basis of accountId") boolean childResource;
   @Parameter(description = "For Filtering on the basis of environment identifiers")
   @QueryParam("envIdentifiers")

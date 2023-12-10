@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doReturn;
 
 import io.harness.CategoryTest;
+import io.harness.beans.FeatureName;
 import io.harness.category.element.UnitTests;
 import io.harness.cdng.creator.plan.stage.DeploymentStageConfig;
 import io.harness.cdng.creator.plan.stage.DeploymentStageNode;
@@ -59,6 +60,7 @@ import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.rule.Owner;
+import io.harness.utils.NGFeatureFlagHelperService;
 import io.harness.utils.YamlPipelineUtils;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -80,13 +82,15 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.Spy;
 
 @RunWith(JUnitParamsRunner.class)
 public class DeploymentStageFilterJsonCreatorV2Test extends CategoryTest {
   @Mock private ServiceEntityService serviceEntityService;
   @Mock private EnvironmentService environmentService;
-
+  @Mock private NGFeatureFlagHelperService ngFeatureFlagHelperService;
   @Mock private InfrastructureEntityService infraService;
+  @Spy @InjectMocks private StageFilterCreatorHelper stageFilterCreatorHelper;
   @InjectMocks private DeploymentStageFilterJsonCreatorV2 filterCreator;
 
   private final ClassLoader classLoader = this.getClass().getClassLoader();
@@ -141,16 +145,21 @@ public class DeploymentStageFilterJsonCreatorV2Test extends CategoryTest {
 
     doReturn(Optional.of(serviceEntity))
         .when(serviceEntityService)
-        .get("accountId", "orgId", "projectId", "service-id", false);
+        .getMetadata("accountId", "orgId", "projectId", "service-id", false);
     doReturn(List.of(serviceEntity))
         .when(serviceEntityService)
         .getMetadata("accountId", "orgId", "projectId", List.of("service-id"));
     doReturn(Optional.of(envEntity)).when(environmentService).get("accountId", "orgId", "projectId", "env-id", false);
+    doReturn(Optional.of(envEntity))
+        .when(environmentService)
+        .getMetadata("accountId", "orgId", "projectId", "env-id", false);
+
     doReturn(Optional.of(infra)).when(infraService).get("accountId", "orgId", "projectId", "env-id", "infra-id");
     doReturn(Lists.newArrayList(infra))
         .when(infraService)
-        .getAllInfrastructureFromIdentifierList(
-            "accountId", "orgId", "projectId", "env-id", Lists.newArrayList("infra-id"));
+        .getAllInfrastructuresWithYamlFromIdentifierList(
+            "accountId", "orgId", "projectId", "env-id", null, Lists.newArrayList("infra-id"));
+    doReturn(true).when(ngFeatureFlagHelperService).isEnabled("accountId", FeatureName.CDS_SCOPE_INFRA_TO_SERVICES);
   }
 
   @Test

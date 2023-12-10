@@ -27,6 +27,7 @@ import io.harness.pms.ngpipeline.inputset.beans.entity.InputSetEntity.InputSetEn
 import io.harness.pms.ngpipeline.inputset.beans.resource.InputSetImportRequestDTO;
 import io.harness.pms.ngpipeline.inputset.beans.resource.InputSetListTypePMS;
 import io.harness.pms.ngpipeline.inputset.exceptions.InvalidInputSetException;
+import io.harness.pms.ngpipeline.inputset.helpers.ValidateAndMergeHelper;
 import io.harness.pms.ngpipeline.inputset.mappers.PMSInputSetElementMapper;
 import io.harness.pms.ngpipeline.inputset.mappers.PMSInputSetFilterHelper;
 import io.harness.pms.ngpipeline.inputset.service.PMSInputSetService;
@@ -44,10 +45,15 @@ import io.harness.spec.server.pipeline.v1.model.InputSetMoveConfigRequestBody;
 import io.harness.spec.server.pipeline.v1.model.InputSetMoveConfigResponseBody;
 import io.harness.spec.server.pipeline.v1.model.InputSetResponseBody;
 import io.harness.spec.server.pipeline.v1.model.InputSetUpdateRequestBody;
+import io.harness.spec.server.pipeline.v1.model.MergeInputSetRequestBody;
+import io.harness.spec.server.pipeline.v1.model.MergeInputSetResponseBody;
 import io.harness.utils.ApiUtils;
 import io.harness.utils.PageUtils;
 
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import javax.validation.Valid;
@@ -70,9 +76,12 @@ import org.springframework.data.mongodb.core.query.Criteria;
 public class InputSetsApiImpl implements InputSetsApi {
   private final PMSInputSetService pmsInputSetService;
   private final InputSetsApiUtils inputSetsApiUtils;
+  private final ValidateAndMergeHelper validateAndMergeHelper;
 
   @Override
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_CREATE_AND_EDIT)
+  @Timed
+  @ResponseMetered
   public Response createInputSet(InputSetCreateRequestBody requestBody, @ResourceIdentifier String pipeline,
       @OrgIdentifier String org, @ProjectIdentifier String project, @AccountIdentifier String account) {
     if (requestBody == null) {
@@ -91,6 +100,8 @@ public class InputSetsApiImpl implements InputSetsApi {
 
   @Override
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_DELETE)
+  @Timed
+  @ResponseMetered
   public Response deleteInputSet(@OrgIdentifier String org, @ProjectIdentifier String project, String inputSet,
       @ResourceIdentifier String pipeline, @AccountIdentifier String account) {
     log.info(String.format("Deleting input set with identifier %s for pipeline %s in project %s, org %s, account %s",
@@ -101,6 +112,8 @@ public class InputSetsApiImpl implements InputSetsApi {
 
   @Override
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_VIEW)
+  @Timed
+  @ResponseMetered
   public Response getInputSet(@OrgIdentifier String org, @ProjectIdentifier String project, String inputSet,
       @ResourceIdentifier String pipeline, @AccountIdentifier String account, String branchGitX,
       String parentEntityConnectorRef, String parentEntityRepoName, Boolean loadFromFallbackBranch,
@@ -158,6 +171,8 @@ public class InputSetsApiImpl implements InputSetsApi {
 
   @Override
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_VIEW)
+  @Timed
+  @ResponseMetered
   public Response listInputSets(@OrgIdentifier String org, @ProjectIdentifier String project,
       @ResourceIdentifier String pipeline, @AccountIdentifier String account, Integer page, Integer limit,
       String searchTerm, String sort, String order) {
@@ -178,7 +193,45 @@ public class InputSetsApiImpl implements InputSetsApi {
   }
 
   @Override
+  public Response mergedInputSets(@NotNull String pipeline, String org, String project,
+      @Valid MergeInputSetRequestBody body, String harnessAccount, String loadFromCache, String pipelineRepoId,
+      String pipelineBranch, String branchName, String parentEntityConnectorRef, String parentEntityRepoName) {
+    GitAwareContextHelper.populateGitDetails(GitEntityInfo.builder()
+                                                 .branch(branchName)
+                                                 .parentEntityConnectorRef(parentEntityConnectorRef)
+                                                 .parentEntityRepoName(parentEntityRepoName)
+                                                 .build());
+    inputSetsApiUtils.checkAndSetContextIfGetOnlyFileContentEnabled(harnessAccount, body.isGetOnlyFileContent());
+    List<String> inputSetReferences = body.getInputSetReferences();
+    String mergedYaml = null;
+    MergeInputSetResponseBody mergeInputSetResponseBody = new MergeInputSetResponseBody();
+    try {
+      mergedYaml =
+          validateAndMergeHelper.getMergedYamlFromInputSetReferencesAndRuntimeInputYamlWithDefaultValues(harnessAccount,
+              org, project, pipeline, inputSetReferences, pipelineBranch, pipelineRepoId, body.getStageIdentifiers(),
+              body.getLastYamlToMerge(), GitXCacheMapper.parseLoadFromCacheHeaderParam(loadFromCache));
+    } catch (InvalidInputSetException e) {
+      InputSetErrorWrapperDTOPMS errorWrapperDTO = (InputSetErrorWrapperDTOPMS) e.getMetadata();
+      mergeInputSetResponseBody.setIsErrorResponse(true);
+      mergeInputSetResponseBody.setInputsetErrorWrapper(inputSetsApiUtils.getInputSetErrorWrapper(errorWrapperDTO));
+      Response.ok().entity(mergeInputSetResponseBody).build();
+    }
+    String fullYaml = "";
+    if (body.isWithMergedPipelineYaml()) {
+      fullYaml = validateAndMergeHelper.mergeInputSetIntoPipeline(harnessAccount, org, project, pipeline, mergedYaml,
+          pipelineBranch, pipelineRepoId, body.getStageIdentifiers(),
+          GitXCacheMapper.parseLoadFromCacheHeaderParam(loadFromCache));
+    }
+    mergeInputSetResponseBody.setIsErrorResponse(false);
+    mergeInputSetResponseBody.setInputsYamlMerged(mergedYaml);
+    mergeInputSetResponseBody.setMergedPipelineYaml(fullYaml);
+    return Response.ok().entity(mergeInputSetResponseBody).build();
+  }
+
+  @Override
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_CREATE_AND_EDIT)
+  @Timed
+  @ResponseMetered
   public Response updateInputSet(InputSetUpdateRequestBody requestBody, @ResourceIdentifier String pipeline,
       @OrgIdentifier String org, @ProjectIdentifier String project, String inputSet,
       @AccountIdentifier String account) {

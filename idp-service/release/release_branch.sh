@@ -46,8 +46,8 @@ function check_file_present(){
 export PURPOSE=idp-service
 export STATUS_ID_TO_MOVE=151
 
-git config --global user.email "bot@harness.io"
-git config --global user.name "bot-harness"
+git config --global user.email $BOT_EMAIL
+git config --global user.name $BOT_USERNAME
 
 git remote set-url origin https://${DRONE_NETRC_USERNAME}:${BOT_PASSWORD}@github.com/harness/harness-core.git
 
@@ -130,7 +130,7 @@ if [[ "$EXECUTE_NEW_CODE" == "true" ]]; then
     newBranch="${major}_${minor}"
     echo ${newBranch}
     git commit -m "Branching to release/${PURPOSE}/${newBranch}. New version ${NEW_VERSION}"
-    git push origin develop
+    git push origin develop -f
 
     echo "STEP3: INFO: Creating a release branch for ${PURPOSE}"
 
@@ -143,7 +143,7 @@ if [[ "$EXECUTE_NEW_CODE" == "true" ]]; then
 
     git add ${VERSION_FILE}
     git commit --allow-empty -m "Set the proper version branch release/${PURPOSE}/${newBranch}"
-    git push origin release/${PURPOSE}/${newBranch}
+    git push origin release/${PURPOSE}/${newBranch} -f
 fi
 
 

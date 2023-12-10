@@ -365,7 +365,13 @@ public enum NGStepType {
       StepSpecTypeConstants.ECS_UPGRADE_CONTAINER),
   @JsonProperty(StepSpecTypeConstants.ECS_BASIC_ROLLBACK)
   ECS_BASIC_ROLLBACK(
-      "ECS Basic Rollback", Arrays.asList(ServiceDefinitionType.ECS), "ECS", StepSpecTypeConstants.ECS_BASIC_ROLLBACK);
+      "ECS Basic Rollback", Arrays.asList(ServiceDefinitionType.ECS), "ECS", StepSpecTypeConstants.ECS_BASIC_ROLLBACK),
+  @JsonProperty(StepSpecTypeConstants.ASG_SHIFT_TRAFFIC)
+  ASG_SHIFT_TRAFFIC(
+      "Asg Shift Traffic", Arrays.asList(ServiceDefinitionType.ASG), "ASG", StepSpecTypeConstants.ASG_SHIFT_TRAFFIC),
+  @JsonProperty(StepSpecTypeConstants.DOWNLOAD_AWS_S3)
+  DOWNLOAD_AWS_S3("Download AWS S3", Arrays.asList(ServiceDefinitionType.values()),
+      "CD Container Step Group Common Steps/DOWNLOAD AWS S3", StepSpecTypeConstants.DOWNLOAD_AWS_S3);
 
   private String displayName;
   private List<ServiceDefinitionType> serviceDefinitionTypes;

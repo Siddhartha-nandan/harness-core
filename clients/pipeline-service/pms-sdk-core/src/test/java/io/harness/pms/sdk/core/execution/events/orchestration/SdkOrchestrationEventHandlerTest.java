@@ -17,6 +17,7 @@ import static org.mockito.Mockito.when;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
+import io.harness.data.structure.ListUtils;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.events.OrchestrationEvent;
 import io.harness.pms.contracts.execution.events.OrchestrationEventType;
@@ -30,9 +31,7 @@ import io.harness.pms.serializer.recaster.RecastOrchestrationUtils;
 import io.harness.rule.Owner;
 
 import com.google.common.collect.ImmutableSet;
-import io.fabric8.utils.Lists;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import org.junit.Before;
@@ -62,21 +61,8 @@ public class SdkOrchestrationEventHandlerTest extends PmsSdkCoreTestBase {
   @Test
   @Owner(developers = SAHIL)
   @Category(UnitTests.class)
-  public void testExtractMetricContext() {
-    Map<String, String> metricsMap =
-        sdkOrchestrationEventHandler.extractMetricContext(new HashMap<>(), orchestrationEvent);
-    assertThat(metricsMap.isEmpty()).isFalse();
-    assertThat(metricsMap.size()).isEqualTo(3);
-    assertThat(metricsMap.get("accountId")).isEqualTo(AmbianceTestUtils.ACCOUNT_ID);
-    assertThat(metricsMap.get("orgIdentifier")).isEqualTo(AmbianceTestUtils.ORG_ID);
-    assertThat(metricsMap.get("projectIdentifier")).isEqualTo(AmbianceTestUtils.PROJECT_ID);
-  }
-
-  @Test
-  @Owner(developers = SAHIL)
-  @Category(UnitTests.class)
   public void testMetricPrefix() {
-    assertThat(sdkOrchestrationEventHandler.getMetricPrefix(orchestrationEvent)).isEqualTo("orchestration_event");
+    assertThat(sdkOrchestrationEventHandler.getEventType(orchestrationEvent)).isEqualTo("orchestration_event");
   }
 
   @Test
@@ -144,7 +130,7 @@ public class SdkOrchestrationEventHandlerTest extends PmsSdkCoreTestBase {
                            orchestrationEvent.getStepParameters().toStringUtf8(), StepParameters.class))
                        .serviceName(orchestrationEvent.getServiceName())
                        .triggerPayload(orchestrationEvent.getTriggerPayload())
-                       .tags(Lists.newArrayList("a"))
+                       .tags(ListUtils.newArrayList("a"))
                        .build());
   }
 

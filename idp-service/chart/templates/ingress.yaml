@@ -58,6 +58,13 @@ spec:
                 name: {{.Values.name}}
                 port:
                   number: 12003
+          - path: /(v2/status-info/.+)
+            pathType: Prefix
+            backend:
+              service:
+                name: {{.Values.name}}
+                port:
+                  number: 12003
           - path: /(v1/onboarding/.+)
             pathType: Prefix
             backend:
@@ -191,6 +198,13 @@ spec:
                 name: {{.Values.name}}
                 port:
                   number: 12003
+          - path: /(v2/scores.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: {{.Values.name}}
+                port:
+                  number: 12003
           - path: /(v1/scorecards.*)
             pathType: Prefix
             backend:
@@ -206,6 +220,20 @@ spec:
                 port:
                   number: 12003
           - path: /(v1/entity-facets.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: {{.Values.name}}
+                port:
+                  number: 12003
+          - path: /(v1/license.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: {{.Values.name}}
+                port:
+                  number: 12003
+          - path: /(usage.*)
             pathType: Prefix
             backend:
               service:

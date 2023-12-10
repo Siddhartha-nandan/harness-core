@@ -62,6 +62,10 @@ import io.harness.cvng.analysis.services.impl.TimeSeriesAnalysisServiceImpl;
 import io.harness.cvng.analysis.services.impl.TimeSeriesAnomalousPatternsServiceImpl;
 import io.harness.cvng.analysis.services.impl.TrendAnalysisServiceImpl;
 import io.harness.cvng.analysis.services.impl.VerificationJobInstanceAnalysisServiceImpl;
+import io.harness.cvng.autodiscovery.services.AutoDiscoveryClient;
+import io.harness.cvng.autodiscovery.services.AutoDiscoveryService;
+import io.harness.cvng.autodiscovery.services.impl.AutoDiscoveryClientImpl;
+import io.harness.cvng.autodiscovery.services.impl.AutoDiscoveryServiceImpl;
 import io.harness.cvng.beans.DataSourceType;
 import io.harness.cvng.beans.activity.ActivityType;
 import io.harness.cvng.beans.change.ChangeSourceType;
@@ -377,16 +381,21 @@ import io.harness.cvng.servicelevelobjective.beans.slospec.LeastPerformanceCompo
 import io.harness.cvng.servicelevelobjective.beans.slospec.WeightedAverageCompositeSLOEvaluator;
 import io.harness.cvng.servicelevelobjective.entities.AbstractServiceLevelObjective.AbstractServiceLevelObjectiveUpdatableEntity;
 import io.harness.cvng.servicelevelobjective.entities.CompositeServiceLevelObjective.CompositeServiceLevelObjectiveUpdatableEntity;
+import io.harness.cvng.servicelevelobjective.entities.MetricLessServiceLevelIndicator.MetricLessServiceLevelIndicatorUpdatableEntity;
 import io.harness.cvng.servicelevelobjective.entities.RatioServiceLevelIndicator.RatioServiceLevelIndicatorUpdatableEntity;
 import io.harness.cvng.servicelevelobjective.entities.RequestServiceLevelIndicator.RequestServiceLevelIndicatorUpdatableEntity;
 import io.harness.cvng.servicelevelobjective.entities.ServiceLevelIndicator;
 import io.harness.cvng.servicelevelobjective.entities.ServiceLevelIndicator.ServiceLevelIndicatorUpdatableEntity;
 import io.harness.cvng.servicelevelobjective.entities.SimpleServiceLevelObjective.SimpleServiceLevelObjectiveUpdatableEntity;
 import io.harness.cvng.servicelevelobjective.entities.ThresholdServiceLevelIndicator.ThresholdServiceLevelIndicatorUpdatableEntity;
+import io.harness.cvng.servicelevelobjective.resources.ServiceLevelObjectiveResourceApiImpl;
 import io.harness.cvng.servicelevelobjective.services.api.AnnotationService;
+import io.harness.cvng.servicelevelobjective.services.api.CompositeSLORecordBucketService;
 import io.harness.cvng.servicelevelobjective.services.api.CompositeSLORecordService;
 import io.harness.cvng.servicelevelobjective.services.api.CompositeSLOService;
+import io.harness.cvng.servicelevelobjective.services.api.ErrorBudgetBurnDownService;
 import io.harness.cvng.servicelevelobjective.services.api.GraphDataService;
+import io.harness.cvng.servicelevelobjective.services.api.GraphDataServiceV2;
 import io.harness.cvng.servicelevelobjective.services.api.SLIAnalyserService;
 import io.harness.cvng.servicelevelobjective.services.api.SLIConsecutiveMinutesProcessorService;
 import io.harness.cvng.servicelevelobjective.services.api.SLIDataProcessorService;
@@ -402,9 +411,12 @@ import io.harness.cvng.servicelevelobjective.services.api.ServiceLevelIndicatorS
 import io.harness.cvng.servicelevelobjective.services.api.ServiceLevelObjectiveV2Service;
 import io.harness.cvng.servicelevelobjective.services.api.UserJourneyService;
 import io.harness.cvng.servicelevelobjective.services.impl.AnnotationServiceImpl;
+import io.harness.cvng.servicelevelobjective.services.impl.CompositeSLORecordBucketServiceImpl;
 import io.harness.cvng.servicelevelobjective.services.impl.CompositeSLORecordServiceImpl;
 import io.harness.cvng.servicelevelobjective.services.impl.CompositeSLOServiceImpl;
+import io.harness.cvng.servicelevelobjective.services.impl.ErrorBudgetBurnDownServiceImpl;
 import io.harness.cvng.servicelevelobjective.services.impl.GraphDataServiceImpl;
+import io.harness.cvng.servicelevelobjective.services.impl.GraphDataServiceV2Impl;
 import io.harness.cvng.servicelevelobjective.services.impl.RatioAnalyserServiceImpl;
 import io.harness.cvng.servicelevelobjective.services.impl.SLIConsecutiveMinutesProcessorServiceImpl;
 import io.harness.cvng.servicelevelobjective.services.impl.SLIDataProcessorServiceImpl;
@@ -420,6 +432,7 @@ import io.harness.cvng.servicelevelobjective.services.impl.ServiceLevelObjective
 import io.harness.cvng.servicelevelobjective.services.impl.ThresholdAnalyserServiceImpl;
 import io.harness.cvng.servicelevelobjective.services.impl.UserJourneyServiceImpl;
 import io.harness.cvng.servicelevelobjective.transformer.servicelevelindicator.CalenderSLOTargetTransformer;
+import io.harness.cvng.servicelevelobjective.transformer.servicelevelindicator.MetricLessServiceLevelIndicatorTransformer;
 import io.harness.cvng.servicelevelobjective.transformer.servicelevelindicator.RatioServiceLevelIndicatorTransformer;
 import io.harness.cvng.servicelevelobjective.transformer.servicelevelindicator.RequestServiceLevelIndicatorTransformer;
 import io.harness.cvng.servicelevelobjective.transformer.servicelevelindicator.RollingSLOTargetTransformer;
@@ -445,6 +458,7 @@ import io.harness.cvng.statemachine.services.api.DeploymentTimeSeriesAnalysisSta
 import io.harness.cvng.statemachine.services.api.OrchestrationService;
 import io.harness.cvng.statemachine.services.api.PreDeploymentLogClusterStateExecutor;
 import io.harness.cvng.statemachine.services.api.SLIMetricAnalysisStateExecutor;
+import io.harness.cvng.statemachine.services.api.SLIMetricLessAnalysisStateExecutor;
 import io.harness.cvng.statemachine.services.api.ServiceGuardLogAnalysisStateExecutor;
 import io.harness.cvng.statemachine.services.api.ServiceGuardLogClusterStateExecutor;
 import io.harness.cvng.statemachine.services.api.ServiceGuardTimeSeriesAnalysisStateExecutor;
@@ -485,6 +499,8 @@ import io.harness.redis.RedisConfig;
 import io.harness.reflection.HarnessReflections;
 import io.harness.remote.client.ServiceHttpClientConfig;
 import io.harness.serializer.CvNextGenRegistrars;
+import io.harness.servicediscovery.client.remote.ServiceDiscoveryClientModule;
+import io.harness.spec.server.cvng.v1.ServiceLevelObjectiveApi;
 import io.harness.telemetry.AbstractTelemetryModule;
 import io.harness.telemetry.TelemetryConfiguration;
 import io.harness.template.TemplateResourceClientModule;
@@ -571,6 +587,8 @@ public class CVServiceModule extends AbstractModule {
         AuthorizationServiceHeader.CV_NEXT_GEN.toString()));
     install(new OpaClientModule(verificationConfiguration.getOpaClientConfig(),
         verificationConfiguration.getPolicyManagerSecret(), CV_NEXT_GEN.getServiceId()));
+    install(new ServiceDiscoveryClientModule(verificationConfiguration.getServiceDiscoveryServiceClientConfig(),
+        verificationConfiguration.getServiceDiscoveryServiceSecret(), CV_NEXT_GEN.getServiceId()));
     install(new AbstractTelemetryModule() {
       @Override
       public TelemetryConfiguration telemetryConfiguration() {
@@ -629,6 +647,7 @@ public class CVServiceModule extends AbstractModule {
     bind(SplunkService.class).to(SplunkServiceImpl.class);
     bind(CVConfigService.class).to(CVConfigServiceImpl.class);
     bind(CompositeSLORecordService.class).to(CompositeSLORecordServiceImpl.class);
+    bind(CompositeSLORecordBucketService.class).to(CompositeSLORecordBucketServiceImpl.class);
     bind(TicketServiceRestClientService.class).to(TicketServiceRestClientServiceImpl.class);
     bind(SRMTelemetrySentStatusService.class).to(SRMTelemetrySentStatusServiceImpl.class);
     bind(TicketService.class).to(TicketServiceImpl.class);
@@ -861,6 +880,7 @@ public class CVServiceModule extends AbstractModule {
     bind(DeleteEntityByHandler.class).to(DefaultDeleteEntityByHandler.class);
     bind(TimeSeriesAnomalousPatternsService.class).to(TimeSeriesAnomalousPatternsServiceImpl.class);
     bind(SLOTimeScaleService.class).to(SLOTimeScaleServiceImpl.class);
+    bind(ErrorBudgetBurnDownService.class).to(ErrorBudgetBurnDownServiceImpl.class);
     try {
       bind(TimeScaleDBService.class)
           .toConstructor(TimeScaleDBServiceImpl.class.getConstructor(TimeScaleDBConfig.class));
@@ -992,7 +1012,10 @@ public class CVServiceModule extends AbstractModule {
         .addBinding(ServiceLevelIndicator.getEvaluationAndMetricType(SLIEvaluationType.REQUEST, null))
         .to(RequestServiceLevelIndicatorUpdatableEntity.class)
         .in(Scopes.SINGLETON);
-
+    serviceLevelIndicatorMapBinder
+        .addBinding(ServiceLevelIndicator.getEvaluationAndMetricType(SLIEvaluationType.METRIC_LESS, null))
+        .to(MetricLessServiceLevelIndicatorUpdatableEntity.class)
+        .in(Scopes.SINGLETON);
     MapBinder<ServiceLevelObjectiveType, AbstractServiceLevelObjectiveUpdatableEntity>
         serviceLevelObjectiveTypeUpdatableEntityMapBinder = MapBinder.newMapBinder(
             binder(), ServiceLevelObjectiveType.class, AbstractServiceLevelObjectiveUpdatableEntity.class);
@@ -1046,9 +1069,12 @@ public class CVServiceModule extends AbstractModule {
     bind(TimeSeriesThresholdService.class).to(TimeSeriesThresholdServiceImpl.class);
     bind(RiskCategoryService.class).to(RiskCategoryServiceImpl.class);
     bind(GraphDataService.class).to(GraphDataServiceImpl.class);
+    bind(GraphDataServiceV2.class).to(GraphDataServiceV2Impl.class);
     bind(DowntimeService.class).to(DowntimeServiceImpl.class);
     bind(EntityUnavailabilityStatusesService.class).to(EntityUnavailabilityStatusesServiceImpl.class);
     bind(AnnotationService.class).to(AnnotationServiceImpl.class);
+    bind(AutoDiscoveryService.class).to(AutoDiscoveryServiceImpl.class);
+    bind(AutoDiscoveryClient.class).to(AutoDiscoveryClientImpl.class);
     install(new PipelineRemoteClientModule(
         ServiceHttpClientConfig.builder()
             .baseUrl(verificationConfiguration.getPipelineServiceClientConfig().getBaseUrl())
@@ -1197,6 +1223,7 @@ public class CVServiceModule extends AbstractModule {
         .in(Scopes.SINGLETON);
 
     bind(ServiceLevelObjectiveV2Service.class).to(ServiceLevelObjectiveV2ServiceImpl.class).in(Singleton.class);
+    bind(ServiceLevelObjectiveApi.class).to(ServiceLevelObjectiveResourceApiImpl.class).in(Singleton.class);
     bind(SLOErrorBudgetResetService.class).to(SLOErrorBudgetResetServiceImpl.class).in(Singleton.class);
     bind(UserJourneyService.class).to(UserJourneyServiceImpl.class);
     bind(ServiceLevelIndicatorService.class).to(ServiceLevelIndicatorServiceImpl.class).in(Singleton.class);
@@ -1220,6 +1247,10 @@ public class CVServiceModule extends AbstractModule {
     serviceLevelIndicatorFQDITransformerMapBinder
         .addBinding(ServiceLevelIndicator.getEvaluationAndMetricType(SLIEvaluationType.WINDOW, SLIMetricType.THRESHOLD))
         .to(ThresholdServiceLevelIndicatorTransformer.class)
+        .in(Scopes.SINGLETON);
+    serviceLevelIndicatorFQDITransformerMapBinder
+        .addBinding(ServiceLevelIndicator.getEvaluationAndMetricType(SLIEvaluationType.METRIC_LESS, null))
+        .to(MetricLessServiceLevelIndicatorTransformer.class)
         .in(Scopes.SINGLETON);
 
     bind(LearningEngineDevService.class).to(LearningEngineDevServiceImpl.class);
@@ -1480,6 +1511,9 @@ public class CVServiceModule extends AbstractModule {
         .in(Scopes.SINGLETON);
     stateTypeAnalysisStateExecutorMap.addBinding(StateType.SLI_METRIC_ANALYSIS)
         .to(SLIMetricAnalysisStateExecutor.class)
+        .in(Scopes.SINGLETON);
+    stateTypeAnalysisStateExecutorMap.addBinding(StateType.SLI_METRIC_ANALYSIS_STATE)
+        .to(SLIMetricLessAnalysisStateExecutor.class)
         .in(Scopes.SINGLETON);
     stateTypeAnalysisStateExecutorMap.addBinding(StateType.COMPOSOITE_SLO_METRIC_ANALYSIS)
         .to(CompositeSLOMetricAnalysisStateExecutor.class)

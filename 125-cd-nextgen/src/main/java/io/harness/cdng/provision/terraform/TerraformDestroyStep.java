@@ -52,6 +52,7 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.StepUtils;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 import io.harness.utils.IdentifierRefHelper;
 
 import com.google.inject.Inject;
@@ -85,6 +86,12 @@ public class TerraformDestroyStep extends CdTaskExecutable<TerraformTaskNGRespon
   @Override
   public Class<StepBaseParameters> getStepParametersClass() {
     return StepBaseParameters.class;
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 
   @Override
@@ -263,7 +270,7 @@ public class TerraformDestroyStep extends CdTaskExecutable<TerraformTaskNGRespon
                 StepUtils.getTimeoutMillis(StepBaseParameters.getTimeout(), TerraformConstants.DEFAULT_TIMEOUT))
             .useOptimizedTfPlan(true)
             .skipColorLogs(cdFeatureFlagHelper.isEnabled(accountId, CDS_TF_TG_SKIP_ERROR_LOGS_COLORING))
-
+            .skipStateStorage(inheritOutput.isSkipStateStorage())
             .build();
 
     TaskData taskData =
@@ -308,7 +315,8 @@ public class TerraformDestroyStep extends CdTaskExecutable<TerraformTaskNGRespon
         .timeoutInMillis(
             StepUtils.getTimeoutMillis(StepBaseParameters.getTimeout(), TerraformConstants.DEFAULT_TIMEOUT))
         .skipColorLogs(cdFeatureFlagHelper.isEnabled(accountId, CDS_TF_TG_SKIP_ERROR_LOGS_COLORING))
-        .useOptimizedTfPlan(true);
+        .useOptimizedTfPlan(true)
+        .skipStateStorage(terraformConfig.isSkipStateStorage());
     if (terraformConfig.getConfigFiles() != null) {
       builder.configFile(helper.getGitFetchFilesConfig(
           terraformConfig.getConfigFiles().toGitStoreConfig(), ambiance, TerraformStepHelper.TF_CONFIG_FILES));
@@ -377,13 +385,29 @@ public class TerraformDestroyStep extends CdTaskExecutable<TerraformTaskNGRespon
     Map<String, String> outputKeys = getGitRevisionsOutput(ambiance, parameters, terraformTaskNGResponse);
 
     if (CommandExecutionStatus.SUCCESS == terraformTaskNGResponse.getCommandExecutionStatus()) {
+      boolean skipStateStorage = false;
+
+      if (parameters.getConfiguration().getType().getDisplayName().equalsIgnoreCase(
+              TerraformStepConfigurationType.INHERIT_FROM_PLAN.getDisplayName())) {
+        skipStateStorage = helper
+                               .getSavedInheritOutput(
+                                   ParameterFieldHelper.getParameterFieldValue(parameters.getProvisionerIdentifier()),
+                                   DESTROY.name(), ambiance)
+                               .isSkipStateStorage();
+      } else if (parameters.getConfiguration().getType().getDisplayName().equalsIgnoreCase(
+                     TerraformStepConfigurationType.INHERIT_FROM_APPLY.getDisplayName())) {
+        skipStateStorage = helper.getLastSuccessfulApplyConfig(parameters, ambiance).isSkipStateStorage();
+      }
+
       terraformConfigDAL.clearTerraformConfig(ambiance,
           helper.generateFullIdentifier(
               ParameterFieldHelper.getParameterFieldValue(parameters.getProvisionerIdentifier()), ambiance));
-      helper.updateParentEntityIdAndVersion(
-          helper.generateFullIdentifier(
-              ParameterFieldHelper.getParameterFieldValue(parameters.getProvisionerIdentifier()), ambiance),
-          terraformTaskNGResponse.getStateFileId());
+      if (!skipStateStorage) {
+        helper.updateParentEntityIdAndVersion(
+            helper.generateFullIdentifier(
+                ParameterFieldHelper.getParameterFieldValue(parameters.getProvisionerIdentifier()), ambiance),
+            terraformTaskNGResponse.getStateFileId());
+      }
     }
     helper.addTerraformRevisionOutcomeIfRequired(stepResponseBuilder, outputKeys);
     return stepResponseBuilder.build();

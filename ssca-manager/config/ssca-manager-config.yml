@@ -51,6 +51,11 @@ hostname: ${HOSTNAME:-localhost}
 basePathPrefix: ${BASE_PATH_PREFIX:-""}
 
 enableAuth: true
+exportMetricsToStackDriver: false
+enableElasticsearch: false
+
+elasticsearch:
+  url: "https://localhost:9200"
 
 s3Config:
   accessKeyId: "access-key-id"
@@ -108,9 +113,39 @@ debeziumConsumerConfigs:
     threads: 1
     batchSize: 100
 
+pipelineServiceClientConfig:
+  baseUrl: http://localhost:12001/api/
+  connectTimeOutSeconds: 15
+  readTimeOutSeconds: 15
+
+policyMgmtServiceClientConfig:
+  baseUrl: http://localhost:3000
+  connectTimeOutSeconds: 15
+  readTimeOutSeconds: 15
+
+cfClientConfig:
+  apiKey: ""
+  configUrl: "https://config.feature-flags.uat.harness.io/api/1.0"
+  eventUrl: "https://event.feature-flags.uat.harness.io/api/1.0"
+  analyticsEnabled: true
+  connectionTimeout: 10000
+  readTimeout: 45000
+  retries: 6
+  sleepInterval: 5000
+
+featureFlagConfig:
+  featureFlagSystem: LOCAL
+  syncFeaturesToCF: false
+
+managerClientConfig:
+  baseUrl: http://localhost:3457/api/
+  connectTimeOutSeconds: 15
+  readTimeOutSeconds: 15
 
 ngManagerServiceSecret: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
 sscaManagerServiceSecret: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
 jwtAuthSecret: dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq
 jwtIdentityServiceSecret: HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU=
+pipelineServiceSecret: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+policyMgmtServiceSecret: secret
 

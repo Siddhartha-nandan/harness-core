@@ -21,6 +21,7 @@ import io.harness.cdng.aws.asg.AsgCanaryDeleteStepNode;
 import io.harness.cdng.aws.asg.AsgCanaryDeployStepNode;
 import io.harness.cdng.aws.asg.AsgRollingDeployStepNode;
 import io.harness.cdng.aws.asg.AsgRollingRollbackStepNode;
+import io.harness.cdng.aws.asg.AsgShiftTrafficStepNode;
 import io.harness.cdng.aws.lambda.deploy.AwsLambdaDeployStepNode;
 import io.harness.cdng.aws.lambda.rollback.AwsLambdaRollbackStepNode;
 import io.harness.cdng.aws.sam.AwsSamBuildStepNode;
@@ -33,6 +34,7 @@ import io.harness.cdng.azure.webapp.AzureWebAppSwapSlotStepNode;
 import io.harness.cdng.azure.webapp.AzureWebAppTrafficShiftStepNode;
 import io.harness.cdng.bamboo.BambooBuildStepNode;
 import io.harness.cdng.chaos.ChaosStepNode;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepNode;
 import io.harness.cdng.creator.plan.customDeployment.CustomDeploymentConfig;
 import io.harness.cdng.creator.plan.stage.DeploymentStageNode;
 import io.harness.cdng.customDeployment.FetchInstanceScriptStepNode;
@@ -1141,6 +1143,18 @@ public class CDNGRegistrars {
                                            .build())
                    .build())
           .add(YamlSchemaRootClass.builder()
+                   .entityType(EntityType.ASG_SHIFT_TRAFFIC_STEP)
+                   .availableAtProjectLevel(true)
+                   .availableAtOrgLevel(false)
+                   .availableAtAccountLevel(false)
+                   .clazz(AsgShiftTrafficStepNode.class)
+                   .yamlSchemaMetadata(YamlSchemaMetadata.builder()
+                                           .namespace(SchemaNamespaceConstants.CD)
+                                           .modulesSupported(Arrays.asList(ModuleType.CD, ModuleType.PMS))
+                                           .yamlGroup(YamlGroup.builder().group(StepCategory.STEP.name()).build())
+                                           .build())
+                   .build())
+          .add(YamlSchemaRootClass.builder()
                    .entityType(EntityType.TERRAFORM_CLOUD_RUN)
                    .availableAtProjectLevel(true)
                    .availableAtOrgLevel(false)
@@ -1449,6 +1463,18 @@ public class CDNGRegistrars {
                    .yamlSchemaMetadata(YamlSchemaMetadata.builder()
                                            .namespace(SchemaNamespaceConstants.CD)
                                            .modulesSupported(Collections.singletonList(ModuleType.CD))
+                                           .yamlGroup(YamlGroup.builder().group(StepCategory.STEP.name()).build())
+                                           .build())
+                   .build())
+          .add(YamlSchemaRootClass.builder()
+                   .entityType(EntityType.DOWNLOAD_AWS_S3)
+                   .availableAtProjectLevel(true)
+                   .availableAtOrgLevel(false)
+                   .availableAtAccountLevel(false)
+                   .clazz(DownloadAwsS3StepNode.class)
+                   .yamlSchemaMetadata(YamlSchemaMetadata.builder()
+                                           .namespace(SchemaNamespaceConstants.CD)
+                                           .modulesSupported(Arrays.asList(ModuleType.CD, ModuleType.PMS))
                                            .yamlGroup(YamlGroup.builder().group(StepCategory.STEP.name()).build())
                                            .build())
                    .build())

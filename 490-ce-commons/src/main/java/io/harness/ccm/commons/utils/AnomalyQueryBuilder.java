@@ -217,6 +217,8 @@ public class AnomalyQueryBuilder {
     switch (field) {
       case ANOMALY_TIME:
         return ANOMALIES.ANOMALYTIME;
+      case ANOMALY_ID:
+        return ANOMALIES.ID;
       case ACTUAL_COST:
         return ANOMALIES.ACTUALCOST;
       case WORKLOAD:
@@ -255,6 +257,8 @@ public class AnomalyQueryBuilder {
         return ANOMALIES.AZURERESOURCEGROUP;
       case AZURE_METER_CATEGORY:
         return ANOMALIES.AZUREMETERCATEGORY;
+      case CLOUD_PROVIDER:
+        return ANOMALIES.CLOUDPROVIDER;
       default:
         throw new InvalidRequestException(String.format("%s not supported", field.toString()));
     }

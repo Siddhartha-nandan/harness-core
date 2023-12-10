@@ -71,6 +71,8 @@ public class EngineExpressionEvaluator {
   public static final String ENABLED_FEATURE_FLAGS_KEY = "ENABLED_FEATURE_FLAGS";
   public static final String PIE_EXECUTION_JSON_SUPPORT = "PIE_EXECUTION_JSON_SUPPORT";
   public static final String PIE_EXPRESSION_CONCATENATION = "PIE_EXPRESSION_CONCATENATION";
+  public static final String CDS_METHOD_INVOCATION_NEW_FLOW_EXPRESSION_ENGINE =
+      "CDS_METHOD_INVOCATION_NEW_FLOW_EXPRESSION_ENGINE";
   public static final String PIE_EXPRESSION_DISABLE_COMPLEX_JSON_SUPPORT =
       "PIE_EXPRESSION_DISABLE_COMPLEX_JSON_SUPPORT";
 
@@ -295,7 +297,12 @@ public class EngineExpressionEvaluator {
 
     try {
       if (ctx.isFeatureFlagEnabled(PIE_EXPRESSION_CONCATENATION)) {
-        StringReplacerResponse replacerResponse = runStringReplacerWithResponse(expression, resolver);
+        StringReplacerResponse replacerResponse;
+        if (ctx.isFeatureFlagEnabled(CDS_METHOD_INVOCATION_NEW_FLOW_EXPRESSION_ENGINE)) {
+          replacerResponse = runStringReplacerWithResponseAndNewMethodInvocation(expression, resolver);
+        } else {
+          replacerResponse = runStringReplacerWithResponse(expression, resolver);
+        }
         Object evaluatedExpression = evaluateInternalV2(replacerResponse, ctx);
 
         // If expression is evaluated as null, check if prefix combinations can give any valid result or not, we should
@@ -520,6 +527,17 @@ public class EngineExpressionEvaluator {
       } else {
         return evaluateExpressionInternal((String) object, ctx, depth - 1, expressionMode);
       }
+    } else if (isAnyCollection(object)) {
+      try {
+        return ExpressionEvaluatorUtils.updateExpressionsInternal(
+            object, new ResolveNestedObjectFunctorImpl(this, expressionMode), depth - 1, new HashSet<>());
+      } catch (Exception ex) {
+        log.error(
+            String.format(
+                "[EXPRESSION_WITH_NESTED_OBJECT_VALUE]: Exception while resolving nested object expression %s, object value %s",
+                expressionBlock, object),
+            ex);
+      }
     }
 
     observed(expressionBlock, object);
@@ -535,6 +553,11 @@ public class EngineExpressionEvaluator {
       return ExpressionConstants.EXPR_START + expressionBlock + ExpressionConstants.EXPR_END;
     }
     return object;
+  }
+
+  public static boolean isAnyCollection(Object value) {
+    return value instanceof Map || value instanceof Collection || value instanceof String[] || value instanceof List
+        || value instanceof Iterable || (value != null && value.getClass().isArray());
   }
 
   protected Object evaluateCombinations(String expressionBlock, List<String> finalExpressions,
@@ -719,6 +742,13 @@ public class EngineExpressionEvaluator {
     return replacer.replaceWithRenderCheck(expression);
   }
 
+  private static StringReplacerResponse runStringReplacerWithResponseAndNewMethodInvocation(
+      @NotNull String expression, @NotNull ExpressionResolver resolver) {
+    StringReplacer replacer =
+        new StringReplacer(resolver, ExpressionConstants.EXPR_START, ExpressionConstants.EXPR_END);
+    return replacer.replaceWithRenderCheckAndNewMethodInvocation(expression);
+  }
+
   public static boolean isSingleExpression(String str) {
     return TrackingExpressionResolver.isSingleExpression(
         ExpressionConstants.EXPR_START, ExpressionConstants.EXPR_END, str);
@@ -775,11 +805,6 @@ public class EngineExpressionEvaluator {
     @Override
     public ExpressionMode getExpressionMode() {
       return expressionMode;
-    }
-
-    public boolean isAnyCollection(Object value) {
-      return value instanceof Map || value instanceof Collection || value instanceof String[] || value instanceof List
-          || value instanceof Iterable || (value != null && value.getClass().isArray());
     }
 
     @Override
@@ -936,6 +961,26 @@ public class EngineExpressionEvaluator {
     @Override
     public String processString(String expression) {
       return expressionEvaluator.renderExpression(expression, expressionMode);
+    }
+  }
+
+  @Getter
+  public static class ResolveNestedObjectFunctorImpl implements ExpressionResolveFunctor {
+    private final EngineExpressionEvaluator expressionEvaluator;
+    private ExpressionMode expressionMode;
+
+    public ResolveNestedObjectFunctorImpl(
+        EngineExpressionEvaluator expressionEvaluator, ExpressionMode expressionMode) {
+      this.expressionEvaluator = expressionEvaluator;
+      this.expressionMode = expressionMode;
+    }
+
+    @Override
+    public String processString(String expression) {
+      if (hasExpressions(expression)) {
+        return expressionEvaluator.evaluateExpression(expression, expressionMode).toString();
+      }
+      return expression;
     }
   }
 

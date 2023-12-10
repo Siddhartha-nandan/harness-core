@@ -154,8 +154,6 @@ public class PlanCreatorService extends PlanCreationServiceImplBase {
             createPlanForDependencies(ctx, finalResponse, dependencies, finalResponse.getServiceAffinityMap());
         PlanCreatorServiceHelper.removeInitialDependencies(dependencies, initialDependencies);
       }
-      log.info("[PMS_PlanCreatorService_Time] RecursiveDependencies total time took {}ms for dependencies size {}",
-          System.currentTimeMillis() - start, initialDependencies.getDependenciesMap().size());
       if (finalResponse.getDependencies() != null
           && EmptyPredicate.isNotEmpty(finalResponse.getDependencies().getDependenciesMap())) {
         finalResponse.setDependencies(
@@ -199,9 +197,6 @@ public class PlanCreatorService extends PlanCreationServiceImplBase {
           planCreationResponses, finalResponse, currentYaml, dependencies, dependenciesList);
     } catch (Exception ex) {
       throw new UnexpectedException(format("Unexpected plan creation error: %s", ex.getMessage()), ex);
-    } finally {
-      log.info("[PMS_PlanCreatorService_Time] Dependencies list time took {}ms for dependencies size {}",
-          System.currentTimeMillis() - start, dependenciesList.size());
     }
   }
 
@@ -285,13 +280,17 @@ public class PlanCreatorService extends PlanCreationServiceImplBase {
         }
 
         PartialPlanCreator planCreator = planCreatorOptional.get();
-        Class<?> cls = planCreator.getFieldClass();
+        Object obj;
         String executionInputTemplate = "";
-        // ExecutionInput is supported for V0 YAML only. Not supported with YAML simplification.
         if (HarnessYamlVersion.V0.equals(ctx.getYamlVersion())) {
           executionInputTemplate = planCreator.getExecutionInputTemplateAndModifyYamlField(field);
         }
-        Object obj = YamlField.class.isAssignableFrom(cls) ? field : YamlUtils.read(field.getNode().toString(), cls);
+        if (HarnessYamlVersion.isV1(yamlVersion)) {
+          obj = planCreator.getFieldObject(field);
+        } else {
+          Class<?> cls = planCreator.getFieldClass();
+          obj = YamlField.class.isAssignableFrom(cls) ? field : YamlUtils.read(field.getNode().toString(), cls);
+        }
 
         try {
           PlanCreationResponse planForField = planCreator.createPlanForField(

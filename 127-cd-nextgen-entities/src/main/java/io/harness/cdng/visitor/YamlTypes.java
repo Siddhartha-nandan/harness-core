@@ -97,6 +97,7 @@ public interface YamlTypes {
   String ASG_BLUE_GREEN_DEPLOY = StepSpecTypeConstants.ASG_BLUE_GREEN_DEPLOY;
   String ASG_BLUE_GREEN_ROLLBACK = StepSpecTypeConstants.ASG_BLUE_GREEN_ROLLBACK;
   String ASG_BLUE_GREEN_SWAP_SERVICE = StepSpecTypeConstants.ASG_BLUE_GREEN_SWAP_SERVICE;
+  String ASG_SHIFT_TRAFFIC = StepSpecTypeConstants.ASG_SHIFT_TRAFFIC;
   String GOOGLE_CLOUD_FUNCTIONS_DEPLOY = StepSpecTypeConstants.GOOGLE_CLOUD_FUNCTIONS_DEPLOY;
   String GOOGLE_CLOUD_FUNCTIONS_DEPLOY_WITHOUT_TRAFFIC =
       StepSpecTypeConstants.GOOGLE_CLOUD_FUNCTIONS_DEPLOY_WITHOUT_TRAFFIC;
@@ -245,4 +246,6 @@ public interface YamlTypes {
   String AWS_CDK_DEPLOY = StepSpecTypeConstants.AWS_CDK_DEPLOY;
   String AWS_CDK_DESTROY = StepSpecTypeConstants.AWS_CDK_DESTROY;
   String AWS_CDK_ROLLBACK = StepSpecTypeConstants.AWS_CDK_ROLLBACK;
+
+  String DOWNLOAD_AWS_S3 = StepSpecTypeConstants.DOWNLOAD_AWS_S3;
 }

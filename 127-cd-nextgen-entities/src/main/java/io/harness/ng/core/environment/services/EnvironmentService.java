@@ -13,6 +13,7 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.ng.core.environment.beans.Environment;
 import io.harness.ng.core.environment.beans.EnvironmentInputSetYamlAndServiceOverridesMetadataDTO;
 import io.harness.ng.core.environment.beans.EnvironmentInputsMergedResponseDto;
+import io.harness.ng.core.environment.dto.ScopedEnvironmentRequestDTO;
 import io.harness.repositories.UpsertOptions;
 
 import java.util.List;
@@ -49,6 +50,8 @@ public interface EnvironmentService {
   Environment upsert(Environment requestEnvironment, UpsertOptions upsertOptions);
 
   Page<Environment> list(Criteria criteria, Pageable pageable);
+  Page<Environment> list(
+      String accountId, String envType, ScopedEnvironmentRequestDTO scopedEnvironmentRequestDTO, int page, int size);
 
   boolean delete(String accountId, String orgIdentifier, String projectIdentifier, String environmentIdentifier,
       Long version, boolean forceDelete);
@@ -76,7 +79,9 @@ public interface EnvironmentService {
       String accountId, String orgIdentifier, String projectIdentifier, List<String> envRefs);
 
   String createEnvironmentInputsYaml(
-      String accountId, String orgIdentifier, String projectIdentifier, String envIdentifier);
+      String accountId, String orgIdentifier, String projectIdentifier, String envIdentifier, String gitBranch);
+
+  String createEnvironmentInputsYaml(String envIdentifier, String environmentYaml);
 
   List<Map<String, String>> getAttributes(
       String accountId, String orgIdentifier, String projectIdentifier, List<String> envIdentifiers);
@@ -84,6 +89,11 @@ public interface EnvironmentService {
   EnvironmentInputSetYamlAndServiceOverridesMetadataDTO getEnvironmentsInputYamlAndServiceOverridesMetadata(
       String accountId, String orgIdentifier, String projectIdentifier, List<String> envRefs, List<String> serviceRefs,
       boolean isServiceOverrideV2Enabled);
+
+  EnvironmentInputSetYamlAndServiceOverridesMetadataDTO getEnvironmentsInputYamlAndServiceOverridesMetadata(
+      String accountId, String orgIdentifier, String projectIdentifier, List<String> envRefs,
+      Map<String, String> environmentRefBranchMap, List<String> serviceRefs, boolean isServiceOverrideV2Enabled,
+      boolean loadFromCache);
 
   EnvironmentInputsMergedResponseDto mergeEnvironmentInputs(
       String accountId, String orgId, String projectId, String serviceId, String oldEnvironmentInputsYaml);

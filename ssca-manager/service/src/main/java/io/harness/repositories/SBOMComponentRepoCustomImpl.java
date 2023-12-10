@@ -8,6 +8,7 @@
 package io.harness.repositories;
 
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
+import io.harness.ssca.entities.NormalizedSBOMComponentEntity.NormalizedSBOMEntityKeys;
 
 import com.google.inject.Inject;
 import java.util.List;
@@ -17,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.repository.support.PageableExecutionUtils;
@@ -38,5 +40,17 @@ public class SBOMComponentRepoCustomImpl implements SBOMComponentRepoCustom {
   @Override
   public List<NormalizedSBOMComponentEntity> findAllByQuery(Query query) {
     return mongoTemplate.find(query, NormalizedSBOMComponentEntity.class);
+  }
+
+  @Override
+  public List<String> findDistinctOrchestrationIds(Criteria criteria) {
+    Query query = new Query(criteria);
+    return mongoTemplate.findDistinct(
+        query, NormalizedSBOMEntityKeys.orchestrationId, NormalizedSBOMComponentEntity.class, String.class);
+  }
+
+  @Override
+  public <T> List<T> aggregate(Aggregation aggregation, Class<T> resultClass) {
+    return mongoTemplate.aggregate(aggregation, NormalizedSBOMComponentEntity.class, resultClass).getMappedResults();
   }
 }

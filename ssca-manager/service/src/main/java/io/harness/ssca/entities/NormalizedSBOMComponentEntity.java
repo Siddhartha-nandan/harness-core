@@ -37,6 +37,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @TypeAlias("sbomComponent")
 @HarnessEntity(exportable = true)
 public class NormalizedSBOMComponentEntity implements PersistentEntity {
+  @Field("_id") String uuid;
   @Field("orchestrationid") String orchestrationId;
   @Field("sbomversion") String sbomVersion;
 
@@ -66,9 +67,9 @@ public class NormalizedSBOMComponentEntity implements PersistentEntity {
   @Field("packagemanager") String packageManager; // this will be parsed from the purl
   @Field("packagenamespace") String packageNamespace; // this will be parsed from the purl
 
-  @Field("majorversion") int majorVersion;
-  @Field("minorversion") int minorVersion;
-  @Field("patchversion") int patchVersion;
+  @Field("majorversion") Integer majorVersion;
+  @Field("minorversion") Integer minorVersion;
+  @Field("patchversion") Integer patchVersion;
 
   @Field("pipelineidentifier") String pipelineIdentifier;
   @Field("projectidentifier") String projectIdentifier;

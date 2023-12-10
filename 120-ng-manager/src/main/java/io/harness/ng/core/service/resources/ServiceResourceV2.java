@@ -8,8 +8,7 @@
 package io.harness.ng.core.service.resources;
 
 import static io.harness.NGCommonEntityConstants.FORCE_DELETE_MESSAGE;
-import static io.harness.artifact.ArtifactUtilities.getArtifactoryRegistryUrl;
-import static io.harness.cdng.artifact.resources.artifactory.service.ArtifactoryResourceServiceImpl.getConnector;
+import static io.harness.NGCommonEntityConstants.SERVICE_IDENTIFIER_KEY;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.pms.rbac.NGResourceType.SERVICE;
@@ -25,7 +24,6 @@ import static java.lang.Long.parseLong;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 import static javax.ws.rs.core.HttpHeaders.IF_MATCH;
-import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNumeric;
 
 import io.harness.NGCommonEntityConstants;
@@ -57,20 +55,19 @@ import io.harness.cdng.manifest.yaml.K8sCommandFlagType;
 import io.harness.cdng.manifest.yaml.kinds.KustomizeCommandFlagType;
 import io.harness.cdng.service.beans.ServiceDefinitionType;
 import io.harness.data.structure.EmptyPredicate;
-import io.harness.delegate.beans.connector.artifactoryconnector.ArtifactoryConnectorDTO;
-import io.harness.delegate.task.artifacts.ArtifactSourceConstants;
 import io.harness.eventsframework.schemas.entity.EntityDetailProtoDTO;
 import io.harness.exception.InvalidRequestException;
 import io.harness.expression.EngineExpressionEvaluator;
+import io.harness.gitaware.helper.MoveConfigOperationType;
 import io.harness.gitsync.interceptor.GitEntityCreateInfoDTO;
 import io.harness.gitsync.interceptor.GitEntityFindInfoDTO;
 import io.harness.gitsync.interceptor.GitEntityUpdateInfoDTO;
 import io.harness.ng.beans.PageResponse;
 import io.harness.ng.core.artifact.ArtifactSourceYamlRequestDTO;
 import io.harness.ng.core.beans.DocumentationConstants;
+import io.harness.ng.core.beans.EntityWithGitInfo;
 import io.harness.ng.core.beans.NGEntityTemplateResponseDTO;
 import io.harness.ng.core.beans.ServiceV2YamlMetadata;
-import io.harness.ng.core.beans.ServiceWithGitInfo;
 import io.harness.ng.core.beans.ServicesV2YamlMetadataDTO;
 import io.harness.ng.core.beans.ServicesYamlMetadataApiInput;
 import io.harness.ng.core.beans.ServicesYamlMetadataApiInputV2;
@@ -88,6 +85,9 @@ import io.harness.ng.core.service.entity.ArtifactSourcesResponseDTO;
 import io.harness.ng.core.service.entity.ServiceEntity;
 import io.harness.ng.core.service.entity.ServiceEntity.ServiceEntityKeys;
 import io.harness.ng.core.service.entity.ServiceInputsMergedResponseDto;
+import io.harness.ng.core.service.entity.ServiceMoveConfigOperationDTO;
+import io.harness.ng.core.service.entity.ServiceMoveConfigRequestDTO;
+import io.harness.ng.core.service.entity.ServiceMoveConfigResponse;
 import io.harness.ng.core.service.mappers.NGServiceEntityMapper;
 import io.harness.ng.core.service.mappers.ServiceElementMapper;
 import io.harness.ng.core.service.mappers.ServiceFilterHelper;
@@ -99,9 +99,6 @@ import io.harness.ng.core.template.refresh.ValidateTemplateInputsResponseDTO;
 import io.harness.ng.core.utils.GitXUtils;
 import io.harness.ng.core.utils.OrgAndProjectValidationHelper;
 import io.harness.pms.rbac.NGResourceType;
-import io.harness.pms.yaml.YamlField;
-import io.harness.pms.yaml.YamlNode;
-import io.harness.pms.yaml.YamlUtils;
 import io.harness.rbac.CDNGRbacUtility;
 import io.harness.repositories.UpsertOptions;
 import io.harness.security.annotations.InternalApi;
@@ -109,9 +106,9 @@ import io.harness.security.annotations.NextGenManagerAuth;
 import io.harness.utils.IdentifierRefHelper;
 import io.harness.utils.NGFeatureFlagHelperService;
 import io.harness.utils.PageUtils;
-import io.harness.utils.YamlPipelineUtils;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -126,12 +123,10 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -230,6 +225,8 @@ public class ServiceResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "The saved Service")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<ServiceResponse>
   get(@Parameter(description = SERVICE_PARAM_MESSAGE) @PathParam(
           "serviceIdentifier") @ResourceIdentifier String serviceIdentifier,
@@ -262,8 +259,8 @@ public class ServiceResourceV2 {
     }
 
     if (featureFlagService.isEnabled(accountId, FeatureName.CDS_ARTIFACTORY_REPOSITORY_URL_MANDATORY)) {
-      ServiceEntity service =
-          updateArtifactoryRegistryUrlIfEmpty(serviceEntity.get(), accountId, orgIdentifier, projectIdentifier);
+      ServiceEntity service = serviceEntityService.updateArtifactoryRegistryUrlIfEmpty(
+          serviceEntity.get(), accountId, orgIdentifier, projectIdentifier);
       Optional<ServiceEntity> serviceResponse = Optional.ofNullable(service);
       if (fetchResolvedYaml) {
         serviceEntity.get().setYaml(serviceEntityService.resolveArtifactSourceTemplateRefs(
@@ -287,6 +284,8 @@ public class ServiceResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns the created Service")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<ServiceResponse>
   create(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
              NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
@@ -323,6 +322,8 @@ public class ServiceResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns the created Services")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PageResponse<ServiceResponse>>
   createServices(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
                      NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
@@ -360,6 +361,8 @@ public class ServiceResourceV2 {
   @Operation(operationId = "deleteServiceV2", summary = "Delete a Service by identifier",
       responses =
       { @io.swagger.v3.oas.annotations.responses.ApiResponse(description = "Returns true if the Service is deleted") })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<Boolean>
   delete(@HeaderParam(IF_MATCH) String ifMatch,
       @Parameter(description = SERVICE_PARAM_MESSAGE) @PathParam(
@@ -380,6 +383,8 @@ public class ServiceResourceV2 {
   @ApiOperation(value = "Update a service by identifier", nickname = "updateServiceV2")
   @Operation(operationId = "updateServiceV2", summary = "Update a Service by identifier",
       responses = { @io.swagger.v3.oas.annotations.responses.ApiResponse(description = "Returns the updated Service") })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<ServiceResponse>
   update(@HeaderParam(IF_MATCH) String ifMatch,
       @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
@@ -411,6 +416,8 @@ public class ServiceResourceV2 {
   @ApiOperation(value = "Upsert a service by identifier", nickname = "upsertServiceV2")
   @Operation(operationId = "upsertServiceV2", summary = "Upsert a Service by identifier",
       responses = { @io.swagger.v3.oas.annotations.responses.ApiResponse(description = "Returns the updated Service") })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<ServiceResponse>
   upsert(@HeaderParam(IF_MATCH) String ifMatch,
       @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
@@ -442,6 +449,8 @@ public class ServiceResourceV2 {
       {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(description = "Returns the list of Services for a Project")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PageResponse<ServiceResponse>>
   listServices(@Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
                    NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
@@ -517,6 +526,8 @@ public class ServiceResourceV2 {
       hidden = true)
   @InternalApi
   @NGAccessControlCheck(resourceType = NGResourceType.SERVICE, permission = "core_service_view")
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PageResponse<ServiceResponse>>
   getAllServicesList(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
                          NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
@@ -552,6 +563,8 @@ public class ServiceResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(description = "Returns the list of Services filtered by scoped service refs")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PageResponse<ServiceResponse>>
   getServicesFilteredByRefs(@Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
                                 NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
@@ -637,6 +650,8 @@ public class ServiceResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(description = "Returns the list of Services for a Project that are accessible")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<List<ServiceResponse>>
   listAccessServices(@Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
                          NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
@@ -740,6 +755,8 @@ public class ServiceResourceV2 {
   @Path("/runtimeInputs/{serviceIdentifier}")
   @ApiOperation(value = "This api returns runtime input YAML", nickname = "getRuntimeInputsServiceEntity")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<NGEntityTemplateResponseDTO> getServiceRuntimeInputs(
       @Parameter(description = SERVICE_PARAM_MESSAGE) @PathParam(
           "serviceIdentifier") @ResourceIdentifier String serviceIdentifier,
@@ -771,6 +788,8 @@ public class ServiceResourceV2 {
   @ApiOperation(
       value = "This api returns service YAML and runtime input YAML", nickname = "getServicesYamlAndRuntimeInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<ServicesV2YamlMetadataDTO>
   getServicesYamlAndRuntimeInputs(@Parameter(description = SERVICE_YAML_METADATA_INPUT_PARAM_MESSAGE) @Valid
                                   @NotNull ServicesYamlMetadataApiInput servicesYamlMetadataApiInput,
@@ -780,11 +799,8 @@ public class ServiceResourceV2 {
           NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
       @Parameter(description = NGCommonEntityConstants.PROJECT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier) {
-    List<ServiceEntity> serviceEntities = serviceEntityService.getMetadata(
-        accountId, orgIdentifier, projectIdentifier, servicesYamlMetadataApiInput.getServiceIdentifiers());
-
-    List<ServiceV2YamlMetadata> serviceV2YamlMetadataList = new ArrayList<>();
-    serviceEntities.forEach(serviceEntity -> serviceV2YamlMetadataList.add(createServiceV2YamlMetadata(serviceEntity)));
+    List<ServiceV2YamlMetadata> serviceV2YamlMetadataList = serviceEntityService.getServicesYamlMetadata(accountId,
+        orgIdentifier, projectIdentifier, servicesYamlMetadataApiInput.getServiceIdentifiers(), new HashMap<>(), false);
 
     return ResponseDTO.newResponse(
         ServicesV2YamlMetadataDTO.builder().serviceV2YamlMetadataList(serviceV2YamlMetadataList).build());
@@ -795,6 +811,8 @@ public class ServiceResourceV2 {
   @ApiOperation(
       value = "This api returns service YAML and runtime input YAML", nickname = "getServicesYamlAndRuntimeInputsV2")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<ServicesV2YamlMetadataDTO>
   getServicesYamlAndRuntimeInputsV2(@Parameter(description = SERVICE_YAML_METADATA_INPUT_PARAM_MESSAGE) @Valid
                                     @NotNull ServicesYamlMetadataApiInputV2 servicesYamlMetadataApiInput,
@@ -815,25 +833,23 @@ public class ServiceResourceV2 {
     // scoped service refs
     List<String> serviceRefs = new ArrayList<>(serviceRefBranchMap.keySet());
 
-    List<ServiceEntity> serviceEntities = serviceEntityService.getServices(accountId, orgIdentifier, projectIdentifier,
-        serviceRefs, serviceRefBranchMap, GitXUtils.parseLoadFromCacheHeaderParam(loadFromCache));
-
-    List<ServiceV2YamlMetadata> serviceV2YamlMetadataList = new ArrayList<>();
-    serviceEntities.forEach(serviceEntity -> serviceV2YamlMetadataList.add(createServiceV2YamlMetadata(serviceEntity)));
+    List<ServiceV2YamlMetadata> servicesYamlMetadata =
+        serviceEntityService.getServicesYamlMetadata(accountId, orgIdentifier, projectIdentifier, serviceRefs,
+            serviceRefBranchMap, GitXUtils.parseLoadFromCacheHeaderParam(loadFromCache));
 
     return ResponseDTO.newResponse(
-        ServicesV2YamlMetadataDTO.builder().serviceV2YamlMetadataList(serviceV2YamlMetadataList).build());
+        ServicesV2YamlMetadataDTO.builder().serviceV2YamlMetadataList(servicesYamlMetadata).build());
   }
 
   private Map<String, String> getServiceBranchMap(String accountIdentifier, String orgIdentifier,
-      String projectIdentifier, List<ServiceWithGitInfo> serviceWithGitInfo) {
+      String projectIdentifier, List<EntityWithGitInfo> entityWithGitInfo) {
     Map<String, String> resultMap = new HashMap<>();
 
-    if (isEmpty(serviceWithGitInfo)) {
+    if (isEmpty(entityWithGitInfo)) {
       return resultMap;
     }
 
-    for (ServiceWithGitInfo input : serviceWithGitInfo) {
+    for (EntityWithGitInfo input : entityWithGitInfo) {
       String scopedRef = IdentifierRefHelper.getRefFromIdentifierOrRef(
           accountIdentifier, orgIdentifier, projectIdentifier, input.getRef());
       resultMap.put(scopedRef, input.getBranch());
@@ -842,41 +858,13 @@ public class ServiceResourceV2 {
     return resultMap;
   }
 
-  private ServiceV2YamlMetadata createServiceV2YamlMetadata(ServiceEntity serviceEntity) {
-    if (featureFlagService.isEnabled(
-            serviceEntity.getAccountId(), FeatureName.CDS_ARTIFACTORY_REPOSITORY_URL_MANDATORY)) {
-      serviceEntity = updateArtifactoryRegistryUrlIfEmpty(serviceEntity, serviceEntity.getAccountId(),
-          serviceEntity.getOrgIdentifier(), serviceEntity.getProjectIdentifier());
-    }
-
-    if (isBlank(serviceEntity.getYaml())) {
-      log.info("Service with identifier {} is not configured with a Service definition. Service Yaml is empty",
-          serviceEntity.getIdentifier());
-      return ServiceV2YamlMetadata.builder()
-          .serviceIdentifier(serviceEntity.getIdentifier())
-          .serviceYaml("")
-          .inputSetTemplateYaml("")
-          .projectIdentifier(serviceEntity.getProjectIdentifier())
-          .orgIdentifier(serviceEntity.getOrgIdentifier())
-          .build();
-    }
-
-    final String serviceInputSetYaml =
-        serviceEntityService.createServiceInputsYaml(serviceEntity.getYaml(), serviceEntity.getIdentifier());
-    return ServiceV2YamlMetadata.builder()
-        .serviceIdentifier(serviceEntity.getIdentifier())
-        .serviceYaml(serviceEntity.getYaml())
-        .inputSetTemplateYaml(serviceInputSetYaml)
-        .orgIdentifier(serviceEntity.getOrgIdentifier())
-        .projectIdentifier(serviceEntity.getProjectIdentifier())
-        .build();
-  }
-
   @GET
   @Path("/artifactSourceInputs/{serviceIdentifier}")
   @ApiOperation(value = "This api returns artifact source identifiers and their runtime inputs YAML",
       nickname = "getArtifactSourceInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<ArtifactSourcesResponseDTO>
   getArtifactSourceInputs(@Parameter(description = SERVICE_PARAM_MESSAGE) @PathParam(
                               "serviceIdentifier") @ResourceIdentifier String serviceIdentifier,
@@ -890,8 +878,8 @@ public class ServiceResourceV2 {
           hidden = true) @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo,
       @Parameter(description = "Specifies whether to load the entity from cache", hidden = true) @HeaderParam(
           "Load-From-Cache") @DefaultValue("false") String loadFromCache) {
-    Optional<ServiceEntity> serviceEntity =
-        serviceEntityService.get(accountId, orgIdentifier, projectIdentifier, serviceIdentifier, false);
+    Optional<ServiceEntity> serviceEntity = serviceEntityService.get(accountId, orgIdentifier, projectIdentifier,
+        serviceIdentifier, false, GitXUtils.parseLoadFromCacheHeaderParam(loadFromCache), false);
 
     if (serviceEntity.isPresent()) {
       if (EmptyPredicate.isEmpty(serviceEntity.get().getYaml())) {
@@ -927,6 +915,8 @@ public class ServiceResourceV2 {
             responseCode = "default", description = "Returns all entity references in the artifact source template.")
       })
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<List<EntityDetailProtoDTO>>
   getEntityReferences(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
                           NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
@@ -945,6 +935,8 @@ public class ServiceResourceV2 {
   @Path("/mergeServiceInputs/{serviceIdentifier}")
   @ApiOperation(value = "This api merges old and new service inputs YAML", nickname = "mergeServiceInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<ServiceInputsMergedResponseDto> mergeServiceInputs(
       @Parameter(description = SERVICE_PARAM_MESSAGE) @PathParam(
           "serviceIdentifier") @ResourceIdentifier String serviceIdentifier,
@@ -968,6 +960,8 @@ public class ServiceResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(description = "Returns the list of Kubernetes Command Options")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<Set<K8sCommandFlagType>>
   getK8sCommandFlags(@QueryParam("serviceSpecType") @NotNull String serviceSpecType) {
     Set<K8sCommandFlagType> k8sCmdFlags = new HashSet<>();
@@ -988,6 +982,8 @@ public class ServiceResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(description = "Returns the list of actions available for service hooks")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<Set<ServiceHookAction>>
   getServiceHookActions(@QueryParam("serviceSpecType") @NotNull String serviceSpecType) {
     if (allowedServiceSpecs.contains(serviceSpecType)) {
@@ -1002,6 +998,8 @@ public class ServiceResourceV2 {
   @ApiOperation(value = "This validates inputs for templates like artifact sources for service yaml",
       nickname = "validateTemplateInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<ValidateTemplateInputsResponseDTO>
   validateTemplateInputs(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
                              NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
@@ -1010,163 +1008,11 @@ public class ServiceResourceV2 {
       @Parameter(description = NGCommonEntityConstants.PROJECT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectId,
       @QueryParam(NGCommonEntityConstants.IDENTIFIER_KEY) String serviceIdentifier,
-      @HeaderParam("Load-From-Cache") @DefaultValue("false") String loadFromCache) {
+      @HeaderParam("Load-From-Cache") @DefaultValue("false") String loadFromCache,
+      @Parameter(description = "This contains details of Git Entity like Git Branch info",
+          hidden = true) @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo) {
     return ResponseDTO.newResponse(
         serviceEntityService.validateTemplateInputs(accountId, orgId, projectId, serviceIdentifier, loadFromCache));
-  }
-
-  @Hidden
-  public ServiceEntity updateArtifactoryRegistryUrlIfEmpty(
-      ServiceEntity serviceEntity, String accountId, String orgIdentifier, String projectIdentifier) {
-    if (serviceEntity == null) {
-      return null;
-    }
-
-    String repositoryUrlField = "repositoryUrl";
-
-    String serviceYaml = serviceEntity.getYaml();
-
-    YamlNode node = validateAndGetYamlNode(serviceYaml);
-
-    JsonNode artifactSpecNode = null;
-    if (node != null) {
-      JsonNode serviceNode = node.getCurrJsonNode().get("service");
-
-      if (serviceNode != null) {
-        JsonNode serviceDefinitionNode = serviceNode.get("serviceDefinition");
-
-        if (serviceDefinitionNode != null) {
-          JsonNode specNode = serviceDefinitionNode.get("spec");
-
-          if (specNode != null) {
-            JsonNode artifactsNode = specNode.get("artifacts");
-
-            if (artifactsNode != null) {
-              JsonNode primaryNode = artifactsNode.get("primary");
-
-              if (primaryNode != null) {
-                artifactSpecNode = primaryNode.get("sources");
-              }
-            }
-          }
-        }
-      }
-    }
-
-    if (artifactSpecNode == null) {
-      return serviceEntity;
-    }
-
-    Map<String, Object> yamlResMap = getResMap(node, null);
-    LinkedHashMap<String, Object> serviceResMap = (LinkedHashMap<String, Object>) yamlResMap.get("service");
-    LinkedHashMap<String, Object> serviceDefinitionResMap =
-        (LinkedHashMap<String, Object>) serviceResMap.get("serviceDefinition");
-    LinkedHashMap<String, Object> specResMap = (LinkedHashMap<String, Object>) serviceDefinitionResMap.get("spec");
-    LinkedHashMap<String, Object> artifactsResMap = (LinkedHashMap<String, Object>) specResMap.get("artifacts");
-    LinkedHashMap<String, Object> primaryResMap = (LinkedHashMap<String, Object>) artifactsResMap.get("primary");
-    ArrayList<LinkedHashMap<String, Object>> sourcesResMap =
-        (ArrayList<LinkedHashMap<String, Object>>) primaryResMap.get("sources");
-
-    for (int i = 0; i < sourcesResMap.size(); i++) {
-      LinkedHashMap<String, Object> source = sourcesResMap.get(i);
-
-      String type = String.valueOf(source.get("type"));
-      type = type.substring(1, type.length() - 1);
-      LinkedHashMap<String, Object> spec = (LinkedHashMap<String, Object>) source.get("spec");
-
-      if (type.equals(ArtifactSourceConstants.ARTIFACTORY_REGISTRY_NAME)) {
-        if (!spec.containsKey(repositoryUrlField)) {
-          String finalUrl = null;
-          String connectorRef = String.valueOf(spec.get("connectorRef"));
-          connectorRef = connectorRef.substring(1, connectorRef.length() - 1);
-          String repository = String.valueOf(spec.get("repository"));
-          repository = repository.substring(1, repository.length() - 1);
-          String repositoryFormat = String.valueOf(spec.get("repositoryFormat"));
-          repositoryFormat = repositoryFormat.substring(1, repositoryFormat.length() - 1);
-
-          if (repositoryFormat.equals("docker")) {
-            IdentifierRef connectorIdentifier =
-                IdentifierRefHelper.getIdentifierRef(connectorRef, accountId, orgIdentifier, projectIdentifier);
-            ArtifactoryConnectorDTO connector = getConnector(connectorIdentifier);
-            finalUrl = getArtifactoryRegistryUrl(connector.getArtifactoryServerUrl(), null, repository);
-
-            spec.put(repositoryUrlField, finalUrl);
-          }
-        }
-        source.replace("spec", spec);
-      }
-      sourcesResMap.set(i, source);
-    }
-
-    primaryResMap.replace("sources", sourcesResMap);
-    artifactsResMap.replace("primary", primaryResMap);
-    specResMap.replace("artifacts", artifactsResMap);
-    serviceDefinitionResMap.replace("spec", specResMap);
-    serviceResMap.replace("serviceDefinition", serviceDefinitionResMap);
-    yamlResMap.replace("service", serviceResMap);
-
-    serviceEntity.setYaml(YamlPipelineUtils.writeYamlString(yamlResMap));
-    return serviceEntity;
-  }
-
-  private YamlNode validateAndGetYamlNode(String yaml) {
-    if (isEmpty(yaml)) {
-      throw new InvalidRequestException("Service YAML is empty.");
-    }
-    YamlNode yamlNode = null;
-    try {
-      yamlNode = YamlUtils.readTree(yaml).getNode();
-    } catch (IOException e) {
-      log.error("Could not convert yaml to JsonNode. Yaml:\n" + yaml, e);
-    }
-    return yamlNode;
-  }
-
-  private Map<String, Object> getResMap(YamlNode yamlNode, String url) {
-    Map<String, Object> resMap = new LinkedHashMap<>();
-    List<YamlField> childFields = yamlNode.fields();
-    boolean connectorRefFlag = false;
-    // Iterating over the YAML
-    for (YamlField childYamlField : childFields) {
-      String fieldName = childYamlField.getName();
-      if (fieldName.equals("connectorRef")) {
-        connectorRefFlag = true;
-      }
-      JsonNode value = childYamlField.getNode().getCurrJsonNode();
-      if (value.isValueNode() || YamlUtils.checkIfNodeIsArrayWithPrimitiveTypes(value)) {
-        // Value -> ValueNode
-        resMap.put(fieldName, value);
-      } else if (value.isArray()) {
-        // Value -> ArrayNode
-        resMap.put(fieldName, getResMapInArray(childYamlField.getNode(), url));
-      } else {
-        // Value -> ObjectNode
-        resMap.put(fieldName, getResMap(childYamlField.getNode(), url));
-      }
-    }
-    if (connectorRefFlag == true && EmptyPredicate.isNotEmpty(url)) {
-      resMap.put("repositoryUrl", url);
-    }
-    return resMap;
-  }
-
-  // Gets the ResMap if the yamlNode is of the type Array
-  private List<Object> getResMapInArray(YamlNode yamlNode, String url) {
-    List<Object> arrayList = new ArrayList<>();
-    // Iterate over the array
-    for (YamlNode arrayElement : yamlNode.asArray()) {
-      if (yamlNode.getCurrJsonNode().isValueNode()) {
-        // Value -> LeafNode
-        arrayList.add(arrayElement);
-      } else if (arrayElement.isArray()) {
-        // Value -> Array
-        arrayList.add(getResMapInArray(arrayElement, url));
-      } else {
-        // Value -> Object
-        arrayList.add(getResMap(arrayElement, url));
-      }
-    }
-    return arrayList;
   }
 
   private List<ServiceResponse> filterByPermissionAndId(
@@ -1222,6 +1068,8 @@ public class ServiceResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(description = "Returns the list of Kustomize Command Flags")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<Set<KustomizeCommandFlagType>>
   getKustomizeCommandFlags() {
     return ResponseDTO.newResponse(new HashSet<>(Arrays.asList(KustomizeCommandFlagType.values())));
@@ -1266,7 +1114,8 @@ public class ServiceResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns a list of all the repositories of all Services")
       })
-
+  @Timed
+  @ResponseMetered
   public ResponseDTO<RepoListResponseDTO>
   listRepos(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
                 NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
@@ -1279,5 +1128,48 @@ public class ServiceResourceV2 {
     RepoListResponseDTO repoListResponseDTO = serviceEntityService.getListOfRepos(
         accountIdentifier, orgIdentifier, projectIdentifier, includeAllServicesAccessibleAtScope);
     return ResponseDTO.newResponse(repoListResponseDTO);
+  }
+
+  @POST
+  @Path("/move-config/{serviceIdentifier}")
+  @ApiOperation(value = "Move Service YAML from inline to remote", nickname = "moveServiceConfigs")
+  @Operation(operationId = "moveServiceConfigs", summary = "Move Service YAML from inline to remote",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "default", description = "Fetches Service YAML from Harness DB and creates a remote entity")
+      })
+  @Hidden
+  @Timed
+  @ResponseMetered
+  public ResponseDTO<ServiceMoveConfigResponse>
+  moveConfig(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
+                 NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
+      @Parameter(description = NGCommonEntityConstants.ORG_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
+      @Parameter(description = NGCommonEntityConstants.PROJECT_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier,
+      @Parameter(description = SERVICE_PARAM_MESSAGE) @PathParam(SERVICE_IDENTIFIER_KEY)
+      @ResourceIdentifier String serviceIdentifier, @BeanParam ServiceMoveConfigRequestDTO serviceRequestDTO) {
+    // check for service update permission
+    accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
+        Resource.of(NGResourceType.SERVICE, serviceIdentifier), SERVICE_UPDATE_PERMISSION);
+
+    ServiceMoveConfigOperationDTO moveConfigOperationDTO =
+        ServiceMoveConfigOperationDTO.builder()
+            .repoName(serviceRequestDTO.getRepoName())
+            .branch(serviceRequestDTO.getBranch())
+            .moveConfigOperationType(
+                MoveConfigOperationType.getMoveConfigType(serviceRequestDTO.getMoveConfigOperationType()))
+            .connectorRef(serviceRequestDTO.getConnectorRef())
+            .baseBranch(serviceRequestDTO.getBaseBranch())
+            .commitMessage(serviceRequestDTO.getCommitMsg())
+            .isNewBranch(serviceRequestDTO.getIsNewBranch())
+            .filePath(serviceRequestDTO.getFilePath())
+            .build();
+
+    ServiceMoveConfigResponse serviceMoveConfigResponse = serviceEntityService.moveServiceStoreTypeConfig(
+        accountIdentifier, orgIdentifier, projectIdentifier, serviceIdentifier, moveConfigOperationDTO);
+    return ResponseDTO.newResponse(serviceMoveConfigResponse);
   }
 }

@@ -9,6 +9,7 @@ package io.harness.pms.approval.api;
 
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.rule.OwnerRule.NAMANG;
+import static io.harness.rule.OwnerRule.RISHABH;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -26,9 +27,13 @@ import io.harness.pms.approval.ApprovalResourceService;
 import io.harness.pms.plan.execution.service.PMSExecutionService;
 import io.harness.rule.Owner;
 import io.harness.spec.server.pipeline.v1.model.ApprovalInstanceResponseBody;
+import io.harness.spec.server.pipeline.v1.model.ApproverInputDTO;
+import io.harness.spec.server.pipeline.v1.model.HarnessApprovalActivityRequestBody;
+import io.harness.spec.server.pipeline.v1.model.HarnessApprovalActivityRequestBody.ActionEnum;
 import io.harness.steps.approval.step.beans.ApprovalInstanceResponseDTO;
 import io.harness.steps.approval.step.beans.ApprovalStatus;
 import io.harness.steps.approval.step.beans.ApprovalType;
+import io.harness.telemetry.helpers.ApprovalApiInstrumentationHelper;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,11 +49,13 @@ import org.mockito.Mock;
 public class ApprovalsApiImplTest extends PipelineServiceTestBase {
   @Mock ApprovalResourceService approvalResourceService;
   @Mock PMSExecutionService pmsExecutionService;
+  @Mock ApprovalApiInstrumentationHelper instrumentationHelper;
   @InjectMocks ApprovalsApiImpl approvalsApiImpl;
   private static final String ACCOUNT_ID = "accountId";
   private static final String ORG_IDENTIFIER = "orgId";
   private static final String PROJ_IDENTIFIER = "projId";
   private static final String EXECUTION_IDENTIFIER = "exeId";
+  private static final String CALLBACK_IDENTIFIER = "callbackId";
   private static final String NODE_IDENTIFIER = "nodeId";
   private static final String RESOURCE_IDENTIFIER = "id";
   private static final String ERROR_MESSAGE = "errorMessage";
@@ -94,7 +101,7 @@ public class ApprovalsApiImplTest extends PipelineServiceTestBase {
                                EXECUTION_IDENTIFIER, null, "InvalidStatus", "InvalidType", null))
         .isInstanceOf(InvalidRequestException.class);
 
-    when(approvalResourceService.getApprovalInstancesByExecutionId(EXECUTION_IDENTIFIER, null, null, null))
+    when(approvalResourceService.getApprovalInstancesByExecutionId(EXECUTION_IDENTIFIER, null, null, null, null))
         .thenReturn(Collections.emptyList());
 
     assertThatCode(()
@@ -115,6 +122,113 @@ public class ApprovalsApiImplTest extends PipelineServiceTestBase {
             ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER));
 
     verify(pmsExecutionService, times(2))
+        .getPipelineExecutionSummaryEntity(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, EXECUTION_IDENTIFIER, false);
+  }
+
+  @Test
+  @Owner(developers = RISHABH)
+  @Category(UnitTests.class)
+  public void testAddHarnessApprovalActivityByPipelineExecutionIdNegativeCases() {
+    HarnessApprovalActivityRequestBody harnessApprovalActivityRequestBody = new HarnessApprovalActivityRequestBody();
+    assertThatThrownBy(
+        ()
+            -> approvalsApiImpl.addHarnessApprovalActivityByPipelineExecutionId(ORG_IDENTIFIER, PROJ_IDENTIFIER,
+                EXECUTION_IDENTIFIER, harnessApprovalActivityRequestBody, ACCOUNT_ID, null))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage("action in request body should be one of [APPROVE, REJECT]");
+
+    harnessApprovalActivityRequestBody.setAction(ActionEnum.APPROVE);
+    assertThatCode(()
+                       -> approvalsApiImpl.addHarnessApprovalActivityByPipelineExecutionId(ORG_IDENTIFIER,
+                           PROJ_IDENTIFIER, EXECUTION_IDENTIFIER, harnessApprovalActivityRequestBody, ACCOUNT_ID, null))
+        .doesNotThrowAnyException();
+
+    harnessApprovalActivityRequestBody.setApproverInputs(new ArrayList<>());
+    assertThatCode(()
+                       -> approvalsApiImpl.addHarnessApprovalActivityByPipelineExecutionId(ORG_IDENTIFIER,
+                           PROJ_IDENTIFIER, EXECUTION_IDENTIFIER, harnessApprovalActivityRequestBody, ACCOUNT_ID, null))
+        .doesNotThrowAnyException();
+
+    ApproverInputDTO approverInputDTO = new ApproverInputDTO();
+    approverInputDTO.setName("example");
+    approverInputDTO.setValue("example");
+    harnessApprovalActivityRequestBody.getApproverInputs().add(approverInputDTO);
+    assertThatCode(()
+                       -> approvalsApiImpl.addHarnessApprovalActivityByPipelineExecutionId(ORG_IDENTIFIER,
+                           PROJ_IDENTIFIER, EXECUTION_IDENTIFIER, harnessApprovalActivityRequestBody, ACCOUNT_ID, null))
+        .doesNotThrowAnyException();
+
+    when(pmsExecutionService.getPipelineExecutionSummaryEntity(
+             ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, EXECUTION_IDENTIFIER, false))
+        .thenThrow(new EntityNotFoundException("summary doesn't exist"));
+
+    assertThatThrownBy(()
+                           -> approvalsApiImpl.addHarnessApprovalActivityByPipelineExecutionId(
+                               ORG_IDENTIFIER, PROJ_IDENTIFIER, EXECUTION_IDENTIFIER, null, ACCOUNT_ID, null))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(String.format(
+            "execution_id param value provided doesn't belong to Account: %s, Org: %s, Project: %s or the pipeline has been deleted",
+            ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER));
+
+    verify(instrumentationHelper)
+        .sendApprovalApiEvent(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, EXECUTION_IDENTIFIER,
+            ApprovalApiInstrumentationHelper.FAILURE, ApprovalApiInstrumentationHelper.EXECUTION_ID_NOT_FOUND);
+    verify(pmsExecutionService, times(5))
+        .getPipelineExecutionSummaryEntity(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, EXECUTION_IDENTIFIER, false);
+  }
+
+  @Test
+  @Owner(developers = RISHABH)
+  @Category(UnitTests.class)
+  public void testAddHarnessApprovalActivityByPipelineExecutionIdNegativeCasesWithCallbackId() {
+    HarnessApprovalActivityRequestBody harnessApprovalActivityRequestBody = new HarnessApprovalActivityRequestBody();
+    assertThatThrownBy(
+        ()
+            -> approvalsApiImpl.addHarnessApprovalActivityByPipelineExecutionId(ORG_IDENTIFIER, PROJ_IDENTIFIER,
+                EXECUTION_IDENTIFIER, harnessApprovalActivityRequestBody, ACCOUNT_ID, CALLBACK_IDENTIFIER))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage("action in request body should be one of [APPROVE, REJECT]");
+
+    harnessApprovalActivityRequestBody.setAction(ActionEnum.APPROVE);
+    assertThatCode(
+        ()
+            -> approvalsApiImpl.addHarnessApprovalActivityByPipelineExecutionId(ORG_IDENTIFIER, PROJ_IDENTIFIER,
+                EXECUTION_IDENTIFIER, harnessApprovalActivityRequestBody, ACCOUNT_ID, CALLBACK_IDENTIFIER))
+        .doesNotThrowAnyException();
+
+    harnessApprovalActivityRequestBody.setApproverInputs(new ArrayList<>());
+    assertThatCode(
+        ()
+            -> approvalsApiImpl.addHarnessApprovalActivityByPipelineExecutionId(ORG_IDENTIFIER, PROJ_IDENTIFIER,
+                EXECUTION_IDENTIFIER, harnessApprovalActivityRequestBody, ACCOUNT_ID, CALLBACK_IDENTIFIER))
+        .doesNotThrowAnyException();
+
+    ApproverInputDTO approverInputDTO = new ApproverInputDTO();
+    approverInputDTO.setName("example");
+    approverInputDTO.setValue("example");
+    harnessApprovalActivityRequestBody.getApproverInputs().add(approverInputDTO);
+    assertThatCode(
+        ()
+            -> approvalsApiImpl.addHarnessApprovalActivityByPipelineExecutionId(ORG_IDENTIFIER, PROJ_IDENTIFIER,
+                EXECUTION_IDENTIFIER, harnessApprovalActivityRequestBody, ACCOUNT_ID, CALLBACK_IDENTIFIER))
+        .doesNotThrowAnyException();
+
+    when(pmsExecutionService.getPipelineExecutionSummaryEntity(
+             ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, EXECUTION_IDENTIFIER, false))
+        .thenThrow(new EntityNotFoundException("summary doesn't exist"));
+
+    assertThatThrownBy(()
+                           -> approvalsApiImpl.addHarnessApprovalActivityByPipelineExecutionId(ORG_IDENTIFIER,
+                               PROJ_IDENTIFIER, EXECUTION_IDENTIFIER, null, ACCOUNT_ID, CALLBACK_IDENTIFIER))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(String.format(
+            "execution_id param value provided doesn't belong to Account: %s, Org: %s, Project: %s or the pipeline has been deleted",
+            ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER));
+
+    verify(instrumentationHelper)
+        .sendApprovalApiEvent(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, EXECUTION_IDENTIFIER,
+            ApprovalApiInstrumentationHelper.FAILURE, ApprovalApiInstrumentationHelper.EXECUTION_ID_NOT_FOUND);
+    verify(pmsExecutionService, times(5))
         .getPipelineExecutionSummaryEntity(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, EXECUTION_IDENTIFIER, false);
   }
 
@@ -146,7 +260,7 @@ public class ApprovalsApiImplTest extends PipelineServiceTestBase {
     approvalInstances.add(buildApprovalInstance(ApprovalType.CUSTOM_APPROVAL, ApprovalStatus.WAITING));
 
     when(approvalResourceService.getApprovalInstancesByExecutionId(
-             EXECUTION_IDENTIFIER, ApprovalStatus.WAITING, ApprovalType.HARNESS_APPROVAL, NODE_IDENTIFIER))
+             EXECUTION_IDENTIFIER, ApprovalStatus.WAITING, ApprovalType.HARNESS_APPROVAL, NODE_IDENTIFIER, null))
         .thenReturn(approvalInstances);
 
     Response response = approvalsApiImpl.getApprovalInstancesByExecutionId(ORG_IDENTIFIER, PROJ_IDENTIFIER,

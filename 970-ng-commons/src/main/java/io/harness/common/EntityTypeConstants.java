@@ -88,6 +88,8 @@ public interface EntityTypeConstants {
   String SAVE_CACHE_GCS = "SaveCacheGCS";
   String SAVE_CACHE_S3 = "SaveCacheS3";
   String SECURITY = "Security";
+  String ANCHORE = "Anchore";
+  String AQUA_SECURITY = "AquaSecurity";
   String AQUA_TRIVY = "AquaTrivy";
   String AWS_ECR = "AWSECR";
   String AWS_SECURITY_HUB = "AWSSecurityHub";
@@ -202,6 +204,7 @@ public interface EntityTypeConstants {
   String FREEZE = "Freeze";
   String CHAOS_STEP = "Chaos";
   String CHAOS_INFRASTRUCTURE = "ChaosInfrastructure";
+  String CHAOS_HUB = "ChaosHub";
   String ELASTIGROUP_DEPLOY_STEP = "ElastigroupDeploy";
   String ELASTIGROUP_ROLLBACK_STEP = "ElastigroupRollback";
   String IACM_STAGE = "IACMStage";
@@ -238,6 +241,7 @@ public interface EntityTypeConstants {
   String K8S_DRY_RUN_MANIFEST = "K8sDryRun";
   String K8S_BLUE_GREEN_STAGE_SCALE_DOWN = "K8sBlueGreenStageScaleDown";
   String ASG_BLUE_GREEN_SWAP_SERVICE_STEP = "AsgBlueGreenSwapService";
+  String ASG_SHIFT_TRAFFIC = "AsgShiftTraffic";
 
   String TERRAFORM_CLOUD_RUN = "TerraformCloudRun";
   String TERRAFORM_CLOUD_ROLLBACK = "TerraformCloudRollback";
@@ -272,4 +276,16 @@ public interface EntityTypeConstants {
   String AWS_CDK_DESTROY = "AwsCdkDestroy";
   String AWS_CDK_ROLLBACK = "AwsCdkRollback";
   String SLSA_VERIFICATION = "SlsaVerification";
+
+  String OVERRIDES = "Overrides";
+
+  String IDP_STAGE = "IDPStage";
+  String IDP = "IDP";
+  String IDP_COOKIECUTTER = "IdpCookieCutter";
+  String IDP_CREATE_REPO = "IdpCreateRepo";
+  String IDP_CODE_PUSH = "IdpCodePush";
+  String REGISTER_CATALOG = "RegisterCatalog";
+
+  // CD Container Step Group Common Steps
+  String DOWNLOAD_AWS_S3 = "DownloadAwsS3";
 }

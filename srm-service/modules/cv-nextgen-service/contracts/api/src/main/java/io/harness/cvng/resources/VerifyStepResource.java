@@ -9,15 +9,18 @@ package io.harness.cvng.resources;
 
 import static io.harness.cvng.core.services.CVNextGenConstants.VERIFICATIONS_RESOURCE_PATH;
 
+import io.harness.accesscontrol.NGAccessControlCheck;
 import io.harness.annotations.ExposeInternalException;
 import io.harness.cvng.cdng.beans.v2.Baseline;
 import io.harness.cvng.cdng.beans.v2.HealthSource;
 import io.harness.cvng.cdng.beans.v2.MetricsAnalysis;
+import io.harness.cvng.cdng.beans.v2.VerificationAbortDTO;
 import io.harness.cvng.cdng.beans.v2.VerificationMetricsTimeSeries;
 import io.harness.cvng.cdng.beans.v2.VerificationOverview;
 import io.harness.cvng.cdng.beans.v2.VerifyStepPathParams;
 import io.harness.ng.beans.PageRequest;
 import io.harness.ng.beans.PageResponse;
+import io.harness.pms.rbac.PipelineRbacPermissions;
 import io.harness.security.annotations.NextGenManagerAuth;
 
 import com.codahale.metrics.annotation.ExceptionMetered;
@@ -55,6 +58,15 @@ public interface VerifyStepResource {
   @ApiOperation(value = "get all the health sources", nickname = "getHealthSourcesForVerifyStepExecutionId")
   List<HealthSource> getHealthSourcesForVerifyStepExecutionId(
       @BeanParam @Valid VerifyStepPathParams verifyStepPathParams);
+
+  @POST
+  @Path("/abort")
+  @Timed
+  @ExceptionMetered
+  @ApiOperation(value = "Abort a verify step execution, and set the verificationStatus", nickname = "abortVerifyStep")
+  @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_EXECUTE)
+  boolean abortVerifyStep(
+      @BeanParam @Valid VerifyStepPathParams verifyStepPathParams, VerificationAbortDTO verificationAbortDTO);
 
   @GET
   @Path("/overview")

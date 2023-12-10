@@ -51,6 +51,26 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Common labels for CCM Azure SMP K8s Cron Job
+*/}}
+{{- define "ccm-azure-smp.labels" -}}
+helm.sh/chart: {{ include "batch-processing.chart" . }}
+{{ include "ccm-azure-smp.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Selector labels for CCM Azure SMP K8s Cron Job
+*/}}
+{{- define "ccm-azure-smp.selectorLabels" -}}
+app.kubernetes.io/name: ccm-smp-azure
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "batch-processing.serviceAccountName" -}}
@@ -72,8 +92,52 @@ Create the name of the service account to use
 {{- end }}
 
 {{- define "batch-processing.generateSecrets" }}
-    S3_SYNC_CONFIG_ACCESSKEY: {{ include "harnesscommon.secrets.passwords.manage" (dict "secret" "batch-processing" "key" "S3_SYNC_CONFIG_ACCESSKEY" "providedValues" (list "awsSecret.S3_SYNC_CONFIG_ACCESSKEY") "length" 10 "context" $) }}
-    S3_SYNC_CONFIG_SECRETKEY: {{ include "harnesscommon.secrets.passwords.manage" (dict "secret" "batch-processing" "key" "S3_SYNC_CONFIG_SECRETKEY" "providedValues" (list "awsSecret.S3_SYNC_CONFIG_SECRETKEY") "length" 10 "context" $) }}
+    {{- $ := .ctx }}
+    {{- $hasAtleastOneSecret := false }}
+    {{- $localESOSecretCtxIdentifier := (include "harnesscommon.secrets.localESOSecretCtxIdentifier" (dict "ctx" $ )) }}
+    {{- if eq (include "harnesscommon.secrets.isDefaultAppSecret" (dict "ctx" $ "variableName" "S3_SYNC_CONFIG_ACCESSKEY")) "true" }}
+    {{- $hasAtleastOneSecret = true }}
+S3_SYNC_CONFIG_ACCESSKEY: '{{ .ctx.Values.awsSecret.S3_SYNC_CONFIG_ACCESSKEY | b64enc }}'
+    {{- end }}
+    {{- if eq (include "harnesscommon.secrets.isDefaultAppSecret" (dict "ctx" $ "variableName" "S3_SYNC_CONFIG_SECRETKEY")) "true" }}
+    {{- $hasAtleastOneSecret = true }}
+S3_SYNC_CONFIG_SECRETKEY: '{{ .ctx.Values.awsSecret.S3_SYNC_CONFIG_SECRETKEY | b64enc }}'
+    {{- end }}
+    {{- if eq (include "harnesscommon.secrets.isDefaultAppSecret" (dict "ctx" $ "variableName" "NEXT_GEN_MANAGER_SECRET")) "true" }}
+    {{- $hasAtleastOneSecret = true }}
+NEXT_GEN_MANAGER_SECRET: '{{ .ctx.Values.secrets.default.NEXT_GEN_MANAGER_SECRET | b64enc  }}'
+    {{- end }}
+    {{- if eq (include "harnesscommon.secrets.isDefaultAppSecret" (dict "ctx" $ "variableName" "CE_NG_SERVICE_SECRET")) "true" }}
+    {{- $hasAtleastOneSecret = true }}
+CE_NG_SERVICE_SECRET: '{{ .ctx.Values.secrets.default.CE_NG_SERVICE_SECRET | b64enc }}'
+    {{- end }}
+    {{- if eq (include "harnesscommon.secrets.isDefaultAppSecret" (dict "ctx" $ "variableName" "HARNESS_CE_AZURE_CLIENTSECRET")) "true" }}
+    {{- $hasAtleastOneSecret = true }}
+HARNESS_CE_AZURE_CLIENTSECRET: '{{ .ctx.Values.secrets.default.HARNESS_CE_AZURE_CLIENTSECRET | b64enc }}'
+    {{- end }}
+    {{- if eq (include "harnesscommon.secrets.isDefaultAppSecret" (dict "ctx" $ "variableName" "HARNESS_CE_AZURE_SAS")) "true" }}
+    {{- $hasAtleastOneSecret = true }}
+HARNESS_CE_AZURE_SAS: '{{ .ctx.Values.secrets.default.HARNESS_CE_AZURE_SAS | b64enc }}'
+    {{- end }}
+    {{- if eq (include "harnesscommon.secrets.isDefaultAppSecret" (dict "ctx" $ "variableName" "HARNESS_CE_AZURE_CLIENTID")) "true" }}
+    {{- $hasAtleastOneSecret = true }}
+HARNESS_CE_AZURE_CLIENTID: '{{ .ctx.Values.secrets.default.HARNESS_CE_AZURE_CLIENTID | b64enc }}'
+    {{- end }}
+    {{- if eq (include "harnesscommon.secrets.isDefaultAppSecret" (dict "ctx" $ "variableName" "HARNESS_CE_AZURE_TENANTID")) "true" }}
+    {{- $hasAtleastOneSecret = true }}
+HARNESS_CE_AZURE_TENANTID: '{{ .ctx.Values.secrets.default.HARNESS_CE_AZURE_TENANTID | b64enc }}'
+    {{- end }}
+    {{- if eq (include "harnesscommon.secrets.isDefaultAppSecret" (dict "ctx" $ "variableName" "HMAC_ACCESS_KEY")) "true" }}
+    {{- $hasAtleastOneSecret = true }}
+HMAC_ACCESS_KEY: '{{ .ctx.Values.secrets.default.HMAC_ACCESS_KEY | b64enc }}'
+    {{- end }}
+    {{- if eq (include "harnesscommon.secrets.isDefaultAppSecret" (dict "ctx" $ "variableName" "HMAC_SECRET_KEY")) "true" }}
+    {{- $hasAtleastOneSecret = true }}
+HMAC_SECRET_KEY: '{{ .ctx.Values.secrets.default.HMAC_SECRET_KEY | b64enc }}'
+    {{- end }}
+    {{- if not $hasAtleastOneSecret }}
+{}
+    {{- end }}
 {{- end }}
 
 {{- define "batch-processing.generateMountSecrets" }}

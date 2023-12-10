@@ -8,6 +8,7 @@
 package io.harness.steps.approval.step.harness.entities;
 
 import static io.harness.annotations.dev.HarnessTeam.CDC;
+import static io.harness.steps.approval.step.harness.HarnessApprovalUtils.fromAutoApprovalParams;
 
 import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.CodePulse;
@@ -31,6 +32,7 @@ import io.harness.steps.approval.step.harness.HarnessApprovalSpecParameters;
 import io.harness.steps.approval.step.harness.beans.ApproverInput;
 import io.harness.steps.approval.step.harness.beans.ApproverInputInfoDTO;
 import io.harness.steps.approval.step.harness.beans.ApproversDTO;
+import io.harness.steps.approval.step.harness.beans.AutoApprovalDTO;
 import io.harness.steps.approval.step.harness.beans.HarnessApprovalAction;
 import io.harness.steps.approval.step.harness.beans.HarnessApprovalActivity;
 import io.harness.steps.approval.step.harness.beans.HarnessApprovalActivityDTO;
@@ -66,6 +68,7 @@ import org.springframework.data.annotation.TypeAlias;
 public class HarnessApprovalInstance extends ApprovalInstance {
   @NotNull String approvalMessage;
   boolean includePipelineExecutionHistory;
+  String callbackId;
 
   @NotNull List<HarnessApprovalActivity> approvalActivities;
   @NotNull ApproversDTO approvers;
@@ -74,6 +77,8 @@ public class HarnessApprovalInstance extends ApprovalInstance {
   List<ApprovalUserGroupDTO> validatedApprovalUserGroups;
   String approvalKey;
   @Builder.Default Boolean isAutoRejectEnabled = Boolean.FALSE;
+
+  AutoApprovalDTO autoApproval;
 
   public Optional<HarnessApprovalActivity> fetchLastApprovalActivity() {
     if (EmptyPredicate.isEmpty(approvalActivities)) {
@@ -168,7 +173,11 @@ public class HarnessApprovalInstance extends ApprovalInstance {
                 && specParameters.getIsAutoRejectEnabled().fetchFinalValue() != null
                 && (boolean) specParameters.getIsAutoRejectEnabled().fetchFinalValue())
             .approvalKey(stageIdentifier + "#" + stepParameters.getIdentifier())
+            .autoApproval(fromAutoApprovalParams(specParameters.getAutoApproval()))
             .build();
+    if (specParameters.getCallbackId() != null) {
+      instance.setCallbackId((String) specParameters.getCallbackId().fetchFinalValue());
+    }
     instance.updateFromStepParameters(ambiance, stepParameters);
     return instance;
   }

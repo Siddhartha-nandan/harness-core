@@ -21,7 +21,7 @@ import io.harness.ci.execution.plan.creator.codebase.CodebasePlanCreator;
 import io.harness.ci.execution.states.IntegrationStageStepPMS;
 import io.harness.cimanager.stages.V1.IntegrationStageConfigImplV1;
 import io.harness.cimanager.stages.V1.IntegrationStageNodeV1;
-import io.harness.plancreator.DependencyMetadata;
+import io.harness.exception.InvalidYamlException;
 import io.harness.plancreator.PlanCreatorUtilsV1;
 import io.harness.plancreator.execution.ExecutionWrapperConfig;
 import io.harness.plancreator.steps.common.StageElementParameters;
@@ -46,6 +46,7 @@ import io.harness.pms.yaml.DependenciesUtils;
 import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
+import io.harness.pms.yaml.YamlUtils;
 import io.harness.serializer.KryoSerializer;
 import io.harness.when.utils.RunInfoUtils;
 import io.harness.yaml.clone.Clone;
@@ -56,6 +57,7 @@ import io.harness.yaml.registry.Registry;
 import com.google.common.base.Preconditions;
 import com.google.inject.Inject;
 import com.google.protobuf.ByteString;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -77,8 +79,13 @@ public class IntegrationStagePMSPlanCreatorV3 extends ChildrenPlanCreator<Integr
   public static final String CODEBASE = "codebase";
 
   @Override
-  public Class<IntegrationStageNodeV1> getFieldClass() {
-    return IntegrationStageNodeV1.class;
+  public IntegrationStageNodeV1 getFieldObject(YamlField field) {
+    try {
+      return YamlUtils.read(field.getNode().toString(), IntegrationStageNodeV1.class);
+    } catch (IOException e) {
+      throw new InvalidYamlException(
+          "Unable to parse integration stage yaml. Please ensure that it is in correct format", e);
+    }
   }
 
   public PlanNode createPlanForParentNode(
@@ -175,12 +182,9 @@ public class IntegrationStagePMSPlanCreatorV3 extends ChildrenPlanCreator<Integr
     CodeBase codeBase =
         createPlanForCodebase(ctx, stageConfigImpl.getClone(), planCreationResponseMap, stepsField.getUuid());
     dependenciesNodeMap.put(stepsField.getUuid(), stepsField);
-    DependencyMetadata dependencyMetadata = StrategyUtilsV1.getStrategyFieldDependencyMetadataIfPresent(
+    Map<String, HarnessValue> dependencyMetadata = StrategyUtilsV1.getStrategyFieldDependencyMetadataIfPresent(
         kryoSerializer, ctx, stageNode.getUuid(), dependenciesNodeMap, getAdvisorObtainments(ctx.getDependency()));
 
-    // Both metadata and nodeMetadata contain the same metadata, the first one's value will be kryo serialized bytes
-    // while second one can have values in their primitive form like strings, int, etc. and will have kryo serialized
-    // bytes for complex objects. We will deprecate the first one in v1
     planCreationResponseMap.put(stepsField.getUuid(),
         PlanCreationResponse.builder()
             .dependencies(
@@ -188,9 +192,7 @@ public class IntegrationStagePMSPlanCreatorV3 extends ChildrenPlanCreator<Integr
                     .toBuilder()
                     .putDependencyMetadata(field.getUuid(),
                         Dependency.newBuilder()
-                            .putAllMetadata(dependencyMetadata.getMetadataMap())
-                            .setNodeMetadata(
-                                HarnessStruct.newBuilder().putAllData(dependencyMetadata.getNodeMetadataMap()).build())
+                            .setNodeMetadata(HarnessStruct.newBuilder().putAllData(dependencyMetadata).build())
                             .build())
                     .putDependencyMetadata(
                         stepsField.getUuid(), getDependencyMetadataForStepsField(infrastructure, codeBase, stageNode))
@@ -234,11 +236,7 @@ public class IntegrationStagePMSPlanCreatorV3 extends ChildrenPlanCreator<Integr
       metadataMap.put(CODEBASE, codebaseBytes);
       nodeMetadataMap.put(CODEBASE, HarnessValue.newBuilder().setBytesValue(codebaseBytes).build());
     }
-    // Both metadata and nodeMetadata contain the same metadata, the first one's value will be kryo serialized bytes
-    // while second one can have values in their primitive form like strings, int, etc. and will have kryo serialized
-    // bytes for complex objects. We will deprecate the first one in v1
     return Dependency.newBuilder()
-        .putAllMetadata(metadataMap)
         .setNodeMetadata(HarnessStruct.newBuilder().putAllData(nodeMetadataMap).build())
         .build();
   }

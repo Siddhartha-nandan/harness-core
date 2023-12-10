@@ -59,6 +59,8 @@ import io.harness.cvng.notification.services.api.NotificationRuleService;
 import io.harness.cvng.notification.services.api.NotificationRuleTemplateDataGenerator;
 import io.harness.cvng.servicelevelobjective.SLORiskCountResponse;
 import io.harness.cvng.servicelevelobjective.beans.CompositeSLOFormulaType;
+import io.harness.cvng.servicelevelobjective.beans.ErrorBudgetBurnDownDTO;
+import io.harness.cvng.servicelevelobjective.beans.ErrorBudgetBurnDownResponse;
 import io.harness.cvng.servicelevelobjective.beans.ErrorBudgetRisk;
 import io.harness.cvng.servicelevelobjective.beans.SLIEvaluationType;
 import io.harness.cvng.servicelevelobjective.beans.SLIMissingDataType;
@@ -69,7 +71,6 @@ import io.harness.cvng.servicelevelobjective.beans.SLOTargetDTO;
 import io.harness.cvng.servicelevelobjective.beans.SLOTargetType;
 import io.harness.cvng.servicelevelobjective.beans.SLOValue;
 import io.harness.cvng.servicelevelobjective.beans.ServiceLevelIndicatorDTO;
-import io.harness.cvng.servicelevelobjective.beans.ServiceLevelIndicatorType;
 import io.harness.cvng.servicelevelobjective.beans.ServiceLevelObjectiveDetailsDTO;
 import io.harness.cvng.servicelevelobjective.beans.ServiceLevelObjectiveDetailsRefDTO;
 import io.harness.cvng.servicelevelobjective.beans.ServiceLevelObjectiveFilter;
@@ -93,6 +94,7 @@ import io.harness.cvng.servicelevelobjective.entities.SimpleServiceLevelObjectiv
 import io.harness.cvng.servicelevelobjective.entities.TimePeriod;
 import io.harness.cvng.servicelevelobjective.services.api.AnnotationService;
 import io.harness.cvng.servicelevelobjective.services.api.CompositeSLOService;
+import io.harness.cvng.servicelevelobjective.services.api.ErrorBudgetBurnDownService;
 import io.harness.cvng.servicelevelobjective.services.api.SLOErrorBudgetResetService;
 import io.harness.cvng.servicelevelobjective.services.api.SLOHealthIndicatorService;
 import io.harness.cvng.servicelevelobjective.services.api.SLOTimeScaleService;
@@ -170,6 +172,7 @@ public class ServiceLevelObjectiveV2ServiceImpl implements ServiceLevelObjective
   @Inject private PersistentLocker persistentLocker;
 
   @Inject private NextGenService nextGenService;
+  @Inject private ErrorBudgetBurnDownService errorBudgetBurnDownService;
   @Inject
   private Map<ServiceLevelObjectiveType, AbstractServiceLevelObjectiveUpdatableEntity>
       serviceLevelObjectiveTypeUpdatableEntityTransformerMap;
@@ -536,53 +539,103 @@ public class ServiceLevelObjectiveV2ServiceImpl implements ServiceLevelObjective
 
   @Override
   public boolean forceDelete(ProjectParams projectParams, String identifier) {
-    return forceDelete(projectParams, Collections.singletonList(identifier));
+    return forceDelete(projectParams, Collections.singletonList(identifier), null);
   }
 
   @Override
-  public boolean forceDelete(ProjectParams projectParams, List<String> identifiers) {
-    List<AbstractServiceLevelObjective> serviceLevelObjectives = get(projectParams, identifiers);
-    List<String> sliIdentifiers = new ArrayList<>();
-    List<String> notiRuleRefs = new ArrayList<>();
+  public boolean forceDelete(ProjectParams projectParams, List<String> identifiers, List<String> uniqueIdentifiers) {
+    List<AbstractServiceLevelObjective> serviceLevelObjectives;
+    if (isNotEmpty(uniqueIdentifiers)) {
+      serviceLevelObjectives = getSLOById(uniqueIdentifiers);
+    } else {
+      serviceLevelObjectives = get(projectParams, identifiers);
+    }
+
+    Map<ProjectParams, List<String>> projectParamsToSLOIdentifierList = new HashMap<>();
+    Map<ProjectParams, List<String>> projectParamsToSLIIdentifierList = new HashMap<>();
+    Map<ProjectParams, List<String>> projectParamsToNotiRuleRefs = new HashMap<>();
+
     for (AbstractServiceLevelObjective serviceLevelObjective : serviceLevelObjectives) {
+      ProjectParams projectParam =
+          ProjectParams.builder().accountIdentifier(serviceLevelObjective.getAccountId()).build();
+
+      if (serviceLevelObjective.getOrgIdentifier() != null) {
+        projectParam.setOrgIdentifier(serviceLevelObjective.getOrgIdentifier());
+      }
+      if (serviceLevelObjective.getProjectIdentifier() != null) {
+        projectParam.setProjectIdentifier(serviceLevelObjective.getProjectIdentifier());
+      }
+      List<String> sloIdentifier = projectParamsToSLOIdentifierList.getOrDefault(projectParam, new ArrayList<>());
+      sloIdentifier.add(serviceLevelObjective.getIdentifier());
+      projectParamsToSLOIdentifierList.put(projectParam, sloIdentifier);
+
+      List<String> notiRuleRefs = projectParamsToNotiRuleRefs.getOrDefault(projectParam, new ArrayList<>());
+      notiRuleRefs.addAll(serviceLevelObjective.getNotificationRuleRefs()
+                              .stream()
+                              .map(NotificationRuleRef::getNotificationRuleRef)
+                              .collect(Collectors.toList()));
+      projectParamsToNotiRuleRefs.put(projectParam, notiRuleRefs);
+
       if (serviceLevelObjective.getType().equals(ServiceLevelObjectiveType.SIMPLE)) {
+        List<String> sliIdentifiers = projectParamsToSLIIdentifierList.getOrDefault(projectParam, new ArrayList<>());
         sliIdentifiers.addAll(((SimpleServiceLevelObjective) serviceLevelObjective).getServiceLevelIndicators());
-        notiRuleRefs.addAll(serviceLevelObjective.getNotificationRuleRefs()
-                                .stream()
-                                .map(NotificationRuleRef::getNotificationRuleRef)
-                                .collect(Collectors.toList()));
+        projectParamsToSLIIdentifierList.put(projectParam, sliIdentifiers);
       } else {
-        String verificationTaskId = verificationTaskService.getCompositeSLOVerificationTaskId(
+        VerificationTask verificationTask = verificationTaskService.getCompositeSLOTask(
             serviceLevelObjective.getAccountId(), serviceLevelObjective.getUuid());
-        if (StringUtils.isNotBlank(verificationTaskId)) {
-          sideKickService.schedule(
-              VerificationTaskCleanupSideKickData.builder().verificationTaskId(verificationTaskId).build(),
-              clock.instant().plus(Duration.ofMinutes(15)));
+        if (verificationTask != null) {
+          String verificationTaskId = verificationTask.getUuid();
+          if (StringUtils.isNotBlank(verificationTaskId)) {
+            sideKickService.schedule(
+                VerificationTaskCleanupSideKickData.builder().verificationTaskId(verificationTaskId).build(),
+                clock.instant().plus(Duration.ofMinutes(15)));
+          }
         }
       }
     }
-    serviceLevelIndicatorService.deleteByIdentifier(projectParams, sliIdentifiers);
-    notificationRuleService.delete(projectParams, notiRuleRefs);
-    sloErrorBudgetResetService.clearErrorBudgetResets(projectParams, identifiers);
-    sloHealthIndicatorService.delete(projectParams, identifiers);
-    annotationService.delete(projectParams, identifiers);
-    for (String identifier : identifiers) {
-      sloTimeScaleService.deleteServiceLevelObjective(projectParams, identifier);
+
+    for (ProjectParams projectParam : projectParamsToSLIIdentifierList.keySet()) {
+      List<String> sliIdentifiers = projectParamsToSLIIdentifierList.get(projectParam);
+      serviceLevelIndicatorService.deleteByIdentifier(projectParam, sliIdentifiers);
     }
 
-    return hPersistence.delete(
-        hPersistence.createQuery(AbstractServiceLevelObjective.class)
-            .filter(ServiceLevelObjectiveV2Keys.accountId, projectParams.getAccountIdentifier())
-            .filter(ServiceLevelObjectiveV2Keys.orgIdentifier, projectParams.getOrgIdentifier())
-            .filter(ServiceLevelObjectiveV2Keys.projectIdentifier, projectParams.getProjectIdentifier())
-            .field(ServiceLevelObjectiveV2Keys.identifier)
-            .in(identifiers));
+    for (ProjectParams projectParam : projectParamsToNotiRuleRefs.keySet()) {
+      List<String> notiRuleRefs = projectParamsToNotiRuleRefs.get(projectParam);
+      notificationRuleService.delete(projectParam, notiRuleRefs);
+    }
+
+    for (ProjectParams projectParam : projectParamsToSLOIdentifierList.keySet()) {
+      List<String> sloIdentifiers = projectParamsToSLOIdentifierList.get(projectParam);
+      sloErrorBudgetResetService.clearErrorBudgetResets(projectParam, sloIdentifiers);
+      sloHealthIndicatorService.delete(projectParam, sloIdentifiers);
+      annotationService.delete(projectParam, sloIdentifiers);
+      for (String identifier : sloIdentifiers) {
+        sloTimeScaleService.deleteServiceLevelObjective(projectParam, identifier);
+      }
+      hPersistence.delete(
+          hPersistence.createQuery(AbstractServiceLevelObjective.class)
+              .filter(ServiceLevelObjectiveV2Keys.accountId, projectParam.getAccountIdentifier())
+              .filter(ServiceLevelObjectiveV2Keys.orgIdentifier, projectParam.getOrgIdentifier())
+              .filter(ServiceLevelObjectiveV2Keys.projectIdentifier, projectParam.getProjectIdentifier())
+              .field(ServiceLevelObjectiveV2Keys.identifier)
+              .in(sloIdentifiers));
+    }
+
+    return true;
   }
 
   @Override
-  public boolean forceDeleteCompositeSLO(ProjectParams projectParams, List<String> identifiers) {
-    List<AbstractServiceLevelObjective> serviceLevelObjectives = get(projectParams, identifiers);
-    List<String> notiRuleRefs = new ArrayList<>();
+  public boolean forceDeleteCompositeSLO(
+      ProjectParams projectParams, List<String> identifiers, List<String> uniqueIdentifiers) {
+    List<AbstractServiceLevelObjective> serviceLevelObjectives;
+    if (isNotEmpty(uniqueIdentifiers)) {
+      serviceLevelObjectives = getSLOById(uniqueIdentifiers);
+    } else {
+      serviceLevelObjectives = get(projectParams, identifiers);
+    }
+
+    Map<ProjectParams, List<String>> projectParamsToSLOIdentifierList = new HashMap<>();
+    Map<ProjectParams, List<String>> projectParamsToNotiRuleRefs = new HashMap<>();
 
     for (AbstractServiceLevelObjective serviceLevelObjective : serviceLevelObjectives) {
       VerificationTask verificationTask = verificationTaskService.getCompositeSLOTask(
@@ -595,24 +648,55 @@ public class ServiceLevelObjectiveV2ServiceImpl implements ServiceLevelObjective
               clock.instant().plus(Duration.ofMinutes(15)));
         }
       }
+
+      ProjectParams projectParam =
+          ProjectParams.builder().accountIdentifier(serviceLevelObjective.getAccountId()).build();
+
+      if (serviceLevelObjective.getOrgIdentifier() != null) {
+        projectParam.setOrgIdentifier(serviceLevelObjective.getOrgIdentifier());
+      }
+      if (serviceLevelObjective.getProjectIdentifier() != null) {
+        projectParam.setProjectIdentifier(serviceLevelObjective.getProjectIdentifier());
+      }
+      List<String> sloIdentifier = projectParamsToSLOIdentifierList.getOrDefault(projectParam, new ArrayList<>());
+      sloIdentifier.add(serviceLevelObjective.getIdentifier());
+      projectParamsToSLOIdentifierList.put(projectParam, sloIdentifier);
+
+      List<String> notiRuleRefs = projectParamsToNotiRuleRefs.getOrDefault(projectParam, new ArrayList<>());
       notiRuleRefs.addAll(serviceLevelObjective.getNotificationRuleRefs()
                               .stream()
                               .map(NotificationRuleRef::getNotificationRuleRef)
                               .collect(Collectors.toList()));
+      projectParamsToNotiRuleRefs.put(projectParam, notiRuleRefs);
     }
 
-    notificationRuleService.delete(projectParams, notiRuleRefs);
-    sloErrorBudgetResetService.clearErrorBudgetResets(projectParams, identifiers);
-    sloHealthIndicatorService.delete(projectParams, identifiers);
-    annotationService.delete(projectParams, identifiers);
+    for (ProjectParams projectParam : projectParamsToNotiRuleRefs.keySet()) {
+      List<String> notiRuleRefs = projectParamsToNotiRuleRefs.get(projectParam);
+      notificationRuleService.delete(projectParam, notiRuleRefs);
+    }
 
-    return hPersistence.delete(
-        hPersistence.createQuery(AbstractServiceLevelObjective.class)
-            .filter(ServiceLevelObjectiveV2Keys.accountId, projectParams.getAccountIdentifier())
-            .filter(ServiceLevelObjectiveV2Keys.orgIdentifier, projectParams.getOrgIdentifier())
-            .filter(ServiceLevelObjectiveV2Keys.projectIdentifier, projectParams.getProjectIdentifier())
-            .field(ServiceLevelObjectiveV2Keys.identifier)
-            .in(identifiers));
+    for (ProjectParams projectParam : projectParamsToSLOIdentifierList.keySet()) {
+      List<String> sloIdentifiers = projectParamsToSLOIdentifierList.get(projectParam);
+      sloErrorBudgetResetService.clearErrorBudgetResets(projectParam, sloIdentifiers);
+      sloHealthIndicatorService.delete(projectParam, sloIdentifiers);
+      annotationService.delete(projectParam, sloIdentifiers);
+      hPersistence.delete(
+          hPersistence.createQuery(AbstractServiceLevelObjective.class)
+              .filter(ServiceLevelObjectiveV2Keys.accountId, projectParam.getAccountIdentifier())
+              .filter(ServiceLevelObjectiveV2Keys.orgIdentifier, projectParam.getOrgIdentifier())
+              .filter(ServiceLevelObjectiveV2Keys.projectIdentifier, projectParam.getProjectIdentifier())
+              .field(ServiceLevelObjectiveV2Keys.identifier)
+              .in(sloIdentifiers));
+    }
+    return true;
+  }
+
+  private List<AbstractServiceLevelObjective> getSLOById(List<String> uniqueIdentifiers) {
+    Query<AbstractServiceLevelObjective> sloQuery = hPersistence.createQuery(AbstractServiceLevelObjective.class)
+                                                        .field(ServiceLevelObjectiveV2Keys.uuid)
+                                                        .in(uniqueIdentifiers);
+
+    return sloQuery.asList();
   }
 
   @Override
@@ -663,7 +747,6 @@ public class ServiceLevelObjectiveV2ServiceImpl implements ServiceLevelObjective
             .userJourneys(serviceLevelObjectiveFilter.getUserJourneys())
             .identifiers(serviceLevelObjectiveFilter.getIdentifiers())
             .targetTypes(serviceLevelObjectiveFilter.getTargetTypes())
-            .sliTypes(serviceLevelObjectiveFilter.getSliTypes())
             .errorBudgetRisks(serviceLevelObjectiveFilter.getErrorBudgetRisks())
             .build());
   }
@@ -684,7 +767,6 @@ public class ServiceLevelObjectiveV2ServiceImpl implements ServiceLevelObjective
             .userJourneys(sloDashboardApiFilter.getUserJourneyIdentifiers())
             .monitoredServiceIdentifier(sloDashboardApiFilter.getMonitoredServiceIdentifier())
             .targetTypes(sloDashboardApiFilter.getTargetTypes())
-            .sliTypes(sloDashboardApiFilter.getSliTypes())
             .sloType(sloDashboardApiFilter.getType())
             .envIdentifiers(sloDashboardApiFilter.getEnvIdentifiers())
             .sliEvaluationType(sloDashboardApiFilter.getEvaluationType())
@@ -805,7 +887,6 @@ public class ServiceLevelObjectiveV2ServiceImpl implements ServiceLevelObjective
             .identifiers(simpleSLOIdentifiers)
             .monitoredServiceIdentifier(filter.getMonitoredServiceIdentifier())
             .userJourneys(filter.getUserJourneyIdentifiers())
-            .sliTypes(filter.getSliTypes())
             .errorBudgetRisks(filter.getErrorBudgetRisks())
             .targetTypes(filter.getTargetTypes())
             .searchFilter(filter.getSearchFilter())
@@ -904,6 +985,48 @@ public class ServiceLevelObjectiveV2ServiceImpl implements ServiceLevelObjective
   public SLOErrorBudgetResetDTO resetErrorBudget(ProjectParams projectParams, SLOErrorBudgetResetDTO resetDTO) {
     return sloErrorBudgetResetService.resetErrorBudget(projectParams, resetDTO);
   }
+
+  @Override
+  public ErrorBudgetBurnDownResponse saveErrorBudgetBurnDown(
+      ProjectParams projectParams, ErrorBudgetBurnDownDTO errorBudgetBurnDownDTO) {
+    ErrorBudgetBurnDownResponse errorBudgetBurnDownResponse =
+        errorBudgetBurnDownService.save(projectParams, errorBudgetBurnDownDTO);
+    // Trigger recalculation
+    LocalDateTime currentLocalDate = LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
+    AbstractServiceLevelObjective serviceLevelObjective =
+        getEntity(projectParams, errorBudgetBurnDownDTO.getSloIdentifier());
+    TimePeriod timePeriod = serviceLevelObjective.getCurrentTimeRange(currentLocalDate);
+    String serviceLevelIndicatorIdentifier =
+        ((SimpleServiceLevelObjective) serviceLevelObjective).getServiceLevelIndicators().get(0);
+    ServiceLevelIndicator serviceLevelIndicator =
+        serviceLevelIndicatorService.getServiceLevelIndicator(projectParams, serviceLevelIndicatorIdentifier);
+    serviceLevelIndicatorService.recalculate(
+        serviceLevelIndicator, serviceLevelObjective.getCurrentTimeRange(currentLocalDate));
+    return errorBudgetBurnDownResponse;
+  }
+
+  @Override
+  public PageResponse<ErrorBudgetBurnDownDTO> get(
+      ProjectParams projectParams, String identifier, PageParams pageParams) {
+    AbstractServiceLevelObjective abstractServiceLevelObjective = getEntity(projectParams, identifier);
+    LocalDateTime currentLocalDate =
+        LocalDateTime.ofInstant(clock.instant(), abstractServiceLevelObjective.getZoneOffset());
+    TimePeriod timePeriod = abstractServiceLevelObjective.getCurrentTimeRange(currentLocalDate);
+    Instant startTime = timePeriod.getStartTime(ZoneOffset.UTC);
+    List<ErrorBudgetBurnDownDTO> errorBudgetBurnDownDTOs = errorBudgetBurnDownService.getByStartTimeAndEndTimeDto(
+        projectParams, identifier, startTime.toEpochMilli(), clock.millis());
+    PageResponse<ErrorBudgetBurnDownDTO> errorBudgetBurnDownDTOPageResponse =
+        PageUtils.offsetAndLimit(errorBudgetBurnDownDTOs, pageParams.getPage(), pageParams.getSize());
+    return PageResponse.<ErrorBudgetBurnDownDTO>builder()
+        .pageSize(pageParams.getSize())
+        .pageIndex(pageParams.getPage())
+        .totalPages(errorBudgetBurnDownDTOPageResponse.getTotalPages())
+        .totalItems(errorBudgetBurnDownDTOPageResponse.getTotalItems())
+        .pageItemCount(errorBudgetBurnDownDTOPageResponse.getPageItemCount())
+        .content(errorBudgetBurnDownDTOPageResponse.getContent())
+        .build();
+  }
+
   @Override
   public void handleNotification(AbstractServiceLevelObjective serviceLevelObjective) {
     ProjectParams projectParams = ProjectParams.builder()
@@ -1246,8 +1369,9 @@ public class ServiceLevelObjectiveV2ServiceImpl implements ServiceLevelObjective
                 -> serviceLevelObjectiveDetailsTransformer.getServiceLevelObjectiveDetails(
                     serviceLevelObjectiveDetailsDTO))
             .collect(Collectors.toSet()));
-    serviceLevelObjectiveList.stream().forEach(serviceLevelObjective -> {
-      if (serviceLevelObjective.getSliEvaluationType() != compositeServiceLevelObjectiveSpec.getEvaluationType()) {
+    serviceLevelObjectiveList.forEach(serviceLevelObjective -> {
+      if (!serviceLevelObjective.getSliEvaluationType().getCompositeSLOEvaluationType().equals(
+              compositeServiceLevelObjectiveSpec.getEvaluationType().getCompositeSLOEvaluationType())) {
         throw new InvalidRequestException(String.format(
             "The evaluation type of all the SLOs constituting the Composite SLO with identifier %s should be %s.",
             serviceLevelObjectiveDTO.getIdentifier(), compositeServiceLevelObjectiveSpec.getEvaluationType()));
@@ -1390,9 +1514,6 @@ public class ServiceLevelObjectiveV2ServiceImpl implements ServiceLevelObjective
     }
     if (isNotEmpty(filter.getIdentifiers())) {
       sloQuery.field(ServiceLevelObjectiveV2Keys.identifier).in(filter.getIdentifiers());
-    }
-    if (isNotEmpty(filter.getSliTypes())) {
-      sloQuery.field(SimpleServiceLevelObjectiveKeys.serviceLevelIndicatorType).in(filter.getSliTypes());
     }
     if (isNotEmpty(filter.getTargetTypes())) {
       sloQuery.field(ServiceLevelObjectiveV2Keys.target + "." + SLOTargetDTO.SLOTargetKeys.type)
@@ -1569,7 +1690,6 @@ public class ServiceLevelObjectiveV2ServiceImpl implements ServiceLevelObjective
   private static class Filter {
     List<String> userJourneys;
     List<String> identifiers;
-    List<ServiceLevelIndicatorType> sliTypes;
     List<SLOTargetType> targetTypes;
     List<ErrorBudgetRisk> errorBudgetRisks;
     String monitoredServiceIdentifier;

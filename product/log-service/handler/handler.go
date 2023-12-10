@@ -6,15 +6,17 @@
 package handler
 
 import (
-	"github.com/harness/harness-core/product/log-service/stackdriver"
 	"io"
 	"net/http"
 	"net/http/pprof"
+
+	"github.com/harness/harness-core/product/log-service/stackdriver"
 
 	"github.com/harness/harness-core/product/platform/client"
 
 	"github.com/go-chi/chi"
 
+	gcputils "github.com/harness/harness-core/commons/go/lib/gcputils"
 	"github.com/harness/harness-core/product/log-service/cache"
 	"github.com/harness/harness-core/product/log-service/config"
 	"github.com/harness/harness-core/product/log-service/logger"
@@ -25,7 +27,7 @@ import (
 
 // Handler returns an http.Handler that exposes the
 // service resources.
-func Handler(queue queue.Queue, cache cache.Cache, stream stream.Stream, store store.Store, stackdriver *stackdriver.Stackdriver, config config.Config, ngClient *client.HTTPClient) http.Handler {
+func Handler(queue queue.Queue, cache cache.Cache, stream stream.Stream, store store.Store, stackdriver *stackdriver.Stackdriver, config config.Config, ngClient, aclClient *client.HTTPClient, gcsClient gcputils.GCS) http.Handler {
 	r := chi.NewRouter()
 	r.Use(logger.Middleware)
 
@@ -79,7 +81,7 @@ func Handler(queue queue.Queue, cache cache.Cache, stream stream.Stream, store s
 		sr := chi.NewRouter()
 		// Validate the accountID in URL with the token generated above and authorize the request
 		if !config.Auth.DisableAuth {
-			sr.Use(AuthMiddleware(config, ngClient, false))
+			sr.Use(AuthMiddleware(config, ngClient, aclClient, true))
 		}
 
 		sr.Post("/", HandleOpen(stream))
@@ -96,7 +98,7 @@ func Handler(queue queue.Queue, cache cache.Cache, stream stream.Stream, store s
 	r.Mount("/blob", func() http.Handler {
 		sr := chi.NewRouter()
 		if !config.Auth.DisableAuth {
-			sr.Use(AuthMiddleware(config, ngClient, false))
+			sr.Use(AuthMiddleware(config, ngClient, aclClient, true))
 		}
 
 		sr.Post("/", HandleUpload(store))
@@ -127,7 +129,7 @@ func Handler(queue queue.Queue, cache cache.Cache, stream stream.Stream, store s
 		r.Mount("/stackdriver", func() http.Handler {
 			sr := chi.NewRouter()
 			if !config.Auth.DisableAuth {
-				sr.Use(AuthMiddleware(config, ngClient, false))
+				sr.Use(AuthMiddleware(config, ngClient, aclClient, false))
 			}
 
 			sr.Post("/", HandleStackDriverWrite(stackdriver))
@@ -141,7 +143,7 @@ func Handler(queue queue.Queue, cache cache.Cache, stream stream.Stream, store s
 	r.Mount("/rca", func() http.Handler {
 		sr := chi.NewRouter()
 		if !config.Auth.DisableAuth {
-			sr.Use(AuthMiddleware(config, ngClient, true))
+			sr.Use(AuthMiddleware(config, ngClient, aclClient, true))
 		}
 
 		sr.Post("/", HandleRCA(store, config))
@@ -167,14 +169,14 @@ func Handler(queue queue.Queue, cache cache.Cache, stream stream.Stream, store s
 		sr := chi.NewRouter()
 
 		if !config.Auth.DisableAuth {
-			sr.Use(AuthMiddleware(config, ngClient, true))
+			sr.Use(AuthMiddleware(config, ngClient, aclClient, true))
 		}
 
 		sr.
 			With(RequiredQueryParams(accountIDParam, usePrefixParam)).
 			With(ValidatePrefixRequest()).
 			With(CacheRequest(cache)).
-			Post("/", HandleZipLinkPrefix(queue, store, cache, config))
+			Post("/", HandleZipLinkPrefix(queue, store, cache, config, gcsClient, ngClient))
 
 		return sr
 	}())

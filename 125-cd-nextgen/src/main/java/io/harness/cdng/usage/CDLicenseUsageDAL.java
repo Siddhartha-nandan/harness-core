@@ -13,6 +13,7 @@ import static io.harness.cdng.usage.pojos.ActiveService.ActiveServiceField.orgNa
 import static io.harness.cdng.usage.pojos.ActiveService.ActiveServiceField.projectName;
 import static io.harness.cdng.usage.pojos.ActiveServiceBase.ActiveServiceBaseField.identifier;
 import static io.harness.cdng.usage.pojos.ActiveServiceBase.ActiveServiceBaseField.instanceCount;
+import static io.harness.cdng.usage.pojos.ActiveServiceBase.ActiveServiceBaseField.instanceType;
 import static io.harness.cdng.usage.pojos.ActiveServiceBase.ActiveServiceBaseField.lastDeployed;
 import static io.harness.cdng.usage.pojos.ActiveServiceBase.ActiveServiceBaseField.orgIdentifier;
 import static io.harness.cdng.usage.pojos.ActiveServiceBase.ActiveServiceBaseField.projectIdentifier;
@@ -33,8 +34,10 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.FeatureName;
 import io.harness.cd.CDLicenseType;
 import io.harness.cdlicense.exception.CgLicenseUsageException;
+import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.usage.impl.AggregateServiceUsageInfo;
 import io.harness.cdng.usage.pojos.ActiveService;
 import io.harness.cdng.usage.pojos.ActiveServiceBase;
@@ -73,6 +76,7 @@ import org.springframework.data.domain.Sort;
 @OwnedBy(HarnessTeam.CDP)
 @Singleton
 public class CDLicenseUsageDAL {
+  @Inject private CDFeatureFlagHelper featureFlagService;
   private static final double INSTANCE_COUNT_PERCENTILE_DISC = 0.95;
   private static final int MAX_RETRY = 3;
   private static final String MAX_RETRY_MSG = format("%s retries", MAX_RETRY);
@@ -88,23 +92,59 @@ public class CDLicenseUsageDAL {
       + ") as instanceCountsPerReportedAt";
   private static final String QUERY_FETCH_INSTANCES_PER_SERVICE = ""
       + "select percentile_disc(?) within group (order by instancesPerServicePerReportedat.instancecount) as instanceCount,\n"
-      + "    orgid, projectid, serviceid\n"
+      + "    orgid, projectid, serviceid, instancesPerServicePerReportedat.instancetype as instanceType\n"
       + "from (\n"
-      + "    select date_trunc('minute', reportedat) as reportedat, orgid, projectid, serviceid, sum(instancecount) as instancecount\n"
+      + "    select date_trunc('minute', reportedat) as reportedat, orgid, projectid, serviceid, sum(instancecount) as instancecount, instancetype\n"
       + "    from \n"
       + "        ng_instance_stats \n"
       + "    where accountid = ?\n"
       + "        and reportedat > now() - INTERVAL '30 day' \n"
-      + "    group by orgid, projectid, serviceid, date_trunc('minute', reportedat)\n"
+      + "    group by orgid, projectid, serviceid, instancetype, date_trunc('minute', reportedat)\n"
       + "    order by reportedat desc\n"
       + ") instancesPerServicePerReportedat\n"
-      + "group by orgid, projectid, serviceid";
+      + "group by orgid, projectid, serviceid, instancetype";
+  private static final String QUERY_FETCH_INSTANCES_PER_SERVICE_V2 = ""
+      + "select percentile_disc(?) within group (order by instancesPerServicePerReportedat.instancecount) as instanceCount,\n"
+      + "    orgid, projectid, serviceid, instancesPerServicePerReportedat.instancetype as instanceType\n"
+      + "from (\n"
+      + "    select date_trunc('minute', reportedat) as reportedat,\n"
+      + "       case\n"
+      + "           when serviceid like 'account.%' then null\n"
+      + "           else orgid\n"
+      + "       end as orgid,\n"
+      + "       case\n"
+      + "           when serviceid like 'account.%' or serviceid like 'org.%' then null\n"
+      + "           else projectid\n"
+      + "       end as projectid,\n"
+      + "       serviceid,\n"
+      + "       sum(instancecount) as instancecount,\n"
+      + "       instancetype\n"
+      + "    from \n"
+      + "        ng_instance_stats \n"
+      + "    where accountid = ?\n"
+      + "        and reportedat > now() - INTERVAL '30 day' \n"
+      + "    group by\n"
+      + "        case\n"
+      + "            when serviceid like 'account.%' then null\n"
+      + "            else orgid\n"
+      + "        end,\n"
+      + "        case\n"
+      + "            when serviceid like 'account.%' or serviceid like 'org.%' then null\n"
+      + "            else projectid\n"
+      + "        end,\n"
+      + " serviceid,\n"
+      + " instancetype,\n"
+      + " date_trunc('minute', reportedat)\n"
+      + "    order by reportedat desc\n"
+      + ") instancesPerServicePerReportedat\n"
+      + "group by orgid, projectid, serviceid, instancetype";
   private static final String FETCH_ACTIVE_SERVICES_WITH_INSTANCES_COUNT_QUERY = ""
       + "SELECT activeServices.orgIdentifier,\n"
       + "       activeServices.projectIdentifier,\n"
       + "       activeServices.serviceIdentifier AS identifier,\n"
       + "       activeServices.lastDeployedServiceTime AS lastDeployed,\n"
       + "       activeServices.totalCount,\n"
+      + "       percentileInstancesPerServices.instancetype AS instanceType,\n"
       + "       COALESCE(percentileInstancesPerServices.instanceCount, 0) AS instanceCount\n"
       + "FROM\n"
       + "-- List services deployed in last 30 days from service_infra_info table. 'Group by' is needed for lastDeployedServiceTime calculation\n"
@@ -122,6 +162,7 @@ public class CDLicenseUsageDAL {
       + "-- List services percentile instances count from ng_instance_stats table\n"
       + "    (\n"
       + "        SELECT PERCENTILE_DISC(?) WITHIN GROUP (ORDER BY instancesPerService.instanceCount) AS instanceCount,\n"
+      + "            instancetype,\n"
       + "               orgid,\n"
       + "               projectid,\n"
       + "               serviceid\n"
@@ -131,15 +172,17 @@ public class CDLicenseUsageDAL {
       + "                       orgid,\n"
       + "                       projectid,\n"
       + "                       serviceid,\n"
+      + "                       instancetype,\n"
       + "                       SUM(instancecount) AS instanceCount\n"
       + "                FROM ng_instance_stats\n"
       + "                WHERE accountid = ? AND reportedat > NOW() - INTERVAL '30 day' :filterOnNgInstanceStats\n"
       + "                GROUP BY orgid,\n"
       + "                         projectid,\n"
       + "                         serviceid,\n"
+      + "                         instancetype,\n"
       + "                         DATE_TRUNC('minute', reportedat)\n"
       + "            ) instancesPerService\n"
-      + "        GROUP BY orgid,projectid,serviceid\n"
+      + "        GROUP BY orgid,projectid,serviceid,instancetype\n"
       + "    ) percentileInstancesPerServices\n"
       + "ON activeServices.orgIdentifier = percentileInstancesPerServices.orgid\n"
       + "    AND activeServices.projectIdentifier = percentileInstancesPerServices.projectid\n"
@@ -147,9 +190,90 @@ public class CDLicenseUsageDAL {
       + "ORDER BY :sortCriteria\n"
       + "LIMIT ?\n"
       + "OFFSET (? * ?)";
+  private static final String FETCH_ACTIVE_SERVICES_WITH_INSTANCES_COUNT_QUERY_V2 = ""
+      + "SELECT activeServices.orgIdentifier,\n"
+      + "       activeServices.projectIdentifier,\n"
+      + "       activeServices.serviceIdentifier AS identifier,\n"
+      + "       activeServices.lastDeployedServiceTime AS lastDeployed,\n"
+      + "       activeServices.totalCount,\n"
+      + "       percentileInstancesPerServices.instancetype AS instanceType,\n"
+      + "       COALESCE(percentileInstancesPerServices.instanceCount, 0) AS instanceCount\n"
+      + "FROM\n"
+      + "-- List services deployed in last 30 days from service_infra_info table. 'Group by' is needed for lastDeployedServiceTime calculation\n"
+      + "(\n"
+      + "    SELECT\n"
+      + "           CASE\n"
+      + "               WHEN service_id LIKE 'account.%' THEN NULL\n"
+      + "               ELSE orgIdentifier\n"
+      + "           END AS orgIdentifier,\n"
+      + "           CASE\n"
+      + "               WHEN service_id LIKE 'account.%' OR service_id LIKE 'org.%' THEN NULL\n"
+      + "               ELSE projectIdentifier\n"
+      + "           END AS projectIdentifier,\n"
+      + "           service_id AS serviceIdentifier,\n"
+      + "           MAX(service_startts) as lastDeployedServiceTime,\n"
+      + "           COUNT(*) OVER () AS totalCount\n"
+      + "    FROM service_infra_info\n"
+      + "    WHERE (accountid = ? AND service_startts >= ? AND service_startts <= ? :filterOnServiceInfraInfo)\n"
+      + "    GROUP BY\n"
+      + "        CASE WHEN service_id LIKE 'account.%' THEN NULL\n"
+      + "            ELSE orgidentifier\n"
+      + "        END,\n"
+      + "        CASE WHEN service_id LIKE 'account.%' OR service_id LIKE 'org.%' THEN NULL\n"
+      + "            ELSE projectidentifier\n"
+      + "        END,\n"
+      + "        service_id\n"
+      + ") activeServices\n"
+      + "    LEFT JOIN\n"
+      + "-- List services percentile instances count from ng_instance_stats table\n"
+      + "    (\n"
+      + "        SELECT PERCENTILE_DISC(?) WITHIN GROUP (ORDER BY instancesPerService.instanceCount) AS instanceCount,\n"
+      + "            instancetype,\n"
+      + "            orgid,\n"
+      + "            projectid,\n"
+      + "            serviceid\n"
+      + "        FROM\n"
+      + "            (\n"
+      + "                SELECT DATE_TRUNC('minute', reportedat) AS reportedat,\n"
+      + "                    CASE\n"
+      + "                        WHEN serviceid LIKE 'account.%' THEN NULL\n"
+      + "                        ELSE orgid\n"
+      + "                    END AS orgid,\n"
+      + "                    CASE\n"
+      + "                        WHEN serviceid LIKE 'account.%' OR serviceid LIKE 'org.%' THEN NULL\n"
+      + "                        ELSE projectid\n"
+      + "                    END AS projectid,\n"
+      + "                    serviceid,\n"
+      + "                    instancetype,\n"
+      + "                    SUM(instancecount) AS instanceCount\n"
+      + "                FROM ng_instance_stats\n"
+      + "                WHERE accountid = ? AND reportedat > NOW() - INTERVAL '30 day' :filterOnNgInstanceStats\n"
+      + "                GROUP BY\n"
+      + "                    CASE\n"
+      + "                        WHEN serviceid LIKE 'account.%' THEN NULL\n"
+      + "                        ELSE orgid\n"
+      + "                    END,\n"
+      + "                    CASE\n"
+      + "                        WHEN serviceid LIKE 'account.%' OR serviceid LIKE 'org.%' THEN NULL\n"
+      + "                        ELSE projectid\n"
+      + "                    END,\n"
+      + "                         serviceid,\n"
+      + "                         instancetype,\n"
+      + "                         DATE_TRUNC('minute', reportedat)\n"
+      + "            ) instancesPerService\n"
+      + "        GROUP BY orgid,projectid,serviceid,instancetype\n"
+      + "    ) percentileInstancesPerServices\n"
+      + "ON (activeServices.orgIdentifier = percentileInstancesPerServices.orgid\n"
+      + "        OR (activeServices.orgIdentifier IS NULL AND percentileInstancesPerServices.orgid IS NULL))\n"
+      + "    AND (activeServices.projectIdentifier = percentileInstancesPerServices.projectid\n"
+      + "        OR (activeServices.projectIdentifier IS NULL AND percentileInstancesPerServices.projectid IS NULL))\n"
+      + "    AND activeServices.serviceIdentifier = percentileInstancesPerServices.serviceid\n"
+      + "ORDER BY :sortCriteria\n"
+      + "LIMIT ?\n"
+      + "OFFSET (? * ?)";
   private static final String FETCH_ACTIVE_SERVICES_NAME_ORG_AND_PROJECT_NAME_QUERY = ""
       + "SELECT DISTINCT\n"
-      + "    t.orgIdentifier, t.projectIdentifier, t.serviceIdentifier AS identifier, t.lastDeployed, t.instanceCount,\n"
+      + "    t.orgIdentifier, t.projectIdentifier, t.serviceIdentifier AS identifier, t.lastDeployed, t.instanceCount, t.instanceType,\n"
       + "    COALESCE(organizations.name, 'Deleted') AS orgName,\n"
       + "    COALESCE(projects.name, 'Deleted') AS projectName,\n"
       + "    COALESCE(services.name, 'Deleted') AS name\n"
@@ -157,19 +281,54 @@ public class CDLicenseUsageDAL {
       + "    (\n"
       + "        VALUES :constantTable\n"
       + "    )\n"
-      + "    AS t (orgIdentifier, projectIdentifier, serviceIdentifier, lastDeployed, instanceCount)\n"
+      + "    AS t (orgIdentifier, projectIdentifier, serviceIdentifier, lastDeployed, instanceCount, instanceType)\n"
       + "LEFT JOIN services ON\n"
       + "    services.account_id = ?\n"
       + "    AND t.orgidentifier = services.org_identifier\n"
       + "    AND t.projectidentifier = services.project_identifier\n"
-      + "    AND t.serviceIdentifier = services.identifier\n"
+      + "    AND t.serviceIdentifier = services.fully_qualified_identifier\n"
+      + "    AND services.deleted = false\n"
       + " LEFT JOIN projects ON\n"
       + "    projects.account_identifier = ?\n"
       + "    AND t.orgidentifier = projects.org_identifier\n"
       + "    AND t.projectidentifier = projects.identifier\n"
+      + "    AND projects.deleted = false\n"
       + " LEFT JOIN organizations ON\n"
       + "    organizations.account_identifier = ?\n"
       + "    AND t.orgidentifier = organizations.identifier\n"
+      + "    AND organizations.deleted = false\n"
+      + "ORDER BY :sortCriteria";
+  private static final String FETCH_ACTIVE_SERVICES_NAME_ORG_AND_PROJECT_NAME_QUERY_V2 = ""
+      + "SELECT DISTINCT\n"
+      + "    t.orgIdentifier, t.projectIdentifier, t.serviceIdentifier AS identifier, t.lastDeployed, t.instanceCount, t.instanceType,\n"
+      + "    CASE\n"
+      + "        WHEN t.serviceIdentifier LIKE 'account.%' THEN NULL\n"
+      + "        ELSE COALESCE(organizations.name, 'Deleted')\n"
+      + "    END AS orgName,\n"
+      + "    CASE WHEN t.serviceIdentifier LIKE 'account.%' OR t.serviceIdentifier LIKE 'org.%' THEN NULL\n"
+      + "         ELSE COALESCE(projects.name, 'Deleted')\n"
+      + "    END AS projectName,\n"
+      + "    COALESCE(services.name, 'Deleted') AS name\n"
+      + "FROM \n"
+      + "    (\n"
+      + "        VALUES :constantTable\n"
+      + "    )\n"
+      + "    AS t (orgIdentifier, projectIdentifier, serviceIdentifier, lastDeployed, instanceCount, instanceType)\n"
+      + "LEFT JOIN services ON\n"
+      + "    services.account_id = ?\n"
+      + "    AND (t.orgidentifier = services.org_identifier OR (t.orgidentifier IS NULL AND services.org_identifier IS NULL))\n"
+      + "    AND (t.projectidentifier = services.project_identifier OR (t.projectidentifier IS NULL AND services.project_identifier IS NULL))\n"
+      + "    AND t.serviceIdentifier = services.fully_qualified_identifier\n"
+      + "    AND services.deleted = false\n"
+      + " LEFT JOIN projects ON\n"
+      + "    projects.account_identifier = ?\n"
+      + "    AND t.orgidentifier = projects.org_identifier\n"
+      + "    AND t.projectidentifier = projects.identifier\n"
+      + "    AND projects.deleted = false\n"
+      + " LEFT JOIN organizations ON\n"
+      + "    organizations.account_identifier = ?\n"
+      + "    AND t.orgidentifier = organizations.identifier\n"
+      + "    AND organizations.deleted = false\n"
       + "ORDER BY :sortCriteria";
 
   @Inject TimeScaleDBService timeScaleDBService;
@@ -217,12 +376,19 @@ public class CDLicenseUsageDAL {
       return Collections.emptyList();
     }
 
+    final String fetchInstancesPerServiceQuery;
+    if (featureFlagService.isEnabled(accountId, FeatureName.CDS_NG_ACC_ORG_LEVEL_SERVICE_LICENSING_FIX)) {
+      fetchInstancesPerServiceQuery = QUERY_FETCH_INSTANCES_PER_SERVICE_V2;
+    } else {
+      fetchInstancesPerServiceQuery = QUERY_FETCH_INSTANCES_PER_SERVICE;
+    }
+
     int retry = 0;
     boolean successfulOperation = false;
     List<AggregateServiceUsageInfo> instanceCountPerService = new ArrayList<>();
     while (!successfulOperation && retry <= MAX_RETRY) {
       try (Connection dbConnection = timeScaleDBService.getDBConnection();
-           PreparedStatement fetchStatement = dbConnection.prepareStatement(QUERY_FETCH_INSTANCES_PER_SERVICE)) {
+           PreparedStatement fetchStatement = dbConnection.prepareStatement(fetchInstancesPerServiceQuery)) {
         fetchStatement.setDouble(1, INSTANCE_COUNT_PERCENTILE_DISC);
         fetchStatement.setString(2, accountId);
 
@@ -250,15 +416,26 @@ public class CDLicenseUsageDAL {
       throw new InvalidArgumentsException("AccountIdentifier cannot be null or empty for fetching active services");
     }
 
-    final String fetchActiveServicesFinalQuery =
-        FETCH_ACTIVE_SERVICES_WITH_INSTANCES_COUNT_QUERY
-            .replace(":filterOnServiceInfraInfo",
-                buildFilterOnServiceInfraInfoTable(
-                    fetchData.getOrgIdentifier(), fetchData.getProjectIdentifier(), fetchData.getServiceIdentifier()))
-            .replace(":filterOnNgInstanceStats",
-                buildFilterOnNGInstanceStatsTable(
-                    fetchData.getOrgIdentifier(), fetchData.getProjectIdentifier(), fetchData.getServiceIdentifier()))
-            .replace(":sortCriteria", buildSortCriteria(fetchData.getSort()));
+    final String fetchActiveServicesFinalQuery;
+    if (featureFlagService.isEnabled(accountIdentifier, FeatureName.CDS_NG_ACC_ORG_LEVEL_SERVICE_LICENSING_FIX)) {
+      fetchActiveServicesFinalQuery = FETCH_ACTIVE_SERVICES_WITH_INSTANCES_COUNT_QUERY_V2
+                                          .replace(":filterOnServiceInfraInfo",
+                                              buildFilterOnServiceInfraInfoTable(fetchData.getOrgIdentifier(),
+                                                  fetchData.getProjectIdentifier(), fetchData.getServiceIdentifier()))
+                                          .replace(":filterOnNgInstanceStats",
+                                              buildFilterOnNGInstanceStatsTable(fetchData.getOrgIdentifier(),
+                                                  fetchData.getProjectIdentifier(), fetchData.getServiceIdentifier()))
+                                          .replace(":sortCriteria", buildSortCriteria(fetchData.getSort()));
+    } else {
+      fetchActiveServicesFinalQuery = FETCH_ACTIVE_SERVICES_WITH_INSTANCES_COUNT_QUERY
+                                          .replace(":filterOnServiceInfraInfo",
+                                              buildFilterOnServiceInfraInfoTable(fetchData.getOrgIdentifier(),
+                                                  fetchData.getProjectIdentifier(), fetchData.getServiceIdentifier()))
+                                          .replace(":filterOnNgInstanceStats",
+                                              buildFilterOnNGInstanceStatsTable(fetchData.getOrgIdentifier(),
+                                                  fetchData.getProjectIdentifier(), fetchData.getServiceIdentifier()))
+                                          .replace(":sortCriteria", buildSortCriteria(fetchData.getSort()));
+    }
 
     int retry = 0;
     boolean successfulOperation = false;
@@ -305,10 +482,18 @@ public class CDLicenseUsageDAL {
       return Collections.emptyList();
     }
 
-    final String fetchActiveServicesNameOrgAndProjectNameFinalQuery =
-        FETCH_ACTIVE_SERVICES_NAME_ORG_AND_PROJECT_NAME_QUERY
-            .replace(":constantTable", buildConstantTable(activeServiceBaseItems))
-            .replace(":sortCriteria", buildSortCriteria(sort));
+    final String fetchActiveServicesNameOrgAndProjectNameFinalQuery;
+    if (featureFlagService.isEnabled(accountIdentifier, FeatureName.CDS_NG_ACC_ORG_LEVEL_SERVICE_LICENSING_FIX)) {
+      fetchActiveServicesNameOrgAndProjectNameFinalQuery =
+          FETCH_ACTIVE_SERVICES_NAME_ORG_AND_PROJECT_NAME_QUERY_V2
+              .replace(":constantTable", buildConstantTable(activeServiceBaseItems))
+              .replace(":sortCriteria", buildSortCriteria(sort));
+    } else {
+      fetchActiveServicesNameOrgAndProjectNameFinalQuery =
+          FETCH_ACTIVE_SERVICES_NAME_ORG_AND_PROJECT_NAME_QUERY
+              .replace(":constantTable", buildConstantTable(activeServiceBaseItems))
+              .replace(":sortCriteria", buildSortCriteria(sort));
+    }
     int retry = 0;
     boolean successfulOperation = false;
     List<ActiveService> activeServices = new ArrayList<>();
@@ -405,7 +590,9 @@ public class CDLicenseUsageDAL {
       String orgId = resultSet.getString(2);
       String projectId = resultSet.getString(3);
       String serviceId = resultSet.getString(4);
-      instanceCountPerService.add(new AggregateServiceUsageInfo(orgId, projectId, serviceId, instanceCount));
+      String instanceType = resultSet.getString(5);
+      instanceCountPerService.add(
+          new AggregateServiceUsageInfo(orgId, projectId, serviceId, instanceCount, instanceType));
     }
 
     return instanceCountPerService;
@@ -499,6 +686,7 @@ public class CDLicenseUsageDAL {
                                     .identifier(resultSet.getString(identifier))
                                     .lastDeployed(resultSet.getLong(lastDeployed))
                                     .instanceCount(resultSet.getLong(instanceCount))
+                                    .instanceType(resultSet.getString(instanceType))
                                     .build());
       if (!isCountSet) {
         activeServiceResponse.setTotalCountOfItems(resultSet.getLong("totalCount"));
@@ -535,6 +723,7 @@ public class CDLicenseUsageDAL {
                              .identifier(resultSet.getString(identifier))
                              .lastDeployed(resultSet.getLong(lastDeployed))
                              .instanceCount(resultSet.getLong(instanceCount))
+                             .instanceType(resultSet.getString(instanceType))
                              .orgName(resultSet.getString(orgName))
                              .projectName(resultSet.getString(projectName))
                              .name(resultSet.getString(name))

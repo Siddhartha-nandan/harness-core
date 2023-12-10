@@ -16,6 +16,7 @@ import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.rule.OwnerRule.ABOSII;
 import static io.harness.rule.OwnerRule.PRATYUSH;
 import static io.harness.rule.OwnerRule.RISHABH;
+import static io.harness.telemetry.helpers.DeploymentsInstrumentationHelper.MANIFEST_TYPES;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,6 +36,7 @@ import static org.mockito.Mockito.verify;
 import io.harness.CategoryTest;
 import io.harness.beans.DelegateTaskRequest;
 import io.harness.beans.FeatureName;
+import io.harness.beans.IdentifierRef;
 import io.harness.category.element.UnitTests;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.execution.ServiceExecutionSummaryDetails;
@@ -48,6 +50,9 @@ import io.harness.cdng.manifest.steps.output.UnresolvedManifestsOutput;
 import io.harness.cdng.manifest.steps.task.FetchManifestTaskContext;
 import io.harness.cdng.manifest.steps.task.ManifestTaskService;
 import io.harness.cdng.manifest.yaml.GitStore;
+import io.harness.cdng.manifest.yaml.HelmChartManifestOutcome;
+import io.harness.cdng.manifest.yaml.HelmCommandFlagType;
+import io.harness.cdng.manifest.yaml.HelmManifestCommandFlag;
 import io.harness.cdng.manifest.yaml.HttpStoreConfig;
 import io.harness.cdng.manifest.yaml.ManifestAttributes;
 import io.harness.cdng.manifest.yaml.ManifestConfig;
@@ -61,6 +66,7 @@ import io.harness.cdng.manifest.yaml.storeConfig.StoreConfigType;
 import io.harness.cdng.manifest.yaml.storeConfig.StoreConfigWrapper;
 import io.harness.cdng.manifest.yaml.summary.HelmChartManifestSummary;
 import io.harness.cdng.manifestConfigs.ManifestConfigurations;
+import io.harness.cdng.manifestConfigs.outcome.ManifestConfigurationsOutcome;
 import io.harness.cdng.service.beans.ServiceDefinitionType;
 import io.harness.cdng.service.steps.constants.ServiceStepV3Constants;
 import io.harness.cdng.steps.EmptyStepParameters;
@@ -71,6 +77,8 @@ import io.harness.connector.services.ConnectorService;
 import io.harness.delegate.beans.TaskData;
 import io.harness.delegate.task.TaskParameters;
 import io.harness.eventsframework.schemas.entity.EntityDetailProtoDTO;
+import io.harness.eventsframework.schemas.entity.EntityUsageDetailProto;
+import io.harness.eventsframework.schemas.entity.IdentifierRefProtoDTO;
 import io.harness.exception.InvalidRequestException;
 import io.harness.gitsync.sdk.EntityValidityDetails;
 import io.harness.k8s.model.HelmVersion;
@@ -96,14 +104,19 @@ import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.rule.OwnerRule;
+import io.harness.secretusage.SecretRuntimeUsageService;
 import io.harness.serializer.KryoSerializer;
 import io.harness.service.DelegateGrpcClientWrapper;
 import io.harness.steps.EntityReferenceExtractorUtils;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 import io.harness.utils.NGFeatureFlagHelperService;
+import io.harness.walktree.visitor.entityreference.beans.VisitedSecretReference;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.StringValue;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -147,6 +160,9 @@ public class ManifestsStepV2Test extends CategoryTest {
   @Mock private KryoSerializer referenceFalseKryoSerializer;
   @Mock private DelegateGrpcClientWrapper delegateGrpcClientWrapper;
   @Mock private ServiceEnvironmentsLogCallbackUtility serviceEnvironmentsLogUtility;
+  @Mock private SecretRuntimeUsageService secretRuntimeUsageService;
+
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
 
   @InjectMocks private ManifestsStepV2 step = new ManifestsStepV2();
 
@@ -195,9 +211,6 @@ public class ManifestsStepV2Test extends CategoryTest {
   @Owner(developers = PRATYUSH)
   @Category(UnitTests.class)
   public void executeSyncMultipleHelmChart() {
-    doReturn(true)
-        .when(featureFlagHelperService)
-        .isEnabled(anyString(), eq(FeatureName.CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG));
     StepResponse stepResponse = testExecuteForHelmMultipleManifest(
         () -> step.executeSync(buildAmbiance(), new EmptyStepParameters(), null, null));
     assertThat(stepResponse.getStatus()).isEqualTo(Status.SUCCEEDED);
@@ -216,9 +229,6 @@ public class ManifestsStepV2Test extends CategoryTest {
   @Owner(developers = PRATYUSH)
   @Category(UnitTests.class)
   public void executeAsyncMultipleHelmCharts() {
-    doReturn(true)
-        .when(featureFlagHelperService)
-        .isEnabled(anyString(), eq(FeatureName.CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG));
     AsyncExecutableResponse asyncResponse = testExecuteForHelmMultipleManifest(
         () -> step.executeAsync(buildAmbiance(), new EmptyStepParameters(), null, null));
     assertThat(asyncResponse.getCallbackIdsList().asByteStringList()).isEmpty();
@@ -274,6 +284,9 @@ public class ManifestsStepV2Test extends CategoryTest {
     UnresolvedManifestsOutput unresolvedManifestsOutput = captor.getValue();
     assertThat(unresolvedManifestsOutput.getTaskIdMapping()).isEqualTo(ImmutableMap.of("taskId", "file1"));
     assertThat(unresolvedManifestsOutput.getManifestsOutcome().keySet()).containsExactlyInAnyOrder("file1");
+    verify(sweepingOutputService, never())
+        .consume(any(Ambiance.class), eq(OutcomeExpressionConstants.MANIFEST_CONFIG),
+            any(ManifestConfigurationsOutcome.class), anyString());
   }
 
   private <T> T testExecute(Supplier<T> executeMethod) {
@@ -324,6 +337,9 @@ public class ManifestsStepV2Test extends CategoryTest {
     assertThat(outcome.keySet()).containsExactlyInAnyOrder("file1", "file2", "file3");
     assertThat(outcome.get("file2").getOrder()).isEqualTo(1);
     assertThat(outcome.get("file3").getOrder()).isEqualTo(2);
+    verify(sweepingOutputService, never())
+        .consume(any(Ambiance.class), eq(OutcomeExpressionConstants.MANIFEST_CONFIG),
+            any(ManifestConfigurationsOutcome.class), anyString());
     verify(pipelineRbacHelper, times(1)).checkRuntimePermissions(any(), any(List.class), any(Boolean.class));
 
     return response;
@@ -384,6 +400,9 @@ public class ManifestsStepV2Test extends CategoryTest {
 
     assertThat(outcome.keySet()).containsExactlyInAnyOrder("file1", "file2");
     assertThat(outcome.get("file2").getOrder()).isEqualTo(1);
+    verify(sweepingOutputService, never())
+        .consume(any(Ambiance.class), eq(OutcomeExpressionConstants.MANIFEST_CONFIG),
+            any(ManifestConfigurationsOutcome.class), anyString());
     verify(pipelineRbacHelper, times(1)).checkRuntimePermissions(any(), any(List.class), any(Boolean.class));
 
     return response;
@@ -441,6 +460,13 @@ public class ManifestsStepV2Test extends CategoryTest {
     assertThat(outcome.keySet()).containsExactlyInAnyOrder("file2", "file3", "file4");
     assertThat(outcome.get("file3").getOrder()).isEqualTo(1);
     assertThat(outcome.get("file4").getOrder()).isEqualTo(2);
+    ArgumentCaptor<ManifestConfigurationsOutcome> captor2 =
+        ArgumentCaptor.forClass(ManifestConfigurationsOutcome.class);
+    verify(sweepingOutputService, times(1))
+        .consume(any(Ambiance.class), eq(OutcomeExpressionConstants.MANIFEST_CONFIG), captor2.capture(), eq("STAGE"));
+    ManifestConfigurationsOutcome manifestConfigurationsOutcome = captor2.getValue();
+    assertThat(manifestConfigurationsOutcome.getPrimaryManifestId()).isEqualTo("file2");
+
     verify(pipelineRbacHelper, times(1)).checkRuntimePermissions(any(), any(List.class), any(Boolean.class));
 
     return response;
@@ -452,10 +478,6 @@ public class ManifestsStepV2Test extends CategoryTest {
   public void executeSyncFailWithInvalidManifestListSync_0() {
     executeSyncFailWithInvalidManifestList_0(
         () -> step.executeSync(buildAmbiance(), new EmptyStepParameters(), null, null));
-
-    doReturn(true)
-        .when(featureFlagHelperService)
-        .isEnabled(anyString(), eq(FeatureName.CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG));
     executeSyncFailWithInvalidManifestList_0(
         () -> step.executeSync(buildAmbiance(), new EmptyStepParameters(), null, null));
   }
@@ -466,12 +488,28 @@ public class ManifestsStepV2Test extends CategoryTest {
   public void executeSyncFailWithInvalidManifestList_0() {
     executeSyncFailWithInvalidManifestList_0(
         () -> step.executeAsync(buildAmbiance(), new EmptyStepParameters(), null, null));
-
-    doReturn(true)
-        .when(featureFlagHelperService)
-        .isEnabled(anyString(), eq(FeatureName.CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG));
     executeSyncFailWithInvalidManifestList_0(
         () -> step.executeSync(buildAmbiance(), new EmptyStepParameters(), null, null));
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.TMACARI)
+  @Category(UnitTests.class)
+  public void testGetStepExecutionTelemetryEventDTO() {
+    ManifestsOutcome manifestsOutcome = new ManifestsOutcome();
+    HelmChartManifestOutcome helmChartManifestOutcome =
+        HelmChartManifestOutcome.builder()
+            .commandFlags(Collections.singletonList(
+                HelmManifestCommandFlag.builder().commandType(HelmCommandFlagType.Fetch).build()))
+            .build();
+    manifestsOutcome.put("manifest1", helmChartManifestOutcome);
+    StepExecutionTelemetryEventDTO stepExecutionTelemetryEventDTO =
+        step.getStepExecutionTelemetryEventDTO(Optional.of(manifestsOutcome));
+
+    assertThat(stepExecutionTelemetryEventDTO.getStepType()).isEqualTo(ManifestsStepV2.STEP_TYPE.getType());
+    assertThat(stepExecutionTelemetryEventDTO.getProperties().get("helm_command_flags")).isEqualTo(true);
+    assertThat((HashSet) stepExecutionTelemetryEventDTO.getProperties().get(MANIFEST_TYPES))
+        .contains(helmChartManifestOutcome.getType());
   }
 
   private <T> void executeSyncFailWithInvalidManifestList_0(Supplier<T> executeMethod) {
@@ -513,10 +551,6 @@ public class ManifestsStepV2Test extends CategoryTest {
   public void executeSyncFailWithInvalidManifestListSync_1() {
     executeSyncFailWithInvalidManifestList_1(
         () -> step.executeSync(buildAmbiance(), new EmptyStepParameters(), null, null));
-
-    doReturn(true)
-        .when(featureFlagHelperService)
-        .isEnabled(anyString(), eq(FeatureName.CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG));
     executeSyncFailWithInvalidManifestList_1(
         () -> step.executeSync(buildAmbiance(), new EmptyStepParameters(), null, null));
   }
@@ -527,10 +561,6 @@ public class ManifestsStepV2Test extends CategoryTest {
   public void executeSyncFailWithInvalidManifestList_1() {
     executeSyncFailWithInvalidManifestList_1(
         () -> step.executeAsync(buildAmbiance(), new EmptyStepParameters(), null, null));
-
-    doReturn(true)
-        .when(featureFlagHelperService)
-        .isEnabled(anyString(), eq(FeatureName.CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG));
     executeSyncFailWithInvalidManifestList_1(
         () -> step.executeAsync(buildAmbiance(), new EmptyStepParameters(), null, null));
   }
@@ -587,9 +617,6 @@ public class ManifestsStepV2Test extends CategoryTest {
   }
 
   private <T> void executeSyncFailWithInvalidMultipleHelmManifestList_1(Supplier<T> executeMethod) {
-    doReturn(true)
-        .when(featureFlagHelperService)
-        .isEnabled(anyString(), eq(FeatureName.CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG));
     ManifestConfigWrapper file1 = sampleHelmChartManifestFile("file1", ManifestConfigType.HELM_CHART);
     ManifestConfigWrapper file2 = sampleManifestFile("file2", ManifestConfigType.K8_MANIFEST);
     ManifestConfigWrapper file3 = sampleValuesYamlFile("file3");
@@ -867,6 +894,9 @@ public class ManifestsStepV2Test extends CategoryTest {
     assertThat(manifestsOutcome.values().stream().map(ManifestOutcome::getIdentifier).collect(Collectors.toList()))
         .containsExactlyInAnyOrder("id1", "id2", "id3");
 
+    verify(sweepingOutputService, never())
+        .consume(any(Ambiance.class), eq(OutcomeExpressionConstants.MANIFEST_CONFIG),
+            any(ManifestConfigurationsOutcome.class), anyString());
     verify(expressionResolver).updateExpressions(any(), listArgumentCaptor.capture());
     List<ManifestAttributes> manifestAttributes = listArgumentCaptor.getValue();
     assertThat(manifestAttributes.size()).isEqualTo(3);
@@ -886,6 +916,7 @@ public class ManifestsStepV2Test extends CategoryTest {
   public void svcAndEnvLevelOverridesV2HelmRepoOverride() throws IOException {
     svcAndEnvLevelOverridesV2HelmRepoOverride(
         () -> step.executeAsync(buildAmbiance(), new EmptyStepParameters(), null, null));
+    verify(deploymentsInstrumentationHelper).publishStepEvent(any(), any());
   }
 
   private <T> void svcAndEnvLevelOverridesV2HelmRepoOverride(Supplier<T> executeMethod) throws IOException {
@@ -927,15 +958,15 @@ public class ManifestsStepV2Test extends CategoryTest {
     assertThat(manifestsOutcome).isNotNull();
     assertThat(manifestsOutcome.values().stream().map(ManifestOutcome::getIdentifier).collect(Collectors.toList()))
         .containsExactlyInAnyOrder("helm1");
+    verify(sweepingOutputService, never())
+        .consume(any(Ambiance.class), eq(OutcomeExpressionConstants.MANIFEST_CONFIG),
+            any(ManifestConfigurationsOutcome.class), anyString());
   }
 
   @Test
   @Owner(developers = PRATYUSH)
   @Category(UnitTests.class)
   public void svcAndEnvLevelOverridesV2HelmRepoOverrideSyncMultipleManifest() throws IOException {
-    doReturn(true)
-        .when(featureFlagHelperService)
-        .isEnabled(anyString(), eq(FeatureName.CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG));
     svcAndEnvLevelOverridesV2HelmRepoOverrideMultipleManifest(
         () -> step.executeSync(buildAmbiance(), new EmptyStepParameters(), null, null));
   }
@@ -944,9 +975,6 @@ public class ManifestsStepV2Test extends CategoryTest {
   @Owner(developers = PRATYUSH)
   @Category(UnitTests.class)
   public void svcAndEnvLevelOverridesV2HelmRepoOverrideMultipleManifest() throws IOException {
-    doReturn(true)
-        .when(featureFlagHelperService)
-        .isEnabled(anyString(), eq(FeatureName.CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG));
     svcAndEnvLevelOverridesV2HelmRepoOverrideMultipleManifest(
         () -> step.executeAsync(buildAmbiance(), new EmptyStepParameters(), null, null));
   }
@@ -995,6 +1023,12 @@ public class ManifestsStepV2Test extends CategoryTest {
     assertThat(manifestsOutcome).isNotNull();
     assertThat(manifestsOutcome.values().stream().map(ManifestOutcome::getIdentifier).collect(Collectors.toList()))
         .containsExactlyInAnyOrder("helm1");
+    ArgumentCaptor<ManifestConfigurationsOutcome> captor2 =
+        ArgumentCaptor.forClass(ManifestConfigurationsOutcome.class);
+    verify(sweepingOutputService, times(1))
+        .consume(any(Ambiance.class), eq(OutcomeExpressionConstants.MANIFEST_CONFIG), captor2.capture(), eq("STAGE"));
+    ManifestConfigurationsOutcome manifestConfigurationsOutcome = captor2.getValue();
+    assertThat(manifestConfigurationsOutcome.getPrimaryManifestId()).isEqualTo("helm1");
   }
 
   @Test
@@ -1044,6 +1078,9 @@ public class ManifestsStepV2Test extends CategoryTest {
     assertThat(manifestsOutcome).isNotNull();
     assertThat(manifestsOutcome.values().stream().map(ManifestOutcome::getIdentifier).collect(Collectors.toList()))
         .containsExactlyInAnyOrder("id1");
+    verify(sweepingOutputService, never())
+        .consume(any(Ambiance.class), eq(OutcomeExpressionConstants.MANIFEST_CONFIG),
+            any(ManifestConfigurationsOutcome.class), anyString());
   }
 
   @Test
@@ -1094,7 +1131,7 @@ public class ManifestsStepV2Test extends CategoryTest {
     assertThatThrownBy(executeMethod::get)
         .isInstanceOf(InvalidRequestException.class)
         .hasMessageContaining(
-            "Unsupported Manifest Types: [AwsLambdaFunctionDefinition] found for ENV_SERVICE_OVERRIDE");
+            "Unsupported Manifest Types: [AwsLambdaFunctionDefinition] found for Environment Service override");
   }
 
   @Test
@@ -1115,6 +1152,9 @@ public class ManifestsStepV2Test extends CategoryTest {
     verify(sweepingOutputService, never())
         .consume(any(Ambiance.class), eq(OutcomeExpressionConstants.MANIFESTS), any(ExecutionSweepingOutput.class),
             anyString());
+    verify(sweepingOutputService, never())
+        .consume(any(Ambiance.class), eq(OutcomeExpressionConstants.MANIFEST_CONFIG),
+            any(ManifestConfigurationsOutcome.class), anyString());
   }
 
   private <T> T svcAndEnvLevelOverridesV2NoManifest(Supplier<T> executeMethod) throws IOException {
@@ -1188,7 +1228,7 @@ public class ManifestsStepV2Test extends CategoryTest {
 
     assertThatThrownBy(executeMethod::get)
         .isInstanceOf(InvalidRequestException.class)
-        .hasMessageContaining("found duplicate identifiers [id1] in INFRA_GLOBAL_OVERRIDE");
+        .hasMessageContaining("found duplicate identifiers [id1] for Manifest in Infrastructure override");
   }
 
   @Test
@@ -1269,9 +1309,6 @@ public class ManifestsStepV2Test extends CategoryTest {
   @Owner(developers = PRATYUSH)
   @Category(UnitTests.class)
   public void throwExceptionIfPrimaryManifestRefUnresolved() {
-    doReturn(true)
-        .when(featureFlagHelperService)
-        .isEnabled(anyString(), eq(FeatureName.CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG));
     ManifestConfigWrapper svcHelmChart1 = sampleManifestHttpHelm("helm1", ManifestConfigType.HELM_CHART);
     ManifestConfigWrapper svcHelmChart2 = sampleManifestHttpHelm("helm2", ManifestConfigType.HELM_CHART);
     ManifestConfigWrapper envOverride = sampleHelmRepoOverride("helmoverride1", "svcoverride");
@@ -1308,9 +1345,6 @@ public class ManifestsStepV2Test extends CategoryTest {
   @Owner(developers = PRATYUSH)
   @Category(UnitTests.class)
   public void throwExceptionIfPrimaryManifestDoesNotMatchManifestId() throws IOException {
-    doReturn(true)
-        .when(featureFlagHelperService)
-        .isEnabled(anyString(), eq(FeatureName.CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG));
     doReturn(true).when(featureFlagHelperService).isEnabled(anyString(), eq(FeatureName.CDS_SERVICE_OVERRIDES_2_0));
     ManifestConfigWrapper svcHelmChart1 = sampleManifestHttpHelm("helm1", ManifestConfigType.HELM_CHART);
     ManifestConfigWrapper envOverride = sampleHelmRepoOverride("helmoverride1", "svcoverride");
@@ -1345,6 +1379,51 @@ public class ManifestsStepV2Test extends CategoryTest {
     assertThatThrownBy(() -> step.executeAsync(buildAmbiance(), new EmptyStepParameters(), null, null))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("primaryManifestRef: helm2 does not match to any [HELMCHART] manifests");
+  }
+
+  @Test
+  @Owner(developers = ABOSII)
+  @Category(UnitTests.class)
+  public void testReportSecretRuntimeUsage() {
+    Ambiance ambiance = buildAmbiance();
+    IdentifierRef secretRef = IdentifierRef.builder().identifier("TEST-123").build();
+    EntityDetailProtoDTO referredBy =
+        EntityDetailProtoDTO.newBuilder()
+            .setIdentifierRef(IdentifierRefProtoDTO.newBuilder()
+                                  .setIdentifier(StringValue.newBuilder().setValue("TEST-123").build())
+                                  .build())
+            .build();
+
+    ManifestAttributes manifestWithSecrets = mock(ManifestAttributes.class);
+    ManifestAttributes manifestWithoutSecrets = mock(ManifestAttributes.class);
+    List<ManifestAttributes> manifestAttributes =
+        List.of(manifestWithSecrets, manifestWithSecrets, manifestWithoutSecrets);
+
+    doReturn(Set.of(VisitedSecretReference.builder().secretRef(secretRef).referredBy(referredBy).build()))
+        .when(entityReferenceExtractorUtils)
+        .extractReferredSecrets(ambiance, manifestWithSecrets);
+
+    step.reportSecretRuntimeUsage(ambiance, manifestAttributes);
+
+    verify(secretRuntimeUsageService, times(2))
+        .createSecretRuntimeUsage(eq(secretRef), eq(referredBy), any(EntityUsageDetailProto.class));
+  }
+
+  @Test
+  @Owner(developers = ABOSII)
+  @Category(UnitTests.class)
+  public void testReportSecretRuntimeUsageEmptyOrNull() {
+    Ambiance ambiance = buildAmbiance();
+    List<ManifestAttributes> nullManifestAttributes = new ArrayList<>();
+    nullManifestAttributes.add(null);
+    step.reportSecretRuntimeUsage(ambiance, List.of());
+    step.reportSecretRuntimeUsage(ambiance, null);
+    step.reportSecretRuntimeUsage(ambiance, nullManifestAttributes);
+
+    verify(entityReferenceExtractorUtils, never()).extractReferredSecrets(any(Ambiance.class), any());
+    verify(secretRuntimeUsageService, never())
+        .createSecretRuntimeUsage(
+            any(IdentifierRef.class), any(EntityDetailProtoDTO.class), any(EntityUsageDetailProto.class));
   }
 
   private ManifestConfigWrapper sampleManifestFile(String identifier, ManifestConfigType type) {

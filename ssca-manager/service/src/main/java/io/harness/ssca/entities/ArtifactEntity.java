@@ -14,8 +14,6 @@ import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.ng.DbAliases;
 import io.harness.persistence.PersistentEntity;
-import io.harness.persistence.UpdatedAtAware;
-import io.harness.ssca.beans.Activity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import dev.morphia.annotations.Entity;
@@ -41,15 +39,15 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @Document("sscaArtefact")
 @TypeAlias("sscaArtefact")
 @HarnessEntity(exportable = true)
-public class ArtifactEntity implements PersistentEntity, UpdatedAtAware {
+public class ArtifactEntity implements PersistentEntity {
   @Id String id;
   @Field("artifactid") String artifactId;
   @Field("orchestrationid") String orchestrationId;
-  String artifactCorrelationId;
+  @Setter @NonFinal String artifactCorrelationId;
   @NotEmpty String url;
   String name;
   String type;
-  String tag;
+  @Setter @NonFinal String tag;
   @Field("accountid") String accountId;
   @Field("orgid") String orgId;
   @Field("projectid") String projectId;
@@ -63,10 +61,13 @@ public class ArtifactEntity implements PersistentEntity, UpdatedAtAware {
   @Field("isattested") boolean isAttested;
   @Field("attestedfileurl") String attestedFileUrl;
   Sbom sbom;
-  boolean invalid;
-  @Setter @NonFinal long lastUpdatedAt;
-  @Setter @NonFinal long componentsCount;
-  Activity activity;
+  @Setter @NonFinal Boolean invalid;
+  @Setter @NonFinal Long lastUpdatedAt;
+  @Setter @NonFinal Long componentsCount;
+  @Setter @NonFinal Long prodEnvCount;
+  @Setter @NonFinal Long nonProdEnvCount;
+
+  @Setter @NonFinal Scorecard scorecard;
 
   @Value
   @Builder
@@ -75,5 +76,12 @@ public class ArtifactEntity implements PersistentEntity, UpdatedAtAware {
     @Field("toolversion") String toolVersion;
     @Field("sbomformat") String sbomFormat;
     @Field("sbomversion") String sbomVersion;
+  }
+
+  @Value
+  @Builder
+  public static class Scorecard {
+    @Field("avgScore") String avgScore;
+    @Field("maxScore") String maxScore;
   }
 }

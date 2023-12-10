@@ -19,7 +19,7 @@ set -e
 export TargetBranch=$(echo "${ghprbTargetBranch}")
 export SourceBranch=$(echo "${ghprbSourceBranch}")
 
-PR_Name=("SmartPRChecks-PMD" "SmartPRChecks-codebasehashcheck")
+PR_Name=("SmartPRChecks-PMD" "SmartPRChecks-codebasehashcheck" "SmartPRChecks-compileCode")
 PR_TI=("TIAll-JavaUnitTests0" "TIAll-JavaUnitTests1" "TIAll-JavaUnitTests2" "TIAll-JavaUnitTests3" \
 "TIAll-JavaUnitTests4" "TIAll-JavaUnitTests5" "TIAll-JavaUnitTests6" "TIAll-JavaUnitTests7" \
 "TIAll-JavaUnitTests8" "TIAll-JavaUnitTests9")
@@ -34,7 +34,7 @@ BASE_SHA="$(git merge-base "$COMMIT_SHA" "$BASE_COMMIT_SHA")"
 merge_summary=( $(git diff --name-only $COMMIT_SHA..$BASE_SHA) )
 echo -e "${YELLOW}Merge Summary:\e[0m ${merge_summary[@]}"
 
-compile="true"
+compile="true"code
 sonar="true"
 GO_FILES=False
 
@@ -114,24 +114,40 @@ function print_log() {
   echo "false" >/tmp/COMPILE
 }
 
-function CodeformatRequired() {
-  Total_Files=${#merge_summary[@]}
-  General_Files=0
+CodeformatRequired() {
+  local run_codeformat=true
 
-  for file in "${merge_summary[@]}";do
+  for file in "${merge_summary[@]}"; do
     case "${file##*.}" in
-        MD|md|txt)
-          General_Files=`expr $General_Files + 1`
-          ;;
+      MD|md|txt)
+      run_codeformat=false
+	continue
+        ;;
+
+      yml|yaml)
+        if [[ "$file" == *"/chart/"* || "$file" == *"/charts/"* ]]; then
+          echo "Good Job"
+          run_codeformat=false
+          continue
+        fi
+        ;;
+
+      *)
+        run_codeformat=true  # Unsupported extension, set flag to false
+        break
+        ;;
     esac
   done
 
-  echo ${General_Files}
-  echo ${Total_Files}
-  if [ $General_Files == $Total_Files ]; then
+  if [ "$run_codeformat" = true ]; then
+    echo "CodeFormat Result: True"
+    echo "true" > /tmp/codeformatcheck
+  else
     PR_Name+=("SmartPRChecks-CodeformatCheckstyle")
+    echo "CodeFormat Result: False"
     echo "false" > /tmp/codeformatcheck
   fi
+
 }
 
 function send_webhook() {

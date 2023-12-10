@@ -9,12 +9,12 @@ package io.harness.engine.executions.node;
 
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.pms.PmsCommonConstants.AUTO_ABORT_PIPELINE_THROUGH_TRIGGER;
 import static io.harness.pms.contracts.execution.Status.ABORTED;
 import static io.harness.pms.contracts.execution.Status.DISCONTINUING;
 import static io.harness.pms.contracts.execution.Status.ERRORED;
 import static io.harness.pms.contracts.execution.Status.EXPIRED;
-import static io.harness.pms.contracts.execution.Status.SKIPPED;
 import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 import static io.harness.springdata.SpringDataMongoUtils.returnNewOptions;
 
@@ -45,7 +45,7 @@ import io.harness.execution.NodeExecution.NodeExecutionKeys;
 import io.harness.execution.PlanExecutionMetadata;
 import io.harness.execution.expansion.PlanExpansionService;
 import io.harness.interrupts.InterruptEffect;
-import io.harness.monitoring.ExecutionCountWithAccountResult;
+import io.harness.monitoring.ExecutionStatistics;
 import io.harness.observer.Subject;
 import io.harness.plan.Node;
 import io.harness.plan.NodeType;
@@ -61,7 +61,6 @@ import io.harness.pms.execution.ExecutionStatus;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.execution.utils.NodeProjectionUtils;
 import io.harness.pms.execution.utils.StatusUtils;
-import io.harness.springdata.PersistenceModule;
 import io.harness.springdata.TransactionHelper;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -101,7 +100,7 @@ import org.springframework.data.util.CloseableIterator;
 @Slf4j
 @OwnedBy(PIPELINE)
 public class NodeExecutionServiceImpl implements NodeExecutionService {
-  private static final int MAX_BATCH_SIZE = PersistenceModule.MAX_BATCH_SIZE;
+  private static final int MAX_BATCH_SIZE = 500;
 
   private static final Set<String> GRAPH_FIELDS = Set.of(NodeExecutionKeys.mode, NodeExecutionKeys.progressData,
       NodeExecutionKeys.unitProgresses, NodeExecutionKeys.executableResponses, NodeExecutionKeys.interruptHistories,
@@ -712,16 +711,21 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
         nodeExecutionsIdsToDelete.add(next.getUuid());
         batchNodeExecutionList.add(next);
         if (batchNodeExecutionList.size() >= MAX_BATCH_SIZE) {
+          // delete node Executions in batches of 1000
           deleteNodeExecutionsMetadataInternal(batchNodeExecutionList);
+          deleteNodeExecutionsInternal(nodeExecutionsIdsToDelete);
           batchNodeExecutionList.clear();
+          nodeExecutionsIdsToDelete.clear();
         }
       }
     }
+    // delete the remaining node Executions
     if (EmptyPredicate.isNotEmpty(batchNodeExecutionList)) {
       deleteNodeExecutionsMetadataInternal(batchNodeExecutionList);
     }
-    // At end delete all nodeExecutions
-    deleteNodeExecutionsInternal(nodeExecutionsIdsToDelete);
+    if (isNotEmpty(nodeExecutionsIdsToDelete)) {
+      deleteNodeExecutionsInternal(nodeExecutionsIdsToDelete);
+    }
   }
 
   /**
@@ -821,8 +825,11 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
 
   @VisibleForTesting
   void emitEvent(NodeExecution nodeExecution, OrchestrationEventType orchestrationEventType) {
+    if (nodeExecution == null) {
+      return;
+    }
     TriggerPayload triggerPayload = TriggerPayload.newBuilder().build();
-    if (nodeExecution != null && nodeExecution.getAmbiance() != null) {
+    if (nodeExecution.getAmbiance() != null) {
       PlanExecutionMetadata metadata =
           planExecutionMetadataService.findByPlanExecutionId(nodeExecution.getAmbiance().getPlanExecutionId())
               .orElseThrow(()
@@ -918,12 +925,12 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   public List<NodeExecution> fetchStageExecutionsWithEndTsAndStatusProjection(String planExecutionId) {
     Query query =
         query(where(NodeExecutionKeys.planExecutionId).is(planExecutionId))
-            .addCriteria(where(NodeExecutionKeys.status).ne(SKIPPED))
             .addCriteria(
                 where(NodeExecutionKeys.stepCategory).in(Arrays.asList(StepCategory.STAGE, StepCategory.STRATEGY)));
     query.fields()
         .include(NodeExecutionKeys.uuid)
         .include(NodeExecutionKeys.status)
+        .include(NodeExecutionKeys.startTs)
         .include(NodeExecutionKeys.endTs)
         .include(NodeExecutionKeys.createdAt)
         .include(NodeExecutionKeys.mode)
@@ -934,6 +941,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
         .include(NodeExecutionKeys.oldRetry)
         .include(NodeExecutionKeys.ambiance)
         .include(NodeExecutionKeys.resolvedParams)
+        .include(NodeExecutionKeys.failureInfo)
         .include(NodeExecutionKeys.executableResponses);
 
     query.with(by(NodeExecutionKeys.createdAt));
@@ -1126,7 +1134,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   }
 
   @Override
-  public List<ExecutionCountWithAccountResult> aggregateRunningNodesCountPerAccount() {
-    return nodeExecutionReadHelper.aggregateRunningExecutionCountPerAccount();
+  public ExecutionStatistics aggregateRunningNodeExecutionsCount() {
+    return nodeExecutionReadHelper.aggregateRunningExecutionCount();
   }
 }

@@ -9,6 +9,8 @@ package io.harness.steps.approval.step.harness;
 
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static io.harness.delegate.task.shell.ShellScriptTaskNG.COMMAND_UNIT;
+import static io.harness.steps.approval.step.harness.HarnessApprovalUtils.checkForNullOrThrowAutoApproval;
+import static io.harness.steps.approval.step.harness.HarnessApprovalUtils.validateTimestampForAutoApproval;
 
 import static java.util.Objects.isNull;
 
@@ -59,6 +61,7 @@ import io.harness.steps.approval.step.harness.entities.HarnessApprovalInstance;
 import io.harness.steps.approval.step.harness.outcomes.HarnessApprovalStepOutcome;
 import io.harness.steps.executables.PipelineAsyncExecutable;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.ApprovalInstrumentationHelper;
 import io.harness.utils.PmsFeatureFlagHelper;
 import io.harness.utils.TimeStampUtils;
 
@@ -88,14 +91,25 @@ public class HarnessApprovalStep extends PipelineAsyncExecutable {
   @Inject private LogStreamingStepClientFactory logStreamingStepClientFactory;
   @Inject private PmsFeatureFlagHelper pmsFeatureFlagHelper;
   @Inject private StepExecutionEntityService stepExecutionEntityService;
+  @Inject ApprovalInstrumentationHelper instrumentationHelper;
 
   @Override
   public AsyncExecutableResponse executeAsyncAfterRbac(
       Ambiance ambiance, StepBaseParameters stepParameters, StepInputPackage inputPackage) {
     ILogStreamingStepClient logStreamingStepClient = logStreamingStepClientFactory.getLogStreamingStepClient(ambiance);
     logStreamingStepClient.openStream(ShellScriptTaskNG.COMMAND_UNIT);
+
     HarnessApprovalInstance approvalInstance = HarnessApprovalInstance.fromStepParameters(ambiance, stepParameters);
+    instrumentationHelper.sendApprovalEvent(approvalInstance);
     final List<String> userGroups = approvalInstance.getApprovers().getUserGroups();
+
+    HarnessApprovalSpecParameters specParameters = (HarnessApprovalSpecParameters) stepParameters.getSpec();
+
+    if (pmsFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_AUTO_APPROVAL)
+        && specParameters.getAutoApproval() != null) {
+      checkForNullOrThrowAutoApproval(specParameters.getAutoApproval());
+      validateTimestampForAutoApproval(specParameters);
+    }
     final boolean isAnyValidUserGroupPresent = userGroups.stream().anyMatch(EmptyPredicate::isNotEmpty);
     if (!isAnyValidUserGroupPresent) {
       throw new InvalidRequestException("All the provided user groups are empty");
@@ -103,7 +117,9 @@ public class HarnessApprovalStep extends PipelineAsyncExecutable {
 
     List<UserGroupDTO> validatedUserGroups = approvalNotificationHandler.getUserGroups(approvalInstance);
     if (EmptyPredicate.isEmpty(validatedUserGroups)) {
-      throw new InvalidRequestException(String.format("At least 1 valid user group is required in %s", userGroups));
+      throw new InvalidRequestException(String.format(
+          "At least 1 valid user group is required in %s, Please check scope of the user group's provided",
+          userGroups));
     }
     approvalInstance.setValidatedUserGroups(validatedUserGroups);
     approvalInstance.setValidatedApprovalUserGroups(
@@ -111,8 +127,6 @@ public class HarnessApprovalStep extends PipelineAsyncExecutable {
     HarnessApprovalInstance savedApprovalInstance =
         (HarnessApprovalInstance) approvalInstanceService.save(approvalInstance);
     executorService.submit(() -> approvalNotificationHandler.sendNotification(savedApprovalInstance, ambiance));
-
-    HarnessApprovalSpecParameters specParameters = (HarnessApprovalSpecParameters) stepParameters.getSpec();
 
     sweepingOutputService.consume(ambiance, HARNESS_APPROVAL_STEP_OUTCOME,
         HarnessApprovalStepOutcome.builder().approvalInstanceId(approvalInstance.getId()).build(), "");
@@ -132,10 +146,12 @@ public class HarnessApprovalStep extends PipelineAsyncExecutable {
     return asyncExecutableResponseBuilder.build();
   }
 
-  private int getTimeoutForAutoApproval(AutoApprovalParams autoApprovalParams) {
+  private long getTimeoutForAutoApproval(AutoApprovalParams autoApprovalParams) {
     ScheduledDeadline scheduledDeadline = autoApprovalParams.getScheduledDeadline();
-    int autoApprovalDuration = Math.toIntExact(TimeStampUtils.getTotalDurationWRTCurrentTimeFromTimeStamp(
-        scheduledDeadline.getTime(), scheduledDeadline.getTimeZone()));
+
+    long autoApprovalDuration = TimeStampUtils.getTotalDurationWRTCurrentTimeFromTimeStamp(
+        scheduledDeadline.getTime().getValue(), scheduledDeadline.getTimeZone().getValue());
+
     if (autoApprovalDuration <= 0) {
       throw new InvalidRequestException("Auto approval deadline should be greater than current time");
     }
@@ -239,7 +255,6 @@ public class HarnessApprovalStep extends PipelineAsyncExecutable {
     if (isNull(specParameters.getAutoApproval())) {
       throw new InvalidRequestException("Step timed out");
     }
-
     String comment = "";
     if (ParameterField.isNotNull(specParameters.getAutoApproval().getComments())) {
       comment = specParameters.getAutoApproval().getComments().getValue();

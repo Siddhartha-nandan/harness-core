@@ -13,14 +13,20 @@ import static io.harness.aws.asg.manifest.AsgManifestType.AsgLaunchTemplate;
 import static io.harness.aws.asg.manifest.AsgManifestType.AsgScalingPolicy;
 import static io.harness.aws.asg.manifest.AsgManifestType.AsgScheduledUpdateGroupAction;
 import static io.harness.aws.asg.manifest.AsgManifestType.AsgUserData;
+import static io.harness.delegate.task.aws.asg.AsgTaskHelper.DEFAULT_CAPACITY_WHEN_ZERO;
+import static io.harness.delegate.task.aws.asg.AsgTaskHelper.DEFAULT_DESIRED_CAPACITY;
+import static io.harness.delegate.task.aws.asg.AsgTaskHelper.DEFAULT_MAX_CAPACITY;
+import static io.harness.delegate.task.aws.asg.AsgTaskHelper.DEFAULT_MIN_CAPACITY;
 import static io.harness.rule.OwnerRule.LOVISH_BANSAL;
 import static io.harness.rule.OwnerRule.VITALIE;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertNotNull;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,10 +34,13 @@ import static org.mockito.Mockito.when;
 import io.harness.CategoryTest;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.aws.asg.AsgSdkManager;
+import io.harness.aws.asg.manifest.request.AsgInstanceCapacity;
+import io.harness.aws.beans.AsgLoadBalancerConfig;
 import io.harness.category.element.UnitTests;
 import io.harness.delegate.beans.connector.awsconnector.AwsConnectorDTO;
 import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
+import io.harness.exception.HintException;
 import io.harness.logging.LogCallback;
 import io.harness.rule.Owner;
 
@@ -57,6 +66,7 @@ import org.mockito.junit.MockitoRule;
 @OwnedBy(CDP)
 
 public class AsgTaskHelperTest extends CategoryTest {
+  private static final String ASG_NAME = "testAsg";
   @Rule public MockitoRule mockitoRule = MockitoJUnit.rule();
   @InjectMocks private AsgTaskHelper asgTaskHelper = new AsgTaskHelper();
   @Mock AwsUtils awsUtils;
@@ -195,5 +205,99 @@ public class AsgTaskHelperTest extends CategoryTest {
     assertThat(ret.get(AsgScheduledUpdateGroupAction).get(0)).contains(asgName);
     assertThat(ret.get(AsgLaunchTemplate).get(0)).contains(imageId);
     assertThat(ret.get(AsgUserData)).isEqualTo(asgStoreManifestsContent.get(AsgUserData));
+  }
+
+  @Test
+  @Owner(developers = VITALIE)
+  @Category(UnitTests.class)
+  public void getAsgStoreManifestsContentWithoutLaunchTemplate() {
+    final String asgName = "testAsg";
+
+    Map<String, List<String>> asgStoreManifestsContent = Map.of(AsgConfiguration, List.of("AsgConfiguration"),
+        AsgLaunchTemplate, List.of("AsgLaunchTemplate"), AsgScalingPolicy, List.of("AsgScalingPolicy"),
+        AsgScheduledUpdateGroupAction, List.of("AsgScheduledUpdateGroupAction"), AsgUserData, List.of("AsgUserData"));
+
+    // base Asg
+    AsgInfraConfig asgInfraConfig = AsgInfraConfig.builder().baseAsgName(asgName).build();
+    AsgSdkManager asgSdkManager = mock(AsgSdkManager.class);
+
+    when(asgSdkManager.getASG(anyString())).thenReturn(new AutoScalingGroup().withAutoScalingGroupName(asgName));
+    when(asgSdkManager.getLifeCycleHookSpecificationList(anyString())).thenReturn(null);
+
+    when(asgSdkManager.listAllScalingPoliciesOfAsg(anyString()))
+        .thenReturn(List.of(new ScalingPolicy().withAutoScalingGroupName(asgName)));
+    when(asgSdkManager.listAllScheduledActionsOfAsg(anyString()))
+        .thenReturn(List.of(new ScheduledUpdateGroupAction().withAutoScalingGroupName(asgName)));
+
+    assertThatThrownBy(
+        () -> asgTaskHelper.getAsgStoreManifestsContent(asgInfraConfig, asgStoreManifestsContent, asgSdkManager))
+        .isInstanceOf(HintException.class)
+        .hasMessageContaining("Please provide LaunchTemplate for baseAsg `testAsg`");
+  }
+
+  @Test
+  @Owner(developers = VITALIE)
+  @Category(UnitTests.class)
+  public void getRunningInstanceCapacity() {
+    AsgInstanceCapacity ret = asgTaskHelper.getRunningInstanceCapacity(null, false, ASG_NAME);
+    assertThat(ret).isNull();
+
+    AsgSdkManager asgSdkManager = mock(AsgSdkManager.class);
+    doReturn(new AutoScalingGroup()
+                 .withAutoScalingGroupName(ASG_NAME)
+                 .withDesiredCapacity(null)
+                 .withMinSize(null)
+                 .withMaxSize(null))
+        .when(asgSdkManager)
+        .getASG(anyString());
+
+    ret = asgTaskHelper.getRunningInstanceCapacity(asgSdkManager, true, ASG_NAME);
+    assertThat(ret.getMinCapacity()).isEqualTo(DEFAULT_MIN_CAPACITY);
+    assertThat(ret.getDesiredCapacity()).isEqualTo(DEFAULT_CAPACITY_WHEN_ZERO);
+    assertThat(ret.getMaxCapacity()).isEqualTo(DEFAULT_CAPACITY_WHEN_ZERO);
+
+    doReturn(
+        new AutoScalingGroup().withAutoScalingGroupName(ASG_NAME).withDesiredCapacity(0).withMinSize(0).withMaxSize(0))
+        .when(asgSdkManager)
+        .getASG(anyString());
+
+    ret = asgTaskHelper.getRunningInstanceCapacity(asgSdkManager, true, ASG_NAME);
+    assertThat(ret.getMinCapacity()).isEqualTo(DEFAULT_MIN_CAPACITY);
+    assertThat(ret.getDesiredCapacity()).isEqualTo(DEFAULT_CAPACITY_WHEN_ZERO);
+    assertThat(ret.getMaxCapacity()).isEqualTo(DEFAULT_CAPACITY_WHEN_ZERO);
+
+    doReturn(null).when(asgSdkManager).getASG(anyString());
+
+    ret = asgTaskHelper.getRunningInstanceCapacity(asgSdkManager, true, ASG_NAME);
+    assertThat(ret.getMinCapacity()).isEqualTo(DEFAULT_MIN_CAPACITY);
+    assertThat(ret.getDesiredCapacity()).isEqualTo(DEFAULT_DESIRED_CAPACITY);
+    assertThat(ret.getMaxCapacity()).isEqualTo(DEFAULT_MAX_CAPACITY);
+
+    doReturn(
+        new AutoScalingGroup().withAutoScalingGroupName(ASG_NAME).withDesiredCapacity(3).withMinSize(1).withMaxSize(5))
+        .when(asgSdkManager)
+        .getASG(anyString());
+
+    ret = asgTaskHelper.getRunningInstanceCapacity(asgSdkManager, true, ASG_NAME);
+    assertThat(ret.getMinCapacity()).isEqualTo(1);
+    assertThat(ret.getDesiredCapacity()).isEqualTo(3);
+    assertThat(ret.getMaxCapacity()).isEqualTo(5);
+  }
+
+  @Test
+  @Owner(developers = VITALIE)
+  @Category(UnitTests.class)
+  public void isShiftTrafficFeature() {
+    AsgLoadBalancerConfig lbCfg = AsgLoadBalancerConfig.builder().stageListenerRuleArn("test").build();
+    boolean ret = asgTaskHelper.isShiftTrafficFeature(lbCfg);
+    assertThat(ret).isFalse();
+
+    lbCfg = AsgLoadBalancerConfig.builder().build();
+    ret = asgTaskHelper.isShiftTrafficFeature(lbCfg);
+    assertThat(ret).isTrue();
+
+    lbCfg = AsgLoadBalancerConfig.builder().stageListenerRuleArn("").build();
+    ret = asgTaskHelper.isShiftTrafficFeature(lbCfg);
+    assertThat(ret).isTrue();
   }
 }

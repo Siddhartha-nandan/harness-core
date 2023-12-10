@@ -66,14 +66,29 @@ public class AuditResourceImpl implements AuditResource {
       auditPermissionValidator.validate(
           accountIdentifier, ResourceScopeDTO.builder().accountIdentifier(accountIdentifier).build());
     }
-    if (isEmpty(pageRequest.getSortOrders())) {
+
+    if (isEmpty(pageRequest.getSortOrders()) || pageRequest.getSortOrders().size() > 1
+        || !AuditEventKeys.timestamp.equals(pageRequest.getSortOrders().get(0).getFieldName())) {
+      logForInvalidSortOrder(pageRequest, accountIdentifier);
       SortOrder order = SortOrder.Builder.aSortOrder().withField(AuditEventKeys.timestamp, DESC).build();
       pageRequest.setSortOrders(ImmutableList.of(order));
     }
+
     Page<AuditEventDTO> audits =
         auditService.list(accountIdentifier, pageRequest, auditFilterPropertiesDTO).map(AuditEventMapper::toDTO);
     ResponseDTO<PageResponse<AuditEventDTO>> response = ResponseDTO.newResponse(getNGPageResponse(audits));
     log.info(String.format("Took %d milliseconds for list audit api.", System.currentTimeMillis() - startTime));
     return response;
+  }
+
+  private void logForInvalidSortOrder(PageRequest pageRequest, String accountIdentifier) {
+    if (isNotEmpty(pageRequest.getSortOrders()) && pageRequest.getSortOrders().size() > 1) {
+      log.info("AuditLog: More than one sort order passed {} by accountIdentifier {}", pageRequest.getSortOrders(),
+          accountIdentifier);
+    } else if (isNotEmpty(pageRequest.getSortOrders())
+        && !AuditEventKeys.timestamp.equals(pageRequest.getSortOrders().get(0).getFieldName())) {
+      log.info("AuditLog: Incorrect Sort field: {} used by accountIdentifier {}",
+          pageRequest.getSortOrders().get(0).getFieldName(), accountIdentifier);
+    }
   }
 }

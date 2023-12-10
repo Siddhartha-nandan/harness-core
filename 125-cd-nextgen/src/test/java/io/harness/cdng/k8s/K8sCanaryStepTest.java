@@ -7,6 +7,7 @@
 
 package io.harness.cdng.k8s;
 
+import static io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants.DEPLOYMENT_INFO_OUTCOME;
 import static io.harness.logging.CommandExecutionStatus.SUCCESS;
 import static io.harness.rule.OwnerRule.ABOSII;
 import static io.harness.rule.OwnerRule.ANSHUL;
@@ -14,6 +15,7 @@ import static io.harness.rule.OwnerRule.ANSHUL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -31,9 +33,12 @@ import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.helm.ReleaseHelmChartOutcome;
 import io.harness.cdng.instance.info.InstanceInfoService;
 import io.harness.cdng.k8s.beans.K8sExecutionPassThroughData;
+import io.harness.cdng.k8s.trafficrouting.K8sTrafficRoutingHelper;
 import io.harness.cdng.manifest.yaml.K8sCommandFlagType;
 import io.harness.cdng.manifest.yaml.K8sStepCommandFlag;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
+import io.harness.delegate.beans.instancesync.DeploymentOutcomeMetadata;
+import io.harness.delegate.beans.instancesync.K8sDeploymentOutcomeMetadata;
 import io.harness.delegate.beans.logstreaming.UnitProgressData;
 import io.harness.delegate.exception.TaskNGDataException;
 import io.harness.delegate.task.helm.HelmChartInfo;
@@ -55,6 +60,7 @@ import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.sdk.core.steps.io.StepResponse.StepOutcome;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
@@ -73,8 +79,10 @@ import org.mockito.Mock;
 public class K8sCanaryStepTest extends AbstractK8sStepExecutorTestBase {
   @Mock ExecutionSweepingOutputService executionSweepingOutputService;
   @Mock InstanceInfoService instanceInfoService;
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
   @InjectMocks private K8sCanaryStep k8sCanaryStep;
   @Mock private CDFeatureFlagHelper cdFeatureFlagHelper;
+  @Mock private K8sTrafficRoutingHelper k8sTrafficRoutingHelper;
   @Mock StageExecutionInstanceInfoService stageExecutionInstanceInfoService;
 
   @Test
@@ -234,11 +242,14 @@ public class K8sCanaryStepTest extends AbstractK8sStepExecutorTestBase {
     ReleaseHelmChartOutcome releaseHelmChartOutcome =
         ReleaseHelmChartOutcome.builder().name(helmChartInfo.getName()).version(helmChartInfo.getVersion()).build();
     doReturn(releaseHelmChartOutcome).when(k8sStepHelper).getHelmChartOutcome(eq(helmChartInfo));
+    doReturn(StepOutcome.builder().name(DEPLOYMENT_INFO_OUTCOME).build())
+        .when(instanceInfoService)
+        .saveServerInstancesIntoSweepingOutput(eq(ambiance), anyList(), any(DeploymentOutcomeMetadata.class));
 
     StepResponse response = k8sCanaryStep.finalizeExecutionWithSecurityContextAndNodeInfo(
         ambiance, stepElementParameters, K8sExecutionPassThroughData.builder().build(), () -> k8sDeployResponse);
     assertThat(response.getStatus()).isEqualTo(Status.SUCCEEDED);
-    assertThat(response.getStepOutcomes()).hasSize(2);
+    assertThat(response.getStepOutcomes()).hasSize(3);
 
     StepOutcome outcome = response.getStepOutcomes().stream().collect(Collectors.toList()).get(0);
     assertThat(outcome.getOutcome()).isInstanceOf(K8sCanaryOutcome.class);
@@ -255,10 +266,16 @@ public class K8sCanaryStepTest extends AbstractK8sStepExecutorTestBase {
     assertThat(((ReleaseHelmChartOutcome) helmChartOutcome.getOutcome()).getVersion())
         .isEqualTo(helmChartInfo.getVersion());
 
+    StepOutcome deploymentInfoOutcome = new ArrayList<>(response.getStepOutcomes()).get(2);
+    assertThat(deploymentInfoOutcome.getName()).isEqualTo(DEPLOYMENT_INFO_OUTCOME);
+
     ArgumentCaptor<K8sCanaryOutcome> argumentCaptor = ArgumentCaptor.forClass(K8sCanaryOutcome.class);
     verify(executionSweepingOutputService, times(1))
         .consume(eq(ambiance), eq(OutcomeExpressionConstants.K8S_CANARY_OUTCOME), argumentCaptor.capture(),
             eq(StepOutcomeGroup.STEP.name()));
+    verify(instanceInfoService)
+        .saveServerInstancesIntoSweepingOutput(
+            eq(ambiance), anyList(), eq(K8sDeploymentOutcomeMetadata.builder().canary(true).build()));
     assertThat(argumentCaptor.getValue().getReleaseName()).isEqualTo("releaseName");
     assertThat(argumentCaptor.getValue().getCanaryWorkload()).isEqualTo("canaryWorkload");
   }

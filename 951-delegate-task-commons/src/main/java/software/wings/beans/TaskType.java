@@ -524,7 +524,23 @@ public enum TaskType {
       TaskGroup.HELM_VALUES_FETCH_TASK, "Helm Values Fetch Task with Oci Helm Ecr config"),
   K8S_COMMAND_TASK_NG_OCI_ECR_CONFIG(TaskGroup.K8S_NG, "K8s Task with Oci Helm Ecr Config"),
   HELM_COMMAND_TASK_NG_OCI_ECR_CONFIG(TaskGroup.HELM, "Helm Command Task with Oci Helm Ecr Config"),
-  TERRAFORM_TASK_NG_V7(TaskGroup.TERRAFORM_NG, "Terraform Task NG V7");
+  TERRAFORM_TASK_NG_V7(TaskGroup.TERRAFORM_NG, "Terraform Task NG V7"),
+  HELM_VALUES_FETCH_NG_OCI_ECR_CONFIG_V2(
+      TaskGroup.HELM_VALUES_FETCH_TASK, "Helm Values Fetch Task with Oci Helm Ecr config"),
+  K8S_COMMAND_TASK_NG_OCI_ECR_CONFIG_V2(TaskGroup.K8S_NG, "K8s Task with Oci Helm Ecr Config"),
+  HELM_COMMAND_TASK_NG_OCI_ECR_CONFIG_V2(TaskGroup.HELM, "Helm Command Task with Oci Helm Ecr Config"),
+  ECR_HELM_API_LIST_TAGS_TASK_V2(TaskGroup.HELM, "Task to query OCI Helm ECR Config Type ECR API List Tags"),
+  TERRAFORM_TASK_NG_V8(TaskGroup.TERRAFORM_NG, "Terraform Task NG V8"),
+  AWS_ASG_SHIFT_TRAFFIC_TASK_NG(TaskGroup.ASG, "AWS Asg Shift Traffic"),
+  AWS_ASG_BLUE_GREEN_ROLLBACK_TASK_NG_V3(TaskGroup.ASG, "AWS Asg Blue Green Rollback V3 with Shift Traffic support"),
+  AWS_ASG_BLUE_GREEN_PREPARE_ROLLBACK_DATA_TASK_NG_V3(
+      TaskGroup.ASG, "AWS Asg Blue Green Prepare Rollback Data for Shift Traffic"),
+  HELM_COMMAND_TASK_NG_JOBS_STEADY_STATE_CHECK(
+      TaskGroup.HELM, "Helm Command Task with Steady state check for jobs depending on account settings."),
+  ARTIFACT_BUNDLE_FETCH_TASK(TaskGroup.ARTIFACT_BUNDLE, "Artifact bundle fetch task in NG"),
+  AWS_ASG_BLUE_GREEN_DEPLOY_TASK_NG_V3(TaskGroup.ASG, "AWS Asg Blue Green Deploy V3 with Shift Traffic support"),
+  TAS_BG_SETUP_SUPPORT_2_APPS_V2(TaskGroup.TAS, "Tas BG Setup task V2"),
+  K8S_COMMAND_TASK_NG_TRAFFIC_ROUTING(TaskGroup.K8S, "K8s Task with Traffic routing config", true);
 
   private final TaskGroup taskGroup;
   private final String displayName;

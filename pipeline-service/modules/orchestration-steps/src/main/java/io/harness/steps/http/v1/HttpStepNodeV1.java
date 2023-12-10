@@ -20,7 +20,6 @@ import io.harness.plancreator.steps.common.SpecParameters;
 import io.harness.plancreator.steps.common.v1.StepElementParametersV1;
 import io.harness.plancreator.steps.common.v1.StepElementParametersV1.StepElementParametersV1Builder;
 import io.harness.plancreator.steps.common.v1.StepParametersUtilsV1;
-import io.harness.plancreator.steps.http.v1.HttpStepInfoV1;
 import io.harness.plancreator.steps.internal.v1.PmsAbstractStepNodeV1;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.yaml.ParameterField;
@@ -32,17 +31,19 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.Collections;
 import java.util.stream.Collectors;
-import lombok.Data;
+import lombok.Builder;
+import lombok.Getter;
 
 @OwnedBy(PIPELINE)
 @JsonTypeName(StepSpecTypeConstantsV1.HTTP)
-@Data
+@Builder
 public class HttpStepNodeV1 extends PmsAbstractStepNodeV1 {
   String type = StepSpecTypeConstantsV1.HTTP;
 
-  @JsonTypeInfo(use = NAME, property = "type", include = EXTERNAL_PROPERTY, visible = true) HttpStepInfoV1 spec;
+  @Getter @JsonTypeInfo(use = NAME, property = "type", include = EXTERNAL_PROPERTY, visible = true) HttpStepInfoV1 spec;
 
   // TODO: set rollback parameters
+  @Override
   public StepElementParametersV1 getStepParameters(PlanCreationContext ctx) {
     StepElementParametersV1Builder stepBuilder = StepParametersUtilsV1.getStepParameters(this);
     stepBuilder.spec(getSpecParameters());
@@ -52,7 +53,7 @@ public class HttpStepNodeV1 extends PmsAbstractStepNodeV1 {
   }
 
   public SpecParameters getSpecParameters() {
-    return HttpStepParametersV1.infoBuilder()
+    return HttpStepParameters.infoBuilder()
         .assertion(spec.getAssertion())
         .headers(EmptyPredicate.isEmpty(spec.getHeaders()) ? Collections.emptyMap()
                                                            : spec.getHeaders().stream().collect(Collectors.toMap(

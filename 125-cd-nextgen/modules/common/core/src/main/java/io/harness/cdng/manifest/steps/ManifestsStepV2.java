@@ -17,6 +17,7 @@ import static io.harness.cdng.service.steps.constants.ServiceStepConstants.SERVI
 import static io.harness.data.structure.CollectionUtils.emptyIfNull;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+import static io.harness.ng.core.entityusageactivity.EntityUsageTypes.PIPELINE_EXECUTION;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
@@ -53,6 +54,7 @@ import io.harness.cdng.manifest.yaml.kinds.HelmRepoOverrideManifest;
 import io.harness.cdng.manifest.yaml.storeConfig.StoreConfig;
 import io.harness.cdng.manifest.yaml.summary.ManifestSummary;
 import io.harness.cdng.manifestConfigs.ManifestConfigurations;
+import io.harness.cdng.manifestConfigs.outcome.ManifestConfigurationsOutcome;
 import io.harness.cdng.service.steps.constants.ServiceStepV3Constants;
 import io.harness.cdng.steps.EmptyStepParameters;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
@@ -65,7 +67,11 @@ import io.harness.connector.utils.ConnectorUtils;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.data.validator.EntityIdentifierValidator;
 import io.harness.delegate.beans.TaskData;
+import io.harness.eventsframework.protohelper.IdentifierRefProtoDTOHelper;
 import io.harness.eventsframework.schemas.entity.EntityDetailProtoDTO;
+import io.harness.eventsframework.schemas.entity.EntityTypeProtoEnum;
+import io.harness.eventsframework.schemas.entity.EntityUsageDetailProto;
+import io.harness.eventsframework.schemas.entity.PipelineExecutionUsageDataProto;
 import io.harness.exception.InvalidRequestException;
 import io.harness.executions.steps.ExecutionNodeType;
 import io.harness.logging.LogLevel;
@@ -97,18 +103,23 @@ import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.remote.client.NGRestUtils;
+import io.harness.secretusage.SecretRuntimeUsageService;
 import io.harness.serializer.KryoSerializer;
 import io.harness.service.DelegateGrpcClientWrapper;
 import io.harness.steps.EntityReferenceExtractorUtils;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 import io.harness.utils.IdentifierRefHelper;
 import io.harness.utils.NGFeatureFlagHelperService;
+import io.harness.walktree.visitor.entityreference.beans.VisitedSecretReference;
 
 import software.wings.beans.LogColor;
 import software.wings.beans.LogHelper;
 import software.wings.beans.LogWeight;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import java.time.Duration;
@@ -123,6 +134,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import lombok.Builder;
+import lombok.Data;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -153,6 +166,9 @@ public class ManifestsStepV2 implements SyncExecutable<EmptyStepParameters>, Asy
   @Inject private DelegateGrpcClientWrapper delegateGrpcClientWrapper;
   @Inject private StrategyHelper strategyHelper;
   @Inject private ServiceEnvironmentsLogCallbackUtility serviceEnvironmentsLogUtility;
+  @Inject private SecretRuntimeUsageService secretRuntimeUsageService;
+  @Inject private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
+
   private static final String OVERRIDE_PROJECT_SETTING_IDENTIFIER = "service_override_v2";
 
   @Override
@@ -164,12 +180,44 @@ public class ManifestsStepV2 implements SyncExecutable<EmptyStepParameters>, Asy
   public AsyncExecutableResponse executeAsync(Ambiance ambiance, EmptyStepParameters stepParameters,
       StepInputPackage inputPackage, PassThroughData passThroughData) {
     final NGLogCallback logCallback = serviceEnvironmentsLogUtility.getLogCallback(ambiance, false);
-    Optional<ManifestsOutcome> manifestsOutcome = resolveManifestsOutcome(ambiance, logCallback);
+    Optional<ManifestSpec> manifestSpec = resolveManifestsOutcome(ambiance, logCallback);
 
     List<String> callbackIds = new ArrayList<>();
-    manifestsOutcome.ifPresent(manifests -> handleManifests(ambiance, manifests, callbackIds, logCallback));
+    if (manifestSpec.isPresent()) {
+      Optional<ManifestsOutcome> manifestsOutcome = manifestSpec.get().getOptionalManifestsOutcome();
+      deploymentsInstrumentationHelper.publishStepEvent(ambiance, getStepExecutionTelemetryEventDTO(manifestsOutcome));
+      manifestsOutcome.ifPresent(manifests -> handleManifests(ambiance, manifests, callbackIds, logCallback));
+      saveManifestConfigurationOutcome(ambiance, manifestSpec.get().getPrimaryManifestId());
+    }
 
     return AsyncExecutableResponse.newBuilder().addAllCallbackIds(callbackIds).build();
+  }
+
+  @VisibleForTesting
+  StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Optional<ManifestsOutcome> manifestsOutcomeOptional) {
+    HashMap<String, Object> telemetryProperties = new HashMap<>();
+    try {
+      manifestsOutcomeOptional.ifPresent(manifestsOutcome -> {
+        List<String> manifestTypes = new ArrayList<>();
+        manifestsOutcome.values().forEach(manifestOutcome -> {
+          if (manifestOutcome != null) {
+            manifestTypes.add(manifestOutcome.getType());
+            telemetryProperties.putAll(manifestOutcome.createTelemetryProperties());
+          }
+        });
+        if (isNotEmpty(manifestTypes)) {
+          telemetryProperties.put(DeploymentsInstrumentationHelper.MANIFEST_TYPES, new HashSet<>(manifestTypes));
+        }
+      });
+
+    } catch (Exception e) {
+      log.error("Failed to obtain manifests step telemetry properties", e);
+    }
+    return StepExecutionTelemetryEventDTO.builder()
+        .stepType(STEP_TYPE.getType())
+        .properties(telemetryProperties)
+        .build();
   }
 
   @Override
@@ -216,12 +264,16 @@ public class ManifestsStepV2 implements SyncExecutable<EmptyStepParameters>, Asy
   public StepResponse executeSync(Ambiance ambiance, EmptyStepParameters stepParameters, StepInputPackage inputPackage,
       PassThroughData passThroughData) {
     final NGLogCallback logCallback = serviceEnvironmentsLogUtility.getLogCallback(ambiance, false);
-    Optional<ManifestsOutcome> manifestsOutcome = resolveManifestsOutcome(ambiance, logCallback);
+    Optional<ManifestSpec> manifestSpec = resolveManifestsOutcome(ambiance, logCallback);
 
-    manifestsOutcome.ifPresent(outcome -> saveManifestsOutcome(ambiance, outcome, new HashMap<>()));
-    manifestsOutcome.ifPresent(outcome -> saveManifestExecutionDataToStageInfo(ambiance, outcome));
+    if (manifestSpec.isPresent()) {
+      Optional<ManifestsOutcome> manifestsOutcome = manifestSpec.get().getOptionalManifestsOutcome();
+      manifestsOutcome.ifPresent(outcome -> saveManifestsOutcome(ambiance, outcome, new HashMap<>()));
+      manifestsOutcome.ifPresent(outcome -> saveManifestExecutionDataToStageInfo(ambiance, outcome));
+      saveManifestConfigurationOutcome(ambiance, manifestSpec.get().getPrimaryManifestId());
+    }
 
-    return manifestsOutcome.map(ignored -> StepResponse.builder().status(Status.SUCCEEDED).build())
+    return manifestSpec.map(ignored -> StepResponse.builder().status(Status.SUCCEEDED).build())
         .orElseGet(() -> StepResponse.builder().status(Status.SKIPPED).build());
   }
 
@@ -277,7 +329,16 @@ public class ManifestsStepV2 implements SyncExecutable<EmptyStepParameters>, Asy
     }
   }
 
-  private Optional<ManifestsOutcome> resolveManifestsOutcome(Ambiance ambiance, NGLogCallback logCallback) {
+  private void saveManifestConfigurationOutcome(Ambiance ambiance, String primaryManifestId) {
+    if (isNotEmpty(primaryManifestId)) {
+      ManifestConfigurationsOutcome outcome =
+          ManifestConfigurationsOutcome.builder().primaryManifestId(primaryManifestId).build();
+      sweepingOutputService.consume(
+          ambiance, OutcomeExpressionConstants.MANIFEST_CONFIG, outcome, StepCategory.STAGE.name());
+    }
+  }
+
+  private Optional<ManifestSpec> resolveManifestsOutcome(Ambiance ambiance, NGLogCallback logCallback) {
     final NgManifestsMetadataSweepingOutput ngManifestsMetadataSweepingOutput =
         fetchManifestsMetadataFromSweepingOutput(ambiance);
 
@@ -361,6 +422,7 @@ public class ManifestsStepV2 implements SyncExecutable<EmptyStepParameters>, Asy
     validateConnectors(ambiance, manifestAttributes);
 
     checkForAccessOrThrow(ambiance, manifestAttributes);
+    reportSecretRuntimeUsage(ambiance, manifestAttributes);
 
     final ManifestsOutcome manifestsOutcome = new ManifestsOutcome();
     for (int i = 0; i < manifestAttributes.size(); i++) {
@@ -369,7 +431,10 @@ public class ManifestsStepV2 implements SyncExecutable<EmptyStepParameters>, Asy
       manifestsOutcome.put(manifestOutcome.getIdentifier(), manifestOutcome);
     }
 
-    return Optional.of(manifestsOutcome);
+    return Optional.of(ManifestSpec.builder()
+                           .optionalManifestsOutcome(Optional.of(manifestsOutcome))
+                           .primaryManifestId(primaryManifestId)
+                           .build());
   }
 
   private static boolean isNoManifestConfiguredV2(List<ManifestConfigWrapper> svcManifests,
@@ -594,6 +659,34 @@ public class ManifestsStepV2 implements SyncExecutable<EmptyStepParameters>, Asy
     pipelineRbacHelper.checkRuntimePermissions(ambiance, entityDetails, true);
   }
 
+  @VisibleForTesting
+  void reportSecretRuntimeUsage(Ambiance ambiance, List<ManifestAttributes> manifestAttributes) {
+    if (EmptyPredicate.isEmpty(manifestAttributes)) {
+      return;
+    }
+
+    for (ManifestAttributes manifestAttribute : manifestAttributes) {
+      Set<VisitedSecretReference> secretReferences = manifestAttribute == null
+          ? Set.of()
+          : entityReferenceExtractorUtils.extractReferredSecrets(ambiance, manifestAttribute);
+
+      for (VisitedSecretReference secretRef : secretReferences) {
+        secretRuntimeUsageService.createSecretRuntimeUsage(secretRef.getSecretRef(), secretRef.getReferredBy(),
+            EntityUsageDetailProto.newBuilder()
+                .setPipelineExecutionUsageData(PipelineExecutionUsageDataProto.newBuilder()
+                                                   .setPlanExecutionId(ambiance.getPlanExecutionId())
+                                                   .setStageExecutionId(ambiance.getStageExecutionId())
+                                                   .build())
+                .setUsageType(PIPELINE_EXECUTION)
+                .setEntityType(EntityTypeProtoEnum.PIPELINES)
+                .setIdentifierRef(IdentifierRefProtoDTOHelper.createIdentifierRefProtoDTO(
+                    AmbianceUtils.getAccountId(ambiance), AmbianceUtils.getOrgIdentifier(ambiance),
+                    AmbianceUtils.getProjectIdentifier(ambiance), AmbianceUtils.getPipelineIdentifier(ambiance)))
+                .build());
+      }
+    }
+  }
+
   private void checkAndWarnIfDoesNotFollowIdentifierRegex(String str, NGLogCallback logCallback) {
     if (isNotEmpty(str)) {
       final Pattern identifierPattern = EntityIdentifierValidator.IDENTIFIER_PATTERN;
@@ -653,8 +746,7 @@ public class ManifestsStepV2 implements SyncExecutable<EmptyStepParameters>, Asy
   }
 
   private boolean isMultipleManifestEnabled(String accountId, ManifestConfigurations manifestConfigurations) {
-    return ManifestFilterHelper.hasPrimaryManifestRef(manifestConfigurations)
-        && featureFlagHelperService.isEnabled(accountId, FeatureName.CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG);
+    return ManifestFilterHelper.hasPrimaryManifestRef(manifestConfigurations);
   }
 
   private void resolve(Ambiance ambiance, Object... objects) {
@@ -693,5 +785,12 @@ public class ManifestsStepV2 implements SyncExecutable<EmptyStepParameters>, Asy
           primaryManifestId, String.join(", ", MULTIPLE_SUPPORTED_MANIFEST_TYPES)));
     }
     return updatedSvcManifests;
+  }
+
+  @Builder
+  @Data
+  private static class ManifestSpec {
+    private Optional<ManifestsOutcome> optionalManifestsOutcome;
+    private String primaryManifestId;
   }
 }

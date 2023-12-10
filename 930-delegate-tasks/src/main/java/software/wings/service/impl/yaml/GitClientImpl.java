@@ -230,7 +230,7 @@ public class GitClientImpl implements GitClient {
     final String endCommitIdStr =
         StringUtils.defaultIfEmpty(gitOperationContext.getGitDiffRequest().getEndCommitId(), "HEAD");
 
-    ensureRepoLocallyClonedAndUpdated(gitOperationContext);
+    ensureRepoLocallyClonedAndUpdated(gitOperationContext, false);
 
     GitDiffResult diffResult = GitDiffResult.builder()
                                    .branch(gitConfig.getBranch())
@@ -392,24 +392,36 @@ public class GitClientImpl implements GitClient {
   @VisibleForTesting
   synchronized GitCheckoutResult checkout(GitOperationContext gitOperationContext) throws GitAPIException, IOException {
     GitConfig gitConfig = gitOperationContext.getGitConfig();
-    Git git =
-        openGit(new File(gitClientHelper.getRepoDirectory(gitOperationContext)), gitConfig.getDisableUserGitConfig());
+    try (Git git = openGit(
+             new File(gitClientHelper.getRepoDirectory(gitOperationContext)), gitConfig.getDisableUserGitConfig())) {
+      return checkout(gitOperationContext, git);
+    }
+  }
+
+  private GitCheckoutResult checkout(GitOperationContext gitOperationContext, Git git)
+      throws GitAPIException, IOException {
+    GitConfig gitConfig = gitOperationContext.getGitConfig();
+    return checkout(gitOperationContext, git, gitConfig.getBranch(), gitConfig.getReference(), true);
+  }
+
+  private GitCheckoutResult checkout(GitOperationContext gitOperationContext, Git git, String branch, String reference,
+      boolean createBranch) throws GitAPIException {
     try {
-      if (isNotEmpty(gitConfig.getBranch())) {
+      if (isNotEmpty(branch)) {
         Ref ref = git.checkout()
-                      .setCreateBranch(true)
-                      .setName(gitConfig.getBranch())
+                      .setCreateBranch(createBranch)
+                      .setName(branch)
                       .setUpstreamMode(SetupUpstreamMode.TRACK)
-                      .setStartPoint("origin/" + gitConfig.getBranch())
+                      .setStartPoint("origin/" + branch)
                       .call();
       }
 
     } catch (RefAlreadyExistsException refExIgnored) {
-      log.info(getGitLogMessagePrefix(gitConfig.getGitRepoType())
+      log.info(getGitLogMessagePrefix(gitOperationContext.getGitConfig().getGitRepoType())
           + "Reference already exist do nothing."); // TODO:: check gracefully instead of relying on Exception
     }
 
-    String gitRef = gitConfig.getReference() != null ? gitConfig.getReference() : gitConfig.getBranch();
+    String gitRef = reference != null ? reference : branch;
     if (StringUtils.isNotEmpty(gitRef)) {
       git.checkout().setName(gitRef).call();
     }
@@ -718,6 +730,18 @@ public class GitClientImpl implements GitClient {
       // clone repo locally without checkout
       String branch = gitRequest.isUseBranch() ? gitRequest.getBranch() : StringUtils.EMPTY;
       cloneRepoForFilePathCheckout(gitConfig, branch, gitConnectorId, logCallback);
+
+      if (gitRequest.isCloneWithCheckout()) {
+        File repoDir = new File(gitClientHelper.getFileDownloadRepoDirectory(gitConfig, gitConnectorId));
+        GitOperationContext context =
+            GitOperationContext.builder().gitConfig(gitConfig).gitConnectorId(gitConnectorId).build();
+        try (Git git = openGit(repoDir, gitConfig.getDisableUserGitConfig())) {
+          checkout(context, git, gitRequest.getBranch(), gitRequest.getCommitId(), false);
+        } catch (Exception ex) {
+          log.warn(getGitLogMessagePrefix(gitConfig.getGitRepoType()) + EXCEPTION_STRING, ex);
+        }
+      }
+
       // if useBranch is set, use it to checkout latest, else checkout given commitId
       String latestCommitSha;
       if (gitRequest.isUseBranch()) {
@@ -1141,8 +1165,8 @@ public class GitClientImpl implements GitClient {
     return fetchResult;
   }
 
-  public void cloneRepoAndCopyToDestDir(
-      GitOperationContext gitOperationContext, String destinationDir, LogCallback logCallback) {
+  public void cloneRepoAndCopyToDestDir(GitOperationContext gitOperationContext, String destinationDir,
+      LogCallback logCallback, boolean hardResetForGitRef) {
     String gitConnectorId = gitOperationContext.getGitConnectorId();
     saveInfoExecutionLogs(logCallback, "Trying to start synchronized git clone and copy to destination directory");
     File lockFile = gitClientHelper.getLockObject(gitConnectorId);
@@ -1153,7 +1177,7 @@ public class GitClientImpl implements GitClient {
         log.info("Successfully acquired lock on {}", lockFile);
         saveInfoExecutionLogs(
             logCallback, "Started synchronized operation: Cloning repo from git and copying to destination directory");
-        ensureRepoLocallyClonedAndUpdated(gitOperationContext);
+        ensureRepoLocallyClonedAndUpdated(gitOperationContext, hardResetForGitRef);
         File dest = new File(destinationDir);
         File src = new File(gitClientHelper.getRepoDirectory(gitOperationContext));
         deleteDirectoryAndItsContentIfExists(dest.getAbsolutePath());
@@ -1171,7 +1195,8 @@ public class GitClientImpl implements GitClient {
   }
 
   @Override
-  public synchronized void ensureRepoLocallyClonedAndUpdated(GitOperationContext gitOperationContext) {
+  public synchronized void ensureRepoLocallyClonedAndUpdated(
+      GitOperationContext gitOperationContext, boolean hardResetForGitRef) {
     GitConfig gitConfig = gitOperationContext.getGitConfig();
 
     File repoDir = new File(gitClientHelper.getRepoDirectory(gitOperationContext));
@@ -1186,14 +1211,23 @@ public class GitClientImpl implements GitClient {
         FetchResult fetchResult = ((FetchCommand) (getAuthConfiguredCommand(git.fetch(), gitConfig)))
                                       .setTagOpt(TagOpt.FETCH_TAGS)
                                       .call(); // fetch all remote references
+        String gitRef = gitConfig.getReference() != null ? gitConfig.getReference() : gitConfig.getBranch();
+
+        log.info(getGitLogMessagePrefix(gitConfig.getGitRepoType()) + "starting checkout for: " + gitRef);
         checkout(gitOperationContext);
+        log.info(getGitLogMessagePrefix(gitConfig.getGitRepoType()) + "Checkout done for: " + gitRef);
 
         // Do not sync to the HEAD of the branch if a specific commit SHA is provided
         if (StringUtils.isEmpty(gitConfig.getReference())) {
           Ref ref = git.reset().setMode(ResetType.HARD).setRef("refs/remotes/origin/" + gitConfig.getBranch()).call();
+          log.info(getGitLogMessagePrefix(gitConfig.getGitRepoType()) + "Hard reset done for branch "
+              + gitConfig.getBranch());
+        } else if (hardResetForGitRef) {
+          git.reset().setMode(ResetType.HARD).call();
+          log.info(getGitLogMessagePrefix(gitConfig.getGitRepoType())
+              + "Hard reset done for reference: " + gitConfig.getReference());
         }
-        log.info(
-            getGitLogMessagePrefix(gitConfig.getGitRepoType()) + "Hard reset done for branch " + gitConfig.getBranch());
+
         // TODO:: log failed commits queued and being ignored.
         return;
       } catch (Exception ex) {

@@ -1,7 +1,9 @@
 identifier: gitlab
 name: GitLab
 description: View GitLab pipelines, merge requests, languages and contributors.
-createdBy: ImmobiliareLabs
+accountIdentifier: __GLOBAL_ACCOUNT_ID__
+type: DEFAULT
+creator: ImmobiliareLabs
 category: Source Control Mgmt
 source: https://github.com/immobiliare/backstage-plugin-gitlab
 iconUrl: https://about.gitlab.com/images/press/logo/png/gitlab-icon-rgb.png

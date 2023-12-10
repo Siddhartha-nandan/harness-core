@@ -8,9 +8,12 @@
 package io.harness.polling.service.impl;
 
 import static io.harness.rule.OwnerRule.MEET;
+import static io.harness.rule.OwnerRule.SRIDHAR;
 import static io.harness.rule.OwnerRule.VINICIUS;
 import static io.harness.rule.OwnerRule.YUVRAJ;
 
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertNotSame;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
@@ -24,6 +27,7 @@ import io.harness.CategoryTest;
 import io.harness.category.element.UnitTests;
 import io.harness.dto.PolledResponse;
 import io.harness.dto.PollingInfoForTriggers;
+import io.harness.dto.PollingResponseDTO;
 import io.harness.ng.core.dto.PollingTriggerStatusUpdateDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.pipeline.triggers.TriggersClient;
@@ -36,6 +40,7 @@ import io.harness.repositories.polling.PollingRepository;
 import io.harness.rule.Owner;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -77,6 +82,38 @@ public class PollingServiceImplTest extends CategoryTest {
             .build();
     PollingInfoForTriggers pollingInfoForTriggers =
         PollingInfoForTriggers.builder()
+            .perpetualTaskId(perpetualTaskId)
+            .polledResponse(PolledResponse.builder().allPolledKeys(Set.of("key1")).build())
+            .pollingDocId("pollingDocId")
+            .build();
+
+    // For artifacts
+    when(pollingRepository.findByUuidAndAccountId(pollingDocId, accountId)).thenReturn(pollingDocument);
+    assertThat(pollingService.getPollingInfoForTriggers(accountId, pollingDocId)).isEqualTo(pollingInfoForTriggers);
+
+    // For manifests
+    pollingDocument.setPollingType(PollingType.MANIFEST);
+    pollingDocument.setPolledResponse(ManifestPolledResponse.builder().allPolledKeys(Set.of("key1")).build());
+    when(pollingRepository.findByUuidAndAccountId(pollingDocId, accountId)).thenReturn(pollingDocument);
+    assertThat(pollingService.getPollingInfoForTriggers(accountId, pollingDocId)).isEqualTo(pollingInfoForTriggers);
+  }
+
+  @Test
+  @Owner(developers = SRIDHAR)
+  @Category(UnitTests.class)
+  public void testGetPollingInfoWithPollingDocIdForTriggers() {
+    PollingDocument pollingDocument =
+        PollingDocument.builder()
+            .accountId(accountId)
+            .orgIdentifier(orgId)
+            .projectIdentifier(projectId)
+            .pollingType(PollingType.ARTIFACT)
+            .perpetualTaskId(perpetualTaskId)
+            .polledResponse(ArtifactPolledResponse.builder().allPolledKeys(Set.of("key1")).build())
+            .build();
+    PollingInfoForTriggers pollingInfoForTriggers =
+        PollingInfoForTriggers.builder()
+            .pollingDocId(pollingDocId)
             .perpetualTaskId(perpetualTaskId)
             .polledResponse(PolledResponse.builder().allPolledKeys(Set.of("key1")).build())
             .build();
@@ -122,6 +159,90 @@ public class PollingServiceImplTest extends CategoryTest {
   }
 
   @Test
+  @Owner(developers = SRIDHAR)
+  @Category(UnitTests.class)
+  public void testSavePollingDocument() {
+    DockerHubArtifactInfo dockerHubArtifactInfo = DockerHubArtifactInfo.builder().connectorRef("connectorRef").build();
+    PollingDocument pollingDocument =
+        PollingDocument.builder()
+            .uuid("uuid")
+            .accountId(accountId)
+            .orgIdentifier(orgId)
+            .projectIdentifier(projectId)
+            .pollingType(PollingType.ARTIFACT)
+            .perpetualTaskId(perpetualTaskId)
+            .signatures(List.of("trigger1"))
+            .pollingInfo(dockerHubArtifactInfo)
+            .polledResponse(ArtifactPolledResponse.builder().allPolledKeys(Set.of("key1")).build())
+            .build();
+
+    PollingDocument pollingDocumentExisting =
+        PollingDocument.builder()
+            .uuid("uuid")
+            .accountId(accountId)
+            .orgIdentifier(orgId)
+            .projectIdentifier(projectId)
+            .pollingType(PollingType.ARTIFACT)
+            .lastModifiedAt(300L)
+            .perpetualTaskId(perpetualTaskId)
+            .signatures(List.of("trigger1"))
+            .pollingInfo(dockerHubArtifactInfo)
+            .polledResponse(ArtifactPolledResponse.builder().allPolledKeys(Set.of("key1")).build())
+            .build();
+
+    doReturn(pollingDocumentExisting)
+        .when(pollingRepository)
+        .addSubscribersToExistingPollingDoc(accountId, orgId, projectId, PollingType.ARTIFACT, dockerHubArtifactInfo,
+            Collections.singletonList("trigger1"), null);
+    PollingResponseDTO dto = pollingService.save(pollingDocument);
+    assertEquals(dto.getPollingDocId(), pollingDocument.getUuid());
+    assertEquals(dto.getLastPollingUpdate(), pollingDocumentExisting.getLastModifiedAt());
+  }
+
+  @Test
+  @Owner(developers = SRIDHAR)
+  @Category(UnitTests.class)
+  public void testSavePollingDocumentLastModifiedPolledReaponseTime() {
+    DockerHubArtifactInfo dockerHubArtifactInfo = DockerHubArtifactInfo.builder().connectorRef("connectorRef").build();
+    PollingDocument pollingDocument =
+        PollingDocument.builder()
+            .uuid("uuid")
+            .accountId(accountId)
+            .orgIdentifier(orgId)
+            .projectIdentifier(projectId)
+            .pollingType(PollingType.ARTIFACT)
+            .perpetualTaskId(perpetualTaskId)
+            .signatures(List.of("trigger1"))
+            .pollingInfo(dockerHubArtifactInfo)
+            .polledResponse(ArtifactPolledResponse.builder().allPolledKeys(Set.of("key1")).build())
+            .build();
+
+    PollingDocument pollingDocumentExisting =
+        PollingDocument.builder()
+            .uuid("uuid")
+            .accountId(accountId)
+            .orgIdentifier(orgId)
+            .projectIdentifier(projectId)
+            .pollingType(PollingType.ARTIFACT)
+            .lastModifiedAt(300L)
+            .lastModifiedPolledResponseTime(400L)
+            .perpetualTaskId(perpetualTaskId)
+            .signatures(List.of("trigger1"))
+            .pollingInfo(dockerHubArtifactInfo)
+            .polledResponse(ArtifactPolledResponse.builder().allPolledKeys(Set.of("key1")).build())
+            .build();
+
+    doReturn(pollingDocumentExisting)
+        .when(pollingRepository)
+        .addSubscribersToExistingPollingDoc(accountId, orgId, projectId, PollingType.ARTIFACT, dockerHubArtifactInfo,
+            Collections.singletonList("trigger1"), null);
+    PollingResponseDTO dto = pollingService.save(pollingDocument);
+    assertEquals(dto.getPollingDocId(), pollingDocument.getUuid());
+    assertNotSame(dto.getLastPollingUpdate(), pollingDocumentExisting.getLastModifiedAt());
+    assertEquals(dto.getLastPollingUpdate(), pollingDocumentExisting.getLastModifiedPolledResponseTime());
+  }
+
+  @Test
   @Owner(developers = VINICIUS)
   @Category(UnitTests.class)
   public void testUpdateTriggerPollingStatusSuccess() throws IOException {
@@ -130,6 +251,7 @@ public class PollingServiceImplTest extends CategoryTest {
                                                              .success(true)
                                                              .errorMessage("")
                                                              .lastCollectedVersions(Collections.singletonList("1.0"))
+                                                             .errorStatusValidUntil(null)
                                                              .build();
     ArgumentCaptor<PollingTriggerStatusUpdateDTO> updateDTOCaptor =
         ArgumentCaptor.forClass(PollingTriggerStatusUpdateDTO.class);
@@ -137,7 +259,7 @@ public class PollingServiceImplTest extends CategoryTest {
     when(triggersClient.updateTriggerPollingStatus(any(), updateDTOCaptor.capture())).thenReturn(call);
     when(call.execute()).thenReturn(Response.success(ResponseDTO.newResponse(true)));
     boolean result = pollingService.updateTriggerPollingStatus(
-        accountId, Collections.singletonList("sig"), true, "", Collections.singletonList("1.0"));
+        accountId, Collections.singletonList("sig"), true, "", Collections.singletonList("1.0"), null);
     assertThat(result).isTrue();
     expectedStatusUpdate.setLastCollectedTime(updateDTOCaptor.getValue().getLastCollectedTime());
     verify(triggersClient, times(1)).updateTriggerPollingStatus(eq(accountId), any());
@@ -159,10 +281,12 @@ public class PollingServiceImplTest extends CategoryTest {
     Call<ResponseDTO<Boolean>> call = mock(Call.class);
     when(triggersClient.updateTriggerPollingStatus(any(), updateDTOCaptor.capture())).thenReturn(call);
     when(call.execute()).thenReturn(Response.success(ResponseDTO.newResponse(false)));
-    boolean result = pollingService.updateTriggerPollingStatus(
-        accountId, Collections.singletonList("sig"), true, "", Collections.singletonList("1.0"));
+    boolean result = pollingService.updateTriggerPollingStatus(accountId, Collections.singletonList("sig"), true, "",
+        Collections.singletonList("1.0"), Duration.ofMinutes(2).toMillis());
     assertThat(result).isFalse();
     expectedStatusUpdate.setLastCollectedTime(updateDTOCaptor.getValue().getLastCollectedTime());
+    expectedStatusUpdate.setErrorStatusValidUntil(
+        updateDTOCaptor.getValue().getLastCollectedTime() + Duration.ofMinutes(2).toMillis());
     verify(triggersClient, times(1)).updateTriggerPollingStatus(eq(accountId), any());
     assertThat(expectedStatusUpdate).isEqualToComparingFieldByField(updateDTOCaptor.getValue());
   }

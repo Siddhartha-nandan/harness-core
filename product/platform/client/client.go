@@ -7,6 +7,7 @@ package client
 
 import (
 	"context"
+	"net/http"
 )
 
 // Error represents a json-encoded API error.
@@ -19,8 +20,155 @@ func (e *Error) Error() string {
 	return e.Message
 }
 
+type Account struct {
+	MetaData struct {
+	} `json:"metaData"`
+	Resource struct {
+		UUID                    string        `json:"uuid"`
+		AppID                   string        `json:"appId"`
+		CreatedBy               interface{}   `json:"createdBy"`
+		CreatedAt               int64         `json:"createdAt"`
+		LastUpdatedBy           interface{}   `json:"lastUpdatedBy"`
+		LastUpdatedAt           int64         `json:"lastUpdatedAt"`
+		CompanyName             string        `json:"companyName"`
+		NextGenEnabled          bool          `json:"nextGenEnabled"`
+		AccountName             string        `json:"accountName"`
+		WhitelistedDomains      []interface{} `json:"whitelistedDomains"`
+		LicenseID               interface{}   `json:"licenseId"`
+		DataRetentionDurationMs int           `json:"dataRetentionDurationMs"`
+		LicenseInfo             struct {
+			AccountType   string `json:"accountType"`
+			AccountStatus string `json:"accountStatus"`
+			ExpiryTime    int64  `json:"expiryTime"`
+			LicenseUnits  int    `json:"licenseUnits"`
+		} `json:"licenseInfo"`
+		TrustLevel    int `json:"trustLevel"`
+		CeLicenseInfo struct {
+			LicenseType string `json:"licenseType"`
+			ExpiryTime  int64  `json:"expiryTime"`
+		} `json:"ceLicenseInfo"`
+		AccountEvents           interface{} `json:"accountEvents"`
+		SubdomainURL            string      `json:"subdomainUrl"`
+		TwoFactorAdminEnforced  bool        `json:"twoFactorAdminEnforced"`
+		ForImport               bool        `json:"forImport"`
+		MigratedToClusterURL    interface{} `json:"migratedToClusterUrl"`
+		DefaultExperience       string      `json:"defaultExperience"`
+		CreatedFromNG           bool        `json:"createdFromNG"`
+		AccountActivelyUsed     bool        `json:"accountActivelyUsed"`
+		SmpAccount              bool        `json:"smpAccount"`
+		SessionTimeOutInMinutes int         `json:"sessionTimeOutInMinutes"`
+		PublicAccessEnabled     bool        `json:"publicAccessEnabled"`
+		LocalEncryptionEnabled  bool        `json:"localEncryptionEnabled"`
+		DelegateConfiguration   struct {
+			DelegateVersions     []string    `json:"delegateVersions"`
+			Action               interface{} `json:"action"`
+			ValidUntil           int64       `json:"validUntil"`
+			ValidTillNextRelease bool        `json:"validTillNextRelease"`
+		} `json:"delegateConfiguration"`
+		TechStacks             interface{} `json:"techStacks"`
+		OauthEnabled           bool        `json:"oauthEnabled"`
+		RingName               string      `json:"ringName"`
+		AccountPreferences     interface{} `json:"accountPreferences"`
+		CloudCostEnabled       bool        `json:"cloudCostEnabled"`
+		CeAutoCollectK8SEvents bool        `json:"ceAutoCollectK8sEvents"`
+		TrialSignupOptions     struct {
+			ProductsSelected []string `json:"productsSelected"`
+			AssistedOption   bool     `json:"assistedOption"`
+		} `json:"trialSignupOptions"`
+		ServiceGuardLimit           int         `json:"serviceGuardLimit"`
+		ServiceAccountConfig        interface{} `json:"serviceAccountConfig"`
+		GlobalDelegateAccount       bool        `json:"globalDelegateAccount"`
+		ImmutableDelegateEnabled    bool        `json:"immutableDelegateEnabled"`
+		OptionalDelegateTaskLimit   interface{} `json:"optionalDelegateTaskLimit"`
+		ImportantDelegateTaskLimit  interface{} `json:"importantDelegateTaskLimit"`
+		AuthenticationMechanism     string      `json:"authenticationMechanism"`
+		ProductLed                  bool        `json:"productLed"`
+		PovAccount                  bool        `json:"povAccount"`
+		HarnessSupportAccessAllowed bool        `json:"harnessSupportAccessAllowed"`
+		Defaults                    struct {
+		} `json:"defaults"`
+		Encryption                   interface{} `json:"encryption"`
+		CrossGenerationAccessEnabled bool        `json:"crossGenerationAccessEnabled"`
+	} `json:"resource"`
+	ResponseMessages []interface{} `json:"responseMessages"`
+}
+
+type AccountNG struct {
+	Status string `json:"status"`
+	Data   struct {
+		Identifier                       string `json:"identifier"`
+		Name                             string `json:"name"`
+		CompanyName                      string `json:"companyName"`
+		Cluster                          string `json:"cluster"`
+		DefaultExperience                string `json:"defaultExperience"`
+		AuthenticationMechanism          string `json:"authenticationMechanism"`
+		CreatedAt                        int64  `json:"createdAt"`
+		RingName                         string `json:"ringName"`
+		SubdomainURL                     string `json:"subdomainURL"`
+		SessionTimeoutInMinutes          int    `json:"sessionTimeoutInMinutes"`
+		PublicAccessEnabled              bool   `json:"publicAccessEnabled"`
+		TwoFactorAdminEnforced           bool   `json:"twoFactorAdminEnforced"`
+		NextGenEnabled                   bool   `json:"nextGenEnabled"`
+		ProductLed                       bool   `json:"productLed"`
+		HarnessSupportAccessAllowed      bool   `json:"harnessSupportAccessAllowed"`
+		CrossGenerationAccessEnabled     bool   `json:"crossGenerationAccessEnabled"`
+		CannyUsernameAbbreviationEnabled bool   `json:"cannyUsernameAbbreviationEnabled"`
+	} `json:"data"`
+	MetaData      any    `json:"metaData"`
+	CorrelationID string `json:"correlationId"`
+}
+
+type ACLRequest struct {
+	Permissions []Permission `json:"permissions"`
+}
+
+type Permission struct {
+	ResourceScope      ResourceScope `json:"resourceScope"`
+	ResourceType       string        `json:"resourceType"`
+	ResourceIdentifier string        `json:"resourceIdentifier"`
+	Permission         string        `json:"permission"`
+}
+
+type ResourceScope struct {
+	AccountIdentifier string `json:"accountIdentifier"`
+	OrgIdentifier     string `json:"orgIdentifier"`
+	ProjectIdentifier string `json:"projectIdentifier"`
+}
+
+type ACLPrincipal struct {
+	PrincipalIdentifier string `json:"principalIdentifier"`
+	PrincipalType       string `json:"principalType"`
+}
+
+type ACLResourceScope struct {
+	AccountIdentifier string `json:"accountIdentifier"`
+	OrgIdentifier     string `json:"orgIdentifier"`
+	ProjectIdentifier string `json:"projectIdentifier"`
+}
+
+type ACLAccessControl struct {
+	Permission         string           `json:"permission"`
+	ResourceScope      ACLResourceScope `json:"resourceScope"`
+	ResourceType       string           `json:"resourceType"`
+	ResourceIdentifier string           `json:"resourceIdentifier"`
+	Permitted          bool             `json:"permitted"`
+}
+
+type ACLResponse struct {
+	Status        string      `json:"status"`
+	Data          Data        `json:"data"`
+	MetaData      interface{} `json:"metaData"`
+	CorrelationID string      `json:"correlationId"`
+}
+
+type Data struct {
+	Principal         ACLPrincipal       `json:"principal"`
+	AccessControlList []ACLAccessControl `json:"accessControlList"`
+}
+
 // Client defines a log service client.
 type Client interface {
 	// Validate apikey of an account for auth.
 	ValidateApiKey(ctx context.Context, accountID, routingId, apiKey string) error
+	ValidateAccessforPipeline(ctx context.Context, cookies []*http.Cookie, request *ACLRequest) (bool, error)
 }

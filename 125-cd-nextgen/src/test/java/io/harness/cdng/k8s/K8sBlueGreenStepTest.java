@@ -30,6 +30,7 @@ import io.harness.cdng.helm.ReleaseHelmChartOutcome;
 import io.harness.cdng.instance.info.InstanceInfoService;
 import io.harness.cdng.instance.outcome.DeploymentInfoOutcome;
 import io.harness.cdng.k8s.beans.K8sExecutionPassThroughData;
+import io.harness.cdng.k8s.trafficrouting.K8sTrafficRoutingHelper;
 import io.harness.cdng.manifest.yaml.K8sCommandFlagType;
 import io.harness.cdng.manifest.yaml.K8sStepCommandFlag;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
@@ -49,6 +50,7 @@ import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.sdk.core.steps.io.StepResponse.StepOutcome;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
@@ -66,10 +68,11 @@ import org.mockito.Mock;
 @OwnedBy(HarnessTeam.CDP)
 public class K8sBlueGreenStepTest extends AbstractK8sStepExecutorTestBase {
   @Mock ExecutionSweepingOutputService executionSweepingOutputService;
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
   @InjectMocks private K8sBlueGreenStep k8sBlueGreenStep;
   @Mock private InstanceInfoService instanceInfoService;
   @Mock private CDFeatureFlagHelper cdFeatureFlagHelper;
-
+  @Mock private K8sTrafficRoutingHelper k8sTrafficRoutingHelper;
   @Mock StageExecutionInstanceInfoService stageExecutionInstanceInfoService;
 
   @Test

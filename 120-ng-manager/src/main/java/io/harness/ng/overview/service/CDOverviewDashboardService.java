@@ -7,8 +7,11 @@
 
 package io.harness.ng.overview.service;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.service.beans.CustomSequenceDTO;
 import io.harness.models.InstanceDetailGroupedByPipelineExecutionList;
 import io.harness.models.InstanceDetailsByBuildId;
@@ -16,6 +19,7 @@ import io.harness.models.dashboard.InstanceCountDetailsByEnvTypeAndServiceId;
 import io.harness.ng.core.activityhistory.dto.TimeGroupType;
 import io.harness.ng.core.dashboard.DashboardExecutionStatusInfo;
 import io.harness.ng.core.dashboard.DeploymentsInfo;
+import io.harness.ng.core.dashboard.ServiceDeployments;
 import io.harness.ng.core.environment.beans.EnvironmentFilterPropertiesDTO;
 import io.harness.ng.core.environment.beans.EnvironmentType;
 import io.harness.ng.core.service.entity.ServiceSequence;
@@ -55,6 +59,7 @@ import java.util.Map;
 import java.util.Set;
 
 @OwnedBy(HarnessTeam.CDC)
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_DASHBOARD})
 public interface CDOverviewDashboardService {
   HealthDeploymentDashboard getHealthDeploymentDashboard(String accountId, String orgId, String projectId,
       long startInterval, long endInterval, long previousStartInterval);
@@ -76,6 +81,10 @@ public interface CDOverviewDashboardService {
       String projectIdentifier, long startInterval, long endInterval, long previousStartInterval,
       EnvironmentType envType);
 
+  DashboardWorkloadDeploymentV2 getDashboardWorkloadDeploymentV2Paginated(String accountIdentifier,
+      String orgIdentifier, String projectIdentifier, long startInterval, long endInterval, long previousStartInterval,
+      EnvironmentType envType);
+
   ServiceDeploymentListInfo getServiceDeploymentsInfo(String accountIdentifier, String orgIdentifier,
       String projectIdentifier, long startTime, long endTime, String serviceIdentifier, long bucketSizeInDays)
       throws Exception;
@@ -94,7 +103,7 @@ public interface CDOverviewDashboardService {
       long startTime, long endTime, List<String> sort) throws Exception;
 
   ServiceDetailsInfoDTOV2 getServiceDetailsListV2(String accountIdentifier, String orgIdentifier,
-      String projectIdentifier, long startTime, long endTime, List<String> sort) throws Exception;
+      String projectIdentifier, long startTime, long endTime, List<String> sort, String repoName) throws Exception;
 
   io.harness.ng.overview.dto.TimeValuePairListDTO<Integer> getServicesGrowthTrend(String accountIdentifier,
       String orgIdentifier, String projectIdentifier, long startTimeInMs, long endTimeInMs,
@@ -169,6 +178,9 @@ public interface CDOverviewDashboardService {
   DeploymentsInfo getDeploymentsByServiceId(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       String serviceId, long startTimeInMs, long endTimeInMs);
 
+  ServiceDeployments getAllDeploymentsByServiceId(String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, String serviceId, long startTimeInMs, long endTimeInMs);
+
   ServiceHeaderInfo getServiceHeaderInfo(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       String serviceId, boolean loadFromCache, boolean loadFromFallbackBranch);
 
@@ -200,4 +212,7 @@ public interface CDOverviewDashboardService {
       String serviceId, boolean useCustomSequence);
   SequenceToggleDTO useCustomSequence(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String serviceId);
+
+  void validateDashboardRequestDuration(long numOfRequestedDays);
+  void validateDashboardRequestDuration(long startTime, long endTime);
 }

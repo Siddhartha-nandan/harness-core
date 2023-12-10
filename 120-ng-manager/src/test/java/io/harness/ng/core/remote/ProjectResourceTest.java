@@ -36,6 +36,7 @@ import io.harness.accesscontrol.acl.api.ResourceScope;
 import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
+import io.harness.exception.EntityNotFoundException;
 import io.harness.favorites.ResourceType;
 import io.harness.favorites.entities.Favorite;
 import io.harness.favorites.services.FavoritesService;
@@ -54,7 +55,6 @@ import io.harness.utils.UserHelperService;
 
 import java.util.Collections;
 import java.util.Optional;
-import javax.ws.rs.NotFoundException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -93,12 +93,12 @@ public class ProjectResourceTest extends CategoryTest {
   @Owner(developers = KARAN)
   @Category(UnitTests.class)
   public void testCreate() {
-    String parentId = randomAlphabetic(10);
+    String parentUniqueId = randomAlphabetic(10);
     ProjectDTO projectDTO = getProjectDTO(orgIdentifier, identifier, name);
     ProjectRequest projectRequestWrapper = ProjectRequest.builder().project(projectDTO).build();
     Project project = toProject(projectDTO);
     project.setVersion((long) 0);
-    project.setParentId(parentId);
+    project.setParentUniqueId(parentUniqueId);
 
     when(projectService.create(accountIdentifier, orgIdentifier, projectDTO)).thenReturn(project);
     when(favoritesService.getFavorites(anyString(), any(), any(), anyString(), anyString()))
@@ -137,7 +137,7 @@ public class ProjectResourceTest extends CategoryTest {
     boolean exceptionThrown = false;
     try {
       projectResource.get(identifier, accountIdentifier, orgIdentifier);
-    } catch (NotFoundException exception) {
+    } catch (EntityNotFoundException exception) {
       exceptionThrown = true;
     }
 

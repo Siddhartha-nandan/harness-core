@@ -379,6 +379,8 @@ import io.harness.delegate.beans.polling.ArtifactPollingDelegateResponse;
 import io.harness.delegate.beans.polling.GitPollingDelegateResponse;
 import io.harness.delegate.beans.polling.ManifestPollingDelegateResponse;
 import io.harness.delegate.beans.polling.PollingDelegateResponse;
+import io.harness.delegate.beans.scheduler.CleanupInfraResponse;
+import io.harness.delegate.beans.scheduler.ExecutionStatus;
 import io.harness.delegate.beans.scheduler.InitializeExecutionInfraResponse;
 import io.harness.delegate.beans.secrets.SSHConfigValidationTaskResponse;
 import io.harness.delegate.beans.secrets.WinRmConfigValidationTaskResponse;
@@ -435,6 +437,11 @@ import io.harness.delegate.exception.HelmNGException;
 import io.harness.delegate.exception.ServerlessNGException;
 import io.harness.delegate.exception.TaskNGDataException;
 import io.harness.delegate.task.ListNotifyResponseData;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleDelegateConfig;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleFetchRequest;
+import io.harness.delegate.task.artifactBundle.PackageArtifactConfig;
+import io.harness.delegate.task.artifactBundle.response.ArtifactBundleFetchResponse;
 import io.harness.delegate.task.artifacts.ArtifactSourceType;
 import io.harness.delegate.task.artifacts.ArtifactTaskType;
 import io.harness.delegate.task.artifacts.S3ArtifactDelegateResponse;
@@ -516,6 +523,9 @@ import io.harness.delegate.task.aws.asg.AsgRollingDeployResult;
 import io.harness.delegate.task.aws.asg.AsgRollingRollbackRequest;
 import io.harness.delegate.task.aws.asg.AsgRollingRollbackResponse;
 import io.harness.delegate.task.aws.asg.AsgRollingRollbackResult;
+import io.harness.delegate.task.aws.asg.AsgShiftTrafficRequest;
+import io.harness.delegate.task.aws.asg.AsgShiftTrafficResponse;
+import io.harness.delegate.task.aws.asg.AsgShiftTrafficResult;
 import io.harness.delegate.task.aws.asg.AutoScalingGroupContainer;
 import io.harness.delegate.task.aws.asg.AutoScalingGroupInstance;
 import io.harness.delegate.task.aws.lambda.AwsLambda;
@@ -834,6 +844,17 @@ import io.harness.delegate.task.k8s.OpenshiftManifestDelegateConfig;
 import io.harness.delegate.task.k8s.RancherK8sInfraDelegateConfig;
 import io.harness.delegate.task.k8s.ReleaseMetadata;
 import io.harness.delegate.task.k8s.data.K8sCanaryDataException;
+import io.harness.delegate.task.k8s.trafficrouting.HeaderConfig;
+import io.harness.delegate.task.k8s.trafficrouting.IstioProviderConfig;
+import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfig;
+import io.harness.delegate.task.k8s.trafficrouting.MatchType;
+import io.harness.delegate.task.k8s.trafficrouting.ProviderType;
+import io.harness.delegate.task.k8s.trafficrouting.RouteType;
+import io.harness.delegate.task.k8s.trafficrouting.RuleType;
+import io.harness.delegate.task.k8s.trafficrouting.SMIProviderConfig;
+import io.harness.delegate.task.k8s.trafficrouting.TrafficRoute;
+import io.harness.delegate.task.k8s.trafficrouting.TrafficRouteRule;
+import io.harness.delegate.task.k8s.trafficrouting.TrafficRoutingDestination;
 import io.harness.delegate.task.localstore.LocalStoreFetchFilesResult;
 import io.harness.delegate.task.localstore.ManifestFiles;
 import io.harness.delegate.task.manifests.request.CustomManifestFetchConfig;
@@ -1023,6 +1044,7 @@ import io.harness.delegate.task.ssh.config.FileDelegateConfig;
 import io.harness.delegate.task.ssh.config.SecretConfigFile;
 import io.harness.delegate.task.stepstatus.StepExecutionStatus;
 import io.harness.delegate.task.stepstatus.StepMapOutput;
+import io.harness.delegate.task.stepstatus.StepOutputV2;
 import io.harness.delegate.task.stepstatus.StepStatus;
 import io.harness.delegate.task.stepstatus.StepStatusTaskParameters;
 import io.harness.delegate.task.stepstatus.StepStatusTaskResponseData;
@@ -1242,6 +1264,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.google.common.util.concurrent.UncheckedTimeoutException;
 import com.google.protobuf.UnknownFieldSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.SneakyThrows;
 import org.eclipse.jgit.api.GitCommand;
 import org.json.JSONArray;
@@ -1562,8 +1585,9 @@ public class DelegateTasksBeansKryoRegister implements KryoRegistrar {
     kryo.register(DockerInfraInfo.class, 25002);
     kryo.register(VmInfraInfo.class, 25003);
     kryo.register(DliteVmInfraInfo.class, 25004);
-    kryo.register(InitializeExecutionInfraResponse.class, 25005);
-
+    kryo.register(ExecutionStatus.class, 25005);
+    kryo.register(InitializeExecutionInfraResponse.class, 25006);
+    kryo.register(CleanupInfraResponse.class, 25007);
     kryo.register(DeploymentSlotData.class, 19457);
     kryo.register(ShellScriptTaskParametersNG.class, 19463);
     kryo.register(WinRmShellScriptTaskParametersNG.class, 19482);
@@ -1817,6 +1841,7 @@ public class DelegateTasksBeansKryoRegister implements KryoRegistrar {
     kryo.register(ScmGitWebhookTaskParams.class, 543320);
     kryo.register(ScmGitWebhookTaskResponseData.class, 543321);
     kryo.register(CVConnectorValidationParams.class, 543322);
+    kryo.register(StepOutputV2.class, 543323);
 
     kryo.register(SecretParams.class, 543325);
     kryo.register(SecretParams.Type.class, 543326);
@@ -2321,6 +2346,9 @@ public class DelegateTasksBeansKryoRegister implements KryoRegistrar {
     kryo.register(AsgBlueGreenDeployResult.class, 5731609);
     kryo.register(NativeHelmServerInstanceInfo.class, 5731610);
     kryo.register(AsgCapacityConfig.class, 5731611);
+    kryo.register(AsgShiftTrafficRequest.class, 5731612);
+    kryo.register(AsgShiftTrafficResponse.class, 5731613);
+    kryo.register(AsgShiftTrafficResult.class, 5731614);
 
     kryo.register(AzurePackageArtifactConfig.class, 55410);
     kryo.register(AzureArtifactRequestDetails.class, 55411);
@@ -2575,9 +2603,28 @@ public class DelegateTasksBeansKryoRegister implements KryoRegistrar {
     kryo.register(RollbackTrigger.class, 20000615);
     kryo.register(Tag.class, 20000616);
 
+    // k8s traffic routing
+    kryo.register(HeaderConfig.class, 20002000);
+    kryo.register(IstioProviderConfig.class, 20002001);
+    kryo.register(K8sTrafficRoutingConfig.class, 20002002);
+    kryo.register(SMIProviderConfig.class, 20002003);
+    kryo.register(TrafficRoute.class, 20002004);
+    kryo.register(TrafficRouteRule.class, 20002005);
+    kryo.register(TrafficRoutingDestination.class, 20002006);
+    kryo.register(MatchType.class, 20002007);
+    kryo.register(ProviderType.class, 20002008);
+    kryo.register(RuleType.class, 20002009);
+    kryo.register(RouteType.class, 20002010);
+
     kryo.register(HelmFetchChartManifestTaskParameters.class, 20000617);
     kryo.register(HelmFetchChartManifestResponse.class, 20000618);
     kryo.register(HelmChartManifest.class, 20000619);
     kryo.register(ReleaseMetadata.class, 20001002);
+    kryo.register(AtomicBoolean.class, 20001003);
+    kryo.register(ArtifactBundleFetchRequest.class, 20001004);
+    kryo.register(ArtifactBundleFetchResponse.class, 20001005);
+    kryo.register(ArtifactBundleDelegateConfig.class, 20001006);
+    kryo.register(PackageArtifactConfig.class, 20001007);
+    kryo.register(ArtifactBundleDetails.class, 20002011);
   }
 }

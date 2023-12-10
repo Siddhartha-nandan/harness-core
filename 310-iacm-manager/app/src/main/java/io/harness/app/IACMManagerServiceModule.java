@@ -54,6 +54,9 @@ import io.harness.cistatus.service.gitlab.GitlabServiceImpl;
 import io.harness.code.CodeResourceClientModule;
 import io.harness.concurrent.HTimeLimiter;
 import io.harness.connector.ConnectorResourceClientModule;
+import io.harness.core.ci.dashboard.CIOverviewDashboardService;
+import io.harness.core.ci.dashboard.CIOverviewDashboardServiceImpl;
+import io.harness.creditcard.CreditCardClientModule;
 import io.harness.enforcement.client.EnforcementClientModule;
 import io.harness.entitysetupusageclient.EntitySetupUsageClientModule;
 import io.harness.eventsframework.EventsFrameworkConstants;
@@ -81,6 +84,7 @@ import io.harness.opaclient.OpaClientModule;
 import io.harness.packages.HarnessPackages;
 import io.harness.persistence.HPersistence;
 import io.harness.pms.sdk.core.waiter.AsyncWaitEngine;
+import io.harness.project.ProjectClientModule;
 import io.harness.redis.RedisConfig;
 import io.harness.redis.RedissonClientFactory;
 import io.harness.remote.client.ClientMode;
@@ -93,7 +97,11 @@ import io.harness.stoserviceclient.STOServiceClientModule;
 import io.harness.telemetry.AbstractTelemetryModule;
 import io.harness.telemetry.TelemetryConfiguration;
 import io.harness.threading.ThreadPool;
+import io.harness.timescaledb.TimeScaleDBConfig;
+import io.harness.timescaledb.TimeScaleDBService;
+import io.harness.timescaledb.TimeScaleDBServiceImpl;
 import io.harness.token.TokenClientModule;
+import io.harness.tunnel.TunnelResourceClientModule;
 import io.harness.user.UserClientModule;
 import io.harness.version.VersionModule;
 import io.harness.waiter.AsyncWaitEngineImpl;
@@ -152,6 +160,17 @@ public class IACMManagerServiceModule extends AbstractModule {
       return apiUrl.substring(0, apiUrl.length() - 1);
     }
     return apiUrl;
+  }
+
+  @Provides
+  @Singleton
+  @Named("harnessCodeGitBaseUrl")
+  String getHarnessCodeGitBaseUrl() {
+    String gitUrl = iacmManagerConfiguration.getHarnessCodeGitUrl();
+    if (gitUrl.endsWith("/")) {
+      return gitUrl.substring(0, gitUrl.length() - 1);
+    }
+    return gitUrl;
   }
 
   @Provides
@@ -240,6 +259,8 @@ public class IACMManagerServiceModule extends AbstractModule {
     bind(AzureRepoService.class).to(AzureRepoServiceImpl.class); // same?
     bind(SecretDecryptor.class).to(SecretDecryptorViaNg.class); // same?
     bind(AwsClient.class).to(AwsClientImpl.class); // same?
+    install(new TunnelResourceClientModule(iacmManagerConfiguration.getNgManagerClientConfig(),
+        iacmManagerConfiguration.getNgManagerServiceSecret(), IACM_MANAGER.getServiceId()));
     registerEventListeners();
     if (iacmManagerConfiguration.isLocal()) {
       bind(CILicenseService.class)
@@ -274,6 +295,7 @@ public class IACMManagerServiceModule extends AbstractModule {
     bind(ScheduledExecutorService.class)
         .annotatedWith(Names.named("taskPollExecutor"))
         .toInstance(new ManagedScheduledExecutorService("TaskPoll-Thread"));
+    bind(CIOverviewDashboardService.class).to(CIOverviewDashboardServiceImpl.class);
 
     install(NgLicenseHttpClientModule.getInstance(iacmManagerConfiguration.getNgManagerClientConfig(),
         iacmManagerConfiguration.getNgManagerServiceSecret(), IACM_MANAGER.getServiceId())); // Resolve secrets
@@ -307,8 +329,23 @@ public class IACMManagerServiceModule extends AbstractModule {
       }
     });
 
+    try {
+      bind(TimeScaleDBService.class)
+          .toConstructor(TimeScaleDBServiceImpl.class.getConstructor(TimeScaleDBConfig.class));
+    } catch (NoSuchMethodException e) {
+      log.error("TimeScaleDbServiceImpl Initialization Failed in due to missing constructor", e);
+    }
+
+    bind(TimeScaleDBConfig.class)
+        .annotatedWith(Names.named("TimeScaleDBConfig"))
+        .toInstance(TimeScaleDBConfig.builder().build());
+
     install(AccessControlClientModule.getInstance(
         iacmManagerConfiguration.getAccessControlClientConfiguration(), IACM_MANAGER.getServiceId()));
+    install(new CreditCardClientModule(iacmManagerConfiguration.getNgManagerClientConfig(),
+        iacmManagerConfiguration.getNgManagerServiceSecret(), IACM_MANAGER_NAME));
+    install(new ProjectClientModule(iacmManagerConfiguration.getNgManagerClientConfig(),
+        iacmManagerConfiguration.getNgManagerServiceSecret(), IACM_MANAGER_NAME));
     install(new EntitySetupUsageClientModule(iacmManagerConfiguration.getNgManagerClientConfig(),
         iacmManagerConfiguration.getNgManagerServiceSecret(), IACM_MANAGER_NAME));
     install(new ConnectorResourceClientModule(iacmManagerConfiguration.getNgManagerClientConfig(), // For connectors

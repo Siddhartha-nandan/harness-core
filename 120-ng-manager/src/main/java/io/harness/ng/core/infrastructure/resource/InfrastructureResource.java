@@ -11,6 +11,7 @@ import static io.harness.NGCommonEntityConstants.FORCE_DELETE_MESSAGE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.ng.core.environment.resources.EnvironmentResourceV2.ENVIRONMENT_PARAM_MESSAGE;
+import static io.harness.pms.rbac.NGResourceType.ENVIRONMENT;
 import static io.harness.rbac.CDNGRbacPermissions.ENVIRONMENT_UPDATE_PERMISSION;
 import static io.harness.rbac.CDNGRbacPermissions.ENVIRONMENT_VIEW_PERMISSION;
 import static io.harness.utils.PageUtils.getNGPageResponse;
@@ -24,6 +25,8 @@ import io.harness.accesscontrol.NGAccessDeniedException;
 import io.harness.accesscontrol.OrgIdentifier;
 import io.harness.accesscontrol.ProjectIdentifier;
 import io.harness.accesscontrol.ResourceIdentifier;
+import io.harness.accesscontrol.acl.api.AccessControlDTO;
+import io.harness.accesscontrol.acl.api.PermissionCheckDTO;
 import io.harness.accesscontrol.acl.api.Resource;
 import io.harness.accesscontrol.acl.api.ResourceScope;
 import io.harness.accesscontrol.clients.AccessControlClient;
@@ -48,6 +51,7 @@ import io.harness.gitsync.interceptor.GitEntityFindInfoDTO;
 import io.harness.gitsync.interceptor.GitEntityUpdateInfoDTO;
 import io.harness.ng.beans.PageResponse;
 import io.harness.ng.core.beans.DocumentationConstants;
+import io.harness.ng.core.beans.InfrastructureYamlMetadataApiInputV2;
 import io.harness.ng.core.beans.NGEntityTemplateResponseDTO;
 import io.harness.ng.core.customDeployment.helper.CustomDeploymentYamlHelper;
 import io.harness.ng.core.dto.ErrorDTO;
@@ -69,10 +73,14 @@ import io.harness.ng.core.infrastructure.services.impl.InfrastructureYamlSchemaH
 import io.harness.ng.core.utils.GitXUtils;
 import io.harness.ng.core.utils.OrgAndProjectValidationHelper;
 import io.harness.pms.rbac.NGResourceType;
+import io.harness.rbac.CDNGRbacUtility;
 import io.harness.repositories.UpsertOptions;
 import io.harness.security.annotations.NextGenManagerAuth;
+import io.harness.utils.IdentifierRefHelper;
 import io.harness.utils.PageUtils;
 
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import com.google.common.base.Preconditions;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -87,10 +95,12 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
@@ -172,6 +182,8 @@ public class InfrastructureResource {
   @ApiOperation(value = "Gets an Infrastructure by identifier", nickname = "getInfrastructure")
   @Operation(operationId = "getInfrastructure", summary = "Gets an Infrastructure by identifier",
       responses = { @io.swagger.v3.oas.annotations.responses.ApiResponse(description = "The saved Infrastructure") })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<InfrastructureResponse>
   get(@Parameter(description = INFRA_PARAM_MESSAGE) @PathParam(
           "infraIdentifier") @ResourceIdentifier String infraIdentifier,
@@ -220,6 +232,8 @@ public class InfrastructureResource {
   @Operation(operationId = "createInfrastructure", summary = "Create an Infrastructure in an Environment",
       responses =
       { @io.swagger.v3.oas.annotations.responses.ApiResponse(description = "Returns the created Infrastructure") })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<InfrastructureResponse>
   create(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
              NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
@@ -259,6 +273,8 @@ public class InfrastructureResource {
       responses =
       { @io.swagger.v3.oas.annotations.responses.ApiResponse(description = "Returns the created Infrastructures") },
       hidden = true)
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PageResponse<InfrastructureResponse>>
   createInfrastructures(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
                             NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
@@ -292,6 +308,8 @@ public class InfrastructureResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(description = "Returns true if the Infrastructure is deleted")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<Boolean>
   delete(@Parameter(description = INFRA_PARAM_MESSAGE) @PathParam(
              "infraIdentifier") @ResourceIdentifier String infraIdentifier,
@@ -319,6 +337,8 @@ public class InfrastructureResource {
   @Operation(operationId = "updateInfrastructure", summary = "Update an Infrastructure by identifier",
       responses =
       { @io.swagger.v3.oas.annotations.responses.ApiResponse(description = "Returns the updated Infrastructure") })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<InfrastructureResponse>
   update(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
              NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
@@ -357,6 +377,8 @@ public class InfrastructureResource {
       responses =
       { @io.swagger.v3.oas.annotations.responses.ApiResponse(description = "Returns the upserted Infrastructure") },
       hidden = true)
+  @Timed
+  @ResponseMetered
   public ResponseDTO<InfrastructureResponse>
   upsert(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
              NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
@@ -392,6 +414,8 @@ public class InfrastructureResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(description = "Returns the list of Infrastructure for an Environment")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PageResponse<InfrastructureResponse>>
   listInfrastructures(@Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
                           NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
@@ -427,8 +451,8 @@ public class InfrastructureResource {
     checkForAccessOrThrow(
         accountId, orgIdentifier, projectIdentifier, envIdentifier, ENVIRONMENT_VIEW_PERMISSION, "list");
 
-    Criteria criteria = InfrastructureFilterHelper.createListCriteria(
-        accountId, orgIdentifier, projectIdentifier, envIdentifier, searchTerm, infraIdentifiers, deploymentType);
+    Criteria criteria = InfrastructureFilterHelper.createListCriteria(accountId, orgIdentifier, projectIdentifier,
+        envIdentifier, searchTerm, infraIdentifiers, deploymentType, repoName, false);
     Pageable pageRequest;
     if (isEmpty(sort)) {
       pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, InfrastructureEntityKeys.createdAt));
@@ -460,6 +484,8 @@ public class InfrastructureResource {
   @Path("/runtimeInputs")
   @ApiOperation(value = "This api returns Infrastructure Definition inputs YAML", nickname = "getInfrastructureInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<NGEntityTemplateResponseDTO> getInfrastructureInputs(
       @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
           NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
@@ -475,7 +501,7 @@ public class InfrastructureResource {
           NGCommonEntityConstants.DEPLOY_TO_ALL) @DefaultValue("false") boolean deployToAll) {
     String infrastructureInputsYaml =
         infrastructureEntityService.createInfrastructureInputsFromYaml(accountId, orgIdentifier, projectIdentifier,
-            environmentIdentifier, infraIdentifiers, deployToAll, NoInputMergeInputAction.RETURN_EMPTY);
+            environmentIdentifier, null, infraIdentifiers, deployToAll, NoInputMergeInputAction.RETURN_EMPTY);
     return ResponseDTO.newResponse(
         NGEntityTemplateResponseDTO.builder().inputSetTemplateYaml(infrastructureInputsYaml).build());
   }
@@ -527,6 +553,8 @@ public class InfrastructureResource {
   @ApiOperation(value = "This api returns infrastructure YAML and runtime input YAML",
       nickname = "getInfrastructureYamlAndRuntimeInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<InfrastructureYamlMetadataDTO>
   getInfrastructureYamlAndRuntimeInputs(@Parameter(description = INFRASTRUCTURE_YAML_METADATA_INPUT_PARAM_MESSAGE)
                                         @Valid @NotNull InfrastructureYamlMetadataApiInput infrastructureYamlMetadata,
@@ -546,9 +574,43 @@ public class InfrastructureResource {
   }
 
   @POST
+  @Path("v2/infrastructure-yaml-metadata")
+  @ApiOperation(value = "This api returns infrastructure YAML and runtime input YAML",
+      nickname = "getInfrastructureYamlAndRuntimeInputsV2")
+  @Hidden
+  @Timed
+  @ResponseMetered
+  public ResponseDTO<InfrastructureYamlMetadataDTO>
+  getInfrastructureYamlAndRuntimeInputsV2(
+      @Parameter(description = INFRASTRUCTURE_YAML_METADATA_INPUT_PARAM_MESSAGE) @Valid
+      @NotNull InfrastructureYamlMetadataApiInputV2 infrastructureYamlMetadata,
+      @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
+          NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
+      @Parameter(description = NGCommonEntityConstants.ORG_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
+      @Parameter(description = NGCommonEntityConstants.PROJECT_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier,
+      @Parameter(description = ENVIRONMENT_PARAM_MESSAGE) @NotNull @QueryParam(
+          NGCommonEntityConstants.ENVIRONMENT_IDENTIFIER_KEY) @ResourceIdentifier String environmentIdentifier,
+      @Parameter(description = "This contains details of Git Entity like Git Branch info for the Base entity")
+      @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo,
+      @Parameter(description = "Specifies whether to load the entity from cache") @HeaderParam(
+          "Load-From-Cache") @DefaultValue("false") String loadFromCache) {
+    String environmentBranch = infrastructureYamlMetadata.getEnvironmentBranch();
+    List<InfrastructureYamlMetadata> infrastructureYamlMetadataList =
+        infrastructureEntityService.createInfrastructureYamlMetadata(accountId, orgIdentifier, projectIdentifier,
+            environmentIdentifier, environmentBranch, infrastructureYamlMetadata.getInfrastructureIdentifiers(),
+            GitXUtils.parseLoadFromCacheHeaderParam(loadFromCache));
+    return ResponseDTO.newResponse(
+        InfrastructureYamlMetadataDTO.builder().infrastructureYamlMetadataList(infrastructureYamlMetadataList).build());
+  }
+
+  @POST
   @Path("/mergeInfrastructureInputs/{infraIdentifier}")
   @ApiOperation(value = "This api merges old and new infrastructure inputs YAML", nickname = "mergeInfraInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<InfrastructureInputsMergedResponseDto> mergeInfrastructureInputs(
       @Parameter(description = INFRA_PARAM_MESSAGE) @PathParam(
           "infraIdentifier") @ResourceIdentifier String infraIdentifier,
@@ -563,6 +625,71 @@ public class InfrastructureResource {
       String oldInfrastructureInputsYaml) {
     return ResponseDTO.newResponse(infrastructureEntityService.mergeInfraStructureInputs(
         accountId, orgIdentifier, projectIdentifier, envIdentifier, infraIdentifier, oldInfrastructureInputsYaml));
+  }
+
+  @GET
+  @Path("/list-access")
+  @ApiOperation(value = "Gets Infrastructure access list ", nickname = "getInfrastructureAccessList")
+  @Operation(operationId = "getInfrastructureAccessList", summary = "Gets Infrastructure access list",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(description = "Returns the list of Infrastructure accessible at the current scope")
+      })
+  @Hidden
+  @Timed
+  @ResponseMetered
+  public ResponseDTO<List<InfrastructureResponse>>
+  listAccessInfrastructures(@Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
+                                NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
+      @Parameter(description = NGCommonEntityConstants.SIZE_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.SIZE) @DefaultValue("100") int size,
+      @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
+          NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
+      @Parameter(description = NGCommonEntityConstants.ORG_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
+      @Parameter(description = NGCommonEntityConstants.PROJECT_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.PROJECT_KEY) @ResourceIdentifier String projectIdentifier,
+      @Parameter(description = "The word to be searched and included in the list response") @QueryParam(
+          NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm,
+      @Parameter(description = "List of InfrastructureIds") @QueryParam("infraIdentifiers")
+      List<String> infraIdentifiers, @QueryParam("deploymentType") ServiceDefinitionType deploymentType,
+      @Parameter(description = "The Identifier of deployment template if infrastructure is of type custom deployment")
+      @QueryParam("deploymentTemplateIdentifier") String deploymentTemplateIdentifier,
+      @Parameter(
+          description = "The version label of deployment template if infrastructure is of type custom deployment")
+      @QueryParam("versionLabel") String versionLabel,
+      @Parameter(
+          description =
+              "Specifies the sorting criteria of the list. Like sorting based on the last updated entity, alphabetical sorting in an ascending or descending order")
+      @QueryParam("sort") List<String> sort,
+      @Parameter(description = "list of service refs required to fetch infrastructures scoped to these service refs")
+      @QueryParam("serviceRefs") List<String> serviceRefs,
+      @Parameter(description = "Specifies the repo name of the entity", hidden = true) @QueryParam(
+          "repoName") String repoName) {
+    orgAndProjectValidationHelper.checkThatTheOrganizationAndProjectExists(orgIdentifier, projectIdentifier, accountId);
+    Criteria criteria = InfrastructureFilterHelper.createListCriteria(accountId, orgIdentifier, projectIdentifier, null,
+        searchTerm, infraIdentifiers, deploymentType, repoName, true);
+    Pageable pageRequest;
+    if (isEmpty(sort)) {
+      pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, InfrastructureEntityKeys.createdAt));
+    } else {
+      pageRequest = PageUtils.getPageRequest(page, size, sort);
+    }
+    Page<InfrastructureEntity> infraEntities = infrastructureEntityService.list(criteria, pageRequest);
+    if (cdFeatureFlagHelper.isEnabled(accountId, FeatureName.CDS_SCOPE_INFRA_TO_SERVICES)) {
+      infraEntities = infrastructureEntityService.getScopedInfrastructures(infraEntities, serviceRefs);
+    }
+    if (ServiceDefinitionType.CUSTOM_DEPLOYMENT == deploymentType && !isEmpty(deploymentTemplateIdentifier)
+        && !isEmpty(versionLabel)) {
+      infraEntities = customDeploymentYamlHelper.getFilteredInfraEntities(
+          page, size, sort, deploymentTemplateIdentifier, versionLabel, infraEntities);
+    }
+
+    List<InfrastructureEntity> finalInfrastructureList =
+        filterInfraBasedOnAccess(infraEntities, accountId, orgIdentifier, projectIdentifier);
+    return ResponseDTO.newResponse(
+        finalInfrastructureList.stream().map(InfrastructureMapper::toResponseWrapper).collect(Collectors.toList()));
   }
 
   private void validateDeploymentTypeSpecificInfrastructureYaml(InfrastructureEntity infrastructureEntity) {
@@ -588,5 +715,43 @@ public class InfrastructureResource {
     } catch (Exception ex) {
       throw new InvalidRequestException(ex.getMessage());
     }
+  }
+
+  private List<InfrastructureEntity> filterInfraBasedOnAccess(
+      Page<InfrastructureEntity> infraEntities, String accountId, String orgIdentifier, String projectIdentifier) {
+    accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountId, orgIdentifier, projectIdentifier),
+        Resource.of(ENVIRONMENT, null), ENVIRONMENT_VIEW_PERMISSION);
+
+    List<PermissionCheckDTO> permissionCheckDTOS = new ArrayList<>(getPermissionDTOForEnvironments(infraEntities));
+    List<AccessControlDTO> accessControlList =
+        accessControlClient.checkForAccess(permissionCheckDTOS).getAccessControlList();
+
+    Map<String, Boolean> permittedEnvMap = new HashMap<>();
+
+    accessControlList.forEach(accessControl
+        -> permittedEnvMap.put(IdentifierRefHelper
+                                   .getIdentifierRefFromEntityIdentifiers(accessControl.getResourceIdentifier(),
+                                       accessControl.getResourceScope().getAccountIdentifier(),
+                                       accessControl.getResourceScope().getOrgIdentifier(),
+                                       accessControl.getResourceScope().getProjectIdentifier())
+                                   .buildScopedIdentifier(),
+            accessControl.isPermitted()));
+
+    return infraEntities.stream()
+        .filter(infra
+            -> permittedEnvMap.get(
+                IdentifierRefHelper
+                    .getIdentifierRefFromEntityIdentifiers(infra.getEnvIdentifier(), infra.getAccountIdentifier(),
+                        infra.getOrgIdentifier(), infra.getProjectIdentifier())
+                    .buildScopedIdentifier()))
+        .collect(Collectors.toList());
+  }
+
+  private Set<PermissionCheckDTO> getPermissionDTOForEnvironments(Page<InfrastructureEntity> infraEntities) {
+    return infraEntities.stream()
+        .map(infra
+            -> CDNGRbacUtility.environmentResponseToPermissionCheckDTO(
+                infra.getEnvIdentifier(), infra.getAccountId(), infra.getOrgIdentifier(), infra.getProjectIdentifier()))
+        .collect(Collectors.toSet());
   }
 }

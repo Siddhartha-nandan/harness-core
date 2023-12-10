@@ -6,6 +6,7 @@
  */
 
 package io.harness.git;
+
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.data.structure.CollectionUtils.emptyIfNull;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
@@ -75,6 +76,7 @@ import io.harness.git.model.PushResultGit;
 import io.harness.git.model.RevertAndPushRequest;
 import io.harness.git.model.RevertAndPushResult;
 import io.harness.git.model.RevertRequest;
+import io.harness.network.ProxyHttpConnectionFactory;
 
 import software.wings.misc.CustomUserGitConfigSystemReader;
 
@@ -94,6 +96,7 @@ import java.nio.channels.FileLockInterruptionException;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -208,12 +211,16 @@ public class GitClientV2Impl implements GitClientV2 {
         ((FetchCommand) (getAuthConfiguredCommand(git.fetch(), request))).setTagOpt(TagOpt.FETCH_TAGS).call();
         checkout(request);
 
-        // Do not sync to the HEAD of the branch if a specific commit SHA is provided
-        if (StringUtils.isEmpty(request.getCommitId())) {
+        if (StringUtils.isNotEmpty(request.getBranch())) {
           git.reset().setMode(ResetCommand.ResetType.HARD).setRef("refs/remotes/origin/" + request.getBranch()).call();
+          log.info(gitClientHelper.getGitLogMessagePrefix(request.getRepoType()) + "Hard reset done for branch "
+              + request.getBranch());
+        } else if (isNotEmpty(request.getCommitId())) {
+          git.reset().setMode(ResetCommand.ResetType.HARD).call();
+          log.info(gitClientHelper.getGitLogMessagePrefix(request.getRepoType()) + "Hard reset done for ref "
+              + request.getCommitId());
         }
-        log.info(gitClientHelper.getGitLogMessagePrefix(request.getRepoType()) + "Hard reset done for branch "
-            + request.getBranch());
+
         printCommitId(request, git);
         // TODO:: log failed commits queued and being ignored.
         return;
@@ -311,11 +318,16 @@ public class GitClientV2Impl implements GitClientV2 {
   }
 
   private synchronized void checkout(GitBaseRequest request) throws IOException, GitAPIException {
-    Git git = openGit(new File(gitClientHelper.getRepoDirectory(request)), request.getDisableUserGitConfig());
+    try (Git git = openGit(new File(gitClientHelper.getRepoDirectory(request)), request.getDisableUserGitConfig())) {
+      checkout(request, git, true);
+    }
+  }
+
+  private void checkout(GitBaseRequest request, Git git, boolean createBranch) throws GitAPIException {
     try {
       if (isNotEmpty(request.getBranch())) {
         CheckoutCommand checkoutCommand = git.checkout();
-        checkoutCommand.setCreateBranch(true).setName(request.getBranch());
+        checkoutCommand.setCreateBranch(createBranch).setName(request.getBranch());
         if (!request.isUnsureOrNonExistentBranch()) {
           checkoutCommand.setUpstreamMode(SetupUpstreamMode.TRACK).setStartPoint(ORIGIN + request.getBranch());
         } else {
@@ -901,7 +913,7 @@ public class GitClientV2Impl implements GitClientV2 {
         case MODIFY:
           try {
             log.info(gitClientHelper.getGitLogMessagePrefix(gitCommitRequest.getRepoType()) + "Adding git file "
-                + gitFileChange.toString());
+                + gitFileChange.toStringWithoutFileContent());
             FileUtils.forceMkdir(file.getParentFile());
             FileUtils.writeStringToFile(file, gitFileChange.getFileContent(), UTF_8);
             filesToAdd.add(gitFileChange.getFilePath());
@@ -950,7 +962,7 @@ public class GitClientV2Impl implements GitClientV2 {
                   format("Exception in deleting file [%s]", gitFileChange.getFilePath()), ADMIN_SRE);
             }
             log.info(gitClientHelper.getGitLogMessagePrefix(gitCommitRequest.getRepoType()) + "Deleting git file "
-                + gitFileChange.toString());
+                + gitFileChange.toStringWithoutFileContent());
           } else {
             log.warn(gitClientHelper.getGitLogMessagePrefix(gitCommitRequest.getRepoType())
                     + "File already deleted. path: [{}]",
@@ -1257,6 +1269,10 @@ public class GitClientV2Impl implements GitClientV2 {
             .filter(matchingFilesExtensions(request.getFileExtensions()))
             .forEach(path -> gitClientHelper.addFiles(gitFiles, path, repoPath));
       } catch (Exception e) {
+        if (request.isOptionalFiles() && e instanceof NoSuchFileException) {
+          log.debug(format("Unable to fetch optional file: %s", filePath));
+          return;
+        }
         resetWorkingDir(request);
 
         // GitFetchFilesTask relies on the exception cause whether to fail the deployment or not.
@@ -1311,13 +1327,18 @@ public class GitClientV2Impl implements GitClientV2 {
 
         for (String filePath : request.getFilePaths()) {
           try {
+            File destinationFolder = destinationDir;
             File sourceDir = new File(Paths.get(repoPath + "/" + filePath).toString());
             if (sourceDir.isFile()) {
               FileUtils.copyFile(sourceDir, Paths.get(request.getDestinationDirectory(), filePath).toFile());
             } else {
-              FileUtils.copyDirectory(sourceDir, destinationDir);
+              if (request.isMayHaveMultipleFolders()) {
+                FileIo.createDirectoryIfDoesNotExist(Paths.get(request.getDestinationDirectory(), filePath));
+                destinationFolder = new File(Paths.get(request.getDestinationDirectory(), filePath).toString());
+              }
+              FileUtils.copyDirectory(sourceDir, destinationFolder);
               // if source directory is repo root we don't want to have .git copied to destination directory
-              File gitFile = new File(Paths.get(request.getDestinationDirectory(), ".git").toString());
+              File gitFile = new File(Paths.get(destinationFolder.getPath(), ".git").toString());
               if (gitFile.exists()) {
                 FileUtils.deleteQuietly(gitFile);
               }
@@ -1453,6 +1474,16 @@ public class GitClientV2Impl implements GitClientV2 {
       // clone repo locally without checkout
       cloneRepoForFilePathCheckout(request);
 
+      if (request.isCloneWithCheckout()) {
+        try (Git git = openGit(
+                 new File(gitClientHelper.getFileDownloadRepoDirectory(request)), request.getDisableUserGitConfig())) {
+          // we don't want to create a branch as due to a bug in jgit it will fail if branch name matches with a tag
+          checkout(request, git, false);
+        } catch (Exception ex) {
+          log.warn(gitClientHelper.getGitLogMessagePrefix(request.getRepoType()) + EXCEPTION_STRING, ex);
+        }
+      }
+
       // if useBranch is set, use it to checkout latest, else checkout given commitId
       String commitId = request.getCommitId();
       if (request.useBranch()) {
@@ -1579,7 +1610,6 @@ public class GitClientV2Impl implements GitClientV2 {
                      .append("result fetched: ")
                      .append(fetchResult.toString())
                      .toString());
-
         return;
       } catch (Exception ex) {
         exceptionOccured = true;
@@ -1642,7 +1672,15 @@ public class GitClientV2Impl implements GitClientV2 {
           // option for further improvements is to have a custom connection factory where will use a more granular
           // configuration of these timeouts parameters
           http.setTimeout(SOCKET_CONNECTION_READ_TIMEOUT_SECONDS);
-          http.setHttpConnectionFactory(connectionFactory);
+          if (isNotEmpty(gitBaseRequest.getProxyHost()) && gitBaseRequest.getProxyPort() != null) {
+            HttpConnectionFactory httpConnectionFactory = ProxyHttpConnectionFactory.builder()
+                                                              .proxyHost(gitBaseRequest.getProxyHost())
+                                                              .proxyPort(gitBaseRequest.getProxyPort())
+                                                              .build();
+            http.setHttpConnectionFactory(httpConnectionFactory);
+          } else {
+            http.setHttpConnectionFactory(connectionFactory);
+          }
         }
       });
     } else if (gitBaseRequest.getAuthRequest().getAuthType() == AuthInfo.AuthType.SSH_KEY) {

@@ -8,6 +8,7 @@
 package io.harness.impl.scm;
 
 import static io.harness.annotations.dev.HarnessTeam.DX;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.encryption.FieldWithPlainTextOrSecretValueHelper.getSecretAsStringFromPlainTextOrSecretRef;
 
@@ -51,6 +52,8 @@ import io.harness.product.ci.scm.proto.Provider;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import java.io.File;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.NotImplementedException;
 
@@ -62,6 +65,8 @@ public class ScmGitProviderMapper {
   @Inject ScmGitProviderHelper scmGitProviderHelper;
   private static final String SCM_SKIP_SSL = "SCM_SKIP_SSL";
   private static final String ADDITIONAL_CERTS_PATH = "ADDITIONAL_CERTS_PATH";
+  public static final String SHARED_CA_CERTS_PATH = "SHARED_CA_CERTS_PATH";
+  public static final String DESTINATION_CA_PATH = "DESTINATION_CA_PATH";
 
   public Provider mapToSCMGitProvider(ScmConnector scmConnector) {
     return mapToSCMGitProvider(scmConnector, false);
@@ -93,7 +98,10 @@ public class ScmGitProviderMapper {
     } else {
       builder.setBitbucketServer(createBitbucketServerProvider(bitbucketConnector));
     }
-    return builder.setSkipVerify(skipVerify).setAdditionalCertsPath(getAdditionalCertsPath()).build();
+    return builder.setSkipVerify(skipVerify)
+        .setAdditionalCertsPath(getAdditionalCertsPath())
+        .setProxy(Optional.ofNullable(bitbucketConnector.getProxyUrl()).orElse(""))
+        .build();
   }
 
   private Provider mapToAzureRepoProvider(AzureRepoConnectorDTO azureRepoConnector, boolean debug) {
@@ -134,7 +142,32 @@ public class ScmGitProviderMapper {
   private String getAdditionalCertsPath() {
     String additionalCertsPath = "";
     try {
+      String sourceDirPath = System.getenv(SHARED_CA_CERTS_PATH);
+
+      if (!isEmpty(sourceDirPath)) {
+        String sourceCertPathConcatenated = sourceDirPath + "/single-cert-path/all-certs.pem";
+        File file = new File(sourceCertPathConcatenated);
+        if (file.exists()) {
+          additionalCertsPath = sourceCertPathConcatenated;
+        } else {
+          log.error("file does not exist in {}", sourceCertPathConcatenated);
+        }
+      } else {
+        log.error("SHARED_CA_CERTS_PATH environment variable is not set.");
+      }
+    } catch (Exception e) {
+      log.error("Error setting certs from SHARED_CA_CERTS_PATH dir", e);
+    }
+
+    if (isNotEmpty(additionalCertsPath)) {
+      log.info("Using certs from SHARED_CA_CERTS_PATH");
+      return additionalCertsPath;
+    }
+    // try to get certs from SHARED_CA_CERTS_PATH if its set else get from ADDITIONAL_CERTS_PATH for backward
+    // compatibility(remove this later)
+    try {
       additionalCertsPath = System.getenv(ADDITIONAL_CERTS_PATH);
+      log.info("setting certs from ADDITIONAL_CERTS_PATH with value {}", additionalCertsPath);
     } catch (SecurityException e) {
       log.error("Don't have sufficient permission to query ADDITIONAL_CERTS_PATH", e);
     }
@@ -184,6 +217,7 @@ public class ScmGitProviderMapper {
         .setEndpoint(GitClientHelper.getGitlabApiURL(gitlabConnector.getUrl(), getGitlabApiUrl(gitlabConnector)))
         .setSkipVerify(skipVerify)
         .setAdditionalCertsPath(getAdditionalCertsPath())
+        .setProxy(Optional.ofNullable(gitlabConnector.getProxyUrl()).orElse(""))
         .build();
   }
 
@@ -215,6 +249,7 @@ public class ScmGitProviderMapper {
         .setEndpoint(GitClientHelper.getGithubApiURL(githubConnector.getUrl()))
         .setSkipVerify(skipVerify)
         .setAdditionalCertsPath(getAdditionalCertsPath())
+        .setProxy(Optional.ofNullable(githubConnector.getProxyUrl()).orElse(""))
         .build();
   }
 
@@ -256,7 +291,13 @@ public class ScmGitProviderMapper {
         return HarnessProvider.newBuilder().setHarnessAccessToken(harnessAccessToken).build();
       case JWT_TOKEN:
         String jwtToken = getJWTToken(harnessConnector);
-        HarnessJWT harnessJWT = HarnessJWT.newBuilder().setToken(jwtToken).build();
+        HarnessJWT.Builder tokenBuilder = HarnessJWT.newBuilder().setToken(jwtToken);
+        if (isNotEmpty(harnessConnector.getAccountId())) {
+          tokenBuilder.setAccount(harnessConnector.getAccountId())
+              .setOrganization(harnessConnector.getOrgId())
+              .setProject(harnessConnector.getProjectId());
+        }
+        HarnessJWT harnessJWT = tokenBuilder.build();
         return HarnessProvider.newBuilder().setHarnessJwt(harnessJWT).build();
       default:
         throw new NotImplementedException(String.format(

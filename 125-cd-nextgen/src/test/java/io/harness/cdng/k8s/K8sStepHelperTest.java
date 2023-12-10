@@ -10,6 +10,7 @@ package io.harness.cdng.k8s;
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.beans.EnvironmentType.NON_PROD;
 import static io.harness.beans.EnvironmentType.PROD;
+import static io.harness.cdng.K8sHelmCommonStepHelper.MANIFEST_SOURCE_IDENTIFIER;
 import static io.harness.cdng.k8s.K8sStepHelper.MISSING_INFRASTRUCTURE_ERROR;
 import static io.harness.cdng.k8s.K8sStepHelper.RELEASE_NAME;
 import static io.harness.cdng.k8s.yaml.YamlUtility.REDACTED_BY_HARNESS;
@@ -94,6 +95,7 @@ import io.harness.cdng.manifest.yaml.KustomizePatchesManifestOutcome;
 import io.harness.cdng.manifest.yaml.ManifestConfig;
 import io.harness.cdng.manifest.yaml.ManifestConfigWrapper;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
+import io.harness.cdng.manifest.yaml.ManifestSourceWrapper;
 import io.harness.cdng.manifest.yaml.OciHelmChartConfig;
 import io.harness.cdng.manifest.yaml.OciHelmChartStoreGenericConfig;
 import io.harness.cdng.manifest.yaml.OpenshiftManifestOutcome;
@@ -101,6 +103,7 @@ import io.harness.cdng.manifest.yaml.OpenshiftParamManifestOutcome;
 import io.harness.cdng.manifest.yaml.S3StoreConfig;
 import io.harness.cdng.manifest.yaml.ValuesManifestOutcome;
 import io.harness.cdng.manifest.yaml.harness.HarnessStore;
+import io.harness.cdng.manifest.yaml.kinds.K8sManifest;
 import io.harness.cdng.manifest.yaml.kinds.KustomizePatchesManifest;
 import io.harness.cdng.manifest.yaml.kinds.ValuesManifest;
 import io.harness.cdng.manifest.yaml.kinds.kustomize.OverlayConfiguration;
@@ -220,6 +223,7 @@ import io.harness.steps.EntityReferenceExtractorUtils;
 import io.harness.steps.StepHelper;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 import io.harness.utils.NGFeatureFlagHelperService;
 
 import software.wings.beans.ServiceHookDelegateConfig;
@@ -282,7 +286,7 @@ public class K8sStepHelperTest extends CDNGTestBase {
   @Mock private FileStoreService fileStoreService;
   @Spy @InjectMocks private K8sEntityHelper k8sEntityHelper;
   @Spy @InjectMocks private CDStepHelper cdStepHelper;
-
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
   @Spy @InjectMocks private K8sManifestDelegateMapper k8sManifestDelegateMapper;
   @Spy @InjectMocks private K8sStepHelper k8sStepHelper;
 
@@ -395,6 +399,29 @@ public class K8sStepHelperTest extends CDNGTestBase {
                           .build())
             .build());
     k8sStepHelper.resolveManifestsConfigExpressions(ambiance, manifestConfigWrappers);
+    verify(engineExpressionService)
+        .renderExpression(eq(ambiance), eq("k8s/<+pipeline.variables.sample>/values.yaml"),
+            eq(ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED));
+  }
+
+  @Test
+  @Owner(developers = TARUN_UBA)
+  @Category(UnitTests.class)
+  public void testResolveManifestsSourceExpressions() {
+    ManifestSourceWrapper manifestSourceWrapper =
+        ManifestSourceWrapper.builder()
+            .type(ManifestConfigType.K8_MANIFEST)
+            .spec(K8sManifest.builder()
+                      .store(ParameterField.createValueField(
+                          StoreConfigWrapper.builder()
+                              .spec(GithubStore.builder()
+                                        .paths(ParameterField.createValueField(
+                                            Arrays.asList("k8s/<+pipeline.variables.sample>/values.yaml")))
+                                        .build())
+                              .build()))
+                      .build())
+            .build();
+    k8sStepHelper.resolveManifestsSourceExpressions(ambiance, manifestSourceWrapper);
     verify(engineExpressionService)
         .renderExpression(eq(ambiance), eq("k8s/<+pipeline.variables.sample>/values.yaml"),
             eq(ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED));
@@ -4830,7 +4857,7 @@ public class K8sStepHelperTest extends CDNGTestBase {
             .storeDelegateConfig(
                 OciHelmStoreDelegateConfig.builder().awsConnectorDTO(AwsConnectorDTO.builder().build()).build())
             .build();
-    TaskType expectedTaskType = TaskType.K8S_COMMAND_TASK_NG_OCI_ECR_CONFIG;
+    TaskType expectedTaskType = TaskType.K8S_COMMAND_TASK_NG_OCI_ECR_CONFIG_V2;
     checkTaskType(k8sInfraDelegateConfig, expectedTaskType, manifestDelegateConfig);
   }
 
@@ -4856,7 +4883,7 @@ public class K8sStepHelperTest extends CDNGTestBase {
   @Category(UnitTests.class)
   public void testK8sTaskType() {
     K8sInfraDelegateConfig k8sInfraDelegateConfig = DirectK8sInfraDelegateConfig.builder().build();
-    checkTaskType(k8sInfraDelegateConfig, TaskType.K8S_COMMAND_TASK_NG, null);
+    checkTaskType(k8sInfraDelegateConfig, TaskType.K8S_COMMAND_TASK_NG_V2, null);
   }
 
   private void checkTaskType(K8sInfraDelegateConfig k8sInfraDelegateConfig, TaskType expectedTaskType,
@@ -5019,6 +5046,104 @@ public class K8sStepHelperTest extends CDNGTestBase {
         .renderExpression(any(Ambiance.class), any(), eq(ExpressionMode.THROW_EXCEPTION_IF_UNRESOLVED));
     verify(engineExpressionService, times(1))
         .renderExpression(any(Ambiance.class), eq(yaml), eq(ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED));
+  }
+
+  @Test
+  @Owner(developers = TARUN_UBA)
+  @Category(UnitTests.class)
+  public void testManifestSourceStepParameters() throws Exception {
+    GitStore gitStoreStepLevel =
+        GitStore.builder()
+            .branch(ParameterField.createValueField("master"))
+            .paths(ParameterField.createValueField(asList("path/to/k8s/manifest/step-values.yaml")))
+            .connectorRef(ParameterField.createValueField("git-connector"))
+            .build();
+    GitStore gitStoreStepLevelSource =
+        GitStore.builder()
+            .branch(ParameterField.createValueField("master"))
+            .paths(ParameterField.createValueField(asList("path/to/k8s/manifest/templates/deployment.yaml")))
+            .connectorRef(ParameterField.createValueField("git-connector"))
+            .build();
+    StoreConfigWrapper storeConfigWrapper = StoreConfigWrapper.builder().spec(gitStoreStepLevelSource).build();
+    K8sApplyStepParameters applyStepParams = new K8sApplyStepParameters();
+    applyStepParams.setSkipDryRun(ParameterField.ofNull());
+    applyStepParams.setSkipSteadyStateCheck(ParameterField.ofNull());
+    applyStepParams.setOverrides(
+        Arrays.asList(ManifestConfigWrapper.builder()
+                          .manifest(ManifestConfig.builder()
+                                        .spec(ValuesManifest.builder()
+                                                  .store(ParameterField.createValueField(
+                                                      StoreConfigWrapper.builder().spec(gitStoreStepLevel).build()))
+                                                  .build())
+                                        .build())
+                          .build()));
+    applyStepParams.setManifestSource(
+        ManifestSourceWrapper.builder()
+            .spec(K8sManifest.builder()
+                      .store(ParameterField.createValueField(storeConfigWrapper))
+                      .valuesPaths(ParameterField.createValueField(asList("path/to/helm/chart/valuesOverride.yaml")))
+                      .build())
+            .build());
+
+    StepElementParameters stepElementParametersApplyStep =
+        StepElementParameters.builder().spec(applyStepParams).build();
+
+    K8sDirectInfrastructureOutcome k8sDirectInfrastructureOutcome =
+        K8sDirectInfrastructureOutcome.builder().namespace(NAMESPACE).build();
+
+    K8sManifestOutcome k8sManifestOutcome = K8sManifestOutcome.builder().identifier("k8s").build();
+
+    Map<String, ManifestOutcome> manifestOutcomeMap = ImmutableMap.of("k8s", k8sManifestOutcome);
+
+    RefObject manifests = RefObject.newBuilder()
+                              .setName(OutcomeExpressionConstants.MANIFESTS)
+                              .setKey(OutcomeExpressionConstants.MANIFESTS)
+                              .setRefType(RefType.newBuilder().setType(OrchestrationRefType.OUTCOME).build())
+                              .build();
+
+    RefObject infra = RefObject.newBuilder()
+                          .setName(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME)
+                          .setKey(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME)
+                          .setRefType(RefType.newBuilder().setType(OrchestrationRefType.OUTCOME).build())
+                          .build();
+
+    OptionalOutcome manifestsOutcome =
+        OptionalOutcome.builder().found(true).outcome(new ManifestsOutcome(manifestOutcomeMap)).build();
+
+    doReturn(manifestsOutcome).when(outcomeService).resolveOptional(eq(ambiance), eq(manifests));
+
+    ManifestFiles manifestFiles = ManifestFiles.builder()
+                                      .fileName("template.yaml")
+                                      .filePath("path/to/k8s/manifest/template.yaml")
+                                      .fileContent("Test")
+                                      .build();
+    doReturn(Optional.of(getFileStoreNode(manifestFiles.getFilePath(), manifestFiles.getFileName())))
+        .when(fileStoreService)
+        .getWithChildrenByPath(any(), any(), any(), any(), eq(true));
+    doReturn(
+        Optional.of(ConnectorResponseDTO.builder()
+                        .connector(ConnectorInfoDTO.builder()
+                                       .connectorConfig(
+                                           GitConfigDTO.builder().gitAuthType(GitAuthType.HTTP).url(SOME_URL).build())
+                                       .name("test")
+                                       .build())
+                        .build()))
+        .when(connectorService)
+        .get(nullable(String.class), nullable(String.class), nullable(String.class), nullable(String.class));
+    doReturn(manifestsOutcome).when(outcomeService).resolveOptional(eq(ambiance), eq(manifests));
+    doReturn(k8sDirectInfrastructureOutcome).when(outcomeService).resolve(eq(ambiance), eq(infra));
+    TaskChainResponse taskChainResponse =
+        k8sStepHelper.startChainLink(k8sStepExecutor, ambiance, stepElementParametersApplyStep);
+    K8sStepPassThroughData k8sStepPassThroughData = (K8sStepPassThroughData) taskChainResponse.getPassThroughData();
+    assertThat(k8sStepPassThroughData.getManifestOutcome().getStore().retrieveFilePaths().get(0))
+        .isEqualTo("path/to/k8s/manifest/templates/deployment.yaml");
+    assertThat(k8sStepPassThroughData.getManifestOutcome().getIdentifier()).isEqualTo(MANIFEST_SOURCE_IDENTIFIER);
+    assertThat(k8sStepPassThroughData.getManifestOutcomeList().size()).isEqualTo(2);
+    assertThat(k8sStepPassThroughData.getManifestOutcomeList().get(1).getType()).isEqualTo("Values");
+    assertThat(k8sStepPassThroughData.getManifestOutcomeList().get(1).getStore().getKind()).isEqualTo("Git");
+    assertThat(
+        ((GitStore) k8sStepPassThroughData.getManifestOutcomeList().get(1).getStore()).getPaths().getValue().get(0))
+        .isEqualTo("path/to/k8s/manifest/step-values.yaml");
   }
 
   @Test

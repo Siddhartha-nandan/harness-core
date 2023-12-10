@@ -4,6 +4,7 @@
 # https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
 
 CONFIG_FILE=/opt/harness/ssca-manager-config.yml
+REDISSON_CACHE_FILE=/opt/harness/redisson-jcache.yaml
 
 replace_key_value () {
   CONFIG_KEY="$1";
@@ -125,6 +126,64 @@ if [[ "" != "$S3_ACCESS_SECRET_KEY" ]]; then
   export S3_ACCESS_SECRET_KEY; yq -i '.s3Config.accessSecretKey=env(S3_ACCESS_SECRET_KEY)' $CONFIG_FILE
 fi
 
+yq -i 'del(.codec)' $REDISSON_CACHE_FILE
+
+if [[ "$REDIS_SCRIPT_CACHE" == "false" ]]; then
+  yq -i '.useScriptCache=false' $REDISSON_CACHE_FILE
+fi
+
+if [[ "" != "$CACHE_CONFIG_REDIS_URL" ]]; then
+  export CACHE_CONFIG_REDIS_URL; yq -i '.singleServerConfig.address=env(CACHE_CONFIG_REDIS_URL)' $REDISSON_CACHE_FILE
+fi
+
+if [[ "$CACHE_CONFIG_USE_SENTINEL" == "true" ]]; then
+  yq -i 'del(.singleServerConfig)' $REDISSON_CACHE_FILE
+
+  if [[ "" != "$CACHE_CONFIG_SENTINEL_MASTER_NAME" ]]; then
+    export CACHE_CONFIG_SENTINEL_MASTER_NAME; yq -i '.sentinelServersConfig.masterName=env(CACHE_CONFIG_SENTINEL_MASTER_NAME)' $REDISSON_CACHE_FILE
+  fi
+
+  if [[ "" != "$CACHE_CONFIG_REDIS_SENTINELS" ]]; then
+    IFS=',' read -ra SENTINEL_URLS <<< "$CACHE_CONFIG_REDIS_SENTINELS"
+    INDEX=0
+    for REDIS_SENTINEL_URL in "${SENTINEL_URLS[@]}"; do
+      export REDIS_SENTINEL_URL; export INDEX; yq -i '.sentinelServersConfig.sentinelAddresses.[env(INDEX)]=env(REDIS_SENTINEL_URL)' $REDISSON_CACHE_FILE
+      INDEX=$(expr $INDEX + 1)
+    done
+  fi
+
+fi
+
+if [[ "" != "$CACHE_CONFIG_REDIS_USERNAME" ]]; then
+  export CACHE_CONFIG_REDIS_USERNAME; yq -i '.singleServerConfig.username=env(CACHE_CONFIG_REDIS_USERNAME)' $REDISSON_CACHE_FILE
+  export CACHE_CONFIG_REDIS_USERNAME; yq -i '.singleServerConfig.username=env(CACHE_CONFIG_REDIS_USERNAME)' $ENTERPRISE_REDISSON_CACHE_FILE
+fi
+
+if [[ "" != "$CACHE_CONFIG_REDIS_PASSWORD" ]]; then
+  export CACHE_CONFIG_REDIS_PASSWORD; yq -i '.singleServerConfig.password=env(CACHE_CONFIG_REDIS_PASSWORD)' $REDISSON_CACHE_FILE
+  export CACHE_CONFIG_REDIS_PASSWORD; yq -i '.singleServerConfig.password=env(CACHE_CONFIG_REDIS_PASSWORD)' $ENTERPRISE_REDISSON_CACHE_FILE
+fi
+
+if [[ "" != "$REDIS_NETTY_THREADS" ]]; then
+  export REDIS_NETTY_THREADS; yq -i '.nettyThreads=env(REDIS_NETTY_THREADS)' $REDISSON_CACHE_FILE
+fi
+
+if [[ "" != "$REDIS_CONNECTION_POOL_SIZE" ]]; then
+  export REDIS_CONNECTION_POOL_SIZE; yq -i '.singleServerConfig.connectionPoolSize=env(REDIS_CONNECTION_POOL_SIZE)' $REDISSON_CACHE_FILE
+fi
+
+if [[ "" != "$REDIS_RETRY_INTERVAL" ]]; then
+  export REDIS_RETRY_INTERVAL; yq -i '.singleServerConfig.retryInterval=env(REDIS_RETRY_INTERVAL)' $REDISSON_CACHE_FILE
+fi
+
+if [[ "" != "$REDIS_RETRY_ATTEMPTS" ]]; then
+  export REDIS_RETRY_ATTEMPTS; yq -i '.singleServerConfig.retryAttempts=env(REDIS_RETRY_ATTEMPTS)' $REDISSON_CACHE_FILE
+fi
+
+if [[ "" != "$REDIS_TIMEOUT" ]]; then
+  export REDIS_TIMEOUT; yq -i '.singleServerConfig.timeout=env(REDIS_TIMEOUT)' $REDISSON_CACHE_FILE
+fi
+
 if [[ "" != "$DISTRIBUTED_LOCK_IMPLEMENTATION" ]]; then
   export DISTRIBUTED_LOCK_IMPLEMENTATION; yq -i '.distributedLockImplementation=env(DISTRIBUTED_LOCK_IMPLEMENTATION)' $CONFIG_FILE
 fi
@@ -159,6 +218,26 @@ if [[ "" != "$LOCK_CONFIG_REDIS_SENTINELS" ]]; then
   done
 fi
 
+if [[ "" != "$PIPELINE_SERVICE_CLIENT_BASEURL" ]]; then
+  export PIPELINE_SERVICE_CLIENT_BASEURL; yq -i '.pipelineServiceClientConfig.baseUrl=env(PIPELINE_SERVICE_CLIENT_BASEURL)' $CONFIG_FILE
+fi
+
+if [[ "" != "$PIPELINE_SERVICE_SECRET" ]]; then
+  export PIPELINE_SERVICE_SECRET; yq -i '.pipelineServiceSecret=env(PIPELINE_SERVICE_SECRET)' $CONFIG_FILE
+fi
+
+if [[ "" != "$POLICY_MGMT_SERVICE_SECRET" ]]; then
+  export POLICY_MGMT_SERVICE_SECRET; yq -i '.policyMgmtServiceSecret=env(POLICY_MGMT_SERVICE_SECRET)' $CONFIG_FILE
+fi
+
+if [[ "" != "$POLICY_MGMT_SERVICE_BASEURL" ]]; then
+  export POLICY_MGMT_SERVICE_BASEURL; yq -i '.policyMgmtServiceClientConfig.baseUrl=env(POLICY_MGMT_SERVICE_BASEURL)' $CONFIG_FILE
+fi
+
+if [[ "" != "$MANAGER_CLIENT_BASEURL" ]]; then
+  export MANAGER_CLIENT_BASEURL; yq -i '.managerClientConfig.baseUrl=env(MANAGER_CLIENT_BASEURL)' $CONFIG_FILE
+fi
+
 replace_key_value eventsFramework.redis.sentinel $EVENTS_FRAMEWORK_USE_SENTINEL
 replace_key_value eventsFramework.redis.envNamespace $EVENTS_FRAMEWORK_ENV_NAMESPACE
 replace_key_value eventsFramework.redis.redisUrl $EVENTS_FRAMEWORK_REDIS_URL
@@ -181,3 +260,12 @@ replace_key_value redisLockConfig.nettyThreads "$REDIS_NETTY_THREADS"
 replace_key_value cacheConfig.cacheNamespace $CACHE_NAMESPACE
 replace_key_value cacheConfig.cacheBackend $CACHE_BACKEND
 replace_key_value cacheConfig.enterpriseCacheEnabled $ENTERPRISE_CACHE_ENABLED
+
+replace_key_value cfClientConfig.apiKey "$CF_CLIENT_API_KEY"
+replace_key_value cfClientConfig.configUrl "$CF_CLIENT_CONFIG_URL"
+replace_key_value cfClientConfig.eventUrl "$CF_CLIENT_EVENT_URL"
+replace_key_value cfClientConfig.analyticsEnabled "$CF_CLIENT_ANALYTICS_ENABLED"
+replace_key_value cfClientConfig.connectionTimeout "$CF_CLIENT_CONNECTION_TIMEOUT"
+replace_key_value cfClientConfig.readTimeout "$CF_CLIENT_READ_TIMEOUT"
+replace_key_value featureFlagConfig.featureFlagSystem "$FEATURE_FLAG_SYSTEM"
+replace_key_value featureFlagConfig.syncFeaturesToCF "$SYNC_FEATURES_TO_CF"

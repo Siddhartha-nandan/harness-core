@@ -178,6 +178,7 @@ import io.harness.persistence.HPersistence;
 import io.harness.persistence.UuidAware;
 import io.harness.reflection.ReflectionUtils;
 import io.harness.serializer.JsonUtils;
+import io.harness.service.impl.DelegateRbacHelper;
 import io.harness.service.intfc.AgentMtlsEndpointService;
 import io.harness.service.intfc.DelegateCache;
 import io.harness.service.intfc.DelegateCallbackRegistry;
@@ -415,6 +416,7 @@ public class DelegateServiceImpl implements DelegateService {
   @Inject private AgentMtlsEndpointService agentMtlsEndpointService;
   @Inject private DelegateJreVersionHelper jreVersionHelper;
   @Inject private DelegateHeartBeatMetricsHelper delegateHeartBeatMetricsHelper;
+  @Inject private DelegateRbacHelper delegateRbacHelper;
 
   @Inject private DelegateTaskMigrationHelper delegateTaskMigrationHelper;
 
@@ -543,7 +545,7 @@ public class DelegateServiceImpl implements DelegateService {
 
   @Override
   public Set<String> getAllDelegateSelectorsUpTheHierarchy(
-      final String accountId, final String orgId, final String projectId) {
+      final String accountId, final String orgId, final String projectId, boolean applyRbacFilter) {
     final Query<DelegateGroup> delegateGroupQuery = persistence.createQuery(DelegateGroup.class)
                                                         .filter(DelegateGroupKeys.accountId, accountId)
                                                         .filter(DelegateGroupKeys.ng, true);
@@ -553,8 +555,16 @@ public class DelegateServiceImpl implements DelegateService {
     delegateGroupQuery.field(DelegateKeys.owner_identifier)
         .in(Arrays.asList(null, orgId, owner != null ? owner.getIdentifier() : null));
 
-    final List<DelegateGroup> delegateGroups =
+    List<DelegateGroup> delegateGroups =
         delegateGroupQuery.field(DelegateGroupKeys.status).notEqual(DelegateGroupStatus.DELETED).asList();
+
+    if (applyRbacFilter) {
+      delegateGroups = delegateRbacHelper.getViewPermittedDelegateGroups(delegateGroups, accountId, orgId, projectId);
+    }
+
+    if (null == delegateGroups) {
+      return null;
+    }
 
     return delegateGroups.stream()
         .map(group -> {
@@ -1432,11 +1442,19 @@ public class DelegateServiceImpl implements DelegateService {
     final boolean isCiEnabled = isCiEnabled(templateParameters);
 
     String accountSecret = getAccountSecret(templateParameters, isNgDelegate);
-    String base64Secret;
+    String base64Secret = null;
     if (StringUtils.isEmpty(accountSecret)) {
-      accountSecret = String.format(
-          "<No Delegate Token (%s) available, choose a delegate token>", templateParameters.getDelegateTokenName());
-      base64Secret = accountSecret;
+      DelegateTokenDetails delegateTokenDetails = delegateNgTokenService.getDefaultTokenOrOldestActiveDelegateToken(
+          templateParameters.getAccountId(), templateParameters.getDelegateEntityOwner());
+      if (delegateTokenDetails != null) {
+        base64Secret = delegateTokenDetails.getValue();
+        accountSecret = base64Secret;
+      }
+      if (StringUtils.isEmpty(base64Secret)) {
+        accountSecret = String.format(
+            "<No Delegate Token (%s) available, choose a delegate token>", templateParameters.getDelegateTokenName());
+        base64Secret = accountSecret;
+      }
     } else {
       base64Secret = Base64.getEncoder().encodeToString(accountSecret.getBytes());
     }
@@ -2635,6 +2653,7 @@ public class DelegateServiceImpl implements DelegateService {
             .delegateType(delegateParams.getDelegateType())
             .tags(isNotEmpty(delegateParams.getTags()) ? new HashSet<>(delegateParams.getTags()) : null)
             .tokenName(delegateTokenName.orElse(null))
+            .version(delegateParams.getVersion())
             .build();
 
     String delegateGroupId = delegateParams.getDelegateGroupId();
@@ -3263,6 +3282,12 @@ public class DelegateServiceImpl implements DelegateService {
     if (sizeDetails != null) {
       setUnset(updateOperations, DelegateGroupKeys.sizeDetails, sizeDetails);
     }
+    if (delegateSetupDetails != null && isNotEmpty(delegateSetupDetails.getVersion())) {
+      long delegateExpiry = delegateSetupService.getDelegateExpirationTime(
+          delegateSetupDetails.getVersion(), delegateSetupDetails.getHostName());
+      setUnset(updateOperations, DelegateGroupKeys.delegatesExpireOn, delegateExpiry);
+    }
+
     DelegateGroup updatedDelegateGroup =
         persistence.upsert(query, updateOperations, HPersistence.upsertReturnNewOptions);
     DelegateSetupDetails delegateSetupDetailsOld = null;
@@ -4153,9 +4178,9 @@ public class DelegateServiceImpl implements DelegateService {
   public File generateKubernetesYaml(String accountId, DelegateSetupDetails delegateSetupDetails, String managerHost,
       String verificationServiceUrl, MediaType fileFormat) throws IOException {
     // If token name is not provided, use default token
+    DelegateEntityOwner owner = DelegateEntityOwnerHelper.buildOwner(
+        delegateSetupDetails.getOrgIdentifier(), delegateSetupDetails.getProjectIdentifier());
     if (StringUtils.isBlank(delegateSetupDetails.getTokenName())) {
-      DelegateEntityOwner owner = DelegateEntityOwnerHelper.buildOwner(
-          delegateSetupDetails.getOrgIdentifier(), delegateSetupDetails.getProjectIdentifier());
       delegateSetupDetails.setTokenName(delegateNgTokenService.getDefaultTokenName(owner));
     }
     // If size if not provided, use LAPTOP
@@ -4217,7 +4242,8 @@ public class DelegateServiceImpl implements DelegateService {
                   .k8sPermissionsType(delegateSetupDetails.getK8sConfigDetails().getK8sPermissionType())
                   .logStreamingServiceBaseUrl(mainConfiguration.getLogStreamingServiceConfig().getExternalUrl())
                   .runAsRoot(delegateSetupDetails.getRunAsRoot() == null || delegateSetupDetails.getRunAsRoot())
-                  .delegateTokenName(delegateSetupDetails.getTokenName())),
+                  .delegateTokenName(delegateSetupDetails.getTokenName())
+                  .delegateEntityOwner(owner)),
           true);
 
       File yaml = File.createTempFile(HARNESS_DELEGATE, YAML);
@@ -4496,11 +4522,6 @@ public class DelegateServiceImpl implements DelegateService {
               .delegateSetupDetails(delegateSetupDetails)
               .delegateSetupDetailsOld(delegateSetupDetailsOld)
               .build());
-    } else {
-      if (delegateGroup != null) {
-        auditServiceHelper.reportForAuditingUsingAccountId(
-            delegateGroup.getAccountId(), delegateGroup, delegateGroup, Type.DELEGATE_GROUP);
-      }
     }
   }
   private Optional<String> getDelegateTokenNameFromGlobalContext() {

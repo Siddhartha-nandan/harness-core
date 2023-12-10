@@ -7,7 +7,6 @@
 
 package io.harness.oidc.entities;
 
-import io.harness.annotation.HarnessEntity;
 import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
@@ -19,18 +18,21 @@ import io.harness.rsa.RsaKeyPair;
 import dev.morphia.annotations.Entity;
 import dev.morphia.annotations.Id;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.FieldNameConstants;
+import org.springframework.data.annotation.TypeAlias;
 
+@OwnedBy(HarnessTeam.PL)
 @Data
 @AllArgsConstructor
+@Builder
 @EqualsAndHashCode(callSuper = false)
 @FieldNameConstants(innerTypeName = "OidcJwksKeys")
 @StoreIn(DbAliases.HARNESS)
-@Entity(value = "ngOidcJwksKeys")
-@HarnessEntity(exportable = true)
-@OwnedBy(HarnessTeam.PL)
+@Entity(value = "ngOidcJwksKeys", noClassnameStored = true)
+@TypeAlias("oidcJwks")
 public class OidcJwks implements PersistentEntity, UuidAware {
   @org.springframework.data.annotation.Id @Id String uuid;
   String accountId;

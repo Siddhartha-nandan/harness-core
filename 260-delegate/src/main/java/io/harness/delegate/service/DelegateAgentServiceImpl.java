@@ -125,7 +125,6 @@ import io.harness.delegate.configuration.DelegateConfiguration;
 import io.harness.delegate.core.beans.AcquireTasksResponse;
 import io.harness.delegate.core.beans.ExecutionStatusResponse;
 import io.harness.delegate.expression.DelegateExpressionEvaluator;
-import io.harness.delegate.logging.DelegateStackdriverLogAppender;
 import io.harness.delegate.message.Message;
 import io.harness.delegate.message.MessageService;
 import io.harness.delegate.service.common.AcquireTaskHelper;
@@ -535,8 +534,6 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       startTime = clock.millis();
       delegateHealthTimeLimiter = HTimeLimiter.create(healthMonitorExecutor);
       delegateTaskTimeLimiter = HTimeLimiter.create(taskExecutor);
-      DelegateStackdriverLogAppender.setTimeLimiter(delegateHealthTimeLimiter);
-      DelegateStackdriverLogAppender.setManagerClient(delegateAgentManagerClient);
 
       logProxyConfiguration();
 
@@ -646,7 +643,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       delegateId = registerDelegate(builder);
       DelegateAgentCommonVariables.setDelegateId(delegateId);
       log.info("[New] Delegate registered in {} ms", clock.millis() - start);
-      DelegateStackdriverLogAppender.setDelegateId(delegateId);
+
       if (isImmutableDelegate && dynamicRequestHandling) {
         // Enable dynamic throttling of requests only for immutable and FF enabled
         startDynamicHandlingOfTasks();
@@ -698,6 +695,13 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
                     handleClose(o);
                   }
                 })
+            .on(Event.REOPENED,
+                new Function<Object>() { // Do not change this, wasync doesn't like lambdas
+                  @Override
+                  public void on(Object o) {
+                    handleReopen(o);
+                  }
+                })
             .on(new Function<IOException>() {
               @Override
               public void on(IOException ioe) {
@@ -741,6 +745,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       }
       // TODO: we need to refactor configuration related codes. All static configs abtained from DelegateConfiguration
       context.set(Context.DELEGATE_ID, delegateId);
+      context.set(Context.DELEGATE_NAME, DELEGATE_GROUP_NAME);
     } catch (RuntimeException | IOException e) {
       log.error("Exception while starting/running delegate", e);
     }
@@ -889,6 +894,11 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
   private void handleClose(Object o) {
     log.info("Event:{}, trying to reconnect, message:[{}]", Event.CLOSE.name(), o);
     metricRegistry.recordGaugeValue(DELEGATE_CONNECTED.getMetricName(), new String[] {DELEGATE_NAME}, 0.0);
+  }
+
+  private void handleReopen(Object o) {
+    log.info("Event:{}, socket reconnected, message:[{}]", Event.REOPENED.name(), o.toString());
+    metricRegistry.recordGaugeValue(DELEGATE_CONNECTED.getMetricName(), new String[] {DELEGATE_NAME}, 1.0);
   }
 
   private void handleError(final Exception e) {
@@ -1852,7 +1862,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
   }
 
   private void sendHeartbeat(final DelegateParamsBuilder builder) {
-    if (!shouldContactManager() || !acquireTasks.get() || frozen.get()) {
+    if (!shouldContactManager() || frozen.get()) {
       return;
     }
     log.info("Last heartbeat received at {} and sent to manager at {}", lastHeartbeatReceivedAt.get(),
@@ -1908,7 +1918,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
   }
 
   private void sendHttpHeartbeat(DelegateParamsBuilder builder) {
-    if (!shouldContactManager() || !acquireTasks.get() || frozen.get()) {
+    if (!shouldContactManager() || frozen.get()) {
       return;
     }
     try {
@@ -2038,6 +2048,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       currentlyAcquiringTasksCount.getAndDecrement();
     }
 
+    currentlyExecutingTasks.get(delegateTaskEvent.getDelegateTaskId()).getIsAborted().set(true);
     currentlyExecutingTasks.remove(delegateTaskEvent.getDelegateTaskId());
     if (currentlyExecutingFutures.remove(delegateTaskEvent.getDelegateTaskId()) != null) {
       log.info("Removed from executing futures on abort");
@@ -2094,6 +2105,11 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
         if (frozen.get()) {
           log.info(
               "Delegate process with detected time out of sync or with revoked token is running. Won't acquire tasks.");
+          return;
+        }
+
+        if (rejectRequest.get()) {
+          log.info("Delegate running out of resources, dropping this request");
           return;
         }
 
@@ -2611,7 +2627,6 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       finalizeSocket();
     }
 
-    DelegateStackdriverLogAppender.setManagerClient(null);
     if (perpetualTaskWorker != null) {
       perpetualTaskWorker.stop();
     }

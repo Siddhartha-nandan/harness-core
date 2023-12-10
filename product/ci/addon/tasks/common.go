@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -143,9 +144,33 @@ func fetchOutputVariables(outputFile string, fs filesystem.FileSystem, log *zap.
 	}
 	if err := s.Err(); err != nil {
 		log.Errorw("Failed to create scanner from output file", zap.Error(err))
+		if errors.Is(err, bufio.ErrTooLong) {
+			err = fmt.Errorf("output variable length is more than %d bytes", bufio.MaxScanTokenSize)
+		}
 		return nil, err
 	}
 	return envVarMap, nil
+}
+
+func getOutputVarCmd(outputVars []string, outputFile string, isPsh, isPython bool) string {
+	cmd := ""
+	if isPsh {
+		cmd += fmt.Sprintf("\nNew-Item %s", outputFile)
+	} else if isPython {
+		cmd += "\nimport os\n"
+	}
+
+	for _, o := range outputVars {
+		if isPsh {
+			cmd += fmt.Sprintf("\n$val = \"%s $Env:%s\" \nAdd-Content -Path %s -Value $val", o, o, outputFile)
+		} else if isPython {
+			cmd += fmt.Sprintf("with open('%s', 'a') as out_file:\n\tout_file.write('%s ' + os.getenv('%s') + '\\n')\n", outputFile, o, o)
+		} else {
+			cmd += fmt.Sprintf("\necho \"%s $%s\" >> %s", o, o, outputFile)
+		}
+	}
+
+	return cmd
 }
 
 // Fetches map of env variable and value from .env output File.

@@ -162,7 +162,7 @@ public class PipelineEntity implements GitAware, GitSyncableEntity, PersistentEn
 
   @Wither @EntityName String name;
   @Wither @Size(max = 1024) String description;
-  @Wither @Singular @Size(max = 128) List<NGTag> tags;
+  @Wither @Size(max = 128) List<NGTag> tags;
 
   @Wither @Version Long version;
 
@@ -236,7 +236,7 @@ public class PipelineEntity implements GitAware, GitSyncableEntity, PersistentEn
   }
 
   public String getHarnessVersion() {
-    if (harnessVersion == null || harnessVersion.equals("V0")) {
+    if (harnessVersion == null) {
       return HarnessYamlVersion.V0;
     }
     return harnessVersion;

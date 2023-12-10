@@ -21,7 +21,9 @@ import com.google.inject.Singleton;
 import dev.morphia.query.Query;
 import dev.morphia.query.Sort;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections.CollectionUtils;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -129,7 +131,7 @@ public class RuleEnforcementDAO {
                                                  .field(RuleEnforcementId.name)
                                                  .equal(name)
                                                  .asList();
-    if (ruleEnforcements == null) {
+    if (CollectionUtils.isEmpty(ruleEnforcements)) {
       return true;
     }
     if (ruleEnforcements.size() == 1) {
@@ -155,6 +157,17 @@ public class RuleEnforcementDAO {
       }
       throw new InvalidRequestException("No such rule enforcement exists");
     }
+  }
+
+  public List<String> fetchSchedulerNamesByAccountId(String accountId) {
+    return hPersistence.createQuery(RuleEnforcement.class)
+        .field(RuleEnforcementId.accountId)
+        .equal(accountId)
+        .project(RuleEnforcementId.uuid, true)
+        .asList()
+        .stream()
+        .map(ruleEnforcement -> ruleEnforcement.getUuid().toLowerCase())
+        .collect(Collectors.toList());
   }
 
   public List<RuleEnforcement> list(String accountId) {
@@ -204,5 +217,15 @@ public class RuleEnforcementDAO {
 
   public RuleEnforcement get(String uuid) {
     return hPersistence.createQuery(RuleEnforcement.class).field(RuleEnforcementId.uuid).equal(uuid).get();
+  }
+
+  public long count(String accountId) {
+    return hPersistence.createQuery(RuleEnforcement.class).field(RuleEnforcementId.accountId).equal(accountId).count();
+  }
+
+  public boolean deleteAllForAccount(String accountId) {
+    Query<RuleEnforcement> query =
+        hPersistence.createQuery(RuleEnforcement.class).field(RuleEnforcementId.accountId).equal(accountId);
+    return hPersistence.delete(query);
   }
 }

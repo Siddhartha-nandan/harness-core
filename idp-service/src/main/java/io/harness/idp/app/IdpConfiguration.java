@@ -10,12 +10,18 @@ package io.harness.idp.app;
 import static io.harness.idp.provision.ProvisionConstants.PROVISION_MODULE_CONFIG;
 
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toSet;
 
 import io.harness.AccessControlClientConfiguration;
+import io.harness.ScmConnectionConfig;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.entities.IACMServiceConfig;
 import io.harness.cache.CacheConfig;
+import io.harness.ci.beans.entities.LogServiceConfig;
 import io.harness.ci.beans.entities.TIServiceConfig;
+import io.harness.ci.config.CIExecutionServiceConfig;
+import io.harness.enforcement.client.EnforcementClientConfiguration;
 import io.harness.eventsframework.EventsFrameworkConfiguration;
 import io.harness.grpc.client.GrpcClientConfig;
 import io.harness.grpc.server.GrpcServerConfig;
@@ -31,10 +37,16 @@ import io.harness.redis.RedisConfig;
 import io.harness.reflection.HarnessReflections;
 import io.harness.remote.client.ServiceHttpClientConfig;
 import io.harness.secret.ConfigSecret;
+import io.harness.ssca.beans.entities.SSCAServiceConfig;
+import io.harness.sto.beans.entities.STOServiceConfig;
+import io.harness.telemetry.segment.SegmentConfiguration;
+import io.harness.threading.ThreadPoolConfig;
 
 import ch.qos.logback.access.spi.IAccessEvent;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import io.dropwizard.Configuration;
 import io.dropwizard.jetty.ConnectorFactory;
 import io.dropwizard.jetty.HttpConnectorFactory;
@@ -44,10 +56,21 @@ import io.dropwizard.request.logging.RequestLogFactory;
 import io.dropwizard.server.DefaultServerFactory;
 import io.dropwizard.server.ServerFactory;
 import io.grpc.netty.shaded.io.grpc.netty.NegotiationType;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.integration.SwaggerConfiguration;
+import io.swagger.v3.oas.integration.api.OpenAPIConfiguration;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Contact;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.servers.Server;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import javax.ws.rs.Path;
@@ -84,8 +107,11 @@ public class IdpConfiguration extends Configuration {
   @JsonProperty("backstageSaCaCrt") private String backstageSaCaCrt;
   @JsonProperty("backstageMasterUrl") private String backstageMasterUrl;
   @JsonProperty("backstagePodLabel") private String backstagePodLabel;
+  @JsonProperty("backstageEntitiesFetchLimit") private String backstageEntitiesFetchLimit;
   @JsonProperty("env") private String env;
-  @JsonProperty("prEnvDefaultBackstageNamespace") private String prEnvDefaultBackstageNamespace;
+  @JsonProperty("base") private String base;
+  @JsonProperty("devSpaceDefaultBackstageNamespace") private String devSpaceDefaultBackstageNamespace;
+  @JsonProperty("devSpaceDefaultAccountId") private String devSpaceDefaultAccountId;
   @JsonProperty(PROVISION_MODULE_CONFIG) private ProvisionModuleConfig provisionModuleConfig;
   @JsonProperty("backstageAppBaseUrl") private String backstageAppBaseUrl;
   @JsonProperty("backstagePostgresHost") private String backstagePostgresHost;
@@ -107,17 +133,38 @@ public class IdpConfiguration extends Configuration {
   private IteratorConfig scorecardScoreComputationIteratorConfig;
   @JsonProperty("cpu") private String cpu;
   @JsonProperty("scoreComputerThreadsPerCore") private String scoreComputerThreadsPerCore;
+  @JsonProperty("allowedOrigins") private List<String> allowedOrigins = Lists.newArrayList();
+  @JsonProperty("hostname") String hostname = "localhost";
+  @JsonProperty("basePathPrefix") String basePathPrefix = "";
   @JsonProperty("auditClientConfig") private ServiceHttpClientConfig auditClientConfig;
   @JsonProperty("enableAudit") private boolean enableAudit;
   private String managerTarget;
   private String managerAuthority;
   @JsonProperty("streamPerServiceConfiguration") private boolean streamPerServiceConfiguration;
+  @JsonProperty("internalAccounts") private List<String> internalAccounts;
+  @JsonProperty("logServiceConfig") private LogServiceConfig logServiceConfig;
+  @JsonProperty("sscaServiceConfig") private SSCAServiceConfig sscaServiceConfig;
+  @JsonProperty("stoServiceConfig") private STOServiceConfig stoServiceConfig;
+  @JsonProperty("apiUrl") private String apiUrl;
+  @JsonProperty("iacmServiceConfig") private IACMServiceConfig iacmServiceConfig;
+  @JsonProperty("scmConnectionConfig") private ScmConnectionConfig scmConnectionConfig;
+  @JsonProperty("pmsSdkExecutionPoolConfig") private ThreadPoolConfig pmsSdkExecutionPoolConfig;
+  @JsonProperty("pmsSdkOrchestrationEventPoolConfig") private ThreadPoolConfig pmsSdkOrchestrationEventPoolConfig;
+  @JsonProperty("pmsPlanCreatorServicePoolConfig") private ThreadPoolConfig pmsPlanCreatorServicePoolConfig;
+  @JsonProperty("opaClientConfig") private ServiceHttpClientConfig opaClientConfig;
+  @JsonProperty("policyManagerSecret") private String policyManagerSecret;
+  @JsonProperty("ciExecutionServiceConfig") private CIExecutionServiceConfig ciExecutionServiceConfig;
+  @JsonProperty("enforcementClientConfiguration") EnforcementClientConfiguration enforcementClientConfiguration;
+  @JsonProperty("harnessCodeGitUrl") private String harnessCodeGitUrl;
+  @JsonProperty("segmentConfiguration") private SegmentConfiguration segmentConfiguration;
+  @JsonProperty("enableMetrics") private boolean enableMetrics;
 
   public static final Collection<Class<?>> HARNESS_RESOURCE_CLASSES = getResourceClasses();
   public static final String IDP_SPEC_PACKAGE = "io.harness.spec.server.idp.v1";
   public static final String SERVICES_PROXY_PACKAGE = "io.harness.idp.proxy.services";
   public static final String DELEGATE_PROXY_PACKAGE = "io.harness.idp.proxy.delegate";
   public static final String IDP_HEALTH_PACKAGE = "io.harness.idp.health";
+  private static final String IDP_YAML_SCHEMA = "io.harness.idp.pipeline.stages.yamlschema";
 
   public IdpConfiguration() {
     DefaultServerFactory defaultServerFactory = new DefaultServerFactory();
@@ -139,6 +186,37 @@ public class IdpConfiguration extends Configuration {
     ((DefaultServerFactory) getServerFactory()).setAdminConnectors(defaultServerFactory.getAdminConnectors());
     ((DefaultServerFactory) getServerFactory()).setRequestLogFactory(defaultServerFactory.getRequestLogFactory());
     ((DefaultServerFactory) getServerFactory()).setMaxThreads(defaultServerFactory.getMaxThreads());
+  }
+
+  @JsonIgnore
+  public OpenAPIConfiguration getOasConfig() {
+    OpenAPI oas = new OpenAPI();
+    Info info =
+        new Info()
+            .title("IDP Service API Reference")
+            .description(
+                "This is the Open Api Spec 3 for the IDP Service. This is under active development. Beware of the breaking change with respect to the generated code stub")
+            .termsOfService("https://harness.io/terms-of-use/")
+            .version("3.0")
+            .contact(new Contact().email("contact@harness.io"));
+    oas.info(info);
+    URL baseurl = null;
+    try {
+      baseurl = new URL("https", hostname, basePathPrefix);
+      Server server = new Server();
+      server.setUrl(baseurl.toString());
+      oas.servers(Collections.singletonList(server));
+    } catch (MalformedURLException e) {
+      log.error("The base URL of the server could not be set. {}/{}", hostname, basePathPrefix);
+    }
+    Collection<Class<?>> allResourceClasses = HARNESS_RESOURCE_CLASSES;
+    final Set<String> resourceClasses =
+        getOAS3ResourceClassesOnly(allResourceClasses).stream().map(Class::getCanonicalName).collect(toSet());
+    return new SwaggerConfiguration()
+        .openAPI(oas)
+        .prettyPrint(true)
+        .resourceClasses(resourceClasses)
+        .scannerClass("io.swagger.v3.jaxrs2.integration.JaxrsAnnotationScanner");
   }
 
   private ConnectorFactory getDefaultApplicationConnectorFactory() {
@@ -173,13 +251,24 @@ public class IdpConfiguration extends Configuration {
     return dbAliases;
   }
 
+  public static Set<String> getUniquePackages(Collection<Class<?>> classes) {
+    return classes.stream()
+        .filter(x -> x.isAnnotationPresent(Tag.class))
+        .map(aClass -> aClass.getPackage().getName())
+        .collect(toSet());
+  }
+
+  public static Collection<Class<?>> getOAS3ResourceClassesOnly(Collection<Class<?>> allResourceClasses) {
+    return allResourceClasses.stream().collect(Collectors.toList());
+  }
+
   public static Collection<Class<?>> getResourceClasses() {
     return HarnessReflections.get()
         .getTypesAnnotatedWith(Path.class)
         .stream()
         .filter(klazz
             -> StringUtils.startsWithAny(klazz.getPackage().getName(), IDP_SPEC_PACKAGE, SERVICES_PROXY_PACKAGE,
-                DELEGATE_PROXY_PACKAGE, IDP_HEALTH_PACKAGE))
+                DELEGATE_PROXY_PACKAGE, IDP_HEALTH_PACKAGE, IDP_YAML_SCHEMA))
         .collect(Collectors.toSet());
   }
 }

@@ -19,6 +19,9 @@ import io.harness.beans.FeatureName;
 import io.harness.beans.plugin.compatible.PluginCompatibleStep;
 import io.harness.beans.steps.CIRegistry;
 import io.harness.beans.steps.CIStepInfoType;
+import io.harness.beans.steps.stepinfo.GitCloneStepInfo;
+import io.harness.beans.steps.stepinfo.IACMApprovalInfo;
+import io.harness.beans.steps.stepinfo.IACMTerraformPluginInfo;
 import io.harness.beans.steps.stepinfo.SecurityStepInfo;
 import io.harness.beans.steps.stepinfo.security.shared.STOGenericStepInfo;
 import io.harness.beans.sweepingoutputs.StageInfraDetails;
@@ -30,6 +33,7 @@ import io.harness.ci.config.StepImageConfig;
 import io.harness.ci.execution.execution.CIExecutionConfigService;
 import io.harness.ci.ff.CIFeatureFlagService;
 import io.harness.common.NGExpressionUtils;
+import io.harness.common.ParameterFieldHelper;
 import io.harness.delegate.beans.connector.ConnectorType;
 import io.harness.exception.ngexception.CIStageExecutionException;
 import io.harness.pms.contracts.ambiance.Ambiance;
@@ -37,6 +41,7 @@ import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.ssca.beans.stepinfo.ProvenanceStepInfo;
+import io.harness.ssca.beans.stepinfo.SlsaVerificationStepInfo;
 import io.harness.sto.config.STOImageConfig;
 import io.harness.sto.config.STOStepConfig;
 import io.harness.sto.utils.STOSettingsUtils;
@@ -74,6 +79,9 @@ public class CIStepInfoUtils {
     switch (step.getNonYamlInfo().getStepInfoType()) {
       case SECURITY:
         return ((SecurityStepInfo) step).getPrivileged();
+      case GIT_CLONE:
+        return ParameterField.createValueField(
+            ParameterFieldHelper.getBooleanParameterFieldValue(((GitCloneStepInfo) step).getPrivileged()));
       default:
         return null;
     }
@@ -205,6 +213,24 @@ public class CIStepInfoUtils {
     StepImageConfig defaultImageConfig = ciExecutionConfigService.getPluginVersionForK8(stepInfoType, accountId);
     if (stepInfoType == CIStepInfoType.SECURITY) {
       return getSecurityStepImageConfig(step, ciExecutionConfigService, defaultImageConfig);
+    } else if (stepInfoType == CIStepInfoType.IACM_TERRAFORM_PLUGIN) {
+      if (((IACMTerraformPluginInfo) step).getImage().getValue() != null
+          && isNotEmpty(((IACMTerraformPluginInfo) step).getImage().getValue())) {
+        return StepImageConfig.builder()
+            .image(((IACMTerraformPluginInfo) step).getImage().getValue())
+            .entrypoint(defaultImageConfig.getEntrypoint())
+            .windowsEntrypoint(defaultImageConfig.getWindowsEntrypoint())
+            .build();
+      }
+    } else if (stepInfoType == CIStepInfoType.IACM_APPROVAL) {
+      if (((IACMApprovalInfo) step).getImage().getValue() != null
+          && isNotEmpty(((IACMApprovalInfo) step).getImage().getValue())) {
+        return StepImageConfig.builder()
+            .image(((IACMApprovalInfo) step).getImage().getValue())
+            .entrypoint(defaultImageConfig.getEntrypoint())
+            .windowsEntrypoint(defaultImageConfig.getWindowsEntrypoint())
+            .build();
+      }
     }
     return defaultImageConfig;
   }
@@ -212,21 +238,42 @@ public class CIStepInfoUtils {
   private static CIStepInfoType getStepInfoType(PluginCompatibleStep step) {
     CIStepInfoType stepInfoType = step.getNonYamlInfo().getStepInfoType();
     if (stepInfoType == CIStepInfoType.PROVENANCE) {
-      ProvenanceStepInfo stepInfo = (ProvenanceStepInfo) step;
-      if (stepInfo.getSource() == null) {
-        throw new CIStageExecutionException("Provenance source is not provided to fetch image from.");
-      }
-      switch (stepInfo.getSource().getType()) {
-        case DOCKER:
-          return CIStepInfoType.PROVENANCE;
-        case GCR:
-          return CIStepInfoType.PROVENANCE_GCR;
-        default:
-          throw new CIStageExecutionException(
-              "Initialization not handled for provenance subtype of " + stepInfo.getSource().getType());
-      }
+      return getProvenanceStepInfoType((ProvenanceStepInfo) step);
+    }
+    if (stepInfoType == CIStepInfoType.SLSA_VERIFICATION) {
+      return getSlsaVerificationStepInfoType((SlsaVerificationStepInfo) step);
     }
     return stepInfoType;
+  }
+
+  private static CIStepInfoType getProvenanceStepInfoType(ProvenanceStepInfo stepInfo) {
+    if (stepInfo.getSource() == null) {
+      throw new CIStageExecutionException("Provenance source is not provided to fetch image from.");
+    }
+    switch (stepInfo.getSource().getType()) {
+      case DOCKER:
+        return CIStepInfoType.PROVENANCE;
+      case GCR:
+        return CIStepInfoType.PROVENANCE_GCR;
+      default:
+        throw new CIStageExecutionException(
+            "Initialization not handled for provenance subtype of " + stepInfo.getSource().getType());
+    }
+  }
+
+  private static CIStepInfoType getSlsaVerificationStepInfoType(SlsaVerificationStepInfo stepInfo) {
+    if (stepInfo.getSource() == null) {
+      throw new CIStageExecutionException("Slsa Verification source is not provided to fetch image from.");
+    }
+    switch (stepInfo.getSource().getType()) {
+      case DOCKER:
+        return CIStepInfoType.SLSA_VERIFICATION;
+      case GCR:
+        return CIStepInfoType.SLSA_VERIFICATION_GCR;
+      default:
+        throw new CIStageExecutionException(
+            "Initialization not handled for slsa verification subtype of " + stepInfo.getSource().getType());
+    }
   }
 
   private static String getVmPluginCustomStepImageConfig(

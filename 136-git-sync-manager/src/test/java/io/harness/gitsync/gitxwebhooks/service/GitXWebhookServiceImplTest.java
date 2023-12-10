@@ -20,11 +20,15 @@ import static org.mockito.Mockito.when;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.Scope;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InternalServerErrorException;
+import io.harness.exception.ScmBadRequestException;
+import io.harness.exception.WebhookException;
 import io.harness.gitsync.GitSyncTestBase;
+import io.harness.gitsync.caching.service.GitFileCacheService;
 import io.harness.gitsync.common.helper.GitRepoHelper;
-import io.harness.gitsync.common.helper.GitSyncConnectorHelper;
+import io.harness.gitsync.common.service.GitSyncConnectorService;
 import io.harness.gitsync.gitxwebhooks.dtos.CreateGitXWebhookRequestDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.CreateGitXWebhookResponseDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.DeleteGitXWebhookRequestDTO;
@@ -46,7 +50,6 @@ import io.harness.rule.Owner;
 
 import com.mongodb.client.result.DeleteResult;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.junit.Test;
@@ -61,8 +64,9 @@ public class GitXWebhookServiceImplTest extends GitSyncTestBase {
   @InjectMocks GitXWebhookServiceImpl gitXWebhookService;
   @Mock GitXWebhookRepository gitXWebhookRepository;
   @Mock GitRepoHelper gitRepoHelper;
-  @Mock GitSyncConnectorHelper gitSyncConnectorHelper;
+  @Mock GitSyncConnectorService gitSyncConnectorService;
   @Mock WebhookEventService webhookEventService;
+  @Mock GitFileCacheService gitFileCacheService;
 
   private static final String ACCOUNT_IDENTIFIER = "accountId";
   private static final String WEBHOOK_IDENTIFIER = "gitWebhook";
@@ -85,7 +89,7 @@ public class GitXWebhookServiceImplTest extends GitSyncTestBase {
   @Category(UnitTests.class)
   public void testCreateGitXWebhook() {
     CreateGitXWebhookRequestDTO createGitXWebhookRequestDTO = CreateGitXWebhookRequestDTO.builder()
-                                                                  .accountIdentifier(ACCOUNT_IDENTIFIER)
+                                                                  .scope(Scope.of(ACCOUNT_IDENTIFIER))
                                                                   .webhookIdentifier(WEBHOOK_IDENTIFIER)
                                                                   .webhookName(WEBHOOK_NAME)
                                                                   .connectorRef(CONNECTOR_REF)
@@ -116,7 +120,7 @@ public class GitXWebhookServiceImplTest extends GitSyncTestBase {
   @Category(UnitTests.class)
   public void testCreateGitXWebhookFailureCase() {
     CreateGitXWebhookRequestDTO createGitXWebhookRequestDTO = CreateGitXWebhookRequestDTO.builder()
-                                                                  .accountIdentifier(ACCOUNT_IDENTIFIER)
+                                                                  .scope(Scope.of(ACCOUNT_IDENTIFIER))
                                                                   .webhookIdentifier(WEBHOOK_IDENTIFIER)
                                                                   .webhookName(WEBHOOK_NAME)
                                                                   .connectorRef(CONNECTOR_REF)
@@ -131,6 +135,9 @@ public class GitXWebhookServiceImplTest extends GitSyncTestBase {
     when(webhookEventService.upsertWebhook(any())).thenReturn(upsertWebhookResponseDTO);
     assertThrows(
         InternalServerErrorException.class, () -> gitXWebhookService.createGitXWebhook(createGitXWebhookRequestDTO));
+
+    when(webhookEventService.upsertWebhook(any())).thenThrow(new ScmBadRequestException("Webhook failure"));
+    assertThrows(WebhookException.class, () -> gitXWebhookService.createGitXWebhook(createGitXWebhookRequestDTO));
   }
 
   @Test
@@ -138,7 +145,7 @@ public class GitXWebhookServiceImplTest extends GitSyncTestBase {
   @Category(UnitTests.class)
   public void testGetGitXWebhook() {
     GetGitXWebhookRequestDTO getGitXWebhookRequestDTO = GetGitXWebhookRequestDTO.builder()
-                                                            .accountIdentifier(ACCOUNT_IDENTIFIER)
+                                                            .scope(Scope.of(ACCOUNT_IDENTIFIER))
                                                             .webhookIdentifier(WEBHOOK_IDENTIFIER)
                                                             .build();
     GitXWebhook gitXWebhook = GitXWebhook.builder()
@@ -147,8 +154,7 @@ public class GitXWebhookServiceImplTest extends GitSyncTestBase {
                                   .repoName(REPO_NAME)
                                   .connectorRef(CONNECTOR_REF)
                                   .build();
-    when(gitXWebhookRepository.findByAccountIdentifierAndIdentifier(any(), any()))
-        .thenReturn(Arrays.asList(gitXWebhook));
+    when(gitXWebhookRepository.find(any())).thenReturn(gitXWebhook);
     Optional<GetGitXWebhookResponseDTO> getGitXWebhookResponseDTO =
         gitXWebhookService.getGitXWebhook(getGitXWebhookRequestDTO);
     assertTrue(getGitXWebhookResponseDTO.isPresent());
@@ -160,7 +166,7 @@ public class GitXWebhookServiceImplTest extends GitSyncTestBase {
   @Category(UnitTests.class)
   public void testGetGitXWebhookForFailure() {
     GetGitXWebhookRequestDTO getGitXWebhookRequestDTO = GetGitXWebhookRequestDTO.builder()
-                                                            .accountIdentifier(ACCOUNT_IDENTIFIER)
+                                                            .scope(Scope.of(ACCOUNT_IDENTIFIER))
                                                             .webhookIdentifier(WEBHOOK_IDENTIFIER)
                                                             .build();
     GitXWebhook gitXWebhook1 = GitXWebhook.builder()
@@ -188,7 +194,7 @@ public class GitXWebhookServiceImplTest extends GitSyncTestBase {
   public void testUpdateGitXWebhook() {
     UpdateGitXWebhookCriteriaDTO updateGitXWebhookCriteriaDTO = UpdateGitXWebhookCriteriaDTO.builder()
                                                                     .webhookIdentifier(WEBHOOK_IDENTIFIER)
-                                                                    .accountIdentifier(ACCOUNT_IDENTIFIER)
+                                                                    .scope(Scope.of(ACCOUNT_IDENTIFIER))
                                                                     .build();
     UpdateGitXWebhookRequestDTO updateGitXWebhookRequestDTO =
         UpdateGitXWebhookRequestDTO.builder().isEnabled(true).build();
@@ -212,7 +218,7 @@ public class GitXWebhookServiceImplTest extends GitSyncTestBase {
   public void testUpdateRepoGitXWebhook() {
     UpdateGitXWebhookCriteriaDTO updateGitXWebhookCriteriaDTO = UpdateGitXWebhookCriteriaDTO.builder()
                                                                     .webhookIdentifier(WEBHOOK_IDENTIFIER)
-                                                                    .accountIdentifier(ACCOUNT_IDENTIFIER)
+                                                                    .scope(Scope.of(ACCOUNT_IDENTIFIER))
                                                                     .build();
     UpdateGitXWebhookRequestDTO updateGitXWebhookRequestDTO =
         UpdateGitXWebhookRequestDTO.builder().repoName(REPO_NAME).connectorRef(CONNECTOR_REF).build();
@@ -242,11 +248,15 @@ public class GitXWebhookServiceImplTest extends GitSyncTestBase {
   public void testUpdateGitXWebhookFailure() {
     UpdateGitXWebhookCriteriaDTO updateGitXWebhookCriteriaDTO = UpdateGitXWebhookCriteriaDTO.builder()
                                                                     .webhookIdentifier(WEBHOOK_IDENTIFIER)
-                                                                    .accountIdentifier(ACCOUNT_IDENTIFIER)
+                                                                    .scope(Scope.of(ACCOUNT_IDENTIFIER))
                                                                     .build();
     UpdateGitXWebhookRequestDTO updateGitXWebhookRequestDTO =
-        UpdateGitXWebhookRequestDTO.builder().isEnabled(true).build();
+        UpdateGitXWebhookRequestDTO.builder().repoName("repo").connectorRef("connector").isEnabled(true).build();
     assertThrows(InternalServerErrorException.class,
+        () -> gitXWebhookService.updateGitXWebhook(updateGitXWebhookCriteriaDTO, updateGitXWebhookRequestDTO));
+
+    when(webhookEventService.upsertWebhook(any())).thenThrow(new ScmBadRequestException("Webhook failure"));
+    assertThrows(WebhookException.class,
         () -> gitXWebhookService.updateGitXWebhook(updateGitXWebhookCriteriaDTO, updateGitXWebhookRequestDTO));
   }
 
@@ -255,11 +265,15 @@ public class GitXWebhookServiceImplTest extends GitSyncTestBase {
   @Category(UnitTests.class)
   public void testDeleteGitXWebhook() {
     DeleteGitXWebhookRequestDTO deleteGitXWebhookRequestDTO = DeleteGitXWebhookRequestDTO.builder()
-                                                                  .accountIdentifier(ACCOUNT_IDENTIFIER)
+                                                                  .scope(Scope.of(ACCOUNT_IDENTIFIER))
                                                                   .webhookIdentifier(WEBHOOK_IDENTIFIER)
                                                                   .build();
     Criteria criteria = Criteria.where(GitXWebhookKeys.accountIdentifier)
                             .is(ACCOUNT_IDENTIFIER)
+                            .and(GitXWebhookKeys.orgIdentifier)
+                            .is(null)
+                            .and(GitXWebhookKeys.projectIdentifier)
+                            .is(null)
                             .and(GitXWebhookKeys.identifier)
                             .is(WEBHOOK_IDENTIFIER);
     when(gitXWebhookRepository.delete(criteria)).thenReturn(DeleteResult.acknowledged(1));
@@ -274,7 +288,7 @@ public class GitXWebhookServiceImplTest extends GitSyncTestBase {
   @Category(UnitTests.class)
   public void testDeleteGitXWebhookFailure() {
     DeleteGitXWebhookRequestDTO deleteGitXWebhookRequestDTO = DeleteGitXWebhookRequestDTO.builder()
-                                                                  .accountIdentifier(ACCOUNT_IDENTIFIER)
+                                                                  .scope(Scope.of(ACCOUNT_IDENTIFIER))
                                                                   .webhookIdentifier(WEBHOOK_IDENTIFIER)
                                                                   .build();
     Criteria criteria = Criteria.where(GitXWebhookKeys.accountIdentifier)
@@ -291,7 +305,7 @@ public class GitXWebhookServiceImplTest extends GitSyncTestBase {
   @Category(UnitTests.class)
   public void testListGitXWebhooks() {
     ListGitXWebhookRequestDTO listGitXWebhookRequestDTO =
-        ListGitXWebhookRequestDTO.builder().accountIdentifier(ACCOUNT_IDENTIFIER).build();
+        ListGitXWebhookRequestDTO.builder().scope(Scope.of(ACCOUNT_IDENTIFIER)).build();
     GitXWebhook gitXWebhook1 = GitXWebhook.builder()
                                    .accountIdentifier(ACCOUNT_IDENTIFIER)
                                    .identifier(WEBHOOK_IDENTIFIER)

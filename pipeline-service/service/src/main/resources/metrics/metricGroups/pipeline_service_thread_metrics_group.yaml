@@ -1,0 +1,5 @@
+name: Pipeline Service Thread Metrics Group
+identifier: PipelineServiceThreadMetricsGroup
+labels:
+  - namespace
+  - serviceName

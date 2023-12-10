@@ -20,6 +20,7 @@ import io.harness.cdng.aws.asg.AsgCanaryDeleteStepInfo;
 import io.harness.cdng.aws.asg.AsgCanaryDeployStepInfo;
 import io.harness.cdng.aws.asg.AsgRollingDeployStepInfo;
 import io.harness.cdng.aws.asg.AsgRollingRollbackStepInfo;
+import io.harness.cdng.aws.asg.AsgShiftTrafficStepInfo;
 import io.harness.cdng.aws.lambda.deploy.AwsLambdaDeployStepInfo;
 import io.harness.cdng.aws.lambda.rollback.AwsLambdaRollbackStepInfo;
 import io.harness.cdng.aws.sam.AwsSamBuildStepInfo;
@@ -30,6 +31,7 @@ import io.harness.cdng.azure.webapp.AzureWebAppSlotDeploymentStepInfo;
 import io.harness.cdng.azure.webapp.AzureWebAppSwapSlotStepInfo;
 import io.harness.cdng.azure.webapp.AzureWebAppTrafficShiftStepInfo;
 import io.harness.cdng.bamboo.BambooBuildStepInfo;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo;
 import io.harness.cdng.customDeployment.FetchInstanceScriptStepInfo;
 import io.harness.cdng.ecs.EcsBasicRollbackStepInfo;
 import io.harness.cdng.ecs.EcsBlueGreenCreateServiceStepInfo;
@@ -152,18 +154,19 @@ import io.swagger.annotations.ApiModel;
         TasCommandStepInfo.class, ElastigroupBGStageSetupStepInfo.class, ElastigroupSwapRouteStepInfo.class,
         TasAppResizeStepInfo.class, TasRollbackStepInfo.class, AsgRollingDeployStepInfo.class,
         AsgRollingRollbackStepInfo.class, AsgBlueGreenDeployStepInfo.class, AsgBlueGreenRollbackStepInfo.class,
-        TasRollingDeployStepInfo.class, TasRollingRollbackStepInfo.class, K8sDryRunManifestStepInfo.class,
-        AsgBlueGreenSwapServiceStepInfo.class, TerraformCloudRunStepInfo.class, TerraformCloudRollbackStepInfo.class,
-        GoogleFunctionsDeployStepInfo.class, GoogleFunctionsDeployWithoutTrafficStepInfo.class,
-        GoogleFunctionsTrafficShiftStepInfo.class, GoogleFunctionsRollbackStepInfo.class, AwsSamDeployStepInfo.class,
-        AwsSamBuildStepInfo.class, AwsLambdaDeployStepInfo.class, AwsSamRollbackStepInfo.class,
-        AwsLambdaRollbackStepInfo.class, BambooBuildStepInfo.class, TasRouteMappingStepInfo.class,
-        GoogleFunctionsGenOneDeployStep.class, GoogleFunctionsGenOneRollbackStep.class, K8sBGStageScaleDownStep.class,
+        AsgShiftTrafficStepInfo.class, TasRollingDeployStepInfo.class, TasRollingRollbackStepInfo.class,
+        K8sDryRunManifestStepInfo.class, AsgBlueGreenSwapServiceStepInfo.class, TerraformCloudRunStepInfo.class,
+        TerraformCloudRollbackStepInfo.class, GoogleFunctionsDeployStepInfo.class,
+        GoogleFunctionsDeployWithoutTrafficStepInfo.class, GoogleFunctionsTrafficShiftStepInfo.class,
+        GoogleFunctionsRollbackStepInfo.class, AwsSamDeployStepInfo.class, AwsSamBuildStepInfo.class,
+        AwsLambdaDeployStepInfo.class, AwsSamRollbackStepInfo.class, AwsLambdaRollbackStepInfo.class,
+        BambooBuildStepInfo.class, TasRouteMappingStepInfo.class, GoogleFunctionsGenOneDeployStep.class,
+        GoogleFunctionsGenOneRollbackStep.class, K8sBGStageScaleDownStep.class,
         ServerlessAwsLambdaPrepareRollbackV2StepInfo.class, ServerlessAwsLambdaDeployV2StepInfo.class,
         ServerlessAwsLambdaPackageV2StepInfo.class, ServerlessAwsLambdaRollbackV2StepInfo.class,
         AwsCdkBootstrapStepInfo.class, AwsCdkSynthStepInfo.class, AwsCdkDiffStepInfo.class, AwsCdkDeployStepInfo.class,
         AwsCdkDestroyStepInfo.class, AwsCdkRollbackStepInfo.class, EcsServiceSetupStepInfo.class,
-        EcsUpgradeContainerStepInfo.class, EcsBasicRollbackStepInfo.class})
+        EcsUpgradeContainerStepInfo.class, EcsBasicRollbackStepInfo.class, DownloadAwsS3StepInfo.class})
 
 @OwnedBy(HarnessTeam.CDC)
 // keeping this class because of the swagger annotation and UI dependency on it

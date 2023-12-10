@@ -63,6 +63,11 @@ public abstract class AbstractStaticSchemaParser implements SchemaParserInterfac
     }
   }
 
+  @Override
+  public JsonNode getRootSchemaJsonNode() {
+    return rootSchemaJsonNode;
+  }
+
   abstract IndividualSchemaGenContext getIndividualSchemaGenContext();
 
   boolean shouldInitParser() {
@@ -154,6 +159,11 @@ public abstract class AbstractStaticSchemaParser implements SchemaParserInterfac
     if (parentFieldNode == null) {
       // return dummy node
       return new ObjectNode(JsonNodeFactory.instance);
+    }
+    // if the input-field is directly in the node yaml(parallel to spec) then parentFieldNode properties should have
+    // that field. Else find the field in the spec.
+    if (parentFieldNode.has(PROPERTIES_NODE) && parentFieldNode.get(PROPERTIES_NODE).has(fieldName)) {
+      return parentFieldNode.get(PROPERTIES_NODE).get(fieldName);
     }
     JsonNode allOfNode = JsonFieldUtils.getFieldNode(parentFieldNode, "allOf");
     JsonNode specNode = JsonFieldUtils.getFieldNode(allOfNode, "spec");

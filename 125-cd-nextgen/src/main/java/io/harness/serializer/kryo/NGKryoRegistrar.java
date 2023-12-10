@@ -96,6 +96,7 @@ import io.harness.cdng.manifest.steps.ManifestStepParameters;
 import io.harness.cdng.manifest.yaml.InlineStoreConfig;
 import io.harness.cdng.pipeline.PipelineInfrastructure;
 import io.harness.cdng.pipeline.beans.DeploymentStageStepParameters;
+import io.harness.cdng.pipeline.beans.DeploymentStageStepParametersV1;
 import io.harness.cdng.pipeline.beans.RollbackNode;
 import io.harness.cdng.pipeline.beans.RollbackOptionalChildChainStepParameters;
 import io.harness.cdng.pipeline.executions.CDAccountExecutionMetadata;
@@ -147,6 +148,7 @@ import io.harness.cdng.tas.TasSwapRollbackStepInfo;
 import io.harness.cdng.tas.TasSwapRollbackStepParameters;
 import io.harness.cdng.tas.TasSwapRoutesStepInfo;
 import io.harness.cdng.tas.TasSwapRoutesStepParameters;
+import io.harness.cdng.tas.beans.ArtifactBundleFetchResponsePassThroughData;
 import io.harness.cdng.tasks.manifestFetch.step.ManifestFetchOutcome;
 import io.harness.cdng.tasks.manifestFetch.step.ManifestFetchParameters;
 import io.harness.gitops.models.Application;
@@ -189,6 +191,7 @@ public class NGKryoRegistrar implements KryoRegistrar {
     kryo.register(K8sRollingStepParameters.class, 8052);
     kryo.register(ManifestFetchParameters.class, 8053);
     kryo.register(K8sStepPassThroughData.class, 8056);
+    kryo.register(DeploymentStageStepParametersV1.class, 8080);
 
     // Starting using 8100 series
     kryo.register(PipelineInfrastructure.class, 8101);
@@ -321,5 +324,6 @@ public class NGKryoRegistrar implements KryoRegistrar {
 
     kryo.register(K8sBGStageScaleDownStepInfo.class, 12647);
     kryo.register(K8sBGStageScaleDownStepParameters.class, 12648);
+    kryo.register(ArtifactBundleFetchResponsePassThroughData.class, 12649);
   }
 }

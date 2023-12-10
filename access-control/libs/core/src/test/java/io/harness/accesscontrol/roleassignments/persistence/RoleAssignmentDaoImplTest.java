@@ -265,9 +265,9 @@ public class RoleAssignmentDaoImplTest extends AccessControlCoreTestBase {
   @Category(UnitTests.class)
   public void testDeleteMulti() {
     RoleAssignmentFilter roleAssignmentFilter = RoleAssignmentFilter.builder().build();
-    when(roleAssignmentRepository.deleteMulti(any())).thenReturn(17L);
-    long result = roleAssignmentDao.deleteMulti(roleAssignmentFilter);
-    assertEquals(17L, result);
+    when(roleAssignmentRepository.findAndRemove(any())).thenReturn(List.of(RoleAssignmentDBO.builder().build()));
+    long result = roleAssignmentDao.findAndRemove(roleAssignmentFilter).size();
+    assertEquals(1L, result);
   }
 
   @Test
@@ -277,16 +277,16 @@ public class RoleAssignmentDaoImplTest extends AccessControlCoreTestBase {
     RoleAssignmentFilter roleAssignmentFilter = getRoleAssignmentFilter(false);
     RoleAssignmentFilter roleAssignmentFilterClone = (RoleAssignmentFilter) HObjectMapper.clone(roleAssignmentFilter);
     ArgumentCaptor<Criteria> criteriaArgumentCaptor = ArgumentCaptor.forClass(Criteria.class);
-    when(roleAssignmentRepository.deleteMulti(any())).thenReturn(0L);
-    roleAssignmentDao.deleteMulti(roleAssignmentFilter);
-    verify(roleAssignmentRepository, times(1)).deleteMulti(criteriaArgumentCaptor.capture());
+    when(roleAssignmentRepository.findAndRemove(any())).thenReturn(emptyList());
+    roleAssignmentDao.findAndRemove(roleAssignmentFilter);
+    verify(roleAssignmentRepository, times(1)).findAndRemove(criteriaArgumentCaptor.capture());
     assertFilterCriteria(roleAssignmentFilterClone, criteriaArgumentCaptor);
 
     roleAssignmentFilter = getRoleAssignmentFilter(true);
     roleAssignmentFilterClone = (RoleAssignmentFilter) HObjectMapper.clone(roleAssignmentFilter);
     criteriaArgumentCaptor = ArgumentCaptor.forClass(Criteria.class);
-    roleAssignmentDao.deleteMulti(roleAssignmentFilter);
-    verify(roleAssignmentRepository, times(2)).deleteMulti(criteriaArgumentCaptor.capture());
+    roleAssignmentDao.findAndRemove(roleAssignmentFilter);
+    verify(roleAssignmentRepository, times(2)).findAndRemove(criteriaArgumentCaptor.capture());
     assertFilterCriteria(roleAssignmentFilterClone, criteriaArgumentCaptor);
   }
 
@@ -323,9 +323,16 @@ public class RoleAssignmentDaoImplTest extends AccessControlCoreTestBase {
     assertEquals(2, document.size());
     if (roleAssignmentFilter.isIncludeChildScopes()) {
       BasicDBList orList = (BasicDBList) document.get("$or");
+
       Document scopeCriteria = (Document) orList.get(0);
-      Pattern pattern = (Pattern) scopeCriteria.get(RoleAssignmentDBOKeys.scopeIdentifier);
-      assertEquals("^" + roleAssignmentFilter.getScopeFilter(), pattern.toString());
+      BasicDBList orScopeIdentifierList = (BasicDBList) scopeCriteria.get("$or");
+
+      Document scopeCriteria1 = (Document) orScopeIdentifierList.get(0);
+      assertEquals(roleAssignmentFilter.getScopeFilter(), scopeCriteria1.get(RoleAssignmentDBOKeys.scopeIdentifier));
+
+      Document scopeCriteria2 = (Document) orScopeIdentifierList.get(1);
+      Pattern pattern = (Pattern) scopeCriteria2.get(RoleAssignmentDBOKeys.scopeIdentifier);
+      assertEquals("^" + roleAssignmentFilter.getScopeFilter() + "/", pattern.toString());
     } else {
       BasicDBList orList = (BasicDBList) document.get("$or");
       Document scopeCriteria = (Document) orList.get(0);

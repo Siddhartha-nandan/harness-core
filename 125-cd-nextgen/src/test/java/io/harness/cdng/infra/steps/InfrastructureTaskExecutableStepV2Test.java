@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -88,10 +89,12 @@ import io.harness.encryption.Scope;
 import io.harness.encryption.SecretRefData;
 import io.harness.exception.AccessDeniedException;
 import io.harness.exception.InvalidRequestException;
+import io.harness.gitsync.beans.StoreType;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.UnitStatus;
 import io.harness.logstreaming.NGLogCallback;
 import io.harness.ng.core.entitydetail.EntityDetailProtoToRestMapper;
+import io.harness.ng.core.environment.services.EnvironmentService;
 import io.harness.ng.core.infrastructure.InfrastructureKind;
 import io.harness.ng.core.infrastructure.InfrastructureType;
 import io.harness.ng.core.infrastructure.entity.InfrastructureEntity;
@@ -183,7 +186,8 @@ public class InfrastructureTaskExecutableStepV2Test extends CategoryTest {
 
   @Mock private DelegateGrpcClientWrapper delegateGrpcClientWrapper;
   @Mock private NGFeatureFlagHelperService ngFeatureFlagHelperService;
-  @InjectMocks private InfrastructureTaskExecutableStepV2 step = new InfrastructureTaskExecutableStepV2();
+  @Mock private EnvironmentService environmentService;
+  @Spy @InjectMocks private InfrastructureTaskExecutableStepV2 step = new InfrastructureTaskExecutableStepV2();
   private AutoCloseable mocks;
 
   private final Ambiance ambiance = buildAmbiance();
@@ -228,6 +232,13 @@ public class InfrastructureTaskExecutableStepV2Test extends CategoryTest {
     doCallRealMethod()
         .when(cdStepHelper)
         .mapTaskRequestToDelegateTaskRequest(any(), any(), anySet(), anyString(), anyBoolean());
+    doCallRealMethod()
+        .when(cdStepHelper)
+        .mapTaskRequestToDelegateTaskRequest(any(), any(), anyList(), anyString(), anyBoolean());
+
+    doReturn(Optional.of(InfrastructureEntity.builder().storeType(StoreType.INLINE).build()))
+        .when(infrastructureEntityService)
+        .getMetadata(anyString(), anyString(), anyString(), anyString(), anyString());
   }
 
   @After
@@ -431,7 +442,7 @@ public class InfrastructureTaskExecutableStepV2Test extends CategoryTest {
             .build())
         .when(cdStepHelper)
         .getSshInfraDelegateConfig(any(InfrastructureOutcome.class), any(Ambiance.class));
-    when(infrastructureOutcomeProvider.getOutcome(any(), any(), any(), any(), any(), any(), any(), anyMap()))
+    when(infrastructureOutcomeProvider.getOutcome(any(), any(), any(), any(), any(), any(), any(), anyMap(), any()))
         .thenReturn(SshWinRmAwsInfrastructureOutcome.builder()
                         .connectorRef("awsconnector")
                         .hostConnectionType("PrivateIP")
@@ -479,7 +490,7 @@ public class InfrastructureTaskExecutableStepV2Test extends CategoryTest {
         .getSshInfraDelegateConfig(any(InfrastructureOutcome.class), any(Ambiance.class));
 
     mockInfra(azureInfra);
-    when(infrastructureOutcomeProvider.getOutcome(any(), any(), any(), any(), any(), any(), any(), anyMap()))
+    when(infrastructureOutcomeProvider.getOutcome(any(), any(), any(), any(), any(), any(), any(), anyMap(), any()))
         .thenReturn(SshWinRmAzureInfrastructureOutcome.builder()
                         .connectorRef("azureconnector")
                         .subscriptionId("dev-subscription")

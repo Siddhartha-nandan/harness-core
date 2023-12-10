@@ -8,14 +8,19 @@
 package io.harness.pms.plan.execution;
 
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
+import static io.harness.beans.FeatureName.CDS_METHOD_INVOCATION_NEW_FLOW_EXPRESSION_ENGINE;
 import static io.harness.beans.FeatureName.CDS_NG_BARRIER_STEPS_WITHIN_LOOPING_STRATEGIES;
+import static io.harness.beans.FeatureName.CDS_REMOVE_RESUME_EVENT_FOR_ASYNC_AND_ASYNCCHAIN_MODE;
+import static io.harness.beans.FeatureName.CDS_USE_AMBIANCE_IN_EXPRESSION_ENGINE;
 import static io.harness.beans.FeatureName.PIE_EXPRESSION_CONCATENATION;
 import static io.harness.beans.FeatureName.PIE_EXPRESSION_DISABLE_COMPLEX_JSON_SUPPORT;
+import static io.harness.beans.FeatureName.PIE_SECRETS_OBSERVER;
 import static io.harness.beans.FeatureName.PIE_SIMPLIFY_LOG_BASE_KEY;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.gitcaching.GitCachingConstants.BOOLEAN_FALSE_VALUE;
+import static io.harness.ngsettings.SettingIdentifiers.SKIP_FAIL_FAST_VALIDATION_CHECKS_FOR_PIPELINE_EXECUTE;
 import static io.harness.pms.contracts.plan.TriggerType.MANUAL;
 import static io.harness.utils.ExecutionModeUtils.isRollbackMode;
 
@@ -66,6 +71,7 @@ import io.harness.pms.contracts.plan.PlanCreationBlobResponse;
 import io.harness.pms.contracts.plan.RerunInfo;
 import io.harness.pms.contracts.plan.RetryExecutionInfo;
 import io.harness.pms.exception.PmsExceptionUtils;
+import io.harness.pms.expression.helper.InputSetMergeHelperV1;
 import io.harness.pms.gitsync.PmsGitSyncHelper;
 import io.harness.pms.helpers.PrincipalInfoHelper;
 import io.harness.pms.helpers.TriggeredByHelper;
@@ -94,9 +100,6 @@ import io.harness.pms.plan.execution.beans.ProcessStageExecutionInfoResult;
 import io.harness.pms.plan.execution.beans.StagesExecutionInfo;
 import io.harness.pms.plan.execution.beans.dto.ChildExecutionDetailDTO;
 import io.harness.pms.plan.execution.beans.dto.PipelineExecutionDetailDTO;
-import io.harness.pms.plan.execution.helpers.InputSetMergeHelperV1;
-import io.harness.pms.plan.execution.preprocess.PipelinePreprocessor;
-import io.harness.pms.plan.execution.preprocess.PipelinePreprocessorFactory;
 import io.harness.pms.plan.execution.service.PMSExecutionService;
 import io.harness.pms.rbac.PipelineRbacPermissions;
 import io.harness.pms.rbac.validator.PipelineRbacService;
@@ -105,6 +108,7 @@ import io.harness.pms.utils.NGPipelineSettingsConstant;
 import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlUtils;
+import io.harness.pms.yaml.preprocess.YamlPreProcessorFactory;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.repositories.executions.PmsExecutionSummaryRepository;
 import io.harness.template.yaml.TemplateRefHelper;
@@ -166,11 +170,12 @@ public class ExecutionHelper {
   NodeExecutionService nodeExecutionService;
   RollbackModeExecutionHelper rollbackModeExecutionHelper;
   RollbackGraphGenerator rollbackGraphGenerator;
-  PipelinePreprocessorFactory pipelinePreprocessorFactory;
+  YamlPreProcessorFactory yamlPreProcessorFactory;
   // Add all FFs to this list that we want to use during pipeline execution
-  public final List<FeatureName> featureNames =
-      List.of(PIE_EXPRESSION_CONCATENATION, PIE_EXPRESSION_DISABLE_COMPLEX_JSON_SUPPORT, PIE_SIMPLIFY_LOG_BASE_KEY,
-          CDS_NG_BARRIER_STEPS_WITHIN_LOOPING_STRATEGIES);
+  public final List<FeatureName> featureNames = List.of(PIE_EXPRESSION_CONCATENATION,
+      PIE_EXPRESSION_DISABLE_COMPLEX_JSON_SUPPORT, PIE_SIMPLIFY_LOG_BASE_KEY,
+      CDS_NG_BARRIER_STEPS_WITHIN_LOOPING_STRATEGIES, CDS_REMOVE_RESUME_EVENT_FOR_ASYNC_AND_ASYNCCHAIN_MODE,
+      PIE_SECRETS_OBSERVER, CDS_METHOD_INVOCATION_NEW_FLOW_EXPRESSION_ENGINE, CDS_USE_AMBIANCE_IN_EXPRESSION_ENGINE);
   public static final String PMS_EXECUTION_SETTINGS_GROUP_IDENTIFIER = "pms_execution_settings";
 
   public PipelineEntity fetchPipelineEntity(@NotNull String accountId, @NotNull String orgIdentifier,
@@ -254,9 +259,13 @@ public class ExecutionHelper {
       String pipelineYamlWithTemplateRef = pipelineMetadataInternalDTO.getPipelineYamlWithTemplateRef();
       List<NotificationRules> notificationRules = new ArrayList<>();
       boolean allowedStageExecution = false;
-      if (basicPipeline != null) {
-        notificationRules = basicPipeline.getNotificationRules();
-        allowedStageExecution = pipelineMetadataInternalDTO.getBasicPipeline().isAllowStageExecutions();
+      if (HarnessYamlVersion.V0.equals(pipelineEntity.getHarnessVersion())) {
+        if (basicPipeline != null) {
+          notificationRules = basicPipeline.getNotificationRules();
+          allowedStageExecution = pipelineMetadataInternalDTO.getBasicPipeline().isAllowStageExecutions();
+        }
+      } else {
+        allowedStageExecution = true;
       }
 
       // TODO(Shalini): Change these methods to use jsonNode instead of yaml in processing.
@@ -312,10 +321,9 @@ public class ExecutionHelper {
       case HarnessYamlVersion.V1:
         pipelineYaml = InputSetMergeHelperV1.mergeInputSetIntoPipelineYaml(
             mergedRuntimeInputJsonNode, YamlUtils.readAsJsonNode(pipelineEntity.getYaml()));
-        PipelinePreprocessor preprocessor = pipelinePreprocessorFactory.getProcessorInstance(HarnessYamlVersion.V1);
-        if (preprocessor != null) {
-          pipelineYaml = preprocessor.preProcess(pipelineYaml);
-        }
+        // Adds ids in all the stages and steps where it doesn't already exists
+        // For templates, the ids will be added by template service during template resolution
+        pipelineYaml = pmsPipelineServiceHelper.preProcessPipelineYaml(pipelineYaml);
         pipelineYamlWithTemplateRef = pipelineYaml;
         templateMergeResponseDTO = getPipelineYamlAndValidateStaticallyReferredEntities(
             YamlUtils.readAsJsonNode(pipelineYaml), pipelineEntity, System.currentTimeMillis());
@@ -345,11 +353,14 @@ public class ExecutionHelper {
       RetryExecutionInfo retryExecutionInfo) throws Exception {
     Builder planExecutionMetadataBuilder = obtainPlanExecutionMetadata(mergedRuntimeInputYaml, executionId,
         stagesExecutionInfo, originalExecutionId, retryExecutionParameters, notifyOnlyUser, notes, pipelineEntity);
-    if (stagesExecutionInfo.isStagesExecution()) {
-      pipelineEnforcementService.validateExecutionEnforcementsBasedOnStage(pipelineEntity.getAccountId(),
-          YamlUtils.extractPipelineField(planExecutionMetadataBuilder.build().getProcessedYaml()));
-    } else {
-      pipelineEnforcementService.validateExecutionEnforcementsBasedOnStage(pipelineEntity);
+    // TODO - @utkarsh @brijesh - CDS-85458 - Add Enforcement Check for V1 Pipelines
+    if (HarnessYamlVersion.V0.equals(pipelineEntity.getHarnessVersion())) {
+      if (stagesExecutionInfo.isStagesExecution()) {
+        pipelineEnforcementService.validateExecutionEnforcementsBasedOnStage(pipelineEntity.getAccountId(),
+            YamlUtils.extractPipelineField(planExecutionMetadataBuilder.build().getProcessedYaml()));
+      } else {
+        pipelineEnforcementService.validateExecutionEnforcementsBasedOnStage(pipelineEntity);
+      }
     }
 
     String branch = GitAwareContextHelper.getBranchInRequestOrFromSCMGitMetadata();
@@ -376,13 +387,10 @@ public class ExecutionHelper {
     in pipelineYamlJsonNode will be 12h.allowedValues(12h, 1d) for validation during execution. However, this value will
     give an error in schema validation. That's why we need a value that doesn't have this validator appended.
      */
-    // We don't have schema validation for V1 yaml as of now.
-    if (HarnessYamlVersion.V0.equals(pipelineEntity.getHarnessVersion())) {
-      JsonNode jsonNodeForValidatingSchema =
-          getPipelineYamlWithUnResolvedTemplates(mergedRuntimeInputJsonNode, pipelineEntity);
-      pmsYamlSchemaService.validateYamlSchema(pipelineEntity.getAccountId(), pipelineEntity.getOrgIdentifier(),
-          pipelineEntity.getProjectIdentifier(), jsonNodeForValidatingSchema);
-    }
+    JsonNode jsonNodeForValidatingSchema =
+        getPipelineYamlWithUnResolvedTemplates(mergedRuntimeInputJsonNode, pipelineEntity);
+    pmsYamlSchemaService.validateYamlSchema(pipelineEntity.getAccountId(), pipelineEntity.getOrgIdentifier(),
+        pipelineEntity.getProjectIdentifier(), jsonNodeForValidatingSchema, pipelineEntity.getHarnessVersion());
   }
 
   private ExecutionMetadata buildExecutionMetadata(@NotNull String pipelineIdentifier, String moduleType,
@@ -429,8 +437,9 @@ public class ExecutionHelper {
       in pipelineJsonNode will be 12h.allowedValues(12h, 1d) for validation during execution. However, this value will
       give an error in schema validation. That's why we need a value that doesn't have this validator appended.
        */
-      pipelineJsonNodeForSchemaValidations = MergeHelper.mergeRuntimeInputValuesIntoOriginalJsonNode(
-          YamlUtils.readAsJsonNode(pipelineEntity.getYaml()), mergedRuntimeInputJsonNode, false);
+      pipelineJsonNodeForSchemaValidations =
+          MergeHelper.mergeRuntimeInputValuesIntoOriginalJsonNode(YamlUtils.readAsJsonNode(pipelineEntity.getYaml()),
+              Collections.singletonList(mergedRuntimeInputJsonNode), false);
     }
     pipelineJsonNodeForSchemaValidations = InputSetSanitizer.trimValues(pipelineJsonNodeForSchemaValidations);
     return pipelineJsonNodeForSchemaValidations;
@@ -450,6 +459,19 @@ public class ExecutionHelper {
           pipelineEntityJsonNode, mergedRuntimeInputJsonNode, true, true);
     }
     return getPipelineYamlAndValidateStaticallyReferredEntities(pipelineJsonNode, pipelineEntity, start);
+  }
+  public boolean isSkipFailFastValidationEnabled(PipelineEntity pipelineEntity) {
+    String isSkipFailFastValidationEnabled = "false";
+    try {
+      isSkipFailFastValidationEnabled =
+          NGRestUtils
+              .getResponse(settingsClient.getSetting(
+                  SKIP_FAIL_FAST_VALIDATION_CHECKS_FOR_PIPELINE_EXECUTE, pipelineEntity.getAccountId(), null, null))
+              .getValue();
+    } catch (Exception ex) {
+      log.error("Failed to fetch setting value for {}", SKIP_FAIL_FAST_VALIDATION_CHECKS_FOR_PIPELINE_EXECUTE, ex);
+    }
+    return Boolean.TRUE.equals(Boolean.valueOf(isSkipFailFastValidationEnabled));
   }
 
   TemplateMergeResponseDTO getPipelineYamlAndValidateStaticallyReferredEntities(
@@ -474,7 +496,8 @@ public class ExecutionHelper {
           : templateMergeResponseDTO.getMergedPipelineYamlWithTemplateRef();
       processedYamlVersion = templateMergeResponseDTO.getProcessedYamlVersion();
     }
-    if (pipelineEntity.getStoreType() == null || pipelineEntity.getStoreType() == StoreType.INLINE) {
+    if ((pipelineEntity.getStoreType() == null || pipelineEntity.getStoreType() == StoreType.INLINE)
+        && !isSkipFailFastValidationEnabled(pipelineEntity)) {
       // For REMOTE Pipelines, entity setup usage framework cannot be relied upon. That is because the setup usages can
       // be outdated wrt the YAML we find on Git during execution. This means the fail fast approach that we have for
       // RBAC checks can't be provided for remote pipelines

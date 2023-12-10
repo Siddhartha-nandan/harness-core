@@ -36,6 +36,7 @@ import io.harness.eraro.ResponseMessage;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.WingsException;
 import io.harness.licensing.beans.modules.AccountLicenseDTO;
+import io.harness.licensing.beans.modules.DeveloperMappingDTO;
 import io.harness.licensing.beans.modules.ModuleLicenseDTO;
 import io.harness.licensing.beans.modules.SMPEncLicenseDTO;
 import io.harness.licensing.beans.modules.SMPLicenseRequestDTO;
@@ -377,6 +378,33 @@ public class AccountResource {
         accountService.updateCrossGenerationAccessEnabled(accountId, isCrossGenerationAccessEnabled, false));
   }
 
+  @PUT
+  @Path("{accountId}/canny-username-abbreviation-enabled")
+  @Timed
+  @ExceptionMetered
+  public RestResponse<Account> updateCannyUsernameAbbreviationEnabled(
+      @PathParam("accountId") @NotEmpty String accountId,
+      @QueryParam("clientAccountId") @NotNull String clientAccountId,
+      @QueryParam("cannyUsernameAbbreviationEnabled") @DefaultValue(
+          "false") boolean isCannyUsernameAbbreviationEnabled) {
+    User existingUser = UserThreadLocal.get();
+    if (existingUser == null) {
+      throw new InvalidRequestException("Invalid User");
+    }
+
+    if (harnessUserGroupService.isHarnessSupportUser(existingUser.getUuid())) {
+      return new RestResponse<>(
+          accountService.updateCannyUsernameAbbreviationEnabled(clientAccountId, isCannyUsernameAbbreviationEnabled));
+    } else {
+      return RestResponse.Builder.aRestResponse()
+          .withResponseMessages(Lists.newArrayList(
+              ResponseMessage.builder()
+                  .message("User not allowed to update account isCannyUsernameAbbreviationEnabled field")
+                  .build()))
+          .build();
+    }
+  }
+
   @POST
   @Path("/createSampleApplication")
   @Timed
@@ -708,9 +736,89 @@ public class AccountResource {
   }
 
   @POST
+  @Path("{accountId}/ng/developer-license-mapping")
+  public RestResponse<DeveloperMappingDTO> createDeveloperMapping(@PathParam("accountId") String accountId,
+      @QueryParam("clientAccountId") @NotNull String clientAccountId, @Body DeveloperMappingDTO developerMappingDTO) {
+    validateAccountExistence(clientAccountId);
+    User existingUser = UserThreadLocal.get();
+    if (existingUser == null) {
+      throw new InvalidRequestException("Invalid User");
+    }
+    if (harnessUserGroupService.isHarnessSupportUser(existingUser.getUuid())) {
+      return new RestResponse<>(
+          getResponse(adminLicenseHttpClient.createDeveloperMapping(clientAccountId, developerMappingDTO)));
+    } else {
+      return RestResponse.Builder.aRestResponse()
+          .withResponseMessages(Lists.newArrayList(
+              ResponseMessage.builder().message("User not allowed to create developer mapping").build()))
+          .build();
+    }
+  }
+
+  @GET
+  @Path("{accountId}/ng/developer-license-mapping")
+  public RestResponse<List<DeveloperMappingDTO>> getDeveloperMapping(
+      @PathParam("accountId") String accountId, @QueryParam("clientAccountId") @NotNull String clientAccountId) {
+    validateAccountExistence(clientAccountId);
+    User existingUser = UserThreadLocal.get();
+    if (existingUser == null) {
+      throw new InvalidRequestException("Invalid User");
+    }
+    if (harnessUserGroupService.isHarnessSupportUser(existingUser.getUuid())) {
+      return new RestResponse<>(getResponse(adminLicenseHttpClient.getDeveloperMapping(clientAccountId)));
+    } else {
+      return RestResponse.Builder.aRestResponse()
+          .withResponseMessages(Lists.newArrayList(
+              ResponseMessage.builder().message("User not allowed to get developer mapping").build()))
+          .build();
+    }
+  }
+
+  @PUT
+  @Path("{accountId}/ng/developer-license-mapping")
+  public RestResponse<DeveloperMappingDTO> updateDeveloperMapping(@PathParam("accountId") String accountId,
+      @QueryParam("clientAccountId") @NotNull String clientAccountId, @Body DeveloperMappingDTO developerMappingDTO) {
+    validateAccountExistence(clientAccountId);
+    User existingUser = UserThreadLocal.get();
+    if (existingUser == null) {
+      throw new InvalidRequestException("Invalid User");
+    }
+
+    if (harnessUserGroupService.isHarnessSupportUser(existingUser.getUuid())) {
+      return new RestResponse<>(
+          getResponse(adminLicenseHttpClient.updateDeveloperMapping(clientAccountId, developerMappingDTO)));
+    } else {
+      return RestResponse.Builder.aRestResponse()
+          .withResponseMessages(Lists.newArrayList(
+              ResponseMessage.builder().message("User not allowed to update developer mapping").build()))
+          .build();
+    }
+  }
+
+  @DELETE
+  @Path("{accountId}/ng/developer-license-mapping")
+  public RestResponse<Void> deleteDeveloperMapping(
+      @PathParam("accountId") String accountId, @QueryParam("developerMappingId") String developerMappingId) {
+    User existingUser = UserThreadLocal.get();
+    if (existingUser == null) {
+      throw new InvalidRequestException("Invalid User");
+    }
+
+    if (harnessUserGroupService.isHarnessSupportUser(existingUser.getUuid())) {
+      return new RestResponse<>(getResponse(adminLicenseHttpClient.deleteDeveloperMapping(developerMappingId)));
+    } else {
+      return RestResponse.Builder.aRestResponse()
+          .withResponseMessages(Lists.newArrayList(
+              ResponseMessage.builder().message("User not allowed to delete developer mapping").build()))
+          .build();
+    }
+  }
+
+  @POST
   @Path("{accountId}/ng/credit")
   public RestResponse<CreditDTO> createNgCredit(@PathParam("accountId") String accountId,
       @QueryParam("clientAccountId") @NotNull String clientAccountId, @Body CreditDTO creditDTO) {
+    validateAccountExistence(clientAccountId);
     User existingUser = UserThreadLocal.get();
     if (existingUser == null) {
       throw new InvalidRequestException("Invalid User");
@@ -730,6 +838,7 @@ public class AccountResource {
   @Path("{accountId}/ng/credit")
   public RestResponse<List<CreditDTO>> getNgAccountCredit(
       @PathParam("accountId") String accountId, @QueryParam("clientAccountId") @NotNull String clientAccountId) {
+    validateAccountExistence(clientAccountId);
     User existingUser = UserThreadLocal.get();
     if (existingUser == null) {
       throw new InvalidRequestException("Invalid User");
@@ -741,6 +850,45 @@ public class AccountResource {
       return RestResponse.Builder.aRestResponse()
           .withResponseMessages(
               Lists.newArrayList(ResponseMessage.builder().message("User not allowed to query credits").build()))
+          .build();
+    }
+  }
+
+  @PUT
+  @Path("{accountId}/ng/credit")
+  public RestResponse<CreditDTO> updateNgCredit(@PathParam("accountId") String accountId,
+      @QueryParam("clientAccountId") @NotNull String clientAccountId, @Body CreditDTO creditDTO) {
+    validateAccountExistence(clientAccountId);
+    User existingUser = UserThreadLocal.get();
+    if (existingUser == null) {
+      throw new InvalidRequestException("Invalid User");
+    }
+
+    if (harnessUserGroupService.isHarnessSupportUser(existingUser.getUuid())) {
+      return new RestResponse<>(getResponse(adminCreditHttpClient.updateAccountCredit(clientAccountId, creditDTO)));
+    } else {
+      return RestResponse.Builder.aRestResponse()
+          .withResponseMessages(
+              Lists.newArrayList(ResponseMessage.builder().message("User not allowed to update credit").build()))
+          .build();
+    }
+  }
+
+  @DELETE
+  @Path("{accountId}/ng/credit/{creditId}")
+  public RestResponse<Void> deleteNgCredit(@PathParam("accountId") String accountId,
+      @PathParam("creditId") String creditId, @QueryParam("clientAccountId") @NotNull String clientAccountId) {
+    validateAccountExistence(clientAccountId);
+    User existingUser = UserThreadLocal.get();
+    if (existingUser == null) {
+      throw new InvalidRequestException("Invalid User");
+    }
+    if (harnessUserGroupService.isHarnessSupportUser(existingUser.getUuid())) {
+      return new RestResponse<>(getResponse(adminCreditHttpClient.deleteAccountCredit(creditId, clientAccountId)));
+    } else {
+      return RestResponse.Builder.aRestResponse()
+          .withResponseMessages(
+              Lists.newArrayList(ResponseMessage.builder().message("User not allowed to delete credit").build()))
           .build();
     }
   }
@@ -847,6 +995,15 @@ public class AccountResource {
           .withResponseMessages(
               Lists.newArrayList(ResponseMessage.builder().message("User not allowed to schedule jobs").build()))
           .build();
+    }
+  }
+
+  private void validateAccountExistence(String accountIdentifier) {
+    try {
+      accountService.get(accountIdentifier);
+    } catch (Exception ex) {
+      log.error(ex.getMessage(), ex);
+      throw ex;
     }
   }
 }

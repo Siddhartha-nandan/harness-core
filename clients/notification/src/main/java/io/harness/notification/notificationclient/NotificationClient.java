@@ -9,8 +9,10 @@ package io.harness.notification.notificationclient;
 
 import io.harness.delegate.beans.NotificationTaskResponse;
 import io.harness.ng.core.dto.ResponseDTO;
+import io.harness.notification.NotificationTriggerRequest;
 import io.harness.notification.Team;
 import io.harness.notification.channeldetails.NotificationChannel;
+import io.harness.notification.model.NotificationRuleReferenceDTO;
 import io.harness.notification.remote.dto.EmailDTO;
 import io.harness.notification.remote.dto.NotificationSettingDTO;
 import io.harness.notification.remote.dto.TemplateDTO;
@@ -22,8 +24,18 @@ import retrofit2.Response;
 
 public interface NotificationClient {
   NotificationResult sendNotificationAsync(NotificationChannel notificationChannel);
+  Response<ResponseDTO<NotificationTaskResponse>> sendNotificationSync(NotificationChannel notificationChannel)
+      throws IOException;
+
   List<NotificationResult> sendBulkNotificationAsync(List<NotificationChannel> notificationChannels);
   boolean testNotificationChannel(NotificationSettingDTO notificationSettingDTO);
   TemplateDTO saveNotificationTemplate(Team team, PredefinedTemplate template, Boolean harnessManaged);
   Response<ResponseDTO<NotificationTaskResponse>> sendEmail(EmailDTO emailDTO) throws IOException;
+
+  NotificationResult sendNotificationTrigger(NotificationTriggerRequest notificationTriggerRequest);
+  List<NotificationResult> sendBulkNotificationTrigger(List<NotificationTriggerRequest> notificationTriggerRequest);
+  NotificationRuleReferenceDTO getNotificationRule(String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, String notificationEntity, String notificationEvent);
+
+  boolean isDefaultSMTPPresent(String accountId);
 }

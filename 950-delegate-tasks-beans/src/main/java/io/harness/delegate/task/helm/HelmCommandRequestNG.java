@@ -91,6 +91,7 @@ public class HelmCommandRequestNG implements TaskParameters, ExecutionCapability
   private boolean sendTaskProgressEvents;
   private boolean disableFabric8;
   private boolean improvedHelmTracking;
+  private boolean useSteadyStateCheckForJobs;
 
   @Override
   public List<ExecutionCapability> fetchRequiredExecutionCapabilities(ExpressionEvaluator maskingEvaluator) {
@@ -167,7 +168,7 @@ public class HelmCommandRequestNG implements TaskParameters, ExecutionCapability
                 (OciHelmStoreDelegateConfig) helManifestConfig.getStoreDelegateConfig();
             String criteria = null;
             if (ociHelmStoreConfig.getAwsConnectorDTO() != null) {
-              criteria = ociHelmStoreConfig.getRepoName() + ":" + ociHelmStoreConfig.getRegion();
+              criteria = helManifestConfig.getChartName() + ":" + ociHelmStoreConfig.getRegion();
               capabilities.addAll(AwsCapabilityHelper.fetchRequiredExecutionCapabilities(
                   ociHelmStoreConfig.getAwsConnectorDTO(), maskingEvaluator));
             } else if (ociHelmStoreConfig.getOciHelmConnector() != null) {

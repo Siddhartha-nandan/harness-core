@@ -15,11 +15,14 @@ import static io.harness.git.model.ChangeType.DELETE;
 import static io.harness.git.model.ChangeType.RENAME;
 import static io.harness.git.model.PushResultGit.pushResultBuilder;
 import static io.harness.rule.OwnerRule.ABHINAV;
+import static io.harness.rule.OwnerRule.ABOSII;
 import static io.harness.rule.OwnerRule.ARVIND;
 import static io.harness.rule.OwnerRule.LUCAS_SALES;
 import static io.harness.rule.OwnerRule.SATHISH;
 import static io.harness.rule.OwnerRule.TARUN_UBA;
+import static io.harness.rule.OwnerRule.TMACARI;
 import static io.harness.rule.OwnerRule.VINICIUS;
+import static io.harness.rule.OwnerRule.VLICA;
 import static io.harness.rule.OwnerRule.YOGESH;
 
 import static java.lang.String.format;
@@ -31,6 +34,7 @@ import static org.assertj.core.api.Fail.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -314,6 +318,59 @@ public class GitClientV2ImplTest extends CategoryTest {
   }
 
   @Test
+  @Owner(developers = TMACARI)
+  @Category(UnitTests.class)
+  public void testEnsureRepoLocallyClonedAndUpdatedWithGitTagAndHardResetDone() throws IOException {
+    String remoteRepo = addRemote(repoPath);
+    GitBaseRequest request = GitBaseRequest.builder()
+                                 .repoUrl(remoteRepo)
+                                 .authRequest(new UsernamePasswordAuthRequest(USERNAME, PASSWORD.toCharArray()))
+                                 .branch("master")
+                                 .build();
+    doReturn(repoPath).when(gitClientHelper).getRepoDirectory(request);
+    gitClient.ensureRepoLocallyClonedAndUpdated(request);
+
+    String workRepo = Files.createTempDirectory(UUID.randomUUID().toString()).toString();
+    String tag = "hello-tag1";
+    String command = new StringBuilder(128)
+                         .append("git clone " + remoteRepo + " ")
+                         .append(workRepo)
+                         .append(";")
+                         .append("cd " + workRepo + ";")
+                         .append("touch ")
+                         .append(tag)
+                         .append(";")
+                         .append("git add ")
+                         .append(tag)
+                         .append(";")
+                         .append("git commit -m 'commit base 2';")
+                         .append("git tag ")
+                         .append(tag)
+                         .append(";")
+                         .append("git push origin ")
+                         .append(tag)
+                         .append(";")
+                         .append("git remote update;")
+                         .append("git fetch;")
+                         .toString();
+
+    executeCommand(command);
+    FileUtils.forceDelete(new File(repoPath + "/base.txt"));
+    assertThat(new File(repoPath + "/base.txt").exists()).isFalse();
+
+    request.setBranch(null);
+    request.setCommitId(tag);
+
+    try {
+      gitClient.ensureRepoLocallyClonedAndUpdated(request);
+      verify(gitClient, times(0)).clone(eq(request), anyString(), eq(false));
+      assertThat(new File(repoPath + "/base.txt").exists()).isTrue();
+    } catch (Exception e) {
+      fail("Should not have thrown any exception");
+    }
+  }
+
+  @Test
   @Owner(developers = ARVIND)
   @Category(UnitTests.class)
   public void testDownloadFiles_Branch_Directory() throws Exception {
@@ -365,6 +422,33 @@ public class GitClientV2ImplTest extends CategoryTest {
     gitClient.downloadFiles(request);
     doReturn(null).when(gitClientHelper).getFileDownloadRepoDirectory(any());
     assertThatThrownBy(() -> gitClient.downloadFiles(request)).isInstanceOf(YamlException.class);
+  }
+
+  @Test
+  @Owner(developers = ABOSII)
+  @Category(UnitTests.class)
+  public void testDownloadFiles_File_Clone_With_Checkout() throws Exception {
+    String destinationDirectory = Files.createTempDirectory(UUID.randomUUID().toString()).toString();
+    DownloadFilesRequest request = DownloadFilesRequest.builder()
+                                       .repoUrl(repoPath)
+                                       .authRequest(new UsernamePasswordAuthRequest(USERNAME, PASSWORD.toCharArray()))
+                                       .branch("master")
+                                       .connectorId(CONNECTOR_ID)
+                                       .accountId("ACCOUNT_ID")
+                                       .destinationDirectory(destinationDirectory)
+                                       .cloneWithCheckout(true)
+                                       .build();
+    addRemote(repoPath);
+    String data = "ABCD\nDEP\n";
+    FileUtils.writeStringToFile(new File(repoPath + "/base.txt"), data, UTF_8);
+
+    request.setFilePaths(Collections.singletonList("./base.txt"));
+    doReturn(cache.get(CONNECTOR_ID)).when(gitClientHelper).getLockObject(request.getConnectorId());
+
+    doNothing().when(gitClientHelper).createDirStructureForFileDownload(any());
+    doReturn(repoPath).when(gitClientHelper).getFileDownloadRepoDirectory(any());
+    gitClient.downloadFiles(request);
+    assertThat(FileUtils.readFileToString(new File(destinationDirectory + "/base.txt"), UTF_8)).isEqualTo(data);
   }
 
   @Test
@@ -1072,5 +1156,91 @@ public class GitClientV2ImplTest extends CategoryTest {
     addRemoteWithIndexLock(repoPath);
     FetchFilesResult fetchFilesResult = gitClient.fetchFilesByPath(request);
     assertThat(fetchFilesResult.getFiles()).isEmpty();
+  }
+
+  @Test
+  @Owner(developers = VLICA)
+  @Category(UnitTests.class)
+  public void testFetchOptionalFilesAndFetchOnlyExisting() throws Exception {
+    FetchFilesByPathRequest request =
+        FetchFilesByPathRequest.builder()
+            .repoUrl(repoPath)
+            .authRequest(new UsernamePasswordAuthRequest(USERNAME, PASSWORD.toCharArray()))
+            .connectorId(CONNECTOR_ID)
+            .accountId("ACCOUNT_ID")
+            .optionalFiles(true)
+            .build();
+
+    request.setFilePaths(List.of("base.txt", "not-existing-file.txt"));
+
+    request.setBranch("master");
+    doReturn(cache.get(CONNECTOR_ID)).when(gitClientHelper).getLockObject(request.getConnectorId());
+
+    doCallRealMethod().when(gitClientHelper).addFiles(any(), any(), anyString());
+    doNothing().when(gitClientHelper).createDirStructureForFileDownload(any());
+    doReturn(repoPath).when(gitClientHelper).getFileDownloadRepoDirectory(any());
+    addRemote(repoPath);
+    FetchFilesResult fetchFilesResult = gitClient.fetchFilesByPath(request);
+    assertThat(fetchFilesResult.getFiles()).size().isEqualTo(1);
+    assertThat(fetchFilesResult.getFiles().get(0).getFilePath()).isEqualTo("base.txt");
+  }
+
+  @Test
+  @Owner(developers = VLICA)
+  @Category(UnitTests.class)
+  public void testFetchOptionalFilesAndNotFailIfNoOptionalFiles() throws Exception {
+    FetchFilesByPathRequest request =
+        FetchFilesByPathRequest.builder()
+            .repoUrl(repoPath)
+            .authRequest(new UsernamePasswordAuthRequest(USERNAME, PASSWORD.toCharArray()))
+            .connectorId(CONNECTOR_ID)
+            .accountId("ACCOUNT_ID")
+            .optionalFiles(true)
+            .build();
+
+    request.setFilePaths(List.of("not-existing-file1.txt", "not-existing-file2.txt"));
+
+    request.setBranch("master");
+    doReturn(cache.get(CONNECTOR_ID)).when(gitClientHelper).getLockObject(request.getConnectorId());
+
+    doCallRealMethod().when(gitClientHelper).addFiles(any(), any(), anyString());
+    doNothing().when(gitClientHelper).createDirStructureForFileDownload(any());
+    doReturn(repoPath).when(gitClientHelper).getFileDownloadRepoDirectory(any());
+    addRemote(repoPath);
+    FetchFilesResult fetchFilesResult = gitClient.fetchFilesByPath(request);
+    assertThat(fetchFilesResult.getFiles()).isEmpty();
+  }
+
+  @Test
+  @Owner(developers = TARUN_UBA)
+  @Category(UnitTests.class)
+  public void testDownloadFiles_Branch_Directory_And_May_Have_Multiple_Folders() throws Exception {
+    String destinationDirectory = Files.createTempDirectory(UUID.randomUUID().toString()).toString();
+    DownloadFilesRequest request = DownloadFilesRequest.builder()
+                                       .repoUrl(repoPath)
+                                       .authRequest(new UsernamePasswordAuthRequest(USERNAME, PASSWORD.toCharArray()))
+                                       .branch("master")
+                                       .connectorId(CONNECTOR_ID)
+                                       .accountId("ACCOUNT_ID")
+                                       .destinationDirectory(destinationDirectory)
+                                       .mayHaveMultipleFolders(true)
+                                       .build();
+    addRemote(repoPath);
+    String data = "ABCD\nDEP\n";
+    createDirectoryIfDoesNotExist(Paths.get(repoPath, "sample/"));
+    Files.createFile(Paths.get(repoPath, "sample/base.txt"));
+    FileUtils.writeStringToFile(new File(Paths.get(repoPath, "sample/base.txt").toString()), data, UTF_8);
+
+    request.setFilePaths(Collections.singletonList("sample/"));
+    doReturn(cache.get(CONNECTOR_ID)).when(gitClientHelper).getLockObject(request.getConnectorId());
+
+    doNothing().when(gitClientHelper).createDirStructureForFileDownload(any());
+    doReturn(repoPath).when(gitClientHelper).getFileDownloadRepoDirectory(any());
+    gitClient.downloadFiles(request);
+    assertThat(FileUtils.readFileToString(new File(Paths.get(repoPath, "sample/base.txt").toString()), UTF_8))
+        .isEqualTo(data);
+
+    doReturn(null).when(gitClientHelper).getFileDownloadRepoDirectory(any());
+    assertThatThrownBy(() -> gitClient.downloadFiles(request)).isInstanceOf(YamlException.class);
   }
 }

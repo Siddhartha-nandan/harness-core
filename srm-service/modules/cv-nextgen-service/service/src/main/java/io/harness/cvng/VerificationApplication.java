@@ -84,10 +84,6 @@ import io.harness.cvng.core.jobs.InternalChangeEventFFConsumer;
 import io.harness.cvng.core.jobs.MonitoringSourcePerpetualTaskHandler;
 import io.harness.cvng.core.jobs.PersistentLockCleanup;
 import io.harness.cvng.core.jobs.RestoreDataCollectionTaskRecalculationHandler;
-import io.harness.cvng.core.jobs.SLIDataCollectionTaskCreateNextTaskHandler;
-import io.harness.cvng.core.jobs.SLOHealthIndicatorTimescaleHandler;
-import io.harness.cvng.core.jobs.SLOHistoryTimescaleHandler;
-import io.harness.cvng.core.jobs.SLORecalculationFailureHandler;
 import io.harness.cvng.core.jobs.ServiceGuardDataCollectionTaskCreateNextTaskHandler;
 import io.harness.cvng.core.jobs.StatemachineEventConsumer;
 import io.harness.cvng.core.services.CVNextGenConstants;
@@ -113,6 +109,12 @@ import io.harness.cvng.notification.jobs.ErrorTrackingNotificationHandler;
 import io.harness.cvng.notification.jobs.MonitoredServiceNotificationHandler;
 import io.harness.cvng.notification.jobs.SLONotificationHandler;
 import io.harness.cvng.notification.jobs.SRMAnalysisStepNotificationHandler;
+import io.harness.cvng.servicelevelobjective.beans.SLIEvaluationType;
+import io.harness.cvng.servicelevelobjective.beans.jobs.MetricLessSLIStateMachineCreationHandler;
+import io.harness.cvng.servicelevelobjective.beans.jobs.SLIDataCollectionTaskCreateNextTaskHandler;
+import io.harness.cvng.servicelevelobjective.beans.jobs.SLOHealthIndicatorTimescaleHandler;
+import io.harness.cvng.servicelevelobjective.beans.jobs.SLOHistoryTimescaleHandler;
+import io.harness.cvng.servicelevelobjective.beans.jobs.SLORecalculationFailureHandler;
 import io.harness.cvng.servicelevelobjective.entities.AbstractServiceLevelObjective;
 import io.harness.cvng.servicelevelobjective.entities.AbstractServiceLevelObjective.ServiceLevelObjectiveV2Keys;
 import io.harness.cvng.servicelevelobjective.entities.SLOHealthIndicator;
@@ -172,6 +174,7 @@ import io.harness.ng.core.CorrelationFilter;
 import io.harness.ng.core.TraceFilter;
 import io.harness.ng.core.exceptionmappers.GenericExceptionMapperV2;
 import io.harness.ng.core.exceptionmappers.WingsExceptionMapperV2;
+import io.harness.ng.core.filter.ApiResponseFilter;
 import io.harness.notification.Team;
 import io.harness.notification.module.NotificationClientModule;
 import io.harness.notification.notificationclient.NotificationClient;
@@ -299,6 +302,7 @@ public class VerificationApplication extends Application<VerificationConfigurati
 
   private final MetricRegistry metricRegistry = new MetricRegistry();
   private HarnessMetricRegistry harnessMetricRegistry;
+  private final MetricRegistry threadPoolMetricRegistry = new MetricRegistry();
   private HPersistence hPersistence;
 
   public static void main(String[] args) throws Exception {
@@ -469,7 +473,7 @@ public class VerificationApplication extends Application<VerificationConfigurati
     modules.add(new CVServiceModule(configuration));
     modules.add(new PersistentLockModule());
     modules.add(new EventsFrameworkModule(configuration.getEventsFrameworkConfiguration()));
-    modules.add(new MetricRegistryModule(metricRegistry));
+    modules.add(new MetricRegistryModule(metricRegistry, threadPoolMetricRegistry));
     modules.add(new VerificationManagerClientModule(configuration.getManagerClientConfig().getBaseUrl()));
     modules.add(new NextGenClientModule(configuration.getNgManagerServiceConfig()));
     modules.add(new ErrorTrackingClientModule(configuration.getErrorTrackingClientConfig()));
@@ -491,7 +495,7 @@ public class VerificationApplication extends Application<VerificationConfigurati
 
     // Pipeline Service Modules
     PmsSdkConfiguration pmsSdkConfiguration = getPmsSdkConfiguration(configuration);
-    modules.add(PmsSdkModule.getInstance(pmsSdkConfiguration));
+    modules.add(PmsSdkModule.getInstance(pmsSdkConfiguration, threadPoolMetricRegistry));
     modules.add(PipelineServiceUtilityModule.getInstance());
     modules.add(NGMigrationSdkModule.getInstance());
     modules.add(new TicketServiceRestClientModule(configuration.getTicketServiceRestClientConfig().getBaseUrl()));
@@ -505,6 +509,7 @@ public class VerificationApplication extends Application<VerificationConfigurati
     registerResources(environment, injector);
     registerVerificationTaskOrchestrationIterator(injector);
     registerVerificationJobInstanceDataCollectionTaskIterator(injector);
+    registerMetricLessStateMachineCreationIterator(injector);
     registerDataCollectionTaskIterator(injector);
     registerCreateNextSLIDataCollectionTaskIterator(injector);
     registerAnalysisOrchestratorQueueNextAnalysisHandler(injector);
@@ -544,6 +549,7 @@ public class VerificationApplication extends Application<VerificationConfigurati
     }
     initializeMetrics(injector);
     registerOasResource(configuration, environment, injector);
+    registerApiResponseFilter(environment, injector);
     initializeSrmMonitoring(configuration, injector);
     registerAPIAuthTelemetryFilters(configuration, environment, injector);
     registerMigrations(injector);
@@ -701,6 +707,10 @@ public class VerificationApplication extends Application<VerificationConfigurati
     OpenApiResource openApiResource = injector.getInstance(OpenApiResource.class);
     openApiResource.setOpenApiConfiguration(verificationConfiguration.getOasConfig());
     environment.jersey().register(openApiResource);
+  }
+
+  private void registerApiResponseFilter(Environment environment, Injector injector) {
+    environment.jersey().register(injector.getInstance(ApiResponseFilter.class));
   }
 
   private void registerActivityIterator(Injector injector) {
@@ -1173,6 +1183,34 @@ public class VerificationApplication extends Application<VerificationConfigurati
     verificationTaskExecutor.scheduleWithFixedDelay(dataCollectionIterator::process, 0, 30, TimeUnit.SECONDS);
   }
 
+  private void registerMetricLessStateMachineCreationIterator(Injector injector) {
+    ScheduledThreadPoolExecutor metricLessStateMachineExecutor = new ScheduledThreadPoolExecutor(
+        5, new ThreadFactoryBuilder().setNameFormat("metric-less-state-machine-iterator").build());
+    MetricLessSLIStateMachineCreationHandler handler =
+        injector.getInstance(MetricLessSLIStateMachineCreationHandler.class);
+    // TODO: setup alert if this goes above acceptable threshold.
+    PersistenceIterator dataCollectionIterator =
+        MongoPersistenceIterator.<ServiceLevelIndicator, MorphiaFilterExpander<ServiceLevelIndicator>>builder()
+            .mode(PersistenceIterator.ProcessMode.PUMP)
+            .iteratorName("metricLessStateMachineIterator")
+            .clazz(ServiceLevelIndicator.class)
+            .fieldName(ServiceLevelIndicatorKeys.createNextTaskIteration)
+            .targetInterval(ofSeconds(30))
+            .acceptableNoAlertDelay(ofMinutes(1))
+            .executorService(metricLessStateMachineExecutor)
+            .semaphore(new Semaphore(5))
+            .handler(handler)
+            .schedulingType(REGULAR)
+            .filterExpander(query
+                -> query.field(ServiceLevelIndicatorKeys.sliEvaluationType)
+                       .in(Collections.singletonList(SLIEvaluationType.METRIC_LESS)))
+            .persistenceProvider(injector.getInstance(MorphiaPersistenceProvider.class))
+            .redistribute(true)
+            .build();
+    injector.injectMembers(dataCollectionIterator);
+    metricLessStateMachineExecutor.scheduleWithFixedDelay(dataCollectionIterator::process, 0, 30, TimeUnit.SECONDS);
+  }
+
   private void registerHealthChecks(Environment environment, Injector injector) {
     HealthService healthService = injector.getInstance(HealthService.class);
     environment.healthChecks().register("CV nextgen", healthService);
@@ -1243,7 +1281,7 @@ public class VerificationApplication extends Application<VerificationConfigurati
         PredefinedTemplate.CVNG_MONITOREDSERVICE_ET_SLACK, PredefinedTemplate.CVNG_MONITOREDSERVICE_ET_EMAIL,
         PredefinedTemplate.CVNG_MONITOREDSERVICE_REPORT_SLACK, PredefinedTemplate.CVNG_MONITOREDSERVICE_REPORT_EMAIL,
         PredefinedTemplate.CVNG_MONITOREDSERVICE_REPORT_PAGERDUTY,
-        PredefinedTemplate.CVNG_MONITOREDSERVICE_REPORT_MSTEAMS));
+        PredefinedTemplate.CVNG_MONITOREDSERVICE_REPORT_MSTEAMS, PredefinedTemplate.CVNG_FIREHYDRANT_WEBHOOK));
 
     if (configuration.getShouldConfigureWithNotification()) {
       for (PredefinedTemplate template : templates) {

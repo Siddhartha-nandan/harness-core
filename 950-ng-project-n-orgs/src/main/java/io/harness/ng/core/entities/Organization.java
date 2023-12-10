@@ -19,6 +19,7 @@ import io.harness.mongo.collation.CollationStrength;
 import io.harness.mongo.index.Collation;
 import io.harness.mongo.index.CompoundMongoIndex;
 import io.harness.mongo.index.FdIndex;
+import io.harness.mongo.index.FdUniqueIndex;
 import io.harness.mongo.index.MongoIndex;
 import io.harness.mongo.index.SortCompoundMongoIndex;
 import io.harness.ng.DbAliases;
@@ -93,14 +94,36 @@ public class Organization implements PersistentEntity, NGAccountAccess, UniqueId
                  .field(OrganizationKeys.identifier)
                  .unique(false)
                  .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("parentUniqueIdIdentifierIdx")
+                 .field(OrganizationKeys.parentUniqueId)
+                 .field(OrganizationKeys.identifier)
+                 .unique(true)
+                 .collation(
+                     Collation.builder().locale(CollationLocale.ENGLISH).strength(CollationStrength.PRIMARY).build())
+                 .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("accountIdentifierParentUniqueIdIdentifierDeletedIdx")
+                 .field(OrganizationKeys.accountIdentifier)
+                 .field(OrganizationKeys.parentUniqueId)
+                 .field(OrganizationKeys.identifier)
+                 .field(OrganizationKeys.deleted)
+                 .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("accountIdentifierParentUniqueIdDeletedIdx")
+                 .field(OrganizationKeys.accountIdentifier)
+                 .field(OrganizationKeys.parentUniqueId)
+                 .field(OrganizationKeys.deleted)
+                 .build())
         .build();
   }
 
   @Wither @Id @dev.morphia.annotations.Id String id;
   String accountIdentifier;
 
-  String uniqueId;
+  @FdUniqueIndex String uniqueId;
   String parentId;
+  String parentUniqueId;
   @EntityIdentifier(allowBlank = false) @FdIndex String identifier;
 
   @NGEntityName String name;

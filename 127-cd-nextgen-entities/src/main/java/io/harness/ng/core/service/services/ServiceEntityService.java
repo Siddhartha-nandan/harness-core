@@ -6,15 +6,19 @@
  */
 
 package io.harness.ng.core.service.services;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.ng.core.beans.ServiceV2YamlMetadata;
 import io.harness.ng.core.dto.RepoListResponseDTO;
 import io.harness.ng.core.service.entity.ArtifactSourcesResponseDTO;
 import io.harness.ng.core.service.entity.ServiceEntity;
 import io.harness.ng.core.service.entity.ServiceInputsMergedResponseDto;
+import io.harness.ng.core.service.entity.ServiceMoveConfigOperationDTO;
+import io.harness.ng.core.service.entity.ServiceMoveConfigResponse;
 import io.harness.ng.core.template.refresh.ValidateTemplateInputsResponseDTO;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.repositories.UpsertOptions;
@@ -112,8 +116,12 @@ public interface ServiceEntityService {
   List<ServiceEntity> getMetadata(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, List<String> serviceIdentifiers);
 
-  List<ServiceEntity> getServices(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      List<String> serviceRefs, Map<String, String> servicesMetadataWithGitInfo, boolean loadFromCache);
+  List<ServiceV2YamlMetadata> getServicesYamlMetadata(String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, List<String> serviceRefs, Map<String, String> servicesMetadataWithGitInfo,
+      boolean loadFromCache);
+
+  ServiceEntity updateArtifactoryRegistryUrlIfEmpty(
+      ServiceEntity serviceEntity, String accountId, String orgIdentifier, String projectIdentifier);
 
   boolean isServiceField(String fieldName, JsonNode value);
 
@@ -131,4 +139,7 @@ public interface ServiceEntityService {
 
   RepoListResponseDTO getListOfRepos(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       boolean includeAllServicesAccessibleAtScope);
+
+  ServiceMoveConfigResponse moveServiceStoreTypeConfig(String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, String serviceIdentifier, ServiceMoveConfigOperationDTO serviceRequestDTO);
 }

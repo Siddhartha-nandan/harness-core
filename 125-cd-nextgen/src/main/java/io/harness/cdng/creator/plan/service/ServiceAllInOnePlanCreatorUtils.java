@@ -55,11 +55,13 @@ import io.harness.pms.plan.creation.PlanCreatorUtils;
 import io.harness.pms.sdk.core.adviser.OrchestrationAdviserTypes;
 import io.harness.pms.sdk.core.adviser.success.OnSuccessAdviserParameters;
 import io.harness.pms.sdk.core.plan.PlanNode;
+import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.serializer.KryoSerializer;
+import io.harness.steps.StepUtils;
 
 import com.google.protobuf.ByteString;
 import java.io.IOException;
@@ -87,7 +89,7 @@ public class ServiceAllInOnePlanCreatorUtils {
    */
   public LinkedHashMap<String, PlanCreationResponse> addServiceNode(YamlField specField, KryoSerializer kryoSerializer,
       ServiceYamlV2 serviceYamlV2, EnvironmentYamlV2 environmentYamlV2, String serviceNodeId, String nextNodeId,
-      ServiceDefinitionType serviceType, ParameterField<String> envGroupRef) {
+      ServiceDefinitionType serviceType, ParameterField<String> envGroupRef, PlanCreationContext ctx) {
     if (isConcreteServiceRefUnavailable(serviceYamlV2) && serviceYamlV2.getUseFromStage() == null) {
       throw new InvalidRequestException("At least one of serviceRef and useFromStage fields is required.");
     }
@@ -107,7 +109,7 @@ public class ServiceAllInOnePlanCreatorUtils {
     final LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap = new LinkedHashMap<>();
 
     // add nodes for artifacts/manifests/files
-    final List<String> childrenNodeIds = addChildrenNodes(planCreationResponseMap, serviceType);
+    final List<String> childrenNodeIds = addChildrenNodes(planCreationResponseMap, serviceType, ctx);
     ParameterField<Map<String, Object>> serviceOverrideInputs = finalEnvironmentYamlV2.getServiceOverrideInputs();
     if (finalServiceYaml.getServiceRef().isExpression()
         && finalServiceYaml.getServiceRef().getExpressionValue().equals(SERVICE_REF_EXPRESSION)) {
@@ -124,12 +126,14 @@ public class ServiceAllInOnePlanCreatorUtils {
     }
     final ServiceStepV3ParametersBuilder stepParameters = ServiceStepV3Parameters.builder()
                                                               .serviceRef(finalServiceYaml.getServiceRef())
+                                                              .serviceGitBranch(finalServiceYaml.getGitBranch())
                                                               .inputs(finalServiceYaml.getServiceInputs())
                                                               .infraId(infraRef)
                                                               .childrenNodeIds(childrenNodeIds)
                                                               .serviceOverrideInputs(serviceOverrideInputs)
                                                               .deploymentType(serviceType)
                                                               .envRef(finalEnvironmentYamlV2.getEnvironmentRef())
+                                                              .envGitBranch(finalEnvironmentYamlV2.getGitBranch())
                                                               .envInputs(finalEnvironmentYamlV2.getEnvironmentInputs())
                                                               .envGroupRef(envGroupRef);
 
@@ -138,7 +142,7 @@ public class ServiceAllInOnePlanCreatorUtils {
 
   public LinkedHashMap<String, PlanCreationResponse> addServiceNodeForGitOpsEnvGroup(YamlField specField,
       KryoSerializer kryoSerializer, ServiceYamlV2 serviceYamlV2, EnvironmentGroupYaml environmentGroupYaml,
-      String serviceNodeId, String nextNodeId, ServiceDefinitionType serviceType) {
+      String serviceNodeId, String nextNodeId, ServiceDefinitionType serviceType, PlanCreationContext ctx) {
     final ServiceYamlV2 finalServiceYaml = useFromStage(serviceYamlV2)
         ? useServiceYamlFromStage(serviceYamlV2.getUseFromStage(), specField)
         : serviceYamlV2;
@@ -146,10 +150,11 @@ public class ServiceAllInOnePlanCreatorUtils {
     final LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap = new LinkedHashMap<>();
 
     // add nodes for artifacts/manifests/files
-    final List<String> childrenNodeIds = addChildrenNodes(planCreationResponseMap, serviceType);
+    final List<String> childrenNodeIds = addChildrenNodes(planCreationResponseMap, serviceType, ctx);
     ServiceStepV3ParametersBuilder stepParameters =
         ServiceStepV3Parameters.builder()
             .serviceRef(finalServiceYaml.getServiceRef())
+            .serviceGitBranch(finalServiceYaml.getGitBranch())
             .inputs(finalServiceYaml.getServiceInputs())
             .childrenNodeIds(childrenNodeIds)
             .deploymentType(serviceType)
@@ -176,7 +181,7 @@ public class ServiceAllInOnePlanCreatorUtils {
 
   public LinkedHashMap<String, PlanCreationResponse> addServiceNodeForGitOpsEnvironments(YamlField specField,
       KryoSerializer kryoSerializer, ServiceYamlV2 serviceYamlV2, EnvironmentsYaml environmentsYaml,
-      String serviceNodeId, String nextNodeId, ServiceDefinitionType serviceType) {
+      String serviceNodeId, String nextNodeId, ServiceDefinitionType serviceType, PlanCreationContext ctx) {
     final ServiceYamlV2 finalServiceYaml = useFromStage(serviceYamlV2)
         ? useServiceYamlFromStage(serviceYamlV2.getUseFromStage(), specField)
         : serviceYamlV2;
@@ -184,10 +189,11 @@ public class ServiceAllInOnePlanCreatorUtils {
     final LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap = new LinkedHashMap<>();
 
     // add nodes for artifacts/manifests/files
-    final List<String> childrenNodeIds = addChildrenNodes(planCreationResponseMap, serviceType);
+    final List<String> childrenNodeIds = addChildrenNodes(planCreationResponseMap, serviceType, ctx);
     final ServiceStepV3ParametersBuilder stepParameters =
         ServiceStepV3Parameters.builder()
             .serviceRef(finalServiceYaml.getServiceRef())
+            .serviceGitBranch(finalServiceYaml.getGitBranch())
             .inputs(finalServiceYaml.getServiceInputs())
             .childrenNodeIds(childrenNodeIds)
             .deploymentType(serviceType)
@@ -243,18 +249,19 @@ public class ServiceAllInOnePlanCreatorUtils {
     return serviceYamlV2.getUseFromStage() != null && serviceYamlV2.getUseFromStage().getStage() != null;
   }
 
-  private List<String> addChildrenNodes(
-      LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap, ServiceDefinitionType serviceType) {
+  private List<String> addChildrenNodes(LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap,
+      ServiceDefinitionType serviceType, PlanCreationContext ctx) {
     final List<String> nodeIds = new ArrayList<>();
-
     // Add artifacts node
+    EmptyStepParameters emptyStepParameters = new EmptyStepParameters();
+    StepUtils.appendDelegateSelectors(emptyStepParameters, ctx);
     final PlanNode artifactsNode =
         PlanNode.builder()
             .uuid("artifacts-" + UUIDGenerator.generateUuid())
             .stepType(ArtifactsStepV2Constants.STEP_TYPE)
             .name(PlanCreatorConstants.ARTIFACTS_NODE_NAME)
             .identifier(YamlTypes.ARTIFACT_LIST_CONFIG)
-            .stepParameters(new EmptyStepParameters())
+            .stepParameters(emptyStepParameters)
             .facilitatorObtainment(
                 FacilitatorObtainment.newBuilder()
                     .setType(FacilitatorType.newBuilder().setType(OrchestrationFacilitatorType.ASYNC).build())
@@ -298,7 +305,7 @@ public class ServiceAllInOnePlanCreatorUtils {
         serviceHooksNode.getUuid(), PlanCreationResponse.builder().planNode(serviceHooksNode).build());
 
     // Add Azure settings node
-    if (serviceType == ServiceDefinitionType.AZURE_WEBAPP) {
+    if (ServiceDefinitionType.AZURE_WEBAPP == serviceType) {
       PlanNode azureSettingsNode =
           PlanNode.builder()
               .uuid("azure-settings-" + UUIDGenerator.generateUuid())
@@ -318,7 +325,7 @@ public class ServiceAllInOnePlanCreatorUtils {
     }
 
     // Add Elastigroup settings node
-    if (serviceType == ServiceDefinitionType.ELASTIGROUP) {
+    if (ServiceDefinitionType.ELASTIGROUP == serviceType) {
       PlanNode elastigroupSettingsNode =
           PlanNode.builder()
               .uuid("elastigroup-settings-" + UUIDGenerator.generateUuid())
@@ -338,7 +345,7 @@ public class ServiceAllInOnePlanCreatorUtils {
     }
 
     // Add ASG settings node
-    if (serviceType == ServiceDefinitionType.ASG) {
+    if (ServiceDefinitionType.ASG == serviceType) {
       PlanNode asgSettingsNode =
           PlanNode.builder()
               .uuid("asg-settings-" + UUIDGenerator.generateUuid())

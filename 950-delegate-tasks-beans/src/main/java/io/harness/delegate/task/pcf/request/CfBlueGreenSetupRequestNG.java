@@ -10,6 +10,9 @@ package io.harness.delegate.task.pcf.request;
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.expression.Expression.ALLOW_SECRETS;
 
+import static software.wings.beans.TaskType.TAS_BG_SETUP;
+import static software.wings.beans.TaskType.TAS_BG_SETUP_SUPPORT_2_APPS_V2;
+
 import static java.lang.String.format;
 
 import io.harness.annotations.dev.CodePulse;
@@ -30,6 +33,7 @@ import io.harness.delegate.beans.executioncapability.ExecutionCapability;
 import io.harness.delegate.beans.executioncapability.PcfAutoScalarCapability;
 import io.harness.delegate.beans.executioncapability.PcfInstallationCapability;
 import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
 import io.harness.delegate.task.pcf.CfCommandTypeNG;
 import io.harness.delegate.task.pcf.artifact.TasArtifactConfig;
 import io.harness.delegate.task.pcf.artifact.TasArtifactType;
@@ -40,10 +44,13 @@ import io.harness.expression.Expression;
 import io.harness.expression.ExpressionEvaluator;
 import io.harness.pcf.model.CfCliVersion;
 
+import software.wings.beans.TaskType;
+
 import java.util.List;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_PCF})
 @Data
 @OwnedBy(CDP)
@@ -59,6 +66,7 @@ public class CfBlueGreenSetupRequestNG extends AbstractTasTaskRequest {
   @Expression(ALLOW_SECRETS) List<String> routeMaps;
   boolean useAppAutoScalar;
   @Expression(ALLOW_SECRETS) TasManifestsPackage tasManifestsPackage;
+  ArtifactBundleDetails artifactBundleDetails;
 
   @Builder
   public CfBlueGreenSetupRequestNG(String accountId, CfCommandTypeNG cfCommandTypeNG, String commandName,
@@ -66,7 +74,7 @@ public class CfBlueGreenSetupRequestNG extends AbstractTasTaskRequest {
       CfCliVersion cfCliVersion, Integer timeoutIntervalInMin, String releaseNamePrefix,
       TasArtifactConfig tasArtifactConfig, Integer olderActiveVersionCountToKeep, Integer maxCount,
       Integer currentRunningCount, boolean useCurrentCount, List<String> routeMaps, boolean useAppAutoScalar,
-      TasManifestsPackage tasManifestsPackage, List<String> tempRoutes) {
+      TasManifestsPackage tasManifestsPackage, List<String> tempRoutes, ArtifactBundleDetails artifactBundleDetails) {
     super(timeoutIntervalInMin, accountId, commandName, cfCommandTypeNG, commandUnitsProgress, tasInfraConfig, useCfCLI,
         cfCliVersion);
     this.releaseNamePrefix = releaseNamePrefix;
@@ -79,6 +87,15 @@ public class CfBlueGreenSetupRequestNG extends AbstractTasTaskRequest {
     this.useAppAutoScalar = useAppAutoScalar;
     this.tasManifestsPackage = tasManifestsPackage;
     this.tempRoutes = tempRoutes;
+    this.artifactBundleDetails = artifactBundleDetails;
+  }
+
+  public TaskType getDelegateTaskType() {
+    if (this.olderActiveVersionCountToKeep == 0) {
+      return TAS_BG_SETUP_SUPPORT_2_APPS_V2;
+    } else {
+      return TAS_BG_SETUP;
+    }
   }
 
   @Override

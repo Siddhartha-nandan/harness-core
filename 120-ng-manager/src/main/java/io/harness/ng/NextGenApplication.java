@@ -40,6 +40,8 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeInfoFactory;
 import io.harness.cache.CacheModule;
 import io.harness.cdng.creator.CDNGModuleInfoProvider;
 import io.harness.cdng.creator.CDNGPlanCreatorProvider;
@@ -104,6 +106,7 @@ import io.harness.gitsync.core.webhook.GitSyncEventConsumerService;
 import io.harness.gitsync.core.webhook.createbranchevent.WebhookBranchHookEventQueueProcessor;
 import io.harness.gitsync.core.webhook.pushevent.WebhookPushEventQueueProcessor;
 import io.harness.gitsync.gitxwebhooks.listener.GitXWebhookQueueProcessor;
+import io.harness.gitsync.gitxwebhooks.listener.WebhookGitXPushEventQueueProcessor;
 import io.harness.gitsync.migration.GitSyncMigrationProvider;
 import io.harness.gitsync.server.GitSyncGrpcModule;
 import io.harness.gitsync.server.GitSyncServiceConfiguration;
@@ -138,7 +141,9 @@ import io.harness.ng.core.exceptionmappers.WingsExceptionMapperV2;
 import io.harness.ng.core.filter.ApiResponseFilter;
 import io.harness.ng.core.handler.NGVaultSecretManagerRenewalHandler;
 import io.harness.ng.core.handler.freezeHandlers.NgDeploymentFreezeActivationHandler;
+import io.harness.ng.core.migration.AddUniqueIdParentIdToEntitiesJob;
 import io.harness.ng.core.migration.NGBeanMigrationProvider;
+import io.harness.ng.core.migration.ParentUniqueIdMigrationProvider;
 import io.harness.ng.core.migration.ProjectMigrationProvider;
 import io.harness.ng.core.migration.UniqueIdParentIdMigrationProvider;
 import io.harness.ng.core.migration.UserGroupMigrationProvider;
@@ -152,6 +157,7 @@ import io.harness.ng.core.remote.licenserestriction.ProjectRestrictionsUsageImpl
 import io.harness.ng.core.remote.licenserestriction.SecretRestrictionUsageImpl;
 import io.harness.ng.core.remote.licenserestriction.ServiceAccountRestrictionUsageImpl;
 import io.harness.ng.core.remote.licenserestriction.VariableRestrictionUsageImpl;
+import io.harness.ng.core.scheduler.SendAccountStatisticsToSegmentTask;
 import io.harness.ng.core.user.exception.mapper.InvalidUserRemoveRequestExceptionMapper;
 import io.harness.ng.core.variable.expressions.functors.VariableFunctor;
 import io.harness.ng.migration.DelegateMigrationProvider;
@@ -221,9 +227,11 @@ import io.harness.registrars.CDServiceAdviserRegistrar;
 import io.harness.request.RequestContextFilter;
 import io.harness.resource.VersionInfoResource;
 import io.harness.runnable.InstanceAccountInfoRunnable;
+import io.harness.scopeinfoclient.remote.ScopeInfoClient;
 import io.harness.secret.ConfigSecretUtils;
 import io.harness.security.InternalApiAuthFilter;
 import io.harness.security.NextGenAuthenticationFilter;
+import io.harness.security.ScopeInfoFilter;
 import io.harness.security.annotations.InternalApi;
 import io.harness.security.annotations.PublicApi;
 import io.harness.service.deploymentevent.DeploymentEventListenerRegistrar;
@@ -259,6 +267,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.ServiceManager;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.AbstractModule;
@@ -305,6 +314,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
+import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.glassfish.jersey.server.model.Resource;
@@ -318,6 +328,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
   private static final String APPLICATION_NAME = "CD NextGen Application";
 
   private final MetricRegistry metricRegistry = new MetricRegistry();
+  private final MetricRegistry threadPoolMetricRegistry = new MetricRegistry();
 
   public static void main(String[] args) throws Exception {
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -396,7 +407,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
         return appConfig.getDbAliases();
       }
     });
-    modules.add(new MetricRegistryModule(metricRegistry));
+    modules.add(new MetricRegistryModule(metricRegistry, threadPoolMetricRegistry));
     modules.add(NGMigrationSdkModule.getInstance());
     modules.add(new LogStreamingModule(appConfig.getLogStreamingServiceConfig().getBaseUrl()));
     modules.add(new AbstractCfModule() {
@@ -451,7 +462,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     });
     // Pipeline Service Modules
     PmsSdkConfiguration pmsSdkConfiguration = getPmsSdkConfiguration(appConfig);
-    modules.add(PmsSdkModule.getInstance(pmsSdkConfiguration));
+    modules.add(PmsSdkModule.getInstance(pmsSdkConfiguration, threadPoolMetricRegistry));
     modules.add(PipelineServiceUtilityModule.getInstance());
     CacheModule cacheModule = new CacheModule(appConfig.getCacheConfig());
     modules.add(cacheModule);
@@ -489,6 +500,14 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     registerObservers(injector);
     registerOasResource(appConfig, environment, injector);
     registerManagedBeans(environment, injector, appConfig);
+    environment.jersey().getResourceConfig().register(new AbstractBinder() {
+      @Override
+      protected void configure() {
+        bindFactory(ScopeInfoFactory.class).to(ScopeInfo.class);
+      }
+    });
+    environment.jersey().register(
+        new ScopeInfoFilter(injector.getInstance(Key.get(ScopeInfoClient.class, Names.named("PRIVILEGED")))));
     initializeEnforcementService(injector, appConfig);
     initializeEnforcementSdk(injector);
     initializeCdMonitoring(appConfig, injector);
@@ -579,6 +598,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
           { add(ProjectMigrationProvider.class); }
 
           { add(UniqueIdParentIdMigrationProvider.class); }
+          { add(ParentUniqueIdMigrationProvider.class); }
 
           { add(NGCoreMigrationProvider.class); } // Add all migration provider classes here
 
@@ -911,11 +931,15 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     environment.lifecycle().manage(injector.getInstance(OutboxEventPollService.class));
     environment.lifecycle().manage(injector.getInstance(DefaultUserGroupsCreationJob.class));
     environment.lifecycle().manage(injector.getInstance(FixInconsistentUserDataMigrationJob.class));
+    environment.lifecycle().manage(injector.getInstance(AddUniqueIdParentIdToEntitiesJob.class));
     // Do not remove as it's used for MaintenanceController for shutdown mode
     environment.lifecycle().manage(injector.getInstance(MaintenanceController.class));
     if (appConfig.isUseQueueServiceForWebhookTriggers()) {
       environment.lifecycle().manage(injector.getInstance(WebhookBranchHookEventQueueProcessor.class));
       environment.lifecycle().manage(injector.getInstance(WebhookPushEventQueueProcessor.class));
+      environment.lifecycle().manage(injector.getInstance(WebhookGitXPushEventQueueProcessor.class));
+    }
+    if (appConfig.isUseQueueServiceForGitXWebhook()) {
       environment.lifecycle().manage(injector.getInstance(GitXWebhookQueueProcessor.class));
     }
     createConsumerThreadsToListenToEvents(environment, injector);
@@ -931,14 +955,19 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
   }
 
   private void registerResources(NextGenConfiguration appConfig, Environment environment, Injector injector) {
-    for (Class<?> resource : HARNESS_RESOURCE_CLASSES) {
-      if (Resource.isAcceptable(resource)) {
-        environment.jersey().register(injector.getInstance(resource));
+    try {
+      for (Class<?> resource : HARNESS_RESOURCE_CLASSES) {
+        if (Resource.isAcceptable(resource)) {
+          environment.jersey().register(injector.getInstance(resource));
+        }
       }
+      environment.jersey().register(injector.getInstance(VersionInfoResource.class));
+      environment.jersey().property(
+          ServerProperties.RESOURCE_VALIDATION_DISABLE, appConfig.isDisableResourceValidation());
+    } catch (Exception e) {
+      log.error("Failed to register resources. Classes are: {}", Iterables.toString(HARNESS_RESOURCE_CLASSES));
+      throw e;
     }
-    environment.jersey().register(injector.getInstance(VersionInfoResource.class));
-    environment.jersey().property(
-        ServerProperties.RESOURCE_VALIDATION_DISABLE, appConfig.isDisableResourceValidation());
   }
 
   private void registerJerseyProviders(Environment environment, Injector injector) {
@@ -1012,6 +1041,8 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
         .scheduleWithFixedDelay(injector.getInstance(ModuleVersionsMaintenanceTask.class), 0, 3, TimeUnit.HOURS);
     injector.getInstance(Key.get(ScheduledExecutorService.class, Names.named("taskPollExecutor")))
         .scheduleWithFixedDelay(injector.getInstance(CDLicenseDailyReportTask.class), 0, 3, TimeUnit.HOURS);
+    injector.getInstance(Key.get(ScheduledExecutorService.class, Names.named("taskPollExecutor")))
+        .scheduleWithFixedDelay(injector.getInstance(SendAccountStatisticsToSegmentTask.class), 0, 24, TimeUnit.HOURS);
   }
 
   private void registerAuthFilters(NextGenConfiguration configuration, Environment environment, Injector injector) {
@@ -1087,7 +1118,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
   private Predicate<Pair<ResourceInfo, ContainerRequestContext>> getAuthenticationExemptedRequestsPredicate() {
     return getAuthFilterPredicate(PublicApi.class)
         .or(resourceInfoAndRequest
-            -> resourceInfoAndRequest.getValue().getUriInfo().getAbsolutePath().getPath().endsWith("/version")
+            -> resourceInfoAndRequest.getValue().getUriInfo().getAbsolutePath().getPath().equals("/version")
                 || resourceInfoAndRequest.getValue().getUriInfo().getAbsolutePath().getPath().endsWith("/swagger")
                 || resourceInfoAndRequest.getValue().getUriInfo().getAbsolutePath().getPath().endsWith("/swagger.json")
                 || resourceInfoAndRequest.getValue().getUriInfo().getAbsolutePath().getPath().endsWith("/openapi.json")

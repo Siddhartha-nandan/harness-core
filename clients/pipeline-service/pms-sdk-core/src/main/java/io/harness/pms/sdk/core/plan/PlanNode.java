@@ -6,11 +6,13 @@
  */
 
 package io.harness.pms.sdk.core.plan;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.plancreator.exports.ExportConfig;
 import io.harness.pms.contracts.advisers.AdviserObtainment;
 import io.harness.pms.contracts.facilitators.FacilitatorObtainment;
 import io.harness.pms.contracts.plan.ExecutionMode;
@@ -32,7 +34,7 @@ import lombok.experimental.NonFinal;
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(HarnessTeam.PIPELINE)
 @Value
-@Builder
+@Builder(toBuilder = true)
 public class PlanNode {
   // Identifiers
   @NotNull String uuid;
@@ -64,4 +66,5 @@ public class PlanNode {
   @Builder.Default @NotNull ExpressionMode expressionMode = ExpressionMode.RETURN_NULL_IF_UNRESOLVED;
   @Builder.Default SkipType skipGraphType = SkipType.NOOP;
   @Builder.Default boolean skipUnresolvedExpressionsCheck = true;
+  Map<String, ExportConfig> exports;
 }

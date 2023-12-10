@@ -305,6 +305,9 @@ public class AuthenticationManager {
 
   public User switchAccount(String bearerToken, String accountId) {
     AuthToken authToken = authService.validateToken(bearerToken);
+    if (authToken == null) {
+      throw new AccessDeniedException("User not authorized", USER);
+    }
     User user = authToken.getUser();
     if (user.getAccounts() == null
         || user.getAccounts().stream().noneMatch(account -> account.getUuid().equals(accountId))) {
@@ -503,11 +506,13 @@ public class AuthenticationManager {
       if (user.isTwoFactorAuthenticationEnabled()) {
         return generate2faJWTToken(user);
       } else {
-        List<String> accountIds = user.getAccountIds();
-
+        String accountId = userService.getClaimsFromJWTToken(jwtSecret, JWT_CATEGORY.SSO_REDIRECT, ACCOUNT_ID);
+        if (accountId == null) {
+          accountId = getAccountId(user, null);
+        }
         User loggedInUser = authService.generateBearerTokenForUser(user);
-        authService.auditLogin(accountIds, loggedInUser);
-        authService.auditLoginToNg(accountIds, loggedInUser);
+        authService.auditLogin(Collections.singletonList(accountId), loggedInUser);
+        authService.auditLoginToNg(Collections.singletonList(accountId), loggedInUser);
         return loggedInUser;
       }
     } catch (Exception e) {

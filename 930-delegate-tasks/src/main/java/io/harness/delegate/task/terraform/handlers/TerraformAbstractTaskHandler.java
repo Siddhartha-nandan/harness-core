@@ -21,26 +21,34 @@ import io.harness.logging.LogCallback;
 import com.google.inject.Inject;
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @OwnedBy(CDP)
 public abstract class TerraformAbstractTaskHandler {
-  public abstract TerraformTaskNGResponse executeTaskInternal(
-      TerraformTaskNGParameters taskParameters, String delegateId, String taskId, LogCallback logCallback)
+  public abstract TerraformTaskNGResponse executeTaskInternal(TerraformTaskNGParameters taskParameters,
+      String delegateId, String taskId, LogCallback logCallback, String baseDir, AtomicBoolean isAborted)
       throws IOException, TimeoutException, InterruptedException;
   @Inject TerraformBaseHelper terraformBaseHelper;
 
   public TerraformTaskNGResponse executeTask(TerraformTaskNGParameters taskParameters, String delegateId, String taskId,
-      LogCallback logCallback) throws Exception {
+      LogCallback logCallback, AtomicBoolean isAborted) throws Exception {
+    String baseDir = terraformBaseHelper.getBaseDir(taskParameters.getEntityId());
     try {
-      return executeTaskInternal(taskParameters, delegateId, taskId, logCallback);
+      return executeTaskInternal(taskParameters, delegateId, taskId, logCallback, baseDir, isAborted);
     } catch (InterruptedRuntimeException | InterruptedException ex) {
       log.error("Interrupted Exception received: {}", ex.getMessage());
       logCallback.saveExecutionLog("Interrupt received.", ERROR, CommandExecutionStatus.RUNNING);
       throw ex;
     } finally {
-      terraformBaseHelper.performCleanupOfTfDirs(taskParameters, logCallback);
+      terraformBaseHelper.performCleanupOfTfDirs(taskParameters, logCallback, baseDir);
+    }
+  }
+
+  protected void handleAborted(AtomicBoolean isAborted) throws InterruptedException {
+    if (isAborted.get()) {
+      throw new InterruptedException();
     }
   }
 }
