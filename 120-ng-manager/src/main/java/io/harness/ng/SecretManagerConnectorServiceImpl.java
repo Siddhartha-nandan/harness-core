@@ -8,6 +8,7 @@
 package io.harness.ng;
 
 import static io.harness.NGConstants.HARNESS_SECRET_MANAGER_IDENTIFIER;
+import static io.harness.NGConstants.HARNESS_SECRET_MANAGER_NAME;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.connector.ConnectorModule.DEFAULT_CONNECTOR_SERVICE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
@@ -252,9 +253,9 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
         Scope.ACCOUNT.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER,
         Scope.ORG.getYamlRepresentation() + "." + HARNESS_SECRET_MANAGER_IDENTIFIER, HARNESS_SECRET_MANAGER_IDENTIFIER);
     if (!harnessSecretManagers.contains(secretManagerIdentifier)) {
-      throw new InvalidRequestException(
-          String.format("The secret %s is created using the secret manager %s. Please use secrets created using %s",
-              secretIdentifier, secretManagerIdentifier, HARNESS_SECRET_MANAGER_IDENTIFIER));
+      throw new InvalidRequestException(String.format(
+          "Secret [%s] is stored in secret manager [%s]. Secret manager credentials should be stored in [%s]",
+          secretIdentifier, secretManagerIdentifier, HARNESS_SECRET_MANAGER_NAME));
     }
   }
 
@@ -266,10 +267,10 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
     }
 
     secrets.forEach((key, secretRefData) -> {
-      String secretIdentifier = secretRefData.getIdentifier();
-      if (isEmpty(secretIdentifier)) {
+      if (isNull(secretRefData) || isEmpty(secretRefData.getIdentifier())) {
         return;
       }
+
       Optional<SecretResponseWrapper> secretResponseWrapperOptional = getSecretOptionalFromSecretRef(accountIdentifier,
           connectorInfoDTO.getOrgIdentifier(), connectorInfoDTO.getProjectIdentifier(), secretRefData);
 
@@ -294,7 +295,7 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
           }
         } // TODO- add handling for WinRM creds
 
-        throwIfNotHarnessSM(secretManagerIdentifier, secretIdentifier);
+        throwIfNotHarnessSM(secretManagerIdentifier, secretRefData.getIdentifier());
       }
     });
   }
@@ -328,10 +329,10 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
     }
 
     secrets.forEach((key, secretRefData) -> {
-      String secretIdentifier = secretRefData.getIdentifier();
-      if (isEmpty(secretIdentifier)) {
+      if (isNull(secretRefData) || isEmpty(secretRefData.getIdentifier())) {
         return;
       }
+
       Optional<SecretResponseWrapper> secretResponseWrapperOptional =
           getSecretOptionalFromSecretRef(identifierRef.getAccountIdentifier(), identifierRef.getOrgIdentifier(),
               identifierRef.getProjectIdentifier(), secretRefData);
@@ -345,7 +346,7 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
           secretManagerIdentifier = ((SecretFileSpecDTO) secretDTO.getSpec()).getSecretManagerIdentifier();
         }
 
-        throwIfNotHarnessSM(secretManagerIdentifier, secretIdentifier);
+        throwIfNotHarnessSM(secretManagerIdentifier, secretRefData.getIdentifier());
       }
     });
   }
@@ -535,8 +536,8 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
       String secretManagerIdentifierFromSecret = getSecretManagerIdentifierFromSecret(secret.get().getSecret());
       if (!HARNESS_SECRET_MANAGER_IDENTIFIER.equals(secretManagerIdentifierFromSecret)) {
         throw new InvalidRequestException(String.format(
-            "Cannot use the secret %s in the secret manager template. Please use secrets created using %s",
-            secretRef.getIdentifier(), HARNESS_SECRET_MANAGER_IDENTIFIER));
+            "Secret [%s] specified in template is stored in secret manager [%s]. Secrets used in the template should be stored in [%s]",
+            secretRef.getIdentifier(), secretManagerIdentifierFromSecret, HARNESS_SECRET_MANAGER_NAME));
       }
     });
   }
