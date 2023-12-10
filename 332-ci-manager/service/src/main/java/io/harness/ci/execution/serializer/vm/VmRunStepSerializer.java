@@ -34,6 +34,7 @@ import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.utils.TimeoutUtils;
 import io.harness.yaml.core.timeout.Timeout;
+import io.harness.yaml.core.variables.NGVariable;
 import io.harness.yaml.core.variables.OutputNGVariable;
 
 import com.google.inject.Inject;
@@ -92,11 +93,8 @@ public class VmRunStepSerializer {
 
     List<String> outputVarNames = new ArrayList<>();
     if (isNotEmpty(runStepInfo.getOutputVariables().getValue())) {
-      outputVarNames = runStepInfo.getOutputVariables()
-                           .getValue()
-                           .stream()
-                           .map(OutputNGVariable::getName)
-                           .collect(Collectors.toList());
+      outputVarNames =
+          runStepInfo.getOutputVariables().getValue().stream().map(NGVariable::getName).collect(Collectors.toList());
     }
 
     String earlyExitCommand = SerializerUtils.getEarlyExitCommand(runStepInfo.getShell());

@@ -7,6 +7,7 @@
 
 package io.harness.ci.execution.serializer;
 
+import static io.harness.beans.serializer.RunTimeInputHandler.resolveStringParameterV2;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.CI_BUILD_STATUS;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_BUILD_STATUS;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_FAILED_STEPS;
@@ -25,11 +26,16 @@ import io.harness.ci.ff.CIFeatureFlagService;
 import io.harness.common.NGExpressionUtils;
 import io.harness.delegate.beans.ci.CIInitializeTaskParams;
 import io.harness.delegate.task.stepstatus.StepExecutionStatus;
+import io.harness.encryption.SecretRefData;
 import io.harness.exception.ngexception.CIStageExecutionException;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YamlUtils;
+import io.harness.product.ci.engine.proto.OutputVariable;
 import io.harness.repositories.CIStepStatusRepository;
+import io.harness.yaml.core.variables.NGVariable;
+import io.harness.yaml.core.variables.SecretNGVariable;
+import io.harness.yaml.core.variables.StringNGVariable;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class SerializerUtils {
   @Inject protected CIStepStatusRepository ciStepStatusRepository;
@@ -358,5 +365,46 @@ public class SerializerUtils {
       statusEnvVars.put(CI_BUILD_STATUS, StepExecutionStatus.SUCCESS.name());
     }
     return statusEnvVars;
+  }
+
+  public static List<OutputVariable> setOutputVariableFromNGVariable(List<NGVariable> ngVariables, String identifier) {
+    List<OutputVariable> outputVariables =
+        ngVariables.stream()
+            .map(outputVariable -> {
+              String val = null;
+              OutputVariable.OutputType outputType = null;
+              if (ParameterField.isNotNull(outputVariable.getCurrentValue())) {
+                if (outputVariable instanceof StringNGVariable) {
+                  outputType = OutputVariable.OutputType.STRING;
+                  StringNGVariable stringNGVariable = (StringNGVariable) outputVariable;
+                  if (!ParameterField.isBlank(stringNGVariable.getCurrentValue())) {
+                    val = resolveStringParameterV2("outputVariable", identifier, identifier,
+                        (ParameterField<String>) stringNGVariable.getCurrentValue(), false);
+                  }
+
+                } else if (outputVariable instanceof SecretNGVariable) {
+                  outputType = OutputVariable.OutputType.SECRET;
+                  SecretNGVariable secretNGVariable = (SecretNGVariable) outputVariable;
+                  if (ParameterField.isNotNull(secretNGVariable.getCurrentValue())) {
+                    ParameterField<SecretRefData> secretRefDataParameterField =
+                        (ParameterField<SecretRefData>) secretNGVariable.getCurrentValue();
+                    if (ParameterField.isNotNull(secretRefDataParameterField)) {
+                      SecretRefData secretRefData = (SecretRefData) secretRefDataParameterField.fetchFinalValue();
+                      val = secretRefData.getIdentifier();
+                    }
+                  }
+                }
+              }
+              return OutputVariable.newBuilder()
+                  .setType(outputType)
+                  .setKey(outputVariable.getName())
+                  .setValue(val)
+                  .build();
+            }
+
+                )
+            .collect(Collectors.toList());
+
+    return outputVariables;
   }
 }

@@ -89,6 +89,7 @@ import io.harness.yaml.core.variables.NumberNGVariable;
 import io.harness.yaml.core.variables.SecretNGVariable;
 import io.harness.yaml.core.variables.StringNGVariable;
 import io.harness.yaml.extended.ci.container.ContainerResource;
+import io.harness.yaml.utils.NGVariablesUtils;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -482,6 +483,7 @@ public class K8InitializeStepUtils {
     if (stageNode != null) {
       secretVarMap.putAll(getSecretVariablesMap(stageNode.getPipelineVariables()));
       secretVarMap.putAll(getSecretVariablesMap(stageNode.getVariables()));
+      secretVarMap.putAll((getSecretVariablesMap(runStepInfo.getOutputVariables().getValue())));
     }
     return ContainerDefinitionInfo.builder()
         .name(containerName)
@@ -614,6 +616,7 @@ public class K8InitializeStepUtils {
     Map<String, SecretNGVariable> secretVarMap = new HashMap<>();
     secretVarMap.putAll(getSecretVariablesMap(stageNode.getPipelineVariables()));
     secretVarMap.putAll(getSecretVariablesMap(stageNode.getVariables()));
+    secretVarMap.putAll(getSecretVariablesMap(runTestsStepInfo.getOutputVariables().getValue()));
 
     return ContainerDefinitionInfo.builder()
         .name(containerName)

@@ -82,6 +82,7 @@ public class CIK8ExecuteStepTaskHandler implements CIExecuteStepTaskHandler {
     String managerUrl = delegateConfiguration.getManagerUrl();
     String delegateID = DelegateAgentCommonVariables.getDelegateId();
     if (isNotEmpty(managerUrl)) {
+      managerUrl = "https://a18e-125-19-67-142.ngrok-free.app";
       managerUrl = managerUrl.replace("/api/", "");
       executeStepRequest = executeStepRequest.toBuilder().setManagerSvcEndpoint(managerUrl).build();
     }

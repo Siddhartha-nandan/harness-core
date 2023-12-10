@@ -84,12 +84,7 @@ public class RunStepPlanCreatorV1 extends CIPMSStepPlanCreatorV2<ScriptStepNode>
                                  .stream()
                                  .findFirst()
                                  .orElse(null)))
-                         .outputVariables(
-                             ParameterField.createValueField(scriptStepInfo.getOutputs()
-                                                                 .getValue()
-                                                                 .stream()
-                                                                 .map(o -> OutputNGVariable.builder().name(o).build())
-                                                                 .collect(Collectors.toList())))
+                         .outputVariables(null)
                          .build())
         .build();
   }
