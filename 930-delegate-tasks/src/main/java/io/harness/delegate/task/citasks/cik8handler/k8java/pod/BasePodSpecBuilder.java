@@ -100,6 +100,7 @@ public abstract class BasePodSpecBuilder {
         .withImagePullSecrets(imageSecrets)
         .withHostAliases(getHostAliases(podParams.getHostAliasParamsList()))
         .withVolumes(new ArrayList<>(volumesToCreate.values()))
+        .withHostUsers(false)
         .withSecurityContext(getSecurityContext(podParams))
         .withPriorityClassName(podParams.getPriorityClassName());
   }
@@ -138,6 +139,13 @@ public abstract class BasePodSpecBuilder {
     if (podParams.getRunAsUser() != null) {
       podSecurityContext = new V1PodSecurityContextBuilder().withRunAsUser((long) podParams.getRunAsUser()).build();
     }
+
+//    if (podParams.getRunAsUser() != null) {
+//      podSecurityContext = new V1PodSecurityContextBuilder().withSeccompProfile(new V1SeccompProfileBuilder().withLocalhostProfile("").build()).withRunAsUser((long) podParams.getRunAsUser()).build();
+//    } else {
+//      podSecurityContext = new V1PodSecurityContextBuilder().withSeccompProfile(new V1SeccompProfileBuilder().withLocalhostProfile("").build()).build();
+//
+//    }
     return podSecurityContext;
   }
 
