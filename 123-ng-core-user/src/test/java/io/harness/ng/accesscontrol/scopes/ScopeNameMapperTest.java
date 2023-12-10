@@ -138,6 +138,8 @@ public class ScopeNameMapperTest extends CategoryTest {
                                  .orgIdentifier(ORG_IDENTIFIER)
                                  .uniqueId(orgUniqueIdentifier)
                                  .build();
+    when(scopeResolverService.getScopeInfo(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, null))
+        .thenReturn(Optional.of(orgScopeInfo));
     doReturn(organizationResponse)
         .when(organizationService)
         .get(ACCOUNT_IDENTIFIER,
@@ -174,6 +176,8 @@ public class ScopeNameMapperTest extends CategoryTest {
                                  .orgIdentifier(ORG_IDENTIFIER)
                                  .uniqueId(orgUniqueIdentifier)
                                  .build();
+    when(scopeResolverService.getScopeInfo(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, null))
+        .thenReturn(Optional.of(orgScopeInfo));
     ScopeInfo scopeInfo = ScopeInfo.builder()
                               .accountIdentifier(ACCOUNT_IDENTIFIER)
                               .scopeType(ScopeLevel.ACCOUNT)
