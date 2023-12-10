@@ -23,13 +23,16 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.FeatureName;
 import io.harness.data.structure.CollectionUtils;
+import io.harness.delegate.Entrypoint;
+import io.harness.delegate.Execution;
+import io.harness.delegate.K8sExecutionSpec;
+import io.harness.delegate.ShellType;
 import io.harness.delegate.TaskSelector;
 import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.TaskData;
 import io.harness.delegate.beans.ci.k8s.K8sTaskExecutionResponse;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.delegate.task.shell.ShellScriptTaskParametersNG;
-import io.harness.encryption.Scope;
 import io.harness.engine.pms.data.PmsSweepingOutputService;
 import io.harness.engine.pms.tasks.TaskExecutor;
 import io.harness.exception.InvalidRequestException;
@@ -45,11 +48,9 @@ import io.harness.pms.contracts.execution.AsyncExecutableResponse;
 import io.harness.pms.contracts.execution.tasks.TaskCategory;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.execution.utils.AmbianceUtils;
-import io.harness.pms.sdk.core.data.OptionalOutcome;
 import io.harness.pms.sdk.core.data.OptionalSweepingOutput;
 import io.harness.pms.sdk.core.plugin.ContainerStepExecutionResponseHelper;
 import io.harness.pms.sdk.core.resolver.RefObjectUtils;
-import io.harness.pms.sdk.core.resolver.outcome.OutcomeService;
 import io.harness.pms.sdk.core.resolver.outputs.ExecutionSweepingOutputService;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
@@ -143,11 +144,11 @@ public abstract class AbstractContainerStep implements AsyncExecutableWithRbac<S
         throw new InvalidRequestException("Not found k8sInfra infraRefId");
       }
       KubernetesInfraOutput k8sInfra = (KubernetesInfraOutput) optionalCleanupSweepingOutput.getOutput();
-      String queueExecuteTaskId = taskExecutor.queueExecuteTask(
-          prepareExecuteTaskRequest(ambiance, SHELL_SCRIPT_TASK_IDENTIFIER, getTaskData(ambiance),
-              referenceFalseKryoSerializer, timeout, TaskCategory.DELEGATE_TASK_V2, true, delegateSelectors,
-              Scope.PROJECT, k8sInfra.getInfraRefId()),
-          Duration.ofSeconds(0));
+      Execution execution = getExecution(SHELL_SCRIPT_TASK_IDENTIFIER, k8sInfra.getInfraRefId());
+      String queueExecuteTaskId =
+          taskExecutor.queueExecuteTask(prepareExecuteTaskRequest(ambiance, execution, timeout,
+                                            TaskCategory.DELEGATE_TASK_V2, true, delegateSelectors),
+              Duration.ofSeconds(0));
 
       return AsyncExecutableResponse.newBuilder()
           .addCallbackIds(queueExecuteTaskId)
@@ -183,6 +184,18 @@ public abstract class AbstractContainerStep implements AsyncExecutableWithRbac<S
         .parameters(new Object[] {parametersNG})
         .taskType(TaskType.SHELL_SCRIPT_TASK_NG.name())
         .timeout(StepUtils.getTimeoutMillis(null, StepUtils.DEFAULT_STEP_TIMEOUT))
+        .build();
+  }
+
+  private Execution getExecution(String stepId, String infraRefId) {
+    return Execution.newBuilder()
+        .setInfraRefId(infraRefId)
+        .setStepId(stepId)
+        .setK8S(
+            K8sExecutionSpec.newBuilder()
+                .setEntryPoint(
+                    Entrypoint.newBuilder().setShellType(ShellType.BASH).setCommand("echo 'POC FOR BIJOU API'").build())
+                .build())
         .build();
   }
 

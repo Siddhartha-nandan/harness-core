@@ -19,7 +19,6 @@ import io.harness.delegate.AccountId;
 import io.harness.delegate.Capability;
 import io.harness.delegate.Execution;
 import io.harness.delegate.ExecutionInfrastructure;
-import io.harness.delegate.ExecutionInput;
 import io.harness.delegate.ScheduleTaskRequest;
 import io.harness.delegate.SchedulingConfig;
 import io.harness.delegate.SetupExecutionInfrastructureRequest;
@@ -30,7 +29,6 @@ import io.harness.delegate.TaskMode;
 import io.harness.delegate.TaskSelector;
 import io.harness.delegate.TaskSetupAbstractions;
 import io.harness.delegate.TaskType;
-import io.harness.delegate.beans.DelegateTaskPackage;
 import io.harness.delegate.beans.RunnerType;
 import io.harness.delegate.beans.TaskData;
 import io.harness.delegate.beans.executioncapability.ExecutionCapability;
@@ -315,9 +313,8 @@ public class TaskRequestsUtils {
         .build();
   }
 
-  public static TaskRequest prepareExecuteTaskRequest(Ambiance ambiance, String stepId, TaskData taskData,
-      KryoSerializer referenceFalseKryoSerializer, long timeout, TaskCategory taskCategory, boolean withLogs,
-      List<TaskSelector> selectors, Scope taskScope, String infraRefId) {
+  public static TaskRequest prepareExecuteTaskRequest(Ambiance ambiance, Execution stepExecution, long timeout,
+      TaskCategory taskCategory, boolean withLogs, List<TaskSelector> selectors) {
     String accountId = Preconditions.checkNotNull(ambiance.getSetupAbstractionsMap().get("accountId"));
     LinkedHashMap<String, String> logAbstractionMap =
         withLogs ? StepUtils.generateLogAbstractions(ambiance) : new LinkedHashMap<>();
@@ -330,14 +327,11 @@ public class TaskRequestsUtils {
             .setSelectionTrackingLogEnabled(true)
             .build();
 
-    DelegateTaskPackage delegateTaskPackage = DelegateTaskPackage.builder().accountId(accountId).data(taskData).build();
-    byte[] taskPackageBytes = referenceFalseKryoSerializer.asDeflatedBytes(delegateTaskPackage);
-    ExecutionInput executionInput = ExecutionInput.newBuilder().setData(ByteString.copyFrom(taskPackageBytes)).build();
-    Execution execution =
-        Execution.newBuilder().setInfraRefId(infraRefId).setStepId(stepId).setInput(executionInput).build();
-
-    ScheduleTaskRequest scheduleTaskRequest =
-        ScheduleTaskRequest.newBuilder().setExecution(execution).setConfig(schedulingConfig).build();
+    ScheduleTaskRequest scheduleTaskRequest = ScheduleTaskRequest.newBuilder()
+                                                  .setExecution(stepExecution)
+                                                  .setAccountId(accountId)
+                                                  .setConfig(schedulingConfig)
+                                                  .build();
 
     DelegateTaskRequest delegateTaskRequest =
         DelegateTaskRequest.newBuilder()
