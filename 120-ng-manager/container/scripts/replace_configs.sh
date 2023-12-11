@@ -358,6 +358,9 @@ replace_key_value redisLockConfig.connectionPoolSize $REDIS_CONNECTION_POOL_SIZE
 replace_key_value redisLockConfig.retryInterval $REDIS_RETRY_INTERVAL
 replace_key_value redisLockConfig.retryAttempts $REDIS_RETRY_ATTEMPTS
 replace_key_value redisLockConfig.timeout $REDIS_TIMEOUT
+replace_key_value redisLockConfig.sslConfig.enabled $LOCK_CONFIG_REDIS_SSL_ENABLED
+replace_key_value redisLockConfig.sslConfig.CATrustStorePath $LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH
+replace_key_value redisLockConfig.sslConfig.CATrustStorePassword $LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD
 
 if [[ "" != "$HSQS_BASE_URL" ]]; then
   export HSQS_BASE_URL; yq -i '.queueServiceClientConfig.httpClientConfig.baseUrl=env(HSQS_BASE_URL)' $CONFIG_FILE
@@ -373,6 +376,14 @@ fi
 
 if [[ "" != "$LOCK_CONFIG_REDIS_URL" ]]; then
   export LOCK_CONFIG_REDIS_URL; yq -i '.singleServerConfig.address=env(LOCK_CONFIG_REDIS_URL)' $REDISSON_CACHE_FILE
+fi
+
+if [[ "" != "$LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH" ]]; then
+  export LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH; yq -i '.singleServerConfig.sslTruststore=env(LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH)' $REDISSON_CACHE_FILE
+fi
+
+if [[ "" != "$LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD" ]]; then
+  export LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD; yq -i '.singleServerConfig.sslTruststorePassword=env(LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD)' $REDISSON_CACHE_FILE
 fi
 
 if [[ "" != "$GITLAB_OAUTH_CLIENT" ]]; then

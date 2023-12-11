@@ -95,6 +95,10 @@ redisLockConfig:
   useScriptCache: true
   userName: ${LOCK_CONFIG_REDIS_USERNAME:-""}
   password: ${LOCK_CONFIG_REDIS_PASSWORD:-""}
+  sslConfig:
+    enabled: ${LOCK_CONFIG_REDIS_SSL_ENABLED:-false}
+    CATrustStorePath: ${LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH:-""}
+    CATrustStorePassword: ${LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD:-""}
 
 distributedLockImplementation: ${DISTRIBUTED_LOCK_IMPLEMENTATION:-REDIS}
 

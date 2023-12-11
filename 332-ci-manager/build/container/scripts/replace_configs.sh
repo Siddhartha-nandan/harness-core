@@ -497,6 +497,14 @@ if [[ "" != "$CACHE_CONFIG_REDIS_PASSWORD" ]]; then
   export CACHE_CONFIG_REDIS_PASSWORD; yq -i '.singleServerConfig.password=env(CACHE_CONFIG_REDIS_PASSWORD)' $ENTERPRISE_REDISSON_CACHE_FILE
 fi
 
+if [[ "" != "$CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH" ]]; then
+  export CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH; yq -i '.singleServerConfig.sslTruststore=env(CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH)' $REDISSON_CACHE_FILE
+fi
+
+if [[ "" != "$CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD" ]]; then
+  export CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD; yq -i '.singleServerConfig.sslTruststorePassword=env(CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD)' $REDISSON_CACHE_FILE
+fi
+
 if [[ "" != "$REDIS_NETTY_THREADS" ]]; then
   export REDIS_NETTY_THREADS; yq -i '.nettyThreads=env(REDIS_NETTY_THREADS)' $REDISSON_CACHE_FILE
 fi
@@ -621,6 +629,9 @@ replace_key_value redisLockConfig.connectionPoolSize $REDIS_CONNECTION_POOL_SIZE
 replace_key_value redisLockConfig.retryInterval $REDIS_RETRY_INTERVAL
 replace_key_value redisLockConfig.retryAttempts $REDIS_RETRY_ATTEMPTS
 replace_key_value redisLockConfig.timeout $REDIS_TIMEOUT
+replace_key_value redisLockConfig.redis.sslConfig.enabled $LOCK_CONFIG_REDIS_SSL_ENABLED
+replace_key_value redisLockConfig.redis.sslConfig.CATrustStorePath $LOCK_CONFIGK_REDIS_SSL_CA_TRUST_STORE_PATH
+replace_key_value redisLockConfig.redis.sslConfig.CATrustStorePassword $LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD
 
 replace_key_value enableOpentelemetry "$ENABLE_OPENTELEMETRY"
 replace_key_value enforcementClientConfiguration.enforcementCheckEnabled "$ENFORCEMENT_CHECK_ENABLED"
