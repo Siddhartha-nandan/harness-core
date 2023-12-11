@@ -23,8 +23,10 @@ import io.harness.cvng.notification.entities.MonitoredServiceNotificationRule;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.ToString;
@@ -150,7 +152,7 @@ public class AggregatedEvent {
         baseLinkUrl, account, CET_MODULE_NAME, org, project, env, service, deployment, from, to);
     List<ErrorTrackingEventType> errorTrackingEventTypes = codeErrorCondition.getErrorTrackingEventTypes();
     if (errorTrackingEventTypes != null) {
-      List<String> eventTypeNames = new ArrayList<>();
+      Set<String> eventTypeNames = new HashSet<>();
       for (ErrorTrackingEventType eventType : errorTrackingEventTypes) {
         switch (eventType) {
           case CAUGHT_EXCEPTION:
@@ -184,7 +186,7 @@ public class AggregatedEvent {
         }
       }
       if (eventTypeNames.size() > 0) {
-        url += EVENT_TYPE_PARAM + String.join(",", eventTypeNames);
+        url += EVENT_TYPE_PARAM + String.join(",", eventTypeNames.stream().sorted().collect(Collectors.toList()));
       }
     }
     return url;
