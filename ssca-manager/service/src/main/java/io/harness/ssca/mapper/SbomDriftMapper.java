@@ -9,9 +9,9 @@ package io.harness.ssca.mapper;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidRequestException;
 import io.harness.spec.server.ssca.v1.model.ComponentDrift;
-import io.harness.spec.server.ssca.v1.model.ComponentDriftResponse;
 import io.harness.spec.server.ssca.v1.model.ComponentSummary;
 import io.harness.ssca.beans.drift.ComponentDriftStatus;
 
@@ -37,27 +37,22 @@ public class SbomDriftMapper {
     }
   }
 
-  public ComponentDriftResponse toComponentDriftResponse(String artifactName, String baseTag, String tag,
+  public List<ComponentDrift> toComponentDriftResponseList(
       List<io.harness.ssca.beans.drift.ComponentDrift> componentDrifts) {
-    List<ComponentDrift> componentDriftsResponseList = new ArrayList<>();
+    if (EmptyPredicate.isEmpty(componentDrifts)) {
+      return new ArrayList<>();
+    }
+    List<ComponentDrift> componentDriftList = new ArrayList<>();
     for (io.harness.ssca.beans.drift.ComponentDrift componentDrift : componentDrifts) {
-      componentDriftsResponseList.add(toComponentDriftResponse(componentDrift));
+      if (componentDrift == null || componentDrift.getStatus() == null) {
+        return new ArrayList<>();
+      }
+      componentDriftList.add(new ComponentDrift()
+                                 .newComponent(toComponentSummaryResponse(componentDrift.getNewComponent()))
+                                 .oldComponent(toComponentSummaryResponse(componentDrift.getOldComponent()))
+                                 .status(componentDrift.getStatus().toString()));
     }
-    return new ComponentDriftResponse()
-        .componentDrifts(componentDriftsResponseList)
-        .tag(tag)
-        .baseTag(baseTag)
-        .artifactName(artifactName);
-  }
-
-  private ComponentDrift toComponentDriftResponse(io.harness.ssca.beans.drift.ComponentDrift componentDrift) {
-    if (componentDrift == null || componentDrift.getStatus() == null) {
-      return null;
-    }
-    return new ComponentDrift()
-        .newComponent(toComponentSummaryResponse(componentDrift.getNewComponent()))
-        .oldComponent(toComponentSummaryResponse(componentDrift.getOldComponent()))
-        .status(componentDrift.getStatus().toString());
+    return componentDriftList;
   }
 
   private ComponentSummary toComponentSummaryResponse(io.harness.ssca.beans.drift.ComponentSummary componentSummary) {

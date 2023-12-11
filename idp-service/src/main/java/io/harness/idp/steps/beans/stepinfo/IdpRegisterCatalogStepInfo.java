@@ -1,8 +1,8 @@
 /*
  * Copyright 2023 Harness Inc. All rights reserved.
- * Use of this source code is governed by the PolyForm Free Trial 1.0.0 license
+ * Use of this source code is governed by the PolyForm Shield 1.0.0 license
  * that can be found in the licenses directory at the root of this repository, also available at
- * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
+ * https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt.
  */
 package io.harness.idp.steps.beans.stepinfo;
 
@@ -42,13 +42,13 @@ import org.springframework.data.annotation.TypeAlias;
 
 @Data
 @NoArgsConstructor
-@JsonTypeName(Constants.IDP_CODE_PUSH)
-@TypeAlias("IdpCodePushStepInfo")
+@JsonTypeName(Constants.REGISTER_CATALOG)
+@TypeAlias("RegisterCatalogStepInfo")
 @OwnedBy(HarnessTeam.IDP)
 @Builder
 @AllArgsConstructor
-@RecasterAlias("io.harness.idp.pipeline.steps.beans.stepinfo.IdpCodePushStepInfo")
-public class IdpCodePushStepInfo implements PluginCompatibleStep, WithConnectorRef {
+@RecasterAlias("io.harness.idp.pipeline.steps.beans.stepinfo.IdpRegisterCatalogStepInfo")
+public class IdpRegisterCatalogStepInfo implements PluginCompatibleStep, WithConnectorRef {
   @VariableExpression(skipVariableExpression = true) public static final int DEFAULT_RETRY = 1;
 
   @JsonProperty(YamlNode.UUID_FIELD_NAME)
@@ -61,12 +61,10 @@ public class IdpCodePushStepInfo implements PluginCompatibleStep, WithConnectorR
 
   @VariableExpression(skipVariableExpression = true) @Min(MIN_RETRY) @Max(MAX_RETRY) private int retry;
 
-  @ApiModelProperty(dataType = STRING_CLASSPATH) ParameterField<String> codeDirectory;
-  @ApiModelProperty(dataType = STRING_CLASSPATH) ParameterField<String> codeOutputDirectory;
+  @ApiModelProperty(dataType = STRING_CLASSPATH) ParameterField<String> filePath;
+  @ApiModelProperty(dataType = STRING_CLASSPATH) ParameterField<String> organization;
+  @ApiModelProperty(dataType = STRING_CLASSPATH) ParameterField<String> repository;
   @ApiModelProperty(dataType = STRING_CLASSPATH) ParameterField<String> branch;
-
-  @ApiModelProperty(dataType = STRING_CLASSPATH) ParameterField<String> orgName;
-  @ApiModelProperty(dataType = STRING_CLASSPATH) ParameterField<String> repoName;
   @ApiModelProperty(dataType = STRING_CLASSPATH) ParameterField<String> workspace; // needed in case of bitbucket
   @ApiModelProperty(dataType = STRING_CLASSPATH)
   ParameterField<String> project; // needed in case of gitlab and bitbucket
@@ -77,12 +75,12 @@ public class IdpCodePushStepInfo implements PluginCompatibleStep, WithConnectorR
 
   @Override
   public TypeInfo getNonYamlInfo() {
-    return TypeInfo.builder().stepInfoType(CIStepInfoType.IDP_CODE_PUSH).build();
+    return TypeInfo.builder().stepInfoType(CIStepInfoType.REGISTER_CATALOG).build();
   }
 
   @Override
   public StepType getStepType() {
-    return Constants.IDP_CODE_PUSH_STEP_TYPE;
+    return Constants.REGISTER_CATALOG_STEP_TYPE;
   }
 
   @Override

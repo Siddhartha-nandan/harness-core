@@ -326,9 +326,10 @@ public class K8InitializeStepUtils {
       case SSCA_ENFORCEMENT:
       case PROVENANCE:
       case SLSA_VERIFICATION:
-      case IDP_COOKIECUTTER:
-      case IDP_CREATE_REPO:
-      case IDP_CODE_PUSH:
+      case COOKIECUTTER:
+      case CREATE_REPO:
+      case DIRECT_PUSH:
+      case REGISTER_CATALOG:
         return createPluginCompatibleStepContainerDefinition((PluginCompatibleStep) ciStepInfo, stageNode,
             ciExecutionArgs, portFinder, stepIndex, stepElement.getIdentifier(), stepElement.getName(),
             stepElement.getType(), timeout, accountId, os, ambiance, extraMemoryPerStep, extraCPUPerStep);
@@ -1117,9 +1118,10 @@ public class K8InitializeStepUtils {
       case IACM_APPROVAL:
       case PROVENANCE:
       case SLSA_VERIFICATION:
-      case IDP_COOKIECUTTER:
-      case IDP_CREATE_REPO:
-      case IDP_CODE_PUSH:
+      case COOKIECUTTER:
+      case CREATE_REPO:
+      case DIRECT_PUSH:
+      case REGISTER_CATALOG:
         return ((PluginCompatibleStep) ciStepInfo).getResources();
       default:
         throw new CIStageExecutionException(

@@ -9,17 +9,18 @@ package io.harness.repositories.drift;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
 import io.harness.ssca.entities.drift.DriftEntity;
 
 import com.google.inject.Inject;
 import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 
 @OwnedBy(HarnessTeam.SSCA)
 @AllArgsConstructor(access = AccessLevel.PROTECTED, onConstructor = @__({ @Inject }))
@@ -33,7 +34,17 @@ public class SbomDriftRepositoryCustomImpl implements SbomDriftRepositoryCustom 
   }
 
   @Override
+  public DriftEntity find(Criteria criteria) {
+    return mongoTemplate.findOne(new Query(criteria), DriftEntity.class);
+  }
+
+  @Override
+  public DriftEntity update(Query query, Update update) {
+    return mongoTemplate.findAndModify(query, update, new FindAndModifyOptions().returnNew(true), DriftEntity.class);
+  }
+
+  @Override
   public <T> List<T> aggregate(Aggregation aggregation, Class<T> resultClass) {
-    return mongoTemplate.aggregate(aggregation, NormalizedSBOMComponentEntity.class, resultClass).getMappedResults();
+    return mongoTemplate.aggregate(aggregation, DriftEntity.class, resultClass).getMappedResults();
   }
 }
