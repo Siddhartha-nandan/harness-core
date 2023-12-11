@@ -318,7 +318,9 @@ ceGCPHomeProjectCreds: ""
 
 storageObjectAdmin: ""
 
-gcpSyncPythonImagePath: "placeholder"
+gcpSyncConfig:
+  pythonImagePath: "placeholder"
+  bucketNamePrefix: "harness-ccm-%s-%s"
 
 awsSecret:
   S3_SYNC_CONFIG_ACCESSKEY: ""

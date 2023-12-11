@@ -222,6 +222,8 @@ clickHouseConfig:
   socketTimeout: 86400000
   sendReceiveTimeout: "86400"
   queryRetries: "3"
+  secretName: "clickhouse"
+  secretPasswordKey: "admin-password"
 
 deployMode: KUBERNETES
 
@@ -301,5 +303,4 @@ gcpSyncSmpConfig:
   hmacAccessKey : "HMAC_ACCESS_KEY"
   batchProcessingMountSecretName: "batch-processing-secret-mount"
   serviceAccountCredentialKey: "ce-batch-gcp-credentials"
-  clickHouseSecretName: "clickhouse"
-  clickHousePasswordKey: "admin-password"
+  bucketNamePrefix: "harness-ccm-%s-%s"

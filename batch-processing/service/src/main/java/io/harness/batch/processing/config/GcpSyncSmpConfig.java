@@ -29,6 +29,5 @@ public class GcpSyncSmpConfig {
   private String hmacSecretKey;
   private String serviceAccountCredentialKey;
   private String batchProcessingMountSecretName;
-  private String clickHouseSecretName;
-  private String clickHousePasswordKey;
+  private String bucketNamePrefix;
 }
