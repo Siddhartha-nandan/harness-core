@@ -130,7 +130,7 @@ public class NGConnectorSecretManagerServiceImpl implements NGConnectorSecretMan
     if (CUSTOM_SECRET_MANAGER.equals(connectorDTO.getConnectorInfo().getConnectorType())) {
       checkIfDecryptionIsPossible(accountIdentifier, connectorDTO.getConnectorInfo(), false);
       Set<String> secretIdentifiers = customSecretManagerHelper.extractSecretsUsed(accountIdentifier, connectorDTO);
-      validateSecretManagerCredentialsAreInHarnessSM(accountIdentifier, connectorDTO, secretIdentifiers);
+      validateSecretManagerCredentialsAreInHarnessSM(accountIdentifier, connectorDTO, secretIdentifiers, false);
     }
 
     ngEncryptorService.decryptEncryptionConfigSecrets(connectorDTO.getConnectorInfo().getConnectorConfig(),
@@ -335,8 +335,8 @@ public class NGConnectorSecretManagerServiceImpl implements NGConnectorSecretMan
     });
   }
 
-  public void validateSecretManagerCredentialsAreInHarnessSM(
-      String accountIdentifier, ConnectorDTO connectorDTO, Set<String> credentialSecretIdentifiers) {
+  public void validateSecretManagerCredentialsAreInHarnessSM(String accountIdentifier, ConnectorDTO connectorDTO,
+      Set<String> credentialSecretIdentifiers, boolean validateSMCredentialsStoredInHarnessSM) {
     ConnectorInfoDTO connectorInfoDTO = connectorDTO.getConnectorInfo();
     if (isEmpty(credentialSecretIdentifiers)) {
       return;
@@ -355,15 +355,36 @@ public class NGConnectorSecretManagerServiceImpl implements NGConnectorSecretMan
       }
       String secretManagerIdentifierFromSecret =
           getSecretManagerIdentifierFromSecret(accountIdentifier, secret.get().getSecret());
-      if (!HARNESS_SECRET_MANAGER_IDENTIFIER.equals(secretManagerIdentifierFromSecret)) {
+      if (validateSMCredentialsStoredInHarnessSM
+          && !HARNESS_SECRET_MANAGER_IDENTIFIER.equals(secretManagerIdentifierFromSecret)) {
         throw new InvalidRequestException(String.format(
             "Secret [%s] specified in template is stored in secret manager [%s]. Secrets used in the template should be stored in [%s]",
             secretRef.getIdentifier(), secretManagerIdentifierFromSecret, HARNESS_SECRET_MANAGER_NAME));
+      }
+
+      String connectorScopedIdentifier =
+          IdentifierRefHelper.getRefFromIdentifierOrRef(accountIdentifier, connectorInfoDTO.getOrgIdentifier(),
+              connectorInfoDTO.getProjectIdentifier(), connectorInfoDTO.getIdentifier());
+
+      String secretManagerScopedIdentifier =
+          getScopedSecretManagerIdentifierFromSecret(accountIdentifier, secret.get().getSecret());
+
+      if (connectorScopedIdentifier.equals(secretManagerScopedIdentifier)) {
+        throw new InvalidRequestException(String.format(
+            "Detected cyclic dependency in credentials of secret manager- [%s]", secretManagerIdentifierFromSecret));
       }
     });
   }
 
   private String getSecretManagerIdentifierFromSecret(String accountIdentifier, SecretDTOV2 secretDTO) {
+    String scopedIdentifier = getScopedSecretManagerIdentifierFromSecret(accountIdentifier, secretDTO);
+    if (scopedIdentifier != null) {
+      return IdentifierRefHelper.getIdentifier(scopedIdentifier);
+    }
+    return null;
+  }
+
+  private String getScopedSecretManagerIdentifierFromSecret(String accountIdentifier, SecretDTOV2 secretDTO) {
     String identifier;
     switch (secretDTO.getType()) {
       case SecretText:
@@ -376,9 +397,8 @@ public class NGConnectorSecretManagerServiceImpl implements NGConnectorSecretMan
         return null;
     }
     if (identifier != null) {
-      String scopedIdentifier = IdentifierRefHelper.getRefFromIdentifierOrRef(
+      return IdentifierRefHelper.getRefFromIdentifierOrRef(
           accountIdentifier, secretDTO.getOrgIdentifier(), secretDTO.getProjectIdentifier(), identifier);
-      return IdentifierRefHelper.getIdentifier(scopedIdentifier);
     }
     return null;
   }

@@ -314,7 +314,7 @@ public class NGEncryptedDataServiceImpl implements NGEncryptedDataService {
     customSecretManagerConnectorDTO.getTemplate().setTemplateInputs(inputValues);
     Set<String> secretIdentifiers = customSecretManagerHelper.extractSecretsUsed(accountIdentifier, connectorDTO);
     ngConnectorSecretManagerService.validateSecretManagerCredentialsAreInHarnessSM(
-        accountIdentifier, connectorDTO, secretIdentifiers);
+        accountIdentifier, connectorDTO, secretIdentifiers, true);
   }
 
   private void validateSecretDoesNotExist(

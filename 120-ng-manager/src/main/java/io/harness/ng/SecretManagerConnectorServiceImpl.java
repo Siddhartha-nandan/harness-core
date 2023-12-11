@@ -406,7 +406,7 @@ public class SecretManagerConnectorServiceImpl implements ConnectorService {
     if (connectorDTO.getConnectorInfo().getConnectorType() == ConnectorType.CUSTOM_SECRET_MANAGER) {
       Set<String> secretIdentifiers = customSecretManagerHelper.extractSecretsUsed(accountIdentifier, connectorDTO);
       ngConnectorSecretManagerService.validateSecretManagerCredentialsAreInHarnessSM(
-          accountIdentifier, connectorDTO, secretIdentifiers);
+          accountIdentifier, connectorDTO, secretIdentifiers, true);
     }
   }
 

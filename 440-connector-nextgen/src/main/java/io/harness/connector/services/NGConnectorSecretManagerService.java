@@ -55,6 +55,6 @@ public interface NGConnectorSecretManagerService {
   void checkIfDecryptionIsPossible(
       String accountIdentifier, ConnectorInfoDTO connectorInfoDTO, boolean shouldBelongToHarnessSM);
 
-  void validateSecretManagerCredentialsAreInHarnessSM(
-      String accountIdentifier, ConnectorDTO connectorDTO, Set<String> credentialSecretIdentifiers);
+  void validateSecretManagerCredentialsAreInHarnessSM(String accountIdentifier, ConnectorDTO connectorDTO,
+      Set<String> credentialSecretIdentifiers, boolean validateSMCredentialsStoredInHarnessSM);
 }
