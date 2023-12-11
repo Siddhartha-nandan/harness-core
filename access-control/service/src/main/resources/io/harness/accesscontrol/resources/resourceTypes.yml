@@ -43,7 +43,7 @@ resourceTypes:
     permissionKey: authsetting
   - identifier: FEATUREFLAG
     permissionKey: featureflag
-  identifier: FF_PROXYAPIKEY
+  - identifier: FF_PROXYAPIKEY
     permissionKey: proxyapikey
   - identifier: TARGET
     permissionKey: target
