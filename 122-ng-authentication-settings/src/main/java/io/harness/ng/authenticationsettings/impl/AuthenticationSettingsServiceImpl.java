@@ -492,15 +492,16 @@ public class AuthenticationSettingsServiceImpl implements AuthenticationSettings
 
   private LDAPSettings fromCGLdapSettings(LdapSettings ldapSettings) {
     return ldapSettings != null ? LDAPSettings.builder()
-        .identifier(ldapSettings.getUuid())
-        .connectionSettings(ldapSettings.getConnectionSettings())
-        .userSettingsList(ldapSettings.getUserSettingsList())
-        .groupSettingsList(ldapSettings.getGroupSettingsList())
-        .displayName(ldapSettings.getDisplayName())
-        .cronExpression(ldapSettings.getCronExpression())
-        .nextIterations(ldapSettings.getNextIterations())
-        .disabled(ldapSettings.isDisabled())
-        .build() : null;
+                                      .identifier(ldapSettings.getUuid())
+                                      .connectionSettings(ldapSettings.getConnectionSettings())
+                                      .userSettingsList(ldapSettings.getUserSettingsList())
+                                      .groupSettingsList(ldapSettings.getGroupSettingsList())
+                                      .displayName(ldapSettings.getDisplayName())
+                                      .cronExpression(ldapSettings.getCronExpression())
+                                      .nextIterations(ldapSettings.getNextIterations())
+                                      .disabled(ldapSettings.isDisabled())
+                                      .build()
+                                : null;
   }
 
   private LdapSettings toCGLdapSettings(LDAPSettings ldapSettings, final String accountId) {

@@ -630,8 +630,10 @@ public class SSOSettingServiceImplTest extends WingsBaseTest {
     ldapSettings.getConnectionSettings().setBindPassword(null);
     LdapSettings updatedLdapSetting = ssoSettingService.updateLdapSettings(ldapSettings);
     assertThat(updatedLdapSetting.getConnectionSettings().getBindPassword().isEmpty()).isTrue();
-    assertThat(updatedLdapSetting.getConnectionSettings().getPasswordType()).isEqualTo(LdapConnectionSettings.NG_SECRET);
-    assertThat(updatedLdapSetting.getConnectionSettings().getNgBindSecret().getIdentifier()).isEqualTo(testNgBindSecret);
+    assertThat(updatedLdapSetting.getConnectionSettings().getPasswordType())
+        .isEqualTo(LdapConnectionSettings.NG_SECRET);
+    assertThat(updatedLdapSetting.getConnectionSettings().getNgBindSecret().getIdentifier())
+        .isEqualTo(testNgBindSecret);
   }
 
   public LdapSettings createLDAPSSOProvider() {
