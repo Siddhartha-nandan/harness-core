@@ -63,7 +63,6 @@ public class CDLicenseUsageDALTest extends CategoryTest {
   private static final String serviceIdentifier = "serviceIdentifier";
 
   @Mock TimeScaleDBService timeScaleDBService;
-  @Mock private CDFeatureFlagHelper featureFlagService;
   @InjectMocks private CDLicenseUsageDAL cdLicenseUsageDAL;
 
   @Test

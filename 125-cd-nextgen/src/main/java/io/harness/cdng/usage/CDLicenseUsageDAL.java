@@ -34,7 +34,6 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
-import io.harness.beans.FeatureName;
 import io.harness.cd.CDLicenseType;
 import io.harness.cdlicense.exception.CgLicenseUsageException;
 import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
@@ -76,7 +75,6 @@ import org.springframework.data.domain.Sort;
 @OwnedBy(HarnessTeam.CDP)
 @Singleton
 public class CDLicenseUsageDAL {
-  @Inject private CDFeatureFlagHelper featureFlagService;
   private static final double INSTANCE_COUNT_PERCENTILE_DISC = 0.95;
   private static final int MAX_RETRY = 3;
   private static final String MAX_RETRY_MSG = format("%s retries", MAX_RETRY);
