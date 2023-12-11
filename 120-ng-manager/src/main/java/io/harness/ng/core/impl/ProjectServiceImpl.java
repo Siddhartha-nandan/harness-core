@@ -20,6 +20,7 @@ import static io.harness.exception.WingsException.USER_SRE;
 import static io.harness.logging.AutoLogContext.OverrideBehavior.OVERRIDE_ERROR;
 import static io.harness.ng.accesscontrol.PlatformPermissions.INVITE_PERMISSION_IDENTIFIER;
 import static io.harness.ng.core.remote.ProjectMapper.toProject;
+import static io.harness.ng.core.remote.ProjectMapper.writeDTO;
 import static io.harness.ng.core.user.UserMembershipUpdateSource.SYSTEM;
 import static io.harness.ng.core.utils.NGUtils.validate;
 import static io.harness.ng.core.utils.NGUtils.verifyValuesNotChanged;
@@ -121,6 +122,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.joda.time.DateTime;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -488,6 +490,49 @@ public class ProjectServiceImpl implements ProjectService {
         outboxService.save(new ProjectUpdateEvent(project.getAccountIdentifier(),
             ProjectMapper.writeDTO(updatedProject), ProjectMapper.writeDTO(existingProject)));
         return updatedProject;
+      }));
+    }
+    throw new InvalidRequestException(
+        String.format("Project with identifier [%s] and orgIdentifier [%s] not found", identifier, orgIdentifier),
+        USER);
+  }
+
+  public boolean moveProject(String accountIdentifier, @OrgIdentifier String orgIdentifier,
+      @ProjectIdentifier String identifier, @OrgIdentifier String destinationOrgIdentifier) {
+    // 1 Check if org is present or not
+    Optional<Organization> organizationOptional = organizationService.get(accountIdentifier, destinationOrgIdentifier);
+    if (!organizationOptional.isPresent()) {
+      throw new EntityNotFoundException(String.format("Organization with identifier [%s] not found", orgIdentifier));
+    }
+
+    Optional<Project> optionalProject = get(accountIdentifier, orgIdentifier, identifier);
+        //    Project finalproject = finalProjectOptional.get();
+        //    ProjectDTO projectdto = ProjectMapper.writeDTO(finalproject);
+        if (optionalProject.isPresent()) {
+      Project project = optionalProject.get();
+      //      Project project = toProject(projectDTO);
+      project.setAccountIdentifier(accountIdentifier);
+      project.setOrgIdentifier(destinationOrgIdentifier);
+      project.setId(project.getId());
+      project.setIdentifier(project.getIdentifier());
+      project.setCreatedAt(project.getCreatedAt() == null ? project.getLastModifiedAt() : DateTime.now().getMillis());
+      project.setUniqueId(project.getUniqueId());
+      project.setParentId(organizationOptional.get().getUniqueId());
+      project.setParentUniqueId(organizationOptional.get().getUniqueId());
+      if (project.getVersion() == null) {
+        project.setVersion(project.getVersion());
+      }
+
+      project.setModules(project.getModules());
+      validate(project);
+      return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
+        Project updatedProject = projectRepository.save(project);
+        addToScopeInfoCache(updatedProject);
+        log.info(String.format(
+            "Project with identifier [%s] and orgIdentifier [%s] was successfully updated", identifier, orgIdentifier));
+        outboxService.save(new ProjectUpdateEvent(
+            project.getAccountIdentifier(), ProjectMapper.writeDTO(updatedProject), ProjectMapper.writeDTO(project)));
+        return updatedProject.getParentUniqueId().equals(organizationOptional.get().getUniqueId());
       }));
     }
     throw new InvalidRequestException(
