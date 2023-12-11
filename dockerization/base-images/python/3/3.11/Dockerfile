@@ -94,5 +94,5 @@ RUN INSTALL_PKGS="python3.11 python3.11-devel python3.11-setuptools python3.11-p
     pip uninstall -y pip-upgrade-outdated && \
     rm -rf ~/.cache/pip/selfcheck/* && \
     rm -rf ~/.cache/pip/http/*
-RUN yum module install -y nodejs:18
+RUN yum module install -y nodejs:20
 USER 65534

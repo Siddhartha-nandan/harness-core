@@ -94,5 +94,5 @@ RUN INSTALL_PKGS="python38 python38-devel python38-setuptools python38-pip nss_w
     pip uninstall -y pip-upgrade-outdated && \
     rm -rf ~/.cache/pip/selfcheck/* && \
     rm -rf ~/.cache/pip/http/*
-RUN yum module install -y nodejs:18
+RUN yum module install -y nodejs:20
 USER 65534
