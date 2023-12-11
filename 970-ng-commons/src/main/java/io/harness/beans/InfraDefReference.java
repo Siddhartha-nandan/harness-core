@@ -32,6 +32,7 @@ public class InfraDefReference implements EntityReference {
   String branch;
   Boolean isDefault;
   Scope scope;
+  Map<String, String> metadata;
 
   @Override
   public String getFullyQualifiedName() {
@@ -52,6 +53,4 @@ public class InfraDefReference implements EntityReference {
     }
     return Scope.of(accountIdentifier, orgIdentifier, projectIdentifier);
   }
-
-  public void setMetadata(Map<String, String> metadata) {}
 }
