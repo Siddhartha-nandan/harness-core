@@ -16,6 +16,7 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.ng.accesscontrol.PlatformPermissions.*;
+import static io.harness.ng.accesscontrol.PlatformResourceTypes.ORGANIZATION;
 import static io.harness.ng.accesscontrol.PlatformResourceTypes.PROJECT;
 import static io.harness.ng.core.remote.ProjectMapper.toResponseWithFavouritesInfo;
 import static io.harness.utils.PageUtils.getNGPageResponse;
@@ -313,9 +314,9 @@ public class ProjectResource {
 
   @PUT
   @Path("{identifier}/move")
-
+  @InternalApi
+  @Hidden()
   @ApiOperation(value = "Move a Project across orgs", nickname = "moveProject")
-
   public ResponseDTO<Boolean> moveProject(
       @Parameter(description = PROJECT_PARAM_MESSAGE) @NotNull @PathParam(
           NGCommonEntityConstants.IDENTIFIER_KEY) @ResourceIdentifier String identifier,
@@ -328,10 +329,10 @@ public class ProjectResource {
       @RequestBody(required = true,
           description = "This is the updated org identifier") @NotNull @Valid MoveProjectRequest moveProjectRequest) {
     accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountIdentifier, orgIdentifier, identifier),
-        Resource.of(PROJECT, identifier), DELETE_PROJECT_PERMISSION);
+        Resource.of(ORGANIZATION, identifier), DELETE_PROJECT_PERMISSION);
     accessControlClient.checkForAccessOrThrow(
         ResourceScope.of(accountIdentifier, orgIdentifier, moveProjectRequest.getDestinationOrgIdentifier()),
-        Resource.of(PROJECT, moveProjectRequest.getDestinationOrgIdentifier()), CREATE_PROJECT_PERMISSION);
+        Resource.of(ORGANIZATION, moveProjectRequest.getDestinationOrgIdentifier()), CREATE_PROJECT_PERMISSION);
     return ResponseDTO.newResponse(projectService.moveProject(
         accountIdentifier, orgIdentifier, identifier, moveProjectRequest.getDestinationOrgIdentifier()));
   }

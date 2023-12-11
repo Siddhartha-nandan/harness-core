@@ -499,18 +499,21 @@ public class ProjectServiceImpl implements ProjectService {
 
   public boolean moveProject(String accountIdentifier, @OrgIdentifier String orgIdentifier,
       @ProjectIdentifier String identifier, @OrgIdentifier String destinationOrgIdentifier) {
-    // 1 Check if org is present or not
     Optional<Organization> organizationOptional = organizationService.get(accountIdentifier, destinationOrgIdentifier);
-    if (!organizationOptional.isPresent()) {
+    if (organizationOptional.isEmpty()) {
       throw new EntityNotFoundException(String.format("Organization with identifier [%s] not found", orgIdentifier));
     }
-
+    Optional<Project> duplicateProjectCheck = get(accountIdentifier, destinationOrgIdentifier, identifier);
+    if (duplicateProjectCheck.isPresent()) {
+      throw new DuplicateFieldException(
+          String.format("A project with identifier [%s] and orgIdentifier [%s] is already present",
+              duplicateProjectCheck.get().getIdentifier(), destinationOrgIdentifier),
+          USER_SRE);
+    }
     Optional<Project> optionalProject = get(accountIdentifier, orgIdentifier, identifier);
-        //    Project finalproject = finalProjectOptional.get();
-        //    ProjectDTO projectdto = ProjectMapper.writeDTO(finalproject);
-        if (optionalProject.isPresent()) {
+
+    if (optionalProject.isPresent()) {
       Project project = optionalProject.get();
-      //      Project project = toProject(projectDTO);
       project.setAccountIdentifier(accountIdentifier);
       project.setOrgIdentifier(destinationOrgIdentifier);
       project.setId(project.getId());
@@ -528,8 +531,10 @@ public class ProjectServiceImpl implements ProjectService {
       return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
         Project updatedProject = projectRepository.save(project);
         addToScopeInfoCache(updatedProject);
+        setupProject(Scope.of(accountIdentifier, destinationOrgIdentifier, project.getIdentifier()));
         log.info(String.format(
-            "Project with identifier [%s] and orgIdentifier [%s] was successfully updated", identifier, orgIdentifier));
+            "Project with identifier [%s] and source orgIdentifier [%s] was successfully migrated to [%s] orgIdentifier",
+            identifier, orgIdentifier, destinationOrgIdentifier));
         outboxService.save(new ProjectUpdateEvent(
             project.getAccountIdentifier(), ProjectMapper.writeDTO(updatedProject), ProjectMapper.writeDTO(project)));
         return updatedProject.getParentUniqueId().equals(organizationOptional.get().getUniqueId());
