@@ -323,7 +323,7 @@ public class SSOResourceNG {
   @Timed
   @ExceptionMetered
   public RestResponse<LdapSettings> getLdapSettings(@QueryParam("accountId") @NotBlank String accountId) {
-    return new RestResponse<>(ssoService.getLdapSettings(accountId, false));
+    return new RestResponse<>(ssoService.getLdapSettings(accountId, true));
   }
 
   @DELETE
@@ -340,7 +340,7 @@ public class SSOResourceNG {
   @ExceptionMetered
   public RestResponse<LdapResponse> testLdapAuthentication(@QueryParam("accountId") @NotBlank String accountId,
       @FormDataParam("email") String email, @FormDataParam("password") String password) {
-    LdapSettings settings = ssoService.getLdapSettings(accountId, false);
+    LdapSettings settings = ssoService.getLdapSettings(accountId, true);
     if (null == settings) {
       throw new InvalidRequestException(
           String.format("No LDAP SSO Provider settings found for account: %s", accountId));

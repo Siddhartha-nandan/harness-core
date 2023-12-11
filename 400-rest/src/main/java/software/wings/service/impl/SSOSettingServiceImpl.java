@@ -28,7 +28,6 @@ import io.harness.beans.PageRequest.PageRequestBuilder;
 import io.harness.beans.SearchFilter.Operator;
 import io.harness.delegate.beans.Delegate;
 import io.harness.delegate.beans.Delegate.DelegateKeys;
-import io.harness.encryption.SecretRefData;
 import io.harness.event.handler.impl.EventPublishHelper;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ff.FeatureFlagService;
@@ -66,6 +65,7 @@ import software.wings.beans.loginSettings.events.OAuthSettingsYamlDTO;
 import software.wings.beans.loginSettings.events.SamlSettingsYamlDTO;
 import software.wings.beans.sso.LdapConnectionSettingSecretReferences;
 import software.wings.beans.sso.LdapConnectionSettings;
+import software.wings.beans.sso.LdapPasswordTypeSecretReference;
 import software.wings.beans.sso.LdapSettings;
 import software.wings.beans.sso.OauthSettings;
 import software.wings.beans.sso.SSOSettings;
@@ -601,30 +601,49 @@ public class SSOSettingServiceImpl implements SSOSettingService {
     return savedSettings;
   }
 
-  private void createAndSaveLdapConnectionSecretReference(LdapSettings settings, boolean isNG, LdapSettings savedSettings) {
+  private void createAndSaveLdapConnectionSecretReference(
+      LdapSettings settings, boolean isNG, LdapSettings savedSettings) {
     LdapConnectionSettingSecretReferences settingSecretReferences = new LdapConnectionSettingSecretReferences();
     settingSecretReferences.setAccountId(settings.getAccountId());
     settingSecretReferences.setLdapSsoId(savedSettings.getUuid());
-    if (isNG) {
-      if (LdapConnectionSettings.INLINE_SECRET.equals(settings.getConnectionSettings().getPasswordType())) {
-        settingSecretReferences.getConnectionSettingSecretReferences().put(
-            Generation.CG, savedSettings.getConnectionSettings().getEncryptedBindPassword());
-        settingSecretReferences.getConnectionSettingSecretReferences().put(
-            Generation.NG, savedSettings.getConnectionSettings().getEncryptedBindPassword());
-      } else if (LdapConnectionSettings.NG_SECRET.equals(settings.getConnectionSettings().getPasswordType())) {
-        settingSecretReferences.getConnectionSettingSecretReferences().put(
-            Generation.NG, savedSettings.getConnectionSettings().getNgBindSecret().getIdentifier());
-      }
+    if (LdapConnectionSettings.INLINE_SECRET.equals(settings.getConnectionSettings().getPasswordType())) {
+      settingSecretReferences.getGenToPwdTypeSecretReferenceMap().put(Generation.CG,
+          LdapPasswordTypeSecretReference.builder()
+              .passwordType(LdapConnectionSettings.INLINE_SECRET)
+              .secretReference(savedSettings.getConnectionSettings().getEncryptedBindPassword())
+              .build());
+      settingSecretReferences.getGenToPwdTypeSecretReferenceMap().put(Generation.NG,
+          LdapPasswordTypeSecretReference.builder()
+              .passwordType(LdapConnectionSettings.INLINE_SECRET)
+              .secretReference(savedSettings.getConnectionSettings().getEncryptedBindPassword())
+              .build());
     } else {
-      // to keep backward compatibility
-      String passwordOrSecretString = null;
-      if (LdapConnectionSettings.INLINE_SECRET.equals(settings.getConnectionSettings().getPasswordType())) {
-        passwordOrSecretString = savedSettings.getConnectionSettings().getEncryptedBindPassword();
-      } else if (LdapConnectionSettings.SECRET.equals(settings.getConnectionSettings().getPasswordType())) {
-        passwordOrSecretString = String.valueOf(savedSettings.getConnectionSettings().getBindSecret());
+      if (isNG) {
+        if (LdapConnectionSettings.NG_SECRET.equals(settings.getConnectionSettings().getPasswordType())) {
+          settingSecretReferences.getGenToPwdTypeSecretReferenceMap().put(Generation.NG,
+              LdapPasswordTypeSecretReference.builder()
+                  .passwordType(LdapConnectionSettings.NG_SECRET)
+                  .secretReference(savedSettings.getConnectionSettings().getNgBindSecret().getIdentifier())
+                  .build());
+        }
+      } else {
+        if (LdapConnectionSettings.SECRET.equals(settings.getConnectionSettings().getPasswordType())
+            && savedSettings.getConnectionSettings().getEncryptedBindSecret() != null) {
+          String passwordOrSecretString =
+              String.valueOf(savedSettings.getConnectionSettings().getEncryptedBindSecret());
+          settingSecretReferences.getGenToPwdTypeSecretReferenceMap().put(Generation.CG,
+              LdapPasswordTypeSecretReference.builder()
+                  .passwordType(LdapConnectionSettings.SECRET)
+                  .secretReference(passwordOrSecretString)
+                  .build());
+          // to keep existing backward compatibility of using CG secret-ref in NG
+          settingSecretReferences.getGenToPwdTypeSecretReferenceMap().put(Generation.NG,
+              LdapPasswordTypeSecretReference.builder()
+                  .passwordType(LdapConnectionSettings.SECRET)
+                  .secretReference(passwordOrSecretString)
+                  .build());
+        }
       }
-      settingSecretReferences.getConnectionSettingSecretReferences().put(Generation.CG, passwordOrSecretString);
-      settingSecretReferences.getConnectionSettingSecretReferences().put(Generation.NG, passwordOrSecretString);
     }
     wingsPersistence.save(settingSecretReferences);
   }
@@ -805,26 +824,6 @@ public class SSOSettingServiceImpl implements SSOSettingService {
     if (ldapSettings != null && isNotEmpty(ldapSettings.getConnectionSettings().getEncryptedBindSecret())) {
       ldapSettings.getConnectionSettings().setBindSecret(
           ldapSettings.getConnectionSettings().getEncryptedBindSecret().toCharArray());
-    }
-  }
-
-  private void mergeLdapSettingsAndSecretReferences(LdapSettings ldapSettings, boolean isNG) {
-    LdapConnectionSettingSecretReferences connectionSettingSecretReferences =
-        wingsPersistence.createQuery(LdapConnectionSettingSecretReferences.class)
-            .filter(LdapConnectionSettingSecretReferences.LdapConnectionSettingSecretReferencesKeys.accountId,
-                ldapSettings.getAccountId())
-            .filter(LdapConnectionSettingSecretReferences.LdapConnectionSettingSecretReferencesKeys.ldapSsoId,
-                ldapSettings.getUuid())
-            .get();
-
-    if (connectionSettingSecretReferences != null && ldapSettings.getConnectionSettings() != null) {
-      if (isNG && connectionSettingSecretReferences.getConnectionSettingSecretReferences().containsKey(Generation.NG)
-          && !connectionSettingSecretReferences.getConnectionSettingSecretReferences().containsKey(Generation.CG)) {
-        ldapSettings.getConnectionSettings().setBindPassword(null);
-        ldapSettings.getConnectionSettings().setBindSecret(null);
-        ldapSettings.getConnectionSettings().setNgBindSecret(new SecretRefData(
-            connectionSettingSecretReferences.getConnectionSettingSecretReferences().get(Generation.NG)));
-      }
     }
   }
 

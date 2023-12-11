@@ -6,6 +6,7 @@
  */
 
 package software.wings.service.impl;
+
 import static io.harness.annotations.dev.HarnessModule._950_NG_AUTHENTICATION_SERVICE;
 import static io.harness.beans.FeatureName.PL_ENABLE_MULTIPLE_IDP_SUPPORT;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
@@ -523,10 +524,14 @@ public class SSOServiceImpl implements SSOService {
       @NotBlank String accountId, LdapSettings inputLdapSettings) {
     if (null == inputLdapSettings) {
       LdapSettings ldapSettings = ssoSettingService.getLdapSettingsByAccountId(accountId, true);
-      populateEncryptedFields(ldapSettings);
-      encryptSecretIfFFisEnabled(ldapSettings);
-      ldapSettings.encryptLdapInlineSecret(secretManager, false);
-      EncryptedDataDetail encryptedDataDetail = ldapSettings.getEncryptedDataDetails(secretManager);
+      EncryptedDataDetail encryptedDataDetail = null;
+      if (ldapSettings != null && ldapSettings.getConnectionSettings() != null
+          && !LdapConnectionSettings.NG_SECRET.equals(ldapSettings.getConnectionSettings().getPasswordType())) {
+        populateEncryptedFields(ldapSettings);
+        encryptSecretIfFFisEnabled(ldapSettings);
+        ldapSettings.encryptLdapInlineSecret(secretManager, false);
+        encryptedDataDetail = ldapSettings.getEncryptedDataDetails(secretManager);
+      }
       return buildLdapSettingsWithEncryptedDataDetail(ldapSettings, encryptedDataDetail);
     } else {
       return getLdapSettingsWithEncryptedDataDetailFromInputSettings(accountId, inputLdapSettings);

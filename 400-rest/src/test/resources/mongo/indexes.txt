@@ -693,7 +693,7 @@ ssoSettings {"name": "appId_1", "background": true} {"appId": 1}
 ssoSettings {"name": "createdAt_1", "background": true} {"createdAt": 1}
 ssoSettings {"name": "nextIterations_1", "background": true} {"nextIterations": 1}
 ssoSettings {"name": "typeNextIterations", "background": true} {"type": 1, "nextIterations": 1}
-ldapConnectionSettingSecretReferences {"name": "accountIdLdapSsoIdIdx", "background": true} {"accountId": 1, "ldapSsoId": 1}
+ldapConnectionSettingSecretReferences {"name": "accountIdLdapSsoIdIdx", "unique": true} {"accountId": 1, "ldapSsoId": 1}
 stateExecutionInstances {"name": "accountId_status_stateType", "background": true} {"accountId": 1, "status": 1, "stateType": 1}
 stateExecutionInstances {"name": "accountId_validUntil", "background": true} {"accountId": 1, "validUntil": 1}
 stateExecutionInstances {"name": "appIdExecutionIdStatus", "background": true} {"appId": 1, "executionUuid": 1, "status": 1}

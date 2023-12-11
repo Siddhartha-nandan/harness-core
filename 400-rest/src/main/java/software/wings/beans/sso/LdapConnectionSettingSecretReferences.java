@@ -61,5 +61,7 @@ public class LdapConnectionSettingSecretReferences extends Base implements Accou
   @NotBlank String accountId;
   @NotBlank String ldapSsoId;
 
-  @Getter @Setter private Map<Generation, String> connectionSettingSecretReferences = new HashMap<>();
+  @Getter
+  @Setter
+  private Map<Generation, LdapPasswordTypeSecretReference> genToPwdTypeSecretReferenceMap = new HashMap<>();
 }
