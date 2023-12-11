@@ -82,6 +82,7 @@ public class EntityYamlRootNames {
   public static final String K8S_DELETE = "K8sDelete";
   public static final String K8S_SWAP_SERVICES = "K8sBGSwapServices";
   public static final String K8S_CANARY_DELETE = "K8sCanaryDelete";
+  public static final String K8S_TRAFFIC_ROUTING = "K8sTrafficRouting";
   public static final String TERRAFORM_APPLY = "TerraformApply";
   public static final String TERRAFORM_PLAN = "TerraformPlan";
   public static final String TERRAFORM_DESTROY = "TerraformDestroy";
@@ -278,9 +279,9 @@ public class EntityYamlRootNames {
 
   public static final String OVERRIDES = "Overrides";
   public static final String IDP_STAGE = "IdpStage";
-  public static final String IDP_COOKIECUTTER = "IdpCookieCutter";
-  public static final String IDP_CREATE_REPO = "IdpCreateRepo";
-  public static final String IDP_CODE_PUSH = "IdpCodePush";
+  public static final String COOKIECUTTER = "CookieCutter";
+  public static final String CREATE_REPO = "CreateRepo";
+  public static final String DIRECT_PUSH = "DirectPush";
   public static final String REGISTER_CATALOG = "RegisterCatalog";
 
   // CD Container Step Group Common Steps

@@ -13,6 +13,8 @@ import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConst;
+import io.harness.delegate.task.k8s.trafficrouting.ProviderConfig;
 import io.harness.pms.yaml.YamlNode;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -48,4 +50,6 @@ public abstract class K8sTrafficRoutingProvider {
 
   @NotEmpty List<K8sTrafficRoutingRoute> routes;
   @NotEmpty List<K8sTrafficRoutingDestination> destinations;
+
+  abstract ProviderConfig toProviderConfig();
 }

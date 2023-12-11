@@ -1298,8 +1298,8 @@ go_repository(
 go_repository(
     name = "com_github_drone_go_scm",
     importpath = "github.com/drone/go-scm",
-    sum = "h1:Ve1p5dXHRlkVDebPtGIytrcPgPIXpXRQJcyXVysjurM=",
-    version = "v1.33.0",
+    sum = "h1:0XEHFiVajXcsgqKZGBJlpKljr8euay6OaQI1bLslWSg=",
+    version = "v1.34.1",
 )
 
 go_repository(
@@ -6432,8 +6432,8 @@ plain_artifacts = [
     "org.cloudfoundry:cloudfoundry-util:5.9.0.RELEASE",
     "org.codehaus.groovy:groovy:3.0.15",
     "org.codehaus.jackson:jackson-core-asl:1.9.11",
-    "org.codehaus.janino:commons-compiler:3.0.6",
-    "org.codehaus.janino:janino:3.0.6",
+    "org.codehaus.janino:commons-compiler:3.1.11",
+    "org.codehaus.janino:janino:3.1.11",
     "org.codehaus.mojo:animal-sniffer-annotations:1.18",
     "org.codehaus.plexus:plexus-utils:4.0.0",
     "org.codehaus.woodstox:stax2-api:4.2",

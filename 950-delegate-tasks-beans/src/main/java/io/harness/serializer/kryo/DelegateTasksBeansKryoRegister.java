@@ -839,6 +839,8 @@ import io.harness.delegate.task.k8s.K8sScaleRequest;
 import io.harness.delegate.task.k8s.K8sScaleResponse;
 import io.harness.delegate.task.k8s.K8sSwapServiceSelectorsRequest;
 import io.harness.delegate.task.k8s.K8sTaskType;
+import io.harness.delegate.task.k8s.K8sTrafficRoutingRequest;
+import io.harness.delegate.task.k8s.K8sTrafficRoutingResponse;
 import io.harness.delegate.task.k8s.KustomizeManifestDelegateConfig;
 import io.harness.delegate.task.k8s.OpenshiftManifestDelegateConfig;
 import io.harness.delegate.task.k8s.RancherK8sInfraDelegateConfig;
@@ -847,6 +849,7 @@ import io.harness.delegate.task.k8s.data.K8sCanaryDataException;
 import io.harness.delegate.task.k8s.trafficrouting.HeaderConfig;
 import io.harness.delegate.task.k8s.trafficrouting.IstioProviderConfig;
 import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfig;
+import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfigType;
 import io.harness.delegate.task.k8s.trafficrouting.MatchType;
 import io.harness.delegate.task.k8s.trafficrouting.ProviderType;
 import io.harness.delegate.task.k8s.trafficrouting.RouteType;
@@ -1044,6 +1047,7 @@ import io.harness.delegate.task.ssh.config.FileDelegateConfig;
 import io.harness.delegate.task.ssh.config.SecretConfigFile;
 import io.harness.delegate.task.stepstatus.StepExecutionStatus;
 import io.harness.delegate.task.stepstatus.StepMapOutput;
+import io.harness.delegate.task.stepstatus.StepOutputV2;
 import io.harness.delegate.task.stepstatus.StepStatus;
 import io.harness.delegate.task.stepstatus.StepStatusTaskParameters;
 import io.harness.delegate.task.stepstatus.StepStatusTaskResponseData;
@@ -1840,6 +1844,7 @@ public class DelegateTasksBeansKryoRegister implements KryoRegistrar {
     kryo.register(ScmGitWebhookTaskParams.class, 543320);
     kryo.register(ScmGitWebhookTaskResponseData.class, 543321);
     kryo.register(CVConnectorValidationParams.class, 543322);
+    kryo.register(StepOutputV2.class, 543323);
 
     kryo.register(SecretParams.class, 543325);
     kryo.register(SecretParams.Type.class, 543326);
@@ -2624,5 +2629,8 @@ public class DelegateTasksBeansKryoRegister implements KryoRegistrar {
     kryo.register(ArtifactBundleDelegateConfig.class, 20001006);
     kryo.register(PackageArtifactConfig.class, 20001007);
     kryo.register(ArtifactBundleDetails.class, 20002011);
+    kryo.register(K8sTrafficRoutingConfigType.class, 20002014);
+    kryo.register(K8sTrafficRoutingRequest.class, 20002012);
+    kryo.register(K8sTrafficRoutingResponse.class, 20002013);
   }
 }

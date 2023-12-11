@@ -469,6 +469,14 @@ public class NextGenModule extends AbstractModule {
 
   @Provides
   @Singleton
+  @Named("chaosTemplateRegistrationExecutorService")
+  public ExecutorService chaosTemplateRegistrationExecutionServiceThreadPool() {
+    return ThreadPool.create(1, 1, 10, TimeUnit.SECONDS,
+        new ThreadFactoryBuilder().setNameFormat("ChaosTemplateRegistrationService-%d").build());
+  }
+
+  @Provides
+  @Singleton
   @Named("DashboardExecutorService")
   public ExecutorService DashboardExecutorServiceThreadPool() {
     return ThreadPool.create(appConfig.getDashboardExecutorServiceConfig().getCorePoolSize(),
@@ -946,6 +954,13 @@ public class NextGenModule extends AbstractModule {
       @Singleton
       List<YamlSchemaRootClass> yamlSchemaRootClasses() {
         return ImmutableList.<YamlSchemaRootClass>builder().addAll(NextGenRegistrars.yamlSchemaRegistrars).build();
+      }
+
+      @Provides
+      @Singleton
+      @Named("scmServiceBaseUrl")
+      String getScmServiceBaseUrl() {
+        return getBaseUrls().getScmServiceBaseUrl();
       }
 
       @Provides
