@@ -1895,3 +1895,27 @@ permissions:
       - account
       - organization
       - project
+  - identifier: core_notification_view
+    name: View notification rules and channels
+    status: STAGING
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
+  - identifier: core_notification_edit
+    name: Edit notification rules and channels
+    status: STAGING
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
+  - identifier: core_notification_delete
+    name: Delete notification rules and channels
+    status: STAGING
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
