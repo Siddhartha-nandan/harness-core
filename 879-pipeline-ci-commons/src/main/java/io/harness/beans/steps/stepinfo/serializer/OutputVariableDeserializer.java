@@ -7,7 +7,9 @@
 
 package io.harness.beans.steps.stepinfo.serializer;
 
-import static io.harness.pms.yaml.YAMLFieldNameConstants.*;
+import static io.harness.pms.yaml.YAMLFieldNameConstants.NAME;
+import static io.harness.pms.yaml.YAMLFieldNameConstants.TYPE;
+import static io.harness.pms.yaml.YAMLFieldNameConstants.VALUE;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
@@ -44,34 +46,31 @@ public class OutputVariableDeserializer extends StdDeserializer<ParameterField<L
     JsonNode currentJsonNode = jp.getCodec().readTree(jp);
     for (JsonNode childNode : currentJsonNode) {
       if (childNode.get(TYPE) == null) {
-        NGVariable ngVariable1 =
-            StringNGVariable.builder()
-                .name(childNode.get(NAME).asText())
-                .type(NGVariableType.STRING)
-                .value(ParameterField.<String>builder().value(childNode.get(NAME).asText()).build())
-                .build();
-        ngVariables.add(ngVariable1);
+        NGVariable ngVariable = StringNGVariable.builder()
+                                    .name(childNode.get(NAME).asText())
+                                    .type(NGVariableType.STRING)
+                                    .value(ParameterField.createValueField(childNode.get(NAME).asText()))
+                                    .build();
+        ngVariables.add(ngVariable);
       } else {
-        if (childNode.get(TYPE).asText().equals(JsonNodeType.STRING)) {
-          NGVariable ngVariable1 =
-              StringNGVariable.builder()
-                  .name(childNode.get(NAME).asText())
-                  .type(NGVariableType.STRING)
-                  .value(ParameterField.<String>builder().value(childNode.get(VALUE).asText()).build())
-                  .build();
-          ngVariables.add(ngVariable1);
+        if (childNode.get(TYPE).asText().equals("String")) {
+          NGVariable ngVariable = StringNGVariable.builder()
+                                      .name(childNode.get(NAME).asText())
+                                      .type(NGVariableType.STRING)
+                                      .value(ParameterField.createValueField(childNode.get(VALUE).asText()))
+                                      .build();
+          ngVariables.add(ngVariable);
         } else {
-          NGVariable ngVariable1 = SecretNGVariable.builder()
-                                       .name(childNode.get(NAME).asText())
-                                       .type(NGVariableType.SECRET)
-                                       .value(ParameterField.createValueField(
-                                           SecretRefHelper.createSecretRef(childNode.get(VALUE).asText())))
-                                       .build();
-          ngVariables.add(ngVariable1);
+          NGVariable ngVariable = SecretNGVariable.builder()
+                                      .name(childNode.get(NAME).asText())
+                                      .type(NGVariableType.SECRET)
+                                      .value(ParameterField.createValueField(
+                                          SecretRefHelper.createSecretRef(childNode.get(VALUE).asText())))
+                                      .build();
+          ngVariables.add(ngVariable);
         }
       }
     }
-
     return ParameterField.createValueField(ngVariables);
   }
 }

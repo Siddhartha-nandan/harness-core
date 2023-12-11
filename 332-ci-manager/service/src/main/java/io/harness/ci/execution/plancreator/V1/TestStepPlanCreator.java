@@ -104,7 +104,7 @@ public class TestStepPlanCreator extends CIPMSStepPlanCreatorV2<TestStepNode> {
                         .stream()
                         .findFirst()
                         .orElse(null)))
-                .outputVariables(null)
+                .outputVariables(testStepInfo.getOutputs())
                 .build())
         .build();
   }

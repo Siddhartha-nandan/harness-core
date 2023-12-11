@@ -34,7 +34,6 @@ import io.harness.product.ci.engine.proto.*;
 import io.harness.utils.TimeoutUtils;
 import io.harness.yaml.core.timeout.Timeout;
 import io.harness.yaml.core.variables.NGVariable;
-import io.harness.yaml.core.variables.OutputNGVariable;
 
 import com.google.inject.Inject;
 import java.util.List;

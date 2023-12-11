@@ -52,24 +52,22 @@ public class RunTestStepInfoTest extends CategoryTest {
     RunTestStepNode runTestStepNode = (RunTestStepNode) abstractStepNode;
     RunTestsStepInfo runStepInfo = (RunTestsStepInfo) runTestStepNode.getStepSpecType();
 
-    NGVariable outputVariableWithoutType =
-        StringNGVariable.builder()
-            .name("\"variableWithoutType\"")
-            .type(NGVariableType.STRING)
-            .value(ParameterField.<String>builder().value("\"variableWithoutType\"").build())
-            .build();
-    NGVariable outputVariableWithTypeString =
-        StringNGVariable.builder()
-            .name("\"variableWithTypeString\"")
-            .type(NGVariableType.STRING)
-            .value(ParameterField.<String>builder().value("\"variableWithTypeString\"").build())
-            .build();
+    NGVariable outputVariableWithoutType = StringNGVariable.builder()
+                                               .name("variableWithoutType")
+                                               .type(NGVariableType.STRING)
+                                               .value(ParameterField.createValueField("variableWithoutType"))
+                                               .build();
+    NGVariable outputVariableWithTypeString = StringNGVariable.builder()
+                                                  .name("variableWithTypeString")
+                                                  .type(NGVariableType.STRING)
+                                                  .value(ParameterField.createValueField("variableWithTypeString"))
+                                                  .build();
 
     NGVariable outputVariableWithTypeSecret =
         SecretNGVariable.builder()
-            .name("\"variableWithTypeSecret\"")
+            .name("variableWithTypeSecret")
             .type(NGVariableType.SECRET)
-            .value(ParameterField.createValueField(SecretRefHelper.createSecretRef("\"variableWithTypeSecret\"")))
+            .value(ParameterField.createValueField(SecretRefHelper.createSecretRef("variableWithTypeSecret")))
             .build();
     List<NGVariable> ngVariableList = new ArrayList<>();
     ngVariableList.add(outputVariableWithoutType);
