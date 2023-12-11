@@ -414,7 +414,7 @@ public class K8InitializeTaskUtils {
     return podWaitUntilReadyTimeout;
   }
 
-  public ContainerSecurityContext getCtrSecurityContext(Infrastructure infrastructure) {
+  public ContainerSecurityContext getCtrSecurityContext(Infrastructure infrastructure, boolean override) {
     if (infrastructure.getType() != Infrastructure.Type.KUBERNETES_DIRECT) {
       return ContainerSecurityContext.builder().build();
     }
@@ -433,12 +433,19 @@ public class K8InitializeTaskUtils {
     if (securityContext == null || os == OSType.Windows) {
       return ContainerSecurityContext.builder().build();
     }
+
+    Boolean runAsNonRoot = securityContext.getRunAsNonRoot().getValue();
+
+    if (override) {
+      runAsNonRoot = false;
+    }
+
     return ContainerSecurityContext.builder()
         .allowPrivilegeEscalation(securityContext.getAllowPrivilegeEscalation().getValue())
         .privileged(securityContext.getPrivileged().getValue())
         .procMount(securityContext.getProcMount().getValue())
         .readOnlyRootFilesystem(securityContext.getReadOnlyRootFilesystem().getValue())
-        .runAsNonRoot(securityContext.getRunAsNonRoot().getValue())
+        .runAsNonRoot(runAsNonRoot)
         .runAsGroup(securityContext.getRunAsGroup().getValue())
         .runAsUser(resolveIntegerParameter(securityContext.getRunAsUser(), null))
         .capabilities(getCtrCapabilities(securityContext.getCapabilities().getValue()))

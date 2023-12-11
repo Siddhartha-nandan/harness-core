@@ -116,7 +116,7 @@ public class K8InitializeTaskParamsBuilderTest extends CIExecutionTestBase {
         .thenReturn(new HashMap<>());
     when(k8InitializeTaskUtils.getCacheEnvironmentVariable()).thenReturn(new HashMap<>());
     when(k8InitializeTaskUtils.getWorkDir()).thenReturn("/harness");
-    when(k8InitializeTaskUtils.getCtrSecurityContext(any())).thenReturn(ContainerSecurityContext.builder().build());
+//    when(k8InitializeTaskUtils.getCtrSecurityContext(any())).thenReturn(ContainerSecurityContext.builder().build());
     when(internalContainerParamsProvider.getSetupAddonContainerParams(any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(getAddonContainer());
     when(internalContainerParamsProvider.getLiteEngineContainerParams(

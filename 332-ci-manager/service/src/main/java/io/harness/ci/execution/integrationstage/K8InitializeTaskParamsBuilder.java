@@ -243,7 +243,7 @@ public class K8InitializeTaskParamsBuilder {
     String imagePullPolicy = getImagePullPolicy(infrastructure);
     CIK8ContainerParams setupAddOnContainerParams =
         internalContainerParamsProvider.getSetupAddonContainerParams(harnessInternalImageConnector, volumeToMountPath,
-            k8InitializeTaskUtils.getWorkDir(), k8InitializeTaskUtils.getCtrSecurityContext(infrastructure),
+            k8InitializeTaskUtils.getWorkDir(), k8InitializeTaskUtils.getCtrSecurityContext(infrastructure, false),
             ngAccess.getAccountIdentifier(), os, imagePullPolicy);
 
     Pair<Integer, Integer> wrapperRequests = k8InitializeStepUtils.getStageRequest(initializeStepInfo, accountId);
@@ -253,7 +253,7 @@ public class K8InitializeTaskParamsBuilder {
     CIK8ContainerParams liteEngineContainerParams =
         internalContainerParamsProvider.getLiteEngineContainerParams(harnessInternalImageConnector, new HashMap<>(),
             k8PodDetails, stageCpuRequest, stageMemoryRequest, logEnvVars, tiEnvVars, stoEnvVars, volumeToMountPath,
-            k8InitializeTaskUtils.getWorkDir(), k8InitializeTaskUtils.getCtrSecurityContext(infrastructure), logPrefix,
+            k8InitializeTaskUtils.getWorkDir(), k8InitializeTaskUtils.getCtrSecurityContext(infrastructure, false), logPrefix,
             ambiance, secretEnvVars, imagePullPolicy);
 
     List<CIK8ContainerParams> containerParams = new ArrayList<>();
@@ -264,12 +264,14 @@ public class K8InitializeTaskParamsBuilder {
     consumePortDetails(ambiance, stageCtrDefinitions);
     Map<String, List<ConnectorConversionInfo>> stepConnectors =
         k8InitializeStepUtils.getStepConnectorRefs(initializeStepInfo.getExecutionElementConfig(), ambiance);
+    int index = 0;
     for (ContainerDefinitionInfo containerDefinitionInfo : stageCtrDefinitions) {
       CIK8ContainerParams cik8ContainerParams = createCIK8ContainerParams(ngAccess, containerDefinitionInfo,
           harnessInternalImageConnector, commonEnvVars, stoEnvVars, stepConnectors, volumeToMountPath,
-          k8InitializeTaskUtils.getWorkDir(), k8InitializeTaskUtils.getCtrSecurityContext(infrastructure), logPrefix,
+          k8InitializeTaskUtils.getWorkDir(), k8InitializeTaskUtils.getCtrSecurityContext(infrastructure, index == 1), logPrefix,
           secretVariableDetails, githubApiTokenFunctorConnectors, os, secretEnvVars);
       containerParams.add(cik8ContainerParams);
+      index++;
     }
 
     return Pair.of(setupAddOnContainerParams, containerParams);
