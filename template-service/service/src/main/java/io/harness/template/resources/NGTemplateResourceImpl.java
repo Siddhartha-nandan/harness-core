@@ -569,4 +569,22 @@ public class NGTemplateResourceImpl implements NGTemplateResource {
             .build());
     return ResponseDTO.newResponse(TemplateUpdateGitMetadataResponse.builder().status(true).build());
   }
+
+  @Override
+  public ResponseDTO<TemplateUpdateGitMetadataResponse> updateMultiGitMetadataDetails(
+      @NotNull @AccountIdentifier String accountIdentifier, @OrgIdentifier String orgIdentifier,
+      @ProjectIdentifier String projectIdentifier, @ResourceIdentifier String templateIdentifier,
+      List<TemplateUpdateGitMetadataRequest> requests) {
+    accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
+        Resource.of(TEMPLATE, templateIdentifier), PermissionTypes.TEMPLATE_EDIT_PERMISSION);
+    requests.forEach(request
+        -> templateService.updateGitDetails(accountIdentifier, orgIdentifier, projectIdentifier, templateIdentifier,
+            request.getVersion(),
+            UpdateGitDetailsParams.builder()
+                .filePath(request.getFilePath())
+                .repoName(request.getRepoName())
+                .connectorRef(request.getConnectorRef())
+                .build()));
+    return ResponseDTO.newResponse(TemplateUpdateGitMetadataResponse.builder().status(true).build());
+  }
 }

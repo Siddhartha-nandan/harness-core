@@ -704,4 +704,28 @@ public interface NGTemplateResource {
           NGCommonEntityConstants.VERSION_LABEL_KEY) String versionLabel,
       @Parameter(description = "This contains details of Git Entity like Git Branch info to be updated")
       TemplateUpdateGitMetadataRequest request);
+
+  @POST
+  @Path("/update/git-metadata/{templateIdentifier}")
+  @Timed
+  @ResponseMetered
+  @ApiOperation(value = "Update git metadata details for a remote template", nickname = "updateGitDetails")
+  @Operation(operationId = "updateGitDetails", summary = "Update git metadata details for a remote template",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(responseCode = "default", description = "Update git metadata details for a remote template")
+      })
+  ResponseDTO<TemplateUpdateGitMetadataResponse>
+  updateMultiGitMetadataDetails(
+      @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
+          NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
+      @Parameter(description = NGCommonEntityConstants.ORG_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
+      @Parameter(description = NGCommonEntityConstants.PROJECT_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier,
+      @Parameter(description = TEMPLATE_PARAM_MESSAGE) @PathParam(
+          "templateIdentifier") @ResourceIdentifier String templateIdentifier,
+      @Parameter(description = "This contains details of Git Entity like Git Branch info to be updated")
+      List<TemplateUpdateGitMetadataRequest> request);
 }

@@ -34,4 +34,5 @@ public class TemplateUpdateGitMetadataRequest {
   @Schema(description = "filepath to be updated") String filePath;
   @Schema(description = "repo name to be updated") String repoName;
   @Schema(description = "connector ref to be updated") String connectorRef;
+  @Schema(description = "template version") String version;
 }
