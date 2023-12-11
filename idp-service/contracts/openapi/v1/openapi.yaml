@@ -14,7 +14,7 @@ servers:
 paths:
   /v1/backstage-env-variables:
     get:
-      summary: List Backstage Env Variables
+      summary: List Backstage Env Variables 2
       responses:
         '200':
           $ref: '#/components/responses/BackstageEnvVariableResponseList'
