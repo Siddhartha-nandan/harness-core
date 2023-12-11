@@ -72,7 +72,7 @@ public class CIK8ExecuteStepTaskHandler implements CIExecuteStepTaskHandler {
 
     String namespacedDelegateSvcEndpoint =
         getNamespacedDelegateSvcEndpoint(cik8ExecuteStepTaskParams.getDelegateSvcEndpoint());
-    log.info("Delegate service endpoint for step {}: {}", executeStepRequest.getStep().getId(),
+    log.info("Delegate service endpoint for step {}:  {}", executeStepRequest.getStep().getId(),
         namespacedDelegateSvcEndpoint);
     if (isNotEmpty(namespacedDelegateSvcEndpoint)) {
       executeStepRequest = executeStepRequest.toBuilder().setDelegateSvcEndpoint(namespacedDelegateSvcEndpoint).build();
