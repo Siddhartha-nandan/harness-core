@@ -677,18 +677,7 @@ public class NGTemplateResourceTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testUpdateGitMetadataDetails() {
     templateResource.updateGitMetadataDetails(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, TEMPLATE_IDENTIFIER,
-        TEMPLATE_VERSION_LABEL, TemplateUpdateGitMetadataRequest.builder().build());
-    verify(accessControlClient)
-        .checkForAccessOrThrow(ResourceScope.of(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER),
-            Resource.of(TEMPLATE, TEMPLATE_IDENTIFIER), PermissionTypes.TEMPLATE_EDIT_PERMISSION);
-  }
-
-  @Test
-  @Owner(developers = SHIVAM)
-  @Category(UnitTests.class)
-  public void testUpdateMultiGitMetadataDetails() {
-    templateResource.updateMultiGitMetadataDetails(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, TEMPLATE_IDENTIFIER,
-        Collections.singletonList(TemplateUpdateGitMetadataRequest.builder().build()));
+        TEMPLATE_VERSION_LABEL, Collections.singletonList(TemplateUpdateGitMetadataRequest.builder().build()));
     verify(accessControlClient)
         .checkForAccessOrThrow(ResourceScope.of(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER),
             Resource.of(TEMPLATE, TEMPLATE_IDENTIFIER), PermissionTypes.TEMPLATE_EDIT_PERMISSION);

@@ -557,27 +557,10 @@ public class NGTemplateResourceImpl implements NGTemplateResource {
   public ResponseDTO<TemplateUpdateGitMetadataResponse> updateGitMetadataDetails(
       @NotNull @AccountIdentifier String accountIdentifier, @OrgIdentifier String orgIdentifier,
       @ProjectIdentifier String projectIdentifier, @ResourceIdentifier String templateIdentifier, String versionLabel,
-      TemplateUpdateGitMetadataRequest request) {
+      List<TemplateUpdateGitMetadataRequest> templateUpdateGitMetadataRequests) {
     accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
         Resource.of(TEMPLATE, templateIdentifier), PermissionTypes.TEMPLATE_EDIT_PERMISSION);
-    templateService.updateGitDetails(accountIdentifier, orgIdentifier, projectIdentifier, templateIdentifier,
-        versionLabel,
-        UpdateGitDetailsParams.builder()
-            .filePath(request.getFilePath())
-            .repoName(request.getRepoName())
-            .connectorRef(request.getConnectorRef())
-            .build());
-    return ResponseDTO.newResponse(TemplateUpdateGitMetadataResponse.builder().status(true).build());
-  }
-
-  @Override
-  public ResponseDTO<TemplateUpdateGitMetadataResponse> updateMultiGitMetadataDetails(
-      @NotNull @AccountIdentifier String accountIdentifier, @OrgIdentifier String orgIdentifier,
-      @ProjectIdentifier String projectIdentifier, @ResourceIdentifier String templateIdentifier,
-      List<TemplateUpdateGitMetadataRequest> requests) {
-    accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
-        Resource.of(TEMPLATE, templateIdentifier), PermissionTypes.TEMPLATE_EDIT_PERMISSION);
-    requests.forEach(request
+    templateUpdateGitMetadataRequests.forEach(request
         -> templateService.updateGitDetails(accountIdentifier, orgIdentifier, projectIdentifier, templateIdentifier,
             request.getVersion(),
             UpdateGitDetailsParams.builder()
