@@ -14,6 +14,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.encryption.Scope;
 import io.harness.utils.FullyQualifiedIdentifierHelper;
 
+import java.util.Map;
 import lombok.Builder;
 import lombok.Data;
 
@@ -51,4 +52,6 @@ public class InfraDefReference implements EntityReference {
     }
     return Scope.of(accountIdentifier, orgIdentifier, projectIdentifier);
   }
+
+  public void setMetadata(Map<String, String> metadata) {}
 }
