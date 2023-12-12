@@ -30,8 +30,8 @@ import lombok.experimental.SuperBuilder;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
-@Schema(name = "CODELicenseSummary",
-        description = "This contains details of the CODE Module License Summary in Harness")
+@Schema(
+    name = "CODELicenseSummary", description = "This contains details of the CODE Module License Summary in Harness")
 public class CODELicenseSummaryDTO extends LicensesWithSummaryDTO {
-    private int numberOfDevelopers;
+  private int numberOfDevelopers;
 }
