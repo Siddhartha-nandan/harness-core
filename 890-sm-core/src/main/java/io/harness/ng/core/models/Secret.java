@@ -57,6 +57,14 @@ public class Secret {
                  .field(SecretKeys.projectIdentifier)
                  .field(SecretKeys.identifier)
                  .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("unique_identification")
+                 .unique(true)
+                 .field(SecretKeys.accountIdentifier)
+                 .field(SecretKeys.orgIdentifier)
+                 .field(SecretKeys.projectIdentifier)
+                 .field(SecretKeys.secretManagerIdentifier)
+                 .build())
         .build();
   }
 

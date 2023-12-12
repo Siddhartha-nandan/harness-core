@@ -40,6 +40,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.FeatureName;
+import io.harness.beans.IdentifierRef;
 import io.harness.beans.SortOrder;
 import io.harness.connector.ConnectorCategory;
 import io.harness.connector.services.NGConnectorSecretManagerService;
@@ -96,6 +97,7 @@ import io.harness.secretmanagerclient.SecretType;
 import io.harness.secretmanagerclient.ValueType;
 import io.harness.secretmanagerclient.dto.SecretManagerConfigDTO;
 import io.harness.stream.BoundedInputStream;
+import io.harness.utils.IdentifierRefHelper;
 import io.harness.utils.featureflaghelper.NGFeatureFlagHelperService;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -423,7 +425,34 @@ public class SecretCrudServiceImpl implements SecretCrudService {
     }
 
     if (isNotEmpty(secretManagerIdentifiers)) {
-      criteria.and(SecretKeys.secretManagerIdentifier).in(secretManagerIdentifiers);
+      for (String secretManagerIdentifier : secretManagerIdentifiers) {
+        String identifier = IdentifierRefHelper.getIdentifier(secretManagerIdentifier);
+        IdentifierRef identifierRef = IdentifierRefHelper.getIdentifierRef(
+            secretManagerIdentifier, accountIdentifier, orgIdentifier, projectIdentifier);
+
+        if (isNotEmpty(identifierRef.getProjectIdentifier())) {
+          criteria.and(SecretKeys.projectIdentifier)
+              .exists(true)
+              .and(SecretKeys.secretManagerIdentifier)
+              .is(identifier);
+        } else if (isNotEmpty(identifierRef.getOrgIdentifier())) {
+          criteria = criteria.orOperator(Criteria.where(SecretKeys.orgIdentifier)
+                                             .exists(true)
+                                             .and(SecretKeys.projectIdentifier)
+                                             .exists(false)
+                                             .and(SecretKeys.secretManagerIdentifier)
+                                             .is(identifier),
+              Criteria.where(SecretKeys.secretManagerIdentifier).is(secretManagerIdentifier));
+        } else {
+          criteria = criteria.orOperator(Criteria.where(SecretKeys.orgIdentifier)
+                                             .exists(false)
+                                             .and(SecretKeys.projectIdentifier)
+                                             .exists(false)
+                                             .and(SecretKeys.secretManagerIdentifier)
+                                             .is(identifier),
+              Criteria.where(SecretKeys.secretManagerIdentifier).is(secretManagerIdentifier));
+        }
+      }
     }
 
     if (accessControlClient.hasAccess(ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
