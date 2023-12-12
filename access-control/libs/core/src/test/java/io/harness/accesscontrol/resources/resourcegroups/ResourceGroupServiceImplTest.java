@@ -9,6 +9,7 @@ package io.harness.accesscontrol.resources.resourcegroups;
 
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.outbox.TransactionOutboxModule.OUTBOX_TRANSACTION_TEMPLATE;
+import static io.harness.rule.OwnerRule.JIMIT_GANDHI;
 import static io.harness.rule.OwnerRule.KARAN;
 
 import static java.util.Collections.singleton;
@@ -137,6 +138,28 @@ public class ResourceGroupServiceImplTest extends AccessControlCoreTestBase {
   }
 
   @Test
+  @Owner(developers = JIMIT_GANDHI)
+  @Category(UnitTests.class)
+  public void skipUpsert_IfStateIsSame() {
+    ResourceGroup currentResourceGroup = getResourceGroup(5, false);
+    ResourceGroup currentResourceGroupClone = (ResourceGroup) HObjectMapper.clone(currentResourceGroup);
+
+    ResourceGroup updatedResourceGroup = (ResourceGroup) HObjectMapper.clone(currentResourceGroupClone);
+    when(resourceGroupDao.get(updatedResourceGroup.getIdentifier(), updatedResourceGroup.getScopeIdentifier(),
+             ManagedFilter.ONLY_CUSTOM))
+        .thenReturn(Optional.of(currentResourceGroup));
+
+    when(resourceGroupDao.upsert(updatedResourceGroup)).thenReturn(updatedResourceGroup);
+    ResourceGroup resourceGroupUpdateResult = resourceGroupService.upsert(updatedResourceGroup);
+
+    assertEquals(updatedResourceGroup, resourceGroupUpdateResult);
+    verify(outboxTransactionTemplate, never()).execute(any());
+    verify(resourceGroupDao, times(1)).get(any(), any(), any());
+    verify(resourceGroupDao, never()).upsert(any());
+    verify(outboxService, never()).save(any());
+  }
+
+  @Test
   @Owner(developers = KARAN)
   @Category(UnitTests.class)
   public void testUpsertNotFound() {
@@ -197,7 +220,7 @@ public class ResourceGroupServiceImplTest extends AccessControlCoreTestBase {
         Sets.difference(currentResourceGroup.getAllowedScopeLevels(), updatedResourceGroup.getAllowedScopeLevels());
     when(roleAssignmentService.deleteMulti(RoleAssignmentFilter.builder()
                                                .resourceGroupFilter(singleton(currentResourceGroup.getIdentifier()))
-                                               .scopeFilter("/")
+                                               .scopeFilter("")
                                                .includeChildScopes(true)
                                                .scopeLevelFilter(removedScopeLevels)
                                                .build()))
@@ -212,7 +235,7 @@ public class ResourceGroupServiceImplTest extends AccessControlCoreTestBase {
     verify(roleAssignmentService, times(1))
         .deleteMulti(RoleAssignmentFilter.builder()
                          .resourceGroupFilter(singleton(currentResourceGroup.getIdentifier()))
-                         .scopeFilter("/")
+                         .scopeFilter("")
                          .includeChildScopes(true)
                          .scopeLevelFilter(removedScopeLevels)
                          .build());

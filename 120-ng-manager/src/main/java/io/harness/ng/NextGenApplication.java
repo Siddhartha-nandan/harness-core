@@ -126,6 +126,7 @@ import io.harness.migration.NGMigrationSdkInitHelper;
 import io.harness.migration.NGMigrationSdkModule;
 import io.harness.migration.beans.NGMigrationConfiguration;
 import io.harness.migrations.InstanceMigrationProvider;
+import io.harness.ng.chaos.ChaosNotificationTemplateRegistrar;
 import io.harness.ng.core.CorrelationFilter;
 import io.harness.ng.core.DefaultUserGroupsCreationJob;
 import io.harness.ng.core.EtagFilter;
@@ -143,6 +144,7 @@ import io.harness.ng.core.handler.NGVaultSecretManagerRenewalHandler;
 import io.harness.ng.core.handler.freezeHandlers.NgDeploymentFreezeActivationHandler;
 import io.harness.ng.core.migration.AddUniqueIdParentIdToEntitiesJob;
 import io.harness.ng.core.migration.NGBeanMigrationProvider;
+import io.harness.ng.core.migration.ParentUniqueIdMigrationProvider;
 import io.harness.ng.core.migration.ProjectMigrationProvider;
 import io.harness.ng.core.migration.UniqueIdParentIdMigrationProvider;
 import io.harness.ng.core.migration.UserGroupMigrationProvider;
@@ -493,6 +495,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     if (!appConfig.isDisableFreezeNotificationTemplate()) {
       registerNotificationTemplates(injector);
     }
+    registerChaosNotificationTemplates(injector);
     registerPmsSdkEvents(appConfig, injector);
     registerDebeziumEvents(appConfig, injector);
     initializeMonitoring(appConfig, injector);
@@ -551,6 +554,12 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     executorService.submit(injector.getInstance(FreezeNotificationTemplateRegistrar.class));
   }
 
+  private void registerChaosNotificationTemplates(Injector injector) {
+    ExecutorService executorService =
+        injector.getInstance(Key.get(ExecutorService.class, Names.named("chaosTemplateRegistrationExecutorService")));
+    executorService.submit(injector.getInstance(ChaosNotificationTemplateRegistrar.class));
+  }
+
   private void initializeNGMonitoring(NextGenConfiguration appConfig, Injector injector) {
     log.info("Initializing NGMonitoring");
     injector.getInstance(NGTelemetryRecordsJob.class).scheduleTasks();
@@ -597,6 +606,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
           { add(ProjectMigrationProvider.class); }
 
           { add(UniqueIdParentIdMigrationProvider.class); }
+          { add(ParentUniqueIdMigrationProvider.class); }
 
           { add(NGCoreMigrationProvider.class); } // Add all migration provider classes here
 

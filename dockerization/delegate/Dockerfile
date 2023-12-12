@@ -63,12 +63,14 @@ RUN mkdir -m 777 -p client-tools/kubectl/v1.24.3 \
   && curl -s -L -o client-tools/scm/f5203793/scm https://app.harness.io/public/shared/tools/scm/release/f5203793/bin/linux/$TARGETARCH/scm \
   && chmod -R 775 /opt/harness-delegate \
   && chgrp -R 0 /opt/harness-delegate  \
-  && chown -R 1001 /opt/harness-delegate
+  && chown -R 1001 /opt/harness-delegate \
+  && chown -R 1001 $JAVA_HOME/lib/security/cacerts
 
 ENV PATH=/opt/harness-delegate/client-tools/kubectl/v1.24.3/:$PATH
 ENV PATH=/opt/harness-delegate/client-tools/go-template/v0.4.5/:$PATH
 ENV PATH=/opt/harness-delegate/client-tools/chartmuseum/v0.15.0/:$PATH
 ENV PATH=/opt/harness-delegate/client-tools/tf-config-inspect/v1.2/:$PATH
+ENV PATH=/opt/harness-delegate/client-tools/helm/v3.12.0/:$PATH
 ENV PATH=/opt/harness-delegate/client-tools/oc/v4.13.4/:$PATH
 ENV SHARED_CA_CERTS_PATH=/opt/harness-delegate/additional_certs_pem_split
 

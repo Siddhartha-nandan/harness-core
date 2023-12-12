@@ -41,7 +41,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 
 public class NormalisedSbomComponentServiceImpl implements NormalisedSbomComponentService {
   @Inject SBOMComponentRepo sbomComponentRepo;
@@ -230,5 +232,20 @@ public class NormalisedSbomComponentServiceImpl implements NormalisedSbomCompone
 
     criteria.andOperator(getLicenseCriteria(licenseFilter), getComponentCriteria(componentFilter));
     return sbomComponentRepo.findDistinctOrchestrationIds(criteria);
+  }
+
+  @Override
+  public <T> List<T> getComponentsByAggregation(Aggregation aggregation, Class<T> resultClass) {
+    return sbomComponentRepo.aggregate(aggregation, resultClass);
+  }
+
+  @Override
+  public List<NormalizedSBOMComponentEntity> getComponentsOfSbomByLicense(String orchestrationId, String license) {
+    Criteria criteria = Criteria.where(NormalizedSBOMEntityKeys.orchestrationId.toLowerCase())
+                            .is(orchestrationId)
+                            .and(NormalizedSBOMEntityKeys.packageLicense.toLowerCase())
+                            .is(license);
+
+    return sbomComponentRepo.findAllByQuery(new Query(criteria));
   }
 }

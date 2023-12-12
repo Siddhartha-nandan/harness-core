@@ -16,6 +16,7 @@ import static io.harness.audit.ResourceTypeConstants.ENVIRONMENT_GROUP;
 import static io.harness.audit.ResourceTypeConstants.EULA;
 import static io.harness.audit.ResourceTypeConstants.FILE;
 import static io.harness.audit.ResourceTypeConstants.IP_ALLOWLIST_CONFIG;
+import static io.harness.audit.ResourceTypeConstants.MODULE_LICENSE;
 import static io.harness.audit.ResourceTypeConstants.ORGANIZATION;
 import static io.harness.audit.ResourceTypeConstants.PROJECT;
 import static io.harness.audit.ResourceTypeConstants.SECRET;
@@ -155,6 +156,7 @@ import io.harness.grpc.client.GrpcClientConfig;
 import io.harness.hsqs.client.beans.HsqsDequeueConfig;
 import io.harness.licensing.LicenseModule;
 import io.harness.licensing.event.ModuleLicenseEventListener;
+import io.harness.licensing.outbox.ModuleLicenseOutboxEventHandler;
 import io.harness.lock.DistributedLockImplementation;
 import io.harness.lock.PersistentLockModule;
 import io.harness.logstreaming.LogStreamingServiceConfiguration;
@@ -463,6 +465,14 @@ public class NextGenModule extends AbstractModule {
   public ExecutorService templateRegistrationExecutionServiceThreadPool() {
     return ThreadPool.create(1, 1, 10, TimeUnit.SECONDS,
         new ThreadFactoryBuilder().setNameFormat("FreezeTemplateRegistrationService-%d").build());
+  }
+
+  @Provides
+  @Singleton
+  @Named("chaosTemplateRegistrationExecutorService")
+  public ExecutorService chaosTemplateRegistrationExecutionServiceThreadPool() {
+    return ThreadPool.create(1, 1, 10, TimeUnit.SECONDS,
+        new ThreadFactoryBuilder().setNameFormat("ChaosTemplateRegistrationService-%d").build());
   }
 
   @Provides
@@ -948,6 +958,13 @@ public class NextGenModule extends AbstractModule {
 
       @Provides
       @Singleton
+      @Named("scmServiceBaseUrl")
+      String getScmServiceBaseUrl() {
+        return getBaseUrls().getScmServiceBaseUrl();
+      }
+
+      @Provides
+      @Singleton
       BaseUrls getBaseUrls() {
         return appConfig.getBaseUrls();
       }
@@ -1201,6 +1218,7 @@ public class NextGenModule extends AbstractModule {
     outboxEventHandlerMapBinder.addBinding(DEPLOYMENT_FREEZE).to(FreezeOutboxEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(IP_ALLOWLIST_CONFIG).to(IPAllowlistConfigEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(EULA).to(EulaEventHandler.class);
+    outboxEventHandlerMapBinder.addBinding(MODULE_LICENSE).to(ModuleLicenseOutboxEventHandler.class);
   }
 
   private void registerEventsFrameworkMessageListeners() {

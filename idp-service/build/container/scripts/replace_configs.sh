@@ -460,7 +460,9 @@ replace_key_value backstageServiceSecret "$BACKSTAGE_SERVICE_SECRET"
 replace_key_value onboardingModuleConfig.harnessCiCdAnnotations.projectUrl "$ONBOARDING_MODULE_CONFIG_HARNESS_CI_CD_ANNOTATIONS_PROJECT_URL"
 replace_key_value onboardingModuleConfig.harnessCiCdAnnotations.serviceUrl "$ONBOARDING_MODULE_CONFIG_HARNESS_CI_CD_ANNOTATIONS_SERVICE_URL"
 replace_key_value env "$ENV"
-replace_key_value prEnvDefaultBackstageNamespace "$DEFAULT_BACKSTAGE_NAMESPACE"
+replace_key_value base "$BASE"
+replace_key_value devSpaceDefaultBackstageNamespace "$DEVSPACE_DEFAULT_BACKSTAGE_NAMESPACE"
+replace_key_value devSpaceDefaultAccountId "$DEVSPACE_DEFAULT_ACCOUNT_ID"
 replace_key_value backstageAppBaseUrl "$BACKSTAGE_APP_BASE_URL"
 replace_key_value backstagePostgresHost "$BACKSTAGE_POSTGRES_HOST"
 replace_key_value onboardingModuleConfig.useGitServiceGrpcForSingleEntityPush $ONBOARDING_MODULE_CONFIG_USE_GIT_SERVICE_GRPC_FOR_SINGLE_ENTITY_PUSH
@@ -475,6 +477,7 @@ replace_key_value segmentConfiguration.url "$SEGMENT_URL"
 replace_key_value segmentConfiguration.apiKey "$SEGMENT_APIKEY"
 replace_key_value segmentConfiguration.certValidationRequired "$SEGMENT_VERIFY_CERT"
 replace_key_value delegateSelectorsCacheMode "$DELEGATE_SELECTORS_CACHE_MODE"
+replace_key_value enableMetrics "$ENABLE_METRICS"
 
 if [[ "" != "$LOCK_CONFIG_REDIS_URL" ]]; then
   export LOCK_CONFIG_REDIS_URL; yq -i '.singleServerConfig.address=env(LOCK_CONFIG_REDIS_URL)' $REDISSON_CACHE_FILE

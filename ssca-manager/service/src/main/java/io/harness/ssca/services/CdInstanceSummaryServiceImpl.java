@@ -7,16 +7,14 @@
 
 package io.harness.ssca.services;
 
-import io.harness.entities.Instance;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.pipeline.remote.PipelineServiceClient;
-import io.harness.remote.client.NGRestUtils;
 import io.harness.repositories.CdInstanceSummaryRepo;
 import io.harness.repositories.EnforcementSummaryRepo;
-import io.harness.serializer.JsonUtils;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewRequestBody;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.beans.SLSAVerificationSummary;
+import io.harness.ssca.beans.instance.InstanceDTO;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.CdInstanceSummary;
 import io.harness.ssca.entities.CdInstanceSummary.CdInstanceSummaryKeys;
@@ -69,7 +67,7 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
   private static String TAG = "tag";
 
   @Override
-  public boolean upsertInstance(Instance instance) {
+  public boolean upsertInstance(InstanceDTO instance) {
     if (Objects.isNull(instance.getPrimaryArtifact())
         || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity())
         || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity().getImage())) {
@@ -98,6 +96,7 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
       cdInstanceSummary.getInstanceIds().add(instance.getId());
       cdInstanceSummary.setSlsaVerificationSummary(getSlsaVerificationSummary(rootNode, instance, artifact));
       cdInstanceSummary = setPipelineDetails(cdInstanceSummary, rootNode, instance);
+      artifactService.updateArtifactEnvCount(artifact, cdInstanceSummary.getEnvType(), 0);
       cdInstanceSummaryRepo.save(cdInstanceSummary);
     } else {
       CdInstanceSummary newCdInstanceSummary = createInstanceSummary(instance, artifact);
@@ -108,7 +107,7 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
   }
 
   @Override
-  public boolean removeInstance(Instance instance) {
+  public boolean removeInstance(InstanceDTO instance) {
     if (Objects.isNull(instance.getPrimaryArtifact())
         || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity())
         || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity().getImage())) {
@@ -122,13 +121,14 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
 
     if (Objects.nonNull(cdInstanceSummary)) {
       cdInstanceSummary.getInstanceIds().remove(instance.getId());
+      ArtifactEntity artifact =
+          artifactService.getArtifactByCorrelationId(instance.getAccountIdentifier(), instance.getOrgIdentifier(),
+              instance.getProjectIdentifier(), instance.getPrimaryArtifact().getArtifactIdentity().getImage());
       if (cdInstanceSummary.getInstanceIds().isEmpty()) {
-        ArtifactEntity artifact =
-            artifactService.getArtifactByCorrelationId(instance.getAccountIdentifier(), instance.getOrgIdentifier(),
-                instance.getProjectIdentifier(), instance.getPrimaryArtifact().getArtifactIdentity().getImage());
         artifactService.updateArtifactEnvCount(artifact, cdInstanceSummary.getEnvType(), -1);
         cdInstanceSummaryRepo.delete(cdInstanceSummary);
       } else {
+        artifactService.updateArtifactEnvCount(artifact, cdInstanceSummary.getEnvType(), 0);
         cdInstanceSummaryRepo.save(cdInstanceSummary);
       }
     }
@@ -241,7 +241,7 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
   }
 
   @VisibleForTesting
-  public CdInstanceSummary createInstanceSummary(Instance instance, ArtifactEntity artifact) {
+  public CdInstanceSummary createInstanceSummary(InstanceDTO instance, ArtifactEntity artifact) {
     JsonNode rootNode = pipelineUtils.getPipelineExecutionSummaryResponse(instance.getLastPipelineExecutionId(),
         instance.getAccountIdentifier(), instance.getOrgIdentifier(), instance.getProjectIdentifier(),
         instance.getStageSetupId());
@@ -255,7 +255,7 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
             .slsaVerificationSummary(getSlsaVerificationSummary(rootNode, instance, artifact))
             .envIdentifier(instance.getEnvIdentifier())
             .envName(instance.getEnvName())
-            .envType(EnvType.valueOf(instance.getEnvType().name()))
+            .envType(EnvType.valueOf(instance.getEnvType()))
             .createdAt(Instant.now().toEpochMilli())
             .instanceIds(Collections.singleton(instance.getId()))
             .build();
@@ -264,7 +264,7 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
   }
 
   private CdInstanceSummary setPipelineDetails(
-      CdInstanceSummary cdInstanceSummary, JsonNode rootNode, Instance instance) {
+      CdInstanceSummary cdInstanceSummary, JsonNode rootNode, InstanceDTO instance) {
     cdInstanceSummary.setLastPipelineName(pipelineUtils.parsePipelineName(rootNode));
     cdInstanceSummary.setLastPipelineExecutionName(instance.getLastPipelineExecutionName());
     cdInstanceSummary.setLastPipelineExecutionId(instance.getLastPipelineExecutionId());
@@ -278,7 +278,7 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
   }
 
   private SLSAVerificationSummary getSlsaVerificationSummary(
-      JsonNode rootNode, Instance instance, ArtifactEntity artifact) {
+      JsonNode rootNode, InstanceDTO instance, ArtifactEntity artifact) {
     if (rootNode == null) {
       return null;
     }
@@ -338,19 +338,6 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
       }
     }
     return false;
-  }
-
-  private JsonNode getPmsExecutionSummary(Instance instance) {
-    JsonNode rootNode = null;
-    try {
-      Object pmsExecutionSummary = NGRestUtils.getResponse(pipelineServiceClient.getExecutionDetailV2(
-          instance.getLastPipelineExecutionId(), instance.getAccountIdentifier(), instance.getOrgIdentifier(),
-          instance.getProjectIdentifier(), instance.getStageSetupId()));
-      rootNode = JsonUtils.asTree(pmsExecutionSummary);
-    } catch (Exception e) {
-      log.error(String.format("PMS Request Failed. Exception: %s", e));
-    }
-    return rootNode;
   }
 
   private JsonNode parseField(JsonNode rootNode, String... path) {

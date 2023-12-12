@@ -93,6 +93,7 @@ import io.harness.exception.sanitizer.ExceptionMessageSanitizer;
 import io.harness.filesystem.FileIo;
 import io.harness.helm.HelmCliCommandType;
 import io.harness.helm.HelmCommandFlagsUtils;
+import io.harness.helm.HelmCommandRunner;
 import io.harness.helm.HelmCommandTemplateFactory;
 import io.harness.helm.HelmCommandType;
 import io.harness.helm.HelmSubCommandType;
@@ -165,6 +166,7 @@ public class HelmTaskHelperBase {
   @Inject private SecretDecryptionService decryptionService;
   @Inject private AwsClient awsClient;
   @Inject private AwsNgConfigMapper awsNgConfigMapper;
+  @Inject private HelmCommandRunner helmCommandRunner;
   public static final String RESOURCE_DIR_BASE = "./repository/helm/resources/";
   public static final String VERSION_KEY = "version:";
   public static final String NAME_KEY = "name:";
@@ -402,7 +404,7 @@ public class HelmTaskHelperBase {
           exitCode, repoAddCommandForLogging, processOutput);
       throw new HelmClientException(exceptionMessage, USER, HelmCliCommandType.REPO_ADD);
     }
-    checkIndexFile(repoName, tempDir, chartDirectory);
+    checkIndexFile(repoName, tempDir, chartDirectory, repoDisplayName);
   }
 
   public void addRepo(String repoName, String repoDisplayName, String chartRepoUrl, String username, char[] password,
@@ -526,6 +528,10 @@ public class HelmTaskHelperBase {
 
   public ProcessResult executeCommand(Map<String, String> envVars, String command, String directoryPath,
       String errorMessage, long timeoutInMillis, HelmCliCommandType helmCliCommandType) {
+    if (helmCommandRunner.isEnabled()) {
+      return helmCommandRunner.execute(helmCliCommandType, command, directoryPath, envVars, timeoutInMillis);
+    }
+
     ProcessExecutor processExecutor = createProcessExecutor(command, directoryPath, timeoutInMillis, envVars);
     return executeCommand(processExecutor, errorMessage, helmCliCommandType);
   }
@@ -1005,7 +1011,7 @@ public class HelmTaskHelperBase {
           exitCode, repoAddCommand, processOutput);
       throw new HelmClientException(exceptionMessage, USER, HelmCliCommandType.REPO_ADD);
     }
-    checkIndexFile(repoName, cacheDir, chartDirectory);
+    checkIndexFile(repoName, cacheDir, chartDirectory, repoDisplayName);
 
     if (isEmpty(cacheDir)) {
       return;
@@ -1814,9 +1820,9 @@ public class HelmTaskHelperBase {
   }
 
   @VisibleForTesting
-  void checkIndexFile(String repoName, String cacheDir, String chartDirectory) {
+  void checkIndexFile(String repoName, String cacheDir, String chartDirectory, String repoDisplayName) {
     File indexFile;
-    if (repoName.isEmpty()) {
+    if (repoName.isEmpty() && repoDisplayName.isEmpty()) {
       return;
     }
     if (!isEmpty(cacheDir)) {
@@ -1830,7 +1836,7 @@ public class HelmTaskHelperBase {
     }
     if (indexFile.exists() && (indexFile.length() > SAFE_LIMIT_OF_INDEX_FILE)) {
       double megabytes = (double) indexFile.length() / (1024 * 1024);
-      log.warn(String.format(INDEX_FILE_WARN_LOG, repoName, megabytes));
+      log.warn(String.format(INDEX_FILE_WARN_LOG, repoDisplayName, megabytes));
     }
   }
 }

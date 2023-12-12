@@ -109,7 +109,9 @@ public class IdpConfiguration extends Configuration {
   @JsonProperty("backstagePodLabel") private String backstagePodLabel;
   @JsonProperty("backstageEntitiesFetchLimit") private String backstageEntitiesFetchLimit;
   @JsonProperty("env") private String env;
-  @JsonProperty("prEnvDefaultBackstageNamespace") private String prEnvDefaultBackstageNamespace;
+  @JsonProperty("base") private String base;
+  @JsonProperty("devSpaceDefaultBackstageNamespace") private String devSpaceDefaultBackstageNamespace;
+  @JsonProperty("devSpaceDefaultAccountId") private String devSpaceDefaultAccountId;
   @JsonProperty(PROVISION_MODULE_CONFIG) private ProvisionModuleConfig provisionModuleConfig;
   @JsonProperty("backstageAppBaseUrl") private String backstageAppBaseUrl;
   @JsonProperty("backstagePostgresHost") private String backstagePostgresHost;
@@ -155,6 +157,7 @@ public class IdpConfiguration extends Configuration {
   @JsonProperty("enforcementClientConfiguration") EnforcementClientConfiguration enforcementClientConfiguration;
   @JsonProperty("harnessCodeGitUrl") private String harnessCodeGitUrl;
   @JsonProperty("segmentConfiguration") private SegmentConfiguration segmentConfiguration;
+  @JsonProperty("enableMetrics") private boolean enableMetrics;
 
   public static final Collection<Class<?>> HARNESS_RESOURCE_CLASSES = getResourceClasses();
   public static final String IDP_SPEC_PACKAGE = "io.harness.spec.server.idp.v1";

@@ -20,6 +20,7 @@ import static org.springframework.data.mongodb.core.aggregation.Aggregation.unwi
 
 import io.harness.network.Http;
 import io.harness.repositories.ArtifactRepository;
+import io.harness.repositories.BaselineRepository;
 import io.harness.repositories.EnforcementSummaryRepo;
 import io.harness.spec.server.ssca.v1.model.ArtifactComponentViewRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactComponentViewResponse;
@@ -39,6 +40,7 @@ import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.beans.SbomDTO;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityKeys;
+import io.harness.ssca.entities.BaselineEntity;
 import io.harness.ssca.entities.CdInstanceSummary;
 import io.harness.ssca.entities.EnforcementSummaryEntity;
 import io.harness.ssca.entities.EnforcementSummaryEntity.EnforcementSummaryEntityKeys;
@@ -55,6 +57,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -88,7 +91,9 @@ public class ArtifactServiceImpl implements ArtifactService {
   @Inject CdInstanceSummaryService cdInstanceSummaryService;
   @Inject PipelineUtils pipelineUtils;
 
-  private final String GCP_REGISTRY_HOST = "grc.io";
+  @Inject BaselineRepository baselineRepository;
+
+  private final String GCP_REGISTRY_HOST = "gcr.io";
 
   @Override
   public ArtifactEntity getArtifactFromSbomPayload(
@@ -140,6 +145,27 @@ public class ArtifactServiceImpl implements ArtifactService {
       String accountId, String orgIdentifier, String projectIdentifier, String artifactId, Sort sort) {
     return artifactRepository.findFirstByAccountIdAndOrgIdAndProjectIdAndArtifactIdLike(
         accountId, orgIdentifier, projectIdentifier, artifactId, sort);
+  }
+
+  @Override
+  public String getArtifactName(String accountId, String orgIdentifier, String projectIdentifier, String artifactId) {
+    Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
+                            .is(accountId)
+                            .and(ArtifactEntityKeys.orgId)
+                            .is(orgIdentifier)
+                            .and(ArtifactEntityKeys.projectId)
+                            .is(projectIdentifier)
+                            .and(ArtifactEntityKeys.artifactId)
+                            .is(artifactId)
+                            .and(ArtifactEntityKeys.invalid)
+                            .is(false);
+    ArtifactEntity artifactEntity =
+        artifactRepository.findOne(criteria, Sort.by(Direction.DESC, ArtifactEntityKeys.createdOn.toLowerCase()),
+            List.of(ArtifactEntityKeys.name, ArtifactEntityKeys.isAttested.toLowerCase()));
+    if (artifactEntity == null) {
+      return null;
+    }
+    return artifactEntity.getName();
   }
 
   @Override
@@ -394,6 +420,22 @@ public class ArtifactServiceImpl implements ArtifactService {
     artifactRepository.save(artifact);
   }
 
+  @Override
+  public ArtifactEntity getLastGeneratedArtifactFromTime(
+      String accountId, String orgId, String projectId, String artifactId, Instant time) {
+    Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
+                            .is(accountId)
+                            .and(ArtifactEntityKeys.orgId)
+                            .is(orgId)
+                            .and(ArtifactEntityKeys.projectId)
+                            .is(projectId)
+                            .and(ArtifactEntityKeys.artifactId)
+                            .is(artifactId)
+                            .and(ArtifactEntityKeys.createdOn)
+                            .lt(time);
+    return artifactRepository.findOne(criteria);
+  }
+
   private List<ArtifactListingResponse> getArtifactListingResponses(
       String accountId, String orgIdentifier, String projectIdentifier, List<ArtifactEntity> artifactEntities) {
     List<String> orchestrationIds =
@@ -413,12 +455,23 @@ public class ArtifactServiceImpl implements ArtifactService {
     Map<String, EnforcementSummaryEntity> enforcementSummaryEntityMap = enforcementSummaryEntities.stream().collect(
         Collectors.toMap(entity -> entity.getOrchestrationId(), Function.identity()));
 
+    List<BaselineEntity> baselineEntities =
+        baselineRepository.findAll(accountId, orgIdentifier, projectIdentifier, orchestrationIds);
+
+    Set<String> baselineEntityOrchestrationIds =
+        baselineEntities.stream().map(entity -> entity.getOrchestrationId()).collect(Collectors.toSet());
+
     List<ArtifactListingResponse> responses = new ArrayList<>();
     for (ArtifactEntity artifact : artifactEntities) {
       EnforcementSummaryEntity enforcementSummary = EnforcementSummaryEntity.builder().build();
 
       if (enforcementSummaryEntityMap.containsKey(artifact.getOrchestrationId())) {
         enforcementSummary = enforcementSummaryEntityMap.get(artifact.getOrchestrationId());
+      }
+
+      Boolean baseline = false;
+      if (baselineEntityOrchestrationIds.contains(artifact.getOrchestrationId())) {
+        baseline = true;
       }
 
       responses.add(
@@ -438,12 +491,14 @@ public class ArtifactServiceImpl implements ArtifactService {
               .nonProdEnvCount(artifact.getNonProdEnvCount().intValue())
               .orchestrationId(artifact.getOrchestrationId())
               .buildPipelineId(artifact.getPipelineId())
-              .buildPipelineExecutionId(artifact.getPipelineExecutionId()));
+              .buildPipelineExecutionId(artifact.getPipelineExecutionId())
+              .baseline(baseline));
     }
     return responses;
   }
 
-  private String getCDImagePath(String url, String image, String tag) {
+  @VisibleForTesting
+  String getCDImagePath(String url, String image, String tag) {
     URI uri = UriBuilder.fromUri(url).build();
     String registryUrl = UriBuilder.fromUri(url).path(uri.getPath().endsWith("/") ? "" : "/").build().toString();
     String domainName = Http.getDomainWithPort(registryUrl);
@@ -463,11 +518,8 @@ public class ArtifactServiceImpl implements ArtifactService {
     // { "aggregate" : "__collection__", "pipeline" : [{ "$sort" : { "createdAt" : -1}}, { "$group" : { "_id" :
     // "$orchestrationId", "document" : { "$first" : "$$ROOT"}}}, { "$unwind" : "$document"}, { "$match" : {
     // "document.denylistviolationcount" : { "$ne" : 0}}}]}
-    List<EnforcementSummaryEntity> enforcementSummaryEntities = enforcementSummaryRepo.findAll(aggregation);
-    criteria.and(ArtifactEntityKeys.orchestrationId)
-        .in(enforcementSummaryEntities.stream()
-                .map(EnforcementSummaryEntity::getOrchestrationId)
-                .collect(Collectors.toSet()));
+    Set<String> orchestrationIds = enforcementSummaryRepo.findAllOrchestrationId(aggregation);
+    criteria.and(ArtifactEntityKeys.orchestrationId).in(orchestrationIds);
     return criteria;
   }
 
@@ -516,7 +568,9 @@ public class ArtifactServiceImpl implements ArtifactService {
     GroupOperation groupByOrchestrationId =
         group(EnforcementSummaryEntityKeys.orchestrationId).first("$$ROOT").as(EnforcementSummaryDBOKeys.document);
     UnwindOperation unwindOperation = unwind(EnforcementSummaryDBOKeys.document);
-    return newAggregation(sortOperation, groupByOrchestrationId, unwindOperation, matchOperation);
+    ProjectionOperation projectionOperation = Aggregation.project(
+        EnforcementSummaryDBOKeys.document + "." + EnforcementSummaryEntityKeys.orchestrationId.toLowerCase());
+    return newAggregation(sortOperation, groupByOrchestrationId, unwindOperation, matchOperation, projectionOperation);
   }
 
   private Criteria getDeploymentFilterCriteria(ArtifactListingRequestBody body) {

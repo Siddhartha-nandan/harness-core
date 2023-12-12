@@ -9,8 +9,12 @@ package io.harness.ssca.services;
 
 import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 
+import io.harness.exception.DuplicateEntityException;
+import io.harness.outbox.api.OutboxService;
+import io.harness.repositories.BaselineRepository;
 import io.harness.repositories.SBOMComponentRepo;
 import io.harness.spec.server.ssca.v1.model.Artifact;
+import io.harness.spec.server.ssca.v1.model.ArtifactScorecard;
 import io.harness.spec.server.ssca.v1.model.OrchestrationSummaryResponse;
 import io.harness.spec.server.ssca.v1.model.SbomDetails;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
@@ -18,11 +22,13 @@ import io.harness.ssca.beans.SbomDTO;
 import io.harness.ssca.beans.SettingsDTO;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
+import io.harness.ssca.events.SSCAArtifactCreatedEvent;
 import io.harness.ssca.normalize.Normalizer;
 import io.harness.ssca.normalize.NormalizerRegistry;
 import io.harness.ssca.utils.SBOMUtils;
 
 import com.google.inject.Inject;
+import com.google.inject.name.Named;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -45,6 +51,10 @@ public class OrchestrationStepServiceImpl implements OrchestrationStepService {
   @Inject SBOMComponentRepo SBOMComponentRepo;
   @Inject NormalizerRegistry normalizerRegistry;
   @Inject S3StoreService s3StoreService;
+  @Inject BaselineRepository baselineRepository;
+  @Inject OutboxService outboxService;
+
+  @Inject @Named("isElasticSearchEnabled") boolean isElasticSearchEnabled;
   private static final RetryPolicy<Object> transactionRetryPolicy = DEFAULT_RETRY_POLICY;
 
   @Override
@@ -52,6 +62,14 @@ public class OrchestrationStepServiceImpl implements OrchestrationStepService {
       SbomProcessRequestBody sbomProcessRequestBody) throws ParseException {
     // TODO: Check if we can prevent IO Operation.
     // TODO: Use Jackson instead of Gson.
+    if (artifactService
+            .getArtifact(accountId, orgIdentifier, projectIdentifier,
+                sbomProcessRequestBody.getSbomMetadata().getStepExecutionId())
+            .isPresent()) {
+      throw new DuplicateEntityException(String.format("Artifact already present with orchestration id [%s]",
+          sbomProcessRequestBody.getSbomMetadata().getStepExecutionId()));
+    }
+
     log.info("Starting SBOM Processing");
     String sbomFileName = UUID.randomUUID() + "_sbom";
     File sbomDumpFile = new File(sbomFileName);
@@ -78,14 +96,23 @@ public class OrchestrationStepServiceImpl implements OrchestrationStepService {
 
     artifactEntity.setComponentsCount(sbomEntityList.stream().count());
 
-    Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
-      artifactService.saveArtifactAndInvalidateOldArtifact(artifactEntity);
-      return null;
-    }));
-    SBOMComponentRepo.saveAll(sbomEntityList);
+    Boolean baselineExists =
+        baselineRepository.existsByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndArtifactIdAndTag(
+            accountId, orgIdentifier, projectIdentifier, artifactEntity.getArtifactId(), artifactEntity.getTag());
 
-    log.info(String.format("SBOM Processed Successfully, Artifact ID: %s", artifactEntity.getArtifactId()));
-    return artifactEntity.getArtifactId();
+    return Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
+      artifactService.saveArtifactAndInvalidateOldArtifact(artifactEntity);
+      SBOMComponentRepo.saveAll(sbomEntityList);
+      if (isElasticSearchEnabled) {
+        outboxService.save(new SSCAArtifactCreatedEvent(accountId, orgIdentifier, projectIdentifier, artifactEntity));
+      }
+      if (baselineExists) {
+        baselineRepository.updateOrchestrationId(accountId, orgIdentifier, projectIdentifier,
+            artifactEntity.getArtifactId(), artifactEntity.getTag(), artifactEntity.getOrchestrationId());
+      }
+      log.info(String.format("SBOM Processed Successfully, Artifact ID: %s", artifactEntity.getArtifactId()));
+      return artifactEntity.getArtifactId();
+    }));
   }
 
   private void uploadSbomAndDeleteLocalFile(File sbomDumpFile, ArtifactEntity artifactEntity) {
@@ -105,13 +132,21 @@ public class OrchestrationStepServiceImpl implements OrchestrationStepService {
                              -> new NotFoundException(String.format(
                                  "Artifact with orchestrationIdentifier [%s] is not found", orchestrationId)));
 
+    Artifact artifactResponse = new Artifact()
+                                    .name(artifact.getName())
+                                    .type(artifact.getName())
+                                    .registryUrl(artifact.getUrl())
+                                    .id(artifact.getId())
+                                    .tag(artifact.getTag());
+
+    if (artifact.getScorecard() != null) {
+      artifactResponse.setScorecard(new ArtifactScorecard()
+                                        .avgScore(artifact.getScorecard().getAvgScore())
+                                        .maxScore(artifact.getScorecard().getMaxScore()));
+    }
+
     return new OrchestrationSummaryResponse()
-        .artifact(new Artifact()
-                      .name(artifact.getName())
-                      .type(artifact.getName())
-                      .registryUrl(artifact.getUrl())
-                      .id(artifact.getId())
-                      .tag(artifact.getTag()))
+        .artifact(artifactResponse)
         .stepExecutionId(artifact.getOrchestrationId())
         .isAttested(artifact.isAttested())
         .sbom(new SbomDetails().name(artifact.getSbomName()));

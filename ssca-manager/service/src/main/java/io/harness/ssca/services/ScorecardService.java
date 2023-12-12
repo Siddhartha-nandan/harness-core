@@ -10,11 +10,8 @@ package io.harness.ssca.services;
 import io.harness.spec.server.ssca.v1.model.SbomScorecardRequestBody;
 import io.harness.spec.server.ssca.v1.model.SbomScorecardResponseBody;
 
-import com.google.inject.ImplementedBy;
-
-@ImplementedBy(ScorecardServiceImpl.class)
 public interface ScorecardService {
-  boolean save(SbomScorecardRequestBody body);
+  void save(SbomScorecardRequestBody body);
 
   SbomScorecardResponseBody getByOrchestrationId(
       String accountId, String orgId, String projectId, String orchestrateId);
