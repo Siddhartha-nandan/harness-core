@@ -337,9 +337,9 @@ func getStepStatusPayload(ctx context.Context, stepID, accountID, delegateID, de
 		var stepOutputDataV2 []payloads.OutputV2
 		for _, o := range stepOutput.Output.OutputVariables {
 			stepOutput := payloads.OutputV2{
-				Key: o.Key,
+				Key:   o.Key,
 				Value: o.Value,
-				Type: o.Type.String(),
+				Type:  o.Type.String(),
 			}
 			stepOutputDataV2 = append(stepOutputDataV2, stepOutput)
 		}
