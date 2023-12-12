@@ -283,7 +283,10 @@ public class EntityYamlRootNames {
   public static final String CREATE_REPO = "CreateRepo";
   public static final String DIRECT_PUSH = "DirectPush";
   public static final String REGISTER_CATALOG = "RegisterCatalog";
+  public static final String CREATE_CATALOG = "CreateCatalog";
+  public static final String SLACK_NOTIFY = "SlackNotify";
 
   // CD Container Step Group Common Steps
   public static final String DOWNLOAD_AWS_S3 = "DownloadAwsS3";
+  public static final String DOWNLOAD_HARNESS_STORE = "DownloadHarnessStore";
 }

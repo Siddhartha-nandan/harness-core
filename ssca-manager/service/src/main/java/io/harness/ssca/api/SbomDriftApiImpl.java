@@ -14,9 +14,13 @@ import io.harness.spec.server.ssca.v1.SbomDriftApi;
 import io.harness.spec.server.ssca.v1.model.ArtifactSbomDriftRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactSbomDriftResponse;
 import io.harness.spec.server.ssca.v1.model.ComponentDrift;
+import io.harness.spec.server.ssca.v1.model.LicenseDrift;
 import io.harness.spec.server.ssca.v1.model.OrchestrationStepDriftRequestBody;
 import io.harness.ssca.beans.drift.ComponentDriftResults;
 import io.harness.ssca.beans.drift.ComponentDriftStatus;
+import io.harness.ssca.beans.drift.DriftBase;
+import io.harness.ssca.beans.drift.LicenseDriftResults;
+import io.harness.ssca.beans.drift.LicenseDriftStatus;
 import io.harness.ssca.mapper.SbomDriftMapper;
 import io.harness.ssca.services.drift.SbomDriftService;
 import io.harness.utils.ApiUtils;
@@ -28,6 +32,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
@@ -53,7 +58,7 @@ public class SbomDriftApiImpl implements SbomDriftApi {
     ComponentDriftStatus componentDriftStatus = SbomDriftMapper.mapStatusToComponentDriftStatus(status);
     ComponentDriftResults componentDriftResults =
         sbomDriftService.getComponentDrifts(harnessAccount, org, project, drift, componentDriftStatus, pageable);
-    Response.ResponseBuilder responseBuilder = Response.ok();
+    ResponseBuilder responseBuilder = Response.ok();
     if (componentDriftResults != null) {
       List<ComponentDrift> componentDrifts =
           SbomDriftMapper.toComponentDriftResponseList(componentDriftResults.getComponentDrifts());
@@ -69,12 +74,23 @@ public class SbomDriftApiImpl implements SbomDriftApi {
   @Override
   public Response getLicenseDrift(String org, String project, String drift, String harnessAccount, String status,
       @Min(0L) Integer page, @Min(1L) @Max(1000L) Integer limit) {
-    return null;
+    Pageable pageable = PageRequest.of(page, limit);
+    LicenseDriftStatus licenseDriftStatus = SbomDriftMapper.mapStatusToLicenseDriftStatus(status);
+    LicenseDriftResults licenseDriftResults =
+        sbomDriftService.getLicenseDrifts(harnessAccount, org, project, drift, licenseDriftStatus, pageable);
+    List<LicenseDrift> licenseDrifts =
+        SbomDriftMapper.toLicenseDriftResponseList(licenseDriftResults.getLicenseDrifts());
+    ResponseBuilder responseBuilder = Response.ok().entity(licenseDrifts);
+    ApiUtils.addLinksHeader(responseBuilder, licenseDriftResults.getTotalLicenseDrifts(), page, limit);
+    return responseBuilder.build();
   }
 
   @Override
   public Response calculateDriftForOrchestrationStep(String org, String project, String orchestration,
       @Valid OrchestrationStepDriftRequestBody body, String harnessAccount) {
-    return null;
+    DriftBase driftBase = SbomDriftMapper.toDriftBase(body);
+    ArtifactSbomDriftResponse responseBody =
+        sbomDriftService.calculateSbomDriftForOrchestration(harnessAccount, org, project, orchestration, driftBase);
+    return Response.ok().entity(responseBody).build();
   }
 }

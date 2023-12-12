@@ -13,6 +13,9 @@ import io.harness.spec.server.ssca.v1.model.ArtifactSbomDriftRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactSbomDriftResponse;
 import io.harness.ssca.beans.drift.ComponentDriftResults;
 import io.harness.ssca.beans.drift.ComponentDriftStatus;
+import io.harness.ssca.beans.drift.DriftBase;
+import io.harness.ssca.beans.drift.LicenseDriftResults;
+import io.harness.ssca.beans.drift.LicenseDriftStatus;
 
 import org.springframework.data.domain.Pageable;
 
@@ -21,6 +24,12 @@ public interface SbomDriftService {
   ArtifactSbomDriftResponse calculateSbomDrift(
       String accountId, String orgId, String projectId, String artifactId, ArtifactSbomDriftRequestBody requestBody);
 
+  ArtifactSbomDriftResponse calculateSbomDriftForOrchestration(
+      String accountId, String orgId, String projectId, String orchestrationId, DriftBase driftBase);
+
   ComponentDriftResults getComponentDrifts(
       String accountId, String orgId, String projectId, String driftId, ComponentDriftStatus status, Pageable pageable);
+
+  LicenseDriftResults getLicenseDrifts(
+      String accountId, String orgId, String projectId, String driftId, LicenseDriftStatus status, Pageable pageable);
 }
