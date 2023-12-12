@@ -38,7 +38,6 @@ import io.harness.licensing.mappers.modules.STOLicenseObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import org.codehaus.janino.Mod;
 
 public class ModuleLicenseRegistrarFactory {
   private static Map<ModuleType, ModuleLicenseRegistrar> registrar = new HashMap<>();
