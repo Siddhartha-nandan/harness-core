@@ -190,10 +190,12 @@ public class PerpetualTaskServiceImpl implements PerpetualTaskService, DelegateO
   }
 
   @Override
-  public long updateTasksSchedule(String accountId, String perpetualTaskType, long intervalInMillis) {
+  public long updateTasksSchedule(
+      String accountId, String perpetualTaskType, long intervalInMillis, PerpetualTaskState perpetualTaskState) {
     try (AutoLogContext ignore0 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
       log.info("Updating task schedule for perpetual task type: {}", perpetualTaskType);
-      return perpetualTaskRecordDao.updateTasksSchedule(accountId, perpetualTaskType, intervalInMillis);
+      return perpetualTaskRecordDao.updateTasksSchedule(
+          accountId, perpetualTaskType, intervalInMillis, perpetualTaskState);
     }
   }
 
