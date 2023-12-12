@@ -1,2 +1,2 @@
-DOCKER_FILE_PATH: /harness/harness-core/dist/audit-event-streaming/Dockerfile-cie-jdk
+DOCKER_FILE_PATH: /harness/harness-core/audit-event-streaming/build/container/Dockerfile-audit-event-streaming-multistage
 HELM_CHART_REPO: harness-core/audit-event-streaming/chart
