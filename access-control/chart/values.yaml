@@ -615,10 +615,47 @@ ingress:
 secrets:
   default:
     IDENTITY_SERVICE_SECRET: "HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU="
+    CF_CLIENT_API_KEY: ""
+    ACCESS_CONTROL_CLIENT_SERVICE_SECRET: ""
+    ACCESS_CONTROL_SERVICE_SECRET: ""
+    ACCOUNT_SERVICE_SECRET: ""
+    APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY: ""
+    DEFAULT_SERVICE_SECRET: ""
+    EVENTS_CONFIG_REDIS_PASSWORD: ""
+    FEATURE_FLAG_CLIENT_SECRET: ""
+    JWT_AUTH_SECRET: ""
+    LOCK_CONFIG_REDIS_PASSWORD: ""
+    ORGANIZATION_CLIENT_SERVICE_SECRET: ""
+    PROJECT_CLIENT_SERVICE_SECRET: ""
+    RESOURCE_GROUP_CLIENT_SERVICE_SECRET: ""
+    SEGMENT_APIKEY: ""
+    SERVICEACCOUNT_CLIENT_SERVICE_SECRET: ""
+    USER_CLIENT_SERVICE_SECRET: ""
+    USER_GROUP_CLIENT_SERVICE_SECRET: ""
+    CF_CLIENT_API_KEY: ""
+    EVENTS_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD: ""
   kubernetesSecrets:
     - secretName: ""
       keys:
         IDENTITY_SERVICE_SECRET: ""
+        CF_CLIENT_API_KEY: ""
+        ACCESS_CONTROL_CLIENT_SERVICE_SECRET: ""
+        ACCESS_CONTROL_SERVICE_SECRET: ""
+        ACCOUNT_SERVICE_SECRET: ""
+        APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY: ""
+        DEFAULT_SERVICE_SECRET: ""
+        EVENTS_CONFIG_REDIS_PASSWORD: ""
+        FEATURE_FLAG_CLIENT_SECRET: ""
+        JWT_AUTH_SECRET: ""
+        LOCK_CONFIG_REDIS_PASSWORD: ""
+        ORGANIZATION_CLIENT_SERVICE_SECRET: ""
+        PROJECT_CLIENT_SERVICE_SECRET: ""
+        RESOURCE_GROUP_CLIENT_SERVICE_SECRET: ""
+        SEGMENT_APIKEY: ""
+        SERVICEACCOUNT_CLIENT_SERVICE_SECRET: ""
+        USER_CLIENT_SERVICE_SECRET: ""
+        USER_GROUP_CLIENT_SERVICE_SECRET: ""
+        EVENTS_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD: ""
   secretManagement:
     externalSecretsOperator:
       - secretStore:
@@ -626,5 +663,59 @@ secrets:
           kind: ""
         remoteKeys:
           IDENTITY_SERVICE_SECRET:
+            name: ""
+            property: ""
+          CF_CLIENT_API_KEY:
+            name: ""
+            property: ""
+          ACCESS_CONTROL_CLIENT_SERVICE_SECRET:
+            name: ""
+            property: ""
+          ACCESS_CONTROL_SERVICE_SECRET:
+            name: ""
+            property: ""
+          ACCOUNT_SERVICE_SECRET:
+            name: ""
+            property: ""
+          APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY:
+            name: ""
+            property: ""
+          DEFAULT_SERVICE_SECRET:
+            name: ""
+            property: ""
+          EVENTS_CONFIG_REDIS_PASSWORD:
+            name: ""
+            property: ""
+          FEATURE_FLAG_CLIENT_SECRET:
+            name: ""
+            property: ""
+          JWT_AUTH_SECRET:
+            name: ""
+            property: ""
+          LOCK_CONFIG_REDIS_PASSWORD:
+            name: ""
+            property: ""
+          ORGANIZATION_CLIENT_SERVICE_SECRET:
+            name: ""
+            property: ""
+          PROJECT_CLIENT_SERVICE_SECRET:
+            name: ""
+            property: ""
+          RESOURCE_GROUP_CLIENT_SERVICE_SECRET:
+            name: ""
+            property: ""
+          SEGMENT_APIKEY:
+            name: ""
+            property: ""
+          SERVICEACCOUNT_CLIENT_SERVICE_SECRET:
+            name: ""
+            property: ""
+          USER_CLIENT_SERVICE_SECRET:
+            name: ""
+            property: ""
+          USER_GROUP_CLIENT_SERVICE_SECRET:
+            name: ""
+            property: ""
+          EVENTS_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD:
             name: ""
             property: ""
