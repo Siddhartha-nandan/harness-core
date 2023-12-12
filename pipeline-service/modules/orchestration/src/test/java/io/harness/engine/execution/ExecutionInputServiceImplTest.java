@@ -30,13 +30,12 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.engine.executions.node.NodeExecutionService;
-import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.pms.data.PmsEngineExpressionService;
+import io.harness.engine.pms.execution.modifier.ambiance.NodeExecutionAmbianceHelper;
 import io.harness.exception.InvalidRequestException;
 import io.harness.execution.ExecutionInputInstance;
 import io.harness.execution.NodeExecution;
 import io.harness.pms.contracts.ambiance.Ambiance;
-import io.harness.pms.contracts.plan.ExecutionMetadata;
 import io.harness.pms.execution.utils.NodeProjectionUtils;
 import io.harness.pms.serializer.recaster.RecastOrchestrationUtils;
 import io.harness.pms.yaml.YamlUtils;
@@ -78,7 +77,7 @@ public class ExecutionInputServiceImplTest extends OrchestrationTestBase {
   @InjectMocks private ExecutionInputServiceImpl inputService;
   @Mock PmsEngineExpressionService pmsEngineExpressionService;
   @Mock NodeExecutionService nodeExecutionService;
-  @Mock PlanExecutionService planExecutionService;
+  @Mock NodeExecutionAmbianceHelper nodeExecutionAmbianceHelper;
   ObjectMapper objectMapper = new YAMLMapper();
   String nodeExecutionId = "nodeExecutionId";
   String inputInstanceId = "inputInstanceId";
@@ -163,12 +162,10 @@ public class ExecutionInputServiceImplTest extends OrchestrationTestBase {
     doReturn(NodeExecution.builder().ambiance(Ambiance.newBuilder().build()).build())
         .when(nodeExecutionService)
         .getWithFieldsIncluded(nodeExecutionId, NodeProjectionUtils.withAmbianceAndStatus);
-    doReturn(ExecutionMetadata.newBuilder().build())
-        .when(planExecutionService)
-        .getExecutionMetadataFromPlanExecution(any());
     doReturn(YamlUtils.readAsJsonNode(fullExecutionInputYaml))
         .when(pmsEngineExpressionService)
         .resolve(any(), any(), any());
+    doReturn(Ambiance.newBuilder().build()).when(nodeExecutionAmbianceHelper).getExecutionAmbiance(any());
 
     ArgumentCaptor<ExecutionInputInstance> inputInstanceArgumentCaptor =
         ArgumentCaptor.forClass(ExecutionInputInstance.class);

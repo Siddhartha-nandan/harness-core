@@ -16,10 +16,10 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.engine.OrchestrationEngine;
 import io.harness.engine.executions.node.NodeExecutionService;
 import io.harness.engine.executions.node.NodeExecutionUpdateFailedException;
-import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.interrupts.AbortInterruptCallback;
 import io.harness.engine.interrupts.InterruptProcessingFailedException;
 import io.harness.engine.interrupts.handlers.publisher.InterruptEventPublisher;
+import io.harness.engine.pms.execution.modifier.ambiance.NodeExecutionAmbianceHelper;
 import io.harness.exception.InvalidRequestException;
 import io.harness.execution.ExecutionModeUtils;
 import io.harness.execution.NodeExecution;
@@ -33,7 +33,6 @@ import io.harness.pms.contracts.execution.ExecutionMode;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.interrupts.InterruptConfig;
 import io.harness.pms.contracts.interrupts.InterruptType;
-import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.waiter.WaitNotifyEngine;
 
 import com.google.inject.Inject;
@@ -48,7 +47,7 @@ import lombok.extern.slf4j.Slf4j;
 @OwnedBy(PIPELINE)
 public class AbortHelper {
   @Inject private NodeExecutionService nodeExecutionService;
-  @Inject private PlanExecutionService planExecutionService;
+  @Inject private NodeExecutionAmbianceHelper nodeExecutionAmbianceHelper;
   @Inject @Named(OrchestrationPublisherName.PUBLISHER_NAME) String publisherName;
   @Inject private WaitNotifyEngine waitNotifyEngine;
   @Inject private InterruptHelper interruptHelper;
@@ -105,9 +104,7 @@ public class AbortHelper {
                   .build());
         }, EnumSet.noneOf(Status.class));
     log.info("Updated NodeExecution :{} Status to ABORTED", nodeExecution.getUuid());
-    Ambiance executionAmbiance = AmbianceUtils.getExecutionAmbiance(updatedNodeExecution.getAmbiance(),
-        planExecutionService.getExecutionMetadataFromPlanExecution(
-            updatedNodeExecution.getAmbiance().getPlanExecutionId()));
+    Ambiance executionAmbiance = nodeExecutionAmbianceHelper.getExecutionAmbiance(updatedNodeExecution);
     engine.endNodeExecution(executionAmbiance);
   }
 }

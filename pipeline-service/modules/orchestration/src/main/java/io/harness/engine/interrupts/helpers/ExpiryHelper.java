@@ -21,10 +21,10 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.engine.OrchestrationEngine;
 import io.harness.engine.executions.node.NodeExecutionService;
 import io.harness.engine.executions.node.NodeExecutionUpdateFailedException;
-import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.interrupts.ExpiryInterruptCallback;
 import io.harness.engine.interrupts.InterruptProcessingFailedException;
 import io.harness.engine.interrupts.handlers.publisher.InterruptEventPublisher;
+import io.harness.engine.pms.execution.modifier.ambiance.NodeExecutionAmbianceHelper;
 import io.harness.eraro.Level;
 import io.harness.exception.InvalidRequestException;
 import io.harness.execution.ExecutionModeUtils;
@@ -42,7 +42,6 @@ import io.harness.pms.contracts.execution.failure.FailureType;
 import io.harness.pms.contracts.interrupts.InterruptConfig;
 import io.harness.pms.contracts.interrupts.InterruptType;
 import io.harness.pms.contracts.steps.io.StepResponseProto;
-import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.waiter.WaitNotifyEngine;
 
 import com.google.inject.Inject;
@@ -66,7 +65,7 @@ public class ExpiryHelper {
   @Inject private InterruptHelper interruptHelper;
   @Inject @Named(OrchestrationPublisherName.PUBLISHER_NAME) String publisherName;
   @Inject private NodeExecutionService nodeExecutionService;
-  @Inject private PlanExecutionService planExecutionService;
+  @Inject private NodeExecutionAmbianceHelper nodeExecutionAmbianceHelper;
   @Inject private InterruptEventPublisher interruptEventPublisher;
   @Inject private WaitNotifyEngine waitNotifyEngine;
 
@@ -138,8 +137,7 @@ public class ExpiryHelper {
                                 .build())
             .addAllUnitProgress(unitProgressList)
             .build();
-    Ambiance executionAmbiance = AmbianceUtils.getExecutionAmbiance(nodeExecution.getAmbiance(),
-        planExecutionService.getExecutionMetadataFromPlanExecution(nodeExecution.getAmbiance().getPlanExecutionId()));
+    Ambiance executionAmbiance = nodeExecutionAmbianceHelper.getExecutionAmbiance(nodeExecution);
     engine.processStepResponse(executionAmbiance, expiredStepResponse);
   }
 
@@ -178,9 +176,7 @@ public class ExpiryHelper {
                   .build());
         }, EnumSet.noneOf(Status.class));
     log.info("Updated NodeExecution :{} Status to EXPIRED", nodeExecution.getUuid());
-    Ambiance executionAmbiance = AmbianceUtils.getExecutionAmbiance(updatedNodeExecution.getAmbiance(),
-        planExecutionService.getExecutionMetadataFromPlanExecution(
-            updatedNodeExecution.getAmbiance().getPlanExecutionId()));
+    Ambiance executionAmbiance = nodeExecutionAmbianceHelper.getExecutionAmbiance(updatedNodeExecution);
     engine.endNodeExecution(executionAmbiance);
   }
 

@@ -14,10 +14,10 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.engine.executions.node.NodeExecutionService;
-import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.executions.plan.PlanService;
 import io.harness.engine.pms.data.PmsEngineExpressionService;
 import io.harness.engine.pms.data.PmsOutcomeService;
+import io.harness.engine.pms.execution.modifier.ambiance.NodeExecutionAmbianceHelper;
 import io.harness.engine.pms.execution.strategy.plannode.PlanNodeExecutionStrategy;
 import io.harness.execution.NodeExecution;
 import io.harness.execution.NodeExecution.NodeExecutionKeys;
@@ -50,7 +50,7 @@ import lombok.extern.slf4j.Slf4j;
 public class EndNodeExecutionHelper {
   @Inject private PmsOutcomeService pmsOutcomeService;
   @Inject private NodeExecutionService nodeExecutionService;
-  @Inject private PlanExecutionService planExecutionService;
+  @Inject private NodeExecutionAmbianceHelper nodeExecutionAmbianceHelper;
   @Inject private PlanNodeExecutionStrategy executionStrategy;
   @Inject private PlanService planService;
   @Inject private PmsEngineExpressionService pmsEngineExpressionService;
@@ -61,9 +61,7 @@ public class EndNodeExecutionHelper {
       log.warn("Cannot process step response for nodeExecution {}", AmbianceUtils.obtainCurrentRuntimeId(ambiance));
       return;
     }
-    Ambiance executionAmbiance = AmbianceUtils.getExecutionAmbiance(updatedNodeExecution.getAmbiance(),
-        planExecutionService.getExecutionMetadataFromPlanExecution(
-            updatedNodeExecution.getAmbiance().getPlanExecutionId()));
+    Ambiance executionAmbiance = nodeExecutionAmbianceHelper.getExecutionAmbiance(updatedNodeExecution);
     executionStrategy.endNodeExecution(executionAmbiance);
   }
 

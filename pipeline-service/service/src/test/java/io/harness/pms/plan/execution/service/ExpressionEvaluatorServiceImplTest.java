@@ -21,6 +21,7 @@ import io.harness.category.element.UnitTests;
 import io.harness.data.structure.ListUtils;
 import io.harness.engine.executions.node.NodeExecutionService;
 import io.harness.engine.pms.data.PmsEngineExpressionService;
+import io.harness.engine.pms.execution.modifier.ambiance.NodeExecutionAmbianceHelper;
 import io.harness.execution.NodeExecution;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
@@ -45,6 +46,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 @OwnedBy(PIPELINE)
 public class ExpressionEvaluatorServiceImplTest extends CategoryTest {
   @Mock NodeExecutionService nodeExecutionService;
+  @Mock NodeExecutionAmbianceHelper nodeExecutionAmbianceHelper;
   @Mock PmsEngineExpressionService engineExpressionService;
 
   @InjectMocks ExpressionEvaluatorServiceImpl expressionEvaluatorService;
@@ -170,10 +172,11 @@ public class ExpressionEvaluatorServiceImplTest extends CategoryTest {
     Ambiance ambiance =
         Ambiance.newBuilder().addAllLevels(prepareLevel()).setMetadata(ExecutionMetadata.newBuilder().build()).build();
     String expectedFqn = "pipeline.stages.stage1.execution.steps.step1";
+    doReturn(ambiance).when(nodeExecutionAmbianceHelper).getExecutionAmbiance(any());
     Map<String, Ambiance> fqnToAmbianceMap = expressionEvaluatorService.getFQNToAmbianceMap(
         PipelineServiceTestHelper.createCloseableIterator(
             List.of(NodeExecution.builder().ambiance(ambiance).build()).iterator()),
-        ListUtils.newArrayList(expectedFqn), ExecutionMetadata.newBuilder().build());
+        ListUtils.newArrayList(expectedFqn));
     assertThat(fqnToAmbianceMap.containsKey(expectedFqn)).isTrue();
     assertThat(fqnToAmbianceMap.get(expectedFqn)).isEqualTo(ambiance);
   }

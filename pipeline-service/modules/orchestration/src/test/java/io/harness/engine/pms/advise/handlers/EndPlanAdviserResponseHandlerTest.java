@@ -37,7 +37,6 @@ import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.interrupts.AdviserIssuer;
 import io.harness.pms.contracts.interrupts.InterruptType;
-import io.harness.pms.contracts.plan.ExecutionMetadata;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.rule.Owner;
@@ -82,11 +81,7 @@ public class EndPlanAdviserResponseHandlerTest extends OrchestrationTestBase {
     when(planExecutionMetadataService.findByPlanExecutionId(any()))
         .thenReturn(Optional.of(PlanExecutionMetadata.builder().build()));
 
-    planExecutionService.save(PlanExecution.builder()
-                                  .uuid(PLAN_EXECUTION_ID)
-                                  .metadata(ExecutionMetadata.newBuilder().build())
-                                  .status(Status.RUNNING)
-                                  .build());
+    planExecutionService.save(PlanExecution.builder().uuid(PLAN_EXECUTION_ID).status(Status.RUNNING).build());
 
     nodeExecution = NodeExecution.builder()
                         .uuid(NODE_EXECUTION_ID)

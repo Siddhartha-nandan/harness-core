@@ -16,14 +16,13 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.data.structure.HarnessStringUtils;
 import io.harness.engine.executions.node.NodeExecutionService;
-import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.pms.data.PmsEngineExpressionService;
+import io.harness.engine.pms.execution.modifier.ambiance.NodeExecutionAmbianceHelper;
 import io.harness.execution.NodeExecution;
 import io.harness.expression.EngineExpressionEvaluator;
 import io.harness.expression.common.ExpressionMode;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
-import io.harness.pms.contracts.plan.ExecutionMetadata;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.execution.utils.NodeProjectionUtils;
 import io.harness.pms.expressions.YamlExpressionEvaluator;
@@ -52,7 +51,7 @@ import org.springframework.data.util.CloseableIterator;
 @OwnedBy(PIPELINE)
 public class ExpressionEvaluatorServiceImpl implements ExpressionEvaluatorService {
   @Inject NodeExecutionService nodeExecutionService;
-  @Inject PlanExecutionService planExecutionService;
+  @Inject NodeExecutionAmbianceHelper nodeExecutionAmbianceHelper;
   @Inject PmsEngineExpressionService engineExpressionService;
   @Override
   public ExpressionEvaluationDetailDTO evaluateExpression(String planExecutionId, String yaml) {
@@ -82,9 +81,7 @@ public class ExpressionEvaluatorServiceImpl implements ExpressionEvaluatorServic
     // This fetches all the leaf node executions for the given plan execution id.
     CloseableIterator<NodeExecution> nodeExecutions =
         nodeExecutionService.fetchAllLeavesUsingPlanExecutionId(planExecutionId, NodeProjectionUtils.withAmbiance);
-    ExecutionMetadata executionMetadata = planExecutionService.getExecutionMetadataFromPlanExecution(planExecutionId);
-    Map<String, Ambiance> fqnToAmbianceMap =
-        getFQNToAmbianceMap(nodeExecutions, unresolvedAmbianceFqns, executionMetadata);
+    Map<String, Ambiance> fqnToAmbianceMap = getFQNToAmbianceMap(nodeExecutions, unresolvedAmbianceFqns);
 
     for (Map.Entry<FQN, String> entry : fqnObjectMap.entrySet()) {
       String fqn = entry.getKey().getExpressionFqn();
@@ -149,20 +146,20 @@ public class ExpressionEvaluatorServiceImpl implements ExpressionEvaluatorServic
   }
 
   /**
-   *
    * This traverses all the leaf node executions of the given plan execution id.
    * If the fqn of that ambiance is a superset of the unresolved fqn set, we use that ambiance to resolve any expression
+   *
    * @param nodeExecutions
    * @param unresolvedFqnSet
    * @return
    */
-  public Map<String, Ambiance> getFQNToAmbianceMap(CloseableIterator<NodeExecution> nodeExecutions,
-      List<String> unresolvedFqnSet, ExecutionMetadata executionMetadata) {
+  public Map<String, Ambiance> getFQNToAmbianceMap(
+      CloseableIterator<NodeExecution> nodeExecutions, List<String> unresolvedFqnSet) {
     Map<String, Ambiance> fqnToAmbianceMap = new HashMap<>();
 
     while (nodeExecutions.hasNext()) {
       NodeExecution nodeExecution = nodeExecutions.next();
-      Ambiance ambiance = AmbianceUtils.getExecutionAmbiance(nodeExecution.getAmbiance(), executionMetadata);
+      Ambiance ambiance = nodeExecutionAmbianceHelper.getExecutionAmbiance(nodeExecution);
 
       String fqnTillLastGroupWithoutStrategy = getFqnTillLastGroupInAmbianceWithoutStrategy(ambiance);
       for (String usedFqn : unresolvedFqnSet) {

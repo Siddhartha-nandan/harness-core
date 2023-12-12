@@ -27,9 +27,9 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.engine.OrchestrationEngine;
 import io.harness.engine.executions.node.NodeExecutionService;
-import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.interrupts.ExpiryInterruptCallback;
 import io.harness.engine.interrupts.handlers.publisher.InterruptEventPublisher;
+import io.harness.engine.pms.execution.modifier.ambiance.NodeExecutionAmbianceHelper;
 import io.harness.execution.NodeExecution;
 import io.harness.execution.NodeExecution.NodeExecutionBuilder;
 import io.harness.interrupts.Interrupt;
@@ -43,7 +43,6 @@ import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.execution.TaskExecutableResponse;
 import io.harness.pms.contracts.execution.tasks.TaskCategory;
 import io.harness.pms.contracts.interrupts.InterruptConfig;
-import io.harness.pms.contracts.plan.ExecutionMetadata;
 import io.harness.rule.Owner;
 import io.harness.waiter.OldNotifyCallback;
 import io.harness.waiter.WaitNotifyEngine;
@@ -65,7 +64,7 @@ import org.mockito.MockitoAnnotations;
 public class ExpiryHelperTest extends OrchestrationTestBase {
   @Mock InterruptHelper interruptHelper;
   @Mock NodeExecutionService nodeExecutionService;
-  @Mock PlanExecutionService planExecutionService;
+  @Mock NodeExecutionAmbianceHelper nodeExecutionAmbianceHelper;
   @Mock OrchestrationEngine engine;
   @Mock WaitNotifyEngine waitNotifyEngine;
   @Mock InterruptEventPublisher interruptEventPublisher;
@@ -187,8 +186,7 @@ public class ExpiryHelperTest extends OrchestrationTestBase {
             .build();
     String interruptId = "interruptId";
     InterruptConfig interruptConfig = InterruptConfig.newBuilder().build();
-    when(planExecutionService.getExecutionMetadataFromPlanExecution(any()))
-        .thenReturn(ExecutionMetadata.newBuilder().build());
+    when(nodeExecutionAmbianceHelper.getExecutionAmbiance(any())).thenReturn(nodeExecution.getAmbiance());
     expiryHelper.expireDiscontinuedInstance(nodeExecution, interruptConfig, interruptId, MARK_EXPIRED);
     verify(engine, times(1)).processStepResponse(any(), any());
   }
@@ -219,8 +217,7 @@ public class ExpiryHelperTest extends OrchestrationTestBase {
             .build();
     String interruptId = "interruptId";
     when(nodeExecutionService.updateStatusWithOps(any(), any(), any(), any())).thenReturn(nodeExecution);
-    when(planExecutionService.getExecutionMetadataFromPlanExecution(any()))
-        .thenReturn(ExecutionMetadata.newBuilder().build());
+    when(nodeExecutionAmbianceHelper.getExecutionAmbiance(any())).thenReturn(nodeExecution.getAmbiance());
     Map<String, String> metadata = new HashMap<>();
     metadata.put("group", "STAGE");
     metadata.put("identifier", "Stage");
@@ -318,8 +315,7 @@ public class ExpiryHelperTest extends OrchestrationTestBase {
                                               .build())
                         .build());
     when(nodeExecutionService.updateStatusWithOps(any(), any(), any(), any())).thenReturn(nodeExecutionBuilder.build());
-    when(planExecutionService.getExecutionMetadataFromPlanExecution(any()))
-        .thenReturn(ExecutionMetadata.newBuilder().build());
+    when(nodeExecutionAmbianceHelper.getExecutionAmbiance(any())).thenReturn(ambiance);
     expiryHelper.expireMarkedInstance(nodeExecutionBuilder.build(), interrupt, true);
 
     ArgumentCaptor<String> pName = ArgumentCaptor.forClass(String.class);

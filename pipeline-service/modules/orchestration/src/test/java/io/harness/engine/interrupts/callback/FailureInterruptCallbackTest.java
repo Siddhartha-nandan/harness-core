@@ -23,8 +23,8 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.engine.OrchestrationEngine;
 import io.harness.engine.executions.node.NodeExecutionService;
-import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.interrupts.InterruptService;
+import io.harness.engine.pms.execution.modifier.ambiance.NodeExecutionAmbianceHelper;
 import io.harness.execution.NodeExecution;
 import io.harness.interrupts.Interrupt;
 import io.harness.pms.contracts.ambiance.Ambiance;
@@ -50,7 +50,7 @@ import org.mockito.Mock;
 public class FailureInterruptCallbackTest extends OrchestrationTestBase {
   @Mock InterruptService interruptService;
   @Mock NodeExecutionService nodeExecutionService;
-  @Mock PlanExecutionService planExecutionService;
+  @Mock NodeExecutionAmbianceHelper nodeExecutionAmbianceHelper;
   @Mock OrchestrationEngine orchestrationEngine;
 
   @Test
@@ -72,8 +72,7 @@ public class FailureInterruptCallbackTest extends OrchestrationTestBase {
                            .version(1L)
                            .build();
     when(nodeExecutionService.update(eq(nodeExecutionId), any(), any())).thenReturn(ne);
-    when(planExecutionService.getExecutionMetadataFromPlanExecution(ambiance.getPlanExecutionId()))
-        .thenReturn(ExecutionMetadata.newBuilder().build());
+    when(nodeExecutionAmbianceHelper.getExecutionAmbiance(any())).thenReturn(ambiance);
     FailureInterruptCallback failureInterruptCallback =
         FailureInterruptCallback.builder()
             .interruptId(interruptId)
@@ -91,7 +90,7 @@ public class FailureInterruptCallbackTest extends OrchestrationTestBase {
     Reflect.on(failureInterruptCallback).set("interruptService", interruptService);
     Reflect.on(failureInterruptCallback).set("nodeExecutionService", nodeExecutionService);
     Reflect.on(failureInterruptCallback).set("orchestrationEngine", orchestrationEngine);
-    Reflect.on(failureInterruptCallback).set("planExecutionService", planExecutionService);
+    Reflect.on(failureInterruptCallback).set("nodeExecutionAmbianceHelper", nodeExecutionAmbianceHelper);
 
     failureInterruptCallback.notify(
         ImmutableMap.of(generateUuid(), StringNotifyResponseData.builder().data("SOMEDATA").build()));
@@ -125,8 +124,7 @@ public class FailureInterruptCallbackTest extends OrchestrationTestBase {
                            .version(1L)
                            .build();
     when(nodeExecutionService.update(eq(nodeExecutionId), any(), any())).thenReturn(ne);
-    when(planExecutionService.getExecutionMetadataFromPlanExecution(ambiance.getPlanExecutionId()))
-        .thenReturn(ExecutionMetadata.newBuilder().build());
+    when(nodeExecutionAmbianceHelper.getExecutionAmbiance(any())).thenReturn(ambiance);
 
     // Setting original status as null
     FailureInterruptCallback failureInterruptCallback =
@@ -146,7 +144,7 @@ public class FailureInterruptCallbackTest extends OrchestrationTestBase {
     Reflect.on(failureInterruptCallback).set("interruptService", interruptService);
     Reflect.on(failureInterruptCallback).set("nodeExecutionService", nodeExecutionService);
     Reflect.on(failureInterruptCallback).set("orchestrationEngine", orchestrationEngine);
-    Reflect.on(failureInterruptCallback).set("planExecutionService", planExecutionService);
+    Reflect.on(failureInterruptCallback).set("nodeExecutionAmbianceHelper", nodeExecutionAmbianceHelper);
 
     failureInterruptCallback.notify(
         ImmutableMap.of(generateUuid(), StringNotifyResponseData.builder().data("SOMEDATA").build()));

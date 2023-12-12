@@ -594,18 +594,4 @@ public class AmbianceUtils {
     }
     return false;
   }
-
-  // We are planning to remove ambiance object from nodeExecution collection and eventually replacing it with a new
-  // object named Locale . This object will have all the fields same as ambiance except for the execution metadata.
-  //
-  // For that we have divided the entire process in 2 steps .
-  //
-  // We will remove usage of execution metadata from node executions ambiance. We are doing that by replacing
-  // nodeExecution.getAmbiance() with a new execution ambiance which is formed by cloning the current ambiance and
-  // setting the metadata from metadata from plan execution using planExecutionId. This cloning of current ambiance will
-  // later be replaced by the new object. Replace ambiance with new object. The parameter nodeExecutionAmbiance will be
-  // replaced by Locale later
-  public Ambiance getExecutionAmbiance(Ambiance nodeExecutionAmbiance, ExecutionMetadata executionMetadata) {
-    return nodeExecutionAmbiance.toBuilder().clone().setMetadata(executionMetadata).build();
-  }
 }
