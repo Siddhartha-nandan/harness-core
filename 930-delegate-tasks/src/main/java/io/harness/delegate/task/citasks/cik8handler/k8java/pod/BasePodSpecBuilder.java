@@ -100,7 +100,7 @@ public abstract class BasePodSpecBuilder {
         .withImagePullSecrets(imageSecrets)
         .withHostAliases(getHostAliases(podParams.getHostAliasParamsList()))
         .withVolumes(new ArrayList<>(volumesToCreate.values()))
-        .withHostUsers(false)
+        .withHostUsers(true)
         .withSecurityContext(getSecurityContext(podParams))
         .withPriorityClassName(podParams.getPriorityClassName());
   }
