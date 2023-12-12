@@ -291,6 +291,7 @@ public enum FeatureName {
   CVNG_TEMPLATE_MONITORED_SERVICE,
   CVNG_TEMPLATE_VERIFY_STEP,
   CVNG_VERIFY_STEP_DEMO,
+  CV_NEWRELIC_NEW_API("Enable New Relic Graphql API feature", HarnessTeam.CV),
   CV_AWS_PROMETHEUS("Enable AWS Prometheus for CV State", HarnessTeam.CV),
   CV_UI_DISPLAY_NODE_REGEX_FILTER(
       "Displays the control node and test node reg filter option in Verify step", HarnessTeam.CV),
@@ -470,7 +471,6 @@ public enum FeatureName {
   NG_EXPRESSIONS_NEW_INPUT_ELEMENT(
       "FF to enable the new input element for the Expressions on UI when UI suggests the probable expressions to the User based on text input so far",
       PIPELINE),
-  NG_GIT_EXPERIENCE,
   NG_INLINE_MANIFEST,
   NG_LICENSES_ENABLED,
   NG_SVC_ENV_REDESIGN,
@@ -923,7 +923,9 @@ public enum FeatureName {
   CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD(
       "Enable to dowmload Aws S3 buckets, folder or object inside container step group", HarnessTeam.CDP),
   CDS_USER_CD_LICENSE_VIEW("Enable to show Users CD License usage on UI", HarnessTeam.CDP),
-  SSCA_USE_ELK("Enables ELK search for Artifact listing instead of Mongo", HarnessTeam.SSCA);
+  SSCA_USE_ELK("Enables ELK search for Artifact listing instead of Mongo", HarnessTeam.SSCA),
+  SSCA_REMEDIATION_TRACKER("FF for Remediation Tracker flow.", HarnessTeam.SSCA);
+
   // keep-sorted end
 
   @Deprecated
