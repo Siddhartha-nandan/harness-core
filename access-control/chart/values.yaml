@@ -127,7 +127,7 @@ global:
       gateways:
       hosts:
   imagePullSecrets: []
-  
+
 # --mongoHosts List of mongo hosts
 mongoHosts: []
 
@@ -159,7 +159,7 @@ redis:
               property: ""
             REDIS_PASSWORD:
               name: ""
-              property: ""                       
+              property: ""
 
 database:
   mongo:
@@ -174,7 +174,7 @@ database:
             keys:
               MONGO_USER: ""
               MONGO_PASSWORD: ""
-        secretManagement: 
+        secretManagement:
           externalSecretsOperator:
             - secretStore:
                 name: ""
@@ -248,6 +248,53 @@ config:
   AUDIT_CLIENT_BASE_URL:
   DISTRIBUTED_LOCK_IMPLEMENTATION: REDIS
   GOOGLE_APPLICATION_CREDENTIALS: /opt/harness/monitoring/stackdriver.json
+  APPDYNAMICS_AGENT_ACCOUNT_NAME: harness-prod
+  APPDYNAMICS_AGENT_APPLICATION_NAME: envSpecific
+  APPDYNAMICS_AGENT_TIER_NAME: accesscontrol-service
+  APPDYNAMICS_CONTROLLER_HOST_NAME: harness-prod.saas.appdynamics.com
+  APPDYNAMICS_CONTROLLER_PORT: "443"
+  APPDYNAMICS_CONTROLLER_SSL_ENABLED: "true"
+  BASE_PATH_PREFIX: "/gateway/authz/api"
+  BATCH_SIZE_FOR_ACL_CREATION: 5000
+  CF_CLIENT_ANALYTICS_ENABLED: true
+  CF_CLIENT_BUFFER_SIZE: 10240
+  CF_CLIENT_CONFIG_URL: https://config.feature-flags.uat.harness.io/api/1.0
+  CF_CLIENT_CONNECTION_TIMEOUT: 10000
+  CF_CLIENT_EVENT_URL: https://event.feature-flags.uat.harness.io/api/1.0
+  CF_CLIENT_READ_TIMEOUT: 45000
+  CF_RETRIES: 6
+  CF_SLEEP_INTERVAL: 5000
+  COLLECTION_INCLUDE_LIST: harness-rbac.roleassignments,harness-rbac.resourcegroups
+  DATABASE_INCLUDE_LIST: harness-rbac
+  DISABLE_REDUNDANT_ACLS: false
+  ENABLE_ACL_PROCESSING_THROUGH_OUTBOX: true
+  ENABLE_APPDYNAMICS: true
+  ENABLE_HTTP_LOGGING: false
+  ENABLE_OPENTELEMETRY: false
+  ENABLE_PARALLEL_PROCESSING_OF_USERGROUP_UPDATES: true
+  ENFORCEMENT_CHECK_ENABLED: false
+  EVENTS_CONFIG_ENV_NAMESPACE: qa
+  LOCK_CONFIG_ENV_NAMESPACE: qa
+  ENV: qa
+  EVENTS_CONFIG_CONSUMER_THREADS: 1
+  EVENTS_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH: /opt/harness/svc/redis_labs_ca_truststore
+  EVENTS_CONFIG_REDIS_SSL_ENABLED: envSpecific
+  EVENTS_CONFIG_REDIS_USERNAME: ""
+  EXPORT_METRICS_TO_STACK_DRIVER: true
+  FEATURE_FLAG_SYSTEM: CF
+  JAVA_ADVANCED_FLAGS:  -XX:NativeMemoryTracking=summary -Xloggc:mygclogfilename.gc -XX:-UseBiasedLocking -XX:+UseG1GC -XX:ErrorFile=/opt/harness/dumps/access-control/<+pipeline.variables.envType>/jfr_dumps/POD_NAME/hs_err_pid%p.log -XX:StartFlightRecording=disk=true,name=jfrRecording,maxage=30m,dumponexit=true,filename=/opt/harness/dumps/access-control/<+pipeline.variables.envType>/jfr_dumps/POD_NAME/,settings=/opt/harness/default.jfc -XX:FlightRecorderOptions=maxchunksize=10M,memorysize=10M,repository=/opt/harness/dumps/access-control/<+pipeline.variables.envType>/jfr_dumps/POD_NAME --add-reads jdk.jfr=ALL-UNNAMED -Dappdynamics.agent.log4j2.disabled=true -Dappdynamics.agent.disable.retransformation=true -Dappdynamics.bciengine.defer.risky.bci=false
+  LOCK_CONFIG_REDIS_USERNAME: ""
+  LOGGERS: ""
+  MAX_STREAM_BATCH_SIZE: 512
+  MONGO_MAX_OPERATION_TIME_IN_MILLIS: 30000
+  OTEL_EXPORTER_OTLP_ENDPOINT: ""
+  OTEL_SERVICE_NAME: accesscontrol-service
+  SEGMENT_ENABLED: true
+  SYNC_FEATURES_TO_CF: false
+  USE_WORKLOAD_IDENTITY: false
+  ENABLE_PROMETHEUS_COLLECTOR: true
+  PROMETHEUS_COLLECTOR_PORT: 8889
+  NAMESPACE: harness
 java:
   memory: 512m
 ## Pod Disruption Budget configuration in HA mode.
