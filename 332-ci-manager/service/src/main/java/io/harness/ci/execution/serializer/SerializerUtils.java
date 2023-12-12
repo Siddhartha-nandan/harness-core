@@ -367,7 +367,7 @@ public class SerializerUtils {
     return statusEnvVars;
   }
 
-  public static List<OutputVariable> setOutputVariableFromNGVariable(List<NGVariable> ngVariables, String identifier) {
+  public static List<OutputVariable> getOutputVariableFromNGVariable(List<NGVariable> ngVariables, String identifier) {
     List<OutputVariable> outputVariables =
         ngVariables.stream()
             .map(outputVariable -> {
@@ -403,6 +403,7 @@ public class SerializerUtils {
             }
 
                 )
+            .filter(outputVariable -> outputVariable.getType() != null && outputVariable.getValue() != null)
             .collect(Collectors.toList());
 
     return outputVariables;

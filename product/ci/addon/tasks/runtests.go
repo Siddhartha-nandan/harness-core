@@ -581,8 +581,8 @@ func (r *runTestsTask) getCmd(ctx context.Context, agentPath, outputVarFile stri
 
 	// Environment variables
 	outputVarCmd := ""
-	for _, o := range r.envVarOutputs {
-		outputVarCmd += fmt.Sprintf("\necho %s $%s >> %s", o, o, outputVarFile)
+	for _, o := range r.outputs {
+		outputVarCmd += fmt.Sprintf("\necho %s $%s >> %s", o.Key, o.Value, outputVarFile)
 	}
 
 	// Config file

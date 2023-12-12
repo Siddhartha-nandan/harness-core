@@ -10,7 +10,4 @@ go_library(
     srcs = ["payloads.go"],
     importpath = "github.com/harness/harness-core/product/ci/engine/status/payloads",
     visibility = ["//visibility:public"],
-    deps = [
-        "//product/ci/engine/proto",
-    ],
 )

@@ -30,7 +30,11 @@ import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.ngexception.CIStageExecutionException;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.yaml.ParameterField;
-import io.harness.product.ci.engine.proto.*;
+import io.harness.product.ci.engine.proto.OutputVariable;
+import io.harness.product.ci.engine.proto.Report;
+import io.harness.product.ci.engine.proto.RunTestsStep;
+import io.harness.product.ci.engine.proto.StepContext;
+import io.harness.product.ci.engine.proto.UnitStep;
 import io.harness.utils.TimeoutUtils;
 import io.harness.yaml.core.timeout.Timeout;
 import io.harness.yaml.core.variables.NGVariable;
@@ -47,7 +51,6 @@ public class RunTestsStepProtobufSerializer implements ProtobufStepSerializer<Ru
   @Inject private Supplier<DelegateCallbackToken> delegateCallbackTokenSupplier;
   @Inject private CIFeatureFlagService featureFlagService;
   @Inject private SerializerUtils serializerUtils;
-
   @Inject private SweepingOutputSecretEvaluator sweepingOutputSecretEvaluator;
 
   public UnitStep serializeStepWithStepParameters(RunTestsStepInfo runTestsStepInfo, Integer port, String callbackId,
@@ -108,7 +111,7 @@ public class RunTestsStepProtobufSerializer implements ProtobufStepSerializer<Ru
                                         .collect(Collectors.toList());
       runTestsStepBuilder.addAllEnvVarOutputs(outputVarNames);
       List<OutputVariable> outputVariables =
-          SerializerUtils.setOutputVariableFromNGVariable(runTestsStepInfo.getOutputVariables().getValue(), identifier);
+          SerializerUtils.getOutputVariableFromNGVariable(runTestsStepInfo.getOutputVariables().getValue(), identifier);
       runTestsStepBuilder.addAllOutputs(outputVariables);
     }
 

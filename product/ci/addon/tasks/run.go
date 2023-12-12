@@ -279,8 +279,8 @@ func (r *runTask) getEarlyExitCommand() (string, error) {
 }
 
 func (r *runTask) getOutputVarCmd(outputVars []*pb.OutputVariable, outputFile string) string {
-	isPsh := isPowershell()
-	isPython := isPython()
+	isPsh := isPowershell(r.shellType)
+	isPython := isPython(r.shellType)
 
 	cmd := ""
 	if isPsh {
