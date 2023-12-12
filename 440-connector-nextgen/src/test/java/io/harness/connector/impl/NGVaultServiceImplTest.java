@@ -28,6 +28,7 @@ import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -39,6 +40,8 @@ import io.harness.account.AccountClient;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.azure.AzureEnvironmentType;
 import io.harness.beans.DelegateTaskRequest;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.connector.ConnectorDTO;
 import io.harness.connector.ConnectorInfoDTO;
@@ -71,6 +74,7 @@ import io.harness.ng.core.dto.secrets.SecretDTOV2;
 import io.harness.ng.core.dto.secrets.SecretResponseWrapper;
 import io.harness.ng.core.encryptors.NGManagerEncryptorHelper;
 import io.harness.ng.core.entities.NGEncryptedData;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.repositories.ConnectorRepository;
 import io.harness.rest.RestResponse;
 import io.harness.rule.Owner;
@@ -96,6 +100,7 @@ import software.wings.settings.SettingVariableTypes;
 import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -123,6 +128,7 @@ public class NGVaultServiceImplTest extends CategoryTest {
   NGEncryptorService ngEncryptorService;
   SecretCrudService secretCrudService;
   NGManagerEncryptorHelper ngManagerEncryptorHelper;
+  ScopeInfoService scopeResolverService;
 
   private NGVaultServiceImpl ngVaultService;
 
@@ -146,9 +152,11 @@ public class NGVaultServiceImplTest extends CategoryTest {
     ngEncryptedDataService = mock(NGEncryptedDataService.class);
     ngEncryptorService = mock(NGEncryptorService.class);
     secretCrudService = mock(SecretCrudService.class);
+    scopeResolverService = mock(ScopeInfoService.class);
     ngManagerEncryptorHelper = new NGManagerEncryptorHelper(delegateService, new TaskSetupAbstractionHelper());
     ngVaultService = new NGVaultServiceImpl(delegateService, ngConnectorSecretManagerService, connectorRepository,
-        accountClient, ngEncryptedDataService, ngEncryptorService, secretCrudService, ngManagerEncryptorHelper);
+        accountClient, ngEncryptedDataService, ngEncryptorService, secretCrudService, ngManagerEncryptorHelper,
+        scopeResolverService);
   }
 
   @Test
@@ -632,9 +640,19 @@ public class NGVaultServiceImplTest extends CategoryTest {
                 .vaultAppRoleLoginResult(VaultAppRoleLoginResult.builder().clientToken(randomAlphabetic(10)).build())
                 .build());
     ArgumentCaptor<SecretDTOV2> argumentCaptor = ArgumentCaptor.forClass(SecretDTOV2.class);
-    when(secretCrudService.create(any(), argumentCaptor.capture())).thenReturn(SecretResponseWrapper.builder().build());
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(ACCOUNT_IDENTIFIER)
+                              .orgIdentifier(ORG_IDENTIFIER)
+                              .projectIdentifier(PROJECT_IDENTIFIER)
+                              .scopeType(ScopeLevel.PROJECT)
+                              .uniqueId(randomAlphabetic(10))
+                              .build();
+    when(scopeResolverService.getScopeInfo(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .thenReturn(Optional.of(scopeInfo));
+    when(secretCrudService.create(any(), eq(scopeInfo), argumentCaptor.capture()))
+        .thenReturn(SecretResponseWrapper.builder().build());
     ngVaultService.processAppRole(inputConnector, null, ACCOUNT_IDENTIFIER, true);
-    verify(secretCrudService, times(1)).create(any(), any());
+    verify(secretCrudService, times(1)).create(any(), eq(scopeInfo), any());
     SecretDTOV2 secretDTOV2 = argumentCaptor.getValue();
     assertNotNull(secretDTOV2);
     assertThat(secretDTOV2.getIdentifier()).isEqualTo(CONNECTOR_ID + "_" + VaultConnectorKeys.authTokenRef);
@@ -684,8 +702,17 @@ public class NGVaultServiceImplTest extends CategoryTest {
             NGVaultRenewalAppRoleTaskResponse.builder()
                 .vaultAppRoleLoginResult(VaultAppRoleLoginResult.builder().clientToken(randomAlphabetic(10)).build())
                 .build());
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(ACCOUNT_IDENTIFIER)
+                              .orgIdentifier(ORG_IDENTIFIER)
+                              .projectIdentifier(PROJECT_IDENTIFIER)
+                              .scopeType(ScopeLevel.PROJECT)
+                              .uniqueId(randomAlphabetic(10))
+                              .build();
+    when(scopeResolverService.getScopeInfo(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .thenReturn(Optional.of(scopeInfo));
     ngVaultService.processAppRole(inputConnector, null, ACCOUNT_IDENTIFIER, true);
-    verify(secretCrudService, times(0)).create(any(), any());
+    verify(secretCrudService, times(0)).create(any(), eq(scopeInfo), any());
   }
 
   @Test

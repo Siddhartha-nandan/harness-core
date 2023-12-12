@@ -49,6 +49,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.EnvironmentType;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.ScopeInfo;
 import io.harness.category.element.UnitTests;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.expressions.CDExpressionResolver;
@@ -135,6 +136,7 @@ import io.harness.ng.core.api.SecretCrudService;
 import io.harness.ng.core.dto.secrets.SSHKeySpecDTO;
 import io.harness.ng.core.dto.secrets.SecretDTOV2;
 import io.harness.ng.core.dto.secrets.SecretTextSpecDTO;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.persistence.HPersistence;
 import io.harness.plancreator.steps.TaskSelectorYaml;
 import io.harness.plancreator.steps.common.StepElementParameters;
@@ -218,6 +220,7 @@ public class TerraformStepHelperTest extends CategoryTest {
   @Mock private SecretCrudService ngSecretService;
   @Mock private StepHelper stepHelper;
   @Mock private CDExpressionResolver cdExpressionResolver;
+  @Mock private ScopeInfoService scopeResolverService;
 
   @InjectMocks private TerraformStepHelper helper;
   public static final String GLOBAL_ACCOUNT_ID = "__GLOBAL_ACCOUNT_ID__";
@@ -2184,9 +2187,20 @@ public class TerraformStepHelperTest extends CategoryTest {
 
     ArgumentCaptor<SecretDTOV2> captor = ArgumentCaptor.forClass(SecretDTOV2.class);
 
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier("test-account")
+                              .orgIdentifier("test-org")
+                              .projectIdentifier("test-project")
+                              .uniqueId("test-project-unique-id")
+                              .build();
+    doReturn(Optional.of(scopeInfo))
+        .when(scopeResolverService)
+        .getScopeInfo("test-account", "test-org", "test-project");
+
     Map<String, Object> outputs =
         helper.encryptTerraformJsonOutput(tfJsonOutput, ambiance, "secretManagerRef-test", "provisionerId-test");
-    verify(ngSecretService).create(anyString(), captor.capture());
+
+    verify(ngSecretService).create(anyString(), eq(scopeInfo), captor.capture());
     SecretDTOV2 secret = captor.getValue();
 
     assertThat(outputs).isNotEmpty();

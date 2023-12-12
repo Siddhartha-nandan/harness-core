@@ -9,6 +9,7 @@ package io.harness.ng.oauth;
 
 import static java.lang.String.format;
 
+import io.harness.beans.ScopeInfo;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.api.SecretCrudService;
 import io.harness.ng.core.dto.secrets.SecretDTOV2;
@@ -37,7 +38,7 @@ public class OauthSecretService {
   String oauthAccessTokenSecretName = "harnessoauthaccesstoken_%s_%s";
   String oauthRefreshTokenSecretName = "harnessoauthsecrettoken_%s_%s";
 
-  public OauthAccessTokenResponseDTO createSecrets(String accountIdentifier, String orgIdentifier,
+  public OauthAccessTokenResponseDTO createSecrets(String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier,
       String projectIdentifier, String provider, OauthAccessTokenDTO accessToken, String secretManagerIdentifier,
       boolean isPrivateSecret, UserDetailsDTO userDetailsDTO) {
     SecretTextSpecDTO accessTokenSecretDTO = SecretTextSpecDTO.builder()
@@ -71,7 +72,8 @@ public class OauthSecretService {
       accessTokenSecretDTOV2.setOwner(new UserPrincipal(userMetadataDTO.get().getUuid(), userDetailsDTO.getUserEmail(),
           userMetadataDTO.get().getName(), accountIdentifier));
     }
-    SecretResponseWrapper accessTokenResponse = ngSecretService.create(accountIdentifier, accessTokenSecretDTOV2);
+    SecretResponseWrapper accessTokenResponse =
+        ngSecretService.create(accountIdentifier, scopeInfo, accessTokenSecretDTOV2);
 
     // github doesn't provides refresh token
     if (provider.equals("github")) {
@@ -93,7 +95,8 @@ public class OauthSecretService {
       refreshTokenSecretDTOV2.setOwner(new UserPrincipal(userMetadataDTO.get().getUuid(), userDetailsDTO.getUserEmail(),
           userMetadataDTO.get().getName(), accountIdentifier));
     }
-    SecretResponseWrapper refreshTokenResponse = ngSecretService.create(accountIdentifier, refreshTokenSecretDTOV2);
+    SecretResponseWrapper refreshTokenResponse =
+        ngSecretService.create(accountIdentifier, scopeInfo, refreshTokenSecretDTOV2);
     return OauthAccessTokenResponseDTO.builder()
         .accessTokenRef(accessTokenResponse.getSecret().getIdentifier())
         .refreshTokenRef(refreshTokenResponse.getSecret().getIdentifier())

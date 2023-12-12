@@ -24,6 +24,7 @@ import static java.lang.String.format;
 import io.harness.ModuleType;
 import io.harness.account.ProvisionStep;
 import io.harness.account.ProvisionStep.ProvisionStepKeys;
+import io.harness.beans.ScopeInfo;
 import io.harness.connector.ConnectivityStatus;
 import io.harness.connector.ConnectorDTO;
 import io.harness.connector.ConnectorInfoDTO;
@@ -350,8 +351,8 @@ public class ProvisionService {
     }
   }
 
-  public ScmConnectorResponse createDefaultScm(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, ScmConnectorDTO scmConnectorDTO) {
+  public ScmConnectorResponse createDefaultScm(String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier,
+      String projectIdentifier, ScmConnectorDTO scmConnectorDTO) {
     ConnectorResponseDTO connectorResponseDTO = null;
     SecretResponseWrapper secretResponseWrapper = null;
     ScmConnectorResponse scmConnectorResponse = null;
@@ -377,7 +378,7 @@ public class ProvisionService {
       secretResponseWrapper = ngSecretService.update(
           accountIdentifier, orgIdentifier, projectIdentifier, secretDTOV2.getIdentifier(), secretDTOV2);
     } else {
-      secretResponseWrapper = ngSecretService.create(accountIdentifier, secretDTOV2);
+      secretResponseWrapper = ngSecretService.create(accountIdentifier, scopeInfo, secretDTOV2);
     }
 
     Optional<ConnectorResponseDTO> connectorResponseDTOOptional =

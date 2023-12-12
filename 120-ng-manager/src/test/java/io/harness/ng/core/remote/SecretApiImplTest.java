@@ -20,10 +20,14 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.beans.SortOrder;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InvalidRequestException;
@@ -35,6 +39,7 @@ import io.harness.ng.core.api.impl.SecretCrudServiceImpl;
 import io.harness.ng.core.api.impl.SecretPermissionValidator;
 import io.harness.ng.core.dto.secrets.SecretDTOV2;
 import io.harness.ng.core.dto.secrets.SecretResponseWrapper;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.rule.Owner;
 import io.harness.secretmanagerclient.SecretType;
 import io.harness.spec.server.ng.v1.model.Secret;
@@ -46,6 +51,7 @@ import io.harness.spec.server.ng.v1.model.SecretValidationResponse;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import javax.validation.Validation;
 import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
@@ -62,6 +68,7 @@ import org.springframework.data.domain.Sort;
 public class SecretApiImplTest extends CategoryTest {
   private SecretCrudService ngSecretService;
   private NGEncryptedDataService ngEncryptedDataService;
+  private ScopeInfoService scopeResolverService;
 
   private AccountSecretApiImpl accountSecretApi;
   private OrgSecretApiImpl orgSecretApi;
@@ -85,6 +92,7 @@ public class SecretApiImplTest extends CategoryTest {
   @Before
   public void setup() {
     ngSecretService = mock(SecretCrudServiceImpl.class);
+    scopeResolverService = mock(ScopeInfoService.class);
     ngEncryptedDataService = mock(NGEncryptedDataServiceImpl.class);
     pageRequest = PageRequest.builder()
                       .pageIndex(page)
@@ -98,10 +106,10 @@ public class SecretApiImplTest extends CategoryTest {
     secretApiUtils = new SecretApiUtils(validator);
     accountSecretApi = new AccountSecretApiImpl(
         ngSecretService, mock(SecretPermissionValidator.class), secretApiUtils, ngEncryptedDataService);
-    orgSecretApi = new OrgSecretApiImpl(
-        ngSecretService, mock(SecretPermissionValidator.class), secretApiUtils, ngEncryptedDataService);
-    projectSecretApi = new ProjectSecretApiImpl(
-        ngSecretService, mock(SecretPermissionValidator.class), secretApiUtils, ngEncryptedDataService);
+    orgSecretApi = new OrgSecretApiImpl(ngSecretService, mock(SecretPermissionValidator.class), secretApiUtils,
+        ngEncryptedDataService, scopeResolverService);
+    projectSecretApi = new ProjectSecretApiImpl(ngSecretService, mock(SecretPermissionValidator.class), secretApiUtils,
+        ngEncryptedDataService, scopeResolverService);
   }
 
   @Test
@@ -110,14 +118,16 @@ public class SecretApiImplTest extends CategoryTest {
   public void testCreateAccountScopedSecret() {
     SecretRequest secretRequest = new SecretRequest();
     secretRequest.setSecret(getTextSecret(null, null));
-
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build();
     SecretDTOV2 secretDTOV2 = secretApiUtils.toSecretDto(secretRequest.getSecret());
     SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().secret(secretDTOV2).build();
 
-    when(ngSecretService.create(any(), any())).thenReturn(secretResponseWrapper);
+    when(ngSecretService.create(any(), eq(scopeInfo), any())).thenReturn(secretResponseWrapper);
 
     Response response = accountSecretApi.createAccountScopedSecret(secretRequest, account, privateSecret);
 
+    verify(ngSecretService, times(1)).create(eq(account), eq(scopeInfo), any(SecretDTOV2.class));
     assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     SecretResponse secretResponse = (SecretResponse) response.getEntity();
     assertThat(secretResponse.getSecret().getOrg()).isNull();
@@ -132,10 +142,11 @@ public class SecretApiImplTest extends CategoryTest {
   public void testCreateAccountScopedSecretInvalidRequestException() {
     SecretRequest secretRequest = new SecretRequest();
     secretRequest.setSecret(getTextSecret(org, project));
-
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build();
     SecretDTOV2 secretDTOV2 = secretApiUtils.toSecretDto(secretRequest.getSecret());
     SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().secret(secretDTOV2).build();
-    when(ngSecretService.create(any(), any())).thenReturn(secretResponseWrapper);
+    when(ngSecretService.create(any(), eq(scopeInfo), any())).thenReturn(secretResponseWrapper);
 
     accountSecretApi.createAccountScopedSecret(secretRequest, account, privateSecret);
   }
@@ -146,12 +157,21 @@ public class SecretApiImplTest extends CategoryTest {
   public void testCreateOrgScopedSecret() {
     SecretRequest secretRequest = new SecretRequest();
     secretRequest.setSecret(getTextSecret(org, null));
-
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(account)
+                              .orgIdentifier(org)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .uniqueId(randomAlphabetic(10))
+                              .build();
+    when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
     SecretDTOV2 secretDTOV2 = secretApiUtils.toSecretDto(secretRequest.getSecret());
     SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().secret(secretDTOV2).build();
-    when(ngSecretService.create(any(), any())).thenReturn(secretResponseWrapper);
+    when(ngSecretService.create(any(), eq(scopeInfo), any())).thenReturn(secretResponseWrapper);
 
     Response response = orgSecretApi.createOrgScopedSecret(secretRequest, org, account, privateSecret);
+
+    verify(ngSecretService, times(1)).create(eq(account), eq(scopeInfo), any(SecretDTOV2.class));
+
     assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
 
     SecretResponse secretResponse = (SecretResponse) response.getEntity();
@@ -168,9 +188,15 @@ public class SecretApiImplTest extends CategoryTest {
     SecretRequest secretRequest = new SecretRequest();
     secretRequest.setSecret(getTextSecret(null, null));
 
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(account)
+                              .orgIdentifier(org)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .uniqueId(randomAlphabetic(10))
+                              .build();
     SecretDTOV2 secretDTOV2 = secretApiUtils.toSecretDto(secretRequest.getSecret());
     SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().secret(secretDTOV2).build();
-    when(ngSecretService.create(any(), any())).thenReturn(secretResponseWrapper);
+    when(ngSecretService.create(any(), eq(scopeInfo), any())).thenReturn(secretResponseWrapper);
 
     orgSecretApi.createOrgScopedSecret(secretRequest, org, account, privateSecret);
   }
@@ -182,11 +208,21 @@ public class SecretApiImplTest extends CategoryTest {
     SecretRequest secretRequest = new SecretRequest();
     secretRequest.setSecret(getTextSecret(org, project));
 
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(account)
+                              .orgIdentifier(org)
+                              .projectIdentifier(project)
+                              .scopeType(ScopeLevel.PROJECT)
+                              .uniqueId(randomAlphabetic(10))
+                              .build();
+    when(scopeResolverService.getScopeInfo(account, org, project)).thenReturn(Optional.of(scopeInfo));
     SecretDTOV2 secretDTOV2 = secretApiUtils.toSecretDto(secretRequest.getSecret());
     SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().secret(secretDTOV2).build();
-    when(ngSecretService.create(any(), any())).thenReturn(secretResponseWrapper);
+    when(ngSecretService.create(any(), eq(scopeInfo), any())).thenReturn(secretResponseWrapper);
 
     Response response = projectSecretApi.createProjectScopedSecret(secretRequest, org, project, account, privateSecret);
+
+    verify(ngSecretService, times(1)).create(eq(account), eq(scopeInfo), any(SecretDTOV2.class));
     assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
 
     SecretResponse secretResponse = (SecretResponse) response.getEntity();
@@ -203,9 +239,16 @@ public class SecretApiImplTest extends CategoryTest {
     SecretRequest secretRequest = new SecretRequest();
     secretRequest.setSecret(getTextSecret(null, null));
 
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(account)
+                              .orgIdentifier(org)
+                              .projectIdentifier(project)
+                              .scopeType(ScopeLevel.PROJECT)
+                              .uniqueId(randomAlphabetic(10))
+                              .build();
     SecretDTOV2 secretDTOV2 = secretApiUtils.toSecretDto(secretRequest.getSecret());
     SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().secret(secretDTOV2).build();
-    when(ngSecretService.create(any(), any())).thenReturn(secretResponseWrapper);
+    when(ngSecretService.create(any(), eq(scopeInfo), any())).thenReturn(secretResponseWrapper);
 
     projectSecretApi.createProjectScopedSecret(secretRequest, org, project, account, privateSecret);
   }

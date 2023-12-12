@@ -15,11 +15,13 @@ import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.mongo.index.CompoundMongoIndex;
 import io.harness.mongo.index.FdIndex;
+import io.harness.mongo.index.FdUniqueIndex;
 import io.harness.mongo.index.MongoIndex;
 import io.harness.ng.DbAliases;
 import io.harness.ng.core.common.beans.NGTag;
 import io.harness.ng.core.dto.secrets.SecretDTOV2;
 import io.harness.ng.core.dto.secrets.SecretSpecDTO;
+import io.harness.persistence.UniqueIdAware;
 import io.harness.secretmanagerclient.SecretType;
 import io.harness.security.dto.Principal;
 
@@ -46,7 +48,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Entity(value = "secrets", noClassnameStored = true)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Document("secrets")
-public class Secret {
+public class Secret implements UniqueIdAware {
   public static List<MongoIndex> mongoIndexes() {
     return ImmutableList.<MongoIndex>builder()
         .add(CompoundMongoIndex.builder()
@@ -61,6 +63,8 @@ public class Secret {
   }
 
   @Id @dev.morphia.annotations.Id String id;
+  @FdUniqueIndex String uniqueId;
+  String parentUniqueId;
   @FdIndex Boolean migratedFromManager;
   String accountIdentifier;
   String orgIdentifier;

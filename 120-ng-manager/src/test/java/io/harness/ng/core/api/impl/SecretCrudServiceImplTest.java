@@ -38,6 +38,8 @@ import static org.mockito.MockitoAnnotations.initMocks;
 import io.harness.CategoryTest;
 import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.connector.services.NGConnectorSecretManagerService;
 import io.harness.delegate.beans.FileUploadLimit;
@@ -152,9 +154,15 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testCreateSecret() {
     NGEncryptedData encryptedDataDTO = NGEncryptedData.builder().type(SettingVariableTypes.SECRET_TEXT).build();
+
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(accountIdentifier)
+                              .build();
     Secret secret = Secret.builder().build();
     when(encryptedDataService.createSecretText(any(), any())).thenReturn(encryptedDataDTO);
-    when(ngSecretServiceV2.create(any(), any(), eq(false))).thenReturn(secret);
+    when(ngSecretServiceV2.create(any(), eq(scopeInfo), any(), eq(false))).thenReturn(secret);
 
     when(connectorService.getUsingIdentifier(any(), any(), any(), any(), eq(false))).thenReturn(new LocalConfigDTO());
 
@@ -162,11 +170,11 @@ public class SecretCrudServiceImplTest extends CategoryTest {
                                   .type(SecretType.SecretText)
                                   .spec(SecretTextSpecDTO.builder().valueType(ValueType.Inline).value("value").build())
                                   .build();
-    SecretResponseWrapper responseWrapper = secretCrudService.create(accountIdentifier, secretDTOV2);
+    SecretResponseWrapper responseWrapper = secretCrudService.create(accountIdentifier, scopeInfo, secretDTOV2);
     assertThat(responseWrapper).isNotNull();
 
     verify(encryptedDataService).createSecretText(any(), any());
-    verify(ngSecretServiceV2).create(any(), any(), eq(false));
+    verify(ngSecretServiceV2).create(any(), eq(scopeInfo), any(), eq(false));
   }
 
   @Test
@@ -204,6 +212,11 @@ public class SecretCrudServiceImplTest extends CategoryTest {
     SettingValueResponseDTO settingValueResponseDTO =
         SettingValueResponseDTO.builder().value("true").valueType(SettingValueType.BOOLEAN).build();
     when(request.execute()).thenReturn(Response.success(ResponseDTO.newResponse(settingValueResponseDTO)));
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(accountIdentifier)
+                              .build();
     SecretDTOV2 secretDTOV2 = SecretDTOV2.builder()
                                   .type(SecretType.SecretText)
                                   .spec(SecretTextSpecDTO.builder()
@@ -213,7 +226,7 @@ public class SecretCrudServiceImplTest extends CategoryTest {
                                             .build())
                                   .build();
     doReturn(true).when(secretCrudService).checkIfSecretManagerUsedIsHarnessManaged(accountIdentifier, secretDTOV2);
-    assertThatThrownBy(() -> secretCrudService.create(accountIdentifier, secretDTOV2))
+    assertThatThrownBy(() -> secretCrudService.create(accountIdentifier, scopeInfo, secretDTOV2))
         .isInstanceOf(InvalidRequestException.class);
   }
   @Test
@@ -223,7 +236,12 @@ public class SecretCrudServiceImplTest extends CategoryTest {
     NGEncryptedData encryptedDataDTO = NGEncryptedData.builder().type(SettingVariableTypes.SECRET_TEXT).build();
     Secret secret = Secret.builder().build();
     when(encryptedDataService.createSecretText(any(), any())).thenReturn(encryptedDataDTO);
-    when(ngSecretServiceV2.create(any(), any(), eq(false))).thenReturn(secret);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(accountIdentifier)
+                              .build();
+    when(ngSecretServiceV2.create(any(), eq(scopeInfo), any(), eq(false))).thenReturn(secret);
     SecretDTOV2 secretDTOV2 = SecretDTOV2.builder()
                                   .type(SecretType.SecretText)
                                   .spec(SecretTextSpecDTO.builder()
@@ -233,11 +251,11 @@ public class SecretCrudServiceImplTest extends CategoryTest {
                                             .build())
                                   .build();
     doReturn(false).when(secretCrudService).checkIfSecretManagerUsedIsHarnessManaged(accountIdentifier, secretDTOV2);
-    SecretResponseWrapper responseWrapper = secretCrudService.create(accountIdentifier, secretDTOV2);
+    SecretResponseWrapper responseWrapper = secretCrudService.create(accountIdentifier, scopeInfo, secretDTOV2);
     assertThat(responseWrapper).isNotNull();
 
     verify(encryptedDataService).createSecretText(any(), any());
-    verify(ngSecretServiceV2).create(any(), any(), eq(false));
+    verify(ngSecretServiceV2).create(any(), eq(scopeInfo), any(), eq(false));
   }
 
   @Test
@@ -246,8 +264,13 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   public void testCreateSecretWithHarnessManagedSMWhichIsEnabled() {
     NGEncryptedData encryptedDataDTO = NGEncryptedData.builder().type(SettingVariableTypes.SECRET_TEXT).build();
     Secret secret = Secret.builder().build();
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(accountIdentifier)
+                              .build();
     when(encryptedDataService.createSecretText(any(), any())).thenReturn(encryptedDataDTO);
-    when(ngSecretServiceV2.create(any(), any(), eq(false))).thenReturn(secret);
+    when(ngSecretServiceV2.create(any(), eq(scopeInfo), any(), eq(false))).thenReturn(secret);
     SecretDTOV2 secretDTOV2 = SecretDTOV2.builder()
                                   .type(SecretType.SecretText)
                                   .spec(SecretTextSpecDTO.builder()
@@ -257,11 +280,11 @@ public class SecretCrudServiceImplTest extends CategoryTest {
                                             .build())
                                   .build();
     doReturn(true).when(secretCrudService).checkIfSecretManagerUsedIsHarnessManaged(accountIdentifier, secretDTOV2);
-    SecretResponseWrapper responseWrapper = secretCrudService.create(accountIdentifier, secretDTOV2);
+    SecretResponseWrapper responseWrapper = secretCrudService.create(accountIdentifier, scopeInfo, secretDTOV2);
     assertThat(responseWrapper).isNotNull();
 
     verify(encryptedDataService).createSecretText(any(), any());
-    verify(ngSecretServiceV2).create(any(), any(), eq(false));
+    verify(ngSecretServiceV2).create(any(), eq(scopeInfo), any(), eq(false));
   }
 
   @Test
@@ -269,18 +292,24 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testCreateSshWithExistingIdentifierShouldNotCreateSetupUsage() {
     String exMessage = "Duplicate identifier, please try again with a new identifier";
-    when(ngSecretServiceV2.create(any(), any(), eq(false))).thenThrow(new DuplicateFieldException(exMessage));
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(accountIdentifier)
+                              .build();
+    when(ngSecretServiceV2.create(any(), eq(scopeInfo), any(), eq(false)))
+        .thenThrow(new DuplicateFieldException(exMessage));
     SecretDTOV2 secretDTOV2 = SecretDTOV2.builder()
                                   .type(SecretType.SSHKey)
                                   .spec(SSHKeySpecDTO.builder().auth(SSHAuthDTO.builder().build()).build())
                                   .identifier(randomAlphabetic(10))
                                   .name(randomAlphabetic(10))
                                   .build();
-    assertThatThrownBy(() -> secretCrudService.create(accountIdentifier, secretDTOV2))
+    assertThatThrownBy(() -> secretCrudService.create(accountIdentifier, scopeInfo, secretDTOV2))
         .isInstanceOf(DuplicateFieldException.class)
         .hasMessage(exMessage);
 
-    verify(ngSecretServiceV2).create(any(), any(), eq(false));
+    verify(ngSecretServiceV2).create(any(), eq(scopeInfo), any(), eq(false));
     verify(secretEntityReferenceHelper, times(0))
         .createSetupUsageForSecretManager(anyString(), any(), any(), anyString(), anyString(), any());
     verify(secretEntityReferenceHelper, times(0)).createSetupUsageForSecret(anyString(), any());
@@ -292,30 +321,40 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   public void testCreateViaYaml() {
     NGEncryptedData encryptedDataDTO = NGEncryptedData.builder().type(SettingVariableTypes.SECRET_TEXT).build();
     Secret secret = Secret.builder().build();
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(accountIdentifier)
+                              .build();
     when(encryptedDataService.createSecretText(any(), any())).thenReturn(encryptedDataDTO);
-    when(ngSecretServiceV2.create(any(), any(), eq(true))).thenReturn(secret);
+    when(ngSecretServiceV2.create(any(), eq(scopeInfo), any(), eq(true))).thenReturn(secret);
 
     SecretDTOV2 secretDTOV2 = SecretDTOV2.builder()
                                   .type(SecretType.SecretText)
                                   .spec(SecretTextSpecDTO.builder().valueType(ValueType.Inline).build())
                                   .build();
-    SecretResponseWrapper responseWrapper = secretCrudService.createViaYaml(accountIdentifier, secretDTOV2);
+    SecretResponseWrapper responseWrapper = secretCrudService.createViaYaml(accountIdentifier, scopeInfo, secretDTOV2);
     assertThat(responseWrapper).isNotNull();
 
     verify(encryptedDataService).createSecretText(any(), any());
-    verify(ngSecretServiceV2).create(any(), any(), eq(true));
+    verify(ngSecretServiceV2).create(any(), eq(scopeInfo), any(), eq(true));
   }
 
   @Test
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testCreateSecretViaYaml_failDueToValueProvided() {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(accountIdentifier)
+                              .build();
     SecretDTOV2 secretDTOV2 = SecretDTOV2.builder()
                                   .type(SecretType.SecretText)
                                   .spec(SecretTextSpecDTO.builder().valueType(ValueType.Inline).value("value").build())
                                   .build();
     try {
-      secretCrudService.createViaYaml(accountIdentifier, secretDTOV2);
+      secretCrudService.createViaYaml(accountIdentifier, scopeInfo, secretDTOV2);
       fail("Execution should not reach here");
     } catch (InvalidRequestException invalidRequestException) {
       // not required
@@ -357,23 +396,28 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testCreateFile() throws IOException {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(accountIdentifier)
+                              .build();
     SecretDTOV2 secretDTOV2 =
         SecretDTOV2.builder().spec(SecretFileSpecDTO.builder().build()).type(SecretType.SecretFile).build();
     Secret secret = Secret.builder().build();
     NGEncryptedData encryptedDataDTO = NGEncryptedData.builder().type(SettingVariableTypes.CONFIG_FILE).build();
     when(encryptedDataService.createSecretFile(any(), any(), any())).thenReturn(encryptedDataDTO);
-    when(ngSecretServiceV2.create(any(), any(), eq(false))).thenReturn(secret);
+    when(ngSecretServiceV2.create(any(), eq(scopeInfo), any(), eq(false))).thenReturn(secret);
     doNothing()
         .when(secretEntityReferenceHelper)
         .createSetupUsageForSecretManager(any(), any(), any(), any(), any(), any());
     when(opaSecretService.evaluatePoliciesWithEntity(any(), any(), any(), any(), any(), any())).thenReturn(null);
 
     SecretResponseWrapper created =
-        secretCrudService.createFile(accountIdentifier, secretDTOV2, new StringInputStream("string"));
+        secretCrudService.createFile(accountIdentifier, scopeInfo, secretDTOV2, new StringInputStream("string"));
     assertThat(created).isNotNull();
 
     verify(encryptedDataService, atLeastOnce()).createSecretFile(any(), any(), any());
-    verify(ngSecretServiceV2).create(any(), any(), eq(false));
+    verify(ngSecretServiceV2).create(any(), eq(scopeInfo), any(), eq(false));
     verify(secretEntityReferenceHelper).createSetupUsageForSecretManager(any(), any(), any(), any(), any(), any());
   }
 
@@ -381,23 +425,28 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testSecretFileMigration_willCreateSecretInNgSecretsDB() {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(accountIdentifier)
+                              .build();
     SecretDTOV2 secretDTOV2 =
         SecretDTOV2.builder().spec(SecretFileSpecDTO.builder().build()).type(SecretType.SecretFile).build();
     Secret secret = Secret.builder().build();
     NGEncryptedData encryptedDataDTO = NGEncryptedData.builder().type(SettingVariableTypes.CONFIG_FILE).build();
     when(encryptedDataService.createSecretFile(any(), any(), any(), any())).thenReturn(encryptedDataDTO);
-    when(ngSecretServiceV2.create(any(), any(), eq(false))).thenReturn(secret);
+    when(ngSecretServiceV2.create(any(), eq(scopeInfo), any(), eq(false))).thenReturn(secret);
     doNothing()
         .when(secretEntityReferenceHelper)
         .createSetupUsageForSecretManager(any(), any(), any(), any(), any(), any());
     when(opaSecretService.evaluatePoliciesWithEntity(any(), any(), any(), any(), any(), any())).thenReturn(null);
 
     SecretResponseWrapper created =
-        secretCrudService.createFile(accountIdentifier, secretDTOV2, "encryptionKey", "encryptedValue");
+        secretCrudService.createFile(accountIdentifier, scopeInfo, secretDTOV2, "encryptionKey", "encryptedValue");
     assertThat(created).isNotNull();
 
     verify(encryptedDataService, atLeastOnce()).createSecretFile(any(), any(), any(), any());
-    verify(ngSecretServiceV2).create(any(), any(), eq(false));
+    verify(ngSecretServiceV2).create(any(), eq(scopeInfo), any(), eq(false));
     verify(secretEntityReferenceHelper).createSetupUsageForSecretManager(any(), any(), any(), any(), any(), any());
   }
 

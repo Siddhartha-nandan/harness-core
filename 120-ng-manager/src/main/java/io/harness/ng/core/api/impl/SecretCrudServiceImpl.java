@@ -6,6 +6,7 @@
  */
 
 package io.harness.ng.core.api.impl;
+
 import static io.harness.NGConstants.HARNESS_SECRET_MANAGER_IDENTIFIER;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
@@ -40,6 +41,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.FeatureName;
+import io.harness.beans.ScopeInfo;
 import io.harness.beans.SortOrder;
 import io.harness.connector.ConnectorCategory;
 import io.harness.connector.services.NGConnectorSecretManagerService;
@@ -247,7 +249,8 @@ public class SecretCrudServiceImpl implements SecretCrudService {
 
   @Override
   @FeatureRestrictionCheck(MULTIPLE_SECRETS)
-  public SecretResponseWrapper create(@AccountIdentifier String accountIdentifier, SecretDTOV2 dto) {
+  public SecretResponseWrapper create(
+      @AccountIdentifier String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto) {
     if (SecretText.equals(dto.getType()) && isEmpty(((SecretTextSpecDTO) dto.getSpec()).getValue())) {
       if ((((SecretTextSpecDTO) dto.getSpec()).getValueType()).equals(CustomSecretManagerValues)) {
         log.info(format("Secret [%s] does not have any path for custom secret manager: [%s]", dto.getIdentifier(),
@@ -279,14 +282,14 @@ public class SecretCrudServiceImpl implements SecretCrudService {
       case SecretText:
         NGEncryptedData encryptedData = encryptedDataService.createSecretText(accountIdentifier, dto);
         if (Optional.ofNullable(encryptedData).isPresent()) {
-          secretResponseWrapper = createSecretInternal(accountIdentifier, dto, false);
+          secretResponseWrapper = createSecretInternal(accountIdentifier, scopeInfo, dto, false);
           secretResponseWrapper.setGovernanceMetadata(governanceMetadata);
           return secretResponseWrapper;
         }
         break;
       case SSHKey:
       case WinRmCredentials:
-        secretResponseWrapper = createSecretInternal(accountIdentifier, dto, false);
+        secretResponseWrapper = createSecretInternal(accountIdentifier, scopeInfo, dto, false);
         secretResponseWrapper.setGovernanceMetadata(governanceMetadata);
         return secretResponseWrapper;
       default:
@@ -327,8 +330,9 @@ public class SecretCrudServiceImpl implements SecretCrudService {
     return governanceMetadata == null || !OpaConstants.OPA_STATUS_ERROR.equals(governanceMetadata.getStatus());
   }
 
-  private SecretResponseWrapper createSecretInternal(String accountIdentifier, SecretDTOV2 dto, boolean draft) {
-    Secret secret = ngSecretService.create(accountIdentifier, dto, draft);
+  private SecretResponseWrapper createSecretInternal(
+      String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto, boolean draft) {
+    Secret secret = ngSecretService.create(accountIdentifier, scopeInfo, dto, draft);
     secretEntityReferenceHelper.createSetupUsageForSecretManager(accountIdentifier, dto.getOrgIdentifier(),
         dto.getProjectIdentifier(), dto.getIdentifier(), dto.getName(), getSecretManagerIdentifier(dto));
     secretEntityReferenceHelper.createSetupUsageForSecret(accountIdentifier, dto);
@@ -337,7 +341,8 @@ public class SecretCrudServiceImpl implements SecretCrudService {
 
   @Override
   @FeatureRestrictionCheck(MULTIPLE_SECRETS)
-  public SecretResponseWrapper createViaYaml(@AccountIdentifier @NotNull String accountIdentifier, SecretDTOV2 dto) {
+  public SecretResponseWrapper createViaYaml(
+      @AccountIdentifier @NotNull String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto) {
     Optional<String> message = dto.getSpec().getErrorMessageForInvalidYaml();
     if (message.isPresent()) {
       throw new InvalidRequestException(message.get(), USER);
@@ -355,7 +360,7 @@ public class SecretCrudServiceImpl implements SecretCrudService {
       case SecretText:
         encryptedData = encryptedDataService.createSecretText(accountIdentifier, dto);
         if (Optional.ofNullable(encryptedData).isPresent()) {
-          secretResponseWrapper = createSecretInternal(accountIdentifier, dto, true);
+          secretResponseWrapper = createSecretInternal(accountIdentifier, scopeInfo, dto, true);
           secretResponseWrapper.setGovernanceMetadata(governanceMetadata);
           return secretResponseWrapper;
         }
@@ -363,14 +368,14 @@ public class SecretCrudServiceImpl implements SecretCrudService {
       case SecretFile:
         encryptedData = encryptedDataService.createSecretFile(accountIdentifier, dto, null);
         if (Optional.ofNullable(encryptedData).isPresent()) {
-          secretResponseWrapper = createSecretInternal(accountIdentifier, dto, true);
+          secretResponseWrapper = createSecretInternal(accountIdentifier, scopeInfo, dto, true);
           secretResponseWrapper.setGovernanceMetadata(governanceMetadata);
           return secretResponseWrapper;
         }
         break;
       case SSHKey:
       case WinRmCredentials:
-        secretResponseWrapper = createSecretInternal(accountIdentifier, dto, true);
+        secretResponseWrapper = createSecretInternal(accountIdentifier, scopeInfo, dto, true);
         secretResponseWrapper.setGovernanceMetadata(governanceMetadata);
         return secretResponseWrapper;
       default:
@@ -719,8 +724,8 @@ public class SecretCrudServiceImpl implements SecretCrudService {
 
   @SneakyThrows
   @Override
-  public SecretResponseWrapper createFile(
-      @NotNull String accountIdentifier, @NotNull SecretDTOV2 dto, @NotNull InputStream inputStream) {
+  public SecretResponseWrapper createFile(@NotNull String accountIdentifier, ScopeInfo scopeInfo,
+      @NotNull SecretDTOV2 dto, @NotNull InputStream inputStream) {
     SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().build();
     if (!isOpaPoliciesSatisfied(accountIdentifier, getMaskedDTOForOpa(dto), secretResponseWrapper)) {
       return secretResponseWrapper;
@@ -734,7 +739,7 @@ public class SecretCrudServiceImpl implements SecretCrudService {
     if (Optional.ofNullable(encryptedData).isPresent()) {
       secretEntityReferenceHelper.createSetupUsageForSecretManager(accountIdentifier, dto.getOrgIdentifier(),
           dto.getProjectIdentifier(), dto.getIdentifier(), dto.getName(), specDTO.getSecretManagerIdentifier());
-      Secret secret = ngSecretService.create(accountIdentifier, dto, false);
+      Secret secret = ngSecretService.create(accountIdentifier, scopeInfo, dto, false);
       secretResponseWrapper = getResponseWrapper(secret);
       secretResponseWrapper.setGovernanceMetadata(governanceMetadata);
       return secretResponseWrapper;
@@ -744,8 +749,8 @@ public class SecretCrudServiceImpl implements SecretCrudService {
 
   @SneakyThrows
   @Override
-  public SecretResponseWrapper createFile(@NotNull String accountIdentifier, @NotNull SecretDTOV2 dto,
-      @NotNull String encryptionKey, @NotNull String encryptedValue) {
+  public SecretResponseWrapper createFile(@NotNull String accountIdentifier, ScopeInfo scopeInfo,
+      @NotNull SecretDTOV2 dto, @NotNull String encryptionKey, @NotNull String encryptedValue) {
     SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().build();
     if (!isOpaPoliciesSatisfied(accountIdentifier, getMaskedDTOForOpa(dto), secretResponseWrapper)) {
       return secretResponseWrapper;
@@ -759,7 +764,7 @@ public class SecretCrudServiceImpl implements SecretCrudService {
     if (Optional.ofNullable(encryptedData).isPresent()) {
       secretEntityReferenceHelper.createSetupUsageForSecretManager(accountIdentifier, dto.getOrgIdentifier(),
           dto.getProjectIdentifier(), dto.getIdentifier(), dto.getName(), specDTO.getSecretManagerIdentifier());
-      Secret secret = ngSecretService.create(accountIdentifier, dto, false);
+      Secret secret = ngSecretService.create(accountIdentifier, scopeInfo, dto, false);
       secretResponseWrapper = getResponseWrapper(secret);
       secretResponseWrapper.setGovernanceMetadata(governanceMetadata);
       return secretResponseWrapper;

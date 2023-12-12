@@ -27,6 +27,8 @@ import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.ng.beans.PageRequest;
 import io.harness.ng.beans.PageResponse;
@@ -181,6 +183,12 @@ public class NGSecretResourceV2Test extends CategoryTest {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
     String projectIdentifier = randomAlphabetic(10);
+
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .uniqueId(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .build();
     String spec =
         "{\"secret\":{\"type\":\"SecretFile\",\"identifier\":\"test_identifier\",\"description\":\"\",\"tags\":{},"
         + "\"spec\":{\"secretManagerIdentifier\":\"harnessSecretManager\"}}}";
@@ -188,7 +196,8 @@ public class NGSecretResourceV2Test extends CategoryTest {
     Set<ConstraintViolation<Object>> violations = new HashSet<>();
     violations.add(mockviolation);
     when(validator.validate(any())).thenReturn(violations);
-    ngSecretResourceV2.createSecretFile(accountIdentifier, orgIdentifier, projectIdentifier, false, null, spec);
+    ngSecretResourceV2.createSecretFile(
+        accountIdentifier, orgIdentifier, projectIdentifier, false, null, spec, scopeInfo);
   }
 
   @Test
@@ -198,12 +207,19 @@ public class NGSecretResourceV2Test extends CategoryTest {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
     String projectIdentifier = randomAlphabetic(10);
+
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .uniqueId(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .build();
     String spec =
         "{\"secret\":{\"type\":\"SecretFile\",\"identifier\":\"test_identifier\",\"description\":\"\",\"tags\":{},"
         + "\"spec\":{\"secretManagerIdentifier\":\"harnessSecretManager\"}}}";
     try (MockedStatic<JsonUtils> aStatic = mockStatic(JsonUtils.class, CALLS_REAL_METHODS)) {
       try {
-        ngSecretResourceV2.createSecretFile(accountIdentifier, orgIdentifier, projectIdentifier, false, null, spec);
+        ngSecretResourceV2.createSecretFile(
+            accountIdentifier, orgIdentifier, projectIdentifier, false, null, spec, scopeInfo);
       } catch (Exception ignored) {
       }
       aStatic.verify(() -> {
@@ -223,10 +239,17 @@ public class NGSecretResourceV2Test extends CategoryTest {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
     String projectIdentifier = randomAlphabetic(10);
+
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .uniqueId(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .build();
     String spec =
         "{\"secret\":{\"type\":\"SecretFile\",\"identifier\":\"test_identifier\",\"description\":\"\",\"tags\":,"
         + "\"spec\":{\"secretManagerIdentifier\":\"harnessSecretManager\"}}}";
     // passed tags with null in spec
-    ngSecretResourceV2.createSecretFile(accountIdentifier, orgIdentifier, projectIdentifier, false, null, spec);
+    ngSecretResourceV2.createSecretFile(
+        accountIdentifier, orgIdentifier, projectIdentifier, false, null, spec, scopeInfo);
   }
 }

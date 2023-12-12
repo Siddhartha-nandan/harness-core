@@ -34,6 +34,7 @@ import io.harness.beans.DelegateTaskRequest;
 import io.harness.beans.FileReference;
 import io.harness.beans.IdentifierRef;
 import io.harness.beans.Scope;
+import io.harness.beans.ScopeInfo;
 import io.harness.beans.SecretManagerConfig;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.artifact.utils.ArtifactUtils;
@@ -137,6 +138,7 @@ import io.harness.ng.core.api.SecretCrudService;
 import io.harness.ng.core.dto.secrets.SSHKeySpecDTO;
 import io.harness.ng.core.dto.secrets.SecretDTOV2;
 import io.harness.ng.core.dto.secrets.SecretTextSpecDTO;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.persistence.HPersistence;
 import io.harness.plancreator.steps.TaskSelectorYaml;
 import io.harness.pms.contracts.ambiance.Ambiance;
@@ -246,6 +248,7 @@ public class TerraformStepHelper {
   @Inject private StepHelper stepHelper;
   @Inject private CDExpressionResolver cdExpressionResolver;
   @Inject private SecretCrudService ngSecretService;
+  @Inject private ScopeInfoService scopeResolverService;
 
   public static Optional<EntityDetail> prepareEntityDetailForBackendConfigFiles(
       String accountId, String orgIdentifier, String projectIdentifier, TerraformBackendConfig config) {
@@ -1145,7 +1148,8 @@ public class TerraformStepHelper {
             .build();
 
     try {
-      ngSecretService.create(accountId, tfJsonOutputSecretDTO);
+      Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountId, orgIdentifier, projectIdentifier);
+      ngSecretService.create(accountId, scopeInfo.orElseThrow(), tfJsonOutputSecretDTO);
       outputs.put(TF_ENCRYPTED_JSON_OUTPUT_NAME, format(TF_JSON_OUTPUT_SECRET_IDENTIFIER_FORMAT, secretIdentifier));
       saveTerraformApplyExecutionDetails(ambiance, provisionerId, secretIdentifier);
     } catch (Exception exception) {

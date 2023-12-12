@@ -11,6 +11,7 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.ScopeInfo;
 import io.harness.ng.core.dto.secrets.SecretDTOV2;
 import io.harness.ng.core.models.Secret;
 import io.harness.ng.core.remote.SecretValidationMetaData;
@@ -34,7 +35,7 @@ public interface NGSecretServiceV2 {
   boolean delete(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier, boolean forceDelete);
 
-  Secret create(String accountIdentifier, SecretDTOV2 dto, boolean draft);
+  Secret create(String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto, boolean draft);
 
   Secret update(String accountIdentifier, SecretDTOV2 dto, boolean draft);
 

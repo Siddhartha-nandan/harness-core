@@ -50,7 +50,8 @@ import org.apache.commons.lang3.StringUtils;
 public class ScopeInfoFilter implements ContainerRequestFilter, ContainerResponseFilter {
   private static final String SCOPE_INFO_FILTER_LOG = "SCOPE_INFO_FILTER: ";
   public static final Set<String> matchingPathRequests =
-      Set.of("/organizations", "/aggregate/organizations", "/projects", "/aggregate/projects");
+      Set.of("/organizations", "/aggregate/organizations", "/projects", "/aggregate/projects", "/v2/secrets",
+          "/trial-signup/create-scm-connector", "/oauth/create-access-token-secret");
 
   private final ScopeInfoClient scopeInfoClient;
   @Context private ResourceInfo resourceInfo;

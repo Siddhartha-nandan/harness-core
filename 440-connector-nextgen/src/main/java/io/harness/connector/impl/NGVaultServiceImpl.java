@@ -40,6 +40,7 @@ import static java.time.Duration.ofMillis;
 import io.harness.account.AccountClient;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.DelegateTaskRequest;
+import io.harness.beans.ScopeInfo;
 import io.harness.beans.SecretManagerConfig;
 import io.harness.connector.ConnectorDTO;
 import io.harness.connector.ConnectorInfoDTO;
@@ -83,6 +84,7 @@ import io.harness.ng.core.dto.secrets.SecretDTOV2;
 import io.harness.ng.core.dto.secrets.SecretTextSpecDTO;
 import io.harness.ng.core.encryptors.NGManagerEncryptorHelper;
 import io.harness.ng.core.entities.NGEncryptedData;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.repositories.ConnectorRepository;
 import io.harness.secretmanagerclient.NGSecretManagerMetadata;
 import io.harness.secretmanagerclient.SecretType;
@@ -142,12 +144,14 @@ public class NGVaultServiceImpl implements NGVaultService {
   private final NGEncryptorService ngEncryptorService;
   private final SecretCrudService secretCrudService;
   private final NGManagerEncryptorHelper ngManagerEncryptorHelper;
+  private final ScopeInfoService scopeResolverService;
 
   @Inject
   public NGVaultServiceImpl(DelegateGrpcClientWrapper delegateService,
       NGConnectorSecretManagerService ngConnectorSecretManagerService, ConnectorRepository connectorRepository,
       AccountClient accountClient, NGEncryptedDataService encryptedDataService, NGEncryptorService ngEncryptorService,
-      SecretCrudService secretCrudService, NGManagerEncryptorHelper ngManagerEncryptorHelper) {
+      SecretCrudService secretCrudService, NGManagerEncryptorHelper ngManagerEncryptorHelper,
+      ScopeInfoService scopeResolverService) {
     this.delegateService = delegateService;
     this.ngConnectorSecretManagerService = ngConnectorSecretManagerService;
     this.connectorRepository = connectorRepository;
@@ -156,6 +160,7 @@ public class NGVaultServiceImpl implements NGVaultService {
     this.ngEncryptorService = ngEncryptorService;
     this.secretCrudService = secretCrudService;
     this.ngManagerEncryptorHelper = ngManagerEncryptorHelper;
+    this.scopeResolverService = scopeResolverService;
   }
 
   @Override
@@ -746,8 +751,11 @@ public class NGVaultServiceImpl implements NGVaultService {
                                   .orgIdentifier(orgIdentifier)
                                   .spec(secretTextSpecDTO)
                                   .build();
+    Optional<ScopeInfo> scopeInfo =
+        scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, projectIdentifier);
     if (create) {
-      createOrUpdateToken(identifier, accountIdentifier, orgIdentifier, projectIdentifier, secretDTOV2);
+      createOrUpdateToken(
+          identifier, scopeInfo.orElseThrow(), accountIdentifier, orgIdentifier, projectIdentifier, secretDTOV2);
     } else {
       updateToken(identifier, accountIdentifier, orgIdentifier, projectIdentifier, secretDTOV2);
     }
@@ -755,10 +763,10 @@ public class NGVaultServiceImpl implements NGVaultService {
     return new SecretRefData(identifier, secretScope, decryptedValue);
   }
 
-  private void createOrUpdateToken(String identifier, String accountIdentifier, String orgIdentifier,
-      String projectIdentifier, SecretDTOV2 secretDTOV2) {
+  private void createOrUpdateToken(String identifier, ScopeInfo scopeInfo, String accountIdentifier,
+      String orgIdentifier, String projectIdentifier, SecretDTOV2 secretDTOV2) {
     try {
-      secretCrudService.create(accountIdentifier, secretDTOV2);
+      secretCrudService.create(accountIdentifier, scopeInfo, secretDTOV2);
     } catch (Exception e) {
       log.info("NG: Creating new token. Failed to create token for: " + identifier);
       updateToken(identifier, accountIdentifier, orgIdentifier, projectIdentifier, secretDTOV2);

@@ -11,6 +11,7 @@ import static io.harness.annotations.dev.HarnessTeam.CI;
 
 import io.harness.NGCommonEntityConstants;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
 import io.harness.ng.core.dto.ErrorDTO;
 import io.harness.ng.core.dto.FailureDTO;
 import io.harness.rest.RestResponse;
@@ -27,6 +28,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,8 +66,10 @@ public class OauthResource {
       @Parameter(
           description = "This is a boolean value to specify if the Secret is Private. The default value is False.")
       @QueryParam("isPrivateSecret") @DefaultValue("false") boolean isPrivateSecret,
-      @Parameter(description = "access token secret request", required = true) @Body OauthAccessTokenDTO accessToken) {
-    return new RestResponse<>(oauthSecretService.createSecrets(accountIdentifier, orgIdentifier, projectIdentifier,
-        scmProvider, accessToken, secretManagerIdentifier, isPrivateSecret, accessToken.getUserDetailsDTO()));
+      @Parameter(description = "access token secret request", required = true) @Body OauthAccessTokenDTO accessToken,
+      @Context ScopeInfo scopeInfo) {
+    return new RestResponse<>(
+        oauthSecretService.createSecrets(accountIdentifier, scopeInfo, orgIdentifier, projectIdentifier, scmProvider,
+            accessToken, secretManagerIdentifier, isPrivateSecret, accessToken.getUserDetailsDTO()));
   }
 }

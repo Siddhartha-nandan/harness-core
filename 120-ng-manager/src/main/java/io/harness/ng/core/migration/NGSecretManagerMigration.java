@@ -23,6 +23,7 @@ import static io.harness.remote.client.CGRestUtils.getResponse;
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
 import io.harness.connector.ConnectorCategory;
 import io.harness.connector.ConnectorDTO;
 import io.harness.connector.ConnectorInfoDTO;
@@ -61,6 +62,7 @@ import io.harness.ng.core.entities.Organization;
 import io.harness.ng.core.entities.Organization.OrganizationKeys;
 import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.entities.Project.ProjectKeys;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.secretmanagerclient.SecretType;
 import io.harness.secretmanagerclient.ValueType;
 import io.harness.secretmanagerclient.dto.GcpKmsConfigDTO;
@@ -105,14 +107,16 @@ public class NGSecretManagerMigration {
   private final ConnectorMapper connectorMapper;
   private final NGEncryptedDataService ngEncryptedDataService;
   private final SecretManagerClient secretManagerClient;
+  private final ScopeInfoService scopeResolverService;
 
   @Inject
   public NGSecretManagerMigration(MongoTemplate mongoTemplate,
       @Named(DEFAULT_CONNECTOR_SERVICE) ConnectorService connectorService,
       NGSecretManagerService ngSecretManagerService, SecretCrudService secretCrudService,
       ConnectorMapper connectorMapper, NGEncryptedDataService ngEncryptedDataService,
-      SecretManagerClient secretManagerClient) {
+      SecretManagerClient secretManagerClient, ScopeInfoService scopeResolverService) {
     this.secretManagerClient = secretManagerClient;
+    this.scopeResolverService = scopeResolverService;
     this.UUID = UUIDGenerator.generateUuid();
     this.mongoTemplate = mongoTemplate;
     this.connectorService = connectorService;
@@ -633,7 +637,9 @@ public class NGSecretManagerMigration {
     if (secretOptional.isPresent()) {
       return new SecretRefData(secretIdentifier, secretScope, decryptedValue);
     }
-    secretCrudService.create(accountIdentifier, secretDTOV2);
+    Optional<ScopeInfo> scopeInfo =
+        scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, projectIdentifier);
+    secretCrudService.create(accountIdentifier, scopeInfo.orElseThrow(), secretDTOV2);
     return new SecretRefData(secretIdentifier, secretScope, decryptedValue);
   }
 

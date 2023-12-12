@@ -20,12 +20,14 @@ import static java.util.Objects.nonNull;
 
 import io.harness.accesscontrol.acl.api.Resource;
 import io.harness.accesscontrol.acl.api.ResourceScope;
+import io.harness.beans.ScopeInfo;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.api.NGEncryptedDataService;
 import io.harness.ng.core.api.SecretCrudService;
 import io.harness.ng.core.api.impl.SecretPermissionValidator;
 import io.harness.ng.core.dto.secrets.SecretDTOV2;
 import io.harness.ng.core.dto.secrets.SecretResponseWrapper;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.secretmanagerclient.SecretType;
 import io.harness.security.SecurityContextBuilder;
 import io.harness.spec.server.ng.v1.OrgSecretApi;
@@ -38,6 +40,7 @@ import com.google.inject.Inject;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.ws.rs.NotFoundException;
@@ -57,6 +60,7 @@ public class OrgSecretApiImpl implements OrgSecretApi {
   private final SecretPermissionValidator secretPermissionValidator;
   private final SecretApiUtils secretApiUtils;
   private final NGEncryptedDataService ngEncryptedDataService;
+  private final ScopeInfoService scopeResolverService;
 
   @Override
   public Response createOrgScopedSecret(
@@ -84,8 +88,10 @@ public class OrgSecretApiImpl implements OrgSecretApi {
     if (privateSecret) {
       secretDto.setOwner(SecurityContextBuilder.getPrincipal());
     }
-
-    SecretResponseWrapper secretResponseWrapper = ngSecretService.createFile(account, secretDto, fileInputStream);
+    Optional<ScopeInfo> scopeInfo =
+        scopeResolverService.getScopeInfo(account, secretRequest.getSecret().getOrg(), null);
+    SecretResponseWrapper secretResponseWrapper =
+        ngSecretService.createFile(account, scopeInfo.orElseThrow(), secretDto, fileInputStream);
 
     return Response.status(Response.Status.CREATED)
         .entity(secretApiUtils.toSecretResponse(secretResponseWrapper))
@@ -222,7 +228,10 @@ public class OrgSecretApiImpl implements OrgSecretApi {
     if (TRUE.equals(privateSecret)) {
       secretDto.setOwner(SecurityContextBuilder.getPrincipal());
     }
-    SecretResponseWrapper entity = ngSecretService.create(account, secretDto);
+
+    Optional<ScopeInfo> scopeInfo =
+        scopeResolverService.getScopeInfo(account, secretRequest.getSecret().getOrg(), null);
+    SecretResponseWrapper entity = ngSecretService.create(account, scopeInfo.orElseThrow(), secretDto);
 
     return Response.status(Response.Status.CREATED).entity(secretApiUtils.toSecretResponse(entity)).build();
   }

@@ -20,6 +20,8 @@ import static java.util.Objects.nonNull;
 
 import io.harness.accesscontrol.acl.api.Resource;
 import io.harness.accesscontrol.acl.api.ResourceScope;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.api.NGEncryptedDataService;
 import io.harness.ng.core.api.SecretCrudService;
@@ -82,7 +84,10 @@ public class AccountSecretApiImpl implements AccountSecretApi {
       secretDto.setOwner(SecurityContextBuilder.getPrincipal());
     }
 
-    SecretResponseWrapper secretResponseWrapper = ngSecretService.createFile(account, secretDto, fileInputStream);
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier(account).uniqueId(account).scopeType(ScopeLevel.ACCOUNT).build();
+    SecretResponseWrapper secretResponseWrapper =
+        ngSecretService.createFile(account, scopeInfo, secretDto, fileInputStream);
 
     return Response.status(Response.Status.CREATED)
         .entity(secretApiUtils.toSecretResponse(secretResponseWrapper))
@@ -226,7 +231,9 @@ public class AccountSecretApiImpl implements AccountSecretApi {
     if (TRUE.equals(privateSecret)) {
       secretDto.setOwner(SecurityContextBuilder.getPrincipal());
     }
-    SecretResponseWrapper entity = ngSecretService.create(account, secretDto);
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier(account).uniqueId(account).scopeType(ScopeLevel.ACCOUNT).build();
+    SecretResponseWrapper entity = ngSecretService.create(account, scopeInfo, secretDto);
 
     return Response.status(Response.Status.CREATED).entity(secretApiUtils.toSecretResponse(entity)).build();
   }

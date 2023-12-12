@@ -39,6 +39,8 @@ import io.harness.accesscontrol.acl.api.AccessControlDTO;
 import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.secrets.SSHConfigValidationTaskResponse;
@@ -249,7 +251,9 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
     when(secretRepository.save(any())).thenReturn(secret);
     when(transactionTemplate.execute(any())).thenReturn(secret);
 
-    Secret savedSecret = secretServiceV2.create("account", secretDTOV2, false);
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
+    Secret savedSecret = secretServiceV2.create("account", scopeInfo, secretDTOV2, false);
     assertThat(secret).isNotNull();
     assertThat(secret).isEqualTo(savedSecret);
     verify(secretRepository, times(0)).save(any());

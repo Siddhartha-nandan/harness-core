@@ -10,6 +10,7 @@ package io.harness.ng.core.api;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
 import io.harness.connector.ConnectorCategory;
 import io.harness.ng.beans.PageRequest;
 import io.harness.ng.core.dto.secrets.SecretDTOV2;
@@ -29,9 +30,9 @@ public interface SecretCrudService {
   Boolean validateTheIdentifierIsUnique(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier);
 
-  SecretResponseWrapper create(String accountIdentifier, SecretDTOV2 dto);
+  SecretResponseWrapper create(String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto);
 
-  SecretResponseWrapper createViaYaml(String accountIdentifier, SecretDTOV2 dto);
+  SecretResponseWrapper createViaYaml(String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto);
 
   Optional<SecretResponseWrapper> get(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier);
@@ -47,10 +48,11 @@ public interface SecretCrudService {
   void deleteBatch(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, List<String> secretIdentifiersList);
 
-  SecretResponseWrapper createFile(String accountIdentifier, SecretDTOV2 dto, InputStream inputStream);
+  SecretResponseWrapper createFile(
+      String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto, InputStream inputStream);
 
   SecretResponseWrapper createFile(
-      String accountIdentifier, SecretDTOV2 dto, String encryptionKey, String encryptedValue);
+      String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto, String encryptionKey, String encryptedValue);
 
   SecretResponseWrapper updateFile(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       String identifier, SecretDTOV2 updateDTO, InputStream inputStream);

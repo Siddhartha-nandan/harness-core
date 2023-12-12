@@ -28,6 +28,7 @@ import io.harness.accesscontrol.acl.api.ResourceScope;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.DecryptableEntity;
 import io.harness.beans.DecryptedSecretValue;
+import io.harness.beans.ScopeInfo;
 import io.harness.connector.ConnectorCategory;
 import io.harness.data.validator.EntityIdentifier;
 import io.harness.encryption.Scope;
@@ -93,6 +94,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -179,8 +181,8 @@ public class NGSecretResourceV2 {
       @Parameter(
           description = "This is a boolean value to specify if the Secret is Private. The default value is False.")
       @QueryParam("privateSecret") @DefaultValue("false") boolean privateSecret,
-      @RequestBody(required = true,
-          description = "Details required to create the Secret") @Valid @NotNull SecretRequestWrapper dto) {
+      @RequestBody(required = true, description = "Details required to create the Secret") @Valid
+      @NotNull SecretRequestWrapper dto, @Context ScopeInfo scopeInfo) {
     if (!Objects.equals(orgIdentifier, dto.getSecret().getOrgIdentifier())
         || !Objects.equals(projectIdentifier, dto.getSecret().getProjectIdentifier())) {
       throw new InvalidRequestException("Invalid request, scope in payload and params do not match.", USER);
@@ -197,7 +199,7 @@ public class NGSecretResourceV2 {
       dto.getSecret().setOwner(SecurityContextBuilder.getPrincipal());
     }
 
-    return ResponseDTO.newResponse(ngSecretService.create(accountIdentifier, dto.getSecret()));
+    return ResponseDTO.newResponse(ngSecretService.create(accountIdentifier, scopeInfo, dto.getSecret()));
   }
 
   @POST
@@ -251,8 +253,8 @@ public class NGSecretResourceV2 {
       @Parameter(
           description = "This is a boolean value to specify if the Secret is Private. The default value is False.")
       @QueryParam("privateSecret") @DefaultValue("false") boolean privateSecret,
-      @RequestBody(
-          required = true, description = "Details required to create the Secret") @Valid SecretRequestWrapper dto) {
+      @RequestBody(required = true, description = "Details required to create the Secret")
+      @Valid SecretRequestWrapper dto, @Context ScopeInfo scopeInfo) {
     if (!Objects.equals(orgIdentifier, dto.getSecret().getOrgIdentifier())
         || !Objects.equals(projectIdentifier, dto.getSecret().getProjectIdentifier())) {
       throw new InvalidRequestException("Invalid request, scope in payload and params do not match.", USER);
@@ -267,7 +269,7 @@ public class NGSecretResourceV2 {
       dto.getSecret().setOwner(SecurityContextBuilder.getPrincipal());
     }
 
-    return ResponseDTO.newResponse(ngSecretService.createViaYaml(accountIdentifier, dto.getSecret()));
+    return ResponseDTO.newResponse(ngSecretService.createViaYaml(accountIdentifier, scopeInfo, dto.getSecret()));
   }
 
   @GET
@@ -529,8 +531,8 @@ public class NGSecretResourceV2 {
       @QueryParam("privateSecret") @DefaultValue("false") boolean privateSecret,
       @Parameter(description = "This is the encrypted Secret File that needs to be uploaded.") @NotNull @FormDataParam(
           "file") InputStream uploadedInputStream,
-      @Parameter(description = "Specification of Secret file") @FormDataParam("spec") String spec)
-      throws JsonProcessingException {
+      @Parameter(description = "Specification of Secret file") @FormDataParam("spec") String spec,
+      @Context ScopeInfo scopeInfo) throws JsonProcessingException {
     SecretRequestWrapper dto = JsonUtils.asObjectWithExceptionHandlingType(spec, SecretRequestWrapper.class);
     validateRequestPayload(dto);
 
@@ -546,7 +548,8 @@ public class NGSecretResourceV2 {
       dto.getSecret().setOwner(SecurityContextBuilder.getPrincipal());
     }
 
-    return ResponseDTO.newResponse(ngSecretService.createFile(accountIdentifier, dto.getSecret(), uploadedInputStream));
+    return ResponseDTO.newResponse(
+        ngSecretService.createFile(accountIdentifier, scopeInfo, dto.getSecret(), uploadedInputStream));
   }
 
   @POST
@@ -573,7 +576,8 @@ public class NGSecretResourceV2 {
           "encryptionKey") @NotNull String encryptionKey,
       @Parameter(description = "encryptionValue of the file secret from cg") @QueryParam(
           "encryptedValue") @NotNull String encryptedValue,
-      @Parameter(description = "Specification of Secret file") @FormDataParam("spec") String spec) {
+      @Parameter(description = "Specification of Secret file") @FormDataParam("spec") String spec,
+      @Context ScopeInfo scopeInfo) {
     SecretRequestWrapper dto = JsonUtils.asObject(spec, SecretRequestWrapper.class);
     validateRequestPayload(dto);
 
@@ -590,7 +594,7 @@ public class NGSecretResourceV2 {
     }
 
     return ResponseDTO.newResponse(
-        ngSecretService.createFile(accountIdentifier, dto.getSecret(), encryptionKey, encryptedValue));
+        ngSecretService.createFile(accountIdentifier, scopeInfo, dto.getSecret(), encryptionKey, encryptedValue));
   }
 
   @POST

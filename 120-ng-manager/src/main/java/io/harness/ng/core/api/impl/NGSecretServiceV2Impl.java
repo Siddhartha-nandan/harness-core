@@ -32,6 +32,7 @@ import io.harness.beans.DelegateTaskRequest;
 import io.harness.beans.DelegateTaskRequest.DelegateTaskRequestBuilder;
 import io.harness.beans.FeatureName;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.ScopeInfo;
 import io.harness.delegate.beans.DelegateResponseData;
 import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.RemoteMethodReturnValueData;
@@ -212,10 +213,11 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
   }
 
   @Override
-  public Secret create(String accountIdentifier, @Valid SecretDTOV2 secretDTO, boolean draft) {
+  public Secret create(String accountIdentifier, ScopeInfo scopeInfo, @Valid SecretDTOV2 secretDTO, boolean draft) {
     Secret secret = Secret.fromDTO(secretDTO);
     secret.setDraft(draft);
     secret.setAccountIdentifier(accountIdentifier);
+    secret.setParentUniqueId(scopeInfo.getUniqueId());
     try {
       return Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
         Secret savedSecret = secretRepository.save(secret);

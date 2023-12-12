@@ -14,6 +14,7 @@ import static io.harness.annotations.dev.HarnessTeam.CI;
 
 import io.harness.NGCommonEntityConstants;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
 import io.harness.ng.core.OrgIdentifier;
 import io.harness.ng.core.ProjectIdentifier;
 import io.harness.ng.core.dto.ErrorDTO;
@@ -36,6 +37,7 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -81,10 +83,10 @@ public class CIProvisionResource {
           NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
       @Parameter(description = ORG_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
-      @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier) {
-    return ResponseDTO.newResponse(
-        provisionService.createDefaultScm(accountIdentifier, orgIdentifier, projectIdentifier, scmConnectorDTO));
+      @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.PROJECT_KEY)
+      @ProjectIdentifier String projectIdentifier, @Context ScopeInfo scopeInfo) {
+    return ResponseDTO.newResponse(provisionService.createDefaultScm(
+        accountIdentifier, scopeInfo, orgIdentifier, projectIdentifier, scmConnectorDTO));
   }
 
   @GET

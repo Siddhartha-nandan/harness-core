@@ -18,6 +18,8 @@ import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
 import io.harness.NgManagerTestBase;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.connector.mappers.ConnectorMapper;
 import io.harness.connector.services.ConnectorService;
@@ -25,6 +27,7 @@ import io.harness.git.model.ChangeType;
 import io.harness.ng.core.api.NGEncryptedDataService;
 import io.harness.ng.core.api.NGSecretManagerService;
 import io.harness.ng.core.api.SecretCrudService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.rule.Owner;
 import io.harness.secretmanagerclient.dto.GcpKmsConfigDTO;
 import io.harness.secretmanagerclient.dto.LocalConfigDTO;
@@ -32,6 +35,7 @@ import io.harness.secretmanagerclient.dto.SecretManagerConfigDTO;
 import io.harness.secretmanagerclient.remote.SecretManagerClient;
 import io.harness.security.encryption.EncryptionType;
 
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -49,6 +53,7 @@ public class NGSecretManagerMigrationTest extends NgManagerTestBase {
   private SecretManagerClient secretManagerClient;
   private NGSecretManagerMigration ngSecretManagerMigration;
   private final String GLOBAL_ACCOUNT_ID = "__GLOBAL_ACCOUNT_ID__";
+  private ScopeInfoService scopeResolverService;
 
   @Before
   public void setup() {
@@ -60,8 +65,9 @@ public class NGSecretManagerMigrationTest extends NgManagerTestBase {
     secretManagerClient = mock(SecretManagerClient.class);
     ngEncryptedDataService = mock(NGEncryptedDataService.class);
     ngSecretManagerService = mock(NGSecretManagerService.class);
+    scopeResolverService = mock(ScopeInfoService.class);
     ngSecretManagerMigration = new NGSecretManagerMigration(mongoTemplate, connectorService, ngSecretManagerService,
-        secretCrudService, connectorMapper, ngEncryptedDataService, secretManagerClient);
+        secretCrudService, connectorMapper, ngEncryptedDataService, secretManagerClient, scopeResolverService);
   }
 
   @Test
@@ -82,6 +88,13 @@ public class NGSecretManagerMigrationTest extends NgManagerTestBase {
   public void testCreateGlobalGcpKmsSMIfGlobalIsNotLocalType() {
     SecretManagerConfigDTO globalSM = getGcpKmsConfigDTO();
     when(ngSecretManagerService.getGlobalSecretManagerFromCG(GLOBAL_ACCOUNT_ID)).thenReturn(globalSM);
+
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(GLOBAL_ACCOUNT_ID)
+                              .uniqueId(GLOBAL_ACCOUNT_ID)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .build();
+    when(scopeResolverService.getScopeInfo(GLOBAL_ACCOUNT_ID, null, null)).thenReturn(Optional.of(scopeInfo));
     ngSecretManagerMigration.createGlobalGcpKmsSM(GLOBAL_ACCOUNT_ID, null, null, true);
     verify(ngSecretManagerService, times(1)).getGlobalSecretManagerFromCG(GLOBAL_ACCOUNT_ID);
     verify(connectorService, times(2)).create(any(), any(), eq(ChangeType.NONE));
