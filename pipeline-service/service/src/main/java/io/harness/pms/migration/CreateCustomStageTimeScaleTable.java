@@ -21,6 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 public class CreateCustomStageTimeScaleTable extends NGAbstractTimeScaleMigration {
   @Override
   public String getFileName() {
-    return "timescale/create_custom_stage_table.sql";
+    return "timescale/create_custom_stage_table_dummy_file.sql";
   }
 }
