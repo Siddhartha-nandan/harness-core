@@ -397,6 +397,8 @@ public class DeploymentStageFilterJsonCreatorV2 extends GenericStageFilterJsonCr
 
   private void validateInfraScopedToServices(
       DeploymentStageConfig deploymentStageConfig, FilterCreationContext filterCreationContext) {
+    log.info("validateInfraScopedToServices filterCreationContext: "+ filterCreationContext.toString());
+    log.info("validateInfraScopedToServices deploymentStageConfig:"+ deploymentStageConfig.toString());
     if (!ngFeatureFlagHelperService.isEnabled(
             filterCreationContext.getSetupMetadata().getAccountId(), FeatureName.CDS_SCOPE_INFRA_TO_SERVICES)) {
       return;
