@@ -13,6 +13,7 @@ import io.harness.licensing.beans.modules.CEModuleLicenseDTO;
 import io.harness.licensing.beans.modules.CETModuleLicenseDTO;
 import io.harness.licensing.beans.modules.CFModuleLicenseDTO;
 import io.harness.licensing.beans.modules.CIModuleLicenseDTO;
+import io.harness.licensing.beans.modules.CODEModuleLicenseDTO;
 import io.harness.licensing.beans.modules.ChaosModuleLicenseDTO;
 import io.harness.licensing.beans.modules.IACMModuleLicenseDTO;
 import io.harness.licensing.beans.modules.IDPModuleLicenseDTO;
@@ -25,6 +26,7 @@ import io.harness.licensing.beans.summary.CELicenseSummaryDTO;
 import io.harness.licensing.beans.summary.CETLicenseSummaryDTO;
 import io.harness.licensing.beans.summary.CFLicenseSummaryDTO;
 import io.harness.licensing.beans.summary.CILicenseSummaryDTO;
+import io.harness.licensing.beans.summary.CODELicenseSummaryDTO;
 import io.harness.licensing.beans.summary.CVLicenseSummaryDTO;
 import io.harness.licensing.beans.summary.ChaosLicenseSummaryDTO;
 import io.harness.licensing.beans.summary.IACMLicenseSummaryDTO;
@@ -205,6 +207,17 @@ public class ModuleLicenseSummaryHelper {
           if (current < idpModuleLicenseDTO.getExpiryTime() && idpModuleLicenseDTO.getNumberOfDevelopers() != null) {
             idpLicenseSummaryDTO.setNumberOfDevelopers(ModuleLicenseUtils.computeAdd(
                 idpLicenseSummaryDTO.getNumberOfDevelopers(), idpModuleLicenseDTO.getNumberOfDevelopers()));
+          }
+        };
+        break;
+      case CODE:
+        licensesWithSummaryDTO = CODELicenseSummaryDTO.builder().build();
+        summaryHandler = (moduleLicenseDTO, summaryDTO, current) -> {
+          CODEModuleLicenseDTO codeModuleLicenseDTO = (CODEModuleLicenseDTO) moduleLicenseDTO;
+          CODELicenseSummaryDTO codeLicenseSummaryDTO = (CODELicenseSummaryDTO) summaryDTO;
+          if (current < codeModuleLicenseDTO.getExpiryTime() && codeModuleLicenseDTO.getNumberOfDevelopers() != null) {
+            codeLicenseSummaryDTO.setNumberOfDevelopers(ModuleLicenseUtils.computeAdd(
+                codeLicenseSummaryDTO.getNumberOfDevelopers(), codeModuleLicenseDTO.getNumberOfDevelopers()));
           }
         };
         break;

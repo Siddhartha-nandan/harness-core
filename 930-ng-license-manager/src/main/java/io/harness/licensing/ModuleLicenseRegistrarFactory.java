@@ -14,6 +14,7 @@ import io.harness.licensing.interfaces.clients.local.CELocalClient;
 import io.harness.licensing.interfaces.clients.local.CETLocalClient;
 import io.harness.licensing.interfaces.clients.local.CFLocalClient;
 import io.harness.licensing.interfaces.clients.local.CILocalClient;
+import io.harness.licensing.interfaces.clients.local.CODELocalClient;
 import io.harness.licensing.interfaces.clients.local.ChaosLocalClient;
 import io.harness.licensing.interfaces.clients.local.IACMLocalClient;
 import io.harness.licensing.interfaces.clients.local.IDPLocalClient;
@@ -26,6 +27,7 @@ import io.harness.licensing.mappers.modules.CELicenseObjectMapper;
 import io.harness.licensing.mappers.modules.CETLicenseObjectMapper;
 import io.harness.licensing.mappers.modules.CFLicenseObjectMapper;
 import io.harness.licensing.mappers.modules.CILicenseObjectMapper;
+import io.harness.licensing.mappers.modules.CODELicenseObjectMapper;
 import io.harness.licensing.mappers.modules.ChaosLicenseObjectMapper;
 import io.harness.licensing.mappers.modules.IACMLicenseObjectMapper;
 import io.harness.licensing.mappers.modules.IDPLicenseObjectMapper;
@@ -36,6 +38,7 @@ import io.harness.licensing.mappers.modules.STOLicenseObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import org.codehaus.janino.Mod;
 
 public class ModuleLicenseRegistrarFactory {
   private static Map<ModuleType, ModuleLicenseRegistrar> registrar = new HashMap<>();
@@ -67,6 +70,8 @@ public class ModuleLicenseRegistrarFactory {
         ModuleType.SEI, new ModuleLicenseRegistrar(ModuleType.SEI, SEILicenseObjectMapper.class, SEILocalClient.class));
     registrar.put(
         ModuleType.IDP, new ModuleLicenseRegistrar(ModuleType.IDP, IDPLicenseObjectMapper.class, IDPLocalClient.class));
+    registrar.put(ModuleType.CODE,
+        new ModuleLicenseRegistrar(ModuleType.CODE, CODELicenseObjectMapper.class, CODELocalClient.class));
   }
 
   public static Class<? extends LicenseObjectMapper> getLicenseObjectMapper(ModuleType moduleType) {
