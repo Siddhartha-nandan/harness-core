@@ -181,8 +181,7 @@ public class ProjectServiceImpl implements ProjectService {
 
   @Override
   @FeatureRestrictionCheck(MULTIPLE_PROJECTS)
-  public Project create(
-      @AccountIdentifier String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier, ProjectDTO projectDTO) {
+  public Project create(@AccountIdentifier String accountIdentifier, ScopeInfo scopeInfo, ProjectDTO projectDTO) {
     verifyValuesNotChanged(
         Lists.newArrayList(Pair.of(scopeInfo.getOrgIdentifier(), projectDTO.getOrgIdentifier())), true);
     Project project = toProject(projectDTO);
@@ -201,8 +200,10 @@ public class ProjectServiceImpl implements ProjectService {
         return savedProject;
       }));
       setupProject(Scope.of(accountIdentifier, scopeInfo.getOrgIdentifier(), projectDTO.getIdentifier()));
-      log.info(String.format("Project with identifier [%s] and orgIdentifier [%s] was successfully created",
-          project.getIdentifier(), projectDTO.getOrgIdentifier()));
+      log.info(String.format(
+          "Project with identifier [%s], uniqueId [%s], orgIdentifier [%s] and Scope [%s] was successfully created",
+          project.getIdentifier(), createdProject.getUniqueId(), projectDTO.getOrgIdentifier(),
+          scopeInfo.getUniqueId()));
       instrumentationHelper.sendProjectCreateEvent(createdProject, accountIdentifier);
       return createdProject;
     } catch (DuplicateKeyException ex) {

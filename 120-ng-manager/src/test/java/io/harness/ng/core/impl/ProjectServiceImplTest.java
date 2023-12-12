@@ -189,7 +189,7 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
 
-    projectService.create(accountIdentifier, scopeInfo, orgIdentifier, projectDTO);
+    projectService.create(accountIdentifier, scopeInfo, projectDTO);
 
     ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
 
@@ -242,7 +242,7 @@ public class ProjectServiceImplTest extends CategoryTest {
                               .uniqueId(orgUniqueIdentifier)
                               .build();
 
-    projectService.create(accountIdentifier, scopeInfo, orgIdentifier, projectDTO);
+    projectService.create(accountIdentifier, scopeInfo, projectDTO);
   }
 
   @Test

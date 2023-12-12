@@ -123,12 +123,12 @@ public class OrgProjectApiImplTest extends CategoryTest {
                               .uniqueId(orgUniqueId)
                               .build();
     when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
-    when(projectService.create(eq(account), any(), eq(org), eq(projectDTO))).thenReturn(project);
+    when(projectService.create(eq(account), any(), eq(projectDTO))).thenReturn(project);
 
     Response response = orgProjectApi.createOrgScopedProject(request, org, account);
 
     ArgumentCaptor<ScopeInfo> captor = ArgumentCaptor.forClass(ScopeInfo.class);
-    verify(projectService, times(1)).create(eq(account), captor.capture(), eq(org), eq(projectDTO));
+    verify(projectService, times(1)).create(eq(account), captor.capture(), eq(projectDTO));
     ScopeInfo actualScopeInfo = captor.getValue();
     assertEquals(scopeInfo.getScopeType(), actualScopeInfo.getScopeType());
     assertEquals(scopeInfo.getAccountIdentifier(), actualScopeInfo.getAccountIdentifier());

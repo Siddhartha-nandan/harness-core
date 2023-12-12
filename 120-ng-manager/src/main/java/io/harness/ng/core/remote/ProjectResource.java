@@ -153,8 +153,7 @@ public class ProjectResource {
           DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier,
       @RequestBody(required = true, description = "Details of the Project to create") @NotNull
       @Valid ProjectRequest projectDTO, @Context ScopeInfo scopeInfo) {
-    Project createdProject =
-        projectService.create(accountIdentifier, scopeInfo, orgIdentifier, projectDTO.getProject());
+    Project createdProject = projectService.create(accountIdentifier, scopeInfo, projectDTO.getProject());
     return ResponseDTO.newResponse(createdProject.getVersion().toString(),
         ProjectMapper.toProjectResponseBuilder(createdProject)
             .isFavorite(projectService.isFavorite(createdProject, userHelperService.getUserId()))

@@ -13,15 +13,12 @@ import static io.harness.remote.client.CGRestUtils.getResponse;
 
 import io.harness.account.AccountClient;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.beans.ScopeInfo;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
-import io.harness.ng.core.services.ScopeInfoService;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import java.util.Optional;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,7 +30,6 @@ public class AccountOrgProjectValidator {
   private final OrganizationService organizationService;
   private final ProjectService projectService;
   private final AccountClient accountClient;
-  private final ScopeInfoService scopeResolverService;
 
   @DefaultOrganization
   public boolean isPresent(
@@ -50,8 +46,7 @@ public class AccountOrgProjectValidator {
     } else if (isEmpty(projectIdentifier)) {
       return organizationService.get(accountIdentifier, orgIdentifier).isPresent();
     } else {
-      Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
-      return projectService.get(accountIdentifier, scopeInfo.orElseThrow(), projectIdentifier).isPresent();
+      return projectService.get(accountIdentifier, orgIdentifier, projectIdentifier).isPresent();
     }
   }
 }

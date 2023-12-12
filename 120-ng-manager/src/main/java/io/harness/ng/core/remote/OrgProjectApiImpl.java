@@ -108,8 +108,8 @@ public class OrgProjectApiImpl implements OrgProjectApi {
 
   private Response createProject(CreateProjectRequest createProjectRequest, String account, String org) {
     Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
-    Project createdProject = projectService.create(
-        account, scopeInfo.orElseThrow(), org, projectApiUtils.getProjectDto(createProjectRequest));
+    Project createdProject =
+        projectService.create(account, scopeInfo.orElseThrow(), projectApiUtils.getProjectDto(createProjectRequest));
     ProjectResponse projectResponse = projectApiUtils.getProjectResponse(createdProject);
 
     return Response.status(Response.Status.CREATED)

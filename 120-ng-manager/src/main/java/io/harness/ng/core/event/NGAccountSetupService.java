@@ -197,8 +197,7 @@ public class NGAccountSetupService {
     ProjectDTO createProjectDTO = ProjectDTO.builder().build();
     createProjectDTO.setIdentifier(DEFAULT_PROJECT_IDENTIFIER);
     createProjectDTO.setName(DEFAULT_PROJECT_NAME);
-    Project defaultProject =
-        projectService.create(accountIdentifier, scopeInfo.orElseThrow(), organizationIdentifier, createProjectDTO);
+    Project defaultProject = projectService.create(accountIdentifier, scopeInfo.orElseThrow(), createProjectDTO);
     log.info(String.format("[NGAccountSetupService]: Default project created for account %s", accountIdentifier));
     return defaultProject;
   }

@@ -103,7 +103,7 @@ public class ProjectResourceTest extends CategoryTest {
     project.setVersion((long) 0);
     project.setParentUniqueId(parentUniqueId);
 
-    when(projectService.create(eq(accountIdentifier), any(), eq(orgIdentifier), eq(projectDTO))).thenReturn(project);
+    when(projectService.create(eq(accountIdentifier), any(), eq(projectDTO))).thenReturn(project);
     when(favoritesService.getFavorites(anyString(), any(), any(), anyString(), anyString()))
         .thenReturn(Collections.emptyList());
 
@@ -118,7 +118,7 @@ public class ProjectResourceTest extends CategoryTest {
         projectResource.create(accountIdentifier, orgIdentifier, projectRequestWrapper, scopeInfo);
 
     ArgumentCaptor<ScopeInfo> captor = ArgumentCaptor.forClass(ScopeInfo.class);
-    verify(projectService, times(1)).create(eq(accountIdentifier), captor.capture(), eq(orgIdentifier), eq(projectDTO));
+    verify(projectService, times(1)).create(eq(accountIdentifier), captor.capture(), eq(projectDTO));
     ScopeInfo actualScopeInfo = captor.getValue();
     assertEquals(scopeInfo.getScopeType(), actualScopeInfo.getScopeType());
     assertEquals(scopeInfo.getAccountIdentifier(), actualScopeInfo.getAccountIdentifier());
