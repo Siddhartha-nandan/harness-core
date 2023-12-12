@@ -19,19 +19,19 @@ import io.harness.pms.sdk.core.pipeline.filters.FilterCreationResponseMerger;
 public class IdpFilterCreationResponseMerger implements FilterCreationResponseMerger {
   @Override
   public void mergeFilterCreationResponse(FilterCreationResponse finalResponse, FilterCreationResponse current) {
-    if (current == null || current.getPipelineFilter() == null) {
-      return;
-    }
-
-    if (finalResponse.getPipelineFilter() == null) {
-      finalResponse.setPipelineFilter(IDPFilter.builder().build());
-    }
-
-    IDPFilter finalIDPFilter = (IDPFilter) finalResponse.getPipelineFilter();
-    IDPFilter currentCIFilter = (IDPFilter) current.getPipelineFilter();
-
-    if (isNotEmpty(currentCIFilter.getRepoNames())) {
-      finalIDPFilter.addRepoNames(currentCIFilter.getRepoNames());
-    }
+//    if (current == null || current.getPipelineFilter() == null) {
+//      return;
+//    }
+//
+//    if (finalResponse.getPipelineFilter() == null) {
+//      finalResponse.setPipelineFilter(IDPFilter.builder().build());
+//    }
+//
+//    IDPFilter finalIDPFilter = (IDPFilter) finalResponse.getPipelineFilter();
+//    IDPFilter currentCIFilter = (IDPFilter) current.getPipelineFilter();
+//
+//    if (isNotEmpty(currentCIFilter.getRepoNames())) {
+//      finalIDPFilter.addRepoNames(currentCIFilter.getRepoNames());
+//    }
   }
 }

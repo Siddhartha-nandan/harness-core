@@ -46,13 +46,13 @@ public class IdpPipelineServiceInfoProvider implements PipelineServiceInfoProvid
   public List<PartialPlanCreator<?>> getPlanCreators() {
     // Needs to be modified based on steps
     List<PartialPlanCreator<?>> planCreators = new LinkedList<>();
-    planCreators.add(new IDPStagePlanCreator());
-    planCreators.add(new IDPStepPlanCreator());
-    planCreators.add(new IdpCookieCutterStepPlanCreator());
-    planCreators.add(new IdpCreateRepoStepPlanCreator());
-    planCreators.add(new IdpDirectPushStepPlanCreator());
-    planCreators.add(new InitializeStepPlanCreator());
-    planCreators.add(new IdpRegisterCatalogPlanCreator());
+//    planCreators.add(new IDPStagePlanCreator());
+//    planCreators.add(new IDPStepPlanCreator());
+//    planCreators.add(new IdpCookieCutterStepPlanCreator());
+//    planCreators.add(new IdpCreateRepoStepPlanCreator());
+//    planCreators.add(new IdpDirectPushStepPlanCreator());
+//    planCreators.add(new InitializeStepPlanCreator());
+//    planCreators.add(new IdpRegisterCatalogPlanCreator());
     injectorUtils.injectMembers(planCreators);
     return planCreators;
   }
@@ -61,8 +61,8 @@ public class IdpPipelineServiceInfoProvider implements PipelineServiceInfoProvid
   public List<FilterJsonCreator> getFilterJsonCreators() {
     // Needs to be modified based on steps
     List<FilterJsonCreator> filterJsonCreators = new ArrayList<>();
-    filterJsonCreators.add(new IDPStageFilterCreator());
-    filterJsonCreators.add(new IDPStepFilterJsonCreator());
+//    filterJsonCreators.add(new IDPStageFilterCreator());
+//    filterJsonCreators.add(new IDPStepFilterJsonCreator());
     injectorUtils.injectMembers(filterJsonCreators);
     return filterJsonCreators;
   }
@@ -71,9 +71,9 @@ public class IdpPipelineServiceInfoProvider implements PipelineServiceInfoProvid
   public List<VariableCreator> getVariableCreators() {
     // Needs to be modified based on steps
     List<VariableCreator> variableCreators = new ArrayList<>();
-    variableCreators.add(new IDPStageVariableCreator());
-    variableCreators.add(new IDPStepVariableCreator());
-    variableCreators.add(new EmptyVariableCreator(STEP, Set.of(LITE_ENGINE_TASK)));
+//    variableCreators.add(new IDPStageVariableCreator());
+//    variableCreators.add(new IDPStepVariableCreator());
+//    variableCreators.add(new EmptyVariableCreator(STEP, Set.of(LITE_ENGINE_TASK)));
 
     return variableCreators;
   }
@@ -81,62 +81,62 @@ public class IdpPipelineServiceInfoProvider implements PipelineServiceInfoProvid
   @Override
   public List<StepInfo> getStepInfo() {
     // Needs to be modified based on steps
-    StepInfo runStepInfo = StepInfo.newBuilder()
-                               .setName("Run")
-                               .setType(StepSpecTypeConstants.RUN)
-                               .setStepMetaData(StepMetaData.newBuilder().addFolderPaths("Miscellaneous").build())
-                               .build();
-
-    StepInfo pluginStepInfo = StepInfo.newBuilder()
-                                  .setName("Plugin")
-                                  .setType(StepSpecTypeConstants.PLUGIN)
-                                  .setStepMetaData(StepMetaData.newBuilder().addFolderPaths("Miscellaneous").build())
-                                  .build();
-
-    StepInfo gitCloneStepInfo =
-        StepInfo.newBuilder()
-            .setName("Git Clone")
-            .setType(StepSpecTypeConstants.GIT_CLONE)
-            .setStepMetaData(StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Miscellaneous").build())
-            .build();
-    StepInfo cookicutterStepInfo =
-        StepInfo.newBuilder()
-            .setName("Cookiecutter")
-            .setType(Constants.COOKIECUTTER)
-            .setStepMetaData(StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Code Generators").build())
-            .build();
-
-    StepInfo createRepoStepInfo =
-        StepInfo.newBuilder()
-            .setName("Create Repo")
-            .setType(Constants.CREATE_REPO)
-            .setStepMetaData(
-                StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Git Repository Setup").build())
-            .build();
-
-    StepInfo codePushStepInfo =
-        StepInfo.newBuilder()
-            .setName("Direct Push")
-            .setType(Constants.DIRECT_PUSH)
-            .setStepMetaData(
-                StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Git Repository Setup").build())
-            .build();
-
-    StepInfo registerCatalogStepInfo =
-        StepInfo.newBuilder()
-            .setName("Register Catalog")
-            .setType(Constants.REGISTER_CATALOG)
-            .setStepMetaData(StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Close the loop").build())
-            .build();
+//    StepInfo runStepInfo = StepInfo.newBuilder()
+//                               .setName("Run")
+//                               .setType(StepSpecTypeConstants.RUN)
+//                               .setStepMetaData(StepMetaData.newBuilder().addFolderPaths("Miscellaneous").build())
+//                               .build();
+//
+//    StepInfo pluginStepInfo = StepInfo.newBuilder()
+//                                  .setName("Plugin")
+//                                  .setType(StepSpecTypeConstants.PLUGIN)
+//                                  .setStepMetaData(StepMetaData.newBuilder().addFolderPaths("Miscellaneous").build())
+//                                  .build();
+//
+//    StepInfo gitCloneStepInfo =
+//        StepInfo.newBuilder()
+//            .setName("Git Clone")
+//            .setType(StepSpecTypeConstants.GIT_CLONE)
+//            .setStepMetaData(StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Miscellaneous").build())
+//            .build();
+//    StepInfo cookicutterStepInfo =
+//        StepInfo.newBuilder()
+//            .setName("Cookiecutter")
+//            .setType(Constants.COOKIECUTTER)
+//            .setStepMetaData(StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Code Generators").build())
+//            .build();
+//
+//    StepInfo createRepoStepInfo =
+//        StepInfo.newBuilder()
+//            .setName("Create Repo")
+//            .setType(Constants.CREATE_REPO)
+//            .setStepMetaData(
+//                StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Git Repository Setup").build())
+//            .build();
+//
+//    StepInfo codePushStepInfo =
+//        StepInfo.newBuilder()
+//            .setName("Direct Push")
+//            .setType(Constants.DIRECT_PUSH)
+//            .setStepMetaData(
+//                StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Git Repository Setup").build())
+//            .build();
+//
+//    StepInfo registerCatalogStepInfo =
+//        StepInfo.newBuilder()
+//            .setName("Register Catalog")
+//            .setType(Constants.REGISTER_CATALOG)
+//            .setStepMetaData(StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Close the loop").build())
+//            .build();
 
     ArrayList<StepInfo> stepInfos = new ArrayList<>();
-    stepInfos.add(runStepInfo);
-    stepInfos.add(pluginStepInfo);
-    stepInfos.add(gitCloneStepInfo);
-    stepInfos.add(cookicutterStepInfo);
-    stepInfos.add(createRepoStepInfo);
-    stepInfos.add(codePushStepInfo);
-    stepInfos.add(registerCatalogStepInfo);
+//    stepInfos.add(runStepInfo);
+//    stepInfos.add(pluginStepInfo);
+//    stepInfos.add(gitCloneStepInfo);
+//    stepInfos.add(cookicutterStepInfo);
+//    stepInfos.add(createRepoStepInfo);
+//    stepInfos.add(codePushStepInfo);
+//    stepInfos.add(registerCatalogStepInfo);
     return stepInfos;
   }
 }
