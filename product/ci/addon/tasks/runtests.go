@@ -102,7 +102,7 @@ type runTestsTask struct {
 	testSplitStrategy    string
 	parallelizeTests     bool
 	testGlobs            string
-	outputs 		  	 []*pb.OutputVariable
+	outputs              []*pb.OutputVariable
 }
 
 func NewRunTestsTask(step *pb.UnitStep, tmpFilePath string, log *zap.SugaredLogger,
@@ -152,7 +152,7 @@ func NewRunTestsTask(step *pb.UnitStep, tmpFilePath string, log *zap.SugaredLogg
 		testSplitStrategy:    testSplitStrategy,
 		parallelizeTests:     r.GetParallelizeTests(),
 		testGlobs:            r.GetTestGlobs(),
-		outputs: 		   	  r.GetOutputs(),
+		outputs:              r.GetOutputs(),
 	}
 }
 
@@ -702,9 +702,9 @@ func (r *runTestsTask) execute(ctx context.Context) ([]*pb.OutputVariable, error
 		for _, output := range r.outputs {
 			if _, ok := outputVars[output.Key]; ok {
 				stepOutput := &pb.OutputVariable{
-					Key : output.Key,
-					Value : outputVars[output.Key],
-					Type : output.Type,
+					Key:   output.Key,
+					Value: outputVars[output.Key],
+					Type:  output.Type,
 				}
 				stepOutputs = append(stepOutputs, stepOutput)
 			}

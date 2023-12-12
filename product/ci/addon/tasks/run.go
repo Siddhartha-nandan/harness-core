@@ -60,8 +60,7 @@ type runTask struct {
 	detach            bool
 	image             string
 	entrypoint        []string
-	outputs 		  []*pb.OutputVariable
-
+	outputs           []*pb.OutputVariable
 }
 
 // NewRunTask creates a run step executor
@@ -100,7 +99,7 @@ func NewRunTask(step *pb.UnitStep, prevStepOutputs map[string]*pb.StepOutput, tm
 		detach:            r.GetDetach(),
 		image:             r.GetImage(),
 		entrypoint:        r.GetEntrypoint(),
-		outputs: 		   r.GetOutputs(),
+		outputs:           r.GetOutputs(),
 	}
 }
 
@@ -184,9 +183,9 @@ func (r *runTask) execute(ctx context.Context, retryCount int32) ([]*pb.OutputVa
 		for _, output := range r.outputs {
 			if _, ok := outputVars[output.Key]; ok {
 				stepOutput := &pb.OutputVariable{
-					Key : output.Key,
-					Value : outputVars[output.Key],
-					Type : output.Type,
+					Key:   output.Key,
+					Value: outputVars[output.Key],
+					Type:  output.Type,
 				}
 				stepOutputs = append(stepOutputs, stepOutput)
 			}
