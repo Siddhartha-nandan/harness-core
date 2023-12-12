@@ -30,7 +30,12 @@ import io.harness.category.element.UnitTests;
 import io.harness.connector.ConnectorDTO;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.connector.ConnectorResponseDTO;
+import io.harness.connector.entities.embedded.vaultconnector.VaultConnector.VaultConnectorKeys;
+import io.harness.connector.helper.CustomSecretManagerHelper;
+import io.harness.connector.impl.ConnectorErrorMessagesHelper;
+import io.harness.connector.impl.SecretRefInputValidationHelper;
 import io.harness.connector.services.ConnectorService;
+import io.harness.connector.services.NGConnectorSecretManagerService;
 import io.harness.connector.services.NGVaultService;
 import io.harness.delegate.beans.connector.ConnectorType;
 import io.harness.delegate.beans.connector.customsecretmanager.CustomSecretManagerConnectorDTO;
@@ -41,6 +46,7 @@ import io.harness.enforcement.client.services.EnforcementClientService;
 import io.harness.exception.DuplicateFieldException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.api.NGSecretManagerService;
+import io.harness.ng.core.api.SecretCrudService;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.repositories.ConnectorRepository;
@@ -84,6 +90,11 @@ public class SecretManagerConnectorServiceImplTest extends CategoryTest {
   private NGVaultService ngVaultService;
   private EnforcementClientService enforcementClientService;
   private TemplateResourceClient templateResourceClient;
+  private ConnectorErrorMessagesHelper connectorErrorMessagesHelper;
+  private CustomSecretManagerHelper customSecretManagerHelper;
+  private SecretCrudService ngSecretService;
+  private SecretRefInputValidationHelper secretRefInputValidationHelper;
+  private NGConnectorSecretManagerService ngConnectorSecretManagerService;
 
   @Before
   public void setup() {
@@ -93,8 +104,15 @@ public class SecretManagerConnectorServiceImplTest extends CategoryTest {
     ngVaultService = mock(NGVaultService.class);
     enforcementClientService = mock(EnforcementClientService.class);
     templateResourceClient = mock(TemplateResourceClient.class);
-    secretManagerConnectorService = new SecretManagerConnectorServiceImpl(
-        defaultConnectorService, connectorRepository, ngVaultService, enforcementClientService, templateResourceClient);
+    connectorErrorMessagesHelper = mock(ConnectorErrorMessagesHelper.class);
+    customSecretManagerHelper = mock(CustomSecretManagerHelper.class);
+    ngSecretService = mock(SecretCrudService.class);
+    secretRefInputValidationHelper = mock(SecretRefInputValidationHelper.class);
+    ngConnectorSecretManagerService = mock(NGConnectorSecretManagerService.class);
+
+    secretManagerConnectorService = new SecretManagerConnectorServiceImpl(defaultConnectorService, connectorRepository,
+        ngVaultService, enforcementClientService, templateResourceClient, connectorErrorMessagesHelper,
+        customSecretManagerHelper, ngSecretService, secretRefInputValidationHelper, ngConnectorSecretManagerService);
   }
 
   private InvalidRequestException getInvalidRequestException() {
