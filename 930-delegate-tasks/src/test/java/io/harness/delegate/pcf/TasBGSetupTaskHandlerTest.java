@@ -14,7 +14,9 @@ import static io.harness.delegate.pcf.TasTestConstants.VARS_YAML;
 import static io.harness.delegate.pcf.TasTestConstants.VARS_YAML_1;
 import static io.harness.eraro.ErrorCode.INVALID_INFRA_STATE;
 import static io.harness.pcf.model.PcfConstants.PCF_ARTIFACT_DOWNLOAD_DIR_PATH;
-import static io.harness.rule.OwnerRule.*;
+import static io.harness.rule.OwnerRule.ANIL;
+import static io.harness.rule.OwnerRule.SOURABH;
+import static io.harness.rule.OwnerRule.VLICA;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -281,12 +283,12 @@ public class TasBGSetupTaskHandlerTest extends CategoryTest {
   @Owner(developers = ANIL)
   @Category(UnitTests.class)
   public void testExecuteWithRefreshToken() throws Exception {
-    String refreshToken = "eyJhbGciOiJSUzI1NiIsImprdSI6Imh0dHBzOi8vdWFhLnN5c3RlbS50YXMtcWEtc2V0dXAuY29";
+    String refreshTok = "dummyValue";
     CloudFoundryConfig foundryConfig = CloudFoundryConfig.builder()
                                            .endpointUrl(ENDPOINT_URL)
                                            .userName(USERNAME.toCharArray())
                                            .password(PASSWORD.toCharArray())
-                                           .refreshToken(refreshToken.toCharArray())
+                                           .refreshToken(refreshTok.toCharArray())
                                            .build();
 
     doReturn(foundryConfig).when(tasNgConfigMapper).mapTasConfigWithDecryption(any(), any());
@@ -346,7 +348,7 @@ public class TasBGSetupTaskHandlerTest extends CategoryTest {
     assertThat(cfRequestConfigArgumentCaptorValue.getUserName().equals(USERNAME)).isTrue();
     assertThat(cfRequestConfigArgumentCaptorValue.getPassword().equals(PASSWORD)).isTrue();
     assertThat(cfRequestConfigArgumentCaptorValue.getEndpointUrl().equals(ENDPOINT_URL)).isTrue();
-    assertThat(cfRequestConfigArgumentCaptorValue.getRefreshToken().equals(refreshToken)).isTrue();
+    assertThat(cfRequestConfigArgumentCaptorValue.getRefreshToken().equals(refreshTok)).isTrue();
   }
 
   @Test

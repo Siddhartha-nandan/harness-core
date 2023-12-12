@@ -85,7 +85,7 @@ public class CloudFoundryClientProviderTest extends CategoryTest {
     String userName = "qaSanity";
     String password = "harness@123";
     String endPointUrl = "api.system.tas-qa-setup.com";
-    String refreshToken = "eyJhbGciOiJSUzI1NiIsImprdSI6Imh0dHBzOi8vdWFhLnN5c3RlbS50YXMtcWEtc2V0dXAuY29";
+    String refreshTok = "dummyValue";
 
     CfRequestConfig cfRequestConfig = CfRequestConfig.builder()
                                           .timeOutIntervalInMins(1)
@@ -94,7 +94,7 @@ public class CloudFoundryClientProviderTest extends CategoryTest {
                                           .build();
     cfRequestConfig.setUserName(userName);
     cfRequestConfig.setPassword(password);
-    cfRequestConfig.setRefreshToken(refreshToken);
+    cfRequestConfig.setRefreshToken(refreshTok);
     cfRequestConfig.setEndpointUrl(endPointUrl);
 
     DefaultConnectionContext connectionContext = DefaultConnectionContext.builder()
@@ -113,7 +113,7 @@ public class CloudFoundryClientProviderTest extends CategoryTest {
     assertThat(tokenProvider instanceof RefreshTokenGrantTokenProvider).isTrue();
 
     RefreshTokenGrantTokenProvider refreshTokenGrantTokenProvider = (RefreshTokenGrantTokenProvider) tokenProvider;
-    assertThat(refreshTokenGrantTokenProvider.getToken().equals(refreshToken)).isTrue();
+    assertThat(refreshTokenGrantTokenProvider.getToken().equals(refreshTok)).isTrue();
 
     assertThat(reactorCloudFoundryClient.getConnectionContext() instanceof DefaultConnectionContext).isTrue();
     DefaultConnectionContext foundryClientConnectionContext =
