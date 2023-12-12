@@ -334,8 +334,7 @@ public class PipelineResourceTest extends CategoryTest {
   public void testGetPipeline() {
     doReturn(PipelineGetResult.builder().pipelineEntity(Optional.of(entityWithVersion)).build())
         .when(pmsPipelineService)
-        .getAndValidatePipeline(
-            ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, false, false);
+        .validatePipeline(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, null);
     TemplateMergeResponseDTO templateMergeResponseDTO =
         TemplateMergeResponseDTO.builder().mergedPipelineYaml(yaml).build();
     doReturn(templateMergeResponseDTO).when(pipelineTemplateHelper).resolveTemplateRefsInPipeline(any(), any());
@@ -357,8 +356,7 @@ public class PipelineResourceTest extends CategoryTest {
                  .asyncValidationUUID("asyncUuid")
                  .build())
         .when(pmsPipelineService)
-        .getAndValidatePipeline(
-            ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, false, true);
+        .validatePipeline(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, null);
     ResponseDTO<PMSPipelineResponseDTO> responseDTO = pipelineResource.getPipelineByIdentifier(
         ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, null, true, false, true, BOOLEAN_FALSE_VALUE);
     assertThat(responseDTO.getData().getVersion()).isEqualTo(1L);
@@ -386,8 +384,7 @@ public class PipelineResourceTest extends CategoryTest {
                                                                  .build();
     doReturn(PipelineGetResult.builder().pipelineEntity(Optional.of(pipelineEntityCreatedInNonDefaultBranch)).build())
         .when(pmsPipelineService)
-        .getAndValidatePipeline(
-            ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, true, false, false);
+        .validatePipeline(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, null);
     TemplateMergeResponseDTO templateMergeResponseDTO =
         TemplateMergeResponseDTO.builder().mergedPipelineYaml(yaml).build();
     doReturn(templateMergeResponseDTO).when(pipelineTemplateHelper).resolveTemplateRefsInPipeline(any(), any());
@@ -419,8 +416,7 @@ public class PipelineResourceTest extends CategoryTest {
 
     doReturn(PipelineGetResult.builder().pipelineEntity(Optional.of(pipelineEntityCreatedInNonDefaultBranch)).build())
         .when(pmsPipelineService)
-        .getAndValidatePipeline(
-            ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, true, false);
+        .validatePipeline(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, null);
     TemplateMergeResponseDTO templateMergeResponseDTO =
         TemplateMergeResponseDTO.builder().mergedPipelineYaml(yaml).build();
     doReturn(templateMergeResponseDTO).when(pipelineTemplateHelper).resolveTemplateRefsInPipeline(any(), any());
@@ -439,8 +435,7 @@ public class PipelineResourceTest extends CategoryTest {
   public void testGetPipelineWithUnresolvedTemplates() {
     doReturn(PipelineGetResult.builder().pipelineEntity(Optional.of(entityWithVersion)).build())
         .when(pmsPipelineService)
-        .getAndValidatePipeline(
-            ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, false, false);
+        .validatePipeline(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, null);
     doThrow(new InvalidRequestException("random exception"))
         .when(pipelineTemplateHelper)
         .resolveTemplateRefsInPipeline(any(), any());
@@ -463,8 +458,7 @@ public class PipelineResourceTest extends CategoryTest {
             .build();
     doThrow(new InvalidYamlException("errorMsg", null, errorWrapper, yaml))
         .when(pmsPipelineService)
-        .getAndValidatePipeline(
-            ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, false, false);
+        .validatePipeline(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, null);
 
     ResponseDTO<PMSPipelineResponseDTO> responseDTO = pipelineResource.getPipelineByIdentifier(ACCOUNT_ID,
         ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, null, true, false, false, BOOLEAN_FALSE_VALUE);
@@ -483,8 +477,7 @@ public class PipelineResourceTest extends CategoryTest {
         GovernanceMetadata.newBuilder().setDeny(true).setAccountId(ACCOUNT_ID).build();
     doThrow(new PolicyEvaluationFailureException("errorMsg", governanceMetadata, yaml))
         .when(pmsPipelineService)
-        .getAndValidatePipeline(
-            ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, false, false);
+        .validatePipeline(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, null);
 
     ResponseDTO<PMSPipelineResponseDTO> responseDTO = pipelineResource.getPipelineByIdentifier(ACCOUNT_ID,
         ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, null, true, false, false, BOOLEAN_FALSE_VALUE);
@@ -503,8 +496,7 @@ public class PipelineResourceTest extends CategoryTest {
 
     doReturn(PipelineGetResult.builder().pipelineEntity(Optional.empty()).build())
         .when(pmsPipelineService)
-        .getAndValidatePipeline(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, incorrectPipelineIdentifier, false, false,
-            false, false, false);
+        .validatePipeline(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, false, false, false, null);
 
     assertThatThrownBy(()
                            -> pipelineResource.getPipelineByIdentifier(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER,
