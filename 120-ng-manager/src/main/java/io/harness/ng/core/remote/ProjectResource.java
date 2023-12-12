@@ -15,7 +15,10 @@ import static io.harness.NGConstants.DEFAULT_ORG_IDENTIFIER;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
-import static io.harness.ng.accesscontrol.PlatformPermissions.*;
+import static io.harness.ng.accesscontrol.PlatformPermissions.CREATE_PROJECT_PERMISSION;
+import static io.harness.ng.accesscontrol.PlatformPermissions.DELETE_PROJECT_PERMISSION;
+import static io.harness.ng.accesscontrol.PlatformPermissions.EDIT_PROJECT_PERMISSION;
+import static io.harness.ng.accesscontrol.PlatformPermissions.VIEW_PROJECT_PERMISSION;
 import static io.harness.ng.accesscontrol.PlatformResourceTypes.ORGANIZATION;
 import static io.harness.ng.accesscontrol.PlatformResourceTypes.PROJECT;
 import static io.harness.ng.core.remote.ProjectMapper.toResponseWithFavouritesInfo;
@@ -43,10 +46,17 @@ import io.harness.exception.EntityNotFoundException;
 import io.harness.favorites.ResourceType;
 import io.harness.favorites.entities.Favorite;
 import io.harness.favorites.services.FavoritesService;
-import io.harness.ng.accesscontrol.PlatformResourceTypes;
 import io.harness.ng.beans.PageRequest;
 import io.harness.ng.beans.PageResponse;
-import io.harness.ng.core.dto.*;
+import io.harness.ng.core.dto.ActiveProjectsCountDTO;
+import io.harness.ng.core.dto.ErrorDTO;
+import io.harness.ng.core.dto.FailureDTO;
+import io.harness.ng.core.dto.MoveProjectRequest;
+import io.harness.ng.core.dto.ProjectDTO;
+import io.harness.ng.core.dto.ProjectFilterDTO;
+import io.harness.ng.core.dto.ProjectRequest;
+import io.harness.ng.core.dto.ProjectResponse;
+import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.entities.Project.ProjectKeys;
 import io.harness.ng.core.services.OrganizationService;
@@ -314,8 +324,8 @@ public class ProjectResource {
 
   @PUT
   @Path("{identifier}/move")
-//  @InternalApi
-//  @Hidden()
+  //  @InternalApi
+  //  @Hidden()
   @ApiOperation(value = "Move a Project across orgs", nickname = "moveProject")
   public ResponseDTO<Boolean> moveProject(
       @Parameter(description = PROJECT_PARAM_MESSAGE) @NotNull @PathParam(
