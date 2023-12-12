@@ -324,8 +324,8 @@ public class ProjectResource {
 
   @PUT
   @Path("{identifier}/move")
-  //  @InternalApi
-  //  @Hidden()
+  @InternalApi
+  @Hidden()
   @ApiOperation(value = "Move a Project across orgs", nickname = "moveProject")
   public ResponseDTO<Boolean> moveProject(
       @Parameter(description = PROJECT_PARAM_MESSAGE) @NotNull @PathParam(
