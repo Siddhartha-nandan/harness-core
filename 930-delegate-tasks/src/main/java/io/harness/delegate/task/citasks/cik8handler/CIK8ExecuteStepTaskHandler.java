@@ -45,6 +45,9 @@ public class CIK8ExecuteStepTaskHandler implements CIExecuteStepTaskHandler {
   public static final String DELEGATE_NAMESPACE = "DELEGATE_NAMESPACE";
   private final Duration RETRY_SLEEP_DURATION = Duration.ofSeconds(2);
   private final int MAX_ATTEMPTS = 3;
+
+  private Integer ciGRPCDeadlineSecs = 30;
+  private boolean ciGRPCWaitForReady;
   @Inject
   @Getter(value = PACKAGE, onMethod = @__({ @VisibleForTesting }))
   private DelegateConfiguration delegateConfiguration;
@@ -98,6 +101,37 @@ public class CIK8ExecuteStepTaskHandler implements CIExecuteStepTaskHandler {
     log.info("target ip for step {} is {} with executionID {}", executeStepRequest.getStep().getId(), target,
         executeStepRequest.getExecutionId());
     ManagedChannelBuilder managedChannelBuilder = ManagedChannelBuilder.forTarget(target).usePlaintext();
+
+    String ciEnvVar = System.getenv("CI_GRPC_KEEP_ALIVE_TIME_SECS");
+    if (ciEnvVar != null) {
+      log.info("Setting CI_GRPC_KEEP_ALIVE_TIME_SECS with value {}", ciEnvVar);
+      managedChannelBuilder.keepAliveTime(Integer.valueOf(ciEnvVar), TimeUnit.SECONDS);
+    }
+
+    ciEnvVar = System.getenv("CI_GRPC_KEEP_ALIVE_TIMEOUT_SECS");
+    if (ciEnvVar != null) {
+      log.info("Setting CI_GRPC_KEEP_ALIVE_TIMEOUT_SECS with value {}", ciEnvVar);
+      managedChannelBuilder.keepAliveTimeout(Integer.valueOf(ciEnvVar), TimeUnit.SECONDS);
+    }
+
+    ciEnvVar = System.getenv("CI_GRPC_KEEP_ALIVE_WITHOUT_CALLS");
+    if (ciEnvVar != null) {
+      log.info("Setting CI_GRPC_KEEP_ALIVE_WITHOUT_CALLS with value {}", ciEnvVar);
+      managedChannelBuilder.keepAliveWithoutCalls(Boolean.parseBoolean(ciEnvVar));
+    }
+
+    ciEnvVar = System.getenv("CI_GRPC_DEADLINE_SECONDS");
+    if (ciEnvVar != null) {
+      log.info("Setting CI_GRPC_DEADLINE_SECONDS with value {}", ciEnvVar);
+      ciGRPCDeadlineSecs = Integer.valueOf(ciEnvVar);
+    }
+
+    ciEnvVar = System.getenv("CI_GRPC_WAIT_FOR_READY");
+    if (ciEnvVar != null) {
+      log.info("Setting CI_GRPC_WAIT_FOR_READY with value {}", ciEnvVar);
+      ciGRPCWaitForReady = Boolean.parseBoolean(ciEnvVar);
+    }
+
     if (!cik8ExecuteStepTaskParams.isLocal()) {
       managedChannelBuilder.proxyDetector(GrpcUtil.NOOP_PROXY_DETECTOR);
     }
@@ -112,7 +146,11 @@ public class CIK8ExecuteStepTaskHandler implements CIExecuteStepTaskHandler {
 
         return Failsafe.with(retryPolicy).get(() -> {
           LiteEngineGrpc.LiteEngineBlockingStub liteEngineBlockingStub = LiteEngineGrpc.newBlockingStub(channel);
-          liteEngineBlockingStub.withDeadlineAfter(30, TimeUnit.SECONDS).executeStep(finalExecuteStepRequest);
+          if (ciGRPCWaitForReady) {
+            liteEngineBlockingStub.withWaitForReady();
+          }
+          liteEngineBlockingStub.withDeadlineAfter(ciGRPCDeadlineSecs, TimeUnit.SECONDS)
+              .executeStep(finalExecuteStepRequest);
           return K8sTaskExecutionResponse.builder().commandExecutionStatus(CommandExecutionStatus.SUCCESS).build();
         });
 
