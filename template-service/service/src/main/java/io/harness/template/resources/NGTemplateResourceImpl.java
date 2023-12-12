@@ -569,4 +569,23 @@ public class NGTemplateResourceImpl implements NGTemplateResource {
             .build());
     return ResponseDTO.newResponse(TemplateUpdateGitMetadataResponse.builder().status(true).build());
   }
+
+  @Override
+  public ResponseDTO<TemplateResponseDTO> getTemplateByIdentifier(String accountId, String orgId, String projectId,
+      String templateIdentifier, String versionLabel, boolean deleted, GitEntityFindInfoDTO gitEntityBasicInfo,
+      boolean getTemplatesResolvedYaml, boolean loadFromFallbackBranch, String loadFromCache) {
+    ResponseDTO<TemplateResponseDTO> templateResponseDTO = get(accountId, orgId, projectId, templateIdentifier,
+        versionLabel, deleted, gitEntityBasicInfo, loadFromCache, loadFromFallbackBranch);
+    if (getTemplatesResolvedYaml && templateResponseDTO != null && templateResponseDTO.getData() != null) {
+      TemplateApplyRequestDTO templateApplyRequestDTO =
+          TemplateApplyRequestDTO.builder().originalEntityYaml(templateResponseDTO.getData().getYaml()).build();
+      TemplateMergeResponseDTO templateMergeResponseDTO = applyTemplatesV2(
+          accountId, orgId, projectId, gitEntityBasicInfo, templateApplyRequestDTO, loadFromCache, false)
+                                                              .getData();
+      if (templateMergeResponseDTO != null) {
+        templateResponseDTO.getData().setMergedYaml(templateMergeResponseDTO.getMergedPipelineYaml());
+      }
+    }
+    return templateResponseDTO;
+  }
 }
