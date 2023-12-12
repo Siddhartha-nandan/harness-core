@@ -133,4 +133,3 @@ public class Project implements PersistentEntity, NGAccountAccess, UniqueIdAware
   @Wither @Version Long version;
   @Builder.Default Boolean deleted = Boolean.FALSE;
 }
-
