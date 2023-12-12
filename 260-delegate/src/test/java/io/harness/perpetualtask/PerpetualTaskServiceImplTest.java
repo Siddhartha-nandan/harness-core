@@ -246,8 +246,8 @@ public class PerpetualTaskServiceImplTest extends WingsBaseTest {
     perpetualTaskRecord.setIntervalSeconds(intervalInMillis * 10);
     perpetualTaskRecordDao.save(perpetualTaskRecord);
 
-    long updatedRecords =
-        perpetualTaskService.updateTasksSchedule(accountId, PerpetualTaskType.K8S_WATCH, intervalInMillis);
+    long updatedRecords = perpetualTaskService.updateTasksSchedule(
+        accountId, PerpetualTaskType.K8S_WATCH, intervalInMillis, PerpetualTaskState.TASK_PAUSED);
 
     PerpetualTaskRecord record = perpetualTaskService.getTaskRecord(taskId);
 
@@ -274,8 +274,8 @@ public class PerpetualTaskServiceImplTest extends WingsBaseTest {
       perpetualTaskRecordDao.save(perpetualTaskRecord);
     }
 
-    long updatedRecords =
-        perpetualTaskService.updateTasksSchedule(ACCOUNT_ID, PerpetualTaskType.K8S_WATCH, intervalInMillis);
+    long updatedRecords = perpetualTaskService.updateTasksSchedule(
+        ACCOUNT_ID, PerpetualTaskType.K8S_WATCH, intervalInMillis, PerpetualTaskState.TASK_PAUSED);
 
     assertThat(updatedRecords).isEqualTo(10L);
   }
@@ -309,8 +309,8 @@ public class PerpetualTaskServiceImplTest extends WingsBaseTest {
       perpetualTaskRecordDao.save(perpetualTaskRecord);
     }
 
-    long updatedRecords =
-        perpetualTaskService.updateTasksSchedule(ACCOUNT_ID, PerpetualTaskType.K8S_WATCH, intervalInMillis);
+    long updatedRecords = perpetualTaskService.updateTasksSchedule(
+        ACCOUNT_ID, PerpetualTaskType.K8S_WATCH, intervalInMillis, PerpetualTaskState.TASK_PAUSED);
 
     assertThat(updatedRecords).isEqualTo(10L);
   }
@@ -345,8 +345,8 @@ public class PerpetualTaskServiceImplTest extends WingsBaseTest {
       perpetualTaskRecordDao.save(perpetualTaskRecord);
     }
 
-    long updatedRecords =
-        perpetualTaskService.updateTasksSchedule(ACCOUNT_ID, PerpetualTaskType.K8S_WATCH, intervalInMillis);
+    long updatedRecords = perpetualTaskService.updateTasksSchedule(
+        ACCOUNT_ID, PerpetualTaskType.K8S_WATCH, intervalInMillis, PerpetualTaskState.TASK_PAUSED);
 
     assertThat(updatedRecords).isEqualTo(5L);
   }

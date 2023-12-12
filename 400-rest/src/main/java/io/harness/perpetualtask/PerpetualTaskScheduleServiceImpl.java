@@ -49,7 +49,8 @@ public class PerpetualTaskScheduleServiceImpl implements PerpetualTaskScheduleSe
         perpetualTaskScheduleConfig =
             persistence.findAndModify(query, updateOperations, new FindAndModifyOptions().upsert(true).returnNew(true));
         if (perpetualTaskScheduleConfig != null) {
-          perpetualTaskService.updateTasksSchedule(accountId, perpetualTaskType, timeIntervalInMillis);
+          perpetualTaskService.updateTasksSchedule(
+              accountId, perpetualTaskType, timeIntervalInMillis, PerpetualTaskState.TASK_PAUSED);
           return perpetualTaskScheduleConfig;
         }
       } catch (Exception exception) {
@@ -86,7 +87,8 @@ public class PerpetualTaskScheduleServiceImpl implements PerpetualTaskScheduleSe
             queryToGetRecordByAccountIdAndPerpetualTaskType(accountId, perpetualTaskType);
         isDeleted = persistence.delete(query);
         if (isDeleted) {
-          perpetualTaskService.updateTasksSchedule(accountId, perpetualTaskType, timeIntervalInMillis);
+          perpetualTaskService.updateTasksSchedule(
+              accountId, perpetualTaskType, timeIntervalInMillis, PerpetualTaskState.TASK_UNASSIGNED);
           return true;
         }
       } catch (Exception exception) {
