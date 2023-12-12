@@ -481,10 +481,17 @@ public class ServiceAllInOnePlanCreatorUtils {
       if (deploymentStage != null) {
         validateEnvironmentInDeploymentStageConfig(deploymentStage, stage, specField);
         EnvironmentYamlV2 useFromStageEnvironmentYaml = deploymentStage.getEnvironment();
-        if (ParameterField.isNotNull(environmentYaml.getInfrastructureDefinitions())
-            && isNotEmpty(environmentYaml.getInfrastructureDefinitions().getValue())) {
+        if ((environmentYaml.getInfrastructureDefinitions() != null)
+            && (isNotEmpty(environmentYaml.getInfrastructureDefinitions().getValue())
+                || (environmentYaml.getInfrastructureDefinitions().isExpression()
+                    && NGExpressionUtils.isStrictlyExpressionField(
+                        environmentYaml.getInfrastructureDefinitions().getExpressionValue())))) {
           useFromStageEnvironmentYaml.setInfrastructureDefinitions(environmentYaml.getInfrastructureDefinitions());
-        } else if (ParameterField.isNotNull(environmentYaml.getInfrastructureDefinition())) {
+        } else if ((environmentYaml.getInfrastructureDefinition() != null)
+            && ((environmentYaml.getInfrastructureDefinition().getValue() != null)
+                || (environmentYaml.getInfrastructureDefinition().isExpression()
+                    && NGExpressionUtils.isStrictlyExpressionField(
+                        environmentYaml.getInfrastructureDefinition().getExpressionValue())))) {
           useFromStageEnvironmentYaml.setInfrastructureDefinition(environmentYaml.getInfrastructureDefinition());
         }
         return useFromStageEnvironmentYaml;
