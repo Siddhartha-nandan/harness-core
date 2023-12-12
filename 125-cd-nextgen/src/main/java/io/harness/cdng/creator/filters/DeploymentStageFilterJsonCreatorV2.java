@@ -300,7 +300,7 @@ public class DeploymentStageFilterJsonCreatorV2 extends GenericStageFilterJsonCr
     } else if (deploymentStageConfig.getEnvironment() != null) {
       addFiltersFromEnvironment(filterCreationContext, filterBuilder, deploymentStageConfig.getEnvironment(),
           deploymentStageConfig.getGitOpsEnabled());
-      validateInfraScopedToServices(deploymentStageConfig, filterCreationContext);
+      validateInfraScopedToServices(deploymentStageConfig, filterCreationContext, filterBuilder);
     } else if (deploymentStageConfig.getEnvironmentGroup() != null) {
       addFiltersFromEnvironmentGroup(filterCreationContext, deploymentStageConfig.getEnvironmentGroup());
     } else if (deploymentStageConfig.getEnvironments() != null) {
@@ -310,7 +310,7 @@ public class DeploymentStageFilterJsonCreatorV2 extends GenericStageFilterJsonCr
           addFiltersFromEnvironment(
               filterCreationContext, filterBuilder, environmentYamlV2, deploymentStageConfig.getGitOpsEnabled());
         }
-        validateInfraScopedToServices(deploymentStageConfig, filterCreationContext);
+        validateInfraScopedToServices(deploymentStageConfig, filterCreationContext, filterBuilder);
       }
     } else {
       throw new InvalidYamlRuntimeException(format(
@@ -396,9 +396,10 @@ public class DeploymentStageFilterJsonCreatorV2 extends GenericStageFilterJsonCr
   }
 
   private void validateInfraScopedToServices(
-      DeploymentStageConfig deploymentStageConfig, FilterCreationContext filterCreationContext) {
-    log.info("validateInfraScopedToServices filterCreationContext: "+ filterCreationContext.toString());
-    log.info("validateInfraScopedToServices deploymentStageConfig:"+ deploymentStageConfig.toString());
+      DeploymentStageConfig deploymentStageConfig, FilterCreationContext filterCreationContext,
+      CdFilterBuilder filterBuilder) {
+    log.error("validateInfraScopedToServices filterCreationContext: "+ filterCreationContext.toString());
+    log.error("validateInfraScopedToServices deploymentStageConfig:"+ deploymentStageConfig.toString());
     if (!ngFeatureFlagHelperService.isEnabled(
             filterCreationContext.getSetupMetadata().getAccountId(), FeatureName.CDS_SCOPE_INFRA_TO_SERVICES)) {
       return;
@@ -418,9 +419,16 @@ public class DeploymentStageFilterJsonCreatorV2 extends GenericStageFilterJsonCr
     if (deploymentStageConfig.getEnvironments() != null) {
       addMultiEnvRef(deploymentStageConfig.getEnvironments(), envInfraMap);
     }
-    infraService.checkIfInfraIsScopedToService(filterCreationContext.getSetupMetadata().getAccountId(),
-        filterCreationContext.getSetupMetadata().getOrgId(), filterCreationContext.getSetupMetadata().getProjectId(),
-        serviceRefs, envInfraMap);
+    try {
+      infraService.checkIfInfraIsScopedToService(filterCreationContext.getSetupMetadata().getAccountId(),
+              filterCreationContext.getSetupMetadata().getOrgId(), filterCreationContext.getSetupMetadata().getProjectId(),
+              serviceRefs, envInfraMap);
+    }
+    catch (Exception e) {
+      filterBuilder.clearServiceNames();
+      throw e;
+    }
+
   }
 
   private void addMultiEnvRef(EnvironmentsYaml envs, Map<String, List<String>> envInfraMap) {
