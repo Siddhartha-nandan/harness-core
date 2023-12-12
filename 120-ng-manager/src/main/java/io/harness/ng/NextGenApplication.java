@@ -126,6 +126,7 @@ import io.harness.migration.NGMigrationSdkInitHelper;
 import io.harness.migration.NGMigrationSdkModule;
 import io.harness.migration.beans.NGMigrationConfiguration;
 import io.harness.migrations.InstanceMigrationProvider;
+import io.harness.ng.chaos.ChaosNotificationTemplateRegistrar;
 import io.harness.ng.core.CorrelationFilter;
 import io.harness.ng.core.DefaultUserGroupsCreationJob;
 import io.harness.ng.core.EtagFilter;
@@ -185,6 +186,7 @@ import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.events.base.PipelineEventConsumerController;
 import io.harness.pms.expressions.functors.ConfigFileFunctor;
+import io.harness.pms.expressions.functors.ConnectorFunctor;
 import io.harness.pms.expressions.functors.DockerConfigJsonFunctor;
 import io.harness.pms.expressions.functors.FileStoreFunctor;
 import io.harness.pms.expressions.functors.ImagePullSecretFunctor;
@@ -494,6 +496,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     if (!appConfig.isDisableFreezeNotificationTemplate()) {
       registerNotificationTemplates(injector);
     }
+    registerChaosNotificationTemplates(injector);
     registerPmsSdkEvents(appConfig, injector);
     registerDebeziumEvents(appConfig, injector);
     initializeMonitoring(appConfig, injector);
@@ -550,6 +553,12 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     ExecutorService executorService =
         injector.getInstance(Key.get(ExecutorService.class, Names.named("freezeTemplateRegistrationExecutorService")));
     executorService.submit(injector.getInstance(FreezeNotificationTemplateRegistrar.class));
+  }
+
+  private void registerChaosNotificationTemplates(Injector injector) {
+    ExecutorService executorService =
+        injector.getInstance(Key.get(ExecutorService.class, Names.named("chaosTemplateRegistrationExecutorService")));
+    executorService.submit(injector.getInstance(ChaosNotificationTemplateRegistrar.class));
   }
 
   private void initializeNGMonitoring(NextGenConfiguration appConfig, Injector injector) {
@@ -815,6 +824,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
   private Map<String, Class<? extends SdkFunctor>> getSdkFunctors() {
     Map<String, Class<? extends SdkFunctor>> sdkFunctorMap = new HashMap<>();
     sdkFunctorMap.put(ImagePullSecretFunctor.IMAGE_PULL_SECRET, ImagePullSecretFunctor.class);
+    sdkFunctorMap.put(ConnectorFunctor.CONNECTOR_KEY, ConnectorFunctor.class);
     sdkFunctorMap.put(DockerConfigJsonFunctor.DOCKER_CONFIG_JSON, DockerConfigJsonFunctor.class);
     sdkFunctorMap.put(VariableFunctor.VARIABLE, VariableFunctor.class);
     sdkFunctorMap.put(TerraformPlanJsonFunctor.TERRAFORM_PLAN_JSON, TerraformPlanJsonFunctor.class);

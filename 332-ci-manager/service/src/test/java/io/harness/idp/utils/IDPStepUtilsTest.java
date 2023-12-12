@@ -18,13 +18,16 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.delegate.beans.connector.ConnectorType;
-import io.harness.idp.steps.beans.stepinfo.IdpCodePushStepInfo;
 import io.harness.idp.steps.beans.stepinfo.IdpCookieCutterStepInfo;
+import io.harness.idp.steps.beans.stepinfo.IdpCreateCatalogStepInfo;
 import io.harness.idp.steps.beans.stepinfo.IdpCreateRepoStepInfo;
+import io.harness.idp.steps.beans.stepinfo.IdpDirectPushStepInfo;
 import io.harness.idp.steps.beans.stepinfo.IdpRegisterCatalogStepInfo;
+import io.harness.idp.steps.beans.stepinfo.IdpSlackNotifyStepInfo;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.utils.CiCodebaseUtils;
+import io.harness.yaml.core.variables.SecretNGVariable;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -54,7 +57,7 @@ public class IDPStepUtilsTest extends CategoryTest {
   public void testIdpCookieCutterStepEnvVariables() {
     String testName = "test-name";
     String testIdentifier = "test-identifier";
-    String testIsPublicTemplate = "false";
+    String testTemplateType = "public";
     String testPath = "test-path";
     String testCookieCutterVarName = "testVarName";
     String testCookieCutterVarValue = "testVarValue";
@@ -64,7 +67,7 @@ public class IDPStepUtilsTest extends CategoryTest {
     IdpCookieCutterStepInfo idpCookieCutterStepInfo =
         IdpCookieCutterStepInfo.builder()
             .cookieCutterVariables(ParameterField.createValueField(cookiecutterVariables))
-            .isPublicTemplate(ParameterField.createValueField(testIsPublicTemplate))
+            .templateType(ParameterField.createValueField(testTemplateType))
             .pathForTemplate(ParameterField.createValueField(testPath))
             .name(testName)
             .identifier(testIdentifier)
@@ -72,10 +75,10 @@ public class IDPStepUtilsTest extends CategoryTest {
 
     Map<String, String> expected = new HashMap<>();
     expected.put("IDP_COOKIECUTTER_" + testCookieCutterVarName, testCookieCutterVarValue);
-    expected.put("IS_PUBLIC_TEMPLATE", "false");
+    expected.put("TEMPLATE_TYPE", testTemplateType);
     expected.put("PATH_FOR_TEMPLATE", testPath);
     Map<String, String> actual =
-        idpStepUtils.getIDPCookieCutterStepInfoEnvVariables(idpCookieCutterStepInfo, "test-identifier");
+        idpStepUtils.getCookieCutterStepInfoEnvVariables(idpCookieCutterStepInfo, "test-identifier");
     assertThat(actual).isEqualTo(expected);
   }
 
@@ -85,21 +88,21 @@ public class IDPStepUtilsTest extends CategoryTest {
   public void testIdpCreateRepoStepEnvVariables() {
     String testName = "test-name";
 
-    String isPrivateRepo = "true";
+    String repoType = "private";
     String repoName = "test-repo-name";
     String orgName = "test-org-name";
 
     IdpCreateRepoStepInfo idpCreateRepoStepInfo = IdpCreateRepoStepInfo.builder()
-                                                      .isPrivateRepo(ParameterField.createValueField(isPrivateRepo))
-                                                      .repoName(ParameterField.createValueField(repoName))
+                                                      .repoType(ParameterField.createValueField(repoType))
+                                                      .repository(ParameterField.createValueField(repoName))
                                                       .name(testName)
-                                                      .orgName(ParameterField.createValueField(orgName))
+                                                      .organization(ParameterField.createValueField(orgName))
                                                       .connectorRef(ParameterField.createValueField("myConnectorRef"))
                                                       .build();
 
     Map<String, String> expected = new HashMap<>();
     expected.put("IDP_ORG_NAME", orgName);
-    expected.put("IS_PRIVATE_REPO", isPrivateRepo);
+    expected.put("REPO_TYPE", repoType);
     expected.put("IDP_REPO_NAME", repoName);
     expected.put("CONNECTOR_TYPE", ConnectorType.GITHUB.getDisplayName());
 
@@ -108,7 +111,7 @@ public class IDPStepUtilsTest extends CategoryTest {
     when(ciCodebaseUtils.getGitEnvVariables(any(), any())).thenReturn(new HashMap<>());
 
     Map<String, String> actual =
-        idpStepUtils.getIDPCreateRepoStepInfoEnvVariables(idpCreateRepoStepInfo, connectorDetails, "test-id");
+        idpStepUtils.getCreateRepoStepInfoEnvVariables(idpCreateRepoStepInfo, connectorDetails, "test-id");
 
     assertThat(actual).isEqualTo(expected);
   }
@@ -126,20 +129,20 @@ public class IDPStepUtilsTest extends CategoryTest {
     String codeDirectory = "test-code-directory";
     String branch = "test-branch-name";
 
-    IdpCodePushStepInfo idpCodePushStepInfo = IdpCodePushStepInfo.builder()
-                                                  .repoName(ParameterField.createValueField(repoName))
-                                                  .branch(ParameterField.createValueField(branch))
-                                                  .codeDirectory(ParameterField.createValueField(codeDirectory))
-                                                  .name(testName)
-                                                  .orgName(ParameterField.createValueField(orgName))
-                                                  .workspace(ParameterField.createValueField(workspace))
-                                                  .connectorRef(ParameterField.createValueField("myConnectorRef"))
-                                                  .build();
+    IdpDirectPushStepInfo idpCodePushStepInfo = IdpDirectPushStepInfo.builder()
+                                                    .repository(ParameterField.createValueField(repoName))
+                                                    .branch(ParameterField.createValueField(branch))
+                                                    .codeDirectory(ParameterField.createValueField(codeDirectory))
+                                                    .name(testName)
+                                                    .organization(ParameterField.createValueField(orgName))
+                                                    .workspace(ParameterField.createValueField(workspace))
+                                                    .connectorRef(ParameterField.createValueField("myConnectorRef"))
+                                                    .build();
 
     Map<String, String> expected = new HashMap<>();
     expected.put("IDP_ORG_NAME", orgName);
     expected.put("IDP_REPO_NAME", repoName);
-    expected.put("REPO_WORKSPACE", workspace);
+    expected.put("IDP_WORKSPACE_NAME", workspace);
     expected.put("CODE_DIRECTORY", codeDirectory);
     expected.put("BRANCH", branch);
     expected.put("CONNECTOR_TYPE", ConnectorType.GITHUB.getDisplayName());
@@ -149,7 +152,7 @@ public class IDPStepUtilsTest extends CategoryTest {
     when(ciCodebaseUtils.getGitEnvVariables(any(), any())).thenReturn(new HashMap<>());
 
     Map<String, String> actual =
-        idpStepUtils.getIDPCodePushStepInfoEnvVariables(idpCodePushStepInfo, connectorDetails, "test-id");
+        idpStepUtils.getDirectPushStepInfoEnvVariables(idpCodePushStepInfo, connectorDetails, "test-id");
 
     assertThat(actual).isEqualTo(expected);
   }
@@ -179,7 +182,7 @@ public class IDPStepUtilsTest extends CategoryTest {
     Map<String, String> expected = new HashMap<>();
     expected.put("IDP_ORG_NAME", orgName);
     expected.put("IDP_REPO_NAME", repoName);
-    expected.put("REPO_WORKSPACE", workspace);
+    expected.put("IDP_WORKSPACE_NAME", workspace);
     expected.put("FILE_PATH", filePath);
     expected.put("BRANCH", branch);
     expected.put("CONNECTOR_TYPE", ConnectorType.GITHUB.getDisplayName());
@@ -192,5 +195,67 @@ public class IDPStepUtilsTest extends CategoryTest {
         idpStepUtils.getRegisterCatalogStepInfoEnvVariables(idpRegisterCatalogStepInfo, connectorDetails, "test-id");
 
     assertThat(actual).isEqualTo(expected);
+  }
+
+  @Test
+  @Owner(developers = DEVESH)
+  @Category(UnitTests.class)
+  public void testCreateCatalogStepInfoEnvVariables() {
+    String testFileName = "file-name";
+    String testFilePath = "file-path";
+    String testFileContent = "file-content";
+
+    IdpCreateCatalogStepInfo idpCreateCatalogStepInfo =
+        IdpCreateCatalogStepInfo.builder()
+            .fileContent(ParameterField.createValueField(testFileContent))
+            .fileName(ParameterField.createValueField(testFileName))
+            .filePath(ParameterField.createValueField(testFilePath))
+            .build();
+
+    Map<String, String> expected = new HashMap<>();
+    expected.put("FILE_NAME", testFileName);
+    expected.put("FILE_PATH", testFilePath);
+    expected.put("FILE_CONTENT", testFileContent);
+
+    Map<String, String> actual = idpStepUtils.getCreateCatalogStepInfoEnvVariables(idpCreateCatalogStepInfo, "test-id");
+
+    assertThat(actual).isEqualTo(expected);
+  }
+
+  @Test
+  @Owner(developers = DEVESH)
+  @Category(UnitTests.class)
+  public void testSlackNotifyStepInfoEnvVariables() {
+    String testSlackId = "slack-id";
+    String testMessageContent = "message-content";
+
+    IdpSlackNotifyStepInfo idpSlackNotifyStepInfo =
+        IdpSlackNotifyStepInfo.builder()
+            .slackId(ParameterField.createValueField(testSlackId))
+            .messageContent(ParameterField.createValueField(testMessageContent))
+            .build();
+
+    Map<String, String> expected = new HashMap<>();
+    expected.put("SLACK_ID", testSlackId);
+    expected.put("MESSAGE_CONTENT", testMessageContent);
+
+    Map<String, String> actual = idpStepUtils.getSlackNotifyStepInfoEnvVariables(idpSlackNotifyStepInfo, "test-id");
+
+    assertThat(actual).isEqualTo(expected);
+  }
+
+  @Test
+  @Owner(developers = DEVESH)
+  @Category(UnitTests.class)
+  public void testSlackNotifyStepInfoSecretEnvVariables() {
+    String testSlackToken = "test-token";
+
+    IdpSlackNotifyStepInfo idpSlackNotifyStepInfo =
+        IdpSlackNotifyStepInfo.builder().token(ParameterField.createValueField(testSlackToken)).build();
+
+    Map<String, SecretNGVariable> actual =
+        idpStepUtils.getSlackNotifyStepInfoSecretVariables(idpSlackNotifyStepInfo, "test-id");
+
+    assertThat(actual.containsKey("SLACK_TOKEN"));
   }
 }
