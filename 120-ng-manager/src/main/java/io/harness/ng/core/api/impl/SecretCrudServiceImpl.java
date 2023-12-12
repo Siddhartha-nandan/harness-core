@@ -110,6 +110,7 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import com.google.protobuf.StringValue;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -424,36 +425,8 @@ public class SecretCrudServiceImpl implements SecretCrudService {
       criteria.and(SecretKeys.identifier).in(identifiers);
     }
 
-    if (isNotEmpty(secretManagerIdentifiers)) {
-      for (String secretManagerIdentifier : secretManagerIdentifiers) {
-        String identifier = IdentifierRefHelper.getIdentifier(secretManagerIdentifier);
-        IdentifierRef identifierRef = IdentifierRefHelper.getIdentifierRef(
-            secretManagerIdentifier, accountIdentifier, orgIdentifier, projectIdentifier);
-
-        if (isNotEmpty(identifierRef.getProjectIdentifier())) {
-          criteria.and(SecretKeys.projectIdentifier)
-              .exists(true)
-              .and(SecretKeys.secretManagerIdentifier)
-              .is(identifier);
-        } else if (isNotEmpty(identifierRef.getOrgIdentifier())) {
-          criteria = criteria.orOperator(Criteria.where(SecretKeys.orgIdentifier)
-                                             .exists(true)
-                                             .and(SecretKeys.projectIdentifier)
-                                             .exists(false)
-                                             .and(SecretKeys.secretManagerIdentifier)
-                                             .is(identifier),
-              Criteria.where(SecretKeys.secretManagerIdentifier).is(secretManagerIdentifier));
-        } else {
-          criteria = criteria.orOperator(Criteria.where(SecretKeys.orgIdentifier)
-                                             .exists(false)
-                                             .and(SecretKeys.projectIdentifier)
-                                             .exists(false)
-                                             .and(SecretKeys.secretManagerIdentifier)
-                                             .is(identifier),
-              Criteria.where(SecretKeys.secretManagerIdentifier).is(secretManagerIdentifier));
-        }
-      }
-    }
+    addCriteriaForSecretManagerIdentifiers(
+        criteria, secretManagerIdentifiers, accountIdentifier, orgIdentifier, projectIdentifier);
 
     if (accessControlClient.hasAccess(ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
             Resource.of(SECRET_RESOURCE_TYPE, null), SECRET_VIEW_PERMISSION)) {
@@ -498,6 +471,44 @@ public class SecretCrudServiceImpl implements SecretCrudService {
         criteria.andOperator(subScopeCriteria);
       } else {
         criteria.andOperator(superScopeCriteria);
+      }
+    }
+  }
+
+  private void addCriteriaForSecretManagerIdentifiers(Criteria criteria, Set<String> secretManagerIdentifiers,
+      String accountIdentifier, String orgIdentifier, String projectIdentifier) {
+    if (isNotEmpty(secretManagerIdentifiers)) {
+      List<Criteria> criteriaListToOr = new ArrayList<>();
+      for (String secretManagerIdentifier : secretManagerIdentifiers) {
+        String identifier = IdentifierRefHelper.getIdentifier(secretManagerIdentifier);
+        IdentifierRef identifierRef = IdentifierRefHelper.getIdentifierRef(
+            secretManagerIdentifier, accountIdentifier, orgIdentifier, projectIdentifier);
+
+        if (isNotEmpty(identifierRef.getProjectIdentifier())) {
+          criteriaListToOr.add(criteria.and(SecretKeys.projectIdentifier)
+                                   .exists(true)
+                                   .and(SecretKeys.secretManagerIdentifier)
+                                   .is(identifier));
+        } else if (isNotEmpty(identifierRef.getOrgIdentifier())) {
+          criteriaListToOr.add(new Criteria().orOperator(Criteria.where(SecretKeys.orgIdentifier)
+                                                             .exists(true)
+                                                             .and(SecretKeys.projectIdentifier)
+                                                             .exists(false)
+                                                             .and(SecretKeys.secretManagerIdentifier)
+                                                             .is(identifier),
+              Criteria.where(SecretKeys.secretManagerIdentifier).is(secretManagerIdentifier)));
+        } else {
+          criteriaListToOr.add(new Criteria().orOperator(Criteria.where(SecretKeys.orgIdentifier)
+                                                             .exists(false)
+                                                             .and(SecretKeys.projectIdentifier)
+                                                             .exists(false)
+                                                             .and(SecretKeys.secretManagerIdentifier)
+                                                             .is(identifier),
+              Criteria.where(SecretKeys.secretManagerIdentifier).is(secretManagerIdentifier)));
+        }
+      }
+      if (isNotEmpty(criteriaListToOr)) {
+        criteria.orOperator(criteriaListToOr);
       }
     }
   }

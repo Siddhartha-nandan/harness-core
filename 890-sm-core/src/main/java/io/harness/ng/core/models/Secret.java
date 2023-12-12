@@ -58,7 +58,7 @@ public class Secret {
                  .field(SecretKeys.identifier)
                  .build())
         .add(CompoundMongoIndex.builder()
-                 .name("unique_identification")
+                 .name("unique_identification_secretManager")
                  .unique(true)
                  .field(SecretKeys.accountIdentifier)
                  .field(SecretKeys.orgIdentifier)
