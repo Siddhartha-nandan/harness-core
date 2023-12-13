@@ -106,6 +106,8 @@ public class EnvironmentMigrationService extends NgMigrationService {
   public MigratedEntityMapping generateMappingEntity(NGYamlFile yamlFile) {
     CgBasicInfo basicInfo = yamlFile.getCgBasicInfo();
     NGEnvironmentConfig environmentYaml = (NGEnvironmentConfig) yamlFile.getYaml();
+    String orgIdentifier = yamlFile.getNgEntityDetail().getOrgIdentifier();
+    String projectIdentifier = yamlFile.getNgEntityDetail().getProjectIdentifier();
     return MigratedEntityMapping.builder()
         .appId(basicInfo.getAppId())
         .accountId(basicInfo.getAccountId())
@@ -115,7 +117,7 @@ public class EnvironmentMigrationService extends NgMigrationService {
         .orgIdentifier(environmentYaml.getNgEnvironmentInfoConfig().getOrgIdentifier())
         .projectIdentifier(environmentYaml.getNgEnvironmentInfoConfig().getProjectIdentifier())
         .identifier(environmentYaml.getNgEnvironmentInfoConfig().getIdentifier())
-        .scope(Scope.PROJECT)
+        .scope(MigratorMappingService.getScope(orgIdentifier, projectIdentifier))
         .fullyQualifiedIdentifier(MigratorMappingService.getFullyQualifiedIdentifier(basicInfo.getAccountId(),
             environmentYaml.getNgEnvironmentInfoConfig().getOrgIdentifier(),
             environmentYaml.getNgEnvironmentInfoConfig().getProjectIdentifier(),
@@ -244,8 +246,9 @@ public class EnvironmentMigrationService extends NgMigrationService {
     String name = MigratorUtility.generateName(inputDTO.getOverrides(), entityId, environment.getName());
     String identifier = MigratorUtility.generateIdentifierDefaultName(
         inputDTO.getOverrides(), entityId, name, inputDTO.getIdentifierCaseFormat());
-    String projectIdentifier = MigratorUtility.getProjectIdentifier(Scope.PROJECT, inputDTO);
-    String orgIdentifier = MigratorUtility.getOrgIdentifier(Scope.PROJECT, inputDTO);
+    Scope scope = MigratorUtility.getDefaultScope(inputDTO, entityId, Scope.PROJECT);
+    String projectIdentifier = MigratorUtility.getProjectIdentifier(scope, inputDTO);
+    String orgIdentifier = MigratorUtility.getOrgIdentifier(scope, inputDTO);
     List<ServiceVariable> serviceVariablesForAllServices = serviceVariableService.getServiceVariablesForEntity(
         environment.getAppId(), environment.getUuid(), OBTAIN_VALUE);
     Set<CgEntityId> manifestIds =
