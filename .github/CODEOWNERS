@@ -100,7 +100,7 @@ WORKSPACE pranay.shah@harness.io jyoti.raval@harness.io
 /953-git-sync-commons/src/main/ mohit.garg@harness.io adithya.viswanathan@harness.io archit.singla@harness.io
 /idp-service/ sandeepa.kv@harness.io vikyath.harekal@harness.io sathish.soundarapandian@harness.io
 
-**/contracts/openapi/v1/ mankrit.singh@harness.io ashish.sanodia@harness.io deepak.bolangady@harness.io
+**/contracts/openapi/v1/ mankrit.singh@harness.io ashish.sanodia@harness.io
 /scripts/api mankrit.singh@harness.io ashish.sanodia@harness.io
 
 /953-yaml-commons/src/main/java/io/harness/pms/yaml/YamlUtils.java archit.singla@harness.io sahil.hindwani@harness.io ankit.tiwari@harness.io mohit.garg@harness.io
