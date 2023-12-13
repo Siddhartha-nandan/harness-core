@@ -100,6 +100,6 @@ public interface EnvironmentService {
   EnvironmentInputsMergedResponseDto mergeEnvironmentInputs(
       String accountId, String orgId, String projectId, String serviceId, String oldEnvironmentInputsYaml);
 
-  EnvironmentMoveConfigResponse moveEnvironmentStoreTypeConfig(String accountIdentifier, String orgIdentifier,
+  EnvironmentMoveConfigResponse moveEnvironment(String accountIdentifier, String orgIdentifier,
       String projectIdentifier, String environmentIdentifier, EnvironmentMoveConfigOperationDTO moveConfigOperationDTO);
 }

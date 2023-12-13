@@ -338,7 +338,7 @@ public class EnvironmentRepositoryCustomImpl implements EnvironmentRepositoryCus
   private Environment moveToRemote(Criteria criteria, Environment environmentToMove) {
     try {
       Query query = new Query(criteria);
-      Update update = getUpdateOperationsForMovingStoreType(environmentToMove);
+      Update update = getUpdateOperationsForMovingInlineToRemote(environmentToMove);
       RetryPolicy<Object> retryPolicy = getRetryPolicy(
           "[Retrying]: Failed moving Environment; attempt: {}", "[Failed]: Failed moving Environment; attempt: {}");
 
@@ -351,17 +351,22 @@ public class EnvironmentRepositoryCustomImpl implements EnvironmentRepositoryCus
       // update in db
       return updateEnvironmentEntityInMongo(query, update, retryPolicy);
     } catch (ExplanationException | HintException | ScmException e) {
-      log.error(String.format("Error while moving environment [%s]", environmentToMove.getIdentifier()), e);
+      log.error(String.format("Error while moving environment [%s] for operation: [%s]",
+                    environmentToMove.getIdentifier(), INLINE_TO_REMOTE),
+          e);
       throw e;
     } catch (Exception e) {
-      log.error(String.format("Unexpected error while moving environment [%s]", environmentToMove.getIdentifier()), e);
-      throw new InternalServerErrorException(String.format("Unexpected error while moving environment [%s]: [%s]",
-                                                 environmentToMove.getIdentifier(), e.getMessage()),
+      log.error(String.format("Unexpected error while moving environment [%s] for operation: [%s] ",
+                    environmentToMove.getIdentifier(), INLINE_TO_REMOTE),
+          e);
+      throw new InternalServerErrorException(
+          String.format("Unexpected error while moving environment [%s]: for operation: [%s]. Error: [%s]",
+              environmentToMove.getIdentifier(), INLINE_TO_REMOTE, e.getMessage()),
           e);
     }
   }
 
-  private Update getUpdateOperationsForMovingStoreType(Environment environment) {
+  private Update getUpdateOperationsForMovingInlineToRemote(Environment environment) {
     Update update = new Update();
     update.set(EnvironmentKeys.repo, environment.getRepo());
     update.set(EnvironmentKeys.storeType, StoreType.REMOTE);

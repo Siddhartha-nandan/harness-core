@@ -12,11 +12,12 @@ import static io.harness.annotations.dev.HarnessTeam.CDC;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.pms.pipeline.MoveConfigOperationType;
 
+import javax.validation.constraints.NotNull;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Value;
 
 @OwnedBy(CDC)
-@Data
+@Value
 @Builder
 public class EnvironmentMoveConfigOperationDTO {
   String connectorRef;
@@ -26,5 +27,5 @@ public class EnvironmentMoveConfigOperationDTO {
   String baseBranch;
   String commitMessage;
   boolean isNewBranch;
-  MoveConfigOperationType moveConfigOperationType;
+  @NotNull MoveConfigOperationType moveConfigOperationType;
 }

@@ -27,6 +27,8 @@ import lombok.Value;
     description = "Tells us if the environment move config operation was successful or not")
 @OwnedBy(CDC)
 public class EnvironmentMoveConfigResponse {
-  @Schema(description = "Contains the environmentIdentifier of the successfully moved config.", hidden = true)
-  String environmentIdentifier;
+  @Schema(description = "Contains the identifier of the successfully moved environment.") String identifier;
+
+  @Schema(description = "Indicates whether the environment move config operation was successful (true) or not (false).")
+  boolean success;
 }

@@ -698,10 +698,10 @@ public class EnvironmentServiceImplTest extends CDNGEntitiesTestBase {
             .isNewBranch(false)
             .filePath(".harness%2Fprod.yaml")
             .build();
-    EnvironmentMoveConfigResponse moveConfigResponse = environmentService.moveEnvironmentStoreTypeConfig(
-        "ACCOUNT_ID", "default", "neo", "prod", moveConfigOperationDTO);
+    EnvironmentMoveConfigResponse moveConfigResponse =
+        environmentService.moveEnvironment("ACCOUNT_ID", "default", "neo", "prod", moveConfigOperationDTO);
 
-    assertThat(moveConfigResponse.getEnvironmentIdentifier()).isEqualTo("prod");
+    assertThat(moveConfigResponse.getIdentifier()).isEqualTo("prod");
 
     Optional<Environment> optionalEnvironment =
         environmentService.getMetadata("ACCOUNT_ID", "default", "neo", "prod", false);
