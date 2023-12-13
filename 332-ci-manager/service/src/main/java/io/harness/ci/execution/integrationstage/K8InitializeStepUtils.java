@@ -483,7 +483,6 @@ public class K8InitializeStepUtils {
     if (stageNode != null) {
       secretVarMap.putAll(getSecretVariablesMap(stageNode.getPipelineVariables()));
       secretVarMap.putAll(getSecretVariablesMap(stageNode.getVariables()));
-      secretVarMap.putAll((getSecretVariablesMap(runStepInfo.getOutputVariables().getValue())));
     }
     return ContainerDefinitionInfo.builder()
         .name(containerName)
@@ -616,7 +615,6 @@ public class K8InitializeStepUtils {
     Map<String, SecretNGVariable> secretVarMap = new HashMap<>();
     secretVarMap.putAll(getSecretVariablesMap(stageNode.getPipelineVariables()));
     secretVarMap.putAll(getSecretVariablesMap(stageNode.getVariables()));
-    secretVarMap.putAll(getSecretVariablesMap(runTestsStepInfo.getOutputVariables().getValue()));
 
     return ContainerDefinitionInfo.builder()
         .name(containerName)

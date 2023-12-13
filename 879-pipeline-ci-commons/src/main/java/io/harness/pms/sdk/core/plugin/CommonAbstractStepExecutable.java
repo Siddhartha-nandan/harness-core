@@ -13,6 +13,7 @@ import static io.harness.ci.commonconstants.CIExecutionConstants.UNDERSCORE_SEPA
 import static io.harness.ci.commonconstants.ContainerExecutionConstants.LITE_ENGINE_PORT;
 import static io.harness.ci.commonconstants.ContainerExecutionConstants.TMP_PATH;
 import static io.harness.data.structure.CollectionUtils.emptyIfNull;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.data.structure.HarnessStringUtils.emptyIfNull;
 import static io.harness.eraro.ErrorCode.GENERAL_ERROR;
@@ -615,7 +616,8 @@ public abstract class CommonAbstractStepExecutable extends CiAsyncExecutable {
       Map<String, String> resolvedOutputVariables = new HashMap<>();
       List<StepOutputV2> outputVariables = stepStatus.getOutputV2();
       outputVariables.forEach(outputVariable -> {
-        if (OutputVariable.OutputType.SECRET.toString().equals(outputVariable.getType())) {
+        if (OutputVariable.OutputType.SECRET.toString().equals(outputVariable.getType())
+            && isNotEmpty(outputVariable.getValue())) {
           String encodedValue = EncodingUtils.encodeBase64(
               encryption.encrypt(outputVariable.getValue().getBytes(StandardCharsets.UTF_8)));
           String finalValue =
