@@ -89,6 +89,7 @@ import io.harness.secretmanagerclient.WinRmAuthScheme;
 import io.harness.secretmanagerclient.services.SshKeySpecDTOHelper;
 import io.harness.secretmanagerclient.services.WinRmCredentialsSpecDTOHelper;
 import io.harness.service.DelegateGrpcClientWrapper;
+import io.harness.springdata.HTransactionTemplate;
 import io.harness.utils.NGFeatureFlagHelperService;
 
 import com.google.common.collect.ImmutableMap;
@@ -103,6 +104,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.rules.ExpectedException;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.mongodb.MongoTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @OwnedBy(PL)
@@ -147,7 +149,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
     delegateGrpcClientWrapper = mock(DelegateGrpcClientWrapper.class);
     ngSecretActivityService = mock(NGSecretActivityService.class);
     outboxService = mock(OutboxService.class);
-    transactionTemplate = mock(TransactionTemplate.class);
+    transactionTemplate = new HTransactionTemplate(new MongoTransactionManager(), false);
     taskSetupAbstractionHelper = new TaskSetupAbstractionHelper();
     accessControlClient = mock(AccessControlClient.class);
     ngFeatureFlagHelperService = mock(NGFeatureFlagHelperService.class);
@@ -207,11 +209,10 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
     Secret secret = Secret.builder().build();
     doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
     doNothing().when(secretRepository).delete(any());
-    when(transactionTemplate.execute(any())).thenReturn(true);
     boolean success = secretServiceV2Spy.delete("account", "org", "proj", "identifier", false);
     assertThat(success).isTrue();
     verify(secretServiceV2Spy).get(any(), any(), any(), any());
-    verify(secretRepository, times(0)).delete(any());
+    verify(secretRepository, times(1)).delete(any());
   }
 
   @Test
@@ -250,14 +251,18 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
     Secret secret = Secret.fromDTO(secretDTOV2);
     secret.setAccountIdentifier(ACC_ID);
     when(secretRepository.save(any())).thenReturn(secret);
-    when(transactionTemplate.execute(any())).thenReturn(secret);
 
     ScopeInfo scopeInfo =
         ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret savedSecret = secretServiceV2.create("account", scopeInfo, secretDTOV2, false);
     assertThat(secret).isNotNull();
     assertThat(secret).isEqualTo(savedSecret);
-    verify(secretRepository, times(0)).save(any());
+    ArgumentCaptor<Secret> captor = ArgumentCaptor.forClass(Secret.class);
+    verify(secretRepository, times(1)).save(captor.capture());
+
+    Secret actualSecret = captor.getValue();
+    assertThat(actualSecret.getParentUniqueId()).isNotEmpty();
+    assertThat(actualSecret.getParentUniqueId()).isEqualTo("account");
   }
 
   @Test
@@ -268,12 +273,11 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
     doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
     SecretDTOV2 secretDTOV2 = getSecretDTO();
     when(secretRepository.save(any())).thenReturn(secret);
-    when(transactionTemplate.execute(any())).thenReturn(secret);
 
     Secret success = secretServiceV2Spy.update("account", secretDTOV2, false);
     assertThat(success).isNotNull();
     verify(secretServiceV2Spy).get(any(), any(), any(), any());
-    verify(secretRepository, times(0)).save(any());
+    verify(secretRepository, times(1)).save(any());
   }
 
   @Test
