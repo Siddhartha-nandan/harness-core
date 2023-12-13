@@ -283,7 +283,7 @@ public class TasBGSetupTaskHandlerTest extends CategoryTest {
   @Owner(developers = ANIL)
   @Category(UnitTests.class)
   public void testExecuteWithRefreshToken() throws Exception {
-    String refreshToken = "eyJhbGciOiJSUzI1NiIsImprdSI6Imh0dHBzOi8vdWFhLnN5c3RlbS50YXMtcWEtc2V0dXAuY29";
+    String refreshToken = "dummyToken";
     CloudFoundryConfig foundryConfig = CloudFoundryConfig.builder()
                                            .endpointUrl(ENDPOINT_URL)
                                            .userName(USERNAME.toCharArray())

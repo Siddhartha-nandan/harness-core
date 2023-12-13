@@ -40,8 +40,8 @@ public class CloudFoundryClientProviderTest extends CategoryTest {
   @Owner(developers = ANIL)
   @Category(UnitTests.class)
   public void testPasswordGrantTokenProvider() throws PivotalClientApiException {
-    String userName = "qaSanity";
-    String password = "harness@123";
+    String userName = "dummyUser";
+    String password = "dummy@123";
     String endPointUrl = "api.system.tas-qa-setup.com";
 
     CfRequestConfig cfRequestConfig = CfRequestConfig.builder()
@@ -82,10 +82,10 @@ public class CloudFoundryClientProviderTest extends CategoryTest {
   @Owner(developers = ANIL)
   @Category(UnitTests.class)
   public void testRefreshTokenGrantTokenProvider() throws PivotalClientApiException {
-    String userName = "qaSanity";
-    String password = "harness@123";
+    String userName = "dummyUser";
+    String password = "dummy@123";
     String endPointUrl = "api.system.tas-qa-setup.com";
-    String refreshToken = "eyJhbGciOiJSUzI1NiIsImprdSI6Imh0dHBzOi8vdWFhLnN5c3RlbS50YXMtcWEtc2V0dXAuY29";
+    String refreshToken = "dummyToken";
 
     CfRequestConfig cfRequestConfig = CfRequestConfig.builder()
                                           .timeOutIntervalInMins(1)
