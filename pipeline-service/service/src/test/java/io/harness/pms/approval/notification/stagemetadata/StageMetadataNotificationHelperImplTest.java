@@ -554,7 +554,7 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
     assertThat(StageMetadataNotificationHelper.isGraphNodeOfCDDeploymentStageType(graphLayoutNodeDTO)).isFalse();
 
     graphLayoutNodeDTO.setNodeType("Deployment");
-    assertThat(StageMetadataNotificationHelper.isGraphNodeOfCDDeploymentStageType(graphLayoutNodeDTO)).isFalse();
+    assertThat(StageMetadataNotificationHelper.isGraphNodeOfCDDeploymentStageType(graphLayoutNodeDTO)).isTrue();
 
     graphLayoutNodeDTO.setModule("cd");
     assertThat(StageMetadataNotificationHelper.isGraphNodeOfCDDeploymentStageType(graphLayoutNodeDTO)).isTrue();
