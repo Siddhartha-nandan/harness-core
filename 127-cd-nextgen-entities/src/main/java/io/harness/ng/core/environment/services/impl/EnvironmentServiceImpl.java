@@ -13,6 +13,7 @@ import static io.harness.eventsframework.EventsFrameworkConstants.ENTITY_CRUD;
 import static io.harness.exception.WingsException.USER;
 import static io.harness.exception.WingsException.USER_SRE;
 import static io.harness.outbox.TransactionOutboxModule.OUTBOX_TRANSACTION_TEMPLATE;
+import static io.harness.pms.pipeline.MoveConfigOperationType.INLINE_TO_REMOTE;
 import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 import static io.harness.utils.IdentifierRefHelper.MAX_RESULT_THRESHOLD_FOR_SPLIT;
 
@@ -49,6 +50,7 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ReferencedEntityException;
 import io.harness.exception.ScmException;
 import io.harness.exception.UnexpectedException;
+import io.harness.exception.UnsupportedOperationException;
 import io.harness.exception.WingsException;
 import io.harness.expression.EngineExpressionEvaluator;
 import io.harness.gitsync.beans.StoreType;
@@ -87,6 +89,7 @@ import io.harness.ngsettings.SettingIdentifiers;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.outbox.api.OutboxService;
 import io.harness.pms.merger.helpers.RuntimeInputFormHelper;
+import io.harness.pms.pipeline.MoveConfigOperationType;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.remote.client.NGRestUtils;
@@ -1102,7 +1105,7 @@ public class EnvironmentServiceImpl implements EnvironmentService {
   }
 
   @Override
-  public EnvironmentMoveConfigResponse moveEnvironmentStoreTypeConfig(String accountIdentifier, String orgIdentifier,
+  public EnvironmentMoveConfigResponse moveEnvironment(String accountIdentifier, String orgIdentifier,
       String projectIdentifier, String environmentIdentifier,
       EnvironmentMoveConfigOperationDTO moveConfigOperationDTO) {
     validateMoveConfigRequest(moveConfigOperationDTO);
@@ -1114,36 +1117,38 @@ public class EnvironmentServiceImpl implements EnvironmentService {
     Optional<Environment> environment =
         getMetadata(accountIdentifier, orgIdentifier, projectIdentifier, environmentIdentifier, false);
 
-    if (environment.isPresent()) {
-      if (StoreType.REMOTE.equals(environment.get().getStoreType())) {
-        throw new InvalidRequestException(
-            String.format("Environment with the given identifier: %s is already remote", environmentIdentifier));
-      }
-
-      Environment movedEntity = environmentRepository.moveEnvironment(accountIdentifier, orgIdentifier,
-          projectIdentifier, environmentIdentifier, moveConfigOperationDTO, environment.get());
-      return EnvironmentMoveConfigResponse.builder().environmentIdentifier(movedEntity.getIdentifier()).build();
-    } else {
+    if (environment.isEmpty()) {
       throw new InvalidRequestException(
           String.format("Environment with the given identifier: %s does not exist", environmentIdentifier));
     }
+
+    if (StoreType.REMOTE.equals(environment.get().getStoreType())
+        && INLINE_TO_REMOTE.equals(moveConfigOperationDTO.getMoveConfigOperationType())) {
+      throw new InvalidRequestException(
+          String.format("Environment with the given identifier: %s is already remote", environmentIdentifier));
+    }
+
+    Environment movedEntity = environmentRepository.moveEnvironment(accountIdentifier, orgIdentifier, projectIdentifier,
+        environmentIdentifier, moveConfigOperationDTO, environment.get());
+    return EnvironmentMoveConfigResponse.builder().identifier(movedEntity.getIdentifier()).success(true).build();
   }
 
   private void validateMoveConfigRequest(EnvironmentMoveConfigOperationDTO moveConfigOperationDTO) {
-    if (isEmpty(moveConfigOperationDTO.getConnectorRef())) {
-      throwInvalidRequestForEmptyField("connectorRef");
-    }
+    if (moveConfigOperationDTO.getMoveConfigOperationType().equals(INLINE_TO_REMOTE)) {
+      if (isEmpty(moveConfigOperationDTO.getConnectorRef())) {
+        throwInvalidRequestForEmptyField("connectorRef");
+      }
 
-    if (isEmpty(moveConfigOperationDTO.getFilePath())) {
-      throwInvalidRequestForEmptyField("filePath");
-    }
+      if (isEmpty(moveConfigOperationDTO.getFilePath())) {
+        throwInvalidRequestForEmptyField("filePath");
+      }
 
-    if (isEmpty(moveConfigOperationDTO.getRepoName())) {
-      throwInvalidRequestForEmptyField("repoName");
-    }
-
-    if (moveConfigOperationDTO.getMoveConfigOperationType() == null) {
-      throwInvalidRequestForEmptyField("moveConfigOperationType");
+      if (isEmpty(moveConfigOperationDTO.getRepoName())) {
+        throwInvalidRequestForEmptyField("repoName");
+      }
+    } else {
+      throw new UnsupportedOperationException(String.format(
+          "Move operation: [%s] not supported for environments", moveConfigOperationDTO.getMoveConfigOperationType()));
     }
   }
 

@@ -1195,14 +1195,13 @@ public class EnvironmentResourceV2 {
 
   @POST
   @Path("/move-config/{environmentIdentifier}")
-  @ApiOperation(value = "Move Environment YAML from inline to remote", nickname = "moveEnvironmentConfigs")
-  @Operation(operationId = "moveEnvironmentConfigs", summary = "Move Environment YAML from inline to remote",
+  @ApiOperation(value = "Move environment YAML from inline to remote", nickname = "moveEnvironmentConfigs")
+  @Operation(operationId = "moveEnvironmentConfigs", summary = "Move environment YAML from inline to remote",
       responses =
       {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "default",
-            description = "Fetches Environment YAML from Harness DB and creates a remote entity")
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(responseCode = "default", description = "Move environment YAML from inline to remote")
       })
-  @Hidden
   public ResponseDTO<EnvironmentMoveConfigResponse>
   moveConfig(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
                  NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
@@ -1230,7 +1229,7 @@ public class EnvironmentResourceV2 {
             .filePath(environmentRequestDTO.getFilePath())
             .build();
 
-    EnvironmentMoveConfigResponse environmentMoveConfigResponse = environmentService.moveEnvironmentStoreTypeConfig(
+    EnvironmentMoveConfigResponse environmentMoveConfigResponse = environmentService.moveEnvironment(
         accountIdentifier, orgIdentifier, projectIdentifier, environmentIdentifier, moveConfigOperationDTO);
     return ResponseDTO.newResponse(environmentMoveConfigResponse);
   }
