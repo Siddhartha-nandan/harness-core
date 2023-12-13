@@ -10,6 +10,7 @@ package io.harness.ssca.beans.drift;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 
+import java.util.List;
 import lombok.Builder;
 import lombok.Data;
 
@@ -19,4 +20,6 @@ import lombok.Data;
 public class LicenseDrift {
   LicenseDriftStatus status;
   String name;
+  // We will not save components at the time of saving drift entity.
+  List<ComponentSummary> components;
 }

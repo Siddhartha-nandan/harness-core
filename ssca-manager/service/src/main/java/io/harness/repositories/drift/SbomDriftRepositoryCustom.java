@@ -17,7 +17,10 @@ import org.springframework.data.mongodb.core.query.Update;
 
 public interface SbomDriftRepositoryCustom {
   boolean exists(Criteria criteria);
+  DriftEntity find(Criteria criteria);
   DriftEntity update(Query query, Update update);
 
   <T> List<T> aggregate(Aggregation aggregation, Class<T> resultClass);
+
+  DriftEntity findOne(Query query);
 }
