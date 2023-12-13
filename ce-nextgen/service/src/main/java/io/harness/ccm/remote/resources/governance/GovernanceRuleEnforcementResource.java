@@ -53,6 +53,7 @@ import io.harness.ccm.views.service.RuleSetService;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.delegate.beans.connector.ceawsconnector.CEAwsConnectorDTO;
 import io.harness.delegate.beans.connector.ceazure.CEAzureConnectorDTO;
+import io.harness.delegate.beans.connector.gcpccm.GcpCloudCostConnectorDTO;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.WingsException;
 import io.harness.ng.core.dto.ErrorDTO;
@@ -241,6 +242,11 @@ public class GovernanceRuleEnforcementResource {
       ruleEnforcement.setTargetAccounts(
           nextGenConnectorResponses.stream()
               .map(c -> ((CEAzureConnectorDTO) c.getConnectorConfig()).getSubscriptionId())
+              .collect(Collectors.toList()));
+    } else if (ruleEnforcement.getCloudProvider() == RuleCloudProviderType.GCP) {
+      ruleEnforcement.setTargetAccounts(
+          nextGenConnectorResponses.stream()
+              .map(c -> ((GcpCloudCostConnectorDTO) c.getConnectorConfig()).getProjectId())
               .collect(Collectors.toList()));
     }
     ruleEnforcement.setAccountId(accountId);
@@ -461,6 +467,11 @@ public class GovernanceRuleEnforcementResource {
       ruleEnforcement.setTargetAccounts(
           nextGenConnectorResponses.stream()
               .map(c -> ((CEAzureConnectorDTO) c.getConnectorConfig()).getSubscriptionId())
+              .collect(Collectors.toList()));
+    } else if (ruleEnforcement.getCloudProvider() == RuleCloudProviderType.GCP) {
+      ruleEnforcement.setTargetAccounts(
+          nextGenConnectorResponses.stream()
+              .map(c -> ((GcpCloudCostConnectorDTO) c.getConnectorConfig()).getProjectId())
               .collect(Collectors.toList()));
     }
 

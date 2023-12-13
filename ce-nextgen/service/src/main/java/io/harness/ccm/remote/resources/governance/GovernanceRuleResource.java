@@ -223,8 +223,9 @@ public class GovernanceRuleResource {
       ruleEnforcementDAO.updateCount(ruleEnforcementUpdate);
       RuleCloudProviderType ruleCloudProviderType = ruleEnforcement.getCloudProvider();
       accountId = ruleEnforcement.getAccountId();
-      if (ruleCloudProviderType != RuleCloudProviderType.AWS && ruleCloudProviderType != RuleCloudProviderType.AZURE) {
-        log.error("Support for non AWS/AZURE cloud providers is not present atm. Skipping enqueuing in faktory");
+      if (ruleCloudProviderType != RuleCloudProviderType.AWS && ruleCloudProviderType != RuleCloudProviderType.AZURE
+          && ruleCloudProviderType != RuleCloudProviderType.GCP) {
+        log.error("Support for non AWS/AZURE/GCP cloud providers is not present atm. Skipping enqueuing in faktory");
         // TO DO: Return simple response to dkron instead of empty for debugging purposes
         return ResponseDTO.newResponse();
       }
@@ -267,6 +268,9 @@ public class GovernanceRuleResource {
         if (ruleEnforcement.getCloudProvider() == RuleCloudProviderType.AZURE) {
           faktoryJobType = configuration.getGovernanceConfig().getAzureFaktoryJobType();
           faktoryQueueName = configuration.getGovernanceConfig().getAzureFaktoryQueueName();
+        } else if (ruleEnforcement.getCloudProvider() == RuleCloudProviderType.GCP) {
+          faktoryJobType = configuration.getGovernanceConfig().getGcpFaktoryJobType();
+          faktoryQueueName = configuration.getGovernanceConfig().getGcpFaktoryQueueName();
         }
         List<RuleExecution> ruleExecutions = governanceRuleService.enqueue(accountId, ruleEnforcement, rulesList,
             connectorInfoDTO.getConnectorConfig(), connectorInfoDTO.getIdentifier(), faktoryJobType, faktoryQueueName);
