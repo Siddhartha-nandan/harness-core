@@ -338,9 +338,9 @@ nameOverride: ""
 fullnameOverride: ""
 
 serviceAccount:
-  create: false
+  create: true
   annotations: {}
-  name: "harness-default"
+  name: "batch-processing-default"
 
 podAnnotations: {}
 
