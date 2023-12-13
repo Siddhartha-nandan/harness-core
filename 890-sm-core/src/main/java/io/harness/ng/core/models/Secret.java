@@ -63,13 +63,15 @@ public class Secret implements UniqueIdAware {
   }
 
   @Id @dev.morphia.annotations.Id String id;
-  @FdUniqueIndex String uniqueId;
-  String parentUniqueId;
   @FdIndex Boolean migratedFromManager;
   String accountIdentifier;
   String orgIdentifier;
   String projectIdentifier;
   String identifier;
+
+  @FdUniqueIndex String uniqueId;
+  String parentUniqueId;
+
   String name;
   String description;
   List<NGTag> tags;

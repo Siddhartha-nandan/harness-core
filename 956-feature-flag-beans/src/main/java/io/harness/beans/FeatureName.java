@@ -105,6 +105,7 @@ public enum FeatureName {
       "Enabling this FF switches the user to kubernetes java client instead of deprecated fabric8 client in NG.",
       HarnessTeam.CDP),
   CDS_ENABLE_TRIGGER_YAML_VALIDATION("Enables trigger yaml validation", HarnessTeam.SPG),
+  CDS_DISABLE_CG_ITERATORS("Disables CG iterators", HarnessTeam.SPG),
   CDS_ENCRYPT_TERRAFORM_APPLY_JSON_OUTPUT(
       "FF for providing the terraform apply json output as a secret", HarnessTeam.CDP),
   CDS_ENABLE_NEW_PARAMETER_FIELD_PROCESSOR(
@@ -867,9 +868,6 @@ public enum FeatureName {
   CDS_VALIDATE_INPUT_SET_IDENTIFIER("Enable validation check for InputSet Identifier.", PIPELINE),
   CDS_ECS_BASIC_DEPLOYMENT_STRATEGY(
       "This flag enables the basic deployment strategy in ECS Deployment Swimlane", HarnessTeam.CDP),
-  CDS_TF_TG_SKIP_ERROR_LOGS_COLORING(
-      "Skip coloring execution logs that are coming form standart error output of process executor for terraform and terragrunt steps",
-      HarnessTeam.CDP),
   CDS_NOT_SUPPORT_SECRETS_BASE64_EXPRESSION(
       "This flag to not support secrets in files which content will be used in configFile.getAsBase64 and fileStore.getAsBase64 expressions",
       HarnessTeam.CDP),
@@ -914,14 +912,13 @@ public enum FeatureName {
   PL_READ_ONLY_VAULT_TEST_CONNECTION("Enable to check test connection for Hashicorp read only vault", HarnessTeam.PL),
   CDS_ENABLE_TAS_ARTIFACT_AS_MANIFEST_SOURCE_NG("Artifact Bundle Support for Tas Deployment in NG", HarnessTeam.CDP),
   CDS_PCF_SUPPORT_BG_WITH_2_APPS_NG("Feature flag to support PCF Blue/Green with 2 apps", HarnessTeam.CDP),
-  SSCA_ENFORCEMENT_WITH_BOTH_NATIVE_AND_OPA_POLICIES_ENABLED(
-      "FF to enable use of both native SSCA policies and OPA policies for the SSCA enforcement step", HarnessTeam.SSCA),
+  SSCA_ENFORCEMENT_OPA("FF to enable use of OPA policies for the SSCA enforcement step", HarnessTeam.SSCA),
   CDS_ECS_BG_VALIDATION("Enable some conditions, which we will execute before the deployment. "
           + "These conditions are validations around existing load balancer configurations and tags in Blue/Green Service."
           + " We will fail the execution if we found some invalid configurations.",
       HarnessTeam.CDP),
   CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD(
-      "Enable to dowmload Aws S3 buckets, folder or object inside container step group", HarnessTeam.CDP),
+      "Enable to download Aws S3 buckets, folder or object inside container step group", HarnessTeam.CDP),
   CDS_USER_CD_LICENSE_VIEW("Enable to show Users CD License usage on UI", HarnessTeam.CDP),
   SSCA_USE_ELK("Enables ELK search for Artifact listing instead of Mongo", HarnessTeam.SSCA),
   SSCA_REMEDIATION_TRACKER("FF for Remediation Tracker flow.", HarnessTeam.SSCA);

@@ -248,6 +248,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   public void testCreate() {
     SecretDTOV2 secretDTOV2 = getSecretDTO();
     Secret secret = Secret.fromDTO(secretDTOV2);
+    secret.setAccountIdentifier(ACC_ID);
     when(secretRepository.save(any())).thenReturn(secret);
     when(transactionTemplate.execute(any())).thenReturn(secret);
 
