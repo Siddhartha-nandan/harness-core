@@ -292,13 +292,13 @@ public class TasBasicSetupTaskHandlerTest extends CategoryTest {
   @Owner(developers = ANIL)
   @Category(UnitTests.class)
   public void testExecuteWithRefreshToken() throws Exception {
-    String refreshTok = "dummyValue";
+    String refreshToken = "eyJhbGciOiJSUzI1NiIsImprdSI6Imh0dHBzOi8vdWFhLnN5c3RlbS50YXMtcWEtc2V0dXAuY29";
 
     CloudFoundryConfig foundryConfig = CloudFoundryConfig.builder()
                                            .endpointUrl(ENDPOINT_URL)
                                            .userName(USERNAME.toCharArray())
                                            .password(PASSWORD.toCharArray())
-                                           .refreshToken(refreshTok.toCharArray())
+                                           .refreshToken(refreshToken.toCharArray())
                                            .build();
 
     doReturn(foundryConfig).when(tasNgConfigMapper).mapTasConfigWithDecryption(any(), any());
@@ -358,7 +358,7 @@ public class TasBasicSetupTaskHandlerTest extends CategoryTest {
     assertThat(cfRequestConfigArgumentCaptorValue.getUserName().equals(USERNAME)).isTrue();
     assertThat(cfRequestConfigArgumentCaptorValue.getPassword().equals(PASSWORD)).isTrue();
     assertThat(cfRequestConfigArgumentCaptorValue.getEndpointUrl().equals(ENDPOINT_URL)).isTrue();
-    assertThat(cfRequestConfigArgumentCaptorValue.getRefreshToken().equals(refreshTok)).isTrue();
+    assertThat(cfRequestConfigArgumentCaptorValue.getRefreshToken().equals(refreshToken)).isTrue();
   }
   @Test
   @Owner(developers = SOURABH)
