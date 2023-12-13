@@ -82,7 +82,7 @@ public class DeleteAccountHelper {
   private static final Set<Class<? extends PersistentEntity>> separateDeletionEntities =
       new HashSet<>(Arrays.asList(Account.class, User.class, SSOSettings.class));
 
-  private static final int CURRENT_DELETION_ALGO_NUM = 1;
+  private static final int CURRENT_DELETION_ALGO_NUM = 2;
 
   @Inject private Morphia morphia;
   @Inject ServiceClassLocator serviceClassLocator;
