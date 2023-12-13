@@ -11,7 +11,7 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.oidc.config.OidcConfigurationUtility;
-import io.harness.oidc.gcp.GcpOidcTokenUtility;
+import io.harness.oidc.gcp.utility.GcpOidcTokenUtility;
 import io.harness.oidc.jwks.OidcJwksUtility;
 import io.harness.oidc.rsa.OidcRsaKeyService;
 

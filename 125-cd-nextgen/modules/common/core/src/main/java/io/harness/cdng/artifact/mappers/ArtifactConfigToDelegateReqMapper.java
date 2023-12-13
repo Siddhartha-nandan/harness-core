@@ -85,6 +85,8 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.expression.common.ExpressionMode;
 import io.harness.metrics.intfc.DelegateMetricsService;
 import io.harness.ng.core.NGAccess;
+import io.harness.oidc.OidcHelperUtility;
+import io.harness.oidc.delegate.GcpOidcTokenExchangeDetailsForDelegate;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.yaml.ParameterField;
@@ -113,6 +115,7 @@ public class ArtifactConfigToDelegateReqMapper {
   private final String LAST_PUBLISHED_EXPRESSION = "<+lastPublished.tag>";
   private final long TIME_OUT = 600000L;
   private final ArtifactSourceInstrumentationHelper instrumentationHelper;
+  @Inject OidcHelperUtility oidcHelperUtility;
 
   @Inject
   public ArtifactConfigToDelegateReqMapper(ArtifactSourceInstrumentationHelper instrumentationHelper) {
@@ -589,10 +592,15 @@ public class ArtifactConfigToDelegateReqMapper {
       tagRegex = gcrArtifactConfig.getTag().getInputSetValidator().getParameters();
     }
 
+    // Get the OIDC credentials if credential type is OIDC.
+    String accountId = AmbianceUtils.getAccountId(ambiance);
+    GcpOidcTokenExchangeDetailsForDelegate gcpOidcTokenExchangeDetailsForDelegate =
+        oidcHelperUtility.getOidcTokenExchangeDetailsForDelegate(accountId, gcpConnectorDTO);
+
     return ArtifactDelegateRequestUtils.getGcrDelegateRequest(
         (String) gcrArtifactConfig.getImagePath().fetchFinalValue(), tag, tagRegex, null,
         (String) gcrArtifactConfig.getRegistryHostname().fetchFinalValue(), connectorRef, gcpConnectorDTO,
-        encryptedDataDetails, ArtifactSourceType.GCR);
+        encryptedDataDetails, gcpOidcTokenExchangeDetailsForDelegate, ArtifactSourceType.GCR);
   }
   public GarDelegateRequest getGarDelegateRequest(GoogleArtifactRegistryConfig garArtifactConfig,
       GcpConnectorDTO gcpConnectorDTO, List<EncryptedDataDetail> encryptedDataDetails, String connectorRef,

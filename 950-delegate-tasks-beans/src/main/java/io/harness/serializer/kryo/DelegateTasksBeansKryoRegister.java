@@ -1117,6 +1117,8 @@ import io.harness.ng.core.dto.secrets.TGTPasswordSpecDTO;
 import io.harness.ng.core.dto.secrets.WinRmAuthDTO;
 import io.harness.ng.core.dto.secrets.WinRmCredentialsSpecDTO;
 import io.harness.notification.remote.SmtpConfigResponse;
+import io.harness.oidc.accesstoken.OidcWorkloadAccessTokenRequest;
+import io.harness.oidc.delegate.GcpOidcTokenExchangeDetailsForDelegate;
 import io.harness.secretmanagerclient.SSHAuthScheme;
 import io.harness.secretmanagerclient.SecretType;
 import io.harness.secretmanagerclient.ValueType;
@@ -2632,5 +2634,7 @@ public class DelegateTasksBeansKryoRegister implements KryoRegistrar {
     kryo.register(K8sTrafficRoutingConfigType.class, 20002014);
     kryo.register(K8sTrafficRoutingRequest.class, 20002012);
     kryo.register(K8sTrafficRoutingResponse.class, 20002013);
+    kryo.register(OidcWorkloadAccessTokenRequest.class, 20002015);
+    kryo.register(GcpOidcTokenExchangeDetailsForDelegate.class, 20002016);
   }
 }

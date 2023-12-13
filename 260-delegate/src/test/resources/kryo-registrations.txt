@@ -2903,4 +2903,5 @@
 20002012:io.harness.delegate.task.k8s.K8sTrafficRoutingRequest
 20002013:io.harness.delegate.task.k8s.K8sTrafficRoutingResponse
 20002014:io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfigType
-
+20002015:io.harness.oidc.accesstoken.OidcWorkloadAccessTokenRequest
+20002016:io.harness.oidc.delegate.GcpOidcTokenExchangeDetailsForDelegate
