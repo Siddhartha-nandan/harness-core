@@ -708,14 +708,14 @@ public interface NGTemplateResource {
       TemplateUpdateGitMetadataRequest request);
 
   @POST
-  @Path("/internal/{templateIdentifier}")
-  @ApiOperation(value = "Gets a merged template by identifier", nickname = "Get Resolved Template")
-  @Operation(operationId = "getResolvedTemplate", description = "Returns a Template by Identifier based on userInput",
-      summary = "Fetch a Resolved Template",
+  @Path("/getResolvedTemplate/{templateIdentifier}")
+  @ApiOperation(value = "Fetch resolved template by identifier", nickname = "Get Resolved Template")
+  @Operation(operationId = "getResolvedTemplate",
+      description = "Returns resolved Template by Identifier based on userInput", summary = "Fetch a Resolved Template",
       responses =
       {
         @io.swagger.v3.oas.annotations.responses.
-        ApiResponse(responseCode = "default", description = "Returns pipeline YAML")
+        ApiResponse(responseCode = "default", description = "Returns Resolved Template YAML")
       })
   @Timed
   @ResponseMetered
