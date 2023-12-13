@@ -17,7 +17,7 @@ import io.harness.monitoring.ExecutionCountWithAccountResult;
 import io.harness.pms.events.PmsEventMonitoringConstants;
 import io.harness.pms.events.base.PmsMetricContextGuard;
 
-import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
@@ -28,10 +28,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.cache.Cache;
+import lombok.extern.slf4j.Slf4j;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(HarnessTeam.PIPELINE)
 @Singleton
+@Slf4j
 public class PlanExecutionMonitorServiceImpl implements PlanExecutionMonitorService {
   private static final String PIPELINE_EXECUTION_ACTIVE_COUNT = "pipeline_execution_active_count";
   public static final String PLAN_EXECUTION = "_plan_execution";
@@ -76,12 +78,16 @@ public class PlanExecutionMonitorServiceImpl implements PlanExecutionMonitorServ
   }
 
   private void populateZeroCount(Set<String> currentKeys, String metricKey) {
-    Set<String> cachedKeys = metricsLoadingCache.get(metricKey + PLAN_EXECUTION);
-    Set<String> zeroCountKeys = Sets.difference(cachedKeys, currentKeys);
-    for (String key : zeroCountKeys) {
-      populateMetric(metricKey, key, 0);
+    try {
+      Set<String> cachedKeys = metricsLoadingCache.get(metricKey + PLAN_EXECUTION);
+      Set<String> zeroCountKeys = Sets.difference(cachedKeys, currentKeys);
+      for (String key : zeroCountKeys) {
+        populateMetric(metricKey, key, 0);
+      }
+      cachedKeys.addAll(currentKeys);
+    } catch (Exception e) {
+      log.error("Unable to populate zero count for metric {}", PIPELINE_EXECUTION_ACTIVE_COUNT);
     }
-    cachedKeys.addAll(currentKeys);
   }
 
   private void populateMetric(String key, String keyValue, Integer metricValue) {

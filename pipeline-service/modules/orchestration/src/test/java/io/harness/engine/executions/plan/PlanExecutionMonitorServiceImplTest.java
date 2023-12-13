@@ -28,12 +28,13 @@ import io.harness.monitoring.ExecutionCountWithAccountResult;
 import io.harness.pms.events.PmsEventMonitoringConstants;
 import io.harness.rule.Owner;
 
-import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.google.common.cache.LoadingCache;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import javax.cache.Cache;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,7 +60,7 @@ public class PlanExecutionMonitorServiceImplTest extends CategoryTest {
   @Test
   @Owner(developers = SHALINI)
   @Category(UnitTests.class)
-  public void testRegisterActiveExecutionMetrics() {
+  public void testRegisterActiveExecutionMetrics() throws ExecutionException {
     doReturn(true).when(metricsCache).putIfAbsent(any(), any());
 
     List<ExecutionCountWithAccountResult> result = new LinkedList<>();
@@ -76,7 +77,7 @@ public class PlanExecutionMonitorServiceImplTest extends CategoryTest {
   @Test
   @Owner(developers = YUVRAJ)
   @Category(UnitTests.class)
-  public void testRegisterActiveExecutionMetricsWithZeroCount() {
+  public void testRegisterActiveExecutionMetricsWithZeroCount() throws ExecutionException {
     doReturn(true).when(metricsCache).putIfAbsent(any(), any());
     List<ExecutionCountWithAccountResult> result = new LinkedList<>();
     doReturn(result).when(planExecutionService).aggregateRunningExecutionCountPerAccount();

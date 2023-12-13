@@ -20,7 +20,7 @@ import io.harness.monitoring.ExecutionStatistics;
 import io.harness.pms.events.PmsEventMonitoringConstants;
 import io.harness.pms.events.base.PmsMetricContextGuard;
 
-import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
@@ -30,16 +30,19 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import javax.cache.Cache;
+import lombok.extern.slf4j.Slf4j;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(HarnessTeam.PIPELINE)
 @Singleton
+@Slf4j
 public class NodeExecutionMonitorServiceImpl implements NodeExecutionMonitorService {
   private static final String NODE_EXECUTION_ACTIVE_EXECUTION_COUNT_METRIC_NAME = "node_execution_active_count";
   private static final String NODE_EXECUTION_ACTIVE_EXECUTION_COUNT_PER_MODULE_METRIC_NAME =
       "node_execution_active_count_per_module";
   private static final String NODE_EXECUTION_ACTIVE_EXECUTION_COUNT_PER_STEP_TYPE_METRIC_NAME =
       "node_execution_active_count_per_stepType";
+  public static final String NODE_EXECUTION = "_node_execution";
   private final NodeExecutionService nodeExecutionService;
   private final MetricService metricService;
   private final Cache<String, Integer> metricsCache;
@@ -110,12 +113,16 @@ public class NodeExecutionMonitorServiceImpl implements NodeExecutionMonitorServ
 
   private void populateZeroCount(
       Set<String> currentKeys, String metricKey, String nodeExecutionActiveExecutionCountMetricName) {
-    Set<String> cachedKeys = metricsLoadingCache.get(metricKey);
-    Set<String> zeroCountKeys = Sets.difference(cachedKeys, currentKeys);
-    for (String key : zeroCountKeys) {
-      populateMetric(metricKey, key, nodeExecutionActiveExecutionCountMetricName, 0);
+    try {
+      Set<String> cachedKeys = metricsLoadingCache.get(metricKey + NODE_EXECUTION);
+      Set<String> zeroCountKeys = Sets.difference(cachedKeys, currentKeys);
+      for (String key : zeroCountKeys) {
+        populateMetric(metricKey, key, nodeExecutionActiveExecutionCountMetricName, 0);
+      }
+      cachedKeys.addAll(currentKeys);
+    } catch (Exception e) {
+      log.error("Unable to populate zero count for metric {}", nodeExecutionActiveExecutionCountMetricName);
     }
-    cachedKeys.addAll(currentKeys);
   }
 
   private void populateMetric(String key, String keyValue, String metricName, Integer metricValue) {
