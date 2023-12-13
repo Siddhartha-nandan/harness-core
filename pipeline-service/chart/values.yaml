@@ -104,7 +104,7 @@ global:
       passwordKey: ""
       extraArgs: ""
       ssl:
-        enabled: true
+        enabled: false
         secret: "name"
         caFileKey: "caFilekeyName"
         trustStoreKey: "trustStorekeyName"
@@ -157,14 +157,11 @@ global:
     enabled: false
 redis:
   protocol: ""
-  hosts: ["hello:6379"]
+  hosts: []
   extraArgs: ""
-  ssl:
-    enabled: true
-    secret: "name"
-    caFileKey: "caFilekeyName"
-    trustStoreKey: "trustStorekeyName"
-    trustStorePasswordKey: "passwordkeyName"
+  events: {}
+  cache: {}
+  lock: {}
   secrets:
     kubernetesSecrets:
       - secretName: ""

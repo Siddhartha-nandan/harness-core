@@ -114,7 +114,8 @@ USAGE:
   {{- $localCtx := default $globalCtx (index $.Values $dbType) }}
   {{- $localDbCtx := default $localCtx (index $localCtx $database) }}
   {{- $globalDbCtx := default $globalCtx (index $globalCtx $database) }}
-  {{- $mergedCtx := deepCopy $localDbCtx | mergeOverwrite $globalDbCtx }}
+  {{- $globalDbCtxCopy := deepCopy $globalDbCtx }}
+  {{- $mergedCtx := deepCopy $localDbCtx | mergeOverwrite $globalDbCtxCopy }}
   {{- $installed := $mergedCtx.installed }}
   {{- if not $installed }}
     {{- $sslEnabled := $mergedCtx.ssl.enabled }}
@@ -157,7 +158,8 @@ USAGE:
   {{- $localCtx := default $globalCtx (index $.Values $dbType) }}
   {{- $localDbCtx := default $localCtx (index $localCtx $database) }}
   {{- $globalDbCtx := default $globalCtx (index $globalCtx $database) }}
-  {{- $mergedCtx := deepCopy $localDbCtx | mergeOverwrite $globalDbCtx }}
+  {{- $globalDbCtxCopy := deepCopy $globalDbCtx }}
+  {{- $mergedCtx := deepCopy $localDbCtx | mergeOverwrite $globalDbCtxCopy }}
   {{- $installed := $mergedCtx.installed }}
   {{- if not $installed }}
     {{- $sslEnabled := $mergedCtx.ssl.enabled }}
@@ -194,7 +196,8 @@ USAGE:
   {{- $localCtx := default $globalCtx (index $.Values $dbType) }}
   {{- $localDbCtx := default $localCtx (index $localCtx $database) }}
   {{- $globalDbCtx := default $globalCtx (index $globalCtx $database) }}
-  {{- $mergedCtx := deepCopy $localDbCtx | mergeOverwrite $globalDbCtx }}
+  {{- $globalDbCtxCopy := deepCopy $globalDbCtx }}
+  {{- $mergedCtx := deepCopy $localDbCtx | mergeOverwrite $globalDbCtxCopy }}
   {{- $installed := $mergedCtx.installed }}
   {{- if not $installed }}
     {{- $sslEnabled := $mergedCtx.ssl.enabled }}
