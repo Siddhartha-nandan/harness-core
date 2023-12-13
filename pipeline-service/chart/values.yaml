@@ -94,14 +94,21 @@ global:
                   name: ""
                   property: ""
     redis:
-      installed: true
+      installed: false
       protocol: "redis"
       # --  provide default values if redis.installed is set to false
-      hosts: []
+      hosts:
+        - anything:6379
       secretName: ""
       userKey: ""
       passwordKey: ""
       extraArgs: ""
+      ssl:
+        enabled: true
+        secret: "name"
+        caFileKey: "caFilekeyName"
+        trustStoreKey: "trustStorekeyName"
+        trustStorePasswordKey: "passwordkeyName"
       secrets:
         kubernetesSecrets:
           - secretName: ""
@@ -150,8 +157,14 @@ global:
     enabled: false
 redis:
   protocol: ""
-  hosts: []
+  hosts: ["hello:6379"]
   extraArgs: ""
+  ssl:
+    enabled: true
+    secret: "name"
+    caFileKey: "caFilekeyName"
+    trustStoreKey: "trustStorekeyName"
+    trustStorePasswordKey: "passwordkeyName"
   secrets:
     kubernetesSecrets:
       - secretName: ""
