@@ -72,6 +72,7 @@ import io.harness.ng.core.common.beans.NGTag.NGTagKeys;
 import io.harness.ng.core.dto.ActiveProjectsCountDTO;
 import io.harness.ng.core.dto.ProjectDTO;
 import io.harness.ng.core.dto.ProjectFilterDTO;
+import io.harness.ng.core.entities.Organization;
 import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.entities.Project.ProjectKeys;
 import io.harness.ng.core.entities.metrics.ProjectsPerAccountCount;
@@ -486,10 +487,11 @@ public class ProjectServiceImpl implements ProjectService {
         USER);
   }
 
-  public boolean moveProject(String accountIdentifier, @OrgIdentifier String orgIdentifier,
-      @ProjectIdentifier String identifier, @OrgIdentifier String destinationOrgIdentifier) {
-    Optional<Organization> organizationOptional = organizationService.get(accountIdentifier, destinationOrgIdentifier);
-    if (organizationOptional.isEmpty()) {
+  public boolean moveProject(String accountIdentifier, ScopeInfo scopeInfo, @OrgIdentifier String orgIdentifier,
+      @ProjectIdentifier String identifier, String destinationOrgIdentifier) {
+    Optional<Organization> destinationOrgOptional =
+        organizationService.get(accountIdentifier, destinationOrgIdentifier);
+    if (destinationOrgOptional.isEmpty()) {
       throw new EntityNotFoundException(String.format("Organization with identifier [%s] not found", orgIdentifier));
     }
     Optional<Project> duplicateProjectCheck = get(accountIdentifier, destinationOrgIdentifier, identifier);
@@ -497,9 +499,9 @@ public class ProjectServiceImpl implements ProjectService {
       throw new DuplicateFieldException(
           String.format("A project with identifier [%s] and orgIdentifier [%s] is already present",
               duplicateProjectCheck.get().getIdentifier(), destinationOrgIdentifier),
-          USER_SRE);
+          USER);
     }
-    Optional<Project> optionalProject = get(accountIdentifier, orgIdentifier, identifier);
+    Optional<Project> optionalProject = get(accountIdentifier, scopeInfo, identifier);
 
     if (optionalProject.isPresent()) {
       Project project = optionalProject.get();
@@ -509,8 +511,8 @@ public class ProjectServiceImpl implements ProjectService {
       project.setIdentifier(project.getIdentifier());
       project.setCreatedAt(project.getCreatedAt() == null ? project.getLastModifiedAt() : DateTime.now().getMillis());
       project.setUniqueId(project.getUniqueId());
-      project.setParentId(organizationOptional.get().getUniqueId());
-      project.setParentUniqueId(organizationOptional.get().getUniqueId());
+      project.setParentId(destinationOrgOptional.get().getUniqueId());
+      project.setParentUniqueId(destinationOrgOptional.get().getUniqueId());
       if (project.getVersion() == null) {
         project.setVersion(project.getVersion());
       }
@@ -522,11 +524,11 @@ public class ProjectServiceImpl implements ProjectService {
         addToScopeInfoCache(updatedProject);
         setupProject(Scope.of(accountIdentifier, destinationOrgIdentifier, project.getIdentifier()));
         log.info(String.format(
-            "Project with identifier [%s] and source orgIdentifier [%s] was successfully migrated to [%s] orgIdentifier",
-            identifier, orgIdentifier, destinationOrgIdentifier));
+            "Project with identifier [%s] and source orgIdentifier [%s] was successfully moved to [%s] orgIdentifier",
+            identifier, scopeInfo.getOrgIdentifier(), destinationOrgIdentifier));
         outboxService.save(new ProjectUpdateEvent(
             project.getAccountIdentifier(), ProjectMapper.writeDTO(updatedProject), ProjectMapper.writeDTO(project)));
-        return updatedProject.getParentUniqueId().equals(organizationOptional.get().getUniqueId());
+        return updatedProject.getParentUniqueId().equals(destinationOrgOptional.get().getUniqueId());
       }));
     }
     throw new InvalidRequestException(

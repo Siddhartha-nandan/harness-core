@@ -38,10 +38,10 @@ public interface ProjectService {
 
   Optional<Project> getConsideringCase(String accountIdentifier, String orgIdentifier, String identifier);
 
-
   Project update(
       String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier, String identifier, ProjectDTO project);
-  boolean moveProject(String accountIdentifier, String orgIdentifier, String identifier, String destinationOrg);
+  boolean moveProject(
+      String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier, String identifier, String destinationOrg);
 
   PageResponse<ProjectDTO> listProjectsForUser(String userId, String accountId, PageRequest pageRequest);
 

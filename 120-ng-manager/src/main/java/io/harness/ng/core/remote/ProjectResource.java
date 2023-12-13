@@ -326,7 +326,6 @@ public class ProjectResource {
 
   @PUT
   @Path("{identifier}/move")
-  @InternalApi
   @Hidden()
   @ApiOperation(value = "Move a Project across orgs", nickname = "moveProject")
   public ResponseDTO<Boolean> moveProject(
@@ -338,6 +337,7 @@ public class ProjectResource {
           description = "Organization identifier for the Project. If left empty, Default Organization is assumed")
       @QueryParam(NGCommonEntityConstants.ORG_KEY) @DefaultValue(
           DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier,
+      @Context ScopeInfo scopeInfo,
       @RequestBody(required = true,
           description = "This is the updated org identifier") @NotNull @Valid MoveProjectRequest moveProjectRequest) {
     accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountIdentifier, orgIdentifier, identifier),
@@ -346,7 +346,7 @@ public class ProjectResource {
         ResourceScope.of(accountIdentifier, orgIdentifier, moveProjectRequest.getDestinationOrgIdentifier()),
         Resource.of(ORGANIZATION, moveProjectRequest.getDestinationOrgIdentifier()), CREATE_PROJECT_PERMISSION);
     return ResponseDTO.newResponse(projectService.moveProject(
-        accountIdentifier, orgIdentifier, identifier, moveProjectRequest.getDestinationOrgIdentifier()));
+        accountIdentifier, scopeInfo, orgIdentifier, identifier, moveProjectRequest.getDestinationOrgIdentifier()));
   }
 
   @DELETE
