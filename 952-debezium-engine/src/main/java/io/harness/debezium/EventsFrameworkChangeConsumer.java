@@ -80,7 +80,7 @@ public abstract class EventsFrameworkChangeConsumer implements MongoCollectionCh
   private void process(ChangeEvent<String, String> record) {
     Optional<OpType> opType =
         getOperationType(((EmbeddedEngineChangeEvent<String, String, List<Header>>) record).sourceRecord());
-    if (!opType.isEmpty()) {
+    if (opType.isPresent()) {
       DebeziumChangeEvent debeziumChangeEvent = DebeziumChangeEvent.newBuilder()
                                                     .setKey(getKeyOrDefault(record))
                                                     .setValue(getValueOrDefault(record))
