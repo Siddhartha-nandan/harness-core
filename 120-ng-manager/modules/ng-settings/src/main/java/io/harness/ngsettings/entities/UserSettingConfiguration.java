@@ -34,7 +34,7 @@ import java.util.Set;
 @EqualsAndHashCode(callSuper = true)
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserSettingConfiguration extends  SettingConfiguration{
+public class UserSettingConfiguration extends  SettingConfiguration {
 
     String defaultValue;
     @NotNull SettingValueType valueType;

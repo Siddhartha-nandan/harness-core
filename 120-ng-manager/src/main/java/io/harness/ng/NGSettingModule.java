@@ -14,10 +14,16 @@ import io.harness.ngsettings.SettingsValidatorFactory;
 import io.harness.ngsettings.services.SettingEnforcementValidator;
 import io.harness.ngsettings.services.SettingValidator;
 import io.harness.ngsettings.services.SettingsService;
+import io.harness.ngsettings.services.UserSettingsService;
 import io.harness.ngsettings.services.impl.SettingsServiceImpl;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.MapBinder;
+import io.harness.ngsettings.services.impl.UserSettingsServiceImpl;
+import io.harness.repositories.ngsettings.custom.UserSettingConfigurationRepositoryCustom;
+import io.harness.repositories.ngsettings.custom.UserSettingConfigurationRepositoryCustomImpl;
+import io.harness.repositories.ngsettings.spring.UserSettingConfigurationRepository;
+
 import java.util.List;
 
 public class NGSettingModule extends AbstractModule {
@@ -31,6 +37,7 @@ public class NGSettingModule extends AbstractModule {
   protected void configure() {
     bind(NextGenConfiguration.class).toInstance(appConfig);
     bind(SettingsService.class).to(SettingsServiceImpl.class);
+    bind(UserSettingsService.class).to(UserSettingsServiceImpl.class);
     registerSettingValidators();
   }
 

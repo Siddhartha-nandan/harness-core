@@ -171,6 +171,7 @@ import io.harness.ng.oauth.GitlabSCMOAuthTokenRefresher;
 import io.harness.ng.overview.eventGenerator.DeploymentEventGenerator;
 import io.harness.ng.webhook.services.api.WebhookEventProcessingService;
 import io.harness.ngsettings.settings.SettingsCreationJob;
+import io.harness.ngsettings.settings.UserSettingsCreationJob;
 import io.harness.observer.NoOpRemoteObserverInformerImpl;
 import io.harness.observer.RemoteObserver;
 import io.harness.observer.RemoteObserverInformer;
@@ -512,6 +513,8 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     initializeCdMonitoring(appConfig, injector);
     SettingsCreationJob settingsCreationJob = injector.getInstance(SettingsCreationJob.class);
     settingsCreationJob.run();
+    UserSettingsCreationJob userSettingsCreationJob = injector.getInstance(UserSettingsCreationJob.class);
+    userSettingsCreationJob.run();
 
     if (appConfig.getShouldDeployWithGitSync()) {
       intializeGitSync(injector);

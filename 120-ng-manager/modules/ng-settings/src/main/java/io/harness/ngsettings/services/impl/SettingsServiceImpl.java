@@ -243,10 +243,11 @@ public class SettingsServiceImpl implements SettingsService {
   }
 
   @Override
-  public List<AccountSettingConfiguration> listDefaultSettings() {
-    List<AccountSettingConfiguration> settingConfigurationList = new ArrayList<>();
-    for (SettingConfiguration settingConfiguration : settingConfigurationRepository.findAll()) {
-      settingConfigurationList.add((AccountSettingConfiguration)settingConfiguration);
+  public List<SettingConfiguration> listDefaultSettings() {
+    List<SettingConfiguration> settingConfigurationList = new ArrayList<>();
+    Criteria criteria = Criteria.where("_class").is("NGSettingConfiguration");
+    for (SettingConfiguration settingConfiguration : settingConfigurationRepository.findAll(criteria)) {
+      settingConfigurationList.add(settingConfiguration);
     }
     return settingConfigurationList;
   }

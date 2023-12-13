@@ -26,7 +26,7 @@ public interface SettingsService {
       List<SettingRequestDTO> settingRequestDTO);
   SettingValueResponseDTO get(
       String identifier, String accountIdentifier, String orgIdentifier, String projectIdentifier);
-  List<AccountSettingConfiguration> listDefaultSettings();
+  List<SettingConfiguration> listDefaultSettings();
   void removeSetting(String identifier);
   SettingConfiguration upsertSettingConfiguration(SettingConfiguration settingConfiguration);
 

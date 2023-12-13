@@ -167,7 +167,7 @@ public class SettingsCreationJobTest extends NgSettingsTestBase {
     assertTrue(optional.isPresent());
     assertEquals(settingsConfig.getVersion(), optional.get().getConfigVersion());
 
-    List<AccountSettingConfiguration> currentSettingConfigurations = settingsService.listDefaultSettings();
+    List<SettingConfiguration> currentSettingConfigurations = settingsService.listDefaultSettings();
 
     if (currentSettingConfigurations.size() != settingsConfig.getSettings().size()) {
       fail("The count of setting configurations does not match");

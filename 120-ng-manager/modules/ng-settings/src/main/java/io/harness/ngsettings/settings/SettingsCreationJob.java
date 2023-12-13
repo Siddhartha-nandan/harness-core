@@ -82,7 +82,7 @@ public class SettingsCreationJob {
     }
   }
 
-  public void validateConfig(SettingsConfig settingsConfig) {
+  public void validateConfig( SettingsConfig settingsConfig) {
     if (null == settingsConfig) {
       throw new InvalidRequestException("Missing settings config. Check settings.yml file");
     }
