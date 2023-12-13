@@ -370,7 +370,7 @@ deployMode: KUBERNETES
 deployVariant: SAAS
 envPath: ""
 
-scmVersion: 0b5de953
+scmVersion: 80f7e024
 
 ngAuthUIEnabled: false
 
@@ -703,6 +703,7 @@ eventListenersCountConfig:
   executionEventListenerCount: ${EXECUTION_EVENT_LISTENER_COUNT:-3}
   generalNotifyEventListenerCount: ${GENERAL_NOTIFY_EVENT_LISTENER_COUNT:-5}
   orchestrationNotifyEventListenerCount: ${ORCHESTRATION_NOTIFY_EVENT_LISTENER_COUNT:-5}
+  artifactCollectionNotifyEventListenerCount: ${ARTIFACT_COLLECTION_NOTIFY_EVENT_LISTENER_COUNT:-5}
   notifyConsumerCount: ${NOTIFY_CONSUMER_COUNT:-2}
   generalConsumerCount: ${GENERAL_CONSUMER_COUNT:-2}
 
@@ -787,8 +788,6 @@ enableOpentelemetry: false
 
 disableInstanceSyncIterator: ${DISABLE_INSTANCE_SYNC_ITERATOR:-false}
 
-redisNotifyEvent: ${REDIS_NOTIFY_EVENT:-false}
-
 lockNotifyResponseCleanup: ${LOCK_NOTIFY_RESPONSE_CLEANUP:-false}
 moveGitPollingToRunnable: ${MOVE_GIT_POLLING_TO_RUNNABLE:-true}
 
@@ -802,7 +801,7 @@ notificationClient:
     maxConnectionIdleTime: 600000
     connectionsPerHost: 300
   httpClient:
-    baseUrl: http://localhost:9005
+    baseUrl: http://localhost:9005/api/
     connectTimeOutSeconds: 15
     readTimeOutSeconds: 15
   secrets:
@@ -824,3 +823,4 @@ awsServiceEndpointUrls:
   cloudwatchEndPointUrl: https://monitoring.us-east-1.amazonaws.com
 
 maxAccountsToDeleteInParallel: 6
+runAccountDeletionOnWeekdays: ${RUN_ACCOUNT_DELETION_ON_WEEKDAYS:-false}
