@@ -150,7 +150,6 @@ public class ContainerFactory {
     //    envVars.put(HARNESS_BUILD_ID_VARIABLE, String.valueOf(buildNumber));
     //    envVars.put(HARNESS_STAGE_ID_VARIABLE, stageID);
     //    envVars.put(HARNESS_EXECUTION_ID_VARIABLE, executionID);
-    envVars.put(LOCAL_DEV_SKIP_SSL_VERIFY, "true");
     return envVars.build();
   }
 
