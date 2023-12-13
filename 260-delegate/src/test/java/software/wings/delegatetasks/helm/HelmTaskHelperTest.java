@@ -143,7 +143,7 @@ public class HelmTaskHelperTest extends WingsBaseTest {
   @Mock private StartedProcess startedProcess;
   @Mock private HelmCommandRunner helmCommandRunner;
   @Spy @InjectMocks private HelmTaskHelper helmTaskHelper;
-  @Spy @InjectMocks private HelmTaskHelperBase helmTaskHelperBase;
+  @Spy @InjectMocks private HelmTaskHelperBaseEEE helmTaskHelperBase;
 
   private ChartMuseumServer testChartMuseumServer;
 
