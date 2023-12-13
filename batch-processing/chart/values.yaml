@@ -327,7 +327,7 @@ ceGCPHomeProjectCreds: ""
 storageObjectAdmin: ""
 
 gcpConfig:
-  GCP_SMP_ENABLED: false
+  GCP_SMP_ENABLED: true
   bucketNamePrefix: "harness-ccm-%s-%s"
 
 awsSecret:
