@@ -352,6 +352,8 @@ segmentConfiguration:
   url: "segment_url_place_holder"
   apiKey: "segment_api_key"
   certValidationRequired: false
+  flushQueueSize: 250
+  flushInterval: 1
 
 subscriptionConfig:
   stripeApiKey: dummy
@@ -547,6 +549,11 @@ pluginExecutionConfig:
   downloadAwsS3Config:
     # Use rootless image only for K8 download aws s3
     image: harnessdev/download-aws-s3:1.0.0-rootless-linux
+    entrypoint:
+      - /usr/local/bin/download
+  downloadHarnessStoreConfig:
+    # Use rootless image only for K8 download aws s3
+    image: harnessdev/download-harness-store:1.0.0-rootless-linux
     entrypoint:
       - /usr/local/bin/download
   apiUrl: https://localhost:8181/#/

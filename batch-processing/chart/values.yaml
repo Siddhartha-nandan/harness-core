@@ -263,7 +263,7 @@ image:
   repository: harness/batch-processing-signed
   pullPolicy: Always
 # Overrides the image tag whose default is the chart appVersion.
-  tag: "81103-000"
+  tag: "81904-000"
   digest: ""
 # image pull secrets to use for batch-processing image
   imagePullSecrets: []
@@ -273,7 +273,7 @@ imageClickhouseEnabled:
   repository: harness/batch-processing-signed
   pullPolicy: Always
 # Overrides the image tag whose default is the chart appVersion.
-  tag: "81103-000"
+  tag: "81904-000"
   digest: ""
 # image pull secrets to use for batch-processing image
   imagePullSecrets: []
@@ -282,7 +282,15 @@ imageAzureDataPipeline:
   registry: docker.io
   repository: harness/ccm-azure-smp-signed
   pullPolicy: Always
-  tag: "10010"
+  tag: "10058"
+  digest: ""
+  imagePullSecrets: []
+
+imageGCPDataPipeline:
+  registry: docker.io
+  repository: harness/ccm-gcp-smp-signed
+  pullPolicy: Always
+  tag: "10057"
   digest: ""
   imagePullSecrets: []
 
@@ -317,6 +325,10 @@ ceBatchGCPCredentials: ""
 ceGCPHomeProjectCreds: ""
 
 storageObjectAdmin: ""
+
+gcpConfig:
+  GCP_SMP_ENABLED: false
+  bucketNamePrefix: "harness-ccm-%s-%s"
 
 awsSecret:
   S3_SYNC_CONFIG_ACCESSKEY: ""

@@ -21,9 +21,12 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.rule.Owner;
 import io.harness.ssca.beans.drift.ComponentDrift;
-import io.harness.ssca.beans.drift.ComponentDriftResult;
+import io.harness.ssca.beans.drift.ComponentDriftCalculationResult;
 import io.harness.ssca.beans.drift.ComponentDriftStatus;
 import io.harness.ssca.beans.drift.ComponentSummary;
+import io.harness.ssca.beans.drift.LicenseDrift;
+import io.harness.ssca.beans.drift.LicenseDriftCalculationResult;
+import io.harness.ssca.beans.drift.LicenseDriftStatus;
 import io.harness.ssca.services.NormalisedSbomComponentService;
 
 import java.util.List;
@@ -46,7 +49,7 @@ public class SbomDriftCalculatorTest extends SSCAManagerTestBase {
   public void testFindComponentDrifts() {
     when(normalisedSbomComponentService.getComponentsByAggregation(any(), any()))
         .thenReturn(List.of(
-            ComponentDriftResult.builder()
+            ComponentDriftCalculationResult.builder()
                 .addedOrModifiedSet(Set.of(
                     ComponentSummary.builder().packageName("name").purl("purl").packageVersion("version").build(),
                     ComponentSummary.builder().packageName("name1").purl("purl").packageVersion("version1").build()))
@@ -59,7 +62,7 @@ public class SbomDriftCalculatorTest extends SSCAManagerTestBase {
 
     List<ComponentDrift> componentDrifts = sbomDriftCalculator.findComponentDrifts("base", "tag");
     verify(normalisedSbomComponentService)
-        .getComponentsByAggregation(argumentCaptor.capture(), eq(ComponentDriftResult.class));
+        .getComponentsByAggregation(argumentCaptor.capture(), eq(ComponentDriftCalculationResult.class));
     Aggregation aggregation = argumentCaptor.getValue();
     assertThat(aggregation.toString())
         .isEqualTo(
@@ -90,5 +93,37 @@ public class SbomDriftCalculatorTest extends SSCAManagerTestBase {
                 .oldComponent(
                     ComponentSummary.builder().packageName("name2").purl("purl").packageVersion("version2").build())
                 .build());
+  }
+
+  @Test
+  @Owner(developers = INDER)
+  @Category(UnitTests.class)
+  public void testFindLicenseDrifts() {
+    when(normalisedSbomComponentService.getComponentsByAggregation(any(), any()))
+        .thenReturn(List.of(LicenseDriftCalculationResult.builder()
+                                .licensesAdded(Set.of("a1", "f1", "l1"))
+                                .licensesDeleted(Set.of("b1", "g1"))
+                                .build()));
+
+    ArgumentCaptor<Aggregation> argumentCaptor = ArgumentCaptor.forClass(Aggregation.class);
+
+    List<LicenseDrift> licenseDrifts = sbomDriftCalculator.findLicenseDrift("base", "tag");
+    verify(normalisedSbomComponentService)
+        .getComponentsByAggregation(argumentCaptor.capture(), eq(LicenseDriftCalculationResult.class));
+    Aggregation aggregation = argumentCaptor.getValue();
+    assertThat(aggregation.toString())
+        .isEqualTo(
+            "{ \"aggregate\" : \"__collection__\", \"pipeline\" : [{ \"$facet\" : { \"baseSet\" : [{ \"$match\" : { \"orchestrationid\" : \"base\"}}, { \"$project\" : { \"orchestrationid\" : 1, \"packagelicense\" : 1, \"_id\" : 0}}, { \"$unwind\" : \"$packagelicense\"}, { \"$group\" : { \"_id\" : \"$orchestrationid\", \"oldLicenses\" : { \"$addToSet\" : \"$packagelicense\"}}}], \"driftSet\" : [{ \"$match\" : { \"orchestrationid\" : \"tag\"}}, { \"$project\" : { \"orchestrationid\" : 1, \"packagelicense\" : 1, \"_id\" : 0}}, { \"$unwind\" : \"$packagelicense\"}, { \"$group\" : { \"_id\" : \"$orchestrationid\", \"newLicenses\" : { \"$addToSet\" : \"$packagelicense\"}}}]}}, { \"$unwind\" : \"$baseSet\"}, { \"$unwind\" : \"$driftSet\"}, { \"$project\" : { \"licensesDeleted\" : { \"$setDifference\" : [\"$baseSet.oldLicenses\", \"$driftSet.newLicenses\"]}, \"licensesAdded\" : { \"$setDifference\" : [\"$driftSet.newLicenses\", \"$baseSet.oldLicenses\"]}}}]}");
+    assertThat(licenseDrifts).hasSize(5);
+    assertThat(licenseDrifts.get(0))
+        .isEqualTo(LicenseDrift.builder().status(LicenseDriftStatus.ADDED).name("a1").build());
+    assertThat(licenseDrifts.get(1))
+        .isEqualTo(LicenseDrift.builder().status(LicenseDriftStatus.DELETED).name("b1").build());
+    assertThat(licenseDrifts.get(2))
+        .isEqualTo(LicenseDrift.builder().status(LicenseDriftStatus.ADDED).name("f1").build());
+    assertThat(licenseDrifts.get(3))
+        .isEqualTo(LicenseDrift.builder().status(LicenseDriftStatus.DELETED).name("g1").build());
+    assertThat(licenseDrifts.get(4))
+        .isEqualTo(LicenseDrift.builder().status(LicenseDriftStatus.ADDED).name("l1").build());
   }
 }

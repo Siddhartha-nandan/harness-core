@@ -1480,6 +1480,10 @@ components:
           x-stoplight:
             id: xnzkker1vialm
           items: {}
+        execution:
+          type: boolean
+        regex:
+          type: string
     TemplateYamlInputMetadataDTO:
       title: TemplateYamlInputMetadataDTO
       x-stoplight:
@@ -1581,11 +1585,11 @@ components:
       x-internal: true
       description: ''
       enum:
-        - String
-        - Integer
-        - Boolean
-        - Object
-        - Array
+        - string
+        - integer
+        - boolean
+        - object
+        - array
   securitySchemes:
     x-api-key:
       name: x-api-key

@@ -16,16 +16,26 @@ import static java.lang.String.format;
 import io.harness.NGCommonEntityConstants;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeInfo.ScopeInfoBuilder;
+import io.harness.beans.ScopeInfoContext;
+import io.harness.beans.ScopeLevel;
+import io.harness.data.structure.EmptyPredicate;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.scopeinfoclient.remote.ScopeInfoClient;
 
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
+import java.io.IOException;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import javax.annotation.Priority;
+import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Priorities;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
+import javax.ws.rs.container.ContainerResponseContext;
+import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.container.ResourceInfo;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.ext.Provider;
@@ -37,8 +47,10 @@ import org.apache.commons.lang3.StringUtils;
 @Priority(Priorities.USER)
 @Slf4j
 @Provider
-public class ScopeInfoFilter implements ContainerRequestFilter {
+public class ScopeInfoFilter implements ContainerRequestFilter, ContainerResponseFilter {
   private static final String SCOPE_INFO_FILTER_LOG = "SCOPE_INFO_FILTER: ";
+  public static final Set<String> matchingPathRequests =
+      Set.of("/organizations", "/aggregate/organizations", "/projects", "/aggregate/projects");
 
   private final ScopeInfoClient scopeInfoClient;
   @Context private ResourceInfo resourceInfo;
@@ -49,34 +61,72 @@ public class ScopeInfoFilter implements ContainerRequestFilter {
 
   @Override
   public void filter(ContainerRequestContext requestContext) {
-    Optional<String> accountIdentifierOptional = getAccountIdentifierFrom(requestContext);
-    if (accountIdentifierOptional.isEmpty() || accountIdentifierOptional.get().isEmpty()) {
-      // there can be cases when account identifier may actually be not present in API,
-      // they would continue to be handled by upstream as is
-      log.warn(format("%s No accountId present in the request", SCOPE_INFO_FILTER_LOG));
-      return;
-    }
+    if (isFilterApplicableOnRequest(requestContext)) {
+      String existingAccountIdentifier =
+          requestContext.getHeaderString(ScopeInfoContext.SCOPE_INFO_ACCOUNT_CONTEXT_PROPERTY);
+      String existingOrgIdentifier = requestContext.getHeaderString(ScopeInfoContext.SCOPE_INFO_ORG_CONTEXT_PROPERTY);
+      String existingProjectIdentifier =
+          requestContext.getHeaderString(ScopeInfoContext.SCOPE_INFO_PROJECT_CONTEXT_PROPERTY);
+      String existingUniqueId = requestContext.getHeaderString(ScopeInfoContext.SCOPE_INFO_UNIQUE_ID_CONTEXT_PROPERTY);
+      String existingScopeType =
+          requestContext.getHeaderString(ScopeInfoContext.SCOPE_INFO_SCOPE_TYPE_CONTEXT_PROPERTY);
 
-    if (!isScopeInfoResolutionExemptedRequest(resourceInfo, requestContext)) {
-      String accountIdentifier = accountIdentifierOptional.get();
-      String orgIdentifier =
-          getOrgIdentifierFrom(requestContext).isPresent() ? getOrgIdentifierFrom(requestContext).get() : null;
-      String projectIdentifier =
-          getProjectIdentifierFrom(requestContext).isPresent() ? getProjectIdentifierFrom(requestContext).get() : null;
-      Optional<ScopeInfo> optionalScopeInfo =
-          NGRestUtils.getResponse(scopeInfoClient.getScopeInfo(accountIdentifier, orgIdentifier, projectIdentifier));
-      if (optionalScopeInfo.isEmpty()) {
-        log.warn(format(
-            "%s No Scope with given identifiers - accountIdentifier: [%s], orgIdentifier: [%s], projectIdentifier: [%s] present",
-            SCOPE_INFO_FILTER_LOG, accountIdentifier, orgIdentifier, projectIdentifier));
+      ScopeInfoBuilder existingScopeInfoBuilder = ScopeInfo.builder();
+      if (EmptyPredicate.isNotEmpty(existingAccountIdentifier) && EmptyPredicate.isNotEmpty(existingScopeType)
+          && EmptyPredicate.isNotEmpty(existingUniqueId)) {
+        existingScopeInfoBuilder.accountIdentifier(existingAccountIdentifier).build();
+        existingScopeInfoBuilder.orgIdentifier(existingOrgIdentifier);
+        existingScopeInfoBuilder.projectIdentifier(existingProjectIdentifier);
+        existingScopeInfoBuilder.scopeType(ScopeLevel.valueOf(existingScopeType));
+        existingScopeInfoBuilder.uniqueId(existingUniqueId);
+      }
+      ScopeInfo existingScopeInfo = existingScopeInfoBuilder.build();
+
+      Optional<String> accountIdentifierOptional = getAccountIdentifierFrom(requestContext);
+      if (accountIdentifierOptional.isEmpty() || accountIdentifierOptional.get().isEmpty()) {
+        // there can be cases when account identifier may actually be not present in API,
+        // they would continue to be handled by upstream as is
+        log.warn(format("%s No accountId present in the request", SCOPE_INFO_FILTER_LOG));
         return;
       }
-      ScopeInfo scopeInfo = ScopeInfo.builder().accountIdentifier(accountIdentifier).build();
-      scopeInfo.setOrgIdentifier(optionalScopeInfo.get().getOrgIdentifier());
-      scopeInfo.setProjectIdentifier(optionalScopeInfo.get().getProjectIdentifier());
-      scopeInfo.setScopeType(optionalScopeInfo.get().getScopeType());
-      scopeInfo.setUniqueId(optionalScopeInfo.get().getUniqueId());
-      requestContext.setProperty(SCOPE_INFO_CONTEXT_PROPERTY, scopeInfo);
+
+      if (!isScopeInfoResolutionExemptedRequest(resourceInfo, requestContext)) {
+        String accountIdentifier = accountIdentifierOptional.get();
+        String orgIdentifier = getOrgIdentifierFrom(requestContext).orElse(null);
+        String projectIdentifier = getProjectIdentifierFrom(requestContext).orElse(null);
+
+        if (Objects.equals(accountIdentifier, existingScopeInfo.getAccountIdentifier())
+            && Objects.equals(orgIdentifier, existingScopeInfo.getOrgIdentifier())
+            && Objects.equals(projectIdentifier, existingScopeInfo.getProjectIdentifier())) {
+          requestContext.setProperty(SCOPE_INFO_CONTEXT_PROPERTY, existingScopeInfo);
+          ScopeInfoContext.setScopeInfo(existingScopeInfo);
+          return;
+        }
+
+        Optional<ScopeInfo> optionalScopeInfo =
+            NGRestUtils.getResponse(scopeInfoClient.getScopeInfo(accountIdentifier, orgIdentifier, projectIdentifier));
+        if (optionalScopeInfo.isEmpty()) {
+          String errorMsg = null;
+          if (StringUtils.isEmpty(orgIdentifier) && StringUtils.isEmpty(projectIdentifier)) {
+            errorMsg = format("Account with identifier [%s] not found", accountIdentifier);
+          } else if (StringUtils.isEmpty(projectIdentifier)) {
+            errorMsg = format("Organization with identifier [%s] not found", orgIdentifier);
+          } else {
+            errorMsg = format("Project with identifier [%s] not found", projectIdentifier);
+          }
+          throw new NotFoundException(errorMsg);
+        }
+        ScopeInfo scopeInfo = ScopeInfo.builder()
+                                  .accountIdentifier(accountIdentifier)
+                                  .orgIdentifier(optionalScopeInfo.get().getOrgIdentifier())
+                                  .projectIdentifier(optionalScopeInfo.get().getProjectIdentifier())
+                                  .scopeType(optionalScopeInfo.get().getScopeType())
+                                  .uniqueId(optionalScopeInfo.get().getUniqueId())
+                                  .build();
+
+        requestContext.setProperty(SCOPE_INFO_CONTEXT_PROPERTY, scopeInfo);
+        ScopeInfoContext.setScopeInfo(scopeInfo);
+      }
     }
   }
 
@@ -130,5 +180,18 @@ public class ScopeInfoFilter implements ContainerRequestFilter {
   private boolean isScopeInfoResolutionExemptedRequest(
       ResourceInfo requestResourceInfo, ContainerRequestContext requestContext) {
     return ScopeInfoClient.SCOPE_INFO.equals(requestContext.getUriInfo().getPath());
+  }
+
+  @Override
+  public void filter(ContainerRequestContext containerRequestContext, ContainerResponseContext containerResponseContext)
+      throws IOException {
+    ScopeInfoContext.clearScopeInfo();
+  }
+
+  private boolean isFilterApplicableOnRequest(ContainerRequestContext requestContext) {
+    return requestContext != null && requestContext.getUriInfo() != null
+        && requestContext.getUriInfo().getRequestUri() != null
+        && requestContext.getUriInfo().getRequestUri().getPath() != null
+        && matchingPathRequests.stream().anyMatch(requestContext.getUriInfo().getRequestUri().getPath()::startsWith);
   }
 }

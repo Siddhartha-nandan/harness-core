@@ -17,6 +17,7 @@ import io.harness.ng.DbAliases;
 import io.harness.persistence.UuidAware;
 import io.harness.ssca.beans.drift.ComponentDrift;
 import io.harness.ssca.beans.drift.DriftBase;
+import io.harness.ssca.beans.drift.LicenseDrift;
 
 import dev.morphia.annotations.Entity;
 import java.time.OffsetDateTime;
@@ -25,6 +26,7 @@ import java.util.List;
 import lombok.Builder;
 import lombok.Setter;
 import lombok.Value;
+import lombok.experimental.FieldNameConstants;
 import lombok.experimental.NonFinal;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
@@ -38,6 +40,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document("drifts")
 @TypeAlias("drifts")
 @HarnessEntity(exportable = true)
+@FieldNameConstants(innerTypeName = "DriftEntityKeys")
 @OwnedBy(HarnessTeam.SSCA)
 public class DriftEntity implements UuidAware {
   @NonFinal @Setter @Id String uuid; // uuid of the drift entity.
@@ -51,6 +54,16 @@ public class DriftEntity implements UuidAware {
   String baseTag;
   DriftBase base; // mode showing what was the base sbom
   List<ComponentDrift> componentDrifts; // will be in sorted order.
+  List<LicenseDrift> licenseDrifts; // will be in sorted order.
   @FdIndex @CreatedDate long createdAt;
-  @Builder.Default @NonFinal @FdTtlIndex Date validUntil = Date.from(OffsetDateTime.now().plusMonths(6).toInstant());
+  @Builder.Default
+  @Setter
+  @NonFinal
+  @FdTtlIndex
+  Date validUntil = Date.from(OffsetDateTime.now().plusMonths(6).toInstant());
+
+  public static final class DriftEntityKeys {
+    public static final String COMPONENT_DRIFT_STATUS = DriftEntityKeys.componentDrifts + ".status";
+    public static final String LICENSE_DRIFT_STATUS = DriftEntityKeys.licenseDrifts + ".status";
+  }
 }
