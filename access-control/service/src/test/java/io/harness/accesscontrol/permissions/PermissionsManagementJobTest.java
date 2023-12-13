@@ -91,7 +91,7 @@ public class PermissionsManagementJobTest extends AccessControlTestBase {
   @Test
   @Owner(developers = KARAN)
   @Category(UnitTests.class)
-  public void testAddNewPermission() throws NoSuchFieldException, IllegalAccessException {
+  public void testAddNewPermissionSSS() throws NoSuchFieldException, IllegalAccessException {
     permissionsManagementJob.run();
 
     PermissionsConfig permissionsConfig =
