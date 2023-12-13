@@ -250,13 +250,13 @@ public class PipelineResourceImpl implements YamlSchemaResource, PipelineResourc
         projectId, orgId, accountId));
 
     Optional<PipelineEntity> pipelineEntity = pmsPipelineService.getPipeline(accountId, orgId, projectId, pipelineId,
-        false, false, loadFromFallbackBranch, Boolean.TRUE.equals(loadFromFallbackBranch));
+        false, false, loadFromFallbackBranch, GitXCacheMapper.parseLoadFromCacheHeaderParam(loadFromCache));
     if (pipelineEntity.isEmpty()) {
       throw new EntityNotFoundException(
           String.format("Pipeline with the given ID: %s does not exist or has been deleted.", pipelineId));
     }
 
-    String templateResolvedPipelineYaml = "";
+    String templateResolvedPipelineYaml = null;
     TemplateMergeResponseDTO templateMergeResponseDTO = null;
     if (getTemplatesResolvedPipeline) {
       try {
