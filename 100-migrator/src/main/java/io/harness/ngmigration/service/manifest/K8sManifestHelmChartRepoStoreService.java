@@ -9,6 +9,7 @@ package io.harness.ngmigration.service.manifest;
 import static software.wings.settings.SettingVariableTypes.AMAZON_S3_HELM_REPO;
 import static software.wings.settings.SettingVariableTypes.GCS_HELM_REPO;
 import static software.wings.settings.SettingVariableTypes.HTTP_HELM_REPO;
+import static software.wings.settings.SettingVariableTypes.OCI_HELM_REPO;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -20,9 +21,14 @@ import io.harness.cdng.manifest.yaml.GcsStoreConfig;
 import io.harness.cdng.manifest.yaml.HttpStoreConfig;
 import io.harness.cdng.manifest.yaml.ManifestConfig;
 import io.harness.cdng.manifest.yaml.ManifestConfigWrapper;
+import io.harness.cdng.manifest.yaml.OciHelmChartConfig;
+import io.harness.cdng.manifest.yaml.OciHelmChartStoreGenericConfig;
 import io.harness.cdng.manifest.yaml.S3StoreConfig;
 import io.harness.cdng.manifest.yaml.kinds.HelmChartManifest;
 import io.harness.cdng.manifest.yaml.kinds.HelmChartManifest.HelmChartManifestBuilder;
+import io.harness.cdng.manifest.yaml.oci.OciHelmChartStoreConfig;
+import io.harness.cdng.manifest.yaml.oci.OciHelmChartStoreConfigType;
+import io.harness.cdng.manifest.yaml.oci.OciHelmChartStoreConfigWrapper;
 import io.harness.cdng.manifest.yaml.storeConfig.StoreConfigType;
 import io.harness.cdng.manifest.yaml.storeConfig.StoreConfigWrapper;
 import io.harness.ngmigration.beans.ManifestProvidedEntitySpec;
@@ -70,19 +76,13 @@ public class K8sManifestHelmChartRepoStoreService implements NgManifestService {
       return Collections.emptyList();
     }
     SettingAttribute settingAttribute = (SettingAttribute) entities.get(connectorId).getEntity();
-    String name = StringUtils.isBlank(applicationManifest.getName()) ? applicationManifest.getUuid()
-                                                                     : applicationManifest.getName();
 
     Service service =
         (Service) entities
             .get(
                 CgEntityId.builder().type(NGMigrationEntityType.SERVICE).id(applicationManifest.getServiceId()).build())
             .getEntity();
-    String identifier = MigratorUtility.generateIdentifier(name, identifierCaseFormat);
-    ParameterField<String> chartVersion = MigratorUtility.RUNTIME_INPUT;
-    if (StringUtils.isNotBlank(helmChartConfig.getChartVersion())) {
-      chartVersion = ParameterField.createValueField(helmChartConfig.getChartVersion());
-    }
+    String identifier = MigratorUtility.generateIdentifier(applicationManifest.getUuid(), identifierCaseFormat);
 
     HelmChartManifestBuilder helmChartManifest =
         HelmChartManifest.builder()
@@ -90,11 +90,42 @@ public class K8sManifestHelmChartRepoStoreService implements NgManifestService {
             .helmVersion(service.getHelmVersion())
             .skipResourceVersioning(ParameterField.createValueField(
                 Boolean.TRUE.equals(applicationManifest.getSkipVersioningForAllK8sObjects())))
-            .chartName(ParameterField.createValueField(helmChartConfig.getChartName()))
-            .chartVersion(chartVersion);
+            .chartName(ParameterField.createValueField(helmChartConfig.getChartName()));
+
+    if (StringUtils.isNotBlank(helmChartConfig.getChartVersion())) {
+      helmChartManifest.chartVersion(ParameterField.createValueField(helmChartConfig.getChartVersion()));
+    }
 
     helmChartManifest.commandFlags(getCommandFlags(applicationManifest));
 
+    if (OCI_HELM_REPO.equals(settingAttribute.getValue().getSettingType())) {
+      NGYamlFile connectorYamlFile = migratedEntities.get(
+          CgEntityId.builder().id(settingAttribute.getUuid()).type(NGMigrationEntityType.CONNECTOR).build());
+      if (connectorYamlFile == null) {
+        log.error(
+            String.format("We could not migrate the following manifest %s as we could not find the helm connector %s",
+                applicationManifest.getUuid(), helmChartConfig.getConnectorId()));
+        return Collections.emptyList();
+      }
+      NgEntityDetail connector = connectorYamlFile.getNgEntityDetail();
+      OciHelmChartStoreConfig ociHelmChartStoreConfig =
+          OciHelmChartStoreGenericConfig.builder()
+              .connectorRef(ParameterField.createValueField(MigratorUtility.getIdentifierWithScope(connector)))
+              .build();
+      OciHelmChartStoreConfigWrapper ociHelmChartStoreConfigWrapper = OciHelmChartStoreConfigWrapper.builder()
+                                                                          .type(OciHelmChartStoreConfigType.GENERIC)
+                                                                          .spec(ociHelmChartStoreConfig)
+                                                                          .build();
+      helmChartManifest
+          .store(ParameterField.createValueField(
+              StoreConfigWrapper.builder()
+                  .type(StoreConfigType.OCI)
+                  .spec(OciHelmChartConfig.builder()
+                            .config(ParameterField.createValueField(ociHelmChartStoreConfigWrapper))
+                            .build())
+                  .build()))
+          .build();
+    }
     if (HTTP_HELM_REPO.equals(settingAttribute.getValue().getSettingType())) {
       NGYamlFile connectorYamlFile = migratedEntities.get(
           CgEntityId.builder().id(settingAttribute.getUuid()).type(NGMigrationEntityType.CONNECTOR).build());

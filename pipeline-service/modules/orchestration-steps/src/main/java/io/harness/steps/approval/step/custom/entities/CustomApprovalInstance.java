@@ -15,8 +15,8 @@ import io.harness.data.structure.EmptyPredicate;
 import io.harness.iterator.PersistentIrregularIterable;
 import io.harness.ng.DbAliases;
 import io.harness.plancreator.steps.TaskSelectorYaml;
-import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.servicenow.misc.TicketNG;
 import io.harness.steps.approval.step.beans.CriteriaSpecWrapperDTO;
@@ -25,7 +25,7 @@ import io.harness.steps.approval.step.custom.CustomApprovalSpecParameters;
 import io.harness.steps.approval.step.custom.beans.CustomApprovalTicketNG;
 import io.harness.steps.approval.step.entities.ApprovalInstance;
 import io.harness.steps.shellscript.ShellScriptSourceWrapper;
-import io.harness.steps.shellscript.ShellScriptStepParameters;
+import io.harness.steps.shellscript.ShellScriptStepParametersV0;
 import io.harness.steps.shellscript.ShellType;
 import io.harness.yaml.core.timeout.Timeout;
 
@@ -70,7 +70,7 @@ public class CustomApprovalInstance extends ApprovalInstance implements Persiste
   // the id of the latest delegate task created while polling
   String latestDelegateTaskId;
 
-  public static CustomApprovalInstance fromStepParameters(Ambiance ambiance, StepElementParameters stepParameters) {
+  public static CustomApprovalInstance fromStepParameters(Ambiance ambiance, StepBaseParameters stepParameters) {
     if (stepParameters == null) {
       return null;
     }
@@ -100,8 +100,8 @@ public class CustomApprovalInstance extends ApprovalInstance implements Persiste
     return CustomApprovalOutcome.builder().outputVariables(((CustomApprovalTicketNG) ticketNG).getFields()).build();
   }
 
-  public ShellScriptStepParameters toShellScriptStepParameters() {
-    return ShellScriptStepParameters.infoBuilder()
+  public ShellScriptStepParametersV0 toShellScriptStepParameters() {
+    return ShellScriptStepParametersV0.infoBuilder()
         .environmentVariables(getEnvironmentVariables())
         .shellType(getShellType())
         .delegateSelectors(getDelegateSelectors())

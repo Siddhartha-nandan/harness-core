@@ -10,7 +10,7 @@ package io.harness.idp.scorecard.scores.repositories;
 import io.harness.annotation.HarnessRepo;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.scorecard.scores.entities.ScoreEntity;
+import io.harness.idp.scorecard.scores.entity.ScoreEntity;
 
 import java.util.List;
 import org.springframework.data.repository.CrudRepository;
@@ -23,5 +23,10 @@ public interface ScoreRepository extends CrudRepository<ScoreEntity, String>, Sc
   List<ScoreEntity> findAllByAccountIdentifierAndEntityIdentifierAndScorecardIdentifier(
       String accountIdentifier, String entityIdentifier, String scorecardIdentifier);
 
+  List<ScoreEntity> findAllByAccountIdentifierAndScorecardIdentifier(
+      String accountIdentifier, String scorecardIdentifier);
+
   ScoreEntity save(ScoreEntity scoreEntity);
+
+  void deleteAllByAccountIdentifierAndIdIn(String accountIdentifier, List<String> ids);
 }

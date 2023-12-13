@@ -6,7 +6,11 @@
  */
 
 package io.harness.ng.core.environment.mappers;
+
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
+import static io.harness.cdng.artifact.NGArtifactConstants.ACCOUNT;
+import static io.harness.cdng.artifact.NGArtifactConstants.ORG;
+import static io.harness.cdng.artifact.NGArtifactConstants.PROJECT;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.filter.FilterType.ENVIRONMENT;
@@ -107,6 +111,59 @@ public class EnvironmentFilterHelper {
     }
   }
 
+  public Criteria createCriteriaToGetScopedEnvironments(String accountId, List<String> orgIdentifiers,
+      List<String> projectIdentifiers, String envType, List<String> scopes) {
+    if (isEmpty(accountId)) {
+      throw new InvalidRequestException("account identifier cannot be null for environment list");
+    }
+    if (isEmpty(scopes)) {
+      throw new InvalidRequestException("scopes cannot be null for environment list");
+    }
+    List<Criteria> orCriteriaList = new ArrayList<>();
+    Criteria accountCriteria;
+    Criteria orgCriteria;
+    Criteria projectCriteria;
+    if (scopes.stream().anyMatch(scope -> scope.equalsIgnoreCase(ACCOUNT))) {
+      accountCriteria =
+          Criteria.where(EnvironmentKeys.orgIdentifier).is(null).and(EnvironmentKeys.projectIdentifier).is(null);
+      setBaseCriteria(accountId, envType, accountCriteria);
+      orCriteriaList.add(accountCriteria);
+    }
+    if (scopes.stream().anyMatch(scope -> scope.equalsIgnoreCase(ORG))) {
+      orgCriteria = Criteria.where(EnvironmentKeys.projectIdentifier).is(null);
+      setBaseCriteria(accountId, envType, orgCriteria);
+      if (isNotEmpty(orgIdentifiers)) {
+        orgCriteria.and(EnvironmentKeys.orgIdentifier).in(orgIdentifiers);
+      } else {
+        orgCriteria.and(EnvironmentKeys.orgIdentifier).ne(null);
+      }
+      orCriteriaList.add(orgCriteria);
+    }
+    if (scopes.stream().anyMatch(scope -> scope.equalsIgnoreCase(PROJECT))) {
+      projectCriteria = new Criteria();
+      setBaseCriteria(accountId, envType, projectCriteria);
+      if (isNotEmpty(orgIdentifiers)) {
+        projectCriteria.and(EnvironmentKeys.orgIdentifier).in(orgIdentifiers);
+      } else {
+        projectCriteria.and(EnvironmentKeys.orgIdentifier).ne(null);
+      }
+      if (isNotEmpty(projectIdentifiers)) {
+        projectCriteria.and(EnvironmentKeys.projectIdentifier).in(projectIdentifiers);
+      } else {
+        projectCriteria.and(EnvironmentKeys.projectIdentifier).ne(null);
+      }
+      orCriteriaList.add(projectCriteria);
+    }
+    return new Criteria().orOperator(orCriteriaList);
+  }
+
+  private void setBaseCriteria(String accountId, String envType, Criteria accountCriteria) {
+    accountCriteria.and(EnvironmentKeys.accountId).is(accountId).and(EnvironmentKeys.deleted).is(false);
+    if (isNotEmpty(envType)) {
+      accountCriteria.and(EnvironmentKeys.type).is(envType);
+    }
+  }
+
   private Criteria getCriteriaToReturnEnvsFromEnvList(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, List<String> scopedEnvRefs) {
     Criteria criteria = new Criteria();
@@ -164,7 +221,7 @@ public class EnvironmentFilterHelper {
 
   public Criteria createCriteriaForGetList(String accountId, String orgIdentifier, String projectIdentifier,
       boolean deleted, String searchTerm, String filterIdentifier, EnvironmentFilterPropertiesDTO filterProperties,
-      boolean includeAllAccessibleAtScope) {
+      boolean includeAllAccessibleAtScope, String repoName) {
     if (isNotBlank(filterIdentifier) && filterProperties != null) {
       throw new InvalidRequestException("Can not apply both filter properties and saved filter together");
     }
@@ -182,6 +239,9 @@ public class EnvironmentFilterHelper {
           criteria, filterIdentifier, accountId, orgIdentifier, projectIdentifier, searchTerm, andCriteriaList);
     } else {
       populateEnvironmentFiltersInTheCriteria(criteria, filterProperties, searchTerm, andCriteriaList);
+    }
+    if (isNotEmpty(repoName)) {
+      criteria.and(EnvironmentKeys.repo).is(repoName);
     }
     if (andCriteriaList.size() != 0) {
       criteria.andOperator(andCriteriaList.toArray(new Criteria[0]));
@@ -390,6 +450,7 @@ public class EnvironmentFilterHelper {
     // for service override v2
     update.set(NGServiceOverridesEntityKeys.identifier, identifier);
     update.set(NGServiceOverridesEntityKeys.type, type);
+    update.set(NGServiceOverridesEntityKeys.yamlV2, serviceOverridesEntity.getYamlV2());
     return update;
   }
 

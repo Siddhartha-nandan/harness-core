@@ -24,6 +24,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.v3.oas.annotations.Parameter;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -67,5 +68,60 @@ public class ChaosResource {
     } catch (Exception e) {
       return ResponseDTO.newResponse(true);
     }
+  }
+
+  @POST
+  @Path("/chaosInfrastructure")
+  @InternalApi
+  @ApiOperation(value = "Register the chaos infrastructure entity with the parent environment",
+      nickname = "registerChaosInfrastructure", hidden = true)
+  public ResponseDTO<Boolean>
+  registerChaosInfrastructure(@Body ChaosInfrastructureRequest chaosInfrastructureRequest) {
+    boolean result = chaosService.registerChaosInfrastructure(chaosInfrastructureRequest);
+    return ResponseDTO.newResponse(result);
+  }
+
+  @DELETE
+  @Path("/chaosInfrastructure")
+  @InternalApi
+  @ApiOperation(value = "Deregister the chaos infrastructure entity relation with the parent environment",
+      nickname = "deleteChaosInfrastructure", hidden = true)
+  public ResponseDTO<Boolean>
+  deleteChaosInfrastructure(@Body ChaosInfrastructureRequest chaosInfrastructureRequest) {
+    boolean result = chaosService.deleteChaosInfrastructure(chaosInfrastructureRequest);
+    return ResponseDTO.newResponse(result);
+  }
+
+  @POST
+  @Path("/chaosHub")
+  @InternalApi
+  @ApiOperation(
+      value = "Register the chaos hub entity with the github connector", nickname = "registerChaosHub", hidden = true)
+  public ResponseDTO<Boolean>
+  registerChaosHub(@Body ChaosHubRequest chaosHubRequest) {
+    boolean result = chaosService.registerChaosHub(chaosHubRequest);
+    return ResponseDTO.newResponse(result);
+  }
+
+  @DELETE
+  @Path("/chaosHub")
+  @InternalApi
+  @ApiOperation(
+      value = "Deregister the chaos hub entity with the github connector", nickname = "deleteChaosHub", hidden = true)
+  public ResponseDTO<Boolean>
+  deleteChaosHub(@Body ChaosHubRequest chaosHubRequest) {
+    boolean result = chaosService.deleteChaosHub(chaosHubRequest);
+    return ResponseDTO.newResponse(result);
+  }
+
+  @POST
+  @Path("chaosExperimentNotification")
+  @InternalApi
+  @ApiOperation(
+      value = "Trigger notification for chaos experiment", nickname = "chaosExperimentNotification", hidden = true)
+  public ResponseDTO<Void>
+  experimentStartedNotificationTrigger(@Body ExperimentNotificationRequest experimentNotificationRequest) {
+    chaosService.experimentNotificationTrigger(experimentNotificationRequest);
+    return ResponseDTO.newResponse();
   }
 }

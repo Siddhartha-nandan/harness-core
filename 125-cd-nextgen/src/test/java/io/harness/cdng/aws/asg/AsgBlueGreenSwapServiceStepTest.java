@@ -8,6 +8,7 @@
 package io.harness.cdng.aws.asg;
 
 import static io.harness.rule.OwnerRule.LOVISH_BANSAL;
+import static io.harness.rule.OwnerRule.VITALIE;
 
 import static software.wings.beans.TaskType.AWS_ASG_BLUE_GREEN_SWAP_SERVICE_TASK_NG;
 
@@ -16,6 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import io.harness.CategoryTest;
@@ -24,6 +26,7 @@ import io.harness.category.element.UnitTests;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.common.beans.SetupAbstractionKeys;
 import io.harness.cdng.infra.beans.AsgInfrastructureOutcome;
+import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.instance.info.InstanceInfoService;
 import io.harness.cdng.instance.outcome.DeploymentInfoOutcome;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
@@ -52,6 +55,7 @@ import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import software.wings.beans.TaskType;
 
@@ -108,6 +112,7 @@ public class AsgBlueGreenSwapServiceStepTest extends CategoryTest {
   @Spy @InjectMocks private AsgBlueGreenSwapServiceStep asgBlueGreenSwapServiceStep;
   @Spy private InstanceInfoService instanceInfoService;
   @Mock ExecutionSweepingOutputService executionSweepingOutputService;
+  @Mock DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
   @Spy private OutcomeService outcomeService;
 
   @BeforeClass
@@ -167,6 +172,10 @@ public class AsgBlueGreenSwapServiceStepTest extends CategoryTest {
         .when(instanceInfoService)
         .saveServerInstancesIntoSweepingOutput(any(), any());
 
+    doReturn(mock(InfrastructureOutcome.class))
+        .when(asgStepCommonHelper)
+        .getInfrastructureOutcomeWithUpdatedExpressions(any());
+
     StepResponse stepResponse = asgBlueGreenSwapServiceStep.handleTaskResultWithSecurityContext(
         ambiance, stepElementParameters, () -> (AsgCommandResponse) responseData);
 
@@ -218,6 +227,9 @@ public class AsgBlueGreenSwapServiceStepTest extends CategoryTest {
 
     doReturn(asgInfrastructureOutcome1).when(outcomeService).resolve(any(), any());
     doReturn(asgInfraConfig).when(asgStepCommonHelper).getAsgInfraConfig(any(), any());
+    doReturn(mock(InfrastructureOutcome.class))
+        .when(asgStepCommonHelper)
+        .getInfrastructureOutcomeWithUpdatedExpressions(any());
 
     AsgExecutionPassThroughData asgExecutionPassThroughData =
         AsgExecutionPassThroughData.builder().infrastructure(asgInfrastructureOutcome1).build();
@@ -250,5 +262,38 @@ public class AsgBlueGreenSwapServiceStepTest extends CategoryTest {
     verify(asgStepCommonHelper)
         .queueAsgTask(eq(stepElementParameters), eq(asgBlueGreenSwapServiceRequest), eq(ambiance), any(), eq(true),
             eq(AWS_ASG_BLUE_GREEN_SWAP_SERVICE_TASK_NG));
+  }
+
+  @Test
+  @Owner(developers = VITALIE)
+  @Category(UnitTests.class)
+  public void getLoadBalancerTest() {
+    String loadBalancer = "loadBalancer";
+    String prodListenerArn = "prodListenerArn";
+    String prodListenerRuleArn = "prodListenerRuleArn";
+    String stageListenerArn = "stageListenerArn";
+    String stageListenerRuleArn = "stageListenerRuleArn";
+    List<String> prodTargetGroupArnsList = List.of("p_gr1", "p_gr2");
+    List<String> stageTargetGroupArnsList = List.of("s_gr1", "s_gr2");
+
+    AsgBlueGreenPrepareRollbackDataOutcome asgBlueGreenPrepareRollbackDataOutcome =
+        AsgBlueGreenPrepareRollbackDataOutcome.builder()
+            .loadBalancer(loadBalancer)
+            .prodListenerArn(prodListenerArn)
+            .prodListenerRuleArn(prodListenerRuleArn)
+            .prodTargetGroupArnsList(prodTargetGroupArnsList)
+            .stageListenerArn(stageListenerArn)
+            .stageListenerRuleArn(stageListenerRuleArn)
+            .stageTargetGroupArnsList(stageTargetGroupArnsList)
+            .build();
+
+    AsgLoadBalancerConfig ret = AsgBlueGreenSwapServiceStep.getLoadBalancer(asgBlueGreenPrepareRollbackDataOutcome);
+    assertThat(ret.getLoadBalancer()).isEqualTo(loadBalancer);
+    assertThat(ret.getProdListenerArn()).isEqualTo(prodListenerArn);
+    assertThat(ret.getProdListenerRuleArn()).isEqualTo(prodListenerRuleArn);
+    assertThat(ret.getProdTargetGroupArnsList()).isEqualTo(prodTargetGroupArnsList);
+    assertThat(ret.getStageListenerArn()).isEqualTo(stageListenerArn);
+    assertThat(ret.getStageListenerRuleArn()).isEqualTo(stageListenerRuleArn);
+    assertThat(ret.getStageTargetGroupArnsList()).isEqualTo(stageTargetGroupArnsList);
   }
 }

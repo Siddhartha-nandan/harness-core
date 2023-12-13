@@ -7,6 +7,7 @@
 
 package io.harness.ci.plancreator.V1;
 
+import static io.harness.beans.FeatureName.QUEUE_CI_EXECUTIONS_CONCURRENCY;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 
@@ -18,22 +19,28 @@ import io.harness.beans.yaml.extended.infrastrucutre.Infrastructure;
 import io.harness.beans.yaml.extended.infrastrucutre.K8sDirectInfraYaml;
 import io.harness.beans.yaml.extended.infrastrucutre.VmInfraYaml;
 import io.harness.beans.yaml.extended.infrastrucutre.VmPoolYaml;
-import io.harness.ci.integrationstage.BuildJobEnvInfoBuilder;
-import io.harness.ci.integrationstage.VmInitializeTaskParamsBuilder;
+import io.harness.ci.execution.integrationstage.BuildJobEnvInfoBuilder;
+import io.harness.ci.execution.integrationstage.VmInitializeTaskParamsBuilder;
+import io.harness.ci.ff.CIFeatureFlagService;
 import io.harness.ci.plan.creator.step.CIPMSStepPlanCreatorV2;
 import io.harness.cimanager.stages.IntegrationStageConfigImpl;
+import io.harness.exception.InvalidYamlException;
 import io.harness.exception.ngexception.CIStageExecutionException;
 import io.harness.plancreator.execution.ExecutionElementConfig;
 import io.harness.plancreator.execution.ExecutionWrapperConfig;
-import io.harness.plancreator.stages.stage.AbstractStageNode;
+import io.harness.plancreator.stages.stage.v1.AbstractStageNodeV1;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.utils.IdentifierGeneratorUtils;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.ParameterField;
+import io.harness.pms.yaml.YamlField;
+import io.harness.pms.yaml.YamlUtils;
 import io.harness.yaml.core.timeout.Timeout;
 import io.harness.yaml.extended.ci.codebase.CodeBase;
 
 import com.google.inject.Inject;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -42,8 +49,9 @@ import java.util.Set;
 public class InitializeStepPlanCreatorV1 extends CIPMSStepPlanCreatorV2<InitializeStepNode> {
   private final String InitializeDisplayName = "Initialize";
   @Inject private BuildJobEnvInfoBuilder buildJobEnvInfoBuilder;
+  @Inject private CIFeatureFlagService ffService;
 
-  public PlanCreationResponse createPlan(PlanCreationContext ctx, AbstractStageNode abstractStageNode,
+  public PlanCreationResponse createPlan(PlanCreationContext ctx, AbstractStageNodeV1 abstractStageNode,
       CodeBase codebase, Infrastructure infrastructure, List<ExecutionWrapperConfig> executionWrapperConfigs,
       String childID) {
     // create PluginStepNode
@@ -54,14 +62,16 @@ public class InitializeStepPlanCreatorV1 extends CIPMSStepPlanCreatorV2<Initiali
   }
 
   private InitializeStepNode getStepNode(PlanCreationContext ctx, CodeBase codeBase, Infrastructure infrastructure,
-      AbstractStageNode abstractStageNode, List<ExecutionWrapperConfig> executionWrapperConfigs) {
+      AbstractStageNodeV1 abstractStageNode, List<ExecutionWrapperConfig> executionWrapperConfigs) {
+    // TODO: create InitializeStepInfoV1
     InitializeStepInfo initializeStepInfo =
         InitializeStepInfo.builder()
             .identifier(InitializeStepInfo.STEP_TYPE.getType())
             .name(InitializeStepInfo.STEP_TYPE.getType())
             .infrastructure(infrastructure)
-            .stageIdentifier(abstractStageNode.getIdentifier())
-            .variables(abstractStageNode.getVariables())
+            .stageIdentifier(abstractStageNode.getId())
+            // TODO: set variables once InitializeStepInfoV1 is created
+            //            .variables(abstractStageNode.getVariables())
             .stageElementConfig(IntegrationStageConfigImpl.builder()
                                     .uuid(IdentifierGeneratorUtils.getId(abstractStageNode.getName()))
                                     .execution(ExecutionElementConfig.builder().steps(executionWrapperConfigs).build())
@@ -80,16 +90,19 @@ public class InitializeStepPlanCreatorV1 extends CIPMSStepPlanCreatorV2<Initiali
         .name(InitializeDisplayName)
         .uuid(generateUuid())
         .type(InitializeStepNode.StepType.liteEngineTask)
-        .timeout(getTimeout(infrastructure))
+        .timeout(getTimeout(infrastructure, ctx.getAccountIdentifier()))
         .initializeStepInfo(initializeStepInfo)
         .build();
   }
 
-  private ParameterField<Timeout> getTimeout(Infrastructure infrastructure) {
+  private ParameterField<Timeout> getTimeout(Infrastructure infrastructure, String accountId) {
     if (infrastructure == null) {
       throw new CIStageExecutionException("Input infrastructure can not be empty");
     }
-
+    boolean queueEnabled = ffService.isEnabled(QUEUE_CI_EXECUTIONS_CONCURRENCY, accountId);
+    if (queueEnabled) {
+      return ParameterField.createValueField(Timeout.fromString("10h"));
+    }
     if (infrastructure.getType() == Infrastructure.Type.VM) {
       VmInitializeTaskParamsBuilder.validateInfrastructure(infrastructure);
       VmPoolYaml vmPoolYaml = (VmPoolYaml) ((VmInfraYaml) infrastructure).getSpec();
@@ -118,7 +131,17 @@ public class InitializeStepPlanCreatorV1 extends CIPMSStepPlanCreatorV2<Initiali
   }
 
   @Override
-  public Class<InitializeStepNode> getFieldClass() {
-    return InitializeStepNode.class;
+  public InitializeStepNode getFieldObject(YamlField field) {
+    try {
+      return YamlUtils.read(field.getNode().toString(), InitializeStepNode.class);
+    } catch (IOException e) {
+      throw new InvalidYamlException(
+          "Unable to parse initialize step yaml. Please ensure that it is in correct format", e);
+    }
+  }
+
+  @Override
+  public Set<String> getSupportedYamlVersions() {
+    return Set.of(HarnessYamlVersion.V1);
   }
 }

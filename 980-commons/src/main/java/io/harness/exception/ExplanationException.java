@@ -30,6 +30,7 @@ public class ExplanationException extends WingsException {
   public static String EXPLANATION_AWS_AM_ROLE_CHECK =
       "IAM role on delegate ec2 doesn't exist or doesn't have required permissions to describe regions.";
   public static String EXPLANATION_LITE_ENGINE_CHECK = "Delegate is not able to connect to the created build farm";
+  public static String EXPLANATION_DELEGATE_CHECK = "Check if delegate is connected and installed";
   public static String EXPLANATION_AWS_CLIENT_UNKNOWN_ISSUE = "Seems to encounter unknown AWS client issue";
   public static String EXPLANATION_UNEXPECTED_ERROR = "Unexpected error while handling task";
   public static String IMAGE_TAG_METADATA_NOT_FOUND =
@@ -88,6 +89,9 @@ public class ExplanationException extends WingsException {
       "The credentials of Ldap Connection settings you are using are incorrect";
   public static String INVALID_LDAP_AUTH_EMAIL_PWD =
       "The email, password value supplied for the configured Ldap settings is incorrect";
+  public static final String INVALID_SSH_CREDENTIALS = "Username or SSK key/Password is not valid";
+  public static final String INVALID_SSH_KEY_FILE_PATH = "SSH Key File Path is not valid";
+  public static final String INVALID_SSH_KEY = "SSH Key is not valid";
 
   public ExplanationException(String message, Throwable cause) {
     super(message, cause, EXPLANATION, INFO, USER_SRE, null);

@@ -7,6 +7,8 @@
 
 package io.harness.cdng.provision.awscdk;
 
+import static io.harness.yaml.schema.beans.SupportedPossibleFieldTypes.runtime;
+
 import io.harness.annotation.RecasterAlias;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
@@ -23,6 +25,7 @@ import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.walktree.visitor.SimpleVisitorHelper;
 import io.harness.walktree.visitor.Visitable;
+import io.harness.yaml.YamlSchemaTypes;
 import io.harness.yaml.extended.ci.container.ContainerResource;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -53,10 +56,13 @@ public class AwsCdkDeployStepInfo extends AwsCdkBaseStepInfo implements CDAbstra
   private String uuid;
   // For Visitor Framework Impl
   @Getter(onMethod_ = { @ApiModelProperty(hidden = true) }) @ApiModelProperty(hidden = true) String metadata;
-
-  @ApiModelProperty(dataType = SwaggerConstants.STRING_LIST_CLASSPATH) ParameterField<List<String>> stackNames;
+  @YamlSchemaTypes({runtime})
+  @ApiModelProperty(dataType = SwaggerConstants.STRING_LIST_CLASSPATH)
+  ParameterField<List<String>> stackNames;
 
   @NotNull @ApiModelProperty(dataType = SwaggerConstants.STRING_CLASSPATH) ParameterField<String> provisionerIdentifier;
+
+  @ApiModelProperty(dataType = SwaggerConstants.STRING_MAP_CLASSPATH) ParameterField<Map<String, String>> parameters;
 
   @Builder(builderMethodName = "infoBuilder")
   public AwsCdkDeployStepInfo(ParameterField<List<TaskSelectorYaml>> delegateSelectors, ParameterField<String> image,
@@ -64,11 +70,13 @@ public class AwsCdkDeployStepInfo extends AwsCdkBaseStepInfo implements CDAbstra
       ParameterField<Map<String, String>> envVariables, ParameterField<Boolean> privileged,
       ParameterField<Integer> runAsUser, ParameterField<ImagePullPolicy> imagePullPolicy,
       ParameterField<List<String>> commandOptions, ParameterField<String> appPath,
-      ParameterField<List<String>> stackNames, ParameterField<String> provisionerIdentifier) {
+      ParameterField<List<String>> stackNames, ParameterField<String> provisionerIdentifier,
+      ParameterField<Map<String, String>> parameters) {
     super(delegateSelectors, image, connectorRef, resources, envVariables, privileged, runAsUser, imagePullPolicy,
         commandOptions, appPath);
     this.stackNames = stackNames;
     this.provisionerIdentifier = provisionerIdentifier;
+    this.parameters = parameters;
   }
   @Override
   public StepType getStepType() {
@@ -95,6 +103,7 @@ public class AwsCdkDeployStepInfo extends AwsCdkBaseStepInfo implements CDAbstra
         .appPath(getAppPath())
         .envVariables(getEnvVariables())
         .stackNames(getStackNames())
+        .parameters(getParameters())
         .build();
   }
 

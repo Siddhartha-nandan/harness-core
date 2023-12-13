@@ -16,7 +16,7 @@ import io.harness.beans.steps.IACMStepInfo;
 import io.harness.beans.steps.nodes.ActionStepNode;
 import io.harness.beans.steps.nodes.PluginStepNode;
 import io.harness.beans.steps.nodes.RunStepNode;
-import io.harness.ci.serializer.morphia.CIExecutionMorphiaRegistrar;
+import io.harness.ci.execution.serializer.morphia.CIExecutionMorphiaRegistrar;
 import io.harness.cimanager.serializer.CIContractsKryoRegistrar;
 import io.harness.cimanager.serializer.CIContractsMorphiaRegistrar;
 import io.harness.iacm.IACMStepType;
@@ -41,6 +41,7 @@ import io.harness.serializer.SecretManagerClientRegistrars;
 import io.harness.serializer.WaitEngineRegistrars;
 import io.harness.serializer.YamlBeansModuleRegistrars;
 import io.harness.serializer.common.CommonsRegistrars;
+import io.harness.serializer.kryo.CIBeansKryoRegistrar;
 import io.harness.serializer.kryo.NgPersistenceKryoRegistrar;
 import io.harness.serializer.kryo.NotificationBeansKryoRegistrar;
 import io.harness.serializer.morphia.CIBeansMorphiaRegistrar;
@@ -82,6 +83,7 @@ public class IACMBeansRegistrars {
           .add(IACMBeansKryoRegistrar.class)
           .add(CIContractsKryoRegistrar.class)
           .add(NotificationBeansKryoRegistrar.class)
+          .add(CIBeansKryoRegistrar.class)
           .build();
 
   public static final ImmutableSet<Class<? extends MorphiaRegistrar>> morphiaRegistrars =

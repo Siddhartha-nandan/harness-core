@@ -41,14 +41,12 @@ import io.harness.persistence.HPersistence;
 import io.harness.service.intfc.DelegateCache;
 import io.harness.service.intfc.DelegateTaskService;
 
-import software.wings.core.managerConfiguration.ConfigurationController;
 import software.wings.service.intfc.AssignDelegateService;
 import software.wings.service.intfc.DelegateSelectionLogsService;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import dev.morphia.query.Query;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -68,14 +66,13 @@ public class FailDelegateTaskIteratorHelper {
   @Inject private AssignDelegateService assignDelegateService;
   @Inject private DelegateTaskService delegateTaskService;
   @Inject private HPersistence persistence;
-  @Inject private ConfigurationController configurationController;
   @Inject private DelegateMetricsService delegateMetricsService;
   @Inject private Clock clock;
   @Inject private DelegateSelectionLogsService delegateSelectionLogsService;
   @Inject private DelegateCache delegateCache;
 
   private static final long VALIDATION_TIMEOUT = TimeUnit.MINUTES.toMillis(2);
-  private static int MAX_BROADCAST_ROUND = 3;
+  private static final int MAX_BROADCAST_ROUND = 3;
 
   @VisibleForTesting
   public void markTimedOutTasksAsFailed(DelegateTask delegateTask, boolean isDelegateTaskMigrationEnabled) {
@@ -90,7 +87,11 @@ public class FailDelegateTaskIteratorHelper {
     if (asList(QUEUED, PARKED, ABORTED).contains(delegateTask.getStatus())
         && (delegateTask.getExpiry() < currentTimeMillis())) {
       log.info("Marking following long queued tasks as failed [{}]", delegateTask.getUuid());
-      endTasks(asList(delegateTask.getUuid()), isDelegateTaskMigrationEnabled, TaskFailureReason.NOT_ASSIGNED);
+      TaskFailureReason taskFailureReason =
+          delegateTask.getStatus().equals(QUEUED) || isEmpty(delegateTask.getDelegateId())
+          ? TaskFailureReason.NOT_ASSIGNED
+          : TaskFailureReason.EXPIRED;
+      endTasks(asList(delegateTask.getUuid()), isDelegateTaskMigrationEnabled, taskFailureReason);
     }
   }
 
@@ -120,12 +121,10 @@ public class FailDelegateTaskIteratorHelper {
               .asList();
 
       for (DelegateTask task : tasks) {
-        if (shouldExpireTask(task)) {
-          tasksToExpire.add(task);
-          taskIdsToExpire.add(task.getUuid());
-          delegateMetricsService.recordDelegateTaskMetrics(task, DELEGATE_TASK_EXPIRED);
-          logValidationFailedErrorsInSelectionLog(task);
-        }
+        tasksToExpire.add(task);
+        taskIdsToExpire.add(task.getUuid());
+        delegateMetricsService.recordDelegateTaskMetrics(task, DELEGATE_TASK_EXPIRED);
+        logValidationFailedErrorsInSelectionLog(task);
       }
 
       delegateTasks.putAll(tasksToExpire.stream().collect(toMap(DelegateTask::getUuid, identity())));
@@ -133,20 +132,18 @@ public class FailDelegateTaskIteratorHelper {
                              .filter(task -> isNotEmpty(task.getWaitId()))
                              .collect(toMap(DelegateTask::getUuid, DelegateTask::getWaitId)));
     } catch (Exception e1) {
-      log.error("Failed to deserialize {} tasks. Trying individually...", taskIds.size(), e1);
+      log.debug("Failed to deserialize {} tasks. Trying individually...", taskIds.size(), e1);
       for (String taskId : taskIds) {
         try {
           DelegateTask task =
               persistence.createQuery(DelegateTask.class, excludeAuthority, isDelegateTaskMigrationEnabled)
                   .filter(DelegateTaskKeys.uuid, taskId)
                   .get();
-          if (shouldExpireTask(task)) {
-            taskIdsToExpire.add(taskId);
-            delegateTasks.put(taskId, task);
-            delegateMetricsService.recordDelegateTaskMetrics(task, DELEGATE_TASK_EXPIRED);
-            if (isNotEmpty(task.getWaitId())) {
-              taskWaitIds.put(taskId, task.getWaitId());
-            }
+          taskIdsToExpire.add(taskId);
+          delegateTasks.put(taskId, task);
+          delegateMetricsService.recordDelegateTaskMetrics(task, DELEGATE_TASK_EXPIRED);
+          if (isNotEmpty(task.getWaitId())) {
+            taskWaitIds.put(taskId, task.getWaitId());
           }
         } catch (Exception e2) {
           log.error("Could not deserialize task {}. Trying again with only waitId field.", taskId, e2);
@@ -185,7 +182,7 @@ public class FailDelegateTaskIteratorHelper {
               : "Unable to determine proper error as delegate task could not be deserialized.";
           log.info("Marking task as failed - {}: {}", taskId, errorMessage);
           if (delegateTasks.get(taskId) != null) {
-            delegateTaskService.handleResponse(delegateTasks.get(taskId), null,
+            delegateTaskService.handleResponseV2(delegateTasks.get(taskId),
                 DelegateTaskResponse.builder()
                     .accountId(delegateTasks.get(taskId).getAccountId())
                     .responseCode(DelegateTaskResponse.ResponseCode.FAILED)
@@ -197,12 +194,8 @@ public class FailDelegateTaskIteratorHelper {
     }
   }
 
-  private boolean shouldExpireTask(DelegateTask task) {
-    return !task.isForceExecute();
-  }
-
   @VisibleForTesting
-  public void failValidationCompletedQueuedTask(DelegateTask delegateTask, boolean isDelegateTaskMigrationEnabled) {
+  public void failValidationCompletedQueuedTask(DelegateTask delegateTask) {
     if (delegateTask == null) {
       return;
     }
@@ -237,11 +230,8 @@ public class FailDelegateTaskIteratorHelper {
                            .exception(new InvalidRequestException(errorMessage, USER))
                            .build();
           }
-          Query<DelegateTask> taskQuery = persistence.createQuery(DelegateTask.class, isDelegateTaskMigrationEnabled)
-                                              .filter(DelegateTaskKeys.accountId, delegateTask.getAccountId())
-                                              .filter(DelegateTaskKeys.uuid, delegateTask.getUuid());
 
-          delegateTaskService.handleResponse(delegateTask, taskQuery,
+          delegateTaskService.handleResponseV2(delegateTask,
               DelegateTaskResponse.builder()
                   .accountId(delegateTask.getAccountId())
                   .response(response)

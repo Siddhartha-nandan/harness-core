@@ -6,6 +6,7 @@
  */
 
 package io.harness.ci.plan.creator.step;
+
 import static io.harness.pms.yaml.YAMLFieldNameConstants.ROLLBACK_STEPS;
 import static io.harness.pms.yaml.YAMLFieldNameConstants.STAGE;
 import static io.harness.pms.yaml.YAMLFieldNameConstants.STEP_GROUP;
@@ -31,6 +32,7 @@ import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ngexception.CIStageExecutionException;
 import io.harness.govern.Switch;
+import io.harness.plancreator.PlanCreatorUtilsV1;
 import io.harness.plancreator.steps.AbstractStepPlanCreator;
 import io.harness.plancreator.steps.FailureStrategiesUtils;
 import io.harness.plancreator.steps.GenericPlanCreatorUtils;
@@ -43,8 +45,8 @@ import io.harness.pms.contracts.execution.failure.FailureType;
 import io.harness.pms.contracts.facilitators.FacilitatorObtainment;
 import io.harness.pms.contracts.facilitators.FacilitatorType;
 import io.harness.pms.contracts.plan.Dependency;
-import io.harness.pms.contracts.plan.ExecutionMode;
-import io.harness.pms.contracts.plan.PlanCreationContextValue;
+import io.harness.pms.contracts.plan.HarnessStruct;
+import io.harness.pms.contracts.plan.HarnessValue;
 import io.harness.pms.execution.utils.SkipInfoUtils;
 import io.harness.pms.sdk.core.adviser.OrchestrationAdviserTypes;
 import io.harness.pms.sdk.core.adviser.abort.OnAbortAdviser;
@@ -102,8 +104,6 @@ import java.util.stream.Collectors;
 public abstract class CIPMSStepPlanCreatorV2<T extends CIAbstractStepNode> extends AbstractStepPlanCreator<T> {
   public abstract Set<String> getSupportedStepTypes();
 
-  @Override public abstract Class<T> getFieldClass();
-
   @Override
   public PlanCreationResponse createPlanForField(PlanCreationContext ctx, T stepElement) {
     boolean isStepInsideRollback = false;
@@ -121,8 +121,6 @@ public abstract class CIPMSStepPlanCreatorV2<T extends CIAbstractStepNode> exten
     // Adds a strategy field as dependency if present.
     addStrategyFieldDependencyIfPresent(ctx, stepElement, dependenciesNodeMap, metadataMap);
 
-    PlanCreationContextValue planCreationContextValue = ctx.getGlobalContext().get("metadata");
-    ExecutionMode executionMode = planCreationContextValue.getMetadata().getExecutionMode();
     // Swap the nodeUUid with the strategy node if present
     PlanNode stepPlanNode =
         PlanNode.builder()
@@ -416,11 +414,7 @@ public abstract class CIPMSStepPlanCreatorV2<T extends CIAbstractStepNode> exten
     stepElement = (T) getStepNode(stepElement);
     StepParameters stepParameters = getStepParameters(ctx, stepElement);
     Map<String, YamlField> dependenciesNodeMap = new HashMap<>();
-    Map<String, ByteString> metadataMap = new HashMap<>();
     YamlField field = ctx.getCurrentField();
-
-    StrategyUtilsV1.addStrategyFieldDependencyIfPresent(
-        kryoSerializer, ctx, field.getUuid(), dependenciesNodeMap, metadataMap, buildAdviserV1(ctx.getDependency()));
 
     PlanNodeBuilder builder =
         PlanNode.builder()
@@ -449,13 +443,18 @@ public abstract class CIPMSStepPlanCreatorV2<T extends CIAbstractStepNode> exten
         == null) {
       builder.adviserObtainments(buildAdviserV1(ctx.getDependency()));
     }
+    Map<String, HarnessValue> dependencyMetadata = StrategyUtilsV1.getStrategyFieldDependencyMetadataIfPresent(
+        kryoSerializer, ctx, field.getUuid(), dependenciesNodeMap, buildAdviserV1(ctx.getDependency()));
+
     return PlanCreationResponse.builder()
         .planNode(builder.build())
-        .dependencies(
-            DependenciesUtils.toDependenciesProto(dependenciesNodeMap)
-                .toBuilder()
-                .putDependencyMetadata(field.getUuid(), Dependency.newBuilder().putAllMetadata(metadataMap).build())
-                .build())
+        .dependencies(DependenciesUtils.toDependenciesProto(dependenciesNodeMap)
+                          .toBuilder()
+                          .putDependencyMetadata(field.getUuid(),
+                              Dependency.newBuilder()
+                                  .setNodeMetadata(HarnessStruct.newBuilder().putAllData(dependencyMetadata).build())
+                                  .build())
+                          .build())
         .build();
   }
 
@@ -499,18 +498,10 @@ public abstract class CIPMSStepPlanCreatorV2<T extends CIAbstractStepNode> exten
 
   private List<AdviserObtainment> buildAdviserV1(Dependency dependency) {
     List<AdviserObtainment> adviserObtainments = new ArrayList<>();
-    if (dependency == null || EmptyPredicate.isEmpty(dependency.getMetadataMap())
-        || !dependency.getMetadataMap().containsKey("nextId")) {
-      return adviserObtainments;
+    AdviserObtainment adviserObtainment = PlanCreatorUtilsV1.getNextStepAdviser(kryoSerializer, dependency);
+    if (adviserObtainment != null) {
+      adviserObtainments.add(adviserObtainment);
     }
-
-    String nextId = (String) kryoSerializer.asObject(dependency.getMetadataMap().get("nextId").toByteArray());
-    adviserObtainments.add(
-        AdviserObtainment.newBuilder()
-            .setType(AdviserType.newBuilder().setType(OrchestrationAdviserTypes.NEXT_STAGE.name()).build())
-            .setParameters(ByteString.copyFrom(
-                kryoSerializer.asBytes(NextStepAdviserParameters.builder().nextNodeId(nextId).build())))
-            .build());
     return adviserObtainments;
   }
 

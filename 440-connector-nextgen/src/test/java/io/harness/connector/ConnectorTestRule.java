@@ -51,9 +51,11 @@ import io.harness.ng.validator.service.api.NGHostValidationService;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.outbox.api.OutboxService;
 import io.harness.persistence.HPersistence;
+import io.harness.remote.CEAwsServiceEndpointConfig;
 import io.harness.remote.CEAwsSetupConfig;
 import io.harness.remote.CEAzureSetupConfig;
 import io.harness.remote.CEGcpSetupConfig;
+import io.harness.remote.CEProxyConfig;
 import io.harness.remote.client.ClientMode;
 import io.harness.remote.client.ServiceHttpClientConfig;
 import io.harness.rule.InjectorRuleMixin;
@@ -63,6 +65,7 @@ import io.harness.serializer.ConnectorNextGenRegistrars;
 import io.harness.serializer.KryoModule;
 import io.harness.serializer.KryoRegistrar;
 import io.harness.serializer.PersistenceRegistrars;
+import io.harness.services.TunnelService;
 import io.harness.springdata.HTransactionTemplate;
 import io.harness.template.remote.TemplateResourceClient;
 import io.harness.testlib.module.MongoRuleMixin;
@@ -155,6 +158,7 @@ public class ConnectorTestRule implements InjectorRuleMixin, MethodRule, MongoRu
         bind(EntitySetupUsageService.class).toInstance(mock(EntitySetupUsageService.class));
         bind(FavoritesService.class).toInstance(mock(FavoritesService.class));
         bind(NgConnectorManagerClient.class).toInstance(mock(NgConnectorManagerClient.class));
+        bind(TunnelService.class).toInstance(mock(TunnelService.class));
       }
     });
     modules.add(mongoTypeModule(annotations));
@@ -242,6 +246,18 @@ public class ConnectorTestRule implements InjectorRuleMixin, MethodRule, MongoRu
       @Singleton
       CEAwsSetupConfig ceAwsSetupConfig() {
         return CEAwsSetupConfig.builder().build();
+      }
+
+      @Provides
+      @Singleton
+      CEProxyConfig ceProxyConfig() {
+        return CEProxyConfig.builder().build();
+      }
+
+      @Provides
+      @Singleton
+      CEAwsServiceEndpointConfig ceAwsServiceEndpointConfig() {
+        return CEAwsServiceEndpointConfig.builder().build();
       }
 
       @Provides

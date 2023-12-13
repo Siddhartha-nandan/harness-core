@@ -14,10 +14,12 @@ import static io.harness.data.structure.CollectionUtils.emptyIfNull;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.data.structure.HarnessStringUtils.emptyIfNull;
+import static io.harness.delegate.beans.storeconfig.StoreDelegateConfigType.OCI_HELM;
 import static io.harness.eraro.ErrorCode.GENERAL_ERROR;
 import static io.harness.exception.WingsException.USER;
 import static io.harness.logging.CommandExecutionStatus.SUCCESS;
 import static io.harness.logging.LogLevel.INFO;
+import static io.harness.ngsettings.SettingIdentifiers.ENABLE_STEADY_STATE_FOR_JOBS_KEY_IDENTIFIER;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
@@ -50,6 +52,7 @@ import io.harness.delegate.beans.logstreaming.CommandUnitProgress;
 import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.UnitProgressData;
 import io.harness.delegate.beans.logstreaming.UnitProgressDataMapper;
+import io.harness.delegate.beans.storeconfig.OciHelmStoreDelegateConfig;
 import io.harness.delegate.exception.TaskNGDataException;
 import io.harness.delegate.task.git.GitFetchResponse;
 import io.harness.delegate.task.git.TaskStatus;
@@ -57,6 +60,7 @@ import io.harness.delegate.task.helm.HelmCmdExecResponseNG;
 import io.harness.delegate.task.helm.HelmCommandRequestNG;
 import io.harness.delegate.task.helm.HelmFetchFileResult;
 import io.harness.delegate.task.helm.HelmValuesFetchResponse;
+import io.harness.delegate.task.k8s.ManifestDelegateConfig;
 import io.harness.delegate.task.k8s.RancherK8sInfraDelegateConfig;
 import io.harness.delegate.task.localstore.LocalStoreFetchFilesResult;
 import io.harness.delegate.task.localstore.ManifestFiles;
@@ -69,8 +73,8 @@ import io.harness.k8s.K8sCommandUnitConstants;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.LogCallback;
 import io.harness.manifest.CustomSourceFile;
+import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.plancreator.steps.TaskSelectorYaml;
-import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.execution.failure.FailureData;
@@ -86,6 +90,7 @@ import io.harness.pms.sdk.core.steps.io.PassThroughData;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.sdk.core.steps.io.StepResponse.StepResponseBuilder;
 import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
+import io.harness.remote.client.NGRestUtils;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
@@ -108,18 +113,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.validator.constraints.NotEmpty;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(CDP)
 @Singleton
+@Slf4j
 public class NativeHelmStepHelper extends K8sHelmCommonStepHelper {
   public static final String RELEASE_NAME = "Release Name";
   public static final String RELEASE_NAME_VALIDATION_REGEX =
       "[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*";
   public static final Pattern releaseNamePattern = Pattern.compile(RELEASE_NAME_VALIDATION_REGEX);
   public static final String RELEASE_HISTORY_PREFIX = "harness.";
+  private static final String ENABLE_STEADY_STATE_FOR_JOBS_TRUE_VALUE = "true";
+  @Inject private NGSettingsClient settingsClient;
   @Inject private CDExpressionResolver cdExpressionResolver;
   @Inject private SdkGraphVisualizationDataService sdkGraphVisualizationDataService;
   @Inject private CDStepHelper cdStepHelper;
@@ -149,11 +158,20 @@ public class NativeHelmStepHelper extends K8sHelmCommonStepHelper {
   }
 
   private TaskType getHelmTaskType(HelmCommandRequestNG helmCommandRequest, Ambiance ambiance) {
+    ManifestDelegateConfig manifestDelegateConfig = helmCommandRequest.getManifestDelegateConfig();
+
+    if (manifestDelegateConfig != null && manifestDelegateConfig.getStoreDelegateConfig() != null
+        && OCI_HELM.equals(manifestDelegateConfig.getStoreDelegateConfig().getType())
+        && ((OciHelmStoreDelegateConfig) manifestDelegateConfig.getStoreDelegateConfig()).getAwsConnectorDTO()
+            != null) {
+      return TaskType.HELM_COMMAND_TASK_NG_OCI_ECR_CONFIG_V2;
+    }
+
     if (helmCommandRequest.getK8sInfraDelegateConfig() instanceof RancherK8sInfraDelegateConfig) {
       return TaskType.HELM_COMMAND_TASK_NG_RANCHER;
     }
-    if (cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_K8S_SERVICE_HOOKS_NG)
-        && isNotEmpty(helmCommandRequest.getServiceHooks())) {
+
+    if (isNotEmpty(helmCommandRequest.getServiceHooks())) {
       return TaskType.HELM_COMMAND_TASK_NG_V2;
     }
     return TaskType.HELM_COMMAND_TASK_NG;
@@ -169,7 +187,7 @@ public class NativeHelmStepHelper extends K8sHelmCommonStepHelper {
   }
 
   public TaskChainResponse prepareValuesFetchTask(Ambiance ambiance, NativeHelmStepExecutor nativeHelmStepExecutor,
-      StepElementParameters stepElementParameters, List<ValuesManifestOutcome> aggregatedValuesManifests,
+      StepBaseParameters stepElementParameters, List<ValuesManifestOutcome> aggregatedValuesManifests,
       List<ManifestOutcome> manifestOutcomes, K8sStepPassThroughData k8sStepPassThroughData,
       UnitProgressData unitProgressData) {
     ManifestOutcome helmChartManifestOutcome = k8sStepPassThroughData.getManifestOutcome();
@@ -207,7 +225,7 @@ public class NativeHelmStepHelper extends K8sHelmCommonStepHelper {
   }
 
   public TaskChainResponse startChainLink(
-      NativeHelmStepExecutor helmStepExecutor, Ambiance ambiance, StepElementParameters stepElementParameters) {
+      NativeHelmStepExecutor helmStepExecutor, Ambiance ambiance, StepBaseParameters stepElementParameters) {
     ManifestsOutcome manifestsOutcome = resolveManifestsOutcome(ambiance);
     InfrastructureOutcome infrastructureOutcome = (InfrastructureOutcome) outcomeService.resolve(
         ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.INFRASTRUCTURE_OUTCOME));
@@ -240,7 +258,7 @@ public class NativeHelmStepHelper extends K8sHelmCommonStepHelper {
   }
 
   private TaskChainResponse prepareHelmWithValuesManifests(NativeHelmStepExecutor nativeHelmStepExecutor,
-      List<ManifestOutcome> manifestOutcomes, Ambiance ambiance, StepElementParameters stepElementParameters,
+      List<ManifestOutcome> manifestOutcomes, Ambiance ambiance, StepBaseParameters stepElementParameters,
       K8sStepPassThroughData k8sStepPassThroughData) {
     HelmChartManifestOutcome helmChartManifestOutcome =
         (HelmChartManifestOutcome) k8sStepPassThroughData.getManifestOutcome();
@@ -319,7 +337,7 @@ public class NativeHelmStepHelper extends K8sHelmCommonStepHelper {
   }
 
   public TaskChainResponse executeNextLink(NativeHelmStepExecutor nativeHelmStepExecutor, Ambiance ambiance,
-      StepElementParameters stepElementParameters, PassThroughData passThroughData,
+      StepBaseParameters stepElementParameters, PassThroughData passThroughData,
       ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
     K8sStepPassThroughData helmStepPassThroughData = (K8sStepPassThroughData) passThroughData;
     ManifestOutcome helmChartManifest = helmStepPassThroughData.getManifestOutcome();
@@ -366,7 +384,7 @@ public class NativeHelmStepHelper extends K8sHelmCommonStepHelper {
   }
 
   private TaskChainResponse handleGitFetchFilesResponse(ResponseData responseData,
-      NativeHelmStepExecutor nativeHelmStepExecutor, Ambiance ambiance, StepElementParameters stepElementParameters,
+      NativeHelmStepExecutor nativeHelmStepExecutor, Ambiance ambiance, StepBaseParameters stepElementParameters,
       K8sStepPassThroughData nativeHelmStepPassThroughData, ManifestOutcome helmChartManifest) {
     GitFetchResponse gitFetchResponse = (GitFetchResponse) responseData;
     if (gitFetchResponse.getTaskStatus() != TaskStatus.SUCCESS) {
@@ -413,7 +431,7 @@ public class NativeHelmStepHelper extends K8sHelmCommonStepHelper {
   }
 
   private TaskChainResponse handleHelmValuesFetchResponse(ResponseData responseData,
-      NativeHelmStepExecutor nativeHelmStepExecutor, Ambiance ambiance, StepElementParameters stepElementParameters,
+      NativeHelmStepExecutor nativeHelmStepExecutor, Ambiance ambiance, StepBaseParameters stepElementParameters,
       K8sStepPassThroughData nativeHelmStepPassThroughData, ManifestOutcome helmChartManifest) {
     HelmValuesFetchResponse helmValuesFetchResponse = (HelmValuesFetchResponse) responseData;
     if (helmValuesFetchResponse.getCommandExecutionStatus() != SUCCESS) {
@@ -465,7 +483,7 @@ public class NativeHelmStepHelper extends K8sHelmCommonStepHelper {
     }
   }
   private TaskChainResponse handleCustomFetchResponse(ResponseData responseData,
-      NativeHelmStepExecutor nativeHelmStepExecutor, Ambiance ambiance, StepElementParameters stepElementParameters,
+      NativeHelmStepExecutor nativeHelmStepExecutor, Ambiance ambiance, StepBaseParameters stepElementParameters,
       K8sStepPassThroughData k8sStepPassThroughData, ManifestOutcome k8sManifest) {
     CustomManifestValuesFetchResponse customManifestValuesFetchResponse =
         (CustomManifestValuesFetchResponse) responseData;
@@ -518,7 +536,7 @@ public class NativeHelmStepHelper extends K8sHelmCommonStepHelper {
         new ArrayList<>(orderedValuesManifests), k8sManifest, customManifestValuesFetchResponse.getUnitProgressData());
   }
 
-  public TaskChainResponse executeHelmTask(Ambiance ambiance, StepElementParameters stepElementParameters,
+  public TaskChainResponse executeHelmTask(Ambiance ambiance, StepBaseParameters stepElementParameters,
       NativeHelmStepExecutor nativeHelmStepExecutor, K8sStepPassThroughData k8sStepPassThroughData,
       List<ManifestOutcome> manifestOutcomeList, ManifestOutcome k8sManifestOutcome,
       UnitProgressData unitProgressData) {
@@ -600,6 +618,21 @@ public class NativeHelmStepHelper extends K8sHelmCommonStepHelper {
         valuesFileContents.addAll(baseValuesFileContent);
       }
     }
+  }
+
+  public boolean isSteadyStateForJobsEnabled(Ambiance ambiance) {
+    String steadyStateForJobsSettingValue = "";
+    try {
+      steadyStateForJobsSettingValue =
+          NGRestUtils
+              .getResponse(settingsClient.getSetting(ENABLE_STEADY_STATE_FOR_JOBS_KEY_IDENTIFIER,
+                  AmbianceUtils.getAccountId(ambiance), AmbianceUtils.getOrgIdentifier(ambiance),
+                  AmbianceUtils.getProjectIdentifier(ambiance)))
+              .getValue();
+    } catch (Exception ex) {
+      log.error("Failed to fetch setting value for {}", ENABLE_STEADY_STATE_FOR_JOBS_KEY_IDENTIFIER, ex);
+    }
+    return ENABLE_STEADY_STATE_FOR_JOBS_TRUE_VALUE.equals(steadyStateForJobsSettingValue);
   }
 
   private UnitProgressData getUnitProgressData() {

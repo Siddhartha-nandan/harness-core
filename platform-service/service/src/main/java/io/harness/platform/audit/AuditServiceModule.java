@@ -14,6 +14,7 @@ import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ACCOUN
 import static io.harness.outbox.OutboxSDKConstants.DEFAULT_OUTBOX_POLL_CONFIGURATION;
 
 import io.harness.AccessControlClientModule;
+import io.harness.account.AccountClientModule;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.audit.AuditFilterModule;
 import io.harness.audit.api.AuditService;
@@ -47,6 +48,8 @@ import io.harness.remote.client.ClientMode;
 import io.harness.serializer.KryoRegistrar;
 import io.harness.serializer.NGAuditServiceRegistrars;
 import io.harness.springdata.HTransactionTemplate;
+import io.harness.telemetry.AbstractTelemetryModule;
+import io.harness.telemetry.TelemetryConfiguration;
 import io.harness.threading.ExecutorModule;
 import io.harness.token.TokenClientModule;
 import io.harness.version.VersionModule;
@@ -158,6 +161,14 @@ public class AuditServiceModule extends AbstractModule {
         this.appConfig.getPlatformSecrets().getNgManagerServiceSecret(), AUDIT_SERVICE.getServiceId()));
     install(new EventsFrameworkModule(this.appConfig.getEventsFrameworkConfiguration()));
     registerEventListeners();
+    install(new AbstractTelemetryModule() {
+      @Override
+      public TelemetryConfiguration telemetryConfiguration() {
+        return appConfig.getSegmentConfiguration();
+      }
+    });
+    install(new AccountClientModule(appConfig.getManagerServiceConfig(),
+        appConfig.getPlatformSecrets().getNgManagerServiceSecret(), AUDIT_SERVICE.getServiceId()));
   }
 
   private void registerEventListeners() {

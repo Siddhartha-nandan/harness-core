@@ -55,9 +55,11 @@ import io.harness.pms.sdk.core.steps.io.StepResponse.StepResponseBuilder;
 import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.steps.StepHelper;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import software.wings.beans.TaskType;
 
+import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -85,6 +87,12 @@ public class EcsBlueGreenSwapTargetGroupsStep extends CdTaskExecutable<EcsComman
   @Override
   public Class<StepBaseParameters> getStepParametersClass() {
     return StepBaseParameters.class;
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 
   @Override
@@ -208,6 +216,8 @@ public class EcsBlueGreenSwapTargetGroupsStep extends CdTaskExecutable<EcsComman
             .stageListenerRuleArn(ecsBlueGreenPrepareRollbackDataOutcome.getStageListenerRuleArn())
             .stageTargetGroupArn(ecsBlueGreenPrepareRollbackDataOutcome.getStageTargetGroupArn())
             .build();
+    boolean enableAutoscalingInSwapStep =
+        ecsBlueGreenPrepareRollbackDataOutcome.getEcsBGServiceDeployConfig().isEnableAutoscalingInSwapStep();
 
     EcsBlueGreenSwapTargetGroupsRequest ecsBlueGreenSwapTargetGroupsRequest =
         EcsBlueGreenSwapTargetGroupsRequest.builder()
@@ -226,6 +236,14 @@ public class EcsBlueGreenSwapTargetGroupsStep extends CdTaskExecutable<EcsComman
                 && ecsBlueGreenSwapTargetGroupsStepParameters.getDoNotDownsizeOldService().getValue())
             .downsizeOldServiceDelayInSecs(ParameterFieldHelper.getIntegerParameterFieldValue(
                 ecsBlueGreenSwapTargetGroupsStepParameters.getDownsizeOldServiceDelayInSecs()))
+            .ecsScalableTargetManifestContentList(enableAutoscalingInSwapStep
+                    ? ecsBlueGreenPrepareRollbackDataOutcome.getEcsBGServiceDeployConfig()
+                          .getEcsScalableTargetManifestContentList()
+                    : Lists.newArrayList())
+            .ecsScalingPolicyManifestContentList(enableAutoscalingInSwapStep
+                    ? ecsBlueGreenPrepareRollbackDataOutcome.getEcsBGServiceDeployConfig()
+                          .getEcsScalingPolicyManifestContentList()
+                    : Lists.newArrayList())
             .build();
 
     EcsBlueGreenSwapTargetGroupsStartOutcome ecsBlueGreenSwapTargetGroupsStartOutcome =

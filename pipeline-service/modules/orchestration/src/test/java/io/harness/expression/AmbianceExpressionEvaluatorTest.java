@@ -31,9 +31,11 @@ import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.expressions.AmbianceExpressionEvaluator;
 import io.harness.engine.expressions.NodeExecutionsCache;
 import io.harness.engine.expressions.functors.StrategyFunctor;
+import io.harness.engine.secrets.ExpressionsObserverFactory;
 import io.harness.exception.UnresolvedExpressionsException;
 import io.harness.expression.common.ExpressionMode;
 import io.harness.expression.field.dummy.DummyOrchestrationField;
+import io.harness.graph.stepDetail.service.NodeExecutionInfoService;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.execution.ForMetadata;
@@ -82,6 +84,9 @@ public class AmbianceExpressionEvaluatorTest extends OrchestrationTestBase {
   @Inject private InputSetValidatorFactory inputSetValidatorFactory;
   @Mock private PmsFeatureFlagService pmsFeatureFlagService;
   @Mock NodeExecutionsCache nodeExecutionsCache;
+  @Inject NodeExecutionInfoService nodeExecutionInfoService;
+
+  @Mock private ExpressionsObserverFactory expressionsObserverFactory;
 
   @Before
   public void setup() {
@@ -253,10 +258,10 @@ public class AmbianceExpressionEvaluatorTest extends OrchestrationTestBase {
             .setMatrixMetadata(MatrixMetadata.newBuilder().addMatrixCombination(1).putMatrixValues("a", "1").build())
             .build());
 
-    EngineExpressionEvaluator evaluator =
-        prepareEngineExpressionEvaluator(new ImmutableMap.Builder<String, Object>()
-                                             .put("strategy", new StrategyFunctor(ambiance, nodeExecutionsCache))
-                                             .build());
+    EngineExpressionEvaluator evaluator = prepareEngineExpressionEvaluator(
+        new ImmutableMap.Builder<String, Object>()
+            .put("strategy", new StrategyFunctor(ambiance, nodeExecutionsCache, nodeExecutionInfoService))
+            .build());
 
     validateSingleExpression(evaluator, "strategy.matrix.a", "1", false);
     validateSingleExpression(evaluator, "strategy.iteration", 0, false);
@@ -274,10 +279,10 @@ public class AmbianceExpressionEvaluatorTest extends OrchestrationTestBase {
                                                               .build())
                                           .build());
 
-    EngineExpressionEvaluator evaluator =
-        prepareEngineExpressionEvaluator(new ImmutableMap.Builder<String, Object>()
-                                             .put("strategy", new StrategyFunctor(ambiance, nodeExecutionsCache))
-                                             .build());
+    EngineExpressionEvaluator evaluator = prepareEngineExpressionEvaluator(
+        new ImmutableMap.Builder<String, Object>()
+            .put("strategy", new StrategyFunctor(ambiance, nodeExecutionsCache, nodeExecutionInfoService))
+            .build());
 
     validateSingleExpression(evaluator, "strategy.repeat.partition", Arrays.asList("host1", "host2", "host3"), false);
     validateSingleExpression(evaluator, "strategy.repeat.item", "value", false);
@@ -503,6 +508,7 @@ public class AmbianceExpressionEvaluatorTest extends OrchestrationTestBase {
     on(evaluator).set("planExecutionService", planExecutionService);
     on(evaluator).set("inputSetValidatorFactory", inputSetValidatorFactory);
     on(evaluator).set("pmsFeatureFlagService", pmsFeatureFlagService);
+    on(evaluator).set("expressionsObserverFactory", expressionsObserverFactory);
 
     if (EmptyPredicate.isEmpty(contextMap)) {
       return evaluator;

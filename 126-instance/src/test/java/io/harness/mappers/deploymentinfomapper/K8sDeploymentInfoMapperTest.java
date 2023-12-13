@@ -7,6 +7,7 @@
 
 package io.harness.mappers.deploymentinfomapper;
 
+import static io.harness.rule.OwnerRule.ABOSII;
 import static io.harness.rule.OwnerRule.VIKYATH_HAREKAL;
 
 import static junit.framework.TestCase.assertEquals;
@@ -16,9 +17,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
+import io.harness.delegate.task.helm.HelmChartInfo;
 import io.harness.dtos.deploymentinfo.K8sDeploymentInfoDTO;
 import io.harness.entities.deploymentinfo.K8sDeploymentInfo;
 import io.harness.helper.K8sAzureCloudConfigMetadata;
+import io.harness.helper.K8sGcpCloudConfigMetadata;
 import io.harness.rule.Owner;
 
 import java.util.Collections;
@@ -36,11 +39,13 @@ public class K8sDeploymentInfoMapperTest {
   @Owner(developers = VIKYATH_HAREKAL)
   @Category(UnitTests.class)
   public void testToDTO() {
+    HelmChartInfo helmChartInfo = HelmChartInfo.builder().name("haha").repoUrl("sample.com").version("0.2.0").build();
     K8sDeploymentInfo entity =
         K8sDeploymentInfo.builder()
             .blueGreenStageColor(BLUE_GREEN_STAGE_COLOR)
             .namespaces(new LinkedHashSet<>(Collections.singleton(NAMESPACE)))
             .releaseName(RELEASE_NAME)
+            .helmChartInfo(helmChartInfo)
             .cloudConfigMetadata(
                 K8sAzureCloudConfigMetadata.builder().clusterName("clusterName").subscription("subscription").build())
             .build();
@@ -54,6 +59,7 @@ public class K8sDeploymentInfoMapperTest {
         (K8sAzureCloudConfigMetadata) dto.getCloudConfigMetadata();
     assertThat(k8sAzureCloudConfigMetadata.getSubscription()).isEqualTo("subscription");
     assertEquals(RELEASE_NAME, dto.getReleaseName());
+    assertThat(dto.getHelmChartInfo()).isEqualTo(helmChartInfo);
   }
 
   @Test
@@ -78,5 +84,30 @@ public class K8sDeploymentInfoMapperTest {
         (K8sAzureCloudConfigMetadata) entity.getCloudConfigMetadata();
     assertThat(k8sAzureCloudConfigMetadata.getSubscription()).isEqualTo("subscription");
     assertEquals(RELEASE_NAME, entity.getReleaseName());
+  }
+
+  @Test
+  @Owner(developers = ABOSII)
+  @Category(UnitTests.class)
+  public void testToForCanary() {
+    K8sDeploymentInfoDTO dto =
+        K8sDeploymentInfoDTO.builder()
+            .canary(true)
+            .namespaces(new LinkedHashSet<>(Collections.singleton(NAMESPACE)))
+            .releaseName(RELEASE_NAME)
+            .cloudConfigMetadata(K8sGcpCloudConfigMetadata.builder().clusterName("clusterName").build())
+            .build();
+
+    K8sDeploymentInfo entity = K8sDeploymentInfoMapper.toEntity(dto);
+    assertTrue(entity.getNamespaces().contains(NAMESPACE));
+    assertThat(entity.getCloudConfigMetadata()).isNotNull();
+    assertThat(entity.getCloudConfigMetadata().getClusterName()).isEqualTo("clusterName");
+    assertThat(entity.getCloudConfigMetadata()).isInstanceOf(K8sGcpCloudConfigMetadata.class);
+    assertEquals(RELEASE_NAME, entity.getReleaseName());
+    assertThat(entity.getCanary()).isTrue();
+
+    K8sDeploymentInfoDTO reverseDto = K8sDeploymentInfoMapper.toDTO(entity);
+
+    assertThat(reverseDto).isEqualTo(dto);
   }
 }

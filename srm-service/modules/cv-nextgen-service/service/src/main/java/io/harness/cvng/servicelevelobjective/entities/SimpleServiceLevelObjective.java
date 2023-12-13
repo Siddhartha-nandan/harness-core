@@ -6,13 +6,15 @@
  */
 package io.harness.cvng.servicelevelobjective.entities;
 
-import io.harness.cvng.servicelevelobjective.beans.ServiceLevelIndicatorType;
 import io.harness.cvng.servicelevelobjective.beans.ServiceLevelObjectiveType;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import dev.morphia.query.UpdateOperations;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.FieldNameConstants;
@@ -27,10 +29,9 @@ public class SimpleServiceLevelObjective extends AbstractServiceLevelObjective {
   public SimpleServiceLevelObjective() {
     super.setType(ServiceLevelObjectiveType.SIMPLE);
   }
-  String healthSourceIdentifier;
-  String monitoredServiceIdentifier;
-  List<String> serviceLevelIndicators;
-  ServiceLevelIndicatorType serviceLevelIndicatorType;
+  @NotNull String healthSourceIdentifier;
+  @NotNull String monitoredServiceIdentifier;
+  @NotNull @Size(min = 1) List<String> serviceLevelIndicators;
 
   @Override
   public Optional<String> mayBeGetMonitoredServiceIdentifier() {
@@ -43,13 +44,12 @@ public class SimpleServiceLevelObjective extends AbstractServiceLevelObjective {
     public void setUpdateOperations(UpdateOperations<SimpleServiceLevelObjective> updateOperations,
         SimpleServiceLevelObjective simpleServiceLevelObjective) {
       setCommonOperations(updateOperations, simpleServiceLevelObjective);
-      updateOperations
-          .set(SimpleServiceLevelObjectiveKeys.healthSourceIdentifier,
-              simpleServiceLevelObjective.getHealthSourceIdentifier())
-          .set(SimpleServiceLevelObjectiveKeys.monitoredServiceIdentifier,
-              simpleServiceLevelObjective.getMonitoredServiceIdentifier())
-          .set(SimpleServiceLevelObjectiveKeys.serviceLevelIndicatorType,
-              simpleServiceLevelObjective.getServiceLevelIndicatorType());
+      if (!Objects.isNull(simpleServiceLevelObjective.getHealthSourceIdentifier())) {
+        updateOperations.set(SimpleServiceLevelObjectiveKeys.healthSourceIdentifier,
+            simpleServiceLevelObjective.getHealthSourceIdentifier());
+      }
+      updateOperations.set(SimpleServiceLevelObjectiveKeys.monitoredServiceIdentifier,
+          simpleServiceLevelObjective.getMonitoredServiceIdentifier());
     }
   }
 }

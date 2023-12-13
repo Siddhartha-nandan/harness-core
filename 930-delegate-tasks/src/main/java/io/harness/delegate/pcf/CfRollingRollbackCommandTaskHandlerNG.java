@@ -45,6 +45,7 @@ import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
 import io.harness.delegate.beans.pcf.CfInternalInstanceElement;
 import io.harness.delegate.beans.pcf.TasApplicationInfo;
 import io.harness.delegate.cf.PcfCommandTaskBaseHelper;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
 import io.harness.delegate.task.cf.CfCommandTaskHelperNG;
 import io.harness.delegate.task.cf.TasArtifactDownloadContext;
 import io.harness.delegate.task.cf.TasArtifactDownloadResponse;
@@ -134,25 +135,24 @@ public class CfRollingRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandle
     TasApplicationInfo currentProdInfo = null;
     try {
       CfRollingRollbackResponseNG cfRollingRollbackResponseNG;
-
-      if (cfRollingRollbackRequestNG.isFirstDeployment()) {
-        cfRollingRollbackResponseNG = CfRollingRollbackResponseNG.builder()
-                                          .commandExecutionStatus(CommandExecutionStatus.SUCCESS)
-                                          .newApplicationInfo(null)
-                                          .currentProdInfo(null)
-                                          .build();
-        logCallback.saveExecutionLog(
-            "\n ---------  This is first rolling deployment hence skipping rollback", INFO, SUCCESS);
-        logCallback.saveExecutionLog("\n ---------  PCF Rolling Rollback completed successfully", INFO, SUCCESS);
-        return cfRollingRollbackResponseNG;
-      }
-
       List<ApplicationSummary> previousReleases = cfDeploymentManager.getPreviousReleasesForRolling(
           cfRequestConfig, ((CfRollingRollbackRequestNG) cfCommandRequestNG).getApplicationName());
       workingDirectory = generateWorkingDirectoryOnDelegate(cfRollingRollbackRequestNG);
       cfRequestConfig.setCfHomeDirPath(workingDirectory.getAbsolutePath());
       currentProdInfo = getCurrentProdInfo(previousReleases, clonePcfRequestConfig(cfRequestConfig).build(),
           workingDirectory, ((CfRollingRollbackRequestNG) cfCommandRequestNG).getTimeoutIntervalInMin(), logCallback);
+
+      if (cfRollingRollbackRequestNG.isFirstDeployment()) {
+        cfRollingRollbackResponseNG = CfRollingRollbackResponseNG.builder()
+                                          .commandExecutionStatus(CommandExecutionStatus.SUCCESS)
+                                          .newApplicationInfo(currentProdInfo)
+                                          .currentProdInfo(currentProdInfo)
+                                          .build();
+        logCallback.saveExecutionLog(
+            "\n ---------  This is first rolling deployment hence skipping rollback", INFO, SUCCESS);
+        logCallback.saveExecutionLog("\n ---------  PCF Rolling Rollback completed successfully", INFO, SUCCESS);
+        return cfRollingRollbackResponseNG;
+      }
 
       CfAppAutoscalarRequestData cfAppAutoscalarRequestData =
           CfAppAutoscalarRequestData.builder()
@@ -170,6 +170,11 @@ public class CfRollingRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandle
 
       artifactFile = downloadArtifactFile(cfRollingRollbackRequestNG, workingDirectory, logCallback);
 
+      ArtifactBundleDetails artifactBundleDetails = cfRollingRollbackRequestNG.getArtifactBundleDetails();
+
+      String artifactPath =
+          tasTaskHelperBase.getArtifactPath(artifactBundleDetails, artifactFile, workingDirectory, logCallback);
+
       boolean varsYmlPresent = checkIfVarsFilePresent(cfRollingRollbackRequestNG);
       CfCreateApplicationRequestData requestData =
           CfCreateApplicationRequestData.builder()
@@ -177,7 +182,7 @@ public class CfRollingRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandle
                                    .applicationName(cfRollingRollbackRequestNG.getApplicationName())
                                    .routeMaps(cfRollingRollbackRequestNG.getRouteMaps())
                                    .build())
-              .artifactPath(artifactFile == null ? null : artifactFile.getAbsolutePath())
+              .artifactPath(artifactPath)
               .configPathVar(workingDirectory.getAbsolutePath())
               .newReleaseName(cfRollingRollbackRequestNG.getApplicationName())
               .pcfManifestFileData(pcfManifestFileData)
@@ -253,6 +258,7 @@ public class CfRollingRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandle
       Misc.logAllMessages(sanitizedException, logCallback);
       return CfRollingRollbackResponseNG.builder()
           .currentProdInfo(currentProdInfo)
+          .newApplicationInfo(currentProdInfo)
           .commandExecutionStatus(CommandExecutionStatus.FAILURE)
           .errorMessage(ExceptionUtils.getMessage(sanitizedException))
           .build();
@@ -496,6 +502,7 @@ public class CfRollingRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandle
         .spaceName(cfRequestConfig.getSpaceName())
         .userName(cfRequestConfig.getUserName())
         .password(cfRequestConfig.getPassword())
+        .refreshToken(cfRequestConfig.getRefreshToken())
         .endpointUrl(cfRequestConfig.getEndpointUrl())
         .manifestYaml(cfRequestConfig.getManifestYaml())
         .desiredCount(cfRequestConfig.getDesiredCount())
@@ -533,8 +540,10 @@ public class CfRollingRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandle
     try {
       isAutoScalarEnabled = cfDeploymentManager.checkIfAppHasAutoscalarEnabled(cfAppAutoscalarRequestData, logCallback);
     } catch (PivotalClientApiException e) {
+      Exception sanitizedException = ExceptionMessageSanitizer.sanitizeException(e);
       logCallback.saveExecutionLog(
           "Failed while fetching autoscalar state: " + encodeColor(currentActiveApplication.getName()), LogLevel.ERROR);
+      logCallback.saveExecutionLog(sanitizedException.getMessage(), LogLevel.ERROR);
     }
     return TasApplicationInfo.builder()
         .applicationName(currentActiveApplication.getName())
@@ -562,6 +571,7 @@ public class CfRollingRollbackCommandTaskHandlerNG extends CfCommandTaskNGHandle
     return CfRequestConfig.builder()
         .userName(String.valueOf(cfConfig.getUserName()))
         .password(String.valueOf(cfConfig.getPassword()))
+        .refreshToken(cfConfig.getRefreshToken() != null ? String.valueOf(cfConfig.getRefreshToken()) : null)
         .endpointUrl(cfConfig.getEndpointUrl())
         .orgName(cfRollingRollbackRequestNG.getTasInfraConfig().getOrganization())
         .spaceName(cfRollingRollbackRequestNG.getTasInfraConfig().getSpace())

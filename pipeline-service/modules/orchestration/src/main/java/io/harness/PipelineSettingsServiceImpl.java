@@ -6,6 +6,7 @@
  */
 package io.harness;
 
+import static io.harness.beans.FeatureName.PIE_PIPELINE_SETTINGS_ENFORCEMENT_LIMIT;
 import static io.harness.licensing.Edition.ENTERPRISE;
 import static io.harness.licensing.Edition.FREE;
 import static io.harness.licensing.Edition.TEAM;
@@ -16,8 +17,12 @@ import io.harness.licensing.Edition;
 import io.harness.licensing.LicenseType;
 import io.harness.licensing.beans.modules.ModuleLicenseDTO;
 import io.harness.licensing.remote.NgLicenseHttpClient;
+import io.harness.ngsettings.client.remote.NGSettingsClient;
+import io.harness.pms.utils.NGPipelineSettingsConstant;
 import io.harness.remote.client.NGRestUtils;
+import io.harness.utils.PmsFeatureFlagService;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -27,14 +32,18 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.validation.constraints.NotNull;
+import lombok.extern.slf4j.Slf4j;
 
 @Singleton
+@Slf4j
 public class PipelineSettingsServiceImpl implements PipelineSettingsService {
   @Inject PlanExecutionService planExecutionService;
 
   @Inject NgLicenseHttpClient ngLicenseHttpClient;
 
   @Inject OrchestrationRestrictionConfiguration orchestrationRestrictionConfiguration;
+  @Inject PmsFeatureFlagService featureFlagService;
+  @Inject NGSettingsClient ngSettingsClient;
 
   private final LoadingCache<String, List<ModuleLicenseDTO>> moduleLicensesCache =
       CacheBuilder.newBuilder()
@@ -50,7 +59,8 @@ public class PipelineSettingsServiceImpl implements PipelineSettingsService {
     return NGRestUtils.getResponse(ngLicenseHttpClient.getModuleLicenses(accountId));
   }
 
-  private Edition getEdition(String accountId) throws ExecutionException {
+  @VisibleForTesting
+  protected Edition getEdition(String accountId) throws ExecutionException {
     List<ModuleLicenseDTO> moduleLicenseDTOS = moduleLicensesCache.get(accountId);
     Edition edition = FREE;
     for (ModuleLicenseDTO moduleLicenseDTO : moduleLicenseDTOS) {
@@ -67,25 +77,41 @@ public class PipelineSettingsServiceImpl implements PipelineSettingsService {
 
   @Override
   public PlanExecutionSettingResponse shouldQueuePlanExecution(String accountId, String pipelineIdentifier) {
+    if (featureFlagService.isEnabled(accountId, PIE_PIPELINE_SETTINGS_ENFORCEMENT_LIMIT.name())) {
+      try {
+        long concurrency = Long.parseLong(
+            NGRestUtils
+                .getResponse(ngSettingsClient.getSetting(
+                    NGPipelineSettingsConstant.CONCURRENT_ACTIVE_PIPELINE_EXECUTIONS.getName(), accountId, null, null))
+                .getValue());
+        return shouldQueueInternal(concurrency,
+            planExecutionService.countRunningExecutionsForGivenPipelineInAccount(accountId, pipelineIdentifier));
+      } catch (Exception exception) {
+        log.error("FAILED to get \"CONCURRENT_ACTIVE_PIPELINE_EXECUTIONS\" settings : " + exception.getMessage());
+      }
+    }
     try {
       Edition edition = getEdition(accountId);
       switch (edition) {
         case FREE:
           if (orchestrationRestrictionConfiguration.isUseRestrictionForFree()) {
-            return shouldQueueInternal(accountId, pipelineIdentifier,
-                orchestrationRestrictionConfiguration.getPlanExecutionRestriction().getFree());
+            return shouldQueueInternal(orchestrationRestrictionConfiguration.getPlanExecutionRestriction().getFree(),
+                planExecutionService.countRunningExecutionsForGivenPipelineInAccount(accountId, pipelineIdentifier));
           }
           break;
         case ENTERPRISE:
           if (orchestrationRestrictionConfiguration.isUseRestrictionForEnterprise()) {
-            return shouldQueueInternal(accountId, pipelineIdentifier,
-                orchestrationRestrictionConfiguration.getPlanExecutionRestriction().getEnterprise());
+            return shouldQueueInternal(
+                orchestrationRestrictionConfiguration.getPlanExecutionRestriction().getEnterprise(),
+                planExecutionService.countRunningExecutionsForGivenPipelineInAccountExcludingWaitingStatuses(
+                    accountId, pipelineIdentifier));
           }
           break;
         case TEAM:
           if (orchestrationRestrictionConfiguration.isUseRestrictionForTeam()) {
-            return shouldQueueInternal(accountId, pipelineIdentifier,
-                orchestrationRestrictionConfiguration.getPlanExecutionRestriction().getTeam());
+            return shouldQueueInternal(orchestrationRestrictionConfiguration.getPlanExecutionRestriction().getTeam(),
+                planExecutionService.countRunningExecutionsForGivenPipelineInAccountExcludingWaitingStatuses(
+                    accountId, pipelineIdentifier));
           }
           break;
         default:
@@ -170,9 +196,19 @@ public class PipelineSettingsServiceImpl implements PipelineSettingsService {
     }
   }
 
-  private PlanExecutionSettingResponse shouldQueueInternal(String accountId, String pipelineIdentifier, long maxCount) {
-    long runningExecutionsForGivenPipeline =
-        planExecutionService.countRunningExecutionsForGivenPipelineInAccount(accountId, pipelineIdentifier);
+  @Override
+  public String getAccountEdition(String accountId) {
+    try {
+      Edition edition = getEdition(accountId);
+      return edition.toString();
+    } catch (Exception e) {
+      // do nothing
+    }
+    return ENTERPRISE.name();
+  }
+
+  @VisibleForTesting
+  protected PlanExecutionSettingResponse shouldQueueInternal(long maxCount, long runningExecutionsForGivenPipeline) {
     if (runningExecutionsForGivenPipeline >= maxCount) {
       return PlanExecutionSettingResponse.builder().shouldQueue(true).useNewFlow(true).build();
     }

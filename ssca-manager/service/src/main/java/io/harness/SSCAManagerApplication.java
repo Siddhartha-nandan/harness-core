@@ -18,15 +18,45 @@ import io.harness.annotations.SSCAAuthIfHasApiKey;
 import io.harness.annotations.SSCAServiceAuth;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.authorization.AuthorizationServiceHeader;
+import io.harness.cache.CacheModule;
+import io.harness.cf.AbstractCfModule;
+import io.harness.cf.CfClientConfig;
+import io.harness.cf.CfMigrationConfig;
+import io.harness.changestreams.redisconsumers.InstanceNGRedisEventConsumer;
+import io.harness.controller.PrimaryVersionChangeScheduler;
+import io.harness.ff.FeatureFlagConfig;
 import io.harness.govern.ProviderModule;
 import io.harness.maintenance.MaintenanceController;
+import io.harness.metrics.HarnessMetricRegistry;
+import io.harness.metrics.MetricRegistryModule;
+import io.harness.metrics.modules.MetricsModule;
+import io.harness.migration.MigrationProvider;
+import io.harness.migration.NGMigrationSdkInitHelper;
+import io.harness.migration.NGMigrationSdkModule;
+import io.harness.migration.beans.NGMigrationConfiguration;
+import io.harness.ng.core.CorrelationFilter;
+import io.harness.ng.core.exceptionmappers.GenericExceptionMapperV2;
+import io.harness.ng.core.exceptionmappers.JerseyViolationExceptionMapperV2;
+import io.harness.ng.core.exceptionmappers.NotAllowedExceptionMapper;
+import io.harness.ng.core.exceptionmappers.NotFoundExceptionMapper;
+import io.harness.ng.core.exceptionmappers.WingsExceptionMapperV2;
+import io.harness.ng.core.filter.ApiResponseFilter;
+import io.harness.outbox.OutboxEventPollService;
 import io.harness.persistence.HPersistence;
+import io.harness.request.RequestContextFilter;
 import io.harness.security.InternalApiAuthFilter;
 import io.harness.security.NextGenAuthenticationFilter;
 import io.harness.security.annotations.InternalApi;
 import io.harness.security.annotations.NextGenManagerAuth;
+import io.harness.ssca.jobs.RemediationTrackerUpdateArtifactsIteratorHandler;
+import io.harness.ssca.migration.SSCAMigrationProvider;
+import io.harness.threading.ExecutorModule;
+import io.harness.threading.ThreadPool;
 import io.harness.token.remote.TokenClient;
 
+import com.codahale.metrics.MetricRegistry;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Key;
@@ -49,6 +79,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import javax.servlet.DispatcherType;
 import javax.servlet.FilterRegistration;
@@ -64,6 +95,10 @@ import org.glassfish.jersey.server.model.Resource;
 @OwnedBy(SSCA)
 public class SSCAManagerApplication extends Application<SSCAManagerConfiguration> {
   private static final String APPLICATION_NAME = "SSCA Manager Application";
+
+  private final MetricRegistry metricRegistry = new MetricRegistry();
+
+  private HarnessMetricRegistry harnessMetricRegistry;
 
   public static void main(String[] args) throws Exception {
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -91,11 +126,15 @@ public class SSCAManagerApplication extends Application<SSCAManagerConfiguration
         return sscaManagerConfiguration.getSwaggerBundleConfiguration();
       }
     });
+    bootstrap.setMetricRegistry(metricRegistry);
   }
 
   @Override
   public void run(SSCAManagerConfiguration sscaManagerConfiguration, Environment environment) throws Exception {
     log.info("Starting SSCA Manager Application ...");
+    ExecutorModule.getInstance().setExecutorService(ThreadPool.create(
+        20, 1000, 500L, TimeUnit.MILLISECONDS, new ThreadFactoryBuilder().setNameFormat("main-app-pool-%d").build()));
+
     List<Module> modules = new ArrayList<>();
     modules.add(new ProviderModule() {
       @Provides
@@ -112,7 +151,34 @@ public class SSCAManagerApplication extends Application<SSCAManagerConfiguration
       }
     });
 
+    modules.add(new AbstractModule() {
+      @Override
+      protected void configure() {
+        bind(MetricRegistry.class).toInstance(metricRegistry);
+      }
+    });
+    modules.add(new MetricRegistryModule(metricRegistry));
+    modules.add(NGMigrationSdkModule.getInstance());
+    modules.add(new MetricsModule());
+    CacheModule cacheModule = new CacheModule(sscaManagerConfiguration.getCacheConfig());
+    modules.add(cacheModule);
     modules.add(io.harness.SSCAManagerModule.getInstance(sscaManagerConfiguration));
+    modules.add(new AbstractCfModule() {
+      @Override
+      public CfClientConfig cfClientConfig() {
+        return sscaManagerConfiguration.getCfClientConfig();
+      }
+
+      @Override
+      public CfMigrationConfig cfMigrationConfig() {
+        return CfMigrationConfig.builder().build();
+      }
+
+      @Override
+      public FeatureFlagConfig featureFlagConfig() {
+        return sscaManagerConfiguration.getFeatureFlagConfig();
+      }
+    });
     MaintenanceController.forceMaintenance(true);
     Injector injector = Guice.createInjector(modules);
     injector.getInstance(HPersistence.class);
@@ -120,8 +186,17 @@ public class SSCAManagerApplication extends Application<SSCAManagerConfiguration
     registerResources(environment, injector);
     registerOasResource(sscaManagerConfiguration, environment, injector);
     registerAuthFilters(sscaManagerConfiguration, environment, injector);
+    registerApiResponseFilter(environment, injector);
+    registerCorrelationFilter(environment, injector);
+    registerRequestContextFilter(environment);
     registerCorsFilter(sscaManagerConfiguration, environment);
+    registerIterators(injector);
+    registerSscaEvents(sscaManagerConfiguration, injector);
+    registerManagedBeans(environment, injector);
+    registerMigrations(injector);
     MaintenanceController.forceMaintenance(false);
+    injector.getInstance(PrimaryVersionChangeScheduler.class).registerExecutors();
+    harnessMetricRegistry = injector.getInstance(HarnessMetricRegistry.class);
   }
 
   private void registerOasResource(
@@ -138,6 +213,16 @@ public class SSCAManagerApplication extends Application<SSCAManagerConfiguration
       }
     }
   }
+  private void registerRequestContextFilter(Environment environment) {
+    environment.jersey().register(new RequestContextFilter());
+  }
+  private void registerApiResponseFilter(Environment environment, Injector injector) {
+    environment.jersey().register(injector.getInstance(ApiResponseFilter.class));
+  }
+
+  private void registerCorrelationFilter(Environment environment, Injector injector) {
+    environment.jersey().register(injector.getInstance(CorrelationFilter.class));
+  }
 
   private void registerCorsFilter(SSCAManagerConfiguration appConfig, Environment environment) {
     FilterRegistration.Dynamic cors = environment.servlets().addFilter("CORS", CrossOriginFilter.class);
@@ -149,8 +234,13 @@ public class SSCAManagerApplication extends Application<SSCAManagerConfiguration
   }
 
   private void registerJerseyProviders(Environment environment, Injector injector) {
-    environment.jersey().register(JsonProcessingExceptionMapper.class);
+    environment.jersey().register(JerseyViolationExceptionMapperV2.class);
+    environment.jersey().register(GenericExceptionMapperV2.class);
+    environment.jersey().register(new JsonProcessingExceptionMapper(true));
     environment.jersey().register(EarlyEofExceptionMapper.class);
+    environment.jersey().register(WingsExceptionMapperV2.class);
+    environment.jersey().register(NotFoundExceptionMapper.class);
+    environment.jersey().register(NotAllowedExceptionMapper.class);
     environment.jersey().register(MultiPartFeature.class);
   }
 
@@ -187,6 +277,35 @@ public class SSCAManagerApplication extends Application<SSCAManagerConfiguration
         new InternalApiAuthFilter(getAuthFilterPredicate(InternalApi.class), null, serviceToSecretMapping));
   }
 
+  private void registerSscaEvents(SSCAManagerConfiguration appConfig, Injector injector) {
+    SSCAEventConsumerController sscaEventConsumerController = injector.getInstance(SSCAEventConsumerController.class);
+    sscaEventConsumerController.register(injector.getInstance(InstanceNGRedisEventConsumer.class),
+        appConfig.getDebeziumConsumerConfigs().getInstanceNGConsumer().getThreads());
+  }
+
+  private void registerManagedBeans(Environment environment, Injector injector) {
+    createConsumerThreadsToListenToEvents(environment, injector);
+    environment.lifecycle().manage(injector.getInstance(OutboxEventPollService.class));
+  }
+
+  private void registerMigrations(Injector injector) {
+    NGMigrationConfiguration config = getMigrationSdkConfiguration();
+    NGMigrationSdkInitHelper.initialize(injector, config);
+  }
+
+  private NGMigrationConfiguration getMigrationSdkConfiguration() {
+    return NGMigrationConfiguration.builder()
+        .microservice(Microservice.SSCA)
+        .migrationProviderList(new ArrayList<Class<? extends MigrationProvider>>() {
+          { add(SSCAMigrationProvider.class); } // Add all migration provider classes here
+        })
+        .build();
+  }
+
+  private void createConsumerThreadsToListenToEvents(Environment environment, Injector injector) {
+    environment.lifecycle().manage(injector.getInstance(SSCAEventConsumerController.class));
+  }
+
   private Predicate<Pair<ResourceInfo, ContainerRequestContext>> getAuthFilterPredicate(
       Class<? extends Annotation> annotation) {
     return resourceInfoAndRequest
@@ -194,5 +313,9 @@ public class SSCAManagerApplication extends Application<SSCAManagerConfiguration
                && resourceInfoAndRequest.getKey().getResourceMethod().getAnnotation(annotation) != null)
         || (resourceInfoAndRequest.getKey().getResourceClass() != null
             && resourceInfoAndRequest.getKey().getResourceClass().getAnnotation(annotation) != null);
+  }
+
+  public static void registerIterators(Injector injector) {
+    injector.getInstance(RemediationTrackerUpdateArtifactsIteratorHandler.class).registerIterators(5);
   }
 }

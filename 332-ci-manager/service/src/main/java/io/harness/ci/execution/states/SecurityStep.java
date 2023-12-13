@@ -5,7 +5,9 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.states;
+package io.harness.ci.execution.states;
+
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
@@ -22,7 +24,6 @@ import io.harness.stoserviceclient.STOServiceUtils;
 import io.harness.tasks.ResponseData;
 
 import com.google.inject.Inject;
-import io.fabric8.utils.Strings;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -51,7 +52,7 @@ public class SecurityStep extends AbstractStepExecutable {
     String stepId = AmbianceUtils.obtainStepIdentifier(ambiance);
 
     String stepGroupIdentifier = AmbianceUtils.obtainStepGroupIdentifier(ambiance);
-    if (Strings.isNotBlank(stepGroupIdentifier)) {
+    if (isNotEmpty(stepGroupIdentifier)) {
       stepId = stepGroupIdentifier + "_" + stepId;
     }
 

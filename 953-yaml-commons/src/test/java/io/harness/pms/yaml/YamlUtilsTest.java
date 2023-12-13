@@ -14,6 +14,7 @@ import static io.harness.rule.OwnerRule.DEV_MITTAL;
 import static io.harness.rule.OwnerRule.PRASHANTSHARMA;
 import static io.harness.rule.OwnerRule.SAHIL;
 
+import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,6 +26,8 @@ import io.harness.pms.merger.YamlConfig;
 import io.harness.rule.Owner;
 import io.harness.rule.OwnerRule;
 import io.harness.serializer.JsonUtils;
+import io.harness.yaml.core.variables.v1.NGVariableV1Wrapper;
+import io.harness.yaml.core.variables.v1.StringNGVariableV1;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -832,7 +835,7 @@ public class YamlUtilsTest extends CategoryTest {
     YamlNode stepsNode =
         stage1Node.getField("spec").getNode().getField("execution").getNode().getField("steps").getNode();
     YamlNode step1Node = stepsNode.asArray().get(0).getField("step").getNode();
-    assertThat(YamlUtils.getStageFqnPath(step1Node, PipelineVersion.V0)).isEqualTo("pipeline.stages.qaStage");
+    assertThat(YamlUtils.getStageFqnPath(step1Node, HarnessYamlVersion.V0)).isEqualTo("pipeline.stages.qaStage");
   }
 
   @Test
@@ -849,7 +852,7 @@ public class YamlUtilsTest extends CategoryTest {
     YamlNode stage1Node = stagesNode.getNode().asArray().get(0);
     YamlNode stepsNode = stage1Node.getField("spec").getNode().getField("steps").getNode();
     YamlNode step1Node = stepsNode.asArray().get(0);
-    assertThat(YamlUtils.getStageFqnPath(step1Node, PipelineVersion.V1)).isEqualTo("stages.stage1");
+    assertThat(YamlUtils.getStageFqnPath(step1Node, HarnessYamlVersion.V1)).isEqualTo("stages.stage1");
   }
 
   @Test
@@ -953,5 +956,73 @@ public class YamlUtilsTest extends CategoryTest {
     assertThat(YamlUtils.writeYamlString(Map.of("k", new TextNode("_12321")))).isEqualTo("k: _12321\n");
     assertThat(YamlUtils.writeYamlString(Map.of("k", new TextNode("123_321_")))).isEqualTo("k: \"123_321_\"\n");
     assertThat(YamlUtils.writeYamlString(Map.of("k", new TextNode("12321_")))).isEqualTo("k: \"12321_\"\n");
+    assertThat(YamlUtils.writeYamlString(Map.of("k", new TextNode("abcdef")))).isEqualTo("k: abcdef\n");
+    assertThat(YamlUtils.writeYamlString(Map.of("k", new TextNode("2014-10-01T20:30:00Z"))))
+        .isEqualTo("k: \"2014-10-01T20:30:00Z\"\n");
+    assertThat(YamlUtils.writeYamlString(Map.of("k", new TextNode("2014-10-01 20:30:00Z"))))
+        .isEqualTo("k: \"2014-10-01 20:30:00Z\"\n");
+    assertThat(YamlUtils.writeYamlString(Map.of("k", new TextNode("2014-10-01 20:30:00"))))
+        .isEqualTo("k: \"2014-10-01 20:30:00\"\n");
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.SHALINI)
+  @Category(UnitTests.class)
+  public void testConvert() throws IOException {
+    NGVariableV1Wrapper ngVariableV1Wrapper =
+        YamlUtils.convert(new LinkedHashMap<>(Map.of(YamlNode.UUID_FIELD_NAME, "abc", "var1",
+                              new LinkedHashMap<>(Map.of("type", "string", "value", "abc")))),
+            NGVariableV1Wrapper.class);
+    assertEquals(ngVariableV1Wrapper.getMap().size(), 1);
+    StringNGVariableV1 stringNGVariableV1 = (StringNGVariableV1) ngVariableV1Wrapper.getMap().get("var1");
+    assertEquals(stringNGVariableV1.getValue().getValue(), "abc");
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.VINICIUS)
+  @Category(UnitTests.class)
+  public void testReplaceFieldInJsonNodeFromAnotherJsonNode() throws IOException {
+    String previousYaml = "someNode:\n"
+        + "  stringNode: managerServiceDeployment\n"
+        + "  listNode: someValue\n";
+    String currentYaml = "someNode:\n"
+        + "  stringNode: managerServiceDeployment\n"
+        + "  listNode:\n"
+        + "    - name: entry1\n"
+        + "      type: Number\n"
+        + "      default: 1\n"
+        + "      value: someValue\n"
+        + "  additionalNode: Manager Service Deployment\n";
+    YamlField previousYamlField = YamlUtils.readTree(YamlUtils.injectUuid(previousYaml));
+    YamlField currentYamlField = YamlUtils.readTree(YamlUtils.injectUuid(currentYaml));
+    String expectedSomeNodeUuid = previousYamlField.getNode().getField("someNode").getNode().getUuid();
+    String expectedStringNode =
+        previousYamlField.getNode().getField("someNode").getNode().getField("stringNode").toString();
+    String expectedListNodeFirstEntryUuid = currentYamlField.getNode()
+                                                .getField("someNode")
+                                                .getNode()
+                                                .getField("listNode")
+                                                .getNode()
+                                                .asArray()
+                                                .get(0)
+                                                .getUuid();
+    String expectedAdditionalNode =
+        currentYamlField.getNode().getField("someNode").getNode().getField("additionalNode").toString();
+    YamlUtils.replaceFieldInJsonNodeFromAnotherJsonNode(currentYamlField.getNode().getCurrJsonNode(),
+        previousYamlField.getNode().getCurrJsonNode(), YAMLFieldNameConstants.UUID);
+    assertThat(currentYamlField.getNode().getField("someNode").getNode().getUuid()).isEqualTo(expectedSomeNodeUuid);
+    assertThat(currentYamlField.getNode().getField("someNode").getNode().getField("stringNode").toString())
+        .isEqualTo(expectedStringNode);
+    assertThat(currentYamlField.getNode()
+                   .getField("someNode")
+                   .getNode()
+                   .getField("listNode")
+                   .getNode()
+                   .asArray()
+                   .get(0)
+                   .getUuid())
+        .isEqualTo(expectedListNodeFirstEntryUuid);
+    assertThat(currentYamlField.getNode().getField("someNode").getNode().getField("additionalNode").toString())
+        .isEqualTo(expectedAdditionalNode);
   }
 }

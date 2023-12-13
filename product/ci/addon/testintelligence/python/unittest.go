@@ -22,6 +22,7 @@ import (
 
 	"github.com/harness/harness-core/commons/go/lib/exec"
 	"github.com/harness/harness-core/commons/go/lib/filesystem"
+	"github.com/harness/harness-core/commons/go/lib/utils"
 	"github.com/harness/ti-client/types"
 	"go.uber.org/zap"
 )
@@ -51,7 +52,10 @@ func (b *unittestRunner) AutoDetectPackages() ([]string, error) {
 }
 
 func (b *unittestRunner) AutoDetectTests(ctx context.Context, testGlobs []string) ([]types.RunnableTest, error) {
-	return GetPythonTests(testGlobs)
+	if len(testGlobs) == 0 {
+		testGlobs = utils.PYTHON_TEST_PATTERN
+	}
+	return utils.GetTestsFromLocal(testGlobs, "py", utils.LangType_PYTHON)
 }
 
 func (b *unittestRunner) ReadPackages(files []types.File) []types.File {
@@ -61,6 +65,9 @@ func (b *unittestRunner) ReadPackages(files []types.File) []types.File {
 func (b *unittestRunner) GetCmd(ctx context.Context, tests []types.RunnableTest, userArgs, agentConfigPath string, ignoreInstr, runAll bool) (string, error) {
 	// Run all the tests
 	testCmd := ""
+	if userArgs == "" {
+		userArgs = fmt.Sprintf("--junitxml='%s${HARNESS_NODE_INDEX}' -o junit_family='xunit1'", utils.HarnessDefaultReportPath)
+	}
 	scriptPath := filepath.Join(b.agentPath, "harness", "python-agent", "python_agent.py")
 	userCmd := strings.TrimSpace(fmt.Sprintf("\"%s %s\"", unittestCmd, userArgs))
 	if runAll {
@@ -76,18 +83,7 @@ func (b *unittestRunner) GetCmd(ctx context.Context, tests []types.RunnableTest,
 		return "echo \"Skipping test run, received no tests to execute\"", nil
 	}
 
-	// Use only unique <package, class> tuples
-	set := make(map[types.RunnableTest]interface{})
-	ut := []string{}
-	for _, t := range tests {
-		w := types.RunnableTest{Class: t.Class}
-		if _, ok := set[w]; ok {
-			// The test has already been added
-			continue
-		}
-		set[w] = struct{}{}
-		ut = append(ut, t.Class)
-	}
+	ut := utils.GetUniqueTestStrings(tests)
 	testStr := strings.Join(ut, ",")
 
 	if ignoreInstr {

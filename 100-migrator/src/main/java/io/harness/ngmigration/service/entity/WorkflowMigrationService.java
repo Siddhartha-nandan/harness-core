@@ -6,6 +6,7 @@
  */
 
 package io.harness.ngmigration.service.entity;
+
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import static software.wings.ngmigration.NGMigrationEntityType.PIPELINE;
@@ -295,17 +296,18 @@ public class WorkflowMigrationService extends NgMigrationService {
             .build();
       }
       yamlDTO = PipelineConfig.builder()
-                    .pipelineInfoConfig(PipelineInfoConfig.builder()
-                                            .identifier(identifier)
-                                            .name(name)
-                                            .description(ParameterField.createValueField(description))
-                                            .projectIdentifier(projectIdentifier)
-                                            .orgIdentifier(orgIdentifier)
-                                            .stages(stages)
-                                            .allowStageExecutions(true)
-                                            .tags(MigratorUtility.getTags(workflow.getTagLinks()))
-                                            .variables(workflowHandler.getVariables(migrationContext, workflow, stages))
-                                            .build())
+                    .pipelineInfoConfig(
+                        PipelineInfoConfig.builder()
+                            .identifier(identifier)
+                            .name(name)
+                            .description(ParameterField.createValueField(description))
+                            .projectIdentifier(projectIdentifier)
+                            .orgIdentifier(orgIdentifier)
+                            .stages(stages)
+                            .allowStageExecutions(true)
+                            .tags(MigratorUtility.getTags(workflow.getTagLinks()))
+                            .variables(workflowHandler.getVariables(migrationContext, workflow, stages, false))
+                            .build())
                     .build();
       ngType = PIPELINE;
     } else {
@@ -379,7 +381,7 @@ public class WorkflowMigrationService extends NgMigrationService {
                                                 .build()))
           .build();
     }
-    String yaml = YamlUtils.writeYamlString(yamlFile.getYaml());
+    String yaml;
     if (yamlFile.getYaml() instanceof PipelineConfig) {
       yaml = getYamlString(yamlFile);
       Response<ResponseDTO<PipelineSaveResponse>> resp =
@@ -388,18 +390,38 @@ public class WorkflowMigrationService extends NgMigrationService {
                   inputDTO.getOrgIdentifier(), inputDTO.getProjectIdentifier(),
                   RequestBody.create(MediaType.parse("application/yaml"), yaml), StoreType.INLINE)
               .execute();
+      if (!(resp.code() >= 200 && resp.code() < 300)) {
+        yaml = getYamlStringV2(yamlFile);
+        resp = pmsClient
+                   .createPipeline(inputDTO.getDestinationAuthToken(), inputDTO.getDestinationAccountIdentifier(),
+                       inputDTO.getOrgIdentifier(), inputDTO.getProjectIdentifier(),
+                       RequestBody.create(MediaType.parse("application/yaml"), yaml), StoreType.INLINE)
+                   .execute();
+      }
       log.info("Workflow as pipeline creation Response details {} {}", resp.code(), resp.message());
       if (resp.code() >= 400) {
         log.info("Workflows as pipeline template is \n - {}", yaml);
       }
       return handleResp(yamlFile, resp);
     } else {
+      yaml = YamlUtils.writeYamlString(yamlFile.getYaml());
       Response<ResponseDTO<TemplateWrapperResponseDTO>> resp =
           templateClient
               .createTemplate(inputDTO.getDestinationAuthToken(), inputDTO.getDestinationAccountIdentifier(),
-                  inputDTO.getOrgIdentifier(), inputDTO.getProjectIdentifier(),
+                  yamlFile.getNgEntityDetail().getOrgIdentifier(), yamlFile.getNgEntityDetail().getProjectIdentifier(),
                   RequestBody.create(MediaType.parse("application/yaml"), yaml), StoreType.INLINE)
               .execute();
+
+      if (!(resp.code() >= 200 && resp.code() < 300)) {
+        yaml = getYamlStringV2(yamlFile);
+        resp = templateClient
+                   .createTemplate(inputDTO.getDestinationAuthToken(), inputDTO.getDestinationAccountIdentifier(),
+                       yamlFile.getNgEntityDetail().getOrgIdentifier(),
+                       yamlFile.getNgEntityDetail().getProjectIdentifier(),
+                       RequestBody.create(MediaType.parse("application/yaml"), yaml), StoreType.INLINE)
+                   .execute();
+      }
+
       log.info("Workflow as template creation Response details {} {}", resp.code(), resp.message());
       if (resp.code() >= 400) {
         log.info("The WF template is \n - {}", yaml);
@@ -468,7 +490,7 @@ public class WorkflowMigrationService extends NgMigrationService {
   }
 
   @Override
-  protected boolean isNGEntityExists() {
+  protected boolean isNGEntityExists(MigrationContext migrationContext) {
     return true;
   }
 }

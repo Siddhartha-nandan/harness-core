@@ -5,9 +5,10 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.utils;
+package io.harness.ci.execution.utils;
 
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.exception.WingsException.USER;
 
 import io.harness.annotations.dev.HarnessTeam;
@@ -32,7 +33,6 @@ import io.harness.product.ci.scm.proto.ReleaseHook;
 import io.harness.product.ci.scm.proto.Signature;
 import io.harness.product.ci.scm.proto.User;
 
-import io.fabric8.utils.Strings;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -205,7 +205,7 @@ public class WebhookTriggerProcessorUtils {
 
   public static String getShortCommitSha(String commitSha) {
     String shortCommitSha = null;
-    if (Strings.isNotBlank(commitSha)) {
+    if (isNotEmpty(commitSha)) {
       shortCommitSha = commitSha.substring(0, Math.min(commitSha.length(), 7));
     }
     return shortCommitSha;

@@ -11,6 +11,7 @@ go_library(
     importpath = "github.com/harness/harness-core/product/log-service/cli/server",
     visibility = ["//visibility:public"],
     deps = [
+        "//commons/go/lib/gcputils",
         "//commons/go/lib/secret",
         "//product/log-service/cache",
         "//product/log-service/cache/memory",
@@ -21,10 +22,12 @@ go_library(
         "//product/log-service/download/zipwork",
         "//product/log-service/handler",
         "//product/log-service/logger",
+        "//product/log-service/metric",
         "//product/log-service/queue",
         "//product/log-service/queue/memory",
         "//product/log-service/queue/redis",
         "//product/log-service/server",
+        "//product/log-service/stackdriver",
         "//product/log-service/store",
         "//product/log-service/store/bolt",
         "//product/log-service/store/s3",
@@ -34,6 +37,7 @@ go_library(
         "//product/platform/client",
         "@com_github_joho_godotenv//:godotenv",
         "@com_github_sirupsen_logrus//:logrus",
+        "@com_google_cloud_go_profiler//:profiler",
         "@in_gopkg_alecthomas_kingpin_v2//:kingpin_v2",
     ],
 )

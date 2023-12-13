@@ -9,6 +9,7 @@ package io.harness.idp.scorecard.datapoints.service;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.idp.scorecard.datapoints.entity.DataPointEntity;
+import io.harness.idp.scorecard.scores.beans.DataFetchDTO;
 import io.harness.spec.server.idp.v1.model.DataPoint;
 
 import java.util.List;
@@ -20,4 +21,10 @@ public interface DataPointService {
 
   Map<String, List<DataPointEntity>> getDslDataPointsInfo(
       String accountIdentifier, List<String> identifiers, String dataSourceIdentifier);
+
+  List<DataPointEntity> getAllDataPointsForAccount(String accountIdentifier);
+  Map<String, DataPoint> getDataPointsMap(String accountIdentifier);
+  Map<String, List<DataFetchDTO>> getDslDataPointsInfo(
+      String identifier, String s, List<DataFetchDTO> dataPointIdsAndInputValues);
+  DataPointEntity getDataPoint(String accountIdentifier, String dataSourceIdentifier, String dataPointIdentifier);
 }

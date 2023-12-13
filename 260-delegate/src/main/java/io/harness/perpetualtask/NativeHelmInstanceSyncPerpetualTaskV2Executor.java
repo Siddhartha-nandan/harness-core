@@ -22,6 +22,8 @@ import io.harness.annotations.dev.TargetModule;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.delegate.beans.instancesync.ServerInstanceInfo;
 import io.harness.delegate.task.helm.HelmChartInfo;
+import io.harness.delegate.task.k8s.K8sInfraDelegateConfig;
+import io.harness.delegate.task.k8s.K8sTaskCleanupDTO;
 import io.harness.grpc.utils.AnyUtils;
 import io.harness.k8s.model.KubernetesConfig;
 import io.harness.managerclient.DelegateAgentManagerClient;
@@ -36,6 +38,7 @@ import com.google.inject.Inject;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Builder;
@@ -123,15 +126,23 @@ public class NativeHelmInstanceSyncPerpetualTaskV2Executor extends AbstractInsta
     HashSet<String> namespaces = new HashSet<>(releaseDetails.getNamespaces());
     String releaseName = releaseDetails.getReleaseName();
     return namespaces.stream()
-        .map(namespace
-            -> PodDetailsRequest.builder()
-                   .kubernetesConfig(k8sInstanceSyncV2Helper.getKubernetesConfig(
-                       connectorDTO, releaseDetails.getK8sCloudClusterConfig(), namespace))
-                   .namespace(namespace)
-                   .releaseName(releaseName)
-                   .helmChartInfo(releaseDetails.getHelmChartInfo())
-                   .helmVersion(releaseDetails.getHelmVersion())
-                   .build())
+        .map(namespace -> {
+          K8sInfraDelegateConfig k8sInfraDelegateConfig = k8sInstanceSyncV2Helper.getK8sInfraDelegateConfig(
+              connectorDTO, releaseDetails.getK8sCloudClusterConfig(), namespace);
+          KubernetesConfig kubernetesConfig = k8sInstanceSyncV2Helper.getKubernetesConfig(k8sInfraDelegateConfig);
+          return PodDetailsRequest.builder()
+              .kubernetesConfig(kubernetesConfig)
+              .namespace(namespace)
+              .releaseName(releaseName)
+              .helmChartInfo(releaseDetails.getHelmChartInfo())
+              .helmVersion(releaseDetails.getHelmVersion())
+              .workloadLabelSelectors(releaseDetails.getWorkloadLabelSelectors())
+              .cleanupDTO(K8sTaskCleanupDTO.builder()
+                              .infraDelegateConfig(k8sInfraDelegateConfig)
+                              .generatedKubeConfig(kubernetesConfig)
+                              .build())
+              .build();
+        })
         .collect(Collectors.toList());
   }
 
@@ -148,5 +159,7 @@ public class NativeHelmInstanceSyncPerpetualTaskV2Executor extends AbstractInsta
     @NotNull private String releaseName;
     private HelmChartInfo helmChartInfo;
     String helmVersion;
+    private Map<String, List<String>> workloadLabelSelectors;
+    private K8sTaskCleanupDTO cleanupDTO;
   }
 }

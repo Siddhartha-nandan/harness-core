@@ -18,10 +18,14 @@ import io.harness.accesscontrol.AccountIdentifier;
 import io.harness.accesscontrol.NGAccessControlCheck;
 import io.harness.accesscontrol.OrgIdentifier;
 import io.harness.accesscontrol.ResourceIdentifier;
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.cd.NGServiceConstants;
 import io.harness.cdng.service.beans.CustomSequenceDTO;
+import io.harness.gitsync.interceptor.GitEntityFindInfoDTO;
 import io.harness.models.InstanceDetailGroupedByPipelineExecutionList;
 import io.harness.models.InstanceDetailsByBuildId;
 import io.harness.models.dashboard.InstanceCountDetailsByEnvTypeAndServiceId;
@@ -29,15 +33,18 @@ import io.harness.ng.core.ProjectIdentifier;
 import io.harness.ng.core.activityhistory.dto.TimeGroupType;
 import io.harness.ng.core.dashboard.DashboardExecutionStatusInfo;
 import io.harness.ng.core.dashboard.DeploymentsInfo;
+import io.harness.ng.core.dashboard.ServiceDeployments;
 import io.harness.ng.core.dto.ErrorDTO;
 import io.harness.ng.core.dto.FailureDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.environment.beans.EnvironmentFilterPropertiesDTO;
 import io.harness.ng.core.environment.beans.EnvironmentType;
 import io.harness.ng.core.service.entity.ServiceSequence;
+import io.harness.ng.core.utils.GitXUtils;
 import io.harness.ng.overview.dto.ActiveServiceInstanceSummary;
 import io.harness.ng.overview.dto.ActiveServiceInstanceSummaryV2;
 import io.harness.ng.overview.dto.ArtifactInstanceDetails;
+import io.harness.ng.overview.dto.ChartVersionInstanceDetails;
 import io.harness.ng.overview.dto.DashboardWorkloadDeployment;
 import io.harness.ng.overview.dto.DashboardWorkloadDeploymentV2;
 import io.harness.ng.overview.dto.EnvBuildIdAndInstanceCountInfoList;
@@ -50,6 +57,7 @@ import io.harness.ng.overview.dto.HealthDeploymentDashboardV2;
 import io.harness.ng.overview.dto.InstanceGroupedByEnvironmentList;
 import io.harness.ng.overview.dto.InstanceGroupedByServiceList;
 import io.harness.ng.overview.dto.InstanceGroupedOnArtifactList;
+import io.harness.ng.overview.dto.InstanceGroupedOnChartVersionList;
 import io.harness.ng.overview.dto.InstancesByBuildIdList;
 import io.harness.ng.overview.dto.OpenTaskDetails;
 import io.harness.ng.overview.dto.PipelineExecutionCountInfo;
@@ -78,9 +86,11 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import javax.validation.constraints.NotNull;
+import javax.ws.rs.BeanParam;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -122,6 +132,7 @@ import lombok.extern.slf4j.Slf4j;
               schema = @Schema(implementation = ErrorDTO.class))
     })
 @Slf4j
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_DASHBOARD})
 public class CDDashboardOverviewResource {
   private final CDOverviewDashboardService cdOverviewDashboardService;
   private final long HR_IN_MS = 60 * 60 * 1000;
@@ -143,8 +154,9 @@ public class CDDashboardOverviewResource {
       @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval) {
     log.info("Getting deployment health");
 
-    long previousStartInterval =
-        startInterval - getStartTimeOfPreviousInterval(startInterval, getNumberOfDays(startInterval, endInterval));
+    long numDays = getNumberOfDays(startInterval, endInterval);
+    long previousStartInterval = startInterval - getStartTimeOfPreviousInterval(startInterval, numDays);
+    cdOverviewDashboardService.validateDashboardRequestDuration(numDays);
     return ResponseDTO.newResponse(cdOverviewDashboardService.getHealthDeploymentDashboard(
         accountIdentifier, orgIdentifier, projectIdentifier, startInterval, endInterval, previousStartInterval));
   }
@@ -162,8 +174,9 @@ public class CDDashboardOverviewResource {
       @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval) {
     log.info("Getting deployment health");
 
-    long previousStartInterval =
-        startInterval - getStartTimeOfPreviousInterval(startInterval, getNumberOfDays(startInterval, endInterval));
+    long numDays = getNumberOfDays(startInterval, endInterval);
+    long previousStartInterval = startInterval - getStartTimeOfPreviousInterval(startInterval, numDays);
+    cdOverviewDashboardService.validateDashboardRequestDuration(numDays);
     return ResponseDTO.newResponse(cdOverviewDashboardService.getHealthDeploymentDashboardV2(
         accountIdentifier, orgIdentifier, projectIdentifier, startInterval, endInterval, previousStartInterval));
   }
@@ -181,6 +194,7 @@ public class CDDashboardOverviewResource {
       @QueryParam(NGServiceConstants.SERVICE_IDENTIFIER) String serviceIdentifier,
       @QueryParam(NGServiceConstants.BUCKET_SIZE_IN_DAYS) @DefaultValue("1") long bucketSizeInDays) {
     log.info("Getting service deployments between %s and %s", startTime, endTime);
+    cdOverviewDashboardService.validateDashboardRequestDuration(startTime, endTime);
     return ResponseDTO.newResponse(cdOverviewDashboardService.getServiceDeployments(
         accountIdentifier, orgIdentifier, projectIdentifier, startTime, endTime, serviceIdentifier, bucketSizeInDays));
   }
@@ -197,6 +211,7 @@ public class CDDashboardOverviewResource {
       @NotNull @QueryParam(NGServiceConstants.END_TIME) long endTime,
       @QueryParam(NGServiceConstants.SERVICE_IDENTIFIER) String serviceIdentifier,
       @QueryParam(NGServiceConstants.BUCKET_SIZE_IN_DAYS) @DefaultValue("1") long bucketSizeInDays) throws Exception {
+    cdOverviewDashboardService.validateDashboardRequestDuration(startTime, endTime);
     return ResponseDTO.newResponse(cdOverviewDashboardService.getServiceDeploymentsInfo(
         accountIdentifier, orgIdentifier, projectIdentifier, startTime, endTime, serviceIdentifier, bucketSizeInDays));
   }
@@ -213,6 +228,7 @@ public class CDDashboardOverviewResource {
       @NotNull @QueryParam(NGServiceConstants.END_TIME) long endTime,
       @QueryParam(NGServiceConstants.SERVICE_IDENTIFIER) String serviceIdentifier,
       @QueryParam(NGServiceConstants.BUCKET_SIZE_IN_DAYS) @DefaultValue("1") long bucketSizeInDays) throws Exception {
+    cdOverviewDashboardService.validateDashboardRequestDuration(startTime, endTime);
     return ResponseDTO.newResponse(cdOverviewDashboardService.getServiceDeploymentsInfoV2(
         accountIdentifier, orgIdentifier, projectIdentifier, startTime, endTime, serviceIdentifier, bucketSizeInDays));
   }
@@ -229,6 +245,7 @@ public class CDDashboardOverviewResource {
       @NotNull @QueryParam(NGResourceFilterConstants.START_TIME) long startInterval,
       @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval) {
     log.info("Getting deployment execution");
+    cdOverviewDashboardService.validateDashboardRequestDuration(startInterval, endInterval);
     return ResponseDTO.newResponse(cdOverviewDashboardService.getExecutionDeploymentDashboard(
         accountIdentifier, orgIdentifier, projectIdentifier, startInterval, endInterval));
   }
@@ -246,6 +263,7 @@ public class CDDashboardOverviewResource {
       @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval,
       @QueryParam("top") @DefaultValue("20") long days) {
     log.info("Getting deployments for active failed and running status");
+    cdOverviewDashboardService.validateDashboardRequestDuration(startInterval, endInterval);
     return ResponseDTO.newResponse(cdOverviewDashboardService.getDeploymentActiveFailedRunningInfo(
         accountIdentifier, orgIdentifier, projectIdentifier, days, startInterval, endInterval));
   }
@@ -265,6 +283,7 @@ public class CDDashboardOverviewResource {
     log.info("Getting workloads");
     long numDays = getNumberOfDays(startInterval, endInterval);
     long previousStartInterval = getStartTimeOfPreviousInterval(startInterval, numDays);
+    cdOverviewDashboardService.validateDashboardRequestDuration(numDays);
 
     return ResponseDTO.newResponse(cdOverviewDashboardService.getDashboardWorkloadDeployment(accountIdentifier,
         orgIdentifier, projectIdentifier, startInterval, endInterval, previousStartInterval, envType));
@@ -285,6 +304,7 @@ public class CDDashboardOverviewResource {
     log.info("Getting workloads");
     long numDays = getNumberOfDays(startInterval, endInterval);
     long previousStartInterval = getStartTimeOfPreviousInterval(startInterval, numDays);
+    cdOverviewDashboardService.validateDashboardRequestDuration(numDays);
 
     return ResponseDTO.newResponse(cdOverviewDashboardService.getDashboardWorkloadDeploymentV2(accountIdentifier,
         orgIdentifier, projectIdentifier, startInterval, endInterval, previousStartInterval, envType));
@@ -302,6 +322,7 @@ public class CDDashboardOverviewResource {
       @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endTime,
       @Parameter(description = "Specifies the sorting criteria of the list") @QueryParam("sort") List<String> sort)
       throws Exception {
+    cdOverviewDashboardService.validateDashboardRequestDuration(startTime, endTime);
     return ResponseDTO.newResponse(cdOverviewDashboardService.getServiceDetailsList(
         accountIdentifier, orgIdentifier, projectIdentifier, startTime, endTime, sort));
   }
@@ -316,10 +337,12 @@ public class CDDashboardOverviewResource {
       @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
       @NotNull @QueryParam(NGResourceFilterConstants.START_TIME) long startTime,
       @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endTime,
-      @Parameter(description = "Specifies the sorting criteria of the list") @QueryParam("sort") List<String> sort)
-      throws Exception {
+      @Parameter(description = "Specifies the sorting criteria of the list") @QueryParam("sort") List<String> sort,
+      @Parameter(description = "Specifies the repo name of the entity", hidden = true) @QueryParam(
+          "repoName") String repoName) throws Exception {
+    cdOverviewDashboardService.validateDashboardRequestDuration(startTime, endTime);
     return ResponseDTO.newResponse(cdOverviewDashboardService.getServiceDetailsListV2(
-        accountIdentifier, orgIdentifier, projectIdentifier, startTime, endTime, sort));
+        accountIdentifier, orgIdentifier, projectIdentifier, startTime, endTime, sort, repoName));
   }
 
   @GET
@@ -333,6 +356,7 @@ public class CDDashboardOverviewResource {
       @NotNull @QueryParam(NGResourceFilterConstants.START_TIME) long startInterval,
       @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval,
       @NotNull @QueryParam(NGResourceFilterConstants.TIME_GROUP_BY_TYPE) TimeGroupType timeGroupType) {
+    cdOverviewDashboardService.validateDashboardRequestDuration(startInterval, endInterval);
     return ResponseDTO.newResponse(cdOverviewDashboardService.getServicesGrowthTrend(
         accountIdentifier, orgIdentifier, projectIdentifier, startInterval, endInterval, timeGroupType));
   }
@@ -446,6 +470,26 @@ public class CDDashboardOverviewResource {
   }
 
   @GET
+  @Path("/getActiveInstanceGroupedByChartVersion")
+  @ApiOperation(
+      value = "Get active instance count for a service grouped on chart version, artifact, environment, infrastructure",
+      nickname = "getActiveInstanceGroupedByChartVersion")
+  @Hidden
+  public ResponseDTO<InstanceGroupedOnChartVersionList>
+  getActiveInstanceGroupedByChartVersion(
+      @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
+      @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
+      @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
+      @NotNull @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceId,
+      @QueryParam(NGCommonEntityConstants.ENVIRONMENT_IDENTIFIER_KEY) String environmentId,
+      @QueryParam(NGCommonEntityConstants.ENVIRONMENT_GROUP_KEY) String envGrpId,
+      @QueryParam(NGCommonEntityConstants.CHART_VERSION) String chartVersion,
+      @NotNull @QueryParam(NGCommonEntityConstants.FILTER_ON_CHART_VERSION) boolean filterOnChartVersion) {
+    return ResponseDTO.newResponse(cdOverviewDashboardService.getInstanceGroupedOnChartVersionList(accountIdentifier,
+        orgIdentifier, projectIdentifier, serviceId, environmentId, envGrpId, chartVersion, filterOnChartVersion));
+  }
+
+  @GET
   @Path("/getInstancesByServiceEnvAndBuilds")
   @ApiOperation(value = "Get list of buildId and instances", nickname = "getActiveInstancesByServiceIdEnvIdAndBuildIds")
   @Hidden
@@ -499,10 +543,11 @@ public class CDDashboardOverviewResource {
       @QueryParam(NGCommonEntityConstants.ENVIRONMENT_TYPE_KEY) EnvironmentType environmentType,
       @QueryParam(NGCommonEntityConstants.INFRA_IDENTIFIER) String infraId,
       @QueryParam(NGCommonEntityConstants.CLUSTER_IDENTIFIER) String clusterId,
-      @QueryParam(NGCommonEntityConstants.ARTIFACT) String displayName) {
+      @QueryParam(NGCommonEntityConstants.ARTIFACT) String displayName,
+      @QueryParam(NGCommonEntityConstants.CHART_VERSION) String chartVersion) {
     return ResponseDTO.newResponse(
         cdOverviewDashboardService.getInstanceDetailGroupedByPipelineExecution(accountIdentifier, orgIdentifier,
-            projectIdentifier, serviceId, envId, environmentType, infraId, clusterId, displayName));
+            projectIdentifier, serviceId, envId, environmentType, infraId, clusterId, displayName, chartVersion));
   }
 
   @GET
@@ -516,6 +561,7 @@ public class CDDashboardOverviewResource {
       @NotNull @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceId,
       @NotNull @QueryParam(NGResourceFilterConstants.START_TIME) long startInterval,
       @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval) {
+    cdOverviewDashboardService.validateDashboardRequestDuration(startInterval, endInterval);
     return ResponseDTO.newResponse(cdOverviewDashboardService.getInstanceGrowthTrend(
         accountIdentifier, orgIdentifier, projectIdentifier, serviceId, startInterval, endInterval));
   }
@@ -531,6 +577,7 @@ public class CDDashboardOverviewResource {
       @NotNull @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceId,
       @NotNull @QueryParam(NGResourceFilterConstants.START_TIME) long startInterval,
       @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval) {
+    cdOverviewDashboardService.validateDashboardRequestDuration(startInterval, endInterval);
     return ResponseDTO.newResponse(cdOverviewDashboardService.getInstanceCountHistory(
         accountIdentifier, orgIdentifier, projectIdentifier, serviceId, startInterval, endInterval));
   }
@@ -546,7 +593,24 @@ public class CDDashboardOverviewResource {
       @NotNull @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceId,
       @NotNull @QueryParam(NGResourceFilterConstants.START_TIME) long startInterval,
       @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval) {
+    cdOverviewDashboardService.validateDashboardRequestDuration(startInterval, endInterval);
     return ResponseDTO.newResponse(cdOverviewDashboardService.getDeploymentsByServiceId(
+        accountIdentifier, orgIdentifier, projectIdentifier, serviceId, startInterval, endInterval));
+  }
+
+  @GET
+  @Path("/getAllDeploymentsByServiceId")
+  @ApiOperation(value = "Get all deployments by serviceId", nickname = "getAllDeploymentsByServiceId")
+  @Hidden
+  public ResponseDTO<ServiceDeployments> getAllDeploymentsByServiceId(
+      @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
+      @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
+      @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
+      @NotNull @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceId,
+      @NotNull @QueryParam(NGResourceFilterConstants.START_TIME) long startInterval,
+      @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval) {
+    cdOverviewDashboardService.validateDashboardRequestDuration(startInterval, endInterval);
+    return ResponseDTO.newResponse(cdOverviewDashboardService.getAllDeploymentsByServiceId(
         accountIdentifier, orgIdentifier, projectIdentifier, serviceId, startInterval, endInterval));
   }
 
@@ -558,9 +622,15 @@ public class CDDashboardOverviewResource {
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
       @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
-      @NotNull @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceId) {
-    return ResponseDTO.newResponse(cdOverviewDashboardService.getServiceHeaderInfo(
-        accountIdentifier, orgIdentifier, projectIdentifier, serviceId));
+      @NotNull @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceId,
+      @Parameter(description = "This contains details of Git Entity like Git Branch info",
+          hidden = true) @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo,
+      @Parameter(description = "Specifies whether to load the entity from cache", hidden = true) @HeaderParam(
+          "Load-From-Cache") @DefaultValue("false") String loadFromCache,
+      @Parameter(description = "Specifies whether to load the entity from fallback branch", hidden = true) @QueryParam(
+          "loadFromFallbackBranch") @DefaultValue("false") boolean loadFromFallbackBranch) {
+    return ResponseDTO.newResponse(cdOverviewDashboardService.getServiceHeaderInfo(accountIdentifier, orgIdentifier,
+        projectIdentifier, serviceId, GitXUtils.parseLoadFromCacheHeaderParam(loadFromCache), loadFromFallbackBranch));
   }
 
   @GET
@@ -620,6 +690,21 @@ public class CDDashboardOverviewResource {
       @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
       @NotNull @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceId) {
     return ResponseDTO.newResponse(cdOverviewDashboardService.getArtifactInstanceDetails(
+        accountIdentifier, orgIdentifier, projectIdentifier, serviceId));
+  }
+
+  @GET
+  @Path("/getChartVersionInstanceDetails")
+  @ApiOperation(
+      value = "Get last deployment detail in each environment for chart versions having active instances of a service",
+      nickname = "getChartVersionInstanceDetails")
+  @Hidden
+  public ResponseDTO<ChartVersionInstanceDetails>
+  getChartVersionInstanceDetails(@NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
+      @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
+      @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
+      @NotNull @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceId) {
+    return ResponseDTO.newResponse(cdOverviewDashboardService.getChartVersionInstanceDetails(
         accountIdentifier, orgIdentifier, projectIdentifier, serviceId));
   }
 

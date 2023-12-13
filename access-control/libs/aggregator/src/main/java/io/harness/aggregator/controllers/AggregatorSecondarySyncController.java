@@ -7,6 +7,7 @@
 
 package io.harness.aggregator.controllers;
 
+import static io.harness.aggregator.ACLGeneratorServiceFactory.SECONDARY_ACL_GENERATOR_SERVICE;
 import static io.harness.aggregator.AggregatorConfiguration.ACCESS_CONTROL_SERVICE;
 import static io.harness.aggregator.models.MongoReconciliationOffset.SECONDARY_COLLECTION;
 import static io.harness.annotations.dev.HarnessTeam.PL;
@@ -60,14 +61,16 @@ public class AggregatorSecondarySyncController extends AggregatorBaseSyncControl
       ResourceGroupRepository resourceGroupRepository, UserGroupRepository userGroupRepository,
       AggregatorConfiguration aggregatorConfiguration, PersistentLocker persistentLocker,
       ChangeEventFailureHandler changeEventFailureHandler,
-      MongoReconciliationOffsetRepository mongoReconciliationOffsetRepository, ACLGeneratorService aclGeneratorService,
+      MongoReconciliationOffsetRepository mongoReconciliationOffsetRepository,
+      @Named(SECONDARY_ACL_GENERATOR_SERVICE) ACLGeneratorService aclGeneratorService,
       RoleAssignmentCRUDEventHandler roleAssignmentCRUDEventHandler,
       UserGroupCRUDEventHandler userGroupCRUDEventHandler, ScopeService scopeService,
-      AccessControlAdminService accessControlAdminService) {
+      AccessControlAdminService accessControlAdminService,
+      @Named("enableAclProcessingThroughOutbox") boolean enableAclProcessingThroughOutbox) {
     super(aclRepository, roleAssignmentRepository, roleRepository, resourceGroupRepository, userGroupRepository,
         aggregatorConfiguration, persistentLocker, changeEventFailureHandler, AggregatorJobType.SECONDARY,
         aclGeneratorService, roleAssignmentCRUDEventHandler, userGroupCRUDEventHandler, scopeService,
-        accessControlAdminService);
+        accessControlAdminService, enableAclProcessingThroughOutbox);
     this.aggregatorSecondarySyncStateRepository = aggregatorSecondarySyncStateRepository;
     this.aclRepository = aclRepository;
     this.mongoReconciliationOffsetRepository = mongoReconciliationOffsetRepository;

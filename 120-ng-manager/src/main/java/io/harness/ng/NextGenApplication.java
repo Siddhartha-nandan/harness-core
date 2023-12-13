@@ -6,6 +6,7 @@
  */
 
 package io.harness.ng;
+
 import static io.harness.NGCommonEntityConstants.CONFIG_FILE_FUNCTOR;
 import static io.harness.NGCommonEntityConstants.FILE_STORE_FUNCTOR;
 import static io.harness.accesscontrol.filter.NGScopeAccessCheckFilter.bypassInterMsvcRequests;
@@ -39,6 +40,8 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeInfoFactory;
 import io.harness.cache.CacheModule;
 import io.harness.cdng.creator.CDNGModuleInfoProvider;
 import io.harness.cdng.creator.CDNGPlanCreatorProvider;
@@ -70,6 +73,10 @@ import io.harness.connector.ConnectorRestrictionUsageImpl;
 import io.harness.connector.entities.Connector;
 import io.harness.connector.gitsync.ConnectorGitSyncHelper;
 import io.harness.controller.PrimaryVersionChangeScheduler;
+import io.harness.credit.schedular.CICreditExpiryIteratorHandler;
+import io.harness.credit.schedular.ProvisionMonthlyCICreditsHandler;
+import io.harness.credit.schedular.SendProvisionedCICreditsToSegmentHandler;
+import io.harness.delay.DelayEventListener;
 import io.harness.enforcement.client.CustomRestrictionRegisterConfiguration;
 import io.harness.enforcement.client.RestrictionUsageRegisterConfiguration;
 import io.harness.enforcement.client.custom.CustomRestrictionInterface;
@@ -98,6 +105,8 @@ import io.harness.gitsync.core.runnable.GitChangeSetRunnable;
 import io.harness.gitsync.core.webhook.GitSyncEventConsumerService;
 import io.harness.gitsync.core.webhook.createbranchevent.WebhookBranchHookEventQueueProcessor;
 import io.harness.gitsync.core.webhook.pushevent.WebhookPushEventQueueProcessor;
+import io.harness.gitsync.gitxwebhooks.listener.GitXWebhookQueueProcessor;
+import io.harness.gitsync.gitxwebhooks.listener.WebhookGitXPushEventQueueProcessor;
 import io.harness.gitsync.migration.GitSyncMigrationProvider;
 import io.harness.gitsync.server.GitSyncGrpcModule;
 import io.harness.gitsync.server.GitSyncServiceConfiguration;
@@ -117,6 +126,7 @@ import io.harness.migration.NGMigrationSdkInitHelper;
 import io.harness.migration.NGMigrationSdkModule;
 import io.harness.migration.beans.NGMigrationConfiguration;
 import io.harness.migrations.InstanceMigrationProvider;
+import io.harness.ng.chaos.ChaosNotificationTemplateRegistrar;
 import io.harness.ng.core.CorrelationFilter;
 import io.harness.ng.core.DefaultUserGroupsCreationJob;
 import io.harness.ng.core.EtagFilter;
@@ -132,8 +142,11 @@ import io.harness.ng.core.exceptionmappers.WingsExceptionMapperV2;
 import io.harness.ng.core.filter.ApiResponseFilter;
 import io.harness.ng.core.handler.NGVaultSecretManagerRenewalHandler;
 import io.harness.ng.core.handler.freezeHandlers.NgDeploymentFreezeActivationHandler;
+import io.harness.ng.core.migration.AddUniqueIdParentIdToEntitiesJob;
 import io.harness.ng.core.migration.NGBeanMigrationProvider;
+import io.harness.ng.core.migration.ParentUniqueIdMigrationProvider;
 import io.harness.ng.core.migration.ProjectMigrationProvider;
+import io.harness.ng.core.migration.UniqueIdParentIdMigrationProvider;
 import io.harness.ng.core.migration.UserGroupMigrationProvider;
 import io.harness.ng.core.remote.UserGroupRestrictionUsageImpl;
 import io.harness.ng.core.remote.UsersRestrictionUsageImpl;
@@ -145,6 +158,7 @@ import io.harness.ng.core.remote.licenserestriction.ProjectRestrictionsUsageImpl
 import io.harness.ng.core.remote.licenserestriction.SecretRestrictionUsageImpl;
 import io.harness.ng.core.remote.licenserestriction.ServiceAccountRestrictionUsageImpl;
 import io.harness.ng.core.remote.licenserestriction.VariableRestrictionUsageImpl;
+import io.harness.ng.core.scheduler.SendAccountStatisticsToSegmentTask;
 import io.harness.ng.core.user.exception.mapper.InvalidUserRemoveRequestExceptionMapper;
 import io.harness.ng.core.variable.expressions.functors.VariableFunctor;
 import io.harness.ng.migration.DelegateMigrationProvider;
@@ -192,11 +206,16 @@ import io.harness.pms.sdk.core.events.OrchestrationEventHandler;
 import io.harness.pms.sdk.core.execution.expression.SdkFunctor;
 import io.harness.pms.sdk.core.governance.JsonExpansionHandlerInfo;
 import io.harness.pms.sdk.execution.events.facilitators.FacilitatorEventRedisConsumer;
+import io.harness.pms.sdk.execution.events.facilitators.FacilitatorEventRedisConsumerV2;
 import io.harness.pms.sdk.execution.events.interrupts.InterruptEventRedisConsumer;
 import io.harness.pms.sdk.execution.events.node.advise.NodeAdviseEventRedisConsumer;
+import io.harness.pms.sdk.execution.events.node.advise.NodeAdviseRedisConsumerV2;
+import io.harness.pms.sdk.execution.events.node.resume.NodeResumeEventConsumerV2;
 import io.harness.pms.sdk.execution.events.node.resume.NodeResumeEventRedisConsumer;
 import io.harness.pms.sdk.execution.events.node.start.NodeStartEventRedisConsumer;
+import io.harness.pms.sdk.execution.events.node.start.NodeStartEventRedisConsumerV2;
 import io.harness.pms.sdk.execution.events.plan.CreatePartialPlanRedisConsumer;
+import io.harness.pms.sdk.execution.events.progress.NodeProgressEventRedisConsumerV2;
 import io.harness.pms.sdk.execution.events.progress.ProgressEventRedisConsumer;
 import io.harness.pms.serializer.json.PmsBeansJacksonModule;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
@@ -209,9 +228,11 @@ import io.harness.registrars.CDServiceAdviserRegistrar;
 import io.harness.request.RequestContextFilter;
 import io.harness.resource.VersionInfoResource;
 import io.harness.runnable.InstanceAccountInfoRunnable;
+import io.harness.scopeinfoclient.remote.ScopeInfoClient;
 import io.harness.secret.ConfigSecretUtils;
 import io.harness.security.InternalApiAuthFilter;
 import io.harness.security.NextGenAuthenticationFilter;
+import io.harness.security.ScopeInfoFilter;
 import io.harness.security.annotations.InternalApi;
 import io.harness.security.annotations.PublicApi;
 import io.harness.service.deploymentevent.DeploymentEventListenerRegistrar;
@@ -247,6 +268,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.ServiceManager;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.AbstractModule;
@@ -293,6 +315,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
+import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.glassfish.jersey.server.model.Resource;
@@ -306,6 +329,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
   private static final String APPLICATION_NAME = "CD NextGen Application";
 
   private final MetricRegistry metricRegistry = new MetricRegistry();
+  private final MetricRegistry threadPoolMetricRegistry = new MetricRegistry();
 
   public static void main(String[] args) throws Exception {
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -384,7 +408,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
         return appConfig.getDbAliases();
       }
     });
-    modules.add(new MetricRegistryModule(metricRegistry));
+    modules.add(new MetricRegistryModule(metricRegistry, threadPoolMetricRegistry));
     modules.add(NGMigrationSdkModule.getInstance());
     modules.add(new LogStreamingModule(appConfig.getLogStreamingServiceConfig().getBaseUrl()));
     modules.add(new AbstractCfModule() {
@@ -439,7 +463,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     });
     // Pipeline Service Modules
     PmsSdkConfiguration pmsSdkConfiguration = getPmsSdkConfiguration(appConfig);
-    modules.add(PmsSdkModule.getInstance(pmsSdkConfiguration));
+    modules.add(PmsSdkModule.getInstance(pmsSdkConfiguration, threadPoolMetricRegistry));
     modules.add(PipelineServiceUtilityModule.getInstance());
     CacheModule cacheModule = new CacheModule(appConfig.getCacheConfig());
     modules.add(cacheModule);
@@ -471,12 +495,21 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     if (!appConfig.isDisableFreezeNotificationTemplate()) {
       registerNotificationTemplates(injector);
     }
+    registerChaosNotificationTemplates(injector);
     registerPmsSdkEvents(appConfig, injector);
     registerDebeziumEvents(appConfig, injector);
     initializeMonitoring(appConfig, injector);
     registerObservers(injector);
     registerOasResource(appConfig, environment, injector);
     registerManagedBeans(environment, injector, appConfig);
+    environment.jersey().getResourceConfig().register(new AbstractBinder() {
+      @Override
+      protected void configure() {
+        bindFactory(ScopeInfoFactory.class).to(ScopeInfo.class);
+      }
+    });
+    environment.jersey().register(
+        new ScopeInfoFilter(injector.getInstance(Key.get(ScopeInfoClient.class, Names.named("PRIVILEGED")))));
     initializeEnforcementService(injector, appConfig);
     initializeEnforcementSdk(injector);
     initializeCdMonitoring(appConfig, injector);
@@ -521,6 +554,12 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     executorService.submit(injector.getInstance(FreezeNotificationTemplateRegistrar.class));
   }
 
+  private void registerChaosNotificationTemplates(Injector injector) {
+    ExecutorService executorService =
+        injector.getInstance(Key.get(ExecutorService.class, Names.named("chaosTemplateRegistrationExecutorService")));
+    executorService.submit(injector.getInstance(ChaosNotificationTemplateRegistrar.class));
+  }
+
   private void initializeNGMonitoring(NextGenConfiguration appConfig, Injector injector) {
     log.info("Initializing NGMonitoring");
     injector.getInstance(NGTelemetryRecordsJob.class).scheduleTasks();
@@ -540,6 +579,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
   private void registerQueueListeners(Injector injector) {
     log.info("Initializing queue listeners...");
     QueueListenerController queueListenerController = injector.getInstance(QueueListenerController.class);
+    queueListenerController.register(injector.getInstance(DelayEventListener.class), 1);
     queueListenerController.register(injector.getInstance(NgOrchestrationNotifyEventListener.class), 1);
   }
 
@@ -564,6 +604,9 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
           { add(NGBeanMigrationProvider.class); }
 
           { add(ProjectMigrationProvider.class); }
+
+          { add(UniqueIdParentIdMigrationProvider.class); }
+          { add(ParentUniqueIdMigrationProvider.class); }
 
           { add(NGCoreMigrationProvider.class); } // Add all migration provider classes here
 
@@ -661,6 +704,9 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
         .registerIterators(ngIteratorsConfig.getOauthTokenRefreshIteratorConfig().getThreadPoolSize());
     injector.getInstance(CDLicenseDailyReportIteratorHandler.class)
         .registerIterator(ngIteratorsConfig.getCdLicenseDailyReportIteratorConfig());
+    injector.getInstance(CICreditExpiryIteratorHandler.class).registerIterator(2);
+    injector.getInstance(SendProvisionedCICreditsToSegmentHandler.class).registerIterator(2);
+    injector.getInstance(ProvisionMonthlyCICreditsHandler.class).registerIterators(2);
   }
 
   public void registerJobs(Injector injector) {
@@ -686,11 +732,20 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
         injector.getInstance(PipelineEventConsumerController.class);
     pipelineEventConsumerController.register(injector.getInstance(InterruptEventRedisConsumer.class), 1);
     pipelineEventConsumerController.register(injector.getInstance(CdngOrchestrationEventRedisConsumer.class), 1);
+
+    // V1 will be removed once the change has reached prod
     pipelineEventConsumerController.register(injector.getInstance(FacilitatorEventRedisConsumer.class), 1);
     pipelineEventConsumerController.register(injector.getInstance(NodeStartEventRedisConsumer.class), 2);
     pipelineEventConsumerController.register(injector.getInstance(ProgressEventRedisConsumer.class), 1);
     pipelineEventConsumerController.register(injector.getInstance(NodeAdviseEventRedisConsumer.class), 2);
     pipelineEventConsumerController.register(injector.getInstance(NodeResumeEventRedisConsumer.class), 2);
+
+    pipelineEventConsumerController.register(injector.getInstance(FacilitatorEventRedisConsumerV2.class), 1);
+    pipelineEventConsumerController.register(injector.getInstance(NodeStartEventRedisConsumerV2.class), 2);
+    pipelineEventConsumerController.register(injector.getInstance(NodeProgressEventRedisConsumerV2.class), 1);
+    pipelineEventConsumerController.register(injector.getInstance(NodeAdviseRedisConsumerV2.class), 2);
+    pipelineEventConsumerController.register(injector.getInstance(NodeResumeEventConsumerV2.class), 2);
+
     pipelineEventConsumerController.register(injector.getInstance(CreatePartialPlanRedisConsumer.class), 2);
     pipelineEventConsumerController.register(injector.getInstance(PipelineExecutionSummaryCDRedisEventConsumer.class),
         appConfig.getDebeziumConsumersConfigs().getPlanExecutionsSummaryStreaming().getThreads());
@@ -732,6 +787,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
 
     return PmsSdkConfiguration.builder()
         .deploymentMode(remote ? SdkDeployMode.REMOTE : SdkDeployMode.LOCAL)
+        .streamPerServiceConfiguration(appConfig.isStreamPerServiceConfiguration())
         .moduleType(ModuleType.CD)
         .grpcServerConfig(appConfig.getPmsSdkGrpcServerConfig())
         .pmsGrpcClientConfig(appConfig.getPmsGrpcClientConfig())
@@ -758,6 +814,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     aliases.put("artifact", "artifacts.primary");
     aliases.put("infra", "stage.spec.infrastructure.output");
     aliases.put("INFRA_KEY", "stage.spec.infrastructure.output.infrastructureKey");
+    aliases.put("INFRA_KEY_SHORT_ID", "stage.spec.infrastructure.output.infrastructureKeyShort");
     aliases.put("OnRollbackModeExecution",
         "(<+ambiance.metadata.executionMode> == \"POST_EXECUTION_ROLLBACK\") || (<+ambiance.metadata.executionMode> == \"PIPELINE_ROLLBACK\")");
     return aliases;
@@ -882,11 +939,16 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     environment.lifecycle().manage(injector.getInstance(OutboxEventPollService.class));
     environment.lifecycle().manage(injector.getInstance(DefaultUserGroupsCreationJob.class));
     environment.lifecycle().manage(injector.getInstance(FixInconsistentUserDataMigrationJob.class));
+    environment.lifecycle().manage(injector.getInstance(AddUniqueIdParentIdToEntitiesJob.class));
     // Do not remove as it's used for MaintenanceController for shutdown mode
     environment.lifecycle().manage(injector.getInstance(MaintenanceController.class));
     if (appConfig.isUseQueueServiceForWebhookTriggers()) {
       environment.lifecycle().manage(injector.getInstance(WebhookBranchHookEventQueueProcessor.class));
       environment.lifecycle().manage(injector.getInstance(WebhookPushEventQueueProcessor.class));
+      environment.lifecycle().manage(injector.getInstance(WebhookGitXPushEventQueueProcessor.class));
+    }
+    if (appConfig.isUseQueueServiceForGitXWebhook()) {
+      environment.lifecycle().manage(injector.getInstance(GitXWebhookQueueProcessor.class));
     }
     createConsumerThreadsToListenToEvents(environment, injector);
   }
@@ -901,14 +963,19 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
   }
 
   private void registerResources(NextGenConfiguration appConfig, Environment environment, Injector injector) {
-    for (Class<?> resource : HARNESS_RESOURCE_CLASSES) {
-      if (Resource.isAcceptable(resource)) {
-        environment.jersey().register(injector.getInstance(resource));
+    try {
+      for (Class<?> resource : HARNESS_RESOURCE_CLASSES) {
+        if (Resource.isAcceptable(resource)) {
+          environment.jersey().register(injector.getInstance(resource));
+        }
       }
+      environment.jersey().register(injector.getInstance(VersionInfoResource.class));
+      environment.jersey().property(
+          ServerProperties.RESOURCE_VALIDATION_DISABLE, appConfig.isDisableResourceValidation());
+    } catch (Exception e) {
+      log.error("Failed to register resources. Classes are: {}", Iterables.toString(HARNESS_RESOURCE_CLASSES));
+      throw e;
     }
-    environment.jersey().register(injector.getInstance(VersionInfoResource.class));
-    environment.jersey().property(
-        ServerProperties.RESOURCE_VALIDATION_DISABLE, appConfig.isDisableResourceValidation());
   }
 
   private void registerJerseyProviders(Environment environment, Injector injector) {
@@ -982,6 +1049,8 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
         .scheduleWithFixedDelay(injector.getInstance(ModuleVersionsMaintenanceTask.class), 0, 3, TimeUnit.HOURS);
     injector.getInstance(Key.get(ScheduledExecutorService.class, Names.named("taskPollExecutor")))
         .scheduleWithFixedDelay(injector.getInstance(CDLicenseDailyReportTask.class), 0, 3, TimeUnit.HOURS);
+    injector.getInstance(Key.get(ScheduledExecutorService.class, Names.named("taskPollExecutor")))
+        .scheduleWithFixedDelay(injector.getInstance(SendAccountStatisticsToSegmentTask.class), 0, 24, TimeUnit.HOURS);
   }
 
   private void registerAuthFilters(NextGenConfiguration configuration, Environment environment, Injector injector) {
@@ -1057,7 +1126,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
   private Predicate<Pair<ResourceInfo, ContainerRequestContext>> getAuthenticationExemptedRequestsPredicate() {
     return getAuthFilterPredicate(PublicApi.class)
         .or(resourceInfoAndRequest
-            -> resourceInfoAndRequest.getValue().getUriInfo().getAbsolutePath().getPath().endsWith("/version")
+            -> resourceInfoAndRequest.getValue().getUriInfo().getAbsolutePath().getPath().equals("/version")
                 || resourceInfoAndRequest.getValue().getUriInfo().getAbsolutePath().getPath().endsWith("/swagger")
                 || resourceInfoAndRequest.getValue().getUriInfo().getAbsolutePath().getPath().endsWith("/swagger.json")
                 || resourceInfoAndRequest.getValue().getUriInfo().getAbsolutePath().getPath().endsWith("/openapi.json")

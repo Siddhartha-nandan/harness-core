@@ -56,6 +56,7 @@ import io.harness.audit.repositories.AuditRepository;
 import io.harness.category.element.UnitTests;
 import io.harness.ng.beans.PageRequest;
 import io.harness.rule.Owner;
+import io.harness.telemetry.TelemetryReporter;
 
 import com.mongodb.BasicDBList;
 import java.time.Instant;
@@ -79,6 +80,8 @@ public class AuditServiceImplTest extends CategoryTest {
   private AuditService auditService;
   private TransactionTemplate transactionTemplate;
   private AuditSettingsService auditSettingsService;
+
+  private TelemetryReporter telemetryReporter;
 
   private final PageRequest samplePageRequest = PageRequest.builder().pageIndex(0).pageSize(50).build();
 

@@ -13,6 +13,7 @@ import static io.harness.rule.OwnerRule.ANIL;
 import static io.harness.rule.OwnerRule.ARVIND;
 import static io.harness.rule.OwnerRule.SARTHAK_KASAT;
 import static io.harness.rule.OwnerRule.VITALIE;
+import static io.harness.steps.StepUtils.PIE_SIMPLIFY_LOG_BASE_KEY;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -56,6 +57,7 @@ import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.execution.failure.FailureInfo;
 import io.harness.pms.contracts.execution.tasks.TaskRequest;
+import io.harness.pms.contracts.plan.ExecutionMetadata;
 import io.harness.pms.sdk.core.resolver.RefObjectUtils;
 import io.harness.pms.sdk.core.resolver.outcome.OutcomeService;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
@@ -67,6 +69,7 @@ import io.harness.serializer.kryo.ApiServiceBeansKryoRegister;
 import io.harness.serializer.kryo.DelegateTasksBeansKryoRegister;
 import io.harness.steps.StepHelper;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import software.wings.beans.TaskType;
 
@@ -95,6 +98,7 @@ public class CommandStepTest extends CategoryTest {
   @Mock private CDStepHelper cdStepHelper;
   @Mock private InstanceInfoService instanceInfoService;
   @Mock private ThrowingSupplier exceptionThrowingSupplier;
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
   @Captor private ArgumentCaptor<List<ServerInstanceInfo>> serverInstanceInfoListCaptor;
 
   @InjectMocks private CommandStep commandStep;
@@ -103,7 +107,14 @@ public class CommandStepTest extends CategoryTest {
   private final String accountId = "accountId";
   private final String infraKey = "INFRAKEY";
   private final String localhost = "localhost";
-  private final Ambiance ambiance = Ambiance.newBuilder().putSetupAbstractions("accountId", accountId).build();
+
+  private final Ambiance ambiance =
+      Ambiance.newBuilder()
+          .putSetupAbstractions("accountId", accountId)
+          .setMetadata(
+              ExecutionMetadata.newBuilder().putFeatureFlagToValueMap(PIE_SIMPLIFY_LOG_BASE_KEY, false).build())
+          .build();
+
   private final CommandStepParameters commandStepParameters =
       CommandStepParameters.infoBuilder()
           .host(ParameterField.createValueField(localhost))

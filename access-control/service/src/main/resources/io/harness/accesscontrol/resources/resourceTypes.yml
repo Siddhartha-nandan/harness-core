@@ -1,6 +1,6 @@
 # Any edit in this file should accompany an increment in version.
 name: resourceTypeConfiguration
-version: 33
+version: 41
 resourceTypes:
   - identifier: ACCOUNT
     permissionKey: account
@@ -121,18 +121,26 @@ resourceTypes:
     permissionKey: setting
   - identifier: DEPLOYMENTFREEZE
     permissionKey: deploymentfreeze
-  - identifier: IAC_STACK
-    permissionKey: stack
   - identifier: STREAMING_DESTINATION
     permissionKey: streamingDestination
   - identifier: DOWNTIME
     permissionKey: downtime
   - identifier: IDP_SETTINGS
     permissionKey: idpsettings
+  - identifier: IDP_PLUGIN
+    permissionKey: plugin
+  - identifier: IDP_SCORECARD
+    permissionKey: scorecard
+  - identifier: IDP_LAYOUT
+    permissionKey: layout
+  - identifier: IDP_CATALOG_ACCESS_POLICY
+    permissionKey: catalogaccesspolicy
+  - identifier: IDP_INTEGRATION
+    permissionKey: integration
+  - identifier: IDP_ADVANCED_CONFIGURATION
+    permissionKey: advancedconfiguration
   - identifier: CODE_REPOSITORY
     permissionKey: repo
-  - identifier: CODE_COMMIT_CHECK
-    permissionKey: commitCheck
   - identifier: NETWORK_MAP
     permissionKey: networkmap
   - identifier: CHAOS_SECURITY_GOVERNANCE
@@ -143,3 +151,21 @@ resourceTypes:
     permissionKey: token
   - identifier:  CET_CRITICAL_EVENT
     permissionKey: criticalevent
+  - identifier: IAC_WORKSPACE
+    permissionKey: workspace
+  - identifier: SEI_CONFIGURATION_SETTINGS
+    permissionKey: seiconfigurationsettings
+  - identifier: SEI_COLLECTIONS
+    permissionKey: seicollections
+  - identifier: SEI_INSIGHTS
+    permissionKey: seiinsights
+  - identifier: CCM_ANOMALIES
+    permissionKey: anomalies
+  - identifier: CCM_RECOMMENDATIONS
+    permissionKey: recommendations
+  - identifier: CCM_COMMITMENT_ORCHESTRATOR
+    permissionKey: commitmentOrchestrator
+  - identifier: INPUT_SET
+    permissionKey: inputset
+  - identifier: NOTIFICATION
+    permissionKey: notification

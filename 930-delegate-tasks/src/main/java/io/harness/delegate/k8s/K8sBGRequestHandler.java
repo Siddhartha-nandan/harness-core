@@ -49,12 +49,15 @@ import io.harness.beans.FileData;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
+import io.harness.delegate.task.helm.HelmChartInfo;
 import io.harness.delegate.task.k8s.ContainerDeploymentDelegateBaseHelper;
+import io.harness.delegate.task.k8s.HelmChartManifestDelegateConfig;
 import io.harness.delegate.task.k8s.K8sBGDeployRequest;
 import io.harness.delegate.task.k8s.K8sBGDeployResponse;
 import io.harness.delegate.task.k8s.K8sDeployRequest;
 import io.harness.delegate.task.k8s.K8sDeployResponse;
 import io.harness.delegate.task.k8s.K8sTaskHelperBase;
+import io.harness.delegate.task.k8s.ReleaseMetadata;
 import io.harness.delegate.task.k8s.client.K8sClient;
 import io.harness.delegate.task.utils.ServiceHookDTO;
 import io.harness.delegate.utils.ServiceHookHandler;
@@ -65,6 +68,7 @@ import io.harness.exception.NestedExceptionUtils;
 import io.harness.helpers.k8s.releasehistory.K8sReleaseHandler;
 import io.harness.k8s.K8sCliCommandType;
 import io.harness.k8s.K8sCommandFlagsUtils;
+import io.harness.k8s.K8sReleaseWarningLogger;
 import io.harness.k8s.KubernetesContainerService;
 import io.harness.k8s.KubernetesReleaseDetails;
 import io.harness.k8s.KubernetesReleaseDetails.KubernetesReleaseDetailsBuilder;
@@ -104,6 +108,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import io.kubernetes.client.openapi.models.V1Service;
 import java.nio.file.Paths;
+import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -147,6 +152,7 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
   private String currentManifestHash;
   private K8sReleaseHandler releaseHandler;
   private K8sRequestHandlerContext k8sRequestHandlerContext = new K8sRequestHandlerContext();
+  private ReleaseMetadata releaseMetadata;
 
   @Override
   protected K8sDeployResponse executeTaskInternal(K8sDeployRequest k8sDeployRequest,
@@ -155,11 +161,13 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
     if (!(k8sDeployRequest instanceof K8sBGDeployRequest)) {
       throw new InvalidArgumentsException(Pair.of("k8sDeployRequest", "Must be instance of K8sBGDeployRequest"));
     }
-
+    HelmChartInfo helmChartInfo = null;
     K8sBGDeployRequest k8sBGDeployRequest = (K8sBGDeployRequest) k8sDeployRequest;
+    kubernetesConfig = k8sDelegateTaskParams.getKubernetesConfig();
     deploymentSkipped = false;
     k8sRequestHandlerContext.setEnabledSupportHPAAndPDB(k8sBGDeployRequest.isEnabledSupportHPAAndPDB());
     releaseName = k8sBGDeployRequest.getReleaseName();
+    releaseMetadata = k8sBGDeployRequest.getReleaseMetadata();
     useDeclarativeRollback = k8sBGDeployRequest.isUseDeclarativeRollback();
     releaseHandler = k8sTaskHelperBase.getReleaseHandler(useDeclarativeRollback);
     manifestFilesDirectory = Paths.get(k8sDelegateTaskParams.getWorkingDirectory(), MANIFEST_FILES_DIR).toString();
@@ -177,7 +185,7 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
     serviceHookHandler.execute(ServiceHookType.PRE_HOOK, ServiceHookAction.FETCH_FILES,
         k8sDelegateTaskParams.getWorkingDirectory(), executionLogCallback);
     k8sTaskHelperBase.fetchManifestFilesAndWriteToDirectory(k8sBGDeployRequest.getManifestDelegateConfig(),
-        manifestFilesDirectory, executionLogCallback, timeoutInMillis, k8sBGDeployRequest.getAccountId(), false);
+        manifestFilesDirectory, executionLogCallback, timeoutInMillis, k8sBGDeployRequest.getAccountId(), false, false);
     serviceHookHandler.execute(ServiceHookType.POST_HOOK, ServiceHookAction.FETCH_FILES,
         k8sDelegateTaskParams.getWorkingDirectory(), executionLogCallback);
     executionLogCallback.saveExecutionLog("Done.", INFO, SUCCESS);
@@ -189,6 +197,10 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
         k8sTaskHelperBase.getLogCallback(logStreamingTaskClient, Prepare, true, commandUnitsProgress),
         k8sBGDeployRequest.isSkipResourceVersioning(), k8sBGDeployRequest.isPruningEnabled());
 
+    if (k8sBGDeployRequest.getManifestDelegateConfig() instanceof HelmChartManifestDelegateConfig) {
+      helmChartInfo =
+          k8sTaskHelperBase.getHelmChartDetails(k8sBGDeployRequest.getManifestDelegateConfig(), manifestFilesDirectory);
+    }
     List<K8sPod> existingPodList =
         k8sBGBaseHandler.getExistingPods(timeoutInMillis, kubernetesConfig, releaseName, executionLogCallback);
 
@@ -217,7 +229,7 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
 
     k8sTaskHelperBase.applyManifests(
         client, resources, k8sDelegateTaskParams, applyManifestsLogCallback, true, true, commandFlags);
-
+    OffsetDateTime manifestApplyTime = OffsetDateTime.now();
     k8sTaskHelperBase.saveRelease(
         useDeclarativeRollback, false, kubernetesConfig, release, releaseHistory, releaseName);
 
@@ -243,6 +255,7 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
                                               .denoteOverallSuccess(false)
                                               .isErrorFrameworkEnabled(true)
                                               .kubernetesConfig(kubernetesConfig)
+                                              .startTime(manifestApplyTime)
                                               .build();
 
     K8sClient k8sClient = k8sTaskHelperBase.getKubernetesClient(k8sBGDeployRequest.isUseK8sApiForSteadyStateCheck());
@@ -273,7 +286,9 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
                                                   .stageServiceName(stageService.getResourceId().getName())
                                                   .stageColor(stageColor)
                                                   .primaryColor(primaryColor)
+                                                  .helmChartInfo(helmChartInfo)
                                                   .build();
+
     wrapUpLogCallback.saveExecutionLog("\nDone.", INFO, CommandExecutionStatus.SUCCESS);
 
     if (k8sBGDeployRequest.isPruningEnabled()) {
@@ -312,8 +327,11 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
     executionLogCallback.saveExecutionLog("Initializing..\n");
     executionLogCallback.saveExecutionLog(color(String.format("Release Name: [%s]", releaseName), Yellow, Bold));
 
-    kubernetesConfig = containerDeploymentDelegateBaseHelper.createKubernetesConfig(
-        request.getK8sInfraDelegateConfig(), k8sDelegateTaskParams.getWorkingDirectory(), executionLogCallback);
+    if (kubernetesConfig == null) {
+      log.warn("Kubernetes config passed to task is NULL. Creating it again...");
+      kubernetesConfig = containerDeploymentDelegateBaseHelper.createKubernetesConfig(
+          request.getK8sInfraDelegateConfig(), k8sDelegateTaskParams.getWorkingDirectory(), executionLogCallback);
+    }
 
     client = KubectlFactory.getKubectlClient(k8sDelegateTaskParams.getKubectlPath(),
         k8sDelegateTaskParams.getKubeconfigPath(), k8sDelegateTaskParams.getWorkingDirectory());
@@ -324,6 +342,8 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
           k8sTaskHelperBase.getNextReleaseNumberFromOldReleaseHistory(kubernetesConfig, request.getReleaseName());
     }
 
+    K8sReleaseWarningLogger.logWarningIfReleaseConflictExists(
+        request.getReleaseMetadata(), releaseHistory, executionLogCallback);
     k8sTaskHelperBase.deleteSkippedManifestFiles(manifestFilesDirectory, executionLogCallback);
 
     KubernetesReleaseDetailsBuilder releaseBuilder =
@@ -483,7 +503,7 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
 
     stageColor = k8sBGBaseHandler.getInverseColor(primaryColor);
 
-    release = releaseHandler.createRelease(releaseName, currentReleaseNumber);
+    release = releaseHandler.createRelease(releaseName, currentReleaseNumber, releaseMetadata);
 
     if (storeReleaseHash) {
       release.setManifestHash(currentManifestHash);

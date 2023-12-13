@@ -6,6 +6,7 @@
  */
 
 package io.harness.ng.core.serviceoverride.services.impl;
+
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.eventsframework.EventsFrameworkConstants.ENTITY_CRUD;
@@ -95,6 +96,13 @@ public class ServiceOverrideServiceImpl implements ServiceOverrideService {
       String accountId, String orgIdentifier, String projectIdentifier, String environmentRef, String serviceRef) {
     checkArgument(isNotEmpty(accountId), "accountId must be present");
 
+    return getByEnvironmentRef(accountId, orgIdentifier, projectIdentifier, environmentRef, serviceRef);
+  }
+
+  @Override
+  public Optional<NGServiceOverridesEntity> getForV1AndV2(
+      String accountId, String orgIdentifier, String projectIdentifier, String environmentRef, String serviceRef) {
+    checkArgument(isNotEmpty(accountId), "accountId must be present");
     return getByEnvironmentRef(accountId, orgIdentifier, projectIdentifier, environmentRef, serviceRef);
   }
 

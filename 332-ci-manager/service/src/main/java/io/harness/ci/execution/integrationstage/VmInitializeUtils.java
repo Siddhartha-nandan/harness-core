@@ -5,10 +5,12 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.integrationstage;
+package io.harness.ci.execution.integrationstage;
 
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveArchType;
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveOSType;
+import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_HTTP_PROXY;
+import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_NO_PROXY;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_ARCH;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_MACHINE;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_NAME;
@@ -43,7 +45,7 @@ import static io.harness.ci.commonconstants.ContainerExecutionConstants.GOLANG_C
 import static io.harness.ci.commonconstants.ContainerExecutionConstants.GRADLE_CACHE_DIR;
 import static io.harness.ci.commonconstants.ContainerExecutionConstants.GRADLE_CACHE_ENV_NAME;
 import static io.harness.ci.commonconstants.ContainerExecutionConstants.PLUGIN_PIPELINE;
-import static io.harness.ci.utils.UsageUtils.getExecutionUser;
+import static io.harness.ci.execution.utils.UsageUtils.getExecutionUser;
 import static io.harness.common.STOExecutionConstants.STO_SERVICE_ENDPOINT_VARIABLE;
 import static io.harness.common.STOExecutionConstants.STO_SERVICE_TOKEN_VARIABLE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
@@ -53,6 +55,7 @@ import static java.lang.String.format;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.FeatureName;
 import io.harness.beans.plugin.compatible.PluginCompatibleStep;
 import io.harness.beans.serializer.RunTimeInputHandler;
 import io.harness.beans.steps.CIAbstractStepNode;
@@ -69,28 +72,46 @@ import io.harness.beans.yaml.extended.infrastrucutre.VmInfraYaml;
 import io.harness.beans.yaml.extended.infrastrucutre.VmPoolYaml;
 import io.harness.beans.yaml.extended.platform.ArchType;
 import io.harness.beans.yaml.extended.platform.Platform;
-import io.harness.ci.buildstate.PluginSettingUtils;
+import io.harness.ci.commonconstants.CIExecutionConstants;
+import io.harness.ci.execution.buildstate.ConnectorUtils;
+import io.harness.ci.execution.buildstate.PluginSettingUtils;
+import io.harness.ci.ff.CIFeatureFlagService;
 import io.harness.cimanager.stages.IntegrationStageConfig;
+import io.harness.connector.WithProxy;
+import io.harness.delegate.beans.ci.pod.ConnectorDetails;
+import io.harness.delegate.beans.connector.ConnectorConfigDTO;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ngexception.CIStageExecutionException;
+import io.harness.ng.core.NGAccess;
+import io.harness.ng.core.dto.TunnelResponseDTO;
 import io.harness.plancreator.execution.ExecutionWrapperConfig;
 import io.harness.plancreator.steps.ParallelStepElementConfig;
 import io.harness.plancreator.steps.StepGroupElementConfig;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.yaml.ParameterField;
+import io.harness.remote.client.NGRestUtils;
 import io.harness.stoserviceclient.STOServiceUtils;
+import io.harness.tunnel.TunnelResourceClient;
+import io.harness.utils.CiIntegrationStageUtils;
 
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 
 @Singleton
 @Slf4j
 @OwnedBy(HarnessTeam.CI)
 public class VmInitializeUtils {
+  @Inject CIFeatureFlagService featureFlagService;
+  @Inject TunnelResourceClient tunnelResourceClient;
+
   public void validateStageConfig(IntegrationStageConfig integrationStageConfig, String accountId) {
     for (ExecutionWrapperConfig executionWrapper : integrationStageConfig.getExecution().getSteps()) {
       validateStageConfigUtil(executionWrapper);
@@ -232,10 +253,61 @@ public class VmInitializeUtils {
       envVars.put(DRONE_STAGE_ARCH, arch.toString());
     }
     envVars.put(DRONE_STAGE_OS, os.toString());
-    envVars.put(DRONE_WORKSPACE, workDir);
     envVars.put(DRONE_STAGE_MACHINE, poolID);
     envVars.put(DRONE_STAGE_TYPE, infrastructure.getType().toString());
+    if (infrastructure.getType() != Infrastructure.Type.DOCKER) {
+      envVars.put(DRONE_WORKSPACE, workDir);
+    }
 
+    return envVars;
+  }
+
+  public Map<String, String> getStageProxyVars(IntegrationStageConfig integrationStageConfig, OSType os,
+      NGAccess ngAccess, ConnectorUtils connectorUtils, Infrastructure infra) {
+    Map<String, String> envVars = new HashMap<>();
+    Set<String> noProxyVars = new HashSet<>();
+    Set<String> shouldProxyRegistries = new HashSet<>();
+    if (infra.getType() != Infrastructure.Type.HOSTED_VM || os != OSType.Linux
+        || !featureFlagService.isEnabled(FeatureName.CI_SECURE_TUNNEL, ngAccess.getAccountIdentifier())) {
+      return envVars;
+    }
+
+    TunnelResponseDTO tunnelResponseDTO =
+        NGRestUtils.getResponse(tunnelResourceClient.getTunnel(ngAccess.getAccountIdentifier()));
+    if (tunnelResponseDTO != null && isNotEmpty(tunnelResponseDTO.getServerUrl())
+        && isNotEmpty(tunnelResponseDTO.getPort())) {
+      envVars.put(DRONE_HTTP_PROXY, tunnelResponseDTO.getServerUrl() + ":" + tunnelResponseDTO.getPort());
+    } else {
+      return envVars;
+    }
+
+    List<Pair<String, ConnectorDetails>> registries = IntegrationStageUtils.populateConnectorAndImageIdentifiers(
+        ngAccess, connectorUtils, integrationStageConfig.getExecution().getSteps());
+    for (Pair<String, ConnectorDetails> registry : registries) {
+      ConnectorDetails connectorDetails = registry.getRight();
+      if (connectorDetails != null) {
+        ConnectorConfigDTO configDTO = connectorDetails.getConnectorConfig();
+        if (configDTO instanceof WithProxy) {
+          WithProxy connectorProxy = (WithProxy) configDTO;
+          if (!CiIntegrationStageUtils.isDockerhubConnector(registry.getRight())) {
+            String imageName =
+                IntegrationStageUtils.getFullyQualifiedImageName(registry.getLeft(), registry.getRight());
+            String registryHost = IntegrationStageUtils.getRegistryFromFullyQualifiedImage(imageName);
+            if (connectorProxy.getProxy()) {
+              shouldProxyRegistries.add(registryHost);
+              noProxyVars.remove(registryHost);
+            } else if (!shouldProxyRegistries.contains(registryHost)) {
+              noProxyVars.add(registryHost);
+            }
+          }
+        }
+      }
+    }
+
+    if (!shouldProxyRegistries.isEmpty()) {
+      noProxyVars.addAll(Set.of(CIExecutionConstants.DOCKER_IO, CIExecutionConstants.DOCKER_COM));
+      envVars.put(DRONE_NO_PROXY, String.join(",", noProxyVars));
+    }
     return envVars;
   }
 

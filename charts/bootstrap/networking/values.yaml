@@ -1,8 +1,16 @@
 global:
+  globalIngress:
+    enabled: false
+    className: "harness-global"
+    hosts:
+      - 'myhost.example.com'
+    tls:
+      enabled: true
+      secretName: harness-cert
+  commonAnnotations: {}
+  commonLabels: {}
   ingress:
     enabled: false
-    loadBalancerIP: '0.0.0.0'
-    loadBalancerEnabled: false
     className: "harness"
     hosts:
       - 'myhost.example.com'
@@ -44,6 +52,13 @@ global:
 nginx:
   # -- Create Nginx Controller.  True will deploy a controller into your cluster
   create: false
+  # -- Creates clusterIP
+  clusterIPEnabled: false
+  clusterIP:
+  # if clusterIP is disabled and this is set, it uses type:Loadbalancer, otherwise uses nodePort
+  loadBalancerEnabled: false
+  # set loadbalancer IP when loadBalancer service is enabled.
+  loadBalancerIP:
   healthPort: ""
   healthNodePort: ""
   httpNodePort: ""
@@ -58,11 +73,11 @@ nginx:
   tolerations: []
   affinity: {}
   image:
-    registry:  us.gcr.io
-    repository: k8s-artifacts-prod/ingress-nginx/controller
+    registry:  registry.k8s.io
+    repository: ingress-nginx/controller
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "v1.0.0-alpha.2"
+    tag: "v1.3.0"
     digest: ""
   resources:
     limits:
@@ -70,6 +85,10 @@ nginx:
     requests:
       cpu: '0.5'
       memory: '512Mi'
+  podLabels: {}
+  service:
+    annotations: {}
+  replicaCount: 1
 
 
 defaultbackend:
@@ -91,3 +110,7 @@ defaultbackend:
     requests:
       cpu: 10m
       memory: 20Mi
+  podLabels: {}
+  service:
+    annotations: {}
+  replicaCount: 1

@@ -9,7 +9,9 @@ package io.harness.when.utils;
 
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.rule.OwnerRule.ARCHIT;
+import static io.harness.rule.OwnerRule.LUCAS_SALES;
 import static io.harness.rule.OwnerRule.NAMAN;
+import static io.harness.rule.OwnerRule.YUVRAJ;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -30,6 +32,55 @@ import org.junit.experimental.categories.Category;
 
 @OwnedBy(PIPELINE)
 public class RunInfoUtilsTest extends CategoryTest {
+  @Test
+  @Owner(developers = LUCAS_SALES)
+  @Category(UnitTests.class)
+  public void shouldRespectDefault_RunConditionWithRuntimeInput() {
+    String successRunCondition = RunInfoUtils.getRunConditionForStage(ParameterField.createValueField(
+        StageWhenCondition.builder()
+            .pipelineStatus(WhenConditionStatus.SUCCESS)
+            .condition(ParameterField.createFieldWithDefaultValue(true, false, "<+input>", "true", null, true))
+            .build()));
+    assertThat(successRunCondition).isNotEmpty();
+    assertThat(successRunCondition).isEqualTo("<+OnPipelineSuccess> && (true)");
+  }
+
+  @Test
+  @Owner(developers = LUCAS_SALES)
+  @Category(UnitTests.class)
+  public void shouldBeTrue_RunConditionWithoutConditionNode() {
+    String successRunCondition = RunInfoUtils.getRunConditionForStage(ParameterField.createValueField(
+        StageWhenCondition.builder().pipelineStatus(WhenConditionStatus.SUCCESS).build()));
+    assertThat(successRunCondition).isNotEmpty();
+    assertThat(successRunCondition).isEqualTo("<+OnPipelineSuccess>");
+
+    String failureRunCondition = RunInfoUtils.getRunConditionForStage(ParameterField.createValueField(
+        StageWhenCondition.builder().pipelineStatus(WhenConditionStatus.FAILURE).build()));
+    assertThat(failureRunCondition).isNotEmpty();
+    assertThat(failureRunCondition).isEqualTo("<+OnPipelineFailure>");
+  }
+
+  @Test
+  @Owner(developers = LUCAS_SALES)
+  @Category(UnitTests.class)
+  public void shouldTestGetStageRunConditionWithRuntimeExpression() {
+    String successRunCondition = RunInfoUtils.getRunConditionForStage(
+        ParameterField.createValueField(StageWhenCondition.builder()
+                                            .pipelineStatus(WhenConditionStatus.SUCCESS)
+                                            .condition(ParameterField.createValueField("<+input>"))
+                                            .build()));
+    assertThat(successRunCondition).isNotEmpty();
+    assertThat(successRunCondition).isEqualTo("<+OnPipelineSuccess> && (false)");
+
+    String failureRunCondition = RunInfoUtils.getRunConditionForStage(
+        ParameterField.createValueField(StageWhenCondition.builder()
+                                            .pipelineStatus(WhenConditionStatus.FAILURE)
+                                            .condition(ParameterField.createValueField("<+input>"))
+                                            .build()));
+    assertThat(failureRunCondition).isNotEmpty();
+    assertThat(failureRunCondition).isEqualTo("<+OnPipelineFailure> && (false)");
+  }
+
   @Test
   @Owner(developers = ARCHIT)
   @Category(UnitTests.class)
@@ -54,6 +105,34 @@ public class RunInfoUtilsTest extends CategoryTest {
                                             .build()));
     assertThat(failureRunCondition).isNotEmpty();
     assertThat(failureRunCondition).isEqualTo("<+OnPipelineFailure> && (<+stage.name> == \"dev\")");
+  }
+
+  @Test
+  @Owner(developers = YUVRAJ)
+  @Category(UnitTests.class)
+  public void shouldTestGetStageRunConditionForRollbackMode() {
+    assertThatThrownBy(()
+                           -> RunInfoUtils.getRunConditionForStage(
+                               ParameterField.createValueField(StageWhenCondition.builder().build())))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage("Pipeline Status in stage when condition cannot be empty.");
+    String successRunCondition = RunInfoUtils.getRunConditionForStage(
+        ParameterField.createValueField(StageWhenCondition.builder()
+                                            .pipelineStatus(WhenConditionStatus.SUCCESS)
+                                            .condition(ParameterField.createValueField("<+stage.name> == \"dev\""))
+                                            .build()),
+        ExecutionMode.POST_EXECUTION_ROLLBACK);
+    assertThat(successRunCondition).isNotEmpty();
+    assertThat(successRunCondition).isEqualTo("<+Always> && (<+stage.name> == \"dev\")");
+
+    String failureRunCondition = RunInfoUtils.getRunConditionForStage(
+        ParameterField.createValueField(StageWhenCondition.builder()
+                                            .pipelineStatus(WhenConditionStatus.FAILURE)
+                                            .condition(ParameterField.createValueField("<+stage.name> == \"dev\""))
+                                            .build()),
+        ExecutionMode.POST_EXECUTION_ROLLBACK);
+    assertThat(failureRunCondition).isNotEmpty();
+    assertThat(failureRunCondition).isEqualTo("<+Always> && (<+stage.name> == \"dev\")");
   }
 
   @Test

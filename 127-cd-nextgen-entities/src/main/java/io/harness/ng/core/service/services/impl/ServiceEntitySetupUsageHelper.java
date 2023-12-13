@@ -6,6 +6,7 @@
  */
 
 package io.harness.ng.core.service.services.impl;
+
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
@@ -33,7 +34,8 @@ import java.util.List;
 import java.util.Set;
 import lombok.NonNull;
 
-@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
+    components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
 @Singleton
 @OwnedBy(HarnessTeam.CDC)
 public class ServiceEntitySetupUsageHelper {
@@ -49,7 +51,7 @@ public class ServiceEntitySetupUsageHelper {
     final Set<EntityDetailProtoDTO> referredEntities = getAllReferredEntities(ROOT_LEVEL_NAME, entity);
     final SetupUsageOwnerEntity ownerEntity = getOwnerEntity(entity);
     if (isEmpty(referredEntities)) {
-      setupUsageHelper.deleteServiceSetupUsages(ownerEntity);
+      setupUsageHelper.deleteEntitySetupUsages(ownerEntity);
     } else {
       setupUsageHelper.publishServiceEntitySetupUsage(ownerEntity, referredEntities);
     }
@@ -71,7 +73,7 @@ public class ServiceEntitySetupUsageHelper {
   protected void updateSetupUsages(ServiceEntity entity, Set<EntityDetailProtoDTO> referredEntities) {
     final SetupUsageOwnerEntity ownerEntity = getOwnerEntity(entity);
     if (isEmpty(referredEntities)) {
-      setupUsageHelper.deleteServiceSetupUsages(ownerEntity);
+      setupUsageHelper.deleteEntitySetupUsages(ownerEntity);
     } else {
       setupUsageHelper.publishServiceEntitySetupUsage(ownerEntity, referredEntities);
     }
@@ -81,7 +83,7 @@ public class ServiceEntitySetupUsageHelper {
    * Delete all setup usages where the 'referred by' is the current service entity
    */
   protected void deleteSetupUsages(ServiceEntity entity) {
-    setupUsageHelper.deleteServiceSetupUsages(getOwnerEntity(entity));
+    setupUsageHelper.deleteEntitySetupUsages(getOwnerEntity(entity));
   }
 
   /**
@@ -98,7 +100,7 @@ public class ServiceEntitySetupUsageHelper {
                                                  .type(EntityTypeProtoEnum.SERVICE)
                                                  .build();
 
-    setupUsageHelper.deleteServiceSetupUsages(entitySetupUsage);
+    setupUsageHelper.deleteEntitySetupUsages(entitySetupUsage);
   }
 
   private Set<EntityDetailProtoDTO> getAllReferredEntities(String rootName, ServiceEntity entity) {

@@ -6,12 +6,11 @@
  */
 
 package io.harness.ng.core.services;
+
 import static io.harness.annotations.dev.HarnessTeam.PL;
 
-import io.harness.annotations.dev.CodePulse;
-import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.ScopeInfo;
 import io.harness.favorites.entities.Favorite;
 import io.harness.ng.beans.PageRequest;
 import io.harness.ng.beans.PageResponse;
@@ -27,10 +26,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
 
-@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
-    components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
 @OwnedBy(PL)
 public interface ProjectService {
+  String PROJECT_SCOPE_INFO_DATA_CACHE_KEY = "projectScopeInfoDataCache";
+
   Project create(String accountIdentifier, String orgIdentifier, ProjectDTO project);
 
   Optional<Project> get(String accountIdentifier, String orgIdentifier, String identifier);
@@ -76,4 +75,8 @@ public interface ProjectService {
   Long countProjects(String accountIdentifier);
 
   boolean isFavorite(Project project, String userId);
+
+  Map<String, Integer> getProjectsCountPerAccount(List<String> accountIdentifiers);
+
+  Optional<ScopeInfo> getScopeInfo(String accountIdentifier, String orgIdentifier, String projectIdentifier);
 }

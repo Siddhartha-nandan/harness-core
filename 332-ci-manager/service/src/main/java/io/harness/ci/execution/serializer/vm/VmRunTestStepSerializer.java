@@ -5,22 +5,23 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.serializer.vm;
+package io.harness.ci.execution.serializer.vm;
 
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveBooleanParameter;
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveMapParameterV2;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
+import io.harness.beans.FeatureName;
 import io.harness.beans.serializer.RunTimeInputHandler;
 import io.harness.beans.steps.CIRegistry;
 import io.harness.beans.steps.stepinfo.RunTestsStepInfo;
 import io.harness.beans.yaml.extended.reports.JUnitTestReport;
 import io.harness.beans.yaml.extended.reports.UnitTestReportType;
-import io.harness.ci.buildstate.ConnectorUtils;
+import io.harness.ci.execution.buildstate.ConnectorUtils;
+import io.harness.ci.execution.serializer.SerializerUtils;
+import io.harness.ci.execution.utils.CIStepInfoUtils;
 import io.harness.ci.ff.CIFeatureFlagService;
-import io.harness.ci.serializer.SerializerUtils;
-import io.harness.ci.utils.CIStepInfoUtils;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.delegate.beans.ci.vm.steps.VmJunitTestReport;
 import io.harness.delegate.beans.ci.vm.steps.VmRunTestStep;
@@ -169,6 +170,12 @@ public class VmRunTestStepSerializer {
     runTestStepBuilder.testGlobs(RunTimeInputHandler.resolveStringParameter(
         "testGlobs", stepName, identifier, runTestsStepInfo.getTestGlobs(), false));
 
+    boolean runAsUserContainerLess =
+        runAsUserContainerLess(runTestsStepInfo, AmbianceUtils.getAccountId(ambiance), image);
+    if (runAsUserContainerLess) {
+      runTestStepBuilder.runAsUser(runTestsStepInfo.getRunAsUser().getValue().toString());
+    }
+
     if (runTestsStepInfo.getReports().getValue() != null) {
       if (runTestsStepInfo.getReports().getValue().getType() == UnitTestReportType.JUNIT) {
         JUnitTestReport junitTestReport = (JUnitTestReport) runTestsStepInfo.getReports().getValue().getSpec();
@@ -179,5 +186,14 @@ public class VmRunTestStepSerializer {
     }
 
     return runTestStepBuilder.build();
+  }
+
+  public boolean runAsUserContainerLess(RunTestsStepInfo runTestsStepInfo, String accountId, String image) {
+    boolean flag = featureFlagService.isEnabled(FeatureName.CI_VM_CONTAINERLESS_RUN_ASUSER, accountId);
+    if (flag && runTestsStepInfo.getRunAsUser() != null && runTestsStepInfo.getRunAsUser().getValue() != null
+        && StringUtils.isEmpty(image)) {
+      return true;
+    }
+    return false;
   }
 }

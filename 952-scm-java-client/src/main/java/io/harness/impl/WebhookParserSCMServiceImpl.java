@@ -70,8 +70,7 @@ public class WebhookParserSCMServiceImpl implements WebhookParserSCMService {
 
   @Override
   public ParseWebhookResponse parseWebhookUsingSCMAPI(List<HeaderConfig> headers, String payload) {
-    Set<String> headerKeys = headers.stream().map(HeaderConfig::getKey).collect(toSet());
-    GitProvider gitProvider = obtainWebhookSource(headerKeys);
+    GitProvider gitProvider = obtainWebhookSource(headers);
     Header.Builder header = Header.newBuilder();
     headers.forEach(headerConfig
         -> header.addFields(
@@ -107,7 +106,7 @@ public class WebhookParserSCMServiceImpl implements WebhookParserSCMService {
       ReleaseHook releaseHook = parseWebhookResponse.getRelease();
       builder = convertRelease(releaseHook);
     } else {
-      log.error("Unsupported webhook event");
+      log.warn("Unsupported webhook event");
       throw new InvalidRequestException("Unsupported webhook event", USER);
     }
     return builder.build();
@@ -230,7 +229,9 @@ public class WebhookParserSCMServiceImpl implements WebhookParserSCMService {
         .build();
   }
 
-  public GitProvider obtainWebhookSource(Set<String> headerKeys) {
+  @Override
+  public GitProvider obtainWebhookSource(List<HeaderConfig> headers) {
+    Set<String> headerKeys = headers.stream().map(HeaderConfig::getKey).collect(toSet());
     if (isEmpty(headerKeys)) {
       throw new InvalidRequestException("Failed to resolve Webhook Source. Reason: HttpHeaders are empty.");
     }

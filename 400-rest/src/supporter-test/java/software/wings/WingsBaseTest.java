@@ -15,12 +15,13 @@ import io.harness.MockableTestMixin;
 import io.harness.annotations.dev.HarnessModule;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.TargetModule;
+import io.harness.ng.core.account.AuthenticationMechanism;
 
 import software.wings.beans.Account;
 import software.wings.beans.Account.Builder;
-import software.wings.beans.AccountStatus;
 import software.wings.beans.AccountType;
 import software.wings.beans.LicenseInfo;
+import software.wings.beans.account.AccountStatus;
 import software.wings.rules.WingsRule;
 
 import org.junit.Rule;
@@ -41,6 +42,7 @@ public abstract class WingsBaseTest extends CategoryTest implements MockableTest
     LicenseInfo license = getLicenseInfo();
     license.setAccountType(accountType);
     accountBuilder.withLicenseInfo(license);
+    accountBuilder.withAuthenticationMechanism(AuthenticationMechanism.SAML);
 
     return accountBuilder.build();
   }

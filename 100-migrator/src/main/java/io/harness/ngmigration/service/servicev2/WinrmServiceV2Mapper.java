@@ -6,16 +6,17 @@
  */
 
 package io.harness.ngmigration.service.servicev2;
-
 import static io.harness.cdng.service.beans.WinRmServiceSpec.WinRmServiceSpecBuilder;
 import static io.harness.cdng.service.beans.WinRmServiceSpec.builder;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.artifact.bean.yaml.ArtifactListConfig;
 import io.harness.cdng.artifact.bean.yaml.PrimaryArtifact;
 import io.harness.cdng.configfile.ConfigFileWrapper;
-import io.harness.cdng.elastigroup.config.yaml.StartupScriptConfiguration;
 import io.harness.cdng.manifest.yaml.ManifestConfigWrapper;
 import io.harness.cdng.service.beans.ServiceDefinition;
 import io.harness.cdng.service.beans.ServiceDefinitionType;
@@ -33,12 +34,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_MIGRATOR})
 @OwnedBy(HarnessTeam.CDC)
 public class WinrmServiceV2Mapper implements ServiceV2Mapper {
   @Override
   public ServiceDefinition getServiceDefinition(WorkflowService workflowService, MigrationContext migrationContext,
       Service service, List<ManifestConfigWrapper> manifests, List<ConfigFileWrapper> configFiles,
-      List<StartupScriptConfiguration> startupScriptConfigurations) {
+      List<NGYamlFile> startupScriptConfigurationFiles) {
     Map<CgEntityId, NGYamlFile> migratedEntities = migrationContext.getMigratedEntities();
     Map<CgEntityId, CgEntityNode> entities = migrationContext.getEntities();
     Map<CgEntityId, Set<CgEntityId>> graph = migrationContext.getGraph();

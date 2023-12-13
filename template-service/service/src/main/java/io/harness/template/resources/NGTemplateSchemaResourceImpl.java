@@ -5,6 +5,7 @@ package io.harness.template.resources;
  * that can be found in the licenses directory at the root of this repository, also available at
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
+
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 
 import io.harness.annotations.dev.CodePulse;
@@ -37,22 +38,13 @@ public class NGTemplateSchemaResourceImpl implements NGTemplateSchemaResource {
   public ResponseDTO<JsonNode> getTemplateSchema(@NotNull TemplateEntityType templateEntityType,
       String projectIdentifier, String orgIdentifier, Scope scope, @NotNull String accountIdentifier,
       String templateChildType) {
-    JsonNode schema = null;
-    schema = ngTemplateSchemaService.getTemplateSchema(
-        accountIdentifier, projectIdentifier, orgIdentifier, scope, templateChildType, templateEntityType);
+    JsonNode schema = ngTemplateSchemaService.getIndividualStaticSchema(
+        templateEntityType.getRootYamlName(), templateChildType, "v0");
+    // TODO (Shalini): remove this once ui and schema changes are also done
+    if (schema == null) {
+      schema = ngTemplateSchemaService.getIndividualStaticSchema(
+          templateEntityType.getYamlTypeV1(), templateChildType, "v0");
+    }
     return ResponseDTO.newResponse(schema);
-  }
-
-  @Override
-  public ResponseDTO<JsonNode> getStaticYamlSchema(String accountIdentifier, String orgIdentifier,
-      String projectIdentifier, String templateChildType, TemplateEntityType templateEntityType, Scope scope,
-      String version) {
-    JsonNode staticJson = ngTemplateSchemaService.getStaticYamlSchema(
-        accountIdentifier, orgIdentifier, projectIdentifier, templateChildType, templateEntityType, scope, version);
-
-    // return static json if not empty or return the Pojo Schema
-    return staticJson != null ? ResponseDTO.newResponse(staticJson)
-                              : getTemplateSchema(templateEntityType, projectIdentifier, orgIdentifier, scope,
-                                  templateChildType, accountIdentifier);
   }
 }

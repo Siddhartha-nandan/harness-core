@@ -10,6 +10,8 @@ package io.harness.cvng.core.jobs;
 import io.harness.cvng.activity.entities.Activity;
 import io.harness.cvng.activity.entities.ActivityBucket;
 import io.harness.cvng.analysis.entities.SRMAnalysisStepExecutionDetail;
+import io.harness.cvng.autodiscovery.entities.AsyncAutoDiscoveryReImport;
+import io.harness.cvng.autodiscovery.entities.AutoDiscoveryAgent;
 import io.harness.cvng.cdng.entities.CVNGStepTask;
 import io.harness.cvng.core.entities.CVConfig;
 import io.harness.cvng.core.entities.MetricPack;
@@ -30,6 +32,7 @@ import io.harness.cvng.downtime.entities.EntityUnavailabilityStatuses;
 import io.harness.cvng.notification.entities.NotificationRule;
 import io.harness.cvng.servicelevelobjective.entities.AbstractServiceLevelObjective;
 import io.harness.cvng.servicelevelobjective.entities.Annotation;
+import io.harness.cvng.servicelevelobjective.entities.ErrorBudgetBurnDown;
 import io.harness.cvng.servicelevelobjective.entities.SLOErrorBudgetReset;
 import io.harness.cvng.servicelevelobjective.entities.SLOHealthIndicator;
 import io.harness.cvng.servicelevelobjective.entities.ServiceLevelIndicator;
@@ -54,9 +57,10 @@ public abstract class EntityChangeEventMessageProcessor implements ConsumerMessa
     // Add the service for project level default deletion
     final List<Class<? extends PersistentEntity>> deleteEntitiesWithDefaultHandler =
         Arrays.asList(VerificationJob.class, Activity.class, ActivityBucket.class, MetricPack.class, HeatMap.class,
-            TimeSeriesThreshold.class, CVNGStepTask.class, UserJourney.class, Webhook.class, ServiceDependency.class,
+            TimeSeriesThreshold.class, CVNGStepTask.class, UserJourney.class, ServiceDependency.class,
             SLOHealthIndicator.class, SLOErrorBudgetReset.class, NotificationRule.class,
-            EntityUnavailabilityStatuses.class, Downtime.class, SRMAnalysisStepExecutionDetail.class);
+            EntityUnavailabilityStatuses.class, Downtime.class, SRMAnalysisStepExecutionDetail.class,
+            AutoDiscoveryAgent.class, AsyncAutoDiscoveryReImport.class, ErrorBudgetBurnDown.class);
     ENTITIES_MAP = new LinkedHashMap<>();
     deleteEntitiesWithDefaultHandler.forEach(entity -> ENTITIES_MAP.put(entity, DeleteEntityByHandler.class));
 
@@ -70,5 +74,6 @@ public abstract class EntityChangeEventMessageProcessor implements ConsumerMessa
     EXCEPTIONS = new HashSet<>();
     EXCEPTIONS.add(ServiceLevelIndicator.class);
     EXCEPTIONS.add(Annotation.class);
+    EXCEPTIONS.add(Webhook.class);
   }
 }

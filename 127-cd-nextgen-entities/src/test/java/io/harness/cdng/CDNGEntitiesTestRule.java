@@ -13,6 +13,7 @@
  */
 
 package io.harness.cdng;
+
 import static io.harness.connector.ConnectorModule.DEFAULT_CONNECTOR_SERVICE;
 import static io.harness.outbox.TransactionOutboxModule.OUTBOX_TRANSACTION_TEMPLATE;
 
@@ -39,6 +40,9 @@ import io.harness.factory.ClosingFactory;
 import io.harness.file.NGFileServiceModule;
 import io.harness.filestore.NgFileStoreModule;
 import io.harness.filter.FiltersModule;
+import io.harness.gitaware.helper.GitAwareEntityHelper;
+import io.harness.gitsync.persistance.GitSyncSdkService;
+import io.harness.gitsync.persistance.NoOpGitSyncSdkServiceImpl;
 import io.harness.gitsync.persistance.testing.GitSyncablePersistenceTestModule;
 import io.harness.govern.ProviderModule;
 import io.harness.govern.ServersModule;
@@ -46,6 +50,7 @@ import io.harness.mongo.MongoConfig;
 import io.harness.mongo.MongoPersistence;
 import io.harness.morphia.MorphiaRegistrar;
 import io.harness.ng.core.NGCoreModule;
+import io.harness.ng.core.api.SecretCrudService;
 import io.harness.ng.core.entitysetupusage.EntitySetupUsageModule;
 import io.harness.ng.core.environment.services.EnvironmentService;
 import io.harness.ng.core.environment.services.impl.EnvironmentServiceImpl;
@@ -59,6 +64,8 @@ import io.harness.ng.core.serviceoverridev2.service.DummyServiceOverridesService
 import io.harness.ng.core.serviceoverridev2.service.ServiceOverridesServiceV2;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
+import io.harness.ng.core.utils.CDGitXService;
+import io.harness.ng.core.utils.CDGitXServiceImpl;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.outbox.api.OutboxService;
 import io.harness.outbox.api.impl.OutboxDaoImpl;
@@ -99,6 +106,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.rules.MethodRule;
 import org.junit.runners.model.FrameworkMethod;
@@ -108,7 +116,7 @@ import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.mongodb.MongoTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = false,
     components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
 @OwnedBy(HarnessTeam.CDC)
 @Slf4j
@@ -234,16 +242,29 @@ public class CDNGEntitiesTestRule implements InjectorRuleMixin, MethodRule, Mong
             .annotatedWith(Names.named(EventsFrameworkConstants.SETUP_USAGE))
             .toInstance(mock(NoOpProducer.class));
         bind(ClusterService.class).to(ClusterServiceImpl.class);
+        bind(GitAwareEntityHelper.class).toProvider(() -> mock(GitAwareEntityHelper.class));
         bind(InfrastructureEntityService.class).to(InfrastructureEntityServiceImpl.class);
         bind(NGSettingsClient.class).toInstance(mock(NGSettingsClient.class));
         bind(EnvironmentService.class).to(EnvironmentServiceImpl.class);
         bind(ServiceOverrideService.class).to(ServiceOverrideServiceImpl.class);
         bind(ServiceOverridesServiceV2.class).to(DummyServiceOverridesServiceV2Impl.class);
+        bind(GitSyncSdkService.class).to(NoOpGitSyncSdkServiceImpl.class);
+        bind(CDGitXService.class).to(CDGitXServiceImpl.class);
         bind(ServiceEntityService.class).to(ServiceEntityServiceImpl.class);
         bind(AccountService.class).toInstance(mock(AccountService.class));
         bind(AccountClient.class).annotatedWith(Names.named("PRIVILEGED")).toInstance(mock(AccountClient.class));
         bind(OrganizationService.class).toInstance(mock(OrganizationService.class));
         bind(ProjectService.class).toInstance(mock(ProjectService.class));
+        bind(ExecutorService.class)
+            .annotatedWith(Names.named("service-gitx-executor"))
+            .toInstance(mock(ExecutorService.class));
+        bind(ExecutorService.class)
+            .annotatedWith(Names.named("environment-gitx-executor"))
+            .toInstance(mock(ExecutorService.class));
+        bind(SecretCrudService.class).toProvider(() -> mock(SecretCrudService.class)).asEagerSingleton();
+        bind(ExecutorService.class)
+            .annotatedWith(Names.named("deployment-stage-plan-creation-info-executor"))
+            .toInstance(mock(ExecutorService.class));
       }
     });
     modules.add(TimeModule.getInstance());

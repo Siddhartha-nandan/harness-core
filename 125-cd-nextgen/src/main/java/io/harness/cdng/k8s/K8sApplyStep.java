@@ -7,9 +7,11 @@
 
 package io.harness.cdng.k8s;
 
+import static io.harness.cdng.manifest.yaml.harness.HarnessStoreConstants.HARNESS_STORE_TYPE;
 import static io.harness.common.ParameterFieldHelper.getParameterFieldValue;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+import static io.harness.ng.core.entityusageactivity.EntityUsageTypes.PIPELINE_EXECUTION;
 
 import static java.lang.String.format;
 
@@ -17,6 +19,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.FeatureName;
 import io.harness.cdng.CDStepHelper;
+import io.harness.cdng.executables.CdTaskChainExecutable;
 import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.k8s.K8sApplyBaseStepInfo.K8sApplyBaseStepInfoKeys;
@@ -28,17 +31,26 @@ import io.harness.cdng.k8s.beans.StepExceptionPassThroughData;
 import io.harness.cdng.manifest.ManifestType;
 import io.harness.cdng.manifest.steps.outcome.ManifestsOutcome;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
+import io.harness.data.structure.EmptyPredicate;
 import io.harness.delegate.beans.logstreaming.UnitProgressData;
 import io.harness.delegate.beans.logstreaming.UnitProgressDataMapper;
 import io.harness.delegate.task.k8s.K8sApplyRequest;
 import io.harness.delegate.task.k8s.K8sApplyRequest.K8sApplyRequestBuilder;
 import io.harness.delegate.task.k8s.K8sDeployResponse;
 import io.harness.delegate.task.k8s.K8sTaskType;
+import io.harness.delegate.task.localstore.ManifestFiles;
+import io.harness.eventsframework.protohelper.IdentifierRefProtoDTOHelper;
+import io.harness.eventsframework.schemas.entity.EntityTypeProtoEnum;
+import io.harness.eventsframework.schemas.entity.EntityUsageDetailProto;
+import io.harness.eventsframework.schemas.entity.PipelineExecutionUsageDataProto;
 import io.harness.exception.InvalidRequestException;
+import io.harness.exception.KubernetesTaskException;
+import io.harness.exception.NestedExceptionUtils;
 import io.harness.executions.steps.ExecutionNodeType;
+import io.harness.k8s.exception.KubernetesExceptionExplanation;
+import io.harness.k8s.exception.KubernetesExceptionHints;
+import io.harness.k8s.exception.KubernetesExceptionMessages;
 import io.harness.logging.CommandExecutionStatus;
-import io.harness.plancreator.steps.common.StepElementParameters;
-import io.harness.plancreator.steps.common.rollback.TaskChainExecutableWithRollbackAndRbac;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.steps.StepCategory;
@@ -49,18 +61,27 @@ import io.harness.pms.sdk.core.steps.io.PassThroughData;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.sdk.core.steps.io.StepResponse.StepResponseBuilder;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.pms.yaml.ParameterField;
+import io.harness.secretusage.SecretRuntimeUsageService;
+import io.harness.steps.EntityReferenceExtractorUtils;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
+import io.harness.walktree.visitor.entityreference.beans.VisitedSecretReference;
 
 import com.google.inject.Inject;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @OwnedBy(HarnessTeam.CDP)
-public class K8sApplyStep extends TaskChainExecutableWithRollbackAndRbac implements K8sStepExecutor {
+public class K8sApplyStep extends CdTaskChainExecutable implements K8sStepExecutor {
   public static final StepType STEP_TYPE = StepType.newBuilder()
                                                .setType(ExecutionNodeType.K8S_APPLY.getYamlType())
                                                .setStepCategory(StepCategory.STEP)
@@ -70,25 +91,33 @@ public class K8sApplyStep extends TaskChainExecutableWithRollbackAndRbac impleme
   @Inject private K8sStepHelper k8sStepHelper;
   @Inject private CDStepHelper cdStepHelper;
   @Inject private CDFeatureFlagHelper cdFeatureFlagHelper;
+  @Inject private SecretRuntimeUsageService secretRuntimeUsageService;
+  @Inject private EntityReferenceExtractorUtils entityReferenceExtractorUtils;
 
   @Override
-  public Class<StepElementParameters> getStepParametersClass() {
-    return StepElementParameters.class;
+  public Class<StepBaseParameters> getStepParametersClass() {
+    return StepBaseParameters.class;
   }
 
   @Override
-  public void validateResources(Ambiance ambiance, StepElementParameters stepParameters) {
+  public void validateResources(Ambiance ambiance, StepBaseParameters stepParameters) {
     // Noop
   }
 
   @Override
   public TaskChainResponse startChainLinkAfterRbac(
-      Ambiance ambiance, StepElementParameters stepElementParameters, StepInputPackage inputPackage) {
+      Ambiance ambiance, StepBaseParameters stepElementParameters, StepInputPackage inputPackage) {
     K8sApplyStepParameters k8sApplyStepParameters = (K8sApplyStepParameters) stepElementParameters.getSpec();
     if (isNotEmpty(k8sApplyStepParameters.getOverrides())) {
       k8sStepHelper.resolveManifestsConfigExpressions(ambiance, k8sApplyStepParameters.getOverrides());
     }
-    validateFilePaths(k8sApplyStepParameters);
+
+    publishSecretRuntimeUsage(ambiance, k8sApplyStepParameters);
+    if (k8sApplyStepParameters.getManifestSource() != null) {
+      validateManifestSource(ambiance, k8sApplyStepParameters);
+    } else {
+      validateFilePaths(k8sApplyStepParameters);
+    }
     validateManifestType(ambiance);
     return k8sStepHelper.startChainLink(this, ambiance, stepElementParameters);
   }
@@ -118,16 +147,25 @@ public class K8sApplyStep extends TaskChainExecutableWithRollbackAndRbac impleme
     }
   }
 
+  private void validateManifestSource(Ambiance ambiance, K8sApplyStepParameters k8sApplyStepParameters) {
+    if (!ManifestType.K8Manifest.equals(k8sApplyStepParameters.getManifestSource().getType().getDisplayName())) {
+      throw new UnsupportedOperationException(
+          format("K8s Apply step manifest source only supports manifests of type: [%s], and [%s] is provided",
+              ManifestType.K8Manifest, k8sApplyStepParameters.getManifestSource().getType()));
+    }
+    k8sStepHelper.resolveManifestsSourceExpressions(ambiance, k8sApplyStepParameters.getManifestSource());
+  }
+
   @Override
-  public TaskChainResponse executeNextLinkWithSecurityContext(Ambiance ambiance,
-      StepElementParameters stepElementParameters, StepInputPackage inputPackage, PassThroughData passThroughData,
+  public TaskChainResponse executeNextLinkWithSecurityContextAndNodeInfo(Ambiance ambiance,
+      StepBaseParameters stepElementParameters, StepInputPackage inputPackage, PassThroughData passThroughData,
       ThrowingSupplier<ResponseData> responseSupplier) throws Exception {
     return k8sStepHelper.executeNextLink(this, ambiance, stepElementParameters, passThroughData, responseSupplier);
   }
 
   @Override
   public TaskChainResponse executeK8sTask(ManifestOutcome k8sManifestOutcome, Ambiance ambiance,
-      StepElementParameters stepElementParameters, List<String> manifestOverrideContents,
+      StepBaseParameters stepElementParameters, List<String> manifestOverrideContents,
       K8sExecutionPassThroughData executionPassThroughData, boolean shouldOpenFetchFilesLogStream,
       UnitProgressData unitProgressData) {
     InfrastructureOutcome infrastructure = executionPassThroughData.getInfrastructure();
@@ -156,7 +194,6 @@ public class K8sApplyStep extends TaskChainExecutableWithRollbackAndRbac impleme
                     k8sManifestOutcome, ambiance, executionPassThroughData.getManifestFiles()))
             .accountId(accountId)
             .deprecateFabric8Enabled(true)
-            .filePaths(k8sApplyStepParameters.getFilePaths().getValue())
             .skipSteadyStateCheck(skipSteadyStateCheck)
             .shouldOpenFetchFilesLogStream(shouldOpenFetchFilesLogStream)
             .commandUnitsProgress(UnitProgressDataMapper.toCommandUnitsProgress(unitProgressData))
@@ -165,9 +202,18 @@ public class K8sApplyStep extends TaskChainExecutableWithRollbackAndRbac impleme
             .useK8sApiForSteadyStateCheck(cdStepHelper.shouldUseK8sApiForSteadyStateCheck(accountId))
             .skipRendering(skipRendering);
 
-    if (cdFeatureFlagHelper.isEnabled(accountId, FeatureName.CDS_K8S_SERVICE_HOOKS_NG)) {
-      applyRequestBuilder.serviceHooks(k8sStepHelper.getServiceHooks(ambiance));
+    applyRequestBuilder.serviceHooks(k8sStepHelper.getServiceHooks(ambiance));
+
+    if (k8sManifestOutcome != null && k8sManifestOutcome.getStore() != null
+        && HARNESS_STORE_TYPE.equals(k8sManifestOutcome.getStore().getKind())
+        && isNotEmpty(getParameterFieldValue(k8sApplyStepParameters.getFilePaths()))) {
+      // if Harness Store has been used for Manifest all specified file paths should be present in the manifestFiles
+      // should only cover if the manifest is specified in the service definition
+      validateFilePathsAgainstManifestFiles(
+          getParameterFieldValue(k8sApplyStepParameters.getFilePaths()), executionPassThroughData.getManifestFiles());
     }
+
+    setFilePathsInRequest(k8sManifestOutcome, k8sApplyStepParameters, applyRequestBuilder, accountId);
 
     Map<String, String> k8sCommandFlag =
         k8sStepHelper.getDelegateK8sCommandFlag(k8sApplyStepParameters.getCommandFlags(), ambiance);
@@ -180,8 +226,8 @@ public class K8sApplyStep extends TaskChainExecutableWithRollbackAndRbac impleme
   }
 
   @Override
-  public StepResponse finalizeExecutionWithSecurityContext(Ambiance ambiance,
-      StepElementParameters stepElementParameters, PassThroughData passThroughData,
+  public StepResponse finalizeExecutionWithSecurityContextAndNodeInfo(Ambiance ambiance,
+      StepBaseParameters stepElementParameters, PassThroughData passThroughData,
       ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
     if (passThroughData instanceof CustomFetchResponsePassThroughData) {
       return k8sStepHelper.handleCustomTaskFailure((CustomFetchResponsePassThroughData) passThroughData);
@@ -214,5 +260,77 @@ public class K8sApplyStep extends TaskChainExecutableWithRollbackAndRbac impleme
       return K8sStepHelper.getFailureResponseBuilder(k8sTaskExecutionResponse, stepResponseBuilder).build();
     }
     return stepResponseBuilder.status(Status.SUCCEEDED).build();
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
+  }
+
+  private void publishSecretRuntimeUsage(Ambiance ambiance, K8sApplyStepParameters stepParameters) {
+    Set<VisitedSecretReference> secretReferences = new HashSet<>();
+    if (isNotEmpty(stepParameters.getOverrides())) {
+      stepParameters.getOverrides()
+          .stream()
+          .map(override -> entityReferenceExtractorUtils.extractReferredSecrets(ambiance, override))
+          .filter(EmptyPredicate::isNotEmpty)
+          .forEach(secretReferences::addAll);
+    }
+
+    if (stepParameters.getManifestSource() != null) {
+      Set<VisitedSecretReference> manifestSourceSecretRefs =
+          entityReferenceExtractorUtils.extractReferredSecrets(ambiance, stepParameters.getManifestSource());
+      if (isNotEmpty(manifestSourceSecretRefs)) {
+        secretReferences.addAll(manifestSourceSecretRefs);
+      }
+    }
+
+    if (isEmpty(secretReferences)) {
+      return;
+    }
+
+    secretRuntimeUsageService.createSecretRuntimeUsage(secretReferences,
+        EntityUsageDetailProto.newBuilder()
+            .setPipelineExecutionUsageData(PipelineExecutionUsageDataProto.newBuilder()
+                                               .setPlanExecutionId(ambiance.getPlanExecutionId())
+                                               .setStageExecutionId(ambiance.getStageExecutionId())
+                                               .build())
+            .setUsageType(PIPELINE_EXECUTION)
+            .setEntityType(EntityTypeProtoEnum.PIPELINES)
+            .setIdentifierRef(IdentifierRefProtoDTOHelper.createIdentifierRefProtoDTO(
+                AmbianceUtils.getAccountId(ambiance), AmbianceUtils.getOrgIdentifier(ambiance),
+                AmbianceUtils.getProjectIdentifier(ambiance), AmbianceUtils.getPipelineIdentifier(ambiance)))
+            .build());
+  }
+
+  private void setFilePathsInRequest(ManifestOutcome k8sManifestOutcome, K8sApplyStepParameters k8sApplyStepParameters,
+      K8sApplyRequestBuilder applyRequestBuilder, String accountId) {
+    if (!isEmpty(getParameterFieldValue(k8sApplyStepParameters.getFilePaths()))) {
+      applyRequestBuilder.filePaths(k8sApplyStepParameters.getFilePaths().getValue());
+    } else if (cdFeatureFlagHelper.isEnabled(accountId, FeatureName.CDS_K8S_APPLY_MANIFEST_WITHOUT_SERVICE_NG)) {
+      applyRequestBuilder.filePaths(k8sManifestOutcome.getStore().retrieveFilePaths());
+      applyRequestBuilder.useManifestSource(true);
+    } else {
+      throw NestedExceptionUtils.hintWithExplanationException(KubernetesExceptionHints.APPLY_NO_FILEPATH_SPECIFIED,
+          KubernetesExceptionExplanation.APPLY_NO_FILEPATH_SPECIFIED,
+          new KubernetesTaskException(KubernetesExceptionMessages.APPLY_NO_FILEPATH_SPECIFIED));
+    }
+  }
+
+  private void validateFilePathsAgainstManifestFiles(List<String> filePaths, List<ManifestFiles> manifestFiles) {
+    if (manifestFiles != null) {
+      Set<String> manifestPaths =
+          manifestFiles.stream().map(ManifestFiles::getFilePath).filter(Objects::nonNull).collect(Collectors.toSet());
+      Set<String> normalizedFilePaths =
+          filePaths.stream().map(path -> path.charAt(0) == '/' ? path : "/" + path).collect(Collectors.toSet());
+
+      normalizedFilePaths.removeAll(manifestPaths);
+      if (isNotEmpty(normalizedFilePaths)) {
+        throw new KubernetesTaskException(
+            format(KubernetesExceptionMessages.PROVIDED_PATHS_ARE_NOT_PART_OF_THE_MANIFEST,
+                String.join("\n- ", normalizedFilePaths)));
+      }
+    }
   }
 }

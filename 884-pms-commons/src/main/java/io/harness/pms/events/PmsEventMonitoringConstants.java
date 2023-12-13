@@ -16,5 +16,11 @@ public class PmsEventMonitoringConstants {
   public String PROJECT_ID = "projectIdentifier";
   public String MODULE = "module";
   public String STEP_TYPE = "stepType";
+  public String STATUS = "status";
+  public String EDITION = "edition";
   public String PIPELINE_IDENTIFIER = "pipelineIdentifier";
+  public String EVENT_TYPE = "eventType";
+  public String STREAM_NAME = "streamName";
+  public String EVENT_RECEIVE_TS = "eventReceiveTs";
+  public String EVENT_SEND_TS = "eventSendTs";
 }

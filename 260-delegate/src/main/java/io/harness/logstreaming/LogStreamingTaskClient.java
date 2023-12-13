@@ -7,6 +7,8 @@
 
 package io.harness.logstreaming;
 
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
+
 import static software.wings.beans.LogColor.Red;
 import static software.wings.beans.LogColor.Yellow;
 import static software.wings.beans.LogHelper.COMMAND_UNIT_PLACEHOLDER;
@@ -33,6 +35,7 @@ import software.wings.beans.command.ExecutionLogCallback;
 import software.wings.delegatetasks.DelegateLogService;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -86,11 +89,14 @@ public class LogStreamingTaskClient implements ILogStreamingTaskClient {
   @Override
   public void openStream(String baseLogKeySuffix) {
     String logKey = getLogKey(baseLogKeySuffix);
-
+    if (isEmpty(token)) {
+      log.warn("Unable to open log stream for account {} due to empty token", accountId);
+      return;
+    }
     try {
       SafeHttpCall.executeWithExceptions(logStreamingClient.openLogStream(token, accountId, logKey));
     } catch (Exception ex) {
-      log.error("Unable to open log stream for account {} and key {}", accountId, logKey, ex);
+      log.warn("Unable to open log stream for account {} and key {}", accountId, logKey, ex);
     }
     scheduledFuture = scheduledExecutorService.scheduleAtFixedRate(this::dispatchLogs, 0, 100, TimeUnit.MILLISECONDS);
   }
@@ -119,18 +125,18 @@ public class LogStreamingTaskClient implements ILogStreamingTaskClient {
       }
     }
     if (logCache.containsKey(logKey)) {
-      log.error("log cache was not drained for {}. num of keys in map {}. This will result in missing logs", logKey,
+      log.warn("log cache was not drained for {}. num of keys in map {}. This will result in missing logs", logKey,
           logCache.size());
     }
     try {
       SafeHttpCall.executeWithExceptions(logStreamingClient.closeLogStream(token, accountId, logKey, true));
     } catch (Exception ex) {
-      log.error("Unable to close log stream for account {} and key {}", accountId, logKey, ex);
+      log.warn("Unable to close log stream for account {} and key {}", accountId, logKey, ex);
     } finally {
       if (scheduledFuture != null) {
         scheduledFuture.cancel(false);
       } else {
-        log.error("Scheduled future is missing for logkey {}", logKey);
+        log.warn("Scheduled future is missing for logkey {}", logKey);
       }
     }
   }
@@ -163,7 +169,7 @@ public class LogStreamingTaskClient implements ILogStreamingTaskClient {
           SafeHttpCall.executeWithExceptions(
               logStreamingClient.pushMessage(token, accountId, next.getKey(), next.getValue()));
         } catch (Exception ex) {
-          log.error("Unable to push message to log stream for account {} and key {}", accountId, next.getKey(), ex);
+          log.warn("Unable to push message to log stream for account {} and key {}", accountId, next.getKey(), ex);
         }
         iterator.remove();
       }
@@ -178,10 +184,12 @@ public class LogStreamingTaskClient implements ILogStreamingTaskClient {
 
   private void colorLog(LogLine logLine) {
     String message = logLine.getMessage();
-    if (logLine.getLevel() == LogLevel.ERROR) {
-      message = color(message, Red, Bold);
-    } else if (logLine.getLevel() == LogLevel.WARN) {
-      message = color(message, Yellow, Bold);
+    if (!logLine.isSkipColoring()) {
+      if (logLine.getLevel() == LogLevel.ERROR) {
+        message = color(message, Red, Bold);
+      } else if (logLine.getLevel() == LogLevel.WARN) {
+        message = color(message, Yellow, Bold);
+      }
     }
     message = doneColoring(message);
     logLine.setMessage(message);
@@ -213,5 +221,24 @@ public class LogStreamingTaskClient implements ILogStreamingTaskClient {
       markers = new HashSet<>();
     }
     return markers;
+  }
+
+  @Override
+  public void log(LogLevel logLevel, String message) {
+    LogLine logLine =
+        LogLine.builder().level(logLevel).message(message).timestamp(OffsetDateTime.now().toInstant()).build();
+    this.writeLogLine(logLine, "");
+  }
+
+  public static ILogStreamingTaskClient getInstance(String loggingToken, String logKey,
+      LogStreamingClient logStreamingClient, String accountId, DelegateLogService delegateLogService) {
+    return LogStreamingTaskClient.builder()
+        .logStreamingClient(logStreamingClient)
+        .accountId(accountId)
+        .token(loggingToken)
+        .logStreamingSanitizer(LogStreamingSanitizer.builder().build())
+        .baseLogKey(logKey)
+        .logService(delegateLogService)
+        .build();
   }
 }

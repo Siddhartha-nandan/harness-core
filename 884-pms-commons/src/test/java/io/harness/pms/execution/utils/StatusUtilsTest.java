@@ -326,7 +326,7 @@ public class StatusUtilsTest extends CategoryTest {
     assertThat(StatusUtils.nodeAllowedStartSet(Status.DISCONTINUING))
         .containsExactlyInAnyOrder(QUEUED, RUNNING, INTERVENTION_WAITING, TIMED_WAITING, ASYNC_WAITING, TASK_WAITING,
             PAUSING, RESOURCE_WAITING, APPROVAL_WAITING, WAIT_STEP_RUNNING, PAUSED, FAILED, SUSPENDED, EXPIRED,
-            APPROVAL_REJECTED, INPUT_WAITING);
+            APPROVAL_REJECTED, INPUT_WAITING, QUEUED_LICENSE_LIMIT_REACHED);
     assertThat(StatusUtils.nodeAllowedStartSet(Status.QUEUED)).containsExactlyInAnyOrder(PAUSED, PAUSING);
     assertThat(StatusUtils.nodeAllowedStartSet(Status.ABORTED)).isEqualTo(StatusUtils.finalizableStatuses());
     assertThat(StatusUtils.nodeAllowedStartSet(Status.ERRORED)).isEqualTo(StatusUtils.finalizableStatuses());
@@ -335,7 +335,8 @@ public class StatusUtilsTest extends CategoryTest {
     assertThat(StatusUtils.nodeAllowedStartSet(Status.EXPIRED)).isEqualTo(StatusUtils.finalizableStatuses());
     assertThat(StatusUtils.nodeAllowedStartSet(APPROVAL_REJECTED)).isEqualTo(StatusUtils.finalizableStatuses());
     assertThat(StatusUtils.nodeAllowedStartSet(Status.SUCCEEDED))
-        .containsExactlyInAnyOrder(INTERVENTION_WAITING, RUNNING, QUEUED);
+        .containsExactlyInAnyOrder(INTERVENTION_WAITING, RUNNING, QUEUED, WAIT_STEP_RUNNING, ASYNC_WAITING,
+            APPROVAL_WAITING, RESOURCE_WAITING, INPUT_WAITING);
     assertThat(StatusUtils.nodeAllowedStartSet(Status.IGNORE_FAILED))
         .containsExactlyInAnyOrder(EXPIRED, FAILED, INTERVENTION_WAITING, RUNNING, APPROVAL_REJECTED, QUEUED);
     assertThatThrownBy(() -> StatusUtils.nodeAllowedStartSet(Status.UNRECOGNIZED))
@@ -368,7 +369,7 @@ public class StatusUtilsTest extends CategoryTest {
     assertThat(StatusUtils.planAllowedStartSet(Status.DISCONTINUING))
         .containsExactlyInAnyOrder(RUNNING, INTERVENTION_WAITING, TIMED_WAITING, ASYNC_WAITING, TASK_WAITING, PAUSING,
             RESOURCE_WAITING, APPROVAL_WAITING, WAIT_STEP_RUNNING, QUEUED, PAUSED, FAILED, SUSPENDED, EXPIRED,
-            APPROVAL_REJECTED, INPUT_WAITING);
+            APPROVAL_REJECTED, INPUT_WAITING, QUEUED_LICENSE_LIMIT_REACHED);
     assertThat(StatusUtils.planAllowedStartSet(Status.QUEUED)).containsExactlyInAnyOrder(PAUSED, PAUSING);
     assertThat(StatusUtils.planAllowedStartSet(Status.ABORTED)).isEqualTo(StatusUtils.finalizableStatuses());
     assertThat(StatusUtils.planAllowedStartSet(Status.ERRORED)).isEqualTo(StatusUtils.finalizableStatuses());

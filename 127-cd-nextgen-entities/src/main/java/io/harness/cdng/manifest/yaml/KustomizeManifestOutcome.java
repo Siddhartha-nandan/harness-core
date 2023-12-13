@@ -9,6 +9,8 @@ package io.harness.cdng.manifest.yaml;
 
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.common.ParameterFieldHelper.getParameterFieldValue;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import io.harness.annotation.RecasterAlias;
 import io.harness.annotations.dev.OwnedBy;
@@ -16,11 +18,16 @@ import io.harness.cdng.manifest.ManifestType;
 import io.harness.cdng.manifest.yaml.kinds.KustomizeManifestCommandFlag;
 import io.harness.cdng.manifest.yaml.kinds.kustomize.OverlayConfiguration;
 import io.harness.cdng.manifest.yaml.storeConfig.StoreConfig;
+import io.harness.cdng.manifest.yaml.summary.ManifestStoreInfo;
+import io.harness.cdng.manifest.yaml.summary.ManifestStoreInfo.ManifestStoreInfoBuilder;
 import io.harness.pms.yaml.ParameterField;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import lombok.Builder;
 import lombok.Value;
 import lombok.experimental.FieldNameConstants;
@@ -34,6 +41,8 @@ import org.springframework.data.annotation.TypeAlias;
 @FieldNameConstants(innerTypeName = "KustomizeManifestOutcomeKeys")
 @RecasterAlias("io.harness.cdng.manifest.yaml.KustomizeManifestOutcome")
 public class KustomizeManifestOutcome implements ManifestOutcome {
+  private static String KUSTOMIZE_COMMAND_FLAGS_PROPERTY = "kustomize_command_flags";
+
   String identifier;
   String type = ManifestType.Kustomize;
   StoreConfig store;
@@ -49,5 +58,40 @@ public class KustomizeManifestOutcome implements ManifestOutcome {
       return ParameterField.createValueField(Collections.emptyList());
     }
     return this.patchesPaths;
+  }
+  @Override
+  public Optional<ManifestStoreInfo> toManifestStoreInfo() {
+    ManifestStoreInfoBuilder manifestInfoBuilder = ManifestStoreInfo.builder();
+    store.populateManifestStoreInfo(manifestInfoBuilder);
+    OverlayConfiguration overlayConfiguration = getParameterFieldValue(this.getOverlayConfiguration());
+    if (overlayConfiguration != null) {
+      String kustomizeYamlFolderPath = getParameterFieldValue(overlayConfiguration.getKustomizeYamlFolderPath());
+      ManifestStoreInfo manifestStoreInfo = manifestInfoBuilder.build();
+      ManifestStoreInfo manifestStoreInfoFinal =
+          getKustomizeManifestInfo(kustomizeYamlFolderPath, manifestStoreInfo, manifestInfoBuilder);
+      return Optional.of(manifestStoreInfoFinal);
+    }
+    return Optional.of(manifestInfoBuilder.build());
+  }
+
+  private ManifestStoreInfo getKustomizeManifestInfo(
+      String operationalPath, ManifestStoreInfo manifestStoreInfo, ManifestStoreInfoBuilder manifestStoreInfoBuilder) {
+    String folderPath = manifestStoreInfo.getFolderPath();
+    if (isEmpty(folderPath)) {
+      manifestStoreInfoBuilder.folderPath(operationalPath);
+    } else if (isEmpty(operationalPath)) {
+      manifestStoreInfoBuilder.folderPath(folderPath);
+    } else {
+      String finalFolderPath = folderPath.replaceAll("/$", "") + "/" + operationalPath.replaceAll("^/", "");
+      manifestStoreInfoBuilder.folderPath(finalFolderPath);
+    }
+    return manifestStoreInfoBuilder.build();
+  }
+
+  @Override
+  public Map<String, Object> createTelemetryProperties() {
+    Map<String, Object> telemetryProperties = new HashMap<>();
+    telemetryProperties.put(KUSTOMIZE_COMMAND_FLAGS_PROPERTY, isNotEmpty(getCommandFlags()));
+    return telemetryProperties;
   }
 }

@@ -28,20 +28,12 @@ else
     export GC_PARAMS=" -XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=40 -XX:MaxGCPauseMillis=1000 -Dfile.encoding=UTF-8"
 fi
 
-export JAVA_OPTS="-Xmx${MEMORY} -XX:+HeapDumpOnOutOfMemoryError -Xloggc:mygclogfilename.gc $GC_PARAMS $JAVA_ADVANCED_FLAGS"
+export JAVA_OPTS="-Xmx${MEMORY} -XX:+HeapDumpOnOutOfMemoryError -Xloggc:mygclogfilename.gc $GC_PARAMS $JAVA_ADVANCED_FLAGS $JAVA_17_FLAGS"
 
 if [[ "${ENABLE_REMOTE_DEBUG}" == "true" ]]; then
   export REMOTE_DEBUG="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=localhost:5005"
   export JAVA_OPTS="$REMOTE_DEBUG $JAVA_OPTS"
   echo "Enabled remote debug"
-fi
-
-if [[ "${ENABLE_APPDYNAMICS}" == "true" ]]; then
-    mkdir /opt/harness/AppServerAgent && unzip AppServerAgent.zip -d /opt/harness/AppServerAgent
-    node_name="-Dappdynamics.agent.nodeName=$(hostname)"
-    JAVA_OPTS=$JAVA_OPTS" -javaagent:/opt/harness/AppServerAgent/javaagent.jar -Dappdynamics.jvm.shutdown.mark.node.as.historical=true"
-    JAVA_OPTS="$JAVA_OPTS $node_name"
-    echo "Using Appdynamics java agent"
 fi
 
 if [[ "${ENABLE_OVEROPS}" == "true" ]] ; then

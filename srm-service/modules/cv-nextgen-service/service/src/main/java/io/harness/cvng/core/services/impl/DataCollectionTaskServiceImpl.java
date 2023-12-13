@@ -38,6 +38,7 @@ import io.harness.cvng.core.services.api.MonitoringSourcePerpetualTaskService;
 import io.harness.cvng.core.utils.CVNGTaskMetadataUtils;
 import io.harness.cvng.statemachine.beans.AnalysisInput;
 import io.harness.cvng.statemachine.services.api.OrchestrationService;
+import io.harness.data.structure.ListUtils;
 import io.harness.persistence.HPersistence;
 
 import com.google.inject.Inject;
@@ -47,7 +48,6 @@ import dev.morphia.query.Query;
 import dev.morphia.query.Sort;
 import dev.morphia.query.UpdateOperations;
 import dev.morphia.query.UpdateResults;
-import io.fabric8.utils.Lists;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -229,6 +229,16 @@ public class DataCollectionTaskServiceImpl implements DataCollectionTaskService 
         cvngLogTags.addAll(CVNGTaskMetadataUtils.getTaskDurationTags(
             CVNGTaskMetadataUtils.DurationType.TOTAL_DURATION, dataCollectionTask.totalTime(clock.instant())));
       }
+      String perpetualTaskId = "";
+      try {
+        perpetualTaskId =
+            monitoringSourcePerpetualTaskService.getPerpetualTask(dataCollectionTask.getDataCollectionWorkerId())
+                .getPerpetualTaskId();
+      } catch (Exception exception) {
+        log.warn("Perpetual Task Id is not present for data collection task {}", dataCollectionTask);
+      }
+      cvngLogTags.add(
+          CVNGTaskMetadataUtils.getCvngLogDebugTag(CVNGTaskMetadataConstants.PERPETUAL_TASK_ID, perpetualTaskId));
     }
     cvngLogTags.addAll(CVNGTaskMetadataUtils.getDataCollectionMetadataTags(result));
     String message = "Data collection task status: " + dataCollectionTask.getStatus();
@@ -387,11 +397,11 @@ public class DataCollectionTaskServiceImpl implements DataCollectionTaskService 
           DataCollectionTaskResult.builder()
               .dataCollectionTaskId(dataCollectionTask.getUuid())
               .status(DataCollectionExecutionStatus.FAILED)
-              .exception("Exception while getting MontioringSourcePerpetualTask status with workerId:"
+              .exception("Exception while getting MonitoringSourcePerpetualTask status with workerId: "
                   + dataCollectionTask.getDataCollectionWorkerId() + ". " + exception.getMessage())
               .build();
       updateTaskStatus(dataCollectionTaskResult, false);
-      log.error("Exception while getting MontioringSourcePerpetualTask status with workerId:"
+      log.warn("Exception while getting MonitoringSourcePerpetualTask status with workerId: "
               + dataCollectionTask.getDataCollectionWorkerId(),
           exception);
       return;
@@ -456,7 +466,7 @@ public class DataCollectionTaskServiceImpl implements DataCollectionTaskService 
             .field(DataCollectionTaskKeys.verificationTaskId)
             .in(verificationTaskIds)
             .field(DataCollectionTaskKeys.status)
-            .in(Lists.newArrayList(DataCollectionExecutionStatus.WAITING, DataCollectionExecutionStatus.QUEUED));
+            .in(ListUtils.newArrayList(DataCollectionExecutionStatus.WAITING, DataCollectionExecutionStatus.QUEUED));
     UpdateOperations<DataCollectionTask> abortDCTaskOperation =
         hPersistence.createUpdateOperations(DataCollectionTask.class)
             .set(DataCollectionTaskKeys.status, DataCollectionExecutionStatus.ABORTED);

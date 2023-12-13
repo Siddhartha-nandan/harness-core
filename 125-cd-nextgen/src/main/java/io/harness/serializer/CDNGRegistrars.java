@@ -21,6 +21,7 @@ import io.harness.cdng.aws.asg.AsgCanaryDeleteStepNode;
 import io.harness.cdng.aws.asg.AsgCanaryDeployStepNode;
 import io.harness.cdng.aws.asg.AsgRollingDeployStepNode;
 import io.harness.cdng.aws.asg.AsgRollingRollbackStepNode;
+import io.harness.cdng.aws.asg.AsgShiftTrafficStepNode;
 import io.harness.cdng.aws.lambda.deploy.AwsLambdaDeployStepNode;
 import io.harness.cdng.aws.lambda.rollback.AwsLambdaRollbackStepNode;
 import io.harness.cdng.aws.sam.AwsSamBuildStepNode;
@@ -33,9 +34,11 @@ import io.harness.cdng.azure.webapp.AzureWebAppSwapSlotStepNode;
 import io.harness.cdng.azure.webapp.AzureWebAppTrafficShiftStepNode;
 import io.harness.cdng.bamboo.BambooBuildStepNode;
 import io.harness.cdng.chaos.ChaosStepNode;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepNode;
 import io.harness.cdng.creator.plan.customDeployment.CustomDeploymentConfig;
 import io.harness.cdng.creator.plan.stage.DeploymentStageNode;
 import io.harness.cdng.customDeployment.FetchInstanceScriptStepNode;
+import io.harness.cdng.ecs.EcsBasicRollbackStepNode;
 import io.harness.cdng.ecs.EcsBlueGreenCreateServiceStepNode;
 import io.harness.cdng.ecs.EcsBlueGreenRollbackStepNode;
 import io.harness.cdng.ecs.EcsBlueGreenSwapTargetGroupsStepNode;
@@ -44,6 +47,8 @@ import io.harness.cdng.ecs.EcsCanaryDeployStepNode;
 import io.harness.cdng.ecs.EcsRollingDeployStepNode;
 import io.harness.cdng.ecs.EcsRollingRollbackStepNode;
 import io.harness.cdng.ecs.EcsRunTaskStepNode;
+import io.harness.cdng.ecs.EcsServiceSetupStepNode;
+import io.harness.cdng.ecs.EcsUpgradeContainerStepNode;
 import io.harness.cdng.elastigroup.ElastigroupBGStageSetupStepNode;
 import io.harness.cdng.elastigroup.ElastigroupSetupStepNode;
 import io.harness.cdng.elastigroup.ElastigroupSwapRouteStepNode;
@@ -54,6 +59,7 @@ import io.harness.cdng.gitops.UpdateReleaseRepoStepNode;
 import io.harness.cdng.gitops.beans.FetchLinkedAppsStepNode;
 import io.harness.cdng.gitops.revertpr.RevertPRStepNode;
 import io.harness.cdng.gitops.syncstep.SyncStepNode;
+import io.harness.cdng.gitops.updategitopsapp.UpdateGitOpsAppStepNode;
 import io.harness.cdng.googlefunctions.deploy.GoogleFunctionsDeployStepNode;
 import io.harness.cdng.googlefunctions.deployWithoutTraffic.GoogleFunctionsDeployWithoutTrafficStepNode;
 import io.harness.cdng.googlefunctions.deploygenone.GoogleFunctionsGenOneDeployStepNode;
@@ -246,6 +252,20 @@ public class CDNGRegistrars {
                                            .yamlGroup(YamlGroup.builder().group(StepCategory.STEP.name()).build())
                                            .build())
                    .build())
+
+          .add(YamlSchemaRootClass.builder()
+                   .entityType(EntityType.UPDATE_GITOPS_APP)
+                   .availableAtProjectLevel(true)
+                   .availableAtOrgLevel(false)
+                   .availableAtAccountLevel(false)
+                   .clazz(UpdateGitOpsAppStepNode.class)
+                   .yamlSchemaMetadata(YamlSchemaMetadata.builder()
+                                           .namespace(SchemaNamespaceConstants.CD)
+                                           .modulesSupported(Collections.singletonList(ModuleType.CD))
+                                           .yamlGroup(YamlGroup.builder().group(StepCategory.STEP.name()).build())
+                                           .build())
+                   .build())
+
           .add(YamlSchemaRootClass.builder()
                    .entityType(EntityType.GITOPS_SYNC)
                    .availableAtProjectLevel(true)
@@ -1123,6 +1143,18 @@ public class CDNGRegistrars {
                                            .build())
                    .build())
           .add(YamlSchemaRootClass.builder()
+                   .entityType(EntityType.ASG_SHIFT_TRAFFIC_STEP)
+                   .availableAtProjectLevel(true)
+                   .availableAtOrgLevel(false)
+                   .availableAtAccountLevel(false)
+                   .clazz(AsgShiftTrafficStepNode.class)
+                   .yamlSchemaMetadata(YamlSchemaMetadata.builder()
+                                           .namespace(SchemaNamespaceConstants.CD)
+                                           .modulesSupported(Arrays.asList(ModuleType.CD, ModuleType.PMS))
+                                           .yamlGroup(YamlGroup.builder().group(StepCategory.STEP.name()).build())
+                                           .build())
+                   .build())
+          .add(YamlSchemaRootClass.builder()
                    .entityType(EntityType.TERRAFORM_CLOUD_RUN)
                    .availableAtProjectLevel(true)
                    .availableAtOrgLevel(false)
@@ -1392,6 +1424,54 @@ public class CDNGRegistrars {
                    .availableAtOrgLevel(false)
                    .availableAtAccountLevel(false)
                    .clazz(AwsCdkRollbackStepNode.class)
+                   .yamlSchemaMetadata(YamlSchemaMetadata.builder()
+                                           .namespace(SchemaNamespaceConstants.CD)
+                                           .modulesSupported(Arrays.asList(ModuleType.CD, ModuleType.PMS))
+                                           .yamlGroup(YamlGroup.builder().group(StepCategory.STEP.name()).build())
+                                           .build())
+                   .build())
+          .add(YamlSchemaRootClass.builder()
+                   .entityType(EntityType.ECS_SERVICE_SETUP_STEP)
+                   .availableAtProjectLevel(true)
+                   .availableAtOrgLevel(false)
+                   .availableAtAccountLevel(false)
+                   .clazz(EcsServiceSetupStepNode.class)
+                   .yamlSchemaMetadata(YamlSchemaMetadata.builder()
+                                           .namespace(SchemaNamespaceConstants.CD)
+                                           .modulesSupported(Collections.singletonList(ModuleType.CD))
+                                           .yamlGroup(YamlGroup.builder().group(StepCategory.STEP.name()).build())
+                                           .build())
+                   .build())
+          .add(YamlSchemaRootClass.builder()
+                   .entityType(EntityType.ECS_UPGRADE_CONTAINER_STEP)
+                   .availableAtProjectLevel(true)
+                   .availableAtOrgLevel(false)
+                   .availableAtAccountLevel(false)
+                   .clazz(EcsUpgradeContainerStepNode.class)
+                   .yamlSchemaMetadata(YamlSchemaMetadata.builder()
+                                           .namespace(SchemaNamespaceConstants.CD)
+                                           .modulesSupported(Collections.singletonList(ModuleType.CD))
+                                           .yamlGroup(YamlGroup.builder().group(StepCategory.STEP.name()).build())
+                                           .build())
+                   .build())
+          .add(YamlSchemaRootClass.builder()
+                   .entityType(EntityType.ECS_BASIC_ROLLBACK_STEP)
+                   .availableAtProjectLevel(true)
+                   .availableAtOrgLevel(false)
+                   .availableAtAccountLevel(false)
+                   .clazz(EcsBasicRollbackStepNode.class)
+                   .yamlSchemaMetadata(YamlSchemaMetadata.builder()
+                                           .namespace(SchemaNamespaceConstants.CD)
+                                           .modulesSupported(Collections.singletonList(ModuleType.CD))
+                                           .yamlGroup(YamlGroup.builder().group(StepCategory.STEP.name()).build())
+                                           .build())
+                   .build())
+          .add(YamlSchemaRootClass.builder()
+                   .entityType(EntityType.DOWNLOAD_AWS_S3)
+                   .availableAtProjectLevel(true)
+                   .availableAtOrgLevel(false)
+                   .availableAtAccountLevel(false)
+                   .clazz(DownloadAwsS3StepNode.class)
                    .yamlSchemaMetadata(YamlSchemaMetadata.builder()
                                            .namespace(SchemaNamespaceConstants.CD)
                                            .modulesSupported(Arrays.asList(ModuleType.CD, ModuleType.PMS))

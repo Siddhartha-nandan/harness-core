@@ -19,6 +19,7 @@ import static io.harness.notification.NotificationServiceConstants.WEBHOOKSERVIC
 
 import static java.time.Duration.ofSeconds;
 
+import io.harness.AccessControlClientModule;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.callback.DelegateCallback;
 import io.harness.callback.DelegateCallbackToken;
@@ -36,6 +37,7 @@ import io.harness.mongo.MongoPersistence;
 import io.harness.mongo.queue.NGMongoQueueConsumer;
 import io.harness.morphia.MorphiaRegistrar;
 import io.harness.ng.core.event.MessageListener;
+import io.harness.ngsettings.client.remote.NGSettingsClientModule;
 import io.harness.notification.SmtpConfig;
 import io.harness.notification.entities.MongoNotificationRequest;
 import io.harness.notification.eventbackbone.MessageConsumer;
@@ -45,6 +47,8 @@ import io.harness.notification.modules.SmtpConfigClientModule;
 import io.harness.notification.service.ChannelServiceImpl;
 import io.harness.notification.service.MSTeamsServiceImpl;
 import io.harness.notification.service.MailServiceImpl;
+import io.harness.notification.service.NotificationChannelManagementServiceImpl;
+import io.harness.notification.service.NotificationRuleManagementServiceImpl;
 import io.harness.notification.service.NotificationServiceImpl;
 import io.harness.notification.service.NotificationSettingsServiceImpl;
 import io.harness.notification.service.NotificationTemplateServiceImpl;
@@ -53,6 +57,8 @@ import io.harness.notification.service.SeedDataPopulaterServiceImpl;
 import io.harness.notification.service.SlackServiceImpl;
 import io.harness.notification.service.WebhookServiceImpl;
 import io.harness.notification.service.api.ChannelService;
+import io.harness.notification.service.api.NotificationChannelManagementService;
+import io.harness.notification.service.api.NotificationRuleManagementService;
 import io.harness.notification.service.api.NotificationService;
 import io.harness.notification.service.api.NotificationSettingsService;
 import io.harness.notification.service.api.NotificationTemplateService;
@@ -206,6 +212,8 @@ public class NotificationServiceModule extends AbstractModule {
     install(new ValidationModule(getValidatorFactory()));
 
     install(new NotificationPersistenceModule());
+    install(AccessControlClientModule.getInstance(
+        appConfig.getAccessControlClientConfig(), NOTIFICATION_SERVICE.getServiceId()));
 
     install(new UserGroupClientModule(appConfig.getRbacServiceConfig(),
         appConfig.getPlatformSecrets().getNgManagerServiceSecret(), NOTIFICATION_SERVICE.getServiceId()));
@@ -216,6 +224,8 @@ public class NotificationServiceModule extends AbstractModule {
     bind(ChannelService.class).to(ChannelServiceImpl.class);
     install(new SmtpConfigClientModule(
         appConfig.getManagerServiceConfig(), appConfig.getPlatformSecrets().getNgManagerServiceSecret()));
+    install(new NGSettingsClientModule(appConfig.getNgManagerServiceConfig(),
+        this.appConfig.getPlatformSecrets().getNgManagerServiceSecret(), NOTIFICATION_SERVICE.getServiceId()));
     bind(NotificationSettingsService.class).to(NotificationSettingsServiceImpl.class);
     bind(SeedDataPopulaterService.class).to(SeedDataPopulaterServiceImpl.class);
     bind(ChannelService.class).annotatedWith(Names.named(MAILSERVICE)).to(MailServiceImpl.class);
@@ -224,6 +234,8 @@ public class NotificationServiceModule extends AbstractModule {
     bind(ChannelService.class).annotatedWith(Names.named(MSTEAMSSERVICE)).to(MSTeamsServiceImpl.class);
     bind(ChannelService.class).annotatedWith(Names.named(WEBHOOKSERVICE)).to(WebhookServiceImpl.class);
     bind(NotificationService.class).to(NotificationServiceImpl.class);
+    bind(NotificationRuleManagementService.class).to(NotificationRuleManagementServiceImpl.class);
+    bind(NotificationChannelManagementService.class).to(NotificationChannelManagementServiceImpl.class);
     bind(NotificationTemplateService.class).to(NotificationTemplateServiceImpl.class);
     bindMessageConsumer();
     install(new TokenClientModule(this.appConfig.getRbacServiceConfig(),

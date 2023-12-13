@@ -16,6 +16,7 @@ import io.harness.cvng.beans.activity.ActivityStatusDTO;
 import io.harness.cvng.beans.activity.ActivityType;
 import io.harness.cvng.beans.activity.ActivityVerificationStatus;
 import io.harness.cvng.beans.job.Sensitivity;
+import io.harness.cvng.beans.job.VerificationJobType;
 import io.harness.cvng.cdng.beans.CVNGStepParameter;
 import io.harness.cvng.cdng.beans.CVNGStepType;
 import io.harness.cvng.cdng.beans.MonitoredServiceNode;
@@ -42,12 +43,12 @@ import io.harness.cvng.verificationjob.entities.VerificationJobInstance;
 import io.harness.cvng.verificationjob.entities.VerificationJobInstance.ExecutionStatus;
 import io.harness.cvng.verificationjob.entities.VerificationJobInstance.VerificationJobInstanceBuilder;
 import io.harness.cvng.verificationjob.services.api.VerificationJobInstanceService;
+import io.harness.cvng.verificationjob.utils.VerificationJobInstanceServiceInstanceUtils;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.delegate.cdng.execution.StepExecutionInstanceInfo;
 import io.harness.eraro.ErrorCode;
 import io.harness.eraro.Level;
 import io.harness.opaclient.OpaServiceClient;
-import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.AsyncExecutableResponse;
 import io.harness.pms.contracts.execution.Status;
@@ -61,6 +62,7 @@ import io.harness.pms.sdk.core.data.Outcome;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.sdk.core.steps.io.StepResponse.StepResponseBuilder;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.steps.executable.AsyncExecutableWithCapabilities;
 import io.harness.tasks.ProgressData;
@@ -109,7 +111,7 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
 
   @Override
   public AsyncExecutableResponse executeAsyncAfterRbac(
-      Ambiance ambiance, StepElementParameters stepElementParameters, StepInputPackage inputPackage) {
+      Ambiance ambiance, StepBaseParameters stepElementParameters, StepInputPackage inputPackage) {
     log.info("ExecuteAsync called for CVNGStep");
     CVNGStepParameter stepParameters = (CVNGStepParameter) stepElementParameters.getSpec();
     String accountId = AmbianceUtils.getAccountId(ambiance);
@@ -154,7 +156,7 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
                       })
                       .collect(Collectors.toList());
     }
-    if (CollectionUtils.isEmpty(cvConfigs)) {
+    if (CollectionUtils.isEmpty(cvConfigs) || hasInvalidCVConfig(cvConfigs)) {
       CVNGStepTaskBuilder cvngStepTaskBuilder = CVNGStepTask.builder();
       cvngStepTaskBuilder.skip(true);
       cvngStepTaskBuilder.callbackId(UUID.randomUUID().toString());
@@ -195,7 +197,8 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
                 monitoredServiceTemplateIdentifier, monitoredServiceTemplateVersionLabel, cvConfigs);
         activity.fillInVerificationJobInstanceDetails(verificationJobInstanceBuilder);
         verificationJobInstanceBuilder.monitoredServiceType(monitoredServiceType);
-        verificationJobInstanceBuilder.serviceInstanceDetails(getServiceInstanceDetails(ambiance, stepParameters));
+        verificationJobInstanceBuilder.serviceInstanceDetails(getServiceInstanceDetails(
+            ambiance, stepParameters, verificationJobInstanceBuilder.getResolvedJob().getType()));
         verificationJobInstanceBuilder.nodeExecutionId(AmbianceUtils.obtainCurrentRuntimeId(ambiance));
         verificationJobInstanceId = verificationJobInstanceService.create(verificationJobInstanceBuilder.build());
       }
@@ -238,7 +241,8 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
     return identifier.endsWith("_dev");
   }
 
-  private ServiceInstanceDetails getServiceInstanceDetails(Ambiance ambiance, CVNGStepParameter cvngStepParameter) {
+  private ServiceInstanceDetails getServiceInstanceDetails(
+      Ambiance ambiance, CVNGStepParameter cvngStepParameter, VerificationJobType verificationJobType) {
     ServiceInstanceDetailsBuilder serviceInstanceDetailsBuilder =
         ServiceInstanceDetails.builder()
             .shouldUseNodesFromCD(getValueFromParameterisedField(cvngStepParameter.getShouldUseCDNodes(), false))
@@ -279,9 +283,18 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
             .filter(instanceName -> instanceNamesAfterDeployment.contains(instanceName))
             .distinct()
             .collect(Collectors.toList());
-    return serviceInstanceDetailsBuilder.deployedServiceInstances(deployedServiceInstanceDetails)
+
+    serviceInstanceDetailsBuilder.deployedServiceInstances(deployedServiceInstanceDetails)
         .serviceInstancesBeforeDeployment(instanceNamesBeforeDeployment)
-        .serviceInstancesAfterDeployment(instanceNamesAfterDeployment)
+        .serviceInstancesAfterDeployment(instanceNamesAfterDeployment);
+
+    ServiceInstanceDetails preSamplingServiceInstanceDetails = serviceInstanceDetailsBuilder.build();
+
+    return serviceInstanceDetailsBuilder
+        .sampledTestNodes(
+            VerificationJobInstanceServiceInstanceUtils.getSampledTestNodes(preSamplingServiceInstanceDetails))
+        .sampledControlNodes(VerificationJobInstanceServiceInstanceUtils.getSampledControlNodes(
+            verificationJobType, preSamplingServiceInstanceDetails))
         .build();
   }
 
@@ -372,6 +385,7 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
             .stageId(AmbianceUtils.getStageLevelFromAmbiance(ambiance).get().getIdentifier())
             .stageStepId(AmbianceUtils.getStageLevelFromAmbiance(ambiance).get().getSetupId())
             .pipelineId(ambiance.getMetadata().getPipelineIdentifier())
+            .runSequence(String.valueOf(ambiance.getMetadata().getRunSequence()))
             .planExecutionId(ambiance.getPlanExecutionId())
             .build();
     deploymentActivity.setVerificationJobs(Collections.singletonList(verificationJob));
@@ -386,6 +400,14 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
     return deploymentActivity;
   }
 
+  public boolean hasInvalidCVConfig(List<CVConfig> cvConfigs) {
+    for (CVConfig cvConfig : cvConfigs) {
+      if (cvConfig.isDeploymentVerificationEnabled()) {
+        return false;
+      }
+    }
+    return true;
+  }
   private void validate(CVNGStepParameter stepParameters) {
     Preconditions.checkNotNull(stepParameters.getDeploymentTag().getValue(),
         "Could not resolve expression for deployment tag. Please check your expression.");
@@ -419,7 +441,7 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
 
   @Override
   public StepResponse handleAsyncResponseInternal(
-      Ambiance ambiance, StepElementParameters stepElementParameters, Map<String, ResponseData> responseDataMap) {
+      Ambiance ambiance, StepBaseParameters stepElementParameters, Map<String, ResponseData> responseDataMap) {
     log.info("handleAsyncResponse async response");
     CVNGStepParameter stepParameters = (CVNGStepParameter) stepElementParameters.getSpec();
     CVNGResponseData cvngResponseData = (CVNGResponseData) responseDataMap.values().iterator().next();
@@ -444,9 +466,11 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
       ErrorCode errorCode = null;
       switch (cvngResponseData.getActivityStatusDTO().getStatus()) {
         case VERIFICATION_PASSED:
+        case ABORTED_AS_SUCCESS:
           status = Status.SUCCEEDED;
           break;
         case VERIFICATION_FAILED:
+        case ABORTED_AS_FAILURE:
           status = Status.FAILED;
           errorCode = ErrorCode.DEFAULT_ERROR_CODE;
           failureType = FailureType.VERIFICATION_FAILURE;
@@ -458,6 +482,12 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
           errorCode = ErrorCode.UNKNOWN_ERROR;
           failureType = FailureType.UNKNOWN_FAILURE;
           failureMessage = "Verification could not complete due to an unknown error";
+          break;
+        case ABORTED:
+          status = Status.FAILED;
+          errorCode = ErrorCode.ABORT_ALL_ALREADY_NG;
+          failureType = FailureType.USER_MARKED_FAILURE;
+          failureMessage = "Verification could not complete due to it being aborted";
           break;
         default:
           throw new IllegalStateException(
@@ -490,8 +520,8 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
   }
 
   @Override
-  public ProgressData handleProgress(
-      Ambiance ambiance, StepElementParameters stepElementParameters, ProgressData progressData) {
+  public ProgressData handleProgressAsync(
+      Ambiance ambiance, StepBaseParameters stepElementParameters, ProgressData progressData) {
     CVNGResponseData cvngResponseData = (CVNGResponseData) progressData;
     return VerifyStepOutcome.builder()
         .progressPercentage(cvngResponseData.getActivityStatusDTO().getProgressPercentage())
@@ -502,13 +532,13 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
   }
 
   @Override
-  public Class<StepElementParameters> getStepParametersClass() {
-    return StepElementParameters.class;
+  public Class<StepBaseParameters> getStepParametersClass() {
+    return StepBaseParameters.class;
   }
 
   @Override
-  public void handleAbort(
-      Ambiance ambiance, StepElementParameters stepElementParameters, AsyncExecutableResponse executableResponse) {
+  public void handleAbort(Ambiance ambiance, StepBaseParameters stepElementParameters,
+      AsyncExecutableResponse executableResponse, boolean userMarked) {
     CVNGStepTask cvngStepTask = cvngStepTaskService.getByCallBackId(executableResponse.getCallbackIds(0));
     activityService.abort(cvngStepTask.getActivityId());
   }
@@ -527,11 +557,11 @@ public class CVNGStep extends AsyncExecutableWithCapabilities {
   }
 
   @Override
-  public void validateResources(Ambiance ambiance, StepElementParameters stepParameters) {}
+  public void validateResources(Ambiance ambiance, StepBaseParameters stepParameters) {}
 
   @Override
   public StepResponse postAsyncValidate(
-      Ambiance ambiance, StepElementParameters stepParameters, StepResponse stepResponse) {
+      Ambiance ambiance, StepBaseParameters stepParameters, StepResponse stepResponse) {
     if (Status.SUCCEEDED.equals(stepResponse.getStatus())) {
       return PolicyEvalUtils.evalPolicies(ambiance, stepParameters, stepResponse, opaServiceClient);
     }

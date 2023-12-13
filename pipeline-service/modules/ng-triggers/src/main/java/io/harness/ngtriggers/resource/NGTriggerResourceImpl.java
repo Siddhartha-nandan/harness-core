@@ -28,15 +28,21 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.EntityNotFoundException;
 import io.harness.exception.InvalidRequestException;
+import io.harness.filter.FilterType;
+import io.harness.filter.dto.FilterDTO;
+import io.harness.filter.service.FilterService;
 import io.harness.ng.beans.PageResponse;
 import io.harness.ng.core.dto.PollingTriggerStatusUpdateDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
+import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
+import io.harness.ngtriggers.beans.dto.BulkTriggersResponseDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerCatalogDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerDetailsResponseDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerEventHistoryDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerResponseDTO;
+import io.harness.ngtriggers.beans.dto.NGTriggersFilterPropertiesDTO;
 import io.harness.ngtriggers.beans.dto.TriggerDetails;
 import io.harness.ngtriggers.beans.dto.TriggerYamlDiffDTO;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity;
@@ -75,6 +81,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
+import retrofit2.http.Body;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_TRIGGERS})
 @AllArgsConstructor(access = AccessLevel.PACKAGE, onConstructor = @__({ @Inject }))
@@ -91,6 +98,7 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
   private final NGTriggerElementMapper ngTriggerElementMapper;
   private final AccessControlClient accessControlClient;
   private final NGSettingsClient settingsClient;
+  private final FilterService filterService;
   private final PmsFeatureFlagService pmsFeatureFlagService;
 
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_EXECUTE)
@@ -210,9 +218,16 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
   public ResponseDTO<PageResponse<NGTriggerDetailsResponseDTO>> getListForTarget(
       @NotNull @AccountIdentifier String accountIdentifier, @NotNull @OrgIdentifier String orgIdentifier,
       @NotNull @ProjectIdentifier String projectIdentifier, @NotNull @ResourceIdentifier String targetIdentifier,
-      String filterQuery, int page, int size, List<String> sort, String searchTerm) {
-    Criteria criteria = TriggerFilterHelper.createCriteriaForGetList(
-        accountIdentifier, orgIdentifier, projectIdentifier, targetIdentifier, null, searchTerm, false);
+      String filterQuery, int page, int size, List<String> sort, String searchTerm,
+      NGTriggersFilterPropertiesDTO filterProperties) {
+    FilterDTO triggerFilterDTO = null;
+    if (filterQuery != null) {
+      triggerFilterDTO =
+          filterService.get(accountIdentifier, orgIdentifier, projectIdentifier, filterQuery, FilterType.TRIGGER);
+    }
+
+    Criteria criteria = TriggerFilterHelper.createCriteriaForGetList(accountIdentifier, orgIdentifier,
+        projectIdentifier, targetIdentifier, null, searchTerm, false, filterQuery, filterProperties, triggerFilterDTO);
     Pageable pageRequest;
     if (EmptyPredicate.isEmpty(sort)) {
       pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, NGTriggerEntityKeys.createdAt));
@@ -307,5 +322,10 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
             "true");
 
     return mandatoryAuth;
+  }
+
+  public ResponseDTO<BulkTriggersResponseDTO> bulkToggleTriggers(@NotNull @AccountIdentifier String accountIdentifier,
+      @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO) {
+    return ResponseDTO.newResponse(ngTriggerService.toggleTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO));
   }
 }

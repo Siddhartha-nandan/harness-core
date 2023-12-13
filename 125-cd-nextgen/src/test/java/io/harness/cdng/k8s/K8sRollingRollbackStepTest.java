@@ -34,6 +34,7 @@ import io.harness.cdng.k8s.beans.K8sRollingReleaseOutput;
 import io.harness.cdng.manifest.steps.outcome.ManifestsOutcome;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
 import io.harness.delegate.beans.logstreaming.UnitProgressData;
+import io.harness.delegate.task.helm.HelmChartInfo;
 import io.harness.delegate.task.k8s.K8sDeployRequest;
 import io.harness.delegate.task.k8s.K8sDeployResponse;
 import io.harness.delegate.task.k8s.K8sRollingDeployRollbackResponse;
@@ -58,6 +59,7 @@ import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.steps.StepHelper;
 import io.harness.telemetry.TelemetryReporter;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -82,6 +84,7 @@ public class K8sRollingRollbackStepTest extends CategoryTest {
   @Mock private K8sStepHelper k8sStepHelper;
   @Mock private CDStepHelper cdStepHelper;
   @Mock private InstanceInfoService instanceInfoService;
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
   @InjectMocks private K8sRollingRollbackStep k8sRollingRollbackStep;
   @Mock private AccountService accountService;
   @Mock private StepHelper stepHelper;
@@ -154,7 +157,12 @@ public class K8sRollingRollbackStepTest extends CategoryTest {
   public void testHandleTaskResultWithSecurityContext() throws Exception {
     AccountDTO accountDTO = AccountDTO.builder().name("TestAccountName").build();
     doReturn(accountDTO).when(accountService).getAccount(any());
-
+    HelmChartInfo helmChartInfo = HelmChartInfo.builder()
+                                      .repoUrl("repoUrl")
+                                      .version("1.0.2")
+                                      .name("chartName")
+                                      .subChartPath("subChartPath")
+                                      .build();
     StepResponse stepResponse = k8sRollingRollbackStep.handleTaskResultWithSecurityContext(
         ambiance, StepElementParameters.builder().build(), () -> {
           return K8sDeployResponse.builder()
@@ -174,7 +182,10 @@ public class K8sRollingRollbackStepTest extends CategoryTest {
     stepResponse = k8sRollingRollbackStep.handleTaskResultWithSecurityContext(
         ambiance, StepElementParameters.builder().build(), () -> {
           return K8sDeployResponse.builder()
-              .k8sNGTaskResponse(K8sRollingDeployRollbackResponse.builder().k8sPodList(k8sPodList).build())
+              .k8sNGTaskResponse(K8sRollingDeployRollbackResponse.builder()
+                                     .k8sPodList(k8sPodList)
+                                     .helmChartInfo(helmChartInfo)
+                                     .build())
               .commandUnitsProgress(UnitProgressData.builder().build())
               .commandExecutionStatus(CommandExecutionStatus.SUCCESS)
               .build();

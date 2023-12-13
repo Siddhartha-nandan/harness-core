@@ -54,7 +54,6 @@ import io.harness.pms.sdk.core.plan.creation.creators.PipelineServiceInfoDecorat
 import io.harness.pms.sdk.core.variables.VariableCreator;
 import io.harness.pms.utils.InjectorUtils;
 import io.harness.rule.Owner;
-import io.harness.ssca.beans.SscaConstants;
 import io.harness.ssca.cd.execution.filtercreator.CdSscaStepFilterJsonCreator;
 import io.harness.ssca.cd.execution.variablecreator.CdSscaStepVariableCreator;
 import io.harness.ssca.plancreator.CdSscaEnforcementStepPlanCreator;
@@ -103,9 +102,9 @@ import org.mockito.MockitoAnnotations;
 
 @OwnedBy(PIPELINE)
 public class PipelineServiceInternalInfoProviderTest extends CategoryTest {
-  public static final int PLAN_CREATOR_NUMBER = 38;
-  public static final int FILTER_JSON_CREATOR_NUMBER = 13;
-  public static final int VARIABLE_CREATOR_NUMBER = 26;
+  public static final int PLAN_CREATOR_NUMBER = 37;
+  public static final int FILTER_JSON_CREATOR_NUMBER = 14;
+  public static final int VARIABLE_CREATOR_NUMBER = 27;
 
   @InjectMocks PipelineServiceInternalInfoProvider pipelineServiceInternalInfoProvider;
   @InjectMocks PipelineServiceInfoDecoratorImpl serviceInfoDecorator;
@@ -232,9 +231,6 @@ public class PipelineServiceInternalInfoProviderTest extends CategoryTest {
   public void testGetStepInfo() {
     List<StepInfo> steps = pipelineServiceInternalInfoProvider.getStepInfo();
     assertThat(steps).isNotEmpty();
-    assertThat(steps)
-        .hasSize(3)
-        .extracting(StepInfo::getName)
-        .containsExactly("Flag Configuration", SscaConstants.SSCA_ORCHESTRATION_STEP, SscaConstants.SSCA_ENFORCEMENT);
+    assertThat(steps).hasSize(1).extracting(StepInfo::getName).containsExactly("Flag Configuration");
   }
 }

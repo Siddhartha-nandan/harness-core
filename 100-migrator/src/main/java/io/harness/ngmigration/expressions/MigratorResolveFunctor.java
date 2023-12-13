@@ -6,16 +6,30 @@
  */
 
 package io.harness.ngmigration.expressions;
-
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.expression.ExpressionEvaluator;
 import io.harness.expression.ExpressionResolveFunctor;
 
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_MIGRATOR})
 public class MigratorResolveFunctor implements ExpressionResolveFunctor {
   private final Map<String, Object> context;
 
   private final ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+  private static final String REPLACE_EXPRESSION = "\\.replace\\(.*?\\)";
+  private static final String REPLACE_ALL_EXPRESSION = "\\.replaceAll\\(.*?\\)";
+  private static final String SPLIT_EXPRESSION = "\\.split\\(.*?\\)";
+  private static final String LOWER_EXPRESSION = ".toLowerCase()";
+  private static final String UPPER_EXPRESSION = ".toUpperCase()";
+
+  private static final Pattern REPLACE_PATTERN = Pattern.compile(REPLACE_EXPRESSION);
+  private static final Pattern REPLACE_ALL_PATTERN = Pattern.compile(REPLACE_ALL_EXPRESSION);
+  private static final Pattern SPLIT_PATTERN = Pattern.compile(SPLIT_EXPRESSION);
 
   public MigratorResolveFunctor(Map<String, Object> context) {
     this.context = context;
@@ -23,6 +37,32 @@ public class MigratorResolveFunctor implements ExpressionResolveFunctor {
 
   @Override
   public String processString(String expression) {
+    Matcher replaceMatcher = REPLACE_PATTERN.matcher(expression);
+    Matcher replaceAllMatcher = REPLACE_ALL_PATTERN.matcher(expression);
+    Matcher splitMatcher = SPLIT_PATTERN.matcher(expression);
+    if (expression.contains(LOWER_EXPRESSION)) {
+      String treatedExpression = expression.replace(LOWER_EXPRESSION, "");
+      return expressionEvaluator.substitute(treatedExpression, context) + LOWER_EXPRESSION;
+    }
+    if (expression.contains(UPPER_EXPRESSION)) {
+      String treatedExpression = expression.replace(UPPER_EXPRESSION, "");
+      return expressionEvaluator.substitute(treatedExpression, context) + UPPER_EXPRESSION;
+    }
+    if (replaceMatcher.find()) {
+      String replaceContent = replaceMatcher.group();
+      String treatedExpression = expression.replaceAll(REPLACE_EXPRESSION, "");
+      return expressionEvaluator.substitute(treatedExpression, context) + replaceContent;
+    }
+    if (replaceAllMatcher.find()) {
+      String replaceAllContent = replaceAllMatcher.group();
+      String treatedExpression = expression.replaceAll(REPLACE_ALL_EXPRESSION, "");
+      return expressionEvaluator.substitute(treatedExpression, context) + replaceAllContent;
+    }
+    if (splitMatcher.find()) {
+      String splitContent = splitMatcher.group();
+      String treatedExpression = expression.replaceAll(SPLIT_EXPRESSION, "");
+      return expressionEvaluator.substitute(treatedExpression, context) + splitContent;
+    }
     return expressionEvaluator.substitute(expression, context);
   }
 }

@@ -57,6 +57,7 @@ import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.steps.StepHelper;
 import io.harness.steps.TaskRequestsUtils;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -100,6 +101,7 @@ public class TasSwapRoutesStepTest extends CategoryTest {
   @Mock private TasStepHelper tasStepHelper;
   @Mock private StepHelper stepHelper;
   @Mock private CDFeatureFlagHelper cdFeatureFlagHelper;
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
   @InjectMocks private TasSwapRoutesStep tasSwapRoutesStep;
 
   @Test
@@ -124,7 +126,7 @@ public class TasSwapRoutesStepTest extends CategoryTest {
   public void testValidateResourcesFFDisabled() {
     doReturn(false).when(cdFeatureFlagHelper).isEnabled(anyString(), eq(FeatureName.NG_SVC_ENV_REDESIGN));
     assertThatThrownBy(() -> tasSwapRoutesStep.validateResources(ambiance, stepElementParameters))
-        .hasMessage("CDS_TAS_NG FF is not enabled for this account. Please contact harness customer care.");
+        .hasMessage("NG_SVC_ENV_REDESIGN FF is not enabled for this account. Please contact harness customer care.");
   }
 
   @Test

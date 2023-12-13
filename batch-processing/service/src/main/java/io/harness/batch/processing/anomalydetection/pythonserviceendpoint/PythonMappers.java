@@ -35,6 +35,8 @@ public class PythonMappers {
         .namespace(timeSeries.getNamespace())
         .workloadType(timeSeries.getWorkloadType())
         .workloadName(timeSeries.getWorkloadName())
+        .service(timeSeries.getService())
+        .serviceName(timeSeries.getServiceName())
         .gcpProject(timeSeries.getGcpProject())
         .gcpProduct(timeSeries.getGcpProduct())
         .gcpSKUId(timeSeries.getGcpSKUId())
@@ -46,6 +48,8 @@ public class PythonMappers {
         .azureSubscription(timeSeries.getAzureSubscription())
         .azureResourceGroup(timeSeries.getAzureResourceGroup())
         .azureMeterCategory(timeSeries.getAzureMeterCategory())
+        .newEntity(timeSeries.isNewEntity())
+        .cloudProvider(timeSeries.getCloudProvider())
         .build();
   }
 
@@ -58,6 +62,8 @@ public class PythonMappers {
     pythonInput.setNamespace(source.getNamespace());
     pythonInput.setWorkloadName(source.getWorkloadName());
     pythonInput.setWorkloadType(source.getWorkloadType());
+    pythonInput.setService(source.getService());
+    pythonInput.setServiceName(source.getServiceName());
     pythonInput.setAwsAccount(source.getAwsAccount());
     pythonInput.setAwsService(source.getAwsService());
     pythonInput.setAwsUsageType(source.getAwsUsageType());
@@ -68,6 +74,8 @@ public class PythonMappers {
     pythonInput.setAzureSubscription(source.getAzureSubscription());
     pythonInput.setAzureResourceGroup(source.getAzureResourceGroup());
     pythonInput.setAzureMeterCategory(source.getAzureMeterCategory());
+    pythonInput.setNewEntity(source.isNewEntity());
+    pythonInput.setCloudProvider(source.getCloudProvider());
 
     PythonInput.APITimeSeries apiTimeSeries =
         PythonInput.APITimeSeries.builder()

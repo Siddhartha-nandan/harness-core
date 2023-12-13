@@ -5,7 +5,7 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.execution;
+package io.harness.ci.execution.execution;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
@@ -16,7 +16,6 @@ import io.harness.beans.sweepingoutputs.StageInfraDetails.Type;
 import io.harness.ci.beans.entities.CIExecutionConfig;
 import io.harness.ci.beans.entities.CIExecutionImages;
 import io.harness.ci.beans.entities.CIExecutionImages.CIExecutionImagesBuilder;
-import io.harness.ci.buildstate.PluginSettingUtils;
 import io.harness.ci.config.CIExecutionServiceConfig;
 import io.harness.ci.config.CIStepConfig;
 import io.harness.ci.config.Operation;
@@ -24,6 +23,8 @@ import io.harness.ci.config.PluginField;
 import io.harness.ci.config.StepImageConfig;
 import io.harness.ci.config.VmContainerlessStepConfig;
 import io.harness.ci.config.VmImageConfig;
+import io.harness.ci.execution.DeprecatedImageInfo;
+import io.harness.ci.execution.buildstate.PluginSettingUtils;
 import io.harness.repositories.CIExecutionConfigRepository;
 
 import com.google.inject.Inject;
@@ -32,6 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import javax.ws.rs.BadRequestException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 
 public class CIExecutionConfigService {
@@ -40,6 +42,9 @@ public class CIExecutionConfigService {
   @Inject private PluginSettingUtils pluginSettingUtils;
 
   private static final String UNEXPECTED_ERR_FORMAT = "Unexpected value: %s";
+
+  private static final String GLOBAL_ACCOUNT_ID = "__GLOBAL_ACCOUNT_ID__";
+
   public CIExecutionServiceConfig getCiExecutionServiceConfig() {
     return ciExecutionServiceConfig;
   }
@@ -113,6 +118,9 @@ public class CIExecutionConfigService {
       case BUILD_PUSH_GCR:
         executionConfig.setBuildAndPushGCRImage(value);
         break;
+      case BUILD_PUSH_GAR:
+        executionConfig.setBuildAndPushGARImage(value);
+        break;
       case GCS_UPLOAD:
         executionConfig.setGcsUploadImage(value);
         break;
@@ -136,6 +144,30 @@ public class CIExecutionConfigService {
         break;
       case SSCA_ENFORCEMENT:
         executionConfig.setSscaEnforcementTag(value);
+        break;
+      case PROVENANCE:
+        executionConfig.setProvenanceTag(value);
+        break;
+      case SLSA_VERIFICATION:
+        executionConfig.setSlsaVerificationTag(value);
+        break;
+      case SLSA_VERIFICATION_GCR:
+        executionConfig.setSlsaVerificationGcrTag(value);
+        break;
+      case PROVENANCE_GCR:
+        executionConfig.setProvenanceGcrTag(value);
+        break;
+      case COOKIECUTTER:
+        executionConfig.setCookieCutter(value);
+        break;
+      case CREATE_REPO:
+        executionConfig.setCreateRepo(value);
+        break;
+      case DIRECT_PUSH:
+        executionConfig.setDirectPush(value);
+        break;
+      case REGISTER_CATALOG:
+        executionConfig.setRegisterCatalog(value);
         break;
       default:
         throw new BadRequestException(format("Field %s does not exist for infra type: K8", field));
@@ -167,6 +199,9 @@ public class CIExecutionConfigService {
       case BUILD_PUSH_GCR:
         vmImageConfig.setBuildAndPushGCR(value);
         break;
+      case BUILD_PUSH_GAR:
+        vmImageConfig.setBuildAndPushGAR(value);
+        break;
       case GCS_UPLOAD:
         vmImageConfig.setGcsUpload(value);
         break;
@@ -184,6 +219,24 @@ public class CIExecutionConfigService {
         break;
       case SECURITY:
         vmImageConfig.setSecurity(value);
+        break;
+      case SSCA_ORCHESTRATION:
+        vmImageConfig.setSscaOrchestration(value);
+        break;
+      case SSCA_ENFORCEMENT:
+        vmImageConfig.setSscaEnforcement(value);
+        break;
+      case COOKIECUTTER:
+        vmImageConfig.setCookieCutter(value);
+        break;
+      case CREATE_REPO:
+        vmImageConfig.setCreateRepo(value);
+        break;
+      case DIRECT_PUSH:
+        vmImageConfig.setDirectPush(value);
+        break;
+      case REGISTER_CATALOG:
+        vmImageConfig.setRegisterCatalog(value);
         break;
       default:
         throw new BadRequestException(format("Field %s does not exist for infra type: VM", field));
@@ -249,6 +302,9 @@ public class CIExecutionConfigService {
     if (Strings.isNotBlank(overriddenConfig.getBuildAndPushGCRTag())) {
       defaultConfig.setBuildAndPushGCRTag(overriddenConfig.getBuildAndPushGCRTag());
     }
+    if (Strings.isNotBlank(overriddenConfig.getBuildAndPushGARTag())) {
+      defaultConfig.setBuildAndPushGARTag(overriddenConfig.getBuildAndPushGARTag());
+    }
     if (Strings.isNotBlank(overriddenConfig.getGcsUploadTag())) {
       defaultConfig.setGcsUploadTag(overriddenConfig.getGcsUploadTag());
     }
@@ -280,6 +336,7 @@ public class CIExecutionConfigService {
         .gitCloneTag(vmImageConfig.getGitClone())
         .buildAndPushECRTag(vmImageConfig.getBuildAndPushECR())
         .buildAndPushACRTag(vmImageConfig.getBuildAndPushACR())
+        .buildAndPushGARTag(vmImageConfig.getBuildAndPushGAR())
         .buildAndPushGCRTag(vmImageConfig.getBuildAndPushGCR())
         .gcsUploadTag(vmImageConfig.getGcsUpload())
         .s3UploadTag(vmImageConfig.getS3Upload())
@@ -289,6 +346,7 @@ public class CIExecutionConfigService {
         .securityTag(vmImageConfig.getSecurity())
         .sscaOrchestrationTag(vmImageConfig.getSscaOrchestration())
         .sscaEnforcementTag(vmImageConfig.getSscaEnforcement())
+        .slsaVerificationTag(vmImageConfig.getSlsaVerification())
         .build();
   }
 
@@ -330,6 +388,7 @@ public class CIExecutionConfigService {
         .gitCloneTag(vmImageConfig.getGitClone())
         .buildAndPushECRTag(vmImageConfig.getBuildAndPushECR())
         .buildAndPushGCRTag(vmImageConfig.getBuildAndPushGCR())
+        .buildAndPushGARTag(vmImageConfig.getBuildAndPushGAR())
         .buildAndPushACRTag(vmImageConfig.getBuildAndPushACR())
         .gcsUploadTag(vmImageConfig.getGcsUpload())
         .s3UploadTag(vmImageConfig.getS3Upload())
@@ -339,6 +398,7 @@ public class CIExecutionConfigService {
         .securityTag(vmImageConfig.getSecurity())
         .sscaOrchestrationTag(vmImageConfig.getSscaOrchestration())
         .sscaEnforcementTag(vmImageConfig.getSscaEnforcement())
+        .slsaVerificationTag(vmImageConfig.getSlsaVerification())
         .build();
   }
 
@@ -354,6 +414,7 @@ public class CIExecutionConfigService {
         .buildAndPushECRTag(config.getBuildAndPushECRConfig().getImage())
         .buildAndPushGCRTag(config.getBuildAndPushGCRConfig().getImage())
         .buildAndPushACRTag(config.getBuildAndPushACRConfig().getImage())
+        .buildAndPushGARTag(config.getBuildAndPushGARConfig().getImage())
         .gcsUploadTag(config.getGcsUploadConfig().getImage())
         .s3UploadTag(config.getS3UploadConfig().getImage())
         .artifactoryUploadTag(config.getArtifactoryUploadConfig().getImage())
@@ -362,6 +423,10 @@ public class CIExecutionConfigService {
         .securityTag(config.getSecurityConfig().getImage())
         .sscaOrchestrationTag(config.getSscaOrchestrationConfig().getImage())
         .sscaEnforcementTag(config.getSscaEnforcementConfig().getImage())
+        .provenanceTag(config.getProvenanceConfig().getImage())
+        .provenanceGcrTag(config.getProvenanceGcrConfig().getImage())
+        .slsaVerificationTag(config.getSlsaVerificationConfig().getImage())
+        .slsaVerificationGcrTag(config.getSlsaVerificationGcrConfig().getImage())
         .build();
   }
 
@@ -374,6 +439,7 @@ public class CIExecutionConfigService {
         .buildAndPushECRTag(config.getBuildAndPushECRImage())
         .buildAndPushGCRTag(config.getBuildAndPushGCRImage())
         .buildAndPushACRTag(config.getBuildAndPushACRImage())
+        .buildAndPushGARTag(config.getBuildAndPushGARImage())
         .gcsUploadTag(config.getGcsUploadImage())
         .s3UploadTag(config.getS3UploadImage())
         .artifactoryUploadTag(config.getArtifactoryUploadTag())
@@ -382,6 +448,10 @@ public class CIExecutionConfigService {
         .securityTag(config.getSecurityImage())
         .sscaOrchestrationTag(config.getSscaOrchestrationTag())
         .sscaEnforcementTag(config.getSscaEnforcementTag())
+        .provenanceTag(config.getProvenanceTag())
+        .provenanceGcrTag(config.getProvenanceGcrTag())
+        .slsaVerificationTag(config.getSlsaVerificationTag())
+        .slsaVerificationGcrTag(config.getSlsaVerificationGcrTag())
         .build();
   }
 
@@ -442,92 +512,117 @@ public class CIExecutionConfigService {
     Version customVersion = Version.parseVersion(customImageTag);
     return customVersion.getMajor() <= defaultVersion.getMajor() - 1;
   }
-
-  public StepImageConfig getPluginVersionForK8(CIStepInfoType stepInfoType, String accountId) {
-    Optional<CIExecutionConfig> existingConfig = configRepository.findFirstByAccountIdentifier(accountId);
-    StepImageConfig stepImageConfig = getStepImageConfigForK8(stepInfoType, ciExecutionServiceConfig);
-    String image = stepImageConfig.getImage();
-
-    if (!existingConfig.isPresent()) {
-      return StepImageConfig.builder()
-          .entrypoint(stepImageConfig.getEntrypoint())
-          .windowsEntrypoint(Optional.ofNullable(stepImageConfig.getWindowsEntrypoint()).orElse(emptyList()))
-          .image(image)
-          .build();
+  private static boolean doesStepSupportGlobalAccountConfig(CIStepInfoType stepInfoType) {
+    // TODO: We can enhance the CIStepInfoType enum to have this as a property.
+    switch (stepInfoType) {
+      case SSCA_ORCHESTRATION:
+      case SSCA_ENFORCEMENT:
+      case PROVENANCE:
+      case PROVENANCE_GCR:
+      case SLSA_VERIFICATION:
+      case SLSA_VERIFICATION_GCR:
+        return true;
+      default:
+        return false;
     }
-    CIExecutionConfig ciExecutionConfig = existingConfig.get();
+  }
 
+  private static String getApplicableImage(CIStepInfoType stepInfoType, String accountLevelImage, String globalImage) {
+    if (doesStepSupportGlobalAccountConfig(stepInfoType)) {
+      return StringUtils.isBlank(accountLevelImage) ? globalImage : accountLevelImage;
+    } else {
+      return accountLevelImage;
+    }
+  }
+
+  private String getImageForK8(CIStepInfoType stepInfoType, String accountId) {
+    CIExecutionConfig accountLevelExecutionConfig =
+        configRepository.findFirstByAccountIdentifier(accountId).orElse(CIExecutionConfig.builder().build());
+    CIExecutionConfig globalExecutionConfig =
+        configRepository.findFirstByAccountIdentifier(GLOBAL_ACCOUNT_ID).orElse(CIExecutionConfig.builder().build());
     switch (stepInfoType) {
       case DOCKER:
-        if (Strings.isNotBlank(ciExecutionConfig.getBuildAndPushDockerRegistryImage())) {
-          image = ciExecutionConfig.getBuildAndPushDockerRegistryImage();
-        }
-        break;
+        return getApplicableImage(stepInfoType, accountLevelExecutionConfig.getBuildAndPushDockerRegistryImage(),
+            globalExecutionConfig.getBuildAndPushDockerRegistryImage());
       case GCR:
-        if (Strings.isNotBlank(ciExecutionConfig.getBuildAndPushGCRImage())) {
-          image = ciExecutionConfig.getBuildAndPushGCRImage();
-        }
-        break;
+        return getApplicableImage(stepInfoType, accountLevelExecutionConfig.getBuildAndPushGCRImage(),
+            globalExecutionConfig.getBuildAndPushGCRImage());
+      case GAR:
+        return getApplicableImage(stepInfoType, accountLevelExecutionConfig.getBuildAndPushGARImage(),
+            globalExecutionConfig.getBuildAndPushGARImage());
       case ECR:
-        if (Strings.isNotBlank(ciExecutionConfig.getBuildAndPushECRImage())) {
-          image = ciExecutionConfig.getBuildAndPushECRImage();
-        }
-        break;
+        return getApplicableImage(stepInfoType, accountLevelExecutionConfig.getBuildAndPushECRImage(),
+            globalExecutionConfig.getBuildAndPushECRImage());
       case ACR:
-        if (Strings.isNotBlank(ciExecutionConfig.getBuildAndPushACRImage())) {
-          image = ciExecutionConfig.getBuildAndPushACRImage();
-        }
-        break;
+        return getApplicableImage(stepInfoType, accountLevelExecutionConfig.getBuildAndPushACRImage(),
+            globalExecutionConfig.getBuildAndPushACRImage());
       case RESTORE_CACHE_S3:
       case SAVE_CACHE_S3:
-        if (Strings.isNotBlank(ciExecutionConfig.getCacheS3Tag())) {
-          image = ciExecutionConfig.getCacheS3Tag();
-        }
-        break;
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getCacheS3Tag(), globalExecutionConfig.getCacheS3Tag());
       case UPLOAD_S3:
-        if (Strings.isNotBlank(ciExecutionConfig.getS3UploadImage())) {
-          image = ciExecutionConfig.getS3UploadImage();
-        }
-        break;
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getS3UploadImage(), globalExecutionConfig.getS3UploadImage());
       case UPLOAD_GCS:
-        if (Strings.isNotBlank(ciExecutionConfig.getGcsUploadImage())) {
-          image = ciExecutionConfig.getGcsUploadImage();
-        }
-        break;
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getGcsUploadImage(), globalExecutionConfig.getGcsUploadImage());
       case SAVE_CACHE_GCS:
       case RESTORE_CACHE_GCS:
-        if (Strings.isNotBlank(ciExecutionConfig.getCacheGCSTag())) {
-          image = ciExecutionConfig.getCacheGCSTag();
-        }
-        break;
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getCacheGCSTag(), globalExecutionConfig.getCacheGCSTag());
       case SECURITY:
-        if (Strings.isNotBlank(ciExecutionConfig.getSecurityImage())) {
-          image = ciExecutionConfig.getSecurityImage();
-        }
-        break;
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getSecurityImage(), globalExecutionConfig.getSecurityImage());
       case UPLOAD_ARTIFACTORY:
-        if (Strings.isNotBlank(ciExecutionConfig.getArtifactoryUploadTag())) {
-          image = ciExecutionConfig.getArtifactoryUploadTag();
-        }
-        break;
+        return getApplicableImage(stepInfoType, accountLevelExecutionConfig.getArtifactoryUploadTag(),
+            globalExecutionConfig.getArtifactoryUploadTag());
       case GIT_CLONE:
-        if (Strings.isNotBlank(ciExecutionConfig.getGitCloneImage())) {
-          image = ciExecutionConfig.getGitCloneImage();
-        }
-        break;
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getGitCloneImage(), globalExecutionConfig.getGitCloneImage());
       case SSCA_ORCHESTRATION:
-        if (Strings.isNotBlank(ciExecutionConfig.getSscaOrchestrationTag())) {
-          image = ciExecutionConfig.getSscaOrchestrationTag();
-        }
-        break;
+        return getApplicableImage(stepInfoType, accountLevelExecutionConfig.getSscaOrchestrationTag(),
+            globalExecutionConfig.getSscaOrchestrationTag());
       case SSCA_ENFORCEMENT:
-        if (Strings.isNotBlank(ciExecutionConfig.getSscaEnforcementTag())) {
-          image = ciExecutionConfig.getSscaEnforcementTag();
-        }
-        break;
+        return getApplicableImage(stepInfoType, accountLevelExecutionConfig.getSscaEnforcementTag(),
+            globalExecutionConfig.getSscaEnforcementTag());
+      case PROVENANCE:
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getProvenanceTag(), globalExecutionConfig.getProvenanceTag());
+      case PROVENANCE_GCR:
+        return getApplicableImage(stepInfoType, accountLevelExecutionConfig.getProvenanceGcrTag(),
+            globalExecutionConfig.getProvenanceGcrTag());
+      case SLSA_VERIFICATION:
+        return getApplicableImage(stepInfoType, accountLevelExecutionConfig.getSlsaVerificationTag(),
+            globalExecutionConfig.getSlsaVerificationTag());
+      case SLSA_VERIFICATION_GCR:
+        return getApplicableImage(stepInfoType, accountLevelExecutionConfig.getSlsaVerificationGcrTag(),
+            globalExecutionConfig.getSlsaVerificationGcrTag());
+      case COOKIECUTTER:
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getCookieCutter(), globalExecutionConfig.getCookieCutter());
+      case CREATE_REPO:
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getCreateRepo(), globalExecutionConfig.getCreateRepo());
+      case DIRECT_PUSH:
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getDirectPush(), globalExecutionConfig.getDirectPush());
+      case REGISTER_CATALOG:
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getRegisterCatalog(), globalExecutionConfig.getRegisterCatalog());
+      case IACM_TERRAFORM_PLUGIN:
+      case IACM_APPROVAL:
+        return Strings.EMPTY;
       default:
         throw new BadRequestException(format(UNEXPECTED_ERR_FORMAT, stepInfoType));
     }
+  }
+  public StepImageConfig getPluginVersionForK8(CIStepInfoType stepInfoType, String accountId) {
+    StepImageConfig stepImageConfig = getStepImageConfigForK8(stepInfoType, ciExecutionServiceConfig);
+    String image = getImageForK8(stepInfoType, accountId);
+    if (StringUtils.isBlank(image)) {
+      image = stepImageConfig.getImage();
+    }
+
     return StepImageConfig.builder()
         .entrypoint(stepImageConfig.getEntrypoint())
         .windowsEntrypoint(Optional.ofNullable(stepImageConfig.getWindowsEntrypoint()).orElse(emptyList()))
@@ -544,6 +639,8 @@ public class CIExecutionConfigService {
         return ciExecutionServiceConfig.getStepConfig().getBuildAndPushGCRConfig();
       case ECR:
         return ciExecutionServiceConfig.getStepConfig().getBuildAndPushECRConfig();
+      case GAR:
+        return ciExecutionServiceConfig.getStepConfig().getBuildAndPushGARConfig();
       case ACR:
         return ciExecutionServiceConfig.getStepConfig().getBuildAndPushACRConfig();
       case RESTORE_CACHE_S3:
@@ -566,9 +663,25 @@ public class CIExecutionConfigService {
         return ciExecutionServiceConfig.getStepConfig().getSscaOrchestrationConfig();
       case SSCA_ENFORCEMENT:
         return ciExecutionServiceConfig.getStepConfig().getSscaEnforcementConfig();
+      case PROVENANCE:
+        return ciExecutionServiceConfig.getStepConfig().getProvenanceConfig();
+      case PROVENANCE_GCR:
+        return ciExecutionServiceConfig.getStepConfig().getProvenanceGcrConfig();
+      case SLSA_VERIFICATION:
+        return ciExecutionServiceConfig.getStepConfig().getSlsaVerificationConfig();
+      case SLSA_VERIFICATION_GCR:
+        return ciExecutionServiceConfig.getStepConfig().getSlsaVerificationGcrConfig();
       case IACM_TERRAFORM_PLUGIN:
       case IACM_APPROVAL:
         return ciExecutionServiceConfig.getStepConfig().getIacmTerraform();
+      case COOKIECUTTER:
+        return ciExecutionServiceConfig.getStepConfig().getCookieCutter();
+      case CREATE_REPO:
+        return ciExecutionServiceConfig.getStepConfig().getCreateRepo();
+      case DIRECT_PUSH:
+        return ciExecutionServiceConfig.getStepConfig().getDirectPush();
+      case REGISTER_CATALOG:
+        return ciExecutionServiceConfig.getStepConfig().getRegisterCatalog();
       default:
         throw new BadRequestException(format(UNEXPECTED_ERR_FORMAT, stepInfoType));
     }
@@ -581,89 +694,78 @@ public class CIExecutionConfigService {
   }
 
   public String getPluginVersionForVM(CIStepInfoType stepInfoType, String accountId) {
-    Optional<CIExecutionConfig> existingConfig = configRepository.findFirstByAccountIdentifier(accountId);
-    String image = getStepImageConfigForVM(stepInfoType, ciExecutionServiceConfig);
-    if (!existingConfig.isPresent() || existingConfig.get().getVmImageConfig() == null) {
-      return image;
-    }
-    VmImageConfig vmImageConfig = existingConfig.get().getVmImageConfig();
+    String image = getImageForVM(stepInfoType, accountId);
+    return StringUtils.isBlank(image) ? getStepImageConfigForVM(stepInfoType, ciExecutionServiceConfig) : image;
+  }
+
+  private String getImageForVM(CIStepInfoType stepInfoType, String accountId) {
+    VmImageConfig accountLevelImageConfig =
+        configRepository.findFirstByAccountIdentifier(accountId)
+            .orElse(CIExecutionConfig.builder().vmImageConfig(VmImageConfig.builder().build()).build())
+            .getVmImageConfig();
+    VmImageConfig globalImageConfig =
+        configRepository.findFirstByAccountIdentifier(GLOBAL_ACCOUNT_ID)
+            .orElse(CIExecutionConfig.builder().vmImageConfig(VmImageConfig.builder().build()).build())
+            .getVmImageConfig();
     switch (stepInfoType) {
       case DOCKER:
-        if (Strings.isNotBlank(vmImageConfig.getBuildAndPushDockerRegistry())) {
-          image = vmImageConfig.getBuildAndPushDockerRegistry();
-        }
-        break;
+        return getApplicableImage(stepInfoType, accountLevelImageConfig.getBuildAndPushDockerRegistry(),
+            globalImageConfig.getBuildAndPushDockerRegistry());
       case GCR:
-        if (Strings.isNotBlank(vmImageConfig.getBuildAndPushGCR())) {
-          image = vmImageConfig.getBuildAndPushGCR();
-        }
-        break;
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getBuildAndPushGCR(), globalImageConfig.getBuildAndPushGCR());
+      case GAR:
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getBuildAndPushGAR(), globalImageConfig.getBuildAndPushGAR());
       case ECR:
-        if (Strings.isNotBlank(vmImageConfig.getBuildAndPushECR())) {
-          image = vmImageConfig.getBuildAndPushECR();
-        }
-        break;
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getBuildAndPushECR(), globalImageConfig.getBuildAndPushECR());
       case ACR:
-        if (Strings.isNotBlank(vmImageConfig.getBuildAndPushACR())) {
-          image = vmImageConfig.getBuildAndPushACR();
-        }
-        break;
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getBuildAndPushACR(), globalImageConfig.getBuildAndPushACR());
       case RESTORE_CACHE_S3:
       case SAVE_CACHE_S3:
-        if (Strings.isNotBlank(vmImageConfig.getCacheS3())) {
-          image = vmImageConfig.getCacheS3();
-        }
-        break;
+        return getApplicableImage(stepInfoType, accountLevelImageConfig.getCacheS3(), globalImageConfig.getCacheS3());
       case UPLOAD_S3:
-        if (Strings.isNotBlank(vmImageConfig.getS3Upload())) {
-          image = vmImageConfig.getS3Upload();
-        }
-        break;
+        return getApplicableImage(stepInfoType, accountLevelImageConfig.getS3Upload(), globalImageConfig.getS3Upload());
       case UPLOAD_GCS:
-        if (Strings.isNotBlank(vmImageConfig.getGcsUpload())) {
-          image = vmImageConfig.getGcsUpload();
-        }
-        break;
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getGcsUpload(), globalImageConfig.getGcsUpload());
       case SAVE_CACHE_GCS:
       case RESTORE_CACHE_GCS:
-        if (Strings.isNotBlank(vmImageConfig.getCacheGCS())) {
-          image = vmImageConfig.getCacheGCS();
-        }
-        break;
+        return getApplicableImage(stepInfoType, accountLevelImageConfig.getCacheGCS(), globalImageConfig.getCacheGCS());
       case SECURITY:
-        if (Strings.isNotBlank(vmImageConfig.getSecurity())) {
-          image = vmImageConfig.getSecurity();
-        }
-        break;
+        return getApplicableImage(stepInfoType, accountLevelImageConfig.getSecurity(), globalImageConfig.getSecurity());
       case UPLOAD_ARTIFACTORY:
-        if (Strings.isNotBlank(vmImageConfig.getArtifactoryUpload())) {
-          image = vmImageConfig.getArtifactoryUpload();
-        }
-        break;
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getArtifactoryUpload(), globalImageConfig.getArtifactoryUpload());
       case GIT_CLONE:
-        if (Strings.isNotBlank(vmImageConfig.getGitClone())) {
-          image = vmImageConfig.getGitClone();
-        }
-        break;
-      case IACM:
-        if (Strings.isNotBlank(vmImageConfig.getIacmTerraform())) {
-          image = vmImageConfig.getIacmTerraform();
-        }
-        break;
+        return getApplicableImage(stepInfoType, accountLevelImageConfig.getGitClone(), globalImageConfig.getGitClone());
+      case IACM_TERRAFORM_PLUGIN:
+      case IACM_APPROVAL:
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getIacmTerraform(), globalImageConfig.getIacmTerraform());
       case SSCA_ORCHESTRATION:
-        if (Strings.isNotBlank(vmImageConfig.getSscaOrchestration())) {
-          image = vmImageConfig.getSscaOrchestration();
-        }
-        break;
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getSscaOrchestration(), globalImageConfig.getSscaOrchestration());
       case SSCA_ENFORCEMENT:
-        if (Strings.isNotBlank(vmImageConfig.getSscaEnforcement())) {
-          image = vmImageConfig.getSscaEnforcement();
-        }
-        break;
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getSscaEnforcement(), globalImageConfig.getSscaEnforcement());
+      case COOKIECUTTER:
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getCookieCutter(), globalImageConfig.getCookieCutter());
+      case CREATE_REPO:
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getCreateRepo(), globalImageConfig.getCreateRepo());
+      case DIRECT_PUSH:
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getDirectPush(), globalImageConfig.getDirectPush());
+      case REGISTER_CATALOG:
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getRegisterCatalog(), globalImageConfig.getRegisterCatalog());
       default:
         throw new BadRequestException(format(UNEXPECTED_ERR_FORMAT, stepInfoType));
     }
-    return image;
   }
 
   public String getContainerlessPluginNameForVM(
@@ -699,6 +801,11 @@ public class CIExecutionConfigService {
           name = vmContainerlessStepConfig.getDockerBuildxEcrConfig().getName();
         }
         break;
+      case GAR:
+        if (pluginSettingUtils.buildxRequired(pluginCompatibleStep)) {
+          name = vmContainerlessStepConfig.getDockerBuildxGarConfig().getName();
+        }
+        break;
       case GCR:
         if (pluginSettingUtils.buildxRequired(pluginCompatibleStep)) {
           name = vmContainerlessStepConfig.getDockerBuildxGcrConfig().getName();
@@ -711,9 +818,14 @@ public class CIExecutionConfigService {
         break;
       case SECURITY:
       case UPLOAD_ARTIFACTORY:
-      case IACM:
+      case IACM_TERRAFORM_PLUGIN:
+      case IACM_APPROVAL:
       case SSCA_ORCHESTRATION:
       case SSCA_ENFORCEMENT:
+      case COOKIECUTTER:
+      case CREATE_REPO:
+      case DIRECT_PUSH:
+      case REGISTER_CATALOG:
         break;
       default:
         throw new BadRequestException(format(UNEXPECTED_ERR_FORMAT, stepInfoType));
@@ -733,6 +845,8 @@ public class CIExecutionConfigService {
         return vmImageConfig.getBuildAndPushECR();
       case ACR:
         return vmImageConfig.getBuildAndPushACR();
+      case GAR:
+        return vmImageConfig.getBuildAndPushGAR();
       case RESTORE_CACHE_S3:
       case SAVE_CACHE_S3:
         return vmImageConfig.getCacheS3();
@@ -756,6 +870,14 @@ public class CIExecutionConfigService {
         return vmImageConfig.getSscaOrchestration();
       case SSCA_ENFORCEMENT:
         return vmImageConfig.getSscaEnforcement();
+      case COOKIECUTTER:
+        return vmImageConfig.getCookieCutter();
+      case CREATE_REPO:
+        return vmImageConfig.getCreateRepo();
+      case DIRECT_PUSH:
+        return vmImageConfig.getDirectPush();
+      case REGISTER_CATALOG:
+        return vmImageConfig.getRegisterCatalog();
       default:
         throw new BadRequestException(format(UNEXPECTED_ERR_FORMAT, stepInfoType));
     }

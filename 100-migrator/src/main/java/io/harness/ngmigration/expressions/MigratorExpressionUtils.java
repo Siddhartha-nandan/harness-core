@@ -7,6 +7,9 @@
 
 package io.harness.ngmigration.expressions;
 
+import static io.harness.ngmigration.dto.Flag.LONG_RELEASE_NAME;
+import static io.harness.ngmigration.utils.MigratorUtility.isEnabled;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
@@ -96,8 +99,15 @@ public class MigratorExpressionUtils {
 
     // Infra Expressions
     context.put("infra.kubernetes.namespace", "<+infra.namespace>");
-    context.put("infra.kubernetes.infraId", "<+INFRA_KEY>");
+
+    if (isEnabled(LONG_RELEASE_NAME)) {
+      context.put("infra.kubernetes.infraId", "<+INFRA_KEY>");
+    } else {
+      context.put("infra.kubernetes.infraId", "<+INFRA_KEY_SHORT_ID>");
+    }
+
     context.put("infra.helm.releaseName", "<+infra.releaseName>");
+    context.put("infra.helm.shortId", "<+INFRA_KEY_SHORT_ID>");
     context.put("infra.name", "<+infra.name>");
     context.put("infra.cloudProvider.name", "<+infra.connectorRef>");
 
@@ -129,6 +139,7 @@ public class MigratorExpressionUtils {
     artifactExpressions.put("ARTIFACT_PLACEHOLDER.metadata.groupId", "<+ARTIFACT_PLACEHOLDER.groupId>");
     artifactExpressions.put("ARTIFACT_PLACEHOLDER.metadata.package", "<+ARTIFACT_PLACEHOLDER.metadata.package>");
     artifactExpressions.put("ARTIFACT_PLACEHOLDER.metadata.region", "<+ARTIFACT_PLACEHOLDER.metadata.region>");
+    artifactExpressions.put("ARTIFACT_PLACEHOLDER.metadata.chartName", "<+ARTIFACT_PLACEHOLDER.metadata.chartName>");
     artifactExpressions.put("ARTIFACT_PLACEHOLDER.metadata.repository", "<+ARTIFACT_PLACEHOLDER.repository>");
     artifactExpressions.put("ARTIFACT_PLACEHOLDER.metadata.repositoryName", "<+ARTIFACT_PLACEHOLDER.repositoryName>");
     artifactExpressions.put("ARTIFACT_PLACEHOLDER.metadata.url", "<+ARTIFACT_PLACEHOLDER.url>");
@@ -157,6 +168,10 @@ public class MigratorExpressionUtils {
       context.put(
           k.replace("ARTIFACT_PLACEHOLDER", "rollbackArtifact"), v.replace("ARTIFACT_PLACEHOLDER", "rollbackArtifact"));
     });
+
+    context.put("artifact.metadata.s3_bucket", "<+artifact.metadata.get(\"s3_bucket\")>");
+    context.put("artifact.metadata.s3_key", "<+artifact.metadata.get(\"s3_key\")>");
+    context.put("artifact.metadata.s3_secret", "<+artifact.metadata.get(\"s3_secret\")>");
 
     context.put("artifact.label", new ArtifactLabelMigratorFunctor());
     context.put("rollbackArtifact.label", new ArtifactLabelMigratorFunctor());
@@ -226,6 +241,13 @@ public class MigratorExpressionUtils {
     context.put("infra.pcf.space", "<+infra.space>");
     context.put("host.pcfElement.applicationId", "<+pcf.newAppGuid>");
     context.put("host.pcfElement.displayName", "<+pcf.newAppName>");
+
+    context.put("BACKUP_PATH", "<+variable.backupPath>");
+    context.put("RUNTIME_PATH", "<+variable.runtimePath>");
+    context.put("STAGING_PATH", "<+variable.stagingPath>");
+    context.put("WINGS_BACKUP_PATH", "<+variable.backupPath>");
+    context.put("WINGS_RUNTIME_PATH", "<+variable.runtimePath>");
+    context.put("WINGS_STAGING_PATH", "<+variable.stagingPath>");
 
     if (overrides != null && EmptyPredicate.isNotEmpty(overrides.getCustomExpressions())) {
       context.putAll(overrides.getCustomExpressions());

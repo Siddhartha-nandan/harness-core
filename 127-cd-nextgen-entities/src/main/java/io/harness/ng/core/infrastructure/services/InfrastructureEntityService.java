@@ -10,6 +10,7 @@ package io.harness.ng.core.infrastructure.services;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.cdng.service.beans.ServiceDefinitionType;
+import io.harness.gitsync.interceptor.GitEntityInfo;
 import io.harness.ng.core.infrastructure.dto.InfrastructureInputsMergedResponseDto;
 import io.harness.ng.core.infrastructure.dto.InfrastructureYamlMetadata;
 import io.harness.ng.core.infrastructure.dto.NoInputMergeInputAction;
@@ -20,6 +21,7 @@ import io.harness.repositories.UpsertOptions;
 import com.mongodb.client.result.UpdateResult;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
@@ -34,6 +36,13 @@ public interface InfrastructureEntityService {
 
   Optional<InfrastructureEntity> get(@NotEmpty String accountId, @NotEmpty String orgIdentifier,
       @NotEmpty String projectIdentifier, @NotEmpty String envIdentifier, @NotEmpty String infraIdentifier);
+
+  Optional<InfrastructureEntity> getMetadata(@NotEmpty String accountId, @NotEmpty String orgIdentifier,
+      @NotEmpty String projectIdentifier, @NotEmpty String envIdentifier, @NotEmpty String infraIdentifier);
+
+  Optional<InfrastructureEntity> get(@NotEmpty String accountId, String orgIdentifier, String projectIdentifier,
+      @NotEmpty String environmentIdentifier, @NotEmpty String infraIdentifier, boolean loadFromCache,
+      boolean loadFromFallbackBranch);
 
   InfrastructureEntity update(@NotNull InfrastructureEntity requestInfra);
 
@@ -64,11 +73,18 @@ public interface InfrastructureEntityService {
   Page<InfrastructureEntity> bulkCreate(
       @NotEmpty String accountId, @NotNull List<InfrastructureEntity> infrastructureEntities);
 
-  List<InfrastructureEntity> getAllInfrastructureFromIdentifierList(String accountIdentifier, String orgIdentifier,
-      String projectIdentifier, String envIdentifier, List<String> infraIdentifier);
+  List<InfrastructureEntity> getAllInfrastructureMetadataFromIdentifierList(String accountIdentifier,
+      String orgIdentifier, String projectIdentifier, String envIdentifier, List<String> infraIdentifier);
 
-  List<InfrastructureEntity> getAllInfrastructureFromEnvRef(
+  List<InfrastructureEntity> getAllInfrastructuresWithYamlFromIdentifierList(String accountIdentifier,
+      String orgIdentifier, String projectIdentifier, String envIdentifier, String environmentBranch,
+      List<String> infraIdentifiers);
+
+  List<InfrastructureEntity> getAllInfrastructureMetadataFromEnvRef(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String envIdentifier);
+
+  List<InfrastructureEntity> getAllInfrastructuresWithYamlFromEnvRef(String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, String envIdentifier, String environmentBranch);
 
   List<InfrastructureEntity> getAllInfrastructureFromEnvRefAndDeploymentType(String accountIdentifier,
       String orgIdentifier, String projectIdentifier, String envIdentifier, ServiceDefinitionType deploymentType);
@@ -77,7 +93,7 @@ public interface InfrastructureEntityService {
       String accountIdentifier, String orgIdentifier, String projectIdentifier);
 
   String createInfrastructureInputsFromYaml(String accountId, String orgIdentifier, String projectIdentifier,
-      String environmentIdentifier, List<String> infraIdentifiers, boolean deployToAll,
+      String environmentIdentifier, String environmentBranch, List<String> infraIdentifiers, boolean deployToAll,
       NoInputMergeInputAction noInputMergeInputAction);
 
   UpdateResult batchUpdateInfrastructure(String accountIdentifier, String orgIdentifier, String projectIdentifier,
@@ -86,9 +102,28 @@ public interface InfrastructureEntityService {
   List<InfrastructureYamlMetadata> createInfrastructureYamlMetadata(String accountId, String orgIdentifier,
       String projectIdentifier, String environmentIdentifier, List<String> infraIds);
 
+  List<InfrastructureYamlMetadata> createInfrastructureYamlMetadata(String accountId, String orgIdentifier,
+      String projectIdentifier, String environmentIdentifier, String environmentBranch, List<String> infraIds,
+      boolean loadFromCache);
+
   String createInfrastructureInputsFromYaml(String accountId, String orgIdentifier, String projectIdentifier,
       String environmentIdentifier, String infraIdentifier);
 
   InfrastructureInputsMergedResponseDto mergeInfraStructureInputs(String accountId, String orgIdentifier,
       String projectIdentifier, String envIdentifier, String infraIdentifier, String oldInfrastructureInputsYaml);
+
+  Page<InfrastructureEntity> getScopedInfrastructures(
+      Page<InfrastructureEntity> infrastructureEntities, List<String> serviceRefs);
+
+  List<String> filterServicesByScopedInfrastructures(String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, List<String> serviceRefs, Map<String, List<String>> envRefInfraRefsMapping);
+
+  void checkIfInfraIsScopedToService(String accountIdentifier, String orgIdentifier, String projectIdentifier,
+      String serviceRef, String envRef, String infraRef);
+
+  void checkIfInfraIsScopedToService(String accountIdentifier, String orgIdentifier, String projectIdentifier,
+      List<String> serviceRefs, Map<String, List<String>> envRefInfraRefsMapping);
+
+  GitEntityInfo getGitDetailsForInfrastructure(String accountIdentifier, String orgIdentifier, String projectIdentifier,
+      String environmentRef, String environmentBranch);
 }

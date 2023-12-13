@@ -20,6 +20,8 @@ import static io.harness.eventsframework.EventsFrameworkMetadataConstants.UPDATE
 
 import io.harness.account.AccountClient;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.eventsframework.consumer.Message;
 import io.harness.eventsframework.entity_crud.account.AccountEntityChangeDTO;
 import io.harness.exception.InvalidRequestException;
@@ -36,12 +38,10 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.query.Criteria;
 
 @OwnedBy(PL)
-@AllArgsConstructor(onConstructor = @__({ @Inject }))
 @Slf4j
 @Singleton
 public class AccountSetupListener implements MessageListener {
@@ -50,6 +50,15 @@ public class AccountSetupListener implements MessageListener {
   private final AccountClient accountClient;
 
   private final IPAllowlistRepositoryCustom ipAllowlistRepositoryCustom;
+
+  @Inject
+  public AccountSetupListener(OrganizationService organizationService, NGAccountSetupService ngAccountSetupService,
+      AccountClient accountClient, IPAllowlistRepositoryCustom ipAllowlistRepositoryCustom) {
+    this.organizationService = organizationService;
+    this.ngAccountSetupService = ngAccountSetupService;
+    this.accountClient = accountClient;
+    this.ipAllowlistRepositoryCustom = ipAllowlistRepositoryCustom;
+  }
 
   @Override
   public boolean handleMessage(Message message) {
@@ -138,7 +147,13 @@ public class AccountSetupListener implements MessageListener {
     List<Organization> organizations = organizationService.list(criteria);
     AtomicBoolean success = new AtomicBoolean(true);
     organizations.forEach(organization -> {
-      if (!organizationService.delete(organization.getAccountIdentifier(), organization.getIdentifier(), null)) {
+      if (!organizationService.delete(organization.getAccountIdentifier(),
+              ScopeInfo.builder()
+                  .accountIdentifier(organization.getAccountIdentifier())
+                  .scopeType(ScopeLevel.ACCOUNT)
+                  .uniqueId(organization.getAccountIdentifier())
+                  .build(),
+              organization.getIdentifier(), null)) {
         log.error(String.format("Delete operation failed for organization with accountIdentifier %s and identifier %s",
             organization.getAccountIdentifier(), organization.getIdentifier()));
         success.set(false);
@@ -162,7 +177,13 @@ public class AccountSetupListener implements MessageListener {
     List<Organization> organizations = organizationService.list(criteria);
     AtomicBoolean success = new AtomicBoolean(true);
     organizations.forEach(organization -> {
-      if (!organizationService.restore(organization.getAccountIdentifier(), organization.getIdentifier())) {
+      if (!organizationService.restore(organization.getAccountIdentifier(),
+              ScopeInfo.builder()
+                  .accountIdentifier(organization.getAccountIdentifier())
+                  .scopeType(ScopeLevel.ACCOUNT)
+                  .uniqueId(organization.getAccountIdentifier())
+                  .build(),
+              organization.getIdentifier())) {
         log.error(String.format("Restore operation failed for organization with accountIdentifier %s and identifier %s",
             organization.getAccountIdentifier(), organization.getIdentifier()));
         success.set(false);

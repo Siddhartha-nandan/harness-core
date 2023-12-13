@@ -6,12 +6,14 @@
  */
 
 package io.harness.ng.core.environment.services;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.ng.core.environment.beans.Environment;
 import io.harness.ng.core.environment.beans.EnvironmentInputSetYamlAndServiceOverridesMetadataDTO;
 import io.harness.ng.core.environment.beans.EnvironmentInputsMergedResponseDto;
+import io.harness.ng.core.environment.dto.ScopedEnvironmentRequestDTO;
 import io.harness.repositories.UpsertOptions;
 
 import java.util.List;
@@ -26,8 +28,20 @@ import org.springframework.data.mongodb.core.query.Criteria;
 public interface EnvironmentService {
   Environment create(Environment environment);
 
-  Optional<Environment> get(
-      String accountId, String orgIdentifier, String projectIdentifier, String environmentIdentifier, boolean deleted);
+  Optional<Environment> get(String accountIdentifier, String orgIdentifier, String projectIdentifier,
+      String environmentIdentifier, boolean deleted);
+
+  /**
+   * this method will return the environment entity as stored in the MongoDB
+   * database itself. No additional data (YAML) will be fetched from the source code repository.
+   * @return An Optional containing the retrieved or fetched Environment, or an empty Optional if
+   *         no matching entity is found.
+   */
+  Optional<Environment> getMetadata(String accountIdentifier, String orgIdentifier, String projectIdentifier,
+      String environmentIdentifier, boolean deleted);
+
+  Optional<Environment> get(String accountId, String orgIdentifier, String projectIdentifier,
+      String environmentIdentifier, boolean deleted, boolean loadFromCache, boolean loadFromFallbackBranch);
 
   // TODO(archit): make it transactional
   Environment update(Environment requestEnvironment);
@@ -36,6 +50,8 @@ public interface EnvironmentService {
   Environment upsert(Environment requestEnvironment, UpsertOptions upsertOptions);
 
   Page<Environment> list(Criteria criteria, Pageable pageable);
+  Page<Environment> list(
+      String accountId, String envType, ScopedEnvironmentRequestDTO scopedEnvironmentRequestDTO, int page, int size);
 
   boolean delete(String accountId, String orgIdentifier, String projectIdentifier, String environmentIdentifier,
       Long version, boolean forceDelete);
@@ -63,7 +79,9 @@ public interface EnvironmentService {
       String accountId, String orgIdentifier, String projectIdentifier, List<String> envRefs);
 
   String createEnvironmentInputsYaml(
-      String accountId, String orgIdentifier, String projectIdentifier, String envIdentifier);
+      String accountId, String orgIdentifier, String projectIdentifier, String envIdentifier, String gitBranch);
+
+  String createEnvironmentInputsYaml(String envIdentifier, String environmentYaml);
 
   List<Map<String, String>> getAttributes(
       String accountId, String orgIdentifier, String projectIdentifier, List<String> envIdentifiers);
@@ -71,6 +89,11 @@ public interface EnvironmentService {
   EnvironmentInputSetYamlAndServiceOverridesMetadataDTO getEnvironmentsInputYamlAndServiceOverridesMetadata(
       String accountId, String orgIdentifier, String projectIdentifier, List<String> envRefs, List<String> serviceRefs,
       boolean isServiceOverrideV2Enabled);
+
+  EnvironmentInputSetYamlAndServiceOverridesMetadataDTO getEnvironmentsInputYamlAndServiceOverridesMetadata(
+      String accountId, String orgIdentifier, String projectIdentifier, List<String> envRefs,
+      Map<String, String> environmentRefBranchMap, List<String> serviceRefs, boolean isServiceOverrideV2Enabled,
+      boolean loadFromCache);
 
   EnvironmentInputsMergedResponseDto mergeEnvironmentInputs(
       String accountId, String orgId, String projectId, String serviceId, String oldEnvironmentInputsYaml);

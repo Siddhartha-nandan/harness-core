@@ -13,6 +13,7 @@ go_library(
         "plugin.go",
         "run.go",
         "runtests.go",
+        "shell_common.go",
         "ti_helper.go",
     ],
     importpath = "github.com/harness/harness-core/product/ci/addon/tasks",
@@ -30,6 +31,7 @@ go_library(
         "//product/ci/addon/testintelligence/csharp",
         "//product/ci/addon/testintelligence/java",
         "//product/ci/addon/testintelligence/python",
+        "//product/ci/addon/testintelligence/ruby",
         "//product/ci/addon/testreports",
         "//product/ci/addon/testreports/junit",
         "//product/ci/common/external",
@@ -49,6 +51,7 @@ go_library(
 go_test(
     name = "tasks_test",
     srcs = [
+        "common_test.go",
         "plugin_test.go",
         "run_test.go",
         "runtests_test.go",

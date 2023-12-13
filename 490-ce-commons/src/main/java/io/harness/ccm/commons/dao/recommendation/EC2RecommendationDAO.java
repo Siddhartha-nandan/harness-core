@@ -94,7 +94,6 @@ public class EC2RecommendationDAO {
             .set(EC2RecommendationKeys.awsAccountId, ec2Recommendation.getAwsAccountId())
             .set(EC2RecommendationKeys.instanceId, ec2Recommendation.getInstanceId())
             .set(EC2RecommendationKeys.vcpu, ec2Recommendation.getVcpu())
-            .set(EC2RecommendationKeys.instanceName, ec2Recommendation.getInstanceName())
             .set(EC2RecommendationKeys.instanceType, ec2Recommendation.getInstanceType())
             .set(EC2RecommendationKeys.platform, ec2Recommendation.getPlatform())
             .set(EC2RecommendationKeys.region, ec2Recommendation.getRegion())
@@ -110,6 +109,10 @@ public class EC2RecommendationDAO {
             .set(EC2RecommendationKeys.expectedSaving, ec2Recommendation.getExpectedSaving())
             .set(EC2RecommendationKeys.rightsizingType, ec2Recommendation.getRightsizingType())
             .set(EC2RecommendationKeys.lastUpdatedTime, ec2Recommendation.getLastUpdatedTime());
+
+    if (ec2Recommendation.getInstanceName() != null) {
+      updateOperations.set(EC2RecommendationKeys.instanceName, ec2Recommendation.getInstanceName());
+    }
 
     return hPersistence.upsert(query, updateOperations, upsertReturnNewOptions);
   }
@@ -218,6 +221,19 @@ public class EC2RecommendationDAO {
                    .and(CE_RECOMMENDATIONS.RESOURCETYPE.eq(ResourceType.EC2_INSTANCE.name()))
                    .and(getEC2Condition(ec2Instances)))
         .execute();
+  }
+
+  public long count(String accountId) {
+    return hPersistence.createQuery(EC2Recommendation.class)
+        .field(EC2RecommendationKeys.accountId)
+        .equal(accountId)
+        .count();
+  }
+
+  public boolean deleteAllForAccount(String accountId) {
+    Query<EC2Recommendation> query =
+        hPersistence.createQuery(EC2Recommendation.class).field(EC2RecommendationKeys.accountId).equal(accountId);
+    return hPersistence.delete(query);
   }
 
   private Condition getEC2Condition(List<RecommendationEC2InstanceId> ec2Instances) {

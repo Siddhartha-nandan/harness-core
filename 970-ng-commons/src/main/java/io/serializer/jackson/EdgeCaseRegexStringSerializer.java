@@ -27,8 +27,10 @@ import java.util.regex.Pattern;
 public class EdgeCaseRegexStringSerializer extends StdSerializer<String> {
   // The string is an SHA digest. If it's something like 97e0087, it matches the scientific notation and hence without
   // quotes, it gets converted to a number 9.7E88, to avoid this, we are adding quotes around the string which matches
-  // following regex
-  private Pattern shaRegex = Pattern.compile("[0-9]+[eE][0-9]+");
+  // following regex.
+  // The scientific notation has 2 components. Before e/E and after e/E. Before e can be any Number(Negative/Positive
+  // and can include decimal). And after e component can be any Integer(Negative/Zero/Positive).
+  private Pattern shaRegex = Pattern.compile("^[-+]?(?:\\d+\\.\\d*|\\.\\d+|\\d+)[eE][-+]?\\d+$");
   // When string is of type +1234.23, it also needs to be wrapped around quotes, else, it'll be considered a number and
   // user won't be able to save a string variable with this value
   private Pattern positiveNumberRegex = Pattern.compile("[+][0-9]*(\\.[0-9]*)?");
@@ -37,6 +39,9 @@ public class EdgeCaseRegexStringSerializer extends StdSerializer<String> {
   // user will be able to save that value but, upon reloading UI will remove underscores from it. The string should
   // start with a number and have at-least 1 underscore in it.
   private Pattern numbersWithUnderscoresRegex = Pattern.compile("^[0-9][0-9_]*_[0-9_]*$");
+  private Pattern dateWithTimezoneFormatRegex =
+      Pattern.compile("^[0-9][0-9][0-9][0-9][-/][0-1][0-9][-/][0-3][0-9][T ][0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z?$",
+          Pattern.CASE_INSENSITIVE);
   public EdgeCaseRegexStringSerializer() {
     super(String.class);
   }
@@ -45,7 +50,8 @@ public class EdgeCaseRegexStringSerializer extends StdSerializer<String> {
   public void serialize(String value, JsonGenerator gen, SerializerProvider provider) throws IOException {
     if (value != null) {
       if (shaRegex.matcher(value).matches() || positiveNumberRegex.matcher(value).matches()
-          || numbersWithUnderscoresRegex.matcher(value).matches()) {
+          || numbersWithUnderscoresRegex.matcher(value).matches()
+          || dateWithTimezoneFormatRegex.matcher(value).matches()) {
         YAMLGenerator yamlGenerator = (YAMLGenerator) gen;
         yamlGenerator.disable(YAMLGenerator.Feature.MINIMIZE_QUOTES);
         yamlGenerator.writeString(value);

@@ -6,11 +6,8 @@
  */
 
 package software.wings.service.impl;
-
 import static io.harness.annotations.dev.HarnessModule._870_CG_ORCHESTRATION;
 import static io.harness.annotations.dev.HarnessTeam.CDP;
-import static io.harness.beans.FeatureName.CDS_TERRAFORM_CONFIG_INSPECT_V1_2;
-import static io.harness.beans.FeatureName.CDS_TERRAFORM_CONFIG_INSPECT_V1_3;
 import static io.harness.beans.FeatureName.GIT_HOST_CONNECTIVITY;
 import static io.harness.beans.FeatureName.TERRAFORM_CONFIG_INSPECT_VERSION_SELECTOR;
 import static io.harness.beans.FeatureName.VALIDATE_PROVISIONER_EXPRESSION;
@@ -30,7 +27,10 @@ import static org.apache.commons.lang3.StringUtils.trim;
 import static org.atteo.evo.inflector.English.plural;
 
 import io.harness.annotations.dev.BreakDependencyOn;
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.annotations.dev.TargetModule;
 import io.harness.azure.model.ARMResourceType;
 import io.harness.azure.model.ARMScopeType;
@@ -157,6 +157,7 @@ import org.hibernate.validator.constraints.NotEmpty;
 import org.jetbrains.annotations.NotNull;
 import ru.vyarus.guice.validator.group.annotation.ValidationGroups;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_FIRST_GEN})
 @OwnedBy(CDP)
 @Singleton
 @TargetModule(_870_CG_ORCHESTRATION)
@@ -494,8 +495,8 @@ public class InfrastructureProvisionerServiceImpl implements InfrastructureProvi
   public PageResponse<InfrastructureProvisionerDetails> listDetails(
       PageRequest<InfrastructureProvisioner> pageRequest, boolean withTags, String tagFilter, @NotEmpty String appId) {
     final long apiStartTime = System.currentTimeMillis();
-    PageResponse<InfrastructureProvisioner> pageResponse =
-        resourceLookupService.listWithTagFilters(pageRequest, tagFilter, EntityType.PROVISIONER, withTags, false);
+    PageResponse<InfrastructureProvisioner> pageResponse = resourceLookupService.listWithTagFilters(
+        pageRequest, tagFilter, EntityType.PROVISIONER, withTags, false, false);
 
     log.info(format("Time taken in fetching listWithTagFilters : [%s] ms", System.currentTimeMillis() - apiStartTime));
     long startTime = System.currentTimeMillis();
@@ -772,9 +773,9 @@ public class InfrastructureProvisionerServiceImpl implements InfrastructureProvi
         TerraformProvisionParameters.builder()
             .scriptPath(terraformDirectory)
             .useTfConfigInspectLatestVersion(
-                featureFlagService.isEnabled(TERRAFORM_CONFIG_INSPECT_VERSION_SELECTOR, accountId));
+                featureFlagService.isEnabled(TERRAFORM_CONFIG_INSPECT_VERSION_SELECTOR, accountId))
+            .terraformConfigInspectVersion(TfConfigInspectVersion.V1_2);
 
-    setTerraformConfigInspectVersion(accountId, terraformProvisionParameters);
     if (terraformSourceType.equals(TerraformSourceType.S3)) {
       validateS3Config(awsConfigId, s3URI, scmSettingId);
       SettingAttribute awsS3SettingAttribute = settingService.get(awsConfigId);
@@ -846,15 +847,6 @@ public class InfrastructureProvisionerServiceImpl implements InfrastructureProvi
       return taskResponse.getVariablesList();
     } else {
       throw new GeneralException(taskResponse.getTerraformExecutionData().getErrorMessage());
-    }
-  }
-
-  private void setTerraformConfigInspectVersion(
-      String accountId, TerraformProvisionParametersBuilder terraformProvisionParameters) {
-    if (featureFlagService.isEnabled(CDS_TERRAFORM_CONFIG_INSPECT_V1_3, accountId)) {
-      terraformProvisionParameters.terraformConfigInspectVersion(TfConfigInspectVersion.V1_3);
-    } else if (featureFlagService.isEnabled(CDS_TERRAFORM_CONFIG_INSPECT_V1_2, accountId)) {
-      terraformProvisionParameters.terraformConfigInspectVersion(TfConfigInspectVersion.V1_2);
     }
   }
 
@@ -963,10 +955,7 @@ public class InfrastructureProvisionerServiceImpl implements InfrastructureProvi
                             .configFilesS3URI(terraformInfrastructureProvisioner.getS3URI())
                             .configFilesAwsSourceConfig(awsS3SourceBucketConfig)
                             .configFileAWSEncryptionDetails(awsS3EncryptionDetails)
-                            .terraformConfigInspectVersion(
-                                featureFlagService.isEnabled(CDS_TERRAFORM_CONFIG_INSPECT_V1_2, accountId)
-                                    ? TfConfigInspectVersion.V1_2
-                                    : null)
+                            .terraformConfigInspectVersion(TfConfigInspectVersion.V1_2)
                             .build()})
                     .timeout(TaskData.DEFAULT_SYNC_CALL_TIMEOUT)
                     .build())

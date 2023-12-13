@@ -10,21 +10,22 @@ package io.harness.cvng.core.services.impl;
 import static io.harness.cvng.CVNGTestConstants.FIXED_TIME_FOR_TESTS;
 import static io.harness.rule.OwnerRule.ABHIJITH;
 import static io.harness.rule.OwnerRule.ARPITJ;
+import static io.harness.rule.OwnerRule.DHRUVX;
 import static io.harness.rule.OwnerRule.KAMAL;
 import static io.harness.rule.OwnerRule.KARAN_SARASWAT;
+import static io.harness.rule.OwnerRule.SHASHWAT_SACHAN;
 import static io.harness.rule.OwnerRule.VARSHA_LALWANI;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.offset;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import io.harness.CvNextGenTestBase;
 import io.harness.category.element.UnitTests;
 import io.harness.cvng.BuilderFactory;
 import io.harness.cvng.activity.entities.Activity;
+import io.harness.cvng.activity.entities.DeploymentActivity;
 import io.harness.cvng.activity.services.api.ActivityService;
 import io.harness.cvng.analysis.entities.SRMAnalysisStepExecutionDetail;
 import io.harness.cvng.beans.activity.ActivityType;
@@ -33,8 +34,10 @@ import io.harness.cvng.beans.change.ChangeEventDTO;
 import io.harness.cvng.beans.change.ChangeSourceType;
 import io.harness.cvng.beans.change.CustomChangeEventMetadata;
 import io.harness.cvng.beans.change.DeepLink;
+import io.harness.cvng.beans.change.HarnessCDEventMetadata;
 import io.harness.cvng.beans.change.InternalChangeEvent;
 import io.harness.cvng.beans.change.InternalChangeEventMetaData;
+import io.harness.cvng.beans.change.KubernetesChangeEventMetadata;
 import io.harness.cvng.core.beans.change.ChangeSummaryDTO;
 import io.harness.cvng.core.beans.change.ChangeTimeline;
 import io.harness.cvng.core.beans.change.ChangeTimeline.TimeRangeDetail;
@@ -43,7 +46,6 @@ import io.harness.cvng.core.services.api.FeatureFlagService;
 import io.harness.cvng.core.services.api.monitoredService.ChangeSourceService;
 import io.harness.cvng.core.services.api.monitoredService.MonitoredServiceService;
 import io.harness.cvng.core.services.impl.ChangeEventServiceImpl.TimelineObject;
-import io.harness.cvng.core.utils.FeatureFlagNames;
 import io.harness.cvng.utils.ScopedInformation;
 import io.harness.ng.beans.PageRequest;
 import io.harness.ng.beans.PageResponse;
@@ -89,9 +91,6 @@ public class ChangeEventServiceImplTest extends CvNextGenTestBase {
         builderFactory.getContext().getServiceIdentifier(), builderFactory.getContext().getEnvIdentifier());
     MockitoAnnotations.initMocks(this);
     featureFlagService = mock(FeatureFlagService.class);
-    when(featureFlagService.isFeatureFlagEnabled(
-             eq(builderFactory.getContext().getAccountId()), eq(FeatureFlagNames.SRM_INTERNAL_CHANGE_SOURCE_CE)))
-        .thenReturn(true);
     FieldUtils.writeField(changeEventService, "featureFlagService", featureFlagService, true);
   }
 
@@ -105,25 +104,6 @@ public class ChangeEventServiceImplTest extends CvNextGenTestBase {
 
     Activity activityFromDb = hPersistence.createQuery(Activity.class).get();
     Assertions.assertThat(activityFromDb).isNotNull();
-  }
-
-  @Test
-  @Owner(developers = ABHIJITH)
-  @Category(UnitTests.class)
-  public void testRegisterSRMAnalysisEvent_insert() {
-    ChangeEventDTO changeEventDTO = builderFactory.harnessSRMAnalysisChangeEventDTOBuilder().build();
-    changeEventDTO.setMonitoredServiceIdentifier(builderFactory.getContext().getMonitoredServiceIdentifier());
-
-    changeEventService.register(changeEventDTO);
-
-    Activity activityFromDb = hPersistence.createQuery(Activity.class).get();
-    Assertions.assertThat(activityFromDb).isNotNull();
-
-    SRMAnalysisStepExecutionDetail executionDetail =
-        hPersistence.createQuery(SRMAnalysisStepExecutionDetail.class).get();
-    Assertions.assertThat(executionDetail).isNotNull();
-
-    assertThat(executionDetail.getUuid()).isEqualTo(activityFromDb.getUuid());
   }
 
   @Test
@@ -300,10 +280,57 @@ public class ChangeEventServiceImplTest extends CvNextGenTestBase {
         builderFactory.getCustomChangeEventBuilder(ChangeSourceType.CUSTOM_INCIDENT).build();
     ((CustomChangeEventMetadata) changeEventDTO.getMetadata()).getCustomChangeEvent().setWebhookUrl("webhookurl");
     changeEventService.registerWithHealthReport(
-        changeEventDTO, builderFactory.getContext().getMonitoredServiceIdentifier());
+        changeEventDTO, builderFactory.getContext().getMonitoredServiceIdentifier(), null);
 
     Activity activityFromDb = hPersistence.createQuery(Activity.class).get();
     assertThat(activityFromDb).isNotNull();
+  }
+
+  @Test
+  @Owner(developers = SHASHWAT_SACHAN)
+  @Category(UnitTests.class)
+  public void testRegisterWithHealthReportWithAuthToken() {
+    ChangeEventDTO changeEventDTO =
+        builderFactory.getCustomChangeEventBuilder(ChangeSourceType.CUSTOM_INCIDENT).build();
+    ((CustomChangeEventMetadata) changeEventDTO.getMetadata()).getCustomChangeEvent().setWebhookUrl("webhookurl");
+    ((CustomChangeEventMetadata) changeEventDTO.getMetadata()).getCustomChangeEvent().setChannelId("channelId");
+
+    changeEventService.registerWithHealthReport(
+        changeEventDTO, builderFactory.getContext().getMonitoredServiceIdentifier(), "TestToken");
+
+    Activity activityFromDb = hPersistence.createQuery(Activity.class).get();
+    assertThat(activityFromDb).isNotNull();
+  }
+
+  @Test
+  @Owner(developers = DHRUVX)
+  @Category(UnitTests.class)
+  public void testGetPaginated_withoutMetadata() {
+    Activity harnessCDActivity_1 = builderFactory.getDeploymentActivityBuilder()
+                                       .pipelineId("pipelineId")
+                                       .runSequence("23")
+                                       .eventTime(Instant.ofEpochSecond(100))
+                                       .build();
+    Activity harnessCDActivity_2 = builderFactory.getKubernetesClusterActivityBuilder()
+                                       .newYaml("yaml")
+                                       .oldYaml("yaml")
+                                       .eventTime(Instant.ofEpochSecond(200))
+                                       .build();
+    hPersistence.save(Arrays.asList(harnessCDActivity_1, harnessCDActivity_2));
+
+    PageResponse<ChangeEventDTO> firstPage = changeEventService.getChangeEvents(
+        builderFactory.getContext().getProjectParams(), null, null, null, null, Instant.ofEpochSecond(100),
+        Instant.ofEpochSecond(400), PageRequest.builder().pageIndex(0).pageSize(2).build());
+
+    assertThat(firstPage.getContent().size()).isEqualTo(2);
+    KubernetesChangeEventMetadata kubernetesChangeEventMetadata =
+        (KubernetesChangeEventMetadata) firstPage.getContent().get(0).getMetadata();
+    assertThat(kubernetesChangeEventMetadata.getNewYaml()).isNull();
+    assertThat(kubernetesChangeEventMetadata.getOldYaml()).isNull();
+    HarnessCDEventMetadata harnessCDEventMetadata =
+        (HarnessCDEventMetadata) firstPage.getContent().get(1).getMetadata();
+    assertThat(harnessCDEventMetadata.getPipelineId()).isEqualTo("pipelineId");
+    assertThat(harnessCDEventMetadata.getRunSequence()).isEqualTo("23");
   }
 
   @Test
@@ -460,26 +487,6 @@ public class ChangeEventServiceImplTest extends CvNextGenTestBase {
     assertThat(changeSummaryDTO.getTotal().getCount()).isEqualTo(7);
     assertThat(changeSummaryDTO.getTotal().getCountInPrecedingWindow()).isEqualTo(4);
     assertThat(changeSummaryDTO.getTotal().getPercentageChange()).isCloseTo(75.0, offset(0.1));
-  }
-
-  @Test
-  @Owner(developers = KARAN_SARASWAT)
-  @Category(UnitTests.class)
-  public void testGetChangeSummary_withCEFeatureFlagOff() {
-    hPersistence.save(
-        Arrays.asList(builderFactory.getInternalChangeActivity_CEBuilder().eventTime(Instant.ofEpochSecond(50)).build(),
-            builderFactory.getInternalChangeActivity_CEBuilder().eventTime(Instant.ofEpochSecond(300)).build()));
-
-    when(featureFlagService.isFeatureFlagEnabled(
-             eq(builderFactory.getContext().getAccountId()), eq(FeatureFlagNames.SRM_INTERNAL_CHANGE_SOURCE_CE)))
-        .thenReturn(false);
-    ChangeSummaryDTO changeSummaryDTO =
-        changeEventService.getChangeSummary(builderFactory.getContext().getProjectParams(), (List<String>) null, null,
-            null, null, Instant.ofEpochSecond(100), Instant.ofEpochSecond(500));
-
-    assertThat(changeSummaryDTO.getTotal().getCount()).isEqualTo(0);
-    assertThat(changeSummaryDTO.getTotal().getCountInPrecedingWindow()).isEqualTo(0);
-    assertThat(changeSummaryDTO.getTotal().getPercentageChange()).isCloseTo(0.0, offset(0.1));
   }
 
   @Test
@@ -1151,5 +1158,21 @@ public class ChangeEventServiceImplTest extends CvNextGenTestBase {
     Assertions
         .assertThat(changeSummaryDTO.getCategoryCountMap().get(ChangeCategory.DEPLOYMENT).getCountInPrecedingWindow())
         .isEqualTo(1);
+  }
+
+  @Test
+  @Owner(developers = KARAN_SARASWAT)
+  @Category(UnitTests.class)
+  public void testMapSRMAnalysisExecutionToDeploymentActivities() {
+    ChangeEventDTO changeEventDTO = builderFactory.harnessCDChangeEventDTOBuilder().build();
+    changeEventService.register(changeEventDTO);
+
+    SRMAnalysisStepExecutionDetail stepExecutionDetail = builderFactory.getSRMAnalysisStepExecutionDetail();
+    stepExecutionDetail.setUuid("executionDetailId");
+    changeEventService.mapSRMAnalysisExecutionsToDeploymentActivities(stepExecutionDetail);
+    DeploymentActivity activityFromDb = hPersistence.createQuery(DeploymentActivity.class).get();
+    assertThat(activityFromDb).isNotNull();
+    assertThat(activityFromDb.getAnalysisImpactExecutionIds().size()).isEqualTo(1);
+    assertThat(activityFromDb.getAnalysisImpactExecutionIds().get(0)).isEqualTo("executionDetailId");
   }
 }

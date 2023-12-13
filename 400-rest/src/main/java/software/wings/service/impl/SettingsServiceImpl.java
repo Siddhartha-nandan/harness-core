@@ -100,7 +100,6 @@ import software.wings.annotation.EncryptableSetting;
 import software.wings.beans.APMVerificationConfig;
 import software.wings.beans.Account;
 import software.wings.beans.AccountEvent;
-import software.wings.beans.AccountEventType;
 import software.wings.beans.Application;
 import software.wings.beans.AwsConfig;
 import software.wings.beans.AwsS3BucketDetails;
@@ -122,6 +121,7 @@ import software.wings.beans.ValidationResult;
 import software.wings.beans.Variable;
 import software.wings.beans.WinRmConnectionAttributes;
 import software.wings.beans.Workflow;
+import software.wings.beans.account.AccountEventType;
 import software.wings.beans.alert.AlertType;
 import software.wings.beans.alert.SettingAttributeValidationFailedAlert;
 import software.wings.beans.appmanifest.ApplicationManifest;
@@ -502,9 +502,6 @@ public class SettingsServiceImpl implements SettingsService {
 
     Set<String> appsByAccountId = appService.getAppIdsAsSetByAccountId(accountId);
     Map<String, List<Base>> appIdEnvMap = envService.getAppIdEnvMap(appsByAccountId, accountId);
-    if (featureFlagService.isGlobalEnabled(FeatureName.SPG_ENVIRONMENT_QUERY_LOGS)) {
-      log.info("[GetAppIdEnvMap] SettingsServiceImpl:getFilteredSettingAttributes - debug log");
-    }
 
     Set<SettingAttribute> helmRepoSettingAttributes = new HashSet<>();
     boolean isAccountAdmin;

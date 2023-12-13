@@ -9,8 +9,10 @@ package io.harness.cvng.cdng.services.impl;
 
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.rule.OwnerRule.ABHIJITH;
+import static io.harness.rule.OwnerRule.ANSUMAN;
 import static io.harness.rule.OwnerRule.DHRUVX;
 import static io.harness.rule.OwnerRule.KAMAL;
+import static io.harness.rule.OwnerRule.SHUBHENDU;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -45,6 +47,9 @@ import io.harness.cvng.cdng.services.api.PipelineStepMonitoredServiceResolutionS
 import io.harness.cvng.cdng.services.impl.CVNGStep.VerifyStepOutcome;
 import io.harness.cvng.client.NextGenService;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceDTO;
+import io.harness.cvng.core.entities.CVConfig;
+import io.harness.cvng.core.entities.DatadogMetricCVConfig;
+import io.harness.cvng.core.entities.MetricPack;
 import io.harness.cvng.core.services.api.FeatureFlagService;
 import io.harness.cvng.core.services.api.MetricPackService;
 import io.harness.cvng.core.services.api.monitoredService.ChangeSourceService;
@@ -75,6 +80,7 @@ import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.sdk.core.steps.io.StepResponse.StepOutcome;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
+import io.harness.tasks.ResponseData;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
@@ -86,6 +92,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.junit.Before;
@@ -533,8 +540,9 @@ public class CVNGStepTest extends CvNextGenTestBase {
                                               .remainingTimeMs(Duration.ofMinutes(3).toMillis())
                                               .durationMs(Duration.ofMinutes(30).toMillis())
                                               .build();
-    VerifyStepOutcome verifyStepOutcome = (VerifyStepOutcome) cvngStep.handleProgress(ambiance, stepElementParameters,
-        CVNGStep.CVNGResponseData.builder().activityId(activityId).activityStatusDTO(activityStatusDTO).build());
+    VerifyStepOutcome verifyStepOutcome =
+        (VerifyStepOutcome) cvngStep.handleProgressAsync(ambiance, stepElementParameters,
+            CVNGStep.CVNGResponseData.builder().activityId(activityId).activityStatusDTO(activityStatusDTO).build());
     VerifyStepOutcome expected = VerifyStepOutcome.builder()
                                      .progressPercentage(50)
                                      .estimatedRemainingTime("3 minutes")
@@ -555,7 +563,7 @@ public class CVNGStepTest extends CvNextGenTestBase {
     FieldUtils.writeField(cvngStep, "activityService", activityService, true);
 
     cvngStep.handleAbort(ambiance, stepElementParameters,
-        AsyncExecutableResponse.newBuilder().addCallbackIds(cvngStepTask.getCallbackId()).build());
+        AsyncExecutableResponse.newBuilder().addCallbackIds(cvngStepTask.getCallbackId()).build(), false);
     Mockito.verify(activityService).abort(cvngStepTask.getActivityId());
   }
 
@@ -616,6 +624,127 @@ public class CVNGStepTest extends CvNextGenTestBase {
     verify(spiedDefaultVerifyStepMonitoredServiceResolutionService, times(1)).managePerpetualTasks(any(), any(), any());
   }
 
+  @Test
+  @Owner(developers = ANSUMAN)
+  @Category(UnitTests.class)
+  public void testhandleAsyncResponseInternal() {
+    Ambiance ambiance = getAmbiance();
+    metricPackService.createDefaultMetricPackAndThresholds(accountId, orgIdentifier, projectIdentifier);
+    monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
+    StepElementParameters stepElementParameters = getStepElementParametersWithLoadTest();
+    Map<String, ResponseData> responseDataMap = new HashMap<>();
+    responseDataMap.put("KXbJ9aapSIOGyrBIhHT8YQ",
+        CVNGStep.CVNGResponseData.builder()
+            .activityId("KXbJ9aapSIOGyrBIhHT8YQ")
+            .verifyStepExecutionId("KXbJ9aapSIOGyrBIhHT8YQ")
+            .skip(false)
+            .activityStatusDTO(ActivityStatusDTO.builder()
+                                   .durationMs(300000)
+                                   .remainingTimeMs(600000)
+                                   .progressPercentage(0)
+                                   .activityId("KXbJ9aapSIOGyrBIhHT8YQ")
+                                   .status(ActivityVerificationStatus.ABORTED)
+                                   .build())
+            .build());
+    StepResponse stepResponse = cvngStep.handleAsyncResponseInternal(ambiance, stepElementParameters, responseDataMap);
+    FailureData failureData = FailureData.newBuilder()
+                                  .setCode(ErrorCode.ABORT_ALL_ALREADY_NG.name())
+                                  .setLevel(io.harness.eraro.Level.ERROR.name())
+                                  .addFailureTypes(FailureType.USER_MARKED_FAILURE)
+                                  .setMessage("Verification could not complete due to it being aborted")
+                                  .build();
+    StepResponse stepResponseFailed =
+        StepResponse.builder()
+            .status(Status.FAILED)
+            .stepOutcome(StepResponse.StepOutcome.builder()
+                             .name("output")
+                             .outcome(VerifyStepOutcome.builder()
+                                          .progressPercentage(0)
+                                          .estimatedRemainingTime(TimeUnit.MILLISECONDS.toMinutes(600000) + " minutes")
+                                          .activityId("KXbJ9aapSIOGyrBIhHT8YQ")
+                                          .verifyStepExecutionId("KXbJ9aapSIOGyrBIhHT8YQ")
+                                          .build())
+                             .build())
+            .failureInfo(FailureInfo.newBuilder().addFailureData(failureData).build())
+            .build();
+    assertThat(stepResponse).isEqualTo(stepResponseFailed);
+  }
+
+  @Test
+  @Owner(developers = ABHIJITH)
+  @Category(UnitTests.class)
+  public void testhandleAsyncResponseInternal_AbortAsFailure() {
+    Ambiance ambiance = getAmbiance();
+    metricPackService.createDefaultMetricPackAndThresholds(accountId, orgIdentifier, projectIdentifier);
+    monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
+    StepElementParameters stepElementParameters = getStepElementParametersWithLoadTest();
+    Map<String, ResponseData> responseDataMap = new HashMap<>();
+    responseDataMap.put("KXbJ9aapSIOGyrBIhHT8YQ",
+        CVNGStep.CVNGResponseData.builder()
+            .activityId("KXbJ9aapSIOGyrBIhHT8YQ")
+            .verifyStepExecutionId("KXbJ9aapSIOGyrBIhHT8YQ")
+            .skip(false)
+            .activityStatusDTO(ActivityStatusDTO.builder()
+                                   .durationMs(300000)
+                                   .remainingTimeMs(600000)
+                                   .progressPercentage(0)
+                                   .activityId("KXbJ9aapSIOGyrBIhHT8YQ")
+                                   .status(ActivityVerificationStatus.ABORTED_AS_FAILURE)
+                                   .build())
+            .build());
+    StepResponse stepResponse = cvngStep.handleAsyncResponseInternal(ambiance, stepElementParameters, responseDataMap);
+    assertThat(stepResponse.getStatus()).isEqualTo(Status.FAILED);
+    assertThat(stepResponse.getFailureInfo().getFailureData(0).getFailureTypes(0))
+        .isEqualTo(FailureType.VERIFICATION_FAILURE);
+  }
+
+  @Test
+  @Owner(developers = ABHIJITH)
+  @Category(UnitTests.class)
+  public void testhandleAsyncResponseInternal_AbortAsSuccess() {
+    Ambiance ambiance = getAmbiance();
+    metricPackService.createDefaultMetricPackAndThresholds(accountId, orgIdentifier, projectIdentifier);
+    monitoredServiceService.create(builderFactory.getContext().getAccountId(), monitoredServiceDTO);
+    StepElementParameters stepElementParameters = getStepElementParametersWithLoadTest();
+    Map<String, ResponseData> responseDataMap = new HashMap<>();
+    responseDataMap.put("KXbJ9aapSIOGyrBIhHT8YQ",
+        CVNGStep.CVNGResponseData.builder()
+            .activityId("KXbJ9aapSIOGyrBIhHT8YQ")
+            .verifyStepExecutionId("KXbJ9aapSIOGyrBIhHT8YQ")
+            .skip(false)
+            .activityStatusDTO(ActivityStatusDTO.builder()
+                                   .durationMs(300000)
+                                   .remainingTimeMs(600000)
+                                   .progressPercentage(0)
+                                   .activityId("KXbJ9aapSIOGyrBIhHT8YQ")
+                                   .status(ActivityVerificationStatus.ABORTED_AS_SUCCESS)
+                                   .build())
+            .build());
+    StepResponse stepResponse = cvngStep.handleAsyncResponseInternal(ambiance, stepElementParameters, responseDataMap);
+    assertThat(stepResponse.getStatus()).isEqualTo(Status.SUCCEEDED);
+  }
+
+  @Test
+  @Owner(developers = SHUBHENDU)
+  @Category(UnitTests.class)
+  public void testHasInvalidCVConfig() {
+    CVConfig cvConfig = DatadogMetricCVConfig.builder()
+                            .accountId(builderFactory.getContext().getAccountId())
+                            .orgIdentifier(builderFactory.getContext().getOrgIdentifier())
+                            .projectIdentifier(builderFactory.getContext().getProjectIdentifier())
+                            .monitoredServiceIdentifier(generateUuid())
+                            .metricPack(MetricPack.builder().dataCollectionDsl("dsl").build())
+                            .build();
+    assertThat(cvngStep.hasInvalidCVConfig(Collections.singletonList(cvConfig))).isTrue();
+  }
+
+  @Test
+  @Owner(developers = SHUBHENDU)
+  @Category(UnitTests.class)
+  public void testHasInvalidCVConfig_falseCase() {
+    CVConfig cvConfig = builderFactory.splunkCVConfigBuilder().build();
+    assertThat(cvngStep.hasInvalidCVConfig(Collections.singletonList(cvConfig))).isFalse();
+  }
   private StepElementParameters getStepElementParametersWithLoadTest() {
     TestVerificationJobSpec spec = TestVerificationJobSpec.builder()
                                        .deploymentTag(randomParameter())

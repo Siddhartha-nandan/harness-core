@@ -24,7 +24,6 @@ import io.harness.CvNextGenTestBase;
 import io.harness.category.element.UnitTests;
 import io.harness.cvng.BuilderFactory;
 import io.harness.cvng.activity.entities.Activity;
-import io.harness.cvng.activity.entities.SRMStepAnalysisActivity;
 import io.harness.cvng.activity.services.api.ActivityService;
 import io.harness.cvng.analysis.entities.SRMAnalysisStepDetailDTO;
 import io.harness.cvng.analysis.entities.SRMAnalysisStepExecutionDetail;
@@ -128,11 +127,6 @@ public class ChangeEventResourceTest extends CvNextGenTestBase {
     analysisExecutionDetailsId = srmAnalysisStepService.createSRMAnalysisStepExecution(
         builderFactory.getAmbiance(builderFactory.getProjectParams()), monitoredServiceIdentifier, stepName,
         serviceEnvironmentParams, Duration.ofDays(1), Optional.empty());
-    SRMStepAnalysisActivity stepAnalysisActivity = builderFactory.getSRMStepAnalysisActivityBuilder()
-                                                       .executionNotificationDetailsId(analysisExecutionDetailsId)
-                                                       .build();
-    stepAnalysisActivity.setUuid(analysisExecutionDetailsId);
-    activityId = activityService.createActivity(stepAnalysisActivity);
     FieldUtils.writeField(srmAnalysisStepService, "clock", clock, true);
   }
 
@@ -269,7 +263,8 @@ public class ChangeEventResourceTest extends CvNextGenTestBase {
     Response response = NGRESOURCES.client()
                             .target(getChangeEventPath(builderFactory.getContext().getProjectParams()) + "/report")
                             .queryParam("accountId", builderFactory.getContext().getAccountId())
-                            .queryParam("monitoredServiceIdentifiers", monitoredServiceIdentifier)
+                            .queryParam("serviceIdentifiers", builderFactory.getContext().getServiceIdentifier())
+                            .queryParam("envIdentifiers", builderFactory.getContext().getEnvIdentifier())
                             .queryParam("startTime", clock.instant().toEpochMilli())
                             .queryParam("endTime", clock.instant().plus(4, ChronoUnit.DAYS).toEpochMilli())
                             .queryParam("pageIndex", 0)
@@ -287,6 +282,32 @@ public class ChangeEventResourceTest extends CvNextGenTestBase {
     assertThat(firstPage.getPageItemCount()).isEqualTo(1);
   }
 
+  @Test
+  @Owner(developers = SHASHWAT_SACHAN)
+  @Category(UnitTests.class)
+  public void testGetPaginatedReportWithMonitoredServiceIdentifier() {
+    SRMAnalysisStepExecutionDetail stepExecutionDetail =
+        srmAnalysisStepService.getSRMAnalysisStepExecutionDetail(analysisExecutionDetailsId);
+    Response response = NGRESOURCES.client()
+                            .target(getChangeEventPath(builderFactory.getContext().getProjectParams()) + "/report")
+                            .queryParam("accountId", builderFactory.getContext().getAccountId())
+                            .queryParam("monitoredServiceIdentifiers", monitoredServiceIdentifier)
+                            .queryParam("startTime", clock.instant().toEpochMilli())
+                            .queryParam("endTime", clock.instant().plus(4, ChronoUnit.DAYS).toEpochMilli())
+                            .queryParam("pageIndex", 0)
+                            .queryParam("pageSize", 2)
+                            .request(MediaType.APPLICATION_JSON_TYPE)
+                            .get();
+
+    assertThat(response.getStatus()).isEqualTo(200);
+    PageResponse<SRMAnalysisStepDetailDTO> firstPage =
+        response.readEntity(new GenericType<RestResponse<PageResponse<SRMAnalysisStepDetailDTO>>>() {}).getResource();
+    assertThat(firstPage.getPageIndex()).isEqualTo(0);
+    assertThat(firstPage.getPageItemCount()).isEqualTo(1);
+    assertThat(firstPage.getTotalItems()).isEqualTo(1);
+    assertThat(firstPage.getTotalPages()).isEqualTo(1);
+    assertThat(firstPage.getPageItemCount()).isEqualTo(1);
+  }
   @Test
   @Owner(developers = SHASHWAT_SACHAN)
   @Category(UnitTests.class)

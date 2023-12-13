@@ -34,6 +34,8 @@ public enum ResourceType {
   API_KEY(ResourceTypeConstants.API_KEY),
   TOKEN(ResourceTypeConstants.TOKEN),
   DELEGATE_TOKEN(ResourceTypeConstants.DELEGATE_TOKEN),
+  DASHBOARD(ResourceTypeConstants.DASHBOARD),
+  DASHBOARD_FOLDER(ResourceTypeConstants.DASHBOARD_FOLDER),
   GOVERNANCE_POLICY(ResourceTypeConstants.GOVERNANCE_POLICY),
   GOVERNANCE_POLICY_SET(ResourceTypeConstants.GOVERNANCE_POLICY_SET),
   VARIABLE(ResourceTypeConstants.VARIABLE),
@@ -70,7 +72,21 @@ public enum ResourceType {
   CET_CRITICAL_EVENT(ResourceTypeConstants.CET_CRITICAL_EVENT),
   CHAOS_SECURITY_GOVERNANCE(ResourceTypeConstants.CHAOS_SECURITY_GOVERNANCE),
   END_USER_LICENSE_AGREEMENT(ResourceTypeConstants.EULA),
-  WORKSPACE(ResourceTypeConstants.WORKSPACE);
+  WORKSPACE(ResourceTypeConstants.WORKSPACE),
+  SEI_CONFIGURATION_SETTINGS(ResourceTypeConstants.SEI_CONFIGURATION_SETTINGS),
+  SEI_COLLECTIONS(ResourceTypeConstants.SEI_COLLECTIONS),
+  SEI_INSIGHTS(ResourceTypeConstants.SEI_INSIGHTS),
+  CET_SAVED_FILTER(ResourceTypeConstants.CET_SAVED_FILTER),
+  GITOPS_AGENT(ResourceTypeConstants.GITOPS_AGENT),
+  GITOPS_REPOSITORY(ResourceTypeConstants.GITOPS_REPOSITORY),
+  GITOPS_CLUSTER(ResourceTypeConstants.GITOPS_CLUSTER),
+  GITOPS_CREDENTIAL_TEMPLATE(ResourceTypeConstants.GITOPS_CREDENTIAL_TEMPLATE),
+  GITOPS_REPOSITORY_CERTIFICATE(ResourceTypeConstants.GITOPS_REPOSITORY_CERTIFICATE),
+  GITOPS_GNUPG_KEY(ResourceTypeConstants.GITOPS_GNUPG_KEY),
+  GITOPS_PROJECT_MAPPING(ResourceTypeConstants.GITOPS_PROJECT_MAPPING),
+  GITOPS_APPLICATION(ResourceTypeConstants.GITOPS_APPLICATION),
+  CODE_REPOSITORY(ResourceTypeConstants.CODE_REPOSITORY),
+  MODULE_LICENSE(ResourceTypeConstants.MODULE_LICENSE);
 
   ResourceType(String resourceType) {
     if (!this.name().equals(resourceType)) {

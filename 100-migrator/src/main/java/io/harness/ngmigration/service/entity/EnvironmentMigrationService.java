@@ -17,8 +17,11 @@ import static software.wings.ngmigration.NGMigrationEntityType.CONFIG_FILE;
 import static software.wings.ngmigration.NGMigrationEntityType.MANIFEST;
 import static software.wings.service.intfc.ServiceVariableService.EncryptedFieldMode.OBTAIN_VALUE;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.MigratedEntityMapping;
 import io.harness.cdng.configfile.ConfigFileWrapper;
 import io.harness.cdng.manifest.yaml.ManifestConfigWrapper;
@@ -43,6 +46,8 @@ import io.harness.ngmigration.client.PmsClient;
 import io.harness.ngmigration.client.TemplateClient;
 import io.harness.ngmigration.dto.ImportError;
 import io.harness.ngmigration.dto.MigrationImportSummaryDTO;
+import io.harness.ngmigration.expressions.MigratorExpressionUtils;
+import io.harness.ngmigration.service.MigrationHelperService;
 import io.harness.ngmigration.service.MigratorMappingService;
 import io.harness.ngmigration.service.NgMigrationService;
 import io.harness.ngmigration.utils.MigratorUtility;
@@ -73,6 +78,7 @@ import com.google.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -82,6 +88,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import retrofit2.Response;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_MIGRATOR})
 @Slf4j
 @OwnedBy(HarnessTeam.CDC)
 public class EnvironmentMigrationService extends NgMigrationService {
@@ -93,6 +100,7 @@ public class EnvironmentMigrationService extends NgMigrationService {
   @Inject ConfigService configService;
   @Inject ConfigFileMigrationService configFileMigrationService;
   @Inject EnvironmentResourceClient environmentResourceClient;
+  @Inject private MigrationHelperService migrationHelperService;
 
   @Override
   public MigratedEntityMapping generateMappingEntity(NGYamlFile yamlFile) {
@@ -152,6 +160,7 @@ public class EnvironmentMigrationService extends NgMigrationService {
                                      .build())
                           .collect(Collectors.toList()));
     }
+
     List<ApplicationManifest> applicationManifests =
         applicationManifestService.getAllByEnvId(environment.getAppId(), environment.getUuid());
     if (isNotEmpty(applicationManifests)) {
@@ -189,6 +198,7 @@ public class EnvironmentMigrationService extends NgMigrationService {
           .build();
     }
     NGEnvironmentInfoConfig environmentConfig = ((NGEnvironmentConfig) yamlFile.getYaml()).getNgEnvironmentInfoConfig();
+
     EnvironmentRequestDTO environmentRequestDTO = EnvironmentRequestDTO.builder()
                                                       .identifier(environmentConfig.getIdentifier())
                                                       .type(environmentConfig.getType())
@@ -204,6 +214,23 @@ public class EnvironmentMigrationService extends NgMigrationService {
             .createEnvironment(inputDTO.getDestinationAuthToken(), inputDTO.getDestinationAccountIdentifier(),
                 JsonUtils.asTree(environmentRequestDTO))
             .execute();
+
+    if (!(resp.code() >= 200 && resp.code() < 300)) {
+      environmentRequestDTO = EnvironmentRequestDTO.builder()
+                                  .identifier(environmentConfig.getIdentifier())
+                                  .type(environmentConfig.getType())
+                                  .orgIdentifier(environmentConfig.getOrgIdentifier())
+                                  .projectIdentifier(environmentConfig.getProjectIdentifier())
+                                  .name(environmentConfig.getName())
+                                  .tags(environmentConfig.getTags())
+                                  .description(environmentConfig.getDescription())
+                                  .yaml(getYamlStringV2(yamlFile))
+                                  .build();
+      resp = ngClient
+                 .createEnvironment(inputDTO.getDestinationAuthToken(), inputDTO.getDestinationAccountIdentifier(),
+                     JsonUtils.asTree(environmentRequestDTO))
+                 .execute();
+    }
     log.info("Environment creation Response details {} {}", resp.code(), resp.message());
     return handleResp(yamlFile, resp);
   }
@@ -260,6 +287,8 @@ public class EnvironmentMigrationService extends NgMigrationService {
                     .type(PROD == environment.getEnvironmentType() ? Production : PreProduction)
                     .build())
             .build();
+    Map<String, Object> custom = migrationHelperService.updateContextVariables(migrationContext, entities, environment);
+    MigratorExpressionUtils.render(migrationContext, environmentConfig, custom);
 
     List<NGYamlFile> files = new ArrayList<>();
     NGYamlFile ngYamlFile = NGYamlFile.builder()
@@ -289,6 +318,7 @@ public class EnvironmentMigrationService extends NgMigrationService {
               .filter(serviceVariable -> StringUtils.isBlank(serviceVariable.getServiceId()))
               .collect(Collectors.toList())));
     }
+    variables.sort(Comparator.comparing(NGVariable::getName));
     return variables;
   }
 
@@ -310,7 +340,7 @@ public class EnvironmentMigrationService extends NgMigrationService {
   }
 
   @Override
-  protected boolean isNGEntityExists() {
+  protected boolean isNGEntityExists(MigrationContext migrationContext) {
     return true;
   }
 }

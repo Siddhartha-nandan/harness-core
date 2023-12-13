@@ -32,8 +32,12 @@ import io.harness.ng.core.utils.CoreCriteriaUtils;
 import io.harness.rule.Owner;
 import io.harness.rule.OwnerRule;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.BasicDBList;
 import java.beans.PropertyDescriptor;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -43,6 +47,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.bson.Document;
 import org.junit.Before;
 import org.junit.Test;
@@ -98,7 +104,9 @@ public class EnvironmentFilterHelperTest extends CategoryTest {
     Set<String> excludedFields = new HashSet<>(Arrays.asList(EnvironmentKeys.id, EnvironmentKeys.createdAt,
         EnvironmentKeys.version, EnvironmentKeys.yaml, EnvironmentKeys.branch, EnvironmentKeys.filePath,
         EnvironmentKeys.isFromDefaultBranch, EnvironmentKeys.objectIdOfYaml, EnvironmentKeys.yamlGitConfigRef,
-        EnvironmentKeys.rootFolder, "class", EnvironmentKeys.isMigratedToOverride));
+        EnvironmentKeys.rootFolder, "class", EnvironmentKeys.isMigratedToOverride, EnvironmentKeys.storeType,
+        EnvironmentKeys.repo, EnvironmentKeys.connectorRef, EnvironmentKeys.repoURL, EnvironmentKeys.fallBackBranch,
+        "accountIdentifier", "invalidYamlString", "uuid", "entityInvalid", "data"));
 
     for (PropertyDescriptor propertyDescriptor : propertyDescriptors) {
       boolean shouldExist =
@@ -134,8 +142,8 @@ public class EnvironmentFilterHelperTest extends CategoryTest {
   public void testListWithNamesFilter() {
     EnvironmentFilterPropertiesDTO environmentFilterPropertiesDTO =
         EnvironmentFilterPropertiesDTO.builder().environmentNames(Arrays.asList("qa", "dev")).build();
-    Criteria criteria = environmentFilterHelper.createCriteriaForGetList(
-        accountIdentifier, orgIdentifier, projectIdentifier, false, null, null, environmentFilterPropertiesDTO, false);
+    Criteria criteria = environmentFilterHelper.createCriteriaForGetList(accountIdentifier, orgIdentifier,
+        projectIdentifier, false, null, null, environmentFilterPropertiesDTO, false, StringUtils.EMPTY);
     Document criteriaObj = criteria.getCriteriaObject();
     assertThat(criteriaObj.get(EnvironmentKeys.accountId)).isEqualTo(accountIdentifier);
     assertThat(criteriaObj.get(EnvironmentKeys.projectIdentifier)).isEqualTo(projectIdentifier);
@@ -151,8 +159,8 @@ public class EnvironmentFilterHelperTest extends CategoryTest {
   public void testListWithEnvTypeFilter() {
     EnvironmentFilterPropertiesDTO environmentFilterPropertiesDTO =
         EnvironmentFilterPropertiesDTO.builder().environmentTypes(Collections.singletonList(environmentType)).build();
-    Criteria criteria = environmentFilterHelper.createCriteriaForGetList(
-        accountIdentifier, orgIdentifier, projectIdentifier, false, null, null, environmentFilterPropertiesDTO, false);
+    Criteria criteria = environmentFilterHelper.createCriteriaForGetList(accountIdentifier, orgIdentifier,
+        projectIdentifier, false, null, null, environmentFilterPropertiesDTO, false, StringUtils.EMPTY);
     Document criteriaObj = criteria.getCriteriaObject();
     assertThat(criteriaObj.get(EnvironmentKeys.accountId)).isEqualTo(accountIdentifier);
     assertThat(criteriaObj.get(EnvironmentKeys.projectIdentifier)).isEqualTo(projectIdentifier);
@@ -167,8 +175,8 @@ public class EnvironmentFilterHelperTest extends CategoryTest {
   public void testListWithDescriptionFilter() {
     EnvironmentFilterPropertiesDTO environmentFilterPropertiesDTO =
         EnvironmentFilterPropertiesDTO.builder().description("deploying to production").build();
-    Criteria criteria = environmentFilterHelper.createCriteriaForGetList(
-        accountIdentifier, orgIdentifier, projectIdentifier, false, null, null, environmentFilterPropertiesDTO, false);
+    Criteria criteria = environmentFilterHelper.createCriteriaForGetList(accountIdentifier, orgIdentifier,
+        projectIdentifier, false, null, null, environmentFilterPropertiesDTO, false, StringUtils.EMPTY);
     Document criteriaObj = criteria.getCriteriaObject();
     assertThat(criteriaObj.get(EnvironmentKeys.accountId)).isEqualTo(accountIdentifier);
     assertThat(criteriaObj.get(EnvironmentKeys.projectIdentifier)).isEqualTo(projectIdentifier);
@@ -183,8 +191,8 @@ public class EnvironmentFilterHelperTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testListWithSearchTermFilter() {
     EnvironmentFilterPropertiesDTO environmentFilterPropertiesDTO = EnvironmentFilterPropertiesDTO.builder().build();
-    Criteria criteria = environmentFilterHelper.createCriteriaForGetList(
-        accountIdentifier, orgIdentifier, projectIdentifier, false, "gcp", null, environmentFilterPropertiesDTO, false);
+    Criteria criteria = environmentFilterHelper.createCriteriaForGetList(accountIdentifier, orgIdentifier,
+        projectIdentifier, false, "gcp", null, environmentFilterPropertiesDTO, false, StringUtils.EMPTY);
     Document criteriaObj = criteria.getCriteriaObject();
     assertThat(criteriaObj.get(EnvironmentKeys.accountId)).isEqualTo(accountIdentifier);
     assertThat(criteriaObj.get(EnvironmentKeys.projectIdentifier)).isEqualTo(projectIdentifier);
@@ -297,8 +305,8 @@ public class EnvironmentFilterHelperTest extends CategoryTest {
         .when(filterService)
         .get(accountIdentifier, orgIdentifier, projectIdentifier, "filterIdentifier", FilterType.ENVIRONMENT);
 
-    Criteria criteria = environmentFilterHelper.createCriteriaForGetList(
-        accountIdentifier, orgIdentifier, projectIdentifier, false, null, "filterIdentifier", null, false);
+    Criteria criteria = environmentFilterHelper.createCriteriaForGetList(accountIdentifier, orgIdentifier,
+        projectIdentifier, false, null, "filterIdentifier", null, false, StringUtils.EMPTY);
 
     Document criteriaObj = criteria.getCriteriaObject();
     assertThat(criteriaObj.get(EnvironmentKeys.accountId)).isEqualTo(accountIdentifier);
@@ -314,7 +322,7 @@ public class EnvironmentFilterHelperTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testListIncludeAllScopesEnvAtProjectLevel() {
     Criteria criteria = environmentFilterHelper.createCriteriaForGetList(
-        accountIdentifier, orgIdentifier, projectIdentifier, false, null, null, null, true);
+        accountIdentifier, orgIdentifier, projectIdentifier, false, null, null, null, true, StringUtils.EMPTY);
     Document criteriaObj = criteria.getCriteriaObject();
     // 3 criteria for org/project
     assertThat(criteriaObj.toJson())
@@ -327,7 +335,7 @@ public class EnvironmentFilterHelperTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testListIncludeAllScopesEnvAtOrgLevel() {
     Criteria criteria = environmentFilterHelper.createCriteriaForGetList(
-        accountIdentifier, orgIdentifier, null, false, null, null, null, true);
+        accountIdentifier, orgIdentifier, null, false, null, null, null, true, StringUtils.EMPTY);
     Document criteriaObj = criteria.getCriteriaObject();
 
     // 2 criteria for org/project
@@ -340,8 +348,8 @@ public class EnvironmentFilterHelperTest extends CategoryTest {
   @Owner(developers = OwnerRule.HINGER)
   @Category(UnitTests.class)
   public void testListIncludeAllScopesEnvAtAccountLevel() {
-    Criteria criteria =
-        environmentFilterHelper.createCriteriaForGetList(accountIdentifier, null, null, false, null, null, null, true);
+    Criteria criteria = environmentFilterHelper.createCriteriaForGetList(
+        accountIdentifier, null, null, false, null, null, null, true, StringUtils.EMPTY);
     Document criteriaObj = criteria.getCriteriaObject();
     assertThat(criteriaObj.get(EnvironmentKeys.accountId)).isEqualTo(accountIdentifier);
     // 1 criteria for org/project
@@ -357,7 +365,7 @@ public class EnvironmentFilterHelperTest extends CategoryTest {
     EnvironmentFilterPropertiesDTO environmentFilterPropertiesDTO =
         EnvironmentFilterPropertiesDTO.builder().environmentNames(List.of("qa")).build();
     Criteria criteria = environmentFilterHelper.createCriteriaForGetList(
-        accountIdentifier, null, null, false, null, null, environmentFilterPropertiesDTO, true);
+        accountIdentifier, null, null, false, null, null, environmentFilterPropertiesDTO, true, StringUtils.EMPTY);
     Document criteriaObj = criteria.getCriteriaObject();
     assertThat(criteriaObj.get(EnvironmentKeys.accountId)).isEqualTo(accountIdentifier);
     // 1 criteria for org/project
@@ -377,6 +385,54 @@ public class EnvironmentFilterHelperTest extends CategoryTest {
     assertThat(criteriaObj.toJson())
         .isEqualTo(
             "{\"accountId\": \"accountIdentifier\", \"$and\": [{\"$or\": [{\"orgIdentifier\": null, \"projectIdentifier\": null, \"identifier\": {\"$in\": [\"accEnv\"]}}, {\"orgIdentifier\": \"orgIdentifier\", \"projectIdentifier\": null, \"identifier\": {\"$in\": [\"orgEnv\"]}}, {\"orgIdentifier\": \"orgIdentifier\", \"projectIdentifier\": \"projectIdentifier\", \"identifier\": {\"$in\": [\"projEnv\"]}}]}], \"deleted\": false}");
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.SARTHAK_KASAT)
+  @Category(UnitTests.class)
+  public void testCreateCriteriaToGetEnvironmentsForProjects() throws IOException {
+    List<String> projectIdentifiers = List.of("projectIdentifier1", "projectIdentifier2");
+    List<String> orgIdentifiers = List.of("orgIdentifier1", "orgIdentifier2");
+    Criteria criteria = environmentFilterHelper.createCriteriaToGetScopedEnvironments(
+        accountIdentifier, orgIdentifiers, projectIdentifiers, null, List.of("Project"));
+    Document criteriaObj = criteria.getCriteriaObject();
+    JsonNode expected = readJsonNode("environment/list-project-envs.json");
+    assertThat(new ObjectMapper().readTree(criteriaObj.toJson())).isEqualTo(expected);
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.SARTHAK_KASAT)
+  @Category(UnitTests.class)
+  public void testCreateCriteriaToGetAllEnvironments() throws IOException {
+    Criteria criteria = environmentFilterHelper.createCriteriaToGetScopedEnvironments(
+        accountIdentifier, null, null, null, List.of("Account", "Org", "Project"));
+    Document criteriaObj = criteria.getCriteriaObject();
+    JsonNode expected = readJsonNode("environment/list-all-envs.json");
+    assertThat(new ObjectMapper().readTree(criteriaObj.toJson())).isEqualTo(expected);
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.SARTHAK_KASAT)
+  @Category(UnitTests.class)
+  public void testCreateCriteriaToGetEnvironmentsForProjectsWithEnvType() throws IOException {
+    List<String> projectIdentifiers = List.of("projectIdentifier1", "projectIdentifier2");
+    List<String> orgIdentifiers = List.of("orgIdentifier1", "orgIdentifier2");
+    Criteria criteria = environmentFilterHelper.createCriteriaToGetScopedEnvironments(
+        accountIdentifier, orgIdentifiers, projectIdentifiers, "Production", List.of("Project"));
+    Document criteriaObj = criteria.getCriteriaObject();
+    JsonNode expected = readJsonNode("environment/list-envs-filtered-by-type.json");
+    assertThat(new ObjectMapper().readTree(criteriaObj.toJson())).isEqualTo(expected);
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.SARTHAK_KASAT)
+  @Category(UnitTests.class)
+  public void testCreateCriteriaToGetEnvironmentsForAccount() throws IOException {
+    Criteria criteria = environmentFilterHelper.createCriteriaToGetScopedEnvironments(
+        accountIdentifier, null, null, null, List.of("Account"));
+    Document criteriaObj = criteria.getCriteriaObject();
+    JsonNode expected = readJsonNode("environment/list-account-envs.json");
+    assertThat(new ObjectMapper().readTree(criteriaObj.toJson())).isEqualTo(expected);
   }
 
   @Test
@@ -419,5 +475,11 @@ public class EnvironmentFilterHelperTest extends CategoryTest {
     assertThat(criteriaObj.toJson())
         .isEqualTo(
             "{\"accountId\": \"accountIdentifier\", \"$and\": [{\"$or\": [{\"orgIdentifier\": \"orgIdentifier\", \"projectIdentifier\": \"projectIdentifier\", \"identifier\": {\"$in\": [\"env\"]}}]}], \"deleted\": false}");
+  }
+
+  private JsonNode readJsonNode(String resourceName) throws IOException {
+    final String resource = IOUtils.resourceToString(resourceName, StandardCharsets.UTF_8, getClass().getClassLoader());
+    ObjectMapper objectMapper = new ObjectMapper();
+    return objectMapper.readTree(resource);
   }
 }

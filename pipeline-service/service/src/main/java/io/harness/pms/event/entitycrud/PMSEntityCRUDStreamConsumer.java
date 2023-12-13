@@ -15,10 +15,12 @@ import static io.harness.eventsframework.EventsFrameworkMetadataConstants.PIPELI
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.PROJECT_ENTITY;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.context.GlobalContext;
 import io.harness.eventsframework.api.Consumer;
 import io.harness.eventsframework.api.EventsFrameworkDownException;
 import io.harness.eventsframework.consumer.Message;
 import io.harness.eventsframework.impl.redis.RedisTraceConsumer;
+import io.harness.manage.GlobalContextManager;
 import io.harness.ng.core.event.MessageListener;
 import io.harness.queue.QueueController;
 import io.harness.security.SecurityContextBuilder;
@@ -31,8 +33,10 @@ import com.google.inject.name.Named;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -43,19 +47,21 @@ public class PMSEntityCRUDStreamConsumer extends RedisTraceConsumer {
   private final Consumer redisConsumer;
   private final List<MessageListener> messageListenersList;
   private final QueueController queueController;
+  private final ExecutorService pipelineExecutorService;
 
   @Inject
   public PMSEntityCRUDStreamConsumer(@Named(ENTITY_CRUD) Consumer redisConsumer,
       @Named(PIPELINE_ENTITY + ENTITY_CRUD) MessageListener pipelineEntityCRUDStreamListener,
       @Named(PROJECT_ENTITY + ENTITY_CRUD) MessageListener projectEntityCrudStreamListener,
       @Named(ACCOUNT_ENTITY + ENTITY_CRUD) MessageListener accountEntityCrudStreamListener,
-      QueueController queueController) {
+      QueueController queueController, @Named("PipelineExecutorService") ExecutorService pipelineExecutorService) {
     this.redisConsumer = redisConsumer;
     messageListenersList = new ArrayList<>();
     messageListenersList.add(pipelineEntityCRUDStreamListener);
     messageListenersList.add(projectEntityCrudStreamListener);
     messageListenersList.add(accountEntityCrudStreamListener);
     this.queueController = queueController;
+    this.pipelineExecutorService = pipelineExecutorService;
   }
 
   @Override
@@ -97,6 +103,10 @@ public class PMSEntityCRUDStreamConsumer extends RedisTraceConsumer {
     String messageId;
     boolean messageProcessed;
     messages = redisConsumer.read(Duration.ofSeconds(WAIT_TIME_IN_SECONDS));
+    List<String> messageIds = messages.stream().map(Message::getId).collect(Collectors.toList());
+    if (messageIds.size() > 0) {
+      log.info("Received events with eventIds [{}] from redis", messageIds);
+    }
     for (Message message : messages) {
       messageId = message.getId();
       messageProcessed = handleMessage(message);
@@ -109,9 +119,14 @@ public class PMSEntityCRUDStreamConsumer extends RedisTraceConsumer {
   @Override
   protected boolean processMessage(Message message) {
     AtomicBoolean success = new AtomicBoolean(true);
-    messageListenersList.forEach(messageListener -> {
-      if (!messageListener.handleMessage(message)) {
-        success.set(false);
+    GlobalContext context = GlobalContextManager.obtainGlobalContextCopy();
+    pipelineExecutorService.submit(() -> {
+      try (GlobalContextManager.GlobalContextGuard guard = GlobalContextManager.initGlobalContextGuard(context)) {
+        messageListenersList.forEach(messageListener -> {
+          if (!messageListener.handleMessage(message)) {
+            log.error("Failed to process event with event id : {}", message.getId());
+          }
+        });
       }
     });
     return success.get();

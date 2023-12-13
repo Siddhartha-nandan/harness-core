@@ -19,6 +19,7 @@ import io.harness.cvng.core.beans.monitoredService.MonitoredServiceChangeDetailS
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceDTO;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceListItemDTO;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServicePlatformResponse;
+import io.harness.cvng.core.beans.monitoredService.MonitoredServiceReference;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceResponse;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceWithHealthSources;
 import io.harness.cvng.core.beans.monitoredService.healthSouceSpec.HealthSourceDTO;
@@ -34,10 +35,14 @@ import io.harness.cvng.notification.beans.NotificationRuleConditionType;
 import io.harness.cvng.notification.beans.NotificationRuleResponse;
 import io.harness.cvng.notification.entities.MonitoredServiceNotificationRule;
 import io.harness.cvng.servicelevelobjective.beans.MonitoredServiceDetail;
+import io.harness.cvng.servicelevelobjective.beans.secondaryevents.SecondaryEventDetailsResponse;
+import io.harness.cvng.servicelevelobjective.beans.secondaryevents.SecondaryEventsResponse;
+import io.harness.cvng.servicelevelobjective.beans.secondaryevents.SecondaryEventsType;
 import io.harness.cvng.usage.impl.ActiveServiceMonitoredDTO;
-import io.harness.cvng.usage.impl.resources.ActiveMonitoredServiceDTO;
+import io.harness.cvng.usage.impl.resources.ActiveServiceDTO;
 import io.harness.ng.beans.PageResponse;
 import io.harness.ng.core.environment.dto.EnvironmentResponse;
+import io.harness.ng.core.service.dto.ServiceResponse;
 import io.harness.pms.contracts.ambiance.Ambiance;
 
 import java.time.Instant;
@@ -51,7 +56,7 @@ public interface MonitoredServiceService extends DeleteEntityByHandler<Monitored
   MonitoredServiceResponse create(String accountId, MonitoredServiceDTO monitoredServiceDTO);
   MonitoredServiceResponse createFromYaml(ProjectParams projectParams, String yaml);
   MonitoredServiceResponse updateFromYaml(ProjectParams projectParams, String identifier, String yaml);
-  MonitoredServiceResponse update(String accountId, MonitoredServiceDTO monitoredServiceDTO);
+  MonitoredServiceResponse update(String accountId, MonitoredServiceDTO monitoredServiceDTO, boolean isUpdatedFromYaml);
   boolean delete(ProjectParams projectParams, String identifier);
   List<MonitoredServiceResponse> get(ProjectParams projectParams, Set<String> identifier);
 
@@ -78,6 +83,11 @@ public interface MonitoredServiceService extends DeleteEntityByHandler<Monitored
 
   MonitoredServiceDTO getExpandedMonitoredServiceFromYamlWithPipelineVariables(
       ProjectParams projectParams, String yaml, Ambiance ambiance);
+  String getResolvedTemplateInputs(
+      ProjectParams projectParams, String identifier, String templateIdentifier, String versionLabel);
+  boolean isReconciliationRequiredForMonitoredServices(ProjectParams templateProjectParams, String templateIdentifier,
+      String versionLabel, String monitoredServiceIdentifier, int templateVersionNumber);
+  boolean detachMonitoredServiceFromTemplate(ProjectParams projectParams, String identifier);
 
   Optional<MonitoredService> getApplicationMonitoredService(ServiceEnvironmentParams serviceEnvironmentParams);
 
@@ -89,12 +99,14 @@ public interface MonitoredServiceService extends DeleteEntityByHandler<Monitored
   List<MonitoredService> listWithFilter(@NonNull ProjectParams projectParams, List<String> identifiers, String filter);
 
   PageResponse<MonitoredServiceListItemDTO> list(ProjectParams projectParams, List<String> environmentIdentifiers,
-      Integer offset, Integer pageSize, String filter, MonitoredServiceType monitoredServiceType,
-      boolean servicesAtRiskFilter);
+      String serviceIdentifier, Integer offset, Integer pageSize, String filter,
+      MonitoredServiceType monitoredServiceType, boolean servicesAtRiskFilter);
 
   List<String> listConnectorRefs(MonitoredServiceDTO monitoredServiceDTO);
 
-  List<EnvironmentResponse> listEnvironments(String accountId, String orgIdentifier, String projectIdentifier);
+  List<ServiceResponse> getUniqueServices(String accountId, String orgIdentifier, String projectIdentifier);
+  List<EnvironmentResponse> getUniqueEnvironments(String accountId, String orgIdentifier, String projectIdentifier);
+
   MonitoredServiceResponse createDefault(
       ProjectParams projectParams, String serviceIdentifier, String environmentIdentifier);
   HealthMonitoringFlagResponse setHealthMonitoringFlag(ProjectParams projectParams, String identifier, boolean enable);
@@ -103,6 +115,10 @@ public interface MonitoredServiceService extends DeleteEntityByHandler<Monitored
       ProjectParams projectParams, String identifier, Instant startTime, Instant endTime);
 
   HealthScoreDTO getCurrentAndDependentServicesScore(MonitoredServiceParams monitoredServiceParams);
+
+  List<SecondaryEventsResponse> getMSSecondaryEvents(
+      ProjectParams projectParams, String monitoredServiceIdentifier, long startTime, long endTime);
+  SecondaryEventDetailsResponse getMSSecondaryEventDetails(SecondaryEventsType eventType, List<String> uuids);
 
   String getYamlTemplate(ProjectParams projectParams, MonitoredServiceType type);
 
@@ -141,5 +157,8 @@ public interface MonitoredServiceService extends DeleteEntityByHandler<Monitored
 
   List<ActiveServiceMonitoredDTO> listActiveServiceMonitored(ProjectParams projectParams);
 
-  List<ActiveMonitoredServiceDTO> listActiveMonitoredServices(ProjectParams projectParams, String serviceIdentifier);
+  List<ActiveServiceDTO> listActiveMonitoredServices(ProjectParams projectParams, String serviceIdentifier);
+
+  PageResponse<MonitoredServiceReference> getMonitoredServiceReconciliationStatuses(ProjectParams templateProjectParams,
+      String templateIdentifier, String templateVersionLabel, PageParams pageParams);
 }

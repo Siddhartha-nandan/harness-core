@@ -7,6 +7,7 @@
 
 package io.harness.service.impl;
 
+import static io.harness.beans.DelegateTask.Status.runningStatuses;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.delegate.utils.DelegateServiceConstants.HEARTBEAT_EXPIRY_TIME_FIVE_MINS;
 import static io.harness.serializer.DelegateServiceCacheRegistrar.ABORTED_TASK_LIST_CACHE;
@@ -33,6 +34,7 @@ import io.harness.persistence.HPersistence;
 import io.harness.redis.intfc.DelegateRedissonCacheManager;
 import io.harness.service.intfc.DelegateCache;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -41,11 +43,13 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
+import com.mongodb.MongoTimeoutException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -64,6 +68,7 @@ import org.redisson.api.RLocalCachedMap;
 @OwnedBy(HarnessTeam.DEL)
 public class DelegateCacheImpl implements DelegateCache {
   private static final int MAX_DELEGATE_META_INFO_ENTRIES = 10000;
+  private static final String MONGO_TIMEOUT_MESSAGE = "Failed to connect to mongodb when fetching delegate from cache.";
 
   @Inject private HPersistence persistence;
   @Inject private DelegateTaskMigrationHelper delegateTaskMigrationHelper;
@@ -165,6 +170,20 @@ public class DelegateCacheImpl implements DelegateCache {
             }
           });
 
+  private LoadingCache<String, Long> parkedDelegateTasksCountCache =
+      CacheBuilder.newBuilder()
+          .maximumSize(10000)
+          .expireAfterWrite(1, TimeUnit.MINUTES)
+          .build(new CacheLoader<String, Long>() {
+            @Override
+            public Long load(@NotNull String accountId) {
+              return persistence.createQuery(DelegateTask.class, true)
+                  .filter(DelegateTaskKeys.accountId, accountId)
+                  .filter(DelegateTaskKeys.status, DelegateTask.Status.PARKED)
+                  .count();
+            }
+          });
+
   @Override
   public Delegate get(String accountId, String delegateId, boolean forceRefresh) {
     try {
@@ -188,7 +207,13 @@ public class DelegateCacheImpl implements DelegateCache {
     } catch (ExecutionException e) {
       log.error("Execution exception", e);
     } catch (UncheckedExecutionException e) {
-      log.error("Delegate not found exception", e);
+      if (e.getCause() instanceof MongoTimeoutException
+          || (null != e.getCause() && e.getCause().getCause() instanceof MongoTimeoutException)) {
+        log.error(MONGO_TIMEOUT_MESSAGE, e.getCause());
+        throw new MongoTimeoutException(MONGO_TIMEOUT_MESSAGE);
+      } else {
+        log.error("Delegate not found exception", e);
+      }
     }
     return null;
   }
@@ -275,6 +300,16 @@ public class DelegateCacheImpl implements DelegateCache {
   }
 
   @Override
+  public long getParkedTasksCount(String accountId) {
+    try {
+      return parkedDelegateTasksCountCache.get(accountId);
+    } catch (ExecutionException | CacheLoader.InvalidCacheLoadException e) {
+      log.warn("Unable to get count of optional delegate tasks from cache based on accountId.");
+      return 0;
+    }
+  }
+
+  @Override
   public Map<String, Long> getTasksCountPerAccount(@NotNull DelegateTaskRank rank) {
     if (rank == DelegateTaskRank.OPTIONAL) {
       return optionalDelegateTasksCountCache.asMap();
@@ -327,6 +362,11 @@ public class DelegateCacheImpl implements DelegateCache {
       supportedTaskTypes = new HashSet<>(delegateList.get(0).getSupportedTaskTypes());
     }
     for (Delegate delegate : delegateList) {
+      if (Objects.isNull(delegate.getSupportedTaskTypes())) {
+        log.warn(
+            "Supported task types of delegate {}, account {} is null.", delegate.getUuid(), delegate.getAccountId());
+        return Set.of();
+      }
       supportedTaskTypes = Sets.intersection(supportedTaskTypes, new HashSet<>(delegate.getSupportedTaskTypes()));
     }
     return supportedTaskTypes;
@@ -343,7 +383,8 @@ public class DelegateCacheImpl implements DelegateCache {
         .asList();
   }
 
-  private Long populateDelegateTaskCount(String accountId, DelegateTaskRank rank) {
+  @VisibleForTesting
+  protected Long populateDelegateTaskCount(String accountId, DelegateTaskRank rank) {
     long count = getDelegateTaskCount(accountId, rank, false);
 
     if (delegateTaskMigrationHelper.isDelegateTaskMigrationEnabled()) {
@@ -355,6 +396,8 @@ public class DelegateCacheImpl implements DelegateCache {
   private long getDelegateTaskCount(String accountId, DelegateTaskRank rank, boolean isDelegateTaskMigrationEnabled) {
     return persistence.createQuery(DelegateTask.class, isDelegateTaskMigrationEnabled)
         .filter(DelegateTaskKeys.accountId, accountId)
+        .field(DelegateTaskKeys.status)
+        .in(runningStatuses())
         .filter(DelegateTaskKeys.rank, rank)
         .count();
   }

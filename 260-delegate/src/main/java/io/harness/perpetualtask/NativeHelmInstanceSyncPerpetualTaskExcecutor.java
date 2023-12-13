@@ -6,7 +6,6 @@
  */
 
 package io.harness.perpetualtask;
-
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.network.SafeHttpCall.execute;
@@ -15,17 +14,22 @@ import static java.lang.String.format;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
+import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModule;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.annotations.dev.TargetModule;
 import io.harness.container.ContainerInfo;
 import io.harness.delegate.beans.instancesync.NativeHelmInstanceSyncPerpetualTaskResponse;
 import io.harness.delegate.beans.instancesync.ServerInstanceInfo;
 import io.harness.delegate.beans.instancesync.mapper.K8sContainerToHelmServiceInstanceInfoMapper;
+import io.harness.delegate.k8s.utils.K8sTaskCleaner;
 import io.harness.delegate.task.helm.HelmChartInfo;
 import io.harness.delegate.task.helm.NativeHelmDeploymentReleaseData;
 import io.harness.delegate.task.k8s.ContainerDeploymentDelegateBaseHelper;
 import io.harness.delegate.task.k8s.K8sInfraDelegateConfig;
+import io.harness.delegate.task.k8s.K8sTaskCleanupDTO;
 import io.harness.delegate.task.k8s.K8sTaskHelperBase;
 import io.harness.grpc.utils.AnyUtils;
 import io.harness.k8s.model.HelmVersion;
@@ -38,10 +42,12 @@ import io.harness.serializer.KryoSerializer;
 
 import com.google.inject.Inject;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Builder;
@@ -50,6 +56,7 @@ import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 @Slf4j
 @TargetModule(HarnessModule._930_DELEGATE_TASKS)
 @OwnedBy(CDP)
@@ -61,6 +68,8 @@ public class NativeHelmInstanceSyncPerpetualTaskExcecutor implements PerpetualTa
   @Inject private ContainerDeploymentDelegateBaseHelper containerBaseHelper;
   @Inject private K8sTaskHelperBase k8sTaskHelperBase;
   @Inject private DelegateAgentManagerClient delegateAgentManagerClient;
+
+  @Inject private K8sTaskCleaner k8sTaskCleaner;
 
   @Override
   public PerpetualTaskResponse runOnce(
@@ -111,6 +120,8 @@ public class NativeHelmInstanceSyncPerpetualTaskExcecutor implements PerpetualTa
             nativeHelmDeploymentRelease.getK8SInfraDelegateConfig().toByteArray()))
         .helmChartInfo(
             (HelmChartInfo) kryoSerializer.asObject(nativeHelmDeploymentRelease.getHelmChartInfo().toByteArray()))
+        .workloadLabelSelectors(nativeHelmDeploymentRelease.getWorkloadLabelSelectorsMap().entrySet().stream().collect(
+            Collectors.toMap(Map.Entry::getKey, e -> new ArrayList<>(e.getValue().getLabelSelectorsList()))))
         .build();
   }
 
@@ -148,6 +159,11 @@ public class NativeHelmInstanceSyncPerpetualTaskExcecutor implements PerpetualTa
                    .namespace(namespace)
                    .releaseName(releaseName)
                    .helmChartInfo(releaseData.getHelmChartInfo())
+                   .workloadLabelSelectors(releaseData.getWorkloadLabelSelectors())
+                   .cleanupDTO(K8sTaskCleanupDTO.builder()
+                                   .generatedKubeConfig(kubernetesConfig)
+                                   .infraDelegateConfig(releaseData.getK8sInfraDelegateConfig())
+                                   .build())
                    .build())
         .collect(Collectors.toList());
   }
@@ -156,14 +172,17 @@ public class NativeHelmInstanceSyncPerpetualTaskExcecutor implements PerpetualTa
       ContainerDetailsRequest requestData, HelmVersion helmVersion) {
     long timeoutMillis = K8sTaskHelperBase.getTimeoutMillisFromMinutes(DEFAULT_STEADY_STATE_TIMEOUT);
     try {
-      List<ContainerInfo> containerInfoList = k8sTaskHelperBase.getContainerInfos(
-          requestData.getKubernetesConfig(), requestData.getReleaseName(), requestData.getNamespace(), timeoutMillis);
+      List<ContainerInfo> containerInfoList =
+          k8sTaskHelperBase.getContainerInfos(requestData.getKubernetesConfig(), requestData.getReleaseName(),
+              requestData.getNamespace(), requestData.getWorkloadLabelSelectors(), timeoutMillis);
       return K8sContainerToHelmServiceInstanceInfoMapper.toServerInstanceInfoList(
           containerInfoList, requestData.getHelmChartInfo(), helmVersion);
     } catch (Exception ex) {
       log.warn("Unable to get list of server instances, namespace: {}, releaseName: {}", requestData.getNamespace(),
           requestData.getReleaseName(), ex);
       return Collections.emptyList();
+    } finally {
+      k8sTaskCleaner.cleanup(requestData.getCleanupDTO());
     }
   }
 
@@ -198,5 +217,7 @@ public class NativeHelmInstanceSyncPerpetualTaskExcecutor implements PerpetualTa
     @NotNull private String namespace;
     @NotNull private String releaseName;
     private HelmChartInfo helmChartInfo;
+    private Map<String, List<String>> workloadLabelSelectors;
+    private K8sTaskCleanupDTO cleanupDTO;
   }
 }

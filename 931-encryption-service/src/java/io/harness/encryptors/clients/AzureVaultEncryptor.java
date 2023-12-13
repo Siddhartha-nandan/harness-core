@@ -12,9 +12,11 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.eraro.ErrorCode.AZURE_AUTHENTICATION_ERROR;
+import static io.harness.eraro.ErrorCode.AZURE_KEY_VAULT_INTERRUPT_ERROR;
 import static io.harness.eraro.ErrorCode.AZURE_KEY_VAULT_OPERATION_ERROR;
 import static io.harness.exception.WingsException.USER;
 import static io.harness.exception.WingsException.USER_SRE;
+import static io.harness.helpers.GlobalSecretManagerUtils.getValueByJsonPath;
 import static io.harness.threading.Morpheus.sleep;
 
 import static java.lang.String.format;
@@ -266,6 +268,11 @@ public class AzureVaultEncryptor implements VaultEncryptor {
         log.info(e.getMessage());
         log.info("deletion of key {} in azure vault {} was successful.", existingRecord.getEncryptionKey(),
             azureVaultConfig.getVaultName());
+        if (Boolean.TRUE.equals(azureVaultConfig.getEnablePurge())) {
+          purgeSecret(existingRecord.getName(), azureVaultConfig.getVaultName(), keyVaultClient);
+          log.info("Successfully purged deleted Secret {} from azure vault: {}", existingRecord.getName(),
+              azureVaultConfig.getVaultName());
+        }
         return true;
       }
     } catch (MsalException e) {
@@ -387,17 +394,24 @@ public class AzureVaultEncryptor implements VaultEncryptor {
         throw new AzureKeyVaultOperationException("Received null value for " + parsedSecretReference.getSecretName(),
             AZURE_KEY_VAULT_OPERATION_ERROR, USER_SRE);
       }
-      return response.getValue().getValue().toCharArray();
+      return getValueByJsonPath(response.getValue().getValue(), parsedSecretReference.getKey()).toCharArray();
     } catch (KeyVaultErrorException | MsalException ex) {
       throw ex;
     } catch (Exception ex) {
-      log.error("Failed to decrypt azure secret in vault due to exception", ex);
       String message = format("Failed to decrypt Azure secret %s in vault %s in account %s due to error %s",
           parsedSecretReference.getSecretName(), azureVaultConfig.getName(), azureVaultConfig.getAccountId(),
           ex.getMessage());
+      // Do not log an addition exception error dump for Interrupted Exception
+      // as it can flood the log stream. Interrupted exception will be wrapped
+      // within another exception as no method will throw it directly.
+      if ((ex.getCause() != null) && (ex.getCause() instanceof InterruptedException)) {
+        throw new SecretManagementDelegateException(AZURE_KEY_VAULT_INTERRUPT_ERROR, message, USER);
+      }
+      log.error("Failed to decrypt azure secret in vault due to exception.", ex);
       throw new SecretManagementDelegateException(AZURE_KEY_VAULT_OPERATION_ERROR, message, USER);
     }
   }
+
   private SecretClient getAzureVaultSecretsClient(AzureVaultConfig azureVaultConfig) {
     return KeyVaultAuthenticator.getSecretsClient(azureVaultConfig.getVaultName(),
         KeyVaultAuthenticator.getAzureHttpPipeline(azureVaultConfig.getClientId(), azureVaultConfig.getSecretKey(),
@@ -405,5 +419,25 @@ public class AzureVaultEncryptor implements VaultEncryptor {
             azureVaultConfig.getAzureEnvironmentType(), azureVaultConfig.getUseManagedIdentity(),
             azureVaultConfig.getAzureManagedIdentityType(), azureVaultConfig.getManagedClientId()),
         azureVaultConfig.getAzureEnvironmentType());
+  }
+
+  private void purgeSecret(String recordName, String vaultName, SecretClient keyVaultClient) {
+    int failedAttempts = 0;
+    while (true) {
+      try {
+        keyVaultClient.purgeDeletedSecret(recordName);
+        return;
+      } catch (Exception ex) {
+        failedAttempts++;
+        log.error("Failed to purge deleted Secret {} from azure vault: {} failed attempt{}", recordName, vaultName,
+            failedAttempts);
+        if (failedAttempts == NUM_OF_RETRIES) {
+          throw new SecretManagementDelegateException(AZURE_KEY_VAULT_OPERATION_ERROR,
+              "Failed to complete the purge operation. The secret will remain in the deleted/recoverable state in Azure. To successfully purge it, please navigate to Azure Key Vault.",
+              ex, USER);
+        }
+      }
+      sleep(Duration.ofSeconds(5));
+    }
   }
 }

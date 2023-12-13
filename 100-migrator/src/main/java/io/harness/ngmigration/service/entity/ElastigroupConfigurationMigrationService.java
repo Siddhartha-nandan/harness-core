@@ -9,19 +9,17 @@ package io.harness.ngmigration.service.entity;
 
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
-import static software.wings.ngmigration.NGMigrationEntityType.ELASTIGROUP_CONFIGURATION;
-
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.MigratedEntityMapping;
 import io.harness.cdng.elastigroup.ElastigroupConfiguration;
 import io.harness.cdng.manifest.yaml.harness.HarnessStore;
 import io.harness.cdng.manifest.yaml.storeConfig.StoreConfigType;
 import io.harness.cdng.manifest.yaml.storeConfig.StoreConfigWrapper;
-import io.harness.encryption.Scope;
 import io.harness.gitsync.beans.YamlDTO;
-import io.harness.ng.core.filestore.FileUsage;
-import io.harness.ngmigration.beans.FileYamlDTO;
 import io.harness.ngmigration.beans.MigrationContext;
 import io.harness.ngmigration.beans.MigrationInputDTO;
 import io.harness.ngmigration.beans.NGYamlFile;
@@ -32,14 +30,16 @@ import io.harness.ngmigration.client.PmsClient;
 import io.harness.ngmigration.client.TemplateClient;
 import io.harness.ngmigration.dto.MigrationImportSummaryDTO;
 import io.harness.ngmigration.expressions.MigratorExpressionUtils;
+import io.harness.ngmigration.service.MigrationHelperService;
 import io.harness.ngmigration.service.NgMigrationService;
+import io.harness.ngmigration.service.config.ElastigroupConfigurationFileHandlerImpl;
 import io.harness.ngmigration.utils.MigratorUtility;
 import io.harness.ngmigration.utils.SecretRefUtils;
 import io.harness.pms.yaml.ParameterField;
 
+import software.wings.beans.Environment;
 import software.wings.infra.AwsAmiInfrastructure;
 import software.wings.infra.InfrastructureDefinition;
-import software.wings.ngmigration.CgBasicInfo;
 import software.wings.ngmigration.CgEntityId;
 import software.wings.ngmigration.CgEntityNode;
 import software.wings.ngmigration.DiscoveryNode;
@@ -59,11 +59,13 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_MIGRATOR})
 @OwnedBy(HarnessTeam.CDC)
 @Slf4j
 public class ElastigroupConfigurationMigrationService extends NgMigrationService {
   @Inject InfrastructureDefinitionService infrastructureDefinitionService;
   @Inject private SecretRefUtils secretRefUtils;
+  @Inject private MigrationHelperService migrationHelperService;
 
   @Override
   public MigratedEntityMapping generateMappingEntity(NGYamlFile yamlFile) {
@@ -109,62 +111,50 @@ public class ElastigroupConfigurationMigrationService extends NgMigrationService
     Map<CgEntityId, CgEntityNode> entities = migrationContext.getEntities();
     MigrationInputDTO inputDTO = migrationContext.getInputDTO();
     InfrastructureDefinition infrastructureDefinition = (InfrastructureDefinition) entities.get(entityId).getEntity();
-    MigratorExpressionUtils.render(migrationContext, infrastructureDefinition, inputDTO.getCustomExpressions());
-    NGYamlFile yamlFile = getYamlFile(infrastructureDefinition, inputDTO);
+    Map<String, Object> custom =
+        migrationHelperService.updateContextVariables(migrationContext, entities, infrastructureDefinition);
+    MigratorExpressionUtils.render(migrationContext, infrastructureDefinition, custom);
+    NGYamlFile yamlFile = getYamlFile(infrastructureDefinition, inputDTO, migrationContext);
     if (yamlFile == null) {
       return null;
     }
     return YamlGenerationDetails.builder().yamlFileList(Collections.singletonList(yamlFile)).build();
   }
 
-  private NGYamlFile getYamlFile(InfrastructureDefinition infrastructureDefinition, MigrationInputDTO inputDTO) {
+  private NGYamlFile getYamlFile(
+      InfrastructureDefinition infrastructureDefinition, MigrationInputDTO inputDTO, MigrationContext context) {
     AwsAmiInfrastructure infrastructure = (AwsAmiInfrastructure) infrastructureDefinition.getInfrastructure();
     if (StringUtils.isBlank(infrastructure.getSpotinstElastiGroupJson())) {
       return null;
     }
     byte[] fileContent = infrastructure.getSpotinstElastiGroupJson().getBytes(StandardCharsets.UTF_8);
-    return getYamlFile(inputDTO, infrastructureDefinition, fileContent, infrastructureDefinition.getName());
+    return getYamlFile(inputDTO, infrastructureDefinition, fileContent, infrastructureDefinition.getName(), context);
   }
 
-  private static NGYamlFile getYamlFile(
-      MigrationInputDTO inputDTO, InfrastructureDefinition infrastructureDefinition, byte[] content, String infraName) {
+  private static NGYamlFile getYamlFile(MigrationInputDTO inputDTO, InfrastructureDefinition infrastructureDefinition,
+      byte[] content, String infraName, MigrationContext context) {
     if (isEmpty(content)) {
       return null;
     }
-    String prefix = infraName + ' ';
-    String fileUsage = FileUsage.CONFIG.name();
-    String projectIdentifier = MigratorUtility.getProjectIdentifier(Scope.PROJECT, inputDTO);
-    String orgIdentifier = MigratorUtility.getOrgIdentifier(Scope.PROJECT, inputDTO);
-    String identifier = MigratorUtility.generateManifestIdentifier(
-        prefix + "ElastigroupConfigurationSpec", inputDTO.getIdentifierCaseFormat());
-    String name = identifier + ".json";
+
+    CgEntityNode environmentNode = context.getEntities().get(
+        CgEntityId.builder().type(NGMigrationEntityType.ENVIRONMENT).id(infrastructureDefinition.getEnvId()).build());
+
+    String envName = "";
+    if (environmentNode != null && environmentNode.getEntity() != null) {
+      Environment environment = (Environment) environmentNode.getEntity();
+      envName = environment.getName();
+    }
+
+    ElastigroupConfigurationFileHandlerImpl handler =
+        new ElastigroupConfigurationFileHandlerImpl(null, envName, content);
+
     return NGYamlFile.builder()
         .type(NGMigrationEntityType.ELASTIGROUP_CONFIGURATION)
         .filename(null)
-        .yaml(FileYamlDTO.builder()
-                  .identifier(identifier)
-                  .fileUsage(fileUsage)
-                  .name(name)
-                  .content(new String(content))
-                  .rootIdentifier("Root")
-                  .depth(Integer.MAX_VALUE)
-                  .filePath("")
-                  .orgIdentifier(orgIdentifier)
-                  .projectIdentifier(projectIdentifier)
-                  .build())
-        .ngEntityDetail(NgEntityDetail.builder()
-                            .entityType(NGMigrationEntityType.FILE_STORE)
-                            .identifier(identifier)
-                            .orgIdentifier(orgIdentifier)
-                            .projectIdentifier(projectIdentifier)
-                            .build())
-        .cgBasicInfo(CgBasicInfo.builder()
-                         .id(infrastructureDefinition.getUuid())
-                         .name(infrastructureDefinition.getName())
-                         .type(ELASTIGROUP_CONFIGURATION)
-                         .appId(infrastructureDefinition.getAppId())
-                         .accountId(infrastructureDefinition.getAccountId())
-                         .build())
+        .yaml(handler.getFileYamlDTO(context, infrastructureDefinition))
+        .ngEntityDetail(handler.getNGEntityDetail(context, infrastructureDefinition))
+        .cgBasicInfo(handler.getCgBasicInfo(infrastructureDefinition))
         .build();
   }
 
@@ -175,7 +165,7 @@ public class ElastigroupConfigurationMigrationService extends NgMigrationService
   }
 
   @Override
-  protected boolean isNGEntityExists() {
+  protected boolean isNGEntityExists(MigrationContext migrationContext) {
     return true;
   }
 
@@ -192,7 +182,7 @@ public class ElastigroupConfigurationMigrationService extends NgMigrationService
       if (configNode != null) {
         InfrastructureDefinition infrastructureDefinition = (InfrastructureDefinition) configNode.getEntity();
         MigratorExpressionUtils.render(migrationContext, infrastructureDefinition, inputDTO.getCustomExpressions());
-        NGYamlFile file = getYamlFile(infrastructureDefinition, inputDTO);
+        NGYamlFile file = getYamlFile(infrastructureDefinition, inputDTO, migrationContext);
         if (file != null) {
           elastigroupConfigurations.add(getConfigFileWrapper(file));
         }

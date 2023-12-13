@@ -37,6 +37,7 @@ import io.harness.category.element.UnitTests;
 import io.harness.delegate.beans.artifact.ArtifactFileMetadata;
 import io.harness.exception.ArtifactServerException;
 import io.harness.exception.HintException;
+import io.harness.logging.LogCallback;
 import io.harness.logging.LoggingInitializer;
 import io.harness.rule.Owner;
 import io.harness.scm.ScmSecret;
@@ -71,6 +72,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.mockito.Mockito;
 import org.powermock.api.mockito.PowerMockito;
 
 /**
@@ -112,6 +114,13 @@ public class JenkinsRegistryUtilsTest extends WingsBaseTest {
                                 .password(PASSWORD.toCharArray())
                                 .useConnectorUrlForJobExecution(true)
                                 .build();
+  }
+
+  private LogCallback logCallback;
+
+  @Before
+  public void before() {
+    logCallback = Mockito.mock(LogCallback.class);
   }
 
   /**
@@ -428,8 +437,8 @@ public class JenkinsRegistryUtilsTest extends WingsBaseTest {
   @Owner(developers = SHIVAM)
   @Category(UnitTests.class)
   public void shouldTriggerJobWithParameters() throws IOException {
-    QueueReference queueItem =
-        jenkinsRegistryUtils.trigger("todolist_war", jenkinsInternalConfig, ImmutableMap.of("Test", "Test"));
+    QueueReference queueItem = jenkinsRegistryUtils.trigger(
+        "todolist_war", jenkinsInternalConfig, ImmutableMap.of("Test", "Test"), logCallback);
     assertThat(queueItem.getQueueItemUrlPart()).isNotNull();
   }
 
@@ -449,7 +458,7 @@ public class JenkinsRegistryUtilsTest extends WingsBaseTest {
   @Category(UnitTests.class)
   public void shouldTriggerJobWithoutParameters() throws IOException {
     QueueReference queueItem =
-        jenkinsRegistryUtils.trigger("todolist_war", jenkinsInternalConfig, Collections.emptyMap());
+        jenkinsRegistryUtils.trigger("todolist_war", jenkinsInternalConfig, Collections.emptyMap(), logCallback);
     assertThat(queueItem.getQueueItemUrlPart()).isNotNull();
   }
 
@@ -483,8 +492,8 @@ public class JenkinsRegistryUtilsTest extends WingsBaseTest {
   @Owner(developers = SHIVAM)
   @Category(UnitTests.class)
   public void triggerJobWithParametersWithConnectorUrl() throws IOException {
-    QueueReference queueItem =
-        jenkinsRegistryUtils.trigger("todolist_war", jenkinsInternalConfig, ImmutableMap.of("Test", "Test"));
+    QueueReference queueItem = jenkinsRegistryUtils.trigger(
+        "todolist_war", jenkinsInternalConfig, ImmutableMap.of("Test", "Test"), logCallback);
     assertThat(queueItem.getQueueItemUrlPart()).isNotNull();
   }
 
@@ -493,7 +502,7 @@ public class JenkinsRegistryUtilsTest extends WingsBaseTest {
   @Category(UnitTests.class)
   public void triggerJobWithoutParametersWithConnectorUrl() throws IOException {
     QueueReference queueItem =
-        jenkinsRegistryUtils.trigger("todolist_war", jenkinsInternalConfig, Collections.emptyMap());
+        jenkinsRegistryUtils.trigger("todolist_war", jenkinsInternalConfig, Collections.emptyMap(), logCallback);
     assertThat(queueItem.getQueueItemUrlPart()).isNotNull();
   }
 
@@ -509,6 +518,7 @@ public class JenkinsRegistryUtilsTest extends WingsBaseTest {
   @Test
   @Owner(developers = SHIVAM)
   @Category(UnitTests.class)
+
   public void shouldRetryOnFailures() throws IOException, URISyntaxException {
     JenkinsInternalConfig jenkinsInternalConfigTest =
         JenkinsInternalConfig.builder().jenkinsUrl(rootUrl).username(USERNAME).password(PASSWORD.toCharArray()).build();
@@ -557,17 +567,20 @@ public class JenkinsRegistryUtilsTest extends WingsBaseTest {
   @Test
   @Owner(developers = SHIVAM)
   @Category(UnitTests.class)
+
   public void triggerThrowErrorJobNotFound() throws IOException {
     CustomJenkinsServer jenkinsServer = mock(CustomJenkinsServer.class);
     when(jenkinsServer.createJob(any(FolderJob.class), eq("randomJob"), any(JenkinsConfig.class))).thenReturn(null);
-    assertThatThrownBy(
-        () -> jenkinsRegistryUtils.trigger("randomJob", jenkinsInternalConfig, ImmutableMap.of("Test", "Test")))
+    assertThatThrownBy(()
+                           -> jenkinsRegistryUtils.trigger(
+                               "randomJob", jenkinsInternalConfig, ImmutableMap.of("Test", "Test"), logCallback))
         .isInstanceOf(ArtifactServerException.class);
   }
 
   @Test
   @Owner(developers = SHIVAM)
   @Category(UnitTests.class)
+
   public void testGetJobsReturnsEmptyArrayWhenException() throws IOException {
     JenkinsCustomServer jenkinsServer = mock(JenkinsCustomServer.class);
     when(jenkinsServer.getJobs()).thenThrow(new RuntimeException());
@@ -690,6 +703,7 @@ public class JenkinsRegistryUtilsTest extends WingsBaseTest {
   @Test
   @Owner(developers = SHIVAM)
   @Category(UnitTests.class)
+
   public void verifyGetConsoleLogs() throws IOException, URISyntaxException {
     JenkinsInternalConfig jenkinsInternalConfigTest =
         JenkinsInternalConfig.builder().jenkinsUrl(rootUrl).username(USERNAME).password(PASSWORD.toCharArray()).build();
@@ -704,6 +718,7 @@ public class JenkinsRegistryUtilsTest extends WingsBaseTest {
   @Test
   @Owner(developers = SHIVAM)
   @Category(UnitTests.class)
+
   public void verifyGetConsoleLogsIOException() throws IOException, URISyntaxException {
     JenkinsInternalConfig jenkinsInternalConfigTest =
         JenkinsInternalConfig.builder().jenkinsUrl(rootUrl).username(USERNAME).password(PASSWORD.toCharArray()).build();
@@ -718,6 +733,7 @@ public class JenkinsRegistryUtilsTest extends WingsBaseTest {
   @Test
   @Owner(developers = SHIVAM)
   @Category(UnitTests.class)
+
   public void verifyGetConsoleLogsURIException() throws IOException, URISyntaxException {
     JenkinsInternalConfig jenkinsInternalConfigTest =
         JenkinsInternalConfig.builder().jenkinsUrl(rootUrl).username(USERNAME).password(PASSWORD.toCharArray()).build();

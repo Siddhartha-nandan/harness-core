@@ -12,6 +12,7 @@ import static io.harness.licensing.LicenseConstant.UNLIMITED;
 import static io.harness.licensing.LicenseTestConstant.ACCOUNT_IDENTIFIER;
 import static io.harness.rule.OwnerRule.KAPIL_GARG;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,6 +23,7 @@ import io.harness.ModuleType;
 import io.harness.account.services.AccountService;
 import io.harness.category.element.UnitTests;
 import io.harness.ccm.license.remote.CeLicenseClient;
+import io.harness.eventsframework.api.Producer;
 import io.harness.exception.InvalidRequestException;
 import io.harness.licensing.Edition;
 import io.harness.licensing.LicenseStatus;
@@ -31,12 +33,15 @@ import io.harness.licensing.beans.modules.SMPEncLicenseDTO;
 import io.harness.licensing.checks.LicenseComplianceResolver;
 import io.harness.licensing.entities.modules.CDModuleLicense;
 import io.harness.licensing.entities.modules.ModuleLicense;
+import io.harness.licensing.helpers.ModuleLicenseHelper;
 import io.harness.licensing.interfaces.ModuleLicenseInterface;
 import io.harness.licensing.jobs.SMPLicenseValidationJob;
 import io.harness.licensing.mappers.LicenseObjectConverter;
 import io.harness.licensing.mappers.LicenseObjectMapper;
 import io.harness.licensing.mappers.SMPLicenseMapper;
 import io.harness.licensing.mappers.modules.CDLicenseObjectMapper;
+import io.harness.lock.PersistentLocker;
+import io.harness.lock.redis.RedisAcquiredLock;
 import io.harness.ng.core.dto.AccountDTO;
 import io.harness.repositories.ModuleLicenseRepository;
 import io.harness.rule.Owner;
@@ -75,11 +80,15 @@ public class SMPLicenseServiceImplTest extends CategoryTest {
   @Mock LicenseValidator licenseValidator;
   @Mock SMPLicenseMapper smpLicenseMapper;
   @Mock SMPLicenseValidationJob smpLicenseValidationJob;
+  @Mock Producer eventProducer;
+  @Mock PersistentLocker persistentLocker;
+  @Mock ModuleLicenseHelper moduleLicenseHelper;
   @InjectMocks SMPLicenseServiceImpl licenseService;
 
   @Before
   public void setup() {
     initMocks(this);
+    when(moduleLicenseHelper.isDeveloperLicensingFeatureEnabled(Mockito.anyString())).thenReturn(false);
   }
 
   @Test(expected = UnsupportedOperationException.class)
@@ -118,12 +127,15 @@ public class SMPLicenseServiceImplTest extends CategoryTest {
         .thenReturn(new ArrayList<>());
     when(moduleLicenseRepository.findByAccountIdentifier(Mockito.any())).thenReturn(new ArrayList<>());
     when(moduleLicenseRepository.save(Mockito.any())).thenReturn(getModuleLicenses().get(0));
+    when(persistentLocker.tryToAcquireLock(Mockito.anyString(), Mockito.any()))
+        .thenReturn(RedisAcquiredLock.builder().lock(null).isSentinelMode(false).build());
 
     licenseService.applySMPLicense(licenseDTO);
     verify(moduleLicenseRepository, times(1)).save(Mockito.any());
     verify(accountService, times(1)).createAccount(Mockito.any(AccountDTO.class));
     verify(smpLicenseValidationJob, times(1))
-        .scheduleValidation(Mockito.anyString(), Mockito.any(), Mockito.eq(60), Mockito.any());
+        .scheduleValidation(Mockito.anyString(), Mockito.any(), Mockito.eq(1440), Mockito.any());
+    verify(eventProducer, times(1)).send(any());
   }
 
   @Test
@@ -147,12 +159,15 @@ public class SMPLicenseServiceImplTest extends CategoryTest {
         .thenReturn(new ArrayList<>());
     when(moduleLicenseRepository.findByAccountIdentifier("accountId")).thenReturn(new ArrayList<>());
     when(moduleLicenseRepository.save(Mockito.any())).thenReturn(getModuleLicenses().get(0));
+    when(persistentLocker.tryToAcquireLock(Mockito.anyString(), Mockito.any()))
+        .thenReturn(RedisAcquiredLock.builder().lock(null).isSentinelMode(false).build());
 
     licenseService.applySMPLicense(licenseDTO);
     verify(moduleLicenseRepository, times(1)).save(Mockito.any());
     verify(accountService, times(0)).createAccount(Mockito.any(AccountDTO.class));
     verify(smpLicenseValidationJob, times(1))
-        .scheduleValidation(Mockito.anyString(), Mockito.any(), Mockito.eq(60), Mockito.any());
+        .scheduleValidation(Mockito.anyString(), Mockito.any(), Mockito.eq(1440), Mockito.any());
+    verify(eventProducer, times(1)).send(any());
   }
 
   @Test
@@ -178,12 +193,14 @@ public class SMPLicenseServiceImplTest extends CategoryTest {
     when(moduleLicenseRepository.findById(Mockito.eq(getModuleLicenses().get(0).getId())))
         .thenReturn(Optional.of(getModuleLicenses().get(0)));
     when(moduleLicenseRepository.save(Mockito.any())).thenReturn(getModuleLicenses().get(0));
+    when(persistentLocker.tryToAcquireLock(Mockito.anyString(), Mockito.any()))
+        .thenReturn(RedisAcquiredLock.builder().lock(null).isSentinelMode(false).build());
 
     licenseService.applySMPLicense(licenseDTO);
     verify(moduleLicenseRepository, times(1)).save(Mockito.any());
     verify(accountService, times(0)).createAccount(Mockito.any(AccountDTO.class));
     verify(smpLicenseValidationJob, times(1))
-        .scheduleValidation(Mockito.anyString(), Mockito.any(), Mockito.eq(60), Mockito.any());
+        .scheduleValidation(Mockito.anyString(), Mockito.any(), Mockito.eq(1440), Mockito.any());
   }
 
   @Test(expected = InvalidRequestException.class)
@@ -220,7 +237,12 @@ public class SMPLicenseServiceImplTest extends CategoryTest {
   private void setupLicenseObjectConverter() throws NoSuchFieldException, IllegalAccessException {
     LicenseObjectConverter licenseObjectConverter = new LicenseObjectConverter();
     Map<ModuleType, LicenseObjectMapper> mapperMap = new HashMap<>();
-    mapperMap.put(CD, new CDLicenseObjectMapper());
+    CDLicenseObjectMapper cdLicenseMapper = new CDLicenseObjectMapper();
+    Field helperField = cdLicenseMapper.getClass().getDeclaredField("moduleLicenseHelper");
+    helperField.setAccessible(true);
+    helperField.set(cdLicenseMapper, moduleLicenseHelper);
+
+    mapperMap.put(CD, cdLicenseMapper);
     Field mapperField = licenseObjectConverter.getClass().getDeclaredField("mapperMap");
     mapperField.setAccessible(true);
     mapperField.set(licenseObjectConverter, mapperMap);

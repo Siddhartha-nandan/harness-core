@@ -12,24 +12,23 @@ import static io.harness.logging.AutoLogContext.OverrideBehavior.OVERRIDE_ERROR;
 
 import static software.wings.security.PermissionAttribute.ResourceType.DELEGATE;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.DelegateTask;
-import io.harness.beans.DelegateTask.DelegateTaskKeys;
-import io.harness.delegate.InitializeExecutionInfraResponse;
+import io.harness.delegate.beans.DelegateResponseData;
 import io.harness.delegate.beans.DelegateTaskResponse;
+import io.harness.delegate.beans.scheduler.CleanupInfraResponse;
+import io.harness.delegate.beans.scheduler.ExecutionStatus;
+import io.harness.delegate.beans.scheduler.InitializeExecutionInfraResponse;
+import io.harness.delegate.core.beans.ResponseCode;
 import io.harness.delegate.core.beans.SetupInfraResponse;
 import io.harness.delegate.task.tasklogging.ExecutionLogContext;
 import io.harness.delegate.task.tasklogging.TaskLogContext;
-import io.harness.delegate.utils.DelegateTaskMigrationHelper;
-import io.harness.exception.InvalidArgumentsException;
 import io.harness.executionInfra.ExecutionInfrastructureService;
 import io.harness.logging.AccountLogContext;
 import io.harness.logging.AutoLogContext;
-import io.harness.observer.RemoteObserverInformer;
-import io.harness.observer.Subject;
-import io.harness.persistence.HPersistence;
 import io.harness.security.annotations.DelegateAuth;
-import io.harness.service.intfc.DelegateTaskRetryObserver;
 import io.harness.service.intfc.DelegateTaskService;
 
 import software.wings.security.annotations.Scope;
@@ -38,10 +37,8 @@ import software.wings.service.intfc.DelegateTaskServiceClassic;
 import com.codahale.metrics.annotation.ExceptionMetered;
 import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
-import dev.morphia.query.Query;
 import io.dropwizard.jersey.protobuf.ProtocolBufferMediaType;
 import io.swagger.annotations.Api;
-import java.util.Objects;
 import javax.validation.constraints.NotEmpty;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -54,7 +51,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.tuple.Pair;
 
 @Api("/executions")
 @Path("/executions")
@@ -65,12 +61,8 @@ import org.apache.commons.lang3.tuple.Pair;
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class CoreDelegateExecutionResource {
   private final DelegateTaskServiceClassic delegateTaskServiceClassic;
-  private final ExecutionInfrastructureService executionInfrastructureService;
-  private final HPersistence persistence;
-  private final DelegateTaskMigrationHelper delegateTaskMigrationHelper;
-  private Subject<DelegateTaskRetryObserver> retryObserverSubject = new Subject<>();
-  private final RemoteObserverInformer remoteObserverInformer;
-  private final DelegateTaskService delegateTaskService;
+  private final ExecutionInfrastructureService infraService;
+  private final DelegateTaskService taskService;
 
   @DelegateAuth
   @GET
@@ -78,62 +70,132 @@ public class CoreDelegateExecutionResource {
   @Produces(ProtocolBufferMediaType.APPLICATION_PROTOBUF)
   @Timed
   @ExceptionMetered
-  public Response acquireRequestPayload(@PathParam("executionId") final String executionId,
+  public Response acquireRequestPayload(@PathParam("executionId") final String taskId,
       @QueryParam("accountId") @NotEmpty final String accountId,
       @QueryParam("delegateInstanceId") final String delegateInstanceId,
       @QueryParam("delegateId") final String delegateId) {
-    try (AutoLogContext ignore1 = new TaskLogContext(executionId, OVERRIDE_ERROR);
+    try (AutoLogContext ignore1 = new TaskLogContext(taskId, OVERRIDE_ERROR);
          AutoLogContext ignore2 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
       final var optionalDelegateTask =
-          delegateTaskServiceClassic.acquireTask(accountId, delegateId, executionId, delegateInstanceId);
-      if (!optionalDelegateTask.isPresent()) {
+          delegateTaskServiceClassic.acquireTask(accountId, delegateId, taskId, delegateInstanceId);
+      if (optionalDelegateTask.isEmpty()) {
         return Response.status(Response.Status.NOT_FOUND).build();
       }
       return Response.ok(optionalDelegateTask.get()).build();
     } catch (final Exception e) {
-      log.error("Exception serializing task {} data ", executionId, e);
+      log.error("Exception serializing task {} data ", taskId, e);
       return Response.serverError().build();
     }
   }
 
   @DelegateAuth
   @POST
-  @Path("response/{executionId}/executionInfra")
+  @Path("response/{executionId}/infra-setup")
   @Consumes(ProtocolBufferMediaType.APPLICATION_PROTOBUF)
   @Timed
   @ExceptionMetered
-  public Response handleSetupExecutionInfraResponse(@QueryParam("delegateId") final String delegateId,
+  public Response handleSetupInfraResponse(@QueryParam("delegateId") final String delegateId,
       @PathParam("executionId") final String executionId, @QueryParam("accountId") @NotEmpty final String accountId,
-      SetupInfraResponse response) {
+      final SetupInfraResponse response) {
     try (AutoLogContext ignore1 = new ExecutionLogContext(executionId, OVERRIDE_ERROR);
          AutoLogContext ignore2 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
-      if (response == null) {
-        throw new InvalidArgumentsException(Pair.of("args", "response cannot be null"));
+      if (response.getResponseCode() == ResponseCode.RESPONSE_UNKNOWN) {
+        log.warn("Unknown init infra response from delegate {} for execution {}", delegateId, executionId);
+        return Response.status(BAD_REQUEST).build();
       }
-      Query<DelegateTask> taskQuery =
-          persistence
-              .createQuery(DelegateTask.class, delegateTaskMigrationHelper.isMigrationEnabledForTask(executionId))
-              .filter(DelegateTaskKeys.accountId, accountId)
-              .filter(DelegateTaskKeys.uuid, executionId);
-      DelegateTask task = taskQuery.get();
-      if (Objects.isNull(task)) {
-        log.error("When processing response from delegate {}, task not found.", delegateId);
+
+      final var task = taskService.fetchDelegateTask(accountId, executionId);
+      if (task.isEmpty()) {
+        log.error("Task not found when processing infra setup response from delegate {}", delegateId);
         return Response.serverError().build();
       }
-      final String uuid =
-          executionInfrastructureService.addExecutionInfrastructure(task, delegateId, response.getLocation());
 
-      delegateTaskService.handleResponse(task, taskQuery,
-          DelegateTaskResponse.builder()
-              .response(InitializeExecutionInfraResponse.builder().executionInfraReferenceId(uuid).build())
-              .accountId(task.getAccountId())
-              .build());
+      if (response.getResponseCode() != ResponseCode.RESPONSE_OK) {
+        log.error("Error response from delegate {} for execution {}. {}", delegateId, executionId,
+            response.getErrorMessage());
+        final var callbackResponse =
+            InitializeExecutionInfraResponse.builder(task.get().getUuid(), ExecutionStatus.FAILED)
+                .errorMessage(response.getErrorMessage())
+                .build();
+        handleResponse(task.get(), callbackResponse);
+        return Response.ok().build();
+      }
+
+      final var updated = infraService.updateDelegateInfo(
+          accountId, task.get().getUuid(), delegateId, response.getLocation().getDelegateName());
+
+      if (!updated) {
+        log.error("Error updating delegate info for account {} and execution {}", accountId, executionId);
+        final var callbackResponse =
+            InitializeExecutionInfraResponse.builder(task.get().getUuid(), ExecutionStatus.FAILED)
+                .errorMessage("Failed to update the infrastructure details")
+                .build();
+        handleResponse(task.get(), callbackResponse);
+        return Response.serverError().build();
+      }
+
+      final var callbackResponse =
+          InitializeExecutionInfraResponse.builder(task.get().getUuid(), ExecutionStatus.SUCCESS).build();
+      handleResponse(task.get(), callbackResponse);
       return Response.ok().build();
     } catch (final Exception e) {
-      log.error(
-          "Exception adding new execution infra entry in manager account_id: %s, delegate_id: %s, execution_id: %s.",
-          accountId, delegateId, executionId);
+      log.error("Exception updating execution infra for account {}, with delegate details {}, for execution {}",
+          accountId, delegateId, executionId, e);
       return Response.serverError().build();
     }
+  }
+
+  @DelegateAuth
+  @POST
+  @Path("response/{executionId}/infra-cleanup/{infraId}")
+  @Consumes(ProtocolBufferMediaType.APPLICATION_PROTOBUF)
+  @Timed
+  @ExceptionMetered
+  public Response handleCleanupInfraResponse(@PathParam("executionId") final String executionId,
+      @PathParam("infraId") final String infraRefId, @QueryParam("accountId") @NotEmpty final String accountId,
+      @QueryParam("delegateId") final String delegateId,
+      final io.harness.delegate.core.beans.CleanupInfraResponse response) {
+    try (AutoLogContext ignore1 = new ExecutionLogContext(executionId, OVERRIDE_ERROR);
+         AutoLogContext ignore2 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
+      if (response.getResponseCode() == ResponseCode.RESPONSE_UNKNOWN) {
+        log.warn("Unknown cleanup infra response from delegate {} for execution {}", delegateId, executionId);
+        return Response.status(BAD_REQUEST).build();
+      }
+
+      final var task = taskService.fetchDelegateTask(accountId, executionId);
+      if (task.isEmpty()) {
+        log.error("Task not found when processing infra setup response from delegate {}", delegateId);
+        return Response.serverError().build();
+      }
+
+      if (response.getResponseCode() != ResponseCode.RESPONSE_OK) {
+        log.error("Error response from delegate {} for execution {}. {}", delegateId, executionId,
+            response.getErrorMessage());
+        final var callbackResponse = CleanupInfraResponse.builder(executionId, infraRefId, ExecutionStatus.FAILED)
+                                         .errorMessage(response.getErrorMessage())
+                                         .build();
+        handleResponse(task.get(), callbackResponse);
+        return Response.ok().build();
+      }
+
+      final var callbackResponse =
+          CleanupInfraResponse.builder(executionId, infraRefId, ExecutionStatus.SUCCESS).build();
+      handleResponse(task.get(), callbackResponse);
+      return Response.ok().build();
+    } catch (final Exception e) {
+      log.error("Exception updating execution infra for account {}, with delegate details {}, for execution {}",
+          accountId, delegateId, executionId, e);
+      return Response.serverError().build();
+    } finally {
+      final var deleted = infraService.deleteInfra(accountId, infraRefId);
+      if (!deleted) {
+        log.warn("Problem deleting infra for account {} and task {}", accountId, infraRefId);
+      }
+    }
+  }
+
+  private void handleResponse(final DelegateTask task, final DelegateResponseData response) {
+    taskService.handleResponseV2(
+        task, DelegateTaskResponse.builder().response(response).accountId(task.getAccountId()).build());
   }
 }

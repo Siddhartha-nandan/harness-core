@@ -12,6 +12,9 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import static java.lang.String.format;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.ccm.clickHouse.ClickHouseService;
 import io.harness.ccm.commons.beans.config.ClickHouseConfig;
 import io.harness.ccm.commons.dao.CEMetadataRecordDao;
@@ -43,7 +46,6 @@ import io.harness.ccm.views.service.CEViewService;
 import io.harness.ccm.views.service.ViewsBillingService;
 import io.harness.exception.InvalidRequestException;
 
-import com.google.cloud.bigquery.BigQuery;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import java.awt.Color;
@@ -81,6 +83,8 @@ import org.jfree.chart.renderer.category.StandardBarPainter;
 import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.data.category.DefaultCategoryDataset;
 
+@CodePulse(
+    module = ProductModule.CCM, unitCoverageRequired = true, components = {HarnessModuleComponent.CCM_PERSPECTIVE})
 @Slf4j
 public class CEReportTemplateBuilderServiceImpl implements CEReportTemplateBuilderService {
   @Inject private CEViewService ceViewService;
@@ -157,13 +161,13 @@ public class CEReportTemplateBuilderServiceImpl implements CEReportTemplateBuild
 
   @Override
   public Map<String, String> getTemplatePlaceholders(
-      String accountId, String viewId, BigQuery bigQuery, String cloudProviderTableName, String baseUrl) {
-    return getTemplatePlaceholders(accountId, viewId, null, bigQuery, cloudProviderTableName, baseUrl);
+      String accountId, String viewId, String cloudProviderTableName, String baseUrl) {
+    return getTemplatePlaceholders(accountId, viewId, null, cloudProviderTableName, baseUrl);
   }
 
   @Override
-  public Map<String, String> getTemplatePlaceholders(String accountId, String viewId, String reportId,
-      BigQuery bigQuery, String cloudProviderTableName, String baseUrl) {
+  public Map<String, String> getTemplatePlaceholders(
+      String accountId, String viewId, String reportId, String cloudProviderTableName, String baseUrl) {
     Map<String, String> templatePlaceholders = new HashMap<>();
 
     // Get cloud provider table name here
@@ -246,7 +250,7 @@ public class CEReportTemplateBuilderServiceImpl implements CEReportTemplateBuild
 
     // Trend bar for report
     templatePlaceholders.put(
-        TOTAL_COST, trendData.getStatsValue().replaceFirst(currency.getSymbol(), currency.getUtf8HexSymbol()));
+        TOTAL_COST, currency.getUtf8HexSymbol() + viewsQueryHelper.formatNumber(trendData.getValue().doubleValue()));
     if (trendData.getStatsTrend().doubleValue() < 0) {
       templatePlaceholders.put(TOTAL_COST_TREND,
           String.format(COST_TREND, GREEN_COLOR, trendData.getStatsTrend() + PERCENT, getTotalCostDiff(trendData)));

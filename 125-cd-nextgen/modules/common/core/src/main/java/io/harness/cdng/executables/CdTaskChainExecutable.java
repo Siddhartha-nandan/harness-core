@@ -6,6 +6,7 @@
  */
 
 package io.harness.cdng.executables;
+
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 
 import io.harness.annotations.dev.CodePulse;
@@ -16,7 +17,6 @@ import io.harness.cdng.execution.service.StageExecutionInstanceInfoService;
 import io.harness.delegate.beans.CDDelegateTaskNotifyResponseData;
 import io.harness.delegate.cdng.execution.StepExecutionInstanceInfo;
 import io.harness.opaclient.OpaServiceClient;
-import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.execution.utils.AmbianceUtils;
@@ -24,9 +24,12 @@ import io.harness.pms.sdk.core.steps.executables.TaskChainResponse;
 import io.harness.pms.sdk.core.steps.io.PassThroughData;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.steps.executable.TaskChainExecutableWithCapabilities;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 import io.harness.utils.PolicyEvalUtils;
 
 import com.google.inject.Inject;
@@ -39,11 +42,12 @@ import lombok.extern.slf4j.Slf4j;
 public abstract class CdTaskChainExecutable extends TaskChainExecutableWithCapabilities {
   @Inject OpaServiceClient opaServiceClient;
   @Inject StageExecutionInstanceInfoService stageExecutionInstanceInfoService;
+  @Inject private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
 
   // evaluating policies added in advanced section of the steps and updating status and failure info in the step
   // response
   public StepResponse postTaskValidate(
-      Ambiance ambiance, StepElementParameters stepParameters, StepResponse stepResponse) {
+      Ambiance ambiance, StepBaseParameters stepParameters, StepResponse stepResponse) {
     if (Status.SUCCEEDED.equals(stepResponse.getStatus())) {
       return PolicyEvalUtils.evalPolicies(ambiance, stepParameters, stepResponse, opaServiceClient);
     }
@@ -51,7 +55,7 @@ public abstract class CdTaskChainExecutable extends TaskChainExecutableWithCapab
   }
 
   @Override
-  public TaskChainResponse executeNextLinkWithSecurityContext(Ambiance ambiance, StepElementParameters stepParameters,
+  public TaskChainResponse executeNextLinkWithSecurityContext(Ambiance ambiance, StepBaseParameters stepParameters,
       StepInputPackage inputPackage, PassThroughData passThroughData, ThrowingSupplier<ResponseData> responseSupplier)
       throws Exception {
     saveNodeInfo(ambiance, responseSupplier);
@@ -60,19 +64,34 @@ public abstract class CdTaskChainExecutable extends TaskChainExecutableWithCapab
   }
 
   public abstract TaskChainResponse executeNextLinkWithSecurityContextAndNodeInfo(Ambiance ambiance,
-      StepElementParameters stepParameters, StepInputPackage inputPackage, PassThroughData passThroughData,
+      StepBaseParameters stepParameters, StepInputPackage inputPackage, PassThroughData passThroughData,
       ThrowingSupplier<ResponseData> responseSupplier) throws Exception;
 
   @Override
-  public StepResponse finalizeExecutionWithSecurityContext(Ambiance ambiance, StepElementParameters stepParameters,
+  public StepResponse finalizeExecutionWithSecurityContext(Ambiance ambiance, StepBaseParameters stepParameters,
       PassThroughData passThroughData, ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
     saveNodeInfo(ambiance, responseDataSupplier);
+    handleTelemetryEventDTO(ambiance, stepParameters, passThroughData);
     return finalizeExecutionWithSecurityContextAndNodeInfo(
         ambiance, stepParameters, passThroughData, responseDataSupplier);
   }
 
+  private void handleTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    StepExecutionTelemetryEventDTO telemetryEventDTO =
+        getStepExecutionTelemetryEventDTO(ambiance, stepParameters, passThroughData);
+    if (telemetryEventDTO != null) {
+      deploymentsInstrumentationHelper.publishStepEvent(ambiance, telemetryEventDTO);
+    }
+  }
+
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    return null;
+  }
+
   public abstract StepResponse finalizeExecutionWithSecurityContextAndNodeInfo(Ambiance ambiance,
-      StepElementParameters stepParameters, PassThroughData passThroughData,
+      StepBaseParameters stepParameters, PassThroughData passThroughData,
       ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception;
 
   private void saveNodeInfo(Ambiance ambiance, ThrowingSupplier<ResponseData> responseSupplier) {

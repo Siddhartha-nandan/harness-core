@@ -20,6 +20,8 @@ import static io.harness.delegate.k8s.K8sTestHelper.CONFIG_MAP;
 import static io.harness.delegate.k8s.K8sTestHelper.DEPLOYMENT;
 import static io.harness.delegate.k8s.K8sTestHelper.DEPLOYMENT_CONFIG;
 import static io.harness.filesystem.FileIo.deleteDirectoryAndItsContentIfExists;
+import static io.harness.helm.HelmConstants.CHARTS_YAML_KEY;
+import static io.harness.helm.HelmConstants.HELM_INSTANCE_LABEL;
 import static io.harness.helm.HelmConstants.HELM_RELEASE_LABEL;
 import static io.harness.helm.HelmSubCommandType.TEMPLATE;
 import static io.harness.k8s.K8sConstants.RELEASE_NAME_CONFLICTS_WITH_SECRETS_OR_CONFIG_MAPS;
@@ -45,6 +47,7 @@ import static io.harness.rule.OwnerRule.ADWAIT;
 import static io.harness.rule.OwnerRule.ANSHUL;
 import static io.harness.rule.OwnerRule.ARVIND;
 import static io.harness.rule.OwnerRule.BOGDAN;
+import static io.harness.rule.OwnerRule.BUHA;
 import static io.harness.rule.OwnerRule.MLUKIC;
 import static io.harness.rule.OwnerRule.NAMAN_TALAYCHA;
 import static io.harness.rule.OwnerRule.PRATYUSH;
@@ -62,7 +65,6 @@ import static software.wings.beans.LogColor.Yellow;
 import static software.wings.beans.LogHelper.color;
 import static software.wings.beans.LogWeight.Bold;
 
-import static io.fabric8.utils.Files.getFileName;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -106,6 +108,7 @@ import io.harness.container.ContainerInfo;
 import io.harness.delegate.beans.connector.CEFeatures;
 import io.harness.delegate.beans.connector.ConnectorConfigDTO;
 import io.harness.delegate.beans.connector.helm.HttpHelmConnectorDTO;
+import io.harness.delegate.beans.connector.helm.OciHelmConnectorDTO;
 import io.harness.delegate.beans.connector.k8Connector.KubernetesAuthDTO;
 import io.harness.delegate.beans.connector.k8Connector.KubernetesClusterConfigDTO;
 import io.harness.delegate.beans.connector.k8Connector.KubernetesClusterDetailsDTO;
@@ -124,8 +127,11 @@ import io.harness.delegate.beans.storeconfig.CustomRemoteStoreDelegateConfig;
 import io.harness.delegate.beans.storeconfig.FetchType;
 import io.harness.delegate.beans.storeconfig.GcsHelmStoreDelegateConfig;
 import io.harness.delegate.beans.storeconfig.GitStoreDelegateConfig;
+import io.harness.delegate.beans.storeconfig.HarnessStoreDelegateConfig;
 import io.harness.delegate.beans.storeconfig.HttpHelmStoreDelegateConfig;
+import io.harness.delegate.beans.storeconfig.InlineStoreDelegateConfig;
 import io.harness.delegate.beans.storeconfig.LocalFileStoreDelegateConfig;
+import io.harness.delegate.beans.storeconfig.OciHelmStoreDelegateConfig;
 import io.harness.delegate.beans.storeconfig.S3HelmStoreDelegateConfig;
 import io.harness.delegate.beans.storeconfig.StoreDelegateConfig;
 import io.harness.delegate.clienttools.ClientTool;
@@ -134,6 +140,7 @@ import io.harness.delegate.k8s.K8sTestHelper;
 import io.harness.delegate.k8s.openshift.OpenShiftDelegateService;
 import io.harness.delegate.service.ExecutionConfigOverrideFromFileOnDelegate;
 import io.harness.delegate.task.git.ScmFetchFilesHelperNG;
+import io.harness.delegate.task.helm.HelmChartInfo;
 import io.harness.delegate.task.helm.HelmCommandFlag;
 import io.harness.delegate.task.helm.HelmTaskHelperBase;
 import io.harness.delegate.task.k8s.client.K8sApiClient;
@@ -141,6 +148,7 @@ import io.harness.delegate.task.k8s.client.K8sCliClient;
 import io.harness.delegate.task.k8s.k8sbase.K8sReleaseHandlerFactory;
 import io.harness.delegate.task.k8s.k8sbase.KustomizeTaskHelper;
 import io.harness.delegate.task.localstore.ManifestFiles;
+import io.harness.delegate.task.ssh.config.ConfigFileParameters;
 import io.harness.encryption.SecretRefData;
 import io.harness.errorhandling.NGErrorHelper;
 import io.harness.exception.ExceptionUtils;
@@ -2619,8 +2627,8 @@ public class K8sTaskHelperBaseTest extends CategoryTest {
     doReturn(existingPods)
         .when(spyK8sTaskHelperBase)
         .getPodDetailsWithLabels(any(KubernetesConfig.class), anyString(), anyString(), anyMap(), anyLong());
-    List<ContainerInfo> result =
-        spyK8sTaskHelperBase.getContainerInfos(config, "release", "default", DEFAULT_STEADY_STATE_TIMEOUT);
+    List<ContainerInfo> result = spyK8sTaskHelperBase.getContainerInfos(
+        config, "release", "default", Collections.emptyMap(), DEFAULT_STEADY_STATE_TIMEOUT);
 
     verify(spyK8sTaskHelperBase, times(1))
         .getPodDetailsWithLabels(config, "default", "release", expectedLabels, DEFAULT_STEADY_STATE_TIMEOUT);
@@ -2913,7 +2921,7 @@ public class K8sTaskHelperBaseTest extends CategoryTest {
 
     verify(gitDecryptionHelper, times(1)).decryptGitConfig(gitConfigDTO, encryptionDataDetails);
     verify(ngGitService, times(1))
-        .downloadFiles(storeDelegateConfig, "manifest", "accountId", sshSessionConfig, gitConfigDTO);
+        .downloadFiles(storeDelegateConfig, "manifest", "accountId", sshSessionConfig, gitConfigDTO, false);
   }
 
   @Test
@@ -3005,11 +3013,13 @@ public class K8sTaskHelperBaseTest extends CategoryTest {
     assertThat(result).isTrue();
 
     verify(mockSecretDecryptionService, times(1)).decrypt(any(), eq(apiAuthEncryptedDataDetails));
-    verify(scmFetchFilesHelper, times(1)).downloadFilesUsingScm("manifest", storeDelegateConfig, executionLogCallback);
+    verify(scmFetchFilesHelper, times(1))
+        .downloadFilesUsingScm("manifest", storeDelegateConfig, executionLogCallback, false);
 
     verify(gitDecryptionHelper, times(0)).decryptGitConfig(any(), eq(encryptionDataDetails));
     verify(ngGitService, times(0))
-        .downloadFiles(eq(storeDelegateConfig), eq("manifest"), eq("accountId"), eq(sshSessionConfig), any());
+        .downloadFiles(
+            eq(storeDelegateConfig), eq("manifest"), eq("accountId"), eq(sshSessionConfig), any(), anyBoolean());
   }
 
   @Test
@@ -3271,14 +3281,14 @@ public class K8sTaskHelperBaseTest extends CategoryTest {
     List<FileData> renderedFiles = new ArrayList<>();
     doReturn(renderedFiles)
         .when(kustomizeTaskHelper)
-        .build("manifest", kustomizePath, kustomizePluginPath, "kustomize-dir-path", executionLogCallback, null);
+        .build("manifest", delegateTaskParams, kustomizePluginPath, "kustomize-dir-path", executionLogCallback, null);
 
     List<FileData> result = k8sTaskHelperBase.renderTemplate(delegateTaskParams, manifestDelegateConfig, "manifest",
         valuesList, "release", "namespace", executionLogCallback, 10);
 
     assertThat(result).isEqualTo(renderedFiles);
     verify(kustomizeTaskHelper, times(1))
-        .build("manifest", kustomizePath, kustomizePluginPath, "kustomize-dir-path", executionLogCallback, null);
+        .build("manifest", delegateTaskParams, kustomizePluginPath, "kustomize-dir-path", executionLogCallback, null);
   }
 
   @Test
@@ -3298,16 +3308,16 @@ public class K8sTaskHelperBaseTest extends CategoryTest {
     List<FileData> renderedFiles = ImmutableList.of(FileData.builder().fileName("deploy.yaml").build());
     doReturn(renderedFiles)
         .when(kustomizeTaskHelper)
-        .buildForApply(
-            kustomizePath, kustomizePluginPath, "manifest", fileList, true, emptyList(), executionLogCallback, null);
+        .buildForApply(delegateTaskParams, kustomizePluginPath, "manifest", fileList, true, emptyList(),
+            executionLogCallback, null);
 
     List<FileData> result = k8sTaskHelperBase.renderTemplateForGivenFiles(delegateTaskParams, manifestDelegateConfig,
         "manifest", fileList, valuesList, "release", "namespace", executionLogCallback, 10, false);
 
     assertThat(result).isEqualTo(renderedFiles);
     verify(kustomizeTaskHelper, times(1))
-        .buildForApply(
-            kustomizePath, kustomizePluginPath, "manifest", fileList, true, emptyList(), executionLogCallback, null);
+        .buildForApply(delegateTaskParams, kustomizePluginPath, "manifest", fileList, true, emptyList(),
+            executionLogCallback, null);
   }
 
   @Test
@@ -3377,7 +3387,7 @@ public class K8sTaskHelperBaseTest extends CategoryTest {
             .build();
     K8sDelegateTaskParams delegateTaskParams = K8sDelegateTaskParams.builder().ocPath(ocPath).build();
     List<FileData> renderedFiles = new ArrayList<>();
-    String templateFileName = getFileName(ocTemplatePath);
+    String templateFileName = new File(ocTemplatePath).getName();
     doReturn(renderedFiles)
         .when(openShiftDelegateService)
         .processTemplatization("manifest", ocPath, templateFileName, executionLogCallback, valuesList);
@@ -3914,5 +3924,293 @@ public class K8sTaskHelperBaseTest extends CategoryTest {
     spyK8sTaskHelperBase.warnIfReleaseNameConflictsWithSecretOrConfigMap(resources, "configMap1", executionLogCallback);
     verify(executionLogCallback, times(0))
         .saveExecutionLog(RELEASE_NAME_CONFLICTS_WITH_SECRETS_OR_CONFIG_MAPS, WARN, CommandExecutionStatus.RUNNING);
+  }
+  @Test
+  @Owner(developers = TARUN_UBA)
+  @Category(UnitTests.class)
+  public void testGetHelmChartDetailsFunctionForHTTP() throws Exception {
+    String repoUrl = "sample/repo/url";
+    String repoUrl2 = "sample/repo/url2";
+    String bucketName = "bucket";
+    String folderPath = "sample/folder/path";
+    GitConfigDTO gitConfigDTO = GitConfigDTO.builder().url(repoUrl).build();
+    String manifestFilesDir = "sample/manifest/dir";
+    String manifestFilesDirHelm = "sample/manifest/dir/nginx";
+    String helmStoreChartName = "helmStoreChart";
+    String sampleHelmChartName = "sampleHelmchart";
+    String chartName = "nginx";
+    GitStoreDelegateConfig gitStoreDelegateConfig = GitStoreDelegateConfig.builder().gitConfigDTO(gitConfigDTO).build();
+    GcsHelmStoreDelegateConfig gcsHelmStoreDelegateConfig =
+        GcsHelmStoreDelegateConfig.builder().bucketName(bucketName).folderPath(folderPath).build();
+    HttpHelmStoreDelegateConfig httpStoreDelegateConfig =
+        HttpHelmStoreDelegateConfig.builder()
+            .httpHelmConnector(HttpHelmConnectorDTO.builder().helmRepoUrl(repoUrl).build())
+            .build();
+    OciHelmStoreDelegateConfig ociHelmStoreDelegateConfig =
+        OciHelmStoreDelegateConfig.builder()
+            .ociHelmConnector(OciHelmConnectorDTO.builder().helmRepoUrl(repoUrl).build())
+            .repoUrl(repoUrl)
+            .build();
+
+    CustomRemoteStoreDelegateConfig customRemoteStoreDelegateConfig =
+        CustomRemoteStoreDelegateConfig.builder()
+            .customManifestSource(CustomManifestSource.builder().filePaths(Collections.singletonList(repoUrl)).build())
+            .build();
+    List<String> customFilePaths = new ArrayList<>();
+    customFilePaths.add(repoUrl);
+    customFilePaths.add(repoUrl2);
+    CustomRemoteStoreDelegateConfig customRemoteStoreDelegateConfigMultipleFilePaths =
+        CustomRemoteStoreDelegateConfig.builder()
+            .customManifestSource(CustomManifestSource.builder().filePaths(customFilePaths).build())
+            .build();
+
+    HarnessStoreDelegateConfig harnessStoreDelegateConfig =
+        HarnessStoreDelegateConfig.builder()
+            .configFiles(Collections.singletonList(ConfigFileParameters.builder().destinationPath(repoUrl).build()))
+            .build();
+    List<ConfigFileParameters> configFileParams = new ArrayList<>();
+    configFileParams.add(ConfigFileParameters.builder().destinationPath(repoUrl).build());
+    configFileParams.add(ConfigFileParameters.builder().destinationPath(repoUrl2).build());
+    HarnessStoreDelegateConfig harnessStoreDelegateConfigMultipleConfigParams =
+        HarnessStoreDelegateConfig.builder().configFiles(configFileParams).build();
+
+    S3HelmStoreDelegateConfig s3HelmStoreDelegateConfig =
+        S3HelmStoreDelegateConfig.builder().bucketName(bucketName).folderPath(folderPath).build();
+
+    InlineStoreDelegateConfig inlineStoreDelegateConfig = InlineStoreDelegateConfig.builder().build();
+
+    LocalFileStoreDelegateConfig localFileStoreDelegateConfig =
+        LocalFileStoreDelegateConfig.builder().folder(repoUrl).build();
+    HelmChartInfo helmChartInfo = HelmChartInfo.builder().version("sample").name(sampleHelmChartName).build();
+    HelmChartInfo helmChartInfo2 = HelmChartInfo.builder().version("sample").name(helmStoreChartName).build();
+
+    ManifestDelegateConfig manifestDelegateConfig =
+        HelmChartManifestDelegateConfig.builder().storeDelegateConfig(gitStoreDelegateConfig).build();
+    doReturn(helmChartInfo)
+        .when(helmTaskHelperBase)
+        .getHelmChartInfoFromChartsYamlFile(Paths.get(manifestFilesDir, CHARTS_YAML_KEY).toString());
+    doReturn(helmChartInfo2)
+        .when(helmTaskHelperBase)
+        .getHelmChartInfoFromChartsYamlFile(Paths.get(manifestFilesDirHelm, CHARTS_YAML_KEY).toString());
+
+    // Test GitStore
+    HelmChartInfo helmChartInfoFinal = k8sTaskHelperBase.getHelmChartDetails(manifestDelegateConfig, manifestFilesDir);
+    assertThat(helmChartInfoFinal.getRepoUrl()).isEqualTo("sample/repo/url");
+    assertThat(helmChartInfoFinal.getName()).isEqualTo(sampleHelmChartName);
+    // Test Gcs
+    manifestDelegateConfig = HelmChartManifestDelegateConfig.builder()
+                                 .storeDelegateConfig(gcsHelmStoreDelegateConfig)
+                                 .chartName(chartName)
+                                 .build();
+    helmChartInfoFinal = k8sTaskHelperBase.getHelmChartDetails(manifestDelegateConfig, manifestFilesDir);
+    assertThat(helmChartInfoFinal.getRepoUrl()).isEqualTo("gs://" + bucketName + "/" + folderPath);
+    assertThat(helmChartInfoFinal.getName()).isEqualTo(helmStoreChartName);
+
+    // Test HTTP
+    manifestDelegateConfig = HelmChartManifestDelegateConfig.builder()
+                                 .storeDelegateConfig(httpStoreDelegateConfig)
+                                 .chartName(chartName)
+                                 .build();
+    helmChartInfoFinal = k8sTaskHelperBase.getHelmChartDetails(manifestDelegateConfig, manifestFilesDir);
+    assertThat(helmChartInfoFinal.getName()).isEqualTo(helmStoreChartName);
+    assertThat(helmChartInfoFinal.getRepoUrl()).isEqualTo(repoUrl);
+
+    // Test S3
+    manifestDelegateConfig = HelmChartManifestDelegateConfig.builder()
+                                 .storeDelegateConfig(s3HelmStoreDelegateConfig)
+                                 .chartName(chartName)
+                                 .build();
+    helmChartInfoFinal = k8sTaskHelperBase.getHelmChartDetails(manifestDelegateConfig, manifestFilesDir);
+    assertThat(helmChartInfoFinal.getName()).isEqualTo(helmStoreChartName);
+    assertThat(helmChartInfoFinal.getRepoUrl()).isEqualTo("s3://" + bucketName + "/" + folderPath);
+
+    // Test Custom
+    manifestDelegateConfig =
+        HelmChartManifestDelegateConfig.builder().storeDelegateConfig(customRemoteStoreDelegateConfig).build();
+    helmChartInfoFinal = k8sTaskHelperBase.getHelmChartDetails(manifestDelegateConfig, manifestFilesDir);
+    assertThat(helmChartInfoFinal.getRepoUrl()).isEqualTo("custom://" + repoUrl);
+
+    // Test Multiple Custom
+    manifestDelegateConfig = HelmChartManifestDelegateConfig.builder()
+                                 .storeDelegateConfig(customRemoteStoreDelegateConfigMultipleFilePaths)
+                                 .build();
+    helmChartInfoFinal = k8sTaskHelperBase.getHelmChartDetails(manifestDelegateConfig, manifestFilesDir);
+    assertThat(helmChartInfoFinal.getRepoUrl()).isEqualTo("custom");
+
+    // Test Harness
+    manifestDelegateConfig =
+        HelmChartManifestDelegateConfig.builder().storeDelegateConfig(harnessStoreDelegateConfig).build();
+    helmChartInfoFinal = k8sTaskHelperBase.getHelmChartDetails(manifestDelegateConfig, manifestFilesDir);
+    assertThat(helmChartInfoFinal.getRepoUrl()).isEqualTo("harness://" + repoUrl);
+
+    // Test Multiple Harness
+    manifestDelegateConfig = HelmChartManifestDelegateConfig.builder()
+                                 .storeDelegateConfig(harnessStoreDelegateConfigMultipleConfigParams)
+                                 .build();
+    helmChartInfoFinal = k8sTaskHelperBase.getHelmChartDetails(manifestDelegateConfig, manifestFilesDir);
+    assertThat(helmChartInfoFinal.getRepoUrl()).isEqualTo("harness");
+
+    // Test Oci
+    manifestDelegateConfig = HelmChartManifestDelegateConfig.builder()
+                                 .storeDelegateConfig(ociHelmStoreDelegateConfig)
+                                 .chartName(chartName)
+                                 .build();
+    helmChartInfoFinal = k8sTaskHelperBase.getHelmChartDetails(manifestDelegateConfig, manifestFilesDir);
+    assertThat(helmChartInfoFinal.getName()).isEqualTo(helmStoreChartName);
+    assertThat(helmChartInfoFinal.getRepoUrl()).isEqualTo(repoUrl);
+
+    // Test Inline
+    manifestDelegateConfig = HelmChartManifestDelegateConfig.builder()
+                                 .storeDelegateConfig(inlineStoreDelegateConfig)
+                                 .chartName(chartName)
+                                 .build();
+    helmChartInfoFinal = k8sTaskHelperBase.getHelmChartDetails(manifestDelegateConfig, manifestFilesDir);
+    assertThat(helmChartInfoFinal.getName()).isEqualTo(helmStoreChartName);
+    assertThat(helmChartInfoFinal.getRepoUrl()).isEmpty();
+
+    // Test Local
+    manifestDelegateConfig =
+        HelmChartManifestDelegateConfig.builder().storeDelegateConfig(localFileStoreDelegateConfig).build();
+    helmChartInfoFinal = k8sTaskHelperBase.getHelmChartDetails(manifestDelegateConfig, manifestFilesDir);
+    assertThat(helmChartInfoFinal.getRepoUrl()).isEqualTo("harness://" + repoUrl);
+  }
+
+  @Test
+  @Owner(developers = BUHA)
+  @Category(UnitTests.class)
+  public void testGetContainersInfoWithLabelSelectors() throws Exception {
+    List<String> labels1 = List.of("label1=value1", "label2=value2");
+    List<String> labels2 = List.of("label3 in (value3-a, value3-b)");
+    List<String> labels3 = List.of("label4=value4");
+
+    Map<String, List<String>> labelSelectors = Map.of("workload1", labels1, "workload2", labels2, "workload3", labels3);
+    List<List<K8sPod>> podLists = getPodLists();
+    KubernetesConfig config = KubernetesConfig.builder().build();
+    K8sTaskHelperBase spyK8sTaskHelperBase = spy(K8sTaskHelperBase.class);
+    doReturn(podLists.get(0))
+        .when(spyK8sTaskHelperBase)
+        .getPodDetailsWithLabels(config, "default", "release", labels1, DEFAULT_STEADY_STATE_TIMEOUT);
+    doReturn(podLists.get(1))
+        .when(spyK8sTaskHelperBase)
+        .getPodDetailsWithLabels(config, "default", "release", labels2, DEFAULT_STEADY_STATE_TIMEOUT);
+    doReturn(podLists.get(2))
+        .when(spyK8sTaskHelperBase)
+        .getPodDetailsWithLabels(config, "default", "release", labels3, DEFAULT_STEADY_STATE_TIMEOUT);
+
+    List<ContainerInfo> result = spyK8sTaskHelperBase.getContainerInfos(
+        config, "release", "default", labelSelectors, DEFAULT_STEADY_STATE_TIMEOUT);
+
+    verify(spyK8sTaskHelperBase, times(1))
+        .getPodDetailsWithLabels(config, "default", "release", labels1, DEFAULT_STEADY_STATE_TIMEOUT);
+    verify(spyK8sTaskHelperBase, times(1))
+        .getPodDetailsWithLabels(config, "default", "release", labels2, DEFAULT_STEADY_STATE_TIMEOUT);
+    verify(spyK8sTaskHelperBase, times(1))
+        .getPodDetailsWithLabels(config, "default", "release", labels3, DEFAULT_STEADY_STATE_TIMEOUT);
+    assertThat(result).hasSize(4);
+    assertThat(result.stream().map(ContainerInfo::getPodName))
+        .contains("workload1-pod1", "workload2-pod2", "workload2-pod3", "workload3-pod4");
+    assertThat(result.stream().map(ContainerInfo::getIp)).contains("pod-ip1", "pod-ip2", "pod-ip3", "pod-ip4");
+  }
+
+  @Test
+  @Owner(developers = BUHA)
+  @Category(UnitTests.class)
+  public void testGetgetHelmPodListWithLabelSelectors() {
+    List<String> labels1 = List.of("label1=value1", "label2=value2");
+    List<String> labels2 = List.of("label3 in (value3-a, value3-b)");
+    List<String> labels3 = List.of("label4=value4");
+
+    Map<String, List<String>> labelSelectors = Map.of("workload1", labels1, "workload2", labels2, "workload3", labels3);
+    List<List<K8sPod>> podLists = getPodLists();
+    KubernetesConfig config = KubernetesConfig.builder().namespace("default").build();
+    K8sTaskHelperBase spyK8sTaskHelperBase = spy(K8sTaskHelperBase.class);
+    doReturn(podLists.get(0))
+        .when(spyK8sTaskHelperBase)
+        .getPodDetailsWithLabels(config, "default", "release", labels1, DEFAULT_STEADY_STATE_TIMEOUT);
+    doReturn(podLists.get(1))
+        .when(spyK8sTaskHelperBase)
+        .getPodDetailsWithLabels(config, "default", "release", labels2, DEFAULT_STEADY_STATE_TIMEOUT);
+    doReturn(podLists.get(2))
+        .when(spyK8sTaskHelperBase)
+        .getPodDetailsWithLabels(config, "default", "release", labels3, DEFAULT_STEADY_STATE_TIMEOUT);
+
+    List<K8sPod> result = spyK8sTaskHelperBase.getHelmPodList(
+        DEFAULT_STEADY_STATE_TIMEOUT, config, "release", labelSelectors, executionLogCallback);
+
+    verify(spyK8sTaskHelperBase, times(1))
+        .getPodDetailsWithLabels(config, "default", "release", labels1, DEFAULT_STEADY_STATE_TIMEOUT);
+    verify(spyK8sTaskHelperBase, times(1))
+        .getPodDetailsWithLabels(config, "default", "release", labels2, DEFAULT_STEADY_STATE_TIMEOUT);
+    verify(spyK8sTaskHelperBase, times(1))
+        .getPodDetailsWithLabels(config, "default", "release", labels3, DEFAULT_STEADY_STATE_TIMEOUT);
+    assertThat(result).hasSize(4);
+    assertThat(result.stream().map(K8sPod::getName))
+        .contains("workload1-pod1", "workload2-pod2", "workload2-pod3", "workload3-pod4");
+    assertThat(result.stream().map(K8sPod::getPodIP)).contains("pod-ip1", "pod-ip2", "pod-ip3", "pod-ip4");
+  }
+
+  @Test
+  @Owner(developers = BUHA)
+  @Category(UnitTests.class)
+  public void testGetPodDetailsWithLabelsSelectors() throws Exception {
+    KubernetesConfig config = KubernetesConfig.builder().build();
+    List<String> labelsList = List.of("label1=value1", "label2=value2", "label3=value3");
+    Map<String, String> labelsMap = Map.of("label1", "value1", "label2", "value2", "label3", "value3");
+    List<V1Pod> existingPods =
+        asList(v1Pod(v1Metadata("pod-1", labelsMap), v1PodStatus("pod-1-ip", v1ContainerStatus("web", "nginx"))),
+            v1Pod(v1Metadata("pod-2", labelsMap),
+                v1PodStatus("pod-2-ip", v1ContainerStatus("app", "todo"), v1ContainerStatus("web", "nginx"))),
+            v1Pod(v1Metadata("pod-3", labelsMap), v1PodStatus("pod-3-ip")), v1Pod(v1Metadata("pod-4", labelsMap), null),
+            v1Pod(null, null));
+
+    doReturn(existingPods).when(mockKubernetesContainerService).getRunningPodsWithLabels(config, "default", labelsList);
+
+    List<K8sPod> pods =
+        k8sTaskHelperBase.getPodDetailsWithLabels(config, "default", "releaseName", labelsList, LONG_TIMEOUT_INTERVAL);
+
+    assertThat(pods).hasSize(2);
+    K8sPod pod = pods.get(0);
+    K8sContainer container = pods.get(0).getContainerList().get(0);
+    assertThat(pod.getName()).isEqualTo("pod-1");
+    assertThat(pod.getUid()).isEqualTo("pod-1");
+    assertThat(pod.getLabels()).isEqualTo(labelsMap);
+    assertThat(pod.getContainerList()).hasSize(1);
+    assertThat(container.getName()).isEqualTo("web");
+    assertThat(container.getImage()).isEqualTo("nginx");
+
+    pod = pods.get(1);
+    assertThat(pod.getName()).isEqualTo("pod-2");
+    assertThat(pod.getUid()).isEqualTo("pod-2");
+    assertThat(pod.getLabels()).isEqualTo(labelsMap);
+    assertThat(pod.getContainerList()).hasSize(2);
+    container = pods.get(1).getContainerList().get(0);
+    assertThat(container.getName()).isEqualTo("app");
+    assertThat(container.getImage()).isEqualTo("todo");
+    container = pods.get(1).getContainerList().get(1);
+    assertThat(container.getName()).isEqualTo("web");
+    assertThat(container.getImage()).isEqualTo("nginx");
+  }
+
+  private List<List<K8sPod>> getPodLists() {
+    List<K8sPod> existingPods1 =
+        singletonList(K8sPod.builder().name("workload1-pod1").podIP("pod-ip1").labels(Collections.emptyMap()).build());
+    List<K8sPod> existingPods2 =
+        List.of(K8sPod.builder().name("workload2-pod2").podIP("pod-ip2").labels(Collections.emptyMap()).build(),
+            K8sPod.builder().name("workload2-pod3").podIP("pod-ip3").labels(Collections.emptyMap()).build());
+    List<K8sPod> existingPods3 =
+        List.of(K8sPod.builder()
+                    .name("workload3-pod4")
+                    .podIP("pod-ip4")
+                    .releaseName("release")
+                    .labels(Map.of(HELM_INSTANCE_LABEL, "release", HELM_RELEASE_LABEL, "release"))
+                    .build(),
+            K8sPod.builder()
+                .name("workload3-pod5")
+                .podIP("pod-ip5")
+                .releaseName("release")
+                .labels(Map.of(HELM_INSTANCE_LABEL, "some-other-release", HELM_RELEASE_LABEL, "release"))
+                .build(),
+            K8sPod.builder().name("invalidName").podIP("pod-ip6").labels(Collections.emptyMap()).build());
+    return List.of(existingPods1, existingPods2, existingPods3);
   }
 }

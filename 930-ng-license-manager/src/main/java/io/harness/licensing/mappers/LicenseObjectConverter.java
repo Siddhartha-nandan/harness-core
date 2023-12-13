@@ -7,11 +7,8 @@
 
 package io.harness.licensing.mappers;
 import io.harness.ModuleType;
-import io.harness.annotations.dev.CodePulse;
-import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.annotations.dev.ProductModule;
 import io.harness.licensing.beans.modules.ModuleLicenseDTO;
 import io.harness.licensing.entities.modules.ModuleLicense;
 
@@ -19,7 +16,6 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.Map;
 
-@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_APPROVALS})
 @OwnedBy(HarnessTeam.GTM)
 @Singleton
 public class LicenseObjectConverter {
@@ -38,9 +34,12 @@ public class LicenseObjectConverter {
     moduleLicenseDTO.setStartTime(moduleLicense.getStartTime());
     moduleLicenseDTO.setExpiryTime(moduleLicense.getExpiryTime());
     moduleLicenseDTO.setPremiumSupport(moduleLicense.isPremiumSupport());
+    moduleLicenseDTO.setCreatedBy(moduleLicense.getCreatedBy());
+    moduleLicenseDTO.setLastUpdatedBy(moduleLicense.getLastUpdatedBy());
     moduleLicenseDTO.setCreatedAt(moduleLicense.getCreatedAt());
     moduleLicenseDTO.setLastModifiedAt(moduleLicense.getLastUpdatedAt());
     moduleLicenseDTO.setTrialExtended(moduleLicense.getTrialExtended());
+    moduleLicenseDTO.setDeveloperLicenseCount(moduleLicense.getDeveloperLicenseCount());
     return (T) moduleLicenseDTO;
   }
 
@@ -57,6 +56,7 @@ public class LicenseObjectConverter {
     moduleLicense.setStartTime(moduleLicenseDTO.getStartTime());
     moduleLicense.setExpiryTime(moduleLicenseDTO.getExpiryTime());
     moduleLicense.setTrialExtended(moduleLicenseDTO.getTrialExtended());
+    moduleLicense.setDeveloperLicenseCount(moduleLicenseDTO.getDeveloperLicenseCount());
     return (T) moduleLicense;
   }
 }

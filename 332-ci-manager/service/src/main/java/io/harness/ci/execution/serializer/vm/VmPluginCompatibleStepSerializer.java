@@ -5,21 +5,21 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.serializer.vm;
+package io.harness.ci.execution.serializer.vm;
 
 import io.harness.beans.plugin.compatible.PluginCompatibleStep;
 import io.harness.beans.sweepingoutputs.StageInfraDetails;
 import io.harness.beans.sweepingoutputs.StageInfraDetails.Type;
-import io.harness.ci.buildstate.ConnectorUtils;
-import io.harness.ci.buildstate.PluginSettingUtils;
 import io.harness.ci.config.CIDockerLayerCachingConfig;
-import io.harness.ci.execution.CIDockerLayerCachingConfigService;
-import io.harness.ci.execution.CIExecutionConfigService;
+import io.harness.ci.execution.buildstate.ConnectorUtils;
+import io.harness.ci.execution.buildstate.PluginSettingUtils;
+import io.harness.ci.execution.execution.CIDockerLayerCachingConfigService;
+import io.harness.ci.execution.execution.CIExecutionConfigService;
+import io.harness.ci.execution.integrationstage.IntegrationStageUtils;
+import io.harness.ci.execution.serializer.SerializerUtils;
+import io.harness.ci.execution.utils.CIStepInfoUtils;
+import io.harness.ci.execution.utils.HarnessImageUtils;
 import io.harness.ci.ff.CIFeatureFlagService;
-import io.harness.ci.integrationstage.IntegrationStageUtils;
-import io.harness.ci.serializer.SerializerUtils;
-import io.harness.ci.utils.CIStepInfoUtils;
-import io.harness.ci.utils.HarnessImageUtils;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.delegate.beans.ci.pod.EnvVariableEnum;
 import io.harness.delegate.beans.ci.vm.steps.VmPluginStep;
@@ -36,6 +36,7 @@ import io.harness.yaml.core.timeout.Timeout;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -104,13 +105,18 @@ public class VmPluginCompatibleStepSerializer {
       return null;
     }
 
-    Map<EnvVariableEnum, String> connectorSecretEnvMap =
+    Map<EnvVariableEnum, String> additionalSecretsMap =
         PluginSettingUtils.getConnectorSecretEnvMap(pluginCompatibleStep.getNonYamlInfo().getStepInfoType());
+
     ConnectorDetails connectorDetails = connectorUtils.getConnectorDetails(ngAccess, connectorRef);
-    connectorDetails.setEnvToSecretsMap(connectorSecretEnvMap);
+
+    Map<EnvVariableEnum, String> newEnvToSecretsMap = new HashMap<>(connectorDetails.getEnvToSecretsMap());
+    newEnvToSecretsMap.putAll(additionalSecretsMap);
+
+    connectorDetails.setEnvToSecretsMap(newEnvToSecretsMap);
+
     return connectorDetails;
   }
-
   public Set<String> preProcessStep(Ambiance ambiance, PluginCompatibleStep pluginCompatibleStep,
       StageInfraDetails stageInfraDetails, String identifier, boolean isBareMetalUsed) {
     Set<String> secretSet = new HashSet<>();

@@ -19,16 +19,14 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.data.structure.UUIDGenerator;
 import io.harness.engine.executions.node.NodeExecutionService;
-import io.harness.engine.executions.plan.PlanExecutionMetadataService;
 import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.executions.plan.PlanService;
 import io.harness.engine.pms.data.PmsOutcomeService;
 import io.harness.engine.pms.data.PmsSweepingOutputService;
 import io.harness.execution.expansion.PlanExpansionService;
-import io.harness.graph.stepDetail.service.PmsGraphStepDetailsService;
+import io.harness.graph.stepDetail.service.NodeExecutionInfoService;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.events.OrchestrationEventType;
-import io.harness.pms.plan.execution.service.PmsExecutionSummaryService;
 import io.harness.pms.sdk.core.events.OrchestrationEvent;
 import io.harness.rule.Owner;
 
@@ -45,12 +43,10 @@ public class PipelineExecutionEndEventHandlerTest extends CategoryTest {
 
   @Mock NodeExecutionService nodeExecutionService;
   @Mock PlanExpansionService planExpansionService;
-  @Mock PmsGraphStepDetailsService pmsGraphStepDetailsService;
+  @Mock NodeExecutionInfoService pmsGraphStepDetailsService;
   @Mock PmsOutcomeService pmsOutcomeService;
   @Mock PmsSweepingOutputService pmsSweepingOutputService;
-  @Mock PlanExecutionMetadataService planExecutionMetadataService;
   @Mock PlanExecutionService planExecutionService;
-  @Mock PmsExecutionSummaryService pmsExecutionSummaryService;
 
   @InjectMocks PipelineExecutionEndEventHandler pipelineExecutionEndEventHandler;
 
@@ -75,8 +71,6 @@ public class PipelineExecutionEndEventHandlerTest extends CategoryTest {
     verify(planService, times(1)).updateTTLForPlans(any(), any());
     verify(nodeExecutionService, times(1)).updateTTLForNodeExecution(any(), any());
     verify(planExpansionService, times(1)).updateTTL(any(), any());
-    verify(pmsExecutionSummaryService, times(1)).updateTTL(any(), any());
-    verify(planExecutionMetadataService, times(1)).updateTTL(any(), any());
     verify(planExecutionService, times(1)).updateTTL(any(), any());
     verify(pmsGraphStepDetailsService, times(1)).updateTTLForNodesForGivenPlanExecutionId(any(), any());
     verify(pmsOutcomeService, times(1)).updateTTL(any(), any());

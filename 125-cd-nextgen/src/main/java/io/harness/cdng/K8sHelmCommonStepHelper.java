@@ -6,9 +6,11 @@
  */
 
 package io.harness.cdng;
+
 import static io.harness.common.ParameterFieldHelper.getParameterFieldValue;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+import static io.harness.delegate.beans.storeconfig.StoreDelegateConfigType.OCI_HELM;
 import static io.harness.filestore.utils.FileStoreNodeUtils.mapFileNodes;
 import static io.harness.k8s.manifest.ManifestHelper.getValuesYamlGitFilePath;
 import static io.harness.k8s.manifest.ManifestHelper.values_filename;
@@ -29,6 +31,7 @@ import io.harness.beans.FileReference;
 import io.harness.cdng.expressions.CDExpressionResolver;
 import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.helm.HelmSpecParameters;
+import io.harness.cdng.helm.ReleaseHelmChartOutcome;
 import io.harness.cdng.hooks.steps.ServiceHooksOutcome;
 import io.harness.cdng.k8s.K8sApplyStepParameters;
 import io.harness.cdng.k8s.K8sEntityHelper;
@@ -64,9 +67,12 @@ import io.harness.delegate.beans.logstreaming.UnitProgressData;
 import io.harness.delegate.beans.storeconfig.CustomRemoteStoreDelegateConfig;
 import io.harness.delegate.beans.storeconfig.GitStoreDelegateConfig;
 import io.harness.delegate.beans.storeconfig.LocalFileStoreDelegateConfig;
+import io.harness.delegate.beans.storeconfig.OciHelmStoreDelegateConfig;
+import io.harness.delegate.beans.storeconfig.StoreDelegateConfig;
 import io.harness.delegate.beans.storeconfig.StoreDelegateConfigType;
 import io.harness.delegate.task.git.GitFetchFilesConfig;
 import io.harness.delegate.task.git.GitFetchRequest;
+import io.harness.delegate.task.helm.HelmChartInfo;
 import io.harness.delegate.task.helm.HelmCommandFlag;
 import io.harness.delegate.task.helm.HelmFetchFileConfig;
 import io.harness.delegate.task.helm.HelmFetchFileResult;
@@ -93,16 +99,17 @@ import io.harness.manifest.CustomSourceFile;
 import io.harness.ng.core.NGAccess;
 import io.harness.ng.core.filestore.NGFileType;
 import io.harness.plancreator.steps.TaskSelectorYaml;
-import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.execution.failure.FailureInfo;
 import io.harness.pms.contracts.execution.tasks.TaskRequest;
+import io.harness.pms.contracts.plan.ExpressionMode;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.expression.EngineExpressionService;
 import io.harness.pms.sdk.core.resolver.outcome.OutcomeService;
 import io.harness.pms.sdk.core.steps.executables.TaskChainResponse;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.serializer.KryoSerializer;
 import io.harness.steps.StepHelper;
@@ -130,6 +137,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.ObjectUtils;
 import org.hibernate.validator.constraints.NotEmpty;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
@@ -155,6 +163,7 @@ public class K8sHelmCommonStepHelper {
       "Incompatible manifest store type. Cannot convert manifest outcome to HelmChartManifestOutcome.";
   public static final String RELEASE_NAME_VALIDATION_REGEX =
       "[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*";
+  public static final String MANIFEST_SOURCE_IDENTIFIER = "APPLY_STEP_MANIFEST_SOURCE_ID";
 
   public static final Pattern releaseNamePattern = Pattern.compile(RELEASE_NAME_VALIDATION_REGEX);
 
@@ -167,7 +176,7 @@ public class K8sHelmCommonStepHelper {
   }
 
   protected TaskChainResponse prepareGitFetchValuesTaskChainResponse(Ambiance ambiance,
-      StepElementParameters stepElementParameters, ValuesManifestOutcome valuesManifestOutcome,
+      StepBaseParameters stepElementParameters, ValuesManifestOutcome valuesManifestOutcome,
       List<ValuesManifestOutcome> aggregatedValuesManifests, K8sStepPassThroughData k8sStepPassThroughData,
       StoreConfig storeConfig) {
     LinkedList<ValuesManifestOutcome> orderedValuesManifests = new LinkedList<>(aggregatedValuesManifests);
@@ -209,7 +218,7 @@ public class K8sHelmCommonStepHelper {
   }
 
   protected TaskChainResponse prepareCustomFetchManifestAndValuesTaskChainResponse(StoreConfig storeConfig,
-      Ambiance ambiance, StepElementParameters stepElementParameters, List<ManifestOutcome> paramsOrValuesManifests,
+      Ambiance ambiance, StepBaseParameters stepElementParameters, List<ManifestOutcome> paramsOrValuesManifests,
       K8sStepPassThroughData k8sStepPassThroughData) {
     String accountId = AmbianceUtils.getAccountId(ambiance);
     ManifestOutcome manifestOutcome = k8sStepPassThroughData.getManifestOutcome();
@@ -332,7 +341,7 @@ public class K8sHelmCommonStepHelper {
   }
 
   protected TaskChainResponse getGitFetchFileTaskChainResponse(Ambiance ambiance,
-      List<GitFetchFilesConfig> gitFetchFilesConfigs, StepElementParameters stepElementParameters,
+      List<GitFetchFilesConfig> gitFetchFilesConfigs, StepBaseParameters stepElementParameters,
       K8sStepPassThroughData k8sStepPassThroughData) {
     String accountId = AmbianceUtils.getAccountId(ambiance);
     GitFetchRequest gitFetchRequest = GitFetchRequest.builder()
@@ -380,7 +389,7 @@ public class K8sHelmCommonStepHelper {
                 format("Values YAML with Id [%s]", valuesManifestOutcome.getIdentifier()), valuesManifestOutcome))
         .collect(Collectors.toList());
   }
-  public TaskChainResponse executeValuesFetchTask(Ambiance ambiance, StepElementParameters stepElementParameters,
+  public TaskChainResponse executeValuesFetchTask(Ambiance ambiance, StepBaseParameters stepElementParameters,
       List<ValuesManifestOutcome> aggregatedValuesManifests,
       Map<String, HelmFetchFileResult> helmChartValuesFileContentMap, K8sStepPassThroughData k8sStepPassThroughData) {
     List<GitFetchFilesConfig> gitFetchFilesConfigs =
@@ -396,7 +405,7 @@ public class K8sHelmCommonStepHelper {
   }
 
   protected TaskChainResponse prepareHelmFetchValuesTaskChainResponse(Ambiance ambiance,
-      StepElementParameters stepElementParameters, List<ValuesManifestOutcome> aggregatedValuesManifests,
+      StepBaseParameters stepElementParameters, List<ValuesManifestOutcome> aggregatedValuesManifests,
       K8sStepPassThroughData k8sStepPassThroughData) {
     String accountId = AmbianceUtils.getAccountId(ambiance);
     HelmChartManifestOutcome helmChartManifestOutcome =
@@ -419,14 +428,15 @@ public class K8sHelmCommonStepHelper {
             .closeLogStream(k8sStepPassThroughData.isShouldCloseFetchFilesStream())
             .build();
 
+    TaskType taskType = getHelmValuesFetchTaskType(helmManifest.getStoreDelegateConfig());
     final TaskData taskData = TaskData.builder()
                                   .async(true)
                                   .timeout(CDStepHelper.getTimeoutInMillis(stepElementParameters))
-                                  .taskType(TaskType.HELM_VALUES_FETCH_NG.name())
+                                  .taskType(taskType.name())
                                   .parameters(new Object[] {helmValuesFetchRequest})
                                   .build();
 
-    String taskName = TaskType.HELM_VALUES_FETCH_NG.getDisplayName();
+    String taskName = taskType.getDisplayName();
 
     ParameterField<List<TaskSelectorYaml>> stepLevelSelectors = null;
     List<String> commandUnits = null;
@@ -686,6 +696,16 @@ public class K8sHelmCommonStepHelper {
         .collect(Collectors.toList());
   }
 
+  public String renderValue(Ambiance ambiance, String value, boolean skipUnresolvedExpression) {
+    if (isEmpty(value)) {
+      return value;
+    }
+
+    return engineExpressionService.renderExpression(ambiance, value,
+        skipUnresolvedExpression ? ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED
+                                 : ExpressionMode.THROW_EXCEPTION_IF_UNRESOLVED);
+  }
+
   public StepResponse handleCustomTaskFailure(CustomFetchResponsePassThroughData customFetchResponse) {
     UnitProgressData unitProgressData = customFetchResponse.getUnitProgressData();
     return StepResponse.builder()
@@ -808,7 +828,23 @@ public class K8sHelmCommonStepHelper {
     }
   }
 
-  public List<ManifestOutcome> getStepLevelManifestOutcomes(StepElementParameters stepElementParameters) {
+  public Optional<ManifestOutcome> getStepLevelSourceOutcome(StepBaseParameters stepElementParameters) {
+    if (!(stepElementParameters.getSpec() instanceof K8sApplyStepParameters)) {
+      return Optional.empty();
+    }
+    if (((K8sApplyStepParameters) stepElementParameters.getSpec()).getManifestSource() == null) {
+      return Optional.empty();
+    }
+    ManifestAttributes manifestAttributes =
+        ((K8sApplyStepParameters) stepElementParameters.getSpec()).getManifestSource().getSpec();
+    if (manifestAttributes == null) {
+      return Optional.empty();
+    }
+    manifestAttributes.setIdentifier(MANIFEST_SOURCE_IDENTIFIER);
+    return Optional.of(ManifestOutcomeMapper.toManifestOutcome(manifestAttributes, 0));
+  }
+
+  public List<ManifestOutcome> getStepLevelManifestOutcomes(StepBaseParameters stepElementParameters) {
     if (!(stepElementParameters.getSpec() instanceof K8sApplyStepParameters)) {
       return Collections.emptyList();
     }
@@ -1054,5 +1090,26 @@ public class K8sHelmCommonStepHelper {
       serviceHooks.add(serviceHook);
     });
     return serviceHooks;
+  }
+
+  public ReleaseHelmChartOutcome getHelmChartOutcome(HelmChartInfo helmChartInfo) {
+    ReleaseHelmChartOutcome releaseHelmChartOutcome = null;
+    if (ObjectUtils.isNotEmpty(helmChartInfo)) {
+      releaseHelmChartOutcome = ReleaseHelmChartOutcome.builder()
+                                    .name(helmChartInfo.getName())
+                                    .subChartPath(helmChartInfo.getSubChartPath())
+                                    .repoUrl(helmChartInfo.getRepoUrl())
+                                    .version(helmChartInfo.getVersion())
+                                    .build();
+    }
+    return releaseHelmChartOutcome;
+  }
+
+  private TaskType getHelmValuesFetchTaskType(StoreDelegateConfig storeDelegateConfig) {
+    if (OCI_HELM.equals(storeDelegateConfig.getType())
+        && ((OciHelmStoreDelegateConfig) storeDelegateConfig).getAwsConnectorDTO() != null) {
+      return TaskType.HELM_VALUES_FETCH_NG_OCI_ECR_CONFIG_V2;
+    }
+    return TaskType.HELM_VALUES_FETCH_NG;
   }
 }

@@ -73,6 +73,7 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.StepUtils;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import software.wings.beans.TaskType;
 
@@ -120,6 +121,12 @@ public class FetchLinkedAppsStep extends CdTaskExecutable<GitOpsFetchAppTaskResp
 
   @Override
   public void validateResources(Ambiance ambiance, StepBaseParameters stepParameters) {}
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
+  }
 
   @Override
   public StepResponse handleTaskResultWithSecurityContextAndNodeInfo(Ambiance ambiance,
@@ -316,8 +323,8 @@ public class FetchLinkedAppsStep extends CdTaskExecutable<GitOpsFetchAppTaskResp
     String connectorId = gitStoreConfig.getConnectorRef().getValue();
     ConnectorInfoDTO connectorDTO = cdStepHelper.getConnector(connectorId, ambiance);
 
-    GitStoreDelegateConfig gitStoreDelegateConfig = cdStepHelper.getGitStoreDelegateConfig(
-        gitStoreConfig, connectorDTO, manifestOutcome, getParameterFieldValue(gitStoreConfig.getPaths()), ambiance);
+    GitStoreDelegateConfig gitStoreDelegateConfig = cdStepHelper.getGitStoreDelegateConfigWithApiAccess(
+        gitStoreConfig, connectorDTO, getParameterFieldValue(gitStoreConfig.getPaths()), ambiance, manifestOutcome);
 
     return GitFetchFilesConfig.builder()
         .identifier(manifestOutcome.getIdentifier())

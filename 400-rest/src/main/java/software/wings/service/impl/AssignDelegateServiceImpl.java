@@ -14,7 +14,6 @@ import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.delegate.beans.NgSetupFields.NG;
-import static io.harness.delegate.task.TaskFailureReason.EXPIRED;
 import static io.harness.delegate.utils.DelegateServiceConstants.HEARTBEAT_EXPIRY_TIME;
 import static io.harness.persistence.HPersistence.upsertReturnNewOptions;
 
@@ -153,6 +152,9 @@ public class AssignDelegateServiceImpl implements AssignDelegateService, Delegat
   private static final String TIME_OUT_ERR_MSG = "Delegate %s failed to complete the task and timed out.\n\n";
   private static final String DELEGATE_DISCONNECT_ERR_MSG =
       "The delegate %s disconnected while executing the task.\n\n";
+
+  // TODO: remove after resolving PL-40073
+  private static final String ACCOUNTID_FOR_DEBUG = "pitvBmtSMKNZU3gANq01Q";
 
   @Inject private DelegateSelectionLogsService delegateSelectionLogsService;
   @Inject private DelegateService delegateService;
@@ -510,9 +512,15 @@ public class AssignDelegateServiceImpl implements AssignDelegateService, Delegat
     log.info("Selectors received : {}", selectorsCapabilityList);
 
     Set<String> delegateSelectors = trimmedLowercaseSet(delegateService.retrieveDelegateSelectors(delegate, true));
+
     if (isEmpty(delegateSelectors)) {
       return false;
     }
+    // TODO: remove after resolving PL-40073
+    if (ACCOUNTID_FOR_DEBUG.equals(delegate.getAccountId())) {
+      log.info("Delegate {} has following selectors : {} ", delegate.getDelegateName(), delegateSelectors);
+    }
+
     boolean canAssignSelector = true;
 
     for (SelectorCapability selectorCapability : selectorsCapabilityList) {
@@ -866,7 +874,7 @@ public class AssignDelegateServiceImpl implements AssignDelegateService, Delegat
           err = String.format(STEP_EXPIRY_QUEUED_STATE_MSG, eligibleDelegateNames);
           break;
         }
-        // default message used for other states like "Parked"
+        // default message used for other states like "Parked" and "aborted"
         err = EXPIRED_DEFAULT;
         break;
       case DELEGATE_DISCONNECTED:
@@ -1124,8 +1132,18 @@ public class AssignDelegateServiceImpl implements AssignDelegateService, Delegat
     return delegates.stream().filter(connectedDelegates::contains).collect(Collectors.toList());
   }
 
+  /**
+   * Variation of the method {@link AssignDelegateService#getEligibleDelegatesToExecuteTask(DelegateTask)}
+   * to be used for scheduling tasks API flow {@link io.harness.grpc.scheduler.ScheduleTaskServiceGrpcImpl}.
+   * @param task the incoming task
+   * @return list of eligible delegate ids
+   * @throws WingsException if any exception occurs
+   */
+  // TODO: Revisit the assignment logic for scheduling tasks. Some aspects don't apply, like directly setting
+  // delegateIds, but also there are new concepts like does delegate have runnerType or is it able to reach specific
+  // infra
   @Override
-  public List<String> getEligibleDelegatesToTask(DelegateTask task) throws WingsException {
+  public List<String> getEligibleDelegatesToScheduleTask(DelegateTask task) throws WingsException {
     // If task comes with eligibleToExecuteDelegateIds then no need to do assignment logic.
     if (isNotEmpty(task.getEligibleToExecuteDelegateIds())) {
       log.info(
@@ -1137,7 +1155,7 @@ public class AssignDelegateServiceImpl implements AssignDelegateService, Delegat
     try {
       List<Delegate> accountDelegates = fetchActiveDelegates(task);
       // NG only for new APIs
-      accountDelegates = accountDelegates.stream().filter(delegate -> delegate.isNg() == true).collect(toList());
+      accountDelegates = accountDelegates.stream().filter(Delegate::isNg).collect(toList());
       if (isEmpty(accountDelegates)) {
         task.getNonAssignableDelegates().putIfAbsent(NO_ACTIVE_DELEGATES, Collections.emptyList());
         delegateTaskServiceClassic.addToTaskActivityLog(task, NO_ACTIVE_DELEGATES);

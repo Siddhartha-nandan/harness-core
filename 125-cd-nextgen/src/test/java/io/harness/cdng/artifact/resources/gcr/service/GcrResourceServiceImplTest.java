@@ -9,6 +9,7 @@ package io.harness.cdng.artifact.resources.gcr.service;
 
 import static io.harness.rule.OwnerRule.ABHISHEK;
 import static io.harness.rule.OwnerRule.ARCHIT;
+import static io.harness.rule.OwnerRule.RAKSHIT_AGARWAL;
 import static io.harness.rule.OwnerRule.vivekveman;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,6 +30,7 @@ import io.harness.cdng.artifact.resources.gcr.dtos.GcrResponseDTO;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.connector.ConnectorResponseDTO;
 import io.harness.connector.services.ConnectorService;
+import io.harness.data.structure.ListUtils;
 import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.connector.ConnectorType;
 import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorCredentialDTO;
@@ -51,7 +53,6 @@ import io.harness.secretmanagerclient.services.api.SecretManagerClientService;
 import io.harness.security.encryption.EncryptedDataDetail;
 import io.harness.service.DelegateGrpcClientWrapper;
 
-import io.fabric8.utils.Lists;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Optional;
@@ -125,7 +126,7 @@ public class GcrResourceServiceImplTest extends CategoryTest {
         .thenReturn(Optional.of(connectorResponse));
     EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
     when(secretManagerClientService.getEncryptionDetails(any(), any()))
-        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(
             ArtifactTaskResponse.builder()
@@ -156,13 +157,13 @@ public class GcrResourceServiceImplTest extends CategoryTest {
         .thenReturn(Optional.of(connectorDTO));
     EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
     when(secretManagerClientService.getEncryptionDetails(any(), any()))
-        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(
             ArtifactTaskResponse.builder()
                 .commandExecutionStatus(CommandExecutionStatus.SUCCESS)
                 .artifactTaskExecutionResponse(ArtifactTaskExecutionResponse.builder()
-                                                   .artifactDelegateResponses(Lists.newArrayList(
+                                                   .artifactDelegateResponses(ListUtils.newArrayList(
                                                        GcrArtifactDelegateResponse.builder()
                                                            .buildDetails(ArtifactBuildDetailsNG.builder().build())
                                                            .build()))
@@ -196,13 +197,13 @@ public class GcrResourceServiceImplTest extends CategoryTest {
         .thenReturn(Optional.of(connectorDTO));
     EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
     when(secretManagerClientService.getEncryptionDetails(any(), any()))
-        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(
             ArtifactTaskResponse.builder()
                 .commandExecutionStatus(CommandExecutionStatus.SUCCESS)
                 .artifactTaskExecutionResponse(ArtifactTaskExecutionResponse.builder()
-                                                   .artifactDelegateResponses(Lists.newArrayList(
+                                                   .artifactDelegateResponses(ListUtils.newArrayList(
                                                        GcrArtifactDelegateResponse.builder()
                                                            .buildDetails(ArtifactBuildDetailsNG.builder().build())
                                                            .build()))
@@ -236,13 +237,13 @@ public class GcrResourceServiceImplTest extends CategoryTest {
         .thenReturn(Optional.of(connectorDTO));
     EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
     when(secretManagerClientService.getEncryptionDetails(any(), any()))
-        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(
             ArtifactTaskResponse.builder()
                 .commandExecutionStatus(CommandExecutionStatus.SUCCESS)
                 .artifactTaskExecutionResponse(ArtifactTaskExecutionResponse.builder()
-                                                   .artifactDelegateResponses(Lists.newArrayList(
+                                                   .artifactDelegateResponses(ListUtils.newArrayList(
                                                        GcrArtifactDelegateResponse.builder()
                                                            .buildDetails(ArtifactBuildDetailsNG.builder().build())
                                                            .build()))
@@ -260,23 +261,6 @@ public class GcrResourceServiceImplTest extends CategoryTest {
     ArtifactTaskParameters artifactTaskParameters = (ArtifactTaskParameters) delegateTaskRequest.getTaskParameters();
     assertThat(artifactTaskParameters.getArtifactTaskType()).isEqualTo(ArtifactTaskType.VALIDATE_ARTIFACT_SOURCE);
   }
-
-  @Test
-  @Owner(developers = vivekveman)
-  @Category(UnitTests.class)
-  public void testimagePathBlankCheck() {
-    IdentifierRef identifierRef = IdentifierRef.builder()
-                                      .accountIdentifier(ACCOUNT_ID)
-                                      .identifier("identifier")
-                                      .projectIdentifier(PROJECT_IDENTIFIER)
-                                      .orgIdentifier(ORG_IDENTIFIER)
-                                      .build();
-    assertThatThrownBy(()
-                           -> gcrResourceService.getBuildDetails(
-                               identifierRef, "", REGISTRY_HOSTNAME, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
-        .isInstanceOf(InvalidRequestException.class)
-        .hasMessage("imagePath cannot be null");
-  }
   @Test
   @Owner(developers = vivekveman)
   @Category(UnitTests.class)
@@ -292,7 +276,7 @@ public class GcrResourceServiceImplTest extends CategoryTest {
         .thenReturn(Optional.of(connectorResponse));
     EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
     when(secretManagerClientService.getEncryptionDetails(any(), any()))
-        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(
             ArtifactTaskResponse.builder()
@@ -329,7 +313,7 @@ public class GcrResourceServiceImplTest extends CategoryTest {
         .thenReturn(Optional.of(connectorResponse));
     EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
     when(secretManagerClientService.getEncryptionDetails(any(), any()))
-        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(ErrorNotifyResponseData.builder().errorMessage("Testing").build());
 
@@ -357,7 +341,7 @@ public class GcrResourceServiceImplTest extends CategoryTest {
     EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
 
     when(secretManagerClientService.getEncryptionDetails(any(), any()))
-        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
 
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(
@@ -374,6 +358,63 @@ public class GcrResourceServiceImplTest extends CategoryTest {
                                identifierRef, IMAGE_PATH, REGISTRY_HOSTNAME, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
         .isInstanceOf(WingsException.class)
         .hasMessage("Gcr Get Builds task failure due to error - Test failed with error code: DEFAULT_ERROR_CODE");
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_ImagePath_NULL() {
+    assertThatThrownBy(()
+                           -> gcrResourceService.getBuildDetails(
+                               IDENTIFIER_REF, null, REGISTRY_HOSTNAME, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(IMAGE_PATH_MESSAGE);
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_ImagePath_Empty() {
+    assertThatThrownBy(()
+                           -> gcrResourceService.getBuildDetails(
+                               IDENTIFIER_REF, "", REGISTRY_HOSTNAME, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(IMAGE_PATH_MESSAGE);
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_ImagePath_Input() {
+    assertThatThrownBy(()
+                           -> gcrResourceService.getBuildDetails(
+                               IDENTIFIER_REF, INPUT, REGISTRY_HOSTNAME, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(IMAGE_PATH_MESSAGE);
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_RegistryHostName_NULL() {
+    assertThatThrownBy(
+        () -> gcrResourceService.getBuildDetails(IDENTIFIER_REF, IMAGE_PATH, null, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(REGISTRY_HOST_NAME_MESSAGE);
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_RegistryHostName_Empty() {
+    assertThatThrownBy(
+        () -> gcrResourceService.getBuildDetails(IDENTIFIER_REF, IMAGE_PATH, "", ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(REGISTRY_HOST_NAME_MESSAGE);
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_RegistryHostName_Input() {
+    assertThatThrownBy(
+        () -> gcrResourceService.getBuildDetails(IDENTIFIER_REF, IMAGE_PATH, INPUT, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(REGISTRY_HOST_NAME_MESSAGE);
   }
 
   @Test

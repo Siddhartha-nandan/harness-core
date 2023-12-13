@@ -7,6 +7,8 @@
 
 package io.harness.perpetualtask.internal;
 
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.perpetualtask.PerpetualTaskType.CONTAINER_INSTANCE_SYNC;
 
 import static java.lang.String.format;
@@ -34,6 +36,7 @@ public class PerpetualTaskValidationCallback implements OldNotifyCallback {
   private String accountId;
   private String perpetualTaskId;
   private String delegateTaskId;
+  private static final String CONTAINER_TYPE_KEY = "containerType";
 
   public PerpetualTaskValidationCallback(String accountId, String perpetualTaskId, String delegateTaskId) {
     this.accountId = accountId;
@@ -47,23 +50,35 @@ public class PerpetualTaskValidationCallback implements OldNotifyCallback {
 
   @Override
   public void notify(Map<String, ResponseData> response) {
-    log.info("PT validation task for {} response {} for account {}", perpetualTaskId, response, accountId);
+    log.debug("PT validation task for {} response {} for account {}", perpetualTaskId, response, accountId);
     DelegateResponseData notifyResponseData = (DelegateResponseData) response.values().iterator().next();
     handleResponse(notifyResponseData);
   }
 
   @Override
   public void notifyError(Map<String, ResponseData> response) {
-    log.info("PT validation task failed for {} with response {} for account {}", perpetualTaskId, response, accountId);
+    log.debug("PT validation task failed for {} with response {} for account {}", perpetualTaskId, response, accountId);
     DelegateResponseData notifyResponseData = (DelegateResponseData) response.values().iterator().next();
     handleResponse(notifyResponseData);
+  }
+
+  private boolean excludeFromErrorSetting(PerpetualTaskRecord taskRecord) {
+    // @TODO to Remove once all delegates upgraded (after June 2024)
+    // avoid PT marking as invalid of type container instance sync which collects active service counts.
+    // clientContext.clientParams.containerType"  = ""
+    if (!CONTAINER_INSTANCE_SYNC.equals(taskRecord.getPerpetualTaskType())) {
+      return false;
+    }
+    return taskRecord.getClientContext() != null && isNotEmpty(taskRecord.getClientContext().getClientParams())
+        && taskRecord.getClientContext().getClientParams().get(CONTAINER_TYPE_KEY) != null
+        && isEmpty(taskRecord.getClientContext().getClientParams().get(CONTAINER_TYPE_KEY));
   }
 
   private void handleResponse(DelegateResponseData response) {
     PerpetualTaskRecord taskRecord = hPersistence.get(PerpetualTaskRecord.class, perpetualTaskId);
     Preconditions.checkNotNull(taskRecord, "no perpeetual task found with id " + perpetualTaskId);
 
-    if (response instanceof ErrorNotifyResponseData) {
+    if (response instanceof ErrorNotifyResponseData && !excludeFromErrorSetting(taskRecord)) {
       log.info("Perpetual validation task {} failed, unable to assign delegate.", taskRecord.getUuid());
       if (CONTAINER_INSTANCE_SYNC.equals(taskRecord.getPerpetualTaskType())) {
         perpetualTaskService.markStateAndNonAssignedReason_OnAssignTryCount(taskRecord,

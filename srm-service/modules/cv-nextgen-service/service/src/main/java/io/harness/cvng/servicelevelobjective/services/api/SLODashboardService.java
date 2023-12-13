@@ -10,6 +10,7 @@ package io.harness.cvng.servicelevelobjective.services.api;
 import io.harness.cvng.core.beans.params.PageParams;
 import io.harness.cvng.core.beans.params.ProjectParams;
 import io.harness.cvng.servicelevelobjective.SLORiskCountResponse;
+import io.harness.cvng.servicelevelobjective.beans.EnvironmentIdentifierResponse;
 import io.harness.cvng.servicelevelobjective.beans.MSDropdownResponse;
 import io.harness.cvng.servicelevelobjective.beans.SLOConsumptionBreakdown;
 import io.harness.cvng.servicelevelobjective.beans.SLODashboardApiFilter;
@@ -19,8 +20,10 @@ import io.harness.cvng.servicelevelobjective.beans.secondaryevents.SecondaryEven
 import io.harness.cvng.servicelevelobjective.beans.secondaryevents.SecondaryEventsResponse;
 import io.harness.cvng.servicelevelobjective.beans.secondaryevents.SecondaryEventsType;
 import io.harness.ng.beans.PageResponse;
+import io.harness.spec.server.cvng.v1.model.MetricGraph;
 
 import java.util.List;
+import java.util.Map;
 
 public interface SLODashboardService {
   PageResponse<SLOHealthListView> getSloHealthListView(
@@ -31,8 +34,14 @@ public interface SLODashboardService {
   SLODashboardDetail getSloDashboardDetail(
       ProjectParams projectParams, String sloIdentifier, Long startTime, Long endTime);
 
+  Map<String, MetricGraph> getMetricGraphs(
+      ProjectParams projectParams, String sloIdentifier, Long startTime, Long endTime);
+
   SLORiskCountResponse getRiskCount(ProjectParams projectParams, SLODashboardApiFilter serviceLevelObjectiveFilter);
   PageResponse<MSDropdownResponse> getSLOAssociatedMonitoredServices(
+      ProjectParams projectParams, PageParams pageParams);
+
+  PageResponse<EnvironmentIdentifierResponse> getSLOAssociatedEnvironmentIdentifiers(
       ProjectParams projectParams, PageParams pageParams);
 
   List<SecondaryEventsResponse> getSecondaryEvents(

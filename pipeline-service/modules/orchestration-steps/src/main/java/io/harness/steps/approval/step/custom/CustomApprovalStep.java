@@ -6,6 +6,7 @@
  */
 
 package io.harness.steps.approval.step.custom;
+
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static io.harness.eraro.ErrorCode.APPROVAL_STEP_NG_ERROR;
 
@@ -17,14 +18,12 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.data.structure.CollectionUtils;
 import io.harness.delegate.task.shell.ShellScriptTaskNG;
-import io.harness.delegate.task.shell.WinRmShellScriptTaskNG;
 import io.harness.engine.executions.step.StepExecutionEntityService;
 import io.harness.eraro.Level;
 import io.harness.exception.ApprovalStepNGException;
 import io.harness.execution.step.approval.custom.CustomApprovalStepExecutionDetails;
 import io.harness.logstreaming.ILogStreamingStepClient;
 import io.harness.logstreaming.LogStreamingStepClientFactory;
-import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.AsyncExecutableResponse;
 import io.harness.pms.contracts.execution.Status;
@@ -34,6 +33,7 @@ import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.steps.OutputExpressionConstants;
 import io.harness.steps.StepSpecTypeConstants;
 import io.harness.steps.StepUtils;
@@ -42,12 +42,11 @@ import io.harness.steps.approval.step.beans.ApprovalStatus;
 import io.harness.steps.approval.step.custom.beans.CustomApprovalResponseData;
 import io.harness.steps.approval.step.custom.entities.CustomApprovalInstance;
 import io.harness.steps.executables.PipelineAsyncExecutable;
-import io.harness.steps.shellscript.ShellType;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.ApprovalInstrumentationHelper;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -65,11 +64,13 @@ public class CustomApprovalStep extends PipelineAsyncExecutable {
   @Inject private LogStreamingStepClientFactory logStreamingStepClientFactory;
   @Inject private StepExecutionEntityService stepExecutionEntityService;
   @Inject @Named("DashboardExecutorService") ExecutorService dashboardExecutorService;
+  @Inject ApprovalInstrumentationHelper instrumentationHelper;
 
   @Override
   public AsyncExecutableResponse executeAsyncAfterRbac(
-      Ambiance ambiance, StepElementParameters stepParameters, StepInputPackage inputPackage) {
+      Ambiance ambiance, StepBaseParameters stepParameters, StepInputPackage inputPackage) {
     CustomApprovalInstance approvalInstance = CustomApprovalInstance.fromStepParameters(ambiance, stepParameters);
+    instrumentationHelper.sendApprovalEvent(approvalInstance);
     openLogStream(ambiance, approvalInstance);
     approvalInstance = (CustomApprovalInstance) approvalInstanceService.save(approvalInstance);
     irregularApprovalInstanceHandler.wakeup();
@@ -82,12 +83,8 @@ public class CustomApprovalStep extends PipelineAsyncExecutable {
 
   private void openLogStream(Ambiance ambiance, CustomApprovalInstance approvalInstance) {
     ILogStreamingStepClient logStreamingStepClient = logStreamingStepClientFactory.getLogStreamingStepClient(ambiance);
-    List<String> units;
-    if (ShellType.Bash.equals(approvalInstance.getShellType())) {
-      units = Collections.singletonList(ShellScriptTaskNG.COMMAND_UNIT);
-    } else {
-      units = Arrays.asList(WinRmShellScriptTaskNG.INIT_UNIT, WinRmShellScriptTaskNG.COMMAND_UNIT);
-    }
+
+    List<String> units = Collections.singletonList(ShellScriptTaskNG.COMMAND_UNIT);
 
     for (String unit : units) {
       logStreamingStepClient.openStream(unit);
@@ -96,7 +93,7 @@ public class CustomApprovalStep extends PipelineAsyncExecutable {
 
   @Override
   public StepResponse handleAsyncResponseInternal(
-      Ambiance ambiance, StepElementParameters stepParameters, Map<String, ResponseData> responseDataMap) {
+      Ambiance ambiance, StepBaseParameters stepParameters, Map<String, ResponseData> responseDataMap) {
     try {
       CustomApprovalResponseData customApprovalResponseData =
           (CustomApprovalResponseData) responseDataMap.values().iterator().next();
@@ -143,15 +140,15 @@ public class CustomApprovalStep extends PipelineAsyncExecutable {
   }
 
   @Override
-  public void handleAbort(
-      Ambiance ambiance, StepElementParameters stepParameters, AsyncExecutableResponse executableResponse) {
+  public void handleAbort(Ambiance ambiance, StepBaseParameters stepParameters,
+      AsyncExecutableResponse executableResponse, boolean userMarked) {
     approvalInstanceService.abortByNodeExecutionId(AmbianceUtils.obtainCurrentRuntimeId(ambiance));
     closeLogStream(ambiance);
   }
 
   @Override
-  public Class<StepElementParameters> getStepParametersClass() {
-    return StepElementParameters.class;
+  public Class<StepBaseParameters> getStepParametersClass() {
+    return StepBaseParameters.class;
   }
 
   private void closeLogStream(Ambiance ambiance) {

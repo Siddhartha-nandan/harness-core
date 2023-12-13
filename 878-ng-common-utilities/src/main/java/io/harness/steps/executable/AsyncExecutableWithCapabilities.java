@@ -6,45 +6,49 @@
  */
 
 package io.harness.steps.executable;
-
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.plancreator.steps.common.StepElementParameters;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.plancreator.steps.common.rollback.RollbackExecutableUtility;
 import io.harness.pms.contracts.ambiance.Ambiance;
+import io.harness.pms.contracts.execution.AsyncExecutableResponse;
 import io.harness.pms.sdk.core.resolver.outputs.ExecutionSweepingOutputService;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.tasks.ResponseData;
 
 import com.google.inject.Inject;
 import java.util.Map;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(PIPELINE)
 // Async Executable With RBAC, Rollback and postAsyncValidation
-public abstract class AsyncExecutableWithCapabilities implements AsyncExecutableWithRbac<StepElementParameters> {
+public abstract class AsyncExecutableWithCapabilities implements AsyncExecutableWithRbac<StepBaseParameters> {
   @Inject ExecutionSweepingOutputService executionSweepingOutputService;
 
   @Override
-  public void handleFailureInterrupt(
-      Ambiance ambiance, StepElementParameters stepParameters, Map<String, String> metadata) {
+  public void handleFailure(Ambiance ambiance, StepBaseParameters stepParameters, AsyncExecutableResponse response,
+      Map<String, String> metadata) {
     RollbackExecutableUtility.publishRollbackInfo(ambiance, stepParameters, metadata, executionSweepingOutputService);
   }
 
   @Override
   public StepResponse handleAsyncResponse(
-      Ambiance ambiance, StepElementParameters stepParameters, Map<String, ResponseData> responseDataMap) {
+      Ambiance ambiance, StepBaseParameters stepParameters, Map<String, ResponseData> responseDataMap) {
     StepResponse stepResponse = handleAsyncResponseInternal(ambiance, stepParameters, responseDataMap);
     return postAsyncValidate(ambiance, stepParameters, stepResponse);
   }
 
   public abstract StepResponse handleAsyncResponseInternal(
-      Ambiance ambiance, StepElementParameters stepParameters, Map<String, ResponseData> responseDataMap);
+      Ambiance ambiance, StepBaseParameters stepParameters, Map<String, ResponseData> responseDataMap);
 
   // evaluating policies added in advanced section of the steps and updating status and failure info in the step
   // response
   public StepResponse postAsyncValidate(
-      Ambiance ambiance, StepElementParameters stepParameters, StepResponse stepResponse) {
+      Ambiance ambiance, StepBaseParameters stepParameters, StepResponse stepResponse) {
     return stepResponse;
   }
 }

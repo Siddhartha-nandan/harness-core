@@ -13,6 +13,7 @@ import static io.harness.rule.OwnerRule.ABOSII;
 import static io.harness.rule.OwnerRule.ACHYUTH;
 import static io.harness.rule.OwnerRule.ANSHUL;
 import static io.harness.rule.OwnerRule.MLUKIC;
+import static io.harness.rule.OwnerRule.PRATYUSH;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -39,11 +40,13 @@ import io.harness.delegate.beans.helm.HelmDeployProgressData;
 import io.harness.delegate.beans.helm.HelmDeployProgressDataVersion;
 import io.harness.delegate.beans.logstreaming.UnitProgressData;
 import io.harness.delegate.exception.HelmNGException;
+import io.harness.delegate.task.helm.HelmChartInfo;
 import io.harness.delegate.task.helm.HelmCmdExecResponseNG;
 import io.harness.delegate.task.helm.HelmCommandRequestNG;
 import io.harness.delegate.task.helm.HelmInstallCmdResponseNG;
 import io.harness.delegate.task.helm.HelmInstallCommandRequestNG;
 import io.harness.exception.GeneralException;
+import io.harness.k8s.model.K8sPod;
 import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
@@ -56,6 +59,7 @@ import io.harness.tasks.ProgressData;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import org.junit.Test;
@@ -86,6 +90,28 @@ public class HelmDeployStepTest extends AbstractHelmStepExecutorTestBase {
     assertThat(request.getManifestDelegateConfig()).isEqualTo(manifestDelegateConfig);
     assertThat(request.getAccountId()).isEqualTo(accountId);
     assertThat(request.getTimeoutInMillis()).isEqualTo(NGTimeConversionHelper.convertTimeStringToMilliseconds("30m"));
+    assertThat(request.isUseSteadyStateCheckForJobs()).isFalse();
+
+    ArgumentCaptor<String> releaseNameCaptor = ArgumentCaptor.forClass(String.class);
+    verify(nativeHelmStepHelper, times(1)).publishReleaseNameStepDetails(eq(ambiance), releaseNameCaptor.capture());
+    assertThat(releaseNameCaptor.getValue()).isEqualTo(releaseName);
+  }
+
+  @Test
+  @Owner(developers = PRATYUSH)
+  @Category(UnitTests.class)
+  public void testExecuteHelmTaskWithAccountSettings() {
+    HelmDeployStepParams stepParameters = HelmDeployStepParams.infoBuilder().build();
+    final StepElementParameters stepElementParameters =
+        StepElementParameters.builder().spec(stepParameters).timeout(ParameterField.createValueField("30m")).build();
+
+    doReturn(true).when(nativeHelmStepHelper).isSteadyStateForJobsEnabled(ambiance);
+    HelmInstallCommandRequestNG request = executeTask(stepElementParameters, HelmInstallCommandRequestNG.class);
+    assertThat(request.getK8sInfraDelegateConfig()).isEqualTo(infraDelegateConfig);
+    assertThat(request.getManifestDelegateConfig()).isEqualTo(manifestDelegateConfig);
+    assertThat(request.getAccountId()).isEqualTo(accountId);
+    assertThat(request.getTimeoutInMillis()).isEqualTo(NGTimeConversionHelper.convertTimeStringToMilliseconds("30m"));
+    assertThat(request.isUseSteadyStateCheckForJobs()).isTrue();
 
     ArgumentCaptor<String> releaseNameCaptor = ArgumentCaptor.forClass(String.class);
     verify(nativeHelmStepHelper, times(1)).publishReleaseNameStepDetails(eq(ambiance), releaseNameCaptor.capture());
@@ -111,12 +137,16 @@ public class HelmDeployStepTest extends AbstractHelmStepExecutorTestBase {
   public void testOutcomesInResponse() {
     HelmDeployStepParams stepParameters = HelmDeployStepParams.infoBuilder().build();
     final StepElementParameters stepElementParameters = StepElementParameters.builder().spec(stepParameters).build();
+    HelmChartInfo helmChartInfo = HelmChartInfo.builder().name("todolist").version("0.2.0").build();
 
     HelmCmdExecResponseNG helmCmdExecResponseNG =
         HelmCmdExecResponseNG.builder()
             .helmCommandResponse(HelmInstallCmdResponseNG.builder()
                                      .containerInfoList(Collections.emptyList())
+                                     .helmChartInfo(helmChartInfo)
                                      .releaseName("releaseName")
+                                     .k8sPodList(List.of(K8sPod.builder().podIP("ip1").build(),
+                                         K8sPod.builder().podIP("ip2").build(), K8sPod.builder().podIP("ip3").build()))
                                      .build())
             .commandUnitsProgress(UnitProgressData.builder().build())
             .commandExecutionStatus(SUCCESS)
@@ -126,12 +156,15 @@ public class HelmDeployStepTest extends AbstractHelmStepExecutorTestBase {
                                   .name(OutcomeExpressionConstants.DEPLOYMENT_INFO_OUTCOME)
                                   .outcome(DeploymentInfoOutcome.builder().build())
                                   .build();
-    doReturn(stepOutcome).when(instanceInfoService).saveServerInstancesIntoSweepingOutput(any(), any());
+    doReturn(stepOutcome).when(instanceInfoService).saveDeploymentInfoOutcomeIntoSweepingOutput(any(), any());
+    ReleaseHelmChartOutcome releaseHelmChartOutcome =
+        ReleaseHelmChartOutcome.builder().name(helmChartInfo.getName()).version(helmChartInfo.getVersion()).build();
+    doReturn(releaseHelmChartOutcome).when(nativeHelmStepHelper).getHelmChartOutcome(eq(helmChartInfo));
 
     StepResponse response = helmDeployStep.finalizeExecutionWithSecurityContextAndNodeInfo(ambiance,
         stepElementParameters, NativeHelmExecutionPassThroughData.builder().build(), () -> helmCmdExecResponseNG);
     assertThat(response.getStatus()).isEqualTo(Status.SUCCEEDED);
-    assertThat(response.getStepOutcomes()).hasSize(2);
+    assertThat(response.getStepOutcomes()).hasSize(3);
 
     StepOutcome outcome = response.getStepOutcomes().stream().collect(Collectors.toList()).get(0);
     assertThat(outcome.getOutcome()).isInstanceOf(DeploymentInfoOutcome.class);
@@ -141,6 +174,16 @@ public class HelmDeployStepTest extends AbstractHelmStepExecutorTestBase {
     StepOutcome deploymentInfoOutcome = new ArrayList<>(response.getStepOutcomes()).get(1);
     assertThat(deploymentInfoOutcome.getOutcome()).isInstanceOf(NativeHelmDeployOutcome.class);
     assertThat(deploymentInfoOutcome.getName()).isEqualTo(OutcomeExpressionConstants.HELM_DEPLOY_OUTCOME);
+    ((NativeHelmDeployOutcome) deploymentInfoOutcome.getOutcome())
+        .getPodIps()
+        .forEach(ip -> assertThat(List.of("ip1", "ip2", "ip3").contains(ip)).isTrue());
+
+    StepOutcome helmChartOutcome = new ArrayList<>(response.getStepOutcomes()).get(2);
+    assertThat(helmChartOutcome.getOutcome()).isInstanceOf(ReleaseHelmChartOutcome.class);
+    assertThat(helmChartOutcome.getName()).isEqualTo(OutcomeExpressionConstants.RELEASE_HELM_CHART_OUTCOME);
+    assertThat(((ReleaseHelmChartOutcome) helmChartOutcome.getOutcome()).getName()).isEqualTo(helmChartInfo.getName());
+    assertThat(((ReleaseHelmChartOutcome) helmChartOutcome.getOutcome()).getVersion())
+        .isEqualTo(helmChartInfo.getVersion());
 
     ArgumentCaptor<NativeHelmDeployOutcome> argumentCaptor = ArgumentCaptor.forClass(NativeHelmDeployOutcome.class);
     verify(executionSweepingOutputService, times(1))
@@ -261,7 +304,7 @@ public class HelmDeployStepTest extends AbstractHelmStepExecutorTestBase {
     ProgressData progressData =
         HelmDeployProgressData.builder().progressDataVersion(HelmDeployProgressDataVersion.V1.getVersionName()).build();
 
-    ProgressData result = helmDeployStep.handleProgress(ambiance, stepElementParameters, progressData);
+    ProgressData result = helmDeployStep.handleProgressTaskChain(ambiance, stepElementParameters, progressData);
 
     verify(executionSweepingOutputService, times(1))
         .consume(eq(ambiance), eq(OutcomeExpressionConstants.HELM_DEPLOY_RELEASE_OUTCOME),
@@ -279,7 +322,7 @@ public class HelmDeployStepTest extends AbstractHelmStepExecutorTestBase {
         HelmDeployProgressData.builder().progressDataVersion(HelmDeployProgressDataVersion.V1.getVersionName()).build();
     doReturn(false).when(cdFeatureFlagHelper).isEnabled(any(), eq(FeatureName.CDS_HELM_SEND_TASK_PROGRESS_NG));
 
-    ProgressData result = helmDeployStep.handleProgress(ambiance, stepElementParameters, progressData);
+    ProgressData result = helmDeployStep.handleProgressTaskChain(ambiance, stepElementParameters, progressData);
 
     verify(executionSweepingOutputService, times(0)).consume(any(), any(), any(), any());
 
@@ -295,7 +338,7 @@ public class HelmDeployStepTest extends AbstractHelmStepExecutorTestBase {
     ProgressData progressData = UnitProgressData.builder().build();
     doReturn(false).when(cdFeatureFlagHelper).isEnabled(any(), eq(FeatureName.CDS_HELM_SEND_TASK_PROGRESS_NG));
 
-    helmDeployStep.handleProgress(ambiance, stepElementParameters, progressData);
+    helmDeployStep.handleProgressTaskChain(ambiance, stepElementParameters, progressData);
 
     verify(executionSweepingOutputService, times(0)).consume(any(), any(), any(), any());
   }
@@ -308,7 +351,7 @@ public class HelmDeployStepTest extends AbstractHelmStepExecutorTestBase {
     final StepElementParameters stepElementParameters = StepElementParameters.builder().spec(stepParameters).build();
     ProgressData progressData = UnitProgressData.builder().build();
 
-    helmDeployStep.handleProgress(ambiance, stepElementParameters, progressData);
+    helmDeployStep.handleProgressTaskChain(ambiance, stepElementParameters, progressData);
 
     verify(executionSweepingOutputService, times(0)).consume(any(), any(), any(), any());
   }

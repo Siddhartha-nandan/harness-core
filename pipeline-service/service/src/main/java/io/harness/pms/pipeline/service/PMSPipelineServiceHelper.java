@@ -69,11 +69,13 @@ import io.harness.pms.pipeline.references.PipelineSetupUsageCreationHelper;
 import io.harness.pms.pipeline.validation.PipelineValidationResponse;
 import io.harness.pms.pipeline.validation.service.PipelineValidationService;
 import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity.PlanExecutionSummaryKeys;
-import io.harness.pms.yaml.PipelineVersion;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YAMLMetadataFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlUtils;
+import io.harness.pms.yaml.preprocess.YamlPreProcessor;
+import io.harness.pms.yaml.preprocess.YamlPreProcessorFactory;
 import io.harness.repositories.pipeline.PMSPipelineRepository;
 import io.harness.serializer.JsonUtils;
 import io.harness.telemetry.TelemetryReporter;
@@ -117,7 +119,9 @@ public class PMSPipelineServiceHelper {
   @Inject private final GitAwareEntityHelper gitAwareEntityHelper;
   @Inject private final PMSPipelineRepository pmsPipelineRepository;
   @Inject private final PipelineSetupUsageCreationHelper pipelineSetupUsageCreationHelper;
+  @Inject private final PMSPipelineService pmsPipelineService;
   @Inject @Named("PipelineExecutorService") ExecutorService executorService;
+  @Inject private final YamlPreProcessorFactory yamlPreProcessorFactory;
 
   public static String PIPELINE_SAVE = "pipeline_save";
   public static String PIPELINE_SAVE_ACTION_TYPE = "action";
@@ -177,9 +181,9 @@ public class PMSPipelineServiceHelper {
 
   public PipelineEntity updatePipelineInfo(PipelineEntity pipelineEntity, String pipelineVersion) throws IOException {
     switch (pipelineVersion) {
-      case PipelineVersion.V1:
+      case HarnessYamlVersion.V1:
         return pipelineEntity;
-      case PipelineVersion.V0:
+      case HarnessYamlVersion.V0:
         return updatePipelineInfoInternal(pipelineEntity);
       default:
         throw new IllegalStateException("version not supported");
@@ -263,6 +267,10 @@ public class PMSPipelineServiceHelper {
     }
   }
 
+  public PipelineEntity updatePipelineFilters(PipelineEntity pipelineToUpdate, String uuid, Integer yamlHash) {
+    return pmsPipelineRepository.updatePipelineFilters(pipelineToUpdate, uuid, yamlHash);
+  }
+
   @VisibleForTesting
   static void checkAndThrowMismatchInImportedPipelineMetadataInternal(String orgIdentifier, String projectIdentifier,
       String pipelineIdentifier, PipelineImportRequestDTO pipelineImportRequest, String importedPipeline) {
@@ -321,6 +329,13 @@ public class PMSPipelineServiceHelper {
       PipelineEntity pipelineEntity, boolean throwExceptionIfGovernanceRulesFails, boolean loadFromCache) {
     try {
       GitEntityInfo gitEntityInfo = GitContextHelper.getGitEntityInfo();
+      if (HarnessYamlVersion.isV1(pipelineEntity.getHarnessVersion())) {
+        // preprocessedYaml with ids is needed for template resolution
+        String yaml = preProcessPipelineYaml(pipelineEntity.getYaml());
+        // withYaml() will return a new object of pipelineEntity and will not modify yaml in existing pipelineEntity
+        // so while saving/updating, yaml will be saved without preprocessing only.
+        pipelineEntity = pipelineEntity.withYaml(yaml);
+      }
       if (gitEntityInfo != null && gitEntityInfo.isNewBranch()) {
         GitSyncBranchContext gitSyncBranchContext =
             GitSyncBranchContext.builder()
@@ -391,22 +406,15 @@ public class PMSPipelineServiceHelper {
 
   GovernanceMetadata resolveTemplatesAndValidatePipelineYaml(
       PipelineEntity pipelineEntity, boolean throwExceptionIfGovernanceRulesFails, boolean loadFromCache) {
-    switch (pipelineEntity.getHarnessVersion()) {
-      case PipelineVersion.V1:
-        return GovernanceMetadata.newBuilder().setDeny(false).build();
-      case PipelineVersion.V0:
-        boolean getMergedTemplateWithTemplateReferences =
-            pmsFeatureFlagService.isEnabled(pipelineEntity.getAccountId(), FeatureName.OPA_PIPELINE_GOVERNANCE);
-        // Apply all the templateRefs(if any) then check for schema validation.
-        TemplateMergeResponseDTO templateMergeResponseDTO = pipelineTemplateHelper.resolveTemplateRefsInPipeline(
-            pipelineEntity, getMergedTemplateWithTemplateReferences, loadFromCache);
-        // Add Template Module Info temporarily to Pipeline Entity
-        pipelineEntity.setTemplateModules(pipelineTemplateHelper.getTemplatesModuleInfo(templateMergeResponseDTO));
-        return validateYaml(pipelineEntity, templateMergeResponseDTO, throwExceptionIfGovernanceRulesFails)
-            .getGovernanceMetadata();
-      default:
-        throw new IllegalStateException("version not supported");
-    }
+    boolean getMergedTemplateWithTemplateReferences =
+        pmsFeatureFlagService.isEnabled(pipelineEntity.getAccountId(), FeatureName.OPA_PIPELINE_GOVERNANCE);
+    // Apply all the templateRefs(if any) then check for schema validation.
+    TemplateMergeResponseDTO templateMergeResponseDTO = pipelineTemplateHelper.resolveTemplateRefsInPipeline(
+        pipelineEntity, getMergedTemplateWithTemplateReferences, loadFromCache);
+    // Add Template Module Info temporarily to Pipeline Entity
+    pipelineEntity.setTemplateModules(pipelineTemplateHelper.getTemplatesModuleInfo(templateMergeResponseDTO));
+    return validateYaml(pipelineEntity, templateMergeResponseDTO, throwExceptionIfGovernanceRulesFails)
+        .getGovernanceMetadata();
   }
 
   PipelineValidationResponse validateYaml(PipelineEntity pipelineEntity,
@@ -487,7 +495,6 @@ public class PMSPipelineServiceHelper {
 
     return criteria;
   }
-
   public void sendPipelineSaveTelemetryEvent(PipelineEntity entity, String actionType) {
     executorService.submit(() -> {
       try {
@@ -577,7 +584,7 @@ public class PMSPipelineServiceHelper {
     }
     // TODO (prashant) : Check with the team
     switch (pipelineVersion) {
-      case PipelineVersion.V1:
+      case HarnessYamlVersion.V1:
         return;
       default:
         checkAndThrowMismatchInImportedPipelineMetadataInternal(
@@ -686,5 +693,32 @@ public class PMSPipelineServiceHelper {
                                            .isGitDefaultBranch(true)
                                            .build())
             .build());
+  }
+
+  public void deletePipelineReferences(PipelineEntity pipelineEntity) {
+    filterCreatorMergeService.deleteSetupReferences(pipelineEntity);
+  }
+
+  public void setPermittedPipelines(
+      String accountId, String orgId, String projectId, Criteria criteria, String pipelineIdentifierKey) {
+    /*
+    If user is having all pipeline view permission, we do not need to check for individual pipeline view permission
+     */
+    if (!pmsPipelineService.validateViewPermission(accountId, orgId, projectId)) {
+      List<String> allPipelineIdentifiers = pmsPipelineService.listAllIdentifiers(criteria);
+
+      List<String> permittedPipelineIdentifiers =
+          pmsPipelineService.getPermittedPipelineIdentifier(accountId, orgId, projectId, allPipelineIdentifiers);
+
+      criteria.and(pipelineIdentifierKey).in(permittedPipelineIdentifiers);
+    }
+  }
+
+  public String preProcessPipelineYaml(String yaml) {
+    YamlPreProcessor preProcessor = yamlPreProcessorFactory.getProcessorInstance(HarnessYamlVersion.V1);
+    if (preProcessor != null) {
+      yaml = YamlUtils.writeYamlString(preProcessor.preProcess(yaml).getPreprocessedJsonNode());
+    }
+    return yaml;
   }
 }

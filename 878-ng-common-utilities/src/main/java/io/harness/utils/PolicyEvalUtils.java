@@ -18,6 +18,7 @@ import io.harness.eraro.ErrorCode;
 import io.harness.eraro.Level;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.UnexpectedException;
+import io.harness.logging.UnitProgress.Builder;
 import io.harness.network.SafeHttpCall;
 import io.harness.opaclient.OpaServiceClient;
 import io.harness.opaclient.model.OpaConstants;
@@ -35,6 +36,7 @@ import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
+import io.harness.pms.yaml.YamlNode;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.serializer.JsonUtils;
 
@@ -60,12 +62,26 @@ public class PolicyEvalUtils {
   public boolean isInvalidPayload(String payload) {
     try {
       YamlField yamlField = YamlUtils.readTree(payload);
-      // Policy manager does not support primitive values like strings or numbers. Arrays are also not supported
-      return !yamlField.getNode().isObject();
+      // Policy manager does not support primitive values like strings or numbers.
+      YamlNode rootNode = yamlField.getNode();
+      return isInvalidNode(rootNode);
     } catch (IOException e) {
       log.error("Exception while reading payload", e);
       return true;
     }
+  }
+
+  private static boolean isInvalidNode(YamlNode rootNode) {
+    if (rootNode.isArray()) {
+      for (YamlNode element : rootNode.asArray()) {
+        // Perform checks on individual elements of the array
+        if (isInvalidNode(element)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    return !rootNode.isObject();
   }
 
   public StepResponse buildPolicyEvaluationErrorStepResponse(String errorResponseString, StepResponse stepResponse) {
@@ -85,17 +101,22 @@ public class PolicyEvalUtils {
   }
 
   public StepResponse buildFailureStepResponse(ErrorCode errorCode, String message, FailureType failureType) {
-    return buildFailureStepResponse(errorCode, message, failureType, null, null);
+    return buildFailureStepResponse(errorCode, message, failureType, null, null, null);
+  }
+
+  public StepResponse buildFailureStepResponse(ErrorCode errorCode, String message, FailureType failureType,
+      StepOutcome stepOutcome, Builder unitResponseBuilder) {
+    return buildFailureStepResponse(errorCode, message, failureType, stepOutcome, null, unitResponseBuilder);
   }
 
   public StepResponse buildFailureStepResponse(
       ErrorCode errorCode, String message, FailureType failureType, StepOutcome stepOutcome) {
-    return buildFailureStepResponse(errorCode, message, failureType, stepOutcome, null);
+    return buildFailureStepResponse(errorCode, message, failureType, stepOutcome, null, null);
   }
 
   public StepResponse buildFailureStepResponse(
       ErrorCode errorCode, String message, FailureType failureType, StepResponse stepResponse) {
-    return buildFailureStepResponse(errorCode, message, failureType, null, stepResponse);
+    return buildFailureStepResponse(errorCode, message, failureType, null, stepResponse, null);
   }
 
   public String getEntityMetadataString(String stepName) {
@@ -109,7 +130,7 @@ public class PolicyEvalUtils {
   }
 
   private StepResponse buildFailureStepResponse(ErrorCode errorCode, String message, FailureType failureType,
-      StepOutcome stepOutcome, StepResponse stepResponse) {
+      StepOutcome stepOutcome, StepResponse stepResponse, Builder unitResponseBuilder) {
     FailureData failureData = FailureData.newBuilder()
                                   .setCode(errorCode.name())
                                   .setLevel(Level.ERROR.name())
@@ -178,7 +199,7 @@ public class PolicyEvalUtils {
     if (OpaConstants.OPA_STATUS_ERROR.equals(opaEvaluationResponseHolder.getStatus())) {
       String errorMessage = PolicyEvalUtils.buildPolicyEvaluationFailureMessage(opaEvaluationResponseHolder);
       stepResponse = PolicyEvalUtils.buildFailureStepResponse(ErrorCode.POLICY_EVALUATION_FAILURE, errorMessage,
-          FailureType.POLICY_EVALUATION_FAILURE, policyOutcome, stepResponse);
+          FailureType.POLICY_EVALUATION_FAILURE, policyOutcome, stepResponse, null);
       stepResponse = stepResponse.toBuilder().status(Status.FAILED).build();
     } else {
       stepResponse = stepResponse.toBuilder().stepOutcome(policyOutcome).build();

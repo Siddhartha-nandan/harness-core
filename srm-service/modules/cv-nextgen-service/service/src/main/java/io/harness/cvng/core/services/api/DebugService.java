@@ -7,8 +7,10 @@
 
 package io.harness.cvng.core.services.api;
 
+import io.harness.cvng.analysis.entities.SRMAnalysisStepExecutionDetail;
 import io.harness.cvng.beans.change.ChangeEventDTO;
 import io.harness.cvng.core.beans.CompositeSLODebugResponse;
+import io.harness.cvng.core.beans.ProjectDeletionResponse;
 import io.harness.cvng.core.beans.SLODebugResponse;
 import io.harness.cvng.core.beans.VerifyStepDebugResponse;
 import io.harness.cvng.core.beans.params.ProjectParams;
@@ -20,15 +22,18 @@ import java.util.List;
 public interface DebugService {
   SLODebugResponse getSLODebugResponse(ProjectParams projectParams, String identifier);
 
-  Boolean isProjectDeleted(ProjectParams projectParams);
+  ProjectDeletionResponse isProjectDeleted(ProjectParams projectParams);
 
   Boolean isSLODeleted(ProjectParams projectParams, String identifier);
 
   Boolean isSLIDeleted(ProjectParams projectParams, String identifier);
 
-  boolean forceDeleteSLO(ProjectParams projectParams, List<String> sloIdentifiers);
+  boolean forceDeleteSLO(ProjectParams projectParams, List<String> sloIdentifiers, List<String> uniqueIdentifiers);
 
   boolean forceDeleteSLI(ProjectParams projectParams, List<String> sliIdentifiers);
+
+  boolean forceDeleteCompositeSLO(
+      ProjectParams projectParams, List<String> compositeSloIdentifiers, List<String> uniqueIdentifiers);
 
   VerifyStepDebugResponse getVerifyStepDebugResponse(ProjectParams projectParams, String identifier);
 
@@ -37,6 +42,8 @@ public interface DebugService {
 
   boolean registerInternalChangeEvent(ProjectParams projectParams, ChangeEventDTO changeEventDTO);
 
+  boolean registerSRMAnalysisStep(SRMAnalysisStepExecutionDetail srmAnalysisStepBody);
+
   void registerFFChangeEvent(FakeFeatureFlagSRMProducer.FFEventBody ffEventBody);
 
   void enqueueDataCollectionFailure(ProjectParams projectParams, String sloIdentifier, long startTime, long endTime);
@@ -44,4 +51,6 @@ public interface DebugService {
   void restoreSLOData(ProjectParams projectParams, String sloIdentifier, long startTime, long endTime);
 
   void updateFailedStateOfSLO(ProjectParams projectParams, String sloIdentifier, boolean failedState);
+
+  void scheduleCleanup(List<String> verificationTaskIds);
 }

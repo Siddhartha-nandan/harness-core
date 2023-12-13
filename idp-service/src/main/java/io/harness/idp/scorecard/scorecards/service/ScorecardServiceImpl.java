@@ -7,10 +7,13 @@
 
 package io.harness.idp.scorecard.scorecards.service;
 
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.idp.common.Constants.DOT_SEPARATOR;
 import static io.harness.idp.common.Constants.GLOBAL_ACCOUNT_ID;
+import static io.harness.outbox.TransactionOutboxModule.OUTBOX_TRANSACTION_TEMPLATE;
 import static io.harness.remote.client.NGRestUtils.getGeneralResponse;
+import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 
 import static java.lang.String.format;
 
@@ -19,25 +22,35 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.clients.BackstageResourceClient;
 import io.harness.exception.InvalidRequestException;
-import io.harness.idp.events.producers.SetupUsageProducer;
 import io.harness.idp.scorecard.checks.entity.CheckEntity;
 import io.harness.idp.scorecard.checks.service.CheckService;
 import io.harness.idp.scorecard.scorecards.beans.BackstageCatalogEntityFacets;
 import io.harness.idp.scorecard.scorecards.beans.ScorecardAndChecks;
 import io.harness.idp.scorecard.scorecards.entity.ScorecardEntity;
+import io.harness.idp.scorecard.scorecards.entity.ScorecardStatsEntity;
+import io.harness.idp.scorecard.scorecards.events.ScorecardCreateEvent;
+import io.harness.idp.scorecard.scorecards.events.ScorecardDeleteEvent;
+import io.harness.idp.scorecard.scorecards.events.ScorecardUpdateEvent;
 import io.harness.idp.scorecard.scorecards.mappers.ScorecardAndChecksMapper;
 import io.harness.idp.scorecard.scorecards.mappers.ScorecardDetailsMapper;
 import io.harness.idp.scorecard.scorecards.mappers.ScorecardMapper;
+import io.harness.idp.scorecard.scorecards.mappers.ScorecardStatsMapper;
+import io.harness.idp.scorecard.scorecards.repositories.ScorecardIdentifierAndScore;
 import io.harness.idp.scorecard.scorecards.repositories.ScorecardRepository;
+import io.harness.idp.scorecard.scorecards.repositories.ScorecardStatsRepository;
+import io.harness.outbox.api.OutboxService;
 import io.harness.spec.server.idp.v1.model.Facets;
 import io.harness.spec.server.idp.v1.model.Scorecard;
 import io.harness.spec.server.idp.v1.model.ScorecardChecks;
 import io.harness.spec.server.idp.v1.model.ScorecardDetailsRequest;
 import io.harness.spec.server.idp.v1.model.ScorecardDetailsResponse;
+import io.harness.spec.server.idp.v1.model.ScorecardFilter;
+import io.harness.spec.server.idp.v1.model.ScorecardStatsResponse;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
+import com.google.inject.name.Named;
 import com.mongodb.client.result.DeleteResult;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -47,30 +60,42 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @HarnessRepo
 @OwnedBy(HarnessTeam.IDP)
 @Slf4j
 public class ScorecardServiceImpl implements ScorecardService {
   private final ScorecardRepository scorecardRepository;
+  private final ScorecardStatsRepository scorecardStatsRepository;
   private final CheckService checkService;
-  private final SetupUsageProducer setupUsageProducer;
   private final BackstageResourceClient backstageResourceClient;
-  private static final ObjectMapper mapper =
+
+  @Inject @Named(OUTBOX_TRANSACTION_TEMPLATE) private TransactionTemplate transactionTemplate;
+  @Inject private final OutboxService outboxService;
+  private static final RetryPolicy<Object> transactionRetryPolicy = DEFAULT_RETRY_POLICY;
+  private final ObjectMapper mapper =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-  private static final String CATALOG_API = "%s/idp/api/catalog/entity-facets?filter=kind=%s&facet=%s";
   private static final String TYPE_FILTER = "spec.type";
   private static final String OWNERS_FILTER = "relations.ownedBy";
   private static final String TAGS_FILTER = "metadata.tags";
   private static final String LIFECYCLE_FILTER = "spec.lifecycle";
+  private static final String CATALOG_API = "%s/idp/api/catalog/entity-facets?filter=kind=%s&facet=" + TYPE_FILTER
+      + "&facet=" + OWNERS_FILTER + "&facet=" + TAGS_FILTER + "&facet=" + LIFECYCLE_FILTER;
 
   @Inject
-  public ScorecardServiceImpl(ScorecardRepository scorecardRepository, CheckService checkService,
-      SetupUsageProducer setupUsageProducer, BackstageResourceClient backstageResourceClient) {
+  public ScorecardServiceImpl(ScorecardRepository scorecardRepository,
+      ScorecardStatsRepository scorecardStatsRepository, CheckService checkService,
+      BackstageResourceClient backstageResourceClient, TransactionTemplate transactionTemplate,
+      OutboxService outboxService) {
     this.scorecardRepository = scorecardRepository;
+    this.scorecardStatsRepository = scorecardStatsRepository;
     this.checkService = checkService;
-    this.setupUsageProducer = setupUsageProducer;
     this.backstageResourceClient = backstageResourceClient;
+    this.transactionTemplate = transactionTemplate;
+    this.outboxService = outboxService;
   }
 
   @Override
@@ -83,14 +108,21 @@ public class ScorecardServiceImpl implements ScorecardService {
           scorecardEntity.getChecks().stream().map(ScorecardEntity.Check::getIdentifier).collect(Collectors.toSet());
       uniqueCheckIds.addAll(checkIds);
     }
-    Map<String, CheckEntity> checkEntityMap =
-        checkService.getChecksByAccountIdAndIdentifiers(accountIdentifier, uniqueCheckIds)
+
+    List<String> scorecardIdentifiers = scorecardEntities.stream()
+                                            .filter(ScorecardEntity::isPublished)
+                                            .map(ScorecardEntity::getIdentifier)
+                                            .collect(Collectors.toList());
+    Map<String, ScorecardIdentifierAndScore> scorecardIdScoreMap =
+        scorecardStatsRepository.computeScoresPercentageByScorecard(accountIdentifier, scorecardIdentifiers)
             .stream()
-            .collect(Collectors.toMap(checkEntity
-                -> checkEntity.getAccountIdentifier() + DOT_SEPARATOR + checkEntity.getIdentifier(),
-                checkEntity -> checkEntity));
+            .collect(Collectors.toMap(ScorecardIdentifierAndScore::getScorecardIdentifier,
+                scorecardIdentifierAndScore -> scorecardIdentifierAndScore));
+
     for (ScorecardEntity scorecardEntity : scorecardEntities) {
-      scorecards.add(ScorecardMapper.toDTO(scorecardEntity, checkEntityMap, accountIdentifier));
+      scorecards.add(
+          ScorecardMapper.toDTO(scorecardEntity, getIdentifierCheckEntityMapping(accountIdentifier, uniqueCheckIds),
+              scorecardIdScoreMap.get(scorecardEntity.getIdentifier()), accountIdentifier));
     }
     return scorecards;
   }
@@ -99,7 +131,7 @@ public class ScorecardServiceImpl implements ScorecardService {
   public List<ScorecardAndChecks> getAllScorecardAndChecks(
       String accountIdentifier, List<String> scorecardIdentifiers) {
     List<ScorecardEntity> scorecardEntities;
-    if (scorecardIdentifiers.isEmpty()) {
+    if (scorecardIdentifiers == null || scorecardIdentifiers.isEmpty()) {
       scorecardEntities = scorecardRepository.findByAccountIdentifierAndPublished(accountIdentifier, true);
     } else {
       scorecardEntities =
@@ -127,18 +159,57 @@ public class ScorecardServiceImpl implements ScorecardService {
 
   @Override
   public void saveScorecard(ScorecardDetailsRequest scorecardDetailsRequest, String accountIdentifier) {
+    validateScorecardSaveRequest(scorecardDetailsRequest);
     validateChecks(scorecardDetailsRequest.getChecks(), accountIdentifier);
-    scorecardRepository.save(ScorecardDetailsMapper.fromDTO(scorecardDetailsRequest, accountIdentifier));
-    setupUsageProducer.publishScorecardSetupUsage(scorecardDetailsRequest, accountIdentifier);
+
+    Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
+      ScorecardEntity savedScorecardEntity =
+          scorecardRepository.saveOrUpdate(ScorecardDetailsMapper.fromDTO(scorecardDetailsRequest, accountIdentifier));
+
+      ScorecardDetailsResponse savedScorecardDetailsResponse = ScorecardDetailsMapper.toDTO(savedScorecardEntity,
+          getIdentifierCheckEntityMapping(accountIdentifier,
+              savedScorecardEntity.getChecks()
+                  .stream()
+                  .map(ScorecardEntity.Check::getIdentifier)
+                  .collect(Collectors.toSet())),
+          null, accountIdentifier);
+
+      outboxService.save(new ScorecardCreateEvent(accountIdentifier, savedScorecardDetailsResponse));
+      return true;
+    }));
   }
 
   @Override
   public void updateScorecard(ScorecardDetailsRequest scorecardDetailsRequest, String accountIdentifier) {
+    validateScorecardSaveRequest(scorecardDetailsRequest);
     validateChecks(scorecardDetailsRequest.getChecks(), accountIdentifier);
-    scorecardRepository.update(ScorecardDetailsMapper.fromDTO(scorecardDetailsRequest, accountIdentifier));
-    setupUsageProducer.deleteScorecardSetupUsage(
-        accountIdentifier, scorecardDetailsRequest.getScorecard().getIdentifier());
-    setupUsageProducer.publishScorecardSetupUsage(scorecardDetailsRequest, accountIdentifier);
+
+    Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
+      ScorecardEntity oldScorecardEntity = scorecardRepository.findByAccountIdentifierAndIdentifier(
+          accountIdentifier, scorecardDetailsRequest.getScorecard().getIdentifier());
+
+      ScorecardDetailsResponse oldScorecardDetails = ScorecardDetailsMapper.toDTO(oldScorecardEntity,
+          getIdentifierCheckEntityMapping(accountIdentifier,
+              oldScorecardEntity.getChecks()
+                  .stream()
+                  .map(ScorecardEntity.Check::getIdentifier)
+                  .collect(Collectors.toSet())),
+          null, accountIdentifier);
+
+      ScorecardEntity updatedScorecardEntity =
+          scorecardRepository.update(ScorecardDetailsMapper.fromDTO(scorecardDetailsRequest, accountIdentifier));
+
+      ScorecardDetailsResponse updatedScorecardDetails = ScorecardDetailsMapper.toDTO(updatedScorecardEntity,
+          getIdentifierCheckEntityMapping(accountIdentifier,
+              updatedScorecardEntity.getChecks()
+                  .stream()
+                  .map(ScorecardEntity.Check::getIdentifier)
+                  .collect(Collectors.toSet())),
+          null, accountIdentifier);
+
+      outboxService.save(new ScorecardUpdateEvent(accountIdentifier, updatedScorecardDetails, oldScorecardDetails));
+      return true;
+    }));
   }
 
   @Override
@@ -150,23 +221,36 @@ public class ScorecardServiceImpl implements ScorecardService {
     }
     Set<String> checkIds =
         scorecardEntity.getChecks().stream().map(ScorecardEntity.Check::getIdentifier).collect(Collectors.toSet());
-    Map<String, CheckEntity> checkEntityMap =
-        checkService.getChecksByAccountIdAndIdentifiers(accountIdentifier, checkIds)
+    ScorecardIdentifierAndScore scorecardIdentifierAndScore =
+        scorecardStatsRepository.computeScoresPercentageByScorecard(accountIdentifier, List.of(identifier))
             .stream()
-            .collect(Collectors.toMap(checkEntity
-                -> checkEntity.getAccountIdentifier() + DOT_SEPARATOR + checkEntity.getIdentifier(),
-                checkEntity -> checkEntity));
-    return ScorecardDetailsMapper.toDTO(scorecardEntity, checkEntityMap, accountIdentifier);
+            .filter(
+                ScorecardIdentifierAndScore -> ScorecardIdentifierAndScore.getScorecardIdentifier().equals(identifier))
+            .findFirst()
+            .orElse(null);
+    return ScorecardDetailsMapper.toDTO(scorecardEntity, getIdentifierCheckEntityMapping(accountIdentifier, checkIds),
+        scorecardIdentifierAndScore, accountIdentifier);
+  }
+
+  @Override
+  public List<ScorecardFilter> getScorecardFilters(String accountIdentifier, List<String> scorecardIdentifiers) {
+    List<ScorecardEntity> scorecardEntities =
+        scorecardRepository.findByAccountIdentifierAndIdentifierIn(accountIdentifier, scorecardIdentifiers);
+    return scorecardEntities.stream()
+        .filter(ScorecardEntity::isPublished)
+        .map(ScorecardEntity::getFilter)
+        .collect(Collectors.toList());
+  }
+
+  private void validateScorecardSaveRequest(ScorecardDetailsRequest scorecardDetailsRequest) {
+    if (scorecardDetailsRequest.getScorecard().isPublished() && isEmpty(scorecardDetailsRequest.getChecks())) {
+      throw new InvalidRequestException("Atleast one check should be present for publishing scorecard");
+    }
   }
 
   private void validateChecks(List<ScorecardChecks> scorecardChecks, String harnessAccount) {
     Set<String> checkIds = scorecardChecks.stream().map(ScorecardChecks::getIdentifier).collect(Collectors.toSet());
-    Map<String, CheckEntity> checkEntityMap =
-        checkService.getChecksByAccountIdAndIdentifiers(harnessAccount, checkIds)
-            .stream()
-            .collect(Collectors.toMap(checkEntity
-                -> checkEntity.getAccountIdentifier() + DOT_SEPARATOR + checkEntity.getIdentifier(),
-                checkEntity -> checkEntity));
+    Map<String, CheckEntity> checkEntityMap = getIdentifierCheckEntityMapping(harnessAccount, checkIds);
     List<String> missingChecks = new ArrayList<>();
     scorecardChecks.forEach(scorecardCheck -> {
       String accountId = scorecardCheck.isCustom() ? harnessAccount : GLOBAL_ACCOUNT_ID;
@@ -188,30 +272,58 @@ public class ScorecardServiceImpl implements ScorecardService {
 
   @Override
   public void deleteScorecard(String accountIdentifier, String identifier) {
-    DeleteResult deleteResult = scorecardRepository.delete(accountIdentifier, identifier);
-    if (deleteResult.getDeletedCount() == 0) {
-      throw new InvalidRequestException("Could not delete scorecard");
-    }
-    setupUsageProducer.deleteScorecardSetupUsage(accountIdentifier, identifier);
+    Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
+      ScorecardEntity toBeDeletedScorecardEntity =
+          scorecardRepository.findByAccountIdentifierAndIdentifier(accountIdentifier, identifier);
+
+      DeleteResult deleteResult = scorecardRepository.delete(accountIdentifier, identifier);
+
+      if (deleteResult.getDeletedCount() == 0 || toBeDeletedScorecardEntity == null) {
+        throw new InvalidRequestException("Could not delete scorecard");
+      }
+      ScorecardDetailsResponse toBeDeletedScorecardDetails = ScorecardDetailsMapper.toDTO(toBeDeletedScorecardEntity,
+          getIdentifierCheckEntityMapping(accountIdentifier,
+              toBeDeletedScorecardEntity.getChecks()
+                  .stream()
+                  .map(ScorecardEntity.Check::getIdentifier)
+                  .collect(Collectors.toSet())),
+          null, accountIdentifier);
+
+      outboxService.save(new ScorecardDeleteEvent(accountIdentifier, toBeDeletedScorecardDetails));
+      return true;
+    }));
   }
 
   @Override
   public Facets getAllEntityFacets(String accountIdentifier, String kind) {
     Facets facets = new Facets();
-    List<BackstageCatalogEntityFacets> entityFacets = new ArrayList<>();
-    entityFacets.add(getEntityResponse(accountIdentifier, kind, TYPE_FILTER));
-    entityFacets.add(getEntityResponse(accountIdentifier, kind, OWNERS_FILTER));
-    entityFacets.add(getEntityResponse(accountIdentifier, kind, TAGS_FILTER));
-    entityFacets.add(getEntityResponse(accountIdentifier, kind, LIFECYCLE_FILTER));
-
-    for (BackstageCatalogEntityFacets backstageCatalogEntityFacets : entityFacets) {
-      populateFacets(backstageCatalogEntityFacets, facets);
-    }
+    BackstageCatalogEntityFacets backstageCatalogEntityFacets = getEntityResponse(accountIdentifier, kind);
+    populateFacets(backstageCatalogEntityFacets, facets);
     return facets;
   }
 
-  private BackstageCatalogEntityFacets getEntityResponse(String accountIdentifier, String kind, String filter) {
-    String url = String.format(CATALOG_API, accountIdentifier, kind, filter);
+  @Override
+  public ScorecardStatsResponse getScorecardStats(String accountIdentifier, String identifier) {
+    ScorecardEntity scorecardEntity =
+        scorecardRepository.findByAccountIdentifierAndIdentifier(accountIdentifier, identifier);
+    if (scorecardEntity == null) {
+      throw new InvalidRequestException(String.format("Scorecard stats not found for scorecardId [%s]", identifier));
+    }
+    List<ScorecardStatsEntity> scorecardStatsEntities =
+        scorecardStatsRepository.findByAccountIdentifierAndScorecardIdentifier(accountIdentifier, identifier);
+    return ScorecardStatsMapper.toDTO(scorecardStatsEntities, scorecardEntity.getName());
+  }
+
+  @Override
+  public List<String> getScorecardIdentifiers(String accountIdentifier, String checkIdentifier, Boolean custom) {
+    return scorecardRepository.findByCheckIdentifierAndIsCustom(accountIdentifier, checkIdentifier, custom)
+        .stream()
+        .map(ScorecardEntity::getIdentifier)
+        .collect(Collectors.toList());
+  }
+
+  private BackstageCatalogEntityFacets getEntityResponse(String accountIdentifier, String kind) {
+    String url = String.format(CATALOG_API, accountIdentifier, kind);
     return mapper.convertValue(
         getGeneralResponse(backstageResourceClient.getCatalogEntityFacets(url)), BackstageCatalogEntityFacets.class);
   }
@@ -225,6 +337,7 @@ public class ScorecardServiceImpl implements ScorecardService {
                              .stream()
                              .map(BackstageCatalogEntityFacets.FacetType::getValue)
                              .collect(Collectors.toList()));
+          break;
         case OWNERS_FILTER:
           facets.setOwners(entry.getValue()
                                .stream()
@@ -245,5 +358,13 @@ public class ScorecardServiceImpl implements ScorecardService {
           break;
       }
     }
+  }
+
+  private Map<String, CheckEntity> getIdentifierCheckEntityMapping(String accountIdentifier, Set<String> checkIds) {
+    return checkService.getChecksByAccountIdAndIdentifiers(accountIdentifier, checkIds)
+        .stream()
+        .collect(Collectors.toMap(checkEntity
+            -> checkEntity.getAccountIdentifier() + DOT_SEPARATOR + checkEntity.getIdentifier(),
+            checkEntity -> checkEntity));
   }
 }

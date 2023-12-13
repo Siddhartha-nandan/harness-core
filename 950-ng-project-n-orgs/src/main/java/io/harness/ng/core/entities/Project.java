@@ -19,12 +19,14 @@ import io.harness.mongo.collation.CollationLocale;
 import io.harness.mongo.collation.CollationStrength;
 import io.harness.mongo.index.Collation;
 import io.harness.mongo.index.CompoundMongoIndex;
+import io.harness.mongo.index.FdUniqueIndex;
 import io.harness.mongo.index.MongoIndex;
 import io.harness.mongo.index.SortCompoundMongoIndex;
 import io.harness.ng.DbAliases;
 import io.harness.ng.core.NGAccountAccess;
 import io.harness.ng.core.common.beans.NGTag;
 import io.harness.persistence.PersistentEntity;
+import io.harness.persistence.UniqueIdAware;
 
 import com.google.common.collect.ImmutableList;
 import dev.morphia.annotations.Entity;
@@ -54,7 +56,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @TypeAlias("projects")
 @ChangeDataCapture(table = "projects", dataStore = "ng-harness", fields = {}, handler = "Projects")
 @ChangeDataCapture(table = "tags_info_ng", dataStore = "ng-harness", fields = {}, handler = "TagsInfoNGCD")
-public class Project implements PersistentEntity, NGAccountAccess {
+public class Project implements PersistentEntity, NGAccountAccess, UniqueIdAware {
   public static List<MongoIndex> mongoIndexes() {
     return ImmutableList.<MongoIndex>builder()
         .add(CompoundMongoIndex.builder()
@@ -100,11 +102,23 @@ public class Project implements PersistentEntity, NGAccountAccess {
                  .sortField(ProjectKeys.lastModifiedAt)
                  .unique(false)
                  .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("parentUniqueIdIdentifierIdx")
+                 .field(ProjectKeys.parentUniqueId)
+                 .field(ProjectKeys.identifier)
+                 .unique(true)
+                 .collation(
+                     Collation.builder().locale(CollationLocale.ENGLISH).strength(CollationStrength.PRIMARY).build())
+                 .build())
         .build();
   }
 
   @Wither @Id @dev.morphia.annotations.Id String id;
   String accountIdentifier;
+
+  @FdUniqueIndex String uniqueId;
+  String parentId;
+  String parentUniqueId;
   @EntityIdentifier(allowBlank = false) String identifier;
   @EntityIdentifier(allowBlank = false) String orgIdentifier;
 

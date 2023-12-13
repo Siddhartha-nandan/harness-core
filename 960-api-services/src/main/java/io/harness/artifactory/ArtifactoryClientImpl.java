@@ -19,6 +19,7 @@ import static software.wings.helpers.ext.jenkins.BuildDetails.Builder.aBuildDeta
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.jfrog.artifactory.client.ArtifactoryRequest.ContentType.JSON;
 import static org.jfrog.artifactory.client.ArtifactoryRequest.ContentType.TEXT;
@@ -76,6 +77,7 @@ import org.jfrog.artifactory.client.httpClient.http.ProxyConfig;
 import org.jfrog.artifactory.client.impl.ArtifactoryRequestImpl;
 import org.jfrog.artifactory.client.model.RepoPath;
 import org.jfrog.artifactory.client.model.Repository;
+import org.jfrog.artifactory.client.model.impl.FileImpl;
 import org.jfrog.artifactory.client.model.impl.PackageTypeImpl;
 import org.jfrog.artifactory.client.model.repository.settings.RepositorySettings;
 
@@ -354,8 +356,12 @@ public class ArtifactoryClientImpl {
 
   public List<BuildDetails> getArtifactList(
       ArtifactoryConfigRequest artifactoryConfig, String repositoryName, String artifactPath, int maxVersions) {
-    return getBuildDetails(artifactoryConfig, repositoryName, artifactPath, maxVersions)
-        .stream()
+    List<BuildDetails> buildDetailsList = getBuildDetails(artifactoryConfig, repositoryName, artifactPath, maxVersions);
+    return getArtifactListHelper(repositoryName, buildDetailsList);
+  }
+
+  private List<BuildDetails> getArtifactListHelper(String repositoryName, List<BuildDetails> buildDetails) {
+    return buildDetails.stream()
         .map(buildDetail -> {
           buildDetail.setArtifactPath(buildDetail.getArtifactPath().replaceFirst(repositoryName, "").substring(1));
           Map<String, String> metadata = new HashMap<>();
@@ -463,6 +469,45 @@ public class ArtifactoryClientImpl {
       handleAndRethrow(e, USER);
     }
     return new ArrayList<>();
+  }
+
+  public BuildDetails getBuildDetailWithFullPath(
+      ArtifactoryConfigRequest artifactoryConfig, String repositoryName, String artifactPath) {
+    if (log.isDebugEnabled()) {
+      log.debug("Retrieving file paths for repositoryName {} artifactPath {}", repositoryName, artifactPath);
+    }
+    Artifactory artifactory = getArtifactoryClient(artifactoryConfig);
+    FileImpl item;
+    try {
+      item = artifactory.repository(repositoryName).file(artifactPath).info();
+    } catch (Exception e) {
+      log.warn(String.format("Could not fetch Artifactory Generic artifact with artifactPath [%s] in repository [%s]",
+                   artifactPath, repositoryName),
+          e);
+      return null;
+    }
+
+    if (item == null) {
+      return null;
+    }
+
+    String path = item.getPath();
+
+    if (isBlank(path)) {
+      return null;
+    }
+
+    String artifact = repositoryName + path;
+    path = path.substring(1);
+    BuildDetails buildDetails = aBuildDetails()
+                                    .withNumber(path)
+                                    .withArtifactPath(artifact)
+                                    .withBuildUrl(getBaseUrl(artifactoryConfig) + artifact)
+                                    .withArtifactFileSize(Long.toString(item.getSize()))
+                                    .withUiDisplayName("Build# " + path)
+                                    .build();
+
+    return getArtifactListHelper(repositoryName, List.of(buildDetails)).get(0);
   }
 
   public InputStream downloadArtifacts(ArtifactoryConfigRequest artifactoryConfig, String repoKey,

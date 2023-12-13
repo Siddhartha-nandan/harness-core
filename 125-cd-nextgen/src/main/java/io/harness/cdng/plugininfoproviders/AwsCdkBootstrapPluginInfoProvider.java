@@ -7,6 +7,8 @@
 
 package io.harness.cdng.plugininfoproviders;
 
+import static io.harness.cdng.provision.awscdk.AwsCdkEnvironmentVariables.BOOTSTRAP;
+import static io.harness.cdng.provision.awscdk.AwsCdkEnvironmentVariables.PLUGIN_AWS_CDK_ACTION;
 import static io.harness.common.ParameterFieldHelper.getParameterFieldValue;
 
 import io.harness.annotations.dev.CodePulse;
@@ -44,10 +46,12 @@ public class AwsCdkBootstrapPluginInfoProvider extends AbstractPluginInfoProvide
     Map<String, String> envVariables = awsCdkStepHelper.getCommonEnvVariables(
         getParameterFieldValue(awsCdkBootstrapStepInfo.getAppPath()),
         getParameterFieldValue(awsCdkBootstrapStepInfo.getCommandOptions()), awsCdkBootstrapStepInfo.getEnvVariables());
+    envVariables.put(PLUGIN_AWS_CDK_ACTION, BOOTSTRAP);
     ImageDetails imageDetails = PluginInfoProviderHelper.getImageDetails(awsCdkBootstrapStepInfo.getConnectorRef(),
         awsCdkBootstrapStepInfo.getImage(), awsCdkBootstrapStepInfo.getImagePullPolicy());
-    PluginDetails pluginDetails = getPluginDetails(usedPorts, awsCdkBootstrapStepInfo.getRunAsUser(),
-        awsCdkBootstrapStepInfo.getResources(), awsCdkBootstrapStepInfo.getPrivileged(), envVariables, imageDetails);
+    PluginDetails pluginDetails =
+        getPluginDetails(usedPorts, awsCdkBootstrapStepInfo.getRunAsUser(), awsCdkBootstrapStepInfo.getResources(),
+            awsCdkBootstrapStepInfo.getPrivileged(), envVariables, imageDetails, false);
     PluginCreationResponse response = PluginCreationResponse.newBuilder().setPluginDetails(pluginDetails).build();
     StepInfoProto stepInfoProto = getStepInfoProto(cdAbstractStepNode);
 

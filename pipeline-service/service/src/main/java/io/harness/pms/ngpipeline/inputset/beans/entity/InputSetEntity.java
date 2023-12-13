@@ -6,6 +6,7 @@
  */
 
 package io.harness.pms.ngpipeline.inputset.beans.entity;
+
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
 import io.harness.annotation.HarnessEntity;
@@ -31,7 +32,7 @@ import io.harness.persistence.AccountAccess;
 import io.harness.persistence.PersistentEntity;
 import io.harness.persistence.UuidAware;
 import io.harness.persistence.gitaware.GitAware;
-import io.harness.pms.yaml.PipelineVersion;
+import io.harness.pms.yaml.HarnessYamlVersion;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.github.reinert.jjschema.SchemaIgnore;
@@ -130,7 +131,9 @@ public class InputSetEntity implements GitAware, GitSyncableEntity, PersistentEn
   @Wither @Size(max = 1024) String description;
   @Wither @Singular @Size(max = 128) List<NGTag> tags;
 
+  // For V1 InputSets we use type as INPUT_SET for both InputSet and Overlay InputSet
   @NotEmpty InputSetEntityType inputSetEntityType;
+  // Used By V0 Only, for V1 we calculate references from YAML
   @Wither List<String> inputSetReferences;
 
   @Setter @NonFinal @SchemaIgnore @FdIndex @CreatedDate @Builder.Default Long createdAt = 0L;
@@ -196,7 +199,7 @@ public class InputSetEntity implements GitAware, GitSyncableEntity, PersistentEn
 
   public String getHarnessVersion() {
     if (harnessVersion == null || harnessVersion.equals("0")) {
-      return PipelineVersion.V0;
+      return HarnessYamlVersion.V0;
     }
     return harnessVersion;
   }

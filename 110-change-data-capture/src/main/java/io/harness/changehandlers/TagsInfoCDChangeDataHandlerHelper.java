@@ -6,8 +6,11 @@
  */
 
 package io.harness.changehandlers;
+import static io.harness.annotations.dev.HarnessTeam.CDC;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
+import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.execution.StageExecutionInfo;
 import io.harness.cdng.execution.StageExecutionInfo.StageExecutionInfoKeys;
@@ -29,11 +32,19 @@ import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity.PlanEx
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.experimental.UtilityClass;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_DASHBOARD})
 @UtilityClass
+@OwnedBy(CDC)
 public class TagsInfoCDChangeDataHandlerHelper {
+  // REGEX pattern is used to escape the quotes " present in the tag key or value
+  // otherwise it creates issues while saving to timescale
+  private final String REGEX_MATCH_PATTERN = "(?<!\\\\)\\\"";
+  private final String REGEX_REPLACE_STRING = "\\\\\"";
+
   public String getParentIdentifier(ChangeEvent<?> changeEvent, DBObject dbObject) {
     if (changeEvent.getEntityType() == PipelineEntity.class && dbObject.get(PipelineEntityKeys.identifier) != null) {
       return dbObject.get(PipelineEntityKeys.identifier).toString();
@@ -195,6 +206,7 @@ public class TagsInfoCDChangeDataHandlerHelper {
     String[] tagArray = tagsList.toArray(new String[tagsList.size()]);
     StringBuilder tagString = new StringBuilder("{");
     for (String tag : tagArray) {
+      tag = tag.replaceAll(REGEX_MATCH_PATTERN, REGEX_REPLACE_STRING);
       tagString.append(tag);
       tagString.append(',');
     }
@@ -220,6 +232,8 @@ public class TagsInfoCDChangeDataHandlerHelper {
 
       String tagKey = tag.get(NGTagKeys.key).toString();
       String tagValue = tag.get(NGTagKeys.value) == null ? "" : tag.get(NGTagKeys.value).toString();
+      tagKey = tagKey.replaceAll(REGEX_MATCH_PATTERN, REGEX_REPLACE_STRING);
+      tagValue = tagValue.replaceAll(REGEX_MATCH_PATTERN, REGEX_REPLACE_STRING);
       tagString.append(tagKey);
       tagString.append(':');
       tagString.append(tagValue);
@@ -228,5 +242,22 @@ public class TagsInfoCDChangeDataHandlerHelper {
     tagString = new StringBuilder(tagString.subSequence(0, tagString.length() - 1));
     tagString.append('}');
     return tagString.toString();
+  }
+
+  public List<String> getTagsList(BasicDBObject[] tagArray) {
+    List<String> tags = new ArrayList<>();
+    for (BasicDBObject tag : tagArray) {
+      if (tag.get(NGTagKeys.key) == null) {
+        continue;
+      }
+
+      String tagKey = tag.get(NGTagKeys.key).toString();
+      String tagValue = tag.get(NGTagKeys.value) == null ? "" : tag.get(NGTagKeys.value).toString();
+      tagKey = tagKey.replaceAll(REGEX_MATCH_PATTERN, REGEX_REPLACE_STRING);
+      tagValue = tagValue.replaceAll(REGEX_MATCH_PATTERN, REGEX_REPLACE_STRING);
+      String tagString = tagKey + ':' + tagValue;
+      tags.add(tagString);
+    }
+    return tags;
   }
 }

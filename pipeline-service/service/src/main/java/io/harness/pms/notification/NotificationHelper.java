@@ -6,12 +6,14 @@
  */
 
 package io.harness.pms.notification;
+
 import io.harness.PipelineServiceConfiguration;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.common.NGExpressionUtils;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.engine.executions.plan.PlanExecutionMetadataService;
 import io.harness.engine.executions.plan.PlanExecutionService;
@@ -21,7 +23,9 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.execution.NodeExecution;
 import io.harness.execution.PlanExecution;
 import io.harness.execution.PlanExecutionMetadata;
+import io.harness.expression.common.ExpressionMode;
 import io.harness.logging.AutoLogContext;
+import io.harness.ng.core.common.beans.NGTag;
 import io.harness.notification.PipelineEventType;
 import io.harness.notification.PipelineEventTypeConstants;
 import io.harness.notification.TriggerExecutionInfo;
@@ -273,6 +277,7 @@ public class NotificationHelper {
         pmsExecutionService.getPipelineExecutionSummaryEntity(
             AmbianceUtils.getAccountId(ambiance), orgIdentifier, projectIdentifier, ambiance.getPlanExecutionId());
     String pipelineId = ambiance.getMetadata().getPipelineIdentifier();
+    String pipelineName = pipelineExecutionSummaryEntity.getName();
 
     WebhookNotificationEventBuilder webhookNotificationEvent =
         WebhookNotificationEvent.builder()
@@ -293,7 +298,8 @@ public class NotificationHelper {
     String nodeIdentifier = "";
     String stepIdentifier = "";
     String stageIdentifier = "";
-    String stepName = "";
+    String nodeName = "";
+    String stageName = "";
     String imageStatus = PipelineNotificationUtils.getStatusForImage(planExecution.getStatus());
     String themeColor = PipelineNotificationUtils.getThemeColor(planExecution.getStatus());
     String nodeStatus = PipelineNotificationUtils.getNodeStatus(planExecution.getStatus());
@@ -315,10 +321,13 @@ public class NotificationHelper {
         if (stageOptional.isPresent()) {
           stageIdentifier = stageOptional.get().getIdentifier();
         }
-      } else {
-        stageIdentifier = nodeIdentifier;
       }
-      stepName = nodeExecution.getName();
+      nodeName = nodeExecution.getName();
+      if (pipelineEventType.isStageLevelEvent()) {
+        stageIdentifier = nodeIdentifier;
+        stageName = nodeExecution.getName();
+      }
+
     } else {
       userName = ambiance.getMetadata().getTriggerInfo().getTriggeredBy().getIdentifier();
       startTs = planExecution.getStartTs() / 1000;
@@ -336,7 +345,8 @@ public class NotificationHelper {
     templateData.put("EVENT_TYPE", pipelineEventType.getDisplayName());
     templateData.put("PIPELINE", pipelineId);
     templateData.put("PIPELINE_STEP", nodeIdentifier);
-    templateData.put("PIPELINE_STEP_NAME", stepName);
+    // This env variable is for all nodes not just step
+    templateData.put("PIPELINE_STEP_NAME", nodeName);
     templateData.put("START_TS_SECS", String.valueOf(startTs));
     templateData.put("END_TS_SECS", String.valueOf(endTs));
     templateData.put("START_DATE", startDate);
@@ -355,6 +365,34 @@ public class NotificationHelper {
     webhookNotificationEvent.nodeStatus(nodeStatus);
     webhookNotificationEvent.pipelineUrl(pipelineUrl);
     webhookNotificationEvent.executionUrl(executionUrl);
+
+    List<NGTag> resolvedTags = pipelineExecutionSummaryEntity.getTags();
+    boolean isTagsContainExpression = false;
+    if (resolvedTags != null) {
+      for (NGTag tag : resolvedTags) {
+        if (NGExpressionUtils.isExpressionField(tag.getKey()) || NGExpressionUtils.isExpressionField(tag.getValue())) {
+          isTagsContainExpression = true;
+          break;
+        }
+      }
+    }
+    if (isTagsContainExpression) {
+      resolvedTags = (List<NGTag>) pmsEngineExpressionService.resolve(
+          ambiance, resolvedTags, ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED);
+    }
+    webhookNotificationEvent.tag(resolvedTags);
+    webhookNotificationEvent.pipelineName(pipelineName);
+    webhookNotificationEvent.stepName(nodeName);
+    webhookNotificationEvent.stageName(stageName);
+    if (null != nodeExecution && null != nodeExecution.getFailureInfo()
+        && EmptyPredicate.isNotEmpty(nodeExecution.getFailureInfo().toString())) {
+      webhookNotificationEvent.errorMessage(nodeExecution.getFailureInfo().toString());
+    } else if (PipelineEventType.PIPELINE_FAILED == pipelineEventType && null != pipelineExecutionSummaryEntity
+        && null != pipelineExecutionSummaryEntity.getFailureInfo()
+        && EmptyPredicate.isNotEmpty(pipelineExecutionSummaryEntity.getFailureInfo().getMessage())) {
+      webhookNotificationEvent.errorMessage(pipelineExecutionSummaryEntity.getFailureInfo().getMessage());
+    }
+
     if (!EmptyPredicate.isEmpty(endDate) && !PipelineEventType.startEvents.contains(pipelineEventType)) {
       webhookNotificationEvent.endTime(endDate);
       webhookNotificationEvent.endTs(endTs);

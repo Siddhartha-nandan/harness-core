@@ -6,6 +6,7 @@
  */
 
 package io.harness.pms.pipeline.validation.service;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
@@ -18,7 +19,7 @@ import io.harness.pms.pipeline.service.PMSPipelineServiceHelper;
 import io.harness.pms.pipeline.service.PMSYamlSchemaService;
 import io.harness.pms.pipeline.service.PipelineCRUDErrorResponse;
 import io.harness.pms.pipeline.validation.PipelineValidationResponse;
-import io.harness.pms.yaml.PipelineVersion;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlUtils;
@@ -43,11 +44,12 @@ public class PipelineValidationServiceImpl implements PipelineValidationService 
   @Override
   public boolean validateYaml(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       String yamlWithTemplatesResolved, String pipelineYaml, String harnessVersion) {
-    if (harnessVersion.equals(PipelineVersion.V0)) {
-      checkIfRootNodeIsPipeline(pipelineYaml);
+    if (harnessVersion.equals(HarnessYamlVersion.V1)) {
+      return true;
     }
-    pmsYamlSchemaService.validateYamlSchema(
-        accountIdentifier, orgIdentifier, projectIdentifier, YamlUtils.readAsJsonNode(yamlWithTemplatesResolved));
+    checkIfRootNodeIsPipeline(pipelineYaml);
+    pmsYamlSchemaService.validateYamlSchema(accountIdentifier, orgIdentifier, projectIdentifier,
+        YamlUtils.readAsJsonNode(yamlWithTemplatesResolved), harnessVersion);
     // validate unique fqn in resolveTemplateRefsInPipeline
     pmsYamlSchemaService.validateUniqueFqn(yamlWithTemplatesResolved);
     return true;
@@ -56,11 +58,11 @@ public class PipelineValidationServiceImpl implements PipelineValidationService 
   @Override
   public void validateYamlWithUnresolvedTemplates(String accountIdentifier, String orgIdentifier,
       String projectIdentifier, String pipelineYaml, String harnessVersion) {
-    if (Objects.equals(harnessVersion, PipelineVersion.V0)) {
+    if (Objects.equals(harnessVersion, HarnessYamlVersion.V0)) {
       checkIfRootNodeIsPipeline(pipelineYaml);
     }
     pmsYamlSchemaService.validateYamlSchema(
-        accountIdentifier, orgIdentifier, projectIdentifier, YamlUtils.readAsJsonNode(pipelineYaml));
+        accountIdentifier, orgIdentifier, projectIdentifier, YamlUtils.readAsJsonNode(pipelineYaml), harnessVersion);
     pmsYamlSchemaService.validateUniqueFqn(pipelineYaml);
   }
 

@@ -7,15 +7,19 @@
 
 package io.harness.pms.sdk.core.plan.creation.beans;
 
+import static io.harness.pms.utils.PmsConstants.DEFAULT_TIMEOUT;
+
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.async.AsyncCreatorContext;
 import io.harness.pms.contracts.plan.Dependency;
+import io.harness.pms.contracts.plan.ExecutionMode;
+import io.harness.pms.contracts.plan.ExecutionPrincipalInfo;
 import io.harness.pms.contracts.plan.ExecutionTriggerInfo;
 import io.harness.pms.contracts.plan.PipelineStoreType;
 import io.harness.pms.contracts.plan.PlanCreationContextValue;
 import io.harness.pms.contracts.triggers.TriggerPayload;
-import io.harness.pms.yaml.PipelineVersion;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlNode;
@@ -98,7 +102,7 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (metadata == null) {
       return "";
     }
-    return metadata.getMetadata().getPipelineIdentifier();
+    return metadata.getExecutionContext().getPipelineIdentifier();
   }
 
   public String getExecutionUuid() {
@@ -106,7 +110,7 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (metadata == null) {
       return "";
     }
-    return metadata.getMetadata().getExecutionUuid();
+    return metadata.getExecutionContext().getExecutionUuid();
   }
 
   public TriggerPayload getTriggerPayload() {
@@ -122,7 +126,7 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (metadata == null) {
       return null;
     }
-    return metadata.getMetadata().getTriggerInfo();
+    return metadata.getExecutionContext().getTriggerInfo();
   }
 
   public int getRunSequence() {
@@ -130,7 +134,7 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (metadata == null) {
       return -1;
     }
-    return metadata.getMetadata().getRunSequence();
+    return metadata.getExecutionContext().getRunSequence();
   }
 
   public String getPipelineConnectorRef() {
@@ -138,7 +142,7 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (metadata == null) {
       return "";
     }
-    return metadata.getMetadata().getPipelineConnectorRef();
+    return metadata.getExecutionContext().getPipelineConnectorRef();
   }
 
   @Override
@@ -147,7 +151,7 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (value == null) {
       return null;
     }
-    return getMetadata().getMetadata().getGitSyncBranchContext();
+    return value.getExecutionContext().getGitSyncBranchContext();
   }
 
   public List<YamlField> getStepYamlFields() {
@@ -199,11 +203,41 @@ public class PlanCreationContext implements AsyncCreatorContext {
     if (value == null) {
       return PipelineStoreType.UNDEFINED;
     }
-    return value.getMetadata().getPipelineStoreType();
+    return value.getExecutionContext().getPipelineStoreType();
   }
 
   public String getYamlVersion() {
-    String harnessVersion = getMetadata().getMetadata().getHarnessVersion();
-    return StringUtils.isEmpty(harnessVersion) ? PipelineVersion.V0 : harnessVersion;
+    String harnessVersion = getMetadata().getExecutionContext().getHarnessVersion();
+    return StringUtils.isEmpty(harnessVersion) ? HarnessYamlVersion.V0 : harnessVersion;
+  }
+
+  public ExecutionPrincipalInfo getPrincipalInfo() {
+    PlanCreationContextValue value = getMetadata();
+    if (value == null) {
+      return null;
+    }
+    return value.getExecutionContext().getPrincipalInfo();
+  }
+
+  public ExecutionMode getExecutionMode() {
+    PlanCreationContextValue value = getMetadata();
+    if (value == null) {
+      return null;
+    }
+    return value.getExecutionContext().getExecutionMode();
+  }
+
+  /*
+  Method will get the Max timeout from SettingsValueMap if existed,
+  Otherwise will return Default timeout '8w'
+   */
+  public String getTimeoutDuration(String timeoutIdentifier) {
+    PlanCreationContextValue value = getMetadata();
+    return value.getExecutionContext().getSettingToValueMapOrDefault(timeoutIdentifier, DEFAULT_TIMEOUT);
+  }
+
+  public boolean getFeatureFlagValue(String featureName) {
+    PlanCreationContextValue value = getMetadata();
+    return value.getExecutionContext().getFeatureFlagToValueMapOrDefault(featureName, false);
   }
 }

@@ -18,9 +18,11 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class CDLicenseUsageConstants {
   public static final String DISPLAY_NAME = "Last 30 Days";
-  public static final int TIME_PERIOD_IN_DAYS = 30;
+  public static final int TIME_PERIOD_30_DAYS = 30;
+  public static final int TIME_PERIOD_15_DAYS = 15;
   public static final double PERCENTILE = 0.95;
   public static final int SERVICE_INSTANCE_LIMIT = 20;
+  public static final int SERVICE_INSTANCE_LIMIT_LAMBDA = 5;
   public static final String SERVICE_INSTANCES_QUERY_PROPERTY = "serviceInstances";
   public static final String SERVICE_INSTANCES_SORT_PROPERTY = "instanceCount";
   public static final String LAST_DEPLOYED_SERVICE_PROPERTY = "lastDeployed";

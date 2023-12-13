@@ -17,18 +17,20 @@ import io.harness.pms.contracts.advisers.AdviserType;
 import io.harness.pms.contracts.facilitators.FacilitatorObtainment;
 import io.harness.pms.contracts.facilitators.FacilitatorType;
 import io.harness.pms.contracts.plan.EdgeLayoutList;
+import io.harness.pms.contracts.plan.ExecutionMode;
 import io.harness.pms.contracts.plan.GraphLayoutNode;
 import io.harness.pms.execution.OrchestrationFacilitatorType;
 import io.harness.pms.plan.creation.PlanCreatorUtils;
 import io.harness.pms.sdk.core.adviser.OrchestrationAdviserTypes;
 import io.harness.pms.sdk.core.plan.PlanNode;
+import io.harness.pms.sdk.core.plan.PlanNode.PlanNodeBuilder;
 import io.harness.pms.sdk.core.plan.creation.beans.GraphLayoutResponse;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.sdk.core.plan.creation.creators.ChildrenPlanCreator;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
 import io.harness.pms.yaml.DependenciesUtils;
-import io.harness.pms.yaml.PipelineVersion;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlNode;
@@ -82,19 +84,28 @@ public class ParallelPlanCreator extends ChildrenPlanCreator<YamlField> {
   @Override
   public PlanNode createPlanForParentNode(PlanCreationContext ctx, YamlField config, List<String> childrenNodeIds) {
     YamlNode currentNode = config.getNode();
-    return PlanNode.builder()
-        .uuid(currentNode.getUuid())
-        .name(YAMLFieldNameConstants.PARALLEL)
-        .identifier(YAMLFieldNameConstants.PARALLEL + currentNode.getUuid())
-        .stepType(NGForkStep.STEP_TYPE)
-        .stepParameters(ForkStepParameters.builder().parallelNodeIds(childrenNodeIds).build())
-        .facilitatorObtainment(
-            FacilitatorObtainment.newBuilder()
-                .setType(FacilitatorType.newBuilder().setType(OrchestrationFacilitatorType.CHILDREN).build())
-                .build())
-        .adviserObtainments(getAdviserObtainmentFromMetaData(config))
-        .skipExpressionChain(true)
-        .build();
+
+    YamlNode parallelNodeInStage =
+        YamlUtils.findParentNode(ctx.getCurrentField().getNode(), YAMLFieldNameConstants.STAGE);
+    List<AdviserObtainment> adviserObtainments = getAdviserObtainmentFromMetaData(config);
+    PlanNodeBuilder planNodeBuilder =
+        PlanNode.builder()
+            .uuid(currentNode.getUuid())
+            .name(YAMLFieldNameConstants.PARALLEL)
+            .identifier(YAMLFieldNameConstants.PARALLEL + currentNode.getUuid())
+            .stepType(NGForkStep.STEP_TYPE)
+            .stepParameters(ForkStepParameters.builder().parallelNodeIds(childrenNodeIds).build())
+            .facilitatorObtainment(
+                FacilitatorObtainment.newBuilder()
+                    .setType(FacilitatorType.newBuilder().setType(OrchestrationFacilitatorType.CHILDREN).build())
+                    .build())
+            .adviserObtainments(adviserObtainments)
+            .skipExpressionChain(true);
+    if (parallelNodeInStage != null) {
+      planNodeBuilder.advisorObtainmentForExecutionMode(ExecutionMode.PIPELINE_ROLLBACK, adviserObtainments);
+      planNodeBuilder.advisorObtainmentForExecutionMode(ExecutionMode.POST_EXECUTION_ROLLBACK, adviserObtainments);
+    }
+    return planNodeBuilder.build();
   }
 
   @Override
@@ -178,6 +189,6 @@ public class ParallelPlanCreator extends ChildrenPlanCreator<YamlField> {
 
   @Override
   public Set<String> getSupportedYamlVersions() {
-    return Set.of(PipelineVersion.V0);
+    return Set.of(HarnessYamlVersion.V0);
   }
 }

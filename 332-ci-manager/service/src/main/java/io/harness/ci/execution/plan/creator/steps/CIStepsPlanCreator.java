@@ -5,31 +5,34 @@
  * https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt.
  */
 
-package io.harness.ci.plan.creator.steps;
+package io.harness.ci.execution.plan.creator.steps;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.yaml.extended.infrastrucutre.Infrastructure;
-import io.harness.ci.integrationstage.V1.CIPlanCreatorUtils;
+import io.harness.ci.execution.integrationstage.V1.CIPlanCreatorUtils;
 import io.harness.ci.plancreator.V1.GitClonePlanCreator;
 import io.harness.ci.plancreator.V1.InitializeStepPlanCreatorV1;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidRequestException;
 import io.harness.plancreator.execution.ExecutionWrapperConfig;
-import io.harness.plancreator.stages.stage.AbstractStageNode;
+import io.harness.plancreator.stages.stage.v1.AbstractStageNodeV1;
 import io.harness.pms.contracts.facilitators.FacilitatorObtainment;
 import io.harness.pms.contracts.facilitators.FacilitatorType;
 import io.harness.pms.contracts.plan.Dependencies;
 import io.harness.pms.contracts.plan.Dependency;
+import io.harness.pms.contracts.plan.HarnessStruct;
+import io.harness.pms.contracts.plan.HarnessValue;
 import io.harness.pms.contracts.steps.SkipType;
 import io.harness.pms.execution.OrchestrationFacilitatorType;
+import io.harness.pms.plan.creation.PlanCreatorConstants;
 import io.harness.pms.plan.creation.PlanCreatorUtils;
 import io.harness.pms.sdk.core.plan.PlanNode;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.sdk.core.plan.creation.creators.ChildrenPlanCreator;
 import io.harness.pms.sdk.core.steps.io.StepParameters;
-import io.harness.pms.yaml.PipelineVersion;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
 import io.harness.serializer.KryoSerializer;
@@ -39,7 +42,6 @@ import io.harness.yaml.extended.ci.codebase.CodeBase;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
-import com.google.protobuf.ByteString;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -89,28 +91,33 @@ public class CIStepsPlanCreator extends ChildrenPlanCreator<YamlField> {
     // TODO : Figure out corresponding failure stages and put that here as well
     IntStream.range(0, steps.size() - 1).forEach(i -> {
       YamlField curr = steps.get(i);
+      String nextId = steps.get(i + 1).getUuid();
       responseMap.put(curr.getUuid(),
           PlanCreationResponse.builder()
-              .dependencies(Dependencies.newBuilder()
-                                .putDependencies(curr.getUuid(), curr.getYamlPath())
-                                .putDependencyMetadata(curr.getUuid(),
-                                    Dependency.newBuilder()
-                                        .putAllMetadata(ctx.getDependency().getMetadataMap())
-                                        .putMetadata("nextId",
-                                            ByteString.copyFrom(kryoSerializer.asBytes(steps.get(i + 1).getUuid())))
-                                        .build())
-                                .build())
+              .dependencies(
+                  Dependencies.newBuilder()
+                      .putDependencies(curr.getUuid(), curr.getYamlPath())
+                      .putDependencyMetadata(curr.getUuid(),
+                          Dependency.newBuilder()
+                              .setNodeMetadata(HarnessStruct.newBuilder()
+                                                   .putData(PlanCreatorConstants.NEXT_ID,
+                                                       HarnessValue.newBuilder().setStringValue(nextId).build())
+                                                   .putAllData(ctx.getDependency().getNodeMetadata().getDataMap())
+                                                   .build())
+                              .build())
+                      .build())
               .build());
     });
 
     YamlField curr = steps.get(steps.size() - 1);
     responseMap.put(curr.getUuid(),
         PlanCreationResponse.builder()
-            .dependencies(Dependencies.newBuilder()
-                              .putDependencyMetadata(curr.getUuid(),
-                                  Dependency.newBuilder().putAllMetadata(ctx.getDependency().getMetadataMap()).build())
-                              .putDependencies(curr.getUuid(), curr.getYamlPath())
-                              .build())
+            .dependencies(
+                Dependencies.newBuilder()
+                    .putDependencyMetadata(curr.getUuid(),
+                        Dependency.newBuilder().setNodeMetadata(ctx.getDependency().getNodeMetadata()).build())
+                    .putDependencies(curr.getUuid(), curr.getYamlPath())
+                    .build())
             .build());
     return responseMap;
   }
@@ -143,7 +150,7 @@ public class CIStepsPlanCreator extends ChildrenPlanCreator<YamlField> {
     if (optionalStageNode.isEmpty()) {
       throw new InvalidRequestException("IntegrationStageNode cannot be empty");
     }
-    AbstractStageNode stageNode = (AbstractStageNode) optionalStageNode.get();
+    AbstractStageNodeV1 stageNode = (AbstractStageNodeV1) optionalStageNode.get();
     PlanCreationResponse planCreationResponse = initializeStepPlanCreatorV1.createPlan(
         ctx, stageNode, codeBase, infrastructure, executionWrapperConfigs, childNodeID);
     planCreationResponseMap.put(planCreationResponse.getPlanNode().getUuid(), planCreationResponse);
@@ -165,8 +172,8 @@ public class CIStepsPlanCreator extends ChildrenPlanCreator<YamlField> {
   }
 
   @Override
-  public Class<YamlField> getFieldClass() {
-    return YamlField.class;
+  public YamlField getFieldObject(YamlField field) {
+    return field;
   }
 
   @Override
@@ -176,6 +183,6 @@ public class CIStepsPlanCreator extends ChildrenPlanCreator<YamlField> {
 
   @Override
   public Set<String> getSupportedYamlVersions() {
-    return Set.of(PipelineVersion.V1);
+    return Set.of(HarnessYamlVersion.V1);
   }
 }

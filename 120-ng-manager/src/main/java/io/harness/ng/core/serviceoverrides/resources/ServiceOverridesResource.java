@@ -6,16 +6,19 @@
  */
 
 package io.harness.ng.core.serviceoverrides.resources;
-import static io.harness.data.structure.EmptyPredicate.isEmpty;
+
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.exception.WingsException.USER;
+import static io.harness.filter.FilterType.OVERRIDE;
 import static io.harness.pms.rbac.NGResourceType.ENVIRONMENT;
 import static io.harness.rbac.CDNGRbacPermissions.ENVIRONMENT_VIEW_PERMISSION;
 import static io.harness.utils.PageUtils.getNGPageResponse;
 
 import static java.lang.String.format;
+import static java.util.Objects.isNull;
 
 import io.harness.NGCommonEntityConstants;
+import io.harness.NGResourceFilterConstants;
 import io.harness.accesscontrol.AccountIdentifier;
 import io.harness.accesscontrol.OrgIdentifier;
 import io.harness.accesscontrol.ProjectIdentifier;
@@ -36,6 +39,8 @@ import io.harness.cdng.service.steps.helpers.serviceoverridesv2.services.Service
 import io.harness.cdng.service.steps.helpers.serviceoverridesv2.validators.ServiceOverrideValidatorService;
 import io.harness.exception.AccessDeniedException;
 import io.harness.exception.InvalidRequestException;
+import io.harness.filter.dto.FilterDTO;
+import io.harness.filter.service.FilterService;
 import io.harness.manage.GlobalContextManager;
 import io.harness.ng.beans.PageResponse;
 import io.harness.ng.core.beans.DocumentationConstants;
@@ -45,6 +50,7 @@ import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.environment.services.EnvironmentService;
 import io.harness.ng.core.serviceoverride.beans.NGServiceOverridesEntity;
 import io.harness.ng.core.serviceoverride.beans.NGServiceOverridesEntity.NGServiceOverridesEntityKeys;
+import io.harness.ng.core.serviceoverride.beans.OverrideFilterPropertiesDTO;
 import io.harness.ng.core.serviceoverridev2.beans.OverrideV2SettingsUpdateResponseDTO;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverrideBatchMigrationDTO;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverrideMigrationResponseDTO;
@@ -57,11 +63,11 @@ import io.harness.ng.core.serviceoverridev2.service.ServiceOverridesServiceV2;
 import io.harness.ng.core.utils.OrgAndProjectValidationHelper;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.remote.client.CGRestUtils;
+import io.harness.scope.ScopeHelper;
 import io.harness.security.SourcePrincipalContextData;
 import io.harness.security.annotations.NextGenManagerAuth;
 import io.harness.security.dto.Principal;
 import io.harness.utils.IdentifierRefHelper;
-import io.harness.yaml.utils.JsonPipelineUtils;
 
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -148,6 +154,7 @@ public class ServiceOverridesResource {
 
   @Inject private OrgAndProjectValidationHelper orgAndProjectValidationHelper;
   @Inject private AccountClient accountClient;
+  @Inject private FilterService filterService;
   private static final int MAX_LIMIT = 1000;
 
   @GET
@@ -210,7 +217,9 @@ public class ServiceOverridesResource {
                      description = "Sample Service Override Request"))
       }) @Valid ServiceOverrideRequestDTOV2 requestDTOV2) {
     String yamlInternal = requestDTOV2.getYamlInternal();
-    if (isNotEmpty(yamlInternal)) {
+    // if request is coming from v1 automation, yamlInternal is only to be used for sending back to v1 api response
+    // In this case it cant be used for creating spec as v1 yaml and v2 yaml (created from spec) are different
+    if (isNotEmpty(yamlInternal) && requestDTOV2.getSpec() == null && !requestDTOV2.isV1Api()) {
       try {
         ServiceOverridesSpec spec = YamlUtils.read(yamlInternal, ServiceOverridesSpec.class);
         requestDTOV2.setSpec(spec);
@@ -245,7 +254,7 @@ public class ServiceOverridesResource {
                      description = "Sample Service Override Request"))
       }) @Valid ServiceOverrideRequestDTOV2 requestDTOV2) throws IOException {
     String yamlInternal = requestDTOV2.getYamlInternal();
-    if (isNotEmpty(yamlInternal)) {
+    if (isNotEmpty(yamlInternal) && requestDTOV2.getSpec() == null && !requestDTOV2.isV1Api()) {
       try {
         ServiceOverridesSpec spec = YamlUtils.read(yamlInternal, ServiceOverridesSpec.class);
         requestDTOV2.setSpec(spec);
@@ -332,7 +341,7 @@ public class ServiceOverridesResource {
   listServiceOverrides(@Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
                            NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
       @Parameter(description = NGCommonEntityConstants.SIZE_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.SIZE) @DefaultValue("100") @Max(MAX_LIMIT) int size,
+          NGCommonEntityConstants.SIZE) @DefaultValue("500") @Max(MAX_LIMIT) int size,
       @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
           NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
       @Parameter(description = NGCommonEntityConstants.ORG_PARAM_MESSAGE) @QueryParam(
@@ -341,8 +350,48 @@ public class ServiceOverridesResource {
           NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier,
       @Parameter(description = "This is service override type which is based on override source") @QueryParam(
           "type") ServiceOverridesType type) {
-    Criteria criteria =
-        ServiceOverrideCriteriaHelper.createCriteriaForGetList(accountId, orgIdentifier, projectIdentifier, type);
+    Criteria criteria = ServiceOverrideCriteriaHelper.createCriteriaForGetList(
+        accountId, orgIdentifier, projectIdentifier, type, null, null);
+    Pageable pageRequest =
+        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, NGServiceOverridesEntityKeys.lastModifiedAt));
+    Page<NGServiceOverridesEntity> serviceOverridesEntities = serviceOverridesServiceV2.list(criteria, pageRequest);
+
+    return ResponseDTO.newResponse(getNGPageResponse(
+        serviceOverridesEntities.map(entity -> ServiceOverridesMapperV2.toResponseDTO(entity, false))));
+  }
+
+  @POST
+  @Path("/v2/list")
+  @Hidden
+  @ApiOperation(value = "Gets Service Override List", nickname = "getServiceOverrideListV3")
+  @Operation(operationId = "getServiceOverrideListV3", summary = "Gets Service Override List",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(description = "Returns the list of Services for a Project")
+      })
+  public ResponseDTO<PageResponse<ServiceOverridesResponseDTOV2>>
+  listServiceOverrides(@Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
+                           NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
+      @Parameter(description = NGCommonEntityConstants.SIZE_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.SIZE) @DefaultValue("500") @Max(MAX_LIMIT) int size,
+      @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
+          NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
+      @Parameter(description = NGCommonEntityConstants.ORG_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
+      @Parameter(description = NGCommonEntityConstants.PROJECT_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier,
+      @Parameter(description = "This is service override type which is based on override source") @QueryParam(
+          "type") ServiceOverridesType type,
+      @RequestBody(description = "This is the body for the filter properties for listing overrides.")
+      OverrideFilterPropertiesDTO filterProperties,
+      @Parameter(description = "The word to be searched and included in the list response") @QueryParam(
+          NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm,
+      @QueryParam(NGResourceFilterConstants.FILTER_KEY) String filterIdentifier) {
+    OverrideFilterPropertiesDTO finalFilterProperties = filterProperties != null
+        ? filterProperties
+        : fetchFilterPropertiesFromFilterIdentifier(filterIdentifier, accountId, orgIdentifier, projectIdentifier);
+    Criteria criteria = ServiceOverrideCriteriaHelper.createCriteriaForGetList(
+        accountId, orgIdentifier, projectIdentifier, type, searchTerm, finalFilterProperties);
     Pageable pageRequest =
         PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, NGServiceOverridesEntityKeys.lastModifiedAt));
     Page<NGServiceOverridesEntity> serviceOverridesEntities = serviceOverridesServiceV2.list(criteria, pageRequest);
@@ -590,10 +639,9 @@ public class ServiceOverridesResource {
             "Unauthorized to view environment %s referred in serviceOverrideEntity", envIdentifierRef.getIdentifier()));
 
     ServiceOverridesSpec spec = serviceOverridesEntity.getSpec();
-    String yamlInternal = serviceOverridesEntity.getYamlInternal();
-    if (spec != null && isEmpty(yamlInternal)) {
+    if (spec != null) {
       try {
-        String yamlInternalFromSpec = JsonPipelineUtils.writeJsonString(spec);
+        String yamlInternalFromSpec = YamlUtils.writeYamlString(spec);
         serviceOverridesEntity.setYamlInternal(yamlInternalFromSpec);
       } catch (Exception ex) {
         log.error("Failed to generate yaml from the service override entity's spec", ex);
@@ -606,5 +654,24 @@ public class ServiceOverridesResource {
     return ResponseDTO.newResponse(
         serviceOverridesEntityOptional.map(entity -> ServiceOverridesMapperV2.toResponseDTO(entity, false))
             .orElse(null));
+  }
+
+  private OverrideFilterPropertiesDTO fetchFilterPropertiesFromFilterIdentifier(
+      String filterIdentifier, String accountId, String orgIdentifier, String projectIdentifier) {
+    if (isNull(filterIdentifier)) {
+      return null;
+    }
+    FilterDTO overrideFilterDTO =
+        filterService.get(accountId, orgIdentifier, projectIdentifier, filterIdentifier, OVERRIDE);
+    if (overrideFilterDTO == null) {
+      throw new InvalidRequestException(String.format("Could not find a override filter with the identifier %s, in %s",
+          filterIdentifier, ScopeHelper.getScopeMessageForLogs(accountId, orgIdentifier, projectIdentifier)));
+    }
+
+    if (!(overrideFilterDTO.getFilterProperties() instanceof OverrideFilterPropertiesDTO)) {
+      throw new InvalidRequestException(String.format("Filter with the identifier %s, in %s is not an override filter",
+          filterIdentifier, ScopeHelper.getScopeMessageForLogs(accountId, orgIdentifier, projectIdentifier)));
+    }
+    return (OverrideFilterPropertiesDTO) overrideFilterDTO.getFilterProperties();
   }
 }

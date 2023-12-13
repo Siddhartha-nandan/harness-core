@@ -17,14 +17,13 @@ import static org.mockito.Mockito.when;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.steps.stepinfo.IACMApprovalInfo;
 import io.harness.category.element.UnitTests;
-import io.harness.ci.buildstate.ConnectorUtils;
-import io.harness.ci.buildstate.PluginSettingUtils;
-import io.harness.ci.execution.CIExecutionConfigService;
-import io.harness.ci.integrationstage.IntegrationStageUtils;
-import io.harness.ci.serializer.SerializerUtils;
-import io.harness.ci.serializer.vm.VmIACMApprovalStepSerializer;
-import io.harness.ci.utils.CIStepInfoUtils;
-import io.harness.ci.utils.HarnessImageUtils;
+import io.harness.ci.execution.buildstate.ConnectorUtils;
+import io.harness.ci.execution.buildstate.PluginSettingUtils;
+import io.harness.ci.execution.execution.CIExecutionConfigService;
+import io.harness.ci.execution.integrationstage.IntegrationStageUtils;
+import io.harness.ci.execution.serializer.SerializerUtils;
+import io.harness.ci.execution.utils.CIStepInfoUtils;
+import io.harness.ci.execution.utils.HarnessImageUtils;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.delegate.beans.ci.vm.steps.VmPluginStep;
 import io.harness.iacm.execution.IACMStepsUtils;
@@ -102,11 +101,12 @@ public class VmIACMApprovalStepSerializerTest {
     when(connectorUtils.getConnectorDetails(any(), any())).thenReturn(ConnectorDetails.builder().build());
 
     VmPluginStep vmPluginStep = vmIACMApprovalStepSerializer.serialize(ambiance, stepInfo, null, null);
-    assertThat(vmPluginStep.getEnvVariables().size()).isEqualTo(6);
+    assertThat(vmPluginStep.getEnvVariables().size()).isEqualTo(7);
     assertThat(vmPluginStep.getEnvVariables().get("ENV_SECRETS_keytest1")).contains("${ngSecretManager.obtain");
     assertThat(vmPluginStep.getEnvVariables().get("PLUGIN_keytest2")).isEqualTo("keyValue2");
     assertThat(vmPluginStep.getEnvVariables().get("TFVARS_SECRETS_keytest3")).contains("${ngSecretManager.obtain");
     assertThat(vmPluginStep.getEnvVariables().get("TF_keytest4")).isEqualTo("keyValue4");
     assertThat(vmPluginStep.getEnvVariables().get("PLUGIN_COMMAND")).isEqualTo("approval");
+    assertThat(vmPluginStep.getEnvVariables().get("PLUGIN_AUTO_APPROVE")).isEqualTo("false");
   }
 }

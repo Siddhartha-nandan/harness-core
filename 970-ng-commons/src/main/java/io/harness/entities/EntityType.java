@@ -317,6 +317,10 @@ public enum EntityType {
   @JsonProperty(EntityTypeConstants.BUILD_AND_PUSH_GCR)
   BUILD_AND_PUSH_GCR(ModuleType.CI, EntityTypeConstants.BUILD_AND_PUSH_GCR, IdentifierRef.class,
       EntityYamlRootNames.BUILD_AND_PUSH_GCR),
+
+  @JsonProperty(EntityTypeConstants.BUILD_AND_PUSH_GAR)
+  BUILD_AND_PUSH_GAR(ModuleType.CI, EntityTypeConstants.BUILD_AND_PUSH_GAR, IdentifierRef.class,
+      EntityYamlRootNames.BUILD_AND_PUSH_GAR),
   @JsonProperty(EntityTypeConstants.BUILD_AND_PUSH_ECR)
   BUILD_AND_PUSH_ECR(ModuleType.CI, EntityTypeConstants.BUILD_AND_PUSH_ECR, IdentifierRef.class,
       EntityYamlRootNames.BUILD_AND_PUSH_ECR),
@@ -461,7 +465,6 @@ public enum EntityType {
   @JsonProperty(EntityTypeConstants.IACM)
   IACM_TERRAFORM_PLUGIN(ModuleType.IACM, EntityTypeConstants.IACM_TERRAFORM_PLUGIN, IdentifierRef.class,
       EntityYamlRootNames.IACM_TERRAFORM_PLUGIN),
-
   @JsonProperty(EntityTypeConstants.IACM)
   IACM_APPROVAL(
       ModuleType.IACM, EntityTypeConstants.IACM_APPROVAL, IdentifierRef.class, EntityYamlRootNames.IACM_APPROVAL),
@@ -649,7 +652,54 @@ public enum EntityType {
   IDP_CHECK(ModuleType.IDP, EntityTypeConstants.IDP_CHECK, IdentifierRef.class),
   @JsonProperty(EntityTypeConstants.AWS_CDK_ROLLBACK)
   AWS_CDK_ROLLBACK(
-      ModuleType.CD, EntityTypeConstants.AWS_CDK_ROLLBACK, IdentifierRef.class, EntityYamlRootNames.AWS_CDK_ROLLBACK);
+      ModuleType.CD, EntityTypeConstants.AWS_CDK_ROLLBACK, IdentifierRef.class, EntityYamlRootNames.AWS_CDK_ROLLBACK),
+  @JsonProperty(EntityTypeConstants.SLSA_VERIFICATION)
+  SLSA_VERIFICATION(ModuleType.CI, EntityTypeConstants.SLSA_VERIFICATION, IdentifierRef.class),
+  @JsonProperty(EntityTypeConstants.UPDATE_GITOPS_APP)
+  UPDATE_GITOPS_APP(
+      ModuleType.CD, EntityTypeConstants.UPDATE_GITOPS_APP, IdentifierRef.class, EntityYamlRootNames.UPDATE_GITOPS_APP),
+  @JsonProperty(EntityTypeConstants.ECS_SERVICE_SETUP)
+  ECS_SERVICE_SETUP_STEP(
+      ModuleType.CD, EntityTypeConstants.ECS_SERVICE_SETUP, IdentifierRef.class, EntityYamlRootNames.ECS_SERVICE_SETUP),
+  @JsonProperty(EntityTypeConstants.ECS_UPGRADE_CONTAINER)
+  ECS_UPGRADE_CONTAINER_STEP(ModuleType.CD, EntityTypeConstants.ECS_UPGRADE_CONTAINER, IdentifierRef.class,
+      EntityYamlRootNames.ECS_UPGRADE_CONTAINER),
+  @JsonProperty(EntityTypeConstants.ECS_BASIC_ROLLBACK)
+  ECS_BASIC_ROLLBACK_STEP(ModuleType.CD, EntityTypeConstants.ECS_BASIC_ROLLBACK, IdentifierRef.class,
+      EntityYamlRootNames.ECS_BASIC_ROLLBACK),
+  @JsonProperty(EntityTypeConstants.CHAOS_INFRASTRUCTURE)
+  CHAOS_INFRASTRUCTURE(ModuleType.CHAOS, EntityTypeConstants.CHAOS_INFRASTRUCTURE, IdentifierRef.class,
+      EntityYamlRootNames.CHAOS_INFRASTRUCTURE),
+  @JsonProperty(EntityTypeConstants.ANCHORE)
+  ANCHORE(ModuleType.STO, EntityTypeConstants.ANCHORE, IdentifierRef.class, EntityYamlRootNames.ANCHORE),
+  @JsonProperty(EntityTypeConstants.OVERRIDES)
+  OVERRIDES(ModuleType.CORE, EntityTypeConstants.OVERRIDES, IdentifierRef.class, EntityYamlRootNames.OVERRIDES),
+  @JsonProperty(EntityTypeConstants.ASG_SHIFT_TRAFFIC)
+  ASG_SHIFT_TRAFFIC_STEP(
+      ModuleType.CD, EntityTypeConstants.ASG_SHIFT_TRAFFIC, IdentifierRef.class, EntityYamlRootNames.ASG_SHIFT_TRAFFIC),
+  @JsonProperty(EntityTypeConstants.AQUA_SECURITY)
+  AQUA_SECURITY(
+      ModuleType.STO, EntityTypeConstants.AQUA_SECURITY, IdentifierRef.class, EntityYamlRootNames.AQUA_SECURITY),
+  @JsonProperty(EntityTypeConstants.IDP_STAGE)
+  IDP_STAGE(ModuleType.IDP, EntityTypeConstants.IDP_STAGE, IdentifierRef.class, EntityYamlRootNames.IDP_STAGE),
+  @JsonProperty(EntityTypeConstants.CHAOS_HUB)
+  CHAOS_HUB(ModuleType.CHAOS, EntityTypeConstants.CHAOS_HUB, IdentifierRef.class, EntityYamlRootNames.CHAOS_HUB),
+  @JsonProperty(EntityTypeConstants.COOKIECUTTER)
+  COOKIECUTTER(ModuleType.IDP, EntityTypeConstants.COOKIECUTTER, IdentifierRef.class, EntityYamlRootNames.COOKIECUTTER),
+  @JsonProperty(EntityTypeConstants.CREATE_REPO)
+  CREATE_REPO(ModuleType.IDP, EntityTypeConstants.CREATE_REPO, IdentifierRef.class, EntityYamlRootNames.CREATE_REPO),
+  @JsonProperty(EntityTypeConstants.DOWNLOAD_AWS_S3)
+  DOWNLOAD_AWS_S3(
+      ModuleType.CD, EntityTypeConstants.DOWNLOAD_AWS_S3, IdentifierRef.class, EntityYamlRootNames.DOWNLOAD_AWS_S3),
+  @JsonProperty(EntityTypeConstants.DIRECT_PUSH)
+  DIRECT_PUSH(ModuleType.IDP, EntityTypeConstants.DIRECT_PUSH, IdentifierRef.class, EntityYamlRootNames.DIRECT_PUSH),
+
+  @JsonProperty(EntityTypeConstants.REGISTER_CATALOG)
+  REGISTER_CATALOG(
+      ModuleType.IDP, EntityTypeConstants.REGISTER_CATALOG, IdentifierRef.class, EntityYamlRootNames.REGISTER_CATALOG),
+  @JsonProperty(EntityTypeConstants.K8S_TRAFFIC_ROUTING)
+  K8S_TRAFFIC_ROUTING_STEP(ModuleType.CD, EntityTypeConstants.K8S_TRAFFIC_ROUTING, IdentifierRef.class,
+      EntityYamlRootNames.K8S_TRAFFIC_ROUTING);
 
   private final ModuleType moduleType;
   String yamlName;

@@ -4,19 +4,37 @@ kind: Service
 metadata:
   name: harness-ingress-controller
   namespace: {{ .Release.Namespace }}
-  {{- if .Values.nginx.controller.annotations}}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.nginx.controller.annotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  labels:
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- if .Values.nginx.service.annotations }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.nginx.service.annotations "context" $ ) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.global.commonAnnotations }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.nginx.controller.annotations }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.nginx.controller.annotations "context" $ ) | nindent 4 }}
+    {{- end }}
 spec:
   selector:
     app: harness-ingress-controller
-  {{- if .Values.global.ingress.loadBalancerEnabled }}
+  {{- if or .Values.global.globalIngress.enabled .Values.nginx.clusterIPEnabled }}
+  type: 'ClusterIP'
+  {{- if not (empty .Values.nginx.clusterIP) }}
+  clusterIP: {{ .Values.nginx.clusterIP }}
+  {{- end }}
+  {{- else if .Values.nginx.loadBalancerEnabled }}
   type: 'LoadBalancer'
-  loadBalancerIP: {{ .Values.global.ingress.loadBalancerIP }}
+  {{- if not (empty .Values.nginx.loadBalancerIP) }}
+  loadBalancerIP: {{ .Values.nginx.loadBalancerIP }}
+  {{- end }}
   {{- else }}
   type: 'NodePort'
   {{- end }}
-  externalTrafficPolicy: 'Cluster'
+  # externalTrafficPolicy: 'Cluster'
   ports:
   - name: health
     protocol: TCP
@@ -45,6 +63,13 @@ kind: ConfigMap
 metadata:
   name: harness-ingress-controller
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
 data:
   proxy-body-size: 1024m
   proxy-read-timeout: "600"
@@ -63,6 +88,27 @@ metadata:
   namespace: {{ .Release.Namespace }}
 rules:
 - apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - list
+  - watch
+  - create
+  - delete
+  - get 
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - get
+  - list
+  - update
+  - delete
+  - watch
+- apiGroups:
   - ""
   resources:
   - namespaces
@@ -76,6 +122,7 @@ rules:
   - secrets
   - endpoints
   verbs:
+  - update
   - get
   - list
   - watch
@@ -154,8 +201,15 @@ apiVersion: apps/v1
 metadata:
   name: harness-ingress-controller
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.nginx.replicaCount }}
   selector:
     matchLabels:
       app: harness-ingress-controller
@@ -169,6 +223,12 @@ spec:
     metadata:
       labels:
         app: "harness-ingress-controller"
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.nginx.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.nginx.podLabels "context" $) | nindent 8 }}
+        {{- end }}
     spec:
       affinity:
         podAntiAffinity:
@@ -240,4 +300,5 @@ spec:
         - --https-port=8443
         - --default-ssl-certificate=$(POD_NAMESPACE)/{{ .Values.global.ingress.tls.secretName }}
         - --publish-service=$(POD_NAMESPACE)/harness-ingress-controller
+        - --watch-ingress-without-class=true
 {{- end }}

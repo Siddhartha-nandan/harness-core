@@ -8,8 +8,11 @@
 package io.harness.cdng.ecs;
 
 import io.harness.annotation.RecasterAlias;
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.pipeline.steps.CDAbstractStepInfo;
 import io.harness.cdng.visitor.helpers.cdstepinfo.EcsBlueGreenCreateServiceStepInfoVisitorHelper;
 import io.harness.executions.steps.StepSpecTypeConstants;
@@ -33,6 +36,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.TypeAlias;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_ECS})
 @OwnedBy(HarnessTeam.CDP)
 @Data
 @NoArgsConstructor
@@ -54,8 +58,10 @@ public class EcsBlueGreenCreateServiceStepInfo
   public EcsBlueGreenCreateServiceStepInfo(ParameterField<List<TaskSelectorYaml>> delegateSelectors,
       ParameterField<String> loadBalancer, ParameterField<String> prodListener,
       ParameterField<String> prodListenerRuleArn, ParameterField<String> stageListener,
-      ParameterField<String> stageListenerRuleArn) {
-    super(delegateSelectors, loadBalancer, prodListener, prodListenerRuleArn, stageListener, stageListenerRuleArn);
+      ParameterField<String> stageListenerRuleArn, ParameterField<Boolean> sameAsAlreadyRunningInstances,
+      ParameterField<Boolean> enableAutoscalingInSwapStep, ParameterField<Boolean> updateGreenService) {
+    super(delegateSelectors, loadBalancer, prodListener, prodListenerRuleArn, stageListener, stageListenerRuleArn,
+        sameAsAlreadyRunningInstances, enableAutoscalingInSwapStep, updateGreenService);
   }
 
   @Override
@@ -77,6 +83,9 @@ public class EcsBlueGreenCreateServiceStepInfo
         .stageListener(this.getStageListener())
         .prodListenerRuleArn(this.getProdListenerRuleArn())
         .stageListenerRuleArn(this.getStageListenerRuleArn())
+        .sameAsAlreadyRunningInstances(this.getSameAsAlreadyRunningInstances())
+        .enableAutoScalingInSwapStep(this.getEnableAutoScalingInSwapStep())
+        .updateGreenService(this.getUpdateGreenService())
         .build();
   }
 

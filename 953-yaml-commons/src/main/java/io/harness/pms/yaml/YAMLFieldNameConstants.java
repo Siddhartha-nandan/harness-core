@@ -6,6 +6,7 @@
  */
 
 package io.harness.pms.yaml;
+
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 
 import io.harness.annotations.dev.CodePulse;
@@ -22,6 +23,7 @@ import lombok.experimental.UtilityClass;
 public class YAMLFieldNameConstants {
   public final String EXECUTION = "execution";
   public final String PIPELINE = "pipeline";
+  public final String TRIGGER = "trigger";
   public final String POLICY_OUTPUT = "policyOutput";
   public final String CI_CODE_BASE = "codebase";
   public final String PROPERTIES = "properties";
@@ -100,11 +102,13 @@ public class YAMLFieldNameConstants {
   public final String SERVICE = "service";
 
   public final String INPUT_SET_REFERENCES = "inputSetReferences";
+  public final String INPUT_SETS = "input_sets";
   public final String REPEAT = "repeat";
   public final String SERVICE_REF = "serviceRef";
   public final String ENVIRONMENT_REF = "environmentRef";
   public final String GROUP = "group";
   public static final String OUTPUTS = "outputs";
+  public static final String EXPORTS = "exports";
 
   public final String OPTIONS = "options";
   public final String REPOSITORY = "repository";
@@ -122,4 +126,17 @@ public class YAMLFieldNameConstants {
 
   public final String COMBINED_ROLLBACK_STATUS = "combinedRollbackStatus";
   public final String RETRY_STEP_GROUP = "retryStepGroup";
+  public final String CUSTOM = "Custom";
+  public final String CUSTOM_V1 = "custom";
+  public final String REF = "ref";
+  public final String DOLLAR_REF = "$ref";
+  public final String VERSION = "version";
+  public final String KIND = "kind";
+  public final String VALIDATOR = "validator";
+  public final String ALLOWED = "allowed";
+  public final String REGEX = "regex";
+  public final String DESC = "desc";
+
+  public final String DEPLOYMENT_STAGE_V1 = "deployment";
+  public final String ROLLBACK_STEPS_V1 = "rollback_steps";
 }

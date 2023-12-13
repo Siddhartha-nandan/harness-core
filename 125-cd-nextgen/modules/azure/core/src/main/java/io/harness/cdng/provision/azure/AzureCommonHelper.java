@@ -41,7 +41,6 @@ import io.harness.logging.UnitProgress;
 import io.harness.ng.core.NGAccess;
 import io.harness.ng.core.dto.secrets.SSHKeySpecDTO;
 import io.harness.plancreator.steps.TaskSelectorYaml;
-import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.execution.failure.FailureInfo;
@@ -50,6 +49,7 @@ import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.sdk.core.steps.executables.TaskChainResponse;
 import io.harness.pms.sdk.core.steps.io.PassThroughData;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.secretmanagerclient.services.api.SecretManagerClientService;
 import io.harness.security.encryption.EncryptedDataDetail;
@@ -109,8 +109,8 @@ public class AzureCommonHelper {
       gitConfigDTO.setUrl(repoUrl);
       gitConfigDTO.setGitConnectionType(GitConnectionType.REPO);
     }
-    ScmConnector scmConnector = cdStepHelper.getScmConnector(
-        (ScmConnector) connectorDTO.getConnectorConfig(), basicNGAccessObject.getAccountIdentifier(), gitConfigDTO);
+    ScmConnector scmConnector = cdStepHelper.getScmConnector((ScmConnector) connectorDTO.getConnectorConfig(),
+        basicNGAccessObject.getAccountIdentifier(), gitConfigDTO, repoName);
     List<EncryptedDataDetail> encryptedDataDetails =
         gitConfigAuthenticationInfoHelper.getEncryptedDataDetails(scmConnector, sshKeySpecDTO, basicNGAccessObject);
     GitStoreDelegateConfigBuilder builder = GitStoreDelegateConfig.builder();
@@ -150,7 +150,7 @@ public class AzureCommonHelper {
   }
 
   public TaskChainResponse getGitFetchFileTaskChainResponse(Ambiance ambiance,
-      List<GitFetchFilesConfig> gitFetchFilesConfigs, StepElementParameters stepElementParameters,
+      List<GitFetchFilesConfig> gitFetchFilesConfigs, StepBaseParameters stepElementParameters,
       PassThroughData passThroughData, List<String> commandUnits, CommandUnitsProgress commandUnitsProgress) {
     ParameterField<List<TaskSelectorYaml>> delegateSelector;
     if (stepElementParameters.getSpec() instanceof AzureCreateBPStepParameters) {

@@ -58,9 +58,12 @@ import io.harness.pms.plan.execution.beans.dto.PipelineExecutionSummaryDTO;
 import io.harness.pms.plan.execution.service.ExecutionGraphService;
 import io.harness.pms.plan.execution.service.ExpressionEvaluatorService;
 import io.harness.pms.plan.execution.service.PMSExecutionService;
+import io.harness.pms.plan.execution.service.PmsExecutionSummaryService;
 import io.harness.pms.rbac.PipelineRbacPermissions;
 import io.harness.utils.PageUtils;
 
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiModelProperty;
@@ -77,6 +80,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import javax.ws.rs.BeanParam;
@@ -136,6 +140,12 @@ public class ExecutionDetailsResource {
   @Inject private final ExecutionGraphService executionGraphService;
   @Inject private final ExpressionEvaluatorService expressionEvaluatorService;
   @Inject private final PlanExecutionMetadataService planExecutionMetadataService;
+  @Inject private final PmsExecutionSummaryService pmsExecutionSummaryService;
+
+  private final String INVALID_PAGE_REQUEST_EXCEPTION_MESSAGE =
+      "Please Verify Executions list parameters for page and size, page should be >= 0 and size should be > 0 and <=1000";
+  private final String PIPELINE_RESOURCE_TYPE = "PIPELINE";
+  private final String PERMISSION_MISSING_MESSAGE = "Missing permission %s on %s";
 
   @POST
   @Path("/summary")
@@ -147,7 +157,8 @@ public class ExecutionDetailsResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns all the Executions of pipelines for given filter")
       })
-  @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_VIEW)
+  @Timed
+  @ResponseMetered
   public ResponseDTO<Page<PipelineExecutionSummaryDTO>>
   getListOfExecutions(@Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true)
                       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
@@ -165,6 +176,7 @@ public class ExecutionDetailsResource {
           NGCommonEntityConstants.SIZE) @DefaultValue("10") int size,
       @Parameter(description = NGCommonEntityConstants.SORT_PARAM_MESSAGE) @QueryParam("sort") List<String> sort,
       @QueryParam(NGResourceFilterConstants.FILTER_KEY) String filterIdentifier,
+      @DefaultValue("false") @QueryParam(NGResourceFilterConstants.SHOW_ALL_EXECUTONS) boolean showAllExecutions,
       @QueryParam("module") String moduleName,
       @RequestBody(description = "Returns a List of Pipeline Executions with Specific Filters",
           content =
@@ -179,11 +191,10 @@ public class ExecutionDetailsResource {
     log.info("Get List of executions");
     Criteria criteria = pmsExecutionService.formCriteria(accountId, orgId, projectId, pipelineIdentifier,
         filterIdentifier, (PipelineExecutionFilterPropertiesDTO) filterProperties, moduleName, searchTerm, statusesList,
-        myDeployments, false, true);
+        myDeployments, false, showAllExecutions);
     Pageable pageRequest;
     if (page < 0 || !(size > 0 && size <= 1000)) {
-      throw new InvalidRequestException(
-          "Please Verify Executions list parameters for page and size, page should be >= 0 and size should be > 0 and <=1000");
+      throw new InvalidRequestException(INVALID_PAGE_REQUEST_EXCEPTION_MESSAGE);
     }
     if (EmptyPredicate.isEmpty(sort)) {
       pageRequest = PageRequest.of(page, size, Sort.by(Direction.DESC, PlanExecutionSummaryKeys.startTs));
@@ -192,7 +203,7 @@ public class ExecutionDetailsResource {
     }
 
     // NOTE: We are getting entity git details from git context and not pipeline entity as we'll have to make DB calls
-    // to fetch them and each might have a different branch context so we cannot even batch them. The only data missing
+    // to fetch them and each might have a different branch context, so we cannot even batch them. The only data missing
     // because of this approach is objectId which UI doesn't use.
     Page<PipelineExecutionSummaryDTO> planExecutionSummaryDTOS =
         pmsExecutionService.getPipelineExecutionSummaryEntity(criteria, pageRequest)
@@ -216,7 +227,9 @@ public class ExecutionDetailsResource {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "default",
             description = "Returns all the Executions Identifier of pipelines for given filter")
       })
-  @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_VIEW)
+  @Timed
+  @ResponseMetered
+  @NGAccessControlCheck(resourceType = PIPELINE_RESOURCE_TYPE, permission = PipelineRbacPermissions.PIPELINE_VIEW)
   public ResponseDTO<Page<PipelineExecutionIdentifierSummaryDTO>>
   getListOfExecutionIdentifier(
       @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
@@ -237,8 +250,7 @@ public class ExecutionDetailsResource {
         null, null, ExecutionStatus.getListExecutionStatus(StatusUtils.finalStatuses()), false, false, true);
     Pageable pageRequest;
     if (page < 0 || !(size > 0 && size <= 1000)) {
-      throw new InvalidRequestException(
-          "Please Verify Executions list parameters for page and size, page should be >= 0 and size should be > 0 and <=1000");
+      throw new InvalidRequestException(INVALID_PAGE_REQUEST_EXCEPTION_MESSAGE);
     }
 
     pageRequest = PageRequest.of(page, size, Sort.by(Direction.DESC, PlanExecutionSummaryKeys.startTs));
@@ -250,7 +262,7 @@ public class ExecutionDetailsResource {
 
     Page<PipelineExecutionIdentifierSummaryDTO> planExecutionSummaryDTOS =
         pmsExecutionService.getPipelineExecutionSummaryEntityWithProjection(criteria, pageRequest, projections)
-            .map(e -> PipelineExecutionSummaryDtoMapper.toExecutionIdentifierDto(e));
+            .map(PipelineExecutionSummaryDtoMapper::toExecutionIdentifierDto);
 
     return ResponseDTO.newResponse(planExecutionSummaryDTOS);
   }
@@ -272,7 +284,7 @@ public class ExecutionDetailsResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns all the Executions of pipelines for given filters")
       })
-  @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_VIEW)
+  @NGAccessControlCheck(resourceType = PIPELINE_RESOURCE_TYPE, permission = PipelineRbacPermissions.PIPELINE_VIEW)
   public ResponseDTO<Page<PipelineExecutionSummaryDTO>>
   getListOfExecutionsWithOrOperator(
       @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
@@ -297,15 +309,13 @@ public class ExecutionDetailsResource {
     Criteria criteria = pmsExecutionService.formCriteriaOROperatorOnModules(accountId, orgId, projectId,
         pipelineIdentifier, (PipelineExecutionFilterPropertiesDTO) filterProperties, filterIdentifier);
     Pageable pageRequest;
-    pageRequest = PageRequest.of(page, size, Sort.by(Direction.DESC, PlanExecutionSummaryKeys.startTs));
     if (page < 0 || !(size > 0 && size <= 1000)) {
-      throw new InvalidRequestException(
-          "Please Verify Executions list parameters for page and size, page should be >= 0 and size should be > 0 and <=1000");
+      throw new InvalidRequestException(INVALID_PAGE_REQUEST_EXCEPTION_MESSAGE);
     }
     pageRequest = PageRequest.of(page, size, Sort.by(Direction.DESC, PlanExecutionSummaryKeys.startTs));
 
     // NOTE: We are getting entity git details from git context and not pipeline entity as we'll have to make DB calls
-    // to fetch them and each might have a different branch context so we cannot even batch them. The only data missing
+    // to fetch them and each might have a different branch context, so we cannot even batch them. The only data missing
     // because of this approach is objectId which UI doesn't use.
     Page<PipelineExecutionSummaryDTO> planExecutionSummaryDTOS =
         pmsExecutionService.getPipelineExecutionSummaryEntity(criteria, pageRequest)
@@ -330,6 +340,8 @@ public class ExecutionDetailsResource {
             description =
                 "Return the Pipeline Execution details for given PlanExecution Id without full graph if stageNodeId is null")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PipelineExecutionDetailDTO>
   getExecutionDetailV2(
       @NotNull @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true) @QueryParam(
@@ -352,7 +364,8 @@ public class ExecutionDetailsResource {
         pmsExecutionService.getPipelineExecutionSummaryEntity(accountId, orgId, projectId, planExecutionId, false);
 
     accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountId, orgId, projectId),
-        Resource.of("PIPELINE", executionSummaryEntity.getPipelineIdentifier()), PipelineRbacPermissions.PIPELINE_VIEW);
+        Resource.of(PIPELINE_RESOURCE_TYPE, executionSummaryEntity.getPipelineIdentifier()),
+        PipelineRbacPermissions.PIPELINE_VIEW);
 
     EntityGitDetails entityGitDetails;
     if (executionSummaryEntity.getEntityGitDetails() == null) {
@@ -380,6 +393,8 @@ public class ExecutionDetailsResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Return Execution subGraph for a Given NodeExecution ID")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<NodeExecutionSubGraphResponse>
   getExecutionSubGraphForNodeExecution(
       @NotNull @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true) @QueryParam(
@@ -395,7 +410,8 @@ public class ExecutionDetailsResource {
     PipelineExecutionSummaryEntity executionSummaryEntity =
         pmsExecutionService.getPipelineExecutionSummaryEntity(accountId, orgId, projectId, planExecutionId, false);
     accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountId, orgId, projectId),
-        Resource.of("PIPELINE", executionSummaryEntity.getPipelineIdentifier()), PipelineRbacPermissions.PIPELINE_VIEW);
+        Resource.of(PIPELINE_RESOURCE_TYPE, executionSummaryEntity.getPipelineIdentifier()),
+        PipelineRbacPermissions.PIPELINE_VIEW);
     NodeExecutionSubGraphResponse nodeExecutionSubGraph =
         executionGraphService.getNodeExecutionSubGraph(nodeExecutionId, planExecutionId);
     return ResponseDTO.newResponse(nodeExecutionSubGraph);
@@ -412,7 +428,9 @@ public class ExecutionDetailsResource {
         ApiResponse(responseCode = "default", description = "Returns the Map of evaluated Expression")
       })
   @Hidden
-  @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_VIEW)
+  @NGAccessControlCheck(resourceType = PIPELINE_RESOURCE_TYPE, permission = PipelineRbacPermissions.PIPELINE_VIEW)
+  @Timed
+  @ResponseMetered
   public ResponseDTO<ExpressionEvaluationDetailDTO>
   getExpressionEvaluated(
       @NotNull @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true) @QueryParam(
@@ -441,6 +459,8 @@ public class ExecutionDetailsResource {
             responseCode = "default", description = "Return the Pipeline Execution details for given PlanExecution Id")
       },
       deprecated = true)
+  @Timed
+  @ResponseMetered
   @Deprecated
   public ResponseDTO<PipelineExecutionDetailDTO>
   getExecutionDetail(@NotNull @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true)
@@ -459,7 +479,8 @@ public class ExecutionDetailsResource {
         pmsExecutionService.getPipelineExecutionSummaryEntity(accountId, orgId, projectId, planExecutionId, false);
 
     accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountId, orgId, projectId),
-        Resource.of("PIPELINE", executionSummaryEntity.getPipelineIdentifier()), PipelineRbacPermissions.PIPELINE_VIEW);
+        Resource.of(PIPELINE_RESOURCE_TYPE, executionSummaryEntity.getPipelineIdentifier()),
+        PipelineRbacPermissions.PIPELINE_VIEW);
 
     EntityGitDetails entityGitDetails;
     if (executionSummaryEntity.getEntityGitDetails() == null) {
@@ -481,7 +502,6 @@ public class ExecutionDetailsResource {
   @GET
   @Path("/{planExecutionId}/metadata")
   @ApiOperation(value = "Get metadata of an execution", nickname = "getExecutionData")
-  @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_VIEW)
   @Operation(operationId = "getExecutionData", summary = "Get execution metadata of a pipeline execution",
       responses =
       {
@@ -494,6 +514,16 @@ public class ExecutionDetailsResource {
                 @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
       @NotNull @PathParam(NGCommonEntityConstants.PLAN_KEY) @Parameter(
           description = "ExecutionId of the execution for which we want to get Metadata") String planExecutionId) {
+    PipelineExecutionSummaryEntity pipelineExecutionSummaryEntity =
+        pmsExecutionSummaryService.getPipelineExecutionSummaryWithProjections(planExecutionId,
+            Set.of(PlanExecutionSummaryKeys.accountId, PlanExecutionSummaryKeys.orgIdentifier,
+                PlanExecutionSummaryKeys.projectIdentifier, PlanExecutionSummaryKeys.pipelineIdentifier));
+    accessControlClient.checkForAccessOrThrow(
+        ResourceScope.of(accountId, pipelineExecutionSummaryEntity.getOrgIdentifier(),
+            pipelineExecutionSummaryEntity.getProjectIdentifier()),
+        Resource.of(PIPELINE_RESOURCE_TYPE, pipelineExecutionSummaryEntity.getPipelineIdentifier()),
+        PipelineRbacPermissions.PIPELINE_VIEW,
+        String.format(PERMISSION_MISSING_MESSAGE, PipelineRbacPermissions.PIPELINE_VIEW, "pipeline"));
     ExecutionDataResponseDTO executionDetailsResponseDTO = pmsExecutionService.getExecutionData(planExecutionId);
     return ResponseDTO.newResponse(executionDetailsResponseDTO);
   }
@@ -501,7 +531,7 @@ public class ExecutionDetailsResource {
   @GET
   @Path("/{planExecutionId}/metadata/details")
   @ApiOperation(value = "Get plan metadata details of an execution", nickname = "getExecutionDataDetails")
-  @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_VIEW)
+  @NGAccessControlCheck(resourceType = PIPELINE_RESOURCE_TYPE, permission = PipelineRbacPermissions.PIPELINE_VIEW)
   @Operation(operationId = "getExecutionDataDetails",
       summary = "Get execution metadata details of a pipeline execution",
       responses =
@@ -525,7 +555,7 @@ public class ExecutionDetailsResource {
   @Produces({"application/yaml"})
   @Path("/{planExecutionId}/inputset")
   @ApiOperation(value = "Gets  inputsetYaml", nickname = "getInputsetYaml")
-  @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_VIEW)
+  @NGAccessControlCheck(resourceType = PIPELINE_RESOURCE_TYPE, permission = PipelineRbacPermissions.PIPELINE_VIEW)
   @Operation(deprecated = true, operationId = "getInputsetYaml",
       summary = "Get the Input Set YAML used for given Plan Execution",
       responses =
@@ -554,13 +584,15 @@ public class ExecutionDetailsResource {
   @GET
   @Path("/{planExecutionId}/inputsetV2")
   @ApiOperation(value = "Gets  inputsetYaml", nickname = "getInputsetYamlV2")
-  @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_VIEW)
+  @NGAccessControlCheck(resourceType = PIPELINE_RESOURCE_TYPE, permission = PipelineRbacPermissions.PIPELINE_VIEW)
   @Operation(operationId = "getInputsetYamlV2", summary = "Get the Input Set YAML used for given Plan Execution",
       responses =
       {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Return the Input Set YAML used for given Plan Execution")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<InputSetYamlWithTemplateDTO>
   getInputsetYamlV2(@NotNull @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true)
                     @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
@@ -638,7 +670,7 @@ public class ExecutionDetailsResource {
   @GET
   @Path("/{planExecutionId}/notes")
   @ApiOperation(value = "Get Notes of an execution from planExecutionMetadata", nickname = "getNotesForExecution")
-  @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_VIEW)
+  @NGAccessControlCheck(resourceType = PIPELINE_RESOURCE_TYPE, permission = PipelineRbacPermissions.PIPELINE_VIEW)
   @Operation(operationId = "getNotesForExecution", summary = "Get Notes for a pipelineExecution",
       responses =
       {
@@ -659,7 +691,7 @@ public class ExecutionDetailsResource {
   @PUT
   @Path("/{planExecutionId}/notes")
   @ApiOperation(value = "Updates Notes of a pipelineExecution", nickname = "updateNotesForExecution")
-  @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_CREATE_AND_EDIT)
+  @NGAccessControlCheck(resourceType = PIPELINE_RESOURCE_TYPE, permission = PipelineRbacPermissions.PIPELINE_EXECUTE)
   @Operation(operationId = "updateNotesForExecution", summary = "Updates Notes for a pipelineExecution",
       responses =
       {
@@ -680,6 +712,9 @@ public class ExecutionDetailsResource {
           description = "ExecutionId of the execution for which we want to update notes",
           required = true) String planExecutionId) {
     String pipelineExecutionNotes = planExecutionMetadataService.updateNotesForExecution(planExecutionId, notes);
+    if (EmptyPredicate.isNotEmpty(pipelineExecutionNotes)) {
+      pmsExecutionSummaryService.updateNotes(planExecutionId, true);
+    }
     return ResponseDTO.newResponse(PipelineExecutionNotesDTO.builder().notes(pipelineExecutionNotes).build());
   }
 }

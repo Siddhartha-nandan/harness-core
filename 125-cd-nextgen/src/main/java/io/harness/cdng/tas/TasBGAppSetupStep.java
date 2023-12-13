@@ -6,6 +6,9 @@
  */
 
 package io.harness.cdng.tas;
+
+import static io.harness.cdng.manifest.ManifestStoreType.ARTIFACT_BUNDLE;
+import static io.harness.cdng.manifest.ManifestType.TAS_MANIFEST;
 import static io.harness.common.ParameterFieldHelper.getParameterFieldValue;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
@@ -23,6 +26,7 @@ import io.harness.cdng.artifact.outcome.ArtifactOutcome;
 import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.k8s.beans.StepExceptionPassThroughData;
+import io.harness.cdng.manifest.yaml.ArtifactBundleStore;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
 import io.harness.cdng.tas.outcome.TasSetupDataOutcome;
@@ -34,7 +38,7 @@ import io.harness.delegate.beans.TaskData;
 import io.harness.delegate.beans.logstreaming.UnitProgressData;
 import io.harness.delegate.beans.logstreaming.UnitProgressDataMapper;
 import io.harness.delegate.beans.pcf.TasResizeStrategyType;
-import io.harness.delegate.task.TaskParameters;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
 import io.harness.delegate.task.pcf.CfCommandTypeNG;
 import io.harness.delegate.task.pcf.request.CfBlueGreenSetupRequestNG;
 import io.harness.delegate.task.pcf.request.TasManifestsPackage;
@@ -48,7 +52,6 @@ import io.harness.executions.steps.ExecutionNodeType;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.pcf.CfCommandUnitConstants;
 import io.harness.plancreator.steps.TaskSelectorYaml;
-import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.plancreator.steps.common.rollback.TaskChainExecutableWithRollbackAndRbac;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
@@ -62,17 +65,15 @@ import io.harness.pms.sdk.core.steps.executables.TaskChainResponse;
 import io.harness.pms.sdk.core.steps.io.PassThroughData;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.serializer.KryoSerializer;
 import io.harness.steps.StepHelper;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
 
-import software.wings.beans.TaskType;
-
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import java.math.BigDecimal;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -93,23 +94,23 @@ public class TasBGAppSetupStep extends TaskChainExecutableWithRollbackAndRbac im
   @Inject ExecutionSweepingOutputService executionSweepingOutputService;
 
   @Override
-  public void validateResources(Ambiance ambiance, StepElementParameters stepParameters) {
+  public void validateResources(Ambiance ambiance, StepBaseParameters stepParameters) {
     if (!cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), FeatureName.NG_SVC_ENV_REDESIGN)) {
       throw new AccessDeniedException(
-          "CDS_TAS_NG FF is not enabled for this account. Please contact harness customer care.",
+          "NG_SVC_ENV_REDESIGN FF is not enabled for this account. Please contact harness customer care.",
           ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
     }
   }
 
   @Override
-  public TaskChainResponse executeNextLinkWithSecurityContext(Ambiance ambiance, StepElementParameters stepParameters,
+  public TaskChainResponse executeNextLinkWithSecurityContext(Ambiance ambiance, StepBaseParameters stepParameters,
       StepInputPackage inputPackage, PassThroughData passThroughData, ThrowingSupplier<ResponseData> responseSupplier)
       throws Exception {
     return tasStepHelper.executeNextLink(this, ambiance, stepParameters, passThroughData, responseSupplier);
   }
 
   @Override
-  public StepResponse finalizeExecutionWithSecurityContext(Ambiance ambiance, StepElementParameters stepParameters,
+  public StepResponse finalizeExecutionWithSecurityContext(Ambiance ambiance, StepBaseParameters stepParameters,
       PassThroughData passThroughData, ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
     if (passThroughData instanceof StepExceptionPassThroughData) {
       StepExceptionPassThroughData stepExceptionPassThroughData = (StepExceptionPassThroughData) passThroughData;
@@ -166,6 +167,9 @@ public class TasBGAppSetupStep extends TaskChainExecutableWithRollbackAndRbac im
               getParameterFieldValue(tasBGAppSetupStepParameters.getAdditionalRoutes())),
           tasExecutionPassThroughData.getTasManifestsPackage());
       tasSetupDataOutcomeBuilder.routeMaps(routeMaps);
+      int olderActiveVersionCountToKeep =
+          Integer.parseInt(getParameterFieldValue(tasBGAppSetupStepParameters.getExistingVersionToKeep()));
+      tasSetupDataOutcomeBuilder.olderActiveVersionCountToKeep(olderActiveVersionCountToKeep);
       executionSweepingOutputService.consume(ambiance, OutcomeExpressionConstants.TAS_APP_SETUP_OUTCOME,
           tasSetupDataOutcomeBuilder.build(), StepCategory.STEP.name());
 
@@ -204,18 +208,18 @@ public class TasBGAppSetupStep extends TaskChainExecutableWithRollbackAndRbac im
 
   @Override
   public TaskChainResponse startChainLinkAfterRbac(
-      Ambiance ambiance, StepElementParameters stepParameters, StepInputPackage inputPackage) {
+      Ambiance ambiance, StepBaseParameters stepParameters, StepInputPackage inputPackage) {
     return tasStepHelper.startChainLink(this, ambiance, stepParameters);
   }
 
   @Override
-  public Class<StepElementParameters> getStepParametersClass() {
-    return StepElementParameters.class;
+  public Class<StepBaseParameters> getStepParametersClass() {
+    return StepBaseParameters.class;
   }
 
   @Override
   public TaskChainResponse executeTasTask(ManifestOutcome tasManifestOutcome, Ambiance ambiance,
-      StepElementParameters stepParameters, TasExecutionPassThroughData executionPassThroughData,
+      StepBaseParameters stepParameters, TasExecutionPassThroughData executionPassThroughData,
       boolean shouldOpenFetchFilesLogStream, UnitProgressData unitProgressData) {
     TasBGAppSetupStepParameters tasBGAppSetupStepParameters = (TasBGAppSetupStepParameters) stepParameters.getSpec();
     ArtifactOutcome artifactOutcome = cdStepHelper.resolveArtifactsOutcome(ambiance).orElseThrow(
@@ -225,9 +229,30 @@ public class TasBGAppSetupStep extends TaskChainExecutableWithRollbackAndRbac im
     if (tasBGAppSetupStepParameters.getTasInstanceCountType().equals(TasInstanceCountType.FROM_MANIFEST)) {
       maxCount = tasStepHelper.fetchMaxCountFromManifest(executionPassThroughData.getTasManifestsPackage());
     }
-    Integer olderActiveVersionCountToKeep =
-        new BigDecimal(getParameterFieldValue(tasBGAppSetupStepParameters.getExistingVersionToKeep())).intValueExact();
-    TaskParameters taskParameters =
+    ArtifactBundleDetails artifactBundleDetails = null;
+    if (tasManifestOutcome != null && tasManifestOutcome.getType().equals(TAS_MANIFEST)
+        && tasManifestOutcome.getStore().getKind().equals(ARTIFACT_BUNDLE)) {
+      ArtifactBundleStore artifactBundleStore = (ArtifactBundleStore) tasManifestOutcome.getStore();
+      artifactBundleDetails =
+          ArtifactBundleDetails.builder()
+              .artifactBundleType(artifactBundleStore.getArtifactBundleType().toString())
+              .deployableUnitPath(getParameterFieldValue(artifactBundleStore.getDeployableUnitPath()))
+              .activityId(ambiance.getStageExecutionId())
+              .build();
+    }
+
+    int olderActiveVersionCountToKeep =
+        Integer.parseInt(getParameterFieldValue(tasBGAppSetupStepParameters.getExistingVersionToKeep()));
+
+    if (olderActiveVersionCountToKeep == 0
+        && !cdFeatureFlagHelper.isEnabled(
+            AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_PCF_SUPPORT_BG_WITH_2_APPS_NG)) {
+      throw new AccessDeniedException(
+          "CDS_PCF_SUPPORT_BG_WITH_2_APPS_NG FF is not enabled for this account. Please contact harness customer care.",
+          ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
+    }
+
+    CfBlueGreenSetupRequestNG taskParameters =
         CfBlueGreenSetupRequestNG.builder()
             .accountId(AmbianceUtils.getAccountId(ambiance))
             .cfCommandTypeNG(CfCommandTypeNG.TAS_BG_SETUP)
@@ -245,18 +270,19 @@ public class TasBGAppSetupStep extends TaskChainExecutableWithRollbackAndRbac im
             .routeMaps(getParameterFieldValue(tasBGAppSetupStepParameters.getTempRoutes()))
             .useAppAutoScalar(!isNull(executionPassThroughData.getTasManifestsPackage().getAutoscalarManifestYml()))
             .tempRoutes(getParameterFieldValue(tasBGAppSetupStepParameters.getTempRoutes()))
+            .artifactBundleDetails(artifactBundleDetails)
             .build();
 
     TaskData taskData = TaskData.builder()
                             .parameters(new Object[] {taskParameters})
-                            .taskType(TaskType.TAS_BG_SETUP.name())
+                            .taskType(taskParameters.getDelegateTaskType().name())
                             .timeout(CDStepHelper.getTimeoutInMillis(stepParameters))
                             .async(true)
                             .build();
 
     final TaskRequest taskRequest =
         TaskRequestsUtils.prepareCDTaskRequest(ambiance, taskData, referenceFalseKryoSerializer,
-            executionPassThroughData.getCommandUnits(), TaskType.TAS_BG_SETUP.getDisplayName(),
+            executionPassThroughData.getCommandUnits(), taskParameters.getDelegateTaskType().getDisplayName(),
             TaskSelectorYaml.toTaskSelector(tasBGAppSetupStepParameters.getDelegateSelectors()),
             stepHelper.getEnvironmentType(ambiance));
     return TaskChainResponse.builder()

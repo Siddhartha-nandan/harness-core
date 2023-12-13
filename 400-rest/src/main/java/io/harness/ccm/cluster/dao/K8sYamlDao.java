@@ -19,6 +19,9 @@ import io.harness.persistence.HPersistence;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mongodb.DuplicateKeyException;
+import dev.morphia.query.Query;
+import java.time.Duration;
+import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -40,6 +43,7 @@ public class K8sYamlDao {
                           .uid(uid)
                           .resourceVersion(resourceVersion)
                           .yaml(yaml)
+                          .ttl(Instant.now().plus(Duration.ofDays(90)))
                           .build();
     saveIfNotPresent(k8sYaml);
     return k8sYaml.getHash();
@@ -60,5 +64,14 @@ public class K8sYamlDao {
     } catch (DuplicateKeyException e) {
       log.debug("Ignoring exception for yaml already present", e);
     }
+  }
+
+  public long count(String accountId) {
+    return hPersistence.createQuery(K8sYaml.class).field(K8sYamlKeys.accountId).equal(accountId).count();
+  }
+
+  public boolean deleteAllForAccount(String accountId) {
+    Query<K8sYaml> query = hPersistence.createQuery(K8sYaml.class).field(K8sYamlKeys.accountId).equal(accountId);
+    return hPersistence.delete(query);
   }
 }

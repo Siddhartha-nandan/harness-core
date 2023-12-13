@@ -6,11 +6,8 @@
  */
 
 package io.harness.serializer.kryo;
-import io.harness.annotations.dev.CodePulse;
-import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.annotations.dev.ProductModule;
 import io.harness.connector.ConnectorDTO;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.delegate.beans.connector.CEFeatures;
@@ -109,6 +106,7 @@ import io.harness.delegate.beans.connector.gcpconnector.GcpConstants;
 import io.harness.delegate.beans.connector.gcpconnector.GcpCredentialType;
 import io.harness.delegate.beans.connector.gcpconnector.GcpDelegateDetailsDTO;
 import io.harness.delegate.beans.connector.gcpconnector.GcpManualDetailsDTO;
+import io.harness.delegate.beans.connector.gcpconnector.GcpOidcDetailsDTO;
 import io.harness.delegate.beans.connector.gcpkmsconnector.GcpKmsConnectorDTO;
 import io.harness.delegate.beans.connector.gcpsecretmanager.GcpSecretManagerConnectorDTO;
 import io.harness.delegate.beans.connector.helm.HttpHelmAuthCredentialsDTO;
@@ -277,7 +275,6 @@ import io.harness.serializer.KryoRegistrar;
 import com.esotericsoftware.kryo.Kryo;
 import java.util.LinkedHashSet;
 
-@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_APPROVALS})
 @OwnedBy(HarnessTeam.PL)
 public class ConnectorBeansKryoRegistrar implements KryoRegistrar {
   @Override
@@ -385,6 +382,7 @@ public class ConnectorBeansKryoRegistrar implements KryoRegistrar {
     kryo.register(LocalConnectorDTO.class, 543237);
     kryo.register(GcpKmsConnectorDTO.class, 543238);
     kryo.register(GithubAppDTO.class, 20001000);
+    kryo.register(GcpOidcDetailsDTO.class, 20001001);
 
     kryo.register(AwsKmsConnectorDTO.class, 543286);
     kryo.register(AwsKmsConnectorCredentialDTO.class, 543288);

@@ -85,6 +85,7 @@ public interface Constants {
   String PR_TITLE = "prTitle";
   String SOURCE = "source";
   String CONNECTOR_REF = "connectorRef";
+  String TRIGGER_PAYLOAD = "triggerPayload";
   String IMAGE_PATH = "imagePath";
   String SOURCE_TYPE = "sourceType";
   String ARTIFACT_EXPR = "artifact";
@@ -113,6 +114,7 @@ public interface Constants {
   String TRIGGER_INFO_LOG = "TRIGGER_INFO_LOG: ";
   String TRIGGER_PAYLOAD_COMMITS = "<+trigger.payload.commits>";
   String TRIGGER_PAYLOAD_BRANCH = "<+trigger.payload.branch>";
+  String TRIGGER_BRANCH = "<+trigger.branch>";
   String COMMIT_FILE_ADDED = "added";
   String COMMIT_FILE_MODIFIED = "modified";
   String COMMIT_FILE_REMOVED = "removed";
@@ -142,7 +144,6 @@ public interface Constants {
   String MANDATE_CUSTOM_WEBHOOK_TRUE_VALUE = "true";
   String ENABLE_NODE_EXECUTION_AUDIT_EVENTS = "enable_node_execution_audit_events";
   String ENABLE_NODE_EXECUTION_AUDIT_EVENTS_TRUE_VALUE = "true";
-  Integer MAX_MULTI_ARTIFACT_TRIGGER_SOURCES = 10;
   String API_SAMPLE_TRIGGER_YAML = "trigger:\n"
       + "  name: Trigger\n"
       + "  identifier: Trigger\n"

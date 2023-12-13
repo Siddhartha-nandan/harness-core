@@ -8,10 +8,15 @@
 package io.harness.ccm.views.service.impl;
 
 import static io.harness.annotations.dev.HarnessTeam.CE;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import static java.lang.Boolean.parseBoolean;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.ccm.views.entities.AWSViewPreferenceCost;
 import io.harness.ccm.views.entities.AWSViewPreferences;
 import io.harness.ccm.views.entities.CEView;
@@ -39,8 +44,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
-import io.fabric8.utils.Lists;
-import io.fabric8.utils.Maps;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -52,6 +55,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
+@CodePulse(
+    module = ProductModule.CCM, unitCoverageRequired = true, components = {HarnessModuleComponent.CCM_PERSPECTIVE})
 @Singleton
 @Slf4j
 @OwnedBy(CE)
@@ -102,7 +107,7 @@ public class CEViewPreferenceServiceImpl implements CEViewPreferenceService {
     ViewPreferences viewPreferences = ceView.getViewPreferences();
     try {
       final Map<String, String> settingsMap = getDefaultSettingsMap(ceView.getAccountId());
-      if (!Maps.isNullOrEmpty(settingsMap)) {
+      if (isNotEmpty(settingsMap)) {
         viewPreferences = getViewPreferences(ceView, settingsMap, viewPreferencesFieldsToUpdateWithDefaultSettings);
       } else {
         log.error("Unable to fetch perspective preferences account default settings map for an account: {}",
@@ -117,7 +122,7 @@ public class CEViewPreferenceServiceImpl implements CEViewPreferenceService {
   private Map<String, String> getDefaultSettingsMap(final String accountId) {
     Map<String, String> settingsMap = new HashMap<>();
     final List<SettingResponseDTO> settingsResponse = getDefaultSettingResponse(accountId);
-    if (!Lists.isNullOrEmpty(settingsResponse)) {
+    if (!isEmpty(settingsResponse)) {
       final List<SettingDTO> settingsDTO =
           settingsResponse.stream().map(SettingResponseDTO::getSetting).collect(Collectors.toList());
       settingsMap = settingsDTO.stream().collect(Collectors.toMap(SettingDTO::getIdentifier, SettingDTO::getValue));

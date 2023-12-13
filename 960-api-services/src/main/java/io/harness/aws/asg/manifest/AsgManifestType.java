@@ -19,4 +19,6 @@ public interface AsgManifestType {
   String AsgScheduledUpdateGroupAction = "AsgScheduledUpdateGroupAction";
   String AsgInstanceRefresh = "AsgInstanceRefresh";
   String AsgSwapService = "AsgSwapService";
+  String AsgUserData = "userData";
+  String AsgShiftTraffic = "AsgShiftTraffic";
 }

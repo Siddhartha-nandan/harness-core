@@ -7,7 +7,9 @@ package executor
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
@@ -22,7 +24,8 @@ import (
 )
 
 const (
-	maxAddonRetries = 100 // max retry time of 10 seconds
+	maxAddonRetries    = 100 // max retry time of 10 seconds
+	addonDisconnectErr = "Error while dialing: dial tcp"
 )
 
 var (
@@ -59,6 +62,9 @@ func ExecuteStepOnAddon(ctx context.Context, step *pb.UnitStep, tmpFilePath stri
 	if err != nil {
 		log.Errorw("Execute step RPC failed", "step_id", stepID,
 			"elapsed_time_ms", utils.TimeSince(st), zap.Error(err))
+		if strings.Contains(err.Error(), addonDisconnectErr) {
+			err = fmt.Errorf("Could not connect to addon client after max retries %v", maxAddonRetries)
+		}
 		return nil, nil, err
 	}
 
@@ -72,16 +78,18 @@ func ExecuteStepOnAddon(ctx context.Context, step *pb.UnitStep, tmpFilePath stri
 
 // StopAddon stops addon grpc service running on specified port
 func StopAddon(ctx context.Context, stepID string, port uint32, log *zap.SugaredLogger) error {
+	log.Infow("LE: Starting addonClient for addon_executor step container", "step_id", stepID, "port", port)
 	addonClient, err := newAddonClient(uint(port), log)
 	if err != nil {
-		log.Errorw("Could not create CI Addon client", "step_id", stepID, zap.Error(err))
+		log.Errorw("Could not create CI Addon client addon_executor", "step_id", stepID, zap.Error(err))
 		return errors.Wrap(err, "Could not create CI Addon client")
 	}
 	defer addonClient.CloseConn()
+	log.Infow("LE: Created addonClient for step container", "step_id", stepID, "port", port)
 
 	_, err = addonClient.Client().SignalStop(ctx, &addonpb.SignalStopRequest{})
 	if err != nil {
-		log.Errorw("Unable to send Stop server request", "step_id", stepID, zap.Error(err))
+		log.Errorw("LE: Unable to send Stop server request", "step_id", stepID, zap.Error(err))
 		return errors.Wrap(err, "Could not send stop server request")
 	}
 

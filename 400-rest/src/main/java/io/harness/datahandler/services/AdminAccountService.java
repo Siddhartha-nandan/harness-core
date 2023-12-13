@@ -66,7 +66,7 @@ public interface AdminAccountService {
 
   boolean updateCompanyName(String accountId, String companyName);
 
-  boolean enableOrDisableNextGen(String accountId, boolean enabled);
+  boolean enableOrDisableNextGen(String accountId, boolean isNextGenEnabled);
 
   boolean syncNextgenWithCG(String accountId);
 
@@ -79,4 +79,6 @@ public interface AdminAccountService {
   boolean updateRingName(String accountId, String ringName);
 
   Account createGlobalDelegateAccount(Account account, String adminUserEmail);
+
+  List<Account> getAccountsUpdatedSinceTimestamp(long timestamp);
 }

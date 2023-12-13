@@ -11,6 +11,8 @@ import static io.harness.aggregator.ACLEventProcessingConstants.UPDATE_ACTION;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
+import static java.util.Optional.of;
+
 import io.harness.accesscontrol.scopes.core.Scope;
 import io.harness.accesscontrol.scopes.harness.HarnessScopeParams;
 import io.harness.accesscontrol.scopes.harness.ScopeMapper;
@@ -77,6 +79,7 @@ public class HarnessUserGroupServiceImpl implements HarnessUserGroupService {
                   isEmpty(existingUserGroup.getUsers()) ? Collections.emptySet() : existingUserGroup.getUsers(),
                   isEmpty(userGroup.getUsers()) ? Collections.emptySet() : userGroup.getUsers());
               UserGroupUpdateEventData userGroupUpdateEventData = UserGroupUpdateEventData.builder()
+                                                                      .scope(of(scope))
                                                                       .usersAdded(usersAddedToUserGroup)
                                                                       .usersRemoved(usersRemovedFromUserGroup)
                                                                       .updatedUserGroup(userGroup)
@@ -84,8 +87,9 @@ public class HarnessUserGroupServiceImpl implements HarnessUserGroupService {
               accessControlChangeConsumer.consumeEvent(UPDATE_ACTION, null, userGroupUpdateEventData);
               userGroupService.upsert(userGroup);
             } else {
-              log.info(
-                  "[HarnessUserGroupServiceImpl]: Skipping User Group update as state is same in NGManager and ACS");
+              log.debug(
+                  "[HarnessUserGroupServiceImpl]: Skipping User Group update for identifier: {}, scope: {} as state is same in NGManager and ACS",
+                  userGroup.getIdentifier(), userGroup.getScopeIdentifier());
             }
           } else {
             userGroupService.upsert(userGroup);
@@ -102,6 +106,7 @@ public class HarnessUserGroupServiceImpl implements HarnessUserGroupService {
       }
     } catch (Exception e) {
       log.error("Exception while syncing user groups", e);
+      throw e;
     }
   }
 

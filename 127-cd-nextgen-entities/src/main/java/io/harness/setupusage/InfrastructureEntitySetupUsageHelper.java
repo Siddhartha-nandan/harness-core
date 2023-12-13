@@ -12,8 +12,11 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.setupusage.InfraDefinitionRefProtoDTOHelper.createInfraDefinitionReferenceProtoDTO;
 
 import io.harness.EntityType;
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.InfraDefReference;
 import io.harness.cdng.infra.mapper.InfrastructureEntityConfigMapper;
 import io.harness.cdng.infra.yaml.InfrastructureConfig;
@@ -31,6 +34,7 @@ import io.harness.ng.core.setupusage.SetupUsageHelper;
 import io.harness.walktree.visitor.SimpleVisitorFactory;
 import io.harness.walktree.visitor.entityreference.EntityReferenceExtractorVisitor;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.Collections;
@@ -43,7 +47,8 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
-
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
+    components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
 @Singleton
 @OwnedBy(HarnessTeam.CDC)
 @Slf4j
@@ -127,8 +132,9 @@ public class InfrastructureEntitySetupUsageHelper {
     setupUsageHelper.publishInfraEntitySetupUsage(entityDetail, referredEntities, entity.getAccountId());
   }
 
-  private EntityDetailProtoDTO buildInfraDefRefBasedEntityDetailProtoDTO(@NonNull InfrastructureEntity entity) {
-    Optional<Environment> environment = environmentService.get(entity.getAccountId(), entity.getOrgIdentifier(),
+  @VisibleForTesting
+  EntityDetailProtoDTO buildInfraDefRefBasedEntityDetailProtoDTO(@NonNull InfrastructureEntity entity) {
+    Optional<Environment> environment = environmentService.getMetadata(entity.getAccountId(), entity.getOrgIdentifier(),
         entity.getProjectIdentifier(), entity.getEnvIdentifier(), false);
     return EntityDetailProtoDTO.newBuilder()
         .setInfraDefRef(createInfraDefinitionReferenceProtoDTO(entity.getAccountId(), entity.getOrgIdentifier(),

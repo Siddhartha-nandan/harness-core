@@ -9,7 +9,6 @@ package io.harness.delegate.task.k8s;
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.azure.model.AzureConstants.AZURE_AUTH_CERT_DIR_PATH;
 import static io.harness.azure.model.AzureConstants.REPOSITORY_DIR_PATH;
-import static io.harness.data.structure.CollectionUtils.emptyIfNull;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.delegate.beans.connector.gcpconnector.GcpCredentialType.INHERIT_FROM_DELEGATE;
 import static io.harness.delegate.beans.connector.gcpconnector.GcpCredentialType.MANUAL_CREDENTIALS;
@@ -36,13 +35,13 @@ import io.harness.delegate.beans.connector.k8Connector.KubernetesClusterConfigDT
 import io.harness.delegate.beans.connector.k8Connector.KubernetesClusterDetailsDTO;
 import io.harness.delegate.beans.connector.k8Connector.KubernetesCredentialType;
 import io.harness.delegate.beans.connector.rancher.RancherConfigType;
-import io.harness.delegate.beans.connector.rancher.RancherConnectorBearerTokenAuthenticationDTO;
 import io.harness.delegate.beans.connector.rancher.RancherConnectorConfigAuthDTO;
 import io.harness.delegate.beans.connector.rancher.RancherConnectorConfigAuthenticationSpecDTO;
 import io.harness.delegate.beans.connector.rancher.RancherConnectorDTO;
 import io.harness.delegate.task.aws.eks.AwsEKSV2DelegateTaskHelper;
 import io.harness.delegate.task.gcp.helpers.GkeClusterHelper;
 import io.harness.delegate.task.k8s.rancher.RancherClusterActionDTO;
+import io.harness.delegate.task.k8s.rancher.RancherHelper;
 import io.harness.delegate.task.k8s.rancher.RancherKubeConfigGenerator;
 import io.harness.exception.AzureAuthenticationException;
 import io.harness.exception.ExceptionUtils;
@@ -72,7 +71,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -94,11 +92,6 @@ public class ContainerDeploymentDelegateBaseHelper {
   public static final LoadingCache<String, Object> lockObjects =
       CacheBuilder.newBuilder().expireAfterAccess(30, TimeUnit.MINUTES).build(CacheLoader.from(Object::new));
   private static final String KUBE_CONFIG_DIR = "./repository/helm/.kube/";
-
-  @NotNull
-  public List<Pod> getExistingPodsByLabels(KubernetesConfig kubernetesConfig, Map<String, String> labels) {
-    return emptyIfNull(kubernetesContainerService.getPods(kubernetesConfig, labels));
-  }
 
   private List<ContainerInfo> fetchContainersUsingControllersWhenReady(KubernetesConfig kubernetesConfig,
       LogCallback executionLogCallback, List<? extends HasMetadata> controllers, List<Pod> existingPods) {
@@ -177,9 +170,7 @@ public class ContainerDeploymentDelegateBaseHelper {
       }
     } else if (clusterConfigDTO instanceof EksK8sInfraDelegateConfig) {
       EksK8sInfraDelegateConfig eksK8sInfraDelegateConfig = (EksK8sInfraDelegateConfig) clusterConfigDTO;
-      AwsConnectorDTO awsConnectorDTO = eksK8sInfraDelegateConfig.getAwsConnectorDTO();
-      return awsEKSDelegateTaskHelper.getKubeConfig(awsConnectorDTO, eksK8sInfraDelegateConfig.getCluster(),
-          eksK8sInfraDelegateConfig.getNamespace(), logCallback);
+      return awsEKSDelegateTaskHelper.getKubeConfig(eksK8sInfraDelegateConfig, logCallback);
     } else if (clusterConfigDTO instanceof RancherK8sInfraDelegateConfig) {
       RancherK8sInfraDelegateConfig rancherK8sInfraDelegateConfig = (RancherK8sInfraDelegateConfig) clusterConfigDTO;
       return rancherKubeConfigGenerator.createKubernetesConfig(
@@ -190,9 +181,8 @@ public class ContainerDeploymentDelegateBaseHelper {
 
   private RancherClusterActionDTO getRancherClusterActionDTO(
       LogCallback logCallback, RancherK8sInfraDelegateConfig rancherK8sInfraDelegateConfig) {
-    String rancherUrl = rancherK8sInfraDelegateConfig.getRancherConnectorDTO().getConfig().getConfig().getRancherUrl();
-    String bearerToken =
-        String.valueOf(getRancherAuthDto(rancherK8sInfraDelegateConfig).getPasswordRef().getDecryptedValue());
+    String rancherUrl = RancherHelper.getRancherUrl(rancherK8sInfraDelegateConfig);
+    String bearerToken = RancherHelper.getRancherBearerToken(rancherK8sInfraDelegateConfig);
     return RancherClusterActionDTO.builder()
         .clusterUrl(rancherUrl)
         .bearerToken(bearerToken)
@@ -200,15 +190,6 @@ public class ContainerDeploymentDelegateBaseHelper {
         .namespace(rancherK8sInfraDelegateConfig.getNamespace())
         .logCallback(logCallback)
         .build();
-  }
-
-  private RancherConnectorBearerTokenAuthenticationDTO getRancherAuthDto(
-      RancherK8sInfraDelegateConfig rancherK8sInfraDelegateConfig) {
-    return (RancherConnectorBearerTokenAuthenticationDTO) rancherK8sInfraDelegateConfig.getRancherConnectorDTO()
-        .getConfig()
-        .getConfig()
-        .getCredentials()
-        .getAuth();
   }
 
   private char[] getGcpServiceAccountKeyFileContent(GcpConnectorCredentialDTO gcpCredentials) {
@@ -308,6 +289,7 @@ public class ContainerDeploymentDelegateBaseHelper {
           log.info("File doesn't exist. Creating file at path {}", configFilePath);
           FileUtils.forceMkdir(file.getParentFile());
           FileUtils.writeStringToFile(file, configFileContent, UTF_8);
+          kubernetesContainerService.modifyFileReadableProperties(configFilePath);
           log.info("Created file with size {}", file.length());
         }
         return file.getAbsolutePath();

@@ -6,6 +6,9 @@
  */
 
 package io.harness.cdng.provision.terraform;
+
+import static io.harness.beans.FeatureName.CDS_TF_TG_SKIP_ERROR_LOGS_COLORING;
+
 import io.harness.EntityType;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -35,7 +38,6 @@ import io.harness.executions.steps.ExecutionNodeType;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.UnitProgress;
 import io.harness.ng.core.EntityDetail;
-import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.steps.StepCategory;
@@ -47,6 +49,7 @@ import io.harness.pms.sdk.core.steps.io.PassThroughData;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.sdk.core.steps.io.StepResponse.StepResponseBuilder;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.provision.TerraformConstants;
 import io.harness.security.encryption.EncryptionConfig;
@@ -55,6 +58,7 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.StepUtils;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 import io.harness.utils.IdentifierRefHelper;
 
 import com.google.inject.Inject;
@@ -85,12 +89,12 @@ public class TerraformPlanStepV2 extends CdTaskChainExecutable {
   @Inject TerraformPlanExectionDetailsService terraformPlanExectionDetailsService;
 
   @Override
-  public Class<StepElementParameters> getStepParametersClass() {
-    return StepElementParameters.class;
+  public Class<StepBaseParameters> getStepParametersClass() {
+    return StepBaseParameters.class;
   }
 
   @Override
-  public void validateResources(Ambiance ambiance, StepElementParameters stepParameters) {
+  public void validateResources(Ambiance ambiance, StepBaseParameters stepParameters) {
     String accountId = AmbianceUtils.getAccountId(ambiance);
     String orgIdentifier = AmbianceUtils.getOrgIdentifier(ambiance);
     String projectIdentifier = AmbianceUtils.getProjectIdentifier(ambiance);
@@ -134,7 +138,7 @@ public class TerraformPlanStepV2 extends CdTaskChainExecutable {
 
   @Override
   public TaskChainResponse startChainLinkAfterRbac(
-      Ambiance ambiance, StepElementParameters stepElementParameters, StepInputPackage inputPackage) {
+      Ambiance ambiance, StepBaseParameters stepElementParameters, StepInputPackage inputPackage) {
     log.info("Starting execution ObtainTask after Rbac for the Plan Step");
     TerraformPlanStepParameters planStepParameters = (TerraformPlanStepParameters) stepElementParameters.getSpec();
     helper.validatePlanStepConfigFiles(planStepParameters);
@@ -164,7 +168,7 @@ public class TerraformPlanStepV2 extends CdTaskChainExecutable {
 
   @Override
   public TaskChainResponse executeNextLinkWithSecurityContextAndNodeInfo(Ambiance ambiance,
-      StepElementParameters stepElementParameters, StepInputPackage inputPackage, PassThroughData passThroughData,
+      StepBaseParameters stepElementParameters, StepInputPackage inputPackage, PassThroughData passThroughData,
       ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
     TerraformPlanStepParameters planStepParameters = (TerraformPlanStepParameters) stepElementParameters.getSpec();
 
@@ -173,8 +177,14 @@ public class TerraformPlanStepV2 extends CdTaskChainExecutable {
   }
 
   @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
+  }
+
+  @Override
   public StepResponse finalizeExecutionWithSecurityContextAndNodeInfo(Ambiance ambiance,
-      StepElementParameters stepElementParameters, PassThroughData passThroughData,
+      StepBaseParameters stepElementParameters, PassThroughData passThroughData,
       ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
     if (passThroughData instanceof StepExceptionPassThroughData) {
       StepExceptionPassThroughData stepExceptionPassThroughData = (StepExceptionPassThroughData) passThroughData;
@@ -230,10 +240,13 @@ public class TerraformPlanStepV2 extends CdTaskChainExecutable {
 
     if (CommandExecutionStatus.SUCCESS == terraformTaskNGResponse.getCommandExecutionStatus()) {
       TerraformPlanOutcomeBuilder tfPlanOutcomeBuilder = TerraformPlanOutcome.builder();
-      helper.updateParentEntityIdAndVersion(
-          helper.generateFullIdentifier(
-              ParameterFieldHelper.getParameterFieldValue(planStepParameters.getProvisionerIdentifier()), ambiance),
-          terraformTaskNGResponse.getStateFileId());
+      if (!ParameterFieldHelper.getBooleanParameterFieldValue(
+              planStepParameters.getConfiguration().getSkipStateStorage())) {
+        helper.updateParentEntityIdAndVersion(
+            helper.generateFullIdentifier(
+                ParameterFieldHelper.getParameterFieldValue(planStepParameters.getProvisionerIdentifier()), ambiance),
+            terraformTaskNGResponse.getStateFileId());
+      }
       tfPlanOutcomeBuilder.detailedExitCode(terraformTaskNGResponse.getDetailedExitCode());
 
       if (!planStepParameters.getConfiguration().getIsTerraformCloudCli().getValue()) {
@@ -292,7 +305,7 @@ public class TerraformPlanStepV2 extends CdTaskChainExecutable {
   }
 
   private TerraformTaskNGParametersBuilder getTerraformTaskNGParametersBuilder(
-      Ambiance ambiance, StepElementParameters stepElementParameters) {
+      Ambiance ambiance, StepBaseParameters stepElementParameters) {
     TerraformPlanStepParameters planStepParameters = (TerraformPlanStepParameters) stepElementParameters.getSpec();
     helper.validatePlanStepConfigFiles(planStepParameters);
     TerraformPlanExecutionDataParameters configuration = planStepParameters.getConfiguration();
@@ -352,7 +365,12 @@ public class TerraformPlanStepV2 extends CdTaskChainExecutable {
         .timeoutInMillis(
             StepUtils.getTimeoutMillis(stepElementParameters.getTimeout(), TerraformConstants.DEFAULT_TIMEOUT))
         .useOptimizedTfPlan(true)
-        .isTerraformCloudCli(isTerraformCloudCli);
+        .skipColorLogs(featureFlagHelper.isEnabled(accountId, CDS_TF_TG_SKIP_ERROR_LOGS_COLORING))
+        .isTerraformCloudCli(isTerraformCloudCli)
+        .providerCredentialDelegateInfo(
+            helper.getProviderCredentialDelegateInfo(configuration.getProviderCredential(), ambiance))
+        .skipStateStorage(ParameterFieldHelper.getBooleanParameterFieldValue(
+            planStepParameters.getConfiguration().getSkipStateStorage()));
 
     return builder;
   }

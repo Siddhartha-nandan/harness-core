@@ -6,7 +6,11 @@
  */
 
 package io.harness.ngmigration.service.step;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.ngmigration.beans.MigrationContext;
 import io.harness.ngmigration.beans.SupportStatus;
 import io.harness.ngmigration.beans.WorkflowMigrationContext;
@@ -14,6 +18,7 @@ import io.harness.ngmigration.utils.MigratorUtility;
 import io.harness.plancreator.steps.AbstractStepNode;
 import io.harness.plancreator.steps.resourceconstraint.QueueStepInfo;
 import io.harness.plancreator.steps.resourceconstraint.QueueStepNode;
+import io.harness.pms.yaml.ParameterField;
 import io.harness.steps.StepSpecTypeConstants;
 import io.harness.steps.resourcerestraint.beans.QueueHoldingScope;
 
@@ -24,6 +29,7 @@ import software.wings.sm.states.ResourceConstraintState;
 
 import java.util.Map;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_MIGRATOR})
 public class ResourceConstraintStepMapperImpl extends StepMapper {
   @Override
   public SupportStatus stepSupportStatus(GraphNode graphNode) {
@@ -50,7 +56,8 @@ public class ResourceConstraintStepMapperImpl extends StepMapper {
     QueueStepNode queueStepNode = new QueueStepNode();
     baseSetup(graphNode, queueStepNode, context.getIdentifierCaseFormat());
     QueueStepInfo queueStepInfo = new QueueStepInfo();
-    queueStepInfo.setKey(MigratorUtility.RUNTIME_INPUT);
+    queueStepInfo.setKey(isEmpty(state.getResourceUnit()) ? MigratorUtility.RUNTIME_INPUT
+                                                          : ParameterField.createValueField(state.getResourceUnit()));
     queueStepInfo.setScope(getHoldingScope(state));
     queueStepNode.setQueueStepInfo(queueStepInfo);
     return queueStepNode;

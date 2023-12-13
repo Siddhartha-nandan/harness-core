@@ -12,14 +12,17 @@ import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import io.harness.annotations.StoreIn;
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidRequestException;
 import io.harness.iterator.PersistentIrregularIterable;
 import io.harness.ng.DbAliases;
 import io.harness.plancreator.steps.TaskSelectorYaml;
-import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.steps.approval.step.beans.CriteriaSpecWrapperDTO;
 import io.harness.steps.approval.step.entities.ApprovalInstance;
@@ -44,6 +47,7 @@ import org.hibernate.validator.constraints.NotEmpty;
 import org.springframework.data.annotation.Persistent;
 import org.springframework.data.annotation.TypeAlias;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_APPROVALS})
 @OwnedBy(CDC)
 @Data
 @Builder
@@ -67,8 +71,10 @@ public class JiraApprovalInstance extends ApprovalInstance implements Persistent
 
   // the id of the latest delegate task created while polling
   String latestDelegateTaskId;
+  // this field if populated will be used to optimize Jira Approvals by filtering fields
+  String keyListInKeyValueCriteria;
 
-  public static JiraApprovalInstance fromStepParameters(Ambiance ambiance, StepElementParameters stepParameters) {
+  public static JiraApprovalInstance fromStepParameters(Ambiance ambiance, StepBaseParameters stepParameters) {
     if (stepParameters == null) {
       return null;
     }

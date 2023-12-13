@@ -7,17 +7,28 @@
 
 package io.harness.plancreator.strategy;
 
+import static io.harness.rule.OwnerRule.NAMANG;
 import static io.harness.rule.OwnerRule.SAHIL;
 import static io.harness.rule.OwnerRule.YAGYANSH;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.harness.advisers.nextstep.NextStageAdviserParameters;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InvalidYamlException;
+import io.harness.pms.contracts.advisers.AdviserObtainment;
+import io.harness.pms.contracts.advisers.AdviserType;
+import io.harness.pms.contracts.plan.Dependency;
+import io.harness.pms.contracts.plan.GraphLayoutNode;
+import io.harness.pms.contracts.plan.HarnessStruct;
+import io.harness.pms.contracts.plan.HarnessValue;
+import io.harness.pms.plan.creation.PlanCreatorConstants;
 import io.harness.pms.sdk.core.PmsSdkCoreTestBase;
+import io.harness.pms.sdk.core.adviser.OrchestrationAdviserTypes;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
+import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlNode;
@@ -87,6 +98,22 @@ public class StrategyUtilsTest extends PmsSdkCoreTestBase {
     assertThat(StrategyUtils.isWrappedUnderStrategy(approvalStageYamlField)).isTrue();
 
     assertThat(StrategyUtils.getAdviserObtainments(approvalStageYamlField, kryoSerializer, false).size()).isEqualTo(1);
+
+    Dependency dependency = Dependency.newBuilder()
+                                .setNodeMetadata(HarnessStruct.newBuilder()
+                                                     .putData(PlanCreatorConstants.NEXT_ID,
+                                                         HarnessValue.newBuilder().setStringValue("nextId").build())
+                                                     .build())
+                                .build();
+    List<AdviserObtainment> adviserObtainmentList =
+        StrategyUtils.getAdviserObtainments(approvalStageYamlField, kryoSerializer, false, dependency);
+
+    assertThat(adviserObtainmentList.size()).isEqualTo(1);
+    assertThat(adviserObtainmentList.get(0).getType())
+        .isEqualTo(AdviserType.newBuilder().setType(OrchestrationAdviserTypes.NEXT_STAGE.name()).build());
+    assertThat(adviserObtainmentList.get(0).getParameters())
+        .isEqualTo(ByteString.copyFrom(kryoSerializer.asBytes(
+            NextStageAdviserParameters.builder().nextNodeId("nextId").pipelineRollbackStageId(null).build())));
   }
 
   @Test
@@ -133,6 +160,40 @@ public class StrategyUtilsTest extends PmsSdkCoreTestBase {
     assertThat(StrategyUtils.isWrappedUnderStrategy(approvalStageYamlField)).isTrue();
 
     assertThat(StrategyUtils.modifyStageLayoutNodeGraph(approvalStageYamlField).size()).isEqualTo(2);
+  }
+
+  @Test
+  @Owner(developers = NAMANG)
+  @Category(UnitTests.class)
+  public void testModifyStageLayoutNodeGraphWithTerminalStrategyStage() throws IOException {
+    MockitoAnnotations.initMocks(this);
+    ClassLoader classLoader = this.getClass().getClassLoader();
+    final URL testFile = classLoader.getResource("pipeline-with-terminal-strategy-stage.yaml");
+    assertThat(testFile).isNotNull();
+    String pipelineYaml = Resources.toString(testFile, Charsets.UTF_8);
+    String pipelineYamlWithUuid = YamlUtils.injectUuid(pipelineYaml);
+
+    YamlField pipelineYamlField = YamlUtils.readTree(pipelineYamlWithUuid).getNode().getField("pipeline");
+    assertThat(pipelineYamlField).isNotNull();
+    YamlField stagesYamlField = pipelineYamlField.getNode().getField("stages");
+    assertThat(stagesYamlField).isNotNull();
+    List<YamlNode> stageYamlNodes = stagesYamlField.getNode().asArray();
+
+    YamlField terminalApprovalStageYamlField = stageYamlNodes.get(3).getField("stage");
+    assertThat(StrategyUtils.isWrappedUnderStrategy(terminalApprovalStageYamlField)).isTrue();
+
+    Map<String, GraphLayoutNode> layoutMap = StrategyUtils.modifyStageLayoutNodeGraph(terminalApprovalStageYamlField);
+    List<GraphLayoutNode> layouts = new ArrayList<>(layoutMap.values());
+    // ordered map is used in implementation hence values should be ordered
+
+    assertThat(layouts).hasSize(2);
+    assertThat(layouts.get(0).getNodeGroup()).isEqualTo(StepOutcomeGroup.STRATEGY.name());
+    assertThat(layouts.get(0).getEdgeLayoutList().getCurrentNodeChildrenCount()).isEqualTo(1);
+    assertThat(layouts.get(0).getEdgeLayoutList().getNextIdsCount()).isEqualTo(0);
+
+    assertThat(layouts.get(1).getNodeGroup()).isEqualTo(StepOutcomeGroup.STAGE.name());
+    assertThat(layouts.get(1).getEdgeLayoutList().getCurrentNodeChildrenCount()).isEqualTo(0);
+    assertThat(layouts.get(1).getEdgeLayoutList().getNextIdsCount()).isEqualTo(0);
   }
 
   @Test

@@ -22,6 +22,7 @@ import (
 	"github.com/harness/harness-core/product/ci/addon/testintelligence/csharp"
 	"github.com/harness/harness-core/product/ci/addon/testintelligence/java"
 	"github.com/harness/harness-core/product/ci/addon/testintelligence/python"
+	"github.com/harness/harness-core/product/ci/addon/testintelligence/ruby"
 	"github.com/harness/harness-core/product/ci/common/external"
 	pb "github.com/harness/harness-core/product/ci/engine/proto"
 	stutils "github.com/harness/harness-core/product/ci/split_tests/utils"
@@ -59,6 +60,7 @@ var (
 	getStageStrategyIterations   = external.GetStageStrategyIterations
 	isStepParallelismEnabled     = external.IsStepParallelismEnabled
 	isStageParallelismEnabled    = external.IsStageParallelismEnabled
+	getSha                       = external.GetSha
 )
 
 // RunTestsTask represents an interface to run tests intelligently
@@ -157,6 +159,7 @@ func (r *runTestsTask) Run(ctx context.Context) (map[string]string, int32, error
 	cgDirPath := filepath.Join(r.tmpFilePath, cgDir)
 	testSt := time.Now()
 
+	r.injectReportInformation(ctx)
 	stepOutput, err := r.execute(ctx)
 	collectionErr := r.collectRunTestData(ctx, cgDirPath, testSt)
 	if err == nil {
@@ -178,11 +181,20 @@ func (r *runTestsTask) collectRunTestData(ctx context.Context, cgDirPath string,
 	if errCr != nil {
 		r.log.Errorw(fmt.Sprintf("Unable to collect tests reports. Time taken: %s", time.Since(crStart)), zap.Error(errCr))
 	}
+	return errCg
+}
 
-	if errCg != nil {
-		return errCg
+func (r *runTestsTask) injectReportInformation(ctx context.Context) {
+	switch strings.ToLower(r.language) {
+	case "ruby", "python":
+		if r.args == "" && len(r.reports) == 0 {
+			report := &pb.Report{
+				Type:  pb.Report_JUNIT,
+				Paths: []string{fmt.Sprintf("**/%s*", utils.HarnessDefaultReportPath)},
+			}
+			r.reports = []*pb.Report{report}
+		}
 	}
-	return errCr
 }
 
 // createJavaAgentArg creates the ini file which is required as input to the java agent
@@ -347,29 +359,42 @@ func (r *runTestsTask) getTestSelection(ctx context.Context, runner testintellig
 		return resp
 	}
 	// PR/Push execution
-	var errChangedFiles error
 	if isPushTriggerFn() {
 		// Get changes files from the previous successful commit
 		lastSuccessfulCommitID, err := getCommitInfoFn(ctx, r.id, r.log)
-		if err != nil || lastSuccessfulCommitID == "" {
-			// Run all tests when there's no CG present
-			log.Infow("Test Intelligence determined to run all tests to bootstrap", "error", zap.Error(err))
+		if err != nil {
+			log.Infow("Failed to get reference commit", "error", zap.Error(err))
+			r.runOnlySelectedTests = false // TI selected all the tests to be run
+			return resp
+		}
+		if lastSuccessfulCommitID == "" {
+			log.Infow("Test Intelligence determined to run all tests to bootstrap")
 			r.runOnlySelectedTests = false // TI selected all the tests to be run
 			return resp
 		}
 		log.Infof("Using reference commit: %s", lastSuccessfulCommitID)
-		files, errChangedFiles = getChangedFilesPushTriggerFn(ctx, r.id, lastSuccessfulCommitID, r.log)
-	}
-	if errChangedFiles != nil || len(files) == 0 {
-		// Select all tests if unable to find changed files list
-		log.Infow("Unable to get changed files list")
-		r.runOnlySelectedTests = false
-		return resp
+		var errChangedFiles error
+		currentCommitID, _ := getSha()
+		files, errChangedFiles = getChangedFilesPushTriggerFn(ctx, r.id, lastSuccessfulCommitID, currentCommitID, r.log)
+		if errChangedFiles != nil {
+			// Select all tests if unable to find changed files list
+			log.Infow("Unable to get changed files list. Running all the tests.")
+			r.runOnlySelectedTests = false
+			return resp
+		}
+	} else {
+		if len(files) == 0 {
+			// Select all tests if unable to find changed files list
+			log.Infow("Unable to get changed files list for PR. Running all the tests.")
+			r.runOnlySelectedTests = false
+			return resp
+		}
 	}
 	// Call TI svc to get test selection based on the files changed
 	files = runner.ReadPackages(files)
 	var err error
-	resp, err = selectTestsFn(ctx, files, r.runOnlySelectedTests, r.id, r.log, r.fs)
+	testGlobSlice := strings.Split(r.testGlobs, ",")
+	resp, err = selectTestsFn(ctx, files, r.runOnlySelectedTests, r.id, r.log, r.fs, r.language, testGlobSlice)
 	if err != nil {
 		log.Errorw("There was some issue in trying to intelligently figure out tests to run, running all the tests", "error", zap.Error(err))
 		r.runOnlySelectedTests = false
@@ -560,6 +585,7 @@ func (r *runTestsTask) getCmd(ctx context.Context, agentPath, outputVarFile stri
 
 	// Config file
 	var iniFilePath, agentArg string
+	tiPreCmd := "set -xe\n"
 	switch r.language {
 	case "java", "scala", "kotlin":
 		// Create the java agent config file
@@ -568,20 +594,20 @@ func (r *runTestsTask) getCmd(ctx context.Context, agentPath, outputVarFile stri
 			return "", err
 		}
 		agentArg = fmt.Sprintf(javaAgentArg, iniFilePath)
+		tiPreCmd += fmt.Sprintf("export TMPDIR=%s\nexport HARNESS_JAVA_AGENT=%s\n", r.tmpFilePath, agentArg)
 	case "csharp":
-		{
-			iniFilePath, err = r.createDotNetConfigFile()
-			if err != nil {
-				return "", err
-			}
+		iniFilePath, err = r.createDotNetConfigFile()
+		if err != nil {
+			return "", err
 		}
 	case "python":
-		{
-			iniFilePath, err = r.createPythonConfigFile()
-			if err != nil {
-				return "", err
-			}
+		iniFilePath, err = r.createPythonConfigFile()
+		if err != nil {
+			return "", err
 		}
+	case "ruby":
+		// Ruby does not have config file for now, but pass arguments by env variables
+		tiPreCmd += fmt.Sprintf("export TI_OUTPUT_PATH=%s\n", filepath.Join(r.tmpFilePath, cgDir))
 	}
 
 	// Test splitting: only when parallelism is enabled
@@ -598,7 +624,7 @@ func (r *runTestsTask) getCmd(ctx context.Context, agentPath, outputVarFile stri
 	// TMPDIR needs to be set for some build tools like bazel
 	// TODO: (Vistaar) These commands need to be handled for Windows as well. We should move this out to the tool
 	// implementations and check for OS there.
-	command := fmt.Sprintf("set -xe\nexport TMPDIR=%s\nexport HARNESS_JAVA_AGENT=%s\n%s\n%s\n%s%s", r.tmpFilePath, agentArg, r.preCommand, testCmd, r.postCommand, outputVarCmd)
+	command := fmt.Sprintf("%s\n%s\n%s\n%s%s", tiPreCmd, r.preCommand, testCmd, r.postCommand, outputVarCmd)
 	resolvedCmd, err := resolveExprInCmd(command)
 	if err != nil {
 		return "", err
@@ -618,7 +644,9 @@ func (r *runTestsTask) execute(ctx context.Context) (map[string]string, error) {
 
 	// Install agent artifacts if not present
 	var agentPath = ""
-	if r.language == "csharp" || r.language == "python" {
+	switch r.language {
+	case "java", "kotlin", "scala":
+	default:
 		zipAgentPath, err := installAgentFn(ctx, r.tmpFilePath, r.language, r.buildTool, r.frameworkVersion, r.buildEnvironment, r.log, r.fs)
 		if err != nil {
 			return nil, err
@@ -692,36 +720,37 @@ func (r *runTestsTask) getTiRunner(agentPath string) (runner testintelligence.Te
 		case "bazel":
 			runner = java.NewBazelRunner(r.log, r.fs, r.cmdContextFactory)
 		case "sbt":
-			{
-				if r.language != "scala" {
-					return runner, fmt.Errorf("build tool: SBT is not supported for non-Scala languages")
-				}
-				runner = java.NewSBTRunner(r.log, r.fs, r.cmdContextFactory)
+			if r.language != "scala" {
+				return runner, fmt.Errorf("build tool: SBT is not supported for non-Scala languages")
 			}
+			runner = java.NewSBTRunner(r.log, r.fs, r.cmdContextFactory)
 		default:
 			return runner, fmt.Errorf("build tool: %s is not supported for Java", r.buildTool)
 		}
 	case "csharp":
-		{
-			switch r.buildTool {
-			case "dotnet":
-				runner = csharp.NewDotnetRunner(r.log, r.fs, r.cmdContextFactory, agentPath)
-			case "nunitconsole":
-				runner = csharp.NewNunitConsoleRunner(r.log, r.fs, r.cmdContextFactory, agentPath)
-			default:
-				return runner, fmt.Errorf("build tool: %s is not supported for csharp", r.buildTool)
-			}
+		switch r.buildTool {
+		case "dotnet":
+			runner = csharp.NewDotnetRunner(r.log, r.fs, r.cmdContextFactory, agentPath)
+		case "nunitconsole":
+			runner = csharp.NewNunitConsoleRunner(r.log, r.fs, r.cmdContextFactory, agentPath)
+		default:
+			return runner, fmt.Errorf("build tool: %s is not supported for csharp", r.buildTool)
 		}
 	case "python":
-		{
-			switch r.buildTool {
-			case "pytest":
-				runner = python.NewPytestRunner(r.log, r.fs, r.cmdContextFactory, agentPath)
-			case "unittest":
-				runner = python.NewUnittestRunner(r.log, r.fs, r.cmdContextFactory, agentPath)
-			default:
-				return runner, fmt.Errorf("build tool: %s is not supported for python", r.buildTool)
-			}
+		switch r.buildTool {
+		case "pytest":
+			runner = python.NewPytestRunner(r.log, r.fs, r.cmdContextFactory, agentPath)
+		case "unittest":
+			runner = python.NewUnittestRunner(r.log, r.fs, r.cmdContextFactory, agentPath)
+		default:
+			return runner, fmt.Errorf("build tool: %s is not supported for python", r.buildTool)
+		}
+	case "ruby":
+		switch r.buildTool {
+		case "rspec":
+			runner = ruby.NewRspecRunner(r.log, r.fs, r.cmdContextFactory, agentPath)
+		default:
+			return runner, fmt.Errorf("build tool: %s is not supported for python", r.buildTool)
 		}
 	default:
 		return runner, fmt.Errorf("language %s is not suported", r.language)

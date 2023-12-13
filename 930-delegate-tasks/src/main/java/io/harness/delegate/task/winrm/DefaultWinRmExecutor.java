@@ -129,6 +129,7 @@ public class DefaultWinRmExecutor implements WinRmExecutor {
       String command, boolean winrmScriptCommandSplit, StringBuffer output, boolean displayCommand) {
     CommandExecutionStatus commandExecutionStatus;
     saveExecutionLog(format("Initializing WinRM connection to %s ...", config.getHostname()), INFO);
+    String psScriptFile = getPSScriptFile();
 
     try (WinRmSession session = new WinRmSession(config, this.logCallback);
          ExecutionLogWriter outputWriter = getExecutionLogWriter(INFO);
@@ -139,14 +140,10 @@ public class DefaultWinRmExecutor implements WinRmExecutor {
       } else {
         saveExecutionLog(format("Executing command ...%n"), INFO);
       }
-
-      String psScriptFile = getPSScriptFile();
       int exitCode =
           executeCommand(command, session, outputWriter, errorWriter, psScriptFile, winrmScriptCommandSplit, false);
       commandExecutionStatus = getCommandExecutionStatus(exitCode);
       saveExecutionLog(format("%nCommand completed with ExitCode (%d)", exitCode), INFO, commandExecutionStatus);
-      WinRmExecutorHelper.cleanupFiles(
-          session, psScriptFile, powershell, disableCommandEncoding, config.getCommandParameters());
     } catch (RuntimeException re) {
       commandExecutionStatus = FAILURE;
       log.error(ERROR_WHILE_EXECUTING_COMMAND, re);
@@ -161,6 +158,8 @@ public class DefaultWinRmExecutor implements WinRmExecutor {
       saveExecutionLog(
           format("Command execution failed. Error: %s", details.getMessage()), ERROR, commandExecutionStatus);
     } finally {
+      WinRmExecutorHelper.cleanupFilesInNewSession(
+          psScriptFile, powershell, disableCommandEncoding, config.getCommandParameters(), config, logCallback);
       logCallback.dispatchLogs();
     }
     return commandExecutionStatus;
@@ -250,15 +249,13 @@ public class DefaultWinRmExecutor implements WinRmExecutor {
       envVariablesOutputFile = this.config.getWorkingDirectory() + "\\"
           + "harness-" + this.config.getExecutionId() + ".out";
     }
-
+    String psScriptFile = getPSScriptFile();
     try (WinRmSession session = new WinRmSession(config, this.logCallback);
          ExecutionLogWriter outputWriter = getExecutionLogWriter(INFO);
          ExecutionLogWriter errorWriter = getExecutionLogWriter(ERROR)) {
       saveExecutionLog(format("Connected to %s", config.getHostname()), INFO);
       saveExecutionLog(format("Executing command ...%n"), INFO);
-
       command = addEnvVariablesCollector(command, allVariablesToCollect, envVariablesOutputFile);
-      String psScriptFile = getPSScriptFile();
       int exitCode =
           executeCommand(command, session, outputWriter, errorWriter, psScriptFile, winrmScriptCommandSplit, false);
       commandExecutionStatus = getCommandExecutionStatus(exitCode);
@@ -275,8 +272,6 @@ public class DefaultWinRmExecutor implements WinRmExecutor {
       saveExecutionLog(format("%nCommand completed with ExitCode (%d)", exitCode), INFO, commandExecutionStatus);
       executeCommandResponseBuilder.status(commandExecutionStatus);
       executeCommandResponseBuilder.commandExecutionData(executionDataBuilder.build());
-      WinRmExecutorHelper.cleanupFiles(
-          session, psScriptFile, powershell, disableCommandEncoding, config.getCommandParameters());
       return executeCommandResponseBuilder.build();
     } catch (RuntimeException re) {
       throw re;
@@ -287,6 +282,8 @@ public class DefaultWinRmExecutor implements WinRmExecutor {
       saveExecutionLog(
           format("Command execution failed. Error: %s", details.getMessage()), ERROR, commandExecutionStatus);
     } finally {
+      WinRmExecutorHelper.cleanupFilesInNewSession(
+          psScriptFile, powershell, disableCommandEncoding, config.getCommandParameters(), config, logCallback);
       logCallback.dispatchLogs();
     }
     executeCommandResponseBuilder.status(commandExecutionStatus);
@@ -307,10 +304,9 @@ public class DefaultWinRmExecutor implements WinRmExecutor {
           + "Write-Host $base64string -NoNewline";
     }
 
-    String psScriptFile;
+    String psScriptFile = getPSScriptFile();
     try (StringWriter outputAccumulator = new StringWriter(1024);
          StringWriter errorAccumulator = new StringWriter(1024)) {
-      psScriptFile = getPSScriptFile();
       int exitCode = executeCommand(command, session, outputAccumulator, errorAccumulator, psScriptFile, false, true);
       if (exitCode != 0) {
         log.error("Powershell script collecting output environment Variables failed with exitCode {}", exitCode);
@@ -340,15 +336,15 @@ public class DefaultWinRmExecutor implements WinRmExecutor {
           }
         }
       }
-
-      WinRmExecutorHelper.cleanupFiles(
-          session, envVariablesOutputFile, powershell, disableCommandEncoding, config.getCommandParameters());
-      WinRmExecutorHelper.cleanupFiles(
-          session, psScriptFile, powershell, disableCommandEncoding, config.getCommandParameters());
     } catch (RuntimeException re) {
       throw re;
     } catch (Exception e) {
       log.error("Exception while trying to collectOutputEnvironmentVariables", e);
+    } finally {
+      WinRmExecutorHelper.cleanupFiles(
+          session, envVariablesOutputFile, powershell, disableCommandEncoding, config.getCommandParameters());
+      WinRmExecutorHelper.cleanupFiles(
+          session, psScriptFile, powershell, disableCommandEncoding, config.getCommandParameters());
     }
     return envVariablesMap;
   }
@@ -380,34 +376,36 @@ public class DefaultWinRmExecutor implements WinRmExecutor {
     int exitCode;
     List<String> commandList =
         splitCommandForCopyingToRemoteFile(command, encodedScriptFilePath, powershell, config.getCommandParameters());
-    exitCode = session.copyScriptToRemote(commandList, outputWriter, errorWriter);
-    if (exitCode != 0) {
-      log.error("Transferring encoded script data to remote file FAILED.");
-      return exitCode;
-    }
-
     String executablePSFilePath = executablePSFilePath(config.getWorkingDirectory(), config.getExecutionId());
-    String psExecutionCommand = prepareCommandForCopyingToRemoteFile(
-        encodedScriptFilePath, psScriptFile, powershell, config.getCommandParameters(), executablePSFilePath);
-    exitCode = session.executeCommandString(psExecutionCommand, outputWriter, errorWriter, false);
-    if (exitCode != 0) {
-      log.error("Transferring script for decoding failed.");
+    try {
+      exitCode = session.copyScriptToRemote(commandList, outputWriter, errorWriter);
+      if (exitCode != 0) {
+        log.error("Transferring encoded script data to remote file FAILED.");
+        return exitCode;
+      }
+
+      String psExecutionCommand = prepareCommandForCopyingToRemoteFile(
+          encodedScriptFilePath, psScriptFile, powershell, config.getCommandParameters(), executablePSFilePath);
+      exitCode = session.executeCommandString(psExecutionCommand, outputWriter, errorWriter, false);
+      if (exitCode != 0) {
+        log.error("Transferring script for decoding failed.");
+        return exitCode;
+      }
+
+      String scriptFileExecutingCommand = getScriptExecutingCommand(psScriptFile, powershell);
+      exitCode = session.executeScript(scriptFileExecutingCommand, outputWriter, errorWriter);
+      if (exitCode != 0) {
+        log.error("Decoding of the script on remote failed.");
+        return exitCode;
+      }
+
+      String executeScript = getScriptExecutingCommand(executablePSFilePath, powershell);
+      exitCode = session.executeScript(executeScript, outputWriter, errorWriter);
       return exitCode;
+    } finally {
+      WinRmExecutorHelper.cleanupFiles(
+          session, executablePSFilePath, powershell, disableCommandEncoding, config.getCommandParameters());
     }
-
-    String scriptFileExecutingCommand = getScriptExecutingCommand(psScriptFile, powershell);
-    exitCode = session.executeScript(scriptFileExecutingCommand, outputWriter, errorWriter);
-    if (exitCode != 0) {
-      log.error("Decoding of the script on remote failed.");
-      return exitCode;
-    }
-
-    String executeScript = getScriptExecutingCommand(executablePSFilePath, powershell);
-    exitCode = session.executeScript(executeScript, outputWriter, errorWriter);
-
-    WinRmExecutorHelper.cleanupFiles(
-        session, executablePSFilePath, powershell, disableCommandEncoding, config.getCommandParameters());
-    return exitCode;
   }
 
   @Override

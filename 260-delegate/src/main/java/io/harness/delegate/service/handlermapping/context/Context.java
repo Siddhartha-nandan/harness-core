@@ -12,14 +12,18 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Shared runtime data across handlers
+ * Shared runtime data across handlers.
+ * FixMe: DELEGATE_ID is static data, TASK_ID is dynamic data. Because of this mix we always inject context (to get
+ * FixMe: static data) and then create a deep clone to add dynamic data. That pattern is not good.
  */
 @Singleton
 public class Context {
   public static final String DELEGATE_ID = "delegateId";
+  public static final String DELEGATE_NAME = "delegateName";
   public static final String TASK_ID = "taskId";
+  public static final String ACCOUNT_ID = "accountId";
 
-  private Map<String, String> context;
+  private final Map<String, String> context;
 
   public Context() {
     this.context = new HashMap<>();
@@ -38,8 +42,6 @@ public class Context {
   }
 
   public Context deepCopy() {
-    Map<String, String> contents = new HashMap<>();
-    contents.putAll(context);
-    return new Context(contents);
+    return new Context(new HashMap<>(context));
   }
 }

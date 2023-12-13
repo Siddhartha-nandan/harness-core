@@ -6,6 +6,7 @@
  */
 
 package io.harness.ng;
+
 import static io.harness.audit.ResourceTypeConstants.API_KEY;
 import static io.harness.audit.ResourceTypeConstants.CONNECTOR;
 import static io.harness.audit.ResourceTypeConstants.DELEGATE_CONFIGURATION;
@@ -15,6 +16,7 @@ import static io.harness.audit.ResourceTypeConstants.ENVIRONMENT_GROUP;
 import static io.harness.audit.ResourceTypeConstants.EULA;
 import static io.harness.audit.ResourceTypeConstants.FILE;
 import static io.harness.audit.ResourceTypeConstants.IP_ALLOWLIST_CONFIG;
+import static io.harness.audit.ResourceTypeConstants.MODULE_LICENSE;
 import static io.harness.audit.ResourceTypeConstants.ORGANIZATION;
 import static io.harness.audit.ResourceTypeConstants.PROJECT;
 import static io.harness.audit.ResourceTypeConstants.SECRET;
@@ -49,7 +51,7 @@ import static io.harness.eventsframework.EventsFrameworkMetadataConstants.TERRAG
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.USER_ENTITY;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.USER_SCOPE_RECONCILIATION;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.VARIABLE_ENTITY;
-import static io.harness.lock.DistributedLockImplementation.MONGO;
+import static io.harness.lock.DistributedLockImplementation.REDIS;
 import static io.harness.ng.core.api.utils.JWTTokenFlowAuthFilterUtils.JWT_TOKEN_PUBLIC_KEYS_JSON_DATA_CACHE_KEY;
 import static io.harness.ng.core.api.utils.JWTTokenFlowAuthFilterUtils.JWT_TOKEN_SCIM_SETTINGS_DATA_CACHE_KEY;
 import static io.harness.ng.core.api.utils.JWTTokenFlowAuthFilterUtils.JWT_TOKEN_SERVICE_ACCOUNT_DATA_CACHE_KEY;
@@ -79,6 +81,7 @@ import io.harness.app.PrimaryVersionManagerModule;
 import io.harness.audit.ResourceTypeConstants;
 import io.harness.audit.client.remote.AuditClientModule;
 import io.harness.authorization.AuthorizationServiceHeader;
+import io.harness.beans.ScopeInfo;
 import io.harness.cache.HarnessCacheManager;
 import io.harness.callback.DelegateCallback;
 import io.harness.callback.DelegateCallbackToken;
@@ -93,6 +96,9 @@ import io.harness.cdng.fileservice.FileServiceClient;
 import io.harness.cdng.fileservice.FileServiceClientFactory;
 import io.harness.cdng.jenkins.jenkinsstep.JenkinsBuildStepHelperService;
 import io.harness.cdng.jenkins.jenkinsstep.JenkinsBuildStepHelperServiceImpl;
+import io.harness.cdng.stage.resources.CDNGStageSummaryResource;
+import io.harness.cdng.stage.resources.CDNGStageSummaryResourceImpl;
+import io.harness.client.DelegateSelectionLogHttpClientModule;
 import io.harness.client.NgConnectorManagerClientModule;
 import io.harness.connector.ConnectorModule;
 import io.harness.connector.ConnectorResourceClientModule;
@@ -138,8 +144,11 @@ import io.harness.gitsync.GitSyncConfigClientModule;
 import io.harness.gitsync.GitSyncModule;
 import io.harness.gitsync.common.events.FullSyncMessageListener;
 import io.harness.gitsync.common.events.GitSyncProjectCleanup;
+import io.harness.gitsync.common.impl.GitSyncConnectorServiceImpl;
+import io.harness.gitsync.common.service.GitSyncConnectorService;
 import io.harness.gitsync.core.webhook.createbranchevent.GitBranchHookEventStreamListener;
 import io.harness.gitsync.core.webhook.pushevent.GitPushEventStreamListener;
+import io.harness.gitsync.gitxwebhooks.listener.GitXWebhookPushEventListener;
 import io.harness.govern.ProviderModule;
 import io.harness.grpc.DelegateServiceDriverGrpcClientModule;
 import io.harness.grpc.DelegateServiceGrpcClient;
@@ -147,11 +156,13 @@ import io.harness.grpc.client.GrpcClientConfig;
 import io.harness.hsqs.client.beans.HsqsDequeueConfig;
 import io.harness.licensing.LicenseModule;
 import io.harness.licensing.event.ModuleLicenseEventListener;
+import io.harness.licensing.outbox.ModuleLicenseOutboxEventHandler;
 import io.harness.lock.DistributedLockImplementation;
 import io.harness.lock.PersistentLockModule;
 import io.harness.logstreaming.LogStreamingServiceConfiguration;
 import io.harness.logstreaming.LogStreamingServiceRestClient;
 import io.harness.logstreaming.NGLogStreamingClientFactory;
+import io.harness.manage.ManagedExecutorService;
 import io.harness.manage.ManagedScheduledExecutorService;
 import io.harness.metrics.impl.DelegateMetricsServiceImpl;
 import io.harness.metrics.intfc.DelegateMetricsService;
@@ -171,6 +182,7 @@ import io.harness.ng.core.DefaultOrganizationModule;
 import io.harness.ng.core.DelegateServiceModule;
 import io.harness.ng.core.InviteModule;
 import io.harness.ng.core.NGAggregateModule;
+import io.harness.ng.core.ScopeInfoModule;
 import io.harness.ng.core.SecretManagementModule;
 import io.harness.ng.core.agent.client.AgentNgManagerCgManagerClientModule;
 import io.harness.ng.core.api.ApiKeyService;
@@ -223,10 +235,12 @@ import io.harness.ng.core.event.UserMembershipReconciliationMessageProcessor;
 import io.harness.ng.core.event.UserMembershipStreamListener;
 import io.harness.ng.core.event.VariableEntityCRUDStreamListener;
 import io.harness.ng.core.event.gitops.ClusterCrudStreamListener;
+import io.harness.ng.core.event.modulelicense.ModuleLicenseStreamListener;
 import io.harness.ng.core.globalkms.impl.NgGlobalKmsServiceImpl;
 import io.harness.ng.core.globalkms.services.NgGlobalKmsService;
 import io.harness.ng.core.impl.OrganizationServiceImpl;
 import io.harness.ng.core.impl.ProjectServiceImpl;
+import io.harness.ng.core.impl.ScopeInfoServiceImpl;
 import io.harness.ng.core.outbox.ApiKeyEventHandler;
 import io.harness.ng.core.outbox.DelegateProfileEventHandler;
 import io.harness.ng.core.outbox.EnvironmentGroupOutboxEventHandler;
@@ -247,6 +261,7 @@ import io.harness.ng.core.refresh.service.EntityRefreshServiceImpl;
 import io.harness.ng.core.schema.YamlBaseUrlService;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ng.core.smtp.NgSMTPSettingsHttpClientModule;
 import io.harness.ng.core.smtp.SmtpNgService;
 import io.harness.ng.core.smtp.SmtpNgServiceImpl;
@@ -255,6 +270,8 @@ import io.harness.ng.core.user.service.NgUserService;
 import io.harness.ng.core.user.service.impl.LastAdminCheckServiceImpl;
 import io.harness.ng.core.user.service.impl.NgUserServiceImpl;
 import io.harness.ng.core.user.service.impl.UserEntityCrudStreamListener;
+import io.harness.ng.core.utils.CDGitXService;
+import io.harness.ng.core.utils.CDGitXServiceImpl;
 import io.harness.ng.eventsframework.EventsFrameworkModule;
 import io.harness.ng.feedback.services.FeedbackService;
 import io.harness.ng.feedback.services.impls.FeedbackServiceImpl;
@@ -268,6 +285,8 @@ import io.harness.ng.opa.entities.secret.OpaSecretService;
 import io.harness.ng.opa.entities.secret.OpaSecretServiceImpl;
 import io.harness.ng.overview.service.CDLandingDashboardService;
 import io.harness.ng.overview.service.CDLandingDashboardServiceImpl;
+import io.harness.ng.overview.service.CDLandingPageService;
+import io.harness.ng.overview.service.CDLandingPageServiceImpl;
 import io.harness.ng.overview.service.CDOverviewDashboardService;
 import io.harness.ng.overview.service.CDOverviewDashboardServiceImpl;
 import io.harness.ng.rollback.PostProdRollbackService;
@@ -277,6 +296,8 @@ import io.harness.ng.scim.NGScimUserServiceImpl;
 import io.harness.ng.serviceaccounts.service.api.ServiceAccountService;
 import io.harness.ng.serviceaccounts.service.impl.ServiceAccountServiceImpl;
 import io.harness.ng.servicediscovery.AbstractServiceDiscoveryModule;
+import io.harness.ng.support.client.CannyConfig;
+import io.harness.ng.tunnel.services.impl.TunnelServiceImpl;
 import io.harness.ng.userprofile.commons.SCMType;
 import io.harness.ng.userprofile.entities.AwsCodeCommitSCM.AwsCodeCommitSCMMapper;
 import io.harness.ng.userprofile.entities.AzureRepoSCM.AzureRepoSCMMapper;
@@ -314,14 +335,17 @@ import io.harness.polling.service.intfc.PollingPerpetualTaskService;
 import io.harness.polling.service.intfc.PollingService;
 import io.harness.redis.RedisConfig;
 import io.harness.reflection.HarnessReflections;
+import io.harness.remote.CEAwsServiceEndpointConfig;
 import io.harness.remote.CEAwsSetupConfig;
 import io.harness.remote.CEAzureSetupConfig;
 import io.harness.remote.CEGcpSetupConfig;
+import io.harness.remote.CEProxyConfig;
 import io.harness.remote.client.ClientMode;
 import io.harness.remote.client.ServiceHttpClientConfig;
 import io.harness.resourcegroupclient.ResourceGroupClientModule;
 import io.harness.scim.service.ScimGroupService;
 import io.harness.scim.service.ScimUserService;
+import io.harness.scopeinfoclient.ScopeInfoClientModule;
 import io.harness.secretmanagerclient.SecretManagementClientModule;
 import io.harness.secrets.SecretNGManagerClientModule;
 import io.harness.security.ServiceTokenGenerator;
@@ -333,6 +357,7 @@ import io.harness.serializer.kryo.KryoConverterFactory;
 import io.harness.service.DelegateServiceDriverModule;
 import io.harness.service.InstanceModule;
 import io.harness.service.stats.usagemetrics.eventconsumer.InstanceStatsEventListener;
+import io.harness.services.TunnelService;
 import io.harness.signup.SignupModule;
 import io.harness.subscription.SubscriptionModule;
 import io.harness.telemetry.AbstractTelemetryModule;
@@ -346,6 +371,7 @@ import io.harness.timescaledb.JooqModule;
 import io.harness.timescaledb.TimeScaleDBConfig;
 import io.harness.timescaledb.TimeScaleDBService;
 import io.harness.timescaledb.TimeScaleDBServiceImpl;
+import io.harness.timescaledb.TimescalePersistence;
 import io.harness.timescaledb.metrics.HExecuteListener;
 import io.harness.timescaledb.retention.RetentionManager;
 import io.harness.timescaledb.retention.RetentionManagerImpl;
@@ -443,6 +469,25 @@ public class NextGenModule extends AbstractModule {
 
   @Provides
   @Singleton
+  @Named("chaosTemplateRegistrationExecutorService")
+  public ExecutorService chaosTemplateRegistrationExecutionServiceThreadPool() {
+    return ThreadPool.create(1, 1, 10, TimeUnit.SECONDS,
+        new ThreadFactoryBuilder().setNameFormat("ChaosTemplateRegistrationService-%d").build());
+  }
+
+  @Provides
+  @Singleton
+  @Named("DashboardExecutorService")
+  public ExecutorService DashboardExecutorServiceThreadPool() {
+    return ThreadPool.create(appConfig.getDashboardExecutorServiceConfig().getCorePoolSize(),
+        appConfig.getDashboardExecutorServiceConfig().getMaxPoolSize(),
+        appConfig.getDashboardExecutorServiceConfig().getIdleTime(),
+        appConfig.getDashboardExecutorServiceConfig().getTimeUnit(),
+        new ThreadFactoryBuilder().setNameFormat("DashboardExecutorService-%d").build());
+  }
+
+  @Provides
+  @Singleton
   CiDefaultEntityConfiguration getCiDefaultConfiguration() {
     return appConfig.getCiDefaultEntityConfiguration();
   }
@@ -451,6 +496,13 @@ public class NextGenModule extends AbstractModule {
   @Singleton
   LogStreamingServiceConfiguration getLogStreamingServiceConfiguration() {
     return appConfig.getLogStreamingServiceConfig();
+  }
+
+  @Provides
+  @Named("cannyApiConfiguration")
+  @Singleton
+  CannyConfig getCannyConfig() {
+    return appConfig.getCannyConfig();
   }
 
   @Provides
@@ -471,7 +523,7 @@ public class NextGenModule extends AbstractModule {
   @Provides
   @Singleton
   DistributedLockImplementation distributedLockImplementation() {
-    return appConfig.getDistributedLockImplementation() == null ? MONGO : appConfig.getDistributedLockImplementation();
+    return appConfig.getDistributedLockImplementation() == null ? REDIS : appConfig.getDistributedLockImplementation();
   }
 
   @Provides
@@ -525,6 +577,18 @@ public class NextGenModule extends AbstractModule {
   @Named("GitSyncGrpcClientConfigs")
   public Map<Microservice, GrpcClientConfig> grpcClientConfigs() {
     return appConfig.getGitGrpcClientConfigs();
+  }
+
+  @Provides
+  @Singleton
+  CEProxyConfig ceProxyConfig() {
+    return this.appConfig.getCeProxyConfig();
+  }
+
+  @Provides
+  @Singleton
+  CEAwsServiceEndpointConfig ceAwsServiceEndpointConfig() {
+    return this.appConfig.getCeAwsServiceEndpointConfig();
   }
 
   @Provides
@@ -604,15 +668,49 @@ public class NextGenModule extends AbstractModule {
 
   @Provides
   @Singleton
-  @Named("logStreamingClientThreadPool")
-  public ThreadPoolExecutor logStreamingClientThreadPool() {
+  @Named("logStreamingDelayExecutor")
+  public ScheduledExecutorService logStreamingDelayExecutor() {
     ThreadPoolConfig threadPoolConfig = appConfig != null && appConfig.getLogStreamingServiceConfig() != null
             && appConfig.getLogStreamingServiceConfig().getThreadPoolConfig() != null
         ? appConfig.getLogStreamingServiceConfig().getThreadPoolConfig()
-        : ThreadPoolConfig.builder().corePoolSize(1).maxPoolSize(50).idleTime(30).timeUnit(TimeUnit.SECONDS).build();
+        : ThreadPoolConfig.builder().corePoolSize(10).build();
+    return new ScheduledThreadPoolExecutor(threadPoolConfig.getCorePoolSize(),
+        new ThreadFactoryBuilder().setNameFormat("log-client-pool-%d").setPriority(Thread.NORM_PRIORITY).build());
+  }
+
+  // this should be used with a managed executor service
+  private ThreadPoolExecutor serviceGitXThreadPool() {
+    ThreadPoolConfig threadPoolConfig = appConfig != null && appConfig.getServiceGitXThreadConfig() != null
+            && appConfig.getServiceGitXThreadConfig().getThreadPoolConfig() != null
+        ? appConfig.getServiceGitXThreadConfig().getThreadPoolConfig()
+        : ThreadPoolConfig.builder().corePoolSize(1).maxPoolSize(10).idleTime(30).timeUnit(TimeUnit.SECONDS).build();
+
     return ThreadPool.create(threadPoolConfig.getCorePoolSize(), threadPoolConfig.getMaxPoolSize(),
         threadPoolConfig.getIdleTime(), threadPoolConfig.getTimeUnit(),
-        new ThreadFactoryBuilder().setNameFormat("log-client-pool-%d").build());
+        new ThreadFactoryBuilder().setNameFormat("service-gitx-pool-%d").build());
+  }
+
+  private ThreadPoolExecutor environmentGitXThreadPool() {
+    ThreadPoolConfig threadPoolConfig = appConfig != null && appConfig.getEnvironmentGitXThreadConfig() != null
+            && appConfig.getEnvironmentGitXThreadConfig().getThreadPoolConfig() != null
+        ? appConfig.getEnvironmentGitXThreadConfig().getThreadPoolConfig()
+        : ThreadPoolConfig.builder().corePoolSize(1).maxPoolSize(10).idleTime(30).timeUnit(TimeUnit.SECONDS).build();
+
+    return ThreadPool.create(threadPoolConfig.getCorePoolSize(), threadPoolConfig.getMaxPoolSize(),
+        threadPoolConfig.getIdleTime(), threadPoolConfig.getTimeUnit(),
+        new ThreadFactoryBuilder().setNameFormat("environment-gitx-pool-%d").build());
+  }
+
+  private ThreadPoolExecutor deploymentStagePlanCreationInfoThreadPoolConfiguration() {
+    ThreadPoolConfig threadPoolConfig = appConfig != null
+            && appConfig.getDeploymentStagePlanCreationInfoThreadPoolConfiguration() != null
+            && appConfig.getDeploymentStagePlanCreationInfoThreadPoolConfiguration().getThreadPoolConfig() != null
+        ? appConfig.getDeploymentStagePlanCreationInfoThreadPoolConfiguration().getThreadPoolConfig()
+        : ThreadPoolConfig.builder().corePoolSize(1).maxPoolSize(10).idleTime(30).timeUnit(TimeUnit.SECONDS).build();
+
+    return ThreadPool.create(threadPoolConfig.getCorePoolSize(), threadPoolConfig.getMaxPoolSize(),
+        threadPoolConfig.getIdleTime(), threadPoolConfig.getTimeUnit(),
+        new ThreadFactoryBuilder().setNameFormat("deployment-stage-plan-creation-info-pool-%d").build());
   }
 
   @Provides
@@ -624,9 +722,23 @@ public class NextGenModule extends AbstractModule {
 
   @Provides
   @Singleton
+  @Named("gitXWebhookEventQueueConfig")
+  public HsqsDequeueConfig getGitXWebhookEventQueueConfig() {
+    return appConfig.getGitXWebhookEventQueueConfig();
+  }
+
+  @Provides
+  @Singleton
   @Named("webhookPushEventHsqsDequeueConfig")
   public HsqsDequeueConfig getWebhookPushEventHsqsDequeueConfig() {
     return appConfig.getWebhookPushEventHsqsDequeueConfig();
+  }
+
+  @Provides
+  @Singleton
+  @Named("webhookGitXPushEventQueueConfig")
+  public HsqsDequeueConfig getWebhookGitXPushEventQueueConfig() {
+    return appConfig.getWebhookGitXPushEventQueueConfig();
   }
 
   @Override
@@ -662,10 +774,14 @@ public class NextGenModule extends AbstractModule {
 
     bind(CDOverviewDashboardService.class).to(CDOverviewDashboardServiceImpl.class);
     bind(CDLandingDashboardService.class).to(CDLandingDashboardServiceImpl.class);
+    bind(CDLandingPageService.class).to(CDLandingPageServiceImpl.class);
+    bind(GitSyncConnectorService.class).to(GitSyncConnectorServiceImpl.class);
 
     try {
       bind(TimeScaleDBService.class)
           .toConstructor(TimeScaleDBServiceImpl.class.getConstructor(TimeScaleDBConfig.class));
+      bind(TimescalePersistence.class)
+          .toConstructor(TimescalePersistence.class.getConstructor(TimeScaleDBService.class));
       bind(RetentionManager.class).to(RetentionManagerImpl.class);
     } catch (NoSuchMethodException e) {
       log.error("TimeScaleDbServiceImpl Initialization Failed in due to missing constructor", e);
@@ -732,6 +848,7 @@ public class NextGenModule extends AbstractModule {
         appConfig.getNextGenConfig().getManagerServiceSecret(), NG_MANAGER.getServiceId()));
     install(JooqModule.getInstance());
     install(new DefaultOrganizationModule());
+    install(new ScopeInfoModule());
     install(new NGAggregateModule());
     install(new DelegateServiceModule());
     install(NGModule.getInstance());
@@ -772,7 +889,8 @@ public class NextGenModule extends AbstractModule {
     install(new OpaClientModule(
         appConfig.getOpaClientConfig(), appConfig.getPolicyManagerSecret(), NG_MANAGER.getServiceId()));
     install(EnforcementModule.getInstance());
-
+    install(new DelegateSelectionLogHttpClientModule(this.appConfig.getManagerClientConfig(),
+        this.appConfig.getNextGenConfig().getNgManagerServiceSecret(), NG_MANAGER.getServiceId()));
     install(EnforcementClientModule.getInstance(appConfig.getNgManagerClientConfig(),
         appConfig.getNextGenConfig().getNgManagerServiceSecret(), NG_MANAGER.getServiceId(),
         appConfig.getEnforcementClientConfiguration()));
@@ -794,6 +912,8 @@ public class NextGenModule extends AbstractModule {
     bind(FreezeSchemaService.class).to(FreezeSchemaServiceImpl.class);
     bind(DelegateMetricsService.class).to(DelegateMetricsServiceImpl.class);
     bind(FrozenExecutionService.class).to(FrozenExecutionServiceImpl.class);
+    bind(CDNGStageSummaryResource.class).to(CDNGStageSummaryResourceImpl.class);
+    bind(TunnelService.class).to(TunnelServiceImpl.class);
     install(new ProviderModule() {
       @Provides
       @Singleton
@@ -826,6 +946,7 @@ public class NextGenModule extends AbstractModule {
       List<Class<? extends Converter<?, ?>>> springConverters() {
         return ImmutableList.<Class<? extends Converter<?, ?>>>builder()
             .addAll(ManagerRegistrars.springConverters)
+            .addAll(NextGenRegistrars.springConvertors)
             .build();
       }
 
@@ -837,15 +958,24 @@ public class NextGenModule extends AbstractModule {
 
       @Provides
       @Singleton
+      @Named("scmServiceBaseUrl")
+      String getScmServiceBaseUrl() {
+        return getBaseUrls().getScmServiceBaseUrl();
+      }
+
+      @Provides
+      @Singleton
       BaseUrls getBaseUrls() {
         return appConfig.getBaseUrls();
       }
     });
     install(new NGLdapModule(appConfig));
+    install(new NGOidcModule(appConfig));
     install(new NgVariableModule(appConfig));
     install(new NGIpAllowlistModule(appConfig));
     install(new NGFavoriteModule(appConfig));
     install(new EulaModule(appConfig));
+    install(new GitXWebhookModule(appConfig));
     install(EntitySetupUsageModule.getInstance());
     install(PersistentLockModule.getInstance());
     install(new TransactionOutboxModule(
@@ -854,6 +984,8 @@ public class NextGenModule extends AbstractModule {
         appConfig.getResourceGroupClientConfig().getSecret(), NG_MANAGER.getServiceId()));
     install(NGFileServiceModule.getInstance(appConfig.getFileServiceConfiguration().getFileStorageMode(),
         appConfig.getFileServiceConfiguration().getClusterName()));
+    install(new ScopeInfoClientModule(appConfig.getNgManagerClientConfig(),
+        appConfig.getNextGenConfig().getNgManagerServiceSecret(), NG_MANAGER.getServiceId()));
     install(NgFileStoreModule.getInstance());
     install(new GitopsResourceClientModule(appConfig.getGitopsResourceClientConfig(), NG_MANAGER.getServiceId()));
     if (TRUE.equals(appConfig.getAccessControlAdminClientConfiguration().getMockAccessControlService())) {
@@ -941,6 +1073,7 @@ public class NextGenModule extends AbstractModule {
     bind(WebhookService.class).to(WebhookServiceImpl.class);
     bind(WebhookEventProcessingService.class).to(WebhookEventProcessingServiceImpl.class);
     bind(NGHostValidationService.class).to(NGHostValidationServiceImpl.class);
+    bind(ScopeInfoService.class).to(ScopeInfoServiceImpl.class);
     bind(MessageListener.class)
         .annotatedWith(Names.named(USER_ENTITY + ENTITY_CRUD))
         .to(UserEntityCrudStreamListener.class);
@@ -976,6 +1109,20 @@ public class NextGenModule extends AbstractModule {
                 .setNameFormat("ng-telemetry-publisher-Thread-%d")
                 .setPriority(Thread.NORM_PRIORITY)
                 .build()));
+
+    bind(CDGitXService.class).to(CDGitXServiceImpl.class).in(Singleton.class);
+
+    bind(ExecutorService.class)
+        .annotatedWith(Names.named("service-gitx-executor"))
+        .toInstance(new ManagedExecutorService(serviceGitXThreadPool()));
+
+    bind(ExecutorService.class)
+        .annotatedWith(Names.named("environment-gitx-executor"))
+        .toInstance(new ManagedExecutorService(environmentGitXThreadPool()));
+
+    bind(ExecutorService.class)
+        .annotatedWith(Names.named("deployment-stage-plan-creation-info-executor"))
+        .toInstance(new ManagedExecutorService(deploymentStagePlanCreationInfoThreadPoolConfiguration()));
 
     MapBinder<SCMType, SourceCodeManagerMapper> sourceCodeManagerMapBinder =
         MapBinder.newMapBinder(binder(), SCMType.class, SourceCodeManagerMapper.class);
@@ -1071,6 +1218,7 @@ public class NextGenModule extends AbstractModule {
     outboxEventHandlerMapBinder.addBinding(DEPLOYMENT_FREEZE).to(FreezeOutboxEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(IP_ALLOWLIST_CONFIG).to(IPAllowlistConfigEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(EULA).to(EulaEventHandler.class);
+    outboxEventHandlerMapBinder.addBinding(MODULE_LICENSE).to(ModuleLicenseOutboxEventHandler.class);
   }
 
   private void registerEventsFrameworkMessageListeners() {
@@ -1151,6 +1299,9 @@ public class NextGenModule extends AbstractModule {
     bind(MessageListener.class)
         .annotatedWith(Names.named(EventsFrameworkConstants.USERMEMBERSHIP))
         .to(UserMembershipStreamListener.class);
+    bind(MessageListener.class)
+        .annotatedWith(Names.named(EventsFrameworkConstants.MODULE_LICENSE))
+        .to(ModuleLicenseStreamListener.class);
 
     bind(MessageListener.class).annotatedWith(Names.named(SETUP_USAGE)).to(SetupUsageChangeEventMessageListener.class);
     bind(MessageListener.class)
@@ -1159,6 +1310,9 @@ public class NextGenModule extends AbstractModule {
     bind(MessageListener.class)
         .annotatedWith(Names.named(EventsFrameworkConstants.GIT_PUSH_EVENT_STREAM))
         .to(GitPushEventStreamListener.class);
+    bind(MessageListener.class)
+        .annotatedWith(Names.named(EventsFrameworkConstants.GITX_WEBHOOK_PUSH_EVENT_STREAM))
+        .to(GitXWebhookPushEventListener.class);
     bind(MessageListener.class)
         .annotatedWith(Names.named(EventsFrameworkConstants.GIT_BRANCH_HOOK_EVENT_STREAM))
         .to(GitBranchHookEventStreamListener.class);
@@ -1195,5 +1349,25 @@ public class NextGenModule extends AbstractModule {
         .configure()
         .parameterNameProvider(new ReflectionParameterNameProvider())
         .buildValidatorFactory();
+  }
+
+  @Provides
+  @Singleton
+  @Named(OrganizationService.ORG_SCOPE_INFO_DATA_CACHE_KEY)
+  Cache<String, ScopeInfo> getOrgScopeInfoDataCache(
+      HarnessCacheManager harnessCacheManager, VersionInfoManager versionInfoManager) {
+    return harnessCacheManager.getCache(OrganizationService.ORG_SCOPE_INFO_DATA_CACHE_KEY, String.class,
+        ScopeInfo.class, CreatedExpiryPolicy.factoryOf(new Duration(TimeUnit.HOURS, 1)),
+        versionInfoManager.getVersionInfo().getBuildNo());
+  }
+
+  @Provides
+  @Singleton
+  @Named(ProjectService.PROJECT_SCOPE_INFO_DATA_CACHE_KEY)
+  Cache<String, ScopeInfo> getProjectScopeInfoDataCache(
+      HarnessCacheManager harnessCacheManager, VersionInfoManager versionInfoManager) {
+    return harnessCacheManager.getCache(ProjectService.PROJECT_SCOPE_INFO_DATA_CACHE_KEY, String.class, ScopeInfo.class,
+        CreatedExpiryPolicy.factoryOf(new Duration(TimeUnit.HOURS, 1)),
+        versionInfoManager.getVersionInfo().getBuildNo());
   }
 }

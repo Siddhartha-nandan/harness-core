@@ -6,6 +6,7 @@
  */
 
 package io.harness.pms.plan.execution;
+
 import static io.harness.pms.pipeline.PipelineResourceConstants.NOTES_FOR_PLAN_EXECUTION_PARAM_MESSAGE;
 
 import io.harness.NGCommonEntityConstants;
@@ -36,6 +37,8 @@ import io.harness.pms.preflight.PreFlightDTO;
 import io.harness.pms.rbac.PipelineRbacPermissions;
 import io.harness.pms.stages.StageExecutionResponse;
 
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -104,6 +107,8 @@ public interface PlanExecutionResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns pipeline execution details")
       })
+  @Timed
+  @ResponseMetered
   ResponseDTO<PlanExecutionResponseDto>
   runPipelineWithInputSetPipelineYaml(
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @Parameter(
@@ -196,7 +201,8 @@ public interface PlanExecutionResource {
 
   @POST
   @Path("/{identifier}/stages")
-  @ApiOperation(value = "Execute a pipeline with inputSet pipeline yaml", nickname = "runStagesWithRuntimeInputYaml")
+  @ApiOperation(value = "Execute given Stages of a Pipeline with inputSet pipeline yaml",
+      nickname = "runStagesWithRuntimeInputYaml")
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_EXECUTE)
   @Operation(operationId = "postExecuteStages", summary = "Execute given Stages of a Pipeline",
       responses =
@@ -204,7 +210,6 @@ public interface PlanExecutionResource {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "default", description = "Execute given Stages of a Pipeline with Runtime Input Yaml")
       })
-  @Hidden
   ResponseDTO<PlanExecutionResponseDto>
   runStagesWithRuntimeInputYaml(@NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier @Parameter(
                                     description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE) String accountId,
@@ -466,6 +471,8 @@ public interface PlanExecutionResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns pipeline execution details V2")
       })
+  @Timed
+  @ResponseMetered
   ResponseDTO<PlanExecutionResponseDto>
   runPipelineWithInputSetIdentifierList(
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @Parameter(
@@ -681,6 +688,8 @@ public interface PlanExecutionResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns execution details")
       })
+  @Timed
+  @ResponseMetered
   ResponseDTO<PlanExecutionResponseDto>
   retryPipelineWithInputSetPipelineYaml(
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @Parameter(

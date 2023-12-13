@@ -67,6 +67,7 @@ import io.harness.serializer.KryoSerializer;
 import io.harness.steps.StepHelper;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -94,6 +95,7 @@ public class TasRollingRollbackStepTest extends CDNGTestBase {
   @Mock private KryoSerializer kryoSerializer;
   @Mock private LogStreamingStepClientFactory logStreamingStepClientFactory;
   @Mock private InstanceInfoService instanceInfoService;
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
   @Mock private OutcomeService outcomeService;
   @Mock private TasEntityHelper tasEntityHelper;
   @Mock private ExecutionSweepingOutputService executionSweepingOutputService;
@@ -142,7 +144,7 @@ public class TasRollingRollbackStepTest extends CDNGTestBase {
     StepElementParameters stepElementParameters =
         StepElementParameters.builder().type("BasicAppSetup").spec(parameters).build();
     assertThatThrownBy(() -> tasRollingRollbackStep.validateResources(ambiance, stepElementParameters))
-        .hasMessage("CDS_TAS_NG FF is not enabled for this account. Please contact harness customer care.");
+        .hasMessage("NG_SVC_ENV_REDESIGN FF is not enabled for this account. Please contact harness customer care.");
   }
 
   private Ambiance getAmbiance() {

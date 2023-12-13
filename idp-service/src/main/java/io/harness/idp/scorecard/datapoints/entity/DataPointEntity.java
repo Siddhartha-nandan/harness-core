@@ -11,9 +11,11 @@ import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.mongo.index.CompoundMongoIndex;
+import io.harness.mongo.index.FdIndex;
 import io.harness.mongo.index.MongoIndex;
 import io.harness.ng.DbAliases;
 import io.harness.persistence.PersistentEntity;
+import io.harness.spec.server.idp.v1.model.InputDetails;
 
 import com.google.common.collect.ImmutableList;
 import dev.morphia.annotations.Entity;
@@ -48,15 +50,17 @@ public class DataPointEntity implements PersistentEntity {
   }
 
   @Id private String id;
-  private String accountIdentifier;
+  @FdIndex private String accountIdentifier;
   @Column(name = "identifier") private String identifier;
   private String name;
   private Type type;
   private String description;
+  private String detailedDescription;
   private boolean isConditional;
   private String conditionalInputValueDescription;
+  private List<InputDetails> inputDetails;
   private String dataSourceLocationIdentifier;
   private String dataSourceIdentifier;
-
+  private String outcomeExpression;
   public enum Type { NUMBER, BOOLEAN, STRING }
 }

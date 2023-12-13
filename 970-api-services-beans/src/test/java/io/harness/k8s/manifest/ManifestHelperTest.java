@@ -10,6 +10,8 @@ package io.harness.k8s.manifest;
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.exception.WingsException.ReportTarget.LOG_SYSTEM;
 import static io.harness.k8s.manifest.ManifestHelper.MAX_VALUES_EXPRESSION_RECURSION_DEPTH;
+import static io.harness.k8s.manifest.ManifestHelper.SECRET_DATA_MASK;
+import static io.harness.k8s.manifest.ManifestHelper.SECRET_STRING_DATA_MASK;
 import static io.harness.k8s.manifest.ManifestHelper.getMapFromValuesFileContent;
 import static io.harness.k8s.manifest.ManifestHelper.getValuesExpressionKeysFromMap;
 import static io.harness.k8s.manifest.ManifestHelper.processYaml;
@@ -19,6 +21,7 @@ import static io.harness.logging.LoggingInitializer.initializeLogging;
 import static io.harness.rule.OwnerRule.ABOSII;
 import static io.harness.rule.OwnerRule.ACASIAN;
 import static io.harness.rule.OwnerRule.ANSHUL;
+import static io.harness.rule.OwnerRule.BUHA;
 import static io.harness.rule.OwnerRule.PUNEET;
 
 import static java.util.Arrays.asList;
@@ -337,7 +340,24 @@ public class ManifestHelperTest extends CategoryTest {
     try {
       processYaml("object");
     } catch (KubernetesYamlException e) {
-      assertThat(ExceptionUtils.getMessage(e)).contains("Object is not a map..");
+      assertThat(ExceptionUtils.getMessage(e))
+          .contains("Spec: \n"
+              + " object\n"
+              + " can't be loaded as map.");
+    }
+  }
+
+  @Test
+  @Owner(developers = BUHA)
+  @Category(UnitTests.class)
+  public void invalidYamlObjectTest2() {
+    try {
+      processYaml("This is some dummy response");
+    } catch (KubernetesYamlException e) {
+      assertThat(ExceptionUtils.getMessage(e))
+          .contains("Spec: \n"
+              + " This is some dummy response\n"
+              + " can't be loaded as map.");
     }
   }
 
@@ -755,5 +775,65 @@ public class ManifestHelperTest extends CategoryTest {
         + "    kind: ResourceDef\n");
 
     assertThat(kubernetesResources).isNotEmpty();
+  }
+
+  @Test
+  @Owner(developers = ABOSII)
+  @Category(UnitTests.class)
+  public void testToDryRunOutput() {
+    String templateYaml = "---\n"
+        + "apiVersion: v1\n"
+        + "kind: Secret\n"
+        + "metadata:\n"
+        + "  name: dotfile-secret\n"
+        + "data:\n"
+        + "  .secret-file: __DATA_VALUE__\n"
+        + "---\n"
+        + "apiVersion: v1\n"
+        + "kind: Secret\n"
+        + "metadata:\n"
+        + "  name: dotfile-secret-string\n"
+        + "stringData:\n"
+        + "  .secret-file: '__STRING_DATA_VALUE__'\n"
+        + "---\n"
+        + "apiVersion: v1\n"
+        + "kind: Pod\n"
+        + "metadata:\n"
+        + "  name: secret-dotfiles-pod\n"
+        + "spec:\n"
+        + "  volumes:\n"
+        + "    - name: secret-volume\n"
+        + "      secret:\n"
+        + "        secretName: dotfile-secret\n"
+        + "  containers:\n"
+        + "    - name: dotfile-test-container\n"
+        + "      image: registry.k8s.io/busybox\n"
+        + "      command:\n"
+        + "        - ls\n"
+        + "        - \"-l\"\n"
+        + "        - \"/etc/secret-volume\"\n"
+        + "      volumeMounts:\n"
+        + "        - name: secret-volume\n"
+        + "          readOnly: true\n"
+        + "          mountPath: \"/etc/secret-volume\"\n"
+        + "---\n"
+        + "apiVersion: \"stable.example.com/v1\"\n"
+        + "kind: CronTab\n"
+        + "metadata:\n"
+        + "  name: my-new-cron-object\n"
+        + "spec:\n"
+        + "  cronSpec: \"* * * * */5\"\n"
+        + "  image: my-awesome-cron-image\n";
+
+    String inputYaml =
+        templateYaml.replaceAll("__DATA_VALUE__", "dmFsdWUtMg0KDQo=").replaceAll("__STRING_DATA_VALUE__", "value-2");
+    String expectedYaml = templateYaml.replaceAll("__DATA_VALUE__", SECRET_DATA_MASK)
+                              .replaceAll("__STRING_DATA_VALUE__", SECRET_STRING_DATA_MASK);
+
+    List<KubernetesResource> kubernetesResources = processYaml(inputYaml);
+
+    List<DryRunOutput> dryRunOutputList = ManifestHelper.toDryRunOutput(kubernetesResources);
+    String result = ManifestHelper.toYamlOutput(dryRunOutputList);
+    assertThat(result).isEqualTo(expectedYaml);
   }
 }

@@ -7,10 +7,15 @@
 
 package io.harness.delegate.beans.instancesync.mapper;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.delegate.beans.instancesync.ServerInstanceInfo;
 import io.harness.delegate.beans.instancesync.info.K8sServerInstanceInfo;
+import io.harness.delegate.beans.instancesync.info.K8sServerInstanceInfo.K8sServerInstanceInfoBuilder;
+import io.harness.delegate.task.helm.HelmChartInfo;
 import io.harness.k8s.model.K8sPod;
 
 import java.util.List;
@@ -19,21 +24,26 @@ import lombok.experimental.UtilityClass;
 
 @UtilityClass
 @OwnedBy(HarnessTeam.CDP)
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 public class K8sPodToServiceInstanceInfoMapper {
-  public List<ServerInstanceInfo> toServerInstanceInfoList(List<K8sPod> k8sPodList) {
-    return k8sPodList.stream()
-        .map(K8sPodToServiceInstanceInfoMapper::toServerInstanceInfo)
-        .collect(Collectors.toList());
+  public List<ServerInstanceInfo> toServerInstanceInfoList(List<K8sPod> k8sPodList, HelmChartInfo helmChartInfo) {
+    return k8sPodList.stream().map(k8sPod -> toServerInstanceInfo(k8sPod, helmChartInfo)).collect(Collectors.toList());
   }
 
-  public ServerInstanceInfo toServerInstanceInfo(K8sPod k8sPod) {
-    return K8sServerInstanceInfo.builder()
-        .name(k8sPod.getName())
-        .namespace(k8sPod.getNamespace())
-        .releaseName(k8sPod.getReleaseName())
-        .podIP(k8sPod.getPodIP())
-        .containerList(k8sPod.getContainerList())
-        .blueGreenColor(k8sPod.getColor())
-        .build();
+  private ServerInstanceInfo toServerInstanceInfo(K8sPod k8sPod, HelmChartInfo helmChartInfo) {
+    K8sServerInstanceInfoBuilder k8sServerInstanceInfoBuilder = K8sServerInstanceInfo.builder()
+                                                                    .name(k8sPod.getName())
+                                                                    .namespace(k8sPod.getNamespace())
+                                                                    .releaseName(k8sPod.getReleaseName())
+                                                                    .podIP(k8sPod.getPodIP())
+                                                                    .containerList(k8sPod.getContainerList())
+                                                                    .helmChartInfo(helmChartInfo)
+                                                                    .blueGreenColor(k8sPod.getColor())
+                                                                    .canary(k8sPod.isCanary());
+
+    if (helmChartInfo != null) {
+      k8sServerInstanceInfoBuilder.helmChartInfo(helmChartInfo);
+    }
+    return k8sServerInstanceInfoBuilder.build();
   }
 }

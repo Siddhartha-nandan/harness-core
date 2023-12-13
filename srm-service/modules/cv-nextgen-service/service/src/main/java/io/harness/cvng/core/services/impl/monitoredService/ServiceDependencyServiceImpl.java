@@ -38,14 +38,17 @@ public class ServiceDependencyServiceImpl implements ServiceDependencyService {
   @Inject private HPersistence hPersistence;
 
   @Override
-  public void updateDependencies(ProjectParams projectParams, String toMonitoredServiceIdentifier,
+  public int updateDependencies(ProjectParams projectParams, String toMonitoredServiceIdentifier,
       Set<ServiceDependencyDTO> fromMonitoredServiceIdentifiers) {
     if (isEmpty(fromMonitoredServiceIdentifiers)) {
       deleteToDependency(projectParams, toMonitoredServiceIdentifier);
-      return;
+      return 0;
     }
     List<ServiceDependency> dependencies = new ArrayList<>();
     fromMonitoredServiceIdentifiers.forEach(fromServiceIdentifier -> {
+      if (fromServiceIdentifier.getDependencyMetadata() != null) {
+        fromServiceIdentifier.getDependencyMetadata().setType(fromServiceIdentifier.getType());
+      }
       dependencies.add(ServiceDependency.builder()
                            .accountId(projectParams.getAccountIdentifier())
                            .orgIdentifier(projectParams.getOrgIdentifier())
@@ -62,7 +65,7 @@ public class ServiceDependencyServiceImpl implements ServiceDependencyService {
             .filter(ServiceDependencyKeys.projectIdentifier, projectParams.getProjectIdentifier())
             .filter(ServiceDependencyKeys.toMonitoredServiceIdentifier, toMonitoredServiceIdentifier)
             .asList();
-    executeDBOperations(dependencies, oldDependencies);
+    return executeDBOperations(dependencies, oldDependencies);
   }
 
   private void deleteToDependency(ProjectParams projectParams, String monitoredServiceIdentifier) {
@@ -75,7 +78,7 @@ public class ServiceDependencyServiceImpl implements ServiceDependencyService {
     hPersistence.delete(toServiceQuery);
   }
 
-  private void executeDBOperations(List<ServiceDependency> newDependencies, List<ServiceDependency> oldDependencies) {
+  private int executeDBOperations(List<ServiceDependency> newDependencies, List<ServiceDependency> oldDependencies) {
     Map<Key, ServiceDependency> newDependencyMap =
         newDependencies.stream().collect(Collectors.toMap(ServiceDependency::getKey, x -> x));
     Map<Key, ServiceDependency> oldDependencyMap =
@@ -89,6 +92,7 @@ public class ServiceDependencyServiceImpl implements ServiceDependencyService {
     List<ServiceDependency> createDependencies =
         createKeys.stream().map(newDependencyMap::get).collect(Collectors.toList());
     hPersistence.saveBatch(createDependencies);
+    return createKeys.size();
   }
 
   @Override
@@ -118,6 +122,7 @@ public class ServiceDependencyServiceImpl implements ServiceDependencyService {
         .map(d
             -> ServiceDependencyDTO.builder()
                    .monitoredServiceIdentifier(d.getFromMonitoredServiceIdentifier())
+                   .type(d.getServiceDependencyMetadata() == null ? null : d.getServiceDependencyMetadata().getType())
                    .dependencyMetadata(d.getServiceDependencyMetadata())
                    .build())
         .collect(Collectors.toSet());

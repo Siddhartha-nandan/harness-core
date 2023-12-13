@@ -27,13 +27,13 @@ import io.harness.beans.stages.IntegrationStageNode;
 import io.harness.beans.stages.IntegrationStageStepParametersPMS;
 import io.harness.beans.stages.SecurityStageNode;
 import io.harness.beans.steps.StepSpecTypeConstants;
-import io.harness.ci.buildstate.ConnectorUtils;
-import io.harness.ci.integrationstage.CIIntegrationStageModifier;
-import io.harness.ci.integrationstage.IntegrationStageUtils;
-import io.harness.ci.plan.creator.codebase.CodebasePlanCreator;
-import io.harness.ci.states.STOSpecStep;
-import io.harness.ci.states.SecurityStageStepPMS;
-import io.harness.ci.utils.CIStagePlanCreationUtils;
+import io.harness.ci.execution.buildstate.ConnectorUtils;
+import io.harness.ci.execution.integrationstage.CIIntegrationStageModifier;
+import io.harness.ci.execution.integrationstage.IntegrationStageUtils;
+import io.harness.ci.execution.plan.creator.codebase.CodebasePlanCreator;
+import io.harness.ci.execution.states.STOSpecStep;
+import io.harness.ci.execution.states.SecurityStageStepPMS;
+import io.harness.ci.execution.utils.CIStagePlanCreationUtils;
 import io.harness.cimanager.stages.IntegrationStageConfig;
 import io.harness.cimanager.stages.IntegrationStageConfigImpl;
 import io.harness.exception.InvalidRequestException;
@@ -52,6 +52,7 @@ import io.harness.pms.contracts.triggers.TriggerPayload;
 import io.harness.pms.execution.OrchestrationFacilitatorType;
 import io.harness.pms.execution.utils.SkipInfoUtils;
 import io.harness.pms.sdk.core.plan.PlanNode;
+import io.harness.pms.sdk.core.plan.PlanNode.PlanNodeBuilder;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
@@ -167,21 +168,23 @@ public class SecurityStagePMSPlanCreator extends AbstractStagePlanCreator<Securi
     YamlField specField =
         Preconditions.checkNotNull(ctx.getCurrentField().getNode().getField(YAMLFieldNameConstants.SPEC));
     stageParameters.specConfig(getSpecParameters(specField.getNode().getUuid(), ctx, stageNode));
-    return PlanNode.builder()
-        .uuid(StrategyUtils.getSwappedPlanNodeId(ctx, stageNode.getUuid()))
-        .name(stageNode.getName())
-        .identifier(stageNode.getIdentifier())
-        .group(StepOutcomeGroup.STAGE.name())
-        .stepParameters(stageParameters.build())
-        .stepType(getStepType(stageNode))
-        .skipCondition(SkipInfoUtils.getSkipCondition(stageNode.getSkipCondition()))
-        .whenCondition(RunInfoUtils.getRunConditionForStage(stageNode.getWhen()))
-        .facilitatorObtainment(
-            FacilitatorObtainment.newBuilder()
-                .setType(FacilitatorType.newBuilder().setType(OrchestrationFacilitatorType.CHILD).build())
-                .build())
-        .adviserObtainments(StrategyUtils.getAdviserObtainments(ctx.getCurrentField(), kryoSerializer, true))
-        .build();
+    PlanNodeBuilder planNodeBuilder =
+        PlanNode.builder()
+            .uuid(StrategyUtils.getSwappedPlanNodeId(ctx, stageNode.getUuid()))
+            .name(stageNode.getName())
+            .identifier(stageNode.getIdentifier())
+            .group(StepOutcomeGroup.STAGE.name())
+            .stepParameters(stageParameters.build())
+            .stepType(getStepType(stageNode))
+            .skipCondition(SkipInfoUtils.getSkipCondition(stageNode.getSkipCondition()))
+            .whenCondition(RunInfoUtils.getRunConditionForStage(stageNode.getWhen()))
+            .facilitatorObtainment(
+                FacilitatorObtainment.newBuilder()
+                    .setType(FacilitatorType.newBuilder().setType(OrchestrationFacilitatorType.CHILD).build())
+                    .build())
+            .adviserObtainments(StrategyUtils.getAdviserObtainments(ctx.getCurrentField(), kryoSerializer, true));
+
+    return planNodeBuilder.build();
   }
 
   private void putNewExecutionYAMLInResponseMap(YamlField executionField,

@@ -6,6 +6,7 @@
  */
 
 package io.harness.gitx;
+
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
@@ -27,6 +28,7 @@ import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.remote.client.NGRestUtils;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.Collections;
@@ -120,7 +122,8 @@ public class GitXSettingsHelper {
     return StoreType.valueOf(defaultStoreTypeForEntities);
   }
 
-  private String getDefaultConnectorForGitX(String accountIdentifier, String orgIdentifier, String projIdentifier) {
+  @VisibleForTesting
+  String getDefaultConnectorForGitX(String accountIdentifier, String orgIdentifier, String projIdentifier) {
     return NGRestUtils
         .getResponse(ngSettingsClient.getSetting(
             GitSyncConstants.DEFAULT_CONNECTOR_FOR_GIT_EXPERIENCE, accountIdentifier, orgIdentifier, projIdentifier))
@@ -139,6 +142,9 @@ public class GitXSettingsHelper {
   }
 
   public List<String> getGitRepoAllowlist(String accountIdentifier, String orgIdentifier, String projectIdentifier) {
+    orgIdentifier = Strings.emptyToNull(orgIdentifier);
+    projectIdentifier = Strings.emptyToNull(projectIdentifier);
+
     String repoAllowlist =
         NGRestUtils
             .getResponse(ngSettingsClient.getSetting(GitSyncConstants.REPO_ALLOWLIST_FOR_GIT_EXPERIENCE,
@@ -154,7 +160,8 @@ public class GitXSettingsHelper {
     return HarnessStringUtils.removeLeadingAndTrailingSpacesInListOfStrings(listOfRepos);
   }
 
-  private String getDefaultRepoForGitX(String accountIdentifier, String orgIdentifier, String projIdentifier) {
+  @VisibleForTesting
+  String getDefaultRepoForGitX(String accountIdentifier, String orgIdentifier, String projIdentifier) {
     return NGRestUtils
         .getResponse(ngSettingsClient.getSetting(
             GitSyncConstants.DEFAULT_REPO_FOR_GIT_EXPERIENCE, accountIdentifier, orgIdentifier, projIdentifier))

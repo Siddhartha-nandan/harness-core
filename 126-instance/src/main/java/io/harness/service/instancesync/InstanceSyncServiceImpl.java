@@ -364,7 +364,7 @@ public class InstanceSyncServiceImpl implements InstanceSyncService {
             infrastructureMappingService.getByInfrastructureMappingId(
                 instanceSyncPerpetualTaskInfoDTO.getInfrastructureMappingId());
         if (!infrastructureMappingDTO.isPresent()) {
-          log.error(
+          log.warn(
               "Infrastructure mapping not found for {}", instanceSyncPerpetualTaskInfoDTO.getInfrastructureMappingId());
           // delete perpetual task as well as instance sync perpetual task info record
           instanceSyncHelper.cleanUpInstanceSyncPerpetualTaskInfo(instanceSyncPerpetualTaskInfoDTO, false);
@@ -469,7 +469,7 @@ public class InstanceSyncServiceImpl implements InstanceSyncService {
             infrastructureMappingService.getByInfrastructureMappingId(
                 instanceSyncPerpetualTaskInfoDTO.getInfrastructureMappingId());
         if (infrastructureMappingDTO.isEmpty()) {
-          log.error(
+          log.warn(
               "Infrastructure mapping not found for {}", instanceSyncPerpetualTaskInfoDTO.getInfrastructureMappingId());
           // delete instance sync perpetual task info record
           instanceSyncHelper.cleanUpOnlyInstanceSyncPerpetualTaskInfo(instanceSyncPerpetualTaskInfoDTO);
@@ -586,7 +586,7 @@ public class InstanceSyncServiceImpl implements InstanceSyncService {
           infrastructureMappingService.getByInfrastructureMappingId(
               instanceSyncPerpetualTaskInfoDTO.getInfrastructureMappingId());
       if (infrastructureMappingDTOOptional.isEmpty()) {
-        log.error(
+        log.warn(
             "Infrastructure mapping not found for {}", instanceSyncPerpetualTaskInfoDTO.getInfrastructureMappingId());
         continue;
       }
@@ -745,7 +745,7 @@ public class InstanceSyncServiceImpl implements InstanceSyncService {
     Sets.SetView<String> instancesToBeDeleted =
         Sets.difference(instancesInDBMap.keySet(), instanceInfosFromServerMap.keySet());
 
-    log.info("Instances to be deleted: {}", instancesToBeDeleted);
+    log.debug("Instances to be deleted: {}", instancesToBeDeleted.size());
 
     // Add instances to be deleted to the global map
     instancesToBeModified.get(OperationsOnInstances.DELETE)

@@ -55,6 +55,7 @@ import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
 import io.harness.delegate.beans.pcf.TasApplicationInfo;
 import io.harness.delegate.cf.PcfCommandTaskBaseHelper;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
 import io.harness.delegate.task.cf.CfCommandTaskHelperNG;
 import io.harness.delegate.task.cf.TasArtifactDownloadContext;
 import io.harness.delegate.task.cf.TasArtifactDownloadResponse;
@@ -173,6 +174,11 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
 
       artifactFile = downloadArtifactFile(blueGreenSetupRequestNG, workingDirectory, logCallback);
 
+      ArtifactBundleDetails artifactBundleDetails = blueGreenSetupRequestNG.getArtifactBundleDetails();
+
+      String artifactPath =
+          tasTaskHelperBase.getArtifactPath(artifactBundleDetails, artifactFile, workingDirectory, logCallback);
+
       deleteOlderApplications(previousReleases, cfRequestConfig, blueGreenSetupRequestNG, cfAppAutoscalarRequestData,
           logCallback, activeApplicationInfo, inActiveApplicationInfo);
 
@@ -184,7 +190,7 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
           CfCreateApplicationRequestData.builder()
               .cfRequestConfig(updatePcfRequestConfig(blueGreenSetupRequestNG, cfRequestConfig,
                   blueGreenSetupRequestNG.getReleaseNamePrefix() + INACTIVE_APP_NAME_SUFFIX))
-              .artifactPath(artifactFile == null ? null : artifactFile.getAbsolutePath())
+              .artifactPath(artifactPath)
               .configPathVar(workingDirectory.getAbsolutePath())
               .newReleaseName(blueGreenSetupRequestNG.getReleaseNamePrefix() + INACTIVE_APP_NAME_SUFFIX)
               .pcfManifestFileData(pcfManifestFileData)
@@ -254,10 +260,11 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
             "Revert not required as no application got created or renamed", ERROR, CommandExecutionStatus.FAILURE);
       }
     } catch (Exception e) {
-      log.error(CLOUD_FOUNDRY_LOG_PREFIX + "Exception in reverting app names", e);
-      logCallback.saveExecutionLog(format("\n\n ----------  Failed to revert app names : %s",
-                                       ExceptionMessageSanitizer.sanitizeMessage(e.getMessage())),
-          ERROR, CommandExecutionStatus.FAILURE);
+      Exception sanitizedException = ExceptionMessageSanitizer.sanitizeException(e);
+      log.error(CLOUD_FOUNDRY_LOG_PREFIX + "Exception in reverting app names", sanitizedException);
+      logCallback.saveExecutionLog(
+          format("\n\n ----------  Failed to revert app names : %s", sanitizedException.getMessage()), ERROR,
+          CommandExecutionStatus.FAILURE);
     }
   }
 
@@ -292,6 +299,7 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
         .spaceName(cfRequestConfig.getSpaceName())
         .userName(cfRequestConfig.getUserName())
         .password(cfRequestConfig.getPassword())
+        .refreshToken(cfRequestConfig.getRefreshToken())
         .endpointUrl(cfRequestConfig.getEndpointUrl())
         .manifestYaml(cfRequestConfig.getManifestYaml())
         .desiredCount(cfRequestConfig.getDesiredCount())
@@ -313,6 +321,7 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
     return CfRequestConfig.builder()
         .userName(String.valueOf(cfConfig.getUserName()))
         .password(String.valueOf(cfConfig.getPassword()))
+        .refreshToken(cfConfig.getRefreshToken() != null ? String.valueOf(cfConfig.getRefreshToken()) : null)
         .endpointUrl(cfConfig.getEndpointUrl())
         .orgName(blueGreenSetupRequest.getTasInfraConfig().getOrganization())
         .spaceName(blueGreenSetupRequest.getTasInfraConfig().getSpace())
@@ -343,8 +352,10 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
     try {
       isAutoScalarEnabled = cfDeploymentManager.checkIfAppHasAutoscalarEnabled(cfAppAutoscalarRequestData, logCallback);
     } catch (PivotalClientApiException e) {
+      Exception sanitizedException = ExceptionMessageSanitizer.sanitizeException(e);
       logCallback.saveExecutionLog(
           "Failed while fetching autoscalar state: " + encodeColor(currentActiveApplication.getName()), LogLevel.ERROR);
+      logCallback.saveExecutionLog(sanitizedException.getMessage(), LogLevel.ERROR);
     }
     return TasApplicationInfo.builder()
         .applicationName(currentActiveApplication.getName())
@@ -378,8 +389,10 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
     try {
       isAutoScalarEnabled = cfDeploymentManager.checkIfAppHasAutoscalarEnabled(cfAppAutoscalarRequestData, logCallback);
     } catch (PivotalClientApiException e) {
+      Exception sanitizedException = ExceptionMessageSanitizer.sanitizeException(e);
       logCallback.saveExecutionLog(
           "Failed while fetching autoscalar state: " + encodeColor(inActiveApplication.getName()), LogLevel.ERROR);
+      logCallback.saveExecutionLog(sanitizedException.getMessage(), LogLevel.ERROR);
     }
     return TasApplicationInfo.builder()
         .applicationName(inActiveApplication.getName())
@@ -513,9 +526,11 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
       cfDeploymentManager.deleteApplication(cfRequestConfig);
       //      appsDeleted.add(applicationSummary.getName());
     } catch (PivotalClientApiException e) {
+      Exception sanitizedException = ExceptionMessageSanitizer.sanitizeException(e);
       executionLogCallback.saveExecutionLog("Failed while deleting application: "
               + encodeColor(applicationSummary.getName()) + ", Continuing for next one",
           LogLevel.ERROR);
+      executionLogCallback.saveExecutionLog(sanitizedException.getMessage(), LogLevel.ERROR);
     }
   }
   void downsizeApplicationToZero(ApplicationSummary applicationSummary, CfRequestConfig cfRequestConfig,
@@ -549,7 +564,9 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
             cfRequestConfig, applicationDetail.getUrls(), executionLogCallback);
       }
     } catch (PivotalClientApiException exception) {
-      log.warn(ExceptionMessageSanitizer.sanitizeException(exception).getMessage());
+      Exception sanitizedException = ExceptionMessageSanitizer.sanitizeException(exception);
+      log.warn(sanitizedException.getMessage());
+      executionLogCallback.saveExecutionLog(sanitizedException.getMessage(), LogLevel.WARN);
     }
   }
 
@@ -559,7 +576,9 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
       // Remove Env Variable "HARNESS__STATUS__IDENTIFIER"
       cfDeploymentManager.unsetEnvironmentVariableForAppStatus(cfRequestConfig, executionLogCallback);
     } catch (PivotalClientApiException exception) {
-      log.warn(ExceptionMessageSanitizer.sanitizeException(exception).getMessage());
+      Exception sanitizedException = ExceptionMessageSanitizer.sanitizeException(exception);
+      log.warn(sanitizedException.getMessage());
+      executionLogCallback.saveExecutionLog(sanitizedException.getMessage(), LogLevel.WARN);
     }
   }
 
@@ -567,7 +586,9 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
     try {
       cfDeploymentManager.resizeApplication(cfRequestConfig, executionLogCallback);
     } catch (PivotalClientApiException exception) {
-      log.warn(ExceptionMessageSanitizer.sanitizeException(exception).getMessage());
+      Exception sanitizedException = ExceptionMessageSanitizer.sanitizeException(exception);
+      log.warn(sanitizedException.getMessage());
+      executionLogCallback.saveExecutionLog(sanitizedException.getMessage(), LogLevel.WARN);
     }
   }
 
@@ -601,6 +622,7 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
     } catch (Exception e) {
       Exception sanitizedException = ExceptionMessageSanitizer.sanitizeException(e);
       log.warn("Failed to remove temp files created", sanitizedException);
+      Misc.logAllMessages(sanitizedException, executionLogCallback);
     }
   }
 
@@ -608,6 +630,9 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
       CfBlueGreenSetupRequestNG blueGreenSetupRequestNG, CfRequestConfig cfRequestConfig, LogCallback logCallback,
       TasApplicationInfo activeApplicationInfo, TasApplicationInfo inActiveApplicationInfo)
       throws PivotalClientApiException {
+    if (!shouldRenameInactiveApp(blueGreenSetupRequestNG.getOlderActiveVersionCountToKeep())) {
+      return null;
+    }
     if (inActiveApplicationInfo == null || isEmpty(inActiveApplicationInfo.getApplicationGuid())
         || previousReleases.size() == 1) {
       return Collections.emptyList();
@@ -811,5 +836,12 @@ public class TasBlueGreenSetupTaskHandler extends CfCommandTaskNGHandler {
     executionLogCallback.saveExecutionLog("# App Details: ");
     pcfCommandTaskBaseHelper.printApplicationDetail(newApplication, executionLogCallback);
     return newApplication;
+  }
+
+  private boolean shouldRenameInactiveApp(Integer olderActiveVersionsCountToKeep) {
+    if (olderActiveVersionsCountToKeep == null) {
+      return true;
+    }
+    return olderActiveVersionsCountToKeep != 0;
   }
 }

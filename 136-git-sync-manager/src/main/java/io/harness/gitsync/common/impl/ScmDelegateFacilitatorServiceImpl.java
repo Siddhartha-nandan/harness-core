@@ -91,12 +91,14 @@ import io.harness.gitsync.common.dtos.UpdateGitFileRequestDTO;
 import io.harness.gitsync.common.dtos.UserDetailsRequestDTO;
 import io.harness.gitsync.common.dtos.UserDetailsResponseDTO;
 import io.harness.gitsync.common.helper.FileBatchResponseMapper;
-import io.harness.gitsync.common.helper.GitSyncConnectorHelper;
 import io.harness.gitsync.common.helper.GitSyncUtils;
 import io.harness.gitsync.common.helper.PRFileListMapper;
 import io.harness.gitsync.common.helper.UserProfileHelper;
+import io.harness.gitsync.common.helper.UserSourceCodeManagerHelper;
+import io.harness.gitsync.common.service.GitSyncConnectorService;
 import io.harness.gitsync.common.service.YamlGitConfigService;
 import io.harness.impl.ScmResponseStatusUtils;
+import io.harness.logging.ResponseTimeRecorder;
 import io.harness.manage.GlobalContextManager;
 import io.harness.ng.beans.PageRequest;
 import io.harness.ng.core.BaseNGAccess;
@@ -135,6 +137,7 @@ import com.google.inject.name.Named;
 import com.google.protobuf.InvalidProtocolBufferException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -151,7 +154,7 @@ import org.apache.commons.lang3.tuple.Pair;
 public class ScmDelegateFacilitatorServiceImpl extends AbstractScmClientFacilitatorServiceImpl {
   private SecretManagerClientService secretManagerClientService;
   private DelegateGrpcClientWrapper delegateGrpcClientWrapper;
-  private GitSyncConnectorHelper gitSyncConnectorHelper;
+  private GitSyncConnectorService gitSyncConnectorService;
   private final String errorFormat =
       "Unexpected error occurred while doing scm operation for %s for accountId [%s], orgId [%s], projectId [%s]";
   private final long DEFAULT_DELEGATE_TASK_TIMEOUT_In_SECONDS = 30;
@@ -160,12 +163,13 @@ public class ScmDelegateFacilitatorServiceImpl extends AbstractScmClientFacilita
   public ScmDelegateFacilitatorServiceImpl(@Named("connectorDecoratorService") ConnectorService connectorService,
       ConnectorErrorMessagesHelper connectorErrorMessagesHelper, YamlGitConfigService yamlGitConfigService,
       SecretManagerClientService secretManagerClientService, DelegateGrpcClientWrapper delegateGrpcClientWrapper,
-      UserProfileHelper userProfileHelper, GitSyncConnectorHelper gitSyncConnectorHelper) {
+      UserProfileHelper userProfileHelper, GitSyncConnectorService gitSyncConnectorService,
+      UserSourceCodeManagerHelper userSourceCodeManagerHelper) {
     super(connectorService, connectorErrorMessagesHelper, yamlGitConfigService, userProfileHelper,
-        gitSyncConnectorHelper);
+        gitSyncConnectorService, userSourceCodeManagerHelper);
     this.secretManagerClientService = secretManagerClientService;
     this.delegateGrpcClientWrapper = delegateGrpcClientWrapper;
-    this.gitSyncConnectorHelper = gitSyncConnectorHelper;
+    this.gitSyncConnectorService = gitSyncConnectorService;
   }
 
   @Override
@@ -221,7 +225,7 @@ public class ScmDelegateFacilitatorServiceImpl extends AbstractScmClientFacilita
   @Override
   public FileContent getFile(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       String connectorRef, String repoName, String branchName, String filePath, String commitId) {
-    ScmConnector connector = gitSyncConnectorHelper.getScmConnectorForGivenRepo(
+    ScmConnector connector = gitSyncConnectorService.getScmConnectorForGivenRepo(
         accountIdentifier, orgIdentifier, projectIdentifier, connectorRef, repoName);
     final List<EncryptedDataDetail> encryptionDetails =
         getEncryptedDataDetailsForNewGitX(accountIdentifier, orgIdentifier, projectIdentifier, connector);
@@ -243,7 +247,7 @@ public class ScmDelegateFacilitatorServiceImpl extends AbstractScmClientFacilita
   @Override
   public CreatePRResponse createPullRequest(
       Scope scope, String connectorRef, String repoName, String sourceBranch, String targetBranch, String title) {
-    final ScmConnector decryptedConnector = gitSyncConnectorHelper.getScmConnectorForGivenRepo(
+    final ScmConnector decryptedConnector = gitSyncConnectorService.getScmConnectorForGivenRepo(
         scope.getAccountIdentifier(), scope.getOrgIdentifier(), scope.getProjectIdentifier(), connectorRef, repoName);
     final List<EncryptedDataDetail> encryptionDetails = getEncryptedDataDetailsForNewGitX(
         scope.getAccountIdentifier(), scope.getOrgIdentifier(), scope.getProjectIdentifier(), decryptedConnector);
@@ -432,6 +436,30 @@ public class ScmDelegateFacilitatorServiceImpl extends AbstractScmClientFacilita
     DelegateTaskRequest delegateTaskRequest =
         getDelegateTaskRequest(yamlGitConfigDTO.getAccountIdentifier(), yamlGitConfigDTO.getOrganizationIdentifier(),
             yamlGitConfigDTO.getProjectIdentifier(), scmGitRefTaskParams, TaskType.SCM_GIT_REF_TASK);
+    final DelegateResponseData delegateResponseData = executeDelegateSyncTask(delegateTaskRequest);
+    ScmGitRefTaskResponseData scmGitRefTaskResponseData = (ScmGitRefTaskResponseData) delegateResponseData;
+    try {
+      return PRFileListMapper.toGitDiffResultFileListDTO(
+          CompareCommitsResponse.parseFrom(scmGitRefTaskResponseData.getCompareCommitsResponse()).getFilesList());
+    } catch (InvalidProtocolBufferException e) {
+      throw new UnexpectedException("Unexpected error occurred while doing scm operation");
+    }
+  }
+
+  @Override
+  public GitDiffResultFileListDTO listCommitsDiffFiles(
+      Scope scope, ScmConnector scmConnector, String initialCommitId, String finalCommitId) {
+    final List<EncryptedDataDetail> encryptionDetails = getEncryptedDataDetails(
+        scope.getAccountIdentifier(), scope.getOrgIdentifier(), scope.getProjectIdentifier(), scmConnector);
+    final ScmGitRefTaskParams scmGitRefTaskParams = ScmGitRefTaskParams.builder()
+                                                        .gitRefType(GitRefType.COMPARE_COMMITS)
+                                                        .initialCommitId(initialCommitId)
+                                                        .finalCommitId(finalCommitId)
+                                                        .scmConnector(scmConnector)
+                                                        .encryptedDataDetails(encryptionDetails)
+                                                        .build();
+    DelegateTaskRequest delegateTaskRequest = getDelegateTaskRequest(scope.getAccountIdentifier(),
+        scope.getOrgIdentifier(), scope.getProjectIdentifier(), scmGitRefTaskParams, TaskType.SCM_GIT_REF_TASK);
     final DelegateResponseData delegateResponseData = executeDelegateSyncTask(delegateTaskRequest);
     ScmGitRefTaskResponseData scmGitRefTaskResponseData = (ScmGitRefTaskResponseData) delegateResponseData;
     try {
@@ -792,8 +820,8 @@ public class ScmDelegateFacilitatorServiceImpl extends AbstractScmClientFacilita
     setUserGitCredsInConnector(scope.getAccountIdentifier(), connectorDTO);
     final List<EncryptedDataDetail> encryptionDetails = getEncryptedDataDetailsForNewGitX(
         scope.getAccountIdentifier(), scope.getOrgIdentifier(), scope.getProjectIdentifier(), connectorDTO);
-    GitFileDetails gitFileDetails = getGitFileDetails(
-        createGitFileRequestDTO, gitSyncConnectorHelper.getUserDetails(scope.getAccountIdentifier(), connectorDTO));
+    GitFileDetails gitFileDetails =
+        getGitFileDetails(createGitFileRequestDTO, getUserDetails(scope.getAccountIdentifier(), connectorDTO));
     ScmPushTaskParams scmPushTaskParams = ScmPushTaskParams.builder()
                                               .useGitClient(createGitFileRequestDTO.isUseGitClient())
                                               .changeType(ChangeType.ADD_V2)
@@ -825,8 +853,8 @@ public class ScmDelegateFacilitatorServiceImpl extends AbstractScmClientFacilita
     setUserGitCredsInConnector(scope.getAccountIdentifier(), connectorDTO);
     final List<EncryptedDataDetail> encryptionDetails = getEncryptedDataDetailsForNewGitX(
         scope.getAccountIdentifier(), scope.getOrgIdentifier(), scope.getProjectIdentifier(), connectorDTO);
-    GitFileDetails gitFileDetails = getGitFileDetails(
-        updateGitFileRequestDTO, gitSyncConnectorHelper.getUserDetails(scope.getAccountIdentifier(), connectorDTO));
+    GitFileDetails gitFileDetails =
+        getGitFileDetails(updateGitFileRequestDTO, getUserDetails(scope.getAccountIdentifier(), connectorDTO));
     ScmPushTaskParams scmPushTaskParams = ScmPushTaskParams.builder()
                                               .useGitClient(updateGitFileRequestDTO.isUseGitClient())
                                               .changeType(ChangeType.UPDATE_V2)
@@ -952,18 +980,37 @@ public class ScmDelegateFacilitatorServiceImpl extends AbstractScmClientFacilita
 
   @Override
   public GitFileBatchResponse getFileBatch(GitFileBatchRequest gitFileBatchRequest) {
-    ScmBatchGetFileTaskParams scmBatchGetFileTaskParams = getScmBatchGetFileTaskParams(gitFileBatchRequest);
-    Scope eligibleDelegatesScope = getEligibleScopeOfDelegates(gitFileBatchRequest);
-    DelegateTaskRequest delegateTaskRequest = getDelegateTaskRequest(eligibleDelegatesScope.getAccountIdentifier(),
-        eligibleDelegatesScope.getOrgIdentifier(), eligibleDelegatesScope.getProjectIdentifier(),
-        scmBatchGetFileTaskParams, TaskType.SCM_BATCH_GET_FILE_TASK, 120);
-    final DelegateResponseData delegateResponseData = executeDelegateSyncTaskV2(delegateTaskRequest);
-    ScmBatchGetFileTaskResponseData scmBatchGetFileTaskResponseData =
-        (ScmBatchGetFileTaskResponseData) delegateResponseData;
-    return GitFileBatchResponse.builder()
-        .getBatchFileRequestIdentifierGitFileResponseMap(
-            scmBatchGetFileTaskResponseData.getGetBatchFileRequestIdentifierGitFileResponseMap())
-        .build();
+    Map<GetBatchFileRequestIdentifier, GitFileResponse> gitFileResponseMap = new HashMap<>();
+
+    List<ScmBatchGetFileTaskParams> scmBatchGetFileTaskParams = getScmBatchGetFileTaskParams(gitFileBatchRequest);
+    log.info(String.format("Fetching files in %s batches", scmBatchGetFileTaskParams.size()));
+    scmBatchGetFileTaskParams.forEach(gitFileTaskParams -> {
+      Scope connectorScope = gitFileTaskParams.getGetFileTaskParamsPerConnectorList()
+                                 .get(0)
+                                 .getConnectorDecryptionParams()
+                                 .getConnectorScope();
+      DelegateTaskRequest delegateTaskRequest =
+          getDelegateTaskRequest(connectorScope.getAccountIdentifier(), connectorScope.getOrgIdentifier(),
+              connectorScope.getProjectIdentifier(), gitFileTaskParams, TaskType.SCM_BATCH_GET_FILE_TASK, 120);
+      try {
+        logFileBatch(gitFileTaskParams);
+        final DelegateResponseData delegateResponseData = executeDelegateSyncTaskV2(delegateTaskRequest);
+        gitFileResponseMap.putAll(((ScmBatchGetFileTaskResponseData) delegateResponseData)
+                                      .getGetBatchFileRequestIdentifierGitFileResponseMap());
+      } catch (Exception exception) {
+        log.error("Faced exception while fetching a batch of files", exception);
+        Map<GetBatchFileRequestIdentifier, GitFileResponse> errorResponse = new HashMap<>();
+        gitFileTaskParams.getGetFileTaskParamsPerConnectorList().forEach(params -> {
+          params.getGitFileLocationDetailsMap().forEach((fileIdentifier, fileLocationDetails) -> {
+            errorResponse.put(
+                fileIdentifier, GitFileResponse.builder().error(exception.getMessage()).statusCode(500).build());
+          });
+        });
+        gitFileResponseMap.putAll(errorResponse);
+      }
+    });
+
+    return GitFileBatchResponse.builder().getBatchFileRequestIdentifierGitFileResponseMap(gitFileResponseMap).build();
   }
 
   // ------------------------------- PRIVATE METHODS -------------------------------
@@ -1090,36 +1137,43 @@ public class ScmDelegateFacilitatorServiceImpl extends AbstractScmClientFacilita
   private DelegateResponseData executeDelegateSyncTaskV2(DelegateTaskRequest delegateTaskRequest) {
     final DelegateResponseData delegateResponseData;
     String defaultDelegateErrorMessage = "Faced issue while performing delegate task for the required git operation.";
-    try {
+    try (ResponseTimeRecorder ignore = new ResponseTimeRecorder("Gitx Delegate Task Execution")) {
       delegateResponseData = delegateGrpcClientWrapper.executeSyncTaskV2(delegateTaskRequest);
     } catch (DelegateServiceDriverException ex) {
       log.error("Error occurred while executing delegate task.", ex);
-      throw new ScmDelegateException(defaultDelegateErrorMessage);
+      String errorMessage = defaultDelegateErrorMessage + " : " + ex.getMessage();
+      throw new ScmDelegateException(errorMessage);
     }
 
     if (delegateResponseData instanceof ErrorNotifyResponseData) {
       ErrorNotifyResponseData errorNotifyResponseData = (ErrorNotifyResponseData) delegateResponseData;
       log.error("Got Error Response from Delegate. {}", errorNotifyResponseData.getErrorMessage(),
           errorNotifyResponseData.getException());
-      throw new ScmDelegateException(defaultDelegateErrorMessage);
+      String errorMessage = defaultDelegateErrorMessage + " : " + errorNotifyResponseData.getErrorMessage();
+      throw new ScmDelegateException(errorMessage);
     }
     return delegateResponseData;
   }
 
   // Group files per connector to optimize on payload and pass it as task params to delegate task
   @VisibleForTesting
-  ScmBatchGetFileTaskParams getScmBatchGetFileTaskParams(GitFileBatchRequest gitFileBatchRequest) {
+  List<ScmBatchGetFileTaskParams> getScmBatchGetFileTaskParams(GitFileBatchRequest gitFileBatchRequest) {
+    List<ScmBatchGetFileTaskParams> scmBatchGetFileTaskParamsList = new ArrayList<>();
     Map<ConnectorDetails, Pair<ScmConnector, List<EncryptedDataDetail>>> connectorDetailsToEncryptedDataDetailsMapping =
         new HashMap<>();
     Map<ConnectorDetails, Map<GetBatchFileRequestIdentifier, GitFileLocationDetails>>
         connectorDetailsToFileLocationMapping = new HashMap<>();
 
     gitFileBatchRequest.getGetBatchFileRequestIdentifierGitFileRequestV2Map().forEach((identifier, request) -> {
-      ConnectorDetails key = ConnectorDetails.builder()
-                                 .scope(request.getScope())
-                                 .connectorRef(request.getConnectorRef())
-                                 .repo(request.getRepo())
-                                 .build();
+      ConnectorDetails key =
+          ConnectorDetails
+              .builder()
+              // It is important to get exact scope for connector as it later also defines what
+              // different scope of delegates are eligible for the task
+              .scope(GitSyncUtils.getApplicableConnectorScope(request.getScope(), request.getConnectorRef()))
+              .connectorRef(request.getConnectorRef())
+              .repo(request.getRepo())
+              .build();
       populateScmConnectorEncryptionDetailsMap(
           key, connectorDetailsToEncryptedDataDetailsMapping, request.getScope(), request.getScmConnector());
       GitFileLocationDetails gitFileLocationDetails = getGitFileLocationDetails(request);
@@ -1128,9 +1182,12 @@ public class ScmDelegateFacilitatorServiceImpl extends AbstractScmClientFacilita
 
     List<GetFileTaskParamsPerConnector> getFileTaskParamsPerConnectorList = prepareGetFileTaskParamsPerConnectorList(
         connectorDetailsToEncryptedDataDetailsMapping, connectorDetailsToFileLocationMapping);
-    return ScmBatchGetFileTaskParams.builder()
-        .getFileTaskParamsPerConnectorList(getFileTaskParamsPerConnectorList)
-        .build();
+    getFileTaskParamsPerConnectorList.forEach(gitFileTaskParams -> {
+      scmBatchGetFileTaskParamsList.add(ScmBatchGetFileTaskParams.builder()
+                                            .getFileTaskParamsPerConnectorList(Arrays.asList(gitFileTaskParams))
+                                            .build());
+    });
+    return scmBatchGetFileTaskParamsList;
   }
 
   private GitFileLocationDetails getGitFileLocationDetails(GitFileRequestV2 gitFileRequest) {
@@ -1186,6 +1243,7 @@ public class ScmDelegateFacilitatorServiceImpl extends AbstractScmClientFacilita
               .connectorDecryptionParams(ConnectorDecryptionParams.builder()
                                              .encryptedDataDetails(scmConnectorEncryptionDetails.getValue())
                                              .scmConnector(scmConnectorEncryptionDetails.getKey())
+                                             .connectorScope(connectorDetails.getScope())
                                              .build())
               .gitFileLocationDetailsMap(connectorDetailsToFileLocationMapping.get(connectorDetails))
               .build();
@@ -1226,7 +1284,7 @@ public class ScmDelegateFacilitatorServiceImpl extends AbstractScmClientFacilita
   }
 
   private void setUserGitCredsInConnector(String accountIdentifier, ScmConnector connectorDTO) {
-    gitSyncConnectorHelper.setUserGitCredsInConnectorIfPresent(accountIdentifier, connectorDTO);
+    setUserGitCredsInConnectorIfPresent(accountIdentifier, connectorDTO);
   }
 
   @Override
@@ -1251,5 +1309,15 @@ public class ScmDelegateFacilitatorServiceImpl extends AbstractScmClientFacilita
       return BranchFilterDelegateTaskParams.builder().build();
     }
     return BranchFilterDelegateTaskParams.builder().branchName(branchFilterParamsDTO.getBranchName()).build();
+  }
+
+  private void logFileBatch(ScmBatchGetFileTaskParams gitFileTaskParams) {
+    Set<GetBatchFileRequestIdentifier> requestIdentifierSet =
+        gitFileTaskParams.getGetFileTaskParamsPerConnectorList().get(0).getGitFileLocationDetailsMap().keySet();
+    String requestIdentifiersAsString = "";
+    for (GetBatchFileRequestIdentifier requestIdentifier : requestIdentifierSet) {
+      requestIdentifiersAsString += requestIdentifier.getIdentifier() + " , ";
+    }
+    log.info("Initiating delegate operation for fetching files : {}", requestIdentifiersAsString);
   }
 }

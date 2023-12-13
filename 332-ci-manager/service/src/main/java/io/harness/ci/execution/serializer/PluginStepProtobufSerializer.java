@@ -5,7 +5,7 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.serializer;
+package io.harness.ci.execution.serializer;
 
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveJsonNodeMapParameter;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_MACHINE;
@@ -28,6 +28,7 @@ import io.harness.beans.yaml.extended.reports.JUnitTestReport;
 import io.harness.beans.yaml.extended.reports.UnitTestReport;
 import io.harness.beans.yaml.extended.reports.UnitTestReportType;
 import io.harness.callback.DelegateCallbackToken;
+import io.harness.ci.serializer.ProtobufStepSerializer;
 import io.harness.exception.ngexception.CIStageExecutionException;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.yaml.ParameterField;
@@ -71,8 +72,7 @@ public class PluginStepProtobufSerializer implements ProtobufStepSerializer<Plug
     Map<String, JsonNode> settings =
         resolveJsonNodeMapParameter("settings", "Plugin", identifier, pluginStepInfo.getSettings(), false);
     Map<String, String> envVarMap = new HashMap<>();
-    if (executionSource != null && executionSource.getType() == ExecutionSource.Type.MANUAL
-        && identifier.equals(GIT_CLONE_STEP_ID) && settings != null) {
+    if (executionSource != null && identifier.equals(GIT_CLONE_STEP_ID) && settings != null) {
       resolveGitCloneDepth(settings, executionSource);
     }
     if (!isEmpty(settings)) {
@@ -120,14 +120,17 @@ public class PluginStepProtobufSerializer implements ProtobufStepSerializer<Plug
   }
 
   private void resolveGitCloneDepth(Map<String, JsonNode> settings, ExecutionSource executionSource) {
-    ManualExecutionSource manualExecutionSource = (ManualExecutionSource) executionSource;
-    if (isNotEmpty(manualExecutionSource.getBranch()) || isNotEmpty(manualExecutionSource.getTag())) {
-      if (!settings.containsKey(GIT_CLONE_DEPTH_ATTRIBUTE)) {
-        settings.put(GIT_CLONE_DEPTH_ATTRIBUTE, JsonNodeFactory.instance.textNode(GIT_CLONE_MANUAL_DEPTH.toString()));
+    if (executionSource instanceof ManualExecutionSource) {
+      ManualExecutionSource manualExecutionSource = (ManualExecutionSource) executionSource;
+      if (isNotEmpty(manualExecutionSource.getBranch()) || isNotEmpty(manualExecutionSource.getTag())) {
+        if (!settings.containsKey(GIT_CLONE_DEPTH_ATTRIBUTE)) {
+          settings.put(GIT_CLONE_DEPTH_ATTRIBUTE, JsonNodeFactory.instance.textNode(GIT_CLONE_MANUAL_DEPTH.toString()));
+        }
       }
-      if (settings.get(GIT_CLONE_DEPTH_ATTRIBUTE).asText().equals("0")) {
-        settings.remove(GIT_CLONE_DEPTH_ATTRIBUTE);
-      }
+    }
+    if (settings.get(GIT_CLONE_DEPTH_ATTRIBUTE) != null
+        && settings.get(GIT_CLONE_DEPTH_ATTRIBUTE).asText().equals("0")) {
+      settings.remove(GIT_CLONE_DEPTH_ATTRIBUTE);
     }
   }
 }

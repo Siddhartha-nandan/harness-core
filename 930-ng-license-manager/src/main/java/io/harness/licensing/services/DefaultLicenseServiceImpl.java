@@ -9,6 +9,12 @@ package io.harness.licensing.services;
 
 import static io.harness.configuration.DeployMode.DEPLOY_MODE;
 import static io.harness.configuration.DeployVariant.DEPLOY_VERSION;
+import static io.harness.eventsframework.EventsFrameworkConstants.MODULE_LICENSE;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ACTION;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.CREATE_ACTION;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.DELETE_ACTION;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ENTITY_TYPE;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.UPDATE_ACTION;
 import static io.harness.licensing.LicenseModule.LICENSE_CACHE_NAMESPACE;
 import static io.harness.licensing.interfaces.ModuleLicenseImpl.TRIAL_DURATION;
 import static io.harness.remote.client.CGRestUtils.getResponse;
@@ -22,6 +28,10 @@ import io.harness.ccm.license.CeLicenseInfoDTO;
 import io.harness.ccm.license.remote.CeLicenseClient;
 import io.harness.configuration.DeployMode;
 import io.harness.configuration.DeployVariant;
+import io.harness.eventsframework.api.EventsFrameworkDownException;
+import io.harness.eventsframework.api.Producer;
+import io.harness.eventsframework.producer.Message;
+import io.harness.eventsframework.schemas.entity_crud.modulelicense.ModuleLicenseEntityChangeDTO;
 import io.harness.exception.InvalidRequestException;
 import io.harness.licensing.Edition;
 import io.harness.licensing.EditionAction;
@@ -38,6 +48,10 @@ import io.harness.licensing.beans.response.CheckExpiryResultDTO;
 import io.harness.licensing.beans.summary.LicensesWithSummaryDTO;
 import io.harness.licensing.checks.LicenseComplianceResolver;
 import io.harness.licensing.entities.modules.ModuleLicense;
+import io.harness.licensing.event.ModuleLicenseCreateEvent;
+import io.harness.licensing.event.ModuleLicenseDeleteEvent;
+import io.harness.licensing.event.ModuleLicenseUpdateEvent;
+import io.harness.licensing.event.ModuleLicenseYamlDTO;
 import io.harness.licensing.helpers.ModuleLicenseHelper;
 import io.harness.licensing.helpers.ModuleLicenseSummaryHelper;
 import io.harness.licensing.interfaces.ModuleLicenseInterface;
@@ -45,6 +59,7 @@ import io.harness.licensing.mappers.LicenseObjectConverter;
 import io.harness.licensing.mappers.SMPLicenseMapper;
 import io.harness.ng.core.account.DefaultExperience;
 import io.harness.ng.core.dto.AccountDTO;
+import io.harness.outbox.api.OutboxService;
 import io.harness.repositories.ModuleLicenseRepository;
 import io.harness.security.SourcePrincipalContextBuilder;
 import io.harness.security.dto.Principal;
@@ -77,6 +92,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.cache.Cache;
+import javax.cache.CacheException;
 import javax.ws.rs.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
 
@@ -94,6 +110,8 @@ public class DefaultLicenseServiceImpl implements LicenseService {
   protected final SMPLicenseMapper smpLicenseMapper;
 
   protected final AccountService accountService;
+  private final Producer eventProducer;
+  private final OutboxService outboxService;
 
   static final String FAILED_OPERATION = "START_TRIAL_ATTEMPT_FAILED";
   static final String SUCCEED_START_FREE_OPERATION = "FREE_PLAN";
@@ -108,7 +126,8 @@ public class DefaultLicenseServiceImpl implements LicenseService {
       LicenseObjectConverter licenseObjectConverter, ModuleLicenseInterface licenseInterface,
       AccountService accountService, TelemetryReporter telemetryReporter, CeLicenseClient ceLicenseClient,
       LicenseComplianceResolver licenseComplianceResolver, @Named(LICENSE_CACHE_NAMESPACE) Cache<String, List> cache,
-      LicenseGenerator licenseGenerator, LicenseValidator licenseValidator, SMPLicenseMapper smpLicenseMapper) {
+      LicenseGenerator licenseGenerator, LicenseValidator licenseValidator, SMPLicenseMapper smpLicenseMapper,
+      @Named(MODULE_LICENSE) Producer eventProducer, OutboxService outboxService) {
     this.moduleLicenseRepository = moduleLicenseRepository;
     this.licenseObjectConverter = licenseObjectConverter;
     this.licenseInterface = licenseInterface;
@@ -120,6 +139,8 @@ public class DefaultLicenseServiceImpl implements LicenseService {
     this.licenseGenerator = licenseGenerator;
     this.licenseValidator = licenseValidator;
     this.smpLicenseMapper = smpLicenseMapper;
+    this.eventProducer = eventProducer;
+    this.outboxService = outboxService;
   }
 
   @Override
@@ -174,14 +195,14 @@ public class DefaultLicenseServiceImpl implements LicenseService {
   }
 
   @Override
-  public ModuleLicenseDTO createModuleLicense(ModuleLicenseDTO moduleLicense) {
-    ModuleLicense savedEntity = createModuleLicense(licenseObjectConverter.toEntity(moduleLicense));
+  public ModuleLicenseDTO createModuleLicense(ModuleLicenseDTO moduleLicenseDTO) {
+    ModuleLicense savedEntity = createModuleLicense(licenseObjectConverter.toEntity(moduleLicenseDTO));
     return licenseObjectConverter.toDTO(savedEntity);
   }
 
   @Override
-  public ModuleLicenseDTO updateModuleLicense(ModuleLicenseDTO moduleLicense) {
-    ModuleLicense updatedLicense = updateModuleLicense(licenseObjectConverter.toEntity(moduleLicense));
+  public ModuleLicenseDTO updateModuleLicense(ModuleLicenseDTO moduleLicenseDTO) {
+    ModuleLicense updatedLicense = updateModuleLicense(licenseObjectConverter.toEntity(moduleLicenseDTO));
     return licenseObjectConverter.toDTO(updatedLicense);
   }
 
@@ -195,6 +216,8 @@ public class DefaultLicenseServiceImpl implements LicenseService {
     ModuleLicense moduleLicense = existingEntityOptional.get();
     moduleLicenseRepository.deleteById(id);
     evictCache(moduleLicense.getAccountIdentifier(), moduleLicense.getModuleType());
+    publishLicenseEvent(moduleLicense, DELETE_ACTION);
+    ngAuditModuleLicenseDeleteEvent(licenseObjectConverter.toDTO(moduleLicense));
     log.info("Deleted license [{}] for module [{}] in account [{}]", id, moduleLicense.getModuleType(),
         moduleLicense.getAccountIdentifier());
   }
@@ -221,6 +244,8 @@ public class DefaultLicenseServiceImpl implements LicenseService {
     moduleLicense.setCreatedBy(EmbeddedUser.builder().email(getEmailFromPrincipal()).build());
     ModuleLicense savedEntity = saveLicense(moduleLicense);
     // Send telemetry
+    publishLicenseEvent(savedEntity, CREATE_ACTION);
+    ngAuditModuleLicenseCreateEvent(licenseObjectConverter.toDTO(savedEntity));
 
     log.info("Created license for module [{}] in account [{}]", savedEntity.getModuleType(),
         savedEntity.getAccountIdentifier());
@@ -235,11 +260,13 @@ public class DefaultLicenseServiceImpl implements LicenseService {
       throw new NotFoundException(String.format("ModuleLicense with identifier [%s] not found", moduleLicense.getId()));
     }
 
-    ModuleLicense existedLicense = existingEntityOptional.get();
-    ModuleLicense updateLicense = ModuleLicenseHelper.compareAndUpdate(existedLicense, moduleLicense);
+    ModuleLicense existingModuleLicense = existingEntityOptional.get();
+    ModuleLicenseDTO existingModuleLicenseDTO = licenseObjectConverter.toDTO(existingModuleLicense);
+    ModuleLicense updateLicense = ModuleLicenseHelper.compareAndUpdate(existingModuleLicense, moduleLicense);
 
     updateLicense.setLastUpdatedBy(EmbeddedUser.builder().email(getEmailFromPrincipal()).build());
     ModuleLicense updatedLicense = saveLicense(updateLicense);
+    ngAuditModuleLicenseUpdateEvent(existingModuleLicenseDTO, licenseObjectConverter.toDTO(updatedLicense));
 
     log.info("Updated license for module [{}] in account [{}]", updatedLicense.getModuleType(),
         updatedLicense.getAccountIdentifier());
@@ -263,6 +290,8 @@ public class DefaultLicenseServiceImpl implements LicenseService {
     licenseComplianceResolver.preCheck(trialLicense, EditionAction.START_FREE);
     ModuleLicense savedEntity = saveLicense(trialLicense);
     sendSucceedTelemetryEvents(SUCCEED_START_FREE_OPERATION, savedEntity, accountIdentifier, referer, gaClientId);
+    publishLicenseEvent(savedEntity, CREATE_ACTION);
+    ngAuditModuleLicenseCreateEvent(licenseObjectConverter.toDTO(savedEntity));
 
     log.info("Free license for module [{}] is started in account [{}]", moduleType, accountIdentifier);
 
@@ -310,6 +339,8 @@ public class DefaultLicenseServiceImpl implements LicenseService {
     licenseComplianceResolver.preCheck(trialLicense, EditionAction.START_TRIAL);
     ModuleLicense savedEntity = saveLicense(trialLicense);
     sendSucceedTelemetryEvents(SUCCEED_START_TRIAL_OPERATION, savedEntity, accountIdentifier, referer, null);
+    publishLicenseEvent(savedEntity, CREATE_ACTION);
+    ngAuditModuleLicenseCreateEvent(licenseObjectConverter.toDTO(savedEntity));
 
     log.info("Trial license for module [{}] is started in account [{}]", startTrialRequestDTO.getModuleType(),
         accountIdentifier);
@@ -330,13 +361,16 @@ public class DefaultLicenseServiceImpl implements LicenseService {
     }
 
     ModuleLicense licenseToBeExtended = existing.get(0);
+    ModuleLicenseDTO existingModuleLicenseDTO = licenseObjectConverter.toDTO(licenseToBeExtended);
     licenseToBeExtended.setTrialExtended(true);
     licenseToBeExtended.setExpiryTime(Instant.now().plus(TRIAL_DURATION, ChronoUnit.DAYS).toEpochMilli());
     licenseToBeExtended.setStatus(LicenseStatus.ACTIVE);
     licenseComplianceResolver.preCheck(licenseToBeExtended, EditionAction.EXTEND_TRIAL);
     ModuleLicense savedEntity = saveLicense(licenseToBeExtended);
+    ngAuditModuleLicenseUpdateEvent(existingModuleLicenseDTO, licenseObjectConverter.toDTO(savedEntity));
 
     sendSucceedTelemetryEvents(SUCCEED_EXTEND_TRIAL_OPERATION, savedEntity, accountIdentifier, null, null);
+    publishLicenseEvent(savedEntity, UPDATE_ACTION);
     syncLicenseChangeToCGForCE(savedEntity);
     log.info("Trial license for module [{}] is extended in account [{}]", moduleType, accountIdentifier);
     return licenseObjectConverter.toDTO(savedEntity);
@@ -656,7 +690,11 @@ public class DefaultLicenseServiceImpl implements LicenseService {
         moduleLicenseRepository.findByAccountIdentifierAndModuleType(accountIdentifier, moduleType);
     List<ModuleLicenseDTO> result =
         licenses.stream().map(licenseObjectConverter::<ModuleLicenseDTO>toDTO).collect(Collectors.toList());
-    setToCache(accountIdentifier, moduleType, result);
+    try {
+      setToCache(accountIdentifier, moduleType, result);
+    } catch (CacheException e) {
+      log.error("Unable to set license data into cache", e);
+    }
     return result;
   }
 
@@ -675,12 +713,78 @@ public class DefaultLicenseServiceImpl implements LicenseService {
     cache.put(key, licenses);
   }
 
-  private void evictCache(String accountIdentifier, ModuleType moduleType) {
+  protected void evictCache(String accountIdentifier, ModuleType moduleType) {
     String key = generateCacheKey(accountIdentifier, moduleType);
     cache.remove(key);
   }
 
   private String generateCacheKey(String accountIdentifier, ModuleType moduleType) {
     return String.format("%s:%s", accountIdentifier, moduleType.name());
+  }
+
+  private void publishLicenseEvent(ModuleLicense moduleLicense, String action) {
+    ModuleLicenseEntityChangeDTO.Builder moduleLicenseEntityChangeDTOBuilder =
+        ModuleLicenseEntityChangeDTO.newBuilder()
+            .setAccountIdentifier(moduleLicense.getAccountIdentifier())
+            .setModuleType(moduleLicense.getModuleType().name())
+            .setEdition(moduleLicense.getEdition().name())
+            .setLicenseStatus(moduleLicense.getStatus().name());
+    if (moduleLicense.getLicenseType() != null) {
+      moduleLicenseEntityChangeDTOBuilder.setLicenseType(moduleLicense.getLicenseType().name());
+    }
+
+    try {
+      eventProducer.send(Message.newBuilder()
+                             .putAllMetadata(ImmutableMap.of("accountIdentifier", moduleLicense.getAccountIdentifier(),
+                                 ENTITY_TYPE, MODULE_LICENSE, ACTION, action))
+                             .setData(moduleLicenseEntityChangeDTOBuilder.build().toByteString())
+                             .build());
+    } catch (EventsFrameworkDownException ex) {
+      log.error("Failed to send event to events framework for account: {} on entity: {} with action: {}",
+          moduleLicense.getAccountIdentifier(), MODULE_LICENSE, action, ex);
+    } catch (Exception ex) {
+      log.error("Failure to send event to events framework for account: {} on entity: {} with action: {}",
+          moduleLicense.getAccountIdentifier(), MODULE_LICENSE, action, ex);
+    }
+  }
+
+  private void ngAuditModuleLicenseCreateEvent(ModuleLicenseDTO newModuleLicenseDTO) {
+    try {
+      outboxService.save(
+          ModuleLicenseCreateEvent.builder()
+              .accountIdentifier(newModuleLicenseDTO.getAccountIdentifier())
+              .oldModuleLicenseYamlDTO(ModuleLicenseYamlDTO.builder().moduleLicenseDTO(null).build())
+              .newModuleLicenseYamlDTO(ModuleLicenseYamlDTO.builder().moduleLicenseDTO(newModuleLicenseDTO).build())
+              .build());
+    } catch (Exception ex) {
+      log.error("Audit trails for ModuleLicense create event failed with exception: ", ex);
+    }
+  }
+
+  private void ngAuditModuleLicenseUpdateEvent(
+      ModuleLicenseDTO oldModuleLicenseDTO, ModuleLicenseDTO newModuleLicenseDTO) {
+    try {
+      outboxService.save(
+          ModuleLicenseUpdateEvent.builder()
+              .accountIdentifier(newModuleLicenseDTO.getAccountIdentifier())
+              .oldModuleLicenseYamlDTO(ModuleLicenseYamlDTO.builder().moduleLicenseDTO(oldModuleLicenseDTO).build())
+              .newModuleLicenseYamlDTO(ModuleLicenseYamlDTO.builder().moduleLicenseDTO(newModuleLicenseDTO).build())
+              .build());
+    } catch (Exception ex) {
+      log.error("Audit trails for ModuleLicense update event failed with exception: ", ex);
+    }
+  }
+
+  private void ngAuditModuleLicenseDeleteEvent(ModuleLicenseDTO oldModuleLicenseDTO) {
+    try {
+      outboxService.save(
+          ModuleLicenseDeleteEvent.builder()
+              .accountIdentifier(oldModuleLicenseDTO.getAccountIdentifier())
+              .oldModuleLicenseYamlDTO(ModuleLicenseYamlDTO.builder().moduleLicenseDTO(oldModuleLicenseDTO).build())
+              .newModuleLicenseYamlDTO(ModuleLicenseYamlDTO.builder().moduleLicenseDTO(null).build())
+              .build());
+    } catch (Exception ex) {
+      log.error("Audit trails for ModuleLicense delete event failed with exception: ", ex);
+    }
   }
 }

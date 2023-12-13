@@ -27,18 +27,10 @@ fi
 if [[ "${ENABLE_SERIALGC}" == "true" ]]; then
     export GC_PARAMS=" -XX:+UseSerialGC -Dfile.encoding=UTF-8"
 else
-    export GC_PARAMS=" -XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=40 -XX:MaxGCPauseMillis=1000 -Dfile.encoding=UTF-8"
+    export GC_PARAMS=" -XX:+UseG1GC -Dfile.encoding=UTF-8"
 fi
 
 export JAVA_OPTS="-Xmx${MEMORY} -XX:+HeapDumpOnOutOfMemoryError -Xloggc:mygclogfilename.gc $GC_PARAMS $JAVA_ADVANCED_FLAGS $JAVA_17_FLAGS"
-
-if [[ "${ENABLE_APPDYNAMICS}" == "true" ]]; then
-    mkdir /opt/harness/AppServerAgent && unzip AppServerAgent.zip -d /opt/harness/AppServerAgent
-    node_name="-Dappdynamics.agent.nodeName=$(hostname)"
-    JAVA_OPTS=$JAVA_OPTS" -javaagent:/opt/harness/AppServerAgent/javaagent.jar -Dappdynamics.jvm.shutdown.mark.node.as.historical=true"
-    JAVA_OPTS="$JAVA_OPTS $node_name"
-    echo "Using Appdynamics java agent"
-fi
 
 if [[ "${ENABLE_OPENTELEMETRY}" == "true" ]] ; then
     echo "OpenTelemetry is enabled"
@@ -51,6 +43,22 @@ if [[ "${ENABLE_OPENTELEMETRY}" == "true" ]] ; then
         JAVA_OPTS=$JAVA_OPTS" -Dotel.traces.exporter=none -Dotel.metrics.exporter=none "
     fi
     echo "Using OpenTelemetry Java Agent"
+fi
+
+if [[ "${ENABLE_ET}" == "true" ]]; then
+    echo "Installing error-tracking agent"
+    mkdir -p /opt/harness/agents/
+    mv /opt/harness/harness /opt/harness/agents/et-agent
+
+    export ET_USER_ENV=/opt/harness/agents/et-agent
+    if [[ "${ENABLE_ET_WITH_DEBUG}" == "true" ]]; then
+        et_opts="-agentpath:/opt/harness/agents/et-agent/lib/libETAgent.so=debug.logconsole  -XX:-UseTypeSpeculation -Xshare:off"
+    else
+        et_opts="-agentpath:/opt/harness/agents/et-agent/lib/libETAgent.so -XX:-UseTypeSpeculation -Xshare:off"
+    fi
+
+    JAVA_OPTS="$JAVA_OPTS $et_opts"
+    echo "Using Error Tracking agent"
 fi
 
 if [[ "${DEPLOY_MODE}" == "KUBERNETES" || "${DEPLOY_MODE}" == "KUBERNETES_ONPREM" || "${DEPLOY_VERSION}" == "COMMUNITY" ]]; then

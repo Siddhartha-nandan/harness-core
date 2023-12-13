@@ -67,11 +67,13 @@ import io.harness.pms.sdk.core.resolver.outputs.ExecutionSweepingOutputService;
 import io.harness.pms.sdk.core.steps.executables.TaskChainResponse;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.steps.StepHelper;
 import io.harness.steps.StepUtils;
 import io.harness.telemetry.TelemetryReporter;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -105,6 +107,8 @@ public class TerraformRollbackStepV2Test extends CategoryTest {
   @Mock private AccountService accountService;
   @Mock private TelemetryReporter telemetryReporter;
   @Mock private CDFeatureFlagHelper cdFeatureFlagHelper;
+
+  @Mock DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
 
   @InjectMocks private TerraformRollbackStepV2 terraformRollbackStepV2;
 
@@ -561,7 +565,7 @@ public class TerraformRollbackStepV2Test extends CategoryTest {
   @Owner(developers = VLICA)
   @Category(UnitTests.class)
   public void testGetStepParametersClass() {
-    assertThat(terraformRollbackStepV2.getStepParametersClass()).isEqualTo(StepElementParameters.class);
+    assertThat(terraformRollbackStepV2.getStepParametersClass()).isEqualTo(StepBaseParameters.class);
   }
 
   @Test

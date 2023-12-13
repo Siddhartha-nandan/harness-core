@@ -10,6 +10,7 @@ import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.artifacts.azureartifacts.beans.AzureArtifactsExceptionConstants.DOWNLOAD_FROM_AZURE_ARTIFACTS_EXPLANATION;
 import static io.harness.artifacts.azureartifacts.beans.AzureArtifactsExceptionConstants.DOWNLOAD_FROM_AZURE_ARTIFACTS_FAILED;
 import static io.harness.artifacts.azureartifacts.beans.AzureArtifactsExceptionConstants.DOWNLOAD_FROM_AZURE_ARTIFACTS_HINT;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.delegate.beans.connector.gcpconnector.GcpCredentialType.INHERIT_FROM_DELEGATE;
 import static io.harness.delegate.task.serverless.exception.ServerlessExceptionConstants.BLANK_ARTIFACT_PATH_EXPLANATION;
@@ -243,9 +244,10 @@ public class CfCommandTaskHelperNG {
 
       return artifactResponseBuilder.build();
     } catch (Exception e) {
+      Exception sanitizedException = ExceptionMessageSanitizer.sanitizeException(e);
       logCallback.saveExecutionLog(
           format("Failed to download artifact '%s' due to: %s", artifactConfig.getArtifactDetails().getArtifactName(),
-              ExceptionUtils.getMessage(e)),
+              ExceptionUtils.getMessage(sanitizedException)),
           LogLevel.ERROR, CommandExecutionStatus.FAILURE);
       throw e;
     }
@@ -263,10 +265,11 @@ public class CfCommandTaskHelperNG {
           "Artifact '%s' successfully copied to '%s'", artifactDetails.getArtifactName(), artifactFile.getPath()));
       return artifactFile;
     } catch (IOException exception) {
+      IOException sanitizedException = ExceptionMessageSanitizer.sanitizeException(exception);
       throw NestedExceptionUtils.hintWithExplanationException(HintException.HINT_FILE_CREATION_ERROR,
           ExplanationException.EXPLANATION_FILE_CREATION_ERROR,
           new FileCopyException(format("Failed to copy artifact file '%s' from input stream to path '%s' due to: %s",
-              artifactDetails.getArtifactName(), artifactFile.getPath(), exception.getMessage())));
+              artifactDetails.getArtifactName(), artifactFile.getPath(), sanitizedException.getMessage())));
     }
   }
 
@@ -996,6 +999,10 @@ public class CfCommandTaskHelperNG {
       CfRequestConfig cfRequestConfig, List<CfServiceData> downSizeList, boolean isUseAppAutoScalar,
       CfAppAutoscalarRequestData autoscalarRequestData) throws PivotalClientApiException {
     executionLogCallback.saveExecutionLog("\n");
+    if (isEmpty(downSizeList)) {
+      executionLogCallback.saveExecutionLog("No application To Downsize");
+      return;
+    }
     for (CfServiceData cfServiceData : downSizeList) {
       executionLogCallback.saveExecutionLog(color("# Downsizing application:", White, Bold));
       executionLogCallback.saveExecutionLog(CFLogCallbackFormatter.formatAppInstancesState(

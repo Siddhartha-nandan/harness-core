@@ -9,11 +9,13 @@ package io.harness.cvng.servicelevelobjective.services.impl;
 
 import static io.harness.cvng.utils.ScopedInformation.getScopedInformation;
 
+import io.harness.beans.FeatureName;
 import io.harness.cvng.beans.DataCollectionExecutionStatus;
 import io.harness.cvng.core.beans.params.ProjectParams;
 import io.harness.cvng.core.beans.params.TimeRangeParams;
 import io.harness.cvng.core.entities.DataCollectionTask;
 import io.harness.cvng.core.services.api.DataCollectionTaskService;
+import io.harness.cvng.core.services.api.FeatureFlagService;
 import io.harness.cvng.core.services.api.VerificationTaskService;
 import io.harness.cvng.core.utils.DateTimeUtils;
 import io.harness.cvng.servicelevelobjective.beans.ErrorBudgetRisk;
@@ -26,6 +28,7 @@ import io.harness.cvng.servicelevelobjective.entities.SLOHealthIndicator.SLOHeal
 import io.harness.cvng.servicelevelobjective.entities.SimpleServiceLevelObjective;
 import io.harness.cvng.servicelevelobjective.entities.TimePeriod;
 import io.harness.cvng.servicelevelobjective.services.api.GraphDataService;
+import io.harness.cvng.servicelevelobjective.services.api.GraphDataServiceV2;
 import io.harness.cvng.servicelevelobjective.services.api.SLOErrorBudgetResetService;
 import io.harness.cvng.servicelevelobjective.services.api.SLOHealthIndicatorService;
 import io.harness.cvng.servicelevelobjective.services.api.ServiceLevelIndicatorService;
@@ -39,10 +42,13 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 public class SLOHealthIndicatorServiceImpl implements SLOHealthIndicatorService {
   @Inject private HPersistence hPersistence;
   @Inject private GraphDataService graphDataService;
+  @Inject private GraphDataServiceV2 graphDataServiceV2;
+  @Inject private FeatureFlagService featureFlagService;
   @Inject private Clock clock;
   @Inject private SLOErrorBudgetResetService sloErrorBudgetResetService;
 
@@ -187,22 +193,24 @@ public class SLOHealthIndicatorServiceImpl implements SLOHealthIndicatorService 
 
   @Override
   public boolean getFailedState(ProjectParams projectParams, AbstractServiceLevelObjective serviceLevelObjective) {
-    String verificationTaskId;
+    Optional<String> sliVerificationTaskId;
     if (serviceLevelObjective.getType().equals(ServiceLevelObjectiveType.SIMPLE)) {
       String sliIdentifier = ((SimpleServiceLevelObjective) serviceLevelObjective).getServiceLevelIndicators().get(0);
       String sliId = serviceLevelIndicatorService.getServiceLevelIndicator(projectParams, sliIdentifier).getUuid();
-      verificationTaskId =
+      sliVerificationTaskId =
           verificationTaskService.getSLIVerificationTaskId(projectParams.getAccountIdentifier(), sliId);
-      List<DataCollectionTask> dataCollectionTasks =
-          dataCollectionTaskService.getLatestDataCollectionTasks(projectParams.getAccountIdentifier(),
-              verificationTaskId, MIN_COUNT_OF_DC_FAILED_TO_CONSIDER_SLI_AS_FAILED + 1);
-      if (dataCollectionTasks.size() >= MIN_COUNT_OF_DC_FAILED_TO_CONSIDER_SLI_AS_FAILED) {
-        for (DataCollectionTask dataCollectionTask : dataCollectionTasks) {
-          if (dataCollectionTask.getStatus() == DataCollectionExecutionStatus.SUCCESS) {
-            return false;
+      if (sliVerificationTaskId.isPresent()) {
+        List<DataCollectionTask> dataCollectionTasks =
+            dataCollectionTaskService.getLatestDataCollectionTasks(projectParams.getAccountIdentifier(),
+                sliVerificationTaskId.get(), MIN_COUNT_OF_DC_FAILED_TO_CONSIDER_SLI_AS_FAILED + 1);
+        if (dataCollectionTasks.size() >= MIN_COUNT_OF_DC_FAILED_TO_CONSIDER_SLI_AS_FAILED) {
+          for (DataCollectionTask dataCollectionTask : dataCollectionTasks) {
+            if (dataCollectionTask.getStatus() == DataCollectionExecutionStatus.SUCCESS) {
+              return false;
+            }
           }
+          return true;
         }
-        return true;
       }
     }
     return false;
@@ -218,9 +226,18 @@ public class SLOHealthIndicatorServiceImpl implements SLOHealthIndicatorService 
         serviceLevelObjective.getActiveErrorBudgetMinutes(errorBudgetResetDTOS, currentLocalDate);
     TimePeriod timePeriod = serviceLevelObjective.getCurrentTimeRange(currentLocalDate);
     Instant currentTimeMinute = DateTimeUtils.roundDownTo1MinBoundary(clock.instant());
-    return graphDataService.getGraphData(serviceLevelObjective,
-        timePeriod.getStartTime(serviceLevelObjective.getZoneOffset()), currentTimeMinute, totalErrorBudgetMinutes,
-        filter, 0L);
+    SLOGraphData sloGraphData;
+    if (featureFlagService.isFeatureFlagEnabled(
+            projectParams.getAccountIdentifier(), FeatureName.SRM_ENABLE_SLI_BUCKET.toString())) {
+      sloGraphData = graphDataServiceV2.getGraphData(serviceLevelObjective,
+          timePeriod.getStartTime(serviceLevelObjective.getZoneOffset()), currentTimeMinute, totalErrorBudgetMinutes,
+          filter, 0L);
+    } else {
+      sloGraphData = graphDataService.getGraphData(serviceLevelObjective,
+          timePeriod.getStartTime(serviceLevelObjective.getZoneOffset()), currentTimeMinute, totalErrorBudgetMinutes,
+          filter, 0L);
+    }
+    return sloGraphData;
   }
 
   @Override

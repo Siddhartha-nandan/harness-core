@@ -6,15 +6,17 @@
  */
 
 package io.harness.pms.sdk;
-
 import static io.harness.pms.sdk.SdkStepHelper.SDK_STEP_SET_NAME;
 
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
 import static org.springframework.data.mongodb.core.query.Update.update;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.datastructures.EphemeralCacheService;
 import io.harness.exception.InvalidRequestException;
@@ -47,12 +49,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.cache.Cache;
+import javax.cache.CacheException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(HarnessTeam.PIPELINE)
 @Slf4j
 @Singleton
@@ -95,7 +99,6 @@ public class PmsSdkInstanceService extends PmsServiceImplBase {
         throw new InitializeSdkException("Could not acquire lock");
       }
       saveSdkInstance(request);
-      schemaFetcher.invalidateAllCache();
       ephemeralCacheService.getDistributedSet(SDK_STEP_SET_NAME).clear();
     } catch (Exception ex) {
       log.error(String.format("Exception occurred while registering sdk with name: [%s]", request.getName()), ex);
@@ -145,8 +148,13 @@ public class PmsSdkInstanceService extends PmsServiceImplBase {
       }
       if (shouldUseInstanceCache) {
         log.info("Updating sdkInstanceCache for module {}", request.getName());
-        instanceCache.put(request.getName(), instance);
-        log.info("Updated sdkInstanceCache for module {}", request.getName());
+        try {
+          instanceCache.put(request.getName(), instance);
+          log.info("Updated sdkInstanceCache for module {}", request.getName());
+        } catch (CacheException e) {
+          log.error("Unable to set instance data into cache", e);
+          throw e;
+        }
       }
       return instance;
     });

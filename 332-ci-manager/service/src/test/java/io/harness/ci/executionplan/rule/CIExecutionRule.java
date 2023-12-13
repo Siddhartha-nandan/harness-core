@@ -30,12 +30,12 @@ import io.harness.cache.CacheModule;
 import io.harness.callback.DelegateCallbackToken;
 import io.harness.ci.CIExecutionServiceModule;
 import io.harness.ci.CIExecutionTestModule;
-import io.harness.ci.buildstate.SecretDecryptorViaNg;
 import io.harness.ci.config.CIExecutionServiceConfig;
 import io.harness.ci.config.CIStepConfig;
 import io.harness.ci.config.StepImageConfig;
 import io.harness.ci.config.VmImageConfig;
-import io.harness.ci.execution.OrchestrationExecutionEventHandlerRegistrar;
+import io.harness.ci.execution.buildstate.SecretDecryptorViaNg;
+import io.harness.ci.execution.execution.OrchestrationExecutionEventHandlerRegistrar;
 import io.harness.ci.ff.CIFeatureFlagNoopServiceImpl;
 import io.harness.ci.ff.CIFeatureFlagService;
 import io.harness.ci.license.CILicenseNoopServiceImpl;
@@ -49,6 +49,7 @@ import io.harness.cistatus.service.bitbucket.BitbucketService;
 import io.harness.cistatus.service.bitbucket.BitbucketServiceImpl;
 import io.harness.cistatus.service.gitlab.GitlabService;
 import io.harness.cistatus.service.gitlab.GitlabServiceImpl;
+import io.harness.code.CodeResourceClient;
 import io.harness.delegate.DelegateServiceGrpc;
 import io.harness.entitysetupusageclient.EntitySetupUsageClientModule;
 import io.harness.exception.exceptionmanager.exceptionhandler.CILiteEngineExceptionHandler;
@@ -84,6 +85,7 @@ import io.harness.testlib.module.TestMongoModule;
 import io.harness.threading.CurrentThreadExecutor;
 import io.harness.threading.ExecutorModule;
 import io.harness.time.TimeModule;
+import io.harness.tunnel.TunnelResourceClient;
 
 import com.google.common.base.Suppliers;
 import com.google.inject.AbstractModule;
@@ -155,6 +157,8 @@ public class CIExecutionRule implements MethodRule, InjectorRuleMixin, MongoRule
       protected void configure() {
         bind(AccountClient.class).toInstance(mock(AccountClient.class));
         bind(AccountClient.class).annotatedWith(Names.named("PRIVILEGED")).toInstance(mock(AccountClient.class));
+        bind(CodeResourceClient.class).toInstance(mock(CodeResourceClient.class));
+        bind(TunnelResourceClient.class).toInstance(mock(TunnelResourceClient.class));
       }
     });
 
@@ -218,6 +222,7 @@ public class CIExecutionRule implements MethodRule, InjectorRuleMixin, MongoRule
                                       .buildAndPushDockerRegistry("vm-buildAndPushDockerRegistry")
                                       .buildAndPushECR("vm-buildAndPushECR")
                                       .buildAndPushGCR("vm-buildAndPushGCR")
+                                      .buildAndPushGAR("vm-buildAndPushGAR")
                                       .cacheGCS("vm-cacheGCS")
                                       .cacheS3("vm-cacheS3")
                                       .security("vm-security")
@@ -230,6 +235,7 @@ public class CIExecutionRule implements MethodRule, InjectorRuleMixin, MongoRule
             .buildAndPushACRConfig(StepImageConfig.builder().image("bpacr:1.2.3").build())
             .buildAndPushECRConfig(StepImageConfig.builder().image("bpecr:1.2.3").build())
             .buildAndPushGCRConfig(StepImageConfig.builder().image("bpgcr:1.2.3").build())
+            .buildAndPushGARConfig(StepImageConfig.builder().image("bpgar:1.2.3").build())
             .gcsUploadConfig(StepImageConfig.builder().image("gcsupload:1.2.3").build())
             .s3UploadConfig(StepImageConfig.builder().image("s3upload:1.2.3").build())
             .artifactoryUploadConfig(StepImageConfig.builder().image("art:1.2.3").build())
@@ -239,6 +245,10 @@ public class CIExecutionRule implements MethodRule, InjectorRuleMixin, MongoRule
             .gcsUploadConfig(StepImageConfig.builder().image("gcsUpload:1.2.3").build())
             .sscaOrchestrationConfig(StepImageConfig.builder().image("sscaorchestrate:0.0.1").build())
             .sscaEnforcementConfig(StepImageConfig.builder().image("sscaEnforcement:0.0.1").build())
+            .slsaVerificationConfig(StepImageConfig.builder().image("slsaVerification:0.0.1").build())
+            .slsaVerificationGcrConfig(StepImageConfig.builder().image("slsaVerificationGcr:0.0.1").build())
+            .provenanceConfig(StepImageConfig.builder().image("provenance:0.0.1").build())
+            .provenanceGcrConfig(StepImageConfig.builder().image("provenanceGcr:0.0.1").build())
             .vmImageConfig(vmImageConfig)
             .build();
 
@@ -286,6 +296,13 @@ public class CIExecutionRule implements MethodRule, InjectorRuleMixin, MongoRule
       @Singleton
       RedisConfig redisConfig() {
         return RedisConfig.builder().build();
+      }
+
+      @Provides
+      @Singleton
+      @Named("harnessCodeGitBaseUrl")
+      String getHarnessCodeGitBaseUrl() {
+        return "http://localhost:3000/git";
       }
     });
     modules.add(PersistentLockModule.getInstance());

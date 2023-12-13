@@ -6,15 +6,34 @@
  */
 
 package io.harness.ng.core.serviceoverridev2.mappers;
+
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.exception.InvalidRequestException;
+import io.harness.ng.core.environment.beans.NGEnvironmentGlobalOverride;
+import io.harness.ng.core.environment.yaml.NGEnvironmentConfig;
+import io.harness.ng.core.environment.yaml.NGEnvironmentInfoConfig;
 import io.harness.ng.core.serviceoverride.beans.NGServiceOverridesEntity;
+import io.harness.ng.core.serviceoverride.beans.ServiceOverrideResponseDTO;
+import io.harness.ng.core.serviceoverride.mapper.NGServiceOverrideEntityConfigMapper;
+import io.harness.ng.core.serviceoverride.yaml.NGServiceOverrideConfig;
+import io.harness.ng.core.serviceoverride.yaml.NGServiceOverrideInfoConfig;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverrideRequestDTOV2;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesResponseDTOV2;
+import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesSpec;
+import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesSpec.ServiceOverridesSpecBuilder;
+import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesType;
+import io.harness.utils.IdentifierRefHelper;
+import io.harness.utils.YamlPipelineUtils;
 
+import java.io.IOException;
+import java.util.Optional;
 import javax.validation.constraints.NotNull;
 import lombok.NonNull;
 import lombok.experimental.UtilityClass;
@@ -55,5 +74,114 @@ public class ServiceOverridesMapperV2 {
         .isNewlyCreated(isNewlyCreated)
         .yamlInternal(entity.getYamlInternal())
         .build();
+  }
+
+  // This method is used for redirecting overrides v1 request overrides v2
+  public ServiceOverrideRequestDTOV2 toRequestV2(NGServiceOverridesEntity requestedEntity) {
+    NGServiceOverrideConfig serviceOverrideConfig =
+        NGServiceOverrideEntityConfigMapper.toNGServiceOverrideConfig(requestedEntity);
+    NGServiceOverrideInfoConfig serviceOverrideInfoConfig = serviceOverrideConfig.getServiceOverrideInfoConfig();
+    return ServiceOverrideRequestDTOV2.builder()
+        .orgIdentifier(requestedEntity.getOrgIdentifier())
+        .projectIdentifier(requestedEntity.getProjectIdentifier())
+        .serviceRef(requestedEntity.getServiceRef())
+        .environmentRef(requestedEntity.getEnvironmentRef())
+        .type(ServiceOverridesType.ENV_SERVICE_OVERRIDE)
+        .spec(ServiceOverridesSpec.builder()
+                  .variables(serviceOverrideInfoConfig.getVariables())
+                  .manifests(serviceOverrideInfoConfig.getManifests())
+                  .configFiles(serviceOverrideInfoConfig.getConfigFiles())
+                  .applicationSettings(serviceOverrideInfoConfig.getApplicationSettings())
+                  .connectionStrings(serviceOverrideInfoConfig.getConnectionStrings())
+                  .build())
+        .v1Api(true)
+        .yamlInternal(requestedEntity.getYaml())
+        .build();
+  }
+  public void updateEnvConfigFromOverrideV2(NGServiceOverridesEntity entity, NGEnvironmentConfig environmentConfig) {
+    ServiceOverridesSpec spec = entity.getSpec();
+
+    if (isNotEmpty(spec.getVariables())) {
+      environmentConfig.getNgEnvironmentInfoConfig().setVariables(spec.getVariables());
+    }
+    if (isNotEmpty(spec.getManifests()) || isNotEmpty(spec.getConfigFiles()) || spec.getApplicationSettings() != null
+        || spec.getConnectionStrings() != null) {
+      NGEnvironmentGlobalOverride ngEnvironmentGlobalOverride = NGEnvironmentGlobalOverride.builder()
+                                                                    .manifests(spec.getManifests())
+                                                                    .configFiles(spec.getConfigFiles())
+                                                                    .applicationSettings(spec.getApplicationSettings())
+                                                                    .connectionStrings(spec.getConnectionStrings())
+                                                                    .build();
+      environmentConfig.getNgEnvironmentInfoConfig().setNgEnvironmentGlobalOverride(ngEnvironmentGlobalOverride);
+    }
+  }
+
+  public ServiceOverrideResponseDTO toResponseDTOV1(ServiceOverridesResponseDTOV2 responseDTOV2, String yaml) {
+    return ServiceOverrideResponseDTO.builder()
+        .accountId(responseDTOV2.getAccountId())
+        .orgIdentifier(responseDTOV2.getOrgIdentifier())
+        .projectIdentifier(responseDTOV2.getProjectIdentifier())
+        .environmentRef(responseDTOV2.getEnvironmentRef())
+        .serviceRef(responseDTOV2.getServiceRef())
+        .yaml(yaml)
+        .build();
+  }
+
+  public Optional<ServiceOverrideRequestDTOV2> toRequestDTOV2(NGEnvironmentConfig environmentConfig, String accountId) {
+    NGEnvironmentInfoConfig envInfoConfig = environmentConfig.getNgEnvironmentInfoConfig();
+    if (isEmpty(envInfoConfig.getVariables()) && envInfoConfig.getNgEnvironmentGlobalOverride() == null) {
+      return Optional.empty();
+    }
+
+    ServiceOverridesSpecBuilder serviceOverridesSpecBuilder =
+        ServiceOverridesSpec.builder().variables(envInfoConfig.getVariables());
+    NGEnvironmentGlobalOverride ngEnvironmentGlobalOverride = envInfoConfig.getNgEnvironmentGlobalOverride();
+    if (ngEnvironmentGlobalOverride != null) {
+      serviceOverridesSpecBuilder.manifests(ngEnvironmentGlobalOverride.getManifests())
+          .configFiles(ngEnvironmentGlobalOverride.getConfigFiles())
+          .connectionStrings(ngEnvironmentGlobalOverride.getConnectionStrings())
+          .applicationSettings(ngEnvironmentGlobalOverride.getApplicationSettings());
+    }
+
+    return Optional.of(
+        ServiceOverrideRequestDTOV2.builder()
+            .projectIdentifier(envInfoConfig.getProjectIdentifier())
+            .orgIdentifier(envInfoConfig.getOrgIdentifier())
+            .environmentRef(IdentifierRefHelper.getRefFromIdentifierOrRef(accountId, envInfoConfig.getOrgIdentifier(),
+                envInfoConfig.getProjectIdentifier(), envInfoConfig.getIdentifier()))
+            .type(ServiceOverridesType.ENV_GLOBAL_OVERRIDE)
+            .spec(serviceOverridesSpecBuilder.build())
+            .build());
+  }
+
+  public ServiceOverridesSpec toServiceOverrideSpec(@NonNull NGServiceOverrideConfig configV1) {
+    NGServiceOverrideInfoConfig infoConfigV1 = configV1.getServiceOverrideInfoConfig();
+    return ServiceOverridesSpec.builder()
+        .manifests(infoConfigV1.getManifests())
+        .configFiles(infoConfigV1.getConfigFiles())
+        .variables(infoConfigV1.getVariables())
+        .connectionStrings(infoConfigV1.getConnectionStrings())
+        .applicationSettings(infoConfigV1.getApplicationSettings())
+        .build();
+  }
+
+  public ServiceOverridesSpec toServiceOverrideSpec(@NonNull NGEnvironmentInfoConfig infoConfigV1) {
+    ServiceOverridesSpecBuilder builder = ServiceOverridesSpec.builder().variables(infoConfigV1.getVariables());
+    if (infoConfigV1.getNgEnvironmentGlobalOverride() != null) {
+      NGEnvironmentGlobalOverride ngEnvironmentGlobalOverride = infoConfigV1.getNgEnvironmentGlobalOverride();
+      builder.manifests(ngEnvironmentGlobalOverride.getManifests())
+          .configFiles(ngEnvironmentGlobalOverride.getConfigFiles())
+          .connectionStrings(ngEnvironmentGlobalOverride.getConnectionStrings())
+          .applicationSettings(ngEnvironmentGlobalOverride.getApplicationSettings());
+    }
+    return builder.build();
+  }
+
+  public ServiceOverridesSpec toServiceOverrideSpec(String entityYaml) {
+    try {
+      return YamlPipelineUtils.read(entityYaml, ServiceOverridesSpec.class);
+    } catch (IOException e) {
+      throw new InvalidRequestException(String.format("Cannot read serviceOverride yaml %s ", entityYaml));
+    }
   }
 }

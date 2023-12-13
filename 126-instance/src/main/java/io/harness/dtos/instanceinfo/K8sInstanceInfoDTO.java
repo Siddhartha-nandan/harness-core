@@ -12,8 +12,11 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.delegate.task.helm.HelmChartInfo;
+import io.harness.k8s.model.HarnessLabelValues;
 import io.harness.k8s.model.K8sContainer;
 import io.harness.util.InstanceSyncKey;
+import io.harness.util.InstanceSyncKeyConstants;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -33,6 +36,8 @@ public class K8sInstanceInfoDTO extends InstanceInfoDTO {
   private String podIP;
   private String blueGreenColor;
   @NotNull private List<K8sContainer> containerList;
+  private HelmChartInfo helmChartInfo;
+  private boolean canary;
 
   @Override
   public String prepareInstanceKey() {
@@ -50,6 +55,15 @@ public class K8sInstanceInfoDTO extends InstanceInfoDTO {
     if (isNotEmpty(blueGreenColor)) {
       return InstanceSyncKey.builder().part(releaseName).part(blueGreenColor).build().toString();
     }
+
+    if (canary) {
+      return InstanceSyncKey.builder()
+          .part(releaseName)
+          .part(InstanceSyncKeyConstants.CanaryDeployment)
+          .build()
+          .toString();
+    }
+
     return InstanceSyncKey.builder().part(releaseName).build().toString();
   }
 
@@ -60,5 +74,13 @@ public class K8sInstanceInfoDTO extends InstanceInfoDTO {
   @Override
   public String getType() {
     return "K8s";
+  }
+
+  public void swapBlueGreenColor() {
+    if (HarnessLabelValues.colorBlue.equals(blueGreenColor)) {
+      this.blueGreenColor = HarnessLabelValues.colorGreen;
+    } else if (HarnessLabelValues.colorGreen.equals(blueGreenColor)) {
+      this.blueGreenColor = HarnessLabelValues.colorBlue;
+    }
   }
 }

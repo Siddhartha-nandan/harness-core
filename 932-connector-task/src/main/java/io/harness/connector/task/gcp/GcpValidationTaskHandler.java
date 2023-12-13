@@ -17,6 +17,7 @@ import io.harness.connector.ConnectivityStatus;
 import io.harness.connector.ConnectorValidationResult;
 import io.harness.connector.helper.DecryptionHelper;
 import io.harness.connector.task.ConnectorValidationHandler;
+import io.harness.data.structure.EmptyPredicate;
 import io.harness.delegate.beans.connector.ConnectorValidationParams;
 import io.harness.delegate.beans.connector.gcp.GcpValidationParams;
 import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorCredentialDTO;
@@ -52,24 +53,31 @@ public class GcpValidationTaskHandler implements ConnectorValidationHandler {
       GcpConnectorDTO gcpConnectorDTO = gcpValidationParams.getGcpConnectorDTO();
       GcpConnectorCredentialDTO gcpConnectorCredentialDTO = gcpConnectorDTO.getCredential();
       return validateInternal(gcpConnectorCredentialDTO.getGcpCredentialType(), gcpConnectorCredentialDTO.getConfig(),
-          gcpValidationParams.getEncryptionDetails(), gcpConnectorDTO.getExecuteOnDelegate());
+          gcpValidationParams.getEncryptionDetails(), gcpConnectorDTO.getExecuteOnDelegate(),
+          gcpConnectorDTO.getProxyUrl());
     } catch (Exception e) {
       throw exceptionManager.processException(e, MANAGER, log);
     }
   }
 
   public ConnectorValidationResult validate(GcpRequest gcpRequest) {
-    GcpCredentialType gcpCredentialType =
-        (gcpRequest.getGcpManualDetailsDTO() != null && gcpRequest.getGcpManualDetailsDTO().getSecretKeyRef() != null)
-        ? GcpCredentialType.MANUAL_CREDENTIALS
-        : GcpCredentialType.INHERIT_FROM_DELEGATE;
-    return validateInternal(
-        gcpCredentialType, gcpRequest.getGcpManualDetailsDTO(), gcpRequest.getEncryptionDetails(), true);
+    GcpCredentialType gcpCredentialType = null;
+    boolean executeOnDelegate = true;
+    if (gcpRequest.getGcpManualDetailsDTO() != null && gcpRequest.getGcpManualDetailsDTO().getSecretKeyRef() != null) {
+      gcpCredentialType = GcpCredentialType.MANUAL_CREDENTIALS;
+    } else if (gcpRequest.getGcpOidcDetailsDTO() != null) {
+      gcpCredentialType = GcpCredentialType.OIDC_AUTHENTICATION;
+      executeOnDelegate = false;
+    } else {
+      gcpCredentialType = GcpCredentialType.INHERIT_FROM_DELEGATE;
+    }
+    return validateInternal(gcpCredentialType, gcpRequest.getGcpManualDetailsDTO(), gcpRequest.getEncryptionDetails(),
+        executeOnDelegate, null);
   }
 
   private ConnectorValidationResult validateInternal(GcpCredentialType gcpCredentialType,
-      GcpCredentialSpecDTO gcpCredentialSpecDTO, List<EncryptedDataDetail> encryptionDetails,
-      boolean executeOnDelegate) {
+      GcpCredentialSpecDTO gcpCredentialSpecDTO, List<EncryptedDataDetail> encryptionDetails, boolean executeOnDelegate,
+      String proxyUrl) {
     if (!executeOnDelegate && gcpCredentialType == GcpCredentialType.INHERIT_FROM_DELEGATE) {
       throw new InvalidRequestException(
           format("Connector with credential type %s does not support validation through harness", gcpCredentialType));
@@ -78,8 +86,12 @@ public class GcpValidationTaskHandler implements ConnectorValidationHandler {
     if (gcpCredentialType == GcpCredentialType.MANUAL_CREDENTIALS) {
       GcpManualDetailsDTO config =
           validateAndDecryptManualCredential((GcpManualDetailsDTO) gcpCredentialSpecDTO, encryptionDetails);
-      gcpClient.getGkeContainerService(config.getSecretKeyRef().getDecryptedValue());
-    } else {
+      if (EmptyPredicate.isNotEmpty(proxyUrl)) {
+        gcpClient.getGkeContainerServiceWithProxy(config.getSecretKeyRef().getDecryptedValue(), proxyUrl);
+      } else {
+        gcpClient.getGkeContainerService(config.getSecretKeyRef().getDecryptedValue());
+      }
+    } else if (gcpCredentialType != GcpCredentialType.OIDC_AUTHENTICATION) {
       gcpClient.validateDefaultCredentials();
     }
 

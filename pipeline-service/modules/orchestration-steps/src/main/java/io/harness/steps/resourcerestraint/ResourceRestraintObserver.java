@@ -6,7 +6,9 @@
  */
 
 package io.harness.steps.resourcerestraint;
-
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.engine.observers.NodeStatusUpdateObserver;
 import io.harness.engine.observers.NodeUpdateInfo;
@@ -15,6 +17,7 @@ import io.harness.execution.NodeExecution;
 import io.harness.logging.AutoLogContext;
 import io.harness.observer.AsyncInformObserver;
 import io.harness.pms.contracts.ambiance.Ambiance;
+import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.execution.utils.StatusUtils;
@@ -24,12 +27,15 @@ import io.harness.steps.resourcerestraint.service.ResourceRestraintInstanceServi
 
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import lombok.extern.slf4j.Slf4j;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @Slf4j
+@Singleton
 public class ResourceRestraintObserver
     implements OrchestrationEndObserver, NodeStatusUpdateObserver, AsyncInformObserver {
   private final ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -37,7 +43,7 @@ public class ResourceRestraintObserver
   @Inject private TransactionHelper transactionHelper;
 
   @Override
-  public void onEnd(Ambiance ambiance) {
+  public void onEnd(Ambiance ambiance, Status endStatus) {
     unblockConstraints(ambiance, ambiance.getPlanExecutionId());
   }
 

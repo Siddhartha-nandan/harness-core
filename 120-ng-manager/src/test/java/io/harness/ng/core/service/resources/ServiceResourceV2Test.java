@@ -13,19 +13,14 @@ import static io.harness.rbac.CDNGRbacPermissions.SERVICE_UPDATE_PERMISSION;
 import static io.harness.rule.OwnerRule.ACHYUTH;
 import static io.harness.rule.OwnerRule.SATHISH;
 import static io.harness.rule.OwnerRule.SHIVAM;
-import static io.harness.rule.OwnerRule.TATHAGAT;
 import static io.harness.rule.OwnerRule.UTKARSH_CHOUBEY;
-import static io.harness.rule.OwnerRule.VED;
 import static io.harness.rule.OwnerRule.vivekveman;
 
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,13 +32,8 @@ import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.FeatureName;
 import io.harness.category.element.UnitTests;
-import io.harness.cdng.artifact.resources.artifactory.service.ArtifactoryResourceServiceImpl;
 import io.harness.cdng.manifest.yaml.kinds.KustomizeCommandFlagType;
-import io.harness.delegate.beans.connector.artifactoryconnector.ArtifactoryConnectorDTO;
 import io.harness.exception.InvalidRequestException;
-import io.harness.ng.core.beans.ServiceV2YamlMetadata;
-import io.harness.ng.core.beans.ServicesV2YamlMetadataDTO;
-import io.harness.ng.core.beans.ServicesYamlMetadataApiInput;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.service.dto.ServiceRequestDTO;
 import io.harness.ng.core.service.dto.ServiceResponse;
@@ -61,20 +51,16 @@ import software.wings.beans.Service.ServiceKeys;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -145,7 +131,7 @@ public class ServiceResourceV2Test extends CategoryTest {
              ORG_IDENTIFIER, PROJ_IDENTIFIER, ACCOUNT_ID))
         .thenReturn(true);
     when(serviceEntityService.create(any())).thenReturn(entity);
-    serviceResourceV2.create(ACCOUNT_ID, serviceRequestDTO);
+    serviceResourceV2.create(ACCOUNT_ID, serviceRequestDTO, null);
     verify(accessControlClient, times(1))
         .checkForAccessOrThrow(ResourceScope.of(ACCOUNT_ID, serviceRequestDTO.getOrgIdentifier(),
                                    serviceRequestDTO.getProjectIdentifier()),
@@ -174,7 +160,7 @@ public class ServiceResourceV2Test extends CategoryTest {
                             .name(NAME)
                             .yaml(yaml)
                             .build();
-    assertThatThrownBy(() -> serviceResourceV2.create(ACCOUNT_ID, serviceRequestDTO))
+    assertThatThrownBy(() -> serviceResourceV2.create(ACCOUNT_ID, serviceRequestDTO, null))
         .isInstanceOf(InvalidRequestException.class);
     verify(serviceSchemaHelper, times(1)).validateSchema(ACCOUNT_ID, serviceRequestDTO.getYaml());
   }
@@ -243,9 +229,10 @@ public class ServiceResourceV2Test extends CategoryTest {
   @Owner(developers = SHIVAM)
   @Category(UnitTests.class)
   public void testListTemplate() {
-    when(serviceEntityService.get(any(), any(), any(), any(), eq(false))).thenReturn(Optional.of(entity));
-    ResponseDTO<ServiceResponse> serviceResponseResponseDTO =
-        serviceResourceV2.get(IDENTIFIER, ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, false, false);
+    when(serviceEntityService.get(any(), any(), any(), any(), eq(false), eq(false), eq(false)))
+        .thenReturn(Optional.of(entity));
+    ResponseDTO<ServiceResponse> serviceResponseResponseDTO = serviceResourceV2.get(
+        IDENTIFIER, ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, false, false, null, "false", false);
     assertThat(serviceResponseResponseDTO.getEntityTag()).isNull();
   }
 
@@ -254,8 +241,9 @@ public class ServiceResourceV2Test extends CategoryTest {
   @Category(UnitTests.class)
   public void testListTemplateForNotFoundException() {
     when(serviceEntityService.get(any(), any(), any(), any(), eq(false))).thenReturn(Optional.empty());
-    assertThatThrownBy(
-        () -> serviceResourceV2.get(IDENTIFIER, ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, false, false))
+    assertThatThrownBy(()
+                           -> serviceResourceV2.get(IDENTIFIER, ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, false,
+                               false, null, "false", false))
         .hasMessage("Service with identifier [identifier] in project [projId], org [orgId] not found");
   }
 
@@ -267,7 +255,7 @@ public class ServiceResourceV2Test extends CategoryTest {
              ORG_IDENTIFIER, PROJ_IDENTIFIER, ACCOUNT_ID))
         .thenReturn(true);
     when(serviceEntityService.update(any())).thenReturn(entity);
-    serviceResourceV2.update("IF_MATCH", ACCOUNT_ID, serviceRequestDTO);
+    serviceResourceV2.update("IF_MATCH", ACCOUNT_ID, serviceRequestDTO, null);
     verify(accessControlClient, times(1))
         .checkForAccessOrThrow(ResourceScope.of(ACCOUNT_ID, serviceRequestDTO.getOrgIdentifier(),
                                    serviceRequestDTO.getProjectIdentifier()),
@@ -285,7 +273,7 @@ public class ServiceResourceV2Test extends CategoryTest {
              ORG_IDENTIFIER, PROJ_IDENTIFIER, ACCOUNT_ID))
         .thenReturn(true);
     when(serviceEntityService.update(any())).thenReturn(entity);
-    serviceResourceV2.update("IF_MATCH", ACCOUNT_ID, serviceRequestDTO);
+    serviceResourceV2.update("IF_MATCH", ACCOUNT_ID, serviceRequestDTO, null);
     verify(accessControlClient, times(1))
         .checkForAccessOrThrow(ResourceScope.of(ACCOUNT_ID, serviceRequestDTO.getOrgIdentifier(),
                                    serviceRequestDTO.getProjectIdentifier()),
@@ -329,51 +317,6 @@ public class ServiceResourceV2Test extends CategoryTest {
   }
 
   @Test
-  @Owner(developers = TATHAGAT)
-  @Category(UnitTests.class)
-  public void testGetServicesYamlAndRuntimeInputs() {
-    String svcId1 = "svcId1";
-    String svcId2 = "svcId2";
-
-    final ServicesYamlMetadataApiInput servicesYamlMetadataApiInput =
-        ServicesYamlMetadataApiInput.builder().serviceIdentifiers(Arrays.asList(svcId1, svcId2)).build();
-
-    ServiceEntity service1 = ServiceEntity.builder().identifier(svcId1).yaml("dummy-yaml1").build();
-    ServiceEntity service2 = ServiceEntity.builder().identifier(svcId2).yaml("dummy-yaml2").build();
-
-    doReturn(Arrays.asList(service1, service2))
-        .when(serviceEntityService)
-        .getServices(anyString(), anyString(), anyString(), anyList());
-    doReturn("input-set1", "input-set2").when(serviceEntityService).createServiceInputsYaml(anyString(), anyString());
-
-    when(featureFlagHelperService.isEnabled(ACCOUNT_ID, FeatureName.CDS_ARTIFACTORY_REPOSITORY_URL_MANDATORY))
-        .thenReturn(true);
-
-    final ResponseDTO<ServicesV2YamlMetadataDTO> servicesYamlAndRuntimeInputsResponse =
-        serviceResourceV2.getServicesYamlAndRuntimeInputs(
-            servicesYamlMetadataApiInput, ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
-
-    final ServicesV2YamlMetadataDTO data = servicesYamlAndRuntimeInputsResponse.getData();
-    assertThat(data).isNotNull();
-    assertThat(data.getServiceV2YamlMetadataList()).hasSize(2);
-    assertThat(data.getServiceV2YamlMetadataList()
-                   .stream()
-                   .map(io.harness.ng.core.beans.ServiceV2YamlMetadata::getServiceYaml)
-                   .collect(Collectors.toList()))
-        .containsExactlyInAnyOrder("dummy-yaml1", "dummy-yaml2");
-    assertThat(data.getServiceV2YamlMetadataList()
-                   .stream()
-                   .map(io.harness.ng.core.beans.ServiceV2YamlMetadata::getServiceIdentifier)
-                   .collect(Collectors.toList()))
-        .containsExactlyInAnyOrder(svcId1, svcId2);
-
-    assertThat(data.getServiceV2YamlMetadataList()
-                   .stream()
-                   .map(ServiceV2YamlMetadata::getInputSetTemplateYaml)
-                   .collect(Collectors.toList()))
-        .containsExactlyInAnyOrder("input-set1", "input-set2");
-  }
-  @Test
   @Owner(developers = vivekveman)
   @Category(UnitTests.class)
   public void testCreateServiceWithEmptyYaml() throws IOException {
@@ -392,7 +335,7 @@ public class ServiceResourceV2Test extends CategoryTest {
                             .yaml("")
                             .build();
 
-    serviceResourceV2.create(ACCOUNT_ID, serviceRequestDTO);
+    serviceResourceV2.create(ACCOUNT_ID, serviceRequestDTO, null);
     verify(serviceSchemaHelper, times(2)).validateSchema(any(), any());
   }
 
@@ -464,105 +407,8 @@ public class ServiceResourceV2Test extends CategoryTest {
                                                .projectIdentifier(PROJ_IDENTIFIER)
                                                .name(NAME)
                                                .build();
-    serviceResourceV2.update("IF_MATCH", ACCOUNT_ID, serviceRequestDTO1);
+    serviceResourceV2.update("IF_MATCH", ACCOUNT_ID, serviceRequestDTO1, null);
     verify(serviceSchemaHelper, times(2)).validateSchema(any(), any());
-  }
-
-  @Test
-  @Owner(developers = VED)
-  @Category(UnitTests.class)
-  public void testUpdateArtifactoryRegistryUrlIfEmpty() {
-    String serviceYaml = "service:\n"
-        + "  name: arf4\n"
-        + "  identifier: arf4\n"
-        + "  tags: {}\n"
-        + "  serviceDefinition:\n"
-        + "    spec:\n"
-        + "      artifacts:\n"
-        + "        primary:\n"
-        + "          primaryArtifactRef: <+input>\n"
-        + "          sources:\n"
-        + "            - spec:\n"
-        + "                connectorRef: artifconn1\n"
-        + "                artifactPath: adoptopenjdk/openjdk8\n"
-        + "                tag: <+input>\n"
-        + "                repository: docker\n"
-        + "                repositoryFormat: docker\n"
-        + "              identifier: s\n"
-        + "              type: ArtifactoryRegistry\n"
-        + "            - spec:\n"
-        + "                connectorRef: account.harnessImage\n"
-        + "                imagePath: library/nginx\n"
-        + "                tag: <+input>\n"
-        + "              identifier: sfdff\n"
-        + "              type: DockerRegistry\n"
-        + "            - spec:\n"
-        + "                connectorRef: artifconn1\n"
-        + "                artifactPath: adoptopenjdk/openjdk8\n"
-        + "                tag: <+input>\n"
-        + "                repository: docker\n"
-        + "                repositoryFormat: docker\n"
-        + "              identifier: dhjjadnck\n"
-        + "              type: ArtifactoryRegistry\n"
-        + "    type: Kubernetes\n";
-
-    ServiceEntity service = ServiceEntity.builder()
-                                .accountId("accountId")
-                                .name("service")
-                                .description("description")
-                                .orgIdentifier("orgIdentifier")
-                                .projectIdentifier("projectIdentifier")
-                                .yaml(serviceYaml)
-                                .build();
-
-    ArtifactoryConnectorDTO artifactoryConnectorDTO =
-        ArtifactoryConnectorDTO.builder().artifactoryServerUrl("https://harness.jfrog.io/harness").build();
-
-    try (MockedStatic<ArtifactoryResourceServiceImpl> utilities =
-             Mockito.mockStatic(ArtifactoryResourceServiceImpl.class)) {
-      utilities.when(() -> ArtifactoryResourceServiceImpl.getConnector(any())).thenReturn(artifactoryConnectorDTO);
-
-      service = serviceResourceV2.updateArtifactoryRegistryUrlIfEmpty(
-          service, "accountId", "orgIdentifier", "projectIdentifier");
-    }
-
-    String updatedYaml = "service:\n"
-        + "  name: arf4\n"
-        + "  identifier: arf4\n"
-        + "  tags: {}\n"
-        + "  serviceDefinition:\n"
-        + "    spec:\n"
-        + "      artifacts:\n"
-        + "        primary:\n"
-        + "          primaryArtifactRef: <+input>\n"
-        + "          sources:\n"
-        + "            - spec:\n"
-        + "                connectorRef: artifconn1\n"
-        + "                artifactPath: adoptopenjdk/openjdk8\n"
-        + "                tag: <+input>\n"
-        + "                repository: docker\n"
-        + "                repositoryFormat: docker\n"
-        + "                repositoryUrl: https://harness-docker.jfrog.io\n"
-        + "              identifier: s\n"
-        + "              type: ArtifactoryRegistry\n"
-        + "            - spec:\n"
-        + "                connectorRef: account.harnessImage\n"
-        + "                imagePath: library/nginx\n"
-        + "                tag: <+input>\n"
-        + "              identifier: sfdff\n"
-        + "              type: DockerRegistry\n"
-        + "            - spec:\n"
-        + "                connectorRef: artifconn1\n"
-        + "                artifactPath: adoptopenjdk/openjdk8\n"
-        + "                tag: <+input>\n"
-        + "                repository: docker\n"
-        + "                repositoryFormat: docker\n"
-        + "                repositoryUrl: https://harness-docker.jfrog.io\n"
-        + "              identifier: dhjjadnck\n"
-        + "              type: ArtifactoryRegistry\n"
-        + "    type: Kubernetes\n";
-
-    assertThat(updatedYaml).isEqualTo(service.getYaml());
   }
 
   @Test

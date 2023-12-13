@@ -6,6 +6,8 @@
  */
 
 package io.harness.ngtriggers.utils;
+
+import static io.harness.beans.WebhookEvent.Type.PR;
 import static io.harness.beans.WebhookEvent.Type.PUSH;
 import static io.harness.constants.Constants.BITBUCKET_CLOUD_HEADER_KEY;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
@@ -20,6 +22,7 @@ import static io.harness.ngtriggers.Constants.PULL_REQUEST_EVENT_TYPE;
 import static io.harness.ngtriggers.Constants.PUSH_EVENT_TYPE;
 import static io.harness.ngtriggers.Constants.RELEASE_EVENT_TYPE;
 import static io.harness.ngtriggers.beans.source.webhook.WebhookAction.BT_PULL_REQUEST_UPDATED;
+import static io.harness.ngtriggers.beans.source.webhook.v2.github.action.GithubPRAction.REVIEWREADY;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -38,13 +41,13 @@ import io.harness.ngtriggers.beans.source.webhook.v2.TriggerEventDataCondition;
 import io.harness.ngtriggers.beans.source.webhook.v2.WebhookTriggerSpecV2;
 import io.harness.ngtriggers.beans.source.webhook.v2.bitbucket.action.BitbucketPRAction;
 import io.harness.ngtriggers.beans.source.webhook.v2.git.GitAction;
-import io.harness.ngtriggers.beans.source.webhook.v2.harness.HarnessSpec;
 import io.harness.ngtriggers.conditionchecker.ConditionEvaluator;
 import io.harness.ngtriggers.expressions.TriggerExpressionEvaluator;
 import io.harness.product.ci.scm.proto.ParseWebhookResponse;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -57,21 +60,8 @@ import org.apache.commons.lang3.StringUtils;
 @UtilityClass
 @Slf4j
 public class WebhookTriggerFilterUtils {
-  public boolean checkIfEventTypeMatchesHarnessScm(WebhookTriggerSpecV2 webhookTriggerSpec) {
-    if (webhookTriggerSpec.fetchGitAware() == null) {
-      throw new TriggerException(
-          "Invalid Filter used. Event Filter is not compatible with class: " + webhookTriggerSpec.getClass(), USER_SRE);
-    }
-    String gitEvent = webhookTriggerSpec.fetchGitAware().fetchEvent().getValue();
-    return gitEvent.equals(PUSH_EVENT_TYPE);
-  }
-
   public boolean evaluateEventAndActionFilters(
       WebhookPayloadData webhookPayloadData, WebhookTriggerSpecV2 webhookTriggerConfigSpec) {
-    if (webhookTriggerConfigSpec instanceof HarnessSpec) {
-      return checkIfEventTypeMatchesHarnessScm(webhookTriggerConfigSpec)
-          && checkIfActionMatches(webhookPayloadData, webhookTriggerConfigSpec);
-    }
     return checkIfEventTypeMatches(webhookPayloadData.getWebhookEvent().getType(), webhookTriggerConfigSpec)
         && checkIfActionMatches(webhookPayloadData, webhookTriggerConfigSpec);
   }
@@ -85,7 +75,7 @@ public class WebhookTriggerFilterUtils {
 
     String gitEvent = webhookTriggerSpec.fetchGitAware().fetchEvent().getValue();
 
-    if (eventTypeFromPayload.equals(io.harness.beans.WebhookEvent.Type.PR)) {
+    if (eventTypeFromPayload.equals(PR)) {
       return gitEvent.equals(PULL_REQUEST_EVENT_TYPE) || gitEvent.equals(MERGE_REQUEST_EVENT_TYPE);
     }
 
@@ -113,6 +103,13 @@ public class WebhookTriggerFilterUtils {
     List<GitAction> actions = webhookTriggerSpec.fetchGitAware().fetchActions();
     // No filter means any actions is valid for trigger invocation
     if (isEmpty(actions)) {
+      if (webhookPayloadData.getWebhookEvent() != null && webhookPayloadData.getWebhookEvent().getType() == PR) {
+        if (webhookPayloadData.getWebhookEvent().getBaseAttributes() != null
+            && Objects.equals(
+                webhookPayloadData.getWebhookEvent().getBaseAttributes().getAction(), REVIEWREADY.getParsedValue())) {
+          return false;
+        }
+      }
       return true;
     }
 

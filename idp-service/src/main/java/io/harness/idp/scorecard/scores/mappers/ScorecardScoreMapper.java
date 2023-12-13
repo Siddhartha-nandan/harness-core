@@ -8,7 +8,7 @@ package io.harness.idp.scorecard.scores.mappers;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.scorecard.scores.entities.ScoreEntity;
+import io.harness.idp.scorecard.scores.entity.ScoreEntity;
 import io.harness.spec.server.idp.v1.model.ScorecardScore;
 
 import lombok.experimental.UtilityClass;
@@ -18,7 +18,10 @@ import lombok.experimental.UtilityClass;
 public class ScorecardScoreMapper {
   public ScorecardScore toDTO(ScoreEntity scoreEntity, String scorecardName, String scorecardDescription) {
     ScorecardScore scorecardScore = new ScorecardScore();
-    scorecardScore.score((int) scoreEntity.getScore());
+    scorecardScore.setScore(0);
+    if (scoreEntity != null) {
+      scorecardScore.setScore(scoreEntity.getScore());
+    }
     scorecardScore.setScorecardName(scorecardName);
     scorecardScore.setDescription(scorecardDescription);
     return scorecardScore;

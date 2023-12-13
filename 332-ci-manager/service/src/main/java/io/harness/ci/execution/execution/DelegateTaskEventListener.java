@@ -5,7 +5,9 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.execution;
+package io.harness.ci.execution.execution;
+
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import static software.wings.beans.TaskType.DLITE_CI_VM_INITIALIZE_TASK;
 
@@ -21,7 +23,6 @@ import io.harness.serializer.KryoSerializer;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.protobuf.ByteString;
-import io.fabric8.utils.Strings;
 import java.util.Map;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -65,7 +66,7 @@ public class DelegateTaskEventListener implements MessageListener {
               "Parsed dlite initialization task message, accountId %s, taskId %s, delegateId %s, stageId %s, taskType %s",
               accountId, taskId, delegateId, stageId, taskType));
 
-          if (Strings.isNotBlank(stageId) && DLITE_CI_VM_INITIALIZE_TASK.toString().equals(taskType)) {
+          if (isNotEmpty(stageId) && DLITE_CI_VM_INITIALIZE_TASK.toString().equals(taskType)) {
             if (ciExecutionRepository.findByStageExecutionId(stageId) == null) {
               log.info("Skipping creation of ciTaskDetails for unknown stageId: {}", stageId);
               return true;

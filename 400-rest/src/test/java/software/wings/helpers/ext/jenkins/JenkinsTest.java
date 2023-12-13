@@ -470,6 +470,7 @@ public class JenkinsTest extends WingsBaseTest {
   @Test
   @Owner(developers = DEEPAK_PUTHRAYA)
   @Category(UnitTests.class)
+
   public void shouldThrowException() throws IOException {
     CustomJenkinsServer jenkinsServer = mock(CustomJenkinsServer.class);
 
@@ -498,6 +499,7 @@ public class JenkinsTest extends WingsBaseTest {
   @Test
   @Owner(developers = DEEPAK_PUTHRAYA)
   @Category(UnitTests.class)
+
   public void shouldRetryOnFailures() throws IOException {
     CustomJenkinsServer jenkinsServer = mock(CustomJenkinsServer.class);
     Reflect.on(jenkins).set("jenkinsServer", jenkinsServer);
@@ -562,6 +564,7 @@ public class JenkinsTest extends WingsBaseTest {
   @Test
   @Owner(developers = DEEPAK_PUTHRAYA)
   @Category(UnitTests.class)
+
   public void triggerThrowErrorJobNotFound() throws IOException {
     CustomJenkinsServer jenkinsServer = mock(CustomJenkinsServer.class);
     Reflect.on(jenkins).set("jenkinsServer", jenkinsServer);
@@ -574,6 +577,7 @@ public class JenkinsTest extends WingsBaseTest {
   @Test
   @Owner(developers = DEEPAK_PUTHRAYA)
   @Category(UnitTests.class)
+
   public void testGetJobsReturnsEmptyArrayWhenException() throws IOException {
     CustomJenkinsServer jenkinsServer = mock(CustomJenkinsServer.class);
     Reflect.on(jenkins).set("jenkinsServer", jenkinsServer);

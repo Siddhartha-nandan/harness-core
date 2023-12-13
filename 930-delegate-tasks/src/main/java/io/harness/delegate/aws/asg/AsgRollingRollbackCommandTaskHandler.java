@@ -9,7 +9,6 @@ package io.harness.delegate.aws.asg;
 
 import static io.harness.aws.asg.manifest.AsgManifestType.AsgConfiguration;
 import static io.harness.aws.asg.manifest.AsgManifestType.AsgInstanceRefresh;
-import static io.harness.aws.asg.manifest.AsgManifestType.AsgLaunchTemplate;
 import static io.harness.aws.asg.manifest.AsgManifestType.AsgScalingPolicy;
 import static io.harness.aws.asg.manifest.AsgManifestType.AsgScheduledUpdateGroupAction;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
@@ -31,7 +30,6 @@ import io.harness.aws.asg.manifest.AsgManifestHandlerChainFactory;
 import io.harness.aws.asg.manifest.AsgManifestHandlerChainState;
 import io.harness.aws.asg.manifest.request.AsgConfigurationManifestRequest;
 import io.harness.aws.asg.manifest.request.AsgInstanceRefreshManifestRequest;
-import io.harness.aws.asg.manifest.request.AsgLaunchTemplateManifestRequest;
 import io.harness.aws.asg.manifest.request.AsgScalingPolicyManifestRequest;
 import io.harness.aws.asg.manifest.request.AsgScheduledActionManifestRequest;
 import io.harness.aws.beans.AwsInternalConfig;
@@ -57,6 +55,7 @@ import software.wings.service.impl.AwsUtils;
 
 import com.amazonaws.services.autoscaling.model.AutoScalingGroup;
 import com.amazonaws.services.autoscaling.model.CreateAutoScalingGroupRequest;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import java.util.Arrays;
 import java.util.List;
@@ -120,14 +119,21 @@ public class AsgRollingRollbackCommandTaskHandler extends AsgCommandTaskNGHandle
     }
   }
 
-  private AutoScalingGroupContainer executeRollingRollbackWithInstanceRefresh(AsgSdkManager asgSdkManager,
+  @VisibleForTesting
+  AutoScalingGroupContainer executeRollingRollbackWithInstanceRefresh(AsgSdkManager asgSdkManager,
       Map<String, List<String>> asgManifestsDataForRollback, String asgName, Boolean skipMatching,
       Boolean useAlreadyRunningInstances, AwsInternalConfig awsInternalConfig, String region) {
     if (isNotEmpty(asgManifestsDataForRollback)) {
       asgSdkManager.info("Rolling back to previous version of asg %s", asgName);
 
+      boolean isInstanceRefreshInProgress = asgSdkManager.checkInstanceRefreshInProgress(asgName);
+
+      if (isInstanceRefreshInProgress) {
+        asgSdkManager.info("Instance refresh still in progress for ASG %s", asgName);
+        asgSdkManager.deleteAsg(asgName);
+      }
+
       // Get the content of all required manifest files
-      String asgLaunchTemplateVersion = asgTaskHelper.getAsgLaunchTemplateContent(asgManifestsDataForRollback);
       String asgConfigurationContent = asgTaskHelper.getAsgConfigurationContent(asgManifestsDataForRollback);
       List<String> asgScalingPolicyContent = asgTaskHelper.getAsgScalingPolicyContent(asgManifestsDataForRollback);
       List<String> asgScheduledActionContent = asgTaskHelper.getAsgScheduledActionContent(asgManifestsDataForRollback);
@@ -139,16 +145,17 @@ public class AsgRollingRollbackCommandTaskHandler extends AsgCommandTaskNGHandle
       AsgManifestHandlerChainState initialChainState = AsgManifestHandlerChainState.builder().asgName(asgName).build();
 
       if (isNotEmpty(createAutoScalingGroupRequest.getLaunchTemplate().getVersion())) {
+        initialChainState.setLaunchTemplateName(
+            createAutoScalingGroupRequest.getLaunchTemplate().getLaunchTemplateName());
         initialChainState.setLaunchTemplateVersion(createAutoScalingGroupRequest.getLaunchTemplate().getVersion());
       }
+
       // Chain factory code to handle each manifest one by one in a chain
-      AsgManifestHandlerChainState chainState =
-          AsgManifestHandlerChainFactory.builder()
+      AsgManifestHandlerChainFactory manifestHandlerChainFactory =
+          (AsgManifestHandlerChainFactory) AsgManifestHandlerChainFactory.builder()
               .initialChainState(initialChainState)
               .asgSdkManager(asgSdkManager)
               .build()
-              .addHandler(AsgLaunchTemplate,
-                  AsgLaunchTemplateManifestRequest.builder().manifests(Arrays.asList(asgLaunchTemplateVersion)).build())
               .addHandler(AsgConfiguration,
                   AsgConfigurationManifestRequest.builder()
                       .manifests(Arrays.asList(asgConfigurationContent))
@@ -159,10 +166,14 @@ public class AsgRollingRollbackCommandTaskHandler extends AsgCommandTaskNGHandle
               .addHandler(AsgScalingPolicy,
                   AsgScalingPolicyManifestRequest.builder().manifests(asgScalingPolicyContent).build())
               .addHandler(AsgScheduledUpdateGroupAction,
-                  AsgScheduledActionManifestRequest.builder().manifests(asgScheduledActionContent).build())
-              .addHandler(
-                  AsgInstanceRefresh, AsgInstanceRefreshManifestRequest.builder().skipMatching(skipMatching).build())
-              .executeUpsert();
+                  AsgScheduledActionManifestRequest.builder().manifests(asgScheduledActionContent).build());
+
+      if (!isInstanceRefreshInProgress) {
+        manifestHandlerChainFactory.addHandler(
+            AsgInstanceRefresh, AsgInstanceRefreshManifestRequest.builder().skipMatching(skipMatching).build());
+      }
+
+      AsgManifestHandlerChainState chainState = manifestHandlerChainFactory.executeUpsert();
 
       AutoScalingGroup autoScalingGroup = chainState.getAutoScalingGroup();
       asgSdkManager.infoBold("Rolled back to previous version of asg %s successfully", asgName);

@@ -8,6 +8,7 @@
 package io.harness.cdng.artifact.resources.acr.mappers;
 
 import static io.harness.rule.OwnerRule.ABHISHEK;
+import static io.harness.rule.OwnerRule.RAKSHIT_AGARWAL;
 import static io.harness.rule.OwnerRule.vivekveman;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,6 +30,7 @@ import io.harness.cdng.artifact.resources.acr.dtos.AcrRequestDTO;
 import io.harness.cdng.artifact.resources.acr.service.AcrResourceServiceImpl;
 import io.harness.cdng.azure.AzureHelperService;
 import io.harness.connector.services.ConnectorService;
+import io.harness.data.structure.ListUtils;
 import io.harness.delegate.beans.azure.AcrBuildDetailsDTO;
 import io.harness.delegate.beans.azure.AcrResponseDTO;
 import io.harness.delegate.beans.azure.response.AzureRegistriesResponse;
@@ -44,7 +46,6 @@ import io.harness.ng.core.BaseNGAccess;
 import io.harness.rule.Owner;
 import io.harness.security.encryption.EncryptedDataDetail;
 
-import io.fabric8.utils.Lists;
 import java.util.Arrays;
 import java.util.Collections;
 import org.junit.Rule;
@@ -110,7 +111,7 @@ public class AcrResourceServiceImplTest extends CategoryTest {
 
     EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
 
-    when(azureHelperService.getEncryptionDetails(any(), any())).thenReturn(Lists.newArrayList(encryptedDataDetail));
+    when(azureHelperService.getEncryptionDetails(any(), any())).thenReturn(ListUtils.newArrayList(encryptedDataDetail));
 
     ArtifactBuildDetailsNG artifactBuildDetailsNG = ArtifactBuildDetailsNG.builder().number("tag").build();
 
@@ -144,6 +145,87 @@ public class AcrResourceServiceImplTest extends CategoryTest {
 
     assertThat(acrResponseDTO).isEqualTo(acrResponseDTOres);
   }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_Subscription_Null() {
+    assertThatThrownBy(()
+                           -> acrResourceService.getBuildDetails(
+                               IDENTIFIER_REF, null, REGISTRY, REPOSITORY, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .hasMessage(SUBSCRIPTION_MESSAGE);
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_Subscription_Empty() {
+    assertThatThrownBy(()
+                           -> acrResourceService.getBuildDetails(
+                               IDENTIFIER_REF, "", REGISTRY, REPOSITORY, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .hasMessage(SUBSCRIPTION_MESSAGE);
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_Subscription_Input() {
+    assertThatThrownBy(()
+                           -> acrResourceService.getBuildDetails(
+                               IDENTIFIER_REF, INPUT, REGISTRY, REPOSITORY, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .hasMessage(SUBSCRIPTION_MESSAGE);
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_Registry_NULL() {
+    assertThatThrownBy(()
+                           -> acrResourceService.getBuildDetails(
+                               IDENTIFIER_REF, SUBSCRIPTION, null, REPOSITORY, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .hasMessage(REGISTRY_MESSAGE);
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_Registry_Empty() {
+    assertThatThrownBy(()
+                           -> acrResourceService.getBuildDetails(
+                               IDENTIFIER_REF, SUBSCRIPTION, "", REPOSITORY, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .hasMessage(REGISTRY_MESSAGE);
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_Registry_Input() {
+    assertThatThrownBy(()
+                           -> acrResourceService.getBuildDetails(
+                               IDENTIFIER_REF, SUBSCRIPTION, INPUT, REPOSITORY, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .hasMessage(REGISTRY_MESSAGE);
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_Repository_NULL() {
+    assertThatThrownBy(()
+                           -> acrResourceService.getBuildDetails(
+                               IDENTIFIER_REF, SUBSCRIPTION, REGISTRY, null, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .hasMessage(REPOSITORY_MESSAGE);
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_Repository_Empty() {
+    assertThatThrownBy(()
+                           -> acrResourceService.getBuildDetails(
+                               IDENTIFIER_REF, SUBSCRIPTION, REGISTRY, "", ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .hasMessage(REPOSITORY_MESSAGE);
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetBuildDetails_Repository_Input() {
+    assertThatThrownBy(()
+                           -> acrResourceService.getBuildDetails(
+                               IDENTIFIER_REF, SUBSCRIPTION, REGISTRY, INPUT, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .hasMessage(REPOSITORY_MESSAGE);
+  }
 
   @Test
   @Owner(developers = ABHISHEK)
@@ -167,7 +249,7 @@ public class AcrResourceServiceImplTest extends CategoryTest {
             .build();
 
     when(azureHelperService.getEncryptionDetails(azureArtifactsConnectorDTO, baseNGAccess))
-        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
     when(azureHelperService.executeSyncTask(any(), eq(baseNGAccess), eq(ArtifactTaskType.GET_LAST_SUCCESSFUL_BUILD),
              eq("ACR Artifact Get Last Successful Build task failure due to error")))
         .thenReturn(ArtifactTaskResponse.builder()
@@ -206,7 +288,7 @@ public class AcrResourceServiceImplTest extends CategoryTest {
 
     EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
 
-    when(azureHelperService.getEncryptionDetails(any(), any())).thenReturn(Lists.newArrayList(encryptedDataDetail));
+    when(azureHelperService.getEncryptionDetails(any(), any())).thenReturn(ListUtils.newArrayList(encryptedDataDetail));
 
     AzureRepositoriesResponse acrArtifactDelegateResponse =
         AzureRepositoriesResponse.builder().repositories(Collections.singletonList("first")).build();
@@ -246,7 +328,7 @@ public class AcrResourceServiceImplTest extends CategoryTest {
 
     EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
 
-    when(azureHelperService.getEncryptionDetails(any(), any())).thenReturn(Lists.newArrayList(encryptedDataDetail));
+    when(azureHelperService.getEncryptionDetails(any(), any())).thenReturn(ListUtils.newArrayList(encryptedDataDetail));
 
     AzureRegistriesResponse acrArtifactDelegateResponse =
         AzureRegistriesResponse.builder().containerRegistries(Collections.singletonList("first")).build();

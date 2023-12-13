@@ -11,7 +11,11 @@ import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
+import io.harness.cdng.service.beans.ServiceDefinitionType;
 import io.harness.cdng.service.beans.ServiceYamlV2;
 import io.harness.cdng.service.beans.ServicesYaml;
 import io.harness.ng.core.common.beans.NGTag;
@@ -30,7 +34,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
+    components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
 @OwnedBy(CDC)
 @Singleton
 @Slf4j
@@ -51,8 +56,9 @@ public class NGServiceEntityHelper {
     if (isEmpty(serviceRefs)) {
       return Collections.emptyMap();
     }
+
     List<ServiceEntity> serviceEntityList =
-        serviceEntityService.getServices(accountIdentifier, orgIdentifier, projectIdentifier, serviceRefs);
+        serviceEntityService.getMetadata(accountIdentifier, orgIdentifier, projectIdentifier, serviceRefs);
 
     Map<String, List<NGTag>> serviceToTagsMap = new LinkedHashMap<>();
     for (ServiceEntity serviceEntity : serviceEntityList) {
@@ -73,5 +79,24 @@ public class NGServiceEntityHelper {
       return serviceEntity.get().getTags();
     }
     return Collections.emptyList();
+  }
+
+  public Optional<ServiceEntity> getServiceEntityByRef(PlanCreationContext ctx, ServiceYamlV2 service) {
+    if (service == null || ParameterField.isNull(service.getServiceRef())
+        || isEmpty(service.getServiceRef().getValue())) {
+      return Optional.empty();
+    }
+
+    String serviceRef = service.getServiceRef().getValue();
+    return serviceEntityService.get(
+        ctx.getAccountIdentifier(), ctx.getOrgIdentifier(), ctx.getProjectIdentifier(), serviceRef, false);
+  }
+
+  public ServiceDefinitionType getServiceDefinitionTypeFromService(PlanCreationContext ctx, ServiceYamlV2 service) {
+    Optional<ServiceEntity> optionalServiceEntity = getServiceEntityByRef(ctx, service);
+    if (optionalServiceEntity.isPresent()) {
+      return optionalServiceEntity.get().getType();
+    }
+    return null;
   }
 }

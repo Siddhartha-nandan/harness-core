@@ -13,8 +13,11 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.MigratedEntityMapping;
 import io.harness.cdng.manifest.yaml.GitStore;
 import io.harness.cdng.manifest.yaml.ManifestConfigWrapper;
@@ -75,6 +78,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_MIGRATOR})
 @OwnedBy(HarnessTeam.CDC)
 @Slf4j
 public class ManifestMigrationService extends NgMigrationService {
@@ -198,6 +202,9 @@ public class ManifestMigrationService extends NgMigrationService {
 
   private void validateAndFixTemplateManifests(List<ManifestFile> manifestFiles) {
     for (ManifestFile manifestFile : manifestFiles) {
+      if (manifestFile.getFileContent() == null) {
+        continue;
+      }
       String[] lines = manifestFile.getFileContent().split("\n");
       boolean inAnnotations = false;
 
@@ -287,8 +294,10 @@ public class ManifestMigrationService extends NgMigrationService {
   }
 
   @Override
-  protected boolean isNGEntityExists() {
-    return true;
+  protected boolean isNGEntityExists(MigrationContext migrationContext) {
+    NGMigrationEntityType rootType = migrationContext.getRoot();
+    return NGMigrationEntityType.APPLICATION == rootType || NGMigrationEntityType.WORKFLOW == rootType
+        || NGMigrationEntityType.PIPELINE == rootType;
   }
 
   public List<ManifestConfigWrapper> getManifests(MigrationContext migrationContext, Set<CgEntityId> manifestEntityIds,
@@ -301,28 +310,32 @@ public class ManifestMigrationService extends NgMigrationService {
     Map<CgEntityId, NGYamlFile> migratedEntities = migrationContext.getMigratedEntities();
     List<ManifestConfigWrapper> ngManifests = new ArrayList<>();
     for (CgEntityId manifestEntityId : manifestEntityIds) {
-      CgEntityNode manifestNode = entities.get(manifestEntityId);
-      ApplicationManifest applicationManifest = (ApplicationManifest) manifestNode.getEntity();
-      if (null != applicationManifest && null == service && isNotEmpty(applicationManifest.getServiceId())) {
-        service = serviceResourceService.get(applicationManifest.getAppId(), applicationManifest.getServiceId());
+      try {
+        CgEntityNode manifestNode = entities.get(manifestEntityId);
+        ApplicationManifest applicationManifest = (ApplicationManifest) manifestNode.getEntity();
+        if (null != applicationManifest && null == service && isNotEmpty(applicationManifest.getServiceId())) {
+          service = serviceResourceService.get(applicationManifest.getAppId(), applicationManifest.getServiceId());
+        }
+        MigratorExpressionUtils.render(migrationContext, applicationManifest, inputDTO.getCustomExpressions());
+        BaseProvidedInput manifestInput =
+            inputDTO.getOverrides() == null ? null : inputDTO.getOverrides().get(manifestEntityId);
+        ManifestProvidedEntitySpec entitySpec = null;
+        if (manifestInput != null && manifestInput.getSpec() != null) {
+          entitySpec = JsonUtils.treeToValue(manifestInput.getSpec(), ManifestProvidedEntitySpec.class);
+        }
+        List<NGYamlFile> files = getYamlFilesForManifest(migrationContext, applicationManifest);
+        if (EmptyPredicate.isNotEmpty(files)) {
+          files = files.stream()
+                      .filter(file -> !"FOLDER".equalsIgnoreCase(((FileYamlDTO) file.getYaml()).getFileUsage()))
+                      .collect(Collectors.toList());
+        }
+        NgManifestService ngManifestService = manifestFactory.getNgManifestService(applicationManifest, service);
+        List<ManifestConfigWrapper> manifestConfigWrapper = ngManifestService.getManifestConfigWrapper(
+            applicationManifest, entities, migratedEntities, entitySpec, files, identifierCaseFormat);
+        ngManifests.addAll(manifestConfigWrapper);
+      } catch (Exception ex) {
+        log.error("Failed to get manifest: {} with error: {}", manifestEntityId, ex.getMessage());
       }
-      MigratorExpressionUtils.render(migrationContext, applicationManifest, inputDTO.getCustomExpressions());
-      BaseProvidedInput manifestInput =
-          inputDTO.getOverrides() == null ? null : inputDTO.getOverrides().get(manifestEntityId);
-      ManifestProvidedEntitySpec entitySpec = null;
-      if (manifestInput != null && manifestInput.getSpec() != null) {
-        entitySpec = JsonUtils.treeToValue(manifestInput.getSpec(), ManifestProvidedEntitySpec.class);
-      }
-      List<NGYamlFile> files = getYamlFilesForManifest(migrationContext, applicationManifest);
-      if (EmptyPredicate.isNotEmpty(files)) {
-        files = files.stream()
-                    .filter(file -> !"FOLDER".equalsIgnoreCase(((FileYamlDTO) file.getYaml()).getFileUsage()))
-                    .collect(Collectors.toList());
-      }
-      NgManifestService ngManifestService = manifestFactory.getNgManifestService(applicationManifest, service);
-      List<ManifestConfigWrapper> manifestConfigWrapper = ngManifestService.getManifestConfigWrapper(
-          applicationManifest, entities, migratedEntities, entitySpec, files, identifierCaseFormat);
-      ngManifests.addAll(manifestConfigWrapper);
     }
     return ngManifests;
   }

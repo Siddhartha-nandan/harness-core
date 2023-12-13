@@ -6,6 +6,7 @@
  */
 
 package io.harness.pms.events.base;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
@@ -15,7 +16,6 @@ import io.harness.data.structure.CollectionUtils;
 import io.harness.logging.AutoLogContext;
 import io.harness.logging.AutoLogContext.OverrideBehavior;
 import io.harness.monitoring.EventMonitoringService;
-import io.harness.monitoring.MonitoringInfo;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.events.PmsEventFrameworkConstants;
 import io.harness.pms.events.PmsEventMonitoringConstants;
@@ -36,7 +36,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @OwnedBy(HarnessTeam.PIPELINE)
 public abstract class PmsBaseEventHandler<T extends Message> implements PmsCommonsBaseEventHandler<T> {
-  public static String QUEUE_EVENT_TIME = "%s_queue_time";
+  public static String EVENT_PROCESS_TIME = "event_process_time";
+  public static String EVENT_QUEUED_TIME = "event_queued_time";
 
   @Inject private PmsGitSyncHelper pmsGitSyncHelper;
   @Inject private EventMonitoringService eventMonitoringService;
@@ -49,33 +50,27 @@ public abstract class PmsBaseEventHandler<T extends Message> implements PmsCommo
 
   protected abstract Ambiance extractAmbiance(T event);
 
-  protected Map<String, String> extractMetricContext(Map<String, String> metadataMap, T event) {
-    Ambiance ambiance = extractAmbiance(event);
+  public Map<String, String> extractMetricContext(Map<String, String> metadataMap, T event, String stream) {
     return ImmutableMap.<String, String>builder()
-        .put(PmsEventMonitoringConstants.ACCOUNT_ID, AmbianceUtils.getAccountId(ambiance))
-        .put(PmsEventMonitoringConstants.ORG_ID, AmbianceUtils.getOrgIdentifier(ambiance))
-        .put(PmsEventMonitoringConstants.PROJECT_ID, AmbianceUtils.getProjectIdentifier(ambiance))
-        .put(PmsEventMonitoringConstants.STEP_TYPE, AmbianceUtils.getCurrentStepType(ambiance).getType())
-        .put(PmsEventMonitoringConstants.MODULE, metadataMap.get(PmsEventFrameworkConstants.SERVICE_NAME))
+        .put(PmsEventMonitoringConstants.MODULE, getModuleName(metadataMap))
+        .put(PmsEventMonitoringConstants.EVENT_TYPE, getEventType(event))
+        .put(PmsEventMonitoringConstants.STREAM_NAME, stream)
         .build();
   }
 
-  protected abstract String getMetricPrefix(T message);
+  protected abstract String getEventType(T message);
 
-  public void handleEvent(T event, Map<String, String> metadataMap, long messageTimeStamp, long readTs) {
+  public void handleEvent(T event, Map<String, String> metadataMap, Map<String, Object> metricInfo) {
     try (PmsGitSyncBranchContextGuard ignore1 = gitSyncContext(event); AutoLogContext ignore2 = autoLogContext(event);
-         PmsMetricContextGuard metricContext =
-             new PmsMetricContextGuard(metadataMap, extractMetricContext(metadataMap, event))) {
-      log.info("[PMS_MESSAGE_LISTENER] Starting to process {} event ", event.getClass().getSimpleName());
-      MonitoringInfo monitoringInfo = MonitoringInfo.builder()
-                                          .createdAt(messageTimeStamp)
-                                          .readTs(readTs)
-                                          .metricPrefix(getMetricPrefix(event))
-                                          .metricContext(metricContext)
-                                          .accountId(AmbianceUtils.getAccountId(extractAmbiance(event)))
-                                          .build();
-      eventMonitoringService.sendMetric(QUEUE_EVENT_TIME, monitoringInfo, metadataMap);
+         PmsMetricContextGuard metricContext = new PmsMetricContextGuard(extractMetricContext(
+             metadataMap, event, (String) metricInfo.get(PmsEventMonitoringConstants.STREAM_NAME)))) {
+      log.debug("[PMS_MESSAGE_LISTENER] Starting to process {} event ", event.getClass().getSimpleName());
+      eventMonitoringService.sendMetric(EVENT_QUEUED_TIME,
+          (Long) metricInfo.get(PmsEventMonitoringConstants.EVENT_RECEIVE_TS)
+              - (Long) metricInfo.get(PmsEventMonitoringConstants.EVENT_SEND_TS));
       handleEventWithContext(event);
+      eventMonitoringService.sendMetric(EVENT_PROCESS_TIME,
+          System.currentTimeMillis() - (Long) metricInfo.get(PmsEventMonitoringConstants.EVENT_SEND_TS));
     } catch (Exception ex) {
       try (AutoLogContext autoLogContext = autoLogContext(event)) {
         log.error("Exception occurred while handling {}", event.getClass().getSimpleName(), ex);
@@ -87,6 +82,12 @@ public abstract class PmsBaseEventHandler<T extends Message> implements PmsCommo
             "[PMS_MESSAGE_LISTENER] Event Handler Processing Finished for {} event", event.getClass().getSimpleName());
       }
     }
+  }
+
+  private String getModuleName(Map<String, String> metadataMap) {
+    return metadataMap.get(PmsEventFrameworkConstants.SERVICE_NAME) != null
+        ? metadataMap.get(PmsEventFrameworkConstants.SERVICE_NAME)
+        : "pms";
   }
 
   protected abstract void handleEventWithContext(T event);

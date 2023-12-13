@@ -10,7 +10,6 @@ package io.harness.delegate.service.impl;
 import io.harness.configuration.DeployMode;
 import io.harness.delegate.beans.DelegateEntityOwner;
 import io.harness.delegate.beans.DelegateTokenDetails;
-import io.harness.delegate.beans.DelegateTokenStatus;
 import io.harness.delegate.service.DelegateVersionService;
 import io.harness.delegate.service.intfc.DelegateInstallationCommandService;
 import io.harness.delegate.service.intfc.DelegateNgTokenService;
@@ -27,6 +26,7 @@ import javax.validation.constraints.NotBlank;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringSubstitutor;
+import org.apache.logging.log4j.util.Strings;
 
 @Slf4j
 public class DelegateInstallationCommandServiceImpl implements DelegateInstallationCommandService {
@@ -36,13 +36,16 @@ public class DelegateInstallationCommandServiceImpl implements DelegateInstallat
   private final MainConfiguration mainConfiguration;
   private static final String TERRAFORM_TEMPLATE_FLE = "/delegatetemplates/delegate-terraform-example-module.ftl";
 
-  private static final String DOCKER_COMMAND = "docker run --cpus=1 --memory=2g \\\n"
+  private static final String ONPREM_HELM_REPO_SUFFIX = "/storage/harness-download/delegate-helm-chart/";
+
+  private static final String DOCKER_COMMAND = "docker run ${run_in_background} --cpus=1 --memory=2g ${net_flag}\\\n"
       + "  -e DELEGATE_NAME=docker-delegate \\\n"
       + "${docker_deploy_mode_string}"
       + "  -e NEXT_GEN=\"true\" \\\n"
       + "  -e DELEGATE_TYPE=\"DOCKER\" \\\n"
       + "  -e ACCOUNT_ID=${account_id} \\\n"
       + "  -e DELEGATE_TOKEN=${token} \\\n"
+      + "  -e DELEGATE_TAGS=\"${delegate_tags}\" \\\n"
       + "  -e LOG_STREAMING_SERVICE_URL=${manager_url}/log-service/ \\\n"
       + "  -e MANAGER_HOST_AND_PORT=${manager_url} ${image}";
 
@@ -55,7 +58,7 @@ public class DelegateInstallationCommandServiceImpl implements DelegateInstallat
       + "  --set delegateToken=${token} \\\n"
       + "  --set managerEndpoint=${manager_url} \\\n"
       + "  --set delegateDockerImage=${image} \\\n"
-      + "  --set replicas=1 --set upgrader.enabled=false";
+      + "  --set replicas=1 --set upgrader.enabled=true";
 
   private static final String KUBERNETES_MANIFEST_INSTRUCTIONS = "\"PUT_YOUR_DELEGATE_NAME\" with kubernetes-delegate\n"
       + "\"PUT_YOUR_ACCOUNT_ID\" with ${account_id}\n"
@@ -77,10 +80,10 @@ public class DelegateInstallationCommandServiceImpl implements DelegateInstallat
 
   @Override
   public String getCommand(@NotBlank final String commandType, @NotBlank final String managerUrl,
-      @NotBlank final String accountId, final DelegateEntityOwner owner) {
+      @NotBlank final String accountId, final DelegateEntityOwner owner, String os, String arch) {
     final String tokenValue = getDefaultNgToken(accountId, owner);
     final String image = delegateVersionService.getImmutableDelegateImageTag(accountId);
-    final Map<String, String> values = getScriptParams(managerUrl, accountId, tokenValue, image);
+    final Map<String, String> values = getScriptParams(managerUrl, accountId, tokenValue, image, commandType, os, arch);
 
     final StringSubstitutor substitute = new StringSubstitutor(values);
 
@@ -103,14 +106,22 @@ public class DelegateInstallationCommandServiceImpl implements DelegateInstallat
       final String managerUrl, final String accountId, final DelegateEntityOwner owner) throws IOException {
     final String tokenValue = getDefaultNgToken(accountId, owner);
     final String image = delegateVersionService.getImmutableDelegateImageTag(accountId);
-    final Map<String, String> values = getScriptParams(managerUrl, accountId, tokenValue, image);
+    final Map<String, String> values = getScriptParams(managerUrl, accountId, tokenValue, image, null, null, null);
     String content = IOUtils.toString(this.getClass().getResourceAsStream(TERRAFORM_TEMPLATE_FLE), "UTF-8");
     final StringSubstitutor substitute = new StringSubstitutor(values);
     return substitute.replace(content);
   }
 
-  private Map<String, String> getScriptParams(
-      final String managerUrl, final String accountId, final String tokenValue, final String image) {
+  @Override
+  public String getHelmRepoUrl(String commandType, String managerUrl) {
+    if (DeployMode.isOnPrem(mainConfiguration.getDeployMode().name())) {
+      return managerUrl.concat(ONPREM_HELM_REPO_SUFFIX);
+    }
+    return mainConfiguration.getSaasDelegateHelmChartRepo();
+  }
+
+  private Map<String, String> getScriptParams(final String managerUrl, final String accountId, final String tokenValue,
+      final String image, final String commandType, final String os, final String arch) {
     ImmutableMap.Builder<String, String> valuesMapBuilder =
         ImmutableMap.<String, String>builder()
             .put("account_id", accountId)
@@ -127,15 +138,26 @@ public class DelegateInstallationCommandServiceImpl implements DelegateInstallat
       valuesMapBuilder.put("docker_deploy_mode_string", EMPTY_STRING);
       valuesMapBuilder.put("helm_deploy_mode_string", EMPTY_STRING);
     }
+    if (Strings.isNotBlank(commandType) && commandType.equalsIgnoreCase("DOCKER")) {
+      if (Strings.isNotBlank(os) && os.equalsIgnoreCase("linux")) {
+        valuesMapBuilder.put("run_in_background", "-d");
+        valuesMapBuilder.put("net_flag", "--net=host");
+        valuesMapBuilder.put("delegate_tags", (os + "-" + arch).toLowerCase());
+      } else {
+        valuesMapBuilder.put("run_in_background", "");
+        valuesMapBuilder.put("net_flag", "");
+        valuesMapBuilder.put("delegate_tags", "");
+      }
+    }
     return valuesMapBuilder.build();
   }
 
   private String getDefaultNgToken(String accountId, DelegateEntityOwner owner) {
     final DelegateTokenDetails delegateTokenDetails =
-        delegateNgTokenService.getDelegateToken(accountId, delegateNgTokenService.getDefaultTokenName(owner), true);
+        delegateNgTokenService.getDefaultTokenOrOldestActiveDelegateToken(accountId, owner);
     String tokenValue;
-    if (Objects.isNull(delegateTokenDetails) || !delegateTokenDetails.getStatus().equals(DelegateTokenStatus.ACTIVE)) {
-      tokenValue = "<No Default Delegate Token available, create a default token>";
+    if (Objects.isNull(delegateTokenDetails)) {
+      tokenValue = "<No Token available, please create a new token and try again>";
     } else {
       tokenValue = delegateTokenDetails.getValue();
     }

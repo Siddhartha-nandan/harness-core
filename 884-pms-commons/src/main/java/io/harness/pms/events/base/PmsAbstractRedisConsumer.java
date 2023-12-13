@@ -7,8 +7,10 @@
 
 package io.harness.pms.events.base;
 
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.maintenance.MaintenanceController.getMaintenanceFlag;
+import static io.harness.pms.events.PmsEventFrameworkConstants.PIE_EVENT_ID;
 import static io.harness.threading.Morpheus.sleep;
 
 import static java.time.Duration.ofSeconds;
@@ -22,17 +24,23 @@ import io.harness.data.structure.EmptyPredicate;
 import io.harness.eventsframework.api.Consumer;
 import io.harness.eventsframework.api.EventsFrameworkDownException;
 import io.harness.eventsframework.consumer.Message;
-import io.harness.eventsframework.impl.redis.RedisAbstractConsumer;
 import io.harness.eventsframework.impl.redis.RedisTraceConsumer;
+import io.harness.logging.AutoLogContext;
+import io.harness.pms.events.PmsEventMonitoringConstants;
 import io.harness.queue.QueueController;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import javax.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(HarnessTeam.PIPELINE)
@@ -45,20 +53,24 @@ public abstract class PmsAbstractRedisConsumer<T extends PmsAbstractMessageListe
       EmptyPredicate.isNotEmpty(System.getenv("THREAD_SLEEP_MILLIS_WHEN_CONSUMER_IS_BUSY"))
       ? Integer.parseInt(System.getenv("THREAD_SLEEP_MILLIS_WHEN_CONSUMER_IS_BUSY"))
       : 0;
+
+  private static final Duration THRESHOLD_PROCESS_DURATION = Duration.ofMillis(100);
   private static final int SLEEP_SECONDS = 10;
   private static final String CACHE_KEY = "%s_%s";
   private final Consumer redisConsumer;
   private final T messageListener;
+  private final ExecutorService executorService;
   private final QueueController queueController;
-  private AtomicBoolean shouldStop = new AtomicBoolean(false);
-  private Cache<String, Integer> eventsCache;
+  private final AtomicBoolean shouldStop = new AtomicBoolean(false);
+  private final Cache<String, Integer> eventsCache;
 
-  public PmsAbstractRedisConsumer(
-      Consumer redisConsumer, T messageListener, Cache<String, Integer> eventsCache, QueueController queueController) {
+  public PmsAbstractRedisConsumer(Consumer redisConsumer, T messageListener, Cache<String, Integer> eventsCache,
+      QueueController queueController, ExecutorService executorService) {
     this.redisConsumer = redisConsumer;
     this.messageListener = messageListener;
     this.eventsCache = eventsCache;
     this.queueController = queueController;
+    this.executorService = executorService;
   }
 
   @Override
@@ -71,13 +83,14 @@ public abstract class PmsAbstractRedisConsumer<T extends PmsAbstractMessageListe
     try {
       preThreadHandler();
       do {
-        while (getMaintenanceFlag()) {
-          log.info("We are under maintenance, will try again after {} seconds", SLEEP_SECONDS);
-          sleep(ofSeconds(SLEEP_SECONDS));
+        if (getMaintenanceFlag()) {
+          log.info("We are currently under maintenance");
+          while (getMaintenanceFlag()) {
+            sleep(ofSeconds(SLEEP_SECONDS));
+          }
+          log.info("Maintenance is finished. We are in working state again");
         }
         if (queueController.isNotPrimary()) {
-          log.info(this.getClass().getSimpleName()
-              + " is not running on primary deployment, will try again after some time...");
           TimeUnit.SECONDS.sleep(30);
           continue;
         }
@@ -109,14 +122,26 @@ public abstract class PmsAbstractRedisConsumer<T extends PmsAbstractMessageListe
     String messageId;
     boolean messageProcessed;
     messages = redisConsumer.read(Duration.ofSeconds(WAIT_TIME_IN_SECONDS));
-    for (Message message : messages) {
+    List<Message> processableMessages =
+        messages.stream().filter(messageListener::isProcessable).collect(Collectors.toList());
+    List<String> processableMessageIds = processableMessages.stream().map(Message::getId).collect(Collectors.toList());
+    if (processableMessages.size() > 0) {
+      log.info("Read message with messages with ids [{}] from redis", processableMessageIds);
+    }
+    for (Message message : processableMessages) {
       messageId = message.getId();
       messageProcessed = handleMessage(message);
       if (messageProcessed) {
         redisConsumer.acknowledge(messageId);
       }
     }
-    if (messages.size() < ((RedisAbstractConsumer) this.redisConsumer).getBatchSize()) {
+    List<Message> notProcessableMessages = messages.stream()
+                                               .filter(message -> !processableMessageIds.contains(message.getId()))
+                                               .collect(Collectors.toList());
+    for (Message message : notProcessableMessages) {
+      redisConsumer.acknowledge(message.getId());
+    }
+    if (messages.size() < this.redisConsumer.getBatchSize()) {
       // Adding thread sleep when the events read are less than the batch-size. This way when the load is high, consumer
       // will query the events quickly. And in case of low load, thread will sleep for some time.
       TimeUnit.MILLISECONDS.sleep(THREAD_SLEEP_TIME_IN_MILLIS);
@@ -132,36 +157,59 @@ public abstract class PmsAbstractRedisConsumer<T extends PmsAbstractMessageListe
   @Override
   protected boolean processMessage(Message message) {
     AtomicBoolean success = new AtomicBoolean(true);
-    if (messageListener.isProcessable(message) && !isAlreadyProcessed(message)) {
-      log.info("Read message with message id {} from redis", message.getId());
-      insertMessageInCache(message);
-      if (!messageListener.handleMessage(message)) {
-        success.set(false);
-      }
+    if (!isAlreadyProcessed(message)) {
+      long readTs = System.currentTimeMillis();
+      executorService.submit(() -> {
+        try (AutoLogContext ignore = new MessageLogContext(message)) {
+          // Check and log for time taken to schedule the thread
+          checkAndLogSchedulingDelays(message.getId(), readTs);
+          messageListener.handleMessage(message, getMetricInfo(readTs));
+        } catch (Exception ex) {
+          log.error("[PMS_MESSAGE_LISTENER] Exception occurred while processing {} event with messageId: {}",
+              messageListener.getClass().getSimpleName(), message.getId(), ex);
+        }
+      });
     }
     return success.get();
   }
 
-  private void insertMessageInCache(Message message) {
-    try {
-      eventsCache.put(String.format(CACHE_KEY, this.getClass().getSimpleName(), message.getId()), 1);
-    } catch (Exception ex) {
-      log.error("Exception occurred while storing message id in cache", ex);
-    }
+  @NotNull
+  private Map<String, Object> getMetricInfo(long readTs) {
+    Map<String, Object> metricInfo = new HashMap<>();
+    metricInfo.put(PmsEventMonitoringConstants.STREAM_NAME, redisConsumer.getTopicName());
+    metricInfo.put(PmsEventMonitoringConstants.EVENT_RECEIVE_TS, readTs);
+    return metricInfo;
   }
 
   private boolean isAlreadyProcessed(Message message) {
     try {
-      String key = String.format(CACHE_KEY, this.getClass().getSimpleName(), message.getId());
-      boolean isProcessed = eventsCache.containsKey(key);
+      String uniqueIdForKey = getUniqueIdForKey(message);
+      String key = String.format(CACHE_KEY, this.getClass().getSimpleName(), uniqueIdForKey);
+      boolean isProcessed = !eventsCache.putIfAbsent(key, 1);
       if (isProcessed) {
         log.warn(String.format("Duplicate redis notification received to consumer [%s] with messageId [%s]",
-            this.getClass().getSimpleName(), message.getId()));
+            this.getClass().getSimpleName(), uniqueIdForKey));
       }
       return isProcessed;
     } catch (Exception ex) {
       log.error("Exception occurred while checking for duplicate notification", ex);
       return false;
+    }
+  }
+
+  private String getUniqueIdForKey(Message message) {
+    if (message.getMessage().getMetadataMap() == null
+        || isEmpty(message.getMessage().getMetadataMap().get(PIE_EVENT_ID))) {
+      return message.getId();
+    }
+    return message.getMessage().getMetadataMap().get(PIE_EVENT_ID);
+  }
+
+  private void checkAndLogSchedulingDelays(String messageId, long startTs) {
+    Duration scheduleDuration = Duration.ofMillis(System.currentTimeMillis() - startTs);
+    if (THRESHOLD_PROCESS_DURATION.compareTo(scheduleDuration) < 0) {
+      log.warn("[PMS_MESSAGE_LISTENER] Handler for {} event with messageId {} called after {} delay",
+          messageListener.getClass().getSimpleName(), messageId, scheduleDuration);
     }
   }
 

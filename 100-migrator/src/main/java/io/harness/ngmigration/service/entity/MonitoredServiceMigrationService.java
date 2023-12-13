@@ -6,6 +6,9 @@
  */
 
 package io.harness.ngmigration.service.entity;
+
+import static io.harness.ngmigration.service.step.verification.VerificationBaseService.getMonitoredServiceEntity;
+
 import static software.wings.ngmigration.NGMigrationEntityType.MONITORED_SERVICE_TEMPLATE;
 
 import io.harness.annotations.dev.CodePulse;
@@ -13,11 +16,13 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.MigratedEntityMapping;
 import io.harness.encryption.Scope;
+import io.harness.exception.InvalidRequestException;
 import io.harness.gitsync.beans.StoreType;
 import io.harness.gitsync.beans.YamlDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.template.TemplateEntityType;
 import io.harness.ng.core.template.TemplateResponseDTO;
+import io.harness.ngmigration.beans.InputDefaults;
 import io.harness.ngmigration.beans.MigrationContext;
 import io.harness.ngmigration.beans.MigrationInputDTO;
 import io.harness.ngmigration.beans.NGYamlFile;
@@ -41,13 +46,13 @@ import io.harness.template.resources.beans.TemplateWrapperResponseDTO;
 import io.harness.template.resources.beans.yaml.NGTemplateConfig;
 import io.harness.template.resources.beans.yaml.NGTemplateInfoConfig;
 
-import software.wings.beans.GraphNode;
 import software.wings.beans.Workflow;
 import software.wings.ngmigration.CgBasicInfo;
 import software.wings.ngmigration.CgEntityId;
 import software.wings.ngmigration.CgEntityNode;
 import software.wings.ngmigration.DiscoveryNode;
 import software.wings.ngmigration.NGMigrationEntity;
+import software.wings.ngmigration.NGMigrationEntityType;
 import software.wings.service.intfc.WorkflowService;
 
 import com.google.inject.Inject;
@@ -112,9 +117,17 @@ public class MonitoredServiceMigrationService extends NgMigrationService {
     String workflowId = CGMonitoredServiceEntity.getWorkflowIdFromMonitoredServiceId(entityId);
     String stepId = CGMonitoredServiceEntity.getStepIdFromMonitoredServiceId(entityId);
     Workflow workflow = workflowService.readWorkflow(appId, workflowId);
-    GraphNode graphNode =
-        MigratorUtility.getSteps(workflow).stream().filter(gn -> gn.getId().equals(stepId)).findFirst().get();
-    return discover(CGMonitoredServiceEntity.builder().workflow(workflow).stepNode(graphNode).build());
+
+    CGMonitoredServiceEntity monitoredServiceEntity = null;
+    if (workflow != null) {
+      monitoredServiceEntity = getMonitoredServiceEntity(stepId, workflow);
+    }
+
+    if (null != monitoredServiceEntity) {
+      return discover(monitoredServiceEntity);
+    }
+
+    throw new InvalidRequestException("Monitored service not found!");
   }
 
   @Override
@@ -126,7 +139,7 @@ public class MonitoredServiceMigrationService extends NgMigrationService {
     String name = MigratorUtility.generateName(inputDTO.getOverrides(), entityId, cgMonitoredServiceEntity.getName());
     String identifier = MigratorUtility.generateIdentifierDefaultName(
         inputDTO.getOverrides(), entityId, name, inputDTO.getIdentifierCaseFormat());
-    Scope scope = MigratorUtility.getDefaultScope(inputDTO, entityId, Scope.PROJECT);
+    Scope scope = MigratorUtility.getDefaultScope(inputDTO, entityId, getTemplateScope(inputDTO));
     String projectIdentifier = MigratorUtility.getProjectIdentifier(scope, inputDTO);
     String orgIdentifier = MigratorUtility.getOrgIdentifier(scope, inputDTO);
     String description = "Monitored Service migrated from First Gen";
@@ -149,7 +162,7 @@ public class MonitoredServiceMigrationService extends NgMigrationService {
                                 .orgIdentifier(orgIdentifier)
                                 .versionLabel("v1")
                                 .spec(monitoredServiceEntityToMonitoredServiceMapper.getMonitoredServiceJsonNode(
-                                    cgMonitoredServiceEntity.getStepNode()))
+                                    cgMonitoredServiceEntity.getStepNode(), migrationContext))
                                 .build())
                         .build())
               .ngEntityDetail(NgEntityDetail.builder()
@@ -167,6 +180,19 @@ public class MonitoredServiceMigrationService extends NgMigrationService {
     return null;
   }
 
+  private Scope getTemplateScope(MigrationInputDTO inputDTO) {
+    if (inputDTO == null) {
+      return Scope.PROJECT;
+    }
+
+    Map<NGMigrationEntityType, InputDefaults> defaults = inputDTO.getDefaults();
+    if (defaults != null && defaults.containsKey(NGMigrationEntityType.TEMPLATE)
+        && defaults.get(NGMigrationEntityType.TEMPLATE).getScope() != null) {
+      return defaults.get(NGMigrationEntityType.TEMPLATE).getScope();
+    }
+    return Scope.PROJECT;
+  }
+
   @Override
   public MigrationImportSummaryDTO migrate(NGClient ngClient, PmsClient pmsClient, TemplateClient templateClient,
       MigrationInputDTO inputDTO, NGYamlFile yamlFile) throws IOException {
@@ -177,6 +203,16 @@ public class MonitoredServiceMigrationService extends NgMigrationService {
                 RequestBody.create(MediaType.parse("application/yaml"), YamlUtils.writeYamlString(yamlFile.getYaml())),
                 StoreType.INLINE)
             .execute();
+
+    if (!(resp.code() >= 200 && resp.code() < 300)) {
+      resp =
+          templateClient
+              .createTemplate(inputDTO.getDestinationAuthToken(), inputDTO.getDestinationAccountIdentifier(),
+                  inputDTO.getOrgIdentifier(), inputDTO.getProjectIdentifier(),
+                  RequestBody.create(MediaType.parse("application/yaml"), getYamlStringV2(yamlFile)), StoreType.INLINE)
+              .execute();
+    }
+
     log.info("Template creation Response details for Monitored Service {} {}", resp.code(), resp.message());
     return handleResp(yamlFile, resp);
   }
@@ -198,7 +234,7 @@ public class MonitoredServiceMigrationService extends NgMigrationService {
   }
 
   @Override
-  protected boolean isNGEntityExists() {
+  protected boolean isNGEntityExists(MigrationContext migrationContext) {
     return true;
   }
 }

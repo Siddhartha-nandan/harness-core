@@ -14,9 +14,11 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.artifact.bean.artifactsource.ArtifactSource;
 import io.harness.cdng.artifact.bean.artifactsource.DockerArtifactSource;
 import io.harness.cdng.artifact.steps.beans.ArtifactStepParameters;
+import io.harness.cdng.creator.plan.stage.DeploymentStagePlanCreationInfo;
 import io.harness.cdng.envGroup.beans.EnvironmentGroupEntity;
 import io.harness.cdng.execution.StageExecutionInfo;
 import io.harness.cdng.execution.StageExecutionInstanceInfo;
+import io.harness.cdng.gitops.resume.GitopsStepFinishCallback;
 import io.harness.cdng.infra.InfraUseFromStage;
 import io.harness.cdng.infra.steps.InfraStepParameters;
 import io.harness.cdng.instance.InstanceDeploymentInfo;
@@ -32,6 +34,7 @@ import io.harness.cdng.provision.terraformcloud.dal.TerraformCloudConfig;
 import io.harness.cdng.provision.terragrunt.TerragruntConfig;
 import io.harness.cdng.service.steps.ServiceStepParameters;
 import io.harness.cdng.usage.task.CDLicenseReportAccounts;
+import io.harness.gitopsprovider.entity.GitRestraintInstance;
 import io.harness.morphia.MorphiaRegistrar;
 import io.harness.morphia.MorphiaRegistrarHelperPut;
 import io.harness.polling.bean.PollingDocument;
@@ -64,6 +67,8 @@ public class NGMorphiaRegistrar implements MorphiaRegistrar {
     set.add(StageExecutionInstanceInfo.class);
     set.add(CDLicenseReportAccounts.class);
     set.add(AwsCdkConfig.class);
+    set.add(GitRestraintInstance.class);
+    set.add(DeploymentStagePlanCreationInfo.class);
   }
 
   @Override
@@ -87,5 +92,7 @@ public class NGMorphiaRegistrar implements MorphiaRegistrar {
     h.put("io.harness.cdng.provision.terraform.executions.TerraformApplyExecutionDetails",
         TerraformApplyExecutionDetails.class);
     h.put("io.harness.cdng.provision.awscdk.beans.AwsCdkConfig", AwsCdkConfig.class);
+    h.put("io.harness.cdng.gitops.resume.GitopsStepFinishCallback", GitopsStepFinishCallback.class);
+    h.put("io.harness.cdng.creator.plan.stage.DeploymentStagePlanCreationInfo", DeploymentStagePlanCreationInfo.class);
   }
 }

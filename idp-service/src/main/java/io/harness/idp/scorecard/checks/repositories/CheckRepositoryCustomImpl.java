@@ -44,7 +44,9 @@ public class CheckRepositoryCustomImpl implements CheckRepositoryCustom {
     Criteria criteria = Criteria.where(CheckKeys.accountIdentifier)
                             .is(checkEntity.getAccountIdentifier())
                             .and(CheckKeys.identifier)
-                            .is(checkEntity.getIdentifier());
+                            .is(checkEntity.getIdentifier())
+                            .and(CheckKeys.isCustom)
+                            .is(true);
     Query query = new Query(criteria);
     Update update = new Update();
     update.set(CheckKeys.name, checkEntity.getName());
@@ -54,7 +56,7 @@ public class CheckRepositoryCustomImpl implements CheckRepositoryCustom {
     update.set(CheckKeys.rules, checkEntity.getRules());
     update.set(CheckKeys.failMessage, checkEntity.getFailMessage());
     update.set(CheckKeys.ruleStrategy, checkEntity.getRuleStrategy());
-    update.set(CheckKeys.labels, checkEntity.getLabels());
+    update.set(CheckKeys.tags, checkEntity.getTags());
     FindAndModifyOptions options = new FindAndModifyOptions().returnNew(true);
     return mongoTemplate.findAndModify(query, update, options, CheckEntity.class);
   }

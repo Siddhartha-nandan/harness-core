@@ -9,19 +9,27 @@ package io.harness.pms.outbox;
 
 import static io.harness.audit.beans.AuthenticationInfoDTO.fromSecurityPrincipal;
 import static io.harness.authorization.AuthorizationServiceHeader.PIPELINE_SERVICE;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ENTITY_TYPE;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.PIPELINE_ENTITY;
 import static io.harness.logging.AutoLogContext.OverrideBehavior.OVERRIDE_NESTS;
 import static io.harness.security.PrincipalContextData.PRINCIPAL_CONTEXT;
 
+import io.harness.AbortInfoHelper;
 import io.harness.ModuleType;
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.audit.Action;
 import io.harness.audit.beans.AuditEntry;
 import io.harness.audit.beans.ResourceDTO;
 import io.harness.audit.beans.ResourceScopeDTO;
 import io.harness.audit.beans.custom.executions.NodeExecutionEventData;
 import io.harness.audit.client.api.AuditClientService;
+import io.harness.beans.FeatureName;
 import io.harness.context.GlobalContext;
+import io.harness.datacollection.utils.EmptyPredicate;
 import io.harness.engine.pms.audits.events.NodeExecutionOutboxEventConstants;
 import io.harness.engine.pms.audits.events.PipelineAbortEvent;
 import io.harness.engine.pms.audits.events.PipelineEndEvent;
@@ -29,30 +37,41 @@ import io.harness.engine.pms.audits.events.PipelineStartEvent;
 import io.harness.engine.pms.audits.events.PipelineTimeoutEvent;
 import io.harness.engine.pms.audits.events.StageEndEvent;
 import io.harness.engine.pms.audits.events.StageStartEvent;
+import io.harness.eventsframework.EventsFrameworkConstants;
+import io.harness.eventsframework.api.Producer;
+import io.harness.eventsframework.producer.Message;
 import io.harness.logging.AutoLogContext;
 import io.harness.observer.Subject;
 import io.harness.outbox.OutboxEvent;
 import io.harness.outbox.api.OutboxEventHandler;
+import io.harness.pms.contracts.filter.AsyncFilterCreatorEvent;
 import io.harness.pms.events.PipelineCreateEvent;
 import io.harness.pms.events.PipelineDeleteEvent;
 import io.harness.pms.events.PipelineOutboxEvents;
 import io.harness.pms.events.PipelineUpdateEvent;
 import io.harness.pms.notification.orchestration.NodeExecutionEventUtils;
 import io.harness.pms.outbox.autoLog.OutboxLogContext;
+import io.harness.pms.pipeline.PipelineEntity;
 import io.harness.pms.pipeline.observer.PipelineActionObserver;
 import io.harness.security.PrincipalContextData;
 import io.harness.security.dto.Principal;
 import io.harness.security.dto.ServicePrincipal;
+import io.harness.security.dto.UserPrincipal;
+import io.harness.utils.PmsFeatureFlagService;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.google.inject.name.Named;
 import io.serializer.HObjectMapper;
 import java.io.IOException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @Slf4j
 @OwnedBy(HarnessTeam.PIPELINE)
 @Singleton
@@ -60,11 +79,14 @@ public class PipelineOutboxEventHandler implements OutboxEventHandler {
   private ObjectMapper objectMapper;
   private final AuditClientService auditClientService;
   private final InputSetEventHandler inputSetEventHandler;
+  private PmsFeatureFlagService featureFlagService;
+  @Inject @Named(EventsFrameworkConstants.ASYNC_FILTER_CREATION) private Producer asyncFilterCreationProducer;
 
   @Getter private final Subject<PipelineActionObserver> pipelineActionObserverSubject = new Subject<>();
-
   @Inject
-  PipelineOutboxEventHandler(AuditClientService auditClientService, InputSetEventHandler inputSetEventHandler) {
+  PipelineOutboxEventHandler(AuditClientService auditClientService, InputSetEventHandler inputSetEventHandler,
+      PmsFeatureFlagService featureFlagService) {
+    this.featureFlagService = featureFlagService;
     this.objectMapper = HObjectMapper.NG_DEFAULT_OBJECT_MAPPER;
     this.auditClientService = auditClientService;
     this.inputSetEventHandler = inputSetEventHandler;
@@ -83,16 +105,45 @@ public class PipelineOutboxEventHandler implements OutboxEventHandler {
                                 .insertId(outboxEvent.getId())
                                 .build();
     Principal principal = null;
-    if (globalContext.get(PRINCIPAL_CONTEXT) == null) {
+    if (globalContext == null || globalContext.get(PRINCIPAL_CONTEXT) == null) {
       principal = new ServicePrincipal(PIPELINE_SERVICE.getServiceId());
     } else if (globalContext.get(PRINCIPAL_CONTEXT) != null) {
       principal = ((PrincipalContextData) globalContext.get(PRINCIPAL_CONTEXT)).getPrincipal();
     }
     pipelineActionObserverSubject.fireInform(PipelineActionObserver::onCreate, event);
+    asyncFilterCreation(event.getPipeline());
     if (event.getIsForOldGitSync()) {
       return true;
     }
     return auditClientService.publishAudit(auditEntry, fromSecurityPrincipal(principal), globalContext);
+  }
+
+  private void asyncFilterCreation(PipelineEntity pipelineEntity) {
+    // Don't send async filter creation event for draft pipelines
+    Boolean isDraftPipeline = pipelineEntity.getIsDraft();
+    if (null == isDraftPipeline || !isDraftPipeline) {
+      sendFilterCreationEvent(pipelineEntity.getAccountId(), pipelineEntity.getOrgIdentifier(),
+          pipelineEntity.getProjectIdentifier(), pipelineEntity.getIdentifier(), pipelineEntity.getYamlHash(),
+          pipelineEntity.getUuid());
+    }
+  }
+
+  private void sendFilterCreationEvent(
+      String accountId, String orgId, String projectId, String pipelineId, Integer yamlHash, String uuid) {
+    if (featureFlagService.isEnabled(accountId, FeatureName.PIE_ASYNC_FILTER_CREATION)) {
+      try {
+        asyncFilterCreationProducer.send(
+            Message.newBuilder()
+                .putAllMetadata(ImmutableMap.of(ENTITY_TYPE, PIPELINE_ENTITY))
+                .setData(
+                    AsyncFilterCreatorEvent.newBuilder().setYamlHash(yamlHash).setUuid(uuid).build().toByteString())
+                .build());
+      } catch (Exception ex) {
+        log.error(
+            "Error while the creating event for async filter creation event for pipeline identifier {} in project {} org {} account {}",
+            pipelineId, projectId, orgId, accountId);
+      }
+    }
   }
 
   private boolean handlePipelineUpdateEvent(OutboxEvent outboxEvent) throws IOException {
@@ -109,12 +160,13 @@ public class PipelineOutboxEventHandler implements OutboxEventHandler {
                                 .insertId(outboxEvent.getId())
                                 .build();
     Principal principal = null;
-    if (globalContext.get(PRINCIPAL_CONTEXT) == null) {
+    if (globalContext == null || globalContext.get(PRINCIPAL_CONTEXT) == null) {
       principal = new ServicePrincipal(PIPELINE_SERVICE.getServiceId());
     } else if (globalContext.get(PRINCIPAL_CONTEXT) != null) {
       principal = ((PrincipalContextData) globalContext.get(PRINCIPAL_CONTEXT)).getPrincipal();
     }
     pipelineActionObserverSubject.fireInform(PipelineActionObserver::onUpdate, event);
+    asyncFilterCreation(event.getNewPipeline());
     if (event.getIsForOldGitSync() || event.getOldPipeline() == null) {
       return true;
     }
@@ -126,7 +178,7 @@ public class PipelineOutboxEventHandler implements OutboxEventHandler {
     PipelineDeleteEvent event = objectMapper.readValue(outboxEvent.getEventData(), PipelineDeleteEvent.class);
 
     Principal principal = null;
-    if (globalContext.get(PRINCIPAL_CONTEXT) == null) {
+    if (globalContext == null || globalContext.get(PRINCIPAL_CONTEXT) == null) {
       principal = new ServicePrincipal(PIPELINE_SERVICE.getServiceId());
     } else if (globalContext.get(PRINCIPAL_CONTEXT) != null) {
       principal = ((PrincipalContextData) globalContext.get(PRINCIPAL_CONTEXT)).getPrincipal();
@@ -153,7 +205,7 @@ public class PipelineOutboxEventHandler implements OutboxEventHandler {
     NodeExecutionEventData nodeExecutionEventData =
         NodeExecutionEventUtils.mapPipelineStartEventToNodeExecutionEventData(pipelineStartEvent);
 
-    return publishAuditEntry(outboxEvent, nodeExecutionEventData, Action.START);
+    return publishAuditEntry(outboxEvent, nodeExecutionEventData, Action.START, getPrincipal(nodeExecutionEventData));
   }
 
   private boolean handlePipelineTimeoutEvent(OutboxEvent outboxEvent) throws JsonProcessingException {
@@ -162,7 +214,7 @@ public class PipelineOutboxEventHandler implements OutboxEventHandler {
     NodeExecutionEventData nodeExecutionEventData =
         NodeExecutionEventUtils.mapPipelineTimeoutEventToNodeExecutionEventData(pipelineTimeoutEvent);
 
-    return publishAuditEntry(outboxEvent, nodeExecutionEventData, Action.TIMEOUT);
+    return publishAuditEntry(outboxEvent, nodeExecutionEventData, Action.TIMEOUT, null);
   }
 
   private boolean handlePipelineEndEvent(OutboxEvent outboxEvent) throws JsonProcessingException {
@@ -170,7 +222,7 @@ public class PipelineOutboxEventHandler implements OutboxEventHandler {
     NodeExecutionEventData nodeExecutionEventData =
         NodeExecutionEventUtils.mapPipelineEndEventToNodeExecutionEventData(pipelineEndEvent);
 
-    return publishAuditEntry(outboxEvent, nodeExecutionEventData, Action.END);
+    return publishAuditEntry(outboxEvent, nodeExecutionEventData, Action.END, getPrincipal(nodeExecutionEventData));
   }
 
   private boolean handleStageStartEvent(OutboxEvent outboxEvent) throws JsonProcessingException {
@@ -178,14 +230,17 @@ public class PipelineOutboxEventHandler implements OutboxEventHandler {
     NodeExecutionEventData nodeExecutionEventData =
         NodeExecutionEventUtils.mapStageStartEventToNodeExecutionEventData(stageStartEvent);
 
-    return publishAuditEntry(outboxEvent, nodeExecutionEventData, Action.STAGE_START);
+    return publishAuditEntry(
+        outboxEvent, nodeExecutionEventData, Action.STAGE_START, getPrincipal(nodeExecutionEventData));
   }
   private boolean handleStageEndEvent(OutboxEvent outboxEvent) throws JsonProcessingException {
     StageEndEvent stageEndEvent = objectMapper.readValue(outboxEvent.getEventData(), StageEndEvent.class);
+
     NodeExecutionEventData nodeExecutionEventData =
         NodeExecutionEventUtils.mapStageEndEventToNodeExecutionEventData(stageEndEvent);
 
-    return publishAuditEntry(outboxEvent, nodeExecutionEventData, Action.STAGE_END);
+    return publishAuditEntry(
+        outboxEvent, nodeExecutionEventData, Action.STAGE_END, getPrincipal(nodeExecutionEventData));
   }
 
   private boolean handlePipelineAbortEvent(OutboxEvent outboxEvent) throws JsonProcessingException {
@@ -194,16 +249,28 @@ public class PipelineOutboxEventHandler implements OutboxEventHandler {
     NodeExecutionEventData nodeExecutionEventData =
         NodeExecutionEventUtils.mapPipelineAbortEventToNodeExecutionEventData(pipelineAbortEvent);
 
-    return publishAuditEntry(outboxEvent, nodeExecutionEventData, Action.ABORT);
+    return publishAuditEntry(outboxEvent, nodeExecutionEventData, Action.ABORT, getPrincipal(nodeExecutionEventData));
+  }
+
+  private Principal getPrincipal(NodeExecutionEventData nodeExecutionEventData) {
+    Principal principal = null;
+    if (nodeExecutionEventData.getTriggeredBy() != null) {
+      principal = new UserPrincipal(nodeExecutionEventData.getTriggeredBy().getIdentifier(),
+          getIdentifierForPrincipal(nodeExecutionEventData), nodeExecutionEventData.getTriggeredBy().getIdentifier(),
+          nodeExecutionEventData.getAccountIdentifier());
+    }
+    return principal;
   }
 
   private boolean publishAuditEntry(
-      OutboxEvent outboxEvent, NodeExecutionEventData nodeExecutionEventData, Action action) {
+      OutboxEvent outboxEvent, NodeExecutionEventData nodeExecutionEventData, Action action, Principal principal) {
     GlobalContext globalContext = outboxEvent.getGlobalContext();
 
-    Principal principal = new ServicePrincipal(PIPELINE_SERVICE.getServiceId());
-    if (globalContext.get(PRINCIPAL_CONTEXT) != null) {
-      principal = ((PrincipalContextData) globalContext.get(PRINCIPAL_CONTEXT)).getPrincipal();
+    if (principal == null) {
+      principal = new ServicePrincipal(PIPELINE_SERVICE.getServiceId());
+      if (globalContext.get(PRINCIPAL_CONTEXT) != null) {
+        principal = ((PrincipalContextData) globalContext.get(PRINCIPAL_CONTEXT)).getPrincipal();
+      }
     }
     AuditEntry auditEntry = AuditEntry.builder()
                                 .action(action)
@@ -256,5 +323,16 @@ public class PipelineOutboxEventHandler implements OutboxEventHandler {
         return false;
       }
     }
+  }
+
+  @VisibleForTesting
+  protected String getIdentifierForPrincipal(NodeExecutionEventData nodeExecutionEventData) {
+    if (nodeExecutionEventData.getTriggeredBy().getExtraInfo() != null
+        && !EmptyPredicate.isEmpty(nodeExecutionEventData.getTriggeredBy().getExtraInfo().get("email"))) {
+      return nodeExecutionEventData.getTriggeredBy().getExtraInfo().get("email");
+    } else if (!EmptyPredicate.isEmpty(nodeExecutionEventData.getTriggeredBy().getIdentifier())) {
+      return nodeExecutionEventData.getTriggeredBy().getIdentifier();
+    }
+    return AbortInfoHelper.SYSTEM_USER;
   }
 }

@@ -21,6 +21,7 @@ import io.harness.ng.core.environment.yaml.NGEnvironmentConfig;
 import io.harness.ng.core.filestore.dto.FileStoreRequest;
 import io.harness.ng.core.service.yaml.NGServiceConfig;
 import io.harness.ng.serializer.kryo.NGCacheDataKryoRegistrar;
+import io.harness.oidc.entities.OidcRegistrars;
 import io.harness.serializer.morphia.FeedbackMorphiaRegistrars;
 import io.harness.serializer.morphia.InvitesMorphiaRegistrar;
 import io.harness.serializer.morphia.MockRoleAssignmentMorphiaRegistrar;
@@ -29,13 +30,17 @@ import io.harness.serializer.morphia.NgUserGroupMorphiaRegistrar;
 import io.harness.serializer.morphia.NgUserMorphiaRegistrar;
 import io.harness.serializer.morphia.NgUserProfileMorphiaRegistrars;
 import io.harness.serializer.morphia.ServiceAccountMorphiaRegistrars;
+import io.harness.serializer.morphia.TunnelMorphiaRegistrars;
 import io.harness.serializer.morphia.WebhookMorphiaRegistrars;
+import io.harness.serializer.spring.convertors.EntityUsageDetailReadConvertor;
+import io.harness.serializer.spring.convertors.EntityUsageDetailWriteConvertor;
 import io.harness.yaml.schema.beans.YamlSchemaRootClass;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import dev.morphia.converters.TypeConverter;
 import io.serializer.registrars.NGCommonsRegistrars;
+import org.springframework.core.convert.converter.Converter;
 
 @CodePulse(
     module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PLG_LICENSING})
@@ -84,6 +89,8 @@ public class NextGenRegistrars {
           .addAll(NGSettingRegistrar.morphiaRegistrars)
           .addAll(IpAllowlistRegistrars.morphiaRegistrars)
           .addAll(EulaRegistrar.morphiaRegistrars)
+          .addAll(OidcRegistrars.morphiaRegistrars)
+          .add(TunnelMorphiaRegistrars.class)
           .build();
 
   public static final ImmutableList<YamlSchemaRootClass> yamlSchemaRegistrars =
@@ -145,4 +152,7 @@ public class NextGenRegistrars {
 
   public static final ImmutableSet<Class<? extends TypeConverter>> morphiaConverters =
       ImmutableSet.<Class<? extends TypeConverter>>builder().build();
+
+  public static final ImmutableList<Class<? extends Converter<?, ?>>> springConvertors =
+      ImmutableList.of(EntityUsageDetailReadConvertor.class, EntityUsageDetailWriteConvertor.class);
 }

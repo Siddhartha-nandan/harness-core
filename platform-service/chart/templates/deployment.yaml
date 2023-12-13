@@ -4,7 +4,13 @@ metadata:
   name: platform-service
   namespace: {{ .Release.Namespace }}
   labels:
-        {{- include "platform-service.labels" . | nindent 4 }}
+    {{- include "platform-service.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
@@ -25,8 +31,17 @@ spec:
       {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.global.commonAnnotations }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+      {{- end }}
       labels:
         {{- include "platform-service.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
     spec:
       {{ include "platform-service.pullSecrets" . | nindent 6 }}
       serviceAccountName: {{ include "platform-service.serviceAccountName" . }}
@@ -55,15 +70,18 @@ spec:
         resources:
           {{- toYaml .Values.resources | nindent 12 }}
         env:
-          {{- include "harnesscommon.dbconnection.redisEnv" (dict "context" .Values.global.database.redis "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD") | indent 10 }}
-          {{- include "harnesscommon.dbconnection.redisEnv" (dict "context" .Values.global.database.redis "userVariableName" "LOCK_CONFIG_REDIS_USERNAME" "passwordVariableName" "LOCK_CONFIG_REDIS_PASSWORD") | indent 10 }}
-          {{- include "harnesscommon.dbconnection.mongoEnv" . | indent 10 }}
-          - name: MONGO_URI
-            value: {{ include "harnesscommon.dbconnection.mongoConnection" (dict "database" "notifications" "context" $) }}
-          - name: AUDIT_MONGO_URI
-            value: {{ include "harnesscommon.dbconnection.mongoConnection" (dict "database" "audits" "context" $) }}
-          - name: RESOURCE_GROUP_MONGO_URI
-            value: {{ include "harnesscommon.dbconnection.mongoConnection" (dict "database" "resource-groups" "context" $) }}
+          {{- if .Values.errorTracking.enabled }}
+          {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "ET_AGENT_TOKEN" "overrideEnvName" "ET_TOKEN" "defaultKubernetesSecretName" "platform-service-secret" "defaultKubernetesSecretKey" "ET_AGENT_TOKEN") | indent 10 }}
+          {{- end }}
+          {{- include "harnesscommon.secrets.manageSMTPEnv" (dict "ctx" $) | indent 10 }}
+          {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD") | indent 10 }}
+          {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "LOCK_CONFIG_REDIS_USERNAME" "passwordVariableName" "LOCK_CONFIG_REDIS_PASSWORD") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "notifications") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "notifications" "connectionURIVariableName" "MONGO_URI") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "audits") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "audits" "connectionURIVariableName" "AUDIT_MONGO_URI") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "resource-groups") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "resource-groups" "connectionURIVariableName" "RESOURCE_GROUP_MONGO_URI") | indent 10 }}
           {{- if .Values.extraEnvVars }}
             {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 10 }}
           {{- end }}
@@ -77,16 +95,6 @@ spec:
         envFrom:
         - configMapRef:
             name: platform-service
-        {{- if .Values.global.smtpCreateSecret.enabled }}
-        - secretRef:
-            name: smtp-secret
-        {{- end }}
-        {{- if .Values.global.secrets.app.external.enabled }}
-        {{- if .Values.global.secrets.app.external.kind.externalSecrets }}
-        - secretRef:
-            name: platform-service-external-secret
-        {{- end }}
-        {{- end }}
         readinessProbe:
           httpGet:
             path: /api/health

@@ -91,6 +91,7 @@ import io.harness.cdng.infra.yaml.SshWinRmAwsInfrastructure;
 import io.harness.cdng.infra.yaml.SshWinRmAzureInfrastructure;
 import io.harness.cdng.instance.outcome.DeploymentInfoOutcome;
 import io.harness.cdng.manifest.ManifestConfigType;
+import io.harness.cdng.manifest.yaml.ArtifactBundleStore;
 import io.harness.cdng.manifest.yaml.ArtifactoryStoreConfig;
 import io.harness.cdng.manifest.yaml.AsgConfigurationManifestOutcome;
 import io.harness.cdng.manifest.yaml.AsgLaunchTemplateManifestOutcome;
@@ -129,6 +130,7 @@ import io.harness.cdng.manifest.yaml.ManifestOverrideSetWrapper;
 import io.harness.cdng.manifest.yaml.ManifestOverrideSets;
 import io.harness.cdng.manifest.yaml.ManifestsOutcome;
 import io.harness.cdng.manifest.yaml.OciHelmChartConfig;
+import io.harness.cdng.manifest.yaml.OciHelmChartStoreEcrConfig;
 import io.harness.cdng.manifest.yaml.OciHelmChartStoreGenericConfig;
 import io.harness.cdng.manifest.yaml.OpenshiftManifestOutcome;
 import io.harness.cdng.manifest.yaml.OpenshiftParamManifestOutcome;
@@ -171,6 +173,7 @@ import io.harness.cdng.manifest.yaml.storeConfig.StoreConfig;
 import io.harness.cdng.manifest.yaml.storeConfig.StoreConfigType;
 import io.harness.cdng.manifest.yaml.storeConfig.StoreConfigWrapper;
 import io.harness.cdng.manifestConfigs.ManifestConfigurations;
+import io.harness.cdng.manifestConfigs.outcome.ManifestConfigurationsOutcome;
 import io.harness.cdng.service.beans.AsgServiceSpec;
 import io.harness.cdng.service.beans.AzureWebAppServiceSpec;
 import io.harness.cdng.service.beans.CustomDeploymentServiceSpec;
@@ -415,5 +418,8 @@ public class NGEntitiesKryoRegistrar implements KryoRegistrar {
     kryo.register(GoogleCloudFunctionGenOneDefinitionManifest.class, 1800001);
     kryo.register(GoogleCloudFunctionGenOneDefinitionManifestOutcome.class, 1800002);
     kryo.register(ManifestConfigurations.class, 160005);
+    kryo.register(OciHelmChartStoreEcrConfig.class, 160006);
+    kryo.register(ManifestConfigurationsOutcome.class, 160007);
+    kryo.register(ArtifactBundleStore.class, 160008);
   }
 }

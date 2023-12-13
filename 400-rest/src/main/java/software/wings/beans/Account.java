@@ -18,8 +18,11 @@ import static software.wings.ngmigration.NGMigrationEntityType.ACCOUNT;
 import io.harness.annotation.HarnessEntity;
 import io.harness.annotations.ChangeDataCapture;
 import io.harness.annotations.StoreIn;
+import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModule;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.annotations.dev.TargetModule;
 import io.harness.beans.EmbeddedUser;
 import io.harness.ccm.license.CeLicenseInfo;
@@ -39,6 +42,7 @@ import io.harness.security.EncryptionInterface;
 import io.harness.security.SimpleEncryption;
 import io.harness.validation.Create;
 
+import software.wings.beans.account.AccountPreferences;
 import software.wings.ngmigration.CgBasicInfo;
 import software.wings.ngmigration.NGMigrationEntity;
 import software.wings.yaml.BaseEntityYaml;
@@ -68,6 +72,7 @@ import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
 import lombok.experimental.UtilityClass;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(DX)
 @TargetModule(HarnessModule._955_ACCOUNT_MGMT)
 @FieldNameConstants(innerTypeName = "AccountKeys")
@@ -85,7 +90,28 @@ public class Account extends Base implements PersistentRegularIterable, NGMigrat
                  .name("next_iteration_license_info2")
                  .field(AccountKeys.licenseExpiryCheckIteration)
                  .field(AccountKeys.encryptedLicenseInfo)
-                 .build())
+                 .build(),
+            CompoundMongoIndex.builder()
+                .name("account_status_deletion_iteration")
+                .field(AccountKeys.accountStatusKey)
+                .field(AccountKeys.accountDeletionIteration)
+                .build(),
+            CompoundMongoIndex.builder()
+                .name("accountStatus_accountType_workflowDataCollectionIteration")
+                .field(AccountKeys.accountStatusKey)
+                .field(AccountKeys.accountType)
+                .field(AccountKeys.workflowDataCollectionIteration)
+                .build(),
+            CompoundMongoIndex.builder()
+                .name("appId_uuid_accountName_companyName_licenseInfo_encryptedLicenseInfo")
+                .field(AccountKeys.appId)
+                .field(AccountKeys.uuid)
+                .field(AccountKeys.accountName)
+                .field(AccountKeys.companyName)
+                .field(AccountKeys.licenseInfo)
+                .field(AccountKeys.encryptedLicenseInfo)
+                .build(),
+            CompoundMongoIndex.builder().name("lastUpdatedAt_1").field(AccountKeys.lastUpdatedAt).build())
         .build();
   }
 
@@ -137,6 +163,8 @@ public class Account extends Base implements PersistentRegularIterable, NGMigrat
   @Getter @Setter DefaultExperience defaultExperience;
 
   @Accessors(fluent = true) @Getter @Setter Boolean isCrossGenerationAccessEnabled = Boolean.FALSE;
+
+  @Accessors(fluent = true) @Getter @Setter Boolean isCannyUsernameAbbreviationEnabled = Boolean.FALSE;
 
   @Getter @Setter boolean createdFromNG;
 
@@ -609,6 +637,7 @@ public class Account extends Base implements PersistentRegularIterable, NGMigrat
     private AccountPreferences accountPreferences;
     private DefaultExperience defaultExperience;
     private Boolean isCrossGenerationAccessEnabled = Boolean.FALSE;
+    private Boolean isCannyUsernameAbbreviationEnabled = Boolean.FALSE;
     private boolean createdFromNG;
     private boolean isProductLed;
     private boolean accountActivelyUsed;
@@ -645,6 +674,11 @@ public class Account extends Base implements PersistentRegularIterable, NGMigrat
 
     public Builder withIsCrossGenerationAccessEnabled(Boolean isCrossGenerationAccessEnabled) {
       this.isCrossGenerationAccessEnabled = isCrossGenerationAccessEnabled;
+      return this;
+    }
+
+    public Builder withIsCannyUsernameAbbreviationEnabled(Boolean isCannyUsernameAbbreviationEnabled) {
+      this.isCannyUsernameAbbreviationEnabled = isCannyUsernameAbbreviationEnabled;
       return this;
     }
 
@@ -835,6 +869,7 @@ public class Account extends Base implements PersistentRegularIterable, NGMigrat
           .withBackgroundJobsDisabled(backgroundJobsDisabled)
           .withDefaultExperience(defaultExperience)
           .withIsCrossGenerationAccessEnabled(isCrossGenerationAccessEnabled)
+          .withIsCannyUsernameAbbreviationEnabled(isCannyUsernameAbbreviationEnabled)
           .withCreatedFromNG(createdFromNG)
           .withIsProductLed(isProductLed)
           .withAccountActivelyUsed(accountActivelyUsed)
@@ -873,6 +908,7 @@ public class Account extends Base implements PersistentRegularIterable, NGMigrat
       account.setBackgroundJobsDisabled(backgroundJobsDisabled);
       account.setDefaultExperience(defaultExperience);
       account.isCrossGenerationAccessEnabled(isCrossGenerationAccessEnabled);
+      account.isCannyUsernameAbbreviationEnabled(isCannyUsernameAbbreviationEnabled);
       account.setCreatedFromNG(createdFromNG);
       account.setProductLed(isProductLed);
       account.setAccountActivelyUsed(accountActivelyUsed);
@@ -920,5 +956,9 @@ public class Account extends Base implements PersistentRegularIterable, NGMigrat
     public static final String delegateTaskRebroadcastIteration = "delegateTaskRebroadcastIteration";
     public static final String DELEGATE_CONFIGURATION_DELEGATE_VERSIONS =
         delegateConfiguration + "." + DelegateConfigurationKeys.delegateVersions;
+    public static final String accountStatusKey = "licenseInfo.accountStatus";
+    public static final String accountType = "licenseInfo.accountType";
+    public static final String appId = "appId";
+    public static final String lastUpdatedAt = "lastUpdatedAt";
   }
 }

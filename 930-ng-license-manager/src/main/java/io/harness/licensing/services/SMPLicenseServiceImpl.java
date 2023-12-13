@@ -12,7 +12,8 @@ import static io.harness.licensing.LicenseModule.LICENSE_CACHE_NAMESPACE;
 import io.harness.ModuleType;
 import io.harness.account.services.AccountService;
 import io.harness.ccm.license.remote.CeLicenseClient;
-import io.harness.data.structure.EmptyPredicate;
+import io.harness.eventsframework.EventsFrameworkConstants;
+import io.harness.eventsframework.api.Producer;
 import io.harness.exception.InvalidRequestException;
 import io.harness.licensing.beans.modules.ModuleLicenseDTO;
 import io.harness.licensing.beans.modules.SMPEncLicenseDTO;
@@ -23,9 +24,12 @@ import io.harness.licensing.interfaces.ModuleLicenseInterface;
 import io.harness.licensing.jobs.SMPLicenseValidationJob;
 import io.harness.licensing.mappers.LicenseObjectConverter;
 import io.harness.licensing.mappers.SMPLicenseMapper;
+import io.harness.lock.AcquiredLock;
+import io.harness.lock.PersistentLocker;
 import io.harness.ng.core.account.AuthenticationMechanism;
 import io.harness.ng.core.account.DefaultExperience;
 import io.harness.ng.core.dto.AccountDTO;
+import io.harness.outbox.api.OutboxService;
 import io.harness.repositories.ModuleLicenseRepository;
 import io.harness.smp.license.models.AccountInfo;
 import io.harness.smp.license.models.SMPLicense;
@@ -37,7 +41,7 @@ import io.harness.telemetry.TelemetryReporter;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import java.util.ArrayList;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -48,7 +52,9 @@ import org.apache.commons.lang3.StringUtils;
 
 @Slf4j
 public class SMPLicenseServiceImpl extends DefaultLicenseServiceImpl {
+  private static final String SMP_MODULE_LICENSE_LOCK = "SMP_MODULE_LICENSE_LOCK";
   private final SMPLicenseValidationJob licenseValidationJob;
+  private final PersistentLocker persistentLocker;
 
   @Inject
   public SMPLicenseServiceImpl(ModuleLicenseRepository moduleLicenseRepository,
@@ -56,10 +62,14 @@ public class SMPLicenseServiceImpl extends DefaultLicenseServiceImpl {
       AccountService accountService, TelemetryReporter telemetryReporter, CeLicenseClient ceLicenseClient,
       LicenseComplianceResolver licenseComplianceResolver, @Named(LICENSE_CACHE_NAMESPACE) Cache<String, List> cache,
       LicenseGenerator licenseGenerator, LicenseValidator licenseValidator, SMPLicenseMapper smpLicenseMapper,
-      SMPLicenseValidationJob licenseValidationJob) {
+      SMPLicenseValidationJob licenseValidationJob,
+      @Named(EventsFrameworkConstants.MODULE_LICENSE) Producer eventProducer, PersistentLocker persistentLocker,
+      OutboxService outboxService) {
     super(moduleLicenseRepository, licenseObjectConverter, licenseInterface, accountService, telemetryReporter,
-        ceLicenseClient, licenseComplianceResolver, cache, licenseGenerator, licenseValidator, smpLicenseMapper);
+        ceLicenseClient, licenseComplianceResolver, cache, licenseGenerator, licenseValidator, smpLicenseMapper,
+        eventProducer, outboxService);
     this.licenseValidationJob = licenseValidationJob;
+    this.persistentLocker = persistentLocker;
   }
 
   @Override
@@ -78,11 +88,17 @@ public class SMPLicenseServiceImpl extends DefaultLicenseServiceImpl {
     SMPLicenseEnc smpLicenseEnc = smpLicenseMapper.toSMPLicenseEnc(licenseDTO);
     SMPLicenseValidationResult validationResult = licenseValidator.validate(smpLicenseEnc, licenseDTO.isDecrypt());
     if (validationResult.isValid() && !Objects.isNull(validationResult.getSmpLicense())) {
-      SMPLicense smpLicense = validationResult.getSmpLicense();
-      AccountDTO accountDTO = createAccountIfNotPresent(smpLicense);
-      createOrUpdateModuleLicenses(smpLicense.getModuleLicenses(), accountDTO);
-      // start validation job with 1 day interval
-      licenseValidationJob.scheduleValidation(accountDTO.getIdentifier(), smpLicense, 60, this::createSmpLicense);
+      try (AcquiredLock<?> lock = persistentLocker.tryToAcquireLock(SMP_MODULE_LICENSE_LOCK, Duration.ofMinutes(2))) {
+        if (lock == null) {
+          log.info("Could not acquire lock to apply SMP License. Another instance might be applying the license");
+          return;
+        }
+        SMPLicense smpLicense = validationResult.getSmpLicense();
+        AccountDTO accountDTO = createAccountIfNotPresent(smpLicense);
+        createOrUpdateModuleLicenses(smpLicense.getModuleLicenses(), accountDTO);
+        // start validation job with 1 day interval
+        licenseValidationJob.scheduleValidation(accountDTO.getIdentifier(), smpLicense, 1440, this::createSmpLicense);
+      }
     } else {
       log.error("SMP License Validation Failed");
       throw new InvalidRequestException("Invalid license provided for intallation. Please provide the correct license");
@@ -106,22 +122,28 @@ public class SMPLicenseServiceImpl extends DefaultLicenseServiceImpl {
   }
 
   private void createOrUpdateModuleLicenses(List<ModuleLicenseDTO> moduleLicenseDTOS, AccountDTO accountDTO) {
-    List<ModuleLicenseDTO> moduleLicensesFromDb = getAllModuleLicences(accountDTO.getIdentifier());
-    if (EmptyPredicate.isEmpty(moduleLicensesFromDb)) {
-      moduleLicensesFromDb = new ArrayList<>();
-    }
-    Map<ModuleType, ModuleLicenseDTO> moduleLicenseMapFromDb =
-        moduleLicensesFromDb.stream().collect(Collectors.toMap(ModuleLicenseDTO::getModuleType, a -> a));
-    for (ModuleLicenseDTO moduleLicenseDTO : moduleLicenseDTOS) {
-      moduleLicenseDTO.setAccountIdentifier(accountDTO.getIdentifier());
-      if (moduleLicenseMapFromDb.containsKey(moduleLicenseDTO.getModuleType())) {
-        ModuleLicenseDTO existingLicense = moduleLicenseMapFromDb.get(moduleLicenseDTO.getModuleType());
-        moduleLicenseDTO.setId(existingLicense.getId());
-        updateModuleLicense(moduleLicenseDTO);
-      } else {
-        // if not set null explicitly, record with empty "" id is created post 784xx
-        moduleLicenseDTO.setId(null);
-        createModuleLicense(moduleLicenseDTO);
+    Map<ModuleType, ModuleLicenseDTO> moduleLicenseDtoMap =
+        moduleLicenseDTOS.stream().collect(Collectors.toMap(ModuleLicenseDTO::getModuleType, a -> a));
+
+    for (ModuleType moduleType : ModuleType.getModules()) {
+      if (moduleLicenseDtoMap.containsKey(moduleType)) {
+        ModuleLicenseDTO licenseDTOToEnable = moduleLicenseDtoMap.get(moduleType);
+        licenseDTOToEnable.setAccountIdentifier(accountDTO.getIdentifier());
+        evictCache(accountDTO.getIdentifier(), moduleType);
+        List<ModuleLicenseDTO> moduleLicenseDtoFromDb = getModuleLicenses(accountDTO.getIdentifier(), moduleType);
+        if (moduleLicenseDtoFromDb.isEmpty()) {
+          // if not set null explicitly, record with empty "" id is created post 784xx
+          licenseDTOToEnable.setId(null);
+          createModuleLicense(licenseDTOToEnable);
+        } else if (moduleLicenseDtoFromDb.size() == 1) {
+          ModuleLicenseDTO existingLicense = moduleLicenseDtoFromDb.get(0);
+          licenseDTOToEnable.setId(existingLicense.getId());
+          updateModuleLicense(licenseDTOToEnable);
+        } else {
+          // multiple licenses found, error state
+          // ToDo: Decide if we should only keep the latest one.
+          log.error("Multiple licenses found for module {} in db. Only 1 should be present.", moduleType);
+        }
       }
     }
   }

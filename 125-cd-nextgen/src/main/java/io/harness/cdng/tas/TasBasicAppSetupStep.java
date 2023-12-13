@@ -6,6 +6,9 @@
  */
 
 package io.harness.cdng.tas;
+
+import static io.harness.cdng.manifest.ManifestStoreType.ARTIFACT_BUNDLE;
+import static io.harness.cdng.manifest.ManifestType.TAS_MANIFEST;
 import static io.harness.common.ParameterFieldHelper.getParameterFieldValue;
 
 import static java.util.Objects.isNull;
@@ -18,9 +21,11 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.FeatureName;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.artifact.outcome.ArtifactOutcome;
+import io.harness.cdng.executables.CdTaskChainExecutable;
 import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.k8s.beans.StepExceptionPassThroughData;
+import io.harness.cdng.manifest.yaml.ArtifactBundleStore;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
 import io.harness.cdng.tas.outcome.TasSetupDataOutcome;
@@ -32,6 +37,7 @@ import io.harness.delegate.beans.logstreaming.UnitProgressData;
 import io.harness.delegate.beans.logstreaming.UnitProgressDataMapper;
 import io.harness.delegate.beans.pcf.TasResizeStrategyType;
 import io.harness.delegate.task.TaskParameters;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
 import io.harness.delegate.task.pcf.CfCommandTypeNG;
 import io.harness.delegate.task.pcf.request.CfBasicSetupRequestNG;
 import io.harness.delegate.task.pcf.response.CfBasicSetupResponseNG;
@@ -45,8 +51,6 @@ import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.UnitProgress;
 import io.harness.pcf.CfCommandUnitConstants;
 import io.harness.plancreator.steps.TaskSelectorYaml;
-import io.harness.plancreator.steps.common.StepElementParameters;
-import io.harness.plancreator.steps.common.rollback.TaskChainExecutableWithRollbackAndRbac;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.execution.failure.FailureInfo;
@@ -59,11 +63,13 @@ import io.harness.pms.sdk.core.steps.executables.TaskChainResponse;
 import io.harness.pms.sdk.core.steps.io.PassThroughData;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.serializer.KryoSerializer;
 import io.harness.steps.StepHelper;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import software.wings.beans.TaskType;
 
@@ -78,7 +84,7 @@ import org.apache.commons.lang3.tuple.Pair;
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PCF})
 @OwnedBy(HarnessTeam.CDP)
 @Slf4j
-public class TasBasicAppSetupStep extends TaskChainExecutableWithRollbackAndRbac implements TasStepExecutor {
+public class TasBasicAppSetupStep extends CdTaskChainExecutable implements TasStepExecutor {
   public static final StepType STEP_TYPE = StepType.newBuilder()
                                                .setType(ExecutionNodeType.TAS_BASIC_APP_SETUP.getYamlType())
                                                .setStepCategory(StepCategory.STEP)
@@ -91,24 +97,25 @@ public class TasBasicAppSetupStep extends TaskChainExecutableWithRollbackAndRbac
   @Inject ExecutionSweepingOutputService executionSweepingOutputService;
 
   @Override
-  public void validateResources(Ambiance ambiance, StepElementParameters stepParameters) {
+  public void validateResources(Ambiance ambiance, StepBaseParameters stepParameters) {
     if (!cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), FeatureName.NG_SVC_ENV_REDESIGN)) {
       throw new AccessDeniedException(
-          "CDS_TAS_NG FF is not enabled for this account. Please contact harness customer care.",
+          "NG_SVC_ENV_REDESIGN FF is not enabled for this account. Please contact harness customer care.",
           ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
     }
   }
 
   @Override
-  public TaskChainResponse executeNextLinkWithSecurityContext(Ambiance ambiance, StepElementParameters stepParameters,
-      StepInputPackage inputPackage, PassThroughData passThroughData, ThrowingSupplier<ResponseData> responseSupplier)
-      throws Exception {
+  public TaskChainResponse executeNextLinkWithSecurityContextAndNodeInfo(Ambiance ambiance,
+      StepBaseParameters stepParameters, StepInputPackage inputPackage, PassThroughData passThroughData,
+      ThrowingSupplier<ResponseData> responseSupplier) throws Exception {
     return tasStepHelper.executeNextLink(this, ambiance, stepParameters, passThroughData, responseSupplier);
   }
 
   @Override
-  public StepResponse finalizeExecutionWithSecurityContext(Ambiance ambiance, StepElementParameters stepParameters,
-      PassThroughData passThroughData, ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
+  public StepResponse finalizeExecutionWithSecurityContextAndNodeInfo(Ambiance ambiance,
+      StepBaseParameters stepParameters, PassThroughData passThroughData,
+      ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
     if (passThroughData instanceof StepExceptionPassThroughData) {
       StepExceptionPassThroughData stepExceptionPassThroughData = (StepExceptionPassThroughData) passThroughData;
       return StepResponse.builder()
@@ -195,18 +202,24 @@ public class TasBasicAppSetupStep extends TaskChainExecutableWithRollbackAndRbac
 
   @Override
   public TaskChainResponse startChainLinkAfterRbac(
-      Ambiance ambiance, StepElementParameters stepParameters, StepInputPackage inputPackage) {
+      Ambiance ambiance, StepBaseParameters stepParameters, StepInputPackage inputPackage) {
     return tasStepHelper.startChainLink(this, ambiance, stepParameters);
   }
 
   @Override
-  public Class<StepElementParameters> getStepParametersClass() {
-    return StepElementParameters.class;
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
+  }
+
+  @Override
+  public Class<StepBaseParameters> getStepParametersClass() {
+    return StepBaseParameters.class;
   }
 
   @Override
   public TaskChainResponse executeTasTask(ManifestOutcome tasManifestOutcome, Ambiance ambiance,
-      StepElementParameters stepParameters, TasExecutionPassThroughData executionPassThroughData,
+      StepBaseParameters stepParameters, TasExecutionPassThroughData executionPassThroughData,
       boolean shouldOpenFetchFilesLogStream, UnitProgressData unitProgressData) {
     TasBasicAppSetupStepParameters tasBasicAppSetupStepParameters =
         (TasBasicAppSetupStepParameters) stepParameters.getSpec();
@@ -219,6 +232,19 @@ public class TasBasicAppSetupStep extends TaskChainExecutableWithRollbackAndRbac
     Integer olderActiveVersionCountToKeep =
         new BigDecimal(getParameterFieldValue(tasBasicAppSetupStepParameters.getExistingVersionToKeep()))
             .intValueExact();
+
+    ArtifactBundleDetails artifactBundleDetails = null;
+    if (tasManifestOutcome != null && tasManifestOutcome.getType().equals(TAS_MANIFEST)
+        && tasManifestOutcome.getStore().getKind().equals(ARTIFACT_BUNDLE)) {
+      ArtifactBundleStore artifactBundleStore = (ArtifactBundleStore) tasManifestOutcome.getStore();
+      artifactBundleDetails =
+          ArtifactBundleDetails.builder()
+              .artifactBundleType(artifactBundleStore.getArtifactBundleType().toString())
+              .deployableUnitPath(getParameterFieldValue(artifactBundleStore.getDeployableUnitPath()))
+              .activityId(ambiance.getStageExecutionId())
+              .build();
+    }
+
     TaskParameters taskParameters =
         CfBasicSetupRequestNG.builder()
             .accountId(AmbianceUtils.getAccountId(ambiance))
@@ -235,6 +261,7 @@ public class TasBasicAppSetupStep extends TaskChainExecutableWithRollbackAndRbac
             .olderActiveVersionCountToKeep(olderActiveVersionCountToKeep)
             .routeMaps(routeMaps)
             .useAppAutoScalar(!isNull(executionPassThroughData.getTasManifestsPackage().getAutoscalarManifestYml()))
+            .artifactBundleDetails(artifactBundleDetails)
             .build();
 
     TaskData taskData = TaskData.builder()

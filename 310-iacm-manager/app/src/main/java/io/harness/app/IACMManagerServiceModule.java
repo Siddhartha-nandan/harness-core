@@ -8,13 +8,13 @@
 package io.harness.app;
 
 import static io.harness.authorization.AuthorizationServiceHeader.IACM_MANAGER;
-import static io.harness.ci.utils.HostedVmSecretResolver.SECRET_CACHE_KEY;
+import static io.harness.ci.execution.utils.HostedVmSecretResolver.SECRET_CACHE_KEY;
 import static io.harness.eventsframework.EventsFrameworkConstants.DEFAULT_MAX_PROCESSING_TIME;
 import static io.harness.eventsframework.EventsFrameworkConstants.DEFAULT_READ_BATCH_SIZE;
 import static io.harness.eventsframework.EventsFrameworkConstants.IACM_ORCHESTRATION_NOTIFY_EVENT;
 import static io.harness.eventsframework.EventsFrameworkConstants.OBSERVER_EVENT_CHANNEL;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.DELEGATE_ENTITY;
-import static io.harness.lock.DistributedLockImplementation.MONGO;
+import static io.harness.lock.DistributedLockImplementation.REDIS;
 import static io.harness.pms.listener.NgOrchestrationNotifyEventListener.NG_ORCHESTRATION;
 
 import io.harness.AccessControlClientModule;
@@ -32,16 +32,17 @@ import io.harness.callback.DelegateCallbackToken;
 import io.harness.callback.MongoDatabase;
 import io.harness.ci.CIExecutionServiceModule;
 import io.harness.ci.beans.entities.EncryptedDataDetails;
-import io.harness.ci.buildstate.SecretDecryptorViaNg;
-import io.harness.ci.execution.DelegateTaskEventListener;
+import io.harness.ci.enforcement.CIBuildEnforcer;
+import io.harness.ci.execution.buildstate.SecretDecryptorViaNg;
+import io.harness.ci.execution.execution.DelegateTaskEventListener;
+import io.harness.ci.execution.validation.CIAccountValidationService;
+import io.harness.ci.execution.validation.CIAccountValidationServiceImpl;
+import io.harness.ci.execution.validation.CIYAMLSanitizationService;
+import io.harness.ci.execution.validation.CIYAMLSanitizationServiceImpl;
 import io.harness.ci.ff.CIFeatureFlagService;
 import io.harness.ci.ff.impl.CIFeatureFlagServiceImpl;
 import io.harness.ci.logserviceclient.CILogServiceClientModule;
 import io.harness.ci.tiserviceclient.TIServiceClientModule;
-import io.harness.ci.validation.CIAccountValidationService;
-import io.harness.ci.validation.CIAccountValidationServiceImpl;
-import io.harness.ci.validation.CIYAMLSanitizationService;
-import io.harness.ci.validation.CIYAMLSanitizationServiceImpl;
 import io.harness.cistatus.service.GithubService;
 import io.harness.cistatus.service.GithubServiceImpl;
 import io.harness.cistatus.service.azurerepo.AzureRepoService;
@@ -50,8 +51,12 @@ import io.harness.cistatus.service.bitbucket.BitbucketService;
 import io.harness.cistatus.service.bitbucket.BitbucketServiceImpl;
 import io.harness.cistatus.service.gitlab.GitlabService;
 import io.harness.cistatus.service.gitlab.GitlabServiceImpl;
+import io.harness.code.CodeResourceClientModule;
 import io.harness.concurrent.HTimeLimiter;
 import io.harness.connector.ConnectorResourceClientModule;
+import io.harness.core.ci.dashboard.CIOverviewDashboardService;
+import io.harness.core.ci.dashboard.CIOverviewDashboardServiceImpl;
+import io.harness.creditcard.CreditCardClientModule;
 import io.harness.enforcement.client.EnforcementClientModule;
 import io.harness.entitysetupusageclient.EntitySetupUsageClientModule;
 import io.harness.eventsframework.EventsFrameworkConstants;
@@ -64,6 +69,7 @@ import io.harness.grpc.DelegateServiceDriverGrpcClientModule;
 import io.harness.grpc.DelegateServiceGrpcClient;
 import io.harness.grpc.client.AbstractManagerGrpcClientModule;
 import io.harness.grpc.client.ManagerGrpcClientModule;
+import io.harness.iacm.IACMBuildEnforcerImpl;
 import io.harness.iacmserviceclient.IACMServiceClientModule;
 import io.harness.impl.scm.ScmServiceClientImpl;
 import io.harness.licence.IACMLicenseNoopServiceImpl;
@@ -78,6 +84,7 @@ import io.harness.opaclient.OpaClientModule;
 import io.harness.packages.HarnessPackages;
 import io.harness.persistence.HPersistence;
 import io.harness.pms.sdk.core.waiter.AsyncWaitEngine;
+import io.harness.project.ProjectClientModule;
 import io.harness.redis.RedisConfig;
 import io.harness.redis.RedissonClientFactory;
 import io.harness.remote.client.ClientMode;
@@ -90,7 +97,11 @@ import io.harness.stoserviceclient.STOServiceClientModule;
 import io.harness.telemetry.AbstractTelemetryModule;
 import io.harness.telemetry.TelemetryConfiguration;
 import io.harness.threading.ThreadPool;
+import io.harness.timescaledb.TimeScaleDBConfig;
+import io.harness.timescaledb.TimeScaleDBService;
+import io.harness.timescaledb.TimeScaleDBServiceImpl;
 import io.harness.token.TokenClientModule;
+import io.harness.tunnel.TunnelResourceClientModule;
 import io.harness.user.UserClientModule;
 import io.harness.version.VersionModule;
 import io.harness.waiter.AsyncWaitEngineImpl;
@@ -152,6 +163,17 @@ public class IACMManagerServiceModule extends AbstractModule {
   }
 
   @Provides
+  @Singleton
+  @Named("harnessCodeGitBaseUrl")
+  String getHarnessCodeGitBaseUrl() {
+    String gitUrl = iacmManagerConfiguration.getHarnessCodeGitUrl();
+    if (gitUrl.endsWith("/")) {
+      return gitUrl.substring(0, gitUrl.length() - 1);
+    }
+    return gitUrl;
+  }
+
+  @Provides
   @Named(SECRET_CACHE_KEY)
   Cache<String, EncryptedDataDetails> getSecretTokenCache() {
     return new NoOpCache<>();
@@ -208,7 +230,7 @@ public class IACMManagerServiceModule extends AbstractModule {
   @Singleton
   DistributedLockImplementation distributedLockImplementation() {
     return iacmManagerConfiguration.getDistributedLockImplementation() == null
-        ? MONGO
+        ? REDIS
         : iacmManagerConfiguration.getDistributedLockImplementation();
   }
 
@@ -237,6 +259,8 @@ public class IACMManagerServiceModule extends AbstractModule {
     bind(AzureRepoService.class).to(AzureRepoServiceImpl.class); // same?
     bind(SecretDecryptor.class).to(SecretDecryptorViaNg.class); // same?
     bind(AwsClient.class).to(AwsClientImpl.class); // same?
+    install(new TunnelResourceClientModule(iacmManagerConfiguration.getNgManagerClientConfig(),
+        iacmManagerConfiguration.getNgManagerServiceSecret(), IACM_MANAGER.getServiceId()));
     registerEventListeners();
     if (iacmManagerConfiguration.isLocal()) {
       bind(CILicenseService.class)
@@ -271,6 +295,7 @@ public class IACMManagerServiceModule extends AbstractModule {
     bind(ScheduledExecutorService.class)
         .annotatedWith(Names.named("taskPollExecutor"))
         .toInstance(new ManagedScheduledExecutorService("TaskPoll-Thread"));
+    bind(CIOverviewDashboardService.class).to(CIOverviewDashboardServiceImpl.class);
 
     install(NgLicenseHttpClientModule.getInstance(iacmManagerConfiguration.getNgManagerClientConfig(),
         iacmManagerConfiguration.getNgManagerServiceSecret(), IACM_MANAGER.getServiceId())); // Resolve secrets
@@ -304,8 +329,23 @@ public class IACMManagerServiceModule extends AbstractModule {
       }
     });
 
+    try {
+      bind(TimeScaleDBService.class)
+          .toConstructor(TimeScaleDBServiceImpl.class.getConstructor(TimeScaleDBConfig.class));
+    } catch (NoSuchMethodException e) {
+      log.error("TimeScaleDbServiceImpl Initialization Failed in due to missing constructor", e);
+    }
+
+    bind(TimeScaleDBConfig.class)
+        .annotatedWith(Names.named("TimeScaleDBConfig"))
+        .toInstance(TimeScaleDBConfig.builder().build());
+
     install(AccessControlClientModule.getInstance(
         iacmManagerConfiguration.getAccessControlClientConfiguration(), IACM_MANAGER.getServiceId()));
+    install(new CreditCardClientModule(iacmManagerConfiguration.getNgManagerClientConfig(),
+        iacmManagerConfiguration.getNgManagerServiceSecret(), IACM_MANAGER_NAME));
+    install(new ProjectClientModule(iacmManagerConfiguration.getNgManagerClientConfig(),
+        iacmManagerConfiguration.getNgManagerServiceSecret(), IACM_MANAGER_NAME));
     install(new EntitySetupUsageClientModule(iacmManagerConfiguration.getNgManagerClientConfig(),
         iacmManagerConfiguration.getNgManagerServiceSecret(), IACM_MANAGER_NAME));
     install(new ConnectorResourceClientModule(iacmManagerConfiguration.getNgManagerClientConfig(), // For connectors
@@ -331,6 +371,11 @@ public class IACMManagerServiceModule extends AbstractModule {
         return iacmManagerConfiguration.getSegmentConfiguration();
       }
     });
+    install(new CodeResourceClientModule(
+        iacmManagerConfiguration.getCiExecutionServiceConfig().getGitnessConfig().getHttpClientConfig(),
+        iacmManagerConfiguration.getCiExecutionServiceConfig().getGitnessConfig().getJwtSecret(),
+        IACM_MANAGER.getServiceId(), ClientMode.PRIVILEGED));
+    bind(CIBuildEnforcer.class).to(IACMBuildEnforcerImpl.class);
   }
 
   private void registerEventListeners() {

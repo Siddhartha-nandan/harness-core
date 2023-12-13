@@ -32,6 +32,8 @@ public class Anomalies implements Serializable {
   private String workloadname;
   private String workloadtype;
   private String namespace;
+  private String service;
+  private String servicename;
   private String region;
   private String gcpproduct;
   private String gcpskuid;
@@ -51,6 +53,7 @@ public class Anomalies implements Serializable {
   private String azuresubscriptionguid;
   private String azureresourcegroup;
   private String azuremetercategory;
+  private String cloudprovider;
 
   public Anomalies() {}
 
@@ -67,6 +70,8 @@ public class Anomalies implements Serializable {
     this.workloadname = value.workloadname;
     this.workloadtype = value.workloadtype;
     this.namespace = value.namespace;
+    this.service = value.service;
+    this.servicename = value.servicename;
     this.region = value.region;
     this.gcpproduct = value.gcpproduct;
     this.gcpskuid = value.gcpskuid;
@@ -86,15 +91,17 @@ public class Anomalies implements Serializable {
     this.azuresubscriptionguid = value.azuresubscriptionguid;
     this.azureresourcegroup = value.azureresourcegroup;
     this.azuremetercategory = value.azuremetercategory;
+    this.cloudprovider = value.cloudprovider;
   }
 
   public Anomalies(String id, String accountid, Double actualcost, Double expectedcost, OffsetDateTime anomalytime,
       String timegranularity, String note, String clusterid, String clustername, String workloadname,
-      String workloadtype, String namespace, String region, String gcpproduct, String gcpskuid,
-      String gcpskudescription, String gcpproject, String awsservice, String awsaccount, String awsinstancetype,
-      String awsusagetype, Double anomalyscore, String reportedby, String feedback, Boolean slackdailynotification,
-      Boolean slackinstantnotification, Boolean slackweeklynotification, Boolean newentity,
-      String azuresubscriptionguid, String azureresourcegroup, String azuremetercategory) {
+      String workloadtype, String namespace, String service, String servicename, String region, String gcpproduct,
+      String gcpskuid, String gcpskudescription, String gcpproject, String awsservice, String awsaccount,
+      String awsinstancetype, String awsusagetype, Double anomalyscore, String reportedby, String feedback,
+      Boolean slackdailynotification, Boolean slackinstantnotification, Boolean slackweeklynotification,
+      Boolean newentity, String azuresubscriptionguid, String azureresourcegroup, String azuremetercategory,
+      String cloudprovider) {
     this.id = id;
     this.accountid = accountid;
     this.actualcost = actualcost;
@@ -107,6 +114,8 @@ public class Anomalies implements Serializable {
     this.workloadname = workloadname;
     this.workloadtype = workloadtype;
     this.namespace = namespace;
+    this.service = service;
+    this.servicename = servicename;
     this.region = region;
     this.gcpproduct = gcpproduct;
     this.gcpskuid = gcpskuid;
@@ -126,6 +135,7 @@ public class Anomalies implements Serializable {
     this.azuresubscriptionguid = azuresubscriptionguid;
     this.azureresourcegroup = azureresourcegroup;
     this.azuremetercategory = azuremetercategory;
+    this.cloudprovider = cloudprovider;
   }
 
   /**
@@ -308,6 +318,35 @@ public class Anomalies implements Serializable {
     return this;
   }
 
+  /**
+   * Getter for <code>public.anomalies.service</code>.
+   */
+  public String getService() {
+    return this.service;
+  }
+
+  /**
+   * Setter for <code>public.anomalies.service</code>.
+   */
+  public Anomalies setService(String service) {
+    this.service = service;
+    return this;
+  }
+
+  /**
+   * Getter for <code>public.anomalies.service</code>.
+   */
+  public String getServicename() {
+    return this.servicename;
+  }
+
+  /**
+   * Setter for <code>public.anomalies.service</code>.
+   */
+  public Anomalies setServicename(String servicename) {
+    this.servicename = servicename;
+    return this;
+  }
   /**
    * Getter for <code>public.anomalies.region</code>.
    */
@@ -593,6 +632,21 @@ public class Anomalies implements Serializable {
     return this;
   }
 
+  /**
+   * Getter for <code>public.anomalies.cloudprovider</code>.
+   */
+  public String getCloudprovider() {
+    return this.cloudprovider;
+  }
+
+  /**
+   * Setter for <code>public.anomalies.cloudprovider</code>.
+   */
+  public Anomalies setCloudprovider(String cloudprovider) {
+    this.cloudprovider = cloudprovider;
+    return this;
+  }
+
   @Override
   public boolean equals(Object obj) {
     if (this == obj)
@@ -661,6 +715,16 @@ public class Anomalies implements Serializable {
       if (other.namespace != null)
         return false;
     } else if (!namespace.equals(other.namespace))
+      return false;
+    if (service == null) {
+      if (other.service != null)
+        return false;
+    } else if (!service.equals(other.service))
+      return false;
+    if (servicename == null) {
+      if (other.servicename != null)
+        return false;
+    } else if (!servicename.equals(other.servicename))
       return false;
     if (region == null) {
       if (other.region != null)
@@ -757,6 +821,11 @@ public class Anomalies implements Serializable {
         return false;
     } else if (!azuremetercategory.equals(other.azuremetercategory))
       return false;
+    if (cloudprovider == null) {
+      if (other.cloudprovider != null)
+        return false;
+    } else if (!cloudprovider.equals(other.cloudprovider))
+      return false;
     return true;
   }
 
@@ -776,6 +845,8 @@ public class Anomalies implements Serializable {
     result = prime * result + ((this.workloadname == null) ? 0 : this.workloadname.hashCode());
     result = prime * result + ((this.workloadtype == null) ? 0 : this.workloadtype.hashCode());
     result = prime * result + ((this.namespace == null) ? 0 : this.namespace.hashCode());
+    result = prime * result + ((this.service == null) ? 0 : this.service.hashCode());
+    result = prime * result + ((this.servicename == null) ? 0 : this.servicename.hashCode());
     result = prime * result + ((this.region == null) ? 0 : this.region.hashCode());
     result = prime * result + ((this.gcpproduct == null) ? 0 : this.gcpproduct.hashCode());
     result = prime * result + ((this.gcpskuid == null) ? 0 : this.gcpskuid.hashCode());
@@ -795,6 +866,7 @@ public class Anomalies implements Serializable {
     result = prime * result + ((this.azuresubscriptionguid == null) ? 0 : this.azuresubscriptionguid.hashCode());
     result = prime * result + ((this.azureresourcegroup == null) ? 0 : this.azureresourcegroup.hashCode());
     result = prime * result + ((this.azuremetercategory == null) ? 0 : this.azuremetercategory.hashCode());
+    result = prime * result + ((this.cloudprovider == null) ? 0 : this.cloudprovider.hashCode());
     return result;
   }
 
@@ -814,6 +886,8 @@ public class Anomalies implements Serializable {
     sb.append(", ").append(workloadname);
     sb.append(", ").append(workloadtype);
     sb.append(", ").append(namespace);
+    sb.append(", ").append(service);
+    sb.append(", ").append(servicename);
     sb.append(", ").append(region);
     sb.append(", ").append(gcpproduct);
     sb.append(", ").append(gcpskuid);
@@ -833,6 +907,7 @@ public class Anomalies implements Serializable {
     sb.append(", ").append(azuresubscriptionguid);
     sb.append(", ").append(azureresourcegroup);
     sb.append(", ").append(azuremetercategory);
+    sb.append(", ").append(cloudprovider);
 
     sb.append(")");
     return sb.toString();

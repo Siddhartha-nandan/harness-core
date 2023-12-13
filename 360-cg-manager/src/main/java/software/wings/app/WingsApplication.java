@@ -15,6 +15,7 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.eventsframework.EventsFrameworkConstants.ENTITY_CRUD;
 import static io.harness.lock.mongo.MongoPersistentLocker.LOCKS_STORE;
 import static io.harness.logging.LoggingInitializer.initializeLogging;
+import static io.harness.microservice.NotifyEngineTarget.ARTIFACT_COLLECTION;
 import static io.harness.microservice.NotifyEngineTarget.GENERAL;
 import static io.harness.ng.DbAliases.DMS;
 import static io.harness.persistence.HPersistence.ANALYTICS_STORE_NAME;
@@ -34,7 +35,11 @@ import static java.time.Duration.ofHours;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 
+import io.harness.accesscontrol.NGAccessDeniedExceptionMapper;
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.app.GraphQLModule;
 import io.harness.artifact.ArtifactCollectionPTaskServiceClient;
 import io.harness.cache.CacheModule;
@@ -116,6 +121,7 @@ import io.harness.mongo.tracing.TraceMode;
 import io.harness.morphia.MorphiaRegistrar;
 import io.harness.ng.core.CorrelationFilter;
 import io.harness.ng.core.TraceFilter;
+import io.harness.notifications.NotificationTemplateRegistrar;
 import io.harness.observer.NoOpRemoteObserverInformerImpl;
 import io.harness.observer.RemoteObserver;
 import io.harness.observer.RemoteObserverInformer;
@@ -150,10 +156,6 @@ import io.harness.queue.QueueListenerController;
 import io.harness.queue.QueuePublisher;
 import io.harness.queue.RedisConsumerControllerCg;
 import io.harness.queue.TimerScheduledExecutorService;
-import io.harness.queue.consumers.GeneralEventConsumerCg;
-import io.harness.queue.consumers.NotifyEventConsumerCg;
-import io.harness.queue.publishers.CgGeneralEventPublisher;
-import io.harness.queue.publishers.CgNotifyEventPublisher;
 import io.harness.redis.DelegateHeartBeatSyncFromRedis;
 import io.harness.redis.DelegateServiceCacheModule;
 import io.harness.reflection.HarnessReflections;
@@ -208,6 +210,7 @@ import software.wings.exception.JsonProcessingExceptionMapper;
 import software.wings.exception.WingsExceptionMapper;
 import software.wings.filter.AuditRequestFilter;
 import software.wings.filter.AuditResponseFilter;
+import software.wings.filter.DisableFirstGenFilter;
 import software.wings.jersey.JsonViews;
 import software.wings.jersey.KryoFeature;
 import software.wings.licensing.LicenseService;
@@ -218,6 +221,7 @@ import software.wings.resources.AppResource;
 import software.wings.resources.SearchResource;
 import software.wings.resources.graphql.GraphQLResource;
 import software.wings.scheduler.AccessRequestHandler;
+import software.wings.scheduler.AccountDeletionJob;
 import software.wings.scheduler.AccountPasswordExpirationJob;
 import software.wings.scheduler.DelegateDisconnectAlertHelper;
 import software.wings.scheduler.DeletedEntityHandler;
@@ -227,7 +231,6 @@ import software.wings.scheduler.ManagerVersionsCleanUpJob;
 import software.wings.scheduler.ResourceLookupSyncHandler;
 import software.wings.scheduler.UsageMetricsHandler;
 import software.wings.scheduler.VaultSecretManagerRenewalHandler;
-import software.wings.scheduler.account.DeleteAccountHandler;
 import software.wings.scheduler.account.LicenseCheckHandler;
 import software.wings.scheduler.approval.ApprovalPollingHandler;
 import software.wings.scheduler.audit.EntityAuditRecordHandler;
@@ -280,6 +283,7 @@ import software.wings.service.impl.instance.AuditCleanupJob;
 import software.wings.service.impl.instance.DeploymentEventListener;
 import software.wings.service.impl.instance.InstanceEventListener;
 import software.wings.service.impl.instance.InstanceSyncPerpetualTaskMigrationJob;
+import software.wings.service.impl.instance.StaleAuditCleanupJob;
 import software.wings.service.impl.trigger.ScheduledTriggerHandler;
 import software.wings.service.impl.workflow.WorkflowServiceImpl;
 import software.wings.service.impl.yaml.YamlPushServiceImpl;
@@ -395,6 +399,8 @@ import ru.vyarus.guice.validator.aop.ValidationMethodInterceptor;
 /**
  * The main application - entry point for the entire Wings Application.
  */
+
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_FIRST_GEN})
 @Slf4j
 @OwnedBy(PL)
 public class WingsApplication extends Application<MainConfiguration> {
@@ -672,8 +678,6 @@ public class WingsApplication extends Application<MainConfiguration> {
       registerAtmosphereStreams(environment, injector);
     }
 
-    initializeFeatureFlags(configuration, injector);
-
     if (isManager()) {
       registerHealthChecksManager(environment, injector);
     }
@@ -683,6 +687,9 @@ public class WingsApplication extends Application<MainConfiguration> {
 
     registerStores(configuration, injector);
     registerDataStores(injector);
+
+    initializeFeatureFlags(configuration, injector);
+
     if (configuration.getMongoConnectionFactory().getTraceMode() == TraceMode.ENABLED) {
       registerQueryTracer(injector);
     }
@@ -702,6 +709,8 @@ public class WingsApplication extends Application<MainConfiguration> {
     registerAuthFilters(configuration, environment, injector);
     registerCorrelationFilter(environment, injector);
     registerRequestContextFilter(environment);
+    registerDisableFirstGenFilter(environment, injector);
+    registerNotificationTemplates(configuration, injector);
 
     if (BooleanUtils.isTrue(configuration.getEnableOpentelemetry())) {
       registerTraceFilter(environment, injector);
@@ -739,7 +748,7 @@ public class WingsApplication extends Application<MainConfiguration> {
 
     initMetrics(injector);
 
-    registerWaitEnginePublishers(injector, configuration.isRedisNotifyEvent());
+    registerWaitEnginePublishers(injector);
     if (isManager()) {
       registerQueueListeners(configuration, injector);
     }
@@ -967,8 +976,9 @@ public class WingsApplication extends Application<MainConfiguration> {
         return configuration.getGrpcServerConfig();
       }
     });
-    modules.add(new GrpcServiceConfigurationModule(
-        configuration.getGrpcServerConfig(), configuration.getPortal().getJwtNextGenManagerSecret()));
+    modules.add(new GrpcServiceConfigurationModule(configuration.getGrpcServerConfig(),
+        configuration.getPortal().getJwtNextGenManagerSecret(),
+        configuration.getLogStreamingServiceConfig().getServiceToken()));
     modules.add(new ProviderModule() {
       @Provides
       @Singleton
@@ -1213,6 +1223,7 @@ public class WingsApplication extends Application<MainConfiguration> {
     environment.lifecycle().manage(injector.getInstance(RedisConsumerControllerCg.class));
     environment.lifecycle().manage(injector.getInstance(UserAccountLevelDataMigrationJob.class));
     environment.lifecycle().manage(injector.getInstance(UpdateHeartBeatIntervalAndResetPerpetualTaskJob.class));
+    environment.lifecycle().manage(injector.getInstance(StaleAuditCleanupJob.class));
   }
 
   private void registerManagedBeansManager(
@@ -1229,20 +1240,15 @@ public class WingsApplication extends Application<MainConfiguration> {
     }
   }
 
-  private void registerWaitEnginePublishers(Injector injector, boolean redisNotifyEvent) {
-    if (redisNotifyEvent) {
-      final NotifyQueuePublisherRegister notifyQueuePublisherRegister =
-          injector.getInstance(NotifyQueuePublisherRegister.class);
-      notifyQueuePublisherRegister.register(GENERAL, injector.getInstance(CgGeneralEventPublisher.class));
-      notifyQueuePublisherRegister.register(ORCHESTRATION, injector.getInstance(CgNotifyEventPublisher.class));
-    } else {
-      final QueuePublisher<NotifyEvent> publisher =
-          injector.getInstance(Key.get(new TypeLiteral<QueuePublisher<NotifyEvent>>() {}));
-      final NotifyQueuePublisherRegister notifyQueuePublisherRegister =
-          injector.getInstance(NotifyQueuePublisherRegister.class);
-      notifyQueuePublisherRegister.register(GENERAL, payload -> publisher.send(asList(GENERAL), payload));
-      notifyQueuePublisherRegister.register(ORCHESTRATION, payload -> publisher.send(asList(ORCHESTRATION), payload));
-    }
+  private void registerWaitEnginePublishers(Injector injector) {
+    final QueuePublisher<NotifyEvent> publisher =
+        injector.getInstance(Key.get(new TypeLiteral<QueuePublisher<NotifyEvent>>() {}));
+    final NotifyQueuePublisherRegister notifyQueuePublisherRegister =
+        injector.getInstance(NotifyQueuePublisherRegister.class);
+    notifyQueuePublisherRegister.register(GENERAL, payload -> publisher.send(asList(GENERAL), payload));
+    notifyQueuePublisherRegister.register(ORCHESTRATION, payload -> publisher.send(asList(ORCHESTRATION), payload));
+    notifyQueuePublisherRegister.register(
+        ARTIFACT_COLLECTION, payload -> publisher.send(asList(ARTIFACT_COLLECTION), payload));
   }
 
   private void registerCorrelationFilter(Environment environment, Injector injector) {
@@ -1255,6 +1261,21 @@ public class WingsApplication extends Application<MainConfiguration> {
 
   private void registerRequestContextFilter(Environment environment) {
     environment.jersey().register(new RequestContextFilter());
+  }
+
+  private void registerDisableFirstGenFilter(Environment environment, Injector injector) {
+    if (isManager()) {
+      environment.jersey().register(injector.getInstance(DisableFirstGenFilter.class));
+    }
+  }
+
+  private void registerNotificationTemplates(MainConfiguration configuration, Injector injector) {
+    if (configuration.isDisableNotificationTemplateRegister()) {
+      return;
+    }
+    final ExecutorService notificationTemplateExecutor = Executors.newSingleThreadExecutor(
+        new ThreadFactoryBuilder().setNameFormat("notificationTemplateRegister").build());
+    notificationTemplateExecutor.execute(injector.getInstance(NotificationTemplateRegistrar.class));
   }
 
   private void registerQueueListeners(MainConfiguration configuration, Injector injector) {
@@ -1289,10 +1310,10 @@ public class WingsApplication extends Application<MainConfiguration> {
         injector.getInstance(GeneralNotifyEventListener.class), listenerConfig.getGeneralNotifyEventListenerCount());
     queueListenerController.register(injector.getInstance(OrchestrationNotifyEventListener.class),
         listenerConfig.getOrchestrationNotifyEventListenerCount());
+    queueListenerController.register(injector.getInstance(ArtifactCollectionNotifyEventListener.class),
+        listenerConfig.getArtifactCollectionNotifyEventListenerCount());
 
     RedisConsumerControllerCg controller = injector.getInstance(RedisConsumerControllerCg.class);
-    controller.register(injector.getInstance(NotifyEventConsumerCg.class), listenerConfig.getNotifyConsumerCount());
-    controller.register(injector.getInstance(GeneralEventConsumerCg.class), listenerConfig.getGeneralConsumerCount());
     controller.register(injector.getInstance(ApplicationTimeScaleRedisChangeEventConsumer.class),
         configuration.getDebeziumConsumerConfigs().getApplicationTimescaleStreaming().getThreads());
   }
@@ -1356,6 +1377,10 @@ public class WingsApplication extends Application<MainConfiguration> {
     taskPollExecutor.scheduleWithFixedDelay(
         new Schedulable("Failed cleaning up manager versions.", injector.getInstance(ManagerVersionsCleanUpJob.class)),
         1, 5L, TimeUnit.MINUTES);
+
+    ScheduledExecutorService cgJobExecutor =
+        injector.getInstance(Key.get(ScheduledExecutorService.class, Names.named("cgJobExecutor")));
+    cgJobExecutor.scheduleWithFixedDelay(injector.getInstance(AccountDeletionJob.class), 0, 1, TimeUnit.HOURS);
   }
 
   private void scheduleJobsDelegateService(
@@ -1582,7 +1607,6 @@ public class WingsApplication extends Application<MainConfiguration> {
     injector.getInstance(DeploymentFreezeActivationHandler.class).registerIterator(iteratorExecutionHandler);
     injector.getInstance(DeploymentFreezeDeactivationHandler.class).registerIterator(iteratorExecutionHandler);
     injector.getInstance(CeLicenseExpiryHandler.class).registerIterator(iteratorExecutionHandler);
-    injector.getInstance(DeleteAccountHandler.class).registerIterator(iteratorExecutionHandler);
     injector.getInstance(DeletedEntityHandler.class).registerIterator(iteratorExecutionHandler);
     injector.getInstance(ResourceLookupSyncHandler.class).registerIterator(iteratorExecutionHandler);
     injector.getInstance(AccessRequestHandler.class).registerIterator(iteratorExecutionHandler);
@@ -1626,6 +1650,7 @@ public class WingsApplication extends Application<MainConfiguration> {
     environment.jersey().register(EarlyEofExceptionMapper.class);
     environment.jersey().register(JsonProcessingExceptionMapper.class);
     environment.jersey().register(ConstraintViolationExceptionMapper.class);
+    environment.jersey().register(NGAccessDeniedExceptionMapper.class);
     environment.jersey().register(WingsExceptionMapper.class);
     environment.jersey().register(GenericExceptionMapper.class);
     environment.jersey().register(MongoExecutionTimeoutExceptionMapper.class);

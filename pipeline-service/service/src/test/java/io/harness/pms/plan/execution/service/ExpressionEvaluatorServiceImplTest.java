@@ -15,8 +15,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 
 import io.harness.CategoryTest;
+import io.harness.PipelineServiceTestHelper;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
+import io.harness.data.structure.ListUtils;
 import io.harness.engine.executions.node.NodeExecutionService;
 import io.harness.engine.pms.data.PmsEngineExpressionService;
 import io.harness.execution.NodeExecution;
@@ -28,7 +30,6 @@ import io.harness.rule.Owner;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -131,8 +132,7 @@ public class ExpressionEvaluatorServiceImplTest extends CategoryTest {
     Map<String, ExpressionEvaluationDetail> detailMap = new HashMap<>();
 
     // Test resolveByYaml
-    expressionEvaluatorService.evaluateExpression(
-        detailMap, Ambiance.newBuilder().build(), fqn, expression, new YamlExpressionEvaluator(yaml));
+    expressionEvaluatorService.evaluateExpression(detailMap, fqn, expression, new YamlExpressionEvaluator(yaml));
 
     String key = fqn + "+" + expression;
     assertThat(detailMap.containsKey(key)).isTrue();
@@ -141,8 +141,8 @@ public class ExpressionEvaluatorServiceImplTest extends CategoryTest {
     // Test resolve by ambiance
     doReturn("dummy").when(engineExpressionService).resolve(any(), any(), any());
     detailMap = new HashMap<>();
-    expressionEvaluatorService.evaluateExpression(
-        detailMap, Ambiance.newBuilder().build(), fqn, staticExpression, new YamlExpressionEvaluator(yaml));
+    expressionEvaluatorService.evaluateExpressionUsingAmbiance(
+        detailMap, fqn, ListUtils.newArrayList(staticExpression), null);
     key = fqn + "+" + staticExpression;
     assertThat(detailMap.containsKey(key)).isTrue();
     assertThat(detailMap.get(key).isResolvedByYaml()).isFalse();
@@ -169,7 +169,9 @@ public class ExpressionEvaluatorServiceImplTest extends CategoryTest {
     Ambiance ambiance = Ambiance.newBuilder().addAllLevels(prepareLevel()).build();
     String expectedFqn = "pipeline.stages.stage1.execution.steps.step1";
     Map<String, Ambiance> fqnToAmbianceMap = expressionEvaluatorService.getFQNToAmbianceMap(
-        Collections.singletonList(NodeExecution.builder().ambiance(ambiance).build()));
+        PipelineServiceTestHelper.createCloseableIterator(
+            List.of(NodeExecution.builder().ambiance(ambiance).build()).iterator()),
+        ListUtils.newArrayList(expectedFqn));
     assertThat(fqnToAmbianceMap.containsKey(expectedFqn)).isTrue();
     assertThat(fqnToAmbianceMap.get(expectedFqn)).isEqualTo(ambiance);
   }

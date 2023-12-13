@@ -7,11 +7,19 @@
 
 package io.harness.cdng.pipeline.steps;
 
+import static io.harness.cdng.service.steps.constants.ServiceStepV3Constants.ENV_GIT_BRANCH;
+import static io.harness.cdng.service.steps.constants.ServiceStepV3Constants.ENV_GIT_BRANCH_EXPRESSION;
+import static io.harness.cdng.service.steps.constants.ServiceStepV3Constants.SERVICE_GIT_BRANCH;
+import static io.harness.cdng.service.steps.constants.ServiceStepV3Constants.SERVICE_GIT_BRANCH_EXPRESSION;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 import io.harness.cdng.creator.plan.stage.DeploymentStageConfig;
 import io.harness.cdng.creator.plan.stage.DeploymentStageNode;
+import io.harness.cdng.creator.plan.stage.v1.DeploymentStageConfigV1;
+import io.harness.cdng.creator.plan.stage.v1.DeploymentStageNodeV1;
 import io.harness.cdng.environment.helper.EnvironmentStepsUtils;
 import io.harness.cdng.environment.yaml.EnvironmentYamlV2;
 import io.harness.cdng.infra.yaml.InfraStructureDefinitionYaml;
@@ -34,6 +42,7 @@ import lombok.experimental.UtilityClass;
 public class MultiDeploymentSpawnerUtils {
   private static final String SERVICE_REF = "serviceRef";
   private static final String SERVICE_INPUTS = "serviceInputs";
+
   private static final String USE_FROM_STAGE = "useFromStage";
 
   private static final String ENVIRONMENT_REF = "environmentRef";
@@ -64,6 +73,9 @@ public class MultiDeploymentSpawnerUtils {
   Map<String, String> getMapFromServiceYaml(ServiceYamlV2 service) {
     Map<String, String> matrixMetadataMap = new HashMap<>();
     matrixMetadataMap.put(SERVICE_REF, service.getServiceRef().getValue());
+    if (isNotBlank(service.getGitBranch())) {
+      matrixMetadataMap.put(SERVICE_GIT_BRANCH, service.getGitBranch());
+    }
     if (!ParameterField.isBlank(service.getServiceInputs())
         && EmptyPredicate.isNotEmpty(service.getServiceInputs().getValue())) {
       matrixMetadataMap.put(SERVICE_INPUTS, JsonUtils.asJson(service.getServiceInputs().getValue()));
@@ -83,6 +95,9 @@ public class MultiDeploymentSpawnerUtils {
     Map<String, String> matrixMetadataMap = new HashMap<>();
     matrixMetadataMap.put(ENVIRONMENT_REF,
         EnvironmentStepsUtils.getEnvironmentRef(environmentYamlV2.getEnvironmentRef().getValue(), envGroupScope));
+    if (isNotBlank(environmentYamlV2.getGitBranch())) {
+      matrixMetadataMap.put(ENV_GIT_BRANCH, environmentYamlV2.getGitBranch());
+    }
     if (!ParameterField.isBlank(environmentYamlV2.getEnvironmentInputs())
         && EmptyPredicate.isNotEmpty(environmentYamlV2.getEnvironmentInputs().getValue())) {
       matrixMetadataMap.put(ENVIRONMENT_INPUTS, JsonUtils.asJson(environmentYamlV2.getEnvironmentInputs().getValue()));
@@ -130,12 +145,41 @@ public class MultiDeploymentSpawnerUtils {
     return node.getUuid();
   }
 
+  public String getUuidForMultiDeployment(DeploymentStageNodeV1 node) {
+    DeploymentStageConfigV1 config = node.getSpec();
+    if (config.getServices() != null) {
+      return config.getServices().getUuid();
+    }
+
+    if (!config.getGitOpsEnabled()) {
+      if (config.getEnvironments() != null) {
+        return config.getEnvironments().getUuid();
+      }
+      if (config.getEnvironmentGroup() != null) {
+        return config.getEnvironmentGroup().getUuid();
+      }
+    }
+    return node.getUuid();
+  }
+
   public boolean hasMultiDeploymentConfigured(DeploymentStageNode node) {
     DeploymentStageConfig config = node.getDeploymentStageConfig();
     return hasMultiDeploymentConfigured(config);
   }
 
+  public boolean hasMultiDeploymentConfigured(DeploymentStageNodeV1 node) {
+    DeploymentStageConfigV1 config = node.getSpec();
+    return hasMultiDeploymentConfigured(config);
+  }
+
   public boolean hasMultiDeploymentConfigured(DeploymentStageConfig config) {
+    if (config.getGitOpsEnabled()) {
+      return config.getServices() != null;
+    }
+    return config.getServices() != null || config.getEnvironments() != null || config.getEnvironmentGroup() != null;
+  }
+
+  public boolean hasMultiDeploymentConfigured(DeploymentStageConfigV1 config) {
     if (config.getGitOpsEnabled()) {
       return config.getServices() != null;
     }
@@ -195,11 +239,65 @@ public class MultiDeploymentSpawnerUtils {
     }
   }
 
+  public void validateMultiServiceInfra(DeploymentStageConfigV1 stageConfig) {
+    if (stageConfig.getServices() == null && stageConfig.getEnvironments() == null
+        && stageConfig.getEnvironmentGroup() == null) {
+      return;
+    }
+    if (stageConfig.getServices() != null
+        && (ParameterField.isNull(stageConfig.getServices().getValues())
+            || (!stageConfig.getServices().getValues().isExpression()
+                && isEmpty(stageConfig.getServices().getValues().getValue())))) {
+      throw new InvalidRequestException("No value of services provided, please provide at least one value of service");
+    }
+    if (stageConfig.getEnvironments() != null && ParameterField.isNotNull(stageConfig.getEnvironments().getValues())
+        && !stageConfig.getEnvironments().getValues().isExpression()) {
+      if (ParameterField.isNotNull(stageConfig.getEnvironments().getFilters())
+          && EmptyPredicate.isNotEmpty(stageConfig.getEnvironments().getFilters().getValue())) {
+        return;
+      }
+      if (isEmpty(stageConfig.getEnvironments().getValues().getValue())) {
+        throw new InvalidRequestException(
+            "No value of environments provided, please provide at least one value of environment");
+      }
+      for (EnvironmentYamlV2 environmentYamlV2 : stageConfig.getEnvironments().getValues().getValue()) {
+        if (ParameterField.isNotNull(environmentYamlV2.getFilters())
+            && isNotEmpty(environmentYamlV2.getFilters().getValue())) {
+          return;
+        }
+        if (ParameterField.isNull(environmentYamlV2.getInfrastructureDefinitions())) {
+          if (environmentYamlV2.getEnvironmentRef().getValue() != null) {
+            throw new InvalidRequestException(
+                String.format("No value of infrastructures provided for infrastructure [%s], please provide"
+                        + " at least one value of environment",
+                    environmentYamlV2.getEnvironmentRef().getValue()));
+          } else {
+            throw new InvalidRequestException(
+                "No value of infrastructures provided for infrastructure, please provide at least one value of environment");
+          }
+        }
+        if (!environmentYamlV2.getInfrastructureDefinitions().isExpression()
+            && isEmpty(environmentYamlV2.getInfrastructureDefinitions().getValue())) {
+          if (environmentYamlV2.getEnvironmentRef().getValue() != null) {
+            throw new InvalidRequestException(
+                String.format("No value of infrastructures provided for infrastructure [%s], please provide"
+                        + " at least one value of environment",
+                    environmentYamlV2.getEnvironmentRef().getValue()));
+          } else {
+            throw new InvalidRequestException(
+                "No value of infrastructures provided for infrastructure, please provide at least one value of environment");
+          }
+        }
+      }
+    }
+  }
+
   public ServiceYamlV2 getServiceYamlV2Node() {
     return ServiceYamlV2.builder()
         .uuid(UUIDGenerator.generateUuid())
         .serviceRef(ParameterField.createExpressionField(true, SERVICE_REF_EXPRESSION, null, true))
         .serviceInputs(ParameterField.createExpressionField(true, SERVICE_INPUTS_EXPRESSION, null, false))
+        .gitBranch(SERVICE_GIT_BRANCH_EXPRESSION)
         .build();
   }
 
@@ -216,6 +314,7 @@ public class MultiDeploymentSpawnerUtils {
             ParameterField.createExpressionField(true, SERVICE_OVERRIDE_INPUTS_EXPRESSION, null, false))
         .gitOpsClusters(ParameterField.createExpressionField(true, GIT_OPS_CLUSTERS_EXPRESSION, null, false))
         .infrastructureDefinition(ParameterField.createValueField(infraStructureDefinitionYaml))
+        .gitBranch(ENV_GIT_BRANCH_EXPRESSION)
         .build();
   }
 

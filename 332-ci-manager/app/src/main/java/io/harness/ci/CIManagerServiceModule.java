@@ -7,11 +7,15 @@
 
 package io.harness.app;
 
+import static io.harness.authorization.AuthorizationServiceHeader.ACCESS_CONTROL_SERVICE;
 import static io.harness.eventsframework.EventsFrameworkConstants.DEFAULT_MAX_PROCESSING_TIME;
 import static io.harness.eventsframework.EventsFrameworkConstants.DEFAULT_READ_BATCH_SIZE;
+import static io.harness.eventsframework.EventsFrameworkConstants.ENTITY_CRUD;
 import static io.harness.eventsframework.EventsFrameworkConstants.OBSERVER_EVENT_CHANNEL;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ACCOUNT_ENTITY;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.DELEGATE_ENTITY;
-import static io.harness.lock.DistributedLockImplementation.MONGO;
+import static io.harness.lock.DistributedLockImplementation.REDIS;
+import static io.harness.outbox.OutboxSDKConstants.DEFAULT_OUTBOX_POLL_CONFIGURATION;
 import static io.harness.pms.listener.NgOrchestrationNotifyEventListenerNonVersioned.NG_ORCHESTRATION;
 
 import io.harness.AccessControlClientModule;
@@ -26,29 +30,30 @@ import io.harness.authorization.AuthorizationServiceHeader;
 import io.harness.aws.AwsClient;
 import io.harness.aws.AwsClientImpl;
 import io.harness.beans.execution.license.CILicenseService;
-import io.harness.cache.CICacheManagementService;
-import io.harness.cache.CICacheManagementServiceImpl;
 import io.harness.cache.HarnessCacheManager;
 import io.harness.callback.DelegateCallback;
 import io.harness.callback.DelegateCallbackToken;
 import io.harness.callback.MongoDatabase;
 import io.harness.ci.CIExecutionServiceModule;
 import io.harness.ci.app.intfc.CIYamlSchemaService;
-import io.harness.ci.buildstate.SecretDecryptorViaNg;
+import io.harness.ci.cache.CICacheManagementService;
+import io.harness.ci.cache.CICacheManagementServiceImpl;
 import io.harness.ci.enforcement.CIBuildEnforcer;
 import io.harness.ci.enforcement.CIBuildEnforcerImpl;
-import io.harness.ci.execution.DelegateTaskEventListener;
+import io.harness.ci.execution.buildstate.SecretDecryptorViaNg;
+import io.harness.ci.execution.execution.DelegateTaskEventListener;
 import io.harness.ci.execution.queue.CIInitTaskMessageProcessor;
 import io.harness.ci.execution.queue.CIInitTaskMessageProcessorImpl;
+import io.harness.ci.execution.validation.CIAccountValidationService;
+import io.harness.ci.execution.validation.CIAccountValidationServiceImpl;
+import io.harness.ci.execution.validation.CIYAMLSanitizationService;
+import io.harness.ci.execution.validation.CIYAMLSanitizationServiceImpl;
 import io.harness.ci.ff.CIFeatureFlagService;
 import io.harness.ci.ff.impl.CIFeatureFlagServiceImpl;
+import io.harness.ci.licensing.CILicenseUsageImpl;
 import io.harness.ci.logserviceclient.CILogServiceClientModule;
 import io.harness.ci.plugin.CiPluginStepInfoProvider;
 import io.harness.ci.tiserviceclient.TIServiceClientModule;
-import io.harness.ci.validation.CIAccountValidationService;
-import io.harness.ci.validation.CIAccountValidationServiceImpl;
-import io.harness.ci.validation.CIYAMLSanitizationService;
-import io.harness.ci.validation.CIYAMLSanitizationServiceImpl;
 import io.harness.cistatus.service.GithubService;
 import io.harness.cistatus.service.GithubServiceImpl;
 import io.harness.cistatus.service.azurerepo.AzureRepoService;
@@ -57,12 +62,14 @@ import io.harness.cistatus.service.bitbucket.BitbucketService;
 import io.harness.cistatus.service.bitbucket.BitbucketServiceImpl;
 import io.harness.cistatus.service.gitlab.GitlabService;
 import io.harness.cistatus.service.gitlab.GitlabServiceImpl;
+import io.harness.code.CodeResourceClientModule;
 import io.harness.concurrent.HTimeLimiter;
 import io.harness.connector.ConnectorResourceClientModule;
-import io.harness.core.ci.services.BuildNumberService;
-import io.harness.core.ci.services.BuildNumberServiceImpl;
-import io.harness.core.ci.services.CIOverviewDashboardService;
-import io.harness.core.ci.services.CIOverviewDashboardServiceImpl;
+import io.harness.core.ci.dashboard.BuildNumberService;
+import io.harness.core.ci.dashboard.BuildNumberServiceImpl;
+import io.harness.core.ci.dashboard.CIOverviewDashboardService;
+import io.harness.core.ci.dashboard.CIOverviewDashboardServiceImpl;
+import io.harness.creditcard.CreditCardClientModule;
 import io.harness.enforcement.client.EnforcementClientModule;
 import io.harness.entitysetupusageclient.EntitySetupUsageClientModule;
 import io.harness.eventsframework.EventsFrameworkConstants;
@@ -79,7 +86,6 @@ import io.harness.grpc.client.AbstractManagerGrpcClientModule;
 import io.harness.grpc.client.ManagerGrpcClientModule;
 import io.harness.iacmserviceclient.IACMServiceClientModule;
 import io.harness.impl.scm.ScmServiceClientImpl;
-import io.harness.licensing.CILicenseUsageImpl;
 import io.harness.licensing.remote.NgLicenseHttpClientModule;
 import io.harness.licensing.usage.interfaces.LicenseUsageInterface;
 import io.harness.lock.DistributedLockImplementation;
@@ -88,6 +94,7 @@ import io.harness.manage.ManagedScheduledExecutorService;
 import io.harness.mongo.MongoPersistence;
 import io.harness.ng.core.event.MessageListener;
 import io.harness.opaclient.OpaClientModule;
+import io.harness.outbox.TransactionOutboxModule;
 import io.harness.persistence.HPersistence;
 import io.harness.pms.sdk.core.plugin.PluginInfoProvider;
 import io.harness.pms.sdk.core.waiter.AsyncWaitEngine;
@@ -109,6 +116,7 @@ import io.harness.timescaledb.TimeScaleDBConfig;
 import io.harness.timescaledb.TimeScaleDBService;
 import io.harness.timescaledb.TimeScaleDBServiceImpl;
 import io.harness.token.TokenClientModule;
+import io.harness.tunnel.TunnelResourceClientModule;
 import io.harness.user.UserClientModule;
 import io.harness.version.VersionInfoManager;
 import io.harness.waiter.AsyncWaitEngineImpl;
@@ -177,6 +185,17 @@ public class CIManagerServiceModule extends AbstractModule {
     return apiUrl;
   }
 
+  @Provides
+  @Singleton
+  @Named("harnessCodeGitBaseUrl")
+  String getHarnessCodeGitBaseUrl() {
+    String gitUrl = ciManagerConfiguration.getHarnessCodeGitUrl();
+    if (gitUrl.endsWith("/")) {
+      return gitUrl.substring(0, gitUrl.length() - 1);
+    }
+    return gitUrl;
+  }
+
   private DelegateCallbackToken getDelegateCallbackToken(
       DelegateServiceGrpcClient delegateServiceClient, CIManagerConfiguration appConfig) {
     log.info("Generating Delegate callback token");
@@ -235,7 +254,7 @@ public class CIManagerServiceModule extends AbstractModule {
   @Singleton
   DistributedLockImplementation distributedLockImplementation() {
     return ciManagerConfiguration.getDistributedLockImplementation() == null
-        ? MONGO
+        ? REDIS
         : ciManagerConfiguration.getDistributedLockImplementation();
   }
 
@@ -304,6 +323,13 @@ public class CIManagerServiceModule extends AbstractModule {
                 .setNameFormat("plugin-metadata-publisher-Thread-%d")
                 .setPriority(Thread.NORM_PRIORITY)
                 .build()));
+    bind(ScheduledExecutorService.class)
+        .annotatedWith(Names.named(this.configurationOverride.getModulePrefix() + "DataDeleteScheduler"))
+        .toInstance(new ScheduledThreadPoolExecutor(1,
+            new ThreadFactoryBuilder()
+                .setNameFormat(this.configurationOverride.getModulePrefix() + "-data-delete-Thread-%d")
+                .setPriority(Thread.NORM_PRIORITY)
+                .build()));
     bind(AwsClient.class).to(AwsClientImpl.class);
     Multibinder<PluginInfoProvider> pluginInfoProviderMultibinder =
         Multibinder.newSetBinder(binder(), new TypeLiteral<PluginInfoProvider>() {});
@@ -350,6 +376,15 @@ public class CIManagerServiceModule extends AbstractModule {
         .annotatedWith(Names.named("taskPollExecutor"))
         .toInstance(new ManagedScheduledExecutorService("TaskPoll-Thread"));
 
+    bind(ScheduledExecutorService.class)
+        .annotatedWith(Names.named("resourceCleanupExecutor"))
+        .toInstance(
+            new ScheduledThreadPoolExecutor(ciManagerConfiguration.getAsyncResourceCleanupPool().getCorePoolSize(),
+                new ThreadFactoryBuilder()
+                    .setNameFormat("Resource-Cleanup-Thread-%d")
+                    .setPriority(Thread.NORM_PRIORITY)
+                    .build()));
+
     install(new CIExecutionServiceModule(
         ciManagerConfiguration.getCiExecutionServiceConfig(), ciManagerConfiguration.getShouldConfigureWithPMS()));
     install(DelegateServiceDriverModule.getInstance(false, true));
@@ -388,7 +423,11 @@ public class CIManagerServiceModule extends AbstractModule {
     install(new CILogServiceClientModule(ciManagerConfiguration.getLogServiceConfig()));
     install(UserClientModule.getInstance(
         ciManagerConfiguration.getManagerClientConfig(), ciManagerConfiguration.getManagerServiceSecret(), serviceId));
+    install(
+        new TransactionOutboxModule(DEFAULT_OUTBOX_POLL_CONFIGURATION, ACCESS_CONTROL_SERVICE.getServiceId(), false));
     install(new ProjectClientModule(ciManagerConfiguration.getNgManagerClientConfig(),
+        ciManagerConfiguration.getNgManagerServiceSecret(), serviceId));
+    install(new CreditCardClientModule(ciManagerConfiguration.getNgManagerClientConfig(),
         ciManagerConfiguration.getNgManagerServiceSecret(), serviceId));
     install(new TIServiceClientModule(ciManagerConfiguration.getTiServiceConfig()));
     install(new STOServiceClientModule(ciManagerConfiguration.getStoServiceConfig()));
@@ -406,11 +445,17 @@ public class CIManagerServiceModule extends AbstractModule {
       }
     });
     install(new CICacheRegistrar());
+    install(new CodeResourceClientModule(
+        ciManagerConfiguration.getCiExecutionServiceConfig().getGitnessConfig().getHttpClientConfig(),
+        ciManagerConfiguration.getCiExecutionServiceConfig().getGitnessConfig().getJwtSecret(), serviceId,
+        ClientMode.PRIVILEGED));
     if (configurationOverride.getServiceHeader() == AuthorizationServiceHeader.CI_MANAGER) {
       install(FeatureFlagModule.getInstance());
     } else {
       bind(FeatureFlagService.class).toProvider(Providers.of(null));
     }
+    install(new TunnelResourceClientModule(ciManagerConfiguration.getNgManagerClientConfig(),
+        ciManagerConfiguration.getNgManagerServiceSecret(), serviceId));
   }
 
   private void registerEventListeners() {
@@ -431,9 +476,17 @@ public class CIManagerServiceModule extends AbstractModule {
           .toInstance(RedisConsumer.of(OBSERVER_EVENT_CHANNEL, serviceId, redissonClient, DEFAULT_MAX_PROCESSING_TIME,
               DEFAULT_READ_BATCH_SIZE, redisConfig.getEnvNamespace()));
 
+      bind(Consumer.class)
+          .annotatedWith(Names.named(ENTITY_CRUD))
+          .toInstance(RedisConsumer.of(ENTITY_CRUD, serviceId, redissonClient, DEFAULT_MAX_PROCESSING_TIME,
+              DEFAULT_READ_BATCH_SIZE, redisConfig.getEnvNamespace()));
+
       bind(MessageListener.class)
           .annotatedWith(Names.named(DELEGATE_ENTITY + OBSERVER_EVENT_CHANNEL))
           .to(DelegateTaskEventListener.class);
+      bind(MessageListener.class)
+          .annotatedWith(Names.named(ACCOUNT_ENTITY + ENTITY_CRUD))
+          .to(this.configurationOverride.getAccountEntityListenerClass());
 
       bind(Producer.class)
           .annotatedWith(Names.named(orchestrationEvent))

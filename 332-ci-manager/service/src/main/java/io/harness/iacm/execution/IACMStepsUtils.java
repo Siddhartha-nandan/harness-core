@@ -25,8 +25,9 @@ import io.harness.beans.steps.CIStepInfoType;
 import io.harness.beans.steps.stepinfo.IACMApprovalInfo;
 import io.harness.beans.steps.stepinfo.IACMTerraformPluginInfo;
 import io.harness.beans.steps.stepinfo.PluginStepInfo;
-import io.harness.ci.buildstate.ConnectorUtils;
-import io.harness.ci.buildstate.PluginSettingUtils;
+import io.harness.ci.execution.buildstate.ConnectorUtils;
+import io.harness.ci.execution.buildstate.PluginSettingUtils;
+import io.harness.connector.ConnectorDTO;
 import io.harness.connector.ConnectorEnvVariablesHelper;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.delegate.beans.ci.pod.EnvVariableEnum;
@@ -42,6 +43,11 @@ import io.harness.delegate.beans.connector.azureconnector.AzureManualDetailsDTO;
 import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorCredentialDTO;
 import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorDTO;
 import io.harness.delegate.beans.connector.gcpconnector.GcpManualDetailsDTO;
+import io.harness.delegate.beans.connector.scm.GitConnectionType;
+import io.harness.delegate.beans.connector.scm.bitbucket.BitbucketConnectorDTO;
+import io.harness.delegate.beans.connector.scm.genericgitconnector.GitConfigDTO;
+import io.harness.delegate.beans.connector.scm.github.GithubConnectorDTO;
+import io.harness.delegate.beans.connector.scm.gitlab.GitlabConnectorDTO;
 import io.harness.encryption.SecretRefHelper;
 import io.harness.exception.ngexception.IACMStageExecutionException;
 import io.harness.iacmserviceclient.IACMServiceUtils;
@@ -60,6 +66,7 @@ import com.google.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.commons.codec.digest.DigestUtils;
 
 public class IACMStepsUtils {
   private static final String ENV_VARIABLE = "env";
@@ -82,8 +89,24 @@ public class IACMStepsUtils {
     return iacmServiceUtils.GetTerraformEndpointsData(account, org, project, workspaceId);
   }
 
+  private String getHarnessInfracostKey() {
+    return iacmServiceUtils.getCostEstimationToken();
+  }
+
+  private String getInfracostAPIEndpoint() {
+    return iacmServiceUtils.getCostEstimationAPIEndpoint();
+  }
+
   public void createExecution(Ambiance ambiance, String workspaceId) {
     iacmServiceUtils.createIACMExecution(ambiance, workspaceId);
+  }
+
+  public String generateHashedGitRepoInfo(String repo, String connector, String branch, String commit, String path) {
+    return DigestUtils.md5Hex(String.format("%s_%s_%s_%s_%s", repo, connector, branch, commit, path));
+  }
+
+  public String generateVariableFileBasePath(String hashedGitRepoInfo) {
+    return String.format("/harness/.iacm/%s/", hashedGitRepoInfo);
   }
 
   public String populatePipelineIds(Ambiance ambiance, String json) {
@@ -99,7 +122,6 @@ public class IACMStepsUtils {
 
       return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(rootNode);
     } catch (Exception e) {
-      e.printStackTrace();
       return json;
     }
   }
@@ -129,6 +151,8 @@ public class IACMStepsUtils {
     pluginEnvs.put("PLUGIN_CONNECTOR_REF", workspaceInfo.getProvider_connector());
     pluginEnvs.put("PLUGIN_PROVISIONER", workspaceInfo.getProvisioner());
     pluginEnvs.put("PLUGIN_ENDPOINT_VARIABLES", getTerraformEndpointsInfo(accountId, org, projectId, workspaceID));
+    pluginEnvs.put("PLUGIN_HARNESS_INFRACOST_KEY", getHarnessInfracostKey());
+    pluginEnvs.put("PLUGIN_PRICING_API_ENDPOINT", getInfracostAPIEndpoint());
 
     for (WorkspaceVariables variable : variables) {
       switch (variable.getKind()) {
@@ -268,10 +292,10 @@ public class IACMStepsUtils {
         if (credential.getConfig() instanceof AwsManualConfigSpecDTO) {
           AwsManualConfigSpecDTO dto = (AwsManualConfigSpecDTO) credential.getConfig();
           if (dto.getAccessKeyRef() != null) {
-            secrets.put(PLUGIN_ACCESS_KEY, dto.getAccessKeyRef().getIdentifier());
+            secrets.put(PLUGIN_ACCESS_KEY, dto.getAccessKeyRef().toSecretRefStringValue());
           }
           if (dto.getSecretKeyRef() != null) {
-            secrets.put(PLUGIN_SECRET_KEY, dto.getSecretKeyRef().getIdentifier());
+            secrets.put(PLUGIN_SECRET_KEY, dto.getSecretKeyRef().toSecretRefStringValue());
           }
         }
         break;
@@ -282,7 +306,7 @@ public class IACMStepsUtils {
         if (credential.getConfig() instanceof GcpManualDetailsDTO) {
           GcpManualDetailsDTO dto = (GcpManualDetailsDTO) credential.getConfig();
           if (dto.getSecretKeyRef() != null) {
-            secrets.put(PLUGIN_JSON_KEY, dto.getSecretKeyRef().getIdentifier());
+            secrets.put(PLUGIN_JSON_KEY, dto.getSecretKeyRef().toSecretRefStringValue());
           }
         }
         break;
@@ -296,12 +320,12 @@ public class IACMStepsUtils {
           if (authDTO.getCredentials() instanceof AzureClientSecretKeyDTO) {
             AzureClientSecretKeyDTO azureClientSecretKeyDTO = (AzureClientSecretKeyDTO) authDTO.getCredentials();
             if (azureClientSecretKeyDTO.getSecretKey() != null) {
-              secrets.put(CLIENT_SECRET, azureClientSecretKeyDTO.getSecretKey().getIdentifier());
+              secrets.put(CLIENT_SECRET, azureClientSecretKeyDTO.getSecretKey().toSecretRefStringValue());
             }
           } else if (authDTO.getCredentials() instanceof AzureClientKeyCertDTO) {
             AzureClientKeyCertDTO azureClientKeyCertDTO = (AzureClientKeyCertDTO) authDTO.getCredentials();
             if (azureClientKeyCertDTO.getClientCertRef() != null) {
-              secrets.put(CLIENT_CERTIFICATE, azureClientKeyCertDTO.getClientCertRef().getIdentifier());
+              secrets.put(CLIENT_CERTIFICATE, azureClientKeyCertDTO.getClientCertRef().toSecretRefStringValue());
             }
           }
         }
@@ -373,6 +397,8 @@ public class IACMStepsUtils {
       return new HashMap<>();
     }
     envVars.put("PLUGIN_ENDPOINT_VARIABLES", populatePipelineIds(ambiance, envVars.get("PLUGIN_ENDPOINT_VARIABLES")));
+    envVars.put("PLUGIN_AUTO_APPROVE", iacmApprovalInfo.getAutoApprove().getValue().toString());
+
     return envVars;
   }
 
@@ -407,5 +433,78 @@ public class IACMStepsUtils {
     }
 
     return secrets;
+  }
+
+  public String getCloneUrlFromRepo(ConnectorDTO connectorDTO, Workspace workspace) {
+    if (connectorDTO == null) {
+      return "";
+    }
+    switch (connectorDTO.getConnectorInfo().getConnectorType()) {
+      case GIT:
+        GitConfigDTO gitConfigDTO = (GitConfigDTO) connectorDTO.getConnectorInfo().getConnectorConfig();
+        if (gitConfigDTO.getGitConnectionType() == GitConnectionType.ACCOUNT) {
+          return String.format("%s/%s", gitConfigDTO.getUrl(), workspace.getRepository());
+        }
+        return gitConfigDTO.getUrl();
+      case GITHUB:
+        GithubConnectorDTO githubConnectorDTO =
+            (GithubConnectorDTO) connectorDTO.getConnectorInfo().getConnectorConfig();
+        if (githubConnectorDTO.getConnectionType() == GitConnectionType.ACCOUNT) {
+          return String.format("%s/%s", githubConnectorDTO.getUrl(), workspace.getRepository());
+        }
+        return githubConnectorDTO.getUrl();
+      case GITLAB:
+        GitlabConnectorDTO gitlabConnectorDTO =
+            (GitlabConnectorDTO) connectorDTO.getConnectorInfo().getConnectorConfig();
+        if (gitlabConnectorDTO.getConnectionType() == GitConnectionType.ACCOUNT) {
+          return String.format("%s/%s", gitlabConnectorDTO.getUrl(), workspace.getRepository());
+        }
+        return gitlabConnectorDTO.getUrl();
+      case BITBUCKET:
+        BitbucketConnectorDTO bitbucketConnectorDTO =
+            (BitbucketConnectorDTO) connectorDTO.getConnectorInfo().getConnectorConfig();
+        if (bitbucketConnectorDTO.getConnectionType() == GitConnectionType.ACCOUNT) {
+          return String.format("%s/%s", bitbucketConnectorDTO.getUrl(), workspace.getRepository());
+        }
+        return bitbucketConnectorDTO.getUrl();
+      default:
+        return "";
+    }
+  }
+  public String getCloneUrlFromRepo(ConnectorDTO connectorDTO, String branch) {
+    if (connectorDTO == null) {
+      return "";
+    }
+    switch (connectorDTO.getConnectorInfo().getConnectorType()) {
+      case GIT:
+        GitConfigDTO gitConfigDTO = (GitConfigDTO) connectorDTO.getConnectorInfo().getConnectorConfig();
+        if (gitConfigDTO.getGitConnectionType() == GitConnectionType.ACCOUNT) {
+          return String.format("%s/%s", gitConfigDTO.getUrl(), branch);
+        }
+        return gitConfigDTO.getUrl();
+      case GITHUB:
+        GithubConnectorDTO githubConnectorDTO =
+            (GithubConnectorDTO) connectorDTO.getConnectorInfo().getConnectorConfig();
+        if (githubConnectorDTO.getConnectionType() == GitConnectionType.ACCOUNT) {
+          return String.format("%s/%s", githubConnectorDTO.getUrl(), branch);
+        }
+        return githubConnectorDTO.getUrl();
+      case GITLAB:
+        GitlabConnectorDTO gitlabConnectorDTO =
+            (GitlabConnectorDTO) connectorDTO.getConnectorInfo().getConnectorConfig();
+        if (gitlabConnectorDTO.getConnectionType() == GitConnectionType.ACCOUNT) {
+          return String.format("%s/%s", gitlabConnectorDTO.getUrl(), branch);
+        }
+        return gitlabConnectorDTO.getUrl();
+      case BITBUCKET:
+        BitbucketConnectorDTO bitbucketConnectorDTO =
+            (BitbucketConnectorDTO) connectorDTO.getConnectorInfo().getConnectorConfig();
+        if (bitbucketConnectorDTO.getConnectionType() == GitConnectionType.ACCOUNT) {
+          return String.format("%s/%s", bitbucketConnectorDTO.getUrl(), branch);
+        }
+        return bitbucketConnectorDTO.getUrl();
+      default:
+        return "";
+    }
   }
 }

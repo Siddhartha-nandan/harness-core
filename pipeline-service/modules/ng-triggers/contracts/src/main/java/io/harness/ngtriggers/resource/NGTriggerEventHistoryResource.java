@@ -27,6 +27,8 @@ import io.harness.ngtriggers.beans.dto.NGTriggerEventHistoryDTO;
 import io.harness.pms.annotations.PipelineServiceAuth;
 import io.harness.pms.pipeline.PipelineResourceConstants;
 
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
@@ -83,6 +85,8 @@ public interface NGTriggerEventHistoryResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns the Trigger Event History response")
       })
+  @Timed
+  @ResponseMetered
   ResponseDTO<Page<NGTriggerEventHistoryDTO>>
   getTriggerEventHistory(
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
@@ -91,6 +95,36 @@ public interface NGTriggerEventHistoryResource {
       @Parameter(description = "Identifier of the target pipeline under which trigger resides") @NotNull @QueryParam(
           "targetIdentifier") @ResourceIdentifier String targetIdentifier,
       @PathParam("triggerIdentifier") String triggerIdentifier,
+      @Parameter(description = PipelineResourceConstants.PIPELINE_SEARCH_TERM_PARAM_MESSAGE) @QueryParam(
+          NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm,
+      @Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
+      @Parameter(description = NGCommonEntityConstants.SIZE_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.SIZE) @DefaultValue("10") int size,
+      @Parameter(description = NGCommonEntityConstants.SORT_PARAM_MESSAGE) @QueryParam("sort") List<String> sort);
+
+  @GET
+  @Path("/artifact-manifest-info")
+  @ApiOperation(value = "Get artifact and manifest trigger event history based on build source type",
+      nickname = "triggerEventHistoryBuildSourceType")
+  @Operation(operationId = "triggerEventHistoryBuildSourceType",
+      summary = "Get artifact and manifest trigger event history based on build source type",
+      description = "Get artifact and manifest trigger event history based on build source type",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(responseCode = "default", description = "Returns the Trigger Event History response")
+      })
+  @Timed
+  @ResponseMetered
+  ResponseDTO<Page<NGTriggerEventHistoryDTO>>
+  listTriggerEventHistory(
+      @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
+      @QueryParam(NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
+      @QueryParam(NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier,
+      @Parameter(description = "Identifier of the target pipeline under which trigger resides") @QueryParam(
+          "targetIdentifier") @ResourceIdentifier String targetIdentifier,
+      @Parameter(description = "Type of artifact source") @QueryParam("artifactType") String artifactType,
       @Parameter(description = PipelineResourceConstants.PIPELINE_SEARCH_TERM_PARAM_MESSAGE) @QueryParam(
           NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm,
       @Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
@@ -129,6 +163,8 @@ public interface NGTriggerEventHistoryResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns the Trigger catalogue response")
       })
+  @Timed
+  @ResponseMetered
   ResponseDTO<Page<NGTriggerEventHistoryDTO>>
   getTriggerHistoryEventCorrelationV2(
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,

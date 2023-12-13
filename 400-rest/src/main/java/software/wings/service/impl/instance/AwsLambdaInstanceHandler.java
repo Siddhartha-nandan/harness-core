@@ -10,6 +10,7 @@ package software.wings.service.impl.instance;
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.beans.FeatureName.MOVE_AWS_LAMBDA_INSTANCE_SYNC_TO_PERPETUAL_TASK;
 import static io.harness.beans.FeatureName.STOP_INSTANCE_SYNC_VIA_ITERATOR_FOR_AWS_LAMBDA_DEPLOYMENTS;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.delegate.beans.TaskData.DEFAULT_SYNC_CALL_TIMEOUT;
@@ -19,7 +20,6 @@ import static software.wings.beans.infrastructure.instance.InvocationCount.Invoc
 import static software.wings.service.impl.instance.InstanceSyncFlow.NEW_DEPLOYMENT;
 import static software.wings.service.impl.instance.InstanceSyncFlow.PERPETUAL_TASK;
 
-import static io.fabric8.utils.Lists.isNullOrEmpty;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Objects.isNull;
@@ -166,7 +166,7 @@ public class AwsLambdaInstanceHandler extends InstanceHandler implements Instanc
   void syncInstancesInternal(String appId, String infraMappingId,
       @NotNull List<DeploymentSummary> newDeploymentSummaries, AwsLambdaDetailsMetricsResponse awsLambdaDetailsResponse,
       InstanceSyncFlow instanceSyncFlow) {
-    log.info("# Performing Aws Lambda Instance Sync");
+    log.debug("# Performing Aws Lambda Instance Sync");
     final AwsLambdaInfraStructureMapping awsLambdaInfraStructureMapping = getInfraMapping(infraMappingId, appId);
     final SettingAttribute cloudProviderSetting = cloudProviderSetting(awsLambdaInfraStructureMapping);
     final AwsConfig awsConfig = (AwsConfig) cloudProviderSetting.getValue();
@@ -174,7 +174,7 @@ public class AwsLambdaInstanceHandler extends InstanceHandler implements Instanc
 
     final Collection<ServerlessInstance> activeInstancesInDB =
         emptyIfNull(getActiveServerlessInstances(appId, infraMappingId));
-    log.info("Total no of instances found in DB for AppId: {}, "
+    log.debug("Total no of instances found in DB for AppId: {}, "
             + "No of instances in DB: {}, No of new instances to add: {}",
         appId, activeInstancesInDB.size(), newDeploymentSummaries.size());
 
@@ -311,8 +311,8 @@ public class AwsLambdaInstanceHandler extends InstanceHandler implements Instanc
       List<EncryptedDataDetail> encryptedDataDetails, ServerlessInstance instanceToUpdate) {
     final String functionName = instanceToUpdate.getLambdaInstanceKey().getFunctionName();
     final String functionVersion = instanceToUpdate.getLambdaInstanceKey().getFunctionVersion();
-    log.info("Syncing existing instance id=[{}], function name=[{}], function version=[{}]", instanceToUpdate.getUuid(),
-        functionName, functionVersion);
+    log.debug("Syncing existing instance id=[{}], function name=[{}], function version=[{}]",
+        instanceToUpdate.getUuid(), functionName, functionVersion);
     try {
       final AwsLambdaInstanceInfo lambdaInstanceInfo = getLambdaInstanceInfo(functionName, functionVersion,
           new Date(instanceToUpdate.getLastDeployedAt()), infrastructureMapping, awsConfig, encryptedDataDetails);
@@ -330,8 +330,8 @@ public class AwsLambdaInstanceHandler extends InstanceHandler implements Instanc
       ServerlessInstance instanceToUpdate, AwsLambdaDetailsMetricsResponse awsLambdaDetailsResponse) {
     final String functionName = instanceToUpdate.getLambdaInstanceKey().getFunctionName();
     final String functionVersion = instanceToUpdate.getLambdaInstanceKey().getFunctionVersion();
-    log.info("Syncing existing instance id=[{}], function name=[{}], function version=[{}]", instanceToUpdate.getUuid(),
-        functionName, functionVersion);
+    log.debug("Syncing existing instance id=[{}], function name=[{}], function version=[{}]",
+        instanceToUpdate.getUuid(), functionName, functionVersion);
     try {
       final AwsLambdaInstanceInfo lambdaInstanceInfo = createLambdaInstanceInfo(
           awsLambdaDetailsResponse.getLambdaDetails(), awsLambdaDetailsResponse.getInvocationCountList());
@@ -449,7 +449,7 @@ public class AwsLambdaInstanceHandler extends InstanceHandler implements Instanc
       List<DeploymentSummary> deploymentSummaries, boolean rollback, OnDemandRollbackInfo onDemandRollbackInfo) {
     log.info(" Handling  new deployment. New Deployment Summary Size =[{}], rollback =[{}]",
         emptyIfNull(deploymentSummaries).size(), rollback);
-    if (!isNullOrEmpty(deploymentSummaries)) {
+    if (!isEmpty(deploymentSummaries)) {
       final String appId = deploymentSummaries.iterator().next().getAppId();
       final String infraMappingId = deploymentSummaries.iterator().next().getInfraMappingId();
       syncInstancesInternal(appId, infraMappingId, deploymentSummaries, null, NEW_DEPLOYMENT);
@@ -536,7 +536,7 @@ public class AwsLambdaInstanceHandler extends InstanceHandler implements Instanc
     final List<Tag> tags = emptyIfNull(commandStepExecutionSummary.getTags());
     final List<FunctionMeta> lambdaFunctionMetaList = commandStepExecutionSummary.getLambdaFunctionMetaList();
 
-    if (isNullOrEmpty(lambdaFunctionMetaList)) {
+    if (isEmpty(lambdaFunctionMetaList)) {
       log.warn("Function Metadata not found for workflow:[{}] Can't create deployment event",
           workflowExecution.normalizedName());
       return Optional.empty();

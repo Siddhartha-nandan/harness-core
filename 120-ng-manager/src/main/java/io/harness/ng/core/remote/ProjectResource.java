@@ -36,7 +36,9 @@ import io.harness.accesscontrol.NGAccessControlCheck;
 import io.harness.accesscontrol.OrgIdentifier;
 import io.harness.accesscontrol.ResourceIdentifier;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
 import io.harness.beans.SortOrder;
+import io.harness.exception.EntityNotFoundException;
 import io.harness.favorites.ResourceType;
 import io.harness.favorites.entities.Favorite;
 import io.harness.favorites.services.FavoritesService;
@@ -83,13 +85,13 @@ import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -180,7 +182,7 @@ public class ProjectResource {
           DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier) {
     Optional<Project> projectOptional = projectService.get(accountIdentifier, orgIdentifier, identifier);
     if (!projectOptional.isPresent()) {
-      throw new NotFoundException(
+      throw new EntityNotFoundException(
           String.format("Project with orgIdentifier [%s] and identifier [%s] not found", orgIdentifier, identifier));
     }
     return ResponseDTO.newResponse(projectOptional.get().getVersion().toString(),
@@ -361,9 +363,10 @@ public class ProjectResource {
           "hasModule") @DefaultValue("true") boolean hasModule,
       @Parameter(description = "Module type") @QueryParam(
           NGResourceFilterConstants.MODULE_TYPE_KEY) ModuleType moduleType,
-      @Parameter(description = "Search Term") @QueryParam(
-          NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm) {
-    Set<String> permittedOrgIds = organizationService.getPermittedOrganizations(accountIdentifier, orgIdentifier);
+      @Parameter(description = "Search Term") @QueryParam(NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm,
+      @Context ScopeInfo scopeInfo) {
+    Set<String> permittedOrgIds =
+        organizationService.getPermittedOrganizations(accountIdentifier, scopeInfo, orgIdentifier);
     ProjectFilterDTO projectFilterDTO = getProjectFilterDTO(searchTerm, permittedOrgIds, hasModule, moduleType);
     return ResponseDTO.newResponse(projectService.listPermittedProjects(accountIdentifier, projectFilterDTO));
   }
@@ -392,8 +395,10 @@ public class ProjectResource {
       @Parameter(description = "Search Term") @QueryParam(NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm,
       @Parameter(description = "Start time") @NotNull @QueryParam(
           NGResourceFilterConstants.START_TIME) long startInterval,
-      @Parameter(description = "End time") @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval) {
-    Set<String> permittedOrgIds = organizationService.getPermittedOrganizations(accountIdentifier, orgIdentifier);
+      @Parameter(description = "End time") @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval,
+      @Context ScopeInfo scopeInfo) {
+    Set<String> permittedOrgIds =
+        organizationService.getPermittedOrganizations(accountIdentifier, scopeInfo, orgIdentifier);
     ProjectFilterDTO projectFilterDTO = getProjectFilterDTO(searchTerm, permittedOrgIds, hasModule, moduleType);
     return ResponseDTO.newResponse(
         projectService.permittedProjectsCount(accountIdentifier, projectFilterDTO, startInterval, endInterval));

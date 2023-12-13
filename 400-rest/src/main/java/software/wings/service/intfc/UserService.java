@@ -26,12 +26,13 @@ import io.harness.ng.core.invites.dto.InviteOperationResponse;
 import io.harness.ng.core.switchaccount.RestrictedSwitchAccountInfo;
 import io.harness.ng.core.user.PasswordChangeDTO;
 import io.harness.ng.core.user.PasswordChangeResponse;
+import io.harness.notification.NotificationRequest;
+import io.harness.notification.Team;
 import io.harness.signup.dto.SignupInviteDTO;
 import io.harness.validation.Create;
 import io.harness.validation.Update;
 
 import software.wings.beans.Account;
-import software.wings.beans.AccountJoinRequest;
 import software.wings.beans.AccountRole;
 import software.wings.beans.ApplicationRole;
 import software.wings.beans.CannySsoLoginResponse;
@@ -40,6 +41,7 @@ import software.wings.beans.MarketPlace;
 import software.wings.beans.User;
 import software.wings.beans.UserInvite;
 import software.wings.beans.ZendeskSsoLoginResponse;
+import software.wings.beans.account.AccountJoinRequest;
 import software.wings.beans.loginSettings.PasswordSource;
 import software.wings.beans.loginSettings.PasswordStrengthViolations;
 import software.wings.beans.marketplace.MarketPlaceType;
@@ -296,6 +298,8 @@ public interface UserService extends OwnedByAccount {
   List<User> getUsersByEmail(List<String> emailIds, String accountId);
 
   User getUserByEmail(String email, String accountId);
+
+  User getUserByEmailForScim(String email, String accountId);
 
   List<User> getUsersEmails(String accountId);
 
@@ -715,4 +719,12 @@ public interface UserService extends OwnedByAccount {
   void updateUserAccountLevelDataForThisGen(String accountId, User user, Generation generation, UserSource userSource);
 
   boolean updateExternallyManaged(String userId, Generation generation, boolean externallyManaged);
+
+  String getClaimsFromJWTToken(String jwtToken, JWT_CATEGORY category, String claim);
+
+  void sendNotificationEmailNG(String accountId, List<NotificationRequest.UserGroup> userGroups, String templateId,
+      Map<String, String> templateData, Team team, List<String> recipients);
+
+  boolean sendNotificationEmailCG(String accountId, List<String> to, List<String> cc, List<String> bcc, String subject,
+      String body, String templateName, Map<String, String> templateModel, int retries);
 }

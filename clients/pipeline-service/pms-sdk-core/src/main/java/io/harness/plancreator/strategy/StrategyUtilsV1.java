@@ -12,6 +12,7 @@ import static io.harness.strategy.StrategyValidationUtils.STRATEGY_IDENTIFIER_PO
 import io.harness.pms.contracts.advisers.AdviserObtainment;
 import io.harness.pms.contracts.plan.EdgeLayoutList;
 import io.harness.pms.contracts.plan.GraphLayoutNode;
+import io.harness.pms.contracts.plan.HarnessValue;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
@@ -23,6 +24,7 @@ import io.harness.steps.matrix.StrategyMetadata;
 import io.harness.strategy.StrategyValidationUtils;
 
 import com.google.protobuf.ByteString;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,33 +97,37 @@ public class StrategyUtilsV1 {
     return stageYamlFieldMap;
   }
 
-  public void addStrategyFieldDependencyIfPresent(KryoSerializer kryoSerializer, PlanCreationContext ctx,
-      String fieldUuid, Map<String, YamlField> dependenciesNodeMap, Map<String, ByteString> metadataMap,
+  public Map<String, HarnessValue> getStrategyFieldDependencyMetadataIfPresent(KryoSerializer kryoSerializer,
+      PlanCreationContext ctx, String fieldUuid, Map<String, YamlField> dependenciesNodeMap,
       List<AdviserObtainment> adviserObtainments) {
-    addStrategyFieldDependencyIfPresent(
-        kryoSerializer, ctx, fieldUuid, dependenciesNodeMap, metadataMap, adviserObtainments, true);
+    return getStrategyFieldDependencyMetadataIfPresent(
+        kryoSerializer, ctx, fieldUuid, dependenciesNodeMap, adviserObtainments, true);
   }
 
-  public void addStrategyFieldDependencyIfPresent(KryoSerializer kryoSerializer, PlanCreationContext ctx,
-      String fieldUuid, Map<String, YamlField> dependenciesNodeMap, Map<String, ByteString> metadataMap,
+  public Map<String, HarnessValue> getStrategyFieldDependencyMetadataIfPresent(KryoSerializer kryoSerializer,
+      PlanCreationContext ctx, String fieldUuid, Map<String, YamlField> dependenciesNodeMap,
       List<AdviserObtainment> adviserObtainments, Boolean shouldProceedIfFailed) {
     YamlField strategyField = ctx.getCurrentField().getNode().getField(YAMLFieldNameConstants.STRATEGY);
-
+    Map<String, HarnessValue> nodeMetadataMap = new HashMap<>();
+    // This is mandatory because it is the parent's responsibility to pass the nodeId and the childNodeId to the
+    // strategy node
     if (strategyField != null) {
       dependenciesNodeMap.put(fieldUuid, strategyField);
-      // This is mandatory because it is the parent's responsibility to pass the nodeId and the childNodeId to the
-      // strategy node
-      metadataMap.put(StrategyConstants.STRATEGY_METADATA + strategyField.getNode().getUuid(),
-          ByteString.copyFrom(kryoSerializer.asDeflatedBytes(
-              StrategyMetadata.builder()
-                  .strategyNodeId(fieldUuid)
-                  .adviserObtainments(adviserObtainments)
-                  .childNodeId(strategyField.getNode().getUuid())
-                  .strategyNodeIdentifier(refineIdentifier(ctx.getCurrentField().getId()))
-                  .strategyNodeName(refineIdentifier(ctx.getCurrentField().getNodeName()))
-                  .shouldProceedIfFailed(shouldProceedIfFailed)
-                  .build())));
+      nodeMetadataMap.put(StrategyConstants.STRATEGY_METADATA + strategyField.getNode().getUuid(),
+          HarnessValue.newBuilder()
+              .setBytesValue(ByteString.copyFrom(kryoSerializer.asDeflatedBytes(
+                  StrategyMetadata.builder()
+                      .strategyNodeId(fieldUuid)
+                      .adviserObtainments(adviserObtainments)
+                      .childNodeId(strategyField.getNode().getUuid())
+                      .strategyNodeIdentifier(refineIdentifier(ctx.getCurrentField().getId()))
+                      .strategyNodeName(refineIdentifier(ctx.getCurrentField().getNodeName()))
+                      .shouldProceedIfFailed(shouldProceedIfFailed)
+                      .build())))
+              .build());
+      return nodeMetadataMap;
     }
+    return nodeMetadataMap;
   }
 
   /**

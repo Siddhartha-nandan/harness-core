@@ -17,7 +17,7 @@ import io.harness.beans.execution.ManualExecutionSource;
 import io.harness.beans.serializer.RunTimeInputHandler;
 import io.harness.beans.sweepingoutputs.ContextElement;
 import io.harness.beans.sweepingoutputs.StageDetails;
-import io.harness.ci.buildstate.ConnectorUtils;
+import io.harness.ci.execution.buildstate.ConnectorUtils;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.exception.ngexception.CIStageExecutionException;
 import io.harness.pms.contracts.ambiance.Ambiance;
@@ -95,7 +95,7 @@ public class CodeBaseStep implements ChildExecutable<CodeBaseStepParameters> {
     OptionalSweepingOutput optionalSweepingOutput = executionSweepingOutputResolver.resolveOptional(
         ambiance, RefObjectUtils.getSweepingOutputRefObject(ContextElement.stageDetails));
     if (!optionalSweepingOutput.isFound()) {
-      throw new CIStageExecutionException("Stage details sweeping output cannot be empty");
+      throw new CIStageExecutionException("Unable to fetch stage details. Please retry or verify pipeline yaml");
     }
     StageDetails stageDetails = (StageDetails) optionalSweepingOutput.getOutput();
     return stageDetails.getExecutionSource();

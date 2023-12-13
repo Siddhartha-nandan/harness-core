@@ -28,6 +28,8 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.cdng.creator.plan.stage.DeploymentStageConfig;
 import io.harness.cdng.creator.plan.stage.DeploymentStageNode;
 import io.harness.cdng.customdeploymentng.CustomDeploymentInfrastructureHelper;
@@ -116,7 +118,7 @@ import okhttp3.RequestBody;
 import org.jetbrains.annotations.Nullable;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
-    components = {HarnessModuleComponent.CDS_APPROVALS, HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
+    components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
 @OwnedBy(CDP)
 @Singleton
 @Slf4j
@@ -345,20 +347,21 @@ public class ServiceEnvironmentV2MigrationService {
              currentParallelIndex++) {
           JsonNode currentParallelNode = parallelStageArrayNode.get(currentParallelIndex);
           YamlNode parallelStageYamlNode = new YamlNode(currentParallelNode);
-          migrateStageYamlInPipelineTemplateInput(
-              parallelStageYamlNode, stageIdentifierToSvcObjectMap, stageIdentifierToEnvObjectMap);
+          migrateStageYamlInPipelineTemplateInput(parallelStageYamlNode, stageIdentifierToSvcObjectMap,
+              stageIdentifierToEnvObjectMap, accountId, requestDto);
         }
       } else {
         migrateStageYamlInPipelineTemplateInput(
-            stageYamlNode, stageIdentifierToSvcObjectMap, stageIdentifierToEnvObjectMap);
+            stageYamlNode, stageIdentifierToSvcObjectMap, stageIdentifierToEnvObjectMap, accountId, requestDto);
       }
     }
     return YamlPipelineUtils.writeYamlString(pipelineParentNode);
   }
 
   private void migrateStageYamlInPipelineTemplateInput(YamlNode stageYamlNode,
-      Map<String, ObjectNode> stageIdentifierToSvcObjectMap, Map<String, ObjectNode> stageIdentifierToEnvObjectMap) {
-    if (!"Deployment".equals(getStageType(stageYamlNode))) {
+      Map<String, ObjectNode> stageIdentifierToSvcObjectMap, Map<String, ObjectNode> stageIdentifierToEnvObjectMap,
+      String accountId, SvcEnvMigrationRequestDto requestDto) {
+    if (!"Deployment".equals(getStageType(stageYamlNode, accountId, requestDto))) {
       return;
     }
     String stageIdentifier =
@@ -384,7 +387,7 @@ public class ServiceEnvironmentV2MigrationService {
       List<StageMigrationFailureResponse> failures, YamlNode stageYamlNode, ArrayNode stageArrayNode, int currentIndex,
       Map<String, String> stageIdentifierToDeploymentTypeMap, Map<String, ObjectNode> stageIdentifierToSvcObjectMap,
       Map<String, ObjectNode> stageIdentifierToEnvObjectMap) {
-    if (!"Deployment".equals(getStageType(stageYamlNode))) {
+    if (!"Deployment".equals(getStageType(stageYamlNode, accountId, requestDto))) {
       return false;
     }
     Optional<JsonNode> migratedStageNode = createMigratedYaml(accountId, stageYamlNode, requestDto, failures,
@@ -557,7 +560,8 @@ public class ServiceEnvironmentV2MigrationService {
     DeploymentStageConfig deploymentStageConfig = getDeploymentStageConfig(resolvedStageYaml);
     YamlNode templateStageYamlNode = stageField.getNode().getField("template").getNode();
     ObjectNode specNode = objectMapper.createObjectNode();
-    if (templateStageYamlNode.getField("templateInputs") != null) {
+    if (templateStageYamlNode.getField("templateInputs") != null
+        && templateStageYamlNode.getField("templateInputs").getNode().getField("spec") != null) {
       specNode = (ObjectNode) templateStageYamlNode.getField("templateInputs")
                      .getNode()
                      .getField("spec")
@@ -570,6 +574,11 @@ public class ServiceEnvironmentV2MigrationService {
 
     migrateEnv(accountId, requestDto, serviceType, deploymentStageConfig, resolvedStageField, specNode,
         stageIdentifierToSvcObjectMap, stageIdentifierToEnvObjectMap);
+
+    if (!specNode.isEmpty() && templateStageYamlNode.getField("templateInputs") != null
+        && templateStageYamlNode.getField("templateInputs").getNode().getField("spec") == null) {
+      ((ObjectNode) templateStageYamlNode.getField("templateInputs").getNode().getCurrJsonNode()).set("spec", specNode);
+    }
 
     String templateKey = templateStageYamlNode.getField("templateRef").getNode().getCurrJsonNode().textValue() + "@"
         + templateStageYamlNode.getField("versionLabel").getNode().getCurrJsonNode().textValue();
@@ -804,6 +813,32 @@ public class ServiceEnvironmentV2MigrationService {
     }
   }
 
+  private String getTemplateType(
+      String accountId, String orgId, String projectId, String templateRef, String versionLabel) {
+    TemplateResponseDTO templateResponseDTO = getTemplate(accountId, orgId, projectId, templateRef, versionLabel);
+    if (templateResponseDTO != null) {
+      return templateResponseDTO.getChildType();
+    }
+    throw new InvalidRequestException(
+        String.format("Referred template [%s] with versionLabel [] doesn't exist", templateRef, versionLabel));
+  }
+
+  private TemplateResponseDTO getTemplate(
+      String accountId, String orgId, String projectId, String templateRef, String versionLabel) {
+    String templateId = templateRef;
+    if (templateRef.startsWith("org.")) {
+      templateId = templateId.replace("org.", "");
+      return NGRestUtils.getResponse(
+          templateResourceClient.get(templateId, accountId, orgId, null, versionLabel, false));
+    } else if (templateRef.startsWith("account.")) {
+      templateId = templateId.replace("account.", "");
+      return NGRestUtils.getResponse(
+          templateResourceClient.get(templateId, accountId, null, null, versionLabel, false));
+    }
+    return NGRestUtils.getResponse(
+        templateResourceClient.get(templateId, accountId, orgId, projectId, versionLabel, false));
+  }
+
   private boolean isSkipEntityUpdation(String entityRef, List<String> skipEntities) {
     if (isNotEmpty(skipEntities) && skipEntities.contains(entityRef)) {
       return true;
@@ -811,18 +846,24 @@ public class ServiceEnvironmentV2MigrationService {
     return false;
   }
 
-  private String getStageType(YamlNode stageParentNode) {
+  private String getStageType(YamlNode stageParentNode, String accountId, SvcEnvMigrationRequestDto requestDto) {
     YamlNode stageNode = stageParentNode.getField("stage").getNode();
     boolean isStageTemplatePresent = isStageContainStageTemplate(stageParentNode);
     if (isStageTemplatePresent) {
-      return stageNode.getField("template")
-          .getNode()
-          .getField("templateInputs")
-          .getNode()
-          .getField("type")
-          .getNode()
-          .getCurrJsonNode()
-          .textValue();
+      if (stageHasTemplateInputs(stageNode)) {
+        return stageNode.getField("template")
+            .getNode()
+            .getField("templateInputs")
+            .getNode()
+            .getField("type")
+            .getNode()
+            .getCurrJsonNode()
+            .textValue();
+      }
+      String templateRef = getTemplateRefFromStageNode(stageNode);
+      String versionLabel = getTemplateVersionLabelFromStageNode(stageNode);
+      return getTemplateType(
+          accountId, requestDto.getOrgIdentifier(), requestDto.getProjectIdentifier(), templateRef, versionLabel);
     }
     return stageNode.getField("type").getNode().getCurrJsonNode().textValue();
   }
@@ -959,6 +1000,19 @@ public class ServiceEnvironmentV2MigrationService {
   private boolean isStageContainStageTemplate(YamlNode stageNode) {
     YamlField templateField = stageNode.getField("stage").getNode().getField("template");
     return templateField != null;
+  }
+
+  private boolean stageHasTemplateInputs(YamlNode stageNode) {
+    YamlField templateField = stageNode.getField("template").getNode().getField("templateInputs");
+    return templateField != null;
+  }
+
+  private String getTemplateRefFromStageNode(YamlNode stageNode) {
+    return stageNode.getField("template").getNode().getField("templateRef").getNode().getCurrJsonNode().textValue();
+  }
+
+  private String getTemplateVersionLabelFromStageNode(YamlNode stageNode) {
+    return stageNode.getField("template").getNode().getField("versionLabel").getNode().getCurrJsonNode().textValue();
   }
 
   private boolean isPipelineContainPipelineTemplate(YamlNode pipelineNode) {
@@ -1107,7 +1161,9 @@ public class ServiceEnvironmentV2MigrationService {
   public AccountSummaryResponseDto getAccountSummary(
       String accountId, boolean getInfrastructuresYaml, boolean getServiceConfigsYaml) {
     try {
-      Set<String> orgIds = organizationService.getPermittedOrganizations(accountId, null);
+      Set<String> orgIds = organizationService.getPermittedOrganizations(accountId,
+          ScopeInfo.builder().accountIdentifier(accountId).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountId).build(),
+          null);
       List<ProjectDTO> projects = projectService.listPermittedProjects(accountId,
           ProjectFilterDTO.builder().hasModule(true).moduleType(ModuleType.CD).orgIdentifiers(orgIds).build());
 

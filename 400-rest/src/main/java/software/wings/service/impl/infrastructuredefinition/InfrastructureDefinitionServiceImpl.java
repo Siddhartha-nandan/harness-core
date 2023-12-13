@@ -109,7 +109,6 @@ import software.wings.annotation.EncryptableSetting;
 import software.wings.api.CloudProviderType;
 import software.wings.api.DeploymentType;
 import software.wings.beans.AccountEvent;
-import software.wings.beans.AccountEventType;
 import software.wings.beans.AmiDeploymentType;
 import software.wings.beans.Application;
 import software.wings.beans.AwsConfig;
@@ -130,6 +129,7 @@ import software.wings.beans.SpotInstConfig;
 import software.wings.beans.Variable;
 import software.wings.beans.WorkflowExecution;
 import software.wings.beans.WorkflowExecution.WorkflowExecutionKeys;
+import software.wings.beans.account.AccountEventType;
 import software.wings.beans.customdeployment.CustomDeploymentTypeDTO;
 import software.wings.beans.infrastructure.Host;
 import software.wings.common.InfrastructureConstants;
@@ -223,7 +223,6 @@ import dev.morphia.aggregation.AggregationPipeline;
 import dev.morphia.aggregation.Group;
 import dev.morphia.query.FindOptions;
 import dev.morphia.query.Query;
-import io.fabric8.utils.CountingMap;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -459,9 +458,9 @@ public class InfrastructureDefinitionServiceImpl implements InfrastructureDefini
       PageRequest<InfrastructureDefinition> pageRequest, String appId, String envId) {
     PageResponse<InfrastructureDefinition> infrastructureDefinitionPageResponse = list(pageRequest);
     List<InfrastructureMapping> infrastructureMappings = infrastructureMappingService.listInfraMappings(appId, envId);
-    CountingMap infraDefinitionIdMappingCount = new CountingMap();
+    HashMap<String, Integer> infraDefinitionIdMappingCount = new HashMap<>();
     infrastructureMappings.forEach(infrastructureMapping
-        -> infraDefinitionIdMappingCount.increment(infrastructureMapping.getInfrastructureDefinitionId()));
+        -> infraDefinitionIdMappingCount.merge(infrastructureMapping.getInfrastructureDefinitionId(), 1, Integer::sum));
     List<InfraDefinitionDetail> infraDefinitionDetailList =
         infrastructureDefinitionPageResponse.getResponse()
             .stream()
@@ -469,7 +468,7 @@ public class InfrastructureDefinitionServiceImpl implements InfrastructureDefini
                 -> InfraDefinitionDetail.builder()
                        .infrastructureDefinition(infrastructureDefinition)
                        .countDerivedInfraMappings(
-                           infraDefinitionIdMappingCount.count(infrastructureDefinition.getUuid()))
+                           infraDefinitionIdMappingCount.getOrDefault(infrastructureDefinition.getUuid(), 0))
                        .build())
             .collect(Collectors.toList());
     return PageResponseBuilder.aPageResponse().withResponse(infraDefinitionDetailList).build();

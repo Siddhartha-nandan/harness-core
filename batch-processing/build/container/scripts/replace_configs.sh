@@ -92,6 +92,10 @@ if [[ "" != "$BILLING_DATA_QUERY_BATCH_SIZE" ]]; then
   export BILLING_DATA_QUERY_BATCH_SIZE; yq -i '.batchQueryConfig.billingDataQueryBatchSize=env(BILLING_DATA_QUERY_BATCH_SIZE)' $CONFIG_FILE
 fi
 
+if [[ "" != "$DISABLE_BATCH_JOBS_IN_CG" ]]; then
+  export DISABLE_BATCH_JOBS_IN_CG; yq -i '.batchQueryConfig.disableBatchJobsInCG=env(DISABLE_BATCH_JOBS_IN_CG)' $CONFIG_FILE
+fi
+
 if [[ "" != "$BULK_OPERATION_QUERY_BATCH_SIZE" ]]; then
   export BULK_OPERATION_QUERY_BATCH_SIZE; yq -i '.bulkOperationBatchQueryConfig.queryBatchSize=env(BULK_OPERATION_QUERY_BATCH_SIZE)' $CONFIG_FILE
 fi
@@ -228,6 +232,10 @@ if [[ "" != "$CONNECTOR_HEALTH_UPDATE_CRON" ]]; then
   export CONNECTOR_HEALTH_UPDATE_CRON; yq -i '.scheduler-jobs-config.connectorHealthUpdateJobCron=env(CONNECTOR_HEALTH_UPDATE_CRON)' $CONFIG_FILE
 fi
 
+if [[ "" != "$DELEGATE_HEALTH_UPDATE_CRON" ]]; then
+  export DELEGATE_HEALTH_UPDATE_CRON; yq -i '.scheduler-jobs-config.delegateHealthUpdateJobCron=env(DELEGATE_HEALTH_UPDATE_CRON)' $CONFIG_FILE
+fi
+
 if [[ "" != "$AWS_ACCOUNT_TAGS_COLLECTION_CRON" ]]; then
   export AWS_ACCOUNT_TAGS_COLLECTION_CRON; yq -i '.scheduler-jobs-config.awsAccountTagsCollectionJobCron=env(AWS_ACCOUNT_TAGS_COLLECTION_CRON)' $CONFIG_FILE
 fi
@@ -320,6 +328,10 @@ if [[ "" != "$CONNECTOR_HEALTH_UPDATE_JOB_ENABLED" ]]; then
   export CONNECTOR_HEALTH_UPDATE_JOB_ENABLED; yq -i '.connectorHealthUpdateJobConfig.enabled=env(CONNECTOR_HEALTH_UPDATE_JOB_ENABLED)' $CONFIG_FILE
 fi
 
+if [[ "" != "$DELEGATE_HEALTH_UPDATE_JOB_ENABLED" ]]; then
+  export DELEGATE_HEALTH_UPDATE_JOB_ENABLED; yq -i '.delegateHealthUpdateJobConfig.enabled=env(DELEGATE_HEALTH_UPDATE_JOB_ENABLED)' $CONFIG_FILE
+fi
+
 if [[ "" != "$AWS_ACCOUNT_TAGS_COLLECTION_JOB_ENABLED" ]]; then
   export AWS_ACCOUNT_TAGS_COLLECTION_JOB_ENABLED; yq -i '.awsAccountTagsCollectionJobConfig.enabled=env(AWS_ACCOUNT_TAGS_COLLECTION_JOB_ENABLED)' $CONFIG_FILE
 fi
@@ -340,6 +352,9 @@ if [[ "" != "$BATCH_JOB_METADATA_RETENTION_PERIOD" ]]; then
   export BATCH_JOB_METADATA_RETENTION_PERIOD; yq -i '.batchJobRepository.dataRetentionPeriodInDays=env(BATCH_JOB_METADATA_RETENTION_PERIOD)' $CONFIG_FILE
 fi
 
+if [[ "" != "$GCP_SYNC_PYTHON_IMAGE_PATH" ]]; then
+  export GCP_SYNC_PYTHON_IMAGE_PATH; yq -i '.gcpSyncSmpConfig.k8sJobPythonImage=env(GCP_SYNC_PYTHON_IMAGE_PATH)' $CONFIG_FILE
+fi
 
 replace_key_value cfClientConfig.apiKey "$CF_CLIENT_API_KEY"
 replace_key_value cfClientConfig.configUrl "$CF_CLIENT_CONFIG_URL"
@@ -368,6 +383,7 @@ replace_key_value deployMode "$DEPLOY_MODE"
 replace_key_value clickHouseConfig.url "$CLICKHOUSE_URL"
 replace_key_value clickHouseConfig.username "$CLICKHOUSE_USERNAME"
 replace_key_value clickHouseConfig.password "$CLICKHOUSE_PASSWORD"
+replace_key_value clickHouseConfig.socketTimeout "$CLICKHOUSE_SOCKET_TIMEOUT"
 
 replace_key_value isClickHouseEnabled "$CLICKHOUSE_ENABLED"
 
@@ -379,3 +395,29 @@ replace_key_value governanceConfig.awsFaktoryQueueName "$GOVERNANCE_AWS_FAKTORY_
 replace_key_value governanceConfig.azureFaktoryJobType "$GOVERNANCE_AZURE_FAKTORY_JOB_TYPE"
 replace_key_value governanceConfig.azureFaktoryQueueName "$GOVERNANCE_AZURE_FAKTORY_QUEUE_NAME"
 replace_key_value governanceConfig.OOTBAccount "$GOVERNANCE_OOTB_ACCOUNT"
+
+replace_key_value proxy.enabled "$PROXY_ENABLED"
+replace_key_value proxy.host "$PROXY_HOST"
+replace_key_value proxy.port "$PROXY_PORT"
+replace_key_value proxy.username "$PROXY_USERNAME"
+replace_key_value proxy.password "$PROXY_PASSWORD"
+replace_key_value proxy.protocol "$PROXY_PROTOCOL"
+
+replace_key_value cliProxy.enabled "$CLI_PROXY_ENABLED"
+replace_key_value cliProxy.host "$CLI_PROXY_HOST"
+replace_key_value cliProxy.port "$CLI_PROXY_PORT"
+replace_key_value cliProxy.username "$CLI_PROXY_USERNAME"
+replace_key_value cliProxy.password "$CLI_PROXY_PASSWORD"
+replace_key_value cliProxy.protocol "$CLI_PROXY_PROTOCOL"
+
+replace_key_value awsServiceEndpointUrls.enabled "$AWS_SERVICE_ENDPOINT_URLS_ENABLED"
+replace_key_value awsServiceEndpointUrls.endPointRegion "$AWS_SERVICE_ENDPOINT_URLS_ENDPOINT_REGION"
+replace_key_value awsServiceEndpointUrls.stsEndPointUrl "$AWS_SERVICE_ENDPOINT_URLS_STS_ENDPOINT_URL"
+replace_key_value awsServiceEndpointUrls.ecsEndPointUrl "$AWS_SERVICE_ENDPOINT_URLS_ECS_ENDPOINT_URL"
+replace_key_value awsServiceEndpointUrls.cloudwatchEndPointUrl "$AWS_SERVICE_ENDPOINT_URLS_CLOUDWATCH_ENDPOINT_URL"
+
+replace_key_value dkronClientConfig.baseUrl "$DKRON_CLIENT_BASEURL"
+replace_key_value dkronClientConfig.connectTimeOutSeconds "$DKRON_CLIENT_CONNECTTIMEOUT"
+replace_key_value dkronClientConfig.readTimeOutSeconds "$DKRON_CLIENT_READTIMEOUT"
+
+replace_key_value lightwingAutoCUDClientConfig.baseUrl "$LIGHTWING_AUTOCUD_CLIENT_CONFIG_BASEURL"

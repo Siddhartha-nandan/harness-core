@@ -20,8 +20,10 @@ import dev.morphia.annotations.Entity;
 import java.time.Instant;
 import javax.validation.constraints.NotEmpty;
 import lombok.Builder;
+import lombok.Setter;
 import lombok.Value;
 import lombok.experimental.FieldNameConstants;
+import lombok.experimental.NonFinal;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -41,10 +43,11 @@ public class ArtifactEntity implements PersistentEntity {
   @Id String id;
   @Field("artifactid") String artifactId;
   @Field("orchestrationid") String orchestrationId;
+  @Setter @NonFinal String artifactCorrelationId;
   @NotEmpty String url;
   String name;
   String type;
-  String tag;
+  @Setter @NonFinal String tag;
   @Field("accountid") String accountId;
   @Field("orgid") String orgId;
   @Field("projectid") String projectId;
@@ -58,6 +61,14 @@ public class ArtifactEntity implements PersistentEntity {
   @Field("isattested") boolean isAttested;
   @Field("attestedfileurl") String attestedFileUrl;
   Sbom sbom;
+  @Setter @NonFinal Boolean invalid;
+  @Setter @NonFinal Long lastUpdatedAt;
+  @Setter @NonFinal Long componentsCount;
+  @Setter @NonFinal Long prodEnvCount;
+  @Setter @NonFinal Long nonProdEnvCount;
+
+  @Setter @NonFinal Scorecard scorecard;
+
   @Value
   @Builder
   public static class Sbom {
@@ -65,5 +76,12 @@ public class ArtifactEntity implements PersistentEntity {
     @Field("toolversion") String toolVersion;
     @Field("sbomformat") String sbomFormat;
     @Field("sbomversion") String sbomVersion;
+  }
+
+  @Value
+  @Builder
+  public static class Scorecard {
+    @Field("avgScore") String avgScore;
+    @Field("maxScore") String maxScore;
   }
 }

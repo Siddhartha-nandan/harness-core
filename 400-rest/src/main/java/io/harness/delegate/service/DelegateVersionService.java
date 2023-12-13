@@ -8,6 +8,7 @@
 package io.harness.delegate.service;
 
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+import static io.harness.delegate.beans.VersionOverrideType.DELEGATE_CUSTOM_IMAGE_TAG;
 import static io.harness.delegate.beans.VersionOverrideType.DELEGATE_IMAGE_TAG;
 import static io.harness.delegate.beans.VersionOverrideType.DELEGATE_JAR;
 import static io.harness.delegate.beans.VersionOverrideType.UPGRADER_IMAGE_TAG;
@@ -18,6 +19,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.commons.lang3.StringUtils.substringBefore;
 
 import io.harness.configuration.DeployMode;
+import io.harness.delegate.beans.SupportedDelegateVersion;
 import io.harness.delegate.beans.VersionOverride;
 import io.harness.delegate.beans.VersionOverride.VersionOverrideKeys;
 import io.harness.delegate.beans.VersionOverrideType;
@@ -87,6 +89,14 @@ public class DelegateVersionService {
    * @return
    */
   public String getImmutableDelegateImageTag(final String accountId) {
+    final VersionOverride versionOverride = getVersionOverride(accountId, DELEGATE_CUSTOM_IMAGE_TAG);
+    if (versionOverride != null && isNotBlank(versionOverride.getVersion())) {
+      return versionOverride.getVersion();
+    }
+    return getLatestImmutableDelegateImageTag(accountId);
+  }
+
+  public String getLatestImmutableDelegateImageTag(final String accountId) {
     final VersionOverride versionOverride = getVersionOverride(accountId, DELEGATE_IMAGE_TAG);
     if (versionOverride != null && isNotBlank(versionOverride.getVersion())) {
       return versionOverride.getVersion();
@@ -171,6 +181,17 @@ public class DelegateVersionService {
       log.error("Unable to fetch watcher version from {} ", watcherMetadataUrl, ex);
       throw new IllegalStateException("Unable to fetch watcher version");
     }
+  }
+
+  public SupportedDelegateVersion getSupportedDelegateVersion(String accountId) {
+    String latestSupportedDelegateImage = getLatestImmutableDelegateImageTag(accountId);
+    String[] split = latestSupportedDelegateImage.split(":");
+    String latestVersion = split[1];
+
+    return SupportedDelegateVersion.builder()
+        .latestSupportedVersion(latestVersion)
+        .latestSupportedMinimalVersion(latestVersion.concat(".minimal"))
+        .build();
   }
 
   private VersionOverride getVersionOverride(final String accountId, final VersionOverrideType overrideType) {

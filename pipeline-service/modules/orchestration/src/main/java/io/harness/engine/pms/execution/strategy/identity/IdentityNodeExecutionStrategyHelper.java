@@ -6,6 +6,7 @@
  */
 
 package io.harness.engine.pms.execution.strategy.identity;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
@@ -15,19 +16,19 @@ import io.harness.data.structure.EmptyPredicate;
 import io.harness.data.structure.UUIDGenerator;
 import io.harness.engine.executions.node.NodeExecutionService;
 import io.harness.engine.executions.plan.PlanService;
+import io.harness.engine.pms.data.ResolverUtils;
 import io.harness.engine.utils.PmsLevelUtils;
 import io.harness.exception.UnexpectedException;
 import io.harness.execution.NodeExecution;
 import io.harness.execution.NodeExecution.NodeExecutionBuilder;
 import io.harness.execution.NodeExecution.NodeExecutionKeys;
-import io.harness.graph.stepDetail.service.PmsGraphStepDetailsService;
+import io.harness.graph.stepDetail.service.NodeExecutionInfoService;
 import io.harness.interrupts.InterruptEffect;
 import io.harness.plan.IdentityPlanNode;
 import io.harness.plan.Node;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.execution.Status;
-import io.harness.pms.contracts.execution.StrategyMetadata;
 import io.harness.pms.execution.utils.AmbianceUtils;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -46,7 +47,7 @@ import org.springframework.data.util.CloseableIterator;
 @OwnedBy(HarnessTeam.PIPELINE)
 @Slf4j
 public class IdentityNodeExecutionStrategyHelper {
-  @Inject private PmsGraphStepDetailsService pmsGraphStepDetailsService;
+  @Inject private NodeExecutionInfoService pmsGraphStepDetailsService;
   @Inject private NodeExecutionService nodeExecutionService;
   @Inject private PlanService planService;
 
@@ -62,17 +63,16 @@ public class IdentityNodeExecutionStrategyHelper {
     }
     NodeExecution execution = NodeExecution.builder()
                                   .uuid(uuid)
-                                  .planNode(node)
                                   .ambiance(ambiance)
                                   .levelCount(ambiance.getLevelsCount())
                                   .status(Status.QUEUED)
-                                  .unitProgresses(new ArrayList<>())
+                                  .unitProgresses(originalExecution.getUnitProgresses())
                                   .startTs(AmbianceUtils.getCurrentLevelStartTs(ambiance))
                                   .originalNodeExecutionId(originalExecution.getUuid())
                                   .module(node.getServiceName())
-                                  .name(node.getName())
+                                  .name(originalExecution.getName())
                                   .skipGraphType(node.getSkipGraphType())
-                                  .identifier(node.getIdentifier())
+                                  .identifier(originalExecution.getIdentifier())
                                   .stepType(node.getStepType())
                                   .nodeId(node.getUuid())
                                   .stageFqn(node.getStageFqn())
@@ -93,6 +93,9 @@ public class IdentityNodeExecutionStrategyHelper {
                                   .resolvedParams(originalExecution.getResolvedParams())
                                   .resolvedInputs(originalExecution.getResolvedInputs())
                                   .executionInputConfigured(originalExecution.getExecutionInputConfigured())
+                                  .skipExpressionChain(node.isSkipExpressionChain())
+                                  .levelRuntimeIdx(ResolverUtils.prepareLevelRuntimeIdIndices(ambiance))
+                                  .nodeType(AmbianceUtils.obtainNodeType(ambiance))
                                   .build();
     NodeExecution nodeExecution = nodeExecutionService.save(execution);
     pmsGraphStepDetailsService.copyStepDetailsForRetry(
@@ -100,32 +103,26 @@ public class IdentityNodeExecutionStrategyHelper {
     return nodeExecution;
   }
 
-  // if a list of node execution IDs is provided, the strategy metadata at all levels currently should match the
-  // strategy metadata in the selected node execution
+  // if a list of node execution IDs is provided, the fqn should match the fqn for the selected node execution
   NodeExecution getCorrectNodeExecution(CloseableIterator<NodeExecution> nodeExecutions, List<Level> currLevels) {
-    List<StrategyMetadata> strategyMetadata =
-        currLevels.stream().map(Level::getStrategyMetadata).collect(Collectors.toList());
+    String levelCombinedIteration = AmbianceUtils.getCombinedIndexes(currLevels);
     while (nodeExecutions.hasNext()) {
       NodeExecution nodeExecution = nodeExecutions.next();
-      List<StrategyMetadata> currNodeStrategyMetadata = nodeExecution.getAmbiance()
-                                                            .getLevelsList()
-                                                            .stream()
-                                                            .map(Level::getStrategyMetadata)
-                                                            .collect(Collectors.toList());
-      if (currNodeStrategyMetadata.equals(strategyMetadata)) {
+      String currentCombinedIteration = AmbianceUtils.getCombinedIndexes(nodeExecution.getAmbiance().getLevelsList());
+      if (levelCombinedIteration.equals(currentCombinedIteration)) {
         return nodeExecution;
       }
     }
     throw new UnexpectedException(
         "None of the fetched node executions matched the required levels. Current strategy levels: "
-        + strategyMetadata);
+        + levelCombinedIteration);
   }
 
   // Cloning the nodeExecution. Also copying the original retryIds. We will update the retryIds later in the caller
   // method.
   NodeExecutionBuilder cloneNodeExecutionForRetries(NodeExecution originalNodeExecution, Ambiance ambiance) {
     String uuid = UUIDGenerator.generateUuid();
-    Node node = planService.fetchNode(originalNodeExecution.getNodeId());
+    Node node = planService.fetchNode(originalNodeExecution.getPlanId(), originalNodeExecution.getNodeId());
     Ambiance finalAmbiance = AmbianceUtils.cloneForFinish(ambiance)
                                  .toBuilder()
                                  .addLevels(PmsLevelUtils.buildLevelFromNode(uuid, node))
@@ -136,14 +133,13 @@ public class IdentityNodeExecutionStrategyHelper {
 
     return NodeExecution.builder()
         .uuid(uuid)
-        .planNode(node)
         .ambiance(finalAmbiance)
         .oldRetry(true)
         .retryIds(originalNodeExecution.getRetryIds())
         .executableResponses(originalNodeExecution.getExecutableResponses())
         .levelCount(finalAmbiance.getLevelsCount())
         .status(originalNodeExecution.getStatus())
-        .unitProgresses(new ArrayList<>())
+        .unitProgresses(originalNodeExecution.getUnitProgresses())
         .createdAt(AmbianceUtils.getCurrentLevelStartTs(finalAmbiance))
         .startTs(AmbianceUtils.getCurrentLevelStartTs(finalAmbiance))
         .endTs(System.currentTimeMillis())
@@ -155,6 +151,9 @@ public class IdentityNodeExecutionStrategyHelper {
         .stepType(node.getStepType())
         .nodeId(node.getUuid())
         .stageFqn(node.getStageFqn())
+        .skipExpressionChain(node.isSkipExpressionChain())
+        .levelRuntimeIdx(ResolverUtils.prepareLevelRuntimeIdIndices(ambiance))
+        .nodeType(node.getNodeType().name())
         .group(node.getGroup())
         .notifyId(notifyId)
         .parentId(parentId)

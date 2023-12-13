@@ -10,18 +10,20 @@ package io.harness.cdng.creator.plan.stage;
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
-import static java.lang.Boolean.parseBoolean;
+import static java.util.Objects.isNull;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
-import io.harness.beans.FeatureName;
 import io.harness.cdng.creator.plan.envGroup.EnvGroupPlanCreatorHelper;
 import io.harness.cdng.creator.plan.infrastructure.InfrastructurePmsPlanCreator;
 import io.harness.cdng.creator.plan.service.ServiceAllInOnePlanCreatorUtils;
 import io.harness.cdng.creator.plan.service.ServicePlanCreatorHelper;
+import io.harness.cdng.creator.plan.stage.service.DeploymentStagePlanCreationInfoService;
 import io.harness.cdng.envGroup.yaml.EnvGroupPlanCreatorConfig;
 import io.harness.cdng.envgroup.yaml.EnvironmentGroupYaml;
 import io.harness.cdng.environment.helper.EnvironmentInfraFilterUtils;
@@ -30,7 +32,9 @@ import io.harness.cdng.environment.helper.EnvironmentsPlanCreatorHelper;
 import io.harness.cdng.environment.yaml.EnvironmentPlanCreatorConfig;
 import io.harness.cdng.environment.yaml.EnvironmentYamlV2;
 import io.harness.cdng.environment.yaml.EnvironmentsPlanCreatorConfig;
+import io.harness.cdng.environment.yaml.EnvironmentsYaml;
 import io.harness.cdng.environment.yaml.ServiceOverrideInputsYaml;
+import io.harness.cdng.infra.yaml.InfraStructureDefinitionYaml;
 import io.harness.cdng.pipeline.PipelineInfrastructure;
 import io.harness.cdng.pipeline.beans.DeploymentStageStepParameters;
 import io.harness.cdng.pipeline.beans.MultiDeploymentStepParameters;
@@ -38,10 +42,16 @@ import io.harness.cdng.pipeline.steps.CdStepParametersUtils;
 import io.harness.cdng.pipeline.steps.DeploymentStageStep;
 import io.harness.cdng.pipeline.steps.MultiDeploymentSpawnerUtils;
 import io.harness.cdng.service.beans.ServiceDefinitionType;
+import io.harness.cdng.service.beans.ServiceUseFromStageV2;
 import io.harness.cdng.service.beans.ServiceYamlV2;
+import io.harness.cdng.service.beans.ServicesMetadata;
+import io.harness.cdng.service.beans.ServicesYaml;
+import io.harness.cdng.service.steps.helpers.beans.ServiceStepV3Parameters;
 import io.harness.cdng.visitor.YamlTypes;
+import io.harness.common.ParameterFieldHelper;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.data.structure.UUIDGenerator;
+import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ngexception.NGFreezeException;
 import io.harness.freeze.beans.response.FreezeSummaryResponseDTO;
@@ -50,7 +60,7 @@ import io.harness.freeze.service.FreezeEvaluateService;
 import io.harness.ng.core.environment.services.EnvironmentService;
 import io.harness.ng.core.infrastructure.services.InfrastructureEntityService;
 import io.harness.ng.core.serviceoverride.services.ServiceOverrideService;
-import io.harness.ngsettings.client.remote.NGSettingsClient;
+import io.harness.ng.core.telemetry.entity.SvcEnvTelemetryInfo;
 import io.harness.plancreator.stages.AbstractStagePlanCreator;
 import io.harness.plancreator.steps.GenericStepPMSPlanCreator;
 import io.harness.plancreator.steps.common.SpecParameters;
@@ -69,12 +79,14 @@ import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.execution.OrchestrationFacilitatorType;
 import io.harness.pms.execution.utils.SkipInfoUtils;
 import io.harness.pms.merger.helpers.RuntimeInputFormHelper;
+import io.harness.pms.plan.creation.PlanCreatorUtils;
 import io.harness.pms.sdk.core.plan.PlanNode;
 import io.harness.pms.sdk.core.plan.PlanNode.PlanNodeBuilder;
 import io.harness.pms.sdk.core.plan.creation.beans.GraphLayoutResponse;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
+import io.harness.pms.sdk.core.steps.io.StepParameters;
 import io.harness.pms.yaml.DependenciesUtils;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
@@ -82,13 +94,14 @@ import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.rbac.CDNGRbacUtility;
-import io.harness.remote.client.NGRestUtils;
 import io.harness.serializer.KryoSerializer;
 import io.harness.strategy.StrategyValidationUtils;
+import io.harness.telemetry.helpers.SvcEnvInstrumentationHelper;
 import io.harness.utils.NGFeatureFlagHelperService;
 import io.harness.when.utils.RunInfoUtils;
 import io.harness.yaml.core.failurestrategy.FailureStrategyConfig;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -98,14 +111,19 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
+import javax.validation.constraints.NotNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 /**
  * Stage plan graph V1 -
@@ -153,10 +171,10 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
   @Inject private ServicePlanCreatorHelper servicePlanCreatorHelper;
   @Inject private FreezeEvaluateService freezeEvaluateService;
   @Inject @Named("PRIVILEGED") private AccessControlClient accessControlClient;
-  @Inject private NGSettingsClient settingsClient;
-
-  private static final String PROJECT_SCOPED_RESOURCE_CONSTRAINT_SETTING_ID =
-      "project_scoped_resource_constraint_queue";
+  @Inject private StagePlanCreatorHelper stagePlanCreatorHelper;
+  @Inject private DeploymentStagePlanCreationInfoService deploymentStagePlanCreationInfoService;
+  @Inject @Named("deployment-stage-plan-creation-info-executor") private ExecutorService executorService;
+  @Inject private SvcEnvInstrumentationHelper instrumentationHelper;
 
   @Override
   public Set<String> getSupportedStageTypes() {
@@ -197,23 +215,23 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
     YamlField specField =
         Preconditions.checkNotNull(ctx.getCurrentField().getNode().getField(YAMLFieldNameConstants.SPEC));
     stageParameters.specConfig(getSpecParameters(specField.getNode().getUuid(), ctx, stageNode));
-    String uuid = MultiDeploymentSpawnerUtils.getUuidForMultiDeployment(stageNode);
+
     List<AdviserObtainment> adviserObtainments = new ArrayList<>();
     if (!MultiDeploymentSpawnerUtils.hasMultiDeploymentConfigured(stageNode)) {
-      adviserObtainments = getAdviserObtainmentFromMetaData(ctx.getCurrentField());
+      adviserObtainments = getAdviserObtainmentFromMetaData(ctx.getCurrentField(), ctx.getDependency());
     }
+
     // We need to swap the ids if strategy is present
-    PlanNodeBuilder builder =
+    PlanNodeBuilder planNodeBuilder =
         PlanNode.builder()
-            .uuid(StrategyUtils.getSwappedPlanNodeId(ctx, uuid))
+            .uuid(getFinalPlanNodeId(ctx, stageNode))
             .name(stageNode.getName())
             .identifier(stageNode.getIdentifier())
             .group(StepOutcomeGroup.STAGE.name())
             .stepParameters(stageParameters.build())
             .stepType(getStepType(stageNode))
             .skipCondition(SkipInfoUtils.getSkipCondition(stageNode.getSkipCondition()))
-            .whenCondition(RunInfoUtils.getRunConditionForStage(
-                stageNode.getWhen(), ctx.getGlobalContext().get("metadata").getMetadata().getExecutionMode()))
+            .whenCondition(RunInfoUtils.getRunConditionForStage(stageNode.getWhen(), ctx.getExecutionMode()))
             .facilitatorObtainment(
                 FacilitatorObtainment.newBuilder()
                     .setType(FacilitatorType.newBuilder().setType(OrchestrationFacilitatorType.CHILD).build())
@@ -221,9 +239,9 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
             .adviserObtainments(adviserObtainments);
 
     if (!EmptyPredicate.isEmpty(ctx.getExecutionInputTemplate())) {
-      builder.executionInputTemplate(ctx.getExecutionInputTemplate());
+      planNodeBuilder.executionInputTemplate(ctx.getExecutionInputTemplate());
     }
-    return builder.build();
+    return planNodeBuilder.build();
   }
 
   public String getIdentifierWithExpression(PlanCreationContext ctx, DeploymentStageNode node, String identifier) {
@@ -252,19 +270,23 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
         throw new InvalidRequestException("Execution section cannot be absent in deploy stage");
       }
 
-      final boolean isProjectScopedResourceConstraintQueue = isProjectScopedResourceConstraintQueueByFFOrSetting(ctx);
+      final boolean isProjectScopedResourceConstraintQueue =
+          stagePlanCreatorHelper.isProjectScopedResourceConstraintQueueByFFOrSetting(ctx);
       if (v2Flow(stageNode)) {
         if (isGitopsEnabled(stageNode.getDeploymentStageConfig())) {
           // GitOps flow doesn't fork on environments, so handling it in this function.
           return buildPlanCreationResponse(ctx, planCreationResponseMap, stageNode, specField, executionField);
         } else {
-          List<AdviserObtainment> adviserObtainments = addResourceConstraintDependencyWithWhenCondition(
-              planCreationResponseMap, specField, ctx, isProjectScopedResourceConstraintQueue);
+          List<AdviserObtainment> adviserObtainments =
+              stagePlanCreatorHelper.addResourceConstraintDependencyWithWhenCondition(
+                  planCreationResponseMap, specField, ctx, isProjectScopedResourceConstraintQueue);
           String infraNodeId = addInfrastructureNode(planCreationResponseMap, stageNode, adviserObtainments, specField);
           Optional<String> provisionerIdOptional =
               addProvisionerNodeIfNeeded(specField, planCreationResponseMap, stageNode, infraNodeId);
           String serviceNextNodeId = provisionerIdOptional.orElse(infraNodeId);
-          String serviceNodeId = addServiceNode(specField, planCreationResponseMap, stageNode, serviceNextNodeId);
+          String serviceNodeId = addServiceNode(specField, planCreationResponseMap, stageNode, serviceNextNodeId, ctx);
+          saveSingleServiceEnvDeploymentStagePlanCreationSummary(
+              planCreationResponseMap.get(serviceNodeId), ctx, stageNode);
           addSpecNode(planCreationResponseMap, specField, serviceNodeId);
         }
       } else {
@@ -275,27 +297,18 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
         addServiceDependency(planCreationResponseMap, specField, stageNode, serviceField);
       }
 
-      addCDExecutionDependencies(planCreationResponseMap, executionField);
+      addCDExecutionDependencies(planCreationResponseMap, executionField, ctx, stageNode);
       addMultiDeploymentDependency(planCreationResponseMap, stageNode, ctx, specField);
 
       StrategyUtils.addStrategyFieldDependencyIfPresent(kryoSerializer, ctx, stageNode.getUuid(), stageNode.getName(),
           stageNode.getIdentifier(), planCreationResponseMap, metadataMap,
-          StrategyUtils.getAdviserObtainments(ctx.getCurrentField(), kryoSerializer, false), false);
+          StrategyUtils.getAdviserObtainments(ctx.getCurrentField(), kryoSerializer, false), false, false);
 
       return planCreationResponseMap;
     } catch (IOException e) {
       throw new InvalidRequestException(
           "Invalid yaml for Deployment stage with identifier - " + stageNode.getIdentifier(), e);
     }
-  }
-
-  private boolean isProjectScopedResourceConstraintQueueByFFOrSetting(PlanCreationContext ctx) {
-    return featureFlagHelperService.isEnabled(
-               ctx.getAccountIdentifier(), FeatureName.CDS_PROJECT_SCOPED_RESOURCE_CONSTRAINT_QUEUE)
-        || parseBoolean(NGRestUtils
-                            .getResponse(settingsClient.getSetting(
-                                PROJECT_SCOPED_RESOURCE_CONSTRAINT_SETTING_ID, ctx.getAccountIdentifier(), null, null))
-                            .getValue());
   }
 
   private LinkedHashMap<String, PlanCreationResponse> buildPlanCreationResponse(PlanCreationContext ctx,
@@ -305,15 +318,16 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
     Optional<String> provisionerIdOptional =
         addProvisionerNodeIfNeeded(specField, planCreationResponseMap, stageNode, infraNodeId);
     String serviceNextNodeId = provisionerIdOptional.orElse(infraNodeId);
-    String serviceNodeId = addServiceNodeForGitOps(specField, planCreationResponseMap, stageNode, serviceNextNodeId);
+    String serviceNodeId =
+        addServiceNodeForGitOps(specField, planCreationResponseMap, stageNode, serviceNextNodeId, ctx);
     addSpecNode(planCreationResponseMap, specField, serviceNodeId);
 
-    addCDExecutionDependencies(planCreationResponseMap, executionField);
-    addMultiDeploymentDependencyForGitOps(planCreationResponseMap, stageNode, ctx);
+    addCDExecutionDependencies(planCreationResponseMap, executionField, ctx, stageNode);
+    addMultiDeploymentDependencyForGitOps(planCreationResponseMap, stageNode, ctx, specField);
 
     StrategyUtils.addStrategyFieldDependencyIfPresent(kryoSerializer, ctx, stageNode.getUuid(), stageNode.getName(),
         stageNode.getIdentifier(), planCreationResponseMap, new HashMap<>(),
-        StrategyUtils.getAdviserObtainments(ctx.getCurrentField(), kryoSerializer, false), false);
+        StrategyUtils.getAdviserObtainments(ctx.getCurrentField(), kryoSerializer, false), false, false);
 
     return planCreationResponseMap;
   }
@@ -363,13 +377,6 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
     return GraphLayoutResponse.builder().layoutNodes(stageYamlFieldMap).build();
   }
 
-  private List<AdviserObtainment> addResourceConstraintDependencyWithWhenCondition(
-      LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap, YamlField specField,
-      PlanCreationContext context, boolean isProjectScopedResourceConstraintQueue) {
-    return InfrastructurePmsPlanCreator.addResourceConstraintDependency(
-        planCreationResponseMap, specField, kryoSerializer, context, isProjectScopedResourceConstraintQueue);
-  }
-
   private boolean v2Flow(DeploymentStageNode stageNode) {
     final DeploymentStageConfig deploymentStageConfig = stageNode.getDeploymentStageConfig();
 
@@ -415,8 +422,14 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
   }
 
   private void addMultiDeploymentDependency(LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap,
-      DeploymentStageNode stageNode, PlanCreationContext ctx, YamlField specField) {
+      DeploymentStageNode stageNode, PlanCreationContext ctx, YamlField specField) throws IOException {
     DeploymentStageConfig stageConfig = stageNode.getDeploymentStageConfig();
+    ServicesYaml finalServicesYaml = useFromStage(stageConfig.getServices())
+        ? useServicesYamlFromStage(stageConfig, specField)
+        : stageConfig.getServices();
+    stageConfig.setServices(finalServicesYaml);
+    sendTelemetryEventForSvcEnv(ctx, stageNode);
+
     MultiDeploymentSpawnerUtils.validateMultiServiceInfra(stageConfig);
     if (stageConfig.getServices() == null && stageConfig.getEnvironments() == null
         && stageConfig.getEnvironmentGroup() == null) {
@@ -443,6 +456,8 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
       servicesOverrides = stageConfig.getEnvironment().getServicesOverrides();
     }
 
+    saveDeploymentStagePlanCreationSummaryForMultiServiceMultiEnvAsync(ctx, stageNode, specField);
+
     MultiDeploymentStepParameters stepParameters =
         MultiDeploymentStepParameters.builder()
             .strategyType(StrategyType.MATRIX)
@@ -459,6 +474,81 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
     buildMultiDeploymentMetadata(planCreationResponseMap, stageNode, ctx, stepParameters);
   }
 
+  private ServicesMetadata getServicesMetadataOfCurrentStage(DeploymentStageConfig stageConfig) {
+    if (stageConfig.getServices() != null && stageConfig.getServices().getServicesMetadata() != null
+        && ParameterField.isNotNull(stageConfig.getServices().getServicesMetadata().getParallel())) {
+      return stageConfig.getServices().getServicesMetadata();
+    }
+
+    return ServicesMetadata.builder().parallel(ParameterField.createValueField(Boolean.TRUE)).build();
+  }
+
+  @VisibleForTesting
+  ServicesYaml useServicesYamlFromStage(DeploymentStageConfig currentStageConfig, YamlField specField) {
+    ServiceUseFromStageV2 useFromStage = currentStageConfig.getServices().getUseFromStage();
+    final YamlField serviceField = specField.getNode().getField(YamlTypes.SERVICE_ENTITIES);
+    String stage = useFromStage.getStage();
+    if (isBlank(stage)) {
+      throw new InvalidArgumentsException("Stage identifier is empty in useFromStage");
+    }
+
+    try {
+      YamlField propagatedFromStageConfig = PlanCreatorUtils.getStageConfig(serviceField, stage);
+      if (propagatedFromStageConfig == null) {
+        throw new InvalidArgumentsException(
+            "Stage with identifier [" + stage + "] given for service propagation does not exist.");
+      }
+
+      DeploymentStageNode stageElementConfigPropagatedFrom =
+          YamlUtils.read(propagatedFromStageConfig.getNode().toString(), DeploymentStageNode.class);
+      DeploymentStageConfig deploymentStagePropagatedFrom = stageElementConfigPropagatedFrom.getDeploymentStageConfig();
+      if (deploymentStagePropagatedFrom != null) {
+        if (deploymentStagePropagatedFrom.getServices() != null
+            && useFromStage(deploymentStagePropagatedFrom.getServices())) {
+          throw new InvalidArgumentsException("Invalid identifier [" + stage
+              + "] given in useFromStage. Cannot reference a stage which also has useFromStage parameter");
+        }
+
+        if (deploymentStagePropagatedFrom.getServices() == null) {
+          throw new InvalidRequestException(String.format(
+              "Could not find multi service configuration in stage [%s], hence not possible to propagate service from that stage",
+              stage));
+        }
+
+        if (deploymentStagePropagatedFrom.getDeploymentType() != null
+            && isNotBlank(deploymentStagePropagatedFrom.getDeploymentType().getYamlName())
+            && specField.getNode().getField("deploymentType").getNode() != null) {
+          if (!deploymentStagePropagatedFrom.getDeploymentType().getYamlName().equals(
+                  specField.getNode().getField("deploymentType").getNode().asText())) {
+            throw new InvalidRequestException(String.format(
+                "Deployment type: [%s] of stage: [%s] does not match with deployment type: [%s] of stage: [%s] from which service propagation is configured",
+                specField.getNode().getField("deploymentType").getNode().asText(),
+                specField.getNode().getParentNode().getIdentifier(),
+                deploymentStagePropagatedFrom.getDeploymentType().getYamlName(), stage));
+          }
+        }
+
+        ServicesYaml propagatedServices = deploymentStagePropagatedFrom.getServices();
+        ServicesYaml currentStageServices = ServicesYaml.builder()
+                                                .values(propagatedServices.getValues())
+                                                .servicesMetadata(getServicesMetadataOfCurrentStage(currentStageConfig))
+                                                .build();
+
+        String svcYaml = YamlUtils.writeYamlString(currentStageServices);
+        String injectUuidSvc = YamlUtils.injectUuid(svcYaml);
+        return YamlUtils.read(injectUuidSvc, ServicesYaml.class);
+      } else {
+        throw new InvalidArgumentsException("Stage identifier given in useFromStage doesn't exist");
+      }
+    } catch (IOException ex) {
+      throw new InvalidRequestException("Cannot parse stage: " + stage);
+    }
+  }
+
+  private boolean useFromStage(ServicesYaml services) {
+    return services != null && services.getUseFromStage() != null && isNotBlank(services.getUseFromStage().getStage());
+  }
+
   private ServiceYamlV2 getServiceYaml(YamlField specField, DeploymentStageConfig stageConfig) {
     if (stageConfig.getService() != null && ServiceAllInOnePlanCreatorUtils.useFromStage(stageConfig.getService())) {
       return ServiceAllInOnePlanCreatorUtils.useServiceYamlFromStage(
@@ -468,18 +558,30 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
     return stageConfig.getService();
   }
 
+  private EnvironmentYamlV2 getEnvironmentYaml(YamlField specField, DeploymentStageConfig deploymentStageConfig) {
+    return ServiceAllInOnePlanCreatorUtils.useFromStage(deploymentStageConfig.getEnvironment())
+        ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(
+            deploymentStageConfig.getEnvironment().getUseFromStage(), specField)
+        : deploymentStageConfig.getEnvironment();
+  }
+
   /**
    * Method Handles creation of the multi-service deployments for GitOps Deployments.
    * Note: GitOps Flow doesn't fork stages for deploying to multiple environments or environmentgroup
    */
   private void addMultiDeploymentDependencyForGitOps(
       LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap, DeploymentStageNode stageNode,
-      PlanCreationContext ctx) {
+      PlanCreationContext ctx, YamlField specField) {
     DeploymentStageConfig stageConfig = stageNode.getDeploymentStageConfig();
     if (stageConfig.getServices() == null && stageConfig.getEnvironments() == null
         && stageConfig.getEnvironmentGroup() == null) {
       return;
     }
+
+    final ServicesYaml finalServicesYaml = useFromStage(stageConfig.getServices())
+        ? useServicesYamlFromStage(stageConfig, specField)
+        : stageConfig.getServices();
+    stageConfig.setServices(finalServicesYaml);
 
     String subType;
     if (stageConfig.getServices() != null) {
@@ -537,7 +639,7 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
   }
   private String addServiceNode(YamlField specField,
       LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap, DeploymentStageNode stageNode,
-      String nextNodeId) throws IOException {
+      String nextNodeId, PlanCreationContext ctx) throws IOException {
     // Adding service child by resolving the serviceField
     ServiceDefinitionType deploymentType = stageNode.getDeploymentStageConfig().getDeploymentType();
     ServiceYamlV2 service;
@@ -559,13 +661,13 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
     }
     String serviceNodeId = service.getUuid();
     planCreationResponseMap.putAll(ServiceAllInOnePlanCreatorUtils.addServiceNode(
-        specField, kryoSerializer, service, environment, serviceNodeId, nextNodeId, deploymentType, envGroupRef));
+        specField, kryoSerializer, service, environment, serviceNodeId, nextNodeId, deploymentType, envGroupRef, ctx));
     return serviceNodeId;
   }
 
   private String addServiceNodeForGitOps(YamlField specField,
       LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap, DeploymentStageNode stageNode,
-      String nextNodeId) {
+      String nextNodeId, PlanCreationContext ctx) {
     // Adding service child by resolving the serviceField
     ServiceDefinitionType deploymentType = stageNode.getDeploymentStageConfig().getDeploymentType();
     ServiceYamlV2 service;
@@ -579,15 +681,15 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
     String serviceNodeId = service.getUuid();
     if (stageNode.getDeploymentStageConfig().getEnvironmentGroup() != null) {
       planCreationResponseMap.putAll(ServiceAllInOnePlanCreatorUtils.addServiceNodeForGitOpsEnvGroup(
-          specField, kryoSerializer, service, environmentGroupYaml, serviceNodeId, nextNodeId, deploymentType));
+          specField, kryoSerializer, service, environmentGroupYaml, serviceNodeId, nextNodeId, deploymentType, ctx));
     } else if (stageNode.deploymentStageConfig.getEnvironments() != null) {
       planCreationResponseMap.putAll(
           ServiceAllInOnePlanCreatorUtils.addServiceNodeForGitOpsEnvironments(specField, kryoSerializer, service,
-              stageNode.deploymentStageConfig.getEnvironments(), serviceNodeId, nextNodeId, deploymentType));
+              stageNode.deploymentStageConfig.getEnvironments(), serviceNodeId, nextNodeId, deploymentType, ctx));
     } else if (stageNode.deploymentStageConfig.getEnvironment() != null) {
       planCreationResponseMap.putAll(ServiceAllInOnePlanCreatorUtils.addServiceNode(specField, kryoSerializer, service,
           stageNode.deploymentStageConfig.getEnvironment(), serviceNodeId, nextNodeId, deploymentType,
-          ParameterField.ofNull()));
+          ParameterField.ofNull(), ctx));
     }
 
     return serviceNodeId;
@@ -692,7 +794,6 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
     Map<String, ByteString> specDependencyMap = new HashMap<>();
     specDependencyMap.put(
         YAMLFieldNameConstants.CHILD_NODE_OF_SPEC, ByteString.copyFrom(kryoSerializer.asDeflatedBytes(childNodeUuid)));
-
     Dependency specDependency = Dependency.newBuilder().putAllMetadata(specDependencyMap).build();
     return DependenciesUtils.toDependenciesProto(specYamlFieldMap)
         .toBuilder()
@@ -700,14 +801,22 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
         .build();
   }
 
-  public void addCDExecutionDependencies(
-      Map<String, PlanCreationResponse> planCreationResponseMap, YamlField executionField) {
+  public void addCDExecutionDependencies(Map<String, PlanCreationResponse> planCreationResponseMap,
+      YamlField executionField, PlanCreationContext ctx, DeploymentStageNode stageNode) {
     Map<String, YamlField> executionYamlFieldMap = new HashMap<>();
     executionYamlFieldMap.put(executionField.getNode().getUuid(), executionField);
-
     planCreationResponseMap.put(executionField.getNode().getUuid(),
         PlanCreationResponse.builder()
-            .dependencies(DependenciesUtils.toDependenciesProto(executionYamlFieldMap))
+            .dependencies(
+                DependenciesUtils.toDependenciesProto(executionYamlFieldMap)
+                    .toBuilder()
+                    .putDependencyMetadata(executionField.getNode().getUuid(),
+                        Dependency.newBuilder()
+                            .setParentInfo(generateParentInfo(ctx, stageNode, getFinalPlanNodeId(ctx, stageNode),
+                                StrategyUtils.isWrappedUnderStrategy(ctx.getCurrentField())
+                                    || MultiDeploymentSpawnerUtils.hasMultiDeploymentConfigured(stageNode)))
+                            .build())
+                    .build())
             .build());
   }
 
@@ -734,7 +843,7 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
       String projectId = ctx.getProjectIdentifier();
       String pipelineId = ctx.getPipelineIdentifier();
       if (FreezeRBACHelper.checkIfUserHasFreezeOverrideAccess(featureFlagHelperService, accountId, orgId, projectId,
-              accessControlClient, CDNGRbacUtility.constructPrincipalFromPlanCreationContextValue(ctx.getMetadata()))) {
+              accessControlClient, CDNGRbacUtility.getExecutionPrincipalInfo(ctx))) {
         return;
       }
 
@@ -750,5 +859,350 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
 
   private boolean isGitopsEnabled(DeploymentStageConfig deploymentStageConfig) {
     return deploymentStageConfig.getGitOpsEnabled();
+  }
+
+  @Override
+  protected String getFinalPlanNodeId(PlanCreationContext ctx, DeploymentStageNode stageNode) {
+    String uuid = MultiDeploymentSpawnerUtils.getUuidForMultiDeployment(stageNode);
+    return StrategyUtils.getSwappedPlanNodeId(ctx, uuid);
+  }
+
+  protected void saveSingleServiceEnvDeploymentStagePlanCreationSummary(
+      PlanCreationResponse servicePlanCreationResponse, @NotNull PlanCreationContext ctx,
+      @NotNull DeploymentStageNode stageNode) {
+    // TODO: get names of ser/env/infra if possible
+    DeploymentStageConfig stageConfig = stageNode.getDeploymentStageConfig();
+    if (isNull(servicePlanCreationResponse) || isNull(servicePlanCreationResponse.getPlanNode())) {
+      log.warn(
+          "Plan node or stage config corresponding to service not found while saving deployment info at plan creation, returning");
+      return;
+    }
+    if (MultiDeploymentSpawnerUtils.hasMultiDeploymentConfigured(stageConfig)) {
+      // since multi-service / env configured, info will be saved while adding multi dependency
+      log.debug("Multi service and(or) environment deployment stage encountered, skipping saving info");
+      return;
+    }
+
+    StepParameters stepParameters = servicePlanCreationResponse.getPlanNode().getStepParameters();
+    if (isNull(stepParameters) || !(stepParameters instanceof ServiceStepV3Parameters)) {
+      log.warn(
+          "Step params for service node not of type ServiceStepV3Parameters while saving deployment info at plan creation, returning");
+      return;
+    }
+
+    ServiceStepV3Parameters serviceStepV3Parameters = (ServiceStepV3Parameters) stepParameters;
+    executorService.submit(() -> {
+      try {
+        deploymentStagePlanCreationInfoService.save(
+            DeploymentStagePlanCreationInfo.builder()
+                .planExecutionId(ctx.getExecutionUuid())
+                .accountIdentifier(ctx.getAccountIdentifier())
+                .orgIdentifier(ctx.getOrgIdentifier())
+                .projectIdentifier(ctx.getProjectIdentifier())
+                .pipelineIdentifier(ctx.getPipelineIdentifier())
+                .stageType(DeploymentStageType.SINGLE_SERVICE_ENVIRONMENT)
+                .deploymentStageDetailsInfo(
+                    // saving the expressions as well, so we know in notifications that these fields were expressions
+                    SingleServiceEnvDeploymentStageDetailsInfo.builder()
+                        .envIdentifier(ParameterFieldHelper.getParameterFieldFinalValueStringOrNullIfBlank(
+                            serviceStepV3Parameters.getEnvRef()))
+                        .serviceIdentifier(ParameterFieldHelper.getParameterFieldFinalValueStringOrNullIfBlank(
+                            serviceStepV3Parameters.getServiceRef()))
+                        .infraIdentifier(ParameterFieldHelper.getParameterFieldFinalValueStringOrNullIfBlank(
+                            serviceStepV3Parameters.getInfraId()))
+                        .build())
+                .deploymentType(serviceStepV3Parameters.getDeploymentType())
+                .stageIdentifier(stageNode.getIdentifier())
+                .stageName(stageNode.getName())
+                .build());
+      } catch (Exception ex) {
+        log.warn("Exception occurred while async saving deployment stage plan creation info: {}",
+            ExceptionUtils.getMessage(ex), ex);
+      }
+    });
+  }
+
+  private void sendTelemetryEventForSvcEnv(PlanCreationContext ctx, DeploymentStageNode stageNode) {
+    try {
+      DeploymentStageConfig deploymentStageConfig = stageNode.getDeploymentStageConfig();
+      if (deploymentStageConfig == null) {
+        return;
+      }
+      SvcEnvTelemetryInfo svcEnvTelemetryInfo =
+          SvcEnvTelemetryInfo.builder()
+              .accountIdentifier(ctx.getAccountIdentifier())
+              .orgIdentifier(ctx.getOrgIdentifier())
+              .projectIdentifier(ctx.getProjectIdentifier())
+              .pipelineIdentifier(ctx.getPipelineIdentifier())
+              .serviceCount(getServicesCountForMultiSvcEnvDeployment(deploymentStageConfig))
+              .environmentCount(getEnvironmentsCountForMultiSvcEnvDeployment(deploymentStageConfig))
+              .infrastructureCount(getInfrastructuresCountForMultiSvcEnvDeployment(deploymentStageConfig))
+              .deploymentType(deploymentStageConfig.getDeploymentType().toString())
+              .stageIdentifier(StrategyUtils.refineIdentifier(stageNode.getIdentifier()))
+              .multiServiceDeployment(deploymentStageConfig.getServices() != null)
+              .multiEnvironmentDeployment(deploymentStageConfig.getEnvironmentGroup() != null
+                  || deploymentStageConfig.getEnvironments() != null)
+              .environmentGroupPresent(deploymentStageConfig.getEnvironmentGroup() != null)
+              .environmentFilterPresent(
+                  EnvironmentInfraFilterUtils.areFiltersPresent(deploymentStageConfig.getEnvironments())
+                  || EnvironmentInfraFilterUtils.areFiltersPresent(deploymentStageConfig.getEnvironmentGroup()))
+              .build();
+
+      instrumentationHelper.sendSvcEnvEvent(svcEnvTelemetryInfo);
+    } catch (Exception ex) {
+      log.warn("Exception occurred while sending telemetry event for multi deployment stage: {}",
+          ExceptionUtils.getMessage(ex), ex);
+    }
+  }
+
+  private Integer getServicesCountForMultiSvcEnvDeployment(DeploymentStageConfig deploymentStageConfig) {
+    ServicesYaml servicesYaml = deploymentStageConfig.getServices();
+    ServiceYamlV2 serviceYamlV2 = deploymentStageConfig.getService();
+    if (servicesYaml != null) {
+      ParameterField<List<ServiceYamlV2>> servicesList = servicesYaml.getValues();
+      if (ParameterField.isNotNull(servicesList)) {
+        List<ServiceYamlV2> serviceYamlV2List = servicesList.getValue();
+        return serviceYamlV2List.size();
+      }
+    } else if (serviceYamlV2 != null) {
+      return 1;
+    }
+    return 0;
+  }
+
+  private Integer getEnvironmentsCountForMultiSvcEnvDeployment(DeploymentStageConfig deploymentStageConfig) {
+    EnvironmentsYaml environmentsYaml = deploymentStageConfig.getEnvironments();
+    EnvironmentGroupYaml environmentGroupYaml = deploymentStageConfig.getEnvironmentGroup();
+    EnvironmentYamlV2 environmentYamlV2 = deploymentStageConfig.getEnvironment();
+    if (environmentsYaml != null) {
+      ParameterField<List<EnvironmentYamlV2>> environmentsList = environmentsYaml.getValues();
+      if (ParameterField.isNotNull(environmentsList)) {
+        List<EnvironmentYamlV2> environmentYamlV2List = environmentsList.getValue();
+        return environmentYamlV2List.size();
+      }
+    } else if (environmentGroupYaml != null) {
+      ParameterField<List<EnvironmentYamlV2>> environmentsList = environmentGroupYaml.getEnvironments();
+      if (ParameterField.isNotNull(environmentsList)) {
+        List<EnvironmentYamlV2> environmentYamlV2List = environmentsList.getValue();
+        return environmentYamlV2List.size();
+      }
+    } else if (environmentYamlV2 != null) {
+      return 1;
+    }
+    return 0;
+  }
+
+  private Integer getInfrastructuresCountForMultiSvcEnvDeployment(DeploymentStageConfig deploymentStageConfig) {
+    EnvironmentsYaml environmentsYaml = deploymentStageConfig.getEnvironments();
+    EnvironmentGroupYaml environmentGroupYaml = deploymentStageConfig.getEnvironmentGroup();
+    EnvironmentYamlV2 environmentYamlV2 = deploymentStageConfig.getEnvironment();
+    Integer count = 0;
+
+    if (environmentsYaml != null) {
+      ParameterField<List<EnvironmentYamlV2>> environmentsList = environmentsYaml.getValues();
+      count = getInfrastructureCountForEnvironmentsList(count, environmentsList);
+    } else if (environmentGroupYaml != null) {
+      ParameterField<List<EnvironmentYamlV2>> environmentsList = environmentGroupYaml.getEnvironments();
+      count = getInfrastructureCountForEnvironmentsList(count, environmentsList);
+    } else if (environmentYamlV2 != null) {
+      count = 1;
+    }
+    return count;
+  }
+
+  private Integer getInfrastructureCountForEnvironmentsList(
+      Integer count, ParameterField<List<EnvironmentYamlV2>> environmentsList) {
+    if (ParameterField.isNotNull(environmentsList)) {
+      List<EnvironmentYamlV2> environmentYamlV2List = environmentsList.getValue();
+      for (EnvironmentYamlV2 environmentYamlV2 : environmentYamlV2List) {
+        count += getInfrastructureCountForAnEnvironment(environmentYamlV2);
+      }
+    }
+    return count;
+  }
+
+  private Integer getInfrastructureCountForAnEnvironment(EnvironmentYamlV2 environmentYamlV2) {
+    ParameterField<List<InfraStructureDefinitionYaml>> infraDefinitions =
+        environmentYamlV2.getInfrastructureDefinitions();
+    if (ParameterField.isNotNull(infraDefinitions)) {
+      List<InfraStructureDefinitionYaml> infraStructureDefinitionYamls = infraDefinitions.getValue();
+      return infraStructureDefinitionYamls.size();
+    }
+    return 1;
+  }
+
+  protected void saveDeploymentStagePlanCreationSummaryForMultiServiceMultiEnvAsync(
+      @NotNull PlanCreationContext ctx, DeploymentStageNode stageNode, YamlField specField) {
+    // TODO: get names if possible
+    // We won't be able to get filtered infras and envs at the time of plan creation as they are populated at the time
+    // of step execution.
+    executorService.submit(() -> {
+      try {
+        saveDeploymentStagePlanCreationSummaryForMultiServiceMultiEnv(ctx, stageNode, specField);
+      } catch (Exception ex) {
+        log.warn("Exception occurred while async saving multi deployment stage plan creation info: {}",
+            ExceptionUtils.getMessage(ex), ex);
+      }
+    });
+  }
+
+  protected void saveDeploymentStagePlanCreationSummaryForMultiServiceMultiEnv(
+      @NotNull PlanCreationContext ctx, DeploymentStageNode stageNode, YamlField specField) {
+    try {
+      deploymentStagePlanCreationInfoService.save(
+          DeploymentStagePlanCreationInfo.builder()
+              .planExecutionId(ctx.getExecutionUuid())
+              .accountIdentifier(ctx.getAccountIdentifier())
+              .orgIdentifier(ctx.getOrgIdentifier())
+              .projectIdentifier(ctx.getProjectIdentifier())
+              .pipelineIdentifier(ctx.getPipelineIdentifier())
+              .stageType(DeploymentStageType.MULTI_SERVICE_ENVIRONMENT)
+              .deploymentStageDetailsInfo(
+                  // saving the expressions as well, so we know in notifications that these fields were expressions
+                  MultiServiceEnvDeploymentStageDetailsInfo.builder()
+                      .envIdentifiers(
+                          getEnvironmentRefsForMultiEnvDeployment(stageNode.getDeploymentStageConfig(), specField))
+                      .serviceIdentifiers(
+                          getServicesRefsForMultiSvcDeployment(stageNode.getDeploymentStageConfig(), specField))
+                      .infraIdentifiers(
+                          getInfraRefsForMultiEnvDeployment(stageNode.getDeploymentStageConfig(), specField))
+                      .envGroup(getEnvGroupsForMultiEnvDeployment(stageNode.getDeploymentStageConfig()))
+                      .build())
+              .deploymentType(stageNode.getDeploymentStageConfig().getDeploymentType())
+              .stageIdentifier(StrategyUtils.refineIdentifier(stageNode.getIdentifier()))
+              .stageName(StrategyUtils.refineIdentifier(stageNode.getName()))
+              .build());
+    } catch (Exception ex) {
+      log.warn("Exception occurred while async saving deployment stage plan creation info: {}",
+          ExceptionUtils.getMessage(ex), ex);
+    }
+  }
+
+  private String getEnvGroupsForMultiEnvDeployment(DeploymentStageConfig deploymentStageConfig) {
+    if (deploymentStageConfig.getEnvironmentGroup() != null) {
+      return ParameterFieldHelper.getParameterFieldFinalValueStringOrNullIfBlank(
+          deploymentStageConfig.getEnvironmentGroup().getEnvGroupRef());
+    }
+    return null;
+  }
+
+  private Set<String> getInfraRefsForMultiEnvDeployment(
+      DeploymentStageConfig deploymentStageConfig, YamlField specField) {
+    // InfraRefs can come from either environments(Multi Service), environmentGroup(Multi Service), environment(Single
+    // Service)
+    if (deploymentStageConfig.getEnvironments() != null) {
+      EnvironmentsYaml environmentsYaml = deploymentStageConfig.getEnvironments();
+      return getInfraRefsForMultiEnvDeployment(environmentsYaml.getValues());
+    } else if (deploymentStageConfig.getEnvironmentGroup() != null) {
+      EnvironmentGroupYaml environmentGroupYaml = deploymentStageConfig.getEnvironmentGroup();
+      if (environmentGroupYaml.getEnvironments() != null) {
+        return getInfraRefsForMultiEnvDeployment(environmentGroupYaml.getEnvironments());
+      }
+      return new HashSet<>();
+    } else {
+      // Making sure useFromStages are handled
+      EnvironmentYamlV2 finalEnvironmentYamlV2 = getEnvironmentYaml(specField, deploymentStageConfig);
+      return finalEnvironmentYamlV2.getInfrastructureDefinitions()
+          .getValue()
+          .stream()
+          .map(InfraStructureDefinitionYaml::getIdentifier)
+          .map(ParameterFieldHelper::getParameterFieldFinalValueStringOrNullIfBlank)
+          .collect(Collectors.toSet());
+    }
+  }
+
+  private Set<String> getInfraRefsForMultiEnvDeployment(ParameterField<List<EnvironmentYamlV2>> environmentsYaml) {
+    Set<String> infras = new HashSet<>();
+    if (ParameterField.isNotNull(environmentsYaml) && !environmentsYaml.isExpression()) {
+      environmentsYaml.getValue().stream().forEach(environmentYamlV2
+          -> infras.addAll(
+              getEnvironmentRefsForMultiEnvDeploymentFromInfraYaml(environmentYamlV2.getInfrastructureDefinitions())));
+    }
+    return infras;
+  }
+
+  private Set<String> getEnvironmentRefsForMultiEnvDeploymentFromInfraYaml(
+      ParameterField<List<InfraStructureDefinitionYaml>> infraDefinitions) {
+    if (infraDefinitions != null && ParameterField.isNotNull(infraDefinitions)) {
+      if (!infraDefinitions.isExpression()) {
+        return infraDefinitions.getValue()
+            .stream()
+            .map(InfraStructureDefinitionYaml::getIdentifier)
+            .map(this::getReferenceValue)
+            .collect(Collectors.toSet());
+      } else {
+        return Arrays.asList(infraDefinitions.getExpressionValue()).stream().collect(Collectors.toSet());
+      }
+    }
+    return new HashSet<>();
+  }
+
+  private Set<String> getEnvironmentRefsForMultiEnvDeployment(
+      DeploymentStageConfig deploymentStageConfig, YamlField specField) {
+    // EnvironmentRefs can come from either environments(Multi Service), environmentGroup(Multi Service),
+    // environment(Single Service)
+    if (deploymentStageConfig.getEnvironments() != null) {
+      EnvironmentsYaml environmentsYaml = deploymentStageConfig.getEnvironments();
+      return getEnvironmentRefsForMultiEnvDeployment(environmentsYaml.getValues());
+    } else if (deploymentStageConfig.getEnvironmentGroup() != null) {
+      EnvironmentGroupYaml environmentGroupYaml = deploymentStageConfig.getEnvironmentGroup();
+      return getEnvironmentRefsForMultiEnvDeployment(environmentGroupYaml.getEnvironments());
+    } else {
+      // Making sure useFromStages are handled
+      EnvironmentYamlV2 finalEnvironmentYamlV2 = getEnvironmentYaml(specField, deploymentStageConfig);
+      return Arrays
+          .asList(ParameterFieldHelper.getParameterFieldFinalValueStringOrNullIfBlank(
+              finalEnvironmentYamlV2.getEnvironmentRef()))
+          .stream()
+          .collect(Collectors.toSet());
+    }
+  }
+
+  private Set<String> getEnvironmentRefsForMultiEnvDeployment(
+      ParameterField<List<EnvironmentYamlV2>> environmentsYaml) {
+    if (ParameterField.isNotNull(environmentsYaml)) {
+      return environmentsYaml.getValue()
+          .stream()
+          .map(EnvironmentYamlV2::getEnvironmentRef)
+          .map(this::getReferenceValue)
+          .collect(Collectors.toSet());
+    }
+    return new HashSet<>();
+  }
+
+  private Set<String> getServicesRefsForMultiSvcDeployment(
+      DeploymentStageConfig deploymentStageConfig, YamlField specField) {
+    if (deploymentStageConfig.getServices() != null) {
+      ServicesYaml servicesYaml = deploymentStageConfig.getServices();
+      if (ParameterField.isNotNull(servicesYaml.getValues())) {
+        if (!servicesYaml.getValues().isExpression()) {
+          return getServicesRefsForMultiSvcDeployment(servicesYaml.getValues().getValue());
+        } else {
+          return Arrays.asList(servicesYaml.getValues().getExpressionValue()).stream().collect(Collectors.toSet());
+        }
+      }
+      return new HashSet<>();
+    } else {
+      // Making sure useFromStages are handled
+      ServiceYamlV2 serviceYamlV2 = getServiceYaml(specField, deploymentStageConfig);
+      return Arrays
+          .asList(ParameterFieldHelper.getParameterFieldFinalValueStringOrNullIfBlank(serviceYamlV2.getServiceRef()))
+          .stream()
+          .collect(Collectors.toSet());
+    }
+  }
+
+  private Set<String> getServicesRefsForMultiSvcDeployment(List<ServiceYamlV2> servicesYaml) {
+    Set<String> services = new HashSet<>();
+    for (ServiceYamlV2 serviceYamlV2 : servicesYaml) {
+      if (serviceYamlV2 != null && ParameterField.isNotNull(serviceYamlV2.getServiceRef())) {
+        services.add(getReferenceValue(serviceYamlV2.getServiceRef()));
+      }
+    }
+    return services;
+  }
+
+  private String getReferenceValue(ParameterField<String> parameterField) {
+    return Objects.nonNull(parameterField.getValue()) ? parameterField.getValue() : parameterField.getExpressionValue();
   }
 }

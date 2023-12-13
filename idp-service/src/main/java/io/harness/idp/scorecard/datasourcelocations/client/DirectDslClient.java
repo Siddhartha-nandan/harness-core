@@ -7,16 +7,95 @@
 
 package io.harness.idp.scorecard.datasourcelocations.client;
 
-import io.harness.http.HttpHeaderConfig;
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
-import java.util.List;
+import io.harness.annotations.dev.HarnessTeam;
+import io.harness.annotations.dev.OwnedBy;
+import io.harness.eraro.ResponseMessage;
+import io.harness.exception.UnexpectedException;
+import io.harness.idp.scorecard.datasourcelocations.beans.ApiRequestDetails;
+import io.harness.security.AllTrustingX509TrustManager;
+
+import com.google.common.collect.ImmutableList;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
+import okhttp3.HttpUrl;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
 
+@Slf4j
+@OwnedBy(HarnessTeam.IDP)
 public class DirectDslClient implements DslClient {
+  private static final String POST_METHOD = "POST";
+  private static final String GET_METHOD = "GET";
+  private static final ImmutableList<TrustManager> TRUST_ALL_CERTS =
+      ImmutableList.of(new AllTrustingX509TrustManager());
+
   @Override
-  public Response call(
-      String accountIdentifier, String url, List<HttpHeaderConfig> headerList, String body, String method) {
-    // Refer ProxyApiImpl for okhttpclient example
-    return null;
+  public Response call(String accountIdentifier, ApiRequestDetails apiRequestDetails) {
+    OkHttpClient client = buildOkHttpClient();
+    String url = apiRequestDetails.getUrl();
+    String method = apiRequestDetails.getMethod();
+    String body = apiRequestDetails.getRequestBody();
+    Request request = buildRequest(url, method, apiRequestDetails.getHeaders(), body);
+    return executeRequest(client, request);
+  }
+
+  private OkHttpClient buildOkHttpClient() {
+    try {
+      final SSLContext sslContext = SSLContext.getInstance("SSL");
+      sslContext.init(null, TRUST_ALL_CERTS.toArray(new TrustManager[1]), new java.security.SecureRandom());
+      final SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
+      return new OkHttpClient()
+          .newBuilder()
+          .connectTimeout(10, TimeUnit.SECONDS)
+          .readTimeout(20, TimeUnit.SECONDS)
+          .writeTimeout(10, TimeUnit.SECONDS)
+          .retryOnConnectionFailure(true)
+          .sslSocketFactory(sslSocketFactory, (X509TrustManager) TRUST_ALL_CERTS.get(0))
+          .build();
+    } catch (NoSuchAlgorithmException | KeyManagementException e) {
+      throw new UnexpectedException(e.getMessage());
+    }
+  }
+
+  private Request buildRequest(String url, String method, Map<String, String> headers, String body) {
+    HttpUrl.Builder urlBuilder = Objects.requireNonNull(HttpUrl.parse(url)).newBuilder();
+    Request.Builder requestBuilder = new Request.Builder().url(urlBuilder.build());
+    headers.forEach(requestBuilder::addHeader);
+
+    switch (method) {
+      case POST_METHOD:
+        RequestBody requestBody = RequestBody.create(body, MediaType.parse(APPLICATION_JSON));
+        requestBuilder.post(requestBody);
+        return requestBuilder.build();
+      case GET_METHOD:
+        requestBuilder.get();
+        return requestBuilder.build();
+      default:
+        throw new UnsupportedOperationException("Method " + method + " is not supported for DSL call");
+    }
+  }
+
+  private Response executeRequest(OkHttpClient client, Request request) {
+    try (okhttp3.Response response = client.newCall(request).execute()) {
+      return Response.status(response.code()).entity(Objects.requireNonNull(response.body()).string()).build();
+    } catch (Exception e) {
+      log.error("Error in request execution through direct dsl client. Error = {}", e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(ResponseMessage.builder().message("Error occurred while fetching data").build())
+          .build();
+    }
   }
 }

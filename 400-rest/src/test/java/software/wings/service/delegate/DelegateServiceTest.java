@@ -93,6 +93,7 @@ import io.harness.capability.CapabilitySubjectPermission.PermissionResult;
 import io.harness.category.element.UnitTests;
 import io.harness.configuration.DeployMode;
 import io.harness.context.GlobalContext;
+import io.harness.data.structure.ListUtils;
 import io.harness.delegate.beans.AutoUpgrade;
 import io.harness.delegate.beans.Delegate;
 import io.harness.delegate.beans.Delegate.DelegateBuilder;
@@ -143,6 +144,7 @@ import io.harness.outbox.api.OutboxService;
 import io.harness.persistence.HPersistence;
 import io.harness.rule.Owner;
 import io.harness.security.encryption.EncryptedDataDetail;
+import io.harness.service.impl.DelegateRbacHelper;
 import io.harness.service.intfc.DelegateCache;
 import io.harness.service.intfc.DelegateProfileObserver;
 import io.harness.service.intfc.DelegateTaskRetryObserver;
@@ -157,13 +159,13 @@ import software.wings.app.DelegateGrpcConfig;
 import software.wings.app.MainConfiguration;
 import software.wings.app.PortalConfig;
 import software.wings.beans.Account;
-import software.wings.beans.AccountStatus;
 import software.wings.beans.DelegateScalingGroup;
 import software.wings.beans.DelegateStatus;
 import software.wings.beans.Event.Type;
 import software.wings.beans.LicenseInfo;
 import software.wings.beans.ServiceVariable;
 import software.wings.beans.TaskType;
+import software.wings.beans.account.AccountStatus;
 import software.wings.cdn.CdnConfig;
 import software.wings.core.managerConfiguration.ConfigurationController;
 import software.wings.features.api.UsageLimitedFeature;
@@ -190,7 +192,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.io.CharStreams;
 import com.google.inject.Inject;
 import freemarker.template.TemplateException;
-import io.fabric8.utils.Lists;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -304,6 +305,7 @@ public class DelegateServiceTest extends WingsBaseTest {
   @Mock private Subject<DelegateProfileObserver> delegateProfileSubject;
   @Mock private Subject<DelegateTaskRetryObserver> retryObserverSubject;
   @Mock private Subject<DelegateObserver> subject;
+  @Mock private DelegateRbacHelper delegateRbacHelper;
 
   public static final Duration TEST_EXPIRY_TIME = ofMinutes(6);
 
@@ -2205,12 +2207,24 @@ public class DelegateServiceTest extends WingsBaseTest {
   public void testValidateKubernetesYamlWithoutSize() {
     String accountId = generateUuid();
     DelegateSetupDetails setupDetails =
-        DelegateSetupDetails.builder().delegateConfigurationId("delConfigId").name("name").build();
+        DelegateSetupDetails.builder()
+            .delegateConfigurationId("delConfigId")
+            .name("name")
+            .delegateType("KUBERNETES")
+            .k8sConfigDetails(
+                K8sConfigDetails.builder().k8sPermissionType(CLUSTER_ADMIN).namespace("harness-delegate-ng").build())
+            .tokenName(TOKEN_NAME)
+            .build();
     when(delegateProfileService.get(accountId, "delConfigId")).thenReturn(DelegateProfile.builder().build());
-
-    assertThatThrownBy(() -> delegateService.validateKubernetesSetupDetails(accountId, setupDetails))
-        .isInstanceOf(InvalidRequestException.class)
-        .hasMessage("Delegate Size must be provided.");
+    when(delegateNgTokenService.getDelegateToken(accountId, TOKEN_NAME))
+        .thenReturn(DelegateTokenDetails.builder()
+                        .name(TOKEN_NAME)
+                        .accountId(accountId)
+                        .status(DelegateTokenStatus.ACTIVE)
+                        .build());
+    when(delegateNgTokenService.getDelegateTokenValue(accountId, TOKEN_NAME)).thenReturn("ACCOUNT_KEY");
+    assertThat(delegateService.validateKubernetesSetupDetails(accountId, setupDetails).getSize())
+        .isEqualTo(DelegateSize.LAPTOP);
   }
 
   @Test
@@ -2220,44 +2234,50 @@ public class DelegateServiceTest extends WingsBaseTest {
     String accountId = generateUuid();
 
     // K8sConfig is null
-    DelegateSetupDetails setupDetails = DelegateSetupDetails.builder()
-                                            .delegateConfigurationId("delConfigId")
-                                            .name("name")
-                                            .size(DelegateSize.LARGE)
-                                            .description("desc")
-                                            .build();
-    when(delegateProfileService.get(accountId, "delConfigId")).thenReturn(DelegateProfile.builder().build());
-
-    assertThatThrownBy(() -> delegateService.validateKubernetesSetupDetails(accountId, setupDetails))
-        .isInstanceOf(InvalidRequestException.class)
-        .hasMessage("K8s permission type must be provided.");
-
-    // K8sConfig does not have permission set
-    DelegateSetupDetails setupDetails2 = DelegateSetupDetails.builder()
-                                             .delegateConfigurationId("delConfigId")
-                                             .name("name")
-                                             .size(DelegateSize.LARGE)
-                                             .description("desc")
-                                             .k8sConfigDetails(K8sConfigDetails.builder().build())
-                                             .build();
-
-    assertThatThrownBy(() -> delegateService.validateKubernetesSetupDetails(accountId, setupDetails2))
-        .isInstanceOf(InvalidRequestException.class)
-        .hasMessage("K8s permission type must be provided.");
-
-    // K8sConfig does not have namespace set for namespace admin permission
-    DelegateSetupDetails setupDetails3 =
+    DelegateSetupDetails setupDetails =
         DelegateSetupDetails.builder()
             .delegateConfigurationId("delConfigId")
             .name("name")
             .size(DelegateSize.LARGE)
             .description("desc")
+            .k8sConfigDetails(K8sConfigDetails.builder().k8sPermissionType(CLUSTER_ADMIN).build())
+            .delegateType("KUBERNETES")
+            .tokenName(TOKEN_NAME)
+            .build();
+    when(delegateProfileService.get(accountId, "delConfigId")).thenReturn(DelegateProfile.builder().build());
+    when(delegateNgTokenService.getDelegateToken(accountId, TOKEN_NAME))
+        .thenReturn(DelegateTokenDetails.builder()
+                        .name(TOKEN_NAME)
+                        .accountId(accountId)
+                        .status(DelegateTokenStatus.ACTIVE)
+                        .build());
+    when(delegateNgTokenService.getDelegateTokenValue(accountId, TOKEN_NAME)).thenReturn("ACCOUNT_KEY");
+    assertThat(delegateService.validateKubernetesSetupDetails(accountId, setupDetails)
+                   .getK8sConfigDetails()
+                   .getK8sPermissionType())
+        .isEqualTo(CLUSTER_ADMIN);
+
+    // K8sConfig does not have namespace
+    DelegateSetupDetails setupDetails2 =
+        DelegateSetupDetails.builder()
+            .delegateConfigurationId("delConfigId")
+            .name("name")
+            .size(DelegateSize.LARGE)
+            .description("desc")
+            .delegateType("KUBERNETES")
+            .tokenName(TOKEN_NAME)
             .k8sConfigDetails(K8sConfigDetails.builder().k8sPermissionType(K8sPermissionType.NAMESPACE_ADMIN).build())
             .build();
-
-    assertThatThrownBy(() -> delegateService.validateKubernetesSetupDetails(accountId, setupDetails3))
-        .isInstanceOf(InvalidRequestException.class)
-        .hasMessage("K8s namespace must be provided for this type of permission.");
+    when(delegateNgTokenService.getDelegateToken(accountId, TOKEN_NAME))
+        .thenReturn(DelegateTokenDetails.builder()
+                        .name(TOKEN_NAME)
+                        .accountId(accountId)
+                        .status(DelegateTokenStatus.ACTIVE)
+                        .build());
+    when(delegateNgTokenService.getDelegateTokenValue(accountId, TOKEN_NAME)).thenReturn("ACCOUNT_KEY");
+    assertThat(
+        delegateService.validateKubernetesSetupDetails(accountId, setupDetails2).getK8sConfigDetails().getNamespace())
+        .isEqualTo("harness-delegate-ng");
   }
 
   @Test
@@ -2691,7 +2711,7 @@ public class DelegateServiceTest extends WingsBaseTest {
 
     persistence.saveBatch(Arrays.asList(acctGroup, orgGroup, projectGroup));
 
-    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, null, null);
+    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, null, null, false);
     assertThat(actual).containsExactlyInAnyOrder("acctgrp");
   }
 
@@ -2719,7 +2739,7 @@ public class DelegateServiceTest extends WingsBaseTest {
 
     persistence.saveBatch(Arrays.asList(acctGroup, orgGroup, projectGroup));
 
-    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, null);
+    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, null, false);
     assertThat(actual).containsExactlyInAnyOrder("acctgrp", "orggrp");
   }
 
@@ -2754,7 +2774,8 @@ public class DelegateServiceTest extends WingsBaseTest {
 
     persistence.saveBatch(Arrays.asList(acctGroup, orgGroup, projectGroup));
 
-    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, projectId);
+    final Set<String> actual =
+        delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, projectId, false);
     assertThat(actual).containsExactlyInAnyOrder(
         "acctgrp", "orggrp", "projectgrp", "custom-acct", "custom-org", "custom-proj");
   }
@@ -3641,7 +3662,7 @@ public class DelegateServiceTest extends WingsBaseTest {
                             .uuid("delegateId1")
                             .accountId(ACCOUNT_ID)
                             .ng(false)
-                            .tags(Lists.newArrayList("tag123", "tag456"))
+                            .tags(ListUtils.newArrayList("tag123", "tag456"))
                             .delegateType(KUBERNETES)
                             .delegateName("delegate1")
                             .description("description1")
@@ -3666,7 +3687,7 @@ public class DelegateServiceTest extends WingsBaseTest {
                             .uuid("delegateId1")
                             .accountId(ACCOUNT_ID)
                             .ng(false)
-                            .tags(Lists.newArrayList("tag123", "tag456"))
+                            .tags(ListUtils.newArrayList("tag123", "tag456"))
                             .delegateType(KUBERNETES)
                             .delegateName("delegate1")
                             .description("description1")
@@ -3693,7 +3714,7 @@ public class DelegateServiceTest extends WingsBaseTest {
                             .uuid("delegateId1")
                             .accountId(ACCOUNT_ID)
                             .ng(false)
-                            .tags(Lists.newArrayList("tag123", "tag456"))
+                            .tags(ListUtils.newArrayList("tag123", "tag456"))
                             .delegateType(KUBERNETES)
                             .delegateName("delegate1")
                             .description("description1")
@@ -3720,7 +3741,7 @@ public class DelegateServiceTest extends WingsBaseTest {
                             .uuid("delegateId1")
                             .accountId(ACCOUNT_ID)
                             .ng(false)
-                            .tags(Lists.newArrayList("tag123", "tag456"))
+                            .tags(ListUtils.newArrayList("tag123", "tag456"))
                             .delegateType(KUBERNETES)
                             .delegateName("delegate1")
                             .description("description1")

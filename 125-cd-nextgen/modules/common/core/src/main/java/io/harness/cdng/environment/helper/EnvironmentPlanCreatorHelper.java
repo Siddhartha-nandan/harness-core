@@ -11,7 +11,10 @@ import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.creator.plan.PlanCreatorConstants;
 import io.harness.cdng.environment.yaml.EnvironmentPlanCreatorConfig;
 import io.harness.cdng.environment.yaml.EnvironmentYamlV2;
@@ -22,6 +25,7 @@ import io.harness.cdng.infra.yaml.InfrastructureConfig;
 import io.harness.cdng.visitor.YamlTypes;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidRequestException;
+import io.harness.executions.steps.ExecutionNodeType;
 import io.harness.ng.core.environment.beans.Environment;
 import io.harness.ng.core.environment.mappers.EnvironmentMapper;
 import io.harness.ng.core.environment.services.EnvironmentService;
@@ -36,7 +40,10 @@ import io.harness.pms.contracts.advisers.AdviserType;
 import io.harness.pms.contracts.facilitators.FacilitatorObtainment;
 import io.harness.pms.contracts.facilitators.FacilitatorType;
 import io.harness.pms.contracts.plan.Dependency;
+import io.harness.pms.contracts.plan.ExpressionMode;
 import io.harness.pms.contracts.plan.YamlUpdates;
+import io.harness.pms.contracts.steps.StepCategory;
+import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.execution.OrchestrationFacilitatorType;
 import io.harness.pms.merger.helpers.MergeHelper;
 import io.harness.pms.sdk.core.adviser.OrchestrationAdviserTypes;
@@ -62,7 +69,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.experimental.UtilityClass;
-
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
+    components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
 @UtilityClass
 @OwnedBy(CDP)
 public class EnvironmentPlanCreatorHelper {
@@ -84,6 +92,31 @@ public class EnvironmentPlanCreatorHelper {
                 .setParameters(advisorParameters)
                 .build())
         .skipExpressionChain(false)
+        .build();
+  }
+
+  public PlanNode getEnvPlanNodeForCustomStage(
+      String envNodeUuid, StepParameters stepParameters, ByteString advisorParameters) {
+    return PlanNode.builder()
+        .uuid(envNodeUuid)
+        .stepType(StepType.newBuilder()
+                      .setType(ExecutionNodeType.CUSTOM_STAGE_ENVIRONMENT.getName())
+                      .setStepCategory(StepCategory.STEP)
+                      .build())
+        .expressionMode(ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED)
+        .name(PlanCreatorConstants.ENVIRONMENT_NODE_NAME)
+        .identifier(YamlTypes.ENVIRONMENT_YAML)
+        .stepParameters(stepParameters)
+        .facilitatorObtainment(
+            FacilitatorObtainment.newBuilder()
+                .setType(FacilitatorType.newBuilder().setType(OrchestrationFacilitatorType.CHILDREN).build())
+                .build())
+        .adviserObtainment(
+            AdviserObtainment.newBuilder()
+                .setType(AdviserType.newBuilder().setType(OrchestrationAdviserTypes.ON_SUCCESS.name()).build())
+                .setParameters(advisorParameters)
+                .build())
+        .skipExpressionChain(true)
         .build();
   }
 
@@ -188,6 +221,7 @@ public class EnvironmentPlanCreatorHelper {
     List<InfrastructureEntity> infrastructureEntityList;
     Map<String, Map<String, Object>> refToInputMap = new HashMap<>();
     String envIdentifier = environmentV2.getEnvironmentRef().getValue();
+    String environmentBranch = environmentV2.getGitBranch();
     if (!environmentV2.getDeployToAll().getValue()) {
       List<String> infraIdentifierList = new ArrayList<>();
 
@@ -207,8 +241,8 @@ public class EnvironmentPlanCreatorHelper {
           refToInputMap.put(ref, infraYaml.getInputs().getValue());
         }
       }
-      infrastructureEntityList = infrastructure.getAllInfrastructureFromIdentifierList(
-          accountIdentifier, orgIdentifier, projectIdentifier, envIdentifier, infraIdentifierList);
+      infrastructureEntityList = infrastructure.getAllInfrastructuresWithYamlFromIdentifierList(
+          accountIdentifier, orgIdentifier, projectIdentifier, envIdentifier, environmentBranch, infraIdentifierList);
 
     } else {
       if (isNotEmpty(environmentV2.getInfrastructureDefinitions().getValue())
@@ -216,8 +250,8 @@ public class EnvironmentPlanCreatorHelper {
         throw new InvalidRequestException(String.format("DeployToAll is enabled along with specific Infrastructures %s",
             environmentV2.getInfrastructureDefinitions().getValue()));
       }
-      infrastructureEntityList = infrastructure.getAllInfrastructureFromEnvRef(
-          accountIdentifier, orgIdentifier, projectIdentifier, envIdentifier);
+      infrastructureEntityList = infrastructure.getAllInfrastructuresWithYamlFromEnvRef(
+          accountIdentifier, orgIdentifier, projectIdentifier, envIdentifier, environmentBranch);
     }
 
     return InfrastructurePlanCreatorHelper.getResolvedInfrastructureConfig(infrastructureEntityList, refToInputMap);

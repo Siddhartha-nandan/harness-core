@@ -16,8 +16,11 @@ import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
 import static java.util.Arrays.asList;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.azure.utility.AzureResourceUtility;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.artifact.outcome.ArtifactOutcome;
@@ -53,6 +56,7 @@ import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.sdk.core.steps.io.StepResponse.StepResponseBuilder;
 import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import software.wings.beans.TaskType;
 
@@ -62,6 +66,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 @OwnedBy(HarnessTeam.CDP)
 @Slf4j
 public class AzureWebAppRollbackStep extends CdTaskExecutable<AzureWebAppTaskResponse> {
@@ -100,8 +105,11 @@ public class AzureWebAppRollbackStep extends CdTaskExecutable<AzureWebAppTaskRes
       ArtifactOutcome artifactOutcome = azureWebAppStepHelper.getPrimaryArtifactOutcome(ambiance);
       boolean isPackageType = azureWebAppStepHelper.isPackageArtifactType(artifactOutcome);
       AzureArtifactConfig previousArtifactConfig = null;
+      boolean cleanDeploymentEnabled = false;
       if (isPackageType) {
-        previousArtifactConfig = getPreviousArtifactConfig(ambiance, infraDelegateConfig);
+        AzureWebAppsStageExecutionDetails executionDetails =
+            azureWebAppStepHelper.findLastSuccessfulStageExecutionDetails(ambiance, infraDelegateConfig);
+        previousArtifactConfig = getPreviousArtifactConfig(executionDetails);
         if (previousArtifactConfig == null && !swapSlotsSweepingOutput.isFound()) {
           return getSkipTaskRequest("No swap slots done and previous artifact not found, skipping rollback");
         }
@@ -110,6 +118,8 @@ public class AzureWebAppRollbackStep extends CdTaskExecutable<AzureWebAppTaskRes
           return getSkipTaskRequest(
               "Rollback is not possible when previous artifact is of type Docker and current artifact is of type package");
         }
+
+        cleanDeploymentEnabled = getCleanDeploymentEnabled(executionDetails);
       }
 
       AzureWebAppRollbackRequest azureWebAppRollbackRequest =
@@ -123,6 +133,7 @@ public class AzureWebAppRollbackStep extends CdTaskExecutable<AzureWebAppTaskRes
                       azureAppServicePreDeploymentData.getAppName()))
               .artifact(previousArtifactConfig)
               .azureArtifactType(isPackageType ? AzureArtifactType.PACKAGE : AzureArtifactType.CONTAINER)
+              .cleanDeployment(cleanDeploymentEnabled)
               .build();
 
       List<String> units = getUnits(swapSlotsSweepingOutput, azureWebAppRollbackRequest.getArtifact() != null);
@@ -137,11 +148,14 @@ public class AzureWebAppRollbackStep extends CdTaskExecutable<AzureWebAppTaskRes
         .build();
   }
 
-  private AzureArtifactConfig getPreviousArtifactConfig(
-      Ambiance ambiance, AzureWebAppInfraDelegateConfig infraDelegateConfig) {
-    AzureWebAppsStageExecutionDetails executionDetails =
-        azureWebAppStepHelper.findLastSuccessfulStageExecutionDetails(ambiance, infraDelegateConfig);
+  private AzureArtifactConfig getPreviousArtifactConfig(AzureWebAppsStageExecutionDetails executionDetails) {
     return executionDetails != null ? executionDetails.getArtifactConfig() : null;
+  }
+
+  private boolean getCleanDeploymentEnabled(AzureWebAppsStageExecutionDetails executionDetails) {
+    return executionDetails != null && executionDetails.getCleanDeployment() != null
+        ? executionDetails.getCleanDeployment()
+        : false;
   }
 
   private String getTargetSlotFromSweepingOutput(OptionalSweepingOutput swapSlotsSweepingOutput) {
@@ -212,5 +226,11 @@ public class AzureWebAppRollbackStep extends CdTaskExecutable<AzureWebAppTaskRes
   @Override
   public Class<StepBaseParameters> getStepParametersClass() {
     return StepBaseParameters.class;
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 }

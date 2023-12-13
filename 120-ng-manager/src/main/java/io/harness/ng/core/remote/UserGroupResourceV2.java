@@ -17,11 +17,14 @@ import static io.harness.ng.core.utils.NGUtils.verifyValuesNotChanged;
 import static io.harness.ng.core.utils.UserGroupMapper.toDTO;
 
 import io.harness.NGCommonEntityConstants;
+import io.harness.accesscontrol.AccountIdentifier;
 import io.harness.accesscontrol.acl.api.Resource;
 import io.harness.accesscontrol.acl.api.ResourceScope;
 import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.accesscontrol.commons.exceptions.AccessDeniedErrorDTO;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.enforcement.client.annotation.FeatureRestrictionCheck;
+import io.harness.enforcement.constants.FeatureRestrictionName;
 import io.harness.ng.core.api.UserGroupService;
 import io.harness.ng.core.dto.ErrorDTO;
 import io.harness.ng.core.dto.FailureDTO;
@@ -97,9 +100,10 @@ public class UserGroupResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(description = "Returns the successfully created User Group")
       })
+  @FeatureRestrictionCheck(FeatureRestrictionName.MULTIPLE_USER_GROUPS)
   public ResponseDTO<UserGroupResponseV2DTO>
   create(@Parameter(description = ACCOUNT_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
-             NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
+             NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
       @Parameter(description = ORG_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
@@ -134,7 +138,7 @@ public class UserGroupResourceV2 {
       @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
       @RequestBody(description = "User Group entity with the updates",
-          required = true) @NotNull @Valid UserGroupRequestV2DTO userGroupDTO) {
+          required = true) @NotNull UserGroupRequestV2DTO userGroupDTO) {
     accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
         Resource.of(USERGROUP, userGroupDTO.getIdentifier()), MANAGE_USERGROUP_PERMISSION);
     validateScopes(accountIdentifier, orgIdentifier, projectIdentifier, userGroupDTO);

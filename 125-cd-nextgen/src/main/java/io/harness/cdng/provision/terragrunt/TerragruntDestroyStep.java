@@ -7,11 +7,10 @@
 
 package io.harness.cdng.provision.terragrunt;
 
+import static io.harness.beans.FeatureName.CDS_TF_TG_SKIP_ERROR_LOGS_COLORING;
 import static io.harness.cdng.provision.terragrunt.TerragruntStepHelper.DEFAULT_TIMEOUT;
 import static io.harness.provision.TerragruntConstants.DESTROY;
 import static io.harness.provision.TerragruntConstants.FETCH_CONFIG_FILES;
-
-import static software.wings.beans.TaskType.TERRAGRUNT_DESTROY_TASK_NG;
 
 import io.harness.EntityType;
 import io.harness.annotations.dev.CodePulse;
@@ -50,7 +49,10 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.StepUtils;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 import io.harness.utils.IdentifierRefHelper;
+
+import software.wings.beans.TaskType;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -79,6 +81,12 @@ public class TerragruntDestroyStep extends CdTaskExecutable<TerragruntDestroyTas
   @Override
   public Class getStepParametersClass() {
     return StepBaseParameters.class;
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 
   @Override
@@ -150,6 +158,8 @@ public class TerragruntDestroyStep extends CdTaskExecutable<TerragruntDestroyTas
         ParameterFieldHelper.getParameterFieldValue(stepParameters.getProvisionerIdentifier());
     String entityId = helper.generateFullIdentifier(provisionerIdentifier, ambiance);
 
+    builder.terragruntCommandFlags(helper.getTerragruntCliFlags(configuration.getCommandFlags()));
+
     builder.stateFileId(helper.getLatestFileId(entityId))
         .entityId(entityId)
         .tgModuleSourceInheritSSH(helper.isExportCredentialForSourceModule(
@@ -171,6 +181,8 @@ public class TerragruntDestroyStep extends CdTaskExecutable<TerragruntDestroyTas
         .timeoutInMillis(StepUtils.getTimeoutMillis(StepBaseParameters.getTimeout(), DEFAULT_TIMEOUT))
         .encryptedDataDetailList(helper.getEncryptionDetails(
             spec.getConfigFiles().getStore().getSpec(), spec.getBackendConfig(), spec.getVarFiles(), ambiance))
+        .useUniqueDirectoryForBaseDir(true)
+        .skipColorLogs(cdFeatureFlagHelper.isEnabled(accountId, CDS_TF_TG_SKIP_ERROR_LOGS_COLORING))
         .build();
 
     return prepareCDTaskRequest(ambiance, builder, StepBaseParameters, stepParameters);
@@ -193,6 +205,9 @@ public class TerragruntDestroyStep extends CdTaskExecutable<TerragruntDestroyTas
     TerragruntDestroyTaskParametersBuilder<?, ?> builder = TerragruntDestroyTaskParameters.builder();
     String accountId = AmbianceUtils.getAccountId(ambiance);
     String entityId = helper.generateFullIdentifier(provisionerIdentifier, ambiance);
+
+    builder.terragruntCommandFlags(helper.getTerragruntCliFlags(stepParameters.getConfiguration().getCommandFlags()));
+
     builder.accountId(accountId)
         .entityId(entityId)
         .tgModuleSourceInheritSSH(inheritOutput.isUseConnectorCredentials())
@@ -211,6 +226,8 @@ public class TerragruntDestroyStep extends CdTaskExecutable<TerragruntDestroyTas
             inheritOutput.getBackendConfigFile(), inheritOutput.getVarFileConfigs(), ambiance))
         .encryptDecryptPlanForHarnessSMOnManager(
             helper.tfPlanEncryptionOnManager(accountId, inheritOutput.encryptionConfig))
+        .useUniqueDirectoryForBaseDir(true)
+        .skipColorLogs(cdFeatureFlagHelper.isEnabled(accountId, CDS_TF_TG_SKIP_ERROR_LOGS_COLORING))
         .timeoutInMillis(StepUtils.getTimeoutMillis(StepBaseParameters.getTimeout(), DEFAULT_TIMEOUT));
     builder.build();
 
@@ -229,6 +246,9 @@ public class TerragruntDestroyStep extends CdTaskExecutable<TerragruntDestroyTas
     TerragruntDestroyTaskParametersBuilder<?, ?> builder = TerragruntDestroyTaskParameters.builder();
     String accountId = AmbianceUtils.getAccountId(ambiance);
     String entityId = helper.generateFullIdentifier(provisionerIdentifier, ambiance);
+
+    builder.terragruntCommandFlags(helper.getTerragruntCliFlags(stepParameters.getConfiguration().getCommandFlags()));
+
     builder.accountId(accountId)
         .entityId(entityId)
         .stateFileId(helper.getLatestFileId(entityId))
@@ -244,6 +264,8 @@ public class TerragruntDestroyStep extends CdTaskExecutable<TerragruntDestroyTas
         .encryptedDataDetailList(
             helper.getEncryptionDetailsFromTgInheritConfig(terragruntConfig.getConfigFiles().toGitStoreConfig(),
                 terragruntConfig.getBackendConfigFile(), terragruntConfig.getVarFileConfigs(), ambiance))
+        .useUniqueDirectoryForBaseDir(true)
+        .skipColorLogs(cdFeatureFlagHelper.isEnabled(accountId, CDS_TF_TG_SKIP_ERROR_LOGS_COLORING))
         .timeoutInMillis(StepUtils.getTimeoutMillis(StepBaseParameters.getTimeout(), DEFAULT_TIMEOUT));
     builder.build();
     return prepareCDTaskRequest(ambiance, builder, StepBaseParameters, stepParameters);
@@ -282,9 +304,10 @@ public class TerragruntDestroyStep extends CdTaskExecutable<TerragruntDestroyTas
 
   private TaskRequest prepareCDTaskRequest(Ambiance ambiance, TerragruntDestroyTaskParametersBuilder<?, ?> builder,
       StepBaseParameters StepBaseParameters, TerragruntDestroyStepParameters stepParameters) {
+    TaskType terragruntTaskType = builder.build().getDelegateTaskTypeForDestroyStep();
     TaskData taskData = TaskData.builder()
                             .async(true)
-                            .taskType(TERRAGRUNT_DESTROY_TASK_NG.name())
+                            .taskType(terragruntTaskType.name())
                             .timeout(StepUtils.getTimeoutMillis(StepBaseParameters.getTimeout(), DEFAULT_TIMEOUT))
                             .parameters(new Object[] {builder.build()})
                             .build();
@@ -294,8 +317,7 @@ public class TerragruntDestroyStep extends CdTaskExecutable<TerragruntDestroyTas
     commandUnitsList.add(DESTROY);
 
     return TaskRequestsUtils.prepareCDTaskRequest(ambiance, taskData, referenceFalseKryoSerializer, commandUnitsList,
-        TERRAGRUNT_DESTROY_TASK_NG.getDisplayName(),
-        TaskSelectorYaml.toTaskSelector(stepParameters.getDelegateSelectors()),
+        terragruntTaskType.getDisplayName(), TaskSelectorYaml.toTaskSelector(stepParameters.getDelegateSelectors()),
         stepHelper.getEnvironmentType(ambiance));
   }
 }

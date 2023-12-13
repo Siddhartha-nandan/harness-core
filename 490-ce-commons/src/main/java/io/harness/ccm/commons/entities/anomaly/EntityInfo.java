@@ -23,6 +23,8 @@ public class EntityInfo {
   String namespace;
   String workloadName;
   String workloadType;
+  String service;
+  String serviceName;
   String gcpProjectId;
   String gcpProduct;
   String gcpSKUId;
@@ -36,4 +38,5 @@ public class EntityInfo {
   String azureMeterCategory;
   String azureServiceName;
   String azureInstanceId;
+  String cloudProvider;
 }

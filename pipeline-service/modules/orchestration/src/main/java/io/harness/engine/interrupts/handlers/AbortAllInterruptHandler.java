@@ -6,11 +6,11 @@
  */
 
 package io.harness.engine.interrupts.handlers;
+
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
-import static io.harness.data.structure.CollectionUtils.isPresent;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
-import static io.harness.eraro.ErrorCode.ABORT_ALL_ALREADY;
+import static io.harness.eraro.ErrorCode.ABORT_ALL_ALREADY_NG;
 import static io.harness.exception.WingsException.USER;
 import static io.harness.interrupts.Interrupt.State.DISCARDED;
 import static io.harness.interrupts.Interrupt.State.PROCESSED_SUCCESSFULLY;
@@ -22,6 +22,7 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.data.structure.EmptyPredicate;
 import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.interrupts.InterruptHandler;
 import io.harness.engine.interrupts.InterruptService;
@@ -56,25 +57,27 @@ public class AbortAllInterruptHandler extends InterruptPropagatorHandler impleme
 
   @Override
   public Interrupt registerInterrupt(Interrupt interrupt) {
-    Interrupt savedInterrupt = validateAndSave(interrupt);
+    Status status = planExecutionService.getStatus(interrupt.getPlanExecutionId());
+    Interrupt savedInterrupt = validateAndSave(interrupt, status);
+    if (status == Status.QUEUED) {
+      planExecutionService.updateStatus(interrupt.getPlanExecutionId(), Status.ABORTED);
+      return savedInterrupt;
+    }
     return isNotEmpty(savedInterrupt.getNodeExecutionId())
         ? handleInterruptForNodeExecution(interrupt, interrupt.getNodeExecutionId())
         : handleInterrupt(savedInterrupt);
   }
 
-  private Interrupt validateAndSave(Interrupt interrupt) {
+  private Interrupt validateAndSave(Interrupt interrupt, Status status) {
     return isNotEmpty(interrupt.getNodeExecutionId()) ? validateAndSaveWithNodeExecution(interrupt)
-                                                      : validateAndSaveWithoutNodeExecution(interrupt);
+                                                      : validateAndSaveWithoutNodeExecution(interrupt, status);
   }
 
-  private Interrupt validateAndSaveWithoutNodeExecution(@Valid @NonNull Interrupt interrupt) {
+  private Interrupt validateAndSaveWithoutNodeExecution(@Valid @NonNull Interrupt interrupt, Status status) {
     List<Interrupt> interrupts = interruptService.fetchActiveInterrupts(interrupt.getPlanExecutionId());
-    // Use projections
-    Status status = planExecutionService.getStatus(interrupt.getPlanExecutionId());
     if (StatusUtils.isFinalStatus(status)) {
       throw new InvalidRequestException(String.format("Execution is already finished with status: [%s]", status));
     }
-
     return processInterrupt(interrupt, interrupts);
   }
 
@@ -85,8 +88,8 @@ public class AbortAllInterruptHandler extends InterruptPropagatorHandler impleme
   }
 
   private Interrupt processInterrupt(@Valid @NonNull Interrupt interrupt, List<Interrupt> interrupts) {
-    if (isPresent(interrupts, presentInterrupt -> presentInterrupt.getType() == InterruptType.ABORT_ALL)) {
-      throw new InvalidRequestException("Execution already has ABORT_ALL interrupt", ABORT_ALL_ALREADY, USER);
+    if (checkIfInterruptAlreadyPresent(interrupt, interrupts)) {
+      throw new InvalidRequestException("Execution already has ABORT_ALL interrupt", ABORT_ALL_ALREADY_NG, USER);
     }
     if (isEmpty(interrupts)) {
       return interruptService.save(interrupt);
@@ -96,6 +99,21 @@ public class AbortAllInterruptHandler extends InterruptPropagatorHandler impleme
         -> interruptService.markProcessed(
             savedInterrupt.getUuid(), savedInterrupt.getState() == PROCESSING ? PROCESSED_SUCCESSFULLY : DISCARDED));
     return interruptService.save(interrupt);
+  }
+
+  private boolean checkIfInterruptAlreadyPresent(Interrupt interrupt, List<Interrupt> interrupts) {
+    for (Interrupt presentInterrupt : interrupts) {
+      if (presentInterrupt.getType() == InterruptType.ABORT_ALL) {
+        if (EmptyPredicate.isEmpty(presentInterrupt.getNodeExecutionId())) {
+          // Checking if any plan level AbortAll interrupt present.
+          return true;
+        } else if (presentInterrupt.getNodeExecutionId().equals(interrupt.getNodeExecutionId())) {
+          // Checking if AbortAll interrupt present on the same nodeExecutionId;
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /**

@@ -1,0 +1,73 @@
+// Copyright 2021 Harness Inc. All rights reserved.
+// Use of this source code is governed by the PolyForm Shield 1.0.0 license
+// that can be found in the licenses directory at the root of this repository, also available at
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt.
+
+syntax = "proto3";
+
+package io.harness.delegate;
+
+import "google/protobuf/duration.proto";
+import "920-delegate-service-beans/src/main/proto/io/harness/callback/callback.proto";
+import "920-delegate-service-beans/src/main/proto/io/harness/delegate/task.proto";
+import "920-delegate-service-beans/src/main/proto/io/harness/delegate/execution_infra.proto";
+import "920-delegate-service-beans/src/main/proto/io/harness/delegate/execution.proto";
+
+option java_multiple_files = true;
+option go_package = "920_delegate_service_beans";
+
+// Setup An Execution Infrastructure
+message SetupExecutionInfrastructureRequest {
+  string account_id = 1;              // Account ID
+  ExecutionInfrastructure infra = 2;  // Execution Infrastructure definition
+  SchedulingConfig config = 3;        // Config related to where and how the task should be scheduled
+}
+
+message SetupExecutionInfrastructureResponse {
+  TaskId task_id = 1;                     // Task ID for the setup infra task
+  string infra_ref_id = 2;                // Infrastructure reference
+  map<string, string> step_task_ids = 3;  // Step ID to task ID map
+}
+
+message ScheduleTaskRequest {
+  string account_id = 1;        // Account ID
+  Execution execution = 2;      // Definition of the execution to be scheduled
+  SchedulingConfig config = 3;  // Config related to where and how the task should be scheduled
+}
+
+message ScheduleTaskResponse {
+  TaskId task_id = 1;  // Task ID for the task being scheduled
+}
+
+message CleanupInfraRequest {
+  string account_id = 1;    // Account ID
+  string infra_ref_id = 2;  // Infrastructure reference
+}
+
+message CleanupInfraResponse {
+  TaskId task_id = 1;  // Task ID for the cleanup infra task
+}
+
+message SchedulingConfig {
+  // Scheduling related
+  // The time the task should stay in the queue. To set the execution time out, fill out
+  // details.execution_timeout
+  google.protobuf.Duration execution_timeout = 1;
+
+  // Routing related
+  repeated TaskSelector selectors = 2;
+  // Runner's type
+  string runner_type = 3;
+
+  // TODO: Remove orgId and projectId from SchedulingConfig.
+  //  These are only used for fetching the secrets when we have scopedSecretId and don't really relate to scheduling.
+  //  Also, if we already have scopedId, we should not need these ids, we should update our APIs if needed instead.
+  // NOTE: Don't use these fields for any other purpose.
+  string org_id = 4;
+  string project_id = 5;
+
+  // Represents the callback driver to send task response by DMS
+  callback.DelegateCallbackToken callback_token = 6;
+
+  bool selection_tracking_log_enabled = 7;
+}

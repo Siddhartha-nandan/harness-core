@@ -6,6 +6,7 @@
  */
 
 package io.harness.cdng.artifact.resources.nexus.service;
+
 import static io.harness.connector.ConnectorModule.DEFAULT_CONNECTOR_SERVICE;
 import static io.harness.logging.CommandExecutionStatus.SUCCESS;
 
@@ -55,6 +56,7 @@ import io.harness.security.encryption.EncryptedDataDetail;
 import io.harness.service.DelegateGrpcClientWrapper;
 
 import software.wings.helpers.ext.nexus.NexusRepositories;
+import software.wings.utils.RepositoryFormat;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
@@ -68,6 +70,7 @@ import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_ARTIFACTS})
@@ -94,14 +97,39 @@ public class NexusResourceServiceImpl implements NexusResourceService {
       String artifactPath, String repositoryFormat, String artifactRepositoryUrl, String orgIdentifier,
       String projectIdentifier, String groupId, String artifactId, String extension, String classifier,
       String packageName, String group) {
+    ArtifactUtils.validateIfAllValuesAssigned(MutablePair.of(NGArtifactConstants.REPOSITORY, repositoryName));
+    switch (RepositoryFormat.valueOf(repositoryFormat)) {
+      case docker:
+        ArtifactUtils.validateIfAllValuesAssigned(MutablePair.of(NGArtifactConstants.ARTIFACT_PATH, artifactPath));
+        break;
+
+      case maven:
+        ArtifactUtils.validateIfAllValuesAssigned(MutablePair.of(NGArtifactConstants.GROUP_ID, groupId),
+            MutablePair.of(NGArtifactConstants.ARTIFACT_ID, artifactId));
+        break;
+
+      case npm:
+      case nuget:
+        ArtifactUtils.validateIfAllValuesAssigned(MutablePair.of(NGArtifactConstants.PACKAGE_NAME, packageName));
+        break;
+
+      case raw:
+        ArtifactUtils.validateIfAllValuesAssigned(MutablePair.of(NGArtifactConstants.GROUP, group));
+        break;
+
+      default:
+        throw new IllegalArgumentException("Invalid repository format: " + repositoryFormat);
+    }
+
     NexusConnectorDTO connector = getConnector(nexusConnectorRef);
     BaseNGAccess baseNGAccess =
         getBaseNGAccess(nexusConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
     List<EncryptedDataDetail> encryptionDetails = getEncryptionDetails(connector, baseNGAccess);
-    NexusArtifactDelegateRequest nexusRequest =
-        ArtifactDelegateRequestUtils.getNexusArtifactDelegateRequest(repositoryName, repositoryPort, artifactPath,
-            repositoryFormat, artifactRepositoryUrl, null, null, null, connector, encryptionDetails,
-            ArtifactSourceType.NEXUS3_REGISTRY, groupId, artifactId, extension, classifier, packageName, group);
+
+    NexusArtifactDelegateRequest nexusRequest = ArtifactDelegateRequestUtils.getNexusArtifactDelegateRequest(
+        repositoryName, repositoryPort, artifactPath, repositoryFormat, artifactRepositoryUrl, null, null, null,
+        connector, encryptionDetails, ArtifactSourceType.NEXUS3_REGISTRY, groupId, artifactId,
+        StringUtils.defaultIfBlank(extension, null), StringUtils.defaultIfBlank(classifier, null), packageName, group);
     try {
       ArtifactTaskExecutionResponse artifactTaskExecutionResponse = executeSyncTask(nexusRequest,
           ArtifactTaskType.GET_BUILDS, baseNGAccess, "Nexus Artifact Get Builds task failure due to error");

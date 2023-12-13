@@ -6,16 +6,17 @@
  */
 
 package io.harness.connector.service.git;
+
 import static io.harness.encryption.FieldWithPlainTextOrSecretValueHelper.getSecretAsStringFromPlainTextOrSecretRef;
 import static io.harness.git.Constants.DEFAULT_FETCH_IDENTIFIER;
 import static io.harness.git.model.GitRepositoryType.YAML;
-import static io.harness.shell.SshSessionFactory.getSSHSession;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.data.structure.EmptyPredicate;
 import io.harness.delegate.beans.connector.scm.genericgitconnector.GitConfigDTO;
 import io.harness.delegate.beans.connector.scm.genericgitconnector.GitHTTPAuthenticationDTO;
 import io.harness.delegate.beans.storeconfig.GitStoreDelegateConfig;
@@ -38,6 +39,8 @@ import io.harness.git.model.RevertAndPushResult;
 import io.harness.shell.SshSessionConfig;
 import io.harness.shell.ssh.SshFactory;
 import io.harness.shell.ssh.client.jsch.JschConnection;
+import io.harness.shell.ssh.exception.SshClientException;
+import io.harness.utils.ProxyUtils;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
@@ -47,9 +50,9 @@ import com.jcraft.jsch.Session;
 import java.io.IOException;
 import javax.validation.executable.ValidateOnExecution;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.jgit.transport.JschConfigSessionFactory;
-import org.eclipse.jgit.transport.OpenSshConfig;
 import org.eclipse.jgit.transport.SshSessionFactory;
+import org.eclipse.jgit.transport.ssh.jsch.JschConfigSessionFactory;
+import org.eclipse.jgit.transport.ssh.jsch.OpenSshConfig;
 import org.eclipse.jgit.util.FS;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_GITOPS})
@@ -91,6 +94,11 @@ public class NGGitServiceImpl implements NGGitService {
       gitBaseRequest.setBranch(gitConfig.getBranchName());
       gitBaseRequest.setRepoUrl(gitConfig.getUrl());
     }
+
+    if (EmptyPredicate.isNotEmpty(gitConfig.getProxyUrl())) {
+      gitBaseRequest.setProxyHost(ProxyUtils.getProxyHost(gitConfig.getProxyUrl()));
+      gitBaseRequest.setProxyPort(ProxyUtils.getProxyPort(gitConfig.getProxyUrl()));
+    }
   }
 
   public AuthRequest getAuthRequest(GitConfigDTO gitConfig, SshSessionConfig sshSessionConfig) {
@@ -117,10 +125,11 @@ public class NGGitServiceImpl implements NGGitService {
           throws JSchException {
         sshSessionConfig.setPort(port); // use port from repo URL
         sshSessionConfig.setHost(host);
-        if (sshSessionConfig.isUseSshClient() || sshSessionConfig.isVaultSSH()) {
+
+        try {
           return ((JschConnection) SshFactory.getSshClient(sshSessionConfig).getConnection()).getSession();
-        } else {
-          return getSSHSession(sshSessionConfig);
+        } catch (SshClientException sshClientException) {
+          throw new JSchException(sshClientException.getMessage());
         }
       }
 
@@ -165,13 +174,15 @@ public class NGGitServiceImpl implements NGGitService {
                                                                          : gitStoreDelegateConfig.getConnectorId())
             .repoType(YAML)
             .repoUrl(gitConfigDTO.getUrl())
+            .optionalFiles(gitStoreDelegateConfig.isOptional())
             .build();
     return gitClientV2.fetchFilesByPath(identifier, fetchFilesByPathRequest);
   }
 
   @Override
   public void downloadFiles(GitStoreDelegateConfig gitStoreDelegateConfig, String destinationDirectory,
-      String accountId, SshSessionConfig sshSessionConfig, GitConfigDTO gitConfigDTO) throws IOException {
+      String accountId, SshSessionConfig sshSessionConfig, GitConfigDTO gitConfigDTO, boolean mayHaveMultipleFolders)
+      throws IOException {
     DownloadFilesRequest downloadFilesRequest =
         DownloadFilesRequest.builder()
             .authRequest(getAuthRequest(gitConfigDTO, sshSessionConfig))
@@ -185,6 +196,8 @@ public class NGGitServiceImpl implements NGGitService {
             .repoType(YAML)
             .repoUrl(gitConfigDTO.getUrl())
             .destinationDirectory(destinationDirectory)
+            .mayHaveMultipleFolders(mayHaveMultipleFolders)
+            .cloneWithCheckout(true)
             .build();
     gitClientV2.downloadFiles(downloadFilesRequest);
   }

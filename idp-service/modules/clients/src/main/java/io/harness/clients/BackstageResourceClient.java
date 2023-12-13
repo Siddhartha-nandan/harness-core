@@ -29,6 +29,7 @@ public interface BackstageResourceClient {
   String HARNESS_REFRESH_API = "{accountIdentifier}/idp/api/harness/provider";
 
   @GET Call<Object> getCatalogEntities(@Url String url);
+
   @GET Call<Object> getCatalogEntityFacets(@Url String url);
 
   @POST(CATALOG_API + "/locations")
@@ -53,6 +54,9 @@ public interface BackstageResourceClient {
   @POST(LAYOUT_API + "/ingest")
   Call<Object> ingestLayout(@Body LayoutIngestRequest body, @Path("accountIdentifier") String accountIdentifier);
 
-  @GET(HARNESS_REFRESH_API + "/refresh")
-  Call<Object> providerRefresh(@Path("accountIdentifier") String accountIdentifier);
+  @GET(HARNESS_REFRESH_API + "/refresh"
+      + "/{userGroupIdentifier}")
+  Call<Object>
+  providerRefresh(
+      @Path("accountIdentifier") String accountIdentifier, @Path("userGroupIdentifier") String userGroupIdentifier);
 }

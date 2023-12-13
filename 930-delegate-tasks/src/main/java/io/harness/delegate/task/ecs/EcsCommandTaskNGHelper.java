@@ -21,6 +21,7 @@ import static software.wings.beans.LogWeight.Bold;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.lang.String.format;
 import static java.time.Duration.ofSeconds;
+import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.apache.commons.lang3.StringUtils.trim;
@@ -69,6 +70,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
@@ -95,8 +97,11 @@ import software.amazon.awssdk.services.ecs.model.DescribeTaskDefinitionRequest;
 import software.amazon.awssdk.services.ecs.model.DescribeTaskDefinitionResponse;
 import software.amazon.awssdk.services.ecs.model.DescribeTasksResponse;
 import software.amazon.awssdk.services.ecs.model.DesiredStatus;
+import software.amazon.awssdk.services.ecs.model.ListServicesRequest;
+import software.amazon.awssdk.services.ecs.model.ListServicesResponse;
 import software.amazon.awssdk.services.ecs.model.ListTasksRequest;
 import software.amazon.awssdk.services.ecs.model.ListTasksResponse;
+import software.amazon.awssdk.services.ecs.model.LoadBalancer;
 import software.amazon.awssdk.services.ecs.model.RegisterTaskDefinitionRequest;
 import software.amazon.awssdk.services.ecs.model.RegisterTaskDefinitionResponse;
 import software.amazon.awssdk.services.ecs.model.RunTaskRequest;
@@ -140,6 +145,27 @@ public class EcsCommandTaskNGHelper {
   public static final String BG_VERSION = "BG_VERSION";
   public static final String BG_GREEN = "GREEN";
   public static final String BG_BLUE = "BLUE";
+  private static final int DESCRIBE_SERVICE_API_MAX_LIMIT = 10;
+  private static final int SERVICE_REVISION_FOR_FIRST_DEPLOYMENT = 1;
+  private static final String INVALID_LOAD_BALANCER_CONFIG_ERROR = "Invalid Load balancer configuration in Service.";
+  private static final String INVALID_TARGET_GROUP_ERROR_HINT =
+      "Service should be attached with prod target group or stage target group but not both";
+  private static final String NO_TARGET_GROUP_ERROR_EXPLANATION =
+      "Service: %s is not associated with any target group. "
+      + "Blue/Green Service should be attached with prod target group or stage target group.";
+  private static final String BOTH_TARGET_GROUP_ERROR_EXPLANATION =
+      "Service: %s is associated with both prod target group: %s and stage target group: %s. "
+      + "Blue/Green Service should be attached with prod target group or stage target group but not both.";
+  private static final String OTHER_TARGET_GROUP_ERROR_EXPLANATION =
+      "Service: %s is associated with following target groups: %s "
+      + "Blue/Green Service should be attached with prod target group or stage target group.";
+  private static final String BOTH_SERVICE_WITH_SAME_TARGET_GROUP_ERROR_HINT =
+      "Only one version of Service should be attached with %s target group but not both.";
+  private static final String BOTH_SERVICE_WITH_SAME_TARGET_GROUP_ERROR_EXPLANATION =
+      "Service: %s and Service: %s is associated with %s target group: %s. "
+      + "We can't decide actual %s service between these two service, so only one service should be attached with %s target group.";
+  private static final String PROD_SERVICE = "prod";
+  private static final String STAGE_SERVICE = "stage";
 
   public RegisterTaskDefinitionResponse createTaskDefinition(
       RegisterTaskDefinitionRequest registerTaskDefinitionRequest, String region, AwsConnectorDTO awsConnectorDTO) {
@@ -347,6 +373,189 @@ public class EcsCommandTaskNGHelper {
       }
     } while (nextToken != null);
     return response;
+  }
+
+  public List<Service> fetchServicesOfCluster(AwsConnectorDTO awsConnectorDTO, String cluster, String region) {
+    List<String> serviceArns = listServiceArnsOfCluster(awsConnectorDTO, cluster, region);
+    return listServicesOfCluster(awsConnectorDTO, cluster, region, serviceArns);
+  }
+
+  private List<String> listServiceArnsOfCluster(AwsConnectorDTO awsConnectorDTO, String cluster, String region) {
+    String nextToken = null;
+    List<String> serviceArns = newArrayList();
+    do {
+      ListServicesRequest listServicesRequest =
+          ListServicesRequest.builder().cluster(cluster).nextToken(nextToken).build();
+      ListServicesResponse listServicesResponse = ecsV2Client.listServices(
+          awsNgConfigMapper.createAwsInternalConfig(awsConnectorDTO), listServicesRequest, region);
+      if (CollectionUtils.isNotEmpty(listServicesResponse.serviceArns())) {
+        serviceArns.addAll(listServicesResponse.serviceArns());
+      }
+      nextToken = listServicesResponse.nextToken();
+    } while (nextToken != null);
+    return serviceArns;
+  }
+
+  private List<Service> listServicesOfCluster(
+      AwsConnectorDTO awsConnectorDTO, String cluster, String region, List<String> serviceArns) {
+    List<Service> services = newArrayList();
+    int counter = 0;
+    int endIndex;
+    // We can only use this api to describe 10 services at a time.
+    while (counter < serviceArns.size()) {
+      endIndex = Integer.min(counter + DESCRIBE_SERVICE_API_MAX_LIMIT, serviceArns.size());
+      DescribeServicesRequest describeServicesRequest =
+          DescribeServicesRequest.builder().cluster(cluster).services(serviceArns.subList(counter, endIndex)).build();
+      DescribeServicesResponse describeServicesResponse = ecsV2Client.describeServices(
+          awsNgConfigMapper.createAwsInternalConfig(awsConnectorDTO), describeServicesRequest, region);
+      if (CollectionUtils.isNotEmpty(describeServicesResponse.services())) {
+        services.addAll(describeServicesResponse.services());
+      }
+      counter += DESCRIBE_SERVICE_API_MAX_LIMIT;
+    }
+    return services;
+  }
+
+  public void deleteStaleServicesWithZeroInstance(
+      List<Service> staleServices, LogCallback logCallback, EcsInfraConfig ecsInfraConfig) {
+    // get stale services with zero instances
+    List<Service> staleServicesHavingZeroInstances =
+        ecsCommandTaskHelper.fetchServicesHavingZeroInstance(staleServices);
+    if (CollectionUtils.isNotEmpty(staleServicesHavingZeroInstances)) {
+      logCallback.saveExecutionLog(format("Deleting stale services with zero running instance..%n%n"), LogLevel.INFO);
+    }
+    staleServicesHavingZeroInstances.forEach(service -> {
+      logCallback.saveExecutionLog(
+          format("Deleting stale service: %s with zero running instance..", service.serviceName()), LogLevel.INFO);
+
+      // deleting service
+      deleteService(
+          service.serviceName(), service.clusterArn(), ecsInfraConfig.getRegion(), ecsInfraConfig.getAwsConnectorDTO());
+      logCallback.saveExecutionLog(
+          format("Deleted stale service: %s with zero running instance..", service.serviceName()), LogLevel.INFO);
+    });
+  }
+
+  public void createService(CreateServiceRequest createServiceRequest, EcsInfraConfig ecsInfraConfig,
+      LogCallback logCallback, long timeoutInMillis) {
+    logCallback.saveExecutionLog(format("Creating Service %s with task definition %s and desired count %s %n",
+                                     createServiceRequest.serviceName(), createServiceRequest.taskDefinition(),
+                                     createServiceRequest.desiredCount()),
+        LogLevel.INFO);
+    CreateServiceResponse createServiceResponse =
+        createService(createServiceRequest, ecsInfraConfig.getRegion(), ecsInfraConfig.getAwsConnectorDTO());
+
+    List<ServiceEvent> eventsAlreadyProcessed = new ArrayList<>(createServiceResponse.service().events());
+
+    ecsServiceSteadyStateCheck(logCallback, ecsInfraConfig.getAwsConnectorDTO(), createServiceRequest.cluster(),
+        createServiceRequest.serviceName(), ecsInfraConfig.getRegion(), timeoutInMillis, eventsAlreadyProcessed);
+
+    logCallback.saveExecutionLog(format("Created Service %s with Arn %s %n", createServiceRequest.serviceName(),
+                                     createServiceResponse.service().serviceArn()),
+        LogLevel.INFO);
+  }
+
+  public void downsizeStaleServicesHavingRunningInstances(
+      List<Service> staleServices, LogCallback logCallback, EcsInfraConfig ecsInfraConfig, long timeoutInMillis) {
+    // get stale services with running instances
+    List<Service> staleServicesHavingRunningInstances =
+        ecsCommandTaskHelper.fetchServicesHavingRunningInstance(staleServices);
+    if (CollectionUtils.isNotEmpty(staleServicesHavingRunningInstances)) {
+      logCallback.saveExecutionLog(format("Downsizing stale services with running instance..%n%n"), LogLevel.INFO);
+    }
+    staleServicesHavingRunningInstances.forEach(service -> {
+      logCallback.saveExecutionLog(format("Downsize stale service: %s with %s running instance..",
+                                       service.serviceName(), service.desiredCount()),
+          LogLevel.INFO);
+
+      // downsize stale services
+      downsizeService(service, ecsInfraConfig, logCallback, timeoutInMillis);
+    });
+  }
+
+  public void downsizeService(
+      Service service, EcsInfraConfig ecsInfraConfig, LogCallback logCallback, long timeoutInMillis) {
+    if (service.desiredCount() == 0) {
+      logCallback.saveExecutionLog(
+          format("service: %s already stays at zero instances, ignoring downsize", service.serviceName()),
+          LogLevel.INFO);
+      return;
+    }
+    if (isServiceActive(service)) {
+      UpdateServiceRequest updateServiceRequest = UpdateServiceRequest.builder()
+                                                      .service(service.serviceName())
+                                                      .cluster(ecsInfraConfig.getCluster())
+                                                      .desiredCount(0)
+                                                      .build();
+      // updating desired count
+      UpdateServiceResponse updateServiceResponse =
+          ecsV2Client.updateService(awsNgConfigMapper.createAwsInternalConfig(ecsInfraConfig.getAwsConnectorDTO()),
+              updateServiceRequest, ecsInfraConfig.getRegion());
+
+      List<ServiceEvent> eventsAlreadyProcessed = new ArrayList<>(updateServiceResponse.service().events());
+
+      // steady state check to reach stable state
+      ecsServiceSteadyStateCheck(logCallback, ecsInfraConfig.getAwsConnectorDTO(), ecsInfraConfig.getCluster(),
+          service.serviceName(), ecsInfraConfig.getRegion(), timeoutInMillis, eventsAlreadyProcessed);
+    }
+    logCallback.saveExecutionLog(
+        format("service: %s is not active, ignoring downsize", service.serviceName()), LogLevel.INFO);
+  }
+
+  public List<Service> fetchServicesWithPrefix(List<Service> services, String servicePrefix) {
+    return services.stream().filter(service -> matchWithRegex(service.serviceName(), servicePrefix)).collect(toList());
+  }
+
+  public Service fetchServiceWithName(List<Service> services, String serviceName) {
+    return services.stream().filter(service -> service.serviceName().equals(serviceName)).findFirst().orElse(null);
+  }
+
+  public List<Service> fetchStaleServices(List<Service> services, List<String> activeServices) {
+    return services.stream().filter(service -> !activeServices.contains(service.serviceName())).collect(toList());
+  }
+
+  private List<Service> fetchServicesHavingZeroInstance(List<Service> staleServices) {
+    return staleServices.stream().filter(service -> !isServiceRunning(service)).collect(toList());
+  }
+
+  public List<Service> fetchServicesHavingRunningInstance(List<Service> staleServices) {
+    return staleServices.stream().filter(this::isServiceRunning).collect(toList());
+  }
+
+  public Optional<Service> getLatestRunningService(List<Service> services) {
+    List<Service> runningServices =
+        services.stream()
+            .filter(this::isServiceRunning)
+            .sorted(comparingInt(service -> EcsUtils.getRevisionFromServiceName(service.serviceName())))
+            .collect(toList());
+    if (CollectionUtils.isEmpty(runningServices)) {
+      return Optional.empty();
+    }
+    return Optional.of(runningServices.get(runningServices.size() - 1));
+  }
+
+  public int getNextRevisionForDeployment(List<Service> services) {
+    List<Service> orderedServices =
+        services.stream()
+            .sorted(comparingInt(service -> EcsUtils.getRevisionFromServiceName(service.serviceName())))
+            .collect(toList());
+    if (CollectionUtils.isEmpty(orderedServices)) {
+      return SERVICE_REVISION_FOR_FIRST_DEPLOYMENT;
+    }
+
+    int latestServiceRevision =
+        EcsUtils.getRevisionFromServiceName(orderedServices.get(orderedServices.size() - 1).serviceName());
+
+    return Integer.max(latestServiceRevision + 1, 1);
+  }
+
+  private boolean isServiceRunning(Service service) {
+    return service != null && service.desiredCount() > 0;
+  }
+
+  private boolean matchWithRegex(String serviceName, String servicePrefix) {
+    String pattern = "^" + servicePrefix + "[0-9]+$";
+    return Pattern.compile(pattern).matcher(serviceName).matches();
   }
 
   public void deregisterScalableTargets(
@@ -758,7 +967,8 @@ public class EcsCommandTaskNGHelper {
   public String createStageService(String ecsServiceDefinitionManifestContent,
       List<String> ecsScalableTargetManifestContentList, List<String> ecsScalingPolicyManifestContentList,
       EcsInfraConfig ecsInfraConfig, LogCallback logCallback, long timeoutInMillis, String targetGroupArnKey,
-      String taskDefinitionArn, String targetGroupArn) {
+      String taskDefinitionArn, String targetGroupArn, boolean isSameAsAlreadyRunningInstances,
+      boolean removeAutoScalingFromBlueService, boolean updateGreenService) {
     // render target group arn value in its expression in ecs service definition yaml
     ecsServiceDefinitionManifestContent =
         updateTargetGroupArn(ecsServiceDefinitionManifestContent, targetGroupArn, targetGroupArnKey);
@@ -773,8 +983,10 @@ public class EcsCommandTaskNGHelper {
     Optional<Service> optionalService = describeService(
         ecsInfraConfig.getCluster(), stageServiceName, ecsInfraConfig.getRegion(), ecsInfraConfig.getAwsConnectorDTO());
 
+    boolean greenServiceExist = optionalService.isPresent();
+
     // delete the existing non-blue version
-    if (optionalService.isPresent() && isServiceActive(optionalService.get())) {
+    if (optionalService.isPresent() && isServiceActive(optionalService.get()) && !updateGreenService) {
       Service service = optionalService.get();
       logCallback.saveExecutionLog(
           format("Deleting existing non-blue version Service: %s", service.serviceName()), LogLevel.INFO);
@@ -786,6 +998,7 @@ public class EcsCommandTaskNGHelper {
           service.serviceName(), ecsInfraConfig.getRegion(), (int) TimeUnit.MILLISECONDS.toMinutes(timeoutInMillis));
       logCallback.saveExecutionLog(
           format("Deleted non-blue version Service: %s %n%n", service.serviceName()), LogLevel.INFO);
+      greenServiceExist = false;
     } else if (optionalService.isPresent() && isServiceDraining(optionalService.get())) {
       logCallback.saveExecutionLog(
           format("An existing non-blue version Service with name %s draining, waiting for it to reach "
@@ -797,11 +1010,30 @@ public class EcsCommandTaskNGHelper {
       logCallback.saveExecutionLog(
           format("An existed non-blue version Service with name %s reached inactive state %n", stageServiceName),
           LogLevel.INFO);
+      greenServiceExist = false;
     }
 
     // add green tag in create service request
     CreateServiceRequest.Builder createServiceRequestBuilder =
         addTagInCreateServiceRequest(createServiceRequest, BG_GREEN);
+
+    if (isSameAsAlreadyRunningInstances) {
+      // fetch blue service
+      Optional<Service> blueServiceOptional =
+          fetchBGService(trim(createServiceRequest.serviceName() + DELIMITER), ecsInfraConfig, BG_BLUE);
+      // fetch desired count of blue service and set in green service
+      blueServiceOptional.ifPresent(service -> createServiceRequestBuilder.desiredCount(service.desiredCount()));
+    }
+
+    if (removeAutoScalingFromBlueService) {
+      // fetch blue service
+      Optional<Service> blueServiceOptional =
+          fetchBGService(trim(createServiceRequest.serviceName() + DELIMITER), ecsInfraConfig, BG_BLUE);
+
+      // remove auto scaling from blue service
+      blueServiceOptional.ifPresent(
+          service -> deleteBGServiceAutoScaling(logCallback, "blue", service.serviceName(), ecsInfraConfig));
+    }
 
     // update service name, cluster and task definition
     createServiceRequest = createServiceRequestBuilder.serviceName(stageServiceName)
@@ -809,21 +1041,51 @@ public class EcsCommandTaskNGHelper {
                                .taskDefinition(taskDefinitionArn)
                                .build();
 
-    logCallback.saveExecutionLog(format("Creating Stage Service %s with task definition %s and desired count %s %n",
-                                     createServiceRequest.serviceName(), createServiceRequest.taskDefinition(),
-                                     createServiceRequest.desiredCount()),
-        LogLevel.INFO);
-    CreateServiceResponse createServiceResponse =
-        createService(createServiceRequest, ecsInfraConfig.getRegion(), ecsInfraConfig.getAwsConnectorDTO());
+    if (updateGreenService && greenServiceExist) {
+      deleteScalingPolicies(ecsInfraConfig.getAwsConnectorDTO(), createServiceRequest.serviceName(),
+          ecsInfraConfig.getCluster(), ecsInfraConfig.getRegion(), logCallback);
+      deregisterScalableTargets(ecsInfraConfig.getAwsConnectorDTO(), createServiceRequest.serviceName(),
+          ecsInfraConfig.getCluster(), ecsInfraConfig.getRegion(), logCallback);
 
-    List<ServiceEvent> eventsAlreadyProcessed = new ArrayList<>(createServiceResponse.service().events());
+      logCallback.saveExecutionLog(format("Updating Stage Service %s with task definition %s and desired count %s %n",
+                                       createServiceRequest.serviceName(), createServiceRequest.taskDefinition(),
+                                       createServiceRequest.desiredCount()),
+          LogLevel.INFO);
 
-    ecsServiceSteadyStateCheck(logCallback, ecsInfraConfig.getAwsConnectorDTO(), createServiceRequest.cluster(),
-        createServiceRequest.serviceName(), ecsInfraConfig.getRegion(), timeoutInMillis, eventsAlreadyProcessed);
+      UpdateServiceRequest updateServiceRequest =
+          EcsMapper.createServiceRequestToUpdateServiceRequest(createServiceRequest, true);
 
-    logCallback.saveExecutionLog(format("Created Stage Service %s with Arn %s %n%n", createServiceRequest.serviceName(),
-                                     createServiceResponse.service().serviceArn()),
-        LogLevel.INFO);
+      UpdateServiceResponse updateServiceResponse =
+          updateService(updateServiceRequest, ecsInfraConfig.getRegion(), ecsInfraConfig.getAwsConnectorDTO());
+
+      List<ServiceEvent> eventsAlreadyProcessed = new ArrayList<>(updateServiceResponse.service().events());
+
+      ecsServiceSteadyStateCheck(logCallback, ecsInfraConfig.getAwsConnectorDTO(), createServiceRequest.cluster(),
+          createServiceRequest.serviceName(), ecsInfraConfig.getRegion(), timeoutInMillis, eventsAlreadyProcessed);
+
+      logCallback.saveExecutionLog(
+          format("Updated Stage Service %s with Arn %s %n%n", createServiceRequest.serviceName(),
+              updateServiceResponse.service().serviceArn()),
+          LogLevel.INFO);
+    } else {
+      logCallback.saveExecutionLog(format("Creating Stage Service %s with task definition %s and desired count %s %n",
+                                       createServiceRequest.serviceName(), createServiceRequest.taskDefinition(),
+                                       createServiceRequest.desiredCount()),
+          LogLevel.INFO);
+
+      CreateServiceResponse createServiceResponse =
+          createService(createServiceRequest, ecsInfraConfig.getRegion(), ecsInfraConfig.getAwsConnectorDTO());
+
+      List<ServiceEvent> eventsAlreadyProcessed = new ArrayList<>(createServiceResponse.service().events());
+
+      ecsServiceSteadyStateCheck(logCallback, ecsInfraConfig.getAwsConnectorDTO(), createServiceRequest.cluster(),
+          createServiceRequest.serviceName(), ecsInfraConfig.getRegion(), timeoutInMillis, eventsAlreadyProcessed);
+
+      logCallback.saveExecutionLog(
+          format("Created Stage Service %s with Arn %s %n%n", createServiceRequest.serviceName(),
+              createServiceResponse.service().serviceArn()),
+          LogLevel.INFO);
+    }
 
     logCallback.saveExecutionLog(format("Target Group with Arn: %s is associated with Stage Service %s", targetGroupArn,
                                      createServiceRequest.serviceName()),
@@ -834,13 +1096,24 @@ public class EcsCommandTaskNGHelper {
         LogLevel.INFO);
 
     registerScalableTargets(ecsScalableTargetManifestContentList, ecsInfraConfig.getAwsConnectorDTO(),
-        createServiceResponse.service().serviceName(), ecsInfraConfig.getCluster(), ecsInfraConfig.getRegion(),
-        logCallback);
+        createServiceRequest.serviceName(), ecsInfraConfig.getCluster(), ecsInfraConfig.getRegion(), logCallback);
 
     attachScalingPolicies(ecsScalingPolicyManifestContentList, ecsInfraConfig.getAwsConnectorDTO(),
-        createServiceResponse.service().serviceName(), ecsInfraConfig.getCluster(), ecsInfraConfig.getRegion(),
-        logCallback);
-    return createServiceResponse.service().serviceName();
+        createServiceRequest.serviceName(), ecsInfraConfig.getCluster(), ecsInfraConfig.getRegion(), logCallback);
+    return createServiceRequest.serviceName();
+  }
+
+  private void deleteBGServiceAutoScaling(
+      LogCallback logCallback, String version, String serviceName, EcsInfraConfig ecsInfraConfig) {
+    logCallback.saveExecutionLog(format("Removing %s service:  %s scaling policies", version, serviceName));
+    // deleting scaling policies for service
+    deleteScalingPolicies(ecsInfraConfig.getAwsConnectorDTO(), serviceName, ecsInfraConfig.getCluster(),
+        ecsInfraConfig.getRegion(), logCallback);
+
+    logCallback.saveExecutionLog(format("Removing %s service:  %s scalable targets", version, serviceName));
+    // de-registering scalable target for service
+    deregisterScalableTargets(ecsInfraConfig.getAwsConnectorDTO(), serviceName, ecsInfraConfig.getCluster(),
+        ecsInfraConfig.getRegion(), logCallback);
   }
 
   public void updateOldService(EcsBlueGreenRollbackRequest ecsBlueGreenRollbackRequest,
@@ -1052,6 +1325,107 @@ public class EcsCommandTaskNGHelper {
     return false;
   }
 
+  public void validateTagsInService(EcsLoadBalancerConfig loadBalancerConfig, String servicePrefix,
+      EcsInfraConfig infraConfig, LogCallback logCallback) {
+    String firstVersionServiceName = servicePrefix + 1;
+    String secondVersionServiceName = servicePrefix + 2;
+    Optional<Service> firstService = describeService(
+        infraConfig.getCluster(), firstVersionServiceName, infraConfig.getRegion(), infraConfig.getAwsConnectorDTO());
+    Optional<Service> secondService = describeService(
+        infraConfig.getCluster(), secondVersionServiceName, infraConfig.getRegion(), infraConfig.getAwsConnectorDTO());
+
+    List<String> firstServiceTargetGroups = null;
+    List<String> secondServiceTargetGroups = null;
+
+    if (firstService.isPresent()) {
+      firstServiceTargetGroups = validateTargetGroup(loadBalancerConfig, firstService.get());
+    }
+
+    if (secondService.isPresent()) {
+      secondServiceTargetGroups = validateTargetGroup(loadBalancerConfig, secondService.get());
+    }
+
+    if (CollectionUtils.isEmpty(firstServiceTargetGroups) || CollectionUtils.isEmpty(secondServiceTargetGroups)) {
+      return;
+    } else if (!loadBalancerConfig.getProdTargetGroupArn().equals(loadBalancerConfig.getStageTargetGroupArn())) {
+      if (firstServiceTargetGroups.contains(loadBalancerConfig.getProdTargetGroupArn())
+          && secondServiceTargetGroups.contains(loadBalancerConfig.getProdTargetGroupArn())) {
+        throwSameTargetGroupException(PROD_SERVICE, firstService.get().serviceName(), secondService.get().serviceName(),
+            loadBalancerConfig.getProdTargetGroupArn());
+      } else if (firstServiceTargetGroups.contains(loadBalancerConfig.getStageTargetGroupArn())
+          && secondServiceTargetGroups.contains(loadBalancerConfig.getStageTargetGroupArn())) {
+        throwSameTargetGroupException(STAGE_SERVICE, firstService.get().serviceName(),
+            secondService.get().serviceName(), loadBalancerConfig.getStageTargetGroupArn());
+      }
+    }
+    // check if we can update tags in invalid configuration
+    updateTags(infraConfig, loadBalancerConfig, firstService.get(), secondService.get(), logCallback,
+        firstServiceTargetGroups, secondServiceTargetGroups);
+  }
+
+  private void throwSameTargetGroupException(
+      String serviceType, String firstService, String secondService, String targetGroup) {
+    throw NestedExceptionUtils.hintWithExplanationException(
+        format(BOTH_SERVICE_WITH_SAME_TARGET_GROUP_ERROR_HINT, serviceType),
+        format(BOTH_SERVICE_WITH_SAME_TARGET_GROUP_ERROR_EXPLANATION, firstService, secondService, targetGroup,
+            serviceType, serviceType, serviceType),
+        new InvalidRequestException(INVALID_LOAD_BALANCER_CONFIG_ERROR));
+  }
+
+  private void updateTags(EcsInfraConfig infraConfig, EcsLoadBalancerConfig loadBalancerConfig, Service firstService,
+      Service secondService, LogCallback logCallback, List<String> firstServiceTargetGroups,
+      List<String> secondServiceTargetGroups) {
+    AwsInternalConfig awsInternalConfig = awsNgConfigMapper.createAwsInternalConfig(infraConfig.getAwsConnectorDTO());
+    if (loadBalancerConfig.getProdTargetGroupArn().equals(loadBalancerConfig.getStageTargetGroupArn())) {
+      if (firstService.desiredCount() > secondService.desiredCount()) {
+        updateTag(firstService.serviceName(), infraConfig, BG_BLUE, awsInternalConfig, logCallback);
+        updateTag(secondService.serviceName(), infraConfig, BG_GREEN, awsInternalConfig, logCallback);
+      } else {
+        updateTag(firstService.serviceName(), infraConfig, BG_GREEN, awsInternalConfig, logCallback);
+        updateTag(secondService.serviceName(), infraConfig, BG_BLUE, awsInternalConfig, logCallback);
+      }
+    } else {
+      updateServiceTag(infraConfig, loadBalancerConfig, firstService, logCallback, firstServiceTargetGroups);
+      updateServiceTag(infraConfig, loadBalancerConfig, secondService, logCallback, secondServiceTargetGroups);
+    }
+  }
+
+  private void updateServiceTag(EcsInfraConfig infraConfig, EcsLoadBalancerConfig loadBalancerConfig, Service service,
+      LogCallback logCallback, List<String> targetGroups) {
+    AwsInternalConfig awsInternalConfig = awsNgConfigMapper.createAwsInternalConfig(infraConfig.getAwsConnectorDTO());
+    if (targetGroups.contains(loadBalancerConfig.getProdTargetGroupArn())) {
+      updateTag(service.serviceName(), infraConfig, BG_BLUE, awsInternalConfig, logCallback);
+    } else if (targetGroups.contains(loadBalancerConfig.getStageTargetGroupArn())) {
+      updateTag(service.serviceName(), infraConfig, BG_GREEN, awsInternalConfig, logCallback);
+    }
+  }
+
+  private List<String> validateTargetGroup(EcsLoadBalancerConfig loadBalancerConfig, Service service) {
+    List<LoadBalancer> loadBalancers = service.loadBalancers();
+    List<String> targetGroups = newArrayList();
+    if (loadBalancers != null) {
+      targetGroups = loadBalancers.stream().map(LoadBalancer::targetGroupArn).collect(toList());
+    }
+    if (CollectionUtils.isEmpty(targetGroups)) {
+      throw NestedExceptionUtils.hintWithExplanationException(INVALID_TARGET_GROUP_ERROR_HINT,
+          format(NO_TARGET_GROUP_ERROR_EXPLANATION, service.serviceName()),
+          new InvalidRequestException(INVALID_LOAD_BALANCER_CONFIG_ERROR));
+    } else if (targetGroups.contains(loadBalancerConfig.getProdTargetGroupArn())
+        && targetGroups.contains(loadBalancerConfig.getStageTargetGroupArn())
+        && !loadBalancerConfig.getProdTargetGroupArn().equals(loadBalancerConfig.getStageTargetGroupArn())) {
+      throw NestedExceptionUtils.hintWithExplanationException(INVALID_TARGET_GROUP_ERROR_HINT,
+          format(BOTH_TARGET_GROUP_ERROR_EXPLANATION, service.serviceName(), loadBalancerConfig.getProdTargetGroupArn(),
+              loadBalancerConfig.getStageTargetGroupArn()),
+          new InvalidRequestException(INVALID_LOAD_BALANCER_CONFIG_ERROR));
+    } else if (!targetGroups.contains(loadBalancerConfig.getProdTargetGroupArn())
+        && !targetGroups.contains(loadBalancerConfig.getStageTargetGroupArn())) {
+      throw NestedExceptionUtils.hintWithExplanationException(INVALID_TARGET_GROUP_ERROR_HINT,
+          format(OTHER_TARGET_GROUP_ERROR_EXPLANATION, service.serviceName(), targetGroups),
+          new InvalidRequestException(INVALID_LOAD_BALANCER_CONFIG_ERROR));
+    }
+    return targetGroups;
+  }
+
   public Optional<String> getBlueVersionServiceName(String servicePrefix, EcsInfraConfig ecsInfraConfig) {
     // check for service suffix 1
     String firstVersionServiceName = servicePrefix + 1;
@@ -1071,6 +1445,19 @@ public class EcsCommandTaskNGHelper {
     return Optional.empty();
   }
 
+  public Optional<Service> fetchBGService(String servicePrefix, EcsInfraConfig ecsInfraConfig, String tag) {
+    // check service with suffix 1 is active and has given tag attached
+    String firstVersionService = servicePrefix + 1;
+
+    Optional<Service> serviceOptional = fetchBGServiceWithTag(firstVersionService, ecsInfraConfig, tag);
+    if (serviceOptional.isPresent()) {
+      return serviceOptional;
+    }
+    // check service with suffix 2 is active and has given tag attached
+    String secondVersionService = servicePrefix + 2;
+    return fetchBGServiceWithTag(secondVersionService, ecsInfraConfig, tag);
+  }
+
   private boolean isBlueService(String serviceName, EcsInfraConfig ecsInfraConfig) {
     DescribeServicesRequest describeServicesRequest = DescribeServicesRequest.builder()
                                                           .services(serviceName)
@@ -1087,6 +1474,24 @@ public class EcsCommandTaskNGHelper {
       }
     }
     return false;
+  }
+
+  private Optional<Service> fetchBGServiceWithTag(String serviceName, EcsInfraConfig ecsInfraConfig, String tag) {
+    DescribeServicesRequest describeServicesRequest = DescribeServicesRequest.builder()
+                                                          .services(serviceName)
+                                                          .cluster(ecsInfraConfig.getCluster())
+                                                          .include(ServiceField.TAGS)
+                                                          .build();
+    DescribeServicesResponse describeServicesResponse =
+        ecsV2Client.describeServices(awsNgConfigMapper.createAwsInternalConfig(ecsInfraConfig.getAwsConnectorDTO()),
+            describeServicesRequest, ecsInfraConfig.getRegion());
+    if (CollectionUtils.isNotEmpty(describeServicesResponse.services())) {
+      Service service = describeServicesResponse.services().get(0);
+      if (isServiceActive(service) && isServiceBGVersion(service.tags(), tag)) {
+        return Optional.ofNullable(service);
+      }
+    }
+    return Optional.empty();
   }
 
   public String getNonBlueVersionServiceName(String servicePrefix, EcsInfraConfig ecsInfraConfig) {
@@ -1273,20 +1678,6 @@ public class EcsCommandTaskNGHelper {
     return service != null && service.status().equals("ACTIVE");
   }
 
-  public Integer getDesiredCountOfServiceForRollback(
-      EcsInfraConfig ecsInfraConfig, Integer currentCount, String serviceName) {
-    Integer maxDesiredCount = currentCount;
-
-    Optional<Service> optionalService = ecsCommandTaskHelper.describeService(
-        ecsInfraConfig.getCluster(), serviceName, ecsInfraConfig.getRegion(), ecsInfraConfig.getAwsConnectorDTO());
-
-    // compare max desired count with live desired count
-    if (optionalService.isPresent() && ecsCommandTaskHelper.isServiceActive(optionalService.get())) {
-      maxDesiredCount = Math.max(maxDesiredCount, optionalService.get().desiredCount());
-    }
-    return maxDesiredCount;
-  }
-
   public boolean isServiceDraining(Service service) {
     return service != null && service.status().equals("DRAINING");
   }
@@ -1394,25 +1785,22 @@ public class EcsCommandTaskNGHelper {
           List<Task> tasks =
               getTasksFromTaskARNs(triggeredRunTaskArns, clusterName, region, awsConnectorDTO, logCallback);
 
-          List<Task> notInStoppedStateTasks =
-              tasks.stream()
-                  .filter(t -> !t.lastStatus().equals(com.amazonaws.services.ecs.model.DesiredStatus.STOPPED.name()))
-                  .collect(Collectors.toList());
+          List<Task> notInRunningStateTasks = tasks.stream()
+                                                  .filter(t -> !DesiredStatus.RUNNING.name().equals(t.lastStatus()))
+                                                  .collect(Collectors.toList());
 
           List<Task> tasksWithFailedContainers =
               tasks.stream()
-                  .filter(task -> task.containers().stream().anyMatch(container -> isEcsTaskContainerFailed(container)))
+                  .filter(task -> task.containers().stream().anyMatch(this::isEcsTaskContainerFailed))
                   .collect(Collectors.toList());
 
           if (EmptyPredicate.isNotEmpty(tasksWithFailedContainers)) {
-            String errorMsg =
-                tasksWithFailedContainers.stream()
-                    .flatMap(
-                        task -> task.containers().stream().filter(container -> isEcsTaskContainerFailed(container)))
-                    .map(container
-                        -> container.taskArn() + " => " + container.containerArn()
-                            + " => exit code : " + container.exitCode())
-                    .collect(Collectors.joining("\n"));
+            String errorMsg = tasksWithFailedContainers.stream()
+                                  .flatMap(task -> task.containers().stream().filter(this::isEcsTaskContainerFailed))
+                                  .map(container
+                                      -> container.taskArn() + " => " + container.containerArn()
+                                          + " => exit code : " + container.exitCode())
+                                  .collect(Collectors.joining("\n"));
             logCallback.saveExecutionLog(
                 "Containers in some tasks failed and are showing non zero exit code\n" + errorMsg, LogLevel.ERROR,
                 CommandExecutionStatus.FAILURE);
@@ -1420,7 +1808,7 @@ public class EcsCommandTaskNGHelper {
                 "Containers in some tasks failed and are showing non zero exit code\n " + errorMsg);
           }
 
-          if (EmptyPredicate.isEmpty(notInStoppedStateTasks)) {
+          if (EmptyPredicate.isEmpty(notInRunningStateTasks)) {
             return true;
           }
 
@@ -1428,7 +1816,7 @@ public class EcsCommandTaskNGHelper {
                                      .map(task -> format("%s : %s", task.taskArn(), task.lastStatus()))
                                      .collect(Collectors.joining("\n"));
 
-          logCallback.saveExecutionLog(format("%d tasks have not completed", notInStoppedStateTasks.size()));
+          logCallback.saveExecutionLog(format("%d tasks have not completed", notInRunningStateTasks.size()));
           logCallback.saveExecutionLog(taskStatusLog);
           sleep(ofSeconds(10));
         }

@@ -21,8 +21,8 @@ message Resource {
   Supported resource types. UNKNOWN resource type should not be used
  */
 enum ResourceType {
-  RES_UNKNOWN = 0;
-  RES_VOLUME = 1;
+  RESOURCE_TYPE_UNSPECIFIED = 0;
+  RESOURCE_TYPE_VOLUME = 1;
 }
 
 message EmptyDirVolume {
@@ -35,7 +35,7 @@ message EmptyDirVolume {
 message HostPathVolume {
   string name = 1;
   string path = 2;
-  string hostPath = 3;
+  string host_path = 3;
   string type = 4;
 }
 

@@ -122,6 +122,23 @@ public class Anomalies extends TableImpl<AnomaliesRecord> {
       createField(DSL.name("namespace"), SQLDataType.CLOB, this, "");
 
   /**
+
+  /**
+   * The column <code>public.anomalies.service</code>.
+   */
+  public final TableField<AnomaliesRecord, String> SERVICE =
+      createField(DSL.name("service"), SQLDataType.CLOB, this, "");
+
+  /**
+
+   * The column <code>public.anomalies.servicename</code>.
+   */
+
+  public final TableField<AnomaliesRecord, String> SERVICENAME =
+      createField(DSL.name("servicename"), SQLDataType.CLOB, this, "");
+
+  /**
+
    * The column <code>public.anomalies.region</code>.
    */
   public final TableField<AnomaliesRecord, String> REGION = createField(DSL.name("region"), SQLDataType.CLOB, this, "");
@@ -242,6 +259,12 @@ public class Anomalies extends TableImpl<AnomaliesRecord> {
    */
   public final TableField<AnomaliesRecord, Boolean> NOTIFICATIONSENT = createField(DSL.name("notificationsent"),
       SQLDataType.BOOLEAN.defaultValue(DSL.field("false", SQLDataType.BOOLEAN)), this, "");
+
+  /**
+   * The column <code>public.anomalies.cloudprovider</code>.
+   */
+  public final TableField<AnomaliesRecord, String> CLOUDPROVIDER =
+      createField(DSL.name("cloudprovider"), SQLDataType.CLOB, this, "");
 
   private Anomalies(Name alias, Table<AnomaliesRecord> aliased) {
     this(alias, aliased, null);

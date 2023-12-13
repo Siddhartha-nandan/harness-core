@@ -5,8 +5,9 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.buildstate.providers;
+package io.harness.ci.execution.buildstate.providers;
 
+import static io.harness.beans.FeatureName.CI_EXTRA_ADDON_RESOURCE;
 import static io.harness.ci.commonconstants.CIExecutionConstants.DELEGATE_SERVICE_ENDPOINT_VARIABLE;
 import static io.harness.ci.commonconstants.CIExecutionConstants.DELEGATE_SERVICE_ID_VARIABLE;
 import static io.harness.ci.commonconstants.CIExecutionConstants.DELEGATE_SERVICE_ID_VARIABLE_VALUE;
@@ -29,7 +30,9 @@ import static io.harness.ci.commonconstants.CIExecutionConstants.SETUP_ADDON_CON
 import static io.harness.ci.commonconstants.CIExecutionConstants.SH_COMMAND;
 import static io.harness.ci.commonconstants.CIExecutionConstants.UNIX_SETUP_ADDON_ARGS;
 import static io.harness.ci.commonconstants.CIExecutionConstants.WIN_SETUP_ADDON_ARGS;
-import static io.harness.ci.utils.UsageUtils.getExecutionUser;
+import static io.harness.ci.commonconstants.ContainerExecutionConstants.ADDON_CONTAINER_CPU;
+import static io.harness.ci.commonconstants.ContainerExecutionConstants.ADDON_CONTAINER_MEMORY;
+import static io.harness.ci.execution.utils.UsageUtils.getExecutionUser;
 import static io.harness.data.encoding.EncodingUtils.encodeBase64;
 import static io.harness.delegate.beans.ci.pod.CICommonConstants.LITE_ENGINE_CONTAINER_NAME;
 import static io.harness.delegate.beans.ci.pod.SecretParams.Type.TEXT;
@@ -40,10 +43,10 @@ import io.harness.beans.FeatureName;
 import io.harness.beans.sweepingoutputs.K8PodDetails;
 import io.harness.beans.yaml.extended.infrastrucutre.OSType;
 import io.harness.ci.config.CIExecutionServiceConfig;
-import io.harness.ci.execution.CIExecutionConfigService;
+import io.harness.ci.execution.execution.CIExecutionConfigService;
+import io.harness.ci.execution.integrationstage.IntegrationStageUtils;
+import io.harness.ci.execution.integrationstage.SecretEnvVars;
 import io.harness.ci.ff.CIFeatureFlagService;
-import io.harness.ci.integrationstage.IntegrationStageUtils;
-import io.harness.ci.integrationstage.SecretEnvVars;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.delegate.beans.ci.pod.CIContainerType;
 import io.harness.delegate.beans.ci.pod.CIK8ContainerParams;
@@ -76,7 +79,7 @@ public class InternalContainerParamsProvider {
 
   public CIK8ContainerParams getSetupAddonContainerParams(ConnectorDetails harnessInternalImageConnector,
       Map<String, String> volumeToMountPath, String workDir, ContainerSecurityContext ctrSecurityContext,
-      String accountIdentifier, OSType os) {
+      String accountIdentifier, OSType os, String imagePullPolicy) {
     Map<String, String> envVars = new HashMap<>();
     envVars.put(HARNESS_WORKSPACE, workDir);
 
@@ -89,6 +92,7 @@ public class InternalContainerParamsProvider {
       commands = PWSH_COMMAND;
       args = Arrays.asList(WIN_SETUP_ADDON_ARGS);
     }
+
     return CIK8ContainerParams.builder()
         .name(SETUP_ADDON_CONTAINER_NAME)
         .envVars(envVars)
@@ -101,8 +105,9 @@ public class InternalContainerParamsProvider {
         .volumeToMountPath(volumeToMountPath)
         .commands(commands)
         .args(args)
+        .imagePullPolicy(imagePullPolicy)
         .securityContext(ctrSecurityContext)
-        .containerResourceParams(getAddonResourceParams())
+        .containerResourceParams(getAddonResourceParams(accountIdentifier))
         .build();
   }
 
@@ -110,10 +115,12 @@ public class InternalContainerParamsProvider {
       Map<String, ConnectorDetails> publishArtifactConnectors, K8PodDetails k8PodDetails, Integer stageCpuRequest,
       Integer stageMemoryRequest, Map<String, String> logEnvVars, Map<String, String> tiEnvVars,
       Map<String, String> stoEnvVars, Map<String, String> volumeToMountPath, String workDirPath,
-      ContainerSecurityContext ctrSecurityContext, String logPrefix, Ambiance ambiance, SecretEnvVars secretEnvVars) {
+      ContainerSecurityContext ctrSecurityContext, String logPrefix, Ambiance ambiance, SecretEnvVars secretEnvVars,
+      String imagePullPolicy) {
     String imageName = ciExecutionConfigService.getLiteEngineImage(AmbianceUtils.getAccountId(ambiance));
     String fullyQualifiedImage =
         IntegrationStageUtils.getFullyQualifiedImageName(imageName, harnessInternalImageConnector);
+
     return CIK8ContainerParams.builder()
         .name(LITE_ENGINE_CONTAINER_NAME)
         .containerResourceParams(getLiteEngineResourceParams(stageCpuRequest, stageMemoryRequest))
@@ -129,6 +136,7 @@ public class InternalContainerParamsProvider {
                                        .imageConnectorDetails(harnessInternalImageConnector)
                                        .build())
         .volumeToMountPath(volumeToMountPath)
+        .imagePullPolicy(imagePullPolicy)
         .securityContext(ctrSecurityContext)
         .workingDir(workDirPath)
         .build();
@@ -202,9 +210,13 @@ public class InternalContainerParamsProvider {
         .build();
   }
 
-  private ContainerResourceParams getAddonResourceParams() {
+  private ContainerResourceParams getAddonResourceParams(String accountIdentifier) {
     Integer cpu = LITE_ENGINE_CONTAINER_CPU;
     Integer memory = LITE_ENGINE_CONTAINER_MEM;
+    if (featureFlagService.isEnabled(CI_EXTRA_ADDON_RESOURCE, accountIdentifier)) {
+      cpu = ADDON_CONTAINER_CPU;
+      memory = ADDON_CONTAINER_MEMORY;
+    }
     return ContainerResourceParams.builder()
         .resourceRequestMilliCpu(cpu)
         .resourceRequestMemoryMiB(memory)

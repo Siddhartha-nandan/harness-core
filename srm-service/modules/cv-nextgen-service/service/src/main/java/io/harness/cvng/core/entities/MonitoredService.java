@@ -12,6 +12,8 @@ import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.cvng.beans.MonitoredServiceType;
+import io.harness.cvng.core.beans.template.TemplateMetadata;
+import io.harness.cvng.core.beans.template.TemplateMetadata.TemplateMetadataKeys;
 import io.harness.cvng.notification.beans.NotificationRuleRef;
 import io.harness.iterator.PersistentRegularIterable;
 import io.harness.mongo.index.CompoundMongoIndex;
@@ -30,6 +32,7 @@ import dev.morphia.annotations.Id;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import lombok.AccessLevel;
@@ -63,6 +66,15 @@ public final class MonitoredService implements PersistentEntity, UuidAware, Acco
                  .field(MonitoredServiceKeys.identifier)
                  .unique(true)
                  .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("reconciliation_idx")
+                 .field(MonitoredServiceKeys.accountId)
+                 .field(MonitoredServiceKeys.orgIdentifier)
+                 .field(MonitoredServiceKeys.projectIdentifier)
+                 .field(MonitoredServiceKeys.templateMetadata + "." + TemplateMetadataKeys.isTemplateByReference)
+                 .field(MonitoredServiceKeys.templateMetadata + "." + TemplateMetadataKeys.templateIdentifier)
+                 .field(MonitoredServiceKeys.templateMetadata + "." + TemplateMetadataKeys.versionLabel)
+                 .build())
         .build();
   }
   @Id private String uuid;
@@ -83,8 +95,10 @@ public final class MonitoredService implements PersistentEntity, UuidAware, Acco
   private long lastDisabledAt;
   List<NotificationRuleRef> notificationRuleRefs;
   @FdIndex private long nextNotificationIteration;
+  @FdIndex private long nextErrorTrackingNotificationIteration;
   String templateIdentifier;
   String templateVersionLabel;
+  TemplateMetadata templateMetadata;
 
   @NotNull @Singular @Size(max = 128) List<NGTag> tags;
   // usage of this should be replaced with environmentIdentifierList. A better type based api is needed.
@@ -119,10 +133,34 @@ public final class MonitoredService implements PersistentEntity, UuidAware, Acco
     return notificationRuleRefs;
   }
 
+  public String getTemplateIdentifier() {
+    if (templateIdentifier == null && !Objects.isNull(templateMetadata)) {
+      return templateMetadata.getTemplateIdentifier();
+    }
+    return templateIdentifier;
+  }
+
+  public String getTemplateVersionLabel() {
+    if (templateVersionLabel == null && !Objects.isNull(templateMetadata)) {
+      return templateMetadata.getVersionLabel();
+    }
+    return templateVersionLabel;
+  }
+
+  public boolean isTemplateByReference() {
+    if (!Objects.isNull(templateMetadata)) {
+      return templateMetadata.isTemplateByReference();
+    }
+    return false;
+  }
+
   @Override
   public Long obtainNextIteration(String fieldName) {
     if (MonitoredServiceKeys.nextNotificationIteration.equals(fieldName)) {
       return this.nextNotificationIteration;
+    }
+    if (MonitoredServiceKeys.nextErrorTrackingNotificationIteration.equals(fieldName)) {
+      return this.nextErrorTrackingNotificationIteration;
     }
     throw new IllegalArgumentException("Invalid fieldName " + fieldName);
   }
@@ -131,6 +169,10 @@ public final class MonitoredService implements PersistentEntity, UuidAware, Acco
   public void updateNextIteration(String fieldName, long nextIteration) {
     if (MonitoredServiceKeys.nextNotificationIteration.equals(fieldName)) {
       this.nextNotificationIteration = nextIteration;
+      return;
+    }
+    if (MonitoredServiceKeys.nextErrorTrackingNotificationIteration.equals(fieldName)) {
+      this.nextErrorTrackingNotificationIteration = nextIteration;
       return;
     }
     throw new IllegalArgumentException("Invalid fieldName " + fieldName);

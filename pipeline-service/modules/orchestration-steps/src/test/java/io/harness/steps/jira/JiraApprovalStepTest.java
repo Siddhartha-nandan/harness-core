@@ -11,6 +11,7 @@ import static io.harness.eraro.ErrorCode.APPROVAL_REJECTION;
 import static io.harness.rule.OwnerRule.ABHINAV_MITTAL;
 import static io.harness.rule.OwnerRule.PRABU;
 import static io.harness.rule.OwnerRule.vivekveman;
+import static io.harness.steps.StepUtils.PIE_SIMPLIFY_LOG_BASE_KEY;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,8 +36,10 @@ import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.execution.failure.FailureType;
+import io.harness.pms.contracts.plan.ExecutionMetadata;
 import io.harness.pms.plan.execution.SetupAbstractionKeys;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.steps.approval.step.ApprovalInstanceService;
@@ -49,6 +52,7 @@ import io.harness.steps.approval.step.jira.JiraApprovalSpecParameters;
 import io.harness.steps.approval.step.jira.JiraApprovalStep;
 import io.harness.steps.approval.step.jira.beans.JiraApprovalResponseData;
 import io.harness.steps.approval.step.jira.entities.JiraApprovalInstance;
+import io.harness.telemetry.helpers.ApprovalInstrumentationHelper;
 import io.harness.yaml.core.timeout.Timeout;
 
 import java.util.Collections;
@@ -76,6 +80,7 @@ public class JiraApprovalStepTest extends CategoryTest {
   @Mock Ambiance ambiance;
   @InjectMocks private JiraApprovalStep jiraApprovalStep;
   @Mock JiraApprovalInstance jiraApprovalInstance;
+  @Mock private ApprovalInstrumentationHelper instrumentationHelper;
   private ILogStreamingStepClient logStreamingStepClient;
 
   @Before
@@ -220,7 +225,7 @@ public class JiraApprovalStepTest extends CategoryTest {
   public void testAbort() {
     Ambiance ambiance = buildAmbiance();
     StepElementParameters parameters = getStepElementParameters();
-    jiraApprovalStep.handleAbort(ambiance, parameters, null);
+    jiraApprovalStep.handleAbort(ambiance, parameters, null, false);
     verify(approvalInstanceService).abortByNodeExecutionId(null);
     verify(logStreamingStepClient).closeStream(ShellScriptTaskNG.COMMAND_UNIT);
   }
@@ -229,7 +234,7 @@ public class JiraApprovalStepTest extends CategoryTest {
   @Owner(developers = vivekveman)
   @Category(UnitTests.class)
   public void testgetStepParametersClass() {
-    assertThat(jiraApprovalStep.getStepParametersClass()).isEqualTo(StepElementParameters.class);
+    assertThat(jiraApprovalStep.getStepParametersClass()).isEqualTo(StepBaseParameters.class);
   }
 
   @Test
@@ -292,6 +297,7 @@ public class JiraApprovalStepTest extends CategoryTest {
         .putSetupAbstractions(SetupAbstractionKeys.accountId, "accId")
         .putSetupAbstractions(SetupAbstractionKeys.orgIdentifier, "orgId")
         .putSetupAbstractions(SetupAbstractionKeys.projectIdentifier, "projId")
+        .setMetadata(ExecutionMetadata.newBuilder().putFeatureFlagToValueMap(PIE_SIMPLIFY_LOG_BASE_KEY, false).build())
         .build();
   }
 }

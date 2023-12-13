@@ -11,4 +11,14 @@ import io.harness.cdng.chaos.ChaosStepNotifyData;
 
 public interface ChaosService {
   void notifyStep(String notifyId, ChaosStepNotifyData data);
+
+  boolean registerChaosInfrastructure(ChaosInfrastructureRequest chaosInfrastructureRequest);
+
+  boolean deleteChaosInfrastructure(ChaosInfrastructureRequest chaosInfrastructureRequest);
+
+  boolean registerChaosHub(ChaosHubRequest chaosHubRequest);
+
+  boolean deleteChaosHub(ChaosHubRequest chaosHubRequest);
+
+  void experimentNotificationTrigger(ExperimentNotificationRequest experimentNotificationRequest);
 }

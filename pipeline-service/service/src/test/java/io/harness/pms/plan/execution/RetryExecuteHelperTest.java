@@ -7,6 +7,7 @@
 
 package io.harness.pms.plan.execution;
 
+import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.rule.OwnerRule.BRIJESH;
 import static io.harness.rule.OwnerRule.NAMAN;
 import static io.harness.rule.OwnerRule.PRASHANTSHARMA;
@@ -26,6 +27,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.engine.executions.node.NodeExecutionServiceImpl;
 import io.harness.engine.executions.plan.PlanExecutionMetadataService;
+import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.executions.retry.RetryGroup;
 import io.harness.engine.executions.retry.RetryHistoryResponseDto;
 import io.harness.engine.executions.retry.RetryInfo;
@@ -53,7 +55,7 @@ import io.harness.pms.pipeline.service.PMSPipelineService;
 import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity;
 import io.harness.pms.plan.execution.beans.RollbackExecutionInfo;
 import io.harness.pms.plan.execution.service.PMSExecutionService;
-import io.harness.pms.yaml.PipelineVersion;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.repositories.executions.PmsExecutionSummaryRepository;
 import io.harness.rule.Owner;
 import io.harness.steps.matrix.StrategyStep;
@@ -87,6 +89,7 @@ public class RetryExecuteHelperTest extends CategoryTest {
   @Mock private PMSPipelineService pipelineService;
   @Mock private PMSExecutionService executionService;
   @Mock private PlanExecutionMetadataService planExecutionMetadataService;
+  @Mock private PlanExecutionService planExecutionService;
 
   String accountId = "acc";
   String orgId = "org";
@@ -555,14 +558,14 @@ public class RetryExecuteHelperTest extends CategoryTest {
     String resultYaml = readFile(resultYamlFile);
     List<String> identifierOfSkipStages = new ArrayList<>();
     String replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(
-        previousYaml, currentYaml, Collections.singletonList("stage2"), identifierOfSkipStages, PipelineVersion.V0);
+        previousYaml, currentYaml, Collections.singletonList("stage2"), identifierOfSkipStages, HarnessYamlVersion.V0);
     assertThat(replacedProcessedYaml).isEqualTo(resultYaml);
 
     // resuming from the first stage
     resultYamlFile = "retry-processedYamlResultFirstStageFailed1.yaml";
     resultYaml = readFile(resultYamlFile);
     replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(
-        previousYaml, currentYaml, Collections.singletonList("stage1"), new ArrayList<>(), PipelineVersion.V0);
+        previousYaml, currentYaml, Collections.singletonList("stage1"), new ArrayList<>(), HarnessYamlVersion.V0);
     assertThat(replacedProcessedYaml).isEqualTo(resultYaml);
 
     // failing a single stage which is ahead of some parallel stages
@@ -573,28 +576,28 @@ public class RetryExecuteHelperTest extends CategoryTest {
     String resultProcessedFile = "retry-processedYamlResultGolden1.yaml";
     String resultProcessedYaml = readFile(resultProcessedFile);
     replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(previousGoldenYaml, currentGoldenYaml,
-        Collections.singletonList("stage7"), new ArrayList<>(), PipelineVersion.V0);
+        Collections.singletonList("stage7"), new ArrayList<>(), HarnessYamlVersion.V0);
     assertThat(replacedProcessedYaml).isEqualTo(yamlToJsonString(resultProcessedYaml));
 
     // failing single stages from parallel groups
     resultProcessedFile = "retry-processedYamlResultSingleStageFailedInParallelStages.yaml";
     resultProcessedYaml = readFile(resultProcessedFile);
     replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(previousGoldenYaml, currentGoldenYaml,
-        Collections.singletonList("stage9"), new ArrayList<>(), PipelineVersion.V0);
+        Collections.singletonList("stage9"), new ArrayList<>(), HarnessYamlVersion.V0);
     assertThat(replacedProcessedYaml).isEqualTo(yamlToJsonString(resultProcessedYaml));
 
     // failing multiple stage failure in parallel group
     resultProcessedFile = "retry-processedYamlResultMultipleStageFailedInParallelStages.yaml";
     resultProcessedYaml = readFile(resultProcessedFile);
     replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(previousGoldenYaml, currentGoldenYaml,
-        Arrays.asList("stage3", "stage5"), new ArrayList<>(), PipelineVersion.V0);
+        Arrays.asList("stage3", "stage5"), new ArrayList<>(), HarnessYamlVersion.V0);
     assertThat(replacedProcessedYaml).isEqualTo(yamlToJsonString(resultProcessedYaml));
 
     // selecting all stages in parallel group
     resultProcessedFile = "retry-processedYamlResultAllStageFailedInParallelStages.yaml";
     resultProcessedYaml = readFile(resultProcessedFile);
     replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(previousGoldenYaml, currentGoldenYaml,
-        Arrays.asList("stage3", "stage4", "stage5"), new ArrayList<>(), PipelineVersion.V0);
+        Arrays.asList("stage3", "stage4", "stage5"), new ArrayList<>(), HarnessYamlVersion.V0);
     assertThat(replacedProcessedYaml).isEqualTo(yamlToJsonString(resultProcessedYaml));
 
     // testing the matrix scenarios
@@ -602,8 +605,8 @@ public class RetryExecuteHelperTest extends CategoryTest {
     previousYaml = readFile("retry/previous-retry-processed-yaml-with-matrix.yaml");
     currentYaml = readFile("retry/current-processed-yaml-with-matrix.yaml");
     resultProcessedYaml = readFile("retry/result-processed-yaml-with-matrix.yaml");
-    replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(
-        previousYaml, currentYaml, Collections.singletonList("approval"), Collections.emptyList(), PipelineVersion.V0);
+    replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(previousYaml, currentYaml,
+        Collections.singletonList("approval"), Collections.emptyList(), HarnessYamlVersion.V0);
     assertEquals(replacedProcessedYaml, resultProcessedYaml);
 
     // Resuming from the next stage of the stage that has strategy.
@@ -611,7 +614,16 @@ public class RetryExecuteHelperTest extends CategoryTest {
     currentYaml = readFile("retry/current-processed-yaml-with-matrix-1.yaml");
     resultProcessedYaml = readFile("retry/result-processed-yaml-with-matrix-1.yaml");
     replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(
-        previousYaml, currentYaml, Collections.singletonList("sssss"), new ArrayList<>(), PipelineVersion.V0);
+        previousYaml, currentYaml, Collections.singletonList("sssss"), new ArrayList<>(), HarnessYamlVersion.V0);
+    assertEquals(replacedProcessedYaml, resultProcessedYaml);
+
+    // Retry failed deployment stage. First run was missing infrastructureDefinitions input. Retry execution is fixed
+    // to provide infrastructureDefinitions.
+    previousYaml = readFile("retry/previous-retry-processed-yaml-without-infraDef.yaml");
+    currentYaml = readFile("retry/current-retry-processed-yaml-without-infraDef.yaml");
+    resultProcessedYaml = readFile("retry/result-retry-processed-yaml-without-infraDef.yaml");
+    replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(
+        previousYaml, currentYaml, Collections.singletonList("stage1"), new ArrayList<>(), HarnessYamlVersion.V0);
     assertEquals(replacedProcessedYaml, resultProcessedYaml);
   }
 
@@ -629,7 +641,7 @@ public class RetryExecuteHelperTest extends CategoryTest {
     String resultYamlFile = "retry-processedYamlResultV1.yaml";
     String resultYaml = readFile(resultYamlFile);
     String replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(
-        previousYaml, currentYaml, List.of("stage1"), identifierOfSkipStages, PipelineVersion.V1);
+        previousYaml, currentYaml, List.of("stage1"), identifierOfSkipStages, HarnessYamlVersion.V1);
     assertThat(replacedProcessedYaml).isEqualTo(resultYaml);
 
     // Retrying from parallel stages stage2_1 and stage2_2. Only one of these stages were failed. But in retry both the
@@ -637,21 +649,21 @@ public class RetryExecuteHelperTest extends CategoryTest {
     resultYamlFile = "retry-processedYamlResult1V1.yaml";
     resultYaml = readFile(resultYamlFile);
     replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(
-        previousYaml, currentYaml, List.of("stage2_1", "stage2_2"), identifierOfSkipStages, PipelineVersion.V1);
+        previousYaml, currentYaml, List.of("stage2_1", "stage2_2"), identifierOfSkipStages, HarnessYamlVersion.V1);
     assertThat(replacedProcessedYaml).isEqualTo(resultYaml);
 
     // Retrying from parallel stages stage2_1 only. Only one of these stages were failed. And one will run while retry.
     resultYamlFile = "retry-processedYamlResult2V1.yaml";
     resultYaml = readFile(resultYamlFile);
     replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(
-        previousYaml, currentYaml, List.of("stage2_2"), identifierOfSkipStages, PipelineVersion.V1);
+        previousYaml, currentYaml, List.of("stage2_2"), identifierOfSkipStages, HarnessYamlVersion.V1);
     assertThat(replacedProcessedYaml).isEqualTo(resultYaml);
 
     // Retrying from parallel stages stage1_1 and stage1_2. Both were success in previous execuiton.
     resultYamlFile = "retry-processedYamlResult3V1.yaml";
     resultYaml = readFile(resultYamlFile);
     replacedProcessedYaml = retryExecuteHelper.retryProcessedYaml(
-        previousYaml, currentYaml, List.of("stage1_1", "stage1_2"), identifierOfSkipStages, PipelineVersion.V1);
+        previousYaml, currentYaml, List.of("stage1_1", "stage1_2"), identifierOfSkipStages, HarnessYamlVersion.V1);
     assertThat(replacedProcessedYaml).isEqualTo(resultYaml);
   }
 
@@ -727,12 +739,12 @@ public class RetryExecuteHelperTest extends CategoryTest {
     String currentYaml = readFile(currentYamlFile);
     List<String> identifierOfSkipStages = new ArrayList<>();
     retryExecuteHelper.retryProcessedYaml(
-        previousYaml, currentYaml, Collections.singletonList("stage2"), identifierOfSkipStages, PipelineVersion.V0);
+        previousYaml, currentYaml, Collections.singletonList("stage2"), identifierOfSkipStages, HarnessYamlVersion.V0);
 
     // resuming from the first stage
     identifierOfSkipStages.clear();
     retryExecuteHelper.retryProcessedYaml(
-        previousYaml, currentYaml, Collections.singletonList("stage1"), identifierOfSkipStages, PipelineVersion.V0);
+        previousYaml, currentYaml, Collections.singletonList("stage1"), identifierOfSkipStages, HarnessYamlVersion.V0);
     assertThat(identifierOfSkipStages.size()).isEqualTo(0);
 
     // failing a single stage which is ahead of some parallel stages
@@ -742,7 +754,7 @@ public class RetryExecuteHelperTest extends CategoryTest {
     String currentGoldenYamlFile = "retry-processedYamlCurrentGolden.yaml";
     String currentGoldenYaml = readFile(currentGoldenYamlFile);
     retryExecuteHelper.retryProcessedYaml(previousGoldenYaml, currentGoldenYaml, Collections.singletonList("stage7"),
-        identifierOfSkipStages, PipelineVersion.V0);
+        identifierOfSkipStages, HarnessYamlVersion.V0);
     assertThat(identifierOfSkipStages.size()).isEqualTo(6);
     assertThat(identifierOfSkipStages.get(0)).isEqualTo("stage1");
     assertThat(identifierOfSkipStages.get(1)).isEqualTo("stage2");
@@ -754,7 +766,7 @@ public class RetryExecuteHelperTest extends CategoryTest {
     // failing single stages from parallel groups
     identifierOfSkipStages.clear();
     retryExecuteHelper.retryProcessedYaml(previousGoldenYaml, currentGoldenYaml, Collections.singletonList("stage9"),
-        identifierOfSkipStages, PipelineVersion.V0);
+        identifierOfSkipStages, HarnessYamlVersion.V0);
     assertThat(identifierOfSkipStages.size()).isEqualTo(8);
     assertThat(identifierOfSkipStages.get(0)).isEqualTo("stage1");
     assertThat(identifierOfSkipStages.get(1)).isEqualTo("stage2");
@@ -768,7 +780,7 @@ public class RetryExecuteHelperTest extends CategoryTest {
     // failing multiple stage failure in parallel group
     identifierOfSkipStages.clear();
     retryExecuteHelper.retryProcessedYaml(previousGoldenYaml, currentGoldenYaml, Arrays.asList("stage3", "stage5"),
-        identifierOfSkipStages, PipelineVersion.V0);
+        identifierOfSkipStages, HarnessYamlVersion.V0);
     assertThat(identifierOfSkipStages.size()).isEqualTo(3);
     assertThat(identifierOfSkipStages.get(0)).isEqualTo("stage1");
     assertThat(identifierOfSkipStages.get(1)).isEqualTo("stage2");
@@ -777,7 +789,7 @@ public class RetryExecuteHelperTest extends CategoryTest {
     // selecting all stages in parallel group
     identifierOfSkipStages.clear();
     retryExecuteHelper.retryProcessedYaml(previousGoldenYaml, currentGoldenYaml,
-        Arrays.asList("stage3", "stage4", "stage5"), identifierOfSkipStages, PipelineVersion.V0);
+        Arrays.asList("stage3", "stage4", "stage5"), identifierOfSkipStages, HarnessYamlVersion.V0);
     assertThat(identifierOfSkipStages.size()).isEqualTo(2);
     assertThat(identifierOfSkipStages.get(0)).isEqualTo("stage1");
     assertThat(identifierOfSkipStages.get(1)).isEqualTo("stage2");
@@ -842,7 +854,8 @@ public class RetryExecuteHelperTest extends CategoryTest {
     List<Node> identityPlanNodes =
         updatedNodes.stream().filter(o -> o instanceof IdentityPlanNode).collect(Collectors.toList());
     assertThat(updatedNodes.size()).isEqualTo(3);
-    assertThat(updatedNodes.get(1).getNodeType()).isEqualTo(NodeType.PLAN_NODE);
+    assertThat(updatedNodes.get(0).getNodeType()).isEqualTo(NodeType.PLAN_NODE);
+    assertThat(updatedNodes.get(2).getNodeType()).isEqualTo(NodeType.PLAN_NODE);
     assertEquals(identityPlanNodes.size(), 1);
     assertThat(((IdentityPlanNode) identityPlanNodes.get(0)).getOriginalNodeExecutionId()).isEqualTo("nodeUuid");
     assertThat(identityPlanNodes.get(0).getIdentifier()).isEqualTo("test");
@@ -865,7 +878,7 @@ public class RetryExecuteHelperTest extends CategoryTest {
                                                          .addLevels(Level.newBuilder().build())
                                                          .build())
                                            .stageFqn("pipeline.stages.stage3")
-                                           .planNode(planNode3)
+                                           .nodeId(planNode3.getUuid())
                                            .build()))
         .when(nodeExecutionService)
         .fetchStrategyNodeExecutions(any(), any());
@@ -968,7 +981,7 @@ public class RetryExecuteHelperTest extends CategoryTest {
                                              .addLevels(Level.newBuilder().build())
                                              .build())
                                .stageFqn("pipeline.stages.stage3")
-                               .planNode(planNode3)
+                               .nodeId(planNode3.getUuid())
                                .build(),
                  NodeExecution.builder()
                      .uuid("stepStrategyNodeExecutionUUID")
@@ -979,10 +992,13 @@ public class RetryExecuteHelperTest extends CategoryTest {
                                    .addLevels(Level.newBuilder().setGroup("STRATEGY").build())
                                    .build())
                      .stageFqn("pipeline.stages.stage3")
-                     .planNode(planNode4)
+                     .nodeId(planNode4.getUuid())
                      .build()))
         .when(nodeExecutionService)
         .fetchStrategyNodeExecutions(any(), any());
+    doReturn(Collections.singletonList("pipeline.stages.pip1"))
+        .when(nodeExecutionService)
+        .fetchStageFqnFromStageIdentifiers("abc", identifierOfSkipStages);
 
     Plan newPlan = retryExecuteHelper.transformPlan(
         Plan.builder().planNodes(Arrays.asList(planNode1, planNode2, planNode3, planNode4)).build(),
@@ -1035,12 +1051,14 @@ public class RetryExecuteHelperTest extends CategoryTest {
                                                          .startTs(10L)
                                                          .endTs(11L)
                                                          .status(ExecutionStatus.FAILED)
+                                                         .runSequence(1)
                                                          .build(),
         PipelineExecutionSummaryEntity.builder()
             .planExecutionId("uuid2")
             .startTs(20L)
             .endTs(21L)
             .status(ExecutionStatus.FAILED)
+            .runSequence(2)
             .build(),
         PipelineExecutionSummaryEntity.builder()
             .planExecutionId("uuid3")
@@ -1058,6 +1076,9 @@ public class RetryExecuteHelperTest extends CategoryTest {
     assertThat(retryHistory.getErrorMessage()).isNull();
     assertThat(retryHistory.getLatestExecutionId()).isEqualTo("uuid1");
     assertThat(retryHistory.getExecutionInfos().size()).isEqualTo(3);
+    assertThat(retryHistory.getExecutionInfos().get(0).getRunSequence()).isEqualTo(1);
+    assertThat(retryHistory.getExecutionInfos().get(1).getRunSequence()).isEqualTo(2);
+    assertThat(retryHistory.getExecutionInfos().get(2).getRunSequence()).isEqualTo(0);
   }
 
   @Test
@@ -1291,6 +1312,45 @@ public class RetryExecuteHelperTest extends CategoryTest {
     assertThat(retryInfo.isResumable()).isTrue();
   }
 
+  @Test
+  @Owner(developers = BRIJESH)
+  @Category(UnitTests.class)
+  public void testFetchOnlyFailedStagesFromPlanExecutionId() {
+    String planExecutionId = generateUuid();
+    doReturn(
+        List.of(RetryStageInfo.builder().identifier("stage1").status(ExecutionStatus.FAILED).nextId("nextId1").build(),
+            RetryStageInfo.builder().identifier("stage2").status(ExecutionStatus.SUCCESS).nextId("nextId1").build(),
+            RetryStageInfo.builder().identifier("stage3").status(ExecutionStatus.FAILED).nextId("nextId2").build(),
+            RetryStageInfo.builder().identifier("stage4").status(ExecutionStatus.FAILED).nextId("nextId2").build(),
+            RetryStageInfo.builder().identifier("stage5").status(ExecutionStatus.SUCCESS).nextId("nextId2").build(),
+            RetryStageInfo.builder().identifier("stage6").status(ExecutionStatus.SUCCESS).build(),
+            RetryStageInfo.builder().identifier("stage7").status(ExecutionStatus.SUCCESS).build()))
+        .when(nodeExecutionService)
+        .getStageDetailFromPlanExecutionId(planExecutionId);
+    List<String> failedStagesResponses =
+        retryExecuteHelper.fetchOnlyFailedStages(planExecutionId, List.of("stage1", "stage2"));
+    assertThat(failedStagesResponses.size()).isEqualTo(1);
+    assertThat(failedStagesResponses.get(0)).isEqualTo("stage1");
+
+    assertThatThrownBy(() -> retryExecuteHelper.fetchOnlyFailedStages(planExecutionId, List.of("stage1")))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage("Run only failed stages is applicable only for failed parallel group stages");
+
+    failedStagesResponses =
+        retryExecuteHelper.fetchOnlyFailedStages(planExecutionId, List.of("stage3", "stage4", "stage5"));
+    assertThat(failedStagesResponses.size()).isEqualTo(2);
+    assertThat(failedStagesResponses.contains("stage3")).isTrue();
+    assertThat(failedStagesResponses.contains("stage4")).isTrue();
+
+    assertThatThrownBy(() -> retryExecuteHelper.fetchOnlyFailedStages(planExecutionId, List.of("stage6", "stage7")))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage("No failed stage found in parallel group");
+
+    assertThatThrownBy(() -> retryExecuteHelper.fetchOnlyFailedStages(planExecutionId, List.of("stage8", "stage7")))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(
+            "The execution can not be retried because the retryStagesIdentifier could not be found in any stage Groups. Please provide the correct list of retryStagesIdentifier");
+  }
   private EntityGitDetails buildEntityGitDetails() {
     return EntityGitDetails.builder().branch(branch).repoName(repoName).filePath(filepath).build();
   }

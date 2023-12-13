@@ -16,7 +16,11 @@
     "lighthouse",
     "jenkins",
     "confluence",
-    "catalog"
+    "catalog",
+    "grafana",
+    "sonarqube",
+    "opsgenie",
+    "dynatrace"
   ],
   "properties": {
     "app": {
@@ -62,6 +66,22 @@
     "catalog": {
       "$id": "#root/catalog",
       "title": "Catalog"
+    },
+    "grafana": {
+      "$id": "#root/grafana",
+      "title": "Grafana"
+    },
+    "sonarqube": {
+      "$id": "#root/sonarqube",
+      "title": "Sonarqube"
+    },
+    "opsgenie": {
+      "$id": "#root/opsgenie",
+      "title": "OpsGenie"
+    },
+    "dynatrace": {
+      "$id": "#root/dynatrace",
+      "title": "Dynatrace"
     }
   }
 }

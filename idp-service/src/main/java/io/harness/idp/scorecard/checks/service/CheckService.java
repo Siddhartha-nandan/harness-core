@@ -8,20 +8,28 @@
 package io.harness.idp.scorecard.checks.service;
 
 import io.harness.idp.scorecard.checks.entity.CheckEntity;
+import io.harness.idp.scorecard.checks.entity.CheckStatusEntity;
 import io.harness.spec.server.idp.v1.model.CheckDetails;
-import io.harness.spec.server.idp.v1.model.CheckListItem;
+import io.harness.spec.server.idp.v1.model.CheckGraph;
+import io.harness.spec.server.idp.v1.model.CheckStatsResponse;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface CheckService {
   void createCheck(CheckDetails checkDetails, String accountIdentifier);
   void updateCheck(CheckDetails checkDetails, String accountIdentifier);
-  List<CheckListItem> getChecksByAccountId(
+  Page<CheckEntity> getChecksByAccountId(
       Boolean custom, String accountIdentifier, Pageable pageRequest, String searchTerm);
   List<CheckEntity> getActiveChecks(String accountIdentifier, List<String> checkIdentifiers);
   void deleteCustomCheck(String accountIdentifier, String identifier, boolean forceDelete);
   CheckDetails getCheckDetails(String accountIdentifier, String identifier, Boolean custom);
   List<CheckEntity> getChecksByAccountIdAndIdentifiers(String accountIdentifier, Set<String> identifiers);
+  CheckStatsResponse getCheckStats(String accountIdentifier, String identifier, Boolean custom);
+  List<CheckGraph> getCheckGraph(String accountIdentifier, String identifier, Boolean custom);
+  Map<String, CheckStatusEntity> getCheckStatusByAccountIdAndIdentifiers(
+      String accountIdentifier, List<String> identifiers);
 }

@@ -12,6 +12,7 @@ import static io.harness.app.STOManagerConfiguration.BASE_PACKAGE;
 import static io.harness.app.STOManagerConfiguration.NG_PIPELINE_PACKAGE;
 import static io.harness.authorization.AuthorizationServiceHeader.STO_MANAGER;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+import static io.harness.eventsframework.EventsFrameworkConstants.ENTITY_CRUD;
 import static io.harness.eventsframework.EventsFrameworkConstants.OBSERVER_EVENT_CHANNEL;
 import static io.harness.eventsframework.EventsFrameworkConstants.STO_ORCHESTRATION_NOTIFY_EVENT;
 import static io.harness.logging.LoggingInitializer.initializeLogging;
@@ -28,13 +29,15 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.app.telemetry.STOTelemetryRecordsJob;
 import io.harness.authorization.AuthorizationServiceHeader;
 import io.harness.cache.CacheModule;
-import io.harness.ci.execution.ObserverEventConsumer;
-import io.harness.ci.execution.OrchestrationExecutionEventHandlerRegistrar;
+import io.harness.ci.execution.AccountEventConsumer;
+import io.harness.ci.execution.execution.ObserverEventConsumer;
+import io.harness.ci.execution.execution.OrchestrationExecutionEventHandlerRegistrar;
+import io.harness.ci.execution.plan.creator.CIModuleInfoProvider;
+import io.harness.ci.execution.plan.creator.filter.CIFilterCreationResponseMerger;
 import io.harness.ci.execution.queue.CIExecutionPoller;
-import io.harness.ci.plan.creator.CIModuleInfoProvider;
-import io.harness.ci.plan.creator.filter.CIFilterCreationResponseMerger;
+import io.harness.ci.execution.serializer.CiExecutionRegistrars;
+import io.harness.ci.plugin.PluginMetadataRecordsJob;
 import io.harness.ci.registrars.ExecutionAdvisers;
-import io.harness.ci.serializer.CiExecutionRegistrars;
 import io.harness.delegate.beans.DelegateAsyncTaskResponse;
 import io.harness.delegate.beans.DelegateSyncTaskResponse;
 import io.harness.delegate.beans.DelegateTaskProgressResponse;
@@ -58,7 +61,6 @@ import io.harness.persistence.HPersistence;
 import io.harness.persistence.NoopUserProvider;
 import io.harness.persistence.UserProvider;
 import io.harness.persistence.store.Store;
-import io.harness.plugin.PluginMetadataRecordsJob;
 import io.harness.pms.contracts.plan.JsonExpansionInfo;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.events.base.PipelineEventConsumerController;
@@ -70,12 +72,18 @@ import io.harness.pms.sdk.core.SdkDeployMode;
 import io.harness.pms.sdk.core.governance.JsonExpansionHandlerInfo;
 import io.harness.pms.sdk.core.steps.Step;
 import io.harness.pms.sdk.execution.events.facilitators.FacilitatorEventRedisConsumer;
+import io.harness.pms.sdk.execution.events.facilitators.FacilitatorEventRedisConsumerV2;
 import io.harness.pms.sdk.execution.events.interrupts.InterruptEventRedisConsumer;
+import io.harness.pms.sdk.execution.events.interrupts.InterruptEventRedisConsumerV2;
 import io.harness.pms.sdk.execution.events.node.advise.NodeAdviseEventRedisConsumer;
+import io.harness.pms.sdk.execution.events.node.advise.NodeAdviseRedisConsumerV2;
+import io.harness.pms.sdk.execution.events.node.resume.NodeResumeEventConsumerV2;
 import io.harness.pms.sdk.execution.events.node.resume.NodeResumeEventRedisConsumer;
 import io.harness.pms.sdk.execution.events.node.start.NodeStartEventRedisConsumer;
+import io.harness.pms.sdk.execution.events.node.start.NodeStartEventRedisConsumerV2;
 import io.harness.pms.sdk.execution.events.orchestrationevent.OrchestrationEventRedisConsumer;
 import io.harness.pms.sdk.execution.events.plan.CreatePartialPlanRedisConsumer;
+import io.harness.pms.sdk.execution.events.progress.NodeProgressEventRedisConsumerV2;
 import io.harness.pms.sdk.execution.events.progress.ProgressEventRedisConsumer;
 import io.harness.pms.serializer.json.PmsBeansJacksonModule;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
@@ -96,6 +104,8 @@ import io.harness.serializer.YamlBeansModuleRegistrars;
 import io.harness.service.impl.DelegateAsyncServiceImpl;
 import io.harness.service.impl.DelegateProgressServiceImpl;
 import io.harness.service.impl.DelegateSyncServiceImpl;
+import io.harness.sto.event.STOAccountEntityListener;
+import io.harness.sto.event.STODataDeleteJob;
 import io.harness.sto.execution.STONotifyEventConsumerRedis;
 import io.harness.sto.execution.STONotifyEventPublisher;
 import io.harness.sto.plan.creator.STOPipelineServiceInfoProvider;
@@ -218,6 +228,7 @@ public class STOManagerApplication extends Application<CIManagerConfiguration> {
       @Singleton
       Set<Class<? extends MorphiaRegistrar>> morphiaRegistrars() {
         return ImmutableSet.<Class<? extends MorphiaRegistrar>>builder()
+            .addAll(StoBeansRegistrars.morphiaRegistrars)
             .addAll(CiExecutionRegistrars.morphiaRegistrars)
             .addAll(PrimaryVersionManagerRegistrars.morphiaRegistrars)
             .build();
@@ -281,7 +292,7 @@ public class STOManagerApplication extends Application<CIManagerConfiguration> {
     String mongoUri = STOManagerConfiguration.getHarnessSTOMongo(configuration.getHarnessCIMongo()).getUri();
     modules.add(new CIManagerServiceModule(configuration,
         new CIManagerConfigurationOverride(STO_MANAGER, "sto", false, false, mongoUri, STO_ORCHESTRATION_NOTIFY_EVENT,
-            STOLicenseNoopServiceImpl.class)));
+            STOLicenseNoopServiceImpl.class, STOAccountEntityListener.class)));
     modules.add(new STOManagerServiceModule());
 
     modules.add(new AbstractModule() {
@@ -333,6 +344,7 @@ public class STOManagerApplication extends Application<CIManagerConfiguration> {
 
     initializeSTOUsageMonitoring(configuration, injector);
 
+    initializeSTOManagerDataDeletion(injector);
     initializePluginPublisher(injector);
     registerEventConsumers(injector);
     registerOasResource(configuration, environment, injector);
@@ -354,6 +366,9 @@ public class STOManagerApplication extends Application<CIManagerConfiguration> {
     final ExecutorService observerEventConsumerExecutor =
         Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat(OBSERVER_EVENT_CHANNEL).build());
     observerEventConsumerExecutor.execute(injector.getInstance(ObserverEventConsumer.class));
+    final ExecutorService accountEventConsumerExecutor =
+        Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat(ENTITY_CRUD).build());
+    accountEventConsumerExecutor.execute(injector.getInstance(AccountEventConsumer.class));
   }
 
   private void registerOasResource(CIManagerConfiguration appConfig, Environment environment, Injector injector) {
@@ -419,6 +434,7 @@ public class STOManagerApplication extends Application<CIManagerConfiguration> {
     }
 
     return PmsSdkConfiguration.builder()
+        .streamPerServiceConfiguration(config.isStreamPerServiceConfiguration())
         .deploymentMode(remote ? SdkDeployMode.REMOTE : SdkDeployMode.LOCAL)
         .moduleType(moduleType)
         .pipelineServiceInfoProviderClass(pipelineServiceInfoProviderClass)
@@ -483,14 +499,23 @@ public class STOManagerApplication extends Application<CIManagerConfiguration> {
     log.info("Initializing redis abstract consumers...");
     PipelineEventConsumerController pipelineEventConsumerController =
         injector.getInstance(PipelineEventConsumerController.class);
-    pipelineEventConsumerController.register(injector.getInstance(InterruptEventRedisConsumer.class), 1);
     pipelineEventConsumerController.register(injector.getInstance(OrchestrationEventRedisConsumer.class), 1);
+
+    pipelineEventConsumerController.register(injector.getInstance(InterruptEventRedisConsumer.class), 1);
     pipelineEventConsumerController.register(injector.getInstance(FacilitatorEventRedisConsumer.class), 1);
     pipelineEventConsumerController.register(injector.getInstance(NodeStartEventRedisConsumer.class), 2);
     pipelineEventConsumerController.register(injector.getInstance(ProgressEventRedisConsumer.class), 1);
     pipelineEventConsumerController.register(injector.getInstance(NodeAdviseEventRedisConsumer.class), 2);
     pipelineEventConsumerController.register(injector.getInstance(NodeResumeEventRedisConsumer.class), 2);
     pipelineEventConsumerController.register(injector.getInstance(CreatePartialPlanRedisConsumer.class), 2);
+
+    pipelineEventConsumerController.register(injector.getInstance(InterruptEventRedisConsumerV2.class), 1);
+    pipelineEventConsumerController.register(injector.getInstance(FacilitatorEventRedisConsumerV2.class), 1);
+    pipelineEventConsumerController.register(injector.getInstance(NodeStartEventRedisConsumerV2.class), 2);
+    pipelineEventConsumerController.register(injector.getInstance(NodeProgressEventRedisConsumerV2.class), 1);
+    pipelineEventConsumerController.register(injector.getInstance(NodeAdviseRedisConsumerV2.class), 2);
+    pipelineEventConsumerController.register(injector.getInstance(NodeResumeEventConsumerV2.class), 2);
+
     pipelineEventConsumerController.register(injector.getInstance(STONotifyEventConsumerRedis.class), 15);
   }
 
@@ -566,6 +591,10 @@ public class STOManagerApplication extends Application<CIManagerConfiguration> {
                                                     .requireValidatorInit(false)
                                                     .build();
     YamlSdkInitHelper.initialize(injector, yamlSdkConfiguration);
+  }
+
+  private void initializeSTOManagerDataDeletion(Injector injector) {
+    injector.getInstance(STODataDeleteJob.class).scheduleTasks();
   }
 
   private void initializePluginPublisher(Injector injector) {

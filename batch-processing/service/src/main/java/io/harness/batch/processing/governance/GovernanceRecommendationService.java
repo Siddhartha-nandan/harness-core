@@ -10,6 +10,7 @@ package io.harness.batch.processing.governance;
 import static io.harness.ccm.views.entities.ViewFieldIdentifier.AWS;
 import static io.harness.ccm.views.entities.ViewFieldIdentifier.AZURE;
 import static io.harness.ccm.views.entities.ViewFieldIdentifier.COMMON;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
 import io.harness.batch.processing.cloudevents.aws.ecs.service.support.intfc.AwsEC2HelperService;
 import io.harness.batch.processing.cloudevents.aws.ecs.service.tasklet.support.ng.NGConnectorHelper;
@@ -53,7 +54,6 @@ import io.harness.delegate.beans.connector.ceazure.CEAzureConnectorDTO;
 import software.wings.beans.AwsCrossAccountAttributes;
 
 import com.google.inject.Singleton;
-import io.fabric8.utils.Lists;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -92,8 +92,12 @@ public class GovernanceRecommendationService {
     // get all ce enabled accounts
     List<String> getAccounts = accountShardService.getCeEnabledAccountIds();
     for (String account : getAccounts) {
-      log.info("generateRecommendationForAccount: {}", account);
-      generateRecommendationForAccount(account, ceEnabledConnectorType);
+      try {
+        log.info("generateRecommendationForAccount: {}", account);
+        generateRecommendationForAccount(account, ceEnabledConnectorType);
+      } catch (Exception e) {
+        log.error("Exception while generating governance recommendations for {}", account, e);
+      }
     }
   }
 
@@ -155,8 +159,13 @@ public class GovernanceRecommendationService {
 
     // get top regions
     List<String> regions = new ArrayList<>();
-    List<QLCEViewEntityStatsDataPoint> accountNames =
-        getAccountNames(accountId, cloudProviderIdentifiers, fieldId, fieldName, identifier, identifierName);
+    List<QLCEViewEntityStatsDataPoint> accountNames = new ArrayList<>();
+    try {
+      accountNames =
+          getAccountNames(accountId, cloudProviderIdentifiers, fieldId, fieldName, identifier, identifierName);
+    } catch (Exception e) {
+      log.error("Error which fetching accounts for governance recommendation for {}", accountId, e);
+    }
     // filter out final list of rolearn,externalId etc based on top accounts
     List<RecommendationAdhocDTO> recommendationAdhocDTOListFinal = new ArrayList<>();
     if (!accountNames.isEmpty()) {
@@ -172,9 +181,14 @@ public class GovernanceRecommendationService {
           ruleCloudProviderType.name(), cloudProviderIdentifiersFinal);
 
       if (ruleCloudProviderType == RuleCloudProviderType.AWS) {
-        List<QLCEViewEntityStatsDataPoint> regionsFromPerspective =
-            getTopRegions(accountId, cloudProviderIdentifiersFinal, fieldId, fieldName, identifier);
-        regions = regionsFromPerspective.stream().map(QLCEViewEntityStatsDataPoint::getId).collect(Collectors.toList());
+        try {
+          List<QLCEViewEntityStatsDataPoint> regionsFromPerspective =
+              getTopRegions(accountId, cloudProviderIdentifiersFinal, fieldId, fieldName, identifier);
+          regions =
+              regionsFromPerspective.stream().map(QLCEViewEntityStatsDataPoint::getId).collect(Collectors.toList());
+        } catch (Exception e) {
+          log.error("Error which fetching top regions for governance recommendation for {}", accountId, e);
+        }
       }
     } else {
       log.info("Failed to get account and regions from perspective {} ", accountId);
@@ -189,12 +203,13 @@ public class GovernanceRecommendationService {
   void enqueueRecommendationForAccount(List<RecommendationAdhocDTO> recommendationAdhocDTOListFinal, Set<Rule> ruleList,
       List<String> regions, String accountId, RuleCloudProviderType ruleCloudProviderType) {
     for (RecommendationAdhocDTO recommendationAdhoc : recommendationAdhocDTOListFinal) {
-      if (Lists.isNullOrEmpty(regions)) {
+      if (isEmpty(regions)) {
         if (ruleCloudProviderType == RuleCloudProviderType.AWS) {
           regions = awsEC2HelperService.listRegions(AwsCrossAccountAttributes.builder()
                                                         .crossAccountRoleArn(recommendationAdhoc.getRoleInfo())
                                                         .externalId(recommendationAdhoc.getRoleId())
-                                                        .build());
+                                                        .build(),
+              configuration.getCeAwsServiceEndpointConfig());
         } else if (ruleCloudProviderType == RuleCloudProviderType.AZURE) {
           regions = azureHelperService.getValidRegions(accountId, recommendationAdhoc);
           log.info("Regions for running azure policy : {}", regions);

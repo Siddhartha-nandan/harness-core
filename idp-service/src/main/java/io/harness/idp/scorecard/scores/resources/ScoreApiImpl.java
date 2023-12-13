@@ -10,19 +10,28 @@ package io.harness.idp.scorecard.scores.resources;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.eraro.ResponseMessage;
+import io.harness.idp.scorecard.scores.service.AsyncScoreComputationService;
 import io.harness.idp.scorecard.scores.service.ScoreService;
 import io.harness.security.annotations.NextGenManagerAuth;
 import io.harness.spec.server.idp.v1.ScoresApi;
+import io.harness.spec.server.idp.v1.model.EntityScores;
+import io.harness.spec.server.idp.v1.model.EntityScoresResponse;
+import io.harness.spec.server.idp.v1.model.ScorecardFilter;
 import io.harness.spec.server.idp.v1.model.ScorecardGraphSummaryInfo;
 import io.harness.spec.server.idp.v1.model.ScorecardGraphSummaryInfoResponse;
+import io.harness.spec.server.idp.v1.model.ScorecardRecalibrateIdentifiers;
+import io.harness.spec.server.idp.v1.model.ScorecardRecalibrateInfo;
+import io.harness.spec.server.idp.v1.model.ScorecardRecalibrateRequest;
 import io.harness.spec.server.idp.v1.model.ScorecardRecalibrateResponse;
+import io.harness.spec.server.idp.v1.model.ScorecardRecalibrateResponseV2;
 import io.harness.spec.server.idp.v1.model.ScorecardScore;
 import io.harness.spec.server.idp.v1.model.ScorecardScoreResponse;
 import io.harness.spec.server.idp.v1.model.ScorecardSummaryInfo;
 import io.harness.spec.server.idp.v1.model.ScorecardSummaryResponse;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
+import javax.validation.Valid;
 import javax.ws.rs.core.Response;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +42,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ScoreApiImpl implements ScoresApi {
   private ScoreService scoreService;
+  private AsyncScoreComputationService asyncScoreComputationService;
+
   @Override
   public Response getAllScorecardSummary(String entityIdentifier, String harnessAccount) {
     try {
@@ -42,8 +53,8 @@ public class ScoreApiImpl implements ScoresApi {
       scorecardSummaryResponse.setScorecardsSummary(scorecardSummaryInfoList);
       return Response.status(Response.Status.OK).entity(scorecardSummaryResponse).build();
     } catch (Exception e) {
-      log.error("Error in getting score summary for scorecards details for account - {} and entity - {}",
-          harnessAccount, entityIdentifier);
+      log.error("Error in getting score summary for scorecards details for account - {} and entity - {},  error = {}",
+          harnessAccount, entityIdentifier, e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(ResponseMessage.builder().message(e.getMessage()).build())
           .build();
@@ -51,20 +62,20 @@ public class ScoreApiImpl implements ScoresApi {
   }
 
   @Override
-  public Response getRecalibratedScoreForScorecard(
-      String entityIdentifier, String scorecardIdentifier, String harnessAccount) {
+  public Response scorecardRecalibrate(
+      @Valid ScorecardRecalibrateRequest scorecardRecalibrateRequest, String harnessAccount) {
     try {
-      scoreService.computeScores(
-          harnessAccount, Collections.singletonList(scorecardIdentifier), Collections.singletonList(entityIdentifier));
       ScorecardSummaryInfo scorecardSummaryInfo = scoreService.getScorecardRecalibratedScoreInfoForAnEntityAndScorecard(
-          harnessAccount, entityIdentifier, scorecardIdentifier);
+          harnessAccount, scorecardRecalibrateRequest.getIdentifiers().getEntityIdentifier(),
+          scorecardRecalibrateRequest.getIdentifiers().getScorecardIdentifier());
       ScorecardRecalibrateResponse scorecardRecalibrateResponse = new ScorecardRecalibrateResponse();
       scorecardRecalibrateResponse.setRecalibratedScores(scorecardSummaryInfo);
       return Response.status(Response.Status.OK).entity(scorecardRecalibrateResponse).build();
     } catch (Exception e) {
       log.error(
           "Error in getting recalibrated score for scorecards details for account - {},  entity - {} and scorecard - {}, error = {}",
-          harnessAccount, entityIdentifier, scorecardIdentifier, e.getMessage(), e);
+          harnessAccount, scorecardRecalibrateRequest.getIdentifiers().getEntityIdentifier(),
+          scorecardRecalibrateRequest.getIdentifiers().getScorecardIdentifier(), e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(ResponseMessage.builder().message(e.getMessage()).build())
           .build();
@@ -83,8 +94,8 @@ public class ScoreApiImpl implements ScoresApi {
       return Response.status(Response.Status.OK).entity(scorecardGraphSummaryInfoResponse).build();
     } catch (Exception e) {
       log.error(
-          "Error in getting score graph summary for scorecards details for account - {},  entity - {} and scorecard - {}",
-          harnessAccount, entityIdentifier, scorecardIdentifier);
+          "Error in getting score graph summary for scorecards details for account - {},  entity - {} and scorecard - {},  error = {}",
+          harnessAccount, entityIdentifier, scorecardIdentifier, e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(ResponseMessage.builder().message(e.getMessage()).build())
           .build();
@@ -102,13 +113,48 @@ public class ScoreApiImpl implements ScoresApi {
         overallScore = overallScore + scorecardScore.getScore();
       }
       scorecardScoreResponse.setScorecardScores(scorecardScores);
-      if (scorecardScores.size() > 0) {
+      if (!scorecardScores.isEmpty()) {
         scorecardScoreResponse.setOverallScore(overallScore / scorecardScores.size());
       }
       return Response.status(Response.Status.OK).entity(scorecardScoreResponse).build();
     } catch (Exception e) {
-      log.error("Error in getting scores overview for scorecards details for account - {},  entity - {} }",
-          harnessAccount, entityIdentifier);
+      log.error("Error in getting scores overview for scorecards details for account - {},  entity - {} ,  error = {}",
+          harnessAccount, entityIdentifier, e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(ResponseMessage.builder().message(e.getMessage()).build())
+          .build();
+    }
+  }
+
+  @Override
+  public Response getScoresRecalibrateStatus(@Valid ScorecardRecalibrateRequest body, String harnessAccount) {
+    ScorecardRecalibrateIdentifiers identifiers = body.getIdentifiers();
+    String scorecardIdentifier = identifiers.getScorecardIdentifier();
+    String entityIdentifier = identifiers.getEntityIdentifier();
+    try {
+      ScorecardRecalibrateInfo recalibrateInfo =
+          asyncScoreComputationService.getRecalibrateInfo(harnessAccount, scorecardIdentifier, entityIdentifier);
+      ScorecardRecalibrateResponseV2 responseV2 = new ScorecardRecalibrateResponseV2();
+      responseV2.setInfo(recalibrateInfo);
+      return Response.status(Response.Status.OK).entity(responseV2).build();
+    } catch (Exception e) {
+      log.error("Error in getting recalibrate status for account - {}, scorecard - {}, entity - {},  error = {}",
+          harnessAccount, scorecardIdentifier, entityIdentifier, e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(ResponseMessage.builder().message(e.getMessage()).build())
+          .build();
+    }
+  }
+
+  @Override
+  public Response getAggregatedScores(@Valid ScorecardFilter body, String harnessAccount) {
+    try {
+      List<EntityScores> entityScores = scoreService.getEntityScores(harnessAccount, body);
+      List<EntityScoresResponse> entityScoresResponse = new ArrayList<>();
+      entityScores.forEach(entityScore -> entityScoresResponse.add(new EntityScoresResponse().entity(entityScore)));
+      return Response.status(Response.Status.OK).entity(entityScoresResponse).build();
+    } catch (Exception e) {
+      log.error("Error in getting entity scores for account - {},  error = {}", harnessAccount, e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(ResponseMessage.builder().message(e.getMessage()).build())
           .build();

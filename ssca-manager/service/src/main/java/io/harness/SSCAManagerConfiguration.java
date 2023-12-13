@@ -13,9 +13,18 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.cache.CacheConfig;
+import io.harness.cf.CfClientConfig;
+import io.harness.changestreams.DebeziumConsumerConfig;
+import io.harness.eventsframework.EventsFrameworkConfiguration;
+import io.harness.ff.FeatureFlagConfig;
+import io.harness.lock.DistributedLockImplementation;
 import io.harness.mongo.MongoConfig;
+import io.harness.redis.RedisConfig;
 import io.harness.reflection.HarnessReflections;
 import io.harness.remote.client.ServiceHttpClientConfig;
+import io.harness.ssca.S3Config;
+import io.harness.ssca.beans.ElasticSearchConfig;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -64,8 +73,24 @@ public class SSCAManagerConfiguration extends Configuration {
   @JsonProperty("jwtAuthSecret") private String jwtAuthSecret;
   @JsonProperty("jwtIdentityServiceSecret") private String jwtIdentityServiceSecret;
   @JsonProperty(value = "enableAuth", defaultValue = "true") private boolean authEnabled;
+  @JsonProperty(value = "eventsFramework") private EventsFrameworkConfiguration eventsFrameworkConfiguration;
+  @JsonProperty("distributedLockImplementation") private DistributedLockImplementation distributedLockImplementation;
+  @JsonProperty("redisLockConfig") private RedisConfig redisLockConfig;
+  @JsonProperty("debeziumConsumerConfigs") DebeziumConsumerConfig debeziumConsumerConfigs;
+  @JsonProperty("cacheConfig") CacheConfig cacheConfig;
   @JsonProperty("hostname") String hostname = "localhost";
   @JsonProperty("basePathPrefix") String basePathPrefix = "";
+  @JsonProperty("pipelineServiceClientConfig") private ServiceHttpClientConfig pipelineServiceConfiguration;
+  @JsonProperty("pipelineServiceSecret") private String pipelineServiceSecret;
+  @JsonProperty("exportMetricsToStackDriver") boolean exportMetricsToStackDriver;
+  @JsonProperty("enableElasticsearch") boolean enableElasticsearch;
+  @JsonProperty("elasticsearch") ElasticSearchConfig elasticSearchConfig;
+  @JsonProperty("s3Config") S3Config s3Config;
+  @JsonProperty("policyMgmtServiceClientConfig") private ServiceHttpClientConfig policyMgmtServiceConfiguration;
+  @JsonProperty("policyMgmtServiceSecret") private String policyMgmtServiceSecret;
+  @JsonProperty("cfClientConfig") private CfClientConfig cfClientConfig;
+  @JsonProperty("featureFlagConfig") private FeatureFlagConfig featureFlagConfig;
+  @JsonProperty("managerClientConfig") private ServiceHttpClientConfig managerClientConfig;
 
   public SwaggerBundleConfiguration getSwaggerBundleConfiguration() {
     SwaggerBundleConfiguration defaultSwaggerBundleConfiguration = new SwaggerBundleConfiguration();

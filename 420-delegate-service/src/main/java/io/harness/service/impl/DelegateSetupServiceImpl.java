@@ -102,6 +102,7 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
   @Inject private DelegateDao delegateDao;
   @Inject private FilterService filterService;
   @Inject private OutboxService outboxService;
+  @Inject private DelegateRbacHelper delegateRbacHelper;
 
   @Inject private VersionInfoManager versionInfoManager;
 
@@ -111,6 +112,9 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
 
   private static final long AUTO_UPGRADE_CHECK_TIME_IN_MINUTES = 90;
 
+  // TODO: remove after resolving PL-40073
+  private static final String ACCOUNTID_FOR_DEBUG = "pitvBmtSMKNZU3gANq01Q";
+
   @Override
   public long getDelegateGroupCount(
       final String accountId, @Nullable final String orgId, @Nullable final String projectId) {
@@ -118,17 +122,19 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
   }
 
   @Override
-  public DelegateGroupListing listDelegateGroupDetails(String accountId, String orgId, String projectId) {
+  public DelegateGroupListing listDelegateGroupDetails(
+      String accountId, String orgId, String projectId, boolean applyRbacFilter) {
     final List<DelegateGroupDetails> delegateGroupDetails =
-        getDelegateGroupDetails(accountId, orgId, projectId, false, null);
+        getDelegateGroupDetails(accountId, orgId, projectId, false, null, applyRbacFilter);
 
     return DelegateGroupListing.builder().delegateGroupDetails(delegateGroupDetails).build();
   }
 
   @Override
-  public DelegateGroupListing listDelegateGroupDetailsUpTheHierarchy(String accountId, String orgId, String projectId) {
+  public DelegateGroupListing listDelegateGroupDetailsUpTheHierarchy(
+      String accountId, String orgId, String projectId, boolean applyRbacFilter) {
     final List<DelegateGroupDetails> delegateGroupDetails =
-        getDelegateGroupDetails(accountId, orgId, projectId, true, null);
+        getDelegateGroupDetails(accountId, orgId, projectId, true, null, applyRbacFilter);
 
     return DelegateGroupListing.builder().delegateGroupDetails(delegateGroupDetails).build();
   }
@@ -339,6 +345,11 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
                                            .filter(DelegateKeys.uuid, delegateGroupId);
 
     UpdateOperations<DelegateGroup> updateOperations = persistence.createUpdateOperations(DelegateGroup.class);
+    // TODO: remove after resolving PL-40073
+    if (ACCOUNTID_FOR_DEBUG.equals(accountId) && isNotEmpty(delegateGroupDetails.getGroupCustomSelectors())) {
+      log.info("Following tags registering for delegate group id {} ,with custom selectors as {}", delegateGroupId,
+          delegateGroupDetails.getGroupCustomSelectors());
+    }
     setUnset(updateOperations, DelegateGroupKeys.tags, delegateGroupDetails.getGroupCustomSelectors());
 
     DelegateGroup updatedDelegateGroup =
@@ -358,6 +369,13 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
                                            .filter(DelegateGroupKeys.identifier, identifier);
 
     UpdateOperations<DelegateGroup> updateOperations = persistence.createUpdateOperations(DelegateGroup.class);
+
+    // TODO: remove after resolving PL-40073
+    if (ACCOUNTID_FOR_DEBUG.equals(accountId) && isNotEmpty(delegateGroupDetails.getGroupCustomSelectors())) {
+      log.info(
+          "updateDelegateGroup: Following tags registering for delegate group identifier {} ,with custom selectors as {}",
+          identifier, delegateGroupDetails.getGroupCustomSelectors());
+    }
     setUnset(updateOperations, DelegateGroupKeys.tags, delegateGroupDetails.getGroupCustomSelectors());
 
     DelegateGroup updatedDelegateGroup =
@@ -368,10 +386,19 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
   }
 
   private List<DelegateGroupDetails> getDelegateGroupDetails(final String accountId, final String orgId,
-      final String projectId, final boolean upTheHierarchy, String delegateTokenName) {
+      final String projectId, final boolean upTheHierarchy, String delegateTokenName, boolean applyRbacFilter) {
     final Query<DelegateGroup> query = createDelegateGroupsQuery(accountId, orgId, projectId, upTheHierarchy);
 
-    final List<String> delegateGroupIds = query.asKeyList().stream().map(key -> (String) key.getId()).collect(toList());
+    List<String> delegateGroupIds = query.asKeyList().stream().map(key -> (String) key.getId()).collect(toList());
+
+    if (applyRbacFilter) {
+      delegateGroupIds =
+          delegateRbacHelper.getViewPermittedDelegateGroupIds(delegateGroupIds, accountId, orgId, projectId);
+    }
+
+    if (null == delegateGroupIds) {
+      return null;
+    }
 
     Query<Delegate> delegateQuery = persistence.createQuery(Delegate.class)
                                         .filter(DelegateKeys.accountId, accountId)
@@ -521,8 +548,8 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
 
   @Override
   public DelegateGroupListing listDelegateGroupDetailsV2(String accountId, String orgId, String projectId,
-      String filterIdentifier, String searchTerm, DelegateFilterPropertiesDTO filterProperties,
-      PageRequest pageRequest) {
+      String filterIdentifier, String searchTerm, DelegateFilterPropertiesDTO filterProperties, PageRequest pageRequest,
+      boolean applyRbacFilter) {
     if (isNotEmpty(filterIdentifier) && filterProperties != null) {
       throw new InvalidRequestException("Can not apply both filter properties and saved filter together");
     }
@@ -533,6 +560,14 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
     }
 
     List<String> delegateGroupIds = getDelegateGroupIds(accountId, orgId, projectId, filterProperties, searchTerm);
+    if (applyRbacFilter) {
+      delegateGroupIds =
+          delegateRbacHelper.getViewPermittedDelegateGroupIds(delegateGroupIds, accountId, orgId, projectId);
+    }
+
+    if (null == delegateGroupIds) {
+      return null;
+    }
 
     List<Delegate> delegateList = getFilteredDelegateList(accountId, filterProperties, delegateGroupIds);
 
@@ -737,9 +772,10 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
 
   @Override
   public DelegateGroupListing listDelegateGroupDetails(
-      String accountId, String orgId, String projectId, String delegateTokenName) {
+      String accountId, String orgId, String projectId, String delegateTokenName, boolean applyRbacFilter) {
     return DelegateGroupListing.builder()
-        .delegateGroupDetails(getDelegateGroupDetails(accountId, orgId, projectId, false, delegateTokenName))
+        .delegateGroupDetails(
+            getDelegateGroupDetails(accountId, orgId, projectId, false, delegateTokenName, applyRbacFilter))
         .build();
   }
 
@@ -783,7 +819,17 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
       }
 
       if (isNotEmpty(filterProperties.getDelegateTags())) {
-        delegateGroupQuery.field(DelegateGroupKeys.tags).hasAllOf(filterProperties.getDelegateTags());
+        List<DelegateGroup> delegateGroups =
+            delegateGroupQuery.field(DelegateGroupKeys.status).notEqual(DelegateGroupStatus.DELETED).asList();
+
+        // Add implicit selector/tag of group-name then filter by tag. This is because tag we store in database doesn't
+        // contain implicit tag of delegate-name
+        delegateGroups.forEach(delegateGroup -> delegateGroup.getTags().add(delegateGroup.getName().toLowerCase()));
+
+        return delegateGroups.stream()
+            .filter(delegateGroup -> delegateGroup.getTags().containsAll(filterProperties.getDelegateTags()))
+            .map(DelegateGroup::getUuid)
+            .collect(toList());
       }
     }
     return delegateGroupQuery.field(DelegateGroupKeys.status)
@@ -808,6 +854,14 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
                                            .filter(DelegateGroupKeys.ng, true);
 
     final UpdateOperations<DelegateGroup> updateOperations = persistence.createUpdateOperations(DelegateGroup.class);
+
+    // TODO: remove after resolving PL-40073
+    if (ACCOUNTID_FOR_DEBUG.equals(accountId) && isNotEmpty(tags)) {
+      log.info(
+          "updateDelegateGroupTags_old: Following tags registering for delegate group name {} ,with selectors as {}",
+          delegateGroupName, tags);
+    }
+
     setUnset(updateOperations, DelegateGroupKeys.tags, tags);
 
     DelegateGroup updatedDelegateGroup =
@@ -874,6 +928,12 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
                                              .filter(DelegateGroupKeys.ng, true);
 
       final UpdateOperations<DelegateGroup> updateOperations = persistence.createUpdateOperations(DelegateGroup.class);
+      // TODO: remove after resolving PL-40073
+      if (ACCOUNTID_FOR_DEBUG.equals(accountIdentifier) && isNotEmpty(delegateGroupTags.getTags())) {
+        log.info("updateDelegateGroupTags: Following tags registering for delegate group id {} ,with selectors as {}",
+            groupIdentifier, delegateGroupTags.getTags());
+      }
+
       setUnset(updateOperations, DelegateGroupKeys.tags, delegateGroupTags.getTags());
 
       DelegateGroup updatedDelegateGroup =

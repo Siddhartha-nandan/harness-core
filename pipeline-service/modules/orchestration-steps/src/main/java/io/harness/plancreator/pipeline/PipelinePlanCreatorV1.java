@@ -7,11 +7,18 @@
 
 package io.harness.plancreator.pipeline;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.pms.contracts.facilitators.FacilitatorObtainment;
 import io.harness.pms.contracts.facilitators.FacilitatorType;
+import io.harness.pms.contracts.plan.Dependency;
+import io.harness.pms.contracts.plan.HarnessStruct;
+import io.harness.pms.contracts.plan.HarnessValue;
 import io.harness.pms.execution.OrchestrationFacilitatorType;
+import io.harness.pms.plan.creation.PlanCreatorConstants;
 import io.harness.pms.plan.creation.PlanCreatorUtils;
 import io.harness.pms.sdk.core.plan.PlanNode;
 import io.harness.pms.sdk.core.plan.PlanNode.PlanNodeBuilder;
@@ -21,7 +28,7 @@ import io.harness.pms.sdk.core.plan.creation.creators.ChildrenPlanCreator;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
 import io.harness.pms.sdk.core.steps.io.StepParameters;
 import io.harness.pms.yaml.DependenciesUtils;
-import io.harness.pms.yaml.PipelineVersion;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
 import io.harness.steps.common.pipeline.PipelineSetupStep;
@@ -35,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(HarnessTeam.PIPELINE)
 public class PipelinePlanCreatorV1 extends ChildrenPlanCreator<YamlField> {
   @Override
@@ -47,14 +55,23 @@ public class PipelinePlanCreatorV1 extends ChildrenPlanCreator<YamlField> {
       PlanCreationContext ctx, YamlField config) {
     LinkedHashMap<String, PlanCreationResponse> responseMap = new LinkedHashMap<>();
     Map<String, YamlField> dependencies = new HashMap<>();
-    YamlField stagesYamlNode = Preconditions.checkNotNull(config.getNode().getField("stages"));
-    if (stagesYamlNode.getNode() == null) {
+    YamlField specNode = Preconditions.checkNotNull(config.getNode().getField(YAMLFieldNameConstants.SPEC));
+    if (specNode.getNode() == null) {
       return responseMap;
     }
-
-    dependencies.put(stagesYamlNode.getNode().getUuid(), stagesYamlNode);
-    responseMap.put(stagesYamlNode.getNode().getUuid(),
-        PlanCreationResponse.builder().dependencies(DependenciesUtils.toDependenciesProto(dependencies)).build());
+    dependencies.put(specNode.getNode().getUuid(), specNode);
+    responseMap.put(specNode.getNode().getUuid(),
+        PlanCreationResponse.builder()
+            .dependencies(DependenciesUtils.toDependenciesProto(dependencies)
+                              .toBuilder()
+                              .putDependencyMetadata(specNode.getUuid(),
+                                  Dependency.newBuilder()
+                                      .setNodeMetadata(
+                                          HarnessStruct.newBuilder().putData(PlanCreatorConstants.SET_STARTING_NODE_ID,
+                                              HarnessValue.newBuilder().setBoolValue(true).build()))
+                                      .build())
+                              .build())
+            .build());
     return responseMap;
   }
 
@@ -82,13 +99,13 @@ public class PipelinePlanCreatorV1 extends ChildrenPlanCreator<YamlField> {
   }
 
   @Override
-  public Class<YamlField> getFieldClass() {
-    return YamlField.class;
+  public YamlField getFieldObject(YamlField field) {
+    return field;
   }
 
   @Override
   public Set<String> getSupportedYamlVersions() {
-    return Set.of(PipelineVersion.V1);
+    return Set.of(HarnessYamlVersion.V1);
   }
 
   @Override

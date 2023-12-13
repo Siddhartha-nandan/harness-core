@@ -18,10 +18,8 @@ import io.harness.executions.steps.StepSpecTypeConstants;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.walktree.visitor.utilities.VisitorParentPathUtils;
 
-@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
-    components = {HarnessModuleComponent.CDS_ECS, HarnessModuleComponent.CDS_GITOPS,
-        HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT, HarnessModuleComponent.CDS_K8S,
-        HarnessModuleComponent.CDS_INFRA_PROVISIONERS})
+@CodePulse(
+    module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_COMMON_STEPS})
 @OwnedBy(CDC)
 public interface YamlTypes {
   String GITOPS_MERGE_PR = StepSpecTypeConstants.GITOPS_MERGE_PR;
@@ -82,6 +80,9 @@ public interface YamlTypes {
   String ECS_BLUE_GREEN_CREATE_SERVICE = StepSpecTypeConstants.ECS_BLUE_GREEN_CREATE_SERVICE;
   String ECS_BLUE_GREEN_SWAP_TARGET_GROUPS = StepSpecTypeConstants.ECS_BLUE_GREEN_SWAP_TARGET_GROUPS;
   String ECS_BLUE_GREEN_ROLLBACK = StepSpecTypeConstants.ECS_BLUE_GREEN_ROLLBACK;
+  String ECS_SERVICE_SETUP = StepSpecTypeConstants.ECS_SERVICE_SETUP;
+  String ECS_UPGRADE_CONTAINER = StepSpecTypeConstants.ECS_UPGRADE_CONTAINER;
+  String ECS_BASIC_ROLLBACK = StepSpecTypeConstants.ECS_BASIC_ROLLBACK;
 
   String AZURE_SLOT_DEPLOYMENT = StepSpecTypeConstants.AZURE_SLOT_DEPLOYMENT;
   String AZURE_TRAFFIC_SHIFT = StepSpecTypeConstants.AZURE_TRAFFIC_SHIFT;
@@ -96,6 +97,7 @@ public interface YamlTypes {
   String ASG_BLUE_GREEN_DEPLOY = StepSpecTypeConstants.ASG_BLUE_GREEN_DEPLOY;
   String ASG_BLUE_GREEN_ROLLBACK = StepSpecTypeConstants.ASG_BLUE_GREEN_ROLLBACK;
   String ASG_BLUE_GREEN_SWAP_SERVICE = StepSpecTypeConstants.ASG_BLUE_GREEN_SWAP_SERVICE;
+  String ASG_SHIFT_TRAFFIC = StepSpecTypeConstants.ASG_SHIFT_TRAFFIC;
   String GOOGLE_CLOUD_FUNCTIONS_DEPLOY = StepSpecTypeConstants.GOOGLE_CLOUD_FUNCTIONS_DEPLOY;
   String GOOGLE_CLOUD_FUNCTIONS_DEPLOY_WITHOUT_TRAFFIC =
       StepSpecTypeConstants.GOOGLE_CLOUD_FUNCTIONS_DEPLOY_WITHOUT_TRAFFIC;
@@ -190,6 +192,7 @@ public interface YamlTypes {
 
   String ELASTIGROUP_SERVICE_SETTINGS_STEP = "Elastigroup_Service_Settings";
   String AZURE_SERVICE_SETTINGS_STEP = "Azure_Service_Settings";
+  String ASG_SERVICE_SETTINGS_STEP = "Asg_Service_Settings";
 
   String APPLICATION_SETTINGS = "applicationSettings";
   String CONNECTION_STRINGS = "connectionStrings";
@@ -243,4 +246,6 @@ public interface YamlTypes {
   String AWS_CDK_DEPLOY = StepSpecTypeConstants.AWS_CDK_DEPLOY;
   String AWS_CDK_DESTROY = StepSpecTypeConstants.AWS_CDK_DESTROY;
   String AWS_CDK_ROLLBACK = StepSpecTypeConstants.AWS_CDK_ROLLBACK;
+
+  String DOWNLOAD_AWS_S3 = StepSpecTypeConstants.DOWNLOAD_AWS_S3;
 }

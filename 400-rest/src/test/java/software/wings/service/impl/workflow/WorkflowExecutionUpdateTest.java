@@ -12,6 +12,7 @@ import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.rule.OwnerRule.AADITI;
 import static io.harness.rule.OwnerRule.RAMA;
 import static io.harness.rule.OwnerRule.UJJAWAL;
+import static io.harness.rule.OwnerRule.XIN;
 import static io.harness.rule.OwnerRule.YUVRAJ;
 
 import static software.wings.utils.WingsTestConstants.ACCOUNT_ID;
@@ -24,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.joor.Reflect.on;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -174,6 +176,20 @@ public class WorkflowExecutionUpdateTest extends WingsBaseTest {
   }
 
   @Test
+  @Owner(developers = XIN)
+  @Category(UnitTests.class)
+  public void shouldReportDeploymentEventToSegmentWithUserEmail() throws URISyntaxException {
+    Account account = testUtils.createAccount();
+    User user = testUtils.createUser(account);
+    ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+    when(accountService.getFromCacheWithFallback(anyString())).thenReturn(account);
+    WorkflowExecution workflowExecution = createWorkflowExecution(user);
+    workflowExecutionUpdate.reportDeploymentEventToSegment(workflowExecution);
+    verify(segmentHandler).reportTrackEvent(eq(account), anyString(), captor.capture(), anyMap(), anyMap());
+    assertThat(captor.getValue()).isEqualTo(user.getEmail());
+  }
+
+  @Test
   @Owner(developers = UJJAWAL)
   @Category(UnitTests.class)
   public void shouldReportDeploymentEventToSegmentWithNullServiceIds() throws URISyntaxException {
@@ -240,7 +256,8 @@ public class WorkflowExecutionUpdateTest extends WingsBaseTest {
     harnessTagLinkList.add(constructHarnessTagLink("env", "${workflow.variables.env}"));
     harnessTagLinkList.add(constructHarnessTagLink("company", "foobar"));
     harnessTagLinkList.add(constructHarnessTagLink("${account.defaults.owner}", ""));
-    when(harnessTagService.getTagLinksWithEntityId(anyString(), anyString())).thenReturn(harnessTagLinkList);
+    when(harnessTagService.getTagLinksWithEntityId(anyString(), anyString(), anyBoolean()))
+        .thenReturn(harnessTagLinkList);
     when(context.renderExpression(eq("foo"))).thenReturn("foo");
     when(context.renderExpression(eq(""))).thenReturn("");
     when(context.renderExpression(eq("env"))).thenReturn("env");
@@ -271,7 +288,7 @@ public class WorkflowExecutionUpdateTest extends WingsBaseTest {
     harnessTagLinkList.add(constructHarnessTagLink("${app.defaults.RUNTIME_PATH}", ""));
     harnessTagLinkList.add(constructHarnessTagLink("${mytag}", ""));
     harnessTagLinkList.add(constructHarnessTagLink("${mytag1}", ""));
-    when(harnessTagService.getTagLinksWithEntityId(any(), any())).thenReturn(harnessTagLinkList);
+    when(harnessTagService.getTagLinksWithEntityId(any(), any(), anyBoolean())).thenReturn(harnessTagLinkList);
     when(context.renderExpression(eq("foo"))).thenReturn("foo");
     when(context.renderExpression(eq(""))).thenReturn("");
     when(context.renderExpression(eq("env"))).thenReturn("env");

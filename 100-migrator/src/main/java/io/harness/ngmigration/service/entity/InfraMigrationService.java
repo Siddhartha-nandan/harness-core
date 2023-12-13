@@ -19,8 +19,11 @@ import static software.wings.ngmigration.NGMigrationEntityType.TEMPLATE;
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.MigratedEntityMapping;
 import io.harness.cdng.elastigroup.ElastigroupConfiguration;
 import io.harness.cdng.infra.yaml.Infrastructure;
@@ -49,6 +52,7 @@ import io.harness.ngmigration.client.TemplateClient;
 import io.harness.ngmigration.dto.ImportError;
 import io.harness.ngmigration.dto.MigrationImportSummaryDTO;
 import io.harness.ngmigration.expressions.MigratorExpressionUtils;
+import io.harness.ngmigration.service.MigrationHelperService;
 import io.harness.ngmigration.service.MigratorMappingService;
 import io.harness.ngmigration.service.NgMigrationService;
 import io.harness.ngmigration.service.infra.InfraDefMapper;
@@ -69,6 +73,7 @@ import software.wings.ngmigration.DiscoveryNode;
 import software.wings.ngmigration.NGMigrationEntity;
 import software.wings.ngmigration.NGMigrationEntityType;
 import software.wings.service.intfc.InfrastructureDefinitionService;
+import software.wings.service.intfc.WorkflowService;
 
 import com.google.inject.Inject;
 import java.io.IOException;
@@ -83,12 +88,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import retrofit2.Response;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_MIGRATOR})
 @OwnedBy(HarnessTeam.CDC)
 @Slf4j
 public class InfraMigrationService extends NgMigrationService {
   @Inject private InfrastructureDefinitionService infrastructureDefinitionService;
   @Inject private ElastigroupConfigurationMigrationService elastigroupConfigurationMigrationService;
   @Inject InfrastructureResourceClient infrastructureResourceClient;
+  @Inject private WorkflowService workflowService;
+  @Inject private MigrationHelperService migrationHelperService;
 
   @Override
   public MigratedEntityMapping generateMappingEntity(NGYamlFile yamlFile) {
@@ -214,6 +222,26 @@ public class InfraMigrationService extends NgMigrationService {
             .createInfrastructure(inputDTO.getDestinationAuthToken(), inputDTO.getDestinationAccountIdentifier(),
                 JsonUtils.asTree(infraReqDTO))
             .execute();
+
+    if (!(resp.code() >= 200 && resp.code() < 300)) {
+      infraReqDTO = InfrastructureRequestDTO.builder()
+                        .identifier(infraConfig.getIdentifier())
+                        .type(infraConfig.getType())
+                        .orgIdentifier(infraConfig.getOrgIdentifier())
+                        .projectIdentifier(infraConfig.getProjectIdentifier())
+                        .name(infraConfig.getName())
+                        .tags(infraConfig.getTags())
+                        .type(infraConfig.getType())
+                        .environmentRef(infraConfig.getEnvironmentRef())
+                        .description(infraConfig.getDescription())
+                        .yaml(getYamlStringV2(yamlFile))
+                        .build();
+      resp = ngClient
+                 .createInfrastructure(inputDTO.getDestinationAuthToken(), inputDTO.getDestinationAccountIdentifier(),
+                     JsonUtils.asTree(infraReqDTO))
+                 .execute();
+    }
+
     log.info("Infrastructure creation Response details {} {}", resp.code(), resp.message());
     return handleResp(yamlFile, resp);
   }
@@ -242,6 +270,9 @@ public class InfraMigrationService extends NgMigrationService {
         elastigroupConfigurationMigrationService.getElastigroupConfigurations(migrationContext, infraSpecIds);
 
     Infrastructure infraSpec = infraDefMapper.getSpec(migrationContext, infra, elastigroupConfigurations);
+    Map<String, Object> custom = migrationHelperService.updateContextVariables(migrationContext, entities, infra);
+    MigratorExpressionUtils.render(migrationContext, infraSpec, custom);
+
     if (infraSpec == null) {
       log.error(String.format("We could not migrate the infra %s", infra.getUuid()));
       return YamlGenerationDetails.builder()
@@ -318,7 +349,7 @@ public class InfraMigrationService extends NgMigrationService {
   }
 
   @Override
-  protected boolean isNGEntityExists() {
+  protected boolean isNGEntityExists(MigrationContext migrationContext) {
     return true;
   }
 

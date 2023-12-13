@@ -1,0 +1,8 @@
+name: NG Manager Metrics Group per Resource Method per Status Codes
+identifier: NgManagerMetricsResourceStatusCodeGroup
+labels:
+  - resource
+  - method
+  - statusCode
+  - namespace
+  - serviceName

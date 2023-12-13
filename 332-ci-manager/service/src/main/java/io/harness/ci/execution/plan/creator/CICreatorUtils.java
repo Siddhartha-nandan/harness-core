@@ -5,7 +5,7 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.plan.creator;
+package io.harness.ci.execution.plan.creator;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
@@ -24,9 +24,9 @@ public class CICreatorUtils {
 
   public static Set<String> getSupportedStepsV2() {
     HashSet<String> steps = Sets.newHashSet("Run", "SaveCacheS3", "RunTests", "liteEngineTask", "BuildAndPushACR",
-        "BuildAndPushGCR", "BuildAndPushECR", "BuildAndPushDockerRegistry", "Plugin", "RestoreCacheGCS",
-        "RestoreCacheS3", "SaveCacheGCS", "S3Upload", "GCSUpload", "ArtifactoryUpload", "Security", "GitClone",
-        "Background", "Action", "Bitrise", "script", "plugin", "test", "background", "bitrise", "action");
+        "BuildAndPushGCR", "BuildAndPushGAR", "BuildAndPushECR", "BuildAndPushDockerRegistry", "Plugin",
+        "RestoreCacheGCS", "RestoreCacheS3", "SaveCacheGCS", "S3Upload", "GCSUpload", "ArtifactoryUpload", "Security",
+        "GitClone", "Background", "Action", "Bitrise", "script", "plugin", "test", "background", "bitrise", "action");
 
     steps.addAll(STOStepType.getSupportedSteps());
 

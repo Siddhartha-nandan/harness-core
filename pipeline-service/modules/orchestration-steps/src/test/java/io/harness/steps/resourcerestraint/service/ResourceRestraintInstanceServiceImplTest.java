@@ -30,6 +30,7 @@ import io.harness.OrchestrationStepsTestBase;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
+import io.harness.data.structure.ListUtils;
 import io.harness.distribution.constraint.Constraint;
 import io.harness.distribution.constraint.Consumer.State;
 import io.harness.engine.executions.node.NodeExecutionService;
@@ -37,13 +38,10 @@ import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.exception.EntityNotFoundException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.execution.NodeExecution;
-import io.harness.plan.PlanNode;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.execution.ExecutionMode;
 import io.harness.pms.contracts.execution.Status;
-import io.harness.pms.contracts.steps.StepCategory;
-import io.harness.pms.contracts.steps.StepType;
 import io.harness.repositories.ResourceRestraintInstanceRepository;
 import io.harness.rule.Owner;
 import io.harness.steps.resourcerestraint.beans.HoldingScope;
@@ -52,7 +50,6 @@ import io.harness.steps.resourcerestraint.beans.ResourceRestraintInstance;
 
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
-import io.fabric8.utils.Lists;
 import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.List;
@@ -256,18 +253,7 @@ public class ResourceRestraintInstanceServiceImplTest extends OrchestrationSteps
 
     when(nodeExecutionService.getWithFieldsIncluded(any(), any()))
         .thenReturn(
-            NodeExecution.builder()
-                .ambiance(ambiance)
-                .planNode(
-                    PlanNode.builder()
-                        .uuid(generateUuid())
-                        .stepType(StepType.newBuilder().setType("DUMMY").setStepCategory(StepCategory.STEP).build())
-                        .name("dummy")
-                        .identifier("dummy")
-                        .build())
-                .mode(ExecutionMode.SYNC)
-                .status(Status.SUCCEEDED)
-                .build());
+            NodeExecution.builder().ambiance(ambiance).mode(ExecutionMode.SYNC).status(Status.SUCCEEDED).build());
 
     boolean isUpdated = resourceRestraintInstanceService.updateActiveConstraintsForInstance(instance);
     assertThat(isUpdated).isTrue();
@@ -297,7 +283,7 @@ public class ResourceRestraintInstanceServiceImplTest extends OrchestrationSteps
 
     List<ResourceRestraintInstance> instances =
         resourceRestraintInstanceService.getAllByRestraintIdAndResourceUnitAndStates(
-            instance.getResourceRestraintId(), instance.getResourceUnit(), Lists.newArrayList(ACTIVE));
+            instance.getResourceRestraintId(), instance.getResourceUnit(), ListUtils.newArrayList(ACTIVE));
 
     assertThat(instances).isNotEmpty();
     assertThat(instances.size()).isEqualTo(1);

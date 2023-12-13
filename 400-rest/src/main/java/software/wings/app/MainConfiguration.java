@@ -44,6 +44,8 @@ import io.harness.notification.NotificationClientConfiguration;
 import io.harness.queueservice.config.DelegateQueueServiceConfig;
 import io.harness.redis.RedisConfig;
 import io.harness.reflection.HarnessReflections;
+import io.harness.remote.CEAwsServiceEndpointConfig;
+import io.harness.remote.CEProxyConfig;
 import io.harness.remote.client.ServiceHttpClientConfig;
 import io.harness.scheduler.SchedulerConfig;
 import io.harness.secret.ConfigSecret;
@@ -161,6 +163,7 @@ public class MainConfiguration extends Configuration implements AssetsBundleConf
   @JsonProperty("ocVersion") private String ocVersion;
   @JsonProperty("scmVersion") private String scmVersion;
   @JsonProperty("trialRegistrationAllowed") private boolean trialRegistrationAllowed;
+  @JsonProperty("useUserProvidedAccountIdInTrialSignup") private boolean useUserProvidedAccountIdInTrialSignup;
   @JsonProperty("eventsFrameworkAvailableInOnPrem") private boolean eventsFrameworkAvailableInOnPrem;
   @JsonProperty(value = "trialRegistrationAllowedForBugathon", defaultValue = "false")
   private boolean trialRegistrationAllowedForBugathon;
@@ -193,6 +196,7 @@ public class MainConfiguration extends Configuration implements AssetsBundleConf
   @JsonProperty("sampleTargetEnv") private String sampleTargetEnv;
   @JsonProperty("sampleTargetStatusHost") private String sampleTargetStatusHost;
   @JsonProperty("timescaledb") @ConfigSecret private TimeScaleDBConfig timeScaleDBConfig;
+  @JsonProperty("licenseUsageTimescaleSocketTimeout") private int licenseUsageTimescaleSocketTimeout;
   @JsonProperty("cacheConfig") private CacheConfig cacheConfig;
   @JsonProperty("ngAuthUIEnabled") private boolean ngAuthUIEnabled;
   @JsonProperty("gcpMarketplaceConfig") private GcpMarketplaceConfig gcpMarketplaceConfig;
@@ -233,6 +237,7 @@ public class MainConfiguration extends Configuration implements AssetsBundleConf
   @JsonProperty(value = "disableDelegateMgmtInManager", defaultValue = "false")
   private boolean disableDelegateMgmtInManager;
   @JsonProperty("secretsConfiguration") private SecretsConfiguration secretsConfiguration;
+  @JsonProperty("saasDelegateHelmChartRepo") private String saasDelegateHelmChartRepo;
   @JsonProperty("ldapSyncJobConfig") private LdapSyncJobConfig ldapSyncJobConfig;
   @JsonProperty("eventListenersCountConfig") private EventListenersCountConfig eventListenersCountConfig;
   @JsonProperty(value = "useGlobalKMSAsBaseAlgo", defaultValue = "false") private boolean useGlobalKMSAsBaseAlgo;
@@ -242,8 +247,6 @@ public class MainConfiguration extends Configuration implements AssetsBundleConf
   @JsonProperty(value = "disableInstanceSyncIterator") private Boolean disableInstanceSyncIterator;
   @JsonProperty("delegateQueueServiceConfig") private DelegateQueueServiceConfig queueServiceConfig;
   @JsonProperty("debeziumConsumersConfigs") DebeziumConsumersConfig debeziumConsumerConfigs;
-  // If this flag is enabled event framework is utilized for wait engine notification mechanism
-  @JsonProperty(value = "redisNotifyEvent") private boolean redisNotifyEvent;
 
   // If flag is enabled, only one thread does Notify response cleanup.
   @JsonProperty(value = "lockNotifyResponseCleanup") private boolean lockNotifyResponseCleanup;
@@ -253,6 +256,11 @@ public class MainConfiguration extends Configuration implements AssetsBundleConf
   @JsonProperty("notificationClient")
   @ConfigSecret
   private NotificationClientConfiguration notificationClientConfiguration;
+  @JsonProperty("proxy") private CEProxyConfig ceProxyConfig;
+  @JsonProperty("awsServiceEndpointUrls") private CEAwsServiceEndpointConfig ceAwsServiceEndpointConfig;
+  @JsonProperty("maxAccountsToDeleteInParallel") private int maxAccountsToDeleteInParallel;
+  @JsonProperty("runAccountDeletionOnWeekdays") private boolean runAccountDeletionOnWeekdays;
+  @JsonProperty(value = "disableNotificationTemplateRegister") private boolean disableNotificationTemplateRegister;
 
   private int applicationPort;
   private boolean sslEnabled;

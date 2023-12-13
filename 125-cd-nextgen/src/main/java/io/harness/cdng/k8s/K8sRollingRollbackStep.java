@@ -6,11 +6,13 @@
  */
 
 package io.harness.cdng.k8s;
-
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 
 import io.harness.account.services.AccountService;
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.executables.CdTaskExecutable;
 import io.harness.cdng.expressions.CDExpressionResolver;
@@ -31,6 +33,7 @@ import io.harness.delegate.task.k8s.K8sRollingRollbackDeployRequest;
 import io.harness.delegate.task.k8s.K8sRollingRollbackDeployRequest.K8sRollingRollbackDeployRequestBuilder;
 import io.harness.delegate.task.k8s.K8sTaskType;
 import io.harness.executions.steps.ExecutionNodeType;
+import io.harness.k8s.model.K8sPod;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
@@ -51,10 +54,13 @@ import io.harness.pms.sdk.core.steps.io.StepResponse.StepResponseBuilder;
 import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.steps.StepHelper;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import com.google.inject.Inject;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 @OwnedBy(CDP)
 public class K8sRollingRollbackStep extends CdTaskExecutable<K8sDeployResponse> {
   public static final StepType STEP_TYPE = StepType.newBuilder()
@@ -174,6 +180,12 @@ public class K8sRollingRollbackStep extends CdTaskExecutable<K8sDeployResponse> 
     return stepResponse;
   }
 
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
+  }
+
   private StepResponse generateStepResponse(
       Ambiance ambiance, K8sDeployResponse executionResponse, StepResponseBuilder stepResponseBuilder) {
     StepResponse stepResponse = null;
@@ -188,10 +200,16 @@ public class K8sRollingRollbackStep extends CdTaskExecutable<K8sDeployResponse> 
       final K8sRollingDeployRollbackResponse response =
           (K8sRollingDeployRollbackResponse) executionResponse.getK8sNGTaskResponse();
       K8sRollingRollbackOutcome k8sRollingRollbackOutcome =
-          K8sRollingRollbackOutcome.builder().recreatedResourceIds(response.getRecreatedResourceIds()).build();
+          K8sRollingRollbackOutcome.builder()
+              .recreatedResourceIds(response.getRecreatedResourceIds())
+              .podIps(response.getK8sPodList() != null
+                      ? response.getK8sPodList().stream().map(K8sPod::getPodIP).collect(Collectors.toList())
+                      : null)
+              .build();
 
-      StepOutcome stepOutcome = instanceInfoService.saveServerInstancesIntoSweepingOutput(
-          ambiance, K8sPodToServiceInstanceInfoMapper.toServerInstanceInfoList(response.getK8sPodList()));
+      StepOutcome stepOutcome = instanceInfoService.saveServerInstancesIntoSweepingOutput(ambiance,
+          K8sPodToServiceInstanceInfoMapper.toServerInstanceInfoList(
+              response.getK8sPodList(), response.getHelmChartInfo()));
 
       stepResponse = stepResponseBuilder.status(Status.SUCCEEDED)
                          .stepOutcome(stepOutcome)

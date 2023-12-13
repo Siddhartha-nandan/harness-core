@@ -33,6 +33,7 @@ public class EntityYamlRootNames {
   public static final String GITOPS_MERGE_PR = "MergePR";
   public static final String GITOPS_REVERT_PR = "RevertPR";
   public static final String GITOPS_UPDATE_RELEASE_REPO = "GitOpsUpdateReleaseRepo";
+  public static final String UPDATE_GITOPS_APP = "UpdateGitOpsApp";
   public static final String GITOPS_FETCH_LINKED_APPS = "GitOpsFetchLinkedApps";
   public static final String GITOPS_SYNC = "GitOpsSync";
   public static final String ENVIRONMENT_GROUP = "environmentGroup";
@@ -81,6 +82,7 @@ public class EntityYamlRootNames {
   public static final String K8S_DELETE = "K8sDelete";
   public static final String K8S_SWAP_SERVICES = "K8sBGSwapServices";
   public static final String K8S_CANARY_DELETE = "K8sCanaryDelete";
+  public static final String K8S_TRAFFIC_ROUTING = "K8sTrafficRouting";
   public static final String TERRAFORM_APPLY = "TerraformApply";
   public static final String TERRAFORM_PLAN = "TerraformPlan";
   public static final String TERRAFORM_DESTROY = "TerraformDestroy";
@@ -104,6 +106,8 @@ public class EntityYamlRootNames {
   public static final String PLUGIN = "Plugin";
   public static final String SECURITY = "Security";
 
+  public static final String ANCHORE = "Anchore";
+  public static final String AQUA_SECURITY = "AquaSecurity";
   public static final String AQUA_TRIVY = "AquaTrivy";
   public static final String AWS_ECR = "AWSECR";
   public static final String AWS_SECURITY_HUB = "AWSSecurityHub";
@@ -158,6 +162,9 @@ public class EntityYamlRootNames {
   public static final String GCS_UPLOAD = "GCSUpload";
   public static final String S3_UPLOAD = "S3Upload";
   public static final String BUILD_AND_PUSH_GCR = "BuildAndPushGCR";
+
+  public static final String BUILD_AND_PUSH_GAR = "BuildAndPushGAR";
+
   public static final String BUILD_AND_PUSH_ACR = "BuildAndPushACR";
   public static final String BUILD_AND_PUSH_ECR = "BuildAndPushECR";
   public static final String BUILD_AND_PUSH_DOCKER_REGISTRY = "BuildAndPushDockerRegistry";
@@ -193,10 +200,15 @@ public class EntityYamlRootNames {
   public static final String ECS_BLUE_GREEN_CREATE_SERVICE = "EcsBlueGreenCreateService";
   public static final String ECS_BLUE_GREEN_SWAP_TARGET_GROUPS = "EcsBlueGreenSwapTargetGroups";
   public static final String ECS_BLUE_GREEN_ROLLBACK = "EcsBlueGreenRollback";
+  public static final String ECS_SERVICE_SETUP = "EcsServiceSetup";
+  public static final String ECS_UPGRADE_CONTAINER = "EcsUpgradeContainer";
+  public static final String ECS_BASIC_ROLLBACK = "EcsBasicRollback";
   public static final String WAIT_STEP = "Wait";
   public static final String SHELL_SCRIPT_PROVISION_STEP = "ShellScriptProvision";
   public static final String FREEZE = "freeze";
   public static final String CHAOS_STEP = "Chaos";
+  public static final String CHAOS_INFRASTRUCTURE = "ChaosInfrastructure";
+  public static final String CHAOS_HUB = "ChaosHub";
   public static final String ELASTIGROUP_DEPLOY_STEP = "ElastigroupDeploy";
   public static final String ELASTIGROUP_ROLLBACK_STEP = "ElastigroupRollback";
   public static final String IACM_STAGE = "IACMStage";
@@ -239,6 +251,7 @@ public class EntityYamlRootNames {
   public static final String K8S_DRY_RUN_MANIFEST = "K8sDryRun";
   public static final String K8S_BLUE_GREEN_STAGE_SCALE_DOWN = "K8sBlueGreenStageScaleDown";
   public static final String ASG_BLUE_GREEN_SWAP_SERVICE_STEP = "AsgBlueGreenSwapService";
+  public static final String ASG_SHIFT_TRAFFIC = "AsgShiftTraffic";
   public static final String TERRAFORM_CLOUD_RUN = "TerraformCloudRun";
   public static final String TERRAFORM_CLOUD_ROLLBACK = "TerraformCloudRollback";
 
@@ -263,4 +276,14 @@ public class EntityYamlRootNames {
   public static final String AWS_CDK_DEPLOY = "AwsCdkDeploy";
   public static final String AWS_CDK_DESTROY = "AwsCdkDestroy";
   public static final String AWS_CDK_ROLLBACK = "AwsCdkRollback";
+
+  public static final String OVERRIDES = "Overrides";
+  public static final String IDP_STAGE = "IdpStage";
+  public static final String COOKIECUTTER = "CookieCutter";
+  public static final String CREATE_REPO = "CreateRepo";
+  public static final String DIRECT_PUSH = "DirectPush";
+  public static final String REGISTER_CATALOG = "RegisterCatalog";
+
+  // CD Container Step Group Common Steps
+  public static final String DOWNLOAD_AWS_S3 = "DownloadAwsS3";
 }

@@ -6,6 +6,7 @@
  */
 
 package io.harness.cdng.infra.steps;
+
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static io.harness.connector.ConnectorModule.DEFAULT_CONNECTOR_SERVICE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
@@ -126,7 +127,8 @@ import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 
-@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
+    components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
 @Slf4j
 @OwnedBy(CDC)
 public class InfrastructureStep implements SyncExecutableWithRbac<Infrastructure> {
@@ -150,6 +152,7 @@ public class InfrastructureStep implements SyncExecutableWithRbac<Infrastructure
   @Inject private InfrastructureOutcomeProvider infrastructureOutcomeProvider;
   @Inject private NGFeatureFlagHelperService ngFeatureFlagHelperService;
   @Inject private StageExecutionInfoService stageExecutionInfoService;
+  @Inject private InfrastructureProvisionerHelper infrastructureProvisionerHelper;
 
   @Override
   public Class<Infrastructure> getStepParametersClass() {
@@ -171,7 +174,9 @@ public class InfrastructureStep implements SyncExecutableWithRbac<Infrastructure
     validateConnector(infrastructure, ambiance);
 
     saveExecutionLogSafely(logCallback, "Fetching environment information...");
-
+    if (infrastructure.isDynamicallyProvisioned()) {
+      infrastructureProvisionerHelper.resolveProvisionerExpressions(ambiance, infrastructure);
+    }
     validateInfrastructure(infrastructure, ambiance);
     EnvironmentOutcome environmentOutcome = (EnvironmentOutcome) executionSweepingOutputService.resolve(
         ambiance, RefObjectUtils.getSweepingOutputRefObject(OutputExpressionConstants.ENVIRONMENT));
@@ -183,7 +188,7 @@ public class InfrastructureStep implements SyncExecutableWithRbac<Infrastructure
 
     final InfrastructureOutcome infrastructureOutcome = infrastructureOutcomeProvider.getOutcome(ambiance,
         infrastructure, environmentOutcome, serviceOutcome, ngAccess.getAccountIdentifier(),
-        ngAccess.getOrgIdentifier(), ngAccess.getProjectIdentifier(), new HashMap<>());
+        ngAccess.getOrgIdentifier(), ngAccess.getProjectIdentifier(), new HashMap<>(), null);
 
     if (environmentOutcome != null) {
       if (isNotEmpty(environmentOutcome.getName())) {
@@ -618,7 +623,7 @@ public class InfrastructureStep implements SyncExecutableWithRbac<Infrastructure
   }
 
   public void saveInfraExecutionDataToStageInfo(Ambiance ambiance, InfrastructureOutcome infrastructureOutcome) {
-    stageExecutionInfoService.updateStageExecutionInfo(ambiance,
+    stageExecutionInfoService.upsertStageExecutionInfo(ambiance,
         StageExecutionInfoUpdateDTO.builder()
             .infraExecutionSummary(createInfraExecutionSummaryDetailsFromInfraOutcome(infrastructureOutcome))
             .build());

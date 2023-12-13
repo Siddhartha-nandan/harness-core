@@ -12,11 +12,25 @@ import static io.harness.aws.asg.manifest.AsgManifestType.AsgConfiguration;
 import static io.harness.aws.asg.manifest.AsgManifestType.AsgLaunchTemplate;
 import static io.harness.aws.asg.manifest.AsgManifestType.AsgScalingPolicy;
 import static io.harness.aws.asg.manifest.AsgManifestType.AsgScheduledUpdateGroupAction;
+import static io.harness.aws.asg.manifest.AsgManifestType.AsgUserData;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import static java.lang.String.format;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.aws.asg.AsgContentParser;
 import io.harness.aws.asg.AsgSdkManager;
+import io.harness.aws.asg.manifest.AsgConfigurationManifestHandler;
+import io.harness.aws.asg.manifest.AsgLaunchTemplateManifestHandler;
+import io.harness.aws.asg.manifest.AsgManifestHandlerChainFactory;
+import io.harness.aws.asg.manifest.AsgManifestHandlerChainState;
+import io.harness.aws.asg.manifest.request.AsgConfigurationManifestRequest;
+import io.harness.aws.asg.manifest.request.AsgInstanceCapacity;
+import io.harness.aws.asg.manifest.request.AsgScalingPolicyManifestRequest;
+import io.harness.aws.asg.manifest.request.AsgScheduledActionManifestRequest;
+import io.harness.aws.beans.AsgCapacityConfig;
+import io.harness.aws.beans.AsgLoadBalancerConfig;
 import io.harness.aws.beans.AwsInternalConfig;
 import io.harness.aws.v2.ecs.ElbV2Client;
 import io.harness.delegate.beans.instancesync.ServerInstanceInfo;
@@ -25,6 +39,8 @@ import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
 import io.harness.delegate.beans.logstreaming.NGDelegateLogCallback;
 import io.harness.exception.ExceptionUtils;
+import io.harness.exception.InvalidRequestException;
+import io.harness.exception.NestedExceptionUtils;
 import io.harness.exception.sanitizer.ExceptionMessageSanitizer;
 import io.harness.logging.LogCallback;
 
@@ -33,11 +49,16 @@ import software.wings.service.impl.AwsUtils;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient;
 import com.amazonaws.services.autoscaling.model.AutoScalingGroup;
+import com.amazonaws.services.autoscaling.model.CreateAutoScalingGroupRequest;
+import com.amazonaws.services.autoscaling.model.LaunchTemplateSpecification;
 import com.amazonaws.services.ec2.AmazonEC2Client;
+import com.amazonaws.services.ec2.model.RequestLaunchTemplateData;
+import com.amazonaws.services.ec2.model.ResponseLaunchTemplateData;
 import com.google.common.util.concurrent.TimeLimiter;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -53,10 +74,19 @@ public class AsgTaskHelper {
   @Inject private TimeLimiter timeLimiter;
   @Inject private AsgInfraConfigHelper asgInfraConfigHelper;
   private static final String CANARY_SUFFIX = "Canary";
+  public static final int DEFAULT_MIN_CAPACITY = 0;
+  public static final int DEFAULT_DESIRED_CAPACITY = 6;
+  public static final int DEFAULT_MAX_CAPACITY = 10;
+  public static final int DEFAULT_CAPACITY_WHEN_ZERO = 1;
   private static final String EXEC_STRATEGY_CANARY = "canary";
   private static final String EXEC_STRATEGY_BLUEGREEN = "blue-green";
   private static final String BG_GREEN = "GREEN";
   private static final String BG_BLUE = "BLUE";
+
+  public static final String LAUNCH_TEMPLATE_MISSING_HINT = "Please provide LaunchTemplate for baseAsg `%s`";
+  public static final String LAUNCH_TEMPLATE_MISSING_EXPLANATION = "LaunchTemplate missing for baseAsg";
+  public static final String LAUNCH_TEMPLATE_MISSING_ERROR = "Missing LaunchTemplate for base ASG with name `%s`";
+
   public LogCallback getLogCallback(ILogStreamingTaskClient logStreamingTaskClient, String commandUnitName,
       boolean shouldOpenStream, CommandUnitsProgress commandUnitsProgress) {
     return new NGDelegateLogCallback(logStreamingTaskClient, commandUnitName, shouldOpenStream, commandUnitsProgress);
@@ -76,6 +106,19 @@ public class AsgTaskHelper {
 
   public List<String> getAsgScheduledActionContent(Map<String, List<String>> asgStoreManifestsContent) {
     return asgStoreManifestsContent.get(AsgScheduledUpdateGroupAction);
+  }
+
+  public String getUserData(Map<String, List<String>> asgStoreManifestsContent) {
+    List<String> contents = asgStoreManifestsContent.get(AsgUserData);
+    if (isEmpty(contents)) {
+      return null;
+    }
+
+    if (contents.size() > 1) {
+      throw new InvalidRequestException("userData should contain only one file");
+    }
+
+    return contents.get(0);
   }
 
   public AutoScalingGroupContainer mapToAutoScalingGroupContainer(AutoScalingGroup autoScalingGroup) {
@@ -233,5 +276,159 @@ public class AsgTaskHelper {
           asgInfraConfig.getInfraStructureKey(), asgInfraConfig.getRegion(), executionStrategy, asgNameWithoutSuffix,
           true);
     }
+  }
+
+  public void overrideLaunchTemplateWithUserData(
+      Map<String, Object> asgLaunchTemplateOverrideProperties, Map<String, List<String>> asgStoreManifestsContent) {
+    String userData = getUserData(asgStoreManifestsContent);
+    if (isNotEmpty(userData)) {
+      asgLaunchTemplateOverrideProperties.put(AsgLaunchTemplateManifestHandler.OverrideProperties.userData, userData);
+    }
+  }
+
+  public void overrideCapacity(
+      Map<String, Object> asgConfigurationOverrideProperties, AsgCapacityConfig asgCapacityConfig) {
+    if (asgCapacityConfig != null) {
+      asgConfigurationOverrideProperties.put(
+          AsgConfigurationManifestHandler.OverrideProperties.minSize, asgCapacityConfig.getMin());
+      asgConfigurationOverrideProperties.put(
+          AsgConfigurationManifestHandler.OverrideProperties.maxSize, asgCapacityConfig.getMax());
+      asgConfigurationOverrideProperties.put(
+          AsgConfigurationManifestHandler.OverrideProperties.desiredCapacity, asgCapacityConfig.getDesired());
+    }
+  }
+
+  public boolean isBaseAsgDeployment(AsgInfraConfig asgInfraConfig) {
+    return isNotEmpty(asgInfraConfig.getBaseAsgName());
+  }
+
+  public String getAsgName(AsgCommandRequest asgCommandRequest, Map<String, List<String>> asgStoreManifestsContent) {
+    if (isNotEmpty(asgCommandRequest.getAsgName())) {
+      return asgCommandRequest.getAsgName();
+    }
+
+    String asgConfigurationContent = getAsgConfigurationContent(asgStoreManifestsContent);
+    CreateAutoScalingGroupRequest createAutoScalingGroupRequest =
+        AsgContentParser.parseJson(asgConfigurationContent, CreateAutoScalingGroupRequest.class, true);
+    return createAutoScalingGroupRequest.getAutoScalingGroupName();
+  }
+
+  public Map<String, List<String>> getAsgStoreManifestsContent(
+      AsgInfraConfig asgInfraConfig, Map<String, List<String>> asgStoreManifestsContent, AsgSdkManager asgSdkManager) {
+    boolean isBaseAsg = isBaseAsgDeployment(asgInfraConfig);
+    if (isBaseAsg) {
+      Map<String, List<String>> map =
+          createAsgStoreManifestsContentFromAsg(asgInfraConfig.getBaseAsgName(), asgSdkManager);
+      // merge userData
+      if (isNotEmpty(asgStoreManifestsContent) && isNotEmpty(asgStoreManifestsContent.get(AsgUserData))) {
+        map.put(AsgUserData, asgStoreManifestsContent.get(AsgUserData));
+      }
+      return map;
+    }
+
+    return asgStoreManifestsContent;
+  }
+
+  private Map<String, List<String>> createAsgStoreManifestsContentFromAsg(
+      String baseAsgName, AsgSdkManager asgSdkManager) {
+    asgSdkManager.info("Getting Asg configuration for ASG `%s`", baseAsgName);
+
+    // Chain factory code to handle each manifest one by one in a chain
+    AsgManifestHandlerChainState chainState =
+        AsgManifestHandlerChainFactory.builder()
+            .initialChainState(AsgManifestHandlerChainState.builder().asgName(baseAsgName).build())
+            .asgSdkManager(asgSdkManager)
+            .build()
+            .addHandler(AsgConfiguration, AsgConfigurationManifestRequest.builder().build())
+            .addHandler(AsgScalingPolicy, AsgScalingPolicyManifestRequest.builder().build())
+            .addHandler(AsgScheduledUpdateGroupAction, AsgScheduledActionManifestRequest.builder().build())
+            .getContent();
+
+    if (chainState.getAutoScalingGroup() == null) {
+      throw new InvalidRequestException(format("base ASG with name `%s` does not exist", baseAsgName));
+    }
+
+    Map<String, List<String>> result = chainState.getAsgManifestsDataForRollback();
+    String launchTemplateContent = generateManifestContentForLaunchTemplateForBaseDeploy(asgSdkManager, baseAsgName);
+    result.put(AsgLaunchTemplate, Arrays.asList(launchTemplateContent));
+
+    return chainState.getAsgManifestsDataForRollback();
+  }
+
+  private String generateManifestContentForLaunchTemplateForBaseDeploy(
+      AsgSdkManager asgSdkManager, String baseAsgName) {
+    AutoScalingGroup baseAsg = asgSdkManager.getASG(baseAsgName);
+    LaunchTemplateSpecification launchTemplateSpecification = baseAsg.getLaunchTemplate();
+
+    if (launchTemplateSpecification == null) {
+      throw NestedExceptionUtils.hintWithExplanationException(format(LAUNCH_TEMPLATE_MISSING_HINT, baseAsgName),
+          LAUNCH_TEMPLATE_MISSING_EXPLANATION,
+          new InvalidRequestException(format(LAUNCH_TEMPLATE_MISSING_ERROR, baseAsgName)));
+    }
+
+    ResponseLaunchTemplateData responseLaunchTemplateData = asgSdkManager.getLaunchTemplateData(
+        launchTemplateSpecification.getLaunchTemplateName(), launchTemplateSpecification.getVersion());
+
+    RequestLaunchTemplateData requestLaunchTemplateData = mapToRequestLaunchTemplateData(responseLaunchTemplateData);
+
+    // don't use new CreateLaunchTemplateRequest() as it creates properties with bidirectional relations and leads to
+    // stackOverflow
+    Map<String, RequestLaunchTemplateData> map = Map.of("launchTemplateData", requestLaunchTemplateData);
+    return AsgContentParser.toString(map, false);
+  }
+
+  private RequestLaunchTemplateData mapToRequestLaunchTemplateData(
+      ResponseLaunchTemplateData responseLaunchTemplateData) {
+    String responseLaunchTemplateDataJson = AsgContentParser.toString(responseLaunchTemplateData, false);
+    return AsgContentParser.parseJson(responseLaunchTemplateDataJson, RequestLaunchTemplateData.class, false);
+  }
+
+  public AsgInstanceCapacity getRunningInstanceCapacity(
+      AsgSdkManager asgSdkManager, boolean useAlreadyRunningInstances, String prodAsgName) {
+    if (useAlreadyRunningInstances) {
+      AsgInstanceCapacity defaultAsgInstanceCapacity = AsgInstanceCapacity.builder()
+                                                           .minCapacity(DEFAULT_MIN_CAPACITY)
+                                                           .desiredCapacity(DEFAULT_DESIRED_CAPACITY)
+                                                           .maxCapacity(DEFAULT_MAX_CAPACITY)
+                                                           .build();
+
+      if (isEmpty(prodAsgName)) {
+        return defaultAsgInstanceCapacity;
+      }
+
+      AutoScalingGroup prodAutoScalingGroup = asgSdkManager.getASG(prodAsgName);
+      if (prodAutoScalingGroup == null) {
+        return defaultAsgInstanceCapacity;
+      }
+
+      return AsgInstanceCapacity.builder()
+          .minCapacity(getMinCapacityValue(prodAutoScalingGroup.getMinSize()))
+          .desiredCapacity(getDesiredCapacityValue(prodAutoScalingGroup.getDesiredCapacity()))
+          .maxCapacity(getMaxCapacityValue(prodAutoScalingGroup.getMaxSize()))
+          .build();
+    }
+    return null;
+  }
+
+  private int getMinCapacityValue(Integer value) {
+    if (value == null || value == 0) {
+      return DEFAULT_MIN_CAPACITY;
+    }
+    return value;
+  }
+
+  private int getDesiredCapacityValue(Integer value) {
+    if (value == null || value == 0) {
+      return DEFAULT_CAPACITY_WHEN_ZERO;
+    }
+    return value;
+  }
+
+  private int getMaxCapacityValue(Integer value) {
+    return getDesiredCapacityValue(value);
+  }
+
+  public boolean isShiftTrafficFeature(AsgLoadBalancerConfig lbCfg) {
+    return isEmpty(lbCfg.getStageListenerRuleArn());
   }
 }

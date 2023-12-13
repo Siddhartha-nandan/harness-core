@@ -25,7 +25,7 @@ fi
 
 export GC_PARAMS=" -XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=40 -XX:MaxGCPauseMillis=1000 -Dfile.encoding=UTF-8"
 
-export JAVA_OPTS="-Xmx${MEMORY} -XX:+HeapDumpOnOutOfMemoryError -Xloggc:mygclogfilename.gc $GC_PARAMS $JAVA_ADVANCED_FLAGS"
+export JAVA_OPTS="-Xmx${MEMORY} -XX:+HeapDumpOnOutOfMemoryError -Xloggc:mygclogfilename.gc $GC_PARAMS $JAVA_ADVANCED_FLAGS $JAVA_17_FLAGS"
 
 if [[ "${ENABLE_APPDYNAMICS}" == "true" ]]; then
     mkdir /opt/harness/AppServerAgent && unzip AppServerAgent.zip -d /opt/harness/AppServerAgent
@@ -33,6 +33,10 @@ if [[ "${ENABLE_APPDYNAMICS}" == "true" ]]; then
     JAVA_OPTS=$JAVA_OPTS" -javaagent:/opt/harness/AppServerAgent/javaagent.jar -Dappdynamics.jvm.shutdown.mark.node.as.historical=true"
     JAVA_OPTS="$JAVA_OPTS $node_name"
     echo "Using Appdynamics java agent"
+fi
+
+if [[ "${ENABLE_JMX_PROMETHEUS}" == "true" ]]; then
+    JAVA_OPTS=$JAVA_OPTS" -javaagent:/opt/harness/jmx_prometheus_javaagent-0.19.0.jar=${JMX_PROMETHEUS_PORT}:jmx_prometheus_config.yml"
 fi
 
 if [[ "${DEPLOY_MODE}" == "KUBERNETES" || "${DEPLOY_MODE}" == "KUBERNETES_ONPREM" || "${DEPLOY_VERSION}" == "COMMUNITY" ]]; then

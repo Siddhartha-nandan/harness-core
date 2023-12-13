@@ -52,6 +52,7 @@ import io.harness.k8s.KubernetesConvention;
 import io.harness.logging.AccountLogContext;
 import io.harness.logging.AutoLogContext;
 import io.harness.rest.RestResponse;
+import io.harness.security.annotations.InternalApi;
 import io.harness.security.annotations.LearningEngineAuth;
 import io.harness.security.annotations.PublicApi;
 import io.harness.service.intfc.DelegateCache;
@@ -117,6 +118,7 @@ public class DelegateSetupResource {
   private static final String ATTACHMENT_FILENAME = "attachment; filename=";
   public static final String YAML = ".yaml";
   private static final String TAR_GZ = ".tar.gz";
+  private static final String HELM = "HELM";
 
   private final DelegateService delegateService;
   private final DelegateCache delegateCache;
@@ -377,11 +379,16 @@ public class DelegateSetupResource {
   public RestResponse<Set<String>> delegateSelectorsUpTheHierarchy(@Context HttpServletRequest request,
       @QueryParam("accountId") @NotEmpty String accountId, @QueryParam("orgId") String orgId,
       @QueryParam("projectId") String projectId) {
-    accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountId, orgId, projectId),
-        Resource.of(DELEGATE_RESOURCE_TYPE, null), DELEGATE_VIEW_PERMISSION);
-
+    if (accessControlClient.hasAccess(ResourceScope.of(accountId, orgId, projectId),
+            Resource.of(DELEGATE_RESOURCE_TYPE, null), DELEGATE_VIEW_PERMISSION)) {
+      try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
+        return new RestResponse<>(
+            delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, projectId, false));
+      }
+    }
     try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
-      return new RestResponse<>(delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, projectId));
+      return new RestResponse<>(
+          delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, projectId, true));
     }
   }
 
@@ -490,12 +497,13 @@ public class DelegateSetupResource {
          AutoLogContext ignore2 = new DelegateLogContext(delegateId, OVERRIDE_ERROR)) {
       delegate.setAccountId(accountId);
       delegate.setUuid(delegateId);
-      delegate.setUuid(delegateId);
 
       Delegate existingDelegate = delegateCache.get(accountId, delegateId, true);
       if (existingDelegate != null) {
         delegate.setDelegateType(existingDelegate.getDelegateType());
         delegate.setDelegateGroupName(existingDelegate.getDelegateGroupName());
+        delegate.setDelegateName(existingDelegate.getDelegateName());
+        delegate.setIp(existingDelegate.getIp());
       }
 
       return new RestResponse<>(delegateService.update(delegate));
@@ -805,16 +813,33 @@ public class DelegateSetupResource {
   @ExceptionMetered
   public RestResponse<Map<String, String>> getInstallationCommand(@Context HttpServletRequest request,
       @QueryParam("accountId") @NotEmpty String accountId, @QueryParam("orgId") String orgId,
-      @QueryParam("projectId") String projectId, @QueryParam("commandType") @NotEmpty String commandType)
-      throws IOException {
+      @QueryParam("projectId") String projectId, @QueryParam("commandType") @NotEmpty String commandType,
+      @QueryParam("os") String os, @QueryParam("arch") String arch) throws IOException {
     try (AutoLogContext ignore1 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
       final String managerUrl = subdomainUrlHelper.getManagerUrl(request, accountId);
       final DelegateEntityOwner owner = DelegateEntityOwnerHelper.buildOwner(orgId, projectId);
-      final String command = delegateInstallationCommandService.getCommand(commandType, managerUrl, accountId, owner);
-      ImmutableMap<String, String> commandResponse =
-          ImmutableMap.<String, String>builder().put("command", command).build();
-      return new RestResponse(commandResponse);
+      final String command =
+          delegateInstallationCommandService.getCommand(commandType, managerUrl, accountId, owner, os, arch);
+      ImmutableMap.Builder<String, String> commandResponseBuilder =
+          ImmutableMap.<String, String>builder().put("command", command);
+      if (commandType.equals(HELM)) {
+        commandResponseBuilder.put(
+            "delegateHelmRepoUrl", delegateInstallationCommandService.getHelmRepoUrl(commandType, managerUrl));
+      }
+      return new RestResponse(commandResponseBuilder.build());
     }
+  }
+
+  @GET
+  @Path("internal/installation-command")
+  @Timed
+  @InternalApi
+  @ExceptionMetered
+  public RestResponse<Map<String, String>> getInstallationCommandInternal(@Context HttpServletRequest request,
+      @QueryParam("accountId") @NotEmpty String accountId, @QueryParam("orgId") String orgId,
+      @QueryParam("projectId") String projectId, @QueryParam("commandType") @NotEmpty String commandType,
+      @QueryParam("os") String os, @QueryParam("arch") String arch) throws IOException {
+    return getInstallationCommand(request, accountId, orgId, projectId, commandType, os, arch);
   }
 
   private String getVerificationUrl(HttpServletRequest request) {

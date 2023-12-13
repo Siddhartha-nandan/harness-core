@@ -7,6 +7,8 @@
 
 package io.harness.cdng.provision.terraform.steps.rolllback;
 
+import static io.harness.beans.FeatureName.CDS_TF_TG_SKIP_ERROR_LOGS_COLORING;
+
 import static java.lang.String.format;
 
 import io.harness.account.services.AccountService;
@@ -21,6 +23,7 @@ import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.provision.terraform.TerraformConfig;
 import io.harness.cdng.provision.terraform.TerraformConfigDAL;
 import io.harness.cdng.provision.terraform.TerraformConfigHelper;
+import io.harness.cdng.provision.terraform.TerraformProviderCredential;
 import io.harness.cdng.provision.terraform.TerraformStepHelper;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
 import io.harness.common.ParameterFieldHelper;
@@ -57,6 +60,7 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.StepUtils;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -167,13 +171,21 @@ public class TerraformRollbackStep extends CdTaskExecutable<TerraformTaskNGRespo
       builder.isTerraformCloudCli(rollbackConfig.isTerraformCloudCli());
 
       builder.terraformCommandFlags(terraformStepHelper.getTerraformCliFlags(stepParametersSpec.getCommandFlags()));
+      if (rollbackConfig.getProviderCredentialConfig() != null) {
+        TerraformProviderCredential providerCredential =
+            terraformStepHelper.toTerraformProviderCredential(rollbackConfig.getProviderCredentialConfig());
+        builder.providerCredentialDelegateInfo(
+            terraformStepHelper.getProviderCredentialDelegateInfo(providerCredential, ambiance));
+      }
 
       builder.backendConfig(rollbackConfig.getBackendConfig())
           .targets(rollbackConfig.getTargets())
           .environmentVariables(rollbackConfig.getEnvironmentVariables() == null
                   ? new HashMap<>()
                   : rollbackConfig.getEnvironmentVariables())
-          .timeoutInMillis(StepUtils.getTimeoutMillis(stepParameters.getTimeout(), TerraformConstants.DEFAULT_TIMEOUT));
+          .timeoutInMillis(StepUtils.getTimeoutMillis(stepParameters.getTimeout(), TerraformConstants.DEFAULT_TIMEOUT))
+          .skipColorLogs(
+              cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), CDS_TF_TG_SKIP_ERROR_LOGS_COLORING));
 
       ParameterField<Boolean> skipTerraformRefreshCommandParameter = stepParametersSpec.getSkipRefreshCommand();
 
@@ -265,5 +277,11 @@ public class TerraformRollbackStep extends CdTaskExecutable<TerraformTaskNGRespo
   @Override
   public Class<StepBaseParameters> getStepParametersClass() {
     return StepBaseParameters.class;
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 }

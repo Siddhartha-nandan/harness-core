@@ -32,6 +32,7 @@ import io.harness.cdng.environment.yaml.EnvironmentYamlV2;
 import io.harness.cdng.environment.yaml.EnvironmentsYaml;
 import io.harness.cdng.gitops.entity.Cluster;
 import io.harness.cdng.gitops.service.ClusterService;
+import io.harness.cdng.gitops.steps.ClusterAgentRef;
 import io.harness.cdng.gitops.steps.EnvClusterRefs;
 import io.harness.cdng.infra.yaml.InfraStructureDefinitionYaml;
 import io.harness.cdng.service.beans.ServiceDefinitionType;
@@ -305,6 +306,10 @@ public class EnvironmentInfraFilterHelperTest extends CategoryTest {
             .get();
     assertThat(filteredEnvYaml1.getInfrastructureDefinitions().getValue()).isNotNull();
     assertThat(filteredEnvYaml1.getInfrastructureDefinitions().getValue().size()).isEqualTo(2);
+    assertThat(filteredEnvYaml1.getInfrastructureDefinitions().getValue().get(0).getIdentifier().getValue())
+        .isEqualTo("infra1");
+    assertThat(filteredEnvYaml1.getInfrastructureDefinitions().getValue().get(1).getIdentifier().getValue())
+        .isEqualTo("infra2");
 
     EnvironmentYamlV2 filteredEnvYaml2 =
         environmentsYaml.getValues()
@@ -497,7 +502,7 @@ public class EnvironmentInfraFilterHelperTest extends CategoryTest {
     assertThat(envClusterRefs).hasSize(1);
     assertThat(envClusterRefs.get(0).getEnvRef()).isEqualTo("env1");
     assertThat(envClusterRefs.get(0).getClusterRefs()).hasSize(1);
-    assertThat(envClusterRefs.get(0).getClusterRefs()).contains("c1");
+    assertThat(envClusterRefs.get(0).getClusterRefs()).contains(ClusterAgentRef.builder().clusterId("c1").build());
   }
 
   @Test
@@ -537,10 +542,11 @@ public class EnvironmentInfraFilterHelperTest extends CategoryTest {
     EnvClusterRefs filteredEnv2 =
         envClusterRefs.stream().filter(envClusterRefs1 -> envClusterRefs1.getEnvRef().equals("env2")).findFirst().get();
     assertThat(filteredEnv1.getClusterRefs()).hasSize(2);
-    assertThat(filteredEnv1.getClusterRefs()).contains("c1", "c2");
+    assertThat(filteredEnv1.getClusterRefs())
+        .contains(ClusterAgentRef.builder().clusterId("c1").build(), ClusterAgentRef.builder().clusterId("c2").build());
     assertThat(filteredEnv2.getEnvRef()).isEqualTo("env2");
     assertThat(filteredEnv2.getClusterRefs()).hasSize(1);
-    assertThat(filteredEnv2.getClusterRefs()).contains("c3");
+    assertThat(filteredEnv2.getClusterRefs()).contains(ClusterAgentRef.builder().clusterId("c3").build());
   }
 
   private Cluster getCluster(String clusterRef, String envRef) {
@@ -741,7 +747,8 @@ public class EnvironmentInfraFilterHelperTest extends CategoryTest {
     assertThat(envClusterRefs).hasSize(1);
     assertThat(envClusterRefs.get(0).getEnvRef()).isEqualTo("account.env1");
     assertThat(envClusterRefs.get(0).getClusterRefs()).hasSize(1);
-    assertThat(envClusterRefs.get(0).getClusterRefs()).contains("account.c1");
+    assertThat(envClusterRefs.get(0).getClusterRefs())
+        .contains(ClusterAgentRef.builder().clusterId("account.c1").build());
   }
 
   @Test

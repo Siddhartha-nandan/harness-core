@@ -7,6 +7,7 @@
 
 package software.wings.service.impl;
 
+import static io.harness.beans.FeatureName.PL_RUN_INVALID_AUDITS_CLEANUP;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
@@ -99,7 +100,6 @@ import com.mongodb.DBObject;
 import dev.morphia.query.Query;
 import dev.morphia.query.Sort;
 import dev.morphia.query.UpdateOperations;
-import io.fabric8.utils.Lists;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.time.Instant;
@@ -463,6 +463,76 @@ public class AuditServiceImpl implements AuditService {
     registerAuditActions(accountId, oldEntity, newEntity, type);
   }
 
+  @Override
+  public void deleteStaleAuditRecords(long retentionMillis) {
+    if (!featureFlagService.isGlobalEnabled(PL_RUN_INVALID_AUDITS_CLEANUP)) {
+      return;
+    }
+    final int batchSize = 1000;
+    final long days = Instant.ofEpochMilli(retentionMillis).until(Instant.now(), ChronoUnit.DAYS);
+    log.info("Start: Deleting {} stale audit records older than {} days", batchSize, days);
+    // AuditHeaders Cleanup
+    int updated = 0;
+    int batched = 0;
+    int deleted = 0;
+    DBCollection collection = wingsPersistence.getCollection(AuditHeader.class);
+    BulkWriteOperation bulkWriteOperation = collection.initializeUnorderedBulkOperation();
+    try {
+      BasicDBObject projection = new BasicDBObject("_id", true).append("accountId", true);
+
+      DBCursor audits = fetchNextBatch(collection, projection, retentionMillis, batchSize);
+
+      while (audits.hasNext()) {
+        DBObject record = audits.next();
+        updated++;
+        batched++;
+
+        String uuid = (String) record.get("_id");
+        String accountId = (String) record.get("accountId");
+        if (isEmpty(accountId)) {
+          bulkWriteOperation.find(new BasicDBObject("_id", uuid)).remove();
+          deleted++;
+        }
+        if (updated != 0 && updated % batchSize == 0) {
+          try {
+            bulkWriteOperation.execute();
+          } catch (Exception ex) {
+            log.error("Exception occurred while deleting a stale audits batch: ", ex);
+          }
+          if (updated >= 20000) {
+            log.info("Number of audits records processed: {}, deleted: {}", updated, deleted);
+            return;
+          }
+          bulkWriteOperation = collection.initializeUnorderedBulkOperation();
+          audits = fetchNextBatch(collection, projection, retentionMillis, batchSize);
+          batched = 0;
+        }
+      }
+
+      if (batched != 0) {
+        try {
+          bulkWriteOperation.execute();
+        } catch (Exception ex) {
+          log.error("Exception occurred while deleting a stale audits batch: ", ex);
+        }
+        log.info("Number of audits records processed: {}, deleted: {}", updated, deleted);
+      }
+    } catch (Exception e) {
+      log.error("Audit Records Deletion has failed", e);
+    }
+  }
+
+  private DBCursor fetchNextBatch(
+      DBCollection collection, BasicDBObject projection, long retentionMillis, int batchSize) {
+    return collection
+        .find(wingsPersistence.createQuery(AuditHeader.class, excludeAuthority)
+                  .field(AuditHeaderKeys.createdAt)
+                  .lessThan(retentionMillis)
+                  .getQueryObject(),
+            projection)
+        .limit(batchSize);
+  }
+
   private Optional<String> fetchAuditHeaderIdFromGlobalContext() {
     try {
       return Optional.ofNullable(getAuditHeaderIdFromGlobalContext());
@@ -659,15 +729,13 @@ public class AuditServiceImpl implements AuditService {
   void changeAuditPreferenceForHomePage(AuditPreference auditPreference, String accountId) {
     if (featureFlagService.isEnabled(FeatureName.ENABLE_LOGIN_AUDITS, accountId)) {
       if (Objects.isNull(auditPreference.getApplicationAuditFilter())
-          && Objects.isNull(auditPreference.getAccountAuditFilter())
-          && Lists.isNullOrEmpty(auditPreference.getOperationTypes())) {
+          && Objects.isNull(auditPreference.getAccountAuditFilter()) && isEmpty(auditPreference.getOperationTypes())) {
         auditPreference.setOperationTypes(Arrays.stream(Type.values()).map(Type::name).collect(Collectors.toList()));
       }
 
     } else {
       if (Objects.isNull(auditPreference.getApplicationAuditFilter())
-          && Objects.isNull(auditPreference.getAccountAuditFilter())
-          && Lists.isNullOrEmpty(auditPreference.getOperationTypes())) {
+          && Objects.isNull(auditPreference.getAccountAuditFilter()) && isEmpty(auditPreference.getOperationTypes())) {
         auditPreference.setOperationTypes(Arrays.stream(Type.values())
                                               .filter(type -> type != Type.LOGIN)
                                               .filter(type -> type != Type.LOGIN_2FA)

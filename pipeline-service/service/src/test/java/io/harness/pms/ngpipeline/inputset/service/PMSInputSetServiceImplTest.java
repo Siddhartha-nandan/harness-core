@@ -8,13 +8,17 @@
 package io.harness.pms.ngpipeline.inputset.service;
 
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
+import static io.harness.pms.pipeline.MoveConfigOperationType.INLINE_TO_REMOTE;
+import static io.harness.pms.pipeline.MoveConfigOperationType.REMOTE_TO_INLINE;
 import static io.harness.rule.OwnerRule.ADITHYA;
 import static io.harness.rule.OwnerRule.BRIJESH;
 import static io.harness.rule.OwnerRule.NAMAN;
 import static io.harness.rule.OwnerRule.RAGHAV_GUPTA;
 import static io.harness.rule.OwnerRule.SAMARTH;
+import static io.harness.rule.OwnerRule.SANDESH_SALUNKHE;
 import static io.harness.rule.OwnerRule.VIVEK_DIXIT;
 
+import static java.lang.String.format;
 import static junit.framework.TestCase.assertTrue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -27,12 +31,15 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.harness.PipelineServiceTestBase;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.FeatureName;
 import io.harness.category.element.UnitTests;
 import io.harness.context.GlobalContext;
 import io.harness.eraro.ErrorCode;
@@ -61,18 +68,22 @@ import io.harness.pms.inputset.gitsync.InputSetYamlDTO;
 import io.harness.pms.inputset.gitsync.InputSetYamlDTOMapper;
 import io.harness.pms.ngpipeline.inputset.api.InputSetsApiUtils;
 import io.harness.pms.ngpipeline.inputset.beans.entity.InputSetEntity;
+import io.harness.pms.ngpipeline.inputset.beans.entity.InputSetEntity.InputSetEntityKeys;
 import io.harness.pms.ngpipeline.inputset.beans.entity.InputSetEntityType;
 import io.harness.pms.ngpipeline.inputset.beans.resource.InputSetImportRequestDTO;
 import io.harness.pms.ngpipeline.inputset.beans.resource.InputSetListTypePMS;
 import io.harness.pms.ngpipeline.inputset.mappers.PMSInputSetElementMapper;
 import io.harness.pms.ngpipeline.inputset.mappers.PMSInputSetFilterHelper;
 import io.harness.pms.pipeline.MoveConfigOperationType;
+import io.harness.pms.pipeline.PMSInputSetListRepoResponse;
 import io.harness.pms.pipeline.PipelineEntity;
+import io.harness.pms.pipeline.gitsync.PMSUpdateGitDetailsParams;
 import io.harness.pms.pipeline.service.PMSPipelineService;
-import io.harness.pms.yaml.PipelineVersion;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.repositories.inputset.PMSInputSetRepository;
 import io.harness.rule.Owner;
 import io.harness.utils.PageUtils;
+import io.harness.utils.PmsFeatureFlagHelper;
 import io.harness.yaml.validator.InvalidYamlException;
 
 import com.google.common.collect.ImmutableList;
@@ -81,10 +92,12 @@ import com.google.inject.Inject;
 import com.google.protobuf.StringValue;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import javax.ws.rs.InternalServerErrorException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -93,7 +106,6 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
-import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.springframework.dao.DuplicateKeyException;
@@ -101,6 +113,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 
 @PrepareForTest({InputSetValidationHelper.class})
 @OwnedBy(PIPELINE)
@@ -113,11 +126,14 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   @Mock private GitAwareEntityHelper gitAwareEntityHelper;
   @Mock private PMSPipelineService pipelineService;
   @Mock private InputSetsApiUtils inputSetsApiUtils;
+  @Mock PmsFeatureFlagHelper pmsFeatureFlagHelper;
 
   String ACCOUNT_ID = "account_id";
   String ORG_IDENTIFIER = "orgId";
   String PROJ_IDENTIFIER = "projId";
   String PIPELINE_IDENTIFIER = "pipeline_identifier";
+  String YAML_GIT_CONFIG_REF = "yaml_git_config_ref";
+  String BRANCH = "branch";
 
   String INPUT_SET_IDENTIFIER = "identifier";
   String NAME = "identifier";
@@ -125,6 +141,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   String YAMLV1;
 
   InputSetEntity inputSetEntity;
+  InputSetEntity inputSet;
   InputSetEntity inputSetEntityV1;
 
   String OVERLAY_INPUT_SET_IDENTIFIER = "overlay-identifier";
@@ -166,12 +183,27 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
                          .name(NAME)
                          .yaml(YAML)
                          .inputSetEntityType(InputSetEntityType.INPUT_SET)
+                         .yamlGitConfigRef(YAML_GIT_CONFIG_REF)
+                         .branch(BRANCH)
                          .accountId(ACCOUNT_ID)
                          .orgIdentifier(ORG_IDENTIFIER)
                          .projectIdentifier(PROJ_IDENTIFIER)
                          .pipelineIdentifier(PIPELINE_IDENTIFIER)
                          .storeType(StoreType.INLINE)
                          .build();
+    inputSet = InputSetEntity.builder()
+                   .identifier(INPUT_SET_IDENTIFIER)
+                   .name(NAME)
+                   .yaml(YAML)
+                   .inputSetEntityType(InputSetEntityType.INPUT_SET)
+                   .yamlGitConfigRef(null)
+                   .branch(BRANCH)
+                   .accountId(ACCOUNT_ID)
+                   .orgIdentifier(ORG_IDENTIFIER)
+                   .projectIdentifier(PROJ_IDENTIFIER)
+                   .pipelineIdentifier(PIPELINE_IDENTIFIER)
+                   .storeType(StoreType.INLINE)
+                   .build();
 
     OVERLAY_YAML = "overlayInputSet:\n"
         + "  identifier: overlay1\n"
@@ -209,7 +241,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
                            .projectIdentifier(PROJ_IDENTIFIER)
                            .pipelineIdentifier(PIPELINE_IDENTIFIER)
                            .storeType(StoreType.INLINE)
-                           .harnessVersion(PipelineVersion.V1)
+                           .harnessVersion(HarnessYamlVersion.V1)
                            .build();
 
     String pipelineYamlFileName = "failure-strategy.yaml";
@@ -233,7 +265,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   @Owner(developers = NAMAN)
   @Category(UnitTests.class)
   public void testServiceLayer() {
-    MockedStatic<InputSetValidationHelper> mockSettings = Mockito.mockStatic(InputSetValidationHelper.class);
+    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
     List<InputSetEntity> inputSets = ImmutableList.of(inputSetEntity, overlayInputSetEntity);
     doNothing().when(gitXSettingsHelper).enforceGitExperienceIfApplicable(any(), any(), any());
     for (InputSetEntity entity : inputSets) {
@@ -245,7 +277,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
       assertThat(createdInputSet.getIdentifier()).isEqualTo(entity.getIdentifier());
       assertThat(createdInputSet.getName()).isEqualTo(entity.getName());
       assertThat(createdInputSet.getYaml()).isEqualTo(entity.getYaml());
-      assertThat(createdInputSet.getVersion()).isEqualTo(0L);
+      assertThat(createdInputSet.getVersion()).isZero();
 
       Optional<InputSetEntity> getInputSet = pmsInputSetService.get(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER,
           PIPELINE_IDENTIFIER, entity.getIdentifier(), false, null, null, false, false, false);
@@ -256,7 +288,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
       assertThat(getInputSet.get().getIdentifier()).isEqualTo(createdInputSet.getIdentifier());
       assertThat(getInputSet.get().getName()).isEqualTo(createdInputSet.getName());
       assertThat(getInputSet.get().getYaml()).isEqualTo(createdInputSet.getYaml());
-      assertThat(getInputSet.get().getVersion()).isEqualTo(0L);
+      assertThat(getInputSet.get().getVersion()).isZero();
 
       String DESCRIPTION = "Added a description here";
       InputSetEntity updateInputSetEntity = InputSetEntity.builder()
@@ -312,7 +344,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   @Owner(developers = NAMAN)
   @Category(UnitTests.class)
   public void testList() {
-    MockedStatic<InputSetValidationHelper> mockSettings = Mockito.mockStatic(InputSetValidationHelper.class);
+    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
     when(inputSetsApiUtils.isDifferentRepoForPipelineAndInputSetsAccountSettingEnabled(any())).thenReturn(false);
     doNothing().when(gitXSettingsHelper).enforceGitExperienceIfApplicable(any(), any(), any());
     pmsInputSetService.create(inputSetEntity, false);
@@ -407,6 +439,323 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   }
 
   @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testSwitchValidationFlagWhenYamlGitConfigRefIsNull() {
+    on(pmsInputSetService).set("inputSetRepository", inputSetRepository);
+    Criteria criteria = Criteria.where(InputSetEntityKeys.accountId)
+                            .is(ACCOUNT_ID)
+                            .and(InputSetEntityKeys.orgIdentifier)
+                            .is(ORG_IDENTIFIER)
+                            .and(InputSetEntityKeys.projectIdentifier)
+                            .is(PROJ_IDENTIFIER)
+                            .and(InputSetEntityKeys.pipelineIdentifier)
+                            .is(PIPELINE_IDENTIFIER)
+                            .and(InputSetEntityKeys.identifier)
+                            .is(INPUT_SET_IDENTIFIER);
+    Update update = new Update();
+    update.set(InputSetEntityKeys.isInvalid, false);
+    doReturn(inputSetEntity).when(inputSetRepository).update(criteria, update);
+    assertTrue(pmsInputSetService.switchValidationFlag(inputSet, false));
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testSwitchValidationFlagWhenYamlGitConfigRefIsNotNull() {
+    on(pmsInputSetService).set("inputSetRepository", inputSetRepository);
+    Criteria criteria = Criteria.where(InputSetEntityKeys.accountId)
+                            .is(ACCOUNT_ID)
+                            .and(InputSetEntityKeys.orgIdentifier)
+                            .is(ORG_IDENTIFIER)
+                            .and(InputSetEntityKeys.projectIdentifier)
+                            .is(PROJ_IDENTIFIER)
+                            .and(InputSetEntityKeys.pipelineIdentifier)
+                            .is(PIPELINE_IDENTIFIER)
+                            .and(InputSetEntityKeys.identifier)
+                            .is(INPUT_SET_IDENTIFIER)
+                            .and(InputSetEntityKeys.yamlGitConfigRef)
+                            .is(YAML_GIT_CONFIG_REF)
+                            .and(InputSetEntityKeys.branch)
+                            .is(BRANCH);
+    Update update = new Update();
+    update.set(InputSetEntityKeys.isInvalid, false);
+    doReturn(inputSetEntity).when(inputSetRepository).update(criteria, update);
+    assertTrue(pmsInputSetService.switchValidationFlag(inputSetEntity, false));
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetListOfReposSuccessNonEmptyReposList() {
+    doReturn(List.of("repo1", "repo2", "repo3")).when(inputSetRepository).findAllUniqueInputSetRepos(any());
+    PMSInputSetListRepoResponse result =
+        pmsInputSetServiceMock.getListOfRepos(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER);
+    assertThat(result).isNotNull();
+    assertThat(result.getRepositories()).isEqualTo(List.of("repo1", "repo2", "repo3"));
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetListOfReposSuccessEmptyReposList() {
+    PMSInputSetListRepoResponse result =
+        pmsInputSetServiceMock.getListOfRepos(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER);
+    assertThat(result).isNotNull();
+    assertThat(result.getRepositories()).isEmpty();
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetListOfReposFailure() {
+    List<String> repoList = new ArrayList<>();
+    for (int i = 0; i <= 1000; i++) {
+      repoList.add("Repo" + i);
+    }
+    doReturn(repoList).when(inputSetRepository).findAllUniqueInputSetRepos(any());
+    InternalServerErrorException internalServerErrorException = new InternalServerErrorException(
+        String.format("The size of unique repository list is greater than [%d]", 1000));
+    try {
+      pmsInputSetServiceMock.getListOfRepos(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER);
+    } catch (InternalServerErrorException ex) {
+      assertThat(ex.getMessage()).isEqualTo(internalServerErrorException.getMessage());
+    }
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testUpdateGitMetadataSuccessNoUpdates() {
+    PMSUpdateGitDetailsParams updateGitDetailsParams = PMSUpdateGitDetailsParams.builder().build();
+    when(inputSetRepository.updateEntity(any(), any())).thenReturn(inputSetEntity);
+    String result = pmsInputSetServiceMock.updateGitMetadata(
+        ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER, updateGitDetailsParams);
+    assertThat(result).isNotNull().isEqualTo("identifier");
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testUpdateGitMetadataSuccessUpdateWithUpdates() {
+    PMSUpdateGitDetailsParams updateGitDetailsParams = PMSUpdateGitDetailsParams.builder()
+                                                           .connectorRef("connectorRef")
+                                                           .repoName("repoName")
+                                                           .filePath("filePath")
+                                                           .build();
+    when(inputSetRepository.updateEntity(any(), any())).thenReturn(inputSetEntity);
+    String result = pmsInputSetServiceMock.updateGitMetadata(
+        ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER, updateGitDetailsParams);
+    assertThat(result).isNotNull().isEqualTo("identifier");
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testUpdateGitMetadataSuccessUpdateReturnsNullInputSetEntity() {
+    PMSUpdateGitDetailsParams updateGitDetailsParams = PMSUpdateGitDetailsParams.builder()
+                                                           .connectorRef("connectorRef")
+                                                           .repoName("repoName")
+                                                           .filePath("filePath")
+                                                           .build();
+    when(inputSetRepository.updateEntity(any(), any())).thenReturn(null);
+    EntityNotFoundException entityNotFoundException = new EntityNotFoundException(
+        format("InputSet with id [%s] is not present or has been deleted", INPUT_SET_IDENTIFIER));
+    try {
+      pmsInputSetServiceMock.updateGitMetadata(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER,
+          INPUT_SET_IDENTIFIER, updateGitDetailsParams);
+    } catch (EntityNotFoundException ex) {
+      assertThat(ex.getMessage()).isEqualTo(entityNotFoundException.getMessage());
+    }
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testMoveInputSetEntityInlineToRemote() {
+    InputSetMoveConfigOperationDTO inputSetMoveConfigOperationDTO = InputSetMoveConfigOperationDTO.builder()
+                                                                        .pipelineIdentifier(PIPELINE_IDENTIFIER)
+                                                                        .moveConfigOperationType(INLINE_TO_REMOTE)
+                                                                        .build();
+    when(inputSetRepository.updateInputSetEntity(any(), any(), any(), any())).thenReturn(inputSetEntity);
+    InputSetEntity result = pmsInputSetServiceMock.moveInputSetEntity(
+        ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, inputSetMoveConfigOperationDTO, inputSetEntity);
+    assertThat(result).isEqualTo(inputSetEntity);
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testMoveInputSetEntityRemoteToInline() {
+    InputSetMoveConfigOperationDTO inputSetMoveConfigOperationDTO = InputSetMoveConfigOperationDTO.builder()
+                                                                        .pipelineIdentifier(PIPELINE_IDENTIFIER)
+                                                                        .moveConfigOperationType(REMOTE_TO_INLINE)
+                                                                        .build();
+    when(inputSetRepository.updateInputSetEntity(any(), any(), any(), any())).thenReturn(inputSetEntity);
+    InputSetEntity result = pmsInputSetServiceMock.moveInputSetEntity(
+        ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, inputSetMoveConfigOperationDTO, inputSetEntity);
+    assertThat(result).isEqualTo(inputSetEntity);
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testMoveInputSetEntityInvalidOperationType() {
+    MoveConfigOperationType invalidMoveConfigOperationType = mock(MoveConfigOperationType.class);
+    InputSetMoveConfigOperationDTO inputSetMoveConfigOperationDTO = mock(InputSetMoveConfigOperationDTO.class);
+    inputSetMoveConfigOperationDTO.setPipelineIdentifier(PIPELINE_IDENTIFIER);
+    inputSetMoveConfigOperationDTO.setMoveConfigOperationType(invalidMoveConfigOperationType);
+    doReturn(invalidMoveConfigOperationType).when(inputSetMoveConfigOperationDTO).getMoveConfigOperationType();
+    doReturn("INVALID_OPERATION").when(invalidMoveConfigOperationType).name();
+    InvalidRequestException exception = assertThrows(InvalidRequestException.class,
+        ()
+            -> pmsInputSetServiceMock.moveInputSetEntity(
+                ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, inputSetMoveConfigOperationDTO, inputSetEntity));
+    assertThat(exception.getMessage()).isEqualTo("Invalid move config operation specified [INVALID_OPERATION].");
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetMetadataWithoutValidationsSuccess() {
+    boolean deleted = false;
+    boolean loadFromFallbackBranch = true;
+    boolean getMetadata = true;
+    boolean loadFromCache = false;
+    when(inputSetRepository.find(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER,
+             !deleted, getMetadata, loadFromFallbackBranch, loadFromCache))
+        .thenReturn(Optional.of(inputSetEntity));
+    Optional<InputSetEntity> result = pmsInputSetServiceMock.getMetadataWithoutValidations(ACCOUNT_ID, ORG_IDENTIFIER,
+        PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER, deleted, loadFromFallbackBranch, getMetadata);
+    assertTrue(result.isPresent());
+    assertThat(result.get()).isEqualTo(inputSetEntity);
+    verify(inputSetRepository, times(1))
+        .find(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER, !deleted,
+            getMetadata, loadFromFallbackBranch, loadFromCache);
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetMetadataWithoutValidationsNotFound() {
+    boolean deleted = false;
+    boolean loadFromFallbackBranch = true;
+    boolean getMetadata = true;
+    boolean loadFromCache = false;
+    when(inputSetRepository.find(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER,
+             !deleted, getMetadata, loadFromFallbackBranch, loadFromCache))
+        .thenReturn(Optional.empty());
+    Optional<InputSetEntity> result = pmsInputSetServiceMock.getMetadataWithoutValidations(ACCOUNT_ID, ORG_IDENTIFIER,
+        PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER, deleted, loadFromFallbackBranch, getMetadata);
+    assertTrue(result.isEmpty());
+    verify(inputSetRepository, times(1))
+        .find(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER, !deleted,
+            getMetadata, loadFromFallbackBranch, loadFromCache);
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetMetadataWithoutValidationsRuntimeException() {
+    boolean deleted = false;
+    boolean loadFromFallbackBranch = true;
+    boolean getMetadata = true;
+    boolean loadFromCache = false;
+    when(inputSetRepository.find(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER,
+             !deleted, getMetadata, loadFromFallbackBranch, loadFromCache))
+        .thenThrow(new RuntimeException("Test exception"));
+    assertThrows(InvalidRequestException.class,
+        ()
+            -> pmsInputSetServiceMock.getMetadataWithoutValidations(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER,
+                PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER, deleted, loadFromFallbackBranch, getMetadata));
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetMetadataWithoutValidationsExplanationException() {
+    boolean deleted = false;
+    boolean loadFromFallbackBranch = true;
+    boolean getMetadata = true;
+    boolean loadFromCache = false;
+    when(inputSetRepository.find(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER,
+             !deleted, getMetadata, loadFromFallbackBranch, loadFromCache))
+        .thenThrow(new ExplanationException("Test exception", new RuntimeException("Test exception")));
+    assertThrows(ExplanationException.class,
+        ()
+            -> pmsInputSetServiceMock.getMetadataWithoutValidations(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER,
+                PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER, deleted, loadFromFallbackBranch, getMetadata));
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetMetadataWithoutValidationsHintException() {
+    boolean deleted = false;
+    boolean loadFromFallbackBranch = true;
+    boolean getMetadata = true;
+    boolean loadFromCache = false;
+    when(inputSetRepository.find(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER,
+             !deleted, getMetadata, loadFromFallbackBranch, loadFromCache))
+        .thenThrow(new HintException("Test exception"));
+    assertThrows(HintException.class,
+        ()
+            -> pmsInputSetServiceMock.getMetadataWithoutValidations(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER,
+                PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER, deleted, loadFromFallbackBranch, getMetadata));
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetMetadataWithoutValidationsScmException() {
+    boolean deleted = false;
+    boolean loadFromFallbackBranch = true;
+    boolean getMetadata = true;
+    boolean loadFromCache = false;
+    when(inputSetRepository.find(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER,
+             !deleted, getMetadata, loadFromFallbackBranch, loadFromCache))
+        .thenThrow(new ScmException(ErrorCode.DEFAULT_ERROR_CODE));
+    assertThrows(ScmException.class,
+        ()
+            -> pmsInputSetServiceMock.getMetadataWithoutValidations(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER,
+                PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER, deleted, loadFromFallbackBranch, getMetadata));
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetMetadataSuccess() {
+    boolean deleted = false;
+    boolean loadFromFallbackBranch = false;
+    boolean getMetadata = true;
+    doReturn(Optional.of(inputSetEntity))
+        .when(pmsInputSetServiceMock)
+        .getMetadataWithoutValidations(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER,
+            INPUT_SET_IDENTIFIER, deleted, loadFromFallbackBranch, getMetadata);
+    InputSetEntity result = pmsInputSetServiceMock.getMetadata(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER,
+        PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER, deleted, loadFromFallbackBranch, getMetadata);
+    assertThat(result).isNotNull();
+    assertThat(result).isEqualTo(inputSetEntity);
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetMetadataFailure() {
+    boolean deleted = false;
+    boolean loadFromFallbackBranch = false;
+    boolean getMetadata = true;
+    doReturn(Optional.empty())
+        .when(pmsInputSetServiceMock)
+        .getMetadataWithoutValidations(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER,
+            INPUT_SET_IDENTIFIER, deleted, loadFromFallbackBranch, getMetadata);
+    assertThrows(InvalidRequestException.class,
+        ()
+            -> pmsInputSetServiceMock.getMetadata(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER,
+                INPUT_SET_IDENTIFIER, deleted, loadFromFallbackBranch, getMetadata));
+  }
+
+  @Test
   @Owner(developers = NAMAN)
   @Category(UnitTests.class)
   public void testCheckForInputSetsForPipeline() {
@@ -436,7 +785,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
     String name = "this name";
     String description = "this has a description too";
     String pipelineIdentifier = "Test_Pipline11";
-    when(inputSetsApiUtils.inputSetVersion(ACCOUNT_ID, YAML)).thenReturn(PipelineVersion.V0);
+    when(inputSetsApiUtils.inputSetVersion(ACCOUNT_ID, YAML)).thenReturn(HarnessYamlVersion.V0);
     doReturn(YAML).when(gitAwareEntityHelper).fetchYAMLFromRemote(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, true);
     InputSetEntity inBetweenEntity = PMSInputSetElementMapper.toInputSetEntity(ACCOUNT_ID, YAML);
     InputSetImportRequestDTO inputSetImportRequest =
@@ -453,9 +802,23 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   @Test
   @Owner(developers = NAMAN)
   @Category(UnitTests.class)
-  public void testCreateForOldGitSync() {
-    MockedStatic<InputSetValidationHelper> mockSettings = Mockito.mockStatic(InputSetValidationHelper.class);
+  public void testCreateForOldGitSyncWithFFDisabled() {
+    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
     doReturn(true).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
+    doReturn(false).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
+    pmsInputSetServiceMock.create(inputSetEntity, false);
+    verify(inputSetRepository, times(1)).saveForOldGitSync(inputSetEntity, InputSetYamlDTOMapper.toDTO(inputSetEntity));
+    verify(inputSetRepository, times(0)).save(any());
+    mockSettings.close();
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testCreateForOldGitSyncWithFFEnabled() {
+    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
+    doReturn(true).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
+    doReturn(true).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
     pmsInputSetServiceMock.create(inputSetEntity, false);
     verify(inputSetRepository, times(1)).saveForOldGitSync(inputSetEntity, InputSetYamlDTOMapper.toDTO(inputSetEntity));
     verify(inputSetRepository, times(0)).save(any());
@@ -465,9 +828,36 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   @Test
   @Owner(developers = NAMAN)
   @Category(UnitTests.class)
-  public void testCreateWithExceptions() {
-    MockedStatic<InputSetValidationHelper> mockSettings = Mockito.mockStatic(InputSetValidationHelper.class);
+  public void testCreateWithExceptionsWithFFDisabled() {
+    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
     doReturn(false).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
+    doReturn(false).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
+    doThrow(new DuplicateKeyException("msg")).when(inputSetRepository).save(inputSetEntity);
+    assertThatThrownBy(() -> pmsInputSetServiceMock.create(inputSetEntity, false))
+        .isInstanceOf(DuplicateFieldException.class);
+
+    doThrow(new ExplanationException("msg", null)).when(inputSetRepository).save(inputSetEntity);
+    assertThatThrownBy(() -> pmsInputSetServiceMock.create(inputSetEntity, false))
+        .isInstanceOf(ExplanationException.class);
+    doThrow(new HintException("msg", null)).when(inputSetRepository).save(inputSetEntity);
+    assertThatThrownBy(() -> pmsInputSetServiceMock.create(inputSetEntity, false)).isInstanceOf(HintException.class);
+    doThrow(new ScmException(ErrorCode.DEFAULT_ERROR_CODE)).when(inputSetRepository).save(inputSetEntity);
+    assertThatThrownBy(() -> pmsInputSetServiceMock.create(inputSetEntity, false)).isInstanceOf(ScmException.class);
+
+    doThrow(new NullPointerException()).when(inputSetRepository).save(inputSetEntity);
+    assertThatThrownBy(() -> pmsInputSetServiceMock.create(inputSetEntity, false))
+        .isInstanceOf(InvalidRequestException.class);
+
+    mockSettings.close();
+  }
+
+  @Test
+  @Owner(developers = NAMAN)
+  @Category(UnitTests.class)
+  public void testCreateWithExceptionsWithFFEnabled() {
+    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
+    doReturn(false).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
+    doReturn(true).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
     doThrow(new DuplicateKeyException("msg")).when(inputSetRepository).save(inputSetEntity);
     assertThatThrownBy(() -> pmsInputSetServiceMock.create(inputSetEntity, false))
         .isInstanceOf(DuplicateFieldException.class);
@@ -491,7 +881,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   @Owner(developers = NAMAN)
   @Category(UnitTests.class)
   public void testGetForOldGitSync() {
-    MockedStatic<InputSetValidationHelper> mockSettings = Mockito.mockStatic(InputSetValidationHelper.class);
+    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
     doReturn(true).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
     doReturn(Optional.of(inputSetEntity))
         .when(inputSetRepository)
@@ -555,7 +945,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
     assertThatThrownBy(()
                            -> pmsInputSetServiceMock.get(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER,
                                PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER, false, null, null, false, false, false));
-    MockedStatic<InputSetValidationHelper> mockSettings = Mockito.mockStatic(InputSetValidationHelper.class);
+    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
     // no exception with the mock
     pmsInputSetServiceMock.get(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, INPUT_SET_IDENTIFIER,
         false, null, null, false, false, false);
@@ -568,7 +958,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   public void testUpdateForOldGitSync() {
     InputSetYamlDTO inputSetYamlDTO = InputSetYamlDTOMapper.toDTO(inputSetEntity);
     ChangeType c = ChangeType.MODIFY;
-    MockedStatic<InputSetValidationHelper> mockSettings = Mockito.mockStatic(InputSetValidationHelper.class);
+    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
     doReturn(true).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
 
     setupGitContext(GitEntityInfo.builder().isNewBranch(true).branch("newBranch").yamlGitConfigId("repo").build());
@@ -614,7 +1004,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   public void testUpdateForOldGitSyncWithErrors() {
     InputSetYamlDTO inputSetYamlDTO = InputSetYamlDTOMapper.toDTO(inputSetEntity);
     ChangeType c = ChangeType.MODIFY;
-    MockedStatic<InputSetValidationHelper> mockSettings = Mockito.mockStatic(InputSetValidationHelper.class);
+    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
     doReturn(true).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
     setupGitContext(GitEntityInfo.builder().isNewBranch(true).branch("newBranch").yamlGitConfigId("repo").build());
 
@@ -780,7 +1170,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   public void testGetRepoUrlAndCheckForFileUniqueness() {
     String repoUrl = "repoUrl123";
     GitEntityInfo gitEntityInfo = GitEntityInfo.builder().filePath("filePath").build();
-    MockedStatic<GitAwareContextHelper> utilities = Mockito.mockStatic(GitAwareContextHelper.class);
+    MockedStatic<GitAwareContextHelper> utilities = mockStatic(GitAwareContextHelper.class);
     utilities.when(GitAwareContextHelper::getGitRequestParamsInfo).thenReturn(gitEntityInfo);
 
     doReturn(repoUrl).when(gitAwareEntityHelper).getRepoUrl(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
@@ -840,27 +1230,57 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   @Test
   @Owner(developers = RAGHAV_GUPTA)
   @Category(UnitTests.class)
-  public void testCreateInputSetV1() {
+  public void testCreateInputSetV1WithFFDisabled() {
     doReturn(false).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
-    MockedStatic<InputSetValidationHelper> mockSettings = Mockito.mockStatic(InputSetValidationHelper.class);
+    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
     doReturn(inputSetEntityV1).when(inputSetRepository).save(inputSetEntityV1);
+    doReturn(false).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
     InputSetEntity inputSetEntity = pmsInputSetServiceMock.create(inputSetEntityV1, false);
     assertThat(inputSetEntity).isNotNull();
     assertThat(inputSetEntityV1.getYaml()).isEqualTo(YAMLV1);
-    assertThat(inputSetEntityV1.getHarnessVersion()).isEqualTo(PipelineVersion.V1);
+    assertThat(inputSetEntityV1.getHarnessVersion()).isEqualTo(HarnessYamlVersion.V1);
+    mockSettings.close();
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testCreateInputSetV1WithFFEnabled() {
+    doReturn(false).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
+    MockedStatic<InputSetValidationHelper> mockSettings = mockStatic(InputSetValidationHelper.class);
+    doReturn(inputSetEntityV1).when(inputSetRepository).save(inputSetEntityV1);
+    doReturn(true).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
+    InputSetEntity inputSetEntity = pmsInputSetServiceMock.create(inputSetEntityV1, false);
+    assertThat(inputSetEntity).isNotNull();
+    assertThat(inputSetEntityV1.getYaml()).isEqualTo(YAMLV1);
+    assertThat(inputSetEntityV1.getHarnessVersion()).isEqualTo(HarnessYamlVersion.V1);
     mockSettings.close();
   }
 
   @Test
   @Owner(developers = RAGHAV_GUPTA)
   @Category(UnitTests.class)
-  public void testUpdateInputSetV1() {
+  public void testUpdateInputSetV1WithFFDisabled() {
     doReturn(false).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
+    doReturn(false).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
     doReturn(inputSetEntityV1).when(inputSetRepository).update(inputSetEntityV1);
     InputSetEntity inputSetEntity = pmsInputSetServiceMock.update(ChangeType.MODIFY, inputSetEntityV1, false);
     assertThat(inputSetEntity).isNotNull();
     assertThat(inputSetEntityV1.getYaml()).isEqualTo(YAMLV1);
-    assertThat(inputSetEntityV1.getHarnessVersion()).isEqualTo(PipelineVersion.V1);
+    assertThat(inputSetEntityV1.getHarnessVersion()).isEqualTo(HarnessYamlVersion.V1);
+  }
+
+  @Test
+  @Owner(developers = RAGHAV_GUPTA)
+  @Category(UnitTests.class)
+  public void testUpdateInputSetV1WithFFEnabled() {
+    doReturn(false).when(gitSyncSdkService).isGitSyncEnabled(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
+    doReturn(true).when(pmsFeatureFlagHelper).isEnabled(ACCOUNT_ID, FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER);
+    doReturn(inputSetEntityV1).when(inputSetRepository).update(inputSetEntityV1);
+    InputSetEntity inputSetEntity = pmsInputSetServiceMock.update(ChangeType.MODIFY, inputSetEntityV1, false);
+    assertThat(inputSetEntity).isNotNull();
+    assertThat(inputSetEntityV1.getYaml()).isEqualTo(YAMLV1);
+    assertThat(inputSetEntityV1.getHarnessVersion()).isEqualTo(HarnessYamlVersion.V1);
   }
 
   @Test
@@ -877,7 +1297,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
     assertThat(optionalInputSetEntity.isPresent()).isTrue();
     InputSetEntity inputSetEntity = optionalInputSetEntity.get();
     assertThat(inputSetEntity.getYaml()).isEqualTo(YAMLV1);
-    assertThat(inputSetEntity.getHarnessVersion()).isEqualTo(PipelineVersion.V1);
+    assertThat(inputSetEntity.getHarnessVersion()).isEqualTo(HarnessYamlVersion.V1);
   }
 
   @Test
@@ -900,7 +1320,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
     String identifier = "set1";
     String name = "set1";
     String description = "this has a description too";
-    when(inputSetsApiUtils.inputSetVersion(ACCOUNT_ID, YAMLV1)).thenReturn(PipelineVersion.V1);
+    when(inputSetsApiUtils.inputSetVersion(ACCOUNT_ID, YAMLV1)).thenReturn(HarnessYamlVersion.V1);
     doReturn(YAMLV1).when(gitAwareEntityHelper).fetchYAMLFromRemote(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, true);
     InputSetEntity inBetweenEntity = PMSInputSetElementMapper.toInputSetEntityV1(
         ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, YAMLV1, InputSetEntityType.INPUT_SET);
@@ -921,9 +1341,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   public void testMoveConfigInlineToRemote() {
     doReturn("repoUrl").when(gitAwareEntityHelper).getRepoUrl(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER);
     InputSetMoveConfigOperationDTO inputSetMoveConfigOperationDTO =
-        InputSetMoveConfigOperationDTO.builder()
-            .moveConfigOperationType(MoveConfigOperationType.INLINE_TO_REMOTE)
-            .build();
+        InputSetMoveConfigOperationDTO.builder().moveConfigOperationType(INLINE_TO_REMOTE).build();
     doReturn(inputSetEntity).when(inputSetRepository).updateInputSetEntity(any(), any(), any(), any());
     InputSetEntity movedInputSet = pmsInputSetServiceMock.moveInputSetEntity(
         ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, inputSetMoveConfigOperationDTO, inputSetEntity);
@@ -937,9 +1355,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
   @Category(UnitTests.class)
   public void testMoveConfigRemoteToInline() {
     InputSetMoveConfigOperationDTO inputSetMoveConfigOperationDTO =
-        InputSetMoveConfigOperationDTO.builder()
-            .moveConfigOperationType(MoveConfigOperationType.REMOTE_TO_INLINE)
-            .build();
+        InputSetMoveConfigOperationDTO.builder().moveConfigOperationType(REMOTE_TO_INLINE).build();
     doReturn(inputSetEntity).when(inputSetRepository).updateInputSetEntity(any(), any(), any(), any());
     InputSetEntity movedInputSet = pmsInputSetServiceMock.moveInputSetEntity(
         ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, inputSetMoveConfigOperationDTO, inputSetEntity);
@@ -970,6 +1386,7 @@ public class PMSInputSetServiceImplTest extends PipelineServiceTestBase {
 
     Assertions.assertDoesNotThrow(() -> pmsInputSetServiceMock.validateInputSetSetting(inputSet, pipeline));
   }
+
   @Test
   @Owner(developers = ADITHYA)
   @Category(UnitTests.class)

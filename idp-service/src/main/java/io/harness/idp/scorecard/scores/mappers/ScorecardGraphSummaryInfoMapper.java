@@ -8,7 +8,7 @@ package io.harness.idp.scorecard.scores.mappers;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.scorecard.scores.entities.ScoreEntity;
+import io.harness.idp.scorecard.scores.entity.ScoreEntity;
 import io.harness.spec.server.idp.v1.model.ScorecardGraphSummaryInfo;
 
 import lombok.experimental.UtilityClass;
@@ -18,6 +18,9 @@ import lombok.experimental.UtilityClass;
 public class ScorecardGraphSummaryInfoMapper {
   public ScorecardGraphSummaryInfo toDTO(ScoreEntity scoreEntity) {
     ScorecardGraphSummaryInfo scorecardGraphSummaryInfo = new ScorecardGraphSummaryInfo();
+    if (scoreEntity == null) {
+      return scorecardGraphSummaryInfo;
+    }
     scorecardGraphSummaryInfo.setScorecardIdentifier(scoreEntity.getScorecardIdentifier());
     scorecardGraphSummaryInfo.setScore((int) scoreEntity.getScore());
     scorecardGraphSummaryInfo.setTimestamp(scoreEntity.getLastComputedTimestamp());

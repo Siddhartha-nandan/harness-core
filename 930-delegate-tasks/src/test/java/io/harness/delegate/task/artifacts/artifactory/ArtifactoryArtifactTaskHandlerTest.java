@@ -29,6 +29,7 @@ import io.harness.artifactory.service.ArtifactoryRegistryService;
 import io.harness.artifacts.beans.BuildDetailsInternal;
 import io.harness.beans.ArtifactMetaInfo;
 import io.harness.category.element.UnitTests;
+import io.harness.data.structure.ListUtils;
 import io.harness.delegate.beans.connector.artifactoryconnector.ArtifactoryAuthType;
 import io.harness.delegate.beans.connector.artifactoryconnector.ArtifactoryAuthenticationDTO;
 import io.harness.delegate.beans.connector.artifactoryconnector.ArtifactoryConnectorDTO;
@@ -42,7 +43,6 @@ import io.harness.security.encryption.SecretDecryptionService;
 import software.wings.helpers.ext.jenkins.BuildDetails;
 import software.wings.utils.RepositoryFormat;
 
-import io.fabric8.utils.Lists;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -87,6 +87,31 @@ public class ArtifactoryArtifactTaskHandlerTest extends CategoryTest {
   @Mock ArtifactoryNgService artifactoryNgService;
   @Mock SecretDecryptionService secretDecryptionService;
   @Spy ArtifactoryRequestMapper artifactoryRequestMapper;
+
+  private static final ArtifactoryUsernamePasswordAuthDTO ARTIFACTORY_USERNAME_PASSWORD_AUTH_DTO =
+      ArtifactoryUsernamePasswordAuthDTO.builder()
+          .username(ARTIFACTORY_USERNAME)
+          .passwordRef(SecretRefData.builder().decryptedValue(ARTIFACTORY_PASSWORD.toCharArray()).build())
+          .build();
+
+  private static final ArtifactoryConnectorDTO ARTIFACTORY_CONNECTOR_DTO =
+      ArtifactoryConnectorDTO.builder()
+          .artifactoryServerUrl(ARTIFACTORY_URL)
+          .auth(ArtifactoryAuthenticationDTO.builder()
+                    .authType(ArtifactoryAuthType.USER_PASSWORD)
+                    .credentials(ARTIFACTORY_USERNAME_PASSWORD_AUTH_DTO)
+                    .build())
+          .build();
+  private static final ArtifactoryConfigRequest ARTIFACTORY_CONFIG_REQUEST =
+      ArtifactoryConfigRequest.builder()
+          .artifactoryUrl(ARTIFACTORY_CONNECTOR_DTO.getArtifactoryServerUrl())
+          .username(ARTIFACTORY_USERNAME_PASSWORD_AUTH_DTO.getUsername())
+          .password(ARTIFACTORY_USERNAME_PASSWORD_AUTH_DTO.getPasswordRef().getDecryptedValue())
+          .hasCredentials(true)
+          .build();
+
+  private static final BuildDetails BUILD_DETAILS =
+      BuildDetails.Builder.aBuildDetails().withArtifactPath(COMBINED_ARTIFACT_PATH).build();
 
   @Test
   @Owner(developers = MLUKIC)
@@ -219,7 +244,7 @@ public class ArtifactoryArtifactTaskHandlerTest extends CategoryTest {
                                                               .artifactoryConnectorDTO(artifactoryConnectorDTO)
                                                               .build();
 
-    doReturn(Lists.newArrayList(buildDetailsInternal))
+    doReturn(ListUtils.newArrayList(buildDetailsInternal))
         .when(artifactoryRegistryService)
         .getBuilds(artifactoryInternalConfig, REPO_NAME, IMAGE_NAME, RepositoryFormat.docker.name());
 
@@ -276,7 +301,7 @@ public class ArtifactoryArtifactTaskHandlerTest extends CategoryTest {
     String artifactDirectory = sourceAttributes.getArtifactDirectory();
     String filePath = Paths.get(artifactDirectory, DEFAULT_ARTIFACT_FILTER).toString();
 
-    doReturn(Lists.newArrayList(buildDetailsInternal))
+    doReturn(ListUtils.newArrayList(buildDetailsInternal))
         .when(artifactoryNgService)
         .getArtifactList(artifactoryInternalConfig, sourceAttributes.getRepositoryName(), filePath,
             MAX_NO_OF_TAGS_PER_ARTIFACT, sourceAttributes.getArtifactPathFilter(), artifactDirectory);
@@ -296,46 +321,50 @@ public class ArtifactoryArtifactTaskHandlerTest extends CategoryTest {
   @Test
   @Owner(developers = ABHISHEK)
   @Category(UnitTests.class)
+  public void testGetBuildsForGenericArtifactFilter() {
+    ArtifactoryGenericArtifactDelegateRequest sourceAttributes = ArtifactoryGenericArtifactDelegateRequest.builder()
+                                                                     .repositoryName(REPO_NAME)
+                                                                     .repositoryFormat(RepositoryFormat.generic.name())
+                                                                     .artifactFilter("filter")
+                                                                     .artifactoryConnectorDTO(ARTIFACTORY_CONNECTOR_DTO)
+                                                                     .artifactPathFilter(".*?")
+                                                                     .build();
+
+    doReturn(ListUtils.newArrayList(BUILD_DETAILS))
+        .when(artifactoryNgService)
+        .getArtifactList(ARTIFACTORY_CONFIG_REQUEST, sourceAttributes.getRepositoryName(), "filter",
+            MAX_NO_OF_TAGS_PER_ARTIFACT, sourceAttributes.getArtifactPathFilter(), "/");
+
+    ArtifactTaskExecutionResponse lastSuccessfulBuild = artifactoryArtifactService.getBuilds(sourceAttributes);
+    assertThat(lastSuccessfulBuild).isNotNull();
+    assertThat(lastSuccessfulBuild.getArtifactDelegateResponses().size()).isEqualTo(1);
+    assertThat(lastSuccessfulBuild.getArtifactDelegateResponses().get(0))
+        .isInstanceOf(ArtifactoryGenericArtifactDelegateResponse.class);
+    ArtifactoryGenericArtifactDelegateResponse attributes =
+        (ArtifactoryGenericArtifactDelegateResponse) lastSuccessfulBuild.getArtifactDelegateResponses().get(0);
+    assertThat(attributes.getArtifactPath()).isEqualTo(COMBINED_ARTIFACT_PATH);
+    assertThat(lastSuccessfulBuild.getBuildDetails().size()).isEqualTo(1);
+    assertThat(lastSuccessfulBuild.getBuildDetails().get(0).getArtifactPath()).isEqualTo(COMBINED_ARTIFACT_PATH);
+  }
+
+  @Test
+  @Owner(developers = ABHISHEK)
+  @Category(UnitTests.class)
   public void testGetBuildsForGeneric_DirectoryWithSlash() {
-    ArtifactoryUsernamePasswordAuthDTO artifactoryUsernamePasswordAuthDTO =
-        ArtifactoryUsernamePasswordAuthDTO.builder()
-            .username(ARTIFACTORY_USERNAME)
-            .passwordRef(SecretRefData.builder().decryptedValue(ARTIFACTORY_PASSWORD.toCharArray()).build())
-            .build();
-
-    ArtifactoryConnectorDTO artifactoryConnectorDTO = ArtifactoryConnectorDTO.builder()
-                                                          .artifactoryServerUrl(ARTIFACTORY_URL)
-                                                          .auth(ArtifactoryAuthenticationDTO.builder()
-                                                                    .authType(ArtifactoryAuthType.USER_PASSWORD)
-                                                                    .credentials(artifactoryUsernamePasswordAuthDTO)
-                                                                    .build())
-                                                          .build();
-
-    BuildDetails buildDetailsInternal =
-        BuildDetails.Builder.aBuildDetails().withArtifactPath(COMBINED_ARTIFACT_PATH).build();
-
-    ArtifactoryConfigRequest artifactoryInternalConfig =
-        ArtifactoryConfigRequest.builder()
-            .artifactoryUrl(artifactoryConnectorDTO.getArtifactoryServerUrl())
-            .username(artifactoryUsernamePasswordAuthDTO.getUsername())
-            .password(artifactoryUsernamePasswordAuthDTO.getPasswordRef().getDecryptedValue())
-            .hasCredentials(true)
-            .build();
-
     ArtifactoryGenericArtifactDelegateRequest sourceAttributes = ArtifactoryGenericArtifactDelegateRequest.builder()
                                                                      .repositoryName(REPO_NAME)
                                                                      .repositoryFormat(RepositoryFormat.generic.name())
                                                                      .artifactDirectory(ARTIFACT_DIRECTORY_2)
-                                                                     .artifactoryConnectorDTO(artifactoryConnectorDTO)
+                                                                     .artifactoryConnectorDTO(ARTIFACTORY_CONNECTOR_DTO)
                                                                      .artifactPathFilter(".*")
                                                                      .build();
 
     String artifactDirectory = sourceAttributes.getArtifactDirectory();
     String filePath = Paths.get(artifactDirectory, DEFAULT_ARTIFACT_FILTER).toString();
 
-    doReturn(Lists.newArrayList(buildDetailsInternal))
+    doReturn(ListUtils.newArrayList(BUILD_DETAILS))
         .when(artifactoryNgService)
-        .getArtifactList(artifactoryInternalConfig, sourceAttributes.getRepositoryName(), filePath,
+        .getArtifactList(ARTIFACTORY_CONFIG_REQUEST, sourceAttributes.getRepositoryName(), filePath,
             MAX_NO_OF_TAGS_PER_ARTIFACT, sourceAttributes.getArtifactPathFilter(), artifactDirectory);
 
     ArtifactTaskExecutionResponse lastSuccessfulBuild = artifactoryArtifactService.getBuilds(sourceAttributes);
@@ -354,45 +383,20 @@ public class ArtifactoryArtifactTaskHandlerTest extends CategoryTest {
   @Owner(developers = ABHISHEK)
   @Category(UnitTests.class)
   public void testGetBuildsForGeneric_DirectoryWithSingleSlash() {
-    ArtifactoryUsernamePasswordAuthDTO artifactoryUsernamePasswordAuthDTO =
-        ArtifactoryUsernamePasswordAuthDTO.builder()
-            .username(ARTIFACTORY_USERNAME)
-            .passwordRef(SecretRefData.builder().decryptedValue(ARTIFACTORY_PASSWORD.toCharArray()).build())
-            .build();
-
-    ArtifactoryConnectorDTO artifactoryConnectorDTO = ArtifactoryConnectorDTO.builder()
-                                                          .artifactoryServerUrl(ARTIFACTORY_URL)
-                                                          .auth(ArtifactoryAuthenticationDTO.builder()
-                                                                    .authType(ArtifactoryAuthType.USER_PASSWORD)
-                                                                    .credentials(artifactoryUsernamePasswordAuthDTO)
-                                                                    .build())
-                                                          .build();
-
-    BuildDetails buildDetailsInternal =
-        BuildDetails.Builder.aBuildDetails().withArtifactPath(COMBINED_ARTIFACT_PATH).build();
-
-    ArtifactoryConfigRequest artifactoryInternalConfig =
-        ArtifactoryConfigRequest.builder()
-            .artifactoryUrl(artifactoryConnectorDTO.getArtifactoryServerUrl())
-            .username(artifactoryUsernamePasswordAuthDTO.getUsername())
-            .password(artifactoryUsernamePasswordAuthDTO.getPasswordRef().getDecryptedValue())
-            .hasCredentials(true)
-            .build();
-
     ArtifactoryGenericArtifactDelegateRequest sourceAttributes = ArtifactoryGenericArtifactDelegateRequest.builder()
                                                                      .repositoryName(REPO_NAME)
                                                                      .repositoryFormat(RepositoryFormat.generic.name())
                                                                      .artifactDirectory(ARTIFACT_DIRECTORY_3)
-                                                                     .artifactoryConnectorDTO(artifactoryConnectorDTO)
+                                                                     .artifactoryConnectorDTO(ARTIFACTORY_CONNECTOR_DTO)
                                                                      .artifactPathFilter(".*")
                                                                      .build();
 
     String artifactDirectory = sourceAttributes.getArtifactDirectory();
     String filePath = Paths.get(artifactDirectory, DEFAULT_ARTIFACT_FILTER).toString();
 
-    doReturn(Lists.newArrayList(buildDetailsInternal))
+    doReturn(ListUtils.newArrayList(BUILD_DETAILS))
         .when(artifactoryNgService)
-        .getArtifactList(artifactoryInternalConfig, sourceAttributes.getRepositoryName(), filePath,
+        .getArtifactList(ARTIFACTORY_CONFIG_REQUEST, sourceAttributes.getRepositoryName(), filePath,
             MAX_NO_OF_TAGS_PER_ARTIFACT, sourceAttributes.getArtifactPathFilter(), artifactDirectory);
 
     ArtifactTaskExecutionResponse lastSuccessfulBuild = artifactoryArtifactService.getBuilds(sourceAttributes);

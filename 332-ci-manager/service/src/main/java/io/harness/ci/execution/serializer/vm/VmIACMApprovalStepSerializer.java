@@ -5,14 +5,14 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.serializer.vm;
+package io.harness.ci.execution.serializer.vm;
 
 import io.harness.beans.steps.stepinfo.IACMApprovalInfo;
 import io.harness.beans.sweepingoutputs.StageInfraDetails;
-import io.harness.ci.execution.CIExecutionConfigService;
-import io.harness.ci.integrationstage.IntegrationStageUtils;
-import io.harness.ci.serializer.SerializerUtils;
-import io.harness.ci.utils.HarnessImageUtils;
+import io.harness.ci.execution.execution.CIExecutionConfigService;
+import io.harness.ci.execution.integrationstage.IntegrationStageUtils;
+import io.harness.ci.execution.serializer.SerializerUtils;
+import io.harness.ci.execution.utils.HarnessImageUtils;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.delegate.beans.ci.vm.steps.VmPluginStep;
 import io.harness.delegate.beans.ci.vm.steps.VmPluginStep.VmPluginStepBuilder;
@@ -46,6 +46,7 @@ public class VmIACMApprovalStepSerializer {
     Map<String, String> envVars = stepInfo.getEnvVariables().getValue();
     envVars.put("PLUGIN_ENDPOINT_VARIABLES",
         iacmStepsUtils.populatePipelineIds(ambiance, envVars.get("PLUGIN_ENDPOINT_VARIABLES")));
+    envVars.put("PLUGIN_AUTO_APPROVE", stepInfo.getAutoApprove().getValue().toString());
 
     Map<String, String> statusEnvVars = serializerUtils.getStepStatusEnvVars(ambiance);
     envVars.putAll(statusEnvVars);

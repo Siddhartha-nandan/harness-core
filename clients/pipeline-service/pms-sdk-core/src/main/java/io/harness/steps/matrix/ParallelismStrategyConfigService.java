@@ -9,16 +9,18 @@ package io.harness.steps.matrix;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.data.structure.ListUtils;
 import io.harness.exception.InvalidYamlException;
 import io.harness.plancreator.strategy.StrategyConfig;
 import io.harness.plancreator.strategy.StrategyUtils;
+import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.ChildrenExecutableResponse;
 import io.harness.pms.contracts.execution.StrategyMetadata;
+import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.yaml.utils.JsonPipelineUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.fabric8.utils.Lists;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,17 +29,22 @@ import java.util.Optional;
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 public class ParallelismStrategyConfigService implements StrategyConfigService {
   @Override
-  public List<ChildrenExecutableResponse.Child> fetchChildren(StrategyConfig strategyConfig, String childNodeId) {
+  public List<ChildrenExecutableResponse.Child> fetchChildren(
+      StrategyConfig strategyConfig, String childNodeId, Ambiance ambiance) {
     Integer parallelism = 0;
     if (!ParameterField.isBlank(strategyConfig.getParallelism())) {
       parallelism = strategyConfig.getParallelism().getValue();
     }
     List<ChildrenExecutableResponse.Child> children = new ArrayList<>();
     for (int i = 0; i < parallelism; i++) {
+      StrategyMetadata metadata =
+          StrategyMetadata.newBuilder().setCurrentIteration(i).setTotalIterations(parallelism).build();
+      String nodeName =
+          AmbianceUtils.getStrategyPostFixUsingMetadata(metadata, AmbianceUtils.shouldUseMatrixFieldName(ambiance));
+      metadata = metadata.toBuilder().setIdentifierPostFix(nodeName).build();
       children.add(ChildrenExecutableResponse.Child.newBuilder()
                        .setChildNodeId(childNodeId)
-                       .setStrategyMetadata(
-                           StrategyMetadata.newBuilder().setCurrentIteration(i).setTotalIterations(parallelism).build())
+                       .setStrategyMetadata(metadata)
                        .build());
     }
     return children;
@@ -60,7 +67,7 @@ public class ParallelismStrategyConfigService implements StrategyConfigService {
     for (int i = 0; i < parallelism; i++) {
       JsonNode clonedJsonNode =
           StrategyUtils.replaceExpressions(JsonPipelineUtils.asTree(jsonNode), new HashMap<>(), i, parallelism, null);
-      StrategyUtils.modifyJsonNode(clonedJsonNode, Lists.newArrayList(String.valueOf(i)));
+      StrategyUtils.modifyJsonNode(clonedJsonNode, ListUtils.newArrayList(String.valueOf(i)));
       jsonNodes.add(clonedJsonNode);
     }
     return StrategyInfo.builder().expandedJsonNodes(jsonNodes).maxConcurrency(jsonNodes.size()).build();

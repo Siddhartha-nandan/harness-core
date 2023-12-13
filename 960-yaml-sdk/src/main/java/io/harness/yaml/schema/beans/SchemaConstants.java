@@ -16,6 +16,7 @@ import io.harness.annotations.dev.OwnedBy;
 public class SchemaConstants {
   public static final String PIPELINE_NODE = "pipeline";
   public static final String TEMPLATE_NODE = "template";
+  public static final String TRIGGER_NODE = "trigger";
   public static final String STAGES_NODE = "stages";
   public static final String PARALLEL_NODE = "parallel";
   public static final String IF_NODE = "if";
@@ -63,6 +64,9 @@ public class SchemaConstants {
   public static final String INPUT_SET_PATTERN = "^" + EXPR_START_ESC + "input" + EXPR_END_ESC + "$";
   // Simplifying the regex for expression. Anything between <+ and > will be considered as expression.
   public static final String EXPRESSION_PATTERN = "(" + EXPR_START_ESC + ".+" + EXPR_END_ESC + ".*)";
+  public static final String EXPRESSION_PATTERN_EMPTY_STRING_ALLOWED = "(" + EXPR_START_ESC + ".+" + EXPR_END_ESC + ".*"
+      + "|^$"
+      + ")";
   // This should validate string patterns starting with optional + or - ([+-]?). Then at least one digit ([0-9]+). Then
   // optional `.` amd optional digits.
   public static final String NUMBER_STRING_WITH_EXPRESSION_PATTERN = "("
@@ -78,4 +82,5 @@ public class SchemaConstants {
   public static final String STAGE_ELEMENT_CONFIG_REF_VALUE = "#/definitions/StageElementConfig";
   public static final String STAGE_NODE = "stage";
   public static final String HASH_SYMBOL = "#";
+  public static final String TITLE = "title";
 }

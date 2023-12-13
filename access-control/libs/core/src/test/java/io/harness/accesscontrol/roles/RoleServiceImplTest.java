@@ -8,6 +8,9 @@
 package io.harness.accesscontrol.roles;
 
 import static io.harness.annotations.dev.HarnessTeam.PL;
+import static io.harness.outbox.TransactionOutboxModule.OUTBOX_TRANSACTION_TEMPLATE;
+import static io.harness.rule.OwnerRule.ADITYA;
+import static io.harness.rule.OwnerRule.JIMIT_GANDHI;
 import static io.harness.rule.OwnerRule.KARAN;
 
 import static junit.framework.TestCase.assertEquals;
@@ -16,6 +19,7 @@ import static junit.framework.TestCase.assertTrue;
 import static junit.framework.TestCase.fail;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -28,7 +32,12 @@ import io.harness.accesscontrol.permissions.Permission;
 import io.harness.accesscontrol.permissions.PermissionFilter;
 import io.harness.accesscontrol.permissions.PermissionService;
 import io.harness.accesscontrol.permissions.PermissionStatus;
+import io.harness.accesscontrol.principals.PrincipalType;
+import io.harness.accesscontrol.roleassignments.RoleAssignment;
+import io.harness.accesscontrol.roleassignments.RoleAssignmentFilter;
 import io.harness.accesscontrol.roleassignments.RoleAssignmentService;
+import io.harness.accesscontrol.roles.events.RoleCreateEventV2;
+import io.harness.accesscontrol.roles.events.RoleUpdateEventV2;
 import io.harness.accesscontrol.roles.filter.RoleFilter;
 import io.harness.accesscontrol.roles.persistence.RoleDao;
 import io.harness.accesscontrol.scopes.TestScopeLevels;
@@ -40,13 +49,16 @@ import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.beans.PageRequest;
 import io.harness.ng.beans.PageResponse;
+import io.harness.outbox.api.OutboxService;
 import io.harness.rule.Owner;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.google.inject.name.Named;
 import io.serializer.HObjectMapper;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -55,6 +67,9 @@ import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.mockito.ArgumentCaptor;
+import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @OwnedBy(PL)
@@ -65,6 +80,8 @@ public class RoleServiceImplTest extends AccessControlCoreTestBase {
   private RoleAssignmentService roleAssignmentService;
   private TransactionTemplate transactionTemplate;
   private RoleServiceImpl roleService;
+  @Named(OUTBOX_TRANSACTION_TEMPLATE) private TransactionTemplate outboxTransactionTemplate;
+  private OutboxService outboxService;
 
   private static final Set<PermissionStatus> ALLOWED_PERMISSION_STATUS =
       Sets.newHashSet(PermissionStatus.EXPERIMENTAL, PermissionStatus.ACTIVE, PermissionStatus.DEPRECATED);
@@ -76,8 +93,10 @@ public class RoleServiceImplTest extends AccessControlCoreTestBase {
     scopeService = mock(ScopeService.class);
     roleAssignmentService = mock(RoleAssignmentService.class);
     transactionTemplate = mock(TransactionTemplate.class);
-    roleService =
-        spy(new RoleServiceImpl(roleDao, permissionService, scopeService, roleAssignmentService, transactionTemplate));
+    outboxService = mock(OutboxService.class);
+    outboxTransactionTemplate = mock(TransactionTemplate.class);
+    roleService = spy(new RoleServiceImpl(roleDao, permissionService, scopeService, roleAssignmentService,
+        transactionTemplate, outboxTransactionTemplate, outboxService));
   }
 
   private Role getRole(int count, boolean managed) {
@@ -194,12 +213,21 @@ public class RoleServiceImplTest extends AccessControlCoreTestBase {
     Role roleClone = (Role) HObjectMapper.clone(role);
     roleClone.getPermissions().add(compulsoryPermissionAllRoleScopes);
     when(roleDao.create(roleClone)).thenReturn(roleClone);
-
+    when(outboxTransactionTemplate.execute(any()))
+        .thenAnswer(invocationOnMock
+            -> invocationOnMock.getArgument(0, TransactionCallback.class)
+                   .doInTransaction(new SimpleTransactionStatus()));
+    when(outboxService.save(any())).thenReturn(null);
+    ArgumentCaptor<RoleCreateEventV2> argumentCaptor = ArgumentCaptor.forClass(RoleCreateEventV2.class);
     Role savedRole = roleService.create(role);
     assertEquals(roleClone, savedRole);
+
+    verify(outboxService, times(1)).save(argumentCaptor.capture());
+    RoleCreateEventV2 roleCreateEventV2 = argumentCaptor.getValue();
+    assertEquals(role.getScopeIdentifier(), roleCreateEventV2.getScope());
+    assertEquals(savedRole, roleCreateEventV2.getRole());
     verify(permissionService, times(1)).list(validatePermissionFilter);
     verify(permissionService, times(1)).list(compulsoryPermissionFilter);
-    verify(roleDao, times(1)).create(any());
   }
 
   private PermissionFilter getCompulsoryPermissionFilter(Role role) {
@@ -237,7 +265,8 @@ public class RoleServiceImplTest extends AccessControlCoreTestBase {
                           .build();
     Role updatedRole = (Role) HObjectMapper.clone(roleUpdate);
     updatedRole.setVersion(currentRole.getVersion() + 1);
-
+    when(scopeService.buildScopeFromScopeIdentifier(roleUpdate.getScopeIdentifier()))
+        .thenReturn(Scope.builder().level(TestScopeLevels.EXTRA_SCOPE).build());
     when(roleDao.get(roleUpdate.getIdentifier(), roleUpdate.getScopeIdentifier(), ManagedFilter.ONLY_CUSTOM))
         .thenReturn(Optional.of(currentRole));
     PermissionFilter validatePermissionFilter = getValidatePermissionFilter(roleUpdate);
@@ -253,15 +282,25 @@ public class RoleServiceImplTest extends AccessControlCoreTestBase {
 
     PermissionFilter compulsoryPermissionFilter = getCompulsoryPermissionFilter(roleUpdate);
     when(permissionService.list(compulsoryPermissionFilter)).thenReturn(new ArrayList<>());
-    when(transactionTemplate.execute(any())).thenReturn(updatedRole);
+    when(roleDao.update(roleUpdate)).thenReturn(roleUpdate);
+    when(outboxTransactionTemplate.execute(any()))
+        .thenAnswer(invocationOnMock
+            -> invocationOnMock.getArgument(0, TransactionCallback.class)
+                   .doInTransaction(new SimpleTransactionStatus()));
+    when(outboxService.save(any())).thenReturn(null);
+    ArgumentCaptor<RoleUpdateEventV2> argumentCaptor = ArgumentCaptor.forClass(RoleUpdateEventV2.class);
 
-    RoleUpdateResult roleUpdateResult = roleService.update(roleUpdate);
-
-    assertEquals(updatedRole, roleUpdateResult.getUpdatedRole());
-    assertEquals(currentRole, roleUpdateResult.getOriginalRole());
+    Role roleUpdateResult = roleService.update(updatedRole);
+    verify(outboxTransactionTemplate, times(1)).execute(any());
+    verify(outboxService, times(1)).save(argumentCaptor.capture());
+    RoleUpdateEventV2 roleUpdateEventV2 = argumentCaptor.getValue();
+    assertEquals(updatedRole.getScopeIdentifier(), roleUpdateEventV2.getScope());
+    assertEquals(currentRole, roleUpdateEventV2.getOldRole());
+    assertEquals(updatedRole, roleUpdateEventV2.getNewRole());
+    assertEquals(updatedRole, roleUpdateResult);
+    assertEquals(currentRole, currentRole);
     verify(roleDao, times(1)).get(any(), any(), any());
     verify(permissionService, times(2)).list(any());
-    verify(transactionTemplate, times(1)).execute(any());
   }
 
   @Test(expected = InvalidRequestException.class)
@@ -314,13 +353,19 @@ public class RoleServiceImplTest extends AccessControlCoreTestBase {
   public void testDelete() {
     String identifier = randomAlphabetic(10);
     String scopeIdentifier = randomAlphabetic(10);
-    Role role = Role.builder().scopeIdentifier(scopeIdentifier).identifier(identifier).build();
-    when(roleDao.get(identifier, scopeIdentifier, ManagedFilter.ONLY_CUSTOM)).thenReturn(Optional.of(role));
-    when(transactionTemplate.execute(any())).thenReturn(role);
+    Role role = Role.builder().scopeIdentifier(scopeIdentifier).identifier(identifier).managed(false).build();
+    when(roleDao.get(identifier, scopeIdentifier, ManagedFilter.NO_FILTER)).thenReturn(Optional.of(role));
+    when(outboxService.save(any())).thenReturn(null);
+    when(outboxTransactionTemplate.execute(any()))
+        .thenAnswer(invocationOnMock
+            -> invocationOnMock.getArgument(0, TransactionCallback.class)
+                   .doInTransaction(new SimpleTransactionStatus()));
+    when(roleDao.delete(identifier, scopeIdentifier, false)).thenReturn(Optional.of(role));
     Role deletedRole = roleService.delete(identifier, scopeIdentifier);
     assertEquals(role, deletedRole);
     verify(roleDao, times(1)).get(any(), any(), any());
-    verify(transactionTemplate, times(1)).execute(any());
+    verify(outboxTransactionTemplate, times(1)).execute(any());
+    verify(roleService, times(1)).delete(identifier, scopeIdentifier);
   }
 
   @Test(expected = InvalidRequestException.class)
@@ -340,7 +385,12 @@ public class RoleServiceImplTest extends AccessControlCoreTestBase {
     String identifier = randomAlphabetic(10);
     Role role = Role.builder().identifier(identifier).build();
     when(roleDao.get(identifier, null, ManagedFilter.ONLY_MANAGED)).thenReturn(Optional.of(role));
-    when(transactionTemplate.execute(any())).thenReturn(role);
+    when(transactionTemplate.execute(any()))
+        .thenAnswer(invocationOnMock
+            -> invocationOnMock.getArgument(0, TransactionCallback.class)
+                   .doInTransaction(new SimpleTransactionStatus()));
+    when(roleDao.delete(identifier, null, true)).thenReturn(Optional.of(role));
+    when(roleAssignmentService.deleteMulti(any())).thenReturn(0L);
     Role deletedRole = roleService.deleteManaged(identifier);
     assertEquals(role, deletedRole);
     verify(roleDao, times(1)).get(any(), any(), any());
@@ -418,5 +468,187 @@ public class RoleServiceImplTest extends AccessControlCoreTestBase {
     result = roleService.removePermissionFromRoles(permissionIdentifier, roleFilter);
     assertFalse(result);
     verify(roleDao, times(2)).removePermissionFromRoles(any(), any());
+  }
+
+  @Test
+  @Owner(developers = {ADITYA, JIMIT_GANDHI})
+  @Category(UnitTests.class)
+  public void testListWithPrincipalCountUser() {
+    PageRequest pageRequest = PageRequest.builder().pageIndex(0).pageSize(50).build();
+    Role role = Role.builder()
+                    .identifier(randomAlphabetic(10))
+                    .scopeIdentifier(randomAlphabetic(10))
+                    .name(randomAlphabetic(10))
+                    .build();
+    RoleAssignment roleAssignmentToUser = RoleAssignment.builder()
+                                              .identifier(randomAlphabetic(10))
+                                              .scopeIdentifier(role.getScopeIdentifier())
+                                              .roleIdentifier(role.getIdentifier())
+                                              .principalType(PrincipalType.USER)
+                                              .build();
+    RoleFilter roleFilter = RoleFilter.builder()
+                                .identifierFilter(Sets.newHashSet(roleAssignmentToUser.getRoleIdentifier()))
+                                .scopeIdentifier(role.getScopeIdentifier())
+                                .build();
+
+    PageResponse<Role> rolePageResponse = PageResponse.<Role>builder()
+                                              .content(Collections.singletonList(role))
+                                              .totalPages(1)
+                                              .totalItems(1)
+                                              .pageItemCount(1)
+                                              .pageSize(50)
+                                              .pageIndex(0)
+                                              .empty(false)
+                                              .build();
+    when(roleService.list(any(), any(RoleFilter.class), eq(true))).thenReturn(rolePageResponse);
+
+    PageResponse<RoleAssignment> roleAssignmentPageResponse =
+        PageResponse.<RoleAssignment>builder()
+            .content(Collections.singletonList(roleAssignmentToUser))
+            .totalPages(1)
+            .totalItems(1)
+            .pageItemCount(1)
+            .pageSize(50)
+            .pageIndex(0)
+            .empty(false)
+            .build();
+
+    PageRequest roleAssignmentsPageRequest = PageRequest.builder().pageSize(50000).build();
+    RoleAssignmentFilter roleAssignmentFilter = RoleAssignmentFilter.builder()
+                                                    .scopeFilter(roleFilter.getScopeIdentifier())
+                                                    .roleFilter(roleFilter.getIdentifierFilter())
+                                                    .build();
+    when(roleAssignmentService.list(roleAssignmentsPageRequest, roleAssignmentFilter, true))
+        .thenReturn(roleAssignmentPageResponse);
+
+    PageResponse<RoleWithPrincipalCount> pageResponse =
+        roleService.listWithPrincipalCount(pageRequest, roleFilter, true);
+
+    assertEquals(1, pageResponse.getContent().size());
+    for (int i = 0; i < pageResponse.getContent().size(); i++) {
+      assertEquals(1, (int) pageResponse.getContent().get(i).getRoleAssignedToUserCount());
+    }
+    verify(roleAssignmentService, times(1)).list(roleAssignmentsPageRequest, roleAssignmentFilter, true);
+  }
+
+  @Test
+  @Owner(developers = {ADITYA, JIMIT_GANDHI})
+  @Category(UnitTests.class)
+  public void testListWithPrincipalCountUserGroup() {
+    PageRequest pageRequest = PageRequest.builder().pageIndex(0).pageSize(50).build();
+    Role role = Role.builder()
+                    .identifier(randomAlphabetic(10))
+                    .scopeIdentifier(randomAlphabetic(10))
+                    .name(randomAlphabetic(10))
+                    .build();
+    RoleAssignment roleAssignmentToUserGroup = RoleAssignment.builder()
+                                                   .identifier(randomAlphabetic(10))
+                                                   .scopeIdentifier(role.getScopeIdentifier())
+                                                   .roleIdentifier(role.getIdentifier())
+                                                   .principalType(PrincipalType.USER_GROUP)
+                                                   .build();
+    RoleFilter roleFilter = RoleFilter.builder()
+                                .identifierFilter(Sets.newHashSet(roleAssignmentToUserGroup.getRoleIdentifier()))
+                                .scopeIdentifier(role.getScopeIdentifier())
+                                .build();
+
+    PageResponse<Role> rolePageResponse = PageResponse.<Role>builder()
+                                              .content(Collections.singletonList(role))
+                                              .totalPages(1)
+                                              .totalItems(1)
+                                              .pageItemCount(1)
+                                              .pageSize(50)
+                                              .pageIndex(0)
+                                              .empty(false)
+                                              .build();
+    when(roleService.list(any(), any(RoleFilter.class), eq(true))).thenReturn(rolePageResponse);
+
+    PageResponse<RoleAssignment> roleAssignmentPageResponse =
+        PageResponse.<RoleAssignment>builder()
+            .content(Collections.singletonList(roleAssignmentToUserGroup))
+            .totalPages(1)
+            .totalItems(1)
+            .pageItemCount(1)
+            .pageSize(50000)
+            .pageIndex(0)
+            .empty(false)
+            .build();
+    when(roleAssignmentService.list(any(), any(RoleAssignmentFilter.class), eq(true)))
+        .thenReturn(roleAssignmentPageResponse);
+    PageRequest roleAssignmentsPageRequest = PageRequest.builder().pageSize(50000).build();
+    RoleAssignmentFilter roleAssignmentFilter = RoleAssignmentFilter.builder()
+                                                    .scopeFilter(roleFilter.getScopeIdentifier())
+                                                    .roleFilter(roleFilter.getIdentifierFilter())
+                                                    .build();
+    when(roleAssignmentService.list(roleAssignmentsPageRequest, roleAssignmentFilter, true))
+        .thenReturn(roleAssignmentPageResponse);
+
+    PageResponse<RoleWithPrincipalCount> pageResponse =
+        roleService.listWithPrincipalCount(pageRequest, roleFilter, true);
+
+    assertEquals(1, pageResponse.getContent().size());
+    for (int i = 0; i < pageResponse.getContent().size(); i++) {
+      assertEquals(1, (int) pageResponse.getContent().get(i).getRoleAssignedToUserGroupCount());
+    }
+    verify(roleAssignmentService, times(1)).list(roleAssignmentsPageRequest, roleAssignmentFilter, true);
+  }
+  @Test
+  @Owner(developers = {ADITYA, JIMIT_GANDHI})
+  @Category(UnitTests.class)
+  public void testListWithPrincipalCountServiceAccount() {
+    PageRequest pageRequest = PageRequest.builder().pageIndex(0).pageSize(50).build();
+    Role role = Role.builder()
+                    .identifier(randomAlphabetic(10))
+                    .scopeIdentifier(randomAlphabetic(10))
+                    .name(randomAlphabetic(10))
+                    .build();
+    RoleAssignment roleAssignmentToServiceAccount = RoleAssignment.builder()
+                                                        .identifier(randomAlphabetic(10))
+                                                        .scopeIdentifier(role.getScopeIdentifier())
+                                                        .roleIdentifier(role.getIdentifier())
+                                                        .principalType(PrincipalType.SERVICE_ACCOUNT)
+                                                        .build();
+    RoleFilter roleFilter = RoleFilter.builder()
+                                .identifierFilter(Sets.newHashSet(roleAssignmentToServiceAccount.getRoleIdentifier()))
+                                .scopeIdentifier(role.getScopeIdentifier())
+                                .build();
+
+    PageResponse<Role> rolePageResponse = PageResponse.<Role>builder()
+                                              .content(Collections.singletonList(role))
+                                              .totalPages(1)
+                                              .totalItems(1)
+                                              .pageItemCount(1)
+                                              .pageSize(50)
+                                              .pageIndex(0)
+                                              .empty(false)
+                                              .build();
+    when(roleService.list(any(), any(RoleFilter.class), eq(true))).thenReturn(rolePageResponse);
+
+    PageResponse<RoleAssignment> roleAssignmentPageResponse =
+        PageResponse.<RoleAssignment>builder()
+            .content(Collections.singletonList(roleAssignmentToServiceAccount))
+            .totalPages(1)
+            .totalItems(1)
+            .pageItemCount(1)
+            .pageSize(50000)
+            .pageIndex(0)
+            .empty(false)
+            .build();
+    PageRequest roleAssignmentsPageRequest = PageRequest.builder().pageSize(50000).build();
+    RoleAssignmentFilter roleAssignmentFilter = RoleAssignmentFilter.builder()
+                                                    .scopeFilter(roleFilter.getScopeIdentifier())
+                                                    .roleFilter(roleFilter.getIdentifierFilter())
+                                                    .build();
+    when(roleAssignmentService.list(roleAssignmentsPageRequest, roleAssignmentFilter, true))
+        .thenReturn(roleAssignmentPageResponse);
+
+    PageResponse<RoleWithPrincipalCount> pageResponse =
+        roleService.listWithPrincipalCount(pageRequest, roleFilter, true);
+
+    assertEquals(1, pageResponse.getContent().size());
+    for (int i = 0; i < pageResponse.getContent().size(); i++) {
+      assertEquals(1, (int) pageResponse.getContent().get(i).getRoleAssignedToServiceAccountCount());
+    }
+    verify(roleAssignmentService, times(1)).list(roleAssignmentsPageRequest, roleAssignmentFilter, true);
   }
 }

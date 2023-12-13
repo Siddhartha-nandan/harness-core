@@ -6,12 +6,15 @@
  */
 
 package io.harness.steps.approval.step;
+
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.delegate.task.shell.ShellScriptTaskNG.COMMAND_UNIT;
 import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 
 import static java.util.Objects.isNull;
+import static org.springframework.data.mongodb.core.query.Criteria.where;
+import static org.springframework.data.mongodb.core.query.Query.query;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -21,6 +24,7 @@ import io.harness.beans.EmbeddedUser;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.pms.data.PmsEngineExpressionService;
+import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.execution.NodeExecution;
 import io.harness.jira.JiraIssueNG;
@@ -43,6 +47,7 @@ import io.harness.steps.approval.step.harness.HarnessApprovalResponseData;
 import io.harness.steps.approval.step.harness.beans.HarnessApprovalAction;
 import io.harness.steps.approval.step.harness.beans.HarnessApprovalActivityRequestDTO;
 import io.harness.steps.approval.step.harness.entities.HarnessApprovalInstance;
+import io.harness.steps.approval.step.harness.entities.HarnessApprovalInstance.HarnessApprovalInstanceKeys;
 import io.harness.steps.approval.step.jira.beans.JiraApprovalResponseData;
 import io.harness.steps.approval.step.jira.entities.JiraApprovalInstance;
 import io.harness.steps.approval.step.jira.entities.JiraApprovalInstance.JiraApprovalInstanceKeys;
@@ -72,6 +77,7 @@ import javax.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -125,9 +131,10 @@ public class ApprovalInstanceServiceImpl implements ApprovalInstanceService {
 
   @Override
   public List<ApprovalInstance> getApprovalInstancesByExecutionId(@NotEmpty String planExecutionId,
-      @Valid ApprovalStatus approvalStatus, @Valid ApprovalType approvalType, String nodeExecutionId) {
+      @Valid ApprovalStatus approvalStatus, @Valid ApprovalType approvalType, String nodeExecutionId,
+      String callbackId) {
     if (isEmpty(planExecutionId)) {
-      throw new InvalidRequestException("PlanExecutionId can be empty");
+      throw new InvalidRequestException("PlanExecutionId cannot be empty");
     }
 
     Criteria criteria = Criteria.where(ApprovalInstanceKeys.planExecutionId).is(planExecutionId);
@@ -146,6 +153,9 @@ public class ApprovalInstanceServiceImpl implements ApprovalInstanceService {
 
     if (EmptyPredicate.isNotEmpty(nodeExecutionId)) {
       criteria.and(ApprovalInstanceKeys.nodeExecutionId).is(nodeExecutionId);
+    }
+    if (EmptyPredicate.isNotEmpty(callbackId)) {
+      criteria.and(HarnessApprovalInstanceKeys.callbackId).is(callbackId);
     }
     // uses planExecutionId_status_type_nodeExecutionId if nodeExecutionId is absent
     // uses nodeExecutionId if nodeExecutionId is present
@@ -166,6 +176,27 @@ public class ApprovalInstanceServiceImpl implements ApprovalInstanceService {
           instance.getType()));
     }
     return (HarnessApprovalInstance) instance;
+  }
+
+  @Override
+  public Optional<ApprovalInstance> findLatestApprovalInstanceByPlanExecutionIdAndType(
+      @NotEmpty String planExecutionId, @NotNull ApprovalType approvalType) {
+    if (isEmpty(planExecutionId)) {
+      throw new InvalidArgumentsException("PlanExecutionId cannot be null or empty");
+    }
+    if (approvalType == null) {
+      throw new InvalidArgumentsException("ApprovalType cannot be null");
+    }
+
+    Query approvalInstancesByPlanExecutionIdAndTypeQuery =
+        query(where(ApprovalInstanceKeys.planExecutionId).is(planExecutionId))
+            .addCriteria(where(ApprovalInstanceKeys.type).in(approvalType))
+            .with(Sort.by(Sort.Direction.DESC, ApprovalInstanceKeys.createdAt))
+            .limit(1);
+
+    List<ApprovalInstance> approvalInstances =
+        approvalInstanceRepository.find(approvalInstancesByPlanExecutionIdAndTypeQuery);
+    return isEmpty(approvalInstances) ? Optional.empty() : Optional.ofNullable(approvalInstances.get(0));
   }
 
   @Override
@@ -334,9 +365,10 @@ public class ApprovalInstanceServiceImpl implements ApprovalInstanceService {
     log.info("No. of approval instances fetched waiting for approval that will be auto rejected : {}",
         approvalInstances.size());
 
-    List<String> rejectedApprovalIds = new ArrayList<>();
-    approvalInstances.forEach(approvalInstance -> rejectedApprovalIds.add(approvalInstance.getId()));
-    return rejectedApprovalIds;
+    return approvalInstances.stream()
+        .filter(instance -> !instance.hasExpired())
+        .map(ApprovalInstance::getId)
+        .collect(Collectors.toList());
   }
 
   private List<ApprovalInstance> filterOnService(List<ApprovalInstance> approvalInstances, Ambiance currAmbiance) {
@@ -482,6 +514,30 @@ public class ApprovalInstanceServiceImpl implements ApprovalInstanceService {
             .addCriteria(Criteria.where(ApprovalInstanceKeys.status).is(ApprovalStatus.WAITING))
             .addCriteria(
                 Criteria.where(ApprovalInstanceKeys.type).in(Arrays.asList(approvalsWithDelegateTasksInPolling))),
+        update);
+  }
+
+  @Override
+  public void updateKeyListInKeyValueCriteria(@NotNull String approvalInstanceId, String keyListInKeyValueCriteria) {
+    if (StringUtils.isBlank(approvalInstanceId)) {
+      log.warn("Skipping updating keyListInKeyValueCriteria as empty approval id received");
+      return;
+    }
+
+    if (isNull(keyListInKeyValueCriteria)) {
+      log.warn(
+          "Skipping updating keyListInKeyValueCriteria in approval instance as null keyListInKeyValueCriteria received");
+      return;
+    }
+
+    // update keyListInKeyValueCriteria in approval instance to filter fields
+    Update update = new Update().set(JiraApprovalInstanceKeys.keyListInKeyValueCriteria, keyListInKeyValueCriteria);
+    // it only makes sense to update keyListInKeyValueCriteria for Jira instances in waiting state
+    // if the instance is aborted/expired etc., and a task is queued then keyListInKeyValueCriteria will not be updated.
+    approvalInstanceRepository.updateFirst(
+        new Query(Criteria.where(Mapper.ID_KEY).is(approvalInstanceId))
+            .addCriteria(Criteria.where(ApprovalInstanceKeys.status).is(ApprovalStatus.WAITING))
+            .addCriteria(Criteria.where(ApprovalInstanceKeys.type).is(ApprovalType.JIRA_APPROVAL)),
         update);
   }
 

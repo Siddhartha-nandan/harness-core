@@ -24,6 +24,8 @@ import io.harness.pms.plan.execution.beans.dto.PipelineExecutionIdentifierSummar
 import io.harness.pms.plan.execution.beans.dto.PipelineExecutionSummaryDTO;
 import io.harness.pms.stages.BasicStageInfo;
 import io.harness.pms.stages.StageExecutionSelectorHelper;
+import io.harness.pms.yaml.HarnessYamlVersion;
+import io.harness.utils.ExecutionModeUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -44,11 +46,14 @@ public class PipelineExecutionSummaryDtoMapper {
     String startingNodeId = pipelineExecutionSummaryEntity.getStartingNodeId();
     StagesExecutionMetadata stagesExecutionMetadata = pipelineExecutionSummaryEntity.getStagesExecutionMetadata();
     boolean isStagesExecution = stagesExecutionMetadata != null && stagesExecutionMetadata.isStagesExecution();
-    List<String> stageIdentifiers =
-        stagesExecutionMetadata == null ? null : stagesExecutionMetadata.getStageIdentifiers();
+    List<String> stageIdentifiers = stagesExecutionMetadata == null
+            || ExecutionModeUtils.isRollbackMode(pipelineExecutionSummaryEntity.getExecutionMode())
+        ? null
+        : stagesExecutionMetadata.getStageIdentifiers();
     Map<String, String> stagesExecutedNames = null;
     if (EmptyPredicate.isNotEmpty(stageIdentifiers)) {
-      stagesExecutedNames = getStageNames(stageIdentifiers, stagesExecutionMetadata.getFullPipelineYaml());
+      stagesExecutedNames = getStageNames(stageIdentifiers, stagesExecutionMetadata.getFullPipelineYaml(),
+          pipelineExecutionSummaryEntity.getPipelineVersion());
     }
     return PipelineExecutionSummaryDTO.builder()
         .name(pipelineExecutionSummaryEntity.getName())
@@ -76,7 +81,8 @@ public class PipelineExecutionSummaryDtoMapper {
                 ? new ArrayList<>()
                 : pipelineExecutionSummaryEntity.getModules())
         .gitDetails(entityGitDetails)
-        .canRetry(pipelineExecutionSummaryEntity.isLatestExecution())
+        .canRetry(!ExecutionModeUtils.isRollbackMode(pipelineExecutionSummaryEntity.getExecutionMode())
+            && pipelineExecutionSummaryEntity.isLatestExecution())
         .showRetryHistory(!pipelineExecutionSummaryEntity.isLatestExecution()
             || !pipelineExecutionSummaryEntity.getPlanExecutionId().equals(
                 pipelineExecutionSummaryEntity.getRetryExecutionMetadata().getRootExecutionId()))
@@ -93,12 +99,21 @@ public class PipelineExecutionSummaryDtoMapper {
         .abortedBy(pipelineExecutionSummaryEntity.getAbortedBy())
         .executionMode(pipelineExecutionSummaryEntity.getExecutionMode())
         .notesExistForPlanExecutionId(checkNotesExistForPlanExecutionId(pipelineExecutionSummaryEntity))
+        .yamlVersion(pipelineExecutionSummaryEntity.getPipelineVersion())
+        .shouldUseSimplifiedKey(checkShouldUseSimplifiedLogBaseKey(pipelineExecutionSummaryEntity))
         .build();
   }
 
   public boolean checkNotesExistForPlanExecutionId(PipelineExecutionSummaryEntity pipelineExecutionSummaryEntity) {
     if (null != pipelineExecutionSummaryEntity.getNotesExistForPlanExecutionId()) {
       return pipelineExecutionSummaryEntity.getNotesExistForPlanExecutionId();
+    }
+    return false;
+  }
+
+  public boolean checkShouldUseSimplifiedLogBaseKey(PipelineExecutionSummaryEntity pipelineExecutionSummaryEntity) {
+    if (null != pipelineExecutionSummaryEntity.getShouldUseSimplifiedLogBaseKey()) {
+      return pipelineExecutionSummaryEntity.getShouldUseSimplifiedLogBaseKey();
     }
     return false;
   }
@@ -115,9 +130,15 @@ public class PipelineExecutionSummaryDtoMapper {
         .build();
   }
 
-  private Map<String, String> getStageNames(List<String> stageIdentifiers, String pipelineYaml) {
+  private Map<String, String> getStageNames(
+      List<String> stageIdentifiers, String pipelineYaml, String pipelineVersion) {
     Map<String, String> identifierToNames = new LinkedHashMap<>();
-    List<BasicStageInfo> stageInfoList = StageExecutionSelectorHelper.getStageInfoList(pipelineYaml);
+    List<BasicStageInfo> stageInfoList;
+    if (HarnessYamlVersion.V0.equals(pipelineVersion)) {
+      { stageInfoList = StageExecutionSelectorHelper.getStageInfoList(pipelineYaml); }
+    } else {
+      stageInfoList = StageExecutionSelectorHelper.getStageInfoListV1(pipelineYaml);
+    }
     stageInfoList.forEach(stageInfo -> {
       String identifier = stageInfo.getIdentifier();
       if (stageIdentifiers.contains(identifier)) {

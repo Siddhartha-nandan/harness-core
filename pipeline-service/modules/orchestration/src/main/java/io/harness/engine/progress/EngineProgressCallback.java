@@ -37,7 +37,8 @@ public class EngineProgressCallback implements ProgressCallback {
   @Inject @Named("referenceFalseKryoSerializer") private KryoSerializer referenceFalseKryoSerializer;
   @Inject @Transient ProgressEventPublisher progressEventPublisher;
 
-  Ambiance ambiance;
+  @Deprecated Ambiance ambiance;
+  String nodeExecutionId;
 
   @Override
   public void notify(String correlationId, ProgressData progressData) {
@@ -55,8 +56,11 @@ public class EngineProgressCallback implements ProgressCallback {
               ? referenceFalseKryoSerializer.asInflatedObject(binaryResponseData.getData())
               : kryoSerializer.asInflatedObject(binaryResponseData.getData()));
       if (data instanceof UnitProgressData) {
-        nodeExecutionService.updateV2(getNodeExecutionId(),
-            ops -> ops.set(NodeExecutionKeys.unitProgresses, ((UnitProgressData) data).getUnitProgresses()));
+        nodeExecutionService.updateV2(getNodeExecutionId(), ops -> {
+          ops.set(NodeExecutionKeys.unitProgresses, ((UnitProgressData) data).getUnitProgresses());
+          ops.set(NodeExecutionKeys.progressData + "." + NodeExecutionKeys.unitProgresses,
+              ((UnitProgressData) data).getUnitProgresses());
+        });
       }
       log.info("Node Execution updated for progress data");
     } catch (Exception ex) {
@@ -65,6 +69,6 @@ public class EngineProgressCallback implements ProgressCallback {
   }
 
   private String getNodeExecutionId() {
-    return AmbianceUtils.obtainCurrentRuntimeId(ambiance);
+    return nodeExecutionId == null ? AmbianceUtils.obtainCurrentRuntimeId(ambiance) : nodeExecutionId;
   }
 }

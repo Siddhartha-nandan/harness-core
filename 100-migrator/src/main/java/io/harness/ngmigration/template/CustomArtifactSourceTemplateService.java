@@ -6,13 +6,15 @@
  */
 
 package io.harness.ngmigration.template;
-
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.delegate.task.artifacts.ArtifactSourceConstants.CUSTOM_ARTIFACT_NAME;
 import static io.harness.ngmigration.utils.NGMigrationConstants.PLEASE_FIX_ME;
 import static io.harness.ngmigration.utils.NGMigrationConstants.RUNTIME_FIELD;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.artifact.bean.yaml.CustomArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.customartifact.CustomArtifactScriptInfo;
 import io.harness.cdng.artifact.bean.yaml.customartifact.CustomArtifactScriptSourceWrapper;
@@ -44,6 +46,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_MIGRATOR})
 public class CustomArtifactSourceTemplateService implements NgTemplateService {
   @Override
   public Set<String> getExpressions(Template template) {
@@ -80,8 +83,7 @@ public class CustomArtifactSourceTemplateService implements NgTemplateService {
                             .name(v.getName())
                             .type(NGVariableType.STRING)
                             .description(v.getDescription())
-                            .value(StringUtils.isBlank(v.getValue()) ? RUNTIME_FIELD
-                                                                     : ParameterField.createValueField(v.getValue()))
+                            .value(RUNTIME_FIELD)
                             .build()));
     }
 
@@ -98,6 +100,7 @@ public class CustomArtifactSourceTemplateService implements NgTemplateService {
                   -> StringNGVariable.builder()
                          .name(isEmpty(attribute.getMappedAttribute()) ? PLEASE_FIX_ME : attribute.getMappedAttribute())
                          .value(ParameterField.createValueField(attribute.getRelativePath()))
+                         .type(NGVariableType.STRING)
                          .build())
               .collect(Collectors.toList());
     }
@@ -116,16 +119,19 @@ public class CustomArtifactSourceTemplateService implements NgTemplateService {
                                 ParameterField.createValueField(customRepositoryMapping.getArtifactRoot()))
                             .versionPath(ParameterField.createValueField(customRepositoryMapping.getBuildNoPath()))
                             .attributes(attributes)
-                            .shellScriptBaseStepInfo(CustomArtifactScriptInfo.builder()
-                                                         .shell(ShellType.Bash)
-                                                         .source(CustomArtifactScriptSourceWrapper.builder()
-                                                                     .type("Inline")
-                                                                     .spec(CustomScriptInlineSource.builder()
-                                                                               .script(ParameterField.createValueField(
-                                                                                   artifactSource.getScript()))
-                                                                               .build())
-                                                                     .build())
-                                                         .build())
+                            .shellScriptBaseStepInfo(
+                                CustomArtifactScriptInfo.builder()
+                                    .shell(ShellType.Bash)
+                                    .source(
+                                        CustomArtifactScriptSourceWrapper.builder()
+                                            .type("Inline")
+                                            .spec(CustomScriptInlineSource.builder()
+                                                      .script(ParameterField.createValueField(
+                                                          artifactSource.getScript().replace("${ARTIFACT_RESULT_PATH}",
+                                                              "$HARNESS_ARTIFACT_RESULT_PATH")))
+                                                      .build())
+                                            .build())
+                                    .build())
                             .build())
                     .build())
             .build();

@@ -13,12 +13,12 @@
 
 # First stage
 FROM alpine:3.12
-RUN GRPC_HEALTH_PROBE_VERSION=v0.4.19 && \
+RUN GRPC_HEALTH_PROBE_VERSION=v0.4.22 && \
     wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
     chmod +x /bin/grpc_health_probe
 
 # Second stage
-FROM us.gcr.io/platform-205701/harness/ubi8/go1:1.20.5
+FROM us.gcr.io/platform-205701/harness/ubi8/go1:1.21
 COPY --from=0 /bin/grpc_health_probe /grpc_health_probe
 # Copy ci-scm binary
 COPY scm_/scm /usr/local/bin/scm

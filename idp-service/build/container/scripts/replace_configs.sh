@@ -189,6 +189,10 @@ if [[ "" != "$IDP_ENCRYPTION_SECRET" ]]; then
   export IDP_ENCRYPTION_SECRET; yq -i '.idpEncryptionSecret=env(IDP_ENCRYPTION_SECRET)' $CONFIG_FILE
 fi
 
+if [[ "" != "$JWT_EXTERNAL_SERVICE_SECRET" ]]; then
+  export JWT_EXTERNAL_SERVICE_SECRET; yq -i '.jwtExternalServiceSecret=env(JWT_EXTERNAL_SERVICE_SECRET)' $CONFIG_FILE
+fi
+
 if [[ "" != "$NG_MANAGER_GITSYNC_TARGET" ]]; then
   export NG_MANAGER_GITSYNC_TARGET; yq -i '.gitManagerGrpcClientConfig.target=env(NG_MANAGER_GITSYNC_TARGET)' $CONFIG_FILE
 fi
@@ -210,11 +214,211 @@ if [[ "" != "$PROXY_ALLOW_LIST_CONFIG_SERVICES" ]]; then
   sed -i '' 's/  services: |-/  services:/g' $CONFIG_FILE
 fi
 
+if [[ "" != "$CPU" ]]; then
+  export CPU; yq -i '.cpu=env(CPU)' $CONFIG_FILE
+fi
+
+if [[ "" != "$SCORE_COMPUTER_THREADS_PER_CORE" ]]; then
+  export SCORE_COMPUTER_THREADS_PER_CORE; yq -i '.scoreComputerThreadsPerCore=env(SCORE_COMPUTER_THREADS_PER_CORE)' $CONFIG_FILE
+fi
+
+
+if [[ "" != "$IDP_ENCRYPTION_SECRET" ]]; then
+  export IDP_ENCRYPTION_SECRET; yq -i '.idpEncryptionSecret=env(IDP_ENCRYPTION_SECRET)' $CONFIG_FILE
+fi
+
 yq -i 'del(.codec)' $REDISSON_CACHE_FILE
 
 if [[ "$REDIS_SCRIPT_CACHE" == "false" ]]; then
   yq -i '.redisLockConfig.useScriptCache=false' $CONFIG_FILE
   yq -i '.useScriptCache=false' $REDISSON_CACHE_FILE
+fi
+
+if [[ "" != "$LOG_SERVICE_ENDPOINT" ]]; then
+  export LOG_SERVICE_ENDPOINT; yq -i '.logServiceConfig.baseUrl=env(LOG_SERVICE_ENDPOINT)' $CONFIG_FILE
+fi
+
+if [[ "" != "$LOG_SERVICE_GLOBAL_TOKEN" ]]; then
+  export LOG_SERVICE_GLOBAL_TOKEN; yq -i '.logServiceConfig.globalToken=env(LOG_SERVICE_GLOBAL_TOKEN)' $CONFIG_FILE
+fi
+
+if [[ "" != "$TI_SERVICE_ENDPOINT" ]]; then
+  export TI_SERVICE_ENDPOINT; yq -i '.tiServiceConfig.baseUrl=env(TI_SERVICE_ENDPOINT)' $CONFIG_FILE
+fi
+
+if [[ "" != "$TI_SERVICE_GLOBAL_TOKEN" ]]; then
+  export TI_SERVICE_GLOBAL_TOKEN; yq -i '.tiServiceConfig.globalToken=env(TI_SERVICE_GLOBAL_TOKEN)' $CONFIG_FILE
+fi
+
+if [[ "" != "$SSCA_SERVICE_ENDPOINT" ]]; then
+  export SSCA_SERVICE_ENDPOINT; yq -i '.sscaServiceConfig.httpClientConfig.baseUrl=env(SSCA_SERVICE_ENDPOINT)' $CONFIG_FILE
+fi
+
+if [[ "" != "$SSCA_SERVICE_SECRET" ]]; then
+  export SSCA_SERVICE_SECRET; yq -i '.sscaServiceConfig.serviceSecret=env(SSCA_SERVICE_SECRET)' $CONFIG_FILE
+fi
+
+if [[ "" != "$STO_SERVICE_ENDPOINT" ]]; then
+  export STO_SERVICE_ENDPOINT; yq -i '.stoServiceConfig.baseUrl=env(STO_SERVICE_ENDPOINT)' $CONFIG_FILE
+fi
+
+if [[ "" != "$STO_SERVICE_GLOBAL_TOKEN" ]]; then
+  export STO_SERVICE_GLOBAL_TOKEN; yq -i '.stoServiceConfig.globalToken=env(STO_SERVICE_GLOBAL_TOKEN)' $CONFIG_FILE
+fi
+
+if [[ "" != "$API_URL" ]]; then
+  export API_URL; yq -i '.apiUrl=env(API_URL)' $CONFIG_FILE
+fi
+
+if [[ "" != "$SCM_SERVICE_URI" ]]; then
+  export SCM_SERVICE_URI; yq -i '.scmConnectionConfig.url=env(SCM_SERVICE_URI)' $CONFIG_FILE
+fi
+
+if [[ "" != "$ADDON_IMAGE" ]]; then
+  export ADDON_IMAGE; yq -i '.ciExecutionServiceConfig.addonImage=env(ADDON_IMAGE)' $CONFIG_FILE
+fi
+if [[ "" != "$LE_IMAGE" ]]; then
+  export LE_IMAGE; yq -i '.ciExecutionServiceConfig.liteEngineImage=env(LE_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$GIT_CLONE_IMAGE" ]]; then
+  export GIT_CLONE_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.gitCloneConfig.image=env(GIT_CLONE_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$DOCKER_PUSH_IMAGE" ]]; then
+  export DOCKER_PUSH_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.buildAndPushDockerRegistryConfig.image=env(DOCKER_PUSH_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$ECR_PUSH_IMAGE" ]]; then
+  export ECR_PUSH_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.buildAndPushECRConfig.image=env(ECR_PUSH_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$GCR_PUSH_IMAGE" ]]; then
+  export GCR_PUSH_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.buildAndPushGCRConfig.image=env(GCR_PUSH_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$GCS_UPLOAD_IMAGE" ]]; then
+  export GCS_UPLOAD_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.gcsUploadConfig.image=env(GCS_UPLOAD_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$S3_UPLOAD_IMAGE" ]]; then
+  export S3_UPLOAD_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.s3UploadConfig.image=env(S3_UPLOAD_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$SECURITY_IMAGE" ]]; then
+  export SECURITY_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.securityConfig.image=env(SECURITY_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$ARTIFACTORY_UPLOAD_IMAGE" ]]; then
+  export ARTIFACTORY_UPLOAD_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.artifactoryUploadConfig.image=env(ARTIFACTORY_UPLOAD_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$GCS_CACHE_IMAGE" ]]; then
+  export GCS_CACHE_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.cacheGCSConfig.image=env(GCS_CACHE_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$S3_CACHE_IMAGE" ]]; then
+  export S3_CACHE_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.cacheS3Config.image=env(S3_CACHE_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$VM_GIT_CLONE_IMAGE" ]]; then
+  export VM_GIT_CLONE_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.vmImageConfig.gitClone=env(VM_GIT_CLONE_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$VM_DOCKER_PUSH_IMAGE" ]]; then
+  export VM_DOCKER_PUSH_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.vmImageConfig.buildAndPushDockerRegistry=env(VM_DOCKER_PUSH_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$VM_ECR_PUSH_IMAGE" ]]; then
+  export VM_ECR_PUSH_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.vmImageConfig.buildAndPushECR=env(VM_ECR_PUSH_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$VM_GCR_PUSH_IMAGE" ]]; then
+  export VM_GCR_PUSH_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.vmImageConfig.buildAndPushGCR=env(VM_GCR_PUSH_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$VM_GCS_UPLOAD_IMAGE" ]]; then
+  export VM_GCS_UPLOAD_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.vmImageConfig.gcsUpload=env(VM_GCS_UPLOAD_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$VM_S3_UPLOAD_IMAGE" ]]; then
+  export VM_S3_UPLOAD_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.vmImageConfig.s3Upload=env(VM_S3_UPLOAD_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$VM_SECURITY_IMAGE" ]]; then
+  export VM_SECURITY_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.vmImageConfig.security=env(VM_SECURITY_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$CACHE_BUCKET" ]]; then
+  export CACHE_BUCKET; yq -i '.ciExecutionServiceConfig.cacheIntelligenceConfig.bucket=env(CACHE_BUCKET)' $CONFIG_FILE
+fi
+
+if [[ "" != "$CACHE_SERVICE_KEY" ]]; then
+  export CACHE_SERVICE_KEY; yq -i '.ciExecutionServiceConfig.cacheIntelligenceConfig.serviceKey=env(CACHE_SERVICE_KEY)' $CONFIG_FILE
+fi
+
+if [[ "" != "$VM_ARTIFACTORY_UPLOAD_IMAGE" ]]; then
+  export VM_ARTIFACTORY_UPLOAD_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.vmImageConfig.artifactoryUpload=env(VM_ARTIFACTORY_UPLOAD_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$VM_GCS_CACHE_IMAGE" ]]; then
+  export VM_GCS_CACHE_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.vmImageConfig.cacheGCS=env(VM_GCS_CACHE_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$VM_S3_CACHE_IMAGE" ]]; then
+  export VM_S3_CACHE_IMAGE; yq -i '.ciExecutionServiceConfig.stepConfig.vmImageConfig.cacheS3=env(VM_S3_CACHE_IMAGE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$DEFAULT_MEMORY_LIMIT" ]]; then
+  export DEFAULT_MEMORY_LIMIT; yq -i '.ciExecutionServiceConfig.defaultMemoryLimit=env(DEFAULT_MEMORY_LIMIT)' $CONFIG_FILE
+fi
+
+if [[ "" != "$DEFAULT_CPU_LIMIT" ]]; then
+  export DEFAULT_CPU_LIMIT; yq -i '.ciExecutionServiceConfig.defaultCPULimit=env(DEFAULT_CPU_LIMIT)' $CONFIG_FILE
+fi
+
+if [[ "" != "$DEFAULT_INTERNAL_IMAGE_CONNECTOR" ]]; then
+  export DEFAULT_INTERNAL_IMAGE_CONNECTOR; yq -i '.ciExecutionServiceConfig.defaultInternalImageConnector=env(DEFAULT_INTERNAL_IMAGE_CONNECTOR)' $CONFIG_FILE
+fi
+
+if [[ "" != "$PVC_DEFAULT_STORAGE_SIZE" ]]; then
+  export PVC_DEFAULT_STORAGE_SIZE; yq -i '.ciExecutionServiceConfig.pvcDefaultStorageSize=env(PVC_DEFAULT_STORAGE_SIZE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$DELEGATE_SERVICE_ENDPOINT_VARIABLE_VALUE" ]]; then
+  export DELEGATE_SERVICE_ENDPOINT_VARIABLE_VALUE; yq -i '.ciExecutionServiceConfig.delegateServiceEndpointVariableValue=env(DELEGATE_SERVICE_ENDPOINT_VARIABLE_VALUE)' $CONFIG_FILE
+fi
+
+if [[ "" != "$MINING_GCS_PROJECT_ID" ]]; then
+  export $MINING_GCS_PROJECT_ID; yq -i '.ciExecutionServiceConfig.miningPatternConfig.projectId=env($MINING_GCS_PROJECT_ID)' $CONFIG_FILE
+fi
+
+if [[ "" != "$MINING_GCS_BUCKET_NAME" ]]; then
+  export $MINING_GCS_BUCKET_NAME; yq -i '.ciExecutionServiceConfig.miningPatternConfig.bucketName=env($MINING_GCS_BUCKET_NAME)' $CONFIG_FILE
+fi
+
+if [[ "" != "$MINING_GCS_CREDS" ]]; then
+  export $MINING_GCS_CREDS; yq -i '.ciExecutionServiceConfig.miningPatternConfig.gcsCreds=env($MINING_GCS_CREDS)' $CONFIG_FILE
+fi
+
+if [[ "" != "$HOSTED_VM_SPLIT_LINUX_AMD64_POOL" ]]; then
+  export HOSTED_VM_SPLIT_LINUX_AMD64_POOL; yq -i '.ciExecutionServiceConfig.hostedVmConfig.splitLinuxAmd64Pool=env(HOSTED_VM_SPLIT_LINUX_AMD64_POOL)' $CONFIG_FILE
+fi
+
+if [[ "" != "$HOSTED_VM_SPLIT_LINUX_ARM64_POOL" ]]; then
+  export HOSTED_VM_SPLIT_LINUX_ARM64_POOL; yq -i '.ciExecutionServiceConfig.hostedVmConfig.splitLinuxArm64Pool=env(HOSTED_VM_SPLIT_LINUX_ARM64_POOL)' $CONFIG_FILE
+fi
+
+if [[ "" != "$IACM_SERVICE_ENDPOINT" ]]; then
+  export IACM_SERVICE_ENDPOINT; yq -i '.iacmServiceConfig.baseUrl=env(IACM_SERVICE_ENDPOINT)' $CONFIG_FILE
+fi
+
+if [[ "" != "$IACM_EXTERNAL_SERVICE_ENDPOINT" ]]; then
+  export IACM_EXTERNAL_SERVICE_ENDPOINT; yq -i '.iacmServiceConfig.externalUrl=env(IACM_EXTERNAL_SERVICE_ENDPOINT)' $CONFIG_FILE
+fi
+
+if [[ "" != "$IACM_SERVICE_GLOBAL_TOKEN" ]]; then
+  export IACM_SERVICE_GLOBAL_TOKEN; yq -i '.iacmServiceConfig.globalToken=env(IACM_SERVICE_GLOBAL_TOKEN)' $CONFIG_FILE
 fi
 
 replace_key_value cacheConfig.cacheNamespace $CACHE_NAMESPACE
@@ -241,8 +445,10 @@ replace_key_value backstageSaToken "$BACKSTAGE_SA_TOKEN"
 replace_key_value backstageSaCaCrt "$BACKSTAGE_SA_CA_CRT"
 replace_key_value backstageMasterUrl "$BACKSTAGE_MASTER_URL"
 replace_key_value backstagePodLabel "$BACKSTAGE_POD_LABEL"
+replace_key_value backstageEntitiesFetchLimit "$BACKSTAGE_ENTITIES_FETCH_LIMIT"
 replace_key_value idpServiceSecret "$IDP_SERVICE_SECRET"
 replace_key_value idpEncryptionSecret "$IDP_ENCRYPTION_SECRET"
+replace_key_value jwtExternalServiceSecret "$JWT_EXTERNAL_SERVICE_SECRET"
 replace_key_value jwtAuthSecret "$JWT_AUTH_SECRET"
 replace_key_value jwtIdentityServiceSecret "$JWT_IDENTITY_SERVICE_SECRET"
 replace_key_value provisionModuleConfig.triggerPipelineUrl "$TRIGGER_PIPELINE_URL"
@@ -254,13 +460,24 @@ replace_key_value backstageServiceSecret "$BACKSTAGE_SERVICE_SECRET"
 replace_key_value onboardingModuleConfig.harnessCiCdAnnotations.projectUrl "$ONBOARDING_MODULE_CONFIG_HARNESS_CI_CD_ANNOTATIONS_PROJECT_URL"
 replace_key_value onboardingModuleConfig.harnessCiCdAnnotations.serviceUrl "$ONBOARDING_MODULE_CONFIG_HARNESS_CI_CD_ANNOTATIONS_SERVICE_URL"
 replace_key_value env "$ENV"
-replace_key_value prEnvDefaultBackstageNamespace "$DEFAULT_BACKSTAGE_NAMESPACE"
+replace_key_value base "$BASE"
+replace_key_value devSpaceDefaultBackstageNamespace "$DEVSPACE_DEFAULT_BACKSTAGE_NAMESPACE"
+replace_key_value devSpaceDefaultAccountId "$DEVSPACE_DEFAULT_ACCOUNT_ID"
 replace_key_value backstageAppBaseUrl "$BACKSTAGE_APP_BASE_URL"
 replace_key_value backstagePostgresHost "$BACKSTAGE_POSTGRES_HOST"
 replace_key_value onboardingModuleConfig.useGitServiceGrpcForSingleEntityPush $ONBOARDING_MODULE_CONFIG_USE_GIT_SERVICE_GRPC_FOR_SINGLE_ENTITY_PUSH
 replace_key_value delegateSelectorsCacheMode "$DELEGATE_SELECTORS_CACHE_MODE"
 replace_key_value shouldConfigureWithNotification "$SHOULD_CONFIGURE_WITH_NOTIFICATION"
 replace_key_value notificationClient.secrets.notificationClientSecret "$NOTIFICATION_CLIENT_SECRET"
+replace_key_value segmentConfiguration.certValidationRequired "$SEGMENT_VERIFY_CERT"
+replace_key_value opaClientConfig.baseUrl "$OPA_SERVER_BASEURL"
+replace_key_value policyManagerSecret "$OPA_SERVER_SECRET"
+replace_key_value segmentConfiguration.enabled "$SEGMENT_ENABLED"
+replace_key_value segmentConfiguration.url "$SEGMENT_URL"
+replace_key_value segmentConfiguration.apiKey "$SEGMENT_APIKEY"
+replace_key_value segmentConfiguration.certValidationRequired "$SEGMENT_VERIFY_CERT"
+replace_key_value delegateSelectorsCacheMode "$DELEGATE_SELECTORS_CACHE_MODE"
+replace_key_value enableMetrics "$ENABLE_METRICS"
 
 if [[ "" != "$LOCK_CONFIG_REDIS_URL" ]]; then
   export LOCK_CONFIG_REDIS_URL; yq -i '.singleServerConfig.address=env(LOCK_CONFIG_REDIS_URL)' $REDISSON_CACHE_FILE
@@ -361,4 +578,50 @@ fi
 
 if [[ "" != "$NOTIFICATION_CONFIGS_PLUGIN_REQUESTS_NOTIFICATION_SLACK" ]]; then
   export NOTIFICATION_CONFIGS_PLUGIN_REQUESTS_NOTIFICATION_SLACK; yq -i '.notificationConfigs.pluginRequestsNotificationSlack=env(NOTIFICATION_CONFIGS_PLUGIN_REQUESTS_NOTIFICATION_SLACK)' $CONFIG_FILE
+fi
+
+if [[ "" != "$PIPELINE_SERVICE_CLIENT_BASEURL" ]]; then
+  export PIPELINE_SERVICE_CLIENT_BASEURL; yq -i '.pipelineServiceClientConfig.baseUrl=env(PIPELINE_SERVICE_CLIENT_BASEURL)' $CONFIG_FILE
+fi
+
+if [[ "" != "$PIPELINE_SERVICE_SECRET" ]]; then
+  export PIPELINE_SERVICE_SECRET; yq -i '.pipelineServiceSecret=env(PIPELINE_SERVICE_SECRET)' $CONFIG_FILE
+fi
+
+if [[ "" != "$TI_SERVICE_ENDPOINT" ]]; then
+  export TI_SERVICE_ENDPOINT; yq -i '.tiServiceConfig.baseUrl=env(TI_SERVICE_ENDPOINT)' $CONFIG_FILE
+fi
+
+if [[ "" != "$TI_SERVICE_INTERNAL_URL" ]]; then
+  export TI_SERVICE_INTERNAL_URL; yq -i '.tiServiceConfig.internalUrl=env(TI_SERVICE_INTERNAL_URL)' $CONFIG_FILE
+fi
+
+if [[ "" != "$TI_SERVICE_GLOBAL_TOKEN" ]]; then
+  export TI_SERVICE_GLOBAL_TOKEN; yq -i '.tiServiceConfig.globalToken=env(TI_SERVICE_GLOBAL_TOKEN)' $CONFIG_FILE
+fi
+
+if [[ "" != "$SCORECARD_ITERATOR_THREAD_POOL_COUNT" ]]; then
+  export SCORECARD_ITERATOR_THREAD_POOL_COUNT; yq -i '.scorecardScoreComputationIteratorConfig.threadPoolCount=env(SCORECARD_ITERATOR_THREAD_POOL_COUNT)' $CONFIG_FILE
+fi
+
+if [[ "" != "$SCORECARD_ITERATOR_ENABLED" ]]; then
+  export SCORECARD_ITERATOR_ENABLED; yq -i '.scorecardScoreComputationIteratorConfig.enabled=env(SCORECARD_ITERATOR_ENABLED)' $CONFIG_FILE
+fi
+
+if [[ "" != "$SCORECARD_ITERATOR_TARGET_INTERVAL_IN_SECONDS" ]]; then
+  export SCORECARD_ITERATOR_TARGET_INTERVAL_IN_SECONDS; yq -i '.scorecardScoreComputationIteratorConfig.targetIntervalInSeconds=env(SCORECARD_ITERATOR_TARGET_INTERVAL_IN_SECONDS)' $CONFIG_FILE
+fi
+
+
+if [[ "" != "$AUDIT_CLIENT_BASEURL" ]]; then
+  export AUDIT_CLIENT_BASEURL; yq -i '.auditClientConfig.baseUrl=env(AUDIT_CLIENT_BASEURL)' $CONFIG_FILE
+fi
+
+if [[ "" != "$AUDIT_ENABLED" ]]; then
+  export AUDIT_ENABLED; yq -i '.enableAudit=env(AUDIT_ENABLED)' $CONFIG_FILE
+fi
+
+if [[ "" != "$INTERNAL_ACCOUNTS" ]]; then
+  yq -i 'del(.internalAccounts)' $CONFIG_FILE
+  export INTERNAL_ACCOUNTS; yq -i '.internalAccounts=(env(INTERNAL_ACCOUNTS) | split(",") | map(trim))' $CONFIG_FILE
 fi

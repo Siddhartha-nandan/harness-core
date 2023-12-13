@@ -38,11 +38,11 @@ import org.jooq.impl.DSL;
 
 @Slf4j
 public class AnomalyQueryBuilder {
-  private static final List<TableField<AnomaliesRecord, String>> ANOMALY_TABLE_ENTITIES =
-      Arrays.asList(ANOMALIES.WORKLOADNAME, ANOMALIES.NAMESPACE, ANOMALIES.CLUSTERNAME, ANOMALIES.AWSACCOUNT,
-          ANOMALIES.AWSSERVICE, ANOMALIES.AWSINSTANCETYPE, ANOMALIES.AWSUSAGETYPE, ANOMALIES.GCPPRODUCT,
-          ANOMALIES.GCPPROJECT, ANOMALIES.GCPSKUDESCRIPTION, ANOMALIES.GCPSKUID, ANOMALIES.AZURESUBSCRIPTIONGUID,
-          ANOMALIES.AZURERESOURCEGROUP, ANOMALIES.AZUREMETERCATEGORY);
+  private static final List<TableField<AnomaliesRecord, String>> ANOMALY_TABLE_ENTITIES = Arrays.asList(
+      ANOMALIES.WORKLOADNAME, ANOMALIES.NAMESPACE, ANOMALIES.SERVICE, ANOMALIES.SERVICENAME, ANOMALIES.CLUSTERNAME,
+      ANOMALIES.AWSACCOUNT, ANOMALIES.AWSSERVICE, ANOMALIES.AWSINSTANCETYPE, ANOMALIES.AWSUSAGETYPE,
+      ANOMALIES.GCPPRODUCT, ANOMALIES.GCPPROJECT, ANOMALIES.GCPSKUDESCRIPTION, ANOMALIES.GCPSKUID,
+      ANOMALIES.AZURESUBSCRIPTIONGUID, ANOMALIES.AZURERESOURCEGROUP, ANOMALIES.AZUREMETERCATEGORY);
 
   // Fields which don't directly correspond to a column in anomalies table
   private static final List<CCMField> NON_TABLE_FIELDS = Arrays.asList(ANOMALOUS_SPEND, COST_IMPACT, ALL);
@@ -179,6 +179,10 @@ public class AnomalyQueryBuilder {
         return ANOMALIES.NAMESPACE;
       case CLUSTER_ID:
         return ANOMALIES.CLUSTERID;
+      case SERVICE:
+        return ANOMALIES.SERVICE;
+      case SERVICE_NAME:
+        return ANOMALIES.SERVICENAME;
       case CLUSTER_NAME:
         return ANOMALIES.CLUSTERNAME;
       case AWS_ACCOUNT:
@@ -213,6 +217,8 @@ public class AnomalyQueryBuilder {
     switch (field) {
       case ANOMALY_TIME:
         return ANOMALIES.ANOMALYTIME;
+      case ANOMALY_ID:
+        return ANOMALIES.ID;
       case ACTUAL_COST:
         return ANOMALIES.ACTUALCOST;
       case WORKLOAD:
@@ -221,6 +227,10 @@ public class AnomalyQueryBuilder {
         return ANOMALIES.WORKLOADTYPE;
       case NAMESPACE:
         return ANOMALIES.NAMESPACE;
+      case SERVICE:
+        return ANOMALIES.SERVICE;
+      case SERVICE_NAME:
+        return ANOMALIES.SERVICENAME;
       case CLUSTER_ID:
         return ANOMALIES.CLUSTERID;
       case CLUSTER_NAME:
@@ -247,6 +257,8 @@ public class AnomalyQueryBuilder {
         return ANOMALIES.AZURERESOURCEGROUP;
       case AZURE_METER_CATEGORY:
         return ANOMALIES.AZUREMETERCATEGORY;
+      case CLOUD_PROVIDER:
+        return ANOMALIES.CLOUDPROVIDER;
       default:
         throw new InvalidRequestException(String.format("%s not supported", field.toString()));
     }

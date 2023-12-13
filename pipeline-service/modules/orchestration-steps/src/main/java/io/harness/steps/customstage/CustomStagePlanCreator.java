@@ -12,12 +12,13 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.exception.InvalidRequestException;
 import io.harness.plancreator.stages.AbstractPmsStagePlanCreator;
 import io.harness.plancreator.steps.common.SpecParameters;
+import io.harness.plancreator.strategy.StrategyUtils;
 import io.harness.pms.contracts.plan.Dependency;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.yaml.DependenciesUtils;
-import io.harness.pms.yaml.PipelineVersion;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
 import io.harness.serializer.KryoSerializer;
@@ -81,6 +82,11 @@ public class CustomStagePlanCreator extends AbstractPmsStagePlanCreator<CustomSt
                 DependenciesUtils.toDependenciesProto(dependenciesNodeMap)
                     .toBuilder()
                     .putDependencyMetadata(field.getUuid(), Dependency.newBuilder().putAllMetadata(metadataMap).build())
+                    .putDependencyMetadata(executionField.getNode().getUuid(),
+                        Dependency.newBuilder()
+                            .setParentInfo(generateParentInfo(ctx, field, getFinalPlanNodeId(ctx, field),
+                                StrategyUtils.isWrappedUnderStrategy(ctx.getCurrentField())))
+                            .build())
                     .build())
             .build());
 
@@ -108,6 +114,6 @@ public class CustomStagePlanCreator extends AbstractPmsStagePlanCreator<CustomSt
 
   @Override
   public Set<String> getSupportedYamlVersions() {
-    return Set.of(PipelineVersion.V0);
+    return Set.of(HarnessYamlVersion.V0);
   }
 }

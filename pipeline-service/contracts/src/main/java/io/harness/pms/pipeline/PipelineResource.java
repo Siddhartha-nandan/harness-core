@@ -6,6 +6,7 @@
  */
 
 package io.harness.pms.pipeline;
+
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
 import static javax.ws.rs.core.HttpHeaders.IF_MATCH;
@@ -42,6 +43,8 @@ import io.harness.spec.server.pipeline.v1.model.PipelineValidationUUIDResponseBo
 import io.harness.steps.template.TemplateStepNode;
 import io.harness.steps.template.stage.TemplateStageNode;
 
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -111,6 +114,7 @@ public interface PipelineResource {
         ApiResponse(responseCode = "default", description = "Returns created pipeline")
       },
       deprecated = true)
+  @Timed
   @Deprecated
   ResponseDTO<String>
   createPipeline(@Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true) @NotNull
@@ -139,6 +143,8 @@ public interface PipelineResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns created pipeline with metadata")
       })
+  @Timed
+  @ResponseMetered
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_CREATE_AND_EDIT)
   ResponseDTO<PipelineSaveResponse>
   createPipelineV2(@Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true) @NotNull
@@ -161,7 +167,7 @@ public interface PipelineResource {
             examples = @ExampleObject(name = "Create", summary = "Sample Create Pipeline YAML",
                 value = PipelineAPIConstants.CREATE_PIPELINE_API,
                 description = "Sample Pipeline YAML with One Build Stage and One Deploy Stage"))
-      }) @NotNull String yaml);
+      }) @NotNull String yaml, @QueryParam("public") @DefaultValue("false") boolean isPublic);
 
   @POST
   @Path("/clone")
@@ -216,9 +222,9 @@ public interface PipelineResource {
   ResponseDTO<VariableMergeServiceResponse>
   createVariablesV2(@Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE,
                         required = true) @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
-      @Parameter(description = PipelineResourceConstants.ORG_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
+      @Parameter(description = PipelineResourceConstants.ORG_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.ORG_KEY) String orgId,
-      @Parameter(description = PipelineResourceConstants.PROJECT_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
+      @Parameter(description = PipelineResourceConstants.PROJECT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PROJECT_KEY) String projectId,
       @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo,
       @HeaderParam("Load-From-Cache") @DefaultValue("false") String loadFromCache,
@@ -234,6 +240,8 @@ public interface PipelineResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns pipeline YAML")
       })
+  @Timed
+  @ResponseMetered
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_VIEW)
   ResponseDTO<PMSPipelineResponseDTO>
   getPipelineByIdentifier(@Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true)
@@ -265,6 +273,7 @@ public interface PipelineResource {
       },
       deprecated = true)
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_CREATE_AND_EDIT)
+  @Timed
   @Deprecated
   ResponseDTO<String>
   updatePipeline(
@@ -295,6 +304,8 @@ public interface PipelineResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns updated pipeline with metadata")
       })
+  @Timed
+  @ResponseMetered
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_CREATE_AND_EDIT)
   ResponseDTO<PipelineSaveResponse>
   updatePipelineV2(
@@ -318,7 +329,7 @@ public interface PipelineResource {
             examples = @ExampleObject(name = "Update", summary = "Sample Update Pipeline YAML",
                 value = PipelineAPIConstants.CREATE_PIPELINE_API,
                 description = "Sample Pipeline YAML with One Build Stage and One Deploy Stage"))
-      }) @NotNull String yaml);
+      }) @NotNull String yaml, @QueryParam("public") @DefaultValue("false") boolean isPublic);
 
   @DELETE
   @Path("/{pipelineIdentifier}")
@@ -330,6 +341,8 @@ public interface PipelineResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Boolean status whether request was successful or not")
       })
+  @Timed
+  @ResponseMetered
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_DELETE)
   ResponseDTO<Boolean>
   deletePipeline(
@@ -354,7 +367,8 @@ public interface PipelineResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Paginated list of pipelines.")
       })
-  @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_VIEW)
+  @Timed
+  @ResponseMetered
   ResponseDTO<Page<PMSPipelineSummaryResponseDTO>>
   getListOfPipelines(@NotNull @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE) @QueryParam(
                          NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
@@ -390,6 +404,8 @@ public interface PipelineResource {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "default",
             description = "Returns Pipeline Summary having pipelineIdentifier as specified in request")
       })
+  @Timed
+  @ResponseMetered
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_VIEW)
   ResponseDTO<PMSPipelineSummaryResponseDTO>
   getPipelineSummary(@NotNull @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE) @QueryParam(

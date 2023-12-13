@@ -13,6 +13,7 @@ import static com.fasterxml.jackson.annotation.JsonTypeInfo.As.EXTERNAL_PROPERTY
 import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.cdng.manifest.yaml.summary.ManifestStoreInfo.ManifestStoreInfoBuilder;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.yaml.core.intfc.OverrideConnectorRef;
 import io.harness.yaml.core.intfc.OverridesApplier;
@@ -20,7 +21,9 @@ import io.harness.yaml.core.intfc.OverridesApplier;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @OwnedBy(PIPELINE)
@@ -31,5 +34,9 @@ public interface StoreConfig extends OverridesApplier<StoreConfig>, OverrideConn
   @JsonIgnore ParameterField<String> getConnectorReference();
   default Set<String> validateAtRuntime() {
     return new HashSet<>();
+  }
+  default void populateManifestStoreInfo(ManifestStoreInfoBuilder manifestStoreInfoBuilder) {}
+  default List<String> retrieveFilePaths() {
+    return Collections.emptyList();
   }
 }

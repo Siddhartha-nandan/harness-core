@@ -6,6 +6,9 @@
  */
 
 package io.harness.cdng.tas;
+
+import static io.harness.cdng.manifest.ManifestStoreType.ARTIFACT_BUNDLE;
+import static io.harness.cdng.manifest.ManifestType.TAS_MANIFEST;
 import static io.harness.common.ParameterFieldHelper.getParameterFieldValue;
 
 import static java.util.Objects.isNull;
@@ -18,6 +21,7 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.FeatureName;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.artifact.outcome.ArtifactOutcome;
+import io.harness.cdng.executables.CdTaskChainExecutable;
 import io.harness.cdng.execution.tas.TasStageExecutionDetails;
 import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.infra.beans.InfrastructureOutcome;
@@ -26,7 +30,9 @@ import io.harness.cdng.instance.info.InstanceInfoService;
 import io.harness.cdng.k8s.beans.CustomFetchResponsePassThroughData;
 import io.harness.cdng.k8s.beans.GitFetchResponsePassThroughData;
 import io.harness.cdng.k8s.beans.StepExceptionPassThroughData;
+import io.harness.cdng.manifest.yaml.ArtifactBundleStore;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
+import io.harness.cdng.manifest.yaml.TasManifestOutcome;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
 import io.harness.cdng.tas.outcome.TasRollingDeployOutcome;
 import io.harness.delegate.beans.TaskData;
@@ -36,6 +42,7 @@ import io.harness.delegate.beans.logstreaming.UnitProgressData;
 import io.harness.delegate.beans.logstreaming.UnitProgressDataMapper;
 import io.harness.delegate.beans.pcf.CfInternalInstanceElement;
 import io.harness.delegate.task.TaskParameters;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
 import io.harness.delegate.task.pcf.CfCommandTypeNG;
 import io.harness.delegate.task.pcf.request.CfRollingDeployRequestNG;
 import io.harness.delegate.task.pcf.response.CfRollingDeployResponseNG;
@@ -50,8 +57,6 @@ import io.harness.logging.CommandExecutionStatus;
 import io.harness.logstreaming.LogStreamingStepClientFactory;
 import io.harness.pcf.CfCommandUnitConstants;
 import io.harness.plancreator.steps.TaskSelectorYaml;
-import io.harness.plancreator.steps.common.StepElementParameters;
-import io.harness.plancreator.steps.common.rollback.TaskChainExecutableWithRollbackAndRbac;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.execution.failure.FailureInfo;
@@ -66,11 +71,13 @@ import io.harness.pms.sdk.core.steps.executables.TaskChainResponse;
 import io.harness.pms.sdk.core.steps.io.PassThroughData;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.serializer.KryoSerializer;
 import io.harness.steps.StepHelper;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import software.wings.beans.TaskType;
 
@@ -86,7 +93,7 @@ import org.apache.commons.lang3.tuple.Pair;
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PCF})
 @OwnedBy(HarnessTeam.CDP)
 @Slf4j
-public class TasRollingDeployStep extends TaskChainExecutableWithRollbackAndRbac implements TasStepExecutor {
+public class TasRollingDeployStep extends CdTaskChainExecutable implements TasStepExecutor {
   public static final StepType STEP_TYPE = StepType.newBuilder()
                                                .setType(ExecutionNodeType.TAS_ROLLING_DEPLOY.getYamlType())
                                                .setStepCategory(StepCategory.STEP)
@@ -102,24 +109,25 @@ public class TasRollingDeployStep extends TaskChainExecutableWithRollbackAndRbac
   @Inject ExecutionSweepingOutputService executionSweepingOutputService;
 
   @Override
-  public void validateResources(Ambiance ambiance, StepElementParameters stepParameters) {
+  public void validateResources(Ambiance ambiance, StepBaseParameters stepParameters) {
     if (!cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), FeatureName.NG_SVC_ENV_REDESIGN)) {
       throw new AccessDeniedException(
-          "CDS_TAS_NG FF is not enabled for this account. Please contact harness customer care.",
+          "NG_SVC_ENV_REDESIGN FF is not enabled for this account. Please contact harness customer care.",
           ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
     }
   }
 
   @Override
-  public TaskChainResponse executeNextLinkWithSecurityContext(Ambiance ambiance, StepElementParameters stepParameters,
-      StepInputPackage inputPackage, PassThroughData passThroughData, ThrowingSupplier<ResponseData> responseSupplier)
-      throws Exception {
+  public TaskChainResponse executeNextLinkWithSecurityContextAndNodeInfo(Ambiance ambiance,
+      StepBaseParameters stepParameters, StepInputPackage inputPackage, PassThroughData passThroughData,
+      ThrowingSupplier<ResponseData> responseSupplier) throws Exception {
     return tasStepHelper.executeNextLink(this, ambiance, stepParameters, passThroughData, responseSupplier);
   }
 
   @Override
-  public StepResponse finalizeExecutionWithSecurityContext(Ambiance ambiance, StepElementParameters stepParameters,
-      PassThroughData passThroughData, ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
+  public StepResponse finalizeExecutionWithSecurityContextAndNodeInfo(Ambiance ambiance,
+      StepBaseParameters stepParameters, PassThroughData passThroughData,
+      ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
     try {
       if (passThroughData instanceof GitFetchResponsePassThroughData) {
         GitFetchResponsePassThroughData stepExceptionPassThroughData =
@@ -190,6 +198,18 @@ public class TasRollingDeployStep extends TaskChainExecutableWithRollbackAndRbac
               .deploymentStarted(response.isDeploymentStarted())
               .routeMaps(response.getNewApplicationInfo().getAttachedRoutes())
               .build();
+
+      TasManifestOutcome tasManifestOutcome = tasExecutionPassThroughData.getTasManifestOutcome();
+      ArtifactBundleDetails artifactBundleDetails = null;
+      if (tasManifestOutcome != null && tasManifestOutcome.getStore().getKind().equals(ARTIFACT_BUNDLE)) {
+        ArtifactBundleStore artifactBundleStore = (ArtifactBundleStore) tasManifestOutcome.getStore();
+        artifactBundleDetails =
+            ArtifactBundleDetails.builder()
+                .deployableUnitPath(getParameterFieldValue(artifactBundleStore.getDeployableUnitPath()))
+                .artifactBundleType(artifactBundleStore.getArtifactBundleType().toString())
+                .activityId(ambiance.getStageExecutionId())
+                .build();
+      }
       List<ServerInstanceInfo> serverInstanceInfoList = getServerInstanceInfoList(response, ambiance);
       StepResponse.StepOutcome stepOutcome =
           instanceInfoService.saveServerInstancesIntoSweepingOutput(ambiance, serverInstanceInfoList);
@@ -204,6 +224,7 @@ public class TasRollingDeployStep extends TaskChainExecutableWithRollbackAndRbac
           ambiance, tasExecutionPassThroughData.getDesiredCountInFinalYaml(), appName, tasInfraConfig);
       tasStepHelper.updateIsFirstDeploymentField(
           ambiance, response.getCurrentProdInfo() == null, appName, tasInfraConfig);
+      tasStepHelper.updateArtifactBundleDetails(ambiance, artifactBundleDetails, appName, tasInfraConfig);
 
       return StepResponse.builder()
           .status(Status.SUCCEEDED)
@@ -222,18 +243,24 @@ public class TasRollingDeployStep extends TaskChainExecutableWithRollbackAndRbac
 
   @Override
   public TaskChainResponse startChainLinkAfterRbac(
-      Ambiance ambiance, StepElementParameters stepParameters, StepInputPackage inputPackage) {
+      Ambiance ambiance, StepBaseParameters stepParameters, StepInputPackage inputPackage) {
     return tasStepHelper.startChainLink(this, ambiance, stepParameters);
   }
 
   @Override
-  public Class<StepElementParameters> getStepParametersClass() {
-    return StepElementParameters.class;
+  public Class<StepBaseParameters> getStepParametersClass() {
+    return StepBaseParameters.class;
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 
   @Override
   public TaskChainResponse executeTasTask(ManifestOutcome tasManifestOutcome, Ambiance ambiance,
-      StepElementParameters stepParameters, TasExecutionPassThroughData executionPassThroughData,
+      StepBaseParameters stepParameters, TasExecutionPassThroughData executionPassThroughData,
       boolean shouldOpenFetchFilesLogStream, UnitProgressData unitProgressData) {
     TasRollingDeployStepParameters tasRollingDeployStepParameters =
         (TasRollingDeployStepParameters) stepParameters.getSpec();
@@ -243,6 +270,19 @@ public class TasRollingDeployStep extends TaskChainExecutableWithRollbackAndRbac
     List<String> routeMaps = tasStepHelper.getRouteMaps(executionPassThroughData.getTasManifestsPackage(),
         getParameterFieldValue(tasRollingDeployStepParameters.getAdditionalRoutes()));
     TasInfraConfig tasInfraConfig = cdStepHelper.getTasInfraConfig(infrastructureOutcome, ambiance);
+
+    ArtifactBundleDetails artifactBundleDetails = null;
+    if (tasManifestOutcome != null && tasManifestOutcome.getType().equals(TAS_MANIFEST)
+        && tasManifestOutcome.getStore().getKind().equals(ARTIFACT_BUNDLE)) {
+      ArtifactBundleStore artifactBundleStore = (ArtifactBundleStore) tasManifestOutcome.getStore();
+      artifactBundleDetails =
+          ArtifactBundleDetails.builder()
+              .artifactBundleType(artifactBundleStore.getArtifactBundleType().toString())
+              .deployableUnitPath(getParameterFieldValue(artifactBundleStore.getDeployableUnitPath()))
+              .activityId(ambiance.getStageExecutionId())
+              .build();
+    }
+
     TaskParameters taskParameters =
         CfRollingDeployRequestNG.builder()
             .applicationName(executionPassThroughData.getApplicationName())
@@ -259,6 +299,7 @@ public class TasRollingDeployStep extends TaskChainExecutableWithRollbackAndRbac
             .timeoutIntervalInMin(CDStepHelper.getTimeoutInMin(stepParameters))
             .useAppAutoScalar(!isNull(executionPassThroughData.getTasManifestsPackage().getAutoscalarManifestYml()))
             .desiredCount(executionPassThroughData.getDesiredCountInFinalYaml())
+            .artifactBundleDetails(artifactBundleDetails)
             .build();
 
     TasStageExecutionDetails tasStageExecutionDetails = tasStepHelper.findLastSuccessfulStageExecutionDetails(

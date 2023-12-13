@@ -82,6 +82,7 @@ import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.extensions.DaemonSet;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -111,7 +112,8 @@ public class ContainerDeploymentDelegateBaseHelperTest extends CategoryTest {
 
   @Spy @InjectMocks ContainerDeploymentDelegateBaseHelper containerDeploymentDelegateBaseHelper;
   private static final String WORK_DIR = "./repository/k8s";
-
+  final Path workingDir = Path.of("dir");
+  final Path configFilePath = Path.of(workingDir.toString(), "configFile");
   @Before
   public void setup() {
     doNothing().when(logCallback).saveExecutionLog(anyString());
@@ -293,25 +295,9 @@ public class ContainerDeploymentDelegateBaseHelperTest extends CategoryTest {
   @Test
   @Owner(developers = YOGESH)
   @Category(UnitTests.class)
-  public void getExistingPodsByLabels() {
-    KubernetesConfig kubernetesConfig = KubernetesConfig.builder().namespace("default").build();
-    Map<String, String> labels = new HashMap<>();
-
-    when(kubernetesContainerService.getPods(kubernetesConfig, labels)).thenReturn(asList(new Pod()));
-
-    final List<Pod> pods = containerDeploymentDelegateBaseHelper.getExistingPodsByLabels(kubernetesConfig, labels);
-    assertThat(pods).hasSize(1);
-    verify(kubernetesContainerService, times(1)).getPods(kubernetesConfig, labels);
-  }
-
-  @Test
-  @Owner(developers = YOGESH)
-  @Category(UnitTests.class)
   public void testGetContainerInfosWhenReadyByLabel() {
     KubernetesConfig kubernetesConfig = mock(KubernetesConfig.class);
     List<Pod> existingPods = asList(new Pod());
-
-    when(kubernetesContainerService.getPods(eq(kubernetesConfig), anyMap())).thenReturn(existingPods);
     doReturn(null)
         .when(containerDeploymentDelegateBaseHelper)
         .getContainerInfosWhenReadyByLabels(any(KubernetesConfig.class), any(LogCallback.class), anyMap(), anyList());
@@ -454,7 +440,7 @@ public class ContainerDeploymentDelegateBaseHelperTest extends CategoryTest {
                                                                     .build();
 
     containerDeploymentDelegateBaseHelper.getKubeconfigFileContent(eksK8sInfraDelegateConfig, WORK_DIR);
-    verify(awsEKSDelegateTaskHelper, times(1)).getKubeConfig(eq(awsConnectorDTO), eq("eks"), eq("default"), eq(null));
+    verify(awsEKSDelegateTaskHelper, times(1)).getKubeConfig(eq(eksK8sInfraDelegateConfig), eq(null));
     verify(kubernetesContainerService).getConfigFileContent(any());
   }
 

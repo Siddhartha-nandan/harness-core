@@ -6,12 +6,18 @@
  */
 
 package io.harness.cdng.aws.service;
-
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.logging.CommandExecutionStatus.SUCCESS;
+import static io.harness.ng.core.entityusageactivity.EntityUsageTypes.PIPELINE_SETUP;
 
+import static software.wings.utils.Utils.emptyIfNull;
+
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.aws.AwsCFTemplatesType;
 import io.harness.beans.IdentifierRef;
 import io.harness.cdng.common.resources.AwsResourceServiceHelper;
@@ -22,6 +28,7 @@ import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.connector.awsconnector.AwsCFTaskParamsRequest;
 import io.harness.delegate.beans.connector.awsconnector.AwsCFTaskResponse;
 import io.harness.delegate.beans.connector.awsconnector.AwsConnectorDTO;
+import io.harness.delegate.beans.connector.awsconnector.AwsCredentialSpecDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsIAMRolesResponse;
 import io.harness.delegate.beans.connector.awsconnector.AwsListASGInstancesTaskParamsRequest;
 import io.harness.delegate.beans.connector.awsconnector.AwsListASGNamesTaskResponse;
@@ -37,10 +44,17 @@ import io.harness.delegate.beans.connector.awsconnector.AwsListLoadBalancersTask
 import io.harness.delegate.beans.connector.awsconnector.AwsListTagsTaskParamsRequest;
 import io.harness.delegate.beans.connector.awsconnector.AwsListTagsTaskResponse;
 import io.harness.delegate.beans.connector.awsconnector.AwsListVpcTaskResponse;
+import io.harness.delegate.beans.connector.awsconnector.AwsManualConfigSpecDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsTaskParams;
 import io.harness.delegate.beans.connector.awsconnector.AwsTaskType;
 import io.harness.delegate.beans.storeconfig.FetchType;
 import io.harness.delegate.beans.storeconfig.GitStoreDelegateConfig;
+import io.harness.encryption.SecretRefData;
+import io.harness.eventsframework.protohelper.IdentifierRefProtoDTOHelper;
+import io.harness.eventsframework.schemas.entity.EntityDetailProtoDTO;
+import io.harness.eventsframework.schemas.entity.EntityTypeProtoEnum;
+import io.harness.eventsframework.schemas.entity.EntityUsageDetailProto;
+import io.harness.eventsframework.schemas.entity.IdentifierRefProtoDTO;
 import io.harness.exception.AwsAutoScaleException;
 import io.harness.exception.AwsCFException;
 import io.harness.exception.AwsECSException;
@@ -53,6 +67,9 @@ import io.harness.exception.AwsVPCException;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.BaseNGAccess;
+import io.harness.ng.core.api.NGSecretServiceV2;
+import io.harness.ng.core.models.Secret;
+import io.harness.secretusage.SecretRuntimeUsageService;
 import io.harness.security.encryption.EncryptedDataDetail;
 
 import software.wings.beans.TaskType;
@@ -73,15 +90,18 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 @Singleton
 @OwnedBy(CDP)
 public class AwsResourceServiceImpl implements AwsResourceService {
@@ -90,7 +110,12 @@ public class AwsResourceServiceImpl implements AwsResourceService {
   private static final String yamlResourceFilePath = "aws/aws.yaml";
   @Inject private AwsResourceServiceHelper serviceHelper;
   @Inject private GitResourceServiceHelper gitResourceServiceHelper;
+  @Inject private SecretRuntimeUsageService secretRuntimeUsageService;
+  @Inject private NGSecretServiceV2 ngSecretService;
+  @Inject private IdentifierRefProtoDTOHelper identifierRefProtoDTOHelper;
+
   private static final String EKS_GET_CLUSTERS_EXCEPTION_MESSAGE = "Failed to get AWS EKS clusters";
+  private static final Duration EKS_LIST_CLUSTERS_TASK_TIMEOUT = Duration.ofMinutes(5);
 
   @Override
   public List<String> getCapabilities() {
@@ -133,6 +158,9 @@ public class AwsResourceServiceImpl implements AwsResourceService {
   public Map<String, String> getRolesARNs(
       IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region) {
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
+
+    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+
     BaseNGAccess access =
         serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
@@ -171,6 +199,9 @@ public class AwsResourceServiceImpl implements AwsResourceService {
     }
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
+
+    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
 
     AwsCFTaskParamsRequest params = AwsCFTaskParamsRequest.builder()
@@ -194,6 +225,9 @@ public class AwsResourceServiceImpl implements AwsResourceService {
         awsConnectorRef.getOrgIdentifier(), awsConnectorRef.getProjectIdentifier());
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
+
+    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
 
     final AwsTaskParams awsTaskParams;
@@ -231,6 +265,9 @@ public class AwsResourceServiceImpl implements AwsResourceService {
         serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
+
+    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
 
     AwsTaskParams awsTaskParams = AwsTaskParams.builder()
@@ -253,6 +290,9 @@ public class AwsResourceServiceImpl implements AwsResourceService {
         serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
+
+    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
 
     AwsListTagsTaskParamsRequest awsTaskParams = AwsListTagsTaskParamsRequest.builder()
@@ -276,6 +316,9 @@ public class AwsResourceServiceImpl implements AwsResourceService {
         serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
+
+    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
 
     AwsTaskParams awsTaskParams = AwsTaskParams.builder()
@@ -298,6 +341,9 @@ public class AwsResourceServiceImpl implements AwsResourceService {
         serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
+
+    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
 
     AwsTaskParams awsTaskParams = AwsTaskParams.builder()
@@ -320,6 +366,9 @@ public class AwsResourceServiceImpl implements AwsResourceService {
         serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
+
+    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
     AwsTaskParams awsTaskParams = AwsTaskParams.builder()
                                       .awsConnector(awsConnector)
@@ -340,6 +389,9 @@ public class AwsResourceServiceImpl implements AwsResourceService {
         serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
+
+    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
     AwsTaskParams awsTaskParams = AwsTaskParams.builder()
                                       .awsConnector(awsConnector)
@@ -360,6 +412,9 @@ public class AwsResourceServiceImpl implements AwsResourceService {
         serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
+
+    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
     AwsTaskParams awsTaskParams = AwsListElbListenersTaskParamsRequest.builder()
                                       .awsConnector(awsConnector)
@@ -381,6 +436,9 @@ public class AwsResourceServiceImpl implements AwsResourceService {
         serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
+
+    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
     AwsTaskParams awsTaskParams = AwsListElbListenerRulesTaskParamsRequest.builder()
                                       .awsConnector(awsConnector)
@@ -552,18 +610,22 @@ public class AwsResourceServiceImpl implements AwsResourceService {
     return response.getListenerRulesArn();
   }
 
+  @Override
   public List<String> getEKSClusterNames(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier) {
+      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region) {
     BaseNGAccess access =
         serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
+
+    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
     AwsTaskParams awsTaskParams =
-        AwsTaskParams.builder().awsConnector(awsConnector).encryptionDetails(encryptedData).build();
+        AwsTaskParams.builder().awsConnector(awsConnector).region(region).encryptionDetails(encryptedData).build();
 
-    DelegateResponseData responseData =
-        serviceHelper.getResponseData(access, awsTaskParams, TaskType.AWS_EKS_LIST_CLUSTERS_TASK.name());
+    DelegateResponseData responseData = serviceHelper.getResponseData(
+        access, awsTaskParams, TaskType.AWS_EKS_LIST_CLUSTERS_TASK.name(), EKS_LIST_CLUSTERS_TASK_TIMEOUT);
     return getEKSClusterNamesFromResponse(responseData);
   }
 
@@ -578,5 +640,44 @@ public class AwsResourceServiceImpl implements AwsResourceService {
       throw new AwsEKSException(EKS_GET_CLUSTERS_EXCEPTION_MESSAGE);
     }
     return response.getClusters();
+  }
+
+  private void publishSecretRuntimeUsage(IdentifierRef awsConnectorRef, AwsConnectorDTO awsConnector) {
+    String accountIdentifier = awsConnectorRef.getAccountIdentifier();
+    String orgIdentifier = awsConnectorRef.getOrgIdentifier();
+    String projectIdentifier = awsConnectorRef.getProjectIdentifier();
+
+    getSecret(awsConnectorRef, awsConnector).ifPresent(secret -> {
+      IdentifierRefProtoDTO secretReference = identifierRefProtoDTOHelper.createIdentifierRefProtoDTO(
+          accountIdentifier, orgIdentifier, projectIdentifier, secret.getIdentifier());
+
+      EntityDetailProtoDTO secretDetails = EntityDetailProtoDTO.newBuilder()
+                                               .setIdentifierRef(secretReference)
+                                               .setType(EntityTypeProtoEnum.SECRETS)
+                                               .setName(emptyIfNull(secret.getName()))
+                                               .build();
+
+      EntityUsageDetailProto entityUsageDetailProto =
+          EntityUsageDetailProto.newBuilder().setUsageType(PIPELINE_SETUP).build();
+
+      secretRuntimeUsageService.createSecretRuntimeUsage(
+          accountIdentifier, secret.toDTO(), secretDetails, entityUsageDetailProto);
+    });
+  }
+
+  private Optional<Secret> getSecret(IdentifierRef awsConnectorRef, AwsConnectorDTO awsConnector) {
+    AwsCredentialSpecDTO awsCredentialSpecDTO = awsConnector.getCredential().getConfig();
+    if (awsCredentialSpecDTO instanceof AwsManualConfigSpecDTO) {
+      AwsManualConfigSpecDTO awsManualConfigSpecDTO = (AwsManualConfigSpecDTO) awsCredentialSpecDTO;
+      SecretRefData secretRefData = awsManualConfigSpecDTO.getSecretKeyRef();
+      if (secretRefData != null && isNotEmpty(secretRefData.getIdentifier())) {
+        String accountIdentifier = awsConnectorRef.getAccountIdentifier();
+        String orgIdentifier = awsConnectorRef.getOrgIdentifier();
+        String projectIdentifier = awsConnectorRef.getProjectIdentifier();
+        return ngSecretService.get(accountIdentifier, orgIdentifier, projectIdentifier, secretRefData.getIdentifier());
+      }
+    }
+
+    return Optional.empty();
   }
 }

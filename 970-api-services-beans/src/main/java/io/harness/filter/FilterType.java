@@ -25,12 +25,15 @@ public enum FilterType {
   @JsonProperty("Deployment") DEPLOYMENT("Deployment"),
   @JsonProperty("Audit") AUDIT("Audit"),
   @JsonProperty("Template") TEMPLATE("Template"),
+  @JsonProperty("Trigger") TRIGGER("Trigger"),
   @JsonProperty("EnvironmentGroup") ENVIRONMENTGROUP("EnvironmentGroup"),
   @JsonProperty("FileStore") FILESTORE("FileStore"),
   @JsonProperty("CCMRecommendation") CCMRECOMMENDATION("CCMRecommendation"),
   @JsonProperty("Anomaly") ANOMALY("Anomaly"),
   @JsonProperty("Environment") ENVIRONMENT("Environment"),
-  @JsonProperty("RuleExecution") RULEEXECUTION("RuleExecution");
+  @JsonProperty("RuleExecution") RULEEXECUTION("RuleExecution"),
+  @JsonProperty("Override") OVERRIDE("Override"),
+  @JsonProperty("InputSet") INPUTSET("InputSet");
 
   private String value;
 

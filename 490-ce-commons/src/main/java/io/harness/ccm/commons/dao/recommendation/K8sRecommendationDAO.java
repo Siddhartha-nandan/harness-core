@@ -69,11 +69,14 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import dev.morphia.query.Query;
 import dev.morphia.query.UpdateOperations;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -81,6 +84,7 @@ import javax.annotation.Nullable;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
+import org.jetbrains.annotations.NotNull;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.DeleteConditionStep;
@@ -161,7 +165,7 @@ public class K8sRecommendationDAO {
       @NonNull String accountId, @Nullable Condition condition, @NonNull Long offset, @NonNull Long limit) {
     return dslContext.selectFrom(CE_RECOMMENDATIONS)
         .where(CE_RECOMMENDATIONS.ACCOUNTID.eq(accountId).and(firstNonNull(condition, DSL.noCondition())))
-        .orderBy(CE_RECOMMENDATIONS.MONTHLYSAVING.desc().nullsLast())
+        .orderBy(CE_RECOMMENDATIONS.MONTHLYSAVING.desc().nullsLast(), CE_RECOMMENDATIONS.ID.asc().nullsLast())
         .offset(offset)
         .limit(limit)
         .fetchInto(CeRecommendations.class);
@@ -224,8 +228,20 @@ public class K8sRecommendationDAO {
 
     SelectFinalStep<? extends Record> finalStepT3 = dslContext.select(selectStepT3.getSelect()).from(t2);
     log.info("maxResourceOfAllTimeBucketsForANodePool, final query\n{}", finalStepT3.toString());
+    long startTime = System.nanoTime();
+    TotalResourceUsage totalResourceUsage = finalStepT3.fetchOneInto(TotalResourceUsage.class);
+    logQueryExecutionStats(jobConstants, nodePoolId, startTime);
+    return totalResourceUsage;
+  }
 
-    return finalStepT3.fetchOneInto(TotalResourceUsage.class);
+  private static void logQueryExecutionStats(
+      @NotNull JobConstants jobConstants, @NotNull NodePoolId nodePoolId, long startTime) {
+    long endTime = System.nanoTime();
+    long duration = (endTime - startTime) / 1_000_000;
+    log.info(
+        "NodePoolRecommendation Query execution: accountId: {}, nodePoolName: {}, clusterId: {}, startTime: {}. Total time in ms: {}",
+        jobConstants.getAccountId(), nodePoolId.getNodepoolname(), nodePoolId.getClusterid(),
+        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date(jobConstants.getJobStartTime())), duration);
   }
 
   private Table<? extends Record> sumResourceForEachTimeBucket(JobConstants jobConstants, NodePoolId nodePoolId) {
@@ -241,19 +257,25 @@ public class K8sRecommendationDAO {
 
   private Table<? extends Record> groupByInstanceIdForEachTimeBucket(JobConstants jobConstants, NodePoolId nodePoolId) {
     Table<? extends Record> t0 = getPodRequest(jobConstants, nodePoolId);
-
     Field<OffsetDateTime> timeBucket =
         Routines.timeBucket2(val(YearToSecond.valueOf(Duration.ofMinutes(20))), KUBERNETES_UTILIZATION_DATA.STARTTIME)
             .as(TIME);
 
+    OffsetDateTime jobStartOffsetDateTime =
+        OffsetDateTime.ofInstant(Instant.ofEpochMilli(jobConstants.getJobStartTime()), ZoneOffset.UTC);
+    OffsetDateTime jobEndOffsetDateTime =
+        OffsetDateTime.ofInstant(Instant.ofEpochMilli(jobConstants.getJobEndTime()), ZoneOffset.UTC);
     Condition kubernetesUtilizationData_with_t0 =
         KUBERNETES_UTILIZATION_DATA.ACTUALINSTANCEID.eq(t0.field(KUBERNETES_UTILIZATION_DATA.ACTUALINSTANCEID))
-            .and(KUBERNETES_UTILIZATION_DATA.ACCOUNTID.eq(jobConstants.getAccountId())
-                     .and(KUBERNETES_UTILIZATION_DATA.CLUSTERID.eq(nodePoolId.getClusterid())
-                              .and(TimescaleUtils.isAlive(KUBERNETES_UTILIZATION_DATA.STARTTIME,
-                                  KUBERNETES_UTILIZATION_DATA.ENDTIME, jobConstants.getJobStartTime(),
-                                  jobConstants.getJobEndTime()))));
-
+            .and(
+                KUBERNETES_UTILIZATION_DATA.ACCOUNTID.eq(jobConstants.getAccountId())
+                    .and(KUBERNETES_UTILIZATION_DATA.CLUSTERID.eq(nodePoolId.getClusterid())
+                             .and(TimescaleUtils
+                                      .isAlive(KUBERNETES_UTILIZATION_DATA.STARTTIME,
+                                          KUBERNETES_UTILIZATION_DATA.ENDTIME, jobConstants.getJobStartTime(),
+                                          jobConstants.getJobEndTime())
+                                      .and(KUBERNETES_UTILIZATION_DATA.STARTTIME.greaterOrEqual(jobStartOffsetDateTime))
+                                      .and(KUBERNETES_UTILIZATION_DATA.STARTTIME.lessThan(jobEndOffsetDateTime)))));
     SelectSelectStep<? extends Record> selectStepT1 = select(timeBucket,
         greatest(max(KUBERNETES_UTILIZATION_DATA.CPU), max(t0.field(POD_INFO.CPUREQUEST)))
             .as(KUBERNETES_UTILIZATION_DATA.CPU),
@@ -274,6 +296,10 @@ public class K8sRecommendationDAO {
     final String kube_system_namespace = "kube-system";
     final String namespace_name_separator = "/";
 
+    OffsetDateTime jobStartOffsetDateTime =
+        OffsetDateTime.ofInstant(Instant.ofEpochMilli(jobConstants.getJobStartTime()), ZoneOffset.UTC);
+    OffsetDateTime jobEndOffsetDateTime =
+        OffsetDateTime.ofInstant(Instant.ofEpochMilli(jobConstants.getJobEndTime()), ZoneOffset.UTC);
     return dslContext
         .select(concat(POD_INFO.NAMESPACE, val(namespace_name_separator), POD_INFO.NAME)
                     .as(KUBERNETES_UTILIZATION_DATA.ACTUALINSTANCEID),
@@ -286,7 +312,10 @@ public class K8sRecommendationDAO {
                 NODE_INFO.STARTTIME, NODE_INFO.STOPTIME, jobConstants.getJobStartTime(), jobConstants.getJobEndTime()),
             POD_INFO.NAMESPACE.notEqual(kube_system_namespace),
             TimescaleUtils.isAlive(
-                POD_INFO.STARTTIME, POD_INFO.STOPTIME, jobConstants.getJobStartTime(), jobConstants.getJobEndTime())))
+                POD_INFO.STARTTIME, POD_INFO.STOPTIME, jobConstants.getJobStartTime(), jobConstants.getJobEndTime()),
+            POD_INFO.STARTTIME.greaterOrEqual(jobStartOffsetDateTime),
+            POD_INFO.STARTTIME.lessThan(jobEndOffsetDateTime),
+            NODE_INFO.STARTTIME.greaterOrEqual(jobStartOffsetDateTime.minusMonths(12))))
         .asTable();
   }
 
@@ -350,6 +379,10 @@ public class K8sRecommendationDAO {
     InstanceData instanceData = instanceDataDao.fetchInstanceData(jobConstants.getAccountId(),
         nodePoolId.getClusterid(), InstanceType.K8S_NODE, nodePoolId.getNodepoolname(), InstanceState.RUNNING);
     try {
+      if (instanceData == null || instanceData.getMetaData() == null) {
+        log.warn("Error fetching instanceData/metadata. Returning default value.");
+        return defaultK8sServiceProvider();
+      }
       Map<String, String> metaData = instanceData.getMetaData();
       String region = metaData.get(InstanceMetaDataConstants.REGION);
       String instanceFamily = metaData.get(InstanceMetaDataConstants.INSTANCE_FAMILY);
@@ -450,6 +483,18 @@ public class K8sRecommendationDAO {
     return dslContext.deleteFrom(CE_RECOMMENDATIONS)
         .where(CE_RECOMMENDATIONS.ISVALID.eq(false),
             CE_RECOMMENDATIONS.UPDATEDAT.lessThan(toOffsetDateTime(Instant.now().minus(180, ChronoUnit.DAYS))));
+  }
+
+  @RetryOnException(retryCount = RETRY_COUNT, sleepDurationInMilliseconds = SLEEP_DURATION)
+  public List<CeRecommendations> getNodepoolsAlreadyUpdated(
+      @NonNull String accountId, @NonNull JobConstants jobConstants, List<String> clusterNames) {
+    return dslContext.selectFrom(CE_RECOMMENDATIONS)
+        .where(CE_RECOMMENDATIONS.ACCOUNTID.eq(accountId))
+        .and(CE_RECOMMENDATIONS.RESOURCETYPE.eq(ResourceType.NODE_POOL.name()))
+        .and(CE_RECOMMENDATIONS.CLUSTERNAME.in(clusterNames))
+        .and(CE_RECOMMENDATIONS.LASTPROCESSEDAT.greaterOrEqual(
+            toOffsetDateTime(Instant.ofEpochMilli(jobConstants.getJobEndTime()))))
+        .fetchInto(CeRecommendations.class);
   }
 
   @RetryOnException(retryCount = RETRY_COUNT, sleepDurationInMilliseconds = SLEEP_DURATION)
@@ -657,5 +702,77 @@ public class K8sRecommendationDAO {
     return TimescaleUtils.retryRun(()
                                        -> dslContext.fetchCount(CE_RECOMMENDATIONS,
                                            CE_RECOMMENDATIONS.ACCOUNTID.eq(accountId).and(nonNullCondition)));
+  }
+
+  @RetryOnException(retryCount = RETRY_COUNT, sleepDurationInMilliseconds = SLEEP_DURATION)
+  public Long countNodePoolAggregatedForAccount(@NonNull String accountId) {
+    return dslContext.select(DSL.count().as("count"))
+        .from(NODE_POOL_AGGREGATED)
+        .where(NODE_POOL_AGGREGATED.ACCOUNTID.eq(accountId))
+        .fetchInto(Long.class)
+        .get(0);
+  }
+
+  @RetryOnException(retryCount = RETRY_COUNT, sleepDurationInMilliseconds = SLEEP_DURATION)
+  public boolean deleteAllNodePoolAggregatedForAccount(@NonNull String accountId) {
+    dslContext.deleteFrom(NODE_POOL_AGGREGATED).where(NODE_POOL_AGGREGATED.ACCOUNTID.eq(accountId)).execute();
+    return true;
+  }
+
+  @RetryOnException(retryCount = RETRY_COUNT, sleepDurationInMilliseconds = SLEEP_DURATION)
+  public Long countRecommendationsForAccount(@NonNull String accountId) {
+    return dslContext.select(DSL.count().as("count"))
+        .from(CE_RECOMMENDATIONS)
+        .where(CE_RECOMMENDATIONS.ACCOUNTID.eq(accountId))
+        .fetchInto(Long.class)
+        .get(0);
+  }
+
+  @RetryOnException(retryCount = RETRY_COUNT, sleepDurationInMilliseconds = SLEEP_DURATION)
+  public boolean deleteAllRecommendationsForAccount(@NonNull String accountId) {
+    dslContext.deleteFrom(CE_RECOMMENDATIONS).where(CE_RECOMMENDATIONS.ACCOUNTID.eq(accountId)).execute();
+    return true;
+  }
+
+  public long countNodeRecommendations(String accountId) {
+    return hPersistence.createQuery(K8sNodeRecommendation.class)
+        .field(K8sNodeRecommendationKeys.accountId)
+        .equal(accountId)
+        .count();
+  }
+
+  public boolean deleteAllNodeRecommendationsForAccount(String accountId) {
+    Query<K8sNodeRecommendation> query = hPersistence.createQuery(K8sNodeRecommendation.class)
+                                             .field(K8sNodeRecommendationKeys.accountId)
+                                             .equal(accountId);
+    return hPersistence.delete(query);
+  }
+
+  public long countWorkloadRecommendations(String accountId) {
+    return hPersistence.createQuery(K8sWorkloadRecommendation.class)
+        .field(K8sWorkloadRecommendationKeys.accountId)
+        .equal(accountId)
+        .count();
+  }
+
+  public boolean deleteAllWorkloadRecommendationsForAccount(String accountId) {
+    Query<K8sWorkloadRecommendation> query = hPersistence.createQuery(K8sWorkloadRecommendation.class)
+                                                 .field(K8sWorkloadRecommendationKeys.accountId)
+                                                 .equal(accountId);
+    return hPersistence.delete(query);
+  }
+
+  public long countPartialHistograms(String accountId) {
+    return hPersistence.createQuery(PartialRecommendationHistogram.class)
+        .field(PartialRecommendationHistogramKeys.accountId)
+        .equal(accountId)
+        .count();
+  }
+
+  public boolean deleteAllPartialHistogramsForAccount(String accountId) {
+    Query<PartialRecommendationHistogram> query = hPersistence.createQuery(PartialRecommendationHistogram.class)
+                                                      .field(PartialRecommendationHistogramKeys.accountId)
+                                                      .equal(accountId);
+    return hPersistence.delete(query);
   }
 }

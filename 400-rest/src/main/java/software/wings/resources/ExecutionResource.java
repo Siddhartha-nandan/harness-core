@@ -55,7 +55,6 @@ import software.wings.beans.GraphGroup;
 import software.wings.beans.GraphNode;
 import software.wings.beans.PipelineStageGroupedInfo;
 import software.wings.beans.RequiredExecutionArgs;
-import software.wings.beans.StateExecutionElement;
 import software.wings.beans.StateExecutionInterrupt;
 import software.wings.beans.WorkflowExecution;
 import software.wings.beans.WorkflowExecution.WorkflowExecutionKeys;
@@ -65,6 +64,7 @@ import software.wings.beans.baseline.WorkflowExecutionBaseline;
 import software.wings.beans.concurrency.ConcurrentExecutionResponse;
 import software.wings.beans.deployment.DeploymentMetadata;
 import software.wings.beans.deployment.WorkflowVariablesMetadata;
+import software.wings.beans.execution.StateExecutionElement;
 import software.wings.beans.execution.WorkflowExecutionInfo;
 import software.wings.features.DeploymentHistoryFeature;
 import software.wings.features.api.RestrictedFeature;
@@ -238,6 +238,7 @@ public class ExecutionResource {
   @Path("{workflowExecutionId}")
   @Timed
   @ExceptionMetered
+  @ApiKeyAuthorized(permissionType = LOGGED_IN)
   @AuthRule(permissionType = LOGGED_IN)
   public RestResponse<WorkflowExecution> getExecutionDetails(@QueryParam("appId") String appId,
       @QueryParam("envId") String envId, @PathParam("workflowExecutionId") String workflowExecutionId) {

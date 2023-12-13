@@ -8,10 +8,11 @@
 package io.harness.delegate.aws.asg;
 
 import static io.harness.aws.asg.manifest.AsgManifestType.AsgConfiguration;
-import static io.harness.aws.asg.manifest.AsgManifestType.AsgLaunchTemplate;
 import static io.harness.aws.asg.manifest.AsgManifestType.AsgScalingPolicy;
 import static io.harness.aws.asg.manifest.AsgManifestType.AsgScheduledUpdateGroupAction;
+import static io.harness.aws.asg.manifest.AsgManifestType.AsgShiftTraffic;
 import static io.harness.aws.asg.manifest.AsgManifestType.AsgSwapService;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.logging.LogLevel.ERROR;
 import static io.harness.logging.LogLevel.INFO;
@@ -30,9 +31,9 @@ import io.harness.aws.asg.AsgSdkManager;
 import io.harness.aws.asg.manifest.AsgManifestHandlerChainFactory;
 import io.harness.aws.asg.manifest.AsgManifestHandlerChainState;
 import io.harness.aws.asg.manifest.request.AsgConfigurationManifestRequest;
-import io.harness.aws.asg.manifest.request.AsgLaunchTemplateManifestRequest;
 import io.harness.aws.asg.manifest.request.AsgScalingPolicyManifestRequest;
 import io.harness.aws.asg.manifest.request.AsgScheduledActionManifestRequest;
+import io.harness.aws.asg.manifest.request.AsgShiftTrafficManifestRequest;
 import io.harness.aws.asg.manifest.request.AsgSwapServiceManifestRequest;
 import io.harness.aws.beans.AsgLoadBalancerConfig;
 import io.harness.aws.beans.AwsInternalConfig;
@@ -61,6 +62,8 @@ import com.google.inject.Inject;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -89,7 +92,9 @@ public class AsgBlueGreenRollbackCommandTaskHandler extends AsgCommandTaskNGHand
         asgBlueGreenRollbackRequest.getStageAsgManifestsDataForRollback();
     Map<String, List<String>> prodAsgManifestsDataForRollback =
         asgBlueGreenRollbackRequest.getProdAsgManifestsDataForRollback();
-    AsgLoadBalancerConfig lbConfig = asgBlueGreenRollbackRequest.getAsgLoadBalancerConfig();
+    List<AsgLoadBalancerConfig> lbConfigs = isNotEmpty(asgBlueGreenRollbackRequest.getLoadBalancers())
+        ? asgBlueGreenRollbackRequest.getLoadBalancers()
+        : Arrays.asList(asgBlueGreenRollbackRequest.getAsgLoadBalancerConfig());
 
     LogCallback logCallback = asgTaskHelper.getLogCallback(
         iLogStreamingTaskClient, AsgCommandUnitConstants.rollback.toString(), true, commandUnitsProgress);
@@ -102,6 +107,9 @@ public class AsgBlueGreenRollbackCommandTaskHandler extends AsgCommandTaskNGHand
       AwsInternalConfig awsInternalConfig = awsUtils.getAwsInternalConfig(asgInfraConfig.getAwsConnectorDTO(), region);
 
       asgSdkManager.info("Starting Blue Green Rollback");
+
+      executeRollbackServiceSwap(asgSdkManager, prodAsgName, stageAsgName, lbConfigs, region, awsInternalConfig);
+      executeRollbackTrafficShift(asgSdkManager, prodAsgName, stageAsgName, lbConfigs, region, awsInternalConfig);
 
       // first deployment
       if (prodAsgName == null) {
@@ -121,11 +129,6 @@ public class AsgBlueGreenRollbackCommandTaskHandler extends AsgCommandTaskNGHand
           asgSdkManager.info("Rolling back Prod ASG %s to previous version", prodAsgName);
           executeRollbackVersion(
               asgSdkManager, prodAsgName, prodAsgManifestsDataForRollback, awsInternalConfig, region);
-        }
-
-        if (asgBlueGreenRollbackRequest.isServicesSwapped()) {
-          asgSdkManager.info("Swapping back routing rule for Prod ASG %s and Stage ASG %s", prodAsgName, stageAsgName);
-          executeRollbackTraffic(asgSdkManager, prodAsgName, stageAsgName, lbConfig, region, awsInternalConfig);
         }
       }
 
@@ -152,26 +155,47 @@ public class AsgBlueGreenRollbackCommandTaskHandler extends AsgCommandTaskNGHand
     }
   }
 
-  private void executeRollbackTraffic(AsgSdkManager asgSdkManager, String prodAsgName, String stageAsgName,
-      AsgLoadBalancerConfig lbConfig, String region, AwsInternalConfig awsInternalConfig) {
-    AsgLoadBalancerConfig rollbackLbConfig = AsgLoadBalancerConfig.builder()
-                                                 .stageListenerArn(lbConfig.getStageListenerArn())
-                                                 .stageListenerRuleArn(lbConfig.getStageListenerRuleArn())
-                                                 .stageTargetGroupArnsList(lbConfig.getProdTargetGroupArnsList())
-                                                 .prodListenerArn(lbConfig.getProdListenerArn())
-                                                 .prodListenerRuleArn(lbConfig.getProdListenerRuleArn())
-                                                 .prodTargetGroupArnsList(lbConfig.getStageTargetGroupArnsList())
-                                                 .build();
+  private void executeRollbackServiceSwap(AsgSdkManager asgSdkManager, String prodAsgName, String stageAsgName,
+      List<AsgLoadBalancerConfig> lbConfigs, String region, AwsInternalConfig awsInternalConfig) {
+    List<AsgLoadBalancerConfig> rollbackLbConfigs = createRollbackLbConfigsForSwapping(lbConfigs);
 
+    if (isEmpty(rollbackLbConfigs)) {
+      return;
+    }
+
+    asgSdkManager.info("Swapping back routing rule for Prod ASG %s and Stage ASG %s", prodAsgName, stageAsgName);
     AsgManifestHandlerChainFactory.builder()
         .initialChainState(AsgManifestHandlerChainState.builder().asgName(stageAsgName).newAsgName(prodAsgName).build())
         .asgSdkManager(asgSdkManager)
         .build()
         .addHandler(AsgSwapService,
             AsgSwapServiceManifestRequest.builder()
-                .asgLoadBalancerConfig(rollbackLbConfig)
+                .loadBalancers(rollbackLbConfigs)
                 .region(region)
                 .awsInternalConfig(awsInternalConfig)
+                .build())
+        .executeUpsert();
+  }
+
+  private void executeRollbackTrafficShift(AsgSdkManager asgSdkManager, String prodAsgName, String stageAsgName,
+      List<AsgLoadBalancerConfig> lbConfigs, String region, AwsInternalConfig awsInternalConfig) {
+    List<AsgLoadBalancerConfig> rollbackLbConfigs = filterLoadBalancers(lbConfigs, true);
+
+    if (isEmpty(rollbackLbConfigs)) {
+      return;
+    }
+
+    asgSdkManager.info("Shifting traffic back for stage TGs weight=0");
+    AsgManifestHandlerChainFactory.builder()
+        .initialChainState(AsgManifestHandlerChainState.builder().asgName(prodAsgName).newAsgName(stageAsgName).build())
+        .asgSdkManager(asgSdkManager)
+        .build()
+        .addHandler(AsgShiftTraffic,
+            AsgShiftTrafficManifestRequest.builder()
+                .loadBalancers(rollbackLbConfigs)
+                .region(region)
+                .awsInternalConfig(awsInternalConfig)
+                .weight(0)
                 .build())
         .executeUpsert();
   }
@@ -182,7 +206,6 @@ public class AsgBlueGreenRollbackCommandTaskHandler extends AsgCommandTaskNGHand
       asgSdkManager.info("Rolling back to previous version of ASG %s", asgName);
 
       // Get the content of all required manifest files
-      String asgLaunchTemplateVersion = asgTaskHelper.getAsgLaunchTemplateContent(asgManifestsDataForRollback);
       String asgConfigurationContent = asgTaskHelper.getAsgConfigurationContent(asgManifestsDataForRollback);
       List<String> asgScalingPolicyContent = asgTaskHelper.getAsgScalingPolicyContent(asgManifestsDataForRollback);
       List<String> asgScheduledActionContent = asgTaskHelper.getAsgScheduledActionContent(asgManifestsDataForRollback);
@@ -195,6 +218,8 @@ public class AsgBlueGreenRollbackCommandTaskHandler extends AsgCommandTaskNGHand
 
       if (isNotEmpty(createAutoScalingGroupRequest.getLaunchTemplate().getVersion())) {
         initialChainState.setLaunchTemplateVersion(createAutoScalingGroupRequest.getLaunchTemplate().getVersion());
+        initialChainState.setLaunchTemplateName(
+            createAutoScalingGroupRequest.getLaunchTemplate().getLaunchTemplateName());
       }
       // Chain factory code to handle each manifest one by one in a chain
       AsgManifestHandlerChainState chainState =
@@ -202,8 +227,6 @@ public class AsgBlueGreenRollbackCommandTaskHandler extends AsgCommandTaskNGHand
               .initialChainState(initialChainState)
               .asgSdkManager(asgSdkManager)
               .build()
-              .addHandler(AsgLaunchTemplate,
-                  AsgLaunchTemplateManifestRequest.builder().manifests(Arrays.asList(asgLaunchTemplateVersion)).build())
               .addHandler(AsgConfiguration,
                   AsgConfigurationManifestRequest.builder()
                       .manifests(Arrays.asList(asgConfigurationContent))
@@ -220,5 +243,29 @@ public class AsgBlueGreenRollbackCommandTaskHandler extends AsgCommandTaskNGHand
     } else {
       asgSdkManager.deleteAsg(asgName);
     }
+  }
+
+  private List<AsgLoadBalancerConfig> filterLoadBalancers(
+      List<AsgLoadBalancerConfig> lbConfigs, boolean usedForShiftTraffic) {
+    Predicate<AsgLoadBalancerConfig> usedForShiftTrafficPredicate = lb -> isEmpty(lb.getStageListenerRuleArn());
+    Predicate<AsgLoadBalancerConfig> filterPredicate =
+        usedForShiftTraffic ? usedForShiftTrafficPredicate : Predicate.not(usedForShiftTrafficPredicate);
+    return lbConfigs.stream().filter(filterPredicate).collect(Collectors.toList());
+  }
+
+  private List<AsgLoadBalancerConfig> createRollbackLbConfigsForSwapping(List<AsgLoadBalancerConfig> lbConfigs) {
+    return filterLoadBalancers(lbConfigs, false)
+        .stream()
+        .map(lbConfig
+            -> AsgLoadBalancerConfig.builder()
+                   .loadBalancer(lbConfig.getLoadBalancer())
+                   .stageListenerArn(lbConfig.getStageListenerArn())
+                   .stageListenerRuleArn(lbConfig.getStageListenerRuleArn())
+                   .stageTargetGroupArnsList(lbConfig.getProdTargetGroupArnsList())
+                   .prodListenerArn(lbConfig.getProdListenerArn())
+                   .prodListenerRuleArn(lbConfig.getProdListenerRuleArn())
+                   .prodTargetGroupArnsList(lbConfig.getStageTargetGroupArnsList())
+                   .build())
+        .collect(Collectors.toList());
   }
 }

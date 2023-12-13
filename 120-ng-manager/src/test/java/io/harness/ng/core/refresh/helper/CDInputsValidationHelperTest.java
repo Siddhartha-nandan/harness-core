@@ -7,6 +7,8 @@
 
 package io.harness.ng.core.refresh.helper;
 
+import static io.harness.connector.ConnectorModule.DEFAULT_CONNECTOR_SERVICE;
+import static io.harness.rule.OwnerRule.BRIJESH;
 import static io.harness.rule.OwnerRule.INDER;
 import static io.harness.rule.OwnerRule.NAMANG;
 
@@ -26,10 +28,14 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.cdng.customdeployment.helper.CustomDeploymentEntitySetupHelper;
 import io.harness.cdng.gitops.service.ClusterService;
+import io.harness.connector.services.ConnectorService;
 import io.harness.eventsframework.api.Producer;
 import io.harness.exception.InvalidRequestException;
+import io.harness.gitaware.helper.GitAwareEntityHelper;
+import io.harness.gitx.GitXSettingsHelper;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.entitysetupusage.service.EntitySetupUsageService;
+import io.harness.ng.core.environment.mappers.EnvironmentFilterHelper;
 import io.harness.ng.core.environment.services.impl.EnvironmentServiceImpl;
 import io.harness.ng.core.infrastructure.dto.NoInputMergeInputAction;
 import io.harness.ng.core.infrastructure.services.impl.InfrastructureEntityServiceImpl;
@@ -40,6 +46,7 @@ import io.harness.ng.core.service.services.impl.ServiceEntitySetupUsageHelper;
 import io.harness.ng.core.serviceoverride.services.ServiceOverrideService;
 import io.harness.ng.core.serviceoverridev2.service.ServiceOverridesServiceV2;
 import io.harness.ng.core.template.refresh.v2.InputsValidationResponse;
+import io.harness.ng.core.utils.CDGitXService;
 import io.harness.ng.core.utils.ServiceOverrideV2ValidationHelper;
 import io.harness.ngsettings.SettingValueType;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
@@ -54,9 +61,10 @@ import io.harness.rest.RestResponse;
 import io.harness.rule.Owner;
 import io.harness.setupusage.EnvironmentEntitySetupUsageHelper;
 import io.harness.setupusage.InfrastructureEntitySetupUsageHelper;
-import io.harness.utils.featureflaghelper.NGFeatureFlagHelperService;
+import io.harness.utils.NGFeatureFlagHelperService;
 
 import com.google.common.io.Resources;
+import com.google.inject.name.Named;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -106,18 +114,23 @@ public class CDInputsValidationHelperTest extends NgManagerTestBase {
   EnvironmentServiceImpl environmentService;
   InfrastructureEntityServiceImpl infrastructureEntityService;
   EnvironmentRefreshHelper environmentRefreshHelper;
-
+  @Mock @Named(DEFAULT_CONNECTOR_SERVICE) private ConnectorService connectorService;
+  @Mock EnvironmentFilterHelper environmentFilterHelper;
+  @Mock GitXSettingsHelper gitXSettingsHelper;
+  @Mock CDGitXService cdGitXService;
+  @Mock GitAwareEntityHelper gitAwareEntityHelper;
   @Before
   public void setup() throws IOException {
     serviceEntityService = spy(new ServiceEntityServiceImpl(serviceRepository, entitySetupUsageService, eventProducer,
-        outboxService, transactionTemplate, serviceOverrideService, serviceOverridesServiceV2, entitySetupUsageHelper));
+        outboxService, transactionTemplate, serviceOverrideService, serviceOverridesServiceV2, entitySetupUsageHelper,
+        ngFeatureFlagHelperService, connectorService, cdGitXService, gitXSettingsHelper));
     infrastructureEntityService = spy(new InfrastructureEntityServiceImpl(infrastructureRepository, transactionTemplate,
         outboxService, customDeploymentEntitySetupHelper, infrastructureEntitySetupUsageHelper, hPersistence,
-        serviceOverridesServiceV2, overrideV2ValidationHelper));
+        serviceOverridesServiceV2, overrideV2ValidationHelper, null, environmentService, gitAwareEntityHelper));
     environmentService = spy(new EnvironmentServiceImpl(environmentRepository, entitySetupUsageService, eventProducer,
         outboxService, transactionTemplate, infrastructureEntityService, clusterService, serviceOverrideService,
         serviceOverridesServiceV2, serviceEntityService, accountClient, settingsClient,
-        environmentEntitySetupUsageHelper, overrideV2ValidationHelper));
+        environmentEntitySetupUsageHelper, overrideV2ValidationHelper, environmentFilterHelper, gitXSettingsHelper));
     environmentRefreshHelper = spy(new EnvironmentRefreshHelper(environmentService, infrastructureEntityService,
         serviceOverrideService, serviceOverridesServiceV2, accountClient, overrideV2ValidationHelper));
     on(entityFetchHelper).set("serviceEntityService", serviceEntityService);
@@ -153,11 +166,13 @@ public class CDInputsValidationHelperTest extends NgManagerTestBase {
 
     when(serviceEntityService.get(ACCOUNT_ID, ORG_ID, PROJECT_ID, "serverless", false))
         .thenReturn(Optional.of(ServiceEntity.builder().yaml(serviceYaml).build()));
-    doReturn(null).when(environmentService).createEnvironmentInputsYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv");
+    doReturn(null)
+        .when(environmentService)
+        .createEnvironmentInputsYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null);
     doReturn("infrastructureDefinitions:\n"
         + "  - identifier: \"infra2\"\n")
         .when(infrastructureEntityService)
-        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv",
+        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null,
             Collections.singletonList("infra2"), false, NoInputMergeInputAction.ADD_IDENTIFIER_NODE);
 
     InputsValidationResponse validationResponse =
@@ -202,6 +217,23 @@ public class CDInputsValidationHelperTest extends NgManagerTestBase {
         CDInputsValidationHelper.validateInputsForYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, pipelineYmlWithService, null);
     assertThat(validationResponse).isNotNull();
     assertThat(validationResponse.isValid()).isFalse();
+    assertThat(validationResponse.getChildrenErrorNodes()).isNullOrEmpty();
+  }
+
+  @Test
+  @Owner(developers = BRIJESH)
+  @Category(UnitTests.class)
+  public void testValidateInputsForPipelineYamlWithServiceRuntimeAndServiceInputsNotPresent() {
+    doNothing()
+        .when(environmentRefreshHelper)
+        .validateEnvironmentInputs(
+            any(YamlNode.class), any(EntityRefreshContext.class), any(InputsValidationResponse.class));
+    String pipelineYmlWithService = readFile("pipeline-with-svc-runtime-serviceInputs-not-present.yaml");
+
+    InputsValidationResponse validationResponse =
+        CDInputsValidationHelper.validateInputsForYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, pipelineYmlWithService, null);
+    assertThat(validationResponse).isNotNull();
+    assertThat(validationResponse.isValid()).isTrue();
     assertThat(validationResponse.getChildrenErrorNodes()).isNullOrEmpty();
   }
 
@@ -281,7 +313,7 @@ public class CDInputsValidationHelperTest extends NgManagerTestBase {
     InputsValidationResponse validationResponse =
         CDInputsValidationHelper.validateInputsForYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, pipelineYmlWithService, null);
     assertThat(validationResponse).isNotNull();
-    assertThat(validationResponse.isValid()).isFalse();
+    assertThat(validationResponse.isValid()).isTrue();
     assertThat(validationResponse.getChildrenErrorNodes()).isNullOrEmpty();
   }
 
@@ -311,7 +343,9 @@ public class CDInputsValidationHelperTest extends NgManagerTestBase {
 
     when(serviceEntityService.get(ACCOUNT_ID, ORG_ID, PROJECT_ID, "serverless", false))
         .thenReturn(Optional.of(ServiceEntity.builder().yaml(serviceYaml).build()));
-    doReturn(null).when(environmentService).createEnvironmentInputsYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv");
+    doReturn(null)
+        .when(environmentService)
+        .createEnvironmentInputsYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null);
 
     InputsValidationResponse validationResponse =
         CDInputsValidationHelper.validateInputsForYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, pipelineYmlWithService, null);
@@ -329,11 +363,13 @@ public class CDInputsValidationHelperTest extends NgManagerTestBase {
 
     when(serviceEntityService.get(ACCOUNT_ID, ORG_ID, PROJECT_ID, "serverless", false))
         .thenReturn(Optional.of(ServiceEntity.builder().yaml(serviceYaml).build()));
-    doReturn(null).when(environmentService).createEnvironmentInputsYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv");
+    doReturn(null)
+        .when(environmentService)
+        .createEnvironmentInputsYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null);
     doReturn("infrastructureDefinitions:\n"
         + "- identifier: \"IDENTIFIER\"")
         .when(infrastructureEntityService)
-        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv",
+        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null,
             Collections.singletonList("IDENTIFIER"), false, NoInputMergeInputAction.ADD_IDENTIFIER_NODE);
 
     InputsValidationResponse validationResponse =
@@ -353,7 +389,7 @@ public class CDInputsValidationHelperTest extends NgManagerTestBase {
     doReturn("infrastructureDefinitions:\n"
         + "- identifier: \"infra1\"")
         .when(infrastructureEntityService)
-        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv",
+        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null,
             Collections.singletonList("infra1"), false, NoInputMergeInputAction.ADD_IDENTIFIER_NODE);
 
     InputsValidationResponse validationResponse = CDInputsValidationHelper.validateInputsForYaml(

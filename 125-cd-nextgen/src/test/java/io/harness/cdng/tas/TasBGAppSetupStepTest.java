@@ -14,8 +14,10 @@ import static io.harness.cdng.tas.TasStepHelperTest.MANIFEST_YML_WITH_ROUTES;
 import static io.harness.cdng.tas.TasStepHelperTest.VARS_WITH_INVALID_ROUTES_YML;
 import static io.harness.cdng.tas.TasStepHelperTest.VARS_YML_1;
 import static io.harness.rule.OwnerRule.RISHABH;
+import static io.harness.rule.OwnerRule.VLICA;
 
 import static software.wings.beans.TaskType.TAS_BG_SETUP;
+import static software.wings.beans.TaskType.TAS_BG_SETUP_SUPPORT_2_APPS_V2;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -74,6 +76,7 @@ import io.harness.pms.sdk.core.data.ExecutionSweepingOutput;
 import io.harness.pms.sdk.core.resolver.outputs.ExecutionSweepingOutputService;
 import io.harness.pms.sdk.core.steps.executables.TaskChainResponse;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.steps.StepHelper;
@@ -254,6 +257,7 @@ public class TasBGAppSetupStepTest extends CDNGTestBase {
                                                      .cfAppNamePrefix(activeApplicationName)
                                                      .isBlueGreen(true)
                                                      .instanceCountType(TasInstanceCountType.FROM_MANIFEST)
+                                                     .olderActiveVersionCountToKeep(3)
                                                      .build();
     TasSetupVariablesOutcome tasSetupVariablesOutcomeReq = TasSetupVariablesOutcome.builder()
                                                                .inActiveAppName(newApplicationInfo.getApplicationName())
@@ -326,6 +330,7 @@ public class TasBGAppSetupStepTest extends CDNGTestBase {
                                                      .cfAppNamePrefix(activeApplicationName)
                                                      .isBlueGreen(true)
                                                      .instanceCountType(TasInstanceCountType.FROM_MANIFEST)
+                                                     .olderActiveVersionCountToKeep(3)
                                                      .build();
     TasSetupVariablesOutcome tasSetupVariablesOutcomeReq =
         TasSetupVariablesOutcome.builder()
@@ -371,6 +376,9 @@ public class TasBGAppSetupStepTest extends CDNGTestBase {
                                                                 .newApplicationInfo(newApplicationInfo)
                                                                 .unitProgressData(unitProgressData)
                                                                 .build();
+    ((TasBGAppSetupStepParameters) stepElementParametersMatchRunningInstances.getSpec())
+        .setExistingVersionToKeep(ParameterField.createValueField("0"));
+
     StepResponse stepResponse =
         tasBGAppSetupStep.finalizeExecutionWithSecurityContext(ambiance, stepElementParametersMatchRunningInstances,
             TasExecutionPassThroughData.builder()
@@ -398,6 +406,7 @@ public class TasBGAppSetupStepTest extends CDNGTestBase {
                                                      .cfAppNamePrefix(activeApplicationName)
                                                      .isBlueGreen(true)
                                                      .instanceCountType(TasInstanceCountType.MATCH_RUNNING_INSTANCES)
+                                                     .olderActiveVersionCountToKeep(0)
                                                      .build();
     TasSetupVariablesOutcome tasSetupVariablesOutcomeReq = TasSetupVariablesOutcome.builder()
                                                                .inActiveAppName(newApplicationInfo.getApplicationName())
@@ -532,6 +541,7 @@ public class TasBGAppSetupStepTest extends CDNGTestBase {
                                                      .cfAppNamePrefix(activeApplicationName)
                                                      .isBlueGreen(true)
                                                      .instanceCountType(TasInstanceCountType.MATCH_RUNNING_INSTANCES)
+                                                     .olderActiveVersionCountToKeep(3)
                                                      .build();
     TasSetupVariablesOutcome tasSetupVariablesOutcomeReq =
         TasSetupVariablesOutcome.builder()
@@ -597,6 +607,51 @@ public class TasBGAppSetupStepTest extends CDNGTestBase {
   }
 
   @Test
+  @Owner(developers = VLICA)
+  @Category(UnitTests.class)
+  public void testExecuteTasTaskWithBG2Apps() {
+    TasManifestsPackage tasManifestsPackage =
+        TasManifestsPackage.builder().manifestYml(MANIFEST_YML).variableYmls(List.of(VARS_YML_1)).build();
+    TasExecutionPassThroughData tasExecutionPassThroughData = TasExecutionPassThroughData.builder()
+                                                                  .tasManifestsPackage(tasManifestsPackage)
+                                                                  .applicationName("tas-test")
+                                                                  .cfCliVersion(CfCliVersionNG.V7)
+                                                                  .build();
+    ArgumentCaptor<TaskData> taskDataArgumentCaptor = ArgumentCaptor.forClass(TaskData.class);
+    Mockito.mockStatic(TaskRequestsUtils.class);
+    when(TaskRequestsUtils.prepareCDTaskRequest(
+             any(), taskDataArgumentCaptor.capture(), any(), any(), any(), any(), any()))
+        .thenReturn(TaskRequest.newBuilder().build());
+
+    doReturn(true).when(cdFeatureFlagHelper).isEnabled(anyString(), eq(FeatureName.CDS_PCF_SUPPORT_BG_WITH_2_APPS_NG));
+
+    ((TasBGAppSetupStepParameters) stepElementParametersFromManifest.getSpec())
+        .setExistingVersionToKeep(ParameterField.createValueField("0"));
+
+    TaskChainResponse taskChainResponse =
+        tasBGAppSetupStep.executeTasTask(null, ambiance, stepElementParametersFromManifest, tasExecutionPassThroughData,
+            true, UnitProgressData.builder().unitProgresses(new ArrayList<>()).build());
+    assertThat(taskChainResponse).isNotNull();
+
+    CfBlueGreenSetupRequestNG requestParameters =
+        (CfBlueGreenSetupRequestNG) taskDataArgumentCaptor.getValue().getParameters()[0];
+
+    assertThat(taskDataArgumentCaptor.getValue().getTaskType()).isEqualTo(TAS_BG_SETUP_SUPPORT_2_APPS_V2.toString());
+    assertThat(requestParameters.getCfCliVersion()).isEqualTo(CfCliVersion.V7);
+    assertThat(requestParameters.getReleaseNamePrefix()).isEqualTo("tas-test");
+    assertThat(requestParameters.isUseAppAutoScalar()).isFalse();
+    assertThat(requestParameters.getTasManifestsPackage()).isEqualTo(tasManifestsPackage);
+    assertThat(requestParameters.getOlderActiveVersionCountToKeep()).isEqualTo(0);
+    assertThat(requestParameters.getRouteMaps()).isEqualTo(new ArrayList<>());
+    assertThat(requestParameters.isUseCfCLI()).isTrue();
+    assertThat(requestParameters.getTasInfraConfig()).isEqualTo(tasInfraConfig);
+    assertThat(requestParameters.getCfCommandTypeNG()).isEqualTo(CfCommandTypeNG.TAS_BG_SETUP);
+    assertThat(requestParameters.getCommandName()).isEqualTo(CfCommandUnitConstants.PcfSetup);
+    assertThat(requestParameters.getAccountId()).isEqualTo("account");
+    assertThat(requestParameters.getTimeoutIntervalInMin()).isEqualTo(10);
+  }
+
+  @Test
   @Owner(developers = RISHABH)
   @Category(UnitTests.class)
   public void testExecuteTasTaskWithAutoScalar() {
@@ -652,7 +707,7 @@ public class TasBGAppSetupStepTest extends CDNGTestBase {
   public void testValidateResourcesFFDisabled() {
     doReturn(false).when(cdFeatureFlagHelper).isEnabled(anyString(), eq(FeatureName.NG_SVC_ENV_REDESIGN));
     assertThatThrownBy(() -> tasBGAppSetupStep.validateResources(getAmbiance(), stepElementParametersFromManifest))
-        .hasMessage("CDS_TAS_NG FF is not enabled for this account. Please contact harness customer care.");
+        .hasMessage("NG_SVC_ENV_REDESIGN FF is not enabled for this account. Please contact harness customer care.");
   }
 
   private Ambiance getAmbiance() {
@@ -671,6 +726,6 @@ public class TasBGAppSetupStepTest extends CDNGTestBase {
   @Owner(developers = RISHABH)
   @Category(UnitTests.class)
   public void testGetStepParametersClass() {
-    assertThat(tasBGAppSetupStep.getStepParametersClass()).isEqualTo(StepElementParameters.class);
+    assertThat(tasBGAppSetupStep.getStepParametersClass()).isEqualTo(StepBaseParameters.class);
   }
 }

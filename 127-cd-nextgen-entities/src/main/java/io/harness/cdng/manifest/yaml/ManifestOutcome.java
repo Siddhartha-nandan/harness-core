@@ -13,10 +13,15 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.WithIdentifier;
 import io.harness.cdng.manifest.ManifestType;
 import io.harness.cdng.manifest.yaml.storeConfig.StoreConfig;
+import io.harness.cdng.manifest.yaml.summary.ManifestStoreInfo;
 import io.harness.pms.sdk.core.data.Outcome;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+
 @OwnedBy(CDP)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 @JsonSubTypes({
@@ -58,5 +63,11 @@ public interface ManifestOutcome extends Outcome, WithIdentifier {
   StoreConfig getStore();
   default int getOrder() {
     return -1;
+  }
+  default Optional<ManifestStoreInfo> toManifestStoreInfo() {
+    return Optional.empty();
+  }
+  default Map<String, Object> createTelemetryProperties() {
+    return Collections.emptyMap();
   }
 }

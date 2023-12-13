@@ -64,7 +64,10 @@ public class EcsTaskArnBlueGreenCreateServiceCommandTaskHandler extends EcsComma
           ecsTaskArnBlueGreenCreateServiceRequest.getEcsServiceDefinitionManifestContent(),
           ecsTaskArnBlueGreenCreateServiceRequest.getEcsTaskDefinitionArn(),
           ecsTaskArnBlueGreenCreateServiceRequest.getEcsLoadBalancerConfig(),
-          ecsTaskArnBlueGreenCreateServiceRequest.getTargetGroupArnKey());
+          ecsTaskArnBlueGreenCreateServiceRequest.getTargetGroupArnKey(),
+          ecsTaskArnBlueGreenCreateServiceRequest.isSameAsAlreadyRunningInstances(),
+          ecsTaskArnBlueGreenCreateServiceRequest.isRemoveAutoScalingFromBlueService(),
+          ecsTaskArnBlueGreenCreateServiceRequest.isUpdateGreenService());
     } catch (Exception e) {
       deployLogCallback.saveExecutionLog(color(format("%n Deployment Failed."), LogColor.Red, LogWeight.Bold),
           LogLevel.ERROR, CommandExecutionStatus.FAILURE);

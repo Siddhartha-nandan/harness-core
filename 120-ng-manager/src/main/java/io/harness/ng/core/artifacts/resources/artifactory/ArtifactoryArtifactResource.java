@@ -6,6 +6,7 @@
  */
 
 package io.harness.ng.core.artifacts.resources.artifactory;
+import static io.harness.cdng.service.steps.constants.ServiceStepV3Constants.SERVICE_GIT_BRANCH;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
@@ -28,15 +29,19 @@ import io.harness.cdng.artifact.resources.artifactory.dtos.ArtifactoryResponseDT
 import io.harness.cdng.artifact.resources.artifactory.service.ArtifactoryResourceService;
 import io.harness.common.NGExpressionUtils;
 import io.harness.data.structure.EmptyPredicate;
+import io.harness.evaluators.CDYamlExpressionEvaluator;
 import io.harness.exception.InvalidIdentifierRefException;
 import io.harness.gitsync.interceptor.GitEntityFindInfoDTO;
 import io.harness.ng.core.artifacts.resources.util.ArtifactResourceUtils;
+import io.harness.ng.core.artifacts.resources.util.YamlExpressionEvaluatorWithContext;
 import io.harness.ng.core.dto.ErrorDTO;
 import io.harness.ng.core.dto.FailureDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.validation.RuntimeInputValuesValidator;
 import io.harness.utils.IdentifierRefHelper;
+
+import software.wings.utils.RepositoryType;
 
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -89,12 +94,13 @@ public class ArtifactoryArtifactResource {
       @QueryParam("connectorRef") String artifactoryConnectorIdentifier,
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
       @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
+      @QueryParam(NGArtifactConstants.ARTIFACT_FILTER) String artifactFilter,
       @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
       @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo) {
     IdentifierRef connectorRef = IdentifierRefHelper.getIdentifierRef(
         artifactoryConnectorIdentifier, accountId, orgIdentifier, projectIdentifier);
     ArtifactoryResponseDTO buildDetails = artifactoryResourceService.getBuildDetails(connectorRef, repository,
-        artifactPath, repositoryFormat, artifactRepositoryUrl, orgIdentifier, projectIdentifier, null);
+        artifactPath, repositoryFormat, artifactRepositoryUrl, orgIdentifier, projectIdentifier, null, artifactFilter);
     return ResponseDTO.newResponse(buildDetails);
   }
 
@@ -112,6 +118,7 @@ public class ArtifactoryArtifactResource {
       @QueryParam("repositoryFormat") String repositoryFormat,
       @QueryParam("repositoryUrl") String artifactRepositoryUrl,
       @QueryParam("connectorRef") String artifactoryConnectorIdentifier,
+      @QueryParam(NGArtifactConstants.ARTIFACT_FILTER) String artifactFilter,
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
       @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
@@ -120,9 +127,22 @@ public class ArtifactoryArtifactResource {
       @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo, @NotNull String runtimeInputYaml,
       @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceRef) {
     String tagRegex = null;
+
+    YamlExpressionEvaluatorWithContext baseEvaluatorWithContext = null;
+
+    // remote services can be linked with a specific branch, so we parse the YAML in one go and store the context data
+    //  has env git branch and service git branch
+    if (isNotEmpty(serviceRef)
+        && artifactResourceUtils.isRemoteService(accountId, orgIdentifier, projectIdentifier, serviceRef)) {
+      baseEvaluatorWithContext = artifactResourceUtils.getYamlExpressionEvaluatorWithContext(accountId, orgIdentifier,
+          projectIdentifier, pipelineIdentifier, runtimeInputYaml, fqnPath, gitEntityBasicInfo, serviceRef);
+    }
+
     if (isNotEmpty(serviceRef)) {
-      final ArtifactConfig artifactSpecFromService = artifactResourceUtils.locateArtifactInService(
-          accountId, orgIdentifier, projectIdentifier, serviceRef, fqnPath);
+      final ArtifactConfig artifactSpecFromService = artifactResourceUtils.locateArtifactInService(accountId,
+          orgIdentifier, projectIdentifier, serviceRef, fqnPath,
+          baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getContextMap().get(SERVICE_GIT_BRANCH));
+
       ArtifactoryRegistryArtifactConfig artifactoryRegistryArtifactConfig =
           (ArtifactoryRegistryArtifactConfig) artifactSpecFromService;
       if (isEmpty(repository)) {
@@ -136,6 +156,13 @@ public class ArtifactoryArtifactResource {
           artifactPath = (String) artifactoryRegistryArtifactConfig.getArtifactPath().fetchFinalValue();
         } else {
           artifactPath = (String) artifactoryRegistryArtifactConfig.getArtifactDirectory().fetchFinalValue();
+        }
+      }
+
+      if (isEmpty(artifactFilter) && ParameterField.isNotNull(artifactoryRegistryArtifactConfig.getArtifactFilter())) {
+        if (RepositoryType.generic.name().equals(
+                artifactoryRegistryArtifactConfig.getRepositoryFormat().fetchFinalValue())) {
+          artifactFilter = (String) artifactoryRegistryArtifactConfig.getArtifactFilter().fetchFinalValue();
         }
       }
       if (isEmpty(repositoryFormat)) {
@@ -164,24 +191,46 @@ public class ArtifactoryArtifactResource {
       }
     }
 
+    CDYamlExpressionEvaluator yamlExpressionEvaluator =
+        baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getYamlExpressionEvaluator();
+
     artifactoryConnectorIdentifier =
-        artifactResourceUtils.getResolvedFieldValue(accountId, orgIdentifier, projectIdentifier, pipelineIdentifier,
-            runtimeInputYaml, artifactoryConnectorIdentifier, fqnPath, gitEntityBasicInfo, serviceRef);
+        artifactResourceUtils
+            .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
+                pipelineIdentifier, runtimeInputYaml, artifactoryConnectorIdentifier, fqnPath, gitEntityBasicInfo,
+                serviceRef, yamlExpressionEvaluator)
+            .getValue();
 
     IdentifierRef connectorRef = IdentifierRefHelper.getIdentifierRef(
         artifactoryConnectorIdentifier, accountId, orgIdentifier, projectIdentifier);
     // todo(hinger): resolve other expressions here
-    artifactPath = artifactResourceUtils.getResolvedFieldValue(accountId, orgIdentifier, projectIdentifier,
-        pipelineIdentifier, runtimeInputYaml, artifactPath, fqnPath, gitEntityBasicInfo, serviceRef);
+    artifactPath = artifactResourceUtils
+                       .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
+                           pipelineIdentifier, runtimeInputYaml, artifactPath, fqnPath, gitEntityBasicInfo, serviceRef,
+                           yamlExpressionEvaluator)
+                       .getValue();
 
-    repository = artifactResourceUtils.getResolvedFieldValue(accountId, orgIdentifier, projectIdentifier,
-        pipelineIdentifier, runtimeInputYaml, repository, fqnPath, gitEntityBasicInfo, serviceRef);
+    artifactFilter = artifactResourceUtils
+                         .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
+                             pipelineIdentifier, runtimeInputYaml, artifactFilter, fqnPath, gitEntityBasicInfo,
+                             serviceRef, yamlExpressionEvaluator)
+                         .getValue();
 
-    artifactRepositoryUrl = artifactResourceUtils.getResolvedFieldValue(accountId, orgIdentifier, projectIdentifier,
-        pipelineIdentifier, runtimeInputYaml, artifactRepositoryUrl, fqnPath, gitEntityBasicInfo, serviceRef);
+    repository = artifactResourceUtils
+                     .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
+                         pipelineIdentifier, runtimeInputYaml, repository, fqnPath, gitEntityBasicInfo, serviceRef,
+                         yamlExpressionEvaluator)
+                     .getValue();
 
-    ArtifactoryResponseDTO buildDetails = artifactoryResourceService.getBuildDetails(connectorRef, repository,
-        artifactPath, repositoryFormat, artifactRepositoryUrl, orgIdentifier, projectIdentifier, tagRegex);
+    artifactRepositoryUrl = artifactResourceUtils
+                                .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier,
+                                    projectIdentifier, pipelineIdentifier, runtimeInputYaml, artifactRepositoryUrl,
+                                    fqnPath, gitEntityBasicInfo, serviceRef, yamlExpressionEvaluator)
+                                .getValue();
+
+    ArtifactoryResponseDTO buildDetails =
+        artifactoryResourceService.getBuildDetails(connectorRef, repository, artifactPath, repositoryFormat,
+            artifactRepositoryUrl, orgIdentifier, projectIdentifier, tagRegex, artifactFilter);
     return ResponseDTO.newResponse(buildDetails);
   }
 
@@ -296,9 +345,21 @@ public class ArtifactoryArtifactResource {
       @NotNull String runtimeInputYaml, @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo) {
     // If UI is not passing repository type as param,then we are assuming repositoryType as any
 
+    YamlExpressionEvaluatorWithContext baseEvaluatorWithContext = null;
+
+    // remote services can be linked with a specific branch, so we parse the YAML in one go and store the context data
+    //  has env git branch and service git branch
+    if (isNotEmpty(serviceRef)
+        && artifactResourceUtils.isRemoteService(accountId, orgIdentifier, projectIdentifier, serviceRef)) {
+      baseEvaluatorWithContext = artifactResourceUtils.getYamlExpressionEvaluatorWithContext(accountId, orgIdentifier,
+          projectIdentifier, pipelineIdentifier, runtimeInputYaml, fqnPath, gitEntityBasicInfo, serviceRef);
+    }
+
     if (isNotEmpty(serviceRef)) {
-      final ArtifactConfig artifactSpecFromService = artifactResourceUtils.locateArtifactInService(
-          accountId, orgIdentifier, projectIdentifier, serviceRef, fqnPath);
+      final ArtifactConfig artifactSpecFromService = artifactResourceUtils.locateArtifactInService(accountId,
+          orgIdentifier, projectIdentifier, serviceRef, fqnPath,
+          baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getContextMap().get(SERVICE_GIT_BRANCH));
+
       ArtifactoryRegistryArtifactConfig artifactoryRegistryArtifactConfig =
           (ArtifactoryRegistryArtifactConfig) artifactSpecFromService;
 
@@ -315,9 +376,15 @@ public class ArtifactoryArtifactResource {
       }
     }
 
+    CDYamlExpressionEvaluator yamlExpressionEvaluator =
+        baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getYamlExpressionEvaluator();
+
     artifactoryConnectorIdentifier =
-        artifactResourceUtils.getResolvedFieldValue(accountId, orgIdentifier, projectIdentifier, pipelineIdentifier,
-            runtimeInputYaml, artifactoryConnectorIdentifier, fqnPath, gitEntityBasicInfo, serviceRef);
+        artifactResourceUtils
+            .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
+                pipelineIdentifier, runtimeInputYaml, artifactoryConnectorIdentifier, fqnPath, gitEntityBasicInfo,
+                serviceRef, yamlExpressionEvaluator)
+            .getValue();
 
     if (artifactoryConnectorIdentifier != null && NGExpressionUtils.isRuntimeField(artifactoryConnectorIdentifier)) {
       throw new InvalidIdentifierRefException(

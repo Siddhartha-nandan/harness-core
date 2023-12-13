@@ -8,14 +8,18 @@
 package io.harness.cdng.aws.asg;
 
 import static io.harness.rule.OwnerRule.LOVISH_BANSAL;
+import static io.harness.rule.OwnerRule.VITALIE;
 
 import static software.wings.beans.TaskType.AWS_ASG_BLUE_GREEN_ROLLBACK_TASK_NG;
+import static software.wings.beans.TaskType.AWS_ASG_BLUE_GREEN_ROLLBACK_TASK_NG_V2;
+import static software.wings.beans.TaskType.AWS_ASG_BLUE_GREEN_ROLLBACK_TASK_NG_V3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import io.harness.CategoryTest;
@@ -25,6 +29,7 @@ import io.harness.category.element.UnitTests;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.common.beans.SetupAbstractionKeys;
 import io.harness.cdng.infra.beans.AsgInfrastructureOutcome;
+import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.instance.info.InstanceInfoService;
 import io.harness.cdng.instance.outcome.DeploymentInfoOutcome;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
@@ -55,6 +60,7 @@ import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.steps.StepHelper;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import software.wings.beans.TaskType;
 
@@ -119,6 +125,7 @@ public class AsgBlueGreenRollbackStepTest extends CategoryTest {
   @Spy private OutcomeService outcomeService;
   @Mock AccountService accountService;
   @Mock StepHelper stepHelper;
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
 
   @BeforeClass
   public static void setup() throws IOException {
@@ -178,6 +185,11 @@ public class AsgBlueGreenRollbackStepTest extends CategoryTest {
 
     doReturn(AccountDTO.builder().name("abcd").build()).when(accountService).getAccount(any());
     doReturn(asgStoreManifestsContent).when(stepHelper).sendRollbackTelemetryEvent(any(), any(), any());
+
+    doReturn(mock(InfrastructureOutcome.class))
+        .when(asgStepCommonHelper)
+        .getInfrastructureOutcomeWithUpdatedExpressions(any());
+
     StepResponse stepResponse = asgBlueGreenRollbackStep.handleTaskResultWithSecurityContext(
         ambiance, stepElementParameters, () -> (AsgCommandResponse) responseData);
 
@@ -259,6 +271,10 @@ public class AsgBlueGreenRollbackStepTest extends CategoryTest {
         .when(asgStepCommonHelper)
         .queueAsgTask(any(), any(), any(), any(), anyBoolean(), any(TaskType.class));
 
+    doReturn(mock(InfrastructureOutcome.class))
+        .when(asgStepCommonHelper)
+        .getInfrastructureOutcomeWithUpdatedExpressions(any());
+
     asgBlueGreenRollbackStep.obtainTaskAfterRbac(ambiance, stepElementParameters, inputPackage);
 
     AsgBlueGreenRollbackRequest asgBlueGreenRollbackRequest =
@@ -279,5 +295,22 @@ public class AsgBlueGreenRollbackStepTest extends CategoryTest {
     verify(asgStepCommonHelper)
         .queueAsgTask(
             eq(stepElementParameters), any(), eq(ambiance), any(), eq(true), eq(AWS_ASG_BLUE_GREEN_ROLLBACK_TASK_NG));
+  }
+
+  @Test
+  @Owner(developers = VITALIE)
+  @Category(UnitTests.class)
+  public void getTaskTypeTest() throws Exception {
+    TaskType ret = asgBlueGreenRollbackStep.getTaskType(null);
+    assertThat(ret).isEqualTo(AWS_ASG_BLUE_GREEN_ROLLBACK_TASK_NG);
+
+    List<AsgLoadBalancerConfig> loadBalancers =
+        Arrays.asList(AsgLoadBalancerConfig.builder().stageListenerRuleArn("stageListenerRuleArn").build());
+    ret = asgBlueGreenRollbackStep.getTaskType(loadBalancers);
+    assertThat(ret).isEqualTo(AWS_ASG_BLUE_GREEN_ROLLBACK_TASK_NG_V2);
+
+    loadBalancers = Arrays.asList(AsgLoadBalancerConfig.builder().build());
+    ret = asgBlueGreenRollbackStep.getTaskType(loadBalancers);
+    assertThat(ret).isEqualTo(AWS_ASG_BLUE_GREEN_ROLLBACK_TASK_NG_V3);
   }
 }

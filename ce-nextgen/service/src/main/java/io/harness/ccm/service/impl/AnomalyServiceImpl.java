@@ -131,7 +131,16 @@ public class AnomalyServiceImpl implements AnomalyService {
   @Override
   public List<PerspectiveAnomalyData> listPerspectiveAnomalies(
       @NonNull String accountIdentifier, @NonNull CEView perspective, PerspectiveQueryDTO perspectiveQuery) {
+    // For labels
+    if (perspectiveToAnomalyQueryHelper.isLabelPerspective(perspective)) {
+      log.info("Account id: {} , Perspective id: {} is made through labels", accountIdentifier, perspective.getUuid());
+      return Collections.emptyList();
+    }
+    // For other cases
     List<CCMFilter> ruleFilters = perspectiveToAnomalyQueryHelper.getConvertedRulesForPerspective(perspective);
+    if (perspectiveToAnomalyQueryHelper.isEmptyRuleFilter(ruleFilters)) {
+      ruleFilters.add(perspectiveToAnomalyQueryHelper.addIdNullFilter());
+    }
     CCMFilter filters =
         perspectiveToAnomalyQueryHelper.getConvertedFiltersForPerspective(perspective, perspectiveQuery);
     List<AnomalyData> anomalyData = listAnomalies(accountIdentifier,
@@ -269,6 +278,9 @@ public class AnomalyServiceImpl implements AnomalyService {
 
     for (CEView perspective : allowedPerspectives) {
       List<CCMFilter> ruleFilters = perspectiveToAnomalyQueryHelper.getConvertedRulesForPerspective(perspective);
+      if (perspectiveToAnomalyQueryHelper.isEmptyRuleFilter(ruleFilters)) {
+        ruleFilters.add(perspectiveToAnomalyQueryHelper.addIdNullFilter());
+      }
       List<AnomalyData> anomalyDataForPerspective = listAnomalies(accountIdentifier,
           AnomalyQueryDTO.builder()
               .filter(filters)
@@ -292,6 +304,9 @@ public class AnomalyServiceImpl implements AnomalyService {
 
     for (CEView perspective : allowedPerspectives) {
       List<CCMFilter> ruleFilters = perspectiveToAnomalyQueryHelper.getConvertedRulesForPerspective(perspective);
+      if (perspectiveToAnomalyQueryHelper.isEmptyRuleFilter(ruleFilters)) {
+        ruleFilters.add(perspectiveToAnomalyQueryHelper.addIdNullFilter());
+      }
       List<AnomalyData> anomalyDataForPerspective = listAnomalies(accountIdentifier,
           AnomalyQueryDTO.builder()
               .filter(filters)

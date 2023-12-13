@@ -59,10 +59,12 @@ import io.harness.pms.sdk.core.resolver.outputs.ExecutionSweepingOutputService;
 import io.harness.pms.sdk.core.steps.executables.TaskChainResponse;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import software.wings.beans.TaskType;
 
@@ -79,6 +81,8 @@ import org.mockito.junit.MockitoRule;
 
 public class EcsBlueGreenCreateServiceStepTest extends CategoryTest {
   @Rule public MockitoRule mockitoRule = MockitoJUnit.rule();
+
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
 
   private final Ambiance ambiance = Ambiance.newBuilder()
                                         .putSetupAbstractions(SetupAbstractionKeys.accountId, "test-account")
@@ -131,11 +135,13 @@ public class EcsBlueGreenCreateServiceStepTest extends CategoryTest {
     doReturn(taskChainResponse)
         .when(ecsStepCommonHelper)
         .queueEcsTask(any(), any(), any(), any(), anyBoolean(), eq(TaskType.ECS_COMMAND_TASK_NG));
+    EcsBlueGreenCreateServiceStepParameters ecsBlueGreenCreateServiceStepParameters =
+        (EcsBlueGreenCreateServiceStepParameters) stepElementParameters.getSpec();
+    ecsBlueGreenCreateServiceStepParameters.setSameAsAlreadyRunningInstances(ParameterField.createValueField(false));
 
     ecsBlueGreenCreateServiceStep.executeEcsTask(
         ambiance, stepElementParameters, ecsExecutionPassThroughData, unitProgressData, ecsStepExecutorParams);
-    EcsBlueGreenCreateServiceStepParameters ecsBlueGreenCreateServiceStepParameters =
-        (EcsBlueGreenCreateServiceStepParameters) stepElementParameters.getSpec();
+
     EcsLoadBalancerConfig ecsLoadBalancerConfig =
         EcsLoadBalancerConfig.builder()
             .loadBalancer(ecsBlueGreenCreateServiceStepParameters.getLoadBalancer().getValue())
@@ -161,6 +167,8 @@ public class EcsBlueGreenCreateServiceStepTest extends CategoryTest {
             .ecsScalingPolicyManifestContentList(ecsStepExecutorParams.getEcsScalingPolicyManifestContentList())
             .ecsLoadBalancerConfig(ecsLoadBalancerConfig)
             .targetGroupArnKey(ecsStepExecutorParams.getTargetGroupArnKey())
+            .sameAsAlreadyRunningInstances(false)
+            .removeAutoScalingFromBlueService(false)
             .build();
     verify(ecsStepCommonHelper)
         .queueEcsTask(stepElementParameters, ecsBlueGreenCreateServiceRequest, ambiance, ecsExecutionPassThroughData,
@@ -223,8 +231,8 @@ public class EcsBlueGreenCreateServiceStepTest extends CategoryTest {
   @Owner(developers = ALLU_VAMSI)
   @Category(UnitTests.class)
   public void getStepParametersClassTest() {
-    Class<StepElementParameters> stepElementParametersClass = ecsBlueGreenCreateServiceStep.getStepParametersClass();
-    assertThat(stepElementParametersClass).isEqualTo(StepElementParameters.class);
+    Class<StepBaseParameters> stepElementParametersClass = ecsBlueGreenCreateServiceStep.getStepParametersClass();
+    assertThat(stepElementParametersClass).isEqualTo(StepBaseParameters.class);
   }
 
   @Test

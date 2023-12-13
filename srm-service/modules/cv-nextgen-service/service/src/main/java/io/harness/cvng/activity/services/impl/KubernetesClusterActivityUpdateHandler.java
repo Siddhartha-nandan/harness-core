@@ -12,8 +12,8 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import io.harness.cvng.activity.entities.KubernetesClusterActivity;
 import io.harness.cvng.activity.entities.KubernetesClusterActivity.RelatedAppMonitoredService;
 import io.harness.cvng.activity.services.api.ActivityUpdateHandler;
+import io.harness.cvng.core.beans.dependency.DependencyMetadataType;
 import io.harness.cvng.core.beans.dependency.KubernetesDependencyMetadata;
-import io.harness.cvng.core.beans.dependency.ServiceDependencyMetadata.DependencyMetadataType;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceDTO.ServiceDependencyDTO;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceResponse;
 import io.harness.cvng.core.beans.params.MonitoredServiceParams;
@@ -70,7 +70,7 @@ public class KubernetesClusterActivityUpdateHandler extends ActivityUpdateHandle
             KubernetesDependencyMetadata kubernetesDependencyMetadata =
                 (KubernetesDependencyMetadata) serviceDependency.getDependencyMetadata();
             if (kubernetesDependencyMetadata.getNamespace().equals(activity.getNamespace())
-                && kubernetesDependencyMetadata.getWorkload().equals(activity.getWorkload())) {
+                && kubernetesDependencyMetadata.getWorkloads().contains(activity.getWorkload())) {
               if (activity.getRelatedAppServices() == null) {
                 activity.setRelatedAppServices(new ArrayList<>());
               }

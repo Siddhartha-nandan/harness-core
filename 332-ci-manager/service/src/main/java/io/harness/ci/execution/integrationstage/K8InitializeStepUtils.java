@@ -5,7 +5,8 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.integrationstage;
+package io.harness.ci.execution.integrationstage;
+
 import static io.harness.beans.serializer.RunTimeInputHandler.UNRESOLVED_PARAMETER;
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveIntegerParameter;
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveMapParameter;
@@ -52,14 +53,16 @@ import io.harness.beans.steps.stepinfo.PluginStepInfo;
 import io.harness.beans.steps.stepinfo.RunStepInfo;
 import io.harness.beans.steps.stepinfo.RunTestsStepInfo;
 import io.harness.beans.sweepingoutputs.StageInfraDetails;
+import io.harness.beans.yaml.extended.infrastrucutre.Infrastructure;
+import io.harness.beans.yaml.extended.infrastrucutre.K8sDirectInfraYaml;
 import io.harness.beans.yaml.extended.infrastrucutre.OSType;
-import io.harness.ci.buildstate.ConnectorUtils;
-import io.harness.ci.buildstate.PluginSettingUtils;
 import io.harness.ci.buildstate.StepContainerUtils;
 import io.harness.ci.config.CIExecutionServiceConfig;
-import io.harness.ci.execution.CIExecutionConfigService;
+import io.harness.ci.execution.buildstate.ConnectorUtils;
+import io.harness.ci.execution.buildstate.PluginSettingUtils;
+import io.harness.ci.execution.execution.CIExecutionConfigService;
+import io.harness.ci.execution.utils.CIStepInfoUtils;
 import io.harness.ci.ff.CIFeatureFlagService;
-import io.harness.ci.utils.CIStepInfoUtils;
 import io.harness.ci.utils.PortFinder;
 import io.harness.ci.utils.QuantityUtils;
 import io.harness.delegate.beans.ci.pod.CIContainerType;
@@ -76,6 +79,7 @@ import io.harness.plancreator.steps.ParallelStepElementConfig;
 import io.harness.plancreator.steps.StepGroupElementConfig;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.execution.utils.AmbianceUtils;
+import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.steps.matrix.StrategyExpansionData;
 import io.harness.utils.TimeoutUtils;
@@ -88,7 +92,6 @@ import io.harness.yaml.extended.ci.container.ContainerResource;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import io.fabric8.utils.Strings;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -98,6 +101,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
@@ -166,7 +170,7 @@ public class K8InitializeStepUtils {
       OSType os, Ambiance ambiance, int maxAllocatableMemoryRequest, int maxAllocatableCpuRequest, int stepIndex,
       String stepGroupIdOfParent) {
     CIAbstractStepNode stepNode = IntegrationStageUtils.getStepNode(executionWrapper);
-    if (Strings.isNotBlank(stepGroupIdOfParent)) {
+    if (isNotEmpty(stepGroupIdOfParent)) {
       stepNode.setIdentifier(stepGroupIdOfParent + "_" + stepNode.getIdentifier());
     }
 
@@ -308,6 +312,7 @@ public class K8InitializeStepUtils {
       case ECR:
       case ACR:
       case GCR:
+      case GAR:
       case SAVE_CACHE_S3:
       case RESTORE_CACHE_S3:
       case RESTORE_CACHE_GCS:
@@ -319,8 +324,12 @@ public class K8InitializeStepUtils {
       case GIT_CLONE:
       case SSCA_ORCHESTRATION:
       case SSCA_ENFORCEMENT:
-      case IACM_TERRAFORM_PLUGIN:
-      case IACM_APPROVAL:
+      case PROVENANCE:
+      case SLSA_VERIFICATION:
+      case COOKIECUTTER:
+      case CREATE_REPO:
+      case DIRECT_PUSH:
+      case REGISTER_CATALOG:
         return createPluginCompatibleStepContainerDefinition((PluginCompatibleStep) ciStepInfo, stageNode,
             ciExecutionArgs, portFinder, stepIndex, stepElement.getIdentifier(), stepElement.getName(),
             stepElement.getType(), timeout, accountId, os, ambiance, extraMemoryPerStep, extraCPUPerStep);
@@ -330,7 +339,23 @@ public class K8InitializeStepUtils {
             extraCPUPerStep);
       case RUN_TESTS:
         return createRunTestsStepContainerDefinition((RunTestsStepInfo) ciStepInfo, stageNode, ciExecutionArgs,
-            portFinder, stepIndex, stepElement.getIdentifier(), accountId, os, extraMemoryPerStep, extraCPUPerStep);
+            portFinder, stepIndex, stepElement.getIdentifier(), stepElement.getName(), accountId, os,
+            extraMemoryPerStep, extraCPUPerStep);
+      case IACM_TERRAFORM_PLUGIN:
+      case IACM_APPROVAL:
+        PluginCompatibleStep pluginCompatibleStep = (PluginCompatibleStep) ciStepInfo;
+        ContainerDefinitionInfo containerDefinitionInfo =
+            createPluginCompatibleStepContainerDefinition(pluginCompatibleStep, stageNode, ciExecutionArgs, portFinder,
+                stepIndex, stepElement.getIdentifier(), stepElement.getName(), stepElement.getType(), timeout,
+                accountId, os, ambiance, extraMemoryPerStep, extraCPUPerStep);
+        if (pluginCompatibleStep.getConnectorRef() != null
+            && !pluginCompatibleStep.getConnectorRef().getValue().isEmpty()) {
+          containerDefinitionInfo.getContainerImageDetails().setConnectorIdentifier(
+              pluginCompatibleStep.getConnectorRef().getValue());
+          containerDefinitionInfo.setHarnessManagedImage(false);
+        }
+
+        return containerDefinitionInfo;
       default:
         return null;
     }
@@ -350,6 +375,7 @@ public class K8InitializeStepUtils {
       case DOCKER:
       case ECR:
       case ACR:
+      case GAR:
       case GCR:
         throw new CIStageExecutionException(format("%s step not allowed in windows kubernetes builds", stepType));
       default:
@@ -404,7 +430,7 @@ public class K8InitializeStepUtils {
         .containerType(CIContainerType.PLUGIN)
         .stepIdentifier(identifier)
         .stepName(stepName)
-        .imagePullPolicy(RunTimeInputHandler.resolveImagePullPolicy(CIStepInfoUtils.getImagePullPolicy(stepInfo)))
+        .imagePullPolicy(getImagePullPolicy(stageNode, stepInfo))
         .privileged(privileged)
         .runAsUser(runAsUser)
         .build();
@@ -416,11 +442,15 @@ public class K8InitializeStepUtils {
       Integer extraCPUPerStep) {
     String image = resolveStringParameter("Image", "Run", identifier, runStepInfo.getImage(), true);
     if (isEmpty(image) || image.equals(NULL_STR)) {
-      throw new CIStageExecutionException("image can't be empty in k8s infrastructure");
+      throw new CIStageExecutionException(String.format(
+          "With a Kubernetes cluster build infrastructure, image is required for stepId: %s and stepName: %s.",
+          identifier, name));
     }
 
-    if (runStepInfo.getConnectorRef() == null) {
-      throw new CIStageExecutionException("connector ref can't be empty in k8s infrastructure");
+    if (ParameterField.isNull(runStepInfo.getConnectorRef())) {
+      throw new CIStageExecutionException(String.format(
+          "With a Kubernetes cluster build infrastructure, connector ref is required for stepId: %s and stepName: %s.",
+          identifier, name));
     }
 
     Integer port = portFinder.getNextPort();
@@ -471,7 +501,7 @@ public class K8InitializeStepUtils {
         .stepName(name)
         .privileged(runStepInfo.getPrivileged().getValue())
         .runAsUser(runAsUser)
-        .imagePullPolicy(RunTimeInputHandler.resolveImagePullPolicy(runStepInfo.getImagePullPolicy()))
+        .imagePullPolicy(getImagePullPolicy(stageNode, runStepInfo))
         .build();
   }
 
@@ -481,20 +511,25 @@ public class K8InitializeStepUtils {
       Integer extraCPUPerStep) {
     String image = resolveStringParameter("Image", "Background", identifier, backgroundStepInfo.getImage(), true);
     if (isEmpty(image) || image.equals(NULL_STR)) {
-      throw new CIStageExecutionException("image can't be empty in k8s infrastructure");
+      throw new CIStageExecutionException(String.format(
+          "With a Kubernetes cluster build infrastructure, image is required for stepId: %s and stepName: %s.",
+          identifier, name));
     }
 
     String connectorRef =
         resolveStringParameter("connectorRef", "Background", identifier, backgroundStepInfo.getConnectorRef(), true);
     if (isEmpty(connectorRef)) {
-      throw new CIStageExecutionException("connectorRef can't be empty in k8s infrastructure");
+      throw new CIStageExecutionException(String.format(
+          "With a Kubernetes cluster build infrastructure, connector ref is required for stepId: %s and stepName: %s.",
+          identifier, name));
     }
 
     Map<String, String> portBindings =
         resolveMapParameter("portBindings", "Background", identifier, backgroundStepInfo.getPortBindings(), false);
 
     if (portBindings != null) {
-      throw new CIStageExecutionException("portBindings should be empty in k8s infrastructure");
+      throw new CIStageExecutionException(String.format(
+          "portBindings should be empty in k8s infrastructure for stepId: %s and stepName: %s", identifier, name));
     }
 
     Integer port = portFinder.getNextPort();
@@ -538,22 +573,27 @@ public class K8InitializeStepUtils {
         .stepName(name)
         .privileged(backgroundStepInfo.getPrivileged().getValue())
         .runAsUser(runAsUser)
-        .imagePullPolicy(RunTimeInputHandler.resolveImagePullPolicy(backgroundStepInfo.getImagePullPolicy()))
+        .imagePullPolicy(getImagePullPolicy(stageNode, backgroundStepInfo))
         .build();
   }
 
   private ContainerDefinitionInfo createRunTestsStepContainerDefinition(RunTestsStepInfo runTestsStepInfo,
       IntegrationStageNode stageNode, CIExecutionArgs ciExecutionArgs, PortFinder portFinder, int stepIndex,
-      String identifier, String accountId, OSType os, Integer extraMemoryPerStep, Integer extraCPUPerStep) {
+      String identifier, String name, String accountId, OSType os, Integer extraMemoryPerStep,
+      Integer extraCPUPerStep) {
     Integer port = portFinder.getNextPort();
 
     String image = resolveStringParameter("Image", "RunTest", identifier, runTestsStepInfo.getImage(), true);
     if (isEmpty(image) || image.equals(NULL_STR)) {
-      throw new CIStageExecutionException("image can't be empty in k8s infrastructure");
+      throw new CIStageExecutionException(String.format(
+          "With a Kubernetes cluster build infrastructure, image is required for stepId: %s and stepName: %s.",
+          identifier, name));
     }
 
-    if (runTestsStepInfo.getConnectorRef() == null) {
-      throw new CIStageExecutionException("connector ref can't be empty in k8s infrastructure");
+    if (ParameterField.isNull(runTestsStepInfo.getConnectorRef())) {
+      throw new CIStageExecutionException(String.format(
+          "With a Kubernetes cluster build infrastructure, connector ref is required for stepId: %s and stepName: %s.",
+          identifier, name));
     }
 
     String containerName = format("%s%d", STEP_PREFIX, stepIndex);
@@ -592,7 +632,7 @@ public class K8InitializeStepUtils {
         .containerType(CIContainerType.TEST_INTELLIGENCE)
         .privileged(runTestsStepInfo.getPrivileged().getValue())
         .runAsUser(runAsUser)
-        .imagePullPolicy(RunTimeInputHandler.resolveImagePullPolicy(runTestsStepInfo.getImagePullPolicy()))
+        .imagePullPolicy(getImagePullPolicy(stageNode, runTestsStepInfo))
         .build();
   }
 
@@ -604,8 +644,10 @@ public class K8InitializeStepUtils {
 
     String containerName = format("%s%d", STEP_PREFIX, stepIndex);
     Map<String, String> envVarMap = new HashMap<>();
-    envVarMap.putAll(getVariablesMap(stageNode.getPipelineVariables(), stageNode.getIdentifier()));
-    envVarMap.putAll(getVariablesMap(stageNode.getVariables(), stageNode.getIdentifier()));
+    if (stageNode != null) {
+      envVarMap.putAll(getVariablesMap(stageNode.getPipelineVariables(), stageNode.getIdentifier()));
+      envVarMap.putAll(getVariablesMap(stageNode.getVariables(), stageNode.getIdentifier()));
+    }
     envVarMap.putAll(BuildEnvironmentUtils.getBuildEnvironmentVariables(ciExecutionArgs));
 
     envVarMap.putAll(resolveMapParameterV2("envs", "pluginStep", identifier, pluginStepInfo.getEnvVariables(), false));
@@ -613,8 +655,10 @@ public class K8InitializeStepUtils {
     Integer runAsUser = resolveIntegerParameter(pluginStepInfo.getRunAsUser(), null);
 
     Map<String, SecretNGVariable> secretVarMap = new HashMap<>();
-    secretVarMap.putAll(getSecretVariablesMap(stageNode.getPipelineVariables()));
-    secretVarMap.putAll(getSecretVariablesMap(stageNode.getVariables()));
+    if (stageNode != null) {
+      secretVarMap.putAll(getSecretVariablesMap(stageNode.getPipelineVariables()));
+      secretVarMap.putAll(getSecretVariablesMap(stageNode.getVariables()));
+    }
 
     return ContainerDefinitionInfo.builder()
         .name(containerName)
@@ -637,7 +681,7 @@ public class K8InitializeStepUtils {
         .stepName(name)
         .privileged(pluginStepInfo.getPrivileged().getValue())
         .runAsUser(runAsUser)
-        .imagePullPolicy(RunTimeInputHandler.resolveImagePullPolicy(pluginStepInfo.getImagePullPolicy()))
+        .imagePullPolicy(getImagePullPolicy(stageNode, pluginStepInfo))
         .build();
   }
 
@@ -756,7 +800,7 @@ public class K8InitializeStepUtils {
 
     // For parallel steps, as they don't have uuid field
     for (ExecutionWrapperConfig step : steps) {
-      if (Strings.isNullOrBlank(step.getUuid())) {
+      if (isEmpty(step.getUuid())) {
         Integer request = getExecutionWrapperRequestWithStrategy(step, strategy, accountId, resource);
         executionWrapperRequest = Math.max(executionWrapperRequest, request);
       }
@@ -832,7 +876,7 @@ public class K8InitializeStepUtils {
   public Map<String, List<ExecutionWrapperConfig>> getUUIDStepsMap(List<ExecutionWrapperConfig> steps) {
     Map<String, List<ExecutionWrapperConfig>> map = new HashMap<>();
     for (ExecutionWrapperConfig step : steps) {
-      if (Strings.isNotBlank(step.getUuid())) {
+      if (isNotEmpty(step.getUuid())) {
         if (!map.containsKey(step.getUuid())) {
           map.put(step.getUuid(), new ArrayList<>());
         }
@@ -860,9 +904,11 @@ public class K8InitializeStepUtils {
       }
     } else if (executionWrapper.getStepGroup() != null && !executionWrapper.getStepGroup().isNull()) {
       StepGroupElementConfig stepGroupElementConfig = IntegrationStageUtils.getStepGroupElementConfig(executionWrapper);
-      for (ExecutionWrapperConfig wrapper : stepGroupElementConfig.getSteps()) {
-        Integer wrapperMemoryRequest = getExecutionWrapperMemoryRequest(wrapper, accountId);
-        executionWrapperMemoryRequest = Math.max(executionWrapperMemoryRequest, wrapperMemoryRequest);
+      if (isNotEmpty(stepGroupElementConfig.getSteps())) {
+        for (ExecutionWrapperConfig wrapper : stepGroupElementConfig.getSteps()) {
+          Integer wrapperMemoryRequest = getExecutionWrapperMemoryRequest(wrapper, accountId);
+          executionWrapperMemoryRequest = Math.max(executionWrapperMemoryRequest, wrapperMemoryRequest);
+        }
       }
     } else {
       throw new InvalidRequestException("Only Parallel, StepElement and StepGroup are supported");
@@ -895,7 +941,8 @@ public class K8InitializeStepUtils {
     if (resource != null && resource.getLimits() != null && resource.getLimits().getMemory() != null) {
       String memoryLimitMemoryQuantity =
           resolveStringParameter("memory", stepType, stepId, resource.getLimits().getMemory(), false);
-      if (isNotEmpty(memoryLimitMemoryQuantity) && !UNRESOLVED_PARAMETER.equals(memoryLimitMemoryQuantity)) {
+      if (isNotEmpty(memoryLimitMemoryQuantity) && !UNRESOLVED_PARAMETER.equals(memoryLimitMemoryQuantity)
+          && !memoryLimitMemoryQuantity.equals(NULL_STR)) {
         memoryLimit = QuantityUtils.getStorageQuantityValueInUnit(memoryLimitMemoryQuantity, StorageQuantityUnit.Mi);
       }
     }
@@ -973,9 +1020,11 @@ public class K8InitializeStepUtils {
       }
     } else if (executionWrapper.getStepGroup() != null && !executionWrapper.getStepGroup().isNull()) {
       StepGroupElementConfig stepGroupElementConfig = IntegrationStageUtils.getStepGroupElementConfig(executionWrapper);
-      for (ExecutionWrapperConfig wrapper : stepGroupElementConfig.getSteps()) {
-        Integer stepCpuRequest = getExecutionWrapperCpuRequest(wrapper, accountId);
-        executionWrapperCpuRequest = Math.max(executionWrapperCpuRequest, stepCpuRequest);
+      if (isNotEmpty(stepGroupElementConfig.getSteps())) {
+        for (ExecutionWrapperConfig wrapper : stepGroupElementConfig.getSteps()) {
+          Integer stepCpuRequest = getExecutionWrapperCpuRequest(wrapper, accountId);
+          executionWrapperCpuRequest = Math.max(executionWrapperCpuRequest, stepCpuRequest);
+        }
       }
     } else {
       throw new InvalidRequestException("Only Parallel, StepElement and StepGroup are supported");
@@ -1031,7 +1080,8 @@ public class K8InitializeStepUtils {
 
     if (resource != null && resource.getLimits() != null && resource.getLimits().getCpu() != null) {
       String cpuLimitQuantity = resolveStringParameter("cpu", stepType, stepId, resource.getLimits().getCpu(), false);
-      if (isNotEmpty(cpuLimitQuantity) && !UNRESOLVED_PARAMETER.equals(cpuLimitQuantity)) {
+      if (isNotEmpty(cpuLimitQuantity) && !UNRESOLVED_PARAMETER.equals(cpuLimitQuantity)
+          && !cpuLimitQuantity.equals(NULL_STR)) {
         cpuLimit = QuantityUtils.getCpuQuantityValueInUnit(cpuLimitQuantity, DecimalQuantityUnit.m);
       }
     }
@@ -1050,6 +1100,7 @@ public class K8InitializeStepUtils {
         return ((RunTestsStepInfo) ciStepInfo).getResources();
       case GCR:
       case ECR:
+      case GAR:
       case ACR:
       case DOCKER:
       case UPLOAD_ARTIFACTORY:
@@ -1065,6 +1116,12 @@ public class K8InitializeStepUtils {
       case SSCA_ENFORCEMENT:
       case IACM_TERRAFORM_PLUGIN:
       case IACM_APPROVAL:
+      case PROVENANCE:
+      case SLSA_VERIFICATION:
+      case COOKIECUTTER:
+      case CREATE_REPO:
+      case DIRECT_PUSH:
+      case REGISTER_CATALOG:
         return ((PluginCompatibleStep) ciStepInfo).getResources();
       default:
         throw new CIStageExecutionException(
@@ -1103,8 +1160,10 @@ public class K8InitializeStepUtils {
       if (!isEmpty(stepGroupIdOfParent)) {
         stepGroupIdentifier = stepGroupIdOfParent + UNDERSCORE_SEPARATOR + stepGroupIdentifier;
       }
-      for (ExecutionWrapperConfig executionWrapper : stepGroupElementConfig.getSteps()) {
-        populateStepConnectorRefsUtil(executionWrapper, ambiance, map, stepGroupIdentifier);
+      if (isNotEmpty(stepGroupElementConfig.getSteps())) {
+        for (ExecutionWrapperConfig executionWrapper : stepGroupElementConfig.getSteps()) {
+          populateStepConnectorRefsUtil(executionWrapper, ambiance, map, stepGroupIdentifier);
+        }
       }
     }
   }
@@ -1115,7 +1174,7 @@ public class K8InitializeStepUtils {
     if ((stepElement.getStepSpecType() instanceof PluginCompatibleStep)
         && (stepElement.getStepSpecType() instanceof WithConnectorRef)) {
       String stepIdentifier = stepElement.getIdentifier();
-      if (Strings.isNotBlank(stepGroupIdOfParent)) {
+      if (isNotEmpty(stepGroupIdOfParent)) {
         stepIdentifier = stepGroupIdOfParent + "_" + stepIdentifier;
       }
 
@@ -1239,9 +1298,11 @@ public class K8InitializeStepUtils {
     } else if (executionWrapperConfig.getStepGroup() != null && !executionWrapperConfig.getStepGroup().isNull()) {
       StepGroupElementConfig stepGroupElementConfig =
           IntegrationStageUtils.getStepGroupElementConfig(executionWrapperConfig);
-      for (ExecutionWrapperConfig stepGroupElementWrapperConfig : stepGroupElementConfig.getSteps()) {
-        if (isStepEligibleForExtraResource(stepGroupElementWrapperConfig)) {
-          return true;
+      if (isNotEmpty(stepGroupElementConfig.getSteps())) {
+        for (ExecutionWrapperConfig stepGroupElementWrapperConfig : stepGroupElementConfig.getSteps()) {
+          if (isStepEligibleForExtraResource(stepGroupElementWrapperConfig)) {
+            return true;
+          }
         }
       }
     }
@@ -1261,6 +1322,7 @@ public class K8InitializeStepUtils {
       case ECR:
       case ACR:
       case GCR:
+      case GAR:
       case SAVE_CACHE_S3:
       case RESTORE_CACHE_S3:
       case RESTORE_CACHE_GCS:
@@ -1278,5 +1340,44 @@ public class K8InitializeStepUtils {
       default:
         return null;
     }
+  }
+
+  private String getImagePullPolicy(IntegrationStageNode stageNode, CIStepInfo ciStepInfo) {
+    String imagePullPolicy = null;
+    if (ciStepInfo != null) {
+      switch (ciStepInfo.getNonYamlInfo().getStepInfoType()) {
+        case RUN:
+          RunStepInfo runStepInfo = (RunStepInfo) ciStepInfo;
+          imagePullPolicy = RunTimeInputHandler.resolveImagePullPolicy(runStepInfo.getImagePullPolicy());
+          break;
+        case BACKGROUND:
+          BackgroundStepInfo backgroundStepInfo = (BackgroundStepInfo) ciStepInfo;
+          imagePullPolicy = RunTimeInputHandler.resolveImagePullPolicy(backgroundStepInfo.getImagePullPolicy());
+          break;
+        case RUN_TESTS:
+          RunTestsStepInfo runTestsStepInfo = (RunTestsStepInfo) ciStepInfo;
+          imagePullPolicy = RunTimeInputHandler.resolveImagePullPolicy(runTestsStepInfo.getImagePullPolicy());
+          break;
+        case PLUGIN:
+          PluginStepInfo pluginStepInfo = (PluginStepInfo) ciStepInfo;
+          imagePullPolicy = RunTimeInputHandler.resolveImagePullPolicy(pluginStepInfo.getImagePullPolicy());
+          break;
+        default:
+          if (ciStepInfo instanceof PluginCompatibleStep) {
+            PluginCompatibleStep pluginCompatibleStep = (PluginCompatibleStep) ciStepInfo;
+            imagePullPolicy =
+                RunTimeInputHandler.resolveImagePullPolicy(CIStepInfoUtils.getImagePullPolicy(pluginCompatibleStep));
+          }
+      }
+    }
+
+    if (stageNode != null && stageNode.getIntegrationStageConfig() != null) {
+      Infrastructure infra = stageNode.getIntegrationStageConfig().getInfrastructure();
+      if (infra.getType() == Infrastructure.Type.KUBERNETES_DIRECT && StringUtils.isBlank(imagePullPolicy)) {
+        K8sDirectInfraYaml k8Infra = (K8sDirectInfraYaml) infra;
+        imagePullPolicy = RunTimeInputHandler.resolveImagePullPolicy(k8Infra.getSpec().getImagePullPolicy());
+      }
+    }
+    return imagePullPolicy;
   }
 }

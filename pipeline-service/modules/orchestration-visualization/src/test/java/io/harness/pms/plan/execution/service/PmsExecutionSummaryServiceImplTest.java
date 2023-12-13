@@ -7,14 +7,19 @@
 
 package io.harness.pms.plan.execution.service;
 
+import static io.harness.data.structure.UUIDGenerator.generateUuid;
+import static io.harness.pms.contracts.execution.Status.ABORTED;
 import static io.harness.pms.contracts.execution.Status.RUNNING;
 import static io.harness.rule.OwnerRule.ARCHIT;
 import static io.harness.rule.OwnerRule.BRIJESH;
 import static io.harness.rule.OwnerRule.NAMAN;
+import static io.harness.rule.OwnerRule.ROHITKARELIA;
 import static io.harness.rule.OwnerRule.SHALINI;
+import static io.harness.rule.OwnerRule.VINICIUS;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.joor.Reflect.on;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -22,17 +27,21 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import io.harness.AbortInfoHelper;
 import io.harness.OrchestrationVisualizationTestBase;
+import io.harness.abort.AbortedBy;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.stepDetail.NodeExecutionsInfo;
 import io.harness.category.element.UnitTests;
 import io.harness.concurrency.ConcurrentChildInstance;
 import io.harness.engine.executions.node.NodeExecutionService;
+import io.harness.engine.executions.plan.PlanExecutionMetadataService;
 import io.harness.execution.NodeExecution;
-import io.harness.graph.stepDetail.service.PmsGraphStepDetailsService;
+import io.harness.execution.PlanExecution;
+import io.harness.execution.PlanExecutionMetadata;
+import io.harness.graph.stepDetail.service.NodeExecutionInfoService;
 import io.harness.plan.NodeType;
-import io.harness.plan.PlanNode;
 import io.harness.plancreator.strategy.StrategyType;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
@@ -43,6 +52,7 @@ import io.harness.pms.contracts.execution.run.NodeRunInfo;
 import io.harness.pms.contracts.execution.skip.SkipInfo;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
+import io.harness.pms.execution.utils.PlanExecutionProjectionConstants;
 import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity;
 import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity.PlanExecutionSummaryKeys;
 import io.harness.pms.plan.execution.beans.dto.EdgeLayoutListDTO;
@@ -78,7 +88,9 @@ public class PmsExecutionSummaryServiceImplTest extends OrchestrationVisualizati
   @Mock PmsExecutionSummaryRepository pmsExecutionSummaryRepositoryMock;
   @Inject PmsExecutionSummaryRepository pmsExecutionSummaryRepository;
   @Mock NodeExecutionService nodeExecutionService;
-  @Mock PmsGraphStepDetailsService pmsGraphStepDetailsService;
+  @Mock PlanExecutionMetadataService planExecutionMetadataService;
+  @Mock NodeExecutionInfoService pmsGraphStepDetailsService;
+  @Mock AbortInfoHelper abortInfoHelper;
   @InjectMocks PmsExecutionSummaryServiceImpl pmsExecutionSummaryService;
 
   @Before
@@ -136,7 +148,6 @@ public class PmsExecutionSummaryServiceImplTest extends OrchestrationVisualizati
                     .addLevels(Level.newBuilder().setNodeType(NodeType.PLAN_NODE.name()).build())
                     .build())
             .stepType(StepType.newBuilder().setStepCategory(StepCategory.STRATEGY).build())
-            .planNode(PlanNode.builder().build())
             .build();
     pmsExecutionSummaryService.updateStrategyPlanNode("planExecution", nodeExecution, update);
     verify(pmsGraphStepDetailsService, times(1)).fetchConcurrentChildInstance(nodeExecution.getUuid());
@@ -170,6 +181,140 @@ public class PmsExecutionSummaryServiceImplTest extends OrchestrationVisualizati
   }
 
   @Test
+  @Owner(developers = ROHITKARELIA)
+  @Category(UnitTests.class)
+  public void testUpdateStageOfIdentityTypeWithNullGraphLayoutNodeDTO() {
+    String stageSetupIdForStrategy = "stageSetupId";
+    String strategyNodeExecutionId = "strategyNodeExecutionId";
+    String runtimeId = "runtimeId";
+    String planExecutionId = "planExecutionId";
+    Ambiance ambiance = Ambiance.newBuilder()
+                            .addLevels(Level.newBuilder()
+                                           .setNodeType(NodeType.PLAN_NODE.name())
+                                           .setRuntimeId(runtimeId)
+                                           .setSetupId("setupId")
+                                           .build())
+                            .build();
+
+    List<NodeExecution> nodeExecutions = new ArrayList<>();
+
+    nodeExecutions.add(NodeExecution.builder()
+                           .uuid("nodeExecutionId1")
+                           .endTs(1000L)
+                           .status(Status.SUCCEEDED)
+                           .nodeId("stageNodeIdWithoutStrategy")
+                           .parentId("parentNodeExecutionId")
+                           .ambiance(ambiance)
+                           .stepType(StepType.newBuilder().setStepCategory(StepCategory.STAGE).build())
+                           .build());
+
+    nodeExecutions.add(NodeExecution.builder()
+                           .uuid("nodeExecutionId2")
+                           .endTs(1000L)
+                           .status(Status.SUCCEEDED)
+                           .nodeId(stageSetupIdForStrategy)
+                           .parentId(strategyNodeExecutionId)
+                           .ambiance(ambiance)
+                           .stepType(StepType.newBuilder().setStepCategory(StepCategory.STAGE).build())
+                           .build());
+
+    nodeExecutions.add(
+        NodeExecution.builder()
+            .uuid("nodeExecutionId3")
+            .parentId(strategyNodeExecutionId)
+            .endTs(1000L)
+            .nodeId(stageSetupIdForStrategy)
+            .status(Status.SUCCEEDED)
+            .ambiance(
+                ambiance.toBuilder()
+                    .addLevels(Level.newBuilder()
+                                   .setNodeType(NodeType.IDENTITY_PLAN_NODE.name())
+                                   .setRuntimeId(runtimeId)
+                                   .setStepType(StepType.newBuilder().setStepCategory(StepCategory.STRATEGY).build())
+                                   .build())
+                    .build())
+            .stepType(StepType.newBuilder().setStepCategory(StepCategory.STAGE).build())
+            .build());
+
+    nodeExecutions.add(
+        NodeExecution.builder()
+            .uuid("stepStrategyNodeExecutionId")
+            .nodeId("stepStrategyNodeId")
+            .parentId("stepsNodeExecutionId")
+            .endTs(1000L)
+            .status(Status.SUCCEEDED)
+            .nodeId("stepNodeId")
+            .ambiance(
+                ambiance.toBuilder()
+                    .addLevels(Level.newBuilder()
+                                   .setNodeType(NodeType.IDENTITY_PLAN_NODE.name())
+                                   .setRuntimeId(runtimeId)
+                                   .setStepType(StepType.newBuilder().setStepCategory(StepCategory.STRATEGY).build())
+                                   .build())
+                    .build())
+            .stepType(StepType.newBuilder().setStepCategory(StepCategory.STRATEGY).build())
+            .build());
+
+    Ambiance ambianceForStageStrategy =
+        Ambiance.newBuilder()
+            .addLevels(Level.newBuilder().setRuntimeId(runtimeId).setSetupId("setupId").setGroup("STAGES").build())
+            .addLevels(Level.newBuilder()
+                           .setNodeType(NodeType.IDENTITY_PLAN_NODE.name())
+                           .setRuntimeId(runtimeId)
+                           .setStepType(StepType.newBuilder().setStepCategory(StepCategory.STRATEGY).build())
+                           .build())
+            .build();
+
+    nodeExecutions.add(NodeExecution.builder()
+                           .uuid(strategyNodeExecutionId)
+                           .nodeId("strategyNodeId")
+                           .parentId("stageNodeExecutionId")
+                           .endTs(1000L)
+                           .status(Status.SUCCEEDED)
+                           .ambiance(ambianceForStageStrategy)
+                           .executableResponses(Collections.singleton(
+                               ExecutableResponse.newBuilder()
+                                   .setChildren(ChildrenExecutableResponse.newBuilder().setMaxConcurrency(3).build())
+                                   .build()))
+                           .stepType(StepType.newBuilder().setStepCategory(StepCategory.STRATEGY).build())
+                           .build());
+
+    doReturn(ConcurrentChildInstance.builder().childrenNodeExecutionIds(Collections.singletonList("randomId")).build())
+        .when(pmsGraphStepDetailsService)
+        .fetchConcurrentChildInstance(strategyNodeExecutionId);
+    doReturn(nodeExecutions)
+        .when(nodeExecutionService)
+        .fetchStageExecutionsWithEndTsAndStatusProjection(planExecutionId);
+
+    doReturn(Optional.of(
+                 PipelineExecutionSummaryEntity.builder()
+                     .layoutNodeMap(Map.of("strategyNodeId",
+                         GraphLayoutNodeDTO.builder()
+                             .nodeType(StrategyType.PARALLELISM.name())
+                             .edgeLayoutList(EdgeLayoutListDTO.builder().currentNodeChildren(new ArrayList<>()).build())
+                             .build(),
+                         "stageSetupIdForStrategy2",
+                         GraphLayoutNodeDTO.builder()
+                             .nodeType("STAGE")
+                             .nodeGroup("stage")
+                             .module("pms")
+                             .edgeLayoutList(EdgeLayoutListDTO.builder().build())
+                             .skipInfo(SkipInfo.newBuilder().build())
+                             .nodeRunInfo(NodeRunInfo.newBuilder().build())
+                             .edgeLayoutList(EdgeLayoutListDTO.builder().currentNodeChildren(new ArrayList<>()).build())
+                             .build()
+
+                             ))
+                     .build()))
+        .when(pmsExecutionSummaryRepositoryMock)
+        .findByPlanExecutionId(any());
+
+    assertThatThrownBy(
+        () -> pmsExecutionSummaryService.updateIdentityStageOrStrategyNodes(planExecutionId, new Update()))
+        .isInstanceOf(NullPointerException.class);
+  }
+
+  @Test
   @Owner(developers = BRIJESH)
   @Category(UnitTests.class)
   public void testUpdateStageOfIdentityType() {
@@ -190,7 +335,6 @@ public class PmsExecutionSummaryServiceImplTest extends OrchestrationVisualizati
     nodeExecutions.add(NodeExecution.builder()
                            .uuid("nodeExecutionId1")
                            .endTs(1000L)
-                           .planNode(PlanNode.builder().build())
                            .status(Status.SUCCEEDED)
                            .nodeId("stageNodeIdWithoutStrategy")
                            .parentId("parentNodeExecutionId")
@@ -201,7 +345,6 @@ public class PmsExecutionSummaryServiceImplTest extends OrchestrationVisualizati
     nodeExecutions.add(NodeExecution.builder()
                            .uuid("nodeExecutionId2")
                            .endTs(1000L)
-                           .planNode(PlanNode.builder().build())
                            .status(Status.SUCCEEDED)
                            .nodeId(stageSetupIdForStrategy)
                            .parentId(strategyNodeExecutionId)
@@ -404,6 +547,7 @@ public class PmsExecutionSummaryServiceImplTest extends OrchestrationVisualizati
     String prevStageId = "prevStageId";
     String prevStageNodeId = "prevStageNodeId";
     String nodeId = "nodeId";
+    String planExecutionId = "planExecutionId";
     NodeExecution currentNodeExecution = NodeExecution.builder()
                                              .ambiance(basicAmbiance)
                                              .stepType(prbStepType)
@@ -413,13 +557,89 @@ public class PmsExecutionSummaryServiceImplTest extends OrchestrationVisualizati
                                              .build();
     NodeExecution prevNodeExecution = NodeExecution.builder().nodeId(prevStageNodeId).build();
     doReturn(prevNodeExecution).when(nodeExecutionService).get(prevStageId);
+    doReturn(PlanExecutionMetadata.builder().build())
+        .when(planExecutionMetadataService)
+        .getWithFieldsIncludedFromSecondary(
+            planExecutionId, PlanExecutionProjectionConstants.fieldsForPostProdRollback);
     Update update = new Update();
-    pmsExecutionSummaryService.handleNodeExecutionUpdateFromGraphUpdate(null, currentNodeExecution, update);
+    pmsExecutionSummaryService.handleNodeExecutionUpdateFromGraphUpdate(planExecutionId, currentNodeExecution, update);
     Document updateObject = update.getUpdateObject();
     assertThat(updateObject).hasSize(1);
     Document setObjects = (Document) updateObject.get("$set");
     String expectedKey = "layoutNodeMap.prevStageNodeId.edgeLayoutList.nextIds";
     assertThat(setObjects).containsKey(expectedKey);
     assertThat(setObjects.get(expectedKey)).isEqualTo(Collections.singletonList("nodeId"));
+  }
+
+  @Test
+  @Owner(developers = ARCHIT)
+  @Category(UnitTests.class)
+  public void testUpdateNotesForExecutionSummaryForGivenPlanExecutionIds() {
+    String projectId = "projectId";
+    String planExecutionId = "planExecutionId";
+    String accountId = "accountId";
+    String orgId = "orgId";
+    PipelineExecutionSummaryEntity pipelineExecutionSummaryEntity = PipelineExecutionSummaryEntity.builder()
+                                                                        .planExecutionId(planExecutionId)
+                                                                        .accountId(accountId)
+                                                                        .orgIdentifier(orgId)
+                                                                        .projectIdentifier(projectId)
+                                                                        .build();
+
+    pmsExecutionSummaryRepository.save(pipelineExecutionSummaryEntity);
+    on(pmsExecutionSummaryService).set("pmsExecutionSummaryRepository", pmsExecutionSummaryRepository);
+
+    Date ttlDate = Date.from(OffsetDateTime.now().plus(Duration.ofMinutes(30)).toInstant());
+    pmsExecutionSummaryService.updateTTL(planExecutionId, ttlDate);
+    pmsExecutionSummaryService.updateNotes(planExecutionId, true);
+
+    PipelineExecutionSummaryEntity pipelineExecutionSummaryWithProjections =
+        pmsExecutionSummaryService.getPipelineExecutionSummaryWithProjections(planExecutionId,
+            Sets.newHashSet(PlanExecutionSummaryKeys.accountId, PlanExecutionSummaryKeys.notesExistForPlanExecutionId));
+
+    assertThat(pipelineExecutionSummaryWithProjections.getNotesExistForPlanExecutionId()).isTrue();
+  }
+
+  @Test
+  @Owner(developers = BRIJESH)
+  @Category(UnitTests.class)
+  public void testUpdateStatus() {
+    PlanExecution planExecution =
+        PlanExecution.builder().uuid(generateUuid()).status(RUNNING).endTs(System.currentTimeMillis()).build();
+    AbortedBy abortedBy = AbortedBy.builder().email("admin@harness.io").userName("admin").build();
+    doReturn(abortedBy).when(abortInfoHelper).fetchAbortedByInfoFromInterrupts(planExecution.getUuid());
+    Update summaryUpdate = new Update();
+    pmsExecutionSummaryService.updateStatusOps(planExecution, summaryUpdate);
+
+    Document document = (Document) summaryUpdate.getUpdateObject().get("$set");
+    assertThat(document.get("internalStatus").toString()).isEqualTo("RUNNING");
+    assertThat(document.get("status").toString()).isEqualTo("RUNNING");
+    assertThat(document.get("endTs")).isNull();
+    assertThat(document.get("abortedBy")).isNull();
+
+    planExecution =
+        PlanExecution.builder().uuid(planExecution.getUuid()).status(ABORTED).endTs(System.currentTimeMillis()).build();
+
+    summaryUpdate = new Update();
+    pmsExecutionSummaryService.updateStatusOps(planExecution, summaryUpdate);
+    document = (Document) summaryUpdate.getUpdateObject().get("$set");
+    assertThat(document.get("internalStatus").toString()).isEqualTo("ABORTED");
+    assertThat(document.get("status").toString()).isEqualTo("ABORTED");
+    assertThat(document.get("endTs")).isEqualTo(planExecution.getEndTs());
+    assertThat(document.get("abortedBy")).isEqualTo(abortedBy);
+  }
+
+  @Test
+  @Owner(developers = VINICIUS)
+  @Category(UnitTests.class)
+  public void testUpdateResolvedUserInputSetYaml() {
+    String planExecutionId = "planExecutionId";
+    String resolvedInputSetYaml = "resolved-input-set-yaml";
+    pmsExecutionSummaryService.updateResolvedUserInputSetYaml(planExecutionId, resolvedInputSetYaml);
+    Update expectedUpdate = new Update();
+    expectedUpdate.set(PlanExecutionSummaryKeys.resolvedUserInputSetYaml, resolvedInputSetYaml);
+    verify(pmsExecutionSummaryRepositoryMock, times(1))
+        .update(
+            new Query(Criteria.where(PlanExecutionSummaryKeys.planExecutionId).is(planExecutionId)), expectedUpdate);
   }
 }

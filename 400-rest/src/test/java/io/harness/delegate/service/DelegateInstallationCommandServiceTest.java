@@ -58,21 +58,22 @@ public class DelegateInstallationCommandServiceTest {
   @Category(UnitTests.class)
   public void testDockerCommandOnSmp() {
     String defaultTokenName = delegateNgTokenService.getDefaultTokenName(null);
-    when(delegateNgTokenService.getDelegateToken(ACCOUNT_ID, defaultTokenName, true)).thenReturn(TOKEN_DETAIL);
+    when(delegateNgTokenService.getDefaultTokenOrOldestActiveDelegateToken(ACCOUNT_ID, null)).thenReturn(TOKEN_DETAIL);
     when(delegateVersionService.getImmutableDelegateImageTag(ACCOUNT_ID)).thenReturn(IMAGE);
     when(mainConfiguration.getDeployMode()).thenReturn(DeployMode.KUBERNETES_ONPREM);
-    final String result = String.format("docker run --cpus=1 --memory=2g \\\n"
+    final String result = String.format("docker run  --cpus=1 --memory=2g \\\n"
             + "  -e DELEGATE_NAME=docker-delegate \\\n"
             + "  -e DEPLOY_MODE=KUBERNETES_ONPREM \\\n"
             + "  -e NEXT_GEN=\"true\" \\\n"
             + "  -e DELEGATE_TYPE=\"DOCKER\" \\\n"
             + "  -e ACCOUNT_ID=%s \\\n"
             + "  -e DELEGATE_TOKEN=%s \\\n"
+            + "  -e DELEGATE_TAGS=\"\" \\\n"
             + "  -e LOG_STREAMING_SERVICE_URL=%s/log-service/ \\\n"
             + "  -e MANAGER_HOST_AND_PORT=%s %s",
         ACCOUNT_ID, ENCODED_TOKEN_VALUE, MANAGER_URL, MANAGER_URL, IMAGE);
 
-    assertThat(delegateInstallationCommandService.getCommand("DOCKER", MANAGER_URL, ACCOUNT_ID, null))
+    assertThat(delegateInstallationCommandService.getCommand("DOCKER", MANAGER_URL, ACCOUNT_ID, null, null, null))
         .isEqualTo(result);
   }
 
@@ -81,20 +82,21 @@ public class DelegateInstallationCommandServiceTest {
   @Category(UnitTests.class)
   public void testDockerCommand() {
     String defaultTokenName = delegateNgTokenService.getDefaultTokenName(null);
-    when(delegateNgTokenService.getDelegateToken(ACCOUNT_ID, defaultTokenName, true)).thenReturn(TOKEN_DETAIL);
+    when(delegateNgTokenService.getDefaultTokenOrOldestActiveDelegateToken(ACCOUNT_ID, null)).thenReturn(TOKEN_DETAIL);
     when(delegateVersionService.getImmutableDelegateImageTag(ACCOUNT_ID)).thenReturn(IMAGE);
     when(mainConfiguration.getDeployMode()).thenReturn(DeployMode.KUBERNETES);
-    final String result = String.format("docker run --cpus=1 --memory=2g \\\n"
+    final String result = String.format("docker run  --cpus=1 --memory=2g \\\n"
             + "  -e DELEGATE_NAME=docker-delegate \\\n"
             + "  -e NEXT_GEN=\"true\" \\\n"
             + "  -e DELEGATE_TYPE=\"DOCKER\" \\\n"
             + "  -e ACCOUNT_ID=%s \\\n"
             + "  -e DELEGATE_TOKEN=%s \\\n"
+            + "  -e DELEGATE_TAGS=\"\" \\\n"
             + "  -e LOG_STREAMING_SERVICE_URL=%s/log-service/ \\\n"
             + "  -e MANAGER_HOST_AND_PORT=%s %s",
         ACCOUNT_ID, ENCODED_TOKEN_VALUE, MANAGER_URL, MANAGER_URL, IMAGE);
 
-    assertThat(delegateInstallationCommandService.getCommand("DOCKER", MANAGER_URL, ACCOUNT_ID, null))
+    assertThat(delegateInstallationCommandService.getCommand("DOCKER", MANAGER_URL, ACCOUNT_ID, null, null, null))
         .isEqualTo(result);
   }
 
@@ -103,7 +105,7 @@ public class DelegateInstallationCommandServiceTest {
   @Category(UnitTests.class)
   public void testHelmCommand() {
     String defaultTokenName = delegateNgTokenService.getDefaultTokenName(null);
-    when(delegateNgTokenService.getDelegateToken(ACCOUNT_ID, defaultTokenName, true)).thenReturn(TOKEN_DETAIL);
+    when(delegateNgTokenService.getDefaultTokenOrOldestActiveDelegateToken(ACCOUNT_ID, null)).thenReturn(TOKEN_DETAIL);
     when(delegateVersionService.getImmutableDelegateImageTag(ACCOUNT_ID)).thenReturn(IMAGE);
     when(mainConfiguration.getDeployMode()).thenReturn(DeployMode.KUBERNETES);
     final String result =
@@ -114,10 +116,11 @@ public class DelegateInstallationCommandServiceTest {
                 + "  --set delegateToken=%s \\\n"
                 + "  --set managerEndpoint=%s \\\n"
                 + "  --set delegateDockerImage=%s \\\n"
-                + "  --set replicas=1 --set upgrader.enabled=false",
+                + "  --set replicas=1 --set upgrader.enabled=true",
             ACCOUNT_ID, ENCODED_TOKEN_VALUE, MANAGER_URL, IMAGE);
 
-    assertThat(delegateInstallationCommandService.getCommand("HELM", MANAGER_URL, ACCOUNT_ID, null)).isEqualTo(result);
+    assertThat(delegateInstallationCommandService.getCommand("HELM", MANAGER_URL, ACCOUNT_ID, null, null, null))
+        .isEqualTo(result);
   }
 
   @Test
@@ -125,7 +128,7 @@ public class DelegateInstallationCommandServiceTest {
   @Category(UnitTests.class)
   public void testHelmCommandOnSmp() {
     String defaultTokenName = delegateNgTokenService.getDefaultTokenName(null);
-    when(delegateNgTokenService.getDelegateToken(ACCOUNT_ID, defaultTokenName, true)).thenReturn(TOKEN_DETAIL);
+    when(delegateNgTokenService.getDefaultTokenOrOldestActiveDelegateToken(ACCOUNT_ID, null)).thenReturn(TOKEN_DETAIL);
     when(delegateVersionService.getImmutableDelegateImageTag(ACCOUNT_ID)).thenReturn(IMAGE);
     when(mainConfiguration.getDeployMode()).thenReturn(DeployMode.KUBERNETES_ONPREM);
     final String result =
@@ -137,10 +140,11 @@ public class DelegateInstallationCommandServiceTest {
                 + "  --set delegateToken=%s \\\n"
                 + "  --set managerEndpoint=%s \\\n"
                 + "  --set delegateDockerImage=%s \\\n"
-                + "  --set replicas=1 --set upgrader.enabled=false",
+                + "  --set replicas=1 --set upgrader.enabled=true",
             ACCOUNT_ID, ENCODED_TOKEN_VALUE, MANAGER_URL, IMAGE);
 
-    assertThat(delegateInstallationCommandService.getCommand("HELM", MANAGER_URL, ACCOUNT_ID, null)).isEqualTo(result);
+    assertThat(delegateInstallationCommandService.getCommand("HELM", MANAGER_URL, ACCOUNT_ID, null, null, null))
+        .isEqualTo(result);
   }
 
   @Test
@@ -148,7 +152,7 @@ public class DelegateInstallationCommandServiceTest {
   @Category(UnitTests.class)
   public void testKubernetesInstructions() {
     String defaultTokenName = delegateNgTokenService.getDefaultTokenName(null);
-    when(delegateNgTokenService.getDelegateToken(ACCOUNT_ID, defaultTokenName, true)).thenReturn(TOKEN_DETAIL);
+    when(delegateNgTokenService.getDefaultTokenOrOldestActiveDelegateToken(ACCOUNT_ID, null)).thenReturn(TOKEN_DETAIL);
     when(delegateVersionService.getImmutableDelegateImageTag(ACCOUNT_ID)).thenReturn(IMAGE);
     when(mainConfiguration.getDeployMode()).thenReturn(DeployMode.KUBERNETES);
     final String result = String.format("\"PUT_YOUR_DELEGATE_NAME\" with kubernetes-delegate\n"
@@ -158,7 +162,7 @@ public class DelegateInstallationCommandServiceTest {
             + "\"PUT_YOUR_DELEGATE_IMAGE\" with %s",
         ACCOUNT_ID, MANAGER_URL, ENCODED_TOKEN_VALUE, IMAGE);
 
-    assertThat(delegateInstallationCommandService.getCommand("KUBERNETES", MANAGER_URL, ACCOUNT_ID, null))
+    assertThat(delegateInstallationCommandService.getCommand("KUBERNETES", MANAGER_URL, ACCOUNT_ID, null, null, null))
         .isEqualTo(result);
   }
 
@@ -167,7 +171,7 @@ public class DelegateInstallationCommandServiceTest {
   @Category(UnitTests.class)
   public void testGetTerraformExampleModuleFile() throws IOException {
     String defaultTokenName = delegateNgTokenService.getDefaultTokenName(null);
-    when(delegateNgTokenService.getDelegateToken(ACCOUNT_ID, defaultTokenName, true)).thenReturn(TOKEN_DETAIL);
+    when(delegateNgTokenService.getDefaultTokenOrOldestActiveDelegateToken(ACCOUNT_ID, null)).thenReturn(TOKEN_DETAIL);
     when(delegateVersionService.getImmutableDelegateImageTag(ACCOUNT_ID)).thenReturn(IMAGE);
     when(mainConfiguration.getDeployMode()).thenReturn(DeployMode.KUBERNETES);
     final String result =

@@ -12,6 +12,9 @@ import (
 	"os"
 	"os/signal"
 
+	"cloud.google.com/go/profiler"
+	gcputils "github.com/harness/harness-core/commons/go/lib/gcputils"
+
 	"github.com/harness/harness-core/commons/go/lib/secret"
 	"github.com/harness/harness-core/product/platform/client"
 
@@ -28,8 +31,10 @@ import (
 	redisDb "github.com/harness/harness-core/product/log-service/db/redis"
 	"github.com/harness/harness-core/product/log-service/handler"
 	"github.com/harness/harness-core/product/log-service/logger"
+	"github.com/harness/harness-core/product/log-service/metric"
 	memoryQueue "github.com/harness/harness-core/product/log-service/queue/memory"
 	"github.com/harness/harness-core/product/log-service/server"
+	"github.com/harness/harness-core/product/log-service/stackdriver"
 	"github.com/harness/harness-core/product/log-service/store"
 	"github.com/harness/harness-core/product/log-service/store/bolt"
 	"github.com/harness/harness-core/product/log-service/store/s3"
@@ -57,6 +62,16 @@ func (c *serverCommand) run(*kingpin.ParseContext) error {
 		logrus.WithError(err).
 			Errorln("cannot load the service configuration")
 		return err
+	}
+
+	// enabling Profiler for service
+	if config.Profiler.EnableProfiler {
+		err := StartProfiler(&config)
+		if err != nil {
+			logrus.WithError(err).
+				Errorln("cannot load the gcp profiler")
+			return err
+		}
 	}
 
 	// Parse the entire config to resolve any secrets (if required)
@@ -114,14 +129,16 @@ func (c *serverCommand) run(*kingpin.ParseContext) error {
 	if config.Redis.UseSentinel {
 		// Create Redis Sentinel storage instance
 		db := redisDb.NewConnection("", config.Redis.Password, false, true, "", config.Redis.MasterName, config.Redis.SentinelAddrs)
-		stream = redisStream.NewWithClient(db, config.Redis.DisableExpiryWatcher, config.Redis.ScanBatch)
+		stream = redisStream.NewWithClient(db, config.Redis.DisableExpiryWatcher, config.Redis.ScanBatch,
+			config.Redis.MaxLineLimit, config.Redis.MaxStreamSize)
 		cache = redisCache.NewWithClient(db)
 		queue = redisQueue.NewWithClient(db)
 		queue.Create(ctx, config.ConsumerWorker.StreamName, config.ConsumerWorker.ConsumerGroup)
 		logrus.Infof("configuring log stream, cache and queue to use Redis Sentinel")
 	} else if config.Redis.Endpoint != "" {
 		db := redisDb.NewConnection(config.Redis.Endpoint, config.Redis.Password, config.Redis.SSLEnabled, false, config.Redis.CertPath, "", nil)
-		stream = redisStream.NewWithClient(db, config.Redis.DisableExpiryWatcher, config.Redis.ScanBatch)
+		stream = redisStream.NewWithClient(db, config.Redis.DisableExpiryWatcher, config.Redis.ScanBatch,
+			config.Redis.MaxLineLimit, config.Redis.MaxStreamSize)
 		cache = redisCache.NewWithClient(db)
 		queue = redisQueue.NewWithClient(db)
 		queue.Create(ctx, config.ConsumerWorker.StreamName, config.ConsumerWorker.ConsumerGroup)
@@ -144,13 +161,39 @@ func (c *serverCommand) run(*kingpin.ParseContext) error {
 
 	workerPool.Execute(zipwork.Work, queue, cache, store, config)
 
+	stackdriver, err := stackdriver.New(ctx, config.Stackdriver.ProjectID)
+	if err != nil {
+		logrus.WithError(err).Errorln("failed to create stackdriver client")
+	} else {
+		logrus.Infof("stackdriver client created for project %s", config.Stackdriver.ProjectID)
+		defer func() {
+			err := stackdriver.Close()
+			if err != nil {
+				logger.FromContext(context.Background()).WithError(err).Errorln("error closing stackdriver client")
+			} else {
+				logger.FromContext(context.Background()).Infoln("stackdriver client closed")
+			}
+		}()
+	}
+
 	ngClient := client.NewHTTPClient(config.Platform.BaseURL, false, "")
+	aclClient := client.NewHTTPClient(config.Platform.ACLBaseURL, false, "")
+
+	var gcsClient gcputils.GCS
+	if config.S3.CredentialsPath != "" {
+		gcsClient, err = gcputils.NewGCSClient(context.Background(), nil, nil, gcputils.WithGCSCredentialsFile(config.S3.CredentialsPath))
+		if err != nil {
+			return err
+		}
+	}
+	// register metrics
+	metrics := metric.RegisterMetrics()
 
 	// create the http server.
 	server := server.Server{
 		Acme:    config.Server.Acme,
 		Addr:    config.Server.Bind,
-		Handler: handler.Handler(queue, cache, stream, store, config, ngClient),
+		Handler: handler.Handler(queue, cache, stream, store, stackdriver, config, ngClient, aclClient, gcsClient, metrics),
 	}
 
 	// trap the os signal to gracefully shutdown the
@@ -177,10 +220,7 @@ func (c *serverCommand) run(*kingpin.ParseContext) error {
 	err = server.ListenAndServe(ctx)
 	if err == context.Canceled {
 		logrus.Infoln("program gracefully terminated")
-		return nil
-	}
-
-	if err != nil {
+	} else if err != nil {
 		logrus.Errorf("program terminated with error: %s", err)
 	}
 
@@ -223,4 +263,18 @@ func initLogging(c config.Config) {
 	if c.Trace {
 		l.SetLevel(logrus.TraceLevel)
 	}
+}
+
+func StartProfiler(config *config.Config) error {
+	hostName, err := os.Hostname()
+	if err != nil {
+		logrus.WithError(err).
+			Warnln("Could not find hostName")
+	}
+	cfg := profiler.Config{
+		Service:        fmt.Sprintf("%s.%s", config.Profiler.ServiceName, config.Profiler.Environment),
+		ServiceVersion: hostName,
+	}
+	logrus.Infoln("Started profiler")
+	return profiler.Start(cfg)
 }

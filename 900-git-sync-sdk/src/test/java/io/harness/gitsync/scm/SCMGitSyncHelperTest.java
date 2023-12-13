@@ -10,6 +10,7 @@ package io.harness.gitsync.scm;
 import static io.harness.rule.OwnerRule.ADITHYA;
 import static io.harness.rule.OwnerRule.MEET;
 import static io.harness.rule.OwnerRule.MOHIT_GARG;
+import static io.harness.rule.OwnerRule.VIVEK_DIXIT;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
@@ -54,6 +55,8 @@ import io.harness.gitsync.HarnessToGitPushInfoServiceGrpc;
 import io.harness.gitsync.PushFileResponse;
 import io.harness.gitsync.UpdateFileRequest;
 import io.harness.gitsync.UpdateFileResponse;
+import io.harness.gitsync.ValidateRepoRequest;
+import io.harness.gitsync.ValidateRepoResponse;
 import io.harness.gitsync.common.helper.GitSyncGrpcClientUtils;
 import io.harness.gitsync.exceptions.GitSyncException;
 import io.harness.gitsync.interceptor.GitEntityInfo;
@@ -215,7 +218,7 @@ public class SCMGitSyncHelperTest extends GitSdkTestBase {
 
     assertThatThrownBy(() -> scmGitSyncHelper.checkForError(buildPushFileResponse(1, 304, "")))
         .isInstanceOf(ScmException.class)
-        .hasMessage("");
+        .hasMessage("SCM_NOT_MODIFIED");
 
     assertThatThrownBy(() -> scmGitSyncHelper.checkForError(buildPushFileResponse(1, 404, errorMessage)))
         .isInstanceOf(HintException.class)
@@ -489,6 +492,20 @@ public class SCMGitSyncHelperTest extends GitSdkTestBase {
     assertTrue(batchFilesResponse.containsKey(uniqueKey2));
     ScmGetFileResponse scmGetFileResponse2 = batchFilesResponse.get(uniqueKey2);
     assertEquals(scmGetFileResponse2.getFileContent(), fileContent2);
+  }
+
+  @Test
+  @Owner(developers = VIVEK_DIXIT)
+  @Category(UnitTests.class)
+  public void testValidateRepo() {
+    ValidateRepoResponse validateRepoResponse =
+        ValidateRepoResponse.newBuilder().setStatusCode(500).setError(getDefaultErrorDetails()).build();
+    when(GitSyncGrpcClientUtils.retryAndProcessException(
+             harnessToGitPushInfoServiceBlockingStub::validateRepo, any(ValidateRepoRequest.class)))
+        .thenReturn(validateRepoResponse);
+    assertThatThrownBy(() -> scmGitSyncHelper.validateRepo(accountId, orgId, projectId, connectorRef, repo))
+        .isInstanceOf(ScmInternalServerErrorException.class)
+        .hasMessage(error);
   }
 
   private GitEntityInfo buildGitEntityInfo(String branch, String baseBranch, String commitId, String commitMsg,

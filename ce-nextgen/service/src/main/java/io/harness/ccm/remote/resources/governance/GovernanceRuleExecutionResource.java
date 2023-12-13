@@ -8,6 +8,7 @@
 package io.harness.ccm.remote.resources.governance;
 
 import static io.harness.annotations.dev.HarnessTeam.CE;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
 import io.harness.NGCommonEntityConstants;
 import io.harness.accesscontrol.AccountIdentifier;
@@ -45,7 +46,6 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.inject.Inject;
-import io.fabric8.utils.Lists;
 import io.leangen.graphql.execution.ResolutionEnvironment;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -307,26 +307,20 @@ public class GovernanceRuleExecutionResource {
     return ResponseDTO.newResponse(ruleExecutionService.getOverviewExecutionDetails(accountId, ruleExecutionFilter));
   }
 
-  @POST
+  @GET
   @Path("overview/executionCostDetails")
   @Consumes(MediaType.APPLICATION_JSON)
   @ApiOperation(value = "Return rule execution Cost Details", nickname = "executionCostDetails")
-  @Operation(operationId = "executionCostDetails", summary = "Return  rule execution Cost Details ",
+  @Operation(operationId = "executionCostDetails", summary = "Return rule execution Cost Details ",
       responses =
       {
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            description = "Return  rule Details", content = { @Content(mediaType = MediaType.APPLICATION_JSON) })
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(description = "Return rule Details", content = { @Content(mediaType = MediaType.APPLICATION_JSON) })
       })
 
   public ResponseDTO<OverviewExecutionCostDetails>
-  getExecutionCostDetails(
-      @Parameter(required = true, description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier @NotNull @Valid String accountId,
-      @RequestBody(required = true, description = "Request body containing CreateRuleExecutionFilterDTO object")
-      @Valid CreateRuleExecutionFilterDTO createRuleExecutionFilterDTO) {
-    RuleExecutionFilter ruleExecutionFilter = createRuleExecutionFilterDTO.getRuleExecutionFilter();
-    ruleExecutionFilter.setAccountId(accountId);
-
+  getExecutionCostDetails(@Parameter(required = true, description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE)
+      @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier @NotNull @Valid String accountId) {
     // Getting recommendations data from timescale DB
     K8sRecommendationFilterDTO filter =
         RecommendationQueryHelper.buildK8sRecommendationFilterDTO(getDefaultGovernanceRecommendationOverviewFilter());
@@ -334,15 +328,13 @@ public class GovernanceRuleExecutionResource {
     final ResolutionEnvironment env = GraphQLToRESTHelper.createResolutionEnv(accountId);
     List<RecommendationItemDTO> recommendationsDTO =
         recommendationsOverviewQueryV2.recommendations(filter, env).getItems();
-    if (Lists.isNullOrEmpty(recommendationsDTO)) {
+    if (isEmpty(recommendationsDTO)) {
       return ResponseDTO.newResponse(OverviewExecutionCostDetails.builder().build());
     }
     List<String> recommendationsIds = recommendationsDTO.stream()
                                           .map(recommendationItemDTO -> recommendationItemDTO.getId())
                                           .collect(Collectors.toList());
-
-    return ResponseDTO.newResponse(
-        ruleExecutionService.getExecutionCostDetails(accountId, ruleExecutionFilter, recommendationsIds));
+    return ResponseDTO.newResponse(ruleExecutionService.getExecutionCostDetails(accountId, recommendationsIds));
   }
 
   @GET

@@ -8,6 +8,22 @@ package io.harness.idp.scorecard.scores.repositories;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.idp.scorecard.scores.entity.ScoreEntity;
+import io.harness.spec.server.idp.v1.model.CheckStatus;
+
+import com.mongodb.client.result.UpdateResult;
+import java.util.List;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 
 @OwnedBy(HarnessTeam.IDP)
-public interface ScoreRepositoryCustom {}
+public interface ScoreRepositoryCustom {
+  AggregationResults<ScoreEntityByScorecardIdentifier> getAllLatestScoresByScorecardsForAnEntity(
+      String accountIdentifier, String entityIdentifier);
+
+  ScoreEntity getLatestComputedScoreForEntityAndScorecard(
+      String accountIdentifier, String entityIdentifier, String scoreCardIdentifier);
+
+  List<ScoreEntityByEntityIdentifier> getLatestScoresForScorecard(String accountIdentifier, String scorecardIdentifier);
+
+  UpdateResult updateCheckIdentifier(ScoreEntity score, List<CheckStatus> checkStatuses);
+}

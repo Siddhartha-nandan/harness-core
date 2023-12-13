@@ -26,7 +26,16 @@ import (
 
 const authHeader = "X-Harness-Token"
 const authAPIKeyHeader = "x-api-key"
+const authTokenHeader = "Authorization"
+const orgIdentifier = "orgIdentifier"
+const projectIdentifier = "projectIdentifier"
+const pipelineIdentifier = "pipelineIdentifier"
+
 const routingIDparam = "routingId"
+const regexp1 = "runSequence:[\\d+]"
+const regexp2 = `\w+\/pipeline\/\w+\/[1-9]\d*\/`
+const resource_pipeline = "PIPELINE"
+const pipeline_view_permission = "core_pipeline_view"
 
 // TokenGenerationMiddleware is middleware to ensure that the incoming request is allowed to
 // invoke token-generation endpoints.
@@ -73,9 +82,40 @@ func TokenGenerationMiddleware(config config.Config, validateAccount bool, ngCli
 	}
 }
 
-// GetAuthFunc is middleware to ensure that the incoming request is allowed to access resources
-// at the specific accountID
-func AuthMiddleware(config config.Config, ngClient *client.HTTPClient, skipKeyCheck bool) func(http.Handler) http.Handler {
+// AuthInternalMiddleware is middleware to ensure that the incoming request is allowed for internal APIs only
+func AuthInternalMiddleware(config config.Config, validateAccount bool, ngClient *client.HTTPClient) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if validateAccount {
+				accountID := r.FormValue(accountIDParam)
+				if accountID == "" {
+					WriteBadRequest(w, errors.New("no account ID in query params"))
+					return
+				}
+			}
+
+			// Try to get token from the header or the URL param
+			inputToken := r.Header.Get(authHeader)
+			if inputToken == "" {
+				WriteBadRequest(w, errors.New("no token in header"))
+				return
+			}
+
+			if inputToken != config.Auth.GlobalToken {
+				// Error: invalid token
+				WriteBadRequest(w, errors.New("token in request not authorized for receiving tokens"))
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// AuthMiddleware is middleware to ensure that the incoming request is allowed to access resources
+// at the specific accountID, also does ACL check incoming request is allowed to access resources
+// at the specific accountID,project, org and pipeline
+func AuthMiddleware(config config.Config, ngClient, aclClient *client.HTTPClient, skipKeyCheck bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -85,12 +125,40 @@ func AuthMiddleware(config config.Config, ngClient *client.HTTPClient, skipKeyCh
 				return
 			}
 
-			// Try to get token from the header or the URL param
 			inputApiKey := r.Header.Get(authAPIKeyHeader)
+			// inputAuthToken := r.Header.Get(authTokenHeader)
+
+			//Check if Auth token is present in Header and if method is allowed,
+			//then check acl with call to access control, else check for old approach (x-api-key or X-harness-Token)
+			// if inputAuthToken != "" && r.Method == http.MethodGet {
+			// 	if r.FormValue(pipelineIdentifier) == "" || r.FormValue(projectIdentifier) == "" || r.FormValue(orgIdentifier) == "" {
+			// 		WriteBadRequest(w, errors.New("scope pipelineID, projectID and orgID are required for validating access"))
+			// 		return
+			// 	}
+
+			// 	allowed, err := aclClient.ValidateAccessforPipeline(r.Context(), inputAuthToken, accountID, r.FormValue(pipelineIdentifier), r.FormValue(projectIdentifier), r.FormValue(orgIdentifier), resource_pipeline, pipeline_view_permission)
+			// 	if err != nil {
+			// 		logger.FromRequest(r).
+			// 			WithError(err).
+			// 			WithField("pipelineIdentifier", pipelineIdentifier).
+			// 			Errorln("middleware: failed to validate access control")
+			// 		WriteInternalError(w, errors.New("error validating access for resource, unauthorized or expired token"))
+			// 		return
+			// 	}
+			// 	if !allowed {
+			// 		writeError(w, errors.New("user not authorized"), 403)
+			// 		return
+			// 	}
+			// }
 			if inputApiKey != "" {
+				// Try to check token from the header or the URL param
 				err := doApiKeyAuthentication(inputApiKey, r.FormValue(accountIDParam), r.FormValue(routingIDparam), ngClient)
 				if err != nil {
-					WriteBadRequest(w, errors.New("apikey in request not authorized for receiving tokens"))
+					logger.FromRequest(r).
+						WithError(err).
+						WithField("accountIDParam", r.FormValue(accountIDParam)).
+						Errorln("middleware: apikey in request not authorized for receiving tokens")
+					writeError(w, errors.New("apikey in request not authorized for receiving tokens"), 403)
 					return
 				}
 			} else {
@@ -107,7 +175,7 @@ func AuthMiddleware(config config.Config, ngClient *client.HTTPClient, skipKeyCh
 				secret := []byte(config.Auth.LogSecret)
 				login := authcookie.Login(inputToken, secret)
 				if login == "" || login != accountID {
-					WriteBadRequest(w, errors.New(fmt.Sprintf("operation not permitted for accountID: %s", accountID)))
+					writeError(w, errors.New(fmt.Sprintf("operation not permitted for accountID: %s", accountID)), 403)
 					return
 				}
 			}
@@ -139,11 +207,13 @@ func CacheRequest(c cache.Cache) func(handler http.Handler) http.Handler {
 			exists := c.Exists(ctx, prefix)
 
 			if exists {
+				logger.FromRequest(r).Infoln("Request found in cache for prefix", prefix)
 				inf, err := c.Get(ctx, prefix)
 				if err != nil {
 					logger.FromRequest(r).
 						WithError(err).
 						WithField("url", r.URL.String()).
+						WithField("Prefix", prefix).
 						WithField("time", time.Now().Format(time.RFC3339)).
 						Errorln("middleware cache: cannot get prefix")
 					WriteInternalError(w, err)
@@ -156,6 +226,7 @@ func CacheRequest(c cache.Cache) func(handler http.Handler) http.Handler {
 						WithError(err).
 						WithField("url", r.URL.String()).
 						WithField("time", time.Now().Format(time.RFC3339)).
+						WithField("Prefix", prefix).
 						WithField("info", inf).
 						Errorln("middleware cache: failed to unmarshal info")
 					WriteInternalError(w, err)
@@ -165,7 +236,8 @@ func CacheRequest(c cache.Cache) func(handler http.Handler) http.Handler {
 				switch info.Status {
 				case entity.QUEUED:
 				case entity.IN_PROGRESS:
-					WriteJSON(w, info, 200)
+					logger.FromRequest(r).Infoln("Returning queued or inprogress for prefix", prefix)
+					WriteUnescapeJSON(w, info, 200)
 					return
 				case entity.ERROR:
 					err := c.Delete(ctx, prefix)
@@ -174,21 +246,26 @@ func CacheRequest(c cache.Cache) func(handler http.Handler) http.Handler {
 							WithError(err).
 							WithField("url", r.URL.String()).
 							WithField("time", time.Now().Format(time.RFC3339)).
+							WithField("Prefix", prefix).
 							WithField("info", inf).
-							Errorln("middleware cache: failed to delete error in c")
+							Errorln("middleware cache: failed to delete error in cache")
 						WriteInternalError(w, err)
 						return
 					}
-					WriteJSON(w, info, 200)
+					logger.FromRequest(r).WithField("Prefix", prefix).Infoln("Deleted from cache")
+					WriteUnescapeJSON(w, info, 200)
 					return
 				case entity.SUCCESS:
-					WriteJSON(w, info, 200)
+					logger.FromRequest(r).Infoln("Returning success found in cache for prefix", prefix)
+					WriteUnescapeJSON(w, info, 200)
 					return
 				default:
+					logger.FromRequest(r).WithField("Prefix", prefix).Infoln("info status does not match, going to default")
 					next.ServeHTTP(w, r)
 					return
 				}
 			}
+			logger.FromRequest(r).Infoln("Prefix does not exist in cache as it is first attempt", prefix)
 			next.ServeHTTP(w, r)
 			return
 		})
@@ -230,7 +307,7 @@ func ValidatePrefixRequest() func(handler http.Handler) http.Handler {
 				return
 			}
 
-			containRunSequence, err := regexp.MatchString("runSequence:[\\d+]", unescapedUrl)
+			containRunSequence, err := regexp.MatchString(regexp1, unescapedUrl)
 			if err != nil {
 				WriteInternalError(w, err)
 				logger.FromRequest(r).
@@ -241,7 +318,10 @@ func ValidatePrefixRequest() func(handler http.Handler) http.Handler {
 				return
 			}
 
-			if containRunSequence {
+			regex := regexp.MustCompile(regexp2)
+			containRunSequenceForSimplifiedLogBaseKey := regex.MatchString(unescapedUrl)
+
+			if containRunSequence || containRunSequenceForSimplifiedLogBaseKey {
 				logger.WithContext(context.Background(), logger.FromRequest(r))
 				logger.FromRequest(r).
 					WithField("url", r.URL.String()).

@@ -13,6 +13,8 @@ import static java.lang.String.format;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.steps.stepinfo.security.AnchoreStepInfo;
+import io.harness.beans.steps.stepinfo.security.AquaSecurityStepInfo;
 import io.harness.beans.steps.stepinfo.security.AquaTrivyStepInfo;
 import io.harness.beans.steps.stepinfo.security.AwsEcrStepInfo;
 import io.harness.beans.steps.stepinfo.security.AwsSecurityHubStepInfo;
@@ -37,6 +39,7 @@ import io.harness.beans.steps.stepinfo.security.VeracodeStepInfo;
 import io.harness.beans.steps.stepinfo.security.ZapStepInfo;
 import io.harness.beans.steps.stepinfo.security.shared.STOGenericStepInfo;
 import io.harness.beans.steps.stepinfo.security.shared.STOYamlAdvancedSettings;
+import io.harness.beans.steps.stepinfo.security.shared.STOYamlAnchoreToolData;
 import io.harness.beans.steps.stepinfo.security.shared.STOYamlArgs;
 import io.harness.beans.steps.stepinfo.security.shared.STOYamlAuth;
 import io.harness.beans.steps.stepinfo.security.shared.STOYamlBlackduckToolData;
@@ -350,6 +353,32 @@ public final class STOSettingsUtils {
     return map;
   }
 
+  private static Map<String, String> processSTOAnchoreFields(
+      AnchoreStepInfo stepInfo, String stepType, String identifier) {
+    Map<String, String> map = new HashMap<>();
+
+    map.putAll(processSTOAuthFields(stepInfo.getAuth(), stepInfo.getTarget(), stepType, identifier));
+    map.putAll(processSTOImageFields(stepInfo.getImage(), stepType, identifier));
+
+    STOYamlAnchoreToolData toolData = stepInfo.getTool();
+
+    if (toolData != null) {
+      map.put(getSTOKey(PRODUCT_IMAGE_NAME),
+          resolveStringParameter(TOOL_IMAGE_NAME, stepType, identifier, toolData.getImageName(), false));
+    }
+
+    return map;
+  }
+
+  private static Map<String, String> processSTOAquaSecurityFields(
+      AquaSecurityStepInfo stepInfo, String stepType, String identifier) {
+    Map<String, String> map = new HashMap<>();
+
+    map.putAll(processSTOImageFields(stepInfo.getImage(), stepType, identifier));
+
+    return map;
+  }
+
   private static Map<String, String> processSTOBlackDuckFields(
       BlackDuckStepInfo stepInfo, String stepType, String identifier) {
     Map<String, String> map = new HashMap<>();
@@ -496,6 +525,7 @@ public final class STOSettingsUtils {
 
     map.putAll(processSTOAuthFields(stepInfo.getAuth(), stepInfo.getTarget(), stepType, identifier));
     map.putAll(processSTOImageFields(stepInfo.getImage(), stepType, identifier));
+    map.putAll(processSTOSBOMFields(stepInfo.getSbom()));
 
     return map;
   }
@@ -534,6 +564,8 @@ public final class STOSettingsUtils {
     Map<String, String> map = new HashMap<>();
 
     map.putAll(processSTOImageFields(stepInfo.getImage(), stepType, identifier));
+
+    map.putAll(processSTOSBOMFields(stepInfo.getSbom()));
 
     return map;
   }
@@ -710,14 +742,20 @@ public final class STOSettingsUtils {
     map.putAll(processSTOIngestionFields(stepInfo.getIngestion(), stepType, identifier));
 
     switch (stepInfo.getSTOStepType()) {
+      case ANCHORE:
+        map.putAll(processSTOAnchoreFields((AnchoreStepInfo) stepInfo, stepType, identifier));
+        break;
+      case AQUA_SECURITY:
+        map.putAll(processSTOAquaSecurityFields((AquaSecurityStepInfo) stepInfo, stepType, identifier));
+        break;
+      case AQUA_TRIVY:
+        map.putAll(processSTOAquaTrivyFields((AquaTrivyStepInfo) stepInfo, stepType, identifier));
+        break;
       case AWS_ECR:
         map.putAll(processSTOAwsEcrFields((AwsEcrStepInfo) stepInfo, stepType, identifier));
         break;
       case AWS_SECURITY_HUB:
         map.putAll(processSTOAwsSecurityHubFields((AwsSecurityHubStepInfo) stepInfo, stepType, identifier));
-        break;
-      case AQUA_TRIVY:
-        map.putAll(processSTOAquaTrivyFields((AquaTrivyStepInfo) stepInfo, stepType, identifier));
         break;
       case BLACKDUCK:
         map.putAll(processSTOBlackDuckFields((BlackDuckStepInfo) stepInfo, stepType, identifier));

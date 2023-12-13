@@ -12,9 +12,16 @@ import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.pms.sdk.core.plan.PlanNode;
+import io.harness.pms.sdk.core.plan.PlanNode.PlanNodeBuilder;
 import io.harness.pms.sdk.core.plan.creation.beans.GraphLayoutResponse;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
+import io.harness.pms.timeout.AbsoluteSdkTimeoutTrackerParameters;
+import io.harness.pms.timeout.SdkTimeoutObtainment;
+import io.harness.pms.yaml.ParameterField;
+import io.harness.timeout.trackers.absolute.AbsoluteTimeoutTrackerFactory;
+import io.harness.utils.TimeoutUtils;
+import io.harness.yaml.core.timeout.Timeout;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -54,5 +61,19 @@ public abstract class ChildrenPlanCreator<T> implements PartialPlanCreator<T> {
     finalResponse.addNode(createPlanForParentNode(ctx, config, childrenNodeIds));
     finalResponse.setGraphLayoutResponse(getLayoutNodeInfo(ctx, config));
     return finalResponse;
+  }
+
+  public PlanNodeBuilder setStageTimeoutObtainment(ParameterField<Timeout> timeout, PlanNodeBuilder planNodeBuilder) {
+    if (ParameterField.isBlank(timeout)) {
+      return planNodeBuilder;
+    }
+
+    return planNodeBuilder.timeoutObtainment(
+        SdkTimeoutObtainment.builder()
+            .dimension(AbsoluteTimeoutTrackerFactory.DIMENSION)
+            .parameters(AbsoluteSdkTimeoutTrackerParameters.builder()
+                            .timeout(TimeoutUtils.getParameterTimeoutString(timeout))
+                            .build())
+            .build());
   }
 }

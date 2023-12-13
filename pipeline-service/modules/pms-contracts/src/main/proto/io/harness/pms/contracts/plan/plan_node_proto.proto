@@ -31,13 +31,28 @@ message PlanNodeProto {
   string skipCondition = 12;
   string serviceName = 13;
   repeated io.harness.timeout.contracts.TimeoutObtainment timeoutObtainments = 14;
-  string stepInputs = 15;
+  string stepInputs = 15 [deprecated = true];
   string whenCondition = 16;
   bool skipUnresolvedExpressionsCheck = 17;
   string stageFqn = 18;
   string executionInputTemplate = 19;
   ExpressionMode expressionMode = 20;
   map<string, io.harness.pms.contracts.advisers.AdvisorObtainmentList> adviserObtainmentsForExecutionMode = 21;
+  repeated string stepInputsKeyExclude = 22;
+  map<string, Export> exports = 23;
+}
+
+message Export {
+  ExportValue value = 1;
+  string desc = 2;
+}
+
+message ExportValue {
+  oneof kind {
+    string stringValue = 3;
+    double numberValue = 2;
+    bool boolValue = 4;
+  }
 }
 
 enum ExpressionMode {

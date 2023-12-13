@@ -10,15 +10,18 @@ package io.harness.delegate.beans.connector.gcpconnector;
 import static io.harness.ConnectorConstants.INHERIT_FROM_DELEGATE_TYPE_ERROR_MSG;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
+import io.harness.annotation.RecasterAlias;
 import io.harness.beans.DecryptableEntity;
 import io.harness.connector.DelegateSelectable;
 import io.harness.connector.ManagerExecutable;
+import io.harness.connector.WithProxy;
 import io.harness.delegate.beans.connector.ConnectorConfigDTO;
 import io.harness.delegate.beans.connector.ConnectorConfigOutcomeDTO;
 import io.harness.delegate.beans.connector.gcpconnector.outcome.GcpConnectorCredentialOutcomeDTO;
 import io.harness.delegate.beans.connector.gcpconnector.outcome.GcpConnectorOutcomeDTO;
 import io.harness.exception.InvalidRequestException;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.annotations.ApiModel;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -44,10 +47,13 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @ApiModel("GcpConnector")
 @Schema(name = "GcpConnector", description = "This contains GCP connector details")
-public class GcpConnectorDTO extends ConnectorConfigDTO implements DelegateSelectable, ManagerExecutable {
+@RecasterAlias("io.harness.delegate.beans.connector.gcpconnector.GcpConnectorDTO")
+public class GcpConnectorDTO extends ConnectorConfigDTO implements DelegateSelectable, ManagerExecutable, WithProxy {
   @Valid @NotNull GcpConnectorCredentialDTO credential;
   Set<String> delegateSelectors;
   @Builder.Default Boolean executeOnDelegate = true;
+  @Builder.Default Boolean proxy = false;
+  @JsonIgnore String proxyUrl;
 
   @Override
   public List<DecryptableEntity> getDecryptableEntities() {

@@ -15,9 +15,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.joor.Reflect.on;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.anyBoolean;
-import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -26,7 +23,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.harness.TemplateServiceConfiguration;
 import io.harness.TemplateServiceTestBase;
 import io.harness.account.AccountClient;
 import io.harness.annotations.dev.OwnedBy;
@@ -34,23 +30,22 @@ import io.harness.beans.FeatureName;
 import io.harness.category.element.UnitTests;
 import io.harness.encryption.Scope;
 import io.harness.exception.InvalidRequestException;
-import io.harness.exception.JsonSchemaException;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.template.TemplateEntityType;
-import io.harness.pipeline.yamlschema.PipelineYamlSchemaServiceClient;
 import io.harness.pms.yaml.YamlSchemaResponse;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.rule.Owner;
 import io.harness.template.entity.GlobalTemplateEntity;
 import io.harness.template.entity.TemplateEntity;
-import io.harness.template.helpers.TemplateYamlSchemaMergeHelper;
-import io.harness.yaml.schema.YamlSchemaProvider;
+import io.harness.yaml.individualschema.TemplateSchemaParserFactory;
+import io.harness.yaml.individualschema.TemplateSchemaParserV0;
 import io.harness.yaml.schema.client.YamlSchemaClient;
 import io.harness.yaml.validator.InvalidYamlException;
 import io.harness.yaml.validator.YamlSchemaValidator;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -66,23 +61,19 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
-import org.mockito.stubbing.Answer;
 import retrofit2.Call;
 
 @OwnedBy(CDC)
 public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
   @Spy @InjectMocks NGTemplateSchemaServiceImpl ngTemplateSchemaService;
 
-  @Mock TemplateYamlSchemaMergeHelper templateYamlSchemaMergeHelper;
-
-  @Mock PipelineYamlSchemaServiceClient pipelineYamlSchemaServiceClient;
   @Mock Map<String, YamlSchemaClient> yamlSchemaClientMapper;
   @Mock AccountClient accountClient;
 
-  @Mock YamlSchemaProvider yamlSchemaProvider;
-
   @Mock YamlSchemaValidator yamlSchemaValidator;
-  @Mock TemplateServiceConfiguration templateServiceConfiguration;
+
+  @Mock TemplateSchemaParserV0 templateSchemaParserV0;
+  @Mock TemplateSchemaParserFactory templateSchemaParserFactory;
   private final String ACCOUNT_ID = RandomStringUtils.randomAlphanumeric(6);
   private final String ORG_IDENTIFIER = "orgId";
   private final String PROJ_IDENTIFIER = "projId";
@@ -120,19 +111,10 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
     MockitoAnnotations.openMocks(this);
     String filename = "template.yaml";
     yaml = readFile(filename);
-
-    on(ngTemplateSchemaService).set("yamlSchemaProvider", yamlSchemaProvider);
+    when(templateSchemaParserFactory.getTemplateSchemaParser("v0")).thenReturn(templateSchemaParserV0);
+    when(templateSchemaParserV0.getIndividualSchema(any()))
+        .thenReturn((ObjectNode) readJsonFile("template-schema.json"));
     on(ngTemplateSchemaService).set("yamlSchemaValidator", yamlSchemaValidator);
-    on(ngTemplateSchemaService).set("allowedParallelStages", 1);
-
-    MockedStatic<TemplateYamlSchemaMergeHelper> templateYamlSchemaMergeHelperMockedStatic =
-        mockStatic(TemplateYamlSchemaMergeHelper.class);
-    when(TemplateYamlSchemaMergeHelper.isFeatureFlagEnabled(any(), anyString(), any())).thenReturn(false);
-    templateYamlSchemaMergeHelperMockedStatic
-        .when(() -> TemplateYamlSchemaMergeHelper.mergeYamlSchema(any(), any(), any(), any()))
-        .thenAnswer((Answer<Void>) invocation -> null);
-    when(yamlSchemaProvider.getYamlSchema(any(), any(), any(), any())).thenReturn(readJsonFile("template-schema.json"));
-
     pipelineTemplateEntity = TemplateEntity.builder()
                                  .accountId(ACCOUNT_ID)
                                  .orgIdentifier(ORG_IDENTIFIER)
@@ -165,42 +147,18 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
   @Test
   @Owner(developers = ABHINAV_MITTAL)
   @Category(UnitTests.class)
-  public void getTemplateSchemaWithTemplateChildTypeNull() {
-    assertThat(ngTemplateSchemaService.getTemplateSchema(
-                   ACCOUNT_ID, PROJ_IDENTIFIER, ORG_IDENTIFIER, Scope.PROJECT, null, TemplateEntityType.STAGE_TEMPLATE))
-        .isEqualTo(readJsonFile("template-schema.json"));
-  }
-
-  @Test
-  @Owner(developers = ABHINAV_MITTAL)
-  @Category(UnitTests.class)
-  public void getTemplateSchemaWithException() {
-    Call<ResponseDTO<YamlSchemaResponse>> requestCall = mock(Call.class);
-    doReturn(requestCall).when(pipelineYamlSchemaServiceClient).getYamlSchema(any(), any(), any(), any(), any(), any());
-    try (MockedStatic<NGRestUtils> mockStatic = mockStatic(NGRestUtils.class)) {
-      mockStatic.when(() -> NGRestUtils.getResponse(requestCall)).thenThrow(new JsonSchemaException("Exception"));
-
-      assertThatThrownBy(() -> {
-        ngTemplateSchemaService.getTemplateSchema(
-            ACCOUNT_ID, PROJ_IDENTIFIER, ORG_IDENTIFIER, Scope.PROJECT, null, TemplateEntityType.PIPELINE_TEMPLATE);
-      }).isInstanceOf(JsonSchemaException.class);
-    }
-  }
-
-  @Test
-  @Owner(developers = ABHINAV_MITTAL)
-  @Category(UnitTests.class)
   public void testValidateStepSchemaBy() throws Exception {
-    when(yamlSchemaValidator.validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString()))
-        .thenReturn(Collections.emptySet());
+    doReturn(false)
+        .when(ngTemplateSchemaService)
+        .isFeatureFlagEnabled(FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, ACCOUNT_ID, accountClient);
+    when(yamlSchemaValidator.validate(anyString(), anyString())).thenReturn(Collections.emptySet());
     Call<ResponseDTO<YamlSchemaResponse>> requestCall = mock(Call.class);
-    doReturn(requestCall).when(pipelineYamlSchemaServiceClient).getYamlSchema(any(), any(), any(), any(), any(), any());
     try (MockedStatic<NGRestUtils> mockStatic = mockStatic(NGRestUtils.class)) {
       YamlSchemaResponse yamlSchemaResponse =
           YamlSchemaResponse.builder().schema(null).schemaErrorResponse(null).build();
       mockStatic.when(() -> NGRestUtils.getResponse(requestCall)).thenReturn(yamlSchemaResponse);
       ngTemplateSchemaService.validateYamlSchemaInternal(stepTemplateEntity);
-      verify(yamlSchemaValidator, times(1)).validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString());
+      verify(yamlSchemaValidator, times(1)).validate(anyString(), anyString());
     }
   }
 
@@ -208,16 +166,17 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
   @Owner(developers = ABHINAV_MITTAL)
   @Category(UnitTests.class)
   public void testValidatePipelineSchema() throws IOException {
-    when(yamlSchemaValidator.validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString()))
-        .thenReturn(Collections.emptySet());
+    doReturn(false)
+        .when(ngTemplateSchemaService)
+        .isFeatureFlagEnabled(FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, ACCOUNT_ID, accountClient);
+    when(yamlSchemaValidator.validate(anyString(), anyString())).thenReturn(Collections.emptySet());
     Call<ResponseDTO<YamlSchemaResponse>> requestCall = mock(Call.class);
-    doReturn(requestCall).when(pipelineYamlSchemaServiceClient).getYamlSchema(any(), any(), any(), any(), any(), any());
     try (MockedStatic<NGRestUtils> mockStatic = mockStatic(NGRestUtils.class)) {
       YamlSchemaResponse yamlSchemaResponse =
           YamlSchemaResponse.builder().schema(null).schemaErrorResponse(null).build();
       mockStatic.when(() -> NGRestUtils.getResponse(requestCall)).thenReturn(yamlSchemaResponse);
       ngTemplateSchemaService.validateYamlSchemaInternal(stepTemplateEntity);
-      verify(yamlSchemaValidator, times(1)).validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString());
+      verify(yamlSchemaValidator, times(1)).validate(anyString(), anyString());
     }
   }
 
@@ -225,16 +184,17 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
   @Owner(developers = UTKARSH_CHOUBEY)
   @Category(UnitTests.class)
   public void testValidPipelineTemplateSchema() throws IOException {
-    when(yamlSchemaValidator.validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString()))
-        .thenReturn(Collections.emptySet());
+    doReturn(false)
+        .when(ngTemplateSchemaService)
+        .isFeatureFlagEnabled(FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, ACCOUNT_ID, accountClient);
+    when(yamlSchemaValidator.validate(anyString(), anyString())).thenReturn(Collections.emptySet());
     Call<ResponseDTO<YamlSchemaResponse>> requestCall = mock(Call.class);
-    doReturn(requestCall).when(pipelineYamlSchemaServiceClient).getYamlSchema(any(), any(), any(), any(), any(), any());
     try (MockedStatic<NGRestUtils> mockStatic = mockStatic(NGRestUtils.class)) {
       YamlSchemaResponse yamlSchemaResponse =
           YamlSchemaResponse.builder().schema(null).schemaErrorResponse(null).build();
       mockStatic.when(() -> NGRestUtils.getResponse(requestCall)).thenReturn(yamlSchemaResponse);
       ngTemplateSchemaService.validateYamlSchemaInternal(pipelineTemplateEntity);
-      verify(yamlSchemaValidator, times(1)).validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString());
+      verify(yamlSchemaValidator, times(1)).validate(anyString(), anyString());
     }
   }
 
@@ -242,10 +202,11 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
   @Owner(developers = ABHINAV_MITTAL)
   @Category(UnitTests.class)
   public void testInvalidValidatePipelineSchema() throws IOException {
-    when(yamlSchemaValidator.validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString()))
-        .thenThrow(new InvalidYamlException("msg", null, null));
+    doReturn(false)
+        .when(ngTemplateSchemaService)
+        .isFeatureFlagEnabled(FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, ACCOUNT_ID, accountClient);
+    when(yamlSchemaValidator.validate(anyString(), anyString())).thenThrow(new InvalidYamlException("msg", null, null));
     Call<ResponseDTO<YamlSchemaResponse>> requestCall = mock(Call.class);
-    doReturn(requestCall).when(pipelineYamlSchemaServiceClient).getYamlSchema(any(), any(), any(), any(), any(), any());
     try (MockedStatic<NGRestUtils> mockStatic = mockStatic(NGRestUtils.class)) {
       YamlSchemaResponse yamlSchemaResponse =
           YamlSchemaResponse.builder().schema(null).schemaErrorResponse(null).build();
@@ -259,13 +220,11 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
   @Owner(developers = UTKARSH_CHOUBEY)
   @Category(UnitTests.class)
   public void testInvalidValidatePipelineSchemaWithSchemaValidationDisabled() throws IOException {
-    when(TemplateYamlSchemaMergeHelper.isFeatureFlagEnabled(
-             FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, ACCOUNT_ID, accountClient))
-        .thenReturn(true);
-    when(yamlSchemaValidator.validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString()))
-        .thenThrow(new InvalidYamlException("msg", null, null));
+    doReturn(true)
+        .when(ngTemplateSchemaService)
+        .isFeatureFlagEnabled(FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, ACCOUNT_ID, accountClient);
+    when(yamlSchemaValidator.validate(anyString(), anyString())).thenThrow(new InvalidYamlException("msg", null, null));
     Call<ResponseDTO<YamlSchemaResponse>> requestCall = mock(Call.class);
-    doReturn(requestCall).when(pipelineYamlSchemaServiceClient).getYamlSchema(any(), any(), any(), any(), any(), any());
     try (MockedStatic<NGRestUtils> mockStatic = mockStatic(NGRestUtils.class)) {
       YamlSchemaResponse yamlSchemaResponse =
           YamlSchemaResponse.builder().schema(null).schemaErrorResponse(null).build();
@@ -278,13 +237,11 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
   @Owner(developers = UTKARSH_CHOUBEY)
   @Category(UnitTests.class)
   public void testUnsupportedTemplateSchemaType() throws IOException {
-    when(TemplateYamlSchemaMergeHelper.isFeatureFlagEnabled(
-             FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, ACCOUNT_ID, accountClient))
-        .thenReturn(true);
-    when(yamlSchemaValidator.validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString()))
-        .thenThrow(new InvalidYamlException("msg", null, null));
+    doReturn(false)
+        .when(ngTemplateSchemaService)
+        .isFeatureFlagEnabled(FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, "acc", accountClient);
+    when(yamlSchemaValidator.validate(anyString(), anyString())).thenThrow(new InvalidYamlException("msg", null, null));
     Call<ResponseDTO<YamlSchemaResponse>> requestCall = mock(Call.class);
-    doReturn(requestCall).when(pipelineYamlSchemaServiceClient).getYamlSchema(any(), any(), any(), any(), any(), any());
     try (MockedStatic<NGRestUtils> mockStatic = mockStatic(NGRestUtils.class)) {
       YamlSchemaResponse yamlSchemaResponse =
           YamlSchemaResponse.builder().schema(null).schemaErrorResponse(null).build();
@@ -301,11 +258,10 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
   @Owner(developers = UTKARSH_CHOUBEY)
   @Category(UnitTests.class)
   public void testArtifactSourceTemplateSchemaType() throws IOException {
-    when(TemplateYamlSchemaMergeHelper.isFeatureFlagEnabled(
-             FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, ACCOUNT_ID, accountClient))
-        .thenReturn(true);
-    when(yamlSchemaValidator.validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString()))
-        .thenReturn(Collections.emptySet());
+    doReturn(false)
+        .when(ngTemplateSchemaService)
+        .isFeatureFlagEnabled(FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, "acc", accountClient);
+    when(yamlSchemaValidator.validate(anyString(), anyString())).thenReturn(Collections.emptySet());
     Call<ResponseDTO<YamlSchemaResponse>> requestCall2 = mock(Call.class);
     YamlSchemaClient mockClient = mock(YamlSchemaClient.class);
     when(yamlSchemaClientMapper.get("cd")).thenReturn(mockClient);
@@ -326,11 +282,10 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
   @Owner(developers = UTKARSH_CHOUBEY)
   @Category(UnitTests.class)
   public void testCustomDeploymentTemplateSchemaType() throws IOException {
-    when(TemplateYamlSchemaMergeHelper.isFeatureFlagEnabled(
-             FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, ACCOUNT_ID, accountClient))
-        .thenReturn(true);
-    when(yamlSchemaValidator.validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString()))
-        .thenReturn(Collections.emptySet());
+    doReturn(false)
+        .when(ngTemplateSchemaService)
+        .isFeatureFlagEnabled(FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, "acc", accountClient);
+    when(yamlSchemaValidator.validate(anyString(), anyString())).thenReturn(Collections.emptySet());
     Call<ResponseDTO<YamlSchemaResponse>> requestCall2 = mock(Call.class);
     YamlSchemaClient mockClient = mock(YamlSchemaClient.class);
     when(yamlSchemaClientMapper.get("cd")).thenReturn(mockClient);
@@ -351,11 +306,10 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
   @Owner(developers = UTKARSH_CHOUBEY)
   @Category(UnitTests.class)
   public void testCustomDeploymentGlobalTemplateSchemaType() throws IOException {
-    when(TemplateYamlSchemaMergeHelper.isFeatureFlagEnabled(
-             FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, ACCOUNT_ID, accountClient))
-        .thenReturn(true);
-    when(yamlSchemaValidator.validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString()))
-        .thenReturn(Collections.emptySet());
+    doReturn(false)
+        .when(ngTemplateSchemaService)
+        .isFeatureFlagEnabled(FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, "acc", accountClient);
+    when(yamlSchemaValidator.validate(anyString(), anyString())).thenReturn(Collections.emptySet());
     Call<ResponseDTO<YamlSchemaResponse>> requestCall2 = mock(Call.class);
     YamlSchemaClient mockClient = mock(YamlSchemaClient.class);
     when(yamlSchemaClientMapper.get("cd")).thenReturn(mockClient);
@@ -376,8 +330,10 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
   @Owner(developers = UTKARSH_CHOUBEY)
   @Category(UnitTests.class)
   public void testValidateInvalidYamlExceptionIsThrownWhenAnyExceptionIsEncountered() throws Exception {
-    when(yamlSchemaValidator.validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString()))
-        .thenThrow(new NullPointerException("msg"));
+    doReturn(false)
+        .when(ngTemplateSchemaService)
+        .isFeatureFlagEnabled(FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, ACCOUNT_ID, accountClient);
+    when(yamlSchemaValidator.validate(anyString(), anyString())).thenThrow(new NullPointerException("msg"));
     TemplateEntity templateEntity = TemplateEntity.builder()
                                         .accountId(ACCOUNT_ID)
                                         .orgIdentifier(ORG_IDENTIFIER)
@@ -392,7 +348,6 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
                                         .templateScope(Scope.PROJECT)
                                         .build();
     Call<ResponseDTO<YamlSchemaResponse>> requestCall = mock(Call.class);
-    doReturn(requestCall).when(pipelineYamlSchemaServiceClient).getYamlSchema(any(), any(), any(), any(), any(), any());
     try (MockedStatic<NGRestUtils> mockStatic = mockStatic(NGRestUtils.class)) {
       YamlSchemaResponse yamlSchemaResponse =
           YamlSchemaResponse.builder().schema(null).schemaErrorResponse(null).build();
@@ -405,9 +360,11 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
   @Test
   @Owner(developers = UTKARSH_CHOUBEY)
   @Category(UnitTests.class)
-  public void testValidateWithStaticSchema() throws Exception {
-    when(yamlSchemaValidator.validate(anyString(), anyString(), anyBoolean(), anyInt(), anyString()))
-        .thenReturn(Collections.emptySet());
+  public void testValidateWithIndividualStaticSchema() throws Exception {
+    doReturn(false)
+        .when(ngTemplateSchemaService)
+        .isFeatureFlagEnabled(FeatureName.DISABLE_TEMPLATE_SCHEMA_VALIDATION, ACCOUNT_ID, accountClient);
+    when(yamlSchemaValidator.validate(anyString(), anyString())).thenReturn(Collections.emptySet());
     TemplateEntity templateEntity = TemplateEntity.builder()
                                         .accountId(ACCOUNT_ID)
                                         .orgIdentifier(ORG_IDENTIFIER)
@@ -422,10 +379,7 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
                                         .templateScope(Scope.PROJECT)
                                         .build();
 
-    when(TemplateYamlSchemaMergeHelper.isFeatureFlagEnabled(eq(FeatureName.PIE_STATIC_YAML_SCHEMA), anyString(), any()))
-        .thenReturn(true);
     Call<ResponseDTO<YamlSchemaResponse>> requestCall = mock(Call.class);
-    doReturn(requestCall).when(pipelineYamlSchemaServiceClient).getYamlSchema(any(), any(), any(), any(), any(), any());
     try (MockedStatic<NGRestUtils> mockStatic = mockStatic(NGRestUtils.class)) {
       YamlSchemaResponse yamlSchemaResponse =
           YamlSchemaResponse.builder().schema(null).schemaErrorResponse(null).build();
@@ -437,21 +391,8 @@ public class NGTemplateSchemaServiceImplTest extends TemplateServiceTestBase {
   @Test
   @Owner(developers = UTKARSH_CHOUBEY)
   @Category(UnitTests.class)
-  public void testGetStaticSchema() throws Exception {
-    ngTemplateSchemaService.getStaticYamlSchema(
-        ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, "shellscript", TemplateEntityType.STEP_TEMPLATE, Scope.ORG, "v0");
-  }
-
-  @Test
-  @Owner(developers = UTKARSH_CHOUBEY)
-  @Category(UnitTests.class)
-  public void testCalculateFileURL() throws Exception {
-    String path = "https://raw.githubusercontent.com/harness/harness-schema/main/%s/%s";
-    when(templateServiceConfiguration.getStaticSchemaFileURL()).thenReturn(path);
-    String value = ngTemplateSchemaService.calculateFileURL(TemplateEntityType.ARTIFACT_SOURCE_TEMPLATE, "v0");
-    assertThat(value).isEqualTo("https://raw.githubusercontent.com/harness/harness-schema/main/v0/template.json");
-
-    value = ngTemplateSchemaService.calculateFileURL(TemplateEntityType.MONITORED_SERVICE_TEMPLATE, "v0");
-    assertThat(value).isEqualTo("https://raw.githubusercontent.com/harness/harness-schema/main/v0/template.json");
+  public void testGetStaticSchemaForAllEntities() {
+    ObjectNode schema = ngTemplateSchemaService.getIndividualStaticSchema("stage", "Deployment", "v0");
+    assertThat(schema).isNotNull();
   }
 }

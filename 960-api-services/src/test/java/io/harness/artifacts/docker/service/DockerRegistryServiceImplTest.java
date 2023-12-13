@@ -12,6 +12,7 @@ import static io.harness.delegate.beans.connector.docker.DockerRegistryProviderT
 import static io.harness.delegate.beans.connector.docker.DockerRegistryProviderType.OTHER;
 import static io.harness.exception.ExceptionUtils.getMessage;
 import static io.harness.logging.LoggingInitializer.initializeLogging;
+import static io.harness.rule.OwnerRule.ABHISHEK;
 import static io.harness.rule.OwnerRule.ANSHUL;
 import static io.harness.rule.OwnerRule.ARCHIT;
 import static io.harness.rule.OwnerRule.DEEPAK_PUTHRAYA;
@@ -42,6 +43,7 @@ import static org.mockito.Mockito.when;
 import io.harness.CategoryTest;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.artifact.ArtifactMetadataKeys;
 import io.harness.artifacts.beans.BuildDetailsInternal;
 import io.harness.artifacts.docker.DockerImageTagResponse;
 import io.harness.artifacts.docker.DockerRegistryRestClient;
@@ -71,6 +73,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import okhttp3.MediaType;
+import okhttp3.ResponseBody;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -80,6 +84,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import retrofit2.Response;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 public class DockerRegistryServiceImplTest extends CategoryTest {
@@ -556,6 +561,28 @@ public class DockerRegistryServiceImplTest extends CategoryTest {
   }
 
   @Test
+  @Owner(developers = ABHISHEK)
+  @Category(UnitTests.class)
+  public void testIsSuccessfulRateLimitExceedResponse() {
+    Response<DockerImageTagResponse> response =
+        Response.error(429, ResponseBody.create(MediaType.parse("text/plain"), "MSG"));
+    assertThatThrownBy(() -> DockerRegistryServiceImpl.isSuccessful(response))
+        .isInstanceOf(HintException.class)
+        .hasMessage("Image pull rate limit reached");
+  }
+
+  @Test
+  @Owner(developers = ABHISHEK)
+  @Category(UnitTests.class)
+  public void testIsSuccessfulRateLimitExceedResponsePublicRegistry() {
+    Response<DockerImageTagResponse> response =
+        Response.error(429, ResponseBody.create(MediaType.parse("text/plain"), "MSG"));
+    assertThatThrownBy(() -> DockerRegistryServiceImpl.isSuccessfulPublicRegistry(response))
+        .isInstanceOf(HintException.class)
+        .hasMessage("Image pull rate limit reached. Please authenticate Docker connector using Username and Password");
+  }
+
+  @Test
   @Owner(developers = ANSHUL)
   @Category(UnitTests.class)
   public void testIsSuccessfulErrorCode500() {
@@ -643,12 +670,43 @@ public class DockerRegistryServiceImplTest extends CategoryTest {
     doReturn(dockerRegistryRestClient).when(dockerRestClientFactory).getDockerRegistryRestClient(dockerConfig2);
     wireMockRule.stubFor(get(urlEqualTo("/v2/")).willReturn(aResponse().withStatus(200)));
     wireMockRule.stubFor(get(urlEqualTo("/")).willReturn(aResponse().withStatus(400)));
-    assertThat(dockerRegistryService.validateCredentials(dockerConfig));
+    assertThat(dockerRegistryService.validateCredentials(dockerConfig)).isTrue();
     url2 = "http://localhost:" + wireMockRule.port() + "/v2/";
     dockerConfig2 =
         DockerInternalConfig.builder().dockerRegistryUrl(url2).username("username").password("password").build();
     doReturn(dockerRegistryRestClient).when(dockerRestClientFactory).getDockerRegistryRestClient(dockerConfig2);
-    assertThat(dockerRegistryService.validateCredentials(dockerConfig));
+    assertThat(dockerRegistryService.validateCredentials(dockerConfig)).isTrue();
+  }
+
+  @Test
+  @Owner(developers = DEEPAK_PUTHRAYA)
+  @Category(UnitTests.class)
+  public void testForWithoutSlash401() {
+    String url2 = "http://localhost:" + wireMockRule.port() + "/";
+    DockerInternalConfig dockerConfig2 =
+        DockerInternalConfig.builder().dockerRegistryUrl(url2).username("username").password("password").build();
+    doReturn(dockerRegistryRestClient).when(dockerRestClientFactory).getDockerRegistryRestClient(dockerConfig2);
+    wireMockRule.stubFor(get(urlEqualTo("/v2/")).willReturn(aResponse().withStatus(200)));
+    wireMockRule.stubFor(get(urlEqualTo("/v2")).willReturn(aResponse().withStatus(401)));
+    assertThat(dockerRegistryService.validateCredentials(dockerConfig)).isTrue();
+  }
+
+  @Test
+  @Owner(developers = DEEPAK_PUTHRAYA)
+  @Category(UnitTests.class)
+  public void testForWithSlash401() {
+    String url2 = "http://localhost:" + wireMockRule.port() + "/";
+    DockerInternalConfig dockerConfig2 =
+        DockerInternalConfig.builder().dockerRegistryUrl(url2).username("username").password("password").build();
+    doReturn(dockerRegistryRestClient).when(dockerRestClientFactory).getDockerRegistryRestClient(dockerConfig2);
+    wireMockRule.stubFor(get(urlEqualTo("/v2/")).willReturn(aResponse().withStatus(401)));
+    wireMockRule.stubFor(get(urlEqualTo("/v2")).willReturn(aResponse().withStatus(404)));
+    assertThatThrownBy(() -> dockerRegistryService.validateCredentials(dockerConfig))
+        .isInstanceOf(HintException.class)
+        .getCause()
+        .isInstanceOf(ExplanationException.class)
+        .extracting("message")
+        .isEqualTo("Check if the provided credentials are correct");
   }
 
   @Test
@@ -757,5 +815,29 @@ public class DockerRegistryServiceImplTest extends CategoryTest {
     BuildDetailsInternal buildDetailsInternal =
         dockerRegistryService.verifyBuildNumber(dockerConfig, "image", "latest");
     assertThat(buildDetailsInternal.getNumber()).isEqualTo("latest");
+  }
+
+  @Test
+  @Owner(developers = ABHISHEK)
+  @Category(UnitTests.class)
+  public void testVerifyImageTag_SHAToTagField() {
+    int port = wireMockRule.port();
+    doReturn(dockerRegistryRestClient).when(dockerRestClientFactory).getDockerRegistryRestClient(dockerConfig);
+    wireMockRule.stubFor(get(urlEqualTo("/v2/image/manifests/sha256:1234"))
+                             .willReturn(aResponse().withStatus(401).withHeader("Www-Authenticate",
+                                 "Bearer realm=\"http://localhost:" + port
+                                     + "/oauth2/token\",service=\"test.azurecr.io\",scope=\"somevalue\"")));
+    wireMockRule.stubFor(
+        get(urlEqualTo("/v2/image/manifests/sha256:1234"))
+            .withHeader("Authorization", equalTo("Bearer dockerRegistryToken"))
+            .willReturn(aResponse().withStatus(200).withBody(JsonUtils.asJson(dockerImageTagResponse))));
+    wireMockRule.stubFor(get(urlEqualTo("/oauth2/token?service=test.azurecr.io&scope=somevalue"))
+                             .willReturn(aResponse().withStatus(200).withBody(JsonUtils.asJson(dockerRegistryToken))));
+
+    BuildDetailsInternal buildDetailsInternal =
+        dockerRegistryService.verifyBuildNumber(dockerConfig, "image", "sha256:1234");
+    assertThat(buildDetailsInternal.getNumber()).isEqualTo("sha256:1234");
+    assertThat(buildDetailsInternal.getMetadata().get(ArtifactMetadataKeys.IMAGE))
+        .isEqualTo(String.format("localhost:%s/image@sha256:1234", port));
   }
 }

@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -45,6 +46,7 @@ import io.harness.cdng.manifest.yaml.storeConfig.StoreConfigWrapper;
 import io.harness.cdng.service.steps.constants.ServiceStepV3Constants;
 import io.harness.cdng.service.steps.helpers.ServiceStepsHelper;
 import io.harness.cdng.steps.EmptyStepParameters;
+import io.harness.cdng.utilities.ServiceEnvironmentsLogCallbackUtility;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.connector.ConnectorResponseDTO;
 import io.harness.connector.services.ConnectorService;
@@ -76,6 +78,7 @@ import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.rule.OwnerRule;
+import io.harness.secretusage.SecretRuntimeUsageService;
 import io.harness.service.DelegateGrpcClientWrapper;
 import io.harness.steps.EntityReferenceExtractorUtils;
 import io.harness.steps.TaskRequestsUtils;
@@ -113,9 +116,11 @@ public class ConfigFilesStepV2Test extends CategoryTest {
   @Mock private CDStepHelper cdStepHelper;
   @Mock EntityDetailProtoToRestMapper entityDetailProtoToRestMapper;
   @Mock private EntityReferenceExtractorUtils entityReferenceExtractorUtils;
+  @Mock private SecretRuntimeUsageService secretRuntimeUsageService;
   @Mock private FileStoreService fileStoreService;
   @Mock private PipelineRbacHelper pipelineRbacHelper;
   @Mock private ConfigGitFilesMapper configGitFilesMapper;
+  @Mock private ServiceEnvironmentsLogCallbackUtility serviceEnvironmentsLogUtility;
   @InjectMocks private final ConfigFilesStepV2 step = new ConfigFilesStepV2();
   private AutoCloseable mocks;
   private static final String ACCOUNT_ID = "accountId";
@@ -132,12 +137,15 @@ public class ConfigFilesStepV2Test extends CategoryTest {
         .when(connectorService)
         .get(anyString(), anyString(), anyString(), anyString());
 
-    // mock serviceStepsHelper
-    doReturn(mockNgLogCallback).when(serviceStepsHelper).getServiceLogCallback(Mockito.any());
-    doReturn(mockNgLogCallback).when(serviceStepsHelper).getServiceLogCallback(Mockito.any(), Mockito.anyBoolean());
+    // mock NgLogCallbackUtility
+    doReturn(mockNgLogCallback).when(serviceEnvironmentsLogUtility).getLogCallback(Mockito.any(), Mockito.anyBoolean());
+
     doCallRealMethod()
         .when(cdStepHelper)
         .mapTaskRequestToDelegateTaskRequest(any(), any(), anySet(), anyString(), anyBoolean());
+    doCallRealMethod()
+        .when(cdStepHelper)
+        .mapTaskRequestToDelegateTaskRequest(any(), any(), anyList(), anyString(), anyBoolean());
     doAnswer(invocationOnMock -> UUIDGenerator.generateUuid())
         .when(delegateGrpcClientWrapper)
         .submitAsyncTaskV2(any(DelegateTaskRequest.class), any(Duration.class));

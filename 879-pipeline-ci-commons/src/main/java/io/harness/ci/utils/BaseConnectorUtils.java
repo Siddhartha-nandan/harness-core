@@ -23,10 +23,13 @@ import static java.lang.String.format;
 import io.harness.beans.IdentifierRef;
 import io.harness.beans.environment.ConnectorConversionInfo;
 import io.harness.ci.buildstate.SecretUtils;
+import io.harness.ci.metrics.ExecutionMetricsService;
 import io.harness.connector.ConnectorDTO;
 import io.harness.connector.ConnectorResourceClient;
+import io.harness.connector.DelegateSelectable;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails.ConnectorDetailsBuilder;
+import io.harness.delegate.beans.ci.pod.EnvVariableEnum;
 import io.harness.delegate.beans.ci.pod.SSHKeyDetails;
 import io.harness.delegate.beans.connector.ConnectorType;
 import io.harness.delegate.beans.connector.artifactoryconnector.ArtifactoryAuthType;
@@ -45,6 +48,7 @@ import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorCredentialDT
 import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorDTO;
 import io.harness.delegate.beans.connector.gcpconnector.GcpCredentialType;
 import io.harness.delegate.beans.connector.gcpconnector.GcpManualDetailsDTO;
+import io.harness.delegate.beans.connector.gcpconnector.GcpOidcDetailsDTO;
 import io.harness.delegate.beans.connector.k8Connector.KubernetesAuthCredentialDTO;
 import io.harness.delegate.beans.connector.k8Connector.KubernetesClusterConfigDTO;
 import io.harness.delegate.beans.connector.k8Connector.KubernetesClusterDetailsDTO;
@@ -97,13 +101,13 @@ import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.secretmanagerclient.services.api.SecretManagerClientService;
 import io.harness.security.encryption.EncryptedDataDetail;
 import io.harness.serializer.JsonUtils;
+import io.harness.utils.GcpOidcAuthenticator;
 import io.harness.utils.IdentifierRefHelper;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import java.io.IOException;
-import java.net.URL;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -122,6 +126,10 @@ public class BaseConnectorUtils {
   @Named("PRIVILEGED") @Inject private SecretManagerClientService secretManagerClientService;
   @Inject private ConnectorResourceClient connectorResourceClient;
   @Inject private SecretUtils secretUtils;
+  @Inject private ExecutionMetricsService executionMetricsService;
+  private static final String CI_Connector_Latency = "ci_connector_latency";
+
+  @Inject private GcpOidcAuthenticator gcpOidcAuthenticator;
 
   public final Duration RETRY_SLEEP_DURATION = Duration.ofSeconds(2);
   public final int MAX_ATTEMPTS = 6;
@@ -158,13 +166,15 @@ public class BaseConnectorUtils {
     return getConnectorDetailsInternalWithRetries(ngAccess, identifierRef);
   }
 
-  public ConnectorDetails getHarnessConnectorDetails(NGAccess ngAccess, String baseUrl, String authToken) {
-    log.info("Generated harness scm baseurl : {}", baseUrl);
+  public ConnectorDetails getHarnessConnectorDetails(
+      NGAccess ngAccess, String gitBaseUrl, String authToken, String apiBaseUrl) {
+    log.info("Generated harness scm baseurl : {}", gitBaseUrl);
     String accountId = ngAccess.getAccountIdentifier();
     HarnessConnectorDTO connectorConfigDTO =
         HarnessConnectorDTO.builder()
             .connectionType(GitConnectionType.ACCOUNT)
-            .url(baseUrl + "/" + accountId)
+            .url(gitBaseUrl + "/" + accountId)
+            .apiUrl(apiBaseUrl)
             .authentication(
                 HarnessAuthenticationDTO.builder()
                     .authType(GitAuthType.HTTP)
@@ -186,8 +196,7 @@ public class BaseConnectorUtils {
                            .build())
             .build();
 
-    HarnessHttpCredentialsDTO harnessHttpCredentialsDTO =
-        (HarnessHttpCredentialsDTO) connectorConfigDTO.getAuthentication().getCredentials();
+    HarnessHttpCredentialsDTO harnessHttpCredentialsDTO = connectorConfigDTO.getAuthentication().getCredentials();
     List<EncryptedDataDetail> encryptedDataDetails =
         secretManagerClientService.getEncryptionDetails(ngAccess, harnessHttpCredentialsDTO.getHttpCredentialsSpec());
     encryptedDataDetails.addAll(
@@ -205,21 +214,6 @@ public class BaseConnectorUtils {
     return connectorDetailsBuilder.build();
   }
 
-  public static String getSCMBaseUrl(String baseUrl) {
-    try {
-      URL url = new URL(baseUrl);
-      String host = url.getHost();
-      String protocol = url.getProtocol();
-      if (host.equals("localhost")) {
-        return "";
-      }
-      return protocol + "://" + host + "/code/git";
-    } catch (Exception e) {
-      log.error("There was error while generating scm base URL", e);
-    }
-    return "";
-  }
-
   public ConnectorDetails getConnectorDetailsInternalWithRetries(NGAccess ngAccess, IdentifierRef connectorRef) {
     Instant startTime = Instant.now();
     RetryPolicy<Object> retryPolicy =
@@ -232,6 +226,8 @@ public class BaseConnectorUtils {
         Failsafe.with(retryPolicy).get(() -> { return getConnectorDetailsInternal(ngAccess, connectorRef); });
 
     long elapsedTimeInSecs = Duration.between(startTime, Instant.now()).toMillis() / 1000;
+    executionMetricsService.recordConnectorLatency(
+        connectorRef.getAccountIdentifier(), CI_Connector_Latency, elapsedTimeInSecs);
 
     log.info(
         "Fetched connector details for connector ref successfully {} with scope {} in {} seconds accountId {}, projectId {}",
@@ -247,8 +243,8 @@ public class BaseConnectorUtils {
         .abortOn(ConnectorNotFoundException.class)
         .withDelay(RETRY_SLEEP_DURATION)
         .withMaxAttempts(MAX_ATTEMPTS)
-        .onFailedAttempt(event -> log.info(failedAttemptMessage, event.getAttemptCount(), event.getLastFailure()))
-        .onFailure(event -> log.error(failureMessage, event.getAttemptCount(), event.getFailure()));
+        .onFailedAttempt(event -> log.info(failedAttemptMessage, event.getAttemptCount()))
+        .onFailure(event -> log.error(failureMessage, event.getAttemptCount()));
   }
 
   private ConnectorDetails getConnectorDetailsInternal(NGAccess ngAccess, IdentifierRef connectorRef)
@@ -479,8 +475,8 @@ public class BaseConnectorUtils {
     }
   }
 
-  private ConnectorDetails getGcpConnectorDetails(
-      NGAccess ngAccess, ConnectorDTO connectorDTO, ConnectorDetailsBuilder connectorDetailsBuilder) {
+  private ConnectorDetails getGcpConnectorDetails(NGAccess ngAccess, ConnectorDTO connectorDTO,
+      ConnectorDetailsBuilder connectorDetailsBuilder) throws IOException {
     List<EncryptedDataDetail> encryptedDataDetails;
     GcpConnectorDTO gcpConnectorDTO = (GcpConnectorDTO) connectorDTO.getConnectorInfo().getConnectorConfig();
     GcpConnectorCredentialDTO credential = gcpConnectorDTO.getCredential();
@@ -492,6 +488,17 @@ public class BaseConnectorUtils {
           .build();
     } else if (credential.getGcpCredentialType() == GcpCredentialType.INHERIT_FROM_DELEGATE) {
       return connectorDetailsBuilder.executeOnDelegate(gcpConnectorDTO.getExecuteOnDelegate()).build();
+    } else if (credential.getGcpCredentialType() == GcpCredentialType.OIDC_AUTHENTICATION) {
+      GcpOidcDetailsDTO gcpOidcDetailsDTO = (GcpOidcDetailsDTO) credential.getConfig();
+      Map<EnvVariableEnum, String> oidcAuthMap = gcpOidcAuthenticator.handleOidcAuthentication(
+          connectorDTO.getConnectorInfo().getAccountIdentifier(), gcpOidcDetailsDTO);
+
+      if (oidcAuthMap.isEmpty()) {
+        throw new IllegalStateException("OIDC Authentication map is empty");
+      }
+
+      connectorDetailsBuilder.envToSecretsMap(oidcAuthMap);
+      return connectorDetailsBuilder.executeOnDelegate(gcpConnectorDTO.getExecuteOnDelegate()).build();
     }
     throw new InvalidArgumentsException(format("Unsupported gcp credential type:[%s] on connector:[%s]",
         gcpConnectorDTO.getCredential().getGcpCredentialType(), gcpConnectorDTO));
@@ -499,6 +506,11 @@ public class BaseConnectorUtils {
 
   private ConnectorDetails getGitConnectorDetails(
       NGAccess ngAccess, ConnectorDTO connectorDTO, ConnectorDetailsBuilder connectorDetailsBuilder) {
+    if (connectorDTO.getConnectorInfo().getConnectorConfig() instanceof DelegateSelectable) {
+      DelegateSelectable delegateSelectable = (DelegateSelectable) connectorDTO.getConnectorInfo().getConnectorConfig();
+      connectorDetailsBuilder = connectorDetailsBuilder.delegateSelectors(delegateSelectable.getDelegateSelectors());
+    }
+
     if (connectorDTO.getConnectorInfo().getConnectorType() == GITHUB) {
       return buildGithubConnectorDetails(ngAccess, connectorDTO, connectorDetailsBuilder);
     } else if (connectorDTO.getConnectorInfo().getConnectorType() == AZURE_REPO) {

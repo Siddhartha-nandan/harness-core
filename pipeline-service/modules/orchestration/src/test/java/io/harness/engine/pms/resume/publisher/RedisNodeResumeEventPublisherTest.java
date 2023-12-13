@@ -9,6 +9,7 @@ package io.harness.engine.pms.resume.publisher;
 
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.rule.OwnerRule.ARCHIT;
+import static io.harness.rule.OwnerRule.BUHA;
 import static io.harness.rule.OwnerRule.SHALINI;
 
 import static junit.framework.TestCase.assertEquals;
@@ -25,6 +26,7 @@ import io.harness.engine.utils.PmsLevelUtils;
 import io.harness.execution.NodeExecution;
 import io.harness.plan.PlanNode;
 import io.harness.pms.contracts.ambiance.Ambiance;
+import io.harness.pms.contracts.execution.AsyncChainExecutableResponse;
 import io.harness.pms.contracts.execution.ChildChainExecutableResponse;
 import io.harness.pms.contracts.execution.ExecutableResponse;
 import io.harness.pms.contracts.execution.ExecutionMode;
@@ -90,7 +92,6 @@ public class RedisNodeResumeEventPublisherTest extends OrchestrationTestBase {
                           .build())
             .status(Status.RUNNING)
             .mode(ExecutionMode.ASYNC)
-            .planNode(planNode)
             .executableResponse(ExecutableResponse.newBuilder()
                                     .setTask(TaskExecutableResponse.newBuilder()
                                                  .setTaskId(generateUuid())
@@ -141,7 +142,6 @@ public class RedisNodeResumeEventPublisherTest extends OrchestrationTestBase {
                           .build())
             .status(Status.RUNNING)
             .mode(ExecutionMode.ASYNC)
-            .planNode(planNode)
             .executableResponse(ExecutableResponse.newBuilder()
                                     .setTask(TaskExecutableResponse.newBuilder()
                                                  .setTaskId(generateUuid())
@@ -193,7 +193,6 @@ public class RedisNodeResumeEventPublisherTest extends OrchestrationTestBase {
                           .build())
             .status(Status.RUNNING)
             .mode(ExecutionMode.ASYNC)
-            .planNode(planNode)
             .executableResponse(ExecutableResponse.newBuilder()
                                     .setTask(TaskExecutableResponse.newBuilder()
                                                  .setTaskId(generateUuid())
@@ -232,7 +231,6 @@ public class RedisNodeResumeEventPublisherTest extends OrchestrationTestBase {
                           .build())
             .status(Status.RUNNING)
             .mode(ExecutionMode.TASK_CHAIN)
-            .planNode(planNode)
             .executableResponse(ExecutableResponse.newBuilder()
                                     .setTaskChain(TaskChainExecutableResponse.newBuilder()
                                                       .setChainEnd(true)
@@ -278,10 +276,54 @@ public class RedisNodeResumeEventPublisherTest extends OrchestrationTestBase {
                           .build())
             .status(Status.RUNNING)
             .mode(ExecutionMode.CHILD_CHAIN)
-            .planNode(planNode)
             .executableResponse(ExecutableResponse.newBuilder()
                                     .setChildChain(ChildChainExecutableResponse.newBuilder()
                                                        .setLastLink(true)
+                                                       .setPassThroughData(ByteString.copyFrom(
+                                                           "PASS_THROUGH_DATA", Charset.defaultCharset()))
+                                                       .build())
+                                    .build())
+            .resolvedStepParameters(resolvedSectionStepParams)
+            .interruptHistories(new ArrayList<>())
+            .startTs(System.currentTimeMillis())
+            .build();
+    ChainDetails chainDetails = resumeEventPublisher.buildChainDetails(ResumeMetadata.fromNodeExecution(nodeExecution));
+    ChainDetails expectedChainDetails =
+        ChainDetails.newBuilder()
+            .setIsEnd(true)
+            .setPassThroughData(ByteString.copyFrom("PASS_THROUGH_DATA", Charset.defaultCharset()))
+            .build();
+    assertEquals(expectedChainDetails, chainDetails);
+  }
+
+  @Test
+  @Owner(developers = BUHA)
+  @Category(UnitTests.class)
+  public void testBuildChainDetailsForAsyncChainMode() {
+    Map<String, Object> sectionStepParams =
+        RecastOrchestrationUtils.toMap(TestStepParameters.builder().param("DummySection").build());
+    Map<String, Object> resolvedSectionStepParams =
+        RecastOrchestrationUtils.toMap(TestStepParameters.builder().param("ResolvedDummySection").build());
+    PlanNode planNode = PlanNode.builder()
+                            .uuid(generateUuid())
+                            .identifier("DUMMY")
+                            .stepType(StepType.newBuilder().setType("DUMMY").setStepCategory(StepCategory.STEP).build())
+                            .stepParameters(PmsStepParameters.parse(RecastOrchestrationUtils.toJson(sectionStepParams)))
+                            .serviceName("DUMMY")
+                            .build();
+    String nodeExecutionId = generateUuid();
+    NodeExecution nodeExecution =
+        NodeExecution.builder()
+            .uuid(nodeExecutionId)
+            .ambiance(Ambiance.newBuilder()
+                          .setPlanExecutionId(generateUuid())
+                          .addLevels(PmsLevelUtils.buildLevelFromNode(nodeExecutionId, planNode))
+                          .build())
+            .status(Status.RUNNING)
+            .mode(ExecutionMode.ASYNC_CHAIN)
+            .executableResponse(ExecutableResponse.newBuilder()
+                                    .setAsyncChain(AsyncChainExecutableResponse.newBuilder()
+                                                       .setChainEnd(true)
                                                        .setPassThroughData(ByteString.copyFrom(
                                                            "PASS_THROUGH_DATA", Charset.defaultCharset()))
                                                        .build())

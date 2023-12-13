@@ -17,6 +17,7 @@ import static io.harness.pcf.model.PcfRouteType.PCF_ROUTE_TYPE_HTTP;
 import static io.harness.pcf.model.PcfRouteType.PCF_ROUTE_TYPE_TCP;
 import static io.harness.rule.OwnerRule.ADWAIT;
 import static io.harness.rule.OwnerRule.IVAN;
+import static io.harness.rule.OwnerRule.RISHABH;
 import static io.harness.rule.OwnerRule.ROHIT_KUMAR;
 import static io.harness.rule.OwnerRule.SATYAM;
 import static io.harness.rule.OwnerRule.TATHAGAT;
@@ -24,6 +25,7 @@ import static io.harness.rule.OwnerRule.TMACARI;
 import static io.harness.rule.OwnerRule.VAIBHAV_KUMAR;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,6 +36,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
@@ -50,6 +53,7 @@ import io.harness.CategoryTest;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
+import io.harness.data.structure.UUIDGenerator;
 import io.harness.filesystem.FileIo;
 import io.harness.logging.LogCallback;
 import io.harness.pcf.PcfUtils;
@@ -70,6 +74,7 @@ import io.harness.rule.Owner;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -86,6 +91,8 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
@@ -101,7 +108,26 @@ public class CfCliClientImplTest extends CategoryTest {
   public static final String CF_COMMAND_FOR_CHECKING_AUTOSCALAR = "cf plugins | grep autoscaling-apps";
   public static final String APP_NAME = "APP_NAME";
   public static final String PATH = "path";
-
+  public static String COMMAND_SCRIPT = "## Performing cf login\n"
+      + "\n"
+      + "\n"
+      + "echo hello\n"
+      + "export envOutput1=$envInput1\n"
+      + "export envOutput2=$envInput2\n"
+      + "\n"
+      + "## Get apps\n"
+      + "#cf apps";
+  public static String FINAL_COMMAND_SCRIPT = "## Performing cf login\n"
+      + "\n"
+      + "\n"
+      + "echo hello\n"
+      + "export envOutput1=$envInput1\n"
+      + "export envOutput2=$envInput2\n"
+      + "\n"
+      + "## Get apps\n"
+      + "#cf apps\n"
+      + "echo harness_start_token_123 envOutput1=\"$envOutput1\" harness_end_token_123 >/tmp/harness-123.out\n"
+      + "echo harness_start_token_123 envOutput2=\"$envOutput2\" harness_end_token_123 >>/tmp/harness-123.out\n";
   // cfSdkClient
   @Spy private ConnectionContextProvider connectionContextProvider;
   @Spy private CloudFoundryClientProvider cloudFoundryClientProvider;
@@ -338,13 +364,76 @@ public class CfCliClientImplTest extends CategoryTest {
   }
 
   @Test
+  @Owner(developers = RISHABH)
+  @Category(UnitTests.class)
+  public void test_runPcfPluginScriptWithNoEnvironmentVarInputsAndOutputs()
+      throws PivotalClientApiException, InterruptedException, TimeoutException, IOException {
+    final CfRunPluginScriptRequestData requestData =
+        CfRunPluginScriptRequestData.builder()
+            .cfRequestConfig(CfRequestConfig.builder().timeOutIntervalInMins(5).build())
+            .workingDirectory("/tmp")
+            .finalScriptString(COMMAND_SCRIPT)
+            .build();
+    MockedStatic<UUIDGenerator> mockedStatic = Mockito.mockStatic(UUIDGenerator.class);
+    mockedStatic.when(UUIDGenerator::generateUuid).thenReturn("123");
+    ArgumentCaptor<Map<String, String>> argumentCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<String> argumentCaptorScript = ArgumentCaptor.forClass(String.class);
+
+    doNothing().when(logCallback).saveExecutionLog(anyString());
+    doReturn(true).when(cfCliClient).doLogin(any(CfRequestConfig.class), any(LogCallback.class), anyString());
+    Map<String, String> result =
+        cfCliClient.runPcfPluginScriptWithEnvironmentVarInputsAndOutputs(requestData, logCallback, null, null);
+    verify(cfCliClient).getProcessResult(argumentCaptorScript.capture(), argumentCaptor.capture(), anyInt(), any());
+    assertThat(argumentCaptorScript.getValue()).isEqualTo(COMMAND_SCRIPT);
+    Map<String, String> envVarResult = argumentCaptor.getValue();
+    assertThat(envVarResult).hasSize(2);
+    assertThat(envVarResult).containsEntry("CF_HOME", "/tmp");
+    assertThat(result).isEqualTo(emptyMap());
+  }
+
+  @Test
+  @Owner(developers = RISHABH)
+  @Category(UnitTests.class)
+  public void test_runPcfPluginScriptWithEnvironmentVarInputsAndOutputs()
+      throws PivotalClientApiException, InterruptedException, TimeoutException, IOException {
+    Map<String, String> inputVariables = new HashMap<>();
+    inputVariables.put("envInput1", "value1");
+    inputVariables.put("envInput2", "value2");
+    List<String> outputVariables = new ArrayList<>();
+    outputVariables.add("envOutput1");
+    outputVariables.add("envOutput2");
+    final CfRunPluginScriptRequestData requestData =
+        CfRunPluginScriptRequestData.builder()
+            .cfRequestConfig(CfRequestConfig.builder().timeOutIntervalInMins(5).build())
+            .workingDirectory("/tmp")
+            .finalScriptString(COMMAND_SCRIPT)
+            .build();
+    MockedStatic<UUIDGenerator> mockedStatic = Mockito.mockStatic(UUIDGenerator.class);
+    mockedStatic.when(UUIDGenerator::generateUuid).thenReturn("123");
+    ArgumentCaptor<Map<String, String>> argumentCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<String> argumentCaptorScript = ArgumentCaptor.forClass(String.class);
+
+    doNothing().when(logCallback).saveExecutionLog(anyString());
+    doReturn(true).when(cfCliClient).doLogin(any(CfRequestConfig.class), any(LogCallback.class), anyString());
+    Map<String, String> result = cfCliClient.runPcfPluginScriptWithEnvironmentVarInputsAndOutputs(
+        requestData, logCallback, inputVariables, outputVariables);
+    verify(cfCliClient).getProcessResult(argumentCaptorScript.capture(), argumentCaptor.capture(), anyInt(), any());
+    assertThat(argumentCaptorScript.getValue()).isEqualTo(FINAL_COMMAND_SCRIPT);
+    Map<String, String> envVarResult = argumentCaptor.getValue();
+    assertThat(envVarResult).containsEntry("CF_HOME", "/tmp");
+    assertThat(envVarResult).containsEntry("envInput1", "value1");
+    assertThat(envVarResult).containsEntry("envInput2", "value2");
+    assertThat(result).isEqualTo(Map.of("envOutput1", "value1", "envOutput2", "value2"));
+  }
+
+  @Test
   @Owner(developers = ADWAIT)
   @Category(UnitTests.class)
   public void test_getProcessExecutorForLogTailing() {
     doNothing().when(logCallback).saveExecutionLog(anyString());
     ProcessExecutor processExecutorForLogTailing = cfCliClient.getProcessExecutorForLogTailing(
         CfRequestConfig.builder().cfCliPath("cf").cfCliVersion(CfCliVersion.V6).applicationName(APP_NAME).build(),
-        logCallback);
+        logCallback, "test");
 
     assertThat(processExecutorForLogTailing.getCommand())
         .containsExactly(BIN_BASH, "-c", CF_COMMAND_FOR_APP_LOG_TAILING.replace(APP_TOKEN, APP_NAME));
@@ -360,7 +449,7 @@ public class CfCliClientImplTest extends CategoryTest {
     CfRequestConfig cfRequestConfig = CfRequestConfig.builder().applicationName(APP_NAME).loggedin(true).build();
     ProcessExecutor processExecutor = mock(ProcessExecutor.class);
     StartedProcess startedProcess = mock(StartedProcess.class);
-    doReturn(processExecutor).when(cfCliClient).getProcessExecutorForLogTailing(any(), any());
+    doReturn(processExecutor).when(cfCliClient).getProcessExecutorForLogTailing(any(), any(), any());
     doReturn(startedProcess).when(processExecutor).start();
 
     StartedProcess startedProcessRet = cfCliClient.tailLogsForPcf(cfRequestConfig, logCallback);
@@ -375,6 +464,39 @@ public class CfCliClientImplTest extends CategoryTest {
 
     reset(cfCliClient);
     doReturn(false).when(cfCliClient).doLogin(any(), any(), any());
+    try {
+      cfCliClient.tailLogsForPcf(cfRequestConfig, logCallback);
+    } catch (PivotalClientApiException e) {
+      assertThat(e.getCause().getMessage()).contains("Failed to login");
+    }
+  }
+
+  @Test
+  @Owner(developers = RISHABH)
+  @Category(UnitTests.class)
+  public void test_tailLogsForPcfNew() throws Exception {
+    reset(cfCliClient);
+    doNothing().when(logCallback).saveExecutionLog(anyString());
+
+    CfRequestConfig cfRequestConfig =
+        CfRequestConfig.builder().applicationName(APP_NAME).trailingLogsDirPath("test").loggedin(true).build();
+    ProcessExecutor processExecutor = mock(ProcessExecutor.class);
+    StartedProcess startedProcess = mock(StartedProcess.class);
+    doReturn(processExecutor).when(cfCliClient).getProcessExecutorForLogTailing(any(), any(), eq("test"));
+    doReturn(startedProcess).when(processExecutor).start();
+
+    StartedProcess startedProcessRet = cfCliClient.tailLogsForPcf(cfRequestConfig, logCallback);
+    assertThat(startedProcess).isEqualTo(startedProcessRet);
+    verify(cfCliClient, never()).doLogin(any(), any(), eq("test"));
+
+    cfRequestConfig.setLoggedin(false);
+    doReturn(true).when(cfCliClient).doLogin(any(), any(), eq("test"));
+    startedProcessRet = cfCliClient.tailLogsForPcf(cfRequestConfig, logCallback);
+    assertThat(startedProcess).isEqualTo(startedProcessRet);
+    verify(cfCliClient, times(1)).doLogin(any(), any(), eq("test"));
+
+    reset(cfCliClient);
+    doReturn(false).when(cfCliClient).doLogin(any(), any(), eq("test"));
     try {
       cfCliClient.tailLogsForPcf(cfRequestConfig, logCallback);
     } catch (PivotalClientApiException e) {

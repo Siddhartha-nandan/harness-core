@@ -6,10 +6,11 @@
  */
 
 package io.harness.artifacts.docker.service;
+
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.exception.WingsException.USER;
-import static io.harness.network.Http.connectableHttpUrl;
+import static io.harness.network.Http.connectableHttpUrlWithProxy;
 
 import static java.util.stream.Collectors.toList;
 
@@ -247,7 +248,8 @@ public class DockerRegistryServiceImpl implements DockerRegistryService {
     String domainName = Http.getDomainWithPort(url);
     Map<String, String> metadata = new HashMap<>();
     metadata.put(ArtifactMetadataKeys.IMAGE,
-        (domainName == null || domainName.endsWith("/") ? domainName : domainName.concat("/")) + imageName + ":" + tag);
+        (domainName == null || domainName.endsWith("/") ? domainName : domainName.concat("/"))
+            + ArtifactUtils.getImageName(imageName, tag));
     metadata.put(ArtifactMetadataKeys.TAG, tag);
     return BuildDetailsInternal.builder()
         .number(tag)
@@ -365,7 +367,8 @@ public class DockerRegistryServiceImpl implements DockerRegistryService {
   public boolean validateCredentials(DockerInternalConfig dockerConfig) {
     String connectableHttpUrl =
         generateConnectivityUrl(dockerConfig.getDockerRegistryUrl(), dockerConfig.getProviderType());
-    if (!connectableHttpUrl(connectableHttpUrl, false)) {
+    if (!connectableHttpUrlWithProxy(
+            connectableHttpUrl, dockerConfig.getProxyHost(), dockerConfig.getProxyPort(), false)) {
       throw NestedExceptionUtils.hintWithExplanationException(
           "Check if the Docker Registry URL is correct & reachable from your delegate(s)",
           "The given Docker Registry URL may be incorrect or not reachable from your delegate(s)",
@@ -400,7 +403,8 @@ public class DockerRegistryServiceImpl implements DockerRegistryService {
             response = registryRestClient.getApiVersion(BEARER + token).execute();
           }
         }
-        if (response.code() == 404) { // https://harness.atlassian.net/browse/CDC-11979
+        if (response.code()
+            >= 400) { // https://harness.atlassian.net/browse/CDC-11979 https://harness.atlassian.net/browse/CDS-82616
           return handleValidateCredentialsEndingWithSlash(registryRestClient, dockerConfig);
         }
         return isSuccessful(response);
@@ -547,7 +551,7 @@ public class DockerRegistryServiceImpl implements DockerRegistryService {
     return callable.call();
   }
 
-  public static boolean isSuccessful(Response<?> response) {
+  private static boolean isSuccessful(Response<?> response, boolean isPublic) {
     if (response == null) {
       throw new InvalidArtifactServerException("Null response found", USER);
     }
@@ -563,6 +567,15 @@ public class DockerRegistryServiceImpl implements DockerRegistryService {
       case 404:
       case 400:
         return false;
+      case 429:
+        if (isPublic) {
+          throw NestedExceptionUtils.hintWithExplanationException(
+              "Image pull rate limit reached. Please authenticate Docker connector using Username and Password",
+              "Docker has rate limit on image requests for anonymous usage. Please refer: https://www.docker.com/increase-rate-limits");
+        } else {
+          throw NestedExceptionUtils.hintWithExplanationException("Image pull rate limit reached",
+              "Docker has rate limit on image requests. Please refer: https://www.docker.com/increase-rate-limits");
+        }
       case 401:
         throw DockerRegistryUtils.unauthorizedException();
       default:
@@ -571,6 +584,14 @@ public class DockerRegistryServiceImpl implements DockerRegistryService {
                 : String.format("Server responded with the following error code - %d", code),
             USER);
     }
+  }
+
+  public static boolean isSuccessful(Response<?> response) {
+    return isSuccessful(response, false);
+  }
+
+  public static boolean isSuccessfulPublicRegistry(Response<?> response) {
+    return isSuccessful(response, true);
   }
 
   public static String parseLink(String headerLink) {

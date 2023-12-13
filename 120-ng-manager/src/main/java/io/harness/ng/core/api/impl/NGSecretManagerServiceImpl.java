@@ -29,6 +29,10 @@ import io.harness.encryptors.CustomEncryptor;
 import io.harness.encryptors.CustomEncryptorsRegistry;
 import io.harness.encryptors.KmsEncryptor;
 import io.harness.encryptors.KmsEncryptorsRegistry;
+import io.harness.encryptors.NgCgManagerCustomEncryptor;
+import io.harness.encryptors.NgCgManagerKmsEncryptor;
+import io.harness.encryptors.NgCgManagerVaultEncryptor;
+import io.harness.encryptors.VaultEncryptor;
 import io.harness.encryptors.VaultEncryptorsRegistry;
 import io.harness.exception.WingsException;
 import io.harness.mappers.SecretManagerConfigMapper;
@@ -58,6 +62,7 @@ import java.util.function.Supplier;
 import javax.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 
 @OwnedBy(PL)
 @AllArgsConstructor(onConstructor = @__({ @Inject }))
@@ -80,6 +85,7 @@ public class NGSecretManagerServiceImpl implements NGSecretManagerService {
   private final RetryRegistry registry = RetryRegistry.of(config);
   private final Retry retry = registry.retry("cgManagerSecretService", config);
   private final NGFeatureFlagHelperService ngFeatureFlagHelperService;
+  private static final String NO_TASK_ID = "";
 
   @Override
   public SecretManagerConfigDTO createSecretManager(@NotNull SecretManagerConfigDTO secretManagerConfig) {
@@ -102,9 +108,9 @@ public class NGSecretManagerServiceImpl implements NGSecretManagerService {
   }
 
   @Override
-  public boolean validateNGSecretManager(
+  public Pair<String, Boolean> validateNGSecretManager(
       @NotNull String accountIdentifier, SecretManagerConfigDTO secretManagerConfigDTO) {
-    boolean validationResult = false;
+    Pair<String, Boolean> validationResultWithTaskId = Pair.of(NO_TASK_ID, false);
     if (null != secretManagerConfigDTO) {
       EncryptionConfig encryptionConfig = SecretManagerConfigMapper.fromDTO(secretManagerConfigDTO);
       try {
@@ -112,26 +118,46 @@ public class NGSecretManagerServiceImpl implements NGSecretManagerService {
           case VAULT:
             Set<EncryptionType> vaultSet = EnumSet.of(AZURE_VAULT, AWS_SECRETS_MANAGER, GCP_SECRETS_MANAGER);
             if (vaultSet.contains(encryptionConfig.getEncryptionType())) {
-              validationResult = vaultEncryptorsRegistry.getVaultEncryptor(encryptionConfig.getEncryptionType())
-                                     .validateSecretManagerConfiguration(accountIdentifier, encryptionConfig);
+              VaultEncryptor vaultEncryptor =
+                  vaultEncryptorsRegistry.getVaultEncryptor(encryptionConfig.getEncryptionType());
+              if (vaultEncryptor instanceof NgCgManagerVaultEncryptor) {
+                validationResultWithTaskId =
+                    ((NgCgManagerVaultEncryptor) vaultEncryptor)
+                        .validateSecretManagerConfigurationWithTaskId(accountIdentifier, encryptionConfig);
+              } else {
+                validationResultWithTaskId = Pair.of(
+                    NO_TASK_ID, vaultEncryptor.validateSecretManagerConfiguration(accountIdentifier, encryptionConfig));
+              }
             } else {
               VaultConfig vaultConfig = (VaultConfig) encryptionConfig;
-              if (APP_ROLE.equals(vaultConfig.getAccessType())
-                  && (ngFeatureFlagHelperService.isEnabled(
-                      accountIdentifier, FeatureName.DO_NOT_RENEW_APPROLE_TOKEN))) {
+              if (APP_ROLE.equals(vaultConfig.getAccessType())) {
                 vaultConfig.setRenewAppRoleToken(false);
               }
-              if (!vaultConfig.isReadOnly()) {
-                validationResult = vaultEncryptorsRegistry.getVaultEncryptor(VAULT).validateSecretManagerConfiguration(
-                    accountIdentifier, vaultConfig);
+              if (vaultConfig.isReadOnly() && !isReadOnlyVaultTestConnectionFFEnabled(vaultConfig.getAccountId())) {
+                validationResultWithTaskId = Pair.of("", true);
               } else {
-                validationResult = true;
+                VaultEncryptor vaultEncryptor = vaultEncryptorsRegistry.getVaultEncryptor(VAULT);
+                if (vaultEncryptor instanceof NgCgManagerVaultEncryptor) {
+                  validationResultWithTaskId =
+                      ((NgCgManagerVaultEncryptor) vaultEncryptor)
+                          .validateSecretManagerConfigurationWithTaskId(accountIdentifier, vaultConfig);
+                } else {
+                  validationResultWithTaskId = Pair.of(NO_TASK_ID,
+                      vaultEncryptor.validateSecretManagerConfiguration(accountIdentifier, encryptionConfig));
+                }
               }
             }
             break;
           case KMS:
             KmsEncryptor kmsEncryptor = kmsEncryptorsRegistry.getKmsEncryptor(encryptionConfig);
-            validationResult = kmsEncryptor.validateKmsConfiguration(encryptionConfig.getAccountId(), encryptionConfig);
+            if (kmsEncryptor instanceof NgCgManagerKmsEncryptor) {
+              validationResultWithTaskId =
+                  ((NgCgManagerKmsEncryptor) kmsEncryptor)
+                      .validateKmsConfigurationWithTaskId(encryptionConfig.getAccountId(), encryptionConfig);
+            } else {
+              validationResultWithTaskId = Pair.of(
+                  NO_TASK_ID, kmsEncryptor.validateKmsConfiguration(encryptionConfig.getAccountId(), encryptionConfig));
+            }
             break;
           case CUSTOM:
             CustomSecretManagerConfigDTO customNGSecretManagerConfigDTO =
@@ -141,8 +167,14 @@ public class NGSecretManagerServiceImpl implements NGSecretManagerService {
                 customSecretManagerHelper.prepareEncryptedDataParamsSet(customNGSecretManagerConfigDTO);
             encryptionConfig.setEncryptionType(CUSTOM_NG);
             CustomEncryptor customEncryptor = customEncryptorsRegistry.getCustomEncryptor(CUSTOM_NG);
-            validationResult =
-                customEncryptor.validateReference(accountIdentifier, encryptedDataParamsSet, encryptionConfig);
+            if (customEncryptor instanceof NgCgManagerCustomEncryptor) {
+              validationResultWithTaskId =
+                  ((NgCgManagerCustomEncryptor) customEncryptor)
+                      .validateReferenceWithTaskId(accountIdentifier, encryptedDataParamsSet, encryptionConfig);
+            } else {
+              validationResultWithTaskId = Pair.of(NO_TASK_ID,
+                  customEncryptor.validateReference(accountIdentifier, encryptedDataParamsSet, encryptionConfig));
+            }
             break;
           default:
             String errorMessage = " Encryptor for validate reference task for encryption config"
@@ -156,7 +188,11 @@ public class NGSecretManagerServiceImpl implements NGSecretManagerService {
         throw exception;
       }
     }
-    return validationResult;
+    return validationResultWithTaskId;
+  }
+
+  private boolean isReadOnlyVaultTestConnectionFFEnabled(String accountId) {
+    return ngFeatureFlagHelperService.isEnabled(accountId, FeatureName.PL_READ_ONLY_VAULT_TEST_CONNECTION);
   }
 
   @Override
@@ -197,10 +233,16 @@ public class NGSecretManagerServiceImpl implements NGSecretManagerService {
       @NotNull String accountIdentifier, String orgIdentifier, String projectIdentifier, @NotNull String identifier) {
     ConnectivityStatus connectivityStatus = ConnectivityStatus.FAILURE;
     SecretManagerConfigDTO secretManagerConfigDTO = null;
+    String taskId = "";
     try {
       secretManagerConfigDTO = ngConnectorSecretManagerService.getUsingIdentifier(
           accountIdentifier, orgIdentifier, projectIdentifier, identifier, false);
-      if (validateNGSecretManager(accountIdentifier, secretManagerConfigDTO)) {
+      var responseEntry = validateNGSecretManager(accountIdentifier, secretManagerConfigDTO);
+      if (responseEntry.getValue()) {
+        connectivityStatus = ConnectivityStatus.SUCCESS;
+        taskId = responseEntry.getKey();
+      }
+      if (validateNGSecretManager(accountIdentifier, secretManagerConfigDTO).getValue()) {
         connectivityStatus = ConnectivityStatus.SUCCESS;
       }
     } catch (WingsException wingsException) {
@@ -209,7 +251,9 @@ public class NGSecretManagerServiceImpl implements NGSecretManagerService {
       log.error("An error occurred when attempting to obtain a Connector. False validation.", exception);
       throw exception;
     }
-    return ConnectorValidationResult.builder().status(connectivityStatus).build();
+    ConnectorValidationResult result = ConnectorValidationResult.builder().status(connectivityStatus).build();
+    result.setTaskId(taskId);
+    return result;
   }
 
   @Override

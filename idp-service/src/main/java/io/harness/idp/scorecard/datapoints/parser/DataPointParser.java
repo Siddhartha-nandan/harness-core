@@ -7,19 +7,24 @@
 
 package io.harness.idp.scorecard.datapoints.parser;
 
+import static io.harness.idp.common.Constants.DATA_POINT_VALUE_KEY;
+import static io.harness.idp.common.Constants.ERROR_MESSAGE_KEY;
+
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.idp.scorecard.scores.beans.DataFetchDTO;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 @OwnedBy(HarnessTeam.IDP)
 public interface DataPointParser {
-  Object parseDataPoint(Map<String, Object> data, String dataPointIdentifier, Set<String> strings);
+  Object parseDataPoint(Map<String, Object> data, DataFetchDTO inputValues);
 
-  default String extractInputValue(String expression) {
-    return "INV";
+  default Map<String, Object> constructDataPointInfo(DataFetchDTO dataFetchDTO, Object value, String errorMessage) {
+    Map<String, Object> data = new HashMap<>();
+    data.put(DATA_POINT_VALUE_KEY, value);
+    data.put(ERROR_MESSAGE_KEY, errorMessage);
+    return Map.of(dataFetchDTO.getRuleIdentifier(), data);
   }
-
-  String getReplaceKey();
 }

@@ -185,8 +185,8 @@ public class AdminAccountServiceImpl implements AdminAccountService {
   }
 
   @Override
-  public boolean enableOrDisableNextGen(String accountId, boolean enabled) {
-    accountService.updateNextGenEnabled(accountId, enabled);
+  public boolean enableOrDisableNextGen(String accountId, boolean isNextGenEnabled) {
+    accountService.updateNextGenEnabled(accountId, isNextGenEnabled, true);
     return true;
   }
 
@@ -226,5 +226,10 @@ public class AdminAccountServiceImpl implements AdminAccountService {
       return null;
     }
     return createAccount(account, adminUserEmail);
+  }
+
+  @Override
+  public List<Account> getAccountsUpdatedSinceTimestamp(long timestamp) {
+    return accountService.getAccountsUpdatedSinceTimestamp(timestamp);
   }
 }

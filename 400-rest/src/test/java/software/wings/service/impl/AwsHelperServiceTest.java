@@ -13,9 +13,11 @@ import static io.harness.rule.OwnerRule.BRETT;
 import static io.harness.rule.OwnerRule.DEEPAK_PUTHRAYA;
 import static io.harness.rule.OwnerRule.INDER;
 import static io.harness.rule.OwnerRule.MILOS;
+import static io.harness.rule.OwnerRule.NAMAN_TALAYCHA;
 import static io.harness.rule.OwnerRule.RAGHVENDRA;
 import static io.harness.rule.OwnerRule.RUSHABH;
 import static io.harness.rule.OwnerRule.TMACARI;
+import static io.harness.rule.OwnerRule.vivekveman;
 
 import static software.wings.utils.WingsTestConstants.ACCESS_KEY;
 import static software.wings.utils.WingsTestConstants.SECRET_KEY;
@@ -56,6 +58,7 @@ import software.wings.WingsBaseTest;
 import software.wings.annotation.EncryptableSetting;
 import software.wings.beans.AWSTemporaryCredentials;
 import software.wings.beans.AwsConfig;
+import software.wings.beans.AwsCrossAccountAttributes;
 import software.wings.beans.artifact.ArtifactStreamAttributes;
 import software.wings.service.impl.aws.manager.AwsHelperServiceManager;
 import software.wings.service.intfc.security.EncryptionService;
@@ -63,6 +66,7 @@ import software.wings.sm.states.ManagerExecutionLogCallback;
 
 import com.amazonaws.SDKGlobalConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.STSAssumeRoleSessionCredentialsProvider;
 import com.amazonaws.auth.WebIdentityTokenCredentialsProvider;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.regions.Regions;
@@ -77,6 +81,7 @@ import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.DescribeRegionsResult;
 import com.amazonaws.services.ec2.model.Region;
 import com.amazonaws.services.ecr.AmazonECRClient;
+import com.amazonaws.services.ecr.model.AmazonECRException;
 import com.amazonaws.services.ecr.model.BatchGetImageRequest;
 import com.amazonaws.services.ecr.model.BatchGetImageResult;
 import com.amazonaws.services.ecr.model.DescribeRepositoriesRequest;
@@ -309,6 +314,47 @@ public class AwsHelperServiceTest extends WingsBaseTest {
   }
 
   @Test
+  @Owner(developers = NAMAN_TALAYCHA)
+  @Category(UnitTests.class)
+  public void testGetCredentialsForIRSAonDelegateWithCrossArn() {
+    AwsConfig awsConfig = AwsConfig.builder()
+                              .useEc2IamCredentials(false)
+                              .useIRSA(true)
+                              .assumeCrossAccountRole(true)
+                              .crossAccountAttributes(AwsCrossAccountAttributes.builder()
+                                                          .crossAccountRoleArn("crossAccountRoleArn")
+                                                          .externalId("externalId")
+                                                          .build())
+                              .accessKey("accessKey".toCharArray())
+                              .secretKey("secret".toCharArray())
+                              .build();
+    AwsHelperService service = spy(new AwsHelperService());
+    Reflect.on(service).set("awsApiHelperService", awsApiHelperService);
+    doCallRealMethod().when(awsApiHelperService).getAwsCredentialsProvider(any());
+    AWSCredentialsProvider awsCredentialsProvider = service.getAWSCredentialsProvider(awsConfig);
+    assertThat(awsCredentialsProvider).isNotNull().isInstanceOf(STSAssumeRoleSessionCredentialsProvider.class);
+  }
+
+  @Test
+  @Owner(developers = NAMAN_TALAYCHA)
+  @Category(UnitTests.class)
+  public void testGetCredentialsForIRSAonDelegate() {
+    AwsConfig awsConfig = AwsConfig.builder()
+                              .useEc2IamCredentials(false)
+                              .useIRSA(true)
+                              .assumeCrossAccountRole(false)
+                              .accessKey("accessKey".toCharArray())
+                              .secretKey("secret".toCharArray())
+                              .build();
+    AwsHelperService service = spy(new AwsHelperService());
+    Reflect.on(service).set("awsApiHelperService", awsApiHelperService);
+    doCallRealMethod().when(awsApiHelperService).getAwsCredentialsProvider(any());
+    doCallRealMethod().when(awsApiHelperService).getAwsCredentialsProvider(any());
+    AWSCredentialsProvider awsCredentialsProvider = service.getAWSCredentialsProvider(awsConfig);
+    assertThat(awsCredentialsProvider).isNotNull().isInstanceOf(WebIdentityTokenCredentialsProvider.class);
+  }
+
+  @Test
   @Owner(developers = INDER)
   @Category(UnitTests.class)
   public void testGetCredentialsForIAMRoleOnDelegateWithErrorResponseCodeException() {
@@ -448,6 +494,110 @@ public class AwsHelperServiceTest extends WingsBaseTest {
     DescribeRepositoriesResult actual = service.listRepositories(awsConfig, null, request, region);
     verify(tracker, times(1)).trackECRCall("List Repositories");
     assertThat(actual).isEqualTo(result);
+  }
+
+  @Test
+  @Owner(developers = vivekveman)
+  @Category(UnitTests.class)
+  public void testListRepositoriesExceptionHandling400() {
+    String region = "us-west-1";
+    DescribeRepositoriesRequest request = new DescribeRepositoriesRequest();
+    AmazonECRClient ecrClient = mock(AmazonECRClient.class);
+    AwsHelperService service = spy(new AwsHelperService());
+    Reflect.on(service).set("encryptionService", encryptionService);
+    AmazonECRException e = new AmazonECRException("");
+    e.setStatusCode(400);
+    e.setErrorMessage(
+        "is not authorized to perform: ecr:DescribeRepositories on resource: arn:aws:ecr:us-east-2:12345678:repository/engineering/test because no identity-based policy allows the ecr:DescribeRepositories action");
+    doThrow(e).when(awsApiHelperService).getAmazonEcrClient(any(), any(String.class));
+    Reflect.on(service).set("tracker", tracker);
+    Reflect.on(awsApiHelperService).set("tracker", tracker);
+    Reflect.on(service).set("awsApiHelperService", awsApiHelperService);
+
+    DescribeRepositoriesResult result = new DescribeRepositoriesResult();
+    when(ecrClient.describeRepositories(request)).thenReturn(result);
+    when(awsApiHelperService.listRepositories(any(), any(), anyString())).thenCallRealMethod();
+    assertThatThrownBy(() -> service.listRepositories(awsConfig, null, request, region))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(
+            "Please input a valid AWS Connector and corresponding region. Check if permission ecr:DescribeRepositories are scoped for the authenticated user");
+  }
+
+  @Test
+  @Owner(developers = vivekveman)
+  @Category(UnitTests.class)
+  public void testListRepositoriesExceptionHandling404() {
+    String region = "us-west-1";
+    DescribeRepositoriesRequest request = new DescribeRepositoriesRequest();
+    AmazonECRClient ecrClient = mock(AmazonECRClient.class);
+    AwsHelperService service = spy(new AwsHelperService());
+    Reflect.on(service).set("encryptionService", encryptionService);
+    AmazonECRException e = new AmazonECRException("");
+    e.setStatusCode(404);
+    e.setErrorMessage("No repositories found");
+    doThrow(e).when(awsApiHelperService).getAmazonEcrClient(any(), any(String.class));
+    Reflect.on(service).set("tracker", tracker);
+    Reflect.on(awsApiHelperService).set("tracker", tracker);
+    Reflect.on(service).set("awsApiHelperService", awsApiHelperService);
+
+    DescribeRepositoriesResult result = new DescribeRepositoriesResult();
+    when(ecrClient.describeRepositories(request)).thenReturn(result);
+    when(awsApiHelperService.listRepositories(any(), any(), anyString())).thenCallRealMethod();
+    assertThatThrownBy(() -> service.listRepositories(awsConfig, null, request, region))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(
+            "Please check if repositories exist with the provided AWS Connector and corresponding region. Check if permissions are scoped for the authenticated user");
+  }
+
+  @Test
+  @Owner(developers = vivekveman)
+  @Category(UnitTests.class)
+  public void testListRepositoriesExceptionHandling429() {
+    String region = "us-west-1";
+    DescribeRepositoriesRequest request = new DescribeRepositoriesRequest();
+    AmazonECRClient ecrClient = mock(AmazonECRClient.class);
+    AwsHelperService service = spy(new AwsHelperService());
+    Reflect.on(service).set("encryptionService", encryptionService);
+    AmazonECRException e = new AmazonECRException("");
+    e.setStatusCode(429);
+    e.setErrorMessage("Rate limit exceeded");
+    doThrow(e).when(awsApiHelperService).getAmazonEcrClient(any(), any(String.class));
+    Reflect.on(service).set("tracker", tracker);
+    Reflect.on(awsApiHelperService).set("tracker", tracker);
+    Reflect.on(service).set("awsApiHelperService", awsApiHelperService);
+
+    DescribeRepositoriesResult result = new DescribeRepositoriesResult();
+    when(ecrClient.describeRepositories(request)).thenReturn(result);
+    when(awsApiHelperService.listRepositories(any(), any(), anyString())).thenCallRealMethod();
+    assertThatThrownBy(() -> service.listRepositories(awsConfig, null, request, region))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(
+            "The connector provided had Rate limit exceeded while fetching repositories, Please check rate limit on connector's request");
+  }
+  @Test
+  @Owner(developers = vivekveman)
+  @Category(UnitTests.class)
+  public void testListRepositoriesExceptionHandling403() {
+    String region = "us-west-1";
+    DescribeRepositoriesRequest request = new DescribeRepositoriesRequest();
+    AmazonECRClient ecrClient = mock(AmazonECRClient.class);
+    AwsHelperService service = spy(new AwsHelperService());
+    Reflect.on(service).set("encryptionService", encryptionService);
+    AmazonECRException e = new AmazonECRException("");
+    e.setStatusCode(403);
+    e.setErrorMessage("Unauthorized request");
+    doThrow(e).when(awsApiHelperService).getAmazonEcrClient(any(), any(String.class));
+    Reflect.on(service).set("tracker", tracker);
+    Reflect.on(awsApiHelperService).set("tracker", tracker);
+    Reflect.on(service).set("awsApiHelperService", awsApiHelperService);
+
+    DescribeRepositoriesResult result = new DescribeRepositoriesResult();
+    when(ecrClient.describeRepositories(request)).thenReturn(result);
+    when(awsApiHelperService.listRepositories(any(), any(), anyString())).thenCallRealMethod();
+    assertThatThrownBy(() -> service.listRepositories(awsConfig, null, request, region))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(
+            "connector provided does not have permissions granted to use Amazon ECR, Please verify that the user has been granted permissions to access that repository");
   }
 
   @Test

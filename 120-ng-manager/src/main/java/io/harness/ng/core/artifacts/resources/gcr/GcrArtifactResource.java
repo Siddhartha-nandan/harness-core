@@ -6,17 +6,15 @@
  */
 
 package io.harness.ng.core.artifacts.resources.gcr;
-
 import static io.harness.annotations.dev.HarnessTeam.CDC;
-import static io.harness.data.structure.EmptyPredicate.isEmpty;
-import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import io.harness.NGCommonEntityConstants;
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.IdentifierRef;
 import io.harness.cdng.artifact.NGArtifactConstants;
-import io.harness.cdng.artifact.bean.ArtifactConfig;
-import io.harness.cdng.artifact.bean.yaml.GcrArtifactConfig;
 import io.harness.cdng.artifact.resources.gcr.dtos.GcrBuildDetailsDTO;
 import io.harness.cdng.artifact.resources.gcr.dtos.GcrRequestDTO;
 import io.harness.cdng.artifact.resources.gcr.dtos.GcrResponseDTO;
@@ -48,6 +46,8 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
+    components = {HarnessModuleComponent.CDS_ARTIFACTS, HarnessModuleComponent.CDS_COMMON_STEPS})
 @OwnedBy(CDC)
 @Api("artifacts")
 @Path("/artifacts/gcr")
@@ -94,34 +94,9 @@ public class GcrArtifactResource {
       @NotNull @QueryParam("fqnPath") String fqnPath, @NotNull String runtimeInputYaml,
       @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo,
       @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceRef) {
-    if (isNotEmpty(serviceRef)) {
-      final ArtifactConfig artifactSpecFromService = artifactResourceUtils.locateArtifactInService(
-          accountId, orgIdentifier, projectIdentifier, serviceRef, fqnPath);
-      GcrArtifactConfig gcrArtifactConfig = (GcrArtifactConfig) artifactSpecFromService;
-      if (isEmpty(imagePath)) {
-        imagePath = (String) gcrArtifactConfig.getImagePath().fetchFinalValue();
-      }
-      if (isEmpty(registryHostname)) {
-        registryHostname = (String) gcrArtifactConfig.getRegistryHostname().fetchFinalValue();
-      }
-
-      if (isEmpty(gcrConnectorIdentifier)) {
-        gcrConnectorIdentifier = (String) gcrArtifactConfig.getConnectorRef().fetchFinalValue();
-      }
-    }
-    // todo(hinger): resolve other expressions here?
-
-    gcrConnectorIdentifier = artifactResourceUtils.getResolvedFieldValue(accountId, orgIdentifier, projectIdentifier,
-        pipelineIdentifier, runtimeInputYaml, gcrConnectorIdentifier, fqnPath, gitEntityBasicInfo, serviceRef);
-
-    IdentifierRef connectorRef =
-        IdentifierRefHelper.getIdentifierRef(gcrConnectorIdentifier, accountId, orgIdentifier, projectIdentifier);
-    imagePath = artifactResourceUtils.getResolvedFieldValue(accountId, orgIdentifier, projectIdentifier,
-        pipelineIdentifier, runtimeInputYaml, imagePath, fqnPath, gitEntityBasicInfo, serviceRef);
-    registryHostname = artifactResourceUtils.getResolvedFieldValue(accountId, orgIdentifier, projectIdentifier,
-        pipelineIdentifier, runtimeInputYaml, registryHostname, fqnPath, gitEntityBasicInfo, serviceRef);
-    GcrResponseDTO buildDetails =
-        gcrResourceService.getBuildDetails(connectorRef, imagePath, registryHostname, orgIdentifier, projectIdentifier);
+    GcrResponseDTO buildDetails = artifactResourceUtils.getBuildDetailsV2GCR(imagePath, registryHostname,
+        gcrConnectorIdentifier, accountId, orgIdentifier, projectIdentifier, pipelineIdentifier, fqnPath,
+        runtimeInputYaml, gitEntityBasicInfo, serviceRef);
     return ResponseDTO.newResponse(buildDetails);
   }
 

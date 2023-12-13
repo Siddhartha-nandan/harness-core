@@ -29,6 +29,7 @@ import io.harness.pms.contracts.execution.AsyncExecutableResponse;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.sdk.core.execution.SdkGraphVisualizationDataService;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.rule.OwnerRule;
@@ -133,13 +134,6 @@ public class WaitStepTest extends OrchestrationStepsTestBase {
   @Owner(developers = OwnerRule.SHALINI)
   @Category(UnitTests.class)
   public void testGetStepParametersClass() {
-    assertEquals(waitStep.getStepParametersClass(), StepElementParameters.class);
-  }
-
-  @Test
-  @Owner(developers = OwnerRule.SHALINI)
-  @Category(UnitTests.class)
-  public void testHandleAbort() {
-    waitStep.handleAbort(null, null, null);
+    assertEquals(waitStep.getStepParametersClass(), StepBaseParameters.class);
   }
 }

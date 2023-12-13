@@ -15,7 +15,10 @@ import static java.util.stream.Collectors.toSet;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.audit.retention.AuditAccountSyncService;
 import io.harness.audit.retention.AuditRetentionIteratorHandler;
+import io.harness.audit.scheduledJobs.AccountActivityMetricsPublisherService;
 import io.harness.health.HealthService;
+import io.harness.metrics.jobs.RecordMetricsJob;
+import io.harness.metrics.service.api.MetricService;
 import io.harness.ng.core.CorrelationFilter;
 import io.harness.ng.core.TraceFilter;
 import io.harness.persistence.HPersistence;
@@ -56,10 +59,10 @@ public class AuditServiceSetup {
     registerCharsetResponseFilter(environment, injector);
     registerCorrelationFilter(environment, injector);
     registerHealthCheck(environment, injector);
-    registerManagedBeans(environment, injector);
+    registerManagedBeans(environment, injector, appConfig);
     registerIterators(injector);
     registerOasResource(appConfig, environment, injector);
-
+    initializeMonitoring(appConfig, injector);
     if (BooleanUtils.isTrue(appConfig.getEnableOpentelemetry())) {
       registerTraceFilter(environment, injector);
     }
@@ -92,8 +95,11 @@ public class AuditServiceSetup {
     environment.jersey().register(injector.getInstance(TraceFilter.class));
   }
 
-  private void registerManagedBeans(Environment environment, Injector injector) {
+  private void registerManagedBeans(Environment environment, Injector injector, AuditServiceConfiguration appConfig) {
     environment.lifecycle().manage(injector.getInstance(AuditAccountSyncService.class));
+    if (appConfig.isPublishAccountActivityMetrics()) {
+      environment.lifecycle().manage(injector.getInstance(AccountActivityMetricsPublisherService.class));
+    }
   }
 
   private void registerIterators(Injector injector) {
@@ -138,5 +144,12 @@ public class AuditServiceSetup {
         .resourceClasses(resourceClasses)
         .cacheTTL(0L)
         .scannerClass("io.swagger.v3.jaxrs2.integration.JaxrsAnnotationScanner");
+  }
+
+  private void initializeMonitoring(AuditServiceConfiguration appConfig, Injector injector) {
+    if (appConfig.isExportMetricsToStackDriver()) {
+      injector.getInstance(MetricService.class).initializeMetrics();
+      injector.getInstance(RecordMetricsJob.class).scheduleMetricsTasks();
+    }
   }
 }

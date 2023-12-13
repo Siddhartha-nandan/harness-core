@@ -63,6 +63,7 @@ import io.harness.serializer.KryoSerializer;
 import io.harness.steps.StepHelper;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -94,6 +95,7 @@ public class TasRouteMappingStepTest extends CDNGTestBase {
   @Mock private TasEntityHelper tasEntityHelper;
   @Mock private ExecutionSweepingOutputService executionSweepingOutputService;
   @InjectMocks private TasRouteMappingStep tasRouteMappingStep;
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
 
   private final TanzuApplicationServiceInfrastructureOutcome infrastructureOutcome =
       TanzuApplicationServiceInfrastructureOutcome.builder()
@@ -138,7 +140,7 @@ public class TasRouteMappingStepTest extends CDNGTestBase {
     StepElementParameters stepElementParameters =
         StepElementParameters.builder().type("BasicAppSetup").spec(parameters).build();
     assertThatThrownBy(() -> tasRouteMappingStep.validateResources(ambiance, stepElementParameters))
-        .hasMessage("CDS_TAS_NG FF is not enabled for this account. Please contact harness customer care.");
+        .hasMessage("NG_SVC_ENV_REDESIGN FF is not enabled for this account. Please contact harness customer care.");
   }
 
   private Ambiance getAmbiance() {

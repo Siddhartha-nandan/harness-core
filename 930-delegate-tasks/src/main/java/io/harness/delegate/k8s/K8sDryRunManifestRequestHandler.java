@@ -6,7 +6,6 @@
  */
 
 package io.harness.delegate.k8s;
-
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
@@ -28,7 +27,10 @@ import static software.wings.beans.LogWeight.Bold;
 import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.configuration.KubernetesCliCommandType;
 import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
@@ -49,6 +51,7 @@ import io.harness.k8s.ProcessResponse;
 import io.harness.k8s.kubectl.ApplyCommand;
 import io.harness.k8s.kubectl.Kubectl;
 import io.harness.k8s.kubectl.KubectlFactory;
+import io.harness.k8s.manifest.DryRunOutput;
 import io.harness.k8s.manifest.ManifestHelper;
 import io.harness.k8s.model.K8sDelegateTaskParams;
 import io.harness.k8s.model.KubernetesConfig;
@@ -68,6 +71,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.zeroturnaround.exec.ProcessResult;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 @Slf4j
 @OwnedBy(CDP)
 public class K8sDryRunManifestRequestHandler extends K8sRequestHandler {
@@ -95,6 +99,7 @@ public class K8sDryRunManifestRequestHandler extends K8sRequestHandler {
 
     this.releaseName = k8sDryRunManifestRequest.getReleaseName();
     this.manifestFilesDirectory = Paths.get(k8sDelegateTaskParams.getWorkingDirectory(), MANIFEST_FILES_DIR).toString();
+    kubernetesConfig = k8sDelegateTaskParams.getKubernetesConfig();
     long steadyStateTimeoutInMillis = getTimeoutMillisFromMinutes(k8sDeployRequest.getTimeoutIntervalInMin());
 
     LogCallback logCallback = k8sTaskHelperBase.getLogCallback(logStreamingTaskClient, FetchFiles,
@@ -109,7 +114,7 @@ public class K8sDryRunManifestRequestHandler extends K8sRequestHandler {
 
     k8sTaskHelperBase.fetchManifestFilesAndWriteToDirectory(k8sDryRunManifestRequest.getManifestDelegateConfig(),
         this.manifestFilesDirectory, logCallback, steadyStateTimeoutInMillis, k8sDryRunManifestRequest.getAccountId(),
-        false);
+        false, false);
 
     serviceHookHandler.execute(ServiceHookType.POST_HOOK, ServiceHookAction.FETCH_FILES,
         k8sDelegateTaskParams.getWorkingDirectory(), logCallback);
@@ -126,8 +131,11 @@ public class K8sDryRunManifestRequestHandler extends K8sRequestHandler {
       LogCallback executionLogCallback) throws Exception {
     executionLogCallback.saveExecutionLog("Initializing..\n");
     executionLogCallback.saveExecutionLog(color(format("Release Name: [%s]", this.releaseName), Yellow, Bold));
-    this.kubernetesConfig = containerDeploymentDelegateBaseHelper.createKubernetesConfig(
-        request.getK8sInfraDelegateConfig(), k8sDelegateTaskParams.getWorkingDirectory(), executionLogCallback);
+    if (kubernetesConfig == null) {
+      log.warn("Kubernetes config passed to task is NULL. Creating it again...");
+      this.kubernetesConfig = containerDeploymentDelegateBaseHelper.createKubernetesConfig(
+          request.getK8sInfraDelegateConfig(), k8sDelegateTaskParams.getWorkingDirectory(), executionLogCallback);
+    }
     this.client = KubectlFactory.getKubectlClient(k8sDelegateTaskParams.getKubectlPath(),
         k8sDelegateTaskParams.getKubeconfigPath(), k8sDelegateTaskParams.getWorkingDirectory());
 
@@ -173,7 +181,9 @@ public class K8sDryRunManifestRequestHandler extends K8sRequestHandler {
         logExecutableFailed(result, executionLogCallback);
         throw new KubernetesCliTaskRuntimeException(response, KubernetesCliCommandType.DRY_RUN);
       }
-      String dryRunManifestYaml = ManifestHelper.toYamlForLogs(this.resources);
+
+      List<DryRunOutput> dryRunOutputList = ManifestHelper.toDryRunOutput(this.resources);
+      String dryRunManifestYaml = ManifestHelper.toYamlOutput(dryRunOutputList);
       if (dryRunManifestYaml.getBytes(StandardCharsets.UTF_8).length >= MAX_VARIABLE_SIZE) {
         dryRunManifestYaml = "";
         executionLogCallback.saveExecutionLog(

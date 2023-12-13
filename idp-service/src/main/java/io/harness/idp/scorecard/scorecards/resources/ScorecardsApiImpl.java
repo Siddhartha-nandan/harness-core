@@ -25,6 +25,7 @@ import io.harness.spec.server.idp.v1.model.Facets;
 import io.harness.spec.server.idp.v1.model.Scorecard;
 import io.harness.spec.server.idp.v1.model.ScorecardDetailsRequest;
 import io.harness.spec.server.idp.v1.model.ScorecardDetailsResponse;
+import io.harness.spec.server.idp.v1.model.ScorecardStatsResponse;
 
 import com.google.inject.Inject;
 import java.util.List;
@@ -68,6 +69,22 @@ public class ScorecardsApiImpl implements ScorecardsApi {
   }
 
   @Override
+  public Response getScorecardStats(String scorecardId, String harnessAccount) {
+    try {
+      ScorecardStatsResponse response = scorecardService.getScorecardStats(harnessAccount, scorecardId);
+      return Response.status(Response.Status.OK).entity(response).build();
+    } catch (Exception e) {
+      String errorMessage =
+          String.format("Error occurred while fetching scorecard stats for accountId: [%s], scorecardId: [%s]",
+              harnessAccount, scorecardId);
+      log.error(errorMessage, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(ResponseMessage.builder().message(e.getMessage()).build())
+          .build();
+    }
+  }
+
+  @Override
   @NGAccessControlCheck(resourceType = IDP_RESOURCE_TYPE, permission = IDP_PERMISSION)
   public Response createScorecard(@Valid ScorecardDetailsRequest body, @AccountIdentifier String harnessAccount) {
     try {
@@ -80,7 +97,7 @@ public class ScorecardsApiImpl implements ScorecardsApi {
           "Scorecard [%s] already created for accountId [%s]", body.getScorecard().getIdentifier(), harnessAccount);
       log.info(errorMessage);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(ResponseMessage.builder().message(e.getMessage()).build())
+          .entity(ResponseMessage.builder().message(errorMessage).build())
           .build();
     } catch (Exception e) {
       log.error("Could not create scorecard", e);

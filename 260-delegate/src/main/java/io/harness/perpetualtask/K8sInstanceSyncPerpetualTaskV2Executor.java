@@ -21,6 +21,9 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.annotations.dev.TargetModule;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.delegate.beans.instancesync.ServerInstanceInfo;
+import io.harness.delegate.task.helm.HelmChartInfo;
+import io.harness.delegate.task.k8s.K8sInfraDelegateConfig;
+import io.harness.delegate.task.k8s.K8sTaskCleanupDTO;
 import io.harness.grpc.utils.AnyUtils;
 import io.harness.k8s.model.KubernetesConfig;
 import io.harness.managerclient.DelegateAgentManagerClient;
@@ -120,13 +123,21 @@ public class K8sInstanceSyncPerpetualTaskV2Executor extends AbstractInstanceSync
     HashSet<String> namespaces = new HashSet<>(releaseDetails.getNamespaces());
     String releaseName = releaseDetails.getReleaseName();
     return namespaces.stream()
-        .map(namespace
-            -> PodDetailsRequest.builder()
-                   .kubernetesConfig(k8sInstanceSyncV2Helper.getKubernetesConfig(
-                       connectorDTO, releaseDetails.getK8sCloudClusterConfig(), namespace))
-                   .namespace(namespace)
-                   .releaseName(releaseName)
-                   .build())
+        .map(namespace -> {
+          K8sInfraDelegateConfig k8sInfraDelegateConfig = k8sInstanceSyncV2Helper.getK8sInfraDelegateConfig(
+              connectorDTO, releaseDetails.getK8sCloudClusterConfig(), namespace);
+          KubernetesConfig kubernetesConfig = k8sInstanceSyncV2Helper.getKubernetesConfig(k8sInfraDelegateConfig);
+          return PodDetailsRequest.builder()
+              .kubernetesConfig(kubernetesConfig)
+              .namespace(namespace)
+              .releaseName(releaseName)
+              .helmChartInfo(releaseDetails.getHelmChartInfo())
+              .cleanupDTO(K8sTaskCleanupDTO.builder()
+                              .generatedKubeConfig(kubernetesConfig)
+                              .infraDelegateConfig(k8sInfraDelegateConfig)
+                              .build())
+              .build();
+        })
         .collect(Collectors.toList());
   }
 
@@ -140,5 +151,7 @@ public class K8sInstanceSyncPerpetualTaskV2Executor extends AbstractInstanceSync
     private KubernetesConfig kubernetesConfig;
     @NotNull private String namespace;
     @NotNull private String releaseName;
+    private HelmChartInfo helmChartInfo;
+    private K8sTaskCleanupDTO cleanupDTO;
   }
 }

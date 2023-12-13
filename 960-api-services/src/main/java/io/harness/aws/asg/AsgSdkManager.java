@@ -95,11 +95,15 @@ import com.amazonaws.services.ec2.model.CreateLaunchTemplateRequest;
 import com.amazonaws.services.ec2.model.CreateLaunchTemplateResult;
 import com.amazonaws.services.ec2.model.CreateLaunchTemplateVersionRequest;
 import com.amazonaws.services.ec2.model.CreateLaunchTemplateVersionResult;
+import com.amazonaws.services.ec2.model.DescribeLaunchTemplateVersionsRequest;
+import com.amazonaws.services.ec2.model.DescribeLaunchTemplateVersionsResult;
 import com.amazonaws.services.ec2.model.DescribeLaunchTemplatesRequest;
 import com.amazonaws.services.ec2.model.DescribeLaunchTemplatesResult;
 import com.amazonaws.services.ec2.model.LaunchTemplate;
 import com.amazonaws.services.ec2.model.LaunchTemplateVersion;
 import com.amazonaws.services.ec2.model.RequestLaunchTemplateData;
+import com.amazonaws.services.ec2.model.ResponseLaunchTemplateData;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ExecutionError;
 import com.google.common.util.concurrent.TimeLimiter;
 import com.google.common.util.concurrent.UncheckedExecutionException;
@@ -148,6 +152,9 @@ public class AsgSdkManager {
   public static final String BG_VERSION = "BG_VERSION";
   public static final String BG_GREEN = "GREEN";
   public static final String BG_BLUE = "BLUE";
+  static final String NAME_TAG = "Name";
+  static final String AWS_TAG_PREFIX = "aws:";
+  static final String ASG_RESOURCE_TYPE = "auto-scaling-group";
 
   private final Supplier<AmazonEC2Client> ec2ClientSupplier;
   private final Supplier<AmazonAutoScalingClient> asgClientSupplier;
@@ -237,24 +244,29 @@ public class AsgSdkManager {
     return createLaunchTemplateVersionResult.getLaunchTemplateVersion();
   }
 
-  public CreateAutoScalingGroupResult createASG(
-      String asgName, String launchTemplateVersion, CreateAutoScalingGroupRequest createAutoScalingGroupRequest) {
+  public CreateAutoScalingGroupResult createASG(String asgName, String launchTemplateName, String launchTemplateVersion,
+      CreateAutoScalingGroupRequest createAutoScalingGroupRequest) {
     createAutoScalingGroupRequest.withAutoScalingGroupName(asgName).withLaunchTemplate(
-        new LaunchTemplateSpecification().withLaunchTemplateName(asgName).withVersion(launchTemplateVersion));
+        new LaunchTemplateSpecification()
+            .withLaunchTemplateName(launchTemplateName)
+            .withVersion(launchTemplateVersion));
+
+    createAutoScalingGroupRequest.setTags(prepareTags(createAutoScalingGroupRequest.getTags(), asgName));
 
     return asgCall(asgClient -> asgClient.createAutoScalingGroup(createAutoScalingGroupRequest));
   }
 
-  public void updateASG(
-      String asgName, String launchTemplateVersion, CreateAutoScalingGroupRequest createAutoScalingGroupRequest) {
+  public void updateASG(String asgName, String launchTemplateName, String launchTemplateVersion,
+      CreateAutoScalingGroupRequest createAutoScalingGroupRequest) {
     UpdateAutoScalingGroupRequest updateAutoScalingGroupRequest =
         createAsgRequestToUpdateAsgRequestMapper(createAutoScalingGroupRequest);
 
     updateAutoScalingGroupRequest.setAutoScalingGroupName(asgName);
 
     if (isNotEmpty(launchTemplateVersion)) {
-      LaunchTemplateSpecification launchTemplateSpecification =
-          new LaunchTemplateSpecification().withLaunchTemplateName(asgName).withVersion(launchTemplateVersion);
+      LaunchTemplateSpecification launchTemplateSpecification = new LaunchTemplateSpecification()
+                                                                    .withLaunchTemplateName(launchTemplateName)
+                                                                    .withVersion(launchTemplateVersion);
       updateAutoScalingGroupRequest.setLaunchTemplate(launchTemplateSpecification);
     }
     asgCall(asgClient -> asgClient.updateAutoScalingGroup(updateAutoScalingGroupRequest));
@@ -268,7 +280,7 @@ public class AsgSdkManager {
   private void updateTags(String asgName, CreateAutoScalingGroupRequest createAutoScalingGroupRequest) {
     List<TagDescription> currentTagDescriptionsList = new ArrayList<>();
     String nextToken = null;
-    Filter filter = new Filter().withName("auto-scaling-group").withValues(asgName);
+    Filter filter = new Filter().withName(ASG_RESOURCE_TYPE).withValues(asgName);
 
     do {
       DescribeTagsRequest describeTagsRequest = new DescribeTagsRequest().withFilters(filter).withNextToken(nextToken);
@@ -298,22 +310,8 @@ public class AsgSdkManager {
       asgCall(asgClient -> asgClient.deleteTags(deleteTagsRequest));
     }
 
-    List<Tag> tags = createAutoScalingGroupRequest.getTags();
-    List<Tag> tagsList = new ArrayList<>();
-    if (isNotEmpty(tags)) {
-      tags.forEach(tag -> {
-        if (tag.getPropagateAtLaunch() == null) {
-          tag.setPropagateAtLaunch(true);
-        }
-        if (tag.getResourceId() == null) {
-          tag.setResourceId(asgName);
-        }
-        if (tag.getResourceType() == null) {
-          tag.setResourceType("auto-scaling-group");
-        }
-        tagsList.add(tag);
-      });
-
+    List<Tag> tagsList = prepareTags(createAutoScalingGroupRequest.getTags(), asgName);
+    if (isNotEmpty(tagsList)) {
       CreateOrUpdateTagsRequest createOrUpdateTagsRequest = new CreateOrUpdateTagsRequest();
       createOrUpdateTagsRequest.setTags(tagsList);
       asgCall(asgClient -> asgClient.createOrUpdateTags(createOrUpdateTagsRequest));
@@ -705,8 +703,7 @@ public class AsgSdkManager {
 
   public void modifySpecificListenerRule(
       String region, String listenerRuleArn, List<String> targetGroupArnsList, AwsInternalConfig awsInternalConfig) {
-    Collection<software.amazon.awssdk.services.elasticloadbalancingv2.model.TargetGroupTuple> targetGroups =
-        new ArrayList<>();
+    Collection<TargetGroupTuple> targetGroups = new ArrayList<>();
     if (isNotEmpty(targetGroupArnsList)) {
       targetGroupArnsList.forEach(targetGroupArn -> {
         TargetGroupTuple targetGroupTuple = TargetGroupTuple.builder().targetGroupArn(targetGroupArn).weight(1).build();
@@ -746,8 +743,7 @@ public class AsgSdkManager {
 
   public void modifyDefaultListenerRule(
       String region, String listenerArn, List<String> targetGroupArnsList, AwsInternalConfig awsInternalConfig) {
-    Collection<software.amazon.awssdk.services.elasticloadbalancingv2.model.TargetGroupTuple> targetGroups =
-        new ArrayList<>();
+    Collection<TargetGroupTuple> targetGroups = new ArrayList<>();
     if (isNotEmpty(targetGroupArnsList)) {
       targetGroupArnsList.forEach(targetGroupArn -> {
         TargetGroupTuple targetGroupTuple = TargetGroupTuple.builder().targetGroupArn(targetGroupArn).weight(1).build();
@@ -772,7 +768,7 @@ public class AsgSdkManager {
         .withValue(newTagValue)
         .withPropagateAtLaunch(true)
         .withResourceId(asgName)
-        .withResourceType("auto-scaling-group");
+        .withResourceType(ASG_RESOURCE_TYPE);
 
     CreateOrUpdateTagsRequest createOrUpdateTagsRequest = new CreateOrUpdateTagsRequest();
     createOrUpdateTagsRequest.withTags(newTag);
@@ -881,7 +877,7 @@ public class AsgSdkManager {
   }
 
   public String describeBGTags(String asgName) {
-    Filter filter1 = new Filter().withName("auto-scaling-group").withValues(asgName);
+    Filter filter1 = new Filter().withName(ASG_RESOURCE_TYPE).withValues(asgName);
     Filter filter2 = new Filter().withName("key").withValues(BG_VERSION);
 
     List<Filter> filterList = new ArrayList<>();
@@ -927,5 +923,95 @@ public class AsgSdkManager {
       logCallback.saveExecutionLog(formatted, ERROR);
     }
     log.error(formatted);
+  }
+
+  public ResponseLaunchTemplateData getLaunchTemplateData(String templateName, String version) {
+    DescribeLaunchTemplateVersionsRequest req =
+        new DescribeLaunchTemplateVersionsRequest().withLaunchTemplateName(templateName).withVersions(version);
+    DescribeLaunchTemplateVersionsResult describeLaunchTemplateVersionsResult =
+        ec2Call(ec2Client -> ec2Client.describeLaunchTemplateVersions(req));
+    if (isEmpty(describeLaunchTemplateVersionsResult.getLaunchTemplateVersions())) {
+      return null;
+    }
+
+    LaunchTemplateVersion launchTemplateVersion =
+        describeLaunchTemplateVersionsResult.getLaunchTemplateVersions().get(0);
+    return launchTemplateVersion.getLaunchTemplateData();
+  }
+
+  public void modifyDefaultListenerRule(String region, String listenerArn, AwsInternalConfig awsInternalConfig,
+      List<TargetGroupTuple> targetGroupTuples) {
+    ModifyListenerRequest modifyListenerRequest =
+        ModifyListenerRequest.builder()
+            .listenerArn(listenerArn)
+            .defaultActions(Action.builder()
+                                .type(ActionTypeEnum.FORWARD)
+                                .forwardConfig(ForwardActionConfig.builder().targetGroups(targetGroupTuples).build())
+                                .build())
+            .build();
+    elbV2Client.modifyListener(awsInternalConfig, modifyListenerRequest, region);
+  }
+
+  public void modifySpecificListenerRule(String region, String listenerRuleArn, AwsInternalConfig awsInternalConfig,
+      List<TargetGroupTuple> targetGroupTuples) {
+    ModifyRuleRequest modifyRuleRequest =
+        ModifyRuleRequest.builder()
+            .ruleArn(listenerRuleArn)
+            .actions(Action.builder()
+                         .type(ActionTypeEnum.FORWARD)
+                         .forwardConfig(ForwardActionConfig.builder().targetGroups(targetGroupTuples).build())
+                         .build())
+            .build();
+    elbV2Client.modifyRule(awsInternalConfig, modifyRuleRequest, region);
+  }
+
+  @VisibleForTesting
+  List<Tag> prepareTags(Collection<Tag> tags, String asgName) {
+    List<Tag> result = new ArrayList<>();
+    if (isNotEmpty(tags)) {
+      result = tags.stream()
+                   .filter(tagDescription -> !NAME_TAG.equals(tagDescription.getKey()))
+                   /**
+                    * In case of dynamic base Asg provisioning the base Asg would have a tags like the following,
+                    * which a user can't create. So we must filter those ones out
+                    * - aws:cloudformation:logical-id
+                    * - aws:cloudformation:stack-id
+                    * - aws:cloudformation:stack-name
+                    */
+                   .filter(tagDescription -> !tagDescription.getKey().startsWith(AWS_TAG_PREFIX))
+                   .map(tagDescription
+                       -> new Tag()
+                              .withKey(tagDescription.getKey())
+                              .withValue(tagDescription.getValue())
+                              .withPropagateAtLaunch(!Boolean.FALSE.equals(tagDescription.getPropagateAtLaunch()))
+                              .withResourceType(ASG_RESOURCE_TYPE)
+                              .withResourceId(asgName))
+                   .collect(Collectors.toList());
+    }
+    result.add(new Tag()
+                   .withKey(NAME_TAG)
+                   .withValue(asgName)
+                   .withPropagateAtLaunch(true)
+                   .withResourceType(ASG_RESOURCE_TYPE)
+                   .withResourceId(asgName));
+    return result;
+  }
+
+  public boolean checkInstanceRefreshInProgress(String asgName) {
+    DescribeInstanceRefreshesRequest describeInstanceRefreshesRequest =
+        new DescribeInstanceRefreshesRequest().withAutoScalingGroupName(asgName);
+
+    DescribeInstanceRefreshesResult describeInstanceRefreshesResult =
+        asgCall(asgClient -> asgClient.describeInstanceRefreshes(describeInstanceRefreshesRequest));
+
+    List<InstanceRefresh> instanceRefreshes = describeInstanceRefreshesResult.getInstanceRefreshes();
+
+    if (isEmpty(instanceRefreshes)) {
+      return false;
+    }
+
+    // take latest instance refresh
+    InstanceRefresh instanceRefresh = instanceRefreshes.get(0);
+    return !instanceRefresh.getStatus().equalsIgnoreCase(INSTANCE_REFRESH_STATUS_SUCCESSFUL);
   }
 }

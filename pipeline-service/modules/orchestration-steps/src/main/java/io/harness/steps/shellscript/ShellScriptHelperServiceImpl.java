@@ -6,15 +6,18 @@
  */
 
 package io.harness.steps.shellscript;
+
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static io.harness.authorization.AuthorizationServiceHeader.NG_MANAGER;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.delegate.task.shell.winrm.WinRmCommandConstants.SESSION_TIMEOUT;
 import static io.harness.steps.shellscript.ShellScriptBaseSource.HARNESS;
 import static io.harness.steps.shellscript.ShellScriptBaseSource.INLINE;
 
 import static java.lang.Boolean.parseBoolean;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
+import static java.util.Objects.isNull;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -24,13 +27,17 @@ import io.harness.beans.FeatureName;
 import io.harness.beans.FileReference;
 import io.harness.beans.IdentifierRef;
 import io.harness.beans.common.VariablesSweepingOutput;
+import io.harness.common.NGTimeConversionHelper;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.delegate.task.TaskParameters;
 import io.harness.delegate.task.k8s.K8sInfraDelegateConfig;
+import io.harness.delegate.task.shell.ShellScriptTaskNG;
 import io.harness.delegate.task.shell.ShellScriptTaskParametersNG;
 import io.harness.delegate.task.shell.ShellScriptTaskParametersNG.ShellScriptTaskParametersNGBuilder;
 import io.harness.delegate.task.shell.WinRmShellScriptTaskParametersNG;
 import io.harness.delegate.task.shell.WinRmShellScriptTaskParametersNG.WinRmShellScriptTaskParametersNGBuilder;
+import io.harness.exception.ExceptionUtils;
+import io.harness.exception.InternalServerErrorException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.expression.EngineExpressionEvaluator;
 import io.harness.expression.ExpressionEvaluatorUtils;
@@ -55,6 +62,7 @@ import io.harness.pms.expression.ParameterFieldResolverFunctor;
 import io.harness.pms.sdk.core.data.OptionalSweepingOutput;
 import io.harness.pms.sdk.core.resolver.RefObjectUtils;
 import io.harness.pms.sdk.core.resolver.outputs.ExecutionSweepingOutputService;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.validation.InputSetValidatorFactory;
@@ -81,7 +89,7 @@ import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nonnull;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.jetbrains.annotations.NotNull;
 
 @CodePulse(
@@ -90,6 +98,7 @@ import org.jetbrains.annotations.NotNull;
 @Slf4j
 public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
   static final String FILE_STORE_SCRIPT_ERROR_MSG = "Script from Harness File Store cannot be empty, file: %s";
+  static final String NULL_STRING = "null";
 
   @Inject private ExecutionSweepingOutputService executionSweepingOutputService;
   @Inject @Named("PRIVILEGED") private SecretNGManagerClient secretManagerClient;
@@ -198,8 +207,9 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
   }
 
   @Override
-  public K8sInfraDelegateConfig getK8sInfraDelegateConfig(@Nonnull Ambiance ambiance, @Nonnull String shellScript) {
-    if (shellScript.contains(K8sConstants.HARNESS_KUBE_CONFIG_PATH)) {
+  public K8sInfraDelegateConfig getK8sInfraDelegateConfig(
+      @Nonnull Ambiance ambiance, @Nonnull String shellScript, Boolean includeInfraSelectors) {
+    if (BooleanUtils.isTrue(includeInfraSelectors) || shellScript.contains(K8sConstants.HARNESS_KUBE_CONFIG_PATH)) {
       OptionalSweepingOutput optionalSweepingOutput = executionSweepingOutputService.resolveOptional(ambiance,
           RefObjectUtils.getSweepingOutputRefObject(OutputExpressionConstants.K8S_INFRA_DELEGATE_CONFIG_OUTPUT_NAME));
       if (optionalSweepingOutput.isFound()) {
@@ -213,37 +223,42 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
 
   @Override
   public void prepareTaskParametersForExecutionTarget(@Nonnull Ambiance ambiance,
-      @Nonnull ShellScriptStepParameters shellScriptStepParameters,
-      @Nonnull ShellScriptTaskParametersNGBuilder taskParametersNGBuilder) {
-    if (!shellScriptStepParameters.onDelegate.getValue()) {
-      ExecutionTarget executionTarget = shellScriptStepParameters.getExecutionTarget();
-      validateExecutionTarget(executionTarget);
-      SSHKeySpecDTO secretSpec = (SSHKeySpecDTO) getSshKeySpec(ambiance, executionTarget);
+      @Nonnull ShellScriptStepParametersV0 shellScriptStepParameters,
+      @Nonnull ShellScriptTaskParametersNGBuilder taskParametersNGBuilder, boolean executeOnDelegate) {
+    if (!executeOnDelegate) {
+      ParameterField<ExecutionTarget> executionTarget = shellScriptStepParameters.getExecutionTarget();
+      validateExecutionTarget(executionTarget.getValue());
+      SSHKeySpecDTO secretSpec = (SSHKeySpecDTO) getSshKeySpec(ambiance, executionTarget.getValue());
       NGAccess ngAccess = AmbianceUtils.getNgAccess(ambiance);
       List<EncryptedDataDetail> sshKeyEncryptionDetails =
           sshKeySpecDTOHelper.getSSHKeyEncryptionDetails(secretSpec, ngAccess);
 
       taskParametersNGBuilder.sshKeySpecDTO(secretSpec)
           .encryptionDetails(sshKeyEncryptionDetails)
-          .host(executionTarget.getHost().getValue());
+          .host(executionTarget.getValue().getHost().getValue());
     }
   }
 
-  private void validateExecutionTarget(ExecutionTarget executionTarget) {
-    if (executionTarget == null) {
-      throw new InvalidRequestException("Execution Target can't be empty with on delegate set to false");
+  @Override
+  public boolean toExecuteOnDelegate(ParameterField<ExecutionTarget> executionTargetParameterField) {
+    if (ParameterField.isBlank(executionTargetParameterField)
+        || ParameterField.isBlank(executionTargetParameterField.getValue().getHost())) {
+      return true;
     }
-    if (ParameterField.isNull(executionTarget.getConnectorRef())
-        || StringUtils.isEmpty(executionTarget.getConnectorRef().getValue())) {
+    return false;
+  }
+
+  private void validateExecutionTarget(ExecutionTarget executionTarget) {
+    if (ParameterField.isBlank(executionTarget.getConnectorRef())) {
       throw new InvalidRequestException("Connector Ref in Execution Target can't be empty");
     }
-    if (ParameterField.isNull(executionTarget.getHost()) || StringUtils.isEmpty(executionTarget.getHost().getValue())) {
+    if (ParameterField.isBlank(executionTarget.getHost())) {
       throw new InvalidRequestException("Host in Execution Target can't be empty");
     }
   }
 
   @Override
-  public String getShellScript(@Nonnull ShellScriptStepParameters stepParameters, Ambiance ambiance) {
+  public String getShellScript(@Nonnull ShellScriptStepParametersV0 stepParameters, Ambiance ambiance) {
     ShellScriptSourceWrapper shellScriptSourceWrapper = stepParameters.getSource();
 
     if (INLINE.equals(shellScriptSourceWrapper.getType())) {
@@ -300,9 +315,10 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
 
   @Override
   public String getWorkingDirectory(
-      ParameterField<String> workingDirectory, @Nonnull ScriptType scriptType, boolean onDelegate) {
-    if (workingDirectory != null && EmptyPredicate.isNotEmpty(workingDirectory.getValue())) {
-      return workingDirectory.getValue();
+      ParameterField<ExecutionTarget> executionTarget, @Nonnull ScriptType scriptType, boolean onDelegate) {
+    if (ParameterField.isNotBlank(executionTarget)
+        && ParameterField.isNotBlank(executionTarget.getValue().getWorkingDirectory())) {
+      return executionTarget.getValue().getWorkingDirectory().getValue();
     }
     String commandPath = null;
     if (scriptType == ScriptType.BASH) {
@@ -325,40 +341,65 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
   }
 
   @Override
-  public TaskParameters buildShellScriptTaskParametersNG(
-      @Nonnull Ambiance ambiance, @Nonnull ShellScriptStepParameters shellScriptStepParameters) {
+  public TaskParameters buildShellScriptTaskParametersNG(@Nonnull Ambiance ambiance,
+      @Nonnull ShellScriptStepParametersV0 shellScriptStepParameters, String sessionTimeout, String commandUnit) {
     SecurityContextBuilder.setContext(new ServicePrincipal(NG_MANAGER.getServiceId()));
     ScriptType scriptType = shellScriptStepParameters.getShell().getScriptType();
     String shellScript = shellScriptHelperService.getShellScript(shellScriptStepParameters, ambiance);
-    ParameterField<String> workingDirectory = (shellScriptStepParameters.getExecutionTarget() != null)
-        ? shellScriptStepParameters.getExecutionTarget().getWorkingDirectory()
-        : ParameterField.ofNull();
+    validateExportVariables(shellScriptStepParameters.getOutputAlias());
 
     if (ScriptType.BASH.equals(scriptType)) {
-      return buildBashTaskParametersNG(ambiance, shellScriptStepParameters, scriptType, shellScript, workingDirectory);
+      return buildBashTaskParametersNG(ambiance, shellScriptStepParameters, scriptType, shellScript);
     } else {
-      return getWinRmTaskParametersNG(ambiance, shellScriptStepParameters, scriptType, shellScript, workingDirectory);
+      return getWinRmTaskParametersNG(
+          ambiance, shellScriptStepParameters, scriptType, shellScript, sessionTimeout, commandUnit);
     }
   }
 
+  private void validateExportVariables(OutputAlias exportVariables) {
+    if (isNull(exportVariables)) {
+      return;
+    }
+
+    ParameterField<String> alias = exportVariables.getKey();
+    if (ParameterField.isBlank(alias)) {
+      throw new InvalidRequestException("Empty value for key is not allowed in output alias configuration");
+    }
+    if (NULL_STRING.equals(alias.fetchFinalValue())) {
+      throw new InvalidRequestException("Expression provided for key in output alias configuration was not resolved");
+    }
+  }
+
+  @Override
+  public TaskParameters buildShellScriptTaskParametersNG(
+      @NotNull Ambiance ambiance, @NotNull ShellScriptStepParametersV0 shellScriptStepParameters) {
+    return buildShellScriptTaskParametersNG(ambiance, shellScriptStepParameters, null, ShellScriptTaskNG.COMMAND_UNIT);
+  }
+
   private WinRmShellScriptTaskParametersNG getWinRmTaskParametersNG(@NotNull Ambiance ambiance,
-      @NotNull ShellScriptStepParameters shellScriptStepParameters, ScriptType scriptType, String shellScript,
-      ParameterField<String> workingDirectory) {
+      @NotNull ShellScriptStepParametersV0 shellScriptStepParameters, ScriptType scriptType, String shellScript,
+      String sessionTimeout, String commandUnit) {
     WinRmShellScriptTaskParametersNGBuilder taskParametersNGBuilder = WinRmShellScriptTaskParametersNG.builder();
 
-    taskParametersNGBuilder.k8sInfraDelegateConfig(
-        shellScriptHelperService.getK8sInfraDelegateConfig(ambiance, shellScript));
+    Boolean includeInfraSelectors = shellScriptStepParameters.includeInfraSelectors != null
+        && BooleanUtils.isTrue(shellScriptStepParameters.includeInfraSelectors.getValue());
 
-    if (!shellScriptStepParameters.onDelegate.getValue()) {
-      ExecutionTarget executionTarget = shellScriptStepParameters.getExecutionTarget();
-      validateExecutionTarget(executionTarget);
-      SecretSpecDTO secretSpec = getSshKeySpec(ambiance, executionTarget);
+    taskParametersNGBuilder.k8sInfraDelegateConfig(
+        shellScriptHelperService.getK8sInfraDelegateConfig(ambiance, shellScript, includeInfraSelectors));
+
+    boolean executeOnDelegate =
+        shellScriptHelperService.toExecuteOnDelegate(shellScriptStepParameters.getExecutionTarget());
+
+    if (!executeOnDelegate) {
+      ParameterField<ExecutionTarget> executionTarget = shellScriptStepParameters.getExecutionTarget();
+      validateExecutionTarget(executionTarget.getValue());
+      SecretSpecDTO secretSpec = getSshKeySpec(ambiance, executionTarget.getValue());
       final List<EncryptedDataDetail> encryptionDetails = winRmCredentialsSpecDTOHelper.getWinRmEncryptionDetails(
           (WinRmCredentialsSpecDTO) secretSpec, AmbianceUtils.getNgAccess(ambiance));
 
       taskParametersNGBuilder.sshKeySpecDTO(secretSpec)
           .encryptionDetails(encryptionDetails)
-          .host(executionTarget.getHost().getValue());
+          .host(executionTarget.getValue().getHost().getValue());
     }
 
     taskParametersNGBuilder
@@ -367,10 +408,12 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
         .disableCommandEncoding(pmsFeatureFlagService.isEnabled(
             AmbianceUtils.getAccountId(ambiance), FeatureName.DISABLE_WINRM_COMMAND_ENCODING_NG))
         .winrmScriptCommandSplit(pmsFeatureFlagService.isEnabled(
-            AmbianceUtils.getAccountId(ambiance), FeatureName.WINRM_SCRIPT_COMMAND_SPLIT_NG));
+            AmbianceUtils.getAccountId(ambiance), FeatureName.WINRM_SCRIPT_COMMAND_SPLIT_NG))
+        .disableWinRmEnvVarEscaping(pmsFeatureFlagService.isEnabled(
+            AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_NG_DISABLE_SPECIAL_CHARS_ESCAPE_OF_WINRM_ENV_VARS));
 
     return taskParametersNGBuilder.accountId(AmbianceUtils.getAccountId(ambiance))
-        .executeOnDelegate(shellScriptStepParameters.onDelegate.getValue())
+        .executeOnDelegate(executeOnDelegate)
         .environmentVariables(shellScriptHelperService.getEnvironmentVariables(
             shellScriptStepParameters.getEnvironmentVariables(), ambiance))
         .executionId(AmbianceUtils.obtainCurrentRuntimeId(ambiance))
@@ -381,21 +424,28 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
         .script(shellScript)
         .scriptType(scriptType)
         .workingDirectory(shellScriptHelperService.getWorkingDirectory(
-            workingDirectory, scriptType, shellScriptStepParameters.onDelegate.getValue()))
+            shellScriptStepParameters.getExecutionTarget(), scriptType, executeOnDelegate))
+        .sessionTimeout(EmptyPredicate.isNotEmpty(sessionTimeout)
+                ? Math.max(NGTimeConversionHelper.convertTimeStringToMilliseconds(sessionTimeout), SESSION_TIMEOUT)
+                : SESSION_TIMEOUT)
+        .commandUnit(commandUnit)
         .build();
   }
 
   private ShellScriptTaskParametersNG buildBashTaskParametersNG(@NotNull Ambiance ambiance,
-      @NotNull ShellScriptStepParameters shellScriptStepParameters, ScriptType scriptType, String shellScript,
-      ParameterField<String> workingDirectory) {
+      @NotNull ShellScriptStepParametersV0 shellScriptStepParameters, ScriptType scriptType, String shellScript) {
     ShellScriptTaskParametersNGBuilder taskParametersNGBuilder = ShellScriptTaskParametersNG.builder();
 
+    Boolean includeInfraSelectors = shellScriptStepParameters.includeInfraSelectors != null
+        && BooleanUtils.isTrue(shellScriptStepParameters.includeInfraSelectors.getValue());
+
     taskParametersNGBuilder.k8sInfraDelegateConfig(
-        shellScriptHelperService.getK8sInfraDelegateConfig(ambiance, shellScript));
+        shellScriptHelperService.getK8sInfraDelegateConfig(ambiance, shellScript, includeInfraSelectors));
+    boolean executeOnDelegate = toExecuteOnDelegate(shellScriptStepParameters.getExecutionTarget());
     shellScriptHelperService.prepareTaskParametersForExecutionTarget(
-        ambiance, shellScriptStepParameters, taskParametersNGBuilder);
+        ambiance, shellScriptStepParameters, taskParametersNGBuilder, executeOnDelegate);
     return taskParametersNGBuilder.accountId(AmbianceUtils.getAccountId(ambiance))
-        .executeOnDelegate(shellScriptStepParameters.onDelegate.getValue())
+        .executeOnDelegate(executeOnDelegate)
         .environmentVariables(shellScriptHelperService.getEnvironmentVariables(
             shellScriptStepParameters.getEnvironmentVariables(), ambiance))
         .executionId(AmbianceUtils.obtainCurrentRuntimeId(ambiance))
@@ -406,7 +456,7 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
         .script(shellScript)
         .scriptType(scriptType)
         .workingDirectory(shellScriptHelperService.getWorkingDirectory(
-            workingDirectory, scriptType, shellScriptStepParameters.onDelegate.getValue()))
+            shellScriptStepParameters.getExecutionTarget(), scriptType, executeOnDelegate))
         .build();
   }
 
@@ -428,7 +478,7 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
   }
 
   @Override
-  public ShellScriptOutcome prepareShellScriptOutcome(
+  public ShellScriptBaseOutcome prepareShellScriptOutcome(
       Map<String, String> sweepingOutputEnvVariables, Map<String, Object> outputVariables) {
     if (outputVariables == null || sweepingOutputEnvVariables == null) {
       return null;
@@ -438,7 +488,7 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
       Object value = ((ParameterField<?>) outputVariables.get(name)).getValue();
       resolvedOutputVariables.put(name, sweepingOutputEnvVariables.get(value));
     });
-    return ShellScriptOutcome.builder().outputVariables(resolvedOutputVariables).build();
+    return ShellScriptHelperService.getShellScriptOutcome(resolvedOutputVariables, HarnessYamlVersion.V0);
   }
 
   @Override
@@ -465,5 +515,36 @@ public class ShellScriptHelperServiceImpl implements ShellScriptHelperService {
       }
     });
     return outputVars;
+  }
+
+  @Override
+  public void exportOutputVariablesUsingAlias(@Nonnull Ambiance ambiance,
+      @Nonnull ShellScriptStepParametersV0 shellScriptStepParameters,
+      @Nonnull ShellScriptBaseOutcome shellScriptOutcome) {
+    if (isNull(shellScriptStepParameters.getOutputAlias())
+        || EmptyPredicate.isEmpty(shellScriptOutcome.getOutputVariables())) {
+      log.debug("Skipping exporting output variables as output alias not present or output variables are empty");
+      return;
+    }
+    String userAlias = (String) shellScriptStepParameters.getOutputAlias().getKey().fetchFinalValue();
+    String uuid = OutputAliasUtils.generateSweepingOutputKeyUsingUserAlias(userAlias, ambiance);
+    try {
+      executionSweepingOutputService.consume(ambiance, uuid,
+          OutputAliasSweepingOutput.builder().outputVariables(shellScriptOutcome.getOutputVariables()).build(),
+          shellScriptStepParameters.getOutputAlias().getScope().toStepOutcomeGroup());
+    } catch (Exception ex) {
+      if (OutputAliasUtils.isDuplicateKeyException(ex, uuid)) {
+        log.warn("Error while publishing outputAlias due to the output already saved for the key [{}:{}] for scope {}",
+            userAlias, uuid, shellScriptStepParameters.getOutputAlias().getScope(), ex);
+        throw new InvalidRequestException(String.format(
+            "Output alias with key %s, already saved in %s scope. Please ensure that there are no duplicate output alias keys within the same scope",
+            userAlias, shellScriptStepParameters.getOutputAlias().getScope()));
+      }
+      log.warn("Error while publishing outputAlias for the key [{}:{}] for scope {}", userAlias, uuid,
+          shellScriptStepParameters.getOutputAlias().getScope(), ex);
+      throw new InternalServerErrorException(
+          String.format("Error while publishing outputAlias for the key %s for scope %s: %s", userAlias,
+              shellScriptStepParameters.getOutputAlias().getScope(), ExceptionUtils.getMessage(ex)));
+    }
   }
 }

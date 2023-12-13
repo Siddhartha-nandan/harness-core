@@ -7,6 +7,7 @@
 
 package io.harness.subscription.services;
 
+import static io.harness.rule.OwnerRule.KAPIL;
 import static io.harness.rule.OwnerRule.TOMMY;
 import static io.harness.subscription.constant.CreditCardTestConstants.ALTERNATE_ACCOUNT_ID;
 import static io.harness.subscription.constant.CreditCardTestConstants.ALTERNATE_CREDIT_CARD_DTO;
@@ -19,15 +20,24 @@ import static io.harness.subscription.constant.CreditCardTestConstants.DEFAULT_C
 import static io.harness.subscription.constant.CreditCardTestConstants.DEFAULT_CUSTOMER_ID;
 import static io.harness.subscription.constant.CreditCardTestConstants.DEFAULT_FINGERPRINT;
 import static io.harness.subscription.constant.CreditCardTestConstants.DEFAULT_PAYMENT_METHODS;
+import static io.harness.subscription.constant.CreditCardTestConstants.DEFAULT_SOURCE_PRINCIPLE_DATA;
 import static io.harness.subscription.constant.CreditCardTestConstants.EXPIRED_PAYMENT_METHODS;
 import static io.harness.subscription.constant.SubscriptionTestConstant.DEFAULT_ACCOUNT_ID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
 import io.harness.CategoryTest;
+import io.harness.account.AccountClient;
 import io.harness.category.element.UnitTests;
+import io.harness.exception.InvalidArgumentsException;
+import io.harness.exception.InvalidRequestException;
+import io.harness.exception.UnauthorizedException;
+import io.harness.manage.GlobalContextManager;
+import io.harness.remote.client.CGRestUtils;
 import io.harness.repositories.CreditCardRepository;
 import io.harness.repositories.StripeCustomerRepository;
 import io.harness.rule.Owner;
@@ -36,13 +46,14 @@ import io.harness.subscription.helpers.impl.StripeHelperImpl;
 import io.harness.subscription.responses.CreditCardResponse;
 import io.harness.subscription.services.impl.CreditCardServiceImpl;
 
-import javax.ws.rs.BadRequestException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 
 public class CreditCardServiceImplTest extends CategoryTest {
+  @Mock private AccountClient accountClient;
   @Mock private CreditCardRepository creditCardRepository;
   @Mock private StripeCustomerRepository stripeCustomerRepository;
   @Mock private static StripeHelperImpl stripeHelper;
@@ -52,8 +63,8 @@ public class CreditCardServiceImplTest extends CategoryTest {
   @Before
   public void setUp() {
     initMocks(this);
-
-    creditCardService = new CreditCardServiceImpl(creditCardRepository, stripeCustomerRepository, stripeHelper);
+    creditCardService =
+        new CreditCardServiceImpl(accountClient, creditCardRepository, stripeCustomerRepository, stripeHelper);
   }
 
   @Test
@@ -84,7 +95,7 @@ public class CreditCardServiceImplTest extends CategoryTest {
     assertThat(response).isNotNull();
   }
 
-  @Test(expected = BadRequestException.class)
+  @Test(expected = InvalidRequestException.class)
   @Owner(developers = TOMMY)
   @Category(UnitTests.class)
   public void testSaveCreditCardBadRequest() {
@@ -99,23 +110,96 @@ public class CreditCardServiceImplTest extends CategoryTest {
   @Test
   @Owner(developers = TOMMY)
   @Category(UnitTests.class)
-  public void testHasValidCard() {
-    when(stripeCustomerRepository.findByAccountIdentifier(DEFAULT_ACCOUNT_ID)).thenReturn(DEFAULT_CUSTOMER);
-    when(stripeHelper.listPaymentMethods(DEFAULT_CUSTOMER_ID)).thenReturn(DEFAULT_PAYMENT_METHODS);
+  public void testDeleteCreditCard() {
+    when(creditCardRepository.findByCreditCardIdentifier(DEFAULT_CREDIT_CARD_IDENTIFIER))
+        .thenReturn(DEFAULT_CREDIT_CARD);
 
-    creditCardService.hasValidCard(DEFAULT_ACCOUNT_ID);
-    assertThat(creditCardService.hasValidCard(DEFAULT_ACCOUNT_ID)).isTrue();
+    MockedStatic<GlobalContextManager> globalContextManager = mockStatic(GlobalContextManager.class);
+    globalContextManager.when(() -> GlobalContextManager.get(any())).thenReturn(DEFAULT_SOURCE_PRINCIPLE_DATA);
+
+    MockedStatic<CGRestUtils> mockRestUtils = mockStatic(CGRestUtils.class);
+    mockRestUtils.when(() -> CGRestUtils.getResponse(any())).thenReturn(true);
+
+    CreditCardResponse response =
+        creditCardService.deleteCreditCard(DEFAULT_ACCOUNT_ID, DEFAULT_CREDIT_CARD_IDENTIFIER);
+    assertThat(response).isNotNull();
+    assertThat(response.getCreditCardDTO().getAccountIdentifier()).isEqualTo(DEFAULT_ACCOUNT_ID);
+    assertThat(response.getCreditCardDTO().getCreditCardIdentifier()).isEqualTo(DEFAULT_CREDIT_CARD_IDENTIFIER);
+  }
+
+  @Test(expected = UnauthorizedException.class)
+  @Owner(developers = TOMMY)
+  @Category(UnitTests.class)
+  public void testDeleteCreditCardExpectsUnauthorizedException() {
+    when(creditCardRepository.findByCreditCardIdentifier(DEFAULT_CREDIT_CARD_IDENTIFIER))
+        .thenReturn(DEFAULT_CREDIT_CARD);
+
+    MockedStatic<GlobalContextManager> globalContextManager = mockStatic(GlobalContextManager.class);
+    globalContextManager.when(() -> GlobalContextManager.get(any())).thenReturn(DEFAULT_SOURCE_PRINCIPLE_DATA);
+
+    MockedStatic<CGRestUtils> mockRestUtils = mockStatic(CGRestUtils.class);
+    mockRestUtils.when(() -> CGRestUtils.getResponse(any())).thenReturn(false);
+
+    creditCardService.deleteCreditCard(DEFAULT_ACCOUNT_ID, DEFAULT_CREDIT_CARD_IDENTIFIER);
+  }
+
+  @Test(expected = InvalidArgumentsException.class)
+  @Owner(developers = TOMMY)
+  @Category(UnitTests.class)
+  public void testDeleteCardExpectsInvalidArgumentsException() {
+    when(stripeCustomerRepository.findByAccountIdentifier(DEFAULT_ACCOUNT_ID)).thenReturn(null);
+
+    MockedStatic<GlobalContextManager> globalContextManager = mockStatic(GlobalContextManager.class);
+    globalContextManager.when(() -> GlobalContextManager.get(any())).thenReturn(DEFAULT_SOURCE_PRINCIPLE_DATA);
+
+    MockedStatic<CGRestUtils> mockRestUtils = mockStatic(CGRestUtils.class);
+    mockRestUtils.when(() -> CGRestUtils.getResponse(any())).thenReturn(true);
+
+    creditCardService.deleteCreditCard(DEFAULT_ACCOUNT_ID, DEFAULT_CREDIT_CARD_IDENTIFIER);
   }
 
   @Test
   @Owner(developers = TOMMY)
   @Category(UnitTests.class)
-  public void testHasValidCardFailure() {
+  public void testHasAtleastOneValidCreditCard() {
+    when(stripeCustomerRepository.findByAccountIdentifier(DEFAULT_ACCOUNT_ID)).thenReturn(DEFAULT_CUSTOMER);
+    when(stripeHelper.listPaymentMethods(DEFAULT_CUSTOMER_ID)).thenReturn(DEFAULT_PAYMENT_METHODS);
+    when(creditCardRepository.findByCreditCardIdentifier(DEFAULT_CREDIT_CARD_IDENTIFIER))
+        .thenReturn(DEFAULT_CREDIT_CARD);
+
+    assertThat(creditCardService.hasAtleastOneValidCreditCard(DEFAULT_ACCOUNT_ID)).isTrue();
+  }
+
+  @Test
+  @Owner(developers = TOMMY)
+  @Category(UnitTests.class)
+  public void testHasAtleastOneValidCreditCard_WhenCardExpired() {
     when(stripeCustomerRepository.findByAccountIdentifier(DEFAULT_ACCOUNT_ID)).thenReturn(DEFAULT_CUSTOMER);
     when(stripeHelper.listPaymentMethods(DEFAULT_CUSTOMER_ID)).thenReturn(EXPIRED_PAYMENT_METHODS);
 
-    creditCardService.hasValidCard(DEFAULT_ACCOUNT_ID);
-    assertThat(creditCardService.hasValidCard(DEFAULT_ACCOUNT_ID)).isFalse();
+    assertThat(creditCardService.hasAtleastOneValidCreditCard(DEFAULT_ACCOUNT_ID)).isFalse();
+  }
+
+  @Test
+  @Owner(developers = KAPIL)
+  @Category(UnitTests.class)
+  public void testIsValid() {
+    when(stripeCustomerRepository.findByAccountIdentifier(DEFAULT_ACCOUNT_ID)).thenReturn(DEFAULT_CUSTOMER);
+    when(stripeHelper.listPaymentMethods(DEFAULT_CUSTOMER_ID)).thenReturn(DEFAULT_PAYMENT_METHODS);
+    when(creditCardRepository.findByCreditCardIdentifier(DEFAULT_CREDIT_CARD_IDENTIFIER))
+        .thenReturn(DEFAULT_CREDIT_CARD);
+
+    assertThat(creditCardService.isValid(DEFAULT_ACCOUNT_ID, DEFAULT_CREDIT_CARD_IDENTIFIER)).isTrue();
+  }
+
+  @Test
+  @Owner(developers = KAPIL)
+  @Category(UnitTests.class)
+  public void testIsValid_WhenCardExpired() {
+    when(stripeCustomerRepository.findByAccountIdentifier(DEFAULT_ACCOUNT_ID)).thenReturn(DEFAULT_CUSTOMER);
+    when(stripeHelper.listPaymentMethods(DEFAULT_CUSTOMER_ID)).thenReturn(EXPIRED_PAYMENT_METHODS);
+
+    assertThat(creditCardService.isValid(DEFAULT_ACCOUNT_ID, DEFAULT_CREDIT_CARD_IDENTIFIER)).isFalse();
   }
 
   @Test

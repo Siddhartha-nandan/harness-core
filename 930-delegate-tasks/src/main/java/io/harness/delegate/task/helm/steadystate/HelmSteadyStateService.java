@@ -27,6 +27,7 @@ import io.harness.helm.HelmClientUtils;
 import io.harness.helm.HelmCommandData;
 import io.harness.helm.HelmConstants;
 import io.harness.k8s.manifest.ManifestHelper;
+import io.harness.k8s.model.Kind;
 import io.harness.k8s.model.KubernetesResource;
 import io.harness.k8s.model.KubernetesResourceId;
 import io.harness.logging.CommandExecutionStatus;
@@ -64,13 +65,28 @@ public class HelmSteadyStateService {
     return resources;
   }
 
+  public List<KubernetesResourceId> findEligibleWorkloadIds(
+      List<KubernetesResource> resources, boolean useSteadyStateCheckForJobs) {
+    return findEligibleWorkloads(resources)
+        .stream()
+        .map(KubernetesResource::getResourceId)
+        .filter(resource -> useSteadyStateCheckForJobs || !Kind.Job.name().equals(resource.getKind()))
+        .collect(Collectors.toList());
+  }
+
   public List<KubernetesResourceId> findEligibleWorkloadIds(List<KubernetesResource> resources) {
+    return findEligibleWorkloads(resources)
+        .stream()
+        .map(KubernetesResource::getResourceId)
+        .collect(Collectors.toList());
+  }
+
+  public List<KubernetesResource> findEligibleWorkloads(List<KubernetesResource> resources) {
     List<KubernetesResource> eligibleWorkloads = ManifestHelper.getEligibleWorkloads(resources);
 
     return eligibleWorkloads.stream()
         .filter(this::filterHooks)
         .filter(this::filterStrategy)
-        .map(KubernetesResource::getResourceId)
         .collect(Collectors.toList());
   }
 

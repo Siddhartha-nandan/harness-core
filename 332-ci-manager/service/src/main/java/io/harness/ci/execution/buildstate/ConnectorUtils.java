@@ -5,8 +5,9 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.buildstate;
+package io.harness.ci.execution.buildstate;
 
+import static io.harness.beans.sweepingoutputs.CISweepingOutputNames.ALL_TASK_SELECTORS;
 import static io.harness.beans.sweepingoutputs.CISweepingOutputNames.TASK_SELECTORS;
 import static io.harness.beans.sweepingoutputs.StageInfraDetails.STAGE_INFRA_DETAILS;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
@@ -20,8 +21,10 @@ import io.harness.beans.sweepingoutputs.StageInfraDetails;
 import io.harness.beans.sweepingoutputs.TaskSelectorSweepingOutput;
 import io.harness.beans.yaml.extended.infrastrucutre.Infrastructure;
 import io.harness.beans.yaml.extended.infrastrucutre.K8sDirectInfraYaml;
+import io.harness.ci.buildstate.SecretUtils;
 import io.harness.ci.config.CIExecutionServiceConfig;
 import io.harness.ci.ff.CIFeatureFlagService;
+import io.harness.ci.metrics.ExecutionMetricsService;
 import io.harness.ci.utils.BaseConnectorUtils;
 import io.harness.connector.ConnectorResourceClient;
 import io.harness.delegate.TaskSelector;
@@ -39,9 +42,9 @@ import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.sdk.core.data.OptionalSweepingOutput;
 import io.harness.pms.sdk.core.resolver.RefObjectUtils;
 import io.harness.pms.sdk.core.resolver.outputs.ExecutionSweepingOutputService;
+import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.secretmanagerclient.services.api.SecretManagerClientService;
 import io.harness.security.JWTTokenServiceUtils;
-import io.harness.security.dto.PrincipalType;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
@@ -62,10 +65,11 @@ public class ConnectorUtils extends BaseConnectorUtils {
   private final SecretManagerClientService secretManagerClientService;
   private final SecretUtils secretUtils;
   private final CIExecutionServiceConfig cIExecutionServiceConfig;
+  @Inject private ExecutionMetricsService executionMetricsService;
+  private static final String CI_Connector_Error_Count = "ci_connector_error_count";
   @Inject private CIFeatureFlagService featureFlagService;
-  @Inject @Named("ngBaseUrl") private String ngBaseUrl;
+  @Inject @Named("harnessCodeGitBaseUrl") private String harnessCodeGitBaseUrl;
   private final long TEN_HOURS_IN_MS = TimeUnit.MILLISECONDS.convert(10, TimeUnit.HOURS);
-  private final String DOT_GIT = ".git";
 
   @Inject
   public ConnectorUtils(ConnectorResourceClient connectorResourceClient, SecretUtils secretUtils,
@@ -144,6 +148,37 @@ public class ConnectorUtils extends BaseConnectorUtils {
     return taskSelectors;
   }
 
+  public List<TaskSelector> fetchCodebaseDelegateSelector(Ambiance ambiance, ConnectorDetails connectorDetails,
+      ExecutionSweepingOutputService executionSweepingOutputResolver) {
+    List<TaskSelector> taskSelectors = new ArrayList<>();
+
+    // Delegate Selector Precedence: 1)Pipeline -> 2)Connector. If not specified use any delegate
+    OptionalSweepingOutput optionalTaskSelectorSweepingOutput = executionSweepingOutputResolver.resolveOptional(
+        ambiance, RefObjectUtils.getSweepingOutputRefObject(ALL_TASK_SELECTORS));
+
+    if (optionalTaskSelectorSweepingOutput.isFound()) {
+      TaskSelectorSweepingOutput taskSelectorSweepingOutput =
+          (TaskSelectorSweepingOutput) optionalTaskSelectorSweepingOutput.getOutput();
+
+      // only select pipeline delegate selectors for codebase since it's defined on pipeline level
+      taskSelectors = taskSelectorSweepingOutput.getTaskSelectors()
+                          .stream()
+                          .filter(taskSelector -> YAMLFieldNameConstants.PIPELINE.equals(taskSelector.getOrigin()))
+                          .toList();
+      if (isNotEmpty(taskSelectors)) {
+        return taskSelectors;
+      }
+    }
+
+    // fetch from git connector
+    if (connectorDetails != null && isNotEmpty(connectorDetails.getDelegateSelectors())) {
+      taskSelectors = TaskSelectorYaml.toTaskSelector(
+          connectorDetails.getDelegateSelectors().stream().map(TaskSelectorYaml::new).collect(Collectors.toList()));
+    }
+
+    return taskSelectors;
+  }
+
   public ConnectorDetails getDefaultInternalConnector(NGAccess ngAccess) {
     ConnectorDetails connectorDetails = null;
     if (isNotEmpty(cIExecutionServiceConfig.getDefaultInternalImageConnector())) {
@@ -158,19 +193,31 @@ public class ConnectorUtils extends BaseConnectorUtils {
   }
 
   public ConnectorDetails getConnectorDetails(NGAccess ngAccess, String connectorIdentifier, boolean isGitConnector) {
+    ConnectorDetails connectorDetails = null;
     if (isGitConnector && isEmpty(connectorIdentifier)
         && featureFlagService.isEnabled(FeatureName.CODE_ENABLED, ngAccess.getAccountIdentifier())) {
       log.info("fetching harness scm connector");
-      String baseUrl = getSCMBaseUrl(ngBaseUrl);
+      String gitBaseUrl = harnessCodeGitBaseUrl;
       String authToken = "";
-      return super.getHarnessConnectorDetails(ngAccess, baseUrl, authToken);
+      // todo: with this internal url we assume scm is in same cluster as ci manager, will need changes for ci saas and
+      // scm on prem or vice versa
+      return super.getHarnessConnectorDetails(ngAccess, gitBaseUrl, authToken,
+          cIExecutionServiceConfig.getGitnessConfig().getHttpClientConfig().getBaseUrl());
     }
 
     if (isEmpty(connectorIdentifier)) {
       throw new CIStageExecutionException("Git connector is mandatory in case git clone is enabled");
     }
+    try {
+      connectorDetails = super.getConnectorDetails(ngAccess, connectorIdentifier);
+    } catch (ConnectorNotFoundException e) {
+      throw e;
+    } catch (Exception e) {
+      executionMetricsService.recordConnectorErrorCount(ngAccess.getAccountIdentifier(), CI_Connector_Error_Count);
+      throw e;
+    }
 
-    return super.getConnectorDetails(ngAccess, connectorIdentifier);
+    return connectorDetails;
   }
 
   public ConnectorDetails getConnectorDetailsWithToken(
@@ -178,9 +225,12 @@ public class ConnectorUtils extends BaseConnectorUtils {
     if (isEmpty(connectorIdentifier)) {
       if (isGitConnector && featureFlagService.isEnabled(FeatureName.CODE_ENABLED, ngAccess.getAccountIdentifier())) {
         log.info("fetching harness scm connector");
-        String baseUrl = getSCMBaseUrl(ngBaseUrl);
+        String baseUrl = harnessCodeGitBaseUrl;
         String authToken = fetchAuthToken(ngAccess, ambiance, repoName);
-        return super.getHarnessConnectorDetails(ngAccess, baseUrl, authToken);
+        // todo: with this internal url we assume scm is in same cluster as ci manager, will need changes for ci saas
+        // and scm on prem or vice versa
+        return super.getHarnessConnectorDetails(ngAccess, baseUrl, authToken,
+            cIExecutionServiceConfig.getGitnessConfig().getHttpClientConfig().getBaseUrl());
       } else {
         throw new CIStageExecutionException("Git connector is mandatory in case git clone is enabled");
       }
@@ -192,14 +242,14 @@ public class ConnectorUtils extends BaseConnectorUtils {
   private String fetchAuthToken(NGAccess ngAccess, Ambiance ambiance, String repoName) {
     ExecutionPrincipalInfo executionPrincipalInfo = ambiance.getMetadata().getPrincipalInfo();
     String principal = executionPrincipalInfo.getPrincipal();
+    io.harness.pms.contracts.plan.PrincipalType principalType = executionPrincipalInfo.getPrincipalType();
 
-    String completeRepoName = GitClientHelper.convertToHarnessRepoName(ngAccess.getAccountIdentifier(),
-                                  ngAccess.getOrgIdentifier(), ngAccess.getProjectIdentifier(), repoName)
-        + DOT_GIT;
+    String completeRepoName = GitClientHelper.convertToHarnessRepoName(
+        ngAccess.getAccountIdentifier(), ngAccess.getOrgIdentifier(), ngAccess.getProjectIdentifier(), repoName);
 
     String[] allowedResources = {completeRepoName};
 
-    ImmutableMap<String, String> claims = ImmutableMap.of("name", principal, "type", PrincipalType.USER.toString());
+    ImmutableMap<String, String> claims = ImmutableMap.of("name", principal, "type", principalType.name());
     ImmutableMap<String, String[]> arrayClaims = ImmutableMap.of("allowedResources", allowedResources);
 
     return JWTTokenServiceUtils.generateJWTToken(

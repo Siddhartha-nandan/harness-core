@@ -64,6 +64,7 @@ import io.harness.serializer.KryoSerializer;
 import io.harness.steps.StepHelper;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import software.wings.beans.TaskType;
 
@@ -96,9 +97,15 @@ public class TasRollbackStep extends CdTaskExecutable<CfCommandResponseNG> {
   public void validateResources(Ambiance ambiance, StepBaseParameters stepParameters) {
     if (!cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), FeatureName.NG_SVC_ENV_REDESIGN)) {
       throw new AccessDeniedException(
-          "CDS_TAS_NG FF is not enabled for this account. Please contact harness customer care.",
+          "NG_SVC_ENV_REDESIGN FF is not enabled for this account. Please contact harness customer care.",
           ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
     }
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
   @Override
   public TaskRequest obtainTaskAfterRbac(

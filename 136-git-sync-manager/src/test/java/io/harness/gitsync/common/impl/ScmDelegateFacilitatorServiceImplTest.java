@@ -16,8 +16,6 @@ import static io.harness.rule.OwnerRule.MOHIT_GARG;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -45,6 +43,7 @@ import io.harness.delegate.beans.connector.scm.ScmConnector;
 import io.harness.delegate.beans.connector.scm.github.GithubApiAccessDTO;
 import io.harness.delegate.beans.connector.scm.github.GithubConnectorDTO;
 import io.harness.delegate.beans.git.YamlGitConfigDTO;
+import io.harness.delegate.task.scm.GitFileLocationDetails;
 import io.harness.delegate.task.scm.GitFileTaskResponseData;
 import io.harness.delegate.task.scm.ScmBatchGetFileTaskParams;
 import io.harness.delegate.task.scm.ScmGitFileTaskParams;
@@ -57,7 +56,8 @@ import io.harness.gitsync.common.dtos.CreateGitFileRequestDTO;
 import io.harness.gitsync.common.dtos.GetLatestCommitOnFileRequestDTO;
 import io.harness.gitsync.common.dtos.GitFileContent;
 import io.harness.gitsync.common.dtos.UpdateGitFileRequestDTO;
-import io.harness.gitsync.common.helper.GitSyncConnectorHelper;
+import io.harness.gitsync.common.helper.UserSourceCodeManagerHelper;
+import io.harness.gitsync.common.service.GitSyncConnectorService;
 import io.harness.gitsync.common.service.YamlGitConfigService;
 import io.harness.ng.beans.PageRequest;
 import io.harness.product.ci.scm.proto.CreateBranchResponse;
@@ -95,7 +95,8 @@ public class ScmDelegateFacilitatorServiceImplTest extends GitSyncTestBase {
   @Mock ConnectorService connectorService;
   @Mock DelegateGrpcClientWrapper delegateGrpcClientWrapper;
   @Mock YamlGitConfigService yamlGitConfigService;
-  @Mock GitSyncConnectorHelper gitSyncConnectorHelper;
+  @Mock GitSyncConnectorService gitSyncConnectorService;
+  @Mock UserSourceCodeManagerHelper userSourceCodeManagerHelper;
   ScmDelegateFacilitatorServiceImpl scmDelegateFacilitatorService;
   FileContent fileContent = FileContent.newBuilder().build();
   String accountIdentifier = "accountIdentifier";
@@ -124,8 +125,9 @@ public class ScmDelegateFacilitatorServiceImplTest extends GitSyncTestBase {
   @Before
   public void setup() throws Exception {
     MockitoAnnotations.initMocks(this);
-    scmDelegateFacilitatorService = new ScmDelegateFacilitatorServiceImpl(connectorService, null, yamlGitConfigService,
-        secretManagerClientService, delegateGrpcClientWrapper, null, gitSyncConnectorHelper);
+    scmDelegateFacilitatorService =
+        new ScmDelegateFacilitatorServiceImpl(connectorService, null, yamlGitConfigService, secretManagerClientService,
+            delegateGrpcClientWrapper, null, gitSyncConnectorService, userSourceCodeManagerHelper);
     when(secretManagerClientService.getEncryptionDetails(any(), any())).thenReturn(Collections.emptyList());
     githubConnector = GithubConnectorDTO.builder().apiAccess(GithubApiAccessDTO.builder().build()).build();
     connectorInfo = ConnectorInfoDTO.builder().connectorConfig(githubConnector).build();
@@ -134,9 +136,9 @@ public class ScmDelegateFacilitatorServiceImplTest extends GitSyncTestBase {
         .when(connectorService)
         .get(any(), any(), any(), any());
     doReturn((ScmConnector) connectorInfo.getConnectorConfig())
-        .when(gitSyncConnectorHelper)
+        .when(gitSyncConnectorService)
         .getScmConnector(any(), any(), any(), any());
-    doNothing().when(gitSyncConnectorHelper).setUserGitCredsInConnectorIfPresent(anyString(), any());
+    //    doNothing().when(gitSyncConnectorService).setUserGitCredsInConnectorIfPresent(anyString(), any());
     when(yamlGitConfigService.get(any(), any(), any(), any()))
         .thenReturn(YamlGitConfigDTO.builder()
                         .accountIdentifier(accountIdentifier)
@@ -144,10 +146,10 @@ public class ScmDelegateFacilitatorServiceImplTest extends GitSyncTestBase {
                         .organizationIdentifier(orgIdentifier)
                         .gitConnectorRef(connectorIdentifierRef)
                         .build());
-    when(gitSyncConnectorHelper.getScmConnector(any(), any(), any(), any(), any(), any()))
+    when(gitSyncConnectorService.getScmConnector(any(), any(), any(), any(), any(), any()))
         .thenReturn((ScmConnector) connectorInfo.getConnectorConfig());
     doReturn(githubConnector)
-        .when(gitSyncConnectorHelper)
+        .when(gitSyncConnectorService)
         .getScmConnectorForGivenRepo(any(), any(), any(), any(), any());
   }
 
@@ -458,6 +460,7 @@ public class ScmDelegateFacilitatorServiceImplTest extends GitSyncTestBase {
   @Owner(developers = MOHIT_GARG)
   @Category(UnitTests.class)
   public void testGetScmBatchGetFileTaskParams() {
+    String requestIdentifier = "requestIdentifier";
     GitFileRequestV2 gitFileRequest1 = GitFileRequestV2.builder()
                                            .connectorRef("connector-1")
                                            .scope(getScope(accountIdentifier, orgIdentifier, projectIdentifier))
@@ -476,28 +479,41 @@ public class ScmDelegateFacilitatorServiceImplTest extends GitSyncTestBase {
             .getBatchFileRequestIdentifierGitFileRequestV2Map(getBatchFileRequestIdentifierGitFileRequestV2Map)
             .build();
     getBatchFileRequestIdentifierGitFileRequestV2Map.put(getRandomRequestIdentifier(), gitFileRequest1);
-    getBatchFileRequestIdentifierGitFileRequestV2Map.put(getRandomRequestIdentifier(), gitFileRequest2);
-    ScmBatchGetFileTaskParams responseParams =
+    getBatchFileRequestIdentifierGitFileRequestV2Map.put(getRequestIdentifier(requestIdentifier), gitFileRequest2);
+    List<ScmBatchGetFileTaskParams> responseParamsList =
         scmDelegateFacilitatorService.getScmBatchGetFileTaskParams(gitFileBatchRequest);
-    assertThat(responseParams.getGetFileTaskParamsPerConnectorList().size()).isEqualTo(2);
+
+    assertThat(responseParamsList.size()).isEqualTo(2);
+    assertThat(responseParamsList.get(0).getGetFileTaskParamsPerConnectorList().size()).isEqualTo(1);
 
     GitFileRequestV2 gitFileRequest3 = GitFileRequestV2.builder()
+                                           .connectorRef("org.connector-2")
+                                           .scope(getScope(accountIdentifier, orgIdentifier, null))
+                                           .scmConnector(githubConnector)
+                                           .build();
+    getBatchFileRequestIdentifierGitFileRequestV2Map.put(getRandomRequestIdentifier(), gitFileRequest3);
+    responseParamsList = scmDelegateFacilitatorService.getScmBatchGetFileTaskParams(gitFileBatchRequest);
+    assertThat(responseParamsList.size()).isEqualTo(3);
+    assertThat(responseParamsList.get(0).getGetFileTaskParamsPerConnectorList().size()).isEqualTo(1);
+
+    GitFileRequestV2 gitFileRequest4 = GitFileRequestV2.builder()
                                            .connectorRef("connector-2")
                                            .scope(getScope(accountIdentifier, orgIdentifier, projectIdentifier))
                                            .scmConnector(githubConnector)
                                            .build();
-    getBatchFileRequestIdentifierGitFileRequestV2Map.put(getRandomRequestIdentifier(), gitFileRequest3);
-    responseParams = scmDelegateFacilitatorService.getScmBatchGetFileTaskParams(gitFileBatchRequest);
-    assertThat(responseParams.getGetFileTaskParamsPerConnectorList().size()).isEqualTo(2);
-
-    GitFileRequestV2 gitFileRequest4 = GitFileRequestV2.builder()
-                                           .connectorRef("connector-2")
-                                           .scope(getScope(null, orgIdentifier, projectIdentifier))
-                                           .scmConnector(githubConnector)
-                                           .build();
     getBatchFileRequestIdentifierGitFileRequestV2Map.put(getRandomRequestIdentifier(), gitFileRequest4);
-    responseParams = scmDelegateFacilitatorService.getScmBatchGetFileTaskParams(gitFileBatchRequest);
-    assertThat(responseParams.getGetFileTaskParamsPerConnectorList().size()).isEqualTo(3);
+    responseParamsList = scmDelegateFacilitatorService.getScmBatchGetFileTaskParams(gitFileBatchRequest);
+    assertThat(responseParamsList.size()).isEqualTo(3);
+    assertThat(responseParamsList.get(0).getGetFileTaskParamsPerConnectorList().size()).isEqualTo(1);
+    responseParamsList.forEach(responseParams -> {
+      GitFileLocationDetails gitFileLocationDetails =
+          responseParams.getGetFileTaskParamsPerConnectorList().get(0).getGitFileLocationDetailsMap().get(
+              getRequestIdentifier(requestIdentifier));
+      if (gitFileLocationDetails != null) {
+        assertThat(responseParams.getGetFileTaskParamsPerConnectorList().get(0).getGitFileLocationDetailsMap().size())
+            .isEqualTo(2);
+      }
+    });
   }
 
   @Test
@@ -557,5 +573,9 @@ public class ScmDelegateFacilitatorServiceImplTest extends GitSyncTestBase {
 
   private GetBatchFileRequestIdentifier getRandomRequestIdentifier() {
     return GetBatchFileRequestIdentifier.builder().identifier(UUID.randomUUID().toString()).build();
+  }
+
+  private GetBatchFileRequestIdentifier getRequestIdentifier(String requestIdentifier) {
+    return GetBatchFileRequestIdentifier.builder().identifier(requestIdentifier).build();
   }
 }

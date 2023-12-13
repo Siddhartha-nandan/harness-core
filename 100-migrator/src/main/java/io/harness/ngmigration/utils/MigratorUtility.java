@@ -16,6 +16,7 @@ import static io.harness.ngmigration.utils.CaseFormat.LOWER_CASE;
 import static io.harness.ngmigration.utils.CaseFormat.SNAKE_CASE;
 import static io.harness.ngmigration.utils.NGMigrationConstants.PLEASE_FIX_ME;
 import static io.harness.security.NextGenAuthenticationFilter.X_API_KEY;
+import static io.harness.utils.UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier;
 import static io.harness.when.beans.WhenConditionStatus.SUCCESS;
 
 import io.harness.annotations.dev.CodePulse;
@@ -29,6 +30,7 @@ import io.harness.encryption.SecretRefData;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.filestore.FileUsage;
+import io.harness.ng.core.utils.NGYamlUtils;
 import io.harness.ngmigration.beans.BaseProvidedInput;
 import io.harness.ngmigration.beans.FileYamlDTO;
 import io.harness.ngmigration.beans.InputDefaults;
@@ -38,6 +40,8 @@ import io.harness.ngmigration.beans.MigrationInputSettings;
 import io.harness.ngmigration.beans.MigrationInputSettingsType;
 import io.harness.ngmigration.beans.NGYamlFile;
 import io.harness.ngmigration.beans.NgEntityDetail;
+import io.harness.ngmigration.context.ImportDtoThreadLocal;
+import io.harness.ngmigration.dto.Flag;
 import io.harness.ngmigration.dto.ImportDTO;
 import io.harness.ngmigration.dto.ImportError;
 import io.harness.ngmigration.dto.MigrationImportSummaryDTO;
@@ -80,6 +84,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -115,9 +120,11 @@ public class MigratorUtility {
 
   private static final String[] schemes = {"https", "http"};
 
+  private static final String DEFAULT_TIMEOUT = "10m";
+
   // Choice, GumGum
   public static final List<String> ELASTIC_GROUP_ACCOUNT_IDS =
-      Lists.newArrayList("R7OsqSbNQS69mq74kMNceQ", "EBGrtCo0RE6i_E9yNDdCOg");
+      Lists.newArrayList("R7OsqSbNQS69mq74kMNceQ", "EBGrtCo0RE6i_E9yNDdCOg", "kmpySmUISimoRrJL6NL73w");
 
   private MigratorUtility() {}
 
@@ -194,17 +201,6 @@ public class MigratorUtility {
     return identifier;
   }
 
-  public static String generateHarnessUIFormatIdentifier(String name) {
-    if (StringUtils.isBlank(name)) {
-      return "";
-    }
-    name = StringUtils.stripAccents(name);
-    return name.trim()
-        .replaceAll("^[0-9-$]*", "") // remove starting digits, dashes and $
-        .replaceAll("[^0-9a-zA-Z_$ ]", "") // remove special chars except _ and $
-        .replaceAll("\\s", "_"); // replace spaces with _
-  }
-
   public static String generateCamelCaseIdentifier(String name) {
     if (StringUtils.isBlank(name)) {
       return "";
@@ -232,13 +228,86 @@ public class MigratorUtility {
     return Character.isDigit(generated.charAt(0)) ? "_" + generated : generated;
   }
 
-  public static ParameterField<Timeout> getTimeout(Integer timeoutInMillis) {
+  public static ParameterField<Timeout> getTimeout(Long timeoutInMillis) {
     if (timeoutInMillis == null) {
-      return ParameterField.createValueField(Timeout.builder().timeoutString("10m").build());
+      return ParameterField.createValueField(Timeout.builder().timeoutString(DEFAULT_TIMEOUT).build());
     }
-    long t = timeoutInMillis / 1000;
-    String timeoutString = Math.max(60, t) + "s";
-    return ParameterField.createValueField(Timeout.builder().timeoutString(timeoutString).build());
+    if (timeoutInMillis < 10000L) {
+      timeoutInMillis = 10000L;
+    }
+    String timeOut = convertToHumanReadableTimeFormat(timeoutInMillis);
+    return ParameterField.createValueField(Timeout.builder().timeoutString(timeOut).build());
+  }
+
+  private static String convertToHumanReadableTimeFormat(Long timeoutInMillis) {
+    StringBuilder timeOutBuilder = new StringBuilder();
+    extractWeeks(timeoutInMillis, timeOutBuilder);
+    return timeOutBuilder.length() > 0 ? timeOutBuilder.toString().trim() : DEFAULT_TIMEOUT;
+  }
+
+  private static void extractWeeks(Long timeoutInMillis, StringBuilder timeBuilder) {
+    long weekInMillis = TimeUnit.DAYS.toMillis(7);
+    if (timeoutInMillis >= weekInMillis) {
+      long numberOfWeeks = timeoutInMillis / weekInMillis;
+      timeBuilder.append(numberOfWeeks).append("w ");
+      long numberOfDaysInMillis = timeoutInMillis - (numberOfWeeks * weekInMillis);
+      extractDays(numberOfDaysInMillis, timeBuilder);
+    } else {
+      extractDays(timeoutInMillis, timeBuilder);
+    }
+  }
+
+  private static void extractDays(Long timeoutInMillis, StringBuilder timeBuilder) {
+    long dayInMillis = TimeUnit.DAYS.toMillis(1);
+    if (timeoutInMillis >= dayInMillis) {
+      long numberOfDays = timeoutInMillis / dayInMillis;
+      timeBuilder.append(numberOfDays).append("d ");
+      long numberOfHoursInMillis = timeoutInMillis - (numberOfDays * dayInMillis);
+      extractHours(numberOfHoursInMillis, timeBuilder);
+    } else {
+      extractHours(timeoutInMillis, timeBuilder);
+    }
+  }
+
+  private static void extractHours(Long timeoutInMillis, StringBuilder timeBuilder) {
+    long hourInMillis = TimeUnit.HOURS.toMillis(1);
+    if (timeoutInMillis >= hourInMillis) {
+      long numberOfHours = timeoutInMillis / hourInMillis;
+      timeBuilder.append(numberOfHours).append("h ");
+      long numberOfMinutesInMillis = timeoutInMillis - (numberOfHours * hourInMillis);
+      extractMinutes(numberOfMinutesInMillis, timeBuilder);
+    } else {
+      extractMinutes(timeoutInMillis, timeBuilder);
+    }
+  }
+
+  private static void extractMinutes(Long timeoutInMillis, StringBuilder timeBuilder) {
+    long minutesInMillis = TimeUnit.MINUTES.toMillis(1);
+    if (timeoutInMillis >= minutesInMillis) {
+      long numberOfMinutes = timeoutInMillis / minutesInMillis;
+      timeBuilder.append(numberOfMinutes).append("m ");
+      long numberOfSecondsInMillis = timeoutInMillis - (numberOfMinutes * minutesInMillis);
+      extractSeconds(numberOfSecondsInMillis, timeBuilder);
+    } else {
+      extractSeconds(timeoutInMillis, timeBuilder);
+    }
+  }
+
+  private static void extractSeconds(Long timeoutInMillis, StringBuilder timeBuilder) {
+    long secondsInMillis = TimeUnit.SECONDS.toMillis(1);
+    if (timeoutInMillis >= secondsInMillis) {
+      long numberOfSeconds = timeoutInMillis / secondsInMillis;
+      timeBuilder.append(numberOfSeconds).append("s ");
+      long numberOfMilliSeconds = timeoutInMillis - (numberOfSeconds * secondsInMillis);
+
+      if (numberOfMilliSeconds > 0) {
+        timeBuilder.append(numberOfMilliSeconds).append("ms");
+      }
+    } else {
+      if (timeoutInMillis > 0) {
+        timeBuilder.append(timeoutInMillis).append('s');
+      }
+    }
   }
 
   public static ParameterField<String> getParameterField(String value) {
@@ -379,8 +448,15 @@ public class MigratorUtility {
 
   public static List<NGVariable> getVariables(MigrationContext migrationContext, List<Variable> cgVariables) {
     List<NGVariable> variables = new ArrayList<>();
+    Set<String> keySet = new HashSet<>();
     if (EmptyPredicate.isNotEmpty(cgVariables)) {
-      cgVariables.forEach(serviceVariable -> variables.add(getNGVariable(migrationContext, serviceVariable)));
+      cgVariables.forEach(serviceVariable -> {
+        NGVariable ngVariable = getNGVariable(migrationContext, serviceVariable);
+        if (!keySet.contains(ngVariable.getName())) {
+          variables.add(ngVariable);
+          keySet.add(ngVariable.getName());
+        }
+      });
     }
     return variables;
   }
@@ -668,7 +744,7 @@ public class MigratorUtility {
     waitStepNode.setName(name);
     waitStepNode.setIdentifier(generateIdentifier(name, caseFormat));
     waitStepNode.setWaitStepInfo(
-        WaitStepInfo.infoBuilder().duration(MigratorUtility.getTimeout(waitInterval * 1000)).build());
+        WaitStepInfo.infoBuilder().duration(MigratorUtility.getTimeout(waitInterval * 1000L)).build());
     if (skipAlways) {
       waitStepNode.setWhen(ParameterField.createValueField(StepWhenCondition.builder()
                                                                .condition(ParameterField.createValueField("false"))
@@ -683,7 +759,7 @@ public class MigratorUtility {
     if (resp.code() >= 200 && resp.code() < 300) {
       return MigrationImportSummaryDTO.builder().success(true).errors(Collections.emptyList()).build();
     }
-    log.info("The Yaml of the generated data was - {}", yamlFile.getYaml());
+    log.info("The Yaml of the generated data was - \n{}", NGYamlUtils.getYamlString(yamlFile.getYaml()));
     Map<String, Object> error = JsonUtils.asObject(
         resp.errorBody() != null ? resp.errorBody().string() : "{}", new TypeReference<Map<String, Object>>() {});
     log.error(String.format("There was error creating the %s. Response from NG - %s with error body errorBody -  %s",
@@ -704,6 +780,7 @@ public class MigratorUtility {
     Map<CgEntityId, BaseProvidedInput> overrides = new HashMap<>();
     Map<String, Object> expressions = new HashMap<>();
     List<MigrationInputSettings> settings = new ArrayList<>();
+    NGMigrationEntityType root = importDTO.getEntityType();
     if (importDTO.getInputs() != null) {
       overrides = importDTO.getInputs().getOverrides();
       defaults = importDTO.getInputs().getDefaults();
@@ -739,6 +816,7 @@ public class MigratorUtility {
         .settings(settings)
         .identifierCaseFormat(
             importDTO.getIdentifierCaseFormat() == null ? CAMEL_CASE : importDTO.getIdentifierCaseFormat())
+        .root(root)
         .build();
   }
 
@@ -849,5 +927,20 @@ public class MigratorUtility {
       }
     }
     return defaultValue;
+  }
+
+  public static boolean isExpression(String str) {
+    if (StringUtils.isBlank(str)) {
+      return false;
+    }
+    return str.startsWith("${") && str.endsWith("}");
+  }
+
+  public static boolean isEnabled(Flag flag) {
+    ImportDTO importDTO = ImportDtoThreadLocal.get();
+    if (null != flag && null != importDTO && null != importDTO.getFlags()) {
+      return importDTO.getFlags().contains(flag);
+    }
+    return false;
   }
 }

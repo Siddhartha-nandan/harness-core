@@ -101,6 +101,7 @@ import io.harness.steps.shellscript.HarnessFileStoreSource;
 import io.harness.steps.shellscript.ShellScriptInlineSource;
 import io.harness.steps.shellscript.ShellScriptSourceWrapper;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.ArrayList;
@@ -120,9 +121,8 @@ import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 
-@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
-    components = {HarnessModuleComponent.CDS_AMI_ASG, HarnessModuleComponent.CDS_TRADITIONAL,
-        HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
+@CodePulse(
+    module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_TRADITIONAL})
 @Singleton
 @OwnedBy(CDP)
 @Slf4j
@@ -336,6 +336,8 @@ public class SshCommandStepHelper extends CDStepHelper {
         .commandUnits(
             mapCommandUnits(ambiance, commandStepParameters.getCommandUnits(), onDelegate, Collections.emptyMap()))
         .host(onDelegate ? null : getHost(commandStepParameters))
+        .disableEvaluateExportVariable(cdFeatureFlagHelper.isEnabled(
+            AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_DISABLE_EVALUATE_EXPORT_VARIABLES))
         .build();
   }
 
@@ -360,6 +362,8 @@ public class SshCommandStepHelper extends CDStepHelper {
         .commandUnits(
             mapCommandUnits(ambiance, commandStepParameters.getCommandUnits(), onDelegate, Collections.emptyMap()))
         .host(onDelegate ? null : getHost(commandStepParameters))
+        .disableEvaluateExportVariable(cdFeatureFlagHelper.isEnabled(
+            AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_DISABLE_EVALUATE_EXPORT_VARIABLES))
         .build();
   }
 
@@ -393,7 +397,15 @@ public class SshCommandStepHelper extends CDStepHelper {
         .sessionTimeout(isNotEmpty(sessionTimeout)
                 ? Math.max(NGTimeConversionHelper.convertTimeStringToMilliseconds(sessionTimeout), SESSION_TIMEOUT)
                 : SESSION_TIMEOUT)
+        .disableWinRmEnvVarEscaping(
+            cdFeatureFlagHelper.isEnabled(accountId, FeatureName.CDS_NG_DISABLE_SPECIAL_CHARS_ESCAPE_OF_WINRM_ENV_VARS))
+        .preserveWinrmWorkingDir(getPreserveWinrmWorkingDir(accountId))
         .build();
+  }
+
+  @VisibleForTesting
+  boolean getPreserveWinrmWorkingDir(String accountId) {
+    return cdFeatureFlagHelper.isEnabled(accountId, FeatureName.CDS_PRESERVE_WINRM_WORKING_DIR_FOR_COMMAND_UNITS);
   }
 
   private WinrmTaskParameters createRollbackWinRmTaskParameters(Ambiance ambiance,
@@ -426,6 +438,8 @@ public class SshCommandStepHelper extends CDStepHelper {
         .sessionTimeout(isNotEmpty(sessionTimeout)
                 ? Math.max(NGTimeConversionHelper.convertTimeStringToMilliseconds(sessionTimeout), SESSION_TIMEOUT)
                 : SESSION_TIMEOUT)
+        .disableWinRmEnvVarEscaping(
+            cdFeatureFlagHelper.isEnabled(accountId, FeatureName.CDS_NG_DISABLE_SPECIAL_CHARS_ESCAPE_OF_WINRM_ENV_VARS))
         .build();
   }
 

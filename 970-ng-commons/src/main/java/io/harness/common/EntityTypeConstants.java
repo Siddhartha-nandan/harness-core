@@ -24,6 +24,7 @@ public interface EntityTypeConstants {
   String GITOPS_UPDATE_RELEASE_REPO = "GitOpsUpdateReleaseRepo";
   String GITOPS_FETCH_LINKED_APPS = "GitOpsFetchLinkedApps";
   String GITOPS_SYNC = "GitOpsSync";
+  String UPDATE_GITOPS_APP = "UpdateGitOpsApp";
   String PROJECTS = "Projects";
   String PIPELINES = "Pipelines";
   String PIPELINE_STEPS = "PipelineSteps";
@@ -68,6 +69,7 @@ public interface EntityTypeConstants {
   String K8S_DELETE = "K8sDelete";
   String K8S_BG_SWAP_SERVICES = "K8sBGSwapServices";
   String K8S_CANARY_DELETE = "K8sCanaryDelete";
+  String K8S_TRAFFIC_ROUTING = "K8sTrafficRouting";
 
   String TAS_CANARY_APP_SETUP_STEP = "CanaryAppSetup";
   String TAS_BG_APP_SETUP_STEP = "BGAppSetup";
@@ -87,6 +89,8 @@ public interface EntityTypeConstants {
   String SAVE_CACHE_GCS = "SaveCacheGCS";
   String SAVE_CACHE_S3 = "SaveCacheS3";
   String SECURITY = "Security";
+  String ANCHORE = "Anchore";
+  String AQUA_SECURITY = "AquaSecurity";
   String AQUA_TRIVY = "AquaTrivy";
   String AWS_ECR = "AWSECR";
   String AWS_SECURITY_HUB = "AWSSecurityHub";
@@ -136,6 +140,9 @@ public interface EntityTypeConstants {
   String S3_UPLOAD = "S3Upload";
 
   String BUILD_AND_PUSH_GCR = "BuildAndPushGCR";
+
+  String BUILD_AND_PUSH_GAR = "BuildAndPushGAR";
+
   String BUILD_AND_PUSH_ECR = "BuildAndPushECR";
   String BUILD_AND_PUSH_ACR = "BuildAndPushACR";
   String BUILD_AND_PUSH_DOCKER_REGISTRY = "BuildAndPushDockerRegistry";
@@ -189,11 +196,16 @@ public interface EntityTypeConstants {
   String ECS_BLUE_GREEN_CREATE_SERVICE = "EcsBlueGreenCreateService";
   String ECS_BLUE_GREEN_SWAP_TARGET_GROUPS = "EcsBlueGreenSwapTargetGroups";
   String ECS_BLUE_GREEN_ROLLBACK = "EcsBlueGreenRollback";
+  String ECS_SERVICE_SETUP = "EcsServiceSetup";
+  String ECS_UPGRADE_CONTAINER = "EcsUpgradeContainer";
+  String ECS_BASIC_ROLLBACK = "EcsBasicRollback";
   String WAIT_STEP = "Wait";
   String ARTIFACT_SOURCE_TEMPLATE = "ArtifactSource";
   String SHELL_SCRIPT_PROVISION_STEP = "ShellScriptProvision";
   String FREEZE = "Freeze";
   String CHAOS_STEP = "Chaos";
+  String CHAOS_INFRASTRUCTURE = "ChaosInfrastructure";
+  String CHAOS_HUB = "ChaosHub";
   String ELASTIGROUP_DEPLOY_STEP = "ElastigroupDeploy";
   String ELASTIGROUP_ROLLBACK_STEP = "ElastigroupRollback";
   String IACM_STAGE = "IACMStage";
@@ -230,6 +242,7 @@ public interface EntityTypeConstants {
   String K8S_DRY_RUN_MANIFEST = "K8sDryRun";
   String K8S_BLUE_GREEN_STAGE_SCALE_DOWN = "K8sBlueGreenStageScaleDown";
   String ASG_BLUE_GREEN_SWAP_SERVICE_STEP = "AsgBlueGreenSwapService";
+  String ASG_SHIFT_TRAFFIC = "AsgShiftTraffic";
 
   String TERRAFORM_CLOUD_RUN = "TerraformCloudRun";
   String TERRAFORM_CLOUD_ROLLBACK = "TerraformCloudRollback";
@@ -263,4 +276,17 @@ public interface EntityTypeConstants {
   String AWS_CDK_DEPLOY = "AwsCdkDeploy";
   String AWS_CDK_DESTROY = "AwsCdkDestroy";
   String AWS_CDK_ROLLBACK = "AwsCdkRollback";
+  String SLSA_VERIFICATION = "SlsaVerification";
+
+  String OVERRIDES = "Overrides";
+
+  String IDP_STAGE = "IDPStage";
+  String IDP = "IDP";
+  String COOKIECUTTER = "CookieCutter";
+  String CREATE_REPO = "CreateRepo";
+  String DIRECT_PUSH = "DirectPush";
+  String REGISTER_CATALOG = "RegisterCatalog";
+
+  // CD Container Step Group Common Steps
+  String DOWNLOAD_AWS_S3 = "DownloadAwsS3";
 }

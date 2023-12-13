@@ -28,6 +28,9 @@ import static io.harness.audit.Action.RESTORE;
 import static io.harness.audit.Action.RESUME;
 import static io.harness.audit.Action.REVOKE_INVITE;
 import static io.harness.audit.Action.REVOKE_TOKEN;
+import static io.harness.audit.Action.ROLE_ASSIGNMENT_CREATED;
+import static io.harness.audit.Action.ROLE_ASSIGNMENT_DELETED;
+import static io.harness.audit.Action.ROLE_ASSIGNMENT_UPDATED;
 import static io.harness.audit.Action.SIGNED_EULA;
 import static io.harness.audit.Action.STAGE_END;
 import static io.harness.audit.Action.STAGE_START;
@@ -74,6 +77,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -95,13 +99,12 @@ public class AuditServiceImpl implements AuditService {
   private final AuditYamlService auditYamlService;
   private final AuditSettingsService auditSettingsService;
   private final AuditFilterPropertiesValidator auditFilterPropertiesValidator;
-
-  public static List<Action> entityChangeEvents = List.of(CREATE, UPDATE, RESTORE, DELETE, FORCE_DELETE, UPSERT, INVITE,
-      RESEND_INVITE, REVOKE_INVITE, ADD_COLLABORATOR, REMOVE_COLLABORATOR, CREATE_TOKEN, REVOKE_TOKEN, ADD_MEMBERSHIP,
-      REMOVE_MEMBERSHIP, ERROR_BUDGET_RESET, SIGNED_EULA);
+  public static List<Action> entityChangeEvents =
+      List.of(CREATE, UPDATE, RESTORE, DELETE, FORCE_DELETE, UPSERT, INVITE, RESEND_INVITE, REVOKE_INVITE,
+          ADD_COLLABORATOR, REMOVE_COLLABORATOR, CREATE_TOKEN, REVOKE_TOKEN, ADD_MEMBERSHIP, REMOVE_MEMBERSHIP,
+          ERROR_BUDGET_RESET, SIGNED_EULA, ROLE_ASSIGNMENT_CREATED, ROLE_ASSIGNMENT_UPDATED, ROLE_ASSIGNMENT_DELETED);
   public static List<Action> loginEvents = List.of(LOGIN, LOGIN2FA, UNSUCCESSFUL_LOGIN);
   public static List<Action> runTimeEvents = List.of(START, STAGE_START, STAGE_END, END, PAUSE, RESUME, ABORT, TIMEOUT);
-
   @Inject
   public AuditServiceImpl(AuditRepository auditRepository, AuditYamlService auditYamlService,
       AuditFilterPropertiesValidator auditFilterPropertiesValidator, TransactionTemplate transactionTemplate,
@@ -118,11 +121,13 @@ public class AuditServiceImpl implements AuditService {
     AuditEvent auditEvent = fromDTO(auditEventDTO);
     try {
       long startTime = System.currentTimeMillis();
-      Boolean result = Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
-        AuditEvent savedAuditEvent = auditRepository.save(auditEvent);
-        saveYamlDiff(auditEventDTO, savedAuditEvent.getId());
-        return true;
-      }));
+      Boolean result = Failsafe.with(transactionRetryPolicy).get(() -> {
+        return transactionTemplate.execute(status -> {
+          AuditEvent savedAuditEvent = auditRepository.save(auditEvent);
+          saveYamlDiff(auditEventDTO, savedAuditEvent.getId());
+          return true;
+        });
+      });
       log.info(String.format("Took %d milliseconds for create audit db operation for insertId %s.",
           System.currentTimeMillis() - startTime, auditEventDTO.getInsertId()));
       return result;
@@ -349,5 +354,17 @@ public class AuditServiceImpl implements AuditService {
     auditRepository.delete(Criteria.where(AuditEventKeys.ACCOUNT_IDENTIFIER_KEY).is(accountId));
     auditSettingsService.deleteByAccountIdentifier(accountId);
     log.info("Cleaned Audit Events, Yaml Diff and Audit settings for account: " + accountId);
+  }
+
+  @Override
+  public Map<String, Integer> getUniqueActionCount(
+      List<String> accountIds, List<Action> actions, Instant startTime, Instant endTime) {
+    return auditRepository.getUniqueActionCount(accountIds, actions, startTime, endTime);
+  }
+
+  @Override
+  public Map<String, Integer> getUniqueProjectCountPerAccountId(
+      List<String> accountIds, Instant startTime, Instant endTime) {
+    return auditRepository.getUniqueProjectCountPerAccountId(accountIds, startTime, endTime);
   }
 }

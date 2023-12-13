@@ -2,6 +2,8 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 global:
+  commonAnnotations: {}
+  commonLabels: {}
   loadbalancerURL: ""
   airgap: false
   imagePullSecrets: []
@@ -32,28 +34,89 @@ global:
       userKey: ""
       passwordKey: ""
       extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement: 
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
     timescaledb:
       installed: true
       protocol: "jdbc:postgresql"
       # --  provide default values if mongo.installed is set to false
       hosts:
         - timescaledb-single-chart:5432
+      # -- Enable TimescaleDB SSL
+      sslEnabled: false        
       secretName: ""
       userKey: ""
       passwordKey: ""
       extraArgs: ""
       certName: ""
       certKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              TIMESCALEDB_USERNAME: ""
+              TIMESCALEDB_PASSWORD: ""
+              TIMESCALEDB_SSL_ROOT_CERT: ""
+        secretManagement: 
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                TIMESCALEDB_USERNAME:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_PASSWORD:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_SSL_ROOT_CERT:
+                  name: ""
+                  property: ""
     redis:
       installed: true
       protocol: "redis"
       # --  provide default values if redis.installed is set to false
       hosts:
         - redis:6379
-      secretName: "redis-secret"
-      userKey: "redis-user"
-      passwordKey: "redis-password"
+ 
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
       extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement: 
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
   ingress:
     # -- create ingress objects
     enabled: false
@@ -79,6 +142,8 @@ global:
     virtualService:
       gateways:
       hosts:
+  ssca: 
+    enabled: false
 enableAuth: true
 replicaCount: 1
 maxSurge: 1
@@ -88,14 +153,14 @@ image:
   repository: harness/ci-manager-signed
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "4902"
+  tag: "5302"
   digest: ""
   imagePullSecrets: []
 securityImage:
   image:
     registry: docker.io
     repository: harness/sto-plugin
-    tag: 1.13.0
+    tag: 1.21.0
     digest: ""
     imagePullSecrets: []
 waitForInitContainer:
@@ -111,14 +176,14 @@ ci_images:
     image:
       registry: docker.io
       digest: ""
-      tag: "1.16.20"
+      tag: "1.16.26"
       repository: harness/ci-addon
       imagePullSecrets: []
   lite_engine:
     image:
       registry: docker.io
       digest: ""
-      tag: "1.16.20"
+      tag: "1.16.26"
       repository: harness/ci-lite-engine
       imagePullSecrets: []
   git_clone:
@@ -132,64 +197,78 @@ ci_images:
     image:
       registry: docker.io
       digest: ""
-      tag: "1.7.5"
+      tag: "1.8.0"
       repository: plugins/kaniko
       imagePullSecrets: []
   kaniko_ecr:
     image:
       registry: docker.io
       digest: ""
-      tag: "1.7.5"
+      tag: "1.8.0"
       repository: plugins/kaniko-ecr
       imagePullSecrets: []
   kaniko_gcr:
     image:
       registry: docker.io
       digest: ""
-      tag: "1.7.5"
+      tag: "1.8.0"
       repository: plugins/kaniko-gcr
       imagePullSecrets: []
   kaniko_acr:
     image:
       registry: docker.io
       digest: ""
-      tag: "1.7.5"
+      tag: "1.8.0"
       repository: plugins/kaniko-acr
       imagePullSecrets: []
   gcs_upload:
     image:
       registry: docker.io
       digest: ""
-      tag: "1.4.0"
+      tag: "1.5.0"
       repository: plugins/gcs
       imagePullSecrets: []
   s3_upload:
     image:
       registry: docker.io
       digest: ""
-      tag: "1.2.3"
+      tag: "1.2.7"
       repository: plugins/s3
       imagePullSecrets: []
   artifactory_upload:
     image:
       registry: docker.io
       digest: ""
-      tag: "1.4.4"
+      tag: "1.4.7"
       repository: plugins/artifactory
       imagePullSecrets: []
   gcs_cache:
     image:
       registry: docker.io
       digest: ""
-      tag: "1.5.9"
+      tag: "1.6.2"
       repository: plugins/cache
       imagePullSecrets: []
   s3_cache:
     image:
       registry: docker.io
       digest: ""
-      tag: "1.5.9"
+      tag: "1.6.2"
       repository: plugins/cache
+      imagePullSecrets: []
+  ssca_plugin:
+    image:
+      registry: docker.io
+      digest: ""
+      tag: "0.12.2"
+      repository: harness/ssca-plugin
+      imagePullSecrets: []
+  slsa_plugin:
+    image:
+      registry: docker.io
+      digest: ""
+      tag: "0.12.0"
+      repository: harness/slsa-plugin
       imagePullSecrets: []
 stoServiceGlobalToken:
   name: harness-secrets
@@ -222,6 +301,129 @@ podAnnotations: {}
 podSecurityContext: {}
 # fsGroup: 2000
 
+
+redis:
+  protocol: ""
+  hosts: []
+  extraArgs: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          REDIS_USERNAME: ""
+          REDIS_PASSWORD: ""
+    secretManagement: 
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            REDIS_USERNAME:
+              name: ""
+              property: ""
+            REDIS_PASSWORD:
+              name: ""
+              property: ""
+timescaledb:
+  # -- TimescaleDB host names
+  hosts: []
+  # -- Enable TimescaleDB SSL
+  # sslEnabled: false
+  # -- TimescaleDB secrets
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          TIMESCALEDB_USERNAME: ""
+          TIMESCALEDB_PASSWORD: ""
+          TIMESCALEDB_SSL_ROOT_CERT: ""
+    secretManagement: 
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            TIMESCALEDB_USERNAME:
+              name: ""
+              property: ""
+            TIMESCALEDB_PASSWORD:
+              name: ""
+              property: ""
+            TIMESCALEDB_SSL_ROOT_CERT:
+              name: ""
+              property: ""
+database:
+  mongo:
+    harness:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement: 
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    harnessci:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement: 
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    pmsharness:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement: 
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""                        
+
 securityContext:
   runAsUser: 65534
   runAsNonRoot: true
@@ -232,6 +434,7 @@ securityContext:
   # runAsNonRoot: true
   # runAsUser: 1000
 service:
+  annotations: {}
   type: ClusterIP
   port: 7090
   grpcport: 9979
@@ -251,3 +454,31 @@ nodeSelector: {}
 tolerations: []
 affinity: {}
 additionalConfigs: {}
+java17flags: ""
+
+virtualService:
+  annotations: {}
+ingress:
+  annotations: {}
+
+secrets:
+  default:
+    LOG_SERVICE_GLOBAL_TOKEN: "Yzc2ZTU2N2EtYjM0MS00MDRkLWE4ZGQtZDk3Mzg3MTRlYjgyCg=="
+    TI_SERVICE_GLOBAL_TOKEN: "59MR5RlVARcdH7zb7pNx6GzqiglBmXR8"
+  kubernetesSecrets:
+  - secretName: ""
+    keys:
+      LOG_STREAMING_SERVICE_TOKEN: ""
+      VERIFICATION_SERVICE_SECRET: ""
+  secretManagement: 
+    externalSecretsOperator:
+    - secretStore:
+        name: ""
+        kind: ""
+      remoteKeys:
+        LOG_STREAMING_SERVICE_TOKEN:
+          name: ""
+          property: ""
+        VERIFICATION_SERVICE_SECRET:
+          name: ""
+          property: "" 

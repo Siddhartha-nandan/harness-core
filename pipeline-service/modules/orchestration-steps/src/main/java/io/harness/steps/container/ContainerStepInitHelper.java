@@ -22,7 +22,6 @@ import static io.harness.steps.container.execution.ContainerDetailsSweepingOutpu
 import static io.harness.steps.plugin.infrastructure.ContainerStepInfra.Type.KUBERNETES_DIRECT;
 
 import static java.lang.String.format;
-import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -61,6 +60,7 @@ import io.harness.delegate.beans.ci.pod.PodVolume;
 import io.harness.delegate.beans.ci.pod.SecretVariableDetails;
 import io.harness.delegate.task.citasks.cik8handler.params.CIConstants;
 import io.harness.exception.InvalidRequestException;
+import io.harness.exception.ngexception.CIStageExecutionException;
 import io.harness.k8s.model.ImageDetails;
 import io.harness.ng.core.NGAccess;
 import io.harness.ng.core.dto.ResponseDTO;
@@ -70,6 +70,7 @@ import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.expression.ExpressionResolverUtils;
 import io.harness.pms.sdk.core.plugin.ContainerUnitStepUtils;
 import io.harness.pms.sdk.core.resolver.outputs.ExecutionSweepingOutputService;
+import io.harness.pms.yaml.ParameterField;
 import io.harness.steps.container.exception.ContainerStepExecutionException;
 import io.harness.steps.container.execution.ContainerDetailsSweepingOutput;
 import io.harness.steps.container.execution.plugin.PluginExecutionConfigHelper;
@@ -405,6 +406,10 @@ public class ContainerStepInitHelper {
       ctrSecurityContext.setRunAsUser(containerDefinitionInfo.getRunAsUser());
     }
     boolean privileged = containerDefinitionInfo.getPrivileged() != null && containerDefinitionInfo.getPrivileged();
+    Map<String, String> envVarsWithPlainTextSecret = new HashMap<>();
+    if (EmptyPredicate.isNotEmpty(containerDefinitionInfo.getEnvVarsWithPlainTextSecret())) {
+      envVarsWithPlainTextSecret = containerDefinitionInfo.getEnvVarsWithPlainTextSecret();
+    }
 
     CIK8ContainerParams cik8ContainerParams =
         CIK8ContainerParams.builder()
@@ -413,11 +418,12 @@ public class ContainerStepInitHelper {
             .containerType(containerDefinitionInfo.getContainerType())
             .envVars(envVars)
             .envVarsWithSecretRef(envVarsWithSecretRef)
-            .containerSecrets(ContainerSecrets.builder()
-                                  .secretVariableDetails(containerSecretVariableDetails)
-                                  .connectorDetailsMap(stepConnectorDetails)
-                                  .plainTextSecretsByName(containerParamsProvider.getLiteEngineSecretVars(emptyMap()))
-                                  .build())
+            .containerSecrets(
+                ContainerSecrets.builder()
+                    .secretVariableDetails(containerSecretVariableDetails)
+                    .connectorDetailsMap(stepConnectorDetails)
+                    .plainTextSecretsByName(containerParamsProvider.getLiteEngineSecretVars(envVarsWithPlainTextSecret))
+                    .build())
             .commands(containerDefinitionInfo.getCommands())
             .ports(containerDefinitionInfo.getPorts())
             .args(containerDefinitionInfo.getArgs())
@@ -536,11 +542,15 @@ public class ContainerStepInitHelper {
   private ContainerDefinitionInfo createStepContainerDefinition(
       ContainerStepInfo runStepInfo, PortFinder portFinder, String accountId, OSType os) {
     if (runStepInfo.getImage() == null) {
-      throw new ContainerStepExecutionException("image can't be empty in k8s infrastructure");
+      throw new CIStageExecutionException(String.format(
+          "With a Kubernetes cluster build infrastructure, image is required for stepId: %s and stepName: %s",
+          runStepInfo.getIdentifier(), runStepInfo.getName()));
     }
 
-    if (runStepInfo.getConnectorRef() == null) {
-      throw new ContainerStepExecutionException("connector ref can't be empty in k8s infrastructure");
+    if (ParameterField.isNull(runStepInfo.getConnectorRef())) {
+      throw new ContainerStepExecutionException(String.format(
+          "With a Kubernetes cluster build infrastructure, connector ref is required for stepId: %s and stepName: %s",
+          runStepInfo.getIdentifier(), runStepInfo.getName()));
     }
     String identifier = ContainerUnitStepUtils.getKubernetesStandardPodName(runStepInfo.getIdentifier());
     Integer port = portFinder.getNextPort();
@@ -629,7 +639,7 @@ public class ContainerStepInitHelper {
   private Optional<CIExecutionImages> fetchCiExecutionImagesInternal(
       String accountIdentifier, StageInfraDetails.Type infraType) throws IOException {
     final Response<ResponseDTO<CIExecutionImages>> response =
-        ciServiceResourceClient.getCustomersExecutionConfig(infraType, true, accountIdentifier).execute();
+        ciServiceResourceClient.getCustomersExecutionConfig(infraType, false, accountIdentifier).execute();
     if (response.isSuccessful()) {
       if (response.body() != null) {
         CIExecutionImages data = response.body().getData();

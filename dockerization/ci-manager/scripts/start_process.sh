@@ -31,16 +31,7 @@ fi
 
 export GC_PARAMS=" -XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=40 -XX:MaxGCPauseMillis=1000 -Dfile.encoding=UTF-8"
 
-export JAVA_OPTS="-Xms${MIN_MEMORY} -Xmx${MAX_MEMORY} -XX:+HeapDumpOnOutOfMemoryError -Xloggc:mygclogfilename.gc $GC_PARAMS $JAVA_ADVANCED_FLAGS"
-
-
-if [[ "${ENABLE_APPDYNAMICS}" == "true" ]]; then
-    mkdir /opt/harness/AppServerAgent && unzip AppServerAgent.zip -d /opt/harness/AppServerAgent
-    node_name="-Dappdynamics.agent.nodeName=$(hostname)"
-    JAVA_OPTS=$JAVA_OPTS" -javaagent:/opt/harness/AppServerAgent/javaagent.jar -Dappdynamics.jvm.shutdown.mark.node.as.historical=true"
-    JAVA_OPTS="$JAVA_OPTS $node_name"
-    echo "Using Appdynamics java agent"
-fi
+export JAVA_OPTS="-Xms${MIN_MEMORY} -Xmx${MAX_MEMORY} -XX:+HeapDumpOnOutOfMemoryError -Xloggc:mygclogfilename.gc $GC_PARAMS $JAVA_ADVANCED_FLAGS $JAVA_17_FLAGS"
 
 if [[ "${ENABLE_MONITORING}" == "true" ]] ; then
     echo "Monitoring  is enabled"

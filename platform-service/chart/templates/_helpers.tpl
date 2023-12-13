@@ -65,10 +65,18 @@ Create the name of the service account to use
 {{ include "common.images.pullSecrets" (dict "images" (list .Values.image .Values.waitForInitContainer.image) "global" .Values.global ) }}
 {{- end -}}
 
-{{- define "platform-service.generateSmtpSecrets" }}
-    SMTP_HOST: {{ include "harnesscommon.secrets.passwords.manage" (dict "secret" "smtp-secret" "key" "SMTP_HOST" "providedValues" (list "global.smtpCreateSecret.SMTP_HOST") "length" 10 "context" $) }}
-    SMTP_PORT: {{ include "harnesscommon.secrets.passwords.manage" (dict "secret" "smtp-secret" "key" "SMTP_PORT" "providedValues" (list "global.smtpCreateSecret.SMTP_PORT") "length" 10 "context" $) }}
-    SMTP_USERNAME: {{ include "harnesscommon.secrets.passwords.manage" (dict "secret" "smtp-secret" "key" "SMTP_USERNAME" "providedValues" (list "global.smtpCreateSecret.SMTP_USERNAME") "length" 10 "context" $) }}
-    SMTP_PASSWORD: {{ include "harnesscommon.secrets.passwords.manage" (dict "secret" "smtp-secret" "key" "SMTP_PASSWORD" "providedValues" (list "global.smtpCreateSecret.SMTP_PASSWORD") "length" 10 "context" $) }}
-    SMTP_USE_SSL: {{ include "harnesscommon.secrets.passwords.manage" (dict "secret" "smtp-secret" "key" "SMTP_USE_SSL" "providedValues" (list "global.smtpCreateSecret.SMTP_USE_SSL") "length" 10 "context" $) }}
+{{/*
+Manage platofrm-service Secrets
+*/}}
+{{- define "platform-service.generateSecrets" }}
+    {{- $ := .ctx }}
+    {{- $hasAtleastOneSecret := false }}
+    {{- $localESOSecretCtxIdentifier := (include "harnesscommon.secrets.localESOSecretCtxIdentifier" (dict "ctx" $ )) }}
+    {{- if eq (include "harnesscommon.secrets.isDefaultAppSecret" (dict "ctx" $ "variableName" "ET_AGENT_TOKEN")) "true" }}
+    {{- $hasAtleastOneSecret = true }}
+ET_AGENT_TOKEN: {{ .ctx.Values.secrets.default.ET_AGENT_TOKEN | b64enc }}
+    {{- end }}
+    {{- if not $hasAtleastOneSecret }}
+{}
+    {{- end }}
 {{- end }}

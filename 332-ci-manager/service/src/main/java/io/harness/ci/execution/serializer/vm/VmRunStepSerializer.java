@@ -5,7 +5,7 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.serializer.vm;
+package io.harness.ci.execution.serializer.vm;
 
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveMapParameterV2;
 import static io.harness.ci.commonconstants.CIExecutionConstants.NULL_STR;
@@ -19,11 +19,11 @@ import io.harness.beans.steps.stepinfo.RunStepInfo;
 import io.harness.beans.sweepingoutputs.StageInfraDetails;
 import io.harness.beans.yaml.extended.reports.JUnitTestReport;
 import io.harness.beans.yaml.extended.reports.UnitTestReportType;
-import io.harness.ci.buildstate.ConnectorUtils;
 import io.harness.ci.config.CIExecutionServiceConfig;
+import io.harness.ci.execution.buildstate.ConnectorUtils;
+import io.harness.ci.execution.serializer.SerializerUtils;
+import io.harness.ci.execution.utils.CIStepInfoUtils;
 import io.harness.ci.ff.CIFeatureFlagService;
-import io.harness.ci.serializer.SerializerUtils;
-import io.harness.ci.utils.CIStepInfoUtils;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.delegate.beans.ci.vm.steps.VmJunitTestReport;
 import io.harness.delegate.beans.ci.vm.steps.VmRunStep;
@@ -131,6 +131,11 @@ public class VmRunStepSerializer {
       }
     }
 
+    boolean runAsUserContainerLess = runAsUserContainerLess(runStepInfo, ngAccess.getAccountIdentifier(), image);
+    if (runAsUserContainerLess) {
+      runStepBuilder.runAsUser(runStepInfo.getRunAsUser().getValue().toString());
+    }
+
     if (runStepInfo.getReports().getValue() != null) {
       if (runStepInfo.getReports().getValue().getType() == UnitTestReportType.JUNIT) {
         JUnitTestReport junitTestReport = (JUnitTestReport) runStepInfo.getReports().getValue().getSpec();
@@ -141,5 +146,14 @@ public class VmRunStepSerializer {
     }
 
     return runStepBuilder.build();
+  }
+
+  public boolean runAsUserContainerLess(RunStepInfo runStepInfo, String accountId, String image) {
+    boolean flag = featureFlagService.isEnabled(FeatureName.CI_VM_CONTAINERLESS_RUN_ASUSER, accountId);
+    if (flag && runStepInfo.getRunAsUser() != null && runStepInfo.getRunAsUser().getValue() != null
+        && StringUtils.isEmpty(image)) {
+      return true;
+    }
+    return false;
   }
 }

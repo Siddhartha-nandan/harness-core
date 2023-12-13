@@ -31,6 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.harness.PipelineServiceTestBase;
+import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InvalidRequestException;
@@ -71,7 +72,7 @@ import io.harness.pms.pipeline.PMSInputSetListRepoResponse;
 import io.harness.pms.pipeline.PipelineEntity;
 import io.harness.pms.pipeline.service.PMSPipelineService;
 import io.harness.pms.plan.execution.service.PMSExecutionService;
-import io.harness.pms.yaml.PipelineVersion;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.rule.Owner;
 import io.harness.utils.PmsFeatureFlagService;
 
@@ -107,6 +108,7 @@ public class InputSetResourcePMSTest extends PipelineServiceTestBase {
   @Mock InputSetsApiUtils inputSetsApiUtils;
   @Mock PMSExecutionService executionService;
   @Mock PmsFeatureFlagService pmsFeatureFlagService;
+  @Mock AccessControlClient accessControlClient;
 
   private static final String ACCOUNT_ID = "accountId";
   private static final String ORG_IDENTIFIER = "orgId";
@@ -143,7 +145,7 @@ public class InputSetResourcePMSTest extends PipelineServiceTestBase {
   public void setUp() throws IOException {
     MockitoAnnotations.initMocks(this);
     inputSetResourcePMSImpl = new InputSetResourcePMSImpl(pmsInputSetService, pipelineService, gitSyncSdkService,
-        validateAndMergeHelper, inputSetsApiUtils, executionService, pmsFeatureFlagService);
+        validateAndMergeHelper, inputSetsApiUtils, executionService, pmsFeatureFlagService, accessControlClient);
 
     String inputSetFilename = "inputSet1.yml";
     inputSetYaml = readFile(inputSetFilename);
@@ -175,7 +177,7 @@ public class InputSetResourcePMSTest extends PipelineServiceTestBase {
                            .name(INPUT_SET_ID)
                            .yaml(inputSetYamlV1)
                            .inputSetEntityType(InputSetEntityType.INPUT_SET)
-                           .harnessVersion(PipelineVersion.V1)
+                           .harnessVersion(HarnessYamlVersion.V1)
                            .version(1L)
                            .build();
 
@@ -401,7 +403,7 @@ public class InputSetResourcePMSTest extends PipelineServiceTestBase {
   @Owner(developers = BRIJESH)
   @Category(UnitTests.class)
   public void testCreateInputSet() {
-    doReturn(PipelineVersion.V0).when(inputSetsApiUtils).inputSetVersion(any(), any());
+    doReturn(HarnessYamlVersion.V0).when(inputSetsApiUtils).inputSetVersion(any(), any());
     doReturn(inputSetEntity).when(pmsInputSetService).create(any(), anyBoolean());
     ResponseDTO<InputSetResponseDTOPMS> responseDTO = inputSetResourcePMSImpl.createInputSet(
         ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, null, null, null, inputSetYaml);
@@ -429,7 +431,7 @@ public class InputSetResourcePMSTest extends PipelineServiceTestBase {
   @Owner(developers = BRIJESH)
   @Category(UnitTests.class)
   public void testUpdateInputSet() {
-    doReturn(PipelineVersion.V0).when(inputSetsApiUtils).inputSetVersion(any(), any());
+    doReturn(HarnessYamlVersion.V0).when(inputSetsApiUtils).inputSetVersion(any(), any());
     doReturn(inputSetEntity).when(pmsInputSetService).update(any(), any(), anyBoolean());
     ResponseDTO<InputSetResponseDTOPMS> responseDTO = inputSetResourcePMSImpl.updateInputSet(null, INPUT_SET_ID,
         ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, null, null, null, inputSetYaml);
@@ -657,7 +659,7 @@ public class InputSetResourcePMSTest extends PipelineServiceTestBase {
   @Category(UnitTests.class)
   public void testCreateInputSetV1() {
     doReturn(inputSetEntityV1).when(pmsInputSetService).create(any(), anyBoolean());
-    doReturn(PipelineVersion.V1).when(inputSetsApiUtils).inputSetVersion(any(), any());
+    doReturn(HarnessYamlVersion.V1).when(inputSetsApiUtils).inputSetVersion(any(), any());
     ResponseDTO<InputSetResponseDTOPMS> responseDTO = inputSetResourcePMSImpl.createInputSet(
         ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, null, null, null, inputSetYamlV1);
     assertEquals(responseDTO.getData().getInputSetYaml(), inputSetYamlV1);
@@ -672,7 +674,7 @@ public class InputSetResourcePMSTest extends PipelineServiceTestBase {
   @Category(UnitTests.class)
   public void testUpdateInputSetV1() {
     doReturn(inputSetEntityV1).when(pmsInputSetService).update(any(), any(), anyBoolean());
-    doReturn(PipelineVersion.V1).when(inputSetsApiUtils).inputSetVersion(any(), any());
+    doReturn(HarnessYamlVersion.V1).when(inputSetsApiUtils).inputSetVersion(any(), any());
     ResponseDTO<InputSetResponseDTOPMS> responseDTO = inputSetResourcePMSImpl.updateInputSet(null, INPUT_SET_ID,
         ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER, null, null, null, inputSetYamlV1);
     assertEquals(responseDTO.getData().getInputSetYaml(), inputSetYamlV1);

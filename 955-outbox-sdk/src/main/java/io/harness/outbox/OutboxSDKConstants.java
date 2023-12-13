@@ -36,6 +36,7 @@ public class OutboxSDKConstants {
           .maximumRetryAttemptsForAnEvent(DEFAULT_MAX_ATTEMPTS)
           .initialDelayInSeconds(5)
           .pollingIntervalInSeconds(5)
+          .enableMetrics(false)
           .build();
 
   public static final OutboxEventFilter DEFAULT_OUTBOX_EVENT_FILTER =
@@ -46,6 +47,8 @@ public class OutboxSDKConstants {
   public static final String OUTBOX_BLOCKED_QUEUE_SIZE_METRIC_NAME = "outbox_blocked_queue_size";
 
   public static final String OUTBOX_EVENT_PROCESSING_TIME_METRIC_NAME = "outbox_event_processing_time";
+
+  public static final String OUTBOX_EVENT_WAITING_TIME_METRIC_NAME = "outbox_event_waiting_time";
 
   public static final String ALL_EVENT_TYPES = "AllEventTypes";
 }

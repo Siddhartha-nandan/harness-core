@@ -28,6 +28,7 @@ import io.harness.engine.expressions.functors.SecretFunctor;
 import io.harness.engine.expressions.functors.SecretFunctorWithRbac;
 import io.harness.engine.pms.data.PmsOutcomeService;
 import io.harness.engine.pms.data.PmsSweepingOutputService;
+import io.harness.engine.secrets.ExpressionsObserverFactory;
 import io.harness.exception.EngineExpressionEvaluationException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.execution.PlanExecution;
@@ -43,6 +44,7 @@ import io.harness.expression.XmlFunctor;
 import io.harness.expression.common.ExpressionMode;
 import io.harness.expression.functors.NGJsonFunctor;
 import io.harness.expression.functors.NGShellScriptFunctor;
+import io.harness.graph.stepDetail.service.NodeExecutionInfoService;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.expression.EngineExpressionEvaluatorResolver;
@@ -95,11 +97,14 @@ public class AmbianceExpressionEvaluator extends EngineExpressionEvaluator {
   @Inject private PlanExecutionService planExecutionService;
   @Inject private PlanService planService;
   @Inject private InputSetValidatorFactory inputSetValidatorFactory;
+  @Inject private NodeExecutionInfoService nodeExecutionInfoService;
 
   @Inject private PlanExpansionService planExpansionService;
 
   @Inject private PmsFeatureFlagService pmsFeatureFlagService;
   @Inject private PipelineRbacHelper pipelineRbacHelper;
+
+  @Inject private ExpressionsObserverFactory expressionsObserverFactory;
 
   protected final Ambiance ambiance;
   private final Set<NodeExecutionEntityType> entityTypes;
@@ -147,9 +152,13 @@ public class AmbianceExpressionEvaluator extends EngineExpressionEvaluator {
       addToContext("xml", new XmlFunctor());
       if (pmsFeatureFlagService.isEnabled(
               AmbianceUtils.getAccountId(ambiance), FeatureName.PIE_USE_SECRET_FUNCTOR_WITH_RBAC)) {
-        addToContext(SECRETS, new SecretFunctorWithRbac(ambiance, pipelineRbacHelper));
+        addToContext(SECRETS,
+            new SecretFunctorWithRbac(ambiance, pipelineRbacHelper,
+                expressionsObserverFactory.getSubjectForSecretsRuntimeUsages(ExpressionsObserverFactory.SECRET)));
       } else {
-        addToContext(SECRETS, new SecretFunctor(ambiance.getExpressionFunctorToken()));
+        addToContext(SECRETS,
+            new SecretFunctor(ambiance,
+                expressionsObserverFactory.getSubjectForSecretsRuntimeUsages(ExpressionsObserverFactory.SECRET)));
       }
     }
 
@@ -177,8 +186,10 @@ public class AmbianceExpressionEvaluator extends EngineExpressionEvaluator {
             .nodeExecutionsCache(nodeExecutionsCache)
             .pmsOutcomeService(pmsOutcomeService)
             .pmsSweepingOutputService(pmsSweepingOutputService)
+            .nodeExecutionInfoService(nodeExecutionInfoService)
             .ambiance(ambiance)
             .entityTypes(entityTypes)
+            .engine(getEngine())
             .build());
     // Access StepParameters and Outcomes of ancestors.
     addToContext("ancestor",
@@ -186,9 +197,11 @@ public class AmbianceExpressionEvaluator extends EngineExpressionEvaluator {
             .nodeExecutionsCache(nodeExecutionsCache)
             .pmsOutcomeService(pmsOutcomeService)
             .pmsSweepingOutputService(pmsSweepingOutputService)
+            .nodeExecutionInfoService(nodeExecutionInfoService)
             .ambiance(ambiance)
             .entityTypes(entityTypes)
             .groupAliases(groupAliases)
+            .engine(getEngine())
             .build());
     // Access StepParameters and Outcomes using fully qualified names.
     addToContext("qualified",
@@ -196,8 +209,10 @@ public class AmbianceExpressionEvaluator extends EngineExpressionEvaluator {
             .nodeExecutionsCache(nodeExecutionsCache)
             .pmsOutcomeService(pmsOutcomeService)
             .pmsSweepingOutputService(pmsSweepingOutputService)
+            .nodeExecutionInfoService(nodeExecutionInfoService)
             .ambiance(ambiance)
             .entityTypes(entityTypes)
+            .engine(getEngine())
             .build());
   }
 
@@ -292,6 +307,7 @@ public class AmbianceExpressionEvaluator extends EngineExpressionEvaluator {
         List<String> finalExpressions = fetchExpressionsV2(normalizedExpression);
         Object obj = ExpandedJsonFunctor.builder()
                          .planExpansionService(planExpansionService)
+                         .nodeExecutionInfoService(nodeExecutionInfoService)
                          .ambiance(ambiance)
                          .groupAliases(groupAliases)
                          .build()

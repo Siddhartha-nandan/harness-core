@@ -17,14 +17,19 @@ import static io.harness.filesystem.FileIo.createDirectoryIfDoesNotExist;
 import static io.harness.filesystem.FileIo.deleteDirectoryAndItsContentIfExists;
 import static io.harness.filesystem.FileIo.waitForDirectoryToBeAccessibleOutOfProcess;
 import static io.harness.filesystem.FileIo.writeFile;
+import static io.harness.helm.HelmConstants.HELM_CACHE_HOME_PLACEHOLDER;
 import static io.harness.helm.HelmConstants.HELM_HOME_PATH_FLAG;
+import static io.harness.helm.HelmConstants.V3Commands.HELM_CACHE_INDEX_FILE;
+import static io.harness.helm.HelmConstants.V3Commands.HELM_CACHE_INDEX_FILE_FROM_CHART_DIRECTORY;
 import static io.harness.k8s.model.HelmVersion.V2;
 import static io.harness.k8s.model.HelmVersion.V3;
 import static io.harness.rule.OwnerRule.ABOSII;
 import static io.harness.rule.OwnerRule.ACHYUTH;
 import static io.harness.rule.OwnerRule.INDER;
+import static io.harness.rule.OwnerRule.MLUKIC;
 import static io.harness.rule.OwnerRule.NAMAN_TALAYCHA;
 import static io.harness.rule.OwnerRule.PRATYUSH;
+import static io.harness.rule.OwnerRule.TARUN_UBA;
 import static io.harness.rule.OwnerRule.YOGESH;
 
 import static java.lang.String.format;
@@ -48,10 +53,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import io.harness.CategoryTest;
+import io.harness.LoggerRule;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.aws.AwsClient;
+import io.harness.aws.AwsConfig;
+import io.harness.aws.beans.AwsInternalConfig;
 import io.harness.category.element.UnitTests;
 import io.harness.chartmuseum.ChartMuseumServer;
 import io.harness.chartmuseum.ChartmuseumClient;
+import io.harness.delegate.beans.connector.awsconnector.AwsConnectorDTO;
+import io.harness.delegate.beans.connector.awsconnector.AwsCredentialDTO;
 import io.harness.delegate.beans.connector.helm.HttpHelmAuthType;
 import io.harness.delegate.beans.connector.helm.HttpHelmAuthenticationDTO;
 import io.harness.delegate.beans.connector.helm.HttpHelmConnectorDTO;
@@ -67,13 +78,18 @@ import io.harness.delegate.beans.storeconfig.S3HelmStoreDelegateConfig;
 import io.harness.delegate.beans.storeconfig.StoreDelegateConfig;
 import io.harness.delegate.beans.storeconfig.StoreDelegateConfigType;
 import io.harness.delegate.chartmuseum.NgChartmuseumClientFactory;
+import io.harness.delegate.task.aws.AwsNgConfigMapper;
 import io.harness.delegate.task.k8s.HelmChartManifestDelegateConfig;
+import io.harness.delegate.task.k8s.HelmChartManifestDelegateConfig.HelmChartManifestDelegateConfigBuilder;
 import io.harness.encryption.SecretRefData;
 import io.harness.exception.HelmClientException;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.InvalidRequestException;
+import io.harness.filesystem.FileIo;
 import io.harness.helm.HelmCliCommandType;
+import io.harness.helm.HelmCommandRunner;
 import io.harness.helm.HelmCommandTemplateFactory;
+import io.harness.helm.HelmConstants;
 import io.harness.helm.HelmSubCommandType;
 import io.harness.k8s.config.K8sGlobalConfigService;
 import io.harness.k8s.model.HelmVersion;
@@ -82,17 +98,25 @@ import io.harness.rule.Owner;
 
 import software.wings.helpers.ext.helm.response.ReleaseInfo;
 
+import com.amazonaws.services.ecr.model.AuthorizationData;
+import com.amazonaws.util.Base64;
 import com.google.common.collect.ImmutableMap;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.ArgumentCaptor;
@@ -111,6 +135,8 @@ import org.zeroturnaround.exec.StartedProcess;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class HelmTaskHelperBaseTest extends CategoryTest {
   private static final String CHART_NAME = "test-helm-chart";
+  @Rule public final LoggerRule loggerRule = new LoggerRule();
+
   private static final String CHART_VERSION = "1.0.0";
   private static final String REPO_NAME = "helm_charts";
   private static final String REPO_DISPLAY_NAME = "Helm Charts";
@@ -119,12 +145,15 @@ public class HelmTaskHelperBaseTest extends CategoryTest {
   @Mock K8sGlobalConfigService k8sGlobalConfigService;
   @Mock NgChartmuseumClientFactory ngChartmuseumClientFactory;
   @Mock ChartmuseumClient chartmuseumClient;
+  @Mock HelmCommandRunner helmCommandRunner;
 
   @InjectMocks @Spy HelmTaskHelperBase helmTaskHelperBase;
 
   @Mock ProcessExecutor processExecutor;
   @Mock LogCallback logCallback;
   @Mock StartedProcess chartmuseumStartedProcess;
+  @Mock AwsClient awsClient;
+  @Mock AwsNgConfigMapper awsNgConfigMapper;
 
   ChartMuseumServer chartMuseumServer;
   final HelmCommandFlag emptyHelmCommandFlag = HelmCommandFlag.builder().build();
@@ -138,6 +167,7 @@ public class HelmTaskHelperBaseTest extends CategoryTest {
 
     doReturn(processExecutor).when(helmTaskHelperBase).createProcessExecutor(any(), any(), anyLong(), anyMap());
     doReturn(processExecutor).when(helmTaskHelperBase).createProcessExecutor(any(), any(), anyLong(), anyMap());
+    doReturn(false).when(helmCommandRunner).isEnabled();
 
     chartMuseumServer =
         ChartMuseumServer.builder().port(CHARTMUSEUM_SERVER_PORT).startedProcess(chartmuseumStartedProcess).build();
@@ -472,6 +502,82 @@ public class HelmTaskHelperBaseTest extends CategoryTest {
   @Test
   @Owner(developers = PRATYUSH)
   @Category(UnitTests.class)
+  public void testDownloadChartFilesFromOciEcrRepo() throws Exception {
+    String repoUrl = "test.awsecr.io";
+    String username = "AWS";
+    char[] password = "password".toCharArray();
+    String pass = username + ":password";
+    String encodedString = Base64.encodeAsString(pass.getBytes());
+    String chartOutput = "/directory";
+    long timeout = 90000L;
+    String region = "region";
+    String registryId = "registryId";
+
+    HelmChartManifestDelegateConfig helmChartManifestDelegateConfig =
+        HelmChartManifestDelegateConfig.builder()
+            .chartName(CHART_NAME)
+            .useCache(true)
+            .chartVersion(CHART_VERSION)
+            .helmVersion(V3)
+            .helmCommandFlag(emptyHelmCommandFlag)
+            .storeDelegateConfig(
+                OciHelmStoreDelegateConfig.builder()
+                    .repoUrl(repoUrl)
+                    .repoName(REPO_NAME)
+                    .basePath("helm/")
+                    .repoDisplayName(REPO_DISPLAY_NAME)
+                    .awsConnectorDTO(AwsConnectorDTO.builder().credential(AwsCredentialDTO.builder().build()).build())
+                    .registryId(registryId)
+                    .region(region)
+                    .build())
+            .build();
+    AuthorizationData authorizationData = new AuthorizationData();
+    authorizationData.setAuthorizationToken(encodedString);
+    authorizationData.setExpiresAt(new Date(System.currentTimeMillis() + 600000));
+
+    String updatedRepoName = "oci://test.awsecr.io/helm";
+    doReturn("reg-config.json").when(helmTaskHelperBase).getRegFileConfigPath();
+    doReturn(AwsInternalConfig.builder().build()).when(awsNgConfigMapper).createAwsInternalConfig(any());
+    doReturn(repoUrl).when(awsClient).getEcrImageUrl(any(), eq(registryId), eq(region), eq(CHART_NAME));
+    doReturn(AwsConfig.builder().build()).when(awsNgConfigMapper).mapAwsConfigWithDecryption(any(), any(), any());
+    doReturn(authorizationData).when(awsClient).getAmazonEcrAuthData(any(), anyString(), eq(region));
+    doNothing()
+        .when(helmTaskHelperBase)
+        .loginOciRegistry(eq(repoUrl), eq(username), eq(password), eq(HelmVersion.V380), eq(timeout), eq(chartOutput),
+            eq("reg-config.json"));
+    doNothing()
+        .when(helmTaskHelperBase)
+        .fetchChartFromRepo(eq(updatedRepoName), eq(REPO_DISPLAY_NAME), eq(CHART_NAME), eq(CHART_VERSION),
+            eq(chartOutput), eq(HelmVersion.V380), eq(emptyHelmCommandFlag), eq(timeout), anyString(),
+            eq("reg-config.json"));
+
+    helmTaskHelperBase.downloadChartFilesFromOciRepo(helmChartManifestDelegateConfig, chartOutput, timeout);
+    verify(awsNgConfigMapper, times(1)).mapAwsConfigWithDecryption(any(), any(), any());
+    verify(awsClient, times(1)).getAmazonEcrAuthData(any(), anyString(), eq(region));
+    verify(helmTaskHelperBase, times(1))
+        .loginOciRegistry(eq(repoUrl), eq(username), eq(password), eq(HelmVersion.V380), eq(timeout), eq(chartOutput),
+            eq("reg-config.json"));
+    verify(helmTaskHelperBase, times(1))
+        .fetchChartFromRepo(eq(updatedRepoName), eq(REPO_DISPLAY_NAME), eq(CHART_NAME), eq(CHART_VERSION),
+            eq(chartOutput), eq(HelmVersion.V380), eq(emptyHelmCommandFlag), eq(timeout), anyString(),
+            eq("reg-config.json"));
+
+    // Test Caching
+    helmTaskHelperBase.downloadChartFilesFromOciRepo(helmChartManifestDelegateConfig, chartOutput, timeout);
+    verify(awsClient, times(1)).getAmazonEcrAuthData(any(), anyString(), eq(region));
+    verify(awsNgConfigMapper, times(2)).mapAwsConfigWithDecryption(any(), any(), any());
+    verify(helmTaskHelperBase, times(2))
+        .loginOciRegistry(eq(repoUrl), eq(username), eq(password), eq(HelmVersion.V380), eq(timeout), eq(chartOutput),
+            eq("reg-config.json"));
+    verify(helmTaskHelperBase, times(2))
+        .fetchChartFromRepo(eq(updatedRepoName), eq(REPO_DISPLAY_NAME), eq(CHART_NAME), eq(CHART_VERSION),
+            eq(chartOutput), eq(HelmVersion.V380), eq(emptyHelmCommandFlag), eq(timeout), anyString(),
+            eq("reg-config.json"));
+  }
+
+  @Test
+  @Owner(developers = PRATYUSH)
+  @Category(UnitTests.class)
   public void testDownloadChartFilesFromOciRepoAnonymousAuth() throws Exception {
     String repoUrl = "oci://test.azurecr.io";
     String chartOutput = "/directory";
@@ -508,6 +614,128 @@ public class HelmTaskHelperBaseTest extends CategoryTest {
 
     helmTaskHelperBase.downloadChartFilesFromOciRepo(helmChartManifestDelegateConfig, chartOutput, timeout);
 
+    verify(helmTaskHelperBase, times(1))
+        .fetchChartFromRepo(eq(updatedRepoName), eq(REPO_DISPLAY_NAME), eq(CHART_NAME), eq(CHART_VERSION),
+            eq(chartOutput), eq(HelmVersion.V380), eq(emptyHelmCommandFlag), eq(timeout), anyString(),
+            eq("reg-config.json"));
+  }
+
+  @Test
+  @Owner(developers = NAMAN_TALAYCHA)
+  @Category(UnitTests.class)
+  public void testdownloadChartFilesFromOciRepoWithEmptyBasePath() throws Exception {
+    String repoUrl = "test.azurecr.io";
+    String username = "username";
+    char[] password = "password".toCharArray();
+    String chartOutput = "/directory";
+    long timeout = 90000L;
+
+    HelmChartManifestDelegateConfig helmChartManifestDelegateConfig =
+        HelmChartManifestDelegateConfig.builder()
+            .chartName(CHART_NAME)
+            .useCache(true)
+            .chartVersion(CHART_VERSION)
+            .helmVersion(V3)
+            .helmCommandFlag(emptyHelmCommandFlag)
+            .storeDelegateConfig(
+                OciHelmStoreDelegateConfig.builder()
+                    .repoName(REPO_NAME)
+                    .repoDisplayName(REPO_DISPLAY_NAME)
+                    .ociHelmConnector(
+                        OciHelmConnectorDTO.builder()
+                            .helmRepoUrl(repoUrl)
+                            .auth(OciHelmAuthenticationDTO.builder()
+                                      .authType(OciHelmAuthType.USER_PASSWORD)
+                                      .credentials(
+                                          OciHelmUsernamePasswordDTO.builder()
+                                              .username(username)
+                                              .passwordRef(SecretRefData.builder().decryptedValue(password).build())
+                                              .build())
+                                      .build())
+                            .build())
+                    .build())
+            .build();
+
+    String updatedRepoName = "oci://test.azurecr.io";
+
+    doReturn("reg-config.json").when(helmTaskHelperBase).getRegFileConfigPath();
+    doNothing()
+        .when(helmTaskHelperBase)
+        .loginOciRegistry(eq(repoUrl), eq(username), eq(password), eq(HelmVersion.V380), eq(timeout), eq(chartOutput),
+            eq("reg-config.json"));
+    doNothing()
+        .when(helmTaskHelperBase)
+        .fetchChartFromRepo(eq(updatedRepoName), eq(REPO_DISPLAY_NAME), eq(CHART_NAME), eq(CHART_VERSION),
+            eq(chartOutput), eq(HelmVersion.V380), eq(emptyHelmCommandFlag), eq(timeout), anyString(),
+            eq("reg-config.json"));
+
+    helmTaskHelperBase.downloadChartFilesFromOciRepo(helmChartManifestDelegateConfig, chartOutput, timeout);
+
+    verify(helmTaskHelperBase, times(1))
+        .loginOciRegistry(eq(repoUrl), eq(username), eq(password), eq(HelmVersion.V380), eq(timeout), eq(chartOutput),
+            eq("reg-config.json"));
+    verify(helmTaskHelperBase, times(1))
+        .fetchChartFromRepo(eq(updatedRepoName), eq(REPO_DISPLAY_NAME), eq(CHART_NAME), eq(CHART_VERSION),
+            eq(chartOutput), eq(HelmVersion.V380), eq(emptyHelmCommandFlag), eq(timeout), anyString(),
+            eq("reg-config.json"));
+  }
+
+  @Test
+  @Owner(developers = PRATYUSH)
+  @Category(UnitTests.class)
+  public void testDownloadChartFilesFromOciEcrRepoWithEmptyBasePath() throws Exception {
+    String repoUrl = "test.awsecr.io";
+    String username = "AWS";
+    char[] password = "password".toCharArray();
+    String pass = username + ":password";
+    String encodedString = Base64.encodeAsString(pass.getBytes());
+    String chartOutput = "/directory";
+    long timeout = 90000L;
+    String region = "region";
+    String registryId = "registryId";
+
+    HelmChartManifestDelegateConfig helmChartManifestDelegateConfig =
+        HelmChartManifestDelegateConfig.builder()
+            .chartName(CHART_NAME)
+            .useCache(true)
+            .chartVersion(CHART_VERSION)
+            .helmVersion(V3)
+            .helmCommandFlag(emptyHelmCommandFlag)
+            .storeDelegateConfig(
+                OciHelmStoreDelegateConfig.builder()
+                    .repoUrl(repoUrl)
+                    .repoName(REPO_NAME)
+                    .repoDisplayName(REPO_DISPLAY_NAME)
+                    .awsConnectorDTO(AwsConnectorDTO.builder().credential(AwsCredentialDTO.builder().build()).build())
+                    .registryId(registryId)
+                    .region(region)
+                    .build())
+            .build();
+    AuthorizationData authorizationData = new AuthorizationData();
+    authorizationData.setAuthorizationToken(encodedString);
+    authorizationData.setExpiresAt(new Date(System.currentTimeMillis()));
+
+    String updatedRepoName = "oci://test.awsecr.io";
+    doReturn("reg-config.json").when(helmTaskHelperBase).getRegFileConfigPath();
+    doReturn(AwsInternalConfig.builder().build()).when(awsNgConfigMapper).createAwsInternalConfig(any());
+    doReturn(repoUrl).when(awsClient).getEcrImageUrl(any(), eq(registryId), eq(region), eq(CHART_NAME));
+    doReturn(AwsConfig.builder().build()).when(awsNgConfigMapper).mapAwsConfigWithDecryption(any(), any(), any());
+    doReturn(authorizationData).when(awsClient).getAmazonEcrAuthData(any(), anyString(), eq(region));
+    doNothing()
+        .when(helmTaskHelperBase)
+        .loginOciRegistry(eq(repoUrl), eq(username), eq(password), eq(HelmVersion.V380), eq(timeout), eq(chartOutput),
+            eq("reg-config.json"));
+    doNothing()
+        .when(helmTaskHelperBase)
+        .fetchChartFromRepo(eq(updatedRepoName), eq(REPO_DISPLAY_NAME), eq(CHART_NAME), eq(CHART_VERSION),
+            eq(chartOutput), eq(HelmVersion.V380), eq(emptyHelmCommandFlag), eq(timeout), anyString(),
+            eq("reg-config.json"));
+
+    helmTaskHelperBase.downloadChartFilesFromOciRepo(helmChartManifestDelegateConfig, chartOutput, timeout);
+
+    verify(helmTaskHelperBase, times(1))
+        .loginOciRegistry(eq(repoUrl), eq(username), eq(password), eq(HelmVersion.V380), eq(timeout), eq(chartOutput),
+            eq("reg-config.json"));
     verify(helmTaskHelperBase, times(1))
         .fetchChartFromRepo(eq(updatedRepoName), eq(REPO_DISPLAY_NAME), eq(CHART_NAME), eq(CHART_VERSION),
             eq(chartOutput), eq(HelmVersion.V380), eq(emptyHelmCommandFlag), eq(timeout), anyString(),
@@ -954,9 +1182,20 @@ public class HelmTaskHelperBaseTest extends CategoryTest {
   }
 
   @Test
-  @Owner(developers = INDER)
+  @Owner(developers = {INDER, MLUKIC})
   @Category(UnitTests.class)
-  public void testFetchVersionsFromHttpV2() throws Exception {
+  public void testFetchVersionsFromHttpV2NotUsingCache() throws Exception {
+    testFetchVersionsFromHttpV2(false);
+  }
+
+  @Test
+  @Owner(developers = {INDER, MLUKIC})
+  @Category(UnitTests.class)
+  public void testFetchVersionsFromHttpV2UsingCache() throws Exception {
+    testFetchVersionsFromHttpV2(true);
+  }
+
+  private void testFetchVersionsFromHttpV2(boolean useCache) throws Exception {
     final String V_2_HELM_SEARCH_REPO_COMMAND =
         "v2/helm search repoName/chartName -l ${HELM_HOME_PATH_FLAG} --col-width 300";
     String repoUrl = "https://repo-chart/";
@@ -966,7 +1205,7 @@ public class HelmTaskHelperBaseTest extends CategoryTest {
     long timeout = 90000L;
 
     HelmChartManifestDelegateConfig helmChartManifestDelegateConfig =
-        getHelmChartManifestDelegateConfig(repoUrl, username, password, V2, HTTP_HELM);
+        getHelmChartManifestDelegateConfigBuilder(repoUrl, username, password, V2, HTTP_HELM, useCache).build();
     doReturn(new ProcessResult(0, null)).when(processExecutor).execute();
 
     doAnswer(invocationOnMock -> invocationOnMock.getArgument(0, String.class))
@@ -987,7 +1226,7 @@ public class HelmTaskHelperBaseTest extends CategoryTest {
     assertThat(chartVersions.get(0)).isEqualTo("1.0.2");
     assertThat(chartVersions.get(1)).isEqualTo("1.0.1");
     // For helm version 2, we execute another command for helm init apart from add and update repo
-    verify(processExecutor, times(4)).execute();
+    verify(processExecutor, times(useCache ? 3 : 4)).execute();
     verify(helmTaskHelperBase, times(1)).initHelm(directory, V2, timeout);
 
     // anonymous user
@@ -997,7 +1236,7 @@ public class HelmTaskHelperBaseTest extends CategoryTest {
     assertThat(chartVersions2.get(0)).isEqualTo("1.0.2");
     assertThat(chartVersions2.get(1)).isEqualTo("1.0.1");
     // For helm version 2, we execute another command for helm init apart from add and update repo
-    verify(processExecutor, times(8)).execute();
+    verify(processExecutor, times(useCache ? 7 : 8)).execute();
     verify(helmTaskHelperBase, times(2)).initHelm(directory, V2, timeout);
   }
 
@@ -1265,19 +1504,99 @@ public class HelmTaskHelperBaseTest extends CategoryTest {
     deleteDirectoryAndItsContentIfExists(directory);
   }
 
+  @Test
+  @Owner(developers = TARUN_UBA)
+  @Category(UnitTests.class)
+  public void testIndexLogicWhenFilesAreLarge() throws IOException {
+    String cacheDir = "sample/cache/dir";
+    String chartDirectory = "sample/chart/dir";
+    String repoDisplayName = "classicRepo";
+    String repoName = "1234-5678";
+    String helmRepoWithCache =
+        HELM_CACHE_INDEX_FILE.replace(HelmConstants.REPO_NAME, repoName).replace(HELM_CACHE_HOME_PLACEHOLDER, cacheDir);
+    String helmRepoWithChartDirectory =
+        HELM_CACHE_INDEX_FILE_FROM_CHART_DIRECTORY.replace(HelmConstants.REPO_NAME, repoName)
+            .replace(HELM_CACHE_HOME_PLACEHOLDER, chartDirectory);
+
+    createFileAndDirectories(helmRepoWithCache, 25);
+    createFileAndDirectories(helmRepoWithChartDirectory, 25);
+    helmTaskHelperBase.checkIndexFile(repoName, cacheDir, null, repoDisplayName);
+
+    FileIo.deleteDirectoryAndItsContentIfExists(cacheDir);
+    helmTaskHelperBase.checkIndexFile(repoName, "", chartDirectory, repoDisplayName);
+
+    long numberOfInvocations = loggerRule.getFormattedMessages()
+                                   .stream()
+                                   .filter(log -> log.contains("Index.yaml for helm repo: [classicRepo]"))
+                                   .count();
+    assertThat(numberOfInvocations).isEqualTo(2);
+    FileIo.deleteDirectoryAndItsContentIfExists("sample");
+  }
+
+  @Test
+  @Owner(developers = TARUN_UBA)
+  @Category(UnitTests.class)
+  public void testIndexLogicWhenFilesAreSmall() throws IOException {
+    String cacheDir = "sample2/cache/dir";
+    String chartDirectory = "sample2/chart/dir";
+    String repoDisplayName = "classicRepo";
+    String repoName = "1234-5678";
+    String helmRepoWithCache =
+        HELM_CACHE_INDEX_FILE.replace(HelmConstants.REPO_NAME, repoName).replace(HELM_CACHE_HOME_PLACEHOLDER, cacheDir);
+    String helmRepoWithChartDirectory =
+        HELM_CACHE_INDEX_FILE_FROM_CHART_DIRECTORY.replace(HelmConstants.REPO_NAME, repoName)
+            .replace(HELM_CACHE_HOME_PLACEHOLDER, chartDirectory);
+
+    createFileAndDirectories(helmRepoWithCache, 15);
+    createFileAndDirectories(helmRepoWithChartDirectory, 15);
+    helmTaskHelperBase.checkIndexFile(repoName, cacheDir, null, repoDisplayName);
+
+    FileIo.deleteDirectoryAndItsContentIfExists(cacheDir);
+    helmTaskHelperBase.checkIndexFile(repoName, "", chartDirectory, repoDisplayName);
+
+    long numberOfInvocations = loggerRule.getFormattedMessages()
+                                   .stream()
+                                   .filter(log -> log.contains("Index.yaml for helm repo: [classicRepo]"))
+                                   .count();
+    assertThat(numberOfInvocations).isEqualTo(0);
+    FileIo.deleteDirectoryAndItsContentIfExists("sample2");
+  }
+
+  @Test
+  @Owner(developers = ABOSII)
+  @Category(UnitTests.class)
+  public void testExecuteCommandWithHelmCommandRunner() {
+    final Map<String, String> envs = Map.of("k1", "v1", "k2", "v2");
+    final String command = "helm add repo";
+    final String directory = "directory";
+
+    doReturn(true).when(helmCommandRunner).isEnabled();
+
+    helmTaskHelperBase.executeCommand(envs, command, directory, "error", 10L, HelmCliCommandType.REPO_ADD);
+
+    verify(helmCommandRunner).execute(HelmCliCommandType.REPO_ADD, command, directory, envs, 10L);
+  }
+
   private String getHelmCollectionResult() {
     return "NAME\tCHART VERSION\tAPP VERSION\tDESCRIPTION\n"
         + "repoName/chartName\t1.0.2\t0\tDeploys harness delegate\n"
         + "repoName/chartName\t1.0.1\t0\tDeploys harness delegate";
   }
 
-  private HelmChartManifestDelegateConfig getHelmChartManifestDelegateConfig(String repoUrl, String username,
-      char[] password, HelmVersion helmVersion, StoreDelegateConfigType storeDelegateConfigType) {
+  private HelmChartManifestDelegateConfigBuilder getHelmChartManifestDelegateConfigBuilder(String repoUrl,
+      String username, char[] password, HelmVersion helmVersion, StoreDelegateConfigType storeDelegateConfigType,
+      boolean useCache) {
     return HelmChartManifestDelegateConfig.builder()
         .chartName("chartName")
         .helmVersion(helmVersion)
         .helmCommandFlag(emptyHelmCommandFlag)
         .storeDelegateConfig(getStoreDelegateConfig(repoUrl, username, password, storeDelegateConfigType))
+        .useCache(useCache);
+  }
+  private HelmChartManifestDelegateConfig getHelmChartManifestDelegateConfig(String repoUrl, String username,
+      char[] password, HelmVersion helmVersion, StoreDelegateConfigType storeDelegateConfigType) {
+    return getHelmChartManifestDelegateConfigBuilder(
+        repoUrl, username, password, helmVersion, storeDelegateConfigType, false)
         .build();
   }
 
@@ -1322,5 +1641,33 @@ public class HelmTaskHelperBaseTest extends CategoryTest {
   public void createAndWaitForDir(String dir) throws IOException {
     createDirectoryIfDoesNotExist(dir);
     waitForDirectoryToBeAccessibleOutOfProcess(dir, 10);
+  }
+
+  private static void createFileAndDirectories(String filePath, long size) throws IOException {
+    Path path = Paths.get(filePath);
+
+    if (!Files.exists(path.getParent())) {
+      Files.createDirectories(path.getParent());
+    }
+    long fileSizeInMB = size;
+
+    if (!Files.exists(path)) {
+      createLargeFile(filePath, fileSizeInMB);
+    }
+  }
+  private static void createLargeFile(String filePath, long fileSizeInMB) throws IOException {
+    long fileSizeInBytes = fileSizeInMB * 1024 * 1024;
+
+    try (FileOutputStream fos = new FileOutputStream(filePath)) {
+      // Create a buffer of 1 MB to write at a time
+      byte[] buffer = new byte[1024 * 1024];
+      long bytesWritten = 0;
+
+      while (bytesWritten < fileSizeInBytes) {
+        int bytesToWrite = (int) Math.min(buffer.length, fileSizeInBytes - bytesWritten);
+        fos.write(buffer, 0, bytesToWrite);
+        bytesWritten += bytesToWrite;
+      }
+    }
   }
 }

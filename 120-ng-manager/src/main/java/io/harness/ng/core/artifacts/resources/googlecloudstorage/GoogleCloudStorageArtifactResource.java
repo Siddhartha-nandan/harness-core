@@ -6,20 +6,24 @@
  */
 
 package io.harness.ng.core.artifacts.resources.googlecloudstorage;
-
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import io.harness.NGCommonEntityConstants;
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.IdentifierRef;
 import io.harness.cdng.artifact.bean.ArtifactConfig;
 import io.harness.cdng.artifact.bean.yaml.GoogleCloudStorageArtifactConfig;
 import io.harness.cdng.artifact.resources.googlecloudstorage.dtos.GoogleCloudStorageBucketDetails;
 import io.harness.cdng.artifact.resources.googlecloudstorage.dtos.GoogleCloudStorageBucketsResponseDTO;
 import io.harness.cdng.artifact.resources.googlecloudstorage.service.GoogleCloudStorageArtifactResourceService;
+import io.harness.evaluators.CDYamlExpressionEvaluator;
 import io.harness.gitsync.interceptor.GitEntityFindInfoDTO;
 import io.harness.ng.core.artifacts.resources.util.ArtifactResourceUtils;
+import io.harness.ng.core.artifacts.resources.util.YamlExpressionEvaluatorWithContext;
 import io.harness.ng.core.dto.ErrorDTO;
 import io.harness.ng.core.dto.FailureDTO;
 import io.harness.ng.core.dto.ResponseDTO;
@@ -43,6 +47,8 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
+    components = {HarnessModuleComponent.CDS_ARTIFACTS, HarnessModuleComponent.CDS_COMMON_STEPS})
 @OwnedBy(CDC)
 @Api("artifacts")
 @Path("/artifacts/google-cloud-storage")
@@ -70,9 +76,22 @@ public class GoogleCloudStorageArtifactResource {
       @QueryParam(NGCommonEntityConstants.PIPELINE_KEY) String pipelineIdentifier,
       @QueryParam("fqnPath") String fqnPath, @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo,
       String runtimeInputYaml, @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceRef) {
+    YamlExpressionEvaluatorWithContext baseEvaluatorWithContext = null;
+
+    // remote services can be linked with a specific branch, so we parse the YAML in one go and store the context data
+    //  has env git branch and service git branch
+    if (isNotEmpty(serviceRef)
+        && artifactResourceUtils.isRemoteService(accountId, orgIdentifier, projectIdentifier, serviceRef)) {
+      baseEvaluatorWithContext = artifactResourceUtils.getYamlExpressionEvaluatorWithContext(accountId, orgIdentifier,
+          projectIdentifier, pipelineIdentifier, runtimeInputYaml, fqnPath, gitEntityBasicInfo, serviceRef);
+    }
+
     if (isNotEmpty(serviceRef)) {
-      final ArtifactConfig artifactSpecFromService = artifactResourceUtils.locateArtifactInService(
-          accountId, orgIdentifier, projectIdentifier, serviceRef, fqnPath);
+      final ArtifactConfig artifactSpecFromService = artifactResourceUtils.locateArtifactInService(accountId,
+          orgIdentifier, projectIdentifier, serviceRef, fqnPath,
+          baseEvaluatorWithContext == null
+              ? null
+              : baseEvaluatorWithContext.getContextMap().get(artifactResourceUtils.SERVICE_GIT_BRANCH));
 
       GoogleCloudStorageArtifactConfig googleCloudStorageArtifactConfig =
           (GoogleCloudStorageArtifactConfig) artifactSpecFromService;
@@ -85,14 +104,22 @@ public class GoogleCloudStorageArtifactResource {
       }
     }
 
+    CDYamlExpressionEvaluator yamlExpressionEvaluator =
+        baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getYamlExpressionEvaluator();
+
     // Getting the resolved connectorRef in case of expressions
-    String resolvedGcpConnectorRef =
-        artifactResourceUtils.getResolvedFieldValue(accountId, orgIdentifier, projectIdentifier, pipelineIdentifier,
-            runtimeInputYaml, gcpConnectorRef, fqnPath, gitEntityBasicInfo, serviceRef);
+    String resolvedGcpConnectorRef = artifactResourceUtils
+                                         .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier,
+                                             projectIdentifier, pipelineIdentifier, runtimeInputYaml, gcpConnectorRef,
+                                             fqnPath, gitEntityBasicInfo, serviceRef, yamlExpressionEvaluator)
+                                         .getValue();
 
     // Getting the resolved project in case of expressions
-    String resolvedProject = artifactResourceUtils.getResolvedFieldValue(accountId, orgIdentifier, projectIdentifier,
-        pipelineIdentifier, runtimeInputYaml, project, fqnPath, gitEntityBasicInfo, serviceRef);
+    String resolvedProject = artifactResourceUtils
+                                 .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier,
+                                     projectIdentifier, pipelineIdentifier, runtimeInputYaml, project, fqnPath,
+                                     gitEntityBasicInfo, serviceRef, yamlExpressionEvaluator)
+                                 .getValue();
 
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(resolvedGcpConnectorRef, accountId, orgIdentifier, projectIdentifier);

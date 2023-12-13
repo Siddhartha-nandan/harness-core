@@ -13,14 +13,12 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.engine.executions.node.NodeExecutionService;
-import io.harness.engine.executions.plan.PlanExecutionMetadataService;
 import io.harness.engine.executions.plan.PlanExecutionService;
 import io.harness.engine.executions.plan.PlanService;
 import io.harness.engine.pms.data.PmsOutcomeService;
 import io.harness.engine.pms.data.PmsSweepingOutputService;
 import io.harness.execution.expansion.PlanExpansionService;
-import io.harness.graph.stepDetail.service.PmsGraphStepDetailsService;
-import io.harness.pms.plan.execution.service.PmsExecutionSummaryService;
+import io.harness.graph.stepDetail.service.NodeExecutionInfoService;
 import io.harness.pms.sdk.core.events.OrchestrationEvent;
 import io.harness.pms.sdk.core.events.OrchestrationEventHandler;
 
@@ -39,12 +37,10 @@ public class PipelineExecutionEndEventHandler implements OrchestrationEventHandl
 
   @Inject NodeExecutionService nodeExecutionService;
   @Inject PlanExpansionService planExpansionService;
-  @Inject PmsGraphStepDetailsService pmsGraphStepDetailsService;
+  @Inject NodeExecutionInfoService pmsGraphStepDetailsService;
   @Inject PmsOutcomeService pmsOutcomeService;
   @Inject PmsSweepingOutputService pmsSweepingOutputService;
-  @Inject PlanExecutionMetadataService planExecutionMetadataService;
   @Inject PlanExecutionService planExecutionService;
-  @Inject PmsExecutionSummaryService pmsExecutionSummaryService;
 
   @Override
   public void handleEvent(OrchestrationEvent event) {
@@ -63,7 +59,5 @@ public class PipelineExecutionEndEventHandler implements OrchestrationEventHandl
     pmsGraphStepDetailsService.updateTTLForNodesForGivenPlanExecutionId(planExecutionId, ttlExpiryDate);
 
     planExecutionService.updateTTL(planExecutionId, ttlExpiryDate);
-    planExecutionMetadataService.updateTTL(planExecutionId, ttlExpiryDate);
-    pmsExecutionSummaryService.updateTTL(planExecutionId, ttlExpiryDate);
   }
 }

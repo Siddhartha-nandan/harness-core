@@ -73,7 +73,11 @@ import static io.harness.ccm.views.utils.ClusterTableKeys.PRICING_SOURCE;
 import static io.harness.ccm.views.utils.ClusterTableKeys.TASK_ID;
 import static io.harness.ccm.views.utils.ClusterTableKeys.WORKLOAD_NAME;
 import static io.harness.ccm.views.utils.ClusterTableKeys.WORKLOAD_TYPE;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.ccm.views.businessmapping.entities.BusinessMapping;
 import io.harness.ccm.views.businessmapping.service.intf.BusinessMappingService;
 import io.harness.ccm.views.entities.CEView;
@@ -107,7 +111,6 @@ import io.harness.exception.InvalidRequestException;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import io.fabric8.utils.Lists;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -126,6 +129,8 @@ import javax.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 
+@CodePulse(
+    module = ProductModule.CCM, unitCoverageRequired = true, components = {HarnessModuleComponent.CCM_PERSPECTIVE})
 @Slf4j
 @Singleton
 public class ViewParametersHelper {
@@ -368,7 +373,7 @@ public class ViewParametersHelper {
   public List<ViewRule> getModifiedRuleFilters(final List<ViewRule> viewRules) {
     final List<ViewRule> modifiedRuleFilters = new ArrayList<>();
     viewRules.forEach(viewRule -> {
-      if (!Lists.isNullOrEmpty(viewRule.getViewConditions())) {
+      if (!isEmpty(viewRule.getViewConditions())) {
         final List<ViewCondition> modifiedConditions = new ArrayList<>();
         viewRule.getViewConditions().forEach(viewCondition -> {
           final ViewIdCondition viewIdCondition = (ViewIdCondition) viewCondition;
@@ -516,7 +521,9 @@ public class ViewParametersHelper {
   public boolean isDataFilteredByAwsAccount(final List<QLCEViewFilter> idFilters) {
     return idFilters.stream()
         .filter(idFilter -> Objects.nonNull(idFilter) && Objects.nonNull(idFilter.getField()))
-        .anyMatch(idFilter -> AWS_ACCOUNT_FIELD.equals(idFilter.getField().getFieldName()));
+        .anyMatch(idFilter
+            -> AWS_ACCOUNT_FIELD.equalsIgnoreCase(idFilter.getField().getFieldName())
+                || AWS_ACCOUNT_FIELD_ID.equalsIgnoreCase(idFilter.getField().getFieldId()));
   }
 
   public boolean isDataGroupedByAwsAccount(List<QLCEViewFilterWrapper> filters, List<QLCEViewGroupBy> groupBy) {

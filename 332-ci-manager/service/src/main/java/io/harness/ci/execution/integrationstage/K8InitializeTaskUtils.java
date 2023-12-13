@@ -5,7 +5,8 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.integrationstage;
+package io.harness.ci.execution.integrationstage;
+
 import static io.harness.beans.FeatureName.CIE_ENABLED_RBAC;
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveIntegerParameter;
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveOSType;
@@ -53,9 +54,9 @@ import static io.harness.ci.commonconstants.ContainerExecutionConstants.GOLANG_C
 import static io.harness.ci.commonconstants.ContainerExecutionConstants.GOLANG_CACHE_ENV_NAME;
 import static io.harness.ci.commonconstants.ContainerExecutionConstants.GRADLE_CACHE_DIR;
 import static io.harness.ci.commonconstants.ContainerExecutionConstants.GRADLE_CACHE_ENV_NAME;
-import static io.harness.ci.commonconstants.ContainerExecutionConstants.HARNESS_STAGE_ID_VARIABLE;
 import static io.harness.ci.commonconstants.ContainerExecutionConstants.PLUGIN_PIPELINE;
-import static io.harness.ci.utils.UsageUtils.getExecutionUser;
+import static io.harness.ci.commonconstants.ContainerExecutionConstants.POD_WAIT_BUFFER_SECONDS;
+import static io.harness.ci.execution.utils.UsageUtils.getExecutionUser;
 import static io.harness.common.STOExecutionConstants.STO_SERVICE_ENDPOINT_VARIABLE;
 import static io.harness.common.STOExecutionConstants.STO_SERVICE_TOKEN_VARIABLE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
@@ -91,14 +92,14 @@ import io.harness.beans.yaml.extended.volumes.CIVolume;
 import io.harness.beans.yaml.extended.volumes.EmptyDirYaml;
 import io.harness.beans.yaml.extended.volumes.HostPathYaml;
 import io.harness.beans.yaml.extended.volumes.PersistentVolumeClaimYaml;
-import io.harness.ci.buildstate.ConnectorUtils;
 import io.harness.ci.buildstate.SecretUtils;
+import io.harness.ci.execution.buildstate.ConnectorUtils;
+import io.harness.ci.execution.utils.ExceptionUtility;
+import io.harness.ci.execution.utils.GithubApiFunctor;
+import io.harness.ci.execution.utils.GithubApiTokenEvaluator;
 import io.harness.ci.ff.CIFeatureFlagService;
 import io.harness.ci.logserviceclient.CILogServiceUtils;
 import io.harness.ci.tiserviceclient.TIServiceUtils;
-import io.harness.ci.utils.ExceptionUtility;
-import io.harness.ci.utils.GithubApiFunctor;
-import io.harness.ci.utils.GithubApiTokenEvaluator;
 import io.harness.ci.utils.QuantityUtils;
 import io.harness.cimanager.stages.IntegrationStageConfig;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
@@ -135,9 +136,11 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
@@ -406,7 +409,7 @@ public class K8InitializeTaskUtils {
     int podWaitUntilReadyTimeout = POD_MAX_WAIT_UNTIL_READY_SECS;
     if (timeout != null && timeout.fetchFinalValue() != null && isNotEmpty((String) timeout.fetchFinalValue())) {
       long timeoutInMillis = Timeout.fromString((String) timeout.fetchFinalValue()).getTimeoutInMillis();
-      podWaitUntilReadyTimeout = (int) (timeoutInMillis / 1000);
+      podWaitUntilReadyTimeout = (int) (timeoutInMillis / 1000) + POD_WAIT_BUFFER_SECONDS;
     }
     return podWaitUntilReadyTimeout;
   }
@@ -654,6 +657,25 @@ public class K8InitializeTaskUtils {
     if (isNotEmpty(entityDetails) && featureFlagService.isEnabled(CIE_ENABLED_RBAC, accountIdentifier)) {
       pipelineRbacHelper.checkRuntimePermissions(ambiance, entityDetails, false);
     }
+  }
+
+  public List<SecretVariableDetails> deDupSecrets(List<SecretVariableDetails> secretVariableDetails) {
+    Set<String> dedupSet = new HashSet<>();
+    List<SecretVariableDetails> uniqueSecretVariableDetails = new ArrayList<>();
+
+    if (isEmpty(secretVariableDetails)) {
+      return secretVariableDetails;
+    }
+
+    for (SecretVariableDetails secretVariableDetail : secretVariableDetails) {
+      if (secretVariableDetail != null
+          && !dedupSet.contains(secretVariableDetail.getSecretVariableDTO().getSecret().toSecretRefStringValue())) {
+        uniqueSecretVariableDetails.add(secretVariableDetail);
+        dedupSet.add(secretVariableDetail.getSecretVariableDTO().getSecret().toSecretRefStringValue());
+      }
+    }
+
+    return uniqueSecretVariableDetails;
   }
 
   private EntityDetail createEntityDetails(

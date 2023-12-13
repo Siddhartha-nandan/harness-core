@@ -29,20 +29,12 @@ else
     export GC_PARAMS=" -XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=40 -XX:MaxGCPauseMillis=1000 -Dfile.encoding=UTF-8"
 fi
 
-export JAVA_OPTS="-Xmx${MEMORY} -XX:+HeapDumpOnOutOfMemoryError -Xloggc:mygclogfilename.gc $GC_PARAMS $JAVA_ADVANCED_FLAGS"
+export JAVA_OPTS="-Xmx${MEMORY} -XX:+HeapDumpOnOutOfMemoryError -Xloggc:mygclogfilename.gc $GC_PARAMS $JAVA_ADVANCED_FLAGS $JAVA_17_FLAGS"
 
 if [[ "${ENABLE_REMOTE_DEBUG}" == "true" ]]; then
   export REMOTE_DEBUG="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=localhost:5005"
   export JAVA_OPTS="$REMOTE_DEBUG $JAVA_OPTS"
   echo "Enabled remote debug"
-fi
-
-if [[ "${ENABLE_APPDYNAMICS}" == "true" ]]; then
-    mkdir /opt/harness/AppServerAgent && unzip AppServerAgent.zip -d /opt/harness/AppServerAgent
-    node_name="-Dappdynamics.agent.nodeName=$(hostname)"
-    JAVA_OPTS=$JAVA_OPTS" -javaagent:/opt/harness/AppServerAgent/javaagent.jar -Dappdynamics.jvm.shutdown.mark.node.as.historical=true"
-    JAVA_OPTS="$JAVA_OPTS $node_name"
-    echo "Using Appdynamics java agent"
 fi
 
 if [[ "${ENABLE_ERROR_TRACKING}" == "true" ]] ; then
@@ -68,13 +60,6 @@ if [[ "${ENABLE_OPENTELEMETRY}" == "true" ]] ; then
         JAVA_OPTS=$JAVA_OPTS" -Dotel.traces.exporter=none -Dotel.metrics.exporter=none "
     fi
     echo "Using OpenTelemetry Java Agent"
-fi
-
-if [[ "${ENABLE_COVERAGE}" == "true" ]] ; then
-    echo "functional code coverage is enabled"
-    mkdir /opt/harness/jacoco-0.8.7 && unzip jacoco-0.8.7.zip -d /opt/harness/jacoco-0.8.7
-    JAVA_OPTS=$JAVA_OPTS" -javaagent:/opt/harness/jacoco-0.8.7/lib/jacocoagent.jar=port=6300,address=0.0.0.0,append=true,output=tcpserver,destfile=jacoco-remote.exec"
-    echo "Using Jacoco Java Agent"
 fi
 
 if [[ "${DEPLOY_MODE}" == "KUBERNETES" || "${DEPLOY_MODE}" == "KUBERNETES_ONPREM" || "${DEPLOY_VERSION}" == "COMMUNITY" ]]; then

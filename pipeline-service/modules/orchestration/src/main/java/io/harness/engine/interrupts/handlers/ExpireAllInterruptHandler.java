@@ -6,9 +6,10 @@
  */
 
 package io.harness.engine.interrupts.handlers;
+
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.data.structure.CollectionUtils.isPresent;
-import static io.harness.eraro.ErrorCode.ABORT_ALL_ALREADY;
+import static io.harness.eraro.ErrorCode.ABORT_ALL_ALREADY_NG;
 import static io.harness.eraro.ErrorCode.EXPIRE_ALL_ALREADY;
 import static io.harness.exception.WingsException.USER;
 import static io.harness.interrupts.Interrupt.State.PROCESSED_UNSUCCESSFULLY;
@@ -60,7 +61,7 @@ public class ExpireAllInterruptHandler extends InterruptPropagatorHandler implem
 
     // Check if ABORT_ALL present on plan level
     if (isPresent(interrupts, presentInterrupt -> presentInterrupt.getType() == InterruptType.ABORT_ALL)) {
-      throw new InvalidRequestException("Execution already has ABORT_ALL interrupt", ABORT_ALL_ALREADY, USER);
+      throw new InvalidRequestException("Execution already has ABORT_ALL interrupt", ABORT_ALL_ALREADY_NG, USER);
     }
 
     // Check if EXPIRE_ALL already
@@ -99,25 +100,32 @@ public class ExpireAllInterruptHandler extends InterruptPropagatorHandler implem
     executorService.submit(() -> {
       if (interrupt.getNodeExecutionId() != null) {
         handleInterruptForNodeExecution(savedInterrupt, interrupt.getNodeExecutionId());
+      } else {
+        handleInterrupt(savedInterrupt);
       }
-      handleInterrupt(savedInterrupt);
     });
     return savedInterrupt;
   }
 
   @Override
   public Interrupt handleInterrupt(Interrupt interrupt) {
-    return handleAllNodes(interrupt);
+    try (AutoLogContext ignore = interrupt.autoLogContext()) {
+      log.info("Stating to handle interrupt for Plan Execution");
+      return handleAllNodes(interrupt);
+    }
   }
 
   @Override
   protected void handleMarkedInstance(NodeExecution nodeExecution, Interrupt interrupt) {
-    expiryHelper.expireMarkedInstance(nodeExecution, interrupt);
+    expiryHelper.expireMarkedInstance(nodeExecution, interrupt, true);
   }
 
   @Override
   public Interrupt handleInterruptForNodeExecution(Interrupt interrupt, String nodeExecutionId) {
-    return handleChildNodes(interrupt, nodeExecutionId);
+    try (AutoLogContext ignore = interrupt.autoLogContext()) {
+      log.info("Stating to handle interrupt for Node Execution");
+      return handleChildNodes(interrupt, nodeExecutionId);
+    }
   }
 
   protected Interrupt processDiscontinuedInstances(

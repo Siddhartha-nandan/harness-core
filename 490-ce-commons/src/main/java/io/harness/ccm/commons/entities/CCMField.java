@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(name = "Field", description = "List of all possible Fields")
 public enum CCMField {
   PERSPECTIVE_ID,
+  ANOMALY_ID,
   WORKLOAD,
   WORKLOAD_TYPE,
   CLUSTER_ID,
@@ -35,6 +36,8 @@ public enum CCMField {
   CLUSTER_ECS_LAUNCH_TYPE,
   CLUSTER_ECS_LAUNCH_TYPE_ID,
   NAMESPACE,
+  SERVICE,
+  SERVICE_NAME,
   GCP_PRODUCT,
   GCP_PROJECT,
   GCP_SKU_ID,

@@ -5,18 +5,13 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.ci.serializer.vm;
+package io.harness.ci.execution.serializer.vm;
 
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveJsonNodeMapParameter;
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveMapParameterV2;
 import static io.harness.beans.steps.CIStepInfoType.GIT_CLONE;
 import static io.harness.beans.steps.CIStepInfoType.SAVE_CACHE_GCS;
 import static io.harness.beans.steps.CIStepInfoType.SAVE_CACHE_S3;
-import static io.harness.ci.buildstate.PluginSettingUtils.PLUGIN_ARCHIVE_FORMAT;
-import static io.harness.ci.buildstate.PluginSettingUtils.PLUGIN_BACKEND;
-import static io.harness.ci.buildstate.PluginSettingUtils.PLUGIN_BUCKET;
-import static io.harness.ci.buildstate.PluginSettingUtils.PLUGIN_ENDPOINT;
-import static io.harness.ci.buildstate.PluginSettingUtils.PLUGIN_REGION;
 import static io.harness.ci.commonconstants.CIExecutionConstants.CACHE_ARCHIVE_TYPE_TAR;
 import static io.harness.ci.commonconstants.CIExecutionConstants.CACHE_GCS_BACKEND;
 import static io.harness.ci.commonconstants.CIExecutionConstants.CACHE_S3_BACKEND;
@@ -29,6 +24,11 @@ import static io.harness.ci.commonconstants.CIExecutionConstants.PLUGIN_JSON_KEY
 import static io.harness.ci.commonconstants.CIExecutionConstants.PLUGIN_SECRET_KEY;
 import static io.harness.ci.commonconstants.CIExecutionConstants.RESTORE_CACHE_STEP_ID;
 import static io.harness.ci.commonconstants.CIExecutionConstants.SAVE_CACHE_STEP_ID;
+import static io.harness.ci.execution.buildstate.PluginSettingUtils.PLUGIN_ARCHIVE_FORMAT;
+import static io.harness.ci.execution.buildstate.PluginSettingUtils.PLUGIN_BACKEND;
+import static io.harness.ci.execution.buildstate.PluginSettingUtils.PLUGIN_BUCKET;
+import static io.harness.ci.execution.buildstate.PluginSettingUtils.PLUGIN_ENDPOINT;
+import static io.harness.ci.execution.buildstate.PluginSettingUtils.PLUGIN_REGION;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
@@ -43,16 +43,16 @@ import io.harness.beans.steps.stepinfo.PluginStepInfo;
 import io.harness.beans.sweepingoutputs.StageInfraDetails;
 import io.harness.beans.yaml.extended.reports.JUnitTestReport;
 import io.harness.beans.yaml.extended.reports.UnitTestReportType;
-import io.harness.ci.buildstate.ConnectorUtils;
 import io.harness.ci.config.CICacheIntelligenceConfig;
 import io.harness.ci.config.CICacheIntelligenceS3Config;
 import io.harness.ci.config.CIExecutionServiceConfig;
-import io.harness.ci.execution.CIExecutionConfigService;
+import io.harness.ci.execution.buildstate.ConnectorUtils;
+import io.harness.ci.execution.execution.CIExecutionConfigService;
+import io.harness.ci.execution.integrationstage.IntegrationStageUtils;
+import io.harness.ci.execution.serializer.SerializerUtils;
+import io.harness.ci.execution.utils.CIStepInfoUtils;
+import io.harness.ci.execution.utils.HarnessImageUtils;
 import io.harness.ci.ff.CIFeatureFlagService;
-import io.harness.ci.integrationstage.IntegrationStageUtils;
-import io.harness.ci.serializer.SerializerUtils;
-import io.harness.ci.utils.CIStepInfoUtils;
-import io.harness.ci.utils.HarnessImageUtils;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.delegate.beans.ci.vm.steps.VmJunitTestReport;
 import io.harness.delegate.beans.ci.vm.steps.VmPluginStep;
@@ -111,6 +111,12 @@ public class VmPluginStepSerializer {
         }
       }
     }
+
+    if (!isEmpty(settings) && settings.containsKey(GIT_CLONE_DEPTH_ATTRIBUTE)
+        && settings.get(GIT_CLONE_DEPTH_ATTRIBUTE).asText().equals("0")) {
+      settings.remove(GIT_CLONE_DEPTH_ATTRIBUTE);
+    }
+
     if (!isEmpty(settings)) {
       for (Map.Entry<String, JsonNode> entry : settings.entrySet()) {
         String key = PLUGIN_ENV_PREFIX + entry.getKey().toUpperCase();
@@ -161,7 +167,7 @@ public class VmPluginStepSerializer {
       if (identifier.equals(SAVE_CACHE_STEP_ID) || identifier.equals(RESTORE_CACHE_STEP_ID)) {
         if (CIStepInfoUtils.canRunVmStepOnHost(
                 SAVE_CACHE_S3, stageInfraDetails, accountID, ciExecutionConfigService, featureFlagService, null)
-            && featureFlagService.isEnabled(FeatureName.CI_USE_S3_FOR_CACHE, accountID)) {
+            && featureFlagService.isEnabled(FeatureName.CI_ENABLE_BARE_METAL, accountID)) {
           String name = ciExecutionConfigService.getContainerlessPluginNameForVM(SAVE_CACHE_S3, null);
           List<String> entrypoint = Arrays.asList("plugin", "-kind", "harness", "-name", name);
           return convertContainerlessStep(identifier, entrypoint, envVars, timeout, pluginStepInfo);
@@ -265,7 +271,7 @@ public class VmPluginStepSerializer {
       switch (identifier) {
         case SAVE_CACHE_STEP_ID:
         case RESTORE_CACHE_STEP_ID:
-          if (featureFlagService.isEnabled(FeatureName.CI_USE_S3_FOR_CACHE, accountId)) {
+          if (featureFlagService.isEnabled(FeatureName.CI_ENABLE_BARE_METAL, accountId)) {
             CICacheIntelligenceS3Config cacheIntelligenceConfig =
                 ciExecutionServiceConfig.getCacheIntelligenceS3Config();
             String cacheKeyString = cacheIntelligenceConfig.getAccessKey();

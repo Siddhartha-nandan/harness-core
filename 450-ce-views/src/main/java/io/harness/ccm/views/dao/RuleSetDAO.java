@@ -7,13 +7,17 @@
 
 package io.harness.ccm.views.dao;
 
+import static io.harness.beans.FeatureName.CCM_ENABLE_AZURE_CLOUD_ASSET_GOVERNANCE_UI;
+
 import io.harness.ccm.commons.entities.CCMSort;
 import io.harness.ccm.commons.entities.CCMSortOrder;
 import io.harness.ccm.views.entities.RuleSet;
 import io.harness.ccm.views.entities.RuleSet.RuleSetId;
+import io.harness.ccm.views.helper.RuleCloudProviderType;
 import io.harness.ccm.views.helper.RuleSetFilter;
 import io.harness.ccm.views.helper.RuleSetList;
 import io.harness.exception.InvalidRequestException;
+import io.harness.ff.FeatureFlagService;
 import io.harness.persistence.HPersistence;
 
 import com.google.inject.Inject;
@@ -30,6 +34,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 public class RuleSetDAO {
   @Inject private HPersistence hPersistence;
   @Inject private MongoTemplate mongoTemplate;
+  @Inject private FeatureFlagService featureFlagService;
   public static final String GLOBAL_ACCOUNT_ID = "__GLOBAL_ACCOUNT_ID__";
 
   public boolean save(RuleSet rulesSet) {
@@ -148,6 +153,9 @@ public class RuleSetDAO {
                                   .field(RuleSetId.accountId)
                                   .in(Arrays.asList(accountId, GLOBAL_ACCOUNT_ID));
 
+    if (featureFlagService.isNotEnabled(CCM_ENABLE_AZURE_CLOUD_ASSET_GOVERNANCE_UI, accountId)) {
+      ruleSets.field(RuleSetId.cloudProvider).notEqual(RuleCloudProviderType.AZURE);
+    }
     if (ruleSetFilter.getRuleSetIds() != null) {
       ruleSets.field(RuleSetId.uuid).in(ruleSetFilter.getRuleSetIds());
     }
@@ -192,5 +200,14 @@ public class RuleSetDAO {
       default:
         throw new InvalidRequestException("Operator not supported not supported for time fields");
     }
+  }
+
+  public long count(String accountId) {
+    return hPersistence.createQuery(RuleSet.class).field(RuleSetId.accountId).equal(accountId).count();
+  }
+
+  public boolean deleteAllForAccount(String accountId) {
+    Query<RuleSet> query = hPersistence.createQuery(RuleSet.class).field(RuleSetId.accountId).equal(accountId);
+    return hPersistence.delete(query);
   }
 }

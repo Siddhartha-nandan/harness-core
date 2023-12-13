@@ -99,8 +99,7 @@ public class BatchJobRunner {
     if (batchJobType == BatchJobType.RERUN_JOB) {
       endAt = Instant.now().minus(15, ChronoUnit.HOURS);
     }
-    if (batchJobType == BatchJobType.DELEGATE_HEALTH_CHECK || batchJobType == BatchJobType.RECOMMENDATION_JIRA_STATUS
-        || batchJobType == BatchJobType.MSP_MARKUP_AMOUNT) {
+    if (batchJobType == BatchJobType.RECOMMENDATION_JIRA_STATUS || batchJobType == BatchJobType.MSP_MARKUP_AMOUNT) {
       endAt = Instant.now();
     }
     BatchJobScheduleTimeProvider batchJobScheduleTimeProvider =
@@ -249,6 +248,10 @@ public class BatchJobRunner {
   }
 
   boolean checkOutOfClusterDependentJobs(String accountId, Instant startAt, Instant endAt, BatchJobType batchJobType) {
+    if (batchMainConfig.isClickHouseEnabled()) {
+      log.info("For OnPrem we are not calculating billing data from CUR so bypassing this check temporarily.");
+      return true;
+    }
     if (ImmutableSet.of(BatchJobType.INSTANCE_BILLING, BatchJobType.INSTANCE_BILLING_HOURLY).contains(batchJobType)) {
       if (batchJobType == BatchJobType.INSTANCE_BILLING_HOURLY) {
         // adding 6 hrs buffer because sometime last hr data is not present for few instances and we consider cost as 0

@@ -42,6 +42,7 @@ public abstract class AbstractChangeDataHandler implements ChangeHandler {
     try {
       List<String> primaryKeys = getPrimaryKeys();
       columnValueMappings = getColumnValueMappings(changeEvent, fields);
+      beforeAllChangesHook(changeEvent, tableName, columnValueMappings);
       if (Objects.nonNull(columnValueMappings)) {
         for (Map<String, String> columnValueMapping : columnValueMappings) {
           processColumnValueMapping(changeEvent, tableName, primaryKeys, columnValueMapping);
@@ -54,6 +55,9 @@ public abstract class AbstractChangeDataHandler implements ChangeHandler {
     }
     return true;
   }
+
+  protected void beforeAllChangesHook(
+      ChangeEvent<?> changeEvent, String tableName, List<Map<String, String>> columnValueMappings) {}
 
   public static String escapeSql(String str) {
     if (str == null) {
@@ -90,12 +94,20 @@ public abstract class AbstractChangeDataHandler implements ChangeHandler {
     return Objects.nonNull(columnMapping) ? List.of(columnMapping) : null;
   }
 
+  public Map<String, String> getColumnValueMappingsForWhereClause(ChangeEvent<?> changeEvent) {
+    return Collections.singletonMap("id", changeEvent.getUuid());
+  }
+
   public Map<String, String> getColumnValueMappingForDelete() {
     return Collections.emptyMap();
   }
 
   public boolean shouldDelete() {
     return true;
+  }
+
+  public boolean shouldUpdateOnConflict() {
+    return false;
   }
 
   public boolean changeEventHandled(ChangeType changeType) {
@@ -280,18 +292,22 @@ public abstract class AbstractChangeDataHandler implements ChangeHandler {
     switch (changeEvent.getChangeType()) {
       case INSERT:
         if (columnValueMapping != null) {
-          dbOperation(insertSQL(tableName, columnValueMapping));
+          if (shouldUpdateOnConflict()) {
+            dbOperation(updateSQL(
+                tableName, columnValueMapping, Collections.singletonMap("id", changeEvent.getUuid()), primaryKeys));
+          } else {
+            dbOperation(insertSQL(tableName, columnValueMapping));
+          }
         }
         break;
       case UPDATE:
         if (columnValueMapping != null) {
-          dbOperation(updateSQL(
-              tableName, columnValueMapping, Collections.singletonMap("id", changeEvent.getUuid()), primaryKeys));
+          dbOperation(updateSQL(tableName, columnValueMapping, Collections.emptyMap(), primaryKeys));
         }
         break;
       case DELETE:
         if (shouldDelete()) {
-          dbOperation(deleteSQL(tableName, Collections.singletonMap("id", changeEvent.getUuid())));
+          dbOperation(deleteSQL(tableName, getColumnValueMappingsForWhereClause(changeEvent)));
         } else {
           if (columnValueMapping != null) {
             dbOperation(updateDeletedFieldsSQL(tableName, getColumnValueMappingForDelete(), changeEvent.getUuid()));

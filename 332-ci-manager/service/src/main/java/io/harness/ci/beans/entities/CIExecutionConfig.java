@@ -49,6 +49,7 @@ public class CIExecutionConfig implements PersistentEntity, UuidAware, CreatedAt
   @NotBlank String buildAndPushECRImage;
   @NotBlank String buildAndPushACRImage;
   @NotBlank String buildAndPushGCRImage;
+  @NotBlank String buildAndPushGARImage;
   @NotBlank String gcsUploadImage;
   @NotBlank String s3UploadImage;
   @NotBlank String artifactoryUploadTag;
@@ -56,6 +57,14 @@ public class CIExecutionConfig implements PersistentEntity, UuidAware, CreatedAt
   @NotBlank String cacheS3Tag;
   @NotBlank String sscaOrchestrationTag;
   @NotBlank String sscaEnforcementTag;
+  @NotBlank String slsaVerificationTag;
+  @NotBlank String provenanceTag;
+  @NotBlank String provenanceGcrTag;
+  @NotBlank String slsaVerificationGcrTag;
+  @NotBlank String cookieCutter;
+  @NotBlank String createRepo;
+  @NotBlank String directPush;
+  @NotBlank String registerCatalog;
   VmImageConfig vmImageConfig;
   VmContainerlessStepConfig vmContainerlessStepConfig;
   @SchemaIgnore private long createdAt;

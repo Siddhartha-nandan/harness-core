@@ -6,6 +6,8 @@
  */
 
 package io.harness.cf.pipeline;
+
+import static io.harness.pms.utils.NGPipelineSettingsConstant.MAX_STAGE_TIMEOUT;
 import static io.harness.pms.yaml.YAMLFieldNameConstants.STAGES;
 
 import io.harness.advisers.nextstep.NextStepAdviserParameters;
@@ -14,6 +16,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.FeatureName;
 import io.harness.exception.InvalidRequestException;
 import io.harness.plancreator.stages.stage.StageElementConfig;
 import io.harness.plancreator.strategy.StrategyUtils;
@@ -24,18 +27,22 @@ import io.harness.pms.contracts.facilitators.FacilitatorType;
 import io.harness.pms.execution.OrchestrationFacilitatorType;
 import io.harness.pms.sdk.core.adviser.OrchestrationAdviserTypes;
 import io.harness.pms.sdk.core.plan.PlanNode;
+import io.harness.pms.sdk.core.plan.PlanNode.PlanNodeBuilder;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.sdk.core.plan.creation.creators.ChildrenPlanCreator;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
 import io.harness.pms.sdk.core.steps.io.StepParameters;
+import io.harness.pms.utils.SdkTimeoutObtainmentUtils;
 import io.harness.pms.yaml.DependenciesUtils;
+import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
 import io.harness.serializer.KryoSerializer;
 import io.harness.steps.cf.FeatureFlagStageStep;
 import io.harness.steps.common.NGSectionStepParameters;
 import io.harness.when.utils.RunInfoUtils;
+import io.harness.yaml.core.timeout.Timeout;
 
 import com.google.inject.Inject;
 import com.google.protobuf.ByteString;
@@ -80,9 +87,13 @@ public class FeatureFlagStagePlanCreator extends ChildrenPlanCreator<StageElemen
       PlanCreationContext ctx, StageElementConfig config, List<String> childrenNodeIds) {
     StepParameters stepParameters =
         NGSectionStepParameters.builder().childNodeId(childrenNodeIds.get(0)).logMessage("Execution Element").build();
+    PlanNodeBuilder planNodeBuilder = PlanNode.builder();
+    ParameterField<Timeout> timeout =
+        SdkTimeoutObtainmentUtils.getTimeout(config.getTimeout(), ctx.getTimeoutDuration(MAX_STAGE_TIMEOUT.getName()),
+            ctx.getFeatureFlagValue(FeatureName.CDS_DISABLE_MAX_TIMEOUT_CONFIG.toString()));
+    planNodeBuilder = setStageTimeoutObtainment(timeout, planNodeBuilder);
 
-    return PlanNode.builder()
-        .uuid(config.getUuid())
+    return planNodeBuilder.uuid(config.getUuid())
         .name(config.getName())
         .identifier(config.getIdentifier())
         .group(StepOutcomeGroup.STAGE.name())

@@ -58,6 +58,7 @@ import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import software.wings.beans.TaskType;
 
@@ -81,6 +82,7 @@ public class AzureWebAppRollbackStepTest extends CDNGTestBase {
   @Mock private ExecutionSweepingOutputService executionSweepingOutputService;
   @Mock private InstanceInfoService instanceInfoService;
 
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
   @InjectMocks private AzureWebAppRollbackStep azureWebAppRollbackStep;
 
   private AzureWebAppRollbackStepParameters parameters =
@@ -234,7 +236,7 @@ public class AzureWebAppRollbackStepTest extends CDNGTestBase {
         AzureAppServicePreDeploymentData.builder().build();
     AzurePackageArtifactConfig lastArtifactConfig = AzurePackageArtifactConfig.builder().build();
     AzureWebAppsStageExecutionDetails azureWebAppsStageExecutionDetails =
-        AzureWebAppsStageExecutionDetails.builder().artifactConfig(lastArtifactConfig).build();
+        AzureWebAppsStageExecutionDetails.builder().artifactConfig(lastArtifactConfig).cleanDeployment(false).build();
     doReturn(azureWebAppsStageExecutionDetails)
         .when(stepHelper)
         .findLastSuccessfulStageExecutionDetails(ambiance, azureWebAppInfraDelegateConfig);
@@ -276,6 +278,7 @@ public class AzureWebAppRollbackStepTest extends CDNGTestBase {
     assertThat(requestParameters.getInfrastructure()).isEqualTo(azureWebAppInfraDelegateConfig);
     assertThat(requestParameters.getAccountId()).isEqualTo(ACCOUNT_ID);
     assertThat(requestParameters.getArtifact()).isEqualTo(lastArtifactConfig);
+    assertThat(requestParameters.isCleanDeployment()).isFalse();
   }
 
   @Test
@@ -292,7 +295,7 @@ public class AzureWebAppRollbackStepTest extends CDNGTestBase {
     AzureWebAppsStageExecutionDetails lastAzureExecutionDetails =
         AzureWebAppsStageExecutionDetails.builder().targetSlot("targetSlot").artifactConfig(lastArtifactConfig).build();
     AzureWebAppsStageExecutionDetails preLastExecutionDetails =
-        AzureWebAppsStageExecutionDetails.builder().artifactConfig(preLastArtifactConfig).build();
+        AzureWebAppsStageExecutionDetails.builder().artifactConfig(preLastArtifactConfig).cleanDeployment(true).build();
     doReturn(preLastExecutionDetails)
         .when(stepHelper)
         .findLastSuccessfulStageExecutionDetails(ambiance, azureWebAppInfraDelegateConfig);
@@ -334,6 +337,7 @@ public class AzureWebAppRollbackStepTest extends CDNGTestBase {
     assertThat(requestParameters.getInfrastructure()).isEqualTo(azureWebAppInfraDelegateConfig);
     assertThat(requestParameters.getAccountId()).isEqualTo(ACCOUNT_ID);
     assertThat(requestParameters.getArtifact()).isEqualTo(preLastArtifactConfig);
+    assertThat(requestParameters.isCleanDeployment()).isTrue();
   }
 
   @Test

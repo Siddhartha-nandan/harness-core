@@ -135,6 +135,7 @@ auditServiceConfig:
     transactionsEnabled: false
     maxDocumentsToBeFetched: 2147483647
     maxOperationTimeInMillis: 900000
+  publishAccountActivityMetrics: false
 
   enableAuditService: true
   hostname: ${HOSTNAME:-localhost}
@@ -276,3 +277,9 @@ eventsFramework:
       enabled: false
       CATrustStorePath: "/tmp/ca_trust_store"
       CATrustStorePassword: ""
+
+segmentConfiguration:
+  enabled: false
+  url: "segment_url_place_holder"
+  apiKey: "segment_api_key"
+  certValidationRequired: false

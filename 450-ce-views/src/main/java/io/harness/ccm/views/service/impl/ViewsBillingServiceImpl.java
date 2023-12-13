@@ -37,8 +37,12 @@ import static io.harness.ccm.views.utils.ClusterTableKeys.INSTANCE_ID;
 import static io.harness.ccm.views.utils.ClusterTableKeys.PRICING_SOURCE;
 import static io.harness.ccm.views.utils.ClusterTableKeys.TIME_GRANULARITY;
 import static io.harness.ccm.views.utils.ClusterTableKeys.WORKLOAD_NAME;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.ccm.bigQuery.BigQueryService;
 import io.harness.ccm.budget.ValueDataPoint;
 import io.harness.ccm.budget.utils.BudgetUtils;
@@ -111,7 +115,6 @@ import com.google.inject.Singleton;
 import com.healthmarketscience.sqlbuilder.SelectQuery;
 import com.healthmarketscience.sqlbuilder.custom.postgresql.PgLimitClause;
 import com.healthmarketscience.sqlbuilder.custom.postgresql.PgOffsetClause;
-import io.fabric8.utils.Lists;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -127,6 +130,8 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 
+@CodePulse(
+    module = ProductModule.CCM, unitCoverageRequired = true, components = {HarnessModuleComponent.CCM_PERSPECTIVE})
 @Slf4j
 @Singleton
 @OwnedBy(CE)
@@ -185,6 +190,7 @@ public class ViewsBillingServiceImpl implements ViewsBillingService {
     List<QLCEViewFilter> idFilters = awsAccountFieldHelper.addAccountIdsByAwsAccountNameFilter(
         viewParametersHelper.getIdFilters(filters), queryParams.getAccountId());
 
+    // TODO: Remove business mapping code, as it has already been addressed above.
     List<String> businessMappingIds = viewParametersHelper.getBusinessMappingIds(filters, null);
     List<BusinessMapping> sharedCostBusinessMappings =
         viewParametersHelper.getSharedCostBusinessMappings(businessMappingIds);
@@ -1059,7 +1065,7 @@ public class ViewsBillingServiceImpl implements ViewsBillingService {
     Map<String, String> labelsKeyAndColumnMapping =
         labelFlattenedService.getLabelsKeyAndColumnMapping(queryParams.getAccountId());
     boolean isClusterTableQuery = viewParametersHelper.isClusterTableQuery(filters, groupBy, queryParams);
-    if (Lists.isNullOrEmpty(groupBy)) {
+    if (isEmpty(groupBy)) {
       Optional<QLCEViewFilterWrapper> viewMetadataFilter = viewParametersHelper.getViewMetadataFilter(filters);
       if (viewMetadataFilter.isPresent()) {
         QLCEViewMetadataFilter metadataFilter = viewMetadataFilter.get().getViewMetadataFilter();

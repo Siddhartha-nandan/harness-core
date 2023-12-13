@@ -6,9 +6,11 @@
  */
 
 package io.harness.cdng.chaos;
-
 import static io.harness.eraro.ErrorCode.GENERAL_ERROR;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.chaos.client.beans.ChaosQuery;
 import io.harness.chaos.client.beans.ChaosRerunResponse;
 import io.harness.chaos.client.remote.ChaosHttpClient;
@@ -17,7 +19,6 @@ import io.harness.eraro.Level;
 import io.harness.exception.InvalidRequestException;
 import io.harness.executions.steps.StepSpecTypeConstants;
 import io.harness.opaclient.OpaServiceClient;
-import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.AsyncExecutableResponse;
 import io.harness.pms.contracts.execution.Status;
@@ -31,6 +32,7 @@ import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.sdk.core.steps.io.StepResponse.StepOutcome;
 import io.harness.pms.sdk.core.steps.io.StepResponse.StepResponseBuilder;
+import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.steps.executable.AsyncExecutableWithCapabilities;
@@ -42,6 +44,8 @@ import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
+    components = {HarnessModuleComponent.CDS_PIPELINE, HarnessModuleComponent.CDS_GITOPS})
 @Slf4j
 public class ChaosStep extends AsyncExecutableWithCapabilities {
   public static final StepType STEP_TYPE =
@@ -54,13 +58,13 @@ public class ChaosStep extends AsyncExecutableWithCapabilities {
       "mutation{reRunChaosWorkFlow(workflowID: \"%s\",identifiers:{orgIdentifier: \"%s\",projectIdentifier: \"%s\",accountIdentifier: \"%s\"}){notifyID}}";
 
   @Override
-  public Class<StepElementParameters> getStepParametersClass() {
-    return StepElementParameters.class;
+  public Class<StepBaseParameters> getStepParametersClass() {
+    return StepBaseParameters.class;
   }
 
   @Override
   public AsyncExecutableResponse executeAsyncAfterRbac(
-      Ambiance ambiance, StepElementParameters stepParameters, StepInputPackage inputPackage) {
+      Ambiance ambiance, StepBaseParameters stepParameters, StepInputPackage inputPackage) {
     ChaosStepParameters params = (ChaosStepParameters) stepParameters.getSpec();
     String callbackId = triggerWorkflow(ambiance, params);
     log.info("Triggered chaos experiment with ref: {}, workflowRunId: {}", params.getExperimentRef(), callbackId);
@@ -75,7 +79,7 @@ public class ChaosStep extends AsyncExecutableWithCapabilities {
       if (response != null && response.isSuccessful()) {
         return response.getNotifyId();
       }
-      throw new ChaosRerunException("Error talking ot chaos service");
+      throw new ChaosRerunException("Error talking to chaos service");
     } catch (Exception ex) {
       log.error("Unable to trigger chaos experiment", ex);
       throw ex;
@@ -84,7 +88,7 @@ public class ChaosStep extends AsyncExecutableWithCapabilities {
 
   @Override
   public StepResponse handleAsyncResponseInternal(
-      Ambiance ambiance, StepElementParameters stepParameters, Map<String, ResponseData> responseDataMap) {
+      Ambiance ambiance, StepBaseParameters stepParameters, Map<String, ResponseData> responseDataMap) {
     ChaosStepParameters params = (ChaosStepParameters) stepParameters.getSpec();
     ChaosStepNotifyData data = (ChaosStepNotifyData) responseDataMap.values().iterator().next();
     StepResponseBuilder responseBuilder =
@@ -138,12 +142,6 @@ public class ChaosStep extends AsyncExecutableWithCapabilities {
     return responseBuilder.status(Status.SUCCEEDED).build();
   }
 
-  @Override
-  public void handleAbort(
-      Ambiance ambiance, StepElementParameters stepParameters, AsyncExecutableResponse executableResponse) {
-    log.info("Abort Called for chaos Step");
-  }
-
   private ChaosQuery buildPayload(Ambiance ambiance, String experimentRef) {
     String query = String.format(BODY, experimentRef, AmbianceUtils.getOrgIdentifier(ambiance),
         AmbianceUtils.getProjectIdentifier(ambiance), AmbianceUtils.getAccountId(ambiance));
@@ -173,13 +171,13 @@ public class ChaosStep extends AsyncExecutableWithCapabilities {
   }
 
   @Override
-  public void validateResources(Ambiance ambiance, StepElementParameters stepParameters) {}
+  public void validateResources(Ambiance ambiance, StepBaseParameters stepParameters) {}
 
   // evaluating policies added in advanced section of the steps and updating status and failure info in the step
   // response
   @Override
   public StepResponse postAsyncValidate(
-      Ambiance ambiance, StepElementParameters stepParameters, StepResponse stepResponse) {
+      Ambiance ambiance, StepBaseParameters stepParameters, StepResponse stepResponse) {
     if (Status.SUCCEEDED.equals(stepResponse.getStatus())) {
       return PolicyEvalUtils.evalPolicies(ambiance, stepParameters, stepResponse, opaServiceClient);
     }

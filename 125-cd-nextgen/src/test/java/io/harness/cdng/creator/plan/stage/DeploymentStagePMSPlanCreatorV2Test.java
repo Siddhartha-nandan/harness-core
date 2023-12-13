@@ -12,6 +12,7 @@ import static io.harness.rule.OwnerRule.PRASHANTSHARMA;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -20,6 +21,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import io.harness.accesscontrol.acl.api.Principal;
@@ -30,6 +32,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.cdng.CDNGTestBase;
+import io.harness.cdng.creator.plan.stage.service.DeploymentStagePlanCreationInfoService;
 import io.harness.cdng.envgroup.yaml.EnvironmentGroupYaml;
 import io.harness.cdng.environment.filters.Entity;
 import io.harness.cdng.environment.filters.FilterType;
@@ -38,8 +41,14 @@ import io.harness.cdng.environment.helper.EnvironmentInfraFilterHelper;
 import io.harness.cdng.environment.yaml.EnvironmentYamlV2;
 import io.harness.cdng.environment.yaml.EnvironmentsYaml;
 import io.harness.cdng.infra.yaml.InfraStructureDefinitionYaml;
+import io.harness.cdng.service.beans.ServiceUseFromStageV2;
 import io.harness.cdng.service.beans.ServiceYamlV2;
+import io.harness.cdng.service.beans.ServicesMetadata;
 import io.harness.cdng.service.beans.ServicesYaml;
+import io.harness.cdng.service.steps.ServiceStepParameters;
+import io.harness.cdng.service.steps.helpers.beans.ServiceStepV3Parameters;
+import io.harness.exception.InvalidArgumentsException;
+import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ngexception.NGFreezeException;
 import io.harness.freeze.beans.FreezeStatus;
 import io.harness.freeze.beans.FreezeType;
@@ -55,13 +64,15 @@ import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.ngsettings.dto.SettingValueResponseDTO;
 import io.harness.plancreator.execution.ExecutionElementConfig;
 import io.harness.plancreator.execution.ExecutionWrapperConfig;
-import io.harness.pms.contracts.plan.ExecutionMetadata;
 import io.harness.pms.contracts.plan.ExecutionPrincipalInfo;
 import io.harness.pms.contracts.plan.PlanCreationContextValue;
+import io.harness.pms.contracts.plan.PlanExecutionContext;
+import io.harness.pms.contracts.plan.PrincipalType;
 import io.harness.pms.sdk.core.plan.PlanNode;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.yaml.ParameterField;
+import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.pms.yaml.YamlUtils;
@@ -89,6 +100,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
@@ -102,6 +117,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
+import org.mockito.Spy;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import retrofit2.Call;
 
@@ -112,6 +128,9 @@ public class DeploymentStagePMSPlanCreatorV2Test extends CDNGTestBase {
   @Inject private KryoSerializer kryoSerializer;
   @Mock private FreezeEvaluateService freezeEvaluateService;
   @Mock private AccessControlClient accessControlClient;
+  @Spy private StagePlanCreatorHelper stagePlanCreatorHelper;
+  @Mock private DeploymentStagePlanCreationInfoService deploymentStagePlanCreationInfoService;
+  @Spy private ExecutorService executorService;
   @InjectMocks private DeploymentStagePMSPlanCreatorV2 deploymentStagePMSPlanCreator;
 
   @Mock private EnvironmentInfraFilterHelper environmentInfraFilterHelper;
@@ -123,8 +142,10 @@ public class DeploymentStagePMSPlanCreatorV2Test extends CDNGTestBase {
   ObjectMapper mapper = new ObjectMapper();
   @Before
   public void setUp() throws Exception {
+    executorService = Executors.newSingleThreadExecutor();
     mocks = MockitoAnnotations.openMocks(this);
 
+    Reflect.on(stagePlanCreatorHelper).set("kryoSerializer", kryoSerializer);
     Reflect.on(deploymentStagePMSPlanCreator).set("kryoSerializer", kryoSerializer);
   }
 
@@ -133,6 +154,7 @@ public class DeploymentStagePMSPlanCreatorV2Test extends CDNGTestBase {
     if (mocks != null) {
       mocks.close();
     }
+    executorService.shutdown();
   }
 
   private YamlField getYamlFieldFromPath(String path) throws IOException {
@@ -156,13 +178,30 @@ public class DeploymentStagePMSPlanCreatorV2Test extends CDNGTestBase {
   @Test
   @Owner(developers = PRASHANTSHARMA)
   @Category(UnitTests.class)
-  public void testAddCDExecutionDependencies() throws IOException {
+  @Parameters(method = "getDeploymentStageConfig")
+  @PrepareForTest(YamlUtils.class)
+  public void testAddCDExecutionDependencies(DeploymentStageNode node) throws IOException {
     YamlField executionField = getYamlFieldFromPath("cdng/plan/service.yml");
 
     String executionNodeId = executionField.getNode().getUuid();
     LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap = new LinkedHashMap<>();
-    deploymentStagePMSPlanCreator.addCDExecutionDependencies(planCreationResponseMap, executionField);
+    JsonNode jsonNode = mapper.valueToTree(node);
+    PlanCreationContext ctx = PlanCreationContext.builder()
+                                  .globalContext(Map.of("metadata",
+                                      PlanCreationContextValue.newBuilder().setAccountIdentifier("accountId").build()))
+                                  .currentField(new YamlField(new YamlNode("spec", jsonNode)))
+                                  .build();
+    deploymentStagePMSPlanCreator.addCDExecutionDependencies(planCreationResponseMap, executionField, ctx, node);
     assertThat(planCreationResponseMap.containsKey(executionNodeId)).isEqualTo(true);
+    assertThat(planCreationResponseMap.get(executionNodeId)
+                   .getDependencies()
+                   .getDependencyMetadataMap()
+                   .get(executionNodeId)
+                   .getParentInfo()
+                   .getDataMap()
+                   .get("stageId")
+                   .getStringValue())
+        .isEqualTo("nodeuuid");
   }
 
   @Test
@@ -171,6 +210,7 @@ public class DeploymentStagePMSPlanCreatorV2Test extends CDNGTestBase {
   @Parameters(method = "getDeploymentStageConfig")
   @PrepareForTest(YamlUtils.class)
   public void testCreatePlanForChildrenNodes(DeploymentStageNode node) throws IOException {
+    doReturn(false).when(stagePlanCreatorHelper).isProjectScopedResourceConstraintQueueByFFOrSetting(any());
     node.setFailureStrategies(
         ParameterField.createValueField(List.of(FailureStrategyConfig.builder()
                                                     .onFailure(OnFailureConfig.builder()
@@ -221,10 +261,10 @@ public class DeploymentStagePMSPlanCreatorV2Test extends CDNGTestBase {
                                           .setAccountIdentifier("accountId")
                                           .setOrgIdentifier("orgId")
                                           .setProjectIdentifier("projId")
-                                          .setMetadata(ExecutionMetadata.newBuilder().setPrincipalInfo(
+                                          .setExecutionContext(PlanExecutionContext.newBuilder().setPrincipalInfo(
                                               ExecutionPrincipalInfo.newBuilder()
                                                   .setPrincipal("prinicipal")
-                                                  .setPrincipalType(io.harness.pms.contracts.plan.PrincipalType.USER)
+                                                  .setPrincipalType(PrincipalType.USER)
                                                   .build()))
                                           .build()))
                                   .build();
@@ -251,7 +291,7 @@ public class DeploymentStagePMSPlanCreatorV2Test extends CDNGTestBase {
                                           .setAccountIdentifier("accountId")
                                           .setOrgIdentifier("orgId")
                                           .setProjectIdentifier("projId")
-                                          .setMetadata(ExecutionMetadata.newBuilder().setPrincipalInfo(
+                                          .setExecutionContext(PlanExecutionContext.newBuilder().setPrincipalInfo(
                                               ExecutionPrincipalInfo.newBuilder()
                                                   .setPrincipal("prinicipal")
                                                   .setPrincipalType(io.harness.pms.contracts.plan.PrincipalType.USER)
@@ -443,6 +483,7 @@ public class DeploymentStagePMSPlanCreatorV2Test extends CDNGTestBase {
                                                  .type(FilterType.all)
                                                  .entities(Set.of(Entity.environments, Entity.infrastructures))
                                                  .build())))
+                                  .envGroupRef(ParameterField.<String>builder().value("envGroup").build())
                                   .build())
             .deploymentType(KUBERNETES)
             .execution(ExecutionElementConfig.builder()
@@ -451,7 +492,35 @@ public class DeploymentStagePMSPlanCreatorV2Test extends CDNGTestBase {
                            .build())
             .build());
 
-    return new Object[][] {{multiSvcMultienvsNodeWithFilter}, {multiSvcWithEnvGroupNodeWithFilter}, {nodeEnvsFilters}};
+    final DeploymentStageNode multiSvcSingleEnv = buildNode(
+        DeploymentStageConfig.builder()
+            .uuid("stageUuid")
+            .services(ServicesYaml.builder()
+                          .uuid("services-uuid")
+                          .values(ParameterField.createValueField(
+                              Arrays.asList(ServiceYamlV2.builder()
+                                                .uuid("serviceuuid")
+                                                .serviceRef(ParameterField.createValueField(svcId))
+                                                .build())))
+                          .build())
+            .environment(EnvironmentYamlV2.builder()
+                             .uuid("envuuid")
+                             .environmentRef(ParameterField.<String>builder().value(envId).build())
+                             .deployToAll(ParameterField.createValueField(false))
+                             .infrastructureDefinitions(ParameterField.createValueField(
+                                 asList(InfraStructureDefinitionYaml.builder()
+                                            .identifier(ParameterField.createValueField("infra"))
+                                            .build())))
+                             .build())
+            .deploymentType(KUBERNETES)
+            .execution(ExecutionElementConfig.builder()
+                           .uuid("executionuuid")
+                           .steps(List.of(ExecutionWrapperConfig.builder().step(mapper.valueToTree(step)).build()))
+                           .build())
+            .build());
+
+    return new Object[][] {{nodeEnvsFilters}, {multiSvcMultienvsNodeWithFilter}, {multiSvcWithEnvGroupNodeWithFilter},
+        {multiSvcSingleEnv}};
   }
   // TODO VS: Fix these tests
 
@@ -555,5 +624,435 @@ public class DeploymentStagePMSPlanCreatorV2Test extends CDNGTestBase {
                .build();
     assertThat(deploymentStagePMSPlanCreator.getIdentifierWithExpression(context, node, "id1"))
         .isEqualTo("id1<+strategy.identifierPostFix>");
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.TATHAGAT)
+  @Category(UnitTests.class)
+  public void addServiceNodeUseFromStageFromServicesError_0() throws IOException {
+    String pipelineYaml = readFileIntoUTF8String("cdng/creator/servicePlanCreator/pipeline.yaml");
+    YamlField pipeline = new YamlField("pipeline", YamlNode.fromYamlPath(pipelineYaml, ""));
+    YamlField specField = new YamlField("spec", getStageNodeAtIndex(pipeline, 6));
+    assertThatExceptionOfType(InvalidArgumentsException.class)
+        .isThrownBy(
+            ()
+                -> deploymentStagePMSPlanCreator.useServicesYamlFromStage(
+                    DeploymentStageConfig.builder()
+                        .services(ServicesYaml.builder().useFromStage(ServiceUseFromStageV2.builder().build()).build())
+                        .build(),
+                    specField))
+        .withMessageContaining("Stage identifier is empty in useFromStage");
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.TATHAGAT)
+  @Category(UnitTests.class)
+  public void addServiceNodeUseFromStageFromServicesError_1() throws IOException {
+    String pipelineYaml = readFileIntoUTF8String("cdng/creator/servicePlanCreator/pipeline.yaml");
+    YamlField pipeline = new YamlField("pipeline", YamlNode.fromYamlPath(pipelineYaml, ""));
+    YamlField specField = new YamlField("spec", getStageNodeAtIndex(pipeline, 6));
+    assertThatExceptionOfType(InvalidRequestException.class)
+        .isThrownBy(()
+                        -> deploymentStagePMSPlanCreator.useServicesYamlFromStage(
+                            DeploymentStageConfig.builder()
+                                .services(ServicesYaml.builder()
+                                              .useFromStage(ServiceUseFromStageV2.builder().stage("stage2").build())
+                                              .build())
+                                .build(),
+                            specField))
+        .withMessageContaining(
+            "Could not find multi service configuration in stage [stage2], hence not possible to propagate service from that stage");
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.TATHAGAT)
+  @Category(UnitTests.class)
+  public void addServiceNodeUseFromStageFromServicesError_2() throws IOException {
+    String pipelineYaml = readFileIntoUTF8String("cdng/creator/servicePlanCreator/pipeline.yaml");
+    YamlField pipeline = new YamlField("pipeline", YamlNode.fromYamlPath(pipelineYaml, ""));
+    YamlField specField = new YamlField("spec", getStageNodeAtIndex(pipeline, 7));
+    assertThatExceptionOfType(InvalidArgumentsException.class)
+        .isThrownBy(()
+                        -> deploymentStagePMSPlanCreator.useServicesYamlFromStage(
+                            DeploymentStageConfig.builder()
+                                .services(ServicesYaml.builder()
+                                              .useFromStage(ServiceUseFromStageV2.builder().stage("random").build())
+                                              .build())
+                                .build(),
+                            specField))
+        .withMessageContaining("Stage with identifier [random] given for service propagation does not exist");
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.TATHAGAT)
+  @Category(UnitTests.class)
+  public void addServiceNodeUseFromStageFromServicesError_3() throws IOException {
+    String pipelineYaml = readFileIntoUTF8String("cdng/creator/servicePlanCreator/pipeline.yaml");
+    YamlField pipeline = new YamlField("pipeline", YamlNode.fromYamlPath(pipelineYaml, ""));
+    YamlField specField = new YamlField("spec", getStageNodeAtIndex(pipeline, 8));
+    assertThatExceptionOfType(InvalidArgumentsException.class)
+        .isThrownBy(()
+                        -> deploymentStagePMSPlanCreator.useServicesYamlFromStage(
+                            DeploymentStageConfig.builder()
+                                .services(ServicesYaml.builder()
+                                              .useFromStage(ServiceUseFromStageV2.builder().stage("stage5").build())
+                                              .build())
+                                .build(),
+                            specField))
+        .withMessageContaining(
+            "Invalid identifier [stage5] given in useFromStage. Cannot reference a stage which also has useFromStage parameter");
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.TATHAGAT)
+  @Category(UnitTests.class)
+  public void addServiceNodeUseFromStageFromServicesWithMetadata() throws IOException {
+    String pipelineYaml = readFileIntoUTF8String("cdng/creator/servicePlanCreator/pipeline.yaml");
+    YamlField pipeline = new YamlField("pipeline", YamlNode.fromYamlPath(pipelineYaml, ""));
+    YamlField specField = new YamlField("spec", getStageNodeAtIndex(pipeline, 10));
+    ServicesYaml services = deploymentStagePMSPlanCreator.useServicesYamlFromStage(
+        DeploymentStageConfig.builder()
+            .services(
+                ServicesYaml.builder()
+                    .servicesMetadata(
+                        ServicesMetadata.builder().parallel(ParameterField.createValueField(Boolean.TRUE)).build())
+                    .useFromStage(ServiceUseFromStageV2.builder().stage("stage7").build())
+                    .build())
+            .build(),
+        specField);
+    assertThat(services.getUseFromStage()).isNull();
+    assertThat(services.getValues()).isNotNull();
+    assertThat(services.getValues()
+                   .getValue()
+                   .stream()
+                   .map(ServiceYamlV2::getServiceRef)
+                   .map(ParameterField::getValue)
+                   .collect(Collectors.toList()))
+        .containsExactlyInAnyOrder("service1", "service2");
+    assertThat(services.getServicesMetadata().getParallel().getValue()).isEqualTo(Boolean.TRUE);
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.NAMANG)
+  @Category(UnitTests.class)
+  public void testSaveSingleServiceEnvDeploymentStagePlanCreationSummary_NegativeCases() throws InterruptedException {
+    PlanCreationContext ctx = PlanCreationContext.builder().build();
+    PlanCreationResponse faultyServicePlanCreationResponse =
+        PlanCreationResponse.builder()
+            .planNode(PlanNode.builder().stepParameters(ServiceStepParameters.builder().build()).build())
+            .build();
+
+    // plan creation response cases
+    DeploymentStageNode deploymentStageNode = (DeploymentStageNode) getDeploymentStageConfig()[0][0];
+    DeploymentStageNode multiDeploymentStageNode =
+        (DeploymentStageNode) getDeploymentStageConfigForMultiSvcMultiEvs()[0][0];
+    CountDownLatch latch = new CountDownLatch(7);
+
+    executorService.submit(() -> {
+      deploymentStagePMSPlanCreator.saveSingleServiceEnvDeploymentStagePlanCreationSummary(
+          null, ctx, deploymentStageNode);
+      latch.countDown();
+    });
+
+    executorService.submit(() -> {
+      deploymentStagePMSPlanCreator.saveSingleServiceEnvDeploymentStagePlanCreationSummary(
+          PlanCreationResponse.builder().build(), ctx, deploymentStageNode);
+      latch.countDown();
+    });
+
+    executorService.submit(() -> {
+      deploymentStagePMSPlanCreator.saveSingleServiceEnvDeploymentStagePlanCreationSummary(
+          PlanCreationResponse.builder().planNode(PlanNode.builder().build()).build(), ctx, deploymentStageNode);
+      latch.countDown();
+    });
+
+    executorService.submit(() -> {
+      deploymentStagePMSPlanCreator.saveSingleServiceEnvDeploymentStagePlanCreationSummary(
+          faultyServicePlanCreationResponse, ctx, deploymentStageNode);
+      latch.countDown();
+    });
+
+    // multi deployment cases
+    // multiSvcMultiEnvsNodeWithFilter
+    executorService.submit(() -> {
+      deploymentStagePMSPlanCreator.saveSingleServiceEnvDeploymentStagePlanCreationSummary(
+          faultyServicePlanCreationResponse, ctx,
+          (DeploymentStageNode) getDeploymentStageConfigForMultiSvcMultiEvs()[0][0]);
+      latch.countDown();
+    });
+
+    // multiSvcWithEnvGroupNodeWithFilter
+    executorService.submit(() -> {
+      deploymentStagePMSPlanCreator.saveSingleServiceEnvDeploymentStagePlanCreationSummary(
+          faultyServicePlanCreationResponse, ctx,
+          (DeploymentStageNode) getDeploymentStageConfigForMultiSvcMultiEvs()[1][0]);
+      latch.countDown();
+    });
+
+    // nodeEnvsFilters
+    executorService.submit(() -> {
+      deploymentStagePMSPlanCreator.saveSingleServiceEnvDeploymentStagePlanCreationSummary(
+          faultyServicePlanCreationResponse, ctx,
+          (DeploymentStageNode) getDeploymentStageConfigForMultiSvcMultiEvs()[2][0]);
+      latch.countDown();
+    });
+    assertThat(latch.await(20, TimeUnit.SECONDS)).isTrue();
+    verify(executorService, times(7)).submit(any(Runnable.class));
+    verifyNoMoreInteractions(deploymentStagePlanCreationInfoService);
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.NAMANG)
+  @Category(UnitTests.class)
+  public void testSaveSingleServiceEnvDeploymentStagePlanCreationSummary() throws InterruptedException {
+    CountDownLatch latch = new CountDownLatch(1);
+    PlanCreationContext ctx = PlanCreationContext.builder()
+                                  .globalContext(Map.of("metadata",
+                                      PlanCreationContextValue.newBuilder()
+                                          .setAccountIdentifier("accountId")
+                                          .setOrgIdentifier("orgId")
+                                          .setProjectIdentifier("projId")
+                                          .setExecutionContext(PlanExecutionContext.newBuilder()
+                                                                   .setExecutionUuid("planExeId")
+                                                                   .setPipelineIdentifier("pipelineId")
+                                                                   .build())
+                                          .build()))
+                                  .build();
+    PlanCreationResponse servicePlanCreationResponse =
+        PlanCreationResponse.builder()
+            .planNode(PlanNode.builder()
+                          .stepParameters(ServiceStepV3Parameters.builder()
+                                              .envRef(ParameterField.createValueField("acc.env"))
+                                              .infraId(ParameterField.createValueField("acc.infra"))
+                                              .serviceRef(ParameterField.createValueField("acc.ser"))
+                                              .deploymentType(KUBERNETES)
+                                              .build())
+                          .build())
+            .build();
+
+    // plan creation response cases
+    DeploymentStageNode deploymentStageNode = (DeploymentStageNode) getDeploymentStageConfig()[0][0];
+    deploymentStageNode.setIdentifier("stageId");
+    deploymentStageNode.setName("stage Name");
+    executorService.submit(() -> {
+      deploymentStagePMSPlanCreator.saveSingleServiceEnvDeploymentStagePlanCreationSummary(
+          servicePlanCreationResponse, ctx, deploymentStageNode);
+      latch.countDown();
+    });
+
+    verify(executorService, times(2)).submit(any(Runnable.class));
+    assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
+    verify(deploymentStagePlanCreationInfoService, times(1))
+        .save(DeploymentStagePlanCreationInfo.builder()
+                  .planExecutionId("planExeId")
+                  .accountIdentifier("accountId")
+                  .orgIdentifier("orgId")
+                  .projectIdentifier("projId")
+                  .pipelineIdentifier("pipelineId")
+                  .stageType(DeploymentStageType.SINGLE_SERVICE_ENVIRONMENT)
+                  .deploymentType(KUBERNETES)
+                  .stageIdentifier("stageId")
+                  .stageName("stage Name")
+                  .deploymentStageDetailsInfo(SingleServiceEnvDeploymentStageDetailsInfo.builder()
+                                                  .envIdentifier("acc.env")
+                                                  .serviceIdentifier("acc.ser")
+                                                  .infraIdentifier("acc.infra")
+                                                  .build())
+                  .build());
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.ABHINAV_MITTAL)
+  @Category(UnitTests.class)
+  public void testMultiServiceSingleEnvDeploymentStagePlanCreationSummary() throws InterruptedException {
+    PlanCreationContext ctx = PlanCreationContext.builder()
+                                  .globalContext(Map.of("metadata",
+                                      PlanCreationContextValue.newBuilder()
+                                          .setAccountIdentifier("accountId")
+                                          .setOrgIdentifier("orgId")
+                                          .setProjectIdentifier("projId")
+                                          .setExecutionContext(PlanExecutionContext.newBuilder()
+                                                                   .setExecutionUuid("planExeId")
+                                                                   .setPipelineIdentifier("pipelineId")
+                                                                   .build())
+                                          .build()))
+                                  .build();
+
+    // plan creation response cases
+    DeploymentStageNode deploymentStageNode = (DeploymentStageNode) getDeploymentStageConfigForMultiSvcMultiEvs()[3][0];
+    deploymentStageNode.setIdentifier("stageId");
+    deploymentStageNode.setName("stage Name");
+    // Dummy spec Node.
+    deploymentStagePMSPlanCreator.saveDeploymentStagePlanCreationSummaryForMultiServiceMultiEnv(
+        ctx, deploymentStageNode, new YamlField("node", new YamlNode(new TextNode("abcc"))));
+
+    verify(deploymentStagePlanCreationInfoService, times(1))
+        .save(DeploymentStagePlanCreationInfo.builder()
+                  .planExecutionId("planExeId")
+                  .accountIdentifier("accountId")
+                  .orgIdentifier("orgId")
+                  .projectIdentifier("projId")
+                  .pipelineIdentifier("pipelineId")
+                  .stageType(DeploymentStageType.MULTI_SERVICE_ENVIRONMENT)
+                  .deploymentType(KUBERNETES)
+                  .stageIdentifier("stageId")
+                  .stageName("stage Name")
+                  .deploymentStageDetailsInfo(
+                      MultiServiceEnvDeploymentStageDetailsInfo.builder()
+                          .envIdentifiers(asList("envId").stream().collect(Collectors.toSet()))
+                          .serviceIdentifiers(asList("svcId").stream().collect(Collectors.toSet()))
+                          .infraIdentifiers(asList("infra").stream().collect(Collectors.toSet()))
+                          .build())
+                  .build());
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.ABHINAV_MITTAL)
+  @Category(UnitTests.class)
+  public void testSingleServiceMultiEnvDeploymentStagePlanCreationSummary() throws InterruptedException {
+    PlanCreationContext ctx = PlanCreationContext.builder()
+                                  .globalContext(Map.of("metadata",
+                                      PlanCreationContextValue.newBuilder()
+                                          .setAccountIdentifier("accountId")
+                                          .setOrgIdentifier("orgId")
+                                          .setProjectIdentifier("projId")
+                                          .setExecutionContext(PlanExecutionContext.newBuilder()
+                                                                   .setExecutionUuid("planExeId")
+                                                                   .setPipelineIdentifier("pipelineId")
+                                                                   .build())
+                                          .build()))
+                                  .build();
+
+    // plan creation response cases
+    DeploymentStageNode deploymentStageNode = (DeploymentStageNode) getDeploymentStageConfigForMultiSvcMultiEvs()[0][0];
+    deploymentStageNode.setIdentifier("stageId");
+    deploymentStageNode.setName("stage Name");
+    // Dummy spec Node.
+    deploymentStagePMSPlanCreator.saveDeploymentStagePlanCreationSummaryForMultiServiceMultiEnv(
+        ctx, deploymentStageNode, new YamlField("node", new YamlNode(new TextNode("abcc"))));
+
+    verify(deploymentStagePlanCreationInfoService, times(1))
+        .save(DeploymentStagePlanCreationInfo.builder()
+                  .planExecutionId("planExeId")
+                  .accountIdentifier("accountId")
+                  .orgIdentifier("orgId")
+                  .projectIdentifier("projId")
+                  .pipelineIdentifier("pipelineId")
+                  .stageType(DeploymentStageType.MULTI_SERVICE_ENVIRONMENT)
+                  .deploymentType(KUBERNETES)
+                  .stageIdentifier("stageId")
+                  .stageName("stage Name")
+                  .deploymentStageDetailsInfo(
+                      MultiServiceEnvDeploymentStageDetailsInfo.builder()
+                          .envIdentifiers(asList("envId").stream().collect(Collectors.toSet()))
+                          .serviceIdentifiers(asList("svcId").stream().collect(Collectors.toSet()))
+                          .infraIdentifiers(asList("infra").stream().collect(Collectors.toSet()))
+                          .build())
+                  .build());
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.ABHINAV_MITTAL)
+  @Category(UnitTests.class)
+  public void testMultiServiceMultiEnvDeploymentStagePlanCreationSummary() throws InterruptedException {
+    PlanCreationContext ctx = PlanCreationContext.builder()
+                                  .globalContext(Map.of("metadata",
+                                      PlanCreationContextValue.newBuilder()
+                                          .setAccountIdentifier("accountId")
+                                          .setOrgIdentifier("orgId")
+                                          .setProjectIdentifier("projId")
+                                          .setExecutionContext(PlanExecutionContext.newBuilder()
+                                                                   .setExecutionUuid("planExeId")
+                                                                   .setPipelineIdentifier("pipelineId")
+                                                                   .build())
+                                          .build()))
+                                  .build();
+
+    // plan creation response cases
+    DeploymentStageNode deploymentStageNode = (DeploymentStageNode) getDeploymentStageConfigForMultiSvcMultiEvs()[1][0];
+    deploymentStageNode.setIdentifier("stageId");
+    deploymentStageNode.setName("stage Name");
+    // Dummy spec Node.
+    deploymentStagePMSPlanCreator.saveDeploymentStagePlanCreationSummaryForMultiServiceMultiEnv(
+        ctx, deploymentStageNode, new YamlField("node", new YamlNode(new TextNode("abcc"))));
+
+    verify(deploymentStagePlanCreationInfoService, times(1))
+        .save(DeploymentStagePlanCreationInfo.builder()
+                  .planExecutionId("planExeId")
+                  .accountIdentifier("accountId")
+                  .orgIdentifier("orgId")
+                  .projectIdentifier("projId")
+                  .pipelineIdentifier("pipelineId")
+                  .stageType(DeploymentStageType.MULTI_SERVICE_ENVIRONMENT)
+                  .deploymentType(KUBERNETES)
+                  .stageIdentifier("stageId")
+                  .stageName("stage Name")
+                  .deploymentStageDetailsInfo(
+                      MultiServiceEnvDeploymentStageDetailsInfo.builder()
+                          .envIdentifiers(asList("envId").stream().collect(Collectors.toSet()))
+                          .serviceIdentifiers(asList("svcId").stream().collect(Collectors.toSet()))
+                          .infraIdentifiers(asList("infra").stream().collect(Collectors.toSet()))
+                          .build())
+                  .build());
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.ABHINAV_MITTAL)
+  @Category(UnitTests.class)
+  public void testEnvGroupDeploymentStagePlanCreationSummary() throws InterruptedException {
+    PlanCreationContext ctx = PlanCreationContext.builder()
+                                  .globalContext(Map.of("metadata",
+                                      PlanCreationContextValue.newBuilder()
+                                          .setAccountIdentifier("accountId")
+                                          .setOrgIdentifier("orgId")
+                                          .setProjectIdentifier("projId")
+                                          .setExecutionContext(PlanExecutionContext.newBuilder()
+                                                                   .setExecutionUuid("planExeId")
+                                                                   .setPipelineIdentifier("pipelineId")
+                                                                   .build())
+                                          .build()))
+                                  .build();
+
+    // plan creation response cases
+    DeploymentStageNode deploymentStageNode = (DeploymentStageNode) getDeploymentStageConfigForMultiSvcMultiEvs()[2][0];
+    deploymentStageNode.setIdentifier("stageId");
+    deploymentStageNode.setName("stage Name");
+    // Dummy spec Node.
+    deploymentStagePMSPlanCreator.saveDeploymentStagePlanCreationSummaryForMultiServiceMultiEnv(
+        ctx, deploymentStageNode, new YamlField("node", new YamlNode(new TextNode("abcc"))));
+
+    verify(deploymentStagePlanCreationInfoService, times(1))
+        .save(DeploymentStagePlanCreationInfo.builder()
+                  .planExecutionId("planExeId")
+                  .accountIdentifier("accountId")
+                  .orgIdentifier("orgId")
+                  .projectIdentifier("projId")
+                  .pipelineIdentifier("pipelineId")
+                  .stageType(DeploymentStageType.MULTI_SERVICE_ENVIRONMENT)
+                  .deploymentType(KUBERNETES)
+                  .stageIdentifier("stageId")
+                  .stageName("stage Name")
+                  .deploymentStageDetailsInfo(
+                      MultiServiceEnvDeploymentStageDetailsInfo.builder()
+                          .envIdentifiers(asList("envId").stream().collect(Collectors.toSet()))
+                          .serviceIdentifiers(asList("svcId").stream().collect(Collectors.toSet()))
+                          .infraIdentifiers(asList("infra").stream().collect(Collectors.toSet()))
+                          .envGroup("envGroup")
+                          .build())
+                  .build());
+  }
+
+  private static YamlNode getStageNodeAtIndex(YamlField pipeline, int idx) {
+    return pipeline.getNode()
+        .getField("pipeline")
+        .getNode()
+        .getField("stages")
+        .getNode()
+        .asArray()
+        .get(idx)
+        .getField("stage")
+        .getNode()
+        .getField(YAMLFieldNameConstants.SPEC)
+        .getNode();
   }
 }

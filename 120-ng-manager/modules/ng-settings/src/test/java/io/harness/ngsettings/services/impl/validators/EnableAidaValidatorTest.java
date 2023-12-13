@@ -9,8 +9,6 @@ package io.harness.ngsettings.services.impl.validators;
 
 import static io.harness.rule.OwnerRule.BHAVYA;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
@@ -67,21 +65,6 @@ public class EnableAidaValidatorTest extends CategoryTest {
                                 .build();
     when(settingsService.get(SETTING_ID, ACCOUNT_ID, null, null))
         .thenReturn(SettingValueResponseDTO.builder().value(Boolean.toString(false)).build());
-    enableAidaValidator.validate(ACCOUNT_ID, settingDTO, settingDTO);
-  }
-
-  @Test(expected = InvalidRequestException.class)
-  @Owner(developers = BHAVYA)
-  @Category(UnitTests.class)
-  public void testAidaEnablementOnAccountScope_whenEulaIsNotSigned_throwsError() throws InvalidRequestException {
-    SettingDTO settingDTO = SettingDTO.builder()
-                                .category(SettingCategory.EULA)
-                                .defaultValue(Boolean.toString(false))
-                                .name("AIDA")
-                                .identifier(SETTING_ID)
-                                .value(Boolean.toString(true))
-                                .build();
-    when(eulaService.isSigned(any(), anyString())).thenReturn(false);
     enableAidaValidator.validate(ACCOUNT_ID, settingDTO, settingDTO);
   }
 }

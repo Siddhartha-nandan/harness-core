@@ -6,7 +6,6 @@
  */
 
 package software.wings.app;
-
 import static io.harness.annotations.dev.HarnessModule._360_CG_MANAGER;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.audit.ResourceTypeConstants.DELEGATE;
@@ -20,7 +19,7 @@ import static io.harness.authorization.AuthorizationServiceHeader.MANAGER;
 import static io.harness.eventsframework.EventsFrameworkConstants.ENTITY_CRUD;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ORGANIZATION_ENTITY;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.PROJECT_ENTITY;
-import static io.harness.lock.DistributedLockImplementation.MONGO;
+import static io.harness.lock.DistributedLockImplementation.REDIS;
 import static io.harness.outbox.OutboxSDKConstants.DEFAULT_OUTBOX_POLL_CONFIGURATION;
 
 import io.harness.AccessControlClientModule;
@@ -28,7 +27,10 @@ import io.harness.CgOrchestrationModule;
 import io.harness.SecretManagementCoreModule;
 import io.harness.accesscontrol.AccessControlAdminClientConfiguration;
 import io.harness.accesscontrol.AccessControlAdminClientModule;
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.annotations.dev.TargetModule;
 import io.harness.annotations.retry.MethodExecutionHelper;
 import io.harness.annotations.retry.RetryOnException;
@@ -136,6 +138,8 @@ import io.harness.delegate.event.listener.ProjectEntityCRUDEventListener;
 import io.harness.delegate.heartbeat.HeartbeatModule;
 import io.harness.delegate.outbox.DelegateOutboxEventHandler;
 import io.harness.delegate.queueservice.DelegateTaskQueueService;
+import io.harness.delegate.secret.TaskSecretService;
+import io.harness.delegate.secret.TaskSecretServiceImpl;
 import io.harness.delegate.service.impl.AccountDataProviderImpl;
 import io.harness.delegate.service.impl.DelegateDownloadServiceImpl;
 import io.harness.delegate.service.impl.DelegateFeedbacksServiceImpl;
@@ -841,7 +845,9 @@ import com.google.api.client.util.store.DataStore;
 import com.google.api.client.util.store.MemoryDataStoreFactory;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.AbstractModule;
+import com.google.inject.Inject;
 import com.google.inject.Injector;
+import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
@@ -864,6 +870,8 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
@@ -875,11 +883,14 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Guice Module for initializing all beans.
  */
+
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_FIRST_GEN})
 @Slf4j
 @OwnedBy(PL)
 @TargetModule(_360_CG_MANAGER)
 public class WingsModule extends AbstractModule implements ServersModule {
   private static final int OPEN_CENSUS_EXPORT_INTERVAL_MINUTES = 5;
+  private static final int LICENSE_USAGE_TIMESCALE_DEFAULT_SOCKET_TIMEOUT_SECONDS = 60;
   private static final String RETENTION_PERIOD_FORMAT = "%s months";
   private final String hashicorpvault = "hashicorpvault";
   private final MainConfiguration configuration;
@@ -899,7 +910,7 @@ public class WingsModule extends AbstractModule implements ServersModule {
   @Provides
   @Singleton
   DistributedLockImplementation distributedLockImplementation() {
-    return configuration.getDistributedLockImplementation() == null ? MONGO
+    return configuration.getDistributedLockImplementation() == null ? REDIS
                                                                     : configuration.getDistributedLockImplementation();
   }
 
@@ -993,6 +1004,14 @@ public class WingsModule extends AbstractModule implements ServersModule {
     boolean isFreeCluster = StringUtils.equals(clusterType, "freemium");
 
     return new CdnStorageUrlGenerator(configuration.getCdnConfig(), isFreeCluster);
+  }
+
+  @Provides
+  @Singleton
+  @Named("cgJobExecutor")
+  public ScheduledExecutorService cgJobExecutor() {
+    return new ScheduledThreadPoolExecutor(
+        2, new ThreadFactoryBuilder().setNameFormat("cg-job-%d").setPriority(Thread.MAX_PRIORITY).build());
   }
 
   @Override
@@ -1123,6 +1142,7 @@ public class WingsModule extends AbstractModule implements ServersModule {
     bind(AwsClusterService.class).to(AwsClusterServiceImpl.class);
     bind(DelegateServiceQueue.class).to(DelegateTaskQueueService.class);
     bind(DelegateQueueServiceConfig.class).toProvider(Providers.of(configuration.getQueueServiceConfig()));
+    bind(TaskSecretService.class).to(TaskSecretServiceImpl.class);
     bind(GkeClusterService.class).to(GkeClusterServiceImpl.class);
     try {
       bind(new TypeLiteral<DataStore<StoredCredential>>() {
@@ -1318,7 +1338,7 @@ public class WingsModule extends AbstractModule implements ServersModule {
     buildServiceMapBinder.addBinding(SftpConfig.class).toInstance(SftpBuildService.class);
     buildServiceMapBinder.addBinding(AzureArtifactsPATConfig.class).toInstance(AzureArtifactsBuildService.class);
 
-    install(new ManagerCacheRegistrar());
+    install(new ManagerCacheRegistrar(configuration));
     install(new FactoryModuleBuilder().implement(Jenkins.class, JenkinsImpl.class).build(JenkinsFactory.class));
     install(SecretManagementCoreModule.getInstance());
     install(new InstanceSyncMonitoringModule());
@@ -1473,17 +1493,48 @@ public class WingsModule extends AbstractModule implements ServersModule {
     bind(DashboardSettingsService.class).to(DashboardSettingsServiceImpl.class);
     bind(NameService.class).to(NameServiceImpl.class);
     // bind(TimeScaleDBService.class).toInstance(new TimeScaleDBServiceImpl(configuration.getTimeScaleDBConfig()));
-    try {
-      bind(TimeScaleDBService.class)
-          .toConstructor(TimeScaleDBServiceImpl.class.getConstructor(TimeScaleDBConfig.class));
-      bind(RetentionManager.class).to(RetentionManagerImpl.class);
-    } catch (NoSuchMethodException e) {
-      log.error("TimeScaleDbServiceImpl Initialization Failed in due to missing constructor", e);
-    }
+
     bind(TimeScaleDBConfig.class)
         .annotatedWith(Names.named("TimeScaleDBConfig"))
         .toInstance(configuration.getTimeScaleDBConfig() != null ? configuration.getTimeScaleDBConfig()
                                                                  : TimeScaleDBConfig.builder().build());
+
+    bind(TimeScaleDBConfig.class)
+        .annotatedWith(Names.named("LicenseUsageTimeScaleDBConfig"))
+        .toProvider(new Provider<>() {
+          @Inject @Named("TimeScaleDBConfig") TimeScaleDBConfig timeScaleDBConfig;
+
+          @Override
+          public TimeScaleDBConfig get() {
+            return timeScaleDBConfig.toBuilder()
+                .socketTimeout(configuration.getLicenseUsageTimescaleSocketTimeout() != 0
+                        ? configuration.getLicenseUsageTimescaleSocketTimeout()
+                        : LICENSE_USAGE_TIMESCALE_DEFAULT_SOCKET_TIMEOUT_SECONDS)
+                .build();
+          }
+        });
+
+    try {
+      bind(TimeScaleDBService.class)
+          .toConstructor(TimeScaleDBServiceImpl.class.getConstructor(TimeScaleDBConfig.class));
+
+      bind(TimeScaleDBService.class)
+          .annotatedWith(Names.named("LicenseUsageTimeScaleDBService"))
+          .toProvider(new Provider<>() {
+            @Inject @Named("LicenseUsageTimeScaleDBConfig") private TimeScaleDBConfig timeScaleDBConfig;
+
+            @Override
+            public TimeScaleDBService get() {
+              return new TimeScaleDBServiceImpl(timeScaleDBConfig);
+            }
+          })
+          .in(Singleton.class);
+
+      bind(RetentionManager.class).to(RetentionManagerImpl.class);
+    } catch (NoSuchMethodException e) {
+      log.error("TimeScaleDbServiceImpl Initialization Failed in due to missing constructor", e);
+    }
+
     if (configuration.getExecutionLogsStorageMode() == null) {
       configuration.setExecutionLogsStorageMode(DataStorageMode.MONGO);
     }

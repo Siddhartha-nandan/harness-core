@@ -16,10 +16,9 @@
 
 package io.harness.cdng.provision.terragrunt;
 
+import static io.harness.beans.FeatureName.CDS_TF_TG_SKIP_ERROR_LOGS_COLORING;
 import static io.harness.provision.TerragruntConstants.FETCH_CONFIG_FILES;
 import static io.harness.provision.TerragruntConstants.PLAN;
-
-import static software.wings.beans.TaskType.TERRAGRUNT_PLAN_TASK_NG;
 
 import io.harness.EntityType;
 import io.harness.annotations.dev.CodePulse;
@@ -63,7 +62,10 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.StepUtils;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 import io.harness.utils.IdentifierRefHelper;
+
+import software.wings.beans.TaskType;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -93,6 +95,12 @@ public class TerragruntPlanStep extends CdTaskExecutable<TerragruntPlanTaskRespo
   @Override
   public Class getStepParametersClass() {
     return StepBaseParameters.class;
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 
   @Override
@@ -149,6 +157,9 @@ public class TerragruntPlanStep extends CdTaskExecutable<TerragruntPlanTaskRespo
         helper.isExportCredentialForSourceModule(configuration.getConfigFiles(), stepParameters.getType()));
     ParameterField<Boolean> exportTgPlanJsonField = planStepParameters.getConfiguration().getExportTerragruntPlanJson();
 
+    builder.terragruntCommandFlags(
+        helper.getTerragruntCliFlags(planStepParameters.getConfiguration().getCliOptionFlags()));
+
     EncryptionConfig planSecretManagerConfig = helper.getEncryptionConfig(ambiance, planStepParameters);
     builder.entityId(entityId)
         .workspace(ParameterFieldHelper.getParameterFieldValue(configuration.getWorkspace()))
@@ -179,11 +190,14 @@ public class TerragruntPlanStep extends CdTaskExecutable<TerragruntPlanTaskRespo
         .encryptedDataDetailList(helper.getEncryptionDetails(configuration.getConfigFiles().getStore().getSpec(),
             configuration.getBackendConfig(), configuration.getVarFiles(), ambiance))
         .encryptDecryptPlanForHarnessSMOnManager(helper.tfPlanEncryptionOnManager(accountId, planSecretManagerConfig))
+        .useUniqueDirectoryForBaseDir(true)
+        .skipColorLogs(cdFeatureFlagHelper.isEnabled(accountId, CDS_TF_TG_SKIP_ERROR_LOGS_COLORING))
         .build();
 
+    TaskType terragruntTaskType = builder.build().getDelegateTaskTypeForPlanStep();
     TaskData taskData = TaskData.builder()
                             .async(true)
-                            .taskType(TERRAGRUNT_PLAN_TASK_NG.name())
+                            .taskType(terragruntTaskType.name())
                             .timeout(StepUtils.getTimeoutMillis(stepParameters.getTimeout(), DEFAULT_TIMEOUT))
                             .parameters(new Object[] {builder.build()})
                             .build();
@@ -193,8 +207,7 @@ public class TerragruntPlanStep extends CdTaskExecutable<TerragruntPlanTaskRespo
     commandUnitsList.add(PLAN);
 
     return TaskRequestsUtils.prepareCDTaskRequest(ambiance, taskData, referenceFalseKryoSerializer, commandUnitsList,
-        TERRAGRUNT_PLAN_TASK_NG.getDisplayName(),
-        TaskSelectorYaml.toTaskSelector(planStepParameters.getDelegateSelectors()),
+        terragruntTaskType.getDisplayName(), TaskSelectorYaml.toTaskSelector(planStepParameters.getDelegateSelectors()),
         stepHelper.getEnvironmentType(ambiance));
   }
 

@@ -39,6 +39,7 @@ import io.harness.cdng.artifact.resources.artifactory.dtos.ArtifactoryResponseDT
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.connector.ConnectorResponseDTO;
 import io.harness.connector.services.ConnectorService;
+import io.harness.data.structure.ListUtils;
 import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.artifactory.ArtifactoryFetchBuildsResponse;
 import io.harness.delegate.beans.artifactory.ArtifactoryFetchImagePathResponse;
@@ -50,6 +51,7 @@ import io.harness.delegate.beans.connector.artifactoryconnector.ArtifactoryConne
 import io.harness.delegate.beans.connector.artifactoryconnector.ArtifactoryUsernamePasswordAuthDTO;
 import io.harness.delegate.task.artifacts.ArtifactTaskType;
 import io.harness.delegate.task.artifacts.artifactory.ArtifactoryArtifactDelegateResponse;
+import io.harness.delegate.task.artifacts.artifactory.ArtifactoryGenericArtifactDelegateRequest;
 import io.harness.delegate.task.artifacts.request.ArtifactTaskParameters;
 import io.harness.delegate.task.artifacts.response.ArtifactBuildDetailsNG;
 import io.harness.delegate.task.artifacts.response.ArtifactTaskExecutionResponse;
@@ -65,7 +67,6 @@ import io.harness.service.DelegateGrpcClientWrapper;
 import software.wings.helpers.ext.jenkins.BuildDetails;
 import software.wings.utils.RepositoryFormat;
 
-import io.fabric8.utils.Lists;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -89,6 +90,7 @@ public class ArtifactoryResourceServiceImplTest extends CategoryTest {
   private static final String IDENTIFIER = "identifier";
   private static final String INPUT = "<+input>-abc";
   private static final String TAG = "tag";
+  private static final String ARTIFACT_FILTER = "artifactFilter";
 
   private static final IdentifierRef IDENTIFIER_REF = IdentifierRef.builder()
                                                           .accountIdentifier(ACCOUNT_ID)
@@ -101,6 +103,8 @@ public class ArtifactoryResourceServiceImplTest extends CategoryTest {
   private static final String REPOSITORY_MESSAGE = "value for repository is empty or not provided";
   private static final String REPOSITORY_FORMAT_MESSAGE = "value for repositoryFormat is empty or not provided";
   private static final String TAG_TAG_REGEX_MESSAGE = "value for tag, tagRegex is empty or not provided";
+  private static final String ARTIFACT_FILTER_DIRECTORY_ERROR =
+      "value for artifactDirectory, artifactFilter is empty or not provided";
 
   @Mock private ConnectorService connectorService;
   @Mock private DelegateGrpcClientWrapper delegateGrpcClientWrapper;
@@ -310,7 +314,7 @@ public class ArtifactoryResourceServiceImplTest extends CategoryTest {
         .thenReturn(Optional.of(connectorResponse));
     EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
     when(secretManagerClientService.getEncryptionDetails(any(), any()))
-        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(
             ArtifactTaskResponse.builder()
@@ -320,7 +324,7 @@ public class ArtifactoryResourceServiceImplTest extends CategoryTest {
                 .build());
 
     ArtifactoryResponseDTO artifactoryResponseDTO = artifactoryResourceService.getBuildDetails(identifierRef, REPO_NAME,
-        IMAGE_PATH, RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, "stable.*");
+        IMAGE_PATH, RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, "stable.*", null);
     assertThat(artifactoryResponseDTO).isNotNull();
 
     ArgumentCaptor<DelegateTaskRequest> delegateTaskRequestCaptor = ArgumentCaptor.forClass(DelegateTaskRequest.class);
@@ -330,56 +334,121 @@ public class ArtifactoryResourceServiceImplTest extends CategoryTest {
     ArtifactTaskParameters artifactTaskParameters = (ArtifactTaskParameters) delegateTaskRequest.getTaskParameters();
     assertThat(artifactTaskParameters.getArtifactTaskType()).isEqualTo(ArtifactTaskType.GET_BUILDS);
   }
+
+  @Test
+  @Owner(developers = ABHISHEK)
+  @Category(UnitTests.class)
+  public void testGetBuildDetailsGenericArtifactFilter() {
+    ConnectorResponseDTO connectorResponse = getConnector();
+    when(connectorService.get(ACCOUNT_ID, ORG_IDENTIFIER, PROJECT_IDENTIFIER, IDENTIFIER))
+        .thenReturn(Optional.of(connectorResponse));
+    EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
+    when(secretManagerClientService.getEncryptionDetails(any(), any()))
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(ArtifactTaskResponse.builder()
+                        .commandExecutionStatus(CommandExecutionStatus.SUCCESS)
+                        .artifactTaskExecutionResponse(ArtifactTaskExecutionResponse.builder()
+                                                           .artifactDelegateResponses(new ArrayList<>())
+                                                           .buildDetails(new ArrayList<>())
+                                                           .build())
+                        .build());
+
+    ArtifactoryResponseDTO artifactoryResponseDTO =
+        artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, REPO_NAME, null, RepositoryFormat.generic.name(),
+            null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, "stable.*", ARTIFACT_FILTER);
+    assertThat(artifactoryResponseDTO).isNotNull();
+
+    ArgumentCaptor<DelegateTaskRequest> delegateTaskRequestCaptor = ArgumentCaptor.forClass(DelegateTaskRequest.class);
+    verify(connectorService).get(ACCOUNT_ID, ORG_IDENTIFIER, PROJECT_IDENTIFIER, IDENTIFIER);
+    verify(delegateGrpcClientWrapper).executeSyncTaskV2(delegateTaskRequestCaptor.capture());
+    DelegateTaskRequest delegateTaskRequest = delegateTaskRequestCaptor.getValue();
+    ArtifactTaskParameters artifactTaskParameters = (ArtifactTaskParameters) delegateTaskRequest.getTaskParameters();
+    assertThat(artifactTaskParameters.getArtifactTaskType()).isEqualTo(ArtifactTaskType.GET_BUILDS);
+    ArtifactoryGenericArtifactDelegateRequest artifactoryArtifactDelegateRequest =
+        (ArtifactoryGenericArtifactDelegateRequest) artifactTaskParameters.getAttributes();
+    assertThat(artifactoryArtifactDelegateRequest.getArtifactFilter()).isEqualTo(ARTIFACT_FILTER);
+  }
+
+  @Test
+  @Owner(developers = ABHISHEK)
+  @Category(UnitTests.class)
+  public void testGetBuildDetailsGenericDirectory() {
+    ConnectorResponseDTO connectorResponse = getConnector();
+    when(connectorService.get(ACCOUNT_ID, ORG_IDENTIFIER, PROJECT_IDENTIFIER, IDENTIFIER))
+        .thenReturn(Optional.of(connectorResponse));
+    EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
+    when(secretManagerClientService.getEncryptionDetails(any(), any()))
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(ArtifactTaskResponse.builder()
+                        .commandExecutionStatus(CommandExecutionStatus.SUCCESS)
+                        .artifactTaskExecutionResponse(ArtifactTaskExecutionResponse.builder()
+                                                           .artifactDelegateResponses(new ArrayList<>())
+                                                           .buildDetails(new ArrayList<>())
+                                                           .build())
+                        .build());
+
+    ArtifactoryResponseDTO artifactoryResponseDTO =
+        artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, REPO_NAME, IMAGE_PATH,
+            RepositoryFormat.generic.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, "stable.*", null);
+    assertThat(artifactoryResponseDTO).isNotNull();
+
+    ArgumentCaptor<DelegateTaskRequest> delegateTaskRequestCaptor = ArgumentCaptor.forClass(DelegateTaskRequest.class);
+    verify(connectorService).get(ACCOUNT_ID, ORG_IDENTIFIER, PROJECT_IDENTIFIER, IDENTIFIER);
+    verify(delegateGrpcClientWrapper).executeSyncTaskV2(delegateTaskRequestCaptor.capture());
+    DelegateTaskRequest delegateTaskRequest = delegateTaskRequestCaptor.getValue();
+    ArtifactTaskParameters artifactTaskParameters = (ArtifactTaskParameters) delegateTaskRequest.getTaskParameters();
+    assertThat(artifactTaskParameters.getArtifactTaskType()).isEqualTo(ArtifactTaskType.GET_BUILDS);
+    ArtifactoryGenericArtifactDelegateRequest artifactoryArtifactDelegateRequest =
+        (ArtifactoryGenericArtifactDelegateRequest) artifactTaskParameters.getAttributes();
+    assertThat(artifactoryArtifactDelegateRequest.getArtifactFilter()).isNull();
+    assertThat(artifactoryArtifactDelegateRequest.getArtifactDirectory()).isEqualTo(IMAGE_PATH);
+  }
+
   @Test
   @Owner(developers = vivekveman)
   @Category(UnitTests.class)
   public void testGetBuildDetailsWithRepositoyRuntime() {
-    IdentifierRef identifierRef = IdentifierRef.builder()
-                                      .accountIdentifier(ACCOUNT_ID)
-                                      .identifier("identifier")
-                                      .projectIdentifier(PROJECT_IDENTIFIER)
-                                      .orgIdentifier(ORG_IDENTIFIER)
-                                      .build();
-
     assertThatThrownBy(()
-                           -> artifactoryResourceService.getBuildDetails(identifierRef, "<+input>", IMAGE_PATH,
-                               RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null))
+                           -> artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, "<+input>", IMAGE_PATH,
+                               RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, null))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("value for repository is empty or not provided");
     assertThatThrownBy(()
-                           -> artifactoryResourceService.getBuildDetails(identifierRef, null, IMAGE_PATH,
-                               RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null))
+                           -> artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, null, IMAGE_PATH,
+                               RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, null))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("value for repository is empty or not provided");
     assertThatThrownBy(()
-                           -> artifactoryResourceService.getBuildDetails(identifierRef, "<+input>.regex()", IMAGE_PATH,
-                               RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null))
+                           -> artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, "<+input>.regex()", IMAGE_PATH,
+                               RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, null))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("value for repository is empty or not provided");
     assertThatThrownBy(()
-                           -> artifactoryResourceService.getBuildDetails(identifierRef, "", IMAGE_PATH,
-                               RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null))
+                           -> artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, "", IMAGE_PATH,
+                               RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, null))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("value for repository is empty or not provided");
     assertThatThrownBy(()
-                           -> artifactoryResourceService.getBuildDetails(identifierRef, "repository", "<+input>",
-                               RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null))
+                           -> artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, "repository", "<+input>",
+                               RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, null))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("value for artifactPath is empty or not provided");
     assertThatThrownBy(
         ()
-            -> artifactoryResourceService.getBuildDetails(identifierRef, "repository", "<+input>.regex(hello)",
-                RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null))
+            -> artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, "repository", "<+input>.regex(hello)",
+                RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, null))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("value for artifactPath is empty or not provided");
     assertThatThrownBy(()
-                           -> artifactoryResourceService.getBuildDetails(identifierRef, "repository", null,
-                               RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null))
+                           -> artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, "repository", null,
+                               RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, null))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("value for artifactPath is empty or not provided");
     assertThatThrownBy(()
-                           -> artifactoryResourceService.getBuildDetails(identifierRef, "repository", "",
-                               RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null))
+                           -> artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, "repository", "",
+                               RepositoryFormat.docker.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, null))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("value for artifactPath is empty or not provided");
   }
@@ -394,13 +463,13 @@ public class ArtifactoryResourceServiceImplTest extends CategoryTest {
         .thenReturn(Optional.of(connectorDTO));
     EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
     when(secretManagerClientService.getEncryptionDetails(any(), any()))
-        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(
             ArtifactTaskResponse.builder()
                 .commandExecutionStatus(CommandExecutionStatus.SUCCESS)
                 .artifactTaskExecutionResponse(ArtifactTaskExecutionResponse.builder()
-                                                   .artifactDelegateResponses(Lists.newArrayList(
+                                                   .artifactDelegateResponses(ListUtils.newArrayList(
                                                        ArtifactoryArtifactDelegateResponse.builder()
                                                            .buildDetails(ArtifactBuildDetailsNG.builder().build())
                                                            .build()))
@@ -435,13 +504,13 @@ public class ArtifactoryResourceServiceImplTest extends CategoryTest {
         .thenReturn(Optional.of(connectorDTO));
     EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
     when(secretManagerClientService.getEncryptionDetails(any(), any()))
-        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(
             ArtifactTaskResponse.builder()
                 .commandExecutionStatus(CommandExecutionStatus.SUCCESS)
                 .artifactTaskExecutionResponse(ArtifactTaskExecutionResponse.builder()
-                                                   .artifactDelegateResponses(Lists.newArrayList(
+                                                   .artifactDelegateResponses(ListUtils.newArrayList(
                                                        ArtifactoryArtifactDelegateResponse.builder()
                                                            .buildDetails(ArtifactBuildDetailsNG.builder().build())
                                                            .build()))
@@ -474,7 +543,7 @@ public class ArtifactoryResourceServiceImplTest extends CategoryTest {
         .thenReturn(Optional.of(connectorResponse));
     EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
     when(secretManagerClientService.getEncryptionDetails(any(), any()))
-        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
     List<ArtifactoryImagePath> imagePaths = new ArrayList<>();
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(ArtifactoryFetchImagePathResponse.builder()
@@ -655,5 +724,60 @@ public class ArtifactoryResourceServiceImplTest extends CategoryTest {
                 RepositoryFormat.docker.name(), null, ArtifactoryRequestDTO.builder().tagRegex(INPUT).build(),
                 ORG_IDENTIFIER, PROJECT_IDENTIFIER))
         .hasMessage(TAG_TAG_REGEX_MESSAGE);
+  }
+
+  @Test
+  @Owner(developers = ABHISHEK)
+  @Category(UnitTests.class)
+  public void testGetBuildDetailsGeneric_FilterNullDirectoryNull() {
+    assertThatThrownBy(()
+                           -> artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, "repository", null,
+                               RepositoryFormat.generic.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, null))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(ARTIFACT_FILTER_DIRECTORY_ERROR);
+  }
+
+  @Test
+  @Owner(developers = ABHISHEK)
+  @Category(UnitTests.class)
+  public void testGetBuildDetailsGeneric_FilterRuntimeDirectoryNull() {
+    assertThatThrownBy(()
+                           -> artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, "repository", null,
+                               RepositoryFormat.generic.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, INPUT))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(ARTIFACT_FILTER_DIRECTORY_ERROR);
+  }
+
+  @Test
+  @Owner(developers = ABHISHEK)
+  @Category(UnitTests.class)
+  public void testGetBuildDetailsGeneric_FilterEmptyDirectoryNull() {
+    assertThatThrownBy(()
+                           -> artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, "repository", null,
+                               RepositoryFormat.generic.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, ""))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(ARTIFACT_FILTER_DIRECTORY_ERROR);
+  }
+
+  @Test
+  @Owner(developers = ABHISHEK)
+  @Category(UnitTests.class)
+  public void testGetBuildDetailsGeneric_FilterNullDirectoryRuntime() {
+    assertThatThrownBy(()
+                           -> artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, "repository", INPUT,
+                               RepositoryFormat.generic.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, null))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(ARTIFACT_FILTER_DIRECTORY_ERROR);
+  }
+
+  @Test
+  @Owner(developers = ABHISHEK)
+  @Category(UnitTests.class)
+  public void testGetBuildDetailsGeneric_FilterNullDirectoryEmpty() {
+    assertThatThrownBy(()
+                           -> artifactoryResourceService.getBuildDetails(IDENTIFIER_REF, "repository", "",
+                               RepositoryFormat.generic.name(), null, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, null))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(ARTIFACT_FILTER_DIRECTORY_ERROR);
   }
 }

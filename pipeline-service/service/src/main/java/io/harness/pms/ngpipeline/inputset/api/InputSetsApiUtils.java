@@ -6,12 +6,14 @@
  */
 
 package io.harness.pms.ngpipeline.inputset.api;
-
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.pms.pipeline.api.PipelinesApiUtils.getMoveConfigType;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.FeatureName;
 import io.harness.exception.InvalidRequestException;
 import io.harness.gitaware.helper.GitAwareContextHelper;
@@ -19,13 +21,14 @@ import io.harness.gitsync.beans.StoreType;
 import io.harness.gitsync.interceptor.GitEntityInfo;
 import io.harness.gitsync.interceptor.GitSyncConstants;
 import io.harness.gitsync.sdk.EntityGitDetails;
+import io.harness.gitx.USER_FLOW;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.pms.inputset.InputSetErrorDTOPMS;
 import io.harness.pms.inputset.InputSetErrorResponseDTOPMS;
 import io.harness.pms.inputset.InputSetErrorWrapperDTOPMS;
 import io.harness.pms.inputset.InputSetMoveConfigOperationDTO;
 import io.harness.pms.ngpipeline.inputset.beans.entity.InputSetEntity;
-import io.harness.pms.utils.PipelineYamlHelper;
+import io.harness.pms.yaml.NGYamlHelper;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.spec.server.pipeline.v1.model.FQNtoError;
 import io.harness.spec.server.pipeline.v1.model.GitCreateDetails;
@@ -34,11 +37,13 @@ import io.harness.spec.server.pipeline.v1.model.GitMoveDetails;
 import io.harness.spec.server.pipeline.v1.model.InputSetCreateRequestBody;
 import io.harness.spec.server.pipeline.v1.model.InputSetError;
 import io.harness.spec.server.pipeline.v1.model.InputSetErrorDetails;
+import io.harness.spec.server.pipeline.v1.model.InputSetErrorWrapperDTO;
 import io.harness.spec.server.pipeline.v1.model.InputSetGitUpdateDetails;
 import io.harness.spec.server.pipeline.v1.model.InputSetResponseBody;
 import io.harness.spec.server.pipeline.v1.model.InputSetUpdateRequestBody;
 import io.harness.utils.ApiUtils;
 import io.harness.utils.PmsFeatureFlagHelper;
+import io.harness.utils.ThreadOperationContextHelper;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -48,6 +53,7 @@ import java.util.Set;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @Singleton
 @AllArgsConstructor(access = AccessLevel.PACKAGE, onConstructor = @__({ @Inject }))
 @OwnedBy(HarnessTeam.PIPELINE)
@@ -70,6 +76,14 @@ public class InputSetsApiUtils {
     responseBody.setUpdated(inputSetEntity.getLastUpdatedAt());
     responseBody.setErrorDetails(new InputSetErrorDetails().valid(true));
     return responseBody;
+  }
+
+  public InputSetErrorWrapperDTO getInputSetErrorWrapper(InputSetErrorWrapperDTOPMS errorWrapperDTO) {
+    InputSetErrorWrapperDTO inputSetErrorWrapperDTO = new InputSetErrorWrapperDTO();
+    inputSetErrorWrapperDTO.setErrorPipelineYaml(errorWrapperDTO.getErrorPipelineYaml());
+    inputSetErrorWrapperDTO.setUuidToErrorResponseMap(errorWrapperDTO.getUuidToErrorResponseMap());
+    inputSetErrorWrapperDTO.setInvalidInputsetReferences(errorWrapperDTO.getInvalidInputSetReferences());
+    return inputSetErrorWrapperDTO;
   }
 
   public InputSetResponseBody getInputSetResponseWithError(
@@ -204,7 +218,13 @@ public class InputSetsApiUtils {
 
   public String inputSetVersion(String accountId, String yaml) {
     boolean isYamlSimplificationEnabled = pmsFeatureFlagHelper.isEnabled(accountId, FeatureName.CI_YAML_VERSIONING);
-    return PipelineYamlHelper.getVersion(yaml, isYamlSimplificationEnabled);
+    return NGYamlHelper.getVersion(yaml, isYamlSimplificationEnabled);
+  }
+
+  public void checkAndSetContextIfGetOnlyFileContentEnabled(String accountId, boolean getOnlyFileContent) {
+    if (getOnlyFileContent && pmsFeatureFlagHelper.isEnabled(accountId, FeatureName.PIE_GET_FILE_CONTENT_ONLY)) {
+      ThreadOperationContextHelper.setUserFlow(USER_FLOW.EXECUTION);
+    }
   }
 
   public boolean isDifferentRepoForPipelineAndInputSetsAccountSettingEnabled(String accountId) {

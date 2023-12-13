@@ -238,6 +238,7 @@ outboxPollConfig:
   pollingIntervalInSeconds: ${OUTBOX_POLL_INTERVAL:-5}
   maximumRetryAttemptsForAnEvent: ${OUTBOX_MAX_RETRY_ATTEMPTS:-7}
   lockId: AccessControlService
+  enableMetrics: ${ENABLE_OUTBOX_EVENT_METRICS:-true}
 
 featureFlagClientConfiguration:
   featureFlagServiceConfig:
@@ -278,6 +279,6 @@ featureFlagConfig:
   featureFlagSystem: LOCAL
   syncFeaturesToCF: false
 
-disableRedundantACLs: ${DISABLE_REDUNDANT_ACLS:-false}
-
 enableParallelProcessingOfUserGroupUpdates: ${ENABLE_PARALLEL_PROCESSING_OF_USERGROUP_UPDATES:-false}
+enableAclProcessingThroughOutbox: ${ENABLE_ACL_PROCESSING_THROUGH_OUTBOX:-false}
+batchSizeForACLCreation: ${BATCH_SIZE_FOR_ACL_CREATION:-5000}

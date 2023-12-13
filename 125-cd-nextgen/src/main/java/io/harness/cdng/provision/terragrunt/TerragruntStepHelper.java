@@ -246,8 +246,9 @@ public class TerragruntStepHelper {
       return format("%s/%s/%s/%s", AmbianceUtils.getAccountId(ambiance), AmbianceUtils.getOrgIdentifier(ambiance),
           AmbianceUtils.getProjectIdentifier(ambiance), provisionerIdentifier);
     } else {
-      throw new InvalidRequestException(
-          format("Provisioner Identifier cannot contain special characters or spaces: [%s]", provisionerIdentifier));
+      throw new InvalidRequestException(format(
+          "Provisioner Identifier must start with a letter or _ and can then be followed by alphanumerics or _: [%s]",
+          provisionerIdentifier));
     }
   }
 
@@ -306,8 +307,8 @@ public class TerragruntStepHelper {
     } else {
       paths.addAll(ParameterFieldHelper.getParameterFieldValue(gitStoreConfig.getPaths()));
     }
-    ScmConnector scmConnector = cdStepHelper.getScmConnector(
-        (ScmConnector) connectorDTO.getConnectorConfig(), basicNGAccessObject.getAccountIdentifier(), gitConfigDTO);
+    ScmConnector scmConnector = cdStepHelper.getScmConnector((ScmConnector) connectorDTO.getConnectorConfig(),
+        basicNGAccessObject.getAccountIdentifier(), gitConfigDTO, repoName);
     List<EncryptedDataDetail> encryptedDataDetails =
         gitConfigAuthenticationInfoHelper.getEncryptedDataDetails(scmConnector, sshKeySpecDTO, basicNGAccessObject);
     return GitStoreDelegateConfig.builder()
@@ -334,8 +335,9 @@ public class TerragruntStepHelper {
     SSHKeySpecDTO sshKeySpecDTO =
         gitConfigAuthenticationInfoHelper.getSSHKey(gitConfigDTO, AmbianceUtils.getAccountId(ambiance),
             AmbianceUtils.getOrgIdentifier(ambiance), AmbianceUtils.getProjectIdentifier(ambiance));
-    ScmConnector scmConnector = cdStepHelper.getScmConnector(
-        (ScmConnector) connectorDTO.getConnectorConfig(), basicNGAccessObject.getAccountIdentifier(), gitConfigDTO);
+    String repoName = gitStoreConfig.getRepoName() != null ? gitStoreConfig.getRepoName().getValue() : null;
+    ScmConnector scmConnector = cdStepHelper.getScmConnector((ScmConnector) connectorDTO.getConnectorConfig(),
+        basicNGAccessObject.getAccountIdentifier(), gitConfigDTO, repoName);
     encryptedDataDetails.addAll(
         gitConfigAuthenticationInfoHelper.getEncryptedDataDetails(scmConnector, sshKeySpecDTO, basicNGAccessObject));
   }
@@ -918,5 +920,18 @@ public class TerragruntStepHelper {
   public boolean tfPlanEncryptionOnManager(String accountId, EncryptionConfig encryptionConfig) {
     return cdFeatureFlagHelper.isEnabled(accountId, CDS_TERRAFORM_TERRAGRUNT_PLAN_ENCRYPTION_ON_MANAGER_NG)
         && isHarnessSecretManager((SecretManagerConfig) encryptionConfig);
+  }
+
+  public Map<String, String> getTerragruntCliFlags(List<TerragruntCliOptionFlag> commandFlags) {
+    if (commandFlags == null) {
+      return new HashMap<>();
+    }
+
+    Map<String, String> commandsValueMap = new HashMap<>();
+    for (TerragruntCliOptionFlag commandFlag : commandFlags) {
+      commandsValueMap.put(commandFlag.getCommandType().name(), commandFlag.getFlag().getValue());
+    }
+
+    return commandsValueMap;
   }
 }

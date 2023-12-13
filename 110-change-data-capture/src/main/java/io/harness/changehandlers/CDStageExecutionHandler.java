@@ -7,8 +7,13 @@
 
 package io.harness.changehandlers;
 
+import static io.harness.changehandlers.constants.StageExecutionHandlerConstants.DEPLOYMENT_STAGE_STEP;
+
 import static java.util.Arrays.asList;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.execution.StageExecutionInfo.StageExecutionInfoKeys;
 import io.harness.changehandlers.helper.ChangeHandlerHelper;
 import io.harness.changestreamsframework.ChangeEvent;
@@ -23,6 +28,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_DASHBOARD})
 public class CDStageExecutionHandler extends AbstractChangeDataHandler {
   @Inject ChangeHandlerHelper changeHandlerHelper;
 
@@ -35,6 +41,12 @@ public class CDStageExecutionHandler extends AbstractChangeDataHandler {
     DBObject dbObject = changeEvent.getFullDocument();
 
     if (dbObject == null) {
+      return null;
+    }
+
+    // for custom stage, separate CustomStageExecutionHandler is being used
+    if (((dbObject.get(StageExecutionInfoKeys.stageType)) != null)
+        && !(DEPLOYMENT_STAGE_STEP.equals((dbObject.get(StageExecutionInfoKeys.stageType)).toString()))) {
       return null;
     }
 
@@ -84,6 +96,11 @@ public class CDStageExecutionHandler extends AbstractChangeDataHandler {
         log.info("Change Event Type not Handled: {}", changeType);
         return false;
     }
+  }
+
+  @Override
+  public boolean shouldUpdateOnConflict() {
+    return true;
   }
 
   @Override

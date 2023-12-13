@@ -28,6 +28,7 @@ import io.harness.beans.EnvironmentType;
 import io.harness.beans.EventPayload;
 import io.harness.beans.EventType;
 import io.harness.beans.ExecutionStatus;
+import io.harness.beans.FeatureName;
 import io.harness.beans.WorkflowType;
 import io.harness.beans.event.cg.CgPipelineCompletePayload;
 import io.harness.beans.event.cg.CgPipelinePausePayload;
@@ -88,7 +89,6 @@ import dev.morphia.FindAndModifyOptions;
 import dev.morphia.query.Query;
 import dev.morphia.query.Sort;
 import dev.morphia.query.UpdateOperations;
-import io.fabric8.utils.Lists;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -705,7 +705,7 @@ public class WorkflowExecutionUpdate implements StateMachineExecutionCallback {
   @VisibleForTesting
   public List<NameValuePair> resolveDeploymentTags(ExecutionContext context, String workflowId) {
     String accountId = appService.getAccountIdByAppId(appId);
-    List<HarnessTagLink> harnessTagLinks = harnessTagService.getTagLinksWithEntityId(accountId, workflowId);
+    List<HarnessTagLink> harnessTagLinks = harnessTagService.getTagLinksWithEntityId(accountId, workflowId, false);
     List<NameValuePair> resolvedTags = new ArrayList<>();
     if (isNotEmpty(harnessTagLinks)) {
       for (HarnessTagLink harnessTagLink : harnessTagLinks) {
@@ -752,19 +752,19 @@ public class WorkflowExecutionUpdate implements StateMachineExecutionCallback {
     final List<String> deployedCloudProviders =
         workflowExecutionService.getCloudProviderIdsForExecution(workflowExecution);
 
-    if (!Lists.isNullOrEmpty(deployedCloudProviders)) {
+    if (!isEmpty(deployedCloudProviders)) {
       update = true;
       setUnset(updateOps, WorkflowExecutionKeys.deployedCloudProviders, deployedCloudProviders);
     }
     final List<String> deployedServices = workflowExecutionService.getServiceIdsForExecution(workflowExecution);
-    if (!Lists.isNullOrEmpty(deployedServices)) {
+    if (!isEmpty(deployedServices)) {
       update = true;
       setUnset(updateOps, WorkflowExecutionKeys.deployedServices, deployedServices);
     }
     final List<EnvSummary> deployedEnvironments =
         workflowExecutionService.getEnvironmentsForExecution(workflowExecution);
 
-    if (!Lists.isNullOrEmpty(deployedEnvironments)) {
+    if (!isEmpty(deployedEnvironments)) {
       update = true;
       setUnset(updateOps, WorkflowExecutionKeys.deployedEnvironments, deployedEnvironments);
     }
@@ -814,7 +814,7 @@ public class WorkflowExecutionUpdate implements StateMachineExecutionCallback {
       EmbeddedUser triggeredBy = workflowExecution.getTriggeredBy();
       String userId = null;
       if (triggeredBy != null) {
-        userId = triggeredBy.getUuid();
+        userId = triggeredBy.getEmail() != null ? triggeredBy.getEmail() : triggeredBy.getUuid();
       }
 
       String deploymentEvent = getSegmentDeploymentEvent(workflowExecution);
@@ -866,12 +866,17 @@ public class WorkflowExecutionUpdate implements StateMachineExecutionCallback {
 
     // TODO: this is temporary. this should be part of its own callback and with more precise filter
     try {
-      log.info("Update Active Resource constraints");
+      log.debug("Update Active Resource constraints");
       final Set<String> constraintIds =
           resourceConstraintService.updateActiveConstraints(context.getAppId(), workflowExecutionId);
 
-      log.info("Update Blocked Resource constraints");
-      resourceConstraintService.updateBlockedConstraints(constraintIds);
+      log.debug("Update Blocked Resource constraints");
+      if (featureFlagService.isEnabled(
+              FeatureName.CDS_RESOURCE_CONSTRAINT_INSTANCE_OPTIMIZATION, context.getAccountId())) {
+        resourceConstraintService.updateBlockedConstraintsV2(constraintIds, false);
+      } else {
+        resourceConstraintService.updateBlockedConstraints(constraintIds);
+      }
 
     } catch (RuntimeException exception) {
       // Do not block the execution for possible exception in the barrier update

@@ -13,6 +13,7 @@ import static io.harness.rule.OwnerRule.ADITHYA;
 import static io.harness.rule.OwnerRule.ARCHIT;
 import static io.harness.rule.OwnerRule.INDER;
 import static io.harness.rule.OwnerRule.ROHITKARELIA;
+import static io.harness.rule.OwnerRule.SANDESH_SALUNKHE;
 import static io.harness.rule.OwnerRule.SHIVAM;
 import static io.harness.rule.OwnerRule.TATHAGAT;
 import static io.harness.rule.OwnerRule.UTKARSH_CHOUBEY;
@@ -20,6 +21,7 @@ import static io.harness.rule.OwnerRule.VIVEK_DIXIT;
 import static io.harness.template.resources.beans.PermissionTypes.TEMPLATE_VIEW_PERMISSION;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.joor.Reflect.on;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,13 +40,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.harness.EntityType;
+import io.harness.TemplateServiceConfiguration;
 import io.harness.TemplateServiceTestBase;
 import io.harness.accesscontrol.acl.api.Resource;
 import io.harness.accesscontrol.acl.api.ResourceScope;
 import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.account.AccountClient;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.beans.FeatureName;
 import io.harness.category.element.UnitTests;
 import io.harness.context.GlobalContext;
 import io.harness.encryption.Scope;
@@ -175,7 +177,7 @@ public class NGTemplateServiceImplTest extends TemplateServiceTestBase {
   @Mock GitXSettingsHelper gitXSettingsHelper;
   @Mock TemplateRbacHelper templateRbacHelper;
 
-  @InjectMocks NGTemplateServiceImpl templateService;
+  @Spy @InjectMocks NGTemplateServiceImpl templateService;
 
   @Mock private NGTemplateFeatureFlagHelperService ngTemplateFeatureFlagHelperService;
 
@@ -198,6 +200,7 @@ public class NGTemplateServiceImplTest extends TemplateServiceTestBase {
   @InjectMocks TemplateMergeServiceImpl templateMergeService;
   @Mock private GovernanceService governanceService;
   @Mock private PmsFeatureFlagService pmsFeatureFlagService;
+  @Mock TemplateServiceConfiguration templateServiceConfiguration;
 
   private final String ACCOUNT_ID = RandomStringUtils.randomAlphanumeric(6);
   private final String ORG_IDENTIFIER = "orgId";
@@ -278,14 +281,6 @@ public class NGTemplateServiceImplTest extends TemplateServiceTestBase {
     doReturn(ngManagerReconcileCall)
         .when(ngManagerReconcileClient)
         .validateYaml(anyString(), eq(null), eq(null), any(NgManagerRefreshRequestDTO.class));
-
-    doReturn(GovernanceMetadata.newBuilder()
-                 .setDeny(false)
-                 .setMessage(String.format(
-                     "FF: [%s] is disabled for account: [%s]", FeatureName.CDS_OPA_TEMPLATE_GOVERNANCE, ACCOUNT_ID))
-                 .build())
-        .when(governanceService)
-        .evaluateGovernancePoliciesForTemplate(any(), any(), any(), any(), any(), any());
 
     doReturn(Response.success(ResponseDTO.newResponse(InputsValidationResponse.builder().isValid(true).build())))
         .when(ngManagerReconcileCall)
@@ -1712,6 +1707,10 @@ public class NGTemplateServiceImplTest extends TemplateServiceTestBase {
     doReturn(templateEntity)
         .when(ngTemplateService)
         .moveTemplateEntity(any(), any(), any(), any(), any(), any(TemplateMoveConfigOperationDTO.class), any());
+    doReturn(Optional.of(templateEntity))
+        .when(templateServiceHelper)
+        .getTemplate(anyString(), anyString(), anyString(), anyString(), anyString(), anyBoolean(), anyBoolean(),
+            anyBoolean(), anyBoolean());
     TemplateMoveConfigRequestDTO moveConfigOperationDTO =
         TemplateMoveConfigRequestDTO.builder()
             .isNewBranch(false)
@@ -1940,18 +1939,6 @@ public class NGTemplateServiceImplTest extends TemplateServiceTestBase {
   }
 
   @Test
-  @Owner(developers = SHIVAM)
-  @Category(UnitTests.class)
-  public void testEvaluateGovernancePoliciesTemplateWithFlagOff() {
-    doReturn(false).when(pmsFeatureFlagService).isEnabled(ACCOUNT_ID, FeatureName.CDS_OPA_TEMPLATE_GOVERNANCE);
-    GovernanceMetadata flagOffMetadata =
-        templateService.validateGovernanceRules(TemplateEntity.builder().accountId("acc").build());
-    assertThat(flagOffMetadata.getDeny()).isFalse();
-    assertThat(flagOffMetadata.getMessage())
-        .isEqualTo("FF: [CDS_OPA_TEMPLATE_GOVERNANCE] is disabled for account: [acc]");
-  }
-
-  @Test
   @Owner(developers = ROHITKARELIA)
   @Category(UnitTests.class)
   public void testFailOnMoveConfigForNotSupportedTemplates() {
@@ -2059,14 +2046,14 @@ public class NGTemplateServiceImplTest extends TemplateServiceTestBase {
                                         .templateEntityType(TemplateEntityType.SECRET_MANAGER_TEMPLATE)
                                         .yaml(yaml)
                                         .build();
-    doThrow(new DuplicateKeyException("msg")).when(ngTemplateService).saveTemplate(any(), any());
+    doThrow(new DuplicateKeyException("msg")).when(ngTemplateService).saveTemplate(any(TemplateEntity.class), any());
 
     assertThatThrownBy(() -> ngTemplateService.create(templateEntity, true, "", false))
         .isInstanceOf(DuplicateFieldException.class)
         .hasMessage(
             "Template [template-movetogit1] of versionLabel [version1] under Project[projId], Organization [orgId] already exists");
 
-    doThrow(new ScmException(REVOKED_TOKEN)).when(ngTemplateService).saveTemplate(any(), any());
+    doThrow(new ScmException(REVOKED_TOKEN)).when(ngTemplateService).saveTemplate(any(TemplateEntity.class), any());
 
     assertThatThrownBy(() -> ngTemplateService.create(templateEntity, true, "", false))
         .isInstanceOf(ScmException.class);
@@ -2289,5 +2276,117 @@ public class NGTemplateServiceImplTest extends TemplateServiceTestBase {
     assertThatThrownBy(() -> templateService.updateTemplateEntity(updateTemplate, ChangeType.MODIFY, false, ""))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("Error while saving template [template1] of versionLabel [version1] : [null]");
+  }
+
+  @Test
+  @Owner(developers = SHIVAM)
+  @Category(UnitTests.class)
+  public void testEvaluateGovernancePoliciesTemplateWithFlagOff() {
+    doReturn(false).when(templateServiceConfiguration).isEnableOpaEvaluation();
+    GovernanceMetadata flagOffMetadata =
+        templateService.validateGovernanceRules(TemplateEntity.builder().accountId("acc").build());
+    assertThat(flagOffMetadata.getDeny()).isFalse();
+    assertThat(flagOffMetadata.getMessage())
+        .isEqualTo("Template OPA is disabled. Configure \"enableOpaRule: true\" in config.yaml file");
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetAndValidateOldTemplateEntityInvalidStageChange() {
+    TemplateEntity newTemplateEntity = mock(TemplateEntity.class);
+    TemplateEntity oldTemplateEntity = mock(TemplateEntity.class);
+
+    doReturn(ACCOUNT_ID).when(newTemplateEntity).getAccountIdentifier();
+    doReturn(ACCOUNT_ID).when(newTemplateEntity).getAccountId();
+    doReturn("Custom").when(newTemplateEntity).getChildType();
+    doReturn(TemplateEntityType.STAGE_TEMPLATE).when(newTemplateEntity).getTemplateEntityType();
+    doReturn(TEMPLATE_IDENTIFIER).when(newTemplateEntity).getIdentifier();
+    doReturn(TEMPLATE_VERSION_LABEL).when(newTemplateEntity).getVersionLabel();
+    doReturn(ORG_IDENTIFIER).when(newTemplateEntity).getOrgIdentifier();
+    doReturn(PROJ_IDENTIFIER).when(newTemplateEntity).getProjectIdentifier();
+
+    doReturn(ACCOUNT_ID).when(oldTemplateEntity).getAccountIdentifier();
+    doReturn(ACCOUNT_ID).when(oldTemplateEntity).getAccountId();
+    doReturn("CI").when(oldTemplateEntity).getChildType();
+    doReturn(TemplateEntityType.STAGE_TEMPLATE).when(oldTemplateEntity).getTemplateEntityType();
+    doReturn(TEMPLATE_IDENTIFIER).when(oldTemplateEntity).getIdentifier();
+    doReturn(TEMPLATE_VERSION_LABEL).when(oldTemplateEntity).getVersionLabel();
+    doReturn(ORG_IDENTIFIER).when(oldTemplateEntity).getOrgIdentifier();
+    doReturn(PROJ_IDENTIFIER).when(oldTemplateEntity).getProjectIdentifier();
+
+    String invalidArgumentsExceptionErrorMessage = String.format(
+        "Template with identifier [%s] and versionLabel [%s] under Project[%s], Organization [%s] cannot update the internal template type, current type is [CI] and the requested type is [Custom].",
+        TEMPLATE_IDENTIFIER, TEMPLATE_VERSION_LABEL, PROJ_IDENTIFIER, ORG_IDENTIFIER);
+    Optional<TemplateEntity> optionalTemplateEntity = Optional.of(oldTemplateEntity);
+    doReturn(optionalTemplateEntity)
+        .when(templateServiceHelper)
+        .getTemplateWithVersionLabel(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, TEMPLATE_IDENTIFIER,
+            TEMPLATE_VERSION_LABEL, false, false, false, false);
+    try {
+      templateService.getAndValidateOldTemplateEntity(newTemplateEntity, ORG_IDENTIFIER, PROJ_IDENTIFIER);
+    } catch (InvalidRequestException invalidRequestException) {
+      assertThat(invalidRequestException.getMessage()).isEqualTo(invalidArgumentsExceptionErrorMessage);
+    }
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testGetAndValidateOldTemplateEntityValidStageChange() {
+    TemplateEntity newTemplateEntity = mock(TemplateEntity.class);
+    TemplateEntity oldTemplateEntity = mock(TemplateEntity.class);
+
+    doReturn(ACCOUNT_ID).when(newTemplateEntity).getAccountIdentifier();
+    doReturn(ACCOUNT_ID).when(newTemplateEntity).getAccountId();
+    doReturn("Custom").when(newTemplateEntity).getChildType();
+    doReturn(TemplateEntityType.STAGE_TEMPLATE).when(newTemplateEntity).getTemplateEntityType();
+    doReturn(TEMPLATE_IDENTIFIER).when(newTemplateEntity).getIdentifier();
+    doReturn(TEMPLATE_VERSION_LABEL).when(newTemplateEntity).getVersionLabel();
+    doReturn(ORG_IDENTIFIER).when(newTemplateEntity).getOrgIdentifier();
+    doReturn(PROJ_IDENTIFIER).when(newTemplateEntity).getProjectIdentifier();
+
+    doReturn(ACCOUNT_ID).when(oldTemplateEntity).getAccountIdentifier();
+    doReturn(ACCOUNT_ID).when(oldTemplateEntity).getAccountId();
+    doReturn("Custom").when(oldTemplateEntity).getChildType();
+    doReturn(TemplateEntityType.STAGE_TEMPLATE).when(oldTemplateEntity).getTemplateEntityType();
+    doReturn(TEMPLATE_IDENTIFIER).when(oldTemplateEntity).getIdentifier();
+    doReturn(TEMPLATE_VERSION_LABEL).when(oldTemplateEntity).getVersionLabel();
+    doReturn(ORG_IDENTIFIER).when(oldTemplateEntity).getOrgIdentifier();
+    doReturn(PROJ_IDENTIFIER).when(oldTemplateEntity).getProjectIdentifier();
+
+    Optional<TemplateEntity> optionalTemplateEntity = Optional.of(oldTemplateEntity);
+    doReturn(optionalTemplateEntity)
+        .when(templateServiceHelper)
+        .getTemplateWithVersionLabel(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, TEMPLATE_IDENTIFIER,
+            TEMPLATE_VERSION_LABEL, false, false, false, false);
+
+    TemplateEntity result =
+        templateService.getAndValidateOldTemplateEntity(newTemplateEntity, ORG_IDENTIFIER, PROJ_IDENTIFIER);
+    assertThat(result).isEqualTo(oldTemplateEntity);
+  }
+
+  @Test
+  @Owner(developers = VIVEK_DIXIT)
+  @Category(UnitTests.class)
+  public void testStoreTypeCheckWithNullStoreType() {
+    TemplateMoveConfigRequestDTO requestDTO =
+        TemplateMoveConfigRequestDTO.builder()
+            .isNewBranch(false)
+            .moveConfigOperationType(TemplateMoveConfigOperationType.INLINE_TO_REMOTE)
+            .versionLabel(TEMPLATE_VERSION_LABEL)
+            .build();
+    // entity with null storeType.
+    doReturn(Optional.of(entity))
+        .when(templateService)
+        .get(anyString(), anyString(), anyString(), anyString(), anyString(), anyBoolean(), anyBoolean());
+
+    doReturn(entity)
+        .when(templateService)
+        .moveTemplateEntity(anyString(), anyString(), anyString(), anyString(), anyString(), any(), any());
+    assertThatCode(()
+                       -> templateService.moveTemplateStoreTypeConfig(
+                           ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, TEMPLATE_IDENTIFIER, requestDTO))
+        .doesNotThrowAnyException();
   }
 }

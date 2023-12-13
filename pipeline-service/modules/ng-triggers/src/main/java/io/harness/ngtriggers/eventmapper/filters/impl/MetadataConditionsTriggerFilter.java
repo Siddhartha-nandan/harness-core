@@ -5,6 +5,7 @@
  * https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt.
  */
 package io.harness.ngtriggers.eventmapper.filters.impl;
+
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.ngtriggers.beans.response.TriggerEventResponse.FinalStatus.NO_MATCHING_TRIGGER_FOR_METADATA_CONDITIONS;
@@ -18,6 +19,7 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.expression.common.ExpressionMode;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
 import io.harness.ngtriggers.beans.dto.TriggerDetails;
+import io.harness.ngtriggers.beans.dto.eventmapping.TriggerEligibilityInfo;
 import io.harness.ngtriggers.beans.dto.eventmapping.UnMatchedTriggerInfo;
 import io.harness.ngtriggers.beans.dto.eventmapping.WebhookEventMappingResponse;
 import io.harness.ngtriggers.beans.dto.eventmapping.WebhookEventMappingResponse.WebhookEventMappingResponseBuilder;
@@ -65,21 +67,23 @@ public class MetadataConditionsTriggerFilter implements TriggerFilter {
       try {
         NGTriggerConfigV2 ngTriggerConfig = trigger.getNgTriggerConfigV2();
         if (ngTriggerConfig == null) {
-          ngTriggerConfig = ngTriggerElementMapper.toTriggerConfigV2(trigger.getNgTriggerEntity().getYaml());
+          ngTriggerConfig = ngTriggerElementMapper.toTriggerConfigV2WithoutYmlVersion(trigger.getNgTriggerEntity());
         }
 
         TriggerDetails triggerDetails = TriggerDetails.builder()
                                             .ngTriggerConfigV2(ngTriggerConfig)
                                             .ngTriggerEntity(trigger.getNgTriggerEntity())
                                             .build();
-        if (checkTriggerEligibility(filterRequestData, triggerDetails)) {
+        TriggerEligibilityInfo triggerEligibilityInfo = checkTriggerEligibility(filterRequestData, triggerDetails);
+        if (triggerEligibilityInfo.isResult()) {
           matchedTriggers.add(triggerDetails);
         } else {
           UnMatchedTriggerInfo unMatchedTriggerInfo =
               UnMatchedTriggerInfo.builder()
                   .unMatchedTriggers(trigger)
                   .finalStatus(TriggerEventResponse.FinalStatus.TRIGGER_DID_NOT_MATCH_METADATA_CONDITION)
-                  .message(trigger.getNgTriggerEntity().getIdentifier() + " didn't match conditions for metadata")
+                  .message(trigger.getNgTriggerEntity().getIdentifier() + " didn't match conditions for metadata. "
+                      + triggerEligibilityInfo.getMessage())
                   .build();
           unMatchedTriggersInfoList.add(unMatchedTriggerInfo);
         }
@@ -102,14 +106,16 @@ public class MetadataConditionsTriggerFilter implements TriggerFilter {
     return mappingResponseBuilder.build();
   }
 
-  private boolean checkTriggerEligibility(FilterRequestData filterRequestData, TriggerDetails triggerDetails) {
+  private TriggerEligibilityInfo checkTriggerEligibility(
+      FilterRequestData filterRequestData, TriggerDetails triggerDetails) {
+    String message = null;
     List<TriggerEventDataCondition> triggerMetadataConditions = null;
 
     NGTriggerConfigV2 ngTriggerConfigV2 = triggerDetails.getNgTriggerConfigV2();
     NGTriggerSourceV2 source = ngTriggerConfigV2.getSource();
     NGTriggerSpecV2 spec = source.getSpec();
     if (ManifestTriggerConfig.class.isAssignableFrom(spec.getClass())) {
-      return true;
+      return TriggerEligibilityInfo.builder().result(true).build();
     } else if (ArtifactTriggerConfig.class.isAssignableFrom(spec.getClass())) {
       ArtifactTriggerConfig artifactTriggerConfig = (ArtifactTriggerConfig) spec;
       triggerMetadataConditions = artifactTriggerConfig.getSpec().fetchMetaDataConditions();
@@ -119,7 +125,7 @@ public class MetadataConditionsTriggerFilter implements TriggerFilter {
     }
 
     if (isEmpty(triggerMetadataConditions)) {
-      return true;
+      return TriggerEligibilityInfo.builder().result(true).build();
     }
 
     Map<String, String> metadata = new HashMap<>();
@@ -144,9 +150,11 @@ public class MetadataConditionsTriggerFilter implements TriggerFilter {
       input = expressionEvaluator.renderExpression(input, ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED);
       allConditionsMatched = ConditionEvaluator.evaluate(input, standard, operator);
       if (!allConditionsMatched) {
+        message = String.format("%s didn't match %s on applying %s operator", input, condition.getValue(),
+            condition.getOperator().getValue());
         break;
       }
     }
-    return allConditionsMatched;
+    return TriggerEligibilityInfo.builder().result(allConditionsMatched).message(message).build();
   }
 }

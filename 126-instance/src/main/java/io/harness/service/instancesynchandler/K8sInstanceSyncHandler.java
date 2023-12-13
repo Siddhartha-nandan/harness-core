@@ -26,6 +26,8 @@ import io.harness.cdng.infra.beans.K8sGcpInfrastructureOutcome;
 import io.harness.cdng.infra.beans.K8sRancherInfrastructureOutcome;
 import io.harness.delegate.AccountId;
 import io.harness.delegate.TaskType;
+import io.harness.delegate.beans.instancesync.DeploymentOutcomeMetadata;
+import io.harness.delegate.beans.instancesync.K8sDeploymentOutcomeMetadata;
 import io.harness.delegate.beans.instancesync.ServerInstanceInfo;
 import io.harness.delegate.beans.instancesync.info.K8sServerInstanceInfo;
 import io.harness.dtos.deploymentinfo.DeploymentInfoDTO;
@@ -116,7 +118,9 @@ public class K8sInstanceSyncHandler extends AbstractInstanceSyncHandler {
             deploymentInfoDTO != null ? deploymentInfoDTO.getClass().getSimpleName() : null);
       } else {
         k8sDeploymentReleaseDetailsList.add(
-            K8sAndHelmInfrastructureUtility.getK8sDeploymentReleaseDetails(deploymentInfoDTO));
+            K8sAndHelmInfrastructureUtility.getK8sDeploymentReleaseDetails(deploymentInfoDTO,
+                cdFeatureFlagHelper.isEnabled(
+                    instanceSyncPerpetualTaskInfoDTO.getAccountIdentifier(), FeatureName.CDS_EKS_ADD_REGIONAL_PARAM)));
       }
     }
     return DeploymentReleaseDetails.builder()
@@ -141,6 +145,8 @@ public class K8sInstanceSyncHandler extends AbstractInstanceSyncHandler {
         .podIP(k8sServerInstanceInfo.getPodIP())
         .blueGreenColor(k8sServerInstanceInfo.getBlueGreenColor())
         .containerList(k8sServerInstanceInfo.getContainerList())
+        .helmChartInfo(k8sServerInstanceInfo.getHelmChartInfo())
+        .canary(k8sServerInstanceInfo.isCanary())
         .build();
   }
 
@@ -172,6 +178,7 @@ public class K8sInstanceSyncHandler extends AbstractInstanceSyncHandler {
         .namespaces(namespaces)
         .releaseName(k8sServerInstanceInfo.getReleaseName())
         .blueGreenStageColor(k8sServerInstanceInfo.getBlueGreenColor())
+        .helmChartInfo(k8sServerInstanceInfo.getHelmChartInfo())
         .cloudConfigMetadata(k8sCloudConfigMetadata)
         .build();
   }
@@ -190,6 +197,23 @@ public class K8sInstanceSyncHandler extends AbstractInstanceSyncHandler {
             .build();
     return K8sAndHelmInfrastructureUtility.getInfrastructureOutcome(
         infrastructureKind, kubernetesInfrastructureDTO, connectorRef);
+  }
+
+  @Override
+  public DeploymentInfoDTO updateDeploymentInfoDTO(
+      DeploymentInfoDTO deploymentInfoDTO, DeploymentOutcomeMetadata deploymentOutcomeMetadata) {
+    if (!(deploymentInfoDTO instanceof K8sDeploymentInfoDTO)) {
+      return super.updateDeploymentInfoDTO(deploymentInfoDTO, deploymentOutcomeMetadata);
+    }
+
+    if (!(deploymentOutcomeMetadata instanceof K8sDeploymentOutcomeMetadata)) {
+      return super.updateDeploymentInfoDTO(deploymentInfoDTO, deploymentOutcomeMetadata);
+    }
+
+    K8sDeploymentInfoDTO k8sDeploymentInfoDTO = (K8sDeploymentInfoDTO) deploymentInfoDTO;
+    K8sDeploymentOutcomeMetadata k8sDeploymentMetadata = (K8sDeploymentOutcomeMetadata) deploymentOutcomeMetadata;
+    k8sDeploymentInfoDTO.setCanary(k8sDeploymentMetadata.isCanary());
+    return k8sDeploymentInfoDTO;
   }
 
   private LinkedHashSet<String> getNamespaces(@NotNull List<ServerInstanceInfo> serverInstanceInfoList) {

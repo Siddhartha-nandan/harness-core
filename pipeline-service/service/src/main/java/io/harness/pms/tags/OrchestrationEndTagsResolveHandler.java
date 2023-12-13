@@ -16,10 +16,11 @@ import io.harness.engine.pms.data.PmsEngineExpressionService;
 import io.harness.ng.core.common.beans.NGTag;
 import io.harness.observer.AsyncInformObserver;
 import io.harness.pms.contracts.ambiance.Ambiance;
+import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity;
 import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity.PlanExecutionSummaryKeys;
 import io.harness.pms.plan.execution.service.PmsExecutionSummaryService;
-import io.harness.pms.yaml.PipelineVersion;
+import io.harness.pms.yaml.HarnessYamlVersion;
 
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
@@ -40,12 +41,12 @@ public class OrchestrationEndTagsResolveHandler implements OrchestrationEndObser
   @Inject PmsEngineExpressionService pmsEngineExpressionService;
 
   @Override
-  public void onEnd(Ambiance ambiance) {
+  public void onEnd(Ambiance ambiance, Status endStatus) {
     PipelineExecutionSummaryEntity pipelineExecutionSummaryEntity =
         pmsExecutionSummaryService.getPipelineExecutionSummaryWithProjections(ambiance.getPlanExecutionId(),
             Sets.newHashSet(PlanExecutionSummaryKeys.tags, PlanExecutionSummaryKeys.pipelineVersion));
     if (pipelineExecutionSummaryEntity != null
-        && !PipelineVersion.isV1(pipelineExecutionSummaryEntity.getPipelineVersion())) {
+        && !HarnessYamlVersion.isV1(pipelineExecutionSummaryEntity.getPipelineVersion())) {
       List<NGTag> resolvedTags =
           (List<NGTag>) pmsEngineExpressionService.resolve(ambiance, pipelineExecutionSummaryEntity.getTags(), true);
       Update update = new Update().set(PlanExecutionSummaryKeys.tags, resolvedTags);
