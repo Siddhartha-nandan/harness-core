@@ -1,6 +1,6 @@
 # batch-processing
 
-![Version: 0.13.2](https://img.shields.io/badge/Version-0.13.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.0.81103](https://img.shields.io/badge/AppVersion-0.0.81103-informational?style=flat-square)
+![Version: 0.13.3](https://img.shields.io/badge/Version-0.13.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.0.81103](https://img.shields.io/badge/AppVersion-0.0.81103-informational?style=flat-square)
 
 A Helm chart for Kubernetes
 
@@ -82,7 +82,8 @@ A Helm chart for Kubernetes
 | extraVolumeMounts | list | `[]` |  |
 | extraVolumes | list | `[]` |  |
 | fullnameOverride | string | `""` |  |
-| gcpSyncPythonImagePath | string | `"placeholder"` |  |
+| gcpConfig.GCP_SMP_ENABLED | bool | `false` |  |
+| gcpConfig.bucketNamePrefix | string | `"harness-ccm-%s-%s"` |  |
 | global.awsServiceEndpointUrls.cloudwatchEndPointUrl | string | `"https://monitoring.us-east-2.amazonaws.com"` |  |
 | global.awsServiceEndpointUrls.ecsEndPointUrl | string | `"https://ecs.us-east-2.amazonaws.com"` |  |
 | global.awsServiceEndpointUrls.enabled | bool | `false` |  |
@@ -185,13 +186,19 @@ A Helm chart for Kubernetes
 | imageAzureDataPipeline.pullPolicy | string | `"Always"` |  |
 | imageAzureDataPipeline.registry | string | `"docker.io"` |  |
 | imageAzureDataPipeline.repository | string | `"harness/ccm-azure-smp-signed"` |  |
-| imageAzureDataPipeline.tag | string | `"10010"` |  |
+| imageAzureDataPipeline.tag | string | `"10058"` |  |
 | imageClickhouseEnabled.digest | string | `""` |  |
 | imageClickhouseEnabled.imagePullSecrets | list | `[]` |  |
 | imageClickhouseEnabled.pullPolicy | string | `"Always"` |  |
 | imageClickhouseEnabled.registry | string | `"docker.io"` |  |
 | imageClickhouseEnabled.repository | string | `"harness/batch-processing-signed"` |  |
 | imageClickhouseEnabled.tag | string | `"81103-000"` |  |
+| imageGCPDataPipeline.digest | string | `""` |  |
+| imageGCPDataPipeline.imagePullSecrets | list | `[]` |  |
+| imageGCPDataPipeline.pullPolicy | string | `"Always"` |  |
+| imageGCPDataPipeline.registry | string | `"docker.io"` |  |
+| imageGCPDataPipeline.repository | string | `"harness/ccm-gcp-smp-signed"` |  |
+| imageGCPDataPipeline.tag | string | `"10057"` |  |
 | isolatedReplica | int | `0` |  |
 | java.memory | string | `"7168"` |  |
 | java17flags | string | `""` |  |
@@ -254,8 +261,8 @@ A Helm chart for Kubernetes
 | service.port | int | `6340` |  |
 | service.type | string | `"ClusterIP"` |  |
 | serviceAccount.annotations | object | `{}` |  |
-| serviceAccount.create | bool | `true` |  |
-| serviceAccount.name | string | `"batch-processing-default"` |  |
+| serviceAccount.create | bool | `false` |  |
+| serviceAccount.name | string | `"harness-default"` |  |
 | smtp.host | string | `""` |  |
 | smtp.password | string | `""` |  |
 | smtp.user | string | `""` |  |
