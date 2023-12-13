@@ -1226,20 +1226,10 @@ public class InfrastructureEntityServiceImpl implements InfrastructureEntityServ
       return;
     }
     throw new InvalidRequestException(
-        String.format("Infrastructure: [%s] inside %s level Environment: [%s] can't scoped"
+        String.format("Infrastructure: [%s] inside %s level Environment: [%s] can't be scoped"
                 + " to %s level Service: [%s]",
-            infraRef, fetchEntityLevel(envRef), envRef, fetchEntityLevel(serviceRef), serviceRef));
-  }
-
-  private String fetchEntityLevel(String identifierRef) {
-    if (StringUtils.isBlank(identifierRef)) {
-      return "";
-    } else if (identifierRef.startsWith("account.")) {
-      return "account";
-    } else if (identifierRef.startsWith("org.")) {
-      return "org";
-    }
-    return "project";
+            infraRef, IdentifierRefHelper.getScopeFromScopedRef(envRef), envRef,
+            IdentifierRefHelper.getScopeFromScopedRef(serviceRef), serviceRef));
   }
 
   @Override
@@ -1274,9 +1264,10 @@ public class InfrastructureEntityServiceImpl implements InfrastructureEntityServ
 
       if (!CollectionUtils.isEmpty(unScopedServices)) {
         throw new InvalidRequestException(
-            String.format("Infrastructure: [%s] inside %s level Environment: [%s] can't scoped"
+            String.format("Infrastructure: [%s] inside %s level Environment: [%s] can't be scoped"
                     + " to Service: [%s]",
-                infrastructureEntity.getIdentifier(), fetchEntityLevel(envRef), envRef, unScopedServices));
+                infrastructureEntity.getIdentifier(), IdentifierRefHelper.getScopeFromScopedRef(envRef), envRef,
+                unScopedServices));
       }
     }
   }
