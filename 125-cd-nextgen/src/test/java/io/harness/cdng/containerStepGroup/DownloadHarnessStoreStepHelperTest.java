@@ -21,6 +21,7 @@ import io.harness.callback.DelegateCallbackToken;
 import io.harness.category.element.UnitTests;
 import io.harness.cdng.common.beans.SetupAbstractionKeys;
 import io.harness.cdng.plugininfoproviders.PluginExecutionConfig;
+import io.harness.exception.InvalidRequestException;
 import io.harness.filestore.dto.node.FileNodeDTO;
 import io.harness.filestore.dto.node.FileStoreNodeDTO;
 import io.harness.filestore.dto.node.FolderNodeDTO;
@@ -113,6 +114,46 @@ public class DownloadHarnessStoreStepHelperTest extends CategoryTest {
     Map<String, String> environmentVariables = downloadHarnessStoreStepHelper.getEnvironmentVariables(
         ambiance, downloadHarnessStoreStepParameters, "stepIdentifier");
     assertThat(environmentVariables.size()).isEqualTo(3);
+  }
+
+  @Test(expected = InvalidRequestException.class)
+  @Owner(developers = PIYUSH_BHUWALKA)
+  @Category(UnitTests.class)
+  public void throwExceptionWhenDownloadPathAndIdentifierBothAbsent() {
+    DownloadHarnessStoreStepParameters downloadHarnessStoreStepParameters =
+        DownloadHarnessStoreStepParameters.infoBuilder()
+            .files(ParameterField.createValueField(Arrays.asList("org:/path/to/tas/manifests")))
+            .outputFilePathsContent(ParameterField.createValueField(Arrays.asList("abc")))
+            .build();
+    doReturn(Optional.of(getFileStoreNode("path/to/tas/manifests/manifest.yaml", "manifest.yaml", MANIFEST_YML)))
+        .doReturn(Optional.of(getFileStoreNode("path/to/tas/manifests/vars.yaml", "vars.yaml", VARS_YML_1)))
+        .doReturn(Optional.of(getFolderStoreNode("/path/to/tas/manifests", "manifests")))
+        .when(fileStoreService)
+        .getWithChildrenByPath(any(), any(), any(), any(), eq(true));
+    doReturn("abc").when(containerStepGroupHelper).convertToJson(any());
+
+    Map<String, String> environmentVariables =
+        downloadHarnessStoreStepHelper.getEnvironmentVariables(ambiance, downloadHarnessStoreStepParameters, null);
+  }
+
+  @Test(expected = InvalidRequestException.class)
+  @Owner(developers = PIYUSH_BHUWALKA)
+  @Category(UnitTests.class)
+  public void throwExceptionWhenDownloadPathAndIdentifierBothAbsentAndEmpty() {
+    DownloadHarnessStoreStepParameters downloadHarnessStoreStepParameters =
+        DownloadHarnessStoreStepParameters.infoBuilder()
+            .files(ParameterField.createValueField(Arrays.asList("org:/path/to/tas/manifests")))
+            .outputFilePathsContent(ParameterField.createValueField(Arrays.asList("abc")))
+            .build();
+    doReturn(Optional.of(getFileStoreNode("path/to/tas/manifests/manifest.yaml", "manifest.yaml", MANIFEST_YML)))
+        .doReturn(Optional.of(getFileStoreNode("path/to/tas/manifests/vars.yaml", "vars.yaml", VARS_YML_1)))
+        .doReturn(Optional.of(getFolderStoreNode("/path/to/tas/manifests", "manifests")))
+        .when(fileStoreService)
+        .getWithChildrenByPath(any(), any(), any(), any(), eq(true));
+    doReturn("abc").when(containerStepGroupHelper).convertToJson(any());
+
+    Map<String, String> environmentVariables =
+        downloadHarnessStoreStepHelper.getEnvironmentVariables(ambiance, downloadHarnessStoreStepParameters, "");
   }
 
   @SneakyThrows

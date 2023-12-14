@@ -30,6 +30,10 @@ import io.harness.cdng.containerStepGroup.DownloadAwsS3StepNode;
 import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.manifest.steps.outcome.ManifestsOutcome;
 import io.harness.cdng.manifest.yaml.AwsSamDirectoryManifestOutcome;
+import io.harness.cdng.manifest.yaml.BitbucketStore;
+import io.harness.cdng.manifest.yaml.GitLabStore;
+import io.harness.cdng.manifest.yaml.GitStore;
+import io.harness.cdng.manifest.yaml.GithubStore;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
 import io.harness.cdng.manifest.yaml.S3StoreConfig;
 import io.harness.cdng.manifest.yaml.ValuesManifestOutcome;
@@ -138,8 +142,9 @@ public class AwsSamDownloadManifestsStepHelperTest extends CategoryTest {
     ManifestOutcome valuesManifestOutcome = mock(ManifestOutcome.class);
     doReturn(Arrays.asList(valuesManifestOutcome)).when(manifestsOutcome).values();
 
-    AwsSamDirectoryManifestOutcome awsSamDirectoryManifestOutcome = AwsSamDirectoryManifestOutcome.builder().build();
+    AwsSamDirectoryManifestOutcome awsSamDirectoryManifestOutcome = mock(AwsSamDirectoryManifestOutcome.class);
     doReturn(awsSamDirectoryManifestOutcome).when(awsSamStepHelper).getAwsSamDirectoryManifestOutcome(any());
+    doReturn(GithubStore.builder().build()).when(awsSamDirectoryManifestOutcome).getStore();
 
     GitCloneStepInfo gitCloneStepInfo = mock(GitCloneStepInfo.class);
     doReturn(gitCloneStepInfo).when(downloadManifestsCommonHelper).getGitCloneStepInfoFromManifestOutcome(any());
@@ -147,8 +152,9 @@ public class AwsSamDownloadManifestsStepHelperTest extends CategoryTest {
     GitCloneStepNode gitCloneStepNode = mock(GitCloneStepNode.class);
     doReturn(gitCloneStepNode).when(downloadManifestsCommonHelper).getGitCloneStepNode(any(), any(), any());
 
-    ValuesManifestOutcome valuesManifestOutcome1 = ValuesManifestOutcome.builder().build();
+    ValuesManifestOutcome valuesManifestOutcome1 = mock(ValuesManifestOutcome.class);
     doReturn(valuesManifestOutcome1).when(awsSamStepHelper).getAwsSamValuesManifestOutcome(any());
+    doReturn(GitLabStore.builder().build()).when(valuesManifestOutcome1).getStore();
 
     PluginCreationResponseWrapper pluginCreationResponseWrapper = mock(PluginCreationResponseWrapper.class);
     doReturn(pluginCreationResponseWrapper).when(gitClonePluginInfoProvider).getPluginInfo(any(), any(), any());
@@ -218,7 +224,8 @@ public class AwsSamDownloadManifestsStepHelperTest extends CategoryTest {
     ManifestsOutcome manifestsOutcome = mock(ManifestsOutcome.class);
     doReturn(manifestsOutcome).when(downloadManifestsCommonHelper).fetchManifestsOutcome(ambiance);
 
-    AwsSamDirectoryManifestOutcome awsSamDirectoryManifestOutcome = AwsSamDirectoryManifestOutcome.builder().build();
+    AwsSamDirectoryManifestOutcome awsSamDirectoryManifestOutcome =
+        AwsSamDirectoryManifestOutcome.builder().store(GitStore.builder().build()).build();
     doReturn(awsSamDirectoryManifestOutcome).when(awsSamStepHelper).getAwsSamDirectoryManifestOutcome(any());
 
     GitCloneStepInfo gitCloneStepInfo = mock(GitCloneStepInfo.class);
@@ -231,8 +238,6 @@ public class AwsSamDownloadManifestsStepHelperTest extends CategoryTest {
 
     doReturn(ambiance).when(downloadManifestsCommonHelper).buildAmbiance(any(), any());
 
-    GitCloneStep gitCloneStep = mock(GitCloneStep.class);
-
     AsyncExecutableResponse asyncExecutableResponse =
         AsyncExecutableResponse.newBuilder().addCallbackIds("1").addLogKeys("1").setStatus(Status.RUNNING).build();
     doReturn(asyncExecutableResponse).when(gitCloneStep).executeAsyncAfterRbac(any(), any(), any());
@@ -240,11 +245,12 @@ public class AwsSamDownloadManifestsStepHelperTest extends CategoryTest {
     ManifestOutcome valuesManifestOutcome = mock(ManifestOutcome.class);
     doReturn(Arrays.asList(valuesManifestOutcome)).when(manifestsOutcome).values();
 
-    ValuesManifestOutcome valuesManifestOutcome1 = ValuesManifestOutcome.builder().build();
+    ValuesManifestOutcome valuesManifestOutcome1 =
+        ValuesManifestOutcome.builder().store(BitbucketStore.builder().build()).build();
     doReturn(valuesManifestOutcome1).when(awsSamStepHelper).getAwsSamValuesManifestOutcome(any());
 
-    AsyncExecutableResponse asyncExecutableResponse1 = awsSamDownloadManifestsStepHelper.executeAsyncAfterRbac(
-        ambiance, StepInputPackage.builder().build(), gitCloneStep);
+    AsyncExecutableResponse asyncExecutableResponse1 =
+        awsSamDownloadManifestsStepHelper.executeAsyncAfterRbac(ambiance, StepInputPackage.builder().build());
 
     assertThat(asyncExecutableResponse1.getCallbackIdsList().size()).isEqualTo(2);
     assertThat(asyncExecutableResponse1.getLogKeysList().size()).isEqualTo(2);
@@ -366,8 +372,8 @@ public class AwsSamDownloadManifestsStepHelperTest extends CategoryTest {
 
     doReturn("path").when(awsSamStepHelper).getValuesPathFromValuesManifestOutcome(any());
 
-    AsyncExecutableResponse asyncExecutableResponse1 = awsSamDownloadManifestsStepHelper.executeAsyncAfterRbac(
-        ambiance, StepInputPackage.builder().build(), gitCloneStep);
+    AsyncExecutableResponse asyncExecutableResponse1 =
+        awsSamDownloadManifestsStepHelper.executeAsyncAfterRbac(ambiance, StepInputPackage.builder().build());
     assertThat(asyncExecutableResponse1.getCallbackIdsList().size()).isEqualTo(2);
     assertThat(asyncExecutableResponse1.getLogKeysList().size()).isEqualTo(2);
     assertThat(asyncExecutableResponse1.getStatus()).isEqualTo(Status.SUCCEEDED);
@@ -424,8 +430,8 @@ public class AwsSamDownloadManifestsStepHelperTest extends CategoryTest {
 
     doReturn("path").when(awsSamStepHelper).getValuesPathFromValuesManifestOutcome(any());
 
-    AsyncExecutableResponse asyncExecutableResponse1 = awsSamDownloadManifestsStepHelper.executeAsyncAfterRbac(
-        ambiance, StepInputPackage.builder().build(), gitCloneStep);
+    AsyncExecutableResponse asyncExecutableResponse1 =
+        awsSamDownloadManifestsStepHelper.executeAsyncAfterRbac(ambiance, StepInputPackage.builder().build());
     assertThat(asyncExecutableResponse1.getCallbackIdsList().size()).isEqualTo(1);
     assertThat(asyncExecutableResponse1.getLogKeysList().size()).isEqualTo(1);
     assertThat(asyncExecutableResponse1.getStatus()).isEqualTo(Status.SUCCEEDED);

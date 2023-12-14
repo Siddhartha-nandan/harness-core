@@ -293,8 +293,8 @@ public class ServerlessDownloadManifestV2StepHelperTest extends CategoryTest {
         .when(serverlessV2PluginInfoProviderHelper)
         .getServerlessAwsLambdaValuesManifestOutcome(any());
 
-    AsyncExecutableResponse asyncExecutableResponse1 = serverlessDownloadManifestsV2StepHelper.executeAsyncAfterRbac(
-        ambiance, StepInputPackage.builder().build(), gitCloneStep);
+    AsyncExecutableResponse asyncExecutableResponse1 =
+        serverlessDownloadManifestsV2StepHelper.executeAsyncAfterRbac(ambiance, StepInputPackage.builder().build());
     assertThat(asyncExecutableResponse1.getCallbackIdsList().size()).isEqualTo(2);
     assertThat(asyncExecutableResponse1.getLogKeysList().size()).isEqualTo(2);
     assertThat(asyncExecutableResponse1.getStatus()).isEqualTo(Status.SUCCEEDED);
@@ -346,8 +346,8 @@ public class ServerlessDownloadManifestV2StepHelperTest extends CategoryTest {
     ValuesManifestOutcome valuesManifestOutcome = mock(ValuesManifestOutcome.class);
     doReturn(null).when(serverlessV2PluginInfoProviderHelper).getServerlessAwsLambdaValuesManifestOutcome(any());
 
-    AsyncExecutableResponse asyncExecutableResponse1 = serverlessDownloadManifestsV2StepHelper.executeAsyncAfterRbac(
-        ambiance, StepInputPackage.builder().build(), gitCloneStep);
+    AsyncExecutableResponse asyncExecutableResponse1 =
+        serverlessDownloadManifestsV2StepHelper.executeAsyncAfterRbac(ambiance, StepInputPackage.builder().build());
     assertThat(asyncExecutableResponse1.getCallbackIdsList().size()).isEqualTo(1);
     assertThat(asyncExecutableResponse1.getLogKeysList().size()).isEqualTo(1);
     assertThat(asyncExecutableResponse1.getStatus()).isEqualTo(Status.SUCCEEDED);
@@ -618,8 +618,8 @@ public class ServerlessDownloadManifestV2StepHelperTest extends CategoryTest {
 
     doReturn("path").when(serverlessV2PluginInfoProviderHelper).getValuesPathFromValuesManifestOutcome(any());
 
-    AsyncExecutableResponse asyncExecutableResponse1 = serverlessDownloadManifestsV2StepHelper.executeAsyncAfterRbac(
-        ambiance, StepInputPackage.builder().build(), gitCloneStep);
+    AsyncExecutableResponse asyncExecutableResponse1 =
+        serverlessDownloadManifestsV2StepHelper.executeAsyncAfterRbac(ambiance, StepInputPackage.builder().build());
     assertThat(asyncExecutableResponse1.getCallbackIdsList().size()).isEqualTo(2);
     assertThat(asyncExecutableResponse1.getLogKeysList().size()).isEqualTo(2);
     assertThat(asyncExecutableResponse1.getStatus()).isEqualTo(Status.SUCCEEDED);
@@ -679,8 +679,8 @@ public class ServerlessDownloadManifestV2StepHelperTest extends CategoryTest {
 
     doReturn("path").when(serverlessV2PluginInfoProviderHelper).getValuesPathFromValuesManifestOutcome(any());
 
-    AsyncExecutableResponse asyncExecutableResponse1 = serverlessDownloadManifestsV2StepHelper.executeAsyncAfterRbac(
-        ambiance, StepInputPackage.builder().build(), gitCloneStep);
+    AsyncExecutableResponse asyncExecutableResponse1 =
+        serverlessDownloadManifestsV2StepHelper.executeAsyncAfterRbac(ambiance, StepInputPackage.builder().build());
     assertThat(asyncExecutableResponse1.getCallbackIdsList().size()).isEqualTo(1);
     assertThat(asyncExecutableResponse1.getLogKeysList().size()).isEqualTo(1);
     assertThat(asyncExecutableResponse1.getStatus()).isEqualTo(Status.SUCCEEDED);
@@ -893,8 +893,8 @@ public class ServerlessDownloadManifestV2StepHelperTest extends CategoryTest {
 
     doReturn("path").when(serverlessV2PluginInfoProviderHelper).getValuesPathFromValuesManifestOutcome(any());
 
-    AsyncExecutableResponse asyncExecutableResponse1 = serverlessDownloadManifestsV2StepHelper.executeAsyncAfterRbac(
-        ambiance, StepInputPackage.builder().build(), gitCloneStep);
+    AsyncExecutableResponse asyncExecutableResponse1 =
+        serverlessDownloadManifestsV2StepHelper.executeAsyncAfterRbac(ambiance, StepInputPackage.builder().build());
     assertThat(asyncExecutableResponse1.getCallbackIdsList().size()).isEqualTo(2);
     assertThat(asyncExecutableResponse1.getLogKeysList().size()).isEqualTo(2);
     assertThat(asyncExecutableResponse1.getStatus()).isEqualTo(Status.SUCCEEDED);
@@ -956,8 +956,8 @@ public class ServerlessDownloadManifestV2StepHelperTest extends CategoryTest {
 
     doReturn("path").when(serverlessV2PluginInfoProviderHelper).getValuesPathFromValuesManifestOutcome(any());
 
-    AsyncExecutableResponse asyncExecutableResponse1 = serverlessDownloadManifestsV2StepHelper.executeAsyncAfterRbac(
-        ambiance, StepInputPackage.builder().build(), gitCloneStep);
+    AsyncExecutableResponse asyncExecutableResponse1 =
+        serverlessDownloadManifestsV2StepHelper.executeAsyncAfterRbac(ambiance, StepInputPackage.builder().build());
     assertThat(asyncExecutableResponse1.getCallbackIdsList().size()).isEqualTo(1);
     assertThat(asyncExecutableResponse1.getLogKeysList().size()).isEqualTo(1);
     assertThat(asyncExecutableResponse1.getStatus()).isEqualTo(Status.SUCCEEDED);
