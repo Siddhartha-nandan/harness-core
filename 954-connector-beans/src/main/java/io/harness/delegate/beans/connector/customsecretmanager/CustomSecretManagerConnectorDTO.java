@@ -27,6 +27,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -62,7 +64,7 @@ public class CustomSecretManagerConnectorDTO extends ConnectorConfigDTO implemen
   private String host;
   private String workingDirectory;
   @NotNull private TemplateLinkConfigForCustomSecretManager template;
-  private Long timeout;
+  @Min(1L) @Max(60 * 60L) private Long timeout;
   @Override
   public List<DecryptableEntity> getDecryptableEntities() {
     return Collections.singletonList(this);
