@@ -35,7 +35,6 @@ import io.harness.pms.yaml.ParameterField;
 import io.harness.utils.TimeoutUtils;
 import io.harness.yaml.core.timeout.Timeout;
 import io.harness.yaml.core.variables.NGVariable;
-import io.harness.yaml.core.variables.OutputNGVariable;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
