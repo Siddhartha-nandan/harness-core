@@ -218,7 +218,7 @@ public class NGConnectorSecretManagerServiceImpl implements NGConnectorSecretMan
     Scope scope = secretRefData.getScope();
     IdentifierRef secretIdentifierRef = IdentifierRefHelper.getIdentifierRef(
         scope, secretRefData.getIdentifier(), accountIdentifier, orgIdentifier, projectIdentifier, null);
-
+    // TODO: ngSecretService.get is being called in loop, need to revisit how scopeInfo can be used here
     return ngSecretService.get(accountIdentifier, secretIdentifierRef.getOrgIdentifier(),
         secretIdentifierRef.getProjectIdentifier(), secretRefData.getIdentifier());
   }
@@ -348,6 +348,7 @@ public class NGConnectorSecretManagerServiceImpl implements NGConnectorSecretMan
                     connectorInfoDTO.getOrgIdentifier(), connectorInfoDTO.getProjectIdentifier()))
             .toList();
     secretRefs.forEach(secretRef -> {
+      // TODO: ngSecretService.get is being called in loop, need to see how scopeInfo can be used here
       Optional<SecretResponseWrapper> secret = ngSecretService.get(secretRef.getAccountIdentifier(),
           secretRef.getOrgIdentifier(), secretRef.getProjectIdentifier(), secretRef.getIdentifier());
       if (secret.isEmpty()) {

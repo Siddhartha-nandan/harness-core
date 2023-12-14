@@ -11,6 +11,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 import io.harness.beans.DecryptableEntity;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.ScopeInfo;
 import io.harness.encryption.Scope;
 import io.harness.encryption.SecretRefData;
 import io.harness.exception.InvalidRequestException;
@@ -18,6 +19,7 @@ import io.harness.exception.UnexpectedException;
 import io.harness.ng.core.NGAccess;
 import io.harness.ng.core.api.SecretCrudService;
 import io.harness.ng.core.dto.secrets.SecretResponseWrapper;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.utils.IdentifierRefHelper;
 
 import com.google.inject.Inject;
@@ -35,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class SecretRefInputValidationHelper {
   private SecretCrudService secretCrudService;
+  private ScopeInfoService scopeResolverService;
 
   public void validateTheSecretInput(SecretRefData secretRefData, NGAccess ngAccess) {
     if (secretRefData == null) {
@@ -85,8 +88,10 @@ public class SecretRefInputValidationHelper {
   }
 
   private void validateTheSecretIsPresent(SecretRefData secretRefData, NGAccess ngAccess) {
-    Optional<SecretResponseWrapper> secretResponseWrapper = secretCrudService.get(ngAccess.getAccountIdentifier(),
-        ngAccess.getOrgIdentifier(), ngAccess.getProjectIdentifier(), secretRefData.getIdentifier());
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(
+        ngAccess.getAccountIdentifier(), ngAccess.getOrgIdentifier(), ngAccess.getProjectIdentifier());
+    Optional<SecretResponseWrapper> secretResponseWrapper =
+        secretCrudService.get(scopeInfo.orElseThrow(), secretRefData.getIdentifier());
     if (secretResponseWrapper == null || !secretResponseWrapper.isPresent()) {
       String projectScopeString =
           isNotBlank(ngAccess.getProjectIdentifier()) ? " in project " + ngAccess.getProjectIdentifier() : "";

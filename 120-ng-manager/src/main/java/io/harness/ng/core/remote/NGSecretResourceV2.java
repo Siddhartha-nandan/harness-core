@@ -48,6 +48,7 @@ import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.dto.SecretResourceFilterDTO;
 import io.harness.ng.core.dto.secrets.SecretRequestWrapper;
 import io.harness.ng.core.dto.secrets.SecretResponseWrapper;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.secretmanagerclient.SecretType;
 import io.harness.security.SecurityContextBuilder;
 import io.harness.security.annotations.InternalApi;
@@ -140,6 +141,7 @@ public class NGSecretResourceV2 {
   private final NGEncryptedDataService encryptedDataService;
   private final SecretPermissionValidator secretPermissionValidator;
   private final NGEncryptorService ngEncryptorService;
+  private final ScopeInfoService scopeResolverService;
 
   @GET
   @Path("/validateUniqueIdentifier/{identifier}")
@@ -645,11 +647,11 @@ public class NGSecretResourceV2 {
           continue;
         }
         Scope secretScope = secretRefData.getScope();
+        Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier,
+            getOrgIdentifier(ngAccess.getOrgIdentifier(), secretScope),
+            getProjectIdentifier(ngAccess.getProjectIdentifier(), secretScope));
         SecretResponseWrapper secret =
-            ngSecretService
-                .get(accountIdentifier, getOrgIdentifier(ngAccess.getOrgIdentifier(), secretScope),
-                    getProjectIdentifier(ngAccess.getProjectIdentifier(), secretScope), secretRefData.getIdentifier())
-                .orElse(null);
+            ngSecretService.get(scopeInfo.orElseThrow(), secretRefData.getIdentifier()).orElse(null);
         secretPermissionValidator.checkForAccessOrThrow(
             ResourceScope.of(accountIdentifier, getOrgIdentifier(ngAccess.getOrgIdentifier(), secretScope),
                 getProjectIdentifier(ngAccess.getProjectIdentifier(), secretScope)),

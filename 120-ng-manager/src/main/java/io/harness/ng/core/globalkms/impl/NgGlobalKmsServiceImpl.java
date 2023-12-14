@@ -12,6 +12,7 @@ import static io.harness.connector.ConnectorModule.DEFAULT_CONNECTOR_SERVICE;
 import static io.harness.helpers.GlobalSecretManagerUtils.GLOBAL_ACCOUNT_ID;
 import static io.harness.security.PrincipalContextData.PRINCIPAL_CONTEXT;
 
+import io.harness.beans.ScopeInfo;
 import io.harness.connector.ConnectorDTO;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.connector.ConnectorResponseDTO;
@@ -30,6 +31,7 @@ import io.harness.ng.core.dto.secrets.SecretResponseWrapper;
 import io.harness.ng.core.dto.secrets.SecretTextSpecDTO;
 import io.harness.ng.core.globalkms.dto.ConnectorSecretResponseDTO;
 import io.harness.ng.core.globalkms.services.NgGlobalKmsService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.security.PrincipalContextData;
 import io.harness.security.dto.UserPrincipal;
 import io.harness.services.NgConnectorManagerClientService;
@@ -45,15 +47,17 @@ public class NgGlobalKmsServiceImpl implements NgGlobalKmsService {
   private final SecretCrudService ngSecretService;
   private final NgConnectorManagerClientService ngConnectorManagerClientService;
   private final NGSecretManagerService ngSecretManagerService;
+  private final ScopeInfoService scopeResolverService;
 
   @Inject
   public NgGlobalKmsServiceImpl(@Named(DEFAULT_CONNECTOR_SERVICE) ConnectorService connectorService,
       SecretCrudService ngSecretService, NgConnectorManagerClientService ngConnectorManagerClientService,
-      NGSecretManagerService ngSecretManagerService) {
+      NGSecretManagerService ngSecretManagerService, ScopeInfoService scopeResolverService) {
     this.connectorService = connectorService;
     this.ngSecretService = ngSecretService;
     this.ngConnectorManagerClientService = ngConnectorManagerClientService;
     this.ngSecretManagerService = ngSecretManagerService;
+    this.scopeResolverService = scopeResolverService;
   }
 
   @Override
@@ -148,10 +152,9 @@ public class NgGlobalKmsServiceImpl implements NgGlobalKmsService {
   }
 
   private SecretDTOV2 getGlobalKmsSecretOrThrow(SecretDTOV2 secretDTO) {
-    SecretResponseWrapper secret = ngSecretService
-                                       .get(GLOBAL_ACCOUNT_ID, secretDTO.getOrgIdentifier(),
-                                           secretDTO.getProjectIdentifier(), secretDTO.getIdentifier())
-                                       .orElse(null);
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(
+        GLOBAL_ACCOUNT_ID, secretDTO.getOrgIdentifier(), secretDTO.getProjectIdentifier());
+    SecretResponseWrapper secret = ngSecretService.get(scopeInfo.orElseThrow(), secretDTO.getIdentifier()).orElse(null);
     if (null == secret) {
       throw new InvalidRequestException(
           String.format("Secret with identifier %s does not exist in global scope", secretDTO.getIdentifier()));

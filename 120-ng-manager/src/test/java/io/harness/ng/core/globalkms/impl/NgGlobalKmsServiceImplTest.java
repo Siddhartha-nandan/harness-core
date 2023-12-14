@@ -26,6 +26,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.connector.ConnectorDTO;
 import io.harness.connector.ConnectorInfoDTO;
@@ -45,6 +47,7 @@ import io.harness.ng.core.dto.secrets.SecretDTOV2;
 import io.harness.ng.core.dto.secrets.SecretResponseWrapper;
 import io.harness.ng.core.dto.secrets.SecretTextSpecDTO;
 import io.harness.ng.core.globalkms.dto.ConnectorSecretResponseDTO;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.request.RequestContext;
 import io.harness.request.RequestContextData;
 import io.harness.rule.Owner;
@@ -73,6 +76,7 @@ public class NgGlobalKmsServiceImplTest extends CategoryTest {
   @Mock private SecretCrudService ngSecretService;
   @Mock private NgConnectorManagerClientService ngConnectorManagerClientService;
   @Mock private NGSecretManagerService ngSecretManagerService;
+  @Mock private ScopeInfoService scopeResolverService;
   private NgGlobalKmsServiceImpl globalKmsService;
   @Captor ArgumentCaptor<String> accountIdentifierArgumentCaptor;
   @Captor ArgumentCaptor<String> orgIdentifierArgumentCaptor;
@@ -98,8 +102,8 @@ public class NgGlobalKmsServiceImplTest extends CategoryTest {
   @Before
   public void setup() {
     MockitoAnnotations.initMocks(this);
-    globalKmsService = new NgGlobalKmsServiceImpl(
-        connectorService, ngSecretService, ngConnectorManagerClientService, ngSecretManagerService);
+    globalKmsService = new NgGlobalKmsServiceImpl(connectorService, ngSecretService, ngConnectorManagerClientService,
+        ngSecretManagerService, scopeResolverService);
     userPrincipal = new UserPrincipal(userId, randomAlphabetic(10), userId, accountId);
   }
 
@@ -157,9 +161,17 @@ public class NgGlobalKmsServiceImplTest extends CategoryTest {
       SecretResponseWrapper secretResponseWrapper = getSecretResponseWrapper();
       when(connectorService.get(GLOBAL_ACCOUNT_ID, null, null, HARNESS_SECRET_MANAGER_IDENTIFIER))
           .thenReturn(Optional.of(globalKmsConnector));
-      when(ngSecretService.get(GLOBAL_ACCOUNT_ID, secretDTOV2.getOrgIdentifier(), secretDTOV2.getProjectIdentifier(),
-               secretDTOV2.getIdentifier()))
-          .thenReturn(Optional.of(secretResponseWrapper));
+      ScopeInfo scopeInfo = ScopeInfo.builder()
+                                .accountIdentifier(GLOBAL_ACCOUNT_ID)
+                                .orgIdentifier(secretDTOV2.getOrgIdentifier())
+                                .projectIdentifier(secretDTOV2.getProjectIdentifier())
+                                .scopeType(ScopeLevel.PROJECT)
+                                .uniqueId(randomAlphabetic(10))
+                                .build();
+      when(scopeResolverService.getScopeInfo(
+               GLOBAL_ACCOUNT_ID, secretDTOV2.getOrgIdentifier(), secretDTOV2.getProjectIdentifier()))
+          .thenReturn(Optional.of(scopeInfo));
+      when(ngSecretService.get(scopeInfo, secretDTOV2.getIdentifier())).thenReturn(Optional.of(secretResponseWrapper));
       mockForValidUser();
       when(ngSecretManagerService.validateNGSecretManager(eq(GLOBAL_ACCOUNT_ID), any()))
           .thenReturn(Pair.of(NO_TASK_ID, true));
@@ -400,9 +412,6 @@ public class NgGlobalKmsServiceImplTest extends CategoryTest {
       when(connectorService.get(GLOBAL_ACCOUNT_ID, connectorDTO.getConnectorInfo().getOrgIdentifier(), null,
                HARNESS_SECRET_MANAGER_IDENTIFIER))
           .thenReturn(Optional.of(getGlobalKmsConnector()));
-      when(ngSecretService.get(GLOBAL_ACCOUNT_ID, secretDTOV2.getOrgIdentifier(), secretDTOV2.getProjectIdentifier(),
-               secretDTOV2.getIdentifier()))
-          .thenReturn(Optional.of(getSecretResponseWrapper()));
       exceptionRule.expect(InvalidRequestException.class);
       exceptionRule.expectMessage("Global connector cannot have org/project identifier");
       globalKmsService.updateGlobalKms(connectorDTO, secretDTOV2);
@@ -419,16 +428,21 @@ public class NgGlobalKmsServiceImplTest extends CategoryTest {
       SecretDTOV2 secretDTOV2 = getSecretDTOV2();
       when(connectorService.get(GLOBAL_ACCOUNT_ID, null, null, HARNESS_SECRET_MANAGER_IDENTIFIER))
           .thenReturn(Optional.of(getGlobalKmsConnector()));
-      when(ngSecretService.get(GLOBAL_ACCOUNT_ID, secretDTOV2.getOrgIdentifier(), secretDTOV2.getProjectIdentifier(),
-               secretDTOV2.getIdentifier()))
-          .thenReturn(Optional.ofNullable(null));
+      ScopeInfo scopeInfo = ScopeInfo.builder()
+                                .accountIdentifier(GLOBAL_ACCOUNT_ID)
+                                .orgIdentifier(secretDTOV2.getOrgIdentifier())
+                                .projectIdentifier(secretDTOV2.getProjectIdentifier())
+                                .scopeType(ScopeLevel.PROJECT)
+                                .uniqueId(randomAlphabetic(10))
+                                .build();
+      when(scopeResolverService.getScopeInfo(
+               GLOBAL_ACCOUNT_ID, secretDTOV2.getOrgIdentifier(), secretDTOV2.getProjectIdentifier()))
+          .thenReturn(Optional.of(scopeInfo));
+      when(ngSecretService.get(scopeInfo, secretDTOV2.getIdentifier())).thenReturn(Optional.ofNullable(null));
       exceptionRule.expect(InvalidRequestException.class);
       exceptionRule.expectMessage(
           String.format("Secret with identifier %s does not exist in global scope", secretDTOV2.getIdentifier()));
       globalKmsService.updateGlobalKms(connectorDTO, secretDTOV2);
-      verify(ngSecretService, times(1))
-          .get(GLOBAL_ACCOUNT_ID, secretDTOV2.getOrgIdentifier(), secretDTOV2.getProjectIdentifier(),
-              secretDTOV2.getIdentifier());
     }
   }
 
@@ -443,8 +457,17 @@ public class NgGlobalKmsServiceImplTest extends CategoryTest {
       mockForValidUser();
       when(connectorService.get(GLOBAL_ACCOUNT_ID, null, null, HARNESS_SECRET_MANAGER_IDENTIFIER))
           .thenReturn(Optional.of(getGlobalKmsConnector()));
-      when(ngSecretService.get(GLOBAL_ACCOUNT_ID, secretDTOV2.getOrgIdentifier(), secretDTOV2.getProjectIdentifier(),
-               secretDTOV2.getIdentifier()))
+      ScopeInfo scopeInfo = ScopeInfo.builder()
+                                .accountIdentifier(GLOBAL_ACCOUNT_ID)
+                                .orgIdentifier(secretDTOV2.getOrgIdentifier())
+                                .projectIdentifier(secretDTOV2.getProjectIdentifier())
+                                .scopeType(ScopeLevel.PROJECT)
+                                .uniqueId(randomAlphabetic(10))
+                                .build();
+      when(scopeResolverService.getScopeInfo(
+               GLOBAL_ACCOUNT_ID, secretDTOV2.getOrgIdentifier(), secretDTOV2.getProjectIdentifier()))
+          .thenReturn(Optional.of(scopeInfo));
+      when(ngSecretService.get(scopeInfo, secretDTOV2.getIdentifier()))
           .thenReturn(Optional.of(getSecretResponseWrapper()));
       when(ngSecretManagerService.validateNGSecretManager(anyString(), any())).thenReturn(Pair.of(NO_TASK_ID, false));
       exceptionRule.expect(InvalidRequestException.class);

@@ -41,6 +41,7 @@ import io.harness.ng.core.dto.SecretResourceFilterDTO;
 import io.harness.ng.core.dto.secrets.SecretDTOV2;
 import io.harness.ng.core.dto.secrets.SecretRequestWrapper;
 import io.harness.ng.core.dto.secrets.SecretResponseWrapper;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.rule.Owner;
 import io.harness.serializer.JsonUtils;
 
@@ -72,6 +73,7 @@ public class NGSecretResourceV2Test extends CategoryTest {
   private NGEncryptedDataService encryptedDataService;
   private NGSecretResourceV2 ngSecretResourceV2;
   private NGEncryptorService ngEncryptorService;
+  private ScopeInfoService scopeResolverService;
 
   PageRequest pageRequest;
 
@@ -82,9 +84,10 @@ public class NGSecretResourceV2Test extends CategoryTest {
     secretPermissionValidator = mock(SecretPermissionValidator.class);
     encryptedDataService = mock(NGEncryptedDataService.class);
     ngEncryptorService = mock(NGEncryptorService.class);
+    scopeResolverService = mock(ScopeInfoService.class);
     validator = mock(Validator.class);
-    ngSecretResourceV2 = new NGSecretResourceV2(
-        ngSecretService, validator, encryptedDataService, secretPermissionValidator, ngEncryptorService);
+    ngSecretResourceV2 = new NGSecretResourceV2(ngSecretService, validator, encryptedDataService,
+        secretPermissionValidator, ngEncryptorService, scopeResolverService);
   }
 
   @Test
@@ -154,6 +157,7 @@ public class NGSecretResourceV2Test extends CategoryTest {
     verify(ngSecretService)
         .list("Test", scopeInfo, "TestOrg", "TestProj", null, null, false, null, null, false, pageRequest, null);
   }
+
   @Test
   @Owner(developers = MEENAKSHI)
   @Category(UnitTests.class)
