@@ -379,21 +379,23 @@ public class GcpSyncTasklet implements Tasklet {
       Long lastModifiedTime = tableGranularData.getLastModifiedTime();
       lastModifiedTime = lastModifiedTime != null ? lastModifiedTime : tableGranularData.getCreationTime();
       log.info("Sync condition {} {}", lastModifiedTime, endTime);
+      createK8sJob(dataset.getLocation(), datasetId, projectId, accountId, connectorId,
+              tableGranularData.getTableId().getTable());
 //      if (lastModifiedTime > endTime || firstSync) {
-        CacheKey cacheKey = new CacheKey(accountId, projectId, datasetId, tableName);
-        if (gcpSyncInfo.getIfPresent(cacheKey) == null) {
-          boolean isExecuted;
-          if (isOnPremAndClickhouseEnabled() && gcpSyncSmpConfig.isGcpSmpEnabled()) {
-            isExecuted = createK8sJob(dataset.getLocation(), datasetId, projectId, accountId, connectorId,
-                tableGranularData.getTableId().getTable());
-          } else {
-            isExecuted = publishMessage(sourceCredentials, billingDataPipelineConfig.getGcpProjectId(),
-                billingDataPipelineConfig.getGcpSyncPubSubTopic(), dataset.getLocation(), serviceAccountEmail,
-                datasetId, projectId, accountId, connectorId, tableGranularData.getTableId().getTable(), "False",
-                usingWorkloadIdentity);
-          }
-          gcpSyncInfo.put(cacheKey, isExecuted);
-        }
+//        CacheKey cacheKey = new CacheKey(accountId, projectId, datasetId, tableName);
+//        if (gcpSyncInfo.getIfPresent(cacheKey) == null) {
+//          boolean isExecuted;
+//          if (isOnPremAndClickhouseEnabled() && gcpSyncSmpConfig.isGcpSmpEnabled()) {
+//            isExecuted = createK8sJob(dataset.getLocation(), datasetId, projectId, accountId, connectorId,
+//                tableGranularData.getTableId().getTable());
+//          } else {
+//            isExecuted = publishMessage(sourceCredentials, billingDataPipelineConfig.getGcpProjectId(),
+//                billingDataPipelineConfig.getGcpSyncPubSubTopic(), dataset.getLocation(), serviceAccountEmail,
+//                datasetId, projectId, accountId, connectorId, tableGranularData.getTableId().getTable(), "False",
+//                usingWorkloadIdentity);
+//          }
+//          gcpSyncInfo.put(cacheKey, isExecuted);
+//        }
 //      }
     }
   }
