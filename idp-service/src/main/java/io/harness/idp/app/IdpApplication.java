@@ -44,10 +44,10 @@ import io.harness.idp.license.usage.jobs.IDPTelemetryRecordsJob;
 import io.harness.idp.license.usage.jobs.LicenseUsageDailyCountJob;
 import io.harness.idp.license.usage.resources.IDPLicenseUsageResource;
 import io.harness.idp.migration.IdpMigrationProvider;
-import io.harness.idp.namespace.jobs.DefaultAccountIdToNamespaceMappingForPrEnv;
 import io.harness.idp.pipeline.filter.IdpFilterCreationResponseMerger;
 import io.harness.idp.pipeline.provider.IdpPipelineServiceInfoProvider;
 import io.harness.idp.pipeline.registrar.IdpStepRegistrar;
+import io.harness.idp.provision.jobs.DefaultProvisioningForDevSpaces;
 import io.harness.idp.scorecard.scores.iteratorhandler.ScoreComputationHandler;
 import io.harness.idp.scorecard.scores.jobs.StatsComputeDailyRunJob;
 import io.harness.idp.user.jobs.UserSyncJob;
@@ -157,6 +157,7 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ResourceInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.springframework.data.mongodb.core.MongoTemplate;
 /**
@@ -262,6 +263,7 @@ public class IdpApplication extends Application<IdpConfiguration> {
     environment.jersey().register(injector.getInstance(IdpServiceRequestInterceptor.class));
     environment.jersey().register(injector.getInstance(IdpServiceResponseInterceptor.class));
     injector.getInstance(IDPTelemetryRecordsJob.class).scheduleTasks();
+    environment.jersey().register(MultiPartFeature.class);
     initMetrics(injector);
 
     log.info("Starting app done");
@@ -274,7 +276,7 @@ public class IdpApplication extends Application<IdpConfiguration> {
     environment.lifecycle().manage(injector.getInstance(BackstageEnvVariablesSyncJob.class));
     environment.lifecycle().manage(injector.getInstance(UserSyncJob.class));
     environment.lifecycle().manage(injector.getInstance(ConfigPurgeJob.class));
-    environment.lifecycle().manage(injector.getInstance(DefaultAccountIdToNamespaceMappingForPrEnv.class));
+    environment.lifecycle().manage(injector.getInstance(DefaultProvisioningForDevSpaces.class));
     environment.lifecycle().manage(injector.getInstance(PipelineEventConsumerController.class));
     environment.lifecycle().manage(injector.getInstance(OutboxEventPollService.class));
     environment.lifecycle().manage(injector.getInstance(LicenseUsageDailyCountJob.class));

@@ -17,9 +17,13 @@ import io.harness.spec.server.ssca.v1.model.ArtifactListingResponse;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.beans.SbomDTO;
+import io.harness.ssca.beans.remediation_tracker.PatchedPendingArtifactEntitiesResult;
 import io.harness.ssca.entities.ArtifactEntity;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -34,6 +38,8 @@ public interface ArtifactService {
 
   Optional<ArtifactEntity> getArtifact(
       String accountId, String orgIdentifier, String projectIdentifier, String artifactId, Sort sort);
+
+  String getArtifactName(String accountId, String orgIdentifier, String projectIdentifier, String artifactId);
 
   ArtifactEntity getArtifactByCorrelationId(
       String accountId, String orgIdentifier, String projectIdentifier, String artifactCorrelationId);
@@ -54,6 +60,11 @@ public interface ArtifactService {
   Page<ArtifactListingResponse> listArtifacts(String accountId, String orgIdentifier, String projectIdentifier,
       ArtifactListingRequestBody body, Pageable pageable);
 
+  List<PatchedPendingArtifactEntitiesResult> listDeployedArtifactsFromIdsWithCriteria(String accountId,
+      String orgIdentifier, String projectIdentifier, Set<String> artifactIds, List<String> orchestrationIds);
+  Set<String> getDistinctArtifactIds(
+      String accountId, String orgIdentifier, String projectIdentifier, List<String> orchestrationIds);
+
   Page<ArtifactComponentViewResponse> getArtifactComponentView(String accountId, String orgIdentifier,
       String projectIdentifier, String artifactId, String tag, ArtifactComponentViewRequestBody filterBody,
       Pageable pageable);
@@ -63,4 +74,6 @@ public interface ArtifactService {
       Pageable pageable);
 
   void updateArtifactEnvCount(ArtifactEntity artifact, EnvType envType, long count);
+  ArtifactEntity getLastGeneratedArtifactFromTime(
+      String accountId, String orgId, String projectId, String artifactId, Instant time);
 }

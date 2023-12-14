@@ -10,16 +10,20 @@ import re
 import datetime
 import hashlib
 import requests
+import os
 
+from tzlocal import get_localzone
 from google.cloud import bigquery
 from google.cloud import functions_v2
 from google.cloud import pubsub_v1
 from google.cloud.exceptions import NotFound
 
-publisher = pubsub_v1.PublisherClient()
+PROJECTID = os.environ.get('GCP_PROJECT', 'ccm-play')
+publisher = None
 ACCOUNTID_LOG = ""
 CF_EXECUTION_ID = ""
 TABLE_NAME_FORMAT = "%s.BillingReport_%s.%s"
+LOCAL_TIMEZONE = get_localzone()
 
 # TABLE NAMES
 CLUSTERDATAAGGREGATED = "clusterDataAggregated"
@@ -93,8 +97,31 @@ def print_(message, severity="INFO"):
     except:
         print(message)
 
+# TODO: Replace print statement with logging
+def print__(message, severity="INFO"):
+    # Set account id in the beginning of your K8s Job call
+    try:
+        print(json.dumps({
+            "currentTime":str(datetime.datetime.now(LOCAL_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S.%f")),
+            "accountId":ACCOUNTID_LOG,
+            "severity":severity,
+            "message": message
+        }))
+    except:
+        print(message)
+
+def set_account_id_log(account_id):
+    global ACCOUNTID_LOG
+    ACCOUNTID_LOG = account_id
+
+def get_publisher():
+    global publisher
+    if publisher is None:
+        publisher = pubsub_v1.PublisherClient()
+    return publisher
+
 def create_dataset(client, datasetName, accountid=""):
-    dataset_id = "{}.{}".format(client.project, datasetName)
+    dataset_id = "{}.{}".format(os.environ.get('GCP_PROJECT', 'ccm-play'), datasetName)
     dataset = bigquery.Dataset(dataset_id)
     dataset.location = "US"
     # Do not change this format for description
@@ -115,7 +142,7 @@ def create_dataset(client, datasetName, accountid=""):
                 client.update_dataset(dataset, ["description"])
             except:
                 pass
-
+    return dataset
 
 def if_tbl_exists(client, table_ref):
     try:
@@ -408,13 +435,27 @@ def update_connector_data_sync_status(jsonData, PROJECTID, client):
         print_("  Failed to update connector data sync status", "WARN")
         raise e
 
+def update_connector_data_sync_status_clickhouse(jsonData, database, client):
+    pattern_format = "%Y-%m-%d %H:%M:%S"
+    query = """INSERT INTO `%s`.`%s` (accountId, connectorId, lastSuccessfullExecutionAt, jobType, cloudProviderId) 
+                VALUES ('%s', '%s', '%s', '%s', '%s')
+            """ % ( database, CONNECTORDATASYNCSTATUSTABLE,
+                    jsonData["accountId"], jsonData["connectorId"], datetime.datetime.utcnow().strftime(pattern_format), 'cloudfunction', jsonData['cloudProvider']
+                    )
+
+    try:
+        print_(query)
+        client.command(query)
+    except Exception as e:
+        print_("  Failed to update connector data sync status", "WARN")
+        raise e
 
 def send_event(topic_path, event_data):
     message_json = json.dumps(event_data)
     message_bytes = message_json.encode('utf-8')
     # Publishes a message
     try:
-        publish_future = publisher.publish(topic_path, data=message_bytes)
+        publish_future = get_publisher().publish(topic_path, data=message_bytes)
         publish_future.result()  # Verify the publishing succeeded
         print_('Message published: %s.' % event_data)
     except Exception as e:

@@ -518,12 +518,7 @@ paths:
         - AppConfig
       x-internal: false
     parameters:
-      - schema:
-          type: string
-        name: plugin-id
-        description: Plugin Identifier
-        in: path
-        required: true
+      - $ref: '#/components/parameters/PluginId'
   /v1/plugins-info:
     get:
       summary: List Available Plugins
@@ -539,6 +534,22 @@ paths:
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
       x-internal: false
+    post:
+      summary: Save custom plugin info
+      operationId: save-custom-plugins-info
+      responses:
+        '201':
+          $ref: '#/components/responses/CustomPluginInfoResponse'
+      x-stoplight:
+        id: t4vsvfeuf169r
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+      requestBody:
+        $ref: '#/components/requestBodies/CustomPluginCreateRequest'
+      tags:
+        - PluginInfo
   '/v1/plugins-info/{plugin-id}':
     get:
       summary: Get Plugin
@@ -553,8 +564,26 @@ paths:
         - x-api-key: []
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
-        - $ref: '#/components/parameters/PluginId'
+        - $ref: '#/components/parameters/Meta'
       x-internal: false
+    put:
+      summary: Update custom plugin info
+      operationId: update-custom-plugins-info
+      responses:
+        '200':
+          $ref: '#/components/responses/CustomPluginInfoResponse'
+      x-stoplight:
+        id: jt3xnyhpgnfe9
+      security:
+        - x-api-key: []
+      requestBody:
+        $ref: '#/components/requestBodies/CustomPluginInfoRequest'
+      tags:
+        - PluginInfo
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+    parameters:
+      - $ref: '#/components/parameters/PluginId'
   /v1/app-config:
     post:
       summary: Save Or Update Plugin Config
@@ -1359,6 +1388,29 @@ paths:
         $ref: '#/components/requestBodies/ScorecardRecalibrateRequest'
       x-internal: true
     parameters: []
+  '/v1/plugins-info/{plugin-id}/upload':
+    parameters:
+      - schema:
+          type: string
+        name: plugin-id
+        in: path
+        required: true
+    post:
+      summary: Upload Custom Plugin File
+      operationId: upload-custom-plugin-file
+      responses:
+        '200':
+          $ref: '#/components/responses/CustomPluginInfoResponse'
+      x-stoplight:
+        id: 32n05qs9vws0f
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+      requestBody:
+        $ref: '#/components/requestBodies/FileUploadRequest'
+      security:
+        - x-api-key: []
+      tags:
+        - PluginInfo
 components:
   schemas:
     BackstageEnvVariable:
@@ -1764,8 +1816,14 @@ components:
             id: 86jybcrx3x9hy
         image_url:
           type: string
+        images:
+          type: array
           x-stoplight:
             id: tn689mqkfth94
+          items:
+            x-stoplight:
+              id: ybfwwjy9ere6h
+            type: string
         documentation:
           type: string
           x-stoplight:
@@ -1778,17 +1836,13 @@ components:
           type: boolean
           x-stoplight:
             id: dye1mgrxvvkhj
-      required:
-        - id
-        - name
-        - created_by
-        - icon_url
-        - description
-        - category
-        - source
-        - image_url
-        - core
-        - enabled
+        plugin_type:
+          type: string
+          x-stoplight:
+            id: 3afv43ng1qibj
+          enum:
+            - DEFAULT
+            - CUSTOM
     PluginInfoResponse:
       title: PluginInfoResponse
       x-stoplight:
@@ -2558,6 +2612,13 @@ components:
               type: string
               x-stoplight:
                 id: mqml3k84x10ot
+            percentage:
+              type: number
+              x-stoplight:
+                id: kp6ptdhmpvqn7
+              format: double
+              minimum: 0
+              maximum: 100
           required:
             - rule_strategy
             - rules
@@ -2746,6 +2807,17 @@ components:
             x-stoplight:
               id: 6xqs4rtf0fexq
             type: string
+        components:
+          type: integer
+          x-stoplight:
+            id: 8rc2peneqokdm
+        percentage:
+          type: number
+          x-stoplight:
+            id: lzqyp3vjd6kto
+          format: double
+          minimum: 0
+          maximum: 100
       required:
         - name
         - identifier
@@ -3378,6 +3450,10 @@ components:
           type: string
           x-stoplight:
             id: au25s8h8q4qzc
+        namespace:
+          type: string
+          x-stoplight:
+            id: fl26s8h9q4qzc
         data_source_location:
           $ref: '#/components/schemas/DataSourceLocationInfo'
     KubernetesRequest:
@@ -3504,6 +3580,10 @@ components:
           type: string
           x-stoplight:
             id: skt0gj9ivt90s
+        namespace:
+          type: string
+          x-stoplight:
+            id: oklu13i7o6ebd
         owner:
           type: string
           x-stoplight:
@@ -3526,6 +3606,7 @@ components:
             id: ehz071o8ft8bg
       required:
         - name
+        - namespace
         - owner
         - system
         - kind
@@ -3542,6 +3623,11 @@ components:
           type: string
           x-stoplight:
             id: czewiwd87fr8u
+        timestamp:
+          type: integer
+          x-stoplight:
+            id: 5p8wtkrmax6su
+          format: int64
         stats:
           type: array
           x-stoplight:
@@ -3563,6 +3649,10 @@ components:
           type: string
           x-stoplight:
             id: tkt0gj9ivt90s
+        namespace:
+          type: string
+          x-stoplight:
+            id: pklu13i8o9rdb
         owner:
           type: string
           x-stoplight:
@@ -3585,6 +3675,7 @@ components:
             id: fhz071o8ft8bg
       required:
         - name
+        - namespace
         - owner
         - system
         - kind
@@ -3602,6 +3693,11 @@ components:
           type: string
           x-stoplight:
             id: 5kkekddw3r1zh
+        timestamp:
+          type: integer
+          x-stoplight:
+            id: 5e8wpkrsax6xu
+          format: int64
         stats:
           x-stoplight:
             id: nd4na7s04suxx
@@ -3658,6 +3754,118 @@ components:
           x-stoplight:
             id: zrikcrbyjl7pk
       description: ''
+    DefaultPluginDetailedInfo:
+      title: DefaultPluginDetailedInfo
+      x-stoplight:
+        id: om79yzqsehzdj
+      allOf:
+        - $ref: '#/components/schemas/PluginDetailedInfo'
+      description: Metadata for default plugin
+    CustomPluginDetailedInfo:
+      title: CustomPluginDetailedInfo
+      x-stoplight:
+        id: 7d5vhhxgcinuj
+      description: Metadata for custom plugin
+      allOf:
+        - $ref: '#/components/schemas/PluginDetailedInfo'
+        - type: object
+          x-stoplight:
+            id: a3azbqof3qaa4
+          properties:
+            artifact:
+              $ref: '#/components/schemas/Artifact'
+    Artifact:
+      title: Artifact
+      x-stoplight:
+        id: 647wjmduc547h
+      type: object
+      description: Artifact details for custom plugin
+      properties:
+        type:
+          type: string
+          x-stoplight:
+            id: jkdjdyi0psnta
+          enum:
+            - NPM
+            - ZIP
+        url:
+          type: string
+          x-stoplight:
+            id: kmk65kswz6xuz
+      required:
+        - type
+        - url
+    CustomPluginInfoRequest:
+      title: CustomPluginInfoRequest
+      x-stoplight:
+        id: szco1w9ni5gg2
+      type: object
+      properties:
+        info:
+          $ref: '#/components/schemas/CustomPluginDetailedInfo'
+    CustomPluginInfoResponse:
+      title: CustomPluginInfoResponse
+      x-stoplight:
+        id: r9u1gb8tlw8jm
+      type: object
+      properties:
+        info:
+          $ref: '#/components/schemas/CustomPluginDetailedInfo'
+    FileUpload:
+      title: FileUpload
+      x-stoplight:
+        id: 42qigqf34g3qa
+      type: object
+      description: Details of the file to be upload
+      properties:
+        file_type:
+          type: string
+          x-stoplight:
+            id: fkuih8a0cohq6
+          enum:
+            - ICON
+            - SCREENSHOT
+            - ZIP
+        file:
+          type: string
+          x-stoplight:
+            id: m506b6wsbw9b4
+          format: binary
+      required:
+        - file_type
+        - file
+    FileUploadInfo:
+      title: FileUploadInfo
+      x-stoplight:
+        id: tg0lcsmut5g4m
+      type: object
+      properties:
+        identifier:
+          type: string
+          x-stoplight:
+            id: 68qkmk2s7q3ke
+        name:
+          type: string
+          x-stoplight:
+            id: 9xravl6w1v0ri
+        url:
+          type: string
+          x-stoplight:
+            id: mm714ve2fwzkk
+      required:
+        - identifier
+        - name
+        - url
+    FileUploadResponse:
+      title: FileUploadResponse
+      x-stoplight:
+        id: rk1u7nzipft0a
+      type: object
+      properties:
+        info:
+          $ref: '#/components/schemas/FileUploadInfo'
+      required:
+        - info
   parameters:
     AccountHeader:
       name: Harness-Account
@@ -3827,6 +4035,13 @@ components:
       schema:
         type: string
       description: Namespace from where the request is being made
+    Meta:
+      name: meta
+      in: query
+      required: false
+      schema:
+        type: boolean
+      description: Custom plugin metadata
   requestBodies:
     BackstageEnvVariableRequest:
       content:
@@ -3989,6 +4204,24 @@ components:
           schema:
             $ref: '#/components/schemas/LicenseUsageSaveRequest'
       description: User details and accessedAt to capture license usage
+    CustomPluginInfoRequest:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CustomPluginInfoRequest'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/CustomPluginInfoRequest'
+    CustomPluginCreateRequest:
+      content:
+        application/json:
+          schema:
+            type: object
+    FileUploadRequest:
+      content:
+        multipart/form-data:
+          schema:
+            $ref: '#/components/schemas/FileUpload'
   responses:
     BackstageEnvVariableResponse:
       description: Example response
@@ -4421,6 +4654,24 @@ components:
         application/yaml:
           schema:
             $ref: '#/components/schemas/ScorecardRecalibrateResponseV2'
+    CustomPluginInfoResponse:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CustomPluginInfoResponse'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/CustomPluginInfoResponse'
+    FileUploadResponse:
+      description: Response for File Upload request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/FileUploadResponse'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/FileUploadResponse'
   securitySchemes:
     x-api-key:
       name: x-api-key
@@ -4441,6 +4692,8 @@ tags:
     description: Backstage Permissions
   - name: ConnectorInfo
     description: Connector Information
+  - name: CustomPlugin
+    description: Custom Plugin Information
   - name: DataPointsData
     description: DataPointData Information
   - name: DataSource

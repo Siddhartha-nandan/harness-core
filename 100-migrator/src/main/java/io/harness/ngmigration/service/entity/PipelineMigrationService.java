@@ -329,6 +329,7 @@ public class PipelineMigrationService extends NgMigrationService {
     List<StageElementWrapperConfig> ngStages = new ArrayList<>();
     List<StageElementWrapperConfig> parallelStages = null;
     List<NGVariable> pipelineVariables = getPipelineVariables(migrationContext, pipeline);
+    MigratorExpressionUtils.render(migrationContext, pipelineVariables, new HashMap<>());
     List<StepExpressionFunctor> allFunctors = new ArrayList<>();
     Map<String, String> serviceToStageMap = new HashMap<>();
     Map<String, String> envToStageMap = new HashMap<>();
@@ -822,7 +823,9 @@ public class PipelineMigrationService extends NgMigrationService {
     }
 
     // Set Deployment specific runtime inputs
-    if (templateInputs != null && "Deployment".equals(templateInputs.get("type").asText())) {
+    if (templateInputs != null
+        && ("Deployment".equals(templateInputs.get("type").asText())
+            || "Custom".equals(templateInputs.get("type").asText()))) {
       String serviceRef = templateInputs.at("/spec/service/serviceRef").asText();
       if (RUNTIME_INPUT.equals(serviceRef)
           && (!RUNTIME_INPUT.equals(stageServiceRef) || serviceToStageMap.containsKey(serviceId))) {

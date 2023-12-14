@@ -1,6 +1,6 @@
 # batch-processing
 
-![Version: 0.12.3](https://img.shields.io/badge/Version-0.12.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.0.81103](https://img.shields.io/badge/AppVersion-0.0.81103-informational?style=flat-square)
+![Version: 0.13.3](https://img.shields.io/badge/Version-0.13.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.0.81904](https://img.shields.io/badge/AppVersion-0.0.81904-informational?style=flat-square)
 
 A Helm chart for Kubernetes
 
@@ -53,9 +53,37 @@ A Helm chart for Kubernetes
 | cloudProviderConfig.DATA_PIPELINE_CONFIG_GCS_BASE_PATH | string | `"gs://awscustomerbillingdata-onprem"` |  |
 | cloudProviderConfig.S3_SYNC_CONFIG_BUCKET_NAME | string | `"ccm-service-data-bucket"` |  |
 | cloudProviderConfig.S3_SYNC_CONFIG_REGION | string | `"us-east-1"` |  |
+| database.mongo.events.enabled | bool | `false` |  |
+| database.mongo.events.extraArgs | string | `""` |  |
+| database.mongo.events.hosts | list | `[]` |  |
+| database.mongo.events.protocol | string | `""` |  |
+| database.mongo.events.secrets.kubernetesSecrets[0].keys.MONGO_PASSWORD | string | `""` |  |
+| database.mongo.events.secrets.kubernetesSecrets[0].keys.MONGO_USER | string | `""` |  |
+| database.mongo.events.secrets.kubernetesSecrets[0].secretName | string | `""` |  |
+| database.mongo.events.secrets.secretManagement.externalSecretsOperator[0].remoteKeys.MONGO_PASSWORD.name | string | `""` |  |
+| database.mongo.events.secrets.secretManagement.externalSecretsOperator[0].remoteKeys.MONGO_PASSWORD.property | string | `""` |  |
+| database.mongo.events.secrets.secretManagement.externalSecretsOperator[0].remoteKeys.MONGO_USER.name | string | `""` |  |
+| database.mongo.events.secrets.secretManagement.externalSecretsOperator[0].remoteKeys.MONGO_USER.property | string | `""` |  |
+| database.mongo.events.secrets.secretManagement.externalSecretsOperator[0].secretStore.kind | string | `""` |  |
+| database.mongo.events.secrets.secretManagement.externalSecretsOperator[0].secretStore.name | string | `""` |  |
+| database.mongo.harness.enabled | bool | `false` |  |
+| database.mongo.harness.extraArgs | string | `""` |  |
+| database.mongo.harness.hosts | list | `[]` |  |
+| database.mongo.harness.protocol | string | `""` |  |
+| database.mongo.harness.secrets.kubernetesSecrets[0].keys.MONGO_PASSWORD | string | `""` |  |
+| database.mongo.harness.secrets.kubernetesSecrets[0].keys.MONGO_USER | string | `""` |  |
+| database.mongo.harness.secrets.kubernetesSecrets[0].secretName | string | `""` |  |
+| database.mongo.harness.secrets.secretManagement.externalSecretsOperator[0].remoteKeys.MONGO_PASSWORD.name | string | `""` |  |
+| database.mongo.harness.secrets.secretManagement.externalSecretsOperator[0].remoteKeys.MONGO_PASSWORD.property | string | `""` |  |
+| database.mongo.harness.secrets.secretManagement.externalSecretsOperator[0].remoteKeys.MONGO_USER.name | string | `""` |  |
+| database.mongo.harness.secrets.secretManagement.externalSecretsOperator[0].remoteKeys.MONGO_USER.property | string | `""` |  |
+| database.mongo.harness.secrets.secretManagement.externalSecretsOperator[0].secretStore.kind | string | `""` |  |
+| database.mongo.harness.secrets.secretManagement.externalSecretsOperator[0].secretStore.name | string | `""` |  |
 | extraVolumeMounts | list | `[]` |  |
 | extraVolumes | list | `[]` |  |
 | fullnameOverride | string | `""` |  |
+| gcpConfig.GCP_SMP_ENABLED | bool | `false` |  |
+| gcpConfig.bucketNamePrefix | string | `"harness-ccm-%s-%s"` |  |
 | global.awsServiceEndpointUrls.cloudwatchEndPointUrl | string | `"https://monitoring.us-east-2.amazonaws.com"` |  |
 | global.awsServiceEndpointUrls.ecsEndPointUrl | string | `"https://ecs.us-east-2.amazonaws.com"` |  |
 | global.awsServiceEndpointUrls.enabled | bool | `false` |  |
@@ -152,38 +180,29 @@ A Helm chart for Kubernetes
 | image.pullPolicy | string | `"Always"` |  |
 | image.registry | string | `"docker.io"` |  |
 | image.repository | string | `"harness/batch-processing-signed"` |  |
-| image.tag | string | `"81103-000"` |  |
+| image.tag | string | `"81904-000"` |  |
 | imageAzureDataPipeline.digest | string | `""` |  |
 | imageAzureDataPipeline.imagePullSecrets | list | `[]` |  |
 | imageAzureDataPipeline.pullPolicy | string | `"Always"` |  |
 | imageAzureDataPipeline.registry | string | `"docker.io"` |  |
 | imageAzureDataPipeline.repository | string | `"harness/ccm-azure-smp-signed"` |  |
-| imageAzureDataPipeline.tag | string | `"10010"` |  |
+| imageAzureDataPipeline.tag | string | `"10058"` |  |
 | imageClickhouseEnabled.digest | string | `""` |  |
 | imageClickhouseEnabled.imagePullSecrets | list | `[]` |  |
 | imageClickhouseEnabled.pullPolicy | string | `"Always"` |  |
 | imageClickhouseEnabled.registry | string | `"docker.io"` |  |
 | imageClickhouseEnabled.repository | string | `"harness/batch-processing-signed"` |  |
-| imageClickhouseEnabled.tag | string | `"81103-000"` |  |
+| imageClickhouseEnabled.tag | string | `"81904-000"` |  |
+| imageGCPDataPipeline.digest | string | `""` |  |
+| imageGCPDataPipeline.imagePullSecrets | list | `[]` |  |
+| imageGCPDataPipeline.pullPolicy | string | `"Always"` |  |
+| imageGCPDataPipeline.registry | string | `"docker.io"` |  |
+| imageGCPDataPipeline.repository | string | `"harness/ccm-gcp-smp-signed"` |  |
+| imageGCPDataPipeline.tag | string | `"10057"` |  |
 | isolatedReplica | int | `0` |  |
 | java.memory | string | `"7168"` |  |
 | java17flags | string | `""` |  |
 | lifecycleHooks | object | `{}` |  |
-| mongo.extraArgs | string | `""` |  |
-| mongo.hosts | list | `[]` |  |
-| mongo.passwordKey | string | `""` |  |
-| mongo.protocol | string | `""` |  |
-| mongo.secretName | string | `""` |  |
-| mongo.secrets.kubernetesSecrets[0].keys.MONGO_PASSWORD | string | `""` |  |
-| mongo.secrets.kubernetesSecrets[0].keys.MONGO_USER | string | `""` |  |
-| mongo.secrets.kubernetesSecrets[0].secretName | string | `""` |  |
-| mongo.secrets.secretManagement.externalSecretsOperator[0].remoteKeys.MONGO_PASSWORD.name | string | `""` |  |
-| mongo.secrets.secretManagement.externalSecretsOperator[0].remoteKeys.MONGO_PASSWORD.property | string | `""` |  |
-| mongo.secrets.secretManagement.externalSecretsOperator[0].remoteKeys.MONGO_USER.name | string | `""` |  |
-| mongo.secrets.secretManagement.externalSecretsOperator[0].remoteKeys.MONGO_USER.property | string | `""` |  |
-| mongo.secrets.secretManagement.externalSecretsOperator[0].secretStore.kind | string | `""` |  |
-| mongo.secrets.secretManagement.externalSecretsOperator[0].secretStore.name | string | `""` |  |
-| mongo.userKey | string | `""` |  |
 | mongoSecrets.password.key | string | `"mongodb-root-password"` |  |
 | mongoSecrets.password.name | string | `"mongodb-replicaset-chart"` |  |
 | mongoSecrets.userName.key | string | `"mongodbUsername"` |  |
@@ -201,12 +220,16 @@ A Helm chart for Kubernetes
 | secrets.default.HARNESS_CE_AZURE_CLIENTSECRET | string | `""` |  |
 | secrets.default.HARNESS_CE_AZURE_SAS | string | `""` |  |
 | secrets.default.HARNESS_CE_AZURE_TENANTID | string | `""` |  |
+| secrets.default.HMAC_ACCESS_KEY | string | `""` |  |
+| secrets.default.HMAC_SECRET_KEY | string | `""` |  |
 | secrets.default.NEXT_GEN_MANAGER_SECRET | string | `"IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"` |  |
 | secrets.kubernetesSecrets[0].keys.CE_NG_SERVICE_SECRET | string | `""` |  |
 | secrets.kubernetesSecrets[0].keys.HARNESS_CE_AZURE_CLIENTID | string | `""` |  |
 | secrets.kubernetesSecrets[0].keys.HARNESS_CE_AZURE_CLIENTSECRET | string | `""` |  |
 | secrets.kubernetesSecrets[0].keys.HARNESS_CE_AZURE_SAS | string | `""` |  |
 | secrets.kubernetesSecrets[0].keys.HARNESS_CE_AZURE_TENANTID | string | `""` |  |
+| secrets.kubernetesSecrets[0].keys.HMAC_ACCESS_KEY | string | `""` |  |
+| secrets.kubernetesSecrets[0].keys.HMAC_SECRET_KEY | string | `""` |  |
 | secrets.kubernetesSecrets[0].keys.NEXT_GEN_MANAGER_SECRET | string | `""` |  |
 | secrets.kubernetesSecrets[0].keys.S3_SYNC_CONFIG_ACCESSKEY | string | `""` |  |
 | secrets.kubernetesSecrets[0].keys.S3_SYNC_CONFIG_SECRETKEY | string | `""` |  |
@@ -221,6 +244,10 @@ A Helm chart for Kubernetes
 | secrets.secretManagement.externalSecretsOperator[0].remoteKeys.HARNESS_CE_AZURE_SAS.property | string | `""` |  |
 | secrets.secretManagement.externalSecretsOperator[0].remoteKeys.HARNESS_CE_AZURE_TENANTID.name | string | `""` |  |
 | secrets.secretManagement.externalSecretsOperator[0].remoteKeys.HARNESS_CE_AZURE_TENANTID.property | string | `""` |  |
+| secrets.secretManagement.externalSecretsOperator[0].remoteKeys.HMAC_ACCESS_KEY.name | string | `""` |  |
+| secrets.secretManagement.externalSecretsOperator[0].remoteKeys.HMAC_ACCESS_KEY.property | string | `""` |  |
+| secrets.secretManagement.externalSecretsOperator[0].remoteKeys.HMAC_SECRET_KEY.name | string | `""` |  |
+| secrets.secretManagement.externalSecretsOperator[0].remoteKeys.HMAC_SECRET_KEY.property | string | `""` |  |
 | secrets.secretManagement.externalSecretsOperator[0].remoteKeys.NEXT_GEN_MANAGER_SECRET.name | string | `""` |  |
 | secrets.secretManagement.externalSecretsOperator[0].remoteKeys.NEXT_GEN_MANAGER_SECRET.property | string | `""` |  |
 | secrets.secretManagement.externalSecretsOperator[0].remoteKeys.S3_SYNC_CONFIG_ACCESSKEY.name | string | `""` |  |

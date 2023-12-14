@@ -9,10 +9,14 @@ package io.harness.delegate.task.stepstatus.artifact;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.delegate.task.stepstatus.artifact.ssca.DriftSummary;
+import io.harness.delegate.task.stepstatus.artifact.ssca.Scorecard;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import lombok.Builder;
+import lombok.Setter;
 import lombok.Value;
+import lombok.experimental.NonFinal;
 
 @Value
 @Builder
@@ -31,4 +35,6 @@ public class SscaArtifactMetadata implements ArtifactMetadataSpec {
   boolean isSbomAttested;
   int allowListViolationCount;
   int denyListViolationCount;
+  @NonFinal @Setter Scorecard scorecard;
+  @NonFinal @Setter DriftSummary drift;
 }

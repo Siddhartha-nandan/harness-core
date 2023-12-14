@@ -108,7 +108,7 @@ func (r *runTask) Run(ctx context.Context) (map[string]string, int32, error) {
 	for i := int32(1); i <= r.numRetries; i++ {
 		if o, err = r.execute(ctx, i); err == nil {
 			st := time.Now()
-			err = collectTestReports(ctx, r.reports, r.id, r.log, st)
+			err = collectTestReports(ctx, r.reports, r.id, r.log, st, r.environment)
 			if err != nil {
 				// If there's an error in collecting reports, we will log and ignore the error
 				r.log.Errorw("unable to collect test reports", zap.Error(err))
@@ -119,7 +119,7 @@ func (r *runTask) Run(ctx context.Context) (map[string]string, int32, error) {
 	if err != nil {
 		// Run step did not execute successfully
 		// Try and collect reports, ignore any errors during report collection itself
-		errc := collectTestReports(ctx, r.reports, r.id, r.log, time.Now())
+		errc := collectTestReports(ctx, r.reports, r.id, r.log, time.Now(), r.environment)
 		if errc != nil {
 			r.log.Errorw("error while collecting test reports", zap.Error(errc))
 		}
@@ -196,7 +196,7 @@ func (r *runTask) getScript(ctx context.Context, outputVarFile string) (string, 
 		return "", nil
 	}
 
-	outputVarCmd := r.getOutputVarCmd(r.envVarOutputs, outputVarFile)
+	outputVarCmd := getOutputVarCmd(r.envVarOutputs, outputVarFile, isPowershell(r.shellType), isPython(r.shellType))
 	resolvedCmd, err := resolveExprInCmd(r.command)
 	if err != nil {
 		return "", err
@@ -266,44 +266,6 @@ func (r *runTask) getEarlyExitCommand() (string, error) {
 		return "", nil
 	}
 	return "", fmt.Errorf("Unknown shell type: %s", r.shellType)
-}
-
-func (r *runTask) getOutputVarCmd(outputVars []string, outputFile string) string {
-	isPsh := r.isPowershell()
-	isPython := r.isPython()
-
-	cmd := ""
-	if isPsh {
-		cmd += fmt.Sprintf("\nNew-Item %s", outputFile)
-	} else if isPython {
-		cmd += "\nimport os\n"
-	}
-
-	for _, o := range outputVars {
-		if isPsh {
-			cmd += fmt.Sprintf("\n$val = \"%s $Env:%s\" \nAdd-Content -Path %s -Value $val", o, o, outputFile)
-		} else if isPython {
-			cmd += fmt.Sprintf("with open('%s', 'a') as out_file:\n\tout_file.write('%s ' + os.getenv('%s') + '\\n')\n", outputFile, o, o)
-		} else {
-			cmd += fmt.Sprintf("\necho \"%s $%s\" >> %s", o, o, outputFile)
-		}
-	}
-
-	return cmd
-}
-
-func (r *runTask) isPowershell() bool {
-	if r.shellType == pb.ShellType_POWERSHELL || r.shellType == pb.ShellType_PWSH {
-		return true
-	}
-	return false
-}
-
-func (r *runTask) isPython() bool {
-	if r.shellType == pb.ShellType_PYTHON {
-		return true
-	}
-	return false
 }
 
 func logCommandExecErr(log *zap.SugaredLogger, errMsg, stepID, args string, retryCount int32, startTime time.Time, err error) {

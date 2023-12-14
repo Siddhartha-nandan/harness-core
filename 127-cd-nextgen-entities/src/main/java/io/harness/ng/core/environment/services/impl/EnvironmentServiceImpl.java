@@ -145,8 +145,6 @@ public class EnvironmentServiceImpl implements EnvironmentService {
   private static final String DUP_KEY_EXP_FORMAT_STRING_FOR_ORG =
       "Environment [%s] under Organization [%s] in Account [%s] already exists";
   private static final String DUP_KEY_EXP_FORMAT_STRING_FOR_ACCOUNT = "Environment [%s] in Account [%s] already exists";
-  private static final int REMOTE_ENVIRONMENTS_BATCH_SIZE = 20;
-
   private final InfrastructureEntityService infrastructureEntityService;
   private final ClusterService clusterService;
   private final ServiceOverrideService serviceOverrideService;
@@ -1005,15 +1003,15 @@ public class EnvironmentServiceImpl implements EnvironmentService {
     if (isNotEmpty(envIdentifier) && !EngineExpressionEvaluator.hasExpressions(envIdentifier)) {
       // org level entities need to have compatible ids. Eg. Stage level template will call with only org.env type
       // refs
-      IdentifierRef envIdentifierRef =
-          IdentifierRefHelper.getIdentifierRef(envIdentifier, accountIdentifier, orgIdentifier, projectIdentifier);
+      String envRef = IdentifierRefHelper.getRefFromIdentifierOrRef(environment.getAccountId(),
+          environment.getOrgIdentifier(), environment.getProjectIdentifier(), envIdentifier);
 
       boolean overridesV2Enabled =
           isOverridesV2Enabled(accountIdentifier, orgIdentifier, projectIdentifier, isServiceOverrideV2FFEnabled);
 
       String envInputYaml = overridesV2Enabled
-          ? createEnvironmentInputYamlFromOverride(accountIdentifier, orgIdentifier, projectIdentifier, envIdentifier)
-          : createEnvironmentInputsYaml(envIdentifier, environment.getYaml());
+          ? createEnvironmentInputYamlFromOverride(accountIdentifier, orgIdentifier, projectIdentifier, envRef)
+          : createEnvironmentInputsYaml(envRef, environment.getYaml());
 
       List<ServiceOverridesMetadata> serviceOverridesMetadataList = new ArrayList<>();
       for (String serviceRef : serviceRefs) {
@@ -1029,10 +1027,9 @@ public class EnvironmentServiceImpl implements EnvironmentService {
             // overrides will be at same level of envRef, this can be different from service
             String serviceOverridesInputsYaml = overridesV2Enabled
                 ? serviceOverridesServiceV2.createServiceOverrideInputsYaml(
-                    accountIdentifier, orgIdentifier, projectIdentifier, envIdentifier, serviceRef)
-                : serviceOverrideService.createServiceOverrideInputsYaml(envIdentifierRef.getAccountIdentifier(),
-                    envIdentifierRef.getOrgIdentifier(), envIdentifierRef.getProjectIdentifier(), envIdentifier,
-                    serviceRef);
+                    accountIdentifier, orgIdentifier, projectIdentifier, envRef, serviceRef)
+                : serviceOverrideService.createServiceOverrideInputsYaml(environment.getAccountIdentifier(),
+                    environment.getOrgIdentifier(), environment.getProjectIdentifier(), envRef, serviceRef);
             serviceOverridesMetadataList.add(ServiceOverridesMetadata.builder()
                                                  .serviceRef(serviceRef)
                                                  .serviceOverridesYaml(serviceOverridesInputsYaml)
@@ -1044,7 +1041,7 @@ public class EnvironmentServiceImpl implements EnvironmentService {
         }
       }
       envInputYamlAndServiceOverridesList.add(EnvironmentInputSetYamlAndServiceOverridesMetadata.builder()
-                                                  .envRef(envIdentifier)
+                                                  .envRef(envRef)
                                                   .orgIdentifier(environment.getOrgIdentifier())
                                                   .projectIdentifier(environment.getProjectIdentifier())
                                                   .envRuntimeInputYaml(envInputYaml)
@@ -1058,11 +1055,6 @@ public class EnvironmentServiceImpl implements EnvironmentService {
     }
 
     return envInputYamlAndServiceOverridesList;
-  }
-
-  private static List<Environment> getBatch(List<Environment> environmentEntities, int i) {
-    int endIndex = Math.min(i + REMOTE_ENVIRONMENTS_BATCH_SIZE, environmentEntities.size());
-    return environmentEntities.subList(i, endIndex);
   }
 
   // envIdentifierRef : should be scoped ref

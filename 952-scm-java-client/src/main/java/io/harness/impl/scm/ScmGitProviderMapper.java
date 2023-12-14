@@ -217,6 +217,7 @@ public class ScmGitProviderMapper {
         .setEndpoint(GitClientHelper.getGitlabApiURL(gitlabConnector.getUrl(), getGitlabApiUrl(gitlabConnector)))
         .setSkipVerify(skipVerify)
         .setAdditionalCertsPath(getAdditionalCertsPath())
+        .setProxy(Optional.ofNullable(gitlabConnector.getProxyUrl()).orElse(""))
         .build();
   }
 
@@ -290,7 +291,13 @@ public class ScmGitProviderMapper {
         return HarnessProvider.newBuilder().setHarnessAccessToken(harnessAccessToken).build();
       case JWT_TOKEN:
         String jwtToken = getJWTToken(harnessConnector);
-        HarnessJWT harnessJWT = HarnessJWT.newBuilder().setToken(jwtToken).build();
+        HarnessJWT.Builder tokenBuilder = HarnessJWT.newBuilder().setToken(jwtToken);
+        if (isNotEmpty(harnessConnector.getAccountId())) {
+          tokenBuilder.setAccount(harnessConnector.getAccountId())
+              .setOrganization(harnessConnector.getOrgId())
+              .setProject(harnessConnector.getProjectId());
+        }
+        HarnessJWT harnessJWT = tokenBuilder.build();
         return HarnessProvider.newBuilder().setHarnessJwt(harnessJWT).build();
       default:
         throw new NotImplementedException(String.format(

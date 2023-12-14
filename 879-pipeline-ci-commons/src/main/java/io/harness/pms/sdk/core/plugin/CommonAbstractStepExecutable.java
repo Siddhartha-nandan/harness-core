@@ -40,7 +40,7 @@ import io.harness.beans.yaml.extended.infrastrucutre.Infrastructure;
 import io.harness.beans.yaml.extended.infrastrucutre.OSType;
 import io.harness.ci.executable.CiAsyncExecutable;
 import io.harness.ci.ff.CIFeatureFlagService;
-import io.harness.ci.metrics.CIManagerMetricsService;
+import io.harness.ci.metrics.ExecutionMetricsService;
 import io.harness.delegate.TaskSelector;
 import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.TaskData;
@@ -113,7 +113,7 @@ public abstract class CommonAbstractStepExecutable extends CiAsyncExecutable {
   public static final String CI_EXECUTE_STEP = "CI_EXECUTE_STEP";
 
   @Inject private CIDelegateTaskExecutor ciDelegateTaskExecutor;
-  @Inject private CIManagerMetricsService ciManagerMetricsService;
+  @Inject private ExecutionMetricsService executionMetricsService;
   private static final String STEP_STATUS = "ci_active_step_execution_count";
   private static final String STEP_TIME_COUNT = "ci_step_execution_time";
   @Inject private SerializedResponseDataHelper serializedResponseDataHelper;
@@ -437,9 +437,9 @@ public abstract class CommonAbstractStepExecutable extends CiAsyncExecutable {
     StepStatus stepStatus = stepStatusTaskResponseData.getStepStatus();
     StepResponseBuilder stepResponseBuilder = StepResponse.builder();
     try {
-      ciManagerMetricsService.recordStepExecutionCount(stepStatus.getStepExecutionStatus().toString(), STEP_STATUS,
+      executionMetricsService.recordStepExecutionCount(stepStatus.getStepExecutionStatus().toString(), STEP_STATUS,
           AmbianceUtils.getAccountId(ambiance), ((CIStepInfo) stepParameters.getSpec()).getStepType().getType());
-      ciManagerMetricsService.recordStepStatusExecutionTime(stepStatus.getStepExecutionStatus().toString(),
+      executionMetricsService.recordStepStatusExecutionTime(stepStatus.getStepExecutionStatus().toString(),
           (currentTime - startTime) / 1000, STEP_TIME_COUNT, AmbianceUtils.getAccountId(ambiance),
           ((CIStepInfo) stepParameters.getSpec()).getStepType().getType());
     } catch (Exception ex) {

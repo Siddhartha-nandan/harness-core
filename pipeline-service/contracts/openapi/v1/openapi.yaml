@@ -1,6 +1,6 @@
 openapi: 3.0.0
 x-stoplight:
-  id: 7pfrq4khto0sx
+  id: hftz6duy5kn6l
 info:
   title: Harness NextGen Software Delivery Platform API Reference
   version: '1.0'
@@ -128,7 +128,7 @@ paths:
         '200':
           $ref: '#/components/responses/PipelineListResponseBody'
       x-stoplight:
-        id: 7c5rr5tx906x7
+        id: nphh2wxh44nwl
     post:
       summary: Create a Pipeline
       operationId: create-pipeline
@@ -145,12 +145,13 @@ paths:
         '201':
           $ref: '#/components/responses/PipelineCreateResponseBody'
       x-stoplight:
-        id: z4hwsr4fk90aa
+        id: 9frj6q4tzlt8w
   '/v1/orgs/{org}/projects/{project}/pipelines/{pipeline}/triggers':
     parameters:
       - $ref: '#/components/parameters/OrgParam'
       - $ref: '#/components/parameters/ProjectParam'
       - $ref: '#/components/parameters/PipelineParam'
+      - $ref: '#/components/parameters/IgnoreError'
     post:
       summary: Create a Trigger
       operationId: create-trigger
@@ -162,12 +163,12 @@ paths:
       tags:
         - Triggers
       requestBody:
-        $ref: '#/components/requestBodies/TriggerCreateRequestBody'
+        $ref: '#/components/requestBodies/TriggerRequestBody'
       responses:
         '201':
-          $ref: '#/components/responses/TriggerCreateResponseBody'
+          $ref: '#/components/responses/TriggerResponseBody'
       x-stoplight:
-        id: qd6yrxxmqs0u7
+        id: p5843nm0t7592
   '/v1/orgs/{org}/projects/{project}/pipelines/{pipeline}/triggers/{trigger}':
     parameters:
       - $ref: '#/components/parameters/OrgParam'
@@ -195,13 +196,14 @@ paths:
       description: Updates a Trigger.
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
+        - $ref: '#/components/parameters/IgnoreError'
       tags:
         - Triggers
       requestBody:
-        $ref: '#/components/requestBodies/TriggerUpdateRequestBody'
+        $ref: '#/components/requestBodies/TriggerRequestBody'
       responses:
         '200':
-          $ref: '#/components/responses/TriggerCreateResponseBody'
+          $ref: '#/components/responses/TriggerResponseBody'
     delete:
       summary: Delete a Trigger
       operationId: delete-trigger
@@ -287,7 +289,7 @@ paths:
         '200':
           $ref: '#/components/responses/PipelineGetResponseBody'
       x-stoplight:
-        id: qyrmb2tkaxqgl
+        id: 96ga2osh5hwg7
     put:
       summary: Update a Pipeline
       operationId: update-pipeline
@@ -304,7 +306,7 @@ paths:
         '200':
           $ref: '#/components/responses/PipelineCreateResponseBody'
       x-stoplight:
-        id: e41jyiyv7ro9p
+        id: h3l7sci9zfp9f
     delete:
       summary: Delete a Pipeline
       operationId: delete-pipeline
@@ -337,7 +339,7 @@ paths:
                   value: |
                     {}
       x-stoplight:
-        id: bflcry1qn835a
+        id: p36dcsn51d2bh
     patch:
       summary: Patch API for pipeline
       operationId: patch-pipeline
@@ -410,7 +412,7 @@ paths:
         '200':
           $ref: '#/components/responses/PipelineValidationUUIDResponseBody'
       x-stoplight:
-        id: tg6gthqhh0k9r
+        id: wfpawyit2dn13
   '/v1/orgs/{org}/projects/{project}/pipelines/validate/{uuid}':
     parameters:
       - $ref: '#/components/parameters/OrgParam'
@@ -431,7 +433,7 @@ paths:
         '200':
           $ref: '#/components/responses/PipelineValidationResponseBody'
       x-stoplight:
-        id: zdtu70pdyr9hh
+        id: 4u0fyhnbktwfx
   '/v1/orgs/{org}/projects/{project}/input-sets':
     parameters:
       - $ref: '#/components/parameters/OrgParam'
@@ -453,7 +455,7 @@ paths:
       requestBody:
         $ref: '#/components/requestBodies/InputSetCreateRequestBody'
       x-stoplight:
-        id: htaazrfyzmj49
+        id: cj36jk4yf2yhr
     get:
       summary: List Input Sets
       operationId: list-input-sets
@@ -474,7 +476,7 @@ paths:
         - $ref: '#/components/parameters/Sort'
         - $ref: '#/components/parameters/Order'
       x-stoplight:
-        id: 21azv69l0645b
+        id: h2njajg2x8ng7
   '/v1/orgs/{org}/projects/{project}/input-sets/{input-set}':
     parameters:
       - $ref: '#/components/parameters/OrgParam'
@@ -518,7 +520,7 @@ paths:
           description: Specifies whether the remote pipeline should be loaded from Git or Git cache.
           name: Load-From-Cache
       x-stoplight:
-        id: h5v93pyxnnp7k
+        id: na9rtz4ztc1js
     put:
       summary: Update an Input Set
       operationId: update-input-set
@@ -536,7 +538,7 @@ paths:
       requestBody:
         $ref: '#/components/requestBodies/InputSetUpdateRequestBody'
       x-stoplight:
-        id: hukookcin00kf
+        id: ufhkk027u7g6u
     delete:
       summary: Delete an Input Set
       operationId: delete-input-set
@@ -570,7 +572,7 @@ paths:
         - $ref: '#/components/parameters/AccountHeader'
         - $ref: '#/components/parameters/PipelineInputSetParam'
       x-stoplight:
-        id: rnkmtvukmmaog
+        id: hakjf5guef21z
   '/v1/orgs/{org}/projects/{project}/pipelines/{pipeline}/inputs':
     parameters:
       - $ref: '#/components/parameters/OrgParam'
@@ -606,7 +608,7 @@ paths:
         - Inputs
       x-internal: true
       x-stoplight:
-        id: y3pfbfpr2axaz
+        id: dti77knaqwmnc
   '/v1/orgs/{org}/projects/{project}/pipelines/{pipeline}/move-config':
     parameters:
       - $ref: '#/components/parameters/OrgParam'
@@ -629,7 +631,7 @@ paths:
         - Pipelines
       x-internal: false
       x-stoplight:
-        id: xr28kjs0ygciz
+        id: ke45d60ruqz4k
   '/v1/orgs/{org}/projects/{project}/input-sets/{input-set}/move-config':
     parameters:
       - $ref: '#/components/parameters/OrgParam'
@@ -652,7 +654,7 @@ paths:
         - Input Sets
       x-internal: false
       x-stoplight:
-        id: kyeqoc4vkox34
+        id: 6yswuygnctx59
   '/v1/orgs/{org}/projects/{project}/pipelines/{pipeline}/import':
     parameters:
       - $ref: '#/components/parameters/OrgParam'
@@ -672,7 +674,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
       x-stoplight:
-        id: pr8fgbdiy3gab
+        id: ooot1hollv1gz
   '/v1/orgs/{org}/projects/{project}/input-sets/{input-set}/import':
     parameters:
       - $ref: '#/components/parameters/OrgParam'
@@ -693,7 +695,7 @@ paths:
       tags:
         - Input Sets
       x-stoplight:
-        id: l57co80o250nz
+        id: o0d53spbtzqp4
   '/v1/orgs/{org}/projects/{project}/approvals/execution/{execution-id}':
     parameters:
       - $ref: '#/components/parameters/OrgParam'
@@ -761,7 +763,7 @@ paths:
       tags:
         - Approvals
       x-stoplight:
-        id: eys4h4e4lfphl
+        id: hlhl02n4u5g97
     post:
       summary: Approve or Reject an Execution by Pipeline Execution ID
       operationId: addHarnessApprovalActivityByPipelineExecutionId
@@ -776,12 +778,17 @@ paths:
                 type: object
                 properties: {}
       x-stoplight:
-        id: xfvk50ubzcazm
+        id: oq9cjpxdsatqr
       description: 'Approve or Reject an Execution by Pipeline Execution ID [Beta]'
       security:
         - x-api-key: []
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
+        - schema:
+            type: string
+          in: query
+          name: callback_id
+          description: This filters approval instances based on callback id given in the step parameters
       tags:
         - Approvals
       requestBody:
@@ -807,7 +814,7 @@ paths:
         - Pipelines
       description: Update git-metadata in remote pipeline
       x-stoplight:
-        id: ucntzn2zcwg53
+        id: 04mv5ov4iys13
   '/v1/orgs/{org}/projects/{project}/input-sets/{input-set}/git-metadata':
     parameters:
       - $ref: '#/components/parameters/OrgParam'
@@ -830,7 +837,7 @@ paths:
         - $ref: '#/components/parameters/AccountHeader'
         - $ref: '#/components/parameters/PipelineInputSetParam'
       x-stoplight:
-        id: k97ugyl18wboj
+        id: bqc4018y65svk
   /v1/pipeline-schema/individual-schema:
     parameters: []
     get:
@@ -840,7 +847,7 @@ paths:
         '200':
           $ref: '#/components/responses/IndividualSchemaResponseBody'
       x-stoplight:
-        id: sd46sdg9l2f9u
+        id: 66us9yb9u2kb0
       description: get individual schema for any step/stage/strategy/stepgroup.
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
@@ -894,7 +901,7 @@ paths:
         '200':
           $ref: '#/components/responses/PipelineInputSchemaDetailsResponseBody'
       x-stoplight:
-        id: 1fq0nbp1ff8i2
+        id: wccb6q7dfodlx
       tags:
         - Schemas
       parameters:
@@ -916,28 +923,21 @@ paths:
         '200':
           $ref: '#/components/responses/PipelineExecuteResponseBody'
       x-stoplight:
-        id: 8yyz028he1hk6
+        id: er16k4olvl4ep
       requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                yaml:
-                  type: string
-                  x-stoplight:
-                    id: 65efvpok2v1kw
-        description: ''
+        $ref: '#/components/requestBodies/PipelineExecuteRequestBody'
       parameters:
         - schema:
             type: string
           in: query
           name: module
+          description: 'Module type for the entity. If its from deployments,type will be CD , if its from build type will be CI'
         - schema:
             type: boolean
             default: 'false'
           in: query
           name: use_fqn_if_error_response
+          description: Use FQN in error response.
         - schema:
             type: boolean
             default: 'false'
@@ -947,7 +947,19 @@ paths:
             type: string
           in: query
           name: notes
+          description: Notes of a pipeline execution
         - $ref: '#/components/parameters/AccountHeader'
+        - $ref: '#/components/parameters/Branch'
+        - schema:
+            type: string
+          in: query
+          name: connector_ref
+          description: Identifier of the Harness Connector used for CRUD operations on the Entity (for Git Experience).
+        - schema:
+            type: string
+          in: query
+          name: repo_name
+          description: Name of the repository (for Git Experience).
       description: Pipeline Execution API
       tags:
         - Pipeline Execution
@@ -957,7 +969,7 @@ paths:
       - $ref: '#/components/parameters/ProjectParam'
       - $ref: '#/components/parameters/PipelineParam'
     get:
-      summary: Your GET endpoint
+      summary: Get inputs schema details
       tags:
         - Pipelines
       responses:
@@ -965,7 +977,7 @@ paths:
           $ref: '#/components/responses/PipelineInputSchemaDetailsResponseBody'
       operationId: get-inputs-schema-details
       x-stoplight:
-        id: 7ybuejsnv128d
+        id: nwynvtz4olui5
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
       description: ''
@@ -981,7 +993,7 @@ paths:
         '200':
           $ref: '#/components/responses/MergeInputSetResponseBody'
       x-stoplight:
-        id: oq0cyp6h1cm7v
+        id: gy0oh6m7g7h6g
       description: Gets merged input sets
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
@@ -989,7 +1001,7 @@ paths:
             type: string
           in: header
           name: Load-From-Cache
-          description: Flag to enable loading the remote pipeline from git or git cache
+          description: Flag to enable loading the remote Pipeline from git or git cache
         - $ref: '#/components/parameters/PipelineInputSetParam'
         - $ref: '#/components/parameters/PipelineRepoID'
         - $ref: '#/components/parameters/PipelineBranch'
@@ -1009,7 +1021,7 @@ paths:
       x-internal: true
       tags:
         - Input Sets
-  '/v1/orgs/{org}/projects/{project}/pipelines/{pipeline}/rerun/{execution-id}':
+  '/v1/orgs/{org}/projects/{project}/pipelines/{pipeline}/execute/rerun/{execution-id}':
     parameters:
       - $ref: '#/components/parameters/OrgParam'
       - $ref: '#/components/parameters/ProjectParam'
@@ -1022,14 +1034,14 @@ paths:
         '200':
           $ref: '#/components/responses/PipelineExecuteResponseBody'
       x-stoplight:
-        id: 6rh04lz8vt81i
+        id: wgvn6hq2rcthf
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
         - schema:
             type: string
           in: query
           name: module
-          description: 'Module type for the entity. If its from deployments,type will be CD , if its from build type will be CI'
+          description: Module type for the entity. If its from deployments,type will be CD , if its from build type will be CI.
         - schema:
             type: boolean
             default: false
@@ -1057,7 +1069,7 @@ paths:
       tags:
         - Pipeline Execution
       x-internal: true
-  '/v1/orgs/{org}/projects/{project}/pipelines/{pipeline}/retry/{execution-id}':
+  '/v1/orgs/{org}/projects/{project}/pipelines/{pipeline}/execute/retry/{execution-id}':
     post:
       summary: Retry Pipeline
       operationId: retry-pipeline-with-inputset-pipeline-yaml
@@ -1065,21 +1077,23 @@ paths:
         '200':
           $ref: '#/components/responses/PipelineExecuteResponseBody'
       x-stoplight:
-        id: putj0n4p7m245
-      description: Retry a executed pipeline with inputSet pipeline yaml
+        id: wnd53l2n474n1
+      description: Retry a executed Pipeline with inputSet Pipeline yaml.
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
         - schema:
             type: string
           in: query
           name: module
-          description: 'Module type for the entity. If its from deployments,type will be CD , if its from build type will be CI'
+          description: Module type for the entity. If its from deployments,type will be CD , if its from build type will be CI.
         - schema:
             type: array
+            items:
+              type: string
           in: query
           name: retry_stages
           allowEmptyValue: false
-          description: 'This param contains the identifier of stages from where to resume. It will be a list if we want to retry from parallel group '
+          description: This param contains the identifier of stages from where to resume. It will be a list if we want to retry from parallel group.
         - schema:
             type: boolean
             default: true
@@ -1090,7 +1104,7 @@ paths:
             type: string
           in: query
           name: notes
-          description: Notes of a pipeline execution
+          description: Notes of a Pipeline execution.
       requestBody:
         $ref: '#/components/requestBodies/RerunPipelineRequestBody'
       x-internal: true
@@ -1101,12 +1115,141 @@ paths:
       - $ref: '#/components/parameters/ProjectParam'
       - $ref: '#/components/parameters/PipelineParam'
       - $ref: '#/components/parameters/ExecutionIdParam'
+  '/v1/orgs/{org}/projects/{project}/pipelines/{pipeline}/execute/stages-execution-list':
+    parameters:
+      - $ref: '#/components/parameters/OrgParam'
+      - $ref: '#/components/parameters/ProjectParam'
+      - $ref: '#/components/parameters/PipelineParam'
+    get:
+      summary: Get Stages execution List for a given Pipeline execution.
+      tags:
+        - Pipeline Execution
+      responses:
+        '200':
+          $ref: '#/components/responses/StageExecutionResponseList'
+      operationId: get-stages-execution-list
+      x-stoplight:
+        id: zsli398ivhmpn
+      description: Returns list of Stage identifiers with their names and stage dependencies
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+        - schema:
+            type: string
+            default: 'false'
+          in: header
+          name: Load-From-Cache
+          description: Flag to enable loading the remote Pipeline from git or git cache
+        - $ref: '#/components/parameters/Branch'
+        - schema:
+            type: string
+          in: query
+          name: connector_ref
+          description: Identifier of the Harness Connector used for CRUD operations on the Entity (for Git Experience).
+        - schema:
+            type: string
+          in: query
+          name: repo_name
+          description: Name of the repository (for Git Experience).
+  '/v1/orgs/{org}/projects/{project}/pipelines/{pipeline}/execute/rerun/{execution-id}/stages':
+    parameters:
+      - $ref: '#/components/parameters/OrgParam'
+      - $ref: '#/components/parameters/ProjectParam'
+      - $ref: '#/components/parameters/PipelineParam'
+      - $ref: '#/components/parameters/ExecutionIdParam'
+    post:
+      summary: Re-run Stages Execution of a Pipeline
+      tags:
+        - Pipeline Execution
+      responses:
+        '200':
+          $ref: '#/components/responses/PipelineExecuteResponseBody'
+      operationId: rerun-stages-execution-of-pipeline
+      x-stoplight:
+        id: l4lns3pa5ol14
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+        - $ref: '#/components/parameters/Branch'
+        - schema:
+            type: string
+          in: query
+          name: connector_ref
+          description: Identifier of the Harness Connector used for CRUD operations on the Entity (for Git Experience).
+        - schema:
+            type: string
+          in: query
+          name: repo_name
+          description: Name of the repository (for Git Experience)
+        - schema:
+            type: boolean
+            default: false
+          in: query
+          name: use_fqn_if_error
+          description: Use FQN in error response
+        - schema:
+            type: string
+          in: query
+          name: module
+          description: Module type for the entity. If its from deployments,type will be CD , if its from build type will be CI.
+        - schema:
+            type: string
+          in: query
+          name: notes
+          description: Notes of a pipeline execution
+      requestBody:
+        $ref: '#/components/requestBodies/RunStageRequestBody'
+  '/v1/orgs/{org}/projects/{project}/pipelines/{pipeline}/execute/stages':
+    parameters:
+      - $ref: '#/components/parameters/OrgParam'
+      - $ref: '#/components/parameters/ProjectParam'
+      - $ref: '#/components/parameters/PipelineParam'
+    post:
+      summary: Execute given Stages of a Pipeline
+      tags:
+        - Pipeline Execution
+      responses:
+        '200':
+          $ref: '#/components/responses/PipelineExecuteResponseBody'
+      operationId: execute-stages-with-input-yaml
+      x-stoplight:
+        id: fatuo2twr1mu9
+      description: Execute given Stages of a Pipeline with Input Yaml
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+        - schema:
+            type: string
+          in: query
+          name: module
+          description: Module type for the entity. If its from deployments,type will be CD , if its from build type will be CI.
+        - schema:
+            type: string
+            default: 'false'
+          in: query
+          name: use_fqn_if_error
+          description: Use FQN in error response.
+        - schema:
+            type: string
+          in: query
+          name: notes
+          description: Notes of a Pipeline execution.
+        - $ref: '#/components/parameters/Branch'
+        - schema:
+            type: string
+          in: query
+          name: connector_ref
+          description: Identifier of the Harness Connector used for CRUD operations on the Entity (for Git Experience).
+        - schema:
+            type: string
+          in: query
+          name: repo_name
+          description: Name of the repository (for Git Experience).
+      requestBody:
+        $ref: '#/components/requestBodies/RunStageRequestBody'
 components:
   schemas:
     GitDetails:
       title: Git Response Details
       x-stoplight:
-        id: 65qyzj09jokqw
+        id: 1eo5nucpst3vx
       type: object
       description: Git Experience related details of the Entity.
       x-examples:
@@ -1146,7 +1289,7 @@ components:
     PipelineGetResponseBody:
       title: Pipeline Get Response Body
       x-stoplight:
-        id: yl48yozzxrh7s
+        id: v2qy2mhkz94g1
       description: Pipeline response body.
       x-examples:
         example-get:
@@ -1271,7 +1414,7 @@ components:
           status: IN_PROGRESS
       type: object
       x-stoplight:
-        id: ep7zirj3mbwu4
+        id: 98gvw3ttgafs4
       x-internal: true
       properties:
         status:
@@ -1303,11 +1446,11 @@ components:
           description: UUID of the Pipeline Validation Event
       x-internal: true
       x-stoplight:
-        id: sks7qrcqg4892
+        id: ueatzkyd8um13
     PipelineListResponseBody:
       title: Pipeline List Response Body
       x-stoplight:
-        id: 07pz0ewpgp2ec
+        id: 4bzxmgez3cvwl
       description: Pipeline List response body
       x-examples:
         example-summary:
@@ -1401,9 +1544,9 @@ components:
         yaml_version:
           type: string
           x-stoplight:
-            id: ascg15v7c0vlx
-    TriggerCreateRequestBody:
-      title: Trigger Create Request Body
+            id: x2advpz1id7e5
+    TriggerRequestBody:
+      title: Trigger Request Body
       type: object
       description: 'Trigger request body object '
       properties:
@@ -1421,10 +1564,8 @@ components:
           items:
             type: string
         inputs:
-          type: object
-          description: inputs to be used in the pipeline
-          additionalProperties:
-            type: object
+          type: string
+          description: input yaml to be used in the pipeline
         name:
           type: string
           pattern: '^[a-zA-Z_0-9-.][-0-9a-zA-Z_\s.]{0,127}$'
@@ -1445,48 +1586,6 @@ components:
         - identifier
         - name
         - source
-    TriggerUpdateRequestBody:
-      title: Trigger Update Request Body
-      type: object
-      description: Trigger request body object
-      properties:
-        description:
-          type: string
-        enabled:
-          type: boolean
-        encrypted_webhook_secret_identifier:
-          type: string
-        identifier:
-          type: string
-          pattern: '^[a-zA-Z_][0-9a-zA-Z_]{0,127}$'
-        input_set_refs:
-          type: array
-          items:
-            type: string
-        inputs:
-          type: object
-          description: inputs to be used in the pipeline
-          additionalProperties:
-            type: object
-        name:
-          type: string
-          pattern: '^[a-zA-Z_0-9-.][-0-9a-zA-Z_\s.]{0,127}$'
-        pipeline_branch_name:
-          type: string
-        source:
-          $ref: '#/components/schemas/TriggerSource'
-        stages_to_execute:
-          type: array
-          items:
-            type: string
-        tags:
-          type: object
-          additionalProperties:
-            type: string
-      required:
-        - identifier
-        - name
-        - source
     TriggerSource:
       title: Trigger Source
       type: object
@@ -1502,6 +1601,7 @@ components:
             - Artifact
             - Manifest
             - Scheduled
+            - MultiRegionArtifact
         webhook_id:
           type: string
       discriminator:
@@ -1511,6 +1611,7 @@ components:
           Webhook: '#/components/schemas/WebhookTriggerSource'
           Manifest: '#/components/schemas/ManifestTriggerSource'
           Artifact: '#/components/schemas/ArtifactTriggerSource'
+          MultiRegionArtifact: '#/components/schemas/MultiRegionArtifactTriggerSource'
       required:
         - type
         - spec
@@ -1541,6 +1642,25 @@ components:
           properties:
             spec:
               $ref: '#/components/schemas/ManifestTriggerSpec'
+    ArtifactType:
+      title: ArtifactType
+      enum:
+        - Gcr
+        - Ecr
+        - Acr
+        - DockerRegistry
+        - Nexus3Registry
+        - Nexus2Registry
+        - ArtifactoryRegistry
+        - AmazonS3
+        - Jenkins
+        - CustomArtifact
+        - GoogleArtifactRegistry
+        - GithubPackageRegistry
+        - AzureArtifacts
+        - AmazonMachineImage
+        - GoogleCloudStorage
+        - Bamboo
     ArtifactTriggerSource:
       title: Artifact Trigger Source
       x-discriminator-value: Artifact
@@ -1550,15 +1670,42 @@ components:
           properties:
             spec:
               $ref: '#/components/schemas/ArtifactTriggerSpec'
+    MultiRegionArtifactTriggerSource:
+      title: Multi Region Artifact Trigger Source
+      x-discriminator-value: MultiRegionArtifact
+      allOf:
+        - $ref: '#/components/schemas/TriggerSource'
+        - type: object
+          properties:
+            spec:
+              $ref: '#/components/schemas/MultiRegionArtifactTriggerSpec'
+    AMIFilter:
+      title: AMI Artifact Registry filter
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string
     TriggerConditions:
       title: Trigger Conditions
       type: object
-      description: Payload Conditions for the Trigger
+      description: Conditions for the Trigger
       properties:
         key:
           type: string
         operator:
           type: string
+          enum:
+            - In
+            - Equals
+            - NotEquals
+            - StartsWith
+            - EndsWith
+            - Contains
+            - DoesNotContain
+            - Regex
+            - NotIn
         value:
           type: string
     ScheduledTriggerSpec:
@@ -1575,7 +1722,7 @@ components:
     WebhookTriggerSpec:
       title: Webhook Trigger Spec
       type: object
-      description: Spec for Webhook Triggers
+      description: 'Spec for Webhook Triggers'
       properties:
         type:
           type: string
@@ -1604,7 +1751,7 @@ components:
     ManifestTriggerSpec:
       title: Manifest Trigger Spec
       type: object
-      description: Spec for Manifest Triggers
+      description: 'Spec for Manifest Triggers'
       properties:
         type:
           type: string
@@ -1613,35 +1760,39 @@ components:
             - HelmChart
         spec:
           $ref: '#/components/schemas/HelmChartManifestTriggerSpec'
+    MultiRegionArtifactTriggerSpec:
+      title: Multi Region Artifact Trigger Spec
+      type: object
+      description: Spec for Multi Region Artifact Triggers
+      properties:
+        event_conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TriggerConditions'
+        meta_data_conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TriggerConditions'
+        jexl_condition:
+          type: string
+        type:
+          $ref: '#/components/schemas/ArtifactType'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactTypeSpecWrapper'
+    ArtifactTypeSpecWrapper:
+      type: object
+      properties:
+        spec:
+          $ref: '#/components/schemas/ArtifactTriggerSpec'
     ArtifactTriggerSpec:
       title: Artifact Trigger Spec
       type: object
-      description: 'Spec for Artifact Triggers'
+      description: Spec for Artifact Triggers
       properties:
         type:
-          type: string
-          description: This specifies the type of Artifact trigger
-          enum:
-            - Gcr
-            - Ecr
-            - Acr
-            - DockerRegistry
-            - Nexus3Registry
-            - Nexus2Registry
-            - ArtifactoryRegistry
-            - AmazonS3
-            - Jenkins
-            - CustomArtifact
-            - GoogleArtifactRegistry
-            - GithubPackageRegistry
-            - AzureArtifacts
-            - AmazonMachineImage
-            - GoogleCloudStorage
-            - Bamboo
-        stage_identifier:
-          type: string
-        artifact_ref:
-          type: string
+          $ref: '#/components/schemas/ArtifactType'
       discriminator:
         propertyName: type
         mapping:
@@ -2009,12 +2160,12 @@ components:
           type: string
         metadata:
           type: object
-        additionalProperties:
-          type: string
-        inputs:
-          type: object
           additionalProperties:
-            type: object
+            type: string
+        inputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/NGVariable'
     GoogleArtifactRegistryArtifactSpec:
       title: GoogleArtifactRegistry Artifact Spec
       x-discriminator-value: GoogleArtifactRegistry
@@ -2146,9 +2297,13 @@ components:
         region:
           type: string
         tags:
-          type: string
+          type: array
+          items:
+            $ref: '#/components/schemas/AMIFilter'
         filters:
-          type: string
+          type: array
+          items:
+            $ref:  '#/components/schemas/AMIFilter'
         version:
           type: string
         version_regex:
@@ -2792,8 +2947,52 @@ components:
           type: string
         expression:
           type: string
-    TriggerCreateResponseBody:
-      title: Trigger Create Response Body
+    NGVariable:
+      title: NG Variable
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - String
+            - Number
+        description:
+          type: string
+        required:
+          type: boolean
+        name:
+          type: string
+        metadata:
+          type: string
+      discriminator:
+        propertyName: type
+        mapping:
+          String: '#/components/schemas/StringNGVariable'
+          Number: '#/components/schemas/NumberNGVariable'
+    StringNGVariable:
+      title: String NG Variable
+      x-discriminator-value: String
+      allOf:
+        - $ref: '#/components/schemas/NGVariable'
+        - type: object
+          properties:
+            value:
+              type: string
+            default_value:
+              type: string
+    NumberNGVariable:
+      title: Number NG Variable
+      x-discriminator-value: String
+      allOf:
+        - $ref: '#/components/schemas/NGVariable'
+        - type: object
+          properties:
+            value:
+              type: double
+            default_value:
+              type: double
+    TriggerResponseBody:
+      title: Trigger Response Body
       type: object
       description: Pipeline response body
       properties:
@@ -2849,27 +3048,17 @@ components:
       type: object
       description: 'Trigger object '
       properties:
-        description:
-          type: string
         enabled:
           type: boolean
         encrypted_webhook_secret_identifier:
           type: string
-        identifier:
-          type: string
-          pattern: '^[a-zA-Z_][0-9a-zA-Z_]{0,127}$'
         input_set_refs:
           type: array
           items:
             type: string
         inputs:
-          type: object
-          description: inputs to be used in the pipeline
-          additionalProperties:
-            type: object
-        name:
           type: string
-          pattern: '^[a-zA-Z_0-9-.][-0-9a-zA-Z_\s.]{0,127}$'
+          description: input yaml to be used in the pipeline
         pipeline_branch_name:
           type: string
         source:
@@ -2889,7 +3078,7 @@ components:
     PipelineCreateRequestBody:
       title: Pipeline Create Request Body
       x-stoplight:
-        id: iz1vtme92sv2y
+        id: 327uibsry07no
       type: object
       description: 'Pipeline request body object '
       x-examples:
@@ -3032,7 +3221,7 @@ components:
     PipelineCreateResponseBody:
       title: Pipeline Create Response Body
       x-stoplight:
-        id: 951lp3m2aijzv
+        id: 5nmkrnjkec1yo
       type: object
       description: Pipeline response body
       x-examples:
@@ -3048,7 +3237,7 @@ components:
     YAMLSchemaErrorWrapper:
       title: YAML Schema Error Wrapper
       x-stoplight:
-        id: j8js25qc27sq8
+        id: 6zjbd198v68ce
       type: object
       description: YAML schema error.
       properties:
@@ -3089,7 +3278,7 @@ components:
     NodeInfo:
       title: Entity Details
       x-stoplight:
-        id: iddww6rh953z4
+        id: l9jf44onmwq7h
       type: object
       description: Entity details
       x-examples:
@@ -3120,7 +3309,7 @@ components:
     RecentExecutionInfo:
       title: Recent Execution Information
       x-stoplight:
-        id: 77ny51b44zmgm
+        id: iq97fesxywbrn
       type: object
       description: Recent Execution information of the Pipeline.
       properties:
@@ -3192,7 +3381,7 @@ components:
     ExecutorInfo:
       title: Executor Information
       x-stoplight:
-        id: du0ade4mh6r2g
+        id: 3wsb8q7579fr7
       type: object
       description: Information regarding Executor of Pipeline.
       properties:
@@ -3219,7 +3408,7 @@ components:
     GitCreateDetails:
       title: Create Git Details
       x-stoplight:
-        id: a8nr40ev2c8a9
+        id: 2fbhutietufm9
       type: object
       description: Contains parameters related to creating an Entity for Git Experience.
       x-examples:
@@ -3259,7 +3448,7 @@ components:
     GitUpdateDetails:
       title: Update Git Details
       x-stoplight:
-        id: 8rz1icsxdsi3k
+        id: d6tk9xgni8wkt
       type: object
       description: Contains parameters related to updating an Entity for Git Experience.
       x-examples:
@@ -3272,6 +3461,7 @@ components:
           connector_ref: git_connector
           store_type: REMOTE
           repo_name: example_repository
+          file_path: /folder/file.json
       properties:
         branch_name:
           type: string
@@ -3300,10 +3490,12 @@ components:
         repo_name:
           type: string
           description: Name of the repository.
+        file_path:
+          type: string
     PipelineUpdateRequestBody:
       title: Pipeline Update Request Body
       x-stoplight:
-        id: sbishyeoi5j5p
+        id: 1io63qmh756ue
       type: object
       description: 'Pipeline request body object '
       x-examples:
@@ -3447,7 +3639,7 @@ components:
     CacheResponseMetadataDTO:
       title: CacheResponseMetadataDTO
       x-stoplight:
-        id: 67xjbtpg6n96n
+        id: z4m7m4ge8wz0s
       type: object
       x-examples:
         example-1:
@@ -3475,7 +3667,7 @@ components:
     InputSetCreateRequestBody:
       title: Input Set Create Request Body
       x-stoplight:
-        id: 0hslaj9li9yy5
+        id: f94iaeg1g13x5
       type: object
       description: Input Set create request body
       x-examples:
@@ -3566,7 +3758,7 @@ components:
     InputSetResponseBody:
       title: Input Set Response Body
       x-stoplight:
-        id: iaxewl6ae59sr
+        id: bgq4q8rsmgfb1
       type: object
       description: Response body for Input Set
       properties:
@@ -3597,6 +3789,9 @@ components:
           minLength: 1
           maxLength: 128
           description: Project identifier
+        pipeline:
+          type: string
+          description: Pipeline identifier
         description:
           type: string
           maxLength: 1024
@@ -3607,6 +3802,15 @@ components:
             type: string
           maxProperties: 128
           description: Input Set tags
+        store_type:
+          type: string
+          description: Specifies whether the Entity is to be stored in Git or not (for Git Experience).
+          enum:
+            - INLINE
+            - REMOTE
+        connector_ref:
+          type: string
+          description: Identifier of the Harness Connector used for CRUD operations on the Entity (for Git Experience).
         git_details:
           $ref: '#/components/schemas/GitDetails'
         created:
@@ -3657,7 +3861,7 @@ components:
     InputSetErrorDetails:
       title: Input Set Error Details
       x-stoplight:
-        id: 0tv8btglxq502
+        id: vnupecfg5ea4n
       type: object
       description: Error details regarding Input Sets.
       properties:
@@ -3700,7 +3904,7 @@ components:
     FQNtoError:
       title: FQN to Error
       x-stoplight:
-        id: p4bbz6bosf9zt
+        id: l89u00rywdepy
       type: object
       description: FQN to error response mapper.
       x-examples:
@@ -3722,7 +3926,7 @@ components:
     InputSetError:
       title: Input Set Error
       x-stoplight:
-        id: wkyzhi12u01g8
+        id: s74gq70pi4kiu
       type: object
       description: Input Set error
       properties:
@@ -3743,7 +3947,7 @@ components:
     InputSetUpdateRequestBody:
       title: Input Set Update Request Body
       x-stoplight:
-        id: svyqn50qrs5ts
+        id: rbseytrdw7efn
       type: object
       description: Input Set update request body
       x-examples:
@@ -3834,7 +4038,7 @@ components:
     InputSetGitUpdateDetails:
       title: InputSetGitUpdateDetails
       x-stoplight:
-        id: mik6odeqxz8ma
+        id: riqjb110ygyqt
       type: object
       description: Contains parameters related to updating an Input Set for Git Experience.
       x-examples:
@@ -3871,7 +4075,7 @@ components:
     InputsResponseBody:
       title: Inputs Response Body
       x-stoplight:
-        id: kazksy9m0k9gs
+        id: 7w2w3wlp1zzwm
       type: object
       properties:
         inputs:
@@ -3934,7 +4138,7 @@ components:
     ParentStageInfo:
       title: ParentStageInfo
       x-stoplight:
-        id: cn8xkfjoyj41g
+        id: lm7sfb8v44edx
       type: object
       description: 'Information about parent pipeline '
       properties:
@@ -3963,7 +4167,7 @@ components:
     PipelineMoveConfigRequestBody:
       title: PipelineMoveConfigRequestBody
       x-stoplight:
-        id: 30egyqw5vhdas
+        id: dzurga6bzgrfd
       type: object
       description: Request body for moving a pipeline configuration
       properties:
@@ -3976,7 +4180,7 @@ components:
     PipelineMoveConfigResponseBody:
       title: PipelineMoveConfigResponseBody
       x-stoplight:
-        id: 6cf28zpv7isox
+        id: swz7fd7khxd4p
       type: object
       description: Response body for configuration to move a pipeline
       properties:
@@ -3988,11 +4192,11 @@ components:
         - INLINE_TO_REMOTE
       description: Operation type to move the configuration
       x-stoplight:
-        id: adugt443lz6oc
+        id: hh6m9r0yl2k0v
     GitMoveDetails:
       title: Move Git Details
       x-stoplight:
-        id: p9r6dlougqtvy
+        id: 6vvv9ry57ivmc
       type: object
       description: Parameters related to moving an entity for Git Experience.
       x-examples:
@@ -4025,7 +4229,7 @@ components:
     InputSetMoveConfigRequestBody:
       title: InputSetMoveConfigRequestBody
       x-stoplight:
-        id: 3rv2onbsyj8jn
+        id: 3zlhimv4ya86d
       type: object
       description: Request body for moving an input set configuration.
       properties:
@@ -4040,7 +4244,7 @@ components:
     InputSetMoveConfigResponseBody:
       title: InputSetMoveConfigResponseBody
       x-stoplight:
-        id: oo0bzeh9920no
+        id: pguwgihayy039
       type: object
       properties:
         input_set_identifier:
@@ -4049,7 +4253,7 @@ components:
     TemplateValidationResponseBody:
       title: TemplateValidationResponseBody
       x-stoplight:
-        id: q4xkwjlnfxyou
+        id: kp89seen4r5j7
       type: object
       description: Has Template Resolution Response.
       properties:
@@ -4060,7 +4264,7 @@ components:
     GitImportInfo:
       title: Import Git Information
       x-stoplight:
-        id: srhupzy5v6fsq
+        id: zu5yhjzm9asp0
       type: object
       properties:
         connector_ref:
@@ -4077,7 +4281,7 @@ components:
     PipelineImportRequestDTO:
       title: Pipeline Import Request DTO
       x-stoplight:
-        id: k65qkaspcn8w4
+        id: 6q2vy602iyqht
       type: object
       description: Information of Pipeline import request DTO
       properties:
@@ -4088,7 +4292,7 @@ components:
     PolicyMetadata:
       title: Policy Metadata
       x-stoplight:
-        id: vz2t93zmwc6xy
+        id: 2sduf22ggbd8k
       type: object
       description: Information about the policy metadata
       properties:
@@ -4123,7 +4327,7 @@ components:
     PolicySetMetadata:
       title: Policy Set Metadata
       x-stoplight:
-        id: mmt3snj000l9o
+        id: 8ewfp7b2uk419
       type: object
       properties:
         policy_set_identifier:
@@ -4153,7 +4357,7 @@ components:
     GovernanceMetadata:
       title: Governance Metadata
       x-stoplight:
-        id: 6er7iyllbqftz
+        id: 6n1wi6hdpb9ib
       type: object
       description: Information about the governance metadata
       properties:
@@ -4189,7 +4393,7 @@ components:
     PipelineSaveResponseBody:
       title: Pipeline Save Response Body
       x-stoplight:
-        id: twgwheriovi3k
+        id: gaqw0ip4lul5d
       type: object
       properties:
         identifier:
@@ -4202,7 +4406,7 @@ components:
     PipelineImportRequestBody:
       title: PipelineImportRequestBody
       x-stoplight:
-        id: zbo2xh0thm2b0
+        id: lm551619k2sj4
       type: object
       description: Pipeline import request body
       properties:
@@ -4213,7 +4417,7 @@ components:
     InputSetImportRequestDTO:
       title: InputSet Import Request DTO
       x-stoplight:
-        id: vu27lejr1yrh4
+        id: rens2963vzcxe
       type: object
       description: Information of InputSet import request DTO
       properties:
@@ -4224,7 +4428,7 @@ components:
     InputSetImportRequestBody:
       title: InputSet Import Request Body
       x-stoplight:
-        id: 7p9r26k6jke9a
+        id: ugqvh13py7d4x
       type: object
       description: InputSet import request body
       properties:
@@ -4235,7 +4439,7 @@ components:
     InputSetImportResponseBody:
       title: InputSet Import Response Body
       x-stoplight:
-        id: nxiu86tmfjmku
+        id: rb2bhabz7s4bh
       type: object
       properties:
         input_set_identifier:
@@ -4244,7 +4448,7 @@ components:
     ApprovalInstanceResponseBody:
       title: Approval Instance Response Body
       x-stoplight:
-        id: hwie7rtmxtmwu
+        id: 0jyp8p4r67id2
       type: object
       description: Response body for Approval Instance
       properties:
@@ -4328,7 +4532,7 @@ components:
     GitMetadataUpdateRequestBody:
       title: GitMetadataUpdateRequestBody
       x-stoplight:
-        id: euvccc1s48ej0
+        id: kuknf8lditjnm
       type: object
       properties:
         connector_ref:
@@ -4343,7 +4547,7 @@ components:
     GitMetadataUpdateResponseBody:
       title: GitMetadataUpdateResponseBody
       x-stoplight:
-        id: sa40a2nu3gv7m
+        id: 9oho1idcrtv1w
       type: object
       properties:
         entity_identifier:
@@ -4352,7 +4556,7 @@ components:
     IndividualSchemaResponseBody:
       title: IndividualSchemaResponseBody
       x-stoplight:
-        id: dnbn4vuboiw31
+        id: rxerty3g3nnv9
       type: object
       description: Individual Schema Response Body
       x-internal: true
@@ -4360,11 +4564,11 @@ components:
         data:
           type: object
           x-stoplight:
-            id: igym9ifakeumf
+            id: cizruclbipzr5
     PipelineExecuteResponseBody:
       title: PipelineExecuteResponseBody
       x-stoplight:
-        id: suzan9gpzhs9f
+        id: fahc5am5n8cl7
       type: object
       properties:
         execution_details:
@@ -4372,86 +4576,86 @@ components:
     ExecutionDetails:
       title: ExecutionDetails
       x-stoplight:
-        id: shetaetpk7xgv
+        id: 3azwpvfeuov2w
       type: object
       properties:
         execution_id:
           type: string
           x-stoplight:
-            id: rtrj6mug8gud6
+            id: zz119yhwzdq41
         status:
           type: string
           x-stoplight:
-            id: j1qkpouotnuaq
+            id: 11ftonrbzx11o
     PipelineInputSchemaDetailsResponseBody:
       title: PipelineInputSchemaDetailsResponseBody
       x-stoplight:
-        id: fxedgqbvj1dh0
+        id: nb64bylr8vymp
       type: object
       properties:
         inputs:
           type: array
           x-stoplight:
-            id: y3phwowh5kdkm
+            id: vws1ynb45crpg
           items:
             $ref: '#/components/schemas/PipelineYamlInputDetailsDTO'
       x-internal: true
     PipelineYamlInputDTO:
       title: PipelineYamlInputDTO
       x-stoplight:
-        id: 7dtv6s6sp6zvk
+        id: 0yex6oed4tw7g
       type: object
       x-internal: true
       properties:
         name:
           type: string
           x-stoplight:
-            id: gaoej2h98mt95
+            id: 2b8x21xaxspv2
         type:
           $ref: '#/components/schemas/YamlInputType'
         description:
           type: string
           x-stoplight:
-            id: g3z2x6bzhve64
+            id: h5rnlp4z1gj79
         required:
           type: boolean
           x-stoplight:
-            id: 6vjfrgidn0to6
+            id: fn7764m08urfc
         execution:
           type: boolean
         default:
           type: object
           x-stoplight:
-            id: 8cw3dxbtqanp0
+            id: 3w4rfgt8bubl4
         allowed_values:
           type: array
           x-stoplight:
-            id: iaat0fd8y4o5m
+            id: 7iz8sd83y47qa
           items: {}
         regex:
           type: string
     YamlInputType:
       title: YamlInputType
       x-stoplight:
-        id: 2rw5wzkbrgsbf
+        id: db8y6dqoxn5t3
       enum:
-        - String
-        - Integer
-        - Boolean
-        - Object
-        - Array
+        - string
+        - integer
+        - boolean
+        - object
+        - array
       x-internal: true
       description: ''
     PipelineYamlInputMetadataDTO:
       title: PipelineYamlInputMetadataDTO
       x-stoplight:
-        id: u7bz5ve9n3ny2
+        id: 33lsgbkzob6bg
       type: object
       x-internal: true
       properties:
         field_properties:
           x-stoplight:
-            id: wspffgwksxai0
+            id: 40f5u9hahejuy
           type: array
           items:
             $ref: '#/components/schemas/InputDetailsPerFieldDTO'
@@ -4460,75 +4664,75 @@ components:
     InputDetailsPerFieldDTO:
       title: InputDetailsPerFieldDTO
       x-stoplight:
-        id: 1p3vvgeu8dwm8
+        id: kcgbcfiompcev
       type: object
       x-internal: true
       properties:
         input_type:
           type: string
           x-stoplight:
-            id: xbunlvdtgykt3
+            id: 5g0eseqsft1f9
         internal_type:
           type: string
           x-stoplight:
-            id: 8rjk50uhtbuuq
+            id: xmwx4gzh3z62t
     RuntimeInputDependencyDetailsDTO:
       title: RuntimeInputDependencyDetailsDTO
       x-stoplight:
-        id: 67q2hl7913gpe
+        id: zylrpzi4ux8ri
       type: object
       x-internal: true
       properties:
         field_name:
           type: string
           x-stoplight:
-            id: swi3ynd3ar9qj
+            id: sq5c7exxx0k9y
         input_name:
           type: string
           x-stoplight:
-            id: kc68fbp5woy6y
+            id: uz01uwaj14sqy
     FixedValueFieldDependencyDetailsDTO:
       title: FixedValueFieldDependencyDetailsDTO
       x-stoplight:
-        id: 704ok0ahlg48c
+        id: rh3r6q5kqza2n
       type: object
       x-internal: true
       properties:
         field_name:
           type: string
           x-stoplight:
-            id: h5q0808p7g6yr
+            id: r8a9mtfoo5knk
         field_input_type:
           type: string
           x-stoplight:
-            id: qjc9bbq7rej9n
+            id: rcanp3lvp6k8r
         field_value:
           type: object
           x-stoplight:
-            id: 1mr51jgywhu0c
+            id: v5kf4wufvczkq
     YamlInputDependencyDetailsDTO:
       title: YamlInputDependencyDetailsDTO
       x-stoplight:
-        id: ecwpw9hqqv7j6
+        id: qsxx2xl7e39gf
       type: object
       x-internal: true
       properties:
         required_runtime_inputs:
           type: array
           x-stoplight:
-            id: pjvu942f6jofm
+            id: k2e8hxmfa6opy
           items:
             $ref: '#/components/schemas/RuntimeInputDependencyDetailsDTO'
         required_fixed_values:
           type: array
           x-stoplight:
-            id: xfpbs0w39d5qp
+            id: 51bzzm9ae0w3j
           items:
             $ref: '#/components/schemas/FixedValueFieldDependencyDetailsDTO'
     PipelineYamlInputDetailsDTO:
       title: PipelineYamlInputDetailsDTO
       x-stoplight:
-        id: tik9c8dlr01yk
+        id: 3vucdhdt6x0w2
       type: object
       properties:
         details:
@@ -4539,17 +4743,17 @@ components:
     PipelineInputsSchemaRequestBody:
       title: PipelineInputsSchemaRequestBody
       x-stoplight:
-        id: of60qxy21pg4w
+        id: gxk2vvgsv70or
       type: object
       properties:
         pipeline_yaml:
           type: string
           x-stoplight:
-            id: s0kzszazpwlp3
+            id: iy01qft29itk8
     PipelinePatchRequestBody:
       title: PipelinePatchRequestBody
       x-stoplight:
-        id: r22izzzlaa116
+        id: e8fnr82ebj30z
       type: object
       x-examples:
         Example 1:
@@ -4681,107 +4885,107 @@ components:
     MergeInputSetRequestBody:
       title: MergeInputSetRequestBody
       x-stoplight:
-        id: rpe41dd5moz7s
+        id: p9efn1fbvc25l
       type: object
       properties:
         input_set_references:
           type: array
           x-stoplight:
-            id: qtq9gnddqnk6k
+            id: rputs1uijo62x
           description: List of Input Set References to be merged
           items:
             x-stoplight:
-              id: 5ys86s6972hqz
+              id: 9tepv9dmd3eoe
             type: string
         with_merged_pipeline_yaml:
           type: boolean
           x-stoplight:
-            id: 9jvin3c088fio
+            id: 8i9150dkphpm4
           description: This is a boolean value that indicates if the response must contain the YAML for the merged Pipeline. The default value is False.
           default: false
         stage_identifiers:
           type: array
           x-stoplight:
-            id: iiwxxwufm9zjy
+            id: co2u9fyu2sm85
           description: List of Stage Ids. Input Sets corresponding to these Ids will be merged.
           items:
             x-stoplight:
-              id: dtoiz8om5ikhr
+              id: 2xu0a1bgp1ptm
             type: string
         last_yaml_to_merge:
           type: string
           x-stoplight:
-            id: yks6y0xa08cgd
+            id: s9cz14kktfmfb
           description: Runtime Input Yaml needed to be merged into the result of the merged Yaml of the inputSetReferences
         get_only_file_content:
           type: boolean
           x-stoplight:
-            id: xeifhuafkfio6
+            id: xirndpvgrgx5u
           description: To be set true if we want to set user flow in thread context
           default: false
     MergeInputSetResponseBody:
       title: MergeInputSetResponseBody
       x-stoplight:
-        id: sv9fk24a5nzyw
+        id: n3gh7aywg0asd
       type: object
       properties:
         inputs_yaml_merged:
           type: string
           x-stoplight:
-            id: vwtb08zg19qc2
+            id: kd3ytvnqv5ece
           description: Merged YAML of all the Input Sets
         merged_pipeline_yaml:
           type: string
           x-stoplight:
-            id: gavtqszioamvr
+            id: ykhg6xmh4oimb
           description: Pipeline YAML after merging with the Input Sets
         is_error_response:
           type: boolean
           x-stoplight:
-            id: ltfljlqkvn421
+            id: z6m101b1l4ot8
           description: This field is true if the merging is not possible
         inputset_error_wrapper:
           $ref: '#/components/schemas/InputSetErrorWrapperDTO'
     InputSetErrorWrapperDTO:
       title: InputSetErrorWrapperDTO
       x-stoplight:
-        id: rk48j9px3jgks
+        id: s4ql8crs71z1s
       type: object
       properties:
         error_pipeline_yaml:
           type: string
           x-stoplight:
-            id: r4wp3wi49dzxc
+            id: 9gg8szrtezldx
           description: 'If an Input Set save fails, this field contains the error fields, with the field values replaced with a UUID'
         uuid_to_error_response_map:
           type: object
           x-stoplight:
-            id: twzysk1njh0xi
+            id: r4b9a0gn9xbdj
           description: 'If an Input Set save fails, this field contains the map from FQN to why that FQN threw an error'
         invalid_inputset_references:
           type: array
           x-stoplight:
-            id: 2g6lheqo1bpyy
+            id: vvzer3huvx30q
           description: List of Input Sets that are invalid
           items:
             x-stoplight:
-              id: axhfvqnv52o7n
+              id: 3jrk17q8v6ncw
             type: string
     RerunPipelineRequestBody:
       title: RerunPipelineRequestBody
       x-stoplight:
-        id: lmw9r11ed2q21
+        id: 59p2xtj7rgnie
       type: object
       properties:
         inputs_yaml:
           type: string
           x-stoplight:
-            id: sfkahr559l9j0
+            id: sjn41ecauggf2
           description: Inputs YAML if the pipeline contains runtime inputs. This will be empty by default if pipeline does not contains runtime inputs
     HarnessApprovalActivityRequestBody:
       title: HarnessApprovalActivityRequestBody
       x-stoplight:
-        id: 888wxg16n2cjm
+        id: kgmabr9i1e9i6
       type: object
       description: Request Body for Harness Approval Activity
       x-examples:
@@ -4797,11 +5001,11 @@ components:
         comments:
           type: string
           x-stoplight:
-            id: rq8qn4mxrdqaw
+            id: qjz6tqcj999aw
         action:
           type: string
           x-stoplight:
-            id: 3rsbkzsx3y1ic
+            id: 4a1ntzyccidyu
           enum:
             - APPROVE
             - REJECT
@@ -4809,26 +5013,130 @@ components:
         approver_inputs:
           type: array
           x-stoplight:
-            id: okqxre8bbf12a
+            id: eef0q9cv54tqw
           items:
             $ref: '#/components/schemas/ApproverInputDTO'
     ApproverInputDTO:
       title: ApproverInputDTO
       x-stoplight:
-        id: cjwu6pyx6rthh
+        id: t7c2t5a4hr7ua
       type: object
       properties:
         name:
           type: string
           x-stoplight:
-            id: 2oox56okjlbue
+            id: bn22tg5okj4y4
           minLength: 1
         value:
           type: string
           x-stoplight:
-            id: bp6w6gi1s9gwo
+            id: i3f58d4zht258
           minLength: 0
       description: Approver Input DTO
+    StageExecutionResponseList:
+      title: StageExecutionResponseList
+      x-stoplight:
+        id: 9j1diuqe6dhha
+      type: array
+      items:
+        $ref: '#/components/schemas/StageExecutionResponseBody'
+      x-internal: true
+    StageExecutionResponseBody:
+      title: StageExecutionResponseBody
+      x-stoplight:
+        id: vw3y89xuf7elr
+      type: object
+      description: This contains info about a Pipeline Stage needed for stage execution.
+      properties:
+        stage_identifier:
+          type: string
+          x-stoplight:
+            id: ng1uxxiels0q1
+          description: Stage Identifier
+        stage_name:
+          type: string
+          x-stoplight:
+            id: bqz9t5juygp1x
+          description: Stage Name
+        message:
+          type: string
+          x-stoplight:
+            id: p2tis1n2wrdz6
+          description: Warning message for Selective stage execution.
+        is_to_be_blocked:
+          type: boolean
+          x-stoplight:
+            id: kcu5ndradfnwx
+          description: Checks if there is a dependency and stage cannot be run individually.
+        stages_required:
+          type: array
+          x-stoplight:
+            id: 3ktnx59lxquqw
+          description: Stages that needs to be ran along with this stage as there is a dependency.
+          items:
+            x-stoplight:
+              id: 2z3ke5rszvhs4
+            type: string
+    RunStageRequestBody:
+      title: RunStageRequestBody
+      x-stoplight:
+        id: l9oh5nvg2g2ly
+      type: object
+      description: Request Parameters needed to run specific Stages of a Pipeline.
+      properties:
+        inputs_yaml:
+          type: string
+          x-stoplight:
+            id: 8bsruu3v8f9wh
+          description: Inputs yaml of the Pipeline.
+        stage_identifiers:
+          type: array
+          x-stoplight:
+            id: daahrh1u1zy83
+          description: List of stages to run.
+          items:
+            x-stoplight:
+              id: rf1qfn1si3jcr
+            type: string
+        expression_values:
+          type: object
+          additionalProperties:
+            type: string
+          x-stoplight:
+            id: je0s2afm9oehe
+          description: If any selected stage to execute has expressions, then this map contains expressions with its corresponding values.
+    PipelineExecuteRequestBody:
+      title: PipelineExecuteRequestBody
+      x-stoplight:
+        id: kf9cfchziw5kn
+      type: object
+      properties:
+        inputs_yaml:
+          type: string
+          x-stoplight:
+            id: gtp5owd8dxtgy
+          description: Inputs YAML if the Pipeline contains Runtime Inputs
+      x-examples:
+        Example 1:
+          inputs_yaml: |-
+            pipeline:
+              identifier: pipelineIdentifier
+              stages:
+                - stage:
+                    identifier: stage1
+                    type: Custom
+                    spec:
+                      execution:
+                        steps:
+                          - step:
+                              identifier: ShellScript_1
+                              type: ShellScript
+                              spec:
+                                source:
+                                  type: Inline
+                                  spec:
+                                    script: echo hello
+                              timeout: 10s
   securitySchemes:
     x-api-key:
       name: x-api-key
@@ -4895,6 +5203,12 @@ components:
       schema:
         type: string
       description: Pipeline identifier
+    IgnoreError:
+      name: ignoreError
+      in: path
+      required: false
+      schema:
+        type: boolean
     TriggerParam:
       name: trigger
       in: path
@@ -4982,15 +5296,15 @@ components:
             example-pipeline:
               value: |
                 identifier: example_pipeline
-    TriggerCreateResponseBody:
+    TriggerResponseBody:
       description: Trigger response body
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/TriggerCreateResponseBody'
+            $ref: '#/components/schemas/TriggerResponseBody'
         application/yaml:
           schema:
-            $ref: '#/components/schemas/TriggerCreateResponseBody'
+            $ref: '#/components/schemas/TriggerResponseBody'
     TriggerGetResponseBody:
       description: Pipeline response body
       content:
@@ -5688,23 +6002,21 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/MergeInputSetResponseBody'
+    StageExecutionResponseList:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StageExecutionResponseList'
   requestBodies:
-    TriggerCreateRequestBody:
+    TriggerRequestBody:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/TriggerCreateRequestBody'
+            $ref: '#/components/schemas/TriggerRequestBody'
         application/yaml:
           schema:
-            $ref: '#/components/schemas/TriggerCreateRequestBody'
-    TriggerUpdateRequestBody:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/TriggerUpdateRequestBody'
-        application/yaml:
-          schema:
-            $ref: '#/components/schemas/TriggerUpdateRequestBody'
+            $ref: '#/components/schemas/TriggerRequestBody'
       description: Trigger request body
       required: true
     PipelineCreateRequestBody:
@@ -6273,3 +6585,13 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/RerunPipelineRequestBody'
+    RunStageRequestBody:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RunStageRequestBody'
+    PipelineExecuteRequestBody:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PipelineExecuteRequestBody'

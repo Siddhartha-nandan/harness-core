@@ -57,6 +57,9 @@ import io.harness.ng.core.dto.PollingTriggerStatusUpdateDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
+import io.harness.ngtriggers.beans.dto.BulkTriggerDetailDTO;
+import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
+import io.harness.ngtriggers.beans.dto.BulkTriggersResponseDTO;
 import io.harness.ngtriggers.beans.dto.TriggerDetails;
 import io.harness.ngtriggers.beans.dto.TriggerYamlDiffDTO;
 import io.harness.ngtriggers.beans.dto.WebhookEventProcessingDetails;
@@ -106,6 +109,7 @@ import io.harness.pms.merger.fqn.FQN;
 import io.harness.pms.merger.helpers.YamlSubMapExtractor;
 import io.harness.pms.pipeline.PMSPipelineResponseDTO;
 import io.harness.pms.rbac.PipelineRbacPermissions;
+import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.pms.yaml.YamlUtils;
@@ -580,44 +584,53 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   }
 
   @Override
-  public TriggerUpdateCount disableTriggers(String accountIdentifier, String orgIdentifier, String projectIdentifier) {
-    Criteria criteria = Criteria.where(NGTriggerEntityKeys.accountId).is(accountIdentifier);
-    if (isNotEmpty(orgIdentifier)) {
-      criteria.and(NGTriggerEntityKeys.orgIdentifier).is(orgIdentifier);
-    }
-    if (isNotEmpty(projectIdentifier)) {
-      criteria.and(NGTriggerEntityKeys.projectIdentifier).is(projectIdentifier);
-    }
-    criteria.and(NGTriggerEntityKeys.deleted).is(false);
-    CloseableIterator<NGTriggerEntity> iterator = ngTriggerRepository.findAll(criteria);
-    List<NGTriggerEntity> toBeDisabledTriggers = new ArrayList<>();
+  public BulkTriggersResponseDTO toggleTriggers(boolean enable, String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, String pipelineIdentifier, String type) {
+    Criteria criteria = TriggerFilterHelper.getCriteriaForTogglingTriggersInBulk(
+        enable, accountIdentifier, orgIdentifier, projectIdentifier, pipelineIdentifier, type);
+
+    List<NGTriggerEntity> toBeToggledTriggers = new ArrayList<>();
+    List<NGTriggerEntity> triggersToggled = new ArrayList<>();
+
     long successfullyUpdated = 0;
     long failedToUpdate = 0;
+
+    CloseableIterator<NGTriggerEntity> iterator = ngTriggerRepository.findAll(criteria);
+
     while (iterator.hasNext()) {
       NGTriggerEntity ngTriggerEntity = iterator.next();
-      ngTriggerEntity.setEnabled(false);
+      ngTriggerEntity.setEnabled(enable);
       ngTriggerElementMapper.updateEntityYmlWithEnabledValue(ngTriggerEntity);
-      toBeDisabledTriggers.add(ngTriggerEntity);
+      toBeToggledTriggers.add(ngTriggerEntity);
+      triggersToggled.add(ngTriggerEntity);
 
-      if (toBeDisabledTriggers.size() >= MAX_DISABLE_BATCH_SIZE) {
-        TriggerUpdateCount triggerUpdateCount = ngTriggerRepository.updateTriggerEnabled(toBeDisabledTriggers);
+      if (toBeToggledTriggers.size() >= MAX_DISABLE_BATCH_SIZE) {
+        TriggerUpdateCount triggerUpdateCount = ngTriggerRepository.toggleTriggerInBulk(toBeToggledTriggers, enable);
         successfullyUpdated = successfullyUpdated + triggerUpdateCount.getSuccessCount();
         failedToUpdate = failedToUpdate + triggerUpdateCount.getFailureCount();
-        toBeDisabledTriggers.clear();
+        toBeToggledTriggers.clear();
       }
     }
-    if (EmptyPredicate.isNotEmpty(toBeDisabledTriggers)) {
-      TriggerUpdateCount triggerUpdateCount = ngTriggerRepository.updateTriggerEnabled(toBeDisabledTriggers);
+
+    if (EmptyPredicate.isNotEmpty(toBeToggledTriggers)) {
+      TriggerUpdateCount triggerUpdateCount = ngTriggerRepository.toggleTriggerInBulk(toBeToggledTriggers, enable);
       successfullyUpdated = successfullyUpdated + triggerUpdateCount.getSuccessCount();
       failedToUpdate = failedToUpdate + triggerUpdateCount.getFailureCount();
     }
 
-    TriggerUpdateCount triggerUpdateCount =
-        TriggerUpdateCount.builder().successCount(successfullyUpdated).failureCount(failedToUpdate).build();
-    log.info("Successfully disabled {} and failed to disable {} triggers in account {}, org {}, project {}",
-        triggerUpdateCount.getSuccessCount(), triggerUpdateCount.getFailureCount(), accountIdentifier, orgIdentifier,
-        projectIdentifier);
-    return triggerUpdateCount;
+    String toggledAction = enable ? "enabled" : "disabled";
+
+    log.info("Successfully {} {} and failed to {} {} triggers in account {}, org {}, project {}, pipeline {}",
+        toggledAction, successfullyUpdated, toggledAction, failedToUpdate, accountIdentifier, orgIdentifier,
+        projectIdentifier, pipelineIdentifier);
+
+    // mapping the response
+    List<BulkTriggerDetailDTO> bulkTriggerDetails = toBulkTriggerDetails(triggersToggled);
+
+    return BulkTriggersResponseDTO.builder()
+        .count(successfullyUpdated)
+        .bulkTriggerDetailDTOList(bulkTriggerDetails)
+        .build();
   }
 
   @NotNull
@@ -1237,9 +1250,15 @@ public class NGTriggerServiceImpl implements NGTriggerService {
 
   public NGTriggerEntity validateTrigger(NGTriggerEntity ngTriggerEntity) {
     try {
-      ValidationResult validationResult = triggerValidationHandler.applyValidations(
-          ngTriggerElementMapper.toTriggerDetails(ngTriggerEntity.getAccountId(), ngTriggerEntity.getOrgIdentifier(),
-              ngTriggerEntity.getProjectIdentifier(), ngTriggerEntity.getYaml(), ngTriggerEntity.getWithServiceV2()));
+      ValidationResult validationResult;
+      if (HarnessYamlVersion.V0.equals(ngTriggerEntity.getHarnessVersion())) {
+        validationResult = triggerValidationHandler.applyValidations(
+            ngTriggerElementMapper.toTriggerDetails(ngTriggerEntity.getAccountId(), ngTriggerEntity.getOrgIdentifier(),
+                ngTriggerEntity.getProjectIdentifier(), ngTriggerEntity.getYaml(), ngTriggerEntity.getWithServiceV2()));
+      } else {
+        validationResult =
+            triggerValidationHandler.applyValidations(ngTriggerElementMapper.toTriggerDetails(ngTriggerEntity));
+      }
       if (!validationResult.isSuccess()) {
         ngTriggerEntity.setEnabled(false);
       }
@@ -1299,6 +1318,17 @@ public class NGTriggerServiceImpl implements NGTriggerService {
     }
 
     return ngTriggerEntity;
+  }
+
+  @Override
+  public TriggerDetails fetchTriggerEntityV1(String accountId, String orgId, String projectId, String pipelineId,
+      String triggerId, NGTriggerConfigV2 config, NGTriggerEntity entity) {
+    Optional<NGTriggerEntity> existingEntity = get(accountId, orgId, projectId, pipelineId, triggerId, false);
+    if (existingEntity.isPresent()) {
+      ngTriggerElementMapper.copyEntityFieldsOutsideOfYml(existingEntity.get(), entity);
+    }
+
+    return TriggerDetails.builder().ngTriggerConfigV2(config).ngTriggerEntity(entity).build();
   }
 
   @Override
@@ -1458,6 +1488,48 @@ public class NGTriggerServiceImpl implements NGTriggerService {
       log.info("No non-deleted Trigger found to update pipelineBranchName");
       return TriggerUpdateCount.builder().successCount(0).failureCount(0).build();
     }
+  }
+
+  @Override
+  public BulkTriggersResponseDTO toggleTriggersInBulk(
+      String accountIdentifier, BulkTriggersRequestDTO bulkTriggersRequestDTO) {
+    String orgIdentifier = null;
+    String projectIdentifier = null;
+    String pipelineIdentifier = null;
+    String type = null;
+    boolean enable = false;
+
+    // Filters and Data from the RequestBody
+    if (bulkTriggersRequestDTO.getFilters() != null) {
+      orgIdentifier = bulkTriggersRequestDTO.getFilters().getOrgIdentifier();
+      projectIdentifier = bulkTriggersRequestDTO.getFilters().getProjectIdentifier();
+      pipelineIdentifier = bulkTriggersRequestDTO.getFilters().getPipelineIdentifier();
+      type = bulkTriggersRequestDTO.getFilters().getType();
+    }
+    if (bulkTriggersRequestDTO.getData() != null) {
+      enable = bulkTriggersRequestDTO.getData().isEnable();
+    }
+
+    return toggleTriggers(enable, accountIdentifier, orgIdentifier, projectIdentifier, pipelineIdentifier, type);
+  }
+
+  private List<BulkTriggerDetailDTO> toBulkTriggerDetails(List<NGTriggerEntity> triggerEntities) {
+    List<BulkTriggerDetailDTO> bulkTriggerDetails = new ArrayList<>();
+
+    for (NGTriggerEntity trigger : triggerEntities) {
+      BulkTriggerDetailDTO bulkTriggerDetailDTO = BulkTriggerDetailDTO.builder()
+                                                      .accountIdentifier(trigger.getAccountId())
+                                                      .orgIdentifier(trigger.getOrgIdentifier())
+                                                      .projectIdentifier(trigger.getProjectIdentifier())
+                                                      .pipelineIdentifier(trigger.getTargetIdentifier())
+                                                      .triggerIdentifier(trigger.getIdentifier())
+                                                      .type(trigger.getType())
+                                                      .build();
+
+      bulkTriggerDetails.add(bulkTriggerDetailDTO);
+    }
+
+    return bulkTriggerDetails;
   }
 
   public boolean checkIfShouldSubscribePolling(NGTriggerEntity ngTriggerEntity) {
