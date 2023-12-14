@@ -425,8 +425,7 @@ public class SecretCrudServiceImpl implements SecretCrudService {
       criteria.and(SecretKeys.identifier).in(identifiers);
     }
 
-    addCriteriaForSecretManagerIdentifiers(
-        criteria, secretManagerIdentifiers, accountIdentifier, orgIdentifier, projectIdentifier);
+    addCriteriaForSecretManagerIdentifiers(criteria, secretManagerIdentifiers);
 
     if (accessControlClient.hasAccess(ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
             Resource.of(SECRET_RESOURCE_TYPE, null), SECRET_VIEW_PERMISSION)) {
@@ -475,41 +474,20 @@ public class SecretCrudServiceImpl implements SecretCrudService {
     }
   }
 
-  private void addCriteriaForSecretManagerIdentifiers(Criteria criteria, Set<String> secretManagerIdentifiers,
-      String accountIdentifier, String orgIdentifier, String projectIdentifier) {
-    if (isNotEmpty(secretManagerIdentifiers)) {
-      List<Criteria> criteriaListToOr = new ArrayList<>();
-      for (String secretManagerIdentifier : secretManagerIdentifiers) {
-        String identifier = IdentifierRefHelper.getIdentifier(secretManagerIdentifier);
-        IdentifierRef identifierRef = IdentifierRefHelper.getIdentifierRef(
-            secretManagerIdentifier, accountIdentifier, orgIdentifier, projectIdentifier);
+  private void addCriteriaForSecretManagerIdentifiers(Criteria criteria, Set<String> secretManagerScopedIdentifiers) {
+    if (isEmpty(secretManagerScopedIdentifiers)) {
+      return;
+    }
+    Set<String> secretManagerIdentifiersForCriteria = new HashSet<>();
+    for (String secretManagerScopedIdentifier : secretManagerScopedIdentifiers) {
+      secretManagerIdentifiersForCriteria.add(secretManagerScopedIdentifier);
 
-        if (isNotEmpty(identifierRef.getProjectIdentifier())) {
-          criteriaListToOr.add(criteria.and(SecretKeys.projectIdentifier)
-                                   .exists(true)
-                                   .and(SecretKeys.secretManagerIdentifier)
-                                   .is(identifier));
-        } else if (isNotEmpty(identifierRef.getOrgIdentifier())) {
-          criteriaListToOr.add(new Criteria().orOperator(Criteria.where(SecretKeys.orgIdentifier)
-                                                             .exists(true)
-                                                             .and(SecretKeys.projectIdentifier)
-                                                             .exists(false)
-                                                             .and(SecretKeys.secretManagerIdentifier)
-                                                             .is(identifier),
-              Criteria.where(SecretKeys.secretManagerIdentifier).is(secretManagerIdentifier)));
-        } else {
-          criteriaListToOr.add(new Criteria().orOperator(Criteria.where(SecretKeys.orgIdentifier)
-                                                             .exists(false)
-                                                             .and(SecretKeys.projectIdentifier)
-                                                             .exists(false)
-                                                             .and(SecretKeys.secretManagerIdentifier)
-                                                             .is(identifier),
-              Criteria.where(SecretKeys.secretManagerIdentifier).is(secretManagerIdentifier)));
-        }
-      }
-      if (isNotEmpty(criteriaListToOr)) {
-        criteria.orOperator(criteriaListToOr);
-      }
+      String nonScopedIdentifier = IdentifierRefHelper.getIdentifier(secretManagerScopedIdentifier);
+      secretManagerIdentifiersForCriteria.add(nonScopedIdentifier);
+    }
+
+    if (isNotEmpty(secretManagerIdentifiersForCriteria)) {
+      criteria.and(SecretKeys.secretManagerIdentifier).in(secretManagerIdentifiersForCriteria);
     }
   }
 
