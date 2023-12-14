@@ -28,6 +28,7 @@ import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 import static io.harness.utils.PageUtils.getNGPageResponse;
 
 import static java.lang.Boolean.FALSE;
+import static java.lang.Boolean.parseBoolean;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Objects.isNull;
@@ -77,6 +78,7 @@ import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.entities.Project.ProjectKeys;
 import io.harness.ng.core.entities.metrics.ProjectsPerAccountCount;
 import io.harness.ng.core.entities.metrics.ProjectsPerAccountCount.ProjectsPerAccountCountKeys;
+import io.harness.ng.core.event.HarnessSMManager;
 import io.harness.ng.core.events.ProjectCreateEvent;
 import io.harness.ng.core.events.ProjectDeleteEvent;
 import io.harness.ng.core.events.ProjectRestoreEvent;
@@ -89,7 +91,9 @@ import io.harness.ng.core.services.ProjectService;
 import io.harness.ng.core.user.entities.UserMembership;
 import io.harness.ng.core.user.entities.UserMembership.UserMembershipKeys;
 import io.harness.ng.core.user.service.NgUserService;
+import io.harness.ngsettings.SettingIdentifiers;
 import io.harness.outbox.api.OutboxService;
+import io.harness.remote.client.NGRestUtils;
 import io.harness.repositories.core.spring.ProjectRepository;
 import io.harness.security.SourcePrincipalContextBuilder;
 import io.harness.security.dto.PrincipalType;
@@ -155,6 +159,7 @@ public class ProjectServiceImpl implements ProjectService {
   private final UserHelperService userHelperService;
   private final Cache<String, ScopeInfo> scopeInfoCache;
   private final ScopeInfoHelper scopeInfoHelper;
+  private final HarnessSMManager harnessSMManager;
 
   @Inject
   public ProjectServiceImpl(ProjectRepository projectRepository, OrganizationService organizationService,
@@ -164,7 +169,7 @@ public class ProjectServiceImpl implements ProjectService {
       FeatureFlagService featureFlagService, DefaultUserGroupService defaultUserGroupService,
       FavoritesService favoritesService, UserHelperService userHelperService,
       @Named(ProjectService.PROJECT_SCOPE_INFO_DATA_CACHE_KEY) Cache<String, ScopeInfo> scopeInfoCache,
-      ScopeInfoHelper scopeInfoHelper) {
+      ScopeInfoHelper scopeInfoHelper, HarnessSMManager harnessSMManager) {
     this.projectRepository = projectRepository;
     this.organizationService = organizationService;
     this.transactionTemplate = transactionTemplate;
@@ -180,6 +185,7 @@ public class ProjectServiceImpl implements ProjectService {
     this.userHelperService = userHelperService;
     this.scopeInfoCache = scopeInfoCache;
     this.scopeInfoHelper = scopeInfoHelper;
+    this.harnessSMManager = harnessSMManager;
   }
 
   @Override
@@ -523,6 +529,9 @@ public class ProjectServiceImpl implements ProjectService {
         Project updatedProject = projectRepository.save(project);
         addToScopeInfoCache(updatedProject);
         setupProject(Scope.of(accountIdentifier, destinationOrgIdentifier, project.getIdentifier()));
+
+        harnessSMManager.createHarnessSecretManager(accountIdentifier, destinationOrgIdentifier, identifier);
+
         log.info(String.format(
             "Project with identifier [%s] and source orgIdentifier [%s] was successfully moved to [%s] orgIdentifier",
             identifier, scopeInfo.getOrgIdentifier(), destinationOrgIdentifier));
