@@ -32,4 +32,5 @@ public final class SettingConstants {
   public static final String INCLUDES_PARENT_SCOPE =
       "Flag to include the settings which only exist at the parent scopes";
   public static final String INCLUDES_PARENT_SCOPE_KEY = "includeParentScopes";
+  public static final String USER_ID = "userID";
 }
