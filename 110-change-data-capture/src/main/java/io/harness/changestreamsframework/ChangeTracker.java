@@ -185,6 +185,9 @@ public class ChangeTracker {
       if (shouldProcessChange(changeStreamDocument)) {
         ChangeEvent<T> changeEvent =
             changeEventFactory.fromChangeStreamDocument(changeStreamDocument, changeTrackingInfo.getMorphiaClass());
+        log.info("Timestamp: " + changeStreamDocument.getClusterTime().getTime()
+            + ", Document ID: " + changeEventFactory.getUuidfromChangeStream(changeStreamDocument)
+            + ", Change Entity: " + changeEvent.getEntityType());
         if (hasTrackedFieldBeenChanged(changeEvent, changeTrackingInfo.getMorphiaClass())) {
           changeTrackingInfo.getChangeSubscriber().onChange(changeEvent);
         }
