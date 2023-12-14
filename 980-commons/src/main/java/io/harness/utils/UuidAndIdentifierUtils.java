@@ -37,6 +37,7 @@ public final class UuidAndIdentifierUtils {
   }
 
   public static String generateHarnessUIFormatIdentifier(String name) {
+    name = generateFormattedIdentifier(name);
     if (StringUtils.isBlank(name)) {
       return "";
     }
@@ -45,5 +46,20 @@ public final class UuidAndIdentifierUtils {
         .replaceAll("^[0-9-$]*", "") // remove starting digits, dashes and $
         .replaceAll("[^0-9a-zA-Z_$ ]", "") // remove special chars except _ and $
         .replaceAll("\\s", "_"); // replace spaces with _
+  }
+
+  /**
+   * Bring back SCIM usergroup name formatting in lieu of https://harness.atlassian.net/browse/PL-43576
+   * This method will convert space,dot and hypen to underscore
+   * @param name
+   * @return
+   */
+
+  private static String generateFormattedIdentifier(String name) {
+    return StringUtils.isBlank(name) ? name
+                                     : name.trim()
+                                           .replaceAll(" ", "_") // replace spaces with _
+                                           .replaceAll("\\.", "_") // replace dot with _
+                                           .replaceAll("-", "_"); // replace - with _
   }
 }
