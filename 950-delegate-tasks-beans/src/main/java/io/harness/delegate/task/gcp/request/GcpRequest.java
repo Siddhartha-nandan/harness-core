@@ -16,6 +16,7 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.delegate.beans.ci.pod.EnvVariableEnum;
 import io.harness.delegate.beans.connector.ConnectorTaskParams;
 import io.harness.delegate.beans.connector.gcpconnector.GcpManualDetailsDTO;
 import io.harness.delegate.beans.connector.gcpconnector.GcpOidcDetailsDTO;
@@ -27,6 +28,7 @@ import io.harness.security.encryption.EncryptedDataDetail;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import lombok.Data;
 import lombok.experimental.SuperBuilder;
 
@@ -40,6 +42,7 @@ public abstract class GcpRequest extends ConnectorTaskParams implements Executio
   private List<EncryptedDataDetail> encryptionDetails;
   private GcpManualDetailsDTO gcpManualDetailsDTO;
   private GcpOidcDetailsDTO gcpOidcDetailsDTO;
+  private String oidcIdToken;
 
   public Duration getExecutionTimeout() {
     return Duration.ofSeconds(30);

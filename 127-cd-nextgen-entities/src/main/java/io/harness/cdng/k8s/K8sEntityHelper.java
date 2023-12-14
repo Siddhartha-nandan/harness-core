@@ -41,11 +41,15 @@ import io.harness.cdng.infra.beans.K8sDirectInfrastructureOutcome;
 import io.harness.cdng.infra.beans.K8sGcpInfrastructureOutcome;
 import io.harness.cdng.infra.beans.K8sRancherInfrastructureOutcome;
 import io.harness.connector.ConnectorInfoDTO;
+import io.harness.connector.ConnectorResourceClient;
 import io.harness.connector.ConnectorResponseDTO;
 import io.harness.connector.services.ConnectorService;
 import io.harness.delegate.beans.connector.awsconnector.AwsConnectorDTO;
 import io.harness.delegate.beans.connector.azureconnector.AzureConnectorDTO;
+import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorCredentialDTO;
 import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorDTO;
+import io.harness.delegate.beans.connector.gcpconnector.GcpCredentialType;
+import io.harness.delegate.beans.connector.gcpconnector.GcpOidcDetailsDTO;
 import io.harness.delegate.beans.connector.helm.HttpHelmConnectorDTO;
 import io.harness.delegate.beans.connector.helm.OciHelmConnectorDTO;
 import io.harness.delegate.beans.connector.k8Connector.KubernetesAuthCredentialDTO;
@@ -63,6 +67,8 @@ import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.k8s.KubernetesHelperService;
 import io.harness.ng.core.NGAccess;
+import io.harness.ng.core.dto.ResponseDTO;
+import io.harness.oidc.gcp.GcpOidcTokenRequestDTO;
 import io.harness.remote.client.CGRestUtils;
 import io.harness.secretmanagerclient.services.api.SecretManagerClientService;
 import io.harness.security.encryption.EncryptedDataDetail;
@@ -71,6 +77,7 @@ import io.harness.utils.IdentifierRefHelper;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -78,6 +85,7 @@ import javax.annotation.Nonnull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import retrofit2.Response;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 @Slf4j
@@ -88,6 +96,7 @@ public class K8sEntityHelper {
   @Named(DEFAULT_CONNECTOR_SERVICE) @Inject private ConnectorService connectorService;
   @Inject private AccountClient accountClient;
   @Inject protected CDFeatureFlagHelper cdFeatureFlagHelper;
+  @Inject private ConnectorResourceClient connectorResourceClient;
 
   public static final String CLASS_CAST_EXCEPTION_ERROR =
       "Unsupported Connector for Infrastructure type: [%s]. Connector provided is of type: [%s]. Configure connector of type: [%s] to resolve the issue";
@@ -179,12 +188,30 @@ public class K8sEntityHelper {
           K8sGcpInfrastructureOutcome k8sGcpInfrastructure = (K8sGcpInfrastructureOutcome) infrastructure;
           KubernetesHelperService.validateNamespace(k8sGcpInfrastructure.getNamespace());
           KubernetesHelperService.validateCluster(k8sGcpInfrastructure.getCluster());
-
+          GcpConnectorDTO gcpConnectorDTO = (GcpConnectorDTO) connectorDTO.getConnectorConfig();
+          GcpConnectorCredentialDTO credential = gcpConnectorDTO.getCredential();
+          String oidcIdTokenFinal = null;
+          if (credential.getGcpCredentialType() == GcpCredentialType.OIDC_AUTHENTICATION) {
+            try {
+              GcpOidcTokenRequestDTO gcpOidcTokenRequestDTO = createGcpOidcTokenRequestDTO(
+                  ngAccess.getAccountIdentifier(), (GcpOidcDetailsDTO) credential.getConfig());
+              Response<ResponseDTO<String>> oidcIdToken =
+                  connectorResourceClient.getOidcIdToken(gcpOidcTokenRequestDTO).execute();
+              if (oidcIdToken.isSuccessful()) {
+                oidcIdTokenFinal = oidcIdToken.body().getData();
+              } else {
+                throw new IOException("Failed to create OIDC ID Token");
+              }
+            } catch (Exception ex) {
+              throw new InvalidRequestException("Unable to create ID Token from provided creds in connector");
+            }
+          }
           return GcpK8sInfraDelegateConfig.builder()
               .namespace(k8sGcpInfrastructure.getNamespace())
               .cluster(k8sGcpInfrastructure.getCluster())
               .gcpConnectorDTO((GcpConnectorDTO) connectorDTO.getConnectorConfig())
               .encryptionDataDetails(getEncryptionDataDetails(connectorDTO, ngAccess))
+              .oidcIdToken(oidcIdTokenFinal)
               .build();
 
         case KUBERNETES_AZURE:
@@ -274,5 +301,24 @@ public class K8sEntityHelper {
     }
 
     return false;
+  }
+
+  private GcpOidcTokenRequestDTO createGcpOidcTokenRequestDTO(String accountId, GcpOidcDetailsDTO gcpOidcDetailsDTO) {
+    GcpOidcTokenRequestDTO gcpOidcTokenRequestDTO = new GcpOidcTokenRequestDTO();
+    gcpOidcTokenRequestDTO.setAccountId(accountId);
+    gcpOidcTokenRequestDTO.setWorkloadPoolId(gcpOidcDetailsDTO.getWorkloadPoolId());
+    gcpOidcTokenRequestDTO.setProviderId(gcpOidcDetailsDTO.getProviderId());
+    gcpOidcTokenRequestDTO.setServiceAccountEmail(gcpOidcDetailsDTO.getServiceAccountEmail());
+    gcpOidcTokenRequestDTO.setGcpProjectId(gcpOidcDetailsDTO.getGcpProjectId());
+
+    validateGcpOidcTokenRequestDTO(gcpOidcTokenRequestDTO);
+    return gcpOidcTokenRequestDTO;
+  }
+  private void validateGcpOidcTokenRequestDTO(GcpOidcTokenRequestDTO gcpOidcTokenRequestDTO) {
+    if (gcpOidcTokenRequestDTO.getAccountId() == null || gcpOidcTokenRequestDTO.getWorkloadPoolId() == null
+        || gcpOidcTokenRequestDTO.getProviderId() == null || gcpOidcTokenRequestDTO.getServiceAccountEmail() == null
+        || gcpOidcTokenRequestDTO.getGcpProjectId() == null) {
+      throw new IllegalArgumentException("All properties must be set on GcpOidcTokenRequestDTO");
+    }
   }
 }

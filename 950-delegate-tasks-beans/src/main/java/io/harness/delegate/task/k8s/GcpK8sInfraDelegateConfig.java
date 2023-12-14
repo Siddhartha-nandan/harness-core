@@ -27,4 +27,5 @@ public class GcpK8sInfraDelegateConfig implements K8sInfraDelegateConfig {
   String cluster;
   GcpConnectorDTO gcpConnectorDTO;
   List<EncryptedDataDetail> encryptionDataDetails;
+  String oidcIdToken;
 }

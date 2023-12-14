@@ -8,6 +8,7 @@
 package io.harness.cdng.k8s.resources.gcp.service.impl;
 
 import static io.harness.annotations.dev.HarnessTeam.CDP;
+import static io.harness.delegate.beans.ci.pod.EnvVariableEnum.PLUGIN_OIDC_TOKEN_ID;
 import static io.harness.delegate.beans.connector.gcpconnector.GcpCredentialType.INHERIT_FROM_DELEGATE;
 
 import io.harness.annotations.dev.OwnedBy;
@@ -18,15 +19,21 @@ import io.harness.cdng.gcp.GcpHelperService;
 import io.harness.cdng.k8s.resources.gcp.GcpResponseDTO;
 import io.harness.cdng.k8s.resources.gcp.dtos.GcpProjectDetails;
 import io.harness.cdng.k8s.resources.gcp.service.GcpResourceService;
+import io.harness.delegate.beans.ci.pod.EnvVariableEnum;
+import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorCredentialDTO;
 import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorDTO;
+import io.harness.delegate.beans.connector.gcpconnector.GcpCredentialType;
+import io.harness.delegate.beans.connector.gcpconnector.GcpOidcDetailsDTO;
 import io.harness.delegate.task.gcp.GcpTaskType;
 import io.harness.delegate.task.gcp.request.GcpListClustersRequest;
 import io.harness.delegate.task.gcp.request.GcpListProjectsRequest;
 import io.harness.delegate.task.gcp.request.GcpTaskParameters;
 import io.harness.delegate.task.gcp.response.GcpClusterListTaskResponse;
 import io.harness.delegate.task.gcp.response.GcpProjectListTaskResponse;
+import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.BaseNGAccess;
 import io.harness.security.encryption.EncryptedDataDetail;
+import io.harness.utils.GcpOidcAuthenticator;
 
 import software.wings.beans.TaskType;
 
@@ -40,6 +47,7 @@ import java.util.Map;
 @OwnedBy(CDP)
 public class GcpResourceServiceImpl implements GcpResourceService {
   @Inject GcpHelperService gcpHelperService;
+  @Inject private GcpOidcAuthenticator gcpOidcAuthenticator;
 
   @Override
   public GcpResponseDTO getClusterNames(
@@ -50,7 +58,22 @@ public class GcpResourceServiceImpl implements GcpResourceService {
                                     .orgIdentifier(orgIdentifier)
                                     .projectIdentifier(projectIdentifier)
                                     .build();
+    GcpConnectorCredentialDTO credential = connector.getCredential();
+    String oidcIdToken = null;
+    if (credential.getGcpCredentialType() == GcpCredentialType.OIDC_AUTHENTICATION) {
+      GcpOidcDetailsDTO gcpOidcDetailsDTO = (GcpOidcDetailsDTO) credential.getConfig();
+      try {
+        Map<EnvVariableEnum, String> oidcAuthMap =
+            gcpOidcAuthenticator.handleOidcAuthentication(accountId, gcpOidcDetailsDTO);
+        oidcIdToken = oidcAuthMap.get(PLUGIN_OIDC_TOKEN_ID);
+        if (oidcAuthMap.isEmpty()) {
+          throw new IllegalStateException("OIDC Authentication map is empty");
+        }
 
+      } catch (Exception ex) {
+        throw new InvalidRequestException("Unable to create ID Token from provided creds in connector");
+      }
+    }
     List<EncryptedDataDetail> encryptionDetails = gcpHelperService.getEncryptionDetails(connector, baseNGAccess);
     GcpListClustersRequest request =
         GcpListClustersRequest.builder()
@@ -58,6 +81,7 @@ public class GcpResourceServiceImpl implements GcpResourceService {
             .useDelegate(INHERIT_FROM_DELEGATE == connector.getCredential().getGcpCredentialType())
             .delegateSelectors(connector.getDelegateSelectors())
             .encryptionDetails(encryptionDetails)
+            .oidcIdToken(oidcIdToken)
             .build();
 
     GcpClusterListTaskResponse gcpClusterListTaskResponse =
