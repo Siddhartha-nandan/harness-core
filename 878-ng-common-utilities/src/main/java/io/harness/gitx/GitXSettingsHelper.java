@@ -11,8 +11,6 @@ import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
-import static org.apache.commons.lang.StringUtils.EMPTY;
-
 import io.harness.EntityType;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -71,7 +69,7 @@ public class GitXSettingsHelper {
         && GitAwareContextHelper.isNullOrDefault(gitEntityInfo.getConnectorRef())) {
       String defaultConnectorForGitX = getDefaultConnectorForGitX(accountIdentifier, orgIdentifier, projectIdentifier);
       if (gitEntityInfo.getIsHarnessCodeRepo()) {
-        gitEntityInfo.setConnectorRef(EMPTY);
+        gitEntityInfo.setConnectorRef(GitSyncConstants.EMPTY);
         GitAwareContextHelper.updateGitEntityContext(gitEntityInfo);
       } else if (!isEmpty(defaultConnectorForGitX)) {
         gitEntityInfo.setConnectorRef(defaultConnectorForGitX);
