@@ -643,11 +643,11 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       delegateId = registerDelegate(builder);
       DelegateAgentCommonVariables.setDelegateId(delegateId);
       log.info("[New] Delegate registered in {} ms", clock.millis() - start);
-      logPerformanceImpl.getContainerCpuUsage();
 
+      startDynamicHandlingOfTasks();
       if (isImmutableDelegate && dynamicRequestHandling) {
         // Enable dynamic throttling of requests only for immutable and FF enabled
-        startDynamicHandlingOfTasks();
+
       }
 
       if (isPollingForTasksEnabled()) {
@@ -760,6 +760,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
 
   private void maybeUpdateTaskRejectionStatus() {
     final long currentRSSMB = MemoryHelper.getProcessMemoryMB();
+
     if (currentRSSMB >= maxProcessRSSThresholdMB) {
       log.warn(
           "Memory resource reached threshold, temporarily reject incoming task request. CurrentProcessRSSMB {} ThresholdMB {}",
@@ -1866,6 +1867,8 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
     if (!shouldContactManager() || frozen.get()) {
       return;
     }
+    logPerformanceImpl.getCpuUsage();
+    logPerformanceImpl.getContainerCpuUsage();
     log.info("Last heartbeat received at {} and sent to manager at {}", lastHeartbeatReceivedAt.get(),
         lastHeartbeatSentAt.get());
     final boolean heartbeatReceivedTimeout = lastHeartbeatReceivedAt.get() != 0

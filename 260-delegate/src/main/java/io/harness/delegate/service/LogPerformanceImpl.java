@@ -19,7 +19,11 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.RuntimeMXBean;
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -66,6 +70,12 @@ public class LogPerformanceImpl {
     return Long.parseLong(processName.split("@")[0]);
   }
 
+  private static String getDelegateProcessId() {
+    RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
+    String processName = runtimeBean.getName();
+    return processName.split("@")[0];
+  }
+
   private void logTopProcessesByCpuAndMemory() {
     try {
       int totalLinesToRead = 0;
@@ -110,7 +120,9 @@ public class LogPerformanceImpl {
     }
   }
 
-  public double getContainerCpuUsage() {
+
+
+ /* public double getContainerCpuUsage() {
     try {
       int totalLinesToRead = 0;
 
@@ -161,5 +173,118 @@ public class LogPerformanceImpl {
       log.error(e.toString());
     }
     return -1.0;
+  }*/
+
+  public void getCpuUsage() {
+    try {
+      int totalLinesToRead = 0;
+
+      String termEnv = System.getenv(TERM_ENV_VARIABLE);
+      if (StringUtils.isEmpty(termEnv)) {
+        termEnv = DEFAULT_TERM_ENV_VALUE;
+      }
+      String processId = getDelegateProcessId();
+      ProcessBuilder cpuProcessBuilder = new ProcessBuilder("top", "-b", "-n", "1", "-o", "%CPU", "-p", getDelegateProcessId());
+      cpuProcessBuilder.environment().put(TERM_ENV_VARIABLE, termEnv);
+      Process cpuProcess = cpuProcessBuilder.start();
+
+      try (BufferedReader cpuReader = new BufferedReader(new InputStreamReader(cpuProcess.getInputStream()))) {
+        String line;
+        while ((line = cpuReader.readLine()) != null) {
+          log.info("From getCpuUsage: {}", line);
+          if (line.startsWith(processId)) {
+            String[] processInfo = line.trim().split("\\s+");
+             log.info("Process Info: {}", Arrays.stream(processInfo).collect(Collectors.toList()));
+            // Map to store key-value pairs for process information
+          /*  Map<String, String> processInfoMap = new HashMap<>();
+            processInfoMap.put("PID", processInfo[0]);
+            processInfoMap.put("USER", processInfo[1]);
+            processInfoMap.put("PR", processInfo[1]);
+            processInfoMap.put("NI", processInfo[1]);*/
+            //%CPU  %MEM
+          }
+        }
+      }
+
+
+
+    }catch (IOException e) {
+      log.error(e.toString());
+    }
+
   }
+
+
+
+
+
+  public double getContainerCpuUsage() {
+    try {
+      int totalLinesToRead = 0;
+
+      String termEnv = System.getenv(TERM_ENV_VARIABLE);
+      if (StringUtils.isEmpty(termEnv)) {
+        termEnv = DEFAULT_TERM_ENV_VALUE;
+      }
+
+      // ProcessBuilder is used to spawn a child process to run the given command
+      // ProcessBuild allows the process to be killed through manually
+      ProcessBuilder cpuProcessBuilder = new ProcessBuilder("top", "-b", "-n", "1");
+      cpuProcessBuilder.environment().put(TERM_ENV_VARIABLE, termEnv);
+
+      Process cpuProcess = cpuProcessBuilder.start();
+      String processId = "11539";
+
+      try (BufferedReader cpuReader = new BufferedReader(new InputStreamReader(cpuProcess.getInputStream()))) {
+
+       /* String line = "11539 root      20   0   14.9g 982376  22740 S   6.7   0.5  23:42.27";
+
+
+        if (line.contains(processId)) {
+          String[] tokens = line.trim().split("\\s+");
+          if (tokens.length >= 10) {
+            String cpuUsage = tokens[8];
+            String memoryUsage = tokens[9];
+            log.info("CPU Usage for process " + processId + ": " + cpuUsage + "%");
+            // log.info("CPU Usage: " + (100 - Double.parseDouble(cpuUsage[0])) + "%");
+          }
+        }*/
+        String line;
+        while ((line = cpuReader.readLine()) != null) {
+          log.info(line);
+
+          if (line.contains(getDelegateProcessId())) {
+            String[] tokens = line.trim().split("\\s+");
+            if (tokens.length >= 10) {
+              String cpuUsage = tokens[8];
+              String memoryUsage = tokens[9];
+              log.info("CPU Usage for process " + processId + ": " + cpuUsage + "%");
+              log.info("Memory Usage: " + (100 - Double.parseDouble(memoryUsage)) + "%");
+              break;
+            }
+          }
+          totalLinesToRead++;
+          if (totalLinesToRead >= NOS_OF_TOP_PROCESS_LINES_TO_READ) {
+            // Close the input stream and kill the process.
+            cpuProcess.getInputStream().close();
+            cpuProcess.destroy();
+            break;
+          }
+        }
+      }
+
+      // Ensure that the cpuProcess is terminated
+      int exitCode = cpuProcess.waitFor();
+      log.info("The process to dump Top processes exited with code {}", exitCode);
+      return 0;
+    } catch (IOException e) {
+      log.error(e.toString());
+    } catch (InterruptedException e) {
+      log.error(e.toString());
+    } catch (Exception e) {
+      log.error(e.toString());
+    }
+    return -1.0;
+  }
+
 }
