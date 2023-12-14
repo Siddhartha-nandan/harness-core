@@ -34,8 +34,8 @@ import javax.cache.expiry.Duration;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @AllArgsConstructor
+@Slf4j
 @OwnedBy(HarnessTeam.STO)
 public class STOManagerServiceModule extends AbstractModule {
   CIManagerConfiguration configuration;
