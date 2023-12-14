@@ -109,4 +109,57 @@ public class LogPerformanceImpl {
       log.error(e.toString());
     }
   }
+
+  public double getContainerCpuUsage() {
+    try {
+      int totalLinesToRead = 0;
+
+      String termEnv = System.getenv(TERM_ENV_VARIABLE);
+      if (StringUtils.isEmpty(termEnv)) {
+        termEnv = DEFAULT_TERM_ENV_VALUE;
+      }
+
+      // ProcessBuilder is used to spawn a child process to run the given command
+      // ProcessBuild allows the process to be killed through manually
+      ProcessBuilder cpuProcessBuilder = new ProcessBuilder("top", "-b", "-n", "1");
+      cpuProcessBuilder.environment().put(TERM_ENV_VARIABLE, termEnv);
+
+      Process cpuProcess = cpuProcessBuilder.start();
+      double cpu = -1.0;
+      try (BufferedReader cpuReader = new BufferedReader(new InputStreamReader(cpuProcess.getInputStream()))) {
+        String line;
+        log.info("Top CPU processes in the system :");
+        while ((line = cpuReader.readLine()) != null) {
+          log.info(line);
+          totalLinesToRead++;
+          if (line.contains("%Cpu(s):")) {
+            String[] cpuUsage= line.trim().split("\\s+");
+            //cpuUsage = Double.parseDouble(tokens[8].replace(",", ""));
+            //log.info("CPU Usage is {}", cpuUsage);
+            log.info("CPU Usage: " + (100 - Double.parseDouble(cpuUsage[0])) + "%");
+            break;
+            break;
+          }
+
+          if (totalLinesToRead >= NOS_OF_TOP_PROCESS_LINES_TO_READ) {
+            // Close the input stream and kill the process.
+            cpuProcess.getInputStream().close();
+            cpuProcess.destroy();
+            break;
+          }
+        }
+      }
+      // Ensure that the cpuProcess is terminated
+      int exitCode = cpuProcess.waitFor();
+      log.info("The process to dump Top processes exited with code {}", exitCode);
+      return cpu;
+    } catch (IOException e) {
+      log.error(e.toString());
+    } catch (InterruptedException e) {
+      log.error(e.toString());
+    } catch (Exception e) {
+      log.error(e.toString());
+    }
+    return -1.0;
+  }
 }
