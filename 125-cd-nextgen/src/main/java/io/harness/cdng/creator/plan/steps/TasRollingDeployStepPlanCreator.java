@@ -63,8 +63,8 @@ public class TasRollingDeployStepPlanCreator extends CDPMSStepPlanCreatorV2<TasR
   public String getFacilitatorType(PlanCreationContext ctx, TasRollingDeployStepNode stepElement) {
     if (featureFlagService.isEnabled(
             ctx.getMetadata().getAccountIdentifier(), FeatureName.CDS_TAS_ASYNC_STEP_STRATEGY)) {
-      return OrchestrationFacilitatorType.ASYNC;
+      return OrchestrationFacilitatorType.ASYNC_CHAIN;
     }
-    return OrchestrationFacilitatorType.TASK;
+    return OrchestrationFacilitatorType.TASK_CHAIN;
   }
 }
