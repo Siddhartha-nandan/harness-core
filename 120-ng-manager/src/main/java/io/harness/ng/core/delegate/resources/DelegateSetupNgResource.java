@@ -266,4 +266,24 @@ public class DelegateSetupNgResource {
     return new RestResponse<>(CGRestUtils.getResponse(delegateNgManagerCgManagerClient.getDelegates(
         accountIdentifier, orgIdentifier, projectIdentifier, delegateFilterPropertiesDTO)));
   }
+
+  @GET
+  @Timed
+  @Path("disable-background-jobs")
+  @ExceptionMetered
+  @ApiOperation(value = "Gets the latest supported delegate version", nickname = "publishedDelegateVersion")
+  @Operation(operationId = "publishedDelegateVersion",
+          summary =
+                  "Gets the latest supported delegate version. The version has YY.MM.XXXXX format. You can use any version lower than the returned results(upto 3 months old)",
+          responses =
+                  { @ApiResponse(responseCode = "default", description = "Gets the latest supported delegate version") })
+  public RestResponse<SupportedDelegateVersion>
+  disableBackgroundJobs(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier) throws IOException {
+
+    SupportedDelegateVersion supportedDelegateVersion =
+            CGRestUtils.getResponse(delegateNgManagerCgManagerClient.getPublishedDelegateVersion(accountIdentifier));
+
+    return new RestResponse<>(supportedDelegateVersion);
+  }
 }

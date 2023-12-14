@@ -66,6 +66,12 @@ public class LogPerformanceImpl {
     return Long.parseLong(processName.split("@")[0]);
   }
 
+  private static String getDelegateProcessId() {
+    RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
+    String processName = runtimeBean.getName();
+    return processName.split("@")[0];
+  }
+
   private void logTopProcessesByCpuAndMemory() {
     try {
       int totalLinesToRead = 0;
@@ -108,5 +114,62 @@ public class LogPerformanceImpl {
     } catch (Exception e) {
       log.error(e.toString());
     }
+  }
+
+  public double getContainerCpuUsage() {
+    try {
+      int totalLinesToRead = 0;
+
+      String termEnv = System.getenv(TERM_ENV_VARIABLE);
+      if (StringUtils.isEmpty(termEnv)) {
+        termEnv = DEFAULT_TERM_ENV_VALUE;
+      }
+
+      // ProcessBuilder is used to spawn a child process to run the given command
+      // ProcessBuild allows the process to be killed through manually
+      ProcessBuilder cpuProcessBuilder = new ProcessBuilder("top", "-b", "-n", "1");
+      cpuProcessBuilder.environment().put(TERM_ENV_VARIABLE, termEnv);
+
+      Process cpuProcess = cpuProcessBuilder.start();
+      String processId = "1";
+
+      try (BufferedReader cpuReader = new BufferedReader(new InputStreamReader(cpuProcess.getInputStream()))) {
+
+        String line = " 1 root      20   0    2616    536    464 S   0.0   0.0   0:00.00 sh";
+        while ((line = cpuReader.readLine()) != null) {
+          log.info(line);
+
+          if (line.contains(processId)) {
+            String[] tokens = line.trim().split("\\s+");
+            if (tokens.length >= 10) {
+              String cpuUsage = tokens[9];
+              String memoryUsage = tokens[11];
+              log.info("CPU Usage for process " + processId + ": " + cpuUsage + "%");
+              // log.info("CPU Usage: " + (100 - Double.parseDouble(cpuUsage[0])) + "%");
+              break;
+            }
+          }
+          totalLinesToRead++;
+          if (totalLinesToRead >= NOS_OF_TOP_PROCESS_LINES_TO_READ) {
+            // Close the input stream and kill the process.
+            cpuProcess.getInputStream().close();
+            cpuProcess.destroy();
+            break;
+          }
+        }
+      }
+
+      // Ensure that the cpuProcess is terminated
+      int exitCode = cpuProcess.waitFor();
+      log.info("The process to dump Top processes exited with code {}", exitCode);
+      return 0;
+    } catch (IOException e) {
+      log.error(e.toString());
+    } catch (InterruptedException e) {
+      log.error(e.toString());
+    } catch (Exception e) {
+      log.error(e.toString());
+    }
+    return -1.0;
   }
 }
