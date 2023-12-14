@@ -161,7 +161,7 @@ public class EventJobScheduler {
     runCloudEfficiencyEventJobs(BatchJobBucket.IN_CLUSTER_BILLING, true);
   }
 
-  @Scheduled(cron = "0 0 * ? * *") // 0 */10 * * * ?   for testing
+  @Scheduled(cron = "0 */5 * * * ?") // 0 */10 * * * ?   for testing
   public void runCloudEfficiencyOutOfClusterJobs() {
     runCloudEfficiencyEventJobs(BatchJobBucket.OUT_OF_CLUSTER, true);
   }
@@ -175,6 +175,9 @@ public class EventJobScheduler {
     accountShardService.getCeEnabledAccountIds().forEach(account
         -> jobs.stream()
                .filter(job -> BatchJobType.fromJob(job).getBatchJobBucket() == batchJobBucket)
+               .filter(job
+                   -> BatchJobType.fromJob(job) == BatchJobType.SYNC_BILLING_REPORT_GCP
+                       && account.equals("caQRAxT_RHm8fwJOStfXpQ"))
                .forEach(job -> runJob(account, job, runningMode)));
   }
 
