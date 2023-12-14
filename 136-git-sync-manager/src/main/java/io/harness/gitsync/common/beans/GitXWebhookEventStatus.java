@@ -20,5 +20,6 @@ public enum GitXWebhookEventStatus {
   PROCESSING,
   FAILED,
   SUCCESSFUL,
-  SKIPPED
+  SKIPPED,
+  UNKNOWN
 }
