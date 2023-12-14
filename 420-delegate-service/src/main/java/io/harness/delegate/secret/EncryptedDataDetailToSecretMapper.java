@@ -13,6 +13,8 @@ import io.harness.delegate.core.beans.SecretConfig;
 import io.harness.delegate.core.beans.SecretRef;
 import io.harness.security.encryption.EncryptedDataDetail;
 
+import software.wings.beans.CustomSecretNGManagerConfig;
+
 import com.google.protobuf.ByteString;
 import lombok.experimental.UtilityClass;
 
@@ -25,11 +27,16 @@ public class EncryptedDataDetailToSecretMapper {
                 .setBinaryData(ByteString.copyFrom(
                     EncryptedDataRecordPojoProtoMapper.INSTANCE.map(dataDetail.getEncryptedData()).toByteArray()))
                 .build())
-        .setConfig(
-            SecretConfig.newBuilder()
-                .setBinaryData(ByteString.copyFrom(
-                    EncryptionConfigPojoProtoMapper.INSTANCE.map(dataDetail.getEncryptionConfig()).toByteArray()))
-                .build())
+        .setConfig(dataDetail.getEncryptionConfig() instanceof CustomSecretNGManagerConfig
+                ? SecretConfig.newBuilder()
+                      .setBinaryData(ByteString.copyFrom(
+                          CustomSmMapper.pojoProtoMapper((CustomSecretNGManagerConfig) dataDetail.getEncryptionConfig())
+                              .toByteArray()))
+                      .build()
+                : SecretConfig.newBuilder()
+                      .setBinaryData(ByteString.copyFrom(
+                          EncryptionConfigPojoProtoMapper.INSTANCE.map(dataDetail.getEncryptionConfig()).toByteArray()))
+                      .build())
         .setSecretRef(SecretRef.newBuilder().setScopedSecretId(scopedSecretId).build())
         .build();
   }

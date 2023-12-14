@@ -174,7 +174,7 @@ public class ScheduleTaskServiceGrpcImpl extends ScheduleTaskServiceImplBase {
 
   private SetupExecutionInfrastructureResponse sendInitK8SInfraTask(final String accountId, final K8sInfraSpec infra,
       final LogConfig logConfig, final SchedulingConfig config) throws IOException {
-    final var loggingToken = getLoggingToken(accountId);
+    final var loggingToken = "loggingToken";
     final var taskId = delegateTaskMigrationHelper.generateDelegateTaskUUID();
     final var executionTaskIds =
         infra.getStepsList()

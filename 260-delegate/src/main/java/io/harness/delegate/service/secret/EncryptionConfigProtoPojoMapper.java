@@ -29,6 +29,8 @@ public interface EncryptionConfigProtoPojoMapper {
       return AwsKmsConfigProtoPojoMapper.INSTANCE.map(config);
     } else if (config.getEncryptionType().equals(EncryptionType.LOCAL)) {
       return LocalEncryptionConfigProtoPojoMapper.INSTANCE.map(config);
+    } else if (config.getEncryptionType().equals(EncryptionType.CUSTOM_NG)) {
+      return CustomNgSmConfigProtoPojoMapper.protoPojoMapper(config);
     }
     throw new InvalidRequestException("Secret Manager not implemented!");
   }

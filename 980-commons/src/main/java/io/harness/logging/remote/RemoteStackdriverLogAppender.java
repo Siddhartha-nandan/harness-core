@@ -81,10 +81,10 @@ public class RemoteStackdriverLogAppender extends AppenderBase<ILoggingEvent> {
       // remove it - '/' confirmed to work )
       logLabels.put("managerHost", substringAfter(managerHost, "://"));
 
-      Executors
-          .newSingleThreadScheduledExecutor(
-              new ThreadFactoryBuilder().setNameFormat("remote-stackdriver-log-submitter").build())
-          .scheduleWithFixedDelay(this::submit, 1L, 3L, TimeUnit.SECONDS);
+      //      Executors
+      //          .newSingleThreadScheduledExecutor(
+      //              new ThreadFactoryBuilder().setNameFormat("remote-stackdriver-log-submitter").build())
+      //          .scheduleWithFixedDelay(this::submit, 1L, 3L, TimeUnit.SECONDS);
     }
   }
 
