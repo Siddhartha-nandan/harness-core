@@ -62,7 +62,7 @@ data:
   {{- toYaml .Values.additionalConfigs | nindent 2 }}
   {{- end }}
   {{- include "harnesscommon.monitoring.config" . | nindent 2 }}
-  {{- if eq .Values.config.DEPLOY_MODE "KUBERNETES_ONPREM" }}
+  {{- if ne .Values.config.DEPLOY_MODE "KUBERNETES_ONPREM" }}
 #  APPD related configs are commented out. We can add them back if needed
 #  APPDYNAMICS_AGENT_ACCOUNT_NAME: {{ .Values.config.APPDYNAMICS_AGENT_ACCOUNT_NAME | quote }}
 #  APPDYNAMICS_AGENT_APPLICATION_NAME: {{ .Values.config.APPDYNAMICS_AGENT_APPLICATION_NAME | quote }}
