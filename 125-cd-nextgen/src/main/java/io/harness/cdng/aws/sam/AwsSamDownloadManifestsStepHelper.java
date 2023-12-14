@@ -103,17 +103,18 @@ public class AwsSamDownloadManifestsStepHelper {
 
   @Inject private DownloadAwsS3Step downloadAwsS3Step;
 
+  @Inject private GitCloneStep gitCloneStep;
+
   @Inject private DownloadHarnessStoreStep downloadHarnessStoreStep;
 
   @Inject private CDFeatureFlagHelper cdFeatureFlagHelper;
   @Inject private ContainerStepExecutionResponseHelper containerStepExecutionResponseHelper;
 
-  public AsyncExecutableResponse executeAsyncAfterRbac(
-      Ambiance ambiance, StepInputPackage inputPackage, GitCloneStep gitCloneStep) {
+  public AsyncExecutableResponse executeAsyncAfterRbac(Ambiance ambiance, StepInputPackage inputPackage) {
     ManifestsOutcome manifestsOutcome = downloadManifestsCommonHelper.fetchManifestsOutcome(ambiance);
     // @todo(hinger) render manifests here
     AsyncExecutableResponse samDirectoryAsyncExecutableResponse =
-        getAsyncExecutableResponseForAwsSamDirectoryManifest(ambiance, inputPackage, gitCloneStep, manifestsOutcome);
+        getAsyncExecutableResponseForAwsSamDirectoryManifest(ambiance, inputPackage, manifestsOutcome);
 
     List<String> callbackIds = new ArrayList<>(samDirectoryAsyncExecutableResponse.getCallbackIdsList());
     List<String> logKeys = new ArrayList<>(samDirectoryAsyncExecutableResponse.getLogKeysList());
@@ -123,7 +124,7 @@ public class AwsSamDownloadManifestsStepHelper {
 
     if (valuesManifestOutcome != null) {
       AsyncExecutableResponse valuesAsyncExecutableResponse =
-          getAsyncExecutableResponseForValuesManifest(ambiance, inputPackage, gitCloneStep, valuesManifestOutcome);
+          getAsyncExecutableResponseForValuesManifest(ambiance, inputPackage, valuesManifestOutcome);
       callbackIds.addAll(valuesAsyncExecutableResponse.getCallbackIdsList());
       logKeys.addAll(valuesAsyncExecutableResponse.getLogKeysList());
     }
@@ -135,8 +136,8 @@ public class AwsSamDownloadManifestsStepHelper {
         .build();
   }
 
-  private AsyncExecutableResponse getAsyncExecutableResponseForValuesManifest(Ambiance ambiance,
-      StepInputPackage inputPackage, GitCloneStep gitCloneStep, ValuesManifestOutcome valuesManifestOutcome) {
+  private AsyncExecutableResponse getAsyncExecutableResponseForValuesManifest(
+      Ambiance ambiance, StepInputPackage inputPackage, ValuesManifestOutcome valuesManifestOutcome) {
     if (valuesManifestOutcome.getStore() instanceof S3StoreConfig) {
       checkForS3DownloadFeatureFlag(ambiance);
 
@@ -193,7 +194,7 @@ public class AwsSamDownloadManifestsStepHelper {
   }
 
   private AsyncExecutableResponse getAsyncExecutableResponseForAwsSamDirectoryManifest(
-      Ambiance ambiance, StepInputPackage inputPackage, GitCloneStep gitCloneStep, ManifestsOutcome manifestsOutcome) {
+      Ambiance ambiance, StepInputPackage inputPackage, ManifestsOutcome manifestsOutcome) {
     AwsSamDirectoryManifestOutcome awsSamDirectoryManifestOutcome =
         (AwsSamDirectoryManifestOutcome) awsSamStepHelper.getAwsSamDirectoryManifestOutcome(manifestsOutcome.values());
 

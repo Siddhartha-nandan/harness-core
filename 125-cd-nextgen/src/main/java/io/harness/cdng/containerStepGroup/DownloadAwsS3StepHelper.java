@@ -107,6 +107,8 @@ public class DownloadAwsS3StepHelper {
       envVarsMap.put("PLUGIN_DOWNLOAD_PATH", downloadAwsS3StepParameters.getDownloadPath().getValue());
     } else if (EmptyPredicate.isNotEmpty(stepIdentifier)) {
       envVarsMap.put("PLUGIN_DOWNLOAD_PATH", STEP_MOUNT_PATH + PATH_SEPARATOR + stepIdentifier);
+    } else {
+      throw new InvalidRequestException("Both download path and identifier cannot be empty");
     }
 
     if (downloadAwsS3StepParameters.getOutputFilePathsContent() != null

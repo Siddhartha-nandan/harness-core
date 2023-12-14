@@ -105,6 +105,8 @@ public class ServerlessDownloadManifestsStepHelper {
   @Inject private DownloadHarnessStorePluginInfoProvider downloadHarnessStorePluginInfoProvider;
   @Inject private DownloadAwsS3Step downloadAwsS3Step;
 
+  @Inject private GitCloneStep gitCloneStep;
+
   @Inject private DownloadHarnessStoreStep downloadHarnessStoreStep;
 
   @Inject private ServerlessV2PluginInfoProviderHelper serverlessV2PluginInfoProviderHelper;
@@ -115,13 +117,11 @@ public class ServerlessDownloadManifestsStepHelper {
 
   @Inject DownloadManifestsCommonHelper downloadManifestsCommonHelper;
 
-  public AsyncExecutableResponse executeAsyncAfterRbac(
-      Ambiance ambiance, StepInputPackage inputPackage, GitCloneStep gitCloneStep) {
+  public AsyncExecutableResponse executeAsyncAfterRbac(Ambiance ambiance, StepInputPackage inputPackage) {
     ManifestsOutcome manifestsOutcome = serverlessV2PluginInfoProviderHelper.fetchManifestsOutcome(ambiance);
 
     AsyncExecutableResponse samDirectoryAsyncExecutableResponse =
-        getAsyncExecutableResponseForServerlessAwsLambdaManifest(
-            ambiance, inputPackage, gitCloneStep, manifestsOutcome);
+        getAsyncExecutableResponseForServerlessAwsLambdaManifest(ambiance, inputPackage, manifestsOutcome);
 
     List<String> callbackIds = new ArrayList<>(samDirectoryAsyncExecutableResponse.getCallbackIdsList());
     List<String> logKeys = new ArrayList<>(samDirectoryAsyncExecutableResponse.getLogKeysList());
@@ -132,7 +132,7 @@ public class ServerlessDownloadManifestsStepHelper {
 
     if (valuesManifestOutcome != null) {
       AsyncExecutableResponse valuesAsyncExecutableResponse =
-          getAsyncExecutableResponseForValuesManifest(ambiance, inputPackage, gitCloneStep, valuesManifestOutcome);
+          getAsyncExecutableResponseForValuesManifest(ambiance, inputPackage, valuesManifestOutcome);
       callbackIds.addAll(valuesAsyncExecutableResponse.getCallbackIdsList());
       logKeys.addAll(valuesAsyncExecutableResponse.getLogKeysList());
     }
@@ -145,7 +145,7 @@ public class ServerlessDownloadManifestsStepHelper {
   }
 
   public AsyncExecutableResponse getAsyncExecutableResponseForServerlessAwsLambdaManifest(
-      Ambiance ambiance, StepInputPackage inputPackage, GitCloneStep gitCloneStep, ManifestsOutcome manifestsOutcome) {
+      Ambiance ambiance, StepInputPackage inputPackage, ManifestsOutcome manifestsOutcome) {
     ServerlessAwsLambdaManifestOutcome serverlessAwsLambdaDirectoryManifestOutcome =
         (ServerlessAwsLambdaManifestOutcome) serverlessV2PluginInfoProviderHelper
             .getServerlessAwsLambdaDirectoryManifestOutcome(manifestsOutcome.values());
@@ -207,8 +207,8 @@ public class ServerlessDownloadManifestsStepHelper {
     }
   }
 
-  public AsyncExecutableResponse getAsyncExecutableResponseForValuesManifest(Ambiance ambiance,
-      StepInputPackage inputPackage, GitCloneStep gitCloneStep, ValuesManifestOutcome valuesManifestOutcome) {
+  public AsyncExecutableResponse getAsyncExecutableResponseForValuesManifest(
+      Ambiance ambiance, StepInputPackage inputPackage, ValuesManifestOutcome valuesManifestOutcome) {
     if (valuesManifestOutcome.getStore() instanceof S3StoreConfig) {
       checkForS3DownloadFeatureFlag(ambiance);
 

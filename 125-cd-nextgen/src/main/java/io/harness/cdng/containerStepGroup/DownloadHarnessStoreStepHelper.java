@@ -13,6 +13,7 @@ import static io.harness.filestore.utils.FileStoreNodeUtils.mapFileNodes;
 
 import io.harness.beans.FileReference;
 import io.harness.data.structure.EmptyPredicate;
+import io.harness.exception.InvalidRequestException;
 import io.harness.filestore.dto.node.FileNodeDTO;
 import io.harness.filestore.dto.node.FileStoreNodeDTO;
 import io.harness.filestore.service.FileStoreService;
@@ -48,6 +49,8 @@ public class DownloadHarnessStoreStepHelper {
       envVarsMap.put("PLUGIN_DOWNLOAD_PATH", downloadHarnessStoreStepParameters.getDownloadPath().getValue());
     } else if (EmptyPredicate.isNotEmpty(stepIdentifier)) {
       envVarsMap.put("PLUGIN_DOWNLOAD_PATH", STEP_MOUNT_PATH + PATH_SEPARATOR + stepIdentifier);
+    } else {
+      throw new InvalidRequestException("Both download path and identifier cannot be empty");
     }
 
     if (downloadHarnessStoreStepParameters.getOutputFilePathsContent() != null

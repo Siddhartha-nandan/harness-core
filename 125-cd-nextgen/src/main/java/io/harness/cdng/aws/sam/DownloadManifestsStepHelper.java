@@ -25,7 +25,6 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.exception.WingsException;
 import io.harness.ng.core.k8s.ServiceSpecType;
 import io.harness.plancreator.steps.common.StepElementParameters;
-import io.harness.plugin.GitCloneStep;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.AsyncExecutableResponse;
 import io.harness.pms.contracts.plan.PluginCreationRequest;
@@ -55,16 +54,16 @@ public class DownloadManifestsStepHelper {
   private static final String DEPLOYMENT_TYPE_NOT_SUPPORTED_EXCEPTION_MESSAGE =
       "Invalid kind of deployment type for Download Manifests Step";
 
-  public AsyncExecutableResponse handleExecuteAsyncAfterRbac(Ambiance ambiance, StepElementParameters stepParameters,
-      StepInputPackage inputPackage, GitCloneStep gitCloneStep) {
+  public AsyncExecutableResponse handleExecuteAsyncAfterRbac(
+      Ambiance ambiance, StepElementParameters stepParameters, StepInputPackage inputPackage) {
     ServiceStepOutcome serviceOutcome = (ServiceStepOutcome) outcomeService.resolve(
         ambiance, RefObjectUtils.getOutcomeRefObject(OutcomeExpressionConstants.SERVICE));
 
     if (ServiceSpecType.AWS_SAM.equals(serviceOutcome.getType())) {
       checkSamFeatureFlagEnabled(ambiance);
-      return awsSamDownloadManifestsStepHelper.executeAsyncAfterRbac(ambiance, inputPackage, gitCloneStep);
+      return awsSamDownloadManifestsStepHelper.executeAsyncAfterRbac(ambiance, inputPackage);
     } else if (ServiceSpecType.SERVERLESS_AWS_LAMBDA.equals(serviceOutcome.getType())) {
-      return serverlessDownloadManifestsStepHelper.executeAsyncAfterRbac(ambiance, inputPackage, gitCloneStep);
+      return serverlessDownloadManifestsStepHelper.executeAsyncAfterRbac(ambiance, inputPackage);
     } else {
       throw new InvalidRequestException(DEPLOYMENT_TYPE_NOT_SUPPORTED_EXCEPTION_MESSAGE, USER);
     }

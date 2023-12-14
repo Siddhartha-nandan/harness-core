@@ -12,7 +12,6 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.executions.steps.ExecutionNodeType;
 import io.harness.plancreator.steps.common.StepElementParameters;
-import io.harness.plugin.GitCloneStep;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.AsyncExecutableResponse;
 import io.harness.pms.contracts.steps.StepCategory;
@@ -37,8 +36,6 @@ public class DownloadManifestsStep implements AsyncExecutableWithRbac<StepElemen
                                                .setStepCategory(StepCategory.STEP)
                                                .build();
 
-  @Inject GitCloneStep gitCloneStep;
-
   @Inject private OutcomeService outcomeService;
 
   @Inject private ExecutionSweepingOutputService executionSweepingOutputService;
@@ -55,8 +52,7 @@ public class DownloadManifestsStep implements AsyncExecutableWithRbac<StepElemen
   @Override
   public AsyncExecutableResponse executeAsyncAfterRbac(
       Ambiance ambiance, StepElementParameters stepParameters, StepInputPackage inputPackage) {
-    return downloadManifestsStepHelper.handleExecuteAsyncAfterRbac(
-        ambiance, stepParameters, inputPackage, gitCloneStep);
+    return downloadManifestsStepHelper.handleExecuteAsyncAfterRbac(ambiance, stepParameters, inputPackage);
   }
 
   @Override
