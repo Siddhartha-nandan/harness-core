@@ -25,7 +25,6 @@ import org.junit.experimental.categories.Category;
 import org.mockito.InjectMocks;
 
 public class ProxyApiKeyResourceImplTest {
-  @Inject @InjectMocks ProxyApiKeyResourceImplTest proxyApiKeyResource;
   @Inject @InjectMocks ProxyApiKeyResourceImpl proxyApiKeyResourceImpl;
 
   private static final String ACCOUNT_IDENTIFIER = "accountIdentifier";
@@ -49,7 +48,7 @@ public class ProxyApiKeyResourceImplTest {
   @Category(UnitTests.class)
   public void getValidScopeLevels() {
     assertThat(proxyApiKeyResourceImpl.getValidScopeLevels())
-        .containsExactlyInAnyOrder(ScopeLevel.PROJECT, ScopeLevel.ORGANIZATION, ScopeLevel.ACCOUNT);
+        .containsExactlyInAnyOrder(ScopeLevel.PROJECT, ScopeLevel.ORGANIZATION);
   }
 
   @Test
