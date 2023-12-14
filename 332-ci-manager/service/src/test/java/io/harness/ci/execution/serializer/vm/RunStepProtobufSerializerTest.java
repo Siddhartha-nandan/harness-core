@@ -61,7 +61,6 @@ public class RunStepProtobufSerializerTest {
   @Mock private CIFeatureFlagService featureFlagService;
   @Mock CIExecutionServiceConfig ciExecutionServiceConfig;
   @Mock private SerializerUtils serializerUtils;
-  ;
   @Mock private SweepingOutputSecretEvaluator sweepingOutputSecretEvaluator;
 
   private Ambiance ambiance;

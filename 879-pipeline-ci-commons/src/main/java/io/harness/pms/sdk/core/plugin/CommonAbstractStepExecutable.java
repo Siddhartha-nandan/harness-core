@@ -13,7 +13,6 @@ import static io.harness.ci.commonconstants.CIExecutionConstants.UNDERSCORE_SEPA
 import static io.harness.ci.commonconstants.ContainerExecutionConstants.LITE_ENGINE_PORT;
 import static io.harness.ci.commonconstants.ContainerExecutionConstants.TMP_PATH;
 import static io.harness.data.structure.CollectionUtils.emptyIfNull;
-import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.data.structure.HarnessStringUtils.emptyIfNull;
 import static io.harness.eraro.ErrorCode.GENERAL_ERROR;

@@ -15,7 +15,6 @@ import io.harness.pms.contracts.plan.YamlProperties;
 import io.harness.pms.sdk.core.pipeline.variables.GenericStepVariableCreator;
 import io.harness.pms.sdk.core.variables.VariableCreatorHelper;
 import io.harness.yaml.core.variables.NGVariable;
-import io.harness.yaml.core.variables.OutputNGVariable;
 
 import com.google.common.collect.Sets;
 import java.util.HashMap;

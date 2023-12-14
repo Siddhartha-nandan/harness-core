@@ -13,9 +13,7 @@ import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.harness.CategoryTest;
-import io.harness.beans.steps.nodes.RunStepNode;
 import io.harness.beans.steps.nodes.RunTestStepNode;
-import io.harness.beans.steps.stepinfo.RunStepInfo;
 import io.harness.beans.steps.stepinfo.RunTestsStepInfo;
 import io.harness.category.element.UnitTests;
 import io.harness.encryption.SecretRefHelper;

@@ -89,7 +89,6 @@ import io.harness.yaml.core.variables.NumberNGVariable;
 import io.harness.yaml.core.variables.SecretNGVariable;
 import io.harness.yaml.core.variables.StringNGVariable;
 import io.harness.yaml.extended.ci.container.ContainerResource;
-import io.harness.yaml.utils.NGVariablesUtils;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
