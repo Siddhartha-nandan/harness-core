@@ -87,7 +87,7 @@ logging:
       stackdriverLogEnabled: false
     - type: file
       threshold: TRACE
-      currentLogFilename: /tmp/logs/pod.log
+      currentLogFilename: /opt/harness/logs/pod.log
       archive: true
       archivedLogFilenamePattern: pod.%d{yyyy-MM-dd}.%i.log
       archivedFileCount: 10
