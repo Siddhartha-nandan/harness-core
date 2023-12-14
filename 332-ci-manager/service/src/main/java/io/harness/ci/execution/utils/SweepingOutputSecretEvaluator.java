@@ -9,12 +9,9 @@ package io.harness.ci.execution.utils;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.ci.beans.entities.EncryptedDataDetails;
 import io.harness.expression.ExpressionEvaluator;
 import io.harness.expression.ExpressionEvaluatorUtils;
 import io.harness.expression.ExpressionResolveFunctor;
-import io.harness.ng.core.NGAccess;
-import io.harness.secretmanagerclient.services.api.SecretManagerClientService;
 import io.harness.security.SimpleEncryption;
 
 import software.wings.expression.SecretManagerMode;
@@ -22,7 +19,6 @@ import software.wings.expression.SweepingOutputSecretFunctor;
 
 import java.util.HashMap;
 import java.util.Map;
-import javax.cache.Cache;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
