@@ -21,6 +21,7 @@ import io.harness.cdng.artifact.bean.yaml.nexusartifact.NexusRegistryMavenConfig
 import io.harness.cdng.artifact.bean.yaml.nexusartifact.NexusRegistryNpmConfig;
 import io.harness.cdng.artifact.bean.yaml.nexusartifact.NexusRegistryNugetConfig;
 import io.harness.connector.ConnectorDTO;
+import io.harness.cdng.artifact.bean.yaml.nexusartifact.NexusRegistryRawConfig;
 import io.harness.delegate.beans.connector.nexusconnector.NexusConnectorDTO;
 import io.harness.delegate.task.artifacts.ArtifactSourceType;
 import io.harness.ngmigration.beans.MigrationInputDTO;
@@ -121,10 +122,14 @@ public class NexusArtifactStreamMapper implements ArtifactStreamMapper {
         return NexusRegistryNpmConfig.builder()
             .packageName(ParameterField.createValueField(nexusArtifactStream.getPackageName()))
             .build();
+      case RAW:
+        return NexusRegistryRawConfig.builder()
+            .group(ParameterField.createValueField(nexusArtifactStream.getPackageName()))
+            .build();
       default:
         return NexusRegistryNugetConfig.builder()
             .packageName(ParameterField.createValueField(nexusArtifactStream.getPackageName()))
-            .build();
+            .build();            
     }
   }
 
