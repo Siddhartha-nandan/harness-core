@@ -821,9 +821,16 @@ public class MigratorUtility {
   }
 
   public static Map<String, Object> getExpressions(
-      WorkflowPhase phase, List<StepExpressionFunctor> functors, CaseFormat caseFormat) {
+      WorkflowPhase phase, List<StepExpressionFunctor> functors, CaseFormat caseFormat, boolean repeatLoopingEnabled) {
     String stageIdentifier = MigratorUtility.generateIdentifier(phase.getName(), caseFormat);
-    return getExpressions(stageIdentifier, functors);
+    Map<String, Object> expressions = getExpressions(stageIdentifier, functors);
+    if (repeatLoopingEnabled) {
+      expressions.put("instance.hostName", "<+repeat.item>");
+      expressions.put("instance.name", "<+repeat.item>");
+      expressions.put("instance.host.hostName", "<+repeat.item>");
+      expressions.put("instance.host.instanceName", "<+repeat.item>");
+    }
+    return expressions;
   }
 
   public static Map<String, Object> getExpressions(String phaseIdentifier, List<StepExpressionFunctor> functors) {

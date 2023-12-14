@@ -6,6 +6,7 @@
  */
 
 package io.harness.ngmigration.service.step;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
@@ -265,8 +266,8 @@ public class ShellScriptStepMapperImpl extends StepMapper {
     Template template = (Template) entityNode.getEntity();
     ShellScriptTemplate scriptTemplate = (ShellScriptTemplate) template.getTemplateObject();
     Set<String> expressions = MigratorExpressionUtils.getExpressions(scriptTemplate);
-    Map<String, Object> custom =
-        MigratorUtility.getExpressions(phase, context.getStepExpressionFunctors(), context.getIdentifierCaseFormat());
+    Map<String, Object> custom = MigratorUtility.getExpressions(
+        phase, context.getStepExpressionFunctors(), context.getIdentifierCaseFormat(), false);
 
     Map<String, String> map = new HashMap<>();
     for (String exp : expressions) {

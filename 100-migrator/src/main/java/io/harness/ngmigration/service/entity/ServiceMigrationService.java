@@ -6,6 +6,7 @@
  */
 
 package io.harness.ngmigration.service.entity;
+
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.encryption.Scope.PROJECT;
@@ -510,7 +511,7 @@ public class ServiceMigrationService extends NgMigrationService {
       });
     });
     custom.putAll(MigratorUtility.getExpressions(
-        phase, wfContext.getStepExpressionFunctors(), migrationContext.getInputDTO().getIdentifierCaseFormat()));
+        phase, wfContext.getStepExpressionFunctors(), migrationContext.getInputDTO().getIdentifierCaseFormat(), false));
   }
 
   private Map<String, Object> updateContextVariables(

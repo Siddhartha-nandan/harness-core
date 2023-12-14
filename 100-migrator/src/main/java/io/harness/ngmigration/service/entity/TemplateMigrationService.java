@@ -273,7 +273,7 @@ public class TemplateMigrationService extends NgMigrationService {
         List<StepExpressionFunctor> expressionFunctors = processPhase(workflowMigrationContext, phase);
         if (isNotEmpty(expressionFunctors)) {
           custom.putAll(MigratorUtility.getExpressions(phase, workflowMigrationContext.getStepExpressionFunctors(),
-              migrationContext.getInputDTO().getIdentifierCaseFormat()));
+              migrationContext.getInputDTO().getIdentifierCaseFormat(), false));
         }
       }
     }

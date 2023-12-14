@@ -227,6 +227,7 @@ public class MigratorExpressionUtils {
     context.put("instance.hostName", "<+instance.hostName>");
     context.put("instance.name", "<+instance.name>");
     context.put("instance.host.hostName", "<+instance.host.hostName>");
+    context.put("instance.host.instanceName", "<+instance.host.instanceName>");
     context.put("instance.host.ip", "<+instance.host.privateIp>");
 
     // PCF

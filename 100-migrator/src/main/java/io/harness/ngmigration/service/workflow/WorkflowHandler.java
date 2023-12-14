@@ -21,6 +21,7 @@ import static software.wings.sm.StepType.AWS_NODE_SELECT;
 import static software.wings.sm.StepType.AZURE_NODE_SELECT;
 import static software.wings.sm.StepType.CUSTOM_DEPLOYMENT_FETCH_INSTANCES;
 import static software.wings.sm.StepType.DC_NODE_SELECT;
+import static software.wings.sm.StepType.ROLLING_NODE_SELECT;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -116,8 +117,9 @@ import org.apache.commons.lang3.StringUtils;
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_MIGRATOR})
 public abstract class WorkflowHandler {
   public static final String INPUT_EXPRESSION = "<+input>";
-  private static final Set<String> loopingEnablers = Sets.newHashSet(DC_NODE_SELECT.name(),
-      CUSTOM_DEPLOYMENT_FETCH_INSTANCES.getName(), AWS_NODE_SELECT.name(), AZURE_NODE_SELECT.getName());
+  private static final Set<String> loopingEnablers =
+      Sets.newHashSet(DC_NODE_SELECT.name(), CUSTOM_DEPLOYMENT_FETCH_INSTANCES.getName(), AWS_NODE_SELECT.name(),
+          AZURE_NODE_SELECT.getName(), ROLLING_NODE_SELECT.name());
 
   @Inject private StepMapperFactory stepMapperFactory;
   @Inject private MigrationHelperService migrationHelperService;
@@ -444,7 +446,8 @@ public abstract class WorkflowHandler {
       WorkflowPhase phase, PhaseStep phaseStep, boolean addLoopingStrategy) {
     List<GraphNode> stepYamls = phaseStep.getSteps();
 
-    List<ExecutionWrapperConfig> steps = getStepWrappers(migrationContext, context, phase, phaseStep, stepYamls);
+    List<ExecutionWrapperConfig> steps =
+        getStepWrappers(migrationContext, context, phase, phaseStep, stepYamls, addLoopingStrategy);
     if (EmptyPredicate.isEmpty(steps)) {
       return null;
     }
@@ -499,30 +502,32 @@ public abstract class WorkflowHandler {
   }
 
   List<ExecutionWrapperConfig> getStepWrappers(MigrationContext migrationContext, WorkflowMigrationContext context,
-      WorkflowPhase phase, PhaseStep phaseStep, List<GraphNode> stepYamls) {
+      WorkflowPhase phase, PhaseStep phaseStep, List<GraphNode> stepYamls, boolean stepGroupLoopingStrategy) {
     if (EmptyPredicate.isEmpty(stepYamls)) {
       return Collections.emptyList();
     }
-    MigratorExpressionUtils.render(migrationContext, phaseStep,
-        MigExpressionOverrides.builder()
-            .workflowVarsAsPipeline(context.isWorkflowVarsAsPipeline())
-            .customExpressions(MigratorUtility.getExpressions(
-                phase, context.getStepExpressionFunctors(), context.getIdentifierCaseFormat()))
-            .build());
     List<StepSkipStrategy> cgSkipConditions = phaseStep.getStepSkipStrategies();
+
     Map<String, String> skipStrategies = new HashMap<>();
     if (EmptyPredicate.isNotEmpty(cgSkipConditions)
         && cgSkipConditions.stream().noneMatch(skip -> Scope.ALL_STEPS.equals(skip.getScope()))) {
+      MigratorExpressionUtils.render(migrationContext, cgSkipConditions,
+          MigExpressionOverrides.builder()
+              .workflowVarsAsPipeline(context.isWorkflowVarsAsPipeline())
+              .customExpressions(MigratorUtility.getExpressions(phase, context.getStepExpressionFunctors(),
+                  context.getIdentifierCaseFormat(), stepGroupLoopingStrategy))
+              .build());
       cgSkipConditions.stream()
           .filter(skip
               -> EmptyPredicate.isNotEmpty(skip.getStepIds()) && StringUtils.isNotBlank(skip.getAssertionExpression()))
           .forEach(skip -> skip.getStepIds().forEach(step -> skipStrategies.put(step, skip.getAssertionExpression())));
     }
+
     List<ExecutionWrapperConfig> stepWrappers = new ArrayList<>();
     boolean addLoopingStrategy = false;
     for (GraphNode stepYaml : stepYamls) {
       JsonNode stepNodeJson = getStepElementConfig(migrationContext, context, phase, phaseStep, stepYaml,
-          skipStrategies.getOrDefault(stepYaml.getId(), null), addLoopingStrategy);
+          skipStrategies.getOrDefault(stepYaml.getId(), null), addLoopingStrategy, stepGroupLoopingStrategy);
       if (stepNodeJson != null) {
         ExecutionWrapperConfig build = ExecutionWrapperConfig.builder().step(stepNodeJson).build();
         stepWrappers.add(build);
@@ -534,8 +539,8 @@ public abstract class WorkflowHandler {
     MigratorExpressionUtils.render(migrationContext, stepWrappers,
         MigExpressionOverrides.builder()
             .workflowVarsAsPipeline(context.isWorkflowVarsAsPipeline())
-            .customExpressions(MigratorUtility.getExpressions(
-                phase, context.getStepExpressionFunctors(), context.getIdentifierCaseFormat()))
+            .customExpressions(MigratorUtility.getExpressions(phase, context.getStepExpressionFunctors(),
+                context.getIdentifierCaseFormat(), addLoopingStrategy || stepGroupLoopingStrategy))
             .build());
     return stepWrappers;
   }
@@ -545,10 +550,11 @@ public abstract class WorkflowHandler {
   }
 
   JsonNode getStepElementConfig(MigrationContext migrationContext, WorkflowMigrationContext context,
-      WorkflowPhase phase, PhaseStep phaseStep, GraphNode step, String skipCondition, boolean addLoopingStrategy) {
+      WorkflowPhase phase, PhaseStep phaseStep, GraphNode step, String skipCondition, boolean addLoopingStrategy,
+      boolean stepGroupLoopingStrategy) {
     StepMapper stepMapper = stepMapperFactory.getStepMapper(step.getType());
-    Map<String, Object> expressions =
-        MigratorUtility.getExpressions(phase, context.getStepExpressionFunctors(), context.getIdentifierCaseFormat());
+    Map<String, Object> expressions = MigratorUtility.getExpressions(phase, context.getStepExpressionFunctors(),
+        context.getIdentifierCaseFormat(), addLoopingStrategy || stepGroupLoopingStrategy);
     if (StringUtils.isNotBlank(skipCondition)) {
       skipCondition = (String) MigratorExpressionUtils.render(migrationContext, skipCondition,
           MigExpressionOverrides.builder()

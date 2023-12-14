@@ -356,7 +356,7 @@ public class MigrationHelperService {
     if (isNotEmpty(distinctExpressionsFromCurrentPhase)) {
       wfContext.getStepExpressionFunctors().addAll(distinctExpressionsFromCurrentPhase);
       custom.putAll(MigratorUtility.getExpressions(
-          phase, distinctExpressionsFromCurrentPhase, migrationContext.getInputDTO().getIdentifierCaseFormat()));
+          phase, distinctExpressionsFromCurrentPhase, migrationContext.getInputDTO().getIdentifierCaseFormat(), false));
     }
   }
 }
