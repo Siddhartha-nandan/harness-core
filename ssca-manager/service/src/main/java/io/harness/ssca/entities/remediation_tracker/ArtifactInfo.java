@@ -6,7 +6,7 @@
  */
 package io.harness.ssca.entities.remediation_tracker;
 
-import java.util.Map;
+import java.util.List;
 import javax.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;
@@ -16,7 +16,7 @@ import lombok.Data;
 public class ArtifactInfo {
   @NotNull String artifactId;
   @NotNull String artifactName;
-  Map<String, EnvironmentInfo> environments;
+  List<EnvironmentInfo> environments;
   String ticketId;
   boolean isExcluded;
 }
