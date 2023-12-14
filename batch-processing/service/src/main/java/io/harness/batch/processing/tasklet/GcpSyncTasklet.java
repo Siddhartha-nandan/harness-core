@@ -379,7 +379,7 @@ public class GcpSyncTasklet implements Tasklet {
       Long lastModifiedTime = tableGranularData.getLastModifiedTime();
       lastModifiedTime = lastModifiedTime != null ? lastModifiedTime : tableGranularData.getCreationTime();
       log.info("Sync condition {} {}", lastModifiedTime, endTime);
-      if (lastModifiedTime > endTime || firstSync) {
+//      if (lastModifiedTime > endTime || firstSync) {
         CacheKey cacheKey = new CacheKey(accountId, projectId, datasetId, tableName);
         if (gcpSyncInfo.getIfPresent(cacheKey) == null) {
           boolean isExecuted;
@@ -394,7 +394,7 @@ public class GcpSyncTasklet implements Tasklet {
           }
           gcpSyncInfo.put(cacheKey, isExecuted);
         }
-      }
+//      }
     }
   }
 
