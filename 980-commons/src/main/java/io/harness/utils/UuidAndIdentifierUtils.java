@@ -50,16 +50,15 @@ public final class UuidAndIdentifierUtils {
 
   /**
    * Bring back SCIM usergroup name formatting in lieu of https://harness.atlassian.net/browse/PL-43576
-   * This method will convert space,dot and hypen to underscore
+   * This method will convert space, dot and hyphen to underscore.
    * @param name
    * @return
    */
-
   private static String generateFormattedIdentifier(String name) {
-    return StringUtils.isBlank(name) ? name
-                                     : name.trim()
-                                           .replaceAll(" ", "_") // replace spaces with _
-                                           .replaceAll("\\.", "_") // replace dot with _
-                                           .replaceAll("-", "_"); // replace - with _
+    return StringUtils.isBlank(name) ? name : name.trim().replaceAll("\\.", "_"); // replace dot with _
+    // Not making this change for Hyphens as United airlines has already
+    // updated their validations and it might break them again.
+    // Context: https://harness.atlassian.net/browse/PL-43512
+    //.replaceAll("-", "_"); // replace - with _
   }
 }
