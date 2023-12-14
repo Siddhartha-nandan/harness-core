@@ -26,7 +26,6 @@ import lombok.Value;
 public class ApprovalStageNodeV1 extends AbstractStageNodeV1 {
   String type = YAMLFieldNameConstants.APPROVAL_V1;
   ApprovalStageConfigV1 spec;
-  @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY) ParameterField<List<FailureConfigV1>> failure;
 
   @Override
   public String getType() {
