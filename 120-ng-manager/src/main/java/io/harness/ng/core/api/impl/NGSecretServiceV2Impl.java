@@ -164,6 +164,12 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
   }
 
   @Override
+  public Optional<Secret> get(ScopeInfo scopeInfo, @NotNull String identifier) {
+    return secretRepository.findByAccountIdentifierAndParentUniqueIdAndIdentifier(
+        scopeInfo.getAccountIdentifier(), scopeInfo.getUniqueId(), identifier);
+  }
+
+  @Override
   public Optional<Secret> get(@NotNull IdentifierRef identifierRef) {
     return secretRepository.findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(
         identifierRef.getAccountIdentifier(), identifierRef.getOrgIdentifier(), identifierRef.getProjectIdentifier(),

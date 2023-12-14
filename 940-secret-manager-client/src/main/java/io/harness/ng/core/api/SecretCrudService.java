@@ -37,10 +37,12 @@ public interface SecretCrudService {
   Optional<SecretResponseWrapper> get(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier);
 
-  Page<SecretResponseWrapper> list(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      List<String> identifiers, List<SecretType> secretTypes, boolean includeSecretsFromEverySubScope,
-      String searchTerm, ConnectorCategory sourceCategory, boolean includeAllSecretsAccessibleAtScope,
-      PageRequest pageRequest, Set<String> secretManagerIdentifiers);
+  Optional<SecretResponseWrapper> get(ScopeInfo scopeInfo, String identifier);
+
+  Page<SecretResponseWrapper> list(String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier,
+      String projectIdentifier, List<String> identifiers, List<SecretType> secretTypes,
+      boolean includeSecretsFromEverySubScope, String searchTerm, ConnectorCategory sourceCategory,
+      boolean includeAllSecretsAccessibleAtScope, PageRequest pageRequest, Set<String> secretManagerIdentifiers);
 
   boolean delete(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier, boolean forceDelete);

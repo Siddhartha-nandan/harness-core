@@ -219,10 +219,9 @@ public class NGSecretResourceV2 {
       @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
       @Parameter(description = "Secret ID") @QueryParam(NGCommonEntityConstants.IDENTIFIER_KEY) String identifier,
-      @RequestBody(
-          required = true, description = "Details of the Secret type") @Valid SecretValidationMetaData metadata) {
-    SecretResponseWrapper secret =
-        ngSecretService.get(accountIdentifier, orgIdentifier, projectIdentifier, identifier).orElse(null);
+      @RequestBody(required = true, description = "Details of the Secret type")
+      @Valid SecretValidationMetaData metadata, @Context ScopeInfo scopeInfo) {
+    SecretResponseWrapper secret = ngSecretService.get(scopeInfo, identifier).orElse(null);
 
     secretPermissionValidator.checkForAccessOrThrow(
         ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
@@ -307,12 +306,12 @@ public class NGSecretResourceV2 {
               + " org and account Secrets also in the response") @QueryParam("includeAllSecretsAccessibleAtScope")
       @DefaultValue("false") boolean includeAllSecretsAccessibleAtScope,
       @BeanParam PageRequest pageRequest,
-      @Parameter(description = "Specify the secret managers whose secrets should be listed") @QueryParam(
-          "secretManagerIdentifiers") Set<String> secretManagerIdentifiers) {
+      @Parameter(description = "Specify the secret managers whose secrets should be listed")
+      @QueryParam("secretManagerIdentifiers") Set<String> secretManagerIdentifiers, @Context ScopeInfo scopeInfo) {
     if (secretType != null) {
       secretTypes.add(secretType);
     }
-    return ResponseDTO.newResponse(getNGPageResponse(ngSecretService.list(accountIdentifier, orgIdentifier,
+    return ResponseDTO.newResponse(getNGPageResponse(ngSecretService.list(accountIdentifier, scopeInfo, orgIdentifier,
         projectIdentifier, identifiers, secretTypes, includeSecretsFromEverySubScope, searchTerm, sourceCategory,
         includeAllSecretsAccessibleAtScope, pageRequest, secretManagerIdentifiers)));
   }
@@ -334,8 +333,8 @@ public class NGSecretResourceV2 {
       @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
       @Body SecretResourceFilterDTO secretResourceFilterDTO, @BeanParam PageRequest pageRequest,
-      @QueryParam("secretManagerIdentifiers") Set<String> secretManagerIdentifiers) {
-    return ResponseDTO.newResponse(getNGPageResponse(ngSecretService.list(accountIdentifier, orgIdentifier,
+      @QueryParam("secretManagerIdentifiers") Set<String> secretManagerIdentifiers, @Context ScopeInfo scopeInfo) {
+    return ResponseDTO.newResponse(getNGPageResponse(ngSecretService.list(accountIdentifier, scopeInfo, orgIdentifier,
         projectIdentifier, secretResourceFilterDTO.getIdentifiers(), secretResourceFilterDTO.getSecretTypes(),
         secretResourceFilterDTO.isIncludeSecretsFromEverySubScope(), secretResourceFilterDTO.getSearchTerm(),
         secretResourceFilterDTO.getSourceCategory(), secretResourceFilterDTO.isIncludeAllSecretsAccessibleAtScope(),
@@ -357,10 +356,9 @@ public class NGSecretResourceV2 {
       @Parameter(description = ACCOUNT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
       @Parameter(description = ORG_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
-      @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier) {
-    Optional<SecretResponseWrapper> secret =
-        ngSecretService.get(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+      @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.PROJECT_KEY)
+      String projectIdentifier, @Context ScopeInfo scopeInfo) {
+    Optional<SecretResponseWrapper> secret = ngSecretService.get(scopeInfo, identifier);
     if (secret.isPresent()) {
       secretPermissionValidator.checkForAccessOrThrow(
           ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
@@ -390,10 +388,9 @@ public class NGSecretResourceV2 {
       @Parameter(description = ORG_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
-      @Parameter(description = FORCE_DELETE_MESSAGE) @QueryParam(NGCommonEntityConstants.FORCE_DELETE) @DefaultValue(
-          "false") boolean forceDelete) {
-    SecretResponseWrapper secret =
-        ngSecretService.get(accountIdentifier, orgIdentifier, projectIdentifier, identifier).orElse(null);
+      @Parameter(description = FORCE_DELETE_MESSAGE) @QueryParam(NGCommonEntityConstants.FORCE_DELETE)
+      @DefaultValue("false") boolean forceDelete, @Context ScopeInfo scopeInfo) {
+    SecretResponseWrapper secret = ngSecretService.get(scopeInfo, identifier).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(
         ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
         Resource.of(SECRET_RESOURCE_TYPE, identifier), SECRET_DELETE_PERMISSION,
@@ -419,9 +416,8 @@ public class NGSecretResourceV2 {
           NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
       @Parameter(description = ORG_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.PROJECT_KEY)
-      String projectIdentifier, @Valid SecretRequestWrapper dto) {
-    SecretResponseWrapper secret =
-        ngSecretService.get(accountIdentifier, orgIdentifier, projectIdentifier, identifier).orElse(null);
+      String projectIdentifier, @Valid SecretRequestWrapper dto, @Context ScopeInfo scopeInfo) {
+    SecretResponseWrapper secret = ngSecretService.get(scopeInfo, identifier).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(
         ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
         Resource.of(SECRET_RESOURCE_TYPE, identifier), SECRET_EDIT_PERMISSION,
@@ -452,9 +448,9 @@ public class NGSecretResourceV2 {
       @Parameter(description = ORG_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
-      @RequestBody(required = true, description = "Details of Secret to create") @Valid SecretRequestWrapper dto) {
-    SecretResponseWrapper secret =
-        ngSecretService.get(accountIdentifier, orgIdentifier, projectIdentifier, identifier).orElse(null);
+      @RequestBody(required = true, description = "Details of Secret to create") @Valid SecretRequestWrapper dto,
+      @Context ScopeInfo scopeInfo) {
+    SecretResponseWrapper secret = ngSecretService.get(scopeInfo, identifier).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(
         ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
         Resource.of(SECRET_RESOURCE_TYPE, identifier), SECRET_EDIT_PERMISSION,
@@ -494,13 +490,12 @@ public class NGSecretResourceV2 {
           NGCommonEntityConstants.IDENTIFIER_KEY) @NotNull String identifier,
       @Parameter(description = "This is the encrypted Secret File that needs to be uploaded.") @FormDataParam(
           "file") InputStream uploadedInputStream,
-      @Parameter(description = "Specification of Secret file") @FormDataParam("spec") String spec)
-      throws JsonProcessingException {
+      @Parameter(description = "Specification of Secret file") @FormDataParam("spec") String spec,
+      @Context ScopeInfo scopeInfo) throws JsonProcessingException {
     SecretRequestWrapper dto = JsonUtils.asObjectWithExceptionHandlingType(spec, SecretRequestWrapper.class);
     validateRequestPayload(dto);
 
-    SecretResponseWrapper secret =
-        ngSecretService.get(accountIdentifier, orgIdentifier, projectIdentifier, identifier).orElse(null);
+    SecretResponseWrapper secret = ngSecretService.get(scopeInfo, identifier).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(
         ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
         Resource.of(SECRET_RESOURCE_TYPE, identifier), SECRET_EDIT_PERMISSION,

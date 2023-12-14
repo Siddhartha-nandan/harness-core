@@ -87,8 +87,10 @@ public class FavoritesValidator {
   }
 
   private boolean doesSecretExist(FavoriteDTO favoriteDTO, String accountIdentifier) {
-    Optional<SecretResponseWrapper> secretResponse = secretService.get(
-        accountIdentifier, favoriteDTO.getOrg(), favoriteDTO.getProject(), favoriteDTO.getResourceId());
+    Optional<ScopeInfo> scopeInfo =
+        scopeResolverService.getScopeInfo(accountIdentifier, favoriteDTO.getOrg(), favoriteDTO.getProject());
+    Optional<SecretResponseWrapper> secretResponse =
+        secretService.get(scopeInfo.orElseThrow(), favoriteDTO.getResourceId());
     return secretResponse.isPresent();
   }
 

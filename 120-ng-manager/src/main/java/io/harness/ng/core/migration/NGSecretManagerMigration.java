@@ -632,13 +632,12 @@ public class NGSecretManagerMigration {
                                   .orgIdentifier(orgIdentifier)
                                   .spec(secretTextSpecDTO)
                                   .build();
-    Optional<SecretResponseWrapper> secretOptional =
-        secretCrudService.get(accountIdentifier, orgIdentifier, projectIdentifier, secretIdentifier);
+    Optional<ScopeInfo> scopeInfo =
+        scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, projectIdentifier);
+    Optional<SecretResponseWrapper> secretOptional = secretCrudService.get(scopeInfo.orElseThrow(), secretIdentifier);
     if (secretOptional.isPresent()) {
       return new SecretRefData(secretIdentifier, secretScope, decryptedValue);
     }
-    Optional<ScopeInfo> scopeInfo =
-        scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, projectIdentifier);
     secretCrudService.create(accountIdentifier, scopeInfo.orElseThrow(), secretDTOV2);
     return new SecretRefData(secretIdentifier, secretScope, decryptedValue);
   }

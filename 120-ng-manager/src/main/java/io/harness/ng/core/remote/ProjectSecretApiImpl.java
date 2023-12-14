@@ -130,7 +130,8 @@ public class ProjectSecretApiImpl implements ProjectSecretApi {
       throw new InvalidRequestException(
           "Invalid request, org and project scope in payload and params do not match.", USER);
     }
-    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(account, org, project, secret).orElse(null);
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, project);
+    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(scopeInfo.orElseThrow(), secret).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(ResourceScope.of(account, org, project),
         Resource.of(SECRET_RESOURCE_TYPE, secret), SECRET_EDIT_PERMISSION,
         secretResponseWrapper != null ? secretResponseWrapper.getSecret().getOwner() : null);
@@ -171,7 +172,8 @@ public class ProjectSecretApiImpl implements ProjectSecretApi {
       throw new InvalidRequestException(
           "Invalid request, org and project scope in payload and params do not match.", USER);
     }
-    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(account, org, project, secret).orElse(null);
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, project);
+    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(scopeInfo.orElseThrow(), secret).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(ResourceScope.of(account, org, project),
         Resource.of(SECRET_RESOURCE_TYPE, secret), SECRET_EDIT_PERMISSION,
         secretResponseWrapper != null ? secretResponseWrapper.getSecret().getOwner() : null);
@@ -182,7 +184,8 @@ public class ProjectSecretApiImpl implements ProjectSecretApi {
   }
 
   private Response deleteSecret(String org, String project, String secret, String account) {
-    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(account, org, project, secret).orElse(null);
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, project);
+    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(scopeInfo.orElseThrow(), secret).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(ResourceScope.of(account, org, project),
         Resource.of(SECRET_RESOURCE_TYPE, secret), SECRET_DELETE_PERMISSION,
         secretResponseWrapper != null ? secretResponseWrapper.getSecret().getOwner() : null);
@@ -195,7 +198,8 @@ public class ProjectSecretApiImpl implements ProjectSecretApi {
   }
 
   private Response getSecret(String org, String project, String secret, String account) {
-    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(account, org, project, secret).orElse(null);
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, project);
+    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(scopeInfo.orElseThrow(), secret).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(ResourceScope.of(account, org, project),
         Resource.of(SECRET_RESOURCE_TYPE, secret), SECRET_VIEW_PERMISSION,
         secretResponseWrapper != null ? secretResponseWrapper.getSecret().getOwner() : null);
@@ -210,8 +214,10 @@ public class ProjectSecretApiImpl implements ProjectSecretApi {
   private Response getSecrets(String account, String org, String project, List<String> secret, List<String> type,
       Boolean recursive, String searchTerm, Integer page, Integer limit, String sort, String order) {
     List<SecretType> secretTypes = secretApiUtils.toSecretTypes(type);
-    Page<SecretResponseWrapper> secretPage = ngSecretService.list(account, org, project, secret, secretTypes, recursive,
-        searchTerm, null, false, ApiUtils.getPageRequest(page, limit, sort, order), null);
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, project);
+    Page<SecretResponseWrapper> secretPage =
+        ngSecretService.list(account, scopeInfo.orElseThrow(), org, project, secret, secretTypes, recursive, searchTerm,
+            null, false, ApiUtils.getPageRequest(page, limit, sort, order), null);
     List<SecretResponseWrapper> content = getNGPageResponse(secretPage).getContent();
 
     List<SecretResponse> secretResponse =

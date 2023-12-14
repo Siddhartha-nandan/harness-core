@@ -59,6 +59,12 @@ public class Secret implements UniqueIdAware {
                  .field(SecretKeys.projectIdentifier)
                  .field(SecretKeys.identifier)
                  .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("accountIdentifierParentUniqueIdIdentifierIdx")
+                 .field(SecretKeys.accountIdentifier)
+                 .field(SecretKeys.parentUniqueId)
+                 .field(SecretKeys.identifier)
+                 .build())
         .build();
   }
 

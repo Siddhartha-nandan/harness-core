@@ -399,13 +399,19 @@ public class SecretCrudServiceImpl implements SecretCrudService {
   }
 
   @Override
-  public Page<SecretResponseWrapper> list(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      List<String> identifiers, List<SecretType> secretTypes, boolean includeSecretsFromEverySubScope,
-      String searchTerm, ConnectorCategory sourceCategory, boolean includeAllSecretsAccessibleAtScope,
-      PageRequest pageRequest, Set<String> secretManagerIdentifiers) {
+  public Optional<SecretResponseWrapper> get(ScopeInfo scopeInfo, @NotNull String identifier) {
+    Optional<Secret> secretV2Optional = ngSecretService.get(scopeInfo, identifier);
+    return secretV2Optional.map(this::getResponseWrapper);
+  }
+
+  @Override
+  public Page<SecretResponseWrapper> list(String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier,
+      String projectIdentifier, List<String> identifiers, List<SecretType> secretTypes,
+      boolean includeSecretsFromEverySubScope, String searchTerm, ConnectorCategory sourceCategory,
+      boolean includeAllSecretsAccessibleAtScope, PageRequest pageRequest, Set<String> secretManagerIdentifiers) {
     Criteria criteria = Criteria.where(SecretKeys.accountIdentifier).is(accountIdentifier);
-    addCriteriaForRequestedScopes(criteria, orgIdentifier, projectIdentifier, includeAllSecretsAccessibleAtScope,
-        includeSecretsFromEverySubScope);
+    addCriteriaForRequestedScopes(criteria, scopeInfo, orgIdentifier, projectIdentifier,
+        includeAllSecretsAccessibleAtScope, includeSecretsFromEverySubScope);
 
     if (isNotEmpty(secretTypes)) {
       criteria = criteria.and(SecretKeys.type).in(secretTypes);
@@ -457,10 +463,10 @@ public class SecretCrudServiceImpl implements SecretCrudService {
   }
 
   @VisibleForTesting
-  protected void addCriteriaForRequestedScopes(Criteria criteria, String orgIdentifier, String projectIdentifier,
-      boolean includeAllSecretsAccessibleAtScope, boolean includeSecretsFromEverySubScope) {
+  protected void addCriteriaForRequestedScopes(Criteria criteria, ScopeInfo scopeInfo, String orgIdentifier,
+      String projectIdentifier, boolean includeAllSecretsAccessibleAtScope, boolean includeSecretsFromEverySubScope) {
     if (!includeAllSecretsAccessibleAtScope && !includeSecretsFromEverySubScope) {
-      criteria.and(SecretKeys.orgIdentifier).is(orgIdentifier).and(SecretKeys.projectIdentifier).is(projectIdentifier);
+      criteria.and(SecretKeys.parentUniqueId).is(scopeInfo.getUniqueId());
     } else {
       Criteria superScopeCriteriaOrSubScopeCriteria = new Criteria();
       Criteria subScopeCriteria = new Criteria();

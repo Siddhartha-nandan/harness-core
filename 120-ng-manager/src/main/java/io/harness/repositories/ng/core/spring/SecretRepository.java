@@ -23,6 +23,9 @@ public interface SecretRepository extends PagingAndSortingRepository<Secret, Str
   Optional<Secret> findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier);
 
+  Optional<Secret> findByAccountIdentifierAndParentUniqueIdAndIdentifier(
+      String accountIdentifier, String parentUniqueIdentifier, String identifier);
+
   boolean existsByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier);
 

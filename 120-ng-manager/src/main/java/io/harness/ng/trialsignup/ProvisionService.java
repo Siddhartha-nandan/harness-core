@@ -372,7 +372,7 @@ public class ProvisionService {
     }
 
     Optional<SecretResponseWrapper> secretResponseWrapperOptional =
-        ngSecretService.get(accountIdentifier, orgIdentifier, projectIdentifier, secretDTOV2.getIdentifier());
+        ngSecretService.get(scopeInfo, secretDTOV2.getIdentifier());
 
     if (secretResponseWrapperOptional.isPresent()) {
       secretResponseWrapper = ngSecretService.update(

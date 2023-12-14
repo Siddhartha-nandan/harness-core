@@ -93,13 +93,19 @@ public class NGSecretResourceV2Test extends CategoryTest {
   public void testIfListSecretsPostCallReturnsSuccessfully() {
     List<Object> mockResponse = Collections.singletonList(getMockResponse());
     Page<Object> page = new PageImpl<>(mockResponse);
-
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier("Test")
+                              .orgIdentifier("TestOrg")
+                              .projectIdentifier("TestProj")
+                              .uniqueId(randomAlphabetic(10))
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     doNothing().when(secretPermissionValidator).checkForAccessOrThrow(any(), any(), any(), any());
     doReturn(page)
         .when(ngSecretService)
-        .list("Test", "TestOrg", "TestProj", null, null, false, null, null, false, pageRequest, null);
-    ResponseDTO<PageResponse<SecretResponseWrapper>> list = ngSecretResourceV2.listSecrets(
-        "Test", "TestOrg", "TestProj", SecretResourceFilterDTO.builder().identifiers(null).build(), pageRequest, null);
+        .list("Test", scopeInfo, "TestOrg", "TestProj", null, null, false, null, null, false, pageRequest, null);
+    ResponseDTO<PageResponse<SecretResponseWrapper>> list = ngSecretResourceV2.listSecrets("Test", "TestOrg",
+        "TestProj", SecretResourceFilterDTO.builder().identifiers(null).build(), pageRequest, null, scopeInfo);
     assertThat(list.getData().getContent().size()).isEqualTo(1);
   }
 
@@ -109,15 +115,22 @@ public class NGSecretResourceV2Test extends CategoryTest {
   public void testListSecretsAvailableAllScopeForTrue() {
     List<Object> mockResponse = Collections.singletonList(getMockResponse());
     Page<Object> page = new PageImpl<>(mockResponse);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier("Test")
+                              .orgIdentifier("TestOrg")
+                              .projectIdentifier("TestProj")
+                              .uniqueId(randomAlphabetic(10))
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     doNothing().when(secretPermissionValidator).checkForAccessOrThrow(any(), any(), any(), any());
     doReturn(page)
         .when(ngSecretService)
-        .list("Test", "TestOrg", "TestProj", null, null, false, null, null, true, pageRequest, null);
-    ResponseDTO<PageResponse<SecretResponseWrapper>> list =
-        ngSecretResourceV2.listSecrets("Test", "TestOrg", "TestProj",
-            SecretResourceFilterDTO.builder().identifiers(null).includeAllSecretsAccessibleAtScope(true).build(),
-            pageRequest, null);
-    verify(ngSecretService).list("Test", "TestOrg", "TestProj", null, null, false, null, null, true, pageRequest, null);
+        .list("Test", scopeInfo, "TestOrg", "TestProj", null, null, false, null, null, true, pageRequest, null);
+    ngSecretResourceV2.listSecrets("Test", "TestOrg", "TestProj",
+        SecretResourceFilterDTO.builder().identifiers(null).includeAllSecretsAccessibleAtScope(true).build(),
+        pageRequest, null, scopeInfo);
+    verify(ngSecretService)
+        .list("Test", scopeInfo, "TestOrg", "TestProj", null, null, false, null, null, true, pageRequest, null);
   }
   @Test
   @Owner(developers = MEENAKSHI)
@@ -125,14 +138,21 @@ public class NGSecretResourceV2Test extends CategoryTest {
   public void testListSecretsAvailableAllScopeIfNotInFilterShouldBeFalse() {
     List<Object> mockResponse = Collections.singletonList(getMockResponse());
     Page<Object> page = new PageImpl<>(mockResponse);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier("Test")
+                              .orgIdentifier("TestOrg")
+                              .projectIdentifier("TestProj")
+                              .uniqueId(randomAlphabetic(10))
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     doNothing().when(secretPermissionValidator).checkForAccessOrThrow(any(), any(), any(), any());
     doReturn(page)
         .when(ngSecretService)
-        .list("Test", "TestOrg", "TestProj", null, null, false, null, null, false, pageRequest, null);
-    ResponseDTO<PageResponse<SecretResponseWrapper>> list = ngSecretResourceV2.listSecrets(
-        "Test", "TestOrg", "TestProj", SecretResourceFilterDTO.builder().identifiers(null).build(), pageRequest, null);
+        .list("Test", scopeInfo, "TestOrg", "TestProj", null, null, false, null, null, false, pageRequest, null);
+    ngSecretResourceV2.listSecrets("Test", "TestOrg", "TestProj",
+        SecretResourceFilterDTO.builder().identifiers(null).build(), pageRequest, null, scopeInfo);
     verify(ngSecretService)
-        .list("Test", "TestOrg", "TestProj", null, null, false, null, null, false, pageRequest, null);
+        .list("Test", scopeInfo, "TestOrg", "TestProj", null, null, false, null, null, false, pageRequest, null);
   }
   @Test
   @Owner(developers = MEENAKSHI)
@@ -140,13 +160,21 @@ public class NGSecretResourceV2Test extends CategoryTest {
   public void testListV2ForSecretsAvailableAllScopeAsTrue() {
     List<Object> mockResponse = Collections.singletonList(getMockResponse());
     Page<Object> page = new PageImpl<>(mockResponse);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier("Test")
+                              .orgIdentifier("TestOrg")
+                              .projectIdentifier("TestProj")
+                              .uniqueId(randomAlphabetic(10))
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     doNothing().when(secretPermissionValidator).checkForAccessOrThrow(any(), any(), any(), any());
     doReturn(page)
         .when(ngSecretService)
-        .list("Test", "TestOrg", "TestProj", null, null, false, null, null, true, pageRequest, null);
-    ResponseDTO<PageResponse<SecretResponseWrapper>> list = ngSecretResourceV2.list(
-        "Test", "TestOrg", "TestProj", null, null, null, null, null, false, true, pageRequest, null);
-    verify(ngSecretService).list("Test", "TestOrg", "TestProj", null, null, false, null, null, true, pageRequest, null);
+        .list("Test", scopeInfo, "TestOrg", "TestProj", null, null, false, null, null, true, pageRequest, null);
+    ngSecretResourceV2.list(
+        "Test", "TestOrg", "TestProj", null, null, null, null, null, false, true, pageRequest, null, scopeInfo);
+    verify(ngSecretService)
+        .list("Test", scopeInfo, "TestOrg", "TestProj", null, null, false, null, null, true, pageRequest, null);
   }
 
   @Test
@@ -155,14 +183,21 @@ public class NGSecretResourceV2Test extends CategoryTest {
   public void testListV2ForSecretsAvailableAllScopeIfNotInQueryParamShouldBeFalse() {
     List<Object> mockResponse = Collections.singletonList(getMockResponse());
     Page<Object> page = new PageImpl<>(mockResponse);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier("Test")
+                              .orgIdentifier("TestOrg")
+                              .projectIdentifier("TestProj")
+                              .uniqueId(randomAlphabetic(10))
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     doNothing().when(secretPermissionValidator).checkForAccessOrThrow(any(), any(), any(), any());
     doReturn(page)
         .when(ngSecretService)
-        .list("Test", "TestOrg", "TestProj", null, null, false, null, null, false, pageRequest, null);
+        .list("Test", scopeInfo, "TestOrg", "TestProj", null, null, false, null, null, false, pageRequest, null);
     ResponseDTO<PageResponse<SecretResponseWrapper>> list = ngSecretResourceV2.list(
-        "Test", "TestOrg", "TestProj", null, null, null, null, null, false, false, pageRequest, null);
+        "Test", "TestOrg", "TestProj", null, null, null, null, null, false, false, pageRequest, null, scopeInfo);
     verify(ngSecretService)
-        .list("Test", "TestOrg", "TestProj", null, null, false, null, null, false, pageRequest, null);
+        .list("Test", scopeInfo, "TestOrg", "TestProj", null, null, false, null, null, false, pageRequest, null);
   }
 
   @NotNull

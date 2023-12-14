@@ -13,6 +13,7 @@ import static io.harness.annotations.dev.HarnessTeam.DX;
 import io.harness.EntityType;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.EntityReference;
+import io.harness.beans.ScopeInfo;
 import io.harness.connector.services.ConnectorService;
 import io.harness.eventsframework.entity_crud.EntityChangeDTO;
 import io.harness.ng.beans.PageRequest;
@@ -22,6 +23,7 @@ import io.harness.ng.core.dto.secrets.SecretDTOV2;
 import io.harness.ng.core.dto.secrets.SecretResponseWrapper;
 import io.harness.ng.core.entitysetupusage.dto.EntitySetupUsageDTO;
 import io.harness.ng.core.entitysetupusage.service.EntitySetupUsageService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.utils.FullyQualifiedIdentifierHelper;
 
 import com.google.inject.Inject;
@@ -29,6 +31,7 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -42,13 +45,16 @@ public class SecretEntityCRUDEventHandler {
   EntitySetupUsageService entitySetupUsageService;
   ConnectorService connectorService;
   private final SecretCrudService secretCrudService;
+  private final ScopeInfoService scopeResolverService;
 
   @Inject
   public SecretEntityCRUDEventHandler(@Named(CONNECTOR_DECORATOR_SERVICE) ConnectorService connectorService,
-      EntitySetupUsageService entitySetupUsageService, SecretCrudService secretCrudService) {
+      EntitySetupUsageService entitySetupUsageService, SecretCrudService secretCrudService,
+      ScopeInfoService scopeResolverService) {
     this.entitySetupUsageService = entitySetupUsageService;
     this.connectorService = connectorService;
     this.secretCrudService = secretCrudService;
+    this.scopeResolverService = scopeResolverService;
   }
 
   public boolean handleUpdate(@NotNull EntityChangeDTO entityChangeDTO) {
@@ -112,9 +118,11 @@ public class SecretEntityCRUDEventHandler {
       String accountIdentifier, String orgIdentifier, String projectIdentifier) {
     Page<SecretResponseWrapper> pagedSecretList = null;
     List<SecretResponseWrapper> secretList = new ArrayList<>();
+    Optional<ScopeInfo> scopeInfo =
+        scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, projectIdentifier);
     do {
-      pagedSecretList = secretCrudService.list(accountIdentifier, orgIdentifier, projectIdentifier, null, null, false,
-          null, null, false,
+      pagedSecretList = secretCrudService.list(accountIdentifier, scopeInfo.orElseThrow(), orgIdentifier,
+          projectIdentifier, null, null, false, null, null, false,
           PageRequest.builder()
               .pageSize(10)
               .pageIndex(pagedSecretList == null ? 0 : pagedSecretList.getNumber() + 1)

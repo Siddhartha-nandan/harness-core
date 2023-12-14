@@ -30,6 +30,8 @@ public interface NGSecretServiceV2 {
 
   Optional<Secret> get(String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier);
 
+  Optional<Secret> get(ScopeInfo scopeInfo, String identifier);
+
   Optional<Secret> get(IdentifierRef identifierRef);
 
   boolean delete(

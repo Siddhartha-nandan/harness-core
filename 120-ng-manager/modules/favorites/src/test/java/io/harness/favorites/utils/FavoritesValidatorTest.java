@@ -216,7 +216,15 @@ public class FavoritesValidatorTest extends CategoryTest {
     when(userCall.execute()).thenReturn(Response.success(new RestResponse(Optional.of(UserInfo.builder().build()))));
     SecretResponseWrapper secretResponseWrapper =
         SecretResponseWrapper.builder().secret(SecretDTOV2.builder().build()).build();
-    when(secretCrudService.get(accountId, orgId, projectId, resourceId)).thenReturn(of(secretResponseWrapper));
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountId)
+                              .scopeType(ScopeLevel.PROJECT)
+                              .orgIdentifier(orgId)
+                              .projectIdentifier(projectId)
+                              .uniqueId(randomAlphabetic(10))
+                              .build();
+    when(scopeResolverService.getScopeInfo(accountId, orgId, projectId)).thenReturn(Optional.of(scopeInfo));
+    when(secretCrudService.get(scopeInfo, resourceId)).thenReturn(of(secretResponseWrapper));
     assertDoesNotThrow(() -> favoritesValidator.validateFavoriteEntry(favoriteDTO, accountId));
   }
 
@@ -228,7 +236,15 @@ public class FavoritesValidatorTest extends CategoryTest {
     Call userCall = mock(Call.class);
     when(userClient.getUserById(userId)).thenReturn(userCall);
     when(userCall.execute()).thenReturn(Response.success(new RestResponse(Optional.of(UserInfo.builder().build()))));
-    when(secretCrudService.get(accountId, orgId, projectId, resourceId)).thenReturn(Optional.empty());
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountId)
+                              .scopeType(ScopeLevel.PROJECT)
+                              .orgIdentifier(orgId)
+                              .projectIdentifier(projectId)
+                              .uniqueId(randomAlphabetic(10))
+                              .build();
+    when(scopeResolverService.getScopeInfo(accountId, orgId, projectId)).thenReturn(Optional.of(scopeInfo));
+    when(secretCrudService.get(scopeInfo, resourceId)).thenReturn(Optional.empty());
     assertThatThrownBy(() -> favoritesValidator.validateFavoriteEntry(favoriteDTO, accountId))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage(String.format(errorMessage, favoriteDTO.getResourceId(), favoriteDTO.getResourceType(), accountId));

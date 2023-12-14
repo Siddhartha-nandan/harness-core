@@ -88,8 +88,7 @@ public class OrgSecretApiImpl implements OrgSecretApi {
     if (privateSecret) {
       secretDto.setOwner(SecurityContextBuilder.getPrincipal());
     }
-    Optional<ScopeInfo> scopeInfo =
-        scopeResolverService.getScopeInfo(account, secretRequest.getSecret().getOrg(), null);
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
     SecretResponseWrapper secretResponseWrapper =
         ngSecretService.createFile(account, scopeInfo.orElseThrow(), secretDto, fileInputStream);
 
@@ -126,7 +125,9 @@ public class OrgSecretApiImpl implements OrgSecretApi {
       throw new InvalidRequestException(
           "Org scoped request is having different org in payload and param OR non null project", USER);
     }
-    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(account, org, null, secret).orElse(null);
+
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
+    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(scopeInfo.orElseThrow(), secret).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(ResourceScope.of(account, org, null),
         Resource.of(SECRET_RESOURCE_TYPE, secret), SECRET_EDIT_PERMISSION,
         secretResponseWrapper != null ? secretResponseWrapper.getSecret().getOwner() : null);
@@ -164,7 +165,9 @@ public class OrgSecretApiImpl implements OrgSecretApi {
       throw new InvalidRequestException(
           "Org scoped request is having different org in payload and param OR non null project", USER);
     }
-    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(account, org, null, secret).orElse(null);
+
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
+    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(scopeInfo.orElseThrow(), secret).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(ResourceScope.of(account, org, null),
         Resource.of(SECRET_RESOURCE_TYPE, secret), SECRET_EDIT_PERMISSION,
         secretResponseWrapper != null ? secretResponseWrapper.getSecret().getOwner() : null);
@@ -175,7 +178,8 @@ public class OrgSecretApiImpl implements OrgSecretApi {
   }
 
   private Response deleteSecret(String org, String secret, String account) {
-    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(account, org, null, secret).orElse(null);
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
+    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(scopeInfo.orElseThrow(), secret).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(ResourceScope.of(account, org, null),
         Resource.of(SECRET_RESOURCE_TYPE, secret), SECRET_DELETE_PERMISSION,
         secretResponseWrapper != null ? secretResponseWrapper.getSecret().getOwner() : null);
@@ -188,7 +192,8 @@ public class OrgSecretApiImpl implements OrgSecretApi {
   }
 
   private Response getSecret(String org, String secret, String account) {
-    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(account, org, null, secret).orElse(null);
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
+    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(scopeInfo.orElseThrow(), secret).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(ResourceScope.of(account, org, null),
         Resource.of(SECRET_RESOURCE_TYPE, secret), SECRET_VIEW_PERMISSION,
         secretResponseWrapper != null ? secretResponseWrapper.getSecret().getOwner() : null);
@@ -203,8 +208,9 @@ public class OrgSecretApiImpl implements OrgSecretApi {
   private Response getSecrets(String account, String org, List<String> secret, List<String> type, Boolean recursive,
       String searchTerm, Integer page, Integer limit, String sort, String order) {
     List<SecretType> secretTypes = secretApiUtils.toSecretTypes(type);
-    Page<SecretResponseWrapper> secretPage = ngSecretService.list(account, org, null, secret, secretTypes, recursive,
-        searchTerm, null, false, ApiUtils.getPageRequest(page, limit, sort, order), null);
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
+    Page<SecretResponseWrapper> secretPage = ngSecretService.list(account, scopeInfo.orElseThrow(), org, null, secret,
+        secretTypes, recursive, searchTerm, null, false, ApiUtils.getPageRequest(page, limit, sort, order), null);
     List<SecretResponseWrapper> content = getNGPageResponse(secretPage).getContent();
 
     List<SecretResponse> secretResponse =

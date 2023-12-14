@@ -132,7 +132,9 @@ public class AccountSecretApiImpl implements AccountSecretApi {
     if (nonNull(secretRequest.getSecret().getOrg()) || nonNull(secretRequest.getSecret().getProject())) {
       throw new InvalidRequestException("Account scoped request is having non null org or project", USER);
     }
-    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(account, null, null, secret).orElse(null);
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier(account).uniqueId(account).scopeType(ScopeLevel.ACCOUNT).build();
+    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(scopeInfo, secret).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(
         ResourceScope.of(account, secretRequest.getSecret().getOrg(), secretRequest.getSecret().getProject()),
         Resource.of(SECRET_RESOURCE_TYPE, secret), SECRET_EDIT_PERMISSION,
@@ -167,7 +169,9 @@ public class AccountSecretApiImpl implements AccountSecretApi {
   }
 
   private Response updateSecret(SecretRequest secretRequest, String secret, String account) {
-    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(account, null, null, secret).orElse(null);
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier(account).uniqueId(account).scopeType(ScopeLevel.ACCOUNT).build();
+    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(scopeInfo, secret).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(ResourceScope.of(account, null, null),
         Resource.of(SECRET_RESOURCE_TYPE, secret), SECRET_EDIT_PERMISSION,
         secretResponseWrapper != null ? secretResponseWrapper.getSecret().getOwner() : null);
@@ -178,7 +182,9 @@ public class AccountSecretApiImpl implements AccountSecretApi {
   }
 
   private Response deleteSecret(String secret, String account) {
-    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(account, null, null, secret).orElse(null);
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier(account).uniqueId(account).scopeType(ScopeLevel.ACCOUNT).build();
+    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(scopeInfo, secret).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(ResourceScope.of(account, null, null),
         Resource.of(SECRET_RESOURCE_TYPE, secret), SECRET_DELETE_PERMISSION,
         secretResponseWrapper != null ? secretResponseWrapper.getSecret().getOwner() : null);
@@ -191,7 +197,9 @@ public class AccountSecretApiImpl implements AccountSecretApi {
   }
 
   private Response getSecret(String secret, String account) {
-    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(account, null, null, secret).orElse(null);
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier(account).uniqueId(account).scopeType(ScopeLevel.ACCOUNT).build();
+    SecretResponseWrapper secretResponseWrapper = ngSecretService.get(scopeInfo, secret).orElse(null);
     secretPermissionValidator.checkForAccessOrThrow(ResourceScope.of(account, null, null),
         Resource.of(SECRET_RESOURCE_TYPE, secret), SECRET_VIEW_PERMISSION,
         secretResponseWrapper != null ? secretResponseWrapper.getSecret().getOwner() : null);
@@ -206,8 +214,10 @@ public class AccountSecretApiImpl implements AccountSecretApi {
   private Response getSecrets(String account, List<String> secret, List<String> type, Boolean recursive,
       String searchTerm, Integer page, Integer limit, String sort, String order) {
     List<SecretType> secretTypes = secretApiUtils.toSecretTypes(type);
-    Page<SecretResponseWrapper> secretPage = ngSecretService.list(account, null, null, secret, secretTypes, recursive,
-        searchTerm, null, false, ApiUtils.getPageRequest(page, limit, sort, order), null);
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier(account).uniqueId(account).scopeType(ScopeLevel.ACCOUNT).build();
+    Page<SecretResponseWrapper> secretPage = ngSecretService.list(account, scopeInfo, null, null, secret, secretTypes,
+        recursive, searchTerm, null, false, ApiUtils.getPageRequest(page, limit, sort, order), null);
     List<SecretResponseWrapper> content = getNGPageResponse(secretPage).getContent();
 
     List<SecretResponse> secretResponse =
