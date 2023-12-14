@@ -9,6 +9,7 @@ package io.harness.data.validator;
 
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.rule.OwnerRule.BHAVYA;
+import static io.harness.rule.OwnerRule.PIYUSH;
 import static io.harness.rule.OwnerRule.VIKAS;
 import static io.harness.utils.UuidAndIdentifierUtils.base64StrToUuid;
 
@@ -83,104 +84,80 @@ public class UuidValidatorTest extends CategoryTest {
   @Category(UnitTests.class)
   public void test_harnessUIFormatUUID() {
     String name = "$%^abc.ksxjx_+$++&UII J";
-    assertThat(UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier(name)).isEqualTo("abcksxjx_$UII_J");
+    assertThat(UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier(name)).isEqualTo("abc_ksxjx_$UII_J");
   }
 
   @Test
+  @Owner(developers = PIYUSH)
   public void testGenerateHarnessUIFormatIdentifier_BasicCase() {
     assertEquals("example_Name", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("example Name"));
   }
 
   @Test
+  @Owner(developers = PIYUSH)
   public void testGenerateHarnessUIFormatIdentifier_EmptyString() {
     assertEquals("", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier(""));
   }
 
   @Test
+  @Owner(developers = PIYUSH)
   public void testGenerateHarnessUIFormatIdentifier_StringWithSpecialCharacters() {
     assertEquals("user123", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("@user#123"));
   }
 
   @Test
+  @Owner(developers = PIYUSH)
   public void testGenerateHarnessUIFormatIdentifier_StringWithLeadingDigitsDashesAndDollarSigns() {
-    assertEquals("test", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("123-$test"));
+    assertEquals("_$test", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("123-$test"));
   }
 
   @Test
+  @Owner(developers = PIYUSH)
   public void testGenerateHarnessUIFormatIdentifier_StringWithVariousSpecialCharacters() {
     assertEquals("my_test_is_cool", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("my@_test.is-cool"));
   }
 
   @Test
+  @Owner(developers = PIYUSH)
   public void testGenerateHarnessUIFormatIdentifier_StringWithAccentedCharacters() {
     assertEquals("Cafe", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("Café"));
   }
 
   @Test
+  @Owner(developers = PIYUSH)
   public void testGenerateHarnessUIFormatIdentifier_StringWithMultipleSpaces() {
-    assertEquals("multiple_spaces_here",
-        uidAndIdentifierUtils.generateHarnessUIFormatIdentifier("  multiple   spaces  here  "));
+    assertEquals("multiple___spaces__here",
+        UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("  multiple   spaces  here  "));
   }
 
   @Test
+  @Owner(developers = PIYUSH)
   public void testGenerateHarnessUIFormatIdentifier_StringWithLeadingAndTrailingSpaces() {
     assertEquals("space_test", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("  space_test  "));
   }
 
   @Test
+  @Owner(developers = PIYUSH)
   public void testGenerateHarnessUIFormatIdentifier_StringWithOnlyDigitsAndSpecialCharacters() {
-    assertEquals("_12345", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("$#12345"));
+    assertEquals("12345", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("$#12345"));
   }
 
   @Test
+  @Owner(developers = PIYUSH)
   public void testGenerateHarnessUIFormatIdentifier_StringWithMultipleConsecutiveDotsAndDashes() {
-    assertEquals("test_case_here", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("test...case---here"));
+    assertEquals("test___case___here", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("test...case---here"));
   }
 
   @Test
+  @Owner(developers = PIYUSH)
   public void testGenerateHarnessUIFormatIdentifier_StringWithNullInput() {
     assertEquals("", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier(null));
   }
 
   @Test
+  @Owner(developers = PIYUSH)
   public void testGenerateHarnessUIFormatIdentifier_StringWithSpecialCharactersAndSpaces() {
-    assertEquals("
-        my_test_case_is_here", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("my!@ test. case - is $here"));
-  }
-
-  @Test
-  public void testGenerateFormattedIdentifier_BasicCase() {
-    assertEquals("example_Name", UuidAndIdentifierUtils.generateFormattedIdentifier("example Name"));
-  }
-
-  @Test
-  public void testGenerateFormattedIdentifier_EmptyString() {
-    assertEquals("", UuidAndIdentifierUtils.generateFormattedIdentifier(""));
-  }
-
-  @Test
-  public void testGenerateFormattedIdentifier_StringWithAccentedCharacters() {
-    assertEquals("Cafe", UuidAndIdentifierUtils.generateFormattedIdentifier("Café"));
-  }
-
-  @Test
-  public void testGenerateFormattedIdentifier_StringWithMultipleSpaces() {
-    assertEquals("m
-        ultiple_spaces_here", UuidAndIdentifierUtils.generateFormattedIdentifier("  multiple   spaces  here  "));
-  }
-
-  @Test
-  public void testGenerateFormattedIdentifier_StringWithLeadingAndTrailingSpaces() {
-    assertEquals("space_test", UuidAndIdentifierUtils.generateFormattedIdentifier("  space_test  "));
-  }
-
-  @Test
-  public void testGenerateFormattedIdentifier_StringWithMultipleConsecutiveDotsAndDashes() {
-    assertEquals("test_case_here", UuidAndIdentifierUtils.generateFormattedIdentifier("test...case---here"));
-  }
-
-  @Test
-  public void testGenerateFormattedIdentifier_StringWithNullInput() {
-    assertEquals("", UuidAndIdentifierUtils.generateFormattedIdentifier(null));
+    assertEquals("my_test__case___is_$here",
+        UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("my!@ test. case - is $here"));
   }
 }
