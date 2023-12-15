@@ -12,6 +12,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.InvalidYamlException;
 import io.harness.plancreator.stages.v1.AbstractStagePlanCreator;
+import io.harness.plancreator.stages.v1.StageParameterUtilsV1;
 import io.harness.plancreator.steps.common.v1.StageElementParametersV1;
 import io.harness.plancreator.strategy.StrategyUtilsV1;
 import io.harness.pms.contracts.facilitators.FacilitatorObtainment;
@@ -85,7 +86,7 @@ public class ApprovalStagePlanCreator extends AbstractStagePlanCreator<ApprovalS
   public PlanNode createPlanForParentNode(
       PlanCreationContext ctx, ApprovalStageNodeV1 field, List<String> childrenNodeIds) {
     StageElementParametersV1.StageElementParametersV1Builder stageParameters =
-        StepParameterUtils.getStageParameters(field);
+        StageParameterUtilsV1.getCommonStageParameters(field);
     stageParameters.type(YAMLFieldNameConstants.APPROVAL_V1);
     stageParameters.spec(ApprovalStageSpecParameters.builder().childNodeID(childrenNodeIds.get(0)).build());
     String name = field.getName();
