@@ -535,6 +535,7 @@ public class AuthenticationSettingsServiceImpl implements AuthenticationSettings
         .sessionTimeoutInMinutes(accountAuthenticationSettings.getSessionTimeoutInMinutes())
         .publicAccessEnabled(accountAuthenticationSettings.isPublicAccessEnabled())
         .oauthEnabled(accountAuthenticationSettings.isOauthEnabled())
+        .absoluteSessionTimeoutInMinutes(accountAuthenticationSettings.getAbsoluteSessionTimeoutInMinutes())
         .build();
   }
 

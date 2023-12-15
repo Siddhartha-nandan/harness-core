@@ -38,6 +38,7 @@ public class AccountMapper {
         .ringName(account.getRingName())
         .createdAt(account.getCreatedAt())
         .sessionTimeoutInMinutes(account.getSessionTimeOutInMinutes())
+        .absoluteSessionTimeoutInMinutes(account.getAbsoluteSessionTimeOutInMinutes())
         .publicAccessEnabled(account.isPublicAccessEnabled())
         .subdomainURL(account.getSubdomainUrl())
         .build();
@@ -55,6 +56,9 @@ public class AccountMapper {
                           .build();
     if (dto.getSessionTimeoutInMinutes() != null) {
       account.setSessionTimeOutInMinutes(dto.getSessionTimeoutInMinutes());
+    }
+    if (null != dto.getAbsoluteSessionTimeoutInMinutes()) {
+      account.setAbsoluteSessionTimeOutInMinutes(dto.getAbsoluteSessionTimeoutInMinutes());
     }
     return account;
   }

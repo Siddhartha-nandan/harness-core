@@ -19,4 +19,5 @@ public class AccountAuthenticationSettings {
   Integer sessionTimeoutInMinutes;
   boolean publicAccessEnabled;
   boolean oauthEnabled;
+  Integer absoluteSessionTimeoutInMinutes;
 }

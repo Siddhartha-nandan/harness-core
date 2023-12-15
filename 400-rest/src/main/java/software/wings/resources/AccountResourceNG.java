@@ -314,6 +314,7 @@ public class AccountResourceNG {
         AccountAuthenticationSettings.builder()
             .publicAccessEnabled(account.isPublicAccessEnabled())
             .sessionTimeoutInMinutes(account.getSessionTimeOutInMinutes())
+            .absoluteSessionTimeoutInMinutes(account.getAbsoluteSessionTimeOutInMinutes())
             .twoFactorEnabled(account.isTwoFactorAdminEnforced())
             .oauthEnabled(account.isOauthEnabled())
             .build();

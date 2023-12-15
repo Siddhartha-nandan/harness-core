@@ -35,4 +35,9 @@ public class SessionTimeoutSettings {
   @Max(value = 4320)
   @NotNull
   private Integer sessionTimeOutInMinutes;
+  @Getter
+  @Setter
+  @Schema(description = "Any user of this account will be logged out after this number of minutes")
+  @Max(value = 4320)
+  private Integer absoluteSessionTimeOutInMinutes;
 }

@@ -95,13 +95,17 @@ public class AccountDTO {
   @VariableExpression(skipVariableExpression = true)
   boolean isHarnessSupportAccessAllowed;
 
+  @Schema(description = "Absolute SessionTimeout in minutes")
+  @VariableExpression(skipVariableExpression = true)
+  private Integer absoluteSessionTimeoutInMinutes;
+
   @Builder
   public AccountDTO(String identifier, String name, String companyName, String cluster,
       DefaultExperience defaultExperience, boolean isCrossGenerationAccessEnabled,
       boolean isCannyUsernameAbbreviationEnabled, AuthenticationMechanism authenticationMechanism,
       ServiceAccountConfig serviceAccountConfig, boolean isNextGenEnabled, boolean isProductLed,
       boolean isTwoFactorAdminEnforced, long createdAt, String ringName, Integer sessionTimeoutInMinutes,
-      boolean publicAccessEnabled, String subdomainURL) {
+      boolean publicAccessEnabled, String subdomainURL, Integer absoluteSessionTimeoutInMinutes) {
     this.identifier = identifier;
     this.name = name;
     this.companyName = companyName;
@@ -119,5 +123,6 @@ public class AccountDTO {
     this.sessionTimeoutInMinutes = sessionTimeoutInMinutes;
     this.publicAccessEnabled = publicAccessEnabled;
     this.subdomainURL = subdomainURL;
+    this.absoluteSessionTimeoutInMinutes = absoluteSessionTimeoutInMinutes;
   }
 }

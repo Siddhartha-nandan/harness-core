@@ -786,6 +786,7 @@ public class AccountServiceImpl implements AccountService {
     accountDetails.setCannyUsernameAbbreviationEnabled(account.isCannyUsernameAbbreviationEnabled());
     accountDetails.setCreatedFromNG(account.isCreatedFromNG());
     accountDetails.setSessionTimeOutInMinutes(account.getSessionTimeOutInMinutes());
+    accountDetails.setAbsoluteSessionTimeOutInMinutes(account.getAbsoluteSessionTimeOutInMinutes());
     accountDetails.setActiveServiceCount(cgCdLicenseUsageService.getActiveServiceInTimePeriod(accountId, 60));
     if (featureFlagService.isEnabled(CG_LICENSE_USAGE, accountId)) {
       accountDetails.setActiveServicesUsageInfo(cgCdLicenseUsageService.getActiveServiceLicenseUsage(accountId));
@@ -896,6 +897,7 @@ public class AccountServiceImpl implements AccountService {
       String accountId, @NotNull @Valid SessionTimeoutSettings sessionTimeoutSettings) {
     Account account = get(accountId);
     account.setSessionTimeOutInMinutes(sessionTimeoutSettings.getSessionTimeOutInMinutes());
+    account.setAbsoluteSessionTimeOutInMinutes(sessionTimeoutSettings.getAbsoluteSessionTimeOutInMinutes());
     update(account);
   }
 
@@ -1140,6 +1142,10 @@ public class AccountServiceImpl implements AccountService {
 
     if (null != account.getSessionTimeOutInMinutes()) {
       updateOperations.set(AccountKeys.sessionTimeOutInMinutes, account.getSessionTimeOutInMinutes());
+    }
+
+    if (null != account.getAbsoluteSessionTimeOutInMinutes()) {
+      updateOperations.set(AccountKeys.absoluteSessionTimeOutInMinutes, account.getAbsoluteSessionTimeOutInMinutes());
     }
 
     if (null != account.getLicenseInfo()) {

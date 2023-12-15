@@ -40,4 +40,6 @@ public class AuthenticationSettingsResponse {
   @Schema(description = "If public access is enabled, this value is true. Otherwise, it is false.")
   boolean publicAccessEnabled;
   @Schema(description = "If OAUTH is enabled") boolean oauthEnabled;
+  @Schema(description = "Any user of this account will be logged out after this number of minutes")
+  Integer absoluteSessionTimeoutInMinutes;
 }

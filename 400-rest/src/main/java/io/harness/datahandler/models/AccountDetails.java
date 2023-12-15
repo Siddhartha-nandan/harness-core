@@ -40,4 +40,5 @@ public class AccountDetails {
   private CgLicenseModel licenseModel;
   private Integer sessionTimeOutInMinutes;
   private boolean publicAccessEnabled;
+  private Integer absoluteSessionTimeOutInMinutes;
 }

@@ -57,6 +57,7 @@ type Account struct {
 		AccountActivelyUsed     bool        `json:"accountActivelyUsed"`
 		SmpAccount              bool        `json:"smpAccount"`
 		SessionTimeOutInMinutes int         `json:"sessionTimeOutInMinutes"`
+		AbsoluteSessionTimeOutInMinutes int `json:"absoluteSessionTimeOutInMinutes"`
 		PublicAccessEnabled     bool        `json:"publicAccessEnabled"`
 		LocalEncryptionEnabled  bool        `json:"localEncryptionEnabled"`
 		DelegateConfiguration   struct {
@@ -106,6 +107,7 @@ type AccountNG struct {
 		RingName                         string `json:"ringName"`
 		SubdomainURL                     string `json:"subdomainURL"`
 		SessionTimeoutInMinutes          int    `json:"sessionTimeoutInMinutes"`
+		AbsoluteSessionTimeOutInMinutes  int    `json:"absoluteSessionTimeOutInMinutes"`
 		PublicAccessEnabled              bool   `json:"publicAccessEnabled"`
 		TwoFactorAdminEnforced           bool   `json:"twoFactorAdminEnforced"`
 		NextGenEnabled                   bool   `json:"nextGenEnabled"`

@@ -174,6 +174,7 @@ public class Account extends Base implements PersistentRegularIterable, NGMigrat
 
   @Getter @Setter private boolean smpAccount;
   @Getter @Setter private Integer sessionTimeOutInMinutes = DEFAULT_SESSION_TIMEOUT_IN_MINUTES;
+  @Getter @Setter private Integer absoluteSessionTimeOutInMinutes;
   @Getter @Setter private boolean publicAccessEnabled;
 
   /**
