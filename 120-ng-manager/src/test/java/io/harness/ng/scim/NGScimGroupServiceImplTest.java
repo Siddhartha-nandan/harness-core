@@ -14,6 +14,7 @@ import static io.harness.NGConstants.RESOURCE_TYPE;
 import static io.harness.NGConstants.VERSION;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.beans.FeatureName.PL_NEW_SCIM_STANDARDS;
+import static io.harness.rule.OwnerRule.BHAVYA;
 import static io.harness.rule.OwnerRule.BOOPESH;
 import static io.harness.rule.OwnerRule.KAPIL;
 import static io.harness.rule.OwnerRule.PRATEEK;
@@ -117,6 +118,17 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
     assertNotNull(userGroupCreated.getMeta().get(LAST_MODIFIED));
     assertNotNull(userGroupCreated.getMeta().get(LOCATION));
     assertNotNull(userGroupCreated.getMeta().get(VERSION));
+  }
+
+  @Test
+  @Owner(developers = BHAVYA)
+  @Category(UnitTests.class)
+  public void testCreateGroup_shouldReturnMeta_ifFFTurnedOn() {
+    ScimGroup scimGroup = new ScimGroup();
+    scimGroup.setDisplayName("#display$name");
+    scimGroup.setId("id");
+
+    assertThat(scimGroupService.getUserGroupName(scimGroup)).isEqualTo("_display_name");
   }
 
   @Test
