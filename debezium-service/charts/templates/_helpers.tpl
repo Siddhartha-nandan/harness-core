@@ -71,9 +71,9 @@ USAGE:
     {{- $ := .ctx }}
     {{- $hasAtleastOneSecret := false }}
     {{- $localESOSecretCtxIdentifier := (include "harnesscommon.secrets.localESOSecretCtxIdentifier" (dict "ctx" $ )) }}
-    {{- if eq (include "harnesscommon.secrets.isDefaultAppSecret" (dict "ctx" $ "variableName" "IDENTITY_SERVICE_SECRET")) "true" }}
+    {{- if eq (include "harnesscommon.secrets.isDefaultAppSecret" (dict "ctx" $ "variableName" "CF_CLIENT_API_KEY")) "true" }}
     {{- $hasAtleastOneSecret = true }}
-IDENTITY_SERVICE_SECRET: '{{ .ctx.Values.secrets.default.IDENTITY_SERVICE_SECRET | b64enc }}'
+CF_CLIENT_API_KEY: '{{ .ctx.Values.secrets.default.CF_CLIENT_API_KEY | b64enc }}'
     {{- end }}
     {{- if not $hasAtleastOneSecret }}
 {}

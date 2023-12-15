@@ -138,20 +138,10 @@ spec:
             protocol: "TCP"
           {{- include "harnesscommon.monitoring.containerPort" . | nindent 10 }}
           env:
-            {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "EVENTS_CONFIG_REDIS_USERNAME" "passwordVariableName" "EVENTS_CONFIG_REDIS_PASSWORD") | indent 12 }}
-            {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "LOCK_CONFIG_REDIS_USERNAME" "passwordVariableName" "LOCK_CONFIG_REDIS_PASSWORD") | indent 12 }}
-            - name: MONGODB_CONNECTION_PROTOCOL
-              value: {{ include "debezium-service.mongoProtocol" (dict "ctx" $ "database" "accesscontrol") }}
-            - name: MONGODB_HOSTS
-              value: {{ include "debezium-service.mongohosts" (dict "ctx" $ "database" "accesscontrol") }}
-            - name: MONGODB_CONNECTION_URL
-              value: {{ include "debezium-service.mongoConnectionUrl" (dict "database" "accesscontrol" "ctx" $) }}
-            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "accesscontrol" "userVariableName" "MONGODB_USER" "passwordVariableName" "MONGODB_PASSWORD") | indent 12 }}
-            {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "accesscontrol" "connectionURIVariableName" "MONGO_URI" "userVariableName" "MONGODB_USER" "passwordVariableName" "MONGODB_PASSWORD") | indent 12 }}
-            {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "accesscontrol" "connectionURIVariableName" "OFFSET_STORAGE_FILE_FILENAME" "userVariableName" "MONGODB_USER" "passwordVariableName" "MONGODB_PASSWORD") | indent 12 }}
-            {{- if .Values.extraEnvVars }}
-            {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
-            {{- end }}
+            {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD") | indent 10 }}
+            {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "CACHE_CONFIG_REDIS_USERNAME" "passwordVariableName" "CACHE_CONFIG_REDIS_PASSWORD") | indent 10 }}
+            {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "REDIS_LOCK_CONFIG_REDIS_USERNAME" "passwordVariableName" "REDIS_LOCK_CONFIG_REDIS_PASSWORD") | indent 10 }}
+
           envFrom:
           - configMapRef:
               name: debezium-service

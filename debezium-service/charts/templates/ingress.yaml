@@ -29,8 +29,8 @@ spec:
               service:
                 name: {{ include "debezium-service.name" $ }}
                 port:
-                  number: {{ $.Values.service.port }}
-            path: /authz(/|$)(.*)
+                  number: 14552
+            path: /debezium(/|$)(.*)
             pathType: ImplementationSpecific
     {{- end }}
   {{- if .Values.global.ingress.tls.enabled }}
