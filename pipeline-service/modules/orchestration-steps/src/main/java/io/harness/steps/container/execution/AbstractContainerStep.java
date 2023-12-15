@@ -135,6 +135,7 @@ public abstract class AbstractContainerStep implements AsyncExecutableWithRbac<S
           ContainerSpecUtils.mergeStepAndConnectorOriginDelegateSelectors(containerStepInfo, k8sConnector);
     }
 
+    String logPrefix = getLogPrefix(ambiance);
     if (featureFlagService.isEnabled(
             AmbianceUtils.getAccountId(ambiance), CDS_USE_DELEGATE_BIJOU_API_CONTAINER_STEPS)) {
       TaskExecutor taskExecutor = taskExecutorMap.get(TaskCategory.DELEGATE_TASK_V2);
@@ -144,7 +145,7 @@ public abstract class AbstractContainerStep implements AsyncExecutableWithRbac<S
         throw new InvalidRequestException("Not found k8sInfra infraRefId");
       }
       KubernetesInfraOutput k8sInfra = (KubernetesInfraOutput) optionalCleanupSweepingOutput.getOutput();
-      Execution execution = getExecution(SHELL_SCRIPT_TASK_IDENTIFIER, k8sInfra.getInfraRefId());
+      Execution execution = getExecution(logPrefix, SHELL_SCRIPT_TASK_IDENTIFIER, k8sInfra.getInfraRefId());
       String queueExecuteTaskId =
           taskExecutor.queueExecuteTask(prepareExecuteTaskRequest(ambiance, execution, timeout,
                                             TaskCategory.DELEGATE_TASK_V2, true, delegateSelectors),
@@ -152,13 +153,13 @@ public abstract class AbstractContainerStep implements AsyncExecutableWithRbac<S
 
       return AsyncExecutableResponse.newBuilder()
           .addCallbackIds(queueExecuteTaskId)
-          .addAllLogKeys(CollectionUtils.emptyIfNull(singletonList(getLogPrefix(ambiance))))
+          .addAllLogKeys(CollectionUtils.emptyIfNull(singletonList(logPrefix)))
           .build();
     }
 
     String parkedTaskId = taskExecutor.queueParkedDelegateTask(ambiance, timeout, accountId, delegateSelectors);
-    TaskData runStepTaskData = containerRunStepHelper.getRunStepTask(ambiance, containerStepInfo,
-        AmbianceUtils.getAccountId(ambiance), getLogPrefix(ambiance), timeout, parkedTaskId);
+    TaskData runStepTaskData = containerRunStepHelper.getRunStepTask(
+        ambiance, containerStepInfo, AmbianceUtils.getAccountId(ambiance), logPrefix, timeout, parkedTaskId);
     String liteEngineTaskId = taskExecutor.queueTask(ambiance, runStepTaskData, accountId, delegateSelectors);
     log.info("Created parked task {} and lite engine task {} for  step {}", parkedTaskId, liteEngineTaskId,
         containerStepInfo.getIdentifier());
@@ -166,7 +167,7 @@ public abstract class AbstractContainerStep implements AsyncExecutableWithRbac<S
     return AsyncExecutableResponse.newBuilder()
         .addCallbackIds(parkedTaskId)
         .addCallbackIds(liteEngineTaskId)
-        .addAllLogKeys(CollectionUtils.emptyIfNull(singletonList(getLogPrefix(ambiance))))
+        .addAllLogKeys(CollectionUtils.emptyIfNull(singletonList(logPrefix)))
         .build();
   }
 
@@ -187,10 +188,11 @@ public abstract class AbstractContainerStep implements AsyncExecutableWithRbac<S
         .build();
   }
 
-  private Execution getExecution(String stepId, String infraRefId) {
+  private Execution getExecution(String logPrefix, String stepId, String infraRefId) {
     return Execution.newBuilder()
         .setInfraRefId(infraRefId)
         .setStepId(stepId)
+        .setStepLogKey(logPrefix)
         .setK8S(
             K8sExecutionSpec.newBuilder()
                 .setEntryPoint(
