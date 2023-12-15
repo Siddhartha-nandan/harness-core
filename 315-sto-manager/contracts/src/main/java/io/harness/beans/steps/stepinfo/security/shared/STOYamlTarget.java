@@ -14,7 +14,8 @@ import static io.harness.yaml.schema.beans.SupportedPossibleFieldTypes.runtime;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.yaml.YamlSchemaTypes;
-import io.harness.yaml.sto.variables.*;
+import io.harness.yaml.sto.variables.STOYamlTargetType;
+import io.harness.yaml.sto.variables.STOYamlTargetNamingMode;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;

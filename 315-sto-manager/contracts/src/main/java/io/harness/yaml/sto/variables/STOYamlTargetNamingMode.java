@@ -7,9 +7,12 @@
 
 package io.harness.yaml.sto.variables;
 
-import com.fasterxml.jackson.annotation.*;
-import io.harness.annotation.*;
-import org.springframework.data.annotation.*;
+import io.harness.annotation.RecasterAlias;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonValue;
+import org.springframework.data.annotation.TypeAlias;
 
 @TypeAlias("stoYamlTargetNamingMode")
 @RecasterAlias("io.harness.yaml.sto.variables.STOYamlTargetNamingMode")
