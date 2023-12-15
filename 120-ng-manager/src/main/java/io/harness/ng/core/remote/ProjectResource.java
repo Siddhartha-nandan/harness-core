@@ -181,6 +181,7 @@ public class ProjectResource {
       @QueryParam(NGCommonEntityConstants.ORG_KEY) @DefaultValue(
           DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier,
       @Context ScopeInfo scopeInfo) {
+    // TODO: Resolve ScopeInfo here inline
     Optional<Project> projectOptional = projectService.get(accountIdentifier, scopeInfo, identifier);
     if (!projectOptional.isPresent()) {
       throw new EntityNotFoundException(
@@ -309,6 +310,7 @@ public class ProjectResource {
               "This is the updated Project. Please provide values for all fields, not just the fields you are updating")
       @NotNull @Valid ProjectRequest projectDTO,
       @Context ScopeInfo scopeInfo) {
+    // TODO :: Resolve manually
     projectDTO.getProject().setVersion(isNumeric(ifMatch) ? parseLong(ifMatch) : null);
     Project updatedProject =
         projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier, projectDTO.getProject());
@@ -342,6 +344,7 @@ public class ProjectResource {
       @QueryParam(NGCommonEntityConstants.ORG_KEY) @DefaultValue(
           DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier,
       @Context ScopeInfo scopeInfo) {
+    // TODO : Resolve ScopeInfo
     return ResponseDTO.newResponse(projectService.delete(
         accountIdentifier, scopeInfo, orgIdentifier, identifier, isNumeric(ifMatch) ? parseLong(ifMatch) : null));
   }

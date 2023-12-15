@@ -29,16 +29,13 @@ import lombok.extern.slf4j.Slf4j;
 @Singleton
 @Slf4j
 public class ScopeInfoServiceImpl implements ScopeInfoService {
-  private final AccountOrgProjectValidator accountOrgProjectValidator;
   private final OrganizationService organizationService;
   private final ProjectService projectService;
   private final ScopeInfoHelper scopeInfoHelper;
-  private final String SCOPE_DETAIL_RESOLVER_LOG_CONST = "[ScopeInfoService]:";
 
   @Inject
-  public ScopeInfoServiceImpl(AccountOrgProjectValidator accountOrgProjectValidator,
+  public ScopeInfoServiceImpl(
       OrganizationService organizationService, ProjectService projectService, ScopeInfoHelper scopeInfoHelper) {
-    this.accountOrgProjectValidator = accountOrgProjectValidator;
     this.organizationService = organizationService;
     this.projectService = projectService;
     this.scopeInfoHelper = scopeInfoHelper;
@@ -47,11 +44,6 @@ public class ScopeInfoServiceImpl implements ScopeInfoService {
   @Override
   public Optional<ScopeInfo> getScopeInfo(String accountIdentifier, String orgIdentifier, String projectIdentifier) {
     if (isEmpty(orgIdentifier) && isEmpty(projectIdentifier)) {
-      if (!accountOrgProjectValidator.isPresent(accountIdentifier, null, null)) {
-        log.warn(format(
-            "%s Account with identifier [%s] does not exist", SCOPE_DETAIL_RESOLVER_LOG_CONST, accountIdentifier));
-        return Optional.empty();
-      }
       return Optional.of(
           scopeInfoHelper.populateScopeInfo(ScopeLevel.ACCOUNT, accountIdentifier, accountIdentifier, null, null));
     }

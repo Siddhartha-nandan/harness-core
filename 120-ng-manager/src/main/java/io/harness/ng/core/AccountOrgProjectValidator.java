@@ -31,9 +31,9 @@ public class AccountOrgProjectValidator {
   private final ProjectService projectService;
   private final AccountClient accountClient;
 
-  @DefaultOrganization
   public boolean isPresent(
       String accountIdentifier, @OrgIdentifier String orgIdentifier, @ProjectIdentifier String projectIdentifier) {
+    // TODO : Populate orgIdentifier as per interceptor logic
     if (isEmpty(accountIdentifier)) {
       return true;
     } else if (isEmpty(orgIdentifier)) {

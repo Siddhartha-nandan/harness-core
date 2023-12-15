@@ -118,6 +118,7 @@ public class NGAggregateResource {
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
       @QueryParam(NGCommonEntityConstants.ORG_KEY) @DefaultValue(
           DEFAULT_ORG_IDENTIFIER) @OrgIdentifier @io.harness.ng.core.OrgIdentifier String orgIdentifier) {
+    // TODO : ConstructScopeInfo
     return ResponseDTO.newResponse(
         aggregateProjectService.getProjectAggregateDTO(accountIdentifier, orgIdentifier, identifier));
   }

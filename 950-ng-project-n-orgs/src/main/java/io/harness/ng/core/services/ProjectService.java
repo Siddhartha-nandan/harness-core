@@ -38,8 +38,7 @@ public interface ProjectService {
 
   Optional<Project> getConsideringCase(String accountIdentifier, String orgIdentifier, String identifier);
 
-  Project update(
-      String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier, String identifier, ProjectDTO project);
+  Project update(String accountIdentifier, ScopeInfo scopeInfo, String identifier, ProjectDTO project);
 
   PageResponse<ProjectDTO> listProjectsForUser(String userId, String accountId, PageRequest pageRequest);
 
@@ -69,7 +68,7 @@ public interface ProjectService {
    */
   List<Project> list(Criteria criteria);
 
-  boolean delete(String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier, String identifier, Long version);
+  boolean delete(String accountIdentifier, ScopeInfo scopeInfo, String identifier, Long version);
 
   boolean restore(String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier, String identifier);
 

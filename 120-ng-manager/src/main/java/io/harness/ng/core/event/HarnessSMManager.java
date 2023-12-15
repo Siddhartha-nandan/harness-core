@@ -67,9 +67,9 @@ public class HarnessSMManager {
     ngSecretManagerMigration.createGlobal(GLOBAL_ACCOUNT_ID, null, null, true);
   }
 
-  @DefaultOrganization
   public void createHarnessSecretManager(
       String accountIdentifier, @OrgIdentifier String orgIdentifier, @ProjectIdentifier String projectIdentifier) {
+    // TODO: Populate orgIdentifier as per interceptor logic here
     if (isHarnessSecretManagerPresent(accountIdentifier, orgIdentifier, projectIdentifier)) {
       log.info(String.format(
           "Harness Secret Manager for accountIdentifier %s, orgIdentifier %s and projectIdentifier %s already present",
@@ -108,19 +108,11 @@ public class HarnessSMManager {
     return secretScope;
   }
 
-  @DefaultOrganization
   private boolean isHarnessSecretManagerPresent(
       String accountIdentifier, @OrgIdentifier String orgIdentifier, @ProjectIdentifier String projectIdentifier) {
     return secretManagerConnectorService
         .get(accountIdentifier, orgIdentifier, projectIdentifier, HARNESS_SECRET_MANAGER_IDENTIFIER)
         .isPresent();
-  }
-
-  @DefaultOrganization
-  public boolean deleteHarnessSecretManager(
-      String accountIdentifier, @OrgIdentifier String orgIdentifier, @ProjectIdentifier String projectIdentifier) {
-    return secretManagerConnectorService.delete(
-        accountIdentifier, orgIdentifier, projectIdentifier, HARNESS_SECRET_MANAGER_IDENTIFIER, false);
   }
 
   public ConnectorDTO getConnectorRequestDTO(SecretManagerConfigDTO secretManagerConfigDTO, Scope secretScope,

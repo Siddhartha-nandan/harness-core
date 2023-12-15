@@ -309,6 +309,7 @@ public class UserGroupResource {
       @Parameter(description = ORG_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier) {
+    // TODO : Populate default org if project identifier is present and orgIdentifier is null/empty
     accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
         Resource.of(USERGROUP, userGroupIdentifier), VIEW_USERGROUP_PERMISSION);
     List<ScopeNameDTO> inheritingScopeNames = userGroupService.getInheritingChildScopeList(

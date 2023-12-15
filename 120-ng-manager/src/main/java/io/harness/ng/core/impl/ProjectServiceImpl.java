@@ -308,7 +308,6 @@ public class ProjectServiceImpl implements ProjectService {
   }
 
   @Override
-  @DefaultOrganization
   public Optional<Project> get(
       String accountIdentifier, @OrgIdentifier String orgIdentifier, @ProjectIdentifier String projectIdentifier) {
     return projectRepository.findByAccountIdentifierAndOrgIdentifierAndIdentifierIgnoreCaseAndDeletedNot(
@@ -317,6 +316,7 @@ public class ProjectServiceImpl implements ProjectService {
 
   @Override
   @DefaultOrganization
+  // TODO : Check FileValidationServiceImpl and then we can remove from here as well.
   public Optional<Project> get(
       String accountIdentifier, ScopeInfo scopeInfo, @ProjectIdentifier String projectIdentifier) {
     return projectRepository.findByAccountIdentifierAndParentUniqueIdAndIdentifierIgnoreCaseAndDeletedNot(
@@ -324,7 +324,6 @@ public class ProjectServiceImpl implements ProjectService {
   }
 
   @Override
-  @DefaultOrganization
   public Optional<Project> getConsideringCase(
       String accountIdentifier, @OrgIdentifier String orgIdentifier, @ProjectIdentifier String projectIdentifier) {
     return projectRepository.findByAccountIdentifierAndOrgIdentifierAndIdentifierAndDeletedNot(
@@ -444,9 +443,8 @@ public class ProjectServiceImpl implements ProjectService {
   }
 
   @Override
-  @DefaultOrganization
-  public Project update(String accountIdentifier, ScopeInfo scopeInfo, @OrgIdentifier String orgIdentifier,
-      @ProjectIdentifier String identifier, ProjectDTO projectDTO) {
+  public Project update(
+      String accountIdentifier, ScopeInfo scopeInfo, @ProjectIdentifier String identifier, ProjectDTO projectDTO) {
     validateUpdateProjectRequest(accountIdentifier, scopeInfo.getOrgIdentifier(), identifier, projectDTO);
     Optional<Project> optionalProject = get(accountIdentifier, scopeInfo, identifier);
 
@@ -658,9 +656,8 @@ public class ProjectServiceImpl implements ProjectService {
   }
 
   @Override
-  @DefaultOrganization
-  public boolean delete(String accountIdentifier, ScopeInfo scopeInfo, @OrgIdentifier String orgIdentifier,
-      @ProjectIdentifier String projectIdentifier, Long version) {
+  public boolean delete(
+      String accountIdentifier, ScopeInfo scopeInfo, @ProjectIdentifier String projectIdentifier, Long version) {
     try (AutoLogContext ignore1 =
              new NgAutoLogContext(projectIdentifier, scopeInfo.getOrgIdentifier(), accountIdentifier, OVERRIDE_ERROR)) {
       return Failsafe.with(DEFAULT_RETRY_POLICY).get(() -> transactionTemplate.execute(status -> {
