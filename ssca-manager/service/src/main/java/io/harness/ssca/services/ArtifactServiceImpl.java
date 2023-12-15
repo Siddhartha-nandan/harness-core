@@ -20,6 +20,7 @@ import static org.springframework.data.mongodb.core.aggregation.Aggregation.unwi
 
 import io.harness.network.Http;
 import io.harness.repositories.ArtifactRepository;
+import io.harness.repositories.BaselineRepository;
 import io.harness.repositories.EnforcementSummaryRepo;
 import io.harness.spec.server.ssca.v1.model.ArtifactComponentViewRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactComponentViewResponse;
@@ -37,8 +38,10 @@ import io.harness.spec.server.ssca.v1.model.Slsa;
 import io.harness.ssca.beans.EnforcementSummaryDBO.EnforcementSummaryDBOKeys;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.beans.SbomDTO;
+import io.harness.ssca.beans.remediation_tracker.PatchedPendingArtifactEntitiesResult;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityKeys;
+import io.harness.ssca.entities.BaselineEntity;
 import io.harness.ssca.entities.CdInstanceSummary;
 import io.harness.ssca.entities.EnforcementSummaryEntity;
 import io.harness.ssca.entities.EnforcementSummaryEntity.EnforcementSummaryEntityKeys;
@@ -51,6 +54,8 @@ import com.google.inject.Inject;
 import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -68,7 +73,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
 import org.springframework.data.mongodb.core.aggregation.CountOperation;
 import org.springframework.data.mongodb.core.aggregation.GroupOperation;
 import org.springframework.data.mongodb.core.aggregation.LimitOperation;
@@ -89,6 +96,9 @@ public class ArtifactServiceImpl implements ArtifactService {
   @Inject CdInstanceSummaryService cdInstanceSummaryService;
   @Inject PipelineUtils pipelineUtils;
 
+  @Inject BaselineRepository baselineRepository;
+
+  @Inject MongoTemplate mongoTemplate;
   private final String GCP_REGISTRY_HOST = "gcr.io";
 
   @Override
@@ -320,6 +330,47 @@ public class ArtifactServiceImpl implements ArtifactService {
     return new PageImpl<>(artifactListingResponses, pageable, artifactEntities.getTotalElements());
   }
 
+  // make this method accept orchestrationIds and return two separate lists of artifactENtities,
+  // one with criteria orchestrationId in orchestrationIds and
+  // the other with orchestrationId nin orchestrationIds using one facet query.
+  // Currently i had to call this method twice for both the usecases. It is not efficient.
+  @Override
+  public List<PatchedPendingArtifactEntitiesResult> listDeployedArtifactsFromIdsWithCriteria(String accountId,
+      String orgIdentifier, String projectIdentifier, Set<String> artifactIds, List<String> orchestrationIds) {
+    Criteria criteria =
+        Criteria.where(ArtifactEntityKeys.accountId)
+            .is(accountId)
+            .and(ArtifactEntityKeys.orgId)
+            .is(orgIdentifier)
+            .and(ArtifactEntityKeys.projectId)
+            .is(projectIdentifier)
+            .and(ArtifactEntityKeys.invalid)
+            .is(false)
+            .and(ArtifactEntityKeys.artifactId)
+            .in(artifactIds)
+            .andOperator(new Criteria().orOperator(Criteria.where(ArtifactEntityKeys.prodEnvCount).gt(0),
+                Criteria.where(ArtifactEntityKeys.nonProdEnvCount).gt(0)));
+    Aggregation aggregation =
+        Aggregation.newAggregation(Aggregation.facet(getPatchedDeploymentCriteria(criteria, orchestrationIds))
+                                       .as("patchedArtifacts")
+                                       .and(getPendingDeploymentCriteria(criteria, orchestrationIds))
+                                       .as("pendingArtifacts"));
+    return mongoTemplate.aggregate(aggregation, ArtifactEntity.class, PatchedPendingArtifactEntitiesResult.class)
+        .getMappedResults();
+  }
+
+  private AggregationOperation getPatchedDeploymentCriteria(Criteria criteria, List<String> orchestrationIds) {
+    Criteria patchedCriteria =
+        new Criteria().andOperator(criteria, Criteria.where(ArtifactEntityKeys.orchestrationId).nin(orchestrationIds));
+    return Aggregation.match(patchedCriteria);
+  }
+
+  private AggregationOperation getPendingDeploymentCriteria(Criteria criteria, List<String> orchestrationIds) {
+    Criteria pendingCriteria =
+        new Criteria().andOperator(criteria, Criteria.where(ArtifactEntityKeys.orchestrationId).in(orchestrationIds));
+    return Aggregation.match(pendingCriteria);
+  }
+
   @Override
   public Page<ArtifactComponentViewResponse> getArtifactComponentView(String accountId, String orgIdentifier,
       String projectIdentifier, String artifactId, String tag, ArtifactComponentViewRequestBody filterBody,
@@ -416,6 +467,22 @@ public class ArtifactServiceImpl implements ArtifactService {
     artifactRepository.save(artifact);
   }
 
+  @Override
+  public ArtifactEntity getLastGeneratedArtifactFromTime(
+      String accountId, String orgId, String projectId, String artifactId, Instant time) {
+    Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
+                            .is(accountId)
+                            .and(ArtifactEntityKeys.orgId)
+                            .is(orgId)
+                            .and(ArtifactEntityKeys.projectId)
+                            .is(projectId)
+                            .and(ArtifactEntityKeys.artifactId)
+                            .is(artifactId)
+                            .and(ArtifactEntityKeys.createdOn)
+                            .lt(time);
+    return artifactRepository.findOne(criteria);
+  }
+
   private List<ArtifactListingResponse> getArtifactListingResponses(
       String accountId, String orgIdentifier, String projectIdentifier, List<ArtifactEntity> artifactEntities) {
     List<String> orchestrationIds =
@@ -435,12 +502,23 @@ public class ArtifactServiceImpl implements ArtifactService {
     Map<String, EnforcementSummaryEntity> enforcementSummaryEntityMap = enforcementSummaryEntities.stream().collect(
         Collectors.toMap(entity -> entity.getOrchestrationId(), Function.identity()));
 
+    List<BaselineEntity> baselineEntities =
+        baselineRepository.findAll(accountId, orgIdentifier, projectIdentifier, orchestrationIds);
+
+    Set<String> baselineEntityOrchestrationIds =
+        baselineEntities.stream().map(entity -> entity.getOrchestrationId()).collect(Collectors.toSet());
+
     List<ArtifactListingResponse> responses = new ArrayList<>();
     for (ArtifactEntity artifact : artifactEntities) {
       EnforcementSummaryEntity enforcementSummary = EnforcementSummaryEntity.builder().build();
 
       if (enforcementSummaryEntityMap.containsKey(artifact.getOrchestrationId())) {
         enforcementSummary = enforcementSummaryEntityMap.get(artifact.getOrchestrationId());
+      }
+
+      Boolean baseline = false;
+      if (baselineEntityOrchestrationIds.contains(artifact.getOrchestrationId())) {
+        baseline = true;
       }
 
       responses.add(
@@ -460,7 +538,8 @@ public class ArtifactServiceImpl implements ArtifactService {
               .nonProdEnvCount(artifact.getNonProdEnvCount().intValue())
               .orchestrationId(artifact.getOrchestrationId())
               .buildPipelineId(artifact.getPipelineId())
-              .buildPipelineExecutionId(artifact.getPipelineExecutionId()));
+              .buildPipelineExecutionId(artifact.getPipelineExecutionId())
+              .baseline(baseline));
     }
     return responses;
   }
@@ -559,5 +638,26 @@ public class ArtifactServiceImpl implements ArtifactService {
         log.error("Unknown Policy Environment Type");
     }
     return new Criteria();
+  }
+
+  @Override
+  public Set<String> getDistinctArtifactIds(
+      String accountId, String orgIdentifier, String projectIdentifier, List<String> orchestrationIds) {
+    Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
+                            .is(accountId)
+                            .and(ArtifactEntityKeys.orgId)
+                            .is(orgIdentifier)
+                            .and(ArtifactEntityKeys.projectId)
+                            .is(projectIdentifier)
+                            .and(ArtifactEntityKeys.invalid)
+                            .is(false);
+    Criteria filterCriteria;
+    if (isNotEmpty(orchestrationIds)) {
+      filterCriteria = Criteria.where(ArtifactEntityKeys.orchestrationId).in(orchestrationIds);
+    } else {
+      return Collections.emptySet();
+    }
+    criteria.andOperator(filterCriteria);
+    return new HashSet<>(artifactRepository.findDistinctArtifactIds(criteria));
   }
 }

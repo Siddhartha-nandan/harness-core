@@ -18,10 +18,12 @@ import io.harness.idp.pipeline.stages.variablecreator.IDPStageVariableCreator;
 import io.harness.idp.steps.Constants;
 import io.harness.idp.steps.StepSpecTypeConstants;
 import io.harness.idp.steps.execution.filter.IDPStepFilterJsonCreator;
-import io.harness.idp.steps.execution.plan.IdpCodePushStepPlanCreator;
 import io.harness.idp.steps.execution.plan.IdpCookieCutterStepPlanCreator;
+import io.harness.idp.steps.execution.plan.IdpCreateCatalogStepPlanCreator;
 import io.harness.idp.steps.execution.plan.IdpCreateRepoStepPlanCreator;
+import io.harness.idp.steps.execution.plan.IdpDirectPushStepPlanCreator;
 import io.harness.idp.steps.execution.plan.IdpRegisterCatalogPlanCreator;
+import io.harness.idp.steps.execution.plan.IdpSlackNotifyStepPlanCreator;
 import io.harness.idp.steps.execution.variable.IDPStepVariableCreator;
 import io.harness.pms.contracts.steps.StepInfo;
 import io.harness.pms.contracts.steps.StepMetaData;
@@ -50,9 +52,11 @@ public class IdpPipelineServiceInfoProvider implements PipelineServiceInfoProvid
     planCreators.add(new IDPStepPlanCreator());
     planCreators.add(new IdpCookieCutterStepPlanCreator());
     planCreators.add(new IdpCreateRepoStepPlanCreator());
-    planCreators.add(new IdpCodePushStepPlanCreator());
+    planCreators.add(new IdpDirectPushStepPlanCreator());
     planCreators.add(new InitializeStepPlanCreator());
     planCreators.add(new IdpRegisterCatalogPlanCreator());
+    planCreators.add(new IdpCreateCatalogStepPlanCreator());
+    planCreators.add(new IdpSlackNotifyStepPlanCreator());
     injectorUtils.injectMembers(planCreators);
     return planCreators;
   }
@@ -102,22 +106,22 @@ public class IdpPipelineServiceInfoProvider implements PipelineServiceInfoProvid
     StepInfo cookicutterStepInfo =
         StepInfo.newBuilder()
             .setName("Cookiecutter")
-            .setType(Constants.IDP_COOKIECUTTER)
+            .setType(Constants.COOKIECUTTER)
             .setStepMetaData(StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Code Generators").build())
             .build();
 
     StepInfo createRepoStepInfo =
         StepInfo.newBuilder()
             .setName("Create Repo")
-            .setType(Constants.IDP_CREATE_REPO)
+            .setType(Constants.CREATE_REPO)
             .setStepMetaData(
                 StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Git Repository Setup").build())
             .build();
 
     StepInfo codePushStepInfo =
         StepInfo.newBuilder()
-            .setName("Code Push")
-            .setType(Constants.IDP_CODE_PUSH)
+            .setName("Direct Push")
+            .setType(Constants.DIRECT_PUSH)
             .setStepMetaData(
                 StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Git Repository Setup").build())
             .build();
@@ -129,6 +133,21 @@ public class IdpPipelineServiceInfoProvider implements PipelineServiceInfoProvid
             .setStepMetaData(StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Close the loop").build())
             .build();
 
+    StepInfo createCatalogStepInfo =
+        StepInfo.newBuilder()
+            .setName("Create Catalog")
+            .setType(Constants.CREATE_CATALOG)
+            .setStepMetaData(
+                StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Git Repository Setup").build())
+            .build();
+
+    StepInfo slackNotifyStepInfo =
+        StepInfo.newBuilder()
+            .setName("Slack Notify")
+            .setType(Constants.SLACK_NOTIFY)
+            .setStepMetaData(StepMetaData.newBuilder().addCategory(PLUGIN).addFolderPaths("Close the loop").build())
+            .build();
+
     ArrayList<StepInfo> stepInfos = new ArrayList<>();
     stepInfos.add(runStepInfo);
     stepInfos.add(pluginStepInfo);
@@ -137,6 +156,8 @@ public class IdpPipelineServiceInfoProvider implements PipelineServiceInfoProvid
     stepInfos.add(createRepoStepInfo);
     stepInfos.add(codePushStepInfo);
     stepInfos.add(registerCatalogStepInfo);
+    stepInfos.add(createCatalogStepInfo);
+    stepInfos.add(slackNotifyStepInfo);
     return stepInfos;
   }
 }

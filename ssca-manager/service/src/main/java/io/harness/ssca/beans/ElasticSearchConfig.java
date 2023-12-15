@@ -19,4 +19,5 @@ import lombok.Value;
 @OwnedBy(SSCA)
 public class ElasticSearchConfig {
   String url;
+  String apiKey;
 }

@@ -37,18 +37,16 @@ import io.harness.beans.sweepingoutputs.StageDetails;
 import io.harness.beans.sweepingoutputs.StageInfraDetails;
 import io.harness.beans.sweepingoutputs.StepArtifactSweepingOutput;
 import io.harness.beans.yaml.extended.infrastrucutre.Infrastructure;
-import io.harness.beans.yaml.extended.infrastrucutre.K8sDirectInfraYaml;
 import io.harness.beans.yaml.extended.infrastrucutre.OSType;
 import io.harness.ci.executable.CiAsyncExecutable;
 import io.harness.ci.ff.CIFeatureFlagService;
-import io.harness.ci.metrics.CIManagerMetricsService;
+import io.harness.ci.metrics.ExecutionMetricsService;
 import io.harness.delegate.TaskSelector;
 import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.TaskData;
 import io.harness.delegate.beans.ci.CIExecuteStepTaskParams;
 import io.harness.delegate.beans.ci.k8s.CIK8ExecuteStepTaskParams;
 import io.harness.delegate.beans.ci.k8s.K8sTaskExecutionResponse;
-import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.delegate.beans.ci.vm.VmTaskExecutionResponse;
 import io.harness.delegate.task.HDelegateTask;
 import io.harness.delegate.task.stepstatus.StepExecutionStatus;
@@ -66,7 +64,6 @@ import io.harness.execution.CIDelegateTaskExecutor;
 import io.harness.helper.SerializedResponseDataHelper;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.logstreaming.LogStreamingStepClientFactory;
-import io.harness.ng.core.NGAccess;
 import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.plugin.service.BasePluginCompatibleSerializer;
 import io.harness.pms.contracts.ambiance.Ambiance;
@@ -94,7 +91,6 @@ import io.harness.repositories.CILogKeyRepository;
 import io.harness.repositories.CIStageOutputRepository;
 import io.harness.steps.StepUtils;
 import io.harness.tasks.ResponseData;
-import io.harness.utils.ConnectorUtils;
 import io.harness.waiter.WaitNotifyEngine;
 import io.harness.yaml.core.timeout.Timeout;
 
@@ -117,7 +113,7 @@ public abstract class CommonAbstractStepExecutable extends CiAsyncExecutable {
   public static final String CI_EXECUTE_STEP = "CI_EXECUTE_STEP";
 
   @Inject private CIDelegateTaskExecutor ciDelegateTaskExecutor;
-  @Inject private CIManagerMetricsService ciManagerMetricsService;
+  @Inject private ExecutionMetricsService executionMetricsService;
   private static final String STEP_STATUS = "ci_active_step_execution_count";
   private static final String STEP_TIME_COUNT = "ci_step_execution_time";
   @Inject private SerializedResponseDataHelper serializedResponseDataHelper;
@@ -126,8 +122,6 @@ public abstract class CommonAbstractStepExecutable extends CiAsyncExecutable {
   @Inject private WaitNotifyEngine waitNotifyEngine;
 
   @Inject private ExceptionManager exceptionManager;
-
-  @Inject private ConnectorUtils connectorUtils;
 
   public static final long bufferTimeMillis =
       5 * 1000; // These additional 5 seconds are approx time spent on creating delegate ask and receiving response
@@ -233,18 +227,8 @@ public abstract class CommonAbstractStepExecutable extends CiAsyncExecutable {
     } else {
       ip = liteEnginePodDetailsOutcome.getIpAddress();
     }
-    String clusterConnectorRef;
-    String namespace;
-    if (k8StageInfraDetails.getInfrastructure().getType() == Infrastructure.Type.KUBERNETES_DIRECT) {
-      K8sDirectInfraYaml k8sDirectInfraYaml = (K8sDirectInfraYaml) k8StageInfraDetails.getInfrastructure();
-      clusterConnectorRef = k8sDirectInfraYaml.getSpec().getConnectorRef().getValue();
-      namespace = (String) k8sDirectInfraYaml.getSpec().getNamespace().fetchFinalValue();
-    } else {
-      throw new CIStageExecutionException(
-          "Infra type:" + k8StageInfraDetails.getInfrastructure().getType().name() + "is not of k8s type");
-    }
-    String liteEngineTaskId = queueK8DelegateTask(ambiance, timeoutInMillis, accountId, ciDelegateTaskExecutor,
-        unitStep, runtimeId, ip, podName, clusterConnectorRef, namespace);
+    String liteEngineTaskId =
+        queueK8DelegateTask(ambiance, timeoutInMillis, accountId, ciDelegateTaskExecutor, unitStep, runtimeId, ip);
 
     log.info("Created parked task {} and lite engine task {} for  step {} with ip {}", parkedTaskId, liteEngineTaskId,
         stepIdentifier, ip);
@@ -453,9 +437,9 @@ public abstract class CommonAbstractStepExecutable extends CiAsyncExecutable {
     StepStatus stepStatus = stepStatusTaskResponseData.getStepStatus();
     StepResponseBuilder stepResponseBuilder = StepResponse.builder();
     try {
-      ciManagerMetricsService.recordStepExecutionCount(stepStatus.getStepExecutionStatus().toString(), STEP_STATUS,
+      executionMetricsService.recordStepExecutionCount(stepStatus.getStepExecutionStatus().toString(), STEP_STATUS,
           AmbianceUtils.getAccountId(ambiance), ((CIStepInfo) stepParameters.getSpec()).getStepType().getType());
-      ciManagerMetricsService.recordStepStatusExecutionTime(stepStatus.getStepExecutionStatus().toString(),
+      executionMetricsService.recordStepStatusExecutionTime(stepStatus.getStepExecutionStatus().toString(),
           (currentTime - startTime) / 1000, STEP_TIME_COUNT, AmbianceUtils.getAccountId(ambiance),
           ((CIStepInfo) stepParameters.getSpec()).getStepType().getType());
     } catch (Exception ex) {
@@ -545,22 +529,15 @@ public abstract class CommonAbstractStepExecutable extends CiAsyncExecutable {
   }
 
   public String queueK8DelegateTask(Ambiance ambiance, long timeout, String accountId, CIDelegateTaskExecutor executor,
-      UnitStep unitStep, String executionId, String ip, String podName, String clusterConnectorRef, String namespace) {
+      UnitStep unitStep, String executionId, String ip) {
     ExecuteStepRequest executeStepRequest =
         ExecuteStepRequest.newBuilder().setExecutionId(executionId).setStep(unitStep).setTmpFilePath(TMP_PATH).build();
-    NGAccess ngAccess = AmbianceUtils.getNgAccess(ambiance);
-
-    ConnectorDetails connectorDetails = connectorUtils.getConnectorDetails(ngAccess, clusterConnectorRef);
-
     CIK8ExecuteStepTaskParams params = CIK8ExecuteStepTaskParams.builder()
                                            .ip(ip)
                                            .port(LITE_ENGINE_PORT)
                                            .serializedStep(executeStepRequest.toByteArray())
                                            .isLocal(getIsLocal(ambiance))
                                            .delegateSvcEndpoint(getDelegateSvcEndpoint(ambiance))
-                                           .podName(podName)
-                                           .k8sConnectorDetails(connectorDetails)
-                                           .namespace(namespace)
                                            .build();
     List<TaskSelector> taskSelectors = fetchDelegateSelector(ambiance);
     return queueDelegateTask(ambiance, timeout, accountId, executor, params,

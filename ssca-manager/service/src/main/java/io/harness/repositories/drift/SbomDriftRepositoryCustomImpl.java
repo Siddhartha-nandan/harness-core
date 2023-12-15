@@ -9,7 +9,6 @@ package io.harness.repositories.drift;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
 import io.harness.ssca.entities.drift.DriftEntity;
 
 import com.google.inject.Inject;
@@ -35,12 +34,22 @@ public class SbomDriftRepositoryCustomImpl implements SbomDriftRepositoryCustom 
   }
 
   @Override
+  public DriftEntity find(Criteria criteria) {
+    return mongoTemplate.findOne(new Query(criteria), DriftEntity.class);
+  }
+
+  @Override
   public DriftEntity update(Query query, Update update) {
     return mongoTemplate.findAndModify(query, update, new FindAndModifyOptions().returnNew(true), DriftEntity.class);
   }
 
   @Override
   public <T> List<T> aggregate(Aggregation aggregation, Class<T> resultClass) {
-    return mongoTemplate.aggregate(aggregation, NormalizedSBOMComponentEntity.class, resultClass).getMappedResults();
+    return mongoTemplate.aggregate(aggregation, DriftEntity.class, resultClass).getMappedResults();
+  }
+
+  @Override
+  public DriftEntity findOne(Query query) {
+    return mongoTemplate.findOne(query, DriftEntity.class);
   }
 }

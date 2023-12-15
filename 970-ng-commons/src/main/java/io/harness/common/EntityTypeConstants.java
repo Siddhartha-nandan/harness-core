@@ -69,6 +69,7 @@ public interface EntityTypeConstants {
   String K8S_DELETE = "K8sDelete";
   String K8S_BG_SWAP_SERVICES = "K8sBGSwapServices";
   String K8S_CANARY_DELETE = "K8sCanaryDelete";
+  String K8S_TRAFFIC_ROUTING = "K8sTrafficRouting";
 
   String TAS_CANARY_APP_SETUP_STEP = "CanaryAppSetup";
   String TAS_BG_APP_SETUP_STEP = "BGAppSetup";
@@ -281,11 +282,14 @@ public interface EntityTypeConstants {
 
   String IDP_STAGE = "IDPStage";
   String IDP = "IDP";
-  String IDP_COOKIECUTTER = "IdpCookieCutter";
-  String IDP_CREATE_REPO = "IdpCreateRepo";
-  String IDP_CODE_PUSH = "IdpCodePush";
+  String COOKIECUTTER = "CookieCutter";
+  String CREATE_REPO = "CreateRepo";
+  String DIRECT_PUSH = "DirectPush";
   String REGISTER_CATALOG = "RegisterCatalog";
+  String CREATE_CATALOG = "CreateCatalog";
+  String SLACK_NOTIFY = "SlackNotify";
 
   // CD Container Step Group Common Steps
   String DOWNLOAD_AWS_S3 = "DownloadAwsS3";
+  String DOWNLOAD_HARNESS_STORE = "DownloadHarnessStore";
 }
