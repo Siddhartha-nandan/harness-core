@@ -769,6 +769,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       metricRegistry.recordCounterInc(TASK_REJECTED.getMetricName(), new String[] {DELEGATE_NAME});
       return;
     }
+    final long currentPodRSSMB = MemoryHelper.getPodRSSFromCgroupMB();
     Map<String, Double> resourceUsageMap = logPerformanceImpl.getDelegateCpuAndMemoryUsage();
     final double cpuLoad = resourceUsageMap.get("%CPU");
     final double memoryUsage = resourceUsageMap.get("%MEM");
