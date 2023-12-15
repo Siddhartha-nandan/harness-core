@@ -10,14 +10,18 @@ package io.harness.ng.gitxwebhook;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.exception.AccessDeniedException;
+import io.harness.exception.WingsException;
 import io.harness.gitsync.common.beans.GitXWebhookEventStatus;
 import io.harness.gitsync.gitxwebhooks.dtos.GitXEventDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.GitXEventUpdateRequestDTO;
 import io.harness.gitsync.gitxwebhooks.mapper.GitXWebhookMapper;
 import io.harness.gitsync.gitxwebhooks.service.GitXWebhookEventService;
+import io.harness.security.dto.UserPrincipal;
 import io.harness.spec.server.ng.v1.GitXWebhookEventApi;
 import io.harness.spec.server.ng.v1.model.GitXWebhookEventResponse;
 import io.harness.spec.server.ng.v1.model.UpdateGitXWebhookEventRequest;
+import io.harness.utils.UserHelperService;
 
 import com.google.inject.Inject;
 import javax.validation.Valid;
@@ -30,15 +34,30 @@ import lombok.extern.slf4j.Slf4j;
 @AllArgsConstructor(access = AccessLevel.PACKAGE, onConstructor = @__({ @Inject }))
 @Slf4j
 public class GitXWebhookEventApiImpl implements GitXWebhookEventApi {
-  GitXWebhookEventService gitXWebhookEventService;
+  private GitXWebhookEventService gitXWebhookEventService;
+  private UserHelperService userHelperService;
+  private static final String USER_ID_PLACEHOLDER = "{{USER}}";
 
   @Override
   public Response patchGitxWebhookEventsGitxWebhookEvent(
       String gitxWebhookEvent, @Valid UpdateGitXWebhookEventRequest body, String harnessAccount) {
-    GitXWebhookEventStatus gitXWebhookEventStatus = GitXWebhookMapper.getGitXWebhookEventStatus(body.getEventStatus());
+    checkUserAuthorization(String.format("User : %s not allowed to change the webhook event status for event %s",
+        USER_ID_PLACEHOLDER, gitxWebhookEvent));
+
+    GitXWebhookEventStatus gitXWebhookEventStatus =
+        GitXWebhookEventStatus.getGitXWebhookEventStatus(body.getEventStatus());
     GitXEventDTO gitXEventDTO = gitXWebhookEventService.updateEvent(harnessAccount, gitxWebhookEvent,
         GitXEventUpdateRequestDTO.builder().gitXWebhookEventStatus(gitXWebhookEventStatus).build());
     GitXWebhookEventResponse responseBody = GitXWebhookMapper.buildPatchGitXWebhookEventResponse(gitXEventDTO);
     return Response.ok().entity(responseBody).build();
+  }
+
+  private void checkUserAuthorization(String errorMessageIfAuthorizationFailed) {
+    UserPrincipal userPrincipal = userHelperService.getUserPrincipalOrThrow();
+    String userId = userPrincipal.getName();
+    if (!userHelperService.isHarnessSupportUser(userId)) {
+      log.error(errorMessageIfAuthorizationFailed.replace(USER_ID_PLACEHOLDER, userId));
+      throw new AccessDeniedException("Not Authorized", WingsException.USER);
+    }
   }
 }

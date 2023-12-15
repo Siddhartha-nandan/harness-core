@@ -205,23 +205,6 @@ public class GitXWebhookMapper {
     return isEmpty(folderPaths) ? new ArrayList<>() : folderPaths;
   }
 
-  public GitXWebhookEventStatus getGitXWebhookEventStatus(String eventStatus) {
-    switch (eventStatus) {
-      case "FAILED":
-        return GitXWebhookEventStatus.FAILED;
-      case "SKIPPED":
-        return GitXWebhookEventStatus.SKIPPED;
-      case "SUCCESSFUL":
-        return GitXWebhookEventStatus.SUCCESSFUL;
-      case "QUEUED":
-        return GitXWebhookEventStatus.QUEUED;
-      case "PROCESSING":
-        return GitXWebhookEventStatus.PROCESSING;
-      default:
-        return GitXWebhookEventStatus.UNKNOWN;
-    }
-  }
-
   public GitXWebhookEventResponse buildPatchGitXWebhookEventResponse(GitXEventDTO gitXEventDTO) {
     GitXWebhookEventResponse gitXWebhookEventResponse = new GitXWebhookEventResponse();
     gitXWebhookEventResponse.setEventIdentifier(gitXEventDTO.getEventIdentifier());
