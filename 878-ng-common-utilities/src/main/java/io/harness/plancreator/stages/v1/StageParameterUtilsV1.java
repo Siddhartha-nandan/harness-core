@@ -12,6 +12,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.common.ParameterFieldHelper;
 import io.harness.plancreator.stages.stage.v1.AbstractStageNodeV1;
 import io.harness.plancreator.steps.common.v1.StageElementParametersV1;
+import io.harness.plancreator.steps.common.v1.StageElementParametersV1.StageElementParametersV1Builder;
 import io.harness.pms.tags.TagUtils;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.steps.SdkCoreStepUtils;
@@ -21,10 +22,10 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 @OwnedBy(HarnessTeam.PIPELINE)
 public class StageParameterUtilsV1 {
-  public StageElementParametersV1.StageElementParametersV1Builder getCommonStageParameters(
+  public StageElementParametersV1Builder getCommonStageParameters(
       AbstractStageNodeV1 stageNode) {
     TagUtils.removeUuidFromTags(stageNode.getLabels());
-    StageElementParametersV1.StageElementParametersV1Builder stageBuilder = StageElementParametersV1.builder();
+    StageElementParametersV1Builder stageBuilder = StageElementParametersV1.builder();
     stageBuilder.name(stageNode.getName());
     stageBuilder.id(stageNode.getId());
     stageBuilder.desc(SdkCoreStepUtils.getParameterFieldHandleValueNull(stageNode.getDesc()));

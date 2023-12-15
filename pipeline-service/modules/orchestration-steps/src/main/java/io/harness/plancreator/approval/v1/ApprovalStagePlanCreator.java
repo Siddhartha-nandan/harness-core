@@ -13,13 +13,14 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.exception.InvalidYamlException;
 import io.harness.plancreator.stages.v1.AbstractStagePlanCreator;
 import io.harness.plancreator.stages.v1.StageParameterUtilsV1;
-import io.harness.plancreator.steps.common.v1.StageElementParametersV1;
+import io.harness.plancreator.steps.common.v1.StageElementParametersV1.StageElementParametersV1Builder;
 import io.harness.plancreator.strategy.StrategyUtilsV1;
 import io.harness.pms.contracts.facilitators.FacilitatorObtainment;
 import io.harness.pms.contracts.facilitators.FacilitatorType;
 import io.harness.pms.contracts.plan.Dependency;
 import io.harness.pms.execution.OrchestrationFacilitatorType;
 import io.harness.pms.sdk.core.plan.PlanNode;
+import io.harness.pms.sdk.core.plan.PlanNode.PlanNodeBuilder;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
@@ -85,12 +86,12 @@ public class ApprovalStagePlanCreator extends AbstractStagePlanCreator<ApprovalS
   @Override
   public PlanNode createPlanForParentNode(
       PlanCreationContext ctx, ApprovalStageNodeV1 field, List<String> childrenNodeIds) {
-    StageElementParametersV1.StageElementParametersV1Builder stageParameters =
+    StageElementParametersV1Builder stageParameters =
         StageParameterUtilsV1.getCommonStageParameters(field);
     stageParameters.type(YAMLFieldNameConstants.APPROVAL_V1);
     stageParameters.spec(ApprovalStageSpecParameters.builder().childNodeID(childrenNodeIds.get(0)).build());
     String name = field.getName();
-    PlanNode.PlanNodeBuilder builder =
+    PlanNodeBuilder builder =
         PlanNode.builder()
             .uuid(StrategyUtilsV1.getSwappedPlanNodeId(ctx, field.getUuid()))
             .identifier(StrategyUtilsV1.getIdentifierWithExpression(ctx, field.getId()))
