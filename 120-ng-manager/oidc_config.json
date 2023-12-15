@@ -1,7 +1,7 @@
 {
   "OPENID_CONFIGURATION" : {
-    "issuer": "https://abc5-106-51-172-44.ngrok-free.app/oidc/account/kmpySmUISimoRrJL6NL73w/",
-    "jwks_uri": "https://abc5-106-51-172-44.ngrok-free.app/oidc/account/kmpySmUISimoRrJL6NL73w/.wellknown/jwks",
+    "issuer": "https://dc83-2401-4900-1cc4-cc2f-d8a5-f78c-88f4-6aba.ngrok.io/oidc/account/kmpySmUISimoRrJL6NL73w/",
+    "jwks_uri": "https://dc83-2401-4900-1cc4-cc2f-d8a5-f78c-88f4-6aba.ngrok.io/oidc/account/kmpySmUISimoRrJL6NL73w/.wellknown/jwks",
     "subject_types_supported":["public","pairwise"],
     "response_types_supported":["id_token"],
     "claims_supported":
@@ -20,7 +20,7 @@
     "payload": {
       "sub": "{account_id}",
       "aud": "https://iam.googleapis.com/projects/{gcp_project_id}/locations/global/workloadIdentityPools/{workload_pool_id}/providers/{provider_id}",
-      "iss": "https://abc5-106-51-172-44.ngrok-free.app/oidc/account/kmpySmUISimoRrJL6NL73w/",
+      "iss": "https://dc83-2401-4900-1cc4-cc2f-d8a5-f78c-88f4-6aba.ngrok.io/oidc/account/kmpySmUISimoRrJL6NL73w/",
       "exp": 3600,
       "iat": 0,
       "account_id": "{account_id}"
