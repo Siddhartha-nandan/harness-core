@@ -7,6 +7,7 @@
 
 package io.harness.delegate.service;
 
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.utils.MemoryPerformanceUtils.memoryUsage;
 
 import com.google.common.collect.ImmutableMap;
@@ -19,7 +20,12 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.RuntimeMXBean;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -66,6 +72,12 @@ public class LogPerformanceImpl {
     return Long.parseLong(processName.split("@")[0]);
   }
 
+  private static String getDelegateProcessId() {
+    RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
+    String processName = runtimeBean.getName();
+    return processName.split("@")[0];
+  }
+
   private void logTopProcessesByCpuAndMemory() {
     try {
       int totalLinesToRead = 0;
@@ -108,5 +120,58 @@ public class LogPerformanceImpl {
     } catch (Exception e) {
       log.error(e.toString());
     }
+  }
+
+  public Map<String, Double> getDelegateCpuAndMemoryUsage() {
+    Map<String, Double> resourceUsuageMap = new HashMap<>();
+    try {
+      int totalLinesToRead = 0;
+      String termEnv = System.getenv(TERM_ENV_VARIABLE);
+      if (StringUtils.isEmpty(termEnv)) {
+        termEnv = DEFAULT_TERM_ENV_VALUE;
+      }
+      String processId = getDelegateProcessId();
+      ProcessBuilder cpuProcessBuilder = new ProcessBuilder("top", "-b", "-n", "1", "-o", "-p", getDelegateProcessId());
+      cpuProcessBuilder.environment().put(TERM_ENV_VARIABLE, termEnv);
+      Process cpuProcess = cpuProcessBuilder.start();
+
+      List<String> labels = new ArrayList<>();
+      List<String> values = new ArrayList<>();
+      try (BufferedReader cpuReader = new BufferedReader(new InputStreamReader(cpuProcess.getInputStream()))) {
+        String line;
+        while ((line = cpuReader.readLine()) != null) {
+          line.trim();
+          String[] processInfo = line.trim().split("\\s+");
+          if (isNotEmpty(processInfo[0]) && processInfo[0].equals("PID")) {
+            labels.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
+          }
+          if (isNotEmpty(processInfo[0]) && processInfo[0].equals(processId)) {
+            values.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
+          }
+          // Look for specific keys(CPU and MEM) in the keys list and their corresponding values
+          if (isNotEmpty(labels) && isNotEmpty(values)) {
+            for (int i = 0; i < labels.size(); i++) {
+              String currentKey = labels.get(i);
+              if (currentKey.equals("%CPU") || currentKey.equals("%MEM")) {
+                if (isNotEmpty(values.get(i))) {
+                  resourceUsuageMap.put(currentKey, Double.parseDouble(values.get(i)));
+                }
+              }
+            }
+          }
+          totalLinesToRead++;
+          if (totalLinesToRead >= NOS_OF_TOP_PROCESS_LINES_TO_READ) {
+            // Close the input stream and kill the process.
+            cpuProcess.getInputStream().close();
+            cpuProcess.destroy();
+            break;
+          }
+        }
+      }
+
+    } catch (IOException e) {
+      log.error(e.toString());
+    }
+    return resourceUsuageMap;
   }
 }
