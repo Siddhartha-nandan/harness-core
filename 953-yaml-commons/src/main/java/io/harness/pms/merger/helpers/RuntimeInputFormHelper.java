@@ -30,12 +30,10 @@ import io.harness.pms.yaml.YamlNode;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.TextNode;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
 import lombok.experimental.UtilityClass;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
@@ -95,64 +93,32 @@ public class RuntimeInputFormHelper {
     return createRuntimeInputFormJsonNode(jsonNode, true, true);
   }
 
-  public Map<String, InputsMetadata> createRuntimeFqnToInputsMetadataMap(
-          String yaml) {
-    YamlConfig yamlConfig = new YamlConfig(yaml);
-    Map<FQN, Object> fullMap = yamlConfig.getFqnToValueMap();
-    Map<FQN, Object> templateMap = new LinkedHashMap<>();
-    fullMap.keySet().forEach(key -> {
-      String value = HarnessStringUtils.removeLeadingAndTrailingQuotesBothOrNone(fullMap.get(key).toString());
-      // keepInput can be considered always true if value matches executionInputPattern. As the input will be provided
-      // at execution time.
-      if (NGExpressionUtils.matchesExecutionInputPattern(value)
-              || (keepInput && NGExpressionUtils.matchesInputSetPattern(value))
-              || (!keepInput && !NGExpressionUtils.matchesInputSetPattern(value) && !key.isIdentifierOrVariableName()
-              && !key.isType())) {
-        templateMap.put(key, fullMap.get(key));
-      }
-    });
-
-    /* we only want to keep "default" keys if they have a sibling as runtime input
-    For example, over here, the default of v1 should be kept, while v2 should not be kept at all
-    - name: v1
-      type: String
-      default: v1Val
-      value: <+input>
-    - name: v2
-      type: String
-      default: v2Val
-      value: fixedValue
-      This code block goes over all the runtime input fields (all of them are in templateMap). For every runtime input
-    key, it checks if it has a sibling with key "default" in the full pipeline map. If it is there, then the default key
-    is added to the template. In the above example, the "default" key for v2 is not even looped over
-     */
-    if (keepDefaultValues && EmptyPredicate.isNotEmpty(templateMap)) {
-      Map<FQN, Object> defaultKeys = new LinkedHashMap<>();
-      templateMap.keySet().forEach(key -> {
-        FQN parent = key.getParent();
-        FQN defaultSibling = FQN.duplicateAndAddNode(
-                parent, FQNNode.builder().nodeType(FQNNode.NodeType.KEY).key(YAMLFieldNameConstants.DEFAULT).build());
-        if (fullMap.containsKey(defaultSibling)) {
-          defaultKeys.put(defaultSibling, fullMap.get(defaultSibling));
+  public Map<String, InputsMetadata> createRuntimeFqnToInputsMetadataMap(String inputFormYaml, String entityYaml, String prefix) {
+    YamlConfig entityYamlConfig = new YamlConfig(entityYaml);
+    Map<FQN, Object> entityYamlMap = entityYamlConfig.getFqnToValueMap();
+    YamlConfig inputFormYamlConfig = new YamlConfig(inputFormYaml);
+    Map<FQN, Object> inputFormMap = inputFormYamlConfig.getFqnToValueMap();
+    Map<String, InputsMetadata> inputsMetadataMap = new LinkedHashMap<>();
+    inputFormMap.keySet().forEach(key -> {
+      String value = HarnessStringUtils.removeLeadingAndTrailingQuotesBothOrNone(inputFormMap.get(key).toString());
+      if (NGExpressionUtils.matchesRawInputSetPatternV2(value)) {
+        InputsMetadata.InputsMetadataBuilder inputsMetadata = InputsMetadata.builder();
+        Object required = entityYamlMap.get(key.getSiblingFQN(YAMLFieldNameConstants.REQUIRED));
+        if (required != null && "true".equals(HarnessStringUtils.removeLeadingAndTrailingQuotesBothOrNone(required.toString().toLowerCase()))) {
+          inputsMetadata.required(true);
         }
-      });
-      templateMap.putAll(defaultKeys);
-    }
-
-    return new YamlConfig(templateMap, yamlConfig.getYamlMap());
-  }
-
-  public Map<FQN, String> createExpressionFormYamlConfig(YamlConfig yamlConfig) {
-    Map<FQN, Object> fullMap = yamlConfig.getFqnToValueMap();
-    Map<FQN, String> fqnExpressionMap = new LinkedHashMap<>();
-    fullMap.keySet().forEach(key -> {
-      String value = HarnessStringUtils.removeLeadingAndTrailingQuotesBothOrNone(fullMap.get(key).toString());
-      if (NGExpressionUtils.isExpressionField(value)) {
-        fqnExpressionMap.put(key, fullMap.get(key).toString());
+        Object description = entityYamlMap.get(key.getSiblingFQN(YAMLFieldNameConstants.DESCRIPTION));
+        if (description != null) {
+          inputsMetadata.description(HarnessStringUtils.removeLeadingAndTrailingQuotesBothOrNone(description.toString()));
+        }
+        String expressionFqn = key.getExpressionFqn();
+        if (prefix != null) {
+          expressionFqn = prefix.concat(".").concat(expressionFqn);
+        }
+        inputsMetadataMap.put(expressionFqn, inputsMetadata.build());
       }
     });
-
-    return fqnExpressionMap;
+    return inputsMetadataMap;
   }
 
   public YamlConfig createRuntimeInputFormYamlConfig(
@@ -402,5 +368,18 @@ public class RuntimeInputFormHelper {
       return (new YamlConfig(templateMap, yamlConfig.getYamlMap(), false, true)).getYaml();
     }
     return null;
+  }
+
+  public Set<FQN> fetchFQNsWithRawInputFieldValue(String yaml) {
+    YamlConfig yamlConfig = new YamlConfig(yaml);
+    Map<FQN, Object> yamlMap = yamlConfig.getFqnToValueMap();
+    Set<FQN> fqnsWithRawInputFieldValue = new HashSet<>();
+    yamlMap.keySet().forEach(key -> {
+      String value = HarnessStringUtils.removeLeadingAndTrailingQuotesBothOrNone(yamlMap.get(key).toString());
+      if (NGExpressionUtils.matchesRawInputSetPatternV2(value)) {
+        fqnsWithRawInputFieldValue.add(key);
+      }
+    });
+    return fqnsWithRawInputFieldValue;
   }
 }

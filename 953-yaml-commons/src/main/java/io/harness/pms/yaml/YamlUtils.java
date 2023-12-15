@@ -793,4 +793,34 @@ public class YamlUtils {
     });
     return stageFields;
   }
+
+  public String getValueForFQN(String yaml, FQN fqn) throws IOException {
+    YamlNode node = readTree(yaml).getNode();
+    for (FQNNode innerFqn : fqn.getFqnList()) {
+      if (node.isArray()) {
+        for (YamlNode nodeItem : node.asArray()) {
+          // TODO: CONTINUE
+          node = node;
+        }
+      }
+      node = node.getField(innerFqn.getKey()).getNode();
+    }
+    return writeYamlString(node.getCurrJsonNode());
+  }
+
+  public String getInnerYamlFromFQN(String yaml, FQN fqn) throws IOException {
+    YamlNode node = readTree(yaml).getNode();
+    for (FQNNode innerFqn : fqn.getFqnList()) {
+      node = node.getField(innerFqn.getKey()).getNode();
+    }
+    return writeYamlString(node.getCurrJsonNode());
+  }
+
+  public String getInnerYamlFromFQNExpression(String yaml, String fqnExpression) throws IOException {
+    YamlNode node = readTree(yaml).getNode();
+    for (String key : fqnExpression.split("\\.")) {
+      node = node.getField(key).getNode();
+    }
+    return writeYamlString(node.getCurrJsonNode());
+  }
 }

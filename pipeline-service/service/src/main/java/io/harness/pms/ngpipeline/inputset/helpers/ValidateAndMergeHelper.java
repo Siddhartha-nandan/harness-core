@@ -78,6 +78,7 @@ public class ValidateAndMergeHelper {
   private final PMSInputSetService pmsInputSetService;
   private final PMSPipelineTemplateHelper pipelineTemplateHelper;
   private final GitSyncSdkService gitSyncSdkService;
+  private final InputsMetadataHelper inputsMetadataHelper;
 
   public PipelineEntity getPipelineEntity(String accountId, String orgIdentifier, String projectIdentifier,
       String pipelineIdentifier, String pipelineBranch, String pipelineRepoID, boolean checkForStoreType,
@@ -161,6 +162,8 @@ public class ValidateAndMergeHelper {
         template = createTemplateWithDefaultValuesAndModifiedPropertiesFromPipelineForGivenStages(
             yaml, pipelineYaml, stageIdentifiers);
       }
+
+      inputsMetadataHelper.getRuntimeInputsMetadata(accountId, orgIdentifier, projectIdentifier, pipelineYaml, template);
 
       boolean hasInputSets = pmsInputSetService.checkForInputSetsForPipeline(
           accountId, orgIdentifier, projectIdentifier, pipelineIdentifier);

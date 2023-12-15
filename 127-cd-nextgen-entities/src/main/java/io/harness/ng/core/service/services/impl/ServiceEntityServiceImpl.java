@@ -31,6 +31,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.FeatureName;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.InputsMetadata;
 import io.harness.cdng.visitor.YamlTypes;
 import io.harness.common.NGExpressionUtils;
 import io.harness.connector.ConnectorInfoDTO;
@@ -96,10 +97,7 @@ import io.harness.ng.core.utils.GitXUtils;
 import io.harness.ng.core.utils.ServiceOverrideV2ValidationHelper;
 import io.harness.outbox.api.OutboxService;
 import io.harness.pms.merger.helpers.RuntimeInputFormHelper;
-import io.harness.pms.yaml.YamlField;
-import io.harness.pms.yaml.YamlNode;
-import io.harness.pms.yaml.YamlNodeUtils;
-import io.harness.pms.yaml.YamlUtils;
+import io.harness.pms.yaml.*;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.repositories.UpsertOptions;
 import io.harness.repositories.service.spring.ServiceRepository;
@@ -729,6 +727,7 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
         .storeType(serviceEntity.getStoreType())
         .fallbackBranch(serviceEntity.getFallBackBranch())
         .entityGitDetails(ServiceElementMapper.getEntityGitDetails(serviceEntity))
+        .fqnToInputsMetadataMap(getServiceInputsMetadata(serviceInputSetYaml, serviceEntity))
         .build();
   }
 
@@ -1531,5 +1530,18 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
         accountIdentifier, orgIdentifier, projIdentifier, EntityType.SERVICE);
     gitXSettingsHelper.setConnectorRefForRemoteEntity(accountIdentifier, orgIdentifier, projIdentifier);
     gitXSettingsHelper.setDefaultRepoForRemoteEntity(accountIdentifier, orgIdentifier, projIdentifier);
+  }
+
+  private Map<String, InputsMetadata> getServiceInputsMetadata(String serviceInputSetYaml, ServiceEntity serviceEntity) {
+    Map<String, InputsMetadata> serviceInputsMetadata = null;
+    try {
+      serviceInputsMetadata = RuntimeInputFormHelper.createRuntimeFqnToInputsMetadataMap(
+              YamlPipelineUtils.writeYamlString(YamlUtils.readTree(serviceInputSetYaml).getNode().getField(YamlTypes.SERVICE_INPUTS).getNode().getCurrJsonNode()),
+              YamlPipelineUtils.writeYamlString(YamlUtils.readTree(serviceEntity.getYaml()).getNode().getField(YamlTypes.SERVICE_ENTITY).getNode().getCurrJsonNode()),
+              YamlTypes.SERVICE_INPUTS);
+    } catch (Exception ex) {
+      log.error(String.format("Error generating service InputsMetadata for service [%s]", serviceEntity.getIdentifier()), ex);
+    }
+    return serviceInputsMetadata;
   }
 }
