@@ -208,8 +208,7 @@ public class NGScimGroupServiceImpl implements ScimGroupService {
 
     for (UserGroup existingUserGroup : existingUserGroupList) {
       UserGroupDTO userGroupDTO = toDTO(existingUserGroup);
-      String userGroupName = UuidAndIdentifierUtils.generateHarnessUIFormatName(scimGroup.getDisplayName());
-      userGroupDTO.setName(userGroupName);
+      userGroupDTO.setName(getUserGroupName(scimGroup));
       userGroupDTO.setUsers(fetchMembersOfUserGroup(scimGroup));
       userGroupService.update(userGroupDTO);
     }
@@ -418,9 +417,8 @@ public class NGScimGroupServiceImpl implements ScimGroupService {
     String userGroupIdentifier = isNotEmpty(groupQuery.getDisplayName())
         ? UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier(groupQuery.getDisplayName())
         : groupQuery.getDisplayName();
-    String userGroupName = UuidAndIdentifierUtils.generateHarnessUIFormatName(groupQuery.getDisplayName());
     UserGroupDTOBuilder userGroupDTOBuilder = UserGroupDTO.builder()
-                                                  .name(userGroupName)
+                                                  .name(getUserGroupName(groupQuery))
                                                   .users(fetchMembersOfUserGroup(groupQuery))
                                                   .accountIdentifier(accountId)
                                                   .identifier(userGroupIdentifier)
@@ -470,5 +468,10 @@ public class NGScimGroupServiceImpl implements ScimGroupService {
       });
     }
     return newMemberIds;
+  }
+
+  String getUserGroupName(ScimGroup scimGroup) {
+    return UuidAndIdentifierUtils.generateHarnessUIFormatName(scimGroup.getDisplayName());
+    ;
   }
 }
