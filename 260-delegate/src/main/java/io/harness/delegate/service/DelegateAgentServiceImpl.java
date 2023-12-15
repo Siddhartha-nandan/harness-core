@@ -1868,7 +1868,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       return;
     }
     logPerformanceImpl.getCpuUsage();
-    logPerformanceImpl.getContainerCpuUsage();
+    //logPerformanceImpl.getContainerCpuUsage();
     log.info("Last heartbeat received at {} and sent to manager at {}", lastHeartbeatReceivedAt.get(),
         lastHeartbeatSentAt.get());
     final boolean heartbeatReceivedTimeout = lastHeartbeatReceivedAt.get() != 0
