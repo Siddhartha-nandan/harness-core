@@ -333,7 +333,7 @@ image:
   repository: harness/manager-signed
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "80212"
+  tag: "81720"
   digest: ""
   imagePullSecrets: []
 
@@ -381,7 +381,7 @@ immutable_delegate_docker_image:
   image:
     registry: docker.io
     repository: harness/delegate
-    tag: 23.08.80104
+    tag: 23.12.81604
     digest: ""
 
 upgrader_docker_image:

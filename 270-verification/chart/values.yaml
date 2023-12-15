@@ -135,7 +135,7 @@ image:
   repository: harness/verification-service-signed
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "80209"
+  tag: "81708"
   digest: ""
   imagePullSecrets: []
 
