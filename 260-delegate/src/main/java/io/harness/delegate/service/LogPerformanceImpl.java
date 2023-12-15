@@ -206,11 +206,13 @@ public class LogPerformanceImpl {
           log.info("Process Info value: {}", values);
 
           // Look for specific keys in the keys list and their corresponding values
-          for (int i = 0; i < labels.size(); i++) {
-            String currentKey = labels.get(i);
-            if (currentKey.equals("%CPU") || currentKey.equals("%MEM")) {
-              if (isNotEmpty(values.get(i))) {
-                resourceUsuageMap.put(currentKey, Double.parseDouble(values.get(i)));
+          if (isNotEmpty(labels) && isNotEmpty(values)) {
+            for (int i = 0; i < labels.size(); i++) {
+              String currentKey = labels.get(i);
+              if (currentKey.equals("%CPU") || currentKey.equals("%MEM")) {
+                if (isNotEmpty(values.get(i))) {
+                  resourceUsuageMap.put(currentKey, Double.parseDouble(values.get(i)));
+                }
               }
             }
           }

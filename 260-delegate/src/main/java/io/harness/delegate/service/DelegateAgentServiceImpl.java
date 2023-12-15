@@ -1868,8 +1868,12 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       return;
     }
     Map<String, Double> resourceUsageMap = logPerformanceImpl.getDelegateCpuAndMemoryUsage();
-    log.info("CPU Usage: {}, ", resourceUsageMap.get("%CPU"));
-    log.info("Memory Usage: {}, ", resourceUsageMap.get("%MEM"));
+    if (resourceUsageMap.get("%CPU") != null) {
+      log.info("CPU Usage: {}, ", resourceUsageMap.get("%CPU"));
+    }
+    if (resourceUsageMap.get("%MEM") != null) {
+      log.info("Memory Usage: {}, ", resourceUsageMap.get("%MEM"));
+    }
 
     // logPerformanceImpl.getContainerCpuUsage();
     log.info("Last heartbeat received at {} and sent to manager at {}", lastHeartbeatReceivedAt.get(),
