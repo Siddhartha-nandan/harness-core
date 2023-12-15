@@ -13,6 +13,7 @@ import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_BUIL
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_FAILED_STEPS;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_STATUS;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import static java.lang.String.format;
 
@@ -33,6 +34,7 @@ import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.product.ci.engine.proto.OutputVariable;
 import io.harness.repositories.CIStepStatusRepository;
+import io.harness.yaml.core.variables.*;
 import io.harness.yaml.core.variables.NGVariable;
 import io.harness.yaml.core.variables.SecretNGVariable;
 import io.harness.yaml.core.variables.StringNGVariable;
@@ -368,44 +370,59 @@ public class SerializerUtils {
   }
 
   public static List<OutputVariable> getOutputVariableFromNGVariable(List<NGVariable> ngVariables, String identifier) {
-    List<OutputVariable> outputVariables =
-        ngVariables.stream()
-            .map(outputVariable -> {
-              String val = null;
-              OutputVariable.OutputType outputType = null;
-              if (ParameterField.isNotNull(outputVariable.getCurrentValue())) {
-                if (outputVariable instanceof StringNGVariable) {
-                  outputType = OutputVariable.OutputType.STRING;
-                  StringNGVariable stringNGVariable = (StringNGVariable) outputVariable;
-                  if (!ParameterField.isBlank(stringNGVariable.getCurrentValue())) {
-                    val = resolveStringParameterV2("outputVariable", identifier, identifier,
-                        (ParameterField<String>) stringNGVariable.getCurrentValue(), false);
-                  }
+    if (isNotEmpty(ngVariables)) {
+      List<OutputVariable> outputVariables =
+          ngVariables.stream()
+              .map(outputVariable -> {
+                String val = null;
+                OutputVariable.OutputType outputType = null;
+                if (ParameterField.isNotNull(outputVariable.getCurrentValue())) {
+                  if (outputVariable.getType().equals(NGVariableType.STRING)) {
+                    outputType = OutputVariable.OutputType.STRING;
+                    val = getOutputVariableFromStringNGVariable(outputVariable, identifier);
 
-                } else if (outputVariable instanceof SecretNGVariable) {
-                  outputType = OutputVariable.OutputType.SECRET;
-                  SecretNGVariable secretNGVariable = (SecretNGVariable) outputVariable;
-                  if (ParameterField.isNotNull(secretNGVariable.getCurrentValue())) {
-                    ParameterField<SecretRefData> secretRefDataParameterField =
-                        (ParameterField<SecretRefData>) secretNGVariable.getCurrentValue();
-                    if (ParameterField.isNotNull(secretRefDataParameterField)) {
-                      SecretRefData secretRefData = (SecretRefData) secretRefDataParameterField.fetchFinalValue();
-                      val = secretRefData.getIdentifier();
-                    }
+                  } else if (outputVariable.getType().equals(NGVariableType.SECRET)) {
+                    outputType = OutputVariable.OutputType.SECRET;
+                    val = getOutputVariableFromSecretNGVariable(outputVariable);
                   }
                 }
+                return OutputVariable.newBuilder()
+                    .setType(outputType)
+                    .setKey(outputVariable.getName())
+                    .setValue(val)
+                    .build();
               }
-              return OutputVariable.newBuilder()
-                  .setType(outputType)
-                  .setKey(outputVariable.getName())
-                  .setValue(val)
-                  .build();
-            }
 
-                )
-            .filter(outputVariable -> outputVariable.getType() != null && outputVariable.getValue() != null)
-            .collect(Collectors.toList());
+                  )
+              .filter(outputVariable -> outputVariable.getType() != null && outputVariable.getValue() != null)
+              .collect(Collectors.toList());
 
-    return outputVariables;
+      return outputVariables;
+    }
+    return Collections.emptyList();
+  }
+
+  private static String getOutputVariableFromStringNGVariable(NGVariable ngVariable, String identifier) {
+    StringNGVariable stringNGVariable = (StringNGVariable) ngVariable;
+    String val = null;
+    if (!ParameterField.isBlank(stringNGVariable.getCurrentValue())) {
+      val = resolveStringParameterV2(
+          "outputVariable", identifier, identifier, (ParameterField<String>) stringNGVariable.getCurrentValue(), false);
+    }
+    return val;
+  }
+
+  private static String getOutputVariableFromSecretNGVariable(NGVariable ngVariable) {
+    SecretNGVariable secretNGVariable = (SecretNGVariable) ngVariable;
+    String val = null;
+    if (ParameterField.isNotNull(secretNGVariable.getCurrentValue())) {
+      ParameterField<SecretRefData> secretRefDataParameterField =
+          (ParameterField<SecretRefData>) secretNGVariable.getCurrentValue();
+      if (ParameterField.isNotNull(secretRefDataParameterField)) {
+        SecretRefData secretRefData = (SecretRefData) secretRefDataParameterField.fetchFinalValue();
+        val = secretRefData.getIdentifier();
+      }
+    }
+    return val;
   }
 }

@@ -116,6 +116,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public abstract class CommonAbstractStepExecutable extends CiAsyncExecutable {
   public static final String CI_EXECUTE_STEP = "CI_EXECUTE_STEP";
+  public static final String SWEEPING_OUTPUT_SECRET_OBTAIN_PREFIX = "${sweepingOutputSecrets.obtain(\"";
 
   @Inject private CIDelegateTaskExecutor ciDelegateTaskExecutor;
   @Inject private ExecutionMetricsService executionMetricsService;
@@ -620,7 +621,7 @@ public abstract class CommonAbstractStepExecutable extends CiAsyncExecutable {
           String encodedValue = EncodingUtils.encodeBase64(
               encryption.encrypt(outputVariable.getValue().getBytes(StandardCharsets.UTF_8)));
           String finalValue =
-              "${sweepingOutputSecrets.obtain(\"" + outputVariable.getKey() + "\",\"" + encodedValue + "\")}";
+              SWEEPING_OUTPUT_SECRET_OBTAIN_PREFIX + outputVariable.getKey() + "\",\"" + encodedValue + "\")}";
           resolvedOutputVariables.put(outputVariable.getKey(), finalValue);
         } else {
           resolvedOutputVariables.put(outputVariable.getKey(), outputVariable.getValue());
