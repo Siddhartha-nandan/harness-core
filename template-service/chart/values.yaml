@@ -72,6 +72,12 @@ global:
       userKey: ""
       passwordKey: ""
       extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
       secrets:
         kubernetesSecrets:
           - secretName: ""

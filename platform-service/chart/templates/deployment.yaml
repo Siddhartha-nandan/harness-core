@@ -82,6 +82,9 @@ spec:
           {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "audits" "connectionURIVariableName" "AUDIT_MONGO_URI") | indent 10 }}
           {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "resource-groups") | indent 10 }}
           {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "resource-groups" "connectionURIVariableName" "RESOURCE_GROUP_MONGO_URI") | indent 10 }}
+          {{- include "harnesscommon.dbv3.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "EVENTS_FRAMEWORK_REDIS_SSL_ENABLED" "sslCATrustStorePath" "EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PASSWORD")) | indent 10 }}
+          {{- include "harnesscommon.dbv3.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "lock" "variableNames" ( dict "sslEnabled" "LOCK_CONFIG_REDIS_SSL_ENABLED" "sslCATrustStorePath" "LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD" )) | indent 10 }}
+          {{- include "harnesscommon.dbv3.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "cache" "variableNames" ( dict "sslCATrustStorePath" "LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD" )) | indent 10 }}
           {{- if .Values.extraEnvVars }}
             {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 10 }}
           {{- end }}
@@ -92,6 +95,9 @@ spec:
         volumeMounts:
         {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 10 }}
         {{- end }}
+        {{- include "harnesscommon.dbv3.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 10 }}
+        {{- include "harnesscommon.dbv3.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "lock") | nindent 10 }}
+        {{- include "harnesscommon.dbv3.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "cache") | nindent 10 }}
         envFrom:
         - configMapRef:
             name: platform-service
@@ -132,7 +138,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.extraVolumes }}
       volumes:
+      {{- if .Values.extraVolumes }}
       {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
       {{- end }}
+      {{- include "harnesscommon.dbv3.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 8 }}
+      {{- include "harnesscommon.dbv3.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "lock") | indent 8 }}
+      {{- include "harnesscommon.dbv3.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "cache") | indent 8 }}

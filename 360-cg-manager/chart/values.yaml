@@ -97,6 +97,12 @@ global:
         - redis:6379
       secretName: ""
       userKey: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
       passwordKey: ""
       extraArgs: ""
       secrets:

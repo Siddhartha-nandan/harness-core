@@ -105,10 +105,10 @@ global:
       extraArgs: ""
       ssl:
         enabled: false
-        secret: "name"
-        caFileKey: "caFilekeyName"
-        trustStoreKey: "trustStorekeyName"
-        trustStorePasswordKey: "passwordkeyName"
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
       secrets:
         kubernetesSecrets:
           - secretName: ""
