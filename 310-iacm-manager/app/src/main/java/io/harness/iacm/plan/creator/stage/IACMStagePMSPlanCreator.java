@@ -303,6 +303,9 @@ public class IACMStagePMSPlanCreator extends AbstractStagePlanCreator<IACMStageN
                 variablesRepo.getRepository_commit(), variablesRepo.getRepository_path());
             terraformFilePaths.put(String.format("PLUGIN_VARIABLE_CONNECTOR_%s", hashedGitRepoInfo),
                 "/harness/" + variablesRepo.getRepository_path());
+            terraformFilePaths.put(String.format("PLUGIN_DOCKER_VARIABLE_CONNECTOR_%s", hashedGitRepoInfo),
+                String.format("%s/%s", varNs[1].contains(".git") ? varNs[1] : varNs[1] + ".git",
+                    variablesRepo.getRepository_path()));
             continue;
           }
         } else {
@@ -320,6 +323,9 @@ public class IACMStagePMSPlanCreator extends AbstractStagePlanCreator<IACMStageN
                 variablesRepo.getRepository_commit(), variablesRepo.getRepository_path());
             terraformFilePaths.put(String.format("PLUGIN_VARIABLE_CONNECTOR_%s", hashedGitRepoInfo),
                 "/harness/" + variablesRepo.getRepository_path());
+            terraformFilePaths.put(String.format("PLUGIN_DOCKER_VARIABLE_CONNECTOR_%s", hashedGitRepoInfo),
+                String.format("%s/%s", varNs[1].contains(".git") ? varNs[1] : varNs[1] + ".git",
+                    variablesRepo.getRepository_path()));
             continue;
           }
         }
@@ -354,6 +360,9 @@ public class IACMStagePMSPlanCreator extends AbstractStagePlanCreator<IACMStageN
                 variablesRepo.getRepository_path());
             terraformFilePaths.put(String.format("PLUGIN_VARIABLE_CONNECTOR_%s", hashedGitRepoInfo),
                 iacmStepsUtils.generateVariableFileBasePath(hashedGitRepoInfo) + variablesRepo.getRepository_path());
+            terraformFilePaths.put(String.format("PLUGIN_DOCKER_VARIABLE_CONNECTOR_%s", hashedGitRepoInfo),
+                String.format("%s/%s", varNs[1].contains(".git") ? varNs[1] : varNs[1] + ".git",
+                    variablesRepo.getRepository_path()));
           } else if (ctx.getTriggerPayload().getParsedPayload().hasPush()) {
             buildObject.type(BuildType.BRANCH);
             buildObject.spec(BranchBuildSpec.builder()
@@ -368,6 +377,9 @@ public class IACMStagePMSPlanCreator extends AbstractStagePlanCreator<IACMStageN
                 variablesRepo.getRepository_path());
             terraformFilePaths.put(String.format("PLUGIN_VARIABLE_CONNECTOR_%s", hashedGitRepoInfo),
                 iacmStepsUtils.generateVariableFileBasePath(hashedGitRepoInfo) + variablesRepo.getRepository_path());
+            terraformFilePaths.put(String.format("PLUGIN_DOCKER_VARIABLE_CONNECTOR_%s", hashedGitRepoInfo),
+                String.format("%s/%s", varNs[1].contains(".git") ? varNs[1] : varNs[1] + ".git",
+                    variablesRepo.getRepository_path()));
           }
         } else {
           hashedGitRepoInfo = iacmStepsUtils.generateHashedGitRepoInfo(variablesRepo.getRepository(),
@@ -375,6 +387,9 @@ public class IACMStagePMSPlanCreator extends AbstractStagePlanCreator<IACMStageN
               variablesRepo.getRepository_commit(), variablesRepo.getRepository_path());
           terraformFilePaths.put(String.format("PLUGIN_VARIABLE_CONNECTOR_%s", hashedGitRepoInfo),
               iacmStepsUtils.generateVariableFileBasePath(hashedGitRepoInfo) + variablesRepo.getRepository_path());
+          terraformFilePaths.put(String.format("PLUGIN_DOCKER_VARIABLE_CONNECTOR_%s", hashedGitRepoInfo),
+              String.format("%s/%s", varNs[1].contains(".git") ? varNs[1] : varNs[1] + ".git",
+                  variablesRepo.getRepository_path()));
           if (variablesRepo.getRepository_branch() != null
               && !Objects.equals(variablesRepo.getRepository_branch(), "")) {
             buildObject.type(BuildType.BRANCH);
