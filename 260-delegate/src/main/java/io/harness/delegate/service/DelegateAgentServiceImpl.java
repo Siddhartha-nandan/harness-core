@@ -647,7 +647,6 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       startDynamicHandlingOfTasks();
       if (isImmutableDelegate && dynamicRequestHandling) {
         // Enable dynamic throttling of requests only for immutable and FF enabled
-
       }
 
       if (isPollingForTasksEnabled()) {
@@ -785,7 +784,8 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
     }
     log.debug("Process info CurrentProcessRSSMB {} ThresholdProcessMB {} currentPodRSSMB {} ThresholdPodMemoryMB {}",
         currentRSSMB, maxProcessRSSThresholdMB, currentPodRSSMB, maxPodRSSThresholdMB);
-    final double cpuLoad = getCPULoadAverage();
+    Map<String, Double> resourceUsageMap = logPerformanceImpl.getDelegateCpuAndMemoryUsage();
+    final double cpuLoad = resourceUsageMap.get("%CPU");
     if (cpuLoad > RESOURCE_USAGE_THRESHOLD) {
       log.warn(
           "CPU resource reached threshold, temporarily reject incoming task request, CPU consumption above threshold, {}%",
@@ -1867,8 +1867,11 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
     if (!shouldContactManager() || frozen.get()) {
       return;
     }
-    logPerformanceImpl.getCpuUsage();
-    //logPerformanceImpl.getContainerCpuUsage();
+    Map<String, Double> resourceUsageMap = logPerformanceImpl.getDelegateCpuAndMemoryUsage();
+    log.info("CPU Usage: {}, ", resourceUsageMap.get("%CPU"));
+    log.info("Memory Usage: {}, ", resourceUsageMap.get("%MEM"));
+
+    // logPerformanceImpl.getContainerCpuUsage();
     log.info("Last heartbeat received at {} and sent to manager at {}", lastHeartbeatReceivedAt.get(),
         lastHeartbeatSentAt.get());
     final boolean heartbeatReceivedTimeout = lastHeartbeatReceivedAt.get() != 0

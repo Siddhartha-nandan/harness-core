@@ -7,6 +7,7 @@
 
 package io.harness.delegate.service;
 
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.utils.MemoryPerformanceUtils.memoryUsage;
 
 import com.google.common.collect.ImmutableMap;
@@ -174,10 +175,10 @@ public class LogPerformanceImpl {
      return -1.0;
    }*/
 
-  public void getCpuUsage() {
+  public Map<String, Double> getDelegateCpuAndMemoryUsage() {
+    Map<String, Double> resourceUsuageMap = new HashMap<>();
     try {
       int totalLinesToRead = 0;
-
       String termEnv = System.getenv(TERM_ENV_VARIABLE);
       if (StringUtils.isEmpty(termEnv)) {
         termEnv = DEFAULT_TERM_ENV_VALUE;
@@ -187,29 +188,39 @@ public class LogPerformanceImpl {
           new ProcessBuilder("top", "-b", "-n", "1", "-o", "%CPU", "-p", getDelegateProcessId());
       cpuProcessBuilder.environment().put(TERM_ENV_VARIABLE, termEnv);
       Process cpuProcess = cpuProcessBuilder.start();
-      Map<String, String> processInfoMap = new HashMap<>();
-      List<String> label = new ArrayList<>();
-      List<String> value = new ArrayList<>();
+
+      List<String> labels = new ArrayList<>();
+      List<String> values = new ArrayList<>();
       try (BufferedReader cpuReader = new BufferedReader(new InputStreamReader(cpuProcess.getInputStream()))) {
         String line;
         while ((line = cpuReader.readLine()) != null) {
-          log.info("From getCpuUsage: {}", line);
           line.trim();
           String[] processInfo = line.trim().split("\\s+");
           if (processInfo[0].equals("PID")) {
-            label.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
+            labels.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
           }
           if (processInfo[0].equals(processId)) {
-            value.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
+            values.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
           }
-          log.info("Process Info label: {}", label);
-          log.info("Process Info value: {}", value);
+          log.info("Process Info label: {}", labels);
+          log.info("Process Info value: {}", values);
+
+          // Look for specific keys in the keys list and their corresponding values
+          for (int i = 0; i < labels.size(); i++) {
+            String currentKey = labels.get(i);
+            if (currentKey.equals("%CPU") || currentKey.equals("%MEM")) {
+              if (isNotEmpty(values.get(i))) {
+                resourceUsuageMap.put(currentKey, Double.parseDouble(values.get(i)));
+              }
+            }
+          }
         }
       }
 
     } catch (IOException e) {
       log.error(e.toString());
     }
+    return resourceUsuageMap;
   }
 
   public double getContainerCpuUsage() {
