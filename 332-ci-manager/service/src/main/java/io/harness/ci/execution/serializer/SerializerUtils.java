@@ -34,8 +34,8 @@ import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.product.ci.engine.proto.OutputVariable;
 import io.harness.repositories.CIStepStatusRepository;
-import io.harness.yaml.core.variables.*;
 import io.harness.yaml.core.variables.NGVariable;
+import io.harness.yaml.core.variables.NGVariableType;
 import io.harness.yaml.core.variables.SecretNGVariable;
 import io.harness.yaml.core.variables.StringNGVariable;
 
