@@ -54,16 +54,14 @@ public class GitRepoHelper {
       case GITLAB:
         return GitClientHelper.getCompleteHTTPUrlForGitLab(gitConnectionUrl);
       case HARNESS:
-        return getCompleteHTTPUrlForHarness(scmConnector);
+        // TODO: Move this logic to HarnessConnectorDTO
+        HarnessConnectorDTO harnessConnectorDTO = (HarnessConnectorDTO) scmConnector;
+        return GitClientHelper.getCompleteHTTPUrlForHarness(
+            StringUtils.join(harnessConnectorDTO.getApiUrl(), harnessConnectorDTO.getSlug()));
       default:
         throw new InvalidRequestException(
             format("Connector of given type : %s isn't supported", scmConnector.getConnectorType()));
     }
-  }
-
-  private String getCompleteHTTPUrlForHarness(ScmConnector scmConnector) {
-    HarnessConnectorDTO harnessConnectorDTO = (HarnessConnectorDTO) scmConnector;
-    return StringUtils.join(harnessConnectorDTO.getApiUrl(), harnessConnectorDTO.getSlug());
   }
 
   public String getRepoNameWithNamespace(ScmConnector scmConnector, String repo) {
