@@ -414,8 +414,8 @@ public class PartialSyncResource {
       return restResponse;
     }
 
-    int count =
-        changeDataCaptureBulkMigrationHelper.doPartialSync(Set.of(entity), Filters.and(filters), handler, changeType);
+    int count = changeDataCaptureBulkMigrationHelper.doPartialSync(
+        Set.of(entity), Filters.and(filters), handler, changeType, true);
     return new RestResponse<>(count + " events synced");
   }
 }

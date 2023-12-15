@@ -31,6 +31,7 @@ public class ChangeEvent<T extends PersistentEntity> {
   private DBObject fullDocument;
   private DBObject changes;
   private String handler;
+  private boolean isPartialSyncEvent;
 
   public boolean isChangeFor(Class<? extends PersistentEntity> entityClass) {
     return this.entityType.isAssignableFrom(entityClass);

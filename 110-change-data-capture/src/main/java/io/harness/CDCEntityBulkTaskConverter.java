@@ -27,7 +27,7 @@ import org.bson.types.ObjectId;
 @Slf4j
 public class CDCEntityBulkTaskConverter {
   public static <T extends PersistentEntity> ChangeEvent<T> convert(
-      Class<T> entityType, Document document, String handler, ChangeType changeType) {
+      Class<T> entityType, Document document, String handler, ChangeType changeType, boolean isPartialSyncEvent) {
     if (isNull(changeType)) {
       changeType = ChangeType.INSERT; // handle default case to be insert if change type not passed
     }
@@ -39,6 +39,7 @@ public class CDCEntityBulkTaskConverter {
         .entityType(entityType)
         .uuid(getUuidFromDocument(document))
         .handler(handler)
+        .isPartialSyncEvent(isPartialSyncEvent)
         .build();
   }
 

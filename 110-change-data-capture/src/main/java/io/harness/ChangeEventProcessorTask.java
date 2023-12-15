@@ -109,7 +109,8 @@ public class ChangeEventProcessorTask implements Runnable {
           if (changeEvent.getHandler() != null && !changeDataCapture.handler().equals(changeEvent.getHandler())) {
             continue;
           }
-          ChangeHandler changeHandler = cdcEntity.getChangeHandler(changeDataCapture.handler());
+          ChangeHandler changeHandler =
+              cdcEntity.getChangeHandler(changeDataCapture.handler(), changeEvent.isPartialSyncEvent());
           if (changeHandler != null) {
             changeHandler.handleChange(
                 changeEvent, Strings.toLowerCase(changeDataCapture.table()), changeDataCapture.fields());

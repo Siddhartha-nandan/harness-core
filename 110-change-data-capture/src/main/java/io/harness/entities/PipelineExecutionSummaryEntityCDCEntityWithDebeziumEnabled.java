@@ -38,6 +38,8 @@ public class PipelineExecutionSummaryEntityCDCEntityWithDebeziumEnabled
   @Inject
   private PlanExecutionSummaryCdChangeServiceInfraChangeDataHandlerNew
       planExecutionSummaryCdChangeServiceInfraChangeDataHandlerNew;
+  @Inject PipelineExecutionSummaryEntityCDCEntity pipelineExecutionSummaryEntityCDCEntity;
+
   @Override
   public ChangeHandler getChangeHandler(String handlerClass) {
     boolean debeziumEnabled = cfClient.boolVariation(FeatureName.DEBEZIUM_ENABLED.toString(),
@@ -72,6 +74,14 @@ public class PipelineExecutionSummaryEntityCDCEntityWithDebeziumEnabled
     }
 
     return null;
+  }
+
+  @Override
+  public ChangeHandler getChangeHandler(String handlerClass, boolean isPartialSyncEvent) {
+    if (isPartialSyncEvent) {
+      return pipelineExecutionSummaryEntityCDCEntity.getChangeHandler(handlerClass);
+    }
+    return getChangeHandler(handlerClass);
   }
 
   @Override
