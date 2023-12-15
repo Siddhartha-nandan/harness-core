@@ -125,10 +125,10 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
   @Category(UnitTests.class)
   public void testGetUserGroupName_withInvalidName() {
     ScimGroup scimGroup = new ScimGroup();
-    scimGroup.setDisplayName("#display$name");
+    scimGroup.setDisplayName("display$name");
     scimGroup.setId("id");
 
-    assertThat(scimGroupService.getUserGroupName(scimGroup)).isEqualTo("_display_name");
+    assertThat(scimGroupService.getUserGroupName(scimGroup)).isEqualTo("display_name");
   }
 
   @Test
