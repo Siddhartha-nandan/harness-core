@@ -131,7 +131,8 @@ public class LogPerformanceImpl {
         termEnv = DEFAULT_TERM_ENV_VALUE;
       }
       String processId = getDelegateProcessId();
-      ProcessBuilder cpuProcessBuilder = new ProcessBuilder("top", "-b", "-n", "1", "-o", "-p", getDelegateProcessId());
+      ProcessBuilder cpuProcessBuilder =
+          new ProcessBuilder("top", "-b", "-n", "1", "-o", "%CPU", "-p", getDelegateProcessId());
       cpuProcessBuilder.environment().put(TERM_ENV_VARIABLE, termEnv);
       Process cpuProcess = cpuProcessBuilder.start();
 
@@ -140,8 +141,11 @@ public class LogPerformanceImpl {
       try (BufferedReader cpuReader = new BufferedReader(new InputStreamReader(cpuProcess.getInputStream()))) {
         String line;
         while ((line = cpuReader.readLine()) != null) {
-          line.trim();
-          String[] processInfo = line.trim().split("\\s+");
+          line = line.trim();
+          String[] processInfo = line.split("\\s+");
+          // Look for line with label and corresponding value
+          // Example for label: PID USER  PR  NI    VIRT    RES    SHR S  %CPU  %MEM   TIME+ COMMAND
+          // Example for value: 123 harness   20   0 6979396   1.6g  29136 S   0.0  21.1   3:31.16 java
           if (isNotEmpty(processInfo[0]) && processInfo[0].equals("PID")) {
             labels.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
           }
@@ -168,9 +172,12 @@ public class LogPerformanceImpl {
           }
         }
       }
+      cpuProcess.destroy();
 
     } catch (IOException e) {
-      log.error(e.toString());
+      log.error("IOException occurred: {}", e.toString());
+    } catch (Exception ex) {
+      log.error("Unhandled exception: {}", ex.toString());
     }
     return resourceUsuageMap;
   }
