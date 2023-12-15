@@ -142,7 +142,7 @@ public class LogPerformanceImpl {
           String[] processInfo = line.split("\\s+");
           log.info("line is {}", line);
           // Look for line, %Cpu(s):  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
-          if (isNotEmpty(processInfo[0]) && processInfo[0].equals("%Cpu(s)")) {
+          if (isNotEmpty(processInfo[0]) && processInfo[0].equals("%Cpu(s):")) {
             cpuLine.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
             log.info("cpu line as list {}", cpuLine);
             if (isNotEmpty(cpuLine)) {
