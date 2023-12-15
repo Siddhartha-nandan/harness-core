@@ -123,7 +123,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
   @Test
   @Owner(developers = BHAVYA)
   @Category(UnitTests.class)
-  public void testCreateGroup_shouldReturnMeta_ifFFTurnedOn() {
+  public void testGetUserGroupName_withInvalidName() {
     ScimGroup scimGroup = new ScimGroup();
     scimGroup.setDisplayName("#display$name");
     scimGroup.setId("id");
