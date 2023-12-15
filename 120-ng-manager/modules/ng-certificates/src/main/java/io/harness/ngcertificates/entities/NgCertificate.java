@@ -71,7 +71,6 @@ public class NgCertificate {
   String description;
   List<NGTag> tags;
   @NotNull CertificateInputSpecType inputSpecType;
-  InputSpec inputSpec;
   @CreatedDate Long createdAt;
   @LastModifiedDate Long lastModifiedDate;
 }
