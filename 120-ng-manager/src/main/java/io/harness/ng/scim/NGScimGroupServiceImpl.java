@@ -208,7 +208,7 @@ public class NGScimGroupServiceImpl implements ScimGroupService {
 
     for (UserGroup existingUserGroup : existingUserGroupList) {
       UserGroupDTO userGroupDTO = toDTO(existingUserGroup);
-      String userGroupName = UuidAndIdentifierUtils.generateHarnessUIFormatName(scimGroup.getDisplayName())
+      String userGroupName = UuidAndIdentifierUtils.generateHarnessUIFormatName(scimGroup.getDisplayName());
       userGroupDTO.setName(userGroupName);
       userGroupDTO.setUsers(fetchMembersOfUserGroup(scimGroup));
       userGroupService.update(userGroupDTO);
