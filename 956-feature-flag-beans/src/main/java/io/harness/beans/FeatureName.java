@@ -922,7 +922,8 @@ public enum FeatureName {
       "Enable to download Aws S3 buckets, folder or object inside container step group", HarnessTeam.CDP),
   CDS_USER_CD_LICENSE_VIEW("Enable to show Users CD License usage on UI", HarnessTeam.CDP),
   SSCA_USE_ELK("Enables ELK search for Artifact listing instead of Mongo", HarnessTeam.SSCA),
-  SSCA_REMEDIATION_TRACKER("FF for Remediation Tracker flow.", HarnessTeam.SSCA);
+  SSCA_REMEDIATION_TRACKER("FF for Remediation Tracker flow.", HarnessTeam.SSCA),
+  PIE_GITXWEBHOOKS_RBAC_PERMISSIONS("Rbac Permissions for GitXWebHooks CRUD", PIPELINE);
 
   // keep-sorted end
 
