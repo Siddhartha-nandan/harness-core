@@ -472,6 +472,5 @@ public class NGScimGroupServiceImpl implements ScimGroupService {
 
   String getUserGroupName(ScimGroup scimGroup) {
     return UuidAndIdentifierUtils.generateHarnessUIFormatName(scimGroup.getDisplayName());
-    ;
   }
 }
