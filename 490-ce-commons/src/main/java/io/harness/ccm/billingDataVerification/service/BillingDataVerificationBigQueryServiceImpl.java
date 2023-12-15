@@ -9,30 +9,17 @@ package io.harness.ccm.service.impl;
 
 import static io.harness.ccm.commons.utils.BigQueryHelper.*;
 
+import io.harness.ccm.bigQuery.BigQueryService;
 import io.harness.ccm.billingDataVerification.dto.CCMBillingDataVerificationCost;
 import io.harness.ccm.billingDataVerification.dto.CCMBillingDataVerificationKey;
 import io.harness.ccm.commons.utils.BigQueryHelper;
 import io.harness.ccm.service.billingDataVerification.service.BillingDataVerificationSQLService;
 import io.harness.connector.ConnectorResponseDTO;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.BucketPolicy;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.BigQueryException;
-import com.google.cloud.bigquery.Field;
-import com.google.cloud.bigquery.FieldList;
-import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.Job;
-import com.google.cloud.bigquery.JobInfo;
-import com.google.cloud.bigquery.JobStatistics.QueryStatistics;
 import com.google.cloud.bigquery.QueryJobConfiguration;
-import com.google.cloud.bigquery.Schema;
-import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
-import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.time.LocalDate;
@@ -40,11 +27,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
 @Singleton
@@ -71,7 +54,7 @@ public class BillingDataVerificationBigQueryServiceImpl implements BillingDataVe
   private static final int INSERT_BATCH_SIZE_FOR_BILLING_DATA_VERIFICATION_TABLE = 10;
 
   @Inject BigQueryHelper bigQueryHelper;
-  @Inject private io.harness.ccm.bigQuery.BigQueryService bigQueryService;
+  @Inject private BigQueryService bigQueryService;
 
   @Override
   public Map<CCMBillingDataVerificationKey, CCMBillingDataVerificationCost> fetchAWSCostsFromAWSBillingTables(

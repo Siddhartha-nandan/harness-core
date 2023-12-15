@@ -11,7 +11,6 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import lombok.Builder;
 import lombok.Data;
@@ -27,8 +26,8 @@ public class CCMBillingDataVerificationKey {
   String harnessAccountId;
   String connectorId;
   String cloudProvider;
-  String cloudProviderAccountId; // awsusageaccountid, gcpbillingaccountid, azuresubscriptionguid
+  String cloudProviderAccountId;
   LocalDate usageStartDate;
   LocalDate usageEndDate;
-  String costType; // AWSUnblendedCost, AWSAmortisedCost, AWSNetAmortisedCost etc.
+  String costType;
 }

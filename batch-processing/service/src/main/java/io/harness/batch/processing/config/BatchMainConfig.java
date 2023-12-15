@@ -7,7 +7,6 @@
 
 package io.harness.batch.processing.config;
 
-import io.harness.batch.processing.config.BillingDataVerificationJobConfig;
 import io.harness.ccm.commons.beans.config.ClickHouseConfig;
 import io.harness.ccm.commons.beans.config.GcpConfig;
 import io.harness.ccm.config.CurrencyPreferencesConfig;

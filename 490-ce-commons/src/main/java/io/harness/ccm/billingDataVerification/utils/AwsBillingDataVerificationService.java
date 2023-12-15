@@ -11,54 +11,20 @@ import static software.wings.service.impl.aws.model.AwsConstants.AWS_DEFAULT_REG
 
 import io.harness.ccm.billingDataVerification.dto.CCMBillingDataVerificationCost;
 import io.harness.ccm.billingDataVerification.dto.CCMBillingDataVerificationKey;
-import io.harness.ccm.commons.utils.BigQueryHelper;
 import io.harness.ccm.service.billingDataVerification.service.BillingDataVerificationSQLService;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.connector.ConnectorResponseDTO;
 import io.harness.delegate.beans.connector.ceawsconnector.CEAwsConnectorDTO;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicSessionCredentials;
-import com.amazonaws.auth.policy.Action;
-import com.amazonaws.auth.policy.Policy;
-import com.amazonaws.auth.policy.Resource;
-import com.amazonaws.auth.policy.Statement;
-import com.amazonaws.services.costandusagereport.model.AWSCostAndUsageReportException;
-import com.amazonaws.services.costandusagereport.model.ReportDefinition;
 import com.amazonaws.services.costexplorer.AWSCostExplorer;
 import com.amazonaws.services.costexplorer.AWSCostExplorerClientBuilder;
 import com.amazonaws.services.costexplorer.model.*;
-import com.amazonaws.services.identitymanagement.model.AmazonIdentityManagementException;
-import com.amazonaws.services.identitymanagement.model.EvaluationResult;
-import com.amazonaws.services.s3.iterable.S3Objects;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
-import com.amazonaws.services.securitytoken.model.AWSSecurityTokenServiceException;
-import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
-import com.amazonaws.services.securitytoken.model.Credentials;
-import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.BigQueryException;
-import com.google.cloud.bigquery.Field;
-import com.google.cloud.bigquery.FieldList;
-import com.google.cloud.bigquery.FieldValue;
-import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.Job;
-import com.google.cloud.bigquery.JobInfo;
-import com.google.cloud.bigquery.JobStatistics.QueryStatistics;
-import com.google.cloud.bigquery.QueryJobConfiguration;
-import com.google.cloud.bigquery.Schema;
-import com.google.cloud.bigquery.TableId;
-import com.google.cloud.bigquery.TableResult;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.time.LocalDate;
-import java.util.*;
-import lombok.NonNull;
-import lombok.experimental.UtilityClass;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -74,15 +40,13 @@ public class AwsBillingDataVerificationService {
     ConnectorInfoDTO connectorInfo = connector.getConnector();
     CEAwsConnectorDTO ceAwsConnectorDTO = (CEAwsConnectorDTO) connectorInfo.getConnectorConfig();
     if (ceAwsConnectorDTO != null && ceAwsConnectorDTO.getCrossAccountAccess() != null) {
-      // for the connector, calling the CostExplorer API in a try-catch: update results in billingData Map
+      // for the connector, fetch data from different sources and update results in billingData Map
+
       fetchBillingDataFromAWSCostExplorerAPI(
           accountId, connector, startDate, endDate, awsAssumedCredentialsProvider, billingData);
 
-      // awsBilling_* group by usageaccountid, date --> aggregate columns: unblendedcost, blendedcost etc.
       fetchBillingDataFromAWSBillingTables(accountId, connector, startDate, endDate, billingData);
 
-      // unifiedTable group by usageaccountid, date --> aggregate columns: cost, unblendedcost, blendedcost, amortised,
-      // netAmortised etc.
       fetchAWSBillingDataFromUnifiedTable(accountId, connector, startDate, endDate, billingData);
     }
   }
