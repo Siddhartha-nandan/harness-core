@@ -111,9 +111,14 @@ sscaServiceConfig:
   serviceSecret: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
 
 stoServiceConfig:
-  baseUrl: http://localhost:4000
-  internalUrl: ""
-  globalToken: "token"
+  baseUrl: ${STO_SERVICE_ENDPOINT:-http://localhost:4000}
+  internalUrl: ${STO_SERVICE_INTERNAL_ENDPOINT:-""}
+  globalToken: ${STO_SERVICE_GLOBAL_TOKEN:-"token"}
+
+ticketServiceConfig:
+  baseUrl: ${TICKET_SERVICE_ENDPOINT:-http://localhost:4444}
+  internalUrl: ${TICKET_SERVICE_INTERNAL_ENDPOINT:-""}
+  globalToken: ${TICKET_SERVICE_GLOBAL_TOKEN:-"token"}
 
 iacmServiceConfig:
   baseUrl: http://localhost:4000
@@ -296,7 +301,7 @@ ciExecutionServiceConfig:
     # The below config is for K8 steps
     gitCloneConfig:
       # Use rootless image only for K8 git clone
-      image: harness/drone-git:1.4.7-rootless
+      image: harness/drone-git:1.4.9-rootless
       entrypoint:
         - /usr/local/bin/clone
       windowsEntrypoint:
@@ -372,7 +377,7 @@ ciExecutionServiceConfig:
       image: harness/slsa-plugin:latest
     vmImageConfig:
       # Use root image for VM git clone
-      gitClone: harness/drone-git:1.4.7
+      gitClone: harness/drone-git:1.4.9
       buildAndPushDockerRegistry: plugins/docker:20.17.1
       buildAndPushACR: plugins/acr:20.17.1
       buildAndPushECR: plugins/ecr:20.17.1
@@ -396,7 +401,7 @@ ciExecutionServiceConfig:
       cacheGCSConfig:
         name: github.com/drone-plugins/drone-meltwater-cache@refs/tags/v1.6.5
       gitCloneConfig:
-        name: github.com/wings-software/drone-git@refs/tags/v1.4.7
+        name: github.com/wings-software/drone-git@refs/tags/v1.4.9
       dockerBuildxConfig:
         name: github.com/drone-plugins/drone-buildx@refs/tags/v1.0.2
       dockerBuildxEcrConfig:

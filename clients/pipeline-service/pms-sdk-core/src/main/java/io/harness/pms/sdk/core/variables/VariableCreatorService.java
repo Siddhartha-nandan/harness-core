@@ -14,6 +14,7 @@ import static java.lang.String.format;
 import io.harness.NGCommonEntityConstants;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.FeatureName;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidRequestException;
 import io.harness.pms.contracts.plan.Dependencies;
@@ -28,9 +29,13 @@ import io.harness.pms.sdk.core.plan.creation.creators.PipelineServiceInfoDecorat
 import io.harness.pms.sdk.core.variables.beans.VariableCreationContext;
 import io.harness.pms.sdk.core.variables.beans.VariableCreationResponse;
 import io.harness.pms.yaml.HarnessYamlVersion;
+import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
+import io.harness.pms.yaml.YamlNode;
 import io.harness.pms.yaml.YamlUtils;
+import io.harness.serializer.JsonUtils;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.io.IOException;
@@ -39,6 +44,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 @Slf4j
 @OwnedBy(HarnessTeam.PIPELINE)
@@ -90,11 +96,17 @@ public class VariableCreatorService
         addAccountOrgProjectIdentifiers(request, variableCreationContext);
         response = variableCreator.createVariablesForFieldV2(variableCreationContext, obj);
       } catch (IOException ex) {
-        String message = format("Invalid yaml path [%s] during execution variable creation", yamlField.getYamlPath());
+        YamlNode pipelineNode = YamlUtils.findParentNode(yamlField.getNode(), YAMLFieldNameConstants.PIPELINE);
+        String message = format(
+            "Invalid yaml path [%s] for yaml field of type [%s] during execution variable creation for pipeline with identifier [%s]",
+            yamlField.getYamlPath(), yamlField.getType(), pipelineNode.getIdentifier());
         log.error(message, ex);
         throw new InvalidRequestException(message, ex);
       } catch (Throwable t) {
-        String message = format("Error for [%s] during execution variable creation", yamlField.getYamlPath());
+        YamlNode pipelineNode = YamlUtils.findParentNode(yamlField.getNode(), YAMLFieldNameConstants.PIPELINE);
+        String message = format(
+            "Error for yaml path [%s] for yaml field of type [%s] during execution variable creation for pipeline with identifier [%s]",
+            yamlField.getYamlPath(), yamlField.getType(), pipelineNode.getIdentifier());
         log.error(message, t);
         throw new InvalidRequestException(message);
       }
@@ -115,15 +127,31 @@ public class VariableCreatorService
   }
 
   @Override
-  public void mergeResponses(
-      VariableCreationResponse finalResponse, VariableCreationResponse response, Dependencies.Builder dependencies) {
+  public void mergeResponses(VariableCreationResponse finalResponse, VariableCreationResponse response,
+      Dependencies.Builder dependencies, YamlField yamlField, Map<String, JsonNode> fqnJsonNodeMap,
+      VariablesCreationBlobRequest request) {
     finalResponse.mergeResponses(response);
-    if (response.getYamlUpdates() != null && EmptyPredicate.isNotEmpty(response.getYamlUpdates().getFqnToYamlMap())) {
-      String updatedYaml = PlanCreationBlobResponseUtils.mergeYamlUpdates(
-          dependencies.getYaml(), finalResponse.getYamlUpdates().getFqnToYamlMap());
-      finalResponse.updateYamlInDependencies(updatedYaml);
-      dependencies.setYaml(updatedYaml);
+
+    if (isOptimizedFlowEnabled(
+            request)) { // new flow utilizing the map and yaml field passed to be modified instead of string yaml.
+      Map<String, String> fqnYamlNodeContentMap = finalResponse.getYamlUpdates().getFqnToYamlMap();
+      PlanCreationBlobResponseUtils.updateFqnYamlNodeMap(fqnJsonNodeMap, fqnYamlNodeContentMap);
+      if (response.getYamlUpdates() != null && EmptyPredicate.isNotEmpty(response.getYamlUpdates().getFqnToYamlMap())) {
+        PlanCreationBlobResponseUtils.mergeYamlUpdates(yamlField, fqnJsonNodeMap);
+      }
+    } else { // existing flow
+      if (response.getYamlUpdates() != null && EmptyPredicate.isNotEmpty(response.getYamlUpdates().getFqnToYamlMap())) {
+        String updatedYaml = PlanCreationBlobResponseUtils.mergeYamlUpdates(
+            dependencies.getYaml(), finalResponse.getYamlUpdates().getFqnToYamlMap());
+        finalResponse.updateYamlInDependencies(updatedYaml);
+        dependencies.setYaml(updatedYaml);
+      }
     }
+  }
+
+  @Override
+  public void updateYamlInDependencies(VariableCreationResponse finalResponse, YamlNode yamlNode) {
+    finalResponse.updateYamlInDependencies(JsonUtils.asJson(yamlNode));
   }
 
   private Optional<VariableCreator> findVariableCreator(List<VariableCreator> variableCreators, YamlField yamlField) {
@@ -136,5 +164,13 @@ public class VariableCreatorService
           return supportsField(supportedTypes, yamlField, HarnessYamlVersion.V0);
         })
         .findFirst();
+  }
+
+  private boolean isOptimizedFlowEnabled(VariablesCreationBlobRequest request) {
+    return request != null
+        && StringUtils.isNotBlank(
+            request.getMetadata().getMetadataMap().get(FeatureName.CDS_VARIABLES_MERGE_V2_OPTIMIZED_FLOW.name()))
+        && Boolean.parseBoolean(
+            request.getMetadata().getMetadataMap().get(FeatureName.CDS_VARIABLES_MERGE_V2_OPTIMIZED_FLOW.name()));
   }
 }

@@ -7,6 +7,8 @@
 
 package io.harness.ssca.services.drift;
 
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.data.structure.EmptyPredicate;
@@ -14,6 +16,7 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.repositories.drift.SbomDriftRepository;
 import io.harness.spec.server.ssca.v1.model.ArtifactSbomDriftRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactSbomDriftResponse;
+import io.harness.spec.server.ssca.v1.model.OrchestrationDriftSummary;
 import io.harness.ssca.beans.BaselineDTO;
 import io.harness.ssca.beans.drift.ComponentDrift;
 import io.harness.ssca.beans.drift.ComponentDriftResults;
@@ -39,6 +42,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -67,6 +71,7 @@ public class SbomDriftServiceImpl implements SbomDriftService {
       throw new InvalidRequestException("Could not find artifact with tag: " + tag);
     }
 
+    // TODO: calculate drift only when sbom tool and format matches.
     return calculateAndStoreSbomDrift(driftArtifact, baseArtifact, DriftBase.MANUAL);
   }
 
@@ -82,7 +87,8 @@ public class SbomDriftServiceImpl implements SbomDriftService {
     DriftEntity driftEntity;
     if (optionalDriftEntity.isPresent()) {
       driftEntity = optionalDriftEntity.get();
-      if (base == DriftBase.MANUAL) {
+      // only update valid until if drift entity was saved for manual run.
+      if (base == DriftBase.MANUAL && driftEntity.getBase() == DriftBase.MANUAL) {
         // update validUntil if same request has been found.
         Criteria criteria = Criteria.where(DriftEntityKeys.uuid).is(driftEntity.getUuid());
         Update update = new Update();
@@ -223,6 +229,28 @@ public class SbomDriftServiceImpl implements SbomDriftService {
     return licenseDriftResult;
   }
 
+  @Override
+  public OrchestrationDriftSummary getSbomDriftSummary(
+      String accountId, String orgId, String projectId, String orchestrationId) {
+    Criteria criteria = Criteria.where(DriftEntityKeys.accountIdentifier)
+                            .is(accountId)
+                            .and(DriftEntityKeys.orgIdentifier)
+                            .is(orgId)
+                            .and(DriftEntityKeys.projectIdentifier)
+                            .is(projectId)
+                            .and(DriftEntityKeys.orchestrationId)
+                            .is(orchestrationId)
+                            .and(DriftEntityKeys.base)
+                            .ne(DriftBase.MANUAL);
+
+    Query query = new Query(criteria);
+    query.with(Sort.by(Sort.Direction.DESC, "createdAt"));
+
+    DriftEntity driftEntity = sbomDriftRepository.findOne(query);
+
+    return buildDriftSummaryFromEntity(driftEntity);
+  }
+
   private Criteria getComponentStatusMatchCriteria(ComponentDriftStatus status) {
     if (status == null) {
       return new Criteria();
@@ -253,7 +281,8 @@ public class SbomDriftServiceImpl implements SbomDriftService {
                            .packageName(c.getPackageName())
                            .packageVersion(c.getPackageVersion())
                            .packageLicense(c.getPackageLicense())
-                           .packageSupplierName(c.getPackageSupplierName())
+                           .packageOriginatorName(c.getPackageOriginatorName())
+                           .packageManager(c.getPackageManager())
                            .purl(c.getPurl())
                            .build())
                 .collect(Collectors.toList());
@@ -267,12 +296,67 @@ public class SbomDriftServiceImpl implements SbomDriftService {
                            .packageName(c.getPackageName())
                            .packageVersion(c.getPackageVersion())
                            .packageLicense(c.getPackageLicense())
-                           .packageSupplierName(c.getPackageSupplierName())
+                           .packageOriginatorName(c.getPackageOriginatorName())
+                           .packageManager(c.getPackageManager())
                            .purl(c.getPurl())
                            .build())
                 .collect(Collectors.toList());
         licenseDrift.setComponents(componentSummaries);
       }
     }
+  }
+
+  private OrchestrationDriftSummary buildDriftSummaryFromEntity(DriftEntity driftEntity) {
+    OrchestrationDriftSummary driftSummary = null;
+
+    if (driftEntity != null) {
+      int licenseDrifts = isNotEmpty(driftEntity.getLicenseDrifts()) ? driftEntity.getLicenseDrifts().size() : 0;
+      int componentDrifts = isNotEmpty(driftEntity.getComponentDrifts()) ? driftEntity.getComponentDrifts().size() : 0;
+      int componentsAdded = 0;
+      int componentsDeleted = 0;
+      int componentsModified = 0;
+      int licenseAdded = 0;
+      int licenseDeleted = 0;
+
+      if (isNotEmpty(driftEntity.getComponentDrifts())) {
+        for (ComponentDrift componentDrift : driftEntity.getComponentDrifts()) {
+          ComponentDriftStatus status = componentDrift.getStatus();
+
+          if (status.equals(ComponentDriftStatus.ADDED)) {
+            componentsAdded++;
+          } else if (status.equals(ComponentDriftStatus.DELETED)) {
+            componentsDeleted++;
+          } else {
+            componentsModified++;
+          }
+        }
+      }
+
+      if (isNotEmpty(driftEntity.getLicenseDrifts())) {
+        for (LicenseDrift licenseDrift : driftEntity.getLicenseDrifts()) {
+          LicenseDriftStatus status = licenseDrift.getStatus();
+
+          if (status.equals(LicenseDriftStatus.ADDED)) {
+            licenseAdded++;
+          } else {
+            licenseDeleted++;
+          }
+        }
+      }
+
+      driftSummary = new OrchestrationDriftSummary()
+                         .driftId(driftEntity.getUuid())
+                         .base(driftEntity.getBase().toString())
+                         .baseTag(driftEntity.getBaseTag())
+                         .totalDrifts(licenseDrifts + componentDrifts)
+                         .licenseDrifts(licenseDrifts)
+                         .componentDrifts(componentDrifts)
+                         .componentsAdded(componentsAdded)
+                         .componentsDeleted(componentsDeleted)
+                         .componentsModified(componentsModified)
+                         .licenseAdded(licenseAdded)
+                         .licenseDeleted(licenseDeleted);
+    }
+    return driftSummary;
   }
 }
