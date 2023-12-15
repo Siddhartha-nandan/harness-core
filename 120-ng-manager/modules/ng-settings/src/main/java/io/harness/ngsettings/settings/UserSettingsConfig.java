@@ -2,7 +2,6 @@ package io.harness.ngsettings.settings;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.ngsettings.entities.AccountSettingConfiguration;
 import io.harness.ngsettings.entities.UserSettingConfiguration;
 import lombok.Builder;
 import lombok.Value;

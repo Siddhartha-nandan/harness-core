@@ -2,7 +2,6 @@ package io.harness.repositories.ngsettings.spring;
 
 import io.harness.annotation.HarnessRepo;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.ngsettings.entities.SettingConfiguration;
 import io.harness.ngsettings.entities.UserSettingConfiguration;
 import io.harness.repositories.ngsettings.custom.UserSettingConfigurationRepositoryCustom;
 import org.springframework.data.repository.PagingAndSortingRepository;

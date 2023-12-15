@@ -25,4 +25,5 @@ public class UserSettingConfigurationRepositoryCustomImpl implements UserSetting
         Query query = new Query(criteria);
         return mongoTemplate.find(query, UserSettingConfiguration.class);
     }
+
 }

@@ -12,6 +12,7 @@ import io.harness.ngsettings.SettingCategory;
 import io.harness.ngsettings.SettingConstants;
 import io.harness.ngsettings.dto.*;
 
+import io.harness.security.annotations.PublicApi;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
@@ -32,7 +33,6 @@ import retrofit2.http.Body;
 @Path("/user-settings")
 @Produces({"application/json", "application/yaml"})
 @Consumes({"application/json", "application/yaml"})
-
 @ApiResponses(value =
     {
       @ApiResponse(code = 400, response = FailureDTO.class, message = "Bad Request")
