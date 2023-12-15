@@ -770,12 +770,10 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       return;
     }
     final long currentPodRSSMB = MemoryHelper.getPodRSSFromCgroupMB();
-    Map<String, Double> resourceUsageMap = logPerformanceImpl.getDelegateCpuAndMemoryUsage();
-    final double cpuLoad = resourceUsageMap.get("%CPU");
-    final double memoryUsage = resourceUsageMap.get("%MEM");
-    log.info("CPU Usage: {}, Memory Usage: {}, ", cpuLoad, memoryUsage);
+    double cpuUsage = logPerformanceImpl.getDelegateCpuUsage();
+    log.info("CPU Usage: {}, Memory Usage: {}, ", cpuUsage);
 
-    if (memoryUsage >= maxPodRSSThresholdMB) {
+    if (currentRSSMB >= maxPodRSSThresholdMB) {
       log.warn(
           "Memory resource reached threshold, temporarily reject incoming task request. CurrentPodRSSMB {} ThresholdMB {}",
           currentPodRSSMB, maxPodRSSThresholdMB);
@@ -788,10 +786,10 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
     log.debug("Process info CurrentProcessRSSMB {} ThresholdProcessMB {} currentPodRSSMB {} ThresholdPodMemoryMB {}",
         currentRSSMB, maxProcessRSSThresholdMB, currentPodRSSMB, maxPodRSSThresholdMB);
 
-    if (cpuLoad > RESOURCE_USAGE_THRESHOLD) {
+    if (cpuUsage > RESOURCE_USAGE_THRESHOLD) {
       log.warn(
           "CPU resource reached threshold, temporarily reject incoming task request, CPU consumption above threshold, {}%",
-          BigDecimal.valueOf(cpuLoad));
+          BigDecimal.valueOf(cpuUsage));
       rejectRequest.compareAndSet(false, true);
       metricRegistry.recordGaugeValue(
           RESOURCE_CONSUMPTION_ABOVE_THRESHOLD.getMetricName(), new String[] {DELEGATE_NAME}, 1.0);
@@ -1869,11 +1867,9 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
     if (!shouldContactManager() || frozen.get()) {
       return;
     }
-    Map<String, Double> resourceUsageMap = logPerformanceImpl.getDelegateCpuAndMemoryUsage();
-    log.info("CPU Usage: {}, ", resourceUsageMap.get("%CPU"));
-    log.info("Memory Usage: {}, ", resourceUsageMap.get("%MEM"));
+    double cpuUsage = logPerformanceImpl.getDelegateCpuUsage();
+    log.info("CPU Usage: {}, ", cpuUsage);
 
-    // logPerformanceImpl.getContainerCpuUsage();
     log.info("Last heartbeat received at {} and sent to manager at {}", lastHeartbeatReceivedAt.get(),
         lastHeartbeatSentAt.get());
     final boolean heartbeatReceivedTimeout = lastHeartbeatReceivedAt.get() != 0

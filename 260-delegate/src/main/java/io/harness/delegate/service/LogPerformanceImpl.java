@@ -22,7 +22,6 @@ import java.lang.management.RuntimeMXBean;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -122,47 +121,33 @@ public class LogPerformanceImpl {
     }
   }
 
-  public Map<String, Double> getDelegateCpuAndMemoryUsage() {
-    Map<String, Double> resourceUsuageMap = new HashMap<>();
+  public double getDelegateCpuUsage() {
     try {
       int totalLinesToRead = 0;
       String termEnv = System.getenv(TERM_ENV_VARIABLE);
       if (StringUtils.isEmpty(termEnv)) {
         termEnv = DEFAULT_TERM_ENV_VALUE;
       }
-      String processId = getDelegateProcessId();
-      ProcessBuilder cpuProcessBuilder =
-          new ProcessBuilder("top", "-b", "-n", "1", "-o", "%CPU", "-p", getDelegateProcessId());
+      ProcessBuilder cpuProcessBuilder = new ProcessBuilder("top", "-b", "-n", "1", "-o", "%CPU");
+
       cpuProcessBuilder.environment().put(TERM_ENV_VARIABLE, termEnv);
       Process cpuProcess = cpuProcessBuilder.start();
 
-      List<String> labels = new ArrayList<>();
-      List<String> values = new ArrayList<>();
+      List<String> cpuLine = new ArrayList<>();
       try (BufferedReader cpuReader = new BufferedReader(new InputStreamReader(cpuProcess.getInputStream()))) {
         String line;
         while ((line = cpuReader.readLine()) != null) {
           line = line.trim();
           String[] processInfo = line.split("\\s+");
-          // Look for line with label and corresponding value
-          // Example for label: PID USER  PR  NI    VIRT    RES    SHR S  %CPU  %MEM   TIME+ COMMAND
-          // Example for value: 123 harness   20   0 6979396   1.6g  29136 S   0.0  21.1   3:31.16 java
-          if (isNotEmpty(processInfo[0]) && processInfo[0].equals("PID")) {
-            labels.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
-          }
-          if (isNotEmpty(processInfo[0]) && processInfo[0].equals(processId)) {
-            values.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
-          }
-          // Look for specific keys(CPU and MEM) in the keys list and their corresponding values
-          if (isNotEmpty(labels) && isNotEmpty(values)) {
-            for (int i = 0; i < labels.size(); i++) {
-              String currentKey = labels.get(i);
-              if (currentKey.equals("%CPU") || currentKey.equals("%MEM")) {
-                if (isNotEmpty(values.get(i))) {
-                  resourceUsuageMap.put(currentKey, Double.parseDouble(values.get(i)));
-                }
-              }
+          // Look for line, %Cpu(s):  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+          if (isNotEmpty(processInfo[0]) && processInfo[0].equals("%Cpu(s)")) {
+            cpuLine.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
+            if (isNotEmpty(cpuLine)) {
+              double cpuUsage = Double.parseDouble(cpuLine.get(1));
+              return cpuUsage;
             }
           }
+
           totalLinesToRead++;
           if (totalLinesToRead >= NOS_OF_TOP_PROCESS_LINES_TO_READ) {
             // Close the input stream and kill the process.
@@ -173,12 +158,11 @@ public class LogPerformanceImpl {
         }
       }
       cpuProcess.destroy();
-
     } catch (IOException e) {
       log.error("IOException occurred: {}", e.toString());
     } catch (Exception ex) {
       log.error("Unhandled exception: {}", ex.toString());
     }
-    return resourceUsuageMap;
+    return 0.0;
   }
 }
