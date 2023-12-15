@@ -71,6 +71,7 @@ public class SbomDriftServiceImpl implements SbomDriftService {
       throw new InvalidRequestException("Could not find artifact with tag: " + tag);
     }
 
+    // TODO: calculate drift only when sbom tool and format matches.
     return calculateAndStoreSbomDrift(driftArtifact, baseArtifact, DriftBase.MANUAL);
   }
 
@@ -86,7 +87,8 @@ public class SbomDriftServiceImpl implements SbomDriftService {
     DriftEntity driftEntity;
     if (optionalDriftEntity.isPresent()) {
       driftEntity = optionalDriftEntity.get();
-      if (base == DriftBase.MANUAL) {
+      // only update valid until if drift entity was saved for manual run.
+      if (base == DriftBase.MANUAL && driftEntity.getBase() == DriftBase.MANUAL) {
         // update validUntil if same request has been found.
         Criteria criteria = Criteria.where(DriftEntityKeys.uuid).is(driftEntity.getUuid());
         Update update = new Update();
@@ -279,7 +281,8 @@ public class SbomDriftServiceImpl implements SbomDriftService {
                            .packageName(c.getPackageName())
                            .packageVersion(c.getPackageVersion())
                            .packageLicense(c.getPackageLicense())
-                           .packageSupplierName(c.getPackageSupplierName())
+                           .packageOriginatorName(c.getPackageOriginatorName())
+                           .packageManager(c.getPackageManager())
                            .purl(c.getPurl())
                            .build())
                 .collect(Collectors.toList());
@@ -293,7 +296,8 @@ public class SbomDriftServiceImpl implements SbomDriftService {
                            .packageName(c.getPackageName())
                            .packageVersion(c.getPackageVersion())
                            .packageLicense(c.getPackageLicense())
-                           .packageSupplierName(c.getPackageSupplierName())
+                           .packageOriginatorName(c.getPackageOriginatorName())
+                           .packageManager(c.getPackageManager())
                            .purl(c.getPurl())
                            .build())
                 .collect(Collectors.toList());
