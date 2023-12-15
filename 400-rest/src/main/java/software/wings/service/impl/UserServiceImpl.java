@@ -722,6 +722,7 @@ public class UserServiceImpl implements UserService {
     if (null != accountDTO) {
       username = accountDTO.getName();
       account.setUuid(accountDTO.getIdentifier());
+      account.setSubdomainUrl(accountDTO.getSubdomainURL());
     }
     account.setAccountName(username);
     account.setCompanyName(username);
