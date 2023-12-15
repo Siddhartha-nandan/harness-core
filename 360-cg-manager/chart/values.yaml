@@ -375,7 +375,7 @@ image:
   repository: harness-manager
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "1.7.4"
+  tag: "1.7.5"
   digest: ""
   imagePullSecrets: []
 waitForInitContainer:
