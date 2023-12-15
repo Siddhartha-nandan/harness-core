@@ -67,6 +67,7 @@ import io.harness.secretusage.SecretRuntimeUsageService;
 import io.harness.steps.EntityReferenceExtractorUtils;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 import io.harness.walktree.visitor.entityreference.beans.VisitedSecretReference;
 
 import com.google.inject.Inject;
@@ -154,6 +155,7 @@ public class K8sApplyStep extends CdTaskChainExecutable implements K8sStepExecut
     }
     k8sStepHelper.resolveManifestsSourceExpressions(ambiance, k8sApplyStepParameters.getManifestSource());
   }
+
   @Override
   public TaskChainResponse executeNextLinkWithSecurityContextAndNodeInfo(Ambiance ambiance,
       StepBaseParameters stepElementParameters, StepInputPackage inputPackage, PassThroughData passThroughData,
@@ -258,6 +260,12 @@ public class K8sApplyStep extends CdTaskChainExecutable implements K8sStepExecut
       return K8sStepHelper.getFailureResponseBuilder(k8sTaskExecutionResponse, stepResponseBuilder).build();
     }
     return stepResponseBuilder.status(Status.SUCCEEDED).build();
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 
   private void publishSecretRuntimeUsage(Ambiance ambiance, K8sApplyStepParameters stepParameters) {

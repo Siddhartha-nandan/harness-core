@@ -6,8 +6,7 @@
  */
 
 package io.harness.cdng.provision.terragrunt;
-import static io.harness.beans.FeatureName.CDS_TERRAGRUNT_CLI_OPTIONS_NG;
-import static io.harness.beans.FeatureName.CDS_TERRAGRUNT_USE_UNIQUE_DIRECTORY_BASE_DIR_NG;
+
 import static io.harness.beans.FeatureName.CDS_TF_TG_SKIP_ERROR_LOGS_COLORING;
 import static io.harness.cdng.provision.terragrunt.TerragruntStepHelper.DEFAULT_TIMEOUT;
 import static io.harness.provision.TerragruntConstants.APPLY;
@@ -52,6 +51,7 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.StepUtils;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 import io.harness.utils.IdentifierRefHelper;
 
 import software.wings.beans.TaskType;
@@ -84,6 +84,12 @@ public class TerragruntApplyStep extends CdTaskExecutable<TerragruntApplyTaskRes
   @Override
   public Class getStepParametersClass() {
     return StepBaseParameters.class;
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 
   @Override
@@ -156,9 +162,7 @@ public class TerragruntApplyStep extends CdTaskExecutable<TerragruntApplyTaskRes
     builder.tgModuleSourceInheritSSH(
         helper.isExportCredentialForSourceModule(spec.getConfigFiles(), StepBaseParameters.getType()));
 
-    if (cdFeatureFlagHelper.isEnabled(accountId, CDS_TERRAGRUNT_CLI_OPTIONS_NG)) {
-      builder.terragruntCommandFlags(helper.getTerragruntCliFlags(configuration.getCommandFlags()));
-    }
+    builder.terragruntCommandFlags(helper.getTerragruntCliFlags(configuration.getCommandFlags()));
 
     builder.stateFileId(helper.getLatestFileId(entityId))
         .entityId(entityId)
@@ -179,8 +183,7 @@ public class TerragruntApplyStep extends CdTaskExecutable<TerragruntApplyTaskRes
         .timeoutInMillis(StepUtils.getTimeoutMillis(StepBaseParameters.getTimeout(), DEFAULT_TIMEOUT))
         .encryptedDataDetailList(helper.getEncryptionDetails(
             spec.getConfigFiles().getStore().getSpec(), spec.getBackendConfig(), spec.getVarFiles(), ambiance))
-        .useUniqueDirectoryForBaseDir(
-            cdFeatureFlagHelper.isEnabled(accountId, CDS_TERRAGRUNT_USE_UNIQUE_DIRECTORY_BASE_DIR_NG))
+        .useUniqueDirectoryForBaseDir(true)
         .skipColorLogs(cdFeatureFlagHelper.isEnabled(accountId, CDS_TF_TG_SKIP_ERROR_LOGS_COLORING))
         .build();
 
@@ -205,9 +208,7 @@ public class TerragruntApplyStep extends CdTaskExecutable<TerragruntApplyTaskRes
     String accountId = AmbianceUtils.getAccountId(ambiance);
     String entityId = helper.generateFullIdentifier(provisionerIdentifier, ambiance);
 
-    if (cdFeatureFlagHelper.isEnabled(accountId, CDS_TERRAGRUNT_CLI_OPTIONS_NG)) {
-      builder.terragruntCommandFlags(helper.getTerragruntCliFlags(stepParameters.getConfiguration().getCommandFlags()));
-    }
+    builder.terragruntCommandFlags(helper.getTerragruntCliFlags(stepParameters.getConfiguration().getCommandFlags()));
 
     builder.accountId(accountId)
         .entityId(entityId)
@@ -227,8 +228,7 @@ public class TerragruntApplyStep extends CdTaskExecutable<TerragruntApplyTaskRes
             inheritOutput.getBackendConfigFile(), inheritOutput.getVarFileConfigs(), ambiance))
         .encryptDecryptPlanForHarnessSMOnManager(
             helper.tfPlanEncryptionOnManager(accountId, inheritOutput.encryptionConfig))
-        .useUniqueDirectoryForBaseDir(
-            cdFeatureFlagHelper.isEnabled(accountId, CDS_TERRAGRUNT_USE_UNIQUE_DIRECTORY_BASE_DIR_NG))
+        .useUniqueDirectoryForBaseDir(true)
         .skipColorLogs(cdFeatureFlagHelper.isEnabled(accountId, CDS_TF_TG_SKIP_ERROR_LOGS_COLORING))
         .timeoutInMillis(StepUtils.getTimeoutMillis(StepBaseParameters.getTimeout(), DEFAULT_TIMEOUT));
     builder.build();

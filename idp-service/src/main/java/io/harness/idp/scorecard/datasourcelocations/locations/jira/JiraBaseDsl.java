@@ -16,6 +16,7 @@ import static io.harness.idp.scorecard.datapoints.constants.DataPoints.PROJECT_K
 import static io.harness.idp.scorecard.datapoints.constants.Inputs.JQL;
 import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.API_BASE_URL;
 import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.AUTHORIZATION_HEADER;
+import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.HTTPS_PREFIX;
 import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.PROJECT_COMPONENT_REPLACER;
 
 import io.harness.annotations.dev.HarnessTeam;
@@ -63,9 +64,9 @@ public abstract class JiraBaseDsl extends DataSourceLocationNoLoop {
         inputValues.stream().filter(inputValue -> inputValue.getKey().equals(JQL)).findFirst();
     if (inputValueOpt.isPresent()) {
       String inputValue = inputValueOpt.get().getValue();
+      inputValue = inputValue.replaceFirst("\"", "");
+      inputValue = inputValue.substring(0, inputValue.length() - 1);
       if (!inputValue.isEmpty()) {
-        inputValue = inputValue.replaceFirst("\"", "");
-        inputValue = inputValue.substring(0, inputValue.length() - 1);
         requestBody = requestBody.replace("{JQL_EXPRESSION}", inputValue);
       }
     }
@@ -74,7 +75,7 @@ public abstract class JiraBaseDsl extends DataSourceLocationNoLoop {
 
   @Override
   protected String getHost(Map<String, String> data) {
-    return data.get(API_BASE_URL);
+    return data.get(API_BASE_URL).replace(HTTPS_PREFIX, "");
   }
 
   @Override
