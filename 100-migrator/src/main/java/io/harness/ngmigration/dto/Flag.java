@@ -14,5 +14,7 @@ import io.harness.annotations.dev.ProductModule;
 public enum Flag {
   HELM_INFRA_WITH_STAGE_VAR,
   SEQUENTIAL_CREATION,
-  LONG_RELEASE_NAME
+  LONG_RELEASE_NAME,
+
+  PREFER_SERVICE_VARIABLE_OVERRIDES
 }
