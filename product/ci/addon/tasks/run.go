@@ -201,7 +201,7 @@ func (r *runTask) execute(ctx context.Context, retryCount int32) ([]*pb.OutputVa
 }
 
 func (r *runTask) getScript(ctx context.Context, outputVarFile string) (string, error) {
-	if r.detach && len(r.command) == 0 {
+	if len(r.command) == 0 {
 		return "", nil
 	}
 

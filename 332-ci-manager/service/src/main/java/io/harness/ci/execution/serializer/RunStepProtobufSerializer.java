@@ -13,6 +13,8 @@ import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAG
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
+import static java.util.Collections.emptyList;
+
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.FeatureName;
 import io.harness.beans.serializer.RunTimeInputHandler;
@@ -89,7 +91,6 @@ public class RunStepProtobufSerializer implements ProtobufStepSerializer<RunStep
     }
 
     RunStep.Builder runStepBuilder = RunStep.newBuilder();
-    runStepBuilder.setCommand(gitSafeCMD + command);
 
     runStepBuilder.setContainerPort(port);
     Map<String, String> envvars =
@@ -138,7 +139,16 @@ public class RunStepProtobufSerializer implements ProtobufStepSerializer<RunStep
       protoShellType = ShellType.PYTHON;
     }
 
-    runStepBuilder.setShellType(protoShellType);
+    if (command != null) {
+      runStepBuilder.setCommand(gitSafeCMD + command);
+      runStepBuilder.setShellType(protoShellType);
+    } else {
+      // running a step, with no commands
+      runStepBuilder.setCommand("");
+      runStepBuilder.addAllEntrypoint(emptyList());
+      runStepBuilder.setImage(
+          RunTimeInputHandler.resolveStringParameter("Image", "step", identifier, runStepInfo.getImage(), true));
+    }
 
     return UnitStep.newBuilder()
         .setAccountId(accountId)
