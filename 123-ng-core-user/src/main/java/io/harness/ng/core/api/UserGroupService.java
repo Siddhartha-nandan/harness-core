@@ -42,6 +42,8 @@ import org.springframework.data.util.CloseableIterator;
 public interface UserGroupService {
   UserGroup create(UserGroupDTO userGroup);
 
+  UserGroup createForSCIM(UserGroupDTO userGroup);
+
   Optional<UserGroup> get(String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier);
 
   List<UserGroup> getUserGroupsBySsoId(String accountIdentifier, String ssoId);
@@ -54,6 +56,8 @@ public interface UserGroupService {
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String groupIdentifier);
 
   UserGroup update(UserGroupDTO userGroupDTO);
+
+  UserGroup updateForSCIM(UserGroupDTO userGroupDTO);
 
   UserGroup updateWithCheckThatSCIMFieldsAreNotModified(UserGroupDTO userGroupDTO);
 

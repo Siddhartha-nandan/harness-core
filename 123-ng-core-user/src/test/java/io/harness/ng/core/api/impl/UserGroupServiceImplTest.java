@@ -1565,6 +1565,30 @@ public class UserGroupServiceImplTest extends CategoryTest {
     verify(userGroupRepository, times(1)).findAll(userGroupCriteriaArgumentCaptor.capture());
   }
 
+  @Test
+  @Owner(developers = PRATEEK)
+  @Category(UnitTests.class)
+  public void testCreateUserGroupWithBlankIdentifier_throwsJerseyViolation() {
+    Scope scope = Scope.of(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER);
+    String userGroupIdentifier = "  ";
+    UserGroupDTO updatedUserGroupDTO = UserGroupDTO.builder()
+                                           .accountIdentifier(scope.getAccountIdentifier())
+                                           .orgIdentifier(scope.getOrgIdentifier())
+                                           .projectIdentifier(scope.getProjectIdentifier())
+                                           .identifier(userGroupIdentifier)
+                                           .externallyManaged(true)
+                                           .isSsoLinked(false)
+                                           .users(Lists.newArrayList("abc@xyz.com", "def@xyz.com", "jkh@xyz.com"))
+                                           .build();
+    ConstraintViolation<Object> mockviolation = createDummyViolation("identifier", "cannot be empty");
+    Set<ConstraintViolation<Object>> violations = new HashSet<>();
+    violations.add(mockviolation);
+    when(validator.validateValue(any(), anyString(), any())).thenReturn(violations);
+    assertThatThrownBy(() -> userGroupService.update(updatedUserGroupDTO))
+        .isInstanceOf(JerseyViolationException.class)
+        .hasMessage("name: cannot be empty");
+  }
+
   private static ConstraintViolation<Object> createDummyViolation(String propertyPath, String message) {
     return new ConstraintViolation<Object>() {
       @Override

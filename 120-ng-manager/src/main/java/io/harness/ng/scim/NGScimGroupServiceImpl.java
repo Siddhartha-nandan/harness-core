@@ -210,7 +210,7 @@ public class NGScimGroupServiceImpl implements ScimGroupService {
       UserGroupDTO userGroupDTO = toDTO(existingUserGroup);
       userGroupDTO.setName(scimGroup.getDisplayName());
       userGroupDTO.setUsers(fetchMembersOfUserGroup(scimGroup));
-      userGroupService.update(userGroupDTO);
+      userGroupService.updateForSCIM(userGroupDTO);
     }
     log.info("NGSCIM: Member userIds provided by the SCIM Provider are {}, for account {}",
         fetchMembersOfUserGroup(scimGroup), accountId);
@@ -342,7 +342,7 @@ public class NGScimGroupServiceImpl implements ScimGroupService {
       }
       if (updateGroup) {
         finalUserGroupDTO.setExternallyManaged(true);
-        userGroupService.update(finalUserGroupDTO);
+        userGroupService.updateForSCIM(finalUserGroupDTO);
       }
     }
     return Response.status(Response.Status.NO_CONTENT).build();
@@ -417,9 +417,8 @@ public class NGScimGroupServiceImpl implements ScimGroupService {
     String userGroupIdentifier = isNotEmpty(groupQuery.getDisplayName())
         ? UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier(groupQuery.getDisplayName())
         : groupQuery.getDisplayName();
-    String userGroupName = UuidAndIdentifierUtils.generateHarnessUIFormatName(groupQuery.getDisplayName());
     UserGroupDTOBuilder userGroupDTOBuilder = UserGroupDTO.builder()
-                                                  .name(userGroupName)
+                                                  .name(groupQuery.getDisplayName())
                                                   .users(fetchMembersOfUserGroup(groupQuery))
                                                   .accountIdentifier(accountId)
                                                   .identifier(userGroupIdentifier)
@@ -442,10 +441,10 @@ public class NGScimGroupServiceImpl implements ScimGroupService {
           log.info("NGSCIM: Skipping group creation unidentified scope");
           continue;
         }
-        userGroupCreated = userGroupService.create(userGroupDTOBuilder.build());
+        userGroupCreated = userGroupService.createForSCIM(userGroupDTOBuilder.build());
       }
     } else {
-      userGroupCreated = userGroupService.create(userGroupDTOBuilder.build());
+      userGroupCreated = userGroupService.createForSCIM(userGroupDTOBuilder.build());
     }
 
     ScimGroup scimGroup = buildGroupResponse(userGroupCreated, accountId);

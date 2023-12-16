@@ -82,7 +82,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
                               .name(scimGroup.getDisplayName())
                               .identifier(scimGroup.getDisplayName().replaceAll("\\.", "_"))
                               .build();
-    when(userGroupService.create(any())).thenReturn(userGroup);
+    when(userGroupService.createForSCIM(any())).thenReturn(userGroup);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
     assertThat(userGroupCreated.getDisplayName()).isNotNull();
@@ -104,7 +104,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
                               .name(scimGroup.getDisplayName())
                               .identifier(scimGroup.getDisplayName().replaceAll("\\.", "_"))
                               .build();
-    when(userGroupService.create(any())).thenReturn(userGroup);
+    when(userGroupService.createForSCIM(any())).thenReturn(userGroup);
     when(ngFeatureFlagHelperService.isEnabled(accountId, PL_NEW_SCIM_STANDARDS)).thenReturn(true);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
@@ -133,7 +133,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
                               .name(scimGroup.getDisplayName())
                               .identifier(scimGroup.getDisplayName().replaceAll("\\.", "_"))
                               .build();
-    when(userGroupService.create(any())).thenReturn(userGroup);
+    when(userGroupService.createForSCIM(any())).thenReturn(userGroup);
     when(ngFeatureFlagHelperService.isEnabled(accountId, PL_NEW_SCIM_STANDARDS)).thenReturn(false);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
@@ -157,7 +157,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
                               .name(scimGroup.getDisplayName())
                               .identifier(scimGroup.getDisplayName().replaceAll("\\.", "_"))
                               .build();
-    when(userGroupService.create(any())).thenReturn(userGroup);
+    when(userGroupService.createForSCIM(any())).thenReturn(userGroup);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
     assertThat(userGroupCreated.getDisplayName()).isNotNull();
@@ -179,7 +179,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
                               .name(scimGroup.getDisplayName())
                               .identifier(scimGroup.getDisplayName().replaceAll("\\.", "_"))
                               .build();
-    when(userGroupService.create(any())).thenReturn(userGroup);
+    when(userGroupService.createForSCIM(any())).thenReturn(userGroup);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
     assertThat(userGroupCreated.getDisplayName()).isNotNull();
@@ -198,7 +198,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
     scimGroup.setDisplayName("display.name");
     scimGroup.setId("id");
 
-    when(userGroupService.create(any())).thenReturn(null);
+    when(userGroupService.createForSCIM(any())).thenReturn(null);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
     assertThat(userGroupCreated.getDisplayName()).isNull();
@@ -392,7 +392,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
 
     String userGroupId = scimGroup.getDisplayName().replaceAll("-", "_");
     UserGroup userGroup = UserGroup.builder().name(scimGroup.getDisplayName()).identifier(userGroupId).build();
-    when(userGroupService.create(any())).thenReturn(userGroup);
+    when(userGroupService.createForSCIM(any())).thenReturn(userGroup);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
     assertThat(userGroupCreated.getDisplayName()).isNotNull();
@@ -412,7 +412,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
 
     String userGroupId = scimGroup.getDisplayName().replaceAll("-", "_");
     UserGroup userGroup = UserGroup.builder().name(scimGroup.getDisplayName()).identifier(userGroupId).build();
-    when(userGroupService.create(any())).thenReturn(userGroup);
+    when(userGroupService.createForSCIM(any())).thenReturn(userGroup);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
     assertThat(userGroupCreated.getDisplayName()).isNotNull();
@@ -432,7 +432,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
 
     String userGroupId = scimGroup.getDisplayName().replaceAll("-", "_");
     UserGroup userGroup = UserGroup.builder().name(scimGroup.getDisplayName()).identifier(userGroupId).build();
-    when(userGroupService.create(any())).thenReturn(userGroup);
+    when(userGroupService.createForSCIM(any())).thenReturn(userGroup);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
     assertThat(userGroupCreated.getDisplayName()).isNotNull();
@@ -451,7 +451,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
     scimGroup.setDisplayName("display-name");
     scimGroup.setId("id");
 
-    when(userGroupService.create(any())).thenReturn(null);
+    when(userGroupService.createForSCIM(any())).thenReturn(null);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
     assertThat(userGroupCreated.getDisplayName()).isNull();
@@ -471,7 +471,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
 
     String userGroupId = scimGroup.getDisplayName().replaceAll(" ", "_");
     UserGroup userGroup = UserGroup.builder().name(scimGroup.getDisplayName()).identifier(userGroupId).build();
-    when(userGroupService.create(any())).thenReturn(userGroup);
+    when(userGroupService.createForSCIM(any())).thenReturn(userGroup);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
     assertThat(userGroupCreated.getDisplayName()).isNotNull();
@@ -491,7 +491,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
 
     String userGroupId = scimGroup.getDisplayName().replaceAll(" ", "_");
     UserGroup userGroup = UserGroup.builder().name(scimGroup.getDisplayName()).identifier(userGroupId).build();
-    when(userGroupService.create(any())).thenReturn(userGroup);
+    when(userGroupService.createForSCIM(any())).thenReturn(userGroup);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
     assertThat(userGroupCreated.getDisplayName()).isNotNull();
@@ -511,7 +511,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
 
     String userGroupId = scimGroup.getDisplayName().replaceAll(" ", "_");
     UserGroup userGroup = UserGroup.builder().name(scimGroup.getDisplayName()).identifier(userGroupId).build();
-    when(userGroupService.create(any())).thenReturn(userGroup);
+    when(userGroupService.createForSCIM(any())).thenReturn(userGroup);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
     assertThat(userGroupCreated.getDisplayName()).isNotNull();
@@ -530,7 +530,7 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
     scimGroup.setDisplayName("display name");
     scimGroup.setId("id");
 
-    when(userGroupService.create(any())).thenReturn(null);
+    when(userGroupService.createForSCIM(any())).thenReturn(null);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
     assertThat(userGroupCreated.getDisplayName()).isNull();
