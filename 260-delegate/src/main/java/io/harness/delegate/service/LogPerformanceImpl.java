@@ -22,6 +22,7 @@ import java.lang.management.RuntimeMXBean;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -121,51 +122,65 @@ public class LogPerformanceImpl {
     }
   }
 
-  public double getDelegateCpuUsage() {
+  public Map<String, Double> getDelegateMemoryCpuUsage() {
+    Map<String, Double> resourceUsuageMap = new HashMap<>();
     try {
       int totalLinesToRead = 0;
       String termEnv = System.getenv(TERM_ENV_VARIABLE);
       if (StringUtils.isEmpty(termEnv)) {
         termEnv = DEFAULT_TERM_ENV_VALUE;
       }
-      ProcessBuilder cpuProcessBuilder = new ProcessBuilder("top", "-b", "-n", "1", "-o", "%CPU");
-
+      ProcessBuilder cpuProcessBuilder = new ProcessBuilder("top", "-b", "-n", "1", "-o", "%CPU,%MEM");
       cpuProcessBuilder.environment().put(TERM_ENV_VARIABLE, termEnv);
-      Process cpuProcess = cpuProcessBuilder.start();
+      Process process = cpuProcessBuilder.start();
 
-      List<String> cpuLine = new ArrayList<>();
-      try (BufferedReader cpuReader = new BufferedReader(new InputStreamReader(cpuProcess.getInputStream()))) {
+      try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
         String line;
-        while ((line = cpuReader.readLine()) != null) {
-          //line = line.trim();
+        while ((line = reader.readLine()) != null) {
           log.info("line is {}", line);
           String[] processInfo = line.split("\\s+");
-          log.info("line is {}", line);
           // Look for line, %Cpu(s):  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
           if (isNotEmpty(processInfo[0]) && processInfo[0].equals("%Cpu(s):")) {
+            List<String> cpuLine = new ArrayList<>();
             cpuLine.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
             log.info("cpu line as list {}", cpuLine);
-            if (isNotEmpty(cpuLine)) {
-              double cpuUsage = Double.parseDouble(cpuLine.get(1));
-              return cpuUsage;
+            if (isNotEmpty(cpuLine) && isNotEmpty(cpuLine.get(1)) && !resourceUsuageMap.containsKey("CPU")) {
+              resourceUsuageMap.put("CPU", Double.parseDouble(cpuLine.get(1)));
+              continue;
+            }
+
+            // Look for line, MiB Mem : 7818.5 total, 4232.0 free, 1572.2 used, 2014.3 buff/cache
+            // OR KiB Mem :  8092456 total,  2345672 free,  3598140 used,  2143644 buff/cache
+            if (isNotEmpty(processInfo[0]) && (processInfo[0].equals("MiB") || processInfo[0].equals("KiB"))) {
+              List<String> memoryLine = new ArrayList<>();
+              memoryLine.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
+              log.info("Memory line as list {}", memoryLine);
+              double totalMemory = isNotEmpty(memoryLine.get(3)) ? Double.parseDouble(memoryLine.get(3)) : 0.0;
+              double usedMemory = isNotEmpty(memoryLine.get(7)) ? Double.parseDouble(memoryLine.get(7)) : 0.0;
+              double memoryUsed = (usedMemory / totalMemory) * 100;
+              String key = processInfo[0] + "Mem";
+              if (!resourceUsuageMap.containsKey(key)) {
+                resourceUsuageMap.put(key, memoryUsed);
+              }
+              continue;
             }
           }
 
           totalLinesToRead++;
           if (totalLinesToRead >= NOS_OF_TOP_PROCESS_LINES_TO_READ) {
             // Close the input stream and kill the process.
-            cpuProcess.getInputStream().close();
-            cpuProcess.destroy();
+            process.getInputStream().close();
+            process.destroy();
             break;
           }
         }
       }
-      cpuProcess.destroy();
+      process.destroy();
     } catch (IOException e) {
       log.error("IOException occurred: {}", e.toString());
     } catch (Exception ex) {
       log.error("Unhandled exception: {}", ex.toString());
     }
-    return 0.0;
+    return resourceUsuageMap;
   }
 }

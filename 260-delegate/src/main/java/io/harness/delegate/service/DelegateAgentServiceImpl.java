@@ -758,7 +758,10 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
   }
 
   private void maybeUpdateTaskRejectionStatus() {
-    final long currentRSSMB = MemoryHelper.getProcessMemoryMB();
+    // final long currentRSSMB = MemoryHelper.getProcessMemoryMB();
+    Map<String, Double> resourceUsuageMap = logPerformanceImpl.getDelegateMemoryCpuUsage();
+    final double cpuUsage = resourceUsuageMap.get("CPU");
+    final double currentRSSMB = resourceUsuageMap.get("MiBMem");
     if (currentRSSMB >= maxProcessRSSThresholdMB) {
       log.warn(
           "Memory resource reached threshold, temporarily reject incoming task request. CurrentProcessRSSMB {} ThresholdMB {}",
@@ -770,7 +773,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       return;
     }
     final long currentPodRSSMB = MemoryHelper.getPodRSSFromCgroupMB();
-    double cpuUsage = logPerformanceImpl.getDelegateCpuUsage();
+
     log.info("CPU Usage: {}, Memory Usage: {}, ", cpuUsage);
 
     if (currentRSSMB >= maxPodRSSThresholdMB) {
@@ -1867,8 +1870,9 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
     if (!shouldContactManager() || frozen.get()) {
       return;
     }
-    double cpuUsage = logPerformanceImpl.getDelegateCpuUsage();
-    log.info("CPU Usage: {}, ", cpuUsage);
+    Map<String, Double> resourceUsuageMap = logPerformanceImpl.getDelegateMemoryCpuUsage();
+    log.info("CPU Usage: {}, ", resourceUsuageMap.get("CPU"));
+    log.info("Memory Usage: {}, ", resourceUsuageMap.get("MiBMem"));
 
     log.info("Last heartbeat received at {} and sent to manager at {}", lastHeartbeatReceivedAt.get(),
         lastHeartbeatSentAt.get());
