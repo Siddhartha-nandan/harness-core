@@ -11,6 +11,8 @@ import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
+import static java.lang.Boolean.TRUE;
+
 import io.harness.EntityType;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -67,12 +69,16 @@ public class GitXSettingsHelper {
     GitEntityInfo gitEntityInfo = GitAwareContextHelper.getGitRequestParamsInfo();
     if (GitAwareContextHelper.isRemoteEntity(gitEntityInfo)
         && GitAwareContextHelper.isNullOrDefault(gitEntityInfo.getConnectorRef())) {
-      String defaultConnectorForGitX = getDefaultConnectorForGitX(accountIdentifier, orgIdentifier, projectIdentifier);
-      if (!isEmpty(defaultConnectorForGitX)) {
-        gitEntityInfo.setConnectorRef(defaultConnectorForGitX);
-        GitAwareContextHelper.updateGitEntityContext(gitEntityInfo);
+      if (TRUE.equals(gitEntityInfo.getIsHarnessCodeRepo())) {
+        GitAwareContextHelper.setHarnessCodeConnectorRef();
+      } else {
+        String defaultConnectorForGitX =
+            getDefaultConnectorForGitX(accountIdentifier, orgIdentifier, projectIdentifier);
+        if (!isEmpty(defaultConnectorForGitX)) {
+          gitEntityInfo.setConnectorRef(defaultConnectorForGitX);
+          GitAwareContextHelper.updateGitEntityContext(gitEntityInfo);
+        }
       }
-      GitAwareContextHelper.setHarnessCodeConnectorRef();
     }
   }
 
