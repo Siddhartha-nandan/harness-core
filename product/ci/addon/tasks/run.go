@@ -150,7 +150,7 @@ func (r *runTask) execute(ctx context.Context, retryCount int32) (map[string]str
 	}
 
 	if len(r.command) > 0 {
-		r.log.Infof("%sExecuting the following command(s):\n%s", string(boldYellowColor), r.command)
+		r.log.Infof("%sExecuting the following command(s)...aish1:\n%s", string(boldYellowColor), r.command)
 	}
 
 	if r.detach {
