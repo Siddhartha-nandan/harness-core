@@ -130,7 +130,7 @@ public class LogPerformanceImpl {
       if (StringUtils.isEmpty(termEnv)) {
         termEnv = DEFAULT_TERM_ENV_VALUE;
       }
-      ProcessBuilder cpuProcessBuilder = new ProcessBuilder("top", "-b", "-n", "1", "-o", "%CPU,%MEM");
+      ProcessBuilder cpuProcessBuilder = new ProcessBuilder("top", "-b", "-n", "1", "-o", "%CPU");
       cpuProcessBuilder.environment().put(TERM_ENV_VARIABLE, termEnv);
       Process process = cpuProcessBuilder.start();
 
