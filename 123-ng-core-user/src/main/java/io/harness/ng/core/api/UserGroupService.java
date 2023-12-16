@@ -57,8 +57,6 @@ public interface UserGroupService {
 
   UserGroup update(UserGroupDTO userGroupDTO);
 
-  UserGroup updateForSCIM(UserGroupDTO userGroupDTO);
-
   UserGroup updateWithCheckThatSCIMFieldsAreNotModified(UserGroupDTO userGroupDTO);
 
   List<UserInfo> getUserMetaData(List<String> uuids);

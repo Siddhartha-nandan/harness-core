@@ -1622,7 +1622,7 @@ public class UserGroupServiceImplTest extends CategoryTest {
                                            .isSsoLinked(false)
                                            .users(Lists.newArrayList("abc@xyz.com", "def@xyz.com", "jkh@xyz.com"))
                                            .build();
-    assertThatThrownBy(() -> userGroupService.updateForSCIM(updatedUserGroupDTO))
+    assertThatThrownBy(() -> userGroupService.update(updatedUserGroupDTO))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage(String.format("Update UserGroup [%s]- name: cannot be null or empty", userGroupIdentifier));
   }

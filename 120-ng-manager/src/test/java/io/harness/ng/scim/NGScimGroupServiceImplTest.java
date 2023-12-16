@@ -503,21 +503,21 @@ public class NGScimGroupServiceImplTest extends NgManagerTestBase {
   @Test
   @Owner(developers = BOOPESH)
   @Category(UnitTests.class)
-  public void test_createUserGroupForSpace3() {
+  public void test_createUserGroupForDotAndHyphen() {
+    final String nameIdentifier = "test.display-name";
     String accountId = "accountId";
     ScimGroup scimGroup = new ScimGroup();
-    scimGroup.setDisplayName("display_name");
+    scimGroup.setDisplayName(nameIdentifier);
     scimGroup.setId("id");
 
-    String userGroupId = scimGroup.getDisplayName().replaceAll(" ", "_");
+    String userGroupId = nameIdentifier.replaceAll(" ", "_").replaceAll("\\.", "_").replaceAll("-", "_");
     UserGroup userGroup = UserGroup.builder().name(scimGroup.getDisplayName()).identifier(userGroupId).build();
     when(userGroupService.createForSCIM(any())).thenReturn(userGroup);
     ScimGroup userGroupCreated = scimGroupService.createGroup(scimGroup, accountId);
 
     assertThat(userGroupCreated.getDisplayName()).isNotNull();
-    assertThat(userGroupCreated.getDisplayName()).isEqualTo(scimGroup.getDisplayName());
+    assertThat(userGroupCreated.getDisplayName()).isEqualTo(nameIdentifier);
     assertThat(userGroupCreated.getId()).isEqualTo(userGroupId);
-    assertThat(userGroupCreated.getId()).isEqualTo("display_name");
   }
 
   @Test

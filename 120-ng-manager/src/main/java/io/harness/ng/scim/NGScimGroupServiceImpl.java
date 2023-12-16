@@ -210,7 +210,7 @@ public class NGScimGroupServiceImpl implements ScimGroupService {
       UserGroupDTO userGroupDTO = toDTO(existingUserGroup);
       userGroupDTO.setName(scimGroup.getDisplayName());
       userGroupDTO.setUsers(fetchMembersOfUserGroup(scimGroup));
-      userGroupService.updateForSCIM(userGroupDTO);
+      userGroupService.update(userGroupDTO);
     }
     log.info("NGSCIM: Member userIds provided by the SCIM Provider are {}, for account {}",
         fetchMembersOfUserGroup(scimGroup), accountId);
@@ -342,7 +342,7 @@ public class NGScimGroupServiceImpl implements ScimGroupService {
       }
       if (updateGroup) {
         finalUserGroupDTO.setExternallyManaged(true);
-        userGroupService.updateForSCIM(finalUserGroupDTO);
+        userGroupService.update(finalUserGroupDTO);
       }
     }
     return Response.status(Response.Status.NO_CONTENT).build();

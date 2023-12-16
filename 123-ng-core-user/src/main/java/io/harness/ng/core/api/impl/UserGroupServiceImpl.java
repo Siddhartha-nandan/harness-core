@@ -231,16 +231,7 @@ public class UserGroupServiceImpl implements UserGroupService {
 
   @Override
   public UserGroup update(UserGroupDTO userGroupDTO) {
-    Set<ConstraintViolation<UserGroupDTO>> violations = validator.validate(userGroupDTO);
-    if (!violations.isEmpty()) {
-      throw new JerseyViolationException(violations, null);
-    }
-    return updateCommon(userGroupDTO);
-  }
-
-  @Override
-  public UserGroup updateForSCIM(UserGroupDTO userGroupDTO) {
-    validationOnUserGroupDTOUpdateForSCIM(userGroupDTO);
+    validationOnUserGroupDTOUpdate(userGroupDTO);
     return updateCommon(userGroupDTO);
   }
 
@@ -297,7 +288,7 @@ public class UserGroupServiceImpl implements UserGroupService {
     }
   }
 
-  private void validationOnUserGroupDTOUpdateForSCIM(UserGroupDTO userGroupDTO) {
+  private void validationOnUserGroupDTOUpdate(UserGroupDTO userGroupDTO) {
     if (isBlank(userGroupDTO.getName())) {
       throw new InvalidRequestException(
           String.format("Update UserGroup [%s]- name: cannot be null or empty", userGroupDTO.getIdentifier()));
