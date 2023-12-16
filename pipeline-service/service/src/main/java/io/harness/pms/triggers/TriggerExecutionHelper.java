@@ -518,11 +518,16 @@ public class TriggerExecutionHelper {
     }
 
     List<String> inputSetRefs = triggerConfigV2.getInputSetRefs();
+    String overrideInputs = triggerConfigV2.getOverrideInputs();
     MergeInputSetResponseDTOPMS mergeInputSetResponseDTOPMS =
         NGRestUtils.getResponse(pipelineServiceClient.getMergeInputSetFromPipelineTemplate(
             ngTriggerEntity.getAccountId(), ngTriggerEntity.getOrgIdentifier(), ngTriggerEntity.getProjectIdentifier(),
             ngTriggerEntity.getTargetIdentifier(), branch,
-            MergeInputSetRequestDTOPMS.builder().inputSetReferences(inputSetRefs).getOnlyFileContent(true).build()));
+            MergeInputSetRequestDTOPMS.builder()
+                .inputSetReferences(inputSetRefs)
+                .lastYamlToMerge(overrideInputs)
+                .getOnlyFileContent(true)
+                .build()));
 
     return mergeInputSetResponseDTOPMS.getPipelineYaml();
   }

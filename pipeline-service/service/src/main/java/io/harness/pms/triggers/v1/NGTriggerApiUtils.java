@@ -160,6 +160,7 @@ public class NGTriggerApiUtils {
         .tags(body.getTags())
         .source(toNGTriggerSourceV2(body.getSource()))
         .stagesToExecute(body.getStagesToExecute())
+        .overrideInputs(body.getOverrideInputs())
         .build();
   }
 
@@ -269,6 +270,7 @@ public class NGTriggerApiUtils {
     triggerBody.setStagesToExecute(triggerEntity.getStagesToExecute());
     triggerBody.setTags(TagMapper.convertToMap(triggerEntity.getTags()));
     triggerBody.setSource(toTriggerSource(triggerEntity.getTriggerConfigWrapper().getSource()));
+    triggerBody.setOverrideInputs(triggerEntity.getTriggerConfigWrapper().getOverrideInputs());
     return triggerBody;
   }
 

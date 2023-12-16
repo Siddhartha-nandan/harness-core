@@ -1,0 +1,55 @@
+trigger:
+  name: first trigger
+  identifier: first_trigger
+  enabled: true
+  description: ""
+  tags: {}
+  stagesToExecute: []
+  orgIdentifier: org
+  projectIdentifier: proj
+  pipelineIdentifier: pipeline
+  source:
+    type: Webhook
+    spec:
+      type: Custom
+      spec:
+        payloadConditions: []
+        headerConditions: []
+  inputSetRefs:
+    - myInputSet
+  overrideInputs: |
+    pipeline:
+      identifier: pipeline
+      stages:
+        - stage:
+            identifier: stage2
+            type: Deployment
+            spec:
+              service:
+                serviceInputs:
+                  serviceDefinition:
+                    type: Kubernetes
+                    spec:
+                      artifacts:
+                        primary:
+                          primaryArtifactRef: gfgjhjh
+                          sources:
+                            - identifier: gfgjhjh
+                              type: Gcr
+                              spec:
+                                tag: v0.5
+      variables:
+        - name: var2
+          type: String
+          value: overridenValue
+  inputYaml: |
+    pipeline:
+      identifier: secrethttp1
+      stages:
+        - stage:
+            identifier: qaStage
+            spec:
+              infrastructure:
+                infrastructureDefinition:
+                  spec:
+                    releaseName: releaseName1

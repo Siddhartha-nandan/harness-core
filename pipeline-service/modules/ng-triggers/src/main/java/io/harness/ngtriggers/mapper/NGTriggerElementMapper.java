@@ -174,6 +174,7 @@ public class NGTriggerElementMapper {
         .tags(TagMapper.convertToMap(entity.getTags()))
         .source(entity.getTriggerConfigWrapper().getSource())
         .stagesToExecute(entity.getStagesToExecute())
+        .overrideInputs(entity.getTriggerConfigWrapper().getOverrideInputs())
         .build();
   }
 

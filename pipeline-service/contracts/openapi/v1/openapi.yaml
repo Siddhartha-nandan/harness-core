@@ -1586,6 +1586,9 @@ components:
         inputs:
           type: string
           description: input yaml to be used in the pipeline
+        override_inputs:
+          type: string
+          description: input yaml to override values provided by input sets
         name:
           type: string
           pattern: '^[a-zA-Z_0-9-.][-0-9a-zA-Z_\s.]{0,127}$'
@@ -3079,6 +3082,9 @@ components:
         inputs:
           type: string
           description: input yaml to be used in the pipeline
+        override_inputs:
+          type: string
+          description: input yaml to override inputs provided by input sets
         pipeline_branch_name:
           type: string
         source:

@@ -24,4 +24,5 @@ public class TriggerConfigWrapper {
   NGTriggerSourceV2 source;
   String pipelineBranchName;
   List<String> inputSetRefs;
+  String overrideInputs;
 }
