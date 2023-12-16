@@ -55,6 +55,8 @@ public class DelegateHealthCheckService {
     Instant startTime = Instant.now();
     List<PerpetualTaskRecord> perpetualTasks =
         perpetualTaskRecordDao.listValidK8sWatchPerpetualTasksForAccount(accountId);
+    log.info("Perpetual Tasks size: {}", perpetualTasks.size());
+    log.info("Perpetual Tasks: {}", perpetualTasks);
     List<String> clusterIds = new ArrayList<>();
     Map<String, String> clusterIdToDelegateIdMap = new HashMap<>();
     for (PerpetualTaskRecord perpetualTask : perpetualTasks) {
@@ -68,21 +70,28 @@ public class DelegateHealthCheckService {
       clusterIds.add(clusterId);
       clusterIdToDelegateIdMap.put(clusterId, perpetualTask.getDelegateId());
     }
+    log.info("Cluster Ids: {}", clusterIds);
+    log.info("Cluster Id to Delegate Id map: {}", clusterIdToDelegateIdMap);
     Instant allowedTime = startTime.minus(Duration.ofMinutes(DELAY_IN_MINUTES_FOR_LAST_RECEIVED_MSG));
     for (List<String> clusterIdsBatch : Lists.partition(clusterIds, BATCH_SIZE)) {
       List<String> delegateIds =
           clusterIdsBatch.stream().map(clusterIdToDelegateIdMap::get).collect(Collectors.toList());
+      log.info("Delegate Ids: {}", delegateIds);
       List<Delegate> delegates = cloudToHarnessMappingService.obtainDelegateDetails(accountId, delegateIds);
+      log.info("Delegates: {}", delegates);
       Set<String> healthyDelegates = delegates.stream()
                                          .filter(delegate -> isDelegateHealthy(delegate, startTime))
                                          .map(Delegate::getUuid)
                                          .collect(Collectors.toSet());
+      log.info("healthyDelegates: {}", healthyDelegates);
       List<String> healthyClusters =
           clusterIdsBatch.stream()
               .filter(clusterId -> healthyDelegates.contains(clusterIdToDelegateIdMap.get(clusterId)))
               .collect(Collectors.toList());
+      log.info("healthyClusters: {}", healthyClusters);
       Map<String, Long> lastReceivedTimeForClusters =
           lastReceivedPublishedMessageDao.getLastReceivedTimeForClusters(accountId, healthyClusters);
+      log.info("lastReceivedTimeForClusters: {}", lastReceivedTimeForClusters);
       for (String clusterId : healthyClusters) {
         boolean healthy = true;
         if (!lastReceivedTimeForClusters.containsKey(clusterId)
@@ -91,6 +100,7 @@ public class DelegateHealthCheckService {
               clusterIdToDelegateIdMap.get(clusterId));
           healthy = false;
         }
+        log.info("Account {} Cluster {} is healthy {}", accountId, clusterId, healthy);
         try (ClusterHealthContext x = new ClusterHealthContext(accountId, clusterId)) {
           metricService.recordMetric(CLUSTER_HEALTH, healthy ? 1.0 : 0.0);
         }
