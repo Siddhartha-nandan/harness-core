@@ -271,7 +271,7 @@ public class UserGroupServiceImpl implements UserGroupService {
 
   private void validationOnUserGroupDTOCreateForSCIM(UserGroupDTO userGroupDTO) {
     // just check for non-empty separately on name
-    if (isEmpty(userGroupDTO.getName())) {
+    if (isBlank(userGroupDTO.getName())) {
       throw new InvalidRequestException("Create UserGroup- name: cannot be null or empty");
     }
     Set<ConstraintViolation<UserGroupDTO>> violations =
@@ -298,7 +298,7 @@ public class UserGroupServiceImpl implements UserGroupService {
   }
 
   private void validationOnUserGroupDTOUpdateForSCIM(UserGroupDTO userGroupDTO) {
-    if (isEmpty(userGroupDTO.getName())) {
+    if (isBlank(userGroupDTO.getName())) {
       throw new InvalidRequestException(
           String.format("Update UserGroup [%s]- name: cannot be null or empty", userGroupDTO.getIdentifier()));
     }

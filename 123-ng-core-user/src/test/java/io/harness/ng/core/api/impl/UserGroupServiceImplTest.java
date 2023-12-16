@@ -352,11 +352,6 @@ public class UserGroupServiceImplTest extends CategoryTest {
                                            .isSsoLinked(true)
                                            .users(Lists.newArrayList("abc", "def", "ok"))
                                            .build();
-    when(userGroupRepository.save(userGroup)).thenReturn(userGroup);
-    ConstraintViolation<Object> mockviolation = mock(ConstraintViolation.class);
-    Set<ConstraintViolation<Object>> violations = new HashSet<>();
-    violations.add(mockviolation);
-    when(validator.validate(any())).thenReturn(violations);
     UserGroup updatedUserGroup = userGroupService.updateWithCheckThatSCIMFieldsAreNotModified(updatedUserGroupDTO);
     assertThat(updatedUserGroup).isNotNull();
   }
@@ -402,7 +397,7 @@ public class UserGroupServiceImplTest extends CategoryTest {
   @Test
   @Owner(developers = BHAVYA)
   @Category(UnitTests.class)
-  public void testUpdateUserGroupWithNameNull_throwsJerseyViolation() {
+  public void testCreateUserGroupWithNameNull_throwsJerseyViolation() {
     Scope scope = Scope.of(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER);
     String userGroupIdentifier = randomAlphabetic(10);
     UserGroupDTO updatedUserGroupDTO = UserGroupDTO.builder()
@@ -410,17 +405,14 @@ public class UserGroupServiceImplTest extends CategoryTest {
                                            .orgIdentifier(scope.getOrgIdentifier())
                                            .projectIdentifier(scope.getProjectIdentifier())
                                            .identifier(userGroupIdentifier)
+                                           .name(null)
                                            .externallyManaged(true)
                                            .isSsoLinked(true)
                                            .users(Lists.newArrayList("abc", "def", "ok"))
                                            .build();
-    ConstraintViolation<Object> mockviolation = createDummyViolation("name", "cannot be null or empty");
-    Set<ConstraintViolation<Object>> violations = new HashSet<>();
-    violations.add(mockviolation);
-    when(validator.validateValue(any(), anyString(), any())).thenReturn(violations);
-    assertThatThrownBy(() -> userGroupService.update(updatedUserGroupDTO))
-        .isInstanceOf(JerseyViolationException.class)
-        .hasMessage("name: cannot be null or empty");
+    assertThatThrownBy(() -> userGroupService.createForSCIM(updatedUserGroupDTO))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage("Create UserGroup- name: cannot be null or empty");
   }
 
   @Test
@@ -1568,7 +1560,7 @@ public class UserGroupServiceImplTest extends CategoryTest {
   @Test
   @Owner(developers = PRATEEK)
   @Category(UnitTests.class)
-  public void testCreateUserGroupWithBlankIdentifier_throwsJerseyViolation() {
+  public void testCreateUserGroupWithBlankNameInSCIM_throwsInvalidRequestException() {
     Scope scope = Scope.of(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER);
     String userGroupIdentifier = "  ";
     UserGroupDTO updatedUserGroupDTO = UserGroupDTO.builder()
@@ -1576,6 +1568,29 @@ public class UserGroupServiceImplTest extends CategoryTest {
                                            .orgIdentifier(scope.getOrgIdentifier())
                                            .projectIdentifier(scope.getProjectIdentifier())
                                            .identifier(userGroupIdentifier)
+                                           .name(userGroupIdentifier)
+                                           .externallyManaged(true)
+                                           .isSsoLinked(false)
+                                           .users(Lists.newArrayList("abc@xyz.com", "def@xyz.com", "jkh@xyz.com"))
+                                           .build();
+    assertThatThrownBy(() -> userGroupService.createForSCIM(updatedUserGroupDTO))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage("Create UserGroup- name: cannot be null or empty");
+  }
+
+  @Test
+  @Owner(developers = PRATEEK)
+  @Category(UnitTests.class)
+  public void testCreateUserGroupWithBlankIdentifierInSCIM_throwsJerseyViolation() {
+    Scope scope = Scope.of(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER);
+    String userGroupIdentifier = "  ";
+    String userGroupName = " testGroupName ";
+    UserGroupDTO updatedUserGroupDTO = UserGroupDTO.builder()
+                                           .accountIdentifier(scope.getAccountIdentifier())
+                                           .orgIdentifier(scope.getOrgIdentifier())
+                                           .projectIdentifier(scope.getProjectIdentifier())
+                                           .identifier(userGroupIdentifier)
+                                           .name(userGroupName)
                                            .externallyManaged(true)
                                            .isSsoLinked(false)
                                            .users(Lists.newArrayList("abc@xyz.com", "def@xyz.com", "jkh@xyz.com"))
@@ -1584,9 +1599,32 @@ public class UserGroupServiceImplTest extends CategoryTest {
     Set<ConstraintViolation<Object>> violations = new HashSet<>();
     violations.add(mockviolation);
     when(validator.validateValue(any(), anyString(), any())).thenReturn(violations);
-    assertThatThrownBy(() -> userGroupService.update(updatedUserGroupDTO))
+    when(validator.validateValue(any(), anyString(), any())).thenReturn(violations);
+    assertThatThrownBy(() -> userGroupService.createForSCIM(updatedUserGroupDTO))
         .isInstanceOf(JerseyViolationException.class)
-        .hasMessage("name: cannot be empty");
+        .hasMessage("identifier: cannot be empty");
+  }
+
+  @Test
+  @Owner(developers = PRATEEK)
+  @Category(UnitTests.class)
+  public void testUpdateUserGroupWithBlankNameInSCIM_throwsInvalidRequestException() {
+    Scope scope = Scope.of(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER);
+    String userGroupIdentifier = "testGroupIdentifier";
+    String userGroupName = "    ";
+    UserGroupDTO updatedUserGroupDTO = UserGroupDTO.builder()
+                                           .accountIdentifier(scope.getAccountIdentifier())
+                                           .orgIdentifier(scope.getOrgIdentifier())
+                                           .projectIdentifier(scope.getProjectIdentifier())
+                                           .identifier(userGroupIdentifier)
+                                           .name(userGroupName)
+                                           .externallyManaged(true)
+                                           .isSsoLinked(false)
+                                           .users(Lists.newArrayList("abc@xyz.com", "def@xyz.com", "jkh@xyz.com"))
+                                           .build();
+    assertThatThrownBy(() -> userGroupService.updateForSCIM(updatedUserGroupDTO))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage(String.format("Update UserGroup [%s]- name: cannot be null or empty", userGroupIdentifier));
   }
 
   private static ConstraintViolation<Object> createDummyViolation(String propertyPath, String message) {
