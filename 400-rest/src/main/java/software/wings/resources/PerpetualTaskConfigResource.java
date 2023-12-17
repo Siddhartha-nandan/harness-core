@@ -1,18 +1,19 @@
+/*
+ * Copyright 2023 Harness Inc. All rights reserved.
+ * Use of this source code is governed by the PolyForm Free Trial 1.0.0 license
+ * that can be found in the licenses directory at the root of this repository, also available at
+ * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
+ */
+
 package software.wings.resources;
 
 import static io.harness.annotations.dev.HarnessTeam.PL;
-import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.delegate.beans.perpetualtask.PerpetualTaskConfig;
-import io.harness.delegate.beans.perpetualtask.PerpetualTaskScheduleConfig;
 import io.harness.exception.InvalidRequestException;
-import io.harness.exception.UnauthorizedException;
-import io.harness.exception.WingsException;
 import io.harness.perpetualtask.PerpetualTaskConfigService;
 import io.harness.rest.RestResponse;
-
-import software.wings.security.UserThreadLocal;
 
 import com.codahale.metrics.annotation.ExceptionMetered;
 import com.codahale.metrics.annotation.Timed;
@@ -58,9 +59,7 @@ public class PerpetualTaskConfigResource {
   @ExceptionMetered
   public RestResponse<String> resetByAccountIdAndPerpetualTaskType(
       @QueryParam("accountId") String accountId, @QueryParam("perpetualTaskType") String perpetualTaskType) {
-    PerpetualTaskConfig perpetualTaskConfig =
-        perpetualTaskConfigService.resumeAccountPerpetualTask(accountId, perpetualTaskType);
-    if (perpetualTaskConfig != null) {
+    if (perpetualTaskConfigService.resumeAccountPerpetualTask(accountId, perpetualTaskType)) {
       return new RestResponse<>("Enabled background job for the account");
     }
     throw new InvalidRequestException("Unable to enable background jobs");
