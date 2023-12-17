@@ -61,6 +61,18 @@ public class ApprovalInstrumentationHelper extends InstrumentationHelper {
         return null;
     }
   }
+  public CompletableFuture<Void> sendApprovalEventForScheduledApproval(ApprovalInstance approvalInstance) {
+    if (approvalInstance == null) {
+      return null;
+    }
+    HashMap<String, Object> eventPropertiesMap = new HashMap<>();
+    eventPropertiesMap.put(ACCOUNT, approvalInstance.getAccountId());
+    eventPropertiesMap.put(ORG, approvalInstance.getProjectIdentifier());
+    eventPropertiesMap.put(PROJECT, approvalInstance.getOrgIdentifier());
+    eventPropertiesMap.put(APPROVAL_TYPE, approvalInstance.getType());
+    eventPropertiesMap.put(PIPELINE_ID, approvalInstance.getPipelineIdentifier());
+    return publishHarnessApprovalInfo((HarnessApprovalInstance) approvalInstance, AUTO_APPROVAL, eventPropertiesMap);
+  }
 
   private CompletableFuture<Void> publishCustomApprovalInfo(
       CustomApprovalInstance approvalInstance, String eventName, HashMap<String, Object> eventPropertiesMap) {
