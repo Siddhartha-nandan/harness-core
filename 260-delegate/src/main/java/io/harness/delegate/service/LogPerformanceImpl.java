@@ -10,6 +10,8 @@ package io.harness.delegate.service;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.utils.MemoryPerformanceUtils.memoryUsage;
 
+import io.harness.data.structure.EmptyPredicate;
+
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Singleton;
 import com.sun.management.OperatingSystemMXBean;
@@ -26,8 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import io.harness.data.structure.EmptyPredicate;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -152,9 +152,11 @@ public class LogPerformanceImpl {
           }
           // Look for line, MiB Mem : 7818.5 total, 4232.0 free, 1572.2 used, 2014.3 buff/cache
           // OR KiB Mem :  8092456 total,  2345672 free,  3598140 used,  2143644 buff/cache
-          if (isNotEmpty(processInfo[0]) && (processInfo[0].equals("MiB") || processInfo[0].equals("KiB"))) {
+          if (isNotEmpty(processInfo[0]) && (processInfo[0].equals("MiB") || processInfo[0].equals("KiB"))
+              && isNotEmpty(processInfo[1]) && processInfo[1].equals("Mem")) {
             List<String> memoryLine = new ArrayList<>();
-            memoryLine.addAll(Arrays.stream(processInfo).filter(EmptyPredicate::isNotEmpty).collect(Collectors.toList()));
+            memoryLine.addAll(
+                Arrays.stream(processInfo).filter(EmptyPredicate::isNotEmpty).collect(Collectors.toList()));
             log.info("Memory line as list {}", memoryLine);
             double totalMemory = isNotEmpty(memoryLine.get(3)) ? Double.parseDouble(memoryLine.get(3)) : 0.0;
             double usedMemory = isNotEmpty(memoryLine.get(7)) ? Double.parseDouble(memoryLine.get(7)) : 0.0;
