@@ -125,80 +125,87 @@ public class AwsBillingDataVerificationService {
                                .withRegion(AWS_DEFAULT_REGION)
                                .withCredentials(awsAssumedCredentialsProvider)
                                .build();
-      GetCostAndUsageResult result = ce.getCostAndUsage(awsCERequest);
-      result.getResultsByTime().forEach(resultByTime -> {
-        resultByTime.getGroups().forEach(group -> {
-          String awsUsageAccountId = group.getKeys().get(0);
+      boolean isNextPageAvailable = true;
+      while (isNextPageAvailable) {
+        GetCostAndUsageResult result = ce.getCostAndUsage(awsCERequest);
+        result.getResultsByTime().forEach(resultByTime -> {
+          resultByTime.getGroups().forEach(group -> {
+            String awsUsageAccountId = group.getKeys().get(0);
 
-          // UnblendedCost
-          CCMBillingDataVerificationKey unblendedCostKey =
-              CCMBillingDataVerificationKey.builder()
-                  .harnessAccountId(accountId)
-                  .connectorId(connector.getConnector().getIdentifier())
-                  .cloudProvider("AWS")
-                  .cloudProviderAccountId(awsUsageAccountId)
-                  .usageStartDate(LocalDate.parse(resultByTime.getTimePeriod().getStart()))
-                  .usageEndDate(LocalDate.parse(resultByTime.getTimePeriod().getEnd()))
-                  .costType("AWSUnblendedCost")
-                  .build();
-          billingData.put(unblendedCostKey,
-              mergeCostDTOs(
-                  billingData.getOrDefault(unblendedCostKey, createNewCCMBillingDataVerificationCost(null, null, null)),
-                  createNewCCMBillingDataVerificationCost(
-                      null, null, Double.parseDouble(group.getMetrics().get("UnblendedCost").getAmount()))));
+            // UnblendedCost
+            CCMBillingDataVerificationKey unblendedCostKey =
+                CCMBillingDataVerificationKey.builder()
+                    .harnessAccountId(accountId)
+                    .connectorId(connector.getConnector().getIdentifier())
+                    .cloudProvider("AWS")
+                    .cloudProviderAccountId(awsUsageAccountId)
+                    .usageStartDate(LocalDate.parse(resultByTime.getTimePeriod().getStart()))
+                    .usageEndDate(LocalDate.parse(resultByTime.getTimePeriod().getEnd()))
+                    .costType("AWSUnblendedCost")
+                    .build();
+            billingData.put(unblendedCostKey,
+                mergeCostDTOs(billingData.getOrDefault(
+                                  unblendedCostKey, createNewCCMBillingDataVerificationCost(null, null, null)),
+                    createNewCCMBillingDataVerificationCost(
+                        null, null, Double.parseDouble(group.getMetrics().get("UnblendedCost").getAmount()))));
 
-          // BlendedCost
-          CCMBillingDataVerificationKey blendedCostKey =
-              CCMBillingDataVerificationKey.builder()
-                  .harnessAccountId(accountId)
-                  .connectorId(connector.getConnector().getIdentifier())
-                  .cloudProvider("AWS")
-                  .cloudProviderAccountId(awsUsageAccountId)
-                  .usageStartDate(LocalDate.parse(resultByTime.getTimePeriod().getStart()))
-                  .usageEndDate(LocalDate.parse(resultByTime.getTimePeriod().getEnd()))
-                  .costType("AWSBlendedCost")
-                  .build();
-          billingData.put(blendedCostKey,
-              mergeCostDTOs(
-                  billingData.getOrDefault(blendedCostKey, createNewCCMBillingDataVerificationCost(null, null, null)),
-                  createNewCCMBillingDataVerificationCost(
-                      null, null, Double.parseDouble(group.getMetrics().get("BlendedCost").getAmount()))));
+            // BlendedCost
+            CCMBillingDataVerificationKey blendedCostKey =
+                CCMBillingDataVerificationKey.builder()
+                    .harnessAccountId(accountId)
+                    .connectorId(connector.getConnector().getIdentifier())
+                    .cloudProvider("AWS")
+                    .cloudProviderAccountId(awsUsageAccountId)
+                    .usageStartDate(LocalDate.parse(resultByTime.getTimePeriod().getStart()))
+                    .usageEndDate(LocalDate.parse(resultByTime.getTimePeriod().getEnd()))
+                    .costType("AWSBlendedCost")
+                    .build();
+            billingData.put(blendedCostKey,
+                mergeCostDTOs(
+                    billingData.getOrDefault(blendedCostKey, createNewCCMBillingDataVerificationCost(null, null, null)),
+                    createNewCCMBillingDataVerificationCost(
+                        null, null, Double.parseDouble(group.getMetrics().get("BlendedCost").getAmount()))));
 
-          // NetAmortizedCost
-          CCMBillingDataVerificationKey netAmortizedCostKey =
-              CCMBillingDataVerificationKey.builder()
-                  .harnessAccountId(accountId)
-                  .connectorId(connector.getConnector().getIdentifier())
-                  .cloudProvider("AWS")
-                  .cloudProviderAccountId(awsUsageAccountId)
-                  .usageStartDate(LocalDate.parse(resultByTime.getTimePeriod().getStart()))
-                  .usageEndDate(LocalDate.parse(resultByTime.getTimePeriod().getEnd()))
-                  .costType("AWSNetAmortizedCost")
-                  .build();
-          billingData.put(netAmortizedCostKey,
-              mergeCostDTOs(billingData.getOrDefault(
-                                netAmortizedCostKey, createNewCCMBillingDataVerificationCost(null, null, null)),
-                  createNewCCMBillingDataVerificationCost(
-                      null, null, Double.parseDouble(group.getMetrics().get("NetAmortizedCost").getAmount()))));
+            // NetAmortizedCost
+            CCMBillingDataVerificationKey netAmortizedCostKey =
+                CCMBillingDataVerificationKey.builder()
+                    .harnessAccountId(accountId)
+                    .connectorId(connector.getConnector().getIdentifier())
+                    .cloudProvider("AWS")
+                    .cloudProviderAccountId(awsUsageAccountId)
+                    .usageStartDate(LocalDate.parse(resultByTime.getTimePeriod().getStart()))
+                    .usageEndDate(LocalDate.parse(resultByTime.getTimePeriod().getEnd()))
+                    .costType("AWSNetAmortizedCost")
+                    .build();
+            billingData.put(netAmortizedCostKey,
+                mergeCostDTOs(billingData.getOrDefault(
+                                  netAmortizedCostKey, createNewCCMBillingDataVerificationCost(null, null, null)),
+                    createNewCCMBillingDataVerificationCost(
+                        null, null, Double.parseDouble(group.getMetrics().get("NetAmortizedCost").getAmount()))));
 
-          // AmortizedCost
-          CCMBillingDataVerificationKey amortizedCostKey =
-              CCMBillingDataVerificationKey.builder()
-                  .harnessAccountId(accountId)
-                  .connectorId(connector.getConnector().getIdentifier())
-                  .cloudProvider("AWS")
-                  .cloudProviderAccountId(awsUsageAccountId)
-                  .usageStartDate(LocalDate.parse(resultByTime.getTimePeriod().getStart()))
-                  .usageEndDate(LocalDate.parse(resultByTime.getTimePeriod().getEnd()))
-                  .costType("AWSAmortizedCost")
-                  .build();
-          billingData.put(amortizedCostKey,
-              mergeCostDTOs(
-                  billingData.getOrDefault(amortizedCostKey, createNewCCMBillingDataVerificationCost(null, null, null)),
-                  createNewCCMBillingDataVerificationCost(
-                      null, null, Double.parseDouble(group.getMetrics().get("AmortizedCost").getAmount()))));
+            // AmortizedCost
+            CCMBillingDataVerificationKey amortizedCostKey =
+                CCMBillingDataVerificationKey.builder()
+                    .harnessAccountId(accountId)
+                    .connectorId(connector.getConnector().getIdentifier())
+                    .cloudProvider("AWS")
+                    .cloudProviderAccountId(awsUsageAccountId)
+                    .usageStartDate(LocalDate.parse(resultByTime.getTimePeriod().getStart()))
+                    .usageEndDate(LocalDate.parse(resultByTime.getTimePeriod().getEnd()))
+                    .costType("AWSAmortizedCost")
+                    .build();
+            billingData.put(amortizedCostKey,
+                mergeCostDTOs(billingData.getOrDefault(
+                                  amortizedCostKey, createNewCCMBillingDataVerificationCost(null, null, null)),
+                    createNewCCMBillingDataVerificationCost(
+                        null, null, Double.parseDouble(group.getMetrics().get("AmortizedCost").getAmount()))));
+          });
         });
-      });
+        if (result.getNextPageToken() == null) {
+          isNextPageAvailable = false;
+        }
+        awsCERequest.withNextPageToken(result.getNextPageToken());
+      }
       ce.shutdown();
     } catch (final Exception e) {
       log.error("Exception while fetching billing-data from AWS Cost Explorer (accountId: {}, connectorId: {})",
