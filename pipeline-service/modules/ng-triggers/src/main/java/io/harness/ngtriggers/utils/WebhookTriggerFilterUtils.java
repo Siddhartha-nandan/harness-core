@@ -7,6 +7,7 @@
 
 package io.harness.ngtriggers.utils;
 
+import static io.harness.beans.WebhookEvent.Type.DELETE;
 import static io.harness.beans.WebhookEvent.Type.PR;
 import static io.harness.beans.WebhookEvent.Type.PUSH;
 import static io.harness.constants.Constants.BITBUCKET_CLOUD_HEADER_KEY;
@@ -14,6 +15,7 @@ import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.exception.WingsException.USER;
 import static io.harness.exception.WingsException.USER_SRE;
 import static io.harness.ngtriggers.Constants.CHANGED_FILES;
+import static io.harness.ngtriggers.Constants.DELETE_EVENT_TYPE;
 import static io.harness.ngtriggers.Constants.ISSUE_COMMENT_EVENT_TYPE;
 import static io.harness.ngtriggers.Constants.MERGE_REQUEST_EVENT_TYPE;
 import static io.harness.ngtriggers.Constants.MR_COMMENT_EVENT_TYPE;
@@ -81,6 +83,10 @@ public class WebhookTriggerFilterUtils {
 
     if (eventTypeFromPayload.equals(PUSH)) {
       return gitEvent.equals(PUSH_EVENT_TYPE);
+    }
+
+    if (eventTypeFromPayload.equals(DELETE)) {
+      return gitEvent.equals(DELETE_EVENT_TYPE);
     }
 
     if (eventTypeFromPayload.equals(io.harness.beans.WebhookEvent.Type.ISSUE_COMMENT)) {

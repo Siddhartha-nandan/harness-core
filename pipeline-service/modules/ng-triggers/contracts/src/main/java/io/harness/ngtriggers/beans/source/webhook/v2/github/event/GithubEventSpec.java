@@ -8,6 +8,7 @@
 package io.harness.ngtriggers.beans.source.webhook.v2.github.event;
 
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
+import static io.harness.ngtriggers.Constants.DELETE_EVENT_TYPE;
 import static io.harness.ngtriggers.Constants.ISSUE_COMMENT_EVENT_TYPE;
 import static io.harness.ngtriggers.Constants.PULL_REQUEST_EVENT_TYPE;
 import static io.harness.ngtriggers.Constants.PUSH_EVENT_TYPE;
@@ -28,7 +29,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
   @JsonSubTypes.Type(value = GithubPRSpec.class, name = PULL_REQUEST_EVENT_TYPE)
   , @JsonSubTypes.Type(value = GithubPushSpec.class, name = PUSH_EVENT_TYPE),
       @JsonSubTypes.Type(value = GithubIssueCommentSpec.class, name = ISSUE_COMMENT_EVENT_TYPE),
-      @JsonSubTypes.Type(value = GithubReleaseSpec.class, name = RELEASE_EVENT_TYPE)
+      @JsonSubTypes.Type(value = GithubReleaseSpec.class, name = RELEASE_EVENT_TYPE),
+      @JsonSubTypes.Type(value = GithubDeleteSpec.class, name = DELETE_EVENT_TYPE)
 })
 @OwnedBy(PIPELINE)
 public interface GithubEventSpec extends PayloadAware, GitAware {}

@@ -198,6 +198,7 @@ public class WebhookConfigHelper {
             .collect(toList()));
     githubMap.put(GithubTriggerEvent.RELEASE.getValue(),
         getGithubReleaseAction().stream().map(githubReleaseAction -> githubReleaseAction.getValue()).collect(toList()));
+    githubMap.put(GithubTriggerEvent.DELETE.getValue(), emptyList());
 
     Map harnessMap = new HashMap<GitEvent, List<GitAction>>();
     resposeMap.put(HARNESS.getValue(), harnessMap);

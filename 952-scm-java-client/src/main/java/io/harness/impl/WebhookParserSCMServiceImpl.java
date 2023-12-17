@@ -25,6 +25,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.CommitDetails;
+import io.harness.beans.DeleteWebhookEvent;
 import io.harness.beans.HeaderConfig;
 import io.harness.beans.IssueCommentWebhookEvent;
 import io.harness.beans.PRWebhookEvent;
@@ -36,19 +37,7 @@ import io.harness.beans.WebhookGitUser;
 import io.harness.beans.WebhookPayload;
 import io.harness.beans.WebhookPayload.WebhookPayloadBuilder;
 import io.harness.exception.InvalidRequestException;
-import io.harness.product.ci.scm.proto.Commit;
-import io.harness.product.ci.scm.proto.GitProvider;
-import io.harness.product.ci.scm.proto.Header;
-import io.harness.product.ci.scm.proto.IssueCommentHook;
-import io.harness.product.ci.scm.proto.ParseWebhookRequest;
-import io.harness.product.ci.scm.proto.ParseWebhookResponse;
-import io.harness.product.ci.scm.proto.PullRequest;
-import io.harness.product.ci.scm.proto.PullRequestHook;
-import io.harness.product.ci.scm.proto.PushHook;
-import io.harness.product.ci.scm.proto.ReleaseHook;
-import io.harness.product.ci.scm.proto.SCMGrpc;
-import io.harness.product.ci.scm.proto.Signature;
-import io.harness.product.ci.scm.proto.User;
+import io.harness.product.ci.scm.proto.*;
 import io.harness.service.WebhookParserSCMService;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -105,6 +94,15 @@ public class WebhookParserSCMServiceImpl implements WebhookParserSCMService {
     } else if (parseWebhookResponse.hasRelease()) {
       ReleaseHook releaseHook = parseWebhookResponse.getRelease();
       builder = convertRelease(releaseHook);
+    } else if (parseWebhookResponse.hasDelete()) {
+      DeleteHook deleteHook = parseWebhookResponse.getDelete();
+      builder = convertDeleteHook(deleteHook);
+    } else if (parseWebhookResponse.hasTag() && parseWebhookResponse.getTag().getAction().equals(Action.DELETE)) {
+      TagHook tagHook = parseWebhookResponse.getTag();
+      builder = convertTagHookForDeleteAction(tagHook);
+    } else if (parseWebhookResponse.hasBranch() && parseWebhookResponse.getBranch().getAction().equals(Action.DELETE)) {
+      BranchHook branchHook = parseWebhookResponse.getBranch();
+      builder = convertBranchHookForDeleteAction(branchHook);
     } else {
       log.warn("Unsupported webhook event");
       throw new InvalidRequestException("Unsupported webhook event", USER);
@@ -131,7 +129,42 @@ public class WebhookParserSCMServiceImpl implements WebhookParserSCMService {
         .repository(webhookEvent.getRepository())
         .webhookEvent(webhookEvent);
   }
+  WebhookPayloadBuilder convertDeleteHook(DeleteHook deleteHook) {
+    WebhookGitUser webhookGitUser = convertUser(deleteHook.getSender());
+    Repository repository = convertRepository(deleteHook.getRepo());
 
+    DeleteWebhookEvent webhookEvent =
+        DeleteWebhookEvent.builder()
+            .repository(repository)
+            .baseAttributes(WebhookBaseAttributes.builder().action(deleteHook.getAction().name().toLowerCase()).build())
+            .build();
+
+    return WebhookPayload.builder().webhookGitUser(webhookGitUser).repository(repository).webhookEvent(webhookEvent);
+  }
+  WebhookPayloadBuilder convertBranchHookForDeleteAction(BranchHook branchHook) {
+    WebhookGitUser webhookGitUser = convertUser(branchHook.getSender());
+    Repository repository = convertRepository(branchHook.getRepo());
+
+    DeleteWebhookEvent webhookEvent =
+        DeleteWebhookEvent.builder()
+            .repository(repository)
+            .baseAttributes(WebhookBaseAttributes.builder().action(branchHook.getAction().name().toLowerCase()).build())
+            .build();
+
+    return WebhookPayload.builder().webhookGitUser(webhookGitUser).repository(repository).webhookEvent(webhookEvent);
+  }
+  WebhookPayloadBuilder convertTagHookForDeleteAction(TagHook tagHook) {
+    WebhookGitUser webhookGitUser = convertUser(tagHook.getSender());
+    Repository repository = convertRepository(tagHook.getRepo());
+
+    DeleteWebhookEvent webhookEvent =
+        DeleteWebhookEvent.builder()
+            .repository(repository)
+            .baseAttributes(WebhookBaseAttributes.builder().action(tagHook.getAction().name().toLowerCase()).build())
+            .build();
+
+    return WebhookPayload.builder().webhookGitUser(webhookGitUser).repository(repository).webhookEvent(webhookEvent);
+  }
   WebhookPayloadBuilder convertComment(IssueCommentHook commentHook) {
     Repository repository = convertRepository(commentHook.getRepo());
     WebhookGitUser webhookGitUser = convertUser(commentHook.getSender());

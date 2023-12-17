@@ -57,6 +57,7 @@ func ParseWebhook(ctx context.Context, in *pb.ParseWebhookRequest,
 		)
 		return nil, err
 	}
+		log.Infow("line 60")
 
 	switch event := webhook.(type) {
 	case *scm.PullRequestHook:

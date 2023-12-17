@@ -58,6 +58,7 @@ public interface Constants {
   String PULL_REQUEST_EVENT_TYPE = "PullRequest";
   String MERGE_REQUEST_EVENT_TYPE = "MergeRequest";
   String PUSH_EVENT_TYPE = "Push";
+  String DELETE_EVENT_TYPE = "Delete";
   String ISSUE_COMMENT_EVENT_TYPE = "IssueComment";
   String RELEASE_EVENT_TYPE = "Release";
   String MR_COMMENT_EVENT_TYPE = "MRComment";
