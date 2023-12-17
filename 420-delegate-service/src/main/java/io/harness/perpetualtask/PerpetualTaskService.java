@@ -17,9 +17,6 @@ public interface PerpetualTaskService {
 
   boolean resetTask(String accountId, String taskId, PerpetualTaskExecutionBundle taskExecutionBundle);
 
-  long updateTasksSchedule(
-      String accountId, String perpetualTaskType, long intervalInMillis, PerpetualTaskState perpetualTaskState);
-
   boolean deleteTask(String accountId, String taskId);
 
   boolean pauseTask(String accountId, String taskId);
@@ -46,14 +43,14 @@ public interface PerpetualTaskService {
 
   void appointDelegate(String accountId, String taskId, String delegateId, long lastContextUpdated);
 
-  void updateTaskUnassignedReason(String taskId, PerpetualTaskUnassignedReason reason, int assignTryCount);
-
   void markStateAndNonAssignedReason_OnAssignTryCount(PerpetualTaskRecord perpetualTaskRecord,
       PerpetualTaskUnassignedReason reason, PerpetualTaskState perpetualTaskState, String exception);
 
-  void setTaskUnassigned(String taskId);
 
   String createPerpetualTaskInternal(String perpetualTaskType, String accountId,
       PerpetualTaskClientContext clientContext, PerpetualTaskSchedule schedule, boolean allowDuplicate,
       String taskDescription);
+
+  void updateTasksState(
+          String accountId, String perpetualTaskType, PerpetualTaskState perpetualTaskState);
 }

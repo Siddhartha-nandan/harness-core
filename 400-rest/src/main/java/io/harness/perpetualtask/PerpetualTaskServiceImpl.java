@@ -72,7 +72,6 @@ public class PerpetualTaskServiceImpl implements PerpetualTaskService, DelegateO
   private PerpetualTaskRecordDao perpetualTaskRecordDao;
   private PerpetualTaskServiceClientRegistry clientRegistry;
   private final BroadcasterFactory broadcasterFactory;
-  private final PerpetualTaskScheduleService perpetualTaskScheduleService;
   private static final int TASK_FAILED_EXECUTION_LIMIT = 5;
   public static final int MAX_FIBONACCI_INDEX_FOR_TASK_ASSIGNMENT = 5;
 
@@ -82,12 +81,10 @@ public class PerpetualTaskServiceImpl implements PerpetualTaskService, DelegateO
 
   @Inject
   public PerpetualTaskServiceImpl(PerpetualTaskRecordDao perpetualTaskRecordDao,
-      PerpetualTaskServiceClientRegistry clientRegistry, BroadcasterFactory broadcasterFactory,
-      PerpetualTaskScheduleService perpetualTaskScheduleService) {
+      PerpetualTaskServiceClientRegistry clientRegistry, BroadcasterFactory broadcasterFactory) {
     this.perpetualTaskRecordDao = perpetualTaskRecordDao;
     this.clientRegistry = clientRegistry;
     this.broadcasterFactory = broadcasterFactory;
-    this.perpetualTaskScheduleService = perpetualTaskScheduleService;
   }
 
   @Getter private Subject<PerpetualTaskCrudObserver> perpetualTaskCrudSubject = new Subject<>();
@@ -186,16 +183,6 @@ public class PerpetualTaskServiceImpl implements PerpetualTaskService, DelegateO
         delegateMetricsService.recordPerpetualTaskMetrics(accountId, perpetualTaskType, PERPETUAL_TASK_RESET);
       }
       return perpetualTaskRecordDao.resetDelegateIdForTask(accountId, taskId, taskExecutionBundle);
-    }
-  }
-
-  @Override
-  public long updateTasksSchedule(
-      String accountId, String perpetualTaskType, long intervalInMillis, PerpetualTaskState perpetualTaskState) {
-    try (AutoLogContext ignore0 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
-      log.info("Updating task schedule for perpetual task type: {}", perpetualTaskType);
-      return perpetualTaskRecordDao.updateTasksSchedule(
-          accountId, perpetualTaskType, intervalInMillis, perpetualTaskState);
     }
   }
 
@@ -361,18 +348,6 @@ public class PerpetualTaskServiceImpl implements PerpetualTaskService, DelegateO
   }
 
   @Override
-  public void updateTaskUnassignedReason(String taskId, PerpetualTaskUnassignedReason reason, int assignTryCount) {
-    perpetualTaskRecordDao.updateTaskUnassignedReason(taskId, reason, assignTryCount);
-
-    PerpetualTaskRecord perpetualTaskRecord = perpetualTaskRecordDao.getTask(taskId);
-    if (perpetualTaskRecord != null) {
-      String accountId = perpetualTaskRecord.getAccountId();
-      String perpetualTaskType = perpetualTaskRecord.getPerpetualTaskType();
-      delegateMetricsService.recordPerpetualTaskMetrics(accountId, perpetualTaskType, PERPETUAL_TASK_UNASSIGNED);
-    }
-  }
-
-  @Override
   public void markStateAndNonAssignedReason_OnAssignTryCount(PerpetualTaskRecord perpetualTaskRecord,
       PerpetualTaskUnassignedReason reason, PerpetualTaskState perpetualTaskState, String exception) {
     if (perpetualTaskRecord.getAssignTryCount() < MAX_FIBONACCI_INDEX_FOR_TASK_ASSIGNMENT) {
@@ -391,8 +366,11 @@ public class PerpetualTaskServiceImpl implements PerpetualTaskService, DelegateO
   }
 
   @Override
-  public void setTaskUnassigned(String taskId) {
-    perpetualTaskRecordDao.setTaskUnassigned(taskId);
+  public void updateTasksState(String accountId, String perpetualTaskType, PerpetualTaskState perpetualTaskState) {
+    try (AutoLogContext ignore0 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
+      log.info("Updating task state for perpetual task type: {}", perpetualTaskType);
+      perpetualTaskRecordDao.updatePerpetualTaskState(accountId, perpetualTaskType, perpetualTaskState);
+    }
   }
 
   @Override
@@ -421,15 +399,6 @@ public class PerpetualTaskServiceImpl implements PerpetualTaskService, DelegateO
   @VisibleForTesting
   long getTaskTimeInterval(PerpetualTaskSchedule schedule, String accountId, String perpetualTaskType) {
     long intervalSeconds = schedule.getInterval().getSeconds();
-
-    PerpetualTaskScheduleConfig perpetualTaskScheduleConfig =
-        perpetualTaskScheduleService.getByAccountIdAndPerpetualTaskType(accountId, perpetualTaskType);
-    if (perpetualTaskScheduleConfig != null) {
-      intervalSeconds = perpetualTaskScheduleConfig.getTimeIntervalInMillis() / 1000;
-      log.info("Creating new perpetual task with custom time interval : {} for task type : {}",
-          perpetualTaskScheduleConfig.getTimeIntervalInMillis(), perpetualTaskScheduleConfig.getPerpetualTaskType());
-    }
-
     return intervalSeconds;
   }
 }

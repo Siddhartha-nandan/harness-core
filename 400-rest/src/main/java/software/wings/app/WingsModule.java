@@ -224,8 +224,8 @@ import io.harness.organization.OrganizationClientModule;
 import io.harness.outbox.TransactionOutboxModule;
 import io.harness.outbox.api.OutboxEventHandler;
 import io.harness.pcf.CfDeploymentManager;
-import io.harness.perpetualtask.PerpetualTaskScheduleService;
-import io.harness.perpetualtask.PerpetualTaskScheduleServiceImpl;
+import io.harness.perpetualtask.PerpetualTaskConfigService;
+import io.harness.perpetualtask.PerpetualTaskConfigServiceImpl;
 import io.harness.perpetualtask.PerpetualTaskServiceModule;
 import io.harness.persistence.HPersistence;
 import io.harness.polling.client.PollResourceClientModule;
@@ -1551,7 +1551,7 @@ public class WingsModule extends AbstractModule implements ServersModule {
     bind(CustomDeploymentTypeService.class).to(CustomDeploymentTypeServiceImpl.class);
     bind(NGGitService.class).to(NGGitServiceImpl.class);
     bind(GitClientV2.class).to(GitClientV2Impl.class);
-    bind(PerpetualTaskScheduleService.class).to(PerpetualTaskScheduleServiceImpl.class);
+    bind(PerpetualTaskConfigService.class).to(PerpetualTaskConfigServiceImpl.class);
     bind(ClickHouseService.class).to(ClickHouseServiceImpl.class);
 
     bind(AnomalyService.class).to(AnomalyServiceImpl.class);

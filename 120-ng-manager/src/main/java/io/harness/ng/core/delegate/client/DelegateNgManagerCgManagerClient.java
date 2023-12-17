@@ -40,6 +40,7 @@ public interface DelegateNgManagerCgManagerClient {
   String DELEGATE_GROUP_TAGS_API = "delegate-group-tags-internal";
   String DELEGATE_SETUP_NG_API = "delegate-setup/internal";
   String DELEGATE_DOWNLOAD_API = "delegate-download";
+  String DELEGATE_BACKGROUND_JOB_API = "delegate-background-job";
 
   String DELEGATE_VERSION_OVERRIDE_API = "version-override/internal";
 
@@ -182,4 +183,19 @@ public interface DelegateNgManagerCgManagerClient {
   @GET("version/supportedDelegate")
   Call<RestResponse<SupportedDelegateVersion>> getPublishedDelegateVersion(
       @Query(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier);
+
+
+  @POST(DELEGATE_BACKGROUND_JOB_API)
+  Call<RestResponse<String>> disableBackgroundJobs(
+          @Query(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
+          @Query(NGCommonEntityConstants.PERPETUALTASK_TYPE_KEY) String perpetualTaskType);
+
+
+  @DELETE(DELEGATE_BACKGROUND_JOB_API)
+  Call<RestResponse<String>> enableBackgroundJobs(
+          @Query(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
+          @Query(NGCommonEntityConstants.PERPETUALTASK_TYPE_KEY) String perpetualTaskType);
+
+
+
 }

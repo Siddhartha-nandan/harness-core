@@ -168,8 +168,8 @@ public class PerpetualTaskRecordDao {
     return update.getUpdatedCount() > 0;
   }
 
-  public long updateTasksSchedule(
-      String accountId, String perpetualTaskType, long intervalInMillis, PerpetualTaskState perpetualTaskState) {
+  public long updatePerpetualTaskState(
+      String accountId, String perpetualTaskType, PerpetualTaskState perpetualTaskState) {
     Query<PerpetualTaskRecord> query = persistence.createQuery(PerpetualTaskRecord.class)
                                            .filter(PerpetualTaskRecordKeys.accountId, accountId)
                                            .filter(PerpetualTaskRecordKeys.perpetualTaskType, perpetualTaskType);
@@ -178,7 +178,6 @@ public class PerpetualTaskRecordDao {
         persistence.createUpdateOperations(PerpetualTaskRecord.class)
             .set(PerpetualTaskRecordKeys.delegateId, "")
             .set(PerpetualTaskRecordKeys.state, perpetualTaskState)
-            .set(PerpetualTaskRecordKeys.intervalSeconds, intervalInMillis / 1000)
             .unset(PerpetualTaskRecordKeys.unassignedReason);
 
     UpdateResults updateResults = persistence.update(query, updateOperations);

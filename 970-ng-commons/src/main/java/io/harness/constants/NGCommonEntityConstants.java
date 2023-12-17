@@ -190,6 +190,8 @@ public class NGCommonEntityConstants {
   public static final String ARTIFACT_VERSION_PARAM_MESSAGE = "Version of the Artifact";
   public static final String STATUS_PARAM_MESSAGE = "Deployment status";
 
+  public static final String PERPETUAL_TASK_TYPE_PARAM_MESSAGE = "Perpetual Task type.";
+
   // Infrastructures
   public static final String DEPLOY_TO_ALL = "deployToAll";
   public static final String INFRA_IDENTIFIERS = "infraIdentifiers";
@@ -230,6 +232,8 @@ public class NGCommonEntityConstants {
   public static final String APPLY_GITX_REPO_ALLOW_LIST_FILTER = "applyGitXRepoAllowListFilter";
   public static final String ACTIVITY_TYPES = "activityTypes";
   public static final String SCOPE_FILTER = "scopeFilter";
+
+  public static final String PERPETUALTASK_TYPE_KEY = "perpetualTaskType";
 
   public static final String NOTIFICATION_ENTITY = "notificationEntity";
   public static final String NOTIFICATION_EVENT = "notificationEvent";
