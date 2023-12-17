@@ -20,6 +20,13 @@ go_library(
     ],
 )
 
+go_test(
+    name = "middleware_test",
+    srcs = ["wrapper_test.go"],
+    embed = [":middleware"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)
+
 load("//:tools/bazel/macros.bzl", "run_analysis")
 
 run_analysis(
