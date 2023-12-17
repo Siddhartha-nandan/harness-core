@@ -154,17 +154,23 @@ public class LogPerformanceImpl {
           // OR KiB Mem :  8092456 total,  2345672 free,  3598140 used,  2143644 buff/cache
           if (isNotEmpty(processInfo[0]) && (processInfo[0].equals("MiB") || processInfo[0].equals("KiB"))
               && isNotEmpty(processInfo[1]) && processInfo[1].equals("Mem")) {
-            List<String> memoryLine = new ArrayList<>();
-            memoryLine.addAll(
-                Arrays.stream(processInfo).filter(EmptyPredicate::isNotEmpty).collect(Collectors.toList()));
-            log.info("Memory line as list {}", memoryLine);
-            double totalMemory = isNotEmpty(memoryLine.get(3)) ? Double.parseDouble(memoryLine.get(3)) : 0.0;
-            double usedMemory = isNotEmpty(memoryLine.get(7)) ? Double.parseDouble(memoryLine.get(7)) : 0.0;
-            double memoryUsed = (usedMemory / totalMemory) * 100;
+            double memoryUsed = extractMemoryUsage(line);
             String key = processInfo[0] + "Mem";
             if (!resourceUsuageMap.containsKey(key)) {
               resourceUsuageMap.put(key, memoryUsed);
             }
+
+            /*    List<String> memoryLine = new ArrayList<>();
+                memoryLine.addAll(
+                    Arrays.stream(processInfo).filter(EmptyPredicate::isNotEmpty).collect(Collectors.toList()));
+                log.info("Memory line as list {}", memoryLine);
+                double totalMemory = isNotEmpty(memoryLine.get(3)) ? Double.parseDouble(memoryLine.get(3)) : 0.0;
+                double usedMemory = isNotEmpty(memoryLine.get(7)) ? Double.parseDouble(memoryLine.get(7)) : 0.0;
+                double memoryUsed = (usedMemory / totalMemory) * 100;
+                String key = processInfo[0] + "Mem";
+                if (!resourceUsuageMap.containsKey(key)) {
+                  resourceUsuageMap.put(key, memoryUsed);
+                }*/
           }
 
           totalLinesToRead++;
@@ -183,5 +189,34 @@ public class LogPerformanceImpl {
       log.error("Unhandled exception: {}", ex.toString());
     }
     return resourceUsuageMap;
+  }
+
+  private static double extractMemoryUsage(String line) {
+    double totalMemory = 0.0;
+    double usedMemory = 0.0;
+    // Extract Memory usage information from the line
+    // Example: MiB Mem : 7818.5 total, 4232.0 free, 1572.2 used, 2014.3 buff/cache
+    String[] values = line.trim().split(",");
+    List<String> memoryLine = new ArrayList<>();
+    memoryLine.addAll(Arrays.stream(values).filter(EmptyPredicate::isNotEmpty).collect(Collectors.toList()));
+    log.info("Memory line as list {}", memoryLine);
+    for (String v : values) {
+      String[] parts = v.split(" ");
+      int labelIndex = parts.length - 1;
+      if (labelIndex >= 1) {
+        continue;
+      }
+      log.info("Last index value {}", parts[labelIndex]);
+      log.info("Second Last index value {}", parts[labelIndex - 1]);
+      if (parts[labelIndex].equals("total")) {
+        totalMemory = Double.parseDouble(parts[labelIndex - 1]);
+      }
+      if (parts[labelIndex].equals("used")) {
+        usedMemory = Double.parseDouble(parts[labelIndex - 1]);
+      }
+    }
+    double memoryUsed = (usedMemory / totalMemory) * 100;
+
+    return memoryUsed;
   }
 }
