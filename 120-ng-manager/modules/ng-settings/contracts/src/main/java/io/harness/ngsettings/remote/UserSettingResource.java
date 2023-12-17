@@ -82,7 +82,7 @@ public interface UserSettingResource {
            NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
       @Parameter(description = USER_ID, required = true) @NotNull @QueryParam(
           NGCommonEntityConstants.USER_ID) String userIdentifier,
-      @Parameter(description = SettingConstants.CATEGORY) @NotNull @QueryParam(
+      @Parameter(description = SettingConstants.CATEGORY) @QueryParam(
           SettingConstants.CATEGORY_KEY) SettingCategory category,
       @Parameter(description = SettingConstants.GROUP_ID) @QueryParam(
           SettingConstants.GROUP_KEY) String groupIdentifier);

@@ -37,4 +37,5 @@ public final class SettingConstants {
   public static final  String GLOBAL_ACCOUNT = "__GLOBAL_ACCOUNT__";
   public static final  String   TYPE_ALIAS_FOR_ACCOUNT_SETTING="NGSettingConfiguration";
   public static final  String   _CLASS ="_class";
+  public static final  String   TYPE_ALIAS_FOR_USER_SETTING ="UserSetting";
 }

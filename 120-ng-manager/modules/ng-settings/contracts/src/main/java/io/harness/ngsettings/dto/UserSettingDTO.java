@@ -24,7 +24,6 @@ public class UserSettingDTO implements YamlDTO {
     @Schema(description = IDENTIFIER) @NotNull @NotBlank
     @EntityIdentifier
     String identifier;
-    @Schema(description = NAME) @NotNull @NotBlank @EntityIdentifier String name;
     @NotNull @NotBlank @Schema(description = CATEGORY)
     SettingCategory category;
     @NotNull @NotBlank @Schema(description = VALUE_TYPE)

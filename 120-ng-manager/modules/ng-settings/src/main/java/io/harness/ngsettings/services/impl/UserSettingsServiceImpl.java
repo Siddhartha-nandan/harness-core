@@ -4,19 +4,22 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.ngsettings.SettingConstants.GLOBAL_ACCOUNT;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.ngsettings.SettingCategory;
 import io.harness.ngsettings.dto.SettingValueResponseDTO;
+import io.harness.ngsettings.dto.UserSettingResponseDTO;
 import io.harness.ngsettings.entities.Setting;
 import io.harness.ngsettings.entities.UserSetting;
 import io.harness.ngsettings.entities.UserSettingConfiguration;
+import io.harness.ngsettings.mapper.SettingsMapper;
+import io.harness.ngsettings.mapper.UserSettingMapper;
 import io.harness.ngsettings.services.UserSettingsService;
 import io.harness.repositories.ngsettings.spring.SettingRepository;
 import io.harness.repositories.ngsettings.spring.UserSettingConfigurationRepository;
 import io.harness.repositories.ngsettings.spring.UserSettingRepository;
 
 import com.google.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,37 +35,38 @@ public class UserSettingsServiceImpl implements UserSettingsService {
 
   private final UserSettingRepository userSettingRepository;
 
+  private final UserSettingMapper userSettingMapper;
 
   @Override
   public SettingValueResponseDTO getUserSettingValueForIdentifier(
       String identifier, String accountIdentifier, String userIdentifier) {
     UserSetting userSettingForAccount =
-            userSettingRepository.getUserSettingForAccount(accountIdentifier, userIdentifier, identifier);
+        userSettingRepository.getUserSettingByIdentifier(accountIdentifier, userIdentifier, identifier);
     if (userSettingForAccount != null) {
       return SettingValueResponseDTO.builder()
           .valueType(userSettingForAccount.getValueType())
           .value(userSettingForAccount.getValue())
           .build();
     }
-      UserSetting globalUserSetting =
-              userSettingRepository.getUserSettingForAccount(GLOBAL_ACCOUNT, userIdentifier, identifier);
-      if (globalUserSetting != null) {
-          return SettingValueResponseDTO.builder()
-                  .valueType(globalUserSetting.getValueType())
-                  .value(globalUserSetting.getValue())
-                  .build();
-      }
+    UserSetting globalUserSetting =
+        userSettingRepository.getUserSettingByIdentifier(GLOBAL_ACCOUNT, userIdentifier, identifier);
+    if (globalUserSetting != null) {
+      return SettingValueResponseDTO.builder()
+          .valueType(globalUserSetting.getValueType())
+          .value(globalUserSetting.getValue())
+          .build();
+    }
 
-      Optional<UserSettingConfiguration> defaultUserSetting =  userSettingConfigurationRepository.findByIdentifier(identifier);
-            if(defaultUserSetting.isPresent())
-            {
-                return SettingValueResponseDTO.builder()
-                        .valueType(defaultUserSetting.get().getValueType())
-                        .value(defaultUserSetting.get().getDefaultValue())
-                        .build();
-            }
-        log.error("Invalid user setting identifier {}", identifier);
-            return null;
+    Optional<UserSettingConfiguration> defaultUserSetting =
+        userSettingConfigurationRepository.findByIdentifier(identifier);
+    if (defaultUserSetting.isPresent()) {
+      return SettingValueResponseDTO.builder()
+          .valueType(defaultUserSetting.get().getValueType())
+          .value(defaultUserSetting.get().getDefaultValue())
+          .build();
+    }
+    log.error("Invalid user setting identifier {}", identifier);
+    return null;
   }
 
   @Override
@@ -93,5 +97,63 @@ public class UserSettingsServiceImpl implements UserSettingsService {
     if (existingUserSettingConfig.isPresent()) {
       log.info("Deleted the user setting configuration from the database- {}", existingUserSettingConfig.get());
     }
+  }
+
+  @Override
+  public List<UserSettingResponseDTO> list(String accountIdentifier, String userIdentifier, SettingCategory category, String groupIdentifier) {
+    List<UserSettingResponseDTO> userSettingResponseDTOS = new ArrayList<>();
+    List<UserSetting> userSettingForAccount = listUserSettingForAccount(accountIdentifier,  userIdentifier, category, groupIdentifier);
+    List<UserSettingConfiguration> defaultUserSettings = listDefaultSettings();
+    defaultUserSettings.stream()
+            .filter(defaultUserSetting -> userSettingForAccount.stream()
+                    .anyMatch(accountSetting -> accountSetting.getIdentifier().equals(defaultUserSetting.getIdentifier())))
+            .map(defaultUserSetting -> {
+              UserSetting accountSetting = userSettingForAccount.stream()
+                      .filter(account -> account.getIdentifier().equals(defaultUserSetting.getIdentifier()))
+                      .findFirst()
+                      .orElse(null);
+              if (accountSetting != null) {
+                return userSettingMapper.writeUserSettingResponseDTO(accountSetting, defaultUserSetting);
+              }
+              return null;
+            })
+            .filter(Objects::nonNull)
+            .forEach(userSettingResponseDTOS::add);
+    return userSettingResponseDTOS;
+  }
+
+  private List<UserSetting> listUserSettingForAccount(
+      String accountIdentifier, String userIdentifier, SettingCategory category, String groupIdentifier) {
+    List<UserSettingConfiguration> defaultUserSettings = listDefaultSettings();
+
+    List<UserSetting> userSettingForAccount =
+        userSettingRepository.listUserSettingForAccount(accountIdentifier, userIdentifier, category, groupIdentifier);
+    if (!checkIfAllUserSettingPresent(userSettingForAccount, defaultUserSettings)) {
+      List<UserSetting> userSettingForGlobalAccount =
+          userSettingRepository.listUserSettingForAccount(GLOBAL_ACCOUNT, userIdentifier, category, groupIdentifier);
+      userSettingForGlobalAccount.stream()
+          .filter(globalSetting
+              -> !userSettingForAccount.stream().anyMatch(
+                  accountSetting -> accountSetting.getIdentifier().equals(globalSetting.getIdentifier())))
+          .forEach(userSettingForAccount::add);
+    }
+    if (!checkIfAllUserSettingPresent(userSettingForAccount, defaultUserSettings)) {
+      Set<String> userSettingIdentifiers =
+          userSettingForAccount.stream().map(UserSetting::getIdentifier).collect(Collectors.toSet());
+      defaultUserSettings.stream()
+          .filter(defaultUserSetting -> !userSettingIdentifiers.contains(defaultUserSetting.getIdentifier()))
+          .map(defaultUserSetting -> userSettingMapper.toUserSetting(accountIdentifier, defaultUserSetting))
+          .forEach(userSettingForAccount::add);
+    }
+
+    return userSettingForAccount;
+  }
+
+  private boolean checkIfAllUserSettingPresent(
+      List<UserSetting> userSettingForAccount, List<UserSettingConfiguration> defaultUserSettings) {
+    if (userSettingForAccount.size() == defaultUserSettings.size()) {
+      return true;
+    }
+    return false;
   }
 }
