@@ -148,22 +148,21 @@ public class LogPerformanceImpl {
               resourceUsuageMap.put("CPU", Double.parseDouble(cpuLine.get(1)));
               continue;
             }
-
-            // Look for line, MiB Mem : 7818.5 total, 4232.0 free, 1572.2 used, 2014.3 buff/cache
-            // OR KiB Mem :  8092456 total,  2345672 free,  3598140 used,  2143644 buff/cache
-            if (isNotEmpty(processInfo[0]) && (processInfo[0].equals("MiB") || processInfo[0].equals("KiB"))) {
-              List<String> memoryLine = new ArrayList<>();
-              memoryLine.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
-              log.info("Memory line as list {}", memoryLine);
-              double totalMemory = isNotEmpty(memoryLine.get(3)) ? Double.parseDouble(memoryLine.get(3)) : 0.0;
-              double usedMemory = isNotEmpty(memoryLine.get(7)) ? Double.parseDouble(memoryLine.get(7)) : 0.0;
-              double memoryUsed = (usedMemory / totalMemory) * 100;
-              String key = processInfo[0] + "Mem";
-              if (!resourceUsuageMap.containsKey(key)) {
-                resourceUsuageMap.put(key, memoryUsed);
-              }
-              continue;
+          }
+          // Look for line, MiB Mem : 7818.5 total, 4232.0 free, 1572.2 used, 2014.3 buff/cache
+          // OR KiB Mem :  8092456 total,  2345672 free,  3598140 used,  2143644 buff/cache
+          if (isNotEmpty(processInfo[0]) && (processInfo[0].equals("MiB") || processInfo[0].equals("KiB"))) {
+            List<String> memoryLine = new ArrayList<>();
+            memoryLine.addAll(Arrays.stream(processInfo).collect(Collectors.toList()));
+            log.info("Memory line as list {}", memoryLine);
+            double totalMemory = isNotEmpty(memoryLine.get(3)) ? Double.parseDouble(memoryLine.get(3)) : 0.0;
+            double usedMemory = isNotEmpty(memoryLine.get(7)) ? Double.parseDouble(memoryLine.get(7)) : 0.0;
+            double memoryUsed = (usedMemory / totalMemory) * 100;
+            String key = processInfo[0] + "Mem";
+            if (!resourceUsuageMap.containsKey(key)) {
+              resourceUsuageMap.put(key, memoryUsed);
             }
+            continue;
           }
 
           totalLinesToRead++;
