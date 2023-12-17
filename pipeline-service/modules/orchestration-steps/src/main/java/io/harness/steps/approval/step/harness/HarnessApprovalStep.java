@@ -107,6 +107,7 @@ public class HarnessApprovalStep extends PipelineAsyncExecutable {
 
     if (pmsFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_AUTO_APPROVAL)
         && specParameters.getAutoApproval() != null) {
+      instrumentationHelper.sendApprovalEventForScheduledApproval(approvalInstance);
       checkForNullOrThrowAutoApproval(specParameters.getAutoApproval());
       validateTimestampForAutoApproval(specParameters);
     }
