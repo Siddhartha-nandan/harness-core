@@ -24,7 +24,6 @@ import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -183,6 +182,7 @@ public class PollingRepositoryCustomImpl implements PollingRepositoryCustom {
   }
 
   @Override
+<<<<<<< HEAD
   public List<PollingDocument> findPollingDocs(
       String accountId, String orgId, String projectId, PollingType pollingType) {
     Criteria criteria = new Criteria().and(PollingDocumentKeys.accountId).is(accountId);
