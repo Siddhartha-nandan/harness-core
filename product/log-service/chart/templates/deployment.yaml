@@ -53,7 +53,7 @@ spec:
         - configMapRef:
             name: log-service
         env:
-          {{- include "harnesscommon.dbv3.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "LOG_SERVICE_REDIS_SSL_ENABLED" "sslCACertPath" "LOG_SERVICE_REDIS_SSL_CA_CERT_PATH")) | indent 12 }}
+          {{- include "harnesscommon.dbv3.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "LOG_SERVICE_REDIS_SSL_ENABLED" "sslCACertPath" "LOG_SERVICE_REDIS_SSL_CA_CERT_PATH")) | indent 10 }}
           {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "LOG_SERVICE_GLOBAL_TOKEN" "defaultKubernetesSecretName" "log-service" "defaultKubernetesSecretKey" "LOG_SERVICE_GLOBAL_TOKEN") | indent 10 }}
           {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "LOG_SERVICE_SECRET" "defaultKubernetesSecretName" "log-service" "defaultKubernetesSecretKey" "LOG_SERVICE_SECRET") | indent 10 }}
           {{- $globalMinioESOSecretIdentifier := include "harnesscommon.secrets.globalESOSecretCtxIdentifier" (dict "ctx" $ "ctxIdentifier" "minio") }}
