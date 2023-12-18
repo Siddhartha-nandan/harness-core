@@ -29,10 +29,7 @@ import io.harness.eventsframework.producer.Message;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.ng.core.ProjectScope;
 import io.harness.ng.core.dto.ProjectRequest;
-import io.harness.ng.core.events.ProjectCreateEvent;
-import io.harness.ng.core.events.ProjectDeleteEvent;
-import io.harness.ng.core.events.ProjectRestoreEvent;
-import io.harness.ng.core.events.ProjectUpdateEvent;
+import io.harness.ng.core.events.*;
 import io.harness.outbox.OutboxEvent;
 import io.harness.outbox.api.OutboxEventHandler;
 
@@ -69,6 +66,8 @@ public class ProjectEventHandler implements OutboxEventHandler {
           return handleProjectDeleteEvent(outboxEvent);
         case "ProjectRestored":
           return handleProjectRestoreEvent(outboxEvent);
+        case "ProjectMoved":
+          return handleProjectMoveEvent(outboxEvent);
         default:
           throw new InvalidArgumentsException(String.format("Not supported event type %s", outboxEvent.getEventType()));
       }
@@ -117,6 +116,28 @@ public class ProjectEventHandler implements OutboxEventHandler {
             .resourceScope(ResourceScopeDTO.fromResourceScope(outboxEvent.getResourceScope()))
             .insertId(outboxEvent.getId())
             .build();
+    return publishedToRedis && auditClientService.publishAudit(auditEntry, globalContext);
+  }
+
+  private boolean handleProjectMoveEvent(OutboxEvent outboxEvent) throws IOException {
+    GlobalContext globalContext = outboxEvent.getGlobalContext();
+    String accountIdentifier = ((ProjectScope) outboxEvent.getResourceScope()).getAccountIdentifier();
+    String orgIdentifier = ((ProjectScope) outboxEvent.getResourceScope()).getOrgIdentifier();
+    boolean publishedToRedis = publishEvent(accountIdentifier, orgIdentifier, outboxEvent.getResource().getIdentifier(),
+            EventsFrameworkMetadataConstants.MOVE_ACTION);
+    ProjectMoveEvent projectMoveEvent =
+            objectMapper.readValue(outboxEvent.getEventData(), ProjectMoveEvent.class);
+    AuditEntry auditEntry =
+            AuditEntry.builder()
+                    .action(Action.MOVED)
+                    .module(ModuleType.CORE)
+                    .newYaml(getYamlString(ProjectRequest.builder().project(projectMoveEvent.getNewProject()).build()))
+                    .oldYaml(getYamlString(ProjectRequest.builder().project(projectMoveEvent.getOldProject()).build()))
+                    .timestamp(outboxEvent.getCreatedAt())
+                    .resource(ResourceDTO.fromResource(outboxEvent.getResource()))
+                    .resourceScope(ResourceScopeDTO.fromResourceScope(outboxEvent.getResourceScope()))
+                    .insertId(outboxEvent.getId())
+                    .build();
     return publishedToRedis && auditClientService.publishAudit(auditEntry, globalContext);
   }
 

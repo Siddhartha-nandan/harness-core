@@ -8,15 +8,8 @@
 package io.harness.ng.core.event;
 
 import static io.harness.annotations.dev.HarnessTeam.PL;
-import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ACCOUNT_ENTITY;
-import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ACTION;
-import static io.harness.eventsframework.EventsFrameworkMetadataConstants.CREATE_ACTION;
-import static io.harness.eventsframework.EventsFrameworkMetadataConstants.DELETE_ACTION;
-import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ENTITY_TYPE;
-import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ORGANIZATION_ENTITY;
-import static io.harness.eventsframework.EventsFrameworkMetadataConstants.PROJECT_ENTITY;
-import static io.harness.eventsframework.EventsFrameworkMetadataConstants.RESTORE_ACTION;
 
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.*;
 import static java.lang.Boolean.parseBoolean;
 
 import io.harness.annotations.dev.OwnedBy;
@@ -161,6 +154,8 @@ public class ConnectorEntityCRUDStreamListener implements MessageListener {
           return processProjectDeleteEvent(projectEntityChangeDTO);
         case RESTORE_ACTION:
           return processProjectRestoreEvent(projectEntityChangeDTO);
+        case MOVE_ACTION:
+          return processProjectMoveEvent(projectEntityChangeDTO);
         default:
       }
     }
@@ -188,6 +183,23 @@ public class ConnectorEntityCRUDStreamListener implements MessageListener {
   }
 
   private boolean processProjectRestoreEvent(ProjectEntityChangeDTO projectEntityChangeDTO) {
+    return true;
+  }
+
+  private boolean processProjectMoveEvent(ProjectEntityChangeDTO projectEntityChangeDTO){
+    String accountIdentifier = projectEntityChangeDTO.getAccountIdentifier();
+    Boolean isBuiltInSMDisabled =
+            parseBoolean(NGRestUtils
+                    .getResponse(settingsClient.getSetting(
+                            SettingIdentifiers.DISABLE_HARNESS_BUILT_IN_SECRET_MANAGER, accountIdentifier, null, null))
+                    .getValue());
+
+    if (!isBuiltInSMDisabled) {
+      harnessSMManager.createHarnessSecretManager(projectEntityChangeDTO.getAccountIdentifier(),
+              projectEntityChangeDTO.getOrgIdentifier(), projectEntityChangeDTO.getIdentifier());
+    }
+//    connectorEntityCRUDEventHandler.deleteAssociatedConnectors(projectEntityChangeDTO.getAccountIdentifier(),
+//            projectEntityChangeDTO.getOrgIdentifier(), projectEntityChangeDTO.getIdentifier());
     return true;
   }
 }

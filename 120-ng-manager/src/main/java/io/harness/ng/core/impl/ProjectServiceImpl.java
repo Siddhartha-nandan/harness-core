@@ -79,6 +79,7 @@ import io.harness.ng.core.entities.metrics.ProjectsPerAccountCount.ProjectsPerAc
 import io.harness.ng.core.event.HarnessSMManager;
 import io.harness.ng.core.events.ProjectCreateEvent;
 import io.harness.ng.core.events.ProjectDeleteEvent;
+import io.harness.ng.core.events.ProjectMoveEvent;
 import io.harness.ng.core.events.ProjectRestoreEvent;
 import io.harness.ng.core.events.ProjectUpdateEvent;
 import io.harness.ng.core.invites.dto.RoleBinding;
@@ -104,10 +105,10 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
+import io.serializer.HObjectMapper;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -396,7 +397,7 @@ public class ProjectServiceImpl implements ProjectService {
       }
     }
     if (criteriaList.isEmpty()) {
-      return Collections.emptyList();
+      return emptyList();
     }
     projectCriteria.orOperator(criteriaList.toArray(new Criteria[criteriaList.size()]));
     List<Project> projectsList = projectRepository.findAll(projectCriteria);
@@ -507,6 +508,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     if (optionalProject.isPresent()) {
       Project project = optionalProject.get();
+      Project oldProject = (Project) HObjectMapper.clone(project);
       project.setAccountIdentifier(accountIdentifier);
       project.setOrgIdentifier(destinationOrgIdentifier);
       project.setId(project.getId());
@@ -526,13 +528,11 @@ public class ProjectServiceImpl implements ProjectService {
         addToScopeInfoCache(updatedProject);
         setupProject(Scope.of(accountIdentifier, destinationOrgIdentifier, project.getIdentifier()));
 
-        harnessSMManager.createHarnessSecretManager(accountIdentifier, destinationOrgIdentifier, identifier);
-
         log.info(String.format(
             "Project with identifier [%s] and source orgIdentifier [%s] was successfully moved to [%s] orgIdentifier",
             identifier, scopeInfo.getOrgIdentifier(), destinationOrgIdentifier));
-        outboxService.save(new ProjectUpdateEvent(
-            project.getAccountIdentifier(), ProjectMapper.writeDTO(updatedProject), ProjectMapper.writeDTO(project)));
+        outboxService.save(new ProjectMoveEvent(project.getAccountIdentifier(), ProjectMapper.writeDTO(updatedProject),
+            ProjectMapper.writeDTO(oldProject)));
         return updatedProject.getParentUniqueId().equals(destinationOrgOptional.get().getUniqueId());
       }));
     }
@@ -614,7 +614,7 @@ public class ProjectServiceImpl implements ProjectService {
   public List<ProjectDTO> listPermittedProjects(String accountIdentifier, ProjectFilterDTO projectFilterDTO) {
     Criteria criteria = getCriteriaForPermittedProjects(accountIdentifier, projectFilterDTO);
     if (criteria == null) {
-      return Collections.emptyList();
+      return emptyList();
     }
     List<Project> projectsList = projectRepository.findAll(criteria);
     return projectsList.stream().map(ProjectMapper::writeDTO).collect(Collectors.toList());
