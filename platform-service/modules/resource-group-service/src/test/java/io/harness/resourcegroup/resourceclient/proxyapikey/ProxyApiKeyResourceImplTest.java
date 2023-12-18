@@ -48,14 +48,14 @@ public class ProxyApiKeyResourceImplTest {
   @Category(UnitTests.class)
   public void getValidScopeLevels() {
     assertThat(proxyApiKeyResourceImpl.getValidScopeLevels())
-        .containsExactlyInAnyOrder(ScopeLevel.PROJECT, ScopeLevel.ORGANIZATION);
+            .containsExactlyInAnyOrder(ScopeLevel.PROJECT, ScopeLevel.ORGANIZATION, ScopeLevel.ACCOUNT);
   }
 
   @Test
   @Owner(developers = DMACK)
   @Category(UnitTests.class)
   public void getEventFrameworkEntityType() {
-    assertThat(proxyApiKeyResourceImpl.getEventFrameworkEntityType().get()).isEqualTo("FF_PROXYAPIKEY");
+    assertThat(proxyApiKeyResourceImpl.getEventFrameworkEntityType().get()).isEqualTo("proxyApiKey");
   }
 
   @Test
