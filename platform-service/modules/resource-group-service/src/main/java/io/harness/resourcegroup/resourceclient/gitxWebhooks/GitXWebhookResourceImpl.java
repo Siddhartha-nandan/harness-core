@@ -13,7 +13,6 @@ import io.harness.beans.ScopeLevel;
 import io.harness.eventsframework.EventsFrameworkMetadataConstants;
 import io.harness.eventsframework.consumer.Message;
 import io.harness.eventsframework.entity_crud.EntityChangeDTO;
-import io.harness.gitsync.gitxwebhooks.service.GitXWebhookService;
 import io.harness.resourcegroup.beans.ValidatorType;
 import io.harness.resourcegroup.framework.v1.service.Resource;
 import io.harness.resourcegroup.framework.v1.service.ResourceInfo;
@@ -39,7 +38,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @OwnedBy(PIPELINE)
 public class GitXWebhookResourceImpl implements Resource {
-  @Inject GitXWebhookService gitXWebhookService;
   public String GitXWebhook = "GitXWebhook";
 
   @Override

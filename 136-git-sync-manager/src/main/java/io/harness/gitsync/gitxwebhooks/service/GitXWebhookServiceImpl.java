@@ -14,11 +14,15 @@ import static io.harness.exception.WingsException.USER_SRE;
 
 import static java.lang.String.format;
 
+import io.harness.accesscontrol.acl.api.Resource;
+import io.harness.accesscontrol.acl.api.ResourceScope;
+import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.FeatureName;
 import io.harness.beans.HookEventType;
 import io.harness.beans.Scope;
 import io.harness.delegate.beans.connector.scm.ScmConnector;
@@ -47,10 +51,12 @@ import io.harness.gitsync.gitxwebhooks.dtos.UpdateGitXWebhookResponseDTO;
 import io.harness.gitsync.gitxwebhooks.entity.GitXWebhook;
 import io.harness.gitsync.gitxwebhooks.entity.GitXWebhook.GitXWebhookKeys;
 import io.harness.gitsync.gitxwebhooks.loggers.GitXWebhookLogContext;
+import io.harness.gitx.GitXWebhhookRbacPermissionsConstants;
 import io.harness.ng.webhook.UpsertWebhookRequestDTO;
 import io.harness.ng.webhook.UpsertWebhookResponseDTO;
 import io.harness.ng.webhook.services.api.WebhookEventService;
 import io.harness.repositories.gitxwebhook.GitXWebhookRepository;
+import io.harness.utils.featureflaghelper.NGFeatureFlagHelperService;
 
 import com.google.inject.Inject;
 import com.mongodb.client.result.DeleteResult;
@@ -74,6 +80,8 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
   @Inject GitSyncConnectorService gitSyncConnectorService;
   @Inject WebhookEventService webhookEventService;
   @Inject GitFileCacheService gitFileCacheService;
+  @Inject AccessControlClient accessControlClient;
+  @Inject NGFeatureFlagHelperService ngFeatureFlagHelperService;
 
   private static final String DUP_KEY_EXP_FORMAT_STRING =
       "GitX Webhook with identifier [%s] or repo [%s] already exists in the account [%s].";
@@ -90,6 +98,15 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
   @Override
   public CreateGitXWebhookResponseDTO createGitXWebhook(CreateGitXWebhookRequestDTO createGitXWebhookRequestDTO) {
     try (GitXWebhookLogContext context = new GitXWebhookLogContext(createGitXWebhookRequestDTO)) {
+      if (ngFeatureFlagHelperService.isEnabled(createGitXWebhookRequestDTO.getScope().getAccountIdentifier(),
+              FeatureName.PIE_GITXWEBHOOKS_RBAC_PERMISSIONS)) {
+        accessControlClient.checkForAccessOrThrow(
+            ResourceScope.of(createGitXWebhookRequestDTO.getScope().getAccountIdentifier(),
+                createGitXWebhookRequestDTO.getScope().getOrgIdentifier(),
+                createGitXWebhookRequestDTO.getScope().getProjectIdentifier()),
+            Resource.of("GitXWebhook", createGitXWebhookRequestDTO.getWebhookIdentifier()),
+            GitXWebhhookRbacPermissionsConstants.GitXWebhhook_CREATE_AND_EDIT);
+      }
       try {
         clearCache(
             createGitXWebhookRequestDTO.getScope().getAccountIdentifier(), createGitXWebhookRequestDTO.getRepoName());
@@ -134,6 +151,15 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
   @Override
   public Optional<GetGitXWebhookResponseDTO> getGitXWebhook(GetGitXWebhookRequestDTO getGitXWebhookRequestDTO) {
     try (GitXWebhookLogContext context = new GitXWebhookLogContext(getGitXWebhookRequestDTO)) {
+      if (ngFeatureFlagHelperService.isEnabled(getGitXWebhookRequestDTO.getScope().getAccountIdentifier(),
+              FeatureName.PIE_GITXWEBHOOKS_RBAC_PERMISSIONS)) {
+        accessControlClient.checkForAccessOrThrow(
+            ResourceScope.of(getGitXWebhookRequestDTO.getScope().getAccountIdentifier(),
+                getGitXWebhookRequestDTO.getScope().getOrgIdentifier(),
+                getGitXWebhookRequestDTO.getScope().getProjectIdentifier()),
+            Resource.of("GitXWebhook", getGitXWebhookRequestDTO.getWebhookIdentifier()),
+            GitXWebhhookRbacPermissionsConstants.GitXWebhhook_VIEW);
+      }
       try {
         log.info(String.format("Retrieving Webhook with identifier %s in account %s.",
             getGitXWebhookRequestDTO.getWebhookIdentifier(),
@@ -183,6 +209,15 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
       UpdateGitXWebhookRequestDTO updateGitXWebhookRequestDTO) {
     try (GitXWebhookLogContext context =
              new GitXWebhookLogContext(updateGitXWebhookCriteriaDTO, updateGitXWebhookRequestDTO)) {
+      if (ngFeatureFlagHelperService.isEnabled(updateGitXWebhookCriteriaDTO.getScope().getAccountIdentifier(),
+              FeatureName.PIE_GITXWEBHOOKS_RBAC_PERMISSIONS)) {
+        accessControlClient.checkForAccessOrThrow(
+            ResourceScope.of(updateGitXWebhookCriteriaDTO.getScope().getAccountIdentifier(),
+                updateGitXWebhookCriteriaDTO.getScope().getOrgIdentifier(),
+                updateGitXWebhookCriteriaDTO.getScope().getProjectIdentifier()),
+            Resource.of("GitXWebhook", updateGitXWebhookCriteriaDTO.getWebhookIdentifier()),
+            GitXWebhhookRbacPermissionsConstants.GitXWebhhook_CREATE_AND_EDIT);
+      }
       try {
         log.info(String.format("Updating Webhook with identifier %s in account %s",
             updateGitXWebhookCriteriaDTO.getWebhookIdentifier(),
@@ -243,6 +278,15 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
   @Override
   public DeleteGitXWebhookResponseDTO deleteGitXWebhook(DeleteGitXWebhookRequestDTO deleteGitXWebhookRequestDTO) {
     try (GitXWebhookLogContext context = new GitXWebhookLogContext(deleteGitXWebhookRequestDTO)) {
+      if (ngFeatureFlagHelperService.isEnabled(deleteGitXWebhookRequestDTO.getScope().getAccountIdentifier(),
+              FeatureName.PIE_GITXWEBHOOKS_RBAC_PERMISSIONS)) {
+        accessControlClient.checkForAccessOrThrow(
+            ResourceScope.of(deleteGitXWebhookRequestDTO.getScope().getAccountIdentifier(),
+                deleteGitXWebhookRequestDTO.getScope().getOrgIdentifier(),
+                deleteGitXWebhookRequestDTO.getScope().getProjectIdentifier()),
+            Resource.of("GitXWebhook", deleteGitXWebhookRequestDTO.getWebhookIdentifier()),
+            GitXWebhhookRbacPermissionsConstants.GitXWebhhook_CREATE_AND_EDIT);
+      }
       try {
         log.info(String.format("Deleting Webhook with identifier %s in account %s",
             deleteGitXWebhookRequestDTO.getWebhookIdentifier(),
