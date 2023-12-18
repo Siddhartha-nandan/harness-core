@@ -69,6 +69,8 @@ import io.harness.ng.core.remote.SSHKeyValidationMetadata;
 import io.harness.ng.core.remote.SecretValidationMetaData;
 import io.harness.ng.core.remote.SecretValidationResultDTO;
 import io.harness.ng.core.remote.WinRmCredentialsValidationMetadata;
+import io.harness.ng.core.services.OrganizationService;
+import io.harness.ng.core.services.ProjectService;
 import io.harness.outbox.api.OutboxService;
 import io.harness.repositories.ng.core.spring.SecretRepository;
 import io.harness.secretmanagerclient.services.SshKeySpecDTOHelper;
@@ -115,6 +117,7 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
   private static final String CREDENTIALS_VALIDATION_FAILED_DEFAULT_ERROR_MSG = "Credentials validation failed.";
   private static final String DELEGATES_NOT_AVAILABLE_FOR_CREDENTIALS_VALIDATION =
       "Delegates are not available for performing credentials validation.";
+  private static final String REALM_NULL = "with realm \"null\"";
   private final SecretRepository secretRepository;
   private final DelegateGrpcClientWrapper delegateGrpcClientWrapper;
   private final SshKeySpecDTOHelper sshKeySpecDTOHelper;
@@ -127,6 +130,8 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
   private final AccessControlClient accessControlClient;
   private final NGFeatureFlagHelperService ngFeatureFlagHelperService;
   private final ExceptionManager exceptionManager;
+  private final OrganizationService organizationService;
+  private final ProjectService projectService;
 
   @Inject
   public NGSecretServiceV2Impl(SecretRepository secretRepository, DelegateGrpcClientWrapper delegateGrpcClientWrapper,
@@ -134,7 +139,8 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
       OutboxService outboxService, @Named(OUTBOX_TRANSACTION_TEMPLATE) TransactionTemplate transactionTemplate,
       TaskSetupAbstractionHelper taskSetupAbstractionHelper,
       WinRmCredentialsSpecDTOHelper winRmCredentialsSpecDTOHelper, AccessControlClient accessControlClient,
-      NGFeatureFlagHelperService ngFeatureFlagHelperService, ExceptionManager exceptionManager) {
+      NGFeatureFlagHelperService ngFeatureFlagHelperService, ExceptionManager exceptionManager,
+      OrganizationService organizationService, ProjectService projectService) {
     this.secretRepository = secretRepository;
     this.outboxService = outboxService;
     this.delegateGrpcClientWrapper = delegateGrpcClientWrapper;
@@ -146,6 +152,8 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
     this.accessControlClient = accessControlClient;
     this.ngFeatureFlagHelperService = ngFeatureFlagHelperService;
     this.exceptionManager = exceptionManager;
+    this.organizationService = organizationService;
+    this.projectService = projectService;
   }
 
   @Override
@@ -216,6 +224,22 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
     Secret secret = Secret.fromDTO(secretDTO);
     secret.setDraft(draft);
     secret.setAccountIdentifier(accountIdentifier);
+    if (isEmpty(secret.getOrgIdentifier()) && isEmpty(secret.getProjectIdentifier())) {
+      secret.setParentUniqueId(accountIdentifier);
+    } else if (isEmpty(secret.getProjectIdentifier())) {
+      organizationService.get(accountIdentifier, secret.getOrgIdentifier()).ifPresent(org -> {
+        if (isNotEmpty(org.getUniqueId())) {
+          secret.setParentUniqueId(org.getUniqueId());
+        }
+      });
+    } else {
+      projectService.get(accountIdentifier, secret.getOrgIdentifier(), secret.getProjectIdentifier())
+          .ifPresent(proj -> {
+            if (isNotEmpty(proj.getUniqueId())) {
+              secret.setParentUniqueId(proj.getUniqueId());
+            }
+          });
+    }
     try {
       return Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
         Secret savedSecret = secretRepository.save(secret);
@@ -421,6 +445,10 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
       processSSHValidationTaskResponse(errorMessage);
     }
 
+    if (TaskType.NG_WINRM_VALIDATION.name().equals(taskType)) {
+      processWinRmValidationTaskResponse(errorMessage);
+    }
+
     throw new HintException(
         HintException.CHECK_ALL_SETTINGS_ON_CONFIGURATION_PAGE, new InvalidRequestException(errorMessage, USER));
   }
@@ -437,6 +465,19 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
     if (errorMessage.contains(ErrorCode.INVALID_KEY.name())) {
       throw NestedExceptionUtils.hintWithExplanationException(HintException.CHECK_CREDENTIALS_ON_CONFIGURATION_PAGE,
           ExplanationException.INVALID_SSH_KEY, new InvalidRequestException(errorMessage, USER));
+    }
+  }
+
+  private void processWinRmValidationTaskResponse(String errorMessage) {
+    if (errorMessage.contains(ErrorCode.INVALID_CREDENTIALS.getDescription())) {
+      if (errorMessage.contains(REALM_NULL)) {
+        throw NestedExceptionUtils.hintWithExplanationException(
+            HintException.CHECK_WIN_RM_CREDENTIALS_PROTOCOL_ON_CONFIGURATION_PAGE,
+            ExplanationException.INVALID_WIN_RM_CREDENTIALS_PROTOCOL, new InvalidRequestException(errorMessage, USER));
+      }
+
+      throw NestedExceptionUtils.hintWithExplanationException(HintException.CHECK_CREDENTIALS_ON_CONFIGURATION_PAGE,
+          ExplanationException.INVALID_WIN_RM_CREDENTIALS, new InvalidRequestException(errorMessage, USER));
     }
   }
 

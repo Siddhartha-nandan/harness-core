@@ -15,7 +15,6 @@ import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConst;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.List;
-import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -38,7 +37,7 @@ public class K8sTrafficRoutingRoute {
   @JsonIgnoreProperties(ignoreUnknown = true)
   static class RouteSpec {
     @NotNull RouteType type;
-    @NotEmpty List<K8sTrafficRoutingRule> rules;
+    List<K8sTrafficRoutingRule> rules;
 
     @AllArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)

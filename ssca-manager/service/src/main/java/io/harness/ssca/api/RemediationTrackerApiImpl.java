@@ -9,9 +9,10 @@ package io.harness.ssca.api;
 import io.harness.spec.server.ssca.v1.RemediationApi;
 import io.harness.spec.server.ssca.v1.model.RemediationTrackerCreateRequestBody;
 import io.harness.spec.server.ssca.v1.model.RemediationTrackerCreateResponseBody;
+import io.harness.spec.server.ssca.v1.model.RemediationTrackersOverallSummaryResponseBody;
 import io.harness.ssca.services.remediation_tracker.RemediationTrackerService;
 
-import javax.inject.Inject;
+import com.google.inject.Inject;
 import javax.validation.Valid;
 import javax.ws.rs.core.Response;
 
@@ -23,6 +24,13 @@ public class RemediationTrackerApiImpl implements RemediationApi {
     String remediationTrackerId =
         remediationTrackerService.createRemediationTracker(harnessAccount, orgId, projectId, body);
     RemediationTrackerCreateResponseBody response = new RemediationTrackerCreateResponseBody().id(remediationTrackerId);
+    return Response.ok().entity(response).build();
+  }
+
+  @Override
+  public Response getOverallSummary(String org, String project, String harnessAccount) {
+    RemediationTrackersOverallSummaryResponseBody response =
+        remediationTrackerService.getOverallSummaryForRemediationTrackers(harnessAccount, org, project);
     return Response.ok().entity(response).build();
   }
 }
