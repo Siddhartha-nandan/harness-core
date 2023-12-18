@@ -34,17 +34,15 @@ public interface NGSecretServiceV2 {
 
   Optional<Secret> get(IdentifierRef identifierRef);
 
-  boolean delete(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier, boolean forceDelete);
+  boolean delete(ScopeInfo scopeInfo, String identifier, boolean forceDelete);
 
   Secret create(String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto, boolean draft);
 
-  Secret update(String accountIdentifier, SecretDTOV2 dto, boolean draft);
+  Secret update(ScopeInfo scopeInfo, SecretDTOV2 dto, boolean draft);
 
-  SecretValidationResultDTO validateSecret(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      String identifier, SecretValidationMetaData metadata);
+  SecretValidationResultDTO validateSecret(ScopeInfo scopeInfo, String identifier, SecretValidationMetaData metadata);
 
-  long count(String accountIdentifier, String orgIdentifier, String projectIdentifier);
+  long count(ScopeInfo scopeInfo);
 
   Page<Secret> list(Criteria criteria, Pageable pageable);
 

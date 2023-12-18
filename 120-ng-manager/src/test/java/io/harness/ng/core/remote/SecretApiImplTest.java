@@ -475,13 +475,15 @@ public class SecretApiImplTest extends CategoryTest {
   @Owner(developers = ASHISHSANODIA)
   @Category(UnitTests.class)
   public void testUpdateAccountScopedSecret() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier(account).scopeType(ScopeLevel.ACCOUNT).uniqueId(account).build();
     SecretRequest secretRequest = new SecretRequest();
     secretRequest.setSecret(getTextSecret(null, null));
 
     SecretDTOV2 secretDTOV2 = secretApiUtils.toSecretDto(secretRequest.getSecret());
     SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().secret(secretDTOV2).build();
 
-    when(ngSecretService.update(any(), any(), any(), any(), any())).thenReturn(secretResponseWrapper);
+    when(ngSecretService.update(eq(scopeInfo), any(), any())).thenReturn(secretResponseWrapper);
 
     Response response = accountSecretApi.updateAccountScopedSecret(secretRequest, identifier, account);
 
@@ -509,7 +511,7 @@ public class SecretApiImplTest extends CategoryTest {
                               .scopeType(ScopeLevel.ORGANIZATION)
                               .build();
     when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
-    when(ngSecretService.update(any(), any(), any(), any(), any())).thenReturn(secretResponseWrapper);
+    when(ngSecretService.update(eq(scopeInfo), any(), any())).thenReturn(secretResponseWrapper);
 
     Response response = orgSecretApi.updateOrgScopedSecret(secretRequest, org, identifier, account);
 
@@ -537,7 +539,7 @@ public class SecretApiImplTest extends CategoryTest {
                               .scopeType(ScopeLevel.PROJECT)
                               .build();
     when(scopeResolverService.getScopeInfo(account, org, project)).thenReturn(Optional.of(scopeInfo));
-    when(ngSecretService.update(any(), any(), any(), any(), any())).thenReturn(secretResponseWrapper);
+    when(ngSecretService.update(eq(scopeInfo), any(), any())).thenReturn(secretResponseWrapper);
 
     Response response = projectSecretApi.updateProjectScopedSecret(secretRequest, org, project, identifier, account);
 
@@ -566,7 +568,7 @@ public class SecretApiImplTest extends CategoryTest {
                               .build();
     when(scopeResolverService.getScopeInfo(account, org, project)).thenReturn(Optional.of(scopeInfo));
     when(ngSecretService.get(eq(scopeInfo), any())).thenReturn(of(secretResponseWrapper));
-    when(ngSecretService.delete(any(), any(), any(), any(), eq(false))).thenReturn(true);
+    when(ngSecretService.delete(eq(scopeInfo), any(), eq(false))).thenReturn(true);
 
     Response response = projectSecretApi.deleteProjectScopedSecret(org, project, identifier, account);
 
@@ -594,7 +596,7 @@ public class SecretApiImplTest extends CategoryTest {
                               .build();
     when(scopeResolverService.getScopeInfo(account, org, null)).thenReturn(Optional.of(scopeInfo));
     when(ngSecretService.get(eq(scopeInfo), any())).thenReturn(of(secretResponseWrapper));
-    when(ngSecretService.delete(any(), any(), any(), any(), eq(false))).thenReturn(true);
+    when(ngSecretService.delete(eq(scopeInfo), any(), eq(false))).thenReturn(true);
 
     Response response = orgSecretApi.deleteOrgScopedSecret(org, identifier, account);
 
@@ -618,7 +620,7 @@ public class SecretApiImplTest extends CategoryTest {
     ScopeInfo scopeInfo =
         ScopeInfo.builder().accountIdentifier(account).uniqueId(account).scopeType(ScopeLevel.ACCOUNT).build();
     when(ngSecretService.get(eq(scopeInfo), any())).thenReturn(of(secretResponseWrapper));
-    when(ngSecretService.delete(any(), any(), any(), any(), eq(false))).thenReturn(true);
+    when(ngSecretService.delete(eq(scopeInfo), any(), eq(false))).thenReturn(true);
 
     Response response = accountSecretApi.deleteAccountScopedSecret(identifier, account);
 

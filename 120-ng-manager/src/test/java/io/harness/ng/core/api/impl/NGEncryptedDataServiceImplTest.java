@@ -49,6 +49,8 @@ import io.harness.CategoryTest;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.DecryptableEntity;
 import io.harness.beans.DecryptedSecretValue;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.beans.SecretManagerConfig;
 import io.harness.beans.SecretText;
 import io.harness.category.element.UnitTests;
@@ -708,7 +710,13 @@ public class NGEncryptedDataServiceImplTest extends CategoryTest {
     char[] secretValue = randomAlphabetic(10).toCharArray();
     long createdAt = Instant.now().toEpochMilli();
     long lastModifiedAt = Instant.now().toEpochMilli();
-
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .orgIdentifier(orgIdentifier)
+                              .projectIdentifier(projectIdentifier)
+                              .uniqueId(randomAlphabetic(10))
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     SecretManagerConfigDTO secretManagerConfigDTO =
         LocalConfigDTO.builder().harnessManaged(true).encryptionType(LOCAL).build();
     NGEncryptedData encryptedData = NGEncryptedData.builder().secretManagerIdentifier(secretManagerIdentifier).build();
@@ -724,10 +732,9 @@ public class NGEncryptedDataServiceImplTest extends CategoryTest {
              encryptedData, accountIdentifier, encryptionConfig))
         .thenReturn(encryptedRecordData);
     when(localEncryptor.fetchSecretValue(accountIdentifier, encryptedData, encryptionConfig)).thenReturn(secretValue);
-    when(ngSecretServiceV2.get(accountIdentifier, orgIdentifier, projectIdentifier, identifier))
+    when(ngSecretServiceV2.get(scopeInfo, identifier))
         .thenReturn(Optional.of(Secret.builder().createdAt(createdAt).lastModifiedAt(lastModifiedAt).build()));
-    DecryptedSecretValue decryptedSecretValue =
-        ngEncryptedDataService.decryptSecret(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+    DecryptedSecretValue decryptedSecretValue = ngEncryptedDataService.decryptSecret(scopeInfo, identifier);
     assertEquals(decryptedSecretValue.getDecryptedValue(), String.valueOf(secretValue));
     assertEquals(decryptedSecretValue.getAccountIdentifier(), accountIdentifier);
     assertEquals(decryptedSecretValue.getOrgIdentifier(), orgIdentifier);
@@ -741,6 +748,13 @@ public class NGEncryptedDataServiceImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testDecryptSecret_secretManagerNotFound() {
     String secretManagerIdentifier = randomAlphabetic(10);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .orgIdentifier(orgIdentifier)
+                              .projectIdentifier(projectIdentifier)
+                              .uniqueId(randomAlphabetic(10))
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     NGEncryptedData encryptedData = NGEncryptedData.builder().secretManagerIdentifier(secretManagerIdentifier).build();
 
     when(encryptedDataDao.get(accountIdentifier, orgIdentifier, projectIdentifier, identifier))
@@ -749,8 +763,7 @@ public class NGEncryptedDataServiceImplTest extends CategoryTest {
              accountIdentifier, orgIdentifier, projectIdentifier, secretManagerIdentifier, false))
         .thenReturn(null);
     try {
-      DecryptedSecretValue decryptedSecretValue =
-          ngEncryptedDataService.decryptSecret(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+      DecryptedSecretValue decryptedSecretValue = ngEncryptedDataService.decryptSecret(scopeInfo, identifier);
       fail("InvalidRequestException should be thrown as Secret Manager is not found");
     } catch (SecretManagementException ex) {
       assertEquals(ex.getMessage(),
@@ -767,6 +780,13 @@ public class NGEncryptedDataServiceImplTest extends CategoryTest {
   public void testDecryptSecret_secretManagerNotHarnessManaged() {
     String secretManagerIdentifier = randomAlphabetic(10);
     char[] secretValue = randomAlphabetic(10).toCharArray();
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .orgIdentifier(orgIdentifier)
+                              .projectIdentifier(projectIdentifier)
+                              .uniqueId(randomAlphabetic(10))
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     SecretManagerConfigDTO secretManager = VaultConfigDTO.builder()
                                                .harnessManaged(false)
                                                .encryptionType(VAULT)
@@ -784,8 +804,7 @@ public class NGEncryptedDataServiceImplTest extends CategoryTest {
              accountIdentifier, orgIdentifier, projectIdentifier, secretManagerIdentifier, false))
         .thenReturn(secretManager);
     try {
-      DecryptedSecretValue decryptedSecretValue =
-          ngEncryptedDataService.decryptSecret(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+      DecryptedSecretValue decryptedSecretValue = ngEncryptedDataService.decryptSecret(scopeInfo, identifier);
       fail("InvalidRequestException should be thrown as Secret Manager is not Harness Managed");
     } catch (InvalidRequestException ex) {
       assertEquals(
@@ -800,6 +819,13 @@ public class NGEncryptedDataServiceImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testDecryptSecretFile_Success() {
     String secretManagerIdentifier = randomAlphabetic(10);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .orgIdentifier(orgIdentifier)
+                              .projectIdentifier(projectIdentifier)
+                              .uniqueId(randomAlphabetic(10))
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     char[] secretValue = randomAlphabetic(10).toCharArray();
     long createdAt = Instant.now().toEpochMilli();
     long lastModifiedAt = Instant.now().toEpochMilli();
@@ -824,10 +850,9 @@ public class NGEncryptedDataServiceImplTest extends CategoryTest {
              encryptedData, accountIdentifier, encryptionConfig))
         .thenReturn(encryptedRecordData);
     when(localEncryptor.fetchSecretValue(accountIdentifier, encryptedData, encryptionConfig)).thenReturn(secretValue);
-    when(ngSecretServiceV2.get(accountIdentifier, orgIdentifier, projectIdentifier, identifier))
+    when(ngSecretServiceV2.get(scopeInfo, identifier))
         .thenReturn(Optional.of(Secret.builder().createdAt(createdAt).lastModifiedAt(lastModifiedAt).build()));
-    DecryptedSecretValue decryptedSecretValue =
-        ngEncryptedDataService.decryptSecret(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+    DecryptedSecretValue decryptedSecretValue = ngEncryptedDataService.decryptSecret(scopeInfo, identifier);
     assertEquals(decryptedSecretValue.getDecryptedValue(), String.valueOf(secretValue));
     assertEquals(decryptedSecretValue.getAccountIdentifier(), accountIdentifier);
     assertEquals(decryptedSecretValue.getOrgIdentifier(), orgIdentifier);

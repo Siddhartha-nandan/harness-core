@@ -194,7 +194,7 @@ public class NGSecretResourceV2 {
         ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier), Resource.of(SECRET_RESOURCE_TYPE, null),
         SECRET_EDIT_PERMISSION, privateSecret ? SecurityContextBuilder.getPrincipal() : null);
 
-    ngSecretService.validateSshWinRmSecretRef(accountIdentifier, orgIdentifier, projectIdentifier, dto.getSecret());
+    ngSecretService.validateSshWinRmSecretRef(scopeInfo, dto.getSecret());
     ngSecretService.validateSecretDtoSpec(dto.getSecret());
 
     if (privateSecret) {
@@ -230,8 +230,7 @@ public class NGSecretResourceV2 {
         Resource.of(SECRET_RESOURCE_TYPE, identifier), SECRET_ACCESS_PERMISSION,
         secret != null ? secret.getSecret().getOwner() : null);
 
-    return ResponseDTO.newResponse(
-        ngSecretService.validateSecret(accountIdentifier, orgIdentifier, projectIdentifier, identifier, metadata));
+    return ResponseDTO.newResponse(ngSecretService.validateSecret(scopeInfo, identifier, metadata));
   }
 
   @POST
@@ -264,7 +263,7 @@ public class NGSecretResourceV2 {
         ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier), Resource.of(SECRET_RESOURCE_TYPE, null),
         SECRET_EDIT_PERMISSION, privateSecret ? SecurityContextBuilder.getPrincipal() : null);
 
-    ngSecretService.validateSshWinRmSecretRef(accountIdentifier, orgIdentifier, projectIdentifier, dto.getSecret());
+    ngSecretService.validateSshWinRmSecretRef(scopeInfo, dto.getSecret());
     ngSecretService.validateSecretDtoSpec(dto.getSecret());
     if (privateSecret) {
       dto.getSecret().setOwner(SecurityContextBuilder.getPrincipal());
@@ -397,8 +396,7 @@ public class NGSecretResourceV2 {
         ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
         Resource.of(SECRET_RESOURCE_TYPE, identifier), SECRET_DELETE_PERMISSION,
         secret != null ? secret.getSecret().getOwner() : null);
-    return ResponseDTO.newResponse(
-        ngSecretService.delete(accountIdentifier, orgIdentifier, projectIdentifier, identifier, forceDelete));
+    return ResponseDTO.newResponse(ngSecretService.delete(scopeInfo, identifier, forceDelete));
   }
 
   @PUT
@@ -425,11 +423,10 @@ public class NGSecretResourceV2 {
         Resource.of(SECRET_RESOURCE_TYPE, identifier), SECRET_EDIT_PERMISSION,
         secret != null ? secret.getSecret().getOwner() : null);
 
-    ngSecretService.validateSshWinRmSecretRef(accountIdentifier, orgIdentifier, projectIdentifier, dto.getSecret());
+    ngSecretService.validateSshWinRmSecretRef(scopeInfo, dto.getSecret());
     ngSecretService.validateSecretDtoSpec(dto.getSecret());
 
-    return ResponseDTO.newResponse(
-        ngSecretService.update(accountIdentifier, orgIdentifier, projectIdentifier, identifier, dto.getSecret()));
+    return ResponseDTO.newResponse(ngSecretService.update(scopeInfo, identifier, dto.getSecret()));
   }
 
   @PUT
@@ -458,11 +455,10 @@ public class NGSecretResourceV2 {
         Resource.of(SECRET_RESOURCE_TYPE, identifier), SECRET_EDIT_PERMISSION,
         secret != null ? secret.getSecret().getOwner() : null);
 
-    ngSecretService.validateSshWinRmSecretRef(accountIdentifier, orgIdentifier, projectIdentifier, dto.getSecret());
+    ngSecretService.validateSshWinRmSecretRef(scopeInfo, dto.getSecret());
     ngSecretService.validateSecretDtoSpec(dto.getSecret());
 
-    return ResponseDTO.newResponse(ngSecretService.updateViaYaml(
-        accountIdentifier, orgIdentifier, projectIdentifier, identifier, dto.getSecret()));
+    return ResponseDTO.newResponse(ngSecretService.updateViaYaml(scopeInfo, identifier, dto.getSecret()));
   }
 
   private void validateRequestPayload(SecretRequestWrapper dto) {
@@ -503,8 +499,8 @@ public class NGSecretResourceV2 {
         Resource.of(SECRET_RESOURCE_TYPE, identifier), SECRET_EDIT_PERMISSION,
         secret != null ? secret.getSecret().getOwner() : null);
 
-    return ResponseDTO.newResponse(ngSecretService.updateFile(
-        accountIdentifier, orgIdentifier, projectIdentifier, identifier, dto.getSecret(), uploadedInputStream));
+    return ResponseDTO.newResponse(
+        ngSecretService.updateFile(scopeInfo, identifier, dto.getSecret(), uploadedInputStream));
   }
 
   @POST
@@ -677,10 +673,9 @@ public class NGSecretResourceV2 {
       @Parameter(description = ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
           NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
       @Parameter(description = ORG_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
-      @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier) {
-    return ResponseDTO.newResponse(
-        encryptedDataService.decryptSecret(accountIdentifier, orgIdentifier, projectIdentifier, identifier));
+      @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.PROJECT_KEY)
+      String projectIdentifier, @Context ScopeInfo scopeInfo) {
+    return ResponseDTO.newResponse(encryptedDataService.decryptSecret(scopeInfo, identifier));
   }
 
   private String getOrgIdentifier(String parentOrgIdentifier, @NotNull Scope scope) {

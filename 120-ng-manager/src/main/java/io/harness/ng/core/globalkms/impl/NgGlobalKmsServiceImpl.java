@@ -64,7 +64,9 @@ public class NgGlobalKmsServiceImpl implements NgGlobalKmsService {
   public ConnectorSecretResponseDTO updateGlobalKms(ConnectorDTO connector, SecretDTOV2 secret) {
     canUpdateGlobalKms(connector, secret);
     ConnectorResponseDTO existingConnector = getExistingGlobalKmsConnectorOrThrow(connector);
-    SecretDTOV2 existingSecret = getGlobalKmsSecretOrThrow(secret);
+    Optional<ScopeInfo> scopeInfo =
+        scopeResolverService.getScopeInfo(GLOBAL_ACCOUNT_ID, secret.getOrgIdentifier(), secret.getProjectIdentifier());
+    SecretDTOV2 existingSecret = getGlobalKmsSecretOrThrow(scopeInfo.orElseThrow(), secret);
     GcpKmsConnectorDTO connectorConfig = (GcpKmsConnectorDTO) connector.getConnectorInfo().getConnectorConfig();
     GcpKmsConnectorDTO existingConnectorConfig =
         (GcpKmsConnectorDTO) existingConnector.getConnector().getConnectorConfig();
@@ -74,8 +76,8 @@ public class NgGlobalKmsServiceImpl implements NgGlobalKmsService {
     existingConnectorConfig.setRegion(connectorConfig.getRegion());
     existingSecret.setSpec(secret.getSpec());
     validate(existingConnector.getConnector(), existingSecret);
-    SecretResponseWrapper secretResponse = ngSecretService.update(GLOBAL_ACCOUNT_ID, existingSecret.getOrgIdentifier(),
-        existingSecret.getProjectIdentifier(), existingSecret.getIdentifier(), existingSecret);
+    SecretResponseWrapper secretResponse =
+        ngSecretService.update(scopeInfo.orElseThrow(), existingSecret.getIdentifier(), existingSecret);
     ConnectorResponseDTO connectorResponse = connectorService.update(
         ConnectorDTO.builder().connectorInfo(existingConnector.getConnector()).build(), GLOBAL_ACCOUNT_ID);
     return ConnectorSecretResponseDTO.builder()
@@ -151,10 +153,8 @@ public class NgGlobalKmsServiceImpl implements NgGlobalKmsService {
     return existingConnector.get();
   }
 
-  private SecretDTOV2 getGlobalKmsSecretOrThrow(SecretDTOV2 secretDTO) {
-    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(
-        GLOBAL_ACCOUNT_ID, secretDTO.getOrgIdentifier(), secretDTO.getProjectIdentifier());
-    SecretResponseWrapper secret = ngSecretService.get(scopeInfo.orElseThrow(), secretDTO.getIdentifier()).orElse(null);
+  private SecretDTOV2 getGlobalKmsSecretOrThrow(ScopeInfo scopeInfo, SecretDTOV2 secretDTO) {
+    SecretResponseWrapper secret = ngSecretService.get(scopeInfo, secretDTO.getIdentifier()).orElse(null);
     if (null == secret) {
       throw new InvalidRequestException(
           String.format("Secret with identifier %s does not exist in global scope", secretDTO.getIdentifier()));

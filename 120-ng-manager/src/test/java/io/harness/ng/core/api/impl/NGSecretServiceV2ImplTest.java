@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -189,6 +190,20 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   }
 
   @Test
+  @Owner(developers = ASHISHSANODIA)
+  @Category(UnitTests.class)
+  public void testGetWithScopeInfo() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
+    when(secretRepository.findByAccountIdentifierAndParentUniqueIdAndIdentifier(any(), any(), any()))
+        .thenReturn(Optional.empty());
+    Optional<Secret> secretOptional = secretServiceV2.get(scopeInfo, "identifier");
+    assertThat(secretOptional).isEqualTo(Optional.empty());
+    verify(secretRepository)
+        .findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(any(), any(), any(), any());
+  }
+
+  @Test
   @Owner(developers = BOJAN)
   @Category(UnitTests.class)
   public void testGetForIdentifierRef() {
@@ -206,12 +221,19 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testDelete() {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier("account")
+                              .orgIdentifier("org")
+                              .projectIdentifier("proj")
+                              .uniqueId(randomAlphabetic(10))
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     Secret secret = Secret.builder().build();
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     doNothing().when(secretRepository).delete(any());
-    boolean success = secretServiceV2Spy.delete("account", "org", "proj", "identifier", false);
+    boolean success = secretServiceV2Spy.delete(scopeInfo, "identifier", false);
     assertThat(success).isTrue();
-    verify(secretServiceV2Spy).get(any(), any(), any(), any());
+    verify(secretServiceV2Spy).get(eq(scopeInfo), any());
     verify(secretRepository, times(1)).delete(any());
   }
 
@@ -269,14 +291,16 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testUpdate() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = Secret.builder().build();
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     SecretDTOV2 secretDTOV2 = getSecretDTO();
     when(secretRepository.save(any())).thenReturn(secret);
 
-    Secret success = secretServiceV2Spy.update("account", secretDTOV2, false);
+    Secret success = secretServiceV2Spy.update(scopeInfo, secretDTOV2, false);
     assertThat(success).isNotNull();
-    verify(secretServiceV2Spy).get(any(), any(), any(), any());
+    verify(secretServiceV2Spy).get(eq(scopeInfo), any());
     verify(secretRepository, times(1)).save(any());
   }
 
@@ -284,10 +308,12 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testValidateForNonSSHType() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = Secret.builder().type(SecretType.SecretText).build();
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     SecretValidationResultDTO secretValidationResultDTO =
-        secretServiceV2Spy.validateSecret("account", null, null, "identifier", null);
+        secretServiceV2Spy.validateSecret(scopeInfo, "identifier", null);
     assertThat(secretValidationResultDTO.isSuccess()).isEqualTo(false);
   }
 
@@ -311,12 +337,13 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testValidationForSSHWithPassword() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getSecretPasswordCredentialType();
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(SSHConfigValidationTaskResponse.builder().connectionSuccessful(true).build());
-    SecretValidationResultDTO resultDTO =
-        secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata());
+    SecretValidationResultDTO resultDTO = secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getMetadata());
     assertThat(resultDTO.isSuccess()).isEqualTo(true);
   }
 
@@ -324,6 +351,8 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testValidationForSSHWithKeyReference() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getSecret();
     secret.setSecretSpec(SSHExecutionCredentialSpec.builder()
                              .port(22)
@@ -338,11 +367,10 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
                                                     .build())
                                        .build())
                              .build());
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(SSHConfigValidationTaskResponse.builder().connectionSuccessful(true).build());
-    SecretValidationResultDTO resultDTO =
-        secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata());
+    SecretValidationResultDTO resultDTO = secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getMetadata());
     assertThat(resultDTO.isSuccess()).isEqualTo(true);
   }
 
@@ -350,6 +378,8 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = NISHANT)
   @Category(UnitTests.class)
   public void testValidationForSSHWithKeyReferenceNoDelegateException() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getSecret();
     secret.setSecretSpec(SSHExecutionCredentialSpec.builder()
                              .port(22)
@@ -364,19 +394,21 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
                                                     .build())
                                        .build())
                              .build());
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenThrow(new DelegateServiceDriverException("No eligible delegate(s) found in the account."));
     exceptionRule.expect(HintException.class);
     exceptionRule.expectMessage(
         String.format(HintException.DELEGATE_NOT_AVAILABLE, DocumentLinksConstants.DELEGATE_INSTALLATION_LINK));
-    secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata());
+    secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getMetadata());
   }
 
   @Test
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testValidationForSSHWithKeyPath() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getSecret();
     secret.setSecretSpec(
         SSHExecutionCredentialSpec.builder()
@@ -389,11 +421,10 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
                                    .build())
                       .build())
             .build());
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(SSHConfigValidationTaskResponse.builder().connectionSuccessful(true).build());
-    SecretValidationResultDTO resultDTO =
-        secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata());
+    SecretValidationResultDTO resultDTO = secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getMetadata());
     assertThat(resultDTO.isSuccess()).isEqualTo(true);
   }
 
@@ -401,6 +432,8 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testValidationForKerberos() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getSecret();
     secret.setSecretSpec(SSHExecutionCredentialSpec.builder()
                              .port(22)
@@ -414,11 +447,10 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
                                                     .build())
                                        .build())
                              .build());
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(SSHConfigValidationTaskResponse.builder().connectionSuccessful(true).build());
-    SecretValidationResultDTO resultDTO =
-        secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata());
+    SecretValidationResultDTO resultDTO = secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getMetadata());
     assertThat(resultDTO.isSuccess()).isEqualTo(true);
   }
 
@@ -426,6 +458,8 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = VITALIE)
   @Category(UnitTests.class)
   public void testValidationForWinRmNTLM() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getWinRmSecret();
     secret.setSecretSpec(
         WinRmCredentialsSpec.builder()
@@ -435,11 +469,11 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
                       .spec(NTLMConfig.builder().username("user").password(SecretRefData.builder().build()).build())
                       .build())
             .build());
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(WinRmConfigValidationTaskResponse.builder().connectionSuccessful(true).build());
     SecretValidationResultDTO resultDTO =
-        secretServiceV2Spy.validateSecret("account", null, null, "identifier", getWinRmMetaData());
+        secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getWinRmMetaData());
     assertThat(resultDTO.isSuccess()).isEqualTo(true);
   }
 
@@ -447,6 +481,8 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = VITALIE)
   @Category(UnitTests.class)
   public void testValidationForWinRmKerberosPassword() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getWinRmSecret();
     secret.setSecretSpec(
         WinRmCredentialsSpec.builder()
@@ -461,11 +497,11 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
                                 .build())
                       .build())
             .build());
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(WinRmConfigValidationTaskResponse.builder().connectionSuccessful(true).build());
     SecretValidationResultDTO resultDTO =
-        secretServiceV2Spy.validateSecret("account", null, null, "identifier", getWinRmMetaData());
+        secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getWinRmMetaData());
     assertThat(resultDTO.isSuccess()).isEqualTo(true);
   }
 
@@ -473,6 +509,8 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = VITALIE)
   @Category(UnitTests.class)
   public void testValidationForWinRmKerberosKeyTab() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getWinRmSecret();
     secret.setSecretSpec(WinRmCredentialsSpec.builder()
                              .port(5986)
@@ -486,11 +524,11 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
                                                  .build())
                                        .build())
                              .build());
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(WinRmConfigValidationTaskResponse.builder().connectionSuccessful(true).build());
     SecretValidationResultDTO resultDTO =
-        secretServiceV2Spy.validateSecret("account", null, null, "identifier", getWinRmMetaData());
+        secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getWinRmMetaData());
     assertThat(resultDTO.isSuccess()).isEqualTo(true);
   }
 
@@ -541,13 +579,14 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testProcessValidationTaskResponseSSHSuccess() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getSecretPasswordCredentialType();
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(SSHConfigValidationTaskResponse.builder().connectionSuccessful(true).build());
 
-    SecretValidationResultDTO resultDTO =
-        secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata());
+    SecretValidationResultDTO resultDTO = secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getMetadata());
 
     assertThat(resultDTO.isSuccess()).isEqualTo(true);
   }
@@ -556,15 +595,17 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testProcessValidationTaskResponseSSHHostNotReachable() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getSecretPasswordCredentialType();
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(ErrorNotifyResponseData.builder().errorMessage("Unable to connect to host").build());
     doReturn(new WingsException("wings exception message"))
         .when(exceptionManager)
         .processException(any(), any(), any());
 
-    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata()))
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getMetadata()))
         .hasMessage("wings exception message")
         .isInstanceOf(WingsException.class);
 
@@ -586,15 +627,17 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testProcessValidationTaskResponseSSHNoErrorMsg() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getSecretPasswordCredentialType();
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(SSHConfigValidationTaskResponse.builder().errorMessage(null).build());
     doReturn(new WingsException("wings exception message"))
         .when(exceptionManager)
         .processException(any(), any(), any());
 
-    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata()))
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getMetadata()))
         .hasMessage("wings exception message")
         .isInstanceOf(WingsException.class);
 
@@ -609,15 +652,17 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testProcessValidationTaskResponseSSHCheckAllSettingsOnConfigurationPage() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getSecretPasswordCredentialType();
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(SSHConfigValidationTaskResponse.builder().errorMessage("Gateway timeout").build());
     doReturn(new WingsException("wings exception message"))
         .when(exceptionManager)
         .processException(any(), any(), any());
 
-    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata()))
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getMetadata()))
         .hasMessage("wings exception message")
         .isInstanceOf(WingsException.class);
 
@@ -634,6 +679,8 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testProcessValidationTaskResponseSSHInvalidCredentials() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getSecret();
     secret.setSecretSpec(SSHExecutionCredentialSpec.builder()
                              .port(22)
@@ -648,7 +695,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
                                                     .build())
                                        .build())
                              .build());
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(
             SSHConfigValidationTaskResponse.builder()
@@ -658,7 +705,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
         .when(exceptionManager)
         .processException(any(), any(), any());
 
-    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata()))
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getMetadata()))
         .hasMessage("wings exception message")
         .isInstanceOf(WingsException.class);
 
@@ -676,6 +723,8 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testProcessValidationTaskResponseSSHInvalidKeyPath() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getSecret();
     secret.setSecretSpec(SSHExecutionCredentialSpec.builder()
                              .port(22)
@@ -690,7 +739,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
                                                     .build())
                                        .build())
                              .build());
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(
             SSHConfigValidationTaskResponse.builder()
@@ -700,7 +749,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
         .when(exceptionManager)
         .processException(any(), any(), any());
 
-    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata()))
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getMetadata()))
         .hasMessage("wings exception message")
         .isInstanceOf(WingsException.class);
 
@@ -718,6 +767,8 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testProcessValidationTaskResponseSSHInvalidKey() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getSecret();
     secret.setSecretSpec(
         SSHExecutionCredentialSpec.builder()
@@ -733,7 +784,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
                                    .build())
                       .build())
             .build());
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(SSHConfigValidationTaskResponse.builder()
                         .errorMessage(String.format("Failed to get session due to - %s", ErrorCode.INVALID_KEY.name()))
@@ -742,7 +793,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
         .when(exceptionManager)
         .processException(any(), any(), any());
 
-    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata()))
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getMetadata()))
         .hasMessage("wings exception message")
         .isInstanceOf(WingsException.class);
 

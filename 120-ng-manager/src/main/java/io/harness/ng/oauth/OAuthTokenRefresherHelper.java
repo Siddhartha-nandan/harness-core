@@ -97,9 +97,10 @@ public class OAuthTokenRefresherHelper {
     secretDTOV2.setSpec(secretSpecDTO);
 
     Secret secret = Secret.fromDTO(secretDTOV2);
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(
+        scope.getAccountIdentifier(), secret.getOrgIdentifier(), secret.getProjectIdentifier());
     try {
-      ngSecretCrudService.update(scope.getAccountIdentifier(), secret.getOrgIdentifier(), secret.getProjectIdentifier(),
-          secretDTOV2.getIdentifier(), secretDTOV2);
+      ngSecretCrudService.update(scopeInfo.orElseThrow(), secretDTOV2.getIdentifier(), secretDTOV2);
     } catch (Exception ex) {
       log.error("Failed to update token in DB, secretDTO: {}", secretDTOV2, ex);
     }

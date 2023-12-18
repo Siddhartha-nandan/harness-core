@@ -23,6 +23,8 @@ import io.harness.CategoryTest;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.DelegateTaskRequest;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.connector.pdcconnector.HostConnectivityTaskParams;
@@ -88,6 +90,14 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
   @Mock private NGFeatureFlagHelperService ngFeatureFlagHelperService;
   @InjectMocks NGHostValidationServiceImpl hostValidationService;
 
+  ScopeInfo scopeInfo = ScopeInfo.builder()
+                            .accountIdentifier("account")
+                            .orgIdentifier(ORG_IDENTIFIER)
+                            .projectIdentifier(PROJECT_IDENTIFIER)
+                            .uniqueId(PROJECT_IDENTIFIER)
+                            .scopeType(ScopeLevel.PROJECT)
+                            .build();
+
   @Before
   public void before() {
     doReturn(false).when(ngFeatureFlagHelperService).isEnabled(any(), any());
@@ -103,8 +113,8 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
 
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any())).thenReturn(buildSSHConfigValidationTaskResponseSuccess());
 
-    HostValidationDTO result = hostValidationService.validateHost(
-        HOST, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, SECRET_IDENTIFIER, Collections.emptySet());
+    HostValidationDTO result =
+        hostValidationService.validateHost(HOST, scopeInfo, SECRET_IDENTIFIER, Collections.emptySet());
 
     assertThat(result.getHost()).isEqualTo(HOST);
     assertThat(result.getStatus()).isEqualTo(HostValidationDTO.HostValidationStatus.SUCCESS);
@@ -123,8 +133,8 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
     when(ngErrorHelper.getCode(VALIDATION_HOST_FAILED_ERROR_MSG)).thenReturn(450);
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any())).thenReturn(buildSSHConfigValidationTaskResponseFailed());
 
-    HostValidationDTO result = hostValidationService.validateHost(
-        HOST, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, SECRET_IDENTIFIER, Collections.emptySet());
+    HostValidationDTO result =
+        hostValidationService.validateHost(HOST, scopeInfo, SECRET_IDENTIFIER, Collections.emptySet());
 
     assertThat(result.getHost()).isEqualTo(HOST);
     assertThat(result.getStatus()).isEqualTo(HostValidationDTO.HostValidationStatus.FAILED);
@@ -147,8 +157,8 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(buildWinRmConfigValidationTaskResponseSuccess());
 
-    HostValidationDTO result = hostValidationService.validateHost(
-        HOST, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, SECRET_IDENTIFIER, Collections.emptySet());
+    HostValidationDTO result =
+        hostValidationService.validateHost(HOST, scopeInfo, SECRET_IDENTIFIER, Collections.emptySet());
 
     assertThat(result.getHost()).isEqualTo(HOST);
     assertThat(result.getStatus()).isEqualTo(HostValidationDTO.HostValidationStatus.SUCCESS);
@@ -167,8 +177,8 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
     when(ngErrorHelper.getCode(VALIDATION_HOST_FAILED_ERROR_MSG)).thenReturn(450);
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any())).thenReturn(buildWinRmConfigValidationTaskResponseFailed());
 
-    HostValidationDTO result = hostValidationService.validateHost(
-        HOST, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, SECRET_IDENTIFIER, Collections.emptySet());
+    HostValidationDTO result =
+        hostValidationService.validateHost(HOST, scopeInfo, SECRET_IDENTIFIER, Collections.emptySet());
 
     assertThat(result.getHost()).isEqualTo(HOST);
     assertThat(result.getStatus()).isEqualTo(HostValidationDTO.HostValidationStatus.FAILED);
@@ -184,9 +194,8 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testValidateSshHostMissingSecret() {
-    assertThatThrownBy(()
-                           -> hostValidationService.validateHost(HOST, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER,
-                               PROJECT_IDENTIFIER, SECRET_IDENTIFIER_NULL, Collections.emptySet()))
+    assertThatThrownBy(
+        () -> hostValidationService.validateHost(HOST, scopeInfo, SECRET_IDENTIFIER_NULL, Collections.emptySet()))
         .isInstanceOf(InvalidArgumentsException.class)
         .hasMessage("Secret identifier cannot be null or empty");
   }
@@ -195,9 +204,8 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testValidateSshHostMissingHost() {
-    assertThatThrownBy(()
-                           -> hostValidationService.validateHost(HOST_NULL, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER,
-                               PROJECT_IDENTIFIER, SECRET_IDENTIFIER, Collections.emptySet()))
+    assertThatThrownBy(
+        () -> hostValidationService.validateHost(HOST_NULL, scopeInfo, SECRET_IDENTIFIER, Collections.emptySet()))
         .isInstanceOf(InvalidArgumentsException.class)
         .hasMessage("Host cannot be null or empty");
   }
@@ -206,12 +214,10 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testValidateSshHostMissingSecretInDb() {
-    when(ngSecretServiceV2.get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, SECRET_IDENTIFIER))
-        .thenReturn(Optional.empty());
+    when(ngSecretServiceV2.get(scopeInfo, SECRET_IDENTIFIER)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(()
-                           -> hostValidationService.validateHost(HOST, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER,
-                               PROJECT_IDENTIFIER, SECRET_IDENTIFIER, Collections.emptySet()))
+    assertThatThrownBy(
+        () -> hostValidationService.validateHost(HOST, scopeInfo, SECRET_IDENTIFIER, Collections.emptySet()))
         .isInstanceOf(InvalidArgumentsException.class)
         .hasMessage(String.format("Not found secret for host validation, secret identifier: %s", SECRET_IDENTIFIER));
   }
@@ -222,9 +228,8 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
   public void testValidateSshHostInvalidSecretType() {
     mockSecret(SecretType.SecretFile);
 
-    assertThatThrownBy(()
-                           -> hostValidationService.validateHost(HOST, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER,
-                               PROJECT_IDENTIFIER, SECRET_IDENTIFIER, Collections.emptySet()))
+    assertThatThrownBy(
+        () -> hostValidationService.validateHost(HOST, scopeInfo, SECRET_IDENTIFIER, Collections.emptySet()))
         .isInstanceOf(InvalidArgumentsException.class)
         .hasMessage(String.format("Invalid secret type, secret identifier: %s", SECRET_IDENTIFIER));
   }
@@ -236,9 +241,8 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
     mockSecret(SecretType.SSHKey);
     mockEncryptionDetails();
 
-    assertThatThrownBy(()
-                           -> hostValidationService.validateHost(INVALID_HOST, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER,
-                               PROJECT_IDENTIFIER, SECRET_IDENTIFIER, Collections.emptySet()))
+    assertThatThrownBy(
+        () -> hostValidationService.validateHost(INVALID_HOST, scopeInfo, SECRET_IDENTIFIER, Collections.emptySet()))
         .isInstanceOf(InvalidArgumentsException.class)
         .hasMessage(String.format("Not found hostName, host: %s, extracted port: 22", INVALID_HOST));
   }
@@ -247,8 +251,8 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testValidateSshHostsWithEmptyHosts() {
-    List<HostValidationDTO> hostValidationDTOs = hostValidationService.validateHosts(Collections.emptyList(),
-        ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, SECRET_IDENTIFIER, Collections.emptySet());
+    List<HostValidationDTO> hostValidationDTOs = hostValidationService.validateHosts(
+        Collections.emptyList(), scopeInfo, SECRET_IDENTIFIER, Collections.emptySet());
 
     assertThat(hostValidationDTOs).isEmpty();
   }
@@ -258,8 +262,8 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testValidateSshHostsMissingSecret() {
     assertThatThrownBy(()
-                           -> hostValidationService.validateHosts(Collections.singletonList(HOST), ACCOUNT_IDENTIFIER,
-                               ORG_IDENTIFIER, PROJECT_IDENTIFIER, SECRET_IDENTIFIER_NULL, Collections.emptySet()))
+                           -> hostValidationService.validateHosts(Collections.singletonList(HOST), scopeInfo,
+                               SECRET_IDENTIFIER_NULL, Collections.emptySet()))
         .isInstanceOf(InvalidArgumentsException.class)
         .hasMessage("Secret identifier cannot be null or empty");
   }
@@ -350,8 +354,8 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(HostConnectivityTaskResponse.builder().errorMessage(errorMessage).build());
 
-    HostValidationDTO result = hostValidationService.validateHost(HOST, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER,
-        PROJECT_IDENTIFIER, SECRET_IDENTIFIER, Sets.newHashSet(DELEGATE_SELECTOR));
+    HostValidationDTO result =
+        hostValidationService.validateHost(HOST, scopeInfo, SECRET_IDENTIFIER, Sets.newHashSet(DELEGATE_SELECTOR));
     assertThat(result.getStatus()).isEqualTo(HostValidationDTO.HostValidationStatus.FAILED);
     assertThat(result.getError().getMessage()).isEqualTo(hostValidationFailedMessage);
   }
@@ -367,8 +371,8 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
     String hostValidationFailedMessage = "Host connectivity validation failed.";
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any())).thenReturn(buildErrorNotifyResponseData());
 
-    HostValidationDTO result = hostValidationService.validateHost(HOST, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER,
-        PROJECT_IDENTIFIER, SECRET_IDENTIFIER, Sets.newHashSet(DELEGATE_SELECTOR));
+    HostValidationDTO result =
+        hostValidationService.validateHost(HOST, scopeInfo, SECRET_IDENTIFIER, Sets.newHashSet(DELEGATE_SELECTOR));
     assertThat(result.getStatus()).isEqualTo(HostValidationDTO.HostValidationStatus.FAILED);
     assertThat(result.getError().getMessage()).isEqualTo(hostValidationFailedMessage);
   }
@@ -421,8 +425,7 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
     when(secret.getSecretSpec()).thenReturn(secretKeySpec);
     when(secretKeySpec.toDTO()).thenReturn(secretSpecDTO);
 
-    when(ngSecretServiceV2.get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, SECRET_IDENTIFIER))
-        .thenReturn(Optional.of(secret));
+    when(ngSecretServiceV2.get(scopeInfo, SECRET_IDENTIFIER)).thenReturn(Optional.of(secret));
   }
 
   private void mockWinRmSecret(SecretType secretType) {
@@ -434,8 +437,7 @@ public class NGHostValidationServiceImplTest extends CategoryTest {
     when(secret.getSecretSpec()).thenReturn(secretKeySpec);
     when(secretKeySpec.toDTO()).thenReturn(secretSpecDTO);
 
-    when(ngSecretServiceV2.get(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, SECRET_IDENTIFIER))
-        .thenReturn(Optional.of(secret));
+    when(ngSecretServiceV2.get(scopeInfo, SECRET_IDENTIFIER)).thenReturn(Optional.of(secret));
   }
 
   private void mockEncryptionDetails() {

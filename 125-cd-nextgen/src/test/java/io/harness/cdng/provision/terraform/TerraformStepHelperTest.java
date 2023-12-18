@@ -2193,6 +2193,7 @@ public class TerraformStepHelperTest extends CategoryTest {
                               .projectIdentifier("test-project")
                               .uniqueId("test-project-unique-id")
                               .build();
+    // TODO: check this mock
     doReturn(Optional.of(scopeInfo))
         .when(scopeResolverService)
         .getScopeInfo("test-account", "test-org", "test-project");

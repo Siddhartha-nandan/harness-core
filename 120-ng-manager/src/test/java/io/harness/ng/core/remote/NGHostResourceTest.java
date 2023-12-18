@@ -27,6 +27,8 @@ import io.harness.accesscontrol.acl.api.ResourceScope;
 import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.beans.HostValidationParams;
@@ -61,6 +63,8 @@ public class NGHostResourceTest extends CategoryTest {
   @Owner(developers = VLAD)
   @Category(UnitTests.class)
   public void shouldValidateSshHosts() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     String host1 = "host1";
     final List<String> hosts = Collections.singletonList(host1);
     final Set<String> tags = Collections.emptySet();
@@ -71,11 +75,12 @@ public class NGHostResourceTest extends CategoryTest {
         .checkForAccessOrThrow(any(ResourceScope.class), any(Resource.class), eq(SECRET_ACCESS_PERMISSION), any());
     doReturn(Collections.singletonList(hostValidationDTO))
         .when(hostValidationService)
-        .validateHosts(hosts, ACCOUNT_IDENTIFIER, null, null, SECRET_IDENTIFIER, tags);
+        .validateHosts(hosts, scopeInfo, SECRET_IDENTIFIER, tags);
 
     ResponseDTO<List<HostValidationDTO>> result = ngHostResource.validateHost(ACCOUNT_IDENTIFIER, null, null,
         SECRET_IDENTIFIER,
-        HostValidationParams.builder().hosts(Collections.singletonList(host1)).tags(Collections.emptyList()).build());
+        HostValidationParams.builder().hosts(Collections.singletonList(host1)).tags(Collections.emptyList()).build(),
+        scopeInfo);
 
     assertThat(result.getData().get(0).getHost()).isEqualTo(host1);
     assertThat(result.getData().get(0).getStatus()).isEqualTo(HostValidationDTO.HostValidationStatus.SUCCESS);
@@ -86,6 +91,13 @@ public class NGHostResourceTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testValidateSshHostsWithException() {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier("account")
+                              .orgIdentifier(ORG_IDENTIFIER)
+                              .projectIdentifier(PROJECT_IDENTIFIER)
+                              .uniqueId(PROJECT_IDENTIFIER)
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     final List<String> hosts = Collections.singletonList("host");
     final Set<String> tags = Collections.emptySet();
     doNothing()
@@ -93,11 +105,11 @@ public class NGHostResourceTest extends CategoryTest {
         .checkForAccessOrThrow(any(ResourceScope.class), any(Resource.class), eq(SECRET_ACCESS_PERMISSION), any());
     doThrow(new InvalidRequestException("Secret identifier is empty or null"))
         .when(hostValidationService)
-        .validateHosts(hosts, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, SECRET_IDENTIFIER, tags);
+        .validateHosts(hosts, scopeInfo, SECRET_IDENTIFIER, tags);
     assertThatThrownBy(
         ()
             -> ngHostResource.validateHost(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, SECRET_IDENTIFIER,
-                HostValidationParams.builder().hosts(hosts).tags(Collections.emptyList()).build()))
+                HostValidationParams.builder().hosts(hosts).tags(Collections.emptyList()).build(), scopeInfo))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("Secret identifier is empty or null");
   }
@@ -106,6 +118,13 @@ public class NGHostResourceTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testValidateSshHostsWithNGAccessDeniedException() {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier("account")
+                              .orgIdentifier(ORG_IDENTIFIER)
+                              .projectIdentifier(PROJECT_IDENTIFIER)
+                              .uniqueId(PROJECT_IDENTIFIER)
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     final List<String> hosts = Collections.singletonList("host");
     doThrow(new NGAccessDeniedException("Not enough permission", USER, Collections.emptyList()))
         .when(accessControlClient)
@@ -113,7 +132,7 @@ public class NGHostResourceTest extends CategoryTest {
 
     assertThatThrownBy(()
                            -> ngHostResource.validateHost(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER,
-                               SECRET_IDENTIFIER, HostValidationParams.builder().hosts(hosts).build()))
+                               SECRET_IDENTIFIER, HostValidationParams.builder().hosts(hosts).build(), scopeInfo))
         .isInstanceOf(NGAccessDeniedException.class)
         .hasMessage("Not enough permission");
   }

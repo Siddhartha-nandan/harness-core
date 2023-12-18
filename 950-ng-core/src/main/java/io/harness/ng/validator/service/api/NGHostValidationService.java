@@ -10,6 +10,7 @@ package io.harness.ng.validator.service.api;
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
 import io.harness.ng.validator.dto.HostValidationDTO;
 
 import java.util.List;
@@ -55,9 +56,8 @@ public interface NGHostValidationService {
    * @param secretIdentifierWithScope the secret identifier with scope
    * @return the list of host validation results
    */
-  List<HostValidationDTO> validateHosts(@NotNull List<String> hosts, String accountIdentifier,
-      @Nullable String orgIdentifier, @Nullable String projectIdentifier, @NotNull String secretIdentifierWithScope,
-      @Nullable Set<String> delegateSelectors);
+  List<HostValidationDTO> validateHosts(@NotNull List<String> hosts, ScopeInfo scopeInfo,
+      @NotNull String secretIdentifierWithScope, @Nullable Set<String> delegateSelectors);
 
   /**
    * Validate host credentials and connectivity.
@@ -69,7 +69,6 @@ public interface NGHostValidationService {
    * @param secretIdentifierWithScope the secret identifier with scope
    * @return host validation result
    */
-  HostValidationDTO validateHost(@NotNull String host, String accountIdentifier, @Nullable String orgIdentifier,
-      @Nullable String projectIdentifier, @NotNull String secretIdentifierWithScope,
+  HostValidationDTO validateHost(@NotNull String host, ScopeInfo scopeInfo, @NotNull String secretIdentifierWithScope,
       @Nullable Set<String> delegateSelectors);
 }

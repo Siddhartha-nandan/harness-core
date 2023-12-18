@@ -142,9 +142,7 @@ public class AccountSecretApiImpl implements AccountSecretApi {
 
     SecretDTOV2 secretDto = secretApiUtils.toSecretDto(secretRequest.getSecret());
 
-    return Response.ok()
-        .entity(ngSecretService.updateFile(account, null, null, secret, secretDto, fileInputStream))
-        .build();
+    return Response.ok().entity(ngSecretService.updateFile(scopeInfo, secret, secretDto, fileInputStream)).build();
   }
 
   @Override
@@ -177,7 +175,7 @@ public class AccountSecretApiImpl implements AccountSecretApi {
         secretResponseWrapper != null ? secretResponseWrapper.getSecret().getOwner() : null);
 
     SecretResponseWrapper updatedSecret =
-        ngSecretService.update(account, null, null, secret, secretApiUtils.toSecretDto(secretRequest.getSecret()));
+        ngSecretService.update(scopeInfo, secret, secretApiUtils.toSecretDto(secretRequest.getSecret()));
     return Response.ok().entity(secretApiUtils.toSecretResponse(updatedSecret)).build();
   }
 
@@ -188,7 +186,7 @@ public class AccountSecretApiImpl implements AccountSecretApi {
     secretPermissionValidator.checkForAccessOrThrow(ResourceScope.of(account, null, null),
         Resource.of(SECRET_RESOURCE_TYPE, secret), SECRET_DELETE_PERMISSION,
         secretResponseWrapper != null ? secretResponseWrapper.getSecret().getOwner() : null);
-    boolean deleted = ngSecretService.delete(account, null, null, secret, false);
+    boolean deleted = ngSecretService.delete(scopeInfo, secret, false);
     if (deleted) {
       return Response.ok().entity(secretApiUtils.toSecretResponse(secretResponseWrapper)).build();
     }

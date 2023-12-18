@@ -375,8 +375,7 @@ public class ProvisionService {
         ngSecretService.get(scopeInfo, secretDTOV2.getIdentifier());
 
     if (secretResponseWrapperOptional.isPresent()) {
-      secretResponseWrapper = ngSecretService.update(
-          accountIdentifier, orgIdentifier, projectIdentifier, secretDTOV2.getIdentifier(), secretDTOV2);
+      secretResponseWrapper = ngSecretService.update(scopeInfo, secretDTOV2.getIdentifier(), secretDTOV2);
     } else {
       secretResponseWrapper = ngSecretService.create(accountIdentifier, scopeInfo, secretDTOV2);
     }

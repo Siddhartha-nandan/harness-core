@@ -25,6 +25,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import io.harness.beans.DelegateTaskRequest;
 import io.harness.beans.FeatureName;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.ScopeInfo;
 import io.harness.delegate.beans.DelegateResponseData;
 import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.SSHTaskParams;
@@ -156,9 +157,8 @@ public class NGHostValidationServiceImpl implements NGHostValidationService {
   }
 
   @Override
-  public List<HostValidationDTO> validateHosts(@NotNull List<String> hosts, @Nullable String accountIdentifier,
-      @Nullable String orgIdentifier, @Nullable String projectIdentifier, @NotNull String secretIdentifierWithScope,
-      @Nullable Set<String> delegateSelectors) {
+  public List<HostValidationDTO> validateHosts(@NotNull List<String> hosts, ScopeInfo scopeInfo,
+      @NotNull String secretIdentifierWithScope, @Nullable Set<String> delegateSelectors) {
     if (isEmpty(hosts)) {
       return Collections.emptyList();
     }
@@ -168,18 +168,16 @@ public class NGHostValidationServiceImpl implements NGHostValidationService {
 
     CompletableFutures<HostValidationDTO> validateSSHHostTasks = new CompletableFutures<>(hostsSSHExecutor);
     for (String hostName : limitHosts(hosts)) {
-      validateSSHHostTasks.supplyAsync(()
-                                           -> validateHost(hostName, accountIdentifier, orgIdentifier,
-                                               projectIdentifier, secretIdentifierWithScope, delegateSelectors));
+      validateSSHHostTasks.supplyAsync(
+          () -> validateHost(hostName, scopeInfo, secretIdentifierWithScope, delegateSelectors));
     }
 
     return executeParallelTasks(validateSSHHostTasks);
   }
 
   @Override
-  public HostValidationDTO validateHost(@NotNull String host, String accountIdentifier, @Nullable String orgIdentifier,
-      @Nullable String projectIdentifier, @NotNull String secretIdentifierWithScope,
-      @Nullable Set<String> delegateSelectors) {
+  public HostValidationDTO validateHost(@NotNull String host, ScopeInfo scopeInfo,
+      @NotNull String secretIdentifierWithScope, @Nullable Set<String> delegateSelectors) {
     if (isBlank(host)) {
       throw new InvalidArgumentsException("Host cannot be null or empty", USER_SRE);
     }
@@ -187,8 +185,7 @@ public class NGHostValidationServiceImpl implements NGHostValidationService {
       throw new InvalidArgumentsException("Secret identifier cannot be null or empty", USER_SRE);
     }
 
-    Optional<Secret> secretOptional =
-        findSecret(accountIdentifier, orgIdentifier, projectIdentifier, secretIdentifierWithScope);
+    Optional<Secret> secretOptional = findSecret(scopeInfo, secretIdentifierWithScope);
     if (!secretOptional.isPresent()) {
       throw new InvalidArgumentsException(
           format("Not found secret for host validation, secret identifier: %s", secretIdentifierWithScope), USER_SRE);
@@ -200,13 +197,13 @@ public class NGHostValidationServiceImpl implements NGHostValidationService {
 
     switch (secret.getType()) {
       case SSHKey:
-        delegateTaskRequest = generateSshDelegateTaskRequest(
-            secret, host, accountIdentifier, orgIdentifier, projectIdentifier, delegateSelectors);
+        delegateTaskRequest = generateSshDelegateTaskRequest(secret, host, scopeInfo.getAccountIdentifier(),
+            scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier(), delegateSelectors);
         hostName = ((SSHTaskParams) delegateTaskRequest.getTaskParameters()).getHost();
         break;
       case WinRmCredentials:
-        delegateTaskRequest = generateWinRmDelegateTaskRequest(
-            secret, host, accountIdentifier, orgIdentifier, projectIdentifier, delegateSelectors);
+        delegateTaskRequest = generateWinRmDelegateTaskRequest(secret, host, scopeInfo.getAccountIdentifier(),
+            scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier(), delegateSelectors);
         hostName = ((WinRmTaskParams) delegateTaskRequest.getTaskParameters()).getHost();
         break;
       default:
@@ -216,8 +213,8 @@ public class NGHostValidationServiceImpl implements NGHostValidationService {
 
     log.info(
         "Start validation host:{}, hostName:{}, secretIdent:{}, accountIdent:{}, orgIdent:{}, projIdent:{}, tags:{}",
-        host, hostName, secretIdentifierWithScope, accountIdentifier, orgIdentifier, projectIdentifier,
-        delegateSelectors);
+        host, hostName, secretIdentifierWithScope, scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(),
+        scopeInfo.getProjectIdentifier(), delegateSelectors);
 
     DelegateResponseData delegateResponseData = executeDelegateSyncTask(delegateTaskRequest);
 
@@ -384,12 +381,11 @@ public class NGHostValidationServiceImpl implements NGHostValidationService {
     return ErrorDetail.builder().build();
   }
 
-  private Optional<Secret> findSecret(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, String secretIdentifierWithScope) {
+  private Optional<Secret> findSecret(ScopeInfo scopeInfo, String secretIdentifierWithScope) {
     SecretRefData secretRefData = SecretRefHelper.createSecretRef(secretIdentifierWithScope);
-    IdentifierRef secretIdentifiers = IdentifierRefHelper.getIdentifierRef(
-        secretIdentifierWithScope, accountIdentifier, orgIdentifier, projectIdentifier);
-    return ngSecretServiceV2.get(secretIdentifiers.getAccountIdentifier(), secretIdentifiers.getOrgIdentifier(),
-        secretIdentifiers.getProjectIdentifier(), secretRefData.getIdentifier());
+    IdentifierRef secretIdentifiers = IdentifierRefHelper.getIdentifierRef(secretIdentifierWithScope,
+        scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
+    // TODO : need to check if this can be replaced
+    return ngSecretServiceV2.get(scopeInfo, secretRefData.getIdentifier());
   }
 }

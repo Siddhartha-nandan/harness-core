@@ -175,8 +175,7 @@ public class NgGlobalKmsServiceImplTest extends CategoryTest {
       mockForValidUser();
       when(ngSecretManagerService.validateNGSecretManager(eq(GLOBAL_ACCOUNT_ID), any()))
           .thenReturn(Pair.of(NO_TASK_ID, true));
-      when(ngSecretService.update(GLOBAL_ACCOUNT_ID, secretDTOV2.getOrgIdentifier(), secretDTOV2.getProjectIdentifier(),
-               secretDTOV2.getIdentifier(), secretDTOV2))
+      when(ngSecretService.update(scopeInfo, secretDTOV2.getIdentifier(), secretDTOV2))
           .thenReturn(SecretResponseWrapper.builder().build());
       when(connectorService.update(
                ConnectorDTO.builder().connectorInfo(globalKmsConnector.getConnector()).build(), GLOBAL_ACCOUNT_ID))
@@ -184,17 +183,7 @@ public class NgGlobalKmsServiceImplTest extends CategoryTest {
       ConnectorSecretResponseDTO response = globalKmsService.updateGlobalKms(connectorDTO, secretDTOV2);
       globalContextManagerMockedStatic.verify(() -> GlobalContextManager.obtainGlobalContext(), times(1));
       verify(ngConnectorManagerClientService, times(1)).isHarnessSupportUser(userId);
-      verify(ngSecretService, times(1))
-          .update(GLOBAL_ACCOUNT_ID, secretDTOV2.getOrgIdentifier(), secretDTOV2.getProjectIdentifier(),
-              secretDTOV2.getIdentifier(), secretDTOV2);
-      verify(ngSecretService)
-          .update(accountIdentifierArgumentCaptor.capture(), orgIdentifierArgumentCaptor.capture(),
-              projectIdentifierArgumentCaptor.capture(), identifierArgumentCaptor.capture(),
-              secretDTOV2ArgumentCaptor.capture());
-      assertEquals(GLOBAL_ACCOUNT_ID, accountIdentifierArgumentCaptor.getValue());
-      assertEquals(secretDTOV2.getOrgIdentifier(), orgIdentifierArgumentCaptor.getValue());
-      assertEquals(secretDTOV2.getProjectIdentifier(), projectIdentifierArgumentCaptor.getValue());
-      assertEquals(secretDTOV2, secretDTOV2ArgumentCaptor.getValue());
+      verify(ngSecretService, times(1)).update(scopeInfo, secretDTOV2.getIdentifier(), secretDTOV2);
       verify(connectorService, times(1))
           .update(ConnectorDTO.builder().connectorInfo(globalKmsConnector.getConnector()).build(), GLOBAL_ACCOUNT_ID);
       verify(connectorService).update(connectorDTOArgumentCaptor.capture(), accountIdentifierArgumentCaptor.capture());

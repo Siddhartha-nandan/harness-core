@@ -102,27 +102,25 @@ public class SecretEntityCRUDEventHandler {
   }
 
   public boolean deleteAssociatedSecrets(String accountIdentifier, String orgIdentifier, String projectIdentifier) {
-    List<SecretResponseWrapper> secretResponseWrappers =
-        fetchAllSecretsInGivenScope(accountIdentifier, orgIdentifier, projectIdentifier);
+    Optional<ScopeInfo> scopeInfo =
+        scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, projectIdentifier);
+    List<SecretResponseWrapper> secretResponseWrappers = fetchAllSecretsInGivenScope(scopeInfo.orElseThrow());
     List<String> secretIdentifiers = secretResponseWrappers.stream()
                                          .map(SecretResponseWrapper::getSecret)
                                          .map(SecretDTOV2::getIdentifier)
                                          .collect(Collectors.toList());
     if (!secretIdentifiers.isEmpty()) {
-      secretCrudService.deleteBatch(accountIdentifier, orgIdentifier, projectIdentifier, secretIdentifiers);
+      secretCrudService.deleteBatch(scopeInfo.orElseThrow(), secretIdentifiers);
     }
     return true;
   }
 
-  private List<SecretResponseWrapper> fetchAllSecretsInGivenScope(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier) {
+  private List<SecretResponseWrapper> fetchAllSecretsInGivenScope(ScopeInfo scopeInfo) {
     Page<SecretResponseWrapper> pagedSecretList = null;
     List<SecretResponseWrapper> secretList = new ArrayList<>();
-    Optional<ScopeInfo> scopeInfo =
-        scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, projectIdentifier);
     do {
-      pagedSecretList = secretCrudService.list(accountIdentifier, scopeInfo.orElseThrow(), orgIdentifier,
-          projectIdentifier, null, null, false, null, null, false,
+      pagedSecretList = secretCrudService.list(scopeInfo.getAccountIdentifier(), scopeInfo,
+          scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier(), null, null, false, null, null, false,
           PageRequest.builder()
               .pageSize(10)
               .pageIndex(pagedSecretList == null ? 0 : pagedSecretList.getNumber() + 1)

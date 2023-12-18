@@ -514,8 +514,11 @@ public class SecretCrudServiceImpl implements SecretCrudService {
     }
   }
   @Override
-  public boolean delete(String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier,
-      boolean forceDelete) {
+  public boolean delete(ScopeInfo scopeInfo, String identifier, boolean forceDelete) {
+    String accountIdentifier = scopeInfo.getAccountIdentifier();
+    String orgIdentifier = scopeInfo.getOrgIdentifier();
+    String projectIdentifier = scopeInfo.getProjectIdentifier();
+
     try (AutoLogContext ignore1 =
              new NgAutoLogContext(projectIdentifier, orgIdentifier, accountIdentifier, OVERRIDE_ERROR)) {
       if (forceDelete && !isForceDeleteFFEnabledViaSettings(accountIdentifier)) {
@@ -526,8 +529,7 @@ public class SecretCrudServiceImpl implements SecretCrudService {
             USER);
       }
 
-      Optional<SecretResponseWrapper> optionalSecret =
-          get(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+      Optional<SecretResponseWrapper> optionalSecret = get(scopeInfo, identifier);
       if (optionalSecret.isPresent()) {
         if (!forceDelete) {
           secretEntityReferenceHelper.validateSecretIsNotUsedByOthers(
@@ -550,8 +552,7 @@ public class SecretCrudServiceImpl implements SecretCrudService {
       }
 
       if (remoteDeletionSuccess) {
-        localDeletionSuccess =
-            ngSecretService.delete(accountIdentifier, orgIdentifier, projectIdentifier, identifier, forceDelete);
+        localDeletionSuccess = ngSecretService.delete(scopeInfo, identifier, forceDelete);
       }
       if (remoteDeletionSuccess && localDeletionSuccess) {
         secretEntityReferenceHelper.deleteExistingSetupUsage(
@@ -569,14 +570,14 @@ public class SecretCrudServiceImpl implements SecretCrudService {
     }
   }
 
-  public void deleteBatch(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, List<String> secretIdentifiersList) {
+  public void deleteBatch(ScopeInfo scopeInfo, List<String> secretIdentifiersList) {
+    String accountIdentifier = scopeInfo.getAccountIdentifier();
+    String orgIdentifier = scopeInfo.getOrgIdentifier();
+    String projectIdentifier = scopeInfo.getProjectIdentifier();
     for (String identifier : secretIdentifiersList) {
-      Optional<SecretResponseWrapper> optionalSecret =
-          get(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+      Optional<SecretResponseWrapper> optionalSecret = get(scopeInfo, identifier);
       if (optionalSecret.isPresent()) {
-        boolean deletionSuccess =
-            ngSecretService.delete(accountIdentifier, orgIdentifier, projectIdentifier, identifier, false);
+        boolean deletionSuccess = ngSecretService.delete(scopeInfo, identifier, false);
         if (deletionSuccess) {
           secretEntityReferenceHelper.deleteExistingSetupUsage(
               accountIdentifier, orgIdentifier, projectIdentifier, identifier);
@@ -640,27 +641,26 @@ public class SecretCrudServiceImpl implements SecretCrudService {
   }
 
   @Override
-  public SecretResponseWrapper update(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier, SecretDTOV2 dto) {
-    validateUpdateRequestAndGetSecret(accountIdentifier, orgIdentifier, projectIdentifier, identifier, dto);
+  public SecretResponseWrapper update(ScopeInfo scopeInfo, String identifier, SecretDTOV2 dto) {
+    validateUpdateRequestAndGetSecret(scopeInfo, identifier, dto);
     boolean remoteUpdateSuccess = true;
 
     SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().build();
-    if (!isOpaPoliciesSatisfied(accountIdentifier, getMaskedDTOForOpa(dto), secretResponseWrapper)) {
+    if (!isOpaPoliciesSatisfied(scopeInfo.getAccountIdentifier(), getMaskedDTOForOpa(dto), secretResponseWrapper)) {
       return secretResponseWrapper;
     }
     GovernanceMetadata governanceMetadata = secretResponseWrapper.getGovernanceMetadata();
 
     if (SecretText.equals(dto.getType())) {
-      NGEncryptedData encryptedData = encryptedDataService.updateSecretText(accountIdentifier, dto);
+      NGEncryptedData encryptedData = encryptedDataService.updateSecretText(scopeInfo.getAccountIdentifier(), dto);
       if (!Optional.ofNullable(encryptedData).isPresent()) {
         remoteUpdateSuccess = false;
       }
     }
     Secret updatedSecret = null;
     if (remoteUpdateSuccess) {
-      secretEntityReferenceHelper.createSetupUsageForSecret(accountIdentifier, dto);
-      updatedSecret = ngSecretService.update(accountIdentifier, dto, false);
+      secretEntityReferenceHelper.createSetupUsageForSecret(scopeInfo.getAccountIdentifier(), dto);
+      updatedSecret = ngSecretService.update(scopeInfo, dto, false);
     }
     secretResponseWrapper = processAndGetSecret(remoteUpdateSuccess, updatedSecret);
     secretResponseWrapper.setGovernanceMetadata(governanceMetadata);
@@ -668,36 +668,36 @@ public class SecretCrudServiceImpl implements SecretCrudService {
   }
 
   @Override
-  public SecretResponseWrapper updateViaYaml(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier, SecretDTOV2 dto) {
+  public SecretResponseWrapper updateViaYaml(ScopeInfo scopeInfo, String identifier, SecretDTOV2 dto) {
     if (dto.getSpec().getErrorMessageForInvalidYaml().isPresent()) {
       throw new InvalidRequestException(dto.getSpec().getErrorMessageForInvalidYaml().get(), USER);
     }
 
     SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().build();
-    if (!isOpaPoliciesSatisfied(accountIdentifier, getMaskedDTOForOpa(dto), secretResponseWrapper)) {
+    if (!isOpaPoliciesSatisfied(scopeInfo.getAccountIdentifier(), getMaskedDTOForOpa(dto), secretResponseWrapper)) {
       return secretResponseWrapper;
     }
     GovernanceMetadata governanceMetadata = secretResponseWrapper.getGovernanceMetadata();
 
-    validateUpdateRequestAndGetSecret(accountIdentifier, orgIdentifier, projectIdentifier, identifier, dto);
+    validateUpdateRequestAndGetSecret(scopeInfo, identifier, dto);
 
     boolean remoteUpdateSuccess = true;
     if (SecretText.equals(dto.getType())) {
-      NGEncryptedData encryptedData = encryptedDataService.updateSecretText(accountIdentifier, dto);
+      NGEncryptedData encryptedData = encryptedDataService.updateSecretText(scopeInfo.getAccountIdentifier(), dto);
       if (!Optional.ofNullable(encryptedData).isPresent()) {
         remoteUpdateSuccess = false;
       }
     } else if (SecretFile.equals(dto.getType())) {
-      NGEncryptedData encryptedData = encryptedDataService.updateSecretFile(accountIdentifier, dto, null);
+      NGEncryptedData encryptedData =
+          encryptedDataService.updateSecretFile(scopeInfo.getAccountIdentifier(), dto, null);
       if (!Optional.ofNullable(encryptedData).isPresent()) {
         remoteUpdateSuccess = false;
       }
     }
     Secret updatedSecret = null;
     if (remoteUpdateSuccess) {
-      secretEntityReferenceHelper.createSetupUsageForSecret(accountIdentifier, dto);
-      updatedSecret = ngSecretService.update(accountIdentifier, dto, true);
+      secretEntityReferenceHelper.createSetupUsageForSecret(scopeInfo.getAccountIdentifier(), dto);
+      updatedSecret = ngSecretService.update(scopeInfo, dto, true);
     }
     secretResponseWrapper = processAndGetSecret(remoteUpdateSuccess, updatedSecret);
     secretResponseWrapper.setGovernanceMetadata(governanceMetadata);
@@ -778,10 +778,8 @@ public class SecretCrudServiceImpl implements SecretCrudService {
     throw new SecretManagementException(SECRET_MANAGEMENT_ERROR, "Unable to create secret file remotely", USER);
   }
 
-  private SecretDTOV2 validateUpdateRequestAndGetSecret(String accountIdentifier, String orgIdentifier,
-      String projectIdentifier, String identifier, SecretDTOV2 updateDTO) {
-    Optional<SecretResponseWrapper> secretOptional =
-        get(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+  private SecretDTOV2 validateUpdateRequestAndGetSecret(ScopeInfo scopeInfo, String identifier, SecretDTOV2 updateDTO) {
+    Optional<SecretResponseWrapper> secretOptional = get(scopeInfo, identifier);
     if (!secretOptional.isPresent()) {
       throw new InvalidRequestException("No such secret found, please check identifier/scope and try again.");
     }
@@ -795,24 +793,24 @@ public class SecretCrudServiceImpl implements SecretCrudService {
 
   @SneakyThrows
   @Override
-  public SecretResponseWrapper updateFile(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      String identifier, @Valid SecretDTOV2 dto, @NotNull InputStream inputStream) {
+  public SecretResponseWrapper updateFile(
+      ScopeInfo scopeInfo, String identifier, @Valid SecretDTOV2 dto, @NotNull InputStream inputStream) {
     SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().build();
-    if (!isOpaPoliciesSatisfied(accountIdentifier, getMaskedDTOForOpa(dto), secretResponseWrapper)) {
+    if (!isOpaPoliciesSatisfied(scopeInfo.getAccountIdentifier(), getMaskedDTOForOpa(dto), secretResponseWrapper)) {
       return secretResponseWrapper;
     }
     GovernanceMetadata governanceMetadata = secretResponseWrapper.getGovernanceMetadata();
 
-    validateUpdateRequestAndGetSecret(accountIdentifier, orgIdentifier, projectIdentifier, identifier, dto);
+    validateUpdateRequestAndGetSecret(scopeInfo, identifier, dto);
     boolean success =
         Optional
-            .ofNullable(encryptedDataService.updateSecretFile(accountIdentifier, dto,
+            .ofNullable(encryptedDataService.updateSecretFile(scopeInfo.getAccountIdentifier(), dto,
                 (inputStream == null) ? null
                                       : new BoundedInputStream(inputStream, fileUploadLimit.getEncryptedFileLimit())))
             .isPresent();
 
     if (success) {
-      Secret updatedSecret = ngSecretService.update(accountIdentifier, dto, false);
+      Secret updatedSecret = ngSecretService.update(scopeInfo, dto, false);
       publishEvent(updatedSecret, EventsFrameworkMetadataConstants.UPDATE_ACTION);
       secretResponseWrapper = getResponseWrapper(updatedSecret);
       secretResponseWrapper.setGovernanceMetadata(governanceMetadata);
@@ -822,14 +820,13 @@ public class SecretCrudServiceImpl implements SecretCrudService {
   }
 
   @Override
-  public SecretValidationResultDTO validateSecret(String accountIdentifier, String orgIdentifier,
-      String projectIdentifier, String identifier, @Valid SecretValidationMetaData metadata) {
-    return ngSecretService.validateSecret(accountIdentifier, orgIdentifier, projectIdentifier, identifier, metadata);
+  public SecretValidationResultDTO validateSecret(
+      ScopeInfo scopeInfo, String identifier, @Valid SecretValidationMetaData metadata) {
+    return ngSecretService.validateSecret(scopeInfo, identifier, metadata);
   }
 
   @Override
-  public void validateSshWinRmSecretRef(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, SecretDTOV2 secretDTO) {
+  public void validateSshWinRmSecretRef(ScopeInfo scopeInfo, SecretDTOV2 secretDTO) {
     SecretRefData secretRef = null;
 
     if (secretDTO.getSpec() instanceof SSHKeySpecDTO) {
@@ -870,11 +867,10 @@ public class SecretCrudServiceImpl implements SecretCrudService {
       return;
     }
 
-    BaseNGAccess secretRefScopeInfo =
-        SecretRefHelper.getScopeIdentifierForSecretRef(secretRef, accountIdentifier, orgIdentifier, projectIdentifier);
-
-    Optional<Secret> secretOptional = ngSecretService.get(accountIdentifier, secretRefScopeInfo.getOrgIdentifier(),
-        secretRefScopeInfo.getProjectIdentifier(), secretRef.getIdentifier());
+    BaseNGAccess secretRefScopeInfo = SecretRefHelper.getScopeIdentifierForSecretRef(
+        secretRef, scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
+    // TODO : need to check if this can be updated
+    Optional<Secret> secretOptional = ngSecretService.get(scopeInfo, secretRef.getIdentifier());
 
     if (!secretOptional.isPresent()) {
       throw new EntityNotFoundException(

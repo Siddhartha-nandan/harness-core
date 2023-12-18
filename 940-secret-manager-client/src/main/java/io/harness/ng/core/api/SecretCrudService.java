@@ -44,11 +44,9 @@ public interface SecretCrudService {
       boolean includeSecretsFromEverySubScope, String searchTerm, ConnectorCategory sourceCategory,
       boolean includeAllSecretsAccessibleAtScope, PageRequest pageRequest, Set<String> secretManagerIdentifiers);
 
-  boolean delete(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier, boolean forceDelete);
+  boolean delete(ScopeInfo scopeInfo, String identifier, boolean forceDelete);
 
-  void deleteBatch(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, List<String> secretIdentifiersList);
+  void deleteBatch(ScopeInfo scopeInfo, List<String> secretIdentifiersList);
 
   SecretResponseWrapper createFile(
       String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto, InputStream inputStream);
@@ -56,20 +54,16 @@ public interface SecretCrudService {
   SecretResponseWrapper createFile(
       String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto, String encryptionKey, String encryptedValue);
 
-  SecretResponseWrapper updateFile(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      String identifier, SecretDTOV2 updateDTO, InputStream inputStream);
+  SecretResponseWrapper updateFile(
+      ScopeInfo scopeInfo, String identifier, SecretDTOV2 updateDTO, InputStream inputStream);
 
-  SecretResponseWrapper update(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      String identifier, SecretDTOV2 updateDTO);
+  SecretResponseWrapper update(ScopeInfo scopeInfo, String identifier, SecretDTOV2 updateDTO);
 
-  SecretResponseWrapper updateViaYaml(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      String identifier, SecretDTOV2 updateDTO);
+  SecretResponseWrapper updateViaYaml(ScopeInfo scopeInfo, String identifier, SecretDTOV2 updateDTO);
 
-  SecretValidationResultDTO validateSecret(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      String identifier, SecretValidationMetaData metadata);
+  SecretValidationResultDTO validateSecret(ScopeInfo scopeInfo, String identifier, SecretValidationMetaData metadata);
 
-  void validateSshWinRmSecretRef(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, SecretDTOV2 secretDTO);
+  void validateSshWinRmSecretRef(ScopeInfo scopeInfo, SecretDTOV2 secretDTO);
 
   void validateSecretDtoSpec(SecretDTOV2 secretDTO);
 

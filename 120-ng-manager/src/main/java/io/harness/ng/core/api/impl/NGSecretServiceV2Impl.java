@@ -177,9 +177,8 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
   }
 
   @Override
-  public boolean delete(@NotNull String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      @NotNull String identifier, boolean forceDelete) {
-    Optional<Secret> secretV2Optional = get(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+  public boolean delete(ScopeInfo scopeInfo, @NotNull String identifier, boolean forceDelete) {
+    Optional<Secret> secretV2Optional = get(scopeInfo, identifier);
 
     if (!secretV2Optional.isPresent()) {
       return false;
@@ -190,8 +189,8 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
     return Failsafe.with(transactionRetryPolicy)
         .get(()
                  -> transactionTemplate.execute(status
-                     -> deleteInternal(
-                         accountIdentifier, orgIdentifier, projectIdentifier, identifier, secret, forceDelete)));
+                     -> deleteInternal(scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(),
+                         scopeInfo.getProjectIdentifier(), identifier, secret, forceDelete)));
   }
 
   @VisibleForTesting
@@ -246,9 +245,8 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
   }
 
   @Override
-  public Secret update(String accountIdentifier, @Valid SecretDTOV2 secretDTO, boolean draft) {
-    Optional<Secret> secretOptional = get(
-        accountIdentifier, secretDTO.getOrgIdentifier(), secretDTO.getProjectIdentifier(), secretDTO.getIdentifier());
+  public Secret update(ScopeInfo scopeInfo, @Valid SecretDTOV2 secretDTO, boolean draft) {
+    Optional<Secret> secretOptional = get(scopeInfo, secretDTO.getIdentifier());
     if (secretOptional.isPresent()) {
       Secret oldSecret = secretOptional.get();
       SecretDTOV2 oldSecretClone = (SecretDTOV2) HObjectMapper.clone(oldSecret.toDTO());
@@ -263,8 +261,9 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
       try {
         return Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
           secretRepository.save(oldSecret);
-          outboxService.save(new SecretUpdateEvent(accountIdentifier, oldSecret.toDTO(), oldSecretClone));
-          createSecretUpdateActivity(accountIdentifier, secretDTO);
+          outboxService.save(
+              new SecretUpdateEvent(scopeInfo.getAccountIdentifier(), oldSecret.toDTO(), oldSecretClone));
+          createSecretUpdateActivity(scopeInfo.getAccountIdentifier(), secretDTO);
           return oldSecret;
         }));
       } catch (DuplicateKeyException duplicateKeyException) {
@@ -284,9 +283,9 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
   }
 
   @Override
-  public SecretValidationResultDTO validateSecret(@NotNull String accountIdentifier, String orgIdentifier,
-      String projectIdentifier, @NotNull String identifier, @NotNull SecretValidationMetaData metadata) {
-    Optional<Secret> secretV2Optional = get(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+  public SecretValidationResultDTO validateSecret(
+      ScopeInfo scopeInfo, @NotNull String identifier, @NotNull SecretValidationMetaData metadata) {
+    Optional<Secret> secretV2Optional = get(scopeInfo, identifier);
 
     if (!secretV2Optional.isPresent()) {
       return buildFailedValidationResult();
@@ -296,9 +295,11 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
 
     switch (secret.getType()) {
       case SSHKey:
-        return validateSecretSSHKey(accountIdentifier, orgIdentifier, projectIdentifier, metadata, secret);
+        return validateSecretSSHKey(scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(),
+            scopeInfo.getProjectIdentifier(), metadata, secret);
       case WinRmCredentials:
-        return validateSecretWinRmCredentials(accountIdentifier, orgIdentifier, projectIdentifier, metadata, secret);
+        return validateSecretWinRmCredentials(scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(),
+            scopeInfo.getProjectIdentifier(), metadata, secret);
       default:
         return buildFailedValidationResult();
     }
@@ -527,13 +528,11 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
   }
 
   @Override
-  public long count(String accountIdentifier, String orgIdentifier, String projectIdentifier) {
+  public long count(ScopeInfo scopeInfo) {
     Criteria criteria = Criteria.where(SecretKeys.accountIdentifier)
-                            .is(accountIdentifier)
-                            .and(SecretKeys.orgIdentifier)
-                            .is(orgIdentifier)
-                            .and(SecretKeys.projectIdentifier)
-                            .is(projectIdentifier);
+                            .is(scopeInfo.getAccountIdentifier())
+                            .and(SecretKeys.parentUniqueId)
+                            .is(scopeInfo.getUniqueId());
     return secretRepository.count(criteria);
   }
 

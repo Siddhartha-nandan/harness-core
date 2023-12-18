@@ -366,6 +366,11 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testUpdate() {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .uniqueId(accountIdentifier)
+                              .build();
     NGEncryptedData encryptedDataDTO = NGEncryptedData.builder().type(SettingVariableTypes.CONFIG_FILE).build();
     SecretDTOV2 secretDTOV2 =
         SecretDTOV2.builder().type(SecretType.SecretText).spec(SecretTextSpecDTO.builder().build()).build();
@@ -378,10 +383,9 @@ public class SecretCrudServiceImplTest extends CategoryTest {
                         .build());
     doReturn(Optional.ofNullable(SecretResponseWrapper.builder().secret(secretDTOV2).build()))
         .when(secretCrudService)
-        .get(any(), any(), any(), any());
+        .get(eq(scopeInfo), any());
 
-    SecretResponseWrapper updatedSecret =
-        secretCrudService.update(accountIdentifier, null, null, "identifier", secretDTOV2);
+    SecretResponseWrapper updatedSecret = secretCrudService.update(scopeInfo, "identifier", secretDTOV2);
 
     ArgumentCaptor<Message> producerMessage = ArgumentCaptor.forClass(Message.class);
     try {
@@ -455,6 +459,11 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testUpdateFile_failDueToSecretManagerChangeNotAllowed() throws IOException {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .uniqueId(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .build();
     NGEncryptedData encryptedDataDTO = NGEncryptedData.builder()
                                            .type(SettingVariableTypes.CONFIG_FILE)
                                            .secretManagerIdentifier("secretManager1")
@@ -471,11 +480,9 @@ public class SecretCrudServiceImplTest extends CategoryTest {
             .build();
     doReturn(Optional.ofNullable(SecretResponseWrapper.builder().secret(secretDTOV2).build()))
         .when(secretCrudService)
-        .get(any(), any(), any(), any());
-
+        .get(eq(scopeInfo), any());
     try {
-      secretCrudService.updateFile(
-          accountIdentifier, null, null, "identifier", newSecretDTOV2, new StringInputStream("string"));
+      secretCrudService.updateFile(scopeInfo, "identifier", newSecretDTOV2, new StringInputStream("string"));
       fail("Execution should not reach here");
     } catch (InvalidRequestException invalidRequestException) {
       // not required
@@ -486,6 +493,11 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testUpdateFile() throws IOException {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .uniqueId(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .build();
     NGEncryptedData encryptedDataDTO = NGEncryptedData.builder()
                                            .type(SettingVariableTypes.CONFIG_FILE)
                                            .secretManagerIdentifier("secretManager1")
@@ -499,10 +511,10 @@ public class SecretCrudServiceImplTest extends CategoryTest {
         .thenReturn(Secret.builder().identifier("secret").accountIdentifier(accountIdentifier).build());
     doReturn(Optional.ofNullable(SecretResponseWrapper.builder().secret(secretDTOV2).build()))
         .when(secretCrudService)
-        .get(any(), any(), any(), any());
+        .get(eq(scopeInfo), any());
 
-    SecretResponseWrapper updatedFile = secretCrudService.updateFile(
-        accountIdentifier, null, null, "identifier", secretDTOV2, new StringInputStream("string"));
+    SecretResponseWrapper updatedFile =
+        secretCrudService.updateFile(scopeInfo, "identifier", secretDTOV2, new StringInputStream("string"));
 
     ArgumentCaptor<Message> producerMessage = ArgumentCaptor.forClass(Message.class);
     try {
@@ -520,6 +532,11 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Owner(developers = VIKAS_M)
   @Category(UnitTests.class)
   public void testUpdateFile_WithoutInputFile() {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .uniqueId(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .build();
     NGEncryptedData encryptedDataDTO = NGEncryptedData.builder()
                                            .type(SettingVariableTypes.CONFIG_FILE)
                                            .name("fileName")
@@ -536,10 +553,9 @@ public class SecretCrudServiceImplTest extends CategoryTest {
             Secret.builder().identifier("secret").accountIdentifier(accountIdentifier).name("updatedFileName").build());
     doReturn(Optional.ofNullable(SecretResponseWrapper.builder().secret(secretDTOV2).build()))
         .when(secretCrudService)
-        .get(any(), any(), any(), any());
+        .get(eq(scopeInfo), any());
 
-    SecretResponseWrapper updatedFile =
-        secretCrudService.updateFile(accountIdentifier, null, null, "identifier", secretDTOV2, null);
+    SecretResponseWrapper updatedFile = secretCrudService.updateFile(scopeInfo, "identifier", secretDTOV2, null);
     ArgumentCaptor<InputStream> inputStreamArgumentCaptor = ArgumentCaptor.forClass(InputStream.class);
     assertThat(updatedFile).isNotNull();
     assertThat(updatedFile.getSecret().getName()).isEqualTo("updatedFileName");
@@ -551,6 +567,11 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Owner(developers = VIKAS_M)
   @Category(UnitTests.class)
   public void testUpdateFile_WithInputFile() throws IOException {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .uniqueId(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .build();
     NGEncryptedData encryptedDataDTO = NGEncryptedData.builder()
                                            .type(SettingVariableTypes.CONFIG_FILE)
                                            .name("fileName")
@@ -567,10 +588,10 @@ public class SecretCrudServiceImplTest extends CategoryTest {
             Secret.builder().identifier("secret").accountIdentifier(accountIdentifier).name("updatedFileName").build());
     doReturn(Optional.ofNullable(SecretResponseWrapper.builder().secret(secretDTOV2).build()))
         .when(secretCrudService)
-        .get(any(), any(), any(), any());
+        .get(eq(scopeInfo), any());
 
     SecretResponseWrapper updatedFile = secretCrudService.updateFile(
-        accountIdentifier, null, null, "identifier", secretDTOV2, new StringInputStream("input Stream is present"));
+        scopeInfo, "identifier", secretDTOV2, new StringInputStream("input Stream is present"));
     ArgumentCaptor<InputStream> inputStreamArgumentCaptor = ArgumentCaptor.forClass(InputStream.class);
     assertThat(updatedFile).isNotNull();
     assertThat(updatedFile.getSecret().getName()).isEqualTo("updatedFileName");
@@ -582,10 +603,17 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testValidateSecret() {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .orgIdentifier("org")
+                              .projectIdentifier("project")
+                              .uniqueId(randomAlphabetic(10))
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     SecretValidationResultDTO secretValidationResultDTO = SecretValidationResultDTO.builder().success(true).build();
-    when(ngSecretServiceV2.validateSecret(any(), any(), any(), any(), any())).thenReturn(secretValidationResultDTO);
+    when(ngSecretServiceV2.validateSecret(eq(scopeInfo), any(), any())).thenReturn(secretValidationResultDTO);
     SecretValidationResultDTO resultDTO = secretCrudService.validateSecret(
-        accountIdentifier, "org", "project", "identifier", SSHKeyValidationMetadata.builder().host("host").build());
+        scopeInfo, "identifier", SSHKeyValidationMetadata.builder().host("host").build());
     assertThat(resultDTO).isNotNull();
   }
 
@@ -619,8 +647,10 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Owner(developers = NISHANT)
   @Category(UnitTests.class)
   public void testGetForSecretRef() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     String secretRef = "SOME/PATH#value";
-    when(ngSecretServiceV2.get(any(), any(), any(), any()))
+    when(ngSecretServiceV2.get(eq(scopeInfo), any()))
         .thenReturn(Optional.ofNullable(Secret.builder()
                                             .accountIdentifier(accountIdentifier)
                                             .identifier("identifier")
@@ -629,58 +659,68 @@ public class SecretCrudServiceImplTest extends CategoryTest {
                                             .build()));
     when(encryptedDataService.get(accountIdentifier, null, null, "identifier"))
         .thenReturn(NGEncryptedData.builder().path(secretRef).build());
-    Optional<SecretResponseWrapper> secretResponseWrapper =
-        secretCrudService.get(accountIdentifier, null, null, "identifier");
+    Optional<SecretResponseWrapper> secretResponseWrapper = secretCrudService.get(scopeInfo, "identifier");
     assertThat(secretResponseWrapper).isPresent();
     assertThat(secretResponseWrapper.get().getSecret().getSpec()).isInstanceOf(SecretTextSpecDTO.class);
     SecretTextSpecDTO secretSpec = (SecretTextSpecDTO) secretResponseWrapper.get().getSecret().getSpec();
     assertThat(secretSpec.getValue()).isEqualTo(secretRef);
-    verify(ngSecretServiceV2).get(any(), any(), any(), any());
+    verify(ngSecretServiceV2).get(eq(scopeInfo), any());
   }
 
   @Test
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testDelete() {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .uniqueId(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .build();
     NGEncryptedData encryptedDataDTO = random(NGEncryptedData.class);
     when(encryptedDataService.get(any(), any(), any(), any())).thenReturn(encryptedDataDTO);
     when(encryptedDataService.delete(any(), any(), any(), any(), eq(false))).thenReturn(true);
-    when(ngSecretServiceV2.delete(any(), any(), any(), any(), eq(false))).thenReturn(true);
+    when(ngSecretServiceV2.delete(eq(scopeInfo), any(), eq(false))).thenReturn(true);
     doNothing().when(secretEntityReferenceHelper).deleteExistingSetupUsage(any(), any(), any(), any());
     doNothing().when(secretEntityReferenceHelper).validateSecretIsNotUsedByOthers(any(), any(), any(), any());
-    when(ngSecretServiceV2.get(any(), any(), any(), any()))
+    when(ngSecretServiceV2.get(eq(scopeInfo), any()))
         .thenReturn(Optional.of(
             Secret.builder().type(SecretType.SecretText).secretSpec(SecretTextSpec.builder().build()).build()));
-    boolean success = secretCrudService.delete(accountIdentifier, null, null, "identifier", false);
+    boolean success = secretCrudService.delete(scopeInfo, "identifier", false);
 
     assertThat(success).isTrue();
     verify(encryptedDataService, atLeastOnce()).get(any(), any(), any(), any());
     verify(encryptedDataService, atLeastOnce()).delete(any(), any(), any(), any(), eq(false));
-    verify(ngSecretServiceV2, atLeastOnce()).delete(any(), any(), any(), any(), eq(false));
+    verify(ngSecretServiceV2, atLeastOnce()).delete(eq(scopeInfo), any(), eq(false));
     verify(secretEntityReferenceHelper, atLeastOnce()).deleteExistingSetupUsage(any(), any(), any(), any());
   }
+
   @Test
   @Owner(developers = MEENAKSHI)
   @Category(UnitTests.class)
   public void testDelete_withForceDeleteTrue_forceDeleteEnabled() {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .uniqueId(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .build();
     doReturn(true).when(secretCrudService).isForceDeleteFFEnabledViaSettings(accountIdentifier);
     NGEncryptedData encryptedDataDTO = random(NGEncryptedData.class);
     when(encryptedDataService.get(any(), any(), any(), any())).thenReturn(encryptedDataDTO);
     when(encryptedDataService.delete(any(), any(), any(), any(), eq(true))).thenReturn(true);
-    when(ngSecretServiceV2.delete(any(), any(), any(), any(), eq(true))).thenReturn(true);
+    when(ngSecretServiceV2.delete(eq(scopeInfo), any(), eq(true))).thenReturn(true);
 
     doNothing()
         .when(secretEntityReferenceHelper)
         .deleteSecretEntityReferenceWhenSecretGetsDeleted(any(), any(), any(), any(), any());
     doNothing().when(secretEntityReferenceHelper).validateSecretIsNotUsedByOthers(any(), any(), any(), any());
-    when(ngSecretServiceV2.get(any(), any(), any(), any()))
+    when(ngSecretServiceV2.get(eq(scopeInfo), any()))
         .thenReturn(Optional.of(
             Secret.builder().type(SecretType.SecretText).secretSpec(SecretTextSpec.builder().build()).build()));
-    boolean success = secretCrudService.delete(accountIdentifier, null, null, "identifier", true);
+    boolean success = secretCrudService.delete(scopeInfo, "identifier", true);
     assertThat(success).isTrue();
     verify(encryptedDataService, atLeastOnce()).get(any(), any(), any(), any());
     verify(encryptedDataService, atLeastOnce()).delete(any(), any(), any(), any(), eq(true));
-    verify(ngSecretServiceV2, atLeastOnce()).delete(any(), any(), any(), any(), eq(true));
+    verify(ngSecretServiceV2, atLeastOnce()).delete(eq(scopeInfo), any(), eq(true));
     verify(secretEntityReferenceHelper, times(0)).validateSecretIsNotUsedByOthers(any(), any(), any(), any());
   }
 
@@ -688,9 +728,14 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Owner(developers = MEENAKSHI)
   @Category(UnitTests.class)
   public void testDelete_withForceDeleteTrue_settingDisabled() {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(ACC_ID_CONSTANT)
+                              .uniqueId(ACC_ID_CONSTANT)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .build();
     doReturn(false).when(secretCrudService).isForceDeleteFFEnabledViaSettings(ACC_ID_CONSTANT);
     try {
-      secretCrudService.delete(ACC_ID_CONSTANT, null, null, "identifier", true);
+      secretCrudService.delete(scopeInfo, "identifier", true);
     } catch (InvalidRequestException e) {
       assertThat(e.getMessage())
           .isEqualTo(
@@ -702,17 +747,24 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Owner(developers = VIKAS_M)
   @Category(UnitTests.class)
   public void testDeleteBatch() {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .orgIdentifier("orgId")
+                              .projectIdentifier("projectId")
+                              .uniqueId(randomAlphabetic(10))
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     List<String> secretIdentifiers = new ArrayList<>();
     secretIdentifiers.add("identifier1");
     secretIdentifiers.add("identifier2");
-    when(ngSecretServiceV2.delete(any(), any(), any(), any(), eq(false))).thenReturn(true);
+    when(ngSecretServiceV2.delete(eq(scopeInfo), any(), eq(false))).thenReturn(true);
     doNothing().when(secretEntityReferenceHelper).deleteExistingSetupUsage(any(), any(), any(), any());
-    when(ngSecretServiceV2.get(any(), any(), any(), any()))
+    when(ngSecretServiceV2.get(eq(scopeInfo), any()))
         .thenReturn(Optional.of(
             Secret.builder().type(SecretType.SecretText).secretSpec(SecretTextSpec.builder().build()).build()));
-    secretCrudService.deleteBatch(accountIdentifier, "orgId", "projectId", secretIdentifiers);
+    secretCrudService.deleteBatch(scopeInfo, secretIdentifiers);
     verify(encryptedDataService, times(2)).hardDelete(any(), any(), any(), any());
-    verify(ngSecretServiceV2, times(2)).get(any(), any(), any(), any());
+    verify(ngSecretServiceV2, times(2)).get(eq(scopeInfo), any());
     verify(secretEntityReferenceHelper, times(2)).deleteExistingSetupUsage(any(), any(), any(), any());
   }
 
@@ -720,8 +772,13 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Owner(developers = TEJAS)
   @Category(UnitTests.class)
   public void testDeleteInvalidIdentifier() {
-    when(ngSecretServiceV2.get(any(), any(), any(), any())).thenReturn(Optional.empty());
-    secretCrudService.delete(accountIdentifier, null, null, "identifier", false);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .uniqueId(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .build();
+    when(ngSecretServiceV2.get(eq(scopeInfo), any())).thenReturn(Optional.empty());
+    secretCrudService.delete(scopeInfo, "identifier", false);
   }
 
   @Test
@@ -976,9 +1033,12 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testValidateSshWinRmSecretRef_WinRm_NTLM_AccountScope() {
     String accountIdentifier = randomAlphabetic(10);
-    String orgIdentifier = randomAlphabetic(10);
-    String projectIdentifier = randomAlphabetic(10);
     String identifier = randomAlphabetic(10);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .uniqueId(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .build();
     SecretRefData password = SecretRefData.builder().identifier(identifier).scope(Scope.ACCOUNT).build();
     SecretDTOV2 secretDTO =
         SecretDTOV2.builder()
@@ -986,9 +1046,9 @@ public class SecretCrudServiceImplTest extends CategoryTest {
                       .auth(WinRmAuthDTO.builder().spec(NTLMConfigDTO.builder().password(password).build()).build())
                       .build())
             .build();
-    when(ngSecretServiceV2.get(any(), any(), any(), any())).thenReturn(Optional.of(Secret.builder().build()));
-    secretCrudService.validateSshWinRmSecretRef(accountIdentifier, orgIdentifier, projectIdentifier, secretDTO);
-    verify(ngSecretServiceV2, times(1)).get(accountIdentifier, null, null, identifier);
+    when(ngSecretServiceV2.get(eq(scopeInfo), any())).thenReturn(Optional.of(Secret.builder().build()));
+    secretCrudService.validateSshWinRmSecretRef(scopeInfo, secretDTO);
+    verify(ngSecretServiceV2, times(1)).get(scopeInfo, identifier);
   }
 
   @Test
@@ -997,8 +1057,13 @@ public class SecretCrudServiceImplTest extends CategoryTest {
   public void testValidateSshWinRmSecretRef_WinRm_NTLM_OrgScope() {
     String accountIdentifier = randomAlphabetic(10);
     String orgIdentifier = randomAlphabetic(10);
-    String projectIdentifier = randomAlphabetic(10);
     String identifier = randomAlphabetic(10);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(randomAlphabetic(10))
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .build();
     SecretRefData password = SecretRefData.builder().identifier(identifier).scope(Scope.ORG).build();
     SecretDTOV2 secretDTO =
         SecretDTOV2.builder()
@@ -1006,9 +1071,9 @@ public class SecretCrudServiceImplTest extends CategoryTest {
                       .auth(WinRmAuthDTO.builder().spec(NTLMConfigDTO.builder().password(password).build()).build())
                       .build())
             .build();
-    when(ngSecretServiceV2.get(any(), any(), any(), any())).thenReturn(Optional.of(Secret.builder().build()));
-    secretCrudService.validateSshWinRmSecretRef(accountIdentifier, orgIdentifier, projectIdentifier, secretDTO);
-    verify(ngSecretServiceV2, times(1)).get(accountIdentifier, orgIdentifier, null, identifier);
+    when(ngSecretServiceV2.get(eq(scopeInfo), any())).thenReturn(Optional.of(Secret.builder().build()));
+    secretCrudService.validateSshWinRmSecretRef(scopeInfo, secretDTO);
+    verify(ngSecretServiceV2, times(1)).get(scopeInfo, identifier);
   }
 
   @Test
@@ -1019,6 +1084,13 @@ public class SecretCrudServiceImplTest extends CategoryTest {
     String orgIdentifier = randomAlphabetic(10);
     String projectIdentifier = randomAlphabetic(10);
     String identifier = randomAlphabetic(10);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .orgIdentifier(orgIdentifier)
+                              .projectIdentifier(projectIdentifier)
+                              .uniqueId(randomAlphabetic(10))
+                              .scopeType(ScopeLevel.PROJECT)
+                              .build();
     SecretRefData password = SecretRefData.builder().identifier(identifier).scope(Scope.PROJECT).build();
     SecretDTOV2 secretDTO =
         SecretDTOV2.builder()
@@ -1026,9 +1098,9 @@ public class SecretCrudServiceImplTest extends CategoryTest {
                       .auth(WinRmAuthDTO.builder().spec(NTLMConfigDTO.builder().password(password).build()).build())
                       .build())
             .build();
-    when(ngSecretServiceV2.get(any(), any(), any(), any())).thenReturn(Optional.of(Secret.builder().build()));
-    secretCrudService.validateSshWinRmSecretRef(accountIdentifier, orgIdentifier, projectIdentifier, secretDTO);
-    verify(ngSecretServiceV2, times(1)).get(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+    when(ngSecretServiceV2.get(eq(scopeInfo), any())).thenReturn(Optional.of(Secret.builder().build()));
+    secretCrudService.validateSshWinRmSecretRef(scopeInfo, secretDTO);
+    verify(ngSecretServiceV2, times(1)).get(scopeInfo, identifier);
   }
 
   @Test

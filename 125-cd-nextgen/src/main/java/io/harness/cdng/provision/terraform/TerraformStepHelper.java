@@ -1518,8 +1518,9 @@ public class TerraformStepHelper {
       List<TerraformApplyExecutionDetails> terraformApplyExecutionDetailsList) {
     terraformApplyExecutionDetailsList.forEach(eD -> {
       if (isNotEmpty(eD.getTfEncryptedJsonOutputSecretId())) {
-        ngSecretService.delete(eD.getAccountIdentifier(), eD.getOrgIdentifier(), eD.getProjectIdentifier(),
-            eD.getTfEncryptedJsonOutputSecretId(), false);
+        Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(
+            eD.getAccountIdentifier(), eD.getOrgIdentifier(), eD.getProjectIdentifier());
+        ngSecretService.delete(scopeInfo.orElseThrow(), eD.getTfEncryptedJsonOutputSecretId(), false);
       }
     });
   }

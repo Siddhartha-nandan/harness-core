@@ -24,6 +24,7 @@ import io.harness.accesscontrol.acl.api.ResourceScope;
 import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
 import io.harness.connector.accesscontrol.ResourceTypes;
 import io.harness.connector.services.NGHostService;
 import io.harness.delegate.beans.connector.pdcconnector.HostDTO;
@@ -62,6 +63,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import lombok.AllArgsConstructor;
 import org.hibernate.validator.constraints.NotBlank;
 import org.springframework.data.domain.Page;
@@ -145,13 +147,14 @@ public class NGHostResource {
           NGCommonEntityConstants.IDENTIFIER_KEY) @NotNull String secretIdentifier,
       @RequestBody(
           required = true, description = "List of SSH or WinRm hosts to validate, and Delegate tags (optional)")
-      @NotNull @Valid HostValidationParams hostValidationParams) {
+      @NotNull @Valid HostValidationParams hostValidationParams,
+      @Context ScopeInfo scopeInfo) {
     accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
         Resource.of(SECRET_RESOURCE_TYPE, secretIdentifier), SECRET_ACCESS_PERMISSION, "Unauthorized to view secrets.");
 
-    return ResponseDTO.newResponse(hostValidationService.validateHosts(hostValidationParams.getHosts(),
-        accountIdentifier, orgIdentifier, projectIdentifier, secretIdentifier,
-        hostValidationParams.getTags() != null ? new HashSet<>(hostValidationParams.getTags())
-                                               : Collections.emptySet()));
+    return ResponseDTO.newResponse(
+        hostValidationService.validateHosts(hostValidationParams.getHosts(), scopeInfo, secretIdentifier,
+            hostValidationParams.getTags() != null ? new HashSet<>(hostValidationParams.getTags())
+                                                   : Collections.emptySet()));
   }
 }

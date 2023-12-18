@@ -754,29 +754,26 @@ public class NGVaultServiceImpl implements NGVaultService {
     Optional<ScopeInfo> scopeInfo =
         scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, projectIdentifier);
     if (create) {
-      createOrUpdateToken(
-          identifier, scopeInfo.orElseThrow(), accountIdentifier, orgIdentifier, projectIdentifier, secretDTOV2);
+      createOrUpdateToken(identifier, scopeInfo.orElseThrow(), secretDTOV2);
     } else {
-      updateToken(identifier, accountIdentifier, orgIdentifier, projectIdentifier, secretDTOV2);
+      updateToken(identifier, scopeInfo.orElseThrow(), secretDTOV2);
     }
 
     return new SecretRefData(identifier, secretScope, decryptedValue);
   }
 
-  private void createOrUpdateToken(String identifier, ScopeInfo scopeInfo, String accountIdentifier,
-      String orgIdentifier, String projectIdentifier, SecretDTOV2 secretDTOV2) {
+  private void createOrUpdateToken(String identifier, ScopeInfo scopeInfo, SecretDTOV2 secretDTOV2) {
     try {
-      secretCrudService.create(accountIdentifier, scopeInfo, secretDTOV2);
+      secretCrudService.create(scopeInfo.getAccountIdentifier(), scopeInfo, secretDTOV2);
     } catch (Exception e) {
       log.info("NG: Creating new token. Failed to create token for: " + identifier);
-      updateToken(identifier, accountIdentifier, orgIdentifier, projectIdentifier, secretDTOV2);
+      updateToken(identifier, scopeInfo, secretDTOV2);
     }
   }
 
-  private void updateToken(String identifier, String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      SecretDTOV2 secretDTOV2) {
+  private void updateToken(String identifier, ScopeInfo scopeInfo, SecretDTOV2 secretDTOV2) {
     try {
-      secretCrudService.update(accountIdentifier, orgIdentifier, projectIdentifier, identifier, secretDTOV2);
+      secretCrudService.update(scopeInfo, identifier, secretDTOV2);
     } catch (Exception e) {
       String message = "NG: Updating token. Failed to update token for: " + identifier;
       log.error(message, e);

@@ -40,6 +40,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.DecryptableEntity;
 import io.harness.beans.DecryptedSecretValue;
+import io.harness.beans.ScopeInfo;
 import io.harness.beans.SecretManagerConfig;
 import io.harness.connector.ConnectorDTO;
 import io.harness.connector.helper.CustomSecretManagerHelper;
@@ -672,24 +673,25 @@ public class NGEncryptedDataServiceImpl implements NGEncryptedDataService {
   }
 
   @Override
-  public DecryptedSecretValue decryptSecret(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier) {
-    NGEncryptedData encryptedData =
-        getWithFileContentOrThrow(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
-    SecretManagerConfigDTO secretManagerConfigDTO = getSecretManagerOrThrow(
-        accountIdentifier, orgIdentifier, projectIdentifier, encryptedData.getSecretManagerIdentifier(), false);
+  public DecryptedSecretValue decryptSecret(ScopeInfo scopeInfo, String identifier) {
+    NGEncryptedData encryptedData = getWithFileContentOrThrow(
+        scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier(), identifier);
+    SecretManagerConfigDTO secretManagerConfigDTO =
+        getSecretManagerOrThrow(scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(),
+            scopeInfo.getProjectIdentifier(), encryptedData.getSecretManagerIdentifier(), false);
 
     SecretManagerConfig secretManagerConfig = SecretManagerConfigMapper.fromDTO(secretManagerConfigDTO);
     if (isNgHarnessSecretManager(secretManagerConfig.getNgMetadata())) {
       String decryptedValue =
           String.valueOf(kmsEncryptorsRegistry.getKmsEncryptor(secretManagerConfig)
-                             .fetchSecretValue(accountIdentifier, encryptedData, secretManagerConfig));
+                             .fetchSecretValue(scopeInfo.getAccountIdentifier(), encryptedData, secretManagerConfig));
 
-      Optional<Secret> secret = ngSecretServiceV2.get(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+      Optional<Secret> secret = ngSecretServiceV2.get(scopeInfo, identifier);
       if (secret.isEmpty()) {
         throw new EntityNotFoundException(String.format(
             "Secret with identifier {} is not present in the scope: accountIdentifier- {}, orgIdentifier- {}, projectIdentifier- {}",
-            identifier, accountIdentifier, orgIdentifier, projectIdentifier));
+            identifier, scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(),
+            scopeInfo.getProjectIdentifier()));
       }
 
       long createdAt = secret.get().getCreatedAt() == null ? 0 : secret.get().getCreatedAt();
@@ -697,9 +699,9 @@ public class NGEncryptedDataServiceImpl implements NGEncryptedDataService {
 
       return DecryptedSecretValue.builder()
           .identifier(identifier)
-          .accountIdentifier(accountIdentifier)
-          .orgIdentifier(orgIdentifier)
-          .projectIdentifier(projectIdentifier)
+          .accountIdentifier(scopeInfo.getAccountIdentifier())
+          .orgIdentifier(scopeInfo.getOrgIdentifier())
+          .projectIdentifier(scopeInfo.getProjectIdentifier())
           .decryptedValue(decryptedValue)
           .createdAt(createdAt)
           .lastModifiedAt(lastModifiedAt)

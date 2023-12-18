@@ -11,6 +11,8 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.connector.ConnectorModule.DEFAULT_CONNECTOR_SERVICE;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.connector.services.ConnectorService;
 import io.harness.ng.core.api.AggregateAccountResourceService;
 import io.harness.ng.core.api.DelegateDetailsService;
@@ -39,7 +41,12 @@ public class AggregateAccountResourceServiceImpl implements AggregateAccountReso
 
   @Override
   public AccountResourcesDTO getAccountResourcesDTO(String accountIdentifier) {
-    final long secretsCount = secretServiceV2.count(accountIdentifier, null, null);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .uniqueId(accountIdentifier)
+                              .scopeType(ScopeLevel.ACCOUNT)
+                              .build();
+    final long secretsCount = secretServiceV2.count(scopeInfo);
     final long connectorsCount = defaultConnectorService.count(accountIdentifier, null, null);
     final long delegatesCount = delegateDetailsService.getDelegateGroupCount(accountIdentifier, null, null);
 
