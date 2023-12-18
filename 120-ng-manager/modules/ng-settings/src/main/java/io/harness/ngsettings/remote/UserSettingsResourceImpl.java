@@ -18,7 +18,7 @@ public class UserSettingsResourceImpl implements UserSettingResource {
   @Override
   public ResponseDTO<SettingValueResponseDTO> get(String identifier, String accountIdentifier, String userIdentifier) {
     return ResponseDTO.newResponse(
-        userSettingsService.getUserSettingValueForIdentifier(identifier, accountIdentifier, userIdentifier));
+        userSettingsService.get(identifier, accountIdentifier, userIdentifier));
   }
 
   @Override
@@ -31,6 +31,6 @@ public class UserSettingsResourceImpl implements UserSettingResource {
   @Override
   public ResponseDTO<List<UserSettingUpdateResponseDTO>> update(
       String accountIdentifier, String userIdentifier, List<UserSettingRequestDTO> userSettingRequestDTOList) {
-    return null;
+    return ResponseDTO.newResponse(userSettingsService.update(accountIdentifier,userIdentifier,userSettingRequestDTOList));
   }
 }
