@@ -498,7 +498,7 @@ if [[ "" != "$CACHE_CONFIG_REDIS_PASSWORD" ]]; then
 fi
 
 if [[ "" != "$CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH" ]]; then
-  export CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH; yq -i '.singleServerConfig.sslTruststore=env(CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH)' $REDISSON_CACHE_FILE
+  export FILE_VAR="file:$CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH"; yq -i '.singleServerConfig.sslTruststore=env(FILE_VAR)' $REDISSON_CACHE_FILE
 fi
 
 if [[ "" != "$CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD" ]]; then

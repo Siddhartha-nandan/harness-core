@@ -845,7 +845,7 @@ if [[ "" != "$REDIS_SSL_CA_TRUST_STORE_PATH" ]]; then
   replace_key_value redisDelegateConfig.sslConfig.CATrustStorePath $REDIS_SSL_CA_TRUST_STORE_PATH
   replace_key_value redisAtmosphereConfig.sslConfig.CATrustStorePath $REDIS_SSL_CA_TRUST_STORE_PATH
 
-  export REDIS_SSL_CA_TRUST_STORE_PATH; yq -i '.singleServerConfig.sslTruststore=env(REDIS_SSL_CA_TRUST_STORE_PATH)' $REDISSON_CACHE_FILE
+  export FILE_VAR="file:$REDIS_SSL_CA_TRUST_STORE_PATH"; yq -i '.singleServerConfig.sslTruststore=env(FILE_VAR)' $REDISSON_CACHE_FILE
 fi
 
 if [[ "" != "$REDIS_SSL_CA_TRUST_STORE_PASSWORD" ]]; then

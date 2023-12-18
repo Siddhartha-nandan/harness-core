@@ -91,8 +91,8 @@ spec:
         {{- if .Values.lifecycleHooks }}
         lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 10 }}
         {{- end }}
-        {{- if .Values.extraVolumeMounts }}
         volumeMounts:
+        {{- if .Values.extraVolumeMounts }}
         {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 10 }}
         {{- end }}
         {{- include "harnesscommon.dbv3.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 10 }}
