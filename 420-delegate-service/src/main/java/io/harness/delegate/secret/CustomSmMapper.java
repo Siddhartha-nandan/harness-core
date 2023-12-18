@@ -9,14 +9,38 @@ package io.harness.delegate.secret;
 
 import static io.harness.delegate.core.beans.EncryptionType.CUSTOM_NG;
 import static io.harness.delegate.core.beans.KerberosConfig.TGTGenerationMethod.KEY_TAB_FILE_PATH;
-import static io.harness.delegate.core.beans.SSHConfig.SSHCredentialType.*;
+import static io.harness.delegate.core.beans.SSHConfig.SSHCredentialType.KEY_PATH;
+import static io.harness.delegate.core.beans.SSHConfig.SSHCredentialType.KEY_REFERENCE;
+import static io.harness.delegate.core.beans.SSHConfig.SSHCredentialType.PASSWORD;
 import static io.harness.delegate.core.beans.SSHKey.SSHAuthScheme.KERBEROS;
 import static io.harness.delegate.core.beans.SSHKey.SSHAuthScheme.SSH;
 import static io.harness.delegate.core.beans.SecretManagerType.CUSTOM;
 
 import io.harness.delegate.beans.connector.customsecretmanager.TemplateLinkConfigForCustomSecretManager;
-import io.harness.delegate.core.beans.*;
-import io.harness.ng.core.dto.secrets.*;
+import io.harness.delegate.core.beans.EncryptionConfig;
+import io.harness.delegate.core.beans.KerberosConfig;
+import io.harness.delegate.core.beans.NameValuePairWithDefault;
+import io.harness.delegate.core.beans.NameValuePairWithDefaultList;
+import io.harness.delegate.core.beans.SSHConfig;
+import io.harness.delegate.core.beans.SSHKey;
+import io.harness.delegate.core.beans.SSHKeyPathCredential;
+import io.harness.delegate.core.beans.SSHKeyReferenceCredential;
+import io.harness.delegate.core.beans.SSHPasswordCredential;
+import io.harness.delegate.core.beans.SecretDetail;
+import io.harness.delegate.core.beans.TGTKeyTabFilePathSpec;
+import io.harness.delegate.core.beans.TGTPasswordSpec;
+import io.harness.delegate.core.beans.TemplateLinkConfig;
+import io.harness.ng.core.dto.secrets.BaseSSHSpecDTO;
+import io.harness.ng.core.dto.secrets.KerberosBaseConfigDTO;
+import io.harness.ng.core.dto.secrets.SSHAuthDTO;
+import io.harness.ng.core.dto.secrets.SSHConfigDTO;
+import io.harness.ng.core.dto.secrets.SSHCredentialSpecDTO;
+import io.harness.ng.core.dto.secrets.SSHKeyPathCredentialDTO;
+import io.harness.ng.core.dto.secrets.SSHKeyReferenceCredentialDTO;
+import io.harness.ng.core.dto.secrets.SSHKeySpecDTO;
+import io.harness.ng.core.dto.secrets.SSHPasswordCredentialDTO;
+import io.harness.ng.core.dto.secrets.TGTKeyTabFilePathSpecDTO;
+import io.harness.ng.core.dto.secrets.TGTPasswordSpecDTO;
 
 import software.wings.beans.CustomSecretNGManagerConfig;
 
@@ -44,7 +68,6 @@ public class CustomSmMapper {
       protoConfig = protoConfig.setTemplateLinkConfig(mapTemplateInputs(config.getTemplate()));
     }
     EncryptionConfig.Builder encryptionConfig = EncryptionConfig.newBuilder()
-                                                    .setUuid((null != config.getUuid()) ? config.getUuid() : "randomId")
                                                     .setAccountId(config.getAccountId())
                                                     .setIsGlobalKms(config.isGlobalKms())
                                                     .setEncryptionType(CUSTOM_NG)

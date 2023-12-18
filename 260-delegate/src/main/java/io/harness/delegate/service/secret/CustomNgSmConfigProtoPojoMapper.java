@@ -11,17 +11,33 @@ import static io.harness.delegate.core.beans.KerberosConfig.TGTGenerationMethod.
 import static io.harness.ng.core.dto.secrets.TGTGenerationMethod.KeyTabFilePath;
 import static io.harness.ng.core.dto.secrets.TGTGenerationMethod.Password;
 
+import io.harness.delegate.beans.connector.customsecretmanager.TemplateLinkConfigForCustomSecretManager;
+import io.harness.delegate.core.beans.NameValuePairWithDefaultList;
 import io.harness.delegate.core.beans.SSHConfig;
 import io.harness.delegate.core.beans.SSHKey;
+import io.harness.delegate.core.beans.TemplateLinkConfig;
 import io.harness.encryption.SecretRefData;
-import io.harness.ng.core.dto.secrets.*;
+import io.harness.ng.core.dto.secrets.KerberosConfigDTO;
+import io.harness.ng.core.dto.secrets.SSHAuthDTO;
+import io.harness.ng.core.dto.secrets.SSHConfigDTO;
+import io.harness.ng.core.dto.secrets.SSHCredentialType;
+import io.harness.ng.core.dto.secrets.SSHKeyPathCredentialDTO;
+import io.harness.ng.core.dto.secrets.SSHKeyReferenceCredentialDTO;
+import io.harness.ng.core.dto.secrets.SSHKeySpecDTO;
+import io.harness.ng.core.dto.secrets.SSHPasswordCredentialDTO;
+import io.harness.ng.core.dto.secrets.TGTKeyTabFilePathSpecDTO;
+import io.harness.ng.core.dto.secrets.TGTPasswordSpecDTO;
 import io.harness.secretmanagerclient.SSHAuthScheme;
 import io.harness.security.encryption.EncryptedDataDetail;
 import io.harness.security.encryption.EncryptionConfig;
 import io.harness.security.encryption.EncryptionType;
 
+import software.wings.beans.NameValuePairWithDefault;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class CustomNgSmConfigProtoPojoMapper {
   public static EncryptionConfig protoPojoMapper(io.harness.delegate.core.beans.EncryptionConfig config) {
@@ -44,6 +60,8 @@ public class CustomNgSmConfigProtoPojoMapper {
     List<EncryptedDataDetail> sshEncryptionDetails = new ArrayList<>();
     sshEncryptionDetails.add(encryptedDataDetail);
     customSecretNGManagerConfig.setSshKeyEncryptionDetails(sshEncryptionDetails);
+    customSecretNGManagerConfig.setTemplate(
+        mapProtoToPojo(config.getCustomSecretManagerConfig().getTemplateLinkConfig()));
     if ((config.getCustomSecretManagerConfig().getSshKey().getSshAuthScheme()) == SSHKey.SSHAuthScheme.SSH) {
       SSHAuthDTO sshAuthDTO = new SSHAuthDTO();
       sshAuthDTO.setAuthScheme(SSHAuthScheme.SSH);
@@ -164,5 +182,25 @@ public class CustomNgSmConfigProtoPojoMapper {
       return customSecretNGManagerConfig;
     }
     return customSecretNGManagerConfig;
+  }
+
+  public static TemplateLinkConfigForCustomSecretManager mapProtoToPojo(TemplateLinkConfig proto) {
+    TemplateLinkConfigForCustomSecretManager pojo = new TemplateLinkConfigForCustomSecretManager();
+    pojo.setTemplateRef(proto.getTemplateRef());
+    pojo.setVersionLabel(proto.getVersionLabel());
+
+    // Iterate over the map and convert values to POJO
+    Map<String, List<NameValuePairWithDefault>> templateInputs = new HashMap<>();
+    for (Map.Entry<String, NameValuePairWithDefaultList> entry : proto.getTemplateInputsMap().entrySet()) {
+      List<NameValuePairWithDefault> eachMap = new ArrayList<>();
+      for (io.harness.delegate.core.beans.NameValuePairWithDefault eachPair : entry.getValue().getValuesList()) {
+        eachMap.add(new NameValuePairWithDefault(
+            eachPair.getName(), eachPair.getValue(), eachPair.getType(), eachPair.getUseAsDefault()));
+      }
+      templateInputs.put(entry.getKey(), eachMap);
+    }
+    pojo.setTemplateInputs(templateInputs);
+
+    return pojo;
   }
 }
