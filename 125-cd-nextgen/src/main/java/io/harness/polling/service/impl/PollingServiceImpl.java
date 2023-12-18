@@ -6,6 +6,7 @@
  */
 
 package io.harness.polling.service.impl;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.polling.bean.PollingType.ARTIFACT;
 import static io.harness.remote.client.NGRestUtils.getResponse;
 
@@ -22,13 +23,8 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.dto.PollingTriggerStatusUpdateDTO;
 import io.harness.observer.Subject;
 import io.harness.pipeline.triggers.TriggersClient;
-import io.harness.polling.bean.ArtifactPolledResponse;
-import io.harness.polling.bean.GitPollingPolledResponse;
-import io.harness.polling.bean.ManifestPolledResponse;
-import io.harness.polling.bean.PolledResponse;
-import io.harness.polling.bean.PollingDocument;
+import io.harness.polling.bean.*;
 import io.harness.polling.bean.PollingDocument.PollingDocumentKeys;
-import io.harness.polling.bean.PollingType;
 import io.harness.polling.contracts.PollingItem;
 import io.harness.polling.mapper.PollingDocumentMapper;
 import io.harness.polling.service.intfc.PollingPerpetualTaskService;
@@ -246,14 +242,36 @@ public class PollingServiceImpl implements PollingService {
         createScopeCriteria(scope.getAccountIdentifier(), scope.getOrgIdentifier(), scope.getProjectIdentifier());
     pollingRepository.deleteAll(criteria);
   }
-  @Override
 
-  public void deletePollingDocs(String accountId, String orgId, String projectId) {
-    List<String> perpetualTaskIds = pollingRepository.findPTIdsByScope(accountId, orgId, projectId);
-    for (String perpetualTaskId : perpetualTaskIds) {
-      perpetualTaskService.deletePerpetualTask(perpetualTaskId, accountId);
+  public void deletePollingDocs(String accountId, String orgId, String projectId, PollingType pollingType) {
+    Criteria criteria = createDeleteCriteria(accountId, orgId, projectId, pollingType);
+    pollingRepository.deleteAll(criteria);
+  }
+  @Override
+  public void deletePollingDocAndPerpetualTask(
+      String accountId, String orgId, String projectId, PollingType pollingType) {
+    List<PollingDocument> pollingDocuments =
+        pollingRepository.findPollingDocs(accountId, orgId, projectId, pollingType);
+    for (PollingDocument pollingDocument : pollingDocuments) {
+      deletePerpetualTask(pollingDocument);
     }
-    deleteAtAllScopes(Scope.of(accountId, orgId, projectId));
+    deletePollingDocs(accountId, orgId, projectId, pollingType);
+  }
+
+  private Criteria createDeleteCriteria(
+      String accountIdentifier, String orgIdentifier, String projectIdentifier, PollingType pollingType) {
+    Criteria criteria = new Criteria();
+    criteria.and(PollingDocumentKeys.accountId).is(accountIdentifier);
+    if (EmptyPredicate.isNotEmpty(orgIdentifier)) {
+      criteria.and(PollingDocumentKeys.orgIdentifier).is(orgIdentifier);
+    }
+    if (EmptyPredicate.isNotEmpty(orgIdentifier) && EmptyPredicate.isNotEmpty(projectIdentifier)) {
+      criteria.and(PollingDocumentKeys.projectIdentifier).is(projectIdentifier);
+    }
+    if (EmptyPredicate.isNotEmpty(String.valueOf(pollingType))) {
+      criteria.and(PollingDocumentKeys.pollingType).is(pollingType);
+    }
+    return criteria;
   }
 
   public DeleteResult deletePollingDocs(String accountId, String orgId, String projectId, PollingType pollingType) {

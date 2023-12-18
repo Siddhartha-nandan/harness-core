@@ -182,7 +182,6 @@ public class PollingRepositoryCustomImpl implements PollingRepositoryCustom {
   }
 
   @Override
-<<<<<<< HEAD
   public List<PollingDocument> findPollingDocs(
       String accountId, String orgId, String projectId, PollingType pollingType) {
     Criteria criteria = new Criteria().and(PollingDocumentKeys.accountId).is(accountId);
