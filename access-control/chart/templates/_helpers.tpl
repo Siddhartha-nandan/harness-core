@@ -207,6 +207,7 @@ Generates comma separated list of Mongo Host names based off environment
         {{- fail (printf "ERROR: invalid contexts") }}
     {{- end }}
 {{- end }}
+
 {{/*
 Outputs the filepath prefix based on db type and db name
 
@@ -246,15 +247,15 @@ USAGE:
     {{- $filepathprefix := (include "harnesscommon.dbv3.filepathprefix" (dict "dbType" $dbType "dbName" $database)) }}
     {{- if .variableNames.sslEnabled }}
 - name: {{ .variableNames.sslEnabled }}
-  value: {{ printf "%v" $mergedCtx.ssl.enabled }}
+  value: {{ printf "%v" $mergedCtx.ssl.enabled | quote }}
     {{- end }}
     {{- if and .variableNames.sslCATrustStorePath $mergedCtx.ssl.trustStoreKey }}
 - name: {{ .variableNames.sslCATrustStorePath }}
-  value: {{ printf "/opt/harness/svc/ssl/%s-ca-truststore" $filepathprefix }}
+  value: {{ printf "/opt/harness/svc/ssl/%s-ca-truststore" $filepathprefix | quote }}
     {{- end }}
     {{- if and .variableNames.sslCACertPath $mergedCtx.ssl.caFileKey }}
 - name: {{ .variableNames.sslCACertPath }}
-  value: {{ printf "/opt/harness/svc/ssl/%s-ca" $filepathprefix }}
+  value: {{ printf "/opt/harness/svc/ssl/%s-ca" $filepathprefix | quote }}
     {{- end }}
     {{- if and .variableNames.sslCATrustStorePassword $mergedCtx.ssl.trustStorePasswordKey }}
 - name: {{ .variableNames.sslCATrustStorePassword }}
