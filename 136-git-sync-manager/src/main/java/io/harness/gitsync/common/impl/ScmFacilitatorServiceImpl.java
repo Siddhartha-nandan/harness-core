@@ -733,6 +733,7 @@ public class ScmFacilitatorServiceImpl implements ScmFacilitatorService {
     if (isGitClientEnabled) {
       log.info("Executing using gitClient");
     }
+
     UpdateFileResponse updateFileResponse =
         scmOrchestratorService.processScmRequestUsingConnectorSettings(scmClientFacilitatorService
             -> scmClientFacilitatorService.updateFile(UpdateGitFileRequestDTO.builder()
@@ -1476,6 +1477,6 @@ public class ScmFacilitatorServiceImpl implements ScmFacilitatorService {
       return gitDefaultBranchCacheHelper.getDefaultBranchIfInputBranchEmpty(
           scope.getAccountIdentifier(), scmConnector, repo, branch);
     }
-    return null;
+    return branch;
   }
 }

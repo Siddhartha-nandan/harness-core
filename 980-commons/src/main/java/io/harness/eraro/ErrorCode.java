@@ -697,7 +697,10 @@ public enum ErrorCode {
   SERVICENOW_REFRESH_TOKEN_ERROR,
   PARAMETER_FIELD_CAST_ERROR,
   ABORT_ALL_ALREADY_NG,
-  WEBHOOK_EXCEPTION;
+  WEBHOOK_EXCEPTION,
+
+  INVALID_OIDC_CONFIGURATION,
+  INVALID_CREDENTIALS("Invalid credentials");
 
   private Status status = BAD_REQUEST;
   private String description;

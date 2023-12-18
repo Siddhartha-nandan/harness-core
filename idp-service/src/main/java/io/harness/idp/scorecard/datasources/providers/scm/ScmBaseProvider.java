@@ -15,7 +15,7 @@ import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceL
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.backstagebeans.BackstageCatalogEntity;
+import io.harness.idp.backstage.entities.BackstageCatalogEntity;
 import io.harness.idp.scorecard.datapoints.parser.factory.DataPointParserFactory;
 import io.harness.idp.scorecard.datapoints.service.DataPointService;
 import io.harness.idp.scorecard.datasourcelocations.locations.DataSourceLocationFactory;
@@ -76,7 +76,7 @@ public abstract class ScmBaseProvider extends HttpDataSourceProvider {
       possibleReplaceableRequestBodyPairs.put(REPOSITORY_OWNER, catalogLocationParts.get(3));
       possibleReplaceableRequestBodyPairs.put(REPOSITORY_NAME, catalogLocationParts.get(4));
 
-      if (catalogLocationParts.get(5).equals("-")) {
+      if (catalogLocationParts.size() > 5 && catalogLocationParts.get(5).equals("-")) {
         // Gitlab only
         catalogLocationParts.remove(5);
       }

@@ -696,7 +696,19 @@ public enum EntityType {
 
   @JsonProperty(EntityTypeConstants.REGISTER_CATALOG)
   REGISTER_CATALOG(
-      ModuleType.IDP, EntityTypeConstants.REGISTER_CATALOG, IdentifierRef.class, EntityYamlRootNames.REGISTER_CATALOG);
+      ModuleType.IDP, EntityTypeConstants.REGISTER_CATALOG, IdentifierRef.class, EntityYamlRootNames.REGISTER_CATALOG),
+  @JsonProperty(EntityTypeConstants.K8S_TRAFFIC_ROUTING)
+  K8S_TRAFFIC_ROUTING_STEP(ModuleType.CD, EntityTypeConstants.K8S_TRAFFIC_ROUTING, IdentifierRef.class,
+      EntityYamlRootNames.K8S_TRAFFIC_ROUTING),
+  @JsonProperty(EntityTypeConstants.DOWNLOAD_HARNESS_STORE)
+  DOWNLOAD_HARNESS_STORE(ModuleType.CD, EntityTypeConstants.DOWNLOAD_HARNESS_STORE, IdentifierRef.class,
+      EntityYamlRootNames.DOWNLOAD_HARNESS_STORE),
+
+  @JsonProperty(EntityTypeConstants.CREATE_CATALOG)
+  CREATE_CATALOG(
+      ModuleType.IDP, EntityTypeConstants.CREATE_CATALOG, IdentifierRef.class, EntityYamlRootNames.CREATE_CATALOG),
+  @JsonProperty(EntityTypeConstants.SLACK_NOTIFY)
+  SLACK_NOTIFY(ModuleType.IDP, EntityTypeConstants.SLACK_NOTIFY, IdentifierRef.class, EntityYamlRootNames.SLACK_NOTIFY);
 
   private final ModuleType moduleType;
   String yamlName;
