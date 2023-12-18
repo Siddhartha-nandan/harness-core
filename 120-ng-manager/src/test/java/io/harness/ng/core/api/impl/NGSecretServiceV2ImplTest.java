@@ -200,7 +200,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
     Optional<Secret> secretOptional = secretServiceV2.get(scopeInfo, "identifier");
     assertThat(secretOptional).isEqualTo(Optional.empty());
     verify(secretRepository)
-        .findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(any(), any(), any(), any());
+        .findByAccountIdentifierAndParentUniqueIdAndIdentifier(eq("account"), eq("account"), eq("identifier"));
   }
 
   @Test
@@ -815,6 +815,8 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testProcessValidationTaskResponseWinRmInvalidCredentials() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getWinRmSecret();
     secret.setSecretSpec(
         WinRmCredentialsSpec.builder()
@@ -824,7 +826,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
                       .spec(NTLMConfig.builder().username("user").password(SecretRefData.builder().build()).build())
                       .build())
             .build());
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(
             WinRmConfigValidationTaskResponse.builder()
@@ -835,7 +837,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
         .when(exceptionManager)
         .processException(any(), any(), any());
 
-    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getWinRmMetadata()))
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getWinRmMetadata()))
         .hasMessage("wings exception message")
         .isInstanceOf(WingsException.class);
 
@@ -855,6 +857,8 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = IVAN)
   @Category(UnitTests.class)
   public void testProcessValidationTaskResponseWinRmInvalidProtocol() {
+    ScopeInfo scopeInfo =
+        ScopeInfo.builder().accountIdentifier("account").uniqueId("account").scopeType(ScopeLevel.ACCOUNT).build();
     Secret secret = getWinRmSecret();
     secret.setSecretSpec(
         WinRmCredentialsSpec.builder()
@@ -864,7 +868,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
                       .spec(NTLMConfig.builder().username("user").password(SecretRefData.builder().build()).build())
                       .build())
             .build());
-    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(eq(scopeInfo), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(
             WinRmConfigValidationTaskResponse.builder()
@@ -875,7 +879,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
         .when(exceptionManager)
         .processException(any(), any(), any());
 
-    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getWinRmMetadata()))
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret(scopeInfo, "identifier", getWinRmMetadata()))
         .hasMessage("wings exception message")
         .isInstanceOf(WingsException.class);
 

@@ -80,6 +80,7 @@ import io.harness.ng.core.serviceoverride.services.impl.ServiceOverrideServiceIm
 import io.harness.ng.core.serviceoverridev2.service.ServiceOverridesServiceV2;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.outbox.api.OutboxService;
 import io.harness.outbox.api.impl.OutboxDaoImpl;
@@ -325,6 +326,7 @@ public class CDNGTestRule implements InjectorRuleMixin, MethodRule, MongoRuleMix
         bind(AccessControlClient.class).to(NoOpAccessControlClientImpl.class).in(Scopes.SINGLETON);
         bind(OrganizationService.class).toInstance(mock(OrganizationService.class));
         bind(ProjectService.class).toInstance(mock(ProjectService.class));
+        bind(ScopeInfoService.class).toInstance(mock(ScopeInfoService.class));
         bind(FeatureFlagService.class).toInstance(mock(FeatureFlagServiceImpl.class));
         bind(CDStepHelper.class).toProvider(() -> mock(CDStepHelper.class)).asEagerSingleton();
         bind(LicenseService.class).toInstance(mock(DefaultLicenseServiceImpl.class));

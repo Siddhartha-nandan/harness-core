@@ -587,6 +587,15 @@ public class NGVaultServiceImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void processAppRole_orgLevelConnector_createsDelegateTaskHasOwnerSet() throws IOException {
     // Arrange.
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(ACCOUNT_IDENTIFIER)
+                              .orgIdentifier(ORG_IDENTIFIER)
+                              .projectIdentifier(PROJECT_IDENTIFIER)
+                              .scopeType(ScopeLevel.PROJECT)
+                              .uniqueId(randomAlphabetic(10))
+                              .build();
+    when(scopeResolverService.getScopeInfo(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .thenReturn(Optional.of(scopeInfo));
     VaultConnectorDTO vaultConnectorDTO = vaultEntityToDTO.createConnectorDTO(buildAppRoleVaultConnector());
     ConnectorDTO inputConnector = ConnectorDTO.builder()
                                       .connectorInfo(ConnectorInfoDTO.builder()
@@ -719,6 +728,15 @@ public class NGVaultServiceImplTest extends CategoryTest {
   @Owner(developers = NISHANT)
   @Category(UnitTests.class)
   public void testProcessAppRole_VaultConfigHasRequiredLoginParams() throws IOException {
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(ACCOUNT_IDENTIFIER)
+                              .orgIdentifier(ORG_IDENTIFIER)
+                              .projectIdentifier(PROJECT_IDENTIFIER)
+                              .scopeType(ScopeLevel.PROJECT)
+                              .uniqueId(randomAlphabetic(10))
+                              .build();
+    when(scopeResolverService.getScopeInfo(ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .thenReturn(Optional.of(scopeInfo));
     VaultConnectorDTO vaultConnectorDTO = vaultEntityToDTO.createConnectorDTO(buildAppRoleVaultConnector());
     ConnectorDTO inputConnector = ConnectorDTO.builder()
                                       .connectorInfo(ConnectorInfoDTO.builder()
