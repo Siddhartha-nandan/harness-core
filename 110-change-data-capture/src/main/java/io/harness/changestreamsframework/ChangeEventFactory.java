@@ -40,7 +40,7 @@ class ChangeEventFactory {
     return changeStreamDocument.getResumeToken().toJson();
   }
 
-  public String getUuidfromChangeStream(ChangeStreamDocument<DBObject> changeStreamDocument) {
+  private static String getUuidfromChangeStream(ChangeStreamDocument<DBObject> changeStreamDocument) {
     Document uuidDocument = convertBsonDocumentToDocument(changeStreamDocument.getDocumentKey());
     //    return (String) uuidDocument.get("_id");
     if (uuidDocument.get("_id") instanceof String) {

@@ -54,8 +54,8 @@ public class ChangeEventProcessorTask implements Runnable {
 
   @Override
   public void run() {
-    executorService = Executors.newFixedThreadPool(
-        cdcEntities.size(), ThreadFactoryBuilder.create().setNameFormat("change-processor-%d").get());
+    executorService =
+        Executors.newFixedThreadPool(1, ThreadFactoryBuilder.create().setNameFormat("change-processor-%d").get());
     Set<Future<?>> futures =
         cdcEntities.stream().map(cdcEntity -> executorService.submit(this::listenToQueue)).collect(Collectors.toSet());
     waitForTasks(futures);
