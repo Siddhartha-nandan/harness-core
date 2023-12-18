@@ -247,19 +247,19 @@ public class PollingServiceImpl implements PollingService {
     pollingRepository.deleteAll(criteria);
   }
 
-  public void deletePollingDocs(String accountId, String orgId, String projectId, PollingType pollingType) {
+  public DeleteResult deletePollingDocs(String accountId, String orgId, String projectId, PollingType pollingType) {
     Criteria criteria = createDeleteCriteria(accountId, orgId, projectId, pollingType);
-    pollingRepository.deleteAll(criteria);
+    return pollingRepository.deleteAll(criteria);
   }
   @Override
-  public void deletePollingDocAndPerpetualTask(
+  public Boolean deletePollingDocAndPerpetualTask(
       String accountId, String orgId, String projectId, PollingType pollingType) {
     List<PollingDocument> pollingDocuments =
         pollingRepository.findPollingDocs(accountId, orgId, projectId, pollingType);
     for (PollingDocument pollingDocument : pollingDocuments) {
       deletePerpetualTask(pollingDocument);
     }
-    deletePollingDocs(accountId, orgId, projectId, pollingType);
+    return pollingDocuments.size() == deletePollingDocs(accountId, orgId, projectId, pollingType).getDeletedCount();
   }
 
   private Criteria createDeleteCriteria(
