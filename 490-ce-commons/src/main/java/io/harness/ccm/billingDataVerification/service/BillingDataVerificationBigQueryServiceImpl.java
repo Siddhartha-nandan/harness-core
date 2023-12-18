@@ -7,7 +7,9 @@
 
 package io.harness.ccm.service.impl;
 
-import static io.harness.ccm.commons.utils.BigQueryHelper.*;
+import static io.harness.ccm.commons.utils.BigQueryHelper.AWS_BILLING_RAW_TABLE;
+import static io.harness.ccm.commons.utils.BigQueryHelper.CCM_BILLING_DATA_VERIFICATION_TABLE;
+import static io.harness.ccm.commons.utils.BigQueryHelper.UNIFIED_TABLE;
 
 import io.harness.ccm.bigQuery.BigQueryService;
 import io.harness.ccm.billingDataVerification.dto.CCMBillingDataVerificationCost;
