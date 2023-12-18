@@ -20,6 +20,7 @@ import static io.harness.audit.Action.FORCE_DELETE;
 import static io.harness.audit.Action.INVITE;
 import static io.harness.audit.Action.LOGIN;
 import static io.harness.audit.Action.LOGIN2FA;
+import static io.harness.audit.Action.MOVE;
 import static io.harness.audit.Action.PAUSE;
 import static io.harness.audit.Action.REMOVE_COLLABORATOR;
 import static io.harness.audit.Action.REMOVE_MEMBERSHIP;
@@ -99,10 +100,10 @@ public class AuditServiceImpl implements AuditService {
   private final AuditYamlService auditYamlService;
   private final AuditSettingsService auditSettingsService;
   private final AuditFilterPropertiesValidator auditFilterPropertiesValidator;
-  public static List<Action> entityChangeEvents =
-      List.of(CREATE, UPDATE, RESTORE, DELETE, FORCE_DELETE, UPSERT, INVITE, RESEND_INVITE, REVOKE_INVITE,
-          ADD_COLLABORATOR, REMOVE_COLLABORATOR, CREATE_TOKEN, REVOKE_TOKEN, ADD_MEMBERSHIP, REMOVE_MEMBERSHIP,
-          ERROR_BUDGET_RESET, SIGNED_EULA, ROLE_ASSIGNMENT_CREATED, ROLE_ASSIGNMENT_UPDATED, ROLE_ASSIGNMENT_DELETED);
+  public static List<Action> entityChangeEvents = List.of(CREATE, UPDATE, RESTORE, DELETE, FORCE_DELETE, UPSERT, INVITE,
+      RESEND_INVITE, REVOKE_INVITE, ADD_COLLABORATOR, REMOVE_COLLABORATOR, CREATE_TOKEN, REVOKE_TOKEN, ADD_MEMBERSHIP,
+      REMOVE_MEMBERSHIP, ERROR_BUDGET_RESET, SIGNED_EULA, ROLE_ASSIGNMENT_CREATED, ROLE_ASSIGNMENT_UPDATED,
+      ROLE_ASSIGNMENT_DELETED, MOVE);
   public static List<Action> loginEvents = List.of(LOGIN, LOGIN2FA, UNSUCCESSFUL_LOGIN);
   public static List<Action> runTimeEvents = List.of(START, STAGE_START, STAGE_END, END, PAUSE, RESUME, ABORT, TIMEOUT);
   @Inject
