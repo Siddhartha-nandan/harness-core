@@ -16,7 +16,7 @@ import io.harness.licensing.Edition;
 import io.harness.licensing.LicenseStatus;
 import io.harness.licensing.LicenseType;
 import io.harness.licensing.beans.modules.CodeModuleLicenseDTO;
-import io.harness.licensing.beans.modules.CodeModuleLicenseDTO.CODEModuleLicenseDTOBuilder;
+import io.harness.licensing.beans.modules.CodeModuleLicenseDTO.CodeModuleLicenseDTOBuilder;
 import io.harness.licensing.interfaces.clients.CodeModuleLicenseClient;
 
 import java.time.Instant;
@@ -31,7 +31,7 @@ public class CodeLocalClient implements CodeModuleLicenseClient {
     long expiryTime = Instant.now().plus(TRIAL_DURATION, ChronoUnit.DAYS).toEpochMilli();
     long currentTime = Instant.now().toEpochMilli();
 
-    CODEModuleLicenseDTOBuilder<?, ?> builder =
+    CodeModuleLicenseDTOBuilder<?, ?> builder =
         CodeModuleLicenseDTO.builder().startTime(currentTime).expiryTime(expiryTime).status(LicenseStatus.ACTIVE);
 
     if (edition == Edition.ENTERPRISE) {
