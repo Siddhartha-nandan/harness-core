@@ -40,7 +40,7 @@ public class HarnessApprovalStepNodeV1 extends PmsAbstractStepNodeV1 {
         .message(spec.getMessage())
         .auto_approval(spec.getAuto_approval())
         .auto_reject(spec.getAuto_reject())
-        .callbackId(spec.getCallback_id())
+        .callback_id(spec.getCallback_id())
         .include_execution_history(spec.getInclude_execution_history())
         .inputs(spec.getInputs())
         .build();

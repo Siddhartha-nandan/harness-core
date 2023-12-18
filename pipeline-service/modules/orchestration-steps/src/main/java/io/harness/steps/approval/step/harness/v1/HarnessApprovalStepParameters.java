@@ -26,7 +26,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class HarnessApprovalStepParameters implements SpecParameters {
   @NotNull ParameterField<String> message;
-  ParameterField<String> callbackId;
+  ParameterField<String> callback_id;
   @NotNull ParameterField<Boolean> include_execution_history;
   AutoApprovalParams auto_approval;
   @NotNull Approvers approvers;
