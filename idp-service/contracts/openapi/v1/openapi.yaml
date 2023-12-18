@@ -1388,29 +1388,51 @@ paths:
         $ref: '#/components/requestBodies/ScorecardRecalibrateRequest'
       x-internal: true
     parameters: []
-  '/v1/plugins-info/{plugin-id}/upload':
-    parameters:
-      - schema:
-          type: string
-        name: plugin-id
-        in: path
-        required: true
+  /v1/backstage-harness/sync:
     post:
-      summary: Upload Custom Plugin File
-      operationId: upload-custom-plugin-file
+      summary: Sync Backstage Entities as Harness Entities for all IDP enabled accounts
+      tags:
+        - BackstageHarness
       responses:
         '200':
-          $ref: '#/components/responses/CustomPluginInfoResponse'
-      x-stoplight:
-        id: 32n05qs9vws0f
-      parameters:
-        - $ref: '#/components/parameters/AccountHeader'
-      requestBody:
-        $ref: '#/components/requestBodies/FileUploadRequest'
+          $ref: '#/components/responses/BackstageHarnessSyncEntitiesResponse'
+      operationId: backstage-harness-sync-all-accounts
+      description: Syncs Backstage Entities as Harness Entities for all IDP enabled accounts
+      x-internal: true
       security:
         - x-api-key: []
+  /v1/backstage-harness/sync/for-account:
+    post:
+      summary: Sync Backstage Entities as Harness Entities for given account
       tags:
-        - PluginInfo
+        - BackstageHarness
+      responses:
+        '200':
+          $ref: '#/components/responses/BackstageHarnessSyncEntitiesResponse'
+      operationId: backstage-harness-sync-for-account
+      description: Syncs Backstage Entities as Harness Entities for given account
+      x-internal: true
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+  /v1/backstage-harness/sync/for-entity:
+    post:
+      summary: Sync Backstage entity as Harness entity for given account and entity with specified action and sync mode
+      tags:
+        - BackstageHarness
+      requestBody:
+        $ref: '#/components/requestBodies/BackstageHarnessSyncRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/BackstageHarnessSyncEntitiesResponse'
+      operationId: backstage-harness-sync-for-account-entity
+      description: Sync Backstage entity as Harness entity for given account and entity with specified action and sync mode
+      x-internal: true
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
 components:
   schemas:
     BackstageEnvVariable:
@@ -1843,6 +1865,8 @@ components:
           enum:
             - DEFAULT
             - CUSTOM
+          required:
+            - id
     PluginInfoResponse:
       title: PluginInfoResponse
       x-stoplight:
@@ -2203,8 +2227,6 @@ components:
             id: 43cv9jhplzytw
       required:
         - plugin_details
-        - config
-        - exports
     LayoutIngestRequest:
       title: LayoutIngestRequest
       x-stoplight:
@@ -3811,61 +3833,36 @@ components:
       properties:
         info:
           $ref: '#/components/schemas/CustomPluginDetailedInfo'
-    FileUpload:
-      title: FileUpload
-      x-stoplight:
-        id: 42qigqf34g3qa
+    BackstageHarnessSyncRequest:
+      title: BackstageHarnessSyncRequest
       type: object
-      description: Details of the file to be upload
       properties:
-        file_type:
+        entity_identifier:
           type: string
-          x-stoplight:
-            id: fkuih8a0cohq6
+        action:
+          type: string
           enum:
-            - ICON
-            - SCREENSHOT
-            - ZIP
-        file:
+            - create
+            - update
+            - delete
+        sync_mode:
           type: string
-          x-stoplight:
-            id: m506b6wsbw9b4
-          format: binary
+          enum:
+            - sync
+            - async
       required:
-        - file_type
-        - file
-    FileUploadInfo:
-      title: FileUploadInfo
-      x-stoplight:
-        id: tg0lcsmut5g4m
+        - entity_identifier
+        - action
+        - sync_mode
+    BackstageHarnessSyncEntitiesResponse:
+      title: BackstageHarnessSyncEntitiesResponse
       type: object
+      description: Response for backstage harness entities sync
       properties:
-        identifier:
+        status:
           type: string
-          x-stoplight:
-            id: 68qkmk2s7q3ke
-        name:
-          type: string
-          x-stoplight:
-            id: 9xravl6w1v0ri
-        url:
-          type: string
-          x-stoplight:
-            id: mm714ve2fwzkk
       required:
-        - identifier
-        - name
-        - url
-    FileUploadResponse:
-      title: FileUploadResponse
-      x-stoplight:
-        id: rk1u7nzipft0a
-      type: object
-      properties:
-        info:
-          $ref: '#/components/schemas/FileUploadInfo'
-      required:
-        - info
+        - status
   parameters:
     AccountHeader:
       name: Harness-Account
@@ -4217,11 +4214,11 @@ components:
         application/json:
           schema:
             type: object
-    FileUploadRequest:
+    BackstageHarnessSyncRequest:
       content:
-        multipart/form-data:
+        application/json:
           schema:
-            $ref: '#/components/schemas/FileUpload'
+            $ref: '#/components/schemas/BackstageHarnessSyncRequest'
   responses:
     BackstageEnvVariableResponse:
       description: Example response
@@ -4663,15 +4660,12 @@ components:
         application/yaml:
           schema:
             $ref: '#/components/schemas/CustomPluginInfoResponse'
-    FileUploadResponse:
-      description: Response for File Upload request
+    BackstageHarnessSyncEntitiesResponse:
+      description: Response for backstage harness entities sync
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/FileUploadResponse'
-        application/yaml:
-          schema:
-            $ref: '#/components/schemas/FileUploadResponse'
+            $ref: '#/components/schemas/BackstageHarnessSyncEntitiesResponse'
   securitySchemes:
     x-api-key:
       name: x-api-key
@@ -4722,3 +4716,5 @@ tags:
     description: Scores Information V2
   - name: StatusInfo
     description: Status Information
+  - name: BackstageHarness
+    description: Backstage Harness

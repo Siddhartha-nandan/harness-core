@@ -7,13 +7,17 @@
 package io.harness.ssca.services.remediation_tracker;
 
 import io.harness.spec.server.ssca.v1.model.RemediationTrackerCreateRequestBody;
+import io.harness.spec.server.ssca.v1.model.RemediationTrackersOverallSummaryResponseBody;
 import io.harness.ssca.entities.remediation_tracker.RemediationTrackerEntity;
 
 public interface RemediationTrackerService {
   String createRemediationTracker(
       String accountId, String orgId, String projectId, RemediationTrackerCreateRequestBody body);
 
-  void updateArtifactsAndEnvironmentsInRemediationTracker(RemediationTrackerEntity remediationTracker);
+  void updateArtifactsAndEnvironments(RemediationTrackerEntity remediationTracker);
 
   RemediationTrackerEntity getRemediationTracker(String remediationTrackerId);
+
+  RemediationTrackersOverallSummaryResponseBody getOverallSummaryForRemediationTrackers(
+      String accountId, String orgId, String projectId);
 }
