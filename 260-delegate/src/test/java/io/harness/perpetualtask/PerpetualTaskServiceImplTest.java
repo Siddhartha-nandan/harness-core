@@ -72,7 +72,6 @@ public class PerpetualTaskServiceImplTest extends WingsBaseTest {
 
   @Inject private PerpetualTaskRecordDao perpetualTaskRecordDao;
   @Mock private Subject<PerpetualTaskStateObserver> perpetualTaskStateObserverSubject;
-  @Inject private PerpetualTaskScheduleService perpetualTaskScheduleService;
 
   @InjectMocks @Inject private PerpetualTaskServiceImpl perpetualTaskService;
 
@@ -131,18 +130,6 @@ public class PerpetualTaskServiceImplTest extends WingsBaseTest {
         perpetualTaskService.getTaskTimeInterval(perpetualTaskSchedule(), ACCOUNT_ID, PerpetualTaskType.ECS_CLUSTER);
 
     assertThat(finalTaskTimeInterval).isEqualTo(perpetualTaskSchedule().getInterval().getSeconds());
-  }
-
-  @Test
-  @Owner(developers = MOHIT_GARG)
-  @Category(UnitTests.class)
-  public void testCustomTimeIntervalIfPresent() {
-    long customTimeIntervalInMs = 100000;
-    perpetualTaskScheduleService.save(ACCOUNT_ID, PerpetualTaskType.ECS_CLUSTER, customTimeIntervalInMs);
-    long finalTaskTimeInterval =
-        perpetualTaskService.getTaskTimeInterval(perpetualTaskSchedule(), ACCOUNT_ID, PerpetualTaskType.ECS_CLUSTER);
-
-    assertThat(finalTaskTimeInterval).isEqualTo(customTimeIntervalInMs / 1000);
   }
 
   @Test
@@ -227,128 +214,6 @@ public class PerpetualTaskServiceImplTest extends WingsBaseTest {
     assertThat(record.getState()).isEqualTo(PerpetualTaskState.TASK_UNASSIGNED);
     assertThat(resetTask).isTrue();
     assertThat(record.getClientContext()).isNotNull();
-  }
-
-  @Test
-  @Owner(developers = MOHIT_GARG)
-  @Category(UnitTests.class)
-  public void testSingleUpdateTaskSchedule() {
-    String accountId = generateUuid();
-    String delegateId = generateUuid();
-    String taskId = generateUuid();
-    long intervalInMillis = 1000;
-
-    PerpetualTaskRecord perpetualTaskRecord = perpetualTaskRecord();
-    perpetualTaskRecord.setAccountId(accountId);
-    perpetualTaskRecord.setDelegateId(delegateId);
-    perpetualTaskRecord.setUuid(taskId);
-    perpetualTaskRecord.setState(PerpetualTaskState.TASK_ASSIGNED);
-    perpetualTaskRecord.setIntervalSeconds(intervalInMillis * 10);
-    perpetualTaskRecordDao.save(perpetualTaskRecord);
-
-    long updatedRecords = perpetualTaskService.updateTasksSchedule(
-        accountId, PerpetualTaskType.K8S_WATCH, intervalInMillis, PerpetualTaskState.TASK_PAUSED);
-
-    PerpetualTaskRecord record = perpetualTaskService.getTaskRecord(taskId);
-
-    assertThat(updatedRecords).isEqualTo(1L);
-    assertThat(record).isNotNull();
-    assertThat(record.getState()).isEqualTo(PerpetualTaskState.TASK_PAUSED);
-    assertThat(record.getIntervalSeconds()).isEqualTo(intervalInMillis / 1000);
-  }
-
-  @Test
-  @Owner(developers = MOHIT_GARG)
-  @Category(UnitTests.class)
-  public void testMultiUpdateTaskSchedule() {
-    long intervalInMillis = 1000;
-
-    for (int i = 0; i < 10; i++) {
-      String delegateId = generateUuid();
-      String taskId = generateUuid();
-      PerpetualTaskRecord perpetualTaskRecord = perpetualTaskRecord();
-      perpetualTaskRecord.setDelegateId(delegateId);
-      perpetualTaskRecord.setUuid(taskId);
-      perpetualTaskRecord.setState(PerpetualTaskState.TASK_ASSIGNED);
-      perpetualTaskRecord.setIntervalSeconds(intervalInMillis * 10);
-      perpetualTaskRecordDao.save(perpetualTaskRecord);
-    }
-
-    long updatedRecords = perpetualTaskService.updateTasksSchedule(
-        ACCOUNT_ID, PerpetualTaskType.K8S_WATCH, intervalInMillis, PerpetualTaskState.TASK_PAUSED);
-
-    assertThat(updatedRecords).isEqualTo(10L);
-  }
-
-  @Test
-  @Owner(developers = MOHIT_GARG)
-  @Category(UnitTests.class)
-  public void testMultiUpdateTaskScheduleInCaseOfMultipleAccounts() {
-    long intervalInMillis = 1000;
-
-    for (int i = 0; i < 10; i++) {
-      String delegateId = generateUuid();
-      String taskId = generateUuid();
-      PerpetualTaskRecord perpetualTaskRecord = perpetualTaskRecord();
-      perpetualTaskRecord.setDelegateId(delegateId);
-      perpetualTaskRecord.setUuid(taskId);
-      perpetualTaskRecord.setState(PerpetualTaskState.TASK_ASSIGNED);
-      perpetualTaskRecord.setIntervalSeconds(intervalInMillis * 10);
-      perpetualTaskRecordDao.save(perpetualTaskRecord);
-    }
-
-    for (int i = 0; i < 10; i++) {
-      String delegateId = generateUuid();
-      String taskId = generateUuid();
-      PerpetualTaskRecord perpetualTaskRecord = perpetualTaskRecord();
-      perpetualTaskRecord.setDelegateId(delegateId);
-      perpetualTaskRecord.setAccountId(generateUuid());
-      perpetualTaskRecord.setUuid(taskId);
-      perpetualTaskRecord.setState(PerpetualTaskState.TASK_ASSIGNED);
-      perpetualTaskRecord.setIntervalSeconds(intervalInMillis * 10);
-      perpetualTaskRecordDao.save(perpetualTaskRecord);
-    }
-
-    long updatedRecords = perpetualTaskService.updateTasksSchedule(
-        ACCOUNT_ID, PerpetualTaskType.K8S_WATCH, intervalInMillis, PerpetualTaskState.TASK_PAUSED);
-
-    assertThat(updatedRecords).isEqualTo(10L);
-  }
-
-  @Test
-  @Owner(developers = MOHIT_GARG)
-  @Category(UnitTests.class)
-  public void testMultiUpdateTaskScheduleInCaseOfMultipleTaskTypes() {
-    long intervalInMillis = 1000;
-
-    for (int i = 0; i < 5; i++) {
-      String delegateId = generateUuid();
-      String taskId = generateUuid();
-      PerpetualTaskRecord perpetualTaskRecord = perpetualTaskRecord();
-      perpetualTaskRecord.setDelegateId(delegateId);
-      perpetualTaskRecord.setUuid(taskId);
-      perpetualTaskRecord.setState(PerpetualTaskState.TASK_ASSIGNED);
-      perpetualTaskRecord.setIntervalSeconds(intervalInMillis * 10);
-      perpetualTaskRecordDao.save(perpetualTaskRecord);
-    }
-
-    for (int i = 0; i < 5; i++) {
-      String delegateId = generateUuid();
-      String taskId = generateUuid();
-      PerpetualTaskRecord perpetualTaskRecord = perpetualTaskRecord();
-      perpetualTaskRecord.setDelegateId(delegateId);
-      perpetualTaskRecord.setPerpetualTaskType("TASK_TYPE");
-      perpetualTaskRecord.setAccountId(generateUuid());
-      perpetualTaskRecord.setUuid(taskId);
-      perpetualTaskRecord.setState(PerpetualTaskState.TASK_ASSIGNED);
-      perpetualTaskRecord.setIntervalSeconds(intervalInMillis * 10);
-      perpetualTaskRecordDao.save(perpetualTaskRecord);
-    }
-
-    long updatedRecords = perpetualTaskService.updateTasksSchedule(
-        ACCOUNT_ID, PerpetualTaskType.K8S_WATCH, intervalInMillis, PerpetualTaskState.TASK_PAUSED);
-
-    assertThat(updatedRecords).isEqualTo(5L);
   }
 
   @Test

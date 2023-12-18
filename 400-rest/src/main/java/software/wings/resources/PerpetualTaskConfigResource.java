@@ -57,7 +57,7 @@ public class PerpetualTaskConfigResource {
   @DELETE
   @Timed
   @ExceptionMetered
-  public RestResponse<String> resetByAccountIdAndPerpetualTaskType(
+  public RestResponse<String> reset(
       @QueryParam("accountId") String accountId, @QueryParam("perpetualTaskType") String perpetualTaskType) {
     if (perpetualTaskConfigService.resumeAccountPerpetualTask(accountId, perpetualTaskType)) {
       return new RestResponse<>("Enabled background job for the account");

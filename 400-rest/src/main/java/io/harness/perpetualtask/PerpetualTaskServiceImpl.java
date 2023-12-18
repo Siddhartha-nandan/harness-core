@@ -24,7 +24,6 @@ import static java.lang.System.currentTimeMillis;
 import io.harness.annotations.dev.HarnessModule;
 import io.harness.annotations.dev.TargetModule;
 import io.harness.delegate.beans.Delegate;
-import io.harness.delegate.beans.perpetualtask.PerpetualTaskScheduleConfig;
 import io.harness.exception.ExceptionUtils;
 import io.harness.grpc.auth.DelegateAuthServerInterceptor;
 import io.harness.grpc.utils.HTimestamps;

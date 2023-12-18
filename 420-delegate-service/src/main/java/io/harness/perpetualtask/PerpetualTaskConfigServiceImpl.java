@@ -44,6 +44,8 @@ public class PerpetualTaskConfigServiceImpl implements PerpetualTaskConfigServic
                                                  .filter(PerpetualTaskConfigKeys.accountId, accountId)
                                                  .filter(PerpetualTaskConfigKeys.perpetualTaskType, perpetualTaskType);
 
-    return persistence.delete(deleteQuery);
+    boolean result = persistence.delete(deleteQuery);
+    perpetualTaskService.updateTasksState(accountId, perpetualTaskType, PerpetualTaskState.TASK_UNASSIGNED);
+    return result;
   }
 }
