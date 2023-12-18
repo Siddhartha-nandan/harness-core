@@ -310,7 +310,7 @@ database:
             keys:
               MONGO_USER: ""
               MONGO_PASSWORD: ""
-        secretManagement: 
+        secretManagement:
           externalSecretsOperator:
             - secretStore:
                 name: ""
@@ -333,7 +333,7 @@ database:
             keys:
               MONGO_USER: ""
               MONGO_PASSWORD: ""
-        secretManagement: 
+        secretManagement:
           externalSecretsOperator:
             - secretStore:
                 name: ""
@@ -356,7 +356,7 @@ database:
             keys:
               MONGO_USER: ""
               MONGO_PASSWORD: ""
-        secretManagement: 
+        secretManagement:
           externalSecretsOperator:
             - secretStore:
                 name: ""
@@ -368,17 +368,16 @@ database:
                 MONGO_PASSWORD:
                   name: ""
                   property: ""
-
 replicaCount: 1
 maxSurge: 1
 maxUnavailable: 0
 allowedOrigins: ""
 image:
-  registry: docker.io
-  repository: harness/manager-signed
+  registry: us.gcr.io/platform-205701
+  repository: harness-manager
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "80212"
+  tag: "1.8.0"
   digest: ""
   imagePullSecrets: []
 waitForInitContainer:
