@@ -203,7 +203,7 @@ public class LogPerformanceImpl {
     for (String v : values) {
       String[] parts = v.split(" ");
       int labelIndex = parts.length - 1;
-      if (labelIndex >= 1) {
+      if (labelIndex <= 0) {
         continue;
       }
       log.info("Last index value {}", parts[labelIndex]);
