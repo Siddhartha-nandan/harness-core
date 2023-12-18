@@ -682,6 +682,8 @@ github.com/vdemeester/k8s-pkg-credentialprovider v1.18.1-0.20201019120933-f1d169
 github.com/vmware/govmomi v0.20.3/go.mod h1:URlwyTFZX72RmxtxuaFL2Uj3fD1JTvZdx59bHWk6aFU=
 github.com/wings-software/autogen-go v1.0.0 h1:Ovgmeh04oFhEFg+LZy9c4Yo/Yv9Lkl0rFYFJ7jlhtN4=
 github.com/wings-software/autogen-go v1.0.0/go.mod h1:haKhGS/W31Dghjz6XfGAlvBvCaSyGxnbGlPDBE4ukJc=
+github.com/wings-software/autogen-go v1.0.1 h1:SVCNL2KWI0ptby0k4642d7T+M9ZOvo8lgwGIfogdLK8=
+github.com/wings-software/autogen-go v1.0.1/go.mod h1:haKhGS/W31Dghjz6XfGAlvBvCaSyGxnbGlPDBE4ukJc=
 github.com/xanzy/ssh-agent v0.3.0 h1:wUMzuKtKilRgBAD1sUb8gOwwRr2FGoBVumcjoOACClI=
 github.com/xanzy/ssh-agent v0.3.0/go.mod h1:3s9xbODqPuuhK9JV1R321M/FlMZSBvE5aY6eAcqrDh0=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
