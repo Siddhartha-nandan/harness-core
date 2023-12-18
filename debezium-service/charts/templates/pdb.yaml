@@ -1,25 +1,17 @@
-{{- if and .Values.pdb.create }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "debezium-service.name" . }}
+  name: pipeline-service
   namespace: {{ .Release.Namespace }}
+  {{- if .Values.global.commonLabels }}
   labels:
-    {{- include "debezium-service.labels" . | nindent 4 }}
-    {{- if .Values.global.commonLabels }}
     {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
+  {{- end }}
   {{- if .Values.global.commonAnnotations }}
   annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.pdb.minAvailable }}
-  minAvailable: {{ .Values.pdb.minAvailable }}
-  {{- end }}
-  {{- if .Values.pdb.maxUnavailable }}
-  maxUnavailable: {{ .Values.pdb.maxUnavailable }}
-  {{- end }}
+  minAvailable: "50%"
   selector:
-   matchLabels:
-    app: {{ include "debezium-service.name" . }}
-{{- end }}
+    matchLabels:
+      {{- include "debezium-service.selectorLabels" . | nindent 6 }}
