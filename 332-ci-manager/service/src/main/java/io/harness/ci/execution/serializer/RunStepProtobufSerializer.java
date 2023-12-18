@@ -119,7 +119,7 @@ public class RunStepProtobufSerializer implements ProtobufStepSerializer<RunStep
       runStepBuilder.addAllEnvVarOutputs(outputVarNames);
 
       List<OutputVariable> outputVariables =
-          SerializerUtils.getOutputVariableFromNGVariable(runStepInfo.getOutputVariables().getValue(), identifier);
+          SerializerUtils.getOutputVarFromNGVar(runStepInfo.getOutputVariables().getValue(), identifier);
       runStepBuilder.addAllOutputs(outputVariables);
     }
 

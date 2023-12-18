@@ -14,6 +14,7 @@ import static io.harness.pms.yaml.YAMLFieldNameConstants.VALUE;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.encryption.SecretRefHelper;
+import io.harness.exception.ngexception.CIStageExecutionException;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.yaml.core.variables.NGVariable;
 import io.harness.yaml.core.variables.NGVariableType;
@@ -59,7 +60,7 @@ public class OutputVariableDeserializer extends StdDeserializer<ParameterField<L
                                       .value(ParameterField.createValueField(childNode.get(VALUE).asText()))
                                       .build();
           ngVariables.add(ngVariable);
-        } else {
+        } else if (childNode.get(TYPE).asText().equals("Secret")) {
           NGVariable ngVariable = SecretNGVariable.builder()
                                       .name(childNode.get(NAME).asText())
                                       .type(NGVariableType.SECRET)
@@ -67,6 +68,8 @@ public class OutputVariableDeserializer extends StdDeserializer<ParameterField<L
                                           SecretRefHelper.createSecretRef(childNode.get(VALUE).asText())))
                                       .build();
           ngVariables.add(ngVariable);
+        } else {
+          throw new CIStageExecutionException("Unsupported type for the output variable");
         }
       }
     }

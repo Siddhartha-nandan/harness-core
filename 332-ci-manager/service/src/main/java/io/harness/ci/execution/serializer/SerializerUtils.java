@@ -369,7 +369,7 @@ public class SerializerUtils {
     return statusEnvVars;
   }
 
-  public static List<OutputVariable> getOutputVariableFromNGVariable(List<NGVariable> ngVariables, String identifier) {
+  public static List<OutputVariable> getOutputVarFromNGVar(List<NGVariable> ngVariables, String identifier) {
     if (isNotEmpty(ngVariables)) {
       List<OutputVariable> outputVariables =
           ngVariables.stream()
@@ -379,11 +379,10 @@ public class SerializerUtils {
                 if (ParameterField.isNotNull(outputVariable.getCurrentValue())) {
                   if (outputVariable.getType().equals(NGVariableType.STRING)) {
                     outputType = OutputVariable.OutputType.STRING;
-                    val = getOutputVariableFromStringNGVariable(outputVariable, identifier);
-
+                    val = getOutputVarFromStringNGVar(outputVariable, identifier);
                   } else if (outputVariable.getType().equals(NGVariableType.SECRET)) {
                     outputType = OutputVariable.OutputType.SECRET;
-                    val = getOutputVariableFromSecretNGVariable(outputVariable);
+                    val = getOutputVarFromSecretNGVar(outputVariable);
                   }
                 }
                 return OutputVariable.newBuilder()
@@ -402,7 +401,7 @@ public class SerializerUtils {
     return Collections.emptyList();
   }
 
-  private static String getOutputVariableFromStringNGVariable(NGVariable ngVariable, String identifier) {
+  private static String getOutputVarFromStringNGVar(NGVariable ngVariable, String identifier) {
     StringNGVariable stringNGVariable = (StringNGVariable) ngVariable;
     String val = null;
     if (!ParameterField.isBlank(stringNGVariable.getCurrentValue())) {
@@ -412,7 +411,7 @@ public class SerializerUtils {
     return val;
   }
 
-  private static String getOutputVariableFromSecretNGVariable(NGVariable ngVariable) {
+  private static String getOutputVarFromSecretNGVar(NGVariable ngVariable) {
     SecretNGVariable secretNGVariable = (SecretNGVariable) ngVariable;
     String val = null;
     if (ParameterField.isNotNull(secretNGVariable.getCurrentValue())) {

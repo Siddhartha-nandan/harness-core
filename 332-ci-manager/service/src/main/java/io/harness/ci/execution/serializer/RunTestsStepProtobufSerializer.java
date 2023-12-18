@@ -111,7 +111,7 @@ public class RunTestsStepProtobufSerializer implements ProtobufStepSerializer<Ru
                                         .collect(Collectors.toList());
       runTestsStepBuilder.addAllEnvVarOutputs(outputVarNames);
       List<OutputVariable> outputVariables =
-          SerializerUtils.getOutputVariableFromNGVariable(runTestsStepInfo.getOutputVariables().getValue(), identifier);
+          SerializerUtils.getOutputVarFromNGVar(runTestsStepInfo.getOutputVariables().getValue(), identifier);
       runTestsStepBuilder.addAllOutputs(outputVariables);
     }
 
