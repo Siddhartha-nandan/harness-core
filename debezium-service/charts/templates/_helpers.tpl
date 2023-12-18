@@ -61,24 +61,7 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 
-{{/*
-Manage debezium-service Secrets
-USAGE:
-{{- "debezium-service.generateSecrets" (dict "ctx" $)}}
-*/}}
 
-{{- define "debezium-service.generateSecrets" }}
-    {{- $ := .ctx }}
-    {{- $hasAtleastOneSecret := false }}
-    {{- $localESOSecretCtxIdentifier := (include "harnesscommon.secrets.localESOSecretCtxIdentifier" (dict "ctx" $ )) }}
-    {{- if eq (include "harnesscommon.secrets.isDefaultAppSecret" (dict "ctx" $ "variableName" "CF_CLIENT_API_KEY")) "true" }}
-    {{- $hasAtleastOneSecret = true }}
-CF_CLIENT_API_KEY: '{{ .ctx.Values.secrets.default.CF_CLIENT_API_KEY | b64enc }}'
-    {{- end }}
-    {{- if not $hasAtleastOneSecret }}
-{}
-    {{- end }}
-{{- end }}    
 {{/*
 Helper function for pullSecrets at chart level or global level.
 */}}

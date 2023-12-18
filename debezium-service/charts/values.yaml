@@ -9,12 +9,86 @@
 # --global.storageClass Global StorageClass for Persistent Volume(s)
 java:
   memory: "4096m"
-secrets:
-  default:
+#secrets:
+#  default:
 #    CF_CLIENT_API_KEY: "dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq"
+service:
+  annotations: {}
+autoscaling:
+  enabled: false
+redis:
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          REDIS_USERNAME: ""
+          REDIS_PASSWORD: ""
+#    secretManagement:
+#      externalSecretsOperator:
+#        - secretStore:
+#            name: ""
+#            kind: ""
+#          remoteKeys:
+#            REDIS_USERNAME:
+#              name: ""
+#              property: ""
+#            REDIS_PASSWORD:
+#              name: ""
+#              property: ""
+waitForInitContainer:
+  image:
+    registry: docker.io
+    repository: harness/helm-init-container
+    pullPolicy: IfNotPresent
+    tag: "latest"
+    digest: ""
+    imagePullSecrets: []
+image:
+  registry: docker.io
+  digest: ""
+  repository: harness/pipeline-service-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.41.3"
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "harness-default"
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: http-pms
+  timeoutSeconds: 2
+  periodSeconds: 5
+  failureThreshold: 5
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: http-pms
+  timeoutSeconds: 2
+  periodSeconds: 10
+  failureThreshold: 5
+startupProbe:
+  httpGet:
+    path: /api/health
+    port: http-pms
+  timeoutSeconds: 2
+  periodSeconds: 10
+  failureThreshold: 25
 global:
+  ingress:
+    # -- create ingress objects
+    enabled: false
+  commonAnnotations: {}
+  commonLabels: {}
   database:
     redis:
+      installed: true
+    mongo:
       installed: true
   stackDriverLoggingEnabled: false
   IS_ENABLED_PIPELINE: false
