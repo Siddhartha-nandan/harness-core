@@ -1,3 +1,10 @@
+/*
+ * Copyright 2021 Harness Inc. All rights reserved.
+ * Use of this source code is governed by the PolyForm Shield 1.0.0 license
+ * that can be found in the licenses directory at the root of this repository, also available at
+ * https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt.
+ */
+
 package io.harness.ng.core.events;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.audit.ResourceTypeConstants.PROJECT;
@@ -24,7 +31,7 @@ public class ProjectMoveEvent implements Event {
   ProjectDTO newProject;
   ProjectDTO oldProject;
 
-  public ProjectMoveEvent(String accountIdentifier, ProjectDTO newProject,ProjectDTO oldProject) {
+  public ProjectMoveEvent(String accountIdentifier, ProjectDTO newProject, ProjectDTO oldProject) {
     this.newProject = newProject;
     this.oldProject = oldProject;
     this.accountIdentifier = accountIdentifier;
