@@ -9,32 +9,25 @@ package io.harness.steps.approval.step.harness.v1;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.plancreator.steps.common.SpecParameters;
-import io.harness.pms.yaml.HarnessYamlVersion;
+import io.harness.beans.SwaggerConstants;
 import io.harness.pms.yaml.ParameterField;
+import io.swagger.annotations.ApiModelProperty;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
 import javax.validation.constraints.NotNull;
-import java.util.List;
 
 @OwnedBy(HarnessTeam.CDC)
 @Data
-@Builder(builderMethodName = "infoBuilder")
+@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class HarnessApprovalStepParameters implements SpecParameters {
-  @NotNull ParameterField<String> message;
-  ParameterField<String> callbackId;
-  @NotNull ParameterField<Boolean> include_execution_history;
-  AutoApprovalParams auto_approval;
-  @NotNull Approvers approvers;
-  List<ApproverInputInfo> inputs;
-  ParameterField<Boolean> auto_reject;
+public class AutoApprovalParams {
+  @NotNull AutoApprovalAction action;
 
-  @Override
-  public String getVersion() {
-    return HarnessYamlVersion.V1;
-  }
+  @NotNull ScheduledDeadline deadline;
+
+  @ApiModelProperty(dataType = SwaggerConstants.STRING_CLASSPATH)
+  ParameterField<String> comments;
 }

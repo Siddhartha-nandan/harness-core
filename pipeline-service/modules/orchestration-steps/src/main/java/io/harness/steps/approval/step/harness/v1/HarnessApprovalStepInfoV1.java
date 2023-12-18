@@ -19,9 +19,6 @@ import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.steps.StepSpecTypeConstants;
 import io.harness.steps.StepSpecTypeConstantsV1;
-import io.harness.steps.approval.step.harness.beans.ApproverInputInfo;
-import io.harness.steps.approval.step.harness.beans.Approvers;
-import io.harness.steps.approval.step.harness.beans.AutoApprovalParams;
 import io.harness.yaml.YamlSchemaTypes;
 import io.harness.yaml.core.VariableExpression;
 
@@ -46,7 +43,7 @@ public class HarnessApprovalStepInfoV1 implements PMSStepInfo {
 
   @NotEmpty @ApiModelProperty(dataType = SwaggerConstants.STRING_CLASSPATH) ParameterField<String> message;
 
-  @ApiModelProperty(dataType = SwaggerConstants.STRING_CLASSPATH) ParameterField<String> callbackId;
+  @ApiModelProperty(dataType = SwaggerConstants.STRING_CLASSPATH) ParameterField<String> callback_id;
 
   @NotNull
   @YamlSchemaTypes(value = {string})
