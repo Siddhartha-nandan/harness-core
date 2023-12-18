@@ -206,8 +206,6 @@ public class ConnectorEntityCRUDStreamListener implements MessageListener {
       harnessSMManager.createHarnessSecretManager(projectEntityChangeDTO.getAccountIdentifier(),
           projectEntityChangeDTO.getOrgIdentifier(), projectEntityChangeDTO.getIdentifier());
     }
-    //    connectorEntityCRUDEventHandler.deleteAssociatedConnectors(projectEntityChangeDTO.getAccountIdentifier(),
-    //            projectEntityChangeDTO.getOrgIdentifier(), projectEntityChangeDTO.getIdentifier());
     return true;
   }
 }
