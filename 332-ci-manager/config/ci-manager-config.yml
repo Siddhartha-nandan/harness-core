@@ -367,12 +367,12 @@ ciExecutionServiceConfig:
       image: harness/ssca-plugin:0.11.0
       entrypoint:
         - /bin/ssca-plugin
-        - orchestrate
+        - enforce
     sscaEnforcementConfig:
       image: harness/ssca-plugin:0.11.0
       entrypoint:
         - /bin/ssca-plugin
-        - enforce
+        - wrong
     provenanceConfig:
       image: harness/slsa-plugin:latest
       entrypoint:
