@@ -121,6 +121,20 @@ debeziumConfigs:
     poll.interval.ms: ${POLL_INTERVAL_MS_SSCA:-3000}
     heartbeat.interval.ms: ${HEARTBEAT_INTERVAL_SSCA:-10000}
     mongodb.connection.string: ${MONGODB_CONNECTION_STRING_SSCA:-mongodb://localhost:27017}
+  - isEnabled: ${IS_ENABLED_GITOPS:-true}
+    name: ${DEBEZIUM_NAME_GITOPS_UTILIZATION:-gitOps} # unique for each debezium config
+    mongodb.name: ${MONGODB_NAME_GITOPS_UTILIZATION:-gitOpsMongo} # unique for each debezium config
+    mongodb.ssl.enabled: ${MONGO_DB_SSL_ENABLED_SSCA:-false}
+    database.include.list: ${DATABASE_INCLUDE_LIST_GITOPS:-harness-gitops}
+    collection.include.list: ${COLLECTION_INCLUDE_LIST_SSCA:-harness-gitops.utilization}
+    redisStreamSize: ${REDIS_STREAM_SIZE_GITOPS:-10000}
+    snapshot.mode: ${SNAPSHOT_MODE_GITOPS:-never}
+    max.queue.size: ${MAX_QUEUE_SIZE_GITOPS:-8192}
+    max.batch.size: ${MAX_BATCH_SIZE_GITOPS:-2048}
+    max.queue.size.in.bytes: ${MAX_QUEUE_SIZE_IN_BYTES_GITOPS:-1000000000}
+    poll.interval.ms: ${POLL_INTERVAL_MS_GITOPS:-3000}
+    heartbeat.interval.ms: ${HEARTBEAT_INTERVAL_GITOPS:-10000}
+    mongodb.connection.string: ${MONGODB_CONNECTION_STRING_GITOPS:-mongodb://localhost:27017/?replicaSet=rs0}
 
 eventsFramework:
   redis:
@@ -160,7 +174,7 @@ redisLockConfig:
 distributedLockImplementation: REDIS
 
 cfClientConfig:
-  apiKey: ""
+  apiKey: "24e0cab8-a5ff-42ca-aa7b-dda7700935c3"
   configUrl: "https://config.feature-flags.uat.harness.io/api/1.0"
   eventUrl: "https://event.feature-flags.uat.harness.io/api/1.0"
   analyticsEnabled: true

@@ -10,6 +10,7 @@ package io.harness.ng.eventsframework;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.authorization.AuthorizationServiceHeader.NG_MANAGER;
 import static io.harness.eventsframework.EventsFrameworkConstants.CDNG_ORCHESTRATION_EVENT_CONSUMER;
+import static io.harness.eventsframework.EventsFrameworkConstants.GITOPS_UTILIZATION_REDIS_EVENT_CONSUMER;
 import static io.harness.eventsframework.EventsFrameworkConstants.GIT_BRANCH_HOOK_EVENT_STREAM;
 import static io.harness.eventsframework.EventsFrameworkConstants.GIT_BRANCH_HOOK_EVENT_STREAM_MAX_TOPIC_SIZE;
 import static io.harness.eventsframework.EventsFrameworkConstants.GIT_CONFIG_STREAM;
@@ -283,6 +284,11 @@ public class EventsFrameworkModule extends AbstractModule {
           .toInstance(RedisConsumer.of(PIPELINE_ORCHESTRATION_EVENT_TOPIC, NG_MANAGER.getServiceId(), redissonClient,
               java.time.Duration.ofSeconds(MAX_PROCESSING_TIME_SECONDS), PIPELINE_ORCHESTRATION_EVENT_BATCH_SIZE,
               redisConfig.getEnvNamespace()));
+      bind(Consumer.class)
+          .annotatedWith(Names.named(GITOPS_UTILIZATION_REDIS_EVENT_CONSUMER))
+          .toInstance(RedisConsumer.of(debeziumConsumersConfigs.getGitOpsUtilizationStreaming().getTopic(),
+              NG_MANAGER.getServiceId(), redissonClient, EventsFrameworkConstants.DEFAULT_MAX_PROCESSING_TIME,
+              debeziumConsumersConfigs.getGitOpsUtilizationStreaming().getBatchSize(), redisConfig.getEnvNamespace()));
     }
   }
 

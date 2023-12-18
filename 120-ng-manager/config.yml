@@ -525,6 +525,11 @@ debeziumConsumersConfigs:
     topic: ${DEBEZIUM_CONSUMER_TOPIC_NAME_MODULE_LICENSES:-DEBEZIUM_ngMongo.ng-harness.moduleLicenses}
     threads: ${DEBEZIUM_CONSUMER_THREADS_MODULE_LICENSES:-2}
     batchSize: ${DEBEZIUM_CONSUMER_BATCH_SIZE_MODULE_LICENSES:-100}
+  gitOpsUtilizationStreaming:
+    topic: ${DEBEZIUM_CONSUMER_TOPIC_NAME_GITOPS_UTILIZATION:-DEBEZIUM_gitOpsMongo.harness-gitops.utilization}
+    threads: ${DEBEZIUM_CONSUMER_THREADS_GITOPS_UTILIZATION:-2}
+    batchSize: ${DEBEZIUM_CONSUMER_BATCH_SIZE_GITOPS_UTILIZATION:-100}
+
 
 cdTsDbRetentionPeriodMonths: 7
 

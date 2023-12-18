@@ -90,6 +90,7 @@ import io.harness.enforcement.executions.DeploymentRestrictionUsageImpl;
 import io.harness.enforcement.executions.DeploymentsPerMonthRestrictionUsageImpl;
 import io.harness.enforcement.executions.InitialDeploymentRestrictionUsageImpl;
 import io.harness.enforcement.services.FeatureRestrictionLoader;
+import io.harness.events.base.GitOpsEventConsumerController;
 import io.harness.eventsframework.EventsFrameworkConfiguration;
 import io.harness.exception.MongoExecutionTimeoutExceptionMapper;
 import io.harness.ff.FeatureFlagConfig;
@@ -161,6 +162,7 @@ import io.harness.ng.core.remote.licenserestriction.VariableRestrictionUsageImpl
 import io.harness.ng.core.scheduler.SendAccountStatisticsToSegmentTask;
 import io.harness.ng.core.user.exception.mapper.InvalidUserRemoveRequestExceptionMapper;
 import io.harness.ng.core.variable.expressions.functors.VariableFunctor;
+import io.harness.ng.gitops.changestreams.GitOpsUtilizationRedisEventConsumer;
 import io.harness.ng.migration.DelegateMigrationProvider;
 import io.harness.ng.migration.NGCoreMigrationProvider;
 import io.harness.ng.migration.SourceCodeManagerMigrationProvider;
@@ -760,6 +762,12 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     log.info("Initializing sdk redis abstract consumers for PLG...");
     PlgEventConsumerController plgEventConsumerController = injector.getInstance(PlgEventConsumerController.class);
     plgEventConsumerController.register(injector.getInstance(ModuleLicensesRedisEventConsumer.class),
+        appConfig.getDebeziumConsumersConfigs().getModuleLicensesStreaming().getThreads());
+
+    log.info("Initializing sdk redis abstract consumers for GitOps...");
+    GitOpsEventConsumerController gitOpsEventConsumerController =
+        injector.getInstance(GitOpsEventConsumerController.class);
+    gitOpsEventConsumerController.register(injector.getInstance(GitOpsUtilizationRedisEventConsumer.class),
         appConfig.getDebeziumConsumersConfigs().getModuleLicensesStreaming().getThreads());
   }
 
