@@ -48,7 +48,7 @@ public class ProxyApiKeyResourceImplTest {
   @Category(UnitTests.class)
   public void getValidScopeLevels() {
     assertThat(proxyApiKeyResourceImpl.getValidScopeLevels())
-            .containsExactlyInAnyOrder(ScopeLevel.PROJECT, ScopeLevel.ORGANIZATION, ScopeLevel.ACCOUNT);
+        .containsExactlyInAnyOrder(ScopeLevel.PROJECT, ScopeLevel.ORGANIZATION, ScopeLevel.ACCOUNT);
   }
 
   @Test
