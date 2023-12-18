@@ -53,6 +53,12 @@ global:
         - redis-sentinel-harness-announce-1:26379
         - redis-sentinel-harness-announce-2:26379
       secretName: "redis-secret"
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
       userKey: "redis-user"
       passwordKey: "redis-password"
       extraArgs: ""

@@ -53,6 +53,7 @@ spec:
         - configMapRef:
             name: log-service
         env:
+          {{- include "harnesscommon.dbv3.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "LOG_SERVICE_REDIS_SSL_ENABLED" "sslCACertPath" "LOG_SERVICE_REDIS_SSL_CA_CERT_PATH") | indent 12 }}
           {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "LOG_SERVICE_GLOBAL_TOKEN" "defaultKubernetesSecretName" "log-service" "defaultKubernetesSecretKey" "LOG_SERVICE_GLOBAL_TOKEN") | indent 10 }}
           {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "LOG_SERVICE_SECRET" "defaultKubernetesSecretName" "log-service" "defaultKubernetesSecretKey" "LOG_SERVICE_SECRET") | indent 10 }}
           {{- $globalMinioESOSecretIdentifier := include "harnesscommon.secrets.globalESOSecretCtxIdentifier" (dict "ctx" $ "ctxIdentifier" "minio") }}
@@ -87,6 +88,7 @@ spec:
         lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
         {{- end }}
         volumeMounts:
+        {{- include "harnesscommon.dbv3.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 12 }}
         {{- if .Values.extraVolumeMounts }}
         {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
         {{- end }}
@@ -111,7 +113,8 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.extraVolumes }}
       volumes:
+      {{- if .Values.extraVolumes }}
       {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
       {{- end }}
+      {{- include "harnesscommon.dbv3.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 8 }}
