@@ -13,6 +13,7 @@ import static io.harness.lock.DistributedLockImplementation.NOOP;
 import static io.harness.outbox.OutboxSDKConstants.DEFAULT_OUTBOX_POLL_CONFIGURATION;
 
 import static java.lang.System.getProperty;
+import static org.mockito.Mockito.mock;
 
 import io.harness.AccessControlClientConfiguration;
 import io.harness.AccessControlClientModule;
@@ -33,6 +34,8 @@ import io.harness.mongo.MongoConfig;
 import io.harness.mongo.MongoPersistence;
 import io.harness.morphia.MorphiaRegistrar;
 import io.harness.oas.OASModule;
+import io.harness.opaclient.OpaClientModule;
+import io.harness.opaclient.OpaServiceClient;
 import io.harness.outbox.TransactionOutboxModule;
 import io.harness.persistence.HPersistence;
 import io.harness.redis.RedisConfig;
@@ -222,6 +225,8 @@ public class ResourceGroupTestRule implements MethodRule, InjectorRuleMixin, Mon
                                                       .gitopsService(serviceConfig)
                                                       .ceNextGen(serviceConfig)
                                                       .code(serviceConfig)
+                                                      .opaClientConfig(serviceHttpClientConfig)
+                                                      .policyManagerSecret("secret")
                                                       .build();
     configuration.setResourceClientConfigs(resourceClientConfigs);
     return configuration;

@@ -193,6 +193,6 @@ public class ResourceGroupModule extends AbstractModule {
         ServiceHttpClientConfig.builder().baseUrl(resourceClients.getCeNextGen().getBaseUrl()).build(),
         resourceClients.getCeNextGen().getSecret(), RESOUCE_GROUP_SERVICE.toString(), ClientMode.PRIVILEGED));
     install(new OpaClientModule(resourceClients.getOpaClientConfig(), resourceClients.getPolicyManagerSecret(),
-        RESOUCE_GROUP_SERVICE.getServiceId()));
+        RESOUCE_GROUP_SERVICE.toString()));
   }
 }
