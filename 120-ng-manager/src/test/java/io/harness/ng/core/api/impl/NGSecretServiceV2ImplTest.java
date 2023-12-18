@@ -77,6 +77,8 @@ import io.harness.ng.core.models.WinRmCredentialsSpec;
 import io.harness.ng.core.remote.SSHKeyValidationMetadata;
 import io.harness.ng.core.remote.SecretValidationResultDTO;
 import io.harness.ng.core.remote.WinRmCredentialsValidationMetadata;
+import io.harness.ng.core.services.OrganizationService;
+import io.harness.ng.core.services.ProjectService;
 import io.harness.outbox.api.OutboxService;
 import io.harness.repositories.ng.core.spring.SecretRepository;
 import io.harness.rule.Owner;
@@ -116,6 +118,8 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   private AccessControlClient accessControlClient;
   private NGFeatureFlagHelperService ngFeatureFlagHelperService;
   private ExceptionManager exceptionManager;
+  private OrganizationService organizationService;
+  private ProjectService projectService;
 
   @Rule public ExpectedException exceptionRule = ExpectedException.none();
 
@@ -150,12 +154,15 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
     accessControlClient = mock(AccessControlClient.class);
     ngFeatureFlagHelperService = mock(NGFeatureFlagHelperService.class);
     exceptionManager = mock(ExceptionManager.class);
+    organizationService = mock(OrganizationService.class);
+    projectService = mock(ProjectService.class);
     SshKeySpecDTOHelper sshKeySpecDTOHelper = mock(SshKeySpecDTOHelper.class);
     WinRmCredentialsSpecDTOHelper winRmCredentialsSpecDTOHelper = mock(WinRmCredentialsSpecDTOHelper.class);
 
     secretServiceV2 = new NGSecretServiceV2Impl(secretRepository, delegateGrpcClientWrapper, sshKeySpecDTOHelper,
         ngSecretActivityService, outboxService, transactionTemplate, taskSetupAbstractionHelper,
-        winRmCredentialsSpecDTOHelper, accessControlClient, ngFeatureFlagHelperService, exceptionManager);
+        winRmCredentialsSpecDTOHelper, accessControlClient, ngFeatureFlagHelperService, exceptionManager,
+        organizationService, projectService);
     secretServiceV2Spy = spy(secretServiceV2);
     secretForceDeleteEventArgumentCaptor = ArgumentCaptor.forClass(SecretForceDeleteEvent.class);
     secretDeleteEventArgumentCaptor = ArgumentCaptor.forClass(SecretDeleteEvent.class);
@@ -246,6 +253,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   public void testCreate() {
     SecretDTOV2 secretDTOV2 = getSecretDTO();
     Secret secret = Secret.fromDTO(secretDTOV2);
+    secret.setAccountIdentifier(ACC_ID);
     when(secretRepository.save(any())).thenReturn(secret);
     when(transactionTemplate.execute(any())).thenReturn(secret);
 
@@ -284,6 +292,10 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
 
   private SSHKeyValidationMetadata getMetadata() {
     return SSHKeyValidationMetadata.builder().host("1.2.3.4").build();
+  }
+
+  private WinRmCredentialsValidationMetadata getWinRmMetadata() {
+    return WinRmCredentialsValidationMetadata.builder().host("1.2.3.4").build();
   }
 
   private Secret getSecret() {
@@ -745,6 +757,87 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
     assertThat(explanationException.getMessage()).isEqualTo("SSH Key is not valid");
     InvalidRequestException ex = (InvalidRequestException) explanationException.getCause();
     assertThat(ex.getMessage()).isEqualTo("Failed to get session due to - INVALID_KEY");
+  }
+
+  @Test
+  @Owner(developers = IVAN)
+  @Category(UnitTests.class)
+  public void testProcessValidationTaskResponseWinRmInvalidCredentials() {
+    Secret secret = getWinRmSecret();
+    secret.setSecretSpec(
+        WinRmCredentialsSpec.builder()
+            .port(5986)
+            .auth(WinRmAuth.builder()
+                      .type(WinRmAuthScheme.NTLM)
+                      .spec(NTLMConfig.builder().username("user").password(SecretRefData.builder().build()).build())
+                      .build())
+            .build());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(
+            WinRmConfigValidationTaskResponse.builder()
+                .errorMessage(
+                    "Invalid credentials or incompatible authentication schemes\\nAuthorization loop detected on Conduit \"{http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd}WinRmPort.http-conduit\" on URL \"https://ec2-54-225-189-86.compute-1.amazonaws.com:5986/wsman\" with realm \"WSMAN\"")
+                .build());
+    doReturn(new WingsException("wings exception message"))
+        .when(exceptionManager)
+        .processException(any(), any(), any());
+
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getWinRmMetadata()))
+        .hasMessage("wings exception message")
+        .isInstanceOf(WingsException.class);
+
+    verify(exceptionManager, times(1)).processException(exceptionArgumentCaptor.capture(), any(), any());
+    Exception exception = exceptionArgumentCaptor.getValue();
+    assertThat(exception).isNotNull();
+    assertThat(exception.getMessage()).isEqualTo("Please provide valid credentials on configuration page.");
+    ExplanationException explanationException = (ExplanationException) exception.getCause();
+    assertThat(explanationException.getMessage()).isEqualTo("Domain or Username/Password is not valid");
+    InvalidRequestException ex = (InvalidRequestException) explanationException.getCause();
+    assertThat(ex.getMessage())
+        .isEqualTo(
+            "Invalid credentials or incompatible authentication schemes\\nAuthorization loop detected on Conduit \"{http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd}WinRmPort.http-conduit\" on URL \"https://ec2-54-225-189-86.compute-1.amazonaws.com:5986/wsman\" with realm \"WSMAN\"");
+  }
+
+  @Test
+  @Owner(developers = IVAN)
+  @Category(UnitTests.class)
+  public void testProcessValidationTaskResponseWinRmInvalidProtocol() {
+    Secret secret = getWinRmSecret();
+    secret.setSecretSpec(
+        WinRmCredentialsSpec.builder()
+            .port(5986)
+            .auth(WinRmAuth.builder()
+                      .type(WinRmAuthScheme.NTLM)
+                      .spec(NTLMConfig.builder().username("user").password(SecretRefData.builder().build()).build())
+                      .build())
+            .build());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(
+            WinRmConfigValidationTaskResponse.builder()
+                .errorMessage(
+                    "Invalid credentials or incompatible authentication schemes\\nAuthorization loop detected on Conduit \"{http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd}WinRmPort.http-conduit\" on URL \"https://ec2-54-225-189-86.compute-1.amazonaws.com:5986/wsman\" with realm \"null\"")
+                .build());
+    doReturn(new WingsException("wings exception message"))
+        .when(exceptionManager)
+        .processException(any(), any(), any());
+
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getWinRmMetadata()))
+        .hasMessage("wings exception message")
+        .isInstanceOf(WingsException.class);
+
+    verify(exceptionManager, times(1)).processException(exceptionArgumentCaptor.capture(), any(), any());
+    Exception exception = exceptionArgumentCaptor.getValue();
+    assertThat(exception).isNotNull();
+    assertThat(exception.getMessage())
+        .isEqualTo("Please check HTTP/S is enabled on host machine and provide valid setup on configuration page.");
+    ExplanationException explanationException = (ExplanationException) exception.getCause();
+    assertThat(explanationException.getMessage()).isEqualTo("Cannot establish HTTP/S connection to host");
+    InvalidRequestException ex = (InvalidRequestException) explanationException.getCause();
+    assertThat(ex.getMessage())
+        .isEqualTo(
+            "Invalid credentials or incompatible authentication schemes\\nAuthorization loop detected on Conduit \"{http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd}WinRmPort.http-conduit\" on URL \"https://ec2-54-225-189-86.compute-1.amazonaws.com:5986/wsman\" with realm \"null\"");
   }
 
   @NotNull

@@ -18,6 +18,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.FeatureName;
+import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.InvalidYamlException;
 import io.harness.exception.JsonSchemaValidationException;
@@ -76,6 +77,7 @@ public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
 
   private final String PIPELINE_VERSION_V0 = "v0";
   private final String PIPELINE_VERSION_V1 = "v1";
+  private final String STEP_GROUP_NODE_TYPE = "step_group";
 
   @Inject
   public PMSYamlSchemaServiceImpl(YamlSchemaValidator yamlSchemaValidator, PmsYamlSchemaHelper pmsYamlSchemaHelper,
@@ -103,7 +105,7 @@ public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
         // If e.getCause() instance of InvalidYamlException then it means we got some legit schema-validation errors
         // and it has error info according to the schema-error-experience.
         if (e.getCause() != null && e.getCause() instanceof io.harness.yaml.validator.InvalidYamlException) {
-          throw(io.harness.yaml.validator.InvalidYamlException) e.getCause();
+          throw (io.harness.yaml.validator.InvalidYamlException) e.getCause();
         }
         throw new RuntimeException(e.getCause());
       } catch (TimeoutException | InterruptedException e) {
@@ -124,10 +126,10 @@ public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
     long start = System.currentTimeMillis();
     try {
       String schamaPath = null;
-      if (HarnessYamlVersion.V0.equals(harnessVersion)) {
-        schamaPath = PIPELINE_VERSION_V0;
-      } else {
+      if (HarnessYamlVersion.isV1(harnessVersion)) {
         schamaPath = PIPELINE_VERSION_V1;
+      } else {
+        schamaPath = PIPELINE_VERSION_V0;
       }
       JsonNode schema = schemaFetcher.fetchPipelineStaticYamlSchema(schamaPath);
 
@@ -179,6 +181,9 @@ public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
   private ObjectNode getIndividualSchema(
       String nodeGroup, String nodeType, String nodeGroupDifferentiator, String version) {
     SchemaParserInterface pipelineSchemaParser = pipelineSchemaParserFactory.getPipelineSchemaParser(version);
+    if (STEP_GROUP_NODE_TYPE.equals(nodeGroup) && EmptyPredicate.isEmpty(nodeGroupDifferentiator)) {
+      throw new InvalidRequestException("node_group_differentiator cannot be empty for step_group node_group.");
+    }
     return pipelineSchemaParser.getIndividualSchema(
         PipelineSchemaRequest.builder()
             .individualSchemaMetadata(PipelineSchemaMetadata.builder()

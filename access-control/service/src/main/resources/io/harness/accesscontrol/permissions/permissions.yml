@@ -1,6 +1,6 @@
 # Any edit in this file should accompany an increment in version.
 name: permissionsConfiguration
-version: 66
+version: 68
 permissions:
   - identifier: core_project_delete
     name: Delete Project
@@ -1440,121 +1440,121 @@ permissions:
       - account
   - identifier: idp_plugin_view
     name: View IDP custom plugins
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_plugin_edit
     name: Create or Edit IDP custom plugins
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_plugin_toggle
     name: Enable or Disable an IDP Plugin
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_plugin_delete
     name: Delete IDP custom plugins
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_scorecard_view
     name: View IDP Scorecards
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_scorecard_edit
     name: Create or Edit IDP Scorecards
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_scorecard_delete
     name: Delete IDP Scorecards
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_layout_view
     name: View IDP Layout Configurations
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_layout_edit
     name: Create or Edit IDP Layout Configurations
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_catalogaccesspolicy_view
     name: View IDP Catalog Access Control Policies
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_catalogaccesspolicy_create
     name: Create IDP Catalog Access Control Policies
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_catalogaccesspolicy_edit
     name: Edit IDP Catalog Access Control Policies
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_catalogaccesspolicy_delete
     name: Delete IDP Catalog Access Control Policies
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_integration_view
     name: View IDP Integrations
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_integration_create
     name: Create IDP Integrations
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_integration_edit
     name: Edit IDP Integrations
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_integration_delete
     name: Delete IDP Integrations
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_advancedconfiguration_view
     name: View IDP Advanced Configurations
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_advancedconfiguration_edit
     name: Create or Edit IDP Advanced Configurations
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
   - identifier: idp_advancedconfiguration_delete
     name: Delete IDP Advanced Configurations
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account
@@ -1888,6 +1888,54 @@ permissions:
       - project
   - identifier: core_inputset_view
     name: View InputSet
+    status: ACTIVE
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
+  - identifier: core_notification_view
+    name: View notification rules and channels
+    status: STAGING
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
+  - identifier: core_notification_edit
+    name: Edit notification rules and channels
+    status: STAGING
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
+  - identifier: core_notification_delete
+    name: Delete notification rules and channels
+    status: STAGING
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
+  - identifier: ssca_remediationtracker_edit
+    name: Create and Update remediation tracker
+    status: ACTIVE
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
+  - identifier: ssca_remediationtracker_view
+    name: View remediation tracker
+    status: ACTIVE
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
+  - identifier: ssca_remediationtracker_close
+    name: Close remediation tracker
     status: ACTIVE
     includeInAllRoles: false
     allowedScopeLevels:
