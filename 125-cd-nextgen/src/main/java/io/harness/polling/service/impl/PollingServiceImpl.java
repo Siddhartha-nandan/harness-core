@@ -246,6 +246,15 @@ public class PollingServiceImpl implements PollingService {
         createScopeCriteria(scope.getAccountIdentifier(), scope.getOrgIdentifier(), scope.getProjectIdentifier());
     pollingRepository.deleteAll(criteria);
   }
+  @Override
+
+  public void deletePollingDocs(String accountId, String orgId, String projectId) {
+    List<String> perpetualTaskIds = pollingRepository.findPTIdsByScope(accountId, orgId, projectId);
+    for (String perpetualTaskId : perpetualTaskIds) {
+      perpetualTaskService.deletePerpetualTask(perpetualTaskId, accountId);
+    }
+    deleteAtAllScopes(Scope.of(accountId, orgId, projectId));
+  }
 
   public DeleteResult deletePollingDocs(String accountId, String orgId, String projectId, PollingType pollingType) {
     Criteria criteria = createDeleteCriteria(accountId, orgId, projectId, pollingType);
