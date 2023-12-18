@@ -22,10 +22,10 @@ data:
 #  EVENTS_FRAMEWORK_REDIS_SSL_ENABLED: {{.Values.EVENTS_FRAMEWORK_REDIS_SSL_ENABLED | quote}}
 #  EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PATH: {{.Values.EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PATH}}
 #  EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PASSWORD: {{.Values.EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PASSWORD  | quote}}
-  REDIS_LOCK_CONFIG_REDIS_SENTINELS: { { include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) } }
+  REDIS_LOCK_CONFIG_REDIS_SENTINELS: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
   REDIS_LOCK_CONFIG_SENTINEL_MASTER_NAME: harness-redis
-  REDIS_LOCK_CONFIG_USE_SENTINEL: { { .Values.global.database.redis.installed | quote } }
-  REDIS_LOCK_CONFIG_REDIS_URL: { { include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) } }
+  REDIS_LOCK_CONFIG_USE_SENTINEL: {{ .Values.global.database.redis.installed | quote }}
+  REDIS_LOCK_CONFIG_REDIS_URL: {{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $) }}
 #  REDIS_LOCK_CONFIG_ENV_NAMESPACE: {{.Values.REDIS_LOCK_CONFIG_ENV_NAMESPACE | quote}}
   IS_ENABLED_PIPELINE: {{.Values.global.IS_ENABLED_PIPELINE | quote}}
   MONGO_DB_SSL_ENABLED_PIPELINE: {{.Values.global.MONGO_DB_SSL_ENABLED_PIPELINE | quote}}
