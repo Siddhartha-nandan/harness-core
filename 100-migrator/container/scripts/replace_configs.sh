@@ -682,6 +682,25 @@ if [[ "" != "$REDIS_URL" ]]; then
   export REDIS_URL; yq -i '.singleServerConfig.address=env(REDIS_URL)' $REDISSON_CACHE_FILE
 fi
 
+if [[ "" != "$REDIS_SSL_ENABLED" ]]; then
+  replace_key_value redisLockConfig.sslConfig.enabled $REDIS_SSL_ENABLED
+  replace_key_value redisAtmosphereConfig.sslConfig.enabled $REDIS_SSL_ENABLED
+fi
+
+if [[ "" != "$REDIS_SSL_CA_TRUST_STORE_PATH" ]]; then
+  replace_key_value redisLockConfig.sslConfig.CATrustStorePath $REDIS_SSL_CA_TRUST_STORE_PATH
+  replace_key_value redisAtmosphereConfig.sslConfig.CATrustStorePath $REDIS_SSL_CA_TRUST_STORE_PATH
+
+  export REDIS_SSL_CA_TRUST_STORE_PATH; yq -i '.singleServerConfig.sslTruststore=env(REDIS_SSL_CA_TRUST_STORE_PATH)' $REDISSON_CACHE_FILE
+fi
+
+if [[ "" != "$REDIS_SSL_CA_TRUST_STORE_PASSWORD" ]]; then
+  replace_key_value redisLockConfig.sslConfig.CATrustStorePassword $REDIS_SSL_CA_TRUST_STORE_PASSWORD
+  replace_key_value redisAtmosphereConfig.sslConfig.CATrustStorePassword $REDIS_SSL_CA_TRUST_STORE_PASSWORD
+
+  export REDIS_SSL_CA_TRUST_STORE_PASSWORD; yq -i '.singleServerConfig.sslTruststorePassword=env(REDIS_SSL_CA_TRUST_STORE_PASSWORD)' $REDISSON_CACHE_FILE
+fi
+
 if [[ "" != "$ATMOSPHERE_REDIS_URL" ]]; then
   export ATMOSPHERE_REDIS_URL; yq -i '.redisAtmosphereConfig.redisUrl=env(ATMOSPHERE_REDIS_URL)' $CONFIG_FILE
 fi
