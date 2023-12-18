@@ -17,14 +17,14 @@ import io.harness.licensing.LicenseStatus;
 import io.harness.licensing.LicenseType;
 import io.harness.licensing.beans.modules.CODEModuleLicenseDTO;
 import io.harness.licensing.beans.modules.CODEModuleLicenseDTO.CODEModuleLicenseDTOBuilder;
-import io.harness.licensing.interfaces.clients.CODEModuleLicenseClient;
+import io.harness.licensing.interfaces.clients.CodeModuleLicenseClient;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 @OwnedBy(HarnessTeam.CODE)
-public class CODELocalClient implements CODEModuleLicenseClient {
-  private static final int ENTERPRISE_TRIAL_DEVELOPERS = 300;
+public class CodeLocalClient implements CodeModuleLicenseClient {
+  private static final int ENTERPRISE_TRIAL_DEVELOPERS = 200;
 
   @Override
   public CODEModuleLicenseDTO createTrialLicense(Edition edition, String accountId) {

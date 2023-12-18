@@ -11,7 +11,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.exception.InvalidRequestException;
 import io.harness.licensing.beans.modules.CODEModuleLicenseDTO;
-import io.harness.licensing.entities.modules.CODEModuleLicense;
+import io.harness.licensing.entities.modules.CodeModuleLicense;
 import io.harness.licensing.helpers.ModuleLicenseHelper;
 import io.harness.licensing.mappers.LicenseObjectMapper;
 
@@ -20,19 +20,19 @@ import com.google.inject.Singleton;
 
 @OwnedBy(HarnessTeam.CODE)
 @Singleton
-public class CODELicenseObjectMapper implements LicenseObjectMapper<CODEModuleLicense, CODEModuleLicenseDTO> {
+public class CodeLicenseObjectMapper implements LicenseObjectMapper<CodeModuleLicense, CODEModuleLicenseDTO> {
   @Inject private ModuleLicenseHelper moduleLicenseHelper;
 
   @Override
-  public CODEModuleLicenseDTO toDTO(CODEModuleLicense moduleLicense) {
+  public CODEModuleLicenseDTO toDTO(CodeModuleLicense moduleLicense) {
     return CODEModuleLicenseDTO.builder().numberOfDevelopers(moduleLicense.getNumberOfDevelopers()).build();
   }
 
   @Override
-  public CODEModuleLicense toEntity(CODEModuleLicenseDTO codeModuleLicenseDTO) {
+  public CodeModuleLicense toEntity(CODEModuleLicenseDTO codeModuleLicenseDTO) {
     validateModuleLicenseDTO(codeModuleLicenseDTO);
 
-    return CODEModuleLicense.builder().numberOfDevelopers(codeModuleLicenseDTO.getNumberOfDevelopers()).build();
+    return CodeModuleLicense.builder().numberOfDevelopers(codeModuleLicenseDTO.getNumberOfDevelopers()).build();
   }
 
   @Override

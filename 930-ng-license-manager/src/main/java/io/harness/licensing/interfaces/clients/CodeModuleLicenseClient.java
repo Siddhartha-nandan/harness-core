@@ -10,6 +10,6 @@ package io.harness.licensing.interfaces.clients;
 import io.harness.licensing.Edition;
 import io.harness.licensing.beans.modules.CODEModuleLicenseDTO;
 
-public interface CODEModuleLicenseClient extends ModuleLicenseClient<CODEModuleLicenseDTO> {
+public interface CodeModuleLicenseClient extends ModuleLicenseClient<CODEModuleLicenseDTO> {
   @Override CODEModuleLicenseDTO createTrialLicense(Edition edition, String accountId);
 }

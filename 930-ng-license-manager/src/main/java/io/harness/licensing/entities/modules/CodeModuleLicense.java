@@ -27,6 +27,6 @@ import org.springframework.data.annotation.TypeAlias;
 @Entity(value = "moduleLicenses", noClassnameStored = true)
 @Persistent
 @TypeAlias("io.harness.license.entities.module.CodeModuleLicense")
-public class CODEModuleLicense extends ModuleLicense {
+public class CodeModuleLicense extends ModuleLicense {
   Integer numberOfDevelopers;
 }

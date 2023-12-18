@@ -22,7 +22,7 @@ import io.harness.licensing.entities.modules.CEModuleLicense;
 import io.harness.licensing.entities.modules.CETModuleLicense;
 import io.harness.licensing.entities.modules.CFModuleLicense;
 import io.harness.licensing.entities.modules.CIModuleLicense;
-import io.harness.licensing.entities.modules.CODEModuleLicense;
+import io.harness.licensing.entities.modules.CodeModuleLicense;
 import io.harness.licensing.entities.modules.ChaosModuleLicense;
 import io.harness.licensing.entities.modules.IACMModuleLicense;
 import io.harness.licensing.entities.modules.IDPModuleLicense;
@@ -349,8 +349,8 @@ public class ModuleLicenseHelper {
         }
         break;
       case CODE:
-        CODEModuleLicense codeModuleUpdateLicense = (CODEModuleLicense) update;
-        CODEModuleLicense currentCodeModuleLicense = (CODEModuleLicense) current;
+        CodeModuleLicense codeModuleUpdateLicense = (CodeModuleLicense) update;
+        CodeModuleLicense currentCodeModuleLicense = (CodeModuleLicense) current;
         if (codeModuleUpdateLicense.getNumberOfDevelopers() != null
             && !codeModuleUpdateLicense.getNumberOfDevelopers().equals(
                 currentCodeModuleLicense.getNumberOfDevelopers())) {

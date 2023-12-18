@@ -26,7 +26,7 @@ import io.harness.licensing.beans.summary.CELicenseSummaryDTO;
 import io.harness.licensing.beans.summary.CETLicenseSummaryDTO;
 import io.harness.licensing.beans.summary.CFLicenseSummaryDTO;
 import io.harness.licensing.beans.summary.CILicenseSummaryDTO;
-import io.harness.licensing.beans.summary.CODELicenseSummaryDTO;
+import io.harness.licensing.beans.summary.CodeLicenseSummaryDTO;
 import io.harness.licensing.beans.summary.CVLicenseSummaryDTO;
 import io.harness.licensing.beans.summary.ChaosLicenseSummaryDTO;
 import io.harness.licensing.beans.summary.IACMLicenseSummaryDTO;
@@ -211,10 +211,10 @@ public class ModuleLicenseSummaryHelper {
         };
         break;
       case CODE:
-        licensesWithSummaryDTO = CODELicenseSummaryDTO.builder().build();
+        licensesWithSummaryDTO = CodeLicenseSummaryDTO.builder().build();
         summaryHandler = (moduleLicenseDTO, summaryDTO, current) -> {
           CODEModuleLicenseDTO codeModuleLicenseDTO = (CODEModuleLicenseDTO) moduleLicenseDTO;
-          CODELicenseSummaryDTO codeLicenseSummaryDTO = (CODELicenseSummaryDTO) summaryDTO;
+          CodeLicenseSummaryDTO codeLicenseSummaryDTO = (CodeLicenseSummaryDTO) summaryDTO;
           if (current < codeModuleLicenseDTO.getExpiryTime() && codeModuleLicenseDTO.getNumberOfDevelopers() != null) {
             codeLicenseSummaryDTO.setNumberOfDevelopers(ModuleLicenseUtils.computeAdd(
                 codeLicenseSummaryDTO.getNumberOfDevelopers(), codeModuleLicenseDTO.getNumberOfDevelopers()));
