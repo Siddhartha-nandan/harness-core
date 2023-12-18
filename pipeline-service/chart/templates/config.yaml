@@ -89,6 +89,8 @@ data:
   INTERNAL_CI_MANAGER_AUTHORITY: ci-manager:9979
   INTERNAL_STO_MANAGER_AUTHORITY: sto-manager:9979
   INTERNAL_STO_MANAGER_TARGET: sto-manager:9979
+  INTERNAL_IACM_MANAGER_AUTHORITY: iacm-manager:9979
+  INTERNAL_IACM_MANAGER_TARGET: iacm-manager:9979
   INTERNAL_IDP_SERVICE_TARGET: idp-service:9979
   INTERNAL_IDP_SERVICE_AUTHORITY: idp-service:9979
   {{ include "harnesscommon.harnessfunctions.java17flags" (dict "context" $) | nindent 2 }}
