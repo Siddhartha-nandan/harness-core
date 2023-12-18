@@ -96,7 +96,7 @@ USAGE:
 */}}
 {{- define "harnesscommon.dbv3.filepathprefix" }}
   {{- $dbType := lower .dbType }}
-  {{- $database := (default "" .dbName) }}
+  {{- $database := (default "default" .dbName) }}
   {{- if eq $database "" }}
     {{- printf "%s" $dbType }}
   {{- else }}
@@ -113,7 +113,7 @@ USAGE:
 {{- define "harnesscommon.dbv3.sslEnv" }}
   {{- $ := .context }}
   {{- $dbType := lower .dbType }}
-  {{- $database := (default "" .dbName) }}
+  {{- $database := (default "default" .dbName) }}
   {{- $globalCtx := (index $.Values.global.database $dbType) }}
   {{- $localCtx := default $globalCtx (index $.Values $dbType) }}
   {{- $localDbCtx := default $localCtx (index $localCtx $database) }}
@@ -131,11 +131,11 @@ USAGE:
     {{- end }}
     {{- if and .variableNames.sslCATrustStorePath $mergedCtx.ssl.trustStoreKey }}
 - name: {{ .variableNames.sslCATrustStorePath }}
-  value: {{ printf "/opt/harness/svc/ssl/%s-ca-truststore" $filepathprefix | quote }}
+  value: {{ printf "/opt/harness/svc/ssl/%s/%s/%s-ca-truststore" $dbType $database $filepathprefix | quote }}
     {{- end }}
     {{- if and .variableNames.sslCACertPath $mergedCtx.ssl.caFileKey }}
 - name: {{ .variableNames.sslCACertPath }}
-  value: {{ printf "/opt/harness/svc/ssl/%s-ca" $filepathprefix | quote }}
+  value: {{ printf "/opt/harness/svc/ssl/%s/%s/%s-ca" $dbType $database $filepathprefix | quote }}
     {{- end }}
     {{- if and .variableNames.sslCATrustStorePassword $mergedCtx.ssl.trustStorePasswordKey }}
 - name: {{ .variableNames.sslCATrustStorePassword }}
@@ -157,7 +157,7 @@ USAGE:
 {{- define "harnesscommon.dbv3.sslVolume" }}
   {{- $ := .context }}
   {{- $dbType := lower .dbType }}
-  {{- $database := (default "" .dbName) }}
+  {{- $database := (default "default" .dbName) }}
   {{- $globalCtx := (index $.Values.global.database $dbType) }}
   {{- $localCtx := default $globalCtx (index $.Values $dbType) }}
   {{- $localDbCtx := default $localCtx (index $localCtx $database) }}
@@ -195,7 +195,7 @@ USAGE:
 {{- define "harnesscommon.dbv3.sslVolumeMount" }}
   {{- $ := .context }}
   {{- $dbType := lower .dbType }}
-  {{- $database := (default "" .dbName) }}
+  {{- $database := (default "default" .dbName) }}
   {{- $globalCtx := (index $.Values.global.database $dbType) }}
   {{- $localCtx := default $globalCtx (index $.Values $dbType) }}
   {{- $localDbCtx := default $localCtx (index $localCtx $database) }}
@@ -208,7 +208,7 @@ USAGE:
     {{- if and $sslEnabled (or $mergedCtx.ssl.trustStoreKey $mergedCtx.ssl.caFileKey) $mergedCtx.ssl.secret }}
     {{- $filepathprefix := (include "harnesscommon.dbv3.filepathprefix" (dict "dbType" $dbType "dbName" $database)) }}
 - name: {{ printf "%s-ssl" $filepathprefix }}
-  mountPath: "/opt/harness/svc/ssl"
+  mountPath: {{ printf "/opt/harness/svc/ssl/%s/%s" $dbType $database | quote }}
   readOnly: true
     {{- end }}
   {{- end }}
