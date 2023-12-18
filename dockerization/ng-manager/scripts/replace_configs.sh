@@ -427,12 +427,13 @@ if [[ "" != "$LOCK_CONFIG_REDIS_PASSWORD" ]]; then
 fi
 
 if [[ "" != "$LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH" ]]; then
-  export LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH; yq -i '.singleServerConfig.sslTruststore=env(LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH)' $REDISSON_CACHE_FILE
+  export FILE_VAR="file:$LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH"; yq -i '.singleServerConfig.sslTruststore=env(FILE_VAR)' $REDISSON_CACHE_FILE
 fi
 
 if [[ "" != "$LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD" ]]; then
   export LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD; yq -i '.singleServerConfig.sslTruststorePassword=env(LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD)' $REDISSON_CACHE_FILE
 fi
+
 
 if [[ "$LOCK_CONFIG_USE_SENTINEL" == "true" ]]; then
   yq -i 'del(.singleServerConfig)' $REDISSON_CACHE_FILE
