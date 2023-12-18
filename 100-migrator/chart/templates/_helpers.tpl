@@ -142,21 +142,6 @@ Overrride mongoUri if provided, else use the default
 {{- end }}
 {{- end }}
 
-{{/*
-Outputs the filepath prefix based on db type and db name
-
-USAGE:
-{{ include "harnesscommon.dbv3.filepathprefix" (dict "context" $ "dbType" "redis" "dbName" "") }}
-*/}}
-{{- define "harnesscommon.dbv3.filepathprefix" }}
-  {{- $dbType := lower .dbType }}
-  {{- $database := (default "" .dbName) }}
-  {{- if eq $database "" }}
-    {{- printf "%s" $dbType }}
-  {{- else }}
-    {{- printf "%s-%s" $dbType $database }}
-  {{- end }}
-{{- end }}
 
 {{/*
 Outputs the filepath prefix based on db type and db name
