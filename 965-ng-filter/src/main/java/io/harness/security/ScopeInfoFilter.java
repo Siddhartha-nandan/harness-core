@@ -51,7 +51,7 @@ public class ScopeInfoFilter implements ContainerRequestFilter, ContainerRespons
   private static final String SCOPE_INFO_FILTER_LOG = "SCOPE_INFO_FILTER: ";
   public static final Set<String> matchingPathRequests =
       Set.of("/organizations", "/aggregate/organizations", "/projects", "/aggregate/projects", "/v2/secrets",
-          "/trial-signup/create-scm-connector", "/oauth/create-access-token-secret");
+          "/trial-signup/create-scm-connector", "/oauth/create-access-token-secret", "/aws/aws-helper");
 
   private final ScopeInfoClient scopeInfoClient;
   @Context private ResourceInfo resourceInfo;

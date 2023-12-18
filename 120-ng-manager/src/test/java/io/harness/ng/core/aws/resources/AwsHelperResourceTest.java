@@ -9,15 +9,21 @@ package io.harness.ng.core.aws.resources;
 
 import static io.harness.rule.OwnerRule.VITALIE;
 
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.cdng.aws.service.AwsResourceServiceImpl;
 import io.harness.cdng.infra.mapper.InfrastructureEntityConfigMapper;
@@ -61,6 +67,14 @@ public class AwsHelperResourceTest extends CategoryTest {
 
   @InjectMocks AwsHelperResource awsHelperResource;
 
+  ScopeInfo scopeInfo = ScopeInfo.builder()
+                            .accountIdentifier(ACCOUNT_IDENTIFIER)
+                            .orgIdentifier(ORG_IDENTIFIER)
+                            .projectIdentifier(PROJECT_IDENTIFIER)
+                            .scopeType(ScopeLevel.PROJECT)
+                            .uniqueId(randomAlphabetic(10))
+                            .build();
+
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
@@ -74,11 +88,12 @@ public class AwsHelperResourceTest extends CategoryTest {
     try (MockedStatic<IdentifierRefHelper> ignore = mockStatic(IdentifierRefHelper.class)) {
       when(IdentifierRefHelper.getIdentifierRef(anyString(), anyString(), anyString(), anyString()))
           .thenAnswer(i -> identifierRef);
-      when(awsHelperService.getASGNames(any(), anyString(), anyString(), anyString())).thenReturn(asgList);
+      when(awsHelperService.getASGNames(eq(scopeInfo), any(), anyString())).thenReturn(asgList);
 
       ResponseDTO<List<String>> result = awsHelperResource.getASGNames(
-          CONNECTOR_REF, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, REGION, null, null);
+          CONNECTOR_REF, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, REGION, null, null, scopeInfo);
       assertThat(result.getData()).isEqualTo(asgList);
+      verify(awsHelperService, times(1)).getASGNames(eq(scopeInfo), any(), anyString());
     }
   }
 
@@ -102,13 +117,14 @@ public class AwsHelperResourceTest extends CategoryTest {
                                        .build())
                              .build())
                      .build());
-      when(awsHelperService.getASGNames(any(), anyString(), anyString(), anyString())).thenReturn(asgList);
+      when(awsHelperService.getASGNames(eq(scopeInfo), any(), anyString())).thenReturn(asgList);
       when(infrastructureEntityService.get(anyString(), anyString(), anyString(), anyString(), anyString()))
           .thenReturn(Optional.of(InfrastructureEntity.builder().build()));
 
       ResponseDTO<List<String>> result = awsHelperResource.getASGNames(
-          null, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, ENV_ID, INFRA_DEFINITION_ID);
+          null, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, ENV_ID, INFRA_DEFINITION_ID, scopeInfo);
       assertThat(result.getData()).isEqualTo(asgList);
+      verify(awsHelperService, times(1)).getASGNames(eq(scopeInfo), any(), anyString());
     }
   }
 }

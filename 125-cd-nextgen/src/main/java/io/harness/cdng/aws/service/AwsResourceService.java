@@ -6,6 +6,7 @@
  */
 
 package io.harness.cdng.aws.service;
+
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 
 import io.harness.annotations.dev.CodePulse;
@@ -13,6 +14,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.ScopeInfo;
 
 import software.wings.service.impl.aws.model.AwsCFTemplateParamsData;
 import software.wings.service.impl.aws.model.AwsEC2Instance;
@@ -50,14 +52,11 @@ public interface AwsResourceService {
    * Get all the rolesARNs associated with the given computeProviderId and deployment type
    *
    * @param awsConnectorRef the IdentifierRef of the aws connector
-   * @param orgIdentifier the org identifier
-   * @param projectIdentifier the project identifier
    * @param region AWS region
    *
    * @return the list of rolesARNs
    */
-  Map<String, String> getRolesARNs(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region);
+  Map<String, String> getRolesARNs(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region);
 
   /**
    * Get all parameter keys for a cloudformation template
@@ -72,15 +71,11 @@ public interface AwsResourceService {
    * @param awsConnectorRef the IdentifierRef of the aws connector
    * @param data the template data if inline is selected
    * @param connectorDTO the IdentifierRef of the git connector
-   * @param accountIdentifier is the account id
-   * @param orgIdentifier is the org id
-   * @param projectIdentifier is the project id
-   *
    * @return the list of Cloudformation param keys
    */
-  List<AwsCFTemplateParamsData> getCFparametersKeys(String type, String region, boolean isBranch, String branch,
-      String repoName, String filePath, String commitId, IdentifierRef awsConnectorRef, String data,
-      String connectorDTO, String accountIdentifier, String orgIdentifier, String projectIdentifier);
+  List<AwsCFTemplateParamsData> getCFparametersKeys(ScopeInfo scopeInfo, String type, String region, boolean isBranch,
+      String branch, String repoName, String filePath, String commitId, IdentifierRef awsConnectorRef, String data,
+      String connectorDTO);
 
   /**
    * Get list of AWS instance hosts based on search criteria.
@@ -94,112 +89,88 @@ public interface AwsResourceService {
    * @param autoScalingGroupName AWS autoScalingGroupName
    * @return list of hosts
    */
-  List<AwsEC2Instance> filterHosts(IdentifierRef awsConnectorRef, boolean winRm, String region, List<String> vpcIds,
-      Map<String, String> tags, String autoScalingGroupName);
+  List<AwsEC2Instance> filterHosts(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, boolean winRm, String region,
+      List<String> vpcIds, Map<String, String> tags, String autoScalingGroupName);
 
   /**
    * Get list of AWS VPC ids
    *
    * @param awsConnectorRef the IdentifierRef of the aws connector
-   * @param orgIdentifier is the org id
-   * @param projectIdentifier is the project id
    * @param region AWS region
    * @return list of AWS VPC ids
    */
-  List<AwsVPC> getVPCs(IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region);
+  List<AwsVPC> getVPCs(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region);
 
   /**
    * Get list of AWS tags
    *
    * @param awsConnectorRef the IdentifierRef of the aws connector
-   * @param orgIdentifier is the org id
-   * @param projectIdentifier is the project id
    * @param region AWS region
    * @return list of AWS tags
    */
-  Map<String, String> getTags(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region);
+  Map<String, String> getTags(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region);
 
   /**
    * Get list of AWS instance Load balancers
    *
    * @param awsConnectorRef the IdentifierRef of the aws connector
-   * @param orgIdentifier is the org id
-   * @param projectIdentifier is the project id
    * @param region AWS region
    * @return list of AWS Load balancers
    */
-  List<String> getLoadBalancers(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region);
+  List<String> getLoadBalancers(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region);
 
   /**
    * Get list of AWS autoscaling groups
    *
    * @param awsConnectorRef the IdentifierRef of the aws connector
-   * @param orgIdentifier is the org id
-   * @param projectIdentifier is the project id
    * @param region AWS region
    * @return list of AWS autoscaling groups
    */
-  List<String> getASGNames(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region);
+  List<String> getASGNames(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region);
 
   /**
    * Get list of AWS clusters
    *
    * @param awsConnectorRef the IdentifierRef of the aws connector
-   * @param orgIdentifier is the org id
-   * @param projectIdentifier is the project id
    * @param region AWS region
    * @return list of AWS clusters
    */
-  List<String> getClusterNames(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region);
+  List<String> getClusterNames(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region);
 
   /**
    * Get list of AWS elastic load balancers
    *
    * @param awsConnectorRef the IdentifierRef of the aws connector
-   * @param orgIdentifier is the org id
-   * @param projectIdentifier is the project id
    * @param region AWS region
    * @return list of AWS elastic load balancers
    */
-  List<String> getElasticLoadBalancerNames(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region);
+  List<String> getElasticLoadBalancerNames(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region);
 
   /**
    * Get list of AWS elastic load balancer listeners arn
    *
    * @param awsConnectorRef the IdentifierRef of the aws connector
-   * @param orgIdentifier is the org id
-   * @param projectIdentifier is the project id
    * @param region AWS region
    * @return map of AWS elastic load balancer listeners arn
    */
-  Map<String, String> getElasticLoadBalancerListenersArn(IdentifierRef awsConnectorRef, String orgIdentifier,
-      String projectIdentifier, String region, String elasticLoadBalancer);
+  Map<String, String> getElasticLoadBalancerListenersArn(
+      ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region, String elasticLoadBalancer);
 
   /**
    * Get list of AWS elastic load balancer listener rules
    *
    * @param awsConnectorRef the IdentifierRef of the aws connector
-   * @param orgIdentifier is the org id
-   * @param projectIdentifier is the project id
    * @param region AWS region
    * @return list of AWS elastic load balancer listener rules
    */
-  List<String> getElasticLoadBalancerListenerRules(IdentifierRef awsConnectorRef, String orgIdentifier,
-      String projectIdentifier, String region, String elasticLoadBalancer, String listenerArn);
+  List<String> getElasticLoadBalancerListenerRules(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region,
+      String elasticLoadBalancer, String listenerArn);
 
   /**
    * Get list of AWS elastic kubernetes service clusters
    *
    * @param awsConnectorRef the IdentifierRef of the aws connector
-   * @param orgIdentifier is the org id
-   * @param projectIdentifier is the project id
    * @return list of AWS elastic kubernetes service clusters
    */
-  List<String> getEKSClusterNames(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region);
+  List<String> getEKSClusterNames(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region);
 }

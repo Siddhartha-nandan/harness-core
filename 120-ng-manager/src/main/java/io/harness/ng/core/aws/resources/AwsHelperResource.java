@@ -6,6 +6,7 @@
  */
 
 package io.harness.ng.core.aws.resources;
+
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
 import static java.lang.String.format;
@@ -17,6 +18,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.ScopeInfo;
 import io.harness.cdng.aws.service.AwsResourceServiceImpl;
 import io.harness.cdng.infra.mapper.InfrastructureEntityConfigMapper;
 import io.harness.cdng.infra.yaml.AwsBaseInfrastructure;
@@ -59,6 +61,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -98,13 +101,13 @@ public class AwsHelperResource {
       @QueryParam("gitConnectorRef") String gitConnectorRefParam, @QueryParam("repoName") String repoName,
       @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
       @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
-      @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier, String data) {
+      @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier, String data,
+      @Context ScopeInfo scopeInfo) {
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(awsConnectorRef, accountIdentifier, orgIdentifier, projectIdentifier);
 
-    List<AwsCFTemplateParamsData> keys =
-        awsHelperService.getCFparametersKeys(type, region, isBranch, branch, repoName, templatePath, commitId,
-            connectorRef, data, gitConnectorRefParam, accountIdentifier, orgIdentifier, projectIdentifier);
+    List<AwsCFTemplateParamsData> keys = awsHelperService.getCFparametersKeys(scopeInfo, type, region, isBranch, branch,
+        repoName, templatePath, commitId, connectorRef, data, gitConnectorRefParam);
 
     return ResponseDTO.newResponse(keys);
   }
@@ -129,11 +132,11 @@ public class AwsHelperResource {
   public ResponseDTO<Map<String, String>> listIamRoles(@NotNull @QueryParam("awsConnectorRef") String awsConnectorRef,
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
       @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
-      @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier, @QueryParam("region") String region) {
-    IdentifierRef connectorRef =
-        IdentifierRefHelper.getIdentifierRef(awsConnectorRef, accountIdentifier, orgIdentifier, projectIdentifier);
-    return ResponseDTO.newResponse(
-        awsHelperService.getRolesARNs(connectorRef, orgIdentifier, projectIdentifier, region));
+      @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier, @QueryParam("region") String region,
+      @Context ScopeInfo scopeInfo) {
+    IdentifierRef connectorRef = IdentifierRefHelper.getIdentifierRef(awsConnectorRef, scopeInfo.getAccountIdentifier(),
+        scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
+    return ResponseDTO.newResponse(awsHelperService.getRolesARNs(scopeInfo, connectorRef, region));
   }
 
   @GET
@@ -143,10 +146,11 @@ public class AwsHelperResource {
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
       @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
-      @RequestBody(required = true, description = "Filter body") @Valid AwsListInstancesFilterDTO filterDTO) {
+      @RequestBody(required = true, description = "Filter body") @Valid AwsListInstancesFilterDTO filterDTO,
+      @Context ScopeInfo scopeInfo) {
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(awsConnectorRef, accountIdentifier, orgIdentifier, projectIdentifier);
-    List<AwsEC2Instance> instances = awsHelperService.filterHosts(connectorRef, filterDTO.isWinRm(),
+    List<AwsEC2Instance> instances = awsHelperService.filterHosts(scopeInfo, connectorRef, filterDTO.isWinRm(),
         filterDTO.getRegion(), filterDTO.getVpcIds(), filterDTO.getTags(), filterDTO.getAutoScalingGroupName());
     List<String> result = CollectionUtils.emptyIfNull(instances)
                               .stream()
@@ -162,10 +166,10 @@ public class AwsHelperResource {
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
       @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
-      @NotNull @QueryParam("region") String region) {
+      @NotNull @QueryParam("region") String region, @Context ScopeInfo scopeInfo) {
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(awsConnectorRef, accountIdentifier, orgIdentifier, projectIdentifier);
-    return ResponseDTO.newResponse(awsHelperService.getVPCs(connectorRef, orgIdentifier, projectIdentifier, region));
+    return ResponseDTO.newResponse(awsHelperService.getVPCs(scopeInfo, connectorRef, region));
   }
 
   @GET
@@ -175,10 +179,10 @@ public class AwsHelperResource {
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
       @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
-      @NotNull @QueryParam("region") String region) {
+      @NotNull @QueryParam("region") String region, @Context ScopeInfo scopeInfo) {
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(awsConnectorRef, accountIdentifier, orgIdentifier, projectIdentifier);
-    Map<String, String> tags = awsHelperService.getTags(connectorRef, orgIdentifier, projectIdentifier, region);
+    Map<String, String> tags = awsHelperService.getTags(scopeInfo, connectorRef, region);
     return ResponseDTO.newResponse(tags.keySet());
   }
 
@@ -192,7 +196,8 @@ public class AwsHelperResource {
       @Parameter(description = NGCommonEntityConstants.ENV_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.ENVIRONMENT_KEY) String envId,
       @Parameter(description = NGCommonEntityConstants.INFRADEF_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.INFRA_DEFINITION_KEY) String infraDefinitionId) {
+          NGCommonEntityConstants.INFRA_DEFINITION_KEY) String infraDefinitionId,
+      @Context ScopeInfo scopeInfo) {
     Infrastructure spec = null;
     if (isEmpty(awsConnectorRef) || isEmpty(region)) {
       InfrastructureDefinitionConfig infrastructureDefinitionConfig = getInfrastructureDefinitionConfig(
@@ -210,7 +215,7 @@ public class AwsHelperResource {
 
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(awsConnectorRef, accountIdentifier, orgIdentifier, projectIdentifier);
-    Map<String, String> tags = awsHelperService.getTags(connectorRef, orgIdentifier, projectIdentifier, region);
+    Map<String, String> tags = awsHelperService.getTags(scopeInfo, connectorRef, region);
     return ResponseDTO.newResponse(tags.keySet());
   }
 
@@ -221,11 +226,10 @@ public class AwsHelperResource {
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
       @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
-      @NotNull @QueryParam("region") String region) {
+      @NotNull @QueryParam("region") String region, @Context ScopeInfo scopeInfo) {
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(awsConnectorRef, accountIdentifier, orgIdentifier, projectIdentifier);
-    return ResponseDTO.newResponse(
-        awsHelperService.getLoadBalancers(connectorRef, orgIdentifier, projectIdentifier, region));
+    return ResponseDTO.newResponse(awsHelperService.getLoadBalancers(scopeInfo, connectorRef, region));
   }
 
   @GET
@@ -238,7 +242,8 @@ public class AwsHelperResource {
       @Parameter(description = NGCommonEntityConstants.ENV_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.ENVIRONMENT_KEY) String envId,
       @Parameter(description = NGCommonEntityConstants.INFRADEF_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.INFRA_DEFINITION_KEY) String infraDefinitionId) {
+          NGCommonEntityConstants.INFRA_DEFINITION_KEY) String infraDefinitionId,
+      @Context ScopeInfo scopeInfo) {
     Infrastructure spec = null;
     if (isEmpty(awsConnectorRef) || isEmpty(region)) {
       InfrastructureDefinitionConfig infrastructureDefinitionConfig = getInfrastructureDefinitionConfig(
@@ -256,8 +261,7 @@ public class AwsHelperResource {
 
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(awsConnectorRef, accountIdentifier, orgIdentifier, projectIdentifier);
-    return ResponseDTO.newResponse(
-        awsHelperService.getASGNames(connectorRef, orgIdentifier, projectIdentifier, region));
+    return ResponseDTO.newResponse(awsHelperService.getASGNames(scopeInfo, connectorRef, region));
   }
 
   @GET
@@ -270,7 +274,8 @@ public class AwsHelperResource {
       @Parameter(description = NGCommonEntityConstants.ENV_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.ENVIRONMENT_KEY) String envId,
       @Parameter(description = NGCommonEntityConstants.INFRADEF_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.INFRA_DEFINITION_KEY) String infraDefinitionId) {
+          NGCommonEntityConstants.INFRA_DEFINITION_KEY) String infraDefinitionId,
+      @Context ScopeInfo scopeInfo) {
     Infrastructure spec = null;
     if (isEmpty(awsConnectorRef) || isEmpty(region)) {
       InfrastructureDefinitionConfig infrastructureDefinitionConfig = getInfrastructureDefinitionConfig(
@@ -287,8 +292,7 @@ public class AwsHelperResource {
     }
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(awsConnectorRef, accountIdentifier, orgIdentifier, projectIdentifier);
-    return ResponseDTO.newResponse(
-        awsHelperService.getClusterNames(connectorRef, orgIdentifier, projectIdentifier, region));
+    return ResponseDTO.newResponse(awsHelperService.getClusterNames(scopeInfo, connectorRef, region));
   }
 
   @GET
@@ -301,7 +305,8 @@ public class AwsHelperResource {
       @Parameter(description = NGCommonEntityConstants.ENV_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.ENVIRONMENT_KEY) String envId,
       @Parameter(description = NGCommonEntityConstants.INFRADEF_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.INFRA_DEFINITION_KEY) String infraDefinitionId) {
+          NGCommonEntityConstants.INFRA_DEFINITION_KEY) String infraDefinitionId,
+      @Context ScopeInfo scopeInfo) {
     Infrastructure spec = null;
     if (isEmpty(awsConnectorRef) || isEmpty(region)) {
       InfrastructureDefinitionConfig infrastructureDefinitionConfig = getInfrastructureDefinitionConfig(
@@ -318,8 +323,7 @@ public class AwsHelperResource {
     }
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(awsConnectorRef, accountIdentifier, orgIdentifier, projectIdentifier);
-    return ResponseDTO.newResponse(
-        awsHelperService.getElasticLoadBalancerNames(connectorRef, orgIdentifier, projectIdentifier, region));
+    return ResponseDTO.newResponse(awsHelperService.getElasticLoadBalancerNames(scopeInfo, connectorRef, region));
   }
 
   @GET
@@ -334,7 +338,8 @@ public class AwsHelperResource {
       @Parameter(description = NGCommonEntityConstants.ENV_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.ENVIRONMENT_KEY) String envId,
       @Parameter(description = NGCommonEntityConstants.INFRADEF_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.INFRA_DEFINITION_KEY) String infraDefinitionId) {
+          NGCommonEntityConstants.INFRA_DEFINITION_KEY) String infraDefinitionId,
+      @Context ScopeInfo scopeInfo) {
     Infrastructure spec = null;
     if (isEmpty(awsConnectorRef) || isEmpty(region)) {
       InfrastructureDefinitionConfig infrastructureDefinitionConfig = getInfrastructureDefinitionConfig(
@@ -351,8 +356,8 @@ public class AwsHelperResource {
     }
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(awsConnectorRef, accountIdentifier, orgIdentifier, projectIdentifier);
-    return ResponseDTO.newResponse(awsHelperService.getElasticLoadBalancerListenersArn(
-        connectorRef, orgIdentifier, projectIdentifier, region, elasticLoadBalancer));
+    return ResponseDTO.newResponse(
+        awsHelperService.getElasticLoadBalancerListenersArn(scopeInfo, connectorRef, region, elasticLoadBalancer));
   }
 
   @GET
@@ -368,7 +373,8 @@ public class AwsHelperResource {
       @Parameter(description = NGCommonEntityConstants.ENV_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.ENVIRONMENT_KEY) String envId,
       @Parameter(description = NGCommonEntityConstants.INFRADEF_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.INFRA_DEFINITION_KEY) String infraDefinitionId) {
+          NGCommonEntityConstants.INFRA_DEFINITION_KEY) String infraDefinitionId,
+      @Context ScopeInfo scopeInfo) {
     Infrastructure spec = null;
     if (isEmpty(awsConnectorRef) || isEmpty(region)) {
       InfrastructureDefinitionConfig infrastructureDefinitionConfig = getInfrastructureDefinitionConfig(
@@ -386,7 +392,7 @@ public class AwsHelperResource {
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(awsConnectorRef, accountIdentifier, orgIdentifier, projectIdentifier);
     return ResponseDTO.newResponse(awsHelperService.getElasticLoadBalancerListenerRules(
-        connectorRef, orgIdentifier, projectIdentifier, region, elasticLoadBalancer, listenerArn));
+        scopeInfo, connectorRef, region, elasticLoadBalancer, listenerArn));
   }
 
   private InfrastructureDefinitionConfig getInfrastructureDefinitionConfig(
@@ -424,7 +430,8 @@ public class AwsHelperResource {
       @Parameter(description = NGCommonEntityConstants.ENV_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.ENVIRONMENT_KEY) String envId,
       @Parameter(description = NGCommonEntityConstants.INFRADEF_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.INFRA_DEFINITION_KEY) String infraDefinitionId) {
+          NGCommonEntityConstants.INFRA_DEFINITION_KEY) String infraDefinitionId,
+      @Context ScopeInfo scopeInfo) {
     Infrastructure spec = null;
 
     if (isEmpty(awsConnectorRef)) {
@@ -439,7 +446,6 @@ public class AwsHelperResource {
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(awsConnectorRef, accountIdentifier, orgIdentifier, projectIdentifier);
 
-    return ResponseDTO.newResponse(
-        awsHelperService.getEKSClusterNames(connectorRef, orgIdentifier, projectIdentifier, region));
+    return ResponseDTO.newResponse(awsHelperService.getEKSClusterNames(scopeInfo, connectorRef, region));
   }
 }

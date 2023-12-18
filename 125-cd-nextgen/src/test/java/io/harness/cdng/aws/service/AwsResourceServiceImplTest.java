@@ -14,10 +14,12 @@ import static io.harness.rule.OwnerRule.LOVISH_BANSAL;
 import static io.harness.rule.OwnerRule.NGONZALEZ;
 import static io.harness.rule.OwnerRule.VITALIE;
 
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.powermock.api.mockito.PowerMockito.doReturn;
 import static org.powermock.api.mockito.PowerMockito.mock;
@@ -25,6 +27,8 @@ import static org.powermock.api.mockito.PowerMockito.mock;
 import io.harness.CategoryTest;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.cdng.common.resources.AwsResourceServiceHelper;
 import io.harness.cdng.common.resources.GitResourceServiceHelper;
@@ -93,6 +97,14 @@ public class AwsResourceServiceImplTest extends CategoryTest {
 
   @InjectMocks private AwsResourceServiceImpl service;
 
+  ScopeInfo scopeInfo = ScopeInfo.builder()
+                            .accountIdentifier(ACCOUNT_ID)
+                            .orgIdentifier(ORG_ID)
+                            .projectIdentifier(PROJECT_ID)
+                            .scopeType(ScopeLevel.PROJECT)
+                            .uniqueId(randomAlphabetic(10))
+                            .build();
+
   IdentifierRef awsConnectorRef;
   AwsConnectorDTO awsConnectorDTO;
 
@@ -123,7 +135,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
                              .name("secretName")
                              .build()))
         .when(ngSecretService)
-        .get(anyString(), anyString(), anyString(), anyString());
+        .get(eq(scopeInfo), anyString());
   }
 
   @Test
@@ -141,7 +153,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
     AwsIAMRolesResponse mockAwsIAMRolesResponse =
         AwsIAMRolesResponse.builder().roles(rolesMap).commandExecutionStatus(CommandExecutionStatus.SUCCESS).build();
     doReturn(mockAwsIAMRolesResponse).when(serviceHelper).getResponseData(any(), any(), anyString());
-    service.getRolesARNs(awsConnectorRef, "foo", "bar", "us-east-1");
+    service.getRolesARNs(scopeInfo, awsConnectorRef, "us-east-1");
     assertThat(mockAwsIAMRolesResponse.getRoles().size()).isEqualTo(2);
   }
 
@@ -157,7 +169,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
     rolesMap.put("role2", "arn:aws:iam::123456789012:role/role2");
     ErrorNotifyResponseData mockAwsIAMRolesResponse = ErrorNotifyResponseData.builder().build();
     doReturn(mockAwsIAMRolesResponse).when(serviceHelper).getResponseData(any(), any(), anyString());
-    service.getRolesARNs(awsConnectorRef, "foo", "bar", "us-east-1");
+    service.getRolesARNs(scopeInfo, awsConnectorRef, "us-east-1");
   }
 
   @Test
@@ -186,7 +198,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
     doReturn(mockAwsCFTaskResponse).when(serviceHelper).getResponseData(any(), any(), anyString());
 
     service.getCFparametersKeys(
-        "s3", "bar", true, "far", null, "cat", "baz", awsConnectorRef, "quux", "corge", "abc", "efg", "hij");
+        scopeInfo, "s3", "bar", true, "far", null, "cat", "baz", awsConnectorRef, "quux", "corge");
     assertThat(mockAwsCFTaskResponse.getListOfParams().size()).isEqualTo(2);
   }
 
@@ -216,7 +228,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
     doReturn(mockAwsCFTaskResponse).when(serviceHelper).getResponseData(any(), any(), anyString());
 
     service.getCFparametersKeys(
-        "s3", "bar", true, "far", null, "zar", "baz", awsConnectorRef, "quux", "corge", "abc", "efg", "hij");
+        scopeInfo, "s3", "bar", true, "far", null, "zar", "baz", awsConnectorRef, "quux", "corge");
   }
 
   @Test
@@ -243,7 +255,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
     List<String> vpcIds = Collections.emptyList();
     Map<String, String> tags = Collections.emptyMap();
 
-    List<AwsEC2Instance> result = service.filterHosts(awsConnectorRef, true, "region", vpcIds, tags, null);
+    List<AwsEC2Instance> result = service.filterHosts(scopeInfo, awsConnectorRef, true, "region", vpcIds, tags, null);
     assertThat(result.size()).isEqualTo(1);
   }
 
@@ -269,7 +281,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
     doReturn(mockResponse).when(serviceHelper).getResponseData(any(), any(), anyString());
 
     List<AwsEC2Instance> result =
-        service.filterHosts(awsConnectorRef, true, "region", null, null, "autoScalingGroupName");
+        service.filterHosts(scopeInfo, awsConnectorRef, true, "region", null, null, "autoScalingGroupName");
     assertThat(result.size()).isEqualTo(1);
   }
 
@@ -291,7 +303,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
 
     doReturn(mockResponse).when(serviceHelper).getResponseData(any(), any(), anyString());
 
-    List<AwsVPC> result = service.getVPCs(awsConnectorRef, "org", "project", "region");
+    List<AwsVPC> result = service.getVPCs(scopeInfo, awsConnectorRef, "region");
     assertThat(result.get(0).getId().equals("id"));
   }
 
@@ -314,7 +326,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
 
     doReturn(mockResponse).when(serviceHelper).getResponseData(any(), any(), anyString());
 
-    Map<String, String> result = service.getTags(awsConnectorRef, "org", "project", "region");
+    Map<String, String> result = service.getTags(scopeInfo, awsConnectorRef, "region");
     assertThat(result.get("tag").equals("value"));
   }
 
@@ -337,7 +349,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
 
     doReturn(mockResponse).when(serviceHelper).getResponseData(any(), any(), anyString());
 
-    List<String> result = service.getLoadBalancers(awsConnectorRef, "org", "project", "region");
+    List<String> result = service.getLoadBalancers(scopeInfo, awsConnectorRef, "region");
     assertThat(result.get(0).equals("lb1"));
   }
 
@@ -360,7 +372,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
 
     doReturn(mockResponse).when(serviceHelper).getResponseData(any(), any(), anyString());
 
-    List<String> result = service.getASGNames(awsConnectorRef, "org", "project", "region");
+    List<String> result = service.getASGNames(scopeInfo, awsConnectorRef, "region");
     assertThat(result.get(0).equals("asg1"));
   }
 
@@ -383,7 +395,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
 
     doReturn(mockResponse).when(serviceHelper).getResponseData(any(), any(), anyString());
 
-    List<String> result = service.getClusterNames(awsConnectorRef, "org", "project", "region");
+    List<String> result = service.getClusterNames(scopeInfo, awsConnectorRef, "region");
     assertThat(result.get(0).equals("cluster"));
   }
 
@@ -406,7 +418,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
 
     doReturn(mockResponse).when(serviceHelper).getResponseData(any(), any(), anyString());
 
-    List<String> result = service.getElasticLoadBalancerNames(awsConnectorRef, "org", "project", "region");
+    List<String> result = service.getElasticLoadBalancerNames(scopeInfo, awsConnectorRef, "region");
     assertThat(result.get(0).equals("elb"));
   }
 
@@ -430,7 +442,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
     doReturn(mockResponse).when(serviceHelper).getResponseData(any(), any(), anyString());
 
     Map<String, String> result =
-        service.getElasticLoadBalancerListenersArn(awsConnectorRef, "org", "project", "region", "elasticLoadBalancer");
+        service.getElasticLoadBalancerListenersArn(scopeInfo, awsConnectorRef, "region", "elasticLoadBalancer");
     assertThat(result.get("tag").equals("value"));
   }
 
@@ -460,7 +472,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
   @Test
   @Owner(developers = NGONZALEZ)
   @Category(UnitTests.class)
-  public void testAwsCFParameterKeysThowExceptions() {
+  public void testAwsCFParameterKeysThrowExceptions() {
     doReturn(awsConnectorDTO).when(serviceHelper).getAwsConnector(any());
     BaseNGAccess mockAccess = BaseNGAccess.builder().build();
     doReturn(mockAccess).when(serviceHelper).getBaseNGAccess(any(), any(), any());
@@ -483,17 +495,17 @@ public class AwsResourceServiceImplTest extends CategoryTest {
     doReturn(mockAwsCFTaskResponse).when(serviceHelper).getResponseData(any(), any(), anyString());
 
     assertThatThrownBy(()
-                           -> service.getCFparametersKeys("s3", "bar", true, "far", null, "cat", "baz", awsConnectorRef,
-                               "", "corge", "abc", "efg", "hij"))
+                           -> service.getCFparametersKeys(
+                               scopeInfo, "s3", "bar", true, "far", null, "cat", "baz", awsConnectorRef, "", "corge"))
         .isInstanceOf(InvalidRequestException.class);
 
     assertThatThrownBy(()
-                           -> service.getCFparametersKeys("git", "bar", true, "far", null, "cat", "baz",
-                               awsConnectorRef, "", "", "abc", "efg", "hij"))
+                           -> service.getCFparametersKeys(
+                               scopeInfo, "git", "bar", true, "far", null, "cat", "baz", awsConnectorRef, "", ""))
         .isInstanceOf(InvalidRequestException.class);
 
     assertThatThrownBy(
-        () -> service.getCFparametersKeys("", "", true, "", null, "", "", awsConnectorRef, "", "", "abc", "efg", "hij"))
+        () -> service.getCFparametersKeys(scopeInfo, "", "", true, "", null, "", "", awsConnectorRef, "", ""))
         .isInstanceOf(InvalidRequestException.class);
     AwsCFTaskResponse mockAwsCFTaskResponseFailed = AwsCFTaskResponse.builder()
                                                         .listOfParams(response)
@@ -501,8 +513,8 @@ public class AwsResourceServiceImplTest extends CategoryTest {
                                                         .build();
     doReturn(mockAwsCFTaskResponseFailed).when(serviceHelper).getResponseData(any(), any(), anyString());
     assertThatThrownBy(()
-                           -> service.getCFparametersKeys("s3", "bar", true, "far", null, "cat", "baz", awsConnectorRef,
-                               "data", "corge", "abc", "efg", "hij"))
+                           -> service.getCFparametersKeys(scopeInfo, "s3", "bar", true, "far", null, "cat", "baz",
+                               awsConnectorRef, "data", "corge"))
         .isInstanceOf(AwsCFException.class);
   }
 
@@ -525,7 +537,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
 
     doReturn(mockResponse).when(serviceHelper).getResponseData(any(), any(), anyString(), any(Duration.class));
 
-    List<String> result = service.getEKSClusterNames(awsConnectorRef, "org", "project", "region");
+    List<String> result = service.getEKSClusterNames(scopeInfo, awsConnectorRef, "region");
     assertThat(result.get(0).equals("cluster"));
   }
 
@@ -557,7 +569,7 @@ public class AwsResourceServiceImplTest extends CategoryTest {
     when(serviceHelper.getResponseData(
              any(BaseNGAccess.class), awsTaskParamsArgumentCaptor.capture(), anyString(), any(Duration.class)))
         .thenReturn(mockResponse);
-    List<String> result = service.getEKSClusterNames(awsConnectorRef, "org", "project", region);
+    List<String> result = service.getEKSClusterNames(scopeInfo, awsConnectorRef, region);
     assertThat(result.get(0)).isEqualTo("cluster");
 
     AwsTaskParams awsTaskParams = awsTaskParamsArgumentCaptor.getValue();

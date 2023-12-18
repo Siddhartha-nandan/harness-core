@@ -6,6 +6,7 @@
  */
 
 package io.harness.cdng.aws.service;
+
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
@@ -20,6 +21,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.aws.AwsCFTemplatesType;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.ScopeInfo;
 import io.harness.cdng.common.resources.AwsResourceServiceHelper;
 import io.harness.cdng.common.resources.GitResourceServiceHelper;
 import io.harness.connector.ConnectorInfoDTO;
@@ -155,14 +157,13 @@ public class AwsResourceServiceImpl implements AwsResourceService {
   }
 
   @Override
-  public Map<String, String> getRolesARNs(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region) {
+  public Map<String, String> getRolesARNs(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region) {
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
 
-    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+    publishSecretRuntimeUsage(scopeInfo, awsConnector);
 
-    BaseNGAccess access =
-        serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
+    BaseNGAccess access = serviceHelper.getBaseNGAccess(
+        awsConnectorRef.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
     AwsTaskParams params = AwsTaskParams.builder()
                                .awsTaskType(AwsTaskType.LIST_IAM_ROLES)
@@ -174,11 +175,12 @@ public class AwsResourceServiceImpl implements AwsResourceService {
     return response.getRoles();
   }
 
-  public List<AwsCFTemplateParamsData> getCFparametersKeys(String type, String region, boolean isBranch, String branch,
-      String repoName, String templatePath, String commitId, IdentifierRef awsConnectorRef, String dataInput,
-      String connectorDTO, String accountIdentifier, String orgIdentifier, String projectIdentifier) {
+  public List<AwsCFTemplateParamsData> getCFparametersKeys(ScopeInfo scopeInfo, String type, String region,
+      boolean isBranch, String branch, String repoName, String templatePath, String commitId,
+      IdentifierRef awsConnectorRef, String dataInput, String connectorDTO) {
     GitStoreDelegateConfig gitStoreDelegateConfig = null;
-    BaseNGAccess access = serviceHelper.getBaseNGAccess(accountIdentifier, orgIdentifier, projectIdentifier);
+    BaseNGAccess access = serviceHelper.getBaseNGAccess(
+        scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
 
     if (AwsCFTemplatesType.S3.getValue().equalsIgnoreCase(type)
         || AwsCFTemplatesType.BODY.getValue().equalsIgnoreCase(type)) {
@@ -200,7 +202,7 @@ public class AwsResourceServiceImpl implements AwsResourceService {
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
 
-    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+    publishSecretRuntimeUsage(scopeInfo, awsConnector);
 
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
 
@@ -219,14 +221,14 @@ public class AwsResourceServiceImpl implements AwsResourceService {
   }
 
   @Override
-  public List<AwsEC2Instance> filterHosts(IdentifierRef awsConnectorRef, boolean winRm, String region,
-      List<String> vpcIds, Map<String, String> tags, String autoScalingGroupName) {
-    BaseNGAccess access = serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(),
-        awsConnectorRef.getOrgIdentifier(), awsConnectorRef.getProjectIdentifier());
+  public List<AwsEC2Instance> filterHosts(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, boolean winRm,
+      String region, List<String> vpcIds, Map<String, String> tags, String autoScalingGroupName) {
+    BaseNGAccess access = serviceHelper.getBaseNGAccess(
+        scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
 
-    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+    publishSecretRuntimeUsage(scopeInfo, awsConnector);
 
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
 
@@ -259,14 +261,13 @@ public class AwsResourceServiceImpl implements AwsResourceService {
   }
 
   @Override
-  public List<AwsVPC> getVPCs(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region) {
-    BaseNGAccess access =
-        serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
+  public List<AwsVPC> getVPCs(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region) {
+    BaseNGAccess access = serviceHelper.getBaseNGAccess(
+        scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
 
-    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+    publishSecretRuntimeUsage(scopeInfo, awsConnector);
 
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
 
@@ -284,14 +285,13 @@ public class AwsResourceServiceImpl implements AwsResourceService {
   }
 
   @Override
-  public Map<String, String> getTags(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region) {
-    BaseNGAccess access =
-        serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
+  public Map<String, String> getTags(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region) {
+    BaseNGAccess access = serviceHelper.getBaseNGAccess(
+        scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
 
-    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+    publishSecretRuntimeUsage(scopeInfo, awsConnector);
 
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
 
@@ -310,14 +310,13 @@ public class AwsResourceServiceImpl implements AwsResourceService {
   }
 
   @Override
-  public List<String> getLoadBalancers(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region) {
-    BaseNGAccess access =
-        serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
+  public List<String> getLoadBalancers(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region) {
+    BaseNGAccess access = serviceHelper.getBaseNGAccess(
+        scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
 
-    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+    publishSecretRuntimeUsage(scopeInfo, awsConnector);
 
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
 
@@ -335,14 +334,13 @@ public class AwsResourceServiceImpl implements AwsResourceService {
   }
 
   @Override
-  public List<String> getASGNames(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region) {
-    BaseNGAccess access =
-        serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
+  public List<String> getASGNames(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region) {
+    BaseNGAccess access = serviceHelper.getBaseNGAccess(
+        scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
 
-    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+    publishSecretRuntimeUsage(scopeInfo, awsConnector);
 
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
 
@@ -360,14 +358,13 @@ public class AwsResourceServiceImpl implements AwsResourceService {
   }
 
   @Override
-  public List<String> getClusterNames(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region) {
-    BaseNGAccess access =
-        serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
+  public List<String> getClusterNames(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region) {
+    BaseNGAccess access = serviceHelper.getBaseNGAccess(
+        scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
 
-    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+    publishSecretRuntimeUsage(scopeInfo, awsConnector);
 
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
     AwsTaskParams awsTaskParams = AwsTaskParams.builder()
@@ -383,14 +380,13 @@ public class AwsResourceServiceImpl implements AwsResourceService {
   }
 
   @Override
-  public List<String> getElasticLoadBalancerNames(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region) {
-    BaseNGAccess access =
-        serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
+  public List<String> getElasticLoadBalancerNames(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region) {
+    BaseNGAccess access = serviceHelper.getBaseNGAccess(
+        scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
 
-    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+    publishSecretRuntimeUsage(scopeInfo, awsConnector);
 
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
     AwsTaskParams awsTaskParams = AwsTaskParams.builder()
@@ -406,14 +402,14 @@ public class AwsResourceServiceImpl implements AwsResourceService {
   }
 
   @Override
-  public Map<String, String> getElasticLoadBalancerListenersArn(IdentifierRef awsConnectorRef, String orgIdentifier,
-      String projectIdentifier, String region, String elasticLoadBalancer) {
-    BaseNGAccess access =
-        serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
+  public Map<String, String> getElasticLoadBalancerListenersArn(
+      ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region, String elasticLoadBalancer) {
+    BaseNGAccess access = serviceHelper.getBaseNGAccess(
+        scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
 
-    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+    publishSecretRuntimeUsage(scopeInfo, awsConnector);
 
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
     AwsTaskParams awsTaskParams = AwsListElbListenersTaskParamsRequest.builder()
@@ -430,14 +426,14 @@ public class AwsResourceServiceImpl implements AwsResourceService {
   }
 
   @Override
-  public List<String> getElasticLoadBalancerListenerRules(IdentifierRef awsConnectorRef, String orgIdentifier,
-      String projectIdentifier, String region, String elasticLoadBalancer, String listenerArn) {
-    BaseNGAccess access =
-        serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
+  public List<String> getElasticLoadBalancerListenerRules(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef,
+      String region, String elasticLoadBalancer, String listenerArn) {
+    BaseNGAccess access = serviceHelper.getBaseNGAccess(
+        scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
 
-    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+    publishSecretRuntimeUsage(scopeInfo, awsConnector);
 
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
     AwsTaskParams awsTaskParams = AwsListElbListenerRulesTaskParamsRequest.builder()
@@ -611,14 +607,13 @@ public class AwsResourceServiceImpl implements AwsResourceService {
   }
 
   @Override
-  public List<String> getEKSClusterNames(
-      IdentifierRef awsConnectorRef, String orgIdentifier, String projectIdentifier, String region) {
-    BaseNGAccess access =
-        serviceHelper.getBaseNGAccess(awsConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
+  public List<String> getEKSClusterNames(ScopeInfo scopeInfo, IdentifierRef awsConnectorRef, String region) {
+    BaseNGAccess access = serviceHelper.getBaseNGAccess(
+        scopeInfo.getAccountIdentifier(), scopeInfo.getOrgIdentifier(), scopeInfo.getProjectIdentifier());
 
     AwsConnectorDTO awsConnector = serviceHelper.getAwsConnector(awsConnectorRef);
 
-    publishSecretRuntimeUsage(awsConnectorRef, awsConnector);
+    publishSecretRuntimeUsage(scopeInfo, awsConnector);
 
     List<EncryptedDataDetail> encryptedData = serviceHelper.getAwsEncryptionDetails(awsConnector, access);
     AwsTaskParams awsTaskParams =
@@ -642,12 +637,12 @@ public class AwsResourceServiceImpl implements AwsResourceService {
     return response.getClusters();
   }
 
-  private void publishSecretRuntimeUsage(IdentifierRef awsConnectorRef, AwsConnectorDTO awsConnector) {
-    String accountIdentifier = awsConnectorRef.getAccountIdentifier();
-    String orgIdentifier = awsConnectorRef.getOrgIdentifier();
-    String projectIdentifier = awsConnectorRef.getProjectIdentifier();
+  private void publishSecretRuntimeUsage(ScopeInfo scopeInfo, AwsConnectorDTO awsConnector) {
+    String accountIdentifier = scopeInfo.getAccountIdentifier();
+    String orgIdentifier = scopeInfo.getOrgIdentifier();
+    String projectIdentifier = scopeInfo.getProjectIdentifier();
 
-    getSecret(awsConnectorRef, awsConnector).ifPresent(secret -> {
+    getSecret(scopeInfo, awsConnector).ifPresent(secret -> {
       IdentifierRefProtoDTO secretReference = identifierRefProtoDTOHelper.createIdentifierRefProtoDTO(
           accountIdentifier, orgIdentifier, projectIdentifier, secret.getIdentifier());
 
@@ -665,16 +660,13 @@ public class AwsResourceServiceImpl implements AwsResourceService {
     });
   }
 
-  private Optional<Secret> getSecret(IdentifierRef awsConnectorRef, AwsConnectorDTO awsConnector) {
+  private Optional<Secret> getSecret(ScopeInfo scopeInfo, AwsConnectorDTO awsConnector) {
     AwsCredentialSpecDTO awsCredentialSpecDTO = awsConnector.getCredential().getConfig();
     if (awsCredentialSpecDTO instanceof AwsManualConfigSpecDTO) {
       AwsManualConfigSpecDTO awsManualConfigSpecDTO = (AwsManualConfigSpecDTO) awsCredentialSpecDTO;
       SecretRefData secretRefData = awsManualConfigSpecDTO.getSecretKeyRef();
       if (secretRefData != null && isNotEmpty(secretRefData.getIdentifier())) {
-        String accountIdentifier = awsConnectorRef.getAccountIdentifier();
-        String orgIdentifier = awsConnectorRef.getOrgIdentifier();
-        String projectIdentifier = awsConnectorRef.getProjectIdentifier();
-        return ngSecretService.get(accountIdentifier, orgIdentifier, projectIdentifier, secretRefData.getIdentifier());
+        return ngSecretService.get(scopeInfo, secretRefData.getIdentifier());
       }
     }
 
