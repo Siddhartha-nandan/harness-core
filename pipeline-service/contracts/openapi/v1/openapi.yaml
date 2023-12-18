@@ -26,6 +26,9 @@ tags:
   - name: Triggers
     description: This contains APIs for performing CRUD operations on Triggers.
     x-displayName: 'Triggers [Beta]'
+  - name: Steps
+    description: This contains APIs for Steps.
+    x-displayName: 'Steps [Beta]'
 paths:
   '/v1/orgs/{org}/projects/{project}/pipelines':
     parameters:
@@ -911,6 +914,23 @@ paths:
       requestBody:
         $ref: '#/components/requestBodies/PipelineInputsSchemaRequestBody'
       x-internal: true
+  /v1/steps:
+    parameters: []
+    post:
+      summary: Get steps for the steps-pallete
+      operationId: get-steps
+      responses:
+        '200':
+          $ref: '#/components/responses/StepsDataResponseBody'
+      tags:
+        - Steps
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+      security:
+        - x-api-key: []
+      requestBody:
+        $ref: '#/components/requestBodies/StepPalleteFilterRequestBody'
+      x-internal: true
   '/v1/orgs/{org}/projects/{project}/pipelines/{pipeline}/execute':
     parameters:
       - $ref: '#/components/parameters/OrgParam'
@@ -923,28 +943,21 @@ paths:
         '200':
           $ref: '#/components/responses/PipelineExecuteResponseBody'
       x-stoplight:
-        id: vghxybsnhx6ij
+        id: er16k4olvl4ep
       requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                yaml:
-                  type: string
-                  x-stoplight:
-                    id: j93lau3l16bsr
-        description: ''
+        $ref: '#/components/requestBodies/PipelineExecuteRequestBody'
       parameters:
         - schema:
             type: string
           in: query
           name: module
+          description: 'Module type for the entity. If its from deployments,type will be CD , if its from build type will be CI'
         - schema:
             type: boolean
             default: 'false'
           in: query
           name: use_fqn_if_error_response
+          description: Use FQN in error response.
         - schema:
             type: boolean
             default: 'false'
@@ -954,7 +967,19 @@ paths:
             type: string
           in: query
           name: notes
+          description: Notes of a pipeline execution
         - $ref: '#/components/parameters/AccountHeader'
+        - $ref: '#/components/parameters/Branch'
+        - schema:
+            type: string
+          in: query
+          name: connector_ref
+          description: Identifier of the Harness Connector used for CRUD operations on the Entity (for Git Experience).
+        - schema:
+            type: string
+          in: query
+          name: repo_name
+          description: Name of the repository (for Git Experience).
       description: Pipeline Execution API
       tags:
         - Pipeline Execution
@@ -1596,6 +1621,7 @@ components:
             - Artifact
             - Manifest
             - Scheduled
+            - MultiRegionArtifact
         webhook_id:
           type: string
       discriminator:
@@ -1605,6 +1631,7 @@ components:
           Webhook: '#/components/schemas/WebhookTriggerSource'
           Manifest: '#/components/schemas/ManifestTriggerSource'
           Artifact: '#/components/schemas/ArtifactTriggerSource'
+          MultiRegionArtifact: '#/components/schemas/MultiRegionArtifactTriggerSource'
       required:
         - type
         - spec
@@ -1635,6 +1662,25 @@ components:
           properties:
             spec:
               $ref: '#/components/schemas/ManifestTriggerSpec'
+    ArtifactType:
+      title: ArtifactType
+      enum:
+        - Gcr
+        - Ecr
+        - Acr
+        - DockerRegistry
+        - Nexus3Registry
+        - Nexus2Registry
+        - ArtifactoryRegistry
+        - AmazonS3
+        - Jenkins
+        - CustomArtifact
+        - GoogleArtifactRegistry
+        - GithubPackageRegistry
+        - AzureArtifacts
+        - AmazonMachineImage
+        - GoogleCloudStorage
+        - Bamboo
     ArtifactTriggerSource:
       title: Artifact Trigger Source
       x-discriminator-value: Artifact
@@ -1644,6 +1690,15 @@ components:
           properties:
             spec:
               $ref: '#/components/schemas/ArtifactTriggerSpec'
+    MultiRegionArtifactTriggerSource:
+      title: Multi Region Artifact Trigger Source
+      x-discriminator-value: MultiRegionArtifact
+      allOf:
+        - $ref: '#/components/schemas/TriggerSource'
+        - type: object
+          properties:
+            spec:
+              $ref: '#/components/schemas/MultiRegionArtifactTriggerSpec'
     AMIFilter:
       title: AMI Artifact Registry filter
       type: object
@@ -1725,31 +1780,39 @@ components:
             - HelmChart
         spec:
           $ref: '#/components/schemas/HelmChartManifestTriggerSpec'
+    MultiRegionArtifactTriggerSpec:
+      title: Multi Region Artifact Trigger Spec
+      type: object
+      description: Spec for Multi Region Artifact Triggers
+      properties:
+        event_conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TriggerConditions'
+        meta_data_conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TriggerConditions'
+        jexl_condition:
+          type: string
+        type:
+          $ref: '#/components/schemas/ArtifactType'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactTypeSpecWrapper'
+    ArtifactTypeSpecWrapper:
+      type: object
+      properties:
+        spec:
+          $ref: '#/components/schemas/ArtifactTriggerSpec'
     ArtifactTriggerSpec:
       title: Artifact Trigger Spec
       type: object
       description: Spec for Artifact Triggers
       properties:
         type:
-          type: string
-          description: This specifies the type of Artifact trigger
-          enum:
-            - Gcr
-            - Ecr
-            - Acr
-            - DockerRegistry
-            - Nexus3Registry
-            - Nexus2Registry
-            - ArtifactoryRegistry
-            - AmazonS3
-            - Jenkins
-            - CustomArtifact
-            - GoogleArtifactRegistry
-            - GithubPackageRegistry
-            - AzureArtifacts
-            - AmazonMachineImage
-            - GoogleCloudStorage
-            - Bamboo
+          $ref: '#/components/schemas/ArtifactType'
       discriminator:
         propertyName: type
         mapping:
@@ -3746,6 +3809,9 @@ components:
           minLength: 1
           maxLength: 128
           description: Project identifier
+        pipeline:
+          type: string
+          description: Pipeline identifier
         description:
           type: string
           maxLength: 1024
@@ -3756,6 +3822,15 @@ components:
             type: string
           maxProperties: 128
           description: Input Set tags
+        store_type:
+          type: string
+          description: Specifies whether the Entity is to be stored in Git or not (for Git Experience).
+          enum:
+            - INLINE
+            - REMOTE
+        connector_ref:
+          type: string
+          description: Identifier of the Harness Connector used for CRUD operations on the Entity (for Git Experience).
         git_details:
           $ref: '#/components/schemas/GitDetails'
         created:
@@ -4532,6 +4607,32 @@ components:
           type: string
           x-stoplight:
             id: 11ftonrbzx11o
+    StepsDataResponseBody:
+      title: StepCategory
+      type: object
+      properties:
+        name:
+          type: string
+        steps_data:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepData'
+        step_categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepsDataResponseBody'
+    StepData:
+      title: StepData
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        disabled:
+          type: boolean
+        feature_restriction_name:
+          type: string
     PipelineInputSchemaDetailsResponseBody:
       title: PipelineInputSchemaDetailsResponseBody
       x-stoplight:
@@ -4685,6 +4786,28 @@ components:
         metadata:
           $ref: '#/components/schemas/PipelineYamlInputMetadataDTO'
       x-internal: true
+    StepPalleteFilterRequestBody:
+      title: StepPalleteFilterWrapper
+      type: object
+      properties:
+        step_pallete_module_infos:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepPalleteModuleInfo'
+        version:
+          type: string
+    StepPalleteModuleInfo:
+      title: StepPalleteModuleInfo
+      type: object
+      properties:
+        module:
+          type: string
+        category:
+          type: string
+        should_show_common_steps:
+          type: boolean
+        common_step_category:
+          type: string
     PipelineInputsSchemaRequestBody:
       title: PipelineInputsSchemaRequestBody
       x-stoplight:
@@ -5050,6 +5173,38 @@ components:
           x-stoplight:
             id: je0s2afm9oehe
           description: If any selected stage to execute has expressions, then this map contains expressions with its corresponding values.
+    PipelineExecuteRequestBody:
+      title: PipelineExecuteRequestBody
+      x-stoplight:
+        id: kf9cfchziw5kn
+      type: object
+      properties:
+        inputs_yaml:
+          type: string
+          x-stoplight:
+            id: gtp5owd8dxtgy
+          description: Inputs YAML if the Pipeline contains Runtime Inputs
+      x-examples:
+        Example 1:
+          inputs_yaml: |-
+            pipeline:
+              identifier: pipelineIdentifier
+              stages:
+                - stage:
+                    identifier: stage1
+                    type: Custom
+                    spec:
+                      execution:
+                        steps:
+                          - step:
+                              identifier: ShellScript_1
+                              type: ShellScript
+                              spec:
+                                source:
+                                  type: Inline
+                                  spec:
+                                    script: echo hello
+                              timeout: 10s
   securitySchemes:
     x-api-key:
       name: x-api-key
@@ -5903,6 +6058,47 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/PipelineExecuteResponseBody'
+    StepsDataResponseBody:
+      description: Steps data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StepsDataResponseBody'
+          examples:
+            example-1:
+              value:
+                name: Library
+                steps_data: [ ]
+                step_categories:
+                  - name: Continuous Deployment
+                    steps_data: [ ]
+                    step_categories:
+                      - name: GitOps
+                        steps_data:
+                          - name: GitOps Merge PR
+                            type: MergePR
+                            disabled: false
+                            feature_restriction_name: null
+                          - name: Update GitOps App
+                            type: UpdateGitOpsApp
+                            disabled: false
+                            feature_restriction_name: null
+                        step_categories: [ ]
+                      - name: Kubernetes
+                        steps_data:
+                          - name: Canary Deployment
+                            type: K8sCanaryDeploy
+                            disabled: false
+                            feature_restriction_name: null
+                          - name: Canary Delete
+                            type: K8sCanaryDelete
+                            disabled: false
+                            feature_restriction_name: null
+                          - name: Apply
+                            type: K8sApply
+                            disabled: false
+                            feature_restriction_name: null
+                        step_categories: [ ]
     PipelineInputSchemaDetailsResponseBody:
       description: Example response
       content:
@@ -6462,6 +6658,30 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/GitMetadataUpdateRequestBody'
+    StepPalleteFilterRequestBody:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StepPalleteFilterRequestBody'
+          examples:
+            example-1:
+              value:
+                step_pallete_module_infos:
+                  - module: cd
+                    category: Kubernetes
+                    should_show_common_steps: true
+                  - module: cd
+                    category: Builds
+                    should_show_common_steps: false
+                  - module: cv
+                    should_show_common_steps: false
+                  - module: cd
+                    category: Chaos
+                    should_show_common_steps: false
+                  - module: pms
+                    category: ssca
+                    should_show_common_steps: false
+                version: "1"
     PipelineInputsSchemaRequestBody:
       content:
         application/json:
@@ -6503,3 +6723,8 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/RunStageRequestBody'
+    PipelineExecuteRequestBody:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PipelineExecuteRequestBody'
