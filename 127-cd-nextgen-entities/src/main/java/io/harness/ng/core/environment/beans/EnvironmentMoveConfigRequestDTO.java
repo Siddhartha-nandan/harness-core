@@ -48,7 +48,7 @@ public class EnvironmentMoveConfigRequestDTO {
   @QueryParam(GitSyncApiConstants.FILE_PATH_KEY)
   String filePath;
 
-  @Parameter(description = GitSyncApiConstants.FILEPATH_PARAM_MESSAGE)
+  @Parameter(description = GitSyncApiConstants.COMMIT_MESSAGE_PARAM_MESSAGE)
   @QueryParam(GitSyncApiConstants.COMMIT_MSG_KEY)
   String commitMsg;
 
