@@ -86,8 +86,7 @@ public class ApprovalStagePlanCreator extends AbstractStagePlanCreator<ApprovalS
   @Override
   public PlanNode createPlanForParentNode(
       PlanCreationContext ctx, ApprovalStageNodeV1 field, List<String> childrenNodeIds) {
-    StageElementParametersV1Builder stageParameters =
-        StageParameterUtilsV1.getCommonStageParameters(field);
+    StageElementParametersV1Builder stageParameters = StageParameterUtilsV1.getCommonStageParameters(field);
     stageParameters.type(YAMLFieldNameConstants.APPROVAL_V1);
     stageParameters.spec(ApprovalStageSpecParameters.builder().childNodeID(childrenNodeIds.get(0)).build());
     String name = field.getName();
