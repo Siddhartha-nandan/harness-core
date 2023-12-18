@@ -1767,7 +1767,7 @@ public class AccountServiceTest extends WingsBaseTest {
   @Category(UnitTests.class)
   public void testGetSessionTimeoutInMinutesWithValidValue() {
     Account account = saveAccount("Harness");
-    SessionTimeoutSettings sessionTimeoutSettings = new SessionTimeoutSettings(30);
+    SessionTimeoutSettings sessionTimeoutSettings = new SessionTimeoutSettings(30, null);
     accountService.setSessionTimeoutInMinutes(account.getUuid(), sessionTimeoutSettings);
     assertTrue(accountService.getSessionTimeoutInMinutes(account.getUuid()).equals(30));
   }
@@ -1786,7 +1786,7 @@ public class AccountServiceTest extends WingsBaseTest {
   @Category(UnitTests.class)
   public void testGetSessionTimeoutInMinutesForLowerLimit() {
     Account account = saveAccount("Harness");
-    SessionTimeoutSettings sessionTimeoutSettings = new SessionTimeoutSettings(29);
+    SessionTimeoutSettings sessionTimeoutSettings = new SessionTimeoutSettings(29, null);
     assertThatExceptionOfType(ConstraintViolationException.class)
         .isThrownBy(() -> accountService.setSessionTimeoutInMinutes(account.getUuid(), sessionTimeoutSettings));
   }
@@ -1805,7 +1805,7 @@ public class AccountServiceTest extends WingsBaseTest {
   @Category(UnitTests.class)
   public void testGetSessionTimeoutInMinutesWithInvalidAccountId() {
     Account account = saveAccount("Harness");
-    SessionTimeoutSettings sessionTimeoutSettings = new SessionTimeoutSettings(30);
+    SessionTimeoutSettings sessionTimeoutSettings = new SessionTimeoutSettings(30, null);
     accountService.setSessionTimeoutInMinutes(account.getUuid(), sessionTimeoutSettings);
     assertThatExceptionOfType(AccountNotFoundException.class)
         .isThrownBy(() -> accountService.setSessionTimeoutInMinutes("dummy", sessionTimeoutSettings));
@@ -1816,7 +1816,26 @@ public class AccountServiceTest extends WingsBaseTest {
   @Category(UnitTests.class)
   public void testGetSessionTimeoutMoreThanMaxLimit() {
     Account account = saveAccount("Harness");
-    SessionTimeoutSettings sessionTimeoutSettings = new SessionTimeoutSettings(4321);
+    SessionTimeoutSettings sessionTimeoutSettings = new SessionTimeoutSettings(4321, null);
+    assertThatExceptionOfType(ConstraintViolationException.class)
+        .isThrownBy(() -> accountService.setSessionTimeoutInMinutes(account.getUuid(), sessionTimeoutSettings));
+  }
+
+  @Test
+  @Owner(developers = BHAVYA)
+  @Category(UnitTests.class)
+  public void testDefaultValueForAccountWithNoAbsoluteSessionTimeout() {
+    Account account = saveAccount("Harness");
+    System.out.println();
+    assertThat(accountService.get(account.getUuid()).getAbsoluteSessionTimeOutInMinutes()).isNull();
+  }
+
+  @Test
+  @Owner(developers = BHAVYA)
+  @Category(UnitTests.class)
+  public void testGetSessionTimeout_WithAccountSeesionTimeoutMoreThanMaxLimit() {
+    Account account = saveAccount("Harness");
+    SessionTimeoutSettings sessionTimeoutSettings = new SessionTimeoutSettings(35, 4321);
     assertThatExceptionOfType(ConstraintViolationException.class)
         .isThrownBy(() -> accountService.setSessionTimeoutInMinutes(account.getUuid(), sessionTimeoutSettings));
   }
