@@ -910,6 +910,66 @@ paths:
         - $ref: '#/components/parameters/AccountHeader'
       requestBody:
         $ref: '#/components/requestBodies/OrchestrationStepDriftRequestBody'
+  '/v1/orgs/{org}/projects/{project}/remediation/{remediation}/close':
+    parameters:
+      - $ref: '#/components/parameters/OrgParam'
+      - $ref: '#/components/parameters/ProjectParam'
+      - schema:
+          type: string
+        name: remediation
+        in: path
+        required: true
+        description: Remediation Tracker Id
+    put:
+      summary: Close Remediation Tracker
+      tags:
+        - Remediation
+      responses:
+        '200':
+          $ref: '#/components/responses/SaveResponse'
+        '400':
+          description: Bad Request
+        '500':
+          description: Internal Server Error
+      operationId: close
+      x-stoplight:
+        id: fyeszlj20yi1q
+      description: Close Remediation Tracker.
+      security:
+        - x-api-key: [ ]
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+  '/v1/orgs/{org}/projects/{project}/remediation/{remediation}/exclude-artifact':
+    parameters:
+      - $ref: '#/components/parameters/OrgParam'
+      - $ref: '#/components/parameters/ProjectParam'
+      - schema:
+          type: string
+        name: remediation
+        in: path
+        required: true
+        description: Remediation Tracker Id
+    put:
+      summary: Exclude Artifact from Remediation Tracker
+      tags:
+        - Remediation
+      responses:
+        '200':
+          $ref: '#/components/responses/SaveResponse'
+        '400':
+          description: Bad Request
+        '500':
+          description: Internal Server Error
+      operationId: excludeArtifact
+      x-stoplight:
+        id: hoezhchr6prek
+      description: Exclude Artifact From Remediation Tracker.
+      security:
+        - x-api-key: [ ]
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+      requestBody:
+        $ref: '#/components/requestBodies/ExcludeArtifactRequestBody'
 components:
   schemas:
     Artifact:
@@ -2348,6 +2408,18 @@ components:
           $ref: '#/components/schemas/RemediationCondition'
       required:
         - remediation_condition
+    ExcludeArtifactRequestBody:
+      title: ExcludeArtifactRequestBody
+      x-stoplight:
+        id: 5p1t1xvazy9qr
+      type: object
+      properties:
+        artifact_id:
+          type: string
+          x-stoplight:
+            id: 0662qtujo2wxy
+      required:
+        - artifact_id
     OrchestrationStepDriftRequestBody:
       title: OrchestrationStepDriftRequestBody
       x-stoplight:
@@ -2577,6 +2649,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/RemediationTrackerCreateRequestBody'
+    ExcludeArtifactRequestBody:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ExcludeArtifactRequestBody'
     OrchestrationStepDriftRequestBody:
       content:
         application/json:

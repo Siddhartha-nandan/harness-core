@@ -7,6 +7,7 @@
 package io.harness.ssca.api;
 
 import io.harness.spec.server.ssca.v1.RemediationApi;
+import io.harness.spec.server.ssca.v1.model.ExcludeArtifactRequestBody;
 import io.harness.spec.server.ssca.v1.model.RemediationTrackerCreateRequestBody;
 import io.harness.spec.server.ssca.v1.model.RemediationTrackerCreateResponseBody;
 import io.harness.spec.server.ssca.v1.model.RemediationTrackersOverallSummaryResponseBody;
@@ -18,6 +19,7 @@ import javax.ws.rs.core.Response;
 
 public class RemediationTrackerApiImpl implements RemediationApi {
   @Inject RemediationTrackerService remediationTrackerService;
+
   @Override
   public Response createRemediationTracker(
       String orgId, String projectId, @Valid RemediationTrackerCreateRequestBody body, String harnessAccount) {
@@ -25,6 +27,17 @@ public class RemediationTrackerApiImpl implements RemediationApi {
         remediationTrackerService.createRemediationTracker(harnessAccount, orgId, projectId, body);
     RemediationTrackerCreateResponseBody response = new RemediationTrackerCreateResponseBody().id(remediationTrackerId);
     return Response.ok().entity(response).build();
+  }
+
+  @Override
+  public Response close(String org, String project, String remediation, String harnessAccount) {
+    return null;
+  }
+
+  @Override
+  public Response excludeArtifact(
+      String org, String project, String remediation, @Valid ExcludeArtifactRequestBody body, String harnessAccount) {
+    return null;
   }
 
   @Override
