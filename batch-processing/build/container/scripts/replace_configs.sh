@@ -252,10 +252,6 @@ if [[ "" != "$BILLING_DATA_VERIFICATION_JOB_CRON" ]]; then
   export BILLING_DATA_VERIFICATION_JOB_CRON; yq -i '.scheduler-jobs-config.billingDataVerificationJobCron=env(BILLING_DATA_VERIFICATION_JOB_CRON)' $CONFIG_FILE
 fi
 
-if [[ "" != "$GOVERNANCE_RECOMMENDATION_JOB_CRON" ]]; then
-  export GOVERNANCE_RECOMMENDATION_JOB_CRON; yq -i '.scheduler-jobs-config.governanceRecommendationJobCronAws=env(GOVERNANCE_RECOMMENDATION_JOB_CRON)' $CONFIG_FILE
-fi
-
 if [[ "" != "$GOVERNANCE_RECOMMENDATION_JOB_CRON_AZURE" ]]; then
   export GOVERNANCE_RECOMMENDATION_JOB_CRON_AZURE; yq -i '.scheduler-jobs-config.governanceRecommendationJobCronAzure=env(GOVERNANCE_RECOMMENDATION_JOB_CRON_AZURE)' $CONFIG_FILE
 fi
