@@ -14,10 +14,14 @@ import static io.harness.delegate.core.beans.SSHKey.SSHAuthScheme.KERBEROS;
 import static io.harness.delegate.core.beans.SSHKey.SSHAuthScheme.SSH;
 import static io.harness.delegate.core.beans.SecretManagerType.CUSTOM;
 
+import io.harness.delegate.beans.connector.customsecretmanager.TemplateLinkConfigForCustomSecretManager;
 import io.harness.delegate.core.beans.*;
 import io.harness.ng.core.dto.secrets.*;
 
 import software.wings.beans.CustomSecretNGManagerConfig;
+
+import java.util.List;
+import java.util.Map;
 
 public class CustomSmMapper {
   public static EncryptionConfig pojoProtoMapper(CustomSecretNGManagerConfig config) {
@@ -25,8 +29,29 @@ public class CustomSmMapper {
     SSHAuthDTO authDTO = config.getSshKeySpecDTO().getAuth();
     BaseSSHSpecDTO baseSSHSpecDTO = authDTO.getSpec();
     SSHConfig sshConfig;
-    SSHKey sshKey;
-    io.harness.delegate.core.beans.CustomSecretNGManagerConfig protoConfig;
+    SSHKey.Builder sshKey = SSHKey.newBuilder()
+                                .setPort(specDTO.getPort())
+                                .setUseSshJ(authDTO.isUseSshj())
+                                .setUseSshClient(authDTO.isUseSshClient());
+    io.harness.delegate.core.beans.CustomSecretNGManagerConfig.Builder protoConfig =
+        io.harness.delegate.core.beans.CustomSecretNGManagerConfig.newBuilder()
+            .setScript(config.getScript())
+            .setIsOnDelegate(config.isOnDelegate())
+            .setWorkingDirectory(config.getWorkingDirectory())
+            .setHost(config.getHost())
+            .setConnectorRef(config.getConnectorRef());
+    if (null != config.getTemplate()) {
+      protoConfig = protoConfig.setTemplateLinkConfig(mapTemplateInputs(config.getTemplate()));
+    }
+    EncryptionConfig.Builder encryptionConfig = EncryptionConfig.newBuilder()
+                                                    .setUuid((null != config.getUuid()) ? config.getUuid() : "randomId")
+                                                    .setAccountId(config.getAccountId())
+                                                    .setIsGlobalKms(config.isGlobalKms())
+                                                    .setEncryptionType(CUSTOM_NG)
+                                                    .setSecretManagerType(CUSTOM);
+    if (null != config.getEncryptionServiceUrl()) {
+      encryptionConfig.setEncryptionServiceUrl(config.getEncryptionServiceUrl());
+    }
     if (baseSSHSpecDTO instanceof SSHConfigDTO) {
       SSHCredentialSpecDTO sshCredentialSpecDTO = ((SSHConfigDTO) baseSSHSpecDTO).getSpec();
       if (sshCredentialSpecDTO instanceof SSHKeyPathCredentialDTO) {
@@ -39,31 +64,7 @@ public class CustomSmMapper {
                 .build();
         sshConfig =
             SSHConfig.newBuilder().setSshCredentialType(KEY_PATH).setKeyPathCredential(sshKeyPathCredential).build();
-        sshKey = SSHKey.newBuilder()
-                     .setPort(specDTO.getPort())
-                     .setSshAuthScheme(SSH)
-                     .setUseSshJ(authDTO.isUseSshj())
-                     .setUseSshClient(authDTO.isUseSshClient())
-                     .setSshConfig(sshConfig)
-                     .build();
-        protoConfig = io.harness.delegate.core.beans.CustomSecretNGManagerConfig.newBuilder()
-                          .setScript(config.getScript())
-                          .setIsOnDelegate(config.isOnDelegate())
-                          .setWorkingDirectory(config.getWorkingDirectory())
-                          .setHost(config.getHost())
-                          .setConnectorRef(config.getConnectorRef())
-                          .setSshKey(sshKey)
-                          .build();
-        return EncryptionConfig.newBuilder()
-            .setUuid(config.getUuid())
-            .setAccountId(config.getAccountId())
-            .setName(config.getName())
-            .setIsGlobalKms(config.isGlobalKms())
-            .setEncryptionServiceUrl(config.getEncryptionServiceUrl())
-            .setEncryptionType(CUSTOM_NG)
-            .setSecretManagerType(CUSTOM)
-            .setCustomSecretManagerConfig(protoConfig)
-            .build();
+        sshKey.setSshAuthScheme(SSH).setSshConfig(sshConfig);
       } else if (sshCredentialSpecDTO instanceof SSHKeyReferenceCredentialDTO) {
         SSHKeyReferenceCredential sshKeyReferenceCredential;
         if (null != ((SSHKeyReferenceCredentialDTO) sshCredentialSpecDTO).getEncryptedPassphrase()) {
@@ -86,13 +87,7 @@ public class CustomSmMapper {
                         .setSshCredentialType(KEY_REFERENCE)
                         .setKeyReferenceCredential(sshKeyReferenceCredential)
                         .build();
-        sshKey = SSHKey.newBuilder()
-                     .setPort(specDTO.getPort())
-                     .setSshAuthScheme(SSH)
-                     .setUseSshJ(authDTO.isUseSshj())
-                     .setUseSshClient(authDTO.isUseSshClient())
-                     .setSshConfig(sshConfig)
-                     .build();
+        sshKey.setSshAuthScheme(SSH).setSshConfig(sshConfig);
         SecretDetail encryptionDetails;
         if (null != config.getSshKeyEncryptionDetails()) {
           encryptionDetails = SecretDetail.newBuilder()
@@ -104,22 +99,7 @@ public class CustomSmMapper {
         } else {
           encryptionDetails = SecretDetail.newBuilder().build();
         }
-        protoConfig = io.harness.delegate.core.beans.CustomSecretNGManagerConfig.newBuilder()
-                          .setScript(config.getScript())
-                          .setIsOnDelegate(config.isOnDelegate())
-                          .setWorkingDirectory(config.getWorkingDirectory())
-                          .setHost(config.getHost())
-                          .setConnectorRef(config.getConnectorRef())
-                          .setSshKey(sshKey)
-                          .addSshEncryptionDetails(0, encryptionDetails)
-                          .build();
-        return EncryptionConfig.newBuilder()
-            .setAccountId(config.getAccountId())
-            .setIsGlobalKms(config.isGlobalKms())
-            .setEncryptionType(CUSTOM_NG)
-            .setSecretManagerType(CUSTOM)
-            .setCustomSecretManagerConfig(protoConfig)
-            .build();
+        protoConfig.addSshEncryptionDetails(0, encryptionDetails);
       } else {
         SSHPasswordCredential sshPasswordCredential;
         if (null != ((SSHPasswordCredentialDTO) sshCredentialSpecDTO).getPassword()) {
@@ -135,13 +115,7 @@ public class CustomSmMapper {
         }
         sshConfig =
             SSHConfig.newBuilder().setSshCredentialType(PASSWORD).setPasswordCredential(sshPasswordCredential).build();
-        sshKey = SSHKey.newBuilder()
-                     .setPort(specDTO.getPort())
-                     .setSshAuthScheme(SSH)
-                     .setUseSshJ(authDTO.isUseSshj())
-                     .setUseSshClient(authDTO.isUseSshClient())
-                     .setSshConfig(sshConfig)
-                     .build();
+        sshKey.setSshAuthScheme(SSH).setSshConfig(sshConfig);
         SecretDetail encryptionDetails;
         if (null != config.getSshKeyEncryptionDetails()) {
           encryptionDetails = SecretDetail.newBuilder()
@@ -153,22 +127,7 @@ public class CustomSmMapper {
         } else {
           encryptionDetails = SecretDetail.newBuilder().build();
         }
-        protoConfig = io.harness.delegate.core.beans.CustomSecretNGManagerConfig.newBuilder()
-                          .setScript(config.getScript())
-                          .setIsOnDelegate(config.isOnDelegate())
-                          .setWorkingDirectory(config.getWorkingDirectory())
-                          .setHost(config.getHost())
-                          .setConnectorRef(config.getConnectorRef())
-                          .setSshKey(sshKey)
-                          .addSshEncryptionDetails(0, encryptionDetails)
-                          .build();
-        return EncryptionConfig.newBuilder()
-            .setAccountId(config.getAccountId())
-            .setIsGlobalKms(config.isGlobalKms())
-            .setEncryptionType(CUSTOM_NG)
-            .setSecretManagerType(CUSTOM)
-            .setCustomSecretManagerConfig(protoConfig)
-            .build();
+        protoConfig.addSshEncryptionDetails(0, encryptionDetails);
       }
     } else {
       KerberosConfig kerberosConfig;
@@ -184,13 +143,7 @@ public class CustomSmMapper {
                              .setTgtGenerationMethod(KEY_TAB_FILE_PATH)
                              .setTgtTabFilePathSpec(tgtKeyTabFilePathSpec)
                              .build();
-        sshKey = SSHKey.newBuilder()
-                     .setPort(specDTO.getPort())
-                     .setSshAuthScheme(KERBEROS)
-                     .setUseSshJ(authDTO.isUseSshj())
-                     .setUseSshClient(authDTO.isUseSshClient())
-                     .setKerberosConfig(kerberosConfig)
-                     .build();
+        sshKey.setSshAuthScheme(KERBEROS).setKerberosConfig(kerberosConfig);
         SecretDetail encryptionDetails;
         if (null != config.getSshKeyEncryptionDetails()) {
           encryptionDetails = SecretDetail.newBuilder()
@@ -202,22 +155,7 @@ public class CustomSmMapper {
         } else {
           encryptionDetails = SecretDetail.newBuilder().build();
         }
-        protoConfig = io.harness.delegate.core.beans.CustomSecretNGManagerConfig.newBuilder()
-                          .setScript(config.getScript())
-                          .setIsOnDelegate(config.isOnDelegate())
-                          .setWorkingDirectory(config.getWorkingDirectory())
-                          .setHost(config.getHost())
-                          .setConnectorRef(config.getConnectorRef())
-                          .setSshKey(sshKey)
-                          .addSshEncryptionDetails(0, encryptionDetails)
-                          .build();
-        return EncryptionConfig.newBuilder()
-            .setAccountId(config.getAccountId())
-            .setIsGlobalKms(config.isGlobalKms())
-            .setEncryptionType(CUSTOM_NG)
-            .setSecretManagerType(CUSTOM)
-            .setCustomSecretManagerConfig(protoConfig)
-            .build();
+        protoConfig.addSshEncryptionDetails(0, encryptionDetails);
       } else {
         TGTPasswordSpec tgtPasswordSpec =
             TGTPasswordSpec.newBuilder()
@@ -231,13 +169,7 @@ public class CustomSmMapper {
                              .setTgtGenerationMethod(KerberosConfig.TGTGenerationMethod.PASSWORD)
                              .setTgtPasswordSpec(tgtPasswordSpec)
                              .build();
-        sshKey = SSHKey.newBuilder()
-                     .setPort(specDTO.getPort())
-                     .setSshAuthScheme(KERBEROS)
-                     .setUseSshJ(authDTO.isUseSshj())
-                     .setUseSshClient(authDTO.isUseSshClient())
-                     .setKerberosConfig(kerberosConfig)
-                     .build();
+        sshKey.setSshAuthScheme(KERBEROS).setKerberosConfig(kerberosConfig);
         SecretDetail encryptionDetails;
         if (null != config.getSshKeyEncryptionDetails()) {
           encryptionDetails = SecretDetail.newBuilder()
@@ -249,23 +181,30 @@ public class CustomSmMapper {
         } else {
           encryptionDetails = SecretDetail.newBuilder().build();
         }
-        protoConfig = io.harness.delegate.core.beans.CustomSecretNGManagerConfig.newBuilder()
-                          .setScript(config.getScript())
-                          .setIsOnDelegate(config.isOnDelegate())
-                          .setWorkingDirectory(config.getWorkingDirectory())
-                          .setHost(config.getHost())
-                          .setConnectorRef(config.getConnectorRef())
-                          .setSshKey(sshKey)
-                          .addSshEncryptionDetails(0, encryptionDetails)
-                          .build();
-        return EncryptionConfig.newBuilder()
-            .setAccountId(config.getAccountId())
-            .setIsGlobalKms(config.isGlobalKms())
-            .setEncryptionType(CUSTOM_NG)
-            .setSecretManagerType(CUSTOM)
-            .setCustomSecretManagerConfig(protoConfig)
-            .build();
+        protoConfig.addSshEncryptionDetails(0, encryptionDetails);
       }
     }
+    return encryptionConfig.setCustomSecretManagerConfig(protoConfig.setSshKey(sshKey.build())).build();
+  }
+
+  public static TemplateLinkConfig mapTemplateInputs(TemplateLinkConfigForCustomSecretManager pojo) {
+    TemplateLinkConfig.Builder builder =
+        TemplateLinkConfig.newBuilder().setTemplateRef(pojo.getTemplateRef()).setVersionLabel(pojo.getVersionLabel());
+
+    // Iterate over the map and convert values to Proto
+    for (Map.Entry<String, List<software.wings.beans.NameValuePairWithDefault>> entry :
+        pojo.getTemplateInputs().entrySet()) {
+      NameValuePairWithDefaultList.Builder listBuilder = NameValuePairWithDefaultList.newBuilder();
+      for (software.wings.beans.NameValuePairWithDefault val : entry.getValue()) {
+        listBuilder.addValues(NameValuePairWithDefault.newBuilder()
+                                  .setName(val.getName())
+                                  .setValue(val.getValue())
+                                  .setType(val.getType())
+                                  .setUseAsDefault(null != val.getUseAsDefault() && val.getUseAsDefault())
+                                  .build());
+      }
+      builder.putTemplateInputs(entry.getKey(), listBuilder.build());
+    }
+    return builder.build();
   }
 }

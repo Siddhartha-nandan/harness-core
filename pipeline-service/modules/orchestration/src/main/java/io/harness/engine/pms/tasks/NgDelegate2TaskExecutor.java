@@ -141,13 +141,12 @@ public class NgDelegate2TaskExecutor implements TaskExecutor {
     List<Long> ports = new ArrayList<>();
     ports.add(Long.valueOf(20002));
     //    Secret secret = Secret.newBuilder().setScopeSecretIdentifier("account.newone").build();
-    Secret secret1 = Secret.newBuilder().setScopeSecretIdentifier("account.newtwo").build();
-    //    Secret secret2 = Secret.newBuilder().setScopeSecretIdentifier("account.newthree").build();
-    Secret secret4 = Secret.newBuilder().setScopeSecretIdentifier("account.newfour").build();
-    Secret secret5 = Secret.newBuilder().setScopeSecretIdentifier("account.newfive").build();
+    //    Secret secret1 = Secret.newBuilder().setScopeSecretIdentifier("account.newtwo").build();
+    //    //    Secret secret2 = Secret.newBuilder().setScopeSecretIdentifier("account.newthree").build();
+    //    Secret secret4 = Secret.newBuilder().setScopeSecretIdentifier("account.newfour").build();
+    //    Secret secret5 = Secret.newBuilder().setScopeSecretIdentifier("account.newfive").build();
     Secret secret6 = Secret.newBuilder().setScopeSecretIdentifier("account.testCustomSmSecret").build();
-    Secrets secrets =
-        Secrets.newBuilder().addSecrets(secret1).addSecrets(secret4).addSecrets(secret5).addSecrets(secret6).build();
+    Secrets secrets = Secrets.newBuilder().addSecrets(secret6).build();
     StepSpec containerSpec = StepSpec
                                  .newBuilder()
                                  //.setImage("us.gcr.io/gcr-play/delegate-plugin:shell")
