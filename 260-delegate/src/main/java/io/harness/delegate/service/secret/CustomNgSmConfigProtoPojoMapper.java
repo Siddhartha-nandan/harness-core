@@ -7,6 +7,10 @@
 
 package io.harness.delegate.service.secret;
 
+import static io.harness.delegate.core.beans.KerberosConfig.TGTGenerationMethod.KEY_TAB_FILE_PATH;
+import static io.harness.ng.core.dto.secrets.TGTGenerationMethod.KeyTabFilePath;
+import static io.harness.ng.core.dto.secrets.TGTGenerationMethod.Password;
+
 import io.harness.delegate.core.beans.SSHConfig;
 import io.harness.delegate.core.beans.SSHKey;
 import io.harness.encryption.SecretRefData;
@@ -117,6 +121,46 @@ public class CustomNgSmConfigProtoPojoMapper {
       customSecretNGManagerConfig.setSshKeySpecDTO(sshKeySpecDTO);
     } else {
       // KERBEROS
+      SSHAuthDTO sshAuthDTO = new SSHAuthDTO();
+      sshAuthDTO.setAuthScheme(SSHAuthScheme.Kerberos);
+      KerberosConfigDTO kerberosConfigDTO = new KerberosConfigDTO();
+      if (config.getCustomSecretManagerConfig().getSshKey().getKerberosConfig().getTgtGenerationMethod()
+          == KEY_TAB_FILE_PATH) {
+        TGTKeyTabFilePathSpecDTO tgtKeyTabFilePathSpecDTO = TGTKeyTabFilePathSpecDTO.builder()
+                                                                .keyPath(config.getCustomSecretManagerConfig()
+                                                                             .getSshKey()
+                                                                             .getKerberosConfig()
+                                                                             .getTgtTabFilePathSpec()
+                                                                             .getKeyPath())
+                                                                .build();
+        kerberosConfigDTO.setPrincipal(
+            config.getCustomSecretManagerConfig().getSshKey().getKerberosConfig().getPrincipal());
+        kerberosConfigDTO.setRealm(config.getCustomSecretManagerConfig().getSshKey().getKerberosConfig().getRealm());
+        kerberosConfigDTO.setTgtGenerationMethod(KeyTabFilePath);
+        kerberosConfigDTO.setSpec(tgtKeyTabFilePathSpecDTO);
+        sshAuthDTO.setSpec(kerberosConfigDTO);
+        sshAuthDTO.setUseSshClient(config.getCustomSecretManagerConfig().getSshKey().getUseSshClient());
+        sshAuthDTO.setUseSshj(config.getCustomSecretManagerConfig().getSshKey().getUseSshJ());
+        SSHKeySpecDTO sshKeySpecDTO =
+            new SSHKeySpecDTO(config.getCustomSecretManagerConfig().getSshKey().getPort(), sshAuthDTO);
+        customSecretNGManagerConfig.setSshKeySpecDTO(sshKeySpecDTO);
+      } else {
+        TGTPasswordSpecDTO tgtPasswordSpecDTO = TGTPasswordSpecDTO.builder()
+                                                    .password(new SecretRefData(config.getCustomSecretManagerConfig()
+                                                                                    .getSshKey()
+                                                                                    .getKerberosConfig()
+                                                                                    .getTgtPasswordSpec()
+                                                                                    .getPassword()))
+                                                    .build();
+        kerberosConfigDTO.setTgtGenerationMethod(Password);
+        kerberosConfigDTO.setSpec(tgtPasswordSpecDTO);
+        sshAuthDTO.setSpec(kerberosConfigDTO);
+        sshAuthDTO.setUseSshClient(config.getCustomSecretManagerConfig().getSshKey().getUseSshClient());
+        sshAuthDTO.setUseSshj(config.getCustomSecretManagerConfig().getSshKey().getUseSshJ());
+        SSHKeySpecDTO sshKeySpecDTO =
+            new SSHKeySpecDTO(config.getCustomSecretManagerConfig().getSshKey().getPort(), sshAuthDTO);
+        customSecretNGManagerConfig.setSshKeySpecDTO(sshKeySpecDTO);
+      }
       return customSecretNGManagerConfig;
     }
     return customSecretNGManagerConfig;

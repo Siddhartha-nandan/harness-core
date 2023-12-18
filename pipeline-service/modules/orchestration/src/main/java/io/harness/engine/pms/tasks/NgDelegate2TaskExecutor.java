@@ -146,14 +146,8 @@ public class NgDelegate2TaskExecutor implements TaskExecutor {
     Secret secret4 = Secret.newBuilder().setScopeSecretIdentifier("account.newfour").build();
     Secret secret5 = Secret.newBuilder().setScopeSecretIdentifier("account.newfive").build();
     Secret secret6 = Secret.newBuilder().setScopeSecretIdentifier("account.testCustomSmSecret").build();
-    Secret secret7 = Secret.newBuilder().setScopeSecretIdentifier("account.rootTokenVaultQa").build();
-    Secrets secrets = Secrets.newBuilder()
-                          .addSecrets(secret1)
-                          .addSecrets(secret4)
-                          .addSecrets(secret5)
-                          .addSecrets(secret7)
-                          .addSecrets(secret6)
-                          .build();
+    Secrets secrets =
+        Secrets.newBuilder().addSecrets(secret1).addSecrets(secret4).addSecrets(secret5).addSecrets(secret6).build();
     StepSpec containerSpec = StepSpec
                                  .newBuilder()
                                  //.setImage("us.gcr.io/gcr-play/delegate-plugin:shell")
