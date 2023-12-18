@@ -9,14 +9,16 @@ package io.harness.ci.execution.integrationstage;
 
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveArchType;
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveOSType;
-import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_HTTP_PROXY;
-import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_NO_PROXY;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_ARCH;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_MACHINE;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_NAME;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_OS;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_TYPE;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_WORKSPACE;
+import static io.harness.ci.commonconstants.BuildEnvironmentConstants.HARNESS_GIT_PROXY;
+import static io.harness.ci.commonconstants.BuildEnvironmentConstants.HARNESS_HTTPS_PROXY;
+import static io.harness.ci.commonconstants.BuildEnvironmentConstants.HARNESS_HTTP_PROXY;
+import static io.harness.ci.commonconstants.BuildEnvironmentConstants.HARNESS_NO_PROXY;
 import static io.harness.ci.commonconstants.CIExecutionConstants.ACCOUNT_ID_ATTR;
 import static io.harness.ci.commonconstants.CIExecutionConstants.ADDON_VOLUME;
 import static io.harness.ci.commonconstants.CIExecutionConstants.ADDON_VOL_MOUNT_PATH;
@@ -94,6 +96,7 @@ import io.harness.remote.client.NGRestUtils;
 import io.harness.stoserviceclient.STOServiceUtils;
 import io.harness.tunnel.TunnelResourceClient;
 import io.harness.utils.CiIntegrationStageUtils;
+import io.harness.utils.ProxyUtils;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -263,7 +266,7 @@ public class VmInitializeUtils {
   }
 
   public Map<String, String> getStageProxyVars(IntegrationStageConfig integrationStageConfig, OSType os,
-      NGAccess ngAccess, ConnectorUtils connectorUtils, Infrastructure infra) {
+      NGAccess ngAccess, ConnectorUtils connectorUtils, Infrastructure infra, ConnectorDetails gitConnector) {
     Map<String, String> envVars = new HashMap<>();
     Set<String> noProxyVars = new HashSet<>();
     Set<String> shouldProxyRegistries = new HashSet<>();
@@ -276,7 +279,10 @@ public class VmInitializeUtils {
         NGRestUtils.getResponse(tunnelResourceClient.getTunnel(ngAccess.getAccountIdentifier()));
     if (tunnelResponseDTO != null && isNotEmpty(tunnelResponseDTO.getServerUrl())
         && isNotEmpty(tunnelResponseDTO.getPort())) {
-      envVars.put(DRONE_HTTP_PROXY, tunnelResponseDTO.getServerUrl() + ":" + tunnelResponseDTO.getPort());
+      envVars.put(HARNESS_HTTP_PROXY,
+          "http://" + ProxyUtils.getProxyHost(tunnelResponseDTO.getServerUrl()) + ":" + tunnelResponseDTO.getPort());
+      envVars.put(HARNESS_HTTPS_PROXY,
+          "https://" + ProxyUtils.getProxyHost(tunnelResponseDTO.getServerUrl()) + ":" + tunnelResponseDTO.getPort());
     } else {
       return envVars;
     }
@@ -304,10 +310,16 @@ public class VmInitializeUtils {
       }
     }
 
-    if (!shouldProxyRegistries.isEmpty()) {
-      noProxyVars.addAll(Set.of(CIExecutionConstants.DOCKER_IO, CIExecutionConstants.DOCKER_COM));
-      envVars.put(DRONE_NO_PROXY, String.join(",", noProxyVars));
+    noProxyVars.addAll(Set.of(CIExecutionConstants.DOCKER_IO, CIExecutionConstants.DOCKER_COM));
+    envVars.put(HARNESS_NO_PROXY, String.join(",", noProxyVars));
+
+    if (gitConnector != null && gitConnector.getConnectorConfig() instanceof WithProxy) {
+      WithProxy connectorProxy = (WithProxy) gitConnector.getConnectorConfig();
+      if (connectorProxy.getProxy()) {
+        envVars.put(HARNESS_GIT_PROXY, "true");
+      }
     }
+
     return envVars;
   }
 

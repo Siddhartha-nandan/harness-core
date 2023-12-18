@@ -116,6 +116,14 @@ if [[ "" != "$S3_SYNC_CONFIG_REGION" ]]; then
   export S3_SYNC_CONFIG_REGION; yq -i '.awsS3SyncConfig.region=env(S3_SYNC_CONFIG_REGION)' $CONFIG_FILE
 fi
 
+if [[ "" != "$AWS_BILLING_DATA_VERIFICATION_ENABLED" ]]; then
+  export AWS_BILLING_DATA_VERIFICATION_ENABLED; yq -i '.billingDataVerificationJobConfig.awsBillingDataVerificationEnabled=env(AWS_BILLING_DATA_VERIFICATION_ENABLED)' $CONFIG_FILE
+fi
+
+if [[ "" != "$AWS_MAXIMUM_HISTORICAL_MONTHS_FOR_VERIFICATION_JOB" ]]; then
+  export AWS_MAXIMUM_HISTORICAL_MONTHS_FOR_VERIFICATION_JOB; yq -i '.billingDataVerificationJobConfig.awsMaximumHistoricalMonthsForVerificationJob=env(AWS_MAXIMUM_HISTORICAL_MONTHS_FOR_VERIFICATION_JOB)' $CONFIG_FILE
+fi
+
 if [[ "" != "$DATA_PIPELINE_CONFIG_GCP_PROJECT_ID" ]]; then
   export DATA_PIPELINE_CONFIG_GCP_PROJECT_ID; yq -i '.billingDataPipelineConfig.gcpProjectId=env(DATA_PIPELINE_CONFIG_GCP_PROJECT_ID)' $CONFIG_FILE
 fi
@@ -240,6 +248,10 @@ if [[ "" != "$AWS_ACCOUNT_TAGS_COLLECTION_CRON" ]]; then
   export AWS_ACCOUNT_TAGS_COLLECTION_CRON; yq -i '.scheduler-jobs-config.awsAccountTagsCollectionJobCron=env(AWS_ACCOUNT_TAGS_COLLECTION_CRON)' $CONFIG_FILE
 fi
 
+if [[ "" != "$BILLING_DATA_VERIFICATION_JOB_CRON" ]]; then
+  export BILLING_DATA_VERIFICATION_JOB_CRON; yq -i '.scheduler-jobs-config.billingDataVerificationJobCron=env(BILLING_DATA_VERIFICATION_JOB_CRON)' $CONFIG_FILE
+fi
+
 if [[ "" != "$GOVERNANCE_RECOMMENDATION_JOB_CRON" ]]; then
   export GOVERNANCE_RECOMMENDATION_JOB_CRON; yq -i '.scheduler-jobs-config.governanceRecommendationJobCronAws=env(GOVERNANCE_RECOMMENDATION_JOB_CRON)' $CONFIG_FILE
 fi
@@ -354,6 +366,14 @@ fi
 
 if [[ "" != "$GCP_SYNC_PYTHON_IMAGE_PATH" ]]; then
   export GCP_SYNC_PYTHON_IMAGE_PATH; yq -i '.gcpSyncSmpConfig.k8sJobPythonImage=env(GCP_SYNC_PYTHON_IMAGE_PATH)' $CONFIG_FILE
+fi
+
+if [[ "" != "$BUCKET_NAME_PREFIX" ]]; then
+  export BUCKET_NAME_PREFIX; yq -i '.gcpSyncSmpConfig.bucketNamePrefix=env(BUCKET_NAME_PREFIX)' $CONFIG_FILE
+fi
+
+if [[ "" != "$GCP_SMP_ENABLED" ]]; then
+  export GCP_SMP_ENABLED; yq -i '.gcpSyncSmpConfig.gcpSmpEnabled=env(GCP_SMP_ENABLED)' $CONFIG_FILE
 fi
 
 replace_key_value cfClientConfig.apiKey "$CF_CLIENT_API_KEY"

@@ -13,14 +13,13 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 
-import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
+
 @Value
-@EqualsAndHashCode(callSuper = true)
 @SuperBuilder
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_K8S})
-public class SMIProviderConfig extends K8sTrafficRoutingConfig {
+public class SMIProviderConfig implements ProviderConfig {
   String rootService;
   @Override
   public ProviderType getProviderType() {

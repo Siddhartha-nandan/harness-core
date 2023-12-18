@@ -37,7 +37,9 @@ import io.harness.connector.ConnectorResponseDTO;
 import io.harness.connector.entities.embedded.vaultconnector.VaultConnector.VaultConnectorKeys;
 import io.harness.connector.helper.CustomSecretManagerHelper;
 import io.harness.connector.impl.ConnectorErrorMessagesHelper;
+import io.harness.connector.impl.SecretRefInputValidationHelper;
 import io.harness.connector.services.ConnectorService;
+import io.harness.connector.services.NGConnectorSecretManagerService;
 import io.harness.connector.services.NGVaultService;
 import io.harness.delegate.beans.connector.ConnectorType;
 import io.harness.delegate.beans.connector.customsecretmanager.CustomSecretManagerConnectorDTO;
@@ -98,6 +100,8 @@ public class SecretManagerConnectorServiceImplTest extends CategoryTest {
   private ConnectorErrorMessagesHelper connectorErrorMessagesHelper;
   private CustomSecretManagerHelper customSecretManagerHelper;
   private SecretCrudService ngSecretService;
+  private SecretRefInputValidationHelper secretRefInputValidationHelper;
+  private NGConnectorSecretManagerService ngConnectorSecretManagerService;
 
   @Before
   public void setup() {
@@ -110,9 +114,12 @@ public class SecretManagerConnectorServiceImplTest extends CategoryTest {
     connectorErrorMessagesHelper = mock(ConnectorErrorMessagesHelper.class);
     customSecretManagerHelper = mock(CustomSecretManagerHelper.class);
     ngSecretService = mock(SecretCrudService.class);
+    secretRefInputValidationHelper = mock(SecretRefInputValidationHelper.class);
+    ngConnectorSecretManagerService = mock(NGConnectorSecretManagerService.class);
+
     secretManagerConnectorService = new SecretManagerConnectorServiceImpl(defaultConnectorService, connectorRepository,
         ngVaultService, enforcementClientService, templateResourceClient, connectorErrorMessagesHelper,
-        customSecretManagerHelper, ngSecretService);
+        customSecretManagerHelper, ngSecretService, secretRefInputValidationHelper, ngConnectorSecretManagerService);
   }
 
   private InvalidRequestException getInvalidRequestException() {
