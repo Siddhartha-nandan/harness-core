@@ -19,6 +19,7 @@ import static io.harness.ng.accesscontrol.PlatformPermissions.CREATE_PROJECT_PER
 import static io.harness.ng.accesscontrol.PlatformPermissions.DELETE_PROJECT_PERMISSION;
 import static io.harness.ng.accesscontrol.PlatformPermissions.EDIT_PROJECT_PERMISSION;
 import static io.harness.ng.accesscontrol.PlatformPermissions.VIEW_PROJECT_PERMISSION;
+import static io.harness.ng.accesscontrol.PlatformResourceTypes.ORGANIZATION;
 import static io.harness.ng.accesscontrol.PlatformResourceTypes.PROJECT;
 import static io.harness.ng.core.remote.ProjectMapper.toResponseWithFavouritesInfo;
 import static io.harness.utils.PageUtils.getNGPageResponse;
@@ -35,7 +36,11 @@ import io.harness.accesscontrol.AccountIdentifier;
 import io.harness.accesscontrol.NGAccessControlCheck;
 import io.harness.accesscontrol.OrgIdentifier;
 import io.harness.accesscontrol.ResourceIdentifier;
+import io.harness.accesscontrol.acl.api.Resource;
+import io.harness.accesscontrol.acl.api.ResourceScope;
+import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
 import io.harness.beans.SortOrder;
 import io.harness.exception.EntityNotFoundException;
 import io.harness.favorites.ResourceType;
@@ -46,6 +51,7 @@ import io.harness.ng.beans.PageResponse;
 import io.harness.ng.core.dto.ActiveProjectsCountDTO;
 import io.harness.ng.core.dto.ErrorDTO;
 import io.harness.ng.core.dto.FailureDTO;
+import io.harness.ng.core.dto.MoveProjectRequest;
 import io.harness.ng.core.dto.ProjectDTO;
 import io.harness.ng.core.dto.ProjectFilterDTO;
 import io.harness.ng.core.dto.ProjectRequest;
@@ -90,6 +96,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -131,6 +138,7 @@ public class ProjectResource {
   private final OrganizationService organizationService;
   private final FavoritesService favoritesService;
   private final UserHelperService userHelperService;
+  private final AccessControlClient accessControlClient;
 
   @POST
   @ApiOperation(value = "Create a Project", nickname = "postProject")
@@ -149,9 +157,9 @@ public class ProjectResource {
               "Organization identifier for the Project. If left empty, the Project is created under Default Organization")
       @QueryParam(NGCommonEntityConstants.ORG_KEY) @DefaultValue(
           DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier,
-      @RequestBody(required = true,
-          description = "Details of the Project to create") @NotNull @Valid ProjectRequest projectDTO) {
-    Project createdProject = projectService.create(accountIdentifier, orgIdentifier, projectDTO.getProject());
+      @RequestBody(required = true, description = "Details of the Project to create") @NotNull
+      @Valid ProjectRequest projectDTO, @Context ScopeInfo scopeInfo) {
+    Project createdProject = projectService.create(accountIdentifier, scopeInfo, projectDTO.getProject());
     return ResponseDTO.newResponse(createdProject.getVersion().toString(),
         ProjectMapper.toProjectResponseBuilder(createdProject)
             .isFavorite(projectService.isFavorite(createdProject, userHelperService.getUserId()))
@@ -177,8 +185,9 @@ public class ProjectResource {
       @Parameter(
           description = "Organization identifier for the project. If left empty, Default Organization is assumed")
       @QueryParam(NGCommonEntityConstants.ORG_KEY) @DefaultValue(
-          DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier) {
-    Optional<Project> projectOptional = projectService.get(accountIdentifier, orgIdentifier, identifier);
+          DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier,
+      @Context ScopeInfo scopeInfo) {
+    Optional<Project> projectOptional = projectService.get(accountIdentifier, scopeInfo, identifier);
     if (!projectOptional.isPresent()) {
       throw new EntityNotFoundException(
           String.format("Project with orgIdentifier [%s] and identifier [%s] not found", orgIdentifier, identifier));
@@ -304,14 +313,40 @@ public class ProjectResource {
       @RequestBody(required = true,
           description =
               "This is the updated Project. Please provide values for all fields, not just the fields you are updating")
-      @NotNull @Valid ProjectRequest projectDTO) {
+      @NotNull @Valid ProjectRequest projectDTO,
+      @Context ScopeInfo scopeInfo) {
     projectDTO.getProject().setVersion(isNumeric(ifMatch) ? parseLong(ifMatch) : null);
     Project updatedProject =
-        projectService.update(accountIdentifier, orgIdentifier, identifier, projectDTO.getProject());
+        projectService.update(accountIdentifier, scopeInfo, orgIdentifier, identifier, projectDTO.getProject());
     return ResponseDTO.newResponse(updatedProject.getVersion().toString(),
         ProjectMapper.toProjectResponseBuilder(updatedProject)
             .isFavorite(projectService.isFavorite(updatedProject, userHelperService.getUserId()))
             .build());
+  }
+
+  @PUT
+  @Path("{identifier}/move")
+  @Hidden()
+  @ApiOperation(value = "Move a Project across orgs", nickname = "moveProject")
+  public ResponseDTO<Boolean> moveProject(
+      @Parameter(description = PROJECT_PARAM_MESSAGE) @NotNull @PathParam(
+          NGCommonEntityConstants.IDENTIFIER_KEY) @ResourceIdentifier String identifier,
+      @Parameter(description = ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
+          NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
+      @Parameter(
+          description = "Organization identifier for the Project. If left empty, Default Organization is assumed")
+      @QueryParam(NGCommonEntityConstants.ORG_KEY) @DefaultValue(
+          DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier,
+      @Context ScopeInfo scopeInfo,
+      @RequestBody(required = true,
+          description = "This is the updated org identifier") @NotNull @Valid MoveProjectRequest moveProjectRequest) {
+    accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountIdentifier, orgIdentifier, identifier),
+        Resource.of(ORGANIZATION, identifier), DELETE_PROJECT_PERMISSION);
+    accessControlClient.checkForAccessOrThrow(
+        ResourceScope.of(accountIdentifier, orgIdentifier, moveProjectRequest.getDestinationOrgIdentifier()),
+        Resource.of(ORGANIZATION, moveProjectRequest.getDestinationOrgIdentifier()), CREATE_PROJECT_PERMISSION);
+    return ResponseDTO.newResponse(projectService.moveProject(
+        accountIdentifier, scopeInfo, orgIdentifier, identifier, moveProjectRequest.getDestinationOrgIdentifier()));
   }
 
   @DELETE
@@ -336,9 +371,10 @@ public class ProjectResource {
           description =
               "This is the Organization Identifier for the Project. By default, the Default Organization's Identifier is considered.")
       @QueryParam(NGCommonEntityConstants.ORG_KEY) @DefaultValue(
-          DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier) {
+          DEFAULT_ORG_IDENTIFIER) @OrgIdentifier String orgIdentifier,
+      @Context ScopeInfo scopeInfo) {
     return ResponseDTO.newResponse(projectService.delete(
-        accountIdentifier, orgIdentifier, identifier, isNumeric(ifMatch) ? parseLong(ifMatch) : null));
+        accountIdentifier, scopeInfo, orgIdentifier, identifier, isNumeric(ifMatch) ? parseLong(ifMatch) : null));
   }
 
   @GET
@@ -361,9 +397,10 @@ public class ProjectResource {
           "hasModule") @DefaultValue("true") boolean hasModule,
       @Parameter(description = "Module type") @QueryParam(
           NGResourceFilterConstants.MODULE_TYPE_KEY) ModuleType moduleType,
-      @Parameter(description = "Search Term") @QueryParam(
-          NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm) {
-    Set<String> permittedOrgIds = organizationService.getPermittedOrganizations(accountIdentifier, orgIdentifier);
+      @Parameter(description = "Search Term") @QueryParam(NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm,
+      @Context ScopeInfo scopeInfo) {
+    Set<String> permittedOrgIds =
+        organizationService.getPermittedOrganizations(accountIdentifier, scopeInfo, orgIdentifier);
     ProjectFilterDTO projectFilterDTO = getProjectFilterDTO(searchTerm, permittedOrgIds, hasModule, moduleType);
     return ResponseDTO.newResponse(projectService.listPermittedProjects(accountIdentifier, projectFilterDTO));
   }
@@ -392,8 +429,10 @@ public class ProjectResource {
       @Parameter(description = "Search Term") @QueryParam(NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm,
       @Parameter(description = "Start time") @NotNull @QueryParam(
           NGResourceFilterConstants.START_TIME) long startInterval,
-      @Parameter(description = "End time") @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval) {
-    Set<String> permittedOrgIds = organizationService.getPermittedOrganizations(accountIdentifier, orgIdentifier);
+      @Parameter(description = "End time") @NotNull @QueryParam(NGResourceFilterConstants.END_TIME) long endInterval,
+      @Context ScopeInfo scopeInfo) {
+    Set<String> permittedOrgIds =
+        organizationService.getPermittedOrganizations(accountIdentifier, scopeInfo, orgIdentifier);
     ProjectFilterDTO projectFilterDTO = getProjectFilterDTO(searchTerm, permittedOrgIds, hasModule, moduleType);
     return ResponseDTO.newResponse(
         projectService.permittedProjectsCount(accountIdentifier, projectFilterDTO, startInterval, endInterval));

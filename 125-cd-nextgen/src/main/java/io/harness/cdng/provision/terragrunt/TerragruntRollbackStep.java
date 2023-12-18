@@ -6,8 +6,7 @@
  */
 
 package io.harness.cdng.provision.terragrunt;
-import static io.harness.beans.FeatureName.CDS_TERRAGRUNT_USE_UNIQUE_DIRECTORY_BASE_DIR_NG;
-import static io.harness.beans.FeatureName.CDS_TF_TG_SKIP_ERROR_LOGS_COLORING;
+
 import static io.harness.cdng.provision.terragrunt.TerragruntStepHelper.DEFAULT_TIMEOUT;
 import static io.harness.provision.TerragruntConstants.APPLY;
 import static io.harness.provision.TerragruntConstants.DESTROY;
@@ -57,6 +56,7 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.StepUtils;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import software.wings.beans.TaskType;
 
@@ -256,11 +256,9 @@ public class TerragruntRollbackStep extends CdTaskExecutable<AbstractTerragruntT
         .encryptedDataDetailList(terragruntStepHelper.getEncryptionDetailsFromTgInheritConfig(
             terragruntConfig.getConfigFiles().toGitStoreConfig(), terragruntConfig.getBackendConfigFile(),
             terragruntConfig.getVarFileConfigs(), ambiance))
-        .useUniqueDirectoryForBaseDir(
-            cdFeatureFlagHelper.isEnabled(accountId, CDS_TERRAGRUNT_USE_UNIQUE_DIRECTORY_BASE_DIR_NG))
+        .useUniqueDirectoryForBaseDir(true)
         .timeoutInMillis(StepUtils.getTimeoutMillis(stepParameters.getTimeout(), DEFAULT_TIMEOUT))
-        .skipColorLogs(
-            cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), CDS_TF_TG_SKIP_ERROR_LOGS_COLORING));
+        .skipColorLogs(true);
     builder.build();
 
     return builder;
@@ -292,11 +290,9 @@ public class TerragruntRollbackStep extends CdTaskExecutable<AbstractTerragruntT
         .encryptedDataDetailList(terragruntStepHelper.getEncryptionDetailsFromTgInheritConfig(
             terragruntConfig.getConfigFiles().toGitStoreConfig(), terragruntConfig.getBackendConfigFile(),
             terragruntConfig.getVarFileConfigs(), ambiance))
-        .useUniqueDirectoryForBaseDir(
-            cdFeatureFlagHelper.isEnabled(accountId, CDS_TERRAGRUNT_USE_UNIQUE_DIRECTORY_BASE_DIR_NG))
+        .useUniqueDirectoryForBaseDir(true)
         .timeoutInMillis(StepUtils.getTimeoutMillis(stepParameters.getTimeout(), DEFAULT_TIMEOUT))
-        .skipColorLogs(
-            cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), CDS_TF_TG_SKIP_ERROR_LOGS_COLORING));
+        .skipColorLogs(true);
     builder.build();
 
     return builder;
@@ -305,6 +301,12 @@ public class TerragruntRollbackStep extends CdTaskExecutable<AbstractTerragruntT
   @Override
   public Class getStepParametersClass() {
     return StepBaseParameters.class;
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 
   @Override

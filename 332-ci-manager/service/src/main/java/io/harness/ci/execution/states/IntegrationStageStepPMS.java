@@ -28,6 +28,7 @@ import io.harness.app.beans.entities.StepExecutionParameters;
 import io.harness.beans.build.BuildStatusUpdateParameter;
 import io.harness.beans.execution.ExecutionSource;
 import io.harness.beans.execution.WebhookExecutionSource;
+import io.harness.beans.serializer.RunTimeInputHandler;
 import io.harness.beans.stages.IntegrationStageStepParametersPMS;
 import io.harness.beans.steps.CIRegistry;
 import io.harness.beans.steps.outcome.CIStepArtifactOutcome;
@@ -44,7 +45,7 @@ import io.harness.ci.execution.buildstate.ConnectorUtils;
 import io.harness.ci.execution.integrationstage.IntegrationStageUtils;
 import io.harness.ci.execution.utils.CompletableFutures;
 import io.harness.ci.ff.CIFeatureFlagService;
-import io.harness.ci.metrics.CIManagerMetricsService;
+import io.harness.ci.metrics.ExecutionMetricsService;
 import io.harness.data.encoding.EncodingUtils;
 import io.harness.delegate.TaskSelector;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
@@ -119,7 +120,7 @@ public class IntegrationStageStepPMS implements ChildExecutable<StageElementPara
   @Inject private StepExecutionParametersRepository stepExecutionParametersRepository;
   @Inject private HPersistence persistence;
   @Inject private KryoSerializer kryoSerializer;
-  @Inject private CIManagerMetricsService ciManagerMetricsService;
+  @Inject private ExecutionMetricsService executionMetricsService;
   private static final String STAGE_STATUS = "ci_active_stage_execution_count";
   private static final String STAGE_TIME_COUNT = "ci_stage_execution_time";
 
@@ -223,9 +224,9 @@ public class IntegrationStageStepPMS implements ChildExecutable<StageElementPara
     StepResponseNotifyData stepResponseNotifyData = filterStepResponse(responseDataMap);
 
     Status stageStatus = stepResponseNotifyData.getStatus();
-    ciManagerMetricsService.recordStageExecutionCount(
+    executionMetricsService.recordStageExecutionCount(
         String.valueOf(stageStatus), STAGE_STATUS, AmbianceUtils.getAccountId(ambiance), stepParameters.getType());
-    ciManagerMetricsService.recordStageStatusExecutionTime(String.valueOf(stageStatus),
+    executionMetricsService.recordStageStatusExecutionTime(String.valueOf(stageStatus),
         (currentTime - startTime) / 1000, STAGE_TIME_COUNT, AmbianceUtils.getAccountId(ambiance),
         stepParameters.getType());
     log.info("Executed integration stage {} in {} milliseconds with status {} ", stepParameters.getIdentifier(),
@@ -379,6 +380,10 @@ public class IntegrationStageStepPMS implements ChildExecutable<StageElementPara
     CodeBase codeBase = integrationStageStepParametersPMS.getCodeBase();
     if (codeBase == null) {
       return null;
+    }
+    if (RunTimeInputHandler.resolveBooleanParameter(integrationStageStepParametersPMS.getEnableCloneRepo(), false)
+        && ParameterField.isNull(codeBase.getBuild())) {
+      throw new CIStageExecutionException(" Build properties must be defined when codebase is enabled");
     }
     ExecutionTriggerInfo triggerInfo = ambiance.getMetadata().getTriggerInfo();
     TriggerPayload triggerPayload = integrationStageStepParametersPMS.getTriggerPayload();
