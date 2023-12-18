@@ -68,8 +68,7 @@ public final class UuidAndIdentifierUtils {
    * @return
    */
   private static String generateFormattedIdentifier(String name) {
-    return StringUtils.isBlank(name) ? name
-                                     : name.trim().replaceAll("\\.", "_").replaceAll("-", "_");
+    return StringUtils.isBlank(name) ? name : name.trim().replaceAll("\\.", "_").replaceAll("-", "_");
     // replace dot and hyphen with underscore
   }
 }
