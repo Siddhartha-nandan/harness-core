@@ -51,6 +51,5 @@ public interface EnvironmentRepositoryCustom {
   Environment getRemoteEnvironmentWithYaml(
       Environment environment, boolean loadFromCache, boolean loadFromFallbackBranch);
 
-  Environment moveEnvironment(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      String environmentIdentifier, EnvironmentMoveConfigOperationDTO moveConfigOperationDTO, Environment environment);
+  Environment moveEnvironment(EnvironmentMoveConfigOperationDTO moveConfigOperationDTO, Environment environment);
 }

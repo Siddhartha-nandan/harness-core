@@ -53,7 +53,9 @@ import io.harness.exception.UnexpectedException;
 import io.harness.exception.UnsupportedOperationException;
 import io.harness.exception.WingsException;
 import io.harness.expression.EngineExpressionEvaluator;
+import io.harness.gitaware.helper.GitAwareContextHelper;
 import io.harness.gitsync.beans.StoreType;
+import io.harness.gitsync.interceptor.GitEntityInfo;
 import io.harness.gitx.GitXSettingsHelper;
 import io.harness.gitx.GitXTransientBranchGuard;
 import io.harness.ng.core.EntityDetail;
@@ -89,7 +91,6 @@ import io.harness.ngsettings.SettingIdentifiers;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.outbox.api.OutboxService;
 import io.harness.pms.merger.helpers.RuntimeInputFormHelper;
-import io.harness.pms.pipeline.MoveConfigOperationType;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.remote.client.NGRestUtils;
@@ -1114,46 +1115,60 @@ public class EnvironmentServiceImpl implements EnvironmentService {
           GitXUtils.getErrorMessageForGitSimplificationNotEnabled(orgIdentifier, projectIdentifier));
     }
 
-    Optional<Environment> environment =
+    Optional<Environment> optionalEnvironment =
         getMetadata(accountIdentifier, orgIdentifier, projectIdentifier, environmentIdentifier, false);
 
-    if (environment.isEmpty()) {
+    if (optionalEnvironment.isEmpty()) {
       throw new InvalidRequestException(
           String.format("Environment with the given identifier: %s does not exist", environmentIdentifier));
     }
 
-    if (StoreType.REMOTE.equals(environment.get().getStoreType())
+    Environment environment = optionalEnvironment.get();
+    if (StoreType.REMOTE.equals(environment.getStoreType())
         && INLINE_TO_REMOTE.equals(moveConfigOperationDTO.getMoveConfigOperationType())) {
       throw new InvalidRequestException(
           String.format("Environment with the given identifier: %s is already remote", environmentIdentifier));
     }
 
-    Environment movedEntity = environmentRepository.moveEnvironment(accountIdentifier, orgIdentifier, projectIdentifier,
-        environmentIdentifier, moveConfigOperationDTO, environment.get());
+    setupGitContext(moveConfigOperationDTO);
+    applyGitXSettingsIfApplicable(
+        environment.getAccountId(), environment.getOrgIdentifier(), environment.getProjectIdentifier());
+
+    Environment movedEntity = environmentRepository.moveEnvironment(moveConfigOperationDTO, environment);
     return EnvironmentMoveConfigResponse.builder().identifier(movedEntity.getIdentifier()).success(true).build();
   }
 
+  private void setupGitContext(EnvironmentMoveConfigOperationDTO moveConfigDTO) {
+    if (INLINE_TO_REMOTE.equals(moveConfigDTO.getMoveConfigOperationType())) {
+      GitAwareContextHelper.populateGitDetails(
+          GitEntityInfo.builder()
+              .branch(moveConfigDTO.getBranch())
+              .filePath(moveConfigDTO.getFilePath())
+              .commitMsg(moveConfigDTO.getCommitMessage())
+              .isNewBranch(isNotEmpty(moveConfigDTO.getBranch()) && isNotEmpty(moveConfigDTO.getBaseBranch()))
+              .baseBranch(moveConfigDTO.getBaseBranch())
+              .connectorRef(moveConfigDTO.getConnectorRef())
+              .storeType(StoreType.REMOTE)
+              .repoName(moveConfigDTO.getRepoName())
+              .build());
+    }
+  }
+
   private void validateMoveConfigRequest(EnvironmentMoveConfigOperationDTO moveConfigOperationDTO) {
-    if (moveConfigOperationDTO.getMoveConfigOperationType().equals(INLINE_TO_REMOTE)) {
+    if (INLINE_TO_REMOTE.equals(moveConfigOperationDTO.getMoveConfigOperationType())) {
       if (isEmpty(moveConfigOperationDTO.getConnectorRef())) {
-        throwInvalidRequestForEmptyField("connectorRef");
+        GitXUtils.throwInvalidRequestForEmptyField("connectorRef");
       }
-
       if (isEmpty(moveConfigOperationDTO.getFilePath())) {
-        throwInvalidRequestForEmptyField("filePath");
+        GitXUtils.throwInvalidRequestForEmptyField("filePath");
       }
-
       if (isEmpty(moveConfigOperationDTO.getRepoName())) {
-        throwInvalidRequestForEmptyField("repoName");
+        GitXUtils.throwInvalidRequestForEmptyField("repoName");
       }
     } else {
       throw new UnsupportedOperationException(String.format(
           "Move operation: [%s] not supported for environments", moveConfigOperationDTO.getMoveConfigOperationType()));
     }
-  }
-
-  private void throwInvalidRequestForEmptyField(String fieldName) {
-    throw new InvalidRequestException(String.format("Error: %s cannot be empty", fieldName));
   }
 
   private boolean isForceDeleteEnabled(String accountIdentifier) {

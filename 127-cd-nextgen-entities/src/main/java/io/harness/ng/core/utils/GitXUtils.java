@@ -14,6 +14,7 @@ import static java.lang.String.format;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.data.structure.EmptyPredicate;
+import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ScmException;
 
 import lombok.experimental.UtilityClass;
@@ -57,5 +58,9 @@ public class GitXUtils {
       return null;
     }
     return branch;
+  }
+
+  public void throwInvalidRequestForEmptyField(String fieldName) {
+    throw new InvalidRequestException(String.format("Error: %s cannot be empty", fieldName));
   }
 }

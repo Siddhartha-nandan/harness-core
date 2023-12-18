@@ -289,8 +289,8 @@ public class EnvironmentRepositoryCustomImpl implements EnvironmentRepositoryCus
   }
 
   @Override
-  public Environment moveEnvironment(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      String environmentIdentifier, EnvironmentMoveConfigOperationDTO moveConfigOperationDTO, Environment environment) {
+  public Environment moveEnvironment(
+      EnvironmentMoveConfigOperationDTO moveConfigOperationDTO, Environment environment) {
     Criteria criteria = Criteria.where(EnvironmentKeys.accountId)
                             .is(environment.getAccountId())
                             .and(EnvironmentKeys.orgIdentifier)
@@ -303,15 +303,13 @@ public class EnvironmentRepositoryCustomImpl implements EnvironmentRepositoryCus
                             .is(false);
 
     if (INLINE_TO_REMOTE.equals(moveConfigOperationDTO.getMoveConfigOperationType())) {
-      // add params to git context
-      setupGitContext(moveConfigOperationDTO);
-
       Environment environmentToUpdate =
           environment.withRepo(moveConfigOperationDTO.getRepoName())
               .withStoreType(StoreType.REMOTE)
               .withFilePath(moveConfigOperationDTO.getFilePath())
               .withConnectorRef(moveConfigOperationDTO.getConnectorRef())
-              .withRepoURL(gitAwareEntityHelper.getRepoUrl(accountIdentifier, orgIdentifier, projectIdentifier))
+              .withRepoURL(gitAwareEntityHelper.getRepoUrl(environment.getAccountIdentifier(),
+                  environment.getOrgIdentifier(), environment.getProjectIdentifier()))
               .withFallBackBranch(moveConfigOperationDTO.getBranch());
 
       return moveToRemote(criteria, environmentToUpdate);
@@ -319,20 +317,6 @@ public class EnvironmentRepositoryCustomImpl implements EnvironmentRepositoryCus
       throw new UnsupportedOperationException(String.format(
           "Move operation:[%s] not supported for environments", moveConfigOperationDTO.getMoveConfigOperationType()));
     }
-  }
-
-  private void setupGitContext(EnvironmentMoveConfigOperationDTO moveConfigDTO) {
-    GitAwareContextHelper.populateGitDetails(
-        GitEntityInfo.builder()
-            .branch(moveConfigDTO.getBranch())
-            .filePath(moveConfigDTO.getFilePath())
-            .commitMsg(moveConfigDTO.getCommitMessage())
-            .isNewBranch(isNotEmpty(moveConfigDTO.getBranch()) && isNotEmpty(moveConfigDTO.getBaseBranch()))
-            .baseBranch(moveConfigDTO.getBaseBranch())
-            .connectorRef(moveConfigDTO.getConnectorRef())
-            .storeType(StoreType.REMOTE)
-            .repoName(moveConfigDTO.getRepoName())
-            .build());
   }
 
   private Environment moveToRemote(Criteria criteria, Environment environmentToMove) {

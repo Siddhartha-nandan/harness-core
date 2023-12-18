@@ -1508,24 +1508,20 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
 
   private void validateMoveConfigRequest(ServiceMoveConfigOperationDTO moveConfigOperationDTO) {
     if (isEmpty(moveConfigOperationDTO.getConnectorRef())) {
-      throwInvalidRequestForEmptyField("connectorRef");
+      GitXUtils.throwInvalidRequestForEmptyField("connectorRef");
     }
 
     if (isEmpty(moveConfigOperationDTO.getFilePath())) {
-      throwInvalidRequestForEmptyField("filePath");
+      GitXUtils.throwInvalidRequestForEmptyField("filePath");
     }
 
     if (isEmpty(moveConfigOperationDTO.getRepoName())) {
-      throwInvalidRequestForEmptyField("repoName");
+      GitXUtils.throwInvalidRequestForEmptyField("repoName");
     }
 
     if (moveConfigOperationDTO.getMoveConfigOperationType() == null) {
-      throwInvalidRequestForEmptyField("moveConfigOperationType");
+      GitXUtils.throwInvalidRequestForEmptyField("moveConfigOperationType");
     }
-  }
-
-  private void throwInvalidRequestForEmptyField(String fieldName) {
-    throw new InvalidRequestException(String.format("Error: %s cannot be empty", fieldName));
   }
 
   private void applyGitXSettingsIfApplicable(String accountIdentifier, String orgIdentifier, String projIdentifier) {
