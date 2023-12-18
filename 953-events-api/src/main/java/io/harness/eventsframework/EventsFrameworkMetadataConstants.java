@@ -26,7 +26,7 @@ public final class EventsFrameworkMetadataConstants {
   public static final String CREATE_ACTION = "create";
   public static final String RESTORE_ACTION = "restore";
   public static final String UPDATE_ACTION = "update";
-  public static final String MOVE_ACTION = "moved";
+  public static final String MOVE_ACTION = "move";
   public static final String SYNC_ACTION = "syncNgWithCg";
   public static final String UPSERT_ACTION = "upsert";
   public static final String DELETE_ACTION = "delete";

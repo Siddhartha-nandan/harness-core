@@ -132,7 +132,7 @@ public class ProjectEventHandler implements OutboxEventHandler {
     ProjectMoveEvent projectMoveEvent = objectMapper.readValue(outboxEvent.getEventData(), ProjectMoveEvent.class);
     AuditEntry auditEntry =
         AuditEntry.builder()
-            .action(Action.MOVED)
+            .action(Action.MOVE)
             .module(ModuleType.CORE)
             .newYaml(getYamlString(ProjectRequest.builder().project(projectMoveEvent.getNewProject()).build()))
             .oldYaml(getYamlString(ProjectRequest.builder().project(projectMoveEvent.getOldProject()).build()))
