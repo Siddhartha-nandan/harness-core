@@ -40,7 +40,7 @@ global:
             keys:
               MONGO_USER: ""
               MONGO_PASSWORD: ""
-        secretManagement: 
+        secretManagement:
           externalSecretsOperator:
             - secretStore:
                 name: ""
@@ -59,7 +59,7 @@ global:
       hosts:
         - timescaledb-single-chart:5432
       # -- Enable TimescaleDB SSL
-      sslEnabled: false        
+      sslEnabled: false
       secretName: ""
       userKey: ""
       passwordKey: ""
@@ -73,7 +73,7 @@ global:
               TIMESCALEDB_USERNAME: ""
               TIMESCALEDB_PASSWORD: ""
               TIMESCALEDB_SSL_ROOT_CERT: ""
-        secretManagement: 
+        secretManagement:
           externalSecretsOperator:
             - secretStore:
                 name: ""
@@ -94,7 +94,6 @@ global:
       # --  provide default values if redis.installed is set to false
       hosts:
         - redis:6379
- 
       secretName: ""
       userKey: ""
       passwordKey: ""
@@ -105,7 +104,7 @@ global:
             keys:
               REDIS_USERNAME: ""
               REDIS_PASSWORD: ""
-        secretManagement: 
+        secretManagement:
           externalSecretsOperator:
             - secretStore:
                 name: ""
@@ -131,7 +130,7 @@ global:
       secretName: ''
     # -- add annotations to ingress objects
     objects:
-      annotations: { }
+      annotations: {}
   istio:
     # -- create virtualServices objects
     enabled: false
@@ -142,18 +141,18 @@ global:
     virtualService:
       gateways:
       hosts:
-  ssca: 
+  ssca:
     enabled: false
 enableAuth: true
 replicaCount: 1
 maxSurge: 1
 maxUnavailable: 0
 image:
-  registry: docker.io
-  repository: harness/ci-manager-signed
+  registry: us.gcr.io/platform-205701
+  repository: ci-manager
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "5302"
+  tag: "1.6.0"
   digest: ""
   imagePullSecrets: []
 securityImage:
@@ -301,7 +300,6 @@ podAnnotations: {}
 podSecurityContext: {}
 # fsGroup: 2000
 
-
 redis:
   protocol: ""
   hosts: []
@@ -312,7 +310,7 @@ redis:
         keys:
           REDIS_USERNAME: ""
           REDIS_PASSWORD: ""
-    secretManagement: 
+    secretManagement:
       externalSecretsOperator:
         - secretStore:
             name: ""
@@ -337,7 +335,7 @@ timescaledb:
           TIMESCALEDB_USERNAME: ""
           TIMESCALEDB_PASSWORD: ""
           TIMESCALEDB_SSL_ROOT_CERT: ""
-    secretManagement: 
+    secretManagement:
       externalSecretsOperator:
         - secretStore:
             name: ""
@@ -365,7 +363,7 @@ database:
             keys:
               MONGO_USER: ""
               MONGO_PASSWORD: ""
-        secretManagement: 
+        secretManagement:
           externalSecretsOperator:
             - secretStore:
                 name: ""
@@ -388,7 +386,7 @@ database:
             keys:
               MONGO_USER: ""
               MONGO_PASSWORD: ""
-        secretManagement: 
+        secretManagement:
           externalSecretsOperator:
             - secretStore:
                 name: ""
@@ -411,7 +409,7 @@ database:
             keys:
               MONGO_USER: ""
               MONGO_PASSWORD: ""
-        secretManagement: 
+        secretManagement:
           externalSecretsOperator:
             - secretStore:
                 name: ""
@@ -422,8 +420,7 @@ database:
                   property: ""
                 MONGO_PASSWORD:
                   name: ""
-                  property: ""                        
-
+                  property: ""
 securityContext:
   runAsUser: 65534
   runAsNonRoot: true
@@ -455,30 +452,28 @@ tolerations: []
 affinity: {}
 additionalConfigs: {}
 java17flags: ""
-
 virtualService:
   annotations: {}
 ingress:
   annotations: {}
-
 secrets:
   default:
     LOG_SERVICE_GLOBAL_TOKEN: "Yzc2ZTU2N2EtYjM0MS00MDRkLWE4ZGQtZDk3Mzg3MTRlYjgyCg=="
     TI_SERVICE_GLOBAL_TOKEN: "59MR5RlVARcdH7zb7pNx6GzqiglBmXR8"
   kubernetesSecrets:
-  - secretName: ""
-    keys:
-      LOG_STREAMING_SERVICE_TOKEN: ""
-      VERIFICATION_SERVICE_SECRET: ""
-  secretManagement: 
+    - secretName: ""
+      keys:
+        LOG_STREAMING_SERVICE_TOKEN: ""
+        VERIFICATION_SERVICE_SECRET: ""
+  secretManagement:
     externalSecretsOperator:
-    - secretStore:
-        name: ""
-        kind: ""
-      remoteKeys:
-        LOG_STREAMING_SERVICE_TOKEN:
+      - secretStore:
           name: ""
-          property: ""
-        VERIFICATION_SERVICE_SECRET:
-          name: ""
-          property: "" 
+          kind: ""
+        remoteKeys:
+          LOG_STREAMING_SERVICE_TOKEN:
+            name: ""
+            property: ""
+          VERIFICATION_SERVICE_SECRET:
+            name: ""
+            property: ""
