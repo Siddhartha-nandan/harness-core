@@ -10,7 +10,7 @@ package io.harness.licensing.mappers.modules;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.exception.InvalidRequestException;
-import io.harness.licensing.beans.modules.CODEModuleLicenseDTO;
+import io.harness.licensing.beans.modules.CodeModuleLicenseDTO;
 import io.harness.licensing.entities.modules.CodeModuleLicense;
 import io.harness.licensing.helpers.ModuleLicenseHelper;
 import io.harness.licensing.mappers.LicenseObjectMapper;
@@ -20,23 +20,23 @@ import com.google.inject.Singleton;
 
 @OwnedBy(HarnessTeam.CODE)
 @Singleton
-public class CodeLicenseObjectMapper implements LicenseObjectMapper<CodeModuleLicense, CODEModuleLicenseDTO> {
+public class CodeLicenseObjectMapper implements LicenseObjectMapper<CodeModuleLicense, CodeModuleLicenseDTO> {
   @Inject private ModuleLicenseHelper moduleLicenseHelper;
 
   @Override
-  public CODEModuleLicenseDTO toDTO(CodeModuleLicense moduleLicense) {
-    return CODEModuleLicenseDTO.builder().numberOfDevelopers(moduleLicense.getNumberOfDevelopers()).build();
+  public CodeModuleLicenseDTO toDTO(CodeModuleLicense moduleLicense) {
+    return CodeModuleLicenseDTO.builder().numberOfDevelopers(moduleLicense.getNumberOfDevelopers()).build();
   }
 
   @Override
-  public CodeModuleLicense toEntity(CODEModuleLicenseDTO codeModuleLicenseDTO) {
+  public CodeModuleLicense toEntity(CodeModuleLicenseDTO codeModuleLicenseDTO) {
     validateModuleLicenseDTO(codeModuleLicenseDTO);
 
     return CodeModuleLicense.builder().numberOfDevelopers(codeModuleLicenseDTO.getNumberOfDevelopers()).build();
   }
 
   @Override
-  public void validateModuleLicenseDTO(CODEModuleLicenseDTO codeModuleLicenseDTO) {
+  public void validateModuleLicenseDTO(CodeModuleLicenseDTO codeModuleLicenseDTO) {
     if (!moduleLicenseHelper.isDeveloperLicensingFeatureEnabled(codeModuleLicenseDTO.getAccountIdentifier())) {
       if (codeModuleLicenseDTO.getDeveloperLicenseCount() != null) {
         throw new InvalidRequestException("New Developer Licensing feature is not enabled for this account!");

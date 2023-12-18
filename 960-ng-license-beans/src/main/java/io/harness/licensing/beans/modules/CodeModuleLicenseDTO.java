@@ -31,6 +31,6 @@ import lombok.experimental.SuperBuilder;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
 @Schema(name = "CODEModuleLicense", description = "Contains Details of the CODE License in Harness")
-public class CODEModuleLicenseDTO extends ModuleLicenseDTO {
+public class CodeModuleLicenseDTO extends ModuleLicenseDTO {
   Integer numberOfDevelopers;
 }

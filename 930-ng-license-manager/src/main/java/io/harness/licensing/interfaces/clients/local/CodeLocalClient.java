@@ -15,8 +15,8 @@ import io.harness.exception.UnsupportedOperationException;
 import io.harness.licensing.Edition;
 import io.harness.licensing.LicenseStatus;
 import io.harness.licensing.LicenseType;
-import io.harness.licensing.beans.modules.CODEModuleLicenseDTO;
-import io.harness.licensing.beans.modules.CODEModuleLicenseDTO.CODEModuleLicenseDTOBuilder;
+import io.harness.licensing.beans.modules.CodeModuleLicenseDTO;
+import io.harness.licensing.beans.modules.CodeModuleLicenseDTO.CODEModuleLicenseDTOBuilder;
 import io.harness.licensing.interfaces.clients.CodeModuleLicenseClient;
 
 import java.time.Instant;
@@ -27,12 +27,12 @@ public class CodeLocalClient implements CodeModuleLicenseClient {
   private static final int ENTERPRISE_TRIAL_DEVELOPERS = 200;
 
   @Override
-  public CODEModuleLicenseDTO createTrialLicense(Edition edition, String accountId) {
+  public CodeModuleLicenseDTO createTrialLicense(Edition edition, String accountId) {
     long expiryTime = Instant.now().plus(TRIAL_DURATION, ChronoUnit.DAYS).toEpochMilli();
     long currentTime = Instant.now().toEpochMilli();
 
     CODEModuleLicenseDTOBuilder<?, ?> builder =
-        CODEModuleLicenseDTO.builder().startTime(currentTime).expiryTime(expiryTime).status(LicenseStatus.ACTIVE);
+        CodeModuleLicenseDTO.builder().startTime(currentTime).expiryTime(expiryTime).status(LicenseStatus.ACTIVE);
 
     if (edition == Edition.ENTERPRISE) {
       return builder.numberOfDevelopers(ENTERPRISE_TRIAL_DEVELOPERS).licenseType(LicenseType.TRIAL).build();
