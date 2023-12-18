@@ -144,6 +144,9 @@ spec:
           {{- if .Values.extraVolumeMounts }}
           {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
           {{- end }}
+          {{- include "harnesscommon.dbv3.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 12 }}
+          {{- include "harnesscommon.dbv3.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "lock") | nindent 12 }}
+          {{- include "harnesscommon.dbv3.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "cache") | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- if .Values.lifecycleHooks }}
@@ -164,6 +167,9 @@ spec:
       {{- if .Values.extraVolumes }}
       {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
       {{- end }}
+      {{- include "harnesscommon.dbv3.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 8 }}
+      {{- include "harnesscommon.dbv3.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "lock") | indent 8 }}
+      {{- include "harnesscommon.dbv3.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "cache") | indent 8 }}
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

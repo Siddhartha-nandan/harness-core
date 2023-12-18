@@ -95,6 +95,12 @@ global:
       userKey: "redis-user"
       passwordKey: "redis-password"
       extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
       secrets:
         kubernetesSecrets:
           - secretName: ""

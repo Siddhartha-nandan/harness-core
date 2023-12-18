@@ -73,6 +73,9 @@ spec:
           resources:
               {{- toYaml .Values.resources | nindent 12 }}
           env:
+            {{- include "harnesscommon.dbv3.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "EVENTS_FRAMEWORK_REDIS_SSL_ENABLED" "sslCATrustStorePath" "EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PASSWORD")) | indent 12 }}
+            {{- include "harnesscommon.dbv3.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "lock" "variableNames" ( dict "sslEnabled" "REDIS_SSL_ENABLED" "sslCATrustStorePath" "REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "REDIS_SSL_CA_TRUST_STORE_PASSWORD" )) | indent 12 }}
+            {{- include "harnesscommon.dbv3.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "cache" "variableNames" ( dict "sslCATrustStorePath" "REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "REDIS_SSL_CA_TRUST_STORE_PASSWORD" )) | indent 12 }}
             {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD") | indent 12 }}
             {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "CACHE_CONFIG_REDIS_USERNAME" "passwordVariableName" "CACHE_CONFIG_REDIS_PASSWORD") | indent 12 }}
             {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "LOCK_CONFIG_REDIS_USERNAME" "passwordVariableName" "LOCK_CONFIG_REDIS_PASSWORD") | indent 12 }}
@@ -107,6 +110,10 @@ spec:
             timeoutSeconds: 5
             periodSeconds: 10
             failureThreshold: 20
+          volumeMounts:
+            {{- include "harnesscommon.dbv3.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 12 }}
+            {{- include "harnesscommon.dbv3.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "lock") | nindent 12 }}
+            {{- include "harnesscommon.dbv3.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "cache") | nindent 12 }}
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -128,3 +135,7 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      volumes:
+      {{- include "harnesscommon.dbv3.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 8 }}
+      {{- include "harnesscommon.dbv3.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "lock") | indent 8 }}
+      {{- include "harnesscommon.dbv3.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "cache") | indent 8 }}
