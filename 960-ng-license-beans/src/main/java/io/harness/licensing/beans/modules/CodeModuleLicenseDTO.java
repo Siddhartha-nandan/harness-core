@@ -33,4 +33,5 @@ import lombok.experimental.SuperBuilder;
 @Schema(name = "CODEModuleLicense", description = "Contains Details of the CODE License in Harness")
 public class CodeModuleLicenseDTO extends ModuleLicenseDTO {
   Integer numberOfDevelopers;
+  Integer numberOfRepositories;
 }

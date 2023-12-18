@@ -7,6 +7,7 @@
 
 package io.harness.licensing.interfaces.clients.local;
 
+import static io.harness.licensing.LicenseConstant.UNLIMITED;
 import static io.harness.licensing.interfaces.ModuleLicenseImpl.TRIAL_DURATION;
 
 import io.harness.annotations.dev.HarnessTeam;
@@ -34,9 +35,19 @@ public class CodeLocalClient implements CodeModuleLicenseClient {
     CodeModuleLicenseDTOBuilder<?, ?> builder =
         CodeModuleLicenseDTO.builder().startTime(currentTime).expiryTime(expiryTime).status(LicenseStatus.ACTIVE);
 
-    if (edition == Edition.ENTERPRISE) {
-      return builder.numberOfDevelopers(ENTERPRISE_TRIAL_DEVELOPERS).licenseType(LicenseType.TRIAL).build();
+    switch (edition) {
+      case ENTERPRISE:
+        return builder.numberOfDevelopers(ENTERPRISE_TRIAL_DEVELOPERS)
+            .numberOfRepositories(Integer.valueOf(UNLIMITED))
+            .licenseType(LicenseType.TRIAL)
+            .build();
+      case FREE:
+        return builder.numberOfDevelopers(Integer.valueOf(UNLIMITED))
+            .numberOfRepositories(5)
+            .licenseType(LicenseType.TRIAL)
+            .build();
     }
+
     throw new UnsupportedOperationException("Requested edition is not supported");
   }
 }
