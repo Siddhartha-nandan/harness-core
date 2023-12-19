@@ -50,15 +50,17 @@ public class PolicyMgmtServiceImpl implements PolicyMgmtService {
       Instant start = Instant.now();
       log.info("Starting evaluation of policy set {} against {} sbom components", policySetRef,
           normalizedSBOMComponentEntities.size());
+      List<NormalizedSBOMComponentEntity> filteredNormalizedSBOMComponentEntities =
+          filterRequiredFields(normalizedSBOMComponentEntities);
       opaEvaluationResponseHolder = SafeHttpCall.executeWithExceptions(opaServiceClient.evaluateWithCredentialsByID(
           accountId, orgIdentifier, projectIdentifier, PolicyEvalUtils.getPolicySetsStringForQueryParam(policySetRef),
           PolicyEvalUtils.getEntityMetadataString("ssca_enforcement"),
-          JsonUtils.asTree(normalizedSBOMComponentEntities)));
+          JsonUtils.asTree(filteredNormalizedSBOMComponentEntities)));
       log.info("Completed evaluation of policy set {} against {} sbom components", policySetRef,
-          normalizedSBOMComponentEntities.size());
+          filteredNormalizedSBOMComponentEntities.size());
       Instant end = Instant.now();
       log.info("Time taken to evaluate {} sbom entities for policySets {} is {} ms",
-          normalizedSBOMComponentEntities.size(), policySetRef, Duration.between(start, end).toMillis());
+          filteredNormalizedSBOMComponentEntities.size(), policySetRef, Duration.between(start, end).toMillis());
       List<Violation> allowListViolations = new ArrayList<>();
       List<Violation> denyListViolations = new ArrayList<>();
 
@@ -68,8 +70,9 @@ public class PolicyMgmtServiceImpl implements PolicyMgmtService {
           List<OpaPolicyEvaluationResponse> opaPolicyEvaluationResponses = opaPolicySetEvaluationResponse.getDetails();
           if (CollectionUtils.isNotEmpty(opaPolicyEvaluationResponses)) {
             for (OpaPolicyEvaluationResponse opaPolicyEvaluationResponse : opaPolicyEvaluationResponses) {
-              populateViolationDetailsFromSinglePolicyEvaluationResponse(
-                  allowListViolations, denyListViolations, opaPolicyEvaluationResponse);
+              populateViolationDetailsFromSinglePolicyEvaluationResponse(allowListViolations, denyListViolations,
+                  opaPolicyEvaluationResponse, opaPolicySetEvaluationResponse.getName(),
+                  opaPolicySetEvaluationResponse.getIdentifier());
             }
           }
         }
@@ -85,14 +88,19 @@ public class PolicyMgmtServiceImpl implements PolicyMgmtService {
   }
 
   private static void populateViolationDetailsFromSinglePolicyEvaluationResponse(List<Violation> allowListViolations,
-      List<Violation> denyListViolations, OpaPolicyEvaluationResponse singlePolicyEvaluationResponse) {
+      List<Violation> denyListViolations, OpaPolicyEvaluationResponse singlePolicyEvaluationResponse,
+      String policySetName, String policySetIdentifier) {
     JsonNode opaEvaluationEngineOutputNode = extractOpaEvaluationEngineOutputNode(singlePolicyEvaluationResponse);
     ArrayNode allowListViolationsNode = (ArrayNode) opaEvaluationEngineOutputNode.get(OPA_OUTPUT_JSON_KEY_3);
-    allowListViolationsNode.forEach(
-        allowListViolation -> extractAndPopulateViolation(allowListViolations, allowListViolation));
+    allowListViolationsNode.forEach(allowListViolation
+        -> extractAndPopulateViolation(allowListViolations, allowListViolation, policySetName, policySetIdentifier,
+            singlePolicyEvaluationResponse.getPolicy().getName(),
+            singlePolicyEvaluationResponse.getPolicy().getIdentifier()));
     ArrayNode denyListViolationsNode = (ArrayNode) opaEvaluationEngineOutputNode.get(OPA_OUTPUT_JSON_KEY_4);
-    denyListViolationsNode.forEach(
-        denyListViolation -> extractAndPopulateViolation(denyListViolations, denyListViolation));
+    denyListViolationsNode.forEach(denyListViolation
+        -> extractAndPopulateViolation(denyListViolations, denyListViolation, policySetName, policySetIdentifier,
+            singlePolicyEvaluationResponse.getPolicy().getName(),
+            singlePolicyEvaluationResponse.getPolicy().getIdentifier()));
   }
 
   private static JsonNode extractOpaEvaluationEngineOutputNode(
@@ -105,10 +113,16 @@ public class PolicyMgmtServiceImpl implements PolicyMgmtService {
         .get(OPA_OUTPUT_JSON_KEY_2);
   }
 
-  private static void extractAndPopulateViolation(List<Violation> violations, JsonNode violationNode) {
+  private static void extractAndPopulateViolation(List<Violation> violations, JsonNode violationNode,
+      String policySetName, String policySetIdentifier, String policyName, String policyIdentifier) {
     Violation violation = extractViolationFromJsonNode(violationNode);
     if (violation != null) {
-      violations.add(violation);
+      violations.add(violation.toBuilder()
+                         .policySetName(policySetName)
+                         .policySetIdentifier(policySetIdentifier)
+                         .policyName(policyName)
+                         .policyIdentifier(policyIdentifier)
+                         .build());
     }
   }
 
@@ -138,5 +152,21 @@ public class PolicyMgmtServiceImpl implements PolicyMgmtService {
       }
     }
     return rule;
+  }
+
+  private static List<NormalizedSBOMComponentEntity> filterRequiredFields(
+      List<NormalizedSBOMComponentEntity> normalizedSBOMComponentEntities) {
+    List<NormalizedSBOMComponentEntity> filteredNormalizedSBOMComponentEntities = new ArrayList<>();
+    for (NormalizedSBOMComponentEntity entity : normalizedSBOMComponentEntities) {
+      filteredNormalizedSBOMComponentEntities.add(NormalizedSBOMComponentEntity.builder()
+                                                      .uuid(entity.getUuid())
+                                                      .packageName(entity.getPackageName())
+                                                      .packageOriginatorName(entity.getPackageOriginatorName())
+                                                      .purl(entity.getPurl())
+                                                      .packageLicense(entity.getPackageLicense())
+                                                      .packageVersion(entity.getPackageVersion())
+                                                      .build());
+    }
+    return filteredNormalizedSBOMComponentEntities;
   }
 }

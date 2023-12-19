@@ -269,3 +269,17 @@ replace_key_value cfClientConfig.connectionTimeout "$CF_CLIENT_CONNECTION_TIMEOU
 replace_key_value cfClientConfig.readTimeout "$CF_CLIENT_READ_TIMEOUT"
 replace_key_value featureFlagConfig.featureFlagSystem "$FEATURE_FLAG_SYSTEM"
 replace_key_value featureFlagConfig.syncFeaturesToCF "$SYNC_FEATURES_TO_CF"
+
+replace_key_value accessControlClientConfig.enableAccessControl "$ACCESS_CONTROL_ENABLED"
+replace_key_value accessControlClientConfig.accessControlServiceConfig.baseUrl "$ACCESS_CONTROL_BASE_URL"
+replace_key_value accessControlClientConfig.accessControlServiceSecret "$ACCESS_CONTROL_SECRET"
+
+replace_key_value iteratorsConfig.remediationTrackerUpdateIteratorConfig.enabled "$REMEDIATION_TRACKER_ITERATOR_ENABLED"
+replace_key_value iteratorsConfig.remediationTrackerUpdateIteratorConfig.targetIntervalInSeconds "$REMEDIATION_TRACKER_ITERATOR_INTERVAL_SEC"
+replace_key_value iteratorsConfig.remediationTrackerUpdateIteratorConfig.threadPoolSize "$REMEDIATION_TRACKER_ITERATOR_THREAD_POOL_SIZE"
+
+replace_key_value elasticsearch.url "$ELASTIC_URL"
+replace_key_value elasticsearch.apiKey "$ELASTIC_API_KEY"
+replace_key_value elasticsearch.indexName "$ELASTIC_INDEX_NAME"
+
+replace_key_value enableElasticsearch "$ENABLE_ELASTIC"

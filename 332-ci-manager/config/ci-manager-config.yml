@@ -111,9 +111,14 @@ sscaServiceConfig:
   serviceSecret: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
 
 stoServiceConfig:
-  baseUrl: http://localhost:4000
-  internalUrl: ""
-  globalToken: "token"
+  baseUrl: ${STO_SERVICE_ENDPOINT:-http://localhost:4000}
+  internalUrl: ${STO_SERVICE_INTERNAL_ENDPOINT:-""}
+  globalToken: ${STO_SERVICE_GLOBAL_TOKEN:-"token"}
+
+ticketServiceConfig:
+  baseUrl: ${TICKET_SERVICE_ENDPOINT:-http://localhost:4444}
+  internalUrl: ${TICKET_SERVICE_INTERNAL_ENDPOINT:-""}
+  globalToken: ${TICKET_SERVICE_GLOBAL_TOKEN:-"token"}
 
 iacmServiceConfig:
   baseUrl: http://localhost:4000
@@ -174,8 +179,8 @@ ciExecutionServiceConfig:
       - "kmpySmUISimoRrJL6NL73w:1:1"
   pvcDefaultStorageSize: 25600
   delegateServiceEndpointVariableValue: "delegate-service:8080"
-  addonImage: harness/ci-addon:1.16.32
-  liteEngineImage: harness/ci-lite-engine:1.16.32
+  addonImage: harness/ci-addon:1.16.33
+  liteEngineImage: harness/ci-lite-engine:1.16.33
   isLocal: false
   remoteDebugTimeout: 3600
   tmateEndpoint: ${TMATE_ENDPOINT:-"ssh.harness.io"}
@@ -217,11 +222,7 @@ ciExecutionServiceConfig:
       - product: anchore_default
         image: harness/anchore-job-runner
       - product: aquasecurity_default
-        image: harness/sto-plugin
-        entrypoint:
-          - /bin/sto_plugin
-          - "--run-strategy"
-          - single-container
+        image: harness/aqua-security-job-runner
       - product: awsecr_default
         image: harness/aws-ecr-job-runner
       - product: awssecurityhub_default
@@ -360,16 +361,34 @@ ciExecutionServiceConfig:
         - "C:\\drone-cache.exe"
     sscaOrchestrationConfig:
       image: harness/ssca-plugin:0.11.0
+      entrypoint:
+        - /bin/ssca-plugin
+        - orchestrate
     sscaEnforcementConfig:
       image: harness/ssca-plugin:0.11.0
+      entrypoint:
+        - /bin/ssca-plugin
+        - enforce
     provenanceConfig:
       image: harness/slsa-plugin:latest
+      entrypoint:
+        - /bin/slsa-plugin
+        - attest
     provenanceGcrConfig:
       image: harness/slsa-plugin:latest
+      entrypoint:
+        - /bin/slsa-plugin
+        - attest
     slsaVerificationConfig:
       image: harness/slsa-plugin:latest
+      entrypoint:
+        - /bin/slsa-plugin
+        - verify
     slsaVerificationGcrConfig:
       image: harness/slsa-plugin:latest
+      entrypoint:
+        - /bin/slsa-plugin
+        - verify
     vmImageConfig:
       # Use root image for VM git clone
       gitClone: harness/drone-git:1.4.9
