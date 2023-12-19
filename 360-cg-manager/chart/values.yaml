@@ -328,6 +328,7 @@ image:
   tag: "1.0.0-develop-e180be"
   digest: ""
   imagePullSecrets: []
+# init containers
 waitForInitContainer:
   image:
     registry: docker.io
