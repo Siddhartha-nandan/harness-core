@@ -54,6 +54,9 @@ public class YamlRefreshHelper {
   public final Map<String, String> nonIgnorableKeysAndSiblings =
       Map.of("service.gitBranch", "serviceRef", "environment.gitBranch", "environmentRef");
 
+  public final Set<String> ignorableKeysToOneOfUseFromStageAtSameLevel =
+      new HashSet<>(List.of("infrastructureDefinition", "infrastructureDefinitions"));
+
   private static final String USE_FROM_STAGE_NODE = "useFromStage";
   private static final String STAGE_NODE = "stage";
   private static final String CHILD_SERVICE_REF_NODE = "service.serviceRef";
@@ -266,13 +269,15 @@ public class YamlRefreshHelper {
         continue;
       }
 
-      refreshedYamlNodeFqnToValueMap.entrySet().removeIf(
-          next -> next.getKey().contains(parent) && !next.getKey().equals(parent));
+      refreshedYamlNodeFqnToValueMap.entrySet().removeIf(next
+          -> next.getKey().contains(parent) && !next.getKey().equals(parent)
+              && !next.getKey().getExpressionFqn().endsWith("environment.infrastructureDefinitions"));
 
       ObjectNode objectNodeForParentFQN = (ObjectNode) jsonNodeForParentFQN;
       for (Iterator<String> fieldNamesItr = objectNodeForParentFQN.fieldNames(); fieldNamesItr.hasNext();) {
         String childFieldName = fieldNamesItr.next();
-        if (objectNodeForParentFQN.has(childFieldName) && !childFieldName.equals(childKeyFQN.getFieldName())) {
+        if (objectNodeForParentFQN.has(childFieldName) && !childFieldName.equals(childKeyFQN.getFieldName())
+            && !ignorableKeysToOneOfUseFromStageAtSameLevel.contains(childFieldName)) {
           fieldNamesItr.remove();
         }
       }
