@@ -14,10 +14,12 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.dto.PollingInfoForTriggers;
 import io.harness.dto.PollingResponseDTO;
 import io.harness.ng.core.dto.ResponseDTO;
+import io.harness.polling.bean.PollingType;
 
 import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
 import retrofit2.http.Path;
@@ -38,4 +40,7 @@ public interface PollingResourceClient {
       @Query(value = "accountId") String accountId, @Query(value = "pollingDocId") String pollingDocId);
 
   @POST(POLLING_API + "/unsubscribe") Call<Boolean> unsubscribe(@Body RequestBody pollingItem);
+  @DELETE(POLLING_API + "/delete-pollingdoc")
+  Call<Boolean> delete(@Query(value = "accountId") String accountId, @Query(value = "orgId") String orgId,
+      @Query(value = "projectId") String projectId, @Query(value = "pollingType") PollingType pollingType);
 }
