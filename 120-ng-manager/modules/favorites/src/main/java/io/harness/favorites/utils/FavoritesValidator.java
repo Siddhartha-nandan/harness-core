@@ -6,7 +6,6 @@
  */
 
 package io.harness.favorites.utils;
-
 import static io.harness.connector.ConnectorModule.DEFAULT_CONNECTOR_SERVICE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
@@ -15,7 +14,6 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
-import io.harness.beans.ScopeInfo;
 import io.harness.connector.ConnectorResponseDTO;
 import io.harness.connector.services.ConnectorService;
 import io.harness.exception.InvalidRequestException;
@@ -24,7 +22,6 @@ import io.harness.ng.core.api.SecretCrudService;
 import io.harness.ng.core.dto.secrets.SecretResponseWrapper;
 import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.services.ProjectService;
-import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ng.core.user.UserInfo;
 import io.harness.pipeline.remote.PipelineServiceClient;
 import io.harness.pms.pipeline.PMSPipelineResponseDTO;
@@ -48,18 +45,15 @@ public class FavoritesValidator {
   private final PipelineServiceClient pipelineServiceClient;
   private final SecretCrudService secretService;
   private final ProjectService projectService;
-  private final ScopeInfoService scopeResolverService;
 
   @Inject
   public FavoritesValidator(UserClient userClient, @Named(DEFAULT_CONNECTOR_SERVICE) ConnectorService connectorService,
-      PipelineServiceClient pipelineServiceClient, SecretCrudService secretService, ProjectService projectService,
-      ScopeInfoService scopeResolverService) {
+      PipelineServiceClient pipelineServiceClient, SecretCrudService secretService, ProjectService projectService) {
     this.userClient = userClient;
     this.connectorService = connectorService;
     this.pipelineServiceClient = pipelineServiceClient;
     this.secretService = secretService;
     this.projectService = projectService;
-    this.scopeResolverService = scopeResolverService;
   }
 
   private void checkIfUserExist(FavoriteDTO favoriteDTO, String accountIdentifier) {
@@ -93,9 +87,8 @@ public class FavoritesValidator {
   }
 
   private boolean doesProjectExit(FavoriteDTO favoriteDTO, String accountIdentifier) {
-    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, favoriteDTO.getOrg(), null);
     Optional<Project> project =
-        projectService.get(accountIdentifier, scopeInfo.orElseThrow(), favoriteDTO.getResourceId());
+        projectService.get(accountIdentifier, favoriteDTO.getOrg(), favoriteDTO.getResourceId());
     return project.isPresent();
   }
 

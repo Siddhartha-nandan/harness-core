@@ -116,7 +116,6 @@ import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.entitysetupusage.service.EntitySetupUsageService;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
-import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ngsettings.SettingIdentifiers;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.outbox.OutboxEvent;
@@ -184,7 +183,6 @@ public class DefaultConnectorServiceImpl implements ConnectorService {
   OutboxService outboxService;
   YamlGitConfigClient yamlGitConfigClient;
   EntitySetupUsageService entitySetupUsageService;
-  private final ScopeInfoService scopeResolverService;
   private static final String CONNECTOR = "connector";
 
   @Override
@@ -525,9 +523,7 @@ public class DefaultConnectorServiceImpl implements ConnectorService {
 
   private void checkThatTheProjectExists(String orgIdentifier, String projectIdentifier, String accountIdentifier) {
     if (isNotEmpty(orgIdentifier) && isNotEmpty(projectIdentifier)) {
-      Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
-      final Optional<Project> project =
-          projectService.get(accountIdentifier, scopeInfo.orElseThrow(), projectIdentifier);
+      final Optional<Project> project = projectService.get(accountIdentifier, orgIdentifier, projectIdentifier);
       if (!project.isPresent()) {
         throw new NotFoundException(String.format("project [%s] not found.", projectIdentifier));
       }

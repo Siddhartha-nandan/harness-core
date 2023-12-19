@@ -18,11 +18,9 @@ import io.harness.beans.ScopeLevel;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
-import io.harness.ng.core.services.ScopeInfoService;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import java.util.Optional;
 import javax.validation.constraints.NotNull;
 
 @OwnedBy(PL)
@@ -30,14 +28,11 @@ import javax.validation.constraints.NotNull;
 public class ScopeNameMapper {
   private final OrganizationService organizationService;
   private final ProjectService projectService;
-  private final ScopeInfoService scopeResolverService;
 
   @Inject
-  public ScopeNameMapper(
-      OrganizationService organizationService, ProjectService projectService, ScopeInfoService scopeResolverService) {
+  public ScopeNameMapper(OrganizationService organizationService, ProjectService projectService) {
     this.organizationService = organizationService;
     this.projectService = projectService;
-    this.scopeResolverService = scopeResolverService;
   }
 
   public ScopeNameDTO toScopeNameDTO(@NotNull ScopeDTO scopeDTO) {
@@ -59,10 +54,9 @@ public class ScopeNameMapper {
                     .getName();
     }
     if (!isBlank(scopeDTO.getProjectIdentifier())) {
-      Optional<ScopeInfo> scopeInfo =
-          scopeResolverService.getScopeInfo(scopeDTO.getAccountIdentifier(), scopeDTO.getOrgIdentifier(), null);
       projectName =
-          projectService.get(scopeDTO.getAccountIdentifier(), scopeInfo.orElseThrow(), scopeDTO.getProjectIdentifier())
+          projectService
+              .get(scopeDTO.getAccountIdentifier(), scopeDTO.getOrgIdentifier(), scopeDTO.getProjectIdentifier())
               .<InvalidRequestException>orElseThrow(() -> {
                 throw new InvalidRequestException(String.format(
                     "Project details not found for project Identifier: [%s]", scopeDTO.getProjectIdentifier()));

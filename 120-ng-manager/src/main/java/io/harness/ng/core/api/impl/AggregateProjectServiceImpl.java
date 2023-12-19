@@ -24,7 +24,6 @@ import io.harness.ng.core.remote.OrganizationMapper;
 import io.harness.ng.core.remote.ProjectMapper;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
-import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ng.core.user.remote.dto.UserMetadataDTO;
 import io.harness.ng.core.user.service.NgUserService;
 import io.harness.utils.UserHelperService;
@@ -60,25 +59,22 @@ public class AggregateProjectServiceImpl implements AggregateProjectService {
   private final ExecutorService executorService;
   private final UserHelperService userHelperService;
   private final FavoritesService favoritesService;
-  private final ScopeInfoService scopeResolverService;
 
   @Inject
   public AggregateProjectServiceImpl(ProjectService projectService, OrganizationService organizationService,
       NgUserService ngUserService, @Named("aggregate-projects") ExecutorService executorService,
-      UserHelperService userHelperService, FavoritesService favoritesService, ScopeInfoService scopeResolverService) {
+      UserHelperService userHelperService, FavoritesService favoritesService) {
     this.projectService = projectService;
     this.organizationService = organizationService;
     this.ngUserService = ngUserService;
     this.executorService = executorService;
     this.userHelperService = userHelperService;
     this.favoritesService = favoritesService;
-    this.scopeResolverService = scopeResolverService;
   }
 
   @Override
   public ProjectAggregateDTO getProjectAggregateDTO(String accountIdentifier, String orgIdentifier, String identifier) {
-    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
-    Optional<Project> projectOptional = projectService.get(accountIdentifier, scopeInfo.orElseThrow(), identifier);
+    Optional<Project> projectOptional = projectService.get(accountIdentifier, orgIdentifier, identifier);
     if (!projectOptional.isPresent()) {
       throw new NotFoundException(
           String.format("Project with orgIdentifier [%s] and identifier [%s] not found", orgIdentifier, identifier));

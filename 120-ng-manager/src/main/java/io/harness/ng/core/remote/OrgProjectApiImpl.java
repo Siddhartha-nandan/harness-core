@@ -24,12 +24,10 @@ import io.harness.accesscontrol.NGAccessControlCheck;
 import io.harness.accesscontrol.OrgIdentifier;
 import io.harness.accesscontrol.ResourceIdentifier;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.beans.ScopeInfo;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.dto.ProjectFilterDTO;
 import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.services.ProjectService;
-import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.security.annotations.NextGenManagerAuth;
 import io.harness.spec.server.ng.v1.OrgProjectApi;
 import io.harness.spec.server.ng.v1.model.CreateProjectRequest;
@@ -57,7 +55,6 @@ import org.springframework.data.domain.Page;
 public class OrgProjectApiImpl implements OrgProjectApi {
   private final ProjectService projectService;
   private final ProjectApiUtils projectApiUtils;
-  private final ScopeInfoService scopeResolverService;
 
   @NGAccessControlCheck(resourceType = PROJECT, permission = CREATE_PROJECT_PERMISSION)
   @Override
@@ -107,9 +104,7 @@ public class OrgProjectApiImpl implements OrgProjectApi {
   }
 
   private Response createProject(CreateProjectRequest createProjectRequest, String account, String org) {
-    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
-    Project createdProject =
-        projectService.create(account, scopeInfo.orElseThrow(), projectApiUtils.getProjectDto(createProjectRequest));
+    Project createdProject = projectService.create(account, org, projectApiUtils.getProjectDto(createProjectRequest));
     ProjectResponse projectResponse = projectApiUtils.getProjectResponse(createdProject);
 
     return Response.status(Response.Status.CREATED)
@@ -120,17 +115,15 @@ public class OrgProjectApiImpl implements OrgProjectApi {
 
   private Response updateProject(
       String identifier, UpdateProjectRequest updateProjectRequest, String account, String org) {
-    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
-    Project updatedProject = projectService.update(
-        account, scopeInfo.orElseThrow(), org, identifier, projectApiUtils.getProjectDto(updateProjectRequest));
+    Project updatedProject =
+        projectService.update(account, org, identifier, projectApiUtils.getProjectDto(updateProjectRequest));
     ProjectResponse projectResponse = projectApiUtils.getProjectResponse(updatedProject);
 
     return Response.ok().entity(projectResponse).tag(updatedProject.getVersion().toString()).build();
   }
 
   private Response getProject(String identifier, String account, String org) {
-    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
-    Optional<Project> projectOptional = projectService.get(account, scopeInfo.orElseThrow(), identifier);
+    Optional<Project> projectOptional = projectService.get(account, org, identifier);
     if (!projectOptional.isPresent()) {
       throw new NotFoundException(format("Project with org [%s] and identifier [%s] not found", org, identifier));
     }
@@ -156,12 +149,11 @@ public class OrgProjectApiImpl implements OrgProjectApi {
   }
 
   private Response deleteProject(String identifier, String account, String org) {
-    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(account, org, null);
-    Optional<Project> projectOptional = projectService.get(account, scopeInfo.orElseThrow(), identifier);
+    Optional<Project> projectOptional = projectService.get(account, org, identifier);
     if (!projectOptional.isPresent()) {
       throw new NotFoundException(format("Project with org [%s] and identifier [%s] not found", org, identifier));
     }
-    boolean deleted = projectService.delete(account, scopeInfo.orElseThrow(), org, identifier, null);
+    boolean deleted = projectService.delete(account, org, identifier, null);
     if (!deleted) {
       throw new NotFoundException(format("Project with identifier [%s] could not be deleted", identifier));
     }

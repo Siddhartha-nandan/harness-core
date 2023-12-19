@@ -6,7 +6,6 @@
  */
 
 package io.harness.ng.core.event;
-
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ACTION;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.DELETE_ACTION;
@@ -19,7 +18,6 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
-import io.harness.beans.ScopeInfo;
 import io.harness.cdng.envGroup.services.EnvironmentGroupService;
 import io.harness.cdng.gitops.service.ClusterService;
 import io.harness.eventsframework.consumer.Message;
@@ -34,7 +32,6 @@ import io.harness.ng.core.service.services.ServiceEntityService;
 import io.harness.ng.core.serviceoverride.services.ServiceOverrideService;
 import io.harness.ng.core.serviceoverridev2.service.ServiceOverridesServiceV2;
 import io.harness.ng.core.services.ProjectService;
-import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ng.core.utils.ServiceOverrideV2ValidationHelper;
 import io.harness.service.infrastructuremapping.InfrastructureMappingService;
 import io.harness.service.instancesyncperpetualtaskinfo.InstanceSyncPerpetualTaskInfoService;
@@ -45,7 +42,6 @@ import com.google.inject.Singleton;
 import com.google.protobuf.InvalidProtocolBufferException;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import lombok.extern.slf4j.Slf4j;
@@ -72,8 +68,6 @@ public class ProjectEntityCRUDStreamListener implements MessageListener {
   private final ReleaseDetailsMappingService releaseDetailsMappingService;
   private final ServiceOverrideV2ValidationHelper overrideV2ValidationHelper;
 
-  private final ScopeInfoService scopeResolverService;
-
   @Inject
   public ProjectEntityCRUDStreamListener(ProjectService projectService, EnvironmentService environmentService,
       ServiceOverrideService serviceOverrideService, ServiceOverridesServiceV2 serviceOverridesServiceV2,
@@ -81,8 +75,7 @@ public class ProjectEntityCRUDStreamListener implements MessageListener {
       ClusterService clusterService, InfrastructureMappingService infrastructureMappingService,
       ReleaseDetailsMappingService releaseDetailsMappingService,
       InstanceSyncPerpetualTaskInfoService instanceSyncPerpetualTaskInfoService,
-      EnvironmentGroupService environmentGroupService, ServiceOverrideV2ValidationHelper overrideV2ValidationHelper,
-      ScopeInfoService scopeResolverService) {
+      EnvironmentGroupService environmentGroupService, ServiceOverrideV2ValidationHelper overrideV2ValidationHelper) {
     this.projectService = projectService;
     this.environmentService = environmentService;
     this.serviceOverrideService = serviceOverrideService;
@@ -95,7 +88,6 @@ public class ProjectEntityCRUDStreamListener implements MessageListener {
     this.releaseDetailsMappingService = releaseDetailsMappingService;
     this.instanceSyncPerpetualTaskInfoService = instanceSyncPerpetualTaskInfoService;
     this.overrideV2ValidationHelper = overrideV2ValidationHelper;
-    this.scopeResolverService = scopeResolverService;
   }
 
   @Override
@@ -211,18 +203,17 @@ public class ProjectEntityCRUDStreamListener implements MessageListener {
   private boolean processOrganizationDeleteEvent(OrganizationEntityChangeDTO organizationEntityChangeDTO) {
     String accountIdentifier = organizationEntityChangeDTO.getAccountIdentifier();
     String orgIdentifier = organizationEntityChangeDTO.getIdentifier();
-    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
     Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
                             .is(accountIdentifier)
-                            .and(ProjectKeys.parentUniqueId)
-                            .is(scopeInfo.orElseThrow().getUniqueId())
+                            .and(ProjectKeys.orgIdentifier)
+                            .is(orgIdentifier)
                             .and(ProjectKeys.deleted)
                             .ne(Boolean.TRUE);
     List<Project> projects = projectService.list(criteria);
     AtomicBoolean success = new AtomicBoolean(true);
     projects.forEach(project -> {
-      if (!projectService.delete(project.getAccountIdentifier(), scopeInfo.orElseThrow(), project.getOrgIdentifier(),
-              project.getIdentifier(), null)) {
+      if (!projectService.delete(
+              project.getAccountIdentifier(), project.getOrgIdentifier(), project.getIdentifier(), null)) {
         log.error(String.format(
             "Delete operation failed for project with accountIdentifier %s, orgIdentifier %s and identifier %s",
             project.getAccountIdentifier(), project.getOrgIdentifier(), project.getIdentifier()));
@@ -255,18 +246,17 @@ public class ProjectEntityCRUDStreamListener implements MessageListener {
   private boolean processOrganizationRestoreEvent(OrganizationEntityChangeDTO organizationEntityChangeDTO) {
     String accountIdentifier = organizationEntityChangeDTO.getAccountIdentifier();
     String orgIdentifier = organizationEntityChangeDTO.getIdentifier();
-    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
     Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
                             .is(accountIdentifier)
-                            .and(ProjectKeys.parentUniqueId)
-                            .is(scopeInfo.orElseThrow().getUniqueId())
+                            .and(ProjectKeys.orgIdentifier)
+                            .is(orgIdentifier)
                             .and(ProjectKeys.deleted)
                             .is(Boolean.TRUE);
     List<Project> projects = projectService.list(criteria);
     AtomicBoolean success = new AtomicBoolean(true);
     projects.forEach(project -> {
-      if (!projectService.restore(project.getAccountIdentifier(), scopeInfo.orElseThrow(), project.getOrgIdentifier(),
-              project.getIdentifier())) {
+      if (!projectService.restore(
+              project.getAccountIdentifier(), project.getOrgIdentifier(), project.getIdentifier())) {
         log.error(String.format(
             "Restore operation failed for project with accountIdentifier %s, orgIdentifier %s and identifier %s",
             project.getAccountIdentifier(), project.getOrgIdentifier(), project.getIdentifier()));
