@@ -54,9 +54,6 @@ public class YamlRefreshHelper {
   public final Map<String, String> nonIgnorableKeysAndSiblings =
       Map.of("service.gitBranch", "serviceRef", "environment.gitBranch", "environmentRef");
 
-  public final Set<String> ignorableKeysToOneOfUseFromStageAtSameLevel =
-      new HashSet<>(List.of("infrastructureDefinition", "infrastructureDefinitions"));
-
   private static final String USE_FROM_STAGE_NODE = "useFromStage";
   private static final String STAGE_NODE = "stage";
   private static final String CHILD_SERVICE_REF_NODE = "service.serviceRef";
@@ -115,16 +112,14 @@ public class YamlRefreshHelper {
    * @param sourceNodeInputSetFormatYaml
    * @return refreshed jsonNode with updated values
    */
-  public JsonNode refreshYamlFromSourceYaml(
-      String nodeToRefreshYaml, String sourceNodeInputSetFormatYaml, boolean allowDifferentInfraForEnvPropagation) {
+  public JsonNode refreshYamlFromSourceYaml(String nodeToRefreshYaml, String sourceNodeInputSetFormatYaml) {
     YamlConfig sourceNodeYamlConfig = new YamlConfig(sourceNodeInputSetFormatYaml);
     YamlConfig nodeToRefreshYamlConfig = new YamlConfig(nodeToRefreshYaml);
-    return refreshYamlConfigFromSourceYamlConfig(
-        sourceNodeYamlConfig, nodeToRefreshYamlConfig, allowDifferentInfraForEnvPropagation);
+    return refreshYamlConfigFromSourceYamlConfig(sourceNodeYamlConfig, nodeToRefreshYamlConfig);
   }
 
-  public JsonNode refreshYamlConfigFromSourceYamlConfig(YamlConfig sourceNodeYamlConfig,
-      YamlConfig nodeToRefreshYamlConfig, boolean allowDifferentInfraForEnvPropagation) {
+  public JsonNode refreshYamlConfigFromSourceYamlConfig(
+      YamlConfig sourceNodeYamlConfig, YamlConfig nodeToRefreshYamlConfig) {
     Map<FQN, Object> sourceNodeFqnToValueMap = sourceNodeYamlConfig.getFqnToValueMap();
     Map<FQN, Object> nodeToRefreshFqnToValueMap = nodeToRefreshYamlConfig.getFqnToValueMap();
 
@@ -162,9 +157,9 @@ public class YamlRefreshHelper {
 
     Set<FQN> useFromStageFQNKeysFromInputSet =
         getUseFromStageKeysFromInputSet(sourceNodeFqnToValueMap, nodeToRefreshFqnToValueMap);
-    JsonNode modifiedOriginalMap = addOneOfKeysParentKeysRemovingOtherParallelChildren(
-        sourceNodeYamlConfig.getYamlMap(), refreshedFqnToValueMap, useFromStageFQNKeysFromInputSet,
-        nodeToRefreshYamlConfig.getYamlMap(), allowDifferentInfraForEnvPropagation);
+    JsonNode modifiedOriginalMap =
+        addOneOfKeysParentKeysRemovingOtherParallelChildren(sourceNodeYamlConfig.getYamlMap(), refreshedFqnToValueMap,
+            useFromStageFQNKeysFromInputSet, nodeToRefreshYamlConfig.getYamlMap());
 
     return new YamlConfig(refreshedFqnToValueMap, modifiedOriginalMap).getYamlMap();
   }
@@ -263,8 +258,7 @@ public class YamlRefreshHelper {
    * It also modifies refreshedYamlNodeFqnToValueMap in same way
    */
   private JsonNode addOneOfKeysParentKeysRemovingOtherParallelChildren(JsonNode sourceNodeYamlMap,
-      Map<FQN, Object> refreshedYamlNodeFqnToValueMap, Set<FQN> oneOfKeysTypeNodeChild, JsonNode runtimeInputYamlMap,
-      boolean allowDifferentInfraForEnvPropagation) {
+      Map<FQN, Object> refreshedYamlNodeFqnToValueMap, Set<FQN> oneOfKeysTypeNodeChild, JsonNode runtimeInputYamlMap) {
     for (FQN childKeyFQN : oneOfKeysTypeNodeChild) {
       FQN parent = childKeyFQN.getBaseFQNTillOneOfGivenFields(oneOfKeysParent);
       JsonNode jsonNodeForParentFQN = YamlSubMapExtractor.getNodeForFQN(sourceNodeYamlMap, parent);
@@ -272,24 +266,13 @@ public class YamlRefreshHelper {
         continue;
       }
 
-      if (allowDifferentInfraForEnvPropagation) {
-        refreshedYamlNodeFqnToValueMap.entrySet().removeIf(next
-            -> next.getKey().contains(parent) && !next.getKey().equals(parent)
-                && !ignorableKeysToOneOfUseFromStageAtSameLevel.stream().anyMatch(
-                    ignorableKeys -> next.getKey().getExpressionFqn().endsWith(ignorableKeys)));
-      } else {
-        refreshedYamlNodeFqnToValueMap.entrySet().removeIf(
-            next -> next.getKey().contains(parent) && !next.getKey().equals(parent));
-      }
+      refreshedYamlNodeFqnToValueMap.entrySet().removeIf(
+          next -> next.getKey().contains(parent) && !next.getKey().equals(parent));
 
       ObjectNode objectNodeForParentFQN = (ObjectNode) jsonNodeForParentFQN;
       for (Iterator<String> fieldNamesItr = objectNodeForParentFQN.fieldNames(); fieldNamesItr.hasNext();) {
         String childFieldName = fieldNamesItr.next();
         if (objectNodeForParentFQN.has(childFieldName) && !childFieldName.equals(childKeyFQN.getFieldName())) {
-          if (allowDifferentInfraForEnvPropagation
-              && (ignorableKeysToOneOfUseFromStageAtSameLevel.contains(childFieldName))) {
-            continue;
-          }
           fieldNamesItr.remove();
         }
       }
