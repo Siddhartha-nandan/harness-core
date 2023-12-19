@@ -6,6 +6,7 @@
  */
 
 package io.harness.ngmigration.expressions.step;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
@@ -15,7 +16,7 @@ import org.apache.commons.lang3.StringUtils;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_MIGRATOR})
 public class JenkinsStepFunctor extends StepExpressionFunctor {
-  private StepOutput stepOutput;
+  public StepOutput stepOutput;
   public JenkinsStepFunctor(StepOutput stepOutput) {
     super(stepOutput);
     this.stepOutput = stepOutput;
@@ -23,6 +24,15 @@ public class JenkinsStepFunctor extends StepExpressionFunctor {
 
   @Override
   public synchronized Object get(Object key) {
+    if ("jobParameters".equals(key)) {
+      return new JenkinsJobParametersStepFunctor(stepOutput, getCurrentStageIdentifier());
+    } else if ("envVars".equals(key)) {
+      return new JenkinsEnvVarsStepFunctor(stepOutput, getCurrentStageIdentifier());
+    }
+    return getFQN(key);
+  }
+
+  private String getFQN(Object key) {
     if (StringUtils.equals(stepOutput.getStageIdentifier(), getCurrentStageIdentifier())) {
       return String.format("<+execution.steps.%s.steps.%s.build.%s>", stepOutput.getStepGroupIdentifier(),
           stepOutput.getStepIdentifier(), key);

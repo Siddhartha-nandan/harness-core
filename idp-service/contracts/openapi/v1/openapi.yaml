@@ -518,12 +518,7 @@ paths:
         - AppConfig
       x-internal: false
     parameters:
-      - schema:
-          type: string
-        name: plugin-id
-        description: Plugin Identifier
-        in: path
-        required: true
+      - $ref: '#/components/parameters/PluginId'
   /v1/plugins-info:
     get:
       summary: List Available Plugins
@@ -543,7 +538,7 @@ paths:
       summary: Save custom plugin info
       operationId: save-custom-plugins-info
       responses:
-        '200':
+        '201':
           $ref: '#/components/responses/CustomPluginInfoResponse'
       x-stoplight:
         id: t4vsvfeuf169r
@@ -552,7 +547,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
       requestBody:
-        $ref: '#/components/requestBodies/CustomPluginInfoRequest'
+        $ref: '#/components/requestBodies/CustomPluginCreateRequest'
       tags:
         - PluginInfo
   '/v1/plugins-info/{plugin-id}':
@@ -569,7 +564,6 @@ paths:
         - x-api-key: []
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
-        - $ref: '#/components/parameters/PluginId'
         - $ref: '#/components/parameters/Meta'
       x-internal: false
     put:
@@ -1394,6 +1388,51 @@ paths:
         $ref: '#/components/requestBodies/ScorecardRecalibrateRequest'
       x-internal: true
     parameters: []
+  /v1/backstage-harness/sync:
+    post:
+      summary: Sync Backstage Entities as Harness Entities for all IDP enabled accounts
+      tags:
+        - BackstageHarness
+      responses:
+        '200':
+          $ref: '#/components/responses/BackstageHarnessSyncEntitiesResponse'
+      operationId: backstage-harness-sync-all-accounts
+      description: Syncs Backstage Entities as Harness Entities for all IDP enabled accounts
+      x-internal: true
+      security:
+        - x-api-key: []
+  /v1/backstage-harness/sync/for-account:
+    post:
+      summary: Sync Backstage Entities as Harness Entities for given account
+      tags:
+        - BackstageHarness
+      responses:
+        '200':
+          $ref: '#/components/responses/BackstageHarnessSyncEntitiesResponse'
+      operationId: backstage-harness-sync-for-account
+      description: Syncs Backstage Entities as Harness Entities for given account
+      x-internal: true
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+  /v1/backstage-harness/sync/for-entity:
+    post:
+      summary: Sync Backstage entity as Harness entity for given account and entity with specified action and sync mode
+      tags:
+        - BackstageHarness
+      requestBody:
+        $ref: '#/components/requestBodies/BackstageHarnessSyncRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/BackstageHarnessSyncEntitiesResponse'
+      operationId: backstage-harness-sync-for-account-entity
+      description: Sync Backstage entity as Harness entity for given account and entity with specified action and sync mode
+      x-internal: true
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
 components:
   schemas:
     BackstageEnvVariable:
@@ -1799,8 +1838,14 @@ components:
             id: 86jybcrx3x9hy
         image_url:
           type: string
+        images:
+          type: array
           x-stoplight:
             id: tn689mqkfth94
+          items:
+            x-stoplight:
+              id: ybfwwjy9ere6h
+            type: string
         documentation:
           type: string
           x-stoplight:
@@ -1820,18 +1865,8 @@ components:
           enum:
             - DEFAULT
             - CUSTOM
-      required:
-        - id
-        - name
-        - created_by
-        - icon_url
-        - description
-        - category
-        - source
-        - image_url
-        - core
-        - enabled
-        - plugin_type
+          required:
+            - id
     PluginInfoResponse:
       title: PluginInfoResponse
       x-stoplight:
@@ -2192,8 +2227,6 @@ components:
             id: 43cv9jhplzytw
       required:
         - plugin_details
-        - config
-        - exports
     LayoutIngestRequest:
       title: LayoutIngestRequest
       x-stoplight:
@@ -3763,8 +3796,6 @@ components:
           properties:
             artifact:
               $ref: '#/components/schemas/Artifact'
-          required:
-            - artifact
     Artifact:
       title: Artifact
       x-stoplight:
@@ -3802,6 +3833,37 @@ components:
       properties:
         info:
           $ref: '#/components/schemas/CustomPluginDetailedInfo'
+    BackstageHarnessSyncRequest:
+      title: BackstageHarnessSyncRequest
+      type: object
+      properties:
+        entity_identifier:
+          type: string
+        action:
+          type: string
+          enum:
+            - create
+            - update
+            - upsert
+            - delete
+        sync_mode:
+          type: string
+          enum:
+            - sync
+            - async
+      required:
+        - entity_identifier
+        - action
+        - sync_mode
+    BackstageHarnessSyncEntitiesResponse:
+      title: BackstageHarnessSyncEntitiesResponse
+      type: object
+      description: Response for backstage harness entities sync
+      properties:
+        status:
+          type: string
+      required:
+        - status
   parameters:
     AccountHeader:
       name: Harness-Account
@@ -4148,6 +4210,16 @@ components:
         application/yaml:
           schema:
             $ref: '#/components/schemas/CustomPluginInfoRequest'
+    CustomPluginCreateRequest:
+      content:
+        application/json:
+          schema:
+            type: object
+    BackstageHarnessSyncRequest:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BackstageHarnessSyncRequest'
   responses:
     BackstageEnvVariableResponse:
       description: Example response
@@ -4589,6 +4661,12 @@ components:
         application/yaml:
           schema:
             $ref: '#/components/schemas/CustomPluginInfoResponse'
+    BackstageHarnessSyncEntitiesResponse:
+      description: Response for backstage harness entities sync
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BackstageHarnessSyncEntitiesResponse'
   securitySchemes:
     x-api-key:
       name: x-api-key
@@ -4639,3 +4717,5 @@ tags:
     description: Scores Information V2
   - name: StatusInfo
     description: Status Information
+  - name: BackstageHarness
+    description: Backstage Harness

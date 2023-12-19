@@ -1426,7 +1426,7 @@ permissions:
       - account
   - identifier: idp_plugin_view
     name: View IDP custom plugins
-    status: ACTIVE
+    status: EXPERIMENTAL
     includedInAllRoles: false
     allowedScopeLevels:
       - account

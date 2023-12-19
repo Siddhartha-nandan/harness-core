@@ -11,6 +11,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.spec.server.ssca.v1.model.ArtifactSbomDriftRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactSbomDriftResponse;
+import io.harness.spec.server.ssca.v1.model.OrchestrationDriftSummary;
 import io.harness.ssca.beans.drift.ComponentDriftResults;
 import io.harness.ssca.beans.drift.ComponentDriftStatus;
 import io.harness.ssca.beans.drift.DriftBase;
@@ -27,9 +28,12 @@ public interface SbomDriftService {
   ArtifactSbomDriftResponse calculateSbomDriftForOrchestration(
       String accountId, String orgId, String projectId, String orchestrationId, DriftBase driftBase);
 
-  ComponentDriftResults getComponentDrifts(
-      String accountId, String orgId, String projectId, String driftId, ComponentDriftStatus status, Pageable pageable);
+  ComponentDriftResults getComponentDrifts(String accountId, String orgId, String projectId, String driftId,
+      ComponentDriftStatus status, Pageable pageable, String searchTerm);
 
-  LicenseDriftResults getLicenseDrifts(
-      String accountId, String orgId, String projectId, String driftId, LicenseDriftStatus status, Pageable pageable);
+  LicenseDriftResults getLicenseDrifts(String accountId, String orgId, String projectId, String driftId,
+      LicenseDriftStatus status, Pageable pageable, String searchTerm);
+
+  OrchestrationDriftSummary getSbomDriftSummary(
+      String accountId, String orgId, String projectId, String orchestrationId);
 }

@@ -53,11 +53,11 @@ public class SbomDriftApiImpl implements SbomDriftApi {
 
   @Override
   public Response getComponentDrift(String org, String project, String drift, String harnessAccount, String status,
-      @Min(0L) Integer page, @Min(1L) @Max(1000L) Integer limit) {
+      @Min(0L) Integer page, @Min(1L) @Max(1000L) Integer limit, String searchTerm) {
     Pageable pageable = PageRequest.of(page, limit);
     ComponentDriftStatus componentDriftStatus = SbomDriftMapper.mapStatusToComponentDriftStatus(status);
-    ComponentDriftResults componentDriftResults =
-        sbomDriftService.getComponentDrifts(harnessAccount, org, project, drift, componentDriftStatus, pageable);
+    ComponentDriftResults componentDriftResults = sbomDriftService.getComponentDrifts(
+        harnessAccount, org, project, drift, componentDriftStatus, pageable, searchTerm);
     ResponseBuilder responseBuilder = Response.ok();
     if (componentDriftResults != null) {
       List<ComponentDrift> componentDrifts =
@@ -73,11 +73,11 @@ public class SbomDriftApiImpl implements SbomDriftApi {
 
   @Override
   public Response getLicenseDrift(String org, String project, String drift, String harnessAccount, String status,
-      @Min(0L) Integer page, @Min(1L) @Max(1000L) Integer limit) {
+      @Min(0L) Integer page, @Min(1L) @Max(1000L) Integer limit, String searchTerm) {
     Pageable pageable = PageRequest.of(page, limit);
     LicenseDriftStatus licenseDriftStatus = SbomDriftMapper.mapStatusToLicenseDriftStatus(status);
-    LicenseDriftResults licenseDriftResults =
-        sbomDriftService.getLicenseDrifts(harnessAccount, org, project, drift, licenseDriftStatus, pageable);
+    LicenseDriftResults licenseDriftResults = sbomDriftService.getLicenseDrifts(
+        harnessAccount, org, project, drift, licenseDriftStatus, pageable, searchTerm);
     List<LicenseDrift> licenseDrifts =
         SbomDriftMapper.toLicenseDriftResponseList(licenseDriftResults.getLicenseDrifts());
     ResponseBuilder responseBuilder = Response.ok().entity(licenseDrifts);
@@ -88,7 +88,7 @@ public class SbomDriftApiImpl implements SbomDriftApi {
   @Override
   public Response calculateDriftForOrchestrationStep(String org, String project, String orchestration,
       @Valid OrchestrationStepDriftRequestBody body, String harnessAccount) {
-    DriftBase driftBase = SbomDriftMapper.toDriftBase(body);
+    DriftBase driftBase = SbomDriftMapper.getDriftBase(body);
     ArtifactSbomDriftResponse responseBody =
         sbomDriftService.calculateSbomDriftForOrchestration(harnessAccount, org, project, orchestration, driftBase);
     return Response.ok().entity(responseBody).build();

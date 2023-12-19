@@ -30,21 +30,23 @@ import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.IndexRequest;
 import co.elastic.clients.elasticsearch.core.IndexResponse;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.UpdateResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.google.inject.Inject;
+import com.google.inject.name.Named;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
-import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 
 @OwnedBy(HarnessTeam.SSCA)
-@AllArgsConstructor(onConstructor = @__({ @Inject }))
 @Slf4j
 public class SearchServiceImpl implements SearchService {
   @Inject private ElasticsearchClient elasticsearchClient;
-  @Inject ElasticSearchIndexManager elasticSearchIndexManager;
+  @Inject @Named("SSCA") ElasticSearchIndexManager elasticSearchIndexManager;
 
   @Override
   public Result saveArtifact(ArtifactEntity artifactEntity) {
@@ -62,6 +64,23 @@ public class SearchServiceImpl implements SearchService {
       return response.result();
     } catch (IOException ex) {
       throw new GeneralException("Could not save artifact", ex);
+    }
+  }
+
+  @Override
+  public Result updateArtifact(ArtifactEntity artifactEntity) {
+    String index = elasticSearchIndexManager.getIndex(artifactEntity.getAccountId());
+    try {
+      UpdateResponse updateResponse = elasticsearchClient.update(u
+          -> u.index(index)
+                 .id(artifactEntity.getOrchestrationId())
+                 .routing(artifactEntity.getAccountId())
+                 .upsert(SSCAArtifactMapper.toSSCAArtifact(artifactEntity)),
+          SSCAArtifact.class);
+
+      return updateResponse.result();
+    } catch (IOException ex) {
+      throw new GeneralException("Could not update artifact", ex);
     }
   }
 
@@ -150,8 +169,23 @@ public class SearchServiceImpl implements SearchService {
   }
 
   @Override
-  public boolean deleteMigrationIndex() {
-    return elasticSearchIndexManager.deleteDefaultIndex();
+  public boolean deleteIndex(String indexName) {
+    return elasticSearchIndexManager.deleteIndexByName(indexName);
+  }
+
+  public List<String> getOrchestrationIds(
+      String accountId, String orgIdentifier, String projectIdentifier, ArtifactFilter filter) {
+    List<Hit<SSCAArtifact>> artifacts =
+        listArtifacts(accountId, orgIdentifier, projectIdentifier, filter, Pageable.unpaged());
+
+    if (artifacts != null) {
+      return artifacts.stream()
+          .map(sscaArtifactHit -> sscaArtifactHit.source().getOrchestrationId())
+          .filter(Objects::nonNull)
+          .collect(Collectors.toList());
+    } else {
+      return Collections.emptyList();
+    }
   }
 
   @Override
