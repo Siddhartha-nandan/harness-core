@@ -10,6 +10,7 @@ package io.harness.gitsync.gitxwebhooks.service;
 import static io.harness.authorization.AuthorizationServiceHeader.NG_MANAGER;
 import static io.harness.data.structure.CollectionUtils.emptyIfNull;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -20,6 +21,7 @@ import io.harness.beans.Scope;
 import io.harness.delegate.beans.connector.scm.ScmConnector;
 import io.harness.eventsframework.webhookpayloads.webhookdata.WebhookDTO;
 import io.harness.exception.ConnectorNotFoundException;
+import io.harness.exception.InternalServerErrorException;
 import io.harness.gitsync.common.beans.GitXWebhookEventStatus;
 import io.harness.gitsync.common.dtos.GitDiffResultFileDTO;
 import io.harness.gitsync.common.dtos.GitDiffResultFileListDTO;
@@ -135,6 +137,7 @@ public class GitXWebhookEventProcessServiceImpl implements GitXWebhookEventProce
       List<GitXWebhook> gitXWebhookList, GitXWebhookEvent gitXWebhookEvent) {
     Set<String> modifiedFilePaths = new HashSet<>();
     Set<String> processingFilePaths = new HashSet<>();
+    List<Exception> exceptionList = new ArrayList<>();
     ScmConnector scmConnector = null;
     GitXWebhook gitXWebhookFinal = null;
     for (GitXWebhook gitXWebhook : gitXWebhookList) {
@@ -162,8 +165,12 @@ public class GitXWebhookEventProcessServiceImpl implements GitXWebhookEventProce
                   "Failed to fetch the modifiedFilePaths data from gitXWebhook identifier %s, will be trying with the next connector",
                   gitXWebhook.getIdentifier()),
               exception);
+          exceptionList.add(exception);
         }
       }
+    }
+    if (isEmpty(modifiedFilePaths) && isNotEmpty(exceptionList)) {
+      throw new InternalServerErrorException("Failed to fetch the modifiedFilePaths");
     }
     return ProcessingFilePathResponseDTO.builder()
         .modifiedFilePaths(new ArrayList<>(modifiedFilePaths))
