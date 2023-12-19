@@ -59,4 +59,5 @@ public class DelegateParams implements DelegateHeartbeatParams {
 
   List<String> currentlyExecutingDelegateTasks;
   List<String> tags;
+  List<String> runnerTypes;
 }

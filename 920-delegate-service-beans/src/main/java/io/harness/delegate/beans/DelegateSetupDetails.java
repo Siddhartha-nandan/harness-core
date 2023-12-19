@@ -41,6 +41,7 @@ public class DelegateSetupDetails implements YamlDTO {
   private K8sConfigDetails k8sConfigDetails;
 
   private Set<String> tags;
+  private Set<String> runnerTypes;
 
   @Schema(description = "Currently KUBERNETES and HELM_DELEGATE are supported.") @NotNull private String delegateType;
   private String tokenName;

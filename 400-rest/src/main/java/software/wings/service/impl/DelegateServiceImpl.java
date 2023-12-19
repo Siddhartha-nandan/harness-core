@@ -2652,6 +2652,8 @@ public class DelegateServiceImpl implements DelegateService {
             .description(delegateParams.getDescription())
             .delegateType(delegateParams.getDelegateType())
             .tags(isNotEmpty(delegateParams.getTags()) ? new HashSet<>(delegateParams.getTags()) : null)
+            .runnerTypes(
+                isNotEmpty(delegateParams.getRunnerTypes()) ? new HashSet<>(delegateParams.getRunnerType()) : null)
             .tokenName(delegateTokenName.orElse(null))
             .version(delegateParams.getVersion())
             .build();
@@ -3231,6 +3233,7 @@ public class DelegateServiceImpl implements DelegateService {
     K8sConfigDetails k8sConfigDetails =
         delegateSetupDetails != null ? delegateSetupDetails.getK8sConfigDetails() : null;
     final Set<String> tags = delegateSetupDetails != null ? delegateSetupDetails.getTags() : null;
+    final Set<String> runnerTypes = delegateSetupDetails != null ? delegateSetupDetails.getRunnerTypes() : null;
 
     DelegateEntityOwner owner = DelegateEntityOwnerHelper.buildOwner(orgIdentifier, projectIdentifier);
 
@@ -3278,6 +3281,7 @@ public class DelegateServiceImpl implements DelegateService {
     }
 
     setUnset(updateOperations, DelegateGroupKeys.tags, tags);
+    setUnset(updateOperations, DelegateGroupKeys.runnerTypes, runnerTypes);
 
     if (sizeDetails != null) {
       setUnset(updateOperations, DelegateGroupKeys.sizeDetails, sizeDetails);

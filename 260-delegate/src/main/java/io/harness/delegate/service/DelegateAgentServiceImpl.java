@@ -310,6 +310,7 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
       "Duplicate delegate with same delegateId:%s and connectionId:%s exists";
 
   private final String delegateTags = System.getenv().get("DELEGATE_TAGS");
+  private final String runnerTypes = System.getenv().get("RUNNER_TYPES");
   private final String delegateOrgIdentifier = System.getenv().get("DELEGATE_ORG_IDENTIFIER");
   private final String delegateProjectIdentifier = System.getenv().get("DELEGATE_PROJECT_IDENTIFIER");
   private final String delegateDescription = System.getenv().get("DELEGATE_DESCRIPTION");
@@ -635,6 +636,9 @@ public class DelegateAgentServiceImpl implements DelegateAgentService {
               .ng(delegateNg)
               .tags(isNotBlank(delegateTags) ? new ArrayList<>(asList(delegateTags.trim().split("\\s*,+\\s*,*\\s*")))
                                              : emptyList())
+              .runnerTypes(isNotBlank(runnerTypes)
+                      ? new ArrayList<>(asList(runnerTypes.trim().split("\\s*,+\\s*,*\\s*")))
+                      : emptyList())
               .location(Paths.get("").toAbsolutePath().toString())
               .heartbeatAsObject(true)
               .immutable(isImmutableDelegate)
