@@ -127,8 +127,6 @@ public enum FeatureName {
       "FF for enabling Instance Sync V2 for K8s and Native Helm swimlanes in NG", HarnessTeam.CDP),
   CDS_K8S_SOCKET_CAPABILITY_CHECK_NG(
       "Replace HTTP capability check for Kubernetes connector with Socket Capability", HarnessTeam.CDP),
-  CDS_NG_ACC_ORG_LEVEL_SERVICE_LICENSING_FIX(
-      "Update license usage calculation queries for services deployed across projects/orgs.", HarnessTeam.CDC),
   CDS_NG_SECRET_RUNTIME_USAGE_EVENT_GENERATION(
       "FF to enable secret runtime usage event generation for ng", HarnessTeam.CDC),
   CDS_NG_SERVICE_PRINCIPAL_FOR_CUSTOM_WEBHOOK(
@@ -864,6 +862,7 @@ public enum FeatureName {
   CDS_INFRA_GITX("Onboard Infrastructure entity to GitX", HarnessTeam.CDC),
   CDS_K8S_ASYNC_STEP_STRATEGY("This Flag enables the usage of ASYNC chain orchestration for K8s step", HarnessTeam.CDP),
   CDS_ECS_ASYNC_STEP_STRATEGY("This Flag enables the usage of ASYNC chain orchestration for ECS step", HarnessTeam.CDP),
+  CDS_TAS_ASYNC_STEP_STRATEGY("This Flag enables the usage of ASYNC chain orchestration for TAS step", HarnessTeam.CDP),
   CDS_MERGE_PIPELINE_EXECUTION_SUMMARY_UPDATE_FLOW(
       "Merge the different flows to update pipeline execution summary to avoid write conflicts in mongo", PIPELINE),
   PIE_SECRETS_OBSERVER("Secrets Runtime Usages Observer", PIPELINE),

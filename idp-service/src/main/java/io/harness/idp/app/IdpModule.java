@@ -94,6 +94,9 @@ import io.harness.idp.audittrails.eventhandlers.IDPNextGenOutboxEventHandler;
 import io.harness.idp.audittrails.eventhandlers.OAuthConfigEventHandler;
 import io.harness.idp.audittrails.eventhandlers.ProxyHostDetailsEventHandler;
 import io.harness.idp.audittrails.eventhandlers.ScorecardEventHandler;
+import io.harness.idp.backstage.resources.BackstageHarnessApiImpl;
+import io.harness.idp.backstage.service.BackstageService;
+import io.harness.idp.backstage.service.impl.BackstageServiceImpl;
 import io.harness.idp.common.delegateselectors.cache.DelegateSelectorsCache;
 import io.harness.idp.common.delegateselectors.cache.memory.DelegateSelectorsInMemoryCache;
 import io.harness.idp.common.delegateselectors.cache.redis.DelegateSelectorsRedisCache;
@@ -139,6 +142,8 @@ import io.harness.idp.plugin.mappers.CustomPluginDetailedInfoMapper;
 import io.harness.idp.plugin.mappers.DefaultPluginDetailedInfoMapper;
 import io.harness.idp.plugin.mappers.PluginDetailedInfoMapper;
 import io.harness.idp.plugin.resources.AuthInfoApiImpl;
+import io.harness.idp.plugin.resources.PluginFileUploadApi;
+import io.harness.idp.plugin.resources.PluginFileUploadApiImpl;
 import io.harness.idp.plugin.resources.PluginInfoApiImpl;
 import io.harness.idp.plugin.services.AuthInfoService;
 import io.harness.idp.plugin.services.AuthInfoServiceImpl;
@@ -236,6 +241,7 @@ import io.harness.spec.server.idp.v1.AllowListApi;
 import io.harness.spec.server.idp.v1.AppConfigApi;
 import io.harness.spec.server.idp.v1.AuthInfoApi;
 import io.harness.spec.server.idp.v1.BackstageEnvVariableApi;
+import io.harness.spec.server.idp.v1.BackstageHarnessApi;
 import io.harness.spec.server.idp.v1.BackstagePermissionsApi;
 import io.harness.spec.server.idp.v1.ChecksApi;
 import io.harness.spec.server.idp.v1.ConnectorInfoApi;
@@ -498,6 +504,7 @@ public class IdpModule extends AbstractModule {
     bind(LayoutProxyApi.class).to(LayoutProxyApiImpl.class);
     bind(ProxyApi.class).to(ProxyApiImpl.class);
     bind(PluginInfoApi.class).to(PluginInfoApiImpl.class);
+    bind(PluginFileUploadApi.class).to(PluginFileUploadApiImpl.class);
     bind(DelegateProxyApi.class).to(DelegateProxyApiImpl.class);
     bind(PluginInfoService.class).to(PluginInfoServiceImpl.class);
     bind(ConnectorInfoApi.class).to(ConnectorInfoApiImpl.class);
@@ -616,6 +623,9 @@ public class IdpModule extends AbstractModule {
         MapBinder.newMapBinder(binder(), PluginInfo.PluginTypeEnum.class, PluginDetailedInfoMapper.class);
     pluginInfoMapBinder.addBinding(PluginInfo.PluginTypeEnum.DEFAULT).to(DefaultPluginDetailedInfoMapper.class);
     pluginInfoMapBinder.addBinding(PluginInfo.PluginTypeEnum.CUSTOM).to(CustomPluginDetailedInfoMapper.class);
+
+    bind(BackstageHarnessApi.class).to(BackstageHarnessApiImpl.class);
+    bind(BackstageService.class).to(BackstageServiceImpl.class);
   }
 
   private void registerOutboxEventHandlers() {
