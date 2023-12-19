@@ -236,11 +236,7 @@ public class GitXWebhookEventServiceImpl implements GitXWebhookEventService {
   }
 
   private List<GitXWebhook> fetchGitXWebhookForGivenScope(Scope scope, String repoName) {
-    List<GitXWebhook> optionalGitXWebhook = gitXWebhookService.getGitXWebhookForAllScopes(scope, repoName);
-    if (optionalGitXWebhook.isEmpty()) {
-      return null;
-    }
-    return optionalGitXWebhook;
+    return gitXWebhookService.getGitXWebhookForAllScopes(scope, repoName);
   }
 
   private GitXWebhookEvent buildGitXWebhookEvent(WebhookDTO webhookDTO, List<GitXWebhook> gitXWebhookList) {
