@@ -87,14 +87,14 @@ image:
   tag: "1.16.23-idp-1137-b9f06d"
   digest: ""
   imagePullSecrets: []
-waitForInitContainer:
-  image:
-    registry: docker.io
-    repository: harness/helm-init-container
-    pullPolicy: IfNotPresent
-    tag: "latest"
-    digest: ""
-    imagePullSecrets: []
+#waitForInitContainer:
+#  image:
+#    registry: docker.io
+#    repository: harness/helm-init-container
+#    pullPolicy: IfNotPresent
+#    tag: "latest"
+#    digest: ""
+#    imagePullSecrets: []
 securityImage:
   image:
     registry: docker.io

@@ -318,14 +318,14 @@ image:
   imagePullSecrets:
   - gcr-io-secret
 
-waitForInitContainer:
-  image:
-    registry: docker.io
-    repository: harness/helm-init-container
-    pullPolicy: IfNotPresent
-    tag: "latest"
-    digest: ""
-    imagePullSecrets: []
+#waitForInitContainer:
+#  image:
+#    registry: docker.io
+#    repository: harness/helm-init-container
+#    pullPolicy: IfNotPresent
+#    tag: "latest"
+#    digest: ""
+#    imagePullSecrets: []
 
 initContainer:
   image:

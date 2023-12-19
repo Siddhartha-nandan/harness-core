@@ -387,14 +387,14 @@ initContainer:
     digest: ""
     imagePullSecrets: []
 
-waitForInitContainer:
-  image:
-    registry: docker.io
-    repository: harness/helm-init-container
-    pullPolicy: IfNotPresent
-    tag: "latest"
-    digest: ""
-    imagePullSecrets: []
+#waitForInitContainer:
+#  image:
+#    registry: docker.io
+#    repository: harness/helm-init-container
+#    pullPolicy: IfNotPresent
+#    tag: "latest"
+#    digest: ""
+#    imagePullSecrets: []
 
 mongoSecrets:
   userName:

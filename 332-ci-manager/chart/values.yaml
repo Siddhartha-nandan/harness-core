@@ -163,14 +163,14 @@ securityImage:
     tag: 1.21.0
     digest: ""
     imagePullSecrets: []
-waitForInitContainer:
-  image:
-    registry: docker.io
-    repository: harness/helm-init-container
-    pullPolicy: IfNotPresent
-    tag: "latest"
-    digest: ""
-    imagePullSecrets: []
+#waitForInitContainer:
+#  image:
+#    registry: docker.io
+#    repository: harness/helm-init-container
+#    pullPolicy: IfNotPresent
+#    tag: "latest"
+#    digest: ""
+#    imagePullSecrets: []
 ci_images:
   addon:
     image:
