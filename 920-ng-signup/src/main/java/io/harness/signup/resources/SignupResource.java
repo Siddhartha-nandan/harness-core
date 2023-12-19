@@ -139,7 +139,7 @@ public class SignupResource {
     try {
       return new RestResponse<>(signupService.createAccountAndUserInCluster(email, accountDTO));
     } catch (Exception e) {
-      log.error("Signup completion failed. {} at {}", e.getMessage(), e.getStackTrace());
+      log.error("Global Signup completion failed. {} at {}", e.getMessage(), e.getStackTrace());
       throw e;
     }
   }
