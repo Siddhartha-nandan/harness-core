@@ -32,6 +32,7 @@ import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlUtils;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -64,9 +65,10 @@ public class PlanCreatorServiceHelper {
         .findFirst();
   }
 
+  // TODO: update the fullYamlField here
   public Dependencies handlePlanCreationResponses(List<PlanCreationResponse> planCreationResponses,
       MergePlanCreationResponse finalResponse, String currentYaml, Dependencies dependencies,
-      List<Map.Entry<String, String>> dependenciesList) {
+      List<Map.Entry<String, String>> dependenciesList, YamlField fullYaml, Map<String, JsonNode> fqnToJsonMap) {
     String updatedYaml = currentYaml;
     List<String> errorMessages = planCreationResponses.stream()
                                      .filter(resp -> resp != null && EmptyPredicate.isNotEmpty(resp.getErrorMessages()))
@@ -101,13 +103,17 @@ public class PlanCreatorServiceHelper {
         }
       }
       if (response.getYamlUpdates() != null && EmptyPredicate.isNotEmpty(response.getYamlUpdates().getFqnToYamlMap())) {
-        updatedYaml = PlanCreationBlobResponseUtils.mergeYamlUpdates(
-            currentYaml, finalResponse.getYamlUpdates().getFqnToYamlMap());
-        finalResponse.updateYamlInDependencies(updatedYaml);
+        // TODO: here
+        PlanCreationBlobResponseUtils.updateFqnYamlNodeMap(
+            fqnToJsonMap, finalResponse.getYamlUpdates().getFqnToYamlMap());
+        PlanCreationBlobResponseUtils.mergeYamlUpdates(fullYaml, fqnToJsonMap);
+        //        updatedYaml = PlanCreationBlobResponseUtils.mergeYamlUpdates(
+        //            currentYaml, finalResponse.getYamlUpdates().getFqnToYamlMap());
+        //        finalResponse.updateYamlInDependencies(updatedYaml);
       }
     }
     return dependencies.toBuilder()
-        .setYaml(updatedYaml)
+        .setYaml(currentYaml)
         .clearDependencies()
         .putAllDependencies(newDependencies)
         .putAllDependencyMetadata(newMetadataDependency)

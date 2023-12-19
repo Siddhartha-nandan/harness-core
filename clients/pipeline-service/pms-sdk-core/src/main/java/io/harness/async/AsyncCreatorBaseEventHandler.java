@@ -14,16 +14,21 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.ExceptionUtils;
+import io.harness.exception.InvalidRequestException;
 import io.harness.exception.exceptionmanager.ExceptionManager;
 import io.harness.pms.contracts.plan.Dependencies;
 import io.harness.pms.gitsync.PmsGitSyncBranchContextGuard;
 import io.harness.pms.gitsync.PmsGitSyncHelper;
 import io.harness.pms.sdk.execution.events.PmsCommonsBaseEventHandler;
 import io.harness.pms.yaml.YamlField;
+import io.harness.pms.yaml.YamlUtils;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Message;
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -68,8 +73,17 @@ public abstract class AsyncCreatorBaseEventHandler<T extends Message, C extends 
     try (PmsGitSyncBranchContextGuard ignore =
              pmsGitSyncHelper.createGitSyncBranchContextGuardFromBytes(gitSyncBranchContext, true)) {
       Dependencies dependencies = initialDependencies.toBuilder().build();
+      YamlField fullField;
+      try {
+        fullField = YamlUtils.readTree(dependencies.getYaml());
+      } catch (IOException ex) {
+        String message = "Invalid yaml during plan creation";
+        log.error(message, ex);
+        throw new InvalidRequestException(message);
+      }
+      Map<String, JsonNode> fqnToJsonMap = new HashMap<>();
       while (!dependencies.getDependenciesMap().isEmpty()) {
-        dependencies = handleDependencies(context, finalResponse, dependencies);
+        dependencies = handleDependencies(context, finalResponse, dependencies, fullField, fqnToJsonMap);
         removeInitialDependencies(dependencies, initialDependencies);
       }
     }
@@ -83,7 +97,8 @@ public abstract class AsyncCreatorBaseEventHandler<T extends Message, C extends 
 
   protected abstract AsyncCreatorResponse createNewAsyncCreatorResponse(C context);
 
-  public abstract Dependencies handleDependencies(C ctx, AsyncCreatorResponse finalResponse, Dependencies dependencies);
+  public abstract Dependencies handleDependencies(C ctx, AsyncCreatorResponse finalResponse, Dependencies dependencies,
+      YamlField fullField, Map<String, JsonNode> fqnToJsonMap);
 
   protected abstract void handleException(T event, YamlField field, Exception ex);
   protected abstract void handleException(T event, Exception ex);

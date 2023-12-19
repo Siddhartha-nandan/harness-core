@@ -54,15 +54,13 @@ import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlUtils;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -149,9 +147,18 @@ public class PlanCreatorService extends PlanCreationServiceImplBase {
     try (PmsGitSyncBranchContextGuard ignore =
              pmsGitSyncHelper.createGitSyncBranchContextGuardFromBytes(ctx.getGitSyncBranchContext(), true)) {
       Dependencies dependencies = initialDependencies.toBuilder().build();
+      YamlField fullField;
+      try {
+        fullField = YamlUtils.readTree(dependencies.getYaml());
+      } catch (IOException ex) {
+        String message = "Invalid yaml during plan creation";
+        log.error(message, ex);
+        throw new InvalidRequestException(message);
+      }
+      Map<String, JsonNode> fqnToJsonMap = new HashMap<>();
       while (!dependencies.getDependenciesMap().isEmpty()) {
-        dependencies =
-            createPlanForDependencies(ctx, finalResponse, dependencies, finalResponse.getServiceAffinityMap());
+        dependencies = createPlanForDependencies(
+            ctx, finalResponse, dependencies, finalResponse.getServiceAffinityMap(), fullField, fqnToJsonMap);
         PlanCreatorServiceHelper.removeInitialDependencies(dependencies, initialDependencies);
       }
       if (finalResponse.getDependencies() != null
@@ -165,7 +172,8 @@ public class PlanCreatorService extends PlanCreationServiceImplBase {
   }
 
   public Dependencies createPlanForDependencies(PlanCreationContext ctx, MergePlanCreationResponse finalResponse,
-      Dependencies dependencies, Map<String, String> serviceAffinityMap) {
+      Dependencies dependencies, Map<String, String> serviceAffinityMap, YamlField fullField,
+      Map<String, JsonNode> fqnToJsonMap) {
     if (EmptyPredicate.isEmpty(dependencies.getDependenciesMap())) {
       return dependencies;
     }
@@ -173,14 +181,7 @@ public class PlanCreatorService extends PlanCreationServiceImplBase {
     List<Map.Entry<String, String>> dependenciesList = new ArrayList<>(dependencies.getDependenciesMap().entrySet());
     String currentYaml = dependencies.getYaml();
     long start = System.currentTimeMillis();
-    YamlField fullField;
-    try {
-      fullField = YamlUtils.readTree(currentYaml);
-    } catch (IOException ex) {
-      String message = "Invalid yaml during plan creation";
-      log.error(message, ex);
-      throw new InvalidRequestException(message);
-    }
+
     // Iterating dependencies to create plan for each dependency by submitting parallel threads of executor thread.
     dependenciesList.forEach(key -> completableFutures.supplyAsync(() -> {
       try {
@@ -193,8 +194,9 @@ public class PlanCreatorService extends PlanCreationServiceImplBase {
 
     try {
       List<PlanCreationResponse> planCreationResponses = completableFutures.allOf().get(5, TimeUnit.MINUTES);
-      return PlanCreatorServiceHelper.handlePlanCreationResponses(
-          planCreationResponses, finalResponse, currentYaml, dependencies, dependenciesList);
+      Dependencies dep = PlanCreatorServiceHelper.handlePlanCreationResponses(
+          planCreationResponses, finalResponse, currentYaml, dependencies, dependenciesList, fullField, fqnToJsonMap);
+      return dep;
     } catch (Exception ex) {
       throw new UnexpectedException(format("Unexpected plan creation error: %s", ex.getMessage()), ex);
     }
@@ -291,8 +293,8 @@ public class PlanCreatorService extends PlanCreationServiceImplBase {
           Class<?> cls = planCreator.getFieldClass();
           obj = YamlField.class.isAssignableFrom(cls) ? field : YamlUtils.read(field.getNode().toString(), cls);
         }
-
         try {
+          // TODO: look into performance of the AbstractStagePlanCreator
           PlanCreationResponse planForField = planCreator.createPlanForField(
               PlanCreationContext.cloneWithCurrentField(ctx, field, currentYaml, dependency, executionInputTemplate),
               obj);

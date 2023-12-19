@@ -134,9 +134,9 @@ public class VariableCreatorService
 
     if (isOptimizedFlowEnabled(
             request)) { // new flow utilizing the map and yaml field passed to be modified instead of string yaml.
-      Map<String, String> fqnYamlNodeContentMap = finalResponse.getYamlUpdates().getFqnToYamlMap();
-      PlanCreationBlobResponseUtils.updateFqnYamlNodeMap(fqnJsonNodeMap, fqnYamlNodeContentMap);
       if (response.getYamlUpdates() != null && EmptyPredicate.isNotEmpty(response.getYamlUpdates().getFqnToYamlMap())) {
+        PlanCreationBlobResponseUtils.updateFqnYamlNodeMap(
+            fqnJsonNodeMap, finalResponse.getYamlUpdates().getFqnToYamlMap());
         PlanCreationBlobResponseUtils.mergeYamlUpdates(yamlField, fqnJsonNodeMap);
       }
     } else { // existing flow
