@@ -34,6 +34,7 @@ java_library(
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/service/steps/helpers:module",
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/rbac:module",
         "//125-cd-nextgen/modules/gitops/core/src/main/java/io/harness/cdng/gitops/steps:module",
+        "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/telemetry/helpers:module",
         "//125-freeze:module",
         "//127-cd-nextgen-entities:module",
         "//878-ng-common-utilities:module",

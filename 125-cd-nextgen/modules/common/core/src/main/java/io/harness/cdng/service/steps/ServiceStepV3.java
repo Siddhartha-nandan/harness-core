@@ -102,6 +102,7 @@ import io.harness.steps.SdkCoreStepUtils;
 import io.harness.steps.StepUtils;
 import io.harness.steps.environment.EnvironmentOutcome;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.OverrideInstrumentationHelper;
 import io.harness.utils.IdentifierRefHelper;
 import io.harness.utils.NGFeatureFlagHelperService;
 import io.harness.utils.YamlPipelineUtils;
@@ -152,6 +153,7 @@ public class ServiceStepV3 implements ChildrenExecutable<ServiceStepV3Parameters
   @Inject private ServiceStepV3Helper serviceStepV3Helper;
   @Inject private InfrastructureEntityService infrastructureEntityService;
   @Inject private NGFeatureFlagHelperService ngFeatureFlagHelperService;
+  @Inject private OverrideInstrumentationHelper overrideInstrumentationHelper;
 
   private static final Pattern serviceVariablePattern = Pattern.compile(SERVICE_VARIABLES_PATTERN_REGEX);
   private static final Pattern envVariablePattern = Pattern.compile(ENV_VARIABLES_PATTERN_REGEX);
@@ -538,6 +540,8 @@ public class ServiceStepV3 implements ChildrenExecutable<ServiceStepV3Parameters
       if (isOverridesV2enabled) {
         NGServiceV2InfoConfig ngServiceV2InfoConfig =
             servicePartResponse.getNgServiceConfig().getNgServiceV2InfoConfig();
+        overrideInstrumentationHelper.addTelemetryEventsForOverrideV2(
+            accountId, orgIdentifier, projectIdentifier, mergedOverrideV2Configs);
         if (ngServiceV2InfoConfig == null) {
           throw new InvalidRequestException(SERVICE_CONFIGURATION_NOT_FOUND);
         }
@@ -553,6 +557,8 @@ public class ServiceStepV3 implements ChildrenExecutable<ServiceStepV3Parameters
         serviceStepOverrideHelper.saveFinalConnectionStringsToSweepingOutputV2(ngServiceV2InfoConfig,
             mergedOverrideV2Configs, ambiance, ServiceStepV3Constants.SERVICE_CONNECTION_STRINGS_SWEEPING_OUTPUT);
       } else {
+        overrideInstrumentationHelper.addTelemetryEventsForOverrideV1(
+            accountId, orgIdentifier, projectIdentifier, ngServiceOverrides);
         serviceStepOverrideHelper.prepareAndSaveFinalManifestMetadataToSweepingOutput(
             servicePartResponse.getNgServiceConfig(), ngServiceOverrides, ngEnvironmentConfig, ambiance,
             ServiceStepV3Constants.SERVICE_MANIFESTS_SWEEPING_OUTPUT);
