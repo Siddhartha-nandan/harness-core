@@ -272,13 +272,13 @@ public class EnvironmentRefreshHelper {
     }
     if (checkIfInfraDefsToBeValidated(infraDefsNode, infraDefsNodeInResolvedTemplatesYaml, mapper)) {
       YamlNode finalEnvNode = envNodeInResolvedTemplatesYaml;
-      if (allowDifferentInfraForEnvPropagation
-          && envNodeInResolvedTemplatesYaml.getField(YamlTypes.USE_FROM_STAGE) != null) {
-        YamlField propagatedFromStageConfig =
-            PlanCreatorUtils.getStageConfig(stageYamlNodeInResolvedTemplatesYaml.getField(YamlTypes.SPEC),
-                envNodeInResolvedTemplatesYaml.getField(YamlTypes.USE_FROM_STAGE)
-                    .getNode()
-                    .getStringValue(YamlTypes.STAGE));
+      YamlField useFromStageYamlField = envNodeInResolvedTemplatesYaml.getField(YamlTypes.USE_FROM_STAGE);
+      if (allowDifferentInfraForEnvPropagation && useFromStageYamlField != null) {
+        YamlField propagatedFromStageConfig = PlanCreatorUtils.getStageConfig(
+            useFromStageYamlField, useFromStageYamlField.getNode().getStringValue(YamlTypes.STAGE));
+        if (propagatedFromStageConfig == null) {
+          return true;
+        }
         finalEnvNode = YamlNodeUtils.goToPathUsingFqn(propagatedFromStageConfig.getNode(), "spec.environment");
       }
 
@@ -354,12 +354,15 @@ public class EnvironmentRefreshHelper {
   private boolean refreshEnvironmentYamlWithUseFromStage(
       ObjectNode envObjectNode, boolean allowDifferentInfraForEnvPropagation) {
     if (envObjectNode.get(YamlTypes.USE_FROM_STAGE) != null) {
+      if (allowDifferentInfraForEnvPropagation) {
+        envObjectNode.remove(YamlTypes.ENVIRONMENT_INPUTS);
+        envObjectNode.remove(YamlTypes.SERVICE_OVERRIDE_INPUTS);
+        return false;
+      }
       envObjectNode.remove(YamlTypes.ENVIRONMENT_INPUTS);
       envObjectNode.remove(YamlTypes.SERVICE_OVERRIDE_INPUTS);
-      if (!allowDifferentInfraForEnvPropagation) {
-        envObjectNode.remove(YamlTypes.INFRASTRUCTURE_DEFS);
-      }
-      return !allowDifferentInfraForEnvPropagation;
+      envObjectNode.remove(YamlTypes.INFRASTRUCTURE_DEFS);
+      return true;
     }
     return false;
   }
@@ -476,13 +479,13 @@ public class EnvironmentRefreshHelper {
     }
     if (checkIfInfraDefsToBeValidated(infraDefsNode, infraDefsNodeInResolvedTemplatesYaml, mapper)) {
       YamlNode finalEnvNode = envNodeInResolvedTemplatesYaml;
-      if (allowDifferentInfraForEnvPropagation
-          && envNodeInResolvedTemplatesYaml.getField(YamlTypes.USE_FROM_STAGE) != null) {
-        YamlField propagatedFromStageConfig =
-            PlanCreatorUtils.getStageConfig(stageYamlNodeInResolvedTemplatesYaml.getField(YamlTypes.SPEC),
-                envNodeInResolvedTemplatesYaml.getField(YamlTypes.USE_FROM_STAGE)
-                    .getNode()
-                    .getStringValue(YamlTypes.STAGE));
+      YamlField useFromStageYamlField = envNodeInResolvedTemplatesYaml.getField(YamlTypes.USE_FROM_STAGE);
+      if (allowDifferentInfraForEnvPropagation && useFromStageYamlField != null) {
+        YamlField propagatedFromStageConfig = PlanCreatorUtils.getStageConfig(
+            useFromStageYamlField, useFromStageYamlField.getNode().getStringValue(YamlTypes.STAGE));
+        if (propagatedFromStageConfig == null) {
+          return;
+        }
         finalEnvNode = YamlNodeUtils.goToPathUsingFqn(propagatedFromStageConfig.getNode(), "spec.environment");
       }
       JsonNode envRefNode = finalEnvNode.getField(YamlTypes.ENVIRONMENT_REF).getNode().getCurrJsonNode();
@@ -492,6 +495,9 @@ public class EnvironmentRefreshHelper {
       }
       envRefValue = envRefNode.asText();
       String environmentBranch = RefreshInputsHelper.getBranchFromNode(finalEnvNode);
+      if (NGExpressionUtils.isRuntimeOrExpressionField(envRefValue)) {
+        return;
+      }
       refreshInfraDefsInput(context, envRefValue, environmentBranch, mapper, envObjectNode, infraDefsNode);
     }
   }
