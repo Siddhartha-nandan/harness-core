@@ -6,6 +6,7 @@
  */
 
 package io.harness.ngtriggers.utils;
+
 import static io.harness.annotations.dev.HarnessTeam.CI;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.delegate.beans.connector.ConnectorType.AZURE_REPO;
@@ -13,6 +14,7 @@ import static io.harness.delegate.beans.connector.ConnectorType.BITBUCKET;
 import static io.harness.delegate.beans.connector.ConnectorType.GIT;
 import static io.harness.delegate.beans.connector.ConnectorType.GITHUB;
 import static io.harness.delegate.beans.connector.ConnectorType.GITLAB;
+import static io.harness.delegate.beans.connector.ConnectorType.HARNESS;
 import static io.harness.delegate.beans.connector.scm.adapter.AzureRepoToGitMapper.mapToGitConnectionType;
 
 import static software.wings.beans.TaskType.SCM_GIT_REF_TASK;
@@ -123,6 +125,15 @@ public class SCMDataObtainer implements GitProviderBaseDataObtainer {
     return gitUrl;
   }
 
+  public String getGitURL(ConnectorDetails connectorDetails, TriggerDetails triggerDetails) {
+    ScmConnector scmConnector = (ScmConnector) connectorDetails.getConnectorConfig();
+    WebhookTriggerConfigV2 webhookTriggerConfigV2 =
+        (WebhookTriggerConfigV2) triggerDetails.getNgTriggerConfigV2().getSource().getSpec();
+    GitAware gitAware = WebhookConfigHelper.retrieveGitAware(webhookTriggerConfigV2);
+    String repoName = gitAware.fetchRepoName();
+    return getGitURL(retrieveGitConnectionType(connectorDetails), scmConnector.getUrl(), repoName);
+  }
+
   public String retrieveGenericGitConnectorURL(String repoName, GitConnectionType connectionType, String url) {
     String gitUrl = "";
     if (connectionType == GitConnectionType.REPO) {
@@ -201,6 +212,8 @@ public class SCMDataObtainer implements GitProviderBaseDataObtainer {
     } else if (gitConnector.getConnectorType() == GIT) {
       GitConfigDTO gitConfigDTO = (GitConfigDTO) gitConnector.getConnectorConfig();
       return gitConfigDTO.getGitConnectionType();
+    } else if (gitConnector.getConnectorType() == HARNESS) {
+      return GitConnectionType.REPO;
     } else {
       throw new CIStageExecutionException("scmType " + gitConnector.getConnectorType() + "is not supported");
     }
@@ -210,12 +223,7 @@ public class SCMDataObtainer implements GitProviderBaseDataObtainer {
     ScmConnector scmConnector = (ScmConnector) connectorDetails.getConnectorConfig();
 
     try {
-      WebhookTriggerConfigV2 webhookTriggerConfigV2 =
-          (WebhookTriggerConfigV2) triggerDetails.getNgTriggerConfigV2().getSource().getSpec();
-      GitAware gitAware = WebhookConfigHelper.retrieveGitAware(webhookTriggerConfigV2);
-      String repoName = gitAware.fetchRepoName();
-
-      scmConnector.setUrl(getGitURL(retrieveGitConnectionType(connectorDetails), scmConnector.getUrl(), repoName));
+      scmConnector.setUrl(getGitURL(connectorDetails, triggerDetails));
     } catch (Exception ex) {
       log.error("Failed to update url");
     }

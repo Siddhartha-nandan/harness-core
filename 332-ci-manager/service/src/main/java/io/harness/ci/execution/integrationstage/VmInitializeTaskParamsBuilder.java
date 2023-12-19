@@ -92,6 +92,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -142,12 +143,29 @@ public class VmInitializeTaskParamsBuilder {
     vmInitializeUtils.validateDebug(hostedVmInfraYaml, ambiance);
     if (isBareMetalEnabled(accountId, hostedVmInfraYaml.getSpec().getPlatform(), initializeStepInfo)) {
       poolId = getHostedBareMetalPoolId(hostedVmInfraYaml.getSpec().getPlatform());
-      fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, false));
+      fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "fallback"));
+      fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, ""));
+      fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "east5"));
+      fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "west4"));
+
     } else {
-      poolId = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, false);
-      String fallbackPoolId = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true);
-      if (!isEmpty(fallbackPoolId)) {
-        fallbackPoolIds.add(fallbackPoolId);
+      poolId = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, false, "west-1");
+
+      String fallbackPoolIdWest4 = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "west4");
+      String fallbackPoolIdEast1 =
+          getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "fallback");
+      String fallbackPoolIdEast5 = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "east5");
+
+      if (!isEmpty(fallbackPoolIdEast1)) {
+        fallbackPoolIds.add(fallbackPoolIdEast1);
+      }
+
+      if (!isEmpty(fallbackPoolIdEast5)) {
+        fallbackPoolIds.add(fallbackPoolIdEast5);
+      }
+
+      if (!isEmpty(fallbackPoolIdWest4)) {
+        fallbackPoolIds.add(fallbackPoolIdWest4);
       }
     }
     boolean distributed =
@@ -228,8 +246,8 @@ public class VmInitializeTaskParamsBuilder {
     Map<String, String> envVars = new HashMap<>();
     Map<String, String> stageEnvVars =
         vmInitializeUtils.getStageEnvVars(integrationStageConfig.getPlatform(), os, workDir, poolId, infrastructure);
-    Map<String, String> proxyEnvVars =
-        vmInitializeUtils.getStageProxyVars(integrationStageConfig, os, ngAccess, connectorUtils, infrastructure);
+    Map<String, String> proxyEnvVars = vmInitializeUtils.getStageProxyVars(
+        integrationStageConfig, os, ngAccess, connectorUtils, infrastructure, gitConnector);
     envVars.putAll(stageEnvVars);
     envVars.putAll(proxyEnvVars);
     envVars.putAll(codebaseEnvVars);
@@ -261,6 +279,9 @@ public class VmInitializeTaskParamsBuilder {
     CIVmSecretEvaluator ciVmSecretEvaluator = CIVmSecretEvaluator.builder().build();
     Set<String> secrets = ciVmSecretEvaluator.resolve(stageVars, ngAccess, ambiance.getExpressionFunctorToken());
     envVars.putAll(stageVars);
+    String tiSvcToken = getTISvcToken(accountID);
+    secrets.add(Base64.getEncoder().encodeToString(tiSvcToken.getBytes()));
+    secrets.add(envVars.get("HARNESS_STO_SERVICE_TOKEN"));
 
     return CIVmInitializeTaskParams.builder()
         .poolID(poolId)
@@ -280,7 +301,7 @@ public class VmInitializeTaskParamsBuilder {
         .logSvcToken(getLogSvcToken(accountID))
         .logSvcIndirectUpload(featureFlagService.isEnabled(FeatureName.CI_INDIRECT_LOG_UPLOAD, accountID))
         .tiUrl(tiServiceUtils.getTiServiceConfig().getBaseUrl())
-        .tiSvcToken(getTISvcToken(accountID))
+        .tiSvcToken(tiSvcToken)
         .stoUrl(stoServiceUtils.getStoServiceConfig().getBaseUrl())
         .stoSvcToken(getSTOSvcToken(accountID))
         .secrets(new ArrayList<>(secrets))
@@ -555,7 +576,7 @@ public class VmInitializeTaskParamsBuilder {
   // getHostedPoolId returns a pool ID that can be used for GCP hosted builds. If fallback is set to true,
   // it will try to find a fallback pool value instead. Fallback pools are currently only present for linux
   // amd64 architecture.
-  public String getHostedPoolId(ParameterField<Platform> platform, String accountId, boolean fallback) {
+  public String getHostedPoolId(ParameterField<Platform> platform, String accountId, boolean fallback, String region) {
     OSType os = OSType.Linux;
     ArchType arch = ArchType.Amd64;
     String fallbackSuffix = "-fallback";
@@ -601,7 +622,11 @@ public class VmInitializeTaskParamsBuilder {
 
     if (fallback) {
       if (fallbackEligible) {
-        return pool + fallbackSuffix;
+        if (isNotEmpty(region)) {
+          return format("%s-%s", pool, region);
+        } else {
+          return pool;
+        }
       }
       return "";
     }

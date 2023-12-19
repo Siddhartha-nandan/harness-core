@@ -326,9 +326,12 @@ public class K8InitializeStepUtils {
       case SSCA_ENFORCEMENT:
       case PROVENANCE:
       case SLSA_VERIFICATION:
-      case IDP_COOKIECUTTER:
-      case IDP_CREATE_REPO:
-      case IDP_CODE_PUSH:
+      case COOKIECUTTER:
+      case CREATE_REPO:
+      case DIRECT_PUSH:
+      case REGISTER_CATALOG:
+      case CREATE_CATALOG:
+      case SLACK_NOTIFY:
         return createPluginCompatibleStepContainerDefinition((PluginCompatibleStep) ciStepInfo, stageNode,
             ciExecutionArgs, portFinder, stepIndex, stepElement.getIdentifier(), stepElement.getName(),
             stepElement.getType(), timeout, accountId, os, ambiance, extraMemoryPerStep, extraCPUPerStep);
@@ -940,7 +943,8 @@ public class K8InitializeStepUtils {
     if (resource != null && resource.getLimits() != null && resource.getLimits().getMemory() != null) {
       String memoryLimitMemoryQuantity =
           resolveStringParameter("memory", stepType, stepId, resource.getLimits().getMemory(), false);
-      if (isNotEmpty(memoryLimitMemoryQuantity) && !UNRESOLVED_PARAMETER.equals(memoryLimitMemoryQuantity)) {
+      if (isNotEmpty(memoryLimitMemoryQuantity) && !UNRESOLVED_PARAMETER.equals(memoryLimitMemoryQuantity)
+          && !memoryLimitMemoryQuantity.equals(NULL_STR)) {
         memoryLimit = QuantityUtils.getStorageQuantityValueInUnit(memoryLimitMemoryQuantity, StorageQuantityUnit.Mi);
       }
     }
@@ -1078,7 +1082,8 @@ public class K8InitializeStepUtils {
 
     if (resource != null && resource.getLimits() != null && resource.getLimits().getCpu() != null) {
       String cpuLimitQuantity = resolveStringParameter("cpu", stepType, stepId, resource.getLimits().getCpu(), false);
-      if (isNotEmpty(cpuLimitQuantity) && !UNRESOLVED_PARAMETER.equals(cpuLimitQuantity)) {
+      if (isNotEmpty(cpuLimitQuantity) && !UNRESOLVED_PARAMETER.equals(cpuLimitQuantity)
+          && !cpuLimitQuantity.equals(NULL_STR)) {
         cpuLimit = QuantityUtils.getCpuQuantityValueInUnit(cpuLimitQuantity, DecimalQuantityUnit.m);
       }
     }
@@ -1115,9 +1120,12 @@ public class K8InitializeStepUtils {
       case IACM_APPROVAL:
       case PROVENANCE:
       case SLSA_VERIFICATION:
-      case IDP_COOKIECUTTER:
-      case IDP_CREATE_REPO:
-      case IDP_CODE_PUSH:
+      case COOKIECUTTER:
+      case CREATE_REPO:
+      case DIRECT_PUSH:
+      case REGISTER_CATALOG:
+      case CREATE_CATALOG:
+      case SLACK_NOTIFY:
         return ((PluginCompatibleStep) ciStepInfo).getResources();
       default:
         throw new CIStageExecutionException(

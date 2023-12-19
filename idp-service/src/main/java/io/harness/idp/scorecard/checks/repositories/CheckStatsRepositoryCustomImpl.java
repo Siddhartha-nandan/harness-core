@@ -7,12 +7,10 @@
 
 package io.harness.idp.scorecard.checks.repositories;
 
-import static io.harness.idp.common.DateUtils.yesterdayInMilliseconds;
-
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.backstagebeans.BackstageCatalogEntity;
-import io.harness.idp.backstagebeans.BackstageCatalogEntityTypes;
+import io.harness.idp.backstage.beans.BackstageCatalogEntityTypes;
+import io.harness.idp.backstage.entities.BackstageCatalogEntity;
 import io.harness.idp.scorecard.checks.entity.CheckStatsEntity;
 import io.harness.idp.scorecard.checks.entity.CheckStatsEntity.CheckStatsKeys;
 import io.harness.idp.scorecard.scorecards.beans.StatsMetadata;
@@ -54,7 +52,6 @@ public class CheckStatsRepositoryCustomImpl implements CheckStatsRepositoryCusto
     }
     entity.setStatus(String.valueOf(checkStatus.getStatus()));
     entity.setMetadata(buildMetadata(backstageCatalog));
-    entity.setLastUpdatedAt(yesterdayInMilliseconds());
     return entity;
   }
 

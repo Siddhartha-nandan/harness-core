@@ -19,8 +19,12 @@ import io.harness.annotations.SSCAServiceAuth;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.authorization.AuthorizationServiceHeader;
 import io.harness.cache.CacheModule;
+import io.harness.cf.AbstractCfModule;
+import io.harness.cf.CfClientConfig;
+import io.harness.cf.CfMigrationConfig;
 import io.harness.changestreams.redisconsumers.InstanceNGRedisEventConsumer;
 import io.harness.controller.PrimaryVersionChangeScheduler;
+import io.harness.ff.FeatureFlagConfig;
 import io.harness.govern.ProviderModule;
 import io.harness.maintenance.MaintenanceController;
 import io.harness.metrics.HarnessMetricRegistry;
@@ -37,12 +41,15 @@ import io.harness.ng.core.exceptionmappers.NotAllowedExceptionMapper;
 import io.harness.ng.core.exceptionmappers.NotFoundExceptionMapper;
 import io.harness.ng.core.exceptionmappers.WingsExceptionMapperV2;
 import io.harness.ng.core.filter.ApiResponseFilter;
+import io.harness.outbox.OutboxEventPollService;
 import io.harness.persistence.HPersistence;
 import io.harness.request.RequestContextFilter;
 import io.harness.security.InternalApiAuthFilter;
 import io.harness.security.NextGenAuthenticationFilter;
 import io.harness.security.annotations.InternalApi;
 import io.harness.security.annotations.NextGenManagerAuth;
+import io.harness.ssca.jobs.ElkMigrationJob;
+import io.harness.ssca.jobs.RemediationTrackerUpdateArtifactsIteratorHandler;
 import io.harness.ssca.migration.SSCAMigrationProvider;
 import io.harness.threading.ExecutorModule;
 import io.harness.threading.ThreadPool;
@@ -157,6 +164,22 @@ public class SSCAManagerApplication extends Application<SSCAManagerConfiguration
     CacheModule cacheModule = new CacheModule(sscaManagerConfiguration.getCacheConfig());
     modules.add(cacheModule);
     modules.add(io.harness.SSCAManagerModule.getInstance(sscaManagerConfiguration));
+    modules.add(new AbstractCfModule() {
+      @Override
+      public CfClientConfig cfClientConfig() {
+        return sscaManagerConfiguration.getCfClientConfig();
+      }
+
+      @Override
+      public CfMigrationConfig cfMigrationConfig() {
+        return CfMigrationConfig.builder().build();
+      }
+
+      @Override
+      public FeatureFlagConfig featureFlagConfig() {
+        return sscaManagerConfiguration.getFeatureFlagConfig();
+      }
+    });
     MaintenanceController.forceMaintenance(true);
     Injector injector = Guice.createInjector(modules);
     injector.getInstance(HPersistence.class);
@@ -168,8 +191,10 @@ public class SSCAManagerApplication extends Application<SSCAManagerConfiguration
     registerCorrelationFilter(environment, injector);
     registerRequestContextFilter(environment);
     registerCorsFilter(sscaManagerConfiguration, environment);
+    registerIterators(injector, sscaManagerConfiguration.getIteratorsConfig());
     registerSscaEvents(sscaManagerConfiguration, injector);
     registerManagedBeans(environment, injector);
+    registerJobs(sscaManagerConfiguration, environment, injector);
     registerMigrations(injector);
     MaintenanceController.forceMaintenance(false);
     injector.getInstance(PrimaryVersionChangeScheduler.class).registerExecutors();
@@ -220,7 +245,6 @@ public class SSCAManagerApplication extends Application<SSCAManagerConfiguration
     environment.jersey().register(NotAllowedExceptionMapper.class);
     environment.jersey().register(MultiPartFeature.class);
   }
-
   private void registerAuthFilters(SSCAManagerConfiguration config, Environment environment, Injector injector) {
     if (config.isAuthEnabled()) {
       Predicate<Pair<ResourceInfo, ContainerRequestContext>> predicate = resourceInfoAndRequest
@@ -262,6 +286,13 @@ public class SSCAManagerApplication extends Application<SSCAManagerConfiguration
 
   private void registerManagedBeans(Environment environment, Injector injector) {
     createConsumerThreadsToListenToEvents(environment, injector);
+    environment.lifecycle().manage(injector.getInstance(OutboxEventPollService.class));
+  }
+
+  private void registerJobs(SSCAManagerConfiguration appConfig, Environment environment, Injector injector) {
+    if (appConfig.isEnableElasticsearch()) {
+      environment.lifecycle().manage(injector.getInstance(ElkMigrationJob.class));
+    }
   }
 
   private void registerMigrations(Injector injector) {
@@ -289,5 +320,10 @@ public class SSCAManagerApplication extends Application<SSCAManagerConfiguration
                && resourceInfoAndRequest.getKey().getResourceMethod().getAnnotation(annotation) != null)
         || (resourceInfoAndRequest.getKey().getResourceClass() != null
             && resourceInfoAndRequest.getKey().getResourceClass().getAnnotation(annotation) != null);
+  }
+
+  public static void registerIterators(Injector injector, SSCAIteratorsConfig iteratorsConfig) {
+    injector.getInstance(RemediationTrackerUpdateArtifactsIteratorHandler.class)
+        .registerIterators(iteratorsConfig.getRemediationTrackerUpdateIteratorConfig());
   }
 }

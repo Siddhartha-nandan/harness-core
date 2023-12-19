@@ -14,6 +14,7 @@ import static java.util.Collections.singletonList;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.Scope;
+import io.harness.beans.ScopeInfo;
 import io.harness.connector.services.ConnectorService;
 import io.harness.ng.core.api.AggregateOrganizationService;
 import io.harness.ng.core.api.DelegateDetailsService;
@@ -24,6 +25,7 @@ import io.harness.ng.core.entities.Organization;
 import io.harness.ng.core.remote.OrganizationMapper;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ng.core.user.remote.dto.UserMetadataDTO;
 import io.harness.ng.core.user.service.NgUserService;
 
@@ -57,13 +59,14 @@ public class AggregateOrganizationServiceImpl implements AggregateOrganizationSe
   private final DelegateDetailsService delegateDetailsService;
   private final NgUserService ngUserService;
   private final ExecutorService executorService;
+  private final ScopeInfoService scopeResolverService;
 
   @Inject
   public AggregateOrganizationServiceImpl(final OrganizationService organizationService,
       final ProjectService projectService, final NGSecretServiceV2 secretService,
       @Named(DEFAULT_CONNECTOR_SERVICE) final ConnectorService defaultConnectorService,
       final DelegateDetailsService delegateDetailsService, final NgUserService ngUserService,
-      @Named("aggregate-orgs") final ExecutorService executorService) {
+      @Named("aggregate-orgs") final ExecutorService executorService, ScopeInfoService scopeResolverService) {
     this.organizationService = organizationService;
     this.projectService = projectService;
     this.secretServiceV2 = secretService;
@@ -71,11 +74,13 @@ public class AggregateOrganizationServiceImpl implements AggregateOrganizationSe
     this.delegateDetailsService = delegateDetailsService;
     this.ngUserService = ngUserService;
     this.executorService = executorService;
+    this.scopeResolverService = scopeResolverService;
   }
 
   @Override
-  public OrganizationAggregateDTO getOrganizationAggregateDTO(String accountIdentifier, String identifier) {
-    Optional<Organization> organizationOptional = organizationService.get(accountIdentifier, identifier);
+  public OrganizationAggregateDTO getOrganizationAggregateDTO(
+      String accountIdentifier, ScopeInfo scopeInfo, String identifier) {
+    Optional<Organization> organizationOptional = organizationService.get(accountIdentifier, scopeInfo, identifier);
     if (!organizationOptional.isPresent()) {
       throw new NotFoundException(String.format("Organization with identifier [%s] not found", identifier));
     }
@@ -85,9 +90,10 @@ public class AggregateOrganizationServiceImpl implements AggregateOrganizationSe
   private OrganizationAggregateDTO buildAggregateDTO(final Organization organization) {
     final String accountId = organization.getAccountIdentifier();
     final String orgId = organization.getIdentifier();
-
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountId, orgId, null);
     final int projectsCount =
-        projectService.getProjectsCountPerOrganization(accountId, singletonList(orgId)).getOrDefault(orgId, 0);
+        projectService.getProjectsCountPerOrganization(accountId, singletonList(scopeInfo.orElseThrow().getUniqueId()))
+            .getOrDefault(orgId, 0);
     final long secretsCount = secretServiceV2.count(accountId, orgId, null);
     final long connectorsCount = defaultConnectorService.count(accountId, orgId, null);
     final long delegateGroupCount = delegateDetailsService.getDelegateGroupCount(accountId, orgId, null);
@@ -110,9 +116,9 @@ public class AggregateOrganizationServiceImpl implements AggregateOrganizationSe
 
   @Override
   public Page<OrganizationAggregateDTO> listOrganizationAggregateDTO(
-      String accountIdentifier, Pageable pageable, OrganizationFilterDTO organizationFilterDTO) {
+      String accountIdentifier, ScopeInfo scopeInfo, Pageable pageable, OrganizationFilterDTO organizationFilterDTO) {
     Page<Organization> permittedOrgs =
-        organizationService.listPermittedOrgs(accountIdentifier, pageable, organizationFilterDTO);
+        organizationService.listPermittedOrgs(accountIdentifier, scopeInfo, pageable, organizationFilterDTO);
     List<Organization> organizationList = permittedOrgs.getContent();
 
     List<Callable<OrganizationAggregateDTO>> tasks = new ArrayList<>();

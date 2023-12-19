@@ -7,6 +7,8 @@
 
 package io.harness.delegate.service.core.litek8s;
 
+import static java.lang.Boolean.TRUE;
+
 import io.harness.delegate.core.beans.ResourceRequirements;
 import io.harness.delegate.core.beans.SecurityContext;
 import io.harness.delegate.core.beans.StepRuntime;
@@ -49,7 +51,6 @@ public class ContainerFactory {
   private static final String DELEGATE_SERVICE_ENDPOINT_VARIABLE = "DELEGATE_SERVICE_ENDPOINT";
   private static final String DELEGATE_SERVICE_ID_VARIABLE = "DELEGATE_SERVICE_ID";
   private static final String HARNESS_ACCOUNT_ID_VARIABLE = "HARNESS_ACCOUNT_ID";
-  private static final String TASK_PARAMETERS_FILE = "TASK_PARAMETERS_FILE";
   private static final String TASK_DATA_PATH = "TASK_DATA_PATH";
   private static final String DELEGATE_TOKEN = "DELEGATE_TOKEN";
   private static final String TASK_ID = "TASK_ID";
@@ -60,6 +61,9 @@ public class ContainerFactory {
   public static final int RESERVED_LE_PORT = 20001;
   public static final int RESERVED_ADDON_PORT = 20002;
 
+  private static final boolean IS_LOCAL_BIJOU_RUNNER =
+      TRUE.toString().equals(System.getenv().get("BIJOU_LOCAL_TEST_MODE"));
+
   private final K8SRunnerConfig config;
 
   public V1ContainerBuilder createContainer(final String taskId, final StepRuntime containerRuntime, final int port) {
@@ -67,8 +71,8 @@ public class ContainerFactory {
     envVars.putAll(containerRuntime.getEnvMap());
     envVars.put(HARNESS_ACCOUNT_ID_VARIABLE, config.getAccountId());
     envVars.put(DELEGATE_TOKEN, config.getDelegateToken());
-    envVars.put(TASK_PARAMETERS_FILE, config.getDelegateTaskParamsFile());
     envVars.put(TASK_DATA_PATH, config.getDelegateTaskParamsFile());
+    envVars.put(HARNESS_CI_INDIRECT_LOG_UPLOAD_FF, "true");
     envVars.put(TASK_ID, taskId);
     final V1ContainerBuilder containerBuilder = new V1ContainerBuilder()
                                                     .withName(K8SResourceHelper.getContainerName(taskId))
@@ -102,9 +106,10 @@ public class ContainerFactory {
   public V1ContainerBuilder createAddonInitContainer() {
     final var envVars = ImmutableMap.<String, String>builder();
     envVars.put(HARNESS_ACCOUNT_ID_VARIABLE, config.getAccountId());
+    envVars.put(HARNESS_CI_INDIRECT_LOG_UPLOAD_FF, "true");
     return new V1ContainerBuilder()
         .withName(SETUP_ADDON_CONTAINER_NAME)
-        .withImage("raghavendramurali/ci-addon:tag1.6")
+        .withImage("harnessdev/bijou-ci-addon:v0.1")
         .withEnv(K8SEnvVar.fromMap(envVars.build()))
         .withCommand(getAddonCmd())
         .withArgs(getAddonArgs())
@@ -116,7 +121,7 @@ public class ContainerFactory {
   public V1ContainerBuilder createLEContainer(final ResourceRequirements resourceRequirements) {
     return new V1ContainerBuilder()
         .withName(LE_CONTAINER_NAME)
-        .withImage("raghavendramurali/ci-lite-engine:tag1.6")
+        .withImage("harnessdev/bijou-lite-engine:v0.1")
         .withEnv(K8SEnvVar.fromMap(getLeEnvVars()))
         .withImagePullPolicy("Always")
         .withPorts(getPort(RESERVED_LE_PORT))
@@ -133,6 +138,10 @@ public class ContainerFactory {
         "delegate-service"); // Fixme: LE Can't start without it. Should use service discovery instead
     envVars.put(DELEGATE_SERVICE_ID_VARIABLE, "delegate-grpc-service"); // fixme: What's this for?
     envVars.put(HARNESS_ACCOUNT_ID_VARIABLE, config.getAccountId());
+
+    if (IS_LOCAL_BIJOU_RUNNER) {
+      RunnerSetupHelper.populateLocalLeEnvVars(envVars);
+    }
     //    envVars.put(HARNESS_PROJECT_ID_VARIABLE, projectID);
     //    envVars.put(HARNESS_ORG_ID_VARIABLE, orgID);
     //    envVars.put(HARNESS_PIPELINE_ID_VARIABLE, pipelineID);
@@ -150,7 +159,7 @@ public class ContainerFactory {
   @NonNull
   private List<String> getAddonArgs() {
     return List.of(
-        "mkdir -p /addon/bin; mkdir -p /addon/tmp; chmod -R 776 /addon/tmp; if [ -e /usr/local/bin/ci-addon-linux-amd64 ];then cp /usr/local/bin/ci-addon-linux-amd64 /addon/bin/ci-addon;else cp /usr/local/bin/ci-addon-linux /addon/bin/ci-addon;fi; chmod +x /addon/bin/ci-addon; cp /usr/local/bin/tmate /addon/bin/tmate; chmod +x /addon/bin/tmate; cp /usr/local/bin/java-agent.jar /addon/bin/java-agent.jar; chmod +x /addon/bin/java-agent.jar; if [ -e /usr/local/bin/split_tests ];then cp /usr/local/bin/split_tests /addon/bin/split_tests; chmod +x /addon/bin/split_tests; export PATH=$PATH:/addon/bin; fi;");
+        "mkdir -p /addon/bin; mkdir -p /addon/tmp; chmod -R 776 /addon/tmp; if [ -e /usr/local/bin/ci-addon-linux-amd64 ];then cp /usr/local/bin/ci-addon-linux-amd64 /addon/bin/ci-addon;else cp /usr/local/bin/ci-addon-linux /addon/bin/ci-addon;fi; chmod +x /addon/bin/ci-addon; if [ -e /usr/local/bin/split_tests ];then cp /usr/local/bin/split_tests /addon/bin/split_tests; chmod +x /addon/bin/split_tests; export PATH=$PATH:/addon/bin; fi;");
   }
 
   @NonNull

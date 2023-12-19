@@ -28,6 +28,8 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.FeatureName;
 import io.harness.beans.PageResponse;
 import io.harness.beans.Scope;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.exception.DuplicateFieldException;
 import io.harness.exception.GeneralException;
 import io.harness.ff.FeatureFlagService;
@@ -42,6 +44,7 @@ import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.manifests.SampleManifestFileService;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ng.core.user.UserInfo;
 import io.harness.ng.core.user.UserMembershipUpdateSource;
 import io.harness.ng.core.user.service.NgUserService;
@@ -82,6 +85,7 @@ public class NGAccountSetupService {
   private final FeatureFlagService featureFlagService;
   private final DefaultUserGroupService defaultUserGroupService;
   private final SampleManifestFileService sampleManifestFileService;
+  private final ScopeInfoService scopeResolverService;
   @Inject
   public NGAccountSetupService(OrganizationService organizationService,
       AccountOrgProjectValidator accountOrgProjectValidator,
@@ -89,7 +93,8 @@ public class NGAccountSetupService {
       UserClient userClient, HarnessSMManager harnessSMManager, CIDefaultEntityManager ciDefaultEntityManager,
       NextGenConfiguration nextGenConfiguration, NGAccountSettingService accountSettingService,
       ProjectService projectService, FeatureFlagService featureFlagService,
-      SampleManifestFileService sampleManifestFileService, DefaultUserGroupService defaultUserGroupService) {
+      SampleManifestFileService sampleManifestFileService, DefaultUserGroupService defaultUserGroupService,
+      ScopeInfoService scopeResolverService) {
     this.organizationService = organizationService;
     this.accountOrgProjectValidator = accountOrgProjectValidator;
     this.accessControlAdminClient = accessControlAdminClient;
@@ -105,6 +110,7 @@ public class NGAccountSetupService {
     this.featureFlagService = featureFlagService;
     this.sampleManifestFileService = sampleManifestFileService;
     this.defaultUserGroupService = defaultUserGroupService;
+    this.scopeResolverService = scopeResolverService;
   }
 
   public void setupAccountForNG(String accountIdentifier) {
@@ -150,7 +156,13 @@ public class NGAccountSetupService {
   }
 
   private Organization createDefaultOrg(String accountIdentifier) {
-    Optional<Organization> organization = organizationService.get(accountIdentifier, DEFAULT_ORG_IDENTIFIER);
+    Optional<Organization> organization = organizationService.get(accountIdentifier,
+        ScopeInfo.builder()
+            .accountIdentifier(accountIdentifier)
+            .scopeType(ScopeLevel.ACCOUNT)
+            .uniqueId(accountIdentifier)
+            .build(),
+        DEFAULT_ORG_IDENTIFIER);
     if (organization.isPresent()) {
       log.info(String.format(
           "[NGAccountSetupService]: Default Organization for account %s already present", accountIdentifier));
@@ -162,14 +174,21 @@ public class NGAccountSetupService {
     createOrganizationDTO.setTags(emptyMap());
     createOrganizationDTO.setDescription("Default Organization");
     createOrganizationDTO.setHarnessManaged(true);
-    Organization defaultOrganization = organizationService.create(accountIdentifier, createOrganizationDTO);
+    Organization defaultOrganization = organizationService.create(accountIdentifier,
+        ScopeInfo.builder()
+            .accountIdentifier(accountIdentifier)
+            .scopeType(ScopeLevel.ACCOUNT)
+            .uniqueId(accountIdentifier)
+            .build(),
+        createOrganizationDTO);
     log.info(String.format("[NGAccountSetupService]: Created default org for account %s", accountIdentifier));
     return defaultOrganization;
   }
 
   private Project createDefaultProject(String accountIdentifier, String organizationIdentifier) {
+    Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, organizationIdentifier, null);
     Optional<Project> project =
-        projectService.get(accountIdentifier, organizationIdentifier, DEFAULT_PROJECT_IDENTIFIER);
+        projectService.get(accountIdentifier, scopeInfo.orElseThrow(), DEFAULT_PROJECT_IDENTIFIER);
     if (project.isPresent()) {
       log.info(String.format("[NGAccountSetupService]: Default Project for account %s organization %s already present",
           accountIdentifier, organizationIdentifier));
@@ -178,7 +197,7 @@ public class NGAccountSetupService {
     ProjectDTO createProjectDTO = ProjectDTO.builder().build();
     createProjectDTO.setIdentifier(DEFAULT_PROJECT_IDENTIFIER);
     createProjectDTO.setName(DEFAULT_PROJECT_NAME);
-    Project defaultProject = projectService.create(accountIdentifier, organizationIdentifier, createProjectDTO);
+    Project defaultProject = projectService.create(accountIdentifier, scopeInfo.orElseThrow(), createProjectDTO);
     log.info(String.format("[NGAccountSetupService]: Default project created for account %s", accountIdentifier));
     return defaultProject;
   }

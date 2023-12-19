@@ -46,6 +46,7 @@ const (
 	managerSvcEndpointEnv  = "MANAGER_HOST_AND_PORT"
 	delegateID             = "DELEGATE_ID"
 	LEStatusType           = "CI_LE_STATUS"
+	trustAllCerts          = "LE_SKIP_VERIFY_MANAGER"
 )
 
 var (
@@ -244,7 +245,13 @@ func sendStatusHTTP(ctx context.Context, stepID, delegateID, accountKey, account
 
 	additionalCertsDir := external.GetAdditionalCertsDir()
 
-	httpClient := delegate.New(managerSvcEndpoint, accountID, accountKey, false, additionalCertsDir)
+	skipVerify := false
+	// Add to support developer experience from local environment.
+	if skip, ok := os.LookupEnv(trustAllCerts); ok && skip == "true" {
+		skipVerify = true
+	}
+
+	httpClient := delegate.New(managerSvcEndpoint, accountID, accountKey, skipVerify, additionalCertsDir)
 
 	stepStatusTaskResponseData := getStepStatusPayload(ctx, stepID, accountID, delegateID, delegateSvcEndpoint, taskID, status, numRetries, timeTaken, errMsg, stepOutput, artifact)
 
@@ -325,6 +332,18 @@ func getStepStatusPayload(ctx context.Context, stepID, accountID, delegateID, de
 			Error:                  errMsg,
 			ArtifactMetadata:       &artifactMetadata,
 		},
+	}
+	if stepOutput != nil {
+		var stepOutputDataV2 []payloads.OutputV2
+		for _, o := range stepOutput.Output.OutputVariables {
+			stepOutput := payloads.OutputV2{
+				Key:   o.Key,
+				Value: o.Value,
+				Type:  o.Type.String(),
+			}
+			stepOutputDataV2 = append(stepOutputDataV2, stepOutput)
+		}
+		stepStatusTaskResponseData.StepStatus.StepOutputV2 = stepOutputDataV2
 	}
 	return stepStatusTaskResponseData
 }

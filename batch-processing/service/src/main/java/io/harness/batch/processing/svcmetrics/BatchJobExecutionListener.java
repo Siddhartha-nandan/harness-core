@@ -36,15 +36,19 @@ public class BatchJobExecutionListener implements JobExecutionListener {
     JobParameters params = jobExecution.getJobParameters();
     String accountId = params.getString(CCMJobConstants.ACCOUNT_ID);
     String jobType = jobExecution.getJobInstance().getJobName();
+    String jobStatus = jobExecution.getStatus().toString();
 
     Date startTime = jobExecution.getStartTime();
     Date endTime = jobExecution.getEndTime();
     long durationInMillis = endTime.getTime() - startTime.getTime();
     long durationInSeconds = durationInMillis / 1000;
 
-    log.info("Job execution completed in {} sec: accountId={} jobType={}", durationInSeconds, accountId, jobType);
-    try (BatchJobContext x = new BatchJobContext(accountId, jobType)) {
+    log.info("Job execution completed in {} sec: accountId={} jobType={} jobStatus={}", durationInSeconds, accountId,
+        jobType, jobStatus);
+    /*
+    try (BatchJobContext x = new BatchJobContext(accountId, jobType, jobStatus)) {
       metricService.recordMetric(BatchProcessingMetricName.JOB_EXECUTION_TIME_IN_SEC, durationInSeconds);
     }
+    */
   }
 }

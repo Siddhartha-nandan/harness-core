@@ -30,13 +30,18 @@ import org.springframework.data.mongodb.core.query.Criteria;
 public interface ProjectService {
   String PROJECT_SCOPE_INFO_DATA_CACHE_KEY = "projectScopeInfoDataCache";
 
-  Project create(String accountIdentifier, String orgIdentifier, ProjectDTO project);
+  Project create(String accountIdentifier, ScopeInfo scopeInfo, ProjectDTO project);
 
   Optional<Project> get(String accountIdentifier, String orgIdentifier, String identifier);
 
+  Optional<Project> get(String accountIdentifier, ScopeInfo scopeInfo, String identifier);
+
   Optional<Project> getConsideringCase(String accountIdentifier, String orgIdentifier, String identifier);
 
-  Project update(String accountIdentifier, String orgIdentifier, String identifier, ProjectDTO project);
+  Project update(
+      String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier, String identifier, ProjectDTO project);
+  boolean moveProject(
+      String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier, String identifier, String destinationOrg);
 
   PageResponse<ProjectDTO> listProjectsForUser(String userId, String accountId, PageRequest pageRequest);
 
@@ -66,9 +71,9 @@ public interface ProjectService {
    */
   List<Project> list(Criteria criteria);
 
-  boolean delete(String accountIdentifier, String orgIdentifier, String identifier, Long version);
+  boolean delete(String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier, String identifier, Long version);
 
-  boolean restore(String accountIdentifier, String orgIdentifier, String identifier);
+  boolean restore(String accountIdentifier, ScopeInfo scopeInfo, String orgIdentifier, String identifier);
 
   Map<String, Integer> getProjectsCountPerOrganization(String accountIdentifier, List<String> orgIdentifiers);
 

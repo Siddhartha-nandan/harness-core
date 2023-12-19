@@ -349,13 +349,21 @@ public class TriggerExecutionHelper {
           }
         }
         if (sender != null) {
-          builder.putExtraInfo(GIT_USER, sender.getLogin());
+          if (triggerPayload.getSourceType() == SourceType.HARNESS_REPO) {
+            builder.putExtraInfo(GIT_USER, sender.getEmail());
+            if (isNotEmpty(sender.getLogin())) {
+              builder.setIdentifier(sender.getEmail());
+            }
+          } else {
+            builder.putExtraInfo(GIT_USER, sender.getLogin());
+            if (isNotEmpty(sender.getLogin())) {
+              builder.setIdentifier(sender.getLogin());
+            }
+          }
           if (isNotEmpty(sender.getEmail())) {
             builder.putExtraInfo(EMAIL, sender.getEmail());
           }
-          if (isNotEmpty(sender.getLogin())) {
-            builder.setIdentifier(sender.getLogin());
-          }
+
           if (isNotEmpty(sender.getName())) {
             builder.setUuid(sender.getName());
           }
@@ -496,8 +504,9 @@ public class TriggerExecutionHelper {
     NGTriggerEntity ngTriggerEntity = triggerDetails.getNgTriggerEntity();
     NGTriggerConfigV2 triggerConfigV2 = triggerDetails.getNgTriggerConfigV2();
     String pipelineBranch = triggerConfigV2.getPipelineBranchName();
+    String inputYaml = triggerConfigV2.getInputYaml();
     if (isEmpty(triggerConfigV2.getInputSetRefs())) {
-      return triggerConfigV2.getInputYaml();
+      return inputYaml;
     }
 
     String branch = null;
@@ -514,7 +523,11 @@ public class TriggerExecutionHelper {
         NGRestUtils.getResponse(pipelineServiceClient.getMergeInputSetFromPipelineTemplate(
             ngTriggerEntity.getAccountId(), ngTriggerEntity.getOrgIdentifier(), ngTriggerEntity.getProjectIdentifier(),
             ngTriggerEntity.getTargetIdentifier(), branch,
-            MergeInputSetRequestDTOPMS.builder().inputSetReferences(inputSetRefs).getOnlyFileContent(true).build()));
+            MergeInputSetRequestDTOPMS.builder()
+                .inputSetReferences(inputSetRefs)
+                .lastYamlToMerge(inputYaml)
+                .getOnlyFileContent(true)
+                .build()));
 
     return mergeInputSetResponseDTOPMS.getPipelineYaml();
   }

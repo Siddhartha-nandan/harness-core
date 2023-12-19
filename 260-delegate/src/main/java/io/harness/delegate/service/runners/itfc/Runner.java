@@ -19,14 +19,16 @@ public interface Runner {
    * @param infra  Input data for infra config
    * @param context  Context of this task, including delegate information, task id, or decrypted secrets
    */
-  void init(String infraId, InputData infra, Map<String, char[]> decrypted, Context context);
+  void init(String infraId, InputData infra, Map<String, char[]> decrypted, Context context) throws Exception;
   /**
    * Execute a task
    * @param infraId  The execution infra to execute the task on
-   * @param tasks  Input data for the task
+   * @param taskData  Input data for the task
+   * @param runnerData Runner's execution parameters
    * @param context  Context of this task, including delegate information, task id, or decrypted secrets
    */
-  void execute(String infraId, String logKey, InputData tasks, Map<String, char[]> decrypted, Context context);
+  void execute(String infraId, String logKey, InputData taskData, InputData runnerData, Map<String, char[]> decrypted,
+      Context context);
   /**
    * Clean up an execution infra
    * @param infraId  The execution infra to clean up
