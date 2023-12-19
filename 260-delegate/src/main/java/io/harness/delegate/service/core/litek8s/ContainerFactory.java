@@ -7,6 +7,8 @@
 
 package io.harness.delegate.service.core.litek8s;
 
+import static java.lang.Boolean.TRUE;
+
 import io.harness.delegate.core.beans.ResourceRequirements;
 import io.harness.delegate.core.beans.SecurityContext;
 import io.harness.delegate.core.beans.StepRuntime;
@@ -59,6 +61,9 @@ public class ContainerFactory {
   public static final int RESERVED_LE_PORT = 20001;
   public static final int RESERVED_ADDON_PORT = 20002;
 
+  private static final boolean IS_LOCAL_BIJOU_RUNNER =
+      TRUE.toString().equals(System.getenv().get("BIJOU_LOCAL_TEST_MODE"));
+
   private final K8SRunnerConfig config;
 
   public V1ContainerBuilder createContainer(final String taskId, final StepRuntime containerRuntime, final int port) {
@@ -67,6 +72,7 @@ public class ContainerFactory {
     envVars.put(HARNESS_ACCOUNT_ID_VARIABLE, config.getAccountId());
     envVars.put(DELEGATE_TOKEN, config.getDelegateToken());
     envVars.put(TASK_DATA_PATH, config.getDelegateTaskParamsFile());
+    envVars.put(HARNESS_CI_INDIRECT_LOG_UPLOAD_FF, "true");
     envVars.put(TASK_ID, taskId);
     final V1ContainerBuilder containerBuilder = new V1ContainerBuilder()
                                                     .withName(K8SResourceHelper.getContainerName(taskId))
@@ -100,6 +106,7 @@ public class ContainerFactory {
   public V1ContainerBuilder createAddonInitContainer() {
     final var envVars = ImmutableMap.<String, String>builder();
     envVars.put(HARNESS_ACCOUNT_ID_VARIABLE, config.getAccountId());
+    envVars.put(HARNESS_CI_INDIRECT_LOG_UPLOAD_FF, "true");
     return new V1ContainerBuilder()
         .withName(SETUP_ADDON_CONTAINER_NAME)
         .withImage("harnessdev/bijou-ci-addon:v0.1")
@@ -131,6 +138,10 @@ public class ContainerFactory {
         "delegate-service"); // Fixme: LE Can't start without it. Should use service discovery instead
     envVars.put(DELEGATE_SERVICE_ID_VARIABLE, "delegate-grpc-service"); // fixme: What's this for?
     envVars.put(HARNESS_ACCOUNT_ID_VARIABLE, config.getAccountId());
+
+    if (IS_LOCAL_BIJOU_RUNNER) {
+      RunnerSetupHelper.populateLocalLeEnvVars(envVars);
+    }
     //    envVars.put(HARNESS_PROJECT_ID_VARIABLE, projectID);
     //    envVars.put(HARNESS_ORG_ID_VARIABLE, orgID);
     //    envVars.put(HARNESS_PIPELINE_ID_VARIABLE, pipelineID);

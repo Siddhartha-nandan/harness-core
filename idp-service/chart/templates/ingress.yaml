@@ -245,5 +245,11 @@ spec:
                 name: {{ $.Values.name }}
                 port:
                   number: 12003
-    {{- end }}
+          - path: /(v1/backstage-harness/sync.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: {{.Values.name}}
+                port:
+                  number: 12003
 {{- end }}

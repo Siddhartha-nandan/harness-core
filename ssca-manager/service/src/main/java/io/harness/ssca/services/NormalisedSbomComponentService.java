@@ -21,6 +21,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 
 public interface NormalisedSbomComponentService {
+  List<NormalizedSBOMComponentEntity> getNormalizedSbomComponentsForOrchestrationId(String accountId,
+      String orgIdentifier, String projectIdentifier, String orchestrationId, List<String> fieldsToBeIncluded);
   Response listNormalizedSbomComponent(
       String orgIdentifier, String projectIdentifier, Integer page, Integer limit, Artifact body, String accountId);
 
@@ -32,4 +34,6 @@ public interface NormalisedSbomComponentService {
       LicenseFilter licenseFilter, List<ComponentFilter> componentFilter);
 
   <T> List<T> getComponentsByAggregation(Aggregation aggregation, Class<T> resultClass);
+
+  List<NormalizedSBOMComponentEntity> getComponentsOfSbomByLicense(String orchestrationId, String license);
 }

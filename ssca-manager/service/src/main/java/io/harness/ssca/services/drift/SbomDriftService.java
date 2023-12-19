@@ -9,16 +9,31 @@ package io.harness.ssca.services.drift;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.spec.server.ssca.v1.model.ArtifactSbomDriftRequestBody;
+import io.harness.spec.server.ssca.v1.model.ArtifactSbomDriftResponse;
+import io.harness.spec.server.ssca.v1.model.OrchestrationDriftSummary;
 import io.harness.ssca.beans.drift.ComponentDriftResults;
 import io.harness.ssca.beans.drift.ComponentDriftStatus;
+import io.harness.ssca.beans.drift.DriftBase;
+import io.harness.ssca.beans.drift.LicenseDriftResults;
+import io.harness.ssca.beans.drift.LicenseDriftStatus;
 
 import org.springframework.data.domain.Pageable;
 
 @OwnedBy(HarnessTeam.SSCA)
 public interface SbomDriftService {
-  void calculateAndStoreComponentDrift(
-      String accountId, String orgId, String projectId, String artifactId, String baseTag, String tag);
+  ArtifactSbomDriftResponse calculateSbomDrift(
+      String accountId, String orgId, String projectId, String artifactId, ArtifactSbomDriftRequestBody requestBody);
 
-  ComponentDriftResults getComponentDriftsByArtifactId(String accountId, String orgId, String projectId,
-      String artifactId, String baseTag, String tag, ComponentDriftStatus status, Pageable pageable);
+  ArtifactSbomDriftResponse calculateSbomDriftForOrchestration(
+      String accountId, String orgId, String projectId, String orchestrationId, DriftBase driftBase);
+
+  ComponentDriftResults getComponentDrifts(String accountId, String orgId, String projectId, String driftId,
+      ComponentDriftStatus status, Pageable pageable, String searchTerm);
+
+  LicenseDriftResults getLicenseDrifts(String accountId, String orgId, String projectId, String driftId,
+      LicenseDriftStatus status, Pageable pageable, String searchTerm);
+
+  OrchestrationDriftSummary getSbomDriftSummary(
+      String accountId, String orgId, String projectId, String orchestrationId);
 }

@@ -469,6 +469,14 @@ public class NextGenModule extends AbstractModule {
 
   @Provides
   @Singleton
+  @Named("chaosTemplateRegistrationExecutorService")
+  public ExecutorService chaosTemplateRegistrationExecutionServiceThreadPool() {
+    return ThreadPool.create(1, 1, 10, TimeUnit.SECONDS,
+        new ThreadFactoryBuilder().setNameFormat("ChaosTemplateRegistrationService-%d").build());
+  }
+
+  @Provides
+  @Singleton
   @Named("DashboardExecutorService")
   public ExecutorService DashboardExecutorServiceThreadPool() {
     return ThreadPool.create(appConfig.getDashboardExecutorServiceConfig().getCorePoolSize(),
@@ -809,6 +817,7 @@ public class NextGenModule extends AbstractModule {
     bind(ScimUserService.class).to(NGScimUserServiceImpl.class);
     bind(ScimGroupService.class).to(NGScimGroupServiceImpl.class);
     bind(ModuleVersionInfoService.class).to(ModuleVersionInfoServiceImpl.class);
+    bind(ScopeInfoService.class).to(ScopeInfoServiceImpl.class);
 
     install(new ValidationModule(getValidatorFactory()));
     install(new AbstractMongoModule() {
@@ -950,6 +959,20 @@ public class NextGenModule extends AbstractModule {
 
       @Provides
       @Singleton
+      @Named("scmServiceBaseUrl")
+      String getScmServiceBaseUrl() {
+        return getBaseUrls().getScmServiceBaseUrl();
+      }
+
+      @Provides
+      @Singleton
+      @Named("harnessCodeGitUrl")
+      String getHarnessCodeGitUrl() {
+        return getBaseUrls().getHarnessCodeGitUrl();
+      }
+
+      @Provides
+      @Singleton
       BaseUrls getBaseUrls() {
         return appConfig.getBaseUrls();
       }
@@ -1058,7 +1081,6 @@ public class NextGenModule extends AbstractModule {
     bind(WebhookService.class).to(WebhookServiceImpl.class);
     bind(WebhookEventProcessingService.class).to(WebhookEventProcessingServiceImpl.class);
     bind(NGHostValidationService.class).to(NGHostValidationServiceImpl.class);
-    bind(ScopeInfoService.class).to(ScopeInfoServiceImpl.class);
     bind(MessageListener.class)
         .annotatedWith(Names.named(USER_ENTITY + ENTITY_CRUD))
         .to(UserEntityCrudStreamListener.class);

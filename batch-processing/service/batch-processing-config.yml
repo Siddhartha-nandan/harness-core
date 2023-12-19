@@ -133,12 +133,14 @@ scheduler-jobs-config:
   budgetAlertsJobCron: "0 30 14 * * ?"
   weeklyReportsJobCron: "0 0 14 * * MON"
   budgetCostUpdateJobCron: "0 0 14 * * ?"
-  connectorHealthUpdateJobCron: "0 0 14 * * ?"
+  connectorHealthUpdateJobCron: "0 0 10,22 * * ?"
+  delegateHealthUpdateJobCron: "0 0 10,22 * * ?"
   awsAccountTagsCollectionJobCron : "0 0 9 * * ?"
   governanceRecommendationJobCronAws : "0 0 0 * * *"
   governanceRecommendationJobCronAzure : "0 0 8 * * *"
   dailyBudgetAlertsJobCron: "0 30 14 * * ?"
   dailyBudgetCostUpdateJobCron: "0 0 14 * * ?"
+  billingDataVerificationJobCron: "0 0 10 * * ?"
 
 cePythonService:
   pythonServiceUrl: "http://0.0.0.0:8081"
@@ -171,8 +173,15 @@ awsCurBilling: true
 connectorHealthUpdateJobConfig:
   enabled: true
 
+delegateHealthUpdateJobConfig:
+  enabled: true
+
 awsAccountTagsCollectionJobConfig:
   enabled: true
+
+billingDataVerificationJobConfig:
+  awsBillingDataVerificationEnabled: true
+  awsMaximumHistoricalMonthsForVerificationJob: 2
 
 gcpConfig:
   gcpProjectId: "ccm-play"
@@ -216,6 +225,10 @@ clickHouseConfig:
   username: "default"
   password: ""
   socketTimeout: 86400000
+  sendReceiveTimeout: "86400"
+  queryRetries: "3"
+  secretName: "clickhouse"
+  secretPasswordKey: "admin-password"
 
 deployMode: KUBERNETES
 
@@ -283,3 +296,17 @@ awsServiceEndpointUrls:
   stsEndPointUrl: https://sts.us-east-1.amazonaws.com
   ecsEndPointUrl: https://ecs.us-east-1.amazonaws.com
   cloudwatchEndPointUrl: https://monitoring.us-east-1.amazonaws.com
+
+gcpSyncSmpConfig:
+  gcpSmpEnabled: false
+  nextgenCeSecretName: "nextgen-ce"
+  batchProcessingSecretName: "batch-processing"
+  k8sJobContainerName: "python-gcp-sync-container"
+  k8sJobName: "python-gcp-sync-k8s-job"
+  k8sJobPythonImage: "placeholder"
+  batchProcessingConfigMapName: "batch-processing"
+  hmacSecretKey : "HMAC_SECRET_KEY"
+  hmacAccessKey : "HMAC_ACCESS_KEY"
+  batchProcessingMountSecretName: "batch-processing-secret-mount"
+  serviceAccountCredentialKey: "ce-batch-gcp-credentials"
+  bucketNamePrefix: "harness-ccm-%s-%s"
