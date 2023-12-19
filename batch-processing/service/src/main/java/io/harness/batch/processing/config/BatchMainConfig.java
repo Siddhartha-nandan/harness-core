@@ -46,6 +46,8 @@ public class BatchMainConfig {
   @JsonProperty("awsRegionIdToName") private Map<String, String> awsRegionIdToName;
   @JsonProperty("awsS3SyncConfig") private AwsS3SyncConfig awsS3SyncConfig;
   @JsonProperty("azureStorageSyncConfig") private AzureStorageSyncConfig azureStorageSyncConfig;
+  @JsonProperty("billingDataVerificationJobConfig")
+  private BillingDataVerificationJobConfig billingDataVerificationJobConfig;
   @JsonProperty("podInfo") private PodInfoConfig podInfoConfig;
   @JsonProperty("billingDataPipelineConfig") private BillingDataPipelineConfig billingDataPipelineConfig;
   @JsonProperty("smtp") private SmtpConfig smtpConfig;
@@ -67,6 +69,7 @@ public class BatchMainConfig {
   @JsonProperty("managerServiceHttpClientConfig") private ServiceHttpClientConfig managerServiceHttpClientConfig;
   @JsonProperty("banzaiRecommenderConfig") private ServiceHttpClientConfig banzaiRecommenderConfig;
   @JsonProperty("connectorHealthUpdateJobConfig") private ConnectorHealthUpdateJobConfig connectorHealthUpdateJobConfig;
+  @JsonProperty("delegateHealthUpdateJobConfig") private DelegateHealthUpdateJobConfig delegateHealthUpdateJobConfig;
   @JsonProperty("awsAccountTagsCollectionJobConfig")
   private AwsAccountTagsCollectionJobConfig awsAccountTagsCollectionJobConfig;
   @JsonProperty("gcpConfig") private GcpConfig gcpConfig;
@@ -81,6 +84,7 @@ public class BatchMainConfig {
   @JsonProperty("proxy") private CEProxyConfig ceProxyConfig;
   @JsonProperty("cliProxy") private CEProxyConfig ceCliProxyConfig;
   @JsonProperty("awsServiceEndpointUrls") private CEAwsServiceEndpointConfig ceAwsServiceEndpointConfig;
+  @JsonProperty("gcpSyncSmpConfig") private GcpSyncSmpConfig gcpSyncSmpConfig;
 
   public List<String> getDbAliases() {
     List<String> dbAliases = new ArrayList<>();

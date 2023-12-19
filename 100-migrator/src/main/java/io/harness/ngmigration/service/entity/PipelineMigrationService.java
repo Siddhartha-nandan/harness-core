@@ -21,6 +21,7 @@ import static software.wings.ngmigration.NGMigrationEntityType.ENVIRONMENT;
 import static software.wings.ngmigration.NGMigrationEntityType.INFRA;
 import static software.wings.ngmigration.NGMigrationEntityType.PIPELINE;
 import static software.wings.ngmigration.NGMigrationEntityType.SERVICE;
+import static software.wings.ngmigration.NGMigrationEntityType.USER_GROUP;
 import static software.wings.ngmigration.NGMigrationEntityType.WORKFLOW;
 import static software.wings.sm.StateType.ARTIFACT_COLLECTION;
 
@@ -235,6 +236,18 @@ public class PipelineMigrationService extends NgMigrationService {
                       .collect(Collectors.toList()));
             }
           }
+        } else if (StateType.APPROVAL.name().equals(stageElement.getType())) {
+          Map<String, Object> properties = emptyIfNull(stageElement.getProperties());
+          if (isNotEmpty(properties)) {
+            ApprovalState state = new ApprovalState(stageElement.getName());
+            state.parseProperties(properties);
+            if (!state.isUserGroupAsExpression()) {
+              children.addAll(state.getUserGroups()
+                                  .stream()
+                                  .map(entry -> CgEntityId.builder().id(entry).type(USER_GROUP).build())
+                                  .collect(Collectors.toList()));
+            }
+          }
         }
       });
     }
@@ -329,6 +342,7 @@ public class PipelineMigrationService extends NgMigrationService {
     List<StageElementWrapperConfig> ngStages = new ArrayList<>();
     List<StageElementWrapperConfig> parallelStages = null;
     List<NGVariable> pipelineVariables = getPipelineVariables(migrationContext, pipeline);
+    MigratorExpressionUtils.render(migrationContext, pipelineVariables, new HashMap<>());
     List<StepExpressionFunctor> allFunctors = new ArrayList<>();
     Map<String, String> serviceToStageMap = new HashMap<>();
     Map<String, String> envToStageMap = new HashMap<>();
@@ -822,7 +836,9 @@ public class PipelineMigrationService extends NgMigrationService {
     }
 
     // Set Deployment specific runtime inputs
-    if (templateInputs != null && "Deployment".equals(templateInputs.get("type").asText())) {
+    if (templateInputs != null
+        && ("Deployment".equals(templateInputs.get("type").asText())
+            || "Custom".equals(templateInputs.get("type").asText()))) {
       String serviceRef = templateInputs.at("/spec/service/serviceRef").asText();
       if (RUNTIME_INPUT.equals(serviceRef)
           && (!RUNTIME_INPUT.equals(stageServiceRef) || serviceToStageMap.containsKey(serviceId))) {

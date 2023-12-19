@@ -560,8 +560,7 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
 
   private EnvironmentYamlV2 getEnvironmentYaml(YamlField specField, DeploymentStageConfig deploymentStageConfig) {
     return ServiceAllInOnePlanCreatorUtils.useFromStage(deploymentStageConfig.getEnvironment())
-        ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(
-            deploymentStageConfig.getEnvironment().getUseFromStage(), specField)
+        ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(deploymentStageConfig.getEnvironment(), specField)
         : deploymentStageConfig.getEnvironment();
   }
 
@@ -706,7 +705,7 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
     }
 
     final EnvironmentYamlV2 finalEnvironmentYamlV2 = ServiceAllInOnePlanCreatorUtils.useFromStage(environment)
-        ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(environment.getUseFromStage(), specField)
+        ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(environment, specField)
         : environment;
 
     PlanNode node = InfrastructurePmsPlanCreator.getInfraTaskExecutableStepV2PlanNode(finalEnvironmentYamlV2,
@@ -912,8 +911,9 @@ public class DeploymentStagePMSPlanCreatorV2 extends AbstractStagePlanCreator<De
                             serviceStepV3Parameters.getInfraId()))
                         .build())
                 .deploymentType(serviceStepV3Parameters.getDeploymentType())
-                .stageIdentifier(stageNode.getIdentifier())
-                .stageName(stageNode.getName())
+                // for looping cases, omit <+strategy.identifierPostFix>
+                .stageIdentifier(StrategyUtils.refineIdentifier(stageNode.getIdentifier()))
+                .stageName(StrategyUtils.refineIdentifier(stageNode.getName()))
                 .build());
       } catch (Exception ex) {
         log.warn("Exception occurred while async saving deployment stage plan creation info: {}",

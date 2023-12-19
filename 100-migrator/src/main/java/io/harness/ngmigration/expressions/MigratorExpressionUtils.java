@@ -7,6 +7,7 @@
 
 package io.harness.ngmigration.expressions;
 
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.ngmigration.dto.Flag.LONG_RELEASE_NAME;
 import static io.harness.ngmigration.utils.MigratorUtility.isEnabled;
 
@@ -62,7 +63,7 @@ public class MigratorExpressionUtils {
       Map<CgEntityId, NGYamlFile> migratedEntities = context.getMigratedEntities();
       // Generate the secret map
       Map<String, String> secretRefMap = new HashMap<>();
-      if (EmptyPredicate.isNotEmpty(cgEntities) && EmptyPredicate.isNotEmpty(migratedEntities)) {
+      if (isNotEmpty(cgEntities) && isNotEmpty(migratedEntities)) {
         Set<CgEntityId> secretIds = migratedEntities.keySet()
                                         .stream()
                                         .filter(cgEntityId -> NGMigrationEntityType.SECRET.equals(cgEntityId.getType()))
@@ -107,6 +108,7 @@ public class MigratorExpressionUtils {
     }
 
     context.put("infra.helm.releaseName", "<+infra.releaseName>");
+    context.put("infra.helm.shortId", "<+INFRA_KEY_SHORT_ID>");
     context.put("infra.name", "<+infra.name>");
     context.put("infra.cloudProvider.name", "<+infra.connectorRef>");
 
@@ -138,6 +140,7 @@ public class MigratorExpressionUtils {
     artifactExpressions.put("ARTIFACT_PLACEHOLDER.metadata.groupId", "<+ARTIFACT_PLACEHOLDER.groupId>");
     artifactExpressions.put("ARTIFACT_PLACEHOLDER.metadata.package", "<+ARTIFACT_PLACEHOLDER.metadata.package>");
     artifactExpressions.put("ARTIFACT_PLACEHOLDER.metadata.region", "<+ARTIFACT_PLACEHOLDER.metadata.region>");
+    artifactExpressions.put("ARTIFACT_PLACEHOLDER.metadata.chartName", "<+ARTIFACT_PLACEHOLDER.metadata.chartName>");
     artifactExpressions.put("ARTIFACT_PLACEHOLDER.metadata.repository", "<+ARTIFACT_PLACEHOLDER.repository>");
     artifactExpressions.put("ARTIFACT_PLACEHOLDER.metadata.repositoryName", "<+ARTIFACT_PLACEHOLDER.repositoryName>");
     artifactExpressions.put("ARTIFACT_PLACEHOLDER.metadata.url", "<+ARTIFACT_PLACEHOLDER.url>");
@@ -192,10 +195,14 @@ public class MigratorExpressionUtils {
     context.put("workflow.variables",
         asPipelineVariables ? new PipelineVariablesMigratorFunctor() : new WorkflowVariablesMigratorFunctor());
     context.put("pipeline.variables", new PipelineVariablesMigratorFunctor());
-    context.put("serviceVariable", new ServiceVariablesMigratorFunctor());
-    context.put("serviceVariables", new ServiceVariablesMigratorFunctor());
-    context.put("service.variables", new ServiceVariablesMigratorFunctor());
-    context.put("servicevariable", new ServiceVariablesMigratorFunctor());
+    context.put("serviceVariable",
+        new ServiceVariablesMigratorFunctor(extractContextFromOverrides("serviceVariable", migrationContext)));
+    context.put("serviceVariables",
+        new ServiceVariablesMigratorFunctor(extractContextFromOverrides("serviceVariables", migrationContext)));
+    context.put("service.variables",
+        new ServiceVariablesMigratorFunctor(extractContextFromOverrides("serviceVariables", migrationContext)));
+    context.put("servicevariable",
+        new ServiceVariablesMigratorFunctor(extractContextFromOverrides("servicevariable", migrationContext)));
     context.put("environmentVariable", new EnvVariablesMigratorFunctor());
     context.put("environmentVariables", new EnvVariablesMigratorFunctor());
     context.put("configFile", new ConfigFileMigratorFunctor(identifierCaseFormat));
@@ -218,6 +225,7 @@ public class MigratorExpressionUtils {
 
     // Instance
     context.put("instance.hostName", "<+instance.hostName>");
+    context.put("instance.name", "<+instance.name>");
     context.put("instance.host.hostName", "<+instance.host.hostName>");
     context.put("instance.host.ip", "<+instance.host.privateIp>");
 
@@ -247,16 +255,32 @@ public class MigratorExpressionUtils {
     context.put("WINGS_RUNTIME_PATH", "<+variable.runtimePath>");
     context.put("WINGS_STAGING_PATH", "<+variable.stagingPath>");
 
-    if (overrides != null && EmptyPredicate.isNotEmpty(overrides.getCustomExpressions())) {
+    if (overrides != null && isNotEmpty(overrides.getCustomExpressions())) {
       context.putAll(overrides.getCustomExpressions());
     }
 
-    if (migrationContext.getInputDTO() != null
-        && EmptyPredicate.isNotEmpty(migrationContext.getInputDTO().getCustomExpressions())) {
+    if (migrationContext.getInputDTO() != null && isNotEmpty(migrationContext.getInputDTO().getCustomExpressions())) {
       context.putAll(migrationContext.getInputDTO().getCustomExpressions());
     }
 
     return context;
+  }
+
+  private static Map<String, String> extractContextFromOverrides(String key, MigrationContext migrationContext) {
+    Map<String, String> result = new HashMap<>();
+    if (migrationContext.getInputDTO() != null && isNotEmpty(migrationContext.getInputDTO().getCustomExpressions())) {
+      Map<String, Object> customExpressions = migrationContext.getInputDTO().getCustomExpressions();
+      customExpressions.forEach((k, v) -> {
+        try {
+          if (k.startsWith(key + ".") && v instanceof String) {
+            result.put(k.substring(key.length() + 1), (String) v);
+          }
+        } catch (Exception e) {
+          log.error("Failed to extract service context", e);
+        }
+      });
+    }
+    return result;
   }
 
   public static Set<String> extractAll(String source) {

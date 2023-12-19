@@ -16,12 +16,10 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.common.ParameterFieldHelper;
 import io.harness.delegate.task.k8s.trafficrouting.HeaderConfig;
-import io.harness.delegate.task.k8s.trafficrouting.IstioProviderConfig;
 import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfig;
 import io.harness.delegate.task.k8s.trafficrouting.MatchType;
 import io.harness.delegate.task.k8s.trafficrouting.RouteType;
 import io.harness.delegate.task.k8s.trafficrouting.RuleType;
-import io.harness.delegate.task.k8s.trafficrouting.SMIProviderConfig;
 import io.harness.delegate.task.k8s.trafficrouting.TrafficRoute;
 import io.harness.delegate.task.k8s.trafficrouting.TrafficRouteRule;
 import io.harness.delegate.task.k8s.trafficrouting.TrafficRouteRule.TrafficRouteRuleBuilder;
@@ -44,32 +42,28 @@ public class K8sTrafficRoutingHelper {
       "Unsupported combination of Provider type: %s Route type: %s and Rule type: %s";
 
   public Optional<K8sTrafficRoutingConfig> validateAndGetTrafficRoutingConfig(K8sTrafficRouting trafficRouting) {
-    if (trafficRouting == null) {
+    if (trafficRouting == null || trafficRouting.getSpec() == null) {
       return Optional.empty();
     }
-    K8sTrafficRoutingConfig k8sTrafficRoutingConfig;
-    K8sTrafficRouting.ProviderType provider = trafficRouting.getProvider();
-    List<TrafficRoute> trafficRouts = getTrafficRouts(trafficRouting);
-    List<TrafficRoutingDestination> trafficRoutingDestination = getTrafficRoutingDestination(trafficRouting);
-    if (provider == K8sTrafficRouting.ProviderType.SMI) {
-      TrafficRoutingSMIProvider smiProvider = (TrafficRoutingSMIProvider) trafficRouting.getSpec();
-      k8sTrafficRoutingConfig =
-          SMIProviderConfig.builder()
-              .rootService(ParameterFieldHelper.getParameterFieldValue(smiProvider.getRootService()))
-              .destinations(trafficRoutingDestination)
-              .routes(trafficRouts)
-              .build();
-    } else if (provider == K8sTrafficRouting.ProviderType.ISTIO) {
-      TrafficRoutingIstioProvider istioProvider = (TrafficRoutingIstioProvider) trafficRouting.getSpec();
-      k8sTrafficRoutingConfig = IstioProviderConfig.builder()
-                                    .hosts(ParameterFieldHelper.getParameterFieldValue(istioProvider.getHosts()))
-                                    .gateways(ParameterFieldHelper.getParameterFieldValue(istioProvider.getGateways()))
-                                    .destinations(trafficRoutingDestination)
-                                    .routes(trafficRouts)
-                                    .build();
-    } else {
-      throw new InvalidArgumentsException("Unsupported Traffic Routing Provider");
+
+    K8sTrafficRoutingConfig k8sTrafficRoutingConfig = K8sTrafficRoutingConfig.builder()
+                                                          .routes(getTrafficRouts(trafficRouting))
+                                                          .destinations(getTrafficRoutingDestinations(trafficRouting))
+                                                          .providerConfig(trafficRouting.getSpec().toProviderConfig())
+                                                          .build();
+
+    return Optional.of(k8sTrafficRoutingConfig);
+  }
+
+  public Optional<K8sTrafficRoutingConfig> validateAndGetInheritedTrafficRoutingConfig(
+      InheritK8sTrafficRouting trafficRouting) {
+    if (trafficRouting == null || trafficRouting.getDestinations() == null) {
+      return Optional.empty();
     }
+
+    K8sTrafficRoutingConfig k8sTrafficRoutingConfig =
+        K8sTrafficRoutingConfig.builder().destinations(getTrafficRoutingDestinations(trafficRouting)).build();
+
     return Optional.of(k8sTrafficRoutingConfig);
   }
 
@@ -85,9 +79,10 @@ public class K8sTrafficRoutingHelper {
       K8sTrafficRoutingRoute.RouteSpec.RouteType routeType, List<K8sTrafficRoutingRule> rules) {
     return TrafficRoute.builder()
         .routeType(RouteType.HTTP)
-        .rules(rules.stream()
-                   .map(rule -> getTrafficRouteRule(providerType, routeType, rule.getRule()))
-                   .collect(Collectors.toList()))
+        .rules(rules == null ? null
+                             : rules.stream()
+                                   .map(rule -> getTrafficRouteRule(providerType, routeType, rule.getRule()))
+                                   .collect(Collectors.toList()))
         .build();
   }
 
@@ -166,7 +161,7 @@ public class K8sTrafficRoutingHelper {
     if (providerType == K8sTrafficRouting.ProviderType.ISTIO) {
       if (routeType == K8sTrafficRoutingRoute.RouteSpec.RouteType.HTTP) {
         String value = ParameterFieldHelper.getParameterFieldValue(ruleSpec.getValue());
-        if (isNotEmpty(value) && ruleSpec.getMatchType() != null) {
+        if (isNotEmpty(value)) {
           return builder.value(value).matchType(mapMatchType(ruleSpec.getMatchType())).build();
         } else {
           throw new InvalidArgumentsException(
@@ -181,28 +176,12 @@ public class K8sTrafficRoutingHelper {
       K8sTrafficRoutingRoute.RouteSpec.RouteType routeType, K8sTrafficRoutingMethodRuleSpec ruleSpec,
       TrafficRouteRuleBuilder builder) {
     builder.ruleType(RuleType.METHOD);
-    if (providerType == K8sTrafficRouting.ProviderType.SMI) {
-      if (routeType == K8sTrafficRoutingRoute.RouteSpec.RouteType.HTTP) {
-        List<String> values = ruleSpec.getValues().stream().map(Enum::name).collect(Collectors.toList());
-        if (isNotEmpty(values)) {
-          return builder.values(values).build();
-        } else {
-          throw new InvalidArgumentsException(format(FIELD_MUST_BE_SPECIFIED, "values", providerType.displayName));
-        }
-      }
-    } else if (providerType == K8sTrafficRouting.ProviderType.ISTIO) {
-      if (routeType == K8sTrafficRoutingRoute.RouteSpec.RouteType.HTTP) {
-        String value = ruleSpec.getValue() != null ? ruleSpec.getValue().name() : null;
-        if (isNotEmpty(value) && ruleSpec.getMatchType() != null) {
-          return builder.value(value).matchType(mapMatchType(ruleSpec.getMatchType())).build();
-        } else {
-          throw new InvalidArgumentsException(
-              format(FIELD_MUST_BE_SPECIFIED, "values, matchType", providerType.displayName));
-        }
-      }
+    String value = ruleSpec.getValue() != null ? ruleSpec.getValue().name() : null;
+    if (isNotEmpty(value)) {
+      return builder.value(value).matchType(mapMatchType(ruleSpec.getMatchType())).build();
+    } else {
+      throw new InvalidArgumentsException(format(FIELD_MUST_BE_SPECIFIED, "value", providerType.displayName));
     }
-    throw new InvalidArgumentsException(
-        format(UNSUPPORTED_COMBINATION, providerType.displayName, routeType.getDisplayName(), "method"));
   }
 
   private TrafficRouteRule getSchemaRule(K8sTrafficRouting.ProviderType providerType,
@@ -212,7 +191,7 @@ public class K8sTrafficRoutingHelper {
     if (providerType == K8sTrafficRouting.ProviderType.ISTIO) {
       if (routeType == K8sTrafficRoutingRoute.RouteSpec.RouteType.HTTP) {
         String value = ParameterFieldHelper.getParameterFieldValue(schemaRuleSpec.getValue());
-        if (isNotEmpty(value) && schemaRuleSpec.getMatchType() != null) {
+        if (isNotEmpty(value)) {
           return builder.value(value).matchType(mapMatchType(schemaRuleSpec.getMatchType())).build();
         } else {
           throw new InvalidArgumentsException(
@@ -240,7 +219,7 @@ public class K8sTrafficRoutingHelper {
     } else if (providerType == K8sTrafficRouting.ProviderType.ISTIO) {
       if (routeType == K8sTrafficRoutingRoute.RouteSpec.RouteType.HTTP) {
         String value = ParameterFieldHelper.getParameterFieldValue(uriSpec.getValue());
-        if (isNotEmpty(value) && uriSpec.getMatchType() != null) {
+        if (isNotEmpty(value)) {
           return builder.value(value).matchType(mapMatchType(uriSpec.getMatchType())).build();
         } else {
           throw new InvalidArgumentsException(
@@ -254,7 +233,7 @@ public class K8sTrafficRoutingHelper {
 
   private MatchType mapMatchType(io.harness.cdng.k8s.trafficrouting.MatchType matchType) {
     if (matchType == null) {
-      throw new InvalidArgumentsException("MatchType must be specified for Traffic Route Rule");
+      return MatchType.EXACT;
     }
     switch (matchType) {
       case EXACT:
@@ -268,10 +247,17 @@ public class K8sTrafficRoutingHelper {
     }
   }
 
-  private List<TrafficRoutingDestination> getTrafficRoutingDestination(K8sTrafficRouting trafficRouting) {
-    return trafficRouting.getSpec()
-        .getDestinations()
-        .stream()
+  private List<TrafficRoutingDestination> getTrafficRoutingDestinations(K8sTrafficRouting trafficRouting) {
+    return getTrafficRoutingDestinations(trafficRouting.getSpec().getDestinations());
+  }
+
+  private List<TrafficRoutingDestination> getTrafficRoutingDestinations(InheritK8sTrafficRouting routingDestinations) {
+    return getTrafficRoutingDestinations(routingDestinations.getDestinations());
+  }
+
+  private List<TrafficRoutingDestination> getTrafficRoutingDestinations(
+      List<K8sTrafficRoutingDestination> k8sTrafficRoutingDestinationList) {
+    return k8sTrafficRoutingDestinationList.stream()
         .map(destination
             -> TrafficRoutingDestination.builder()
                    .host(ParameterFieldHelper.getParameterFieldValue(destination.getDestination().getHost()))

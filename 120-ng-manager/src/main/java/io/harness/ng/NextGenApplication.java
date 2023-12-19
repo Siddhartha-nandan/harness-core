@@ -126,6 +126,7 @@ import io.harness.migration.NGMigrationSdkInitHelper;
 import io.harness.migration.NGMigrationSdkModule;
 import io.harness.migration.beans.NGMigrationConfiguration;
 import io.harness.migrations.InstanceMigrationProvider;
+import io.harness.ng.chaos.ChaosNotificationTemplateRegistrar;
 import io.harness.ng.core.CorrelationFilter;
 import io.harness.ng.core.DefaultUserGroupsCreationJob;
 import io.harness.ng.core.EtagFilter;
@@ -143,6 +144,7 @@ import io.harness.ng.core.handler.NGVaultSecretManagerRenewalHandler;
 import io.harness.ng.core.handler.freezeHandlers.NgDeploymentFreezeActivationHandler;
 import io.harness.ng.core.migration.AddUniqueIdParentIdToEntitiesJob;
 import io.harness.ng.core.migration.NGBeanMigrationProvider;
+import io.harness.ng.core.migration.ParentUniqueIdMigrationProvider;
 import io.harness.ng.core.migration.ProjectMigrationProvider;
 import io.harness.ng.core.migration.UniqueIdParentIdMigrationProvider;
 import io.harness.ng.core.migration.UserGroupMigrationProvider;
@@ -162,6 +164,7 @@ import io.harness.ng.core.variable.expressions.functors.VariableFunctor;
 import io.harness.ng.migration.DelegateMigrationProvider;
 import io.harness.ng.migration.NGCoreMigrationProvider;
 import io.harness.ng.migration.SourceCodeManagerMigrationProvider;
+import io.harness.ng.migration.UniqueIdParentUniqueIdMigrationProvider;
 import io.harness.ng.migration.UserMembershipMigrationProvider;
 import io.harness.ng.migration.UserMetadataMigrationProvider;
 import io.harness.ng.moduleversioninfo.runnable.ModuleVersionsMaintenanceTask;
@@ -184,6 +187,7 @@ import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.events.base.PipelineEventConsumerController;
 import io.harness.pms.expressions.functors.ConfigFileFunctor;
+import io.harness.pms.expressions.functors.ConnectorFunctor;
 import io.harness.pms.expressions.functors.DockerConfigJsonFunctor;
 import io.harness.pms.expressions.functors.FileStoreFunctor;
 import io.harness.pms.expressions.functors.ImagePullSecretFunctor;
@@ -493,6 +497,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     if (!appConfig.isDisableFreezeNotificationTemplate()) {
       registerNotificationTemplates(injector);
     }
+    registerChaosNotificationTemplates(injector);
     registerPmsSdkEvents(appConfig, injector);
     registerDebeziumEvents(appConfig, injector);
     initializeMonitoring(appConfig, injector);
@@ -551,6 +556,12 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     executorService.submit(injector.getInstance(FreezeNotificationTemplateRegistrar.class));
   }
 
+  private void registerChaosNotificationTemplates(Injector injector) {
+    ExecutorService executorService =
+        injector.getInstance(Key.get(ExecutorService.class, Names.named("chaosTemplateRegistrationExecutorService")));
+    executorService.submit(injector.getInstance(ChaosNotificationTemplateRegistrar.class));
+  }
+
   private void initializeNGMonitoring(NextGenConfiguration appConfig, Injector injector) {
     log.info("Initializing NGMonitoring");
     injector.getInstance(NGTelemetryRecordsJob.class).scheduleTasks();
@@ -597,6 +608,10 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
           { add(ProjectMigrationProvider.class); }
 
           { add(UniqueIdParentIdMigrationProvider.class); }
+
+          { add(ParentUniqueIdMigrationProvider.class); }
+
+          { add(UniqueIdParentUniqueIdMigrationProvider.class); }
 
           { add(NGCoreMigrationProvider.class); } // Add all migration provider classes here
 
@@ -813,6 +828,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
   private Map<String, Class<? extends SdkFunctor>> getSdkFunctors() {
     Map<String, Class<? extends SdkFunctor>> sdkFunctorMap = new HashMap<>();
     sdkFunctorMap.put(ImagePullSecretFunctor.IMAGE_PULL_SECRET, ImagePullSecretFunctor.class);
+    sdkFunctorMap.put(ConnectorFunctor.CONNECTOR_KEY, ConnectorFunctor.class);
     sdkFunctorMap.put(DockerConfigJsonFunctor.DOCKER_CONFIG_JSON, DockerConfigJsonFunctor.class);
     sdkFunctorMap.put(VariableFunctor.VARIABLE, VariableFunctor.class);
     sdkFunctorMap.put(TerraformPlanJsonFunctor.TERRAFORM_PLAN_JSON, TerraformPlanJsonFunctor.class);

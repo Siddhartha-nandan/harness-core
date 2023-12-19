@@ -1,6 +1,6 @@
 #Any edit in this file should accompany an increment in version.
 name : settingsConfiguration
-version : 37
+version : 40
 settings :
   - identifier: mandate_webhook_secrets_for_github_triggers
     name: Mandate Webhook Secrets for Github Triggers
@@ -377,14 +377,6 @@ settings :
       - PROJECT
       - ACCOUNT
       - ORGANIZATION
-  - identifier: skip_fail_fast_validation_checks_for_pipeline_execute
-    name: Skip Fail Fast Validation Checks for Pipeline Execute
-    category: PMS
-    defaultValue: false
-    valueType: BOOLEAN
-    allowOverrides: false
-    allowedScopes:
-      - ACCOUNT
   - identifier: export_service_variables_as_env_variables
     name: Export service variables as ENV variables in shell script
     category: PMS
@@ -560,3 +552,63 @@ settings :
       - ACCOUNT
       - ORGANIZATION
       - PROJECT
+  - identifier: sto_default_baseline_regex_repository
+    name: Code repositories
+    category: STO
+    groupIdentifier: sto_default_baseline_regex
+    defaultValue: '^(main|master)$'
+    valueType: STRING
+    allowOverrides: true
+    allowedScopes:
+      - ACCOUNT
+      - ORGANIZATION
+      - PROJECT
+  - identifier: sto_default_baseline_regex_container
+    name: Container images
+    category: STO
+    groupIdentifier: sto_default_baseline_regex
+    defaultValue: '^(v?\d+\.\d+\.\d+([+-][a-zA-Z0-9\.+-]+)?|latest)$'
+    valueType: STRING
+    allowOverrides: true
+    allowedScopes:
+      - ACCOUNT
+      - ORGANIZATION
+      - PROJECT
+  - identifier: sto_default_baseline_regex_instance
+    name: Cloud instances
+    category: STO
+    groupIdentifier: sto_default_baseline_regex
+    valueType: STRING
+    allowOverrides: true
+    allowedScopes:
+      - ACCOUNT
+      - ORGANIZATION
+      - PROJECT
+  - identifier: sto_default_baseline_regex_configuration
+    name: Infrastructure configurations
+    category: STO
+    groupIdentifier: sto_default_baseline_regex
+    valueType: STRING
+    allowOverrides: true
+    allowedScopes:
+      - ACCOUNT
+      - ORGANIZATION
+      - PROJECT
+  - identifier: use_base64_encoded_secrets_for_attestation
+    name: Base64 Attestation
+    category: SUPPLY_CHAIN_ASSURANCE
+    defaultValue: false
+    valueType: BOOLEAN
+    allowOverrides: true
+    allowedScopes:
+      - ACCOUNT
+      - ORGANIZATION
+      - PROJECT
+  - identifier: run_rbac_validation_before_executing_inline_pipelines
+    name: Run RBAC Validation before executing Inline Pipelines
+    category: PMS
+    defaultValue: true
+    valueType: BOOLEAN
+    allowOverrides: false
+    allowedScopes:
+      - ACCOUNT

@@ -8,12 +8,15 @@
 package io.harness;
 
 import static io.harness.annotations.dev.HarnessTeam.SSCA;
+import static io.harness.audit.ResourceTypeConstants.SSCA_ARTIFACT;
 import static io.harness.authorization.AuthorizationServiceHeader.SSCA_SERVICE;
 import static io.harness.lock.DistributedLockImplementation.REDIS;
 import static io.harness.outbox.OutboxSDKConstants.DEFAULT_OUTBOX_POLL_CONFIGURATION;
 
+import io.harness.account.AccountClientModule;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.app.PrimaryVersionManagerModule;
+import io.harness.exception.GeneralException;
 import io.harness.lock.DistributedLockImplementation;
 import io.harness.lock.PersistentLockModule;
 import io.harness.mongo.AbstractMongoModule;
@@ -22,8 +25,8 @@ import io.harness.mongo.MongoPersistence;
 import io.harness.morphia.MorphiaRegistrar;
 import io.harness.opaclient.OpaClientModule;
 import io.harness.outbox.TransactionOutboxModule;
+import io.harness.outbox.api.OutboxEventHandler;
 import io.harness.persistence.HPersistence;
-import io.harness.persistence.NoopUserProvider;
 import io.harness.persistence.UserProvider;
 import io.harness.pipeline.remote.PipelineRemoteClientModule;
 import io.harness.redis.RedisConfig;
@@ -32,64 +35,102 @@ import io.harness.serializer.KryoRegistrar;
 import io.harness.serializer.SSCAManagerModuleRegistrars;
 import io.harness.spec.server.ssca.v1.ArtifactApi;
 import io.harness.spec.server.ssca.v1.BaselineApi;
+import io.harness.spec.server.ssca.v1.ConfigApi;
 import io.harness.spec.server.ssca.v1.EnforcementApi;
 import io.harness.spec.server.ssca.v1.OrchestrationApi;
+import io.harness.spec.server.ssca.v1.RemediationApi;
 import io.harness.spec.server.ssca.v1.SbomProcessorApi;
+import io.harness.spec.server.ssca.v1.ScorecardApi;
 import io.harness.spec.server.ssca.v1.TokenApi;
 import io.harness.ssca.S3Config;
 import io.harness.ssca.api.ArtifactApiImpl;
 import io.harness.ssca.api.BaselineApiImpl;
+import io.harness.ssca.api.ConfigApiImpl;
 import io.harness.ssca.api.EnforcementApiImpl;
 import io.harness.ssca.api.OrchestrationApiImpl;
+import io.harness.ssca.api.RemediationTrackerApiImpl;
 import io.harness.ssca.api.SbomProcessorApiImpl;
+import io.harness.ssca.api.ScorecardApiImpl;
 import io.harness.ssca.api.TokenApiImpl;
+import io.harness.ssca.beans.ElasticSearchConfig;
+import io.harness.ssca.beans.PolicyType;
+import io.harness.ssca.events.handler.SSCAArtifactEventHandler;
+import io.harness.ssca.events.handler.SSCAOutboxEventHandler;
 import io.harness.ssca.eventsframework.SSCAEventsFrameworkModule;
+import io.harness.ssca.search.ElasticSearchIndexManager;
+import io.harness.ssca.search.SSCAIndexManager;
+import io.harness.ssca.search.SearchService;
+import io.harness.ssca.search.SearchServiceImpl;
 import io.harness.ssca.services.ArtifactService;
 import io.harness.ssca.services.ArtifactServiceImpl;
 import io.harness.ssca.services.BaselineService;
 import io.harness.ssca.services.BaselineServiceImpl;
 import io.harness.ssca.services.CdInstanceSummaryService;
 import io.harness.ssca.services.CdInstanceSummaryServiceImpl;
+import io.harness.ssca.services.ConfigService;
+import io.harness.ssca.services.ConfigServiceImpl;
 import io.harness.ssca.services.EnforcementResultService;
 import io.harness.ssca.services.EnforcementResultServiceImpl;
 import io.harness.ssca.services.EnforcementStepService;
 import io.harness.ssca.services.EnforcementStepServiceImpl;
 import io.harness.ssca.services.EnforcementSummaryService;
 import io.harness.ssca.services.EnforcementSummaryServiceImpl;
+import io.harness.ssca.services.FeatureFlagService;
+import io.harness.ssca.services.FeatureFlagServiceImpl;
 import io.harness.ssca.services.NextGenService;
 import io.harness.ssca.services.NextGenServiceImpl;
 import io.harness.ssca.services.NormalisedSbomComponentService;
 import io.harness.ssca.services.NormalisedSbomComponentServiceImpl;
+import io.harness.ssca.services.OpaPolicyEvaluationService;
 import io.harness.ssca.services.OrchestrationStepService;
 import io.harness.ssca.services.OrchestrationStepServiceImpl;
+import io.harness.ssca.services.PolicyEvaluationService;
 import io.harness.ssca.services.PolicyMgmtService;
 import io.harness.ssca.services.PolicyMgmtServiceImpl;
 import io.harness.ssca.services.RuleEngineService;
 import io.harness.ssca.services.RuleEngineServiceImpl;
 import io.harness.ssca.services.S3StoreService;
 import io.harness.ssca.services.S3StoreServiceImpl;
+import io.harness.ssca.services.ScorecardService;
+import io.harness.ssca.services.ScorecardServiceImpl;
+import io.harness.ssca.services.SscaPolicyEvaluationService;
 import io.harness.ssca.services.drift.SbomDriftService;
 import io.harness.ssca.services.drift.SbomDriftServiceImpl;
+import io.harness.ssca.services.remediation_tracker.RemediationTrackerService;
+import io.harness.ssca.services.remediation_tracker.RemediationTrackerServiceImpl;
 import io.harness.time.TimeModule;
 import io.harness.token.TokenClientModule;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import co.elastic.clients.transport.ElasticsearchTransport;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.google.inject.Scopes;
 import com.google.inject.Singleton;
+import com.google.inject.multibindings.MapBinder;
 import com.google.inject.name.Named;
+import com.google.inject.name.Names;
 import dev.morphia.converters.TypeConverter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.Header;
+import org.apache.http.HttpHost;
+import org.apache.http.message.BasicHeader;
+import org.elasticsearch.client.RestClient;
 import org.springframework.core.convert.converter.Converter;
 
 @Slf4j
@@ -107,10 +148,16 @@ public class SSCAManagerModule extends AbstractModule {
     install(new AbstractMongoModule() {
       @Override
       public UserProvider userProvider() {
-        return new NoopUserProvider();
+        return new UserPrincipalUserProvider();
       }
     });
+    registerOutboxEventHandlers();
+    bind(OutboxEventHandler.class).to(SSCAOutboxEventHandler.class);
     install(new io.harness.SSCAManagerModulePersistence());
+    bind(ScorecardApi.class).to(ScorecardApiImpl.class);
+    bind(ConfigApi.class).to(ConfigApiImpl.class);
+    bind(ConfigService.class).to(ConfigServiceImpl.class);
+    bind(ScorecardService.class).to(ScorecardServiceImpl.class);
     bind(HPersistence.class).to(MongoPersistence.class);
     bind(SbomProcessorApi.class).to(SbomProcessorApiImpl.class);
     bind(TokenApi.class).to(TokenApiImpl.class);
@@ -130,7 +177,20 @@ public class SSCAManagerModule extends AbstractModule {
     bind(ArtifactApi.class).to(ArtifactApiImpl.class);
     bind(CdInstanceSummaryService.class).to(CdInstanceSummaryServiceImpl.class);
     bind(PolicyMgmtService.class).to(PolicyMgmtServiceImpl.class);
+    bind(FeatureFlagService.class).to(FeatureFlagServiceImpl.class);
     bind(SbomDriftService.class).to(SbomDriftServiceImpl.class);
+    bind(SearchService.class).to(SearchServiceImpl.class);
+    bind(RemediationTrackerService.class).to(RemediationTrackerServiceImpl.class);
+    bind(RemediationApi.class).to(RemediationTrackerApiImpl.class);
+    bind(ElasticSearchIndexManager.class).annotatedWith(Names.named("SSCA")).to(SSCAIndexManager.class);
+    MapBinder<PolicyType, PolicyEvaluationService> policyEvaluationServiceMapBinder =
+        MapBinder.newMapBinder(binder(), PolicyType.class, PolicyEvaluationService.class);
+    policyEvaluationServiceMapBinder.addBinding(PolicyType.OPA)
+        .to(OpaPolicyEvaluationService.class)
+        .in(Scopes.SINGLETON);
+    policyEvaluationServiceMapBinder.addBinding(PolicyType.SSCA)
+        .to(SscaPolicyEvaluationService.class)
+        .in(Scopes.SINGLETON);
     install(new TokenClientModule(this.configuration.getNgManagerServiceHttpClientConfig(),
         this.configuration.getNgManagerServiceSecret(), SSCA_SERVICE.getServiceId()));
     install(new SSCAEventsFrameworkModule(
@@ -144,6 +204,10 @@ public class SSCAManagerModule extends AbstractModule {
         configuration.getPolicyMgmtServiceSecret(), SSCA_SERVICE.getServiceId()));
     install(new TransactionOutboxModule(
         DEFAULT_OUTBOX_POLL_CONFIGURATION, SSCA_SERVICE.getServiceId(), configuration.isExportMetricsToStackDriver()));
+    install(new AccountClientModule(configuration.getManagerClientConfig(), configuration.getSscaManagerServiceSecret(),
+        SSCA_SERVICE.getServiceId()));
+    install(AccessControlClientModule.getInstance(
+        this.configuration.getAccessControlClientConfiguration(), SSCA_SERVICE.getServiceId()));
   }
 
   @Provides
@@ -189,6 +253,13 @@ public class SSCAManagerModule extends AbstractModule {
 
   @Provides
   @Singleton
+  @Named("elasticsearch")
+  public ElasticSearchConfig elasticSearchConfig() {
+    return this.configuration.getElasticSearchConfig();
+  }
+
+  @Provides
+  @Singleton
   @Named("jwtAuthSecret")
   public String jwtAuthSecret() {
     return this.configuration.getJwtAuthSecret();
@@ -215,6 +286,23 @@ public class SSCAManagerModule extends AbstractModule {
          */
         .withPathStyleAccessEnabled(Boolean.TRUE)
         .build();
+  }
+
+  @Provides
+  @Singleton
+  public ElasticsearchClient elasticsearchClient() {
+    try {
+      RestClient restClient = RestClient.builder(HttpHost.create(configuration.getElasticSearchConfig().getUrl()))
+                                  .setDefaultHeaders(new Header[] {new BasicHeader(
+                                      "Authorization", "ApiKey " + configuration.getElasticSearchConfig().getApiKey())})
+                                  .build();
+      ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
+      ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper(objectMapper));
+      return new ElasticsearchClient(transport);
+    } catch (Exception e) {
+      throw new GeneralException("Failed to create Elasticsearch client", e);
+    }
   }
 
   @Provides
@@ -288,5 +376,11 @@ public class SSCAManagerModule extends AbstractModule {
       return new SSCAManagerModule(sscaManagerConfiguration);
     }
     return sscaManagerModule;
+  }
+
+  private void registerOutboxEventHandlers() {
+    MapBinder<String, OutboxEventHandler> outboxEventHandlerMapBinder =
+        MapBinder.newMapBinder(binder(), String.class, OutboxEventHandler.class);
+    outboxEventHandlerMapBinder.addBinding(SSCA_ARTIFACT).to(SSCAArtifactEventHandler.class);
   }
 }

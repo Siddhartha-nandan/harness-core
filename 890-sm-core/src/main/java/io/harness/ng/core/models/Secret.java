@@ -20,6 +20,7 @@ import io.harness.ng.DbAliases;
 import io.harness.ng.core.common.beans.NGTag;
 import io.harness.ng.core.dto.secrets.SecretDTOV2;
 import io.harness.ng.core.dto.secrets.SecretSpecDTO;
+import io.harness.persistence.UniqueIdAware;
 import io.harness.secretmanagerclient.SecretType;
 import io.harness.security.dto.Principal;
 
@@ -32,6 +33,7 @@ import java.util.Optional;
 import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldNameConstants;
+import lombok.experimental.UtilityClass;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -45,7 +47,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Entity(value = "secrets", noClassnameStored = true)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Document("secrets")
-public class Secret {
+public class Secret implements UniqueIdAware {
   public static List<MongoIndex> mongoIndexes() {
     return ImmutableList.<MongoIndex>builder()
         .add(CompoundMongoIndex.builder()
@@ -65,6 +67,10 @@ public class Secret {
   String orgIdentifier;
   String projectIdentifier;
   String identifier;
+
+  String uniqueId;
+  String parentUniqueId;
+
   String name;
   String description;
   List<NGTag> tags;
@@ -80,6 +86,12 @@ public class Secret {
   SecretSpec secretSpec;
   @CreatedDate Long createdAt;
   @LastModifiedDate Long lastModifiedAt;
+
+  @UtilityClass
+  public static final class SecretKeys {
+    public static final String secretManagerIdentifier = SecretKeys.secretSpec + "."
+        + "secretManagerIdentifier";
+  }
 
   public SecretDTOV2 toDTO() {
     SecretDTOV2 dto = SecretDTOV2.builder()

@@ -27,6 +27,8 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.InputSetValidatorType;
 import io.harness.beans.OrchestrationWorkflowType;
+import io.harness.cdng.creator.plan.stage.CustomStageConfig;
+import io.harness.cdng.creator.plan.stage.CustomStageNode;
 import io.harness.cdng.creator.plan.stage.DeploymentStageConfig;
 import io.harness.cdng.creator.plan.stage.DeploymentStageNode;
 import io.harness.cdng.customDeployment.FetchInstanceScriptStepInfo;
@@ -62,8 +64,6 @@ import io.harness.plancreator.strategy.HarnessForConfig;
 import io.harness.plancreator.strategy.StrategyConfig;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.validation.InputSetValidator;
-import io.harness.steps.customstage.CustomStageConfig;
-import io.harness.steps.customstage.CustomStageNode;
 import io.harness.steps.template.TemplateStepNode;
 import io.harness.steps.wait.WaitStepNode;
 import io.harness.when.beans.StageWhenCondition;
@@ -901,16 +901,14 @@ public abstract class WorkflowHandler {
   }
 
   // This is for multi-service only
-  DeploymentStageNode buildPrePostDeploySteps(
+  CustomStageNode buildPrePostDeploySteps(
       MigrationContext migrationContext, WorkflowMigrationContext context, WorkflowPhase phase, PhaseStep phaseStep) {
     ExecutionWrapperConfig wrapper = getStepGroup(migrationContext, context, phase, phaseStep, false);
     if (wrapper == null) {
       return null;
     }
-    DeploymentStageConfig stageConfig =
-        DeploymentStageConfig.builder()
-            .deploymentType(ServiceDefinitionType.KUBERNETES)
-            .service(ServiceYamlV2.builder().serviceRef(RUNTIME_INPUT).serviceInputs(getRuntimeInput()).build())
+    CustomStageConfig customStageConfig =
+        CustomStageConfig.builder()
             .environment(
                 EnvironmentYamlV2.builder()
                     .deployToAll(ParameterField.createValueField(false))
@@ -924,12 +922,13 @@ public abstract class WorkflowHandler {
                            .rollbackSteps(Collections.emptyList())
                            .build())
             .build();
-    DeploymentStageNode stageNode = new DeploymentStageNode();
-    stageNode.setName(MigratorUtility.generateName(phase.getName()));
-    stageNode.setIdentifier(MigratorUtility.generateIdentifier(phase.getName(), context.getIdentifierCaseFormat()));
-    stageNode.setDeploymentStageConfig(stageConfig);
-    stageNode.setFailureStrategies(getDefaultFailureStrategy(context));
-    return stageNode;
+    CustomStageNode customStageNode = new CustomStageNode();
+    customStageNode.setName(MigratorUtility.generateName(phase.getName()));
+    customStageNode.setIdentifier(
+        MigratorUtility.generateIdentifier(phase.getName(), context.getIdentifierCaseFormat()));
+    customStageNode.setFailureStrategies(getDefaultFailureStrategy(context));
+    customStageNode.setCustomStageConfig(customStageConfig);
+    return customStageNode;
   }
 
   // This is for multi service only
@@ -1071,7 +1070,7 @@ public abstract class WorkflowHandler {
     if (EmptyPredicate.isNotEmpty(prePhaseStep.getSteps())) {
       WorkflowPhase prePhase = WorkflowPhaseBuilder.aWorkflowPhase().name("Pre Deployment").build();
       prePhaseStep.setName("Pre Deployment");
-      DeploymentStageNode stage = buildPrePostDeploySteps(migrationContext, context, prePhase, prePhaseStep);
+      CustomStageNode stage = buildPrePostDeploySteps(migrationContext, context, prePhase, prePhaseStep);
       if (stage != null) {
         stages.add(stage);
       }
@@ -1096,7 +1095,7 @@ public abstract class WorkflowHandler {
     if (EmptyPredicate.isNotEmpty(postPhaseStep.getSteps())) {
       WorkflowPhase postPhase = WorkflowPhaseBuilder.aWorkflowPhase().name("Post Deployment").build();
       postPhaseStep.setName("Post Deployment");
-      DeploymentStageNode stage = buildPrePostDeploySteps(migrationContext, context, postPhase, postPhaseStep);
+      CustomStageNode stage = buildPrePostDeploySteps(migrationContext, context, postPhase, postPhaseStep);
       if (stage != null) {
         stages.add(stage);
       }

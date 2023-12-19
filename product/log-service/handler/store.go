@@ -40,15 +40,17 @@ const (
 // HandleUpload returns an http.HandlerFunc that uploads
 // a blob to the datastore.
 func HandleUpload(store store.Store, metrics *metric.Metrics) http.HandlerFunc {
-	// Increment blob upload request by 1
-	metrics.BlobUploadCount.Inc()
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Increment blob upload request by 1
+		metrics.BlobUploadCount.Inc()
 		ctx := r.Context()
 		st := time.Now()
 
 		accountID := r.FormValue(accountIDParam)
 		key := CreateAccountSeparatedKey(accountID, r.FormValue(keyParam))
 		if err := store.Upload(ctx, key, r.Body); err != nil {
+			// Increment error metric for blob upload
+			metrics.BlobUploadErrorCount.Inc()
 			WriteInternalError(w, err)
 			logger.FromRequest(r).
 				WithError(err).
@@ -63,7 +65,7 @@ func HandleUpload(store store.Store, metrics *metric.Metrics) http.HandlerFunc {
 			WithField("time", time.Now().Format(time.RFC3339)).
 			Infoln("api: successfully uploaded object")
 		w.WriteHeader(http.StatusNoContent)
-		metrics.BlobUploadLatency.Set(time.Since(st).Seconds())
+		metrics.BlobUploadLatency.Observe(float64(time.Since(st).Milliseconds()))
 	}
 }
 
@@ -103,9 +105,9 @@ func HandleUploadLink(store store.Store) http.HandlerFunc {
 // HandleDownload returns an http.HandlerFunc that downloads
 // a blob from the datastore and copies to the http.Response.
 func HandleDownload(store store.Store, metrics *metric.Metrics) http.HandlerFunc {
-	// increment blob download request by 1
-	metrics.BlobDownloadCount.Inc()
 	return func(w http.ResponseWriter, r *http.Request) {
+		// increment blob download request by 1
+		metrics.BlobDownloadCount.Inc()
 		st := time.Now()
 		h := w.Header()
 		h.Set("Access-Control-Allow-Origin", "*")
@@ -118,6 +120,8 @@ func HandleDownload(store store.Store, metrics *metric.Metrics) http.HandlerFunc
 			defer out.Close()
 		}
 		if err != nil {
+			// increment error metrics for blob download
+			metrics.BlobDownloadErrorCount.Inc()
 			WriteNotFound(w, err)
 			logger.FromRequest(r).
 				WithError(err).
@@ -130,7 +134,7 @@ func HandleDownload(store store.Store, metrics *metric.Metrics) http.HandlerFunc
 				WithField("latency", time.Since(st)).
 				WithField("time", time.Now().Format(time.RFC3339)).
 				Infoln("api: successfully downloaded object")
-			metrics.BlobDownloadLatency.Set(time.Since(st).Seconds())
+			metrics.BlobDownloadLatency.Observe(float64(time.Since(st).Milliseconds()))
 		}
 	}
 }
@@ -138,9 +142,9 @@ func HandleDownload(store store.Store, metrics *metric.Metrics) http.HandlerFunc
 // HandleDownloadLink returns an http.HandlerFunc that generates
 // a signed link to download a blob to the datastore.
 func HandleDownloadLink(store store.Store, metrics *metric.Metrics) http.HandlerFunc {
-	// Increment counter by 1 for blob downloads request
-	metrics.BlobZipDownloadCount.Inc()
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Increment counter by 1 for blob downloads request
+		metrics.BlobZipDownloadCount.Inc()
 		h := w.Header()
 		st := time.Now()
 		h.Set("Access-Control-Allow-Origin", "*")
@@ -151,6 +155,8 @@ func HandleDownloadLink(store store.Store, metrics *metric.Metrics) http.Handler
 		expires := time.Hour
 		link, err := store.DownloadLink(ctx, key, expires)
 		if err != nil {
+			// Increment error metrics for blob zip download
+			metrics.BlobZipDownloadErrorCount.Inc()
 			WriteInternalError(w, err)
 			logger.FromRequest(r).
 				WithError(err).
@@ -168,7 +174,7 @@ func HandleDownloadLink(store store.Store, metrics *metric.Metrics) http.Handler
 			Link    string        `json:"link"`
 			Expires time.Duration `json:"expires"`
 		}{link, expires}, 200)
-		metrics.BlobZipDownloadLatency.Set(time.Since(st).Seconds())
+		metrics.BlobZipDownloadLatency.Observe(float64(time.Since(st).Milliseconds()))
 	}
 }
 
@@ -420,12 +426,11 @@ func getVanityURLFromCache(ctx context.Context, accountID, prefix string, c cach
 
 // getVanityURLFromPlatform gets the vanity URL for the account
 func getVanityURLFromPlatform(ctx context.Context, accountID string, c cache.Cache, cfg config.Config, r *http.Request, ngClient *client.HTTPClient) (string, error) {
-	cookieToken, err := r.Cookie("token")
+	token, err := GenerateJWTToken(cfg.Platform.ManagerSecret)
 	if err != nil {
-		return "", fmt.Errorf("Could not fetch token from Cookie: %v", err)
+		return "", fmt.Errorf("failed to generate jwt token: %v", err)
 	}
-
-	vanityURL, err := ngClient.GetVanityURL(ctx, accountID, "Bearer "+cookieToken.Value)
+	vanityURL, err := ngClient.GetVanityURL(ctx, accountID, "Bearer "+token)
 	if err != nil {
 		return vanityURL, fmt.Errorf("api: cannot fetch the vanity url: %v", err)
 	}

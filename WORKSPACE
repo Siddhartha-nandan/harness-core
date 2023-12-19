@@ -6,10 +6,28 @@
 
 workspace(name = "harness_monorepo")
 
+load("//:tools/bazel/repository.bzl", "REPOSITORY")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "rules_pkg",
+    patch_cmds = [
+        # "echo $(pwd) > /tmp/me",
+        "sed -i.a 's/PY2\\\"/PY3\\\"/g' BUILD",
+    ],
+    # sha256 = "eea0f59c28a9241156a47d7a8e32db9122f3d50b505fae0f33de6ce4d9b61834", # [CDS-85864] for version 0.8.0 (which was incorrectly defined and never used)
+    sha256 = "aeca78988341a2ee1ba097641056d168320ecc51372ef7ff8e64b139516a4937",  # [CDS-85864] for version 0.2.6 which is the one actually being used all along... [CDS-85864]
+    urls = [
+        "https://%s.harness.io/artifactory/rules-pkg-github/download/0.2.6-1/rules_pkg-0.2.6.tar.gz" % REPOSITORY,
+        # "https://%s.harness.io/artifactory/rules-pkg-github/download/0.8.0/rules_pkg-0.8.0.tar.gz" % REPOSITORY,
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_pkg/releases/download/0.2.6-1/rules_pkg-0.2.6.tar.gz",
+        "https://github.com/bazelbuild/rules_pkg/releases/download/0.2.6-1/rules_pkg-0.2.6.tar.gz",
+    ],
+)
+
+load("@rules_pkg//:pkg.bzl", "pkg_tar")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("//tools/bazel/pmd:dependencies.bzl", "rules_pmd_dependencies")
-load("//:tools/bazel/repository.bzl", "REPOSITORY")
 
 rules_pmd_dependencies()
 
@@ -1298,8 +1316,8 @@ go_repository(
 go_repository(
     name = "com_github_drone_go_scm",
     importpath = "github.com/drone/go-scm",
-    sum = "h1:Ve1p5dXHRlkVDebPtGIytrcPgPIXpXRQJcyXVysjurM=",
-    version = "v1.33.0",
+    sum = "h1:0XEHFiVajXcsgqKZGBJlpKljr8euay6OaQI1bLslWSg=",
+    version = "v1.34.1",
 )
 
 go_repository(
@@ -5945,9 +5963,9 @@ plain_artifacts = [
     "ch.qos.logback.contrib:logback-jackson:0.1.5",
     "ch.qos.logback.contrib:logback-json-classic:0.1.5",
     "ch.qos.logback.contrib:logback-json-core:0.1.5",
-    "ch.qos.logback:logback-access:1.2.11",
-    "ch.qos.logback:logback-classic:1.2.11",
-    "ch.qos.logback:logback-core:1.2.11",
+    "ch.qos.logback:logback-access:1.2.13",
+    "ch.qos.logback:logback-classic:1.2.13",
+    "ch.qos.logback:logback-core:1.2.13",
     "com.auth0:java-jwt:3.1.0",
     "com.azure:azure-core:1.36.0",
     "com.azure:azure-identity:1.5.0",
@@ -6308,6 +6326,7 @@ plain_artifacts = [
     "io.sundr:sundr-core:0.21.0",
     "io.vavr:vavr-match:0.9.1",
     "io.vavr:vavr:0.9.1",
+    "co.elastic.clients:elasticsearch-java:8.11.1",
     "jakarta.activation:jakarta.activation-api:1.2.2",
     "jakarta.annotation:jakarta.annotation-api:jar:1.3.5",
     "jakarta.servlet:jakarta.servlet-api:4.0.3",
@@ -6431,8 +6450,8 @@ plain_artifacts = [
     "org.cloudfoundry:cloudfoundry-util:5.9.0.RELEASE",
     "org.codehaus.groovy:groovy:3.0.15",
     "org.codehaus.jackson:jackson-core-asl:1.9.11",
-    "org.codehaus.janino:commons-compiler:3.0.6",
-    "org.codehaus.janino:janino:3.0.6",
+    "org.codehaus.janino:commons-compiler:3.1.11",
+    "org.codehaus.janino:janino:3.1.11",
     "org.codehaus.mojo:animal-sniffer-annotations:1.18",
     "org.codehaus.plexus:plexus-utils:4.0.0",
     "org.codehaus.woodstox:stax2-api:4.2",
@@ -7080,16 +7099,6 @@ load(
 container_repositories()
 
 #========== Docker Rules Configuration End=========================
-
-http_archive(
-    name = "rules_pkg",
-    sha256 = "eea0f59c28a9241156a47d7a8e32db9122f3d50b505fae0f33de6ce4d9b61834",
-    urls = [
-        "https://%s.harness.io/artifactory/rules-pkg-github/download/0.8.0/rules_pkg-0.8.0.tar.gz % (REPOSITORY)",
-        #"https://mirror.bazel.build/github.com/bazelbuild/rules_pkg/releases/download/0.4.0/rules_pkg-0.4.0.tar.gz",
-        #"https://github.com/bazelbuild/rules_pkg/releases/download/0.4.0/rules_pkg-0.4.0.tar.gz",
-    ],
-)
 
 load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")
 
