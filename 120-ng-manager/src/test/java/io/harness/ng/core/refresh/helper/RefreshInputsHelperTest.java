@@ -55,6 +55,7 @@ import io.harness.rest.RestResponse;
 import io.harness.rule.Owner;
 import io.harness.setupusage.EnvironmentEntitySetupUsageHelper;
 import io.harness.setupusage.InfrastructureEntitySetupUsageHelper;
+import io.harness.utils.NGFeatureFlagHelperService;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.io.Resources;
@@ -107,7 +108,7 @@ public class RefreshInputsHelperTest extends NgManagerTestBase {
   @Mock ServiceOverrideV2ValidationHelper overrideV2ValidationHelper;
   @Mock private Call<ResponseDTO<SettingValueResponseDTO>> request;
   @Mock private Call<RestResponse<Boolean>> restRequest;
-  @Mock io.harness.utils.NGFeatureFlagHelperService ngFeatureFlagHelperService;
+  @Mock NGFeatureFlagHelperService ngFeatureFlagHelperService;
   @Mock @Named(DEFAULT_CONNECTOR_SERVICE) private ConnectorService connectorService;
   @Mock EnvironmentFilterHelper environmentFilterHelper;
   @Mock CDGitXService cdGitXService;
@@ -125,8 +126,9 @@ public class RefreshInputsHelperTest extends NgManagerTestBase {
         outboxService, transactionTemplate, infrastructureEntityService, clusterService, serviceOverrideService,
         serviceOverridesServiceV2, serviceEntityService, accountClient, settingsClient,
         environmentEntitySetupUsageHelper, overrideV2ValidationHelper, environmentFilterHelper, gitXSettingsHelper));
-    environmentRefreshHelper = spy(new EnvironmentRefreshHelper(environmentService, infrastructureEntityService,
-        serviceOverrideService, serviceOverridesServiceV2, accountClient, overrideV2ValidationHelper));
+    environmentRefreshHelper =
+        spy(new EnvironmentRefreshHelper(environmentService, infrastructureEntityService, serviceOverrideService,
+            serviceOverridesServiceV2, accountClient, overrideV2ValidationHelper, ngFeatureFlagHelperService));
     on(entityFetchHelper).set("serviceEntityService", serviceEntityService);
     on(refreshInputsHelper).set("serviceEntityService", serviceEntityService);
     on(refreshInputsHelper).set("entityFetchHelper", entityFetchHelper);

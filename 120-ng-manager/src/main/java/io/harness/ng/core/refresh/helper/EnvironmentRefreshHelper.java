@@ -64,9 +64,9 @@ public class EnvironmentRefreshHelper {
 
   ServiceOverridesServiceV2 serviceOverridesServiceV2;
   AccountClient accountClient;
-  NGFeatureFlagHelperService featureFlagHelperService;
 
   ServiceOverrideV2ValidationHelper overrideV2ValidationHelper;
+  NGFeatureFlagHelperService featureFlagHelperService;
   private static final String STAGES_KEY = "stages";
   private static final String DUMMY_NODE = "dummy";
 
@@ -289,7 +289,7 @@ public class EnvironmentRefreshHelper {
       JsonNode envRefNode = finalEnvNode.getField(YamlTypes.ENVIRONMENT_REF).getNode().getCurrJsonNode();
       String envRefValue = envRefNode.asText();
       String environmentBranch = RefreshInputsHelper.getBranchFromNode(finalEnvNode);
-      if (NGExpressionUtils.isRuntimeOrExpressionField(envRefValue)) {
+      if (allowDifferentInfraForEnvPropagation && NGExpressionUtils.isRuntimeOrExpressionField(envRefValue)) {
         return true;
       }
 
@@ -495,7 +495,7 @@ public class EnvironmentRefreshHelper {
       }
       envRefValue = envRefNode.asText();
       String environmentBranch = RefreshInputsHelper.getBranchFromNode(finalEnvNode);
-      if (NGExpressionUtils.isRuntimeOrExpressionField(envRefValue)) {
+      if (allowDifferentInfraForEnvPropagation && NGExpressionUtils.isRuntimeOrExpressionField(envRefValue)) {
         return;
       }
       refreshInfraDefsInput(context, envRefValue, environmentBranch, mapper, envObjectNode, infraDefsNode);

@@ -37,7 +37,7 @@ import io.harness.pms.yaml.YamlNode;
 import io.harness.rest.RestResponse;
 import io.harness.rule.Owner;
 import io.harness.rule.OwnerRule;
-import io.harness.utils.featureflaghelper.NGFeatureFlagHelperService;
+import io.harness.utils.NGFeatureFlagHelperService;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
