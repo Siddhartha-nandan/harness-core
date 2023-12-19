@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -108,17 +109,14 @@ public class GitXWebhookEventServiceImpl implements GitXWebhookEventService {
   public GitXEventsListResponseDTO listEvents(GitXEventsListRequestDTO gitXEventsListRequestDTO) {
     try (GitXWebhookLogContext context = new GitXWebhookLogContext(gitXEventsListRequestDTO)) {
       try {
-        if (isNotEmpty(gitXEventsListRequestDTO.getRepoName())) {
-          GitXWebhook gitXWebhook = fetchGitXWebhookForGivenScope(
-              gitXEventsListRequestDTO.getScope(), gitXEventsListRequestDTO.getRepoName());
-          if (gitXWebhook != null) {
-            gitXEventsListRequestDTO.setWebhookIdentifier(gitXWebhook.getIdentifier());
-          }
-        }
         List<String> gitxWebhookIdentifiers = new ArrayList<>();
-        if (isEmpty(gitXEventsListRequestDTO.getWebhookIdentifier())) {
-          gitxWebhookIdentifiers = getGitXWebhookIdentifiers(gitXEventsListRequestDTO);
-          if (isEmpty(gitxWebhookIdentifiers)) {
+        if (isNotEmpty(gitXEventsListRequestDTO.getRepoName())) {
+          List<GitXWebhook> gitXWebhookList = fetchGitXWebhookForGivenScope(
+              gitXEventsListRequestDTO.getScope(), gitXEventsListRequestDTO.getRepoName());
+          if (isNotEmpty(gitXWebhookList)) {
+            gitxWebhookIdentifiers.addAll(
+                gitXWebhookList.stream().map(GitXWebhook::getIdentifier).collect(Collectors.toList()));
+          } else {
             return GitXEventsListResponseDTO.builder().build();
           }
         }
@@ -224,17 +222,6 @@ public class GitXWebhookEventServiceImpl implements GitXWebhookEventService {
     return criteria;
   }
 
-  private List<String> getGitXWebhookIdentifiers(GitXEventsListRequestDTO gitXEventsListRequestDTO) {
-    ListGitXWebhookResponseDTO listGitXWebhookResponseDTO = gitXWebhookService.listGitXWebhooks(
-        ListGitXWebhookRequestDTO.builder().scope(gitXEventsListRequestDTO.getScope()).build());
-    List<String> gitxWebhookIdentifiers = new ArrayList<>();
-    if (listGitXWebhookResponseDTO != null && isNotEmpty(listGitXWebhookResponseDTO.getGitXWebhooksList())) {
-      listGitXWebhookResponseDTO.getGitXWebhooksList().forEach(
-          gitXWebhookResponseDTO -> { gitxWebhookIdentifiers.add(gitXWebhookResponseDTO.getWebhookIdentifier()); });
-    }
-    return gitxWebhookIdentifiers;
-  }
-
   private Query buildEventsListQuery(
       GitXEventsListRequestDTO gitXEventsListRequestDTO, List<String> gitxWebhookIdentifiers) {
     Criteria criteria = buildEventsListCriteria(gitXEventsListRequestDTO, gitxWebhookIdentifiers);
@@ -248,12 +235,12 @@ public class GitXWebhookEventServiceImpl implements GitXWebhookEventService {
     return gitXWebhookService.getGitXWebhook(accountIdentifier, repoName);
   }
 
-  private GitXWebhook fetchGitXWebhookForGivenScope(Scope scope, String repoName) {
-    Optional<GitXWebhook> optionalGitXWebhook = gitXWebhookService.getGitXWebhookForGivenScopes(scope, repoName);
+  private List<GitXWebhook> fetchGitXWebhookForGivenScope(Scope scope, String repoName) {
+    List<GitXWebhook> optionalGitXWebhook = gitXWebhookService.getGitXWebhookForAllScopes(scope, repoName);
     if (optionalGitXWebhook.isEmpty()) {
       return null;
     }
-    return optionalGitXWebhook.get();
+    return optionalGitXWebhook;
   }
 
   private GitXWebhookEvent buildGitXWebhookEvent(WebhookDTO webhookDTO, List<GitXWebhook> gitXWebhookList) {
