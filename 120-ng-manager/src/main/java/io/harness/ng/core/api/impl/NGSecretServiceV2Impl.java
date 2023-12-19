@@ -546,11 +546,11 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
   }
 
   @Override
-  public long count(ScopeInfo scopeInfo) {
+  public long count(String accountIdentifier, String parentUniqueId) {
     Criteria criteria = Criteria.where(SecretKeys.accountIdentifier)
-                            .is(scopeInfo.getAccountIdentifier())
+                            .is(accountIdentifier)
                             .and(SecretKeys.parentUniqueId)
-                            .is(scopeInfo.getUniqueId());
+                            .is(parentUniqueId);
     return secretRepository.count(criteria);
   }
 

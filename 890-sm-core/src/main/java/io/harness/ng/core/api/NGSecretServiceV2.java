@@ -42,7 +42,7 @@ public interface NGSecretServiceV2 {
 
   SecretValidationResultDTO validateSecret(ScopeInfo scopeInfo, String identifier, SecretValidationMetaData metadata);
 
-  long count(ScopeInfo scopeInfo);
+  long count(String accountIdentifier, String parentUniqueId);
 
   Page<Secret> list(Criteria criteria, Pageable pageable);
 

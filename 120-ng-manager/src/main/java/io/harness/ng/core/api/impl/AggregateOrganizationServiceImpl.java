@@ -94,7 +94,7 @@ public class AggregateOrganizationServiceImpl implements AggregateOrganizationSe
     final int projectsCount =
         projectService.getProjectsCountPerOrganization(accountId, singletonList(scopeInfo.orElseThrow().getUniqueId()))
             .getOrDefault(orgId, 0);
-    final long secretsCount = secretServiceV2.count(scopeInfo.orElseThrow());
+    final long secretsCount = secretServiceV2.count(accountId, organization.getUniqueId());
     final long connectorsCount = defaultConnectorService.count(accountId, orgId, null);
     final long delegateGroupCount = delegateDetailsService.getDelegateGroupCount(accountId, orgId, null);
 
