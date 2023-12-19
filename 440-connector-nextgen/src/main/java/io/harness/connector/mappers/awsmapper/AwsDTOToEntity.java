@@ -15,6 +15,7 @@ import io.harness.connector.entities.embedded.awsconnector.AwsConfig.AwsConfigBu
 import io.harness.connector.entities.embedded.awsconnector.AwsEqualJitterBackoffStrategy;
 import io.harness.connector.entities.embedded.awsconnector.AwsFixedDelayBackoffStrategy;
 import io.harness.connector.entities.embedded.awsconnector.AwsFullJitterBackoffStrategy;
+import io.harness.connector.entities.embedded.awsconnector.AwsOidcCredential;
 import io.harness.connector.entities.embedded.awsconnector.AwsSdkClientBackoffStrategy;
 import io.harness.connector.mappers.ConnectorDTOToEntityMapper;
 import io.harness.delegate.beans.connector.awsconnector.AwsConnectorDTO;
@@ -24,6 +25,7 @@ import io.harness.delegate.beans.connector.awsconnector.AwsEqualJitterBackoffStr
 import io.harness.delegate.beans.connector.awsconnector.AwsFixedDelayBackoffStrategySpecDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsFullJitterBackoffStrategySpecDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsManualConfigSpecDTO;
+import io.harness.delegate.beans.connector.awsconnector.AwsOidcSpecDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsSdkClientBackoffStrategyDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsSdkClientBackoffStrategyType;
 import io.harness.encryption.SecretRefHelper;
@@ -48,6 +50,9 @@ public class AwsDTOToEntity implements ConnectorDTOToEntityMapper<AwsConnectorDT
         break;
       case IRSA:
         awsConfigBuilder = buildIRSA(credential);
+        break;
+      case OIDC_AUTHENTICATION:
+        awsConfigBuilder = buildOidcCredential(credential);
         break;
       default:
         throw new InvalidRequestException("Invalid Credential type.");
@@ -82,6 +87,12 @@ public class AwsDTOToEntity implements ConnectorDTOToEntityMapper<AwsConnectorDT
 
   private AwsConfigBuilder buildIRSA(AwsCredentialDTO connector) {
     return AwsConfig.builder().credentialType(AwsCredentialType.IRSA).credential(null);
+  }
+
+  private AwsConfigBuilder buildOidcCredential(AwsCredentialDTO connector) {
+    final AwsOidcSpecDTO config = (AwsOidcSpecDTO) connector.getConfig();
+    AwsOidcCredential oidcCredential = AwsOidcCredential.builder().iamRoleArn(config.getIamRoleArn()).build();
+    return AwsConfig.builder().credentialType(AwsCredentialType.OIDC_AUTHENTICATION).credential(oidcCredential);
   }
 
   private AwsSdkClientBackoffStrategy buildAwsSdkClientBackoffStrategy(
