@@ -8,6 +8,7 @@
 package io.harness.telemetry.helpers;
 
 import static io.harness.rule.OwnerRule.SARTHAK_KASAT;
+import static io.harness.rule.OwnerRule.vivekveman;
 
 import static junit.framework.TestCase.assertTrue;
 
@@ -66,6 +67,33 @@ public class ApprovalInstrumentationHelperTest extends CategoryTest {
     harnessApprovalInstance.setPipelineIdentifier(PIPE);
     harnessApprovalInstance.setType(ApprovalType.HARNESS_APPROVAL);
     CompletableFuture<Void> telemetryTask = instrumentationHelper.sendApprovalEvent(harnessApprovalInstance);
+    telemetryTask.join();
+    assertTrue(telemetryTask.isDone());
+  }
+
+  @Test
+  @Owner(developers = vivekveman)
+  @Category(UnitTests.class)
+  public void testScheduledApproval() {
+    HarnessApprovalInstance harnessApprovalInstance =
+        HarnessApprovalInstance.builder()
+            .approvalMessage(HARNESS_APPROVAL_MESSAGE)
+            .includePipelineExecutionHistory(true)
+            .isAutoRejectEnabled(false)
+            .approvers(ApproversDTO.builder().build())
+            .autoApproval(
+                AutoApprovalDTO.builder()
+                    .scheduledDeadline(
+                        ScheduledDeadlineDTO.builder().time("2023-05-05 04:24 am").timeZone("Asia/Kolkata").build())
+                    .build())
+            .build();
+    harnessApprovalInstance.setAccountId(ACCOUNT);
+    harnessApprovalInstance.setOrgIdentifier(ORG);
+    harnessApprovalInstance.setProjectIdentifier(PROJECT);
+    harnessApprovalInstance.setPipelineIdentifier(PIPE);
+    harnessApprovalInstance.setType(ApprovalType.HARNESS_APPROVAL);
+    CompletableFuture<Void> telemetryTask =
+        instrumentationHelper.sendApprovalEventForScheduledApproval(harnessApprovalInstance);
     telemetryTask.join();
     assertTrue(telemetryTask.isDone());
   }
