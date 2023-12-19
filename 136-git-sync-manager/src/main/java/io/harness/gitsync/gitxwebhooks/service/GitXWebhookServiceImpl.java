@@ -56,7 +56,7 @@ import io.harness.ng.webhook.UpsertWebhookRequestDTO;
 import io.harness.ng.webhook.UpsertWebhookResponseDTO;
 import io.harness.ng.webhook.services.api.WebhookEventService;
 import io.harness.repositories.gitxwebhook.GitXWebhookRepository;
-import io.harness.utils.featureflaghelper.NGFeatureFlagHelperService;
+import io.harness.utils.NGFeatureFlagHelperService;
 
 import com.google.inject.Inject;
 import com.mongodb.client.result.DeleteResult;
