@@ -77,12 +77,8 @@ data:
   SSCA_ORCHESTRATION_IMAGE: '{{ .Values.ssca_images.ssca_plugin.image.repository }}:{{ .Values.ssca_images.ssca_plugin.image.tag }}'
   SSCA_ENFORCEMENT_IMAGE: '{{ .Values.ssca_images.ssca_plugin.image.repository }}:{{ .Values.ssca_images.ssca_plugin.image.tag }}'
   {{- end }}
-  INTERNAL_MANAGER_TARGET: harness-manager:9879
-  INTERNAL_MANAGER_AUTHORITY: harness-manager:9879
   INTERNAL_NG_MANAGER_TARGET: ng-manager:9979
   INTERNAL_NG_MANAGER_AUTHORITY: ng-manager:9979
-  INTERNAL_NG_MANAGER_GITSYNC_TARGET: ng-manager:13002
-  INTERNAL_NG_MANAGER_GITSYNC_AUTHORITY: ng-manager:13002
   INTERNAL_CVNG_MANAGER_AUTHORITY: cv-nextgen:9979
   INTERNAL_CVNG_MANAGER_TARGET: cv-nextgen:9979
   INTERNAL_CI_MANAGER_TARGET: ci-manager:9979

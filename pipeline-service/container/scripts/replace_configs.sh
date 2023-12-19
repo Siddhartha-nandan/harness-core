@@ -585,8 +585,6 @@ replace_key_value cfClientConfig.sleepInterval "$CF_SLEEP_INTERVAL"
 replace_key_value featureFlagConfig.featureFlagSystem "$FEATURE_FLAG_SYSTEM"
 replace_key_value featureFlagConfig.syncFeaturesToCF "$SYNC_FEATURES_TO_CF"
 
-replace_key_value managerTarget "$INTERNAL_MANAGER_TARGET"
-replace_key_value managerAuthority "$INTERNAL_MANAGER_AUTHORITY"
 replace_key_value grpcClientConfigs.cd.target "$INTERNAL_NG_MANAGER_TARGET"
 replace_key_value grpcClientConfigs.cd.authority "$INTERNAL_NG_MANAGER_AUTHORITY"
 replace_key_value grpcClientConfigs.cv.target "$INTERNAL_CVNG_MANAGER_TARGET"
