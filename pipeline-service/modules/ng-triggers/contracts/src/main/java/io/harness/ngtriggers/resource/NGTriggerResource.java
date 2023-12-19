@@ -39,10 +39,12 @@ import io.harness.ngtriggers.beans.dto.NGTriggerResponseDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggersFilterPropertiesDTO;
 import io.harness.ngtriggers.beans.dto.TriggerYamlDiffDTO;
 import io.harness.ngtriggers.beans.source.GitMoveOperationType;
+import io.harness.ngtriggers.beans.source.TriggerChangePollingInterval;
 import io.harness.ngtriggers.beans.source.TriggerUpdateCount;
 import io.harness.pms.annotations.PipelineServiceAuth;
 import io.harness.pms.pipeline.PipelineResourceConstants;
 import io.harness.pms.rbac.PipelineRbacPermissions;
+import io.harness.polling.bean.PollingType;
 import io.harness.rest.RestResponse;
 import io.harness.security.annotations.InternalApi;
 
@@ -383,4 +385,12 @@ public interface NGTriggerResource {
   ResponseDTO<BulkTriggersResponseDTO> bulkToggleTriggers(
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
       @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO);
+
+  @PUT
+  @Path("/update-polling-interval")
+  ResponseDTO<TriggerChangePollingInterval> updatePollingInterval(
+      @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
+      @QueryParam(NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
+      @QueryParam(NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier,
+      @QueryParam("triggerType") PollingType triggerType);
 }

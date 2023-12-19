@@ -49,6 +49,7 @@ import io.harness.ngtriggers.beans.entity.NGTriggerEntity;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity.NGTriggerEntityKeys;
 import io.harness.ngtriggers.beans.entity.metadata.catalog.TriggerCatalogItem;
 import io.harness.ngtriggers.beans.source.GitMoveOperationType;
+import io.harness.ngtriggers.beans.source.TriggerChangePollingInterval;
 import io.harness.ngtriggers.beans.source.TriggerUpdateCount;
 import io.harness.ngtriggers.exceptions.InvalidTriggerYamlException;
 import io.harness.ngtriggers.instrumentation.TriggerTelemetryHelper;
@@ -58,6 +59,7 @@ import io.harness.ngtriggers.service.NGTriggerEventsService;
 import io.harness.ngtriggers.service.NGTriggerService;
 import io.harness.pms.annotations.PipelineServiceAuth;
 import io.harness.pms.rbac.PipelineRbacPermissions;
+import io.harness.polling.bean.PollingType;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.rest.RestResponse;
 import io.harness.security.annotations.InternalApi;
@@ -312,6 +314,14 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
       String pipelineBranchName) {
     return ResponseDTO.newResponse(ngTriggerService.updateBranchName(
         accountIdentifier, orgIdentifier, projectIdentifier, targetIdentifier, operationType, pipelineBranchName));
+  }
+
+  @Override
+  public ResponseDTO<TriggerChangePollingInterval> updatePollingInterval(
+      @NotNull @AccountIdentifier String accountIdentifier, @OrgIdentifier String orgIdentifier,
+      @ProjectIdentifier String projectIdentifier, PollingType pollingType) {
+    return ResponseDTO.newResponse(
+        ngTriggerService.updatePollingInterval(accountIdentifier, orgIdentifier, projectIdentifier, pollingType));
   }
 
   private boolean getMandatoryAuthForCustomWebhookTriggers(
