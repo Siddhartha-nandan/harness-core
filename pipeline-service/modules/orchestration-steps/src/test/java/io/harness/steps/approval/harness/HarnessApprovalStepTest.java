@@ -163,6 +163,7 @@ public class HarnessApprovalStepTest {
     StepElementParameters parameters = getStepElementParametersWithEmptyUserGroup();
     try {
       harnessApprovalStep.executeAsyncAfterRbac(ambiance, parameters, null);
+      verify(instrumentationHelper, times(1)).sendApprovalEventForScheduledApproval(any());
     } catch (InvalidRequestException e) {
       assertThat(e.getMessage()).isEqualTo("All the provided user groups are empty");
     }
