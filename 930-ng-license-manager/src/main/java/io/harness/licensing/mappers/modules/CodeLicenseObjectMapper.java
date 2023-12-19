@@ -25,14 +25,20 @@ public class CodeLicenseObjectMapper implements LicenseObjectMapper<CodeModuleLi
 
   @Override
   public CodeModuleLicenseDTO toDTO(CodeModuleLicense moduleLicense) {
-    return CodeModuleLicenseDTO.builder().numberOfDevelopers(moduleLicense.getNumberOfDevelopers()).build();
+    return CodeModuleLicenseDTO.builder()
+        .numberOfDevelopers(moduleLicense.getNumberOfDevelopers())
+        .numberOfRepositories(moduleLicense.getNumberOfRepositories())
+        .build();
   }
 
   @Override
   public CodeModuleLicense toEntity(CodeModuleLicenseDTO codeModuleLicenseDTO) {
     validateModuleLicenseDTO(codeModuleLicenseDTO);
 
-    return CodeModuleLicense.builder().numberOfDevelopers(codeModuleLicenseDTO.getNumberOfDevelopers()).build();
+    return CodeModuleLicense.builder()
+        .numberOfDevelopers(codeModuleLicenseDTO.getNumberOfDevelopers())
+        .numberOfRepositories(codeModuleLicenseDTO.getNumberOfRepositories())
+        .build();
   }
 
   @Override

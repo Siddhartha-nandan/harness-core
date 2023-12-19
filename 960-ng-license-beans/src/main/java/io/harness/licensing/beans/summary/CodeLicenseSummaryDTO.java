@@ -34,4 +34,5 @@ import lombok.experimental.SuperBuilder;
     name = "CODELicenseSummary", description = "This contains details of the CODE Module License Summary in Harness")
 public class CodeLicenseSummaryDTO extends LicensesWithSummaryDTO {
   private int numberOfDevelopers;
+  private int numberOfRepositories;
 }

@@ -29,4 +29,5 @@ import org.springframework.data.annotation.TypeAlias;
 @TypeAlias("io.harness.license.entities.module.CodeModuleLicense")
 public class CodeModuleLicense extends ModuleLicense {
   Integer numberOfDevelopers;
+  Integer numberOfRepositories;
 }
