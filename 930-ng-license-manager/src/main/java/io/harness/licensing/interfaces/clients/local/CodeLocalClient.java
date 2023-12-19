@@ -42,10 +42,7 @@ public class CodeLocalClient implements CodeModuleLicenseClient {
             .licenseType(LicenseType.TRIAL)
             .build();
       case FREE:
-        return builder.numberOfDevelopers(Integer.valueOf(UNLIMITED))
-            .numberOfRepositories(5)
-            .licenseType(LicenseType.TRIAL)
-            .build();
+        return builder.numberOfDevelopers(Integer.valueOf(UNLIMITED)).numberOfRepositories(5).build();
     }
 
     throw new UnsupportedOperationException("Requested edition is not supported");

@@ -351,13 +351,14 @@ public class ModuleLicenseHelper {
       case CODE:
         CodeModuleLicense updatedCodeModuleLicense = (CodeModuleLicense) update;
         CodeModuleLicense currentCodeModuleLicense = (CodeModuleLicense) current;
-        if ((updatedCodeModuleLicense.getNumberOfDevelopers() != null
-                && !updatedCodeModuleLicense.getNumberOfDevelopers().equals(
-                    currentCodeModuleLicense.getNumberOfDevelopers()))
-            || (updatedCodeModuleLicense.getNumberOfRepositories() != null
-                && !updatedCodeModuleLicense.getNumberOfRepositories().equals(
-                    currentCodeModuleLicense.getNumberOfRepositories()))) {
+        if (updatedCodeModuleLicense.getNumberOfDevelopers() != null
+            && !updatedCodeModuleLicense.getNumberOfDevelopers().equals(
+                currentCodeModuleLicense.getNumberOfDevelopers())) {
           currentCodeModuleLicense.setNumberOfDevelopers(updatedCodeModuleLicense.getNumberOfDevelopers());
+        }
+        if (updatedCodeModuleLicense.getNumberOfRepositories() != null
+            && !updatedCodeModuleLicense.getNumberOfRepositories().equals(
+                currentCodeModuleLicense.getNumberOfRepositories())) {
           currentCodeModuleLicense.setNumberOfRepositories(updatedCodeModuleLicense.getNumberOfRepositories());
         }
         break;
