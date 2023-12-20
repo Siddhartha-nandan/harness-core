@@ -11,9 +11,7 @@ import io.harness.annotation.RecasterAlias;
 import io.harness.annotations.StoreIn;
 import io.harness.mongo.index.FdIndex;
 import io.harness.ng.DbAliases;
-import io.harness.persistence.CreatedAtAware;
 import io.harness.persistence.PersistentEntity;
-import io.harness.persistence.UpdatedAtAware;
 import io.harness.persistence.UuidAware;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
