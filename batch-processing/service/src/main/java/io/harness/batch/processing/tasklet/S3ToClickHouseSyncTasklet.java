@@ -13,7 +13,6 @@ import io.harness.batch.processing.config.BatchMainConfig;
 import io.harness.ccm.clickHouse.ClickHouseConstants;
 import io.harness.ccm.clickHouse.ClickHouseServiceImpl;
 import io.harness.ccm.commons.beans.JobConstants;
-import io.harness.configuration.DeployMode;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.s3.AmazonS3Client;
@@ -30,13 +29,8 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
@@ -64,10 +58,10 @@ public class S3ToClickHouseSyncTasklet implements Tasklet {
     final JobConstants jobConstants = CCMJobConstants.fromContext(chunkContext);
     log.info("Running s3ToCH for account: " + jobConstants.getAccountId());
     String accountId = jobConstants.getAccountId();
-    Instant startTime = Instant.ofEpochMilli(jobConstants.getJobStartTime());
-    Instant endTime = Instant.ofEpochMilli(jobConstants.getJobEndTime());
-    // Instant endTime = Instant.now();
-    // Instant startTime = endTime.minus(15, ChronoUnit.HOURS);
+    //    Instant startTime = Instant.ofEpochMilli(jobConstants.getJobStartTime());
+    //    Instant endTime = Instant.ofEpochMilli(jobConstants.getJobEndTime());
+    Instant endTime = Instant.now();
+    Instant startTime = endTime.minus(2, ChronoUnit.HOURS);
 
     createDBAndTables();
 
