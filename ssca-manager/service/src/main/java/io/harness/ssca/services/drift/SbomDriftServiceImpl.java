@@ -30,6 +30,7 @@ import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.drift.DriftEntity;
 import io.harness.ssca.entities.drift.DriftEntity.DriftEntityKeys;
 import io.harness.ssca.helpers.SbomDriftCalculator;
+import io.harness.ssca.mapper.SbomDriftMapper;
 import io.harness.ssca.services.ArtifactService;
 import io.harness.ssca.services.BaselineService;
 import io.harness.ssca.services.NormalisedSbomComponentService;
@@ -71,12 +72,12 @@ public class SbomDriftServiceImpl implements SbomDriftService {
       throw new InvalidRequestException("Could not find artifact with tag: " + tag);
     }
 
-    // TODO: calculate drift only when sbom tool and format matches.
     return calculateAndStoreSbomDrift(driftArtifact, baseArtifact, DriftBase.MANUAL);
   }
 
   private ArtifactSbomDriftResponse calculateAndStoreSbomDrift(
       ArtifactEntity driftArtifact, ArtifactEntity baseArtifact, DriftBase base) {
+    validateSbomToolAndFormat(driftArtifact, baseArtifact);
     String accountId = driftArtifact.getAccountId();
     String orgId = driftArtifact.getOrgId();
     String projectId = driftArtifact.getProjectId();
@@ -117,11 +118,35 @@ public class SbomDriftServiceImpl implements SbomDriftService {
                                                    : Date.from(OffsetDateTime.now().plusMonths(6).toInstant()))
               .build());
     }
+    OrchestrationDriftSummary summary = buildDriftSummaryFromEntity(driftEntity);
     return new ArtifactSbomDriftResponse()
         .driftId(driftEntity.getUuid())
         .tag(driftArtifact.getTag())
         .baseTag(baseArtifact.getTag())
-        .artifactName(driftArtifact.getName());
+        .artifactName(driftArtifact.getName())
+        .totalDrifts(summary.getTotalDrifts())
+        .componentDriftSummary(SbomDriftMapper.getComponentDriftSummary(summary))
+        .licenseDriftSummary(SbomDriftMapper.getLicenseDriftSummary(summary));
+  }
+
+  void validateSbomToolAndFormat(ArtifactEntity driftArtifact, ArtifactEntity baseArtifact) {
+    if (driftArtifact.getSbom() != null && baseArtifact.getSbom() != null) {
+      if (EmptyPredicate.isNotEmpty(driftArtifact.getSbom().getTool())
+          && !driftArtifact.getSbom().getTool().equals(baseArtifact.getSbom().getTool())) {
+        throw new InvalidRequestException(String.format(
+            "Not proceeding with drift because sbom tool %s for base tag %s does not match with sbom tool %s of tag %s",
+            baseArtifact.getSbom().getTool(), baseArtifact.getTag(), driftArtifact.getSbom().getTool(),
+            driftArtifact.getTag()));
+      }
+
+      if (EmptyPredicate.isNotEmpty(driftArtifact.getSbom().getSbomFormat())
+          && !driftArtifact.getSbom().getSbomFormat().equals(baseArtifact.getSbom().getSbomFormat())) {
+        throw new InvalidRequestException(String.format(
+            "Not proceeding with drift because sbom format %s for base tag %s does not match with sbom format %s of tag %s",
+            baseArtifact.getSbom().getSbomFormat(), baseArtifact.getTag(), driftArtifact.getSbom().getSbomFormat(),
+            driftArtifact.getTag()));
+      }
+    }
   }
 
   @Override
@@ -154,7 +179,7 @@ public class SbomDriftServiceImpl implements SbomDriftService {
 
   @Override
   public ComponentDriftResults getComponentDrifts(String accountId, String orgId, String projectId, String driftId,
-      ComponentDriftStatus status, Pageable pageable) {
+      ComponentDriftStatus status, Pageable pageable, String searchTerm) {
     Criteria criteria = Criteria.where("_id").is(driftId);
     if (!sbomDriftRepository.exists(criteria)) {
       throw new InvalidRequestException("Couldn't find the drift with drift ID " + driftId);
@@ -164,7 +189,7 @@ public class SbomDriftServiceImpl implements SbomDriftService {
     int pageSize = pageable.getPageSize();
     Aggregation aggregation = Aggregation.newAggregation(Aggregation.match(criteria),
         Aggregation.project(DriftEntityKeys.componentDrifts, "_id"), Aggregation.unwind("$componentDrifts"),
-        Aggregation.match(getComponentStatusMatchCriteria(status)),
+        Aggregation.match(getComponentNameAndStatusMatchCriteria(status, searchTerm)),
         Aggregation.group("$_id").count().as("totalComponentDrifts").push("componentDrifts").as("componentDrifts"),
         Aggregation.project("totalComponentDrifts")
             .and("componentDrifts")
@@ -190,8 +215,8 @@ public class SbomDriftServiceImpl implements SbomDriftService {
   }
 
   @Override
-  public LicenseDriftResults getLicenseDrifts(
-      String accountId, String orgId, String projectId, String driftId, LicenseDriftStatus status, Pageable pageable) {
+  public LicenseDriftResults getLicenseDrifts(String accountId, String orgId, String projectId, String driftId,
+      LicenseDriftStatus status, Pageable pageable, String searchTerm) {
     Criteria criteria = Criteria.where("_id").is(driftId);
     DriftEntity driftEntity = sbomDriftRepository.find(criteria);
     if (driftEntity == null) {
@@ -202,7 +227,7 @@ public class SbomDriftServiceImpl implements SbomDriftService {
     int pageSize = pageable.getPageSize();
     Aggregation aggregation = Aggregation.newAggregation(Aggregation.match(criteria),
         Aggregation.project(DriftEntityKeys.licenseDrifts, "_id"), Aggregation.unwind("$licenseDrifts"),
-        Aggregation.match(getLicenseStatusMatchCriteria(status)),
+        Aggregation.match(getLicenseNameAndStatusMatchCriteria(status, searchTerm)),
         Aggregation.group("$_id").count().as("totalLicenseDrifts").push("licenseDrifts").as("licenseDrifts"),
         Aggregation.project("totalLicenseDrifts")
             .and("licenseDrifts")
@@ -251,18 +276,27 @@ public class SbomDriftServiceImpl implements SbomDriftService {
     return buildDriftSummaryFromEntity(driftEntity);
   }
 
-  private Criteria getComponentStatusMatchCriteria(ComponentDriftStatus status) {
-    if (status == null) {
-      return new Criteria();
+  private Criteria getComponentNameAndStatusMatchCriteria(ComponentDriftStatus status, String searchTerm) {
+    Criteria criteria = new Criteria();
+    if (status != null) {
+      criteria.and(DriftEntityKeys.COMPONENT_DRIFT_STATUS).is(status.name());
     }
-    return Criteria.where(DriftEntityKeys.COMPONENT_DRIFT_STATUS).is(status.name());
+    if (EmptyPredicate.isNotEmpty(searchTerm)) {
+      criteria.orOperator(Criteria.where(DriftEntityKeys.OLD_COMPONENT_DRIFT_NAME).regex(searchTerm, "i"),
+          Criteria.where(DriftEntityKeys.NEW_COMPONENT_DRIFT_NAME).regex(searchTerm, "i"));
+    }
+    return criteria;
   }
 
-  private Criteria getLicenseStatusMatchCriteria(LicenseDriftStatus status) {
-    if (status == null) {
-      return new Criteria();
+  private Criteria getLicenseNameAndStatusMatchCriteria(LicenseDriftStatus status, String searchTerm) {
+    Criteria criteria = new Criteria();
+    if (status != null) {
+      criteria.and(DriftEntityKeys.LICENSE_DRIFT_STATUS).is(status.name());
     }
-    return Criteria.where(DriftEntityKeys.LICENSE_DRIFT_STATUS).is(status.name());
+    if (EmptyPredicate.isNotEmpty(searchTerm)) {
+      criteria.and(DriftEntityKeys.LICENSE_DRIFT_NAME).regex(searchTerm, "i");
+    }
+    return criteria;
   }
 
   private void populateComponentsForLicenseDrifts(

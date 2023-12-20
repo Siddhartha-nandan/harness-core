@@ -25,13 +25,18 @@ public interface SearchService {
 
   Result updateArtifact(ArtifactEntity artifactEntity);
 
+  Result upsertArtifact(ArtifactEntity artifactEntity);
+
   Result saveComponent(NormalizedSBOMComponentEntity component);
 
   boolean bulkSaveComponents(String accountId, List<NormalizedSBOMComponentEntity> components);
 
   boolean bulkSaveArtifacts(String accountId, List<ArtifactEntity> artifactEntities);
 
-  boolean deleteMigrationIndex();
+  boolean deleteIndex(String indexName);
+
+  List<String> getOrchestrationIds(
+      String accountId, String orgIdentifier, String projectIdentifier, ArtifactFilter filter);
 
   List<Hit<SSCAArtifact>> listArtifacts(
       String accountId, String orgIdentifier, String projectIdentifier, ArtifactFilter filter, Pageable pageable);

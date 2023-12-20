@@ -346,6 +346,9 @@ public class StringReplacer {
         return true;
       }
     }
+    if (i > 0) {
+      return StringUtils.isAlpha(String.valueOf(buf.charAt(i - 1)));
+    }
     return false;
   }
 
