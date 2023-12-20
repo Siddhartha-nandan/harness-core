@@ -16,3 +16,8 @@ build:  		## package iacm-manager helm chart dependency charts
 .PHONY: diff
 diff:  			## compare local charts with remote
 	./k8s_dry_run.sh
+
+.PHONY: install
+install:		## install chart into target namespace using default values (eg 'make NS=markmcc install')
+	helm upgrade --install -n $(NS) iacm-manager ../iacm-manager -f global-values.yaml
+

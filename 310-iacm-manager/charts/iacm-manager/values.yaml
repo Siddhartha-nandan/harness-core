@@ -1,9 +1,34 @@
 global:
   commonAnnotations: {}
   commonLabels: {}
-  loadbalancerURL: ""
-  airgap: false
+  loadbalancerURL: "https://example.harness.io"
+  delegate:
+    airgapped: false
   imagePullSecrets: []
+  istio:
+    enabled: false
+    gateway:
+      create: true
+      port: 443
+      protocol: HTTPS
+    hosts:
+    - '*'
+    strict: true
+    tls:
+      credentialName: ""
+    virtualService:
+      hosts:
+      - ''
+      gateways: []
+  ingress:
+    enabled: false
+    objects:
+      annotations: {}
+    hosts:
+      - 'my-host.example.org'
+    tls:
+      enabled: false
+      secretName: harness-cert
   stackDriverLoggingEnabled: false
   database:
     postgres:
@@ -91,7 +116,6 @@ global:
       # --  provide default values if redis.installed is set to false
       hosts:
         - redis:6379
-
       secretName: ""
       userKey: ""
       passwordKey: ""
@@ -114,31 +138,8 @@ global:
                 REDIS_PASSWORD:
                   name: ""
                   property: ""
-  ingress:
-    # -- create ingress objects
+  opa:
     enabled: false
-    # -- set ingress object classname
-    className: harness
-    # -- set host of ingressObjects
-    hosts:
-      - my-host.example.org
-    # -- set tls for ingress objects
-    tls:
-      enabled: true
-      secretName: ''
-    # -- add annotations to ingress objects
-    objects:
-      annotations: { }
-  istio:
-    # -- create virtualServices objects
-    enabled: false
-    # -- create gateway and use in virtualservice
-    gateway:
-      create: false
-    # -- if gateway not created, use specified gateway and host
-    virtualService:
-      gateways:
-      hosts:
 
 # meta
 nameOverride: ""
@@ -148,10 +149,10 @@ podLabels: {}
 
 # image
 image:
-  registry: docker.io
-  repository: harness/iacm-manager-signed
-  pullPolicy: IfNotPresent
-  tag: "latest"
+  registry: us.gcr.io
+  repository: platform-205701/harness/saas-openjdk-8u242/iacm-manager
+  pullPolicy: Always
+  tag: 84000-000
   digest: ""
   imagePullSecrets: []
 # dockercfg:

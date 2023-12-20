@@ -4,7 +4,7 @@
 ns_suffix="${1}"
 
 build_manager_chart_yaml () {
-    helm -n test template ../iacm-manager \
+    helm -n harness-nextgen template ../iacm-manager \
         -f ../iacm-manager/values.yaml \
         > iacm-manager-test.yaml
 }
