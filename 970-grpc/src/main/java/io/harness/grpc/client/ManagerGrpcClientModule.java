@@ -55,11 +55,7 @@ public class ManagerGrpcClientModule extends ProviderModule {
   @Singleton
   CallCredentials callCredentials(
       Config config, @Named("Application") String application, TokenGenerator tokenGenerator) {
-    boolean isSsl = isSsl(config, application);
-    if (!isSsl) {
-      return new DelegateAuthCallCredentials(tokenGenerator, config.accountId, false);
-    }
-    return new DelegateAuthCallCredentials(tokenGenerator, config.accountId, true);
+    return new DelegateAuthCallCredentials(tokenGenerator, config.accountId, false);
   }
 
   @Named("manager-channel")
@@ -69,37 +65,7 @@ public class ManagerGrpcClientModule extends ProviderModule {
       Config config, @Named("Application") String application, VersionInfoManager versionInfoManager)
       throws SSLException, TrustManagerBuilderException, KeyManagerBuilderException {
     String authorityToUse = computeAuthority(config, versionInfoManager.getVersionInfo());
-    boolean isSsl = isSsl(config, application);
-
-    if (!isSsl) {
-      return NettyChannelBuilder.forTarget(config.target).overrideAuthority(authorityToUse).usePlaintext().build();
-    }
-
-    X509TrustManager trustManager = new X509TrustManagerBuilder().trustAllCertificates().build();
-    SslContextBuilder sslContextBuilder = GrpcSslContexts.forClient().trustManager(trustManager);
-
-    if (StringUtils.isNotEmpty(config.clientCertificateFilePath)
-        && StringUtils.isNotEmpty(config.clientCertificateKeyFilePath)) {
-      X509KeyManager keyManager =
-          new X509KeyManagerBuilder()
-              .withClientCertificateFromFile(config.clientCertificateFilePath, config.clientCertificateKeyFilePath)
-              .build();
-      sslContextBuilder.keyManager(keyManager);
-    }
-
-    SslContext sslContext = sslContextBuilder.build();
-    return NettyChannelBuilder.forTarget(config.target)
-        .overrideAuthority(authorityToUse)
-        .sslContext(sslContext)
-        .intercept(HarnessRoutingGrpcInterceptor.MANAGER)
-        .build();
-  }
-
-  private boolean isSsl(Config config, @Named("Application") String application) {
-    if ("KUBERNETES_ONPREM".equals(deployMode)) {
-      return ("Delegate".equalsIgnoreCase(application)) && ("https".equalsIgnoreCase(config.scheme));
-    }
-    return true;
+    return NettyChannelBuilder.forTarget(config.target).overrideAuthority(authorityToUse).usePlaintext().build();
   }
 
   private String computeAuthority(Config config, VersionInfo versionInfo) {

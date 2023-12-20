@@ -65,12 +65,7 @@ public class DelegateServiceDriverGrpcClientModule extends ProviderModule {
   @Provides
   public Channel managerChannel() throws SSLException {
     String authorityToUse = computeAuthority();
-    if ("ONPREM".equals(deployMode) || "KUBERNETES_ONPREM".equals(deployMode)) {
       return NettyChannelBuilder.forTarget(target).overrideAuthority(authorityToUse).usePlaintext().build();
-    } else {
-      SslContext sslContext = GrpcSslContexts.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
-      return NettyChannelBuilder.forTarget(target).overrideAuthority(authorityToUse).sslContext(sslContext).build();
-    }
   }
 
   private String computeAuthority() {
