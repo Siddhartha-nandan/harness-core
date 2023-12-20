@@ -56,10 +56,10 @@ public class S3ToClickHouseSyncTasklet implements Tasklet {
 
   @Override
   public RepeatStatus execute(StepContribution stepContribution, ChunkContext chunkContext) throws Exception {
-    log.info("isDeploymentOnPrem: " + configuration.getDeployMode());
-    if (!DeployMode.isOnPrem(configuration.getDeployMode().name()) || !configuration.isClickHouseEnabled()) {
-      return null;
-    }
+    //    log.info("isDeploymentOnPrem: " + configuration.getDeployMode());
+    //    if (!DeployMode.isOnPrem(configuration.getDeployMode().name()) || !configuration.isClickHouseEnabled()) {
+    //      return null;
+    //    }
     log.info("Running the S3ToClickHouseSync job");
     final JobConstants jobConstants = CCMJobConstants.fromContext(chunkContext);
     log.info("Running s3ToCH for account: " + jobConstants.getAccountId());
@@ -193,12 +193,13 @@ public class S3ToClickHouseSyncTasklet implements Tasklet {
         String awsBillingTableId = "ccm.awsBilling_" + connectorId + "_" + reportYear + "_" + reportMonth;
 
         // DROP existing table if found
-        clickHouseService.executeClickHouseQuery(
-            configuration.getClickHouseConfig(), "DROP TABLE IF EXISTS " + awsBillingTableId, Boolean.FALSE);
+        //        clickHouseService.executeClickHouseQuery(
+        //            configuration.getClickHouseConfig(), "DROP TABLE IF EXISTS " + awsBillingTableId, Boolean.FALSE);
 
         String createAwsBillingTableQuery = "CREATE TABLE IF NOT EXISTS " + awsBillingTableId + " (" + schema
             + " ) ENGINE = MergeTree ORDER BY tuple(usagestartdate) SETTINGS allow_nullable_key = 1;";
         log.info(createAwsBillingTableQuery);
+        return null;
         clickHouseService.executeClickHouseQuery(
             configuration.getClickHouseConfig(), createAwsBillingTableQuery, Boolean.FALSE);
 

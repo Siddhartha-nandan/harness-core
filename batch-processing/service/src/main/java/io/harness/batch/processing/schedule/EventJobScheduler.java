@@ -163,7 +163,7 @@ public class EventJobScheduler {
     runCloudEfficiencyEventJobs(BatchJobBucket.IN_CLUSTER_BILLING, true);
   }
 
-  @Scheduled(cron = "0 0 * ? * *") // 0 */10 * * * ?   for testing
+  @Scheduled(cron = "0 */10 * * * ?") // 0 */10 * * * ?   for testing
   public void runCloudEfficiencyOutOfClusterJobs() {
     runCloudEfficiencyEventJobs(BatchJobBucket.OUT_OF_CLUSTER, true);
   }
@@ -508,6 +508,9 @@ public class EventJobScheduler {
     if (ImmutableSet.of(BatchJobType.K8S_WATCH_EVENT, BatchJobType.K8S_WORKLOAD_RECOMMENDATION)
             .contains(BatchJobType.fromJob(job))
         && accountId.equals("hW63Ny6rQaaGsKkVjE0pJA")) {
+      return;
+    }
+    if (!ImmutableSet.of(BatchJobType.SYNC_BILLING_REPORT_S3_TO_CLICKHOUSE).contains(BatchJobType.fromJob(job))) {
       return;
     }
 
