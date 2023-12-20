@@ -18,7 +18,6 @@ import io.harness.data.structure.EmptyPredicate;
 import io.harness.plancreator.PlanCreatorUtilsV1;
 import io.harness.plancreator.stages.stage.v1.AbstractStageNodeV1;
 import io.harness.plancreator.steps.TaskSelectorYaml;
-import io.harness.plancreator.steps.common.v1.StageElementParametersV1;
 import io.harness.plancreator.strategy.StrategyUtilsV1;
 import io.harness.pms.contracts.advisers.AdviserObtainment;
 import io.harness.pms.contracts.facilitators.FacilitatorObtainment;
@@ -37,6 +36,7 @@ import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.creators.ChildrenPlanCreator;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
 import io.harness.pms.sdk.core.steps.io.StepParameters;
+import io.harness.pms.timeout.SdkTimeoutObtainment;
 import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YamlField;
@@ -108,6 +108,7 @@ public abstract class AbstractStagePlanCreator<T extends AbstractStageNodeV1> ex
   @Override
   public PlanNode createPlanForParentNode(PlanCreationContext ctx, T stageNodeV1, List<String> childrenNodeIds) {
     StepParameters stageParameters = getStageParameters(ctx, stageNodeV1, childrenNodeIds);
+    SdkTimeoutObtainment timeoutObtainment = PlanCreatorUtilsV1.getTimeoutObtainmentForStage(stageNodeV1);
     PlanNodeBuilder builder =
         PlanNode.builder()
             .uuid(StrategyUtilsV1.getSwappedPlanNodeId(ctx, stageNodeV1.getUuid()))
@@ -123,10 +124,12 @@ public abstract class AbstractStagePlanCreator<T extends AbstractStageNodeV1> ex
                     .setType(FacilitatorType.newBuilder().setType(OrchestrationFacilitatorType.CHILD).build())
                     .build())
             .exports(stageNodeV1.getExports())
-            .timeoutObtainment(PlanCreatorUtilsV1.getTimeoutObtainmentForStage(stageNodeV1))
             .adviserObtainments(getAdviserObtainments(ctx, stageNodeV1))
             .skipExpressionChain(false);
 
+    if (timeoutObtainment != null) {
+      builder.timeoutObtainment(timeoutObtainment);
+    }
     // If strategy present then don't add advisers. Strategy node will take care of running the stage nodes.
     if (stageNodeV1.getStrategy() == null) {
       builder.adviserObtainments(getAdviserObtainments(ctx.getDependency()));
