@@ -52,6 +52,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import javax.validation.Valid;
 import javax.ws.rs.core.Response;
@@ -70,6 +71,7 @@ public class PipelineExecutionApiImpl implements PipelineExecutionApi {
   private final RetryExecutionHelper retryExecutionHelper;
   private final PMSPipelineService pmsPipelineService;
   private final PMSPipelineTemplateHelper pipelineTemplateHelper;
+  private final String INPUTS = "inputs";
 
   @Override
   public Response executePipeline(String org, String project, String pipeline, @Valid PipelineExecuteRequestBody body,
@@ -78,7 +80,7 @@ public class PipelineExecutionApiImpl implements PipelineExecutionApi {
     try {
       String inputSetPipelineYaml = null;
       if (body != null) {
-        inputSetPipelineYaml = body.getInputsYaml();
+        inputSetPipelineYaml = YamlUtils.writeYamlString(Map.of(INPUTS, body.getInputs()));
       }
       GitAwareContextHelper.populateGitDetails(
           GitEntityInfo.builder().branch(branchName).connectorRef(connectorRef).repoName(repoName).build());
@@ -113,7 +115,7 @@ public class PipelineExecutionApiImpl implements PipelineExecutionApi {
   private RunStageRequestDTO getRunStageRequestDTO(RunStageRequestBody body) {
     return RunStageRequestDTO.builder()
         .stageIdentifiers(body.getStageIdentifiers())
-        .runtimeInputYaml(body.getInputsYaml())
+        .runtimeInputYaml(YamlUtils.writeYamlString(Map.of(INPUTS, body.getInputs())))
         .expressionValues(body.getExpressionValues())
         .build();
   }
@@ -191,7 +193,7 @@ public class PipelineExecutionApiImpl implements PipelineExecutionApi {
     }
     String inputSetPipelineYaml = null;
     if (body != null) {
-      inputSetPipelineYaml = body.getInputsYaml();
+      inputSetPipelineYaml = YamlUtils.writeYamlString(Map.of(INPUTS, body.getInputs()));
     }
     PlanExecutionResponseDto planExecutionResponseDto = pipelineExecutor.runPipelineWithInputSetPipelineYaml(
         harnessAccount, org, project, pipeline, module, inputSetPipelineYaml, false, false, notes);
@@ -234,7 +236,7 @@ public class PipelineExecutionApiImpl implements PipelineExecutionApi {
     }
     String inputSetPipelineYaml = null;
     if (body != null) {
-      inputSetPipelineYaml = body.getInputsYaml();
+      inputSetPipelineYaml = YamlUtils.writeYamlString(Map.of(INPUTS, body.getInputs()));
     }
     PlanExecutionResponseDto planExecutionResponseDto =
         pipelineExecutor.retryPipelineWithInputSetPipelineYaml(harnessAccount, org, project, pipeline, module,
