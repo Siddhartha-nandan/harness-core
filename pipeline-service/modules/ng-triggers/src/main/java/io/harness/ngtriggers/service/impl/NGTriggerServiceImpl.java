@@ -75,7 +75,12 @@ import io.harness.ngtriggers.beans.entity.metadata.status.PollingSubscriptionSta
 import io.harness.ngtriggers.beans.entity.metadata.status.StatusResult;
 import io.harness.ngtriggers.beans.entity.metadata.status.TriggerStatus;
 import io.harness.ngtriggers.beans.entity.metadata.status.ValidationStatus;
-import io.harness.ngtriggers.beans.source.*;
+import io.harness.ngtriggers.beans.source.GitMoveOperationType;
+import io.harness.ngtriggers.beans.source.NGTriggerSourceV2;
+import io.harness.ngtriggers.beans.source.NGTriggerSpecV2;
+import io.harness.ngtriggers.beans.source.NGTriggerType;
+import io.harness.ngtriggers.beans.source.TriggerChangePollingInterval;
+import io.harness.ngtriggers.beans.source.TriggerUpdateCount;
 import io.harness.ngtriggers.beans.source.artifact.ArtifactTypeSpecWrapper;
 import io.harness.ngtriggers.beans.source.artifact.BuildAware;
 import io.harness.ngtriggers.beans.source.artifact.MultiRegionArtifactTriggerConfig;
