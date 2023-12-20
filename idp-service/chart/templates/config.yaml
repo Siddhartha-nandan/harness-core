@@ -69,6 +69,8 @@ data:
   NOTIFICATION_BASE_URL: 'http://platform-service:9005/api/'
   NOTIFICATION_CONFIGS_PLUGIN_REQUESTS_NOTIFICATION_SLACK: {{.Values.notificationConfigsPluginRequestsNotificationSlack}}  #TBD
   SHOULD_CONFIGURE_WITH_NOTIFICATION: "false"
+  INTERNAL_PMS_TARGET: pipeline-service:12011
+  INTERNAL_PMS_AUTHORITY: pipeline-service:12011
   {{ include "harnesscommon.harnessfunctions.java17flags" (dict "context" $) | nindent 2 }}
   CPU: {{ .Values.cpu | quote}}
   SCORE_COMPUTER_THREADS_PER_CORE: {{.Values.scoreComputerThreadsPerCore | quote}}

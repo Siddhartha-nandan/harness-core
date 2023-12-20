@@ -349,3 +349,6 @@ replace_key_value segmentConfiguration.enabled "$SEGMENT_ENABLED"
 replace_key_value segmentConfiguration.url "$SEGMENT_URL"
 replace_key_value segmentConfiguration.apiKey "$SEGMENT_APIKEY"
 replace_key_value segmentConfiguration.certValidationRequired "$SEGMENT_VERIFY_CERT"
+
+replace_key_value pmsGrpcClientConfig.target "$INTERNAL_PMS_TARGET"
+replace_key_value pmsGrpcClientConfig.authority "$INTERNAL_PMS_AUTHORITY"

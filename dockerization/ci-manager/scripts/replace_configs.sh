@@ -488,3 +488,6 @@ replace_key_value cfClientConfig.sleepInterval "$CF_SLEEP_INTERVAL"
 
 replace_key_value featureFlagConfig.featureFlagSystem "$FEATURE_FLAG_SYSTEM"
 replace_key_value featureFlagConfig.syncFeaturesToCF "$SYNC_FEATURES_TO_CF"
+
+replace_key_value pmsGrpcClientConfig.target "$INTERNAL_PMS_TARGET"
+replace_key_value pmsGrpcClientConfig.authority "$INTERNAL_PMS_AUTHORITY"

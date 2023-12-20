@@ -649,3 +649,6 @@ replace_key_value awsServiceEndpointUrls.ecsEndPointUrl "$AWS_SERVICE_ENDPOINT_U
 replace_key_value awsServiceEndpointUrls.cloudwatchEndPointUrl "$AWS_SERVICE_ENDPOINT_URLS_CLOUDWATCH_ENDPOINT_URL"
 
 replace_key_value enablePaginatedQueryOnTimescale "$ENABLE_PAGINATED_QUERY_ON_TIMESCALE"
+
+replace_key_value pmsGrpcClientConfig.target "$INTERNAL_PMS_TARGET"
+replace_key_value pmsGrpcClientConfig.authority "$INTERNAL_PMS_AUTHORITY"

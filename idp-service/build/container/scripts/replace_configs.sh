@@ -625,3 +625,6 @@ if [[ "" != "$INTERNAL_ACCOUNTS" ]]; then
   yq -i 'del(.internalAccounts)' $CONFIG_FILE
   export INTERNAL_ACCOUNTS; yq -i '.internalAccounts=(env(INTERNAL_ACCOUNTS) | split(",") | map(trim))' $CONFIG_FILE
 fi
+
+replace_key_value pmsGrpcClientConfig.target "$INTERNAL_PMS_TARGET"
+replace_key_value pmsGrpcClientConfig.authority "$INTERNAL_PMS_AUTHORITY"
