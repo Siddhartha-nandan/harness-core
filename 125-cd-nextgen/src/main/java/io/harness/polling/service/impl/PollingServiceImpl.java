@@ -260,7 +260,8 @@ public class PollingServiceImpl implements PollingService {
       deletePerpetualTask(pollingDocument);
     }
     DeleteResult deletePollingDocsResult = deletePollingDocs(accountId, orgId, projectId, pollingType);
-    return pollingDocuments.size() == deletePollingDocsResult.getDeletedCount();
+    long deletedCount = deletePollingDocsResult == null ? 0 : deletePollingDocsResult.getDeletedCount();
+    return pollingDocuments.size() == deletedCount;
   }
 
   private Criteria createDeleteCriteria(

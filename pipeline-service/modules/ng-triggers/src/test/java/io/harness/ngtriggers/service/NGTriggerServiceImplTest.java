@@ -35,6 +35,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -89,6 +90,7 @@ import io.harness.ngtriggers.beans.response.TargetExecutionSummary;
 import io.harness.ngtriggers.beans.source.GitMoveOperationType;
 import io.harness.ngtriggers.beans.source.NGTriggerSourceV2;
 import io.harness.ngtriggers.beans.source.NGTriggerType;
+import io.harness.ngtriggers.beans.source.TriggerChangePollingInterval;
 import io.harness.ngtriggers.beans.source.TriggerUpdateCount;
 import io.harness.ngtriggers.beans.source.artifact.ArtifactTriggerConfig;
 import io.harness.ngtriggers.beans.source.artifact.ArtifactType;
@@ -126,6 +128,7 @@ import io.harness.polling.contracts.GitPollingPayload;
 import io.harness.polling.contracts.PollingItem;
 import io.harness.polling.contracts.PollingPayloadData;
 import io.harness.polling.contracts.service.PollingDocument;
+import io.harness.remote.client.NGRestUtils;
 import io.harness.repositories.spring.NGTriggerRepository;
 import io.harness.repositories.spring.TriggerEventHistoryRepository;
 import io.harness.repositories.spring.TriggerWebhookEventRepository;
@@ -1636,6 +1639,56 @@ public class NGTriggerServiceImplTest extends CategoryTest {
     assertThat(ngTriggerServiceImpl.updateBranchName(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER,
                    GitMoveOperationType.REMOTE_TO_INLINE, pipelineBranchName))
         .isEqualTo(TriggerUpdateCount.builder().failureCount(0L).successCount(0L).build());
+  }
+
+  @Test
+  @Owner(developers = MEET)
+  @Category(UnitTests.class)
+  public void testUpdatePollingInterval() throws IOException {
+    NGTriggerEntity ngTriggerEntity =
+        NGTriggerEntity.builder()
+            .type(NGTriggerType.ARTIFACT)
+            .triggerStatus(TriggerStatus.builder().build())
+            .metadata(NGTriggerMetadata.builder()
+                          .buildMetadata(BuildMetadata.builder().pollingConfig(PollingConfig.builder().build()).build())
+                          .build())
+            .enabled(true)
+            .build();
+    Call<Boolean> call = mock(Call.class);
+    when(pollingResourceClient.delete(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, "ARTIFACT")).thenReturn(call);
+    mockStatic(NGRestUtils.class);
+    when(NGRestUtils.getGeneralResponse(call)).thenReturn(true);
+    when(ngTriggerRepository.findByAccountIdAndOrgIdentifierAndProjectIdentifierAndTypeAndEnabledAndDeletedNot(
+             ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, NGTriggerType.valueOf("ARTIFACT"), true, true))
+        .thenReturn(Optional.of(Collections.singletonList(ngTriggerEntity)));
+    ArgumentCaptor<Runnable> runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
+    when(executorService.submit(runnableCaptor.capture())).then(executeRunnable(runnableCaptor));
+    PollingItem pollingItem = PollingItem.newBuilder().build();
+    when(pollingSubscriptionHelper.generatePollingItems(eq(ngTriggerEntity))).thenReturn(List.of(pollingItem));
+    PollingDocument pollingDocument = PollingDocument.newBuilder().setPollingDocId("id1").build();
+    when(kryoSerializer.asObject((byte[]) any())).thenReturn(pollingDocument);
+
+    byte[] bytes = {70};
+    when(kryoSerializer.asBytes(pollingItem)).thenReturn(bytes);
+
+    ResponseDTO<PollingResponseDTO> pollingResponse =
+        ResponseDTO.newResponse(PollingResponseDTO.builder().isExistingPollingDoc(true).pollingResponse(bytes).build());
+    Call<ResponseDTO<PollingResponseDTO>> subscribeCall = mock(Call.class);
+    when(subscribeCall.execute()).thenReturn(Response.success(pollingResponse));
+    when(pollingResourceClient.subscribe(any())).thenReturn(subscribeCall);
+    when(ngTriggerRepository.updateValidationStatusAndMetadata(any(), any())).thenReturn(ngTriggerEntity);
+    assertThat(ngTriggerServiceImpl.updatePollingInterval(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, "ARTIFACT"))
+        .isEqualTo(TriggerChangePollingInterval.builder()
+                       .success(true)
+                       .message("Successfully reset polling interval.")
+                       .build());
+
+    when(NGRestUtils.getGeneralResponse(call)).thenReturn(false);
+    assertThat(ngTriggerServiceImpl.updatePollingInterval(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, "ARTIFACT"))
+        .isEqualTo(TriggerChangePollingInterval.builder()
+                       .success(false)
+                       .message("Failed to update polling interval for some triggers, please retry after some time.")
+                       .build());
   }
 
   @Test
