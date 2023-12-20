@@ -5,6 +5,13 @@ global:
   delegate:
     airgapped: false
   imagePullSecrets: []
+  image:
+    registry: docker.io
+    repository: harness/iacmmanager-signed
+    pullPolicy: IfNotPresent
+    tag: "latest"
+    digest: ""
+    imagePullSecrets: []
   istio:
     enabled: false
     gateway:
@@ -150,9 +157,10 @@ podLabels: {}
 
 # image
 image:
-  registry: docker.io
-  repository: harness/iacmmanager-signed
-  pullPolicy: Always
+  registry: us.gcr.io
+  repository: platform-205701/harness/saas-openjdk-8u242/iacm-manager
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
   tag: 84000-000
   digest: ""
   imagePullSecrets: []
