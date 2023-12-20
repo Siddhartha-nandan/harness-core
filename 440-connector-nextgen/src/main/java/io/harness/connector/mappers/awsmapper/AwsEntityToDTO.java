@@ -35,6 +35,7 @@ import io.harness.encryption.SecretRefHelper;
 import io.harness.exception.InvalidRequestException;
 
 import com.google.inject.Singleton;
+import javax.validation.constraints.NotNull;
 
 @OwnedBy(HarnessTeam.DX)
 @Singleton
@@ -95,7 +96,7 @@ public class AwsEntityToDTO implements ConnectorEntityToDTOMapper<AwsConnectorDT
     return AwsCredentialDTO.builder().awsCredentialType(AwsCredentialType.IRSA).config(null);
   }
 
-  private AwsCredentialDTOBuilder buildOidcCredential(AwsOidcCredential credential) {
+  private AwsCredentialDTOBuilder buildOidcCredential(@NotNull AwsOidcCredential credential) {
     final AwsOidcSpecDTO oidcSpecDTO = AwsOidcSpecDTO.builder().iamRoleArn(credential.getIamRoleArn()).build();
     return AwsCredentialDTO.builder().awsCredentialType(AwsCredentialType.OIDC_AUTHENTICATION).config(oidcSpecDTO);
   }
