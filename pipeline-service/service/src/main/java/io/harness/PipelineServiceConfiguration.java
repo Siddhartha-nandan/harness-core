@@ -152,6 +152,7 @@ public class PipelineServiceConfiguration extends Configuration {
   @JsonProperty("shouldUseInstanceCache") boolean shouldUseInstanceCache;
   @JsonProperty("pmsPlanCreatorServicePoolConfig") private ThreadPoolConfig pmsPlanCreatorServicePoolConfig;
   @JsonProperty("planCreatorMergeServicePoolConfig") private ThreadPoolConfig planCreatorMergeServicePoolConfig;
+  @JsonProperty("variableCreatorMergeServicePoolConfig") private ThreadPoolConfig variableCreatorMergeServicePoolConfig;
   @JsonProperty("pipelineRedisEventsConfig") private PipelineRedisEventsConfig pipelineRedisEventsConfig;
   @JsonProperty("pipelineSdkRedisEventsConfig") private PipelineSdkRedisEventsConfig pipelineSdkRedisEventsConfig;
   @JsonProperty("orchestrationRedisEventsConfig") private OrchestrationRedisEventsConfig orchestrationRedisEventsConfig;
