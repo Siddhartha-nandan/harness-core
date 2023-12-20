@@ -2551,12 +2551,14 @@ public class DelegateServiceImpl implements DelegateService {
 
   @Override
   public DelegateRegisterResponse register(final DelegateParams delegateParams, final boolean isConnectedUsingMtls) {
-    delegateMetricsService.recordDelegateMetrics(Delegate.builder()
-                                                     .accountId(delegateParams.getAccountId())
-                                                     .version(delegateParams.getVersion())
-                                                     .delegateType(delegateParams.getDelegateType())
-                                                     .build(),
-        DELEGATE_REGISTRATION);
+    if (!ECS.equals(delegateParams.getDelegateType())) {
+      delegateMetricsService.recordDelegateMetrics(Delegate.builder()
+                                                       .accountId(delegateParams.getAccountId())
+                                                       .version(delegateParams.getVersion())
+                                                       .delegateType(delegateParams.getDelegateType())
+                                                       .build(),
+          DELEGATE_REGISTRATION);
+    }
     // TODO: remove broadcasts from the flow of this function. Because it's called only in the first registration,
     // which is before the open of websocket connection.
     if (licenseService.isAccountDeleted(delegateParams.getAccountId())) {
