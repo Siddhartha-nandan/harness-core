@@ -19,31 +19,35 @@ import com.codahale.metrics.annotation.ExceptionMetered;
 import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import io.harness.security.annotations.PublicApi;
 import io.swagger.annotations.Api;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.MediaType;
+
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Api("delegate-background-job")
 @Path("/delegate-background-job")
-@Produces("application/json")
-@Singleton
-@Slf4j
-@OwnedBy(PL)
+@Produces(MediaType.APPLICATION_JSON)
+@RequiredArgsConstructor(onConstructor_ = @Inject)
 public class PerpetualTaskConfigResource {
-  private PerpetualTaskConfigService perpetualTaskConfigService;
+  @Inject private PerpetualTaskConfigService perpetualTaskConfigService;
 
-  @Inject
+
+ /* @Inject
   public PerpetualTaskConfigResource(PerpetualTaskConfigService perpetualTaskConfigService) {
     this.perpetualTaskConfigService = perpetualTaskConfigService;
-  }
+  }*/
 
   @POST
   @Timed
   @ExceptionMetered
+  @PublicApi
   public RestResponse<String> save(
       @QueryParam("accountId") String accountId, @QueryParam("perpetualTaskType") String perpetualTaskType) {
     PerpetualTaskConfig perpetualTaskConfig =
@@ -57,6 +61,7 @@ public class PerpetualTaskConfigResource {
   @DELETE
   @Timed
   @ExceptionMetered
+  @PublicApi
   public RestResponse<String> reset(
       @QueryParam("accountId") String accountId, @QueryParam("perpetualTaskType") String perpetualTaskType) {
     if (perpetualTaskConfigService.resumeAccountPerpetualTask(accountId, perpetualTaskType)) {

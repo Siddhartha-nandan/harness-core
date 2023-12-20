@@ -185,13 +185,13 @@ public interface DelegateNgManagerCgManagerClient {
       @Query(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier);
 
 
-  @POST(DELEGATE_BACKGROUND_JOB_API)
+  @POST("delegate-background-job")
   Call<RestResponse<String>> disableBackgroundJobs(
           @Query(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
           @Query(NGCommonEntityConstants.PERPETUALTASK_TYPE_KEY) String perpetualTaskType);
 
 
-  @DELETE(DELEGATE_BACKGROUND_JOB_API)
+  @DELETE("delegate-background-job")
   Call<RestResponse<String>> enableBackgroundJobs(
           @Query(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
           @Query(NGCommonEntityConstants.PERPETUALTASK_TYPE_KEY) String perpetualTaskType);
