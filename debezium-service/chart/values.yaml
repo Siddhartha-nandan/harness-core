@@ -9,14 +9,21 @@
 # --global.storageClass Global StorageClass for Persistent Volume(s)
 java:
   memory: "4096m"
+nameOverride: ""
+fullnameOverride: ""
 #secrets:
 #  default:
 #    CF_CLIENT_API_KEY: "dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq"
 service:
   annotations: {}
+  type: ClusterIP
   port: 14552
 autoscaling:
   enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPU: ""
+  targetMemory: ""
 redis:
   secrets:
     kubernetesSecrets:
@@ -24,6 +31,13 @@ redis:
         keys:
           REDIS_USERNAME: ""
           REDIS_PASSWORD: ""
+database:
+  mongo:
+    pmsharness:
+      enabled: false
+      protocol: ""
+      hosts: []
+
 #    secretManagement:
 #      externalSecretsOperator:
 #        - secretStore:
@@ -82,8 +96,21 @@ startupProbe:
   failureThreshold: 25
 ingress:
   annotations: {}
+podAnnotations: {}
+podSecurityContext: {}
 global:
   ingress:
+    # -- set ingress object classname
+    className: harness
+    # -- set host of ingressObjects
+    hosts:
+      - my-host.example.org
+    # -- set tls for ingress objects
+    tls:
+      enabled: true
+      secretName: ''
+    objects:
+      annotations: {}
     # -- create ingress objects
     enabled: false
   commonAnnotations: {}
