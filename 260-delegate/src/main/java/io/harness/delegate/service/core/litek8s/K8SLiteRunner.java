@@ -17,6 +17,7 @@ import static java.lang.String.format;
 import static java.util.stream.Collectors.flatMapping;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 import io.harness.delegate.beans.ci.k8s.K8sTaskExecutionResponse;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
@@ -82,7 +83,9 @@ public class K8SLiteRunner implements Runner {
   private static final String LOG_SERVICE_TOKEN_VARIABLE = "HARNESS_LOG_SERVICE_TOKEN";
   private static final String LOG_SERVICE_ENDPOINT_VARIABLE = "HARNESS_LOG_SERVICE_ENDPOINT";
   private static final String HARNESS_LOG_PREFIX_VARIABLE = "HARNESS_LOG_PREFIX";
-  private static final String DELEGATE_SECRET_MNT_PATH = "/etc/secret-values";
+  private static final String DELEGATE_SECRET_MNT_PATH = isNotBlank(System.getenv().get("SECRETS_MOUNT_PATH"))
+      ? System.getenv().get("SECRETS_MOUNT_PATH")
+      : "/etc/harness-secrets/";
 
   private static final boolean IS_LOCAL_BIJOU_RUNNER =
       TRUE.toString().equals(System.getenv().get("BIJOU_LOCAL_TEST_MODE"));
