@@ -28,6 +28,7 @@ public class CodeLicenseObjectMapper implements LicenseObjectMapper<CodeModuleLi
     return CodeModuleLicenseDTO.builder()
         .numberOfDevelopers(moduleLicense.getNumberOfDevelopers())
         .numberOfRepositories(moduleLicense.getNumberOfRepositories())
+        .maxRepoSizeInBytes(moduleLicense.getMaxRepoSize())
         .build();
   }
 
@@ -38,6 +39,7 @@ public class CodeLicenseObjectMapper implements LicenseObjectMapper<CodeModuleLi
     return CodeModuleLicense.builder()
         .numberOfDevelopers(codeModuleLicenseDTO.getNumberOfDevelopers())
         .numberOfRepositories(codeModuleLicenseDTO.getNumberOfRepositories())
+        .maxRepoSize(codeModuleLicenseDTO.getMaxRepoSizeInBytes())
         .build();
   }
 

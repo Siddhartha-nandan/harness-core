@@ -31,8 +31,9 @@ import lombok.experimental.SuperBuilder;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
 @Schema(
-    name = "CODELicenseSummary", description = "This contains details of the CODE Module License Summary in Harness")
+    name = "CodeLicenseSummary", description = "This contains details of the CODE Module License Summary in Harness")
 public class CodeLicenseSummaryDTO extends LicensesWithSummaryDTO {
   private int numberOfDevelopers;
   private int numberOfRepositories;
+  private long maxRepoSizeInBytes;
 }

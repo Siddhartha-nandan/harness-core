@@ -220,6 +220,8 @@ public class ModuleLicenseSummaryHelper {
                 codeLicenseSummaryDTO.getNumberOfDevelopers(), codeModuleLicenseDTO.getNumberOfDevelopers()));
             codeLicenseSummaryDTO.setNumberOfRepositories(ModuleLicenseUtils.computeAdd(
                 codeLicenseSummaryDTO.getNumberOfRepositories(), codeModuleLicenseDTO.getNumberOfRepositories()));
+            codeLicenseSummaryDTO.setMaxRepoSizeInBytes(ModuleLicenseUtils.computeAdd(
+                codeLicenseSummaryDTO.getMaxRepoSizeInBytes(), codeModuleLicenseDTO.getMaxRepoSizeInBytes()));
           }
         };
         break;
