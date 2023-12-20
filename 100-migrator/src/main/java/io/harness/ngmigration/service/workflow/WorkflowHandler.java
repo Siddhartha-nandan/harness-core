@@ -27,6 +27,8 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.InputSetValidatorType;
 import io.harness.beans.OrchestrationWorkflowType;
+import io.harness.cdng.creator.plan.stage.CustomStageConfig;
+import io.harness.cdng.creator.plan.stage.CustomStageNode;
 import io.harness.cdng.creator.plan.stage.DeploymentStageConfig;
 import io.harness.cdng.creator.plan.stage.DeploymentStageNode;
 import io.harness.cdng.customDeployment.FetchInstanceScriptStepInfo;
@@ -62,8 +64,6 @@ import io.harness.plancreator.strategy.HarnessForConfig;
 import io.harness.plancreator.strategy.StrategyConfig;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.validation.InputSetValidator;
-import io.harness.steps.customstage.CustomStageConfig;
-import io.harness.steps.customstage.CustomStageNode;
 import io.harness.steps.template.TemplateStepNode;
 import io.harness.steps.wait.WaitStepNode;
 import io.harness.when.beans.StageWhenCondition;
@@ -231,8 +231,9 @@ public abstract class WorkflowHandler {
     return JsonPipelineUtils.asTree(whenCondition);
   }
 
-  public List<NGVariable> getVariables(MigrationContext context, Workflow workflow, Object ngEntitySpec) {
-    List<Variable> variables = new ArrayList<>();
+  public List<NGVariable> getVariables(
+      MigrationContext context, Workflow workflow, Object ngEntitySpec, boolean includeSteps) {
+    Set<Variable> variables = new HashSet<>();
     // We get the list of expressions that have not been replaced in next gen.
     Set<String> expressions = MigratorExpressionUtils.getExpressions(ngEntitySpec);
     if (EmptyPredicate.isNotEmpty(expressions)) {
@@ -260,9 +261,11 @@ public abstract class WorkflowHandler {
       variables.addAll(userVariables);
     }
 
-    List<GraphNode> steps = MigratorUtility.getSteps(workflow);
-    for (GraphNode step : steps) {
-      variables.addAll(stepMapperFactory.getStepMapper(step.getType()).getCustomVariables(step));
+    if (includeSteps) {
+      List<GraphNode> steps = MigratorUtility.getSteps(workflow);
+      for (GraphNode step : steps) {
+        variables.addAll(stepMapperFactory.getStepMapper(step.getType()).getCustomVariables(step));
+      }
     }
 
     MigratorExpressionUtils.render(
@@ -729,11 +732,12 @@ public abstract class WorkflowHandler {
     }
     List<ExecutionWrapperConfig> rollbackSteps = getStepGroups(migrationContext, context, rollbackPhase, false);
     return getDeploymentStageConfig(
-        serviceDefinitionType, stepGroups, rollbackSteps, context.getIdentifierCaseFormat());
+        context, phase, serviceDefinitionType, stepGroups, rollbackSteps, context.getIdentifierCaseFormat());
   }
 
-  DeploymentStageConfig getDeploymentStageConfig(ServiceDefinitionType serviceDefinitionType,
-      List<ExecutionWrapperConfig> steps, List<ExecutionWrapperConfig> rollbackSteps, CaseFormat caseFormat) {
+  DeploymentStageConfig getDeploymentStageConfig(WorkflowMigrationContext context, WorkflowPhase phase,
+      ServiceDefinitionType serviceDefinitionType, List<ExecutionWrapperConfig> steps,
+      List<ExecutionWrapperConfig> rollbackSteps, CaseFormat caseFormat) {
     List<ExecutionWrapperConfig> allSteps = new ArrayList<>();
     if (EmptyPredicate.isEmpty(steps)) {
       AbstractStepNode waitStepNode = MigratorUtility.getWaitStepNode("Wait", 60, true, caseFormat);
@@ -757,10 +761,18 @@ public abstract class WorkflowHandler {
 
     return DeploymentStageConfig.builder()
         .deploymentType(serviceDefinitionType)
-        .service(ServiceYamlV2.builder().serviceRef(RUNTIME_INPUT).serviceInputs(getRuntimeInput()).build())
+        .service(ServiceYamlV2.builder()
+                     .serviceRef(ParameterField.createValueField(phase != null
+                             ? MigratorUtility.getIdentifierWithScope(
+                                 context.getMigratedEntities(), phase.getServiceId(), NGMigrationEntityType.SERVICE)
+                             : NGMigrationConstants.RUNTIME_INPUT))
+                     .serviceInputs(getRuntimeInput())
+                     .build())
         .environment(EnvironmentYamlV2.builder()
                          .deployToAll(ParameterField.createValueField(false))
-                         .environmentRef(RUNTIME_INPUT)
+                         .environmentRef(ParameterField.createValueField(
+                             MigratorUtility.getIdentifierWithScope(context.getMigratedEntities(),
+                                 context.getWorkflow().getEnvId(), NGMigrationEntityType.ENVIRONMENT)))
                          .environmentInputs(getRuntimeInput())
                          .serviceOverrideInputs(getRuntimeInput())
                          .infrastructureDefinitions(ParameterField.createExpressionField(true, "<+input>", null, false))
@@ -772,7 +784,7 @@ public abstract class WorkflowHandler {
   DeploymentStageConfig getDeploymentStageConfig(WorkflowMigrationContext context, List<ExecutionWrapperConfig> steps,
       List<ExecutionWrapperConfig> rollbackSteps) {
     return getDeploymentStageConfig(
-        inferServiceDefinitionType(context), steps, rollbackSteps, context.getIdentifierCaseFormat());
+        context, null, inferServiceDefinitionType(context), steps, rollbackSteps, context.getIdentifierCaseFormat());
   }
 
   public static ParameterField<List<FailureStrategyConfig>> getDefaultFailureStrategy() {
@@ -835,7 +847,7 @@ public abstract class WorkflowHandler {
             .put("type", "Deployment")
             .put("spec", stageConfig)
             .put("failureStrategies", getDefaultFailureStrategy(context))
-            .put("variables", getVariables(migrationContext, context.getWorkflow(), stageConfig))
+            .put("variables", getVariables(migrationContext, context.getWorkflow(), stageConfig, true))
             .put("when", getSkipCondition())
             .build();
     return JsonPipelineUtils.asTree(templateSpec);
@@ -882,23 +894,21 @@ public abstract class WorkflowHandler {
             .put("type", "Custom")
             .put("spec", customStageConfig)
             .put("failureStrategies", getDefaultFailureStrategy(context))
-            .put("variables", getVariables(migrationContext, workflow, customStageConfig))
+            .put("variables", getVariables(migrationContext, workflow, customStageConfig, true))
             .put("when", getSkipCondition())
             .build();
     return JsonPipelineUtils.asTree(templateSpec);
   }
 
   // This is for multi-service only
-  DeploymentStageNode buildPrePostDeploySteps(
+  CustomStageNode buildPrePostDeploySteps(
       MigrationContext migrationContext, WorkflowMigrationContext context, WorkflowPhase phase, PhaseStep phaseStep) {
     ExecutionWrapperConfig wrapper = getStepGroup(migrationContext, context, phase, phaseStep, false);
     if (wrapper == null) {
       return null;
     }
-    DeploymentStageConfig stageConfig =
-        DeploymentStageConfig.builder()
-            .deploymentType(ServiceDefinitionType.KUBERNETES)
-            .service(ServiceYamlV2.builder().serviceRef(RUNTIME_INPUT).serviceInputs(getRuntimeInput()).build())
+    CustomStageConfig customStageConfig =
+        CustomStageConfig.builder()
             .environment(
                 EnvironmentYamlV2.builder()
                     .deployToAll(ParameterField.createValueField(false))
@@ -912,12 +922,13 @@ public abstract class WorkflowHandler {
                            .rollbackSteps(Collections.emptyList())
                            .build())
             .build();
-    DeploymentStageNode stageNode = new DeploymentStageNode();
-    stageNode.setName(MigratorUtility.generateName(phase.getName()));
-    stageNode.setIdentifier(MigratorUtility.generateIdentifier(phase.getName(), context.getIdentifierCaseFormat()));
-    stageNode.setDeploymentStageConfig(stageConfig);
-    stageNode.setFailureStrategies(getDefaultFailureStrategy(context));
-    return stageNode;
+    CustomStageNode customStageNode = new CustomStageNode();
+    customStageNode.setName(MigratorUtility.generateName(phase.getName()));
+    customStageNode.setIdentifier(
+        MigratorUtility.generateIdentifier(phase.getName(), context.getIdentifierCaseFormat()));
+    customStageNode.setFailureStrategies(getDefaultFailureStrategy(context));
+    customStageNode.setCustomStageConfig(customStageConfig);
+    return customStageNode;
   }
 
   // This is for multi service only
@@ -933,19 +944,35 @@ public abstract class WorkflowHandler {
     stageNode.setIdentifier(MigratorUtility.generateIdentifier(phase.getName(), context.getIdentifierCaseFormat()));
     stageNode.setDeploymentStageConfig(stageConfig);
     stageNode.setFailureStrategies(getDefaultFailureStrategy(context));
-    if (EmptyPredicate.isNotEmpty(phase.getVariableOverrides())) {
-      stageNode.setVariables(phase.getVariableOverrides()
-                                 .stream()
-                                 .filter(sv -> StringUtils.isNotBlank(sv.getName()))
-                                 .map(sv
-                                     -> StringNGVariable.builder()
-                                            .name(sv.getName())
-                                            .type(NGVariableType.STRING)
-                                            .value(ParameterField.createValueField(
-                                                StringUtils.isNotBlank(sv.getValue()) ? sv.getValue() : ""))
-                                            .build())
-                                 .collect(Collectors.toList()));
+    List<NGVariable> variables = new ArrayList<>();
+    List<GraphNode> steps = MigratorUtility.getStepsFromPhases(Collections.singletonList(phase));
+    for (GraphNode step : steps) {
+      variables.addAll(stepMapperFactory.getStepMapper(step.getType())
+                           .getCustomVariables(step)
+                           .stream()
+                           .map(var
+                               -> StringNGVariable.builder()
+                                      .name(var.getName())
+                                      .type(NGVariableType.STRING)
+                                      .value(ParameterField.createValueField(
+                                          StringUtils.isNotBlank(var.getValue()) ? var.getValue() : ""))
+                                      .build())
+                           .toList());
     }
+    if (EmptyPredicate.isNotEmpty(phase.getVariableOverrides())) {
+      variables.addAll(phase.getVariableOverrides()
+                           .stream()
+                           .filter(sv -> StringUtils.isNotBlank(sv.getName()))
+                           .map(sv
+                               -> StringNGVariable.builder()
+                                      .name(sv.getName())
+                                      .type(NGVariableType.STRING)
+                                      .value(ParameterField.createValueField(
+                                          StringUtils.isNotBlank(sv.getValue()) ? sv.getValue() : ""))
+                                      .build())
+                           .toList());
+    }
+    stageNode.setVariables(variables);
     return stageNode;
   }
 
@@ -1025,7 +1052,7 @@ public abstract class WorkflowHandler {
             .put("type", "Deployment")
             .put("spec", stageConfig)
             .put("failureStrategies", getDefaultFailureStrategy(context))
-            .put("variables", getVariables(migrationContext, context.getWorkflow(), stageConfig))
+            .put("variables", getVariables(migrationContext, context.getWorkflow(), stageConfig, true))
             .put("when", getSkipCondition())
             .build();
     return JsonPipelineUtils.asTree(templateSpec);
@@ -1043,7 +1070,7 @@ public abstract class WorkflowHandler {
     if (EmptyPredicate.isNotEmpty(prePhaseStep.getSteps())) {
       WorkflowPhase prePhase = WorkflowPhaseBuilder.aWorkflowPhase().name("Pre Deployment").build();
       prePhaseStep.setName("Pre Deployment");
-      DeploymentStageNode stage = buildPrePostDeploySteps(migrationContext, context, prePhase, prePhaseStep);
+      CustomStageNode stage = buildPrePostDeploySteps(migrationContext, context, prePhase, prePhaseStep);
       if (stage != null) {
         stages.add(stage);
       }
@@ -1068,7 +1095,7 @@ public abstract class WorkflowHandler {
     if (EmptyPredicate.isNotEmpty(postPhaseStep.getSteps())) {
       WorkflowPhase postPhase = WorkflowPhaseBuilder.aWorkflowPhase().name("Post Deployment").build();
       postPhaseStep.setName("Post Deployment");
-      DeploymentStageNode stage = buildPrePostDeploySteps(migrationContext, context, postPhase, postPhaseStep);
+      CustomStageNode stage = buildPrePostDeploySteps(migrationContext, context, postPhase, postPhaseStep);
       if (stage != null) {
         stages.add(stage);
       }

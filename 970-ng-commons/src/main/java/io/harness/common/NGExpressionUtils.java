@@ -54,6 +54,7 @@ public class NGExpressionUtils {
   public static final Pattern GENERIC_EXPRESSIONS_PATTERN_FOR_MATRIX =
       Pattern.compile(".*" + EXPR_START_ESC + ".+" + EXPR_END_ESC + ".*");
   public static final String NULL = "null";
+  public static final String EMPTY = "";
 
   public boolean matchesInputSetPattern(String expression) {
     if (isEmpty(expression)) {
@@ -103,7 +104,8 @@ public class NGExpressionUtils {
   }
 
   public boolean matchesPattern(Pattern pattern, String expression) {
-    if (isEmpty(expression)) {
+    // supporting empty strings to match expression like $^
+    if (expression == null) {
       return false;
     }
     return pattern.matcher(expression).matches();

@@ -71,7 +71,7 @@ import io.harness.ci.execution.utils.CIStagePlanCreationUtils;
 import io.harness.ci.execution.validation.CIAccountValidationService;
 import io.harness.ci.execution.validation.CIYAMLSanitizationService;
 import io.harness.ci.ff.CIFeatureFlagService;
-import io.harness.ci.metrics.CIManagerMetricsService;
+import io.harness.ci.metrics.ExecutionMetricsService;
 import io.harness.cimanager.stages.IntegrationStageConfigImpl;
 import io.harness.data.encoding.EncodingUtils;
 import io.harness.data.structure.CollectionUtils;
@@ -200,7 +200,7 @@ public class InitializeTaskStepV2 extends CiAsyncExecutable {
   @Inject private StepExecutionParametersRepository stepExecutionParametersRepository;
   @Inject CIExecutionRepository ciExecutionRepository;
 
-  @Inject private CIManagerMetricsService ciManagerMetricsService;
+  @Inject private ExecutionMetricsService executionMetricsService;
   @Inject private CILogKeyRepository ciLogKeyRepository;
 
   private static final String STEP_STATUS = "ci_active_step_execution_count";
@@ -593,9 +593,9 @@ public class InitializeTaskStepV2 extends CiAsyncExecutable {
         StepResponse.StepOutcome.builder().name(DEPENDENCY_OUTCOME).outcome(dependencyOutcome).build();
 
     try {
-      ciManagerMetricsService.recordStepExecutionCount(k8sTaskExecutionResponse.getCommandExecutionStatus().name(),
+      executionMetricsService.recordStepExecutionCount(k8sTaskExecutionResponse.getCommandExecutionStatus().name(),
           STEP_STATUS, AmbianceUtils.getAccountId(ambiance), InitializeStepInfo.STEP_TYPE.getType());
-      ciManagerMetricsService.recordStepStatusExecutionTime(k8sTaskExecutionResponse.getCommandExecutionStatus().name(),
+      executionMetricsService.recordStepStatusExecutionTime(k8sTaskExecutionResponse.getCommandExecutionStatus().name(),
           (currentTime - startTime) / 1000, STEP_TIME_COUNT, AmbianceUtils.getAccountId(ambiance),
           InitializeStepInfo.STEP_TYPE.getType());
     } catch (Exception ex) {
@@ -838,7 +838,11 @@ public class InitializeTaskStepV2 extends CiAsyncExecutable {
     if (((K8sDirectInfraYaml) infrastructure).getSpec() == null) {
       throw new CIStageExecutionException("Input infrastructure can not be empty");
     }
-    String infraConnectorRef = ((K8sDirectInfraYaml) infrastructure).getSpec().getConnectorRef().getValue();
+    K8sDirectInfraYaml k8sDirectInfraYaml = (K8sDirectInfraYaml) infrastructure;
+    String infraConnectorRef = k8sDirectInfraYaml.getSpec().getConnectorRef().getValue();
+    if (isEmpty(infraConnectorRef)) {
+      throw new CIStageExecutionException("Kubernetes connector identifier cannot be empty for the stage.");
+    }
     entityDetails.add(createEntityDetails(infraConnectorRef, accountIdentifier, projectIdentifier, orgIdentifier));
 
     entityDetails.addAll(connectorRefs.stream()

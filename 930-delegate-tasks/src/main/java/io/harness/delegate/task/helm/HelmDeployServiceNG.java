@@ -10,6 +10,7 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
+import io.harness.delegate.task.k8s.HelmTaskDTO;
 
 import java.util.List;
 
@@ -21,7 +22,7 @@ public interface HelmDeployServiceNG {
 
   void setTaskProgressStreamingClient(ILogStreamingTaskClient iLogStreamingTaskClient);
 
-  HelmCommandResponseNG deploy(HelmInstallCommandRequestNG commandRequest) throws Exception;
+  HelmCommandResponseNG deploy(HelmInstallCommandRequestNG commandRequest, HelmTaskDTO taskData) throws Exception;
 
   /**
    * Rollback helm command response.
@@ -29,7 +30,7 @@ public interface HelmDeployServiceNG {
    * @param commandRequest       the command request
    * @return the helm command response
    */
-  HelmCommandResponseNG rollback(HelmRollbackCommandRequestNG commandRequest) throws Exception;
+  HelmCommandResponseNG rollback(HelmRollbackCommandRequestNG commandRequest, HelmTaskDTO taskData) throws Exception;
 
   /**
    * Ensure helm cli and tiller installed helm command response.
@@ -45,7 +46,7 @@ public interface HelmDeployServiceNG {
    * @param helmCommandRequest the helm command request
    * @return the string
    */
-  HelmListReleaseResponseNG listReleases(HelmInstallCommandRequestNG helmCommandRequest);
+  HelmListReleaseResponseNG listReleases(HelmInstallCommandRequestNG helmCommandRequest) throws Exception;
 
   /**
    * Release history helm release history command response.

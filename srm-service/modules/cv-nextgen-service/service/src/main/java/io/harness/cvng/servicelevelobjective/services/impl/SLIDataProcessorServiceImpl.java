@@ -7,6 +7,8 @@
 
 package io.harness.cvng.servicelevelobjective.services.impl;
 
+import static io.harness.cvng.utils.SLOGraphUtils.windowAndMetricLessSLO;
+
 import io.harness.cvng.servicelevelobjective.beans.SLIAnalyseRequest;
 import io.harness.cvng.servicelevelobjective.beans.SLIAnalyseResponse;
 import io.harness.cvng.servicelevelobjective.beans.SLIEvaluationType;
@@ -15,13 +17,17 @@ import io.harness.cvng.servicelevelobjective.beans.ServiceLevelIndicatorDTO;
 import io.harness.cvng.servicelevelobjective.beans.slimetricspec.RatioSLIMetricEventType;
 import io.harness.cvng.servicelevelobjective.beans.slispec.RequestBasedServiceLevelIndicatorSpec;
 import io.harness.cvng.servicelevelobjective.beans.slispec.WindowBasedServiceLevelIndicatorSpec;
+import io.harness.cvng.servicelevelobjective.entities.ErrorBudgetBurnDown;
 import io.harness.cvng.servicelevelobjective.entities.SLIState;
+import io.harness.cvng.servicelevelobjective.entities.ServiceLevelIndicator;
+import io.harness.cvng.servicelevelobjective.services.api.ErrorBudgetBurnDownService;
 import io.harness.cvng.servicelevelobjective.services.api.SLIAnalyserService;
 import io.harness.cvng.servicelevelobjective.services.api.SLIDataProcessorService;
 import io.harness.exception.InvalidArgumentsException;
 
 import com.google.inject.Inject;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +37,8 @@ import org.apache.commons.lang3.tuple.Pair;
 
 public class SLIDataProcessorServiceImpl implements SLIDataProcessorService {
   @Inject private Map<SLIMetricType, SLIAnalyserService> sliAnalyserServiceMapBinder;
+
+  @Inject private ErrorBudgetBurnDownService errorBudgetBurnDownService;
 
   @Override
   public List<SLIAnalyseResponse> process(Map<String, List<SLIAnalyseRequest>> sliAnalyseRequestMap,
@@ -67,6 +75,48 @@ public class SLIDataProcessorServiceImpl implements SLIDataProcessorService {
                                      .build());
     }
     return sliAnalyseResponseList;
+  }
+
+  @Override
+  public List<SLIAnalyseResponse> process(List<ErrorBudgetBurnDown> errorBudgetBurnDowns,
+      ServiceLevelIndicator serviceLevelIndicator, Instant startTime, Instant endTime) {
+    List<SLIAnalyseResponse> sliAnalyseResponseList = new ArrayList<>();
+    Pair<Long, Long> runningCount = Pair.of(0L, 0L);
+
+    for (Instant i = startTime; i.isBefore(endTime); i = i.plus(1, ChronoUnit.MINUTES)) {
+      SLIState sliState = getState(errorBudgetBurnDowns, i);
+      long goodCountValue = 0;
+      long badCountValue = 0;
+      if (windowAndMetricLessSLO.contains(serviceLevelIndicator.getSLIEvaluationType())) {
+        if (sliState == SLIState.GOOD) {
+          goodCountValue = 1;
+        } else if (sliState == SLIState.BAD) {
+          badCountValue = 1;
+        }
+      }
+      Pair<Long, Long> countValues = Pair.of(goodCountValue, badCountValue);
+      runningCount = getRunningCount(runningCount, countValues.getKey(), countValues.getValue());
+
+      sliAnalyseResponseList.add(SLIAnalyseResponse.builder()
+                                     .sliState(sliState)
+                                     .timeStamp(i)
+                                     .runningGoodCount(runningCount.getKey())
+                                     .runningBadCount(runningCount.getValue())
+                                     .goodEventCount(countValues.getKey())
+                                     .badEventCount(countValues.getValue())
+                                     .build());
+    }
+    return sliAnalyseResponseList;
+  }
+
+  private SLIState getState(List<ErrorBudgetBurnDown> errorBudgetBurnDowns, Instant instant) {
+    long time = instant.toEpochMilli();
+    for (ErrorBudgetBurnDown errorBudgetBurnDown : errorBudgetBurnDowns) {
+      if (errorBudgetBurnDown.getStartTime() <= time && errorBudgetBurnDown.getEndTime() >= time) {
+        return SLIState.BAD;
+      }
+    }
+    return SLIState.GOOD;
   }
 
   private SLIState getState(

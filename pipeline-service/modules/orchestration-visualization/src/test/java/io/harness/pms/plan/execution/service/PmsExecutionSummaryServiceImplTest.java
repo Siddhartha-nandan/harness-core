@@ -13,11 +13,14 @@ import static io.harness.pms.contracts.execution.Status.RUNNING;
 import static io.harness.rule.OwnerRule.ARCHIT;
 import static io.harness.rule.OwnerRule.BRIJESH;
 import static io.harness.rule.OwnerRule.NAMAN;
+import static io.harness.rule.OwnerRule.ROHITKARELIA;
 import static io.harness.rule.OwnerRule.SHALINI;
 import static io.harness.rule.OwnerRule.VINICIUS;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.joor.Reflect.on;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -176,6 +179,140 @@ public class PmsExecutionSummaryServiceImplTest extends OrchestrationVisualizati
     Query query = new Query(criteria);
     query.fields().include(PlanExecutionSummaryKeys.planExecutionId);
     verify(pmsExecutionSummaryRepositoryMock, times(1)).fetchExecutionSummaryEntityFromAnalytics(query);
+  }
+
+  @Test
+  @Owner(developers = ROHITKARELIA)
+  @Category(UnitTests.class)
+  public void testUpdateStageOfIdentityTypeWithNullGraphLayoutNodeDTO() {
+    String stageSetupIdForStrategy = "stageSetupId";
+    String strategyNodeExecutionId = "strategyNodeExecutionId";
+    String runtimeId = "runtimeId";
+    String planExecutionId = "planExecutionId";
+    Ambiance ambiance = Ambiance.newBuilder()
+                            .addLevels(Level.newBuilder()
+                                           .setNodeType(NodeType.PLAN_NODE.name())
+                                           .setRuntimeId(runtimeId)
+                                           .setSetupId("setupId")
+                                           .build())
+                            .build();
+
+    List<NodeExecution> nodeExecutions = new ArrayList<>();
+
+    nodeExecutions.add(NodeExecution.builder()
+                           .uuid("nodeExecutionId1")
+                           .endTs(1000L)
+                           .status(Status.SUCCEEDED)
+                           .nodeId("stageNodeIdWithoutStrategy")
+                           .parentId("parentNodeExecutionId")
+                           .ambiance(ambiance)
+                           .stepType(StepType.newBuilder().setStepCategory(StepCategory.STAGE).build())
+                           .build());
+
+    nodeExecutions.add(NodeExecution.builder()
+                           .uuid("nodeExecutionId2")
+                           .endTs(1000L)
+                           .status(Status.SUCCEEDED)
+                           .nodeId(stageSetupIdForStrategy)
+                           .parentId(strategyNodeExecutionId)
+                           .ambiance(ambiance)
+                           .stepType(StepType.newBuilder().setStepCategory(StepCategory.STAGE).build())
+                           .build());
+
+    nodeExecutions.add(
+        NodeExecution.builder()
+            .uuid("nodeExecutionId3")
+            .parentId(strategyNodeExecutionId)
+            .endTs(1000L)
+            .nodeId(stageSetupIdForStrategy)
+            .status(Status.SUCCEEDED)
+            .ambiance(
+                ambiance.toBuilder()
+                    .addLevels(Level.newBuilder()
+                                   .setNodeType(NodeType.IDENTITY_PLAN_NODE.name())
+                                   .setRuntimeId(runtimeId)
+                                   .setStepType(StepType.newBuilder().setStepCategory(StepCategory.STRATEGY).build())
+                                   .build())
+                    .build())
+            .stepType(StepType.newBuilder().setStepCategory(StepCategory.STAGE).build())
+            .build());
+
+    nodeExecutions.add(
+        NodeExecution.builder()
+            .uuid("stepStrategyNodeExecutionId")
+            .nodeId("stepStrategyNodeId")
+            .parentId("stepsNodeExecutionId")
+            .endTs(1000L)
+            .status(Status.SUCCEEDED)
+            .nodeId("stepNodeId")
+            .ambiance(
+                ambiance.toBuilder()
+                    .addLevels(Level.newBuilder()
+                                   .setNodeType(NodeType.IDENTITY_PLAN_NODE.name())
+                                   .setRuntimeId(runtimeId)
+                                   .setStepType(StepType.newBuilder().setStepCategory(StepCategory.STRATEGY).build())
+                                   .build())
+                    .build())
+            .stepType(StepType.newBuilder().setStepCategory(StepCategory.STRATEGY).build())
+            .build());
+
+    Ambiance ambianceForStageStrategy =
+        Ambiance.newBuilder()
+            .addLevels(Level.newBuilder().setRuntimeId(runtimeId).setSetupId("setupId").setGroup("STAGES").build())
+            .addLevels(Level.newBuilder()
+                           .setNodeType(NodeType.IDENTITY_PLAN_NODE.name())
+                           .setRuntimeId(runtimeId)
+                           .setStepType(StepType.newBuilder().setStepCategory(StepCategory.STRATEGY).build())
+                           .build())
+            .build();
+
+    nodeExecutions.add(NodeExecution.builder()
+                           .uuid(strategyNodeExecutionId)
+                           .nodeId("strategyNodeId")
+                           .parentId("stageNodeExecutionId")
+                           .endTs(1000L)
+                           .status(Status.SUCCEEDED)
+                           .ambiance(ambianceForStageStrategy)
+                           .executableResponses(Collections.singleton(
+                               ExecutableResponse.newBuilder()
+                                   .setChildren(ChildrenExecutableResponse.newBuilder().setMaxConcurrency(3).build())
+                                   .build()))
+                           .stepType(StepType.newBuilder().setStepCategory(StepCategory.STRATEGY).build())
+                           .build());
+
+    doReturn(ConcurrentChildInstance.builder().childrenNodeExecutionIds(Collections.singletonList("randomId")).build())
+        .when(pmsGraphStepDetailsService)
+        .fetchConcurrentChildInstance(strategyNodeExecutionId);
+    doReturn(nodeExecutions)
+        .when(nodeExecutionService)
+        .fetchStageExecutionsWithEndTsAndStatusProjection(planExecutionId);
+
+    doReturn(Optional.of(
+                 PipelineExecutionSummaryEntity.builder()
+                     .layoutNodeMap(Map.of("strategyNodeId",
+                         GraphLayoutNodeDTO.builder()
+                             .nodeType(StrategyType.PARALLELISM.name())
+                             .edgeLayoutList(EdgeLayoutListDTO.builder().currentNodeChildren(new ArrayList<>()).build())
+                             .build(),
+                         "stageSetupIdForStrategy2",
+                         GraphLayoutNodeDTO.builder()
+                             .nodeType("STAGE")
+                             .nodeGroup("stage")
+                             .module("pms")
+                             .edgeLayoutList(EdgeLayoutListDTO.builder().build())
+                             .skipInfo(SkipInfo.newBuilder().build())
+                             .nodeRunInfo(NodeRunInfo.newBuilder().build())
+                             .edgeLayoutList(EdgeLayoutListDTO.builder().currentNodeChildren(new ArrayList<>()).build())
+                             .build()
+
+                             ))
+                     .build()))
+        .when(pmsExecutionSummaryRepositoryMock)
+        .findByPlanExecutionId(any());
+
+    assertThatThrownBy(
+        () -> pmsExecutionSummaryService.updateIdentityStageOrStrategyNodes(planExecutionId, new Update()))
+        .isInstanceOf(NullPointerException.class);
   }
 
   @Test
@@ -343,6 +480,33 @@ public class PmsExecutionSummaryServiceImplTest extends OrchestrationVisualizati
     // be present in update.
     assertEquals(update.toString(),
         "{ \"$set\" : { \"layoutNodeMap.setupId.status\" : { \"$java\" : SUCCESS }, \"layoutNodeMap.setupId.endTs\" : 1000, \"layoutNodeMap.stageSetupId.status\" : { \"$java\" : SUCCESS }, \"layoutNodeMap.stageSetupId.moduleInfo.stepParameters\" : null, \"layoutNodeMap.stageSetupId.startTs\" : null, \"layoutNodeMap.stageSetupId.endTs\" : 1000, \"layoutNodeMap.nodeExecutionId3.status\" : { \"$java\" : SUCCESS }, \"layoutNodeMap.nodeExecutionId3.endTs\" : 1000, \"layoutNodeMap.strategyNodeId.moduleInfo.maxConcurrency.value\" : 3, \"layoutNodeMap.strategyNodeId.status\" : { \"$java\" : SUCCESS }, \"layoutNodeMap.strategyNodeId.moduleInfo.stepParameters\" : null, \"layoutNodeMap.strategyNodeId.startTs\" : null, \"layoutNodeMap.strategyNodeId.endTs\" : 1000, \"layoutNodeMap.nodeExecutionId2.nodeType\" : \"STAGE\", \"layoutNodeMap.nodeExecutionId2.nodeGroup\" : \"stage\", \"layoutNodeMap.nodeExecutionId2.edgeLayoutList\" : { \"$java\" : EdgeLayoutListDTO(currentNodeChildren=[], nextIds=null) }, \"layoutNodeMap.nodeExecutionId2.skipInfo\" : { \"$java\" :  }, \"layoutNodeMap.nodeExecutionId2.nodeUuid\" : \"stageSetupId\", \"layoutNodeMap.nodeExecutionId2.executionInputConfigured\" : null, \"layoutNodeMap.nodeExecutionId3.nodeType\" : \"STAGE\", \"layoutNodeMap.nodeExecutionId3.nodeGroup\" : \"stage\", \"layoutNodeMap.nodeExecutionId3.edgeLayoutList\" : { \"$java\" : EdgeLayoutListDTO(currentNodeChildren=[], nextIds=null) }, \"layoutNodeMap.nodeExecutionId3.skipInfo\" : { \"$java\" :  }, \"layoutNodeMap.nodeExecutionId3.nodeUuid\" : \"stageSetupId\", \"layoutNodeMap.nodeExecutionId3.executionInputConfigured\" : null }, \"$addToSet\" : { \"layoutNodeMap.strategyNodeId.edgeLayoutList.currentNodeChildren\" : { \"$java\" : { \"$each\" : [ \"nodeExecutionId2\", \"nodeExecutionId3\" ] } } } }");
+
+    // Graph Layout Node with null nodeType
+    doReturn(Optional.of(
+                 PipelineExecutionSummaryEntity.builder()
+                     .layoutNodeMap(Map.of("strategyNodeId",
+                         GraphLayoutNodeDTO.builder()
+                             .edgeLayoutList(EdgeLayoutListDTO.builder().currentNodeChildren(new ArrayList<>()).build())
+                             .build(),
+                         stageSetupIdForStrategy,
+                         GraphLayoutNodeDTO.builder()
+                             .nodeType("STAGE")
+                             .nodeGroup("stage")
+                             .module("pms")
+                             .edgeLayoutList(EdgeLayoutListDTO.builder().build())
+                             .skipInfo(SkipInfo.newBuilder().build())
+                             .nodeRunInfo(NodeRunInfo.newBuilder().build())
+                             .edgeLayoutList(EdgeLayoutListDTO.builder().currentNodeChildren(new ArrayList<>()).build())
+                             .build()
+
+                             ))
+                     .build()))
+        .when(pmsExecutionSummaryRepositoryMock)
+        .findByPlanExecutionId(any());
+
+    Update updateNew = new Update();
+    assertThatCode(() -> pmsExecutionSummaryService.updateIdentityStageOrStrategyNodes(planExecutionId, updateNew))
+        .doesNotThrowAnyException();
   }
 
   @Test

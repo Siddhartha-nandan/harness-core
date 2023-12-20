@@ -516,14 +516,9 @@ paths:
         - x-api-key: []
       tags:
         - AppConfig
-      x-internal: true
+      x-internal: false
     parameters:
-      - schema:
-          type: string
-        name: plugin-id
-        description: Plugin Identifier
-        in: path
-        required: true
+      - $ref: '#/components/parameters/PluginId'
   /v1/plugins-info:
     get:
       summary: List Available Plugins
@@ -538,7 +533,23 @@ paths:
         - x-api-key: []
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
-      x-internal: true
+      x-internal: false
+    post:
+      summary: Save custom plugin info
+      operationId: save-custom-plugins-info
+      responses:
+        '201':
+          $ref: '#/components/responses/CustomPluginInfoResponse'
+      x-stoplight:
+        id: t4vsvfeuf169r
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+      requestBody:
+        $ref: '#/components/requestBodies/CustomPluginCreateRequest'
+      tags:
+        - PluginInfo
   '/v1/plugins-info/{plugin-id}':
     get:
       summary: Get Plugin
@@ -553,8 +564,41 @@ paths:
         - x-api-key: []
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
-        - $ref: '#/components/parameters/PluginId'
+        - $ref: '#/components/parameters/Meta'
+      x-internal: false
+    put:
+      summary: Update custom plugin info
+      operationId: update-custom-plugins-info
+      responses:
+        '200':
+          $ref: '#/components/responses/CustomPluginInfoResponse'
+      x-stoplight:
+        id: jt3xnyhpgnfe9
+      security:
+        - x-api-key: []
+      requestBody:
+        $ref: '#/components/requestBodies/CustomPluginInfoRequest'
+      tags:
+        - PluginInfo
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+    parameters:
+      - $ref: '#/components/parameters/PluginId'
+    delete:
+      summary: Delete custom plugin info
+      operationId: delete-custom-plugin-info
+      responses:
+        '204':
+          description: No Content
+      x-stoplight:
+        id: 1brpcp6chep0j
       x-internal: true
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+      tags:
+        - PluginInfo
   /v1/app-config:
     post:
       summary: Save Or Update Plugin Config
@@ -569,7 +613,7 @@ paths:
         - $ref: '#/components/parameters/AccountHeader'
       requestBody:
         $ref: '#/components/requestBodies/AppConfigRequest'
-      x-internal: true
+      x-internal: false
       tags:
         - AppConfig
   /v1/connectors-info:
@@ -601,7 +645,7 @@ paths:
         - x-api-key: []
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
-      x-internal: true
+      x-internal: false
     post:
       summary: Create or Update Connector Info
       tags:
@@ -617,7 +661,7 @@ paths:
         - x-api-key: []
       requestBody:
         $ref: '#/components/requestBodies/ConnectorInfoRequest'
-      x-internal: true
+      x-internal: false
   '/v1/connector-info/{provider-type}':
     get:
       summary: Get Connector Info by Provider Type
@@ -633,7 +677,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
         - $ref: '#/components/parameters/ProviderType'
-      x-internal: true
+      x-internal: false
   /v1/merged-plugins-config:
     get:
       summary: Retrieve Merged Config for Enabled Plugins.
@@ -674,7 +718,7 @@ paths:
       tags:
         - PluginInfo
       description: Request for a Plugin
-      x-internal: true
+      x-internal: false
       security:
         - x-api-key: []
       parameters:
@@ -689,7 +733,7 @@ paths:
           $ref: '#/components/responses/PluginRequestResponseList'
       tags:
         - PluginInfo
-      x-internal: true
+      x-internal: false
       description: Get all plugin requests for an account
       security:
         - x-api-key: []
@@ -801,7 +845,7 @@ paths:
         - x-api-key: []
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
-      x-internal: true
+      x-internal: false
       description: Get backend url allow list
     post:
       summary: Save backend url allow list
@@ -855,7 +899,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
       description: API for getting all the datasources present in account.
-      x-internal: true
+      x-internal: false
       security:
         - x-api-key: []
   '/v1/data-sources/{data-source}/datapoints':
@@ -877,7 +921,7 @@ paths:
       x-stoplight:
         id: aogrjef7pusxj
       description: Get DataPoints Present in DataSources
-      x-internal: true
+      x-internal: false
       security:
         - x-api-key: []
       parameters:
@@ -896,7 +940,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
         - $ref: '#/components/parameters/EntityIdentifier'
-      x-internal: true
+      x-internal: false
       tags:
         - Scores
     parameters: []
@@ -911,7 +955,7 @@ paths:
         id: lpnl6xzlj655z
       security:
         - x-api-key: []
-      x-internal: true
+      x-internal: false
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
         - $ref: '#/components/parameters/EntityIdentifier'
@@ -936,7 +980,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ScorecardFilter'
-      x-internal: true
+      x-internal: false
       tags:
         - Scores
   /v1/scores/graph:
@@ -997,7 +1041,7 @@ paths:
         id: fybtgv0otf34d
       operationId: get-checks
       description: Get all checks available
-      x-internal: true
+      x-internal: false
       security:
         - x-api-key: []
       responses:
@@ -1023,7 +1067,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CheckDetailsRequest'
-      x-internal: true
+      x-internal: false
   '/v1/checks/{check-id}':
     get:
       summary: Get check details for given checkId
@@ -1042,7 +1086,7 @@ paths:
         - $ref: '#/components/parameters/AccountHeader'
         - $ref: '#/components/parameters/CheckIdentifier'
         - $ref: '#/components/parameters/CheckType'
-      x-internal: true
+      x-internal: false
     put:
       summary: Update check details for given checkId
       tags:
@@ -1054,7 +1098,7 @@ paths:
       x-stoplight:
         id: e6w24mxeru0p6
       description: Update check details for given checkId
-      x-internal: true
+      x-internal: false
       security:
         - x-api-key: []
       parameters:
@@ -1075,7 +1119,7 @@ paths:
         - $ref: '#/components/parameters/AccountHeader'
         - $ref: '#/components/parameters/CheckIdentifier'
         - $ref: '#/components/parameters/ForceDelete'
-      x-internal: true
+      x-internal: false
       responses:
         '204':
           description: No Content
@@ -1131,7 +1175,7 @@ paths:
       x-stoplight:
         id: sd1pqx1g9pu0o
       description: Get all scorecards available
-      x-internal: true
+      x-internal: false
       security:
         - x-api-key: []
       parameters:
@@ -1156,7 +1200,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ScorecardDetailsRequest'
-      x-internal: true
+      x-internal: false
   '/v1/scorecards/{scorecard-id}':
     get:
       summary: Get scorecard details for given scorecardId
@@ -1167,7 +1211,7 @@ paths:
           $ref: '#/components/responses/ScorecardDetailsResponse'
       operationId: get-scorecard
       description: Get scorecard details for given scorecardId
-      x-internal: true
+      x-internal: false
       security:
         - x-api-key: []
       parameters:
@@ -1196,7 +1240,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ScorecardDetailsRequest'
-      x-internal: true
+      x-internal: false
     delete:
       summary: Delete scorecard details for given scorecardId
       operationId: delete-scorecard
@@ -1206,7 +1250,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/AccountHeader'
         - $ref: '#/components/parameters/ScorecardIdentifier'
-      x-internal: true
+      x-internal: false
       responses:
         '204':
           description: No Content
@@ -1279,7 +1323,7 @@ paths:
       x-stoplight:
         id: hxskmevkt524r
       description: API for getting the map of data sources and data points for account
-      x-internal: true
+      x-internal: false
       security:
         - x-api-key: []
       parameters:
@@ -1320,6 +1364,90 @@ paths:
         - LicenseUsageResource
       requestBody:
         $ref: '#/components/requestBodies/LicenseUsageSaveRequest'
+  /v2/scores/recalibrate:
+    post:
+      summary: Trigger recalibration of scores for a scorecard
+      operationId: scorecard-recalibrate-v2
+      responses:
+        '202':
+          $ref: '#/components/responses/ScorecardRecalibrateResponseV2'
+      x-stoplight:
+        id: 7bibsplzghpox
+      description: API for triggering score recalibration for a scorecard
+      tags:
+        - ScoresV2
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+      requestBody:
+        $ref: '#/components/requestBodies/ScorecardRecalibrateRequest'
+      x-internal: true
+  /v1/scores/recalibrate/status:
+    get:
+      summary: Get score recalibration status
+      tags:
+        - Scores
+      responses:
+        '200':
+          $ref: '#/components/responses/ScorecardRecalibrateResponseV2'
+      operationId: get-scores-recalibrate-status
+      x-stoplight:
+        id: 2qlp5rle9cmv8
+      description: Get status of score computation request
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+      requestBody:
+        $ref: '#/components/requestBodies/ScorecardRecalibrateRequest'
+      x-internal: true
+    parameters: []
+  /v1/backstage-harness/sync:
+    post:
+      summary: Sync Backstage Entities as Harness Entities for all IDP enabled accounts
+      tags:
+        - BackstageHarness
+      responses:
+        '200':
+          $ref: '#/components/responses/BackstageHarnessSyncEntitiesResponse'
+      operationId: backstage-harness-sync-all-accounts
+      description: Syncs Backstage Entities as Harness Entities for all IDP enabled accounts
+      x-internal: true
+      security:
+        - x-api-key: []
+  /v1/backstage-harness/sync/for-account:
+    post:
+      summary: Sync Backstage Entities as Harness Entities for given account
+      tags:
+        - BackstageHarness
+      responses:
+        '200':
+          $ref: '#/components/responses/BackstageHarnessSyncEntitiesResponse'
+      operationId: backstage-harness-sync-for-account
+      description: Syncs Backstage Entities as Harness Entities for given account
+      x-internal: true
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+  /v1/backstage-harness/sync/for-entity:
+    post:
+      summary: Sync Backstage entity as Harness entity for given account and entity with specified action and sync mode
+      tags:
+        - BackstageHarness
+      requestBody:
+        $ref: '#/components/requestBodies/BackstageHarnessSyncRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/BackstageHarnessSyncEntitiesResponse'
+      operationId: backstage-harness-sync-for-account-entity
+      description: Sync Backstage entity as Harness entity for given account and entity with specified action and sync mode
+      x-internal: true
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
 components:
   schemas:
     BackstageEnvVariable:
@@ -1725,8 +1853,14 @@ components:
             id: 86jybcrx3x9hy
         image_url:
           type: string
+        images:
+          type: array
           x-stoplight:
             id: tn689mqkfth94
+          items:
+            x-stoplight:
+              id: ybfwwjy9ere6h
+            type: string
         documentation:
           type: string
           x-stoplight:
@@ -1739,17 +1873,15 @@ components:
           type: boolean
           x-stoplight:
             id: dye1mgrxvvkhj
+        plugin_type:
+          type: string
+          x-stoplight:
+            id: 3afv43ng1qibj
+          enum:
+            - DEFAULT
+            - CUSTOM
       required:
         - id
-        - name
-        - created_by
-        - icon_url
-        - description
-        - category
-        - source
-        - image_url
-        - core
-        - enabled
     PluginInfoResponse:
       title: PluginInfoResponse
       x-stoplight:
@@ -2110,8 +2242,6 @@ components:
             id: 43cv9jhplzytw
       required:
         - plugin_details
-        - config
-        - exports
     LayoutIngestRequest:
       title: LayoutIngestRequest
       x-stoplight:
@@ -2446,7 +2576,7 @@ components:
         - identifier
         - name
         - custom
-      x-internal: true
+      x-internal: false
     CheckListItem:
       title: CheckListItem
       x-stoplight:
@@ -2475,7 +2605,7 @@ components:
               maximum: 100
           required:
             - data_source
-      x-internal: true
+      x-internal: false
     CheckResponse:
       title: CheckResponse
       x-stoplight:
@@ -2484,7 +2614,7 @@ components:
       properties:
         check:
           $ref: '#/components/schemas/CheckListItem'
-      x-internal: true
+      x-internal: false
     CheckDetails:
       title: CheckDetails
       x-stoplight:
@@ -2519,11 +2649,18 @@ components:
               type: string
               x-stoplight:
                 id: mqml3k84x10ot
+            percentage:
+              type: number
+              x-stoplight:
+                id: kp6ptdhmpvqn7
+              format: double
+              minimum: 0
+              maximum: 100
           required:
             - rule_strategy
             - rules
             - default_behaviour
-      x-internal: true
+      x-internal: false
     CheckDetailsRequest:
       title: CheckDetailsRequest
       x-stoplight:
@@ -2532,7 +2669,7 @@ components:
       properties:
         check_details:
           $ref: '#/components/schemas/CheckDetails'
-      x-internal: true
+      x-internal: false
     CheckDetailsResponse:
       title: CheckDetailsResponse
       x-stoplight:
@@ -2543,13 +2680,13 @@ components:
           $ref: '#/components/schemas/CheckDetails'
       required:
         - check_details
-      x-internal: true
+      x-internal: false
     Rule:
       title: Rule
       x-stoplight:
         id: 3heyk9rwc10qi
       type: object
-      x-internal: true
+      x-internal: false
       properties:
         identifier:
           type: string
@@ -2571,10 +2708,6 @@ components:
           type: string
           x-stoplight:
             id: ektxg0uwq30y7
-        conditional_input_value:
-          type: string
-          x-stoplight:
-            id: oepovwbe5sp3v
         input_values:
           type: array
           x-stoplight:
@@ -2711,6 +2844,17 @@ components:
             x-stoplight:
               id: 6xqs4rtf0fexq
             type: string
+        components:
+          type: integer
+          x-stoplight:
+            id: 8rc2peneqokdm
+        percentage:
+          type: number
+          x-stoplight:
+            id: lzqyp3vjd6kto
+          format: double
+          minimum: 0
+          maximum: 100
       required:
         - name
         - identifier
@@ -2846,7 +2990,7 @@ components:
         id: rl36h4i72zwmn
       type: object
       description: Contains Details for Single Data source
-      x-internal: true
+      x-internal: false
       properties:
         identifier:
           type: string
@@ -2879,14 +3023,14 @@ components:
             $ref: '#/components/schemas/DataSource'
       required:
         - data_sources
-      x-internal: true
+      x-internal: false
     DataPoint:
       title: DataPoint
       x-stoplight:
         id: c7tcluzgw5cjz
       type: object
       description: Conatins detail for single data point
-      x-internal: true
+      x-internal: false
       properties:
         type:
           type: string
@@ -2900,14 +3044,6 @@ components:
           type: string
           x-stoplight:
             id: 1hkouvzjjgqn1
-        is_conditional:
-          type: boolean
-          x-stoplight:
-            id: paccdjr2rx67a
-        conditional_input_description:
-          type: string
-          x-stoplight:
-            id: w1toqmhqqzd27
         data_point_identifier:
           type: string
           x-stoplight:
@@ -2926,8 +3062,6 @@ components:
         - type
         - name
         - description
-        - is_conditional
-        - conditional_input_description
         - data_point_identifier
         - detailed_description
     DataPointsResponse:
@@ -2945,14 +3079,14 @@ components:
             $ref: '#/components/schemas/DataPoint'
       required:
         - data_points
-      x-internal: true
+      x-internal: false
     CheckStatus:
       title: CheckStatus
       x-stoplight:
         id: fdrxgq2legal0
       type: object
       description: Info for single check status
-      x-internal: true
+      x-internal: false
       properties:
         reason:
           type: string
@@ -2991,7 +3125,7 @@ components:
         id: pay6aezj4d31h
       type: object
       description: Scorecard score calculation summary info
-      x-internal: true
+      x-internal: false
       properties:
         scorecard_name:
           type: string
@@ -3020,6 +3154,8 @@ components:
           type: string
           x-stoplight:
             id: 8ug477to6b52k
+        recalibrate_info:
+          $ref: '#/components/schemas/ScorecardRecalibrateInfo'
       required:
         - scorecard_name
         - timestamp
@@ -3042,13 +3178,13 @@ components:
             $ref: '#/components/schemas/ScorecardSummaryInfo'
       required:
         - scorecards_summary
-      x-internal: true
+      x-internal: false
     ScorecardScore:
       title: ScorecardScore
       x-stoplight:
         id: ynku3ttnf3cx6
       type: object
-      x-internal: true
+      x-internal: false
       description: Score info for single score card
       properties:
         score:
@@ -3072,7 +3208,7 @@ components:
       x-stoplight:
         id: mzt5uyu7qe0wo
       type: object
-      x-internal: true
+      x-internal: false
       description: Response for getting only scores for scorecards
       properties:
         scorecard_scores:
@@ -3093,7 +3229,7 @@ components:
       x-stoplight:
         id: pm2xjutml29k8
       type: object
-      x-internal: true
+      x-internal: false
       description: Scores for each backstage entity
       properties:
         name:
@@ -3128,7 +3264,7 @@ components:
         id: 6jzf10wfckw9o
       type: object
       description: Response for each entity scores
-      x-internal: true
+      x-internal: false
       properties:
         entity:
           $ref: '#/components/schemas/EntityScores'
@@ -3181,13 +3317,21 @@ components:
           $ref: '#/components/schemas/ScorecardSummaryInfo'
       required:
         - recalibrated_scores
+    ScorecardRecalibrateResponseV2:
+      title: ScorecardRecalibrateResponseV2
+      x-stoplight:
+        id: 6ooyo1l1t3jkn
+      type: object
+      properties:
+        info:
+          $ref: '#/components/schemas/ScorecardRecalibrateInfo'
     DataSourceDataPointInfo:
       title: DataSourceDataPointInfo
       x-stoplight:
         id: jip4iam34alsh
       type: object
       description: Request Content for fetching the data point data from data source
-      x-internal: true
+      x-internal: false
       properties:
         data_source_location:
           $ref: '#/components/schemas/DataSourceLocationInfo'
@@ -3220,14 +3364,14 @@ components:
         - data_point_identifier
         - values
       description: Data point values Info for Request
-      x-internal: true
+      x-internal: false
     DataSourceLocationInfo:
       title: DataSourceLocationInfo
       x-stoplight:
         id: ky5xrxrsqr6br
       type: object
       description: Data Source Location Info for request
-      x-internal: true
+      x-internal: false
       properties:
         data_points:
           type: array
@@ -3343,6 +3487,10 @@ components:
           type: string
           x-stoplight:
             id: au25s8h8q4qzc
+        namespace:
+          type: string
+          x-stoplight:
+            id: fl26s8h9q4qzc
         data_source_location:
           $ref: '#/components/schemas/DataSourceLocationInfo'
     KubernetesRequest:
@@ -3463,12 +3611,16 @@ components:
         id: mfzfyuj9dxi9v
       type: object
       description: ScorecardStats
-      x-internal: true
+      x-internal: false
       properties:
         name:
           type: string
           x-stoplight:
             id: skt0gj9ivt90s
+        namespace:
+          type: string
+          x-stoplight:
+            id: oklu13i7o6ebd
         owner:
           type: string
           x-stoplight:
@@ -3491,6 +3643,7 @@ components:
             id: ehz071o8ft8bg
       required:
         - name
+        - namespace
         - owner
         - system
         - kind
@@ -3507,6 +3660,11 @@ components:
           type: string
           x-stoplight:
             id: czewiwd87fr8u
+        timestamp:
+          type: integer
+          x-stoplight:
+            id: 5p8wtkrmax6su
+          format: int64
         stats:
           type: array
           x-stoplight:
@@ -3522,12 +3680,16 @@ components:
         id: mgzeoij8ddi8f
       type: object
       description: CheckStats
-      x-internal: true
+      x-internal: false
       properties:
         name:
           type: string
           x-stoplight:
             id: tkt0gj9ivt90s
+        namespace:
+          type: string
+          x-stoplight:
+            id: pklu13i8o9rdb
         owner:
           type: string
           x-stoplight:
@@ -3550,6 +3712,7 @@ components:
             id: fhz071o8ft8bg
       required:
         - name
+        - namespace
         - owner
         - system
         - kind
@@ -3561,12 +3724,17 @@ components:
         id: 1hhr4bzpt278k
       type: object
       description: CheckStatsResponse
-      x-internal: true
+      x-internal: false
       properties:
         name:
           type: string
           x-stoplight:
             id: 5kkekddw3r1zh
+        timestamp:
+          type: integer
+          x-stoplight:
+            id: 5e8wpkrsax6xu
+          format: int64
         stats:
           x-stoplight:
             id: nd4na7s04suxx
@@ -3591,6 +3759,126 @@ components:
           type: integer
           x-stoplight:
             id: irv1t5g39uexj
+    ScorecardRecalibrateInfo:
+      title: ScorecardRecalibrateInfo
+      x-stoplight:
+        id: a5yovd00yo89y
+      type: object
+      properties:
+        start_time:
+          type: integer
+          x-stoplight:
+            id: dsc57yz269flx
+          format: int64
+        started_by:
+          $ref: '#/components/schemas/User'
+    User:
+      title: User
+      x-stoplight:
+        id: p693c8e19hig1
+      type: object
+      properties:
+        uuid:
+          type: string
+          x-stoplight:
+            id: akz3uywxq3fcy
+        name:
+          type: string
+          x-stoplight:
+            id: j5y9u9hxapibd
+        email:
+          type: string
+          x-stoplight:
+            id: zrikcrbyjl7pk
+      description: ''
+    DefaultPluginDetailedInfo:
+      title: DefaultPluginDetailedInfo
+      x-stoplight:
+        id: om79yzqsehzdj
+      allOf:
+        - $ref: '#/components/schemas/PluginDetailedInfo'
+      description: Metadata for default plugin
+    CustomPluginDetailedInfo:
+      title: CustomPluginDetailedInfo
+      x-stoplight:
+        id: 7d5vhhxgcinuj
+      description: Metadata for custom plugin
+      allOf:
+        - $ref: '#/components/schemas/PluginDetailedInfo'
+        - type: object
+          x-stoplight:
+            id: a3azbqof3qaa4
+          properties:
+            artifact:
+              $ref: '#/components/schemas/Artifact'
+    Artifact:
+      title: Artifact
+      x-stoplight:
+        id: 647wjmduc547h
+      type: object
+      description: Artifact details for custom plugin
+      properties:
+        type:
+          type: string
+          x-stoplight:
+            id: jkdjdyi0psnta
+          enum:
+            - NPM
+            - ZIP
+        url:
+          type: string
+          x-stoplight:
+            id: kmk65kswz6xuz
+      required:
+        - type
+        - url
+    CustomPluginInfoRequest:
+      title: CustomPluginInfoRequest
+      x-stoplight:
+        id: szco1w9ni5gg2
+      type: object
+      properties:
+        info:
+          $ref: '#/components/schemas/CustomPluginDetailedInfo'
+    CustomPluginInfoResponse:
+      title: CustomPluginInfoResponse
+      x-stoplight:
+        id: r9u1gb8tlw8jm
+      type: object
+      properties:
+        info:
+          $ref: '#/components/schemas/CustomPluginDetailedInfo'
+    BackstageHarnessSyncRequest:
+      title: BackstageHarnessSyncRequest
+      type: object
+      properties:
+        entity_identifier:
+          type: string
+        action:
+          type: string
+          enum:
+            - create
+            - update
+            - upsert
+            - delete
+        sync_mode:
+          type: string
+          enum:
+            - sync
+            - async
+      required:
+        - entity_identifier
+        - action
+        - sync_mode
+    BackstageHarnessSyncEntitiesResponse:
+      title: BackstageHarnessSyncEntitiesResponse
+      type: object
+      description: Response for backstage harness entities sync
+      properties:
+        status:
+          type: string
+      required:
+        - status
   parameters:
     AccountHeader:
       name: Harness-Account
@@ -3760,6 +4048,13 @@ components:
       schema:
         type: string
       description: Namespace from where the request is being made
+    Meta:
+      name: meta
+      in: query
+      required: false
+      schema:
+        type: boolean
+      description: Custom plugin metadata
   requestBodies:
     BackstageEnvVariableRequest:
       content:
@@ -3922,6 +4217,24 @@ components:
           schema:
             $ref: '#/components/schemas/LicenseUsageSaveRequest'
       description: User details and accessedAt to capture license usage
+    CustomPluginInfoRequest:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CustomPluginInfoRequest'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/CustomPluginInfoRequest'
+    CustomPluginCreateRequest:
+      content:
+        application/json:
+          schema:
+            type: object
+    BackstageHarnessSyncRequest:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BackstageHarnessSyncRequest'
   responses:
     BackstageEnvVariableResponse:
       description: Example response
@@ -4345,6 +4658,30 @@ components:
             type: array
             items:
               $ref: '#/components/schemas/CheckGraph'
+    ScorecardRecalibrateResponseV2:
+      description: Response for async scorecard recalibrate request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ScorecardRecalibrateResponseV2'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/ScorecardRecalibrateResponseV2'
+    CustomPluginInfoResponse:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CustomPluginInfoResponse'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/CustomPluginInfoResponse'
+    BackstageHarnessSyncEntitiesResponse:
+      description: Response for backstage harness entities sync
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BackstageHarnessSyncEntitiesResponse'
   securitySchemes:
     x-api-key:
       name: x-api-key
@@ -4365,6 +4702,8 @@ tags:
     description: Backstage Permissions
   - name: ConnectorInfo
     description: Connector Information
+  - name: CustomPlugin
+    description: Custom Plugin Information
   - name: DataPointsData
     description: DataPointData Information
   - name: DataSource
@@ -4389,5 +4728,9 @@ tags:
     description: Provision
   - name: Scores
     description: Scores Information
+  - name: ScoresV2
+    description: Scores Information V2
   - name: StatusInfo
     description: Status Information
+  - name: BackstageHarness
+    description: Backstage Harness

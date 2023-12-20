@@ -18,6 +18,7 @@ import static io.harness.rule.OwnerRule.MOHIT_GARG;
 import static io.harness.rule.OwnerRule.NAMANG;
 import static io.harness.rule.OwnerRule.PRABU;
 import static io.harness.rule.OwnerRule.PRATYUSH;
+import static io.harness.rule.OwnerRule.TATHAGAT;
 import static io.harness.rule.OwnerRule.VED;
 import static io.harness.rule.OwnerRule.YOGESH;
 import static io.harness.rule.OwnerRule.vivekveman;
@@ -49,7 +50,9 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ReferencedEntityException;
 import io.harness.exception.UnsupportedOperationException;
 import io.harness.exception.YamlException;
+import io.harness.gitaware.helper.MoveConfigOperationType;
 import io.harness.gitsync.beans.StoreType;
+import io.harness.gitx.GitXSettingsHelper;
 import io.harness.ng.core.EntityDetail;
 import io.harness.ng.core.beans.ServiceV2YamlMetadata;
 import io.harness.ng.core.beans.ServicesV2YamlMetadataDTO;
@@ -62,6 +65,8 @@ import io.harness.ng.core.service.dto.ServiceResponseDTO;
 import io.harness.ng.core.service.entity.ArtifactSourcesResponseDTO;
 import io.harness.ng.core.service.entity.ServiceEntity;
 import io.harness.ng.core.service.entity.ServiceInputsMergedResponseDto;
+import io.harness.ng.core.service.entity.ServiceMoveConfigOperationDTO;
+import io.harness.ng.core.service.entity.ServiceMoveConfigResponse;
 import io.harness.ng.core.service.mappers.ServiceElementMapper;
 import io.harness.ng.core.service.mappers.ServiceFilterHelper;
 import io.harness.ng.core.service.services.validators.NoOpServiceEntityValidator;
@@ -137,6 +142,7 @@ public class ServiceEntityServiceImplTest extends CDNGEntitiesTestBase {
   @Mock ServiceOverrideV2ValidationHelper overrideV2ValidationHelper;
   @Mock @Named(DEFAULT_CONNECTOR_SERVICE) private ConnectorService connectorService;
   @Mock private CDGitXService cdGitXService;
+  @Mock GitXSettingsHelper gitXSettingsHelper;
 
   @Inject @InjectMocks private ServiceEntityServiceImpl serviceEntityService;
   private static final String ACCOUNT_ID = "ACCOUNT_ID";
@@ -158,6 +164,8 @@ public class ServiceEntityServiceImplTest extends CDNGEntitiesTestBase {
     Reflect.on(serviceEntityService).set("connectorService", connectorService);
     Reflect.on(serviceEntityService).set("featureFlagService", featureFlagService);
     Reflect.on(serviceEntityService).set("cdGitXService", cdGitXService);
+    Reflect.on(serviceEntityService).set("gitXSettingsHelper", gitXSettingsHelper);
+    when(cdGitXService.isNewGitXEnabled(anyString(), anyString(), anyString())).thenReturn(true);
   }
 
   private Object[][] data() {
@@ -1332,6 +1340,31 @@ public class ServiceEntityServiceImplTest extends CDNGEntitiesTestBase {
   }
 
   @Test
+  @Owner(developers = TATHAGAT)
+  @Category(UnitTests.class)
+  public void testGitXSettingsWithRemoteServices() {
+    ServiceEntity serviceEntity = ServiceEntity.builder()
+                                      .accountId("ACCOUNT_ID")
+                                      .identifier("IDENTIFIER")
+                                      .orgIdentifier("ORG_ID")
+                                      .projectIdentifier("PROJECT_ID")
+                                      .name("Service")
+                                      .type(ServiceDefinitionType.NATIVE_HELM)
+                                      .gitOpsEnabled(true)
+                                      .storeType(StoreType.REMOTE)
+                                      .connectorRef("githubRepoConnector")
+                                      .fallBackBranch("feature")
+                                      .repo("githubRepoName")
+                                      .build();
+
+    serviceEntityService.create(serviceEntity);
+    verify(gitXSettingsHelper).enforceGitExperienceIfApplicable(anyString(), anyString(), anyString());
+    verify(gitXSettingsHelper).setDefaultStoreTypeForEntities(anyString(), anyString(), anyString(), any());
+    verify(gitXSettingsHelper).setConnectorRefForRemoteEntity(anyString(), anyString(), anyString());
+    verify(gitXSettingsHelper).setDefaultRepoForRemoteEntity(anyString(), anyString(), anyString());
+  }
+
+  @Test
   @Owner(developers = VED)
   @Category(UnitTests.class)
   public void testUpdateArtifactoryRegistryUrlIfEmpty() {
@@ -1496,6 +1529,50 @@ public class ServiceEntityServiceImplTest extends CDNGEntitiesTestBase {
                    .map(ServiceV2YamlMetadata::getInputSetTemplateYaml)
                    .collect(Collectors.toList()))
         .containsExactlyInAnyOrder(inputSetYaml, inputSetYaml);
+  }
+
+  @Test
+  @Owner(developers = HINGER)
+  @Category(UnitTests.class)
+  public void testMoveStoreTypeConfigProjectLevelService() {
+    ServiceEntity serviceEntity = ServiceEntity.builder()
+                                      .accountId("ACCOUNT_ID")
+                                      .identifier("IDENTIFIER")
+                                      .orgIdentifier("ORG_ID")
+                                      .projectIdentifier("PROJECT_ID")
+                                      .name("Service")
+                                      .type(ServiceDefinitionType.NATIVE_HELM)
+                                      .gitOpsEnabled(true)
+                                      .build();
+
+    // Create operations
+    ServiceEntity createdService = serviceEntityService.create(serviceEntity);
+    assertThat(createdService).isNotNull();
+
+    ServiceMoveConfigOperationDTO moveConfigOperationDTO =
+        ServiceMoveConfigOperationDTO.builder()
+            .repoName("test_repo")
+            .branch("feature")
+            .moveConfigOperationType(
+                MoveConfigOperationType.getMoveConfigType(MoveConfigOperationType.INLINE_TO_REMOTE))
+            .connectorRef("test_github_connector")
+            .commitMessage("Moving%20Service%20%5BIDENTIFIER%5D%20to%20Git")
+            .isNewBranch(false)
+            .filePath(".harness%2FIDENTIFIER.yaml")
+            .build();
+
+    ServiceMoveConfigResponse moveConfigResponse = serviceEntityService.moveServiceStoreTypeConfig(
+        "ACCOUNT_ID", "ORG_ID", "PROJECT_ID", "IDENTIFIER", moveConfigOperationDTO);
+    assertThat(moveConfigResponse.getServiceIdentifier()).isEqualTo("IDENTIFIER");
+
+    Optional<ServiceEntity> optionalService =
+        serviceEntityService.getMetadata("ACCOUNT_ID", "ORG_ID", "PROJECT_ID", "IDENTIFIER", false);
+    assertThat(optionalService.isPresent()).isTrue();
+    assertThat(optionalService.get().getStoreType()).isEqualTo(StoreType.REMOTE);
+    assertThat(optionalService.get().getRepo()).isEqualTo("test_repo");
+    assertThat(optionalService.get().getConnectorRef()).isEqualTo("test_github_connector");
+    // set fallback branch to initial branch service is moved
+    assertThat(optionalService.get().getFallBackBranch()).isEqualTo("feature");
   }
 
   private String readFile(String filename) {

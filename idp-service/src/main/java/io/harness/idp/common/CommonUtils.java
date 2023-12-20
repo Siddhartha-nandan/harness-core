@@ -8,13 +8,9 @@
 package io.harness.idp.common;
 
 import static io.harness.idp.common.Constants.GLOBAL_ACCOUNT_ID;
+import static io.harness.idp.common.Constants.HARNESS_HOST;
 import static io.harness.idp.common.Constants.LOCAL_ENV;
 import static io.harness.idp.common.Constants.LOCAL_HOST;
-import static io.harness.idp.common.Constants.PRE_QA_ENV;
-import static io.harness.idp.common.Constants.PRE_QA_HOST;
-import static io.harness.idp.common.Constants.PROD_HOST;
-import static io.harness.idp.common.Constants.QA_ENV;
-import static io.harness.idp.common.Constants.QA_HOST;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
@@ -29,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import lombok.experimental.UtilityClass;
+import org.apache.commons.lang3.StringUtils;
 
 @UtilityClass
 @OwnedBy(HarnessTeam.IDP)
@@ -39,6 +36,13 @@ public class CommonUtils {
       return arrOfStr[1];
     }
     return arrOfStr[0];
+  }
+
+  public static String truncateEntityName(String harnessEntityName) {
+    if (harnessEntityName.length() > 63) {
+      return StringUtils.truncate(harnessEntityName, 60) + "---";
+    }
+    return harnessEntityName;
   }
 
   public static String readFileFromClassPath(String filename) {
@@ -70,17 +74,11 @@ public class CommonUtils {
     return null;
   }
 
-  public static String getHarnessHostForEnv(String env) {
-    switch (env) {
-      case QA_ENV:
-        return QA_HOST;
-      case PRE_QA_ENV:
-        return PRE_QA_HOST;
-      case LOCAL_ENV:
-        return LOCAL_HOST;
-      default:
-        return PROD_HOST;
+  public static String getHarnessHostForEnv(String env, String base) {
+    if (env.equals(LOCAL_ENV)) {
+      return LOCAL_HOST;
     }
+    return String.format(HARNESS_HOST, base);
   }
 
   public static String removeTrailingSlash(String str) {

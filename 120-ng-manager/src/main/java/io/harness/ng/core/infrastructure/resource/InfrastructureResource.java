@@ -51,6 +51,7 @@ import io.harness.gitsync.interceptor.GitEntityFindInfoDTO;
 import io.harness.gitsync.interceptor.GitEntityUpdateInfoDTO;
 import io.harness.ng.beans.PageResponse;
 import io.harness.ng.core.beans.DocumentationConstants;
+import io.harness.ng.core.beans.InfrastructureYamlMetadataApiInputV2;
 import io.harness.ng.core.beans.NGEntityTemplateResponseDTO;
 import io.harness.ng.core.customDeployment.helper.CustomDeploymentYamlHelper;
 import io.harness.ng.core.dto.ErrorDTO;
@@ -483,6 +484,8 @@ public class InfrastructureResource {
   @Path("/runtimeInputs")
   @ApiOperation(value = "This api returns Infrastructure Definition inputs YAML", nickname = "getInfrastructureInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<NGEntityTemplateResponseDTO> getInfrastructureInputs(
       @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
           NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
@@ -498,7 +501,7 @@ public class InfrastructureResource {
           NGCommonEntityConstants.DEPLOY_TO_ALL) @DefaultValue("false") boolean deployToAll) {
     String infrastructureInputsYaml =
         infrastructureEntityService.createInfrastructureInputsFromYaml(accountId, orgIdentifier, projectIdentifier,
-            environmentIdentifier, infraIdentifiers, deployToAll, NoInputMergeInputAction.RETURN_EMPTY);
+            environmentIdentifier, null, infraIdentifiers, deployToAll, NoInputMergeInputAction.RETURN_EMPTY);
     return ResponseDTO.newResponse(
         NGEntityTemplateResponseDTO.builder().inputSetTemplateYaml(infrastructureInputsYaml).build());
   }
@@ -550,6 +553,8 @@ public class InfrastructureResource {
   @ApiOperation(value = "This api returns infrastructure YAML and runtime input YAML",
       nickname = "getInfrastructureYamlAndRuntimeInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<InfrastructureYamlMetadataDTO>
   getInfrastructureYamlAndRuntimeInputs(@Parameter(description = INFRASTRUCTURE_YAML_METADATA_INPUT_PARAM_MESSAGE)
                                         @Valid @NotNull InfrastructureYamlMetadataApiInput infrastructureYamlMetadata,
@@ -573,9 +578,12 @@ public class InfrastructureResource {
   @ApiOperation(value = "This api returns infrastructure YAML and runtime input YAML",
       nickname = "getInfrastructureYamlAndRuntimeInputsV2")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<InfrastructureYamlMetadataDTO>
-  getInfrastructureYamlAndRuntimeInputsV2(@Parameter(description = INFRASTRUCTURE_YAML_METADATA_INPUT_PARAM_MESSAGE)
-                                          @Valid @NotNull InfrastructureYamlMetadataApiInput infrastructureYamlMetadata,
+  getInfrastructureYamlAndRuntimeInputsV2(
+      @Parameter(description = INFRASTRUCTURE_YAML_METADATA_INPUT_PARAM_MESSAGE) @Valid
+      @NotNull InfrastructureYamlMetadataApiInputV2 infrastructureYamlMetadata,
       @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
           NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
       @Parameter(description = NGCommonEntityConstants.ORG_PARAM_MESSAGE) @QueryParam(
@@ -588,9 +596,10 @@ public class InfrastructureResource {
       @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo,
       @Parameter(description = "Specifies whether to load the entity from cache") @HeaderParam(
           "Load-From-Cache") @DefaultValue("false") String loadFromCache) {
+    String environmentBranch = infrastructureYamlMetadata.getEnvironmentBranch();
     List<InfrastructureYamlMetadata> infrastructureYamlMetadataList =
         infrastructureEntityService.createInfrastructureYamlMetadata(accountId, orgIdentifier, projectIdentifier,
-            environmentIdentifier, infrastructureYamlMetadata.getInfrastructureIdentifiers(),
+            environmentIdentifier, environmentBranch, infrastructureYamlMetadata.getInfrastructureIdentifiers(),
             GitXUtils.parseLoadFromCacheHeaderParam(loadFromCache));
     return ResponseDTO.newResponse(
         InfrastructureYamlMetadataDTO.builder().infrastructureYamlMetadataList(infrastructureYamlMetadataList).build());
@@ -600,6 +609,8 @@ public class InfrastructureResource {
   @Path("/mergeInfrastructureInputs/{infraIdentifier}")
   @ApiOperation(value = "This api merges old and new infrastructure inputs YAML", nickname = "mergeInfraInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<InfrastructureInputsMergedResponseDto> mergeInfrastructureInputs(
       @Parameter(description = INFRA_PARAM_MESSAGE) @PathParam(
           "infraIdentifier") @ResourceIdentifier String infraIdentifier,
@@ -626,6 +637,8 @@ public class InfrastructureResource {
         ApiResponse(description = "Returns the list of Infrastructure accessible at the current scope")
       })
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<List<InfrastructureResponse>>
   listAccessInfrastructures(@Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
                                 NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,

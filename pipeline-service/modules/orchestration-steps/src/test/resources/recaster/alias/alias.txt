@@ -263,6 +263,7 @@ io.harness.steps.servicenow.create.ServiceNowCreateStepInfo
 io.harness.plancreator.steps.internal.FlagConfigurationStepNode
 io.harness.steps.jira.update.JiraUpdateStepInfo
 io.harness.steps.shellscript.ShellScriptStepParameters
+io.harness.steps.shellscript.ShellScriptStepParametersV0
 io.harness.yaml.core.failurestrategy.ProceedWithDefaultValuesFailureActionConfig
 io.harness.plancreator.customDeployment.StepTemplateRef
 io.harness.plancreator.customDeployment.v1.StepTemplateRefV1
@@ -468,3 +469,4 @@ io.harness.steps.shellscript.v1.ShellScriptOutcome
 io.harness.steps.shellscript.v1.ExportScopeV1
 io.harness.steps.http.v1.HttpStepParameters
 io.harness.steps.http.v1.HttpOutcome
+io.harness.plancreator.steps.common.v1.StageElementParametersV1

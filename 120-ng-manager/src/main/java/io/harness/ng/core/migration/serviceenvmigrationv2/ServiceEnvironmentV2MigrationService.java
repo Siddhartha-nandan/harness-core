@@ -28,6 +28,8 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.IdentifierRef;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.cdng.creator.plan.stage.DeploymentStageConfig;
 import io.harness.cdng.creator.plan.stage.DeploymentStageNode;
 import io.harness.cdng.customdeploymentng.CustomDeploymentInfrastructureHelper;
@@ -558,7 +560,8 @@ public class ServiceEnvironmentV2MigrationService {
     DeploymentStageConfig deploymentStageConfig = getDeploymentStageConfig(resolvedStageYaml);
     YamlNode templateStageYamlNode = stageField.getNode().getField("template").getNode();
     ObjectNode specNode = objectMapper.createObjectNode();
-    if (templateStageYamlNode.getField("templateInputs") != null) {
+    if (templateStageYamlNode.getField("templateInputs") != null
+        && templateStageYamlNode.getField("templateInputs").getNode().getField("spec") != null) {
       specNode = (ObjectNode) templateStageYamlNode.getField("templateInputs")
                      .getNode()
                      .getField("spec")
@@ -571,6 +574,11 @@ public class ServiceEnvironmentV2MigrationService {
 
     migrateEnv(accountId, requestDto, serviceType, deploymentStageConfig, resolvedStageField, specNode,
         stageIdentifierToSvcObjectMap, stageIdentifierToEnvObjectMap);
+
+    if (!specNode.isEmpty() && templateStageYamlNode.getField("templateInputs") != null
+        && templateStageYamlNode.getField("templateInputs").getNode().getField("spec") == null) {
+      ((ObjectNode) templateStageYamlNode.getField("templateInputs").getNode().getCurrJsonNode()).set("spec", specNode);
+    }
 
     String templateKey = templateStageYamlNode.getField("templateRef").getNode().getCurrJsonNode().textValue() + "@"
         + templateStageYamlNode.getField("versionLabel").getNode().getCurrJsonNode().textValue();
@@ -1153,7 +1161,9 @@ public class ServiceEnvironmentV2MigrationService {
   public AccountSummaryResponseDto getAccountSummary(
       String accountId, boolean getInfrastructuresYaml, boolean getServiceConfigsYaml) {
     try {
-      Set<String> orgIds = organizationService.getPermittedOrganizations(accountId, null);
+      Set<String> orgIds = organizationService.getPermittedOrganizations(accountId,
+          ScopeInfo.builder().accountIdentifier(accountId).scopeType(ScopeLevel.ACCOUNT).uniqueId(accountId).build(),
+          null);
       List<ProjectDTO> projects = projectService.listPermittedProjects(accountId,
           ProjectFilterDTO.builder().hasModule(true).moduleType(ModuleType.CD).orgIdentifiers(orgIds).build());
 

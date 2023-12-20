@@ -24,8 +24,11 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidRequestException;
 import io.harness.govern.Switch;
+import io.harness.plancreator.stages.stage.v1.AbstractStageNodeV1;
+import io.harness.plancreator.steps.TaskSelectorYaml;
 import io.harness.plancreator.steps.v1.FailureStrategiesUtilsV1;
 import io.harness.pms.contracts.advisers.AdviserObtainment;
 import io.harness.pms.contracts.advisers.AdviserType;
@@ -43,11 +46,17 @@ import io.harness.pms.sdk.core.adviser.markFailure.OnMarkFailureAdviser;
 import io.harness.pms.sdk.core.adviser.markFailure.OnMarkFailureAdviserParameters;
 import io.harness.pms.sdk.core.adviser.marksuccess.OnMarkSuccessAdviser;
 import io.harness.pms.sdk.core.adviser.marksuccess.OnMarkSuccessAdviserParameters;
+import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
+import io.harness.pms.timeout.AbsoluteSdkTimeoutTrackerParameters;
+import io.harness.pms.timeout.SdkTimeoutObtainment;
 import io.harness.pms.yaml.ParameterField;
+import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.pms.yaml.YamlUtils;
+import io.harness.serializer.JsonUtils;
 import io.harness.serializer.KryoSerializer;
+import io.harness.timeout.trackers.absolute.AbsoluteTimeoutTrackerFactory;
 import io.harness.utils.TimeoutUtils;
 import io.harness.yaml.core.failurestrategy.manualintervention.v1.ManualInterventionFailureActionConfigV1;
 import io.harness.yaml.core.failurestrategy.retry.v1.RetryFailureActionConfigV1;
@@ -58,11 +67,14 @@ import io.harness.yaml.core.failurestrategy.v1.NGFailureActionTypeV1;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.inject.Inject;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -74,6 +86,7 @@ import lombok.experimental.UtilityClass;
 @OwnedBy(HarnessTeam.PIPELINE)
 @UtilityClass
 public class PlanCreatorUtilsV1 {
+  @Inject KryoSerializer kryoSerializer;
   public List<AdviserObtainment> getAdviserObtainmentsForStage(KryoSerializer kryoSerializer, Dependency dependency) {
     List<AdviserObtainment> adviserObtainments = new ArrayList<>();
     AdviserObtainment nextStepAdviser = getNextStepAdviser(kryoSerializer, dependency);
@@ -98,6 +111,30 @@ public class PlanCreatorUtilsV1 {
       adviserObtainments.add(nextStepAdviser);
     }
     return adviserObtainments;
+  }
+
+  public List<AdviserObtainment> getAdviserObtainmentsForStep(
+      KryoSerializer kryoSerializer, Dependency dependency, List<FailureConfigV1> stepFailureStrategies) {
+    List<AdviserObtainment> adviserObtainments = new ArrayList<>();
+    List<AdviserObtainment> failureStrategyAdvisers = getFailureStrategiesAdvisers(
+        kryoSerializer, dependency, stepFailureStrategies, getNextNodeUuid(kryoSerializer, dependency), false);
+    adviserObtainments.addAll(failureStrategyAdvisers);
+    AdviserObtainment nextStepAdviser = getNextStepAdviser(kryoSerializer, dependency);
+    if (nextStepAdviser != null) {
+      adviserObtainments.add(nextStepAdviser);
+    }
+    return adviserObtainments;
+  }
+
+  public SdkTimeoutObtainment getTimeoutObtainmentForStage(AbstractStageNodeV1 stageNode) {
+    if (ParameterField.isNotNull(stageNode.getTimeout())) {
+      return SdkTimeoutObtainment.builder()
+          .dimension(AbsoluteTimeoutTrackerFactory.DIMENSION)
+          .parameters(AbsoluteSdkTimeoutTrackerParameters.builder().timeout(stageNode.getTimeout()).build())
+          .build();
+    }
+
+    return null;
   }
 
   public String getNextNodeUuid(KryoSerializer kryoSerializer, Dependency dependency) {
@@ -234,6 +271,13 @@ public class PlanCreatorUtilsV1 {
   private List<AdviserObtainment> getFailureStrategiesAdvisers(KryoSerializer kryoSerializer, Dependency dependency,
       YamlNode yamlNode, String nextNodeUuid, boolean isStepInsideRollback) {
     List<FailureConfigV1> stepFailureStrategies = getFailureStrategies(yamlNode);
+    return getFailureStrategiesAdvisers(
+        kryoSerializer, dependency, stepFailureStrategies, nextNodeUuid, isStepInsideRollback);
+  }
+
+  @VisibleForTesting
+  List<AdviserObtainment> getFailureStrategiesAdvisers(KryoSerializer kryoSerializer, Dependency dependency,
+      List<FailureConfigV1> stepFailureStrategies, String nextNodeUuid, boolean isStepInsideRollback) {
     List<FailureConfigV1> stageFailureStrategies = getStageFailureStrategies(kryoSerializer, dependency);
     List<FailureConfigV1> stepGroupFailureStrategies = getStepGroupFailureStrategies(kryoSerializer, dependency);
     Map<FailureStrategyActionConfigV1, Collection<FailureType>> actionMap =
@@ -242,14 +286,35 @@ public class PlanCreatorUtilsV1 {
     return getFailureStrategiesAdvisers(
         kryoSerializer, actionMap, isStepInsideRollback, nextNodeUuid, PlanCreatorUtilsV1::getAdviserObtainmentForStep);
   }
-
-  Optional<Object> getDeserializedObjectFromParentInfo(
+  public Optional<Object> getDeserializedObjectFromParentInfo(
       KryoSerializer kryoSerializer, Dependency dependency, String key, boolean asInflatedObject) {
-    if (dependency != null && dependency.getParentInfo().getDataMap().containsKey(key)) {
-      ByteString bytes = dependency.getParentInfo().getDataMap().get(key).getBytesValue();
-      return getObjectFromBytes(bytes, kryoSerializer, asInflatedObject);
+    if (dependency == null) {
+      return Optional.empty();
+    }
+    HarnessValue harnessValue = getHarnessValueParentInfoFromDependency(dependency, key);
+    if (harnessValue != null) {
+      if (harnessValue.hasStringValue()) {
+        return Optional.of(harnessValue.getStringValue());
+      }
+      if (harnessValue.hasBytesValue()) {
+        ByteString bytes = harnessValue.getBytesValue();
+        Optional<Object> objectOptional = getObjectFromBytes(bytes, kryoSerializer, asInflatedObject);
+        if (objectOptional.isPresent()) {
+          return objectOptional;
+        }
+      }
+      if (harnessValue.hasBoolValue()) {
+        return Optional.of(harnessValue.getBoolValue());
+      }
     }
     return Optional.empty();
+  }
+
+  private HarnessValue getHarnessValueParentInfoFromDependency(Dependency dependency, String key) {
+    if (dependency != null && dependency.getParentInfo().getDataMap().containsKey(key)) {
+      return dependency.getParentInfo().getDataMap().get(key);
+    }
+    return null;
   }
 
   Optional<Object> getObjectFromBytes(ByteString bytes, KryoSerializer kryoSerializer, boolean asInflatedObject) {
@@ -403,6 +468,39 @@ public class PlanCreatorUtilsV1 {
     return null;
   }
 
+  public ParameterField<List<TaskSelectorYaml>> getDelegates(YamlNode node) {
+    YamlField delegatesField = node.getField(YAMLFieldNameConstants.DELEGATES);
+    try {
+      if (delegatesField != null) {
+        return getDelegatesParameterField(delegatesField.getNode());
+      }
+      return null;
+    } catch (Exception ex) {
+      throw new InvalidRequestException("Invalid Yaml for Delegates", ex);
+    }
+  }
+
+  ParameterField<List<TaskSelectorYaml>> getDelegatesParameterField(YamlNode delegateYamlNode) throws Exception {
+    ParameterField<List<TaskSelectorYaml>> delegateListV1ParameterField = null;
+    if (delegateYamlNode.isArray() || JsonUtils.isJsonList(delegateYamlNode.asText())) {
+      delegateListV1ParameterField =
+          YamlUtils.read(delegateYamlNode.toString(), new TypeReference<ParameterField<List<TaskSelectorYaml>>>() {});
+    } else {
+      ParameterField<TaskSelectorYaml> delegateV1ParameterField =
+          YamlUtils.read(delegateYamlNode.toString(), new TypeReference<ParameterField<TaskSelectorYaml>>() {});
+      if (ParameterField.isNotNull(delegateV1ParameterField)) {
+        if (delegateV1ParameterField.isExpression()) {
+          delegateListV1ParameterField =
+              ParameterField.createExpressionField(true, delegateV1ParameterField.getExpressionValue(), null, false);
+        } else {
+          delegateListV1ParameterField =
+              ParameterField.createValueField(new ArrayList<>(List.of(delegateV1ParameterField.getValue())));
+        }
+      }
+    }
+    return delegateListV1ParameterField;
+  }
+
   public List<FailureConfigV1> getFailureStrategies(YamlNode node) {
     YamlField failureConfigV1 = node.getField("failure");
     ParameterField<List<FailureConfigV1>> failureConfigListV1ParameterField = null;
@@ -412,7 +510,7 @@ public class PlanCreatorUtilsV1 {
         failureConfigListV1ParameterField = getFailureStrategiesListParameterField(failureConfigV1.getNode());
       }
     } catch (Exception e) {
-      throw new InvalidRequestException("Invalid yaml", e);
+      throw new InvalidRequestException("Invalid yaml for failure strategies", e);
     }
     // If failureStrategies configured as <+input> and no value is given, failureStrategyConfigs.getValue() will still
     // be null and handled as empty list
@@ -421,11 +519,6 @@ public class PlanCreatorUtilsV1 {
     } else {
       return null;
     }
-  }
-
-  // TODO: Get isStepInsideRollback from dependency metadata map
-  public boolean isStepInsideRollback(Dependency dependency) {
-    return false;
   }
 
   ParameterField<List<FailureConfigV1>> getFailureStrategiesListParameterField(YamlNode failureConfigNode)
@@ -445,9 +538,107 @@ public class PlanCreatorUtilsV1 {
     return failureConfigListV1ParameterField;
   }
 
+  // TODO: Get isStepInsideRollback from dependency metadata map
+  public boolean isStepInsideRollback(Dependency dependency) {
+    return false;
+  }
+
   @FunctionalInterface
   public interface GetAdviserForActionType {
     AdviserObtainment getAdviserForActionType(KryoSerializer kryoSerializer, FailureStrategyActionConfigV1 action,
         Set<FailureType> failureTypes, NGFailureActionTypeV1 actionType, String nextNodeUuid);
+  }
+
+  public YamlField getStageConfig(YamlField yamlField, String stageIdentifier) {
+    if (EmptyPredicate.isEmpty(stageIdentifier)) {
+      return null;
+    }
+
+    if (yamlField.getName().equals(YAMLFieldNameConstants.PIPELINE)
+        || yamlField.getName().equals(YAMLFieldNameConstants.STAGES)) {
+      return null;
+    }
+
+    // recursively traversing up the pipeline yaml tree (starting from given yamlField) until we find 'stages' element
+    // or pipeline root element
+    YamlNode stages = YamlUtils.getGivenYamlNodeFromParentPath(yamlField.getNode(), YAMLFieldNameConstants.STAGES);
+    // we get all 'stage' elements from 'stages' previously found
+    List<YamlField> stageYamlFields = getStageYamlFields(stages);
+    for (YamlField stageYamlField : stageYamlFields) {
+      if (stageIdentifier.equals(stageYamlField.getNode().getField(YAMLFieldNameConstants.ID).getNode().asText())) {
+        return stageYamlField;
+      }
+    }
+
+    // in case of nested parallel stage we need to traverse other siblings of parallel stage
+    // max number of nested parallel stages is 1 level
+    // example:
+    //
+    // spec:
+    //  stages:
+    //    - stage1 (deployment type)
+    //    - stage2 (parallel type)
+    //        spec:
+    //          stages:
+    //            - substage1
+    //            - substage2 (svc useFromStage stage1)
+    //
+    // with this logic we are moving up the pipeline hierarchy
+    // so in worst case there will be one level of parallel stages which utilizes useFromStage from a stage at root
+    if (stages != null && stages.getParentNode() != null && stages.getParentNode().getParentNode() != null) {
+      return getStageConfig(new YamlField(stages.getParentNode()), stageIdentifier);
+    }
+
+    return null;
+  }
+
+  private List<YamlField> getStageYamlFields(YamlNode stagesYamlNode) {
+    List<YamlField> stageFields = new LinkedList<>();
+
+    if (stagesYamlNode != null) {
+      List<YamlNode> yamlNodes = Optional.of(stagesYamlNode.asArray()).orElse(Collections.emptyList());
+
+      yamlNodes.forEach(yamlNode -> {
+        String stageFieldType = yamlNode.getStringValue(YAMLFieldNameConstants.TYPE);
+        if (YAMLFieldNameConstants.PARALLEL.equalsIgnoreCase(stageFieldType)) {
+          // max number of allowed nested parallel stages is 1 level hence the for loop instead of recursion
+          YamlNode childStages = yamlNode.getField(YAMLFieldNameConstants.SPEC)
+                                     .getNode()
+                                     .getField(YAMLFieldNameConstants.STAGES)
+                                     .getNode();
+          if (childStages.isArray()) {
+            childStages.asArray().forEach(childStage -> { stageFields.add(new YamlField(childStage)); });
+          }
+        } else {
+          stageFields.add(new YamlField(yamlNode));
+        }
+      });
+    }
+
+    return stageFields;
+  }
+
+  public List<YamlField> getStepYamlFields(List<YamlNode> stepYamlNodes) {
+    List<YamlField> stepFields = new LinkedList<>();
+
+    stepYamlNodes.forEach(yamlNode -> {
+      YamlField stepField = yamlNode.getField(YAMLFieldNameConstants.STEP);
+      YamlField stepGroupField = yamlNode.getField(YAMLFieldNameConstants.STEP_GROUP);
+      YamlField parallelStepField = yamlNode.getField(YAMLFieldNameConstants.PARALLEL);
+      if (stepField != null) {
+        stepFields.add(stepField);
+      } else if (stepGroupField != null) {
+        stepFields.add(stepGroupField);
+      } else if (parallelStepField != null) {
+        stepFields.add(parallelStepField);
+      }
+    });
+    return stepFields;
+  }
+
+  public boolean isInsideParallelNode(PlanCreationContext ctx) {
+    Optional<Object> value = getDeserializedObjectFromDependency(
+        ctx.getDependency(), kryoSerializer, PlanCreatorConstants.IS_INSIDE_PARALLEL_NODE, false);
+    return value.isPresent() && (boolean) value.get();
   }
 }

@@ -8,12 +8,16 @@
 package io.harness.yaml.schema.inputs;
 
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
+import static io.harness.yaml.individualschema.InputFieldMetadata.parentTypesOfNodeGroups;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.exception.InvalidRequestException;
 import io.harness.jackson.JsonNodeUtils;
 import io.harness.pms.merger.fqn.FQN;
+import io.harness.pms.merger.fqn.FQNNode;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
+import io.harness.pms.yaml.YamlNode;
+import io.harness.pms.yaml.YamlNodeUtils;
 import io.harness.pms.yaml.YamlSchemaFieldConstants;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.yaml.schema.inputs.beans.InputDetails;
@@ -54,7 +58,11 @@ public class YamlInputUtils {
     Iterator<String> inputNames = inputsJsonNode.fieldNames();
     for (Iterator<String> it = inputNames; it.hasNext();) {
       String inputName = it.next();
-      inputDetails.add(buildInputJsonNode(JsonFieldUtils.get(inputsJsonNode, inputName), inputName));
+      InputDetails inputDetailForGivenName =
+          buildInputDetails(JsonFieldUtils.get(inputsJsonNode, inputName), inputName);
+      if (inputDetailForGivenName != null) {
+        inputDetails.add(inputDetailForGivenName);
+      }
     }
 
     return inputDetails;
@@ -96,7 +104,12 @@ public class YamlInputUtils {
     return FQNListForEachInput;
   }
 
-  private InputDetails buildInputJsonNode(JsonNode inputNode, String inputName) {
+  private InputDetails buildInputDetails(JsonNode inputNode, String inputName) {
+    // If value is present in some input then we that would be considered as variable with fixed value. So we should not
+    // return such inputs.
+    if (inputNode.has(YAMLFieldNameConstants.VALUE)) {
+      return null;
+    }
     InputDetailsBuilder builder =
         InputDetails.builder().name(inputName).type(SchemaInputType.getYamlInputType(inputNode.get("type").asText()));
     if (inputNode.get(YAMLFieldNameConstants.DESC) != null) {
@@ -105,8 +118,8 @@ public class YamlInputUtils {
     if (inputNode.get(YAMLFieldNameConstants.REQUIRED) != null) {
       builder.required(inputNode.get(YAMLFieldNameConstants.REQUIRED).asBoolean());
     }
-    if (!JsonFieldUtils.isPresent(inputNode, YAMLFieldNameConstants.DEFAULT)) {
-      builder.defaultValue(inputNode.get(YAMLFieldNameConstants.DEFAULT));
+    if (inputNode.has(YAMLFieldNameConstants.DEFAULT)) {
+      builder.defaultValue(JsonNodeUtils.getValueFromJsonNode(inputNode.get(YAMLFieldNameConstants.DEFAULT)));
     }
     if (inputNode.has(YAMLFieldNameConstants.EXECUTION)) {
       builder.execution(inputNode.get(YAMLFieldNameConstants.EXECUTION).asBoolean());
@@ -132,5 +145,26 @@ public class YamlInputUtils {
       return JsonFieldUtils.get(yamlJsonNode, YamlSchemaFieldConstants.SPEC);
     }
     return JsonFieldUtils.get(yamlJsonNode, YamlSchemaFieldConstants.PIPELINE);
+  }
+
+  public String getParentNodeTypeForGivenFQNField(JsonNode jsonNode, FQN fqn) {
+    YamlNode yamlNode = new YamlNode(jsonNode);
+    int parentNodeIndex = -1;
+    for (int i = 1; i < fqn.getFqnList().size(); i++) {
+      if (fqn.getFqnList().get(i).getNodeType() == FQNNode.NodeType.UUID
+          && parentTypesOfNodeGroups.contains(fqn.getFqnList().get(i - 1).getKey())) {
+        parentNodeIndex = i;
+      }
+    }
+    if (parentNodeIndex == -1) {
+      return "";
+    }
+    String pathTillParent =
+        FQN.builder().fqnList(fqn.getFqnList().subList(0, parentNodeIndex + 1)).build().getExpressionFqn();
+    YamlNode parentNode = YamlNodeUtils.goToPathUsingFqn(yamlNode, pathTillParent);
+    if (parentNode == null) {
+      return "";
+    }
+    return JsonFieldUtils.getTextOrEmpty(parentNode.getCurrJsonNode(), YamlSchemaFieldConstants.TYPE);
   }
 }

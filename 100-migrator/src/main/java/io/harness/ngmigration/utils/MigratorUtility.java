@@ -16,6 +16,7 @@ import static io.harness.ngmigration.utils.CaseFormat.LOWER_CASE;
 import static io.harness.ngmigration.utils.CaseFormat.SNAKE_CASE;
 import static io.harness.ngmigration.utils.NGMigrationConstants.PLEASE_FIX_ME;
 import static io.harness.security.NextGenAuthenticationFilter.X_API_KEY;
+import static io.harness.utils.UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier;
 import static io.harness.when.beans.WhenConditionStatus.SUCCESS;
 
 import io.harness.annotations.dev.CodePulse;
@@ -83,6 +84,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -197,17 +199,6 @@ public class MigratorUtility {
       return generateHarnessUIFormatIdentifier(name);
     }
     return identifier;
-  }
-
-  public static String generateHarnessUIFormatIdentifier(String name) {
-    if (StringUtils.isBlank(name)) {
-      return "";
-    }
-    name = StringUtils.stripAccents(name);
-    return name.trim()
-        .replaceAll("^[0-9-$]*", "") // remove starting digits, dashes and $
-        .replaceAll("[^0-9a-zA-Z_$ ]", "") // remove special chars except _ and $
-        .replaceAll("\\s", "_"); // replace spaces with _
   }
 
   public static String generateCamelCaseIdentifier(String name) {
@@ -457,8 +448,15 @@ public class MigratorUtility {
 
   public static List<NGVariable> getVariables(MigrationContext migrationContext, List<Variable> cgVariables) {
     List<NGVariable> variables = new ArrayList<>();
+    Set<String> keySet = new HashSet<>();
     if (EmptyPredicate.isNotEmpty(cgVariables)) {
-      cgVariables.forEach(serviceVariable -> variables.add(getNGVariable(migrationContext, serviceVariable)));
+      cgVariables.forEach(serviceVariable -> {
+        NGVariable ngVariable = getNGVariable(migrationContext, serviceVariable);
+        if (!keySet.contains(ngVariable.getName())) {
+          variables.add(ngVariable);
+          keySet.add(ngVariable.getName());
+        }
+      });
     }
     return variables;
   }

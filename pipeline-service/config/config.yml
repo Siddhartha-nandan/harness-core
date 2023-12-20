@@ -338,7 +338,7 @@ orchestrationStepConfig:
         image: ${SSCA_ENFORCEMENT_IMAGE:-harness/ssca-plugin:0.11.0}
     #Todo: Move to config Management Service
     moduleToSupportedSteps:
-      cd: [ "DownloadManifests", "AwsSamBuild", "AwsSamDeploy", "ServerlessAwsLambdaPrepareRollbackV2", "ServerlessAwsLambdaDeployV2", "ServerlessAwsLambdaPackageV2", "AwsCdkBootstrap", "AwsCdkSynth", "AwsCdkDiff", "ServerlessAwsLambdaRollbackV2", "AwsCdkDeploy", "AwsCdkDestroy", "AwsCdkRollback"]
+      cd: [ "DownloadManifests", "AwsSamBuild", "AwsSamDeploy", "ServerlessAwsLambdaPrepareRollbackV2", "ServerlessAwsLambdaDeployV2", "ServerlessAwsLambdaPackageV2", "AwsCdkBootstrap", "AwsCdkSynth", "AwsCdkDiff", "ServerlessAwsLambdaRollbackV2", "AwsCdkDeploy", "AwsCdkDestroy", "AwsCdkRollback", "DownloadAwsS3", "DownloadHarnessStore"]
       ci: [ "Background", "background", "GitClone", "Run", "Plugin", "Action", "SlsaVerification"]
 
 
@@ -526,6 +526,8 @@ orchestrationLogConfiguration:
 
 planCreatorMergeServiceDependencyBatch: ${PLAN_CREATOR_DEPENDENCY_BATCH:-50}
 
+maxMultiArtifactTriggerSources: ${MAX_MULTI_ARTIFACT_TRIGGER_SOURCES:-10}
+
 enableOpentelemetry: false
 
 ############ Json Expansion Config variables #################
@@ -669,3 +671,7 @@ streamPerServiceConfiguration: ${PIE_STREAM_PER_SERVICE:- false}
 publishAdviserEventForCustomAdvisers: ${PUBLISH_ADVISER_EVENT_FOR_CUSTOM_ADVISERS:-true}
 
 disableCustomStageInPipelineService: ${DISABLE_CUSTOM_STAGE_IN_PIPELINE_SERVICE:-false}
+
+pipelineExecutionDetailsDeleteMaxBatchSize: ${PIPELINE_EXECUTION_DETAILS_DELETE_MAX_BATCH_SIZE:-200}
+
+useSchemaFromHarnessSchemaRepo: ${USE_SCHEMA_FROM_HARNESS_SCHEMA_REPO:-false}

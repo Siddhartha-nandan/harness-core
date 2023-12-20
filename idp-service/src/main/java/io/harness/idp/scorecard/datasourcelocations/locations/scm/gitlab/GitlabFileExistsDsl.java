@@ -11,7 +11,7 @@ import static io.harness.idp.scorecard.datapoints.constants.Inputs.FILE_PATH;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.backstagebeans.BackstageCatalogEntity;
+import io.harness.idp.backstage.entities.BackstageCatalogEntity;
 import io.harness.idp.scorecard.datapoints.entity.DataPointEntity;
 import io.harness.spec.server.idp.v1.model.InputValue;
 
@@ -29,8 +29,8 @@ public class GitlabFileExistsDsl extends GitlabBaseDsl {
         inputValues.stream().filter(inputValue -> inputValue.getKey().equals(FILE_PATH)).findFirst();
     if (inputValueOpt.isPresent()) {
       String inputValue = inputValueOpt.get().getValue();
+      inputValue = inputValue.replace("\"", "");
       if (!inputValue.isEmpty()) {
-        inputValue = inputValue.replace("\"", "");
         int lastSlash = inputValue.lastIndexOf("/");
         if (lastSlash != -1) {
           String path = inputValue.substring(0, lastSlash);

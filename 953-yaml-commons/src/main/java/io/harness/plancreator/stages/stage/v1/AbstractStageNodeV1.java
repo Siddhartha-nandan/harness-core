@@ -16,11 +16,16 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.plancreator.exports.ExportConfig;
+import io.harness.plancreator.exports.ExportsMap;
+import io.harness.plancreator.steps.TaskSelectorYaml;
 import io.harness.plancreator.strategy.v1.StrategyConfigV1;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YamlNode;
+import io.harness.yaml.core.failurestrategy.v1.FailureConfigV1;
 import io.harness.yaml.core.variables.v1.NGVariableV1Wrapper;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -42,10 +47,12 @@ public abstract class AbstractStageNodeV1 {
   ParameterField<String> desc;
   ParameterField<String> when;
   NGVariableV1Wrapper variables;
-  ParameterField<List<String>> delegate;
+  @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY) ParameterField<List<TaskSelectorYaml>> delegates;
   ParameterField<StrategyConfigV1> strategy;
   ParameterField<String> timeout;
   Map<String, String> labels;
+  ExportsMap<String, ExportConfig> exports;
+  @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY) ParameterField<List<FailureConfigV1>> failure;
 
   @JsonIgnore public abstract String getType();
 }

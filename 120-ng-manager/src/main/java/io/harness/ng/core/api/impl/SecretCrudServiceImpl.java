@@ -96,6 +96,7 @@ import io.harness.secretmanagerclient.SecretType;
 import io.harness.secretmanagerclient.ValueType;
 import io.harness.secretmanagerclient.dto.SecretManagerConfigDTO;
 import io.harness.stream.BoundedInputStream;
+import io.harness.utils.IdentifierRefHelper;
 import io.harness.utils.featureflaghelper.NGFeatureFlagHelperService;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -397,7 +398,7 @@ public class SecretCrudServiceImpl implements SecretCrudService {
   public Page<SecretResponseWrapper> list(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       List<String> identifiers, List<SecretType> secretTypes, boolean includeSecretsFromEverySubScope,
       String searchTerm, ConnectorCategory sourceCategory, boolean includeAllSecretsAccessibleAtScope,
-      PageRequest pageRequest) {
+      PageRequest pageRequest, Set<String> secretManagerIdentifiers) {
     Criteria criteria = Criteria.where(SecretKeys.accountIdentifier).is(accountIdentifier);
     addCriteriaForRequestedScopes(criteria, orgIdentifier, projectIdentifier, includeAllSecretsAccessibleAtScope,
         includeSecretsFromEverySubScope);
@@ -421,6 +422,8 @@ public class SecretCrudServiceImpl implements SecretCrudService {
     if (Objects.nonNull(identifiers) && !identifiers.isEmpty()) {
       criteria.and(SecretKeys.identifier).in(identifiers);
     }
+
+    addCriteriaForSecretManagerIdentifiers(criteria, secretManagerIdentifiers);
 
     if (accessControlClient.hasAccess(ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
             Resource.of(SECRET_RESOURCE_TYPE, null), SECRET_VIEW_PERMISSION)) {
@@ -466,6 +469,23 @@ public class SecretCrudServiceImpl implements SecretCrudService {
       } else {
         criteria.andOperator(superScopeCriteria);
       }
+    }
+  }
+
+  private void addCriteriaForSecretManagerIdentifiers(Criteria criteria, Set<String> secretManagerScopedIdentifiers) {
+    if (isEmpty(secretManagerScopedIdentifiers)) {
+      return;
+    }
+    Set<String> secretManagerIdentifiersForCriteria = new HashSet<>();
+    for (String secretManagerScopedIdentifier : secretManagerScopedIdentifiers) {
+      secretManagerIdentifiersForCriteria.add(secretManagerScopedIdentifier);
+
+      String nonScopedIdentifier = IdentifierRefHelper.getIdentifier(secretManagerScopedIdentifier);
+      secretManagerIdentifiersForCriteria.add(nonScopedIdentifier);
+    }
+
+    if (isNotEmpty(secretManagerIdentifiersForCriteria)) {
+      criteria.and(SecretKeys.secretManagerIdentifier).in(secretManagerIdentifiersForCriteria);
     }
   }
 

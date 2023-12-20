@@ -25,6 +25,7 @@ DECLARE v_rows_affected INT default 0;
         v_interim_begin_date DATE;
         v_interim_end_date DATE;
         v_loop_count INT;
+        v_lambda_instance_type TEXT[];
 BEGIN
     DROP TABLE IF EXISTS _tmp_tbl_active_services_by_date_range;
     CREATE TEMPORARY TABLE _tmp_tbl_active_services_by_date_range (
@@ -33,6 +34,7 @@ BEGIN
     );
 
     v_interim_begin_date := '1900-01-01';
+    v_lambda_instance_type := ARRAY['AWS_LAMBDA_INSTANCE', 'AWS_SAM_INSTANCE', 'SERVERLESS_AWS_LAMBDA_INSTANCE', 'GOOGLE_CLOUD_FUNCTIONS_INSTANCE'];
     v_loop_count := -1;  -- so the first increment will be 0
     -- function generates reports, including reports for p_begin_date and p_end_date days
     WHILE v_interim_begin_date < p_end_date LOOP
@@ -60,17 +62,33 @@ BEGIN
                 (
                     SELECT
                         CASE
-                            WHEN instancesPerServices.instanceCount IS NULL OR instancesPerServices.instanceCount <= 20
-                                THEN 1
-                            WHEN instancesPerServices.instanceCount > 20
-                                THEN CEILING(instancesPerServices.instanceCount / 20.0)
-                            END AS licensesConsumedPerService
+                            WHEN instancesPerServices.instanceType = ANY(v_lambda_instance_type) THEN
+                                CASE
+                                    WHEN instancesPerServices.instanceCount IS NULL OR instancesPerServices.instanceCount <= 5
+                                        THEN 1
+                                    WHEN instancesPerServices.instanceCount > 5
+                                        THEN CEILING(instancesPerServices.instanceCount / 5.0)
+                                    END
+                            ELSE
+                                CASE
+                                    WHEN instancesPerServices.instanceCount IS NULL OR instancesPerServices.instanceCount <= 20
+                                        THEN 1
+                                    WHEN instancesPerServices.instanceCount > 20
+                                        THEN CEILING(instancesPerServices.instanceCount / 20.0)
+                                    END
+                        END AS licensesConsumedPerService
                     FROM
                         -- List all deployed services during specific day or month from service_infra_info table
                         (
                             SELECT
-                                orgidentifier AS orgIdentifier,
-                                projectidentifier AS projectIdentifier,
+                                CASE
+                                    WHEN service_id LIKE 'account.%' THEN NULL
+                                    ELSE orgIdentifier
+                                END AS orgIdentifier,
+                                CASE
+                                    WHEN service_id LIKE 'account.%' OR service_id LIKE 'org.%' THEN NULL
+                                    ELSE projectIdentifier
+                                END AS projectIdentifier,
                                 service_id AS serviceIdentifier
                             FROM
                                 service_infra_info
@@ -83,8 +101,14 @@ BEGIN
                                 AND service_startts >= EXTRACT(EPOCH FROM DATE (v_interim_begin_date - INTERVAL '29 day')) * 1000
                                 AND service_startts < EXTRACT(EPOCH FROM DATE (v_interim_end_date::timestamp)) * 1000
                             GROUP BY
-                                orgidentifier,
-                                projectidentifier,
+                                CASE
+                                    WHEN service_id LIKE 'account.%' THEN NULL
+                                    ELSE orgidentifier
+                                END,
+                                CASE
+                                    WHEN service_id LIKE 'account.%' OR service_id LIKE 'org.%' THEN NULL
+                                    ELSE projectidentifier
+                                END,
                                 service_id
                         ) activeServices
                         LEFT JOIN
@@ -92,6 +116,7 @@ BEGIN
                         (
                             SELECT
                                 PERCENTILE_DISC(.95) WITHIN GROUP (ORDER BY instancesPerServicesReportedAt.instanceCount) AS instanceCount,
+                                instancetype AS instanceType,
                                 orgid,
                                 projectid,
                                 serviceid
@@ -99,10 +124,17 @@ BEGIN
                                 (
                                     SELECT
                                         DATE_TRUNC('minute', reportedat) AS reportedat,
-                                        orgid,
-                                        projectid,
+                                        CASE
+                                            WHEN serviceid LIKE 'account.%' THEN NULL
+                                            ELSE orgid
+                                        END AS orgid,
+                                        CASE
+                                            WHEN serviceid LIKE 'account.%' OR serviceid LIKE 'org.%' THEN NULL
+                                            ELSE projectid
+                                        END AS projectid,
                                         serviceid,
-                                        SUM(instancecount) AS instanceCount
+                                        SUM(instancecount) AS instanceCount,
+                                        instancetype
                                     FROM
                                         ng_instance_stats
                                     WHERE
@@ -114,17 +146,28 @@ BEGIN
                                         AND reportedat >= v_interim_begin_date - INTERVAL '29 day'
                                         AND reportedat < v_interim_end_date
                                     GROUP BY
-                                        orgid,
-                                        projectid,
+                                        CASE
+                                            WHEN serviceid LIKE 'account.%' THEN NULL
+                                            ELSE orgid
+                                        END,
+                                        CASE
+                                            WHEN serviceid LIKE 'account.%' OR serviceid LIKE 'org.%' THEN NULL
+                                            ELSE projectid
+                                        END,
                                         serviceid,
+                                        instancetype,
                                         DATE_TRUNC('minute', reportedat)
                                 ) instancesPerServicesReportedAt
                             GROUP BY
                                 orgid,
                                 projectid,
-                                serviceid
-                        ) instancesPerServices ON activeServices.orgIdentifier = instancesPerServices.orgid
-                            AND activeServices.projectIdentifier = instancesPerServices.projectid
+                                serviceid,
+                                instancetype
+                        ) instancesPerServices
+                        ON (activeServices.orgIdentifier = instancesPerServices.orgid
+                                OR (activeServices.orgIdentifier IS NULL AND instancesPerServices.orgid IS NULL))
+                            AND (activeServices.projectIdentifier = instancesPerServices.projectid
+                                OR (activeServices.projectIdentifier IS NULL AND instancesPerServices.projectid IS NULL))
                             AND activeServices.serviceIdentifier = instancesPerServices.serviceid
                 ) servicesLicenses;
 

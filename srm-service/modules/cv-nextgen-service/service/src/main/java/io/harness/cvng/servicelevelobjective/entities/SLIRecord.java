@@ -7,6 +7,8 @@
 
 package io.harness.cvng.servicelevelobjective.entities;
 
+import static io.harness.cvng.CVConstants.SLO_RECORDS_TTL_DAYS;
+
 import io.harness.annotation.HarnessEntity;
 import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.HarnessTeam;
@@ -78,6 +80,7 @@ public class SLIRecord extends VerificationTaskBase implements PersistentEntity,
     bsonDocument.append(SLIRecordKeys.epochMinute, new BsonInt64(epochMinute));
     bsonDocument.append(SLIRecordKeys.runningBadCount, new BsonInt64(runningBadCount));
     bsonDocument.append(SLIRecordKeys.runningGoodCount, new BsonInt64(runningGoodCount));
+    bsonDocument.append(SLIRecordKeys.runningSkipDataCount, new BsonInt64(runningSkipDataCount));
     bsonDocument.append(SLIRecordKeys.sliVersion, new BsonInt32(sliVersion));
     bsonDocument.append(SLIRecordKeys.sliState, new BsonString(sliState.toString()));
     return bsonDocument;
@@ -100,7 +103,11 @@ public class SLIRecord extends VerificationTaskBase implements PersistentEntity,
   private long runningBadCount; // prevMinuteRecord.runningBadCount + sliState == BAD ? 1 : 0
   private long runningGoodCount; // // prevMinuteRecord.runningGoodCount + sliState == GOOD ? 1 : 0
 
+  private long runningSkipDataCount;
+
   private int sliVersion;
 
-  @Builder.Default @FdTtlIndex private Date validUntil = Date.from(OffsetDateTime.now().plusDays(90).toInstant());
+  @Builder.Default
+  @FdTtlIndex
+  private Date validUntil = Date.from(OffsetDateTime.now().plusDays(SLO_RECORDS_TTL_DAYS).toInstant());
 }

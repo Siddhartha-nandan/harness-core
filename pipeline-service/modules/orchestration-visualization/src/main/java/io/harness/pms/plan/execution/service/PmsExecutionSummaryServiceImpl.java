@@ -117,7 +117,12 @@ public class PmsExecutionSummaryServiceImpl implements PmsExecutionSummaryServic
 
       // Update Max concurrency in graph (consumed by UI) if the type of strategy is not parallelism
       // For parallelism, the maxConcurrency cannot be defined via yaml, so we are ignoring its addition in graph.
-      if (!graphLayoutNode.get(nodeExecution.getNodeId()).getNodeType().equals(StrategyType.PARALLELISM.name())) {
+      String nodeType = graphLayoutNode.get(nodeExecution.getNodeId()).getNodeType();
+      if (nodeType == null) {
+        log.warn("NodeType found null for NodeExecution uuid {}", nodeExecution.getUuid());
+      }
+
+      if (!StrategyType.PARALLELISM.name().equals(nodeType)) {
         ConcurrentChildInstance concurrentChildInstance =
             nodeExecutionInfoService.fetchConcurrentChildInstance(nodeExecution.getUuid());
         if (concurrentChildInstance != null && !nodeExecution.getExecutableResponses().isEmpty()) {
@@ -163,8 +168,15 @@ public class PmsExecutionSummaryServiceImpl implements PmsExecutionSummaryServic
     for (NodeExecution stageNodeExecution : childrenNodeExecution) {
       // If the child already exists in graph then ignore.
       if (!alreadyAddedAsChild(graphLayoutNode, nodeExecution.getNodeId(), stageNodeExecution.getUuid())) {
+        GraphLayoutNodeDTO graphLayoutNodeDTO = graphLayoutNode.get(stageSetupId);
+        if (graphLayoutNodeDTO == null) {
+          log.warn(String.format("[CLONE_GRAPH_NODE] NodeExecutionId: %s", nodeExecution.getNodeId()));
+          graphLayoutNode.forEach(
+              (k, v) -> log.warn(String.format("[CLONE_GRAPH_NODE] key %s: value %s", k, v.getNodeIdentifier())));
+          log.warn(String.format("[CLONE_GRAPH_NODE] Clone GraphLayoutNode with stageSetupId: %s", stageSetupId));
+        }
         cloneGraphLayoutNodeDTO(
-            graphLayoutNode.get(stageSetupId), stageNodeExecution.getUuid(), update, stageNodeExecution.getNodeId());
+            graphLayoutNodeDTO, stageNodeExecution.getUuid(), update, stageNodeExecution.getNodeId());
       }
     }
 

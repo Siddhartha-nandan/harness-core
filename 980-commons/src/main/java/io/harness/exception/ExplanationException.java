@@ -89,6 +89,12 @@ public class ExplanationException extends WingsException {
       "The credentials of Ldap Connection settings you are using are incorrect";
   public static String INVALID_LDAP_AUTH_EMAIL_PWD =
       "The email, password value supplied for the configured Ldap settings is incorrect";
+  public static final String INVALID_SSH_CREDENTIALS = "Username or SSK key/Password is not valid";
+  public static final String INVALID_SSH_KEY_FILE_PATH = "SSH Key File Path is not valid";
+  public static final String INVALID_SSH_KEY = "SSH Key is not valid";
+  public static final String INVALID_WIN_RM_CREDENTIALS = "Domain or Username/Password is not valid";
+  public static final String INVALID_WIN_RM_CREDENTIALS_PROTOCOL = "Cannot establish HTTP/S connection to host";
+  public static final String VALIDATION_FAILED = "Validation failed";
 
   public ExplanationException(String message, Throwable cause) {
     super(message, cause, EXPLANATION, INFO, USER_SRE, null);

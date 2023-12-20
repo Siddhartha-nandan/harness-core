@@ -147,7 +147,67 @@ public enum PredefinedTemplate {
       "harness_approval_action_execution_msteams"),
   SLACK_CCM_BUDGET_GROUP_ALERT("templates/slack_ccm_budget_group_alert.txt", "slack_ccm_budget_group_alert"),
   IDP_PLUGIN_REQUESTS_NOTIFICATION_SLACK(
-      "notification_templates/slack/plugin_requests.txt", "idp_plugin_requests_notification_slack");
+      "notification_templates/slack/plugin_requests.txt", "idp_plugin_requests_notification_slack"),
+  DELEGATE_DOWN_EMAIL("notificationtemplates/email/delegate_disconnected.txt", "delegate_disconnected_email"),
+  DELEGATE_EXPIRED_EMAIL("notificationtemplates/email/delegate_expired.txt", "delegate_expired_email"),
+  DELEGATE_ABOUT_EXPIRE_EMAIL(
+      "notificationtemplates/email/delegate_about_to_expire.txt", "delegate_about_to_expire_email"),
+
+  DELEGATE_DOWN_SLACK("notificationtemplates/slack/delegate_disconnected.txt", "delegate_disconnected_slack"),
+  DELEGATE_EXPIRED_SLACK("notificationtemplates/slack/delegate_expired.txt", "delegate_expired_slack"),
+  DELEGATE_ABOUT_EXPIRE_SLACK(
+      "notificationtemplates/slack/delegate_about_to_expire.txt", "delegate_about_to_expire_slack"),
+
+  DELEGATE_DOWN_PAGERDUTY(
+      "notificationtemplates/pagerduty/delegate_disconnected.txt", "delegate_disconnected_pagerduty"),
+  DELEGATE_EXPIRED_PAGERDUTY("notificationtemplates/pagerduty/delegate_expired.txt", "delegate_expired_pagerduty"),
+  DELEGATE_ABOUT_EXPIRE_PAGERDUTY(
+      "notificationtemplates/pagerduty/delegate_about_to_expire.txt", "delegate_about_to_expire_pagerduty"),
+
+  DELEGATE_DOWN_MSTEAMS("notificationtemplates/msteams/delegate_disconnected.txt", "delegate_disconnected_msteams"),
+  DELEGATE_EXPIRED_MSTEAMS("notificationtemplates/msteams/delegate_expired.txt", "delegate_expired_msteams"),
+  DELEGATE_ABOUT_EXPIRE_MSTEAMS(
+      "notificationtemplates/msteams/delegate_about_to_expire.txt", "delegate_about_to_expire_msteams"),
+
+  DELEGATE_DOWN_WEBHOOK("notificationtemplates/webhook/delegate_disconnected.txt", "delegate_disconnected_webhook"),
+  DELEGATE_EXPIRED_WEBHOOK("notificationtemplates/webhook/delegate_expired.txt", "delegate_expired_webhook"),
+  DELEGATE_ABOUT_EXPIRE_WEBHOOK(
+      "notificationtemplates/webhook/delegate_about_to_expire.txt", "delegate_about_to_expire_webhook"),
+  //  Chaos experiment mail templates
+  CHAOS_EXPERIMENT_STARTED_EMAIL(
+      "notification_templates/chaos/email/chaos_experiment_started.txt", "chaos_experiment_started_email"),
+  CHAOS_EXPERIMENT_COMPLETED_EMAIL(
+      "notification_templates/chaos/email/chaos_experiment_completed.txt", "chaos_experiment_completed_email"),
+  CHAOS_EXPERIMENT_STOPPED_EMAIL(
+      "notification_templates/chaos/email/chaos_experiment_stopped.txt", "chaos_experiment_stopped_email"),
+  //  Chaos experiment msteams templates
+  CHAOS_EXPERIMENT_STARTED_MSTEAMS(
+      "notification_templates/chaos/msteams/chaos_experiment_started.txt", "chaos_experiment_started_msteams"),
+  CHAOS_EXPERIMENT_COMPLETED_MSTEAMS(
+      "notification_templates/chaos/msteams/chaos_experiment_completed.txt", "chaos_experiment_completed_msteams"),
+  CHAOS_EXPERIMENT_STOPPED_MSTEAMS(
+      "notification_templates/chaos/msteams/chaos_experiment_stopped.txt", "chaos_experiment_stopped_msteams"),
+  //  Chaos experiment pagerduty templates
+  CHAOS_EXPERIMENT_STARTED_PAGERDUTY(
+      "notification_templates/chaos/pagerduty/chaos_experiment_started.txt", "chaos_experiment_started_pagerduty"),
+  CHAOS_EXPERIMENT_COMPLETED_PAGERDUTY(
+      "notification_templates/chaos/pagerduty/chaos_experiment_completed.txt", "chaos_experiment_completed_pagerduty"),
+  CHAOS_EXPERIMENT_STOPPED_PAGERDUTY(
+      "notification_templates/chaos/pagerduty/chaos_experiment_stopped.txt", "chaos_experiment_stopped_pagerduty"),
+  //  Chaos experiment slack templates
+  CHAOS_EXPERIMENT_STARTED_SLACK(
+      "notification_templates/chaos/slack/chaos_experiment_started.txt", "chaos_experiment_started_slack"),
+  CHAOS_EXPERIMENT_COMPLETED_SLACK(
+      "notification_templates/chaos/slack/chaos_experiment_completed.txt", "chaos_experiment_completed_slack"),
+  CHAOS_EXPERIMENT_STOPPED_SLACK(
+      "notification_templates/chaos/slack/chaos_experiment_stopped.txt", "chaos_experiment_stopped_slack"),
+  //  Chaos experiment webhook templates
+  CHAOS_EXPERIMENT_STARTED_WEBHOOK(
+      "notification_templates/chaos/webhook/chaos_experiment_started.txt", "chaos_experiment_started_webhook"),
+  CHAOS_EXPERIMENT_COMPLETED_WEBHOOK(
+      "notification_templates/chaos/webhook/chaos_experiment_completed.txt", "chaos_experiment_completed_webhook"),
+  CHAOS_EXPERIMENT_STOPPED_WEBHOOK(
+      "notification_templates/chaos/webhook/chaos_experiment_stopped.txt", "chaos_experiment_stopped_webhook");
 
   private String path;
   private String identifier;

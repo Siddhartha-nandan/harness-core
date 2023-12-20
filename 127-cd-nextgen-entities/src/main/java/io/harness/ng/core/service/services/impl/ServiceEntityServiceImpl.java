@@ -59,6 +59,7 @@ import io.harness.exception.WingsException;
 import io.harness.exception.YamlException;
 import io.harness.expression.EngineExpressionEvaluator;
 import io.harness.gitsync.beans.StoreType;
+import io.harness.gitx.GitXSettingsHelper;
 import io.harness.gitx.GitXTransientBranchGuard;
 import io.harness.ng.DuplicateKeyExceptionParser;
 import io.harness.ng.core.EntityDetail;
@@ -115,7 +116,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -131,12 +131,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
@@ -179,8 +174,7 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
   @Inject private ServiceEntityValidatorFactory serviceEntityValidatorFactory;
   @Inject private TemplateResourceClient templateResourceClient;
   @Inject private ServiceOverrideV2ValidationHelper overrideV2ValidationHelper;
-  @Inject @Named("service-gitx-executor") private ExecutorService executorService;
-  private final NGFeatureFlagHelperService featureFlagService;
+  @Inject private final NGFeatureFlagHelperService featureFlagService;
   @Named(DEFAULT_CONNECTOR_SERVICE) private final ConnectorService connectorService;
   private static final String DUP_KEY_EXP_FORMAT_STRING_FOR_PROJECT =
       "Service [%s] under Project[%s], Organization [%s] in Account [%s] already exists";
@@ -189,13 +183,15 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
   private static final String DUP_KEY_EXP_FORMAT_STRING_FOR_ACCOUNT = "Service [%s] in Account [%s] already exists";
   private static final int REMOTE_SERVICE_BATCH_SIZE = 20;
   private final CDGitXService cdGitXService;
+  private final GitXSettingsHelper gitXSettingsHelper;
 
   @Inject
   public ServiceEntityServiceImpl(ServiceRepository serviceRepository, EntitySetupUsageService entitySetupUsageService,
       @Named(ENTITY_CRUD) Producer eventProducer, OutboxService outboxService, TransactionTemplate transactionTemplate,
       ServiceOverrideService serviceOverrideService, ServiceOverridesServiceV2 serviceOverridesServiceV2,
       ServiceEntitySetupUsageHelper entitySetupUsageHelper, NGFeatureFlagHelperService featureFlagService,
-      @Named(DEFAULT_CONNECTOR_SERVICE) ConnectorService connectorService, CDGitXService cdGitXService) {
+      @Named(DEFAULT_CONNECTOR_SERVICE) ConnectorService connectorService, CDGitXService cdGitXService,
+      GitXSettingsHelper gitXSettingsHelper) {
     this.serviceRepository = serviceRepository;
     this.entitySetupUsageService = entitySetupUsageService;
     this.eventProducer = eventProducer;
@@ -207,6 +203,7 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
     this.featureFlagService = featureFlagService;
     this.connectorService = connectorService;
     this.cdGitXService = cdGitXService;
+    this.gitXSettingsHelper = gitXSettingsHelper;
   }
 
   void validatePresenceOfRequiredFields(Object... fields) {
@@ -228,6 +225,10 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
       ServiceEntityValidator serviceEntityValidator =
           serviceEntityValidatorFactory.getServiceEntityValidator(serviceEntity);
       serviceEntityValidator.validate(serviceEntity);
+      if (StoreType.REMOTE.equals(serviceEntity.getStoreType())) {
+        applyGitXSettingsIfApplicable(
+            serviceEntity.getAccountId(), serviceEntity.getOrgIdentifier(), serviceEntity.getProjectIdentifier());
+      }
       ServiceEntity createdService =
           Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
             ServiceEntity service = serviceRepository.saveGitAware(serviceEntity);
@@ -684,10 +685,9 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
     try {
       servicesYamlMetadata = getServicesYamlMetadataInternal(
           accountIdentifier, orgIdentifier, projectIdentifier, serviceRefs, servicesMetadataWithGitInfo, loadFromCache);
-    } catch (CompletionException ex) {
-      // internal method always wraps the CompletionException, so we will have a cause
+    } catch (WingsException ex) {
       log.error(String.format("Error while getting services: %s", serviceRefs), ex);
-      Throwables.throwIfUnchecked(ex.getCause());
+      throw ex;
     } catch (Exception ex) {
       log.error(String.format("Unexpected error occurred while getting services: %s", serviceRefs), ex);
       throw new InternalServerErrorException(
@@ -905,72 +905,29 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
   private List<ServiceV2YamlMetadata> getServicesYamlMetadataInternal(String accountIdentifier, String orgIdentifier,
       String projectIdentifier, List<String> serviceRefs, Map<String, String> servicesMetadataWithGitInfo,
       boolean loadFromCache) {
-    // Using SynchronousQueue to avoid ConcurrentModification Issues.
-    Queue<ServiceV2YamlMetadata> yamlMetadataQueue = new ConcurrentLinkedQueue<>();
+    List<ServiceV2YamlMetadata> serviceMetadataList = new ArrayList<>();
     // Get all service entities
     List<ServiceEntity> serviceEntities =
         getScopedServiceEntities(accountIdentifier, orgIdentifier, projectIdentifier, serviceRefs);
 
-    // Sorting List so that git calls are made parallelly at the earliest.
-    List<ServiceEntity> sortedServiceEntities = sortByStoreType(serviceEntities);
-    for (int i = 0; i < sortedServiceEntities.size(); i += REMOTE_SERVICE_BATCH_SIZE) {
-      List<ServiceEntity> batch = getBatch(sortedServiceEntities, i);
+    for (ServiceEntity serviceEntity : serviceEntities) {
+      if (StoreType.REMOTE.equals(serviceEntity.getStoreType())) {
+        String serviceRef = IdentifierRefHelper.getRefFromIdentifierOrRef(serviceEntity.getAccountId(),
+            serviceEntity.getOrgIdentifier(), serviceEntity.getProjectIdentifier(), serviceEntity.getIdentifier());
+        String branchInfo = servicesMetadataWithGitInfo.get(serviceRef);
 
-      List<CompletableFuture<Void>> batchFutures = new ArrayList<>();
-
-      for (ServiceEntity serviceEntity : batch) {
-        if (StoreType.REMOTE.equals(serviceEntity.getStoreType())) {
-          String serviceRef = IdentifierRefHelper.getRefFromIdentifierOrRef(serviceEntity.getAccountId(),
-              serviceEntity.getOrgIdentifier(), serviceEntity.getProjectIdentifier(), serviceEntity.getIdentifier());
-          String branchInfo = servicesMetadataWithGitInfo.get(serviceRef);
-
-          CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-            try (GitXTransientBranchGuard ignore = new GitXTransientBranchGuard(branchInfo)) {
-              ServiceEntity temp = serviceRepository.getRemoteServiceWithYaml(serviceEntity, loadFromCache, false);
-              yamlMetadataQueue.add(createServiceV2YamlMetadata(temp));
-            }
-          }, executorService);
-
-          batchFutures.add(future);
-        } else {
-          // For inline services, process YAML immediately
-          yamlMetadataQueue.add(createServiceV2YamlMetadata(serviceEntity));
+        try (GitXTransientBranchGuard ignore = new GitXTransientBranchGuard(branchInfo)) {
+          ServiceEntity temp = serviceRepository.getRemoteServiceWithYaml(serviceEntity, loadFromCache, false);
+          serviceMetadataList.add(createServiceV2YamlMetadata(temp));
         }
-      }
 
-      // Wait for the batch to complete
-      CompletableFuture<Void> allOf = CompletableFuture.allOf(batchFutures.toArray(new CompletableFuture[0]));
-      allOf.join();
-    }
-
-    return fetchResponsesInListFromQueue(yamlMetadataQueue);
-  }
-
-  private List<ServiceEntity> sortByStoreType(List<ServiceEntity> serviceEntities) {
-    List<ServiceEntity> sortedInfrastructureEntities = new ArrayList<>();
-    for (ServiceEntity service : serviceEntities) {
-      if (StoreType.REMOTE.equals(service.getStoreType())) {
-        sortedInfrastructureEntities.add(service);
+      } else {
+        // For inline services, process YAML immediately
+        serviceMetadataList.add(createServiceV2YamlMetadata(serviceEntity));
       }
     }
 
-    for (ServiceEntity service : serviceEntities) {
-      // StoreType can be null.
-      if (!StoreType.REMOTE.equals(service.getStoreType())) {
-        sortedInfrastructureEntities.add(service);
-      }
-    }
-    return sortedInfrastructureEntities;
-  }
-
-  private static List<ServiceV2YamlMetadata> fetchResponsesInListFromQueue(
-      Queue<ServiceV2YamlMetadata> envInputYamlAndServiceOverridesQueue) {
-    List<ServiceV2YamlMetadata> envInputYamlAndServiceOverridesList = new ArrayList<>();
-    while (!envInputYamlAndServiceOverridesQueue.isEmpty()) {
-      ServiceV2YamlMetadata element = envInputYamlAndServiceOverridesQueue.poll();
-      envInputYamlAndServiceOverridesList.add(element);
-    }
-    return envInputYamlAndServiceOverridesList;
+    return serviceMetadataList;
   }
 
   private static List<ServiceEntity> getBatch(List<ServiceEntity> remoteServiceEntities, int i) {
@@ -1569,5 +1526,13 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
 
   private void throwInvalidRequestForEmptyField(String fieldName) {
     throw new InvalidRequestException(String.format("Error: %s cannot be empty", fieldName));
+  }
+
+  private void applyGitXSettingsIfApplicable(String accountIdentifier, String orgIdentifier, String projIdentifier) {
+    gitXSettingsHelper.enforceGitExperienceIfApplicable(accountIdentifier, orgIdentifier, projIdentifier);
+    gitXSettingsHelper.setDefaultStoreTypeForEntities(
+        accountIdentifier, orgIdentifier, projIdentifier, EntityType.SERVICE);
+    gitXSettingsHelper.setConnectorRefForRemoteEntity(accountIdentifier, orgIdentifier, projIdentifier);
+    gitXSettingsHelper.setDefaultRepoForRemoteEntity(accountIdentifier, orgIdentifier, projIdentifier);
   }
 }

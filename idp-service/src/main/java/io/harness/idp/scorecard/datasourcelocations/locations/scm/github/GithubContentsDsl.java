@@ -7,24 +7,18 @@
 
 package io.harness.idp.scorecard.datasourcelocations.locations.scm.github;
 
-import static io.harness.idp.scorecard.datapoints.constants.Inputs.BRANCH_NAME;
-import static io.harness.idp.scorecard.datapoints.constants.Inputs.FILE_PATH;
-import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.REPOSITORY_BRANCH;
-
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.backstagebeans.BackstageCatalogEntity;
+import io.harness.idp.backstage.entities.BackstageCatalogEntity;
 import io.harness.idp.scorecard.datapoints.entity.DataPointEntity;
 import io.harness.idp.scorecard.datasourcelocations.locations.scm.ScmBaseDslNoLoop;
+import io.harness.idp.scorecard.datasourcelocations.locations.scm.ScmContentsDsl;
 import io.harness.spec.server.idp.v1.model.InputValue;
 
 import java.util.List;
-import java.util.Optional;
 
 @OwnedBy(HarnessTeam.IDP)
-public class GithubContentsDsl extends ScmBaseDslNoLoop {
-  private static final String FILE_PATH_REPLACER = "{FILE_PATH_REPLACER}";
-
+public class GithubContentsDsl extends ScmBaseDslNoLoop implements ScmContentsDsl {
   @Override
   protected String replaceInputValuePlaceholdersIfAnyInRequestUrl(
       String url, DataPointEntity dataPoint, List<InputValue> inputValues) {
@@ -34,25 +28,6 @@ public class GithubContentsDsl extends ScmBaseDslNoLoop {
   @Override
   public String replaceInputValuePlaceholdersIfAnyInRequestBody(String requestBody, DataPointEntity dataPoint,
       List<InputValue> inputValues, BackstageCatalogEntity backstageCatalogEntity) {
-    Optional<InputValue> inputValueOpt =
-        inputValues.stream().filter(inputValue -> inputValue.getKey().equals(FILE_PATH)).findFirst();
-    if (inputValueOpt.isPresent()) {
-      String inputValue = inputValueOpt.get().getValue();
-      if (!inputValue.isEmpty()) {
-        inputValue = inputValue.replace("\"", "");
-        requestBody = requestBody.replace(FILE_PATH_REPLACER, inputValue);
-      }
-    }
-
-    inputValueOpt = inputValues.stream().filter(inputValue -> inputValue.getKey().equals(BRANCH_NAME)).findFirst();
-    if (inputValueOpt.isPresent()) {
-      String inputValue = inputValueOpt.get().getValue();
-      if (!inputValue.isEmpty()) {
-        inputValue = inputValue.replace("\"", "");
-        requestBody = requestBody.replace(REPOSITORY_BRANCH, inputValue);
-      }
-    }
-
-    return requestBody;
+    return replaceInputValuePlaceholders(requestBody, inputValues);
   }
 }

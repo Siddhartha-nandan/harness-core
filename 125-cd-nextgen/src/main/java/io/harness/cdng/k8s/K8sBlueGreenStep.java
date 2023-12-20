@@ -28,6 +28,7 @@ import io.harness.cdng.k8s.beans.GitFetchResponsePassThroughData;
 import io.harness.cdng.k8s.beans.HelmValuesFetchResponsePassThroughData;
 import io.harness.cdng.k8s.beans.K8sExecutionPassThroughData;
 import io.harness.cdng.k8s.beans.StepExceptionPassThroughData;
+import io.harness.cdng.k8s.trafficrouting.K8sTrafficRoutingHelper;
 import io.harness.cdng.manifest.ManifestType;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
@@ -58,6 +59,7 @@ import io.harness.pms.sdk.core.steps.io.StepResponse.StepResponseBuilder;
 import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import com.google.inject.Inject;
 import java.util.Collections;
@@ -83,6 +85,7 @@ public class K8sBlueGreenStep extends CdTaskChainExecutable implements K8sStepEx
   @Inject private InstanceInfoService instanceInfoService;
   @Inject private CDFeatureFlagHelper cdFeatureFlagHelper;
   @Inject private ReleaseMetadataFactory releaseMetadataFactory;
+  @Inject private K8sTrafficRoutingHelper trafficRoutingHelper;
 
   @Override
   public Class<StepBaseParameters> getStepParametersClass() {
@@ -156,11 +159,14 @@ public class K8sBlueGreenStep extends CdTaskChainExecutable implements K8sStepEx
             .skipUnchangedManifest(cdStepHelper.isSkipUnchangedManifest(accountId, skipUnchangedManifest))
             .storeReleaseHash(cdStepHelper.isStoreReleaseHash(accountId));
 
-    if (cdFeatureFlagHelper.isEnabled(accountId, FeatureName.CDS_K8S_SERVICE_HOOKS_NG)) {
-      bgRequestBuilder.serviceHooks(k8sStepHelper.getServiceHooks(ambiance));
-    }
+    bgRequestBuilder.serviceHooks(k8sStepHelper.getServiceHooks(ambiance));
     if (cdStepHelper.shouldPassReleaseMetadata(accountId)) {
       bgRequestBuilder.releaseMetadata(releaseMetadataFactory.createReleaseMetadata(infrastructure, ambiance));
+    }
+    if (cdFeatureFlagHelper.isEnabled(accountId, FeatureName.CDS_K8S_TRAFFIC_ROUTING_NG)) {
+      bgRequestBuilder.trafficRoutingConfig(
+          trafficRoutingHelper.validateAndGetTrafficRoutingConfig(k8sBlueGreenStepParameters.getTrafficRouting())
+              .orElse(null));
     }
     Map<String, String> k8sCommandFlag =
         k8sStepHelper.getDelegateK8sCommandFlag(k8sBlueGreenStepParameters.getCommandFlags(), ambiance);
@@ -253,5 +259,11 @@ public class K8sBlueGreenStep extends CdTaskChainExecutable implements K8sStepEx
                          .outcome(releaseHelmChartOutcome)
                          .build())
         .build();
+  }
+
+  @Override
+  public StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 }

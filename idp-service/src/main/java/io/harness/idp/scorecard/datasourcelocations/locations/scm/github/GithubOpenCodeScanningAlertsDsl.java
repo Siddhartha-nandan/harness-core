@@ -15,7 +15,7 @@ import static io.harness.idp.scorecard.datapoints.constants.Inputs.SEVERITY_TYPE
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.eraro.ResponseMessage;
-import io.harness.idp.backstagebeans.BackstageCatalogEntity;
+import io.harness.idp.backstage.entities.BackstageCatalogEntity;
 import io.harness.idp.common.GsonUtils;
 import io.harness.idp.scorecard.datapoints.entity.DataPointEntity;
 import io.harness.idp.scorecard.datasourcelocations.locations.scm.ScmBaseDslNoLoop;
@@ -38,6 +38,7 @@ public class GithubOpenCodeScanningAlertsDsl extends ScmBaseDslNoLoop {
         inputValues.stream().filter(inputValue -> inputValue.getKey().equals(SEVERITY_TYPE)).findFirst();
     if (inputValueOpt.isPresent()) {
       String inputValue = inputValueOpt.get().getValue();
+      inputValue = inputValue.replace("\"", "");
       if (!inputValue.isEmpty()) {
         url = url.replace(SEVERITY_REPLACER, inputValue.toLowerCase());
       }

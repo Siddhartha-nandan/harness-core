@@ -76,6 +76,9 @@ public class ResourceGroupServiceImpl implements ResourceGroupService {
         get(resourceGroup.getIdentifier(), resourceGroup.getScopeIdentifier(), managedFilter);
     if (currentResourceGroupOptional.isPresent()) {
       ResourceGroup currentResourceGroup = currentResourceGroupOptional.get();
+      if (currentResourceGroup.equals(resourceGroup)) {
+        return currentResourceGroup;
+      }
       if (areScopeLevelsUpdated(currentResourceGroup, resourceGroup) && !resourceGroup.isManaged()) {
         throw new InvalidRequestException("Cannot change the the scopes at which this resource group can be used.");
       }
@@ -86,7 +89,7 @@ public class ResourceGroupServiceImpl implements ResourceGroupService {
                   Sets.difference(currentResourceGroup.getAllowedScopeLevels(), resourceGroup.getAllowedScopeLevels());
               roleAssignmentService.deleteMulti(RoleAssignmentFilter.builder()
                                                     .resourceGroupFilter(singleton(resourceGroup.getIdentifier()))
-                                                    .scopeFilter("/")
+                                                    .scopeFilter("")
                                                     .includeChildScopes(true)
                                                     .scopeLevelFilter(removedScopeLevels)
                                                     .build());
@@ -150,7 +153,7 @@ public class ResourceGroupServiceImpl implements ResourceGroupService {
   private ResourceGroup deleteManaged(String identifier) {
     return Failsafe.with(deleteResourceGroupTransactionPolicy).get(() -> outboxTransactionTemplate.execute(status -> {
       long deleteCount = roleAssignmentService.deleteMulti(RoleAssignmentFilter.builder()
-                                                               .scopeFilter("/")
+                                                               .scopeFilter("")
                                                                .includeChildScopes(true)
                                                                .resourceGroupFilter(Sets.newHashSet(identifier))
                                                                .build());

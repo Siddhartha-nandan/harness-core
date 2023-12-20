@@ -71,6 +71,7 @@ import io.harness.rule.Owner;
 import io.harness.steps.StepHelper;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.steps.environment.EnvironmentOutcome;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import java.util.HashMap;
 import java.util.List;
@@ -95,6 +96,8 @@ public class FetchInstanceScriptStepTest extends CDNGTestBase {
   @Captor private ArgumentCaptor<DeploymentInfoOutcome> deploymentInfoOutcomeArgumentCaptor;
   @Mock private InstanceInfoService instanceInfoService;
   @Mock private ExecutionSweepingOutputService executionSweepingOutputService;
+
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
   @InjectMocks private FetchInstanceScriptStep fetchInstanceScriptStep;
 
   private FetchInstanceScriptStepParameters parameters =
@@ -349,7 +352,7 @@ public class FetchInstanceScriptStepTest extends CDNGTestBase {
             .output(
                 "{\"hosts\":[{ \"host\": \"instance1\", \"artifactBuildNo\": \"artifact1\" }, { \"host\": \"instance2\", \"artifactBuildNo\": \"artifact2\" } ] }")
             .build();
-    doReturn("").when(executionSweepingOutputService).consume(any(), any(), any(), any());
+    doReturn("").when(executionSweepingOutputService).consumeOptional(any(), any(), any(), any());
     StepResponse stepResponse = fetchInstanceScriptStep.handleTaskResultWithSecurityContext(
         ambiance, stepElementParameters, () -> fetchInstanceScriptTaskNGResponse);
     assertThat(stepResponse.getStatus()).isEqualTo(Status.SUCCEEDED);
@@ -359,7 +362,8 @@ public class FetchInstanceScriptStepTest extends CDNGTestBase {
         .saveDeploymentInfoOutcomeIntoSweepingOutput(eq(ambiance), deploymentInfoOutcomeArgumentCaptor.capture());
     ArgumentCaptor<ExecutionSweepingOutput> instancesOutcomeCaptor =
         ArgumentCaptor.forClass(ExecutionSweepingOutput.class);
-    verify(executionSweepingOutputService, times(2)).consume(any(), any(), instancesOutcomeCaptor.capture(), any());
+    verify(executionSweepingOutputService, times(2))
+        .consumeOptional(any(), any(), instancesOutcomeCaptor.capture(), any());
     assertThat(((InstancesOutcome) instancesOutcomeCaptor.getAllValues().get(0)).getInstances().get(0).getHostName())
         .isEqualTo("instance1");
     assertThat(((InstancesOutcome) instancesOutcomeCaptor.getAllValues().get(0)).getInstances().get(1).getHostName())
