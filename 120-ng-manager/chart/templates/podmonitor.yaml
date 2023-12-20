@@ -1,16 +1,1 @@
-{{- if and .Values.global.monitoring.enabled (eq .Values.global.monitoring.managedPlatform "google") -}}
-apiVersion: monitoring.googleapis.com/v1
-kind: PodMonitoring
-metadata:
-  name: ng-manager
-  namespace:  {{ .Release.Namespace }}
-spec:
-  selector:
-    matchLabels:
-      app: ng-manager
-  endpoints:
-    - port: 8889
-      interval: 120s
-      path: "/metrics"
-
-{{- end }}
+{{ include "harnesscommon.monitoring.podMonitor" (dict "name" "serviceName" "ctx" $) }}
