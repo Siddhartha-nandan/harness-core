@@ -30,7 +30,15 @@ import io.harness.impl.WebhookParserSCMServiceImpl;
 import io.harness.ngtriggers.beans.dto.WebhookEventHeaderData;
 import io.harness.ngtriggers.beans.entity.TriggerWebhookEvent;
 import io.harness.ngtriggers.beans.scm.WebhookPayloadData;
-import io.harness.product.ci.scm.proto.*;
+import io.harness.product.ci.scm.proto.Action;
+import io.harness.product.ci.scm.proto.BranchHook;
+import io.harness.product.ci.scm.proto.Commit;
+import io.harness.product.ci.scm.proto.GitProvider;
+import io.harness.product.ci.scm.proto.ParseWebhookResponse;
+import io.harness.product.ci.scm.proto.PushHook;
+import io.harness.product.ci.scm.proto.Reference;
+import io.harness.product.ci.scm.proto.Signature;
+import io.harness.product.ci.scm.proto.User;
 import io.harness.rule.Owner;
 import io.harness.utils.PmsFeatureFlagHelper;
 
