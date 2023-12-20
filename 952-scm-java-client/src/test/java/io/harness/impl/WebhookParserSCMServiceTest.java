@@ -15,6 +15,7 @@ import static io.harness.product.ci.scm.proto.GitProvider.GITHUB;
 import static io.harness.product.ci.scm.proto.GitProvider.GITLAB;
 import static io.harness.product.ci.scm.proto.GitProvider.STASH;
 import static io.harness.rule.OwnerRule.ADWAIT;
+import static io.harness.rule.OwnerRule.MEET;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -29,13 +30,7 @@ import io.harness.beans.WebhookGitUser;
 import io.harness.beans.WebhookPayload;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InvalidRequestException;
-import io.harness.product.ci.scm.proto.Action;
-import io.harness.product.ci.scm.proto.ParseWebhookResponse;
-import io.harness.product.ci.scm.proto.PullRequest;
-import io.harness.product.ci.scm.proto.PullRequestHook;
-import io.harness.product.ci.scm.proto.Reference;
-import io.harness.product.ci.scm.proto.Repository;
-import io.harness.product.ci.scm.proto.User;
+import io.harness.product.ci.scm.proto.*;
 import io.harness.rule.Owner;
 
 import java.io.IOException;
@@ -215,5 +210,32 @@ public class WebhookParserSCMServiceTest extends CategoryTest {
     assertThat(repository.getBranch()).isEqualTo("master");
     assertThat(repository.getHttpURL()).isEqualTo("https://myRepo");
     assertThat(repository.getSshURL()).isEqualTo("git@myRepo");
+  }
+  @Test
+  @Owner(developers = MEET)
+  @Category(UnitTests.class)
+  public void testParseWebhookPayload() {
+    ParseWebhookResponse parseWebhookResponse =
+        ParseWebhookResponse.newBuilder()
+            .setTag(TagHook.newBuilder()
+                        .setAction(Action.DELETE)
+                        .setRepo(Repository.newBuilder().setBranch("branch").build())
+                        .build())
+            .build();
+    WebhookPayload webhookPayload = webhookParserSCMService.parseWebhookPayload(parseWebhookResponse);
+    assertThat(webhookPayload.getWebhookEvent().getBaseAttributes().getAction())
+        .isEqualTo(Action.DELETE.toString().toLowerCase());
+    assertThat(webhookPayload.getRepository().getBranch()).isEqualTo("branch");
+
+    parseWebhookResponse = ParseWebhookResponse.newBuilder()
+                               .setBranch(BranchHook.newBuilder()
+                                              .setSender(User.newBuilder().setEmail("email").build())
+                                              .setAction(Action.DELETE)
+                                              .build())
+                               .build();
+    webhookPayload = webhookParserSCMService.parseWebhookPayload(parseWebhookResponse);
+    assertThat(webhookPayload.getWebhookEvent().getBaseAttributes().getAction())
+        .isEqualTo(Action.DELETE.toString().toLowerCase());
+    assertThat(webhookPayload.getWebhookGitUser().getEmail()).isEqualTo("email");
   }
 }
