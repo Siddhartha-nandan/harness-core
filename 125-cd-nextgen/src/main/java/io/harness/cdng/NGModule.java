@@ -93,6 +93,8 @@ import io.harness.cdng.plugininfoproviders.AwsCdkRollbackPluginInfoProvider;
 import io.harness.cdng.plugininfoproviders.AwsCdkSynthPluginInfoProvider;
 import io.harness.cdng.plugininfoproviders.AwsSamBuildPluginInfoProvider;
 import io.harness.cdng.plugininfoproviders.AwsSamDeployPluginInfoProvider;
+import io.harness.cdng.plugininfoproviders.DownloadAwsS3PluginInfoProvider;
+import io.harness.cdng.plugininfoproviders.DownloadHarnessStorePluginInfoProvider;
 import io.harness.cdng.plugininfoproviders.DownloadManifestsPluginInfoProvider;
 import io.harness.cdng.plugininfoproviders.GitClonePluginInfoProvider;
 import io.harness.cdng.plugininfoproviders.ServerlessAwsLambdaDeployV2PluginInfoProvider;
@@ -107,6 +109,7 @@ import io.harness.cdng.provision.terraformcloud.executiondetails.TerraformCloudP
 import io.harness.cdng.provision.terraformcloud.executiondetails.TerraformCloudPlanExecutionDetailsServiceImpl;
 import io.harness.cdng.provision.terraformcloud.resources.service.TerraformCloudResourceService;
 import io.harness.cdng.provision.terraformcloud.resources.service.TerraformCloudResourceServiceImpl;
+import io.harness.cdng.service.steps.helpers.serviceoverridesv2.OverrideFilterPropertiesMapper;
 import io.harness.cdng.service.steps.helpers.serviceoverridesv2.services.ServiceOverrideV2MigrationService;
 import io.harness.cdng.service.steps.helpers.serviceoverridesv2.services.ServiceOverrideV2MigrationServiceImpl;
 import io.harness.cdng.service.steps.helpers.serviceoverridesv2.services.ServiceOverrideV2SettingsUpdateService;
@@ -262,6 +265,7 @@ public class NGModule extends AbstractModule {
     filterPropertiesMapper.addBinding(FilterType.ENVIRONMENTGROUP.toString())
         .to(EnvironmentGroupFilterPropertiesMapper.class);
     filterPropertiesMapper.addBinding(FilterType.ENVIRONMENT.toString()).to(EnvironmentFilterPropertiesMapper.class);
+    filterPropertiesMapper.addBinding(FilterType.OVERRIDE.toString()).to(OverrideFilterPropertiesMapper.class);
 
     Multibinder<PluginInfoProvider> pluginInfoProviderMultibinder =
         Multibinder.newSetBinder(binder(), new TypeLiteral<>() {});
@@ -279,6 +283,8 @@ public class NGModule extends AbstractModule {
     pluginInfoProviderMultibinder.addBinding().to(AwsCdkDeployPluginInfoProvider.class);
     pluginInfoProviderMultibinder.addBinding().to(AwsCdkDestroyPluginInfoProvider.class);
     pluginInfoProviderMultibinder.addBinding().to(AwsCdkRollbackPluginInfoProvider.class);
+    pluginInfoProviderMultibinder.addBinding().to(DownloadAwsS3PluginInfoProvider.class);
+    pluginInfoProviderMultibinder.addBinding().to(DownloadHarnessStorePluginInfoProvider.class);
 
     Multibinder<ManifestGroupingStrategy> groupingStrategyMultiBinder =
         Multibinder.newSetBinder(binder(), new TypeLiteral<>() {});

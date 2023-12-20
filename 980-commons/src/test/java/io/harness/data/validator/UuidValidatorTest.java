@@ -8,16 +8,19 @@
 package io.harness.data.validator;
 
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
+import static io.harness.rule.OwnerRule.BHAVYA;
+import static io.harness.rule.OwnerRule.PIYUSH;
 import static io.harness.rule.OwnerRule.VIKAS;
-import static io.harness.utils.UuidUtils.base64StrToUuid;
+import static io.harness.utils.UuidAndIdentifierUtils.base64StrToUuid;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
 
 import io.harness.CategoryTest;
 import io.harness.category.element.UnitTests;
 import io.harness.data.validator.uuid.Uuid;
 import io.harness.rule.Owner;
-import io.harness.utils.UuidUtils;
+import io.harness.utils.UuidAndIdentifierUtils;
 
 import java.util.UUID;
 import javax.validation.Validation;
@@ -70,9 +73,104 @@ public class UuidValidatorTest extends CategoryTest {
         .isEmpty();
 
     String uuidType1 = "efee4cba-9d5f-11e9-a2a3-2a2ae2dbcce4";
-    assertThat(UuidUtils.isValidUuidStr(uuidType1)).isTrue();
+    assertThat(UuidAndIdentifierUtils.isValidUuidStr(uuidType1)).isTrue();
 
     String uuidType4 = "3bcd1e59-1dab-4f6f-a374-17b8e2339f64";
-    assertThat(UuidUtils.isValidUuidStr(uuidType4)).isTrue();
+    assertThat(UuidAndIdentifierUtils.isValidUuidStr(uuidType4)).isTrue();
+  }
+
+  @Test
+  @Owner(developers = BHAVYA)
+  @Category(UnitTests.class)
+  public void test_harnessUIFormatUUID() {
+    String name = "$%^abc.ksxjx_+$++&UII J";
+    assertThat(UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier(name)).isEqualTo("abc_ksxjx_$UII_J");
+  }
+
+  @Test
+  @Owner(developers = PIYUSH)
+  public void testGenerateHarnessUIFormatIdentifier_BasicCase() {
+    assertEquals("example_Name", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("example Name"));
+  }
+
+  @Test
+  @Owner(developers = PIYUSH)
+  public void testGenerateHarnessUIFormatIdentifier_startWithDot() {
+    assertEquals("_test", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier(".test"));
+  }
+
+  @Test
+  @Owner(developers = PIYUSH)
+  public void testGenerateHarnessUIFormatIdentifier_DotInTheMiddle() {
+    assertEquals("abc_test", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("abc.test"));
+  }
+
+  //  Commented out because of https://harness.atlassian.net/browse/PL-43512
+  //  @Test
+  //  @Owner(developers = PIYUSH)
+  //  public void testGenerateHarnessUIFormatIdentifier_startWithHyphen() {
+  //    assertEquals("_test", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("-test"));
+  //  }
+  //
+  //  @Test
+  //  @Owner(developers = PIYUSH)
+  //  public void testGenerateHarnessUIFormatIdentifier_HyphenInTheMiddle() {
+  //    assertEquals("abc_test", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("abc-test"));
+  //  }
+
+  @Test
+  @Owner(developers = PIYUSH)
+  public void testGenerateHarnessUIFormatIdentifier_startWithSpace() {
+    assertEquals("test", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier(" test"));
+  }
+
+  @Test
+  @Owner(developers = PIYUSH)
+  public void testGenerateHarnessUIFormatIdentifier_SpaceInTheMiddle() {
+    assertEquals("abc_test", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("abc test"));
+  }
+
+  @Test
+  @Owner(developers = PIYUSH)
+  public void testGenerateHarnessUIFormatIdentifier_startWithDollar() {
+    assertEquals("test", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("$test"));
+  }
+
+  @Test
+  @Owner(developers = PIYUSH)
+  public void testGenerateHarnessUIFormatIdentifier_dollarInTheMiddle() {
+    assertEquals("test$", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("test$"));
+  }
+
+  @Test
+  @Owner(developers = PIYUSH)
+  public void testGenerateHarnessUIFormatIdentifier_startWithUnsupportedChar() {
+    assertEquals("test", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("%test"));
+  }
+
+  @Test
+  @Owner(developers = PIYUSH)
+  public void testGenerateHarnessUIFormatIdentifier_UnsupportedCharInTheMiddle() {
+    assertEquals("test", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("test%"));
+  }
+
+  @Test
+  @Owner(developers = PIYUSH)
+  public void testGenerateHarnessUIFormatIdentifier_startWithDigit() {
+    assertEquals("test", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("5test"));
+  }
+
+  @Test
+  @Owner(developers = PIYUSH)
+  public void testGenerateHarnessUIFormatIdentifier_DigitInTheMiddle() {
+    assertEquals("test5g", UuidAndIdentifierUtils.generateHarnessUIFormatIdentifier("test5g"));
+  }
+
+  @Test
+  @Owner(developers = BHAVYA)
+  @Category(UnitTests.class)
+  public void test_harnessUIFormatName() {
+    String name = "$%^/abc.ksxjx_+$++&U-II J";
+    assertThat(UuidAndIdentifierUtils.generateHarnessUIFormatName(name)).isEqualTo("____/abc.ksxjx______U-II J");
   }
 }

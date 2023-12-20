@@ -87,10 +87,12 @@ import io.harness.pms.contracts.plan.TriggerType;
 import io.harness.pms.contracts.plan.TriggeredBy;
 import io.harness.pms.contracts.triggers.ArtifactData;
 import io.harness.pms.contracts.triggers.ParsedPayload;
+import io.harness.pms.contracts.triggers.SourceType;
 import io.harness.pms.contracts.triggers.TriggerPayload;
 import io.harness.pms.contracts.triggers.Type;
 import io.harness.pms.gitsync.PmsGitSyncBranchContextGuard;
 import io.harness.pms.gitsync.PmsGitSyncHelper;
+import io.harness.pms.inputset.MergeInputSetRequestDTOPMS;
 import io.harness.pms.inputset.MergeInputSetResponseDTOPMS;
 import io.harness.pms.pipeline.PipelineEntity;
 import io.harness.pms.pipeline.service.PMSPipelineService;
@@ -384,11 +386,13 @@ public class TriggerExecutionHelperTest extends CategoryTest {
                                                  .version(0L)
                                                  .build();
 
+    List<String> inputSetRefs = Arrays.asList("inputSet1", "inputSet2");
     TriggerDetails triggerDetails = TriggerDetails.builder()
                                         .ngTriggerEntity(ngTriggerEntityGitSync)
                                         .ngTriggerConfigV2(NGTriggerConfigV2.builder()
-                                                               .inputSetRefs(Arrays.asList("inputSet1", "inputSet2"))
+                                                               .inputSetRefs(inputSetRefs)
                                                                .pipelineBranchName("pipelineBranchName")
+                                                               .inputYaml("inputsYaml")
                                                                .build())
                                         .build();
 
@@ -396,7 +400,13 @@ public class TriggerExecutionHelperTest extends CategoryTest {
     when(ngTriggerElementMapper.toTriggerConfigV2(ngTriggerEntityGitSync))
         .thenReturn(triggerDetails.getNgTriggerConfigV2());
 
-    when(pipelineServiceClient.getMergeInputSetFromPipelineTemplate(any(), any(), any(), any(), any(), any()))
+    when(pipelineServiceClient.getMergeInputSetFromPipelineTemplate("ACCOUNT_ID", "ORG_IDENTIFIER", "PROJ_IDENTIFIER",
+             "PIPELINE_IDENTIFIER", "pipelineBranchName",
+             MergeInputSetRequestDTOPMS.builder()
+                 .inputSetReferences(inputSetRefs)
+                 .lastYamlToMerge("inputsYaml")
+                 .getOnlyFileContent(true)
+                 .build()))
         .thenReturn(mergeInputSetResponseDTOPMS);
     when(mergeInputSetResponseDTOPMS.execute())
         .thenReturn(Response.success(ResponseDTO.newResponse(
@@ -454,6 +464,21 @@ public class TriggerExecutionHelperTest extends CategoryTest {
         triggerWebhookEvent);
 
     assertTriggerBy(triggeredBy, "login", "user@email.com", true);
+
+    triggeredBy = triggerExecutionHelper.generateTriggerdBy("tag", ngTriggerEntity,
+        TriggerPayload.newBuilder()
+            .setSourceType(SourceType.HARNESS_REPO)
+            .setParsedPayload(
+                ParsedPayload.newBuilder()
+                    .setPr(PullRequestHook.newBuilder()
+                               .setSender(user)
+                               .setPr(PullRequest.newBuilder().setNumber(123).setLink("sourceEventLink").build())
+                               .build())
+                    .build())
+            .build(),
+        triggerWebhookEvent);
+
+    assertTriggerBy(triggeredBy, "user@email.com", "user@email.com", true);
 
     Principal servicePrincipal = new ServicePrincipal("svc");
     triggerWebhookEvent.setPrincipal(servicePrincipal);
@@ -682,7 +707,7 @@ public class TriggerExecutionHelperTest extends CategoryTest {
       assertThat(extraInfoMap.containsKey(EXEC_TAG_SET_BY_TRIGGER)).isTrue();
       assertThat(extraInfoMap.containsKey(TRIGGER_REF)).isTrue();
       assertThat(extraInfoMap.get(EXEC_TAG_SET_BY_TRIGGER)).isEqualTo("tag");
-      assertThat(extraInfoMap.get(GIT_USER)).isEqualTo("login");
+      assertThat(extraInfoMap.get(GIT_USER)).isEqualTo(identifier);
       assertThat(extraInfoMap.containsKey(EVENT_CORRELATION_ID)).isTrue();
       assertThat(extraInfoMap.get(EVENT_CORRELATION_ID)).isEqualTo("eventId");
       assertThat(extraInfoMap.get(TRIGGER_REF)).isEqualTo("acc/org/proj/trigger");

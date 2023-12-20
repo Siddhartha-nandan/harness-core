@@ -6,6 +6,7 @@
  */
 
 package io.harness.delegate.task.helm;
+
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.delegate.beans.storeconfig.StoreDelegateConfigType.CUSTOM_REMOTE;
@@ -21,6 +22,7 @@ import static io.harness.delegate.task.helm.HelmExceptionConstants.Hints.HELM_CH
 import static io.harness.delegate.task.helm.HelmExceptionConstants.Hints.HELM_CHART_REGEX;
 import static io.harness.delegate.task.helm.HelmExceptionConstants.Hints.HELM_CUSTOM_EXCEPTION_HINT;
 import static io.harness.delegate.task.helm.HelmTaskHelperBase.getChartDirectory;
+import static io.harness.exception.HelmClientRuntimeException.ExceptionType.INTERRUPT;
 import static io.harness.exception.WingsException.USER;
 import static io.harness.filesystem.FileIo.createDirectoryIfDoesNotExist;
 import static io.harness.filesystem.FileIo.deleteDirectoryAndItsContentIfExists;
@@ -74,6 +76,7 @@ import io.harness.delegate.task.git.ScmFetchFilesHelperNG;
 import io.harness.delegate.task.helm.steadystate.HelmSteadyStateService;
 import io.harness.delegate.task.k8s.ContainerDeploymentDelegateBaseHelper;
 import io.harness.delegate.task.k8s.HelmChartManifestDelegateConfig;
+import io.harness.delegate.task.k8s.HelmTaskDTO;
 import io.harness.delegate.task.k8s.K8sTaskHelperBase;
 import io.harness.delegate.task.k8s.ManifestDelegateConfig;
 import io.harness.delegate.task.localstore.ManifestFiles;
@@ -202,7 +205,8 @@ public class HelmDeployServiceImplNG implements HelmDeployServiceNG {
   }
 
   @Override
-  public HelmCommandResponseNG deploy(HelmInstallCommandRequestNG commandRequest) throws Exception {
+  public HelmCommandResponseNG deploy(HelmInstallCommandRequestNG commandRequest, HelmTaskDTO taskData)
+      throws Exception {
     LogCallback logCallback = commandRequest.getLogCallback();
     HelmChartInfo helmChartInfo = null;
     int prevVersion = -1;
@@ -212,8 +216,12 @@ public class HelmDeployServiceImplNG implements HelmDeployServiceNG {
     ReleaseHistory releaseHistory = null;
     boolean isImprovedHelmTracking = commandRequest.isImprovedHelmTracking();
     try {
-      kubernetesConfig = containerDeploymentDelegateBaseHelper.createKubernetesConfig(
-          commandRequest.getK8sInfraDelegateConfig(), commandRequest.getWorkingDir(), logCallback);
+      kubernetesConfig = taskData.getKubernetesConfig();
+      if (kubernetesConfig == null) {
+        log.warn("Kubernetes config passed to task is NULL. Creating it again...");
+        kubernetesConfig = containerDeploymentDelegateBaseHelper.createKubernetesConfig(
+            commandRequest.getK8sInfraDelegateConfig(), commandRequest.getWorkingDir(), logCallback);
+      }
 
       List<K8sPod> existingPodList = Collections.emptyList();
       HelmInstallCmdResponseNG commandResponse;
@@ -367,8 +375,7 @@ public class HelmDeployServiceImplNG implements HelmDeployServiceNG {
       return commandResponse;
 
     } catch (InterruptedException ex) {
-      Thread.currentThread().interrupt();
-      throw new HelmNGException(prevVersion, ExceptionMessageSanitizer.sanitizeException(ex), isInstallUpgrade);
+      throw ex;
     } catch (UncheckedTimeoutException e) {
       logCallback.saveExecutionLog(TIMED_OUT_IN_STEADY_STATE, LogLevel.ERROR);
       if (isInstallUpgrade
@@ -473,7 +480,12 @@ public class HelmDeployServiceImplNG implements HelmDeployServiceNG {
   }
 
   private boolean checkIfReleasePurgingNeeded(HelmInstallCommandRequestNG commandRequest) {
-    HelmListReleaseResponseNG commandResponse = listReleases(commandRequest);
+    HelmListReleaseResponseNG commandResponse;
+    try {
+      commandResponse = listReleases(commandRequest);
+    } catch (Exception e) {
+      return false;
+    }
     commandRequest.getLogCallback().saveExecutionLog(commandResponse.getOutput() + "\n");
 
     if (commandResponse.getCommandExecutionStatus() == CommandExecutionStatus.SUCCESS) {
@@ -644,11 +656,16 @@ public class HelmDeployServiceImplNG implements HelmDeployServiceNG {
   }
 
   @Override
-  public HelmCommandResponseNG rollback(HelmRollbackCommandRequestNG commandRequest) throws Exception {
+  public HelmCommandResponseNG rollback(HelmRollbackCommandRequestNG commandRequest, HelmTaskDTO taskData)
+      throws Exception {
     LogCallback logCallback = commandRequest.getLogCallback();
-    kubernetesConfig = containerDeploymentDelegateBaseHelper.createKubernetesConfig(
-        commandRequest.getK8sInfraDelegateConfig(), commandRequest.getWorkingDir(), logCallback);
+    kubernetesConfig = taskData.getKubernetesConfig();
     try {
+      if (kubernetesConfig == null) {
+        log.warn("Kubernetes config passed to task is NULL. Creating it again...");
+        kubernetesConfig = containerDeploymentDelegateBaseHelper.createKubernetesConfig(
+            commandRequest.getK8sInfraDelegateConfig(), commandRequest.getWorkingDir(), logCallback);
+      }
       List<KubernetesResource> existingManifest = commandRequest.isImprovedHelmTracking()
           ? helmSteadyStateService.readManifestFromHelmRelease(HelmCommandDataMapperNG.getHelmCmdDataNG(commandRequest))
           : Collections.emptyList();
@@ -774,7 +791,7 @@ public class HelmDeployServiceImplNG implements HelmDeployServiceNG {
   }
 
   @Override
-  public HelmListReleaseResponseNG listReleases(HelmInstallCommandRequestNG helmCommandRequest) {
+  public HelmListReleaseResponseNG listReleases(HelmInstallCommandRequestNG helmCommandRequest) throws Exception {
     try {
       HelmCliResponse helmCliResponse =
           helmClient.listReleases(HelmCommandDataMapperNG.getHelmCmdDataNG(helmCommandRequest), true);
@@ -1170,12 +1187,17 @@ public class HelmDeployServiceImplNG implements HelmDeployServiceNG {
           helmKubernetesResources, commandRequest.getReleaseName(), executionLogCallback);
       executionLogCallback.saveExecutionLog(ManifestHelper.toYamlForLogs(helmKubernetesResources));
 
-    } catch (InterruptedException e) {
-      log.error("Failed to get k8s resources from Helm chart", ExceptionMessageSanitizer.sanitizeException(e));
-      Thread.currentThread().interrupt();
-      throw new HelmClientRuntimeException(
-          new HelmClientException(ExceptionUtils.getMessage(ExceptionMessageSanitizer.sanitizeException(e)), USER,
-              HelmCliCommandType.RENDER_CHART));
+    } catch (HelmClientRuntimeException e) {
+      if (INTERRUPT == e.getType()) {
+        log.warn("[Interrupted]: printing helm chart resources was interrupted.", e);
+        throw e;
+      }
+      return Collections.emptyList();
+    } catch (Exception e) {
+      log.warn("Failed to print Helm chart kubernetes resources", ExceptionMessageSanitizer.sanitizeException(e));
+      executionLogCallback.saveExecutionLog(
+          "Failed to print Helm chart kubernetes resources", LogLevel.WARN, CommandExecutionStatus.RUNNING);
+      return Collections.emptyList();
     }
     return helmKubernetesResources;
   }

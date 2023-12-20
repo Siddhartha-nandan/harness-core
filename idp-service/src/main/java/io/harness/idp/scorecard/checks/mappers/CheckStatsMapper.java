@@ -9,42 +9,39 @@ package io.harness.idp.scorecard.checks.mappers;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.backstagebeans.BackstageCatalogEntity;
-import io.harness.idp.backstagebeans.BackstageCatalogEntityTypes;
+import io.harness.idp.scorecard.checks.entity.CheckStatsEntity;
 import io.harness.idp.scorecard.checks.entity.CheckStatusEntity;
+import io.harness.idp.scorecard.scorecards.beans.StatsMetadata;
 import io.harness.spec.server.idp.v1.model.CheckGraph;
 import io.harness.spec.server.idp.v1.model.CheckStats;
 import io.harness.spec.server.idp.v1.model.CheckStatsResponse;
-import io.harness.spec.server.idp.v1.model.CheckStatus;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import lombok.experimental.UtilityClass;
 
 @OwnedBy(HarnessTeam.IDP)
 @UtilityClass
 public class CheckStatsMapper {
-  public CheckStatsResponse toDTO(
-      Set<BackstageCatalogEntity> entities, Map<String, CheckStatus.StatusEnum> statusMap, String name) {
+  public CheckStatsResponse toDTO(List<CheckStatsEntity> checkStatsEntities, String name) {
     CheckStatsResponse response = new CheckStatsResponse();
     response.setName(name);
+    long lastComputedAt = 0;
     List<CheckStats> checkStats = new ArrayList<>();
-    for (BackstageCatalogEntity entity : entities) {
-      String entityId = entity.getMetadata().getUid();
-      if (!statusMap.containsKey(entityId) || (statusMap.containsKey(entityId) && statusMap.get(entityId) == null)) {
-        continue;
-      }
+    for (CheckStatsEntity checkStatsEntity : checkStatsEntities) {
       CheckStats stats = new CheckStats();
-      stats.setName(entity.getMetadata().getName());
-      stats.setOwner(BackstageCatalogEntityTypes.getEntityOwner(entity));
-      stats.setSystem(BackstageCatalogEntityTypes.getEntitySystem(entity));
-      stats.setKind(entity.getKind());
-      stats.setType(BackstageCatalogEntityTypes.getEntityType(entity));
-      stats.setStatus(String.valueOf(statusMap.get(entityId)));
+      StatsMetadata metadata = checkStatsEntity.getMetadata();
+      stats.setName(metadata.getName());
+      stats.setNamespace(metadata.getNamespace());
+      stats.setOwner(metadata.getOwner());
+      stats.setSystem(metadata.getSystem());
+      stats.setKind(metadata.getKind());
+      stats.setType(metadata.getType());
+      lastComputedAt = Long.max(lastComputedAt, checkStatsEntity.getLastUpdatedAt());
+      stats.setStatus(checkStatsEntity.getStatus());
       checkStats.add(stats);
     }
+    response.setTimestamp(lastComputedAt);
     response.setStats(checkStats);
     return response;
   }

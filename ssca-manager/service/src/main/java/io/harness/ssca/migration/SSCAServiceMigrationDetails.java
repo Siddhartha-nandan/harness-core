@@ -35,6 +35,13 @@ public class SSCAServiceMigrationDetails implements MigrationDetails {
         .add(Pair.of(2, ArtifactEntityMigration.class))
         .add(Pair.of(3, EnforcementSummaryCreatedTimeMigration.class))
         .add(Pair.of(4, EnforcementSummaryProjectParamMigration.class))
+        .add(Pair.of(5, ArtifactEnvCountMigration.class))
+        .add(Pair.of(6, ArtifactNullEnvCountMigration.class))
+        .add(Pair.of(7, AddInvalidFieldToArtifactEntity.class))
+        .add(Pair.of(8, AddEnvCountsToArtifactEntity.class))
+        .add(Pair.of(9, ArtifactEmptyTagMigration.class))
+        .add(Pair.of(10, RemoveDuplicateOrchestrationIdFromArtifact.class))
+        .add(Pair.of(11, RemoveDuplicateIdFromEnforcementSummary.class))
         .build();
   }
 }

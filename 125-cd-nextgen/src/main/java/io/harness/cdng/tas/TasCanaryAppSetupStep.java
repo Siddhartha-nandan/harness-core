@@ -33,6 +33,7 @@ import io.harness.delegate.beans.TaskData;
 import io.harness.delegate.beans.logstreaming.UnitProgressData;
 import io.harness.delegate.beans.logstreaming.UnitProgressDataMapper;
 import io.harness.delegate.task.TaskParameters;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
 import io.harness.delegate.task.pcf.CfCommandTypeNG;
 import io.harness.delegate.task.pcf.request.CfBasicSetupRequestNG;
 import io.harness.delegate.task.pcf.response.CfBasicSetupResponseNG;
@@ -64,6 +65,7 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import software.wings.beans.TaskType;
 
@@ -203,6 +205,12 @@ public class TasCanaryAppSetupStep extends CdTaskChainExecutable implements TasS
   }
 
   @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
+  }
+
+  @Override
   public Class<StepBaseParameters> getStepParametersClass() {
     return StepBaseParameters.class;
   }
@@ -222,6 +230,9 @@ public class TasCanaryAppSetupStep extends CdTaskChainExecutable implements TasS
     Integer olderActiveVersionCountToKeep =
         new BigDecimal(getParameterFieldValue(tasCanaryAppSetupStepParameters.getExistingVersionToKeep()))
             .intValueExact();
+
+    ArtifactBundleDetails artifactBundleDetails = tasStepHelper.getArtifactBundleDetails(ambiance, tasManifestOutcome);
+
     TaskParameters taskParameters =
         CfBasicSetupRequestNG.builder()
             .accountId(AmbianceUtils.getAccountId(ambiance))
@@ -238,6 +249,7 @@ public class TasCanaryAppSetupStep extends CdTaskChainExecutable implements TasS
             .olderActiveVersionCountToKeep(olderActiveVersionCountToKeep)
             .routeMaps(routeMaps)
             .useAppAutoScalar(!isNull(executionPassThroughData.getTasManifestsPackage().getAutoscalarManifestYml()))
+            .artifactBundleDetails(artifactBundleDetails)
             .build();
 
     TaskData taskData = TaskData.builder()

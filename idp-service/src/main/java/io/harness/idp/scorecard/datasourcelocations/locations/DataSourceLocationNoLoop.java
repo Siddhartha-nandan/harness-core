@@ -9,13 +9,14 @@ package io.harness.idp.scorecard.datasourcelocations.locations;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.backstagebeans.BackstageCatalogEntity;
+import io.harness.idp.backstage.entities.BackstageCatalogEntity;
 import io.harness.idp.scorecard.common.beans.DataSourceConfig;
 import io.harness.idp.scorecard.common.beans.HttpConfig;
 import io.harness.idp.scorecard.datapoints.entity.DataPointEntity;
 import io.harness.idp.scorecard.datasourcelocations.beans.ApiRequestDetails;
 import io.harness.idp.scorecard.datasourcelocations.client.DslClient;
 import io.harness.idp.scorecard.datasourcelocations.entity.DataSourceLocationEntity;
+import io.harness.idp.scorecard.datasourcelocations.entity.HttpDataSourceLocationEntity;
 import io.harness.idp.scorecard.scores.beans.DataFetchDTO;
 import io.harness.spec.server.idp.v1.model.InputValue;
 
@@ -31,6 +32,8 @@ public abstract class DataSourceLocationNoLoop extends DataSourceLocation {
       Map<String, String> replaceableHeaders, Map<String, String> possibleReplaceableRequestBodyPairs,
       Map<String, String> possibleReplaceableUrlPairs, DataSourceConfig dataSourceConfig) {
     ApiRequestDetails apiRequestDetails = fetchApiRequestDetails(dataSourceLocationEntity);
+    String urlUnmodified = apiRequestDetails.getUrl();
+    String requestBodyUnmodified = apiRequestDetails.getRequestBody();
     matchAndReplaceHeaders(apiRequestDetails.getHeaders(), replaceableHeaders);
     HttpConfig httpConfig = (HttpConfig) dataSourceConfig;
     apiRequestDetails.getHeaders().putAll(httpConfig.getHeaders());
@@ -50,6 +53,10 @@ public abstract class DataSourceLocationNoLoop extends DataSourceLocation {
     Response response = getResponse(apiRequestDetails, dslClient, accountIdentifier);
     Map<String, Object> ruleData = processResponse(response);
     data.put(dataPointAndInputValues.get(0).getRuleIdentifier(), ruleData);
+
+    apiRequestDetails.setUrl(urlUnmodified);
+    apiRequestDetails.setRequestBody(requestBodyUnmodified);
+    ((HttpDataSourceLocationEntity) dataSourceLocationEntity).setApiRequestDetails(apiRequestDetails);
 
     return data;
   }

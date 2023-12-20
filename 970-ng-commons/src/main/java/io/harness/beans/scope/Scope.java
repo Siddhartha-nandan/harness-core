@@ -6,6 +6,7 @@
  */
 
 package io.harness.beans;
+
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
@@ -48,8 +49,20 @@ public class Scope {
         .build();
   }
 
+  public static Scope of(ScopeInfo scopeInfo) {
+    return Scope.builder()
+        .accountIdentifier(scopeInfo.getAccountIdentifier())
+        .orgIdentifier(scopeInfo.getOrgIdentifier())
+        .projectIdentifier(scopeInfo.getProjectIdentifier())
+        .build();
+  }
+
   public static Scope of(String accountIdentifier) {
     return Scope.builder().accountIdentifier(accountIdentifier).orgIdentifier(null).projectIdentifier(null).build();
+  }
+
+  public static Scope of(String accountIdentifier, String orgIdentifier) {
+    return Scope.builder().accountIdentifier(accountIdentifier).orgIdentifier(orgIdentifier).build();
   }
 
   public static Scope of(final String accountIdentifier, final String orgIdentifier, final String projectIdentifier,

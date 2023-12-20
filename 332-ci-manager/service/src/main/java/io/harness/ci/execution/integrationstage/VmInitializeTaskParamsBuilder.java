@@ -11,6 +11,7 @@ import static io.harness.beans.serializer.RunTimeInputHandler.resolveArchType;
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveMapParameter;
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveOSType;
 import static io.harness.beans.sweepingoutputs.StageInfraDetails.STAGE_INFRA_DETAILS;
+import static io.harness.ci.commonconstants.CIExecutionConstants.FREE_CI_ATTR;
 import static io.harness.data.encoding.EncodingUtils.decodeBase64;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
@@ -92,6 +93,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -140,14 +142,36 @@ public class VmInitializeTaskParamsBuilder {
     String poolId;
     List<String> fallbackPoolIds = new ArrayList<>();
     vmInitializeUtils.validateDebug(hostedVmInfraYaml, ambiance);
+    boolean ciFreeLicense = vmInitializeUtils.isCIFreeLicense(accountId);
+
     if (isBareMetalEnabled(accountId, hostedVmInfraYaml.getSpec().getPlatform(), initializeStepInfo)) {
       poolId = getHostedBareMetalPoolId(hostedVmInfraYaml.getSpec().getPlatform());
-      fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, false));
+      // https://harness.atlassian.net/browse/CI-10749
+      // Free accounts with bare metal enabled will not have a fallback option
+      if (!ciFreeLicense) {
+        fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "fallback"));
+        fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, ""));
+        fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "east5"));
+        fallbackPoolIds.add(getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "west4"));
+      }
     } else {
-      poolId = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, false);
-      String fallbackPoolId = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true);
-      if (!isEmpty(fallbackPoolId)) {
-        fallbackPoolIds.add(fallbackPoolId);
+      poolId = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, false, "west-1");
+
+      String fallbackPoolIdWest4 = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "west4");
+      String fallbackPoolIdEast1 =
+          getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "fallback");
+      String fallbackPoolIdEast5 = getHostedPoolId(hostedVmInfraYaml.getSpec().getPlatform(), accountId, true, "east5");
+
+      if (!isEmpty(fallbackPoolIdEast1)) {
+        fallbackPoolIds.add(fallbackPoolIdEast1);
+      }
+
+      if (!isEmpty(fallbackPoolIdEast5)) {
+        fallbackPoolIds.add(fallbackPoolIdEast5);
+      }
+
+      if (!isEmpty(fallbackPoolIdWest4)) {
+        fallbackPoolIds.add(fallbackPoolIdWest4);
       }
     }
     boolean distributed =
@@ -155,6 +179,11 @@ public class VmInitializeTaskParamsBuilder {
     CIVmInitializeTaskParams params =
         getVmInitializeParams(initializeStepInfo, ambiance, poolId, fallbackPoolIds, distributed);
     SetupVmRequest setupVmRequest = convertHostedSetupParams(params, ambiance);
+    if (ciFreeLicense) {
+      // this tag is used in dlite for marking it as a free ci account
+      setupVmRequest.getTags().put(FREE_CI_ATTR, "true");
+    }
+
     List<ExecuteStepRequest> services = new ArrayList<>();
     if (isNotEmpty(params.getServiceDependencies())) {
       for (VmServiceDependency serviceDependency : params.getServiceDependencies()) {
@@ -228,7 +257,10 @@ public class VmInitializeTaskParamsBuilder {
     Map<String, String> envVars = new HashMap<>();
     Map<String, String> stageEnvVars =
         vmInitializeUtils.getStageEnvVars(integrationStageConfig.getPlatform(), os, workDir, poolId, infrastructure);
+    Map<String, String> proxyEnvVars = vmInitializeUtils.getStageProxyVars(
+        integrationStageConfig, os, ngAccess, connectorUtils, infrastructure, gitConnector);
     envVars.putAll(stageEnvVars);
+    envVars.putAll(proxyEnvVars);
     envVars.putAll(codebaseEnvVars);
     envVars.putAll(gitEnvVars);
 
@@ -258,6 +290,9 @@ public class VmInitializeTaskParamsBuilder {
     CIVmSecretEvaluator ciVmSecretEvaluator = CIVmSecretEvaluator.builder().build();
     Set<String> secrets = ciVmSecretEvaluator.resolve(stageVars, ngAccess, ambiance.getExpressionFunctorToken());
     envVars.putAll(stageVars);
+    String tiSvcToken = getTISvcToken(accountID);
+    secrets.add(Base64.getEncoder().encodeToString(tiSvcToken.getBytes()));
+    secrets.add(envVars.get("HARNESS_STO_SERVICE_TOKEN"));
 
     return CIVmInitializeTaskParams.builder()
         .poolID(poolId)
@@ -277,7 +312,7 @@ public class VmInitializeTaskParamsBuilder {
         .logSvcToken(getLogSvcToken(accountID))
         .logSvcIndirectUpload(featureFlagService.isEnabled(FeatureName.CI_INDIRECT_LOG_UPLOAD, accountID))
         .tiUrl(tiServiceUtils.getTiServiceConfig().getBaseUrl())
-        .tiSvcToken(getTISvcToken(accountID))
+        .tiSvcToken(tiSvcToken)
         .stoUrl(stoServiceUtils.getStoServiceConfig().getBaseUrl())
         .stoSvcToken(getSTOSvcToken(accountID))
         .secrets(new ArrayList<>(secrets))
@@ -552,7 +587,7 @@ public class VmInitializeTaskParamsBuilder {
   // getHostedPoolId returns a pool ID that can be used for GCP hosted builds. If fallback is set to true,
   // it will try to find a fallback pool value instead. Fallback pools are currently only present for linux
   // amd64 architecture.
-  public String getHostedPoolId(ParameterField<Platform> platform, String accountId, boolean fallback) {
+  public String getHostedPoolId(ParameterField<Platform> platform, String accountId, boolean fallback, String region) {
     OSType os = OSType.Linux;
     ArchType arch = ArchType.Amd64;
     String fallbackSuffix = "-fallback";
@@ -598,7 +633,11 @@ public class VmInitializeTaskParamsBuilder {
 
     if (fallback) {
       if (fallbackEligible) {
-        return pool + fallbackSuffix;
+        if (isNotEmpty(region)) {
+          return format("%s-%s", pool, region);
+        } else {
+          return pool;
+        }
       }
       return "";
     }

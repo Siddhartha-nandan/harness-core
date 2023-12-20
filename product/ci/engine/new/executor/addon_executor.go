@@ -7,7 +7,9 @@ package executor
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
@@ -22,7 +24,8 @@ import (
 )
 
 const (
-	maxAddonRetries = 100 // max retry time of 10 seconds
+	maxAddonRetries    = 100 // max retry time of 10 seconds
+	addonDisconnectErr = "Error while dialing: dial tcp"
 )
 
 var (
@@ -59,13 +62,25 @@ func ExecuteStepOnAddon(ctx context.Context, step *pb.UnitStep, tmpFilePath stri
 	if err != nil {
 		log.Errorw("Execute step RPC failed", "step_id", stepID,
 			"elapsed_time_ms", utils.TimeSince(st), zap.Error(err))
+		if strings.Contains(err.Error(), addonDisconnectErr) {
+			err = fmt.Errorf("Could not connect to addon client after max retries %v", maxAddonRetries)
+		}
 		return nil, nil, err
 	}
 
 	log.Infow("Successfully executed step", "step_id", stepID,
 		"elapsed_time_ms", utils.TimeSince(st))
 	stepOutput := &output.StepOutput{}
-	stepOutput.Output.Variables = ret.GetOutput()
+	if ret.GetOutput() != nil && len(ret.GetOutput()) > 0 {
+		stepOutput.Output.Variables = ret.GetOutput()
+	} else if ret.GetOutputs() != nil && len(ret.GetOutputs()) > 0 {
+		stepOutput.Output.OutputVariables = ret.GetOutputs()
+		variables := make(map[string]string)
+		for _, o := range ret.GetOutputs() {
+			variables[o.Key] = o.Value
+		}
+		stepOutput.Output.Variables = variables
+	}
 	artifact := ret.GetArtifact()
 	return stepOutput, artifact, nil
 }

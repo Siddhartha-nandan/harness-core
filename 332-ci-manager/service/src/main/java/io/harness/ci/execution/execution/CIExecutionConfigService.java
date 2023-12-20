@@ -157,6 +157,24 @@ public class CIExecutionConfigService {
       case PROVENANCE_GCR:
         executionConfig.setProvenanceGcrTag(value);
         break;
+      case COOKIECUTTER:
+        executionConfig.setCookieCutter(value);
+        break;
+      case CREATE_REPO:
+        executionConfig.setCreateRepo(value);
+        break;
+      case DIRECT_PUSH:
+        executionConfig.setDirectPush(value);
+        break;
+      case REGISTER_CATALOG:
+        executionConfig.setRegisterCatalog(value);
+        break;
+      case CREATE_CATALOG:
+        executionConfig.setCreateCatalog(value);
+        break;
+      case SLACK_NOTIFY:
+        executionConfig.setSlackNotify(value);
+        break;
       default:
         throw new BadRequestException(format("Field %s does not exist for infra type: K8", field));
     }
@@ -213,6 +231,24 @@ public class CIExecutionConfigService {
         break;
       case SSCA_ENFORCEMENT:
         vmImageConfig.setSscaEnforcement(value);
+        break;
+      case COOKIECUTTER:
+        vmImageConfig.setCookieCutter(value);
+        break;
+      case CREATE_REPO:
+        vmImageConfig.setCreateRepo(value);
+        break;
+      case DIRECT_PUSH:
+        vmImageConfig.setDirectPush(value);
+        break;
+      case REGISTER_CATALOG:
+        vmImageConfig.setRegisterCatalog(value);
+        break;
+      case CREATE_CATALOG:
+        vmImageConfig.setCreateCatalog(value);
+        break;
+      case SLACK_NOTIFY:
+        vmImageConfig.setSlackNotify(value);
         break;
       default:
         throw new BadRequestException(format("Field %s does not exist for infra type: VM", field));
@@ -573,6 +609,27 @@ public class CIExecutionConfigService {
       case SLSA_VERIFICATION_GCR:
         return getApplicableImage(stepInfoType, accountLevelExecutionConfig.getSlsaVerificationGcrTag(),
             globalExecutionConfig.getSlsaVerificationGcrTag());
+      case COOKIECUTTER:
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getCookieCutter(), globalExecutionConfig.getCookieCutter());
+      case CREATE_REPO:
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getCreateRepo(), globalExecutionConfig.getCreateRepo());
+      case DIRECT_PUSH:
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getDirectPush(), globalExecutionConfig.getDirectPush());
+      case REGISTER_CATALOG:
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getRegisterCatalog(), globalExecutionConfig.getRegisterCatalog());
+      case CREATE_CATALOG:
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getCreateCatalog(), globalExecutionConfig.getCreateCatalog());
+      case SLACK_NOTIFY:
+        return getApplicableImage(
+            stepInfoType, accountLevelExecutionConfig.getSlackNotify(), globalExecutionConfig.getSlackNotify());
+      case IACM_TERRAFORM_PLUGIN:
+      case IACM_APPROVAL:
+        return Strings.EMPTY;
       default:
         throw new BadRequestException(format(UNEXPECTED_ERR_FORMAT, stepInfoType));
     }
@@ -635,6 +692,18 @@ public class CIExecutionConfigService {
       case IACM_TERRAFORM_PLUGIN:
       case IACM_APPROVAL:
         return ciExecutionServiceConfig.getStepConfig().getIacmTerraform();
+      case COOKIECUTTER:
+        return ciExecutionServiceConfig.getStepConfig().getCookieCutter();
+      case CREATE_REPO:
+        return ciExecutionServiceConfig.getStepConfig().getCreateRepo();
+      case DIRECT_PUSH:
+        return ciExecutionServiceConfig.getStepConfig().getDirectPush();
+      case REGISTER_CATALOG:
+        return ciExecutionServiceConfig.getStepConfig().getRegisterCatalog();
+      case CREATE_CATALOG:
+        return ciExecutionServiceConfig.getStepConfig().getCreateCatalog();
+      case SLACK_NOTIFY:
+        return ciExecutionServiceConfig.getStepConfig().getSlackNotify();
       default:
         throw new BadRequestException(format(UNEXPECTED_ERR_FORMAT, stepInfoType));
     }
@@ -704,6 +773,24 @@ public class CIExecutionConfigService {
       case SSCA_ENFORCEMENT:
         return getApplicableImage(
             stepInfoType, accountLevelImageConfig.getSscaEnforcement(), globalImageConfig.getSscaEnforcement());
+      case COOKIECUTTER:
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getCookieCutter(), globalImageConfig.getCookieCutter());
+      case CREATE_REPO:
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getCreateRepo(), globalImageConfig.getCreateRepo());
+      case DIRECT_PUSH:
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getDirectPush(), globalImageConfig.getDirectPush());
+      case REGISTER_CATALOG:
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getRegisterCatalog(), globalImageConfig.getRegisterCatalog());
+      case CREATE_CATALOG:
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getCreateCatalog(), globalImageConfig.getCreateCatalog());
+      case SLACK_NOTIFY:
+        return getApplicableImage(
+            stepInfoType, accountLevelImageConfig.getSlackNotify(), globalImageConfig.getSlackNotify());
       default:
         throw new BadRequestException(format(UNEXPECTED_ERR_FORMAT, stepInfoType));
     }
@@ -763,6 +850,12 @@ public class CIExecutionConfigService {
       case IACM_APPROVAL:
       case SSCA_ORCHESTRATION:
       case SSCA_ENFORCEMENT:
+      case COOKIECUTTER:
+      case CREATE_REPO:
+      case DIRECT_PUSH:
+      case CREATE_CATALOG:
+      case SLACK_NOTIFY:
+      case REGISTER_CATALOG:
         break;
       default:
         throw new BadRequestException(format(UNEXPECTED_ERR_FORMAT, stepInfoType));
@@ -807,6 +900,18 @@ public class CIExecutionConfigService {
         return vmImageConfig.getSscaOrchestration();
       case SSCA_ENFORCEMENT:
         return vmImageConfig.getSscaEnforcement();
+      case COOKIECUTTER:
+        return vmImageConfig.getCookieCutter();
+      case CREATE_REPO:
+        return vmImageConfig.getCreateRepo();
+      case DIRECT_PUSH:
+        return vmImageConfig.getDirectPush();
+      case REGISTER_CATALOG:
+        return vmImageConfig.getRegisterCatalog();
+      case CREATE_CATALOG:
+        return vmImageConfig.getCreateCatalog();
+      case SLACK_NOTIFY:
+        return vmImageConfig.getSlackNotify();
       default:
         throw new BadRequestException(format(UNEXPECTED_ERR_FORMAT, stepInfoType));
     }

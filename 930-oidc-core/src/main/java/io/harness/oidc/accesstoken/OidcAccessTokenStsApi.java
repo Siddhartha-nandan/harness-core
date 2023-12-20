@@ -13,7 +13,7 @@ import retrofit2.http.Headers;
 import retrofit2.http.POST;
 
 public interface OidcAccessTokenStsApi {
-  @POST("v1/token")
+  @POST("/v1/token/")
   @Headers("Content-Type: application/json")
-  Call<OidcWorkloadAccessTokenResponse> exchangeToken(@Body OidcWorkloadAccessTokenRequest request);
+  Call<OidcWorkloadAccessTokenResponse> exchangeWorkloadAccessToken(@Body OidcWorkloadAccessTokenRequest request);
 }

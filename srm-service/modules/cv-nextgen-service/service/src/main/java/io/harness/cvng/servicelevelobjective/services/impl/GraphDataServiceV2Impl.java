@@ -9,6 +9,7 @@ package io.harness.cvng.servicelevelobjective.services.impl;
 
 import static io.harness.cvng.core.services.CVNextGenConstants.MAX_NUMBER_OF_POINTS;
 import static io.harness.cvng.core.services.CVNextGenConstants.SLI_RECORD_BUCKET_SIZE;
+import static io.harness.cvng.utils.SLOGraphUtils.windowAndMetricLessSLO;
 
 import io.harness.cvng.core.beans.params.MonitoredServiceParams;
 import io.harness.cvng.core.beans.params.ProjectParams;
@@ -26,7 +27,7 @@ import io.harness.cvng.servicelevelobjective.beans.ServiceLevelObjectiveType;
 import io.harness.cvng.servicelevelobjective.entities.AbstractServiceLevelObjective;
 import io.harness.cvng.servicelevelobjective.entities.CompositeServiceLevelObjective;
 import io.harness.cvng.servicelevelobjective.entities.SLIRecordBucket;
-import io.harness.cvng.servicelevelobjective.entities.SLIState;
+import io.harness.cvng.servicelevelobjective.entities.SLIRecordCount;
 import io.harness.cvng.servicelevelobjective.entities.ServiceLevelIndicator;
 import io.harness.cvng.servicelevelobjective.entities.SimpleServiceLevelObjective;
 import io.harness.cvng.servicelevelobjective.services.api.GraphDataServiceV2;
@@ -94,6 +95,9 @@ public class GraphDataServiceV2Impl implements GraphDataServiceV2 {
       Instant startTime, Instant endTime, int totalErrorBudgetMinutes, TimeRangeParams filter,
       AbstractServiceLevelObjective serviceLevelObjective, long numOfDataPointsInBetween) {
     SLIMissingDataType sliMissingDataType = serviceLevelIndicator.getSliMissingDataType();
+    if (Objects.isNull(sliMissingDataType)) {
+      sliMissingDataType = SLIMissingDataType.GOOD;
+    }
     int sliVersion = serviceLevelIndicator.getVersion();
     filter = validateAndgetTimeRangeParams(serviceLevelIndicator, startTime, endTime, totalErrorBudgetMinutes, filter);
     List<SLIRecordBucket> sliRecordBuckets = sliRecordBucketService.getSLIRecordBucketsForFilterRange(
@@ -103,14 +107,13 @@ public class GraphDataServiceV2Impl implements GraphDataServiceV2 {
     double errorBudgetRemainingPercentage = 100;
     double sliStatusPercentage = 0;
     long initialErrorBudget =
-        serviceLevelIndicator.getSLIEvaluationType() == SLIEvaluationType.WINDOW ? totalErrorBudgetMinutes : 0;
+        windowAndMetricLessSLO.contains(serviceLevelIndicator.getSLIEvaluationType()) ? totalErrorBudgetMinutes : 0;
     long totalErrorBudget = initialErrorBudget;
     long errorBudgetRemaining = initialErrorBudget;
     long errorBudgetBurned = 0L;
     boolean isCalculatingSLI = false;
     if (!sliRecordBuckets.isEmpty()) {
       long disabledMinutesFromStart = 0;
-      long skippedRecordFromStart = 0;
       long badCountTillRangeEndTime = 0L;
       long badCountTillRangeStartTime = -1L;
       int currentDisabledRangeIndex = 0;
@@ -118,7 +121,7 @@ public class GraphDataServiceV2Impl implements GraphDataServiceV2 {
       List<EntityDisableTime> disableTimes = getEntityDisableTimes(serviceLevelIndicator);
       SLIRecordBucket firstSLIRecord = sliRecordBuckets.get(0);
       SLIValue lastSLIValue = SLIValue.builder().build();
-      Pair<Long, Long> sliBaselineRunningCountPair =
+      SLIRecordCount sliBaselineRunningCountPair =
           sliRecordBucketService.getPreviousBucketRunningCount(firstSLIRecord, serviceLevelIndicator);
       for (int currentSLIBucketIndex = 0; currentSLIBucketIndex < sliRecordBuckets.size(); currentSLIBucketIndex++) {
         SLIRecordBucket currentSLIRecordBucket = sliRecordBuckets.get(currentSLIBucketIndex);
@@ -140,12 +143,10 @@ public class GraphDataServiceV2Impl implements GraphDataServiceV2 {
           return getSloGraphDataForVersionMismatch(serviceLevelIndicator, errorBudgetRemaining, totalErrorBudget,
               errorBudgetRemainingPercentage, errorBudgetBurndowns, sliTrends, sliStatusPercentage, errorBudgetBurned);
         }
-        skippedRecordFromStart +=
-            currentSLIRecordBucket.getSliStates().stream().filter(sliState -> sliState == SLIState.SKIP_DATA).count();
 
-        SLIValue currentSLIValue = sliRecordBucketService.calculateSLIValue(
-            serviceLevelIndicator.getSLIEvaluationType(), sliMissingDataType, currentSLIRecordBucket,
-            sliBaselineRunningCountPair, sliBeginningMinute, skippedRecordFromStart, disabledMinutesFromStart);
+        SLIValue currentSLIValue =
+            sliRecordBucketService.calculateSLIValue(serviceLevelIndicator.getSLIEvaluationType(), sliMissingDataType,
+                currentSLIRecordBucket, sliBaselineRunningCountPair, sliBeginningMinute, disabledMinutesFromStart);
 
         if (currentSLIBucketIndex == sliRecordBuckets.size() - 1) {
           lastSLIValue = currentSLIValue;
@@ -201,7 +202,7 @@ public class GraphDataServiceV2Impl implements GraphDataServiceV2 {
         && !sliRecordBucket.getBucketStartTime().isBefore(
             DateTimeUtils.roundDownTo1MinBoundary(filter.getStartTime()))) {
       Long previousBadRunningCount =
-          sliRecordBucketService.getPreviousBucketRunningCount(sliRecordBucket, serviceLevelIndicator).getRight();
+          sliRecordBucketService.getPreviousBucketRunningCount(sliRecordBucket, serviceLevelIndicator).getBadCount();
       badCountTillRangeStartTime = sliRecordBucketService.getBadCountTillRangeStartTime(
           serviceLevelIndicator, sliMissingDataType, sliValue, sliRecordBucket, previousBadRunningCount);
     }
@@ -210,8 +211,8 @@ public class GraphDataServiceV2Impl implements GraphDataServiceV2 {
 
   private static TimeRangeParams validateAndgetTimeRangeParams(ServiceLevelIndicator serviceLevelIndicator,
       Instant startTime, Instant endTime, int totalErrorBudgetMinutes, TimeRangeParams filter) {
-    Preconditions.checkState(
-        !(totalErrorBudgetMinutes == 0 && serviceLevelIndicator.getSLIEvaluationType() == SLIEvaluationType.WINDOW),
+    Preconditions.checkState(!(totalErrorBudgetMinutes == 0
+                                 && windowAndMetricLessSLO.contains(serviceLevelIndicator.getSLIEvaluationType())),
         "Total error budget minutes should not be zero.");
     if (Objects.isNull(filter)) {
       filter = TimeRangeParams.builder().startTime(startTime).endTime(endTime).build();
@@ -277,7 +278,7 @@ public class GraphDataServiceV2Impl implements GraphDataServiceV2 {
 
   public static long getTotalErrorBudget(ServiceLevelIndicator serviceLevelIndicator, long totalErrorBudgetMinutes,
       SLIValue sliValue, AbstractServiceLevelObjective serviceLevelObjective) {
-    if (serviceLevelIndicator.getSLIEvaluationType() == SLIEvaluationType.WINDOW) {
+    if (windowAndMetricLessSLO.contains(serviceLevelIndicator.getSLIEvaluationType())) {
       return totalErrorBudgetMinutes;
     } else {
       return (long) ((100.0 - serviceLevelObjective.getSloTargetPercentage()) * sliValue.getTotal()) / 100;

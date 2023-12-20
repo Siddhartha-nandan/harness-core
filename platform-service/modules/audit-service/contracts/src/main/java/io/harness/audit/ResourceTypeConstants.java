@@ -39,6 +39,8 @@ public class ResourceTypeConstants {
   public static final String API_KEY = "API_KEY";
   public static final String TOKEN = "TOKEN";
   public static final String DELEGATE_TOKEN = "DELEGATE_TOKEN";
+  public static final String DASHBOARD = "DASHBOARD";
+  public static final String DASHBOARD_FOLDER = "DASHBOARD_FOLDER";
   public static final String GOVERNANCE_POLICY = "GOVERNANCE_POLICY";
   public static final String GOVERNANCE_POLICY_SET = "GOVERNANCE_POLICY_SET";
   public static final String FILE = "FILE";
@@ -105,4 +107,7 @@ public class ResourceTypeConstants {
   public static final String GITOPS_APPLICATION = "GITOPS_APPLICATION";
 
   public static final String CODE_REPOSITORY = "CODE_REPOSITORY";
+  public static final String MODULE_LICENSE = "MODULE_LICENSE";
+
+  public static final String SSCA_ARTIFACT = "SSCA_ARTIFACT";
 }

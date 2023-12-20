@@ -28,6 +28,8 @@ import io.harness.cdng.gitops.service.ClusterService;
 import io.harness.connector.services.ConnectorService;
 import io.harness.eventsframework.api.Producer;
 import io.harness.exception.InvalidRequestException;
+import io.harness.gitaware.helper.GitAwareEntityHelper;
+import io.harness.gitx.GitXSettingsHelper;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.entitysetupusage.service.EntitySetupUsageService;
 import io.harness.ng.core.environment.mappers.EnvironmentFilterHelper;
@@ -92,6 +94,8 @@ public class RefreshInputsHelperTest extends NgManagerTestBase {
   @Mock CustomDeploymentEntitySetupHelper customDeploymentEntitySetupHelper;
   @Mock InfrastructureEntitySetupUsageHelper infrastructureEntitySetupUsageHelper;
   @Mock HPersistence hPersistence;
+
+  @Mock GitXSettingsHelper gitXSettingsHelper;
   ServiceEntityServiceImpl serviceEntityService;
   EnvironmentServiceImpl environmentService;
   InfrastructureEntityServiceImpl infrastructureEntityService;
@@ -107,19 +111,20 @@ public class RefreshInputsHelperTest extends NgManagerTestBase {
   @Mock @Named(DEFAULT_CONNECTOR_SERVICE) private ConnectorService connectorService;
   @Mock EnvironmentFilterHelper environmentFilterHelper;
   @Mock CDGitXService cdGitXService;
+  @Mock GitAwareEntityHelper gitAwareEntityHelper;
 
   @Before
   public void setup() throws IOException {
     serviceEntityService = spy(new ServiceEntityServiceImpl(serviceRepository, entitySetupUsageService, eventProducer,
         outboxService, transactionTemplate, serviceOverrideService, serviceOverridesServiceV2, entitySetupUsageHelper,
-        ngFeatureFlagHelperService, connectorService, cdGitXService));
+        ngFeatureFlagHelperService, connectorService, cdGitXService, gitXSettingsHelper));
     infrastructureEntityService = spy(new InfrastructureEntityServiceImpl(infrastructureRepository, transactionTemplate,
         outboxService, customDeploymentEntitySetupHelper, infrastructureEntitySetupUsageHelper, hPersistence,
-        serviceOverridesServiceV2, overrideV2ValidationHelper, null));
+        serviceOverridesServiceV2, overrideV2ValidationHelper, null, environmentService, gitAwareEntityHelper));
     environmentService = spy(new EnvironmentServiceImpl(environmentRepository, entitySetupUsageService, eventProducer,
         outboxService, transactionTemplate, infrastructureEntityService, clusterService, serviceOverrideService,
         serviceOverridesServiceV2, serviceEntityService, accountClient, settingsClient,
-        environmentEntitySetupUsageHelper, overrideV2ValidationHelper, environmentFilterHelper));
+        environmentEntitySetupUsageHelper, overrideV2ValidationHelper, environmentFilterHelper, gitXSettingsHelper));
     environmentRefreshHelper = spy(new EnvironmentRefreshHelper(environmentService, infrastructureEntityService,
         serviceOverrideService, serviceOverridesServiceV2, accountClient, overrideV2ValidationHelper));
     on(entityFetchHelper).set("serviceEntityService", serviceEntityService);
@@ -161,7 +166,7 @@ public class RefreshInputsHelperTest extends NgManagerTestBase {
     doReturn("infrastructureDefinitions:\n"
         + "  - identifier: \"infra2\"\n")
         .when(infrastructureEntityService)
-        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv",
+        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null,
             Collections.singletonList("infra2"), false, NoInputMergeInputAction.ADD_IDENTIFIER_NODE);
 
     String refreshedYaml =
@@ -299,7 +304,7 @@ public class RefreshInputsHelperTest extends NgManagerTestBase {
     doReturn("infrastructureDefinitions:\n"
         + "- identifier: \"infra2\"")
         .when(infrastructureEntityService)
-        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv",
+        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null,
             Collections.singletonList("infra2"), false, NoInputMergeInputAction.ADD_IDENTIFIER_NODE);
 
     String refreshedYaml =
@@ -323,7 +328,7 @@ public class RefreshInputsHelperTest extends NgManagerTestBase {
     doReturn("infrastructureDefinitions:\n"
         + "- identifier: \"IDENTIFIER\"")
         .when(infrastructureEntityService)
-        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv",
+        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null,
             Collections.singletonList("IDENTIFIER"), false, NoInputMergeInputAction.ADD_IDENTIFIER_NODE);
 
     String refreshedYaml =
@@ -343,7 +348,7 @@ public class RefreshInputsHelperTest extends NgManagerTestBase {
     doReturn("infrastructureDefinitions:\n"
         + "- identifier: \"infra1\"")
         .when(infrastructureEntityService)
-        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv",
+        .createInfrastructureInputsFromYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, "testenv", null,
             Collections.singletonList("infra1"), false, NoInputMergeInputAction.ADD_IDENTIFIER_NODE);
 
     String refreshedYaml = refreshInputsHelper.refreshInputs(

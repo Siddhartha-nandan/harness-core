@@ -40,6 +40,7 @@ import io.harness.factory.ClosingFactory;
 import io.harness.file.NGFileServiceModule;
 import io.harness.filestore.NgFileStoreModule;
 import io.harness.filter.FiltersModule;
+import io.harness.gitaware.helper.GitAwareEntityHelper;
 import io.harness.gitsync.persistance.GitSyncSdkService;
 import io.harness.gitsync.persistance.NoOpGitSyncSdkServiceImpl;
 import io.harness.gitsync.persistance.testing.GitSyncablePersistenceTestModule;
@@ -63,6 +64,7 @@ import io.harness.ng.core.serviceoverridev2.service.DummyServiceOverridesService
 import io.harness.ng.core.serviceoverridev2.service.ServiceOverridesServiceV2;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ng.core.utils.CDGitXService;
 import io.harness.ng.core.utils.CDGitXServiceImpl;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
@@ -241,6 +243,7 @@ public class CDNGEntitiesTestRule implements InjectorRuleMixin, MethodRule, Mong
             .annotatedWith(Names.named(EventsFrameworkConstants.SETUP_USAGE))
             .toInstance(mock(NoOpProducer.class));
         bind(ClusterService.class).to(ClusterServiceImpl.class);
+        bind(GitAwareEntityHelper.class).toProvider(() -> mock(GitAwareEntityHelper.class));
         bind(InfrastructureEntityService.class).to(InfrastructureEntityServiceImpl.class);
         bind(NGSettingsClient.class).toInstance(mock(NGSettingsClient.class));
         bind(EnvironmentService.class).to(EnvironmentServiceImpl.class);
@@ -253,6 +256,7 @@ public class CDNGEntitiesTestRule implements InjectorRuleMixin, MethodRule, Mong
         bind(AccountClient.class).annotatedWith(Names.named("PRIVILEGED")).toInstance(mock(AccountClient.class));
         bind(OrganizationService.class).toInstance(mock(OrganizationService.class));
         bind(ProjectService.class).toInstance(mock(ProjectService.class));
+        bind(ScopeInfoService.class).toInstance(mock(ScopeInfoService.class));
         bind(ExecutorService.class)
             .annotatedWith(Names.named("service-gitx-executor"))
             .toInstance(mock(ExecutorService.class));

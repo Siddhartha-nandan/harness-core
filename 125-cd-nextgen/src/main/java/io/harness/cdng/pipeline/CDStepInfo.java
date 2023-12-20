@@ -31,6 +31,8 @@ import io.harness.cdng.azure.webapp.AzureWebAppSlotDeploymentStepInfo;
 import io.harness.cdng.azure.webapp.AzureWebAppSwapSlotStepInfo;
 import io.harness.cdng.azure.webapp.AzureWebAppTrafficShiftStepInfo;
 import io.harness.cdng.bamboo.BambooBuildStepInfo;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo;
+import io.harness.cdng.containerStepGroup.DownloadHarnessStoreStepInfo;
 import io.harness.cdng.customDeployment.FetchInstanceScriptStepInfo;
 import io.harness.cdng.ecs.EcsBasicRollbackStepInfo;
 import io.harness.cdng.ecs.EcsBlueGreenCreateServiceStepInfo;
@@ -164,7 +166,8 @@ import io.swagger.annotations.ApiModel;
               ServerlessAwsLambdaPackageV2StepInfo.class, ServerlessAwsLambdaRollbackV2StepInfo.class,
               AwsCdkBootstrapStepInfo.class, AwsCdkSynthStepInfo.class, AwsCdkDiffStepInfo.class,
               AwsCdkDeployStepInfo.class, AwsCdkDestroyStepInfo.class, AwsCdkRollbackStepInfo.class,
-              EcsServiceSetupStepInfo.class, EcsUpgradeContainerStepInfo.class, EcsBasicRollbackStepInfo.class})
+              EcsServiceSetupStepInfo.class, EcsUpgradeContainerStepInfo.class, EcsBasicRollbackStepInfo.class,
+              DownloadAwsS3StepInfo.class, DownloadHarnessStoreStepInfo.class})
 
 @OwnedBy(HarnessTeam.CDC)
 // keeping this class because of the swagger annotation and UI dependency on it

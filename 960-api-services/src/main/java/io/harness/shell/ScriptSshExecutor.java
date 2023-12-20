@@ -78,7 +78,7 @@ public class ScriptSshExecutor extends AbstractScriptExecutor {
         output.append(response.getOutput());
       }
       if (response.getStatus() == SUCCESS) {
-        saveExecutionLog("Command finished with status " + SUCCESS, SUCCESS);
+        saveExecutionLog("Command finished with status " + SUCCESS);
       }
       return response.getStatus();
     } catch (Exception ex) {
@@ -107,9 +107,29 @@ public class ScriptSshExecutor extends AbstractScriptExecutor {
     }
   }
 
+  public ExecuteCommandResponse executeCommandString(String command, List<String> envVariablesToCollect,
+      List<String> secretEnvVariablesToCollect, Long timeoutInMillis, String directoryPath) {
+    secretEnvVariablesToCollect =
+        secretEnvVariablesToCollect == null ? Collections.emptyList() : secretEnvVariablesToCollect;
+    try {
+      return executeCommandStringWithSshClient(
+          command, envVariablesToCollect, secretEnvVariablesToCollect, directoryPath);
+    } catch (Exception ex) {
+      log.error("Failed to execute command: ", ex);
+      throw ex;
+    } finally {
+      logCallback.dispatchLogs();
+    }
+  }
+
   private ExecuteCommandResponse executeCommandStringWithSshClient(
       String command, List<String> envVariablesToCollect, List<String> secretEnvVariablesToCollect) {
-    command = setupBashEnvironment(command, config, envVariablesToCollect, secretEnvVariablesToCollect);
+    return executeCommandStringWithSshClient(command, envVariablesToCollect, secretEnvVariablesToCollect, null);
+  }
+
+  private ExecuteCommandResponse executeCommandStringWithSshClient(String command, List<String> envVariablesToCollect,
+      List<String> secretEnvVariablesToCollect, String directoryPath) {
+    command = setupBashEnvironment(command, config, envVariablesToCollect, secretEnvVariablesToCollect, directoryPath);
     ExecResponse response = SshClientManager.exec(
         ExecRequest.builder().command(command).displayCommand(false).build(), config, logCallback);
     Map<String, String> envVariablesMap = new HashMap<>();
@@ -145,13 +165,15 @@ public class ScriptSshExecutor extends AbstractScriptExecutor {
 
       validateExportedVariables(envVariablesMap);
     }
-    saveExecutionLog("Command finished with status " + response.getStatus(), response.getStatus());
+    saveExecutionLog("Command finished with status " + response.getStatus());
     return result;
   }
 
   private String setupBashEnvironment(String command, SshSessionConfig sshSessionConfig,
-      List<String> envVariablesToCollect, List<String> secretEnvVariablesToCollect) {
-    String directoryPath = resolveEnvVarsInPath(sshSessionConfig.getWorkingDirectory() + "/");
+      List<String> envVariablesToCollect, List<String> secretEnvVariablesToCollect, String directoryPath) {
+    if (EmptyPredicate.isEmpty(directoryPath)) {
+      directoryPath = resolveEnvVarsInPath(sshSessionConfig.getWorkingDirectory() + "/");
+    }
 
     if (isNotEmpty(sshSessionConfig.getEnvVariables())) {
       String exportCommand = buildExportForEnvironmentVariables(sshSessionConfig.getEnvVariables());

@@ -48,24 +48,27 @@ public interface ShellScriptHelperService {
       @Nonnull Ambiance ambiance, @Nonnull String shellScript, Boolean includeInfraSelectors);
 
   void prepareTaskParametersForExecutionTarget(@Nonnull Ambiance ambiance,
-      @Nonnull ShellScriptStepParameters shellScriptStepParameters,
-      @Nonnull ShellScriptTaskParametersNGBuilder taskParametersNGBuilder);
+      @Nonnull ShellScriptStepParametersV0 shellScriptStepParameters,
+      @Nonnull ShellScriptTaskParametersNGBuilder taskParametersNGBuilder, boolean executeOnDelegate);
 
-  String getShellScript(@Nonnull ShellScriptStepParameters stepParameters, Ambiance ambiance);
+  boolean toExecuteOnDelegate(ParameterField<ExecutionTarget> executionTargetParameterField);
+
+  String getShellScript(@Nonnull ShellScriptStepParametersV0 stepParameters, Ambiance ambiance);
 
   String getWorkingDirectory(
-      ParameterField<String> workingDirectory, @Nonnull ScriptType scriptType, boolean onDelegate);
+      ParameterField<ExecutionTarget> executionTarget, @Nonnull ScriptType scriptType, boolean executeOnDelegate);
 
+  TaskParameters buildShellScriptTaskParametersNG(@Nonnull Ambiance ambiance,
+      @Nonnull ShellScriptStepParametersV0 shellScriptStepParameters, String sessionTimeout, String commandUnit);
   TaskParameters buildShellScriptTaskParametersNG(
-      @Nonnull Ambiance ambiance, @Nonnull ShellScriptStepParameters shellScriptStepParameters, String sessionTimeout);
-  TaskParameters buildShellScriptTaskParametersNG(
-      @Nonnull Ambiance ambiance, @Nonnull ShellScriptStepParameters shellScriptStepParameters);
+      @Nonnull Ambiance ambiance, @Nonnull ShellScriptStepParametersV0 shellScriptStepParameters);
 
   ShellScriptBaseOutcome prepareShellScriptOutcome(
       Map<String, String> sweepingOutputEnvVariables, Map<String, Object> outputVariables);
 
   void exportOutputVariablesUsingAlias(@Nonnull Ambiance ambiance,
-      @Nonnull ShellScriptStepParameters shellScriptStepParameters, @Nonnull ShellScriptBaseOutcome shellScriptOutcome);
+      @Nonnull ShellScriptStepParametersV0 shellScriptStepParametersV0,
+      @Nonnull ShellScriptBaseOutcome shellScriptOutcome);
 
   static ShellScriptBaseOutcome prepareShellScriptOutcome(Map<String, String> sweepingOutputEnvVariables,
       Map<String, Object> outputVariables, Set<String> secretOutputVariables) {
@@ -113,12 +116,12 @@ public interface ShellScriptHelperService {
 
   // Convert v1 step parameters to v0, we could not do this during plan creation because we also need to support
   // expressions following v1 rfc
-  static io.harness.steps.shellscript.ShellScriptStepParameters getShellScriptStepParameters(
+  static io.harness.steps.shellscript.ShellScriptStepParametersV0 getShellScriptStepParameters(
       StepBaseParameters stepParameters) {
     String version = stepParameters.getSpec().getVersion();
     switch (version) {
       case HarnessYamlVersion.V0:
-        return (io.harness.steps.shellscript.ShellScriptStepParameters) stepParameters.getSpec();
+        return (io.harness.steps.shellscript.ShellScriptStepParametersV0) stepParameters.getSpec();
       case HarnessYamlVersion.V1:
         return ((io.harness.steps.shellscript.v1.ShellScriptStepParameters) stepParameters.getSpec())
             .toShellScriptParametersV0();

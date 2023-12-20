@@ -82,6 +82,7 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.Spy;
 
 @RunWith(JUnitParamsRunner.class)
 public class DeploymentStageFilterJsonCreatorV2Test extends CategoryTest {
@@ -89,6 +90,7 @@ public class DeploymentStageFilterJsonCreatorV2Test extends CategoryTest {
   @Mock private EnvironmentService environmentService;
   @Mock private NGFeatureFlagHelperService ngFeatureFlagHelperService;
   @Mock private InfrastructureEntityService infraService;
+  @Spy @InjectMocks private StageFilterCreatorHelper stageFilterCreatorHelper;
   @InjectMocks private DeploymentStageFilterJsonCreatorV2 filterCreator;
 
   private final ClassLoader classLoader = this.getClass().getClassLoader();
@@ -155,8 +157,8 @@ public class DeploymentStageFilterJsonCreatorV2Test extends CategoryTest {
     doReturn(Optional.of(infra)).when(infraService).get("accountId", "orgId", "projectId", "env-id", "infra-id");
     doReturn(Lists.newArrayList(infra))
         .when(infraService)
-        .getAllInfrastructureFromIdentifierList(
-            "accountId", "orgId", "projectId", "env-id", Lists.newArrayList("infra-id"));
+        .getAllInfrastructuresWithYamlFromIdentifierList(
+            "accountId", "orgId", "projectId", "env-id", null, Lists.newArrayList("infra-id"));
     doReturn(true).when(ngFeatureFlagHelperService).isEnabled("accountId", FeatureName.CDS_SCOPE_INFRA_TO_SERVICES);
   }
 
@@ -319,6 +321,45 @@ public class DeploymentStageFilterJsonCreatorV2Test extends CategoryTest {
     PipelineFilter filter = filterCreator.getFilter(ctx, node);
     assertThat(filter.toJson())
         .isEqualTo("{\"deploymentTypes\":[],\"environmentNames\":[],\"serviceNames\":[],\"infrastructureTypes\":[]}");
+  }
+
+  @Test
+  @Owner(developers = LOVISH_BANSAL)
+  @Category(UnitTests.class)
+  @Parameters(method = "getDeploymentStageConfigWithFiltersAndEnvUseFromStage")
+  public void getFiltersWithEnvFiltersEnvUseFromStage(DeploymentStageNode node) throws IOException {
+    doReturn(true)
+        .when(ngFeatureFlagHelperService)
+        .isEnabled("accountId", FeatureName.CDS_SUPPORT_DIFFERENT_INFRA_DURING_ENV_PROPAGATION);
+    Environment envEntity2 = Environment.builder()
+                                 .accountId("accountId")
+                                 .identifier("my-env-prod")
+                                 .orgIdentifier("orgId")
+                                 .projectIdentifier("projectId")
+                                 .name("my-env-prod")
+                                 .build();
+    doReturn(Lists.newArrayList(infra))
+        .when(infraService)
+        .getAllInfrastructuresWithYamlFromIdentifierList(
+            "accountId", "orgId", "projectId", "my-env-prod", null, Lists.newArrayList("infraId"));
+    doReturn(Optional.of(envEntity2))
+        .when(environmentService)
+        .getMetadata("accountId", "orgId", "projectId", "my_env_prod", false);
+    String pipelineYaml = readFileIntoUTF8String("cdng/creator/servicePlanCreator/pipeline.yaml");
+    YamlField pipeline = new YamlField("pipeline", YamlNode.fromYamlPath(pipelineYaml, ""));
+    YamlField specField = new YamlField("spec", getStageNodeAtIndex(pipeline, 12));
+    FilterCreationContext ctx = FilterCreationContext.builder()
+                                    .setupMetadata(SetupMetadata.newBuilder()
+                                                       .setAccountId("accountId")
+                                                       .setOrgId("orgId")
+                                                       .setProjectId("projectId")
+                                                       .build())
+                                    .currentField(specField)
+                                    .build();
+    PipelineFilter filter = filterCreator.getFilter(ctx, node);
+    assertThat(filter.toJson())
+        .isEqualTo(
+            "{\"deploymentTypes\":[\"Kubernetes\"],\"environmentNames\":[],\"serviceNames\":[\"service-id\"],\"infrastructureTypes\":[\"KubernetesDirect\"]}");
   }
 
   @Test
@@ -790,6 +831,13 @@ public class DeploymentStageFilterJsonCreatorV2Test extends CategoryTest {
   private Object[][] getDeploymentStageConfigWithFilters() throws IOException {
     final DeploymentStageNode node1 =
         getDeploymentStageNodeFromYaml("multisvcinfra/gitops/deployStageWithEnvironmentAndFilter.yaml");
+
+    return new Object[][] {{node1}};
+  }
+
+  private Object[][] getDeploymentStageConfigWithFiltersAndEnvUseFromStage() throws IOException {
+    final DeploymentStageNode node1 =
+        getDeploymentStageNodeFromYaml("multisvcinfra/gitops/deployStageWithEnvironmentUseFromStageAndFilter.yaml");
 
     return new Object[][] {{node1}};
   }

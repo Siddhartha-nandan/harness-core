@@ -37,6 +37,7 @@ import io.harness.cvng.core.beans.monitoredService.MonitoredServiceChangeDetailS
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceDTO;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceListItemDTO;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServicePlatformResponse;
+import io.harness.cvng.core.beans.monitoredService.MonitoredServiceReference;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceResponse;
 import io.harness.cvng.core.beans.monitoredService.MonitoredServiceWithHealthSources;
 import io.harness.cvng.core.beans.monitoredService.healthSouceSpec.HealthSourceDTO;
@@ -205,7 +206,7 @@ public class MonitoredServiceResource {
     Preconditions.checkArgument(identifier.equals(monitoredServiceDTO.getIdentifier()),
         String.format(
             "Identifier %s does not match with path identifier %s", monitoredServiceDTO.getIdentifier(), identifier));
-    return new RestResponse<>(monitoredServiceService.update(accountId, monitoredServiceDTO));
+    return new RestResponse<>(monitoredServiceService.update(accountId, monitoredServiceDTO, false));
   }
 
   @PUT
@@ -337,6 +338,34 @@ public class MonitoredServiceResource {
       @QueryParam("hideNotConfiguredServices") @ApiParam(defaultValue = "false") boolean hideNotConfiguredServices) {
     return ResponseDTO.newResponse(monitoredServiceService.getMSPlatformList(projectParams.getProjectParams(),
         environmentIdentifiers, offset, pageSize, filter, monitoredServiceType, hideNotConfiguredServices));
+  }
+
+  @GET
+  @Path("/reconciliation-required")
+  @Timed
+  @ExceptionMetered
+  @ResponseMetered
+  @ApiOperation(value = "check if a template referenced monitored service(s) require reconciliation",
+      nickname = "isReconciliationRequiredForMonitoredServices")
+  @Operation(operationId = "isReconciliationRequiredForMonitoredServices",
+      summary = "check if a template referenced monitored service(s) require reconciliation",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "default",
+            description = "check if a template referenced monitored service(s) require reconciliation")
+      })
+  @NGAccessControlCheck(resourceType = MONITORED_SERVICE, permission = VIEW_PERMISSION)
+  public ResponseDTO<Boolean>
+  isReconciliationRequiredForMonitoredServices(
+      @ApiParam(required = true) @NotNull @BeanParam ProjectScopedProjectParams scopedTemplateProjectParams,
+      @Parameter(description = "Scoped template identifier used to create the monitored service") @NotNull @QueryParam(
+          "templateIdentifier") String templateIdentifier,
+      @Parameter(description = "Template version Label") @NotNull @QueryParam(
+          NGCommonEntityConstants.VERSION_LABEL_KEY) String versionLabel,
+      @Parameter(description = "filter to check if reconciliation required for a particular monitored service")
+      @QueryParam("monitoredServiceIdentifier") String monitoredServiceIdentifier) {
+    return ResponseDTO.newResponse(monitoredServiceService.isReconciliationRequiredForMonitoredServices(
+        scopedTemplateProjectParams.getProjectParams(), templateIdentifier, versionLabel, monitoredServiceIdentifier));
   }
 
   @GET
@@ -722,5 +751,81 @@ public class MonitoredServiceResource {
       @Valid @Body String yaml) {
     return new RestResponse<>(
         monitoredServiceService.updateFromYaml(projectParam.getProjectParams(), identifier, yaml));
+  }
+
+  @GET
+  @Path("/{identifier}/resolved-template-inputs")
+  @Timed
+  @ExceptionMetered
+  @ResponseMetered
+  @ApiOperation(
+      value = "get monitored service resolved template inputs", nickname = "getMonitoredServiceResolvedTemplateInputs")
+  @Operation(operationId = "getMonitoredServiceResolvedTemplateInputs",
+      summary = "get monitored service resolved template inputs",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(responseCode = "default", description = "get monitored service resolved template inputs")
+      })
+  @NGAccessControlCheck(resourceType = MONITORED_SERVICE, permission = VIEW_PERMISSION)
+  public ResponseDTO<String>
+  getMonitoredServiceResolvedTemplateInputs(
+      @ApiParam(required = true) @NotNull @BeanParam ProjectScopedProjectParams scopedProjectParams,
+      @Parameter(description = NGCommonEntityConstants.IDENTIFIER_PARAM_MESSAGE) @ApiParam(
+          required = true) @NotNull @PathParam("identifier") String identifier,
+      @Parameter(description = "Scoped template identifier used to create the monitored service") @NotNull @QueryParam(
+          "templateIdentifier") String templateIdentifier,
+      @Parameter(description = "Template version Label") @NotNull @QueryParam(
+          NGCommonEntityConstants.VERSION_LABEL_KEY) String versionLabel) {
+    return ResponseDTO.newResponse(monitoredServiceService.getResolvedTemplateInputs(
+        scopedProjectParams.getProjectParams(), identifier, templateIdentifier, versionLabel));
+  }
+
+  @PUT
+  @Path("/{identifier}/detach-template")
+  @Timed
+  @ExceptionMetered
+  @ResponseMetered
+  @ApiOperation(
+      value = "delete template reference from monitored service", nickname = "detachMonitoredServiceFromTemplate")
+  @Operation(operationId = "detachMonitoredServiceFromTemplate",
+      summary = "delete template reference from monitored service",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(responseCode = "default", description = "delete template reference from monitored service")
+      })
+  @NGAccessControlCheck(resourceType = MONITORED_SERVICE, permission = EDIT_PERMISSION)
+  public ResponseDTO<Boolean>
+  detachMonitoredServiceFromTemplate(@NotNull @Valid @BeanParam ProjectParams projectParams,
+      @Parameter(description = NGCommonEntityConstants.IDENTIFIER_PARAM_MESSAGE) @ApiParam(
+          required = true) @NotNull @PathParam("identifier") String identifier) {
+    return ResponseDTO.newResponse(
+        monitoredServiceService.detachMonitoredServiceFromTemplate(projectParams, identifier));
+  }
+
+  @GET
+  @Path("/reconciliation-status")
+  @Timed
+  @ExceptionMetered
+  @ResponseMetered
+  @ApiOperation(value = "fetch reconciliation status for template referenced monitored services",
+      nickname = "getMonitoredServiceReconciliationStatuses")
+  @Operation(operationId = "getMonitoredServiceReconciliationStatuses",
+      summary = "fetch reconciliation status for template referenced monitored services",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "default",
+            description = "fetch reconciliation status for template referenced monitored services")
+      })
+  @NGAccessControlCheck(resourceType = MONITORED_SERVICE, permission = VIEW_PERMISSION)
+  public RestResponse<PageResponse<MonitoredServiceReference>>
+  getMonitoredServiceReconciliationStatuses(@NotNull @Valid @BeanParam ProjectParams projectParams,
+      @Parameter(description = "Scoped template identifier used to create the monitored service") @NotNull @QueryParam(
+          "templateIdentifier") String templateIdentifier,
+      @Parameter(description = "Template version Label") @NotNull @QueryParam(NGCommonEntityConstants.VERSION_LABEL_KEY)
+      String templateVersionLabel, @BeanParam PageParams pageParams) {
+    return new RestResponse<>(monitoredServiceService.getMonitoredServiceReconciliationStatuses(
+        projectParams, templateIdentifier, templateVersionLabel, pageParams));
   }
 }

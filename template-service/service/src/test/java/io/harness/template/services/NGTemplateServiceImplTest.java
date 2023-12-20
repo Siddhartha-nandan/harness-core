@@ -21,6 +21,7 @@ import static io.harness.rule.OwnerRule.VIVEK_DIXIT;
 import static io.harness.template.resources.beans.PermissionTypes.TEMPLATE_VIEW_PERMISSION;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.joor.Reflect.on;
 import static org.mockito.ArgumentMatchers.any;
@@ -120,6 +121,7 @@ import io.harness.template.resources.beans.PermissionTypes;
 import io.harness.template.resources.beans.TemplateFilterPropertiesDTO;
 import io.harness.template.resources.beans.TemplateImportRequestDTO;
 import io.harness.template.resources.beans.TemplateMoveConfigResponse;
+import io.harness.template.resources.beans.UpdateGitDetailsList;
 import io.harness.template.resources.beans.UpdateGitDetailsParams;
 import io.harness.template.resources.beans.yaml.NGTemplateConfig;
 import io.harness.template.utils.NGTemplateFeatureFlagHelperService;
@@ -176,7 +178,7 @@ public class NGTemplateServiceImplTest extends TemplateServiceTestBase {
   @Mock GitXSettingsHelper gitXSettingsHelper;
   @Mock TemplateRbacHelper templateRbacHelper;
 
-  @InjectMocks NGTemplateServiceImpl templateService;
+  @Spy @InjectMocks NGTemplateServiceImpl templateService;
 
   @Mock private NGTemplateFeatureFlagHelperService ngTemplateFeatureFlagHelperService;
 
@@ -1706,6 +1708,10 @@ public class NGTemplateServiceImplTest extends TemplateServiceTestBase {
     doReturn(templateEntity)
         .when(ngTemplateService)
         .moveTemplateEntity(any(), any(), any(), any(), any(), any(TemplateMoveConfigOperationDTO.class), any());
+    doReturn(Optional.of(templateEntity))
+        .when(templateServiceHelper)
+        .getTemplate(anyString(), anyString(), anyString(), anyString(), anyString(), anyBoolean(), anyBoolean(),
+            anyBoolean(), anyBoolean());
     TemplateMoveConfigRequestDTO moveConfigOperationDTO =
         TemplateMoveConfigRequestDTO.builder()
             .isNewBranch(false)
@@ -2022,6 +2028,23 @@ public class NGTemplateServiceImplTest extends TemplateServiceTestBase {
         .isInstanceOf(EntityNotFoundException.class)
         .hasMessage(String.format(
             "Template not found for template identifier [template-movetogit] and version label [version1] in account %s, org orgId, project projId",
+            ACCOUNT_ID));
+  }
+
+  @Test
+  @Owner(developers = SHIVAM)
+  @Category(UnitTests.class)
+  public void testUpdateGitDetailsForMultiVersion() {
+    UpdateGitDetailsList updateGitDetailsList = UpdateGitDetailsList.builder()
+                                                    .updateGitDetailsParams(UpdateGitDetailsParams.builder().build())
+                                                    .version("v1")
+                                                    .build();
+    assertThatThrownBy(()
+                           -> templateService.updateGitDetailsForMultipleVersion(ACCOUNT_ID, ORG_IDENTIFIER,
+                               PROJ_IDENTIFIER, "template-movetogit", Collections.singletonList(updateGitDetailsList)))
+        .isInstanceOf(EntityNotFoundException.class)
+        .hasMessage(String.format(
+            "Template not found for template identifier [template-movetogit] and version label [v1] in account %s, org orgId, project projId",
             ACCOUNT_ID));
   }
 
@@ -2359,5 +2382,29 @@ public class NGTemplateServiceImplTest extends TemplateServiceTestBase {
     TemplateEntity result =
         templateService.getAndValidateOldTemplateEntity(newTemplateEntity, ORG_IDENTIFIER, PROJ_IDENTIFIER);
     assertThat(result).isEqualTo(oldTemplateEntity);
+  }
+
+  @Test
+  @Owner(developers = VIVEK_DIXIT)
+  @Category(UnitTests.class)
+  public void testStoreTypeCheckWithNullStoreType() {
+    TemplateMoveConfigRequestDTO requestDTO =
+        TemplateMoveConfigRequestDTO.builder()
+            .isNewBranch(false)
+            .moveConfigOperationType(TemplateMoveConfigOperationType.INLINE_TO_REMOTE)
+            .versionLabel(TEMPLATE_VERSION_LABEL)
+            .build();
+    // entity with null storeType.
+    doReturn(Optional.of(entity))
+        .when(templateService)
+        .get(anyString(), anyString(), anyString(), anyString(), anyString(), anyBoolean(), anyBoolean());
+
+    doReturn(entity)
+        .when(templateService)
+        .moveTemplateEntity(anyString(), anyString(), anyString(), anyString(), anyString(), any(), any());
+    assertThatCode(()
+                       -> templateService.moveTemplateStoreTypeConfig(
+                           ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, TEMPLATE_IDENTIFIER, requestDTO))
+        .doesNotThrowAnyException();
   }
 }

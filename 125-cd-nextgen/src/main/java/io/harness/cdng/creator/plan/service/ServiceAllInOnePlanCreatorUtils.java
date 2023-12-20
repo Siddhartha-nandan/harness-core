@@ -87,9 +87,11 @@ public class ServiceAllInOnePlanCreatorUtils {
    *      config files
    *      azure settings
    */
+
   public LinkedHashMap<String, PlanCreationResponse> addServiceNode(YamlField specField, KryoSerializer kryoSerializer,
       ServiceYamlV2 serviceYamlV2, EnvironmentYamlV2 environmentYamlV2, String serviceNodeId, String nextNodeId,
-      ServiceDefinitionType serviceType, ParameterField<String> envGroupRef, PlanCreationContext ctx) {
+      ServiceDefinitionType serviceType, ParameterField<String> envGroupRef, PlanCreationContext ctx,
+      boolean allowDifferentInfraForEnvPropagation) {
     if (isConcreteServiceRefUnavailable(serviceYamlV2) && serviceYamlV2.getUseFromStage() == null) {
       throw new InvalidRequestException("At least one of serviceRef and useFromStage fields is required.");
     }
@@ -103,7 +105,7 @@ public class ServiceAllInOnePlanCreatorUtils {
         : serviceYamlV2;
 
     final EnvironmentYamlV2 finalEnvironmentYamlV2 = useFromStage(environmentYamlV2)
-        ? useEnvironmentYamlFromStage(environmentYamlV2.getUseFromStage(), specField)
+        ? useEnvironmentYamlFromStage(environmentYamlV2, specField, allowDifferentInfraForEnvPropagation)
         : environmentYamlV2;
 
     final LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap = new LinkedHashMap<>();
@@ -305,7 +307,7 @@ public class ServiceAllInOnePlanCreatorUtils {
         serviceHooksNode.getUuid(), PlanCreationResponse.builder().planNode(serviceHooksNode).build());
 
     // Add Azure settings node
-    if (serviceType == ServiceDefinitionType.AZURE_WEBAPP) {
+    if (ServiceDefinitionType.AZURE_WEBAPP == serviceType) {
       PlanNode azureSettingsNode =
           PlanNode.builder()
               .uuid("azure-settings-" + UUIDGenerator.generateUuid())
@@ -325,7 +327,7 @@ public class ServiceAllInOnePlanCreatorUtils {
     }
 
     // Add Elastigroup settings node
-    if (serviceType == ServiceDefinitionType.ELASTIGROUP) {
+    if (ServiceDefinitionType.ELASTIGROUP == serviceType) {
       PlanNode elastigroupSettingsNode =
           PlanNode.builder()
               .uuid("elastigroup-settings-" + UUIDGenerator.generateUuid())
@@ -345,7 +347,7 @@ public class ServiceAllInOnePlanCreatorUtils {
     }
 
     // Add ASG settings node
-    if (serviceType == ServiceDefinitionType.ASG) {
+    if (ServiceDefinitionType.ASG == serviceType) {
       PlanNode asgSettingsNode =
           PlanNode.builder()
               .uuid("asg-settings-" + UUIDGenerator.generateUuid())
@@ -461,7 +463,8 @@ public class ServiceAllInOnePlanCreatorUtils {
   }
 
   public static EnvironmentYamlV2 useEnvironmentYamlFromStage(
-      @NotNull EnvironmentInfraUseFromStage useFromStage, YamlField specField) {
+      @NotNull EnvironmentYamlV2 environmentYaml, YamlField specField, boolean allowDifferentInfraForEnvPropagation) {
+    EnvironmentInfraUseFromStage useFromStage = environmentYaml.getUseFromStage();
     final YamlField environmentField = specField.getNode().getField(YamlTypes.ENVIRONMENT_YAML);
     String stage = useFromStage.getStage();
     if (stage.isBlank()) {
@@ -480,7 +483,23 @@ public class ServiceAllInOnePlanCreatorUtils {
       DeploymentStageConfig deploymentStage = stageElementConfig.getDeploymentStageConfig();
       if (deploymentStage != null) {
         validateEnvironmentInDeploymentStageConfig(deploymentStage, stage, specField);
-        return deploymentStage.getEnvironment();
+        EnvironmentYamlV2 useFromStageEnvironmentYaml = deploymentStage.getEnvironment();
+        if (allowDifferentInfraForEnvPropagation) {
+          if ((environmentYaml.getInfrastructureDefinitions() != null)
+              && (isNotEmpty(environmentYaml.getInfrastructureDefinitions().getValue())
+                  || (environmentYaml.getInfrastructureDefinitions().isExpression()
+                      && NGExpressionUtils.isStrictlyExpressionField(
+                          environmentYaml.getInfrastructureDefinitions().getExpressionValue())))) {
+            useFromStageEnvironmentYaml.setInfrastructureDefinitions(environmentYaml.getInfrastructureDefinitions());
+          } else if ((environmentYaml.getInfrastructureDefinition() != null)
+              && ((environmentYaml.getInfrastructureDefinition().getValue() != null)
+                  || (environmentYaml.getInfrastructureDefinition().isExpression()
+                      && NGExpressionUtils.isStrictlyExpressionField(
+                          environmentYaml.getInfrastructureDefinition().getExpressionValue())))) {
+            useFromStageEnvironmentYaml.setInfrastructureDefinition(environmentYaml.getInfrastructureDefinition());
+          }
+        }
+        return useFromStageEnvironmentYaml;
       } else {
         throw new InvalidArgumentsException("Stage identifier given in useFromStage doesn't exist");
       }

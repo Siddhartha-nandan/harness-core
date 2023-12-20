@@ -198,6 +198,13 @@ spec:
                 name: {{.Values.name}}
                 port:
                   number: 12003
+          - path: /(v2/scores.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: {{.Values.name}}
+                port:
+                  number: 12003
           - path: /(v1/scorecards.*)
             pathType: Prefix
             backend:
@@ -227,6 +234,13 @@ spec:
                 port:
                   number: 12003
           - path: /(usage.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: {{.Values.name}}
+                port:
+                  number: 12003
+          - path: /(v1/backstage-harness/sync.*)
             pathType: Prefix
             backend:
               service:

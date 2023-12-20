@@ -26,8 +26,9 @@ import (
 )
 
 const (
-	apiKeyEndpoint    = "/ng/api/token/validate?accountIdentifier=%s"
-	accountEndpoint   = "/gateway/api/account/%s"
+	apiKeyEndpoint    = "/token/validate?accountIdentifier=%s"
+	accountEndpoint   = "/accounts/%s"
+	aclEndpoint       = "/acl"
 	authAPIKeyHeader  = "x-api-key"
 	bearerTokenHeader = "Authorization"
 )
@@ -142,12 +143,24 @@ func (c *HTTPClient) ValidateApiKey(ctx context.Context, accountID, routingId, a
 
 func (c *HTTPClient) GetVanityURL(ctx context.Context, accountID, token string) (string, error) {
 	path := fmt.Sprintf(accountEndpoint, accountID)
-	account := new(Account)
+	account := new(AccountNG)
 	_, err := c.do(ctx, c.Endpoint+path, "GET", "", token, nil, account)
 	if err != nil {
 		return "", err
 	}
-	return account.Resource.SubdomainURL, nil
+	return account.Data.SubdomainURL, nil
+}
+
+func (c *HTTPClient) ValidateAccessforPipeline(ctx context.Context, token, accountID, pipelineID, projectID, orgID, resource, permission string) (bool, error) {
+
+	response := new(ACLResponse)
+	aclRequest := GetACLRequest(accountID, pipelineID, projectID, orgID, resource, permission)
+
+	_, err := c.do(ctx, c.Endpoint+aclEndpoint, "POST", "", token, aclRequest, response)
+	if err != nil {
+		return false, err
+	}
+	return response.Data.AccessControlList[0].Permitted, nil
 }
 
 func createBackoff(maxElapsedTime time.Duration) *backoff.ExponentialBackOff {
@@ -224,6 +237,7 @@ func (c *HTTPClient) do(ctx context.Context, path, method, apiKey, token string,
 	} else {
 		req.Header.Add(bearerTokenHeader, token)
 	}
+	req.Header.Add("content-type", "application/json")
 	res, err := c.client().Do(req)
 	if res != nil {
 		defer func() {
