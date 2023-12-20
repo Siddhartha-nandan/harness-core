@@ -14,6 +14,7 @@ java:
 #    CF_CLIENT_API_KEY: "dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq"
 service:
   annotations: {}
+  port: 14552
 autoscaling:
   enabled: false
 redis:

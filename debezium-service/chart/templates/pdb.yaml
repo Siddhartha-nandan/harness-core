@@ -1,7 +1,7 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: pipeline-service
+  name: debezium-service
   namespace: {{ .Release.Namespace }}
   {{- if .Values.global.commonLabels }}
   labels:
