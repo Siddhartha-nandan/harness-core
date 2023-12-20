@@ -76,7 +76,7 @@ spec:
       {{- end }}
       containers:
       - name: {{ include "iacm-manager.name" . }}
-        image: {{ include "common.images.image" (dict "imageRoot" .Values.image) }}
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
           {{- toYaml .Values.containerSecurityContext | nindent 10 }}

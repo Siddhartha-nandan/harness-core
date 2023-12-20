@@ -5,13 +5,13 @@ global:
   delegate:
     airgapped: false
   imagePullSecrets: []
-  image:
-    registry: docker.io
-    repository: harness/iacmmanager-signed
-    pullPolicy: IfNotPresent
-    tag: "latest"
-    digest: ""
-    imagePullSecrets: []
+  # image:
+  #   registry: docker.io
+  #   repository: harness/iacmmanager-signed
+  #   pullPolicy: IfNotPresent
+  #   tag: "latest"
+  #   digest: ""
+  #   imagePullSecrets: []
   istio:
     enabled: false
     gateway:
