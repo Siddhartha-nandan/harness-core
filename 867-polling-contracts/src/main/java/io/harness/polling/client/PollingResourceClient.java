@@ -14,7 +14,6 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.dto.PollingInfoForTriggers;
 import io.harness.dto.PollingResponseDTO;
 import io.harness.ng.core.dto.ResponseDTO;
-import io.harness.polling.bean.PollingType;
 
 import okhttp3.RequestBody;
 import retrofit2.Call;
@@ -42,5 +41,5 @@ public interface PollingResourceClient {
   @POST(POLLING_API + "/unsubscribe") Call<Boolean> unsubscribe(@Body RequestBody pollingItem);
   @DELETE(POLLING_API + "/delete-pollingdoc")
   Call<Boolean> delete(@Query(value = "accountId") String accountId, @Query(value = "orgId") String orgId,
-      @Query(value = "projectId") String projectId, @Query(value = "pollingType") PollingType pollingType);
+      @Query(value = "projectId") String projectId, @Query(value = "pollingType") String pollingType);
 }

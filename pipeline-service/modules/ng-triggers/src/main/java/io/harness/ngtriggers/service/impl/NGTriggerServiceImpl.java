@@ -110,7 +110,6 @@ import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.pms.yaml.YamlUtils;
-import io.harness.polling.bean.PollingType;
 import io.harness.polling.client.PollingResourceClient;
 import io.harness.polling.contracts.PollingItem;
 import io.harness.polling.contracts.service.PollingDocument;
@@ -1450,18 +1449,18 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   }
 
   public TriggerChangePollingInterval updatePollingInterval(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, PollingType triggerType) {
+      String accountIdentifier, String orgIdentifier, String projectIdentifier, String triggerType) {
     Boolean deletePollingDocs = false;
     try {
-      deletePollingDocs = SafeHttpCall.executeWithExceptions(
+      deletePollingDocs = NGRestUtils.getGeneralResponse(
           pollingResourceClient.delete(accountIdentifier, orgIdentifier, projectIdentifier, triggerType));
     } catch (Exception exception) {
       String msg = "Reset polling interval request failed " + exception;
       throw new InvalidRequestException(msg);
     }
     Optional<List<NGTriggerEntity>> ngTriggerEntityListOptional =
-        ngTriggerRepository.findByAccountIdAndOrgIdentifierAndProjectIdentifierAndEnabledAndDeletedNot(
-            accountIdentifier, orgIdentifier, projectIdentifier, true, false);
+        ngTriggerRepository.findByAccountIdAndOrgIdentifierAndProjectIdentifierAndTypeAndEnabledAndDeletedNot(
+            accountIdentifier, orgIdentifier, projectIdentifier, NGTriggerType.valueOf(triggerType), true, true);
     List<NGTriggerEntity> ngTriggerEntityList = ngTriggerEntityListOptional.get();
     for (NGTriggerEntity ngTriggerEntity : ngTriggerEntityList) {
       registerPollingAsync(ngTriggerEntity, false);
@@ -1469,8 +1468,7 @@ public class NGTriggerServiceImpl implements NGTriggerService {
     if (!deletePollingDocs) {
       return TriggerChangePollingInterval.builder()
           .success(false)
-          .message(
-              "Failed to update polling interval for some triggers, if you find failed status for triggers then please disable and re-enable them.")
+          .message("Failed to update polling interval for some triggers, please retry after some time.")
           .build();
     }
     return TriggerChangePollingInterval.builder().success(true).message("Successfully reset polling interval.").build();

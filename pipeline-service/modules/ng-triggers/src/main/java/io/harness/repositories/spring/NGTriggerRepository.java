@@ -12,6 +12,7 @@ import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import io.harness.annotation.HarnessRepo;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity;
+import io.harness.ngtriggers.beans.source.NGTriggerType;
 import io.harness.repositories.custom.NGTriggerRepositoryCustom;
 
 import java.util.List;
@@ -28,8 +29,8 @@ public interface NGTriggerRepository
 
   Optional<List<NGTriggerEntity>> findByAccountIdAndOrgIdentifierAndProjectIdentifierAndEnabledAndDeletedNot(
       String accountId, String orgIdentifier, String projectIdentifier, boolean enabled, boolean notDeleted);
-  Optional<List<NGTriggerEntity>> findByAccountIdAndOrgIdentifierAndProjectIdentifierAndDeletedNot(
-          String accountId, String orgIdentifier, String projectIdentifier, boolean notDeleted);
+  Optional<List<NGTriggerEntity>> findByAccountIdAndOrgIdentifierAndProjectIdentifierAndTypeAndEnabledAndDeletedNot(
+          String accountId, String orgIdentifier, String projectIdentifier, NGTriggerType type,boolean enabled, boolean notDeleted);
 
   Optional<List<NGTriggerEntity>> findByAccountIdAndOrgIdentifierAndEnabledAndDeletedNot(
       String accountId, String orgIdentifier, boolean enabled, boolean notDeleted);

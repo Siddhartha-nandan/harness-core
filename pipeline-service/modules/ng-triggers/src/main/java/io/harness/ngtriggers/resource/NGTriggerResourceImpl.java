@@ -59,7 +59,6 @@ import io.harness.ngtriggers.service.NGTriggerEventsService;
 import io.harness.ngtriggers.service.NGTriggerService;
 import io.harness.pms.annotations.PipelineServiceAuth;
 import io.harness.pms.rbac.PipelineRbacPermissions;
-import io.harness.polling.bean.PollingType;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.rest.RestResponse;
 import io.harness.security.annotations.InternalApi;
@@ -319,7 +318,7 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
   @Override
   public ResponseDTO<TriggerChangePollingInterval> updatePollingInterval(
       @NotNull @AccountIdentifier String accountIdentifier, @OrgIdentifier String orgIdentifier,
-      @ProjectIdentifier String projectIdentifier, PollingType pollingType) {
+      @ProjectIdentifier String projectIdentifier, String pollingType) {
     return ResponseDTO.newResponse(
         ngTriggerService.updatePollingInterval(accountIdentifier, orgIdentifier, projectIdentifier, pollingType));
   }

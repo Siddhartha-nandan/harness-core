@@ -33,7 +33,6 @@ import io.harness.ngtriggers.validations.ValidationResult;
 import java.util.List;
 import java.util.Optional;
 
-import io.harness.polling.bean.PollingType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -100,7 +99,7 @@ public interface NGTriggerService {
   void checkAuthorization(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       String pipelineIdentifier, List<HeaderConfig> headerConfigs);
   TriggerYamlDiffDTO getTriggerYamlDiff(TriggerDetails triggerDetails);
-  TriggerChangePollingInterval updatePollingInterval(String accountIdentifier, String orgIdentifier, String projectIdentifier, PollingType triggerType) ;
+  TriggerChangePollingInterval updatePollingInterval(String accountIdentifier, String orgIdentifier, String projectIdentifier, String triggerType) ;
 
   TriggerUpdateCount updateBranchName(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       String pipelineIdentifier, GitMoveOperationType operationType, String pipelineBranchName);
