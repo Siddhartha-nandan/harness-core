@@ -150,8 +150,8 @@ podLabels: {}
 
 # image
 image:
-  registry: us.gcr.io
-  repository: platform-205701/harness/saas-openjdk-8u242/iacm-manager
+  registry: docker.io
+  repository: harness/iacmmanager-signed
   pullPolicy: Always
   tag: 84000-000
   digest: ""
@@ -210,7 +210,10 @@ serviceAccount:
 nodeSelector: {}
 tolerations: []
 affinity: {}
-lifecycleHooks: {}
+lifecycleHooks:
+  preStop:
+    exec:
+      command: []
 
 # security
 podSecurityContext:
