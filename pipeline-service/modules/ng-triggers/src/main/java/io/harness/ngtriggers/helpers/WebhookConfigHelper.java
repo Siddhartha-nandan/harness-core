@@ -43,7 +43,6 @@ import io.harness.ngtriggers.beans.source.webhook.v2.github.event.GithubTriggerE
 import io.harness.ngtriggers.beans.source.webhook.v2.gitlab.action.GitlabMRCommentAction;
 import io.harness.ngtriggers.beans.source.webhook.v2.gitlab.action.GitlabPRAction;
 import io.harness.ngtriggers.beans.source.webhook.v2.gitlab.event.GitlabTriggerEvent;
-import io.harness.ngtriggers.beans.source.webhook.v2.harness.action.HarnessIssueCommentAction;
 import io.harness.ngtriggers.beans.source.webhook.v2.harness.action.HarnessPRAction;
 import io.harness.ngtriggers.beans.source.webhook.v2.harness.event.HarnessTriggerEvent;
 
@@ -140,10 +139,6 @@ public class WebhookConfigHelper {
     return Arrays.asList(GithubIssueCommentAction.values());
   }
 
-  public static List<HarnessIssueCommentAction> getHarnessIssueCommentAction() {
-    return Arrays.asList(HarnessIssueCommentAction.values());
-  }
-
   public static List<GithubReleaseAction> getGithubReleaseAction() {
     return Arrays.asList(GithubReleaseAction.values());
   }
@@ -204,11 +199,6 @@ public class WebhookConfigHelper {
     harnessMap.put(HarnessTriggerEvent.PUSH.getValue(), emptyList());
     harnessMap.put(HarnessTriggerEvent.PULL_REQUEST.getValue(),
         getHarnessPRAction().stream().map(githubPRAction -> githubPRAction.getValue()).collect(toList()));
-    harnessMap.put(HarnessTriggerEvent.ISSUE_COMMENT.getValue(),
-        getHarnessIssueCommentAction()
-            .stream()
-            .map(harnessIssueCommentAction -> harnessIssueCommentAction.getValue())
-            .collect(toList()));
 
     Map gitlabMap = new HashMap<GitEvent, List<GitAction>>();
     resposeMap.put(GITLAB.getValue(), gitlabMap);

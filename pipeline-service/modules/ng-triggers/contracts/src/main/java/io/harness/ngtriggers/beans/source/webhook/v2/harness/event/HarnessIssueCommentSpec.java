@@ -18,7 +18,6 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.ngtriggers.beans.source.webhook.v2.TriggerEventDataCondition;
 import io.harness.ngtriggers.beans.source.webhook.v2.git.GitAction;
 import io.harness.ngtriggers.beans.source.webhook.v2.git.GitEvent;
-import io.harness.ngtriggers.beans.source.webhook.v2.harness.action.HarnessIssueCommentAction;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;

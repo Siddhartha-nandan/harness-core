@@ -74,7 +74,6 @@ import io.harness.ngtriggers.beans.source.webhook.v2.github.event.GithubTriggerE
 import io.harness.ngtriggers.beans.source.webhook.v2.gitlab.action.GitlabMRCommentAction;
 import io.harness.ngtriggers.beans.source.webhook.v2.gitlab.action.GitlabPRAction;
 import io.harness.ngtriggers.beans.source.webhook.v2.gitlab.event.GitlabTriggerEvent;
-import io.harness.ngtriggers.beans.source.webhook.v2.harness.action.HarnessIssueCommentAction;
 import io.harness.ngtriggers.beans.source.webhook.v2.harness.action.HarnessPRAction;
 import io.harness.rule.Owner;
 

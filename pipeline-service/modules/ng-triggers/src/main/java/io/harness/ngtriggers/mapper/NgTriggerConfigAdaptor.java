@@ -71,7 +71,6 @@ import io.harness.ngtriggers.beans.source.webhook.v2.gitlab.event.GitlabPushSpec
 import io.harness.ngtriggers.beans.source.webhook.v2.gitlab.event.GitlabTriggerEvent;
 import io.harness.ngtriggers.beans.source.webhook.v2.harness.HarnessSpec;
 import io.harness.ngtriggers.beans.source.webhook.v2.harness.HarnessSpec.HarnessSpecBuilder;
-import io.harness.ngtriggers.beans.source.webhook.v2.harness.action.HarnessIssueCommentAction;
 import io.harness.ngtriggers.beans.source.webhook.v2.harness.action.HarnessPRAction;
 import io.harness.ngtriggers.beans.source.webhook.v2.harness.event.HarnessIssueCommentSpec;
 import io.harness.ngtriggers.beans.source.webhook.v2.harness.event.HarnessPRSpec;

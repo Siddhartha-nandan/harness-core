@@ -17,12 +17,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @OwnedBy(PIPELINE)
 public enum HarnessPRAction implements GitAction {
   @JsonProperty("Close") CLOSE("close", "Close"),
-  @JsonProperty("Edit") EDIT("update", "Edit"),
-  @JsonProperty("Open") OPEN("open", "Open"),
   @JsonProperty("Reopen") REOPEN("reopen", "Reopen"),
-  @JsonProperty("Label") LABEL("label", "Label"),
-  @JsonProperty("Unlabel") UNLABEL("unlabel", "Unlabel"),
-  @JsonProperty("Synchronize") SYNCHRONIZE("sync", "Synchronize");
+  @JsonProperty("Merged") MERGED("merge", "merge"),
+  @JsonProperty("Created") CREATED("created", "created"),
+  @JsonProperty("Comment") COMMENT("comment", "comment");
 
   private String value;
   private String parsedValue;
