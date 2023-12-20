@@ -57,7 +57,7 @@ public class CustomStagePlanCreator extends AbstractStagePlanCreator<CustomStage
   public LinkedHashMap<String, PlanCreationResponse> createPlanForChildrenNodes(
       PlanCreationContext ctx, CustomStageNodeV1 field) {
     LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap = new LinkedHashMap<>();
-    Map<String, YamlField> dependenciesNodeMap = new HashMap<>();
+    final Map<String, YamlField> dependenciesNodeMap = new HashMap<>();
 
     YamlField specField =
         Preconditions.checkNotNull(ctx.getCurrentField().getNode().getField(YAMLFieldNameConstants.SPEC));

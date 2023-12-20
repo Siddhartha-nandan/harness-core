@@ -274,7 +274,7 @@ public class DeploymentStagePlanCreator extends AbstractStagePlanCreator<Deploym
         addServiceNodeForGitOps(ctx, specField, planCreationResponseMap, stageNode, serviceNextNodeId);
     addSpecNode(planCreationResponseMap, specField, serviceNodeId);
 
-    Map<String, YamlField> dependenciesNodeMap = new HashMap<>();
+    final Map<String, YamlField> dependenciesNodeMap = new HashMap<>();
     dependenciesNodeMap.put(specField.getNode().getUuid(), specField);
 
     Dependency strategyDependency = getDependencyForStrategy(dependenciesNodeMap, field, ctx);

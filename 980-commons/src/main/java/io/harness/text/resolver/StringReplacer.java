@@ -343,7 +343,7 @@ public class StringReplacer {
         x++;
       }
       if (x > 0) {
-        return true;
+        break;
       }
     }
     if (i > 0) {
