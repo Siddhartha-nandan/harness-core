@@ -56,6 +56,8 @@ public class NextGenManagerDropwizardMetricsPublisherImpl implements MetricsPubl
       MetricFilter.startsWith("io.harness.ng.core.artifacts.resources.docker.DockerArtifactResource");
   private static final MetricFilter FILESTORE_RESOURCE_FILTER =
       MetricFilter.startsWith("io.harness.filestore.resource.FileStoreResource");
+  private static final MetricFilter PROJECT_RESOURCE_FILTER =
+          MetricFilter.startsWith("io.harness.ng.core.remote.ProjectResource");
   private static final String NG_MANAGER_RESOURCE_RESPONSE_COUNT_METRIC_NAME =
       "io_harness_ng_manager_resources_responses_count";
 
@@ -72,6 +74,8 @@ public class NextGenManagerDropwizardMetricsPublisherImpl implements MetricsPubl
     metricRegistry.getMeters(DOCKER_ARTIFACT_RESOURCE_FILTER)
         .forEach((key, value) -> recordResourceMeter(sanitizeMetricName(key), value));
     metricRegistry.getMeters(FILESTORE_RESOURCE_FILTER)
+        .forEach((key, value) -> recordResourceMeter(sanitizeMetricName(key), value));
+    metricRegistry.getMeters(PROJECT_RESOURCE_FILTER)
         .forEach((key, value) -> recordResourceMeter(sanitizeMetricName(key), value));
 
     Set<Map.Entry<String, Gauge>> gaugeSet = metricRegistry.getGauges().entrySet();

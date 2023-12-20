@@ -29,6 +29,8 @@ import static java.lang.Long.parseLong;
 import static javax.ws.rs.core.HttpHeaders.IF_MATCH;
 import static org.apache.commons.lang3.StringUtils.isNumeric;
 
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.harness.ModuleType;
 import io.harness.NGCommonEntityConstants;
 import io.harness.NGResourceFilterConstants;
@@ -149,6 +151,8 @@ public class ProjectResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns created Project")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<ProjectResponse>
   create(@Parameter(description = ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
              NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
@@ -177,6 +181,8 @@ public class ProjectResource {
         ApiResponse(responseCode = "default", description = "Returns Project having ID as specified in request")
       })
   @NGAccessControlCheck(resourceType = PROJECT, permission = VIEW_PROJECT_PERMISSION)
+  @Timed
+  @ResponseMetered
   public ResponseDTO<ProjectResponse>
   get(@Parameter(description = PROJECT_PARAM_MESSAGE) @NotNull @PathParam(
           NGCommonEntityConstants.IDENTIFIER_KEY) @ResourceIdentifier String identifier,
@@ -207,6 +213,8 @@ public class ProjectResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Paginated list of Projects")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PageResponse<ProjectResponse>>
   list(@Parameter(description = ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
            NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
@@ -253,6 +261,8 @@ public class ProjectResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Paginated list of Projects")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PageResponse<ProjectResponse>>
   listWithMultiOrg(@Parameter(description = ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
                        NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
@@ -300,6 +310,8 @@ public class ProjectResource {
         ApiResponse(responseCode = "default", description = "Returns updated Project details")
       })
   @NGAccessControlCheck(resourceType = PROJECT, permission = EDIT_PROJECT_PERMISSION)
+  @Timed
+  @ResponseMetered
   public ResponseDTO<ProjectResponse>
   update(@Parameter(description = "Version number of Project") @HeaderParam(IF_MATCH) String ifMatch,
       @Parameter(description = PROJECT_PARAM_MESSAGE) @NotNull @PathParam(
@@ -328,6 +340,8 @@ public class ProjectResource {
   @Path("{identifier}/move")
   @Hidden()
   @ApiOperation(value = "Move a Project across orgs", nickname = "moveProject")
+  @Timed
+  @ResponseMetered
   public ResponseDTO<Boolean> moveProject(
       @Parameter(description = PROJECT_PARAM_MESSAGE) @NotNull @PathParam(
           NGCommonEntityConstants.IDENTIFIER_KEY) @ResourceIdentifier String identifier,
@@ -361,6 +375,8 @@ public class ProjectResource {
                 "It returns true if the Project is deleted successfully and false if the Project is not deleted")
       })
   @NGAccessControlCheck(resourceType = PROJECT, permission = DELETE_PROJECT_PERMISSION)
+  @Timed
+  @ResponseMetered
   public ResponseDTO<Boolean>
   delete(@Parameter(description = "Version number of Project") @HeaderParam(IF_MATCH) String ifMatch,
       @Parameter(description = PROJECT_PARAM_MESSAGE) @NotNull @PathParam(
@@ -389,6 +405,8 @@ public class ProjectResource {
       },
       hidden = true)
   @InternalApi
+  @Timed
+  @ResponseMetered
   public ResponseDTO<List<ProjectDTO>>
   getProjectList(@Parameter(description = ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
                      NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
@@ -418,6 +436,8 @@ public class ProjectResource {
       },
       hidden = true)
   @InternalApi
+  @Timed
+  @ResponseMetered
   public ResponseDTO<ActiveProjectsCountDTO>
   getAccessibleProjectsCount(@Parameter(description = ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
                                  NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
