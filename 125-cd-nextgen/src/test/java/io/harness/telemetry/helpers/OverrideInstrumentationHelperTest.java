@@ -64,7 +64,6 @@ public class OverrideInstrumentationHelperTest extends CategoryTest {
   private final String PROJECT_ID = "project_id";
   private final String SVC_REF = "svc_ref";
   private final String ENV_REF = "env_ref";
-  private final String INFRA_REF = "infra_ref";
 
   private static final ManifestConfigWrapper k8sManifest =
       ManifestConfigWrapper.builder()

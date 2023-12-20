@@ -540,11 +540,11 @@ public class ServiceStepV3 implements ChildrenExecutable<ServiceStepV3Parameters
       if (isOverridesV2enabled) {
         NGServiceV2InfoConfig ngServiceV2InfoConfig =
             servicePartResponse.getNgServiceConfig().getNgServiceV2InfoConfig();
-        overrideInstrumentationHelper.addTelemetryEventsForOverrideV2(
-            accountId, orgIdentifier, projectIdentifier, mergedOverrideV2Configs);
         if (ngServiceV2InfoConfig == null) {
           throw new InvalidRequestException(SERVICE_CONFIGURATION_NOT_FOUND);
         }
+        overrideInstrumentationHelper.addTelemetryEventsForOverrideV2(
+            accountId, orgIdentifier, projectIdentifier, mergedOverrideV2Configs);
         final String scopedEnvironmentRef =
             IdentifierRefHelper.getRefFromIdentifierOrRef(accountId, environment.get().getOrgIdentifier(),
                 environment.get().getProjectIdentifier(), environment.get().getIdentifier());

@@ -86,6 +86,7 @@ import io.harness.pms.yaml.YamlUtils;
 import io.harness.rule.Owner;
 import io.harness.rule.OwnerRule;
 import io.harness.steps.environment.EnvironmentOutcome;
+import io.harness.telemetry.helpers.OverrideInstrumentationHelper;
 import io.harness.utils.NGFeatureFlagHelperService;
 import io.harness.yaml.core.variables.NGVariable;
 import io.harness.yaml.core.variables.NumberNGVariable;
@@ -129,6 +130,7 @@ public class ServiceStepV3Test extends CategoryTest {
   @Mock private EngineExpressionService engineExpressionService;
   @Mock private NgExpressionHelper ngExpressionHelper;
   @Mock private ServiceCustomSweepingOutputHelper serviceCustomSweepingOutputHelper;
+  @Mock private OverrideInstrumentationHelper overrideInstrumentationHelper;
 
   @Mock private ServiceEntityYamlSchemaHelper serviceEntityYamlSchemaHelper;
   @Mock private EnvironmentEntityYamlSchemaHelper environmentEntityYamlSchemaHelper;
@@ -166,6 +168,8 @@ public class ServiceStepV3Test extends CategoryTest {
         .saveAdditionalServiceFieldsToSweepingOutput(any(NGServiceConfig.class), any(Ambiance.class));
 
     doReturn(null).when(serviceStepV3Helper).executeFreezePart(any(), any(), any());
+    doNothing().when(overrideInstrumentationHelper).addTelemetryEventsForOverrideV1(any(), any(), any(), any());
+    doNothing().when(overrideInstrumentationHelper).addTelemetryEventsForOverrideV2(any(), any(), any(), any());
   }
   @After
   public void tearDown() throws Exception {
