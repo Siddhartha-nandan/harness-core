@@ -387,7 +387,16 @@ public interface NGTriggerResource {
 
   @PUT
   @Path("/update-polling-interval")
-  ResponseDTO<TriggerChangePollingInterval> updatePollingInterval(
+  @ApiOperation(value = "Update polling interval for triggers", nickname = "updatePollingInterval")
+  @Operation(operationId = "updatePollingInterval", summary = "Update polling interval for triggers",
+      description = "Update polling interval for triggers",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(responseCode = "default", description = "Update polling interval for triggers")
+      })
+  ResponseDTO<TriggerChangePollingInterval>
+  updatePollingInterval(
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
       @QueryParam(NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
       @QueryParam(NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier,
