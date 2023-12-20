@@ -79,6 +79,8 @@ startupProbe:
   timeoutSeconds: 2
   periodSeconds: 10
   failureThreshold: 25
+ingress:
+  annotations: {}
 global:
   ingress:
     # -- create ingress objects
