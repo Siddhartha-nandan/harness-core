@@ -37,7 +37,22 @@ import io.harness.beans.WebhookGitUser;
 import io.harness.beans.WebhookPayload;
 import io.harness.beans.WebhookPayload.WebhookPayloadBuilder;
 import io.harness.exception.InvalidRequestException;
-import io.harness.product.ci.scm.proto.*;
+import io.harness.product.ci.scm.proto.Action;
+import io.harness.product.ci.scm.proto.BranchHook;
+import io.harness.product.ci.scm.proto.Commit;
+import io.harness.product.ci.scm.proto.GitProvider;
+import io.harness.product.ci.scm.proto.Header;
+import io.harness.product.ci.scm.proto.IssueCommentHook;
+import io.harness.product.ci.scm.proto.ParseWebhookRequest;
+import io.harness.product.ci.scm.proto.ParseWebhookResponse;
+import io.harness.product.ci.scm.proto.PullRequest;
+import io.harness.product.ci.scm.proto.PullRequestHook;
+import io.harness.product.ci.scm.proto.PushHook;
+import io.harness.product.ci.scm.proto.ReleaseHook;
+import io.harness.product.ci.scm.proto.SCMGrpc;
+import io.harness.product.ci.scm.proto.Signature;
+import io.harness.product.ci.scm.proto.TagHook;
+import io.harness.product.ci.scm.proto.User;
 import io.harness.service.WebhookParserSCMService;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -94,9 +109,6 @@ public class WebhookParserSCMServiceImpl implements WebhookParserSCMService {
     } else if (parseWebhookResponse.hasRelease()) {
       ReleaseHook releaseHook = parseWebhookResponse.getRelease();
       builder = convertRelease(releaseHook);
-    } else if (parseWebhookResponse.hasDelete()) {
-      DeleteHook deleteHook = parseWebhookResponse.getDelete();
-      builder = convertDeleteHook(deleteHook);
     } else if (parseWebhookResponse.hasTag() && parseWebhookResponse.getTag().getAction().equals(Action.DELETE)) {
       TagHook tagHook = parseWebhookResponse.getTag();
       builder = convertTagHookForDeleteAction(tagHook);
@@ -128,18 +140,6 @@ public class WebhookParserSCMServiceImpl implements WebhookParserSCMService {
         .webhookGitUser(webhookGitUser)
         .repository(webhookEvent.getRepository())
         .webhookEvent(webhookEvent);
-  }
-  WebhookPayloadBuilder convertDeleteHook(DeleteHook deleteHook) {
-    WebhookGitUser webhookGitUser = convertUser(deleteHook.getSender());
-    Repository repository = convertRepository(deleteHook.getRepo());
-
-    DeleteWebhookEvent webhookEvent =
-        DeleteWebhookEvent.builder()
-            .repository(repository)
-            .baseAttributes(WebhookBaseAttributes.builder().action(deleteHook.getAction().name().toLowerCase()).build())
-            .build();
-
-    return WebhookPayload.builder().webhookGitUser(webhookGitUser).repository(repository).webhookEvent(webhookEvent);
   }
   WebhookPayloadBuilder convertBranchHookForDeleteAction(BranchHook branchHook) {
     WebhookGitUser webhookGitUser = convertUser(branchHook.getSender());
