@@ -318,6 +318,7 @@ public class ExecutionHelper {
 
   private PipelineMetadataInternalDTO getPipelineMetadataInternalDTO(
       PipelineEntity pipelineEntity, JsonNode mergedRuntimeInputJsonNode) throws Exception {
+    // TODO: optimize this method.
     String pipelineYaml;
     String pipelineYamlWithTemplateRef;
     BasicPipeline basicPipeline = null;
