@@ -354,8 +354,8 @@ public class NGEncryptedDataServiceImpl implements NGEncryptedDataService {
   }
 
   @Override
-  public NGEncryptedData createSecretFile(
-      String accountIdentifier, SecretDTOV2 dto, String encryptionKey, String encryptedValue) {
+  public NGEncryptedData createSecretFile(String accountIdentifier, SecretDTOV2 dto, String encryptionKey,
+      String encryptedValue, char[] encryptedFileContent) {
     validateSecretDoesNotExist(
         accountIdentifier, dto.getOrgIdentifier(), dto.getProjectIdentifier(), dto.getIdentifier());
     SecretFileSpecDTO secret = (SecretFileSpecDTO) dto.getSpec();
@@ -368,9 +368,17 @@ public class NGEncryptedDataServiceImpl implements NGEncryptedDataService {
       throw new SecretManagementException(SECRET_MANAGEMENT_ERROR, READ_ONLY_SECRET_MANAGER_ERROR, USER);
     }
 
+    if (ENCRYPTION_TYPES_REQUIRING_FILE_DOWNLOAD.contains(encryptedData.getEncryptionType())
+        && isNotEmpty(encryptedFileContent)) {
+      String encryptedFileId = secretsFileService.createFile(
+          encryptedData.getName(), encryptedData.getAccountIdentifier(), encryptedFileContent);
+      encryptedData.setEncryptedValue(encryptedFileId.toCharArray());
+    } else {
+      encryptedData.setEncryptedValue(encryptedValue.toCharArray());
+    }
+
     encryptedData.setPath(null);
     encryptedData.setEncryptionKey(encryptionKey);
-    encryptedData.setEncryptedValue(encryptedValue.toCharArray());
     encryptedData.setBase64Encoded(true);
     return encryptedDataDao.save(encryptedData);
   }

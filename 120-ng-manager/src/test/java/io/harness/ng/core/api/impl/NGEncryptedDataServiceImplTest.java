@@ -1056,7 +1056,7 @@ public class NGEncryptedDataServiceImplTest extends CategoryTest {
         .thenReturn(secretManagerConfigDTO);
     ArgumentCaptor<NGEncryptedData> argumentCaptor = ArgumentCaptor.forClass(NGEncryptedData.class);
     when(encryptedDataDao.save(argumentCaptor.capture())).thenReturn(null);
-    ngEncryptedDataService.createSecretFile(accountIdentifier, secretDTOV2, encryptionKey, encryptedValue);
+    ngEncryptedDataService.createSecretFile(accountIdentifier, secretDTOV2, encryptionKey, encryptedValue, null);
     NGEncryptedData createdData = argumentCaptor.getValue();
     verify(encryptedDataDao, times(1)).get(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
     assertNotNull(createdData);
