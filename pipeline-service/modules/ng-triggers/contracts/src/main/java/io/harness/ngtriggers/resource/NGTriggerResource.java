@@ -44,7 +44,6 @@ import io.harness.ngtriggers.beans.source.TriggerUpdateCount;
 import io.harness.pms.annotations.PipelineServiceAuth;
 import io.harness.pms.pipeline.PipelineResourceConstants;
 import io.harness.pms.rbac.PipelineRbacPermissions;
-import io.harness.polling.bean.PollingType;
 import io.harness.rest.RestResponse;
 import io.harness.security.annotations.InternalApi;
 
@@ -392,5 +391,5 @@ public interface NGTriggerResource {
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
       @QueryParam(NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
       @QueryParam(NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier,
-      @QueryParam("triggerType") PollingType triggerType);
+      @QueryParam("triggerType") String triggerType);
 }
