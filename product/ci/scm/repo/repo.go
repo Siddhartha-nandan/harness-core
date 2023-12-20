@@ -415,6 +415,10 @@ func convertStringsToHarnessEnum(strings []string) (enums pb.NativeEvents_Harnes
 			array = append(array, pb.HarnessWebhookEvent_HARNESS_PULLREQ_CREATED)
 		case "pullreq_reopened":
 			array = append(array, pb.HarnessWebhookEvent_HARNESS_PULLREQ_REOPENED)
+		case "pullreq_closed":
+			array = append(array, pb.HarnessWebhookEvent_HARNESS_PULLREQ_CLOSED)
+		case "pullreq_merged":
+			array = append(array, pb.HarnessWebhookEvent_HARNESS_PULLREQ_MERGED)
 		}
 	}
 	enums.Harness = &pb.HarnessWebhookEvents{Events: array}
