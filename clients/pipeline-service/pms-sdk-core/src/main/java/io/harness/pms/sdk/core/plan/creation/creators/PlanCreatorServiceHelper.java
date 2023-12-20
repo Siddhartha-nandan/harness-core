@@ -65,11 +65,9 @@ public class PlanCreatorServiceHelper {
         .findFirst();
   }
 
-  // TODO: update the fullYamlField here
   public Dependencies handlePlanCreationResponses(List<PlanCreationResponse> planCreationResponses,
       MergePlanCreationResponse finalResponse, String currentYaml, Dependencies dependencies,
       List<Map.Entry<String, String>> dependenciesList, YamlField fullYaml, Map<String, JsonNode> fqnToJsonMap) {
-    String updatedYaml = currentYaml;
     List<String> errorMessages = planCreationResponses.stream()
                                      .filter(resp -> resp != null && EmptyPredicate.isNotEmpty(resp.getErrorMessages()))
                                      .flatMap(resp -> resp.getErrorMessages().stream())
@@ -103,13 +101,9 @@ public class PlanCreatorServiceHelper {
         }
       }
       if (response.getYamlUpdates() != null && EmptyPredicate.isNotEmpty(response.getYamlUpdates().getFqnToYamlMap())) {
-        // TODO: here
         PlanCreationBlobResponseUtils.updateFqnYamlNodeMap(
             fqnToJsonMap, finalResponse.getYamlUpdates().getFqnToYamlMap());
         PlanCreationBlobResponseUtils.mergeYamlUpdates(fullYaml, fqnToJsonMap);
-        //        updatedYaml = PlanCreationBlobResponseUtils.mergeYamlUpdates(
-        //            currentYaml, finalResponse.getYamlUpdates().getFqnToYamlMap());
-        //        finalResponse.updateYamlInDependencies(updatedYaml);
       }
     }
     return dependencies.toBuilder()

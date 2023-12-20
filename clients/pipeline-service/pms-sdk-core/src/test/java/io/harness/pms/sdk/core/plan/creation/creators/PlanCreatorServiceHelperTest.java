@@ -34,16 +34,13 @@ import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.rule.Owner;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -97,9 +94,11 @@ public class PlanCreatorServiceHelperTest extends PmsSdkCoreTestBase {
     ClassLoader classLoader = this.getClass().getClassLoader();
     final URL testFile = classLoader.getResource("pipeline.yaml");
     String yamlContent = Resources.toString(testFile, Charsets.UTF_8);
+    YamlField fullField = YamlUtils.readTree(yamlContent);
+    Map<String, JsonNode> fqnToJsonMap = new HashMap<>();
     Dependencies dependencies =
         PlanCreatorServiceHelper.handlePlanCreationResponses(ListUtils.newArrayList(planCreationResponse),
-            finalResponse, yamlContent, Dependencies.newBuilder().build(), new ArrayList<>());
+            finalResponse, yamlContent, Dependencies.newBuilder().build(), new ArrayList<>(), fullField, fqnToJsonMap);
     assertThat(dependencies).isEqualTo(Dependencies.newBuilder().build());
     assertThat(finalResponse.getErrorMessages().size()).isEqualTo(1);
     assertThat(finalResponse.getErrorMessages().get(0)).isEqualTo("The plan creation has errored");
@@ -117,10 +116,11 @@ public class PlanCreatorServiceHelperTest extends PmsSdkCoreTestBase {
     Dependencies deps =
         Dependencies.newBuilder().setYaml(yamlContent).putDependencies("test", "pipeline.stages").build();
     List<Map.Entry<String, String>> dependenciesList = new ArrayList<>(deps.getDependenciesMap().entrySet());
-
+    YamlField fullField = YamlUtils.readTree(yamlContent);
+    Map<String, JsonNode> fqnToJsonMap = new HashMap<>();
     Dependencies dependencies =
         PlanCreatorServiceHelper.handlePlanCreationResponses(ListUtils.newArrayList(planCreationResponse),
-            finalResponse, yamlContent, Dependencies.newBuilder().build(), dependenciesList);
+            finalResponse, yamlContent, Dependencies.newBuilder().build(), dependenciesList, fullField, fqnToJsonMap);
     assertThat(dependencies).isEqualTo(Dependencies.newBuilder().setYaml(yamlContent).build());
     assertThat(finalResponse.getErrorMessages().size()).isEqualTo(0);
   }
@@ -139,8 +139,10 @@ public class PlanCreatorServiceHelperTest extends PmsSdkCoreTestBase {
     List<PlanCreationResponse> planCreationResponses = new ArrayList<>();
     planCreationResponses.add(null);
 
-    Dependencies dependencies = PlanCreatorServiceHelper.handlePlanCreationResponses(
-        planCreationResponses, finalResponse, yamlContent, Dependencies.newBuilder().build(), dependenciesList);
+    YamlField fullField = YamlUtils.readTree(yamlContent);
+    Map<String, JsonNode> fqnToJsonMap = new HashMap<>();
+    Dependencies dependencies = PlanCreatorServiceHelper.handlePlanCreationResponses(planCreationResponses,
+        finalResponse, yamlContent, Dependencies.newBuilder().build(), dependenciesList, fullField, fqnToJsonMap);
     assertThat(dependencies).isEqualTo(Dependencies.newBuilder().setYaml(yamlContent).build());
     assertThat(finalResponse.getErrorMessages().size()).isEqualTo(0);
   }
