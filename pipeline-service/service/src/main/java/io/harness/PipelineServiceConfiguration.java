@@ -153,6 +153,7 @@ public class PipelineServiceConfiguration extends Configuration {
   @JsonProperty("pmsPlanCreatorServicePoolConfig") private ThreadPoolConfig pmsPlanCreatorServicePoolConfig;
   @JsonProperty("planCreatorMergeServicePoolConfig") private ThreadPoolConfig planCreatorMergeServicePoolConfig;
   @JsonProperty("variableCreatorMergeServicePoolConfig") private ThreadPoolConfig variableCreatorMergeServicePoolConfig;
+  @JsonProperty("filterCreatorMergeServicePoolConfig") private ThreadPoolConfig filterCreatorMergeServicePoolConfig;
   @JsonProperty("pipelineRedisEventsConfig") private PipelineRedisEventsConfig pipelineRedisEventsConfig;
   @JsonProperty("pipelineSdkRedisEventsConfig") private PipelineSdkRedisEventsConfig pipelineSdkRedisEventsConfig;
   @JsonProperty("orchestrationRedisEventsConfig") private OrchestrationRedisEventsConfig orchestrationRedisEventsConfig;

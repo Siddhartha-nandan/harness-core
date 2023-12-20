@@ -806,6 +806,14 @@ public class PipelineServiceModule extends AbstractModule {
 
   @Provides
   @Singleton
+  @Named("FilterCreatorMergeExecutorService")
+  public Executor filterCreatorMergeExecutorService() {
+    return ThreadPool.getInstrumentedExecutorService(configuration.getFilterCreatorMergeServicePoolConfig(),
+        "FilterMergeCreatorExecutorService", threadPoolMetricRegistry);
+  }
+
+  @Provides
+  @Singleton
   @Named("webhookEventHsqsDequeueConfig")
   public HsqsDequeueConfig getWebhookEventHsqsDequeueConfig() {
     return configuration.getWebhookEventHsqsDequeueConfig();

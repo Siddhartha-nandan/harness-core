@@ -59,6 +59,7 @@ import io.harness.utils.IdentifierRefHelper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.google.inject.name.Named;
 import com.google.protobuf.ByteString;
 import io.grpc.StatusRuntimeException;
 import java.io.IOException;
@@ -90,13 +91,13 @@ public class FilterCreatorMergeService {
   private final TriggeredByHelper triggeredByHelper;
 
   public static final int MAX_DEPTH = 10;
-  private final Executor executor = Executors.newFixedThreadPool(5);
+  private final Executor executor;
 
   @Inject
   public FilterCreatorMergeService(PmsSdkHelper pmsSdkHelper, PipelineSetupUsageHelper pipelineSetupUsageHelper,
       PmsGitSyncHelper pmsGitSyncHelper, PMSPipelineTemplateHelper pmsPipelineTemplateHelper,
-      GitSyncSdkService gitSyncSdkService, PrincipalInfoHelper principalInfoHelper,
-      TriggeredByHelper triggeredByHelper) {
+      GitSyncSdkService gitSyncSdkService, PrincipalInfoHelper principalInfoHelper, TriggeredByHelper triggeredByHelper,
+      @Named("FilterCreatorMergeExecutorService") Executor executor) {
     this.pmsSdkHelper = pmsSdkHelper;
     this.pipelineSetupUsageHelper = pipelineSetupUsageHelper;
     this.pmsGitSyncHelper = pmsGitSyncHelper;
@@ -104,6 +105,7 @@ public class FilterCreatorMergeService {
     this.gitSyncSdkService = gitSyncSdkService;
     this.principalInfoHelper = principalInfoHelper;
     this.triggeredByHelper = triggeredByHelper;
+    this.executor = executor;
   }
 
   public FilterCreatorMergeServiceResponse getPipelineInfo(FilterCreationParams filterCreationParams)
