@@ -83,6 +83,11 @@ public class PerpetualTaskRecord
                      + "infrastructureMappingId")
                  .sparse(true)
                  .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("updateIteratorIndex")
+                 .field(PerpetualTaskRecordKeys.perpetualTaskType)
+                 .field(PerpetualTaskRecordKeys.lastUpdatedAt)
+                 .build())
         .build();
   }
 
