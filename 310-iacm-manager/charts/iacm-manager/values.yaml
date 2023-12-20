@@ -532,3 +532,6 @@ timescaledb:
             TIMESCALEDB_SSL_ROOT_CERT:
               name: ""
               property: ""
+
+virtualService:
+  annotations: {}
