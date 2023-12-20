@@ -235,7 +235,7 @@ public class DeploymentStagePlanCreator extends AbstractStagePlanCreator<Deploym
     DeploymentStageStepParametersV1 stepParameters =
         (DeploymentStageStepParametersV1) getSpecParameters(specField.getNode().getUuid(), ctx, stageNodeV1);
 
-    StageElementParametersV1Builder stageParameters = StepParametersUtils.getStageParameters(stageNodeV1);
+    StageElementParametersV1Builder stageParameters = StepParametersUtils.getStageParametersBuilder(stageNodeV1);
     stageParameters.spec(stepParameters);
     stageParameters.spec(stepParameters);
     return stageParameters.build();

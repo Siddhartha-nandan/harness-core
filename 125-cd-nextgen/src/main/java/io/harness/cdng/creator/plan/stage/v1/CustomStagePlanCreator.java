@@ -87,7 +87,8 @@ public class CustomStagePlanCreator extends AbstractStagePlanCreator<CustomStage
   @Override
   public StageElementParametersV1 getStageParameters(
       PlanCreationContext ctx, CustomStageNodeV1 stageNodeV1, List<String> childrenNodeIds) {
-    StageElementParametersV1Builder stageParameters = StageParameterUtilsV1.getCommonStageParameters(stageNodeV1);
+    StageElementParametersV1Builder stageParameters =
+        StageParameterUtilsV1.getCommonStageParametersBuilder(stageNodeV1);
     stageParameters.spec(CustomStageSpecParams.builder().childNodeID(childrenNodeIds.get(0)).build());
     return stageParameters.build();
   }
