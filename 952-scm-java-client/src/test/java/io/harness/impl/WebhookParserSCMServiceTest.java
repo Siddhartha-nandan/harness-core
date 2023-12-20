@@ -30,7 +30,15 @@ import io.harness.beans.WebhookGitUser;
 import io.harness.beans.WebhookPayload;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InvalidRequestException;
-import io.harness.product.ci.scm.proto.*;
+import io.harness.product.ci.scm.proto.Action;
+import io.harness.product.ci.scm.proto.BranchHook;
+import io.harness.product.ci.scm.proto.ParseWebhookResponse;
+import io.harness.product.ci.scm.proto.PullRequest;
+import io.harness.product.ci.scm.proto.PullRequestHook;
+import io.harness.product.ci.scm.proto.Reference;
+import io.harness.product.ci.scm.proto.Repository;
+import io.harness.product.ci.scm.proto.TagHook;
+import io.harness.product.ci.scm.proto.User;
 import io.harness.rule.Owner;
 
 import java.io.IOException;
