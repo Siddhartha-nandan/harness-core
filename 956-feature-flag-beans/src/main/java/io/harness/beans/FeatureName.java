@@ -910,7 +910,9 @@ public enum FeatureName {
   CDS_USER_CD_LICENSE_VIEW("Enable to show Users CD License usage on UI", HarnessTeam.CDP),
   SSCA_USE_ELK("Enables ELK search for Artifact listing instead of Mongo", HarnessTeam.SSCA),
   SSCA_REMEDIATION_TRACKER("FF for Remediation Tracker flow.", HarnessTeam.SSCA),
-  CDS_VARIABLES_MERGE_V2_OPTIMIZED_FLOW("FF to switch the v2/variables flow to a new optimized one", CDC, Scope.GLOBAL);
+  CDS_VARIABLES_MERGE_V2_OPTIMIZED_FLOW("FF to switch the v2/variables flow to a new optimized one", CDC, Scope.GLOBAL),
+  CDS_SUPPORT_DIFFERENT_INFRA_DURING_ENV_PROPAGATION(
+      "FF to suppport selecting different infrastructure during environment propagation", CDC);
 
   // keep-sorted end
 
