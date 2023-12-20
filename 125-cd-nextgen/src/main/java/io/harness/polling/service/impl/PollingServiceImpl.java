@@ -279,38 +279,6 @@ public class PollingServiceImpl implements PollingService {
     return criteria;
   }
 
-  public DeleteResult deletePollingDocs(String accountId, String orgId, String projectId, PollingType pollingType) {
-    Criteria criteria = createDeleteCriteria(accountId, orgId, projectId, pollingType);
-    return pollingRepository.deleteAll(criteria);
-  }
-  @Override
-  public Boolean deletePollingDocAndPerpetualTask(
-      String accountId, String orgId, String projectId, PollingType pollingType) {
-    List<PollingDocument> pollingDocuments =
-        pollingRepository.findPollingDocs(accountId, orgId, projectId, pollingType);
-    for (PollingDocument pollingDocument : pollingDocuments) {
-      deletePerpetualTask(pollingDocument);
-    }
-    DeleteResult deletePollingDocsResult = deletePollingDocs(accountId, orgId, projectId, pollingType);
-    return pollingDocuments.size() == deletePollingDocsResult.getDeletedCount();
-  }
-
-  private Criteria createDeleteCriteria(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, PollingType pollingType) {
-    Criteria criteria = new Criteria();
-    criteria.and(PollingDocumentKeys.accountId).is(accountIdentifier);
-    if (EmptyPredicate.isNotEmpty(orgIdentifier)) {
-      criteria.and(PollingDocumentKeys.orgIdentifier).is(orgIdentifier);
-    }
-    if (EmptyPredicate.isNotEmpty(orgIdentifier) && EmptyPredicate.isNotEmpty(projectIdentifier)) {
-      criteria.and(PollingDocumentKeys.projectIdentifier).is(projectIdentifier);
-    }
-    if (EmptyPredicate.isNotEmpty(String.valueOf(pollingType))) {
-      criteria.and(PollingDocumentKeys.pollingType).is(pollingType);
-    }
-    return criteria;
-  }
-
   private Criteria createScopeCriteria(String accountIdentifier, String orgIdentifier, String projectIdentifier) {
     Criteria criteria = new Criteria();
     criteria.and(PollingDocumentKeys.accountId).is(accountIdentifier);
