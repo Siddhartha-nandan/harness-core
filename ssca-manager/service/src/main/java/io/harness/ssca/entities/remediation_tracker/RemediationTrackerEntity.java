@@ -10,6 +10,7 @@ import io.harness.annotation.HarnessEntity;
 import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.EmbeddedUser;
 import io.harness.iterator.PersistentRegularIterable;
 import io.harness.mongo.index.CompoundMongoIndex;
 import io.harness.mongo.index.FdIndex;
@@ -81,10 +82,8 @@ public class RemediationTrackerEntity implements UuidAware, PersistentRegularIte
   @LastModifiedDate Long lastUpdatedAt;
   String comments;
   boolean closedManually;
-  String closedBy;
+  EmbeddedUser closedBy;
   Long targetEndDateEpochDay;
-  String createdBy;
-  String lastUpdatedBy;
 
   @Override
   public Long obtainNextIteration(String fieldName) {

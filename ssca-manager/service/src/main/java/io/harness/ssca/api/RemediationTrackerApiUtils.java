@@ -7,7 +7,6 @@
 
 package io.harness.ssca.api;
 
-import io.harness.ssca.entities.remediation_tracker.ArtifactInfo.ArtifactInfoKeys;
 import io.harness.ssca.entities.remediation_tracker.RemediationTrackerEntity.RemediationTrackerEntityKeys;
 import io.harness.ssca.entities.remediation_tracker.VulnerabilityInfo.VulnerabilityInfoKeys;
 
@@ -23,8 +22,6 @@ public class RemediationTrackerApiUtils {
         return RemediationTrackerEntityKeys.status;
       case "targetDate":
         return RemediationTrackerEntityKeys.targetEndDateEpochDay;
-      case "artifact":
-        return ArtifactInfoKeys.artifactName;
       default:
         log.info(String.format("Mapping not found for field: %s", field));
     }
