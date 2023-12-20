@@ -199,7 +199,6 @@ public class S3ToClickHouseSyncTasklet implements Tasklet {
         String createAwsBillingTableQuery = "CREATE TABLE IF NOT EXISTS " + awsBillingTableId + " (" + schema
             + " ) ENGINE = MergeTree ORDER BY tuple(usagestartdate) SETTINGS allow_nullable_key = 1;";
         log.info(createAwsBillingTableQuery);
-        return null;
         clickHouseService.executeClickHouseQuery(
             configuration.getClickHouseConfig(), createAwsBillingTableQuery, Boolean.FALSE);
 
