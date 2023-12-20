@@ -1,0 +1,17 @@
+{{ if .Values.enablePodMonitoring }}
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: {{ include "iacm-manager.name" . }}
+spec:
+  endpoints:
+  - interval: 30s
+    path: /metrics
+    port: 8889
+  selector:
+    matchLabels:
+      {{- include "iacm-manager.selectorLabels" . | nindent 6 }}
+  targetLabels:
+    metadata:
+    - container
+{{ end }}

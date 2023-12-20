@@ -1,2 +1,0 @@
-DOCKER_FILE_PATH: /harness/harness-core/dist/iacm-manager-service/Dockerfile-ce-nextgen-cie-jdk
-HELM_CHART_SOURCE_DIRECTORY: harness-core/310-iacm-manager/chart

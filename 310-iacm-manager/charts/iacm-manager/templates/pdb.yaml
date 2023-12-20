@@ -1,0 +1,15 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "iacm-manager.name" . }}
+  labels:
+    {{- include "iacm-manager.labels" . | nindent 4 }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  maxUnavailable: {{.Values.pdbMin}}
+  selector:
+    matchLabels:
+      {{- include "iacm-manager.selectorLabels" . | nindent 6 }}

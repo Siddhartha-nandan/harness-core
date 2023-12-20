@@ -1,0 +1,150 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "iacm-manager.name" . }}
+  labels:
+    {{- include "iacm-manager.labels" . | nindent 4 }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not .Values.autoscalingEnabled }}
+  replicas: {{.Values.replicas}}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "iacm-manager.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.maxSurge }}
+      maxUnavailable: {{ .Values.maxUnavailable }}
+  progressDeadlineSeconds: 300
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "iacm-manager.labels" . | nindent 8 }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{ include "iacm-manager.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "iacm-manager.serviceAccountName" . }}
+      {{- if .Values.dockercfg}}
+      imagePullSecrets:
+      - name: {{ include "iacm-manager.name" . }}-dockercfg
+      {{- end}}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      {{- if .Values.global.database.mongo.installed }}
+      - name: wait-for-mongo
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.waitForInitContainer.image "global" .Values.global) }}
+        imagePullPolicy: IfNotPresent
+        args:
+          - "pod"
+          - "-lapp=mongodb-replicaset"
+      {{- end }}
+      {{- if .Values.global.database.timescaledb.installed }}
+      - name: wait-for-timescale
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.global.waitForInitContainer.image "global" .Values.global) }}
+        imagePullPolicy: IfNotPresent
+        args:
+          - "pod"
+          - "-lapp=timescaledb-single-chart"
+      {{- end }}
+      {{- if .Values.global.database.redis.installed }}
+      - name: wait-for-redis
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.global.waitForInitContainer.image "global" .Values.global) }}
+        imagePullPolicy: IfNotPresent
+        args:
+          - "pod"
+          - "-lapp=redis-sentinel"
+      {{- end }}
+      containers:
+      - name: {{ include "iacm-manager.name" . }}
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.image) }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          {{- toYaml .Values.containerSecurityContext | nindent 10 }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        env:
+          # redis
+          {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD") | indent 10 }}
+          {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "LOCK_CONFIG_REDIS_USERNAME" "passwordVariableName" "LOCK_CONFIG_REDIS_PASSWORD") | indent 10 }}
+          {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "CACHE_CONFIG_REDIS_USERNAME" "passwordVariableName" "CACHE_CONFIG_REDIS_PASSWORD") | indent 10 }}
+          # db
+          {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $ "passwordVariableName" "TIMESCALE_PASSWORD") | indent 10 }}
+          - name: TIMESCALE_URI
+            value: {{ include "harnesscommon.dbconnectionv2.timescaleConnection" (dict "protocol" "jdbc:postgresql" "database" "harness" "context" $) }}
+          # mongo
+          {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "harness") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "harness" "connectionURIVariableName" "MONGO_URI") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "harness-iacm") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "harness-iacm" "connectionURIVariableName" "IACMMANAGER_MONGO_URI") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "pms-harness") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "pms-harness" "connectionURIVariableName" "PMS_MONGO_URI") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "notifications") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "notifications" "connectionURIVariableName" "NOTIFICATION_MONGO_URI") | indent 10 }}
+          # services
+          {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "OPA_SERVER_SECRET" "defaultKubernetesSecretName" "iacm-manager" "defaultKubernetesSecretKey" "OPA_SERVER_SECRET") | indent 10 }}
+          {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "VERIFICATION_SERVICE_SECRET" "defaultKubernetesSecretName" "iacm-manager" "defaultKubernetesSecretKey" "VERIFICATION_SERVICE_SECRET") | indent 10 }}
+        envFrom:
+        - configMapRef:
+            name: {{ include "iacm-manager.name" . }}
+        - secretRef:
+            name: {{ include "iacm-manager.name" . }}
+        ports:
+        - name: http
+          containerPort: {{.Values.service.port}}
+          protocol: TCP
+        - name: iacm-mgr-grpc
+          containerPort: {{.Values.service.grpcPort}}
+          protocol: TCP
+        - name: metrics
+          containerPort: {{.Values.service.metricsPort}}
+          protocol: "TCP"
+        {{- toYaml .Values.probes | nindent 8}}
+        {{- if .Values.lifecycleHooks }}
+        lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.extraVolumeMounts }}
+        volumeMounts:
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 8 }}
+        {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ include "iacm-manager.name" . }}
+            topologyKey: "kubernetes.io/hostname"
+        {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- if .Values.extraVolumes }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+      {{- end }}
