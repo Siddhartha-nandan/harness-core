@@ -28,6 +28,7 @@ import com.google.common.collect.ImmutableList;
 import dev.morphia.annotations.Entity;
 import dev.morphia.annotations.Id;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import lombok.AccessLevel;
@@ -78,7 +79,7 @@ public final class RuleExecution implements PersistentEntity, UuidAware, Created
   @Schema(description = "costComputed") Boolean costComputed;
   @Schema(description = "cost") Double cost;
   @Schema(description = "costType") RuleCostType costType;
-  @EqualsAndHashCode.Exclude @FdTtlIndex Instant ttl;
+  @Builder.Default @EqualsAndHashCode.Exclude @FdTtlIndex Instant ttl = Instant.now().plus(Duration.ofDays(90));
 
   public static List<MongoIndex> mongoIndexes() {
     return ImmutableList.<MongoIndex>builder()
