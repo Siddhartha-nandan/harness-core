@@ -57,7 +57,7 @@ public class NextGenManagerDropwizardMetricsPublisherImpl implements MetricsPubl
   private static final MetricFilter FILESTORE_RESOURCE_FILTER =
       MetricFilter.startsWith("io.harness.filestore.resource.FileStoreResource");
   private static final MetricFilter PROJECT_RESOURCE_FILTER =
-          MetricFilter.startsWith("io.harness.ng.core.remote.ProjectResource");
+      MetricFilter.startsWith("io.harness.ng.core.remote.ProjectResource");
   private static final String NG_MANAGER_RESOURCE_RESPONSE_COUNT_METRIC_NAME =
       "io_harness_ng_manager_resources_responses_count";
 
