@@ -14,8 +14,8 @@ import static io.harness.yaml.schema.beans.SupportedPossibleFieldTypes.runtime;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.yaml.YamlSchemaTypes;
+import io.harness.yaml.sto.variables.STOYamlTargetDetection;
 import io.harness.yaml.sto.variables.STOYamlTargetType;
-import io.harness.yaml.sto.variables.STOYamlTargetNamingMode;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
@@ -24,6 +24,7 @@ import io.swagger.annotations.ApiModelProperty;
 import javax.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;
+
 @Data
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -39,21 +40,20 @@ public class STOYamlTarget {
 
   @NotNull @ApiModelProperty(dataType = STRING_CLASSPATH) protected ParameterField<String> variant;
 
-  @NotNull
-  @ApiModelProperty(dataType = "io.harness.yaml.sto.variables.STOYamlTargetNamingMode")
-  protected ParameterField<STOYamlTargetNamingMode> namingMode;
+  @ApiModelProperty(dataType = "io.harness.yaml.sto.variables.STOYamlTargetDetection")
+  protected ParameterField<STOYamlTargetDetection> targetDetection;
 
   @ApiModelProperty(dataType = STRING_CLASSPATH) protected ParameterField<String> workspace;
 
-  public STOYamlTargetNamingMode getNamingMode() {
-    if (namingMode == null) {
+  public STOYamlTargetDetection getTargetDetection() {
+    if (targetDetection == null) {
       return null;
     }
-    if (namingMode.fetchFinalValue() instanceof String) {
-      String mode = (String) namingMode.fetchFinalValue();
-      return STOYamlTargetNamingMode.getValue(mode);
+    if (targetDetection.fetchFinalValue() instanceof String) {
+      String detection = (String) targetDetection.fetchFinalValue();
+      return STOYamlTargetDetection.getValue(detection);
     } else {
-      return (STOYamlTargetNamingMode) namingMode.fetchFinalValue();
+      return (STOYamlTargetDetection) targetDetection.fetchFinalValue();
     }
   }
 }

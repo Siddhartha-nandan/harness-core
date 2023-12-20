@@ -14,21 +14,21 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
 import org.springframework.data.annotation.TypeAlias;
 
-@TypeAlias("stoYamlTargetNamingMode")
-@RecasterAlias("io.harness.yaml.sto.variables.STOYamlTargetNamingMode")
-public enum STOYamlTargetNamingMode {
+@TypeAlias("stoYamlTargetDetection")
+@RecasterAlias("io.harness.yaml.sto.variables.STOYamlTargetDetection")
+public enum STOYamlTargetDetection {
   @JsonProperty("manual") MANUAL("manual"),
   @JsonProperty("auto") AUTO("auto");
 
   private final String yamlName;
 
-  STOYamlTargetNamingMode(String yamlName) {
+  STOYamlTargetDetection(String yamlName) {
     this.yamlName = yamlName;
   }
 
   @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-  public static STOYamlTargetNamingMode getValue(@JsonProperty("type") String yamlName) {
-    for (STOYamlTargetNamingMode value : STOYamlTargetNamingMode.values()) {
+  public static STOYamlTargetDetection getValue(@JsonProperty("type") String yamlName) {
+    for (STOYamlTargetDetection value : STOYamlTargetDetection.values()) {
       if (value.yamlName.equalsIgnoreCase(yamlName) || value.name().equalsIgnoreCase(yamlName)) {
         return value;
       }
@@ -47,7 +47,7 @@ public enum STOYamlTargetNamingMode {
     return yamlName;
   }
 
-  public static STOYamlTargetNamingMode fromString(final String s) {
-    return STOYamlTargetNamingMode.getValue(s);
+  public static STOYamlTargetDetection fromString(final String s) {
+    return STOYamlTargetDetection.getValue(s);
   }
 }
