@@ -174,4 +174,6 @@ public interface SecretManager extends OwnedByAccount {
       String executionId, String secretManagerId);
 
   UsageRestrictions getAllowedUsageScopesToCreateSecret(String accountId, String secretsManagerConfigId);
+
+  Boolean migrateFile(String accountId);
 }

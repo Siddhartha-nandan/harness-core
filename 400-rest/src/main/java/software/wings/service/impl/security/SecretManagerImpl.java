@@ -776,6 +776,12 @@ public class SecretManagerImpl implements SecretManager, EncryptedSettingAttribu
   }
 
   @Override
+  public Boolean migrateFile(String accountId) {
+
+    return  secretService.migratesecret(accountId);
+  }
+
+  @Override
   public software.wings.beans.dto.SecretManagerRuntimeParameters configureSecretManagerRuntimeCredentialsForExecution(
       String accountId, String kmsId, String executionId, Map<String, String> runtimeParameters) {
     String runtimeParametersString = JsonUtils.asJson(runtimeParameters);

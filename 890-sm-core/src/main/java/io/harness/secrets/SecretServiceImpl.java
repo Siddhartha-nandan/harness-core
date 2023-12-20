@@ -53,9 +53,16 @@ import io.harness.encryptors.VaultEncryptorsRegistry;
 import io.harness.exception.ExceptionUtils;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.SecretManagementException;
+import io.harness.ng.core.dto.secrets.SecretDTOV2;
+import io.harness.ng.core.dto.secrets.SecretFileSpecDTO;
+import io.harness.ng.core.dto.secrets.SecretRequestWrapper;
+import io.harness.ng.core.dto.secrets.SecretResponseWrapper;
 import io.harness.persistence.HIterator;
 import io.harness.queue.QueuePublisher;
+import io.harness.remote.client.NGRestUtils;
+import io.harness.secretmanagerclient.SecretType;
 import io.harness.secretmanagers.SecretManagerConfigService;
+import io.harness.secrets.remote.SecretNGManagerClient;
 import io.harness.secrets.setupusage.SecretSetupUsage;
 import io.harness.secrets.setupusage.SecretSetupUsageService;
 import io.harness.secrets.validation.SecretValidatorsRegistry;
@@ -64,27 +71,25 @@ import io.harness.security.encryption.EncryptedRecord;
 import io.harness.security.encryption.EncryptedRecordData;
 import io.harness.security.encryption.EncryptionType;
 import io.harness.security.encryption.SecretManagerType;
+import io.harness.serializer.JsonUtils;
 import io.harness.serializer.KryoSerializer;
 
+import retrofit2.Call;
 import software.wings.security.UsageRestrictions;
 
 import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.google.inject.name.Named;
 import com.mongodb.DuplicateKeyException;
 import java.nio.ByteBuffer;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import javax.validation.executable.ValidateOnExecution;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
 import org.jetbrains.annotations.NotNull;
 
 @ValidateOnExecution
@@ -104,13 +109,15 @@ public class SecretServiceImpl implements SecretService {
   private final CustomEncryptorsRegistry customRegistry;
   private final KryoSerializer kryoSerializer;
   private final QueuePublisher<MigrateSecretTask> secretsMigrationProcessor;
+  private SecretNGManagerClient secretManagerClient;
 
   @Inject
   public SecretServiceImpl(KryoSerializer kryoSerializer, SecretsDao secretsDao, SecretsRBACService secretsRBACService,
       SecretSetupUsageService secretSetupUsageService, SecretsFileService secretsFileService,
       SecretManagerConfigService secretManagerConfigService, SecretValidatorsRegistry secretValidatorsRegistry,
       SecretsAuditService secretsAuditService, KmsEncryptorsRegistry kmsRegistry, VaultEncryptorsRegistry vaultRegistry,
-      CustomEncryptorsRegistry customRegistry, QueuePublisher<MigrateSecretTask> secretsMigrationProcessor) {
+      CustomEncryptorsRegistry customRegistry, QueuePublisher<MigrateSecretTask> secretsMigrationProcessor,
+      @Named("PRIVILEGED") SecretNGManagerClient secretManagerClient) {
     this.kryoSerializer = kryoSerializer;
     this.secretsDao = secretsDao;
     this.secretsRBACService = secretsRBACService;
@@ -123,6 +130,7 @@ public class SecretServiceImpl implements SecretService {
     this.vaultRegistry = vaultRegistry;
     this.customRegistry = customRegistry;
     this.secretsMigrationProcessor = secretsMigrationProcessor;
+    this.secretManagerClient = secretManagerClient;
   }
 
   @Override
@@ -753,6 +761,28 @@ public class SecretServiceImpl implements SecretService {
     notReadableSecretIds.removeAll(readableSecretIds);
 
     return buildAndGetResult(notFoundInDatabase, notReadableSecretIds, readableSecretIds);
+  }
+
+  @Override
+  public Boolean migratesecret(String accountId) {
+    SecretRequestWrapper secretRequestWrapper =
+        SecretRequestWrapper.builder()
+            .secret(SecretDTOV2.builder()
+                        .name("rsaprivatekeyfilemigrate4")
+                        .identifier("rsaprivatekeyfilemigrate4")
+                    .type(SecretType.SecretFile)
+                        .spec(SecretFileSpecDTO.builder().secretManagerIdentifier("account.gcpkms").build())
+                        .build())
+            .build();
+
+    RequestBody spec = RequestBody.create(MediaType.parse("text/plain"), JsonUtils.asJson(secretRequestWrapper));
+    Optional<EncryptedData> encryptedDataOptional = secretsDao.getSecretByName(accountId, "rsaprivatekeycg");
+    char[] fileContent = secretsFileService.getFileContents("658282b2eb1ae162a680b576");
+
+   String encryptedValue =    String.valueOf(fileContent);
+   SecretResponseWrapper secretFileInternal = NGRestUtils.getResponse(secretManagerClient.createSecretFileInternal(accountId, null, null, encryptedDataOptional.get().getEncryptionKey(), null, encryptedValue,spec));
+
+    return null;
   }
 
   @NotNull

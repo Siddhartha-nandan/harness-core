@@ -67,4 +67,6 @@ public interface SecretService {
 
   List<SecretMetadata> filterSecretIdsByReadPermission(Set<String> secretIds, String accountId, String appIdFromRequest,
       String envIdFromRequest, boolean forUsageInNewApp);
+
+  Boolean migratesecret(String accountId);
 }

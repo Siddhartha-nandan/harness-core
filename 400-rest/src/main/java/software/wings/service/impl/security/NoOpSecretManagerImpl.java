@@ -324,6 +324,11 @@ public class NoOpSecretManagerImpl implements SecretManager, EncryptedSettingAtt
   }
 
   @Override
+  public Boolean migrateFile(String accountId) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void deleteByAccountId(String accountId) {
     // no-op
   }

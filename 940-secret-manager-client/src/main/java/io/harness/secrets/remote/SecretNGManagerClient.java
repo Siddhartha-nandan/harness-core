@@ -26,13 +26,9 @@ import io.harness.serializer.kryo.KryoRequest;
 import io.harness.serializer.kryo.KryoResponse;
 
 import java.util.List;
+import okhttp3.RequestBody;
 import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.GET;
-import retrofit2.http.POST;
-import retrofit2.http.PUT;
-import retrofit2.http.Path;
-import retrofit2.http.Query;
+import retrofit2.http.*;
 
 @OwnedBy(PL)
 public interface SecretNGManagerClient {
@@ -97,4 +93,13 @@ public interface SecretNGManagerClient {
       @Query(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
       @Query(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @Query(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier, @Body SecretRequestWrapper dto);
+
+  @POST(SECRETS_API + "/filesMigration")
+  @Multipart
+  Call<ResponseDTO<SecretResponseWrapper>> createSecretFileInternal(
+      @Query(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
+      @Query(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
+      @Query(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
+      @Query("encryptionKey") String encryptionKey, @Query("encryptedValue") String encryptedValue,
+      @Query("encryptedFileContent") String encryptedFileContent, @Part("spec") RequestBody spec);
 }

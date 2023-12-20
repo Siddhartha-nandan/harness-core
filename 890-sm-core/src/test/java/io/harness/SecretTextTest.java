@@ -44,6 +44,7 @@ import io.harness.secrets.SecretsDao;
 import io.harness.secrets.SecretsDaoImpl;
 import io.harness.secrets.SecretsFileService;
 import io.harness.secrets.SecretsRBACService;
+import io.harness.secrets.remote.SecretNGManagerClient;
 import io.harness.secrets.setupusage.SecretSetupUsageBuilderRegistry;
 import io.harness.secrets.setupusage.SecretSetupUsageService;
 import io.harness.secrets.setupusage.SecretSetupUsageServiceImpl;
@@ -101,7 +102,7 @@ public class SecretTextTest extends SMCoreTestBase {
         new SecretSetupUsageServiceImpl(secretsDao, mockSecretManagerConfigService, secretSetupUsageBuilderRegistry);
     secretService = new SecretServiceImpl(kryoSerializer, secretsDao, mockSecretsRBACService, secretSetupUsageService,
         mockSecretsFileService, mockSecretManagerConfigService, secretValidatorsRegistry, mockSecretsAuditService,
-        kmsEncryptorsRegistry, vaultEncryptorsRegistry, customEncryptorsRegistry, queuePublisher);
+        kmsEncryptorsRegistry, vaultEncryptorsRegistry, customEncryptorsRegistry, queuePublisher, mock(SecretNGManagerClient.class));
   }
 
   private SecretTextBuilder getBaseSecretText() {

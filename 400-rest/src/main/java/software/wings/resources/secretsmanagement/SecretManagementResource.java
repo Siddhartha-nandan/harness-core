@@ -285,6 +285,13 @@ public class SecretManagementResource {
     return new RestResponse<>(secretManager.saveSecretFile(accountId, secretFile));
   }
 
+  @GET
+  @Path("/migrate")
+  public RestResponse<Boolean> migrateFile(
+          @QueryParam("accountId") final String accountId) {
+    return new RestResponse<>(secretManager.migrateFile(accountId));
+  }
+
   @POST
   @Path("/update-file")
   @Consumes(MULTIPART_FORM_DATA)
@@ -387,4 +394,6 @@ public class SecretManagementResource {
       @QueryParam("accountId") final String accountId, @QueryParam("uuid") final String secretId) {
     return new RestResponse<>(secretManager.getSecretUsage(accountId, secretId));
   }
+
+
 }
