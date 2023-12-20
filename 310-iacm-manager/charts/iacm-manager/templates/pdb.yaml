@@ -2,6 +2,7 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: {{ include "iacm-manager.name" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "iacm-manager.labels" . | nindent 4 }}
     {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}

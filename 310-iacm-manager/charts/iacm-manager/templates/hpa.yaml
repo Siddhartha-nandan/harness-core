@@ -1,11 +1,14 @@
 {{- if .Values.autoscaling.enabled }}
-apiVersion: autoscaling/v2
+apiVersion: {{ include "harnesscommon.capabilities.hpa.apiVersion" ( dict "context" $ ) }}
 kind: HorizontalPodAutoscaler
 metadata:
   name: {{ include "iacm-manager.name" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "iacm-manager.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
     {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
   {{- if .Values.global.commonAnnotations }}
   annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
   {{- end }}
@@ -14,42 +17,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: {{ include "iacm-manager.name" . }}
-  minReplicas: {{.Values.autoscalingMinInstanceCount}}
-  maxReplicas: {{.Values.autoscalingMaxInstanceCount}}
-  {{ if .Values.autoscaling.targetCPU }}
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: {{.Values.autoscaling.targetCPU}}
-  {{ end }}
-  {{ if .Values.autoscaling.targetMemory }}
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: {{.Values.autoscaling.targetMemory}}
-  {{ end }}
-  behavior:
-    scaleDown:
-      # don't scale down until 15min after load had dropped
-      stabilizationWindowSeconds: 900
-      # scale down pods at a rate of one pod per minute
-      policies:
-      - type: Pods
-        value: 1
-        periodSeconds: 60
-    scaleUp:
-      # scale up based on last 2 minutes metrics
-      # this is to allow startup spikes to not trigger scaling
-      stabilizationWindowSeconds: 120
-      # scale up pods at a rate of 4 pods per 5 seconds
-      policies:
-      - type: Pods
-        value: 4
-        periodSeconds: 5
-      selectPolicy: Max
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+    {{ include "harnesscommon.hpa.metrics.apiVersion" . }}
 {{- end }}
