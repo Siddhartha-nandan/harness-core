@@ -161,7 +161,18 @@ public class SecretVolumesHelper {
   }
 
   public String getSecretKey(String prefix, String srcPath) {
-    return prefix + "-" + hashFilePath(srcPath);
+    return trimKeyIfExceedsMaxLength(hashFilePath(srcPath) + "-" + prefix);
+  }
+
+  private String trimKeyIfExceedsMaxLength(String key) {
+    int maxLength = 63;
+    if (key.length() > maxLength) {
+      key = key.substring(0, maxLength - 1);
+    }
+    if (key.endsWith("-")) {
+      return key.substring(0, key.length() - 1); // Remove the last character (hyphen)
+    }
+    return key;
   }
 
   public List<String> getAllSecretKeys(String prefix) {

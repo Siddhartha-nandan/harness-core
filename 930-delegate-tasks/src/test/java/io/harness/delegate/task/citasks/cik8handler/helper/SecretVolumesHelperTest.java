@@ -57,9 +57,9 @@ public class SecretVolumesHelperTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testGetSecretKey() {
     String key1 = secretVolumesHelper.getSecretKey("prefix", "/path/to/a.crt");
-    assertThat(key1).startsWith("prefix-a-crt");
+    assertThat(key1).startsWith("a-crt");
     String key2 = secretVolumesHelper.getSecretKey("prefix", "/different/path/to/a.crt");
-    assertThat(key2).startsWith("prefix-a-crt");
+    assertThat(key2).startsWith("a-crt");
     assertThat(key1).isNotEqualTo(key2);
   }
 
