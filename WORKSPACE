@@ -7160,8 +7160,8 @@ go_repository(
 go_repository(
     name = "com_github_wings_software_autogen_go",
     importpath = "github.com/wings-software/autogen-go",
-    sum = "h1:SVCNL2KWI0ptby0k4642d7T+M9ZOvo8lgwGIfogdLK8=",
-    version = "v1.0.1",
+    sum = "h1:KCAOkBZY+ilT5HDSCwahM9un4N2MqtGZ8+pZb1Z4Sb0=",
+    version = "v1.0.2",
 )
 
 go_repository(
