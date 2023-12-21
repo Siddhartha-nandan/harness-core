@@ -212,7 +212,7 @@ public class FetchInstanceScriptStep extends CdTaskExecutable<FetchInstanceScrip
       StepResponseBuilder builder = StepResponse.builder()
                                         .unitProgressList(response.getUnitProgressData().getUnitProgresses())
                                         .status(Status.SUCCEEDED);
-      List<CustomDeploymentServerInstanceInfo> instanceElements = new ArrayList<>();
+      List<CustomDeploymentServerInstanceInfo> instanceElements;
       CustomDeploymentInfrastructureOutcome infrastructureOutcome =
           (CustomDeploymentInfrastructureOutcome) cdStepHelper.getInfrastructureOutcome(ambiance);
       instanceElements =
