@@ -51,8 +51,14 @@ public class DelegatePlatformModule extends AbstractModule {
     if (StringUtils.isEmpty(delegateTaskParamsFile)) {
       delegateTaskParamsFile = "/harness/taskfile";
     }
-    final var runnerConfig = new K8SRunnerConfig(delegateNamespace, delegateName, configuration.getDelegateToken(),
-        delegateTaskParamsFile, configuration.getAccountId(), configuration.getLogStreamingServiceBaseUrl());
+
+    var certificatesMountPath = System.getenv().get("CERTIFICATES_MOUNT_PATH");
+    if (StringUtils.isEmpty(certificatesMountPath)) {
+      certificatesMountPath = "/harness/ca-certs";
+    }
+    final var runnerConfig =
+        new K8SRunnerConfig(delegateNamespace, delegateName, configuration.getDelegateToken(), delegateTaskParamsFile,
+            configuration.getAccountId(), configuration.getLogStreamingServiceBaseUrl(), certificatesMountPath);
 
     install(new K8SRunnerModule(runnerConfig));
   }
