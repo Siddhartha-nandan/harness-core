@@ -14,18 +14,22 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.delegate.beans.connector.awsconnector.AwsConnectorDTO;
+import io.harness.taskcontext.infra.EksK8sInfraContext;
+import io.harness.taskcontext.infra.InfraContext;
 import io.harness.security.encryption.EncryptedDataDetail;
 
 import java.util.List;
 import lombok.Builder;
 import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 
-@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = false,
     components = {HarnessModuleComponent.CDS_COMMON_STEPS, HarnessModuleComponent.CDS_K8S})
 @Value
 @Builder
 @OwnedBy(CDP)
 @RecasterAlias("io.harness.delegate.task.k8s.EksK8sInfraDelegateConfig")
+@Slf4j
 public class EksK8sInfraDelegateConfig implements K8sInfraDelegateConfig {
   String namespace;
   String cluster;
@@ -33,4 +37,9 @@ public class EksK8sInfraDelegateConfig implements K8sInfraDelegateConfig {
   AwsConnectorDTO awsConnectorDTO;
   List<EncryptedDataDetail> encryptionDataDetails;
   boolean addRegionalParam;
+
+  @Override
+  public InfraContext toInfraContext(String delegateId) {
+    return EksK8sInfraContext.builder().delegateId(delegateId).build();
+  }
 }

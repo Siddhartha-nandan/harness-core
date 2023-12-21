@@ -8,16 +8,24 @@
 package io.harness.delegate.task.k8s;
 
 import io.harness.annotation.RecasterAlias;
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.delegate.beans.connector.k8Connector.KubernetesClusterConfigDTO;
 import io.harness.security.encryption.EncryptedDataDetail;
+import io.harness.taskcontext.infra.DirectK8sInfraContext;
+import io.harness.taskcontext.infra.InfraContext;
 
 import java.util.List;
 import lombok.Builder;
 import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 
 @Value
 @Builder
 @RecasterAlias("io.harness.delegate.task.k8s.DirectK8sInfraDelegateConfig")
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_K8S})
+@Slf4j
 public class DirectK8sInfraDelegateConfig implements K8sInfraDelegateConfig {
   String namespace;
   KubernetesClusterConfigDTO kubernetesClusterConfigDTO;
@@ -27,5 +35,10 @@ public class DirectK8sInfraDelegateConfig implements K8sInfraDelegateConfig {
   @Override
   public boolean useSocketCapability() {
     return useSocketCapability;
+  }
+
+  @Override
+  public InfraContext toInfraContext(String delegateId) {
+    return DirectK8sInfraContext.builder().delegateId(delegateId).build();
   }
 }

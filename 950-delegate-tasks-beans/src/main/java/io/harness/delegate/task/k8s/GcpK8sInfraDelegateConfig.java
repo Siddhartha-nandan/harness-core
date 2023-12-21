@@ -10,21 +10,34 @@ package io.harness.delegate.task.k8s;
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 
 import io.harness.annotation.RecasterAlias;
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorDTO;
+import io.harness.taskcontext.infra.GcpK8sInfraContext;
+import io.harness.taskcontext.infra.InfraContext;
 import io.harness.security.encryption.EncryptedDataDetail;
 
 import java.util.List;
 import lombok.Builder;
 import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 
 @Value
 @Builder
 @OwnedBy(CDP)
 @RecasterAlias("io.harness.delegate.task.k8s.GcpK8sInfraDelegateConfig")
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_K8S})
+@Slf4j
 public class GcpK8sInfraDelegateConfig implements K8sInfraDelegateConfig {
   String namespace;
   String cluster;
   GcpConnectorDTO gcpConnectorDTO;
   List<EncryptedDataDetail> encryptionDataDetails;
+
+  @Override
+  public InfraContext toInfraContext(String delegateId) {
+    return GcpK8sInfraContext.builder().delegateId(delegateId).build();
+  }
 }
