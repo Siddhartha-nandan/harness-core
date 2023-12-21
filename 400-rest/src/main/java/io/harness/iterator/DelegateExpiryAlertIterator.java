@@ -49,7 +49,7 @@ public class DelegateExpiryAlertIterator
                     .fieldName(DelegateGroupKeys.delegateExpiryAlertNextIteration)
                     .filterExpander(q
                         -> q.field(DelegateGroupKeys.delegatesExpireOn)
-                               .lessThan(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(45)))
+                               .lessThan(System.currentTimeMillis()))
                     .targetInterval(targetInterval)
                     .acceptableNoAlertDelay(Duration.ofMinutes(2))
                     .handler(this)
@@ -69,7 +69,7 @@ public class DelegateExpiryAlertIterator
                            .fieldName(DelegateGroupKeys.delegateExpiryAlertNextIteration)
                            .filterExpander(q
                                -> q.field(DelegateGroupKeys.delegatesExpireOn)
-                                      .lessThan(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30)))
+                                      .lessThan(System.currentTimeMillis()))
                            .targetInterval(targetInterval)
                            .acceptableNoAlertDelay(Duration.ofMinutes(2))
                            .handler(this)

@@ -151,9 +151,7 @@ public class DelegateDisconnectDetectorIterator
       delegateDao.delegateDisconnected(delegate.getAccountId(), delegate.getUuid());
       delegateService.updateLastExpiredEventHeartbeatTime(
           delegate.getLastHeartBeat(), delegate.getUuid(), delegate.getAccountId());
-      if (featureFlagService.isEnabled(DEL_NOTIFICATION, delegate.getAccountId())) {
-        triggerNotificationRequest(delegate);
-      }
+      triggerNotificationRequest(delegate);
     }
   }
 

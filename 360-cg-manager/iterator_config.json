@@ -371,11 +371,11 @@
   },
   {
     "name": "DelegateExpiryAlert",
-    "enabled": false,
+    "enabled": true,
     "threadPoolSize": 1,
     "threadPoolIntervalInSeconds": 30,
     "nextIterationMode": "TARGET",
-    "targetIntervalInSeconds": 86400,
+    "targetIntervalInSeconds": 600,
     "throttleIntervalInSeconds": 0,
     "iteratorMode": "REDIS_BATCH"
   }
