@@ -152,7 +152,7 @@ image:
   repository: ci-manager
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "1.5.3"
+  tag: "1.5.4"
   digest: ""
   imagePullSecrets: []
 securityImage:
