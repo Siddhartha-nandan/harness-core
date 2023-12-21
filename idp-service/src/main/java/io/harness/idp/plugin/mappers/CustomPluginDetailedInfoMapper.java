@@ -69,4 +69,41 @@ public class CustomPluginDetailedInfoMapper
         throw new UnsupportedOperationException(String.format("File type %s is not supported", fileType));
     }
   }
+
+  public void removeFileDetails(PluginInfoEntity entity, String fileType, String gcsBucketUrl) {
+    CustomPluginInfoEntity customPluginInfoEntity = (CustomPluginInfoEntity) entity;
+    switch (FileType.valueOf(fileType)) {
+      case ZIP:
+        Artifact artifact = customPluginInfoEntity.getArtifact();
+        if (artifact != null && ZIP.equals(artifact.getType()) && gcsBucketUrl.equals(artifact.getUrl())) {
+          customPluginInfoEntity.setArtifact(null);
+        }
+        break;
+      case ICON:
+        if (gcsBucketUrl.equals(customPluginInfoEntity.getIconUrl())) {
+          customPluginInfoEntity.setIconUrl(null);
+        }
+        break;
+      case SCREENSHOT:
+        List<String> images = customPluginInfoEntity.getImages();
+        if (images != null && !images.isEmpty()) {
+          images.remove(gcsBucketUrl);
+        }
+        customPluginInfoEntity.setImages(images);
+        break;
+      default:
+        throw new UnsupportedOperationException(String.format("File type %s is not supported", fileType));
+    }
+  }
+
+  public CustomPluginDetailedInfo toYamlDto(CustomPluginInfoEntity entity, boolean isEnabled) {
+    CustomPluginDetailedInfo info = new CustomPluginDetailedInfo();
+    PluginInfo pluginDetails = new PluginInfo();
+    pluginDetails.setId(entity.getIdentifier());
+    pluginDetails.setName(entity.getName());
+    pluginDetails.setEnabled(isEnabled);
+    info.setPluginDetails(pluginDetails);
+    info.setArtifact(entity.getArtifact());
+    return info;
+  }
 }

@@ -64,6 +64,7 @@ import io.harness.cdng.k8s.asyncsteps.K8sBlueGreenStepV2;
 import io.harness.cdng.k8s.asyncsteps.K8sCanaryStepV2;
 import io.harness.cdng.k8s.asyncsteps.K8sRollingRollbackStepV2;
 import io.harness.cdng.k8s.asyncsteps.K8sRollingStepV2;
+import io.harness.cdng.k8s.asyncsteps.K8sTrafficRoutingStep;
 import io.harness.cdng.serverless.ServerlessAwsLambdaDeployStep;
 import io.harness.cdng.serverless.container.steps.ServerlessAwsLambdaDeployV2Step;
 import io.harness.cdng.ssh.CommandStep;
@@ -73,6 +74,12 @@ import io.harness.cdng.tas.TasRollingDeployStep;
 import io.harness.cdng.tas.TasRollingRollbackStep;
 import io.harness.cdng.tas.TasSwapRollbackStep;
 import io.harness.cdng.tas.TasSwapRoutesStep;
+import io.harness.cdng.tas.asyncsteps.TasAppResizeStepV2;
+import io.harness.cdng.tas.asyncsteps.TasRollbackStepV2;
+import io.harness.cdng.tas.asyncsteps.TasRollingDeployStepV2;
+import io.harness.cdng.tas.asyncsteps.TasRollingRollbackStepV2;
+import io.harness.cdng.tas.asyncsteps.TasSwapRollbackStepV2;
+import io.harness.cdng.tas.asyncsteps.TasSwapRoutesStepV2;
 import io.harness.pms.contracts.steps.StepType;
 
 import com.google.common.collect.Sets;
@@ -97,11 +104,14 @@ public class InstanceSyncStepResolver {
       EcsCanaryDeployStepV2.STEP_TYPE.getType(), EcsBlueGreenSwapTargetGroupsStep.STEP_TYPE.getType(),
       EcsBlueGreenSwapTargetGroupsStepV2.STEP_TYPE.getType(), EcsBlueGreenRollbackStep.STEP_TYPE.getType(),
       EcsBlueGreenRollbackStepV2.STEP_TYPE.getType(), FetchInstanceScriptStep.STEP_TYPE.getType(),
-      ElastigroupDeployStep.STEP_TYPE.getType(), TasAppResizeStep.STEP_TYPE.getType(),
-      TasSwapRoutesStep.STEP_TYPE.getType(), TasRollbackStep.STEP_TYPE.getType(),
-      TasSwapRollbackStep.STEP_TYPE.getType(), ElastigroupBGStageSetupStep.STEP_TYPE.getType(),
+      ElastigroupDeployStep.STEP_TYPE.getType(), ElastigroupBGStageSetupStep.STEP_TYPE.getType(),
       ElastigroupSwapRouteStep.STEP_TYPE.getType(), ElastigroupRollbackStep.STEP_TYPE.getType(),
-      TasRollingDeployStep.STEP_TYPE.getType(), TasRollingRollbackStep.STEP_TYPE.getType(),
+      TasAppResizeStep.STEP_TYPE.getType(), TasAppResizeStepV2.STEP_TYPE.getType(),
+      TasSwapRoutesStep.STEP_TYPE.getType(), TasSwapRoutesStepV2.STEP_TYPE.getType(),
+      TasRollbackStep.STEP_TYPE.getType(), TasRollbackStepV2.STEP_TYPE.getType(),
+      TasSwapRollbackStep.STEP_TYPE.getType(), TasSwapRollbackStepV2.STEP_TYPE.getType(),
+      TasRollingDeployStep.STEP_TYPE.getType(), TasRollingDeployStepV2.STEP_TYPE.getType(),
+      TasRollingRollbackStep.STEP_TYPE.getType(), TasRollingRollbackStepV2.STEP_TYPE.getType(),
       AsgRollingDeployStep.STEP_TYPE.getType(), AsgCanaryDeployStep.STEP_TYPE.getType(),
       AsgCanaryDeleteStep.STEP_TYPE.getType(), AsgRollingRollbackStep.STEP_TYPE.getType(),
       AsgBlueGreenDeployStep.STEP_TYPE.getType(), AsgBlueGreenSwapServiceStep.STEP_TYPE.getType(),
@@ -112,7 +122,8 @@ public class InstanceSyncStepResolver {
       GoogleFunctionsGenOneRollbackStep.STEP_TYPE.getType(), AwsSamDeployStep.STEP_TYPE.getType(),
       ServerlessAwsLambdaDeployV2Step.STEP_TYPE.getType(), EcsUpgradeContainerStep.STEP_TYPE.getType(),
       EcsUpgradeContainerStepV2.STEP_TYPE.getType(), EcsBasicRollbackStep.STEP_TYPE.getType(),
-      EcsBasicRollbackStepV2.STEP_TYPE.getType(), K8sRollingRollbackStepV2.STEP_TYPE.getType()));
+      EcsBasicRollbackStepV2.STEP_TYPE.getType(), K8sRollingRollbackStepV2.STEP_TYPE.getType(),
+      K8sTrafficRoutingStep.STEP_TYPE.getType()));
 
   public boolean shouldRunInstanceSync(StepType stepType) {
     return nonNull(stepType) && INSTANCE_SYN_STEP_TYPES.contains(stepType.getType());

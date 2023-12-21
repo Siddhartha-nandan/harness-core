@@ -26,6 +26,7 @@ import io.harness.eventsframework.EventsFrameworkConfiguration;
 import io.harness.grpc.client.GrpcClientConfig;
 import io.harness.grpc.server.GrpcServerConfig;
 import io.harness.idp.onboarding.config.OnboardingModuleConfig;
+import io.harness.idp.plugin.config.CustomPluginsConfig;
 import io.harness.idp.provision.ProvisionModuleConfig;
 import io.harness.idp.proxy.config.ProxyAllowListConfig;
 import io.harness.lock.DistributedLockImplementation;
@@ -158,11 +159,14 @@ public class IdpConfiguration extends Configuration {
   @JsonProperty("harnessCodeGitUrl") private String harnessCodeGitUrl;
   @JsonProperty("segmentConfiguration") private SegmentConfiguration segmentConfiguration;
   @JsonProperty("enableMetrics") private boolean enableMetrics;
+  @JsonProperty("allowedKindsForCatalogSync") private List<String> allowedKindsForCatalogSync;
+  @JsonProperty("customPlugins") private CustomPluginsConfig customPluginsConfig;
 
   public static final Collection<Class<?>> HARNESS_RESOURCE_CLASSES = getResourceClasses();
   public static final String IDP_SPEC_PACKAGE = "io.harness.spec.server.idp.v1";
   public static final String SERVICES_PROXY_PACKAGE = "io.harness.idp.proxy.services";
   public static final String DELEGATE_PROXY_PACKAGE = "io.harness.idp.proxy.delegate";
+  private static final String PLUGIN_PACKAGE = "io.harness.idp.plugin.resources";
   public static final String IDP_HEALTH_PACKAGE = "io.harness.idp.health";
   private static final String IDP_YAML_SCHEMA = "io.harness.idp.pipeline.stages.yamlschema";
 
@@ -268,7 +272,7 @@ public class IdpConfiguration extends Configuration {
         .stream()
         .filter(klazz
             -> StringUtils.startsWithAny(klazz.getPackage().getName(), IDP_SPEC_PACKAGE, SERVICES_PROXY_PACKAGE,
-                DELEGATE_PROXY_PACKAGE, IDP_HEALTH_PACKAGE, IDP_YAML_SCHEMA))
+                DELEGATE_PROXY_PACKAGE, PLUGIN_PACKAGE, IDP_HEALTH_PACKAGE, IDP_YAML_SCHEMA))
         .collect(Collectors.toSet());
   }
 }
