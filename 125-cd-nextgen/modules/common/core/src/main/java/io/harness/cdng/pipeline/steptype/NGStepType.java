@@ -85,6 +85,9 @@ public enum NGStepType {
   @JsonProperty(StepSpecTypeConstants.K8S_CANARY_DEPLOY)
   CANARY_DEPLOYMENT("Deployment", Arrays.asList(ServiceDefinitionType.KUBERNETES), "Kubernetes",
       StepSpecTypeConstants.K8S_CANARY_DEPLOY),
+  @JsonProperty(StepSpecTypeConstants.K8S_TRAFFIC_ROUTING)
+  K8S_TRAFFIC_ROUTING("Traffic Routing", Arrays.asList(ServiceDefinitionType.KUBERNETES), "Kubernetes",
+      StepSpecTypeConstants.K8S_TRAFFIC_ROUTING),
 
   // Infrastructure Provisioners
   @JsonProperty(StepSpecTypeConstants.TERRAFORM_APPLY)
@@ -371,7 +374,10 @@ public enum NGStepType {
       "Asg Shift Traffic", Arrays.asList(ServiceDefinitionType.ASG), "ASG", StepSpecTypeConstants.ASG_SHIFT_TRAFFIC),
   @JsonProperty(StepSpecTypeConstants.DOWNLOAD_AWS_S3)
   DOWNLOAD_AWS_S3("Download AWS S3", Arrays.asList(ServiceDefinitionType.values()),
-      "CD Container Step Group Common Steps/DOWNLOAD AWS S3", StepSpecTypeConstants.DOWNLOAD_AWS_S3);
+      "CD Container Step Group Common Steps/DOWNLOAD AWS S3", StepSpecTypeConstants.DOWNLOAD_AWS_S3),
+  @JsonProperty(StepSpecTypeConstants.DOWNLOAD_HARNESS_STORE)
+  DOWNLOAD_HARNESS_STORE("Download Harness Store", Arrays.asList(ServiceDefinitionType.values()),
+      "CD Container Step Group Common Steps/DOWNLOAD HARNESS STORE", StepSpecTypeConstants.DOWNLOAD_HARNESS_STORE);
 
   private String displayName;
   private List<ServiceDefinitionType> serviceDefinitionTypes;

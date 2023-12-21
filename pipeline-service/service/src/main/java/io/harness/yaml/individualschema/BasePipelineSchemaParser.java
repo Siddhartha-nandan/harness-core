@@ -47,16 +47,18 @@ public abstract class BasePipelineSchemaParser extends AbstractStaticSchemaParse
 
   @Override
   public JsonNode getFieldNode(InputFieldMetadata inputFieldMetadata) {
-    String[] fqnParts = inputFieldMetadata.getFqnFromParentNode().split("\\.");
+    String fqnFromParentNode = inputFieldMetadata.getFqnFromParentNode();
     PipelineSchemaRequest pipelineSchemaRequest =
         PipelineSchemaRequest.builder()
-            .individualSchemaMetadata(PipelineSchemaMetadata.builder()
-                                          .nodeGroup(getFormattedNodeGroup(fqnParts[0]))
-                                          .nodeType(inputFieldMetadata.getParentNodeType())
-                                          .build())
+            .individualSchemaMetadata(
+                PipelineSchemaMetadata.builder()
+                    .nodeGroup(getFormattedNodeGroup(inputFieldMetadata.getParentTypeOfNodeGroup()))
+                    .nodeType(inputFieldMetadata.getParentNodeType())
+                    .build())
+            .fqnFromParentNode(fqnFromParentNode)
             .build();
 
-    return super.getFieldNode(inputFieldMetadata.getFieldName(), pipelineSchemaRequest);
+    return super.getFieldNode(pipelineSchemaRequest);
   }
 
   @Override
@@ -131,5 +133,15 @@ public abstract class BasePipelineSchemaParser extends AbstractStaticSchemaParse
       return "stage";
     }
     return nodeGroup;
+  }
+
+  @Override
+  Boolean checkIfParserReinitializationNeeded() {
+    if (schemaFetcher.useSchemaFromHarnessSchemaRepo()) {
+      // We will reinitialise the individual schema in 15 min for stress env or for env where
+      // useSchemaFromHarnessSchemaRepo is enabled (dev-space/local)
+      return System.currentTimeMillis() - lastInitializedTime >= MAX_TIME_TO_REINITIALIZE_PARSER;
+    }
+    return false;
   }
 }

@@ -17,24 +17,36 @@ import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConst;
 import io.harness.pms.yaml.YamlNode;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonValue;
 import io.swagger.annotations.ApiModelProperty;
+import javax.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
-@JsonTypeInfo(use = NAME, property = "type", include = EXTERNAL_PROPERTY, visible = true)
-@JsonSubTypes({
-  @JsonSubTypes.Type(value = K8sTrafficRouting.class, name = K8sTrafficRoutingConst.CONFIG)
-  , @JsonSubTypes.Type(value = K8sTrafficRoutingDestinations.class, name = K8sTrafficRoutingConst.INHERIT)
-})
 @NoArgsConstructor
-@AllArgsConstructor
+@SuperBuilder
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_K8S})
 public abstract class AbstractK8sTrafficRouting {
   @JsonProperty(YamlNode.UUID_FIELD_NAME)
   @Getter(onMethod_ = { @ApiModelProperty(hidden = true) })
   @ApiModelProperty(hidden = true)
-  String uuid;
+  private String uuid;
+
+  @NotNull @Getter ProviderType provider;
+
+  @JsonTypeInfo(use = NAME, property = "provider", include = EXTERNAL_PROPERTY, visible = true)
+  @NotNull
+  @Getter
+  K8sTrafficRoutingProvider spec;
+
+  @AllArgsConstructor
+  public enum ProviderType {
+    SMI(K8sTrafficRoutingConst.SMI),
+    ISTIO(K8sTrafficRoutingConst.ISTIO);
+
+    @JsonValue final String displayName;
+  }
 }

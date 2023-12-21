@@ -286,7 +286,10 @@ public interface EntityTypeConstants {
   String CREATE_REPO = "CreateRepo";
   String DIRECT_PUSH = "DirectPush";
   String REGISTER_CATALOG = "RegisterCatalog";
+  String CREATE_CATALOG = "CreateCatalog";
+  String SLACK_NOTIFY = "SlackNotify";
 
   // CD Container Step Group Common Steps
   String DOWNLOAD_AWS_S3 = "DownloadAwsS3";
+  String DOWNLOAD_HARNESS_STORE = "DownloadHarnessStore";
 }

@@ -7,6 +7,7 @@
 
 package io.harness.cdng.tas;
 
+import static io.harness.cdng.manifest.ManifestStoreType.ARTIFACT_BUNDLE;
 import static io.harness.cdng.manifest.ManifestType.TAS_AUTOSCALER;
 import static io.harness.cdng.manifest.ManifestType.TAS_MANIFEST;
 import static io.harness.cdng.manifest.ManifestType.TAS_VARS;
@@ -154,6 +155,7 @@ import io.harness.delegate.task.pcf.artifact.TasPackageArtifactConfig.TasPackage
 import io.harness.delegate.task.pcf.request.TasManifestsPackage;
 import io.harness.delegate.task.pcf.response.CfCommandResponseNG;
 import io.harness.delegate.task.pcf.response.TasInfraConfig;
+import io.harness.entities.ArtifactBundleInfo;
 import io.harness.exception.ExceptionUtils;
 import io.harness.exception.GeneralException;
 import io.harness.exception.InvalidArgumentsException;
@@ -185,11 +187,13 @@ import io.harness.plancreator.steps.TaskSelectorYaml;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.execution.tasks.TaskRequest;
+import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.sdk.core.data.OptionalOutcome;
 import io.harness.pms.sdk.core.resolver.RefObjectUtils;
 import io.harness.pms.sdk.core.resolver.outcome.OutcomeService;
+import io.harness.pms.sdk.core.resolver.outputs.ExecutionSweepingOutputService;
 import io.harness.pms.sdk.core.steps.executables.TaskChainResponse;
 import io.harness.pms.sdk.core.steps.io.PassThroughData;
 import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
@@ -247,6 +251,8 @@ public class TasStepHelper {
   @Inject @Named("referenceFalseKryoSerializer") private KryoSerializer referenceFalseKryoSerializer;
   @Inject private StepHelper stepHelper;
   @Inject private StageExecutionInfoService stageExecutionInfoService;
+
+  @Inject ExecutionSweepingOutputService executionSweepingOutputService;
   @Named("PRIVILEGED") @Inject private SecretManagerClientService secretManagerClientService;
 
   private static final Splitter lineSplitter = Splitter.onPattern("\\r?\\n").trimResults().omitEmptyStrings();
@@ -992,42 +998,41 @@ public class TasStepHelper {
     TasStepPassThroughData tasStepPassThroughData = (TasStepPassThroughData) passThroughData;
     TasManifestOutcome tasManifest = tasStepPassThroughData.getTasManifestOutcome();
     ResponseData responseData = responseDataSupplier.get();
-    UnitProgressData unitProgressData = null;
-
     try {
       if (responseData instanceof GitFetchResponse) {
-        unitProgressData = ((GitFetchResponse) responseData).getUnitProgressData();
         return handleGitFetchFilesResponse(
             responseData, tasStepExecutor, ambiance, stepElementParameters, tasStepPassThroughData, tasManifest);
       }
       if (responseData instanceof CustomManifestValuesFetchResponse) {
-        unitProgressData = ((CustomManifestValuesFetchResponse) responseData).getUnitProgressData();
         return handleCustomFetchResponse(
             responseData, tasStepExecutor, ambiance, stepElementParameters, tasStepPassThroughData, tasManifest);
       }
       if (responseData instanceof ArtifactBundleFetchResponse) {
-        unitProgressData = ((ArtifactBundleFetchResponse) responseData).getUnitProgressData();
         return handleArtifactBundleFetchResponse(
             responseData, tasStepExecutor, ambiance, stepElementParameters, tasStepPassThroughData, tasManifest);
       }
     } catch (Exception e) {
       return TaskChainResponse.builder()
           .chainEnd(true)
-          .passThroughData(StepExceptionPassThroughData.builder()
-                               .errorMessage(ExceptionUtils.getMessage(e))
-                               .unitProgressData(cdStepHelper.completeUnitProgressData(
-                                   unitProgressData, ambiance, ExceptionUtils.getMessage(e)))
-                               .build())
+          .passThroughData(
+              StepExceptionPassThroughData.builder()
+                  .errorMessage(ExceptionUtils.getMessage(e))
+                  .unitProgressData(cdStepHelper.completeUnitProgressData(
+                      UnitProgressData.builder().unitProgresses(tasStepPassThroughData.getUnitProgresses()).build(),
+                      ambiance, ExceptionUtils.getMessage(e)))
+                  .build())
           .build();
     }
 
     return TaskChainResponse.builder()
         .chainEnd(true)
-        .passThroughData(StepExceptionPassThroughData.builder()
-                             .errorMessage("Failed to execute TAS step")
-                             .unitProgressData(cdStepHelper.completeUnitProgressData(
-                                 unitProgressData, ambiance, "Failed to execute TAS step"))
-                             .build())
+        .passThroughData(
+            StepExceptionPassThroughData.builder()
+                .errorMessage("Failed to execute TAS step")
+                .unitProgressData(cdStepHelper.completeUnitProgressData(
+                    UnitProgressData.builder().unitProgresses(tasStepPassThroughData.getUnitProgresses()).build(),
+                    ambiance, "Failed to execute TAS step"))
+                .build())
         .build();
   }
 
@@ -1479,7 +1484,8 @@ public class TasStepHelper {
     if (isNotEmpty(gitFileValuesPaths)) {
       GitStoreDelegateConfig gitStoreDelegateConfig = cdStepHelper.getGitStoreDelegateConfig(
           gitStoreConfig, connectorDTO, manifestOutcome, gitFileValuesPaths, ambiance);
-      return cdStepHelper.getGitFetchFilesConfigFromBuilder(identifier, manifestType, false, gitStoreDelegateConfig);
+      return cdStepHelper.getGitFetchFilesConfigFromBuilder(
+          identifier, manifestType, false, gitStoreDelegateConfig, true);
     }
     return null;
   }
@@ -1490,7 +1496,8 @@ public class TasStepHelper {
     if (isNotEmpty(gitFileValuesPaths)) {
       GitStoreDelegateConfig gitStoreDelegateConfig = getGitStoreDelegateConfig(
           gitStoreConfig, connectorDTO, gitFileValuesPaths, ambiance, manifestType, identifier);
-      return cdStepHelper.getGitFetchFilesConfigFromBuilder(identifier, manifestType, false, gitStoreDelegateConfig);
+      return cdStepHelper.getGitFetchFilesConfigFromBuilder(
+          identifier, manifestType, false, gitStoreDelegateConfig, true);
     }
     return null;
   }
@@ -1572,20 +1579,11 @@ public class TasStepHelper {
           ambiance, stepElementParameters, tasStepExecutor, tasStepPassThroughData, tasManifestOutcome);
     }
 
-    LogCallback logCallback = cdStepHelper.getLogCallback(CfCommandUnitConstants.VerifyManifests, ambiance, true);
-    UnitProgress.Builder unitProgress = UnitProgress.newBuilder()
-                                            .setStartTime(System.currentTimeMillis())
-                                            .setUnitName(CfCommandUnitConstants.VerifyManifests);
     Map<String, String> allFilesFetched = new HashMap<>();
     TasManifestsPackage unresolvedTasManifestsPackage = TasManifestsPackage.builder().build();
     TasManifestsPackage tasManifestsPackage =
-        getManifestFilesContents(ambiance, tasStepPassThroughData.getGitFetchFilesResultMap(),
-            tasStepPassThroughData.getCustomFetchContent(), tasStepPassThroughData.getLocalStoreFileMapContents(),
-            allFilesFetched, tasStepPassThroughData.getFilesFromArtifactBundle(),
-            tasStepPassThroughData.getMaxManifestOrder(), unresolvedTasManifestsPackage, logCallback);
-    unitProgress.setEndTime(System.currentTimeMillis()).setStatus(UnitStatus.SUCCESS);
-    logCallback.saveExecutionLog("Successfully verified all manifests", INFO, SUCCESS);
-    tasStepPassThroughData.getUnitProgresses().add(unitProgress.build());
+        getManifestFilesContents(ambiance, tasStepPassThroughData, allFilesFetched, unresolvedTasManifestsPackage);
+
     return tasStepExecutor.executeTasTask(tasManifestOutcome, ambiance, stepElementParameters,
         TasExecutionPassThroughData.builder()
             .tasManifestOutcome(
@@ -1605,16 +1603,22 @@ public class TasStepHelper {
         tasStepPassThroughData.getShouldOpenFetchFilesStream(),
         UnitProgressData.builder().unitProgresses(tasStepPassThroughData.getUnitProgresses()).build());
   }
+  public TasManifestsPackage getManifestFilesContents(Ambiance ambiance, TasStepPassThroughData tasStepPassThroughData,
+      Map<String, String> allFilesFetched, TasManifestsPackage unresolvedTasManifestPackage) {
+    LogCallback logCallback = cdStepHelper.getLogCallback(CfCommandUnitConstants.VerifyManifests, ambiance, true);
+    UnitProgress.Builder unitProgress = UnitProgress.newBuilder()
+                                            .setStartTime(System.currentTimeMillis())
+                                            .setUnitName(CfCommandUnitConstants.VerifyManifests);
+    logCallback.saveExecutionLog("Verifying TAS manifests", INFO);
 
-  public TasManifestsPackage getManifestFilesContents(Ambiance ambiance,
-      Map<String, FetchFilesResult> gitFetchFilesResultMap,
-      Map<String, Collection<CustomSourceFile>> customFetchContent,
-      Map<String, List<TasManifestFileContents>> localStoreFetchFilesResultMap, Map<String, String> allFilesFetched,
-      Map<String, List<FileData>> filesFromArtifactBundleMap, Integer maxManifestOrder,
-      TasManifestsPackage unresolvedTasManifestPackage, LogCallback logCallback) {
     TasManifestsPackage tasManifestsPackage = TasManifestsPackage.builder().variableYmls(new ArrayList<>()).build();
-    logCallback.saveExecutionLog("Verifying manifests", INFO);
-    for (int manifestOrder = 0; manifestOrder <= maxManifestOrder; manifestOrder++) {
+    Map<String, FetchFilesResult> gitFetchFilesResultMap = tasStepPassThroughData.getGitFetchFilesResultMap();
+    Map<String, Collection<CustomSourceFile>> customFetchContent = tasStepPassThroughData.getCustomFetchContent();
+    Map<String, List<TasManifestFileContents>> localStoreFetchFilesResultMap =
+        tasStepPassThroughData.getLocalStoreFileMapContents();
+    Map<String, List<FileData>> filesFromArtifactBundleMap = tasStepPassThroughData.getFilesFromArtifactBundle();
+
+    for (int manifestOrder = 0; manifestOrder <= tasStepPassThroughData.getMaxManifestOrder(); manifestOrder++) {
       String manifestOrderId = String.valueOf(manifestOrder);
       if (!isNull(gitFetchFilesResultMap) && gitFetchFilesResultMap.containsKey(manifestOrderId)) {
         FetchFilesResult gitFetchFilesResult = gitFetchFilesResultMap.get(manifestOrderId);
@@ -1667,10 +1671,16 @@ public class TasStepHelper {
         }
       }
     }
+
     if (isEmpty(tasManifestsPackage.getManifestYml())) {
       logCallback.saveExecutionLog("No valid Tas Manifest found", ERROR, FAILURE);
+      unitProgress.setEndTime(System.currentTimeMillis()).setStatus(RUNNING);
+      tasStepPassThroughData.getUnitProgresses().add(unitProgress.build());
       throw new UnsupportedOperationException("No valid Tas Manifest found");
     }
+    unitProgress.setEndTime(System.currentTimeMillis()).setStatus(UnitStatus.SUCCESS);
+    logCallback.saveExecutionLog("Successfully verified all manifests", INFO, SUCCESS);
+    tasStepPassThroughData.getUnitProgresses().add(unitProgress.build());
     return tasManifestsPackage;
   }
 
@@ -1896,6 +1906,32 @@ public class TasStepHelper {
       maxCount = treeMap.get(INSTANCE_MANIFEST_YML_ELEMENT);
     }
     return maxCount;
+  }
+
+  public ArtifactBundleDetails getArtifactBundleDetails(Ambiance ambiance, ManifestOutcome tasManifestOutcome) {
+    if (tasManifestOutcome != null && tasManifestOutcome.getType().equals(TAS_MANIFEST)
+        && tasManifestOutcome.getStore().getKind().equals(ARTIFACT_BUNDLE)) {
+      ArtifactBundleStore artifactBundleStore = (ArtifactBundleStore) tasManifestOutcome.getStore();
+      ArtifactBundleDetails artifactBundleDetails =
+          ArtifactBundleDetails.builder()
+              .artifactBundleType(artifactBundleStore.getArtifactBundleType().toString())
+              .deployableUnitPath(getParameterFieldValue(artifactBundleStore.getDeployableUnitPath()))
+              .activityId(ambiance.getStageExecutionId())
+              .build();
+
+      // Saving sweeping Output with Updated Artifact Name to store the Deployment Unit Path as Artifact name in
+      // Instance ng
+      saveArtifactDetailsInSweepingOutput(
+          ambiance, getParameterFieldValue(artifactBundleStore.getDeployableUnitPath()));
+
+      return artifactBundleDetails;
+    }
+    return null;
+  }
+
+  private void saveArtifactDetailsInSweepingOutput(Ambiance ambiance, String deploymentUnitPath) {
+    executionSweepingOutputService.consume(ambiance, OutcomeExpressionConstants.TAS_ARTIFACT_BUNDLE_OUTCOME,
+        ArtifactBundleInfo.builder().artifactPath(deploymentUnitPath).build(), StepCategory.STAGE.name());
   }
 
   public List<String> getRouteMaps(TasManifestsPackage tasManifestsPackage, List<String> additionalRoutesFromStep) {
@@ -2242,16 +2278,20 @@ public class TasStepHelper {
     }
 
     if (isTasManifest(map)) {
+      logCallback.saveExecutionLog(String.format("Manifest file found - [%s]", fileName));
       return ManifestConfigType.TAS_MANIFEST;
     }
     if (isVariableManifest(map)) {
+      logCallback.saveExecutionLog(String.format("Vars file found - [%s]", fileName));
       return ManifestConfigType.TAS_VARS;
     }
     if (isAutoscalarManifest(map)) {
+      logCallback.saveExecutionLog(String.format("Autoscaler file found - [%s]", fileName));
       return ManifestConfigType.TAS_AUTOSCALER;
     }
-    log.warn(getParseErrorMessage(fileName));
-    logCallback.saveExecutionLog(getParseErrorMessage(fileName), LogLevel.WARN);
+    log.warn(String.format("File - [%s] is not of manifest, vars or autoscaler yml type", fileName));
+    logCallback.saveExecutionLog(
+        String.format("File - [%s] is not of manifest, vars or autoscaler yml type", fileName), LogLevel.WARN);
     return null;
   }
 

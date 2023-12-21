@@ -1322,3 +1322,9 @@ io.harness.plancreator.steps.common.v1.StageElementParametersV1
 io.harness.cdng.containerStepGroup.DownloadAwsS3StepNode
 io.harness.cdng.containerStepGroup.DownloadAwsS3StepParameters
 io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo
+io.harness.cdng.containerStepGroup.DownloadHarnessStoreStepNode
+io.harness.cdng.containerStepGroup.DownloadHarnessStoreStepParameters
+io.harness.cdng.containerStepGroup.DownloadHarnessStoreStepInfo
+io.harness.cdng.k8s.K8sTrafficRoutingStepParameters
+io.harness.cdng.k8s.K8sTrafficRoutingStepNode
+io.harness.cdng.k8s.K8sTrafficRoutingStepInfo

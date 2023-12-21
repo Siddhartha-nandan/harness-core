@@ -7,6 +7,13 @@
 
 package io.harness.idp.plugin.repositories;
 
+import static io.harness.spec.server.idp.v1.model.PluginInfo.PluginTypeEnum.CUSTOM;
+import static io.harness.spec.server.idp.v1.model.PluginInfo.PluginTypeEnum.DEFAULT;
+
+import io.harness.idp.plugin.entities.CustomPluginInfoEntity;
+import io.harness.idp.plugin.entities.CustomPluginInfoEntity.CustomPluginInfoEntityKeys;
+import io.harness.idp.plugin.entities.DefaultPluginInfoEntity;
+import io.harness.idp.plugin.entities.DefaultPluginInfoEntity.DefaultPluginInfoEntityKeys;
 import io.harness.idp.plugin.entities.PluginInfoEntity;
 import io.harness.idp.plugin.entities.PluginInfoEntity.PluginInfoEntityKeys;
 
@@ -70,6 +77,17 @@ public class PluginInfoRepositoryCustomImpl implements PluginInfoRepositoryCusto
     update.set(PluginInfoEntityKeys.exports, pluginInfoEntity.getExports());
     update.set(PluginInfoEntityKeys.config, pluginInfoEntity.getConfig());
     update.set(PluginInfoEntityKeys.envVariables, pluginInfoEntity.getEnvVariables());
+
+    if (pluginInfoEntity.getImages() != null) {
+      update.set(PluginInfoEntityKeys.images, pluginInfoEntity.getImages());
+    }
+
+    if (CUSTOM.equals(pluginInfoEntity.getType())) {
+      update.set(CustomPluginInfoEntityKeys.artifact, ((CustomPluginInfoEntity) pluginInfoEntity).getArtifact());
+    } else if (DEFAULT.equals(pluginInfoEntity.getType())) {
+      update.set(DefaultPluginInfoEntityKeys.core, ((DefaultPluginInfoEntity) pluginInfoEntity).isCore());
+    }
+
     return update;
   }
 }

@@ -9,11 +9,13 @@ package io.harness.ssca.services;
 
 import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 
+import io.harness.exception.DuplicateEntityException;
 import io.harness.outbox.api.OutboxService;
 import io.harness.repositories.BaselineRepository;
 import io.harness.repositories.SBOMComponentRepo;
 import io.harness.spec.server.ssca.v1.model.Artifact;
-import io.harness.spec.server.ssca.v1.model.ArtifactScorecard;
+import io.harness.spec.server.ssca.v1.model.OrchestrationDriftSummary;
+import io.harness.spec.server.ssca.v1.model.OrchestrationScorecardSummary;
 import io.harness.spec.server.ssca.v1.model.OrchestrationSummaryResponse;
 import io.harness.spec.server.ssca.v1.model.SbomDetails;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
@@ -24,6 +26,7 @@ import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
 import io.harness.ssca.events.SSCAArtifactCreatedEvent;
 import io.harness.ssca.normalize.Normalizer;
 import io.harness.ssca.normalize.NormalizerRegistry;
+import io.harness.ssca.services.drift.SbomDriftService;
 import io.harness.ssca.utils.SBOMUtils;
 
 import com.google.inject.Inject;
@@ -53,6 +56,8 @@ public class OrchestrationStepServiceImpl implements OrchestrationStepService {
   @Inject BaselineRepository baselineRepository;
   @Inject OutboxService outboxService;
 
+  @Inject SbomDriftService sbomDriftService;
+
   @Inject @Named("isElasticSearchEnabled") boolean isElasticSearchEnabled;
   private static final RetryPolicy<Object> transactionRetryPolicy = DEFAULT_RETRY_POLICY;
 
@@ -61,6 +66,14 @@ public class OrchestrationStepServiceImpl implements OrchestrationStepService {
       SbomProcessRequestBody sbomProcessRequestBody) throws ParseException {
     // TODO: Check if we can prevent IO Operation.
     // TODO: Use Jackson instead of Gson.
+    if (artifactService
+            .getArtifact(accountId, orgIdentifier, projectIdentifier,
+                sbomProcessRequestBody.getSbomMetadata().getStepExecutionId())
+            .isPresent()) {
+      throw new DuplicateEntityException(String.format("Artifact already present with orchestration id [%s]",
+          sbomProcessRequestBody.getSbomMetadata().getStepExecutionId()));
+    }
+
     log.info("Starting SBOM Processing");
     String sbomFileName = UUID.randomUUID() + "_sbom";
     File sbomDumpFile = new File(sbomFileName);
@@ -130,17 +143,24 @@ public class OrchestrationStepServiceImpl implements OrchestrationStepService {
                                     .id(artifact.getId())
                                     .tag(artifact.getTag());
 
+    OrchestrationScorecardSummary scorecardSummary = null;
+
     if (artifact.getScorecard() != null) {
-      artifactResponse.setScorecard(new ArtifactScorecard()
-                                        .avgScore(artifact.getScorecard().getAvgScore())
-                                        .maxScore(artifact.getScorecard().getMaxScore()));
+      scorecardSummary = new OrchestrationScorecardSummary()
+                             .avgScore(artifact.getScorecard().getAvgScore())
+                             .maxScore(artifact.getScorecard().getMaxScore());
     }
+
+    OrchestrationDriftSummary driftSummary =
+        sbomDriftService.getSbomDriftSummary(accountId, orgIdentifier, projectIdentifier, orchestrationId);
 
     return new OrchestrationSummaryResponse()
         .artifact(artifactResponse)
         .stepExecutionId(artifact.getOrchestrationId())
         .isAttested(artifact.isAttested())
-        .sbom(new SbomDetails().name(artifact.getSbomName()));
+        .sbom(new SbomDetails().name(artifact.getSbomName()))
+        .driftSummary(driftSummary)
+        .scorecardSummary(scorecardSummary);
   }
 
   @Override

@@ -8,6 +8,7 @@
 package io.harness.ssca.services;
 
 import io.harness.beans.FeatureName;
+import io.harness.exception.DuplicateEntityException;
 import io.harness.spec.server.ssca.v1.model.Artifact;
 import io.harness.spec.server.ssca.v1.model.EnforceSbomRequestBody;
 import io.harness.spec.server.ssca.v1.model.EnforceSbomResponseBody;
@@ -21,11 +22,9 @@ import io.harness.ssca.entities.EnforcementSummaryEntity;
 
 import com.google.inject.Inject;
 import java.util.Map;
-import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -41,6 +40,12 @@ public class EnforcementStepServiceImpl implements EnforcementStepService {
   @Override
   public EnforceSbomResponseBody enforceSbom(
       String accountId, String orgIdentifier, String projectIdentifier, EnforceSbomRequestBody body) {
+    if (enforcementSummaryService
+            .getEnforcementSummary(accountId, orgIdentifier, projectIdentifier, body.getEnforcementId())
+            .isPresent()) {
+      throw new DuplicateEntityException(
+          String.format("Enforcement Summary already present with enforcement id [%s]", body.getEnforcementId()));
+    }
     String artifactId =
         artifactService.generateArtifactId(body.getArtifact().getRegistryUrl(), body.getArtifact().getName());
     ArtifactEntity artifactEntity =
@@ -52,18 +57,14 @@ public class EnforcementStepServiceImpl implements EnforcementStepService {
                                  String.format("Artifact with image name [%s] and registry Url [%s] is not found",
                                      body.getArtifact().getName(), body.getArtifact().getRegistryUrl())));
     PolicyEvaluationResult policyEvaluationResult;
-    if (!featureFlagService.isFeatureFlagEnabled(
-            accountId, FeatureName.SSCA_ENFORCEMENT_WITH_BOTH_NATIVE_AND_OPA_POLICIES_ENABLED.name())
-        || CollectionUtils.isNotEmpty(body.getPolicySetRef())) {
+    if (featureFlagService.isFeatureFlagEnabled(accountId, FeatureName.SSCA_ENFORCEMENT_OPA.name())
+        && CollectionUtils.isNotEmpty(body.getPolicySetRef())) {
       policyEvaluationResult = policyEvaluationServiceMapBinder.get(PolicyType.OPA)
                                    .evaluatePolicy(accountId, orgIdentifier, projectIdentifier, body, artifactEntity);
-    } else if (StringUtils.isNotBlank(body.getPolicyFileId())) {
+    } else {
       policyEvaluationResult = policyEvaluationServiceMapBinder.get(PolicyType.SSCA)
                                    .evaluatePolicy(accountId, orgIdentifier, projectIdentifier, body, artifactEntity);
-    } else {
-      throw new BadRequestException("policy_set_ref and policy_file_id both must not be null");
     }
-
     String status = enforcementSummaryService.persistEnforcementSummary(body.getEnforcementId(),
         policyEvaluationResult.getDenyListViolations(), policyEvaluationResult.getAllowListViolations(), artifactEntity,
         body.getPipelineExecutionId());

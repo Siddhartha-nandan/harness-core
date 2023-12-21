@@ -17,41 +17,26 @@ import io.harness.data.structure.CollectionUtils;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.http.HttpHeaderConfig;
 import io.harness.plancreator.steps.common.SpecParameters;
-import io.harness.plancreator.steps.common.v1.StepElementParametersV1;
-import io.harness.plancreator.steps.common.v1.StepElementParametersV1.StepElementParametersV1Builder;
-import io.harness.plancreator.steps.common.v1.StepParametersUtilsV1;
 import io.harness.plancreator.steps.internal.v1.PmsAbstractStepNodeV1;
-import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.steps.StepSpecTypeConstantsV1;
-import io.harness.steps.StepUtils;
 import io.harness.yaml.utils.v1.NGVariablesUtilsV1;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.Collections;
 import java.util.stream.Collectors;
-import lombok.Builder;
-import lombok.Getter;
+import lombok.Value;
 
 @OwnedBy(PIPELINE)
 @JsonTypeName(StepSpecTypeConstantsV1.HTTP)
-@Builder
+@Value
 public class HttpStepNodeV1 extends PmsAbstractStepNodeV1 {
   String type = StepSpecTypeConstantsV1.HTTP;
 
-  @Getter @JsonTypeInfo(use = NAME, property = "type", include = EXTERNAL_PROPERTY, visible = true) HttpStepInfoV1 spec;
+  @JsonTypeInfo(use = NAME, property = "type", include = EXTERNAL_PROPERTY, visible = true) HttpStepInfoV1 spec;
 
-  // TODO: set rollback parameters
   @Override
-  public StepElementParametersV1 getStepParameters(PlanCreationContext ctx) {
-    StepElementParametersV1Builder stepBuilder = StepParametersUtilsV1.getStepParameters(this);
-    stepBuilder.spec(getSpecParameters());
-    stepBuilder.type(StepSpecTypeConstantsV1.HTTP);
-    StepUtils.appendDelegateSelectorsToSpecParameters(spec, ctx);
-    return stepBuilder.build();
-  }
-
   public SpecParameters getSpecParameters() {
     return HttpStepParameters.infoBuilder()
         .assertion(spec.getAssertion())
@@ -66,8 +51,8 @@ public class HttpStepNodeV1 extends PmsAbstractStepNodeV1 {
         .input_vars(NGVariablesUtilsV1.getMapOfVariables(
             spec.getInput_vars() != null ? spec.getInput_vars().getMap() : null, 0L))
         .body(spec.getBody())
-        .delegate(ParameterField.createValueField(
-            CollectionUtils.emptyIfNull(spec.getDelegate() != null ? spec.getDelegate().getValue() : null)))
+        .delegates(ParameterField.createValueField(
+            CollectionUtils.emptyIfNull(spec.getDelegates() != null ? spec.getDelegates().getValue() : null)))
         .url(spec.getUrl())
         .build();
   }

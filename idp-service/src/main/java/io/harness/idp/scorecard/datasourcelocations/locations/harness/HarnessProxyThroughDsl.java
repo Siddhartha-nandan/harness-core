@@ -11,7 +11,7 @@ import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceL
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.backstagebeans.BackstageCatalogEntity;
+import io.harness.idp.backstage.entities.BackstageCatalogEntity;
 import io.harness.idp.common.GsonUtils;
 import io.harness.idp.common.YamlUtils;
 import io.harness.idp.scorecard.datapoints.entity.DataPointEntity;
@@ -49,7 +49,7 @@ public class HarnessProxyThroughDsl extends DataSourceLocationLoop {
       List<InputValue> inputValues = dataFetchDTO.getInputValues();
 
       JSONObject dataPointInputValues = new JSONObject();
-      dataPointInputValues.put("values", inputValues);
+      dataPointInputValues.put("input_values", inputValues);
       dataPointInputValues.put("data_point_identifier", dataPointEntity.getIdentifier());
       dataPointInfoList.add(dataPointInputValues);
     }

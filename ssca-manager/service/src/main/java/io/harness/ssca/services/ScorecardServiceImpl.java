@@ -11,7 +11,6 @@ import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 
 import io.harness.exception.InvalidRequestException;
-import io.harness.repositories.ArtifactRepository;
 import io.harness.repositories.ScorecardRepo;
 import io.harness.spec.server.ssca.v1.model.CategoryScorecard;
 import io.harness.spec.server.ssca.v1.model.CategoryScorecardChecks;
@@ -19,6 +18,7 @@ import io.harness.spec.server.ssca.v1.model.SbomDetailsForScorecard;
 import io.harness.spec.server.ssca.v1.model.SbomScorecardRequestBody;
 import io.harness.spec.server.ssca.v1.model.SbomScorecardResponseBody;
 import io.harness.spec.server.ssca.v1.model.ScorecardInfo;
+import io.harness.ssca.beans.Scorecard;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.ScorecardEntity;
 import io.harness.ssca.entities.ScorecardEntity.Checks;
@@ -36,8 +36,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class ScorecardServiceImpl implements ScorecardService {
   @Inject ScorecardRepo scorecardRepo;
 
-  @Inject ArtifactRepository artifactRepository;
-
   @Inject ArtifactService artifactService;
 
   @Inject TransactionTemplate transactionTemplate;
@@ -53,13 +51,11 @@ public class ScorecardServiceImpl implements ScorecardService {
         scorecardEntity.getOrgId(), scorecardEntity.getProjectId(), scorecardEntity.getOrchestrationId());
     if (artifact.isPresent()) {
       ArtifactEntity artifactEntity = artifact.get();
-      artifactEntity.setScorecard(ArtifactEntity.Scorecard.builder()
-                                      .avgScore(scorecardEntity.getAvgScore())
-                                      .maxScore(scorecardEntity.getMaxScore())
-                                      .build());
+      artifactEntity.setScorecard(
+          Scorecard.builder().avgScore(scorecardEntity.getAvgScore()).maxScore(scorecardEntity.getMaxScore()).build());
       artifactEntity.setLastUpdatedAt(Instant.now().toEpochMilli());
       Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
-        artifactRepository.save(artifactEntity);
+        artifactService.saveArtifact(artifactEntity);
         scorecardRepo.save(scorecardEntity);
         return scorecardEntity.getOrchestrationId();
       }));

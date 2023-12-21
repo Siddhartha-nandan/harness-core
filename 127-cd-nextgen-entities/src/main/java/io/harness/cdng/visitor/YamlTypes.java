@@ -52,6 +52,7 @@ public interface YamlTypes {
   String K8S_DELETE = StepSpecTypeConstants.K8S_DELETE;
   String K8S_CANARY_DELETE = StepSpecTypeConstants.K8S_CANARY_DELETE;
   String K8S_BLUE_GREEN_STAGE_SCALE_DOWN = StepSpecTypeConstants.K8S_BLUE_GREEN_STAGE_SCALE_DOWN;
+  String K8S_TRAFFIC_ROUTING = StepSpecTypeConstants.K8S_TRAFFIC_ROUTING;
 
   String HELM_DEPLOY = StepSpecTypeConstants.HELM_DEPLOY;
   String HELM_ROLLBACK = StepSpecTypeConstants.HELM_ROLLBACK;
@@ -248,4 +249,5 @@ public interface YamlTypes {
   String AWS_CDK_ROLLBACK = StepSpecTypeConstants.AWS_CDK_ROLLBACK;
 
   String DOWNLOAD_AWS_S3 = StepSpecTypeConstants.DOWNLOAD_AWS_S3;
+  String DOWNLOAD_HARNESS_STORE = StepSpecTypeConstants.DOWNLOAD_HARNESS_STORE;
 }

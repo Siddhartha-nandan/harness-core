@@ -92,6 +92,9 @@ public class ExplanationException extends WingsException {
   public static final String INVALID_SSH_CREDENTIALS = "Username or SSK key/Password is not valid";
   public static final String INVALID_SSH_KEY_FILE_PATH = "SSH Key File Path is not valid";
   public static final String INVALID_SSH_KEY = "SSH Key is not valid";
+  public static final String INVALID_WIN_RM_CREDENTIALS = "Domain or Username/Password is not valid";
+  public static final String INVALID_WIN_RM_CREDENTIALS_PROTOCOL = "Cannot establish HTTP/S connection to host";
+  public static final String VALIDATION_FAILED = "Validation failed";
 
   public ExplanationException(String message, Throwable cause) {
     super(message, cause, EXPLANATION, INFO, USER_SRE, null);

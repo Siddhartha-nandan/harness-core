@@ -7,6 +7,7 @@
 
 package io.harness.idp.scorecard.datasources.providers.scm;
 
+import static io.harness.idp.common.Constants.HARNESS_ACCOUNT;
 import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.REPOSITORY_BRANCH;
 import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.REPOSITORY_NAME;
 import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.REPOSITORY_OWNER;
@@ -15,7 +16,7 @@ import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceL
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.backstagebeans.BackstageCatalogEntity;
+import io.harness.idp.backstage.entities.BackstageCatalogEntity;
 import io.harness.idp.scorecard.datapoints.parser.factory.DataPointParserFactory;
 import io.harness.idp.scorecard.datapoints.service.DataPointService;
 import io.harness.idp.scorecard.datasourcelocations.locations.DataSourceLocationFactory;
@@ -47,6 +48,7 @@ public abstract class ScmBaseProvider extends HttpDataSourceProvider {
       Map<String, String> possibleReplaceableUrlBodyPairs) {
     Map<String, String> authHeaders = this.getAuthHeaders(accountIdentifier, configs);
     Map<String, String> replaceableHeaders = new HashMap<>(authHeaders);
+    replaceableHeaders.put(HARNESS_ACCOUNT, accountIdentifier);
 
     Map<String, String> possibleReplaceableRequestBodyPairs = new HashMap<>();
 

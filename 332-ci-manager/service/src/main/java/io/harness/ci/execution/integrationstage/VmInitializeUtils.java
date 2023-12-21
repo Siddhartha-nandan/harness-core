@@ -15,6 +15,7 @@ import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAG
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_OS;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_STAGE_TYPE;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.DRONE_WORKSPACE;
+import static io.harness.ci.commonconstants.BuildEnvironmentConstants.HARNESS_GIT_PROXY;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.HARNESS_HTTPS_PROXY;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.HARNESS_HTTP_PROXY;
 import static io.harness.ci.commonconstants.BuildEnvironmentConstants.HARNESS_NO_PROXY;
@@ -57,6 +58,7 @@ import static java.lang.String.format;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.FeatureName;
+import io.harness.beans.execution.license.CILicenseService;
 import io.harness.beans.plugin.compatible.PluginCompatibleStep;
 import io.harness.beans.serializer.RunTimeInputHandler;
 import io.harness.beans.steps.CIAbstractStepNode;
@@ -83,6 +85,8 @@ import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.delegate.beans.connector.ConnectorConfigDTO;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ngexception.CIStageExecutionException;
+import io.harness.licensing.Edition;
+import io.harness.licensing.beans.summary.LicensesWithSummaryDTO;
 import io.harness.ng.core.NGAccess;
 import io.harness.ng.core.dto.TunnelResponseDTO;
 import io.harness.plancreator.execution.ExecutionWrapperConfig;
@@ -113,6 +117,7 @@ import org.apache.commons.lang3.tuple.Pair;
 public class VmInitializeUtils {
   @Inject CIFeatureFlagService featureFlagService;
   @Inject TunnelResourceClient tunnelResourceClient;
+  @Inject CILicenseService ciLicenseService;
 
   public void validateStageConfig(IntegrationStageConfig integrationStageConfig, String accountId) {
     for (ExecutionWrapperConfig executionWrapper : integrationStageConfig.getExecution().getSteps()) {
@@ -265,7 +270,7 @@ public class VmInitializeUtils {
   }
 
   public Map<String, String> getStageProxyVars(IntegrationStageConfig integrationStageConfig, OSType os,
-      NGAccess ngAccess, ConnectorUtils connectorUtils, Infrastructure infra) {
+      NGAccess ngAccess, ConnectorUtils connectorUtils, Infrastructure infra, ConnectorDetails gitConnector) {
     Map<String, String> envVars = new HashMap<>();
     Set<String> noProxyVars = new HashSet<>();
     Set<String> shouldProxyRegistries = new HashSet<>();
@@ -309,10 +314,16 @@ public class VmInitializeUtils {
       }
     }
 
-    if (!shouldProxyRegistries.isEmpty()) {
-      noProxyVars.addAll(Set.of(CIExecutionConstants.DOCKER_IO, CIExecutionConstants.DOCKER_COM));
-      envVars.put(HARNESS_NO_PROXY, String.join(",", noProxyVars));
+    noProxyVars.addAll(Set.of(CIExecutionConstants.DOCKER_IO, CIExecutionConstants.DOCKER_COM));
+    envVars.put(HARNESS_NO_PROXY, String.join(",", noProxyVars));
+
+    if (gitConnector != null && gitConnector.getConnectorConfig() instanceof WithProxy) {
+      WithProxy connectorProxy = (WithProxy) gitConnector.getConnectorConfig();
+      if (connectorProxy.getProxy()) {
+        envVars.put(HARNESS_GIT_PROXY, "true");
+      }
     }
+
     return envVars;
   }
 
@@ -453,5 +464,17 @@ public class VmInitializeUtils {
           "Running the pipeline in debug mode is not supported for the selected Operating System:" + os.toString());
     }
     return true;
+  }
+
+  public boolean isCIFreeLicense(String accountId) {
+    LicensesWithSummaryDTO licensesWithSummaryDTO = ciLicenseService.getLicenseSummary(accountId);
+
+    if (licensesWithSummaryDTO == null) {
+      throw new CIStageExecutionException("Please enable CI free plan or reach out to support.");
+    }
+    if (licensesWithSummaryDTO != null && licensesWithSummaryDTO.getEdition() == Edition.FREE) {
+      return true;
+    }
+    return false;
   }
 }
