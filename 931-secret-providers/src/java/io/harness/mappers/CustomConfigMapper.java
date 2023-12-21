@@ -24,6 +24,7 @@ public class CustomConfigMapper {
             .workingDirectory(customSecretManagerConfigDTO.getWorkingDirectory())
             .template(customSecretManagerConfigDTO.getTemplate())
             .script(customSecretManagerConfigDTO.getScript())
+            .timeout(customSecretManagerConfigDTO.getTimeout())
             .build();
 
     customSecretNGManagerConfig.setNgMetadata(ngMetaDataFromDto(customSecretManagerConfigDTO));
