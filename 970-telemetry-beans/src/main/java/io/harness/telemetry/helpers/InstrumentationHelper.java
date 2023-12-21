@@ -37,20 +37,16 @@ public class InstrumentationHelper {
     String identity = null;
     if (principal != null) {
       switch (principal.getType()) {
-        case USER:
+        case USER -> {
           UserPrincipal userPrincipal = (UserPrincipal) principal;
           identity = userPrincipal.getEmail();
-          break;
-        case SERVICE_ACCOUNT:
+        }
+        case SERVICE_ACCOUNT -> {
           ServiceAccountPrincipal serviceAccountPrincipal = (ServiceAccountPrincipal) principal;
           identity = serviceAccountPrincipal.getEmail();
-          break;
-        case API_KEY:
-        case SERVICE:
-          identity = principal.getName();
-          break;
-        default:
-          log.warn("Unknown principal type from SecurityContextBuilder when reading identity");
+        }
+        case API_KEY, SERVICE -> identity = principal.getName();
+        default -> log.warn("Unknown principal type from SecurityContextBuilder when reading identity");
       }
     }
     if (isEmpty(identity)) {

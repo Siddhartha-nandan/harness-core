@@ -38,8 +38,6 @@ public class SvcEnvInstrumentationHelper extends InstrumentationHelper {
   private static final String ENVIRONMENT_FILTERS_PRESENT = "environment_filters_present";
   private static final String SVC_ENV_EVENT = "svc_env";
 
-  @Inject TelemetryReporter telemetryReporter;
-
   public CompletableFuture<Void> sendSvcEnvEvent(SvcEnvTelemetryInfo svcEnvTelemetryInfo) {
     return publishSvcEnvInfo(svcEnvTelemetryInfo, SVC_ENV_EVENT);
   }
