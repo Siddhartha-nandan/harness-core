@@ -17,6 +17,7 @@ import static java.lang.String.format;
 import static java.util.stream.Collectors.flatMapping;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 import io.harness.delegate.beans.ci.k8s.K8sTaskExecutionResponse;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
@@ -31,6 +32,7 @@ import io.harness.delegate.service.core.k8s.K8SService;
 import io.harness.delegate.service.core.litek8s.mappers.LEShellTypeMapper;
 import io.harness.delegate.service.core.util.ApiExceptionLogger;
 import io.harness.delegate.service.core.util.K8SResourceHelper;
+import io.harness.delegate.service.core.util.K8SVolumeUtils;
 import io.harness.delegate.service.core.util.PodCreationFailedException;
 import io.harness.delegate.service.handlermapping.context.Context;
 import io.harness.delegate.service.runners.itfc.Runner;
@@ -58,10 +60,17 @@ import io.kubernetes.client.openapi.models.V1EnvFromSource;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.openapi.models.V1Service;
+import io.kubernetes.client.openapi.models.V1Volume;
 import io.kubernetes.client.openapi.models.V1VolumeMount;
 import io.kubernetes.client.util.Watch;
 import io.kubernetes.client.util.Yaml;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -80,7 +89,10 @@ public class K8SLiteRunner implements Runner {
   private static final String LOG_SERVICE_TOKEN_VARIABLE = "HARNESS_LOG_SERVICE_TOKEN";
   private static final String LOG_SERVICE_ENDPOINT_VARIABLE = "HARNESS_LOG_SERVICE_ENDPOINT";
   private static final String HARNESS_LOG_PREFIX_VARIABLE = "HARNESS_LOG_PREFIX";
-
+  private static final String CERTIFICATES_MOUNT_PATH = isNotBlank(System.getenv().get("CERTIFICATES_MOUNT_PATH"))
+      ? System.getenv().get("CERTIFICATES_MOUNT_PATH")
+      : "/etc/harness-certs/";
+  private static final String CERTIFICATES_SOURCE = "/opt/harness-delegate/ca-bundle/";
   private static final boolean IS_LOCAL_BIJOU_RUNNER =
       TRUE.toString().equals(System.getenv().get("BIJOU_LOCAL_TEST_MODE"));
   private final Duration RETRY_SLEEP_DURATION = Duration.ofSeconds(2);
@@ -142,6 +154,25 @@ public class K8SLiteRunner implements Runner {
       final var protoVolumes = VolumeBuilder.unpackVolumes(k8sInfra.getResourcesList());
       final var volumes = VolumeBuilder.createVolumes(protoVolumes);
       final var volumeMounts = VolumeBuilder.createVolumeMounts(protoVolumes);
+
+      // mount certs as secret volumes in pod
+      List<String> fileList = listFilesInDir();
+      for (String filePath : fileList) {
+        String content;
+        try {
+          byte[] encoded = Files.readAllBytes(Paths.get(filePath));
+          content = new String(encoded, StandardCharsets.US_ASCII);
+        } catch (IOException e) {
+          log.error("Could not read file: {}, Error: {}", filePath, e);
+          continue;
+        }
+        V1Secret v1Secret =
+            secretsBuilder.createSecret(infraId, getName(filePath), getName(filePath), content.toCharArray());
+        V1Volume volume = K8SVolumeUtils.fromSecret(v1Secret, v1Secret.getMetadata().getName());
+        volumes.add(volume);
+        volumeMounts.add(
+            K8SVolumeUtils.volumeMount(volume, CERTIFICATES_MOUNT_PATH + v1Secret.getMetadata().getName()));
+      }
 
       // Step 3 - create service endpoint for LE communication
       final var namespace = config.getNamespace();
@@ -342,5 +373,36 @@ public class K8SLiteRunner implements Runner {
         .withMaxAttempts(MAX_ATTEMPTS)
         .onFailedAttempt(event -> log.info(failedAttemptMessage, event.getAttemptCount(), event.getLastFailure()))
         .onFailure(event -> log.error(failureMessage, event.getAttemptCount(), event.getFailure()));
+  }
+
+  private static List<String> listFilesInDir() {
+    File directory = new File(K8SLiteRunner.CERTIFICATES_SOURCE);
+    List<String> filePaths = new ArrayList<>();
+
+    if (directory.exists() && directory.isDirectory()) {
+      File[] files = directory.listFiles();
+
+      if (files != null) {
+        for (File file : files) {
+          if (file.isFile()) {
+            filePaths.add(file.getAbsolutePath());
+          }
+        }
+      }
+    }
+    return filePaths;
+  }
+
+  public boolean fileExists(String path) {
+    File file = new File(path);
+    if (!file.exists()) {
+      return false;
+    }
+    return true;
+  }
+
+  public String getName(String filePath) {
+    String[] tokens = filePath.split("[/\\\\]");
+    return tokens[tokens.length - 1];
   }
 }

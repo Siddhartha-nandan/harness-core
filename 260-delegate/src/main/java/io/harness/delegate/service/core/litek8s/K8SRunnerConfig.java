@@ -17,6 +17,7 @@ public class K8SRunnerConfig {
   private final String delegateTaskParamsFile;
   private final String accountId;
   private final String logServiceUrl;
+  private final String certificatesMountPath;
 
   // TODO: possible to pull from private repo or have CI/CD/STO specific addon/LE (CI Addon has TI & STO specific code).
   // It should belong to runner startup config not PL because it's a property of a runner not our SaaS system, but that
