@@ -173,11 +173,14 @@ public class InstanceRepositoryCustomImpl implements InstanceRepositoryCustom {
   @Override
   public List<Instance> getActiveInstances(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, long timestampInMs) {
-    Criteria criteria =
-        getCriteriaForActiveInstances(accountIdentifier, orgIdentifier, projectIdentifier, timestampInMs);
+    final MutuallyExclusiveCriteriaSet criteriaSet =
+        getCriteriaSetForActiveInstances(accountIdentifier, orgIdentifier, projectIdentifier, timestampInMs);
 
-    Query query = new Query().addCriteria(criteria);
-    return secondaryMongoTemplate.find(query, Instance.class);
+    final List<Instance> result = new ArrayList<>();
+    result.addAll(secondaryMongoTemplate.find(new Query().addCriteria(criteriaSet.getCriteria1()), Instance.class));
+    result.addAll(secondaryMongoTemplate.find(new Query().addCriteria(criteriaSet.getCriteria2()), Instance.class));
+
+    return result;
   }
 
   @Override
@@ -214,12 +217,17 @@ public class InstanceRepositoryCustomImpl implements InstanceRepositoryCustom {
   @Override
   public List<Instance> getActiveInstancesByServiceId(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String serviceId, long timestampInMs) {
-    Criteria criteria =
-        getCriteriaForActiveInstances(accountIdentifier, orgIdentifier, projectIdentifier, timestampInMs)
-            .and(InstanceKeys.serviceIdentifier)
-            .is(serviceId);
-    Query query = new Query().addCriteria(criteria);
-    return secondaryMongoTemplate.find(query, Instance.class);
+    final MutuallyExclusiveCriteriaSet criteriaSet =
+        getCriteriaSetForActiveInstances(accountIdentifier, orgIdentifier, projectIdentifier, timestampInMs);
+
+    final Criteria criteria1 = criteriaSet.getCriteria1().and(InstanceKeys.serviceIdentifier).in(serviceId);
+    final Criteria criteria2 = criteriaSet.getCriteria2().and(InstanceKeys.serviceIdentifier).in(serviceId);
+
+    List<Instance> result = new ArrayList<>();
+    result.addAll(secondaryMongoTemplate.find(new Query().addCriteria(criteria1), Instance.class));
+    result.addAll(secondaryMongoTemplate.find(new Query().addCriteria(criteria2), Instance.class));
+
+    return result;
   }
 
   @Override
