@@ -87,7 +87,15 @@ public enum ResourceType {
   GITOPS_APPLICATION(ResourceTypeConstants.GITOPS_APPLICATION),
   CODE_REPOSITORY(ResourceTypeConstants.CODE_REPOSITORY),
   MODULE_LICENSE(ResourceTypeConstants.MODULE_LICENSE),
-  IDP_BACKSTAGE_CATALOG_ENTITY(ResourceTypeConstants.IDP_BACKSTAGE_CATALOG_ENTITY);
+  IDP_BACKSTAGE_CATALOG_ENTITY(ResourceTypeConstants.IDP_BACKSTAGE_CATALOG_ENTITY),
+  IDP_APP_CONFIGS(ResourceTypeConstants.IDP_APP_CONFIGS),
+  IDP_CONFIG_ENV_VARIABLES(ResourceTypeConstants.IDP_CONFIG_ENV_VARIABLES),
+  IDP_PROXY_HOST(ResourceTypeConstants.IDP_PROXY_HOST),
+  IDP_SCORECARDS(ResourceTypeConstants.IDP_SCORECARDS),
+  IDP_CHECKS(ResourceTypeConstants.IDP_CHECKS),
+  IDP_ALLOW_LIST(ResourceTypeConstants.IDP_ALLOW_LIST),
+  IDP_OAUTH_CONFIG(ResourceTypeConstants.IDP_OAUTH_CONFIG),
+  IDP_CATALOG_CONNECTOR(ResourceTypeConstants.IDP_CATALOG_CONNECTOR);
 
   ResourceType(String resourceType) {
     if (!this.name().equals(resourceType)) {

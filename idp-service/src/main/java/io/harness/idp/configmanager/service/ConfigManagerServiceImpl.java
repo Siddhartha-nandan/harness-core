@@ -181,7 +181,7 @@ public class ConfigManagerServiceImpl implements ConfigManagerService {
 
     return Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
       AppConfigEntity updatedData = appConfigRepository.updateConfig(appConfigEntity, configType);
-      if (ConfigType.PLUGIN.equals(configType)) {
+      if (ConfigType.PLUGIN.equals(configType) && !oldAppConfig.getConfigs().equals(appConfig.getConfigs())) {
         outboxService.save(new AppConfigUpdateEvent(accountIdentifier, appConfig, oldAppConfig));
       }
       if (updatedData == null) {

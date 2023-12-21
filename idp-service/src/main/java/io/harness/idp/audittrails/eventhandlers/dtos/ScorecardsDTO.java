@@ -24,5 +24,5 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @OwnedBy(HarnessTeam.IDP)
 public class ScorecardsDTO implements YamlDTO {
-  @Valid ScorecardDetailsResponse scorecardDetailsResponse;
+  @Valid ScorecardDetailsResponse scorecard;
 }

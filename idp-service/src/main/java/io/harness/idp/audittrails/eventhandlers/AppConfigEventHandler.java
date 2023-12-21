@@ -76,7 +76,7 @@ public class AppConfigEventHandler implements OutboxEventHandler {
     AuditEntry auditEntry =
         AuditEntry.builder()
             .action(Action.UPDATE)
-            .module(ModuleType.CORE)
+            .module(ModuleType.IDP)
             .newYaml(NGYamlUtils.getYamlString(ConfigDTO.builder().appConfig(newAppConfig).build(), objectMapper))
             .oldYaml(NGYamlUtils.getYamlString(ConfigDTO.builder().appConfig(oldAppConfig).build(), objectMapper))
             .timestamp(outboxEvent.getCreatedAt())
@@ -99,7 +99,7 @@ public class AppConfigEventHandler implements OutboxEventHandler {
     AuditEntry auditEntry =
         AuditEntry.builder()
             .action(Action.CREATE)
-            .module(ModuleType.CORE)
+            .module(ModuleType.IDP)
             .newYaml(NGYamlUtils.getYamlString(ConfigDTO.builder().appConfig(newAppConfig).build(), objectMapper))
             .timestamp(outboxEvent.getCreatedAt())
             .resource(ResourceDTO.fromResource(outboxEvent.getResource()))
