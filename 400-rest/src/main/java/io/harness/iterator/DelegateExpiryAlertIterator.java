@@ -47,9 +47,6 @@ public class DelegateExpiryAlertIterator
                 MongoPersistenceIterator.<DelegateGroup, MorphiaFilterExpander<DelegateGroup>>builder()
                     .clazz(DelegateGroup.class)
                     .fieldName(DelegateGroupKeys.delegateExpiryAlertNextIteration)
-                    .filterExpander(q
-                        -> q.field(DelegateGroupKeys.delegatesExpireOn)
-                               .lessThan(System.currentTimeMillis()))
                     .targetInterval(targetInterval)
                     .acceptableNoAlertDelay(Duration.ofMinutes(2))
                     .handler(this)
@@ -67,9 +64,6 @@ public class DelegateExpiryAlertIterator
                        MongoPersistenceIterator.<DelegateGroup, MorphiaFilterExpander<DelegateGroup>>builder()
                            .clazz(DelegateGroup.class)
                            .fieldName(DelegateGroupKeys.delegateExpiryAlertNextIteration)
-                           .filterExpander(q
-                               -> q.field(DelegateGroupKeys.delegatesExpireOn)
-                                      .lessThan(System.currentTimeMillis()))
                            .targetInterval(targetInterval)
                            .acceptableNoAlertDelay(Duration.ofMinutes(2))
                            .handler(this)

@@ -375,7 +375,7 @@
     "threadPoolSize": 1,
     "threadPoolIntervalInSeconds": 30,
     "nextIterationMode": "TARGET",
-    "targetIntervalInSeconds": 600,
+    "targetIntervalInSeconds": 60,
     "throttleIntervalInSeconds": 0,
     "iteratorMode": "REDIS_BATCH"
   }

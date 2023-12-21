@@ -52,9 +52,6 @@ public class FailDelegateTaskIterator
                            .targetInterval(targetInterval)
                            .acceptableNoAlertDelay(ACCEPTABLE_NO_ALERT_DELAY)
                            .acceptableExecutionTime(ACCEPTABLE_EXECUTION_TIME)
-                           .filterExpander(query
-                               -> query.criteria(DelegateTaskKeys.createdAt)
-                                      .lessThan(currentTimeMillis() - TimeUnit.MINUTES.toMillis(1)))
                            .handler(this)
                            .schedulingType(MongoPersistenceIterator.SchedulingType.REGULAR)
                            .persistenceProvider(persistenceProvider)
@@ -74,9 +71,6 @@ public class FailDelegateTaskIterator
                            .targetInterval(targetInterval)
                            .acceptableNoAlertDelay(ACCEPTABLE_NO_ALERT_DELAY)
                            .acceptableExecutionTime(ACCEPTABLE_EXECUTION_TIME)
-                           .filterExpander(query
-                               -> query.criteria(DelegateTaskKeys.createdAt)
-                                      .lessThan(currentTimeMillis() - TimeUnit.MINUTES.toMillis(1)))
                            .handler(this)
                            .persistenceProvider(persistenceProvider));
   }
