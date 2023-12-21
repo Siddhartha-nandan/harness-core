@@ -29,7 +29,7 @@ public class CETQualityGateStep extends CdTaskExecutable<ArtifactTaskResponse> {
     public StepResponse handleTaskResultWithSecurityContextAndNodeInfo(Ambiance ambiance,
                                                                        StepBaseParameters stepParameters, ThrowingSupplier<ArtifactTaskResponse> responseDataSupplier) throws Exception {
         try {
-            return new StepResponse();
+            return null;
         } finally {
 
         }
@@ -38,7 +38,7 @@ public class CETQualityGateStep extends CdTaskExecutable<ArtifactTaskResponse> {
     @Override
     public TaskRequest obtainTaskAfterRbac(
             Ambiance ambiance, StepBaseParameters stepParameters, StepInputPackage inputPackage) {
-        return new TaskRequest();
+        return null;
     }
 
     @Override
