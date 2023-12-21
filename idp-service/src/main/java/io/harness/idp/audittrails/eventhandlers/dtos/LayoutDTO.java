@@ -11,6 +11,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.gitsync.beans.YamlDTO;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import javax.validation.Valid;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -22,5 +23,5 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @OwnedBy(HarnessTeam.IDP)
 public class LayoutDTO implements YamlDTO {
-  String yaml;
+  @Valid String yaml;
 }
