@@ -66,6 +66,7 @@ public enum FeatureName {
   CCM_CURRENCY_PREFERENCES("Currency Preferences", HarnessTeam.CE),
   CCM_DEV_TEST("", HarnessTeam.CE),
   CCM_ENABLE_AZURE_CLOUD_ASSET_GOVERNANCE_UI("Enable Azure Cloud Asset Governance UI", HarnessTeam.CE),
+  CCM_ENABLE_GCP_CLOUD_ASSET_GOVERNANCE_UI("Enable Gcp Cloud Asset Governance UI", HarnessTeam.CE),
   CCM_GOVERNANCE_GENAI_ENABLE("Genai feature for cloud asset governance", HarnessTeam.CE),
   CCM_INSTANCE_DATA_CLUSTERID_FILTER("Query from instanceData collection based on clusterId", HarnessTeam.CE),
   CCM_LABELS_FLATTENING("Use flattened label's columns in BigQuery", HarnessTeam.CE),
@@ -911,7 +912,10 @@ public enum FeatureName {
   CDS_USER_CD_LICENSE_VIEW("Enable to show Users CD License usage on UI", HarnessTeam.CDP),
   SSCA_USE_ELK("Enables ELK search for Artifact listing instead of Mongo", HarnessTeam.SSCA),
   SSCA_REMEDIATION_TRACKER("FF for Remediation Tracker flow.", HarnessTeam.SSCA),
-  CDS_VARIABLES_MERGE_V2_OPTIMIZED_FLOW("FF to switch the v2/variables flow to a new optimized one", CDC, Scope.GLOBAL);
+  CDS_VARIABLES_MERGE_V2_OPTIMIZED_FLOW("FF to switch the v2/variables flow to a new optimized one", CDC, Scope.GLOBAL),
+  CDS_OVERRIDES_GITX("Onboard Overrides entity to GitX", HarnessTeam.CDC),
+  CDS_SUPPORT_DIFFERENT_INFRA_DURING_ENV_PROPAGATION(
+      "FF to suppport selecting different infrastructure during environment propagation", CDC);
 
   // keep-sorted end
 
