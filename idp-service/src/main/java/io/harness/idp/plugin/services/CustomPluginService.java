@@ -5,15 +5,12 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.idp.scorecard.datapointsdata.service;
+package io.harness.idp.plugin.services;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.spec.server.idp.v1.model.KubernetesConfig;
-
-import java.util.Map;
 
 @OwnedBy(HarnessTeam.IDP)
-public interface KubernetesDataPointsService {
-  Map<String, Object> getDataPointDataValues(String accountIdentifier, KubernetesConfig dataSourceDataPointInfo);
+public interface CustomPluginService {
+  void triggerBuildPipeline(String accountIdentifier);
 }

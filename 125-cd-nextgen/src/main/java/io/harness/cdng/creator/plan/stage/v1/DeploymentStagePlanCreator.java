@@ -537,8 +537,8 @@ public class DeploymentStagePlanCreator extends AbstractStagePlanCreator<Deploym
     }
     String serviceNodeId = service.getUuid();
     ServiceDefinitionType serviceType = serviceEntityHelper.getServiceDefinitionTypeFromService(ctx, service);
-    planCreationResponseMap.putAll(ServiceAllInOnePlanCreatorUtils.addServiceNode(
-        specField, kryoSerializer, service, environment, serviceNodeId, nextNodeId, serviceType, envGroupRef, ctx));
+    planCreationResponseMap.putAll(ServiceAllInOnePlanCreatorUtils.addServiceNode(specField, kryoSerializer, service,
+        environment, serviceNodeId, nextNodeId, serviceType, envGroupRef, ctx, true));
     return serviceNodeId;
   }
 
@@ -565,7 +565,8 @@ public class DeploymentStagePlanCreator extends AbstractStagePlanCreator<Deploym
           kryoSerializer, service, stageNode.getSpec().getEnvironments(), serviceNodeId, nextNodeId, serviceType, ctx));
     } else if (stageNode.getSpec().getEnvironment() != null) {
       planCreationResponseMap.putAll(ServiceAllInOnePlanCreatorUtils.addServiceNode(specField, kryoSerializer, service,
-          stageNode.getSpec().getEnvironment(), serviceNodeId, nextNodeId, serviceType, ParameterField.ofNull(), ctx));
+          stageNode.getSpec().getEnvironment(), serviceNodeId, nextNodeId, serviceType, ParameterField.ofNull(), ctx,
+          true));
     }
 
     return serviceNodeId;
@@ -580,7 +581,7 @@ public class DeploymentStagePlanCreator extends AbstractStagePlanCreator<Deploym
     }
 
     final EnvironmentYamlV2 finalEnvironmentYamlV2 = ServiceAllInOnePlanCreatorUtils.useFromStage(environment)
-        ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(environment, specField)
+        ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(environment, specField, true)
         : environment;
 
     ServiceDefinitionType serviceType =
@@ -964,7 +965,8 @@ public class DeploymentStagePlanCreator extends AbstractStagePlanCreator<Deploym
 
   private EnvironmentYamlV2 getEnvironmentYaml(YamlField specField, DeploymentStageConfigV1 deploymentStageConfig) {
     return ServiceAllInOnePlanCreatorUtils.useFromStage(deploymentStageConfig.getEnvironment())
-        ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(deploymentStageConfig.getEnvironment(), specField)
+        ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(
+            deploymentStageConfig.getEnvironment(), specField, true)
         : deploymentStageConfig.getEnvironment();
   }
 }
