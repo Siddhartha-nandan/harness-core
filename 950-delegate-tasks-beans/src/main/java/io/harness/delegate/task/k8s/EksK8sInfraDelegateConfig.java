@@ -22,7 +22,6 @@ import io.harness.taskcontext.infra.InfraContext;
 import java.util.List;
 import lombok.Builder;
 import lombok.Value;
-import lombok.extern.slf4j.Slf4j;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = false,
     components = {HarnessModuleComponent.CDS_COMMON_STEPS, HarnessModuleComponent.CDS_K8S})
