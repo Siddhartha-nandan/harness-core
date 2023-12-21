@@ -67,6 +67,7 @@ public class ConfigEnvVariablesServiceImpl implements ConfigEnvVariablesService 
       "%s - is already used in plugin - %s , please use some other env variable name";
 
   private static final String ENV_VARIABLE_NOT_CONFIGURED_ERROR_MESSAGE = "Please set value for %s";
+  private static final String PREFIX_FOR_ACCOUNT = "account.";
 
   @Override
   public List<BackstageEnvSecretVariable> insertConfigEnvVariables(AppConfig appConfig, String accountIdentifier) {
@@ -329,7 +330,8 @@ public class ConfigEnvVariablesServiceImpl implements ConfigEnvVariablesService 
             || !newBackstageEnvSecretVariable.getHarnessSecretIdentifier().equals(
                 oldBackstageEnvVariableMap.get(newEnvVariableIdentifier).getHarnessSecretIdentifier())) {
           outboxService.save(new BackstageEnvSecretUpdateEvent(accountIdentifier, newBackstageEnvSecretVariable,
-              oldBackstageEnvVariableMap.get(newBackstageEnvSecretVariable.getIdentifier())));
+              addAccountAsPrefixForSecretIdentifierInBackstageEnvSecretVariable(
+                  oldBackstageEnvVariableMap.get(newBackstageEnvSecretVariable.getIdentifier()))));
         }
       }
 
@@ -344,5 +346,12 @@ public class ConfigEnvVariablesServiceImpl implements ConfigEnvVariablesService 
     }));
 
     return returnList;
+  }
+
+  private BackstageEnvSecretVariable addAccountAsPrefixForSecretIdentifierInBackstageEnvSecretVariable(
+      BackstageEnvSecretVariable backstageEnvSecretVariable) {
+    backstageEnvSecretVariable.setHarnessSecretIdentifier(
+        PREFIX_FOR_ACCOUNT + backstageEnvSecretVariable.getHarnessSecretIdentifier());
+    return backstageEnvSecretVariable;
   }
 }

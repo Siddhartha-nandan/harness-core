@@ -24,5 +24,5 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @OwnedBy(HarnessTeam.IDP)
 public class CheckDTO implements YamlDTO {
-  @Valid CheckDetails checkDetails;
+  @Valid CheckDetails check;
 }
