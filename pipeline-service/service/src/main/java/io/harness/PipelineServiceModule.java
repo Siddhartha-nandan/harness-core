@@ -12,7 +12,10 @@ import static io.harness.authorization.AuthorizationServiceHeader.BEARER;
 import static io.harness.authorization.AuthorizationServiceHeader.MANAGER;
 import static io.harness.authorization.AuthorizationServiceHeader.PIPELINE_SERVICE;
 import static io.harness.eventsframework.EventsFrameworkConstants.ENTITY_CRUD;
-import static io.harness.eventsframework.EventsFrameworkMetadataConstants.*;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ACCOUNT_ENTITY;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.PIPELINE_ENTITY;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.PROJECT_ENTITY;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.SETTINGS;
 import static io.harness.lock.DistributedLockImplementation.REDIS;
 import static io.harness.outbox.OutboxSDKConstants.DEFAULT_OUTBOX_POLL_CONFIGURATION;
 
@@ -579,7 +582,9 @@ public class PipelineServiceModule extends AbstractModule {
     bind(MessageListener.class)
         .annotatedWith(Names.named(ACCOUNT_ENTITY + ENTITY_CRUD))
         .to(AccountEntityCrudStreamListener.class);
-bind(MessageListener.class).annotatedWith(Names.named(SETTINGS +ENTITY_CRUD)).to(PipelineSettingCRUDStreamListener.class);
+    bind(MessageListener.class)
+        .annotatedWith(Names.named(SETTINGS + ENTITY_CRUD))
+        .to(PipelineSettingCRUDStreamListener.class);
     bind(PmsMessageListener.class)
         .annotatedWith(Names.named(EventsFrameworkConstants.POLLING_EVENTS_STREAM))
         .to(PollingEventStreamListener.class);
