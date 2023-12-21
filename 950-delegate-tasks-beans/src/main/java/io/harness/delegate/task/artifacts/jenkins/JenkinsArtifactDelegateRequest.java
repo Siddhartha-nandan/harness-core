@@ -83,7 +83,7 @@ public class JenkinsArtifactDelegateRequest
     List<ExecutionCapability> capabilities =
         new ArrayList<>(EncryptedDataDetailsCapabilityHelper.fetchExecutionCapabilitiesForEncryptedDataDetails(
             encryptedDataDetails, maskingEvaluator));
-    populateDelegateSelectorCapability(capabilities, jenkinsConnectorDTO.getDelegateSelectors());
+    populateDelegateSelectorCapability(capabilities, jenkinsConnectorDTO.getDelegateSelectors(), jenkinsConnectorDTO.getConnectorType());
     capabilities.add(HttpConnectionExecutionCapabilityGenerator.buildHttpConnectionExecutionCapability(
         jenkinsConnectorDTO.getJenkinsUrl().endsWith("/") ? jenkinsConnectorDTO.getJenkinsUrl()
                                                           : jenkinsConnectorDTO.getJenkinsUrl().concat("/"),

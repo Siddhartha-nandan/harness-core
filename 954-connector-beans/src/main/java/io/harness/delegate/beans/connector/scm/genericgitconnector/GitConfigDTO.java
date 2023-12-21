@@ -62,6 +62,7 @@ public class GitConfigDTO
   Boolean proxy;
   @JsonIgnore private String proxyUrl;
   private String gitConnectionUrl;
+  ConnectorType connectorType;
 
   @JsonProperty("spec")
   @JsonTypeInfo(
