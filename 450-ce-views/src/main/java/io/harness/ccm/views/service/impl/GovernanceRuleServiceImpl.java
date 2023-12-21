@@ -472,6 +472,7 @@ public class GovernanceRuleServiceImpl implements GovernanceRuleService {
       targetAccount = ((GcpCloudCostConnectorDTO) connectorConfig).getProjectId();
       // In case of GCP the targetRegions would be empty
       // So to use same loop making one dummy entry in the list
+      targetRegions = new ArrayList<>();
       targetRegions.add("DummyGcpRegion");
     }
     for (String region : targetRegions) {

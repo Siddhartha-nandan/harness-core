@@ -668,7 +668,7 @@ public class GovernanceRuleResource {
       if (governanceAdhocEnqueueDTO.getRuleCloudProviderType() == GCP) {
         // In case of GCP the targetRegions would be empty or make it empty first
         // And then to use same loop making one dummy entry in the list
-        targetRegions.clear();
+        targetRegions = new ArrayList<>();
         targetRegions.add("DummyGcpRegion");
       }
       for (String targetRegion : targetRegions) {
