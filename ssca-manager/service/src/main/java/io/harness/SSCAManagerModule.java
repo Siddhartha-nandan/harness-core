@@ -13,6 +13,8 @@ import static io.harness.authorization.AuthorizationServiceHeader.SSCA_SERVICE;
 import static io.harness.lock.DistributedLockImplementation.REDIS;
 import static io.harness.outbox.OutboxSDKConstants.DEFAULT_OUTBOX_POLL_CONFIGURATION;
 
+import static io.serializer.HObjectMapper.NG_DEFAULT_OBJECT_MAPPER;
+
 import io.harness.account.AccountClientModule;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.app.PrimaryVersionManagerModule;
@@ -27,7 +29,6 @@ import io.harness.opaclient.OpaClientModule;
 import io.harness.outbox.TransactionOutboxModule;
 import io.harness.outbox.api.OutboxEventHandler;
 import io.harness.persistence.HPersistence;
-import io.harness.persistence.NoopUserProvider;
 import io.harness.persistence.UserProvider;
 import io.harness.pipeline.remote.PipelineRemoteClientModule;
 import io.harness.redis.RedisConfig;
@@ -99,6 +100,8 @@ import io.harness.ssca.services.drift.SbomDriftService;
 import io.harness.ssca.services.drift.SbomDriftServiceImpl;
 import io.harness.ssca.services.remediation_tracker.RemediationTrackerService;
 import io.harness.ssca.services.remediation_tracker.RemediationTrackerServiceImpl;
+import io.harness.ssca.ticket.TicketServiceRestClientService;
+import io.harness.ssca.ticket.TicketServiceRestClientServiceImpl;
 import io.harness.time.TimeModule;
 import io.harness.token.TokenClientModule;
 
@@ -112,7 +115,6 @@ import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.AbstractModule;
@@ -149,7 +151,7 @@ public class SSCAManagerModule extends AbstractModule {
     install(new AbstractMongoModule() {
       @Override
       public UserProvider userProvider() {
-        return new NoopUserProvider();
+        return new UserPrincipalUserProvider();
       }
     });
     registerOutboxEventHandlers();
@@ -184,6 +186,7 @@ public class SSCAManagerModule extends AbstractModule {
     bind(RemediationTrackerService.class).to(RemediationTrackerServiceImpl.class);
     bind(RemediationApi.class).to(RemediationTrackerApiImpl.class);
     bind(ElasticSearchIndexManager.class).annotatedWith(Names.named("SSCA")).to(SSCAIndexManager.class);
+    bind(TicketServiceRestClientService.class).to(TicketServiceRestClientServiceImpl.class);
     MapBinder<PolicyType, PolicyEvaluationService> policyEvaluationServiceMapBinder =
         MapBinder.newMapBinder(binder(), PolicyType.class, PolicyEvaluationService.class);
     policyEvaluationServiceMapBinder.addBinding(PolicyType.OPA)
@@ -297,9 +300,9 @@ public class SSCAManagerModule extends AbstractModule {
                                   .setDefaultHeaders(new Header[] {new BasicHeader(
                                       "Authorization", "ApiKey " + configuration.getElasticSearchConfig().getApiKey())})
                                   .build();
-      ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
-      ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper(objectMapper));
+      ElasticsearchTransport transport =
+          new RestClientTransport(restClient, new JacksonJsonpMapper(NG_DEFAULT_OBJECT_MAPPER));
       return new ElasticsearchClient(transport);
     } catch (Exception e) {
       throw new GeneralException("Failed to create Elasticsearch client", e);
@@ -383,5 +386,11 @@ public class SSCAManagerModule extends AbstractModule {
     MapBinder<String, OutboxEventHandler> outboxEventHandlerMapBinder =
         MapBinder.newMapBinder(binder(), String.class, OutboxEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(SSCA_ARTIFACT).to(SSCAArtifactEventHandler.class);
+  }
+
+  @Provides
+  @Singleton
+  public ObjectMapper getObjectMapper() {
+    return NG_DEFAULT_OBJECT_MAPPER;
   }
 }

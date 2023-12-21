@@ -29,6 +29,8 @@ import io.harness.repositories.drift.SbomDriftRepository;
 import io.harness.rule.Owner;
 import io.harness.spec.server.ssca.v1.model.ArtifactSbomDriftRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactSbomDriftResponse;
+import io.harness.spec.server.ssca.v1.model.ComponentDriftSummary;
+import io.harness.spec.server.ssca.v1.model.LicenseDriftSummary;
 import io.harness.spec.server.ssca.v1.model.OrchestrationDriftSummary;
 import io.harness.ssca.beans.BaselineDTO;
 import io.harness.ssca.beans.drift.ComponentDrift;
@@ -115,13 +117,21 @@ public class SbomDriftServiceTest extends SSCAManagerTestBase {
     when(sbomDriftCalculator.findComponentDrifts(BASE_ORCHESTRATION_ID, ORCHESTRATION_ID))
         .thenReturn(getComponentDrifts());
     when(sbomDriftCalculator.findLicenseDrift(BASE_ORCHESTRATION_ID, ORCHESTRATION_ID)).thenReturn(getLicenseDrifts());
-    when(sbomDriftRepository.save(any())).thenReturn(DriftEntity.builder().uuid(DRIFT_ID).build());
+    when(sbomDriftRepository.save(any()))
+        .thenReturn(getDriftEntityBuilder().uuid(DRIFT_ID).base(DriftBase.MANUAL).build());
 
     ArtifactSbomDriftResponse response =
         sbomDriftService.calculateSbomDrift(ACCOUNT_ID, ORG_ID, PROJECT_ID, ARTIFACT_ID, requestBody);
     assertThat(response).isNotNull();
     assertThat(response).isEqualTo(
-        new ArtifactSbomDriftResponse().driftId(DRIFT_ID).tag(TAG).baseTag(BASE_TAG).artifactName("test/image"));
+        new ArtifactSbomDriftResponse()
+            .driftId(DRIFT_ID)
+            .tag(TAG)
+            .baseTag(BASE_TAG)
+            .totalDrifts(2)
+            .componentDriftSummary(new ComponentDriftSummary().total(1).added(1).deleted(0).modified(0))
+            .licenseDriftSummary(new LicenseDriftSummary().total(1).added(1).deleted(0))
+            .artifactName("test/image"));
     ArgumentCaptor<DriftEntity> captor = ArgumentCaptor.forClass(DriftEntity.class);
     verify(sbomDriftRepository, times(1)).save(captor.capture());
     DriftEntity savedDriftEntity = captor.getValue();
@@ -156,7 +166,14 @@ public class SbomDriftServiceTest extends SSCAManagerTestBase {
         sbomDriftService.calculateSbomDrift(ACCOUNT_ID, ORG_ID, PROJECT_ID, ARTIFACT_ID, requestBody);
     assertThat(response).isNotNull();
     assertThat(response).isEqualTo(
-        new ArtifactSbomDriftResponse().driftId(DRIFT_ID).tag(TAG).baseTag(BASE_TAG).artifactName("test/image"));
+        new ArtifactSbomDriftResponse()
+            .driftId(DRIFT_ID)
+            .tag(TAG)
+            .baseTag(BASE_TAG)
+            .totalDrifts(2)
+            .componentDriftSummary(new ComponentDriftSummary().total(1).added(1).deleted(0).modified(0))
+            .licenseDriftSummary(new LicenseDriftSummary().total(1).added(1).deleted(0))
+            .artifactName("test/image"));
     verify(sbomDriftRepository, never()).save(any());
     verify(sbomDriftRepository, times(1)).update(any(), any());
   }
@@ -192,13 +209,21 @@ public class SbomDriftServiceTest extends SSCAManagerTestBase {
     when(sbomDriftCalculator.findComponentDrifts(BASE_ORCHESTRATION_ID, ORCHESTRATION_ID))
         .thenReturn(getComponentDrifts());
     when(sbomDriftCalculator.findLicenseDrift(BASE_ORCHESTRATION_ID, ORCHESTRATION_ID)).thenReturn(getLicenseDrifts());
-    when(sbomDriftRepository.save(any())).thenReturn(DriftEntity.builder().uuid(DRIFT_ID).build());
+    when(sbomDriftRepository.save(any()))
+        .thenReturn(getDriftEntityBuilder().uuid(DRIFT_ID).base(DriftBase.BASELINE).build());
 
     ArtifactSbomDriftResponse response = sbomDriftService.calculateSbomDriftForOrchestration(
         ACCOUNT_ID, ORG_ID, PROJECT_ID, ORCHESTRATION_ID, DriftBase.BASELINE);
     assertThat(response).isNotNull();
     assertThat(response).isEqualTo(
-        new ArtifactSbomDriftResponse().driftId(DRIFT_ID).tag(TAG).baseTag(BASE_TAG).artifactName("test/image"));
+        new ArtifactSbomDriftResponse()
+            .driftId(DRIFT_ID)
+            .tag(TAG)
+            .baseTag(BASE_TAG)
+            .totalDrifts(2)
+            .componentDriftSummary(new ComponentDriftSummary().total(1).added(1).deleted(0).modified(0))
+            .licenseDriftSummary(new LicenseDriftSummary().total(1).added(1).deleted(0))
+            .artifactName("test/image"));
     ArgumentCaptor<DriftEntity> captor = ArgumentCaptor.forClass(DriftEntity.class);
     verify(sbomDriftRepository, times(1)).save(captor.capture());
     DriftEntity savedDriftEntity = captor.getValue();
@@ -234,13 +259,21 @@ public class SbomDriftServiceTest extends SSCAManagerTestBase {
     when(sbomDriftCalculator.findComponentDrifts(BASE_ORCHESTRATION_ID, ORCHESTRATION_ID))
         .thenReturn(getComponentDrifts());
     when(sbomDriftCalculator.findLicenseDrift(BASE_ORCHESTRATION_ID, ORCHESTRATION_ID)).thenReturn(getLicenseDrifts());
-    when(sbomDriftRepository.save(any())).thenReturn(DriftEntity.builder().uuid(DRIFT_ID).build());
+    when(sbomDriftRepository.save(any()))
+        .thenReturn(getDriftEntityBuilder().uuid(DRIFT_ID).base(DriftBase.LAST_GENERATED_SBOM).build());
 
     ArtifactSbomDriftResponse response = sbomDriftService.calculateSbomDriftForOrchestration(
         ACCOUNT_ID, ORG_ID, PROJECT_ID, ORCHESTRATION_ID, DriftBase.LAST_GENERATED_SBOM);
     assertThat(response).isNotNull();
     assertThat(response).isEqualTo(
-        new ArtifactSbomDriftResponse().driftId(DRIFT_ID).tag(TAG).baseTag(BASE_TAG).artifactName("test/image"));
+        new ArtifactSbomDriftResponse()
+            .driftId(DRIFT_ID)
+            .tag(TAG)
+            .baseTag(BASE_TAG)
+            .totalDrifts(2)
+            .componentDriftSummary(new ComponentDriftSummary().total(1).added(1).deleted(0).modified(0))
+            .licenseDriftSummary(new LicenseDriftSummary().total(1).added(1).deleted(0))
+            .artifactName("test/image"));
     ArgumentCaptor<DriftEntity> captor = ArgumentCaptor.forClass(DriftEntity.class);
     verify(sbomDriftRepository, times(1)).save(captor.capture());
     DriftEntity savedDriftEntity = captor.getValue();
@@ -271,7 +304,7 @@ public class SbomDriftServiceTest extends SSCAManagerTestBase {
     Aggregation aggregation = argumentCaptor.getValue();
     assertThat(aggregation.toString())
         .isEqualTo(
-            "{ \"aggregate\" : \"__collection__\", \"pipeline\" : [{ \"$match\" : { \"_id\" : \"uuid\"}}, { \"$project\" : { \"componentDrifts\" : 1, \"_id\" : 1}}, { \"$unwind\" : \"$componentDrifts\"}, { \"$match\" : { \"componentDrifts.status\" : \"ADDED\", \"$or\" : [{ \"componentDrifts.oldComponent.packagename\" : { \"$regularExpression\" : { \"pattern\" : \"comp\", \"options\" : \"\"}}}, { \"componentDrifts.newComponent.packagename\" : { \"$regularExpression\" : { \"pattern\" : \"comp\", \"options\" : \"\"}}}]}}, { \"$group\" : { \"_id\" : \"$_id\", \"totalComponentDrifts\" : { \"$sum\" : 1}, \"componentDrifts\" : { \"$push\" : \"$componentDrifts\"}}}, { \"$project\" : { \"totalComponentDrifts\" : 1, \"componentDrifts\" : { \"$slice\" : [\"$componentDrifts\", 0, 10]}, \"_id\" : 0}}]}");
+            "{ \"aggregate\" : \"__collection__\", \"pipeline\" : [{ \"$match\" : { \"_id\" : \"uuid\"}}, { \"$project\" : { \"componentDrifts\" : 1, \"_id\" : 1}}, { \"$unwind\" : \"$componentDrifts\"}, { \"$match\" : { \"componentDrifts.status\" : \"ADDED\", \"$or\" : [{ \"componentDrifts.oldComponent.packagename\" : { \"$regularExpression\" : { \"pattern\" : \"comp\", \"options\" : \"i\"}}}, { \"componentDrifts.newComponent.packagename\" : { \"$regularExpression\" : { \"pattern\" : \"comp\", \"options\" : \"i\"}}}]}}, { \"$group\" : { \"_id\" : \"$_id\", \"totalComponentDrifts\" : { \"$sum\" : 1}, \"componentDrifts\" : { \"$push\" : \"$componentDrifts\"}}}, { \"$project\" : { \"totalComponentDrifts\" : 1, \"componentDrifts\" : { \"$slice\" : [\"$componentDrifts\", 0, 10]}, \"_id\" : 0}}]}");
     assertThat(componentDriftResults.getTotalComponentDrifts()).isEqualTo(1);
     assertThat(componentDriftResults.getComponentDrifts()).isEqualTo(getComponentDrifts());
   }
@@ -294,7 +327,7 @@ public class SbomDriftServiceTest extends SSCAManagerTestBase {
     Aggregation aggregation = argumentCaptor.getValue();
     assertThat(aggregation.toString())
         .isEqualTo(
-            "{ \"aggregate\" : \"__collection__\", \"pipeline\" : [{ \"$match\" : { \"_id\" : \"uuid\"}}, { \"$project\" : { \"licenseDrifts\" : 1, \"_id\" : 1}}, { \"$unwind\" : \"$licenseDrifts\"}, { \"$match\" : { \"licenseDrifts.status\" : \"ADDED\", \"licenseDrifts.name\" : { \"$regularExpression\" : { \"pattern\" : \"MIT\", \"options\" : \"\"}}}}, { \"$group\" : { \"_id\" : \"$_id\", \"totalLicenseDrifts\" : { \"$sum\" : 1}, \"licenseDrifts\" : { \"$push\" : \"$licenseDrifts\"}}}, { \"$project\" : { \"totalLicenseDrifts\" : 1, \"licenseDrifts\" : { \"$slice\" : [\"$licenseDrifts\", 0, 10]}, \"_id\" : 0}}]}");
+            "{ \"aggregate\" : \"__collection__\", \"pipeline\" : [{ \"$match\" : { \"_id\" : \"uuid\"}}, { \"$project\" : { \"licenseDrifts\" : 1, \"_id\" : 1}}, { \"$unwind\" : \"$licenseDrifts\"}, { \"$match\" : { \"licenseDrifts.status\" : \"ADDED\", \"licenseDrifts.name\" : { \"$regularExpression\" : { \"pattern\" : \"MIT\", \"options\" : \"i\"}}}}, { \"$group\" : { \"_id\" : \"$_id\", \"totalLicenseDrifts\" : { \"$sum\" : 1}, \"licenseDrifts\" : { \"$push\" : \"$licenseDrifts\"}}}, { \"$project\" : { \"totalLicenseDrifts\" : 1, \"licenseDrifts\" : { \"$slice\" : [\"$licenseDrifts\", 0, 10]}, \"_id\" : 0}}]}");
     assertThat(licenseDriftResults.getTotalLicenseDrifts()).isEqualTo(1);
     assertThat(licenseDriftResults.getLicenseDrifts())
         .isEqualTo(List.of(LicenseDrift.builder()

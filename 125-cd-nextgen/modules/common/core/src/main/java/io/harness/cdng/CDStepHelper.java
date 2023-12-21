@@ -604,16 +604,17 @@ public class CDStepHelper {
     GitStoreDelegateConfig gitStoreDelegateConfig = getGitStoreDelegateConfig(
         gitStoreConfig, connectorDTO, paths, ambiance, manifestType, manifestIdentifier, useOptimizedFilesFetch);
 
-    return getGitFetchFilesConfigFromBuilder(manifestIdentifier, manifestType, false, gitStoreDelegateConfig);
+    return getGitFetchFilesConfigFromBuilder(manifestIdentifier, manifestType, false, gitStoreDelegateConfig, false);
   }
 
   public GitFetchFilesConfig getGitFetchFilesConfigFromBuilder(String identifier, String manifestType,
-      boolean succeedIfFileNotFound, GitStoreDelegateConfig gitStoreDelegateConfig) {
+      boolean succeedIfFileNotFound, GitStoreDelegateConfig gitStoreDelegateConfig, boolean supportFolders) {
     return GitFetchFilesConfig.builder()
         .identifier(identifier)
         .manifestType(manifestType)
         .succeedIfFileNotFound(succeedIfFileNotFound)
         .gitStoreDelegateConfig(gitStoreDelegateConfig)
+        .supportFolders(supportFolders)
         .build();
   }
 
@@ -942,7 +943,7 @@ public class CDStepHelper {
 
   public UnitProgressData completeUnitProgressData(
       UnitProgressData currentProgressData, Ambiance ambiance, String exceptionMessage) {
-    if (currentProgressData == null) {
+    if (currentProgressData == null || isEmpty(currentProgressData.getUnitProgresses())) {
       return UnitProgressData.builder().unitProgresses(new ArrayList<>()).build();
     }
 

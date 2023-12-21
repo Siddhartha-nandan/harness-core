@@ -12,6 +12,7 @@ import static io.harness.ccm.commons.entities.CCMField.RULE_NAME;
 import static io.harness.ccm.commons.entities.CCMField.RULE_SET_NAME;
 import static io.harness.ccm.views.helper.RuleCloudProviderType.AWS;
 import static io.harness.ccm.views.helper.RuleCloudProviderType.AZURE;
+import static io.harness.ccm.views.helper.RuleCloudProviderType.GCP;
 import static io.harness.ccm.views.helper.RuleCostType.POTENTIAL;
 import static io.harness.ccm.views.helper.RuleCostType.REALIZED;
 import static io.harness.ccm.views.helper.RuleExecutionType.INTERNAL;
@@ -50,6 +51,7 @@ import io.harness.exception.InvalidRequestException;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import io.fabric8.utils.Lists;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -170,6 +172,14 @@ public class RuleExecutionServiceImpl implements RuleExecutionService {
     return getResourcePotentialCost(accountId, recommendationIds);
   }
 
+  @Override
+  public List<RuleExecution> getRuleLastExecution(String accountId, List<String> ruleIds) {
+    if (Lists.isNullOrEmpty(ruleIds)) {
+      throw new InvalidRequestException("Rule ids should be provided");
+    }
+    return rulesExecutionDAO.getRuleLastExecution(accountId, ruleIds);
+  }
+
   public <T> AggregationResults<T> aggregate(Aggregation aggregation, Class<T> classToFillResultIn) {
     return mongoTemplate.aggregate(aggregation, RuleExecution.class, classToFillResultIn);
   }
@@ -193,6 +203,7 @@ public class RuleExecutionServiceImpl implements RuleExecutionService {
     return OverviewExecutionCostDetails.builder()
         .awsExecutionCostDetails(getResourcePotentialCostPerCloudProvider(accountId, AWS.name(), ruleExecutionIds))
         .azureExecutionCostDetails(getResourcePotentialCostPerCloudProvider(accountId, AZURE.name(), ruleExecutionIds))
+        .gcpExecutionCostDetails(getResourcePotentialCostPerCloudProvider(accountId, GCP.name(), ruleExecutionIds))
         .build();
   }
 

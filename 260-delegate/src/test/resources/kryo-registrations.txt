@@ -2610,6 +2610,7 @@
 930012:io.harness.licensing.beans.modules.IACMModuleLicenseDTO
 930013:io.harness.licensing.beans.modules.CETModuleLicenseDTO
 930014:io.harness.licensing.beans.modules.IDPModuleLicenseDTO
+930015:io.harness.licensing.beans.modules.CodeModuleLicenseDTO
 955000:io.harness.beans.CommitDetails
 955001:io.harness.beans.Repository
 955002:io.harness.beans.WebhookGitUser
@@ -2903,4 +2904,5 @@
 20002012:io.harness.delegate.task.k8s.K8sTrafficRoutingRequest
 20002013:io.harness.delegate.task.k8s.K8sTrafficRoutingResponse
 20002014:io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfigType
+20002015:io.harness.delegate.beans.connector.scm.github.GithubAnonymousDTO
 
