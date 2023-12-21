@@ -2135,7 +2135,7 @@ components:
           description: Resource Identifier of the Entity.
           pattern: '^[a-zA-Z_][0-9a-zA-Z_$]{0,127}$'
           minLength: 1
-          maxLength: 128
+          maxLength: 256
     FavoriteResponse:
       type: object
       x-examples:
