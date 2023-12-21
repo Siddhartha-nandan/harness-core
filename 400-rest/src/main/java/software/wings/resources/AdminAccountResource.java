@@ -24,6 +24,7 @@ import io.harness.datahandler.services.AdminAccountService;
 import io.harness.datahandler.services.AdminUserService;
 import io.harness.datahandler.utils.AccountSummaryHelper;
 import io.harness.licensing.beans.modules.AccountLicenseDTO;
+import io.harness.licensing.beans.modules.BatchModuleLicenseRequestDTO;
 import io.harness.licensing.beans.modules.ModuleLicenseDTO;
 import io.harness.licensing.remote.admin.AdminLicenseHttpClient;
 import io.harness.limits.ActionType;
@@ -45,6 +46,8 @@ import software.wings.service.intfc.DelegateService;
 import com.codahale.metrics.annotation.ExceptionMetered;
 import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import javax.validation.constraints.NotNull;
@@ -340,6 +343,17 @@ public class AdminAccountResource {
   @Path("{accountId}/ng/license")
   public RestResponse<AccountLicenseDTO> getNgAccountLicenses(@PathParam("accountId") String accountId) {
     return new RestResponse<>(getResponse(adminLicenseHttpClient.getAccountLicense(accountId)));
+  }
+
+  @POST
+  @Path("ng/license/batch")
+  public RestResponse<List<AccountLicenseDTO>> getBatchOfNgAccountLicenses(@Body BatchModuleLicenseRequestDTO batchModuleLicenseRequest) {
+    List<AccountLicenseDTO> accountLicenseDTOS = new ArrayList<>();
+    for (String accountId : batchModuleLicenseRequest.getAccountIds()) {
+      accountLicenseDTOS.add(getResponse(adminLicenseHttpClient.getAccountLicense(accountId)));
+    }
+
+    return new RestResponse<>(accountLicenseDTOS);
   }
 
   @DELETE
