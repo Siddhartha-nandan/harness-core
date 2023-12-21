@@ -32,7 +32,7 @@ public class AzureK8sInfraContextTest extends CategoryTest {
   @Test
   @Owner(developers = MLUKIC)
   @Category(UnitTests.class)
-  public void toConnectorInfoEmptyTest() {
+  public void testToConnectorInfoEmpty() {
     AzureK8sInfraContext azureK8sInfraContext = AzureK8sInfraContext.builder().build();
     Optional<String> result = azureK8sInfraContext.getConnectorInfo();
     assertThat(result).isEmpty();
@@ -41,7 +41,7 @@ public class AzureK8sInfraContextTest extends CategoryTest {
   @Test
   @Owner(developers = MLUKIC)
   @Category(UnitTests.class)
-  public void toConnectorInfoServicePrincipalSecretTest() {
+  public void testToConnectorInfoServicePrincipalSecret() {
     AzureK8sInfraContext azureK8sInfraContext =
         AzureK8sInfraContext.builder()
             .azureAuthenticationType(AzureAuthenticationType.SERVICE_PRINCIPAL_SECRET)
@@ -60,7 +60,7 @@ public class AzureK8sInfraContextTest extends CategoryTest {
   @Test
   @Owner(developers = MLUKIC)
   @Category(UnitTests.class)
-  public void toConnectorInfoServicePrincipalCertTest() {
+  public void testToConnectorInfoServicePrincipalCert() {
     AzureK8sInfraContext azureK8sInfraContext =
         AzureK8sInfraContext.builder()
             .azureAuthenticationType(AzureAuthenticationType.SERVICE_PRINCIPAL_CERT)
@@ -79,7 +79,7 @@ public class AzureK8sInfraContextTest extends CategoryTest {
   @Test
   @Owner(developers = MLUKIC)
   @Category(UnitTests.class)
-  public void toConnectorInfoUserAssignedMSITest() {
+  public void testToConnectorInfoUserAssignedMSI() {
     AzureK8sInfraContext azureK8sInfraContext =
         AzureK8sInfraContext.builder()
             .azureAuthenticationType(AzureAuthenticationType.MANAGED_IDENTITY_USER_ASSIGNED)
@@ -95,7 +95,7 @@ public class AzureK8sInfraContextTest extends CategoryTest {
   @Test
   @Owner(developers = MLUKIC)
   @Category(UnitTests.class)
-  public void toConnectorInfoSystemAssignedMSITest() {
+  public void testToConnectorInfoSystemAssignedMSI() {
     AzureK8sInfraContext azureK8sInfraContext =
         AzureK8sInfraContext.builder()
             .azureAuthenticationType(AzureAuthenticationType.MANAGED_IDENTITY_SYSTEM_ASSIGNED)

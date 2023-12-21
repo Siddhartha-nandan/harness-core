@@ -19,7 +19,7 @@ import java.util.Set;
 import lombok.Builder;
 
 @Builder
-@CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_K8S})
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 public class HelmTaskContext implements TaskContext {
   Set<String> hints;
   InfraContext infraContext;

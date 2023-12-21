@@ -13,11 +13,9 @@ import io.harness.annotations.dev.ProductModule;
 
 import java.util.Optional;
 import lombok.Builder;
-import lombok.extern.slf4j.Slf4j;
 
 @Builder
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_K8S})
-@Slf4j
 public class EksK8sInfraContext implements InfraContext {
   String delegateId;
   String namespace;

@@ -75,6 +75,7 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.HelmClientException;
 import io.harness.exception.HelmClientRuntimeException;
 import io.harness.exception.HintException;
@@ -87,7 +88,6 @@ import io.harness.taskcontext.TaskContext;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Singleton;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -292,12 +292,12 @@ public class HelmClientRuntimeExceptionHandler implements ExceptionHandler {
         DEFAULT_HINT_HELM_UPGRADE, DEFAULT_EXPLAIN_HELM_UPGRADE, helmClientException, dynamicHints);
   }
 
-  private List<String> getDynamicHints(String errorMessage, TaskContext taskContext) {
+  List<String> getDynamicHints(String errorMessage, TaskContext taskContext) {
     List<String> dynamicHints = new ArrayList<>();
 
     if (taskContext != null) {
       Matcher matcher = UNAUTHORIZED_ERROR_PATTERN.matcher(errorMessage);
-      if (matcher.find() && taskContext != null) {
+      if (matcher.find()) {
         Optional<String> connectorInfo = taskContext.getConnectorInfo();
 
         if (connectorInfo.isPresent()) {
@@ -311,11 +311,11 @@ public class HelmClientRuntimeExceptionHandler implements ExceptionHandler {
     return dynamicHints;
   }
 
-  private WingsException generateFinalException(
+  WingsException generateFinalException(
       String fixedHint, String fixedExplanation, WingsException originalCause, List<String> dynamicHints) {
     WingsException latestException = originalCause;
 
-    if (dynamicHints != null && dynamicHints.size() > 0) {
+    if (EmptyPredicate.isNotEmpty(dynamicHints)) {
       Iterator<String> hintsIterator = dynamicHints.iterator();
       while (hintsIterator.hasNext()) {
         latestException = new HintException(hintsIterator.next(), latestException);

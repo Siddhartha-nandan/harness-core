@@ -255,7 +255,7 @@ public class HelmClientRuntimeExceptionHandlerTest extends CategoryTest {
   @Test
   @Owner(developers = MLUKIC)
   @Category(UnitTests.class)
-  public void handleK8sClusterPermissionErrorTest() {
+  public void testHandleK8sClusterPermissionError() {
     List<String> hints = new ArrayList<>();
     hints.add("hint1");
     hints.add("hint2");
@@ -290,5 +290,38 @@ public class HelmClientRuntimeExceptionHandlerTest extends CategoryTest {
     assertThat(handledException.getCause().getCause().getCause().getCause().getCause())
         .isInstanceOf(HelmClientException.class);
     assertThat(handledException.getCause().getCause().getCause().getCause().getCause().getMessage()).isNotEmpty();
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testGetDynamicHints() {
+    List<String> hints = new ArrayList<>();
+    hints.add("hint1");
+    hints.add("hint2");
+    AzureK8sInfraContext azureK8sInfraContext =
+        AzureK8sInfraContext.builder()
+            .azureAuthenticationType(AzureAuthenticationType.SERVICE_PRINCIPAL_SECRET)
+            .azureConnectorEnvironmentType(AzureEnvironmentType.AZURE)
+            .clientId("1234")
+            .tenantId("4321")
+            .delegateId("delId")
+            .build();
+    HelmTaskContext helmTaskContext = HelmTaskContext.builder().infraContext(azureK8sInfraContext).build();
+    helmTaskContext.addHints(hints);
+
+    List<String> dynamicHints = handler.getDynamicHints("some error message", helmTaskContext);
+    assertThat(dynamicHints).isNotNull();
+    assertThat(dynamicHints.size()).isEqualTo(2);
+    assertThat(dynamicHints).contains("hint1", "hint2");
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testGetDynamicHintsEmpty() {
+    List<String> dynamicHints = handler.getDynamicHints("some error message", null);
+    assertThat(dynamicHints).isNotNull();
+    assertThat(dynamicHints).isEmpty();
   }
 }
