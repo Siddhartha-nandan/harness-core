@@ -76,7 +76,7 @@ public class S3ToClickHouseSyncTasklet implements Tasklet {
               .get(0));
     } catch (Exception e) {
       amountToSubtract = 1;
-      log.error(e);
+      log.error(e.getMessage());
     }
     startTime = endTime.minus(amountToSubtract, ChronoUnit.HOURS);
 
