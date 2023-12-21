@@ -7,7 +7,11 @@
 
 package io.harness.pms.event.entitycrud;
 
-import static io.harness.eventsframework.EventsFrameworkMetadataConstants.*;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ACTION;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ENTITY_TYPE;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.SETTINGS;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.SETTINGS_CATEGORY;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.UPDATE_ACTION;
 
 import io.harness.eventsframework.consumer.Message;
 import io.harness.eventsframework.schemas.entity_crud.settings.SettingsEntityChangeDTO;

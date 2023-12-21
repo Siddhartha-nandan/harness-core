@@ -7,8 +7,11 @@
 
 package io.harness.pms.event.entitycrud;
 
-import static io.harness.eventsframework.EventsFrameworkMetadataConstants.*;
-import static io.harness.eventsframework.EventsFrameworkMetadataConstants.DELETE_ACTION;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ACTION;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ENTITY_TYPE;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.SETTINGS;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.SETTINGS_CATEGORY;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.UPDATE_ACTION;
 import static io.harness.rule.OwnerRule.ARCHIT;
 import static io.harness.rule.OwnerRule.MEET;
 
@@ -20,7 +23,6 @@ import static org.mockito.Mockito.verify;
 import io.harness.CategoryTest;
 import io.harness.category.element.UnitTests;
 import io.harness.eventsframework.consumer.Message;
-import io.harness.eventsframework.entity_crud.account.AccountEntityChangeDTO;
 import io.harness.eventsframework.schemas.entity_crud.settings.SettingsEntityChangeDTO;
 import io.harness.ngsettings.SettingCategory;
 import io.harness.ngtriggers.service.NGTriggerService;
