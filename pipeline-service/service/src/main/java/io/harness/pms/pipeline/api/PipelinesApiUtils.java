@@ -592,7 +592,7 @@ public class PipelinesApiUtils {
   private static PipelineYamlInputDTO toPipelineYamlInputDTO(InputDetails inputDetails) {
     PipelineYamlInputDTO pipelineYamlInputDTO = new PipelineYamlInputDTO();
     pipelineYamlInputDTO.setName(inputDetails.getName());
-    pipelineYamlInputDTO.setDescription(inputDetails.getDescription());
+    pipelineYamlInputDTO.setDesc(inputDetails.getDescription());
     pipelineYamlInputDTO.setType(getYamlInputType(inputDetails.getType()));
     pipelineYamlInputDTO.setRequired(inputDetails.isRequired());
     pipelineYamlInputDTO.setAllowedValues(inputDetails.getAllowedValues());

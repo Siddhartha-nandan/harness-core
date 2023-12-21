@@ -138,9 +138,11 @@ public class PipelinesApiImpl implements PipelinesApi {
     pmsPipelineService.delete(account, org, project, pipeline, null);
     return Response.status(204).build();
   }
-
   @Override
-  public Response getInputsSchemaDetails(String org, String project, String pipeline, String harnessAccount) {
+  public Response getInputsSchemaDetails(String org, String project, String pipeline, String harnessAccount,
+      String branchName, String connectorRef, String repoName) {
+    GitAwareContextHelper.populateGitDetails(
+        GitEntityInfo.builder().branch(branchName).connectorRef(connectorRef).repoName(repoName).build());
     List<YamlInputDetails> yamlInputDetails =
         pmsPipelineService.getInputSchemaDetails(harnessAccount, org, project, pipeline);
     PipelineInputSchemaDetailsResponseBody responseBody =
