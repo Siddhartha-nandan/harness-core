@@ -788,6 +788,25 @@ if [[ "$REDIS_SCRIPT_CACHE" == "false" ]]; then
   yq -i '.useScriptCache=false' $REDISSON_CACHE_FILE
 fi
 
+if [[ "" != "$REDIS_SSL_ENABLED" ]]; then
+  replace_key_value redisLockConfig.sslConfig.enabled $REDIS_SSL_ENABLED
+  replace_key_value redisAtmosphereConfig.sslConfig.enabled $REDIS_SSL_ENABLED
+fi
+
+if [[ "" != "$REDIS_SSL_CA_TRUST_STORE_PATH" ]]; then
+  replace_key_value redisLockConfig.sslConfig.CATrustStorePath $REDIS_SSL_CA_TRUST_STORE_PATH
+  replace_key_value redisAtmosphereConfig.sslConfig.CATrustStorePath $REDIS_SSL_CA_TRUST_STORE_PATH
+
+  export FILE_VAR="file:$REDIS_SSL_CA_TRUST_STORE_PATH"; yq -i '.singleServerConfig.sslTruststore=env(FILE_VAR)' $REDISSON_CACHE_FILE
+fi
+
+if [[ "" != "$REDIS_SSL_CA_TRUST_STORE_PASSWORD" ]]; then
+  replace_key_value redisLockConfig.sslConfig.CATrustStorePassword $REDIS_SSL_CA_TRUST_STORE_PASSWORD
+  replace_key_value redisAtmosphereConfig.sslConfig.CATrustStorePassword $REDIS_SSL_CA_TRUST_STORE_PASSWORD
+
+  export REDIS_SSL_CA_TRUST_STORE_PASSWORD; yq -i '.singleServerConfig.sslTruststorePassword=env(REDIS_SSL_CA_TRUST_STORE_PASSWORD)' $REDISSON_CACHE_FILE
+fi
+
 if [[ "" != "$CACHE_NAMESPACE" ]]; then
     export CACHE_NAMESPACE; yq -i '.cg.cacheConfig.cacheNamespace=env(CACHE_NAMESPACE)' $CONFIG_FILE
 fi
