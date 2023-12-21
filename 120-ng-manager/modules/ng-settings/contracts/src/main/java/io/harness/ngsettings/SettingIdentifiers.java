@@ -46,6 +46,8 @@ public class SettingIdentifiers {
   public static String ENABLE_WEBHOOK_NOTIFICATION_IDENTIFIER = "enable_webhook_notification";
   public static String ENABLE_PAGERDUTY_NOTIFICATION_IDENTIFIER = "enable_pagerduty_notification";
   public static String TRIGGER_FOR_ALL_ARTIFACTS_OR_MANIFESTS = "trigger_for_all_artifacts_or_manifests";
+  public static String MANIFEST_COLLECTION_NG_INTERVAL_MINUTES = "manifest_collection_ng_interval_minutes";
+  public static String ARTIFACT_COLLECTION_NG_INTERVAL_MINUTES = "artifact_collection_ng_interval_minutes";
   public static String TICKETING_PREFERENCES_GROUP_IDENTIFIER = "ticketing_preferences";
   public static String TICKETING_TOOL_IDENTIFIER = "ticketing_tool";
   public static String TICKETING_TOOL_CONNECTOR_IDENTIFIER = "ticketing_tool_connector";

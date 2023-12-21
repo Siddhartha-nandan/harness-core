@@ -21,6 +21,8 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.grpc.DelegateServiceGrpcClient;
 import io.harness.logging.AutoLogContext;
 import io.harness.logging.NgPollingAutoLogContext;
+import io.harness.ngsettings.SettingIdentifiers;
+import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.perpetualtask.PerpetualTaskClientContextDetails;
 import io.harness.perpetualtask.PerpetualTaskExecutionBundle;
 import io.harness.perpetualtask.PerpetualTaskId;
@@ -34,6 +36,7 @@ import io.harness.polling.service.impl.gitpolling.GitPollingPerpetualTaskHelperN
 import io.harness.polling.service.impl.manifest.ManifestPerpetualTaskHelperNg;
 import io.harness.polling.service.intfc.PollingPerpetualTaskService;
 import io.harness.polling.service.intfc.PollingService;
+import io.harness.remote.client.NGRestUtils;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -51,6 +54,7 @@ public class PollingPerpetualTaskServiceImpl implements PollingPerpetualTaskServ
   GitPollingPerpetualTaskHelperNg gitPollingPerpetualTaskHelperNg;
   DelegateServiceGrpcClient delegateServiceGrpcClient;
   PollingService pollingService;
+  NGSettingsClient settingsClient;
 
   @Override
   public void createPerpetualTask(PollingDocument pollingDocument) {
@@ -66,16 +70,28 @@ public class PollingPerpetualTaskServiceImpl implements PollingPerpetualTaskServ
         case MANIFEST:
           executionBundle = manifestPerpetualTaskHelperNg.createPerpetualTaskExecutionBundle(pollingDocument);
           perpetualTaskType = MANIFEST_COLLECTION_NG;
+          long manifestCollectionNgIntervalMinutes = Long.parseLong(
+              NGRestUtils
+                  .getResponse(settingsClient.getSetting(SettingIdentifiers.MANIFEST_COLLECTION_NG_INTERVAL_MINUTES,
+                      pollingDocument.getAccountId(), pollingDocument.getOrgIdentifier(),
+                      pollingDocument.getProjectIdentifier()))
+                  .getValue());
           schedule = PerpetualTaskSchedule.newBuilder()
-                         .setInterval(Durations.fromMinutes(PollingConstants.MANIFEST_COLLECTION_NG_INTERVAL_MINUTES))
+                         .setInterval(Durations.fromMinutes(manifestCollectionNgIntervalMinutes))
                          .setTimeout(Durations.fromMinutes(PollingConstants.MANIFEST_COLLECTION_NG_TIMEOUT_MINUTES))
                          .build();
           break;
         case ARTIFACT:
           executionBundle = artifactPerpetualTaskHelperNg.createPerpetualTaskExecutionBundle(pollingDocument);
           perpetualTaskType = ARTIFACT_COLLECTION_NG;
+          long artifactCollectionNgIntervalMinutes = Long.parseLong(
+              NGRestUtils
+                  .getResponse(settingsClient.getSetting(SettingIdentifiers.ARTIFACT_COLLECTION_NG_INTERVAL_MINUTES,
+                      pollingDocument.getAccountId(), pollingDocument.getOrgIdentifier(),
+                      pollingDocument.getProjectIdentifier()))
+                  .getValue());
           schedule = PerpetualTaskSchedule.newBuilder()
-                         .setInterval(Durations.fromMinutes(PollingConstants.ARTIFACT_COLLECTION_NG_INTERVAL_MINUTES))
+                         .setInterval(Durations.fromMinutes(artifactCollectionNgIntervalMinutes))
                          .setTimeout(Durations.fromMinutes(PollingConstants.ARTIFACT_COLLECTION_NG_TIMEOUT_MINUTES))
                          .build();
           break;

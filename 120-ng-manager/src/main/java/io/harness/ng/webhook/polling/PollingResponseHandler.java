@@ -354,14 +354,26 @@ public class PollingResponseHandler {
     Long validityIntervalForErrorStatus = null;
     switch (pollingDocument.getPollingType()) {
       case MANIFEST:
+        long manifestCollectionNgIntervalMinutes = Long.parseLong(
+            NGRestUtils
+                .getResponse(settingsClient.getSetting(SettingIdentifiers.MANIFEST_COLLECTION_NG_INTERVAL_MINUTES,
+                    pollingDocument.getAccountId(), pollingDocument.getOrgIdentifier(),
+                    pollingDocument.getProjectIdentifier()))
+                .getValue());
         validityIntervalForErrorStatus = Duration
-                                             .ofMinutes(PollingConstants.MANIFEST_COLLECTION_NG_INTERVAL_MINUTES
+                                             .ofMinutes(manifestCollectionNgIntervalMinutes
                                                  + PollingConstants.MANIFEST_COLLECTION_NG_TIMEOUT_MINUTES)
                                              .toMillis();
         break;
       case ARTIFACT:
+        long artifactCollectionNgIntervalMinutes = Long.parseLong(
+            NGRestUtils
+                .getResponse(settingsClient.getSetting(SettingIdentifiers.ARTIFACT_COLLECTION_NG_INTERVAL_MINUTES,
+                    pollingDocument.getAccountId(), pollingDocument.getOrgIdentifier(),
+                    pollingDocument.getProjectIdentifier()))
+                .getValue());
         validityIntervalForErrorStatus = Duration
-                                             .ofMinutes(PollingConstants.ARTIFACT_COLLECTION_NG_INTERVAL_MINUTES
+                                             .ofMinutes(artifactCollectionNgIntervalMinutes
                                                  + PollingConstants.ARTIFACT_COLLECTION_NG_TIMEOUT_MINUTES)
                                              .toMillis();
         break;
