@@ -12,7 +12,7 @@ import io.harness.annotation.RecasterAlias;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import io.swagger.annotations.ApiModel;
 import io.swagger.v3.oas.annotations.media.Schema;
-import javax.validation.constraints.NotNull;
+import javax.validation.constraints.NotEmpty;
 import lombok.Builder;
 import lombok.Value;
 
@@ -23,5 +23,5 @@ import lombok.Value;
 @Schema(name = "AwsOidcSpec", description = "This contains AWS OIDC credentials connector spec")
 @RecasterAlias("io.harness.delegate.beans.connector.awsconnector.AwsOidcSpecDTO")
 public class AwsOidcSpecDTO implements AwsCredentialSpecDTO {
-  @NotNull String iamRoleArn;
+  @NotEmpty String iamRoleArn;
 }
