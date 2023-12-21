@@ -325,13 +325,16 @@ public class ConfigEnvVariablesServiceImpl implements ConfigEnvVariablesService 
 
       for (BackstageEnvSecretVariable newBackstageEnvSecretVariable : newBackstageEnvVariables) {
         String newEnvVariableIdentifier = newBackstageEnvSecretVariable.getIdentifier();
-        if (!newBackstageEnvSecretVariable.getEnvName().equals(
-                oldBackstageEnvVariableMap.get(newEnvVariableIdentifier).getEnvName())
+        BackstageEnvSecretVariable oldBackstageEnvSecretVariable =
+            oldBackstageEnvVariableMap.get(newEnvVariableIdentifier);
+        oldBackstageEnvSecretVariable =
+            addAccountAsPrefixForSecretIdentifierInBackstageEnvSecretVariable(oldBackstageEnvSecretVariable);
+
+        if (!newBackstageEnvSecretVariable.getEnvName().equals(oldBackstageEnvSecretVariable.getEnvName())
             || !newBackstageEnvSecretVariable.getHarnessSecretIdentifier().equals(
-                oldBackstageEnvVariableMap.get(newEnvVariableIdentifier).getHarnessSecretIdentifier())) {
-          outboxService.save(new BackstageEnvSecretUpdateEvent(accountIdentifier, newBackstageEnvSecretVariable,
-              addAccountAsPrefixForSecretIdentifierInBackstageEnvSecretVariable(
-                  oldBackstageEnvVariableMap.get(newBackstageEnvSecretVariable.getIdentifier()))));
+                oldBackstageEnvSecretVariable.getHarnessSecretIdentifier())) {
+          outboxService.save(new BackstageEnvSecretUpdateEvent(
+              accountIdentifier, newBackstageEnvSecretVariable, oldBackstageEnvSecretVariable));
         }
       }
 

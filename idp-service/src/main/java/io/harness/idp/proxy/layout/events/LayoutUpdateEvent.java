@@ -49,7 +49,7 @@ public class LayoutUpdateEvent implements Event {
   @Override
   public Resource getResource() {
     Map<String, String> labels = new HashMap<>();
-    labels.put(ResourceConstants.LABEL_KEY_RESOURCE_NAME, newLayout.getDisplayName() + "Layout");
+    labels.put(ResourceConstants.LABEL_KEY_RESOURCE_NAME, newLayout.getDisplayName() + " Layout");
     return Resource.builder()
         .identifier(accountIdentifier + newLayout.getName() + newLayout.getType())
         .type(IDP_LAYOUT)
