@@ -21,13 +21,13 @@ import io.harness.audit.beans.ResourceScopeDTO;
 import io.harness.audit.client.api.AuditClientService;
 import io.harness.context.GlobalContext;
 import io.harness.exception.InvalidArgumentsException;
-import io.harness.idp.audittrails.eventhandlers.dtos.LayoutDTO;
+import io.harness.idp.configmanager.utils.ConfigManagerUtils;
 import io.harness.idp.proxy.layout.events.LayoutCreateEvent;
 import io.harness.idp.proxy.layout.events.LayoutUpdateEvent;
-import io.harness.ng.core.utils.NGYamlUtils;
 import io.harness.outbox.OutboxEvent;
 import io.harness.outbox.api.OutboxEventHandler;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import java.io.IOException;
@@ -66,19 +66,24 @@ public class LayoutEventHandler implements OutboxEventHandler {
 
     LayoutUpdateEvent layoutUpdateEvent = objectMapper.readValue(outboxEvent.getEventData(), LayoutUpdateEvent.class);
 
-    AuditEntry auditEntry =
-        AuditEntry.builder()
-            .action(Action.UPDATE)
-            .module(ModuleType.IDP)
-            .newYaml(NGYamlUtils.getYamlString(
-                LayoutDTO.builder().yaml(layoutUpdateEvent.getNewLayout().getYaml()).build(), objectMapper))
-            .oldYaml(NGYamlUtils.getYamlString(
-                LayoutDTO.builder().yaml(layoutUpdateEvent.getOldLayout().getYaml()).build(), objectMapper))
-            .timestamp(outboxEvent.getCreatedAt())
-            .resource(ResourceDTO.fromResource(outboxEvent.getResource()))
-            .resourceScope(ResourceScopeDTO.fromResourceScope(outboxEvent.getResourceScope()))
-            .insertId(outboxEvent.getId())
-            .build();
+    JsonNode newLayoutNode = ConfigManagerUtils.asJsonNode(layoutUpdateEvent.getNewLayout().getYaml());
+    String newLayoutYaml = ConfigManagerUtils.asYaml(newLayoutNode.toString());
+    newLayoutYaml = removeUnwantedCharactersFromYaml(newLayoutYaml);
+
+    JsonNode oldLayoutNode = ConfigManagerUtils.asJsonNode(layoutUpdateEvent.getOldLayout().getYaml());
+    String oldLayoutYaml = ConfigManagerUtils.asYaml(oldLayoutNode.toString());
+    oldLayoutYaml = removeUnwantedCharactersFromYaml(oldLayoutYaml);
+
+    AuditEntry auditEntry = AuditEntry.builder()
+                                .action(Action.UPDATE)
+                                .module(ModuleType.IDP)
+                                .newYaml(newLayoutYaml)
+                                .oldYaml(oldLayoutYaml)
+                                .timestamp(outboxEvent.getCreatedAt())
+                                .resource(ResourceDTO.fromResource(outboxEvent.getResource()))
+                                .resourceScope(ResourceScopeDTO.fromResourceScope(outboxEvent.getResourceScope()))
+                                .insertId(outboxEvent.getId())
+                                .build();
     return auditClientService.publishAudit(auditEntry, globalContext);
   }
 
@@ -87,17 +92,24 @@ public class LayoutEventHandler implements OutboxEventHandler {
 
     LayoutCreateEvent layoutCreateEvent = objectMapper.readValue(outboxEvent.getEventData(), LayoutCreateEvent.class);
 
-    AuditEntry auditEntry =
-        AuditEntry.builder()
-            .action(Action.UPDATE)
-            .module(ModuleType.IDP)
-            .newYaml(NGYamlUtils.getYamlString(
-                LayoutDTO.builder().yaml(layoutCreateEvent.getNewLayout().getYaml()).build(), objectMapper))
-            .timestamp(outboxEvent.getCreatedAt())
-            .resource(ResourceDTO.fromResource(outboxEvent.getResource()))
-            .resourceScope(ResourceScopeDTO.fromResourceScope(outboxEvent.getResourceScope()))
-            .insertId(outboxEvent.getId())
-            .build();
+    JsonNode newLayoutNode = ConfigManagerUtils.asJsonNode(layoutCreateEvent.getNewLayout().getYaml());
+    String newLayoutYaml = ConfigManagerUtils.asYaml(newLayoutNode.toString());
+    newLayoutYaml = removeUnwantedCharactersFromYaml(newLayoutYaml);
+
+    AuditEntry auditEntry = AuditEntry.builder()
+                                .action(Action.UPDATE)
+                                .module(ModuleType.IDP)
+                                .newYaml(newLayoutYaml)
+                                .timestamp(outboxEvent.getCreatedAt())
+                                .resource(ResourceDTO.fromResource(outboxEvent.getResource()))
+                                .resourceScope(ResourceScopeDTO.fromResourceScope(outboxEvent.getResourceScope()))
+                                .insertId(outboxEvent.getId())
+                                .build();
     return auditClientService.publishAudit(auditEntry, globalContext);
+  }
+
+  private String removeUnwantedCharactersFromYaml(String yamlString) {
+    yamlString = yamlString.replaceFirst("---\n", "");
+    return yamlString;
   }
 }
