@@ -28,6 +28,7 @@ import io.harness.springdata.PersistenceUtils;
 
 import com.google.inject.Inject;
 import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.UpdateResult;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AccessLevel;
@@ -148,6 +149,16 @@ public class NGTriggerRepositoryCustomImpl implements NGTriggerRepositoryCustom 
         .get(()
                  -> mongoTemplate.findAndModify(
                      query, update, new FindAndModifyOptions().returnNew(true), NGTriggerEntity.class));
+  }
+
+  public UpdateResult updateManyPollingStatus(Criteria criteria, PollingSubscriptionStatus pollingSubscriptionStatus) {
+    Query query = new Query(criteria);
+    Update update = new Update();
+    update.set(NGTriggerEntityKeys.triggerStatus + "." + TriggerStatusKeys.pollingSubscriptionStatus,
+        pollingSubscriptionStatus);
+    RetryPolicy<Object> retryPolicy = getRetryPolicy(
+        "[Retrying]: Failed updating Trigger; attempt: {}", "[Failed]: Failed updating Trigger; attempt: {}");
+    return Failsafe.with(retryPolicy).get(() -> mongoTemplate.updateMulti(query, update, NGTriggerEntity.class));
   }
 
   @Override

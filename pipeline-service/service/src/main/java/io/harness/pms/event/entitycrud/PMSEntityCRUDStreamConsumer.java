@@ -13,6 +13,7 @@ import static io.harness.eventsframework.EventsFrameworkConstants.ENTITY_CRUD;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ACCOUNT_ENTITY;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.PIPELINE_ENTITY;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.PROJECT_ENTITY;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.SETTINGS;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.context.GlobalContext;
@@ -54,12 +55,14 @@ public class PMSEntityCRUDStreamConsumer extends RedisTraceConsumer {
       @Named(PIPELINE_ENTITY + ENTITY_CRUD) MessageListener pipelineEntityCRUDStreamListener,
       @Named(PROJECT_ENTITY + ENTITY_CRUD) MessageListener projectEntityCrudStreamListener,
       @Named(ACCOUNT_ENTITY + ENTITY_CRUD) MessageListener accountEntityCrudStreamListener,
-      QueueController queueController, @Named("PipelineExecutorService") ExecutorService pipelineExecutorService) {
+      @Named(SETTINGS + ENTITY_CRUD) MessageListener pipelineSettingCRUDStreamListener, QueueController queueController,
+      @Named("PipelineExecutorService") ExecutorService pipelineExecutorService) {
     this.redisConsumer = redisConsumer;
     messageListenersList = new ArrayList<>();
     messageListenersList.add(pipelineEntityCRUDStreamListener);
     messageListenersList.add(projectEntityCrudStreamListener);
     messageListenersList.add(accountEntityCrudStreamListener);
+    messageListenersList.add(pipelineSettingCRUDStreamListener);
     this.queueController = queueController;
     this.pipelineExecutorService = pipelineExecutorService;
   }

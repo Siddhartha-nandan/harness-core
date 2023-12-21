@@ -39,7 +39,6 @@ import io.harness.ngtriggers.beans.dto.NGTriggerResponseDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggersFilterPropertiesDTO;
 import io.harness.ngtriggers.beans.dto.TriggerYamlDiffDTO;
 import io.harness.ngtriggers.beans.source.GitMoveOperationType;
-import io.harness.ngtriggers.beans.source.TriggerChangePollingInterval;
 import io.harness.ngtriggers.beans.source.TriggerUpdateCount;
 import io.harness.pms.annotations.PipelineServiceAuth;
 import io.harness.pms.pipeline.PipelineResourceConstants;
@@ -384,24 +383,4 @@ public interface NGTriggerResource {
   ResponseDTO<BulkTriggersResponseDTO> bulkToggleTriggers(
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
       @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO);
-
-  @PUT
-  @Path("/update-polling-interval")
-  @ApiOperation(value = "Update polling interval for triggers", nickname = "updatePollingInterval")
-  @Operation(hidden = true, operationId = "updatePollingInterval", summary = "Update polling interval for triggers",
-      description = "Update polling interval for triggers",
-      responses =
-      {
-        @io.swagger.v3.oas.annotations.responses.
-        ApiResponse(responseCode = "default", description = "Update polling interval for triggers")
-      })
-  @NGAccessControlCheck(resourceType = "SETTING", permission = "core_setting_edit")
-  @Timed
-  @ResponseMetered
-  ResponseDTO<TriggerChangePollingInterval>
-  updatePollingInterval(
-      @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
-      @QueryParam(NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
-      @QueryParam(NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier,
-      @QueryParam("triggerType") String triggerType);
 }

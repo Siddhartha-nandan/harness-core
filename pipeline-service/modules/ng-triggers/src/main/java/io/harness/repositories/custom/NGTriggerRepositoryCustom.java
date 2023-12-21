@@ -13,9 +13,11 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.ngtriggers.beans.entity.NGTriggerEntity;
+import io.harness.ngtriggers.beans.entity.metadata.status.PollingSubscriptionStatus;
 import io.harness.ngtriggers.beans.source.TriggerUpdateCount;
 
 import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.UpdateResult;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +32,7 @@ public interface NGTriggerRepositoryCustom {
   NGTriggerEntity update(Criteria criteria, NGTriggerEntity ngTriggerEntity);
   TriggerUpdateCount toggleTriggerInBulk(List<NGTriggerEntity> ngTriggerEntityList, boolean enable);
   NGTriggerEntity updateValidationStatus(Criteria criteria, NGTriggerEntity ngTriggerEntity);
+  UpdateResult updateManyPollingStatus(Criteria criteria, PollingSubscriptionStatus pollingSubscriptionStatus);
   NGTriggerEntity updateValidationStatusAndMetadata(Criteria criteria, NGTriggerEntity ngTriggerEntity);
   DeleteResult hardDelete(Criteria criteria);
   TriggerUpdateCount updateTriggerYaml(List<NGTriggerEntity> ngTriggerEntityList);

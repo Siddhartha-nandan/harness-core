@@ -79,7 +79,6 @@ import io.harness.ngtriggers.beans.source.GitMoveOperationType;
 import io.harness.ngtriggers.beans.source.NGTriggerSourceV2;
 import io.harness.ngtriggers.beans.source.NGTriggerSpecV2;
 import io.harness.ngtriggers.beans.source.NGTriggerType;
-import io.harness.ngtriggers.beans.source.TriggerChangePollingInterval;
 import io.harness.ngtriggers.beans.source.TriggerUpdateCount;
 import io.harness.ngtriggers.beans.source.artifact.ArtifactTypeSpecWrapper;
 import io.harness.ngtriggers.beans.source.artifact.BuildAware;
@@ -1441,30 +1440,50 @@ public class NGTriggerServiceImpl implements NGTriggerService {
     return TriggerYamlDiffDTO.builder().oldYAML(triggerYaml).newYAML(newTriggerYaml).build();
   }
 
-  public TriggerChangePollingInterval updatePollingInterval(
+  public void updatePollingInterval(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String triggerType) {
     Boolean deletePollingDocs = false;
+    Optional<List<NGTriggerEntity>> ngTriggerEntityListOptional =
+        ngTriggerRepository.findByAccountIdAndOrgIdentifierAndProjectIdentifierAndTypeAndEnabledAndDeletedNot(
+            accountIdentifier, orgIdentifier, projectIdentifier, NGTriggerType.valueOf(triggerType), true, true);
+    List<NGTriggerEntity> ngTriggerEntityList = new ArrayList<>();
+    if (ngTriggerEntityListOptional.isPresent()) {
+      ngTriggerEntityList = ngTriggerEntityListOptional.get();
+    }
+    if (ARTIFACT.equals(NGTriggerType.valueOf(triggerType))) {
+      Optional<List<NGTriggerEntity>> ngTriggerEntityListMultiRegionArtifactOptional =
+          ngTriggerRepository.findByAccountIdAndOrgIdentifierAndProjectIdentifierAndTypeAndEnabledAndDeletedNot(
+              accountIdentifier, orgIdentifier, projectIdentifier, MULTI_REGION_ARTIFACT, true, true);
+      ngTriggerEntityListMultiRegionArtifactOptional.ifPresent(ngTriggerEntityList::addAll);
+    }
+    if (ngTriggerEntityList.size() == 0) {
+      return;
+    }
     try {
       deletePollingDocs = NGRestUtils.getGeneralResponse(
           pollingResourceClient.delete(accountIdentifier, orgIdentifier, projectIdentifier, triggerType));
+      updatePollingStatus(ngTriggerEntityList);
     } catch (Exception exception) {
       String msg = "Reset polling interval request failed " + exception;
       throw new InvalidRequestException(msg);
     }
-    Optional<List<NGTriggerEntity>> ngTriggerEntityListOptional =
-        ngTriggerRepository.findByAccountIdAndOrgIdentifierAndProjectIdentifierAndTypeAndEnabledAndDeletedNot(
-            accountIdentifier, orgIdentifier, projectIdentifier, NGTriggerType.valueOf(triggerType), true, true);
-    List<NGTriggerEntity> ngTriggerEntityList = ngTriggerEntityListOptional.get();
+
     for (NGTriggerEntity ngTriggerEntity : ngTriggerEntityList) {
       registerPollingAsync(ngTriggerEntity, false);
     }
     if (!deletePollingDocs) {
-      return TriggerChangePollingInterval.builder()
-          .success(false)
-          .message("Failed to update polling interval for some triggers, please retry after some time.")
-          .build();
+      log.error("Failed to reset polling interval for some triggers in account {}, org {}, project {} of type {}",
+          accountIdentifier, orgIdentifier, projectIdentifier, triggerType);
     }
-    return TriggerChangePollingInterval.builder().success(true).message("Successfully reset polling interval.").build();
+  }
+
+  private void updatePollingStatus(List<NGTriggerEntity> ngTriggerEntityList) {
+    Criteria criteria = new Criteria().and(NGTriggerEntityKeys.identifier).in(ngTriggerEntityList);
+    PollingSubscriptionStatus pollingSubscriptionStatus = PollingSubscriptionStatus.builder()
+                                                              .statusResult(StatusResult.PENDING)
+                                                              .detailedMessage("Resetting polling interval.")
+                                                              .build();
+    ngTriggerRepository.updateManyPollingStatus(criteria, pollingSubscriptionStatus);
   }
 
   public TriggerUpdateCount updateBranchName(String accountIdentifier, String orgIdentifier, String projectIdentifier,

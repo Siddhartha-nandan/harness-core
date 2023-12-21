@@ -26,7 +26,6 @@ import io.harness.ngtriggers.beans.entity.NGTriggerEntity;
 import io.harness.ngtriggers.beans.entity.TriggerWebhookEvent;
 import io.harness.ngtriggers.beans.entity.metadata.catalog.TriggerCatalogItem;
 import io.harness.ngtriggers.beans.source.GitMoveOperationType;
-import io.harness.ngtriggers.beans.source.TriggerChangePollingInterval;
 import io.harness.ngtriggers.beans.source.TriggerUpdateCount;
 import io.harness.ngtriggers.validations.ValidationResult;
 
@@ -98,7 +97,7 @@ public interface NGTriggerService {
   void checkAuthorization(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       String pipelineIdentifier, List<HeaderConfig> headerConfigs);
   TriggerYamlDiffDTO getTriggerYamlDiff(TriggerDetails triggerDetails);
-  TriggerChangePollingInterval updatePollingInterval(
+  void updatePollingInterval(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String triggerType);
 
   TriggerUpdateCount updateBranchName(String accountIdentifier, String orgIdentifier, String projectIdentifier,

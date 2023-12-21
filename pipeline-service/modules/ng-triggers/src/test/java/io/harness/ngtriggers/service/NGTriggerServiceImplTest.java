@@ -81,16 +81,11 @@ import io.harness.ngtriggers.beans.entity.metadata.WebhookRegistrationStatus;
 import io.harness.ngtriggers.beans.entity.metadata.WebhookRegistrationStatusData;
 import io.harness.ngtriggers.beans.entity.metadata.catalog.TriggerCatalogItem;
 import io.harness.ngtriggers.beans.entity.metadata.catalog.TriggerCatalogType;
-import io.harness.ngtriggers.beans.entity.metadata.status.StatusResult;
-import io.harness.ngtriggers.beans.entity.metadata.status.TriggerStatus;
-import io.harness.ngtriggers.beans.entity.metadata.status.ValidationStatus;
-import io.harness.ngtriggers.beans.entity.metadata.status.WebhookAutoRegistrationStatus;
-import io.harness.ngtriggers.beans.entity.metadata.status.WebhookInfo;
+import io.harness.ngtriggers.beans.entity.metadata.status.*;
 import io.harness.ngtriggers.beans.response.TargetExecutionSummary;
 import io.harness.ngtriggers.beans.source.GitMoveOperationType;
 import io.harness.ngtriggers.beans.source.NGTriggerSourceV2;
 import io.harness.ngtriggers.beans.source.NGTriggerType;
-import io.harness.ngtriggers.beans.source.TriggerChangePollingInterval;
 import io.harness.ngtriggers.beans.source.TriggerUpdateCount;
 import io.harness.ngtriggers.beans.source.artifact.ArtifactTriggerConfig;
 import io.harness.ngtriggers.beans.source.artifact.ArtifactType;
@@ -147,6 +142,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.io.Resources;
 import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.UpdateResult;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
@@ -1647,6 +1643,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
   public void testUpdatePollingInterval() throws IOException {
     NGTriggerEntity ngTriggerEntity =
         NGTriggerEntity.builder()
+            .identifier(IDENTIFIER)
             .type(NGTriggerType.ARTIFACT)
             .triggerStatus(TriggerStatus.builder().build())
             .metadata(NGTriggerMetadata.builder()
@@ -1661,6 +1658,9 @@ public class NGTriggerServiceImplTest extends CategoryTest {
     when(ngTriggerRepository.findByAccountIdAndOrgIdentifierAndProjectIdentifierAndTypeAndEnabledAndDeletedNot(
              ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, NGTriggerType.valueOf("ARTIFACT"), true, true))
         .thenReturn(Optional.of(Collections.singletonList(ngTriggerEntity)));
+    when(ngTriggerRepository.findByAccountIdAndOrgIdentifierAndProjectIdentifierAndTypeAndEnabledAndDeletedNot(
+             ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, NGTriggerType.MULTI_REGION_ARTIFACT, true, true))
+        .thenReturn(Optional.empty());
     ArgumentCaptor<Runnable> runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
     when(executorService.submit(runnableCaptor.capture())).then(executeRunnable(runnableCaptor));
     PollingItem pollingItem = PollingItem.newBuilder().build();
@@ -1677,18 +1677,14 @@ public class NGTriggerServiceImplTest extends CategoryTest {
     when(subscribeCall.execute()).thenReturn(Response.success(pollingResponse));
     when(pollingResourceClient.subscribe(any())).thenReturn(subscribeCall);
     when(ngTriggerRepository.updateValidationStatusAndMetadata(any(), any())).thenReturn(ngTriggerEntity);
-    assertThat(ngTriggerServiceImpl.updatePollingInterval(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, "ARTIFACT"))
-        .isEqualTo(TriggerChangePollingInterval.builder()
-                       .success(true)
-                       .message("Successfully reset polling interval.")
-                       .build());
-
-    when(NGRestUtils.getGeneralResponse(call)).thenReturn(false);
-    assertThat(ngTriggerServiceImpl.updatePollingInterval(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, "ARTIFACT"))
-        .isEqualTo(TriggerChangePollingInterval.builder()
-                       .success(false)
-                       .message("Failed to update polling interval for some triggers, please retry after some time.")
-                       .build());
+    ngTriggerServiceImpl.updatePollingInterval(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, "ARTIFACT");
+    verify(pollingResourceClient, times(1)).delete(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, "ARTIFACT");
+    verify(pollingResourceClient, times(1)).subscribe(any());
+    when(ngTriggerRepository.findByAccountIdAndOrgIdentifierAndProjectIdentifierAndTypeAndEnabledAndDeletedNot(
+             ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, NGTriggerType.valueOf("ARTIFACT"), true, true))
+        .thenReturn(Optional.empty());
+    ngTriggerServiceImpl.updatePollingInterval(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, "ARTIFACT");
+    verify(pollingResourceClient, times(1)).delete(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, "ARTIFACT");
   }
 
   @Test
