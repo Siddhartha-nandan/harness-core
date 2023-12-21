@@ -435,7 +435,30 @@ public class DefaultLicenseServiceImpl implements LicenseService {
 
   @Override
   public Edition calculateAccountEdition(String accountIdentifier) {
-return Edition.ENTERPRISE;
+    AccountLicenseDTO accountLicense = getAccountLicense(accountIdentifier);
+    Map<ModuleType, List<ModuleLicenseDTO>> allModuleLicenses = accountLicense.getAllModuleLicenses();
+
+    Optional<ModuleLicenseDTO> highestEditionLicense =
+        allModuleLicenses.values().stream().flatMap(Collection::stream).reduce((compareLicense, currentLicense) -> {
+          if (compareLicense.getEdition().compareTo(currentLicense.getEdition()) < 0) {
+            return currentLicense;
+          }
+          return compareLicense;
+        });
+
+    if (!highestEditionLicense.isPresent()) {
+      Edition edition = Edition.FREE;
+      if (DeployMode.isOnPrem(System.getenv().get(DEPLOY_MODE))) {
+        if (DeployVariant.isCommunity(System.getenv().get(DEPLOY_VERSION))) {
+          edition = Edition.COMMUNITY;
+        } else {
+          edition = Edition.ENTERPRISE;
+        }
+      }
+      log.warn("Account {} has no highest edition license, fallback to {}", accountIdentifier, edition);
+      return edition;
+    }
+    return highestEditionLicense.get().getEdition();
   }
 
   @Override
