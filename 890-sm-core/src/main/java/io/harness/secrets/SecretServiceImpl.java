@@ -53,14 +53,12 @@ import io.harness.encryptors.VaultEncryptorsRegistry;
 import io.harness.exception.ExceptionUtils;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.SecretManagementException;
-import io.harness.ng.core.dto.secrets.SecretDTOV2;
-import io.harness.ng.core.dto.secrets.SecretFileSpecDTO;
-import io.harness.ng.core.dto.secrets.SecretRequestWrapper;
-import io.harness.ng.core.dto.secrets.SecretResponseWrapper;
+import io.harness.ng.core.dto.secrets.*;
 import io.harness.persistence.HIterator;
 import io.harness.queue.QueuePublisher;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.secretmanagerclient.SecretType;
+import io.harness.secretmanagerclient.ValueType;
 import io.harness.secretmanagers.SecretManagerConfigService;
 import io.harness.secrets.remote.SecretNGManagerClient;
 import io.harness.secrets.setupusage.SecretSetupUsage;
@@ -768,19 +766,19 @@ public class SecretServiceImpl implements SecretService {
     SecretRequestWrapper secretRequestWrapper =
         SecretRequestWrapper.builder()
             .secret(SecretDTOV2.builder()
-                        .name("rsaprivatekeyfilemigrate4")
-                        .identifier("rsaprivatekeyfilemigrate4")
-                    .type(SecretType.SecretFile)
-                        .spec(SecretFileSpecDTO.builder().secretManagerIdentifier("account.gcpkms").build())
+                        .name("secrettextcg1")
+                        .identifier("secrettextcg1")
+                        .type(SecretType.SecretText)
+                        .spec(SecretTextSpecDTO.builder().valueType(ValueType.Inline).value("random").secretManagerIdentifier("account.gcpkms").build())
                         .build())
             .build();
 
     RequestBody spec = RequestBody.create(MediaType.parse("text/plain"), JsonUtils.asJson(secretRequestWrapper));
-    Optional<EncryptedData> encryptedDataOptional = secretsDao.getSecretByName(accountId, "rsaprivatekeycg");
+    Optional<EncryptedData> encryptedDataOptional = secretsDao.getSecretByName(accountId, "githubtoken");
     char[] fileContent = secretsFileService.getFileContents("658282b2eb1ae162a680b576");
 
    String encryptedValue =    String.valueOf(fileContent);
-   SecretResponseWrapper secretFileInternal = NGRestUtils.getResponse(secretManagerClient.createSecretFileInternal(accountId, null, null, encryptedDataOptional.get().getEncryptionKey(), null, encryptedValue,spec));
+   SecretResponseWrapper secretFileInternal = NGRestUtils.getResponse(secretManagerClient.createSecretTextInternal(accountId, null, null, encryptedDataOptional.get().getEncryptionKey(), String.valueOf(encryptedDataOptional.get().getEncryptedValue()),spec));
 
     return null;
   }

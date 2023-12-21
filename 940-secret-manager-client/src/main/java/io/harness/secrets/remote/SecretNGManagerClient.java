@@ -102,4 +102,14 @@ public interface SecretNGManagerClient {
       @Query(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
       @Query("encryptionKey") String encryptionKey, @Query("encryptedValue") String encryptedValue,
       @Query("encryptedFileContent") String encryptedFileContent, @Part("spec") RequestBody spec);
+
+
+  @POST(SECRETS_API + "/textMigration")
+  @Multipart
+  Call<ResponseDTO<SecretResponseWrapper>> createSecretTextInternal(
+          @Query(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
+          @Query(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
+          @Query(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
+          @Query("encryptionKey") String encryptionKey, @Query("encryptedValue") String encryptedValue,
+          @Part("spec") RequestBody spec);
 }

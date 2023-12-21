@@ -297,6 +297,38 @@ public class SecretCrudServiceImpl implements SecretCrudService {
     throw new SecretManagementException(SECRET_MANAGEMENT_ERROR, "Unable to create secret remotely.", USER);
   }
 
+
+  @Override
+  public SecretResponseWrapper create(
+          String accountIdentifier, SecretDTOV2 dto, String encryptionKey, String encryptedValue) {
+    SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().build();
+    if (!isOpaPoliciesSatisfied(accountIdentifier, getMaskedDTOForOpa(dto), secretResponseWrapper)) {
+      return secretResponseWrapper;
+    }
+    GovernanceMetadata governanceMetadata = secretResponseWrapper.getGovernanceMetadata();
+    boolean isHarnessManaged = checkIfSecretManagerUsedIsHarnessManaged(accountIdentifier, dto);
+    Boolean isBuiltInSMDisabled =
+            parseBoolean(NGRestUtils
+                    .getResponse(settingsClient.getSetting(
+                            SettingIdentifiers.DISABLE_HARNESS_BUILT_IN_SECRET_MANAGER, accountIdentifier, null, null))
+                    .getValue());
+
+    if (isBuiltInSMDisabled && isHarnessManaged) {
+      throw new InvalidRequestException(
+              "Built-in Harness Secret Manager cannot be used to create Secret as it has been disabled.");
+    }
+    NGEncryptedData encryptedData =
+            encryptedDataService.createSecretText(accountIdentifier, dto, encryptionKey, encryptedValue);
+
+    if (Optional.ofNullable(encryptedData).isPresent()) {
+      secretResponseWrapper = createSecretInternal(accountIdentifier, dto, false);
+      secretResponseWrapper.setGovernanceMetadata(governanceMetadata);
+      return secretResponseWrapper;
+    }
+    throw new SecretManagementException(SECRET_MANAGEMENT_ERROR, "Unable to create secret file remotely", USER);
+  }
+
+
   @VisibleForTesting
   public boolean checkIfSecretManagerUsedIsHarnessManaged(String accountIdentifier, SecretDTOV2 dto) {
     /**
