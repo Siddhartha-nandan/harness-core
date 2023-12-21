@@ -272,6 +272,9 @@ public class GovernanceRuleEnforcementResource {
       targetRegions.removeAll(Collections.singleton(null));
     }
     ruleEnforcement.setTargetRegions(targetRegions);
+    if (ruleEnforcement.getCloudProvider() == RuleCloudProviderType.GCP) {
+      ruleEnforcement.setTargetRegions(null);
+    }
     GovernanceConfig governanceConfig = configuration.getGovernanceConfig();
     ruleEnforcementService.checkLimitsAndValidate(ruleEnforcement, governanceConfig);
     ruleEnforcementService.save(ruleEnforcement);
@@ -473,6 +476,9 @@ public class GovernanceRuleEnforcementResource {
           nextGenConnectorResponses.stream()
               .map(c -> ((GcpCloudCostConnectorDTO) c.getConnectorConfig()).getProjectId())
               .collect(Collectors.toList()));
+    }
+    if (ruleEnforcement.getCloudProvider() == RuleCloudProviderType.GCP) {
+      ruleEnforcement.setTargetRegions(null);
     }
 
     // Update dkron if enforcement is toggled or schedule is changed or timezone is changed

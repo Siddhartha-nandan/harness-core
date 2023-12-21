@@ -22,7 +22,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class GovernanceJobDetailsGCP {
   // This goes to worker for custodian job processing. Any changes here should also be reflected in worker code
-  String region;
   String projectId;
   String serviceAccountEmail;
   String policyId;

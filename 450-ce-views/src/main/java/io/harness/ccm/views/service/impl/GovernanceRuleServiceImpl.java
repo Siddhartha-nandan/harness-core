@@ -16,6 +16,7 @@ import static io.harness.ccm.TelemetryConstants.MODULE_NAME;
 import static io.harness.ccm.TelemetryConstants.RESOURCE_TYPE;
 import static io.harness.ccm.views.helper.RuleCloudProviderType.AWS;
 import static io.harness.ccm.views.helper.RuleCloudProviderType.AZURE;
+import static io.harness.ccm.views.helper.RuleCloudProviderType.GCP;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.telemetry.Destination.AMPLITUDE;
@@ -353,7 +354,9 @@ public class GovernanceRuleServiceImpl implements GovernanceRuleService {
               .executionCompletedAt(null) // Updated by worker when execution finishes
               .ruleIdentifier(governanceJobEnqueueDTO.getRuleId())
               .targetAccount(governanceJobEnqueueDTO.getTargetAccountDetails().getTargetInfo())
-              .targetRegions(Arrays.asList(governanceJobEnqueueDTO.getTargetRegion()))
+              .targetRegions(governanceJobEnqueueDTO.getRuleCloudProviderType() == GCP
+                      ? null
+                      : Arrays.asList(governanceJobEnqueueDTO.getTargetRegion()))
               .executionLogBucketType("")
               .executionType(governanceJobEnqueueDTO.getExecutionType())
               .resourceCount(0)
@@ -384,7 +387,6 @@ public class GovernanceRuleServiceImpl implements GovernanceRuleService {
             .serviceAccountEmail(governanceJobEnqueueDTO.getTargetAccountDetails().getRoleId())
             .isDryRun(governanceJobEnqueueDTO.getIsDryRun())
             .policyId(governanceJobEnqueueDTO.getRuleId())
-            .region(governanceJobEnqueueDTO.getTargetRegion())
             .policyEnforcementId("") // This is adhoc run
             .policy(governanceJobEnqueueDTO.getPolicy())
             .isOOTB(governanceJobEnqueueDTO.getIsOOTB())
@@ -461,14 +463,18 @@ public class GovernanceRuleServiceImpl implements GovernanceRuleService {
       ConnectorConfigDTO connectorConfig, String cloudConnectorId, String faktoryJobType, String faktoryQueueName) {
     List<RuleExecution> ruleExecutions = new ArrayList<>();
     String targetAccount;
+    List<String> targetRegions = ruleEnforcement.getTargetRegions();
     if (ruleEnforcement.getCloudProvider() == AWS) {
       targetAccount = ((CEAwsConnectorDTO) connectorConfig).getAwsAccountId();
     } else if (ruleEnforcement.getCloudProvider() == AZURE) {
       targetAccount = ((CEAzureConnectorDTO) connectorConfig).getSubscriptionId();
     } else {
       targetAccount = ((GcpCloudCostConnectorDTO) connectorConfig).getProjectId();
+      // In case of GCP the targetRegions would be empty
+      // So to use same loop making one dummy entry in the list
+      targetRegions.add("DummyGcpRegion");
     }
-    for (String region : ruleEnforcement.getTargetRegions()) {
+    for (String region : targetRegions) {
       for (Rule rule : rulesList) {
         try {
           String json =
@@ -482,24 +488,25 @@ public class GovernanceRuleServiceImpl implements GovernanceRuleService {
               ruleEnforcement.getCloudProvider(), jid);
           // Make a record in Mongo
           // TO DO: We can bulk insert in mongo for all successful faktory job pushes
-          ruleExecutions.add(RuleExecution.builder()
-                                 .accountId(accountId)
-                                 .jobId(jid)
-                                 .cloudProvider(ruleEnforcement.getCloudProvider())
-                                 .executionLogPath("") // Updated by worker when execution finishes
-                                 .isDryRun(ruleEnforcement.getIsDryRun())
-                                 .ruleEnforcementIdentifier(ruleEnforcement.getUuid())
-                                 .ruleEnforcementName(ruleEnforcement.getName())
-                                 .executionCompletedAt(null) // Updated by worker when execution finishes
-                                 .ruleIdentifier(rule.getUuid())
-                                 .targetAccount(targetAccount)
-                                 .targetRegions(Arrays.asList(region))
-                                 .executionLogBucketType("")
-                                 .ruleName(rule.getName())
-                                 .OOTB(rule.getIsOOTB())
-                                 .executionStatus(RuleExecutionStatusType.ENQUEUED)
-                                 .executionType(RuleExecutionType.EXTERNAL)
-                                 .build());
+          ruleExecutions.add(
+              RuleExecution.builder()
+                  .accountId(accountId)
+                  .jobId(jid)
+                  .cloudProvider(ruleEnforcement.getCloudProvider())
+                  .executionLogPath("") // Updated by worker when execution finishes
+                  .isDryRun(ruleEnforcement.getIsDryRun())
+                  .ruleEnforcementIdentifier(ruleEnforcement.getUuid())
+                  .ruleEnforcementName(ruleEnforcement.getName())
+                  .executionCompletedAt(null) // Updated by worker when execution finishes
+                  .ruleIdentifier(rule.getUuid())
+                  .targetAccount(targetAccount)
+                  .targetRegions(ruleEnforcement.getCloudProvider() == GCP ? null : Arrays.asList(region))
+                  .executionLogBucketType("")
+                  .ruleName(rule.getName())
+                  .OOTB(rule.getIsOOTB())
+                  .executionStatus(RuleExecutionStatusType.ENQUEUED)
+                  .executionType(RuleExecutionType.EXTERNAL)
+                  .build());
           HashMap<String, Object> properties = new HashMap<>();
           properties.put(MODULE, MODULE_NAME);
           properties.put(CLOUD_PROVIDER, rule.getCloudProvider());
@@ -507,9 +514,9 @@ public class GovernanceRuleServiceImpl implements GovernanceRuleService {
           telemetryReporter.sendTrackEvent(GOVERNANCE_EVALUATION_ENQUEUED, null, accountId, properties,
               Collections.singletonMap(AMPLITUDE, true), Category.GLOBAL);
         } catch (Exception e) {
-          log.warn(
-              "Exception enqueueing {} job for ruleEnforcementUuid: {} for targetAccount: {} for targetRegions: {}, {}",
-              ruleEnforcement.getCloudProvider(), ruleEnforcement.getUuid(), targetAccount, region, e);
+          String regionLog = ruleEnforcement.getCloudProvider() == GCP ? "" : " for targetRegions: " + region + ",";
+          log.warn("Exception enqueueing {} job for ruleEnforcementUuid: {} for targetAccount: {}{} {}",
+              ruleEnforcement.getCloudProvider(), ruleEnforcement.getUuid(), targetAccount, regionLog, e);
         }
       }
     }
@@ -571,7 +578,6 @@ public class GovernanceRuleServiceImpl implements GovernanceRuleService {
               .serviceAccountEmail(gcpCloudCostConnectorDTO.getServiceAccountEmail())
               .isDryRun(ruleEnforcement.getIsDryRun())
               .policyId(rule.getUuid())
-              .region(region)
               .policyEnforcementId(ruleEnforcement.getUuid())
               .policy(rule.getRulesYaml())
               .isOOTB(rule.getIsOOTB())
