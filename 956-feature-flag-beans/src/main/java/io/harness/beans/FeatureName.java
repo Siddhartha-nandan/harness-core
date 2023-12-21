@@ -521,6 +521,7 @@ public enum FeatureName {
       "Enable Basic Role assignment  Default User Group in Orgs and Projects", HarnessTeam.PL),
   PL_ENABLE_JIT_USER_PROVISION("Enable support for Just in time user provision", HarnessTeam.PL),
   PL_ENABLE_MULTIPLE_IDP_SUPPORT("Enable support for multiple SSO IDP in an account", HarnessTeam.PL),
+  PL_ENFORCE_DELEGATE_REGISTRATION_ALLOWLIST("Enforce allowed IPs for delegate registration", HarnessTeam.PL),
   PL_FAVORITES("To enable favorites marking support on entities", HarnessTeam.PL),
   PL_FIX_INCONSISTENT_USER_DATA(
       "This FF process all users of this account and fixes their inconsistent data between CG Manager, NG manager and Access Control ",
@@ -912,8 +913,12 @@ public enum FeatureName {
   CDS_USER_CD_LICENSE_VIEW("Enable to show Users CD License usage on UI", HarnessTeam.CDP),
   SSCA_USE_ELK("Enables ELK search for Artifact listing instead of Mongo", HarnessTeam.SSCA),
   SSCA_REMEDIATION_TRACKER("FF for Remediation Tracker flow.", HarnessTeam.SSCA),
+  CDS_DIVIDE_SDK_RESPONSE_EVENTS_IN_DIFF_STREAMS(
+      "FF to enable usage of new streams for few sdk response events", PIPELINE),
   CDS_VARIABLES_MERGE_V2_OPTIMIZED_FLOW("FF to switch the v2/variables flow to a new optimized one", CDC, Scope.GLOBAL),
-  CDS_OVERRIDES_GITX("Onboard Overrides entity to GitX", HarnessTeam.CDC);
+  CDS_OVERRIDES_GITX("Onboard Overrides entity to GitX", HarnessTeam.CDC),
+  CDS_SUPPORT_DIFFERENT_INFRA_DURING_ENV_PROPAGATION(
+      "FF to suppport selecting different infrastructure during environment propagation", CDC);
 
   // keep-sorted end
 

@@ -12,6 +12,7 @@ import static io.harness.audit.ResourceTypeConstants.IDP_APP_CONFIGS;
 import static io.harness.audit.ResourceTypeConstants.IDP_CATALOG_CONNECTOR;
 import static io.harness.audit.ResourceTypeConstants.IDP_CHECKS;
 import static io.harness.audit.ResourceTypeConstants.IDP_CONFIG_ENV_VARIABLES;
+import static io.harness.audit.ResourceTypeConstants.IDP_LAYOUT;
 import static io.harness.audit.ResourceTypeConstants.IDP_OAUTH_CONFIG;
 import static io.harness.audit.ResourceTypeConstants.IDP_PROXY_HOST;
 import static io.harness.audit.ResourceTypeConstants.IDP_SCORECARDS;
@@ -91,6 +92,7 @@ import io.harness.idp.audittrails.eventhandlers.BackstageSecretEnvEventHandler;
 import io.harness.idp.audittrails.eventhandlers.CatalogConnectorEventHandler;
 import io.harness.idp.audittrails.eventhandlers.CheckEventHandler;
 import io.harness.idp.audittrails.eventhandlers.IDPNextGenOutboxEventHandler;
+import io.harness.idp.audittrails.eventhandlers.LayoutEventHandler;
 import io.harness.idp.audittrails.eventhandlers.OAuthConfigEventHandler;
 import io.harness.idp.audittrails.eventhandlers.ProxyHostDetailsEventHandler;
 import io.harness.idp.audittrails.eventhandlers.ScorecardEventHandler;
@@ -138,6 +140,7 @@ import io.harness.idp.onboarding.resources.OnboardingResourceApiImpl;
 import io.harness.idp.onboarding.service.OnboardingService;
 import io.harness.idp.onboarding.service.impl.OnboardingServiceImpl;
 import io.harness.idp.pipeline.IDPBuildEnforcerImpl;
+import io.harness.idp.plugin.config.CustomPluginsConfig;
 import io.harness.idp.plugin.mappers.CustomPluginDetailedInfoMapper;
 import io.harness.idp.plugin.mappers.DefaultPluginDetailedInfoMapper;
 import io.harness.idp.plugin.mappers.PluginDetailedInfoMapper;
@@ -147,6 +150,8 @@ import io.harness.idp.plugin.resources.PluginFileUploadApiImpl;
 import io.harness.idp.plugin.resources.PluginInfoApiImpl;
 import io.harness.idp.plugin.services.AuthInfoService;
 import io.harness.idp.plugin.services.AuthInfoServiceImpl;
+import io.harness.idp.plugin.services.CustomPluginService;
+import io.harness.idp.plugin.services.CustomPluginServiceImpl;
 import io.harness.idp.plugin.services.PluginInfoService;
 import io.harness.idp.plugin.services.PluginInfoServiceImpl;
 import io.harness.idp.provision.ProvisionModuleConfig;
@@ -156,7 +161,9 @@ import io.harness.idp.provision.service.ProvisionServiceImpl;
 import io.harness.idp.proxy.config.ProxyAllowListConfig;
 import io.harness.idp.proxy.delegate.DelegateProxyApi;
 import io.harness.idp.proxy.delegate.DelegateProxyApiImpl;
-import io.harness.idp.proxy.layout.LayoutProxyApiImpl;
+import io.harness.idp.proxy.layout.resource.LayoutProxyApiImpl;
+import io.harness.idp.proxy.layout.service.LayoutService;
+import io.harness.idp.proxy.layout.service.LayoutServiceImpl;
 import io.harness.idp.proxy.services.ProxyApi;
 import io.harness.idp.proxy.services.ProxyApiImpl;
 import io.harness.idp.scorecard.checks.resources.ChecksApiImpl;
@@ -166,10 +173,9 @@ import io.harness.idp.scorecard.datapoints.service.DataPointService;
 import io.harness.idp.scorecard.datapoints.service.DataPointServiceImpl;
 import io.harness.idp.scorecard.datapointsdata.resource.HarnessDataPointsApiImpl;
 import io.harness.idp.scorecard.datapointsdata.resource.KubernetesDataPointsApiImpl;
+import io.harness.idp.scorecard.datapointsdata.resource.ScmDataPointsApiImpl;
 import io.harness.idp.scorecard.datapointsdata.service.DataPointDataValueService;
 import io.harness.idp.scorecard.datapointsdata.service.DataPointDataValueServiceImpl;
-import io.harness.idp.scorecard.datapointsdata.service.KubernetesDataPointsService;
-import io.harness.idp.scorecard.datapointsdata.service.KubernetesDataPointsServiceImpl;
 import io.harness.idp.scorecard.datasourcelocations.service.DataSourceLocationService;
 import io.harness.idp.scorecard.datasourcelocations.service.DataSourceLocationServiceImpl;
 import io.harness.idp.scorecard.datasources.resources.DataSourceApiImpl;
@@ -255,6 +261,7 @@ import io.harness.spec.server.idp.v1.NamespaceApi;
 import io.harness.spec.server.idp.v1.OnboardingResourceApi;
 import io.harness.spec.server.idp.v1.PluginInfoApi;
 import io.harness.spec.server.idp.v1.ProvisionApi;
+import io.harness.spec.server.idp.v1.ScmDataPointsApi;
 import io.harness.spec.server.idp.v1.ScorecardsApi;
 import io.harness.spec.server.idp.v1.ScoresApi;
 import io.harness.spec.server.idp.v1.ScoresV2Api;
@@ -507,6 +514,7 @@ public class IdpModule extends AbstractModule {
     bind(PluginFileUploadApi.class).to(PluginFileUploadApiImpl.class);
     bind(DelegateProxyApi.class).to(DelegateProxyApiImpl.class);
     bind(PluginInfoService.class).to(PluginInfoServiceImpl.class);
+    bind(CustomPluginService.class).to(CustomPluginServiceImpl.class);
     bind(ConnectorInfoApi.class).to(ConnectorInfoApiImpl.class);
     bind(MergedPluginsConfigApi.class).to(MergedPluginsConfigApiImpl.class);
     bind(ConfigEnvVariablesService.class).to(ConfigEnvVariablesServiceImpl.class);
@@ -530,10 +538,11 @@ public class IdpModule extends AbstractModule {
     bind(StatsComputeService.class).to(StatsComputeServiceImpl.class);
     bind(AsyncScoreComputationService.class).to(AsyncScoreComputationServiceImpl.class);
     bind(DataPointService.class).to(DataPointServiceImpl.class);
+    bind(LayoutService.class).to(LayoutServiceImpl.class);
     bind(HarnessDataPointsApi.class).to(HarnessDataPointsApiImpl.class);
     bind(KubernetesDataPointsApi.class).to(KubernetesDataPointsApiImpl.class);
     bind(DataPointDataValueService.class).to(DataPointDataValueServiceImpl.class);
-    bind(KubernetesDataPointsService.class).to(KubernetesDataPointsServiceImpl.class);
+    bind(ScmDataPointsApi.class).to(ScmDataPointsApiImpl.class);
     bind(CIOverviewDashboardService.class).to(CIOverviewDashboardServiceImpl.class);
     bind(ScheduledExecutorService.class)
         .annotatedWith(Names.named("backstageEnvVariableSyncer"))
@@ -639,6 +648,7 @@ public class IdpModule extends AbstractModule {
     outboxEventHandlerMapBinder.addBinding(IDP_CHECKS).to(CheckEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(IDP_ALLOW_LIST).to(AllowListEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(IDP_OAUTH_CONFIG).to(OAuthConfigEventHandler.class);
+    outboxEventHandlerMapBinder.addBinding(IDP_LAYOUT).to(LayoutEventHandler.class);
   }
 
   @Provides
@@ -1046,5 +1056,12 @@ public class IdpModule extends AbstractModule {
   @Named("allowedKindsForCatalogSync")
   public List<String> allowedKindsForCatalogSync() {
     return this.appConfig.getAllowedKindsForCatalogSync();
+  }
+
+  @Provides
+  @Singleton
+  @Named("customPlugins")
+  public CustomPluginsConfig customPluginsConfig() {
+    return this.appConfig.getCustomPluginsConfig();
   }
 }
