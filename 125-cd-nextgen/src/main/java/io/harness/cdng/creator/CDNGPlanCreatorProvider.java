@@ -66,6 +66,8 @@ import io.harness.cdng.azure.webapp.variablecreator.AzureWebAppSwapSlotStepVaria
 import io.harness.cdng.azure.webapp.variablecreator.AzureWebAppTrafficShiftStepVariableCreator;
 import io.harness.cdng.bamboo.BambooBuildStepVariableCreator;
 import io.harness.cdng.bamboo.BambooCreateStepPlanCreator;
+import io.harness.cdng.cet.cetqualitygatestep.CETQualityGateStepPlanCreator;
+import io.harness.cdng.cet.cetqualitygatestep.CETQualityGateStepVariableCreator;
 import io.harness.cdng.chaos.ChaosStepFilterJsonCreator;
 import io.harness.cdng.chaos.ChaosStepPlanCreator;
 import io.harness.cdng.chaos.ChaosStepVariableCreator;
@@ -577,6 +579,9 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
     planCreators.add(new DownloadAwsS3StepPlanCreator());
     planCreators.add(new DownloadHarnessStoreStepPlanCreator());
 
+    // CET
+    planCreators.add(new CETQualityGateStepPlanCreator());
+
     injectorUtils.injectMembers(planCreators);
     return planCreators;
   }
@@ -747,6 +752,9 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
     // CD Container Step Group Common Steps
     variableCreators.add(new DownloadAwsS3StepVariableCreator());
     variableCreators.add(new DownloadHarnessStoreStepVariableCreator());
+
+    //CET
+    variableCreators.add(new CETQualityGateStepVariableCreator());
 
     variableCreators.add(customStageVariableCreator);
 
@@ -1629,6 +1637,12 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
                                         .setFeatureFlag(FeatureName.CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD.name())
                                         .build();
 
+    StepInfo cetQualityGate = StepInfo.newBuilder()
+            .setName("Error Quality Gate")
+            .setType(StepSpecTypeConstants.CET_QUALITY_GATE)
+            .setStepMetaData(StepMetaData.newBuilder().addFolderPaths("Continuous Error Tracking").build())
+            .build();
+
     List<StepInfo> stepInfos = new ArrayList<>();
 
     stepInfos.add(gitOpsMergePR);
@@ -1737,6 +1751,7 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
     stepInfos.add(ecsBasicRollback);
     stepInfos.add(downloadAwsS3);
     stepInfos.add(downloadHarnessStore);
+    stepInfos.add(cetQualityGate);
     return stepInfos;
   }
 }

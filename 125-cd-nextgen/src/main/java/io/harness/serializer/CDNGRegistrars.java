@@ -33,6 +33,7 @@ import io.harness.cdng.azure.webapp.AzureWebAppSlotDeploymentStepNode;
 import io.harness.cdng.azure.webapp.AzureWebAppSwapSlotStepNode;
 import io.harness.cdng.azure.webapp.AzureWebAppTrafficShiftStepNode;
 import io.harness.cdng.bamboo.BambooBuildStepNode;
+import io.harness.cdng.cet.cetqualitygatestep.CETQualityGateStepNode;
 import io.harness.cdng.chaos.ChaosStepNode;
 import io.harness.cdng.containerStepGroup.DownloadAwsS3StepNode;
 import io.harness.cdng.containerStepGroup.DownloadHarnessStoreStepNode;
@@ -1491,5 +1492,17 @@ public class CDNGRegistrars {
                                            .yamlGroup(YamlGroup.builder().group(StepCategory.STEP.name()).build())
                                            .build())
                    .build())
+          .add(YamlSchemaRootClass.builder()
+                  .entityType(EntityType.CET_QUALITY_GATE)
+                  .availableAtProjectLevel(true)
+                  .availableAtOrgLevel(false)
+                  .availableAtAccountLevel(false)
+                  .clazz(CETQualityGateStepNode.class)
+                  .yamlSchemaMetadata(YamlSchemaMetadata.builder()
+                          .namespace(SchemaNamespaceConstants.CD)
+                          .modulesSupported(Arrays.asList(ModuleType.CD, ModuleType.CET))
+                          .yamlGroup(YamlGroup.builder().group(StepCategory.STEP.name()).build())
+                          .build())
+                  .build())
           .build();
 }

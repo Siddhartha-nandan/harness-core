@@ -153,4 +153,6 @@ public interface StepSpecTypeConstantsV1 {
   String AWS_CDK_DEPLOY = "aws-cdk-deploy";
   String AWS_CDK_DESTROY = "aws-cdk-destroy";
   String AWS_CDK_ROLLBACK = "aws-cdk-rollback";
+  
+  String CET_QUALITY_GATE = "cet-quality-gate";
 }

@@ -47,6 +47,7 @@ import io.harness.cdng.azure.webapp.AzureWebAppTrafficShiftStep;
 import io.harness.cdng.azure.webapp.ConnectionStringsStep;
 import io.harness.cdng.azure.webapp.StartupCommandStep;
 import io.harness.cdng.bamboo.BambooBuildStep;
+import io.harness.cdng.cet.cetqualitygatestep.CETQualityGateStep;
 import io.harness.cdng.chaos.ChaosStep;
 import io.harness.cdng.configfile.steps.ConfigFilesStep;
 import io.harness.cdng.configfile.steps.ConfigFilesStepV2;
@@ -431,6 +432,9 @@ public class NgStepRegistrar {
     // CD Container Step Group Common Steps
     engineSteps.put(DownloadAwsS3Step.STEP_TYPE, DownloadAwsS3Step.class);
     engineSteps.put(DownloadHarnessStoreStep.STEP_TYPE, DownloadHarnessStoreStep.class);
+
+    //CET Quality Gate Step
+    engineSteps.put(CETQualityGateStep.STEP_TYPE, CETQualityGateStep.class);
 
     return engineSteps;
   }

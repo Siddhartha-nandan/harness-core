@@ -708,7 +708,10 @@ public enum EntityType {
   CREATE_CATALOG(
       ModuleType.IDP, EntityTypeConstants.CREATE_CATALOG, IdentifierRef.class, EntityYamlRootNames.CREATE_CATALOG),
   @JsonProperty(EntityTypeConstants.SLACK_NOTIFY)
-  SLACK_NOTIFY(ModuleType.IDP, EntityTypeConstants.SLACK_NOTIFY, IdentifierRef.class, EntityYamlRootNames.SLACK_NOTIFY);
+  SLACK_NOTIFY(ModuleType.IDP, EntityTypeConstants.SLACK_NOTIFY, IdentifierRef.class, EntityYamlRootNames.SLACK_NOTIFY),
+
+  @JsonProperty(EntityTypeConstants.CET_QUALITY_GATE)
+  CET_QUALITY_GATE(ModuleType.CET, EntityTypeConstants.CET_QUALITY_GATE, IdentifierRef.class, EntityYamlRootNames.CET_QUALITY_GATE);
 
   private final ModuleType moduleType;
   String yamlName;
