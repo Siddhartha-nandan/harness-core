@@ -28,8 +28,13 @@ import org.springframework.data.annotation.TypeAlias;
 @Data
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@TypeAlias("cetQualityGateStepParameters")
-@RecasterAlias("io.harness.cdng.cetqualitygatestep.CETQualityGateStepParameters")
+@TypeAlias("bambooBuildSpecParameters")
+@RecasterAlias("io.harness.cdng.bamboo.BambooBuildSpecParameters")
 public class BambooBuildSpecParameters implements SpecParameters {
+  @NotEmpty ParameterField<String> connectorRef;
+  @NotEmpty ParameterField<String> planName;
   Map<String, ParameterField<String>> fields;
+  private Map<String, String> filePathsForAssertion;
+  private String queuedBuildUrl;
+  ParameterField<List<TaskSelectorYaml>> delegateSelectors;
 }
