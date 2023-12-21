@@ -73,8 +73,7 @@ public class ScorecardEventHandler implements OutboxEventHandler {
             .action(Action.CREATE)
             .module(ModuleType.IDP)
             .newYaml(NGYamlUtils.getYamlString(
-                ScorecardsDTO.builder().scorecardDetailsResponse(scorecardCreateEvent.getNewScorecardDetails()).build(),
-                objectMapper))
+                ScorecardsDTO.builder().scorecard(scorecardCreateEvent.getNewScorecardDetails()).build(), objectMapper))
             .timestamp(outboxEvent.getCreatedAt())
             .resource(ResourceDTO.fromResource(outboxEvent.getResource()))
             .resourceScope(ResourceScopeDTO.fromResourceScope(outboxEvent.getResourceScope()))
@@ -89,24 +88,21 @@ public class ScorecardEventHandler implements OutboxEventHandler {
     ScorecardUpdateEvent scorecardUpdateEvent =
         objectMapper.readValue(outboxEvent.getEventData(), ScorecardUpdateEvent.class);
 
-    AuditEntry auditEntry = AuditEntry.builder()
-                                .action(Action.UPDATE)
-                                .module(ModuleType.IDP)
-                                .newYaml(NGYamlUtils.getYamlString(
-                                    ScorecardsDTO.builder()
-                                        .scorecardDetailsResponse(scorecardUpdateEvent.getNewScorecardDetailsResponse())
-                                        .build(),
-                                    objectMapper))
-                                .oldYaml(NGYamlUtils.getYamlString(
-                                    ScorecardsDTO.builder()
-                                        .scorecardDetailsResponse(scorecardUpdateEvent.getOldScorecardDetailsResponse())
-                                        .build(),
-                                    objectMapper))
-                                .timestamp(outboxEvent.getCreatedAt())
-                                .resource(ResourceDTO.fromResource(outboxEvent.getResource()))
-                                .resourceScope(ResourceScopeDTO.fromResourceScope(outboxEvent.getResourceScope()))
-                                .insertId(outboxEvent.getId())
-                                .build();
+    AuditEntry auditEntry =
+        AuditEntry.builder()
+            .action(Action.UPDATE)
+            .module(ModuleType.IDP)
+            .newYaml(NGYamlUtils.getYamlString(
+                ScorecardsDTO.builder().scorecard(scorecardUpdateEvent.getNewScorecardDetailsResponse()).build(),
+                objectMapper))
+            .oldYaml(NGYamlUtils.getYamlString(
+                ScorecardsDTO.builder().scorecard(scorecardUpdateEvent.getOldScorecardDetailsResponse()).build(),
+                objectMapper))
+            .timestamp(outboxEvent.getCreatedAt())
+            .resource(ResourceDTO.fromResource(outboxEvent.getResource()))
+            .resourceScope(ResourceScopeDTO.fromResourceScope(outboxEvent.getResourceScope()))
+            .insertId(outboxEvent.getId())
+            .build();
     return auditClientService.publishAudit(auditEntry, globalContext);
   }
 
@@ -116,19 +112,18 @@ public class ScorecardEventHandler implements OutboxEventHandler {
     ScorecardDeleteEvent scorecardDeleteEvent =
         objectMapper.readValue(outboxEvent.getEventData(), ScorecardDeleteEvent.class);
 
-    AuditEntry auditEntry = AuditEntry.builder()
-                                .action(Action.DELETE)
-                                .module(ModuleType.IDP)
-                                .oldYaml(NGYamlUtils.getYamlString(
-                                    ScorecardsDTO.builder()
-                                        .scorecardDetailsResponse(scorecardDeleteEvent.getOldScorecardDetailsResponse())
-                                        .build(),
-                                    objectMapper))
-                                .timestamp(outboxEvent.getCreatedAt())
-                                .resource(ResourceDTO.fromResource(outboxEvent.getResource()))
-                                .resourceScope(ResourceScopeDTO.fromResourceScope(outboxEvent.getResourceScope()))
-                                .insertId(outboxEvent.getId())
-                                .build();
+    AuditEntry auditEntry =
+        AuditEntry.builder()
+            .action(Action.DELETE)
+            .module(ModuleType.IDP)
+            .oldYaml(NGYamlUtils.getYamlString(
+                ScorecardsDTO.builder().scorecard(scorecardDeleteEvent.getOldScorecardDetailsResponse()).build(),
+                objectMapper))
+            .timestamp(outboxEvent.getCreatedAt())
+            .resource(ResourceDTO.fromResource(outboxEvent.getResource()))
+            .resourceScope(ResourceScopeDTO.fromResourceScope(outboxEvent.getResourceScope()))
+            .insertId(outboxEvent.getId())
+            .build();
     return auditClientService.publishAudit(auditEntry, globalContext);
   }
 }

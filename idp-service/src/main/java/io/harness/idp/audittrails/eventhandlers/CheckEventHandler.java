@@ -72,7 +72,7 @@ public class CheckEventHandler implements OutboxEventHandler {
             .action(Action.CREATE)
             .module(ModuleType.IDP)
             .newYaml(NGYamlUtils.getYamlString(
-                CheckDTO.builder().checkDetails(checkCreateEvent.getNewCheckDetails()).build(), objectMapper))
+                CheckDTO.builder().check(checkCreateEvent.getNewCheckDetails()).build(), objectMapper))
             .timestamp(outboxEvent.getCreatedAt())
             .resource(ResourceDTO.fromResource(outboxEvent.getResource()))
             .resourceScope(ResourceScopeDTO.fromResourceScope(outboxEvent.getResourceScope()))
@@ -91,9 +91,9 @@ public class CheckEventHandler implements OutboxEventHandler {
             .action(Action.UPDATE)
             .module(ModuleType.IDP)
             .newYaml(NGYamlUtils.getYamlString(
-                CheckDTO.builder().checkDetails(checkUpdateEvent.getNewCheckDetails()).build(), objectMapper))
+                CheckDTO.builder().check(checkUpdateEvent.getNewCheckDetails()).build(), objectMapper))
             .oldYaml(NGYamlUtils.getYamlString(
-                CheckDTO.builder().checkDetails(checkUpdateEvent.getOldCheckDetails()).build(), objectMapper))
+                CheckDTO.builder().check(checkUpdateEvent.getOldCheckDetails()).build(), objectMapper))
             .timestamp(outboxEvent.getCreatedAt())
             .resource(ResourceDTO.fromResource(outboxEvent.getResource()))
             .resourceScope(ResourceScopeDTO.fromResourceScope(outboxEvent.getResourceScope()))
@@ -112,7 +112,7 @@ public class CheckEventHandler implements OutboxEventHandler {
             .action(Action.DELETE)
             .module(ModuleType.IDP)
             .oldYaml(NGYamlUtils.getYamlString(
-                CheckDTO.builder().checkDetails(checkDeleteEvent.getOldCheckDetails()).build(), objectMapper))
+                CheckDTO.builder().check(checkDeleteEvent.getOldCheckDetails()).build(), objectMapper))
             .timestamp(outboxEvent.getCreatedAt())
             .resource(ResourceDTO.fromResource(outboxEvent.getResource()))
             .resourceScope(ResourceScopeDTO.fromResourceScope(outboxEvent.getResourceScope()))
