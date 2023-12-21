@@ -10,19 +10,16 @@ global:
 replicaCount: 1
 maxSurge: 1
 maxUnavailable: 0
-
 image:
-  registry: docker.io
-  repository: harness/ci-scm-signed
+  registry: us.gcr.io/platform-205701
+  repository: scm-service
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: release-168-ubi
+  tag: 1.2.0
   digest: ""
   imagePullSecrets: []
-
 nameOverride: ""
 fullnameOverride: ""
-
 serviceAccount:
   # Specifies whether a service account should be created
   create: false
@@ -31,40 +28,31 @@ serviceAccount:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: "harness-default"
-
 podAnnotations: {}
-
 podSecurityContext: {}
-  # fsGroup: 2000
+# fsGroup: 2000
 
 securityContext:
   runAsUser: 65534
   runAsNonRoot: true
-
 service:
   type: ClusterIP
   protocol: TCP
   port: 8091
   annotations: {}
-
 resources:
   limits:
     memory: 512Mi
   requests:
     cpu: 0.1
     memory: 512Mi
-
 autoscaling:
   enabled: false
   minReplicas: 1
   maxReplicas: 100
   targetCPU: ""
   targetMemory: ""
-
 nodeSelector: {}
-
 tolerations: []
-
 affinity: {}
-
 imagePullSecrets: {}
