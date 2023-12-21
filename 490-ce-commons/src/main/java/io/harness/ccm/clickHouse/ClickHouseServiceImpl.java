@@ -50,6 +50,8 @@ public class ClickHouseServiceImpl implements ClickHouseService {
     String url = clickHouseConfig.getUrl();
     Properties properties = new Properties();
     properties.put("socket_timeout", clickHouseConfig.getSocketTimeout());
+    properties.setProperty("ssl", "true");
+    properties.setProperty("sslmode", "NONE");
     ClickHouseDataSource dataSource = new ClickHouseDataSource(url, properties);
     try (Connection connection =
              dataSource.getConnection(clickHouseConfig.getUsername(), clickHouseConfig.getPassword());

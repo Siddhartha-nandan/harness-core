@@ -30,6 +30,7 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -66,8 +67,18 @@ public class S3ToClickHouseSyncTasklet implements Tasklet {
     String accountId = jobConstants.getAccountId();
     Instant startTime = Instant.ofEpochMilli(jobConstants.getJobStartTime());
     Instant endTime = Instant.ofEpochMilli(jobConstants.getJobEndTime());
-    // Instant endTime = Instant.now();
-    // Instant startTime = endTime.minus(15, ChronoUnit.HOURS);
+    endTime = Instant.now();
+    Integer amountToSubtract;
+    try {
+      String selectQuery = "SELECT max(deltahours) FROM ccm.s3tochjob";
+      amountToSubtract = Integer.parseInt(
+          clickHouseService.executeClickHouseQuery(configuration.getClickHouseConfig(), selectQuery, Boolean.TRUE)
+              .get(0));
+    } catch (Exception e) {
+      amountToSubtract = 1;
+      log.error(e);
+    }
+    startTime = endTime.minus(amountToSubtract, ChronoUnit.HOURS);
 
     createDBAndTables();
 
@@ -394,10 +405,18 @@ public class S3ToClickHouseSyncTasklet implements Tasklet {
               + configuration.getAwsS3SyncConfig().getAwsS3BucketName() + ".s3.amazonaws.com/" + objectSummary.getKey()
               + "','" + configuration.getAwsS3SyncConfig().getAwsAccessKey() + "','"
               + configuration.getAwsS3SyncConfig().getAwsSecretKey()
-              + "', 'CSV') SETTINGS date_time_input_format='best_effort'";
+              + "', 'CSV') SETTINGS date_time_input_format='best_effort', max_download_threads=4, max_insert_threads=4";
           clickHouseService.executeClickHouseQuery(configuration.getClickHouseConfig(), insertQuery, Boolean.FALSE);
         } catch (Exception e) {
           log.error(String.format("Exception while ingesting CSV: %s", objectSummary.getKey()), e);
+          String insertQuery =
+              "SET input_format_csv_skip_first_lines=1; SET max_memory_usage=1000000000000; INSERT INTO "
+              + awsBillingTableId + " SELECT * FROM s3('https://"
+              + configuration.getAwsS3SyncConfig().getAwsS3BucketName() + ".s3.amazonaws.com/" + objectSummary.getKey()
+              + "','" + configuration.getAwsS3SyncConfig().getAwsAccessKey() + "','"
+              + configuration.getAwsS3SyncConfig().getAwsSecretKey()
+              + "', 'CSV') SETTINGS date_time_input_format='best_effort', max_download_threads=2, max_insert_threads=2";
+          clickHouseService.executeClickHouseQuery(configuration.getClickHouseConfig(), insertQuery, Boolean.FALSE);
         }
       }
     }
