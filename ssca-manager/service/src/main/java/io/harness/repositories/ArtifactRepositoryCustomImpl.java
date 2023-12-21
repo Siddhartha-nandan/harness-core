@@ -23,6 +23,7 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
@@ -58,7 +59,15 @@ public class ArtifactRepositoryCustomImpl implements ArtifactRepositoryCustom {
 
   @Override
   public ArtifactEntity findOne(Criteria criteria) {
+    return findOne(criteria, null);
+  }
+
+  @Override
+  public ArtifactEntity findOne(Criteria criteria, Sort sort) {
     Query query = new Query(criteria);
+    if (sort != null) {
+      query.with(sort);
+    }
     return mongoTemplate.findOne(query, ArtifactEntity.class);
   }
 

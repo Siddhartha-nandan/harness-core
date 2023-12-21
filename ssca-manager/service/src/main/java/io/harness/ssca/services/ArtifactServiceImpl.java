@@ -155,6 +155,27 @@ public class ArtifactServiceImpl implements ArtifactService {
   }
 
   @Override
+  public ArtifactEntity getLatestArtifactByImageNameAndTag(
+      String accountId, String orgIdentifier, String projectIdentifier, String imageName, String tag) {
+    // regex for image name ^(.*\/)?<IMAGE NAME>$
+    String nameEndingWithImageNameRegex = "^(.*\\/)?" + imageName + "$";
+    Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
+                            .is(accountId)
+                            .and(ArtifactEntityKeys.orgId)
+                            .is(orgIdentifier)
+                            .and(ArtifactEntityKeys.projectId)
+                            .is(projectIdentifier)
+                            .and(ArtifactEntityKeys.name)
+                            .regex(nameEndingWithImageNameRegex)
+                            .and(ArtifactEntityKeys.tag)
+                            .is(tag)
+                            .and(ArtifactEntityKeys.invalid)
+                            .is(false);
+    Sort sort = Sort.by(Direction.DESC, ArtifactEntityKeys.createdOn);
+    return artifactRepository.findOne(criteria, sort);
+  }
+
+  @Override
   public ArtifactEntity getLatestArtifact(
       String accountId, String orgIdentifier, String projectIdentifier, String artifactId, String tag) {
     Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)

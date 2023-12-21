@@ -7,8 +7,13 @@
 
 package io.harness.ssca.services;
 
+import io.harness.cdng.artifact.bean.ArtifactCorrelationDetails;
+import io.harness.data.structure.EmptyPredicate;
+import io.harness.entities.ArtifactDetails;
 import io.harness.entities.Instance;
+import io.harness.entities.instanceinfo.K8sInstanceInfo;
 import io.harness.exception.InvalidArgumentsException;
+import io.harness.k8s.model.K8sContainer;
 import io.harness.pipeline.remote.PipelineServiceClient;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.repositories.CdInstanceSummaryRepo;
@@ -27,9 +32,11 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -66,14 +73,26 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
   private static String PUBLISHED_IMAGES = "publishedImageArtifacts";
   private static String IMAGE_NAME = "imageName";
   private static String TAG = "tag";
+  private static final String NAB_ACCOUNT_ID = "7i5sLmXBSne4D8bPq52bSw";
 
   @Override
   public boolean upsertInstance(Instance instance) {
-    if (Objects.isNull(instance.getPrimaryArtifact())
-        || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity())
-        || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity().getImage())) {
-      log.info(
-          String.format("Instance skipped because of missing artifact identity, {InstanceId: %s}", instance.getId()));
+    boolean isNAB = NAB_ACCOUNT_ID.equals(instance.getAccountIdentifier());
+    if (isCDArtifactNull(instance)) {
+      if (isNAB) {
+        if (isK8sInstanceInfo(instance)) {
+          Set<ArtifactEntity> artifactEntities = findCorrelatedArtifactsForNAB(instance);
+          for (ArtifactEntity artifact : artifactEntities) {
+            setArtifactCorrelationIdInInstance(instance, artifact.getArtifactCorrelationId());
+            saveInstanceSummaryAndUpdateCorrelatedArtifact(instance, artifact);
+          }
+        } else {
+          log.info("Either instance info not populated or not an instance of K8s for instance ID " + instance.getId());
+        }
+      } else {
+        log.info(
+            String.format("Instance skipped because of missing artifact identity, {InstanceId: %s}", instance.getId()));
+      }
       return true;
     }
 
@@ -86,6 +105,52 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
       return true;
     }
 
+    saveInstanceSummaryAndUpdateCorrelatedArtifact(instance, artifact);
+    return true;
+  }
+
+  private Set<ArtifactEntity> findCorrelatedArtifactsForNAB(Instance instance) {
+    // keeping it as set in case multiple containers are using the same image, then we update the artifact only once.
+    Set<ArtifactEntity> correlatedArtifacts = new HashSet<>();
+    K8sInstanceInfo k8sInstanceInfo = (K8sInstanceInfo) instance.getInstanceInfo();
+    List<K8sContainer> containers = k8sInstanceInfo.getContainerList();
+    if (EmptyPredicate.isEmpty(containers)) {
+      return correlatedArtifacts;
+    }
+    for (K8sContainer container : containers) {
+      String image = container.getImage();
+      if (EmptyPredicate.isEmpty(image)) {
+        continue;
+      }
+      // First trying with fully qualified path
+      ArtifactEntity artifact = artifactService.getArtifactByCorrelationId(
+          instance.getAccountIdentifier(), instance.getOrgIdentifier(), instance.getProjectIdentifier(), image);
+      if (!Objects.isNull(artifact)) {
+        correlatedArtifacts.add(artifact);
+        continue;
+      }
+      // If not able to find with fully qualified path, trying the loose image search.
+      String[] colonSplit = image.split(":");
+      if (colonSplit.length == 2) {
+        String fullyQualifiedImage = colonSplit[0];
+        String tag = colonSplit[1];
+        String imageName = fullyQualifiedImage;
+        int lastSlashIndex = fullyQualifiedImage.lastIndexOf("/");
+        if (lastSlashIndex != -1) {
+          imageName = fullyQualifiedImage.substring(lastSlashIndex + 1);
+        }
+        artifact = artifactService.getLatestArtifactByImageNameAndTag(instance.getAccountIdentifier(),
+            instance.getOrgIdentifier(), instance.getProjectIdentifier(), imageName, tag);
+        if (!Objects.isNull(artifact)) {
+          correlatedArtifacts.add(artifact);
+        }
+      }
+    }
+    log.info(String.format("Correlating %s images for instance %s", correlatedArtifacts.size(), instance.getId()));
+    return correlatedArtifacts;
+  }
+
+  private void saveInstanceSummaryAndUpdateCorrelatedArtifact(Instance instance, ArtifactEntity artifact) {
     CdInstanceSummary cdInstanceSummary = getCdInstanceSummary(instance.getAccountIdentifier(),
         instance.getOrgIdentifier(), instance.getProjectIdentifier(),
         instance.getPrimaryArtifact().getArtifactIdentity().getImage(), instance.getEnvIdentifier());
@@ -101,18 +166,50 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
       artifactService.updateArtifactEnvCount(artifact, newCdInstanceSummary.getEnvType(), 1);
       cdInstanceSummaryRepo.save(newCdInstanceSummary);
     }
-    return true;
+  }
+
+  private boolean isCDArtifactNull(Instance instance) {
+    return Objects.isNull(instance.getPrimaryArtifact())
+        || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity())
+        || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity().getImage());
+  }
+
+  private void setArtifactCorrelationIdInInstance(Instance instance, String artifactCorrelationId) {
+    instance.setPrimaryArtifact(
+        ArtifactDetails.builder()
+            .artifactIdentity(ArtifactCorrelationDetails.builder().image(artifactCorrelationId).build())
+            .build());
   }
 
   @Override
   public boolean removeInstance(Instance instance) {
-    if (Objects.isNull(instance.getPrimaryArtifact())
-        || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity())
-        || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity().getImage())) {
-      log.info(
-          String.format("Instance skipped because of missing artifact identity, {InstanceId: %s}", instance.getId()));
+    if (isCDArtifactNull(instance)) {
+      if (NAB_ACCOUNT_ID.equals(instance.getAccountIdentifier())) {
+        if (isK8sInstanceInfo(instance)) {
+          Set<ArtifactEntity> artifactEntities = findCorrelatedArtifactsForNAB(instance);
+          for (ArtifactEntity artifact : artifactEntities) {
+            setArtifactCorrelationIdInInstance(instance, artifact.getArtifactCorrelationId());
+            updateInstanceSummary(instance);
+          }
+        } else {
+          log.info("For instance removal, either instance info not populated or not an instance of K8s for instance ID "
+              + instance.getId());
+        }
+      } else {
+        log.info(
+            String.format("Instance skipped because of missing artifact identity, {InstanceId: %s}", instance.getId()));
+      }
       return true;
     }
+    updateInstanceSummary(instance);
+    return true;
+  }
+
+  private boolean isK8sInstanceInfo(Instance instance) {
+    return instance.getInstanceInfo() != null && (instance.getInstanceInfo() instanceof K8sInstanceInfo);
+  }
+
+  private void updateInstanceSummary(Instance instance) {
     CdInstanceSummary cdInstanceSummary = getCdInstanceSummary(instance.getAccountIdentifier(),
         instance.getOrgIdentifier(), instance.getProjectIdentifier(),
         instance.getPrimaryArtifact().getArtifactIdentity().getImage(), instance.getEnvIdentifier());
@@ -129,7 +226,6 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
         cdInstanceSummaryRepo.save(cdInstanceSummary);
       }
     }
-    return true;
   }
 
   @Override
