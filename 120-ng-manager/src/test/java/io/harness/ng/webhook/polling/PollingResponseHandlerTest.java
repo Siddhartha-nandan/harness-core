@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -91,6 +92,7 @@ import io.harness.polling.contracts.PollingResponse;
 import io.harness.polling.contracts.Type;
 import io.harness.polling.service.intfc.PollingPerpetualTaskService;
 import io.harness.polling.service.intfc.PollingService;
+import io.harness.remote.client.NGRestUtils;
 import io.harness.rule.Owner;
 import io.harness.rule.OwnerRule;
 import io.harness.utils.NGFeatureFlagHelperService;
@@ -108,10 +110,7 @@ import java.util.stream.IntStream;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.*;
 import retrofit2.Call;
 import retrofit2.Response;
 
@@ -135,7 +134,7 @@ public class PollingResponseHandlerTest extends CategoryTest {
   @Mock PolledItemPublisher polledItemPublisher;
   @Mock PersistentLocker persistentLocker;
   @Mock NGSettingsClient settingsClient;
-
+  private static MockedStatic<NGRestUtils> mockNGRestUtils;
   @Before
   public void setup() throws IOException {
     MockitoAnnotations.initMocks(this);
@@ -178,8 +177,14 @@ public class PollingResponseHandlerTest extends CategoryTest {
     PollingDocument pollingDocument = getHttpHelmPollingDocument(null);
     when(pollingService.get(anyString(), anyString())).thenReturn(pollingDocument);
 
-    pollingResponseHandler.handlePollingResponse(PERPETUAL_TASK_ID, ACCOUNT_ID, delegateResponse);
+    mockNGRestUtils = mockStatic(NGRestUtils.class);
+    SettingValueResponseDTO response = SettingValueResponseDTO.builder().value("2").build();
+    Call<ResponseDTO<SettingValueResponseDTO>> call = mock(Call.class);
+    when(settingsClient.getSetting(any(), any(), any(), any())).thenReturn(call);
+    when(NGRestUtils.getResponse(call)).thenReturn(response);
 
+    pollingResponseHandler.handlePollingResponse(PERPETUAL_TASK_ID, ACCOUNT_ID, delegateResponse);
+    mockNGRestUtils.close();
     verify(pollingService).get(ACCOUNT_ID, POLLING_DOC_ID);
     verify(pollingService).updateFailedAttempts(ACCOUNT_ID, POLLING_DOC_ID, 1);
     verify(pollingService)
@@ -202,7 +207,15 @@ public class PollingResponseHandlerTest extends CategoryTest {
     for (int i = 0; i < 100; i++) {
       pollingDocument.setFailedAttempts(failedAttempts + i);
       when(pollingService.get(anyString(), anyString())).thenReturn(pollingDocument);
+
+      mockNGRestUtils = mockStatic(NGRestUtils.class);
+      SettingValueResponseDTO response = SettingValueResponseDTO.builder().value("2").build();
+      Call<ResponseDTO<SettingValueResponseDTO>> call = mock(Call.class);
+      when(settingsClient.getSetting(any(), any(), any(), any())).thenReturn(call);
+      when(NGRestUtils.getResponse(call)).thenReturn(response);
+
       pollingResponseHandler.handlePollingResponse(PERPETUAL_TASK_ID, ACCOUNT_ID, delegateResponse);
+      mockNGRestUtils.close();
     }
     verify(pollingService, times(100)).get(ACCOUNT_ID, POLLING_DOC_ID);
     verify(pollingService, times(100)).updateFailedAttempts(eq(ACCOUNT_ID), eq(POLLING_DOC_ID), anyInt());

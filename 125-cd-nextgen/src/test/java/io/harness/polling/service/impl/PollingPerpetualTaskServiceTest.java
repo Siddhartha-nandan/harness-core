@@ -17,6 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -49,6 +51,9 @@ import io.harness.encryption.SecretRefData;
 import io.harness.grpc.DelegateServiceGrpcClient;
 import io.harness.grpc.utils.AnyUtils;
 import io.harness.k8s.model.HelmVersion;
+import io.harness.ng.core.dto.ResponseDTO;
+import io.harness.ngsettings.client.remote.NGSettingsClient;
+import io.harness.ngsettings.dto.SettingValueResponseDTO;
 import io.harness.perpetualtask.PerpetualTaskClientContextDetails;
 import io.harness.perpetualtask.PerpetualTaskExecutionBundle;
 import io.harness.perpetualtask.PerpetualTaskId;
@@ -65,6 +70,7 @@ import io.harness.polling.bean.artifact.DockerHubArtifactInfo;
 import io.harness.polling.service.impl.artifact.ArtifactPerpetualTaskHelperNg;
 import io.harness.polling.service.impl.gitpolling.GitPollingPerpetualTaskHelperNg;
 import io.harness.polling.service.impl.manifest.ManifestPerpetualTaskHelperNg;
+import io.harness.remote.client.NGRestUtils;
 import io.harness.rule.Owner;
 import io.harness.serializer.KryoSerializer;
 
@@ -79,7 +85,9 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import retrofit2.Call;
 
 @OwnedBy(HarnessTeam.CDC)
 public class PollingPerpetualTaskServiceTest extends CDNGTestBase {
@@ -100,7 +108,8 @@ public class PollingPerpetualTaskServiceTest extends CDNGTestBase {
   @Inject KryoSerializer kryoSerializer;
   @Mock ArtifactStepHelper artifactStepHelper;
   @Mock GitPollingStepHelper gitPollingStepHelper;
-
+  @Mock NGSettingsClient settingsClient;
+  private static MockedStatic<NGRestUtils> mockNGRestUtils;
   @Before
   public void setup() {
     ManifestPerpetualTaskHelperNg manifestPerpetualTaskHelperNg =
@@ -117,7 +126,7 @@ public class PollingPerpetualTaskServiceTest extends CDNGTestBase {
 
     pollingPerpetualTaskService =
         new PollingPerpetualTaskServiceImpl(spyManifestPerpetualTaskHelperNg, spyArtifactPerpetualTaskHelperNg,
-            spyGitPollingPerpetualTaskHelperNg, delegateServiceGrpcClient, pollingService);
+            spyGitPollingPerpetualTaskHelperNg, delegateServiceGrpcClient, pollingService, settingsClient);
   }
 
   @Test
@@ -153,8 +162,14 @@ public class PollingPerpetualTaskServiceTest extends CDNGTestBase {
              eq(false), eq("MANIFEST Collection Task"), eq(UUID)))
         .thenReturn(PerpetualTaskId.newBuilder().setId(PERPETUAL_TASK_ID).build());
 
-    pollingPerpetualTaskService.createPerpetualTask(pollingDocument);
+    mockNGRestUtils = mockStatic(NGRestUtils.class);
+    SettingValueResponseDTO response = SettingValueResponseDTO.builder().value("2").build();
+    Call<ResponseDTO<SettingValueResponseDTO>> call = mock(Call.class);
+    when(settingsClient.getSetting(any(), any(), any(), any())).thenReturn(call);
+    when(NGRestUtils.getResponse(call)).thenReturn(response);
 
+    pollingPerpetualTaskService.createPerpetualTask(pollingDocument);
+    mockNGRestUtils.close();
     ArgumentCaptor<PerpetualTaskSchedule> scheduleCaptor = ArgumentCaptor.forClass(PerpetualTaskSchedule.class);
     ArgumentCaptor<PerpetualTaskClientContextDetails> taskContextCaptor =
         ArgumentCaptor.forClass(PerpetualTaskClientContextDetails.class);
@@ -211,8 +226,14 @@ public class PollingPerpetualTaskServiceTest extends CDNGTestBase {
              eq(false), eq("ARTIFACT Collection Task"), eq(UUID)))
         .thenReturn(PerpetualTaskId.newBuilder().setId(PERPETUAL_TASK_ID).build());
 
-    pollingPerpetualTaskService.createPerpetualTask(pollingDocument);
+    mockNGRestUtils = mockStatic(NGRestUtils.class);
+    SettingValueResponseDTO response = SettingValueResponseDTO.builder().value("1").build();
+    Call<ResponseDTO<SettingValueResponseDTO>> call = mock(Call.class);
+    when(settingsClient.getSetting(any(), any(), any(), any())).thenReturn(call);
+    when(NGRestUtils.getResponse(call)).thenReturn(response);
 
+    pollingPerpetualTaskService.createPerpetualTask(pollingDocument);
+    mockNGRestUtils.close();
     ArgumentCaptor<PerpetualTaskSchedule> scheduleCaptor = ArgumentCaptor.forClass(PerpetualTaskSchedule.class);
     ArgumentCaptor<PerpetualTaskClientContextDetails> taskContextCaptor =
         ArgumentCaptor.forClass(PerpetualTaskClientContextDetails.class);
