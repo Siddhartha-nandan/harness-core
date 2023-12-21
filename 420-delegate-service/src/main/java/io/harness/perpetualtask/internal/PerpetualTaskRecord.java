@@ -100,8 +100,8 @@ public class PerpetualTaskRecord
 
   @Deprecated List<Long> assignerIterations;
   long assignIteration;
-  long rebalanceIteration;
-
+  @Deprecated long rebalanceIteration;
+  long verifyIteration;
   int assignTryCount;
   long assignAfterMs;
 
@@ -116,6 +116,9 @@ public class PerpetualTaskRecord
     if (PerpetualTaskRecordKeys.assignIteration.equals(fieldName)) {
       return assignIteration;
     }
+    if (PerpetualTaskRecordKeys.verifyIteration.equals(fieldName)) {
+      return verifyIteration;
+    }
     throw new IllegalArgumentException("Invalid fieldName " + fieldName);
   }
 
@@ -123,6 +126,11 @@ public class PerpetualTaskRecord
   public void updateNextIteration(String fieldName, long nextIteration) {
     if (PerpetualTaskRecordKeys.assignIteration.equals(fieldName)) {
       this.assignIteration = nextIteration;
+      return;
+    }
+
+    if (PerpetualTaskRecordKeys.verifyIteration.equals(fieldName)) {
+      this.verifyIteration = nextIteration;
       return;
     }
 
