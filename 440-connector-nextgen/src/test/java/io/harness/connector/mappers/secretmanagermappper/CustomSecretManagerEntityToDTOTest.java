@@ -39,6 +39,7 @@ public class CustomSecretManagerEntityToDTOTest extends CategoryTest {
     defaultFieldNamesToValue.put("isDefault", false);
     defaultFieldNamesToValue.put("onDelegate", false);
     defaultFieldNamesToValue.put("harnessManaged", false);
+    defaultFieldNamesToValue.put("timeout", 20L);
     // Default of connector ref is secret ref data object which has all fields as null.
     defaultFieldNamesToValue.put("connectorRef", new SecretRefData());
   }
