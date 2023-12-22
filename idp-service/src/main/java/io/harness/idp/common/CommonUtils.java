@@ -94,4 +94,8 @@ public class CommonUtils {
     }
     return str;
   }
+
+  public static String addAccountScopeInIdentifier(String identifier) {
+    return Constants.ACCOUNT_SCOPED + identifier;
+  }
 }

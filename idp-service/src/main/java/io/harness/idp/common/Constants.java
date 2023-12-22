@@ -122,4 +122,6 @@ public class Constants {
 
   public static final String KUBERNETES = "kubernetes";
   public static final String HARNESS_ACCOUNT = "Harness-Account";
+
+  public static final String ACCOUNT_SCOPED = "account.";
 }

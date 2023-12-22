@@ -18,6 +18,7 @@ import io.harness.delegate.beans.connector.scm.github.GithubApiAccessDTO;
 import io.harness.delegate.beans.connector.scm.github.GithubConnectorDTO;
 import io.harness.delegate.beans.connector.scm.gitlab.GitlabConnectorDTO;
 import io.harness.exception.InvalidRequestException;
+import io.harness.idp.common.Constants;
 import io.harness.secretmanagerclient.services.api.SecretManagerClientService;
 import io.harness.spec.server.idp.v1.model.BackstageEnvSecretVariable;
 import io.harness.spec.server.idp.v1.model.BackstageEnvVariable;
@@ -86,6 +87,6 @@ public class GitIntegrationUtils {
   }
 
   public String replaceAccountScopeFromConnectorId(String connectorIdentifier) {
-    return connectorIdentifier.replace(GitIntegrationConstants.ACCOUNT_SCOPED, "");
+    return connectorIdentifier.replace(Constants.ACCOUNT_SCOPED, "");
   }
 }
