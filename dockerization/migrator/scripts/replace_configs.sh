@@ -251,18 +251,10 @@ fi
 yq -i '.server.requestLog.appenders[0].threshold="TRACE"' $CONFIG_FILE
 
 if [[ "$STACK_DRIVER_LOGGING_ENABLED" == "true" ]]; then
-  yq -i 'del(.logging.appenders.[] | select(.type == "file"))' $CONFIG_FILE
   yq -i 'del(.logging.appenders.[] | select(.type == "console"))' $CONFIG_FILE
   yq -i '(.logging.appenders.[] | select(.type == "gke-console") | .stackdriverLogEnabled) = true' $CONFIG_FILE
 else
-  if [[ "$ROLLING_FILE_LOGGING_ENABLED" == "true" ]]; then
-    yq -i 'del(.logging.appenders.[] | select(.type == "gke-console"))' $CONFIG_FILE
-    yq -i '(.logging.appenders.[] | select(.type == "file") | .currentLogFilename) = "/opt/harness/logs/portal.log"' $CONFIG_FILE
-    yq -i '(.logging.appenders.[] | select(.type == "file") | .archivedLogFilenamePattern) = "/opt/harness/logs/portal.%d.%i.log"' $CONFIG_FILE
-  else
-    yq -i 'del(.logging.appenders.[] | select(.type == "file"))' $CONFIG_FILE
-    yq -i 'del(.logging.appenders.[] | select(.type == "gke-console"))' $CONFIG_FILE
-  fi
+  yq -i 'del(.logging.appenders.[] | select(.type == "gke-console"))' $CONFIG_FILE
 fi
 
 if [[ "" != "$WATCHER_METADATA_URL" ]]; then

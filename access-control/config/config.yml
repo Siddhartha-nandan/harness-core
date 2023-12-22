@@ -41,7 +41,7 @@ logging:
       threshold: TRACE
       currentLogFilename: /opt/harness/logs/pod.log
       archive: true
-      archivedLogFilenamePattern: pod.%d{yyyy-MM-dd}.%i.log
+      archivedLogFilenamePattern: /opt/harness/logs/pod.%d{yyyy-MM-dd}.%i.log
       archivedFileCount: 10
       maxFileSize: 50MB
       totalSizeCap: 1GB
