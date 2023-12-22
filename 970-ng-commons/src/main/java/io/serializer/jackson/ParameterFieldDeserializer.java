@@ -39,7 +39,9 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 public class ParameterFieldDeserializer extends StdDeserializer<ParameterField<?>> implements ContextualDeserializer {
   private static final long serialVersionUID = 1L;
@@ -138,7 +140,10 @@ public class ParameterFieldDeserializer extends StdDeserializer<ParameterField<?
             return referenceType;
           }
         }));
-      } catch (Exception ex) {
+      }
+      // Deserializing using the older flow if an exception is caught in above method
+      catch (Exception ex) {
+        log.warn("Exception while deserializing parameter field string with list value", ex);
         return deserialize(p, ctxt, text);
       }
     } else {
