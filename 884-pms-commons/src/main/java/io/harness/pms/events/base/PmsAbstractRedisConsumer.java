@@ -11,6 +11,7 @@ import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.maintenance.MaintenanceController.getMaintenanceFlag;
 import static io.harness.pms.events.PmsEventFrameworkConstants.PIE_EVENT_ID;
+import static io.harness.pms.events.PmsEventFrameworkConstants.PLAN_EXECUTION_ID;
 import static io.harness.threading.Morpheus.sleep;
 
 import static java.time.Duration.ofSeconds;
@@ -26,6 +27,7 @@ import io.harness.eventsframework.api.EventsFrameworkDownException;
 import io.harness.eventsframework.consumer.Message;
 import io.harness.eventsframework.impl.redis.RedisTraceConsumer;
 import io.harness.logging.AutoLogContext;
+import io.harness.pms.events.PmsEventFrameworkConstants;
 import io.harness.pms.events.PmsEventMonitoringConstants;
 import io.harness.queue.QueueController;
 
@@ -56,7 +58,7 @@ public abstract class PmsAbstractRedisConsumer<T extends PmsAbstractMessageListe
 
   private static final Duration THRESHOLD_PROCESS_DURATION = Duration.ofMillis(100);
   private static final int SLEEP_SECONDS = 10;
-  private static final String CACHE_KEY = "%s_%s";
+  private static final String CACHE_KEY = "%s_%s_%s_%s";
   private final Consumer redisConsumer;
   private final T messageListener;
   private final ExecutorService executorService;
@@ -184,11 +186,14 @@ public abstract class PmsAbstractRedisConsumer<T extends PmsAbstractMessageListe
   private boolean isAlreadyProcessed(Message message) {
     try {
       String uniqueIdForKey = getUniqueIdForKey(message);
-      String key = String.format(CACHE_KEY, this.getClass().getSimpleName(), uniqueIdForKey);
+      String planExecutionId = getPlanExecutionId(message);
+      String module = getModuleName(message);
+      String key = String.format(CACHE_KEY, this.getClass().getSimpleName(), module, planExecutionId, uniqueIdForKey);
       boolean isProcessed = !eventsCache.putIfAbsent(key, 1);
       if (isProcessed) {
-        log.warn(String.format("Duplicate redis notification received to consumer [%s] with messageId [%s]",
-            this.getClass().getSimpleName(), uniqueIdForKey));
+        log.warn(String.format(
+            "Duplicate redis notification received to consumer [%s] for module [%s] with planExecutionId [%s] and messageId [%s]",
+            this.getClass().getSimpleName(), module, planExecutionId, uniqueIdForKey));
       }
       return isProcessed;
     } catch (Exception ex) {
@@ -203,6 +208,22 @@ public abstract class PmsAbstractRedisConsumer<T extends PmsAbstractMessageListe
       return message.getId();
     }
     return message.getMessage().getMetadataMap().get(PIE_EVENT_ID);
+  }
+
+  private String getPlanExecutionId(Message message) {
+    if (message.getMessage().getMetadataMap() == null
+        || isEmpty(message.getMessage().getMetadataMap().get(PLAN_EXECUTION_ID))) {
+      return "";
+    }
+    return message.getMessage().getMetadataMap().get(PLAN_EXECUTION_ID);
+  }
+
+  private String getModuleName(Message message) {
+    if (message.getMessage().getMetadataMap() == null
+        || isEmpty(message.getMessage().getMetadataMap().get(PmsEventFrameworkConstants.SERVICE_NAME))) {
+      return "";
+    }
+    return message.getMessage().getMetadataMap().get(PmsEventFrameworkConstants.SERVICE_NAME);
   }
 
   private void checkAndLogSchedulingDelays(String messageId, long startTs) {
