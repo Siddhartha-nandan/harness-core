@@ -7,7 +7,19 @@
 
 package io.harness.telemetry.helpers;
 
+import static io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesType.ENV_GLOBAL_OVERRIDE;
 import static io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesType.ENV_SERVICE_OVERRIDE;
+import static io.harness.telemetry.helpers.OverrideInstrumentConstants.APPLICATION_SETTINGS;
+import static io.harness.telemetry.helpers.OverrideInstrumentConstants.CONFIG_FILES;
+import static io.harness.telemetry.helpers.OverrideInstrumentConstants.CONNECTION_STRINGS;
+import static io.harness.telemetry.helpers.OverrideInstrumentConstants.ENVIRONMENT_REF;
+import static io.harness.telemetry.helpers.OverrideInstrumentConstants.INFRA_IDENTIFIER;
+import static io.harness.telemetry.helpers.OverrideInstrumentConstants.MANIFEST_OVERRIDE;
+import static io.harness.telemetry.helpers.OverrideInstrumentConstants.OVERRIDE_EVENT;
+import static io.harness.telemetry.helpers.OverrideInstrumentConstants.OVERRIDE_TYPE;
+import static io.harness.telemetry.helpers.OverrideInstrumentConstants.OVERRIDE_V2;
+import static io.harness.telemetry.helpers.OverrideInstrumentConstants.SERVICE_REF;
+import static io.harness.telemetry.helpers.OverrideInstrumentConstants.VARIABLE_OVERRIDE;
 
 import static java.util.Objects.isNull;
 
@@ -17,13 +29,18 @@ import io.harness.cdng.azure.config.yaml.ApplicationSettingsConfiguration;
 import io.harness.cdng.azure.config.yaml.ConnectionStringsConfiguration;
 import io.harness.cdng.configfile.ConfigFileWrapper;
 import io.harness.cdng.manifest.yaml.ManifestConfigWrapper;
+import io.harness.ng.core.environment.beans.NGEnvironmentGlobalOverride;
+import io.harness.ng.core.environment.yaml.NGEnvironmentConfig;
 import io.harness.ng.core.serviceoverride.yaml.NGServiceOverrideConfig;
 import io.harness.ng.core.serviceoverride.yaml.NGServiceOverrideInfoConfig;
 import io.harness.ng.core.serviceoverridev2.beans.NGServiceOverrideConfigV2;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesSpec;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesType;
+import io.harness.pms.contracts.ambiance.Ambiance;
+import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.yaml.core.variables.NGVariable;
 
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -37,64 +54,68 @@ import lombok.extern.slf4j.Slf4j;
 @Singleton
 @OwnedBy(HarnessTeam.CDP)
 public class OverrideInstrumentationHelper extends InstrumentationHelper {
-  public static final String ORG_ID = "org_id";
-  public static final String PROJECT_ID = "project_id";
-  public static final String OVERRIDE_EVENT = "override";
-  public static final String OVERRIDE_TYPE = "override_type";
-  public static final String SERVICE_REF = "service_ref";
-  public static final String ENVIRONMENT_REF = "environment_ref";
-  public static final String INFRA_IDENTIFIER = "infra_id";
-  public static final String OVERRIDE_V2 = "override_v2";
-  public static final String MANIFEST_OVERRIDE = "manifest_override";
-  public static final String VARIABLE_OVERRIDE = "variable_override";
-  public static final String APPLICATION_SETTINGS = "application_settings";
-  public static final String CONNECTION_STRINGS = "connection_strings";
-  public static final String CONFIG_FILES = "config_files";
+  @Inject private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
 
-  public void addTelemetryEventsForOverrideV2(String accountId, String orgIdentifier, String projectIdentifier,
-      EnumMap<ServiceOverridesType, NGServiceOverrideConfigV2> mergedOverrideV2Configs) {
+  public void addTelemetryEventsForOverrideV2(
+      Ambiance ambiance, EnumMap<ServiceOverridesType, NGServiceOverrideConfigV2> mergedOverrideV2Configs) {
     try {
       List<NGServiceOverrideConfigV2> ngServiceOverrideConfigV2List = new ArrayList<>(mergedOverrideV2Configs.values());
-      ngServiceOverrideConfigV2List.forEach(ngServiceOverrideConfigV2
-          -> publishOverrideV2Event(accountId, orgIdentifier, projectIdentifier, ngServiceOverrideConfigV2));
+      ngServiceOverrideConfigV2List.forEach(
+          ngServiceOverrideConfigV2 -> publishOverrideV2Event(ambiance, ngServiceOverrideConfigV2));
     } catch (Exception e) {
-      log.error("Override Telemetry event failed for accountID = " + accountId, e);
+      log.error("Override Telemetry event failed for accountID = " + AmbianceUtils.getAccountId(ambiance), e);
     }
   }
 
   public void addTelemetryEventsForOverrideV1(
-      String accountId, String orgIdentifier, String projectIdentifier, NGServiceOverrideConfig ngServiceOverrides) {
+      Ambiance ambiance, NGServiceOverrideConfig ngServiceOverrides, NGEnvironmentConfig ngEnvironmentConfig) {
     try {
       if (ngServiceOverrides != null && ngServiceOverrides.getServiceOverrideInfoConfig() != null) {
-        publishOverrideV1Event(
-            accountId, orgIdentifier, projectIdentifier, ngServiceOverrides.getServiceOverrideInfoConfig());
+        publishOverrideV1EventForServiceAndEnvOverrides(
+            ambiance, ngServiceOverrides.getServiceOverrideInfoConfig(), ngEnvironmentConfig);
       }
     } catch (Exception e) {
-      log.error("Override Telemetry event failed for accountID = " + accountId, e);
+      log.error("Override Telemetry event failed for accountID = " + AmbianceUtils.getAccountId(ambiance), e);
     }
   }
 
-  private void publishOverrideV1Event(String accountId, String orgIdentifier, String projectIdentifier,
-      NGServiceOverrideInfoConfig ngServiceOverrideInfoConfig) {
+  private void publishOverrideV1EventForServiceAndEnvOverrides(Ambiance ambiance,
+      NGServiceOverrideInfoConfig ngServiceOverrideInfoConfig, NGEnvironmentConfig ngEnvironmentInfoConfig) {
     HashMap<String, Object> eventPropertiesMap = new HashMap<>();
-    eventPropertiesMap.put(ORG_ID, orgIdentifier);
+
+    // for service overrides
     eventPropertiesMap.put(OVERRIDE_V2, false);
-    eventPropertiesMap.put(PROJECT_ID, projectIdentifier);
+    eventPropertiesMap.put(ENVIRONMENT_REF, ngServiceOverrideInfoConfig.getEnvironmentRef());
     eventPropertiesMap.put(OVERRIDE_TYPE, ENV_SERVICE_OVERRIDE);
     eventPropertiesMap.put(SERVICE_REF, ngServiceOverrideInfoConfig.getServiceRef());
-    eventPropertiesMap.put(ENVIRONMENT_REF, ngServiceOverrideInfoConfig.getEnvironmentRef());
-
     addManifestCountToMap(eventPropertiesMap, ngServiceOverrideInfoConfig.getManifests());
     addVariableCountToMap(eventPropertiesMap, ngServiceOverrideInfoConfig.getVariables());
     addApplicationSettingToMap(eventPropertiesMap, ngServiceOverrideInfoConfig.getApplicationSettings());
     addConfigFilesToMap(eventPropertiesMap, ngServiceOverrideInfoConfig.getConfigFiles());
     addConnectionStringsConfigToMap(eventPropertiesMap, ngServiceOverrideInfoConfig.getConnectionStrings());
 
-    sendEvent(OVERRIDE_EVENT, accountId, eventPropertiesMap);
+    deploymentsInstrumentationHelper.publishEvent(ambiance, OVERRIDE_EVENT, eventPropertiesMap);
+
+    // for environment overrides
+    if (ngEnvironmentInfoConfig != null && ngEnvironmentInfoConfig.getNgEnvironmentInfoConfig() != null
+        && ngEnvironmentInfoConfig.getNgEnvironmentInfoConfig().getNgEnvironmentGlobalOverride() != null) {
+      NGEnvironmentGlobalOverride ngEnvironmentGlobalOverride =
+          ngEnvironmentInfoConfig.getNgEnvironmentInfoConfig().getNgEnvironmentGlobalOverride();
+
+      eventPropertiesMap = new HashMap<>();
+      eventPropertiesMap.put(OVERRIDE_V2, false);
+      eventPropertiesMap.put(ENVIRONMENT_REF, ngServiceOverrideInfoConfig.getEnvironmentRef());
+      eventPropertiesMap.put(OVERRIDE_TYPE, ENV_GLOBAL_OVERRIDE);
+      addManifestCountToMap(eventPropertiesMap, ngEnvironmentGlobalOverride.getManifests());
+      addApplicationSettingToMap(eventPropertiesMap, ngEnvironmentGlobalOverride.getApplicationSettings());
+      addConfigFilesToMap(eventPropertiesMap, ngEnvironmentGlobalOverride.getConfigFiles());
+      addConnectionStringsConfigToMap(eventPropertiesMap, ngEnvironmentGlobalOverride.getConnectionStrings());
+
+      deploymentsInstrumentationHelper.publishEvent(ambiance, OVERRIDE_EVENT, eventPropertiesMap);
+    }
   }
 
-  private void publishOverrideV2Event(String accountId, String orgIdentifier, String projectIdentifier,
-      NGServiceOverrideConfigV2 ngServiceOverrideConfigV2) {
+  private void publishOverrideV2Event(Ambiance ambiance, NGServiceOverrideConfigV2 ngServiceOverrideConfigV2) {
     if (ngServiceOverrideConfigV2 != null) {
       ServiceOverridesSpec spec = ngServiceOverrideConfigV2.getSpec();
 
@@ -104,9 +125,7 @@ public class OverrideInstrumentationHelper extends InstrumentationHelper {
       }
 
       HashMap<String, Object> eventPropertiesMap = new HashMap<>();
-      eventPropertiesMap.put(ORG_ID, orgIdentifier);
       eventPropertiesMap.put(OVERRIDE_V2, true);
-      eventPropertiesMap.put(PROJECT_ID, projectIdentifier);
       eventPropertiesMap.put(OVERRIDE_TYPE, ngServiceOverrideConfigV2.getType());
       eventPropertiesMap.put(SERVICE_REF, ngServiceOverrideConfigV2.getServiceRef());
       eventPropertiesMap.put(ENVIRONMENT_REF, ngServiceOverrideConfigV2.getEnvironmentRef());
@@ -118,7 +137,7 @@ public class OverrideInstrumentationHelper extends InstrumentationHelper {
       addConfigFilesToMap(eventPropertiesMap, spec.getConfigFiles());
       addConnectionStringsConfigToMap(eventPropertiesMap, spec.getConnectionStrings());
 
-      sendEvent(OVERRIDE_EVENT, accountId, eventPropertiesMap);
+      deploymentsInstrumentationHelper.publishEvent(ambiance, OVERRIDE_EVENT, eventPropertiesMap);
     }
   }
 

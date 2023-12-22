@@ -168,8 +168,8 @@ public class ServiceStepV3Test extends CategoryTest {
         .saveAdditionalServiceFieldsToSweepingOutput(any(NGServiceConfig.class), any(Ambiance.class));
 
     doReturn(null).when(serviceStepV3Helper).executeFreezePart(any(), any(), any());
-    doNothing().when(overrideInstrumentationHelper).addTelemetryEventsForOverrideV1(any(), any(), any(), any());
-    doNothing().when(overrideInstrumentationHelper).addTelemetryEventsForOverrideV2(any(), any(), any(), any());
+    doNothing().when(overrideInstrumentationHelper).addTelemetryEventsForOverrideV1(any(), any(), any());
+    doNothing().when(overrideInstrumentationHelper).addTelemetryEventsForOverrideV2(any(), any());
   }
   @After
   public void tearDown() throws Exception {

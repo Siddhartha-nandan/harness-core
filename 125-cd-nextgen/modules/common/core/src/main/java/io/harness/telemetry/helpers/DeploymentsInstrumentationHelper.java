@@ -50,4 +50,19 @@ public class DeploymentsInstrumentationHelper extends InstrumentationHelper {
     }
     return null;
   }
+
+  public CompletableFuture<Void> publishEvent(
+      Ambiance ambiance, String eventName, HashMap<String, Object> eventPropertiesMap) {
+    try {
+      eventPropertiesMap.put(ORG_ID, AmbianceUtils.getOrgIdentifier(ambiance));
+      eventPropertiesMap.put(PROJECT_ID, AmbianceUtils.getProjectIdentifier(ambiance));
+      eventPropertiesMap.put(STAGE_EXECUTION_ID, ambiance.getStageExecutionId());
+      eventPropertiesMap.put(PIPELINE_EXECUTION_ID, ambiance.getPlanExecutionId());
+      eventPropertiesMap.put(PIPELINE_ID, AmbianceUtils.getPipelineIdentifier(ambiance));
+      return sendEvent(eventName, AmbianceUtils.getAccountId(ambiance), eventPropertiesMap);
+    } catch (Exception e) {
+      log.error(eventName + " event failed for accountID = " + AmbianceUtils.getAccountId(ambiance), e);
+    }
+    return null;
+  }
 }

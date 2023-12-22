@@ -10,13 +10,12 @@ package io.harness.telemetry.helpers;
 import static io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesType.ENV_GLOBAL_OVERRIDE;
 import static io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesType.ENV_SERVICE_OVERRIDE;
 import static io.harness.rule.OwnerRule.SOURABH;
-import static io.harness.telemetry.helpers.OverrideInstrumentationHelper.MANIFEST_OVERRIDE;
-import static io.harness.telemetry.helpers.OverrideInstrumentationHelper.OVERRIDE_EVENT;
-import static io.harness.telemetry.helpers.OverrideInstrumentationHelper.VARIABLE_OVERRIDE;
+import static io.harness.telemetry.helpers.OverrideInstrumentConstants.MANIFEST_OVERRIDE;
+import static io.harness.telemetry.helpers.OverrideInstrumentConstants.OVERRIDE_EVENT;
+import static io.harness.telemetry.helpers.OverrideInstrumentConstants.VARIABLE_OVERRIDE;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -33,9 +32,9 @@ import io.harness.ng.core.serviceoverride.yaml.NGServiceOverrideInfoConfig;
 import io.harness.ng.core.serviceoverridev2.beans.NGServiceOverrideConfigV2;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesSpec;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesType;
+import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
-import io.harness.telemetry.TelemetryReporter;
 import io.harness.yaml.core.variables.NGVariable;
 import io.harness.yaml.core.variables.NGVariableType;
 import io.harness.yaml.core.variables.NumberNGVariable;
@@ -57,7 +56,7 @@ import org.mockito.MockitoAnnotations;
 
 public class OverrideInstrumentationHelperTest extends CategoryTest {
   @InjectMocks OverrideInstrumentationHelper overrideInstrumentationHelper;
-  @Mock TelemetryReporter telemetryReporter;
+  @Mock DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
 
   private final String ACCOUNT_ID = "account_id";
   private final String ORG_ID = "org_id";
@@ -103,17 +102,13 @@ public class OverrideInstrumentationHelperTest extends CategoryTest {
                                            .build())
             .build();
 
-    overrideInstrumentationHelper.addTelemetryEventsForOverrideV1(
-        ACCOUNT_ID, ORG_ID, PROJECT_ID, serviceOverrideConfig);
-    verify(telemetryReporter)
-        .sendTrackEvent(eq(OVERRIDE_EVENT), anyString(), any(), captor.capture(), any(), any(), any());
+    overrideInstrumentationHelper.addTelemetryEventsForOverrideV1(getAmbiance(), serviceOverrideConfig, null);
+    verify(deploymentsInstrumentationHelper).publishEvent(any(), eq(OVERRIDE_EVENT), captor.capture());
 
     HashMap<String, Object> propertiesMap = captor.getValue();
-    assertThat(propertiesMap.get(OverrideInstrumentationHelper.ORG_ID)).isEqualTo(ORG_ID);
-    assertThat(propertiesMap.get(OverrideInstrumentationHelper.PROJECT_ID)).isEqualTo(PROJECT_ID);
-    assertThat(propertiesMap.get(OverrideInstrumentationHelper.ENVIRONMENT_REF)).isEqualTo(ENV_REF);
-    assertThat(propertiesMap.get(OverrideInstrumentationHelper.SERVICE_REF)).isEqualTo(SVC_REF);
-    assertThat(propertiesMap.get(OverrideInstrumentationHelper.OVERRIDE_V2)).isEqualTo(false);
+    assertThat(propertiesMap.get(OverrideInstrumentConstants.ENVIRONMENT_REF)).isEqualTo(ENV_REF);
+    assertThat(propertiesMap.get(OverrideInstrumentConstants.SERVICE_REF)).isEqualTo(SVC_REF);
+    assertThat(propertiesMap.get(OverrideInstrumentConstants.OVERRIDE_V2)).isEqualTo(false);
     assertThat(
         propertiesMap.get(ManifestConfigType.K8_MANIFEST.toString().toLowerCase(Locale.ROOT) + "_" + MANIFEST_OVERRIDE))
         .isEqualTo(1);
@@ -139,9 +134,8 @@ public class OverrideInstrumentationHelperTest extends CategoryTest {
                                            .build())
             .build();
 
-    overrideInstrumentationHelper.addTelemetryEventsForOverrideV1(ACCOUNT_ID, ORG_ID, PROJECT_ID, null);
-    verify(telemetryReporter, times(0))
-        .sendTrackEvent(eq(OVERRIDE_EVENT), anyString(), any(), captor.capture(), any(), any(), any());
+    overrideInstrumentationHelper.addTelemetryEventsForOverrideV1(getAmbiance(), null, null);
+    verify(deploymentsInstrumentationHelper, times(0)).publishEvent(any(), eq(OVERRIDE_EVENT), captor.capture());
   }
 
   @Test
@@ -151,12 +145,10 @@ public class OverrideInstrumentationHelperTest extends CategoryTest {
     ArgumentCaptor<HashMap<String, Object>> captor = ArgumentCaptor.forClass(HashMap.class);
 
     overrideInstrumentationHelper.addTelemetryEventsForOverrideV2(
-        ACCOUNT_ID, ORG_ID, PROJECT_ID, getOverridesConfigsV2MapForEnvSvcTestData());
-    verify(telemetryReporter, times(1))
-        .sendTrackEvent(eq(OVERRIDE_EVENT), anyString(), any(), captor.capture(), any(), any(), any());
+        getAmbiance(), getOverridesConfigsV2MapForEnvSvcTestData());
+    verify(deploymentsInstrumentationHelper, times(1)).publishEvent(any(), eq(OVERRIDE_EVENT), captor.capture());
 
     HashMap<String, Object> propertiesMap = captor.getValue();
-    assertThat(propertiesMap.get(OverrideInstrumentationHelper.ORG_ID)).isEqualTo(ORG_ID);
     assertForPropertyMap(propertiesMap, ENV_REF, SVC_REF, null, ENV_SERVICE_OVERRIDE, null, 1, 1);
   }
 
@@ -167,12 +159,10 @@ public class OverrideInstrumentationHelperTest extends CategoryTest {
     ArgumentCaptor<HashMap<String, Object>> captor = ArgumentCaptor.forClass(HashMap.class);
 
     overrideInstrumentationHelper.addTelemetryEventsForOverrideV2(
-        ACCOUNT_ID, ORG_ID, PROJECT_ID, getOverridesConfigsV2MapForEnvTestData());
-    verify(telemetryReporter, times(1))
-        .sendTrackEvent(eq(OVERRIDE_EVENT), anyString(), any(), captor.capture(), any(), any(), any());
+        getAmbiance(), getOverridesConfigsV2MapForEnvTestData());
+    verify(deploymentsInstrumentationHelper, times(1)).publishEvent(any(), eq(OVERRIDE_EVENT), captor.capture());
 
     HashMap<String, Object> propertiesMap = captor.getValue();
-    assertThat(propertiesMap.get(OverrideInstrumentationHelper.ORG_ID)).isEqualTo(ORG_ID);
     assertForPropertyMap(propertiesMap, ENV_REF, null, null, ENV_GLOBAL_OVERRIDE, 3, 3, null);
   }
 
@@ -182,20 +172,17 @@ public class OverrideInstrumentationHelperTest extends CategoryTest {
   public void testAddTelemetryEventForGlobalEnvOverrideV2Empty() {
     ArgumentCaptor<HashMap<String, Object>> captor = ArgumentCaptor.forClass(HashMap.class);
 
-    overrideInstrumentationHelper.addTelemetryEventsForOverrideV2(ACCOUNT_ID, ORG_ID, PROJECT_ID, null);
-    verify(telemetryReporter, times(0))
-        .sendTrackEvent(eq(OVERRIDE_EVENT), anyString(), any(), captor.capture(), any(), any(), any());
+    overrideInstrumentationHelper.addTelemetryEventsForOverrideV2(getAmbiance(), null);
+    verify(deploymentsInstrumentationHelper, times(0)).publishEvent(any(), eq(OVERRIDE_EVENT), captor.capture());
   }
 
   private void assertForPropertyMap(HashMap<String, Object> propertiesMap, String envRef, String svcRef, String infraId,
       ServiceOverridesType type, Integer manifestCount, Integer stringCount, Integer numberCount) {
-    assertThat(propertiesMap.get(OverrideInstrumentationHelper.ORG_ID)).isEqualTo(ORG_ID);
-    assertThat(propertiesMap.get(OverrideInstrumentationHelper.PROJECT_ID)).isEqualTo(PROJECT_ID);
-    assertThat(propertiesMap.get(OverrideInstrumentationHelper.OVERRIDE_TYPE)).isEqualTo(type);
-    assertThat(propertiesMap.get(OverrideInstrumentationHelper.ENVIRONMENT_REF)).isEqualTo(envRef);
-    assertThat(propertiesMap.get(OverrideInstrumentationHelper.SERVICE_REF)).isEqualTo(svcRef);
-    assertThat(propertiesMap.get(OverrideInstrumentationHelper.INFRA_IDENTIFIER)).isEqualTo(infraId);
-    assertThat(propertiesMap.get(OverrideInstrumentationHelper.OVERRIDE_V2)).isEqualTo(true);
+    assertThat(propertiesMap.get(OverrideInstrumentConstants.OVERRIDE_TYPE)).isEqualTo(type);
+    assertThat(propertiesMap.get(OverrideInstrumentConstants.ENVIRONMENT_REF)).isEqualTo(envRef);
+    assertThat(propertiesMap.get(OverrideInstrumentConstants.SERVICE_REF)).isEqualTo(svcRef);
+    assertThat(propertiesMap.get(OverrideInstrumentConstants.INFRA_IDENTIFIER)).isEqualTo(infraId);
+    assertThat(propertiesMap.get(OverrideInstrumentConstants.OVERRIDE_V2)).isEqualTo(true);
     assertThat(
         propertiesMap.get(ManifestConfigType.K8_MANIFEST.toString().toLowerCase(Locale.ROOT) + "_" + MANIFEST_OVERRIDE))
         .isEqualTo(manifestCount);
@@ -265,5 +252,15 @@ public class OverrideInstrumentationHelperTest extends CategoryTest {
                       .build())
             .build());
     return mergedOverrideV2Configs;
+  }
+
+  private Ambiance getAmbiance() {
+    return Ambiance.newBuilder()
+        .putSetupAbstractions("accountId", ACCOUNT_ID)
+        .putSetupAbstractions("projectIdentifier", PROJECT_ID)
+        .putSetupAbstractions("orgIdentifier", ORG_ID)
+        .setPlanExecutionId("exec_id")
+        .setPlanId("plan_id")
+        .build();
   }
 }

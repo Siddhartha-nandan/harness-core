@@ -365,6 +365,8 @@ public class ServiceStepV3 implements ChildrenExecutable<ServiceStepV3Parameters
         ngServiceOverrides = mergeSvcOverrideInputs(ngServiceOverridesEntity.get().getYaml(),
             parameters.getEnvToSvcOverrideInputs().get(
                 getEnvRefOrId(environment.fetchRef(), parameters.getEnvGroupRef(), environment.getIdentifier())));
+        overrideInstrumentationHelper.addTelemetryEventsForOverrideV1(
+            ambiance, ngServiceOverrides, ngEnvironmentConfig);
 
         svcOverrideVariables = ngServiceOverrides.getServiceOverrideInfoConfig().getVariables();
         if (svcOverrideVariables != null) {
@@ -543,8 +545,7 @@ public class ServiceStepV3 implements ChildrenExecutable<ServiceStepV3Parameters
         if (ngServiceV2InfoConfig == null) {
           throw new InvalidRequestException(SERVICE_CONFIGURATION_NOT_FOUND);
         }
-        overrideInstrumentationHelper.addTelemetryEventsForOverrideV2(
-            accountId, orgIdentifier, projectIdentifier, mergedOverrideV2Configs);
+        overrideInstrumentationHelper.addTelemetryEventsForOverrideV2(ambiance, mergedOverrideV2Configs);
         final String scopedEnvironmentRef =
             IdentifierRefHelper.getRefFromIdentifierOrRef(accountId, environment.get().getOrgIdentifier(),
                 environment.get().getProjectIdentifier(), environment.get().getIdentifier());
@@ -558,7 +559,7 @@ public class ServiceStepV3 implements ChildrenExecutable<ServiceStepV3Parameters
             mergedOverrideV2Configs, ambiance, ServiceStepV3Constants.SERVICE_CONNECTION_STRINGS_SWEEPING_OUTPUT);
       } else {
         overrideInstrumentationHelper.addTelemetryEventsForOverrideV1(
-            accountId, orgIdentifier, projectIdentifier, ngServiceOverrides);
+            ambiance, ngServiceOverrides, ngEnvironmentConfig);
         serviceStepOverrideHelper.prepareAndSaveFinalManifestMetadataToSweepingOutput(
             servicePartResponse.getNgServiceConfig(), ngServiceOverrides, ngEnvironmentConfig, ambiance,
             ServiceStepV3Constants.SERVICE_MANIFESTS_SWEEPING_OUTPUT);
