@@ -23,18 +23,26 @@ import lombok.extern.slf4j.Slf4j;
 public class ClickHouseServiceImpl implements ClickHouseService {
   @Override
   public Connection getConnection(ClickHouseConfig clickHouseConfig) throws SQLException {
-    return getConnection(clickHouseConfig, new Properties());
+    Properties properties = new Properties();
+    properties.setProperty("ssl", "true");
+    properties.setProperty("sslmode", "NONE");
+    return getConnection(clickHouseConfig, properties);
   }
 
   @Override
   public Connection getConnection(ClickHouseConfig clickHouseConfig, Properties properties) throws SQLException {
-    ClickHouseDataSource dataSource = new ClickHouseDataSource(clickHouseConfig.getUrl(), new Properties());
+    properties.setProperty("ssl", "true");
+    properties.setProperty("sslmode", "NONE");
+    ClickHouseDataSource dataSource = new ClickHouseDataSource(clickHouseConfig.getUrl(), properties);
     return dataSource.getConnection(clickHouseConfig.getUsername(), clickHouseConfig.getPassword());
   }
 
   @Override
   public ResultSet getQueryResult(ClickHouseConfig clickHouseConfig, String query) throws SQLException {
-    ClickHouseDataSource dataSource = new ClickHouseDataSource(clickHouseConfig.getUrl(), new Properties());
+    Properties properties = new Properties();
+    properties.setProperty("ssl", "true");
+    properties.setProperty("sslmode", "NONE");
+    ClickHouseDataSource dataSource = new ClickHouseDataSource(clickHouseConfig.getUrl(), properties);
     Connection connection = dataSource.getConnection(clickHouseConfig.getUsername(), clickHouseConfig.getPassword());
     try (Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(query)) {
