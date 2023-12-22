@@ -104,7 +104,7 @@ public class FilterResource {
 
   @GET
   @ApiOperation(value = "Get Filter", nickname = "getFilterList")
-  @Operation(operationId = "getConnectorListV2", summary = "List Filters",
+  @Operation(operationId = "getFilterList", summary = "List Filters",
       description = "Lists Filters for the given criteria.",
       responses =
       {
@@ -121,10 +121,11 @@ public class FilterResource {
       @Parameter(description = ORG_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
-      @Parameter(description = "Type of Filter") @NotNull @QueryParam(
-          NGCommonEntityConstants.TYPE_KEY) FilterType type) {
+      @Parameter(description = "Type of Filter") @NotNull @QueryParam(NGCommonEntityConstants.TYPE_KEY) FilterType type,
+      @Parameter(description = NGResourceFilterConstants.SEARCH_TERM) @QueryParam(
+          NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm) {
     return ResponseDTO.newResponse(getNGPageResponse(
-        filterService.list(page, size, accountIdentifier, orgIdentifier, projectIdentifier, null, type)));
+        filterService.list(page, size, accountIdentifier, orgIdentifier, projectIdentifier, null, type, searchTerm)));
   }
 
   @POST

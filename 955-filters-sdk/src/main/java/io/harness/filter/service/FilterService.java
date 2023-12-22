@@ -30,5 +30,5 @@ public interface FilterService {
   FilterDTO get(String accountId, String orgIdentifier, String projectIdentifier, String identifier, FilterType type);
 
   Page<FilterDTO> list(int page, int size, String accountId, String orgIdentifier, String projectIdentifier,
-      List<String> filterIds, FilterType type);
+      List<String> filterIds, FilterType type, String searchTerm);
 }

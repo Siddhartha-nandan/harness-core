@@ -13,9 +13,12 @@ import static io.harness.filter.dto.FilterVisibility.EVERYONE;
 import static io.harness.filter.dto.FilterVisibility.ONLY_CREATOR;
 
 import static java.lang.String.format;
+import static org.springframework.data.mongodb.core.query.Criteria.where;
 
+import io.harness.NGResourceFilterConstants;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.Scope;
+import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.DuplicateFieldException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.filter.FilterType;
@@ -34,6 +37,7 @@ import io.harness.utils.FullyQualifiedIdentifierHelper;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import javax.ws.rs.NotFoundException;
@@ -188,7 +192,7 @@ public class FilterServiceImpl implements FilterService {
 
   @Override
   public Page<FilterDTO> list(int page, int size, String accountId, String orgIdentifier, String projectIdentifier,
-      List<String> filterIds, FilterType type) {
+      List<String> filterIds, FilterType type, String searchTerm) {
     Criteria criteria = new Criteria();
     if (isNotEmpty(filterIds)) {
       criteria.and(FilterKeys.identifier).in(filterIds);
@@ -197,9 +201,17 @@ public class FilterServiceImpl implements FilterService {
     criteria.and(FilterKeys.orgIdentifier).in(orgIdentifier);
     criteria.and(FilterKeys.projectIdentifier).in(projectIdentifier);
     criteria.and(FilterKeys.filterType).in(type);
+
+    List<Criteria> filterOperators = new ArrayList<>();
     Criteria orOperator = new Criteria().orOperator(Criteria.where(FilterKeys.filterVisibility).is(EVERYONE),
         Criteria.where(FilterKeys.filterVisibility).is(ONLY_CREATOR).and(FilterKeys.userId).is(getUserId()));
-    criteria.andOperator(orOperator);
+    filterOperators.add(orOperator);
+
+    if (EmptyPredicate.isNotEmpty(searchTerm)) {
+      filterOperators.add(
+          where(FilterKeys.name).regex(searchTerm, NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS));
+    }
+    criteria.andOperator(filterOperators);
     Order sortOrder = Sort.Order.asc(FilterKeys.name);
     Pageable pageRequest = PageRequest.of(page, size, Sort.by(sortOrder));
     return filterRepository.findAll(criteria, pageRequest).map(filterMapper::writeDTO);
