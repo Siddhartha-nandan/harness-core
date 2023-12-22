@@ -50,7 +50,7 @@ public class PermissionsCreateEvent implements Event {
     Map<String, String> labels = new HashMap<>();
     labels.put(ResourceConstants.LABEL_KEY_RESOURCE_NAME, IDP_PERMISSIONS_NAME);
     return Resource.builder()
-        .identifier(IDP_PERMISSIONS_NAME + "_" + accountIdentifier)
+        .identifier(IDP_PERMISSIONS + "_" + accountIdentifier)
         .type(IDP_PERMISSIONS)
         .labels(labels)
         .build();
