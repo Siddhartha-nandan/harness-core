@@ -28,8 +28,7 @@ import org.springframework.data.annotation.TypeAlias;
 public class SshWinRmAwsInfraMapping implements InfraMapping {
   @Id private String uuid;
   private String connectorRef;
-  ParameterField<String> credentialsRef;
+  private String credentialsRef;
   private String accountId;
   private String region;
-  private String loadBalancer;
 }

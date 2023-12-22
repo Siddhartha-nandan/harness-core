@@ -16,6 +16,7 @@ import io.harness.cdng.infra.beans.AwsInstanceFilter;
 import io.harness.cdng.infra.beans.InfraMapping;
 import io.harness.cdng.infra.beans.SshWinRmAwsInfraMapping;
 import io.harness.cdng.infra.beans.SshWinRmAwsInfraMapping.SshWinRmAwsInfraMappingBuilder;
+import io.harness.common.ParameterFieldHelper;
 import io.harness.filters.GenericEntityRefExtractorHelper;
 import io.harness.ng.core.infrastructure.InfrastructureKind;
 import io.harness.pms.yaml.ParameterField;
@@ -88,15 +89,11 @@ public class SshWinRmAwsInfrastructure extends InfrastructureDetailsAbstract imp
 
   @Override
   public InfraMapping getInfraMapping() {
-    final SshWinRmAwsInfraMappingBuilder builder = SshWinRmAwsInfraMapping.builder();
-
-    if (connectorRef != null) {
-      builder.connectorRef(connectorRef.getValue());
-    }
-    if (region != null) {
-      builder.region(region.getValue());
-    }
-
+    final SshWinRmAwsInfraMappingBuilder builder =
+        SshWinRmAwsInfraMapping.builder()
+            .connectorRef(ParameterFieldHelper.getParameterFieldValue(connectorRef))
+            .region(ParameterFieldHelper.getParameterFieldValue(region))
+            .credentialsRef(ParameterFieldHelper.getParameterFieldValue(credentialsRef));
     return builder.build();
   }
 
@@ -112,7 +109,7 @@ public class SshWinRmAwsInfrastructure extends InfrastructureDetailsAbstract imp
 
   @Override
   public String[] getInfrastructureKeyValues() {
-    return new String[] {connectorRef.getValue()};
+    return new String[] {connectorRef.getValue(), credentialsRef.getValue(), region.getValue()};
   }
 
   @Override
