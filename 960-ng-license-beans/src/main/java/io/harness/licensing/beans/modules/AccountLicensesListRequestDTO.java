@@ -22,7 +22,8 @@ import java.util.List;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@Schema(name = "BatchModuleLicenseRequest", description = "This contains the data required for batch call.")
-public class BatchModuleLicenseRequestDTO {
-    @Schema(description = "Specifies the list of account Id.") @NotNull List<String> accountIds;
+@Schema(name = "AccountLicensesListRequest",
+    description = "This contains the payload required for retrieve licenses of multiple accounts at once.")
+public class AccountLicensesListRequestDTO {
+  @Schema(description = "Specifies the list of account ids.") @NotNull List<String> accountIds;
 }
