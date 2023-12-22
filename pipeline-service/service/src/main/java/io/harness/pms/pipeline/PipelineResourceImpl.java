@@ -18,9 +18,12 @@ import io.harness.accesscontrol.OrgIdentifier;
 import io.harness.accesscontrol.ProjectIdentifier;
 import io.harness.accesscontrol.ResourceIdentifier;
 import io.harness.accesscontrol.clients.AccessControlClient;
+import io.harness.accesscontrol.clients.RolesClient;
 import io.harness.accesscontrol.publicaccess.PublicAccessClient;
 import io.harness.accesscontrol.publicaccess.dto.PublicAccessResponse;
 import io.harness.accesscontrol.publicaccess.utils.PublicAccessClientUtils;
+import io.harness.accesscontrol.scopes.harness.HarnessScopeParams;
+import io.harness.account.utils.AccountUtils;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
@@ -31,6 +34,7 @@ import io.harness.engine.governance.PolicyEvaluationFailureException;
 import io.harness.exception.EntityNotFoundException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ngexception.beans.yamlschema.YamlSchemaErrorWrapperDTO;
+import io.harness.ff.FeatureFlagService;
 import io.harness.git.model.ChangeType;
 import io.harness.gitaware.helper.GitAwareContextHelper;
 import io.harness.gitaware.helper.GitImportInfoDTO;
@@ -49,6 +53,7 @@ import io.harness.plancreator.steps.internal.PmsAbstractStepNode;
 import io.harness.pms.annotations.PipelineServiceAuth;
 import io.harness.pms.governance.PipelineSaveResponse;
 import io.harness.pms.helpers.PipelineCloneHelper;
+import io.harness.pms.ngpipeline.inputset.service.PMSInputSetService;
 import io.harness.pms.pipeline.PipelineEntity.PipelineEntityKeys;
 import io.harness.pms.pipeline.api.PipelinesApiUtils;
 import io.harness.pms.pipeline.gitsync.PMSUpdateGitDetailsParams;
@@ -67,6 +72,8 @@ import io.harness.pms.pipeline.validation.async.service.PipelineAsyncValidationS
 import io.harness.pms.rbac.PipelineRbacPermissions;
 import io.harness.pms.variables.VariableCreatorMergeService;
 import io.harness.pms.variables.VariableMergeServiceResponse;
+import io.harness.project.remote.ProjectClient;
+import io.harness.resourcegroupclient.remote.ResourceGroupClient;
 import io.harness.spec.server.accesscontrol.v1.model.PublicAccessRequest;
 import io.harness.spec.server.pipeline.v1.model.PipelineValidationUUIDResponseBody;
 import io.harness.steps.template.TemplateStepNode;
@@ -79,6 +86,7 @@ import io.harness.yaml.schema.YamlSchemaResource;
 import io.harness.yaml.validator.InvalidYamlException;
 
 import com.google.inject.Inject;
+import com.google.inject.name.Named;
 import io.swagger.annotations.ApiParam;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -116,7 +124,14 @@ public class PipelineResourceImpl implements YamlSchemaResource, PipelineResourc
   private final PipelineAsyncValidationService pipelineAsyncValidationService;
   private final AccessControlClient accessControlClient;
   private final PublicAccessClient publicAccessClient;
+  private final FeatureFlagService featureFlagService;
+  private final AccountUtils accountUtils;
+  private final PMSInputSetService pmsInputSetService;
+  @Inject @Named("PRIVILEGED") private RolesClient rolesClient;
+  @Inject @Named("PRIVILEGED") private ProjectClient projectClient;
   private final String PIPELINE = "PIPELINE";
+  private static String ADD = "ADD";
+  private static String REMOVE = "REMOVE";
 
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_CREATE_AND_EDIT)
   @Deprecated
@@ -640,5 +655,16 @@ public class PipelineResourceImpl implements YamlSchemaResource, PipelineResourc
                 .repoName(gitMetadataUpdateRequestInfo.getRepoName())
                 .build());
     return ResponseDTO.newResponse(PMSGitUpdateResponseDTO.builder().identifier(pipelineAfterUpdate).build());
+  }
+
+  @Override
+  public ResponseDTO<PipelineSaveResponse> migration() {
+    rolesClient.get("PipelineRole",
+        HarnessScopeParams.builder()
+            .orgIdentifier("default")
+            .accountIdentifier("kmpySmUISimoRrJL6NL73w")
+            .projectIdentifier("TestProject")
+            .build());
+    return null;
   }
 }

@@ -709,4 +709,17 @@ public interface PipelineResource {
       @Parameter(description = PipelineResourceConstants.PIPELINE_ID_PARAM_MESSAGE, required = true) @PathParam(
           NGCommonEntityConstants.PIPELINE_KEY) @ResourceIdentifier String pipelineIdentifier,
       @BeanParam GitMetadataUpdateRequestInfoDTO gitMetadataUpdateRequestInfo);
+
+  @GET
+  @Path("/migration")
+  @ApiOperation(value = "Clone a Pipeline", nickname = "clonePipeline")
+  @Operation(operationId = "clonePipeline", summary = "Clone a Pipeline API",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(responseCode = "default", description = "Returns cloned pipeline with metadata")
+      })
+  @Hidden
+  ResponseDTO<PipelineSaveResponse>
+  migration();
 }
