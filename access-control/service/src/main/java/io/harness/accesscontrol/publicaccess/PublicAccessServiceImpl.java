@@ -178,13 +178,7 @@ public class PublicAccessServiceImpl implements PublicAccessService {
       RoleAssignment roleAssignment = buildRoleAssignment(scope.getLevel().toString(), scope.toString(),
           publicAccessRoleAssignmentMapping.getRoleIdentifier(),
           publicAccessRoleAssignmentMapping.getPrincipalIdentifier());
-      try {
-        roleAssignmentService.create(roleAssignment);
-      } catch (DuplicateKeyException e) {
-        throw new DuplicateFieldException(String.format(
-            "A role assignment with the same resource group, role and principal is already present in the scope %s",
-            roleAssignment.getScopeIdentifier()));
-      }
+      roleAssignmentService.create(roleAssignment);
     }
   }
 
