@@ -27,8 +27,8 @@ import java.time.temporal.ChronoUnit;
 @OwnedBy(HarnessTeam.CODE)
 public class CodeLocalClient implements CodeModuleLicenseClient {
   private static final int ENTERPRISE_TRIAL_DEVELOPERS = 200;
-  private static final long REPO_SIZE_ENTERPRISE = DataSize.parse("10Gi").toBytes();
-  private static final long REPO_SIZE_FREE = DataSize.parse("4Gi").toBytes();
+  private static final DataSize REPO_SIZE_ENTERPRISE = DataSize.parse("10GiB");
+  private static final DataSize REPO_SIZE_FREE = DataSize.parse("4GiB");
 
   @Override
   public CodeModuleLicenseDTO createTrialLicense(Edition edition, String accountId) {
@@ -42,13 +42,15 @@ public class CodeLocalClient implements CodeModuleLicenseClient {
       case ENTERPRISE:
         return builder.numberOfDevelopers(ENTERPRISE_TRIAL_DEVELOPERS)
             .numberOfRepositories(Integer.valueOf(UNLIMITED))
-            .maxRepoSizeInBytes(REPO_SIZE_ENTERPRISE)
+            .maxRepoSizeString(REPO_SIZE_ENTERPRISE.toString())
+            .maxRepoSizeInBytes(REPO_SIZE_ENTERPRISE.toBytes())
             .licenseType(LicenseType.TRIAL)
             .build();
       case FREE:
         return builder.numberOfDevelopers(Integer.valueOf(UNLIMITED))
             .numberOfRepositories(5)
-            .maxRepoSizeInBytes(REPO_SIZE_FREE)
+            .maxRepoSizeString(REPO_SIZE_FREE.toString())
+            .maxRepoSizeInBytes(REPO_SIZE_FREE.toBytes())
             .build();
       default:
         throw new UnsupportedOperationException("Requested edition is not supported");

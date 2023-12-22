@@ -15,16 +15,12 @@ import io.harness.annotations.dev.OwnedBy;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jodd.util.collection.MapEntry;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @OwnedBy(HarnessTeam.CODE)
 @Data
@@ -38,5 +34,6 @@ import java.util.Map;
 public class CodeModuleLicenseDTO extends ModuleLicenseDTO {
   Integer numberOfDevelopers;
   Integer numberOfRepositories;
+  String maxRepoSizeString;
   Long maxRepoSizeInBytes;
 }

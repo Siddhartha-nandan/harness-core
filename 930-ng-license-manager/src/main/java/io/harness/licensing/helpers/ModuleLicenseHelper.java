@@ -361,9 +361,10 @@ public class ModuleLicenseHelper {
                 currentCodeModuleLicense.getNumberOfRepositories())) {
           currentCodeModuleLicense.setNumberOfRepositories(updatedCodeModuleLicense.getNumberOfRepositories());
         }
-        if(updatedCodeModuleLicense.getMaxRepoSize() != null &&
-            !updatedCodeModuleLicense.getMaxRepoSize().equals(currentCodeModuleLicense.getMaxRepoSize())) {
-          currentCodeModuleLicense.setMaxRepoSize(updatedCodeModuleLicense.getMaxRepoSize());
+        if (updatedCodeModuleLicense.getMaxRepoSizeString() != null
+            && !updatedCodeModuleLicense.getMaxRepoSizeString().equals(
+                currentCodeModuleLicense.getMaxRepoSizeString())) {
+          currentCodeModuleLicense.setMaxRepoSizeString(updatedCodeModuleLicense.getMaxRepoSizeString());
         }
 
         break;

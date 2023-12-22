@@ -38,7 +38,7 @@ public enum ModuleType {
   @JsonProperty("IDP") IDP("Internal Developer Portal", PUBLIC, ONBOARDED),
 
   // Internal modules which have been onboarded
-  @JsonProperty("CODE") CODE("Code", INTERNAL, ONBOARDED), // TODO: Remove internal flag once licensing is added.
+  @JsonProperty("CODE") CODE("Code", PUBLIC, ONBOARDED), // TODO: Remove internal flag once licensing is added.
   @JsonProperty("CORE") CORE("Core", INTERNAL, ONBOARDED),
   @JsonProperty("PMS") PMS("Pipelines", INTERNAL, ONBOARDED),
   @JsonProperty("TEMPLATESERVICE") TEMPLATESERVICE("TemplateService", INTERNAL, ONBOARDED),

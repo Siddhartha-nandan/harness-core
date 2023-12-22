@@ -17,6 +17,7 @@ import io.harness.licensing.mappers.LicenseObjectMapper;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import io.dropwizard.util.DataSize;
 
 @OwnedBy(HarnessTeam.CODE)
 @Singleton
@@ -28,7 +29,8 @@ public class CodeLicenseObjectMapper implements LicenseObjectMapper<CodeModuleLi
     return CodeModuleLicenseDTO.builder()
         .numberOfDevelopers(moduleLicense.getNumberOfDevelopers())
         .numberOfRepositories(moduleLicense.getNumberOfRepositories())
-        .maxRepoSizeInBytes(moduleLicense.getMaxRepoSize())
+        .maxRepoSizeString(moduleLicense.getMaxRepoSizeString())
+        .maxRepoSizeInBytes(DataSize.parse(moduleLicense.getMaxRepoSizeString()).toBytes())
         .build();
   }
 
@@ -38,8 +40,9 @@ public class CodeLicenseObjectMapper implements LicenseObjectMapper<CodeModuleLi
 
     return CodeModuleLicense.builder()
         .numberOfDevelopers(codeModuleLicenseDTO.getNumberOfDevelopers())
+        .maxRepoSizeInBytes(DataSize.parse(codeModuleLicenseDTO.getMaxRepoSizeString()).toBytes())
         .numberOfRepositories(codeModuleLicenseDTO.getNumberOfRepositories())
-        .maxRepoSize(codeModuleLicenseDTO.getMaxRepoSizeInBytes())
+        .maxRepoSizeString(codeModuleLicenseDTO.getMaxRepoSizeString())
         .build();
   }
 

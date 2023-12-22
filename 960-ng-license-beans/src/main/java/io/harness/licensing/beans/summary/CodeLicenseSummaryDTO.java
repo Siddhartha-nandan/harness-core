@@ -36,4 +36,5 @@ public class CodeLicenseSummaryDTO extends LicensesWithSummaryDTO {
   private int numberOfDevelopers;
   private int numberOfRepositories;
   private long maxRepoSizeInBytes;
+  private String maxRepoSizeString;
 }
