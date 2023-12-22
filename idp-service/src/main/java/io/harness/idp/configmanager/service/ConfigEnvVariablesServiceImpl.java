@@ -68,7 +68,6 @@ public class ConfigEnvVariablesServiceImpl implements ConfigEnvVariablesService 
       "%s - is already used in plugin - %s , please use some other env variable name";
 
   private static final String ENV_VARIABLE_NOT_CONFIGURED_ERROR_MESSAGE = "Please set value for %s";
-  private static final String PREFIX_FOR_ACCOUNT = "account.";
 
   @Override
   public List<BackstageEnvSecretVariable> insertConfigEnvVariables(AppConfig appConfig, String accountIdentifier) {
