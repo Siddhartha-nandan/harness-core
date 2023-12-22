@@ -213,7 +213,7 @@ public class S3ToClickHouseSyncTasklet implements Tasklet {
         clickHouseService.executeClickHouseQuery(
             configuration.getClickHouseConfig(), createAwsBillingTableQuery, Boolean.FALSE);
 
-        insertIntoAwsBillingTableFromS3Bucket(awsBillingTableId, folderPath);
+        //        insertIntoAwsBillingTableFromS3Bucket(awsBillingTableId, folderPath);
 
         List<String> usageAccountIds = getUniqueAccountIds(awsBillingTableId);
         log.info(String.join(", ", usageAccountIds));
