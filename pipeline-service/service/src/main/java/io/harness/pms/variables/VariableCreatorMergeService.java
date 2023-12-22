@@ -44,6 +44,7 @@ import io.harness.variable.remote.VariableClient;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.google.inject.name.Named;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.util.HashMap;
@@ -70,12 +71,14 @@ public class VariableCreatorMergeService {
   @Inject private FeatureFlagService featureFlagService;
 
   private static final int MAX_DEPTH = 10;
-  private final Executor executor = Executors.newFixedThreadPool(5);
+  private final Executor executor;
 
   @Inject
-  public VariableCreatorMergeService(PmsSdkHelper pmsSdkHelper, PmsGitSyncHelper pmsGitSyncHelper) {
+  public VariableCreatorMergeService(PmsSdkHelper pmsSdkHelper, PmsGitSyncHelper pmsGitSyncHelper,
+      @Named("VariableCreatorMergeExecutorService") Executor executor) {
     this.pmsSdkHelper = pmsSdkHelper;
     this.pmsGitSyncHelper = pmsGitSyncHelper;
+    this.executor = executor;
   }
 
   public VariableMergeServiceResponse createVariablesResponses(String yaml, boolean newVersion) {

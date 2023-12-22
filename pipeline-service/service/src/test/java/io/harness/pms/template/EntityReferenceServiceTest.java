@@ -38,6 +38,7 @@ import io.harness.rule.Owner;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executors;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -71,7 +72,8 @@ public class EntityReferenceServiceTest extends PipelineServiceTestBase {
   @Before
   public void setup() {
     filterCreatorMergeService = spy(new FilterCreatorMergeService(pmsSdkHelper, pipelineSetupUsageHelper,
-        pmsGitSyncHelper, pmsPipelineTemplateHelper, gitSyncSdkService, infoHelper, triggeredByHelper));
+        pmsGitSyncHelper, pmsPipelineTemplateHelper, gitSyncSdkService, infoHelper, triggeredByHelper,
+        Executors.newSingleThreadExecutor()));
     entityReferenceService = new EntityReferenceService(filterCreatorMergeService);
     services.put("cd", new PlanCreatorServiceInfo(new HashMap<>(), null));
     when(filterCreatorMergeService.getServices()).thenReturn(services);

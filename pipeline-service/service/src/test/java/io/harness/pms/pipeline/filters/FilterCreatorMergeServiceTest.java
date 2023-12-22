@@ -66,6 +66,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Executors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -144,7 +145,8 @@ public class FilterCreatorMergeServiceTest extends PipelineServiceTestBase {
   @Before
   public void init() {
     filterCreatorMergeService = spy(new FilterCreatorMergeService(pmsSdkHelper, pipelineSetupUsageHelper,
-        pmsGitSyncHelper, pmsPipelineTemplateHelper, gitSyncSdkService, principalInfoHelper, triggeredByHelper));
+        pmsGitSyncHelper, pmsPipelineTemplateHelper, gitSyncSdkService, principalInfoHelper, triggeredByHelper,
+        Executors.newSingleThreadExecutor()));
     when(
         pmsPipelineTemplateHelper.getTemplateReferencesForGivenYaml(anyString(), anyString(), anyString(), anyString()))
         .thenReturn(new ArrayList<>());
