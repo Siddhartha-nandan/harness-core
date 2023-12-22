@@ -47,6 +47,7 @@ java_library(
         "//980-commons/src/main/java/io/harness/logging/remote:module",
         "//980-commons/src/main/java/io/harness/security/delegate:module",
         "//platform-service/modules/notification-service/delegate-tasks:module",
+        "@maven//:net_logstash_logback_logstash_logback_encoder",
         "@maven//:org_apache_logging_log4j_log4j_api",
         "@maven//:org_apache_logging_log4j_log4j_to_slf4j",
         "@maven//:org_atmosphere_wasync",
