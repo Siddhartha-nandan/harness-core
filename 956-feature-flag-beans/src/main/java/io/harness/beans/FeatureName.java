@@ -12,6 +12,7 @@ import static io.harness.annotations.dev.HarnessTeam.CV;
 import static io.harness.annotations.dev.HarnessTeam.GTM;
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.annotations.dev.HarnessTeam.SPG;
+import static io.harness.annotations.dev.HarnessTeam.SSCA;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
@@ -95,8 +96,6 @@ public enum FeatureName {
       "FF to make the Artifactory Repository Url as mandatory in case of docker repositoryFormat", HarnessTeam.CDC),
   CDS_ARTIFACTS_PRIMARY_IDENTIFIER("To change the expression value for primary artifact identifier", HarnessTeam.CDC),
   CDS_AUTO_APPROVAL("This FF is for allowing scheduled approval in Harness approval step", HarnessTeam.CDP),
-  CDS_AZURE_WEBAPP_NG_LISTING_APP_NAMES_AND_SLOTS(
-      "Support for listing Azure Web App names and slots on Slot Deployment and Swap Slot steps", HarnessTeam.CDP),
   CDS_CONTAINER_STEP_GROUP("Support for container step group in CD", HarnessTeam.CDP),
   CDS_DEBEZIUM_ENABLED_CG("This flag is enable sync using debezium in cg", HarnessTeam.CDC, Scope.GLOBAL),
   CDS_DISABLE_FABRIC8_CG(
@@ -176,7 +175,6 @@ public enum FeatureName {
   CDS_USE_HTTP_CHECK_IGNORE_RESPONSE_INSTEAD_OF_SOCKET_NG(
       "This is to diable checking for the HTTP status code and instead just check for a valid response",
       HarnessTeam.CDP),
-  CDS_GITHUB_APP_AUTHENTICATION("This flag enables the github app authentication fo github connector", HarnessTeam.CDP),
   CDS_RESOURCE_CONSTRAINT_INSTANCE_OPTIMIZATION(
       "This is to optimize resource constraint Instance read Query In CG", HarnessTeam.CDC),
   CD_GIT_WEBHOOK_POLLING("Used to poll git webhook recent delivery events", HarnessTeam.CDP),
@@ -521,6 +519,7 @@ public enum FeatureName {
       "Enable Basic Role assignment  Default User Group in Orgs and Projects", HarnessTeam.PL),
   PL_ENABLE_JIT_USER_PROVISION("Enable support for Just in time user provision", HarnessTeam.PL),
   PL_ENABLE_MULTIPLE_IDP_SUPPORT("Enable support for multiple SSO IDP in an account", HarnessTeam.PL),
+  PL_ENFORCE_DELEGATE_REGISTRATION_ALLOWLIST("Enforce allowed IPs for delegate registration", HarnessTeam.PL),
   PL_FAVORITES("To enable favorites marking support on entities", HarnessTeam.PL),
   PL_FIX_INCONSISTENT_USER_DATA(
       "This FF process all users of this account and fixes their inconsistent data between CG Manager, NG manager and Access Control ",
@@ -831,9 +830,6 @@ public enum FeatureName {
       HarnessTeam.CDP),
   SEI_ENABLED("FF to enable SEI for harness platform users", HarnessTeam.SEI),
   SEI_NEW_ONBOARDING_INTEGRATIONS("FF to enable new onboarding integrations for SEI", HarnessTeam.SEI),
-  CDS_EKS_ADD_REGIONAL_PARAM(
-      "This flag adds the AWS_STS_REGIONAL_ENDPOINTS=regional environment variable for EKS infrastructure while creating the kubernetes config",
-      HarnessTeam.CDP),
   OPA_AIDA_WIDGET("FF for enabling the AIDA integration for OPA Service", HarnessTeam.OPA),
   CDS_RESOLVE_CUSTOM_TRIGGER_EXPRESSION(
       "This flag resolves expression for pipeline branch for Custom Trigger.", PIPELINE),
@@ -850,8 +846,6 @@ public enum FeatureName {
   CDS_NG_K8S_PASS_RELEASE_METADATA(
       "This flag enables warnings in execution logs if conflicting service/infra are found while performing K8s deployments.",
       HarnessTeam.CDP),
-  CDS_K8S_EKS_LIST_CLUSTERS_ADD_REGION(
-      "Allow the user to specify the region to be used for listing EKS clusters.", HarnessTeam.CDP),
   CDS_SHELL_VARIABLES_EXPORT("Export shell script output variables to different scopes", HarnessTeam.CDC),
   CDS_CUSTOM_STAGE_WITH_ENV_INFRA("Enable optional environment and infrastructure in custom stage", HarnessTeam.CDC),
   CDS_VALIDATE_INPUT_SET_IDENTIFIER("Enable validation check for InputSet Identifier.", PIPELINE),
@@ -884,8 +878,6 @@ public enum FeatureName {
       "Follow delegate selector precedence in service/infra step", CDC),
   CDS_K8S_TRAFFIC_ROUTING_NG(
       "Providing Traffic Routing functionality for K8s - BG, Canary and TrafficRouting steps", HarnessTeam.CDP),
-  CDS_METHOD_INVOCATION_NEW_FLOW_EXPRESSION_ENGINE(
-      "Supports edge cases of method invocation in expression engine", PIPELINE),
 
   CDS_USE_AMBIANCE_IN_EXPRESSION_ENGINE(
       "Uses ambiance in expression engine. Should be enabled only if we see any issues", PIPELINE),
@@ -912,10 +904,13 @@ public enum FeatureName {
   CDS_USER_CD_LICENSE_VIEW("Enable to show Users CD License usage on UI", HarnessTeam.CDP),
   SSCA_USE_ELK("Enables ELK search for Artifact listing instead of Mongo", HarnessTeam.SSCA),
   SSCA_REMEDIATION_TRACKER("FF for Remediation Tracker flow.", HarnessTeam.SSCA),
+  CDS_DIVIDE_SDK_RESPONSE_EVENTS_IN_DIFF_STREAMS(
+      "FF to enable usage of new streams for few sdk response events", PIPELINE),
   CDS_VARIABLES_MERGE_V2_OPTIMIZED_FLOW("FF to switch the v2/variables flow to a new optimized one", CDC, Scope.GLOBAL),
   CDS_OVERRIDES_GITX("Onboard Overrides entity to GitX", HarnessTeam.CDC),
   CDS_SUPPORT_DIFFERENT_INFRA_DURING_ENV_PROPAGATION(
-      "FF to suppport selecting different infrastructure during environment propagation", CDC);
+      "FF to suppport selecting different infrastructure during environment propagation", CDC),
+  SSCA_ENFORCEMENT_EXEMPTIONS_ENABLED("FF to enable exemption workflow in the SSCA enforcement step", SSCA);
 
   // keep-sorted end
 
