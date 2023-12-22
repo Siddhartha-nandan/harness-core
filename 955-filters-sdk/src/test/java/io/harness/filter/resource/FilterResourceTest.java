@@ -68,12 +68,13 @@ public class FilterResourceTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testList() {
     final Page<FilterDTO> page = PageTestUtils.getPage(Arrays.asList(FilterDTO.builder().build()), 1);
-    when(filterService.list(0, 100, accountIdentifier, orgIdentifier, projectIdentifier, null, CONNECTOR))
+    when(filterService.list(0, 100, accountIdentifier, orgIdentifier, projectIdentifier, null, CONNECTOR, null))
         .thenReturn(page);
     ResponseDTO<PageResponse<FilterDTO>> connectorFilterList =
-        filterResource.list(0, 100, accountIdentifier, orgIdentifier, projectIdentifier, CONNECTOR);
+        filterResource.list(0, 100, accountIdentifier, orgIdentifier, projectIdentifier, CONNECTOR, null);
     Mockito.verify(filterService, times(1))
-        .list(eq(0), eq(100), eq(accountIdentifier), eq(orgIdentifier), eq(projectIdentifier), eq(null), eq(CONNECTOR));
+        .list(eq(0), eq(100), eq(accountIdentifier), eq(orgIdentifier), eq(projectIdentifier), eq(null), eq(CONNECTOR),
+            any());
     assertThat(connectorFilterList.getData()).isNotNull();
   }
 
