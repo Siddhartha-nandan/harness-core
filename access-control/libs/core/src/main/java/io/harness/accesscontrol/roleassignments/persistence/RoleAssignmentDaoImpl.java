@@ -59,8 +59,8 @@ public class RoleAssignmentDaoImpl implements RoleAssignmentDao {
       return fromDBO(roleAssignmentRepository.save(roleAssignmentDBO));
     } catch (DuplicateKeyException e) {
       throw new DuplicateFieldException(String.format(
-              "A role assignment with the same resource group, role and principal is already present in the scope %s",
-              roleAssignmentDBO.getScopeIdentifier()));
+          "A role assignment with the same resource group, role and principal is already present in the scope %s",
+          roleAssignmentDBO.getScopeIdentifier()));
     }
   }
 
