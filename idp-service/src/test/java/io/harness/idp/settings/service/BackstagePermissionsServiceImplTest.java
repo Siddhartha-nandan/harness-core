@@ -24,9 +24,11 @@ import io.harness.idp.namespace.service.NamespaceService;
 import io.harness.idp.settings.beans.entity.BackstagePermissionsEntity;
 import io.harness.idp.settings.mappers.BackstagePermissionsMapper;
 import io.harness.idp.settings.repositories.BackstagePermissionsRepository;
+import io.harness.outbox.api.OutboxService;
 import io.harness.rule.Owner;
 import io.harness.spec.server.idp.v1.model.BackstagePermissions;
 import io.harness.spec.server.idp.v1.model.NamespaceInfo;
+import io.harness.springdata.TransactionHelper;
 
 import java.util.HashMap;
 import java.util.List;
@@ -41,6 +43,9 @@ import org.junit.experimental.categories.Category;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @OwnedBy(HarnessTeam.IDP)
@@ -56,6 +61,9 @@ public class BackstagePermissionsServiceImplTest extends CategoryTest {
   @Mock K8sClient k8sClient;
   @Mock NamespaceService namespaceService;
   @InjectMocks BackstagePermissionsServiceImpl backstagePermissionsServiceImpl;
+  @Mock private TransactionHelper transactionHelper;
+  @Mock private TransactionTemplate transactionTemplate;
+  @Mock private OutboxService outboxService;
 
   @Before
   public void setUp() {
@@ -78,6 +86,14 @@ public class BackstagePermissionsServiceImplTest extends CategoryTest {
   @Owner(developers = SARTHAK_KASAT)
   @Category(UnitTests.class)
   public void testUpdatePermissions() {
+    when(transactionTemplate.execute(any()))
+        .thenAnswer(invocationOnMock
+            -> invocationOnMock.getArgument(0, TransactionCallback.class)
+                   .doInTransaction(new SimpleTransactionStatus()));
+
+    BackstagePermissionsEntity oldbackstagePermissionsEntity = BackstagePermissionsEntity.builder().build();
+    when(backstagePermissionsRepository.findByAccountIdentifier(TEST_ACCOUNT_IDENTIFIER))
+        .thenReturn(Optional.of(oldbackstagePermissionsEntity));
     mockAccountNamespaceMapping();
     BackstagePermissions backstagePermissions = new BackstagePermissions();
     backstagePermissions.setPermissions(TEST_PERMISSIONS);
@@ -98,6 +114,10 @@ public class BackstagePermissionsServiceImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testCreatePermissions() {
     mockAccountNamespaceMapping();
+    when(transactionTemplate.execute(any()))
+        .thenAnswer(invocationOnMock
+            -> invocationOnMock.getArgument(0, TransactionCallback.class)
+                   .doInTransaction(new SimpleTransactionStatus()));
     BackstagePermissions backstagePermissions = new BackstagePermissions();
     backstagePermissions.setPermissions(TEST_PERMISSIONS);
     backstagePermissions.setUserGroup(TEST_USERGROUP);

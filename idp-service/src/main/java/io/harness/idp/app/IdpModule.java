@@ -14,6 +14,7 @@ import static io.harness.audit.ResourceTypeConstants.IDP_CHECKS;
 import static io.harness.audit.ResourceTypeConstants.IDP_CONFIG_ENV_VARIABLES;
 import static io.harness.audit.ResourceTypeConstants.IDP_LAYOUT;
 import static io.harness.audit.ResourceTypeConstants.IDP_OAUTH_CONFIG;
+import static io.harness.audit.ResourceTypeConstants.IDP_PERMISSIONS;
 import static io.harness.audit.ResourceTypeConstants.IDP_PROXY_HOST;
 import static io.harness.audit.ResourceTypeConstants.IDP_SCORECARDS;
 import static io.harness.authorization.AuthorizationServiceHeader.IDP_SERVICE;
@@ -94,6 +95,7 @@ import io.harness.idp.audittrails.eventhandlers.CheckEventHandler;
 import io.harness.idp.audittrails.eventhandlers.IDPNextGenOutboxEventHandler;
 import io.harness.idp.audittrails.eventhandlers.LayoutEventHandler;
 import io.harness.idp.audittrails.eventhandlers.OAuthConfigEventHandler;
+import io.harness.idp.audittrails.eventhandlers.PermissionsEventHandler;
 import io.harness.idp.audittrails.eventhandlers.ProxyHostDetailsEventHandler;
 import io.harness.idp.audittrails.eventhandlers.ScorecardEventHandler;
 import io.harness.idp.backstage.resources.BackstageHarnessApiImpl;
@@ -649,6 +651,7 @@ public class IdpModule extends AbstractModule {
     outboxEventHandlerMapBinder.addBinding(IDP_ALLOW_LIST).to(AllowListEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(IDP_OAUTH_CONFIG).to(OAuthConfigEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(IDP_LAYOUT).to(LayoutEventHandler.class);
+    outboxEventHandlerMapBinder.addBinding(IDP_PERMISSIONS).to(PermissionsEventHandler.class);
   }
 
   @Provides
