@@ -391,9 +391,6 @@ public class PipelineServiceModule extends AbstractModule {
         configuration.getNgManagerServiceSecret(), PIPELINE_SERVICE.getServiceId()));
     install(new ResourceGroupClientModule(configuration.getResourceGroupClientConfig().getServiceConfig(),
         configuration.getResourceGroupClientConfig().getSecret(), PIPELINE_SERVICE.getServiceId()));
-    install(new RolesClientModule(configuration.getAccessControlClientConfiguration().getAccessControlServiceConfig(),
-        configuration.getAccessControlClientConfiguration().getAccessControlServiceSecret(),
-        PIPELINE_SERVICE.getServiceId()));
     install(
         YamlSchemaClientModule.getInstance(configuration.getYamlSchemaClientConfig(), PIPELINE_SERVICE.getServiceId()));
     install(new UserClientModule(configuration.getManagerClientConfig(), configuration.getManagerServiceSecret(),

@@ -13,7 +13,6 @@ import static io.harness.swagger.SwaggerBundleConfigurationFactory.buildSwaggerB
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 
-import io.harness.accesscontrol.clients.RoleClientConfig;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;

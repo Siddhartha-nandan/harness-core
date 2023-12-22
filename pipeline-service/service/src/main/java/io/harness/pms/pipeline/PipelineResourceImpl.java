@@ -18,11 +18,9 @@ import io.harness.accesscontrol.OrgIdentifier;
 import io.harness.accesscontrol.ProjectIdentifier;
 import io.harness.accesscontrol.ResourceIdentifier;
 import io.harness.accesscontrol.clients.AccessControlClient;
-import io.harness.accesscontrol.clients.RolesClient;
 import io.harness.accesscontrol.publicaccess.PublicAccessClient;
 import io.harness.accesscontrol.publicaccess.dto.PublicAccessResponse;
 import io.harness.accesscontrol.publicaccess.utils.PublicAccessClientUtils;
-import io.harness.accesscontrol.scopes.harness.HarnessScopeParams;
 import io.harness.account.utils.AccountUtils;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -73,7 +71,6 @@ import io.harness.pms.rbac.PipelineRbacPermissions;
 import io.harness.pms.variables.VariableCreatorMergeService;
 import io.harness.pms.variables.VariableMergeServiceResponse;
 import io.harness.project.remote.ProjectClient;
-import io.harness.resourcegroupclient.remote.ResourceGroupClient;
 import io.harness.spec.server.accesscontrol.v1.model.PublicAccessRequest;
 import io.harness.spec.server.pipeline.v1.model.PipelineValidationUUIDResponseBody;
 import io.harness.steps.template.TemplateStepNode;
@@ -124,14 +121,7 @@ public class PipelineResourceImpl implements YamlSchemaResource, PipelineResourc
   private final PipelineAsyncValidationService pipelineAsyncValidationService;
   private final AccessControlClient accessControlClient;
   private final PublicAccessClient publicAccessClient;
-  private final FeatureFlagService featureFlagService;
-  private final AccountUtils accountUtils;
-  private final PMSInputSetService pmsInputSetService;
-  @Inject @Named("PRIVILEGED") private RolesClient rolesClient;
-  @Inject @Named("PRIVILEGED") private ProjectClient projectClient;
   private final String PIPELINE = "PIPELINE";
-  private static String ADD = "ADD";
-  private static String REMOVE = "REMOVE";
 
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_CREATE_AND_EDIT)
   @Deprecated
@@ -655,16 +645,5 @@ public class PipelineResourceImpl implements YamlSchemaResource, PipelineResourc
                 .repoName(gitMetadataUpdateRequestInfo.getRepoName())
                 .build());
     return ResponseDTO.newResponse(PMSGitUpdateResponseDTO.builder().identifier(pipelineAfterUpdate).build());
-  }
-
-  @Override
-  public ResponseDTO<PipelineSaveResponse> migration() {
-    rolesClient.get("PipelineRole",
-        HarnessScopeParams.builder()
-            .orgIdentifier("default")
-            .accountIdentifier("kmpySmUISimoRrJL6NL73w")
-            .projectIdentifier("TestProject")
-            .build());
-    return null;
   }
 }
