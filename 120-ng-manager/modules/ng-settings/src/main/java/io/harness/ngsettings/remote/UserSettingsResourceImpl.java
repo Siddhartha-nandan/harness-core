@@ -10,27 +10,33 @@ import io.harness.ngsettings.services.UserSettingsService;
 
 import com.google.inject.Inject;
 import java.util.List;
+
+import io.harness.utils.UserHelperService;
 import lombok.AllArgsConstructor;
 @AllArgsConstructor(onConstructor = @__({ @Inject }))
 public class UserSettingsResourceImpl implements UserSettingResource {
   UserSettingsService userSettingsService;
+  private final UserHelperService userHelperService;
 
   @Override
-  public ResponseDTO<SettingValueResponseDTO> get(String identifier, String accountIdentifier, String userIdentifier) {
+  public ResponseDTO<SettingValueResponseDTO> get(String identifier, String accountIdentifier) {
+    String userIdentifier = userHelperService.getUserId();
     return ResponseDTO.newResponse(
         userSettingsService.get(identifier, accountIdentifier, userIdentifier));
   }
 
   @Override
   public ResponseDTO<List<UserSettingResponseDTO>> list(
-      String accountIdentifier, String userIdentifier, SettingCategory category, String groupIdentifier) {
+      String accountIdentifier, SettingCategory category, String groupIdentifier) {
+    String userIdentifier = userHelperService.getUserId();
     return ResponseDTO.newResponse(
         userSettingsService.list(accountIdentifier, userIdentifier, category, groupIdentifier));
   }
 
   @Override
   public ResponseDTO<List<UserSettingUpdateResponseDTO>> update(
-      String accountIdentifier, String userIdentifier, List<UserSettingRequestDTO> userSettingRequestDTOList) {
+      String accountIdentifier, List<UserSettingRequestDTO> userSettingRequestDTOList) {
+    String userIdentifier = userHelperService.getUserId();
     return ResponseDTO.newResponse(userSettingsService.update(accountIdentifier,userIdentifier,userSettingRequestDTOList));
   }
 }

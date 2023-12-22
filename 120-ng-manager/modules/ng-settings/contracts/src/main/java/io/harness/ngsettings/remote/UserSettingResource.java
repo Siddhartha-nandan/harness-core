@@ -65,9 +65,7 @@ public interface UserSettingResource {
   get(@Parameter(description = "This is the Identifier of the Entity", required = true) @NotNull @PathParam(
           NGCommonEntityConstants.IDENTIFIER_KEY) String identifier,
       @Parameter(description = ACCOUNT_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
-          NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
-      @Parameter(description = USER_ID, required = true) @NotNull @QueryParam(
-          NGCommonEntityConstants.USER_ID) String userIdentifier);
+          NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier);
 
   @GET
   @ApiOperation(value = "Get list of user settings", nickname = "getUserSettingsList")
@@ -80,8 +78,6 @@ public interface UserSettingResource {
   ResponseDTO<List<UserSettingResponseDTO>>
   list(@Parameter(description = ACCOUNT_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
            NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
-      @Parameter(description = USER_ID, required = true) @NotNull @QueryParam(
-          NGCommonEntityConstants.USER_ID) String userIdentifier,
       @Parameter(description = SettingConstants.CATEGORY) @QueryParam(
           SettingConstants.CATEGORY_KEY) SettingCategory category,
       @Parameter(description = SettingConstants.GROUP_ID) @QueryParam(
@@ -99,8 +95,6 @@ public interface UserSettingResource {
   ResponseDTO<List<UserSettingUpdateResponseDTO>>
   update(@Parameter(description = ACCOUNT_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
              NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
-      @Parameter(description = USER_ID, required = true) @NotNull @QueryParam(
-          NGCommonEntityConstants.USER_ID) String userIdentifier,
       @RequestBody(description = SettingConstants.SETTING_UPDATE_REQUEST_LIST) @Body
       @NotNull List<UserSettingRequestDTO> userSettingRequestDTOList);
 }
