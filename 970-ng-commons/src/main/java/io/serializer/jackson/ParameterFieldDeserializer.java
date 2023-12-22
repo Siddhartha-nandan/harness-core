@@ -126,32 +126,40 @@ public class ParameterFieldDeserializer extends StdDeserializer<ParameterField<?
     if (EngineExpressionEvaluator.hasExpressions(text)) {
       return ParameterField.createExpressionField(true, text, null, isTypeString);
     }
-
-    try {
-      // Adding this handling for the case when text is a jsonList and needs to be deserialized as a list
-      // For eg: text: ["abc","def"], the deserialized object should be a list of size 2 with elements abc and def
-      // valueDeserializer.deserialize() deserializes it to a list of size 1 with element abc,def.
-      // That is why this if block is needed here before valueDeserializer.deserialize().
-      if (JsonUtils.isJsonList(text)) {
+    // Adding this handling for the case when text is a jsonList and needs to be deserialized as a list
+    // For eg: text: ["abc","def"], the deserialized object should be a list of size 2 with elements abc and def
+    // valueDeserializer.deserialize() deserializes it to a list of size 1 with element abc,def.
+    // That is why this if block is needed here before valueDeserializer.deserialize().
+    if (JsonUtils.isJsonList(text) && referenceType.getRawClass() == List.class) {
+      try {
         return ParameterField.createValueField(JsonUtils.asList(text, new TypeReference<>() {
           @Override
           public Type getType() {
             return referenceType;
           }
         }));
+      } catch (Exception ex) {
+        return deserialize(p, ctxt, text);
       }
+    } else {
+      return deserialize(p, ctxt, text);
+    }
+  }
+
+  private ParameterField<?> deserialize(JsonParser p, DeserializationContext ctxt, String text) throws IOException {
+    try {
       Object refd = (valueTypeDeserializer == null)
           ? valueDeserializer.deserialize(p, ctxt)
           : valueDeserializer.deserializeWithType(p, ctxt, valueTypeDeserializer);
       return ParameterField.createValueField(refd);
-    } catch (Exception ex) {
+    } catch (Exception e) {
       if (NGExpressionUtils.NULL.equals(text) || NGExpressionUtils.EMPTY.equals(text)) {
         return getNullValue(ctxt);
       }
       if (referenceType.getRawClass() == List.class) {
         return ParameterField.createValueField(JsonUtils.read(text, ArrayList.class));
       }
-      throw ex;
+      throw e;
     }
   }
 
