@@ -39,7 +39,7 @@ public class DockerRunnerResourceImpl implements DockerRunnerResource {
         accountClient.getInstallationCommand(accountId, DelegateType.DOCKER, os, arch);
     Map<String, String> res = CGRestUtils.getResponse(req);
     String delegateCommand = res.get("command");
-    String env = SystemWrapper.getenv("ENV");
+    String env = SystemWrapper.getenv("ENV_TYPE");
     String scriptUrl = getScriptUrl(env);
     String token = extractToken(delegateCommand, accountId);
     String delegateVersion = extractDelegateVersion(delegateCommand);
