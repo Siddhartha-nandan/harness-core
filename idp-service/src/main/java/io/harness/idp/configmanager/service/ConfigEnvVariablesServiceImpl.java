@@ -13,6 +13,7 @@ import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.exception.InvalidRequestException;
+import io.harness.idp.common.CommonUtils;
 import io.harness.idp.configmanager.beans.entity.PluginConfigEnvVariablesEntity;
 import io.harness.idp.configmanager.events.envvariables.BackstageEnvSecretCreateEvent;
 import io.harness.idp.configmanager.events.envvariables.BackstageEnvSecretDeleteEvent;
@@ -327,8 +328,8 @@ public class ConfigEnvVariablesServiceImpl implements ConfigEnvVariablesService 
         String newEnvVariableIdentifier = newBackstageEnvSecretVariable.getIdentifier();
         BackstageEnvSecretVariable oldBackstageEnvSecretVariable =
             oldBackstageEnvVariableMap.get(newEnvVariableIdentifier);
-        oldBackstageEnvSecretVariable =
-            addAccountAsPrefixForSecretIdentifierInBackstageEnvSecretVariable(oldBackstageEnvSecretVariable);
+        oldBackstageEnvSecretVariable.setHarnessSecretIdentifier(
+            CommonUtils.addAccountScopeInIdentifier(oldBackstageEnvSecretVariable.getHarnessSecretIdentifier()));
 
         if (!newBackstageEnvSecretVariable.getEnvName().equals(oldBackstageEnvSecretVariable.getEnvName())
             || !newBackstageEnvSecretVariable.getHarnessSecretIdentifier().equals(
@@ -349,12 +350,5 @@ public class ConfigEnvVariablesServiceImpl implements ConfigEnvVariablesService 
     }));
 
     return returnList;
-  }
-
-  private BackstageEnvSecretVariable addAccountAsPrefixForSecretIdentifierInBackstageEnvSecretVariable(
-      BackstageEnvSecretVariable backstageEnvSecretVariable) {
-    backstageEnvSecretVariable.setHarnessSecretIdentifier(
-        PREFIX_FOR_ACCOUNT + backstageEnvSecretVariable.getHarnessSecretIdentifier());
-    return backstageEnvSecretVariable;
   }
 }

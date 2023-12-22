@@ -98,4 +98,8 @@ public class CommonUtils {
   public static String parseObjectToString(Object value) {
     return value != null ? (String) value : StringUtils.EMPTY;
   }
+
+  public static String addAccountScopeInIdentifier(String identifier) {
+    return Constants.ACCOUNT_SCOPED + identifier;
+  }
 }

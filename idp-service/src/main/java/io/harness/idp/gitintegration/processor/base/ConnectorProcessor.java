@@ -10,7 +10,6 @@ package io.harness.idp.gitintegration.processor.base;
 import static io.harness.connector.helper.GitApiAccessDecryptionHelper.getAPIAccessDecryptableEntity;
 import static io.harness.connector.helper.GitApiAccessDecryptionHelper.hasApiAccess;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
-import static io.harness.idp.gitintegration.utils.GitIntegrationConstants.ACCOUNT_SCOPED;
 import static io.harness.idp.gitintegration.utils.GitIntegrationConstants.HARNESS_ENTITIES_IMPORT_COMMIT_MESSAGE;
 import static io.harness.utils.DelegateOwner.getNGTaskSetupAbstractionsWithOwner;
 
@@ -67,6 +66,7 @@ import io.harness.gitsync.common.helper.GitSyncGrpcClientUtils;
 import io.harness.gitsync.common.helper.GitSyncLogContextHelper;
 import io.harness.gitsync.common.helper.ScopeIdentifierMapper;
 import io.harness.gitsync.common.helper.UserPrincipalMapper;
+import io.harness.idp.common.Constants;
 import io.harness.idp.configmanager.service.ConfigManagerService;
 import io.harness.idp.configmanager.utils.ConfigManagerUtils;
 import io.harness.ng.core.BaseNGAccess;
@@ -206,7 +206,7 @@ public abstract class ConnectorProcessor {
                 .setRepoName(repoName)
                 .setBranchName(catalogConnectorInfo.getBranch())
                 .setFilePath(filePathInRepo)
-                .setConnectorRef(ACCOUNT_SCOPED + catalogConnectorInfo.getConnector().getIdentifier())
+                .setConnectorRef(Constants.ACCOUNT_SCOPED + catalogConnectorInfo.getConnector().getIdentifier())
                 .setFileContent(Files.readString(filePath))
                 .setIsCommitToNewBranch(commitToNewBranch)
                 .setBaseBranchName(baseBranchName)
