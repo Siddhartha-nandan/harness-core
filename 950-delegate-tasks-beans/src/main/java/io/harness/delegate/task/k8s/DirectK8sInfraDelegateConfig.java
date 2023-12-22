@@ -19,13 +19,11 @@ import io.harness.taskcontext.infra.InfraContext;
 import java.util.List;
 import lombok.Builder;
 import lombok.Value;
-import lombok.extern.slf4j.Slf4j;
 
 @Value
 @Builder
 @RecasterAlias("io.harness.delegate.task.k8s.DirectK8sInfraDelegateConfig")
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_K8S})
-@Slf4j
 public class DirectK8sInfraDelegateConfig implements K8sInfraDelegateConfig {
   String namespace;
   KubernetesClusterConfigDTO kubernetesClusterConfigDTO;

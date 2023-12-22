@@ -22,14 +22,12 @@ import io.harness.taskcontext.infra.RancherK8sInfraContext;
 import java.util.List;
 import lombok.Builder;
 import lombok.Value;
-import lombok.extern.slf4j.Slf4j;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 @Value
 @Builder
 @OwnedBy(CDP)
 @RecasterAlias("io.harness.delegate.task.k8s.RancherK8sInfraDelegateConfig")
-@Slf4j
 public class RancherK8sInfraDelegateConfig implements K8sInfraDelegateConfig {
   String namespace;
   String cluster;
