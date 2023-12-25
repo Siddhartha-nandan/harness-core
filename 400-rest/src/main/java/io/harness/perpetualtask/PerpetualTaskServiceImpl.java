@@ -7,6 +7,7 @@
 
 package io.harness.perpetualtask;
 
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.delegate.message.ManagerMessageConstants.UPDATE_PERPETUAL_TASK;
 import static io.harness.logging.AutoLogContext.OverrideBehavior.OVERRIDE_ERROR;
@@ -97,8 +98,13 @@ public class PerpetualTaskServiceImpl implements PerpetualTaskService, DelegateO
   @Getter private Subject<PerpetualTaskStateObserver> perpetualTaskStateObserverSubject = new Subject<>();
 
   @Override
-  public void appointDelegate(String accountId, String taskId, String delegateId, long lastContextUpdated) {
-    perpetualTaskRecordDao.appointDelegate(taskId, delegateId, lastContextUpdated);
+  public void appointDelegate(
+      String accountId, String taskId, String delegateId, long lastContextUpdated, String delegateGroupIdentifier) {
+    if (isEmpty(delegateGroupIdentifier)) {
+      Delegate delegate = delegateCache.get(accountId, delegateId);
+      delegateGroupIdentifier = delegate != null ? delegate.getDelegateGroupId() : delegateGroupIdentifier;
+    }
+    perpetualTaskRecordDao.appointDelegate(taskId, delegateId, lastContextUpdated, delegateGroupIdentifier);
 
     broadcastAggregateSet.add(Pair.of(accountId, delegateId));
 

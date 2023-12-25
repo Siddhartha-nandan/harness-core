@@ -48,7 +48,7 @@ public class PerpetualTaskRecordDao {
     this.persistence = persistence;
   }
 
-  public void appointDelegate(String taskId, String delegateId, long lastContextUpdated) {
+  public void appointDelegate(String taskId, String delegateId, long lastContextUpdated, String delegateGroupId) {
     try (DelegateLogContext ignore = new DelegateLogContext(delegateId, OVERRIDE_ERROR)) {
       log.debug("Appoint perpetual task: {}", taskId);
       Query<PerpetualTaskRecord> query =
@@ -57,9 +57,11 @@ public class PerpetualTaskRecordDao {
           persistence.createUpdateOperations(PerpetualTaskRecord.class)
               .set(PerpetualTaskRecordKeys.delegateId, delegateId)
               .set(PerpetualTaskRecordKeys.state, TASK_ASSIGNED)
+                  .set(PerpetualTaskRecordKeys.delegateGroupIdentifier, delegateGroupId)
               .set(PerpetualTaskRecordKeys.assignAfterMs, 0L)
               .unset(PerpetualTaskRecordKeys.assignTryCount)
               .unset(PerpetualTaskRecordKeys.unassignedReason)
+              .unset(PerpetualTaskRecordKeys.exception)
               .set(PerpetualTaskRecordKeys.client_context_last_updated, lastContextUpdated);
       persistence.update(query, updateOperations);
     }

@@ -111,7 +111,7 @@ public class PerpetualTaskValidationCallback implements OldNotifyCallback {
             taskRecord.getPerpetualTaskType(), perpetualTaskId);
         if (delegateService.checkDelegateConnected(taskRecord.getAccountId(), delegateId)) {
           perpetualTaskService.appointDelegate(
-              taskRecord.getAccountId(), perpetualTaskId, delegateId, System.currentTimeMillis());
+              taskRecord.getAccountId(), perpetualTaskId, delegateId, System.currentTimeMillis(),taskRecord.getDelegateGroupIdentifier());
         }
 
       } else {

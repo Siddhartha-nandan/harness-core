@@ -43,7 +43,7 @@ public interface PerpetualTaskService {
 
   void recordTaskFailure(String taskId, String exceptionMessage);
 
-  void appointDelegate(String accountId, String taskId, String delegateId, long lastContextUpdated);
+  void appointDelegate(String accountId, String taskId, String delegateId, long lastContextUpdated, String delegateGroupId);
 
   void updateTaskUnassignedReason(String taskId, PerpetualTaskUnassignedReason reason, int assignTryCount);
 

@@ -199,6 +199,8 @@ public interface DelegateService extends OwnedByAccount {
 
   boolean checkDelegateConnected(String accountId, String delegateId);
 
+  String checkAnyDelegateConnectedWithSameDelegateGroup(String accountId, String delegateId);
+
   void updateLastExpiredEventHeartbeatTime(long lastExpiredEventHeartbeatTime, String delegateId, String accountId);
 
   DelegateTask abortTaskV2(String accountId, String delegateTaskId);

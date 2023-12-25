@@ -113,6 +113,8 @@ public class PerpetualTaskRecord
   String exception;
   @Transient String delegateHostName;
 
+  String delegateGroupIdentifier;
+
   @Override
   public Long obtainNextIteration(String fieldName) {
     if (PerpetualTaskRecordKeys.assignIteration.equals(fieldName)) {

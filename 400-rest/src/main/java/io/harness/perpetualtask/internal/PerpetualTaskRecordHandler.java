@@ -25,6 +25,7 @@ import io.harness.beans.DelegateTask;
 import io.harness.delegate.Capability;
 import io.harness.delegate.DelegateTaskValidationFailedException;
 import io.harness.delegate.NoEligibleDelegatesInAccountException;
+import io.harness.delegate.beans.Delegate;
 import io.harness.delegate.beans.DelegateTaskInvalidRequestException;
 import io.harness.delegate.beans.NoAvailableDelegatesException;
 import io.harness.delegate.beans.NoInstalledDelegatesException;
@@ -50,6 +51,7 @@ import io.harness.perpetualtask.PerpetualTaskState;
 import io.harness.perpetualtask.PerpetualTaskUnassignedReason;
 import io.harness.perpetualtask.internal.PerpetualTaskRecord.PerpetualTaskRecordKeys;
 import io.harness.serializer.KryoSerializer;
+import io.harness.service.intfc.DelegateCache;
 import io.harness.waiter.WaitNotifyEngine;
 import io.harness.workers.background.CrossEnvironmentAccountStatusBasedEntityProcessController;
 
@@ -81,6 +83,7 @@ public class PerpetualTaskRecordHandler extends IteratorPumpAndRedisModeHandler 
   @Inject private PerpetualTaskRecordDao perpetualTaskRecordDao;
   @Inject private WaitNotifyEngine waitNotifyEngine;
   @Inject private DelegateTaskMigrationHelper delegateTaskMigrationHelper;
+  @Inject private DelegateCache delegateCache;
 
   private static final Duration ACCEPTABLE_NO_ALERT_DELAY = ofSeconds(45);
   private static final Duration ACCEPTABLE_EXECUTION_TIME = ofSeconds(30);
@@ -145,9 +148,20 @@ public class PerpetualTaskRecordHandler extends IteratorPumpAndRedisModeHandler 
       String taskId = taskRecord.getUuid();
       if (!isEmpty(taskRecord.getDelegateId())
           && delegateService.checkDelegateConnected(taskRecord.getAccountId(), taskRecord.getDelegateId())) {
+        Delegate delegate = delegateCache.get(taskRecord.getAccountId(), taskRecord.getDelegateId());
+        String delegateGroupId = delegate != null ? delegate.getDelegateGroupId() : "";
         log.info(
             "Assign perpetual task {} to previously appointed delegate id {}.", taskId, taskRecord.getDelegateId());
-        perpetualTaskRecordDao.appointDelegate(taskId, taskRecord.getDelegateId(), System.currentTimeMillis());
+        perpetualTaskRecordDao.appointDelegate(
+            taskId, taskRecord.getDelegateId(), System.currentTimeMillis(), delegateGroupId);
+        return;
+      }
+      // check for any delegates connected with same delegate group
+      String delegateConnectedId = delegateService.checkAnyDelegateConnectedWithSameDelegateGroup(
+          taskRecord.getAccountId(), taskRecord.getDelegateGroupIdentifier());
+      if (!isEmpty(delegateConnectedId)) {
+        perpetualTaskService.appointDelegate(taskRecord.getAccountId(), taskRecord.getUuid(), delegateConnectedId,
+            System.currentTimeMillis(), taskRecord.getDelegateGroupIdentifier());
         return;
       }
       log.info("Start assigning perpetual task id:{} type:{} to delegate.", taskId, taskRecord.getPerpetualTaskType());

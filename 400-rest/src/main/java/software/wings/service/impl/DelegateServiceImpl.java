@@ -4084,6 +4084,20 @@ public class DelegateServiceImpl implements DelegateService {
     return delegateDao.checkDelegateConnected(accountId, delegateId);
   }
 
+  @Override
+  public String checkAnyDelegateConnectedWithSameDelegateGroup(String accountId, String delegateGroupId) {
+    List<Delegate> delegatesFromSameGroup = delegateCache.getDelegatesForGroup(accountId, delegateGroupId);
+    if (isEmpty(delegatesFromSameGroup)) {
+      return "";
+    }
+    for (Delegate delegate : delegatesFromSameGroup) {
+      if (checkDelegateConnected(accountId, delegate.getUuid())) {
+        return delegate.getUuid();
+      }
+    }
+    return "";
+  }
+
   private String getVersion(String accountId) {
     String accountVersion = accountService.getAccountPrimaryDelegateVersion(accountId);
     accountVersion = Arrays.stream(accountVersion.split("-")).findFirst().get();
