@@ -103,6 +103,7 @@ import io.harness.iterator.FailDelegateTaskIterator;
 import io.harness.iterator.FailDelegateTaskIteratorOnDMS;
 import io.harness.iterator.IteratorExecutionHandler;
 import io.harness.iterator.IteratorExecutionHandlerImpl;
+import io.harness.iterator.ResetPerpetualTaskIterator;
 import io.harness.lock.AcquiredLock;
 import io.harness.lock.DistributedLockImplementation;
 import io.harness.lock.PersistentLocker;
@@ -1579,6 +1580,7 @@ public class WingsApplication extends Application<MainConfiguration> {
     injector.getInstance(DelegateDisconnectDetectorIterator.class).registerIterator(iteratorExecutionHandler);
     injector.getInstance(FailDelegateTaskIterator.class).registerIterator(iteratorExecutionHandler);
     injector.getInstance(FailDelegateTaskIteratorOnDMS.class).registerIterator(iteratorExecutionHandler);
+    injector.getInstance(ResetPerpetualTaskIterator.class).registerIterator(iteratorExecutionHandler);
     injector.getInstance(DelegateTelemetryPublisher.class).registerIterator(iteratorExecutionHandler);
   }
 

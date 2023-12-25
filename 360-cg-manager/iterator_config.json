@@ -378,5 +378,15 @@
     "targetIntervalInSeconds": 86400,
     "throttleIntervalInSeconds": 0,
     "iteratorMode": "REDIS_BATCH"
+  },
+  {
+    "name": "ResetPerpetualTask",
+    "enabled": true,
+    "threadPoolSize": 1,
+    "threadPoolIntervalInSeconds": 30,
+    "nextIterationMode": "TARGET",
+    "targetIntervalInSeconds": 86400,
+    "throttleIntervalInSeconds": 0,
+    "iteratorMode": "REDIS_BATCH"
   }
 ]
