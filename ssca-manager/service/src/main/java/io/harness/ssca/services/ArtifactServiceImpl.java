@@ -8,6 +8,7 @@
 package io.harness.ssca.services;
 
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+import static io.harness.springdata.PersistenceUtils.DEFAULT_RETRY_POLICY;
 
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.count;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.group;
@@ -18,7 +19,9 @@ import static org.springframework.data.mongodb.core.aggregation.Aggregation.skip
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.sort;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.unwind;
 
+import io.harness.beans.FeatureName;
 import io.harness.network.Http;
+import io.harness.outbox.api.OutboxService;
 import io.harness.repositories.ArtifactRepository;
 import io.harness.repositories.BaselineRepository;
 import io.harness.repositories.EnforcementSummaryRepo;
@@ -45,12 +48,16 @@ import io.harness.ssca.entities.BaselineEntity;
 import io.harness.ssca.entities.CdInstanceSummary;
 import io.harness.ssca.entities.EnforcementSummaryEntity;
 import io.harness.ssca.entities.EnforcementSummaryEntity.EnforcementSummaryEntityKeys;
+import io.harness.ssca.events.SSCAArtifactUpdatedEvent;
+import io.harness.ssca.search.SearchService;
+import io.harness.ssca.search.beans.ArtifactFilter;
 import io.harness.ssca.utils.PipelineUtils;
 import io.harness.ssca.utils.SBOMUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
+import com.google.inject.name.Named;
 import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -67,6 +74,8 @@ import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.UriBuilder;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -86,6 +95,7 @@ import org.springframework.data.mongodb.core.aggregation.SortOperation;
 import org.springframework.data.mongodb.core.aggregation.UnwindOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Slf4j
 public class ArtifactServiceImpl implements ArtifactService {
@@ -96,9 +106,22 @@ public class ArtifactServiceImpl implements ArtifactService {
   @Inject CdInstanceSummaryService cdInstanceSummaryService;
   @Inject PipelineUtils pipelineUtils;
 
+  @Inject FeatureFlagService featureFlagService;
+
+  @Inject SearchService searchService;
+
   @Inject BaselineRepository baselineRepository;
 
   @Inject MongoTemplate mongoTemplate;
+
+  @Inject TransactionTemplate transactionTemplate;
+
+  @Inject OutboxService outboxService;
+
+  private static final RetryPolicy<Object> transactionRetryPolicy = DEFAULT_RETRY_POLICY;
+
+  @Inject @Named("isElasticSearchEnabled") boolean isElasticSearchEnabled;
+
   private final String GCP_REGISTRY_HOST = "gcr.io";
 
   @Override
@@ -253,6 +276,18 @@ public class ArtifactServiceImpl implements ArtifactService {
   }
 
   @Override
+  public void saveArtifact(ArtifactEntity artifact) {
+    Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
+      artifactRepository.save(artifact);
+      if (isElasticSearchEnabled) {
+        outboxService.save(new SSCAArtifactUpdatedEvent(
+            artifact.getAccountId(), artifact.getOrgId(), artifact.getProjectId(), artifact));
+      }
+      return artifact.getArtifactId();
+    }));
+  }
+
+  @Override
   public Page<ArtifactListingResponse> listLatestArtifacts(
       String accountId, String orgIdentifier, String projectIdentifier, Pageable pageable) {
     Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
@@ -294,6 +329,30 @@ public class ArtifactServiceImpl implements ArtifactService {
   @Override
   public Page<ArtifactListingResponse> listArtifacts(String accountId, String orgIdentifier, String projectIdentifier,
       ArtifactListingRequestBody body, Pageable pageable) {
+    if (featureFlagService.isFeatureFlagEnabled(accountId, FeatureName.SSCA_USE_ELK.name())) {
+      List<String> orchestrationIds = searchService.getOrchestrationIds(accountId, orgIdentifier, projectIdentifier,
+          ArtifactFilter.builder()
+              .searchTerm(body.getSearchTerm())
+              .componentFilter(body.getComponentFilter())
+              .licenseFilter(body.getLicenseFilter())
+              .build());
+
+      if (orchestrationIds.isEmpty()) {
+        return Page.empty();
+      }
+
+      Criteria criteria = Criteria.where(ArtifactEntityKeys.orchestrationId)
+                              .in(orchestrationIds)
+                              .andOperator(getPolicyFilterCriteria(body), getDeploymentFilterCriteria(body));
+
+      Page<ArtifactEntity> artifactEntities = artifactRepository.findAll(criteria, pageable);
+
+      List<ArtifactListingResponse> artifactListingResponses =
+          getArtifactListingResponses(accountId, orgIdentifier, projectIdentifier, artifactEntities.toList());
+
+      return new PageImpl<>(artifactListingResponses, pageable, artifactEntities.getTotalElements());
+    }
+
     Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
                             .is(accountId)
                             .and(ArtifactEntityKeys.orgId)
@@ -304,7 +363,7 @@ public class ArtifactServiceImpl implements ArtifactService {
                             .is(false);
 
     if (!StringUtils.isEmpty(body.getSearchTerm())) {
-      criteria.and(ArtifactEntityKeys.name).regex(body.getSearchTerm());
+      criteria.and(ArtifactEntityKeys.name).regex(body.getSearchTerm(), "i");
     }
 
     LicenseFilter licenseFilter = body.getLicenseFilter();
@@ -464,7 +523,7 @@ public class ArtifactServiceImpl implements ArtifactService {
       artifact.setNonProdEnvCount(envCount);
     }
     artifact.setLastUpdatedAt(Instant.now().toEpochMilli());
-    artifactRepository.save(artifact);
+    saveArtifact(artifact);
   }
 
   @Override
