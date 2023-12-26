@@ -7,7 +7,6 @@
 
 package io.harness.delegate.beans.perpetualtask;
 
-import io.harness.annotations.SecondaryStoreIn;
 import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
@@ -28,8 +27,7 @@ import lombok.experimental.FieldNameConstants;
 @Data
 @Builder
 @FieldNameConstants(innerTypeName = "PerpetualTaskConfigKeys")
-@StoreIn(DbAliases.HARNESS)
-@SecondaryStoreIn(DbAliases.DMS)
+@StoreIn(DbAliases.DMS)
 @Entity(value = "perpetualTaskConfig", noClassnameStored = true)
 @OwnedBy(HarnessTeam.PL)
 public class PerpetualTaskConfig implements PersistentEntity {
