@@ -10,6 +10,10 @@ java_library(
     visibility = ["//visibility:public"],
     exports = [
         "//oidc-core/src/main/java/io/harness/oidc/accesstoken:module",
+        "//oidc-core/src/main/java/io/harness/oidc/aws/constants:module",
+        "//oidc-core/src/main/java/io/harness/oidc/aws/credential:module",
+        "//oidc-core/src/main/java/io/harness/oidc/aws/dto:module",
+        "//oidc-core/src/main/java/io/harness/oidc/aws/utility:module",
         "//oidc-core/src/main/java/io/harness/oidc/config:module",
         "//oidc-core/src/main/java/io/harness/oidc/dto:module",
         "//oidc-core/src/main/java/io/harness/oidc/entities:module",

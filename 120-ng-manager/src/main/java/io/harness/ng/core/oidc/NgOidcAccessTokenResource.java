@@ -17,6 +17,7 @@ import io.harness.oidc.accesstoken.OidcWorkloadAccessTokenResponse;
 import io.harness.oidc.aws.credential.AwsOidcCredentialUtility;
 import io.harness.oidc.aws.dto.AwsOidcCredentialRequestDto;
 import io.harness.oidc.aws.dto.AwsOidcCredentialResponseDto;
+import io.harness.oidc.aws.utility.AwsOidcTokenUtility;
 import io.harness.oidc.gcp.constants.GcpOidcServiceAccountAccessTokenResponse;
 import io.harness.oidc.gcp.dto.GcpOidcAccessTokenRequestDTO;
 import io.harness.oidc.gcp.utility.GcpOidcTokenUtility;
@@ -77,6 +78,7 @@ import org.apache.commons.lang3.StringUtils;
 public class NgOidcAccessTokenResource {
   GcpOidcTokenUtility gcpOidcTokenUtility;
   AwsOidcCredentialUtility awsOidcCredentialUtility;
+  AwsOidcTokenUtility awsOidcTokenUtility;
 
   @POST
   @Path("gcp/workload-access")
@@ -142,8 +144,14 @@ public class NgOidcAccessTokenResource {
         ApiResponse(responseCode = "default", description = "Generate an OIDC IAM Role Credential for AWS")
       })
   public ResponseDTO<AwsOidcCredentialResponseDto>
-  getOidcIamRoleCredentialForAws(@RequestBody(required = true) @Valid AwsOidcCredentialRequestDto requestDto) {
+  getOidcIamRoleCredentialForAws(
+      @RequestBody(required = true) @Valid AwsOidcCredentialRequestDto awsOidcCredentialRequestDto) {
+    // Check if the ID Token is empty.
+    String oidcToken = awsOidcCredentialRequestDto.getOidcIdToken();
+    if (StringUtils.isEmpty(oidcToken)) {
+      oidcToken = awsOidcTokenUtility.generateAwsOidcIdToken(awsOidcCredentialRequestDto.getAwsOidcTokenRequestDto());
+    }
     return ResponseDTO.newResponse(
-        awsOidcCredentialUtility.getOidcIamRoleCredential(requestDto.getOidcIdToken(), requestDto));
+        awsOidcCredentialUtility.getOidcIamRoleCredential(oidcToken, awsOidcCredentialRequestDto));
   }
 }

@@ -11,8 +11,8 @@ java_library(
     srcs = glob(["*.java"]),
     visibility = ["//visibility:public"],
     deps = [
-        "//930-oidc-core:module",
         "//:lombok",
+        "//oidc-core/src/main/java/io/harness/oidc/aws/constants:module",
         "@maven//:com_fasterxml_jackson_core_jackson_annotations",
         "@maven//:io_swagger_core_v3_swagger_annotations",
         "@maven//:javax_validation_validation_api",

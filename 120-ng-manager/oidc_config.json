@@ -11,6 +11,21 @@
     "id_token_signing_alg_values_supported":["RS256"],
     "scopes_supported":["openid"]
   },
+  "AWS": {
+    "header": {
+      "typ": "JWT",
+      "alg": "RS256",
+      "kid": "GENERATE_AT_RUNTIME"
+    },
+    "payload": {
+      "sub": "{account_id}",
+      "aud": "https://app.harness.io/{account_id}",
+      "iss": "https://localhost:7457/oidc/account/kmpySmUISimoRrJL6NL73w",
+      "exp": 3600,
+      "iat": 0,
+      "account_id": "{account_id}"
+    }
+  },
   "GCP": {
     "header": {
       "typ": "JWT",

@@ -25,8 +25,8 @@ import lombok.NoArgsConstructor;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(name = "AwsOidcCredentialsRequest", description = "This contains Aws OIDC Credentials request details")
 public class AwsOidcCredentialRequestDto {
-  @NotEmpty @Schema(description = "The OIDC ID Token") private String oidcIdToken;
+  @Schema(description = "The OIDC ID Token") private String oidcIdToken;
   @NotEmpty @Schema(description = "IAM Role ARN") private String iamRoleArn;
   @Schema(description = "Retry policy for aws sdk calls") private AwsSdkCallRetryPolicy retryPolicy;
-  @NotNull private AwsOidcTokenRequestDto requestDto;
+  @NotNull private AwsOidcTokenRequestDto awsOidcTokenRequestDto;
 }
