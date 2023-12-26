@@ -25,6 +25,7 @@ import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.query.Collation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -67,11 +68,11 @@ public class ProjectRepositoryCustomImpl implements ProjectRepositoryCustom {
   }
 
   @Override
-  public Project restore(String accountIdentifier, String orgIdentifier, String identifier) {
+  public Project restore(String accountIdentifier, String parentUniqueIdentifier, String identifier) {
     Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
                             .is(accountIdentifier)
-                            .and(ProjectKeys.orgIdentifier)
-                            .is(orgIdentifier)
+                            .and(ProjectKeys.parentUniqueId)
+                            .is(parentUniqueIdentifier)
                             .and(ProjectKeys.identifier)
                             .is(identifier)
                             .and(ProjectKeys.deleted)
@@ -86,11 +87,11 @@ public class ProjectRepositoryCustomImpl implements ProjectRepositoryCustom {
     return mongoTemplate.findAndModify(query, update, new FindAndModifyOptions().returnNew(true), Project.class);
   }
 
-  public Project hardDelete(String accountIdentifier, String orgIdentifier, String identifier, Long version) {
+  public Project hardDelete(String accountIdentifier, String parentUniqueIdentifier, String identifier, Long version) {
     Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
                             .is(accountIdentifier)
-                            .and(ProjectKeys.orgIdentifier)
-                            .is(orgIdentifier)
+                            .and(ProjectKeys.parentUniqueId)
+                            .is(parentUniqueIdentifier)
                             .and(ProjectKeys.identifier)
                             .is(identifier);
     if (version != null) {
@@ -101,24 +102,6 @@ public class ProjectRepositoryCustomImpl implements ProjectRepositoryCustom {
   }
 
   @Override
-  public Project delete(String accountIdentifier, String orgIdentifier, String identifier, Long version) {
-    Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
-                            .is(accountIdentifier)
-                            .and(ProjectKeys.orgIdentifier)
-                            .is(orgIdentifier)
-                            .and(ProjectKeys.identifier)
-                            .is(identifier)
-                            .and(ProjectKeys.deleted)
-                            .ne(Boolean.TRUE);
-    if (version != null) {
-      criteria.and(ProjectKeys.version).is(version);
-    }
-    Query query = new Query(criteria);
-    Update update = new Update().set(ProjectKeys.deleted, Boolean.TRUE);
-    return mongoTemplate.findAndModify(query, update, Project.class);
-  }
-
-  @Override
   public <T> AggregationResults<T> aggregate(Aggregation aggregation, Class<T> classToFillResultIn) {
     return mongoTemplate.aggregate(aggregation, Project.class, classToFillResultIn);
   }
@@ -126,5 +109,14 @@ public class ProjectRepositoryCustomImpl implements ProjectRepositoryCustom {
   @Override
   public long count(Criteria criteria) {
     return mongoTemplate.count(new Query(criteria), Project.class);
+  }
+
+  @Override
+  public Page<Project> findAllWithCollation(Criteria criteria, Pageable pageable) {
+    Query query = new Query(criteria).with(pageable);
+    query.collation(Collation.of("en").strength(Collation.ComparisonLevel.secondary()));
+    List<Project> projects = mongoTemplate.find(query, Project.class);
+    return PageableExecutionUtils.getPage(
+        projects, pageable, () -> mongoTemplate.count(Query.of(query).limit(-1).skip(-1), Project.class));
   }
 }

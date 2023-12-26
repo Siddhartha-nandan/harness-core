@@ -10,7 +10,9 @@ package io.harness.licensing.helpers;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
 import io.harness.ModuleType;
+import io.harness.beans.FeatureName;
 import io.harness.exception.InvalidRequestException;
+import io.harness.ff.FeatureFlagService;
 import io.harness.licensing.Edition;
 import io.harness.licensing.LicenseType;
 import io.harness.licensing.beans.modules.ModuleLicenseDTO;
@@ -21,6 +23,7 @@ import io.harness.licensing.entities.modules.CETModuleLicense;
 import io.harness.licensing.entities.modules.CFModuleLicense;
 import io.harness.licensing.entities.modules.CIModuleLicense;
 import io.harness.licensing.entities.modules.ChaosModuleLicense;
+import io.harness.licensing.entities.modules.CodeModuleLicense;
 import io.harness.licensing.entities.modules.IACMModuleLicense;
 import io.harness.licensing.entities.modules.IDPModuleLicense;
 import io.harness.licensing.entities.modules.ModuleLicense;
@@ -28,6 +31,7 @@ import io.harness.licensing.entities.modules.SRMModuleLicense;
 import io.harness.licensing.entities.modules.STOModuleLicense;
 import io.harness.subscription.params.UsageKey;
 
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.time.Duration;
 import java.time.Instant;
@@ -35,12 +39,11 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.experimental.UtilityClass;
 
-@UtilityClass
 @Singleton
 public class ModuleLicenseHelper {
-  private final String MODULE_NOT_SUPPORTED_ERROR = "Module %s is not supported for recommendations.";
+  @Inject FeatureFlagService featureFlagService;
+  private static final String MODULE_NOT_SUPPORTED_ERROR = "Module %s is not supported for recommendations.";
 
   public static Map<ModuleType, ModuleLicense> getLastExpiredLicenseForEachModuleType(
       List<ModuleLicense> allModuleLicenses) {
@@ -231,6 +234,11 @@ public class ModuleLicenseHelper {
       current.setSelfService(update.isSelfService());
     }
 
+    if (update.getDeveloperLicenseCount() != null
+        && !update.getDeveloperLicenseCount().equals(current.getDeveloperLicenseCount())) {
+      current.setDeveloperLicenseCount(update.getDeveloperLicenseCount());
+    }
+
     switch (update.getModuleType()) {
       case CD:
         CDModuleLicense cdLicense = (CDModuleLicense) update;
@@ -340,10 +348,28 @@ public class ModuleLicenseHelper {
           currentIdpModuleLicense.setNumberOfDevelopers(updateIdpModuleLicense.getNumberOfDevelopers());
         }
         break;
+      case CODE:
+        CodeModuleLicense updatedCodeModuleLicense = (CodeModuleLicense) update;
+        CodeModuleLicense currentCodeModuleLicense = (CodeModuleLicense) current;
+        if (updatedCodeModuleLicense.getNumberOfDevelopers() != null
+            && !updatedCodeModuleLicense.getNumberOfDevelopers().equals(
+                currentCodeModuleLicense.getNumberOfDevelopers())) {
+          currentCodeModuleLicense.setNumberOfDevelopers(updatedCodeModuleLicense.getNumberOfDevelopers());
+        }
+        if (updatedCodeModuleLicense.getNumberOfRepositories() != null
+            && !updatedCodeModuleLicense.getNumberOfRepositories().equals(
+                currentCodeModuleLicense.getNumberOfRepositories())) {
+          currentCodeModuleLicense.setNumberOfRepositories(updatedCodeModuleLicense.getNumberOfRepositories());
+        }
+        break;
       default:
         // Do nothing
         break;
     }
     return current;
+  }
+
+  public boolean isDeveloperLicensingFeatureEnabled(String accountIdentifier) {
+    return featureFlagService.isEnabled(FeatureName.GTM_DEVELOPER_LICENSING, accountIdentifier);
   }
 }

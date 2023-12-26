@@ -54,6 +54,7 @@ import io.harness.cdng.manifest.yaml.KustomizePatchesManifestOutcome;
 import io.harness.cdng.manifest.yaml.ManifestConfig;
 import io.harness.cdng.manifest.yaml.ManifestConfigWrapper;
 import io.harness.cdng.manifest.yaml.ManifestOutcome;
+import io.harness.cdng.manifest.yaml.ManifestSourceWrapper;
 import io.harness.cdng.manifest.yaml.OpenshiftManifestOutcome;
 import io.harness.cdng.manifest.yaml.OpenshiftManifestOutcome.OpenshiftManifestOutcomeKeys;
 import io.harness.cdng.manifest.yaml.OpenshiftParamManifestOutcome;
@@ -151,8 +152,9 @@ public class K8sStepHelper extends K8sHelmCommonStepHelper {
   @Inject private EncryptionHelper encryptionHelper;
   @Inject private SdkGraphVisualizationDataService sdkGraphVisualizationDataService;
   @Inject private AccountClient accountClient;
-  public TaskChainResponse queueK8sTask(StepBaseParameters stepElementParameters, K8sDeployRequest k8sDeployRequest,
-      Ambiance ambiance, K8sExecutionPassThroughData executionPassThroughData, TaskType taskType) {
+
+  public TaskRequest createTaskRequest(StepBaseParameters stepElementParameters, K8sDeployRequest k8sDeployRequest,
+      TaskType taskType, Ambiance ambiance) {
     TaskData taskData = TaskData.builder()
                             .parameters(new Object[] {k8sDeployRequest})
                             .taskType(taskType.name())
@@ -162,12 +164,16 @@ public class K8sStepHelper extends K8sHelmCommonStepHelper {
 
     String taskName = taskType.getDisplayName() + " : " + k8sDeployRequest.getCommandName();
     K8sSpecParameters k8SSpecParameters = (K8sSpecParameters) stepElementParameters.getSpec();
-    final TaskRequest taskRequest = TaskRequestsUtils.prepareCDTaskRequest(ambiance, taskData,
-        referenceFalseKryoSerializer, k8SSpecParameters.getCommandUnits(), taskName,
+    return TaskRequestsUtils.prepareCDTaskRequest(ambiance, taskData, referenceFalseKryoSerializer,
+        k8SSpecParameters.getCommandUnits(), taskName,
         TaskSelectorYaml.toTaskSelector(emptyIfNull(getParameterFieldValue(k8SSpecParameters.getDelegateSelectors()))),
         stepHelper.getEnvironmentType(ambiance));
+  }
+
+  public TaskChainResponse queueK8sTask(StepBaseParameters stepElementParameters, K8sDeployRequest k8sDeployRequest,
+      Ambiance ambiance, K8sExecutionPassThroughData executionPassThroughData, TaskType taskType) {
     return TaskChainResponse.builder()
-        .taskRequest(taskRequest)
+        .taskRequest(createTaskRequest(stepElementParameters, k8sDeployRequest, taskType, ambiance))
         .chainEnd(true)
         .passThroughData(executionPassThroughData)
         .build();
@@ -179,7 +185,10 @@ public class K8sStepHelper extends K8sHelmCommonStepHelper {
     return queueK8sTask(stepElementParameters, k8sDeployRequest, ambiance, executionPassThroughData, taskType);
   }
 
-  private TaskType getK8sTaskType(K8sDeployRequest k8sDeployRequest, Ambiance ambiance) {
+  public TaskType getK8sTaskType(K8sDeployRequest k8sDeployRequest, Ambiance ambiance) {
+    if (k8sDeployRequest.hasTrafficRoutingConfig()) {
+      return TaskType.K8S_COMMAND_TASK_NG_TRAFFIC_ROUTING;
+    }
     ManifestDelegateConfig manifestDelegateConfig = k8sDeployRequest.getManifestDelegateConfig();
     if (manifestDelegateConfig != null && manifestDelegateConfig.getStoreDelegateConfig() != null
         && OCI_HELM.equals(manifestDelegateConfig.getStoreDelegateConfig().getType())
@@ -192,8 +201,7 @@ public class K8sStepHelper extends K8sHelmCommonStepHelper {
       return TaskType.K8S_COMMAND_TASK_NG_RANCHER;
     }
 
-    if (cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_K8S_SERVICE_HOOKS_NG)
-        && isNotEmpty(k8sDeployRequest.getServiceHooks())) {
+    if (isNotEmpty(k8sDeployRequest.getServiceHooks())) {
       return TaskType.K8S_COMMAND_TASK_NG_V2;
     }
 
@@ -460,6 +468,10 @@ public class K8sStepHelper extends K8sHelmCommonStepHelper {
     List<ManifestConfig> configs =
         manifestConfigWrappers.stream().map(ManifestConfigWrapper::getManifest).collect(Collectors.toList());
     cdExpressionResolver.updateExpressions(ambiance, configs);
+  }
+
+  public void resolveManifestsSourceExpressions(Ambiance ambiance, ManifestSourceWrapper manifestSource) {
+    cdExpressionResolver.updateExpressions(ambiance, manifestSource);
   }
 
   public TaskChainResponse startChainLink(

@@ -18,6 +18,8 @@ import static io.harness.rule.OwnerRule.AYUSHI_TIWARI;
 import static io.harness.rule.OwnerRule.NAMAN;
 import static io.harness.rule.OwnerRule.PRASHANT;
 import static io.harness.rule.OwnerRule.PRASHANTSHARMA;
+import static io.harness.rule.OwnerRule.RISHIKESH;
+import static io.harness.rule.OwnerRule.ROHITKARELIA;
 import static io.harness.rule.OwnerRule.SAHIL;
 import static io.harness.rule.OwnerRule.UTKARSH_CHOUBEY;
 
@@ -45,7 +47,7 @@ import io.harness.event.OrchestrationLogPublisher;
 import io.harness.exception.InvalidRequestException;
 import io.harness.execution.NodeExecution;
 import io.harness.execution.NodeExecution.NodeExecutionKeys;
-import io.harness.monitoring.ExecutionCountWithAccountResult;
+import io.harness.monitoring.ExecutionStatistics;
 import io.harness.observer.Subject;
 import io.harness.plan.Node;
 import io.harness.plan.PlanNode;
@@ -857,10 +859,10 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
     List<NodeExecution> nodeExecutionList = new LinkedList<>();
     Set<String> firstBatchNodeExecutionIds = new HashSet<>();
     Set<String> secondBatchNodeExecutionIds = new HashSet<>();
-    for (int i = 0; i < 1200; i++) {
+    for (int i = 0; i < 900; i++) {
       String uuid = generateUuid();
       nodeExecutionList.add(NodeExecution.builder().uuid(uuid).build());
-      if (i < 1000) {
+      if (i < 500) {
         firstBatchNodeExecutionIds.add(uuid);
       } else {
         secondBatchNodeExecutionIds.add(uuid);
@@ -1059,6 +1061,55 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
         nodeExecutionService.fetchStageExecutionsWithProjection("planExecutionId", fieldsToBeIncluded);
     verify(mongoTemplateMock, times(1)).find(any(), any());
     assertThat(nodeExecution).isEqualTo(actualNodeExecution);
+  }
+
+  @Test
+  @Owner(developers = ROHITKARELIA)
+  @Category(UnitTests.class)
+  public void fetchStageExecutionsWithEndTsAndStatusProjection() {
+    MongoTemplate mongoTemplateMock = Mockito.mock(MongoTemplate.class);
+    Reflect.on(nodeExecutionService).set("mongoTemplate", mongoTemplateMock);
+
+    String planExecutionUuid = generateUuid();
+    String parentId = generateUuid();
+    NodeExecution nodeExecution =
+        NodeExecution.builder()
+            .uuid(generateUuid())
+            .parentId(parentId)
+            .ambiance(Ambiance.newBuilder().setPlanExecutionId(planExecutionUuid).build())
+            .mode(ExecutionMode.SYNC)
+            .uuid(generateUuid())
+            .name("name")
+            .identifier(generateUuid())
+            .stepType(StepType.newBuilder().setType("DUMMY").setStepCategory(StepCategory.STEP).build())
+            .module("CD")
+            .startTs(System.currentTimeMillis())
+            .status(SUCCEEDED)
+            .build();
+    NodeExecution nodeExecution1 =
+        NodeExecution.builder()
+            .uuid(generateUuid())
+            .parentId(parentId)
+            .ambiance(Ambiance.newBuilder().setPlanExecutionId(planExecutionUuid).build())
+            .mode(ExecutionMode.SYNC)
+            .uuid(generateUuid())
+            .name("name")
+            .identifier(generateUuid())
+            .stepType(StepType.newBuilder().setType("DUMMY").setStepCategory(StepCategory.STEP).build())
+            .module("CD")
+            .startTs(System.currentTimeMillis())
+            .status(Status.SKIPPED)
+            .build();
+
+    List<NodeExecution> nodeExecutionList = Arrays.asList(nodeExecution, nodeExecution1);
+
+    doReturn(nodeExecutionList).when(mongoTemplateMock).find(any(), any());
+
+    List<NodeExecution> executionList =
+        nodeExecutionService.fetchStageExecutionsWithEndTsAndStatusProjection(planExecutionUuid);
+    verify(mongoTemplateMock, times(1)).find(any(), any());
+    assertThat(Arrays.asList(executionList.get(0).getStatus(), executionList.get(1).getStatus()))
+        .contains(Status.SKIPPED);
   }
 
   @Test
@@ -1278,7 +1329,47 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
     nodeExecutionService.save(nodeExecution1);
     nodeExecutionService.save(nodeExecution2);
 
-    List<ExecutionCountWithAccountResult> accountResults = nodeExecutionService.aggregateRunningNodesCountPerAccount();
-    assertThat(accountResults.size()).isEqualTo(2);
+    ExecutionStatistics executionStatistics = nodeExecutionService.aggregateRunningNodeExecutionsCount();
+    assertThat(executionStatistics.getAccountStats().size()).isEqualTo(2);
+    assertThat(executionStatistics.getModuleAndStepTypeStats().size()).isEqualTo(1);
+    assertThat(executionStatistics.getAccountStats().get(0).getCount()).isEqualTo(1);
+    assertThat(executionStatistics.getAccountStats().get(1).getCount()).isEqualTo(1);
+    assertThat(executionStatistics.getModuleAndStepTypeStats().get(0).getCount()).isEqualTo(2);
+  }
+
+  @Test
+  @Owner(developers = RISHIKESH)
+  @Category(UnitTests.class)
+  public void testFetchStageExecutionsWithEndTsAndStatusProjection() {
+    String planExecutionUuid = generateUuid();
+    Criteria criteria = Criteria.where(NodeExecutionKeys.planExecutionId)
+                            .is(planExecutionUuid)
+                            .and(NodeExecutionKeys.stepCategory)
+                            .in(Arrays.asList(StepCategory.STAGE, StepCategory.STRATEGY));
+    Query query = new Query(criteria);
+    query.fields()
+        .include(NodeExecutionKeys.uuid)
+        .include(NodeExecutionKeys.status)
+        .include(NodeExecutionKeys.startTs)
+        .include(NodeExecutionKeys.endTs)
+        .include(NodeExecutionKeys.createdAt)
+        .include(NodeExecutionKeys.mode)
+        .include(NodeExecutionKeys.stepType)
+        .include(NodeExecutionKeys.ambiance)
+        .include(NodeExecutionKeys.nodeId)
+        .include(NodeExecutionKeys.parentId)
+        .include(NodeExecutionKeys.oldRetry)
+        .include(NodeExecutionKeys.ambiance)
+        .include(NodeExecutionKeys.resolvedParams)
+        .include(NodeExecutionKeys.failureInfo)
+        .include(NodeExecutionKeys.executableResponses);
+    query.with(Sort.by(NodeExecutionKeys.createdAt));
+
+    MongoTemplate mongoTemplateMock = Mockito.mock(MongoTemplate.class);
+    Reflect.on(nodeExecutionService).set("mongoTemplate", mongoTemplateMock);
+    ArgumentCaptor<Query> queryArgumentCaptor = ArgumentCaptor.forClass(Query.class);
+    nodeExecutionService.fetchStageExecutionsWithEndTsAndStatusProjection(planExecutionUuid);
+    verify(mongoTemplateMock, times(1)).find(queryArgumentCaptor.capture(), eq(NodeExecution.class));
+    assertThat(queryArgumentCaptor.getValue().getQueryObject()).isEqualTo(query.getQueryObject());
   }
 }

@@ -28,11 +28,11 @@ public interface NGTriggerRepositoryCustom {
   CloseableIterator<NGTriggerEntity> findAll(Criteria criteria);
   Page<NGTriggerEntity> findAll(Criteria criteria, Pageable pageable);
   NGTriggerEntity update(Criteria criteria, NGTriggerEntity ngTriggerEntity);
-  TriggerUpdateCount updateTriggerEnabled(List<NGTriggerEntity> ngTriggerEntityList);
+  TriggerUpdateCount toggleTriggerInBulk(List<NGTriggerEntity> ngTriggerEntityList, boolean enable);
   NGTriggerEntity updateValidationStatus(Criteria criteria, NGTriggerEntity ngTriggerEntity);
   NGTriggerEntity updateValidationStatusAndMetadata(Criteria criteria, NGTriggerEntity ngTriggerEntity);
   DeleteResult hardDelete(Criteria criteria);
   TriggerUpdateCount updateTriggerYaml(List<NGTriggerEntity> ngTriggerEntityList);
   boolean updateManyTriggerPollingSubscriptionStatusBySignatures(String accountId, List<String> signatures,
-      boolean status, String errorMessage, List<String> versions, Long timestamp);
+      boolean status, String errorMessage, List<String> versions, Long timestamp, Long errorStatusValidUntil);
 }

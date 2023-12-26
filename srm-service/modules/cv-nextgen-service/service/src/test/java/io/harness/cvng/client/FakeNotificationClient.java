@@ -32,6 +32,12 @@ public class FakeNotificationClient implements NotificationClient {
   }
 
   @Override
+  public Response<ResponseDTO<NotificationTaskResponse>> sendNotificationSync(NotificationChannel notificationChannel)
+      throws IOException {
+    throw new UnsupportedOperationException("mocked method - TODO");
+  }
+
+  @Override
   public List<NotificationResult> sendBulkNotificationAsync(List<NotificationChannel> notificationChannels) {
     throw new UnsupportedOperationException("mocked method - TODO");
   }
@@ -66,5 +72,10 @@ public class FakeNotificationClient implements NotificationClient {
   public NotificationRuleReferenceDTO getNotificationRule(String accountIdentifier, String orgIdentifier,
       String projectIdentifier, String notificationEntity, String notificationEvent) {
     return null;
+  }
+
+  @Override
+  public boolean isDefaultSMTPPresent(String accountId) {
+    return false;
   }
 }

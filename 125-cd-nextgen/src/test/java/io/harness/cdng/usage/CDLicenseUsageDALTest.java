@@ -28,6 +28,7 @@ import io.harness.cd.CDLicenseType;
 import io.harness.cdng.usage.pojos.ActiveServiceBase;
 import io.harness.cdng.usage.pojos.ActiveServiceFetchData;
 import io.harness.cdng.usage.pojos.LicenseDateUsageFetchData;
+import io.harness.entities.InstanceType;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.licensing.usage.params.filter.LicenseDateUsageReportType;
 import io.harness.rule.Owner;
@@ -180,7 +181,7 @@ public class CDLicenseUsageDALTest extends CategoryTest {
   }
 
   @Test
-  @Owner(developers = OwnerRule.IVAN)
+  @Owner(developers = OwnerRule.MANISH)
   @Category(UnitTests.class)
   public void testFetchActiveServicesNameOrgAndProjectName() throws SQLException {
     Connection dbConnection = mock(Connection.class);
@@ -196,6 +197,7 @@ public class CDLicenseUsageDALTest extends CategoryTest {
                                                                  .projectIdentifier(projectIdentifier)
                                                                  .identifier(serviceIdentifier)
                                                                  .instanceCount(2)
+                                                                 .instanceType(InstanceType.K8S_INSTANCE.toString())
                                                                  .lastDeployed(1L)
                                                                  .build());
     cdLicenseUsageDAL.fetchActiveServicesNameOrgAndProjectName(
@@ -206,34 +208,41 @@ public class CDLicenseUsageDALTest extends CategoryTest {
 
     String sqlQuery = queryArgumentCaptor.getValue();
     assertThat(sqlQuery).isNotBlank();
-    assertThat(sqlQuery).isEqualTo(""
-        + "SELECT DISTINCT\n"
-        + "    t.orgIdentifier, t.projectIdentifier, t.serviceIdentifier AS identifier, t.lastDeployed, t.instanceCount,\n"
-        + "    COALESCE(organizations.name, 'Deleted') AS orgName,\n"
-        + "    COALESCE(projects.name, 'Deleted') AS projectName,\n"
+    assertThat(sqlQuery).isEqualTo("SELECT DISTINCT\n"
+        + "    t.orgIdentifier, t.projectIdentifier, t.serviceIdentifier AS identifier, t.lastDeployed, t.instanceCount, t.instanceType,\n"
+        + "    CASE\n"
+        + "        WHEN t.serviceIdentifier LIKE 'account.%' THEN NULL\n"
+        + "        ELSE COALESCE(organizations.name, 'Deleted')\n"
+        + "    END AS orgName,\n"
+        + "    CASE WHEN t.serviceIdentifier LIKE 'account.%' OR t.serviceIdentifier LIKE 'org.%' THEN NULL\n"
+        + "         ELSE COALESCE(projects.name, 'Deleted')\n"
+        + "    END AS projectName,\n"
         + "    COALESCE(services.name, 'Deleted') AS name\n"
         + "FROM \n"
         + "    (\n"
-        + "        VALUES ('orgIdentifier','projectIdentifier','serviceIdentifier',1,2)\n"
+        + "        VALUES ('orgIdentifier','projectIdentifier','serviceIdentifier',1,2,'K8S_INSTANCE')\n"
         + "    )\n"
-        + "    AS t (orgIdentifier, projectIdentifier, serviceIdentifier, lastDeployed, instanceCount)\n"
+        + "    AS t (orgIdentifier, projectIdentifier, serviceIdentifier, lastDeployed, instanceCount, instanceType)\n"
         + "LEFT JOIN services ON\n"
         + "    services.account_id = ?\n"
-        + "    AND t.orgidentifier = services.org_identifier\n"
-        + "    AND t.projectidentifier = services.project_identifier\n"
-        + "    AND t.serviceIdentifier = services.identifier\n"
+        + "    AND (t.orgidentifier = services.org_identifier OR (t.orgidentifier IS NULL AND services.org_identifier IS NULL))\n"
+        + "    AND (t.projectidentifier = services.project_identifier OR (t.projectidentifier IS NULL AND services.project_identifier IS NULL))\n"
+        + "    AND t.serviceIdentifier = services.fully_qualified_identifier\n"
+        + "    AND services.deleted = false\n"
         + " LEFT JOIN projects ON\n"
         + "    projects.account_identifier = ?\n"
         + "    AND t.orgidentifier = projects.org_identifier\n"
         + "    AND t.projectidentifier = projects.identifier\n"
+        + "    AND projects.deleted = false\n"
         + " LEFT JOIN organizations ON\n"
         + "    organizations.account_identifier = ?\n"
         + "    AND t.orgidentifier = organizations.identifier\n"
+        + "    AND organizations.deleted = false\n"
         + "ORDER BY lastDeployed DESC NULLS LAST");
   }
 
   @Test
-  @Owner(developers = OwnerRule.IVAN)
+  @Owner(developers = OwnerRule.MANISH)
   @Category(UnitTests.class)
   public void testFetchActiveServices() throws SQLException {
     Connection dbConnection = mock(Connection.class);
@@ -243,6 +252,7 @@ public class CDLicenseUsageDALTest extends CategoryTest {
     when(dbConnection.prepareStatement(any())).thenReturn(fetchStatement);
     when(fetchStatement.executeQuery()).thenReturn(resultSet);
     when(resultSet.next()).thenReturn(false);
+
     ActiveServiceFetchData fetchData = ActiveServiceFetchData.builder()
                                            .accountIdentifier(accountIdentifier)
                                            .orgIdentifier(orgIdentifier)
@@ -260,50 +270,82 @@ public class CDLicenseUsageDALTest extends CategoryTest {
 
     String sqlQuery = queryArgumentCaptor.getValue();
     assertThat(sqlQuery).isNotBlank();
-    assertThat(sqlQuery).isEqualTo(""
-        + "SELECT activeServices.orgIdentifier,\n"
+    assertThat(sqlQuery).isEqualTo("SELECT activeServices.orgIdentifier,\n"
         + "       activeServices.projectIdentifier,\n"
         + "       activeServices.serviceIdentifier AS identifier,\n"
         + "       activeServices.lastDeployedServiceTime AS lastDeployed,\n"
         + "       activeServices.totalCount,\n"
+        + "       percentileInstancesPerServices.instancetype AS instanceType,\n"
         + "       COALESCE(percentileInstancesPerServices.instanceCount, 0) AS instanceCount\n"
         + "FROM\n"
         + "-- List services deployed in last 30 days from service_infra_info table. 'Group by' is needed for lastDeployedServiceTime calculation\n"
         + "(\n"
-        + "    SELECT orgidentifier AS orgIdentifier,\n"
-        + "           projectidentifier AS projectIdentifier,\n"
+        + "    SELECT\n"
+        + "           CASE\n"
+        + "               WHEN service_id LIKE 'account.%' THEN NULL\n"
+        + "               ELSE orgIdentifier\n"
+        + "           END AS orgIdentifier,\n"
+        + "           CASE\n"
+        + "               WHEN service_id LIKE 'account.%' OR service_id LIKE 'org.%' THEN NULL\n"
+        + "               ELSE projectIdentifier\n"
+        + "           END AS projectIdentifier,\n"
         + "           service_id AS serviceIdentifier,\n"
         + "           MAX(service_startts) as lastDeployedServiceTime,\n"
         + "           COUNT(*) OVER () AS totalCount\n"
         + "    FROM service_infra_info\n"
         + "    WHERE (accountid = ? AND service_startts >= ? AND service_startts <= ? AND orgidentifier = ? AND projectidentifier = ? AND service_id = ?)\n"
-        + "    GROUP BY orgidentifier, projectidentifier, service_id\n"
+        + "    GROUP BY\n"
+        + "        CASE WHEN service_id LIKE 'account.%' THEN NULL\n"
+        + "            ELSE orgidentifier\n"
+        + "        END,\n"
+        + "        CASE WHEN service_id LIKE 'account.%' OR service_id LIKE 'org.%' THEN NULL\n"
+        + "            ELSE projectidentifier\n"
+        + "        END,\n"
+        + "        service_id\n"
         + ") activeServices\n"
         + "    LEFT JOIN\n"
         + "-- List services percentile instances count from ng_instance_stats table\n"
         + "    (\n"
         + "        SELECT PERCENTILE_DISC(?) WITHIN GROUP (ORDER BY instancesPerService.instanceCount) AS instanceCount,\n"
-        + "               orgid,\n"
-        + "               projectid,\n"
-        + "               serviceid\n"
+        + "            instancetype,\n"
+        + "            orgid,\n"
+        + "            projectid,\n"
+        + "            serviceid\n"
         + "        FROM\n"
         + "            (\n"
         + "                SELECT DATE_TRUNC('minute', reportedat) AS reportedat,\n"
-        + "                       orgid,\n"
-        + "                       projectid,\n"
-        + "                       serviceid,\n"
-        + "                       SUM(instancecount) AS instanceCount\n"
+        + "                    CASE\n"
+        + "                        WHEN serviceid LIKE 'account.%' THEN NULL\n"
+        + "                        ELSE orgid\n"
+        + "                    END AS orgid,\n"
+        + "                    CASE\n"
+        + "                        WHEN serviceid LIKE 'account.%' OR serviceid LIKE 'org.%' THEN NULL\n"
+        + "                        ELSE projectid\n"
+        + "                    END AS projectid,\n"
+        + "                    serviceid,\n"
+        + "                    instancetype,\n"
+        + "                    SUM(instancecount) AS instanceCount\n"
         + "                FROM ng_instance_stats\n"
         + "                WHERE accountid = ? AND reportedat > NOW() - INTERVAL '30 day' AND orgid = ? AND projectid = ? AND serviceid = ?\n"
-        + "                GROUP BY orgid,\n"
-        + "                         projectid,\n"
+        + "                GROUP BY\n"
+        + "                    CASE\n"
+        + "                        WHEN serviceid LIKE 'account.%' THEN NULL\n"
+        + "                        ELSE orgid\n"
+        + "                    END,\n"
+        + "                    CASE\n"
+        + "                        WHEN serviceid LIKE 'account.%' OR serviceid LIKE 'org.%' THEN NULL\n"
+        + "                        ELSE projectid\n"
+        + "                    END,\n"
         + "                         serviceid,\n"
+        + "                         instancetype,\n"
         + "                         DATE_TRUNC('minute', reportedat)\n"
         + "            ) instancesPerService\n"
-        + "        GROUP BY orgid,projectid,serviceid\n"
+        + "        GROUP BY orgid,projectid,serviceid,instancetype\n"
         + "    ) percentileInstancesPerServices\n"
-        + "ON activeServices.orgIdentifier = percentileInstancesPerServices.orgid\n"
-        + "    AND activeServices.projectIdentifier = percentileInstancesPerServices.projectid\n"
+        + "ON (activeServices.orgIdentifier = percentileInstancesPerServices.orgid\n"
+        + "        OR (activeServices.orgIdentifier IS NULL AND percentileInstancesPerServices.orgid IS NULL))\n"
+        + "    AND (activeServices.projectIdentifier = percentileInstancesPerServices.projectid\n"
+        + "        OR (activeServices.projectIdentifier IS NULL AND percentileInstancesPerServices.projectid IS NULL))\n"
         + "    AND activeServices.serviceIdentifier = percentileInstancesPerServices.serviceid\n"
         + "ORDER BY lastDeployed DESC NULLS LAST\n"
         + "LIMIT ?\n"
@@ -321,6 +363,7 @@ public class CDLicenseUsageDALTest extends CategoryTest {
     when(dbConnection.prepareStatement(any())).thenReturn(fetchStatement);
     when(fetchStatement.executeQuery()).thenReturn(resultSet);
     when(resultSet.next()).thenReturn(false);
+
     ActiveServiceFetchData fetchData = ActiveServiceFetchData.builder()
                                            .accountIdentifier(accountIdentifier)
                                            .orgIdentifier(null)
@@ -338,50 +381,82 @@ public class CDLicenseUsageDALTest extends CategoryTest {
 
     String sqlQuery = queryArgumentCaptor.getValue();
     assertThat(sqlQuery).isNotBlank();
-    assertThat(sqlQuery).isEqualTo(""
-        + "SELECT activeServices.orgIdentifier,\n"
+    assertThat(sqlQuery).isEqualTo("SELECT activeServices.orgIdentifier,\n"
         + "       activeServices.projectIdentifier,\n"
         + "       activeServices.serviceIdentifier AS identifier,\n"
         + "       activeServices.lastDeployedServiceTime AS lastDeployed,\n"
         + "       activeServices.totalCount,\n"
+        + "       percentileInstancesPerServices.instancetype AS instanceType,\n"
         + "       COALESCE(percentileInstancesPerServices.instanceCount, 0) AS instanceCount\n"
         + "FROM\n"
         + "-- List services deployed in last 30 days from service_infra_info table. 'Group by' is needed for lastDeployedServiceTime calculation\n"
         + "(\n"
-        + "    SELECT orgidentifier AS orgIdentifier,\n"
-        + "           projectidentifier AS projectIdentifier,\n"
+        + "    SELECT\n"
+        + "           CASE\n"
+        + "               WHEN service_id LIKE 'account.%' THEN NULL\n"
+        + "               ELSE orgIdentifier\n"
+        + "           END AS orgIdentifier,\n"
+        + "           CASE\n"
+        + "               WHEN service_id LIKE 'account.%' OR service_id LIKE 'org.%' THEN NULL\n"
+        + "               ELSE projectIdentifier\n"
+        + "           END AS projectIdentifier,\n"
         + "           service_id AS serviceIdentifier,\n"
         + "           MAX(service_startts) as lastDeployedServiceTime,\n"
         + "           COUNT(*) OVER () AS totalCount\n"
         + "    FROM service_infra_info\n"
         + "    WHERE (accountid = ? AND service_startts >= ? AND service_startts <= ? AND service_id = ?)\n"
-        + "    GROUP BY orgidentifier, projectidentifier, service_id\n"
+        + "    GROUP BY\n"
+        + "        CASE WHEN service_id LIKE 'account.%' THEN NULL\n"
+        + "            ELSE orgidentifier\n"
+        + "        END,\n"
+        + "        CASE WHEN service_id LIKE 'account.%' OR service_id LIKE 'org.%' THEN NULL\n"
+        + "            ELSE projectidentifier\n"
+        + "        END,\n"
+        + "        service_id\n"
         + ") activeServices\n"
         + "    LEFT JOIN\n"
         + "-- List services percentile instances count from ng_instance_stats table\n"
         + "    (\n"
         + "        SELECT PERCENTILE_DISC(?) WITHIN GROUP (ORDER BY instancesPerService.instanceCount) AS instanceCount,\n"
-        + "               orgid,\n"
-        + "               projectid,\n"
-        + "               serviceid\n"
+        + "            instancetype,\n"
+        + "            orgid,\n"
+        + "            projectid,\n"
+        + "            serviceid\n"
         + "        FROM\n"
         + "            (\n"
         + "                SELECT DATE_TRUNC('minute', reportedat) AS reportedat,\n"
-        + "                       orgid,\n"
-        + "                       projectid,\n"
-        + "                       serviceid,\n"
-        + "                       SUM(instancecount) AS instanceCount\n"
+        + "                    CASE\n"
+        + "                        WHEN serviceid LIKE 'account.%' THEN NULL\n"
+        + "                        ELSE orgid\n"
+        + "                    END AS orgid,\n"
+        + "                    CASE\n"
+        + "                        WHEN serviceid LIKE 'account.%' OR serviceid LIKE 'org.%' THEN NULL\n"
+        + "                        ELSE projectid\n"
+        + "                    END AS projectid,\n"
+        + "                    serviceid,\n"
+        + "                    instancetype,\n"
+        + "                    SUM(instancecount) AS instanceCount\n"
         + "                FROM ng_instance_stats\n"
         + "                WHERE accountid = ? AND reportedat > NOW() - INTERVAL '30 day' AND serviceid = ?\n"
-        + "                GROUP BY orgid,\n"
-        + "                         projectid,\n"
+        + "                GROUP BY\n"
+        + "                    CASE\n"
+        + "                        WHEN serviceid LIKE 'account.%' THEN NULL\n"
+        + "                        ELSE orgid\n"
+        + "                    END,\n"
+        + "                    CASE\n"
+        + "                        WHEN serviceid LIKE 'account.%' OR serviceid LIKE 'org.%' THEN NULL\n"
+        + "                        ELSE projectid\n"
+        + "                    END,\n"
         + "                         serviceid,\n"
+        + "                         instancetype,\n"
         + "                         DATE_TRUNC('minute', reportedat)\n"
         + "            ) instancesPerService\n"
-        + "        GROUP BY orgid,projectid,serviceid\n"
+        + "        GROUP BY orgid,projectid,serviceid,instancetype\n"
         + "    ) percentileInstancesPerServices\n"
-        + "ON activeServices.orgIdentifier = percentileInstancesPerServices.orgid\n"
-        + "    AND activeServices.projectIdentifier = percentileInstancesPerServices.projectid\n"
+        + "ON (activeServices.orgIdentifier = percentileInstancesPerServices.orgid\n"
+        + "        OR (activeServices.orgIdentifier IS NULL AND percentileInstancesPerServices.orgid IS NULL))\n"
+        + "    AND (activeServices.projectIdentifier = percentileInstancesPerServices.projectid\n"
+        + "        OR (activeServices.projectIdentifier IS NULL AND percentileInstancesPerServices.projectid IS NULL))\n"
         + "    AND activeServices.serviceIdentifier = percentileInstancesPerServices.serviceid\n"
         + "ORDER BY lastDeployed DESC NULLS LAST\n"
         + "LIMIT ?\n"

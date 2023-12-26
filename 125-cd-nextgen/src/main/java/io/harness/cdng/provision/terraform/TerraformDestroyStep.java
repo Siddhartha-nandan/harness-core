@@ -7,7 +7,6 @@
 
 package io.harness.cdng.provision.terraform;
 
-import static io.harness.beans.FeatureName.CDS_TF_TG_SKIP_ERROR_LOGS_COLORING;
 import static io.harness.cdng.provision.terraform.TerraformPlanCommand.DESTROY;
 
 import io.harness.EntityType;
@@ -52,6 +51,7 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.StepUtils;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 import io.harness.utils.IdentifierRefHelper;
 
 import com.google.inject.Inject;
@@ -85,6 +85,12 @@ public class TerraformDestroyStep extends CdTaskExecutable<TerraformTaskNGRespon
   @Override
   public Class<StepBaseParameters> getStepParametersClass() {
     return StepBaseParameters.class;
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 
   @Override
@@ -193,7 +199,7 @@ public class TerraformDestroyStep extends CdTaskExecutable<TerraformTaskNGRespon
                 StepUtils.getTimeoutMillis(StepBaseParameters.getTimeout(), TerraformConstants.DEFAULT_TIMEOUT))
             .useOptimizedTfPlan(true)
             .isTerraformCloudCli(isTerraformCloudCli)
-            .skipColorLogs(cdFeatureFlagHelper.isEnabled(accountId, CDS_TF_TG_SKIP_ERROR_LOGS_COLORING))
+            .skipColorLogs(true)
             .providerCredentialDelegateInfo(
                 helper.getProviderCredentialDelegateInfo(spec.getProviderCredential(), ambiance))
             .build();
@@ -262,7 +268,7 @@ public class TerraformDestroyStep extends CdTaskExecutable<TerraformTaskNGRespon
             .timeoutInMillis(
                 StepUtils.getTimeoutMillis(StepBaseParameters.getTimeout(), TerraformConstants.DEFAULT_TIMEOUT))
             .useOptimizedTfPlan(true)
-            .skipColorLogs(cdFeatureFlagHelper.isEnabled(accountId, CDS_TF_TG_SKIP_ERROR_LOGS_COLORING))
+            .skipColorLogs(true)
             .skipStateStorage(inheritOutput.isSkipStateStorage())
             .build();
 
@@ -307,7 +313,7 @@ public class TerraformDestroyStep extends CdTaskExecutable<TerraformTaskNGRespon
                 : terraformConfig.getEnvironmentVariables())
         .timeoutInMillis(
             StepUtils.getTimeoutMillis(StepBaseParameters.getTimeout(), TerraformConstants.DEFAULT_TIMEOUT))
-        .skipColorLogs(cdFeatureFlagHelper.isEnabled(accountId, CDS_TF_TG_SKIP_ERROR_LOGS_COLORING))
+        .skipColorLogs(true)
         .useOptimizedTfPlan(true)
         .skipStateStorage(terraformConfig.isSkipStateStorage());
     if (terraformConfig.getConfigFiles() != null) {

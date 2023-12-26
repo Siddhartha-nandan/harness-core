@@ -61,7 +61,6 @@ public class CheckStatusEntity implements PersistentEntity, CreatedByAware, Crea
   @Id private String id;
   private String accountIdentifier;
   private String identifier;
-  private String name;
   private boolean isCustom;
   private int passCount;
   private int total;

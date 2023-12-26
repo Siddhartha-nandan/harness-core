@@ -453,6 +453,7 @@ public class PipelinesApiUtils {
         .storeType(StoreType.getFromStringOrNull(
             (gitDetails.getStoreType() == null) ? null : gitDetails.getStoreType().value()))
         .connectorRef(gitDetails.getConnectorRef())
+        .filePath(gitDetails.getFilePath())
         .build();
   }
 
@@ -597,6 +598,7 @@ public class PipelinesApiUtils {
     pipelineYamlInputDTO.setAllowedValues(inputDetails.getAllowedValues());
     pipelineYamlInputDTO.setRegex(inputDetails.getRegex());
     pipelineYamlInputDTO.execution(inputDetails.getExecution());
+    pipelineYamlInputDTO.setDefault(inputDetails.getDefaultValue());
     return pipelineYamlInputDTO;
   }
 

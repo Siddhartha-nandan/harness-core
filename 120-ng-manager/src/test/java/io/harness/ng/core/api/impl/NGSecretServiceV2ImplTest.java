@@ -11,6 +11,7 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.rule.OwnerRule.ASHISHSANODIA;
 import static io.harness.rule.OwnerRule.BHAVYA;
 import static io.harness.rule.OwnerRule.BOJAN;
+import static io.harness.rule.OwnerRule.IVAN;
 import static io.harness.rule.OwnerRule.MEENAKSHI;
 import static io.harness.rule.OwnerRule.NISHANT;
 import static io.harness.rule.OwnerRule.PHOENIKX;
@@ -19,6 +20,7 @@ import static io.harness.rule.OwnerRule.VITALIE;
 import static java.util.List.of;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doNothing;
@@ -38,12 +40,17 @@ import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.IdentifierRef;
 import io.harness.category.element.UnitTests;
+import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.secrets.SSHConfigValidationTaskResponse;
 import io.harness.delegate.beans.secrets.WinRmConfigValidationTaskResponse;
 import io.harness.delegate.utils.TaskSetupAbstractionHelper;
 import io.harness.encryption.SecretRefData;
+import io.harness.eraro.ErrorCode;
 import io.harness.exception.DelegateServiceDriverException;
+import io.harness.exception.ExplanationException;
 import io.harness.exception.HintException;
+import io.harness.exception.InvalidRequestException;
+import io.harness.exception.WingsException;
 import io.harness.exception.exceptionmanager.ExceptionManager;
 import io.harness.exception.exceptionmanager.exceptionhandler.DocumentLinksConstants;
 import io.harness.ng.core.api.NGSecretActivityService;
@@ -70,6 +77,8 @@ import io.harness.ng.core.models.WinRmCredentialsSpec;
 import io.harness.ng.core.remote.SSHKeyValidationMetadata;
 import io.harness.ng.core.remote.SecretValidationResultDTO;
 import io.harness.ng.core.remote.WinRmCredentialsValidationMetadata;
+import io.harness.ng.core.services.OrganizationService;
+import io.harness.ng.core.services.ProjectService;
 import io.harness.outbox.api.OutboxService;
 import io.harness.repositories.ng.core.spring.SecretRepository;
 import io.harness.rule.Owner;
@@ -86,6 +95,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import java.util.Arrays;
 import java.util.Optional;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -108,11 +118,14 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   private AccessControlClient accessControlClient;
   private NGFeatureFlagHelperService ngFeatureFlagHelperService;
   private ExceptionManager exceptionManager;
+  private OrganizationService organizationService;
+  private ProjectService projectService;
 
   @Rule public ExpectedException exceptionRule = ExpectedException.none();
 
   private ArgumentCaptor<SecretForceDeleteEvent> secretForceDeleteEventArgumentCaptor;
   private ArgumentCaptor<SecretDeleteEvent> secretDeleteEventArgumentCaptor;
+  private ArgumentCaptor<Exception> exceptionArgumentCaptor;
 
   private String ORG_ID = randomAlphabetic(10);
   private String PROJECT_ID = randomAlphabetic(10);
@@ -140,15 +153,20 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
     taskSetupAbstractionHelper = new TaskSetupAbstractionHelper();
     accessControlClient = mock(AccessControlClient.class);
     ngFeatureFlagHelperService = mock(NGFeatureFlagHelperService.class);
+    exceptionManager = mock(ExceptionManager.class);
+    organizationService = mock(OrganizationService.class);
+    projectService = mock(ProjectService.class);
     SshKeySpecDTOHelper sshKeySpecDTOHelper = mock(SshKeySpecDTOHelper.class);
     WinRmCredentialsSpecDTOHelper winRmCredentialsSpecDTOHelper = mock(WinRmCredentialsSpecDTOHelper.class);
 
     secretServiceV2 = new NGSecretServiceV2Impl(secretRepository, delegateGrpcClientWrapper, sshKeySpecDTOHelper,
         ngSecretActivityService, outboxService, transactionTemplate, taskSetupAbstractionHelper,
-        winRmCredentialsSpecDTOHelper, accessControlClient, ngFeatureFlagHelperService, exceptionManager);
+        winRmCredentialsSpecDTOHelper, accessControlClient, ngFeatureFlagHelperService, exceptionManager,
+        organizationService, projectService);
     secretServiceV2Spy = spy(secretServiceV2);
     secretForceDeleteEventArgumentCaptor = ArgumentCaptor.forClass(SecretForceDeleteEvent.class);
     secretDeleteEventArgumentCaptor = ArgumentCaptor.forClass(SecretDeleteEvent.class);
+    exceptionArgumentCaptor = ArgumentCaptor.forClass(Exception.class);
   }
 
   private SecretDTOV2 getSecretDTO() {
@@ -235,6 +253,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   public void testCreate() {
     SecretDTOV2 secretDTOV2 = getSecretDTO();
     Secret secret = Secret.fromDTO(secretDTOV2);
+    secret.setAccountIdentifier(ACC_ID);
     when(secretRepository.save(any())).thenReturn(secret);
     when(transactionTemplate.execute(any())).thenReturn(secret);
 
@@ -275,6 +294,10 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
     return SSHKeyValidationMetadata.builder().host("1.2.3.4").build();
   }
 
+  private WinRmCredentialsValidationMetadata getWinRmMetadata() {
+    return WinRmCredentialsValidationMetadata.builder().host("1.2.3.4").build();
+  }
+
   private Secret getSecret() {
     return Secret.builder().type(SecretType.SSHKey).build();
   }
@@ -291,20 +314,7 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
   @Owner(developers = PHOENIKX)
   @Category(UnitTests.class)
   public void testValidationForSSHWithPassword() {
-    Secret secret = getSecret();
-    secret.setSecretSpec(SSHExecutionCredentialSpec.builder()
-                             .port(22)
-                             .auth(SSHAuth.builder()
-                                       .type(SSHAuthScheme.SSH)
-                                       .sshSpec(SSHConfig.builder()
-                                                    .credentialType(SSHCredentialType.Password)
-                                                    .spec(SSHPasswordCredential.builder()
-                                                              .userName("username")
-                                                              .password(SecretRefData.builder().build())
-                                                              .build())
-                                                    .build())
-                                       .build())
-                             .build());
+    Secret secret = getSecretPasswordCredentialType();
     doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
     when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
         .thenReturn(SSHConfigValidationTaskResponse.builder().connectionSuccessful(true).build());
@@ -528,5 +538,324 @@ public class NGSecretServiceV2ImplTest extends CategoryTest {
     doThrow(NGAccessDeniedException.class).when(accessControlClient).checkForAccessOrThrow(any());
 
     secretServiceV2.getPermitted(of(secret1));
+  }
+
+  @Test
+  @Owner(developers = IVAN)
+  @Category(UnitTests.class)
+  public void testProcessValidationTaskResponseSSHSuccess() {
+    Secret secret = getSecretPasswordCredentialType();
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(SSHConfigValidationTaskResponse.builder().connectionSuccessful(true).build());
+
+    SecretValidationResultDTO resultDTO =
+        secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata());
+
+    assertThat(resultDTO.isSuccess()).isEqualTo(true);
+  }
+
+  @Test
+  @Owner(developers = IVAN)
+  @Category(UnitTests.class)
+  public void testProcessValidationTaskResponseSSHHostNotReachable() {
+    Secret secret = getSecretPasswordCredentialType();
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(ErrorNotifyResponseData.builder().errorMessage("Unable to connect to host").build());
+    doReturn(new WingsException("wings exception message"))
+        .when(exceptionManager)
+        .processException(any(), any(), any());
+
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata()))
+        .hasMessage("wings exception message")
+        .isInstanceOf(WingsException.class);
+
+    verify(exceptionManager, times(1)).processException(exceptionArgumentCaptor.capture(), any(), any());
+    Exception exception = exceptionArgumentCaptor.getValue();
+    assertThat(exception).isNotNull();
+    assertThat(exception.getMessage())
+        .isEqualTo(
+            "Please ensure if port is opened on host. Check firewall rules between the delegate and host. Try to test connectivity by telnet");
+    ExplanationException explanationException = (ExplanationException) exception.getCause();
+    assertThat(explanationException.getMessage())
+        .isEqualTo(
+            "Delegate(s) is(are) not able to establish socket connection to host(s). If the port is not specified with the host, it will default to 22.");
+    InvalidRequestException ex = (InvalidRequestException) explanationException.getCause();
+    assertThat(ex.getMessage()).isEqualTo("Unable to connect to host");
+  }
+
+  @Test
+  @Owner(developers = IVAN)
+  @Category(UnitTests.class)
+  public void testProcessValidationTaskResponseSSHNoErrorMsg() {
+    Secret secret = getSecretPasswordCredentialType();
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(SSHConfigValidationTaskResponse.builder().errorMessage(null).build());
+    doReturn(new WingsException("wings exception message"))
+        .when(exceptionManager)
+        .processException(any(), any(), any());
+
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata()))
+        .hasMessage("wings exception message")
+        .isInstanceOf(WingsException.class);
+
+    verify(exceptionManager, times(1)).processException(exceptionArgumentCaptor.capture(), any(), any());
+    Exception exception = exceptionArgumentCaptor.getValue();
+    assertThat(exception).isNotNull();
+    assertThat(exception.getMessage())
+        .isEqualTo("Validation failed, reason not found, please contact Harness support for more help");
+  }
+
+  @Test
+  @Owner(developers = IVAN)
+  @Category(UnitTests.class)
+  public void testProcessValidationTaskResponseSSHCheckAllSettingsOnConfigurationPage() {
+    Secret secret = getSecretPasswordCredentialType();
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(SSHConfigValidationTaskResponse.builder().errorMessage("Gateway timeout").build());
+    doReturn(new WingsException("wings exception message"))
+        .when(exceptionManager)
+        .processException(any(), any(), any());
+
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata()))
+        .hasMessage("wings exception message")
+        .isInstanceOf(WingsException.class);
+
+    verify(exceptionManager, times(1)).processException(exceptionArgumentCaptor.capture(), any(), any());
+    Exception exception = exceptionArgumentCaptor.getValue();
+    assertThat(exception).isNotNull();
+    assertThat(exception.getMessage())
+        .isEqualTo("Please validate the settings on the configuration page and try again.");
+    InvalidRequestException ex = (InvalidRequestException) exception.getCause();
+    assertThat(ex.getMessage()).isEqualTo("Gateway timeout");
+  }
+
+  @Test
+  @Owner(developers = IVAN)
+  @Category(UnitTests.class)
+  public void testProcessValidationTaskResponseSSHInvalidCredentials() {
+    Secret secret = getSecret();
+    secret.setSecretSpec(SSHExecutionCredentialSpec.builder()
+                             .port(22)
+                             .auth(SSHAuth.builder()
+                                       .type(SSHAuthScheme.SSH)
+                                       .sshSpec(SSHConfig.builder()
+                                                    .credentialType(SSHCredentialType.Password)
+                                                    .spec(SSHPasswordCredential.builder()
+                                                              .userName("notValidUsername")
+                                                              .password(SecretRefData.builder().build())
+                                                              .build())
+                                                    .build())
+                                       .build())
+                             .build());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(
+            SSHConfigValidationTaskResponse.builder()
+                .errorMessage(String.format("Failed to get session due to - %s", ErrorCode.INVALID_CREDENTIAL.name()))
+                .build());
+    doReturn(new WingsException("wings exception message"))
+        .when(exceptionManager)
+        .processException(any(), any(), any());
+
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata()))
+        .hasMessage("wings exception message")
+        .isInstanceOf(WingsException.class);
+
+    verify(exceptionManager, times(1)).processException(exceptionArgumentCaptor.capture(), any(), any());
+    Exception exception = exceptionArgumentCaptor.getValue();
+    assertThat(exception).isNotNull();
+    assertThat(exception.getMessage()).isEqualTo("Please provide valid credentials on configuration page.");
+    ExplanationException explanationException = (ExplanationException) exception.getCause();
+    assertThat(explanationException.getMessage()).isEqualTo("Username or SSK key/Password is not valid");
+    InvalidRequestException ex = (InvalidRequestException) explanationException.getCause();
+    assertThat(ex.getMessage()).isEqualTo("Failed to get session due to - INVALID_CREDENTIAL");
+  }
+
+  @Test
+  @Owner(developers = IVAN)
+  @Category(UnitTests.class)
+  public void testProcessValidationTaskResponseSSHInvalidKeyPath() {
+    Secret secret = getSecret();
+    secret.setSecretSpec(SSHExecutionCredentialSpec.builder()
+                             .port(22)
+                             .auth(SSHAuth.builder()
+                                       .type(SSHAuthScheme.SSH)
+                                       .sshSpec(SSHConfig.builder()
+                                                    .credentialType(SSHCredentialType.KeyPath)
+                                                    .spec(SSHKeyPathCredential.builder()
+                                                              .userName("notValidUsername")
+                                                              .keyPath("not/existing/key/path")
+                                                              .build())
+                                                    .build())
+                                       .build())
+                             .build());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(
+            SSHConfigValidationTaskResponse.builder()
+                .errorMessage(String.format("Failed to get session due to - %s", ErrorCode.INVALID_KEYPATH.name()))
+                .build());
+    doReturn(new WingsException("wings exception message"))
+        .when(exceptionManager)
+        .processException(any(), any(), any());
+
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata()))
+        .hasMessage("wings exception message")
+        .isInstanceOf(WingsException.class);
+
+    verify(exceptionManager, times(1)).processException(exceptionArgumentCaptor.capture(), any(), any());
+    Exception exception = exceptionArgumentCaptor.getValue();
+    assertThat(exception).isNotNull();
+    assertThat(exception.getMessage()).isEqualTo("Please provide valid credentials on configuration page.");
+    ExplanationException explanationException = (ExplanationException) exception.getCause();
+    assertThat(explanationException.getMessage()).isEqualTo("SSH Key File Path is not valid");
+    InvalidRequestException ex = (InvalidRequestException) explanationException.getCause();
+    assertThat(ex.getMessage()).isEqualTo("Failed to get session due to - INVALID_KEYPATH");
+  }
+
+  @Test
+  @Owner(developers = IVAN)
+  @Category(UnitTests.class)
+  public void testProcessValidationTaskResponseSSHInvalidKey() {
+    Secret secret = getSecret();
+    secret.setSecretSpec(
+        SSHExecutionCredentialSpec.builder()
+            .port(22)
+            .auth(SSHAuth.builder()
+                      .type(SSHAuthScheme.SSH)
+                      .sshSpec(SSHConfig.builder()
+                                   .credentialType(SSHCredentialType.KeyReference)
+                                   .spec(SSHKeyCredential.builder()
+                                             .userName("Username")
+                                             .key(SecretRefData.builder().identifier("not_valid_ssh_key").build())
+                                             .build())
+                                   .build())
+                      .build())
+            .build());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(SSHConfigValidationTaskResponse.builder()
+                        .errorMessage(String.format("Failed to get session due to - %s", ErrorCode.INVALID_KEY.name()))
+                        .build());
+    doReturn(new WingsException("wings exception message"))
+        .when(exceptionManager)
+        .processException(any(), any(), any());
+
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getMetadata()))
+        .hasMessage("wings exception message")
+        .isInstanceOf(WingsException.class);
+
+    verify(exceptionManager, times(1)).processException(exceptionArgumentCaptor.capture(), any(), any());
+    Exception exception = exceptionArgumentCaptor.getValue();
+    assertThat(exception).isNotNull();
+    assertThat(exception.getMessage()).isEqualTo("Please provide valid credentials on configuration page.");
+    ExplanationException explanationException = (ExplanationException) exception.getCause();
+    assertThat(explanationException.getMessage()).isEqualTo("SSH Key is not valid");
+    InvalidRequestException ex = (InvalidRequestException) explanationException.getCause();
+    assertThat(ex.getMessage()).isEqualTo("Failed to get session due to - INVALID_KEY");
+  }
+
+  @Test
+  @Owner(developers = IVAN)
+  @Category(UnitTests.class)
+  public void testProcessValidationTaskResponseWinRmInvalidCredentials() {
+    Secret secret = getWinRmSecret();
+    secret.setSecretSpec(
+        WinRmCredentialsSpec.builder()
+            .port(5986)
+            .auth(WinRmAuth.builder()
+                      .type(WinRmAuthScheme.NTLM)
+                      .spec(NTLMConfig.builder().username("user").password(SecretRefData.builder().build()).build())
+                      .build())
+            .build());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(
+            WinRmConfigValidationTaskResponse.builder()
+                .errorMessage(
+                    "Invalid credentials or incompatible authentication schemes\\nAuthorization loop detected on Conduit \"{http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd}WinRmPort.http-conduit\" on URL \"https://ec2-54-225-189-86.compute-1.amazonaws.com:5986/wsman\" with realm \"WSMAN\"")
+                .build());
+    doReturn(new WingsException("wings exception message"))
+        .when(exceptionManager)
+        .processException(any(), any(), any());
+
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getWinRmMetadata()))
+        .hasMessage("wings exception message")
+        .isInstanceOf(WingsException.class);
+
+    verify(exceptionManager, times(1)).processException(exceptionArgumentCaptor.capture(), any(), any());
+    Exception exception = exceptionArgumentCaptor.getValue();
+    assertThat(exception).isNotNull();
+    assertThat(exception.getMessage()).isEqualTo("Please provide valid credentials on configuration page.");
+    ExplanationException explanationException = (ExplanationException) exception.getCause();
+    assertThat(explanationException.getMessage()).isEqualTo("Domain or Username/Password is not valid");
+    InvalidRequestException ex = (InvalidRequestException) explanationException.getCause();
+    assertThat(ex.getMessage())
+        .isEqualTo(
+            "Invalid credentials or incompatible authentication schemes\\nAuthorization loop detected on Conduit \"{http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd}WinRmPort.http-conduit\" on URL \"https://ec2-54-225-189-86.compute-1.amazonaws.com:5986/wsman\" with realm \"WSMAN\"");
+  }
+
+  @Test
+  @Owner(developers = IVAN)
+  @Category(UnitTests.class)
+  public void testProcessValidationTaskResponseWinRmInvalidProtocol() {
+    Secret secret = getWinRmSecret();
+    secret.setSecretSpec(
+        WinRmCredentialsSpec.builder()
+            .port(5986)
+            .auth(WinRmAuth.builder()
+                      .type(WinRmAuthScheme.NTLM)
+                      .spec(NTLMConfig.builder().username("user").password(SecretRefData.builder().build()).build())
+                      .build())
+            .build());
+    doReturn(Optional.of(secret)).when(secretServiceV2Spy).get(any(), any(), any(), any());
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(
+            WinRmConfigValidationTaskResponse.builder()
+                .errorMessage(
+                    "Invalid credentials or incompatible authentication schemes\\nAuthorization loop detected on Conduit \"{http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd}WinRmPort.http-conduit\" on URL \"https://ec2-54-225-189-86.compute-1.amazonaws.com:5986/wsman\" with realm \"null\"")
+                .build());
+    doReturn(new WingsException("wings exception message"))
+        .when(exceptionManager)
+        .processException(any(), any(), any());
+
+    assertThatThrownBy(() -> secretServiceV2Spy.validateSecret("account", null, null, "identifier", getWinRmMetadata()))
+        .hasMessage("wings exception message")
+        .isInstanceOf(WingsException.class);
+
+    verify(exceptionManager, times(1)).processException(exceptionArgumentCaptor.capture(), any(), any());
+    Exception exception = exceptionArgumentCaptor.getValue();
+    assertThat(exception).isNotNull();
+    assertThat(exception.getMessage())
+        .isEqualTo("Please check HTTP/S is enabled on host machine and provide valid setup on configuration page.");
+    ExplanationException explanationException = (ExplanationException) exception.getCause();
+    assertThat(explanationException.getMessage()).isEqualTo("Cannot establish HTTP/S connection to host");
+    InvalidRequestException ex = (InvalidRequestException) explanationException.getCause();
+    assertThat(ex.getMessage())
+        .isEqualTo(
+            "Invalid credentials or incompatible authentication schemes\\nAuthorization loop detected on Conduit \"{http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd}WinRmPort.http-conduit\" on URL \"https://ec2-54-225-189-86.compute-1.amazonaws.com:5986/wsman\" with realm \"null\"");
+  }
+
+  @NotNull
+  private Secret getSecretPasswordCredentialType() {
+    Secret secret = getSecret();
+    secret.setSecretSpec(SSHExecutionCredentialSpec.builder()
+                             .port(22)
+                             .auth(SSHAuth.builder()
+                                       .type(SSHAuthScheme.SSH)
+                                       .sshSpec(SSHConfig.builder()
+                                                    .credentialType(SSHCredentialType.Password)
+                                                    .spec(SSHPasswordCredential.builder()
+                                                              .userName("username")
+                                                              .password(SecretRefData.builder().build())
+                                                              .build())
+                                                    .build())
+                                       .build())
+                             .build());
+    return secret;
   }
 }

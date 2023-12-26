@@ -7,6 +7,8 @@
 
 package io.harness.cvng.utils;
 
+import io.harness.cvng.servicelevelobjective.beans.SLIEvaluationType;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -15,6 +17,9 @@ import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class SLOGraphUtils {
+  public static final List<SLIEvaluationType> windowAndMetricLessSLO =
+      List.of(SLIEvaluationType.METRIC_LESS, SLIEvaluationType.WINDOW);
+
   public static List<Instant> getMinutesExclusiveOfStartAndEndTime(
       Instant startTime, Instant endTime, long numOfPointsInBetween) {
     List<Instant> minutes = new ArrayList<>();
@@ -43,6 +48,16 @@ public class SLOGraphUtils {
          current = current.plus(diffDuration)) {
       minutes.add(current);
     }
+    return minutes;
+  }
+
+  public static List<Instant> getBucketMinutesInclusiveOfStartAndEndTime(
+      Instant startTime, Instant endTime, long numOfPointsRequiredInBetween, int bucketSize) {
+    List<Instant> minutes = new ArrayList<>();
+    minutes.add(startTime);
+    minutes.addAll(
+        getBucketMinutesExclusiveOfStartAndEndTime(startTime, endTime, numOfPointsRequiredInBetween, bucketSize));
+    minutes.add(endTime);
     return minutes;
   }
 

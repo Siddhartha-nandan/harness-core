@@ -95,7 +95,13 @@ public enum CIStepInfoType {
   PROVENANCE(CI_LITE_ENGINE, "provenance"),
   SLSA_VERIFICATION(CI_LITE_ENGINE, "SlsaVerification"),
   PROVENANCE_GCR(CI_LITE_ENGINE, "provenanceGcr"),
-  SLSA_VERIFICATION_GCR(CI_LITE_ENGINE, "SlsaVerificationGcr");
+  SLSA_VERIFICATION_GCR(CI_LITE_ENGINE, "SlsaVerificationGcr"),
+  COOKIECUTTER(CI_LITE_ENGINE, "CookieCutter"),
+  CREATE_REPO(CI_LITE_ENGINE, "CreateRepo"),
+  DIRECT_PUSH(CI_LITE_ENGINE, "DirectPush"),
+  REGISTER_CATALOG(CI_LITE_ENGINE, "RegisterCatalog"),
+  CREATE_CATALOG(CI_LITE_ENGINE, "CreateCatalog"),
+  SLACK_NOTIFY(CI_LITE_ENGINE, "SlackNotify");
 
   @Getter private final CIStepExecEnvironment ciStepExecEnvironment;
   private final String displayName;

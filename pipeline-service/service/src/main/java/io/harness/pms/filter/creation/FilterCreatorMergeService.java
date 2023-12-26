@@ -8,6 +8,7 @@
 package io.harness.pms.filter.creation;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+import static io.harness.gitsync.interceptor.GitSyncConstants.DEFAULT;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -22,6 +23,7 @@ import io.harness.eventsframework.schemas.entity.EntityTypeProtoEnum;
 import io.harness.eventsframework.schemas.entity.IdentifierRefProtoDTO;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.UnexpectedException;
+import io.harness.gitaware.helper.GitAwareContextHelper;
 import io.harness.gitsync.beans.StoreType;
 import io.harness.gitsync.helpers.GitContextHelper;
 import io.harness.gitsync.interceptor.GitEntityInfo;
@@ -65,6 +67,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -291,9 +294,9 @@ public class FilterCreatorMergeService {
   @VisibleForTesting
   public Optional<EntityDetailProtoDTO> getGitConnectorReference(PipelineEntity pipelineEntity) {
     if (isGitSimplificationEnabled(pipelineEntity)) {
-      IdentifierRef identifierRef =
-          IdentifierRefHelper.getIdentifierRef(pipelineEntity.getConnectorRef(), pipelineEntity.getAccountIdentifier(),
-              pipelineEntity.getOrgIdentifier(), pipelineEntity.getProjectIdentifier());
+      IdentifierRef identifierRef = IdentifierRefHelper.getIdentifierRef(
+          getConnectorRefFromPipelineEntity(pipelineEntity), pipelineEntity.getAccountIdentifier(),
+          pipelineEntity.getOrgIdentifier(), pipelineEntity.getProjectIdentifier());
 
       IdentifierRefProtoDTO connectorReference =
           IdentifierRefProtoDTOHelper.createIdentifierRefProtoDTO(identifierRef.getAccountIdentifier(),
@@ -307,9 +310,25 @@ public class FilterCreatorMergeService {
     return Optional.empty();
   }
 
+  private String getConnectorRefFromPipelineEntity(PipelineEntity pipelineEntity) {
+    if (isNotEmpty(pipelineEntity.getConnectorRef())) {
+      return pipelineEntity.getConnectorRef();
+    }
+    GitAwareContextHelper.initDefaultScmGitMetaData();
+    GitEntityInfo gitEntityInfo = GitContextHelper.getGitEntityInfo();
+    if (Objects.isNull(gitEntityInfo)) {
+      return DEFAULT;
+    }
+    return gitEntityInfo.getConnectorRef();
+  }
+
   private boolean isGitSimplificationEnabled(PipelineEntity pipelineEntity) {
     return StoreType.REMOTE.equals(pipelineEntity.getStoreType())
         && gitSyncSdkService.isGitSimplificationEnabled(pipelineEntity.getAccountIdentifier(),
             pipelineEntity.getOrgIdentifier(), pipelineEntity.getProjectIdentifier());
+  }
+
+  public void deleteSetupReferences(PipelineEntity pipelineEntity) {
+    pipelineSetupUsageHelper.deleteSetupUsagesForGivenPipeline(pipelineEntity);
   }
 }

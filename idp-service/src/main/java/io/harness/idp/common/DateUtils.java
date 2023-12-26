@@ -23,7 +23,6 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.TimeZone;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -32,12 +31,9 @@ import org.apache.commons.lang3.tuple.Pair;
 @Slf4j
 @OwnedBy(HarnessTeam.IDP)
 public class DateUtils {
-  public static final String ZONE_ID_IST = "Asia/Kolkata";
-
   public long parseTimestamp(String timestamp, String format) {
     try {
       SimpleDateFormat dateFormat = new SimpleDateFormat(format);
-      dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
       Date date = dateFormat.parse(timestamp);
       return date.getTime();
     } catch (ParseException e) {
@@ -50,8 +46,8 @@ public class DateUtils {
     LocalDate today = LocalDate.now();
     LocalDateTime todayMidnight = LocalDateTime.of(today, midnight);
     LocalDateTime previousDayMidnight = todayMidnight.minusDays(1);
-    return Pair.of(previousDayMidnight.atZone(ZoneId.of(ZONE_ID_IST)).toInstant().toEpochMilli(),
-        todayMidnight.atZone(ZoneId.of(ZONE_ID_IST)).toInstant().toEpochMilli());
+    return Pair.of(previousDayMidnight.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+        todayMidnight.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
   }
 
   public static Pair<String, Date> yesterdayDateInStringAndDateFormat() {
@@ -60,6 +56,16 @@ public class DateUtils {
     Date yesterdayDate = calendar.getTime();
     return Pair.of(DateUtils.getDateStringByFormat(yesterdayDate, "yyyy-MM-dd"),
         DateUtils.getDateByFormat(yesterdayDate, "yyyy-MM-dd"));
+  }
+
+  public static long yesterdayInMilliseconds() {
+    Calendar calendar = Calendar.getInstance();
+    calendar.add(Calendar.DATE, -1);
+    calendar.set(Calendar.HOUR_OF_DAY, 12);
+    calendar.set(Calendar.MINUTE, 0);
+    calendar.set(Calendar.SECOND, 0);
+    calendar.set(Calendar.MILLISECOND, 0);
+    return calendar.getTimeInMillis();
   }
 
   public static String getDateStringByFormat(Date date, String format) {

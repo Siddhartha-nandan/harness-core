@@ -61,7 +61,6 @@ import io.harness.strategy.StrategyValidationUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import com.google.protobuf.ByteString;
 import java.util.ArrayList;
@@ -84,12 +83,12 @@ public class StrategyUtils {
 
   public boolean isWrappedUnderStrategy(YamlField yamlField) {
     YamlField strategyField = yamlField.getNode().getField(YAMLFieldNameConstants.STRATEGY);
-    return strategyField != null;
+    return YamlUtils.isUUIDPresent(strategyField);
   }
 
   public boolean isWrappedUnderStrategy(YamlNode yamlField) {
     YamlField strategyField = yamlField.getField(YAMLFieldNameConstants.STRATEGY);
-    return strategyField != null;
+    return YamlUtils.isUUIDPresent(strategyField);
   }
 
   public String getSwappedPlanNodeId(PlanCreationContext ctx, String originalPlanNodeId) {
@@ -97,7 +96,7 @@ public class StrategyUtils {
     // Since strategy is a child of stage but in execution we want to wrap stage around strategy,
     // we are swapping the uuid of stage and strategy node.
     String planNodeId = originalPlanNodeId;
-    if (strategyField != null) {
+    if (YamlUtils.isUUIDPresent(strategyField)) {
       planNodeId = strategyField.getNode().getUuid();
     }
     return planNodeId;
@@ -184,6 +183,9 @@ public class StrategyUtils {
                            .addNextIds(siblingField.getNode().getUuid())
                            .addCurrentNodeChildren(planNodeId)
                            .build();
+    } else {
+      // when sibling field in pipeline rollback node
+      edgeLayoutList = EdgeLayoutList.newBuilder().addCurrentNodeChildren(planNodeId).build();
     }
 
     StrategyType strategyType = StrategyType.LOOP;
@@ -347,23 +349,6 @@ public class StrategyUtils {
    */
   public String refineIdentifier(String identifier) {
     return identifier.replaceAll(STRATEGY_IDENTIFIER_POSTFIX_ESCAPED, "");
-  }
-
-  /**
-   * This is used to fetch strategy object map at a given level
-   * @param level
-   * @return
-   */
-  @Deprecated
-  public Map<String, Object> fetchStrategyObjectMap(Level level, boolean useMatrixFieldName) {
-    Map<String, Object> strategyObjectMap = new HashMap<>();
-    if (AmbianceUtils.hasStrategyMetadata(level)) {
-      return fetchStrategyObjectMap(Lists.newArrayList(level), useMatrixFieldName);
-    }
-    strategyObjectMap.put(ITERATION, 0);
-    strategyObjectMap.put(ITERATIONS, 1);
-    strategyObjectMap.put(TOTAL_ITERATIONS, 1);
-    return strategyObjectMap;
   }
 
   /**

@@ -8,12 +8,14 @@
 package io.harness.notification.entities;
 
 import static io.harness.annotations.dev.HarnessTeam.PL;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.notification.NotificationRequest.PagerDuty;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.notification.NotificationChannelType;
 import io.harness.notification.dtos.UserGroup;
 import io.harness.notification.mapper.NotificationUserGroupMapper;
+import io.harness.spec.server.notification.v1.model.ChannelDTO;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeName;
@@ -33,15 +35,23 @@ public class PagerDutyChannel implements Channel {
   List<UserGroup> userGroups;
   Map<String, String> templateData;
   String templateId;
+  String summary;
+  Map<String, String> links;
 
   @Override
   public Object toObjectofProtoSchema() {
-    return PagerDuty.newBuilder()
-        .addAllPagerDutyIntegrationKeys(pagerDutyIntegrationKeys)
-        .putAllTemplateData(templateData)
-        .setTemplateId(templateId)
-        .addAllUserGroup(NotificationUserGroupMapper.toProto(userGroups))
-        .build();
+    PagerDuty.Builder builder = PagerDuty.newBuilder()
+                                    .addAllPagerDutyIntegrationKeys(pagerDutyIntegrationKeys)
+                                    .putAllTemplateData(templateData)
+                                    .setTemplateId(templateId)
+                                    .addAllUserGroup(NotificationUserGroupMapper.toProto(userGroups));
+    if (isNotEmpty(summary)) {
+      builder.setSummary(summary);
+    }
+    if (isNotEmpty(links)) {
+      builder.putAllLinks(links);
+    }
+    return builder.build();
   }
 
   @Override
@@ -50,12 +60,19 @@ public class PagerDutyChannel implements Channel {
     return NotificationChannelType.PAGERDUTY;
   }
 
+  @Override
+  public ChannelDTO dto() {
+    return new ChannelDTO().pagerDutyIntegrationKeys(pagerDutyIntegrationKeys);
+  }
+
   public static PagerDutyChannel toPagerDutyEntity(PagerDuty pagerDutyDetails) {
     return PagerDutyChannel.builder()
         .pagerDutyIntegrationKeys(pagerDutyDetails.getPagerDutyIntegrationKeysList())
         .templateData(pagerDutyDetails.getTemplateDataMap())
         .templateId(pagerDutyDetails.getTemplateId())
         .userGroups(NotificationUserGroupMapper.toEntity(pagerDutyDetails.getUserGroupList()))
+        .summary(pagerDutyDetails.getSummary())
+        .links(pagerDutyDetails.getLinksMap())
         .build();
   }
 }

@@ -51,6 +51,8 @@ import io.harness.cdng.chaos.ChaosStep;
 import io.harness.cdng.configfile.steps.ConfigFilesStep;
 import io.harness.cdng.configfile.steps.ConfigFilesStepV2;
 import io.harness.cdng.configfile.steps.IndividualConfigFileStep;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3Step;
+import io.harness.cdng.containerStepGroup.DownloadHarnessStoreStep;
 import io.harness.cdng.customDeployment.FetchInstanceScriptStep;
 import io.harness.cdng.ecs.EcsBasicRollbackStep;
 import io.harness.cdng.ecs.EcsBlueGreenCreateServiceStep;
@@ -63,9 +65,17 @@ import io.harness.cdng.ecs.EcsRollingRollbackStep;
 import io.harness.cdng.ecs.EcsRunTaskStep;
 import io.harness.cdng.ecs.EcsServiceSetupStep;
 import io.harness.cdng.ecs.EcsUpgradeContainerStep;
+import io.harness.cdng.ecs.asyncsteps.EcsBasicRollbackStepV2;
+import io.harness.cdng.ecs.asyncsteps.EcsBlueGreenCreateServiceStepV2;
+import io.harness.cdng.ecs.asyncsteps.EcsBlueGreenRollbackStepV2;
+import io.harness.cdng.ecs.asyncsteps.EcsBlueGreenSwapTargetGroupsStepV2;
 import io.harness.cdng.ecs.asyncsteps.EcsCanaryDeleteStepV2;
 import io.harness.cdng.ecs.asyncsteps.EcsCanaryDeployStepV2;
 import io.harness.cdng.ecs.asyncsteps.EcsRollingDeployStepV2;
+import io.harness.cdng.ecs.asyncsteps.EcsRollingRollbackStepV2;
+import io.harness.cdng.ecs.asyncsteps.EcsRunTaskStepV2;
+import io.harness.cdng.ecs.asyncsteps.EcsServiceSetupStepV2;
+import io.harness.cdng.ecs.asyncsteps.EcsUpgradeContainerStepV2;
 import io.harness.cdng.elastigroup.ElastigroupBGStageSetupStep;
 import io.harness.cdng.elastigroup.ElastigroupServiceSettingsStep;
 import io.harness.cdng.elastigroup.ElastigroupSetupStep;
@@ -121,6 +131,7 @@ import io.harness.cdng.k8s.asyncsteps.K8sDryRunManifestStepV2;
 import io.harness.cdng.k8s.asyncsteps.K8sRollingRollbackStepV2;
 import io.harness.cdng.k8s.asyncsteps.K8sRollingStepV2;
 import io.harness.cdng.k8s.asyncsteps.K8sScaleStepV2;
+import io.harness.cdng.k8s.asyncsteps.K8sTrafficRoutingStep;
 import io.harness.cdng.manifest.steps.ManifestStep;
 import io.harness.cdng.manifest.steps.ManifestsStep;
 import io.harness.cdng.manifest.steps.ManifestsStepV2;
@@ -190,6 +201,15 @@ import io.harness.cdng.tas.TasRollingRollbackStep;
 import io.harness.cdng.tas.TasRouteMappingStep;
 import io.harness.cdng.tas.TasSwapRollbackStep;
 import io.harness.cdng.tas.TasSwapRoutesStep;
+import io.harness.cdng.tas.asyncsteps.TasAppResizeStepV2;
+import io.harness.cdng.tas.asyncsteps.TasBasicAppSetupStepV2;
+import io.harness.cdng.tas.asyncsteps.TasCanaryAppSetupStepV2;
+import io.harness.cdng.tas.asyncsteps.TasRollbackStepV2;
+import io.harness.cdng.tas.asyncsteps.TasRollingDeployStepV2;
+import io.harness.cdng.tas.asyncsteps.TasRollingRollbackStepV2;
+import io.harness.cdng.tas.asyncsteps.TasRouteMappingStepV2;
+import io.harness.cdng.tas.asyncsteps.TasSwapRollbackStepV2;
+import io.harness.cdng.tas.asyncsteps.TasSwapRoutesStepV2;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.sdk.core.steps.Step;
 import io.harness.registrar.NGCommonUtilStepsRegistrar;
@@ -298,6 +318,14 @@ public class NgStepRegistrar {
     engineSteps.put(EcsCanaryDeleteStepV2.STEP_TYPE, EcsCanaryDeleteStepV2.class);
     engineSteps.put(EcsCanaryDeployStepV2.STEP_TYPE, EcsCanaryDeployStepV2.class);
     engineSteps.put(EcsRollingDeployStepV2.STEP_TYPE, EcsRollingDeployStepV2.class);
+    engineSteps.put(EcsUpgradeContainerStepV2.STEP_TYPE, EcsUpgradeContainerStepV2.class);
+    engineSteps.put(EcsBlueGreenRollbackStepV2.STEP_TYPE, EcsBlueGreenRollbackStepV2.class);
+    engineSteps.put(EcsBlueGreenSwapTargetGroupsStepV2.STEP_TYPE, EcsBlueGreenSwapTargetGroupsStepV2.class);
+    engineSteps.put(EcsBasicRollbackStepV2.STEP_TYPE, EcsBasicRollbackStepV2.class);
+    engineSteps.put(EcsRollingRollbackStepV2.STEP_TYPE, EcsRollingRollbackStepV2.class);
+    engineSteps.put(EcsBlueGreenCreateServiceStepV2.STEP_TYPE, EcsBlueGreenCreateServiceStepV2.class);
+    engineSteps.put(EcsRunTaskStepV2.STEP_TYPE, EcsRunTaskStepV2.class);
+    engineSteps.put(EcsServiceSetupStepV2.STEP_TYPE, EcsServiceSetupStepV2.class);
 
     engineSteps.put(AzureCreateARMResourceStep.STEP_TYPE, AzureCreateARMResourceStep.class);
     engineSteps.put(MultiDeploymentSpawnerStep.STEP_TYPE, MultiDeploymentSpawnerStep.class);
@@ -343,6 +371,17 @@ public class NgStepRegistrar {
     engineSteps.put(TasRollingDeployStep.STEP_TYPE, TasRollingDeployStep.class);
     engineSteps.put(TasRollingRollbackStep.STEP_TYPE, TasRollingRollbackStep.class);
     engineSteps.put(TasRouteMappingStep.STEP_TYPE, TasRouteMappingStep.class);
+
+    // TAS ASYNC
+    engineSteps.put(TasCanaryAppSetupStepV2.STEP_TYPE, TasCanaryAppSetupStepV2.class);
+    engineSteps.put(TasRollbackStepV2.STEP_TYPE, TasRollbackStepV2.class);
+    engineSteps.put(TasRollingRollbackStepV2.STEP_TYPE, TasRollingRollbackStepV2.class);
+    engineSteps.put(TasSwapRollbackStepV2.STEP_TYPE, TasSwapRollbackStepV2.class);
+    engineSteps.put(TasAppResizeStepV2.STEP_TYPE, TasAppResizeStepV2.class);
+    engineSteps.put(TasRouteMappingStepV2.STEP_TYPE, TasRouteMappingStepV2.class);
+    engineSteps.put(TasSwapRoutesStepV2.STEP_TYPE, TasSwapRoutesStepV2.class);
+    engineSteps.put(TasRollingDeployStepV2.STEP_TYPE, TasRollingDeployStepV2.class);
+    engineSteps.put(TasBasicAppSetupStepV2.STEP_TYPE, TasBasicAppSetupStepV2.class);
 
     engineSteps.put(GoogleFunctionsDeployStep.STEP_TYPE, GoogleFunctionsDeployStep.class);
     engineSteps.put(GoogleFunctionsDeployWithoutTrafficStep.STEP_TYPE, GoogleFunctionsDeployWithoutTrafficStep.class);
@@ -406,9 +445,14 @@ public class NgStepRegistrar {
     engineSteps.put(K8sDeleteStepV2.STEP_TYPE, K8sDeleteStepV2.class);
     engineSteps.put(K8sApplyStepV2.STEP_TYPE, K8sApplyStepV2.class);
     engineSteps.put(K8sRollingStepV2.STEP_TYPE, K8sRollingStepV2.class);
+    engineSteps.put(K8sTrafficRoutingStep.STEP_TYPE, K8sTrafficRoutingStep.class);
 
     engineSteps.put(HelmDeployStepV2.STEP_TYPE, HelmDeployStepV2.class);
     engineSteps.put(HelmRollbackStepV2.STEP_TYPE, HelmRollbackStepV2.class);
+
+    // CD Container Step Group Common Steps
+    engineSteps.put(DownloadAwsS3Step.STEP_TYPE, DownloadAwsS3Step.class);
+    engineSteps.put(DownloadHarnessStoreStep.STEP_TYPE, DownloadHarnessStoreStep.class);
 
     return engineSteps;
   }

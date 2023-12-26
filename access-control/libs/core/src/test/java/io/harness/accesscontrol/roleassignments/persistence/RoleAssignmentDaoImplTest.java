@@ -33,7 +33,6 @@ import io.harness.accesscontrol.roleassignments.persistence.RoleAssignmentDBO.Ro
 import io.harness.accesscontrol.roleassignments.persistence.repositories.RoleAssignmentRepository;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
-import io.harness.exception.DuplicateFieldException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.beans.PageRequest;
 import io.harness.ng.beans.PageResponse;
@@ -53,7 +52,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.ArgumentCaptor;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.query.Criteria;
 
 @OwnedBy(PL)
@@ -93,16 +91,6 @@ public class RoleAssignmentDaoImplTest extends AccessControlCoreTestBase {
     assertEquals(roleAssignment.getPrincipalIdentifier(), savedRoleAssignment.getPrincipalIdentifier());
     assertEquals(roleAssignment.getPrincipalType(), savedRoleAssignment.getPrincipalType());
     assertEquals(roleAssignment.getResourceGroupIdentifier(), savedRoleAssignment.getResourceGroupIdentifier());
-  }
-
-  @Test(expected = DuplicateFieldException.class)
-  @Owner(developers = KARAN)
-  @Category(UnitTests.class)
-  public void testCreateDuplicate() {
-    RoleAssignment roleAssignment = getRoleAssignment();
-    RoleAssignmentDBO roleAssignmentDBO = toDBO(roleAssignment);
-    when(roleAssignmentRepository.save(roleAssignmentDBO)).thenThrow(new DuplicateKeyException(""));
-    roleAssignmentDao.create(roleAssignment);
   }
 
   @Test
@@ -323,9 +311,16 @@ public class RoleAssignmentDaoImplTest extends AccessControlCoreTestBase {
     assertEquals(2, document.size());
     if (roleAssignmentFilter.isIncludeChildScopes()) {
       BasicDBList orList = (BasicDBList) document.get("$or");
+
       Document scopeCriteria = (Document) orList.get(0);
-      Pattern pattern = (Pattern) scopeCriteria.get(RoleAssignmentDBOKeys.scopeIdentifier);
-      assertEquals("^" + roleAssignmentFilter.getScopeFilter(), pattern.toString());
+      BasicDBList orScopeIdentifierList = (BasicDBList) scopeCriteria.get("$or");
+
+      Document scopeCriteria1 = (Document) orScopeIdentifierList.get(0);
+      assertEquals(roleAssignmentFilter.getScopeFilter(), scopeCriteria1.get(RoleAssignmentDBOKeys.scopeIdentifier));
+
+      Document scopeCriteria2 = (Document) orScopeIdentifierList.get(1);
+      Pattern pattern = (Pattern) scopeCriteria2.get(RoleAssignmentDBOKeys.scopeIdentifier);
+      assertEquals("^" + roleAssignmentFilter.getScopeFilter() + "/", pattern.toString());
     } else {
       BasicDBList orList = (BasicDBList) document.get("$or");
       Document scopeCriteria = (Document) orList.get(0);

@@ -21,7 +21,7 @@ metadata:
 spec:
   selector:
     app: harness-ingress-controller
-  {{- if or .Values.global.ggIngress.enabled .Values.nginx.clusterIPEnabled }}
+  {{- if or .Values.global.globalIngress.enabled .Values.nginx.clusterIPEnabled }}
   type: 'ClusterIP'
   {{- if not (empty .Values.nginx.clusterIP) }}
   clusterIP: {{ .Values.nginx.clusterIP }}
@@ -87,6 +87,27 @@ metadata:
   name: harness-role
   namespace: {{ .Release.Namespace }}
 rules:
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - list
+  - watch
+  - create
+  - delete
+  - get 
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - get
+  - list
+  - update
+  - delete
+  - watch
 - apiGroups:
   - ""
   resources:

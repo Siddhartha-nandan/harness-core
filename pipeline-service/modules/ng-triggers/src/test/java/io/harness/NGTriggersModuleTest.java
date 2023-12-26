@@ -43,6 +43,7 @@ import io.harness.serializer.KryoSerializer;
 import io.harness.serializer.NGTriggerRegistrars;
 import io.harness.service.intfc.DelegateAsyncService;
 import io.harness.service.intfc.DelegateSyncService;
+import io.harness.telemetry.TelemetryReporter;
 import io.harness.utils.PmsFeatureFlagService;
 import io.harness.webhook.remote.WebhookEventClient;
 import io.harness.yaml.schema.beans.YamlSchemaRootClass;
@@ -132,6 +133,14 @@ public class NGTriggersModuleTest extends CategoryTest {
       @Singleton
       KryoSerializer getReferenceFalseKryoSerializer() {
         return mock(KryoSerializer.class);
+      }
+    });
+    modules.add(new ProviderModule() {
+      @Provides
+      @Singleton
+      @Named("maxMultiArtifactTriggerSources")
+      public Integer getMaxMultiArtifactTriggerSourcesProvider() {
+        return 10;
       }
     });
     modules.add(new ProviderModule() {
@@ -274,6 +283,13 @@ public class NGTriggersModuleTest extends CategoryTest {
       @Singleton
       ExecutorService getExecutorService() {
         return mock(ExecutorService.class);
+      }
+    });
+    modules.add(new ProviderModule() {
+      @Provides
+      @Singleton
+      TelemetryReporter getTelemetryReporter() {
+        return mock(TelemetryReporter.class);
       }
     });
     modules.add(ngTriggersModule);

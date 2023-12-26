@@ -38,10 +38,7 @@ import lombok.experimental.FieldDefaults;
 @OwnedBy(PL)
 @Schema(name = "Account", description = "Account details defined in Harness.")
 public class AccountDTO {
-  @Schema(description = "Account Identifier.")
-  @EntityIdentifier(allowBlank = false)
-  @VariableExpression(skipVariableExpression = true)
-  String identifier;
+  @Schema(description = "Account Identifier.") @EntityIdentifier(allowBlank = false) String identifier;
   @Schema(description = "Name of the Account.") @NGEntityName String name;
   @Schema(description = "Name of the Company.") String companyName;
   @Schema(description = "Name of the cluster associated with this Account.")
@@ -50,9 +47,12 @@ public class AccountDTO {
   @Schema(description = "Default experience of the Account.")
   @VariableExpression(skipVariableExpression = true)
   DefaultExperience defaultExperience;
-  @Schema(description = "Specifies weather access to other generation is allowed or not")
+  @Schema(description = "Specifies whether access to other generation is allowed or not")
   @VariableExpression(skipVariableExpression = true)
   boolean isCrossGenerationAccessEnabled;
+  @Schema(description = "Specifies whether CannyUsernameAbbreviation is enabled for this account")
+  @VariableExpression(skipVariableExpression = true)
+  boolean isCannyUsernameAbbreviationEnabled;
   @Schema(description = "Authentication mechanism associated with the account.")
   @VariableExpression(skipVariableExpression = true)
   AuthenticationMechanism authenticationMechanism;
@@ -76,6 +76,10 @@ public class AccountDTO {
   @VariableExpression(skipVariableExpression = true)
   private String ringName;
 
+  @Schema(description = "Specifies subdomain url for account")
+  @VariableExpression(skipVariableExpression = true)
+  private String subdomainURL;
+
   @Schema(description = "SessionTimeout in minutes")
   @VariableExpression(skipVariableExpression = true)
   private Integer sessionTimeoutInMinutes;
@@ -91,15 +95,17 @@ public class AccountDTO {
   @Builder
   public AccountDTO(String identifier, String name, String companyName, String cluster,
       DefaultExperience defaultExperience, boolean isCrossGenerationAccessEnabled,
-      AuthenticationMechanism authenticationMechanism, ServiceAccountConfig serviceAccountConfig,
-      boolean isNextGenEnabled, boolean isProductLed, boolean isTwoFactorAdminEnforced, long createdAt, String ringName,
-      Integer sessionTimeoutInMinutes, boolean publicAccessEnabled) {
+      boolean isCannyUsernameAbbreviationEnabled, AuthenticationMechanism authenticationMechanism,
+      ServiceAccountConfig serviceAccountConfig, boolean isNextGenEnabled, boolean isProductLed,
+      boolean isTwoFactorAdminEnforced, long createdAt, String ringName, Integer sessionTimeoutInMinutes,
+      boolean publicAccessEnabled, String subdomainURL) {
     this.identifier = identifier;
     this.name = name;
     this.companyName = companyName;
     this.cluster = cluster;
     this.defaultExperience = defaultExperience;
     this.isCrossGenerationAccessEnabled = isCrossGenerationAccessEnabled;
+    this.isCannyUsernameAbbreviationEnabled = isCannyUsernameAbbreviationEnabled;
     this.authenticationMechanism = authenticationMechanism;
     this.isNextGenEnabled = isNextGenEnabled;
     this.serviceAccountConfig = serviceAccountConfig;
@@ -109,5 +115,6 @@ public class AccountDTO {
     this.createdAt = createdAt;
     this.sessionTimeoutInMinutes = sessionTimeoutInMinutes;
     this.publicAccessEnabled = publicAccessEnabled;
+    this.subdomainURL = subdomainURL;
   }
 }

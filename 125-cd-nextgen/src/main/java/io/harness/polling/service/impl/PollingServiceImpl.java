@@ -31,12 +31,14 @@ import io.harness.polling.bean.PollingDocument.PollingDocumentKeys;
 import io.harness.polling.bean.PollingType;
 import io.harness.polling.contracts.PollingItem;
 import io.harness.polling.mapper.PollingDocumentMapper;
+import io.harness.polling.service.intfc.PollingPerpetualTaskService;
 import io.harness.polling.service.intfc.PollingService;
 import io.harness.polling.service.intfc.PollingServiceObserver;
 import io.harness.repositories.polling.PollingRepository;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -56,6 +58,7 @@ public class PollingServiceImpl implements PollingService {
   @Inject private PollingRepository pollingRepository;
   @Inject private PollingDocumentMapper pollingDocumentMapper;
   @Inject private TriggersClient triggersClient;
+  @Inject private PollingPerpetualTaskService perpetualTaskService;
   @Inject @Getter private final Subject<PollingServiceObserver> subject = new Subject<>();
 
   @Override
@@ -244,6 +247,38 @@ public class PollingServiceImpl implements PollingService {
     pollingRepository.deleteAll(criteria);
   }
 
+  public DeleteResult deletePollingDocs(String accountId, String orgId, String projectId, PollingType pollingType) {
+    Criteria criteria = createDeleteCriteria(accountId, orgId, projectId, pollingType);
+    return pollingRepository.deleteAll(criteria);
+  }
+  @Override
+  public Boolean deletePollingDocAndPerpetualTask(
+      String accountId, String orgId, String projectId, PollingType pollingType) {
+    List<PollingDocument> pollingDocuments =
+        pollingRepository.findPollingDocs(accountId, orgId, projectId, pollingType);
+    for (PollingDocument pollingDocument : pollingDocuments) {
+      deletePerpetualTask(pollingDocument);
+    }
+    DeleteResult deletePollingDocsResult = deletePollingDocs(accountId, orgId, projectId, pollingType);
+    return pollingDocuments.size() == deletePollingDocsResult.getDeletedCount();
+  }
+
+  private Criteria createDeleteCriteria(
+      String accountIdentifier, String orgIdentifier, String projectIdentifier, PollingType pollingType) {
+    Criteria criteria = new Criteria();
+    criteria.and(PollingDocumentKeys.accountId).is(accountIdentifier);
+    if (EmptyPredicate.isNotEmpty(orgIdentifier)) {
+      criteria.and(PollingDocumentKeys.orgIdentifier).is(orgIdentifier);
+    }
+    if (EmptyPredicate.isNotEmpty(orgIdentifier) && EmptyPredicate.isNotEmpty(projectIdentifier)) {
+      criteria.and(PollingDocumentKeys.projectIdentifier).is(projectIdentifier);
+    }
+    if (EmptyPredicate.isNotEmpty(String.valueOf(pollingType))) {
+      criteria.and(PollingDocumentKeys.pollingType).is(pollingType);
+    }
+    return criteria;
+  }
+
   private Criteria createScopeCriteria(String accountIdentifier, String orgIdentifier, String projectIdentifier) {
     Criteria criteria = new Criteria();
     criteria.and(PollingDocumentKeys.accountId).is(accountIdentifier);
@@ -316,17 +351,21 @@ public class PollingServiceImpl implements PollingService {
 
   @Override
   public boolean updateTriggerPollingStatus(String accountId, List<String> signatures, boolean success,
-      String errorMessage, List<String> lastCollectedVersions) {
+      String errorMessage, List<String> lastCollectedVersions, Long validityIntervalForErrorStatusMillis) {
     // Truncate `lastCollectedVersions` list to at most 10 items, in order to avoid large payloads.
     if (lastCollectedVersions != null && lastCollectedVersions.size() > MAX_COLLECTED_VERSIONS_FOR_TRIGGER_STATUS) {
       lastCollectedVersions = lastCollectedVersions.subList(0, MAX_COLLECTED_VERSIONS_FOR_TRIGGER_STATUS);
     }
+    long currentTime = System.currentTimeMillis();
     PollingTriggerStatusUpdateDTO statusUpdate = PollingTriggerStatusUpdateDTO.builder()
                                                      .signatures(signatures)
                                                      .success(success)
                                                      .errorMessage(errorMessage)
                                                      .lastCollectedVersions(lastCollectedVersions)
-                                                     .lastCollectedTime(System.currentTimeMillis())
+                                                     .lastCollectedTime(currentTime)
+                                                     .errorStatusValidUntil(validityIntervalForErrorStatusMillis != null
+                                                             ? currentTime + validityIntervalForErrorStatusMillis
+                                                             : null)
                                                      .build();
     try {
       return getResponse(triggersClient.updateTriggerPollingStatus(accountId, statusUpdate));

@@ -11,7 +11,10 @@ import static io.harness.annotations.dev.HarnessTeam.CDC;
 
 import static java.util.Objects.isNull;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.steps.approval.step.beans.ApprovalStatus;
 
@@ -20,11 +23,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import javax.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Value;
 import lombok.experimental.FieldNameConstants;
 import lombok.experimental.NonFinal;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_APPROVALS})
 @OwnedBy(CDC)
 @Value
 @Builder
@@ -33,7 +38,10 @@ public class ApprovalSummary {
   // maintain this list with field keys which can have multiple lines
   // it is being used to convert to line breaks when rendering as html
   public static final List<String> TEXT_FIELDS_IN_APPROVAL_SUMMARY =
-      List.of(ApprovalSummaryKeys.approvalMessage, ApprovalSummaryKeys.action);
+      List.of(ApprovalSummaryKeys.approvalMessage, ApprovalSummaryKeys.action, ApprovalSummaryKeys.finishedStages,
+          ApprovalSummaryKeys.runningStages, ApprovalSummaryKeys.upcomingStages);
+  public static final String DEFAULT_STAGE_DELIMITER = ", ";
+  public static final String NEWLINE_STAGE_DELIMITER = "\n ";
   String pipelineName;
   String orgName;
   String projectName;
@@ -50,8 +58,9 @@ public class ApprovalSummary {
 
   String pipelineExecutionLink;
   String timeRemainingForApproval;
+  String currentStageName;
 
-  public Map<String, String> toParams() {
+  public Map<String, String> toParams(@NotNull String stageDelimiter) {
     Map<String, String> params = new HashMap<>();
     params.put(ApprovalSummaryKeys.pipelineName, pipelineName);
     params.put(ApprovalSummaryKeys.orgName, orgName);
@@ -60,13 +69,15 @@ public class ApprovalSummary {
     params.put(ApprovalSummaryKeys.startedAt, startedAt);
     params.put(ApprovalSummaryKeys.expiresAt, expiresAt);
     params.put(ApprovalSummaryKeys.triggeredBy, triggeredBy);
-    params.put(ApprovalSummaryKeys.finishedStages, joinStages(finishedStages));
-    params.put(ApprovalSummaryKeys.runningStages, joinStages(runningStages));
-    params.put(ApprovalSummaryKeys.upcomingStages, joinStages(upcomingStages));
+    params.put(ApprovalSummaryKeys.finishedStages, joinStages(finishedStages, stageDelimiter));
+    params.put(ApprovalSummaryKeys.runningStages, joinStages(runningStages, stageDelimiter));
+    params.put(ApprovalSummaryKeys.upcomingStages, joinStages(upcomingStages, stageDelimiter));
 
     params.put(ApprovalSummaryKeys.pipelineExecutionLink, pipelineExecutionLink);
     params.put(ApprovalSummaryKeys.timeRemainingForApproval, timeRemainingForApproval);
     params.put(ApprovalSummaryKeys.action, action);
+    params.put(ApprovalSummaryKeys.currentStageName, currentStageName);
+
     if (isNull(status)) {
       params.put(ApprovalSummaryKeys.status, "");
     } else {
@@ -75,10 +86,10 @@ public class ApprovalSummary {
     return params;
   }
 
-  private static String joinStages(Set<String> stages) {
+  private static String joinStages(Set<String> stages, @NotNull String stageDelimiter) {
     if (EmptyPredicate.isEmpty(stages)) {
       return "N/A";
     }
-    return String.join(", ", stages);
+    return String.join(stageDelimiter, stages);
   }
 }

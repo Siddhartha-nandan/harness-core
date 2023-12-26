@@ -31,9 +31,9 @@ public class ShellScriptBaseStepInfoV1 {
   ShellScriptSourceWrapperV1 source;
   ExecutionTargetV1 execution_target;
 
-  ParameterField<Boolean> on_delegate;
+  @Deprecated ParameterField<Boolean> on_delegate;
 
-  ParameterField<List<TaskSelectorYaml>> delegate;
+  ParameterField<List<TaskSelectorYaml>> delegates;
 
   ParameterField<Boolean> include_infra_selectors;
   OutputAliasV1 output_alias;

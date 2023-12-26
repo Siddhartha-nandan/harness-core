@@ -26,6 +26,8 @@ import io.harness.filters.ParallelFilterJsonCreator;
 import io.harness.filters.PipelineFilterJsonCreator;
 import io.harness.plancreator.approval.ApprovalStageFilterJsonCreator;
 import io.harness.plancreator.approval.ApprovalStagePlanCreatorV2;
+import io.harness.plancreator.approval.v1.ApprovalStageFilterCreator;
+import io.harness.plancreator.approval.v1.ApprovalStagePlanCreator;
 import io.harness.plancreator.group.GroupPlanCreatorV1;
 import io.harness.plancreator.pipeline.NGPipelinePlanCreator;
 import io.harness.plancreator.stages.StagesPlanCreator;
@@ -54,7 +56,6 @@ import io.harness.pms.sdk.core.plan.creation.creators.PipelineServiceInfoDecorat
 import io.harness.pms.sdk.core.variables.VariableCreator;
 import io.harness.pms.utils.InjectorUtils;
 import io.harness.rule.Owner;
-import io.harness.ssca.beans.SscaConstants;
 import io.harness.ssca.cd.execution.filtercreator.CdSscaStepFilterJsonCreator;
 import io.harness.ssca.cd.execution.variablecreator.CdSscaStepVariableCreator;
 import io.harness.ssca.plancreator.CdSscaEnforcementStepPlanCreator;
@@ -103,8 +104,8 @@ import org.mockito.MockitoAnnotations;
 
 @OwnedBy(PIPELINE)
 public class PipelineServiceInternalInfoProviderTest extends CategoryTest {
-  public static final int PLAN_CREATOR_NUMBER = 37;
-  public static final int FILTER_JSON_CREATOR_NUMBER = 14;
+  public static final int PLAN_CREATOR_NUMBER = 38;
+  public static final int FILTER_JSON_CREATOR_NUMBER = 15;
   public static final int VARIABLE_CREATOR_NUMBER = 27;
 
   @InjectMocks PipelineServiceInternalInfoProvider pipelineServiceInternalInfoProvider;
@@ -164,6 +165,7 @@ public class PipelineServiceInternalInfoProviderTest extends CategoryTest {
     assertThat(planCreatorClasses.contains(CdSscaOrchestrationStepPlanCreator.class)).isTrue();
     assertThat(planCreatorClasses.contains(PipelineRollbackStagePlanCreator.class)).isTrue();
     assertThat(planCreatorClasses.contains(CdSscaEnforcementStepPlanCreator.class)).isTrue();
+    assertThat(planCreatorClasses.contains(ApprovalStagePlanCreator.class)).isTrue();
   }
 
   @Test
@@ -188,6 +190,7 @@ public class PipelineServiceInternalInfoProviderTest extends CategoryTest {
     assertThat(filterCreatorClasses.contains(GroupFilterJsonCreator.class)).isTrue();
     assertThat(filterCreatorClasses.contains(HarnessApprovalStepFilterJsonCreatorV2.class)).isTrue();
     assertThat(filterCreatorClasses.contains(CdSscaStepFilterJsonCreator.class)).isTrue();
+    assertThat(filterCreatorClasses.contains(ApprovalStageFilterCreator.class)).isTrue();
   }
 
   @Test
@@ -232,9 +235,6 @@ public class PipelineServiceInternalInfoProviderTest extends CategoryTest {
   public void testGetStepInfo() {
     List<StepInfo> steps = pipelineServiceInternalInfoProvider.getStepInfo();
     assertThat(steps).isNotEmpty();
-    assertThat(steps)
-        .hasSize(3)
-        .extracting(StepInfo::getName)
-        .containsExactly("Flag Configuration", SscaConstants.SSCA_ORCHESTRATION_STEP, SscaConstants.SSCA_ENFORCEMENT);
+    assertThat(steps).hasSize(1).extracting(StepInfo::getName).containsExactly("Flag Configuration");
   }
 }

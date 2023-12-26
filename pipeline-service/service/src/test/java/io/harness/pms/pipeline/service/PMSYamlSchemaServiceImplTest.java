@@ -34,6 +34,7 @@ import io.harness.pms.pipeline.service.yamlschema.PmsYamlSchemaHelper;
 import io.harness.pms.pipeline.service.yamlschema.SchemaFetcher;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.rule.Owner;
+import io.harness.yaml.individualschema.PipelineSchemaParserFactory;
 import io.harness.yaml.utils.JsonPipelineUtils;
 import io.harness.yaml.validator.YamlSchemaValidator;
 
@@ -46,6 +47,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
 import org.apache.commons.io.IOUtils;
 import org.assertj.core.api.Assertions;
+import org.joor.Reflect;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -60,6 +62,8 @@ public class PMSYamlSchemaServiceImplTest {
   @Mock PmsYamlSchemaHelper pmsYamlSchemaHelper;
   @Mock YamlSchemaValidator yamlSchemaValidator;
 
+  @Mock PipelineSchemaParserFactory pipelineSchemaParserFactory;
+
   @InjectMocks private PMSYamlSchemaServiceImpl pmsYamlSchemaService;
   @Mock private ExecutorService yamlSchemaExecutor;
 
@@ -72,6 +76,7 @@ public class PMSYamlSchemaServiceImplTest {
     MockitoAnnotations.initMocks(this);
     pmsYamlSchemaService =
         new PMSYamlSchemaServiceImpl(yamlSchemaValidator, pmsYamlSchemaHelper, schemaFetcher, yamlSchemaExecutor, null);
+    Reflect.on(pmsYamlSchemaService).set("pipelineSchemaParserFactory", pipelineSchemaParserFactory);
   }
 
   @Test
@@ -155,12 +160,21 @@ public class PMSYamlSchemaServiceImplTest {
   }
 
   @Test
+  @Owner(developers = UTKARSH_CHOUBEY)
+  @Category(UnitTests.class)
+  public void staticSchemaForStepGroupWithNullGrpDifferentiator() {
+    assertThatThrownBy(() -> pmsYamlSchemaService.getStaticSchemaForAllEntities("step_group", null, null, "v2x"))
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage("node_group_differentiator cannot be empty for step_group node_group.");
+  }
+
+  @Test
   @Owner(developers = FERNANDOD)
   @Category(UnitTests.class)
   public void shouldNotValidateYamlSchema() throws IOException {
     when(pmsYamlSchemaHelper.isFeatureFlagEnabled(FeatureName.DISABLE_PIPELINE_SCHEMA_VALIDATION, ACC_ID))
         .thenReturn(true);
-    pmsYamlSchemaService.validateYamlSchemaInternal(ACC_ID, ORG_ID, PRJ_ID, null);
+    pmsYamlSchemaService.validateYamlSchemaInternal(ACC_ID, ORG_ID, PRJ_ID, null, "0");
     verify(yamlSchemaValidator, never()).validate(anyString(), anyString());
   }
 
@@ -177,7 +191,7 @@ public class PMSYamlSchemaServiceImplTest {
     MockedStatic<JsonPipelineUtils> pipelineUtils = mockStatic(JsonPipelineUtils.class);
     pipelineUtils.when(() -> JsonPipelineUtils.writeJsonString(any())).thenReturn(schemaString);
 
-    pmsYamlSchemaService.validateYamlSchemaInternal(ACC_ID, ORG_ID, PRJ_ID, YamlUtils.readAsJsonNode(yaml));
+    pmsYamlSchemaService.validateYamlSchemaInternal(ACC_ID, ORG_ID, PRJ_ID, YamlUtils.readAsJsonNode(yaml), "0");
 
     verify(yamlSchemaValidator).validate(eq(YamlUtils.readAsJsonNode(yaml)), eq(schemaString));
   }

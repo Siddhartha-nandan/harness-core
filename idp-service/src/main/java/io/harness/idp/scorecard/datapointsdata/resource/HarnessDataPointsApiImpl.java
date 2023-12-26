@@ -6,6 +6,8 @@
  */
 package io.harness.idp.scorecard.datapointsdata.resource;
 
+import static io.harness.idp.common.Constants.HARNESS_IDENTIFIER;
+
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.eraro.ResponseMessage;
@@ -33,7 +35,7 @@ public class HarnessDataPointsApiImpl implements HarnessDataPointsApi {
     try {
       log.info("Generic API called for harness data source - request body - {}, account - {}", body, harnessAccount);
       Map<String, Object> returnData =
-          dataPointDataValueService.getDataPointDataValues(harnessAccount, "harness", body.getRequest());
+          dataPointDataValueService.getDataPointDataValues(harnessAccount, HARNESS_IDENTIFIER, body.getRequest());
       return Response.status(Response.Status.OK).entity(returnData).build();
     } catch (Exception e) {
       log.error("Error in getting data from harness data source for account - {}", harnessAccount, e);

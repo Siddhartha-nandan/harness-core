@@ -21,32 +21,23 @@ import io.harness.ci.execution.plan.creator.codebase.CodebasePlanCreator;
 import io.harness.ci.execution.states.IntegrationStageStepPMS;
 import io.harness.cimanager.stages.V1.IntegrationStageConfigImplV1;
 import io.harness.cimanager.stages.V1.IntegrationStageNodeV1;
-import io.harness.plancreator.PlanCreatorUtilsV1;
+import io.harness.exception.InvalidYamlException;
 import io.harness.plancreator.execution.ExecutionWrapperConfig;
+import io.harness.plancreator.stages.v1.AbstractStagePlanCreator;
 import io.harness.plancreator.steps.common.StageElementParameters;
-import io.harness.plancreator.strategy.StrategyUtilsV1;
-import io.harness.pms.contracts.advisers.AdviserObtainment;
-import io.harness.pms.contracts.facilitators.FacilitatorObtainment;
-import io.harness.pms.contracts.facilitators.FacilitatorType;
 import io.harness.pms.contracts.plan.Dependency;
-import io.harness.pms.contracts.plan.GraphLayoutNode;
 import io.harness.pms.contracts.plan.HarnessStruct;
 import io.harness.pms.contracts.plan.HarnessValue;
-import io.harness.pms.execution.OrchestrationFacilitatorType;
-import io.harness.pms.execution.utils.SkipInfoUtils;
+import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.sdk.core.plan.PlanNode;
-import io.harness.pms.sdk.core.plan.PlanNode.PlanNodeBuilder;
-import io.harness.pms.sdk.core.plan.creation.beans.GraphLayoutResponse;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
-import io.harness.pms.sdk.core.plan.creation.creators.ChildrenPlanCreator;
-import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
+import io.harness.pms.sdk.core.steps.io.StepParameters;
 import io.harness.pms.yaml.DependenciesUtils;
-import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
+import io.harness.pms.yaml.YamlUtils;
 import io.harness.serializer.KryoSerializer;
-import io.harness.when.utils.RunInfoUtils;
 import io.harness.yaml.clone.Clone;
 import io.harness.yaml.extended.ci.codebase.CodeBase;
 import io.harness.yaml.options.Options;
@@ -55,7 +46,7 @@ import io.harness.yaml.registry.Registry;
 import com.google.common.base.Preconditions;
 import com.google.inject.Inject;
 import com.google.protobuf.ByteString;
-import java.util.ArrayList;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -68,7 +59,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @OwnedBy(HarnessTeam.CI)
-public class IntegrationStagePMSPlanCreatorV3 extends ChildrenPlanCreator<IntegrationStageNodeV1> {
+public class IntegrationStagePMSPlanCreatorV3 extends AbstractStagePlanCreator<IntegrationStageNodeV1> {
   @Inject private KryoSerializer kryoSerializer;
   @Inject private CIPlanCreatorUtils ciPlanCreatorUtils;
   public static final String STAGE_NODE = "stageNode";
@@ -76,82 +67,13 @@ public class IntegrationStagePMSPlanCreatorV3 extends ChildrenPlanCreator<Integr
   public static final String CODEBASE = "codebase";
 
   @Override
-  public Class<IntegrationStageNodeV1> getFieldClass() {
-    return IntegrationStageNodeV1.class;
-  }
-
-  public PlanNode createPlanForParentNode(
-      PlanCreationContext ctx, IntegrationStageNodeV1 stageNode, List<String> childrenNodeIds) {
-    YamlField field = ctx.getCurrentField();
-    IntegrationStageConfigImplV1 stageConfig = stageNode.getStageConfig();
-    Infrastructure infrastructure =
-        ciPlanCreatorUtils.getInfrastructure(stageConfig.getRuntime(), stageConfig.getPlatform());
-    CodeBase codeBase = ciPlanCreatorUtils.getCodebase(ctx, stageConfig.getClone()).orElse(null);
-    Optional<Options> optionalOptions =
-        ciPlanCreatorUtils.getDeserializedOptions(ctx.getMetadata().getGlobalDependency());
-    Options options = optionalOptions.orElse(Options.builder().build());
-    Registry registry = options.getRegistry() == null ? Registry.builder().build() : options.getRegistry();
-
-    YamlField specField = Preconditions.checkNotNull(field.getNode().getField(YAMLFieldNameConstants.SPEC));
-    YamlField stepsField = Preconditions.checkNotNull(specField.getNode().getField(YAMLFieldNameConstants.STEPS));
-    List<YamlField> steps = CIPlanCreatorUtils.getStepYamlFields(stepsField);
-    List<ExecutionWrapperConfig> executionWrapperConfigs =
-        steps.stream().map(CIPlanCreatorUtils::getExecutionConfig).collect(Collectors.toList());
-    IntegrationStageStepParametersPMS params =
-        IntegrationStageStepParametersPMS.builder()
-            .stepIdentifiers(IntegrationStageUtils.getStepIdentifiers(executionWrapperConfigs))
-            .infrastructure(infrastructure)
-            .childNodeID(childrenNodeIds.get(0))
-            .codeBase(codeBase)
-            .triggerPayload(ctx.getTriggerPayload())
-            .registry(registry)
-            .cloneManually(ciPlanCreatorUtils.shouldCloneManually(ctx, codeBase))
-            .build();
-    PlanNodeBuilder builder =
-        PlanNode.builder()
-            .uuid(StrategyUtilsV1.getSwappedPlanNodeId(ctx, stageNode.getUuid()))
-            .name(StrategyUtilsV1.getIdentifierWithExpression(ctx, stageNode.getName()))
-            .identifier(StrategyUtilsV1.getIdentifierWithExpression(ctx, stageNode.getIdentifier()))
-            .group(StepOutcomeGroup.STAGE.name())
-            .stepParameters(StageElementParameters.builder()
-                                .identifier(stageNode.getIdentifier())
-                                .name(stageNode.getName())
-                                .specConfig(params)
-                                .build())
-            .stepType(IntegrationStageStepPMS.STEP_TYPE)
-            .skipCondition(SkipInfoUtils.getSkipCondition(stageNode.getSkipCondition()))
-            .whenCondition(RunInfoUtils.getRunConditionForStage(stageNode.getWhen()))
-            .facilitatorObtainment(
-                FacilitatorObtainment.newBuilder()
-                    .setType(FacilitatorType.newBuilder().setType(OrchestrationFacilitatorType.CHILD).build())
-                    .build())
-            .skipExpressionChain(false);
-    // If strategy present then don't add advisers. Strategy node will take care of running the stage nodes.
-    if (field.getNode().getField(YAMLFieldNameConstants.SPEC).getNode().getField(YAMLFieldNameConstants.STRATEGY)
-        == null) {
-      builder.adviserObtainments(getAdvisorObtainments(ctx.getDependency()));
+  public IntegrationStageNodeV1 getFieldObject(YamlField field) {
+    try {
+      return YamlUtils.read(field.getNode().toString(), IntegrationStageNodeV1.class);
+    } catch (IOException e) {
+      throw new InvalidYamlException(
+          "Unable to parse integration stage yaml. Please ensure that it is in correct format", e);
     }
-    return builder.build();
-  }
-
-  @Override
-  public GraphLayoutResponse getLayoutNodeInfo(PlanCreationContext context, IntegrationStageNodeV1 stageNode) {
-    Map<String, GraphLayoutNode> stageYamlFieldMap = new LinkedHashMap<>();
-    YamlField stageYamlField = context.getCurrentField();
-    String nextNodeUuid = PlanCreatorUtilsV1.getNextNodeUuid(kryoSerializer, context.getDependency());
-    if (StrategyUtilsV1.isWrappedUnderStrategy(context.getCurrentField())) {
-      stageYamlFieldMap = StrategyUtilsV1.modifyStageLayoutNodeGraph(stageYamlField, nextNodeUuid);
-    }
-    return GraphLayoutResponse.builder().layoutNodes(stageYamlFieldMap).build();
-  }
-
-  private List<AdviserObtainment> getAdvisorObtainments(Dependency dependency) {
-    List<AdviserObtainment> adviserObtainments = new ArrayList<>();
-    AdviserObtainment nextStepAdviser = PlanCreatorUtilsV1.getNextStepAdviser(kryoSerializer, dependency);
-    if (nextStepAdviser != null) {
-      adviserObtainments.add(nextStepAdviser);
-    }
-    return adviserObtainments;
   }
 
   @Override
@@ -167,28 +89,22 @@ public class IntegrationStagePMSPlanCreatorV3 extends ChildrenPlanCreator<Integr
     Map<String, YamlField> dependenciesNodeMap = new HashMap<>();
     YamlField field = ctx.getCurrentField();
     YamlField specField = Preconditions.checkNotNull(field.getNode().getField(YAMLFieldNameConstants.SPEC));
-    YamlField stepsField = Preconditions.checkNotNull(specField.getNode().getField(YAMLFieldNameConstants.STEPS));
     IntegrationStageConfigImplV1 stageConfigImpl = stageNode.getStageConfig();
     Infrastructure infrastructure =
         ciPlanCreatorUtils.getInfrastructure(stageConfigImpl.getRuntime(), stageConfigImpl.getPlatform());
     CodeBase codeBase =
-        createPlanForCodebase(ctx, stageConfigImpl.getClone(), planCreationResponseMap, stepsField.getUuid());
-    dependenciesNodeMap.put(stepsField.getUuid(), stepsField);
-    Map<String, HarnessValue> dependencyMetadata = StrategyUtilsV1.getStrategyFieldDependencyMetadataIfPresent(
-        kryoSerializer, ctx, stageNode.getUuid(), dependenciesNodeMap, getAdvisorObtainments(ctx.getDependency()));
+        createPlanForCodebase(ctx, stageConfigImpl.getClone(), planCreationResponseMap, specField.getUuid());
+    dependenciesNodeMap.put(specField.getUuid(), specField);
 
-    planCreationResponseMap.put(stepsField.getUuid(),
+    planCreationResponseMap.put(specField.getUuid(),
         PlanCreationResponse.builder()
-            .dependencies(
-                DependenciesUtils.toDependenciesProto(dependenciesNodeMap)
-                    .toBuilder()
-                    .putDependencyMetadata(field.getUuid(),
-                        Dependency.newBuilder()
-                            .setNodeMetadata(HarnessStruct.newBuilder().putAllData(dependencyMetadata).build())
-                            .build())
-                    .putDependencyMetadata(
-                        stepsField.getUuid(), getDependencyMetadataForStepsField(infrastructure, codeBase, stageNode))
-                    .build())
+            .dependencies(DependenciesUtils.toDependenciesProto(dependenciesNodeMap)
+                              .toBuilder()
+                              .putDependencyMetadata(
+                                  field.getUuid(), getDependencyForStrategy(dependenciesNodeMap, stageNode, ctx))
+                              .putDependencyMetadata(specField.getUuid(),
+                                  getDependencyMetadataForStepsField(infrastructure, codeBase, stageNode))
+                              .build())
             .build());
     log.info("Successfully created plan for integration stage {}", stageNode.getName());
     return planCreationResponseMap;
@@ -234,7 +150,42 @@ public class IntegrationStagePMSPlanCreatorV3 extends ChildrenPlanCreator<Integr
   }
 
   @Override
-  public Set<String> getSupportedYamlVersions() {
-    return Set.of(HarnessYamlVersion.V1);
+  public StepType getStepType() {
+    return IntegrationStageStepPMS.STEP_TYPE;
+  }
+
+  @Override
+  public StepParameters getStageParameters(
+      PlanCreationContext ctx, IntegrationStageNodeV1 stageNodeV1, List<String> childrenNodeIds) {
+    YamlField field = ctx.getCurrentField();
+    YamlField specField = Preconditions.checkNotNull(field.getNode().getField(YAMLFieldNameConstants.SPEC));
+    YamlField stepsField = Preconditions.checkNotNull(specField.getNode().getField(YAMLFieldNameConstants.STEPS));
+    List<YamlField> steps = CIPlanCreatorUtils.getStepYamlFields(stepsField);
+    Optional<Options> optionalOptions =
+        ciPlanCreatorUtils.getDeserializedOptions(ctx.getMetadata().getGlobalDependency());
+    Options options = optionalOptions.orElse(Options.builder().build());
+
+    IntegrationStageConfigImplV1 stageConfig = stageNodeV1.getStageConfig();
+    Infrastructure infrastructure =
+        ciPlanCreatorUtils.getInfrastructure(stageConfig.getRuntime(), stageConfig.getPlatform());
+    CodeBase codeBase = ciPlanCreatorUtils.getCodebase(ctx, stageConfig.getClone()).orElse(null);
+    Registry registry = options.getRegistry() == null ? Registry.builder().build() : options.getRegistry();
+    List<ExecutionWrapperConfig> executionWrapperConfigs =
+        steps.stream().map(CIPlanCreatorUtils::getExecutionConfig).collect(Collectors.toList());
+    IntegrationStageStepParametersPMS params =
+        IntegrationStageStepParametersPMS.builder()
+            .stepIdentifiers(IntegrationStageUtils.getStepIdentifiers(executionWrapperConfigs))
+            .infrastructure(infrastructure)
+            .childNodeID(childrenNodeIds.get(0))
+            .codeBase(codeBase)
+            .triggerPayload(ctx.getTriggerPayload())
+            .registry(registry)
+            .cloneManually(ciPlanCreatorUtils.shouldCloneManually(ctx, codeBase))
+            .build();
+    return StageElementParameters.builder()
+        .identifier(stageNodeV1.getId())
+        .name(stageNodeV1.getName())
+        .specConfig(params)
+        .build();
   }
 }

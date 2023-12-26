@@ -9,6 +9,9 @@ package io.harness.idp.events.producers;
 
 import static io.harness.annotations.dev.HarnessTeam.IDP;
 import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ASYNC_CATALOG_IMPORT_ENTITY;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.ASYNC_SCORE_COMPUTATION_ENTITY;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.BACKSTAGE_CATALOG_ENTITY;
+import static io.harness.eventsframework.EventsFrameworkMetadataConstants.CREATE_ACTION;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.eventsframework.EventsFrameworkConstants;
@@ -53,7 +56,63 @@ public class IdpEntityCrudStreamProducer {
     return true;
   }
 
+  public boolean publishAsyncScoreComputationChangeEventToRedis(
+      String accountIdentifier, String scorecardIdentifier, String entityIdentifier) {
+    try {
+      String eventId = eventProducer.send(
+          Message.newBuilder()
+              .putAllMetadata(Map.of("accountId", accountIdentifier, EventsFrameworkMetadataConstants.ENTITY_TYPE,
+                  ASYNC_SCORE_COMPUTATION_ENTITY, EventsFrameworkMetadataConstants.ACTION, CREATE_ACTION))
+              .setData(getAsyncScoreComputationPayload(accountIdentifier, scorecardIdentifier, entityIdentifier))
+              .build());
+      log.info("Produced event id:[{}] for AsyncScoreComputation AccountId: [{}]", eventId, accountIdentifier);
+    } catch (EventsFrameworkDownException e) {
+      log.error(
+          "Failed to send event to events framework AsyncScoreComputation accountIdentifier: " + accountIdentifier, e);
+      return false;
+    }
+    return true;
+  }
+
+  public boolean publishBackstageCatalogEntityChangeEventToRedis(
+      String accountIdentifier, String entityUid, String action) {
+    try {
+      String eventId =
+          eventProducer.send(Message.newBuilder()
+                                 .putAllMetadata(Map.of("accountIdentifier", accountIdentifier,
+                                     EventsFrameworkMetadataConstants.ENTITY_TYPE, BACKSTAGE_CATALOG_ENTITY,
+                                     EventsFrameworkMetadataConstants.ACTION, action))
+                                 .setData(getBackstageCatalogEntityPayload(accountIdentifier, entityUid))
+                                 .build());
+      log.info("Produced event id:[{}] for backstageCatalogEntity AccountId: [{}], action:[{}]", eventId,
+          accountIdentifier, action);
+    } catch (EventsFrameworkDownException e) {
+      log.error(
+          "Failed to send event to events framework backstageCatalogEntity accountIdentifier: " + accountIdentifier, e);
+      return false;
+    }
+    return true;
+  }
+
   private ByteString getAsyncCatalogImportPayload(String accountIdentifier) {
     return EntityChangeDTO.newBuilder().setAccountIdentifier(StringValue.of(accountIdentifier)).build().toByteString();
+  }
+
+  private ByteString getAsyncScoreComputationPayload(
+      String accountIdentifier, String scorecardIdentifier, String entityIdentifier) {
+    return EntityChangeDTO.newBuilder()
+        .setAccountIdentifier(StringValue.of(accountIdentifier))
+        .putMetadata("scorecardIdentifier", scorecardIdentifier != null ? scorecardIdentifier : "")
+        .putMetadata("entityIdentifier", entityIdentifier != null ? entityIdentifier : "")
+        .build()
+        .toByteString();
+  }
+
+  private ByteString getBackstageCatalogEntityPayload(String accountIdentifier, String entityUid) {
+    return EntityChangeDTO.newBuilder()
+        .setAccountIdentifier(StringValue.of(accountIdentifier))
+        .putMetadata("entityUid", entityUid)
+        .build()
+        .toByteString();
   }
 }

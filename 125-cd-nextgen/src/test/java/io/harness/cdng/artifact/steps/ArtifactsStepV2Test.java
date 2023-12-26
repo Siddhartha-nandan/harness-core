@@ -60,6 +60,7 @@ import io.harness.cdng.artifact.bean.yaml.customartifact.CustomArtifactScriptSou
 import io.harness.cdng.artifact.bean.yaml.customartifact.CustomArtifactScripts;
 import io.harness.cdng.artifact.bean.yaml.customartifact.CustomScriptInlineSource;
 import io.harness.cdng.artifact.bean.yaml.customartifact.FetchAllArtifacts;
+import io.harness.cdng.artifact.mappers.ArtifactConfigToDelegateReqMapper;
 import io.harness.cdng.artifact.outcome.ArtifactsOutcome;
 import io.harness.cdng.artifact.steps.constants.ArtifactsStepV2Constants;
 import io.harness.cdng.artifact.utils.ArtifactStepHelper;
@@ -68,6 +69,7 @@ import io.harness.cdng.common.beans.SetupAbstractionKeys;
 import io.harness.cdng.common.beans.StepDelegateInfo;
 import io.harness.cdng.execution.service.StageExecutionInfoService;
 import io.harness.cdng.expressions.CDExpressionResolver;
+import io.harness.cdng.oidc.OidcHelperUtility;
 import io.harness.cdng.service.beans.KubernetesServiceSpec;
 import io.harness.cdng.service.beans.ServiceDefinition;
 import io.harness.cdng.service.beans.ServiceDefinitionType;
@@ -126,6 +128,7 @@ import io.harness.secretusage.SecretRuntimeUsageService;
 import io.harness.serializer.KryoSerializer;
 import io.harness.service.DelegateGrpcClientWrapper;
 import io.harness.steps.EntityReferenceExtractorUtils;
+import io.harness.telemetry.helpers.ArtifactSourceInstrumentationHelper;
 import io.harness.template.remote.TemplateResourceClient;
 import io.harness.utils.NGFeatureFlagHelperService;
 
@@ -173,6 +176,7 @@ public class ArtifactsStepV2Test extends CDNGTestBase {
   @Mock private EntityReferenceExtractorUtils entityReferenceExtractorUtils;
   @Mock private SecretRuntimeUsageService secretRuntimeUsageService;
   @Mock private PipelineRbacHelper pipelineRbacHelper;
+  @Mock private ArtifactSourceInstrumentationHelper artifactSourceInstrumentationHelper;
   @InjectMocks private ArtifactsStepV2 step = new ArtifactsStepV2();
   private final ArtifactStepHelper stepHelper = new ArtifactStepHelper();
   @Mock private ConnectorService connectorService;
@@ -185,6 +189,10 @@ public class ArtifactsStepV2Test extends CDNGTestBase {
   @Mock private StageExecutionInfoService stageExecutionInfoService;
   @Mock private NGFeatureFlagHelperService ngFeatureFlagHelperService;
   @Mock ServiceEntityService serviceEntityService;
+  @Mock ArtifactSourceInstrumentationHelper instrumentationHelper;
+  @Mock OidcHelperUtility oidcHelperUtility;
+  private ArtifactConfigToDelegateReqMapper artifactConfigToDelegateReqMapper =
+      new ArtifactConfigToDelegateReqMapper(instrumentationHelper, oidcHelperUtility);
   private final EmptyStepParameters stepParameters = new EmptyStepParameters();
   private EmptyStepParameters stepParametersWithDelegateSelector = new EmptyStepParameters();
   private final StepInputPackage inputPackage = StepInputPackage.builder().build();
@@ -217,6 +225,7 @@ public class ArtifactsStepV2Test extends CDNGTestBase {
     Reflect.on(stepHelper).set("cdExpressionResolver", expressionResolver);
     Reflect.on(stepHelper).set("ngFeatureFlagHelperService", ngFeatureFlagHelperService);
     Reflect.on(stepHelper).set("stageExecutionInfoService", stageExecutionInfoService);
+    Reflect.on(stepHelper).set("artifactConfigToDelegateReqMapper", artifactConfigToDelegateReqMapper);
     Reflect.on(step).set("artifactStepHelper", stepHelper);
     doReturn(false).when(ngFeatureFlagHelperService).isEnabled(anyString(), eq(CDS_ARTIFACTS_PRIMARY_IDENTIFIER));
     doReturn(false)

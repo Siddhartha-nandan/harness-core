@@ -8,12 +8,14 @@
 package io.harness.notification.entities;
 
 import static io.harness.annotations.dev.HarnessTeam.PL;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.notification.NotificationRequest.Webhook;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.notification.NotificationChannelType;
 import io.harness.notification.dtos.UserGroup;
 import io.harness.notification.mapper.NotificationUserGroupMapper;
+import io.harness.spec.server.notification.v1.model.ChannelDTO;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeName;
@@ -33,14 +35,19 @@ public class WebhookChannel implements Channel {
   List<UserGroup> userGroups;
   Map<String, String> templateData;
   Map<String, String> headers;
+  String message;
   @Override
   public Object toObjectofProtoSchema() {
-    return Webhook.newBuilder()
-        .addAllUrls(webHookUrls)
-        .putAllTemplateData(templateData)
-        .addAllUserGroup(NotificationUserGroupMapper.toProto(userGroups))
-        .putAllHeaders(headers)
-        .build();
+    Webhook.Builder builder = Webhook.newBuilder()
+                                  .addAllUrls(webHookUrls)
+                                  .putAllTemplateData(templateData)
+                                  .addAllUserGroup(NotificationUserGroupMapper.toProto(userGroups))
+                                  .putAllHeaders(headers);
+
+    if (isNotEmpty(message)) {
+      builder.setMessage(message);
+    }
+    return builder.build();
   }
 
   @Override
@@ -49,12 +56,18 @@ public class WebhookChannel implements Channel {
     return NotificationChannelType.WEBHOOK;
   }
 
+  @Override
+  public ChannelDTO dto() {
+    return new ChannelDTO().webhookUrls(webHookUrls);
+  }
+
   public static WebhookChannel toWebhookEntity(Webhook webhookDetails) {
     return WebhookChannel.builder()
         .webHookUrls(webhookDetails.getUrlsList())
         .templateData(webhookDetails.getTemplateDataMap())
         .userGroups(NotificationUserGroupMapper.toEntity(webhookDetails.getUserGroupList()))
         .headers(webhookDetails.getHeadersMap())
+        .message(webhookDetails.getMessage())
         .build();
   }
 }

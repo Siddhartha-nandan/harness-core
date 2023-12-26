@@ -9,12 +9,14 @@ package io.harness.pms.plan.execution;
 
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.gitcaching.GitCachingConstants.BOOLEAN_FALSE_VALUE;
+import static io.harness.ngsettings.SettingIdentifiers.RUN_RBAC_VALIDATION_BEFORE_EXECUTING_INLINE_PIPELINES;
 import static io.harness.pms.contracts.plan.TriggerType.MANUAL;
 import static io.harness.rule.OwnerRule.ARCHIT;
 import static io.harness.rule.OwnerRule.BRIJESH;
 import static io.harness.rule.OwnerRule.NAMAN;
 import static io.harness.rule.OwnerRule.PRASHANTSHARMA;
 import static io.harness.rule.OwnerRule.RAGHAV_GUPTA;
+import static io.harness.rule.OwnerRule.RISHIKESH;
 import static io.harness.rule.OwnerRule.SHALINI;
 import static io.harness.rule.OwnerRule.TATHAGAT;
 import static io.harness.rule.OwnerRule.UTKARSH_CHOUBEY;
@@ -25,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -49,10 +52,13 @@ import io.harness.execution.PlanExecution.PlanExecutionKeys;
 import io.harness.execution.PlanExecutionMetadata;
 import io.harness.gitaware.helper.GitAwareContextHelper;
 import io.harness.gitsync.beans.StoreType;
+import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.template.TemplateMergeResponseDTO;
+import io.harness.ngsettings.SettingValueType;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.ngsettings.dto.SettingDTO;
 import io.harness.ngsettings.dto.SettingResponseDTO;
+import io.harness.ngsettings.dto.SettingValueResponseDTO;
 import io.harness.opaclient.model.OpaConstants;
 import io.harness.plan.Plan;
 import io.harness.pms.contracts.plan.ExecutionMetadata;
@@ -76,6 +82,7 @@ import io.harness.pms.pipeline.service.PMSPipelineTemplateHelper;
 import io.harness.pms.pipeline.service.PMSYamlSchemaService;
 import io.harness.pms.pipeline.service.PipelineEnforcementService;
 import io.harness.pms.pipeline.service.PipelineMetadataService;
+import io.harness.pms.plan.creation.NodeTypeLookupService;
 import io.harness.pms.plan.creation.PlanCreatorMergeService;
 import io.harness.pms.plan.execution.beans.ExecArgs;
 import io.harness.pms.plan.execution.beans.ProcessStageExecutionInfoResult;
@@ -109,6 +116,8 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.powermock.core.classloader.annotations.PrepareForTest;
+import retrofit2.Call;
+import retrofit2.Response;
 
 @OwnedBy(PIPELINE)
 @PrepareForTest({PlanExecutionUtils.class, UUIDGenerator.class})
@@ -136,6 +145,8 @@ public class ExecutionHelperTest extends CategoryTest {
   @Mock PlanService planService;
   @Mock NGSettingsClient settingsClient;
   @Mock PMSPipelineServiceHelper pmsPipelineServiceHelper;
+  @Mock private Call<ResponseDTO<SettingValueResponseDTO>> request;
+  @Mock private NodeTypeLookupService nodeTypeLookupService;
 
   String accountId = "accountId";
   String orgId = "orgId";
@@ -233,6 +244,7 @@ public class ExecutionHelperTest extends CategoryTest {
     aStatic.when(UUIDGenerator::generateUuid).thenReturn(generatedExecutionId);
 
     pipelineYamlV1 = readFile("simplified-pipeline.yaml");
+    request = Mockito.mock(Call.class);
   }
 
   @After
@@ -479,9 +491,9 @@ public class ExecutionHelperTest extends CategoryTest {
     verify(principalInfoHelper, times(1)).getPrincipalInfoFromSecurityContext();
     verify(pmsGitSyncHelper, times(1)).getGitSyncBranchContextBytesThreadLocal(pipelineEntity, null, null, null);
     verify(pmsYamlSchemaService, times(0))
-        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(pipelineYaml));
+        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(pipelineYaml), "0");
     verify(pmsYamlSchemaService, times(1))
-        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(mergedPipelineYaml));
+        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(mergedPipelineYaml), "0");
     verify(pipelineRbacServiceImpl, times(1))
         .extractAndValidateStaticallyReferredEntities(
             accountId, orgId, projectId, pipelineId, YamlUtils.readAsJsonNode(mergedPipelineYaml));
@@ -533,7 +545,7 @@ public class ExecutionHelperTest extends CategoryTest {
     verify(pmsGitSyncHelper, times(1))
         .getGitSyncBranchContextBytesThreadLocal(pipelineEntity, pipelineEntity.getStoreType(), null, null);
     verify(pmsYamlSchemaService, times(1))
-        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(mergedPipelineYaml));
+        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(mergedPipelineYaml), "0");
     if (pipelineEntity.getStoreType() != StoreType.REMOTE) {
       verify(pipelineRbacServiceImpl, times(1))
           .extractAndValidateStaticallyReferredEntities(
@@ -583,7 +595,7 @@ public class ExecutionHelperTest extends CategoryTest {
     verify(pmsGitSyncHelper, times(1))
         .getGitSyncBranchContextBytesThreadLocal(pipelineEntityWithExpressions, null, null, null);
     verify(pmsYamlSchemaService, times(1))
-        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(pipelineYamlWithExpressions));
+        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(pipelineYamlWithExpressions), "0");
     verify(pipelineRbacServiceImpl, times(1))
         .extractAndValidateStaticallyReferredEntities(
             accountId, orgId, projectId, pipelineId, YamlUtils.readAsJsonNode(pipelineYamlWithExpressions));
@@ -621,7 +633,7 @@ public class ExecutionHelperTest extends CategoryTest {
     doReturn(null).when(pmsGitSyncHelper).getGitSyncBranchContextBytesThreadLocal(pipelineEntity, null, null, null);
     doReturn(true)
         .when(pmsYamlSchemaService)
-        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(mergedPipelineYaml));
+        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(mergedPipelineYaml), "0");
     doNothing()
         .when(pipelineRbacServiceImpl)
         .extractAndValidateStaticallyReferredEntities(accountId, orgId, projectId, pipelineId, mergedPipelineYaml);
@@ -643,9 +655,9 @@ public class ExecutionHelperTest extends CategoryTest {
         .getGitSyncBranchContextBytesThreadLocal(
             pipelineEntity, pipelineEntity.getStoreType(), null, pipelineEntity.getConnectorRef());
     verify(pmsYamlSchemaService, times(0))
-        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(pipelineYaml));
+        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(pipelineYaml), "0");
     verify(pmsYamlSchemaService, times(1))
-        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(mergedPipelineYaml));
+        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(mergedPipelineYaml), "0");
     if (pipelineEntity.getStoreType() != StoreType.REMOTE) {
       verify(pipelineRbacServiceImpl, times(1))
           .extractAndValidateStaticallyReferredEntities(
@@ -683,13 +695,29 @@ public class ExecutionHelperTest extends CategoryTest {
                                         .identifier(pipelineId)
                                         .yaml(pipelineYaml)
                                         .build();
+    doReturn(request)
+        .when(settingsClient)
+        .getSetting(eq(RUN_RBAC_VALIDATION_BEFORE_EXECUTING_INLINE_PIPELINES), eq(pipelineEntity.getAccountId()),
+            eq(null), eq(null));
+    SettingValueResponseDTO settingValueResponseDTOForFalseValue =
+        SettingValueResponseDTO.builder().value("false").valueType(SettingValueType.BOOLEAN).build();
+    doReturn(Response.success(ResponseDTO.newResponse(settingValueResponseDTOForFalseValue))).when(request).execute();
+    executionHelper.getPipelineYamlAndValidateStaticallyReferredEntities(
+        YamlUtils.readAsJsonNode(mergedRuntimeInputYaml), pipelineEntity);
+    verify(pipelineRbacServiceImpl, times(0))
+        .extractAndValidateStaticallyReferredEntities(
+            accountId, orgId, projectId, pipelineId, YamlUtils.readAsJsonNode(mergedRuntimeInputYaml));
+    verify(pipelineRbacServiceImpl, times(0))
+        .extractAndValidateStaticallyReferredEntities(accountId, orgId, projectId, pipelineId, resolvedYaml);
+
+    SettingValueResponseDTO settingValueResponseDTOForTrueValue =
+        SettingValueResponseDTO.builder().value("true").valueType(SettingValueType.BOOLEAN).build();
+    doReturn(Response.success(ResponseDTO.newResponse(settingValueResponseDTOForTrueValue))).when(request).execute();
     executionHelper.getPipelineYamlAndValidateStaticallyReferredEntities(
         YamlUtils.readAsJsonNode(mergedRuntimeInputYaml), pipelineEntity);
     verify(pipelineRbacServiceImpl, times(1))
         .extractAndValidateStaticallyReferredEntities(
             accountId, orgId, projectId, pipelineId, YamlUtils.readAsJsonNode(mergedRuntimeInputYaml));
-    verify(pipelineRbacServiceImpl, times(0))
-        .extractAndValidateStaticallyReferredEntities(accountId, orgId, projectId, pipelineId, resolvedYaml);
   }
 
   @Test
@@ -928,7 +956,7 @@ public class ExecutionHelperTest extends CategoryTest {
     verify(pmsGitSyncHelper, times(1))
         .getGitSyncBranchContextBytesThreadLocal(pipelineEntity, pipelineEntity.getStoreType(), null, null);
     verify(pmsYamlSchemaService, times(0))
-        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(pipelineYaml));
+        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(pipelineYaml), "0");
     verify(pipelineRbacServiceImpl, times(0))
         .extractAndValidateStaticallyReferredEntities(accountId, orgId, projectId, pipelineId, pipelineYaml);
     verify(planExecutionMetadataService, times(0)).findByPlanExecutionId(anyString());
@@ -970,7 +998,7 @@ public class ExecutionHelperTest extends CategoryTest {
     verify(pmsGitSyncHelper, times(1))
         .getGitSyncBranchContextBytesThreadLocal(pipelineEntity, pipelineEntity.getStoreType(), null, null);
     verify(pmsYamlSchemaService, times(0))
-        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(pipelineYamlV1));
+        .validateYamlSchema(accountId, orgId, projectId, YamlUtils.readAsJsonNode(pipelineYamlV1), "0");
     verify(pipelineRbacServiceImpl, times(0))
         .extractAndValidateStaticallyReferredEntities(accountId, orgId, projectId, pipelineId, pipelineYamlV1);
     verify(planExecutionMetadataService, times(0)).findByPlanExecutionId(anyString());
@@ -1031,5 +1059,30 @@ public class ExecutionHelperTest extends CategoryTest {
     } catch (IOException e) {
       throw new InvalidRequestException("Could not read resource file: " + filename);
     }
+  }
+
+  @Test
+  @Owner(developers = RISHIKESH)
+  @Category(UnitTests.class)
+  public void testShouldRunRbacValidationBeforeExecutingInlinePipelines() throws IOException {
+    doReturn(request)
+        .when(settingsClient)
+        .getSetting(eq(RUN_RBAC_VALIDATION_BEFORE_EXECUTING_INLINE_PIPELINES), eq(pipelineEntity.getAccountId()),
+            eq(null), eq(null));
+
+    SettingValueResponseDTO settingValueResponseDTOForFalseValue =
+        SettingValueResponseDTO.builder().value("false").valueType(SettingValueType.BOOLEAN).build();
+    doReturn(Response.success(ResponseDTO.newResponse(settingValueResponseDTOForFalseValue))).when(request).execute();
+    assertThat(executionHelper.shouldRunRbacValidationBeforeExecutingInlinePipelines(pipelineEntity)).isFalse();
+
+    SettingValueResponseDTO settingValueResponseDTOForTrueValue =
+        SettingValueResponseDTO.builder().value("true").valueType(SettingValueType.BOOLEAN).build();
+    doReturn(Response.success(ResponseDTO.newResponse(settingValueResponseDTOForTrueValue))).when(request).execute();
+    assertThat(executionHelper.shouldRunRbacValidationBeforeExecutingInlinePipelines(pipelineEntity)).isTrue();
+
+    doThrow(new IOException("Could not find run rbac validation before executing inline pipelines setting"))
+        .when(request)
+        .execute();
+    assertThat(executionHelper.shouldRunRbacValidationBeforeExecutingInlinePipelines(pipelineEntity)).isTrue();
   }
 }

@@ -86,7 +86,7 @@ public class EnvironmentRefreshHelper {
       envRefValue = envRefJsonNode.asText();
       JsonNode envInputsNode = envJsonNode.get(YamlTypes.ENVIRONMENT_INPUTS);
       if (NGExpressionUtils.isRuntimeField(envRefValue)) {
-        if (isNodeNotNullAndNotHaveRuntimeValue(envInputsNode) || (isNodeNotNullAndNotHaveRuntimeValue(infraDefsNode))
+        if (isNodeNotNullAndNotHaveRuntimeValue(envInputsNode)
             || (isNodeNotNullAndNotHaveRuntimeValue(serviceOverrideInputs))) {
           errorNodeSummary.setValid(false);
         }
@@ -102,7 +102,7 @@ public class EnvironmentRefreshHelper {
       }
 
       // infraDefinitions inputs are not valid, no need to check for serviceOverride Inputs.
-      if (!validateInfraDefsInput(context, errorNodeSummary, envRefValue, mapper, infraDefsNode)) {
+      if (!validateInfraDefsInput(context, errorNodeSummary, envRefValue, gitBranch, mapper, infraDefsNode)) {
         return;
       }
 
@@ -266,7 +266,9 @@ public class EnvironmentRefreshHelper {
       JsonNode envRefNode =
           envNodeInResolvedTemplatesYaml.getField(YamlTypes.ENVIRONMENT_REF).getNode().getCurrJsonNode();
       String envRefValue = envRefNode.asText();
-      return validateInfraDefsInput(context, errorNodeSummary, envRefValue, mapper, infraDefsNode);
+
+      String environmentBranch = RefreshInputsHelper.getBranchFromNode(envNodeInResolvedTemplatesYaml);
+      return validateInfraDefsInput(context, errorNodeSummary, envRefValue, environmentBranch, mapper, infraDefsNode);
     }
     return true;
   }
@@ -275,6 +277,7 @@ public class EnvironmentRefreshHelper {
     ObjectNode envObjectNode = (ObjectNode) entityNode.getCurrJsonNode();
     removeNotRequiredInputFieldsFromEnvObject(entityNode, context, envObjectNode);
     JsonNode envRefJsonNode = envObjectNode.get(YamlTypes.ENVIRONMENT_REF);
+    String environmentBranch = RefreshInputsHelper.getBranchFromNode(entityNode);
     String envRefValue;
     ObjectMapper mapper = new ObjectMapper();
     JsonNode infraDefsNode = envObjectNode.get(YamlTypes.INFRASTRUCTURE_DEFS);
@@ -287,9 +290,6 @@ public class EnvironmentRefreshHelper {
       JsonNode envInputsNode = envObjectNode.get(YamlTypes.ENVIRONMENT_INPUTS);
       if (NGExpressionUtils.isRuntimeField(envRefValue)) {
         envObjectNode.put(YamlTypes.ENVIRONMENT_INPUTS, "<+input>");
-        if (isNodeNotNullAndNotHaveRuntimeValue(infraDefsNode)) {
-          envObjectNode.put(YamlTypes.INFRASTRUCTURE_DEFS, "<+input>");
-        }
         if (isNodeNotNullAndNotHaveRuntimeValue(serviceOverrideInputs)) {
           envObjectNode.put(YamlTypes.SERVICE_OVERRIDE_INPUTS, "<+input>");
         }
@@ -299,7 +299,7 @@ public class EnvironmentRefreshHelper {
       }
 
       refreshEnvInputs(context, envRefValue, mapper, envObjectNode, envInputsNode);
-      refreshInfraDefsInput(context, envRefValue, mapper, envObjectNode, infraDefsNode);
+      refreshInfraDefsInput(context, envRefValue, environmentBranch, mapper, envObjectNode, infraDefsNode);
       refreshServiceOverrideInputsWithEnvRef(
           entityNode, context, envObjectNode, envRefJsonNode, mapper, serviceOverrideInputs);
     } else {
@@ -451,12 +451,13 @@ public class EnvironmentRefreshHelper {
         return;
       }
       envRefValue = envRefNode.asText();
-      refreshInfraDefsInput(context, envRefValue, mapper, envObjectNode, infraDefsNode);
+      String environmentBranch = RefreshInputsHelper.getBranchFromNode(envNodeInResolvedTemplatesYaml);
+      refreshInfraDefsInput(context, envRefValue, environmentBranch, mapper, envObjectNode, infraDefsNode);
     }
   }
 
-  private void refreshInfraDefsInput(EntityRefreshContext context, String envRefValue, ObjectMapper mapper,
-      ObjectNode envObjectNode, JsonNode infraDefsNode) {
+  private void refreshInfraDefsInput(EntityRefreshContext context, String envRefValue, String environmentBranch,
+      ObjectMapper mapper, ObjectNode envObjectNode, JsonNode infraDefsNode) {
     if (infraDefsNode == null) {
       return;
     }
@@ -469,7 +470,7 @@ public class EnvironmentRefreshHelper {
     }
     if (EmptyPredicate.isNotEmpty(infraDefIdentifiers)) {
       String infraInputs = infrastructureEntityService.createInfrastructureInputsFromYaml(context.getAccountId(),
-          context.getOrgId(), context.getProjectId(), envRefValue, infraDefIdentifiers, false,
+          context.getOrgId(), context.getProjectId(), envRefValue, environmentBranch, infraDefIdentifiers, false,
           NoInputMergeInputAction.ADD_IDENTIFIER_NODE);
       if (EmptyPredicate.isEmpty(infraInputs)) {
         envObjectNode.remove(YamlTypes.INFRASTRUCTURE_DEFS);
@@ -519,7 +520,7 @@ public class EnvironmentRefreshHelper {
   }
 
   private boolean validateInfraDefsInput(EntityRefreshContext context, InputsValidationResponse errorNodeSummary,
-      String envRefValue, ObjectMapper mapper, JsonNode infraDefsNode) {
+      String envRefValue, String environmentBranch, ObjectMapper mapper, JsonNode infraDefsNode) {
     if (infraDefsNode == null) {
       return true;
     }
@@ -533,7 +534,7 @@ public class EnvironmentRefreshHelper {
 
     if (EmptyPredicate.isNotEmpty(infraDefIdentifiers)) {
       String infraInputs = infrastructureEntityService.createInfrastructureInputsFromYaml(context.getAccountId(),
-          context.getOrgId(), context.getProjectId(), envRefValue, infraDefIdentifiers, false,
+          context.getOrgId(), context.getProjectId(), envRefValue, environmentBranch, infraDefIdentifiers, false,
           NoInputMergeInputAction.ADD_IDENTIFIER_NODE);
       if (EmptyPredicate.isEmpty(infraInputs)) {
         errorNodeSummary.setValid(false);

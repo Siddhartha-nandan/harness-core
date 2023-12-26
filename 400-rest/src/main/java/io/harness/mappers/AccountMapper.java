@@ -29,6 +29,7 @@ public class AccountMapper {
         .companyName(account.getCompanyName())
         .defaultExperience(account.getDefaultExperience())
         .isCrossGenerationAccessEnabled(account.isCrossGenerationAccessEnabled())
+        .isCannyUsernameAbbreviationEnabled(account.isCannyUsernameAbbreviationEnabled())
         .authenticationMechanism(account.getAuthenticationMechanism())
         .isNextGenEnabled(account.isNextGenEnabled())
         .serviceAccountConfig(account.getServiceAccountConfig())
@@ -38,6 +39,7 @@ public class AccountMapper {
         .createdAt(account.getCreatedAt())
         .sessionTimeoutInMinutes(account.getSessionTimeOutInMinutes())
         .publicAccessEnabled(account.isPublicAccessEnabled())
+        .subdomainURL(account.getSubdomainUrl())
         .build();
   }
 

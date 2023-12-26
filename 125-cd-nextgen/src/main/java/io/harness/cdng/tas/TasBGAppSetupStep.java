@@ -35,7 +35,7 @@ import io.harness.delegate.beans.TaskData;
 import io.harness.delegate.beans.logstreaming.UnitProgressData;
 import io.harness.delegate.beans.logstreaming.UnitProgressDataMapper;
 import io.harness.delegate.beans.pcf.TasResizeStrategyType;
-import io.harness.delegate.task.TaskParameters;
+import io.harness.delegate.task.artifactBundle.ArtifactBundleDetails;
 import io.harness.delegate.task.pcf.CfCommandTypeNG;
 import io.harness.delegate.task.pcf.request.CfBlueGreenSetupRequestNG;
 import io.harness.delegate.task.pcf.request.TasManifestsPackage;
@@ -69,11 +69,8 @@ import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
 
-import software.wings.beans.TaskType;
-
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import java.math.BigDecimal;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -167,6 +164,9 @@ public class TasBGAppSetupStep extends TaskChainExecutableWithRollbackAndRbac im
               getParameterFieldValue(tasBGAppSetupStepParameters.getAdditionalRoutes())),
           tasExecutionPassThroughData.getTasManifestsPackage());
       tasSetupDataOutcomeBuilder.routeMaps(routeMaps);
+      int olderActiveVersionCountToKeep =
+          Integer.parseInt(getParameterFieldValue(tasBGAppSetupStepParameters.getExistingVersionToKeep()));
+      tasSetupDataOutcomeBuilder.olderActiveVersionCountToKeep(olderActiveVersionCountToKeep);
       executionSweepingOutputService.consume(ambiance, OutcomeExpressionConstants.TAS_APP_SETUP_OUTCOME,
           tasSetupDataOutcomeBuilder.build(), StepCategory.STEP.name());
 
@@ -222,13 +222,21 @@ public class TasBGAppSetupStep extends TaskChainExecutableWithRollbackAndRbac im
     ArtifactOutcome artifactOutcome = cdStepHelper.resolveArtifactsOutcome(ambiance).orElseThrow(
         () -> new InvalidArgumentsException(Pair.of("artifacts", "Primary artifact is required for TAS")));
     InfrastructureOutcome infrastructureOutcome = cdStepHelper.getInfrastructureOutcome(ambiance);
-    Integer maxCount = null;
-    if (tasBGAppSetupStepParameters.getTasInstanceCountType().equals(TasInstanceCountType.FROM_MANIFEST)) {
-      maxCount = tasStepHelper.fetchMaxCountFromManifest(executionPassThroughData.getTasManifestsPackage());
+
+    ArtifactBundleDetails artifactBundleDetails = tasStepHelper.getArtifactBundleDetails(ambiance, tasManifestOutcome);
+
+    int olderActiveVersionCountToKeep =
+        Integer.parseInt(getParameterFieldValue(tasBGAppSetupStepParameters.getExistingVersionToKeep()));
+
+    if (olderActiveVersionCountToKeep == 0
+        && !cdFeatureFlagHelper.isEnabled(
+            AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_PCF_SUPPORT_BG_WITH_2_APPS_NG)) {
+      throw new AccessDeniedException(
+          "CDS_PCF_SUPPORT_BG_WITH_2_APPS_NG FF is not enabled for this account. Please contact harness customer care.",
+          ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
     }
-    Integer olderActiveVersionCountToKeep =
-        new BigDecimal(getParameterFieldValue(tasBGAppSetupStepParameters.getExistingVersionToKeep())).intValueExact();
-    TaskParameters taskParameters =
+
+    CfBlueGreenSetupRequestNG taskParameters =
         CfBlueGreenSetupRequestNG.builder()
             .accountId(AmbianceUtils.getAccountId(ambiance))
             .cfCommandTypeNG(CfCommandTypeNG.TAS_BG_SETUP)
@@ -242,22 +250,23 @@ public class TasBGAppSetupStep extends TaskChainExecutableWithRollbackAndRbac im
             .tasManifestsPackage(executionPassThroughData.getTasManifestsPackage())
             .timeoutIntervalInMin(CDStepHelper.getTimeoutInMin(stepParameters))
             .olderActiveVersionCountToKeep(olderActiveVersionCountToKeep)
-            .maxCount(maxCount)
+            .maxCount(getMaxCount(tasBGAppSetupStepParameters, executionPassThroughData))
             .routeMaps(getParameterFieldValue(tasBGAppSetupStepParameters.getTempRoutes()))
             .useAppAutoScalar(!isNull(executionPassThroughData.getTasManifestsPackage().getAutoscalarManifestYml()))
             .tempRoutes(getParameterFieldValue(tasBGAppSetupStepParameters.getTempRoutes()))
+            .artifactBundleDetails(artifactBundleDetails)
             .build();
 
     TaskData taskData = TaskData.builder()
                             .parameters(new Object[] {taskParameters})
-                            .taskType(TaskType.TAS_BG_SETUP.name())
+                            .taskType(taskParameters.getDelegateTaskType().name())
                             .timeout(CDStepHelper.getTimeoutInMillis(stepParameters))
                             .async(true)
                             .build();
 
     final TaskRequest taskRequest =
         TaskRequestsUtils.prepareCDTaskRequest(ambiance, taskData, referenceFalseKryoSerializer,
-            executionPassThroughData.getCommandUnits(), TaskType.TAS_BG_SETUP.getDisplayName(),
+            executionPassThroughData.getCommandUnits(), taskParameters.getDelegateTaskType().getDisplayName(),
             TaskSelectorYaml.toTaskSelector(tasBGAppSetupStepParameters.getDelegateSelectors()),
             stepHelper.getEnvironmentType(ambiance));
     return TaskChainResponse.builder()
@@ -265,6 +274,15 @@ public class TasBGAppSetupStep extends TaskChainExecutableWithRollbackAndRbac im
         .chainEnd(true)
         .passThroughData(executionPassThroughData)
         .build();
+  }
+
+  private Integer getMaxCount(
+      TasBGAppSetupStepParameters tasBGAppSetupStepParameters, TasExecutionPassThroughData executionPassThroughData) {
+    Integer maxCount = null;
+    if (tasBGAppSetupStepParameters.getTasInstanceCountType().equals(TasInstanceCountType.FROM_MANIFEST)) {
+      maxCount = tasStepHelper.fetchMaxCountFromManifest(executionPassThroughData.getTasManifestsPackage());
+    }
+    return maxCount;
   }
 
   public List<String> applyVarsYmlSubstitutionIfApplicable(

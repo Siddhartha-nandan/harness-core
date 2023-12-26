@@ -63,7 +63,9 @@ import io.harness.event.PlanExecutionMetadataDeleteObserver;
 import io.harness.event.handlers.SpawnChildrenRequestProcessor;
 import io.harness.exception.GeneralException;
 import io.harness.execution.consumers.InitiateNodeEventRedisConsumer;
-import io.harness.execution.consumers.SdkResponseEventRedisConsumer;
+import io.harness.execution.consumers.sdk.response.SdkResponseEventRedisConsumer;
+import io.harness.execution.consumers.sdk.response.SdkResponseSpawnEventRedisConsumer;
+import io.harness.execution.consumers.sdk.response.SdkStepResponseEventRedisConsumer;
 import io.harness.ff.FeatureFlagConfig;
 import io.harness.gitsync.AbstractGitSyncSdkModule;
 import io.harness.gitsync.GitSdkConfiguration;
@@ -87,6 +89,7 @@ import io.harness.metrics.HarnessMetricRegistry;
 import io.harness.metrics.MetricRegistryModule;
 import io.harness.metrics.PipelineTelemetryRecordsJob;
 import io.harness.metrics.observers.PipelineExecutionMetricsObserver;
+import io.harness.metrics.observers.StepExecutionMetricsObserver;
 import io.harness.migration.MigrationProvider;
 import io.harness.migration.NGMigrationSdkInitHelper;
 import io.harness.migration.NGMigrationSdkModule;
@@ -563,6 +566,8 @@ public class PipelineServiceApplication extends Application<PipelineServiceConfi
         injector.getInstance(Key.get(NodeExecutionOutboxHandler.class)));
     nodeExecutionService.getNodeStatusUpdateSubject().register(
         injector.getInstance(Key.get(PodCleanupUpdateEventHandler.class)));
+    nodeExecutionService.getNodeStatusUpdateSubject().register(
+        injector.getInstance(Key.get(StepExecutionMetricsObserver.class)));
 
     // NodeExecutionDeleteObserver
     nodeExecutionService.getNodeDeleteObserverSubject().register(
@@ -849,6 +854,10 @@ public class PipelineServiceApplication extends Application<PipelineServiceConfi
 
     pipelineEventConsumerController.register(injector.getInstance(SdkResponseEventRedisConsumer.class),
         pipelineServiceConsumersConfig.getSdkResponse().getThreads());
+    pipelineEventConsumerController.register(injector.getInstance(SdkResponseSpawnEventRedisConsumer.class),
+        pipelineServiceConsumersConfig.getSdkResponseSpawnEvent().getThreads());
+    pipelineEventConsumerController.register(injector.getInstance(SdkStepResponseEventRedisConsumer.class),
+        pipelineServiceConsumersConfig.getSdkStepResponseEvent().getThreads());
     pipelineEventConsumerController.register(injector.getInstance(GraphUpdateRedisConsumer.class),
         pipelineServiceConsumersConfig.getGraphUpdate().getThreads());
     pipelineEventConsumerController.register(injector.getInstance(PipelineExecutionSummaryRedisEventConsumer.class),

@@ -107,6 +107,7 @@ import io.harness.template.resources.beans.TemplateFilterPropertiesDTO;
 import io.harness.template.resources.beans.TemplateImportRequestDTO;
 import io.harness.template.resources.beans.TemplateListRepoResponse;
 import io.harness.template.resources.beans.TemplateMoveConfigResponse;
+import io.harness.template.resources.beans.UpdateGitDetailsList;
 import io.harness.template.resources.beans.UpdateGitDetailsParams;
 import io.harness.template.resources.beans.yaml.NGTemplateConfig;
 import io.harness.template.utils.TemplateUtils;
@@ -1399,7 +1400,8 @@ public class NGTemplateServiceImpl implements NGTemplateService {
     }
   }
 
-  private TemplateEntity getAndValidateOldTemplateEntity(
+  @VisibleForTesting
+  protected TemplateEntity getAndValidateOldTemplateEntity(
       TemplateEntity templateEntity, String oldOrgIdentifier, String oldProjectIdentifier) {
     TemplateUtils.setupGitParentEntityDetails(
         templateEntity.getAccountIdentifier(), oldOrgIdentifier, oldProjectIdentifier, null, null);
@@ -1429,9 +1431,9 @@ public class NGTemplateServiceImpl implements NGTemplateService {
     if (!((oldTemplateEntity.getChildType() == null && templateEntity.getChildType() == null)
             || oldTemplateEntity.getChildType().equals(templateEntity.getChildType()))) {
       throw new InvalidRequestException(format(
-          "Template with identifier [%s] and versionLabel [%s] under Project[%s], Organization [%s] cannot update the internal template type, type is [%s].",
+          "Template with identifier [%s] and versionLabel [%s] under Project[%s], Organization [%s] cannot update the internal template type, current type is [%s] and the requested type is [%s].",
           templateEntity.getIdentifier(), templateEntity.getVersionLabel(), templateEntity.getProjectIdentifier(),
-          templateEntity.getOrgIdentifier(), oldTemplateEntity.getChildType()));
+          templateEntity.getOrgIdentifier(), oldTemplateEntity.getChildType(), templateEntity.getChildType()));
     }
     return oldTemplateEntity;
   }
@@ -1515,7 +1517,7 @@ public class NGTemplateServiceImpl implements NGTemplateService {
             templateIdentifier, versionLabel));
       }
 
-      if (templateEntityOptional.get().getStoreType().equals(StoreType.REMOTE)) {
+      if (StoreType.REMOTE.equals(templateEntityOptional.get().getStoreType())) {
         throw new InvalidRequestException(String.format(
             "Template with the given Identifier: %s and versionLabel %s cannot be moved to Git as it is already Remote Type",
             templateIdentifier, versionLabel));
@@ -1567,6 +1569,19 @@ public class NGTemplateServiceImpl implements NGTemplateService {
   }
 
   @Override
+  public void updateGitDetailsForMultipleVersion(String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, String templateIdentifier, List<UpdateGitDetailsList> updateGitDetailsParamsList) {
+    for (UpdateGitDetailsList request : updateGitDetailsParamsList) {
+      updateGitDetails(accountIdentifier, orgIdentifier, projectIdentifier, templateIdentifier, request.getVersion(),
+          UpdateGitDetailsParams.builder()
+              .filePath(request.getUpdateGitDetailsParams().getFilePath())
+              .repoName(request.getUpdateGitDetailsParams().getRepoName())
+              .connectorRef(request.getUpdateGitDetailsParams().getConnectorRef())
+              .build());
+    }
+  }
+
+  @Override
   public void populateSetupUsageAsync(TemplateEntity templateEntity) {
     if (templateEntity.getStoreType() == StoreType.REMOTE) {
       SetupUsageParams setupUsageParams = SetupUsageParams.builder().templateEntity(templateEntity).build();
@@ -1601,8 +1616,30 @@ public class NGTemplateServiceImpl implements NGTemplateService {
       throw new InvalidRequestException(String.format(
           "Invalid move config operation specified [%s].", moveConfigOperationDTO.getMoveConfigOperationType().name()));
     }
-    return updateMoveConfigForTemplateEntity(
+    TemplateEntity movedTemplateEntity = updateMoveConfigForTemplateEntity(
         templateEntity, templateUpdate, templateCriteria, moveConfigOperationDTO.getMoveConfigOperationType());
+    computeSetupReferences(movedTemplateEntity, moveConfigOperationDTO);
+    return movedTemplateEntity;
+  }
+
+  private void computeSetupReferences(TemplateEntity templateEntity, TemplateMoveConfigOperationDTO moveConfigDTO) {
+    try {
+      if (INLINE_TO_REMOTE.equals(moveConfigDTO.getMoveConfigOperationType())) {
+        Optional<TemplateEntity> optionalTemplateEntity = templateServiceHelper.getTemplate(
+            templateEntity.getAccountId(), templateEntity.getOrgIdentifier(), templateEntity.getProjectIdentifier(),
+            templateEntity.getIdentifier(), templateEntity.getVersionLabel(), false, false, false, false);
+        if (optionalTemplateEntity.isPresent()) {
+          templateReferenceHelper.deleteTemplateReferences(optionalTemplateEntity.get());
+          if (GitAwareContextHelper.isGitDefaultBranch()) {
+            templateReferenceHelper.populateTemplateReferences(
+                SetupUsageParams.builder().templateEntity(templateEntity).build());
+          }
+        }
+      }
+    } catch (Exception exception) {
+      log.error(String.format("Error occurred while trying to update references for template %s and version %s : %s",
+          templateEntity.getIdentifier(), templateEntity.getVersionLabel(), exception));
+    }
   }
 
   TemplateEntity updateMoveConfigForTemplateEntity(TemplateEntity templateEntity, Update templateUpdate,

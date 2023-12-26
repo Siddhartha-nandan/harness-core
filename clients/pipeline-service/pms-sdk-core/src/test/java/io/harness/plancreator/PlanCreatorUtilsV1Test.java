@@ -8,14 +8,21 @@
 package io.harness.plancreator;
 
 import static io.harness.rule.OwnerRule.BRIJESH;
+import static io.harness.rule.OwnerRule.MLUKIC;
 import static io.harness.rule.OwnerRule.SHALINI;
 
 import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertNull;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doReturn;
 
 import io.harness.advisers.nextstep.NextStepAdviserParameters;
 import io.harness.category.element.UnitTests;
+import io.harness.data.structure.UUIDGenerator;
+import io.harness.exception.InvalidRequestException;
+import io.harness.plancreator.stages.stage.v1.AbstractStageNodeV1;
+import io.harness.plancreator.steps.TaskSelectorYaml;
 import io.harness.pms.contracts.advisers.AdviserObtainment;
 import io.harness.pms.contracts.advisers.AdviserType;
 import io.harness.pms.contracts.plan.Dependency;
@@ -24,15 +31,23 @@ import io.harness.pms.contracts.plan.HarnessValue;
 import io.harness.pms.plan.creation.PlanCreatorConstants;
 import io.harness.pms.sdk.core.PmsSdkCoreTestBase;
 import io.harness.pms.sdk.core.adviser.OrchestrationAdviserTypes;
+import io.harness.pms.sdk.core.adviser.abort.OnAbortAdviserParameters;
+import io.harness.pms.sdk.core.adviser.markFailure.OnMarkFailureAdviserParameters;
+import io.harness.pms.sdk.core.adviser.marksuccess.OnMarkSuccessAdviserParameters;
+import io.harness.pms.timeout.AbsoluteSdkTimeoutTrackerParameters;
+import io.harness.pms.timeout.SdkTimeoutObtainment;
 import io.harness.pms.yaml.ParameterField;
+import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlNode;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.rule.Owner;
 import io.harness.serializer.KryoSerializer;
+import io.harness.timeout.trackers.absolute.AbsoluteTimeoutTrackerFactory;
 import io.harness.yaml.core.failurestrategy.abort.v1.AbortFailureActionConfigV1;
 import io.harness.yaml.core.failurestrategy.ignore.v1.IgnoreFailureActionConfigV1;
 import io.harness.yaml.core.failurestrategy.manualintervention.v1.ManualFailureSpecConfigV1;
 import io.harness.yaml.core.failurestrategy.manualintervention.v1.ManualInterventionFailureActionConfigV1;
+import io.harness.yaml.core.failurestrategy.markFailure.v1.MarkAsFailFailureActionConfigV1;
 import io.harness.yaml.core.failurestrategy.marksuccess.v1.MarkAsSuccessFailureActionConfigV1;
 import io.harness.yaml.core.failurestrategy.retry.v1.RetryFailureActionConfigV1;
 import io.harness.yaml.core.failurestrategy.retry.v1.RetryFailureConfigV1;
@@ -41,15 +56,22 @@ import io.harness.yaml.core.failurestrategy.v1.FailureConfigV1;
 import io.harness.yaml.core.failurestrategy.v1.NGFailureTypeV1;
 import io.harness.yaml.core.timeout.Timeout;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.io.Resources;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.mockito.Answers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 
 public class PlanCreatorUtilsV1Test extends PmsSdkCoreTestBase {
   @Mock KryoSerializer kryoSerializer;
@@ -135,5 +157,128 @@ public class PlanCreatorUtilsV1Test extends PmsSdkCoreTestBase {
                 .errors(List.of(NGFailureTypeV1.ALL_ERRORS))
                 .action(MarkAsSuccessFailureActionConfigV1.builder().build())
                 .build()));
+  }
+
+  @Test
+  @Owner(developers = BRIJESH)
+  @Category(UnitTests.class)
+  public void testGetFailureStrategiesAdvisers() {
+    Dependency dependency = Dependency.newBuilder().build();
+    String nextNodeUuid = UUIDGenerator.generateUuid();
+    List<FailureConfigV1> stepFailureStrategies = new ArrayList<>();
+    assertThat(PlanCreatorUtilsV1
+                   .getFailureStrategiesAdvisers(kryoSerializer, dependency, stepFailureStrategies, nextNodeUuid, false)
+                   .isEmpty())
+        .isTrue();
+
+    OnMarkFailureAdviserParameters onMarkFailureAdviserParameters =
+        OnMarkFailureAdviserParameters.builder()
+            .applicableFailureTypes(NGFailureTypeV1.ALL_ERRORS.getFailureTypes())
+            .nextNodeId(nextNodeUuid)
+            .build();
+    doReturn(Collections.singletonList(FailureConfigV1.builder()
+                                           .errors(Collections.singletonList(NGFailureTypeV1.ALL_ERRORS))
+                                           .action(MarkAsFailFailureActionConfigV1.builder().build())
+                                           .build()))
+        .when(kryoSerializer)
+        .asInflatedObject("DummyForStage".getBytes());
+    doReturn("DummyForStage".getBytes()).when(kryoSerializer).asBytes(onMarkFailureAdviserParameters);
+    dependency = dependency.toBuilder()
+                     .setParentInfo(HarnessStruct.newBuilder()
+                                        .putData(PlanCreatorConstants.STAGE_FAILURE_STRATEGIES,
+                                            HarnessValue.newBuilder()
+                                                .setBytesValue(ByteString.copyFrom("DummyForStage".getBytes()))
+                                                .build())
+                                        .build())
+                     .build();
+
+    List<AdviserObtainment> adviserObtainments = PlanCreatorUtilsV1.getFailureStrategiesAdvisers(
+        kryoSerializer, dependency, stepFailureStrategies, nextNodeUuid, false);
+
+    assertThat(adviserObtainments.get(0).getType().getType()).isEqualTo("MARK_AS_FAILURE");
+    assertThat(new String(adviserObtainments.get(0).getParameters().toByteArray())).isEqualTo("DummyForStage");
+
+    doReturn(Collections.singletonList(FailureConfigV1.builder()
+                                           .errors(Collections.singletonList(NGFailureTypeV1.ALL_ERRORS))
+                                           .action(MarkAsSuccessFailureActionConfigV1.builder().build())
+                                           .build()))
+        .when(kryoSerializer)
+        .asInflatedObject("DummyForGroup".getBytes());
+    dependency = dependency.toBuilder()
+                     .setParentInfo(HarnessStruct.newBuilder()
+                                        .putData(PlanCreatorConstants.STEP_GROUP_FAILURE_STRATEGIES,
+                                            HarnessValue.newBuilder()
+                                                .setBytesValue(ByteString.copyFrom("DummyForGroup".getBytes()))
+                                                .build())
+                                        .build())
+                     .build();
+
+    OnMarkSuccessAdviserParameters onMarkSuccessAdviserParameters =
+        OnMarkSuccessAdviserParameters.builder()
+            .applicableFailureTypes(NGFailureTypeV1.ALL_ERRORS.getFailureTypes())
+            .nextNodeId(nextNodeUuid)
+            .build();
+    doReturn("DummyForGroup".getBytes()).when(kryoSerializer).asBytes(onMarkSuccessAdviserParameters);
+    adviserObtainments = PlanCreatorUtilsV1.getFailureStrategiesAdvisers(
+        kryoSerializer, dependency, stepFailureStrategies, nextNodeUuid, false);
+    assertThat(adviserObtainments.get(0).getType().getType()).isEqualTo("MARK_SUCCESS");
+    assertThat(new String(adviserObtainments.get(0).getParameters().toByteArray())).isEqualTo("DummyForGroup");
+
+    OnAbortAdviserParameters onAbortAdviserParameters =
+        OnAbortAdviserParameters.builder().applicableFailureTypes(NGFailureTypeV1.ALL_ERRORS.getFailureTypes()).build();
+    doReturn("DummyForStep".getBytes()).when(kryoSerializer).asBytes(onAbortAdviserParameters);
+    stepFailureStrategies.add(FailureConfigV1.builder()
+                                  .errors(Collections.singletonList(NGFailureTypeV1.ALL_ERRORS))
+                                  .action(AbortFailureActionConfigV1.builder().build())
+                                  .build());
+    adviserObtainments = PlanCreatorUtilsV1.getFailureStrategiesAdvisers(
+        kryoSerializer, dependency, stepFailureStrategies, nextNodeUuid, false);
+    assertThat(adviserObtainments.get(0).getType().getType()).isEqualTo("ABORT");
+    assertThat(new String(adviserObtainments.get(0).getParameters().toByteArray())).isEqualTo("DummyForStep");
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testGetTimeoutObtainmentForStage() {
+    AbstractStageNodeV1 stageNode = Mockito.mock(AbstractStageNodeV1.class, Answers.CALLS_REAL_METHODS);
+    SdkTimeoutObtainment sdkTimeoutObtainment = PlanCreatorUtilsV1.getTimeoutObtainmentForStage(stageNode);
+    assertThat(sdkTimeoutObtainment).isNull();
+
+    stageNode.setTimeout(ParameterField.createValueField("10m"));
+    sdkTimeoutObtainment = PlanCreatorUtilsV1.getTimeoutObtainmentForStage(stageNode);
+    assertThat(sdkTimeoutObtainment).isNotNull();
+    assertThat(sdkTimeoutObtainment.getDimension()).isNotNull();
+    assertThat(sdkTimeoutObtainment.getDimension().getType())
+        .isEqualTo(AbsoluteTimeoutTrackerFactory.DIMENSION.getType());
+    assertThat(sdkTimeoutObtainment.getParameters()).isNotNull();
+    assertThat(sdkTimeoutObtainment.getParameters()).isInstanceOf(AbsoluteSdkTimeoutTrackerParameters.class);
+    assertThat(
+        ((AbsoluteSdkTimeoutTrackerParameters) sdkTimeoutObtainment.getParameters()).getTimeout().fetchFinalValue())
+        .isEqualTo("10m");
+  }
+
+  @Test
+  @Owner(developers = SHALINI)
+  @Category(UnitTests.class)
+  public void testGetDelegates() {
+    ObjectNode jsonNode = new ObjectNode(JsonNodeFactory.instance);
+    ArrayNode arrayNode = new ArrayNode(JsonNodeFactory.instance);
+    arrayNode.add("del1");
+    arrayNode.add("<+expr>");
+    assertNull(PlanCreatorUtilsV1.getDelegates(new YamlNode(jsonNode)));
+    jsonNode.put(YAMLFieldNameConstants.DELEGATES, arrayNode);
+    assertEquals(PlanCreatorUtilsV1.getDelegates(new YamlNode(jsonNode)),
+        ParameterField.createValueField(List.of(new TaskSelectorYaml("del1"), new TaskSelectorYaml("<+expr>"))));
+    jsonNode.put(YAMLFieldNameConstants.DELEGATES, "del1");
+    assertEquals(PlanCreatorUtilsV1.getDelegates(new YamlNode(jsonNode)),
+        ParameterField.createValueField(List.of(new TaskSelectorYaml("del1"))));
+    jsonNode.put(YAMLFieldNameConstants.DELEGATES, "<+expr>");
+    assertEquals(PlanCreatorUtilsV1.getDelegates(new YamlNode(jsonNode)),
+        ParameterField.createExpressionField(true, "<+expr>", null, false));
+    jsonNode.put(YAMLFieldNameConstants.DELEGATES, 123);
+    assertThatThrownBy(() -> PlanCreatorUtilsV1.getDelegates(new YamlNode(jsonNode)))
+        .hasMessage("Invalid Yaml for Delegates")
+        .isInstanceOf(InvalidRequestException.class);
   }
 }

@@ -95,11 +95,13 @@ import io.harness.ccm.remote.mapper.anomaly.AnomalyFilterPropertiesMapper;
 import io.harness.ccm.remote.mapper.governance.ExecutionFilterPropertyMapper;
 import io.harness.ccm.remote.mapper.recommendation.CCMRecommendationFilterPropertiesMapper;
 import io.harness.ccm.scheduler.SchedulerClientModule;
+import io.harness.ccm.service.billingDataVerification.service.BillingDataVerificationSQLService;
 import io.harness.ccm.service.impl.AWSBucketPolicyHelperServiceImpl;
 import io.harness.ccm.service.impl.AWSOrganizationHelperServiceImpl;
 import io.harness.ccm.service.impl.AnomalyServiceImpl;
 import io.harness.ccm.service.impl.AwsEntityChangeEventServiceImpl;
 import io.harness.ccm.service.impl.AzureEntityChangeEventServiceImpl;
+import io.harness.ccm.service.impl.BillingDataVerificationBigQueryServiceImpl;
 import io.harness.ccm.service.impl.CCMActiveSpendServiceImpl;
 import io.harness.ccm.service.impl.CCMConnectorDetailsServiceImpl;
 import io.harness.ccm.service.impl.CCMNotificationServiceImpl;
@@ -168,6 +170,7 @@ import io.harness.delegate.beans.DelegateAsyncTaskResponse;
 import io.harness.delegate.beans.DelegateSyncTaskResponse;
 import io.harness.delegate.beans.DelegateTaskProgressResponse;
 import io.harness.enforcement.client.EnforcementClientModule;
+import io.harness.exception.InvalidRequestException;
 import io.harness.ff.FeatureFlagModule;
 import io.harness.filter.FilterType;
 import io.harness.filter.FiltersModule;
@@ -224,6 +227,7 @@ import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Resources;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
@@ -233,6 +237,9 @@ import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 import dev.morphia.converters.TypeConverter;
 import io.dropwizard.jackson.Jackson;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -461,9 +468,12 @@ public class CENextGenModule extends AbstractModule {
     if (configuration.isClickHouseEnabled()) {
       bind(ViewsBillingService.class).to(ClickHouseViewsBillingServiceImpl.class);
       bind(DataResponseService.class).to(ClickHouseDataResponseServiceImpl.class);
+      // todo: create a separate implementation of BillingDataVerificationSQLService for ClickHouse
+      bind(BillingDataVerificationSQLService.class).to(BillingDataVerificationBigQueryServiceImpl.class);
     } else {
       bind(ViewsBillingService.class).to(ViewsBillingServiceImpl.class);
       bind(DataResponseService.class).to(BigQueryDataResponseServiceImpl.class);
+      bind(BillingDataVerificationSQLService.class).to(BillingDataVerificationBigQueryServiceImpl.class);
     }
 
     try {
@@ -622,5 +632,21 @@ public class CENextGenModule extends AbstractModule {
   @Singleton
   public ObjectMapper getYamlSchemaObjectMapperWithoutNamed() {
     return Jackson.newObjectMapper();
+  }
+
+  @Provides
+  @Named("governance-schema")
+  @Singleton
+  public String getGovernanceSchema() {
+    try {
+      URL url = getClass().getClassLoader().getResource("governance_rule/rule_schema.json");
+      if (url == null) {
+        throw new InvalidRequestException("Rule schema doesn't exist");
+      }
+      byte[] bytes = Resources.toByteArray(url);
+      return new String(bytes, StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      throw new InvalidRequestException("Failed to generate schema file", e);
+    }
   }
 }
