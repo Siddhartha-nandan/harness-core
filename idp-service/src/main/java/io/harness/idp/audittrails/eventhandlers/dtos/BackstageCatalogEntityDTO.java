@@ -4,24 +4,24 @@
  * that can be found in the licenses directory at the root of this repository, also available at
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
+package io.harness.idp.audittrails.eventhandlers.dtos;
 
-package io.harness.ccm.views.helper;
+import io.harness.annotations.dev.HarnessTeam;
+import io.harness.annotations.dev.OwnedBy;
+import io.harness.gitsync.beans.YamlDTO;
 
-import dev.morphia.annotations.Id;
-import io.swagger.v3.oas.annotations.media.Schema;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import javax.validation.Valid;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
-import lombok.experimental.FieldNameConstants;
-import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 
+@OwnedBy(HarnessTeam.IDP)
 @Data
-@Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
-@FieldNameConstants(innerTypeName = "ResourceTypeCountkey")
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ResourceTypeCount {
-  @Id @Schema(description = "resourceName") String resourceName;
-  @Schema(description = "Total count") int count;
+@Builder
+public class BackstageCatalogEntityDTO implements YamlDTO {
+  @Valid private String yaml;
 }
