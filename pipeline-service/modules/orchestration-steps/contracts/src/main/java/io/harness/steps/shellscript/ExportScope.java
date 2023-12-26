@@ -37,6 +37,7 @@ public enum ExportScope {
   public String toString() {
     return displayName;
   }
+
   public String toStepOutcomeGroup() {
     switch (this) {
       case PIPELINE:
