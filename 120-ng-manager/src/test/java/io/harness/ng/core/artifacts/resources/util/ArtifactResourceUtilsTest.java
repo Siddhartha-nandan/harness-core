@@ -187,6 +187,10 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
   private static final String FILE_FILTER = "fileFilter";
   private static final String FILE_FILTER_2 = "fileFilter2";
   private static final String CONNECTOR_REF = "connectorRef";
+  private static final String JOB_NAME = "jobname";
+  private static final String JOB_NAME_2 = "jobname2";
+  private static final String ARTIFACT_PATH = "artifactPath";
+  private static final String ARTIFACT_PATH_2 = "artifactPath2";
   private static final String IMAGE = "image";
   private static final String HOST = "host";
   private static final String PKG = "pkg";
@@ -885,6 +889,140 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
                    CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "", null, FQN, SERVICE_REF, ""))
         .isEqualTo(buildDetails);
   }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetJenkinsJobDetails_ValueFromConfig() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig =
+        JenkinsArtifactConfig.builder()
+            .connectorRef(ParameterField.<String>builder().value(CONNECTOR_REF).build())
+            .build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    // Creating IdentifierRef for mock
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    JenkinsJobDetailsDTO buildDetails = JenkinsJobDetailsDTO.builder().build();
+
+    doReturn(buildDetails).when(jenkinsResourceService).getJobDetails(identifierRef, ORG_ID, PROJECT_ID, "");
+
+    assertThat(spyartifactResourceUtils.getJenkinsJobDetails(
+                   null, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "", null, FQN, SERVICE_REF, ""))
+        .isEqualTo(buildDetails);
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "",
+            CONNECTOR_REF, FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetJenkinsJobDetails_ValueFromParams() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig = JenkinsArtifactConfig.builder().build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    // Creating IdentifierRef for mock
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    JenkinsJobDetailsDTO buildDetails = JenkinsJobDetailsDTO.builder().build();
+
+    doReturn(buildDetails).when(jenkinsResourceService).getJobDetails(identifierRef, ORG_ID, PROJECT_ID, "");
+
+    assertThat(spyartifactResourceUtils.getJenkinsJobDetails(
+                   CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "", null, FQN, SERVICE_REF, ""))
+        .isEqualTo(buildDetails);
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "",
+            CONNECTOR_REF, FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetJenkinsJobDetails_ValuesFromResolvedExpression() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig = JenkinsArtifactConfig.builder().build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    // Creating IdentifierRef for mock
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(ResolvedFieldValueWithYamlExpressionEvaluator.builder().value(CONNECTOR_REF).build())
+        .when(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "",
+            CONNECTOR_REF_2, FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    JenkinsJobDetailsDTO buildDetails = JenkinsJobDetailsDTO.builder().build();
+
+    doReturn(buildDetails).when(jenkinsResourceService).getJobDetails(identifierRef, ORG_ID, PROJECT_ID, "");
+
+    assertThat(spyartifactResourceUtils.getJenkinsJobDetails(
+                   CONNECTOR_REF_2, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "", null, FQN, SERVICE_REF, ""))
+        .isEqualTo(buildDetails);
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "",
+            CONNECTOR_REF_2, FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+  }
 
   @Test
   @Owner(developers = SARTHAK_KASAT)
@@ -928,6 +1066,160 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     assertThat(spyartifactResourceUtils.getJenkinsJobParameters(
                    CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "jobName", null, FQN, SERVICE_REF, ""))
         .isEqualTo(jobDetails.get(0).getParameters());
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetJenkinsJobParameters_ValueFromConfig() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig =
+        JenkinsArtifactConfig.builder()
+            .connectorRef(ParameterField.<String>builder().value(CONNECTOR_REF).build())
+            .jobName(ParameterField.<String>builder().value(JOB_NAME).build())
+            .build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    // Creating IdentifierRef for mock
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    List<JobDetails> jobDetails = new ArrayList<>();
+    jobDetails.add(new JobDetails(JOB_NAME, "", new ArrayList<>()));
+
+    doReturn(jobDetails).when(jenkinsResourceService).getJobParameters(identifierRef, ORG_ID, PROJECT_ID, JOB_NAME);
+
+    assertThat(spyartifactResourceUtils.getJenkinsJobParameters(
+                   null, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, null, null, FQN, SERVICE_REF, ""))
+        .isEqualTo(jobDetails.get(0).getParameters());
+
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "",
+            CONNECTOR_REF, FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "", JOB_NAME,
+            FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetJenkinsJobParameters_ValueFromParams() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig = JenkinsArtifactConfig.builder().build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    // Creating IdentifierRef for mock
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    List<JobDetails> jobDetails = new ArrayList<>();
+    jobDetails.add(new JobDetails(JOB_NAME, "", new ArrayList<>()));
+
+    doReturn(jobDetails).when(jenkinsResourceService).getJobParameters(identifierRef, ORG_ID, PROJECT_ID, JOB_NAME);
+
+    assertThat(spyartifactResourceUtils.getJenkinsJobParameters(
+                   CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, JOB_NAME, null, FQN, SERVICE_REF, ""))
+        .isEqualTo(jobDetails.get(0).getParameters());
+
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "",
+            CONNECTOR_REF, FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "", JOB_NAME,
+            FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetJenkinsJobParameters_ValuesFromResolvedExpression() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig = JenkinsArtifactConfig.builder().build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    // Creating IdentifierRef for mock
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(ResolvedFieldValueWithYamlExpressionEvaluator.builder().value(CONNECTOR_REF).build())
+        .when(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "",
+            CONNECTOR_REF_2, FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    doReturn(ResolvedFieldValueWithYamlExpressionEvaluator.builder().value(JOB_NAME).build())
+        .when(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "", JOB_NAME_2,
+            FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    List<JobDetails> jobDetails = new ArrayList<>();
+    jobDetails.add(new JobDetails(JOB_NAME, "", new ArrayList<>()));
+
+    doReturn(jobDetails).when(jenkinsResourceService).getJobParameters(identifierRef, ORG_ID, PROJECT_ID, JOB_NAME);
+
+    assertThat(spyartifactResourceUtils.getJenkinsJobParameters(CONNECTOR_REF_2, ACCOUNT_ID, ORG_ID, PROJECT_ID,
+                   PIPELINE_ID, JOB_NAME_2, null, FQN, SERVICE_REF, ""))
+        .isEqualTo(jobDetails.get(0).getParameters());
+
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "",
+            CONNECTOR_REF_2, FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "", JOB_NAME_2,
+            FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
   }
 
   @Test
@@ -976,6 +1268,183 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
   }
 
   @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetJenkinsBuildJobDetails_ValueFormConfig() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig =
+        JenkinsArtifactConfig.builder()
+            .connectorRef(ParameterField.<String>builder().value(CONNECTOR_REF).build())
+            .jobName(ParameterField.<String>builder().value(JOB_NAME).build())
+            .artifactPath(ParameterField.<String>builder().value(ARTIFACT_PATH).build())
+            .build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    // Creating IdentifierRef for mock
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    List<BuildDetails> buildDetails = new ArrayList<>();
+
+    doReturn(buildDetails)
+        .when(jenkinsResourceService)
+        .getBuildForJob(identifierRef, ORG_ID, PROJECT_ID, "", new ArrayList<>());
+
+    assertThat(spyartifactResourceUtils.getJenkinsJobBuildsV2(
+                   null, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, null, null, null, FQN, SERVICE_REF, ""))
+        .isEqualTo(buildDetails);
+
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "",
+            CONNECTOR_REF, FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "", JOB_NAME,
+            FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "",
+            ARTIFACT_PATH, FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+  }
+
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetJenkinsBuildJobDetails_ValueFormParams() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig = JenkinsArtifactConfig.builder().build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    // Creating IdentifierRef for mock
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    List<BuildDetails> buildDetails = new ArrayList<>();
+
+    doReturn(buildDetails)
+        .when(jenkinsResourceService)
+        .getBuildForJob(identifierRef, ORG_ID, PROJECT_ID, "", new ArrayList<>());
+
+    assertThat(spyartifactResourceUtils.getJenkinsJobBuildsV2(CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID,
+                   PIPELINE_ID, JOB_NAME, ARTIFACT_PATH, null, FQN, SERVICE_REF, ""))
+        .isEqualTo(buildDetails);
+
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "",
+            CONNECTOR_REF, FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "", JOB_NAME,
+            FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "",
+            ARTIFACT_PATH, FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+  }
+
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetJenkinsBuildJobDetails_ValuesFromResolvedExpression() {
+    ArtifactResourceUtils spyartifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig = JenkinsArtifactConfig.builder().build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyartifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    // Creating IdentifierRef for mock
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyartifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(ResolvedFieldValueWithYamlExpressionEvaluator.builder().value(CONNECTOR_REF).build())
+        .when(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, CONNECTOR_REF_2, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    doReturn(ResolvedFieldValueWithYamlExpressionEvaluator.builder().value(JOB_NAME).build())
+        .when(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, JOB_NAME_2, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    doReturn(ResolvedFieldValueWithYamlExpressionEvaluator.builder().value(JOB_NAME).build())
+        .when(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, ARTIFACT_PATH_2, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+
+    doReturn(true).when(spyartifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    List<BuildDetails> buildDetails = new ArrayList<>();
+
+    doReturn(buildDetails)
+        .when(jenkinsResourceService)
+        .getBuildForJob(identifierRef, ORG_ID, PROJECT_ID, "", new ArrayList<>());
+
+    assertThat(spyartifactResourceUtils.getJenkinsJobBuildsV2(CONNECTOR_REF_2, ACCOUNT_ID, ORG_ID, PROJECT_ID,
+                   PIPELINE_ID, JOB_NAME_2, ARTIFACT_PATH_2, null, FQN, SERVICE_REF, ""))
+        .isEqualTo(buildDetails);
+
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "",
+            CONNECTOR_REF_2, FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "", JOB_NAME_2,
+            FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyartifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "",
+            ARTIFACT_PATH_2, FQN, null, SERVICE_REF, yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+  }
+
+  @Test
   @Owner(developers = SARTHAK_KASAT)
   @Category(UnitTests.class)
   public void testGetJenkinsArtifactPaths() {
@@ -1016,6 +1485,164 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
     assertThat(spyartifactResourceUtils.getJenkinsArtifactPaths(
                    CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, "jobName", null, FQN, SERVICE_REF, ""))
         .isEqualTo(artifactPaths);
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetJenkinsArtifactPaths_ValuesFromConfig() {
+    ArtifactResourceUtils spyArtifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig =
+        JenkinsArtifactConfig.builder()
+            .connectorRef(ParameterField.<String>builder().value(CONNECTOR_REF).build())
+            .jobName(ParameterField.<String>builder().value(JOB_NAME).build())
+            .build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyArtifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyArtifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(true).when(spyArtifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    List<String> artifactPaths = new ArrayList<>();
+
+    doReturn(artifactPaths).when(jenkinsResourceService).getArtifactPath(identifierRef, ORG_ID, PROJECT_ID, JOB_NAME);
+
+    assertThat(spyArtifactResourceUtils.getJenkinsArtifactPaths(null, ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID, null,
+                   null, FQN, SERVICE_REF, pipelineYamlWithoutTemplates))
+        .isEqualTo(artifactPaths);
+
+    verify(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, CONNECTOR_REF, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, JOB_NAME, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+  }
+
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetJenkinsArtifactPaths_ValuesFromParams() {
+    ArtifactResourceUtils spyArtifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig = JenkinsArtifactConfig.builder().build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyArtifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyArtifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(true).when(spyArtifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    List<String> artifactPaths = new ArrayList<>();
+
+    doReturn(artifactPaths).when(jenkinsResourceService).getArtifactPath(identifierRef, ORG_ID, PROJECT_ID, JOB_NAME);
+
+    assertThat(spyArtifactResourceUtils.getJenkinsArtifactPaths(CONNECTOR_REF, ACCOUNT_ID, ORG_ID, PROJECT_ID,
+                   PIPELINE_ID, JOB_NAME, null, FQN, SERVICE_REF, pipelineYamlWithoutTemplates))
+        .isEqualTo(artifactPaths);
+
+    verify(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, CONNECTOR_REF, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, JOB_NAME, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+  }
+
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void testGetJenkinsArtifactPaths_ValuesFromResolvedExpression() {
+    ArtifactResourceUtils spyArtifactResourceUtils = spy(artifactResourceUtils);
+
+    JenkinsArtifactConfig jenkinsArtifactConfig = JenkinsArtifactConfig.builder().build();
+
+    Map<String, String> contextMap = new HashMap<>();
+    contextMap.put("serviceGitBranch", "main-patch");
+
+    YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
+        YamlExpressionEvaluatorWithContext.builder()
+            .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
+            .contextMap(contextMap)
+            .build();
+
+    doReturn(yamlExpressionEvaluatorWithContext)
+        .when(spyArtifactResourceUtils)
+        .getYamlExpressionEvaluatorWithContext(any(), any(), any(), any(), any(), any(), any(), any());
+
+    IdentifierRef identifierRef =
+        IdentifierRefHelper.getIdentifierRef(CONNECTOR_REF, "accountId", "orgId", "projectId");
+
+    doReturn(jenkinsArtifactConfig)
+        .when(spyArtifactResourceUtils)
+        .locateArtifactInService(ACCOUNT_ID, ORG_ID, PROJECT_ID, SERVICE_REF, FQN, "main-patch");
+
+    doReturn(ResolvedFieldValueWithYamlExpressionEvaluator.builder().value(CONNECTOR_REF).build())
+        .when(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, CONNECTOR_REF_2, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    doReturn(ResolvedFieldValueWithYamlExpressionEvaluator.builder().value(JOB_NAME).build())
+        .when(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, JOB_NAME_2, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+
+    doReturn(true).when(spyArtifactResourceUtils).isRemoteService(any(), any(), any(), any());
+
+    List<String> artifactPaths = new ArrayList<>();
+
+    doReturn(artifactPaths).when(jenkinsResourceService).getArtifactPath(identifierRef, ORG_ID, PROJECT_ID, JOB_NAME);
+
+    assertThat(spyArtifactResourceUtils.getJenkinsArtifactPaths(CONNECTOR_REF_2, ACCOUNT_ID, ORG_ID, PROJECT_ID,
+                   PIPELINE_ID, JOB_NAME_2, null, FQN, SERVICE_REF, pipelineYamlWithoutTemplates))
+        .isEqualTo(artifactPaths);
+
+    verify(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, CONNECTOR_REF_2, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
+    verify(spyArtifactResourceUtils)
+        .getResolvedFieldValueWithYamlExpressionEvaluator(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID,
+            pipelineYamlWithoutTemplates, JOB_NAME_2, FQN, null, SERVICE_REF,
+            yamlExpressionEvaluatorWithContext.getYamlExpressionEvaluator());
   }
 
   @Test
