@@ -902,7 +902,6 @@ public class ArtifactResourceUtilsTest extends NgManagerTestBase {
 
     Map<String, String> contextMap = new HashMap<>();
     contextMap.put("serviceGitBranch", "main-patch");
-
     YamlExpressionEvaluatorWithContext yamlExpressionEvaluatorWithContext =
         YamlExpressionEvaluatorWithContext.builder()
             .yamlExpressionEvaluator(cdYamlExpressionEvaluator)
