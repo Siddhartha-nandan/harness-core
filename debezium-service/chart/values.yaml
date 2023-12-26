@@ -121,6 +121,8 @@ global:
     mongo:
       installed: true
   stackDriverLoggingEnabled: false
+
+config:
   IS_ENABLED_PIPELINE: false
   #TODO: Set these values when IS_ENABLED_PIPELINE is set to true.
 #  MONGODB_SSL_ENABLED_PIPELINE: ""
