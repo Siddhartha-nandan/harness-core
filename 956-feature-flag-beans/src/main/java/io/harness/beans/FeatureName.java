@@ -907,7 +907,6 @@ public enum FeatureName {
   CDS_SUPPORT_DIFFERENT_INFRA_DURING_ENV_PROPAGATION(
       "FF to suppport selecting different infrastructure during environment propagation", CDC),
   SSCA_ENFORCEMENT_EXEMPTIONS_ENABLED("FF to enable exemption workflow in the SSCA enforcement step", SSCA),
-  CDS_VARIABLES_MERGE_V2_OPTIMIZED_FLOW("FF to switch the v2/variables flow to a new optimized one", CDC, Scope.GLOBAL),
   PIE_GITXWEBHOOKS_RBAC_PERMISSIONS("Rbac Permissions for GitXWebHooks CRUD", PIPELINE);
 
   // keep-sorted end
