@@ -13,5 +13,5 @@ spec:
     weight: 20
   matches:
   - kind: HTTPRouteGroup
-    name: harness-http-route-group-test
+    name: harness-traffic-routing-release-name-test-http-route
   service: stableService

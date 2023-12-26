@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -39,8 +40,14 @@ public abstract class TrafficRoutingResourceCreator {
   private static final String STABLE_PLACE_HOLDER = "stable";
   private static final String STAGE_PLACE_HOLDER = "stage";
   private static final String CANARY_PLACE_HOLDER = "canary";
+  protected static final String DEFAULT_HARNESS_TRAFFIC_ROUTING_PREFIX = "harness-traffic-routing";
 
   protected K8sTrafficRoutingConfig k8sTrafficRoutingConfig;
+
+  public List<KubernetesResource> createTrafficRoutingResources(
+      String namespace, String releaseName, Set<String> availableApiVersions, LogCallback logCallback) {
+    return createTrafficRoutingResources(namespace, releaseName, null, null, availableApiVersions, logCallback);
+  }
 
   public List<KubernetesResource> createTrafficRoutingResources(String namespace, String releaseName,
       KubernetesResource primaryService, KubernetesResource secondaryService, Set<String> availableApiVersions,
@@ -56,7 +63,7 @@ public abstract class TrafficRoutingResourceCreator {
     return trafficRoutingManifests.stream()
         .map(ManifestHelper::getKubernetesResourcesFromSpec)
         .flatMap(List::stream)
-        .toList();
+        .collect(Collectors.toList());
   }
 
   private List<String> getTrafficRoutingManifests(String namespace, String releaseName,
@@ -83,8 +90,15 @@ public abstract class TrafficRoutingResourceCreator {
     }
   }
 
-  public String getTrafficRoutingResourceName(String name, String suffix, String defaultName) {
-    return name != null ? StringUtils.truncate(name, K8S_RESOURCE_NAME_MAX - suffix.length()) + suffix : defaultName;
+  protected String getTrafficRoutingResourceName(String name, String suffix, String defaultName) {
+    return name != null
+        ? format("%s-%s", StringUtils.truncate(name, K8S_RESOURCE_NAME_MAX - suffix.length() - 1), suffix)
+        : defaultName;
+  }
+
+  protected String generateDefaultName(
+      String trafficRoutingDefaultName, String releaseName, String hash, String trafficSplitSuffix) {
+    return format("%s-%s-%s-%s", trafficRoutingDefaultName, releaseName, hash, trafficSplitSuffix);
   }
 
   public Map<String, String> getApiVersions(Set<String> clusterAvailableApis, LogCallback logCallback) {

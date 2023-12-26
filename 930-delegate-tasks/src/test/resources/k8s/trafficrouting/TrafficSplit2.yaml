@@ -3,7 +3,7 @@ kind: TrafficSplit
 metadata:
   labels:
     harness.io/release-name: release-name
-  name: harness-traffic-routing-traffic-split
+  name: harness-traffic-routing-release-name-e3d4c0477520a72cc8b8964a863330c8558c8e436b58386829bec0f9f2723241-traffic-split
   namespace: namespace
 spec:
   backends:

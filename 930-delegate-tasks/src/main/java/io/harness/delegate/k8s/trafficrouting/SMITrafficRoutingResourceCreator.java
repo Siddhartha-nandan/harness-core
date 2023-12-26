@@ -53,10 +53,8 @@ import org.apache.commons.lang3.RandomStringUtils;
 public class SMITrafficRoutingResourceCreator extends TrafficRoutingResourceCreator {
   public static final String PLURAL = "trafficsplits";
 
-  private static final String TRAFFIC_SPLIT_SUFFIX = "-traffic-split";
-  private static final String HTTP_ROUTE_GROUP_SUFFIX = "-http-route-group";
-  // toDo this needs to be revisited, should not be hardcoded
-  private static final String TRAFFIC_SPLIT_DEFAULT_NAME = "harness-traffic-routing-traffic-split";
+  private static final String TRAFFIC_SPLIT_SUFFIX = "traffic-split";
+  private static final String HTTP_ROUTE_SUFFIX = "http-route";
 
   static final String SPLIT = "split";
   static final String SPECS = "specs";
@@ -82,7 +80,7 @@ public class SMITrafficRoutingResourceCreator extends TrafficRoutingResourceCrea
     applyRoutesToTheTrafficSplit(trafficSplit, smiRoutes);
     List<String> trafficRoutingManifests = new ArrayList<>();
     trafficRoutingManifests.add(Yaml.dump(trafficSplit));
-    trafficRoutingManifests.addAll(smiRoutes.stream().map(Yaml::dump).toList());
+    trafficRoutingManifests.addAll(smiRoutes.stream().map(Yaml::dump).collect(Collectors.toList()));
 
     return trafficRoutingManifests;
   }
@@ -104,7 +102,9 @@ public class SMITrafficRoutingResourceCreator extends TrafficRoutingResourceCrea
 
   private TrafficSplit getTrafficSplit(
       String namespace, String releaseName, String stableName, String stageName, String apiVersion) {
-    String name = getTrafficRoutingResourceName(stableName, TRAFFIC_SPLIT_SUFFIX, TRAFFIC_SPLIT_DEFAULT_NAME);
+    String name = getTrafficRoutingResourceName(stableName, TRAFFIC_SPLIT_SUFFIX,
+        generateDefaultName(DEFAULT_HARNESS_TRAFFIC_ROUTING_PREFIX, releaseName,
+            k8sTrafficRoutingConfig.generateDestinationsHash(), TRAFFIC_SPLIT_SUFFIX));
     Metadata metadata = getMetadata(name, namespace, releaseName);
     String rootService = getRootService((SMIProviderConfig) k8sTrafficRoutingConfig.getProviderConfig(), stableName);
 
@@ -173,10 +173,9 @@ public class SMITrafficRoutingResourceCreator extends TrafficRoutingResourceCrea
 
   private HttpRouteGroup mapToHttpRouteGroup(
       TrafficRouteRule rule, String namespace, String releaseName, String apiVersion) {
-    String defaultName =
-        String.format("harness%s-%s", HTTP_ROUTE_GROUP_SUFFIX, RandomStringUtils.randomAlphanumeric(4));
-
-    String resourceName = getTrafficRoutingResourceName(rule.getName(), HTTP_ROUTE_GROUP_SUFFIX, defaultName);
+    String resourceName = getTrafficRoutingResourceName(rule.getName(), HTTP_ROUTE_SUFFIX,
+        generateDefaultName(DEFAULT_HARNESS_TRAFFIC_ROUTING_PREFIX, releaseName,
+            RandomStringUtils.randomAlphanumeric(4), HTTP_ROUTE_SUFFIX));
     Map<String, String> headerConfig = rule.getHeaderConfigs() == null
         ? null
         : rule.getHeaderConfigs().stream().collect(Collectors.toMap(HeaderConfig::getKey, HeaderConfig::getValue));

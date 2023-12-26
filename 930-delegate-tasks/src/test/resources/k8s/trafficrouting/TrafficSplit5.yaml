@@ -13,5 +13,5 @@ spec:
     weight: 20
   matches:
   - kind: HTTPRouteGroup
-    name: header-http-route-group
+    name: header-http-route
   service: stableService

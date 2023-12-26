@@ -11,6 +11,8 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 
+import com.google.common.hash.Hashing;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.Builder;
@@ -45,5 +47,15 @@ public class K8sTrafficRoutingConfig {
       return 100 / destinations.size();
     }
     return weight == null ? 0 : weight * 100 / sum;
+  }
+
+  public String generateDestinationsHash() {
+    StringBuffer sb = new StringBuffer();
+
+    if (destinations != null && !destinations.isEmpty()) {
+      destinations.stream().forEach(d -> sb.append(d.getHost()));
+    }
+
+    return Hashing.sha256().hashString(sb.toString(), StandardCharsets.UTF_8).toString();
   }
 }

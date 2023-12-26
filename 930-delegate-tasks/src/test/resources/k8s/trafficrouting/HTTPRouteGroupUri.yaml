@@ -3,7 +3,7 @@ kind: HTTPRouteGroup
 metadata:
   labels:
     harness.io/release-name: release-name
-  name: uri-http-route-group
+  name: uri-http-route
   namespace: namespace
 spec:
   matches:

@@ -114,7 +114,7 @@ public class TrafficRoutingResourceCreatorTest extends CategoryTest {
   @Owner(developers = BUHA)
   @Category(UnitTests.class)
   public void testGetTrafficRoutingResourceName() {
-    assertThat(getTrafficRoutingCreator().getTrafficRoutingResourceName("resource-name", "-some-suffix", "defaultName"))
+    assertThat(getTrafficRoutingCreator().getTrafficRoutingResourceName("resource-name", "some-suffix", "defaultName"))
         .isEqualTo("resource-name-some-suffix");
   }
 
@@ -124,7 +124,7 @@ public class TrafficRoutingResourceCreatorTest extends CategoryTest {
   public void testGetTrafficRoutingResourceWithOverLimitResourceName() {
     String overLimitResourceName = RandomStringUtils.randomAlphabetic(260);
     String result =
-        getTrafficRoutingCreator().getTrafficRoutingResourceName(overLimitResourceName, "-some-suffix", "defaultName");
+        getTrafficRoutingCreator().getTrafficRoutingResourceName(overLimitResourceName, "some-suffix", "defaultName");
     assertThat(result).endsWith("-some-suffix").hasSize(253);
   }
 

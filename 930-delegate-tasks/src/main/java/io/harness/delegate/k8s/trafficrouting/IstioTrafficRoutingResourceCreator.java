@@ -49,9 +49,7 @@ import org.apache.commons.lang3.tuple.Pair;
 public class IstioTrafficRoutingResourceCreator extends TrafficRoutingResourceCreator {
   public static final String PLURAL = "virtualservices";
 
-  private static final String VS_SUFFIX = "-virtual-service";
-  // toDo this needs to be revisited, should not be hardcoded
-  private static final String TRAFFIC_ROUTING_STEP_VIRTUAL_SERVICE = "harness-traffic-routing-virtual-service";
+  private static final String VIRTUAL_SERVICE_SUFFIX = "virtual-service";
   private static final String NETWORKING = "networking";
   private static final Map<String, List<String>> SUPPORTED_API_MAP =
       Map.of(NETWORKING, List.of("networking.istio.io/v1alpha3", "networking.istio.io/v1beta1"));
@@ -63,8 +61,9 @@ public class IstioTrafficRoutingResourceCreator extends TrafficRoutingResourceCr
   @Override
   protected List<String> getManifests(
       String namespace, String releaseName, String stableName, String stageName, Map<String, String> apiVersions) {
-    String virtualServiceName =
-        getTrafficRoutingResourceName(stableName, VS_SUFFIX, TRAFFIC_ROUTING_STEP_VIRTUAL_SERVICE);
+    String virtualServiceName = getTrafficRoutingResourceName(stableName, VIRTUAL_SERVICE_SUFFIX,
+        generateDefaultName(DEFAULT_HARNESS_TRAFFIC_ROUTING_PREFIX, releaseName,
+            k8sTrafficRoutingConfig.generateDestinationsHash(), VIRTUAL_SERVICE_SUFFIX));
     VirtualService vs = VirtualService.builder()
                             .metadata(Metadata.builder()
                                           .name(virtualServiceName)

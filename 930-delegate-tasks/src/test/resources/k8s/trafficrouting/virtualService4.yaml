@@ -3,7 +3,7 @@ kind: VirtualService
 metadata:
   labels:
     harness.io/release-name: release-name
-  name: harness-traffic-routing-virtual-service
+  name: harness-traffic-routing-release-name-8c357ebb69249c6944ba965492bd82839a839ef74b5007eb68dbdf8ca111698e-virtual-service
   namespace: namespace
 spec:
   hosts:
