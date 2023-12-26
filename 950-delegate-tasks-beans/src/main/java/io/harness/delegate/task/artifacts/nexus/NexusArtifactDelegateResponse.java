@@ -69,9 +69,9 @@ public class NexusArtifactDelegateResponse extends ArtifactDelegateResponse {
             + getBuildDetails().getMetadata().get("package") + "\ntag: " + getTag() + "\nrepository type: "
             + getRepositoryFormat() + (EmptyPredicate.isNotEmpty(dockerPullCommand) ? dockerPullCommand : "");
       case raw:
-        return "raw-specific description: "
-            + "\nrepository: " + getRepositoryName() + "\ntag: " + getTag() + "\nrepository type: "
-            + getRepositoryFormat() + (EmptyPredicate.isNotEmpty(dockerPullCommand) ? dockerPullCommand : "");
+        return "type: " + getSourceType().getDisplayName() + "\nrepository: " + getRepositoryName()
+            + "\ntag: " + getTag() + "\nrepository type: " + getRepositoryFormat()
+            + (EmptyPredicate.isNotEmpty(dockerPullCommand) ? dockerPullCommand : "");
 
       default:
         return "Unknown Type Description: "
