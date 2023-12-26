@@ -25,7 +25,9 @@ public class ShellScriptStepFunctor extends StepExpressionFunctor {
   @Override
   public synchronized Object get(Object key) {
     if (stepOutput.getExportScope() != null && stepOutput.isUseAlias()) {
-      return String.format("<+exportedVariables.getValue(\"%s.%s.%s\")>", stepOutput.getExportScope().toExpression(),
+      return String.format("<+exportedVariables.getValue(\"%s.%s.%s\")>",
+          Character.toLowerCase(stepOutput.getExportScope().toString().charAt(0))
+              + stepOutput.getExportScope().toString().substring(1),
           stepOutput.getExpression().replace("context.", ""), key);
     }
 

@@ -37,11 +37,6 @@ public enum ExportScope {
   public String toString() {
     return displayName;
   }
-
-  public String toExpression() {
-    return Character.toLowerCase(displayName.charAt(0)) + displayName.substring(1);
-  }
-
   public String toStepOutcomeGroup() {
     switch (this) {
       case PIPELINE:
