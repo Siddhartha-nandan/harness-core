@@ -60,7 +60,6 @@ public class RemediationTrackerMapper {
             .component(vulnerabilityInfo.getComponentName())
             .vulnerabilityDescription(vulnerabilityInfo.getVulnerabilityDescription())
             .type(VulnerabilityInfoType.DEFAULT)
-            .version(vulnerabilityInfo.getComponentVersion())
             .severity(mapSeverityToVulnerabilitySeverity(vulnerabilityInfo.getSeverity()))
             .build();
       case "CVE":
@@ -73,7 +72,6 @@ public class RemediationTrackerMapper {
             .component(vulnerabilityInfo.getComponentName())
             .vulnerabilityDescription(vulnerabilityInfo.getVulnerabilityDescription())
             .type(VulnerabilityInfoType.CVE)
-            .version(vulnerabilityInfo.getComponentVersion())
             .severity(mapSeverityToVulnerabilitySeverity(vulnerabilityInfo.getSeverity()))
             .build();
       default:
@@ -84,8 +82,8 @@ public class RemediationTrackerMapper {
   private VulnerabilitySeverity mapSeverityToVulnerabilitySeverity(
       io.harness.spec.server.ssca.v1.model.VulnerabilitySeverity severity) {
     switch (severity) {
-      case NONE:
-        return VulnerabilitySeverity.NONE;
+      case INFO:
+        return VulnerabilitySeverity.INFO;
       case LOW:
         return VulnerabilitySeverity.LOW;
       case MEDIUM:
