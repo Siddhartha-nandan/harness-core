@@ -26,23 +26,21 @@ public class UserSettingsResourceImpl implements UserSettingResource {
 
   @Override
   public ResponseDTO<SettingValueResponseDTO> get(String identifier, String accountIdentifier) {
-    String userIdentifier = userHelperService.getUserId();
-    return ResponseDTO.newResponse(userSettingsService.get(identifier, accountIdentifier, userIdentifier));
+    return ResponseDTO.newResponse(
+        userSettingsService.get(identifier, accountIdentifier, userHelperService.getUserId()));
   }
 
   @Override
   public ResponseDTO<List<UserSettingResponseDTO>> list(
       String accountIdentifier, SettingCategory category, String groupIdentifier) {
-    String userIdentifier = userHelperService.getUserId();
     return ResponseDTO.newResponse(
-        userSettingsService.list(accountIdentifier, userIdentifier, category, groupIdentifier));
+        userSettingsService.list(accountIdentifier, userHelperService.getUserId(), category, groupIdentifier));
   }
 
   @Override
   public ResponseDTO<List<UserSettingUpdateResponseDTO>> update(
       String accountIdentifier, List<UserSettingRequestDTO> userSettingRequestDTOList) {
-    String userIdentifier = userHelperService.getUserId();
     return ResponseDTO.newResponse(
-        userSettingsService.update(accountIdentifier, userIdentifier, userSettingRequestDTOList));
+        userSettingsService.update(accountIdentifier, userHelperService.getUserId(), userSettingRequestDTOList));
   }
 }

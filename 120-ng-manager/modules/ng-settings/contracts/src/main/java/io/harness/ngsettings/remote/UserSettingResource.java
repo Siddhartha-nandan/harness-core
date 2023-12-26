@@ -9,6 +9,11 @@ package io.harness.ngsettings.remote;
 
 import static io.harness.NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE;
 import static io.harness.annotations.dev.HarnessTeam.PL;
+import static io.harness.ngsettings.SettingConstants.CATEGORY;
+import static io.harness.ngsettings.SettingConstants.CATEGORY_KEY;
+import static io.harness.ngsettings.SettingConstants.GROUP_ID;
+import static io.harness.ngsettings.SettingConstants.GROUP_KEY;
+import static io.harness.ngsettings.SettingConstants.SETTING_UPDATE_REQUEST_LIST;
 
 import io.harness.NGCommonEntityConstants;
 import io.harness.annotations.dev.OwnedBy;
@@ -16,7 +21,6 @@ import io.harness.ng.core.dto.ErrorDTO;
 import io.harness.ng.core.dto.FailureDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ngsettings.SettingCategory;
-import io.harness.ngsettings.SettingConstants;
 import io.harness.ngsettings.dto.SettingValueResponseDTO;
 import io.harness.ngsettings.dto.UserSettingRequestDTO;
 import io.harness.ngsettings.dto.UserSettingResponseDTO;
@@ -74,7 +78,7 @@ public interface UserSettingResource {
       responses =
       {
         @io.swagger.v3.oas.annotations.responses.
-        ApiResponse(responseCode = "default", description = "This returns a setting value by the Identifier")
+        ApiResponse(responseCode = "default", description = "This returns a user setting value for given Identifier")
       })
   ResponseDTO<SettingValueResponseDTO>
   get(@Parameter(description = "This is the Identifier of the Entity", required = true) @NotNull @PathParam(
@@ -88,15 +92,13 @@ public interface UserSettingResource {
       responses =
       {
         @io.swagger.v3.oas.annotations.responses.
-        ApiResponse(responseCode = "default", description = "This contains a list of user Settings")
+        ApiResponse(responseCode = "default", description = "This contains a list of user settings")
       })
   ResponseDTO<List<UserSettingResponseDTO>>
   list(@Parameter(description = ACCOUNT_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
            NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
-      @Parameter(description = SettingConstants.CATEGORY) @QueryParam(
-          SettingConstants.CATEGORY_KEY) SettingCategory category,
-      @Parameter(description = SettingConstants.GROUP_ID) @QueryParam(
-          SettingConstants.GROUP_KEY) String groupIdentifier);
+      @Parameter(description = CATEGORY) @QueryParam(CATEGORY_KEY) SettingCategory category,
+      @Parameter(description = GROUP_ID) @QueryParam(GROUP_KEY) String groupIdentifier);
 
   @PUT
   @ApiOperation(value = "Updates the user settings", nickname = "updateUserSettingValue")
@@ -109,6 +111,6 @@ public interface UserSettingResource {
   ResponseDTO<List<UserSettingUpdateResponseDTO>>
   update(@Parameter(description = ACCOUNT_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
              NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
-      @RequestBody(description = SettingConstants.SETTING_UPDATE_REQUEST_LIST) @Body
+      @RequestBody(description = SETTING_UPDATE_REQUEST_LIST) @Body
       @NotNull List<UserSettingRequestDTO> userSettingRequestDTOList);
 }
