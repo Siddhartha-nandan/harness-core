@@ -24,4 +24,5 @@ public class OidcConfigConstants {
   public static final String SIGNING_ALGS_SUPPORTED = "id_token_signing_alg_values_supported";
   public static final String SCOPES_SUPPORTED = "scopes_supported";
   public static final String GCP_OIDC = "GCP";
+  public static final String AWS_OIDC = "AWS";
 }

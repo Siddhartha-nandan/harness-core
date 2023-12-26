@@ -29,6 +29,7 @@ import lombok.Data;
 public class OidcConfigStructure {
   @JsonProperty(OidcConfigConstants.OPENID_CONFIGURATION) private OidcConfiguration oidcConfiguration;
   @JsonProperty(OidcConfigConstants.GCP_OIDC) private OidcTokenStructure gcpOidcToken;
+  @JsonProperty(OidcConfigConstants.AWS_OIDC) private OidcTokenStructure awsOidcToken;
 
   @Builder
   @Data

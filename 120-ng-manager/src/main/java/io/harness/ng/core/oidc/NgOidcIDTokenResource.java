@@ -13,6 +13,8 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.ng.core.dto.ErrorDTO;
 import io.harness.ng.core.dto.FailureDTO;
 import io.harness.ng.core.dto.ResponseDTO;
+import io.harness.oidc.aws.dto.AwsOidcTokenRequestDto;
+import io.harness.oidc.aws.utility.AwsOidcTokenUtility;
 import io.harness.oidc.gcp.dto.GcpOidcTokenRequestDTO;
 import io.harness.oidc.gcp.utility.GcpOidcTokenUtility;
 import io.harness.security.annotations.NextGenManagerAuth;
@@ -70,6 +72,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class NgOidcIDTokenResource {
   GcpOidcTokenUtility gcpOidcTokenUtility;
+  AwsOidcTokenUtility awsOidcTokenUtility;
 
   @POST
   @Path("gcp")
@@ -85,6 +88,22 @@ public class NgOidcIDTokenResource {
   getOidcIdTokenForGcp(@RequestBody(required = true,
       description = "Details of GCP Workload Identity") @Valid GcpOidcTokenRequestDTO gcpOidcTokenRequestDTO) {
     String idToken = gcpOidcTokenUtility.generateGcpOidcIdToken(gcpOidcTokenRequestDTO);
+    return ResponseDTO.newResponse(idToken);
+  }
+
+  @POST
+  @Path("aws")
+  @Consumes({"application/json", "application/yaml"})
+  @ApiOperation(value = "Generate an OIDC ID Token for AWS", nickname = "generateOidcIdTokenForAws")
+  @Operation(operationId = "generateOidcIdTokenForAws", summary = "Generates an OIDC ID Token for AWS",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(responseCode = "default", description = "Returns OIDC ID Token as a JWT")
+      })
+  public ResponseDTO<String>
+  getOidcIdTokenForAws(@RequestBody(required = true) @Valid AwsOidcTokenRequestDto awsOidcTokenRequestDto) {
+    String idToken = awsOidcTokenUtility.generateAwsOidcIdToken(awsOidcTokenRequestDto);
     return ResponseDTO.newResponse(idToken);
   }
 }
