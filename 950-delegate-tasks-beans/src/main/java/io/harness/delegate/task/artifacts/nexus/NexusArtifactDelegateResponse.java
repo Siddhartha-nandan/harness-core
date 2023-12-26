@@ -52,8 +52,30 @@ public class NexusArtifactDelegateResponse extends ArtifactDelegateResponse {
                                    && getBuildDetails() != null && getBuildDetails().getMetadata() != null)
         ? "\nTo pull image use: docker pull " + getBuildDetails().getMetadata().get(ArtifactMetadataKeys.IMAGE)
         : null;
-    return "type: " + (getSourceType() != null ? getSourceType().getDisplayName() : null) + "\nrepository: "
-        + getRepositoryName() + "\nimagePath: " + getArtifactPath() + "\ntag: " + getTag() + "\nrepository type: "
-        + getRepositoryFormat() + (EmptyPredicate.isNotEmpty(dockerPullCommand) ? dockerPullCommand : "");
+    switch (RepositoryFormat.valueOf(getRepositoryFormat())) {
+      case docker:
+        return "type: " + getSourceType().getDisplayName() + "\nrepository: " + getRepositoryName()
+            + "\nimagePath: " + getArtifactPath() + "\ntag: " + getTag() + "\nrepository type: " + getRepositoryFormat()
+            + (EmptyPredicate.isNotEmpty(dockerPullCommand) ? dockerPullCommand : "");
+      case maven:
+        return "type: " + getSourceType().getDisplayName() + "\nrepository: " + getRepositoryName()
+            + "\nGroupId: " + getBuildDetails().getMetadata().get("groupId") + "\nArtifactPath: " + getArtifactPath()
+            + "\ntag: " + getTag() + "\nrepository type: " + getRepositoryFormat()
+            + (EmptyPredicate.isNotEmpty(dockerPullCommand) ? dockerPullCommand : "");
+
+      case npm:
+      case nuget:
+        return "type: " + getSourceType().getDisplayName() + "\nrepository: " + getRepositoryName() + "\npackageName: "
+            + getBuildDetails().getMetadata().get("package") + "\ntag: " + getTag() + "\nrepository type: "
+            + getRepositoryFormat() + (EmptyPredicate.isNotEmpty(dockerPullCommand) ? dockerPullCommand : "");
+      case raw:
+        return "raw-specific description: "
+            + "\nrepository: " + getRepositoryName() + "\ntag: " + getTag() + "\nrepository type: "
+            + getRepositoryFormat() + (EmptyPredicate.isNotEmpty(dockerPullCommand) ? dockerPullCommand : "");
+
+      default:
+        return "Unknown Type Description: "
+            + "\nrepository: " + null + (EmptyPredicate.isNotEmpty(dockerPullCommand) ? dockerPullCommand : "");
+    }
   }
 }
