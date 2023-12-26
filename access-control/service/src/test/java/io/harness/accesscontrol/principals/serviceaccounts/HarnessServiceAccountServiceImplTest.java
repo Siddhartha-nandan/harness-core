@@ -27,12 +27,10 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.category.element.UnitTests;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.rule.Owner;
-import io.harness.serviceaccount.ServiceAccountDTO;
+import io.harness.serviceaccount.ServiceAccountDTOInternal;
 import io.harness.serviceaccount.remote.ServiceAccountClient;
 
-import com.google.common.collect.Lists;
 import java.io.IOException;
-import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,19 +56,22 @@ public class HarnessServiceAccountServiceImplTest extends AccessControlTestBase 
   @Category(UnitTests.class)
   public void testSyncFound() throws IOException {
     String identifier = randomAlphabetic(10);
-    List<String> resourceIds = Lists.newArrayList(identifier);
     String accountIdentifier = randomAlphabetic(11);
     Scope scope =
         Scope.builder().level(HarnessScopeLevel.ACCOUNT).parentScope(null).instanceId(accountIdentifier).build();
     ServiceAccount serviceAccount =
-        ServiceAccount.builder().identifier(identifier).scopeIdentifier(scope.toString()).build();
-    List<ServiceAccountDTO> serviceAccountDTOs = Lists.newArrayList(
-        ServiceAccountDTO.builder().identifier(identifier).accountIdentifier(accountIdentifier).build());
-    when(serviceAccountClient.listServiceAccounts(accountIdentifier, null, null, resourceIds).execute())
-        .thenReturn(Response.success(ResponseDTO.newResponse(serviceAccountDTOs)));
+        ServiceAccount.builder().uniqueId("uniqueId").identifier(identifier).scopeIdentifier(scope.toString()).build();
+    ServiceAccountDTOInternal serviceAccountDTOInternal =
+        (ServiceAccountDTOInternal) ServiceAccountDTOInternal.builder()
+            .uniqueId("uniqueId")
+            .identifier(identifier)
+            .accountIdentifier(accountIdentifier)
+            .build();
+    when(serviceAccountClient.gerServiceAccountInternal(identifier, accountIdentifier, null, null).execute())
+        .thenReturn(Response.success(ResponseDTO.newResponse(serviceAccountDTOInternal)));
     when(serviceAccountService.createIfNotPresent(serviceAccount)).thenReturn(serviceAccount);
     harnessServiceAccountService.sync(identifier, scope, "");
-    verify(serviceAccountClient, atLeast(1)).listServiceAccounts(accountIdentifier, null, null, resourceIds);
+    verify(serviceAccountClient, atLeast(1)).gerServiceAccountInternal(identifier, accountIdentifier, null, null);
     verify(serviceAccountService, times(1)).createIfNotPresent(serviceAccount);
   }
 
@@ -79,17 +80,16 @@ public class HarnessServiceAccountServiceImplTest extends AccessControlTestBase 
   @Category(UnitTests.class)
   public void testSyncNotFound() throws IOException {
     String identifier = randomAlphabetic(10);
-    List<String> resourceIds = Lists.newArrayList(identifier);
     String accountIdentifier = randomAlphabetic(11);
     Scope scope =
         Scope.builder().level(HarnessScopeLevel.ACCOUNT).parentScope(null).instanceId(accountIdentifier).build();
     ServiceAccount serviceAccount =
-        ServiceAccount.builder().identifier(identifier).scopeIdentifier(scope.toString()).build();
-    when(serviceAccountClient.listServiceAccounts(accountIdentifier, null, null, resourceIds).execute())
-        .thenReturn(Response.success(ResponseDTO.newResponse(emptyList())));
+        ServiceAccount.builder().uniqueId("uniqueId").identifier(identifier).scopeIdentifier(scope.toString()).build();
+    when(serviceAccountClient.gerServiceAccountInternal(identifier, accountIdentifier, null, null).execute())
+        .thenReturn(Response.success(ResponseDTO.newResponse(null)));
     when(serviceAccountService.deleteIfPresent(identifier, scope.toString())).thenReturn(Optional.of(serviceAccount));
     harnessServiceAccountService.sync(identifier, scope, "");
-    verify(serviceAccountClient, atLeast(1)).listServiceAccounts(accountIdentifier, null, null, resourceIds);
+    verify(serviceAccountClient, atLeast(1)).gerServiceAccountInternal(identifier, accountIdentifier, null, null);
     verify(serviceAccountService, times(1)).deleteIfPresent(identifier, scope.toString());
   }
 }
