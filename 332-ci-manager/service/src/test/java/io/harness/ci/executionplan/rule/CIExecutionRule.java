@@ -66,6 +66,7 @@ import io.harness.lock.DistributedLockImplementation;
 import io.harness.lock.PersistentLockModule;
 import io.harness.mongo.MongoConfig;
 import io.harness.mongo.MongoPersistence;
+import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.persistence.HPersistence;
 import io.harness.pms.sdk.PmsSdkConfiguration;
 import io.harness.pms.sdk.PmsSdkModule;
@@ -85,6 +86,7 @@ import io.harness.testlib.module.TestMongoModule;
 import io.harness.threading.CurrentThreadExecutor;
 import io.harness.threading.ExecutorModule;
 import io.harness.time.TimeModule;
+import io.harness.tunnel.TunnelResourceClient;
 
 import com.google.common.base.Suppliers;
 import com.google.inject.AbstractModule;
@@ -157,6 +159,7 @@ public class CIExecutionRule implements MethodRule, InjectorRuleMixin, MongoRule
         bind(AccountClient.class).toInstance(mock(AccountClient.class));
         bind(AccountClient.class).annotatedWith(Names.named("PRIVILEGED")).toInstance(mock(AccountClient.class));
         bind(CodeResourceClient.class).toInstance(mock(CodeResourceClient.class));
+        bind(TunnelResourceClient.class).toInstance(mock(TunnelResourceClient.class));
       }
     });
 
@@ -180,6 +183,7 @@ public class CIExecutionRule implements MethodRule, InjectorRuleMixin, MongoRule
                     .build());
         bind(IACMServiceClient.class).toProvider(IACMServiceClientFactory.class).in(Scopes.SINGLETON);
         bind(SSCAServiceClient.class).toInstance(mock(SSCAServiceClient.class));
+        bind(NGSettingsClient.class).toInstance(mock(NGSettingsClient.class));
       }
     });
 

@@ -86,6 +86,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import javax.validation.constraints.NotNull;
 import lombok.AccessLevel;
@@ -226,8 +227,8 @@ public class PipelineResourceImpl implements YamlSchemaResource, PipelineResourc
   @Hidden
   public ResponseDTO<VariableMergeServiceResponse> createVariablesV2(
       @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true)
-      @NotNull String accountId, @NotNull String orgId, @NotNull String projectId,
-      GitEntityFindInfoDTO gitEntityBasicInfo, String loadFromCache, @NotNull @ApiParam(hidden = true) String yaml) {
+      @NotNull String accountId, String orgId, String projectId, GitEntityFindInfoDTO gitEntityBasicInfo,
+      String loadFromCache, @NotNull @ApiParam(hidden = true) String yaml) {
     log.info("Creating variables for pipeline v2 version.");
 
     PipelineEntity pipelineEntity = PMSPipelineDtoMapper.toPipelineEntity(accountId, orgId, projectId, yaml);
@@ -248,15 +249,33 @@ public class PipelineResourceImpl implements YamlSchemaResource, PipelineResourc
     log.info(String.format("Retrieving pipeline with identifier %s in project %s, org %s, account %s", pipelineId,
         projectId, orgId, accountId));
 
-    Optional<PipelineEntity> pipelineEntity;
+    Optional<PipelineEntity> pipelineEntity = pmsPipelineService.getPipeline(accountId, orgId, projectId, pipelineId,
+        false, false, loadFromFallbackBranch, GitXCacheMapper.parseLoadFromCacheHeaderParam(loadFromCache));
+    if (pipelineEntity.isEmpty()) {
+      throw new EntityNotFoundException(
+          String.format("Pipeline with the given ID: %s does not exist or has been deleted.", pipelineId));
+    }
+
+    String templateResolvedPipelineYaml = null;
+    TemplateMergeResponseDTO templateMergeResponseDTO = null;
+    if (getTemplatesResolvedPipeline) {
+      try {
+        templateMergeResponseDTO =
+            pipelineTemplateHelper.resolveTemplateRefsInPipeline(pipelineEntity.get(), loadFromCache);
+        templateResolvedPipelineYaml = templateMergeResponseDTO.getMergedPipelineYaml();
+      } catch (Exception e) {
+        log.info("Cannot get resolved templates pipeline YAML");
+      }
+    }
+
     // if validateAsync is true, then this ID wil be of the event started for the async validation process, which can be
     // queried on using another API to get the result of the async validation. If validateAsync is false, then this ID
     // is not needed and will be null
     String validationUUID;
     try {
-      PipelineGetResult pipelineGetResult = pmsPipelineService.getAndValidatePipeline(accountId, orgId, projectId,
-          pipelineId, false, false, Boolean.TRUE.equals(loadFromFallbackBranch),
-          GitXCacheMapper.parseLoadFromCacheHeaderParam(loadFromCache), validateAsync);
+      PipelineGetResult pipelineGetResult = pmsPipelineService.validatePipeline(accountId, orgId, projectId, pipelineId,
+          GitXCacheMapper.parseLoadFromCacheHeaderParam(loadFromCache), validateAsync, templateMergeResponseDTO,
+          pipelineEntity.get());
       pipelineEntity = pipelineGetResult.getPipelineEntity();
       validationUUID = pipelineGetResult.getAsyncValidationUUID();
     } catch (PolicyEvaluationFailureException pe) {
@@ -291,19 +310,11 @@ public class PipelineResourceImpl implements YamlSchemaResource, PipelineResourc
 
     pipeline.setPublicAccessResponse(getPublicContextResponse(accountId, orgId, projectId, pipelineId));
 
-    if (getTemplatesResolvedPipeline) {
-      try {
-        String templateResolvedPipelineYaml = "";
-        TemplateMergeResponseDTO templateMergeResponseDTO =
-            pipelineTemplateHelper.resolveTemplateRefsInPipeline(pipelineEntity.get(), loadFromCache);
-        templateResolvedPipelineYaml = templateMergeResponseDTO.getMergedPipelineYaml();
-        pipeline.setResolvedTemplatesPipelineYaml(templateResolvedPipelineYaml);
-      } catch (Exception e) {
-        log.info("Cannot get resolved templates pipeline YAML");
-      }
-    }
     if (validateAsync) {
       pipeline.setValidationUuid(validationUUID);
+    }
+    if (getTemplatesResolvedPipeline) {
+      pipeline.setResolvedTemplatesPipelineYaml(templateResolvedPipelineYaml);
     }
     return ResponseDTO.newResponse(version, pipeline);
   }
@@ -392,9 +403,14 @@ public class PipelineResourceImpl implements YamlSchemaResource, PipelineResourc
       String searchTerm, String module, String filterIdentifier, GitEntityFindInfoDTO gitEntityBasicInfo,
       PipelineFilterPropertiesDto filterProperties, Boolean getDistinctFromBranches) {
     log.info(String.format("Get List of pipelines in project %s, org %s, account %s", projectId, orgId, accountId));
+    Criteria criteria;
+    try {
+      criteria = pipelineServiceHelper.formCriteria(
+          accountId, orgId, projectId, filterIdentifier, filterProperties, false, module, searchTerm);
+    } catch (PatternSyntaxException exception) {
+      return ResponseDTO.newResponse(Page.empty());
+    }
 
-    Criteria criteria = pipelineServiceHelper.formCriteria(
-        accountId, orgId, projectId, filterIdentifier, filterProperties, false, module, searchTerm);
     Pageable pageRequest =
         PageUtils.getPageRequest(page, size, sort, Sort.by(Sort.Direction.DESC, PipelineEntityKeys.lastUpdatedAt));
 
@@ -447,6 +463,16 @@ public class PipelineResourceImpl implements YamlSchemaResource, PipelineResourc
       PipelineImportRequestDTO pipelineImportRequestDTO) {
     PipelineEntity savedPipelineEntity = pmsPipelineService.importPipelineFromRemote(
         accountId, orgId, projectId, pipelineId, pipelineImportRequestDTO, gitImportInfoDTO.getIsForceImport());
+    return ResponseDTO.newResponse(
+        PipelineSaveResponse.builder().identifier(savedPipelineEntity.getIdentifier()).build());
+  }
+
+  @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_CREATE_AND_EDIT)
+  public ResponseDTO<PipelineSaveResponse> importPipelineFromGit(@NotNull @AccountIdentifier String accountId,
+      @NotNull @OrgIdentifier String orgId, @NotNull @ProjectIdentifier String projectId,
+      GitImportInfoDTO gitImportInfoDTO, PipelineImportRequestDTO pipelineImportRequestDTO) {
+    PipelineEntity savedPipelineEntity = pmsPipelineService.importPipelineFromRemote(
+        accountId, orgId, projectId, "", pipelineImportRequestDTO, gitImportInfoDTO.getIsForceImport());
     return ResponseDTO.newResponse(
         PipelineSaveResponse.builder().identifier(savedPipelineEntity.getIdentifier()).build());
   }

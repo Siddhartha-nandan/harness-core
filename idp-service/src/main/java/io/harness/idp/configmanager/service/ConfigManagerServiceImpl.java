@@ -45,8 +45,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -117,6 +121,16 @@ public class ConfigManagerServiceImpl implements ConfigManagerService {
       return null;
     }
     return config.map(AppConfigMapper::toDTO).get();
+  }
+
+  @Override
+  public Map<String, AppConfig> getEnabledPluginsAppConfigs(String accountIdentifier) {
+    List<AppConfigEntity> allEnabledConfigEntities =
+        appConfigRepository.findAllByAccountIdentifierAndConfigTypeAndEnabled(
+            accountIdentifier, ConfigType.PLUGIN, true);
+
+    return allEnabledConfigEntities.stream().collect(
+        Collectors.toMap(AppConfigEntity::getConfigId, AppConfigMapper::toDTO));
   }
 
   @Override
@@ -202,51 +216,52 @@ public class ConfigManagerServiceImpl implements ConfigManagerService {
 
   @Override
   public AppConfig toggleConfigForAccount(
-      String accountIdentifier, String configId, Boolean isEnabled, ConfigType configType) throws ExecutionException {
-    AppConfigEntity updatedData = null;
-    boolean createdNewConfig = false;
+      String accountIdentifier, String configId, Boolean isEnabled, ConfigType configType) {
+    return Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
+      AppConfigEntity updatedData = null;
+      boolean createdNewConfig = false;
+      if (isEnabled) {
+        AppConfigEntity appConfigEntity =
+            appConfigRepository.findByAccountIdentifierAndConfigId(accountIdentifier, configId);
 
-    if (isEnabled) {
-      AppConfigEntity appConfigEntity =
-          appConfigRepository.findByAccountIdentifierAndConfigId(accountIdentifier, configId);
-
-      if (appConfigEntity == null) {
-        long currentTime = System.currentTimeMillis();
-        AppConfigEntity pluginWithNoConfig = AppConfigEntity.builder()
-                                                 .accountIdentifier(accountIdentifier)
-                                                 .configType(configType)
-                                                 .configId(configId)
-                                                 .enabled(true)
-                                                 .createdAt(currentTime)
-                                                 .lastModifiedAt(currentTime)
-                                                 .enabledDisabledAt(currentTime)
-                                                 .build();
-        updatedData = appConfigRepository.save(pluginWithNoConfig);
-        createdNewConfig = true;
+        if (appConfigEntity == null) {
+          long currentTime = System.currentTimeMillis();
+          AppConfigEntity pluginWithNoConfig = AppConfigEntity.builder()
+                                                   .accountIdentifier(accountIdentifier)
+                                                   .configType(configType)
+                                                   .configId(configId)
+                                                   .enabled(true)
+                                                   .createdAt(currentTime)
+                                                   .lastModifiedAt(currentTime)
+                                                   .enabledDisabledAt(currentTime)
+                                                   .build();
+          updatedData = appConfigRepository.save(pluginWithNoConfig);
+          createdNewConfig = true;
+        }
       }
-    }
 
-    if (!createdNewConfig) {
-      updatedData = appConfigRepository.updateConfigEnablement(accountIdentifier, configId, isEnabled, configType);
-    }
+      if (!createdNewConfig) {
+        updatedData = appConfigRepository.updateConfigEnablement(accountIdentifier, configId, isEnabled, configType);
+      }
 
-    if (!isEnabled) {
-      configEnvVariablesService.deleteConfigEnvVariables(accountIdentifier, configId);
-      pluginsProxyInfoService.deleteProxyHostDetailsForPlugin(accountIdentifier, configId);
-    }
+      if (updatedData == null) {
+        throw new InvalidRequestException(format(PLUGIN_CONFIG_NOT_FOUND, configId, accountIdentifier));
+      }
+      if (isEnabled && isAuthRequired(configId, updatedData.getConfigs())
+          && !isAuthConfigured(accountIdentifier, getAuthId(configId))) {
+        throw new InvalidRequestException(format(AUTH_NOT_CONFIGURED, getAuthName(configId)));
+      }
 
-    if (isPluginWithNoConfig(accountIdentifier, configId)) {
-      createOrUpdateTimeStampEnvVariable(accountIdentifier);
-    }
+      if (!isEnabled) {
+        configEnvVariablesService.deleteConfigEnvVariables(accountIdentifier, configId);
+        pluginsProxyInfoService.deleteProxyHostDetailsForPlugin(accountIdentifier, configId);
+      }
 
-    if (updatedData == null) {
-      throw new InvalidRequestException(format(PLUGIN_CONFIG_NOT_FOUND, configId, accountIdentifier));
-    }
-    if (isEnabled && isAuthRequired(configId, updatedData.getConfigs())
-        && !isAuthConfigured(accountIdentifier, getAuthId(configId))) {
-      throw new InvalidRequestException(format(AUTH_NOT_CONFIGURED, getAuthName(configId)));
-    }
-    return AppConfigMapper.toDTO(updatedData);
+      if (isPluginWithNoConfig(accountIdentifier, configId)) {
+        createOrUpdateTimeStampEnvVariable(accountIdentifier);
+      }
+      return AppConfigMapper.toDTO(updatedData);
+    }));
   }
 
   private boolean isAuthRequired(String pluginId, String config) {
@@ -413,12 +428,10 @@ public class ConfigManagerServiceImpl implements ConfigManagerService {
 
   public void validateSchemaForPlugin(String config, String configId) throws Exception {
     String pluginSchema = ConfigManagerUtils.getPluginConfigSchema(configId);
-    if (pluginSchema == null) {
-      throw new UnsupportedOperationException(String.format(INVALID_CONFIG_ID_PROVIDED, configId));
-    }
-    if (!ConfigManagerUtils.isValidSchema(config, pluginSchema)) {
+    if (pluginSchema != null && !ConfigManagerUtils.isValidSchema(config, pluginSchema)) {
       throw new InvalidRequestException(String.format(INVALID_PLUGIN_CONFIG_PROVIDED, configId));
     }
+    // skip schema validation for custom plugins for now
   }
 
   @Override

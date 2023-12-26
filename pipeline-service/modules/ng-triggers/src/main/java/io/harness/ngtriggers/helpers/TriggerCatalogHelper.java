@@ -6,6 +6,7 @@
  */
 
 package io.harness.ngtriggers.helpers;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
@@ -31,8 +32,8 @@ public class TriggerCatalogHelper {
   public List<TriggerCatalogItem> getTriggerTypeToCategoryMapping(String accountIdentifier) {
     final Map<NGTriggerType, List<TriggerCatalogType>> triggerCategoryListMap =
         Arrays.stream(TriggerCatalogType.values())
-            .filter(enumFilter.filter(accountIdentifier, FeatureName.CD_TRIGGER_V2))
             .filter(enumFilter.filter(accountIdentifier, FeatureName.NG_SVC_ENV_REDESIGN))
+            .filter(enumFilter.filter(accountIdentifier, FeatureName.CODE_ENABLED))
             .collect(Collectors.groupingBy(catalogType -> TriggerCatalogType.getTriggerCategory(catalogType)));
     return triggerCategoryListMap.entrySet()
         .stream()

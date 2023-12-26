@@ -12,8 +12,8 @@ import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.delegate.task.k8s.K8sDryRunManifestRequest.K8sDryRunManifestRequestBuilder;
 
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.beans.FeatureName;
 import io.harness.cdng.CDStepHelper;
+import io.harness.cdng.executables.CdTaskChainExecutable;
 import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.k8s.beans.CustomFetchResponsePassThroughData;
@@ -34,7 +34,6 @@ import io.harness.executions.steps.ExecutionNodeType;
 import io.harness.k8s.exception.KubernetesExceptionExplanation;
 import io.harness.k8s.exception.KubernetesExceptionHints;
 import io.harness.logging.CommandExecutionStatus;
-import io.harness.plancreator.steps.common.rollback.TaskChainExecutableWithRollbackAndRbac;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.steps.StepCategory;
@@ -54,6 +53,8 @@ import io.harness.serializer.KryoSerializer;
 import io.harness.steps.StepHelper;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import software.wings.beans.TaskType;
 
@@ -64,7 +65,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @OwnedBy(CDP)
-public class K8sDryRunManifestStep extends TaskChainExecutableWithRollbackAndRbac implements K8sStepExecutor {
+public class K8sDryRunManifestStep extends CdTaskChainExecutable implements K8sStepExecutor {
   public static final StepType STEP_TYPE = StepType.newBuilder()
                                                .setType(ExecutionNodeType.K8S_DRY_RUN_MANIFEST.getYamlType())
                                                .setStepCategory(StepCategory.STEP)
@@ -77,6 +78,7 @@ public class K8sDryRunManifestStep extends TaskChainExecutableWithRollbackAndRba
   @Inject protected KryoSerializer kryoSerializer;
   @Inject protected StepHelper stepHelper;
   @Inject private CDFeatureFlagHelper cdFeatureFlagHelper;
+  @Inject private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
 
   @Override
   public TaskChainResponse executeK8sTask(ManifestOutcome k8sManifestOutcome, Ambiance ambiance,
@@ -123,9 +125,7 @@ public class K8sDryRunManifestStep extends TaskChainExecutableWithRollbackAndRba
             .useDeclarativeRollback(k8sStepHelper.isDeclarativeRollbackEnabled(k8sManifestOutcome))
             .disableFabric8(cdStepHelper.shouldDisableFabric8(accountId));
 
-    if (cdFeatureFlagHelper.isEnabled(accountId, FeatureName.CDS_K8S_SERVICE_HOOKS_NG)) {
-      k8sDryRunManifestRequestbuilder.serviceHooks(k8sStepHelper.getServiceHooks(ambiance));
-    }
+    k8sDryRunManifestRequestbuilder.serviceHooks(k8sStepHelper.getServiceHooks(ambiance));
 
     K8sDryRunManifestRequest k8sDryRunManifestRequest = k8sDryRunManifestRequestbuilder.build();
     k8sStepHelper.publishReleaseNameStepDetails(ambiance, releaseName);
@@ -144,16 +144,17 @@ public class K8sDryRunManifestStep extends TaskChainExecutableWithRollbackAndRba
   }
 
   @Override
-  public TaskChainResponse executeNextLinkWithSecurityContext(Ambiance ambiance, StepBaseParameters stepParameters,
-      StepInputPackage inputPackage, PassThroughData passThroughData, ThrowingSupplier<ResponseData> responseSupplier)
-      throws Exception {
+  public TaskChainResponse executeNextLinkWithSecurityContextAndNodeInfo(Ambiance ambiance,
+      StepBaseParameters stepParameters, StepInputPackage inputPackage, PassThroughData passThroughData,
+      ThrowingSupplier<ResponseData> responseSupplier) throws Exception {
     log.info("Calling executeNextLink");
     return k8sStepHelper.executeNextLink(this, ambiance, stepParameters, passThroughData, responseSupplier);
   }
 
   @Override
-  public StepResponse finalizeExecutionWithSecurityContext(Ambiance ambiance, StepBaseParameters stepParameters,
-      PassThroughData passThroughData, ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
+  public StepResponse finalizeExecutionWithSecurityContextAndNodeInfo(Ambiance ambiance,
+      StepBaseParameters stepParameters, PassThroughData passThroughData,
+      ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
     if (passThroughData instanceof CustomFetchResponsePassThroughData) {
       return k8sStepHelper.handleCustomTaskFailure((CustomFetchResponsePassThroughData) passThroughData);
     }
@@ -205,6 +206,12 @@ public class K8sDryRunManifestStep extends TaskChainExecutableWithRollbackAndRba
                          .outcome(k8sDryRunManifestOutcome)
                          .build())
         .build();
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 
   @Override

@@ -13,15 +13,20 @@ shared_dependencies = [
 ] + [
     "//:lombok",
     "//ssca-manager/modules/contracts:module",
-    "//126-instance:module",
+    "//878-ng-common-utilities/src/main/java/io/harness/beans/common:module",
     "//940-primary-version-manager:module",
+    "//945-account-mgmt:module",
     "//950-ng-core:module",
+    "//950-opa-client:module",
+    "//955-outbox-sdk:module",
     "//958-debezium-utils:module",
     "//958-migration-sdk:module",
     "//960-persistence:module",
-    "//965-api-key-filter:module",
+    "//960-continuous-features:module",
+    "//965-ng-filter:module",
     "//980-commons:module",
     "//999-annotations:module",
+    "//clients/pipeline-service/pms-client:module",
     "//ssca-manager/contracts/openapi/v1:ssca-manager-server-spec-module",
     "@maven//:com_fasterxml_jackson_core_jackson_annotations",
     "@maven//:com_google_inject_guice",
@@ -49,6 +54,8 @@ shared_dependencies = [
     "@maven//:io_swagger_core_v3_swagger_models",
     "@maven//:io_swagger_core_v3_swagger_integration",
     "@maven//:com_amazonaws_aws_java_sdk_s3",
+    "@maven//:co_elastic_clients_elasticsearch_java",
+    "@maven//:com_fasterxml_jackson_core_jackson_databind",
 ]
 
 java_binary(

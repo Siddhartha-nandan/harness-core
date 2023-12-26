@@ -7,22 +7,29 @@
 
 package io.harness.ssca.services;
 
-import io.harness.entities.Instance;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewRequestBody;
+import io.harness.ssca.beans.instance.InstanceDTO;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.CdInstanceSummary;
 
+import com.google.common.annotations.VisibleForTesting;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface CdInstanceSummaryService {
-  boolean upsertInstance(Instance instance);
+  boolean upsertInstance(InstanceDTO instance);
 
-  boolean removeInstance(Instance instance);
+  boolean removeInstance(InstanceDTO instance);
 
   Page<CdInstanceSummary> getCdInstanceSummaries(String accountId, String orgIdentifier, String projectIdentifier,
       ArtifactEntity artifact, ArtifactDeploymentViewRequestBody filterBody, Pageable pageable);
 
+  List<CdInstanceSummary> getCdInstanceSummaries(
+      String accountId, String orgIdentifier, String projectIdentifier, List<String> artifactCorelationIds);
+
   CdInstanceSummary getCdInstanceSummary(String accountId, String orgIdentifier, String projectIdentifier,
       String artifactCorrelationId, String envIdentifier);
+
+  @VisibleForTesting CdInstanceSummary createInstanceSummary(InstanceDTO instance, ArtifactEntity artifact);
 }

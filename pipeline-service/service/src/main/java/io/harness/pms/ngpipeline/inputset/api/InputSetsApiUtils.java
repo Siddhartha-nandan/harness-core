@@ -6,6 +6,7 @@
  */
 
 package io.harness.pms.ngpipeline.inputset.api;
+
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.pms.pipeline.api.PipelinesApiUtils.getMoveConfigType;
 
@@ -21,6 +22,7 @@ import io.harness.gitsync.beans.StoreType;
 import io.harness.gitsync.interceptor.GitEntityInfo;
 import io.harness.gitsync.interceptor.GitSyncConstants;
 import io.harness.gitsync.sdk.EntityGitDetails;
+import io.harness.gitx.USER_FLOW;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.pms.inputset.InputSetErrorDTOPMS;
 import io.harness.pms.inputset.InputSetErrorResponseDTOPMS;
@@ -36,11 +38,14 @@ import io.harness.spec.server.pipeline.v1.model.GitMoveDetails;
 import io.harness.spec.server.pipeline.v1.model.InputSetCreateRequestBody;
 import io.harness.spec.server.pipeline.v1.model.InputSetError;
 import io.harness.spec.server.pipeline.v1.model.InputSetErrorDetails;
+import io.harness.spec.server.pipeline.v1.model.InputSetErrorWrapperDTO;
 import io.harness.spec.server.pipeline.v1.model.InputSetGitUpdateDetails;
 import io.harness.spec.server.pipeline.v1.model.InputSetResponseBody;
+import io.harness.spec.server.pipeline.v1.model.InputSetResponseBody.StoreTypeEnum;
 import io.harness.spec.server.pipeline.v1.model.InputSetUpdateRequestBody;
 import io.harness.utils.ApiUtils;
 import io.harness.utils.PmsFeatureFlagHelper;
+import io.harness.utils.ThreadOperationContextHelper;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -66,13 +71,24 @@ public class InputSetsApiUtils {
     responseBody.setName(inputSetEntity.getName());
     responseBody.setOrg(inputSetEntity.getOrgIdentifier());
     responseBody.setProject(inputSetEntity.getProjectIdentifier());
+    responseBody.pipeline(inputSetEntity.getPipelineIdentifier());
     responseBody.setDescription(inputSetEntity.getDescription());
     responseBody.setTags(ApiUtils.getTags(inputSetEntity.getTags()));
     responseBody.setGitDetails(getGitDetails(inputSetEntity));
     responseBody.setCreated(inputSetEntity.getCreatedAt());
     responseBody.setUpdated(inputSetEntity.getLastUpdatedAt());
+    responseBody.storeType(getStoreType(inputSetEntity.getStoreType()));
+    responseBody.connectorRef(inputSetEntity.getConnectorRef());
     responseBody.setErrorDetails(new InputSetErrorDetails().valid(true));
     return responseBody;
+  }
+
+  public InputSetErrorWrapperDTO getInputSetErrorWrapper(InputSetErrorWrapperDTOPMS errorWrapperDTO) {
+    InputSetErrorWrapperDTO inputSetErrorWrapperDTO = new InputSetErrorWrapperDTO();
+    inputSetErrorWrapperDTO.setErrorPipelineYaml(errorWrapperDTO.getErrorPipelineYaml());
+    inputSetErrorWrapperDTO.setUuidToErrorResponseMap(errorWrapperDTO.getUuidToErrorResponseMap());
+    inputSetErrorWrapperDTO.setInvalidInputsetReferences(errorWrapperDTO.getInvalidInputSetReferences());
+    return inputSetErrorWrapperDTO;
   }
 
   public InputSetResponseBody getInputSetResponseWithError(
@@ -83,8 +99,11 @@ public class InputSetsApiUtils {
     responseBody.setName(inputSetEntity.getName());
     responseBody.setOrg(inputSetEntity.getOrgIdentifier());
     responseBody.setProject(inputSetEntity.getProjectIdentifier());
+    responseBody.setPipeline(inputSetEntity.getPipelineIdentifier());
     responseBody.setDescription(inputSetEntity.getDescription());
     responseBody.setTags(ApiUtils.getTags(inputSetEntity.getTags()));
+    responseBody.storeType(getStoreType(inputSetEntity.getStoreType()));
+    responseBody.connectorRef(inputSetEntity.getConnectorRef());
     responseBody.setGitDetails(getGitDetails(inputSetEntity));
     responseBody.setCreated(inputSetEntity.getCreatedAt());
     responseBody.setUpdated(inputSetEntity.getLastUpdatedAt());
@@ -99,6 +118,15 @@ public class InputSetsApiUtils {
     return responseBody;
   }
 
+  public static StoreTypeEnum getStoreType(StoreType storeType) {
+    if (storeType == null || storeType.equals(StoreType.INLINE)) {
+      return StoreTypeEnum.INLINE;
+    }
+    if (storeType.equals(StoreType.REMOTE)) {
+      return StoreTypeEnum.REMOTE;
+    }
+    return null;
+  }
   public GitDetails getGitDetails(InputSetEntity inputSetEntity) {
     GitDetails gitDetails = new GitDetails();
     if (inputSetEntity.getStoreType() == null) {
@@ -208,6 +236,12 @@ public class InputSetsApiUtils {
   public String inputSetVersion(String accountId, String yaml) {
     boolean isYamlSimplificationEnabled = pmsFeatureFlagHelper.isEnabled(accountId, FeatureName.CI_YAML_VERSIONING);
     return NGYamlHelper.getVersion(yaml, isYamlSimplificationEnabled);
+  }
+
+  public void checkAndSetContextIfGetOnlyFileContentEnabled(String accountId, boolean getOnlyFileContent) {
+    if (getOnlyFileContent && pmsFeatureFlagHelper.isEnabled(accountId, FeatureName.PIE_GET_FILE_CONTENT_ONLY)) {
+      ThreadOperationContextHelper.setUserFlow(USER_FLOW.EXECUTION);
+    }
   }
 
   public boolean isDifferentRepoForPipelineAndInputSetsAccountSettingEnabled(String accountId) {

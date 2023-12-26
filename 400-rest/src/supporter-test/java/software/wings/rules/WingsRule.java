@@ -12,6 +12,7 @@ import static io.harness.cache.CacheBackend.NOOP;
 import static io.harness.logging.LoggingInitializer.initializeLogging;
 import static io.harness.maintenance.MaintenanceController.forceMaintenance;
 import static io.harness.manage.GlobalContextManager.upsertGlobalContextRecord;
+import static io.harness.microservice.NotifyEngineTarget.ARTIFACT_COLLECTION;
 import static io.harness.microservice.NotifyEngineTarget.GENERAL;
 import static io.harness.waiter.OrchestrationNotifyEventListener.ORCHESTRATION;
 
@@ -37,6 +38,7 @@ import io.harness.cf.CfClientConfig;
 import io.harness.cf.CfMigrationConfig;
 import io.harness.commandlibrary.client.CommandLibraryServiceHttpClient;
 import io.harness.config.PublisherConfiguration;
+import io.harness.delegate.AccountCheckAndCleanupServiceImpl;
 import io.harness.delegate.authenticator.DelegateTokenAuthenticatorImpl;
 import io.harness.delegate.beans.Delegate;
 import io.harness.delegate.beans.DelegateGroup;
@@ -78,6 +80,7 @@ import io.harness.redis.intfc.DelegateRedissonCacheManager;
 import io.harness.remote.client.ServiceHttpClientConfig;
 import io.harness.rule.Cache;
 import io.harness.rule.InjectorRuleMixin;
+import io.harness.security.AccountCheckAndCleanupService;
 import io.harness.security.DelegateTokenAuthenticator;
 import io.harness.serializer.KryoModule;
 import io.harness.serializer.KryoRegistrar;
@@ -100,6 +103,7 @@ import io.harness.waiter.OrchestrationNotifyEventListener;
 
 import software.wings.DataStorageMode;
 import software.wings.WingsTestModule;
+import software.wings.app.ArtifactCollectionNotifyEventListener;
 import software.wings.app.AuthModule;
 import software.wings.app.ExecutorConfig;
 import software.wings.app.ExecutorsConfig;
@@ -499,6 +503,7 @@ public class WingsRule implements MethodRule, InjectorRuleMixin, MongoRuleMixin 
       @Override
       protected void configure() {
         bind(DelegateTokenAuthenticator.class).to(DelegateTokenAuthenticatorImpl.class).in(Singleton.class);
+        bind(AccountCheckAndCleanupService.class).to(AccountCheckAndCleanupServiceImpl.class);
         bind(DelegateCache.class).to(DelegateCacheImpl.class).in(Singleton.class);
       }
     });
@@ -620,6 +625,13 @@ public class WingsRule implements MethodRule, InjectorRuleMixin, MongoRuleMixin 
               injector.getInstance(NotifyQueuePublisherRegister.class);
           notifyQueuePublisherRegister.register(
               ORCHESTRATION, payload -> publisher.send(asList(ORCHESTRATION), payload));
+        } else if (queueListenerClass.equals(ArtifactCollectionNotifyEventListener.class)) {
+          final QueuePublisher<NotifyEvent> publisher =
+              injector.getInstance(Key.get(new TypeLiteral<QueuePublisher<NotifyEvent>>() {}));
+          final NotifyQueuePublisherRegister notifyQueuePublisherRegister =
+              injector.getInstance(NotifyQueuePublisherRegister.class);
+          notifyQueuePublisherRegister.register(
+              ARTIFACT_COLLECTION, payload -> publisher.send(asList(ARTIFACT_COLLECTION), payload));
         }
         injector.getInstance(QueueListenerController.class).register(injector.getInstance(queueListenerClass), 2);
       }

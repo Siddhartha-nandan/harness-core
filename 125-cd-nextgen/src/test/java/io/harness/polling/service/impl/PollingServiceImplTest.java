@@ -16,6 +16,7 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertNotSame;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
@@ -30,16 +31,20 @@ import io.harness.dto.PollingInfoForTriggers;
 import io.harness.dto.PollingResponseDTO;
 import io.harness.ng.core.dto.PollingTriggerStatusUpdateDTO;
 import io.harness.ng.core.dto.ResponseDTO;
+import io.harness.observer.Subject;
 import io.harness.pipeline.triggers.TriggersClient;
 import io.harness.polling.bean.ArtifactPolledResponse;
 import io.harness.polling.bean.ManifestPolledResponse;
 import io.harness.polling.bean.PollingDocument;
 import io.harness.polling.bean.PollingType;
 import io.harness.polling.bean.artifact.DockerHubArtifactInfo;
+import io.harness.polling.service.intfc.PollingServiceObserver;
 import io.harness.repositories.polling.PollingRepository;
 import io.harness.rule.Owner;
 
+import com.mongodb.client.result.DeleteResult;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -50,6 +55,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.mongodb.core.query.Criteria;
 import retrofit2.Call;
 import retrofit2.Response;
 
@@ -57,6 +63,7 @@ public class PollingServiceImplTest extends CategoryTest {
   @InjectMocks PollingServiceImpl pollingService;
   @Mock PollingRepository pollingRepository;
   @Mock TriggersClient triggersClient;
+  @Mock Subject<PollingServiceObserver> pollingServiceObserverSubject;
   String accountId = "accountId";
   String orgId = "orgId";
   String projectId = "projectId";
@@ -65,6 +72,18 @@ public class PollingServiceImplTest extends CategoryTest {
   @Before
   public void setUp() throws IOException {
     MockitoAnnotations.initMocks(this);
+  }
+
+  @Test
+  @Owner(developers = MEET)
+  @Category(UnitTests.class)
+  public void testDeletePollingDocAndPerpetualTask() {
+    when(pollingRepository.findPollingDocs(accountId, orgId, projectId, PollingType.ARTIFACT))
+        .thenReturn(Collections.singletonList(PollingDocument.builder().build()));
+    doNothing().when(pollingServiceObserverSubject).fireInform(any(), any());
+    doReturn(DeleteResult.acknowledged(1L)).when(pollingRepository).deleteAll(any(Criteria.class));
+    assertThat(pollingService.deletePollingDocAndPerpetualTask(accountId, orgId, projectId, PollingType.ARTIFACT))
+        .isEqualTo(true);
   }
   @Test
   @Owner(developers = MEET)
@@ -250,6 +269,7 @@ public class PollingServiceImplTest extends CategoryTest {
                                                              .success(true)
                                                              .errorMessage("")
                                                              .lastCollectedVersions(Collections.singletonList("1.0"))
+                                                             .errorStatusValidUntil(null)
                                                              .build();
     ArgumentCaptor<PollingTriggerStatusUpdateDTO> updateDTOCaptor =
         ArgumentCaptor.forClass(PollingTriggerStatusUpdateDTO.class);
@@ -257,7 +277,7 @@ public class PollingServiceImplTest extends CategoryTest {
     when(triggersClient.updateTriggerPollingStatus(any(), updateDTOCaptor.capture())).thenReturn(call);
     when(call.execute()).thenReturn(Response.success(ResponseDTO.newResponse(true)));
     boolean result = pollingService.updateTriggerPollingStatus(
-        accountId, Collections.singletonList("sig"), true, "", Collections.singletonList("1.0"));
+        accountId, Collections.singletonList("sig"), true, "", Collections.singletonList("1.0"), null);
     assertThat(result).isTrue();
     expectedStatusUpdate.setLastCollectedTime(updateDTOCaptor.getValue().getLastCollectedTime());
     verify(triggersClient, times(1)).updateTriggerPollingStatus(eq(accountId), any());
@@ -279,10 +299,12 @@ public class PollingServiceImplTest extends CategoryTest {
     Call<ResponseDTO<Boolean>> call = mock(Call.class);
     when(triggersClient.updateTriggerPollingStatus(any(), updateDTOCaptor.capture())).thenReturn(call);
     when(call.execute()).thenReturn(Response.success(ResponseDTO.newResponse(false)));
-    boolean result = pollingService.updateTriggerPollingStatus(
-        accountId, Collections.singletonList("sig"), true, "", Collections.singletonList("1.0"));
+    boolean result = pollingService.updateTriggerPollingStatus(accountId, Collections.singletonList("sig"), true, "",
+        Collections.singletonList("1.0"), Duration.ofMinutes(2).toMillis());
     assertThat(result).isFalse();
     expectedStatusUpdate.setLastCollectedTime(updateDTOCaptor.getValue().getLastCollectedTime());
+    expectedStatusUpdate.setErrorStatusValidUntil(
+        updateDTOCaptor.getValue().getLastCollectedTime() + Duration.ofMinutes(2).toMillis());
     verify(triggersClient, times(1)).updateTriggerPollingStatus(eq(accountId), any());
     assertThat(expectedStatusUpdate).isEqualToComparingFieldByField(updateDTOCaptor.getValue());
   }

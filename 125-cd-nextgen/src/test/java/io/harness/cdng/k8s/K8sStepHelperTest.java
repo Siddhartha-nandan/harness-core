@@ -223,6 +223,7 @@ import io.harness.steps.EntityReferenceExtractorUtils;
 import io.harness.steps.StepHelper;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 import io.harness.utils.NGFeatureFlagHelperService;
 
 import software.wings.beans.ServiceHookDelegateConfig;
@@ -285,7 +286,7 @@ public class K8sStepHelperTest extends CDNGTestBase {
   @Mock private FileStoreService fileStoreService;
   @Spy @InjectMocks private K8sEntityHelper k8sEntityHelper;
   @Spy @InjectMocks private CDStepHelper cdStepHelper;
-
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
   @Spy @InjectMocks private K8sManifestDelegateMapper k8sManifestDelegateMapper;
   @Spy @InjectMocks private K8sStepHelper k8sStepHelper;
 
@@ -398,6 +399,29 @@ public class K8sStepHelperTest extends CDNGTestBase {
                           .build())
             .build());
     k8sStepHelper.resolveManifestsConfigExpressions(ambiance, manifestConfigWrappers);
+    verify(engineExpressionService)
+        .renderExpression(eq(ambiance), eq("k8s/<+pipeline.variables.sample>/values.yaml"),
+            eq(ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED));
+  }
+
+  @Test
+  @Owner(developers = TARUN_UBA)
+  @Category(UnitTests.class)
+  public void testResolveManifestsSourceExpressions() {
+    ManifestSourceWrapper manifestSourceWrapper =
+        ManifestSourceWrapper.builder()
+            .type(ManifestConfigType.K8_MANIFEST)
+            .spec(K8sManifest.builder()
+                      .store(ParameterField.createValueField(
+                          StoreConfigWrapper.builder()
+                              .spec(GithubStore.builder()
+                                        .paths(ParameterField.createValueField(
+                                            Arrays.asList("k8s/<+pipeline.variables.sample>/values.yaml")))
+                                        .build())
+                              .build()))
+                      .build())
+            .build();
+    k8sStepHelper.resolveManifestsSourceExpressions(ambiance, manifestSourceWrapper);
     verify(engineExpressionService)
         .renderExpression(eq(ambiance), eq("k8s/<+pipeline.variables.sample>/values.yaml"),
             eq(ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED));
@@ -4859,7 +4883,7 @@ public class K8sStepHelperTest extends CDNGTestBase {
   @Category(UnitTests.class)
   public void testK8sTaskType() {
     K8sInfraDelegateConfig k8sInfraDelegateConfig = DirectK8sInfraDelegateConfig.builder().build();
-    checkTaskType(k8sInfraDelegateConfig, TaskType.K8S_COMMAND_TASK_NG, null);
+    checkTaskType(k8sInfraDelegateConfig, TaskType.K8S_COMMAND_TASK_NG_V2, null);
   }
 
   private void checkTaskType(K8sInfraDelegateConfig k8sInfraDelegateConfig, TaskType expectedTaskType,

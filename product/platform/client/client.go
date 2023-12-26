@@ -7,6 +7,7 @@ package client
 
 import (
 	"context"
+	"net/http"
 )
 
 // Error represents a json-encoded API error.
@@ -92,8 +93,82 @@ type Account struct {
 	ResponseMessages []interface{} `json:"responseMessages"`
 }
 
+type AccountNG struct {
+	Status string `json:"status"`
+	Data   struct {
+		Identifier                       string `json:"identifier"`
+		Name                             string `json:"name"`
+		CompanyName                      string `json:"companyName"`
+		Cluster                          string `json:"cluster"`
+		DefaultExperience                string `json:"defaultExperience"`
+		AuthenticationMechanism          string `json:"authenticationMechanism"`
+		CreatedAt                        int64  `json:"createdAt"`
+		RingName                         string `json:"ringName"`
+		SubdomainURL                     string `json:"subdomainURL"`
+		SessionTimeoutInMinutes          int    `json:"sessionTimeoutInMinutes"`
+		PublicAccessEnabled              bool   `json:"publicAccessEnabled"`
+		TwoFactorAdminEnforced           bool   `json:"twoFactorAdminEnforced"`
+		NextGenEnabled                   bool   `json:"nextGenEnabled"`
+		ProductLed                       bool   `json:"productLed"`
+		HarnessSupportAccessAllowed      bool   `json:"harnessSupportAccessAllowed"`
+		CrossGenerationAccessEnabled     bool   `json:"crossGenerationAccessEnabled"`
+		CannyUsernameAbbreviationEnabled bool   `json:"cannyUsernameAbbreviationEnabled"`
+	} `json:"data"`
+	MetaData      any    `json:"metaData"`
+	CorrelationID string `json:"correlationId"`
+}
+
+type ACLRequest struct {
+	Permissions []Permission `json:"permissions"`
+}
+
+type Permission struct {
+	ResourceScope      ResourceScope `json:"resourceScope"`
+	ResourceType       string        `json:"resourceType"`
+	ResourceIdentifier string        `json:"resourceIdentifier"`
+	Permission         string        `json:"permission"`
+}
+
+type ResourceScope struct {
+	AccountIdentifier string `json:"accountIdentifier"`
+	OrgIdentifier     string `json:"orgIdentifier"`
+	ProjectIdentifier string `json:"projectIdentifier"`
+}
+
+type ACLPrincipal struct {
+	PrincipalIdentifier string `json:"principalIdentifier"`
+	PrincipalType       string `json:"principalType"`
+}
+
+type ACLResourceScope struct {
+	AccountIdentifier string `json:"accountIdentifier"`
+	OrgIdentifier     string `json:"orgIdentifier"`
+	ProjectIdentifier string `json:"projectIdentifier"`
+}
+
+type ACLAccessControl struct {
+	Permission         string           `json:"permission"`
+	ResourceScope      ACLResourceScope `json:"resourceScope"`
+	ResourceType       string           `json:"resourceType"`
+	ResourceIdentifier string           `json:"resourceIdentifier"`
+	Permitted          bool             `json:"permitted"`
+}
+
+type ACLResponse struct {
+	Status        string      `json:"status"`
+	Data          Data        `json:"data"`
+	MetaData      interface{} `json:"metaData"`
+	CorrelationID string      `json:"correlationId"`
+}
+
+type Data struct {
+	Principal         ACLPrincipal       `json:"principal"`
+	AccessControlList []ACLAccessControl `json:"accessControlList"`
+}
+
 // Client defines a log service client.
 type Client interface {
 	// Validate apikey of an account for auth.
 	ValidateApiKey(ctx context.Context, accountID, routingId, apiKey string) error
+	ValidateAccessforPipeline(ctx context.Context, cookies []*http.Cookie, request *ACLRequest) (bool, error)
 }

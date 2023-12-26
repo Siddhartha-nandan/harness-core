@@ -1,6 +1,6 @@
 # Any edit in this file should accompany an increment in version.
 name: rolesConfiguration
-version: 64
+version: 68
 roles:
     - identifier: _project_admin
       name: Project Admin
@@ -172,6 +172,9 @@ roles:
         - iac_workspace_edit
         - iac_workspace_editvariable
         - iac_workspace_view
+        - core_inputset_edit
+        - core_inputset_delete
+        - core_inputset_view
       allowedScopeLevels:
         - project
       managed: true
@@ -185,6 +188,7 @@ roles:
         - core_delegate_view
         - core_delegateconfiguration_view
         - core_pipeline_view
+        - core_inputset_view
         - core_service_view
         - core_environment_view
         - core_environmentgroup_view
@@ -304,6 +308,9 @@ roles:
         - core_pipeline_delete
         - core_pipeline_execute
         - core_pipeline_view
+        - core_inputset_edit
+        - core_inputset_delete
+        - core_inputset_view
         - chi_monitoredservice_view
         - chi_monitoredservice_edit
         - chi_monitoredservice_delete
@@ -437,6 +444,7 @@ roles:
         - core_governancePolicySets_view
         - core_project_view
         - core_pipeline_view
+        - core_inputset_view
         - chi_monitoredservice_view
         - chi_slo_view
         - chi_downtime_view
@@ -560,6 +568,9 @@ roles:
         - core_pipeline_delete
         - core_pipeline_execute
         - core_pipeline_view
+        - core_inputset_edit
+        - core_inputset_delete
+        - core_inputset_view
         - chi_monitoredservice_view
         - chi_monitoredservice_edit
         - chi_monitoredservice_delete
@@ -670,6 +681,26 @@ roles:
         - ccm_cloudAssetGovernanceEnforcement_view
         - ccm_cloudAssetGovernanceEnforcement_delete
         - idp_idpsettings_manage
+        - idp_plugin_view
+        - idp_plugin_edit
+        - idp_plugin_toggle
+        - idp_plugin_delete
+        - idp_scorecard_view
+        - idp_scorecard_edit
+        - idp_scorecard_delete
+        - idp_layout_view
+        - idp_layout_edit
+        - idp_catalogaccesspolicy_view
+        - idp_catalogaccesspolicy_create
+        - idp_catalogaccesspolicy_edit
+        - idp_catalogaccesspolicy_delete
+        - idp_integration_view
+        - idp_integration_create
+        - idp_integration_edit
+        - idp_integration_delete
+        - idp_advancedconfiguration_view
+        - idp_advancedconfiguration_edit
+        - idp_advancedconfiguration_delete
         - code_repo_view
         - code_repo_edit
         - code_repo_delete
@@ -732,6 +763,7 @@ roles:
         - core_project_view
         - core_organization_view
         - core_pipeline_view
+        - core_inputset_view
         - chi_monitoredservice_view
         - chi_slo_view
         - chi_downtime_view
@@ -793,6 +825,7 @@ roles:
         - core_connector_view
         - core_connector_access
         - core_pipeline_view
+        - core_inputset_view
         - core_pipeline_execute
         - core_service_view
         - core_service_access
@@ -1130,6 +1163,7 @@ roles:
         - core_resourcegroup_view
         - core_resourcegroup_edit
         - core_resourcegroup_delete
+        - core_organization_view
         - core_project_create
         - core_project_view
         - core_project_edit
@@ -1142,7 +1176,7 @@ roles:
         - core_user_manage
       managed: true
       isPublic: false
-      internal: true
+      internal: false
       allowedScopeLevels:
         - account
     - identifier: _sei_viewer
@@ -1153,7 +1187,7 @@ roles:
         - sei_seicollections_view
       managed: true
       isPublic: false
-      internal: true
+      internal: false
       allowedScopeLevels:
         - account
         - organization
@@ -1167,8 +1201,53 @@ roles:
         - sei_seiinsights_view
       managed: true
       isPublic: false
-      internal: true
+      internal: false
       allowedScopeLevels:
         - account
         - organization
         - project
+    - identifier: _idp_admin
+      name: IDP Admin
+      description: Can create, edit, delete and view IDP Resources
+      permissions:
+        - idp_idpsettings_manage
+        - idp_plugin_view
+        - idp_plugin_edit
+        - idp_plugin_toggle
+        - idp_plugin_delete
+        - idp_scorecard_view
+        - idp_scorecard_edit
+        - idp_scorecard_delete
+        - idp_layout_view
+        - idp_layout_edit
+        - idp_catalogaccesspolicy_view
+        - idp_catalogaccesspolicy_create
+        - idp_catalogaccesspolicy_edit
+        - idp_catalogaccesspolicy_delete
+        - idp_integration_view
+        - idp_integration_create
+        - idp_integration_edit
+        - idp_integration_delete
+        - idp_advancedconfiguration_view
+        - idp_advancedconfiguration_edit
+        - idp_advancedconfiguration_delete
+      managed: true
+      allowedScopeLevels:
+        - account
+    - identifier: _idp_platform_engineer
+      name: IDP Platform Engineer
+      description: Can create, edit, delete and view IDP Plugins, Scorecards, Advanced configuration Resources
+      permissions:
+        - idp_plugin_view
+        - idp_plugin_edit
+        - idp_plugin_toggle
+        - idp_plugin_delete
+        - idp_scorecard_view
+        - idp_scorecard_edit
+        - idp_scorecard_delete
+        - idp_advancedconfiguration_view
+        - idp_advancedconfiguration_edit
+        - idp_advancedconfiguration_delete
+      managed: true
+      allowedScopeLevels:
+        - account

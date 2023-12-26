@@ -7,12 +7,15 @@
 
 package io.harness.service.impl;
 
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.delegate.beans.DelegateTaskResponse.ResponseCode;
 import static io.harness.logging.AutoLogContext.OverrideBehavior.OVERRIDE_ERROR;
 import static io.harness.metrics.impl.DelegateMetricsServiceImpl.DELEGATE_TASK_RESPONSE;
 
 import static java.lang.System.currentTimeMillis;
+import static java.util.Collections.emptyList;
+import static java.util.stream.Collectors.toList;
 
 import io.harness.beans.DelegateTask;
 import io.harness.beans.DelegateTask.DelegateTaskKeys;
@@ -20,8 +23,10 @@ import io.harness.data.structure.EmptyPredicate;
 import io.harness.delegate.beans.DelegateProgressData;
 import io.harness.delegate.beans.DelegateSyncTaskResponse;
 import io.harness.delegate.beans.DelegateTaskResponse;
+import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.TaskData;
 import io.harness.delegate.beans.TaskDataV2;
+import io.harness.delegate.beans.executioncapability.ExecutionCapability;
 import io.harness.delegate.task.tasklogging.TaskLogContext;
 import io.harness.delegate.utils.DelegateLogContextHelper;
 import io.harness.delegate.utils.DelegateTaskMigrationHelper;
@@ -45,6 +50,8 @@ import io.harness.version.VersionInfoManager;
 import io.harness.waiter.WaitNotifyEngine;
 
 import software.wings.beans.SerializationFormat;
+import software.wings.delegatetasks.validation.core.DelegateConnectionResult;
+import software.wings.delegatetasks.validation.core.DelegateConnectionResult.DelegateConnectionResultKeys;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
@@ -156,8 +163,8 @@ public class DelegateTaskServiceImpl implements DelegateTaskService {
             .filter(DelegateTaskKeys.uuid, taskId);
 
     DelegateTask delegateTask = taskQuery.get();
-    copyTaskDataV2ToTaskData(delegateTask);
     if (delegateTask != null) {
+      copyTaskDataV2ToTaskData(delegateTask);
       try (AutoLogContext ignore = DelegateLogContextHelper.getLogContext(delegateTask)) {
         if (response.getResponseCode() == ResponseCode.RETRY_ON_OTHER_DELEGATE) {
           RetryDelegate retryDelegate =
@@ -171,7 +178,7 @@ public class DelegateTaskServiceImpl implements DelegateTaskService {
           }
         }
         log.info("Response received for task: {} from Delegate: {}", taskId, delegateId);
-        handleResponse(delegateTask, taskQuery, response);
+        handleResponseV2(delegateTask, response);
 
         retryObserverSubject.fireInform(DelegateTaskRetryObserver::onTaskResponseProcessed, delegateTask, delegateId);
         remoteObserverInformer.sendEvent(ReflectionUtils.getMethod(DelegateTaskRetryObserver.class,
@@ -223,18 +230,8 @@ public class DelegateTaskServiceImpl implements DelegateTaskService {
     }
   }
 
-  private String getVersion() {
-    return versionInfoManager.getVersionInfo().getVersion();
-  }
-
   @Override
-  public void handleResponse(DelegateTask delegateTask, Query<DelegateTask> taskQuery, DelegateTaskResponse response) {
-    handleResponseV2(delegateTask, taskQuery, response);
-  }
-
-  @Override
-  public void handleResponseV2(
-      DelegateTask delegateTask, Query<DelegateTask> taskQuery, DelegateTaskResponse response) {
+  public void handleResponseV2(final DelegateTask delegateTask, final DelegateTaskResponse response) {
     copyTaskDataToTaskDataV2(delegateTask);
     if (delegateTask.getDriverId() == null) {
       handleInprocResponseV2(delegateTask, response);
@@ -242,9 +239,19 @@ public class DelegateTaskServiceImpl implements DelegateTaskService {
       handleDriverResponseV2(delegateTask, response);
     }
 
-    if (taskQuery != null) {
-      persistence.deleteOnServer(
-          taskQuery, delegateTaskMigrationHelper.isMigrationEnabledForTask(delegateTask.getUuid()));
+    final Query<DelegateTask> taskQuery =
+        persistence
+            .createQuery(
+                DelegateTask.class, delegateTaskMigrationHelper.isMigrationEnabledForTask(delegateTask.getUuid()))
+            .filter(DelegateTaskKeys.accountId, delegateTask.getAccountId())
+            .filter(DelegateTaskKeys.uuid, delegateTask.getUuid());
+
+    persistence.deleteOnServer(
+        taskQuery, delegateTaskMigrationHelper.isMigrationEnabledForTask(delegateTask.getUuid()));
+
+    if (response.getResponse() instanceof ErrorNotifyResponseData
+        || response.getResponseCode().equals(ResponseCode.FAILED)) {
+      clearDelegateConnectionResults(delegateTask);
     }
 
     delegateMetricsService.recordDelegateTaskResponseMetrics(delegateTask, response, DELEGATE_TASK_RESPONSE);
@@ -307,8 +314,13 @@ public class DelegateTaskServiceImpl implements DelegateTaskService {
   }
 
   private void handleInprocResponseV2(DelegateTask delegateTask, DelegateTaskResponse response) {
-    boolean async = delegateTask.getTaskDataV2() != null ? delegateTask.getTaskDataV2().isAsync()
-                                                         : delegateTask.getData().isAsync();
+    boolean async = delegateTask.isAsync();
+    if (delegateTask.getTaskDataV2() != null) {
+      async = delegateTask.getTaskDataV2().isAsync();
+    } else if (delegateTask.getData() != null) {
+      async = delegateTask.getData().isAsync();
+    }
+
     if (async) {
       String waitId = delegateTask.getWaitId();
       if (waitId != null) {
@@ -323,5 +335,32 @@ public class DelegateTaskServiceImpl implements DelegateTaskService {
                            .responseData(referenceFalseKryoSerializer.asDeflatedBytes(response.getResponse()))
                            .build());
     }
+  }
+
+  public void clearDelegateConnectionResults(DelegateTask delegateTask) {
+    try {
+      for (String criteria : fetchCriteria(delegateTask)) {
+        Query<DelegateConnectionResult> query =
+            persistence.createQuery(DelegateConnectionResult.class)
+                .filter(DelegateConnectionResultKeys.accountId, delegateTask.getAccountId())
+                .filter(DelegateConnectionResultKeys.delegateId, delegateTask.getDelegateId())
+                .filter(DelegateConnectionResultKeys.criteria, criteria);
+        persistence.delete(query);
+      }
+    } catch (Exception e) {
+      log.error("Error on clearing delegateConnectionResults {}", delegateTask.getUuid(), e);
+    }
+  }
+
+  private List<String> fetchCriteria(DelegateTask task) {
+    if (isEmpty(task.getExecutionCapabilities())) {
+      return emptyList();
+    }
+
+    return task.getExecutionCapabilities()
+        .stream()
+        .filter(e -> e.evaluationMode() == ExecutionCapability.EvaluationMode.AGENT)
+        .map(ExecutionCapability::fetchCapabilityBasis)
+        .collect(toList());
   }
 }

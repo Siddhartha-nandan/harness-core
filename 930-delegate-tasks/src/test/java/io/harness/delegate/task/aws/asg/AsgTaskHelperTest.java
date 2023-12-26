@@ -23,6 +23,7 @@ import static io.harness.rule.OwnerRule.VITALIE;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertNotNull;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
@@ -34,10 +35,12 @@ import io.harness.CategoryTest;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.aws.asg.AsgSdkManager;
 import io.harness.aws.asg.manifest.request.AsgInstanceCapacity;
+import io.harness.aws.beans.AsgLoadBalancerConfig;
 import io.harness.category.element.UnitTests;
 import io.harness.delegate.beans.connector.awsconnector.AwsConnectorDTO;
 import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
+import io.harness.exception.HintException;
 import io.harness.logging.LogCallback;
 import io.harness.rule.Owner;
 
@@ -207,6 +210,34 @@ public class AsgTaskHelperTest extends CategoryTest {
   @Test
   @Owner(developers = VITALIE)
   @Category(UnitTests.class)
+  public void getAsgStoreManifestsContentWithoutLaunchTemplate() {
+    final String asgName = "testAsg";
+
+    Map<String, List<String>> asgStoreManifestsContent = Map.of(AsgConfiguration, List.of("AsgConfiguration"),
+        AsgLaunchTemplate, List.of("AsgLaunchTemplate"), AsgScalingPolicy, List.of("AsgScalingPolicy"),
+        AsgScheduledUpdateGroupAction, List.of("AsgScheduledUpdateGroupAction"), AsgUserData, List.of("AsgUserData"));
+
+    // base Asg
+    AsgInfraConfig asgInfraConfig = AsgInfraConfig.builder().baseAsgName(asgName).build();
+    AsgSdkManager asgSdkManager = mock(AsgSdkManager.class);
+
+    when(asgSdkManager.getASG(anyString())).thenReturn(new AutoScalingGroup().withAutoScalingGroupName(asgName));
+    when(asgSdkManager.getLifeCycleHookSpecificationList(anyString())).thenReturn(null);
+
+    when(asgSdkManager.listAllScalingPoliciesOfAsg(anyString()))
+        .thenReturn(List.of(new ScalingPolicy().withAutoScalingGroupName(asgName)));
+    when(asgSdkManager.listAllScheduledActionsOfAsg(anyString()))
+        .thenReturn(List.of(new ScheduledUpdateGroupAction().withAutoScalingGroupName(asgName)));
+
+    assertThatThrownBy(
+        () -> asgTaskHelper.getAsgStoreManifestsContent(asgInfraConfig, asgStoreManifestsContent, asgSdkManager))
+        .isInstanceOf(HintException.class)
+        .hasMessageContaining("Please provide LaunchTemplate for baseAsg `testAsg`");
+  }
+
+  @Test
+  @Owner(developers = VITALIE)
+  @Category(UnitTests.class)
   public void getRunningInstanceCapacity() {
     AsgInstanceCapacity ret = asgTaskHelper.getRunningInstanceCapacity(null, false, ASG_NAME);
     assertThat(ret).isNull();
@@ -251,5 +282,22 @@ public class AsgTaskHelperTest extends CategoryTest {
     assertThat(ret.getMinCapacity()).isEqualTo(1);
     assertThat(ret.getDesiredCapacity()).isEqualTo(3);
     assertThat(ret.getMaxCapacity()).isEqualTo(5);
+  }
+
+  @Test
+  @Owner(developers = VITALIE)
+  @Category(UnitTests.class)
+  public void isShiftTrafficFeature() {
+    AsgLoadBalancerConfig lbCfg = AsgLoadBalancerConfig.builder().stageListenerRuleArn("test").build();
+    boolean ret = asgTaskHelper.isShiftTrafficFeature(lbCfg);
+    assertThat(ret).isFalse();
+
+    lbCfg = AsgLoadBalancerConfig.builder().build();
+    ret = asgTaskHelper.isShiftTrafficFeature(lbCfg);
+    assertThat(ret).isTrue();
+
+    lbCfg = AsgLoadBalancerConfig.builder().stageListenerRuleArn("").build();
+    ret = asgTaskHelper.isShiftTrafficFeature(lbCfg);
+    assertThat(ret).isTrue();
   }
 }

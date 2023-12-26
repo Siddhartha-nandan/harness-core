@@ -11,7 +11,9 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.http.HttpHeaderConfig;
 import io.harness.plancreator.steps.TaskSelectorYaml;
+import io.harness.plancreator.steps.common.WithDelegateSelector;
 import io.harness.plancreator.steps.internal.PMSStepInfo;
+import io.harness.pms.contracts.plan.ExpressionMode;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.execution.OrchestrationFacilitatorType;
 import io.harness.pms.yaml.ParameterField;
@@ -26,13 +28,12 @@ import lombok.Value;
 @Value
 @JsonTypeName(StepSpecTypeConstantsV1.HTTP)
 @OwnedBy(HarnessTeam.PIPELINE)
-public class HttpStepInfoV1 extends HttpBaseStepInfoV1 implements Visitable, PMSStepInfo {
+public class HttpStepInfoV1 extends HttpBaseStepInfoV1 implements Visitable, PMSStepInfo, WithDelegateSelector {
   NGVariableV1Wrapper output_vars;
   NGVariableV1Wrapper input_vars;
   List<HttpHeaderConfig> headers;
   ParameterField<String> cert;
   ParameterField<String> cert_key;
-  ParameterField<List<TaskSelectorYaml>> delegate;
 
   @Override
   public StepType getStepType() {
@@ -42,5 +43,20 @@ public class HttpStepInfoV1 extends HttpBaseStepInfoV1 implements Visitable, PMS
   @Override
   public String getFacilitatorType() {
     return OrchestrationFacilitatorType.TASK;
+  }
+
+  @Override
+  public ExpressionMode getExpressionMode() {
+    return ExpressionMode.RETURN_ORIGINAL_EXPRESSION_IF_UNRESOLVED;
+  }
+
+  @Override
+  public ParameterField<List<TaskSelectorYaml>> fetchDelegateSelectors() {
+    return getDelegates();
+  }
+
+  @Override
+  public void setDelegateSelectors(ParameterField<List<TaskSelectorYaml>> delegates) {
+    setDelegates(delegates);
   }
 }

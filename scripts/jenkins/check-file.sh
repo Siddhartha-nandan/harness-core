@@ -19,7 +19,7 @@ set -e
 export TargetBranch=$(echo "${ghprbTargetBranch}")
 export SourceBranch=$(echo "${ghprbSourceBranch}")
 
-PR_Name=("SmartPRChecks-PMD" "SmartPRChecks-codebasehashcheck")
+PR_Name=("SmartPRChecks-PMD" "SmartPRChecks-codebasehashcheck" "SmartPRChecks-compileCode")
 PR_TI=("TIAll-JavaUnitTests0" "TIAll-JavaUnitTests1" "TIAll-JavaUnitTests2" "TIAll-JavaUnitTests3" \
 "TIAll-JavaUnitTests4" "TIAll-JavaUnitTests5" "TIAll-JavaUnitTests6" "TIAll-JavaUnitTests7" \
 "TIAll-JavaUnitTests8" "TIAll-JavaUnitTests9")
@@ -30,7 +30,9 @@ bazelignore_array=($(cat bazelignore))
 tmp_array=($(cat sonarIgnore))
 sonarignore_array=($(printf "%s\n" "${bazelignore_array[@]}" "${tmp_array[@]}" | sort -u))
 
-BASE_SHA="$(git merge-base "$COMMIT_SHA" "$BASE_COMMIT_SHA")"
+echo "Git version: $(git --version)"
+
+BASE_SHA="$(git merge-base ${COMMIT_SHA} ${BASE_COMMIT_SHA})"
 merge_summary=( $(git diff --name-only $COMMIT_SHA..$BASE_SHA) )
 echo -e "${YELLOW}Merge Summary:\e[0m ${merge_summary[@]}"
 

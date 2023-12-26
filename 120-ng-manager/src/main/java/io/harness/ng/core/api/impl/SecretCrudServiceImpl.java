@@ -96,6 +96,7 @@ import io.harness.secretmanagerclient.SecretType;
 import io.harness.secretmanagerclient.ValueType;
 import io.harness.secretmanagerclient.dto.SecretManagerConfigDTO;
 import io.harness.stream.BoundedInputStream;
+import io.harness.utils.IdentifierRefHelper;
 import io.harness.utils.featureflaghelper.NGFeatureFlagHelperService;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -262,18 +263,7 @@ public class SecretCrudServiceImpl implements SecretCrudService {
       return secretResponseWrapper;
     }
     GovernanceMetadata governanceMetadata = secretResponseWrapper.getGovernanceMetadata();
-
-    boolean isHarnessManaged = checkIfSecretManagerUsedIsHarnessManaged(accountIdentifier, dto);
-    Boolean isBuiltInSMDisabled =
-        parseBoolean(NGRestUtils
-                         .getResponse(settingsClient.getSetting(
-                             SettingIdentifiers.DISABLE_HARNESS_BUILT_IN_SECRET_MANAGER, accountIdentifier, null, null))
-                         .getValue());
-
-    if (isBuiltInSMDisabled && isHarnessManaged) {
-      throw new InvalidRequestException(
-          "Built-in Harness Secret Manager cannot be used to create Secret as it has been disabled.");
-    }
+    validateSecretManagerUsed(accountIdentifier, dto);
 
     switch (dto.getType()) {
       case SecretText:
@@ -294,6 +284,40 @@ public class SecretCrudServiceImpl implements SecretCrudService {
     }
 
     throw new SecretManagementException(SECRET_MANAGEMENT_ERROR, "Unable to create secret remotely.", USER);
+  }
+
+  @Override
+  public SecretResponseWrapper create(
+      String accountIdentifier, SecretDTOV2 dto, String encryptionKey, String encryptedValue) {
+    SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().build();
+    if (!isOpaPoliciesSatisfied(accountIdentifier, getMaskedDTOForOpa(dto), secretResponseWrapper)) {
+      return secretResponseWrapper;
+    }
+    GovernanceMetadata governanceMetadata = secretResponseWrapper.getGovernanceMetadata();
+    validateSecretManagerUsed(accountIdentifier, dto);
+    NGEncryptedData encryptedData =
+        encryptedDataService.createSecretText(accountIdentifier, dto, encryptionKey, encryptedValue);
+
+    if (Optional.ofNullable(encryptedData).isPresent()) {
+      secretResponseWrapper = createSecretInternal(accountIdentifier, dto, false);
+      secretResponseWrapper.setGovernanceMetadata(governanceMetadata);
+      return secretResponseWrapper;
+    }
+    throw new SecretManagementException(SECRET_MANAGEMENT_ERROR, "Unable to create secret file remotely", USER);
+  }
+
+  private void validateSecretManagerUsed(String accountIdentifier, SecretDTOV2 dto) {
+    boolean isHarnessManaged = checkIfSecretManagerUsedIsHarnessManaged(accountIdentifier, dto);
+    Boolean isBuiltInSMDisabled =
+        parseBoolean(NGRestUtils
+                         .getResponse(settingsClient.getSetting(
+                             SettingIdentifiers.DISABLE_HARNESS_BUILT_IN_SECRET_MANAGER, accountIdentifier, null, null))
+                         .getValue());
+
+    if (isBuiltInSMDisabled && isHarnessManaged) {
+      throw new InvalidRequestException(
+          "Built-in Harness Secret Manager cannot be used to create Secret as it has been disabled.");
+    }
   }
 
   @VisibleForTesting
@@ -397,7 +421,7 @@ public class SecretCrudServiceImpl implements SecretCrudService {
   public Page<SecretResponseWrapper> list(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       List<String> identifiers, List<SecretType> secretTypes, boolean includeSecretsFromEverySubScope,
       String searchTerm, ConnectorCategory sourceCategory, boolean includeAllSecretsAccessibleAtScope,
-      PageRequest pageRequest) {
+      PageRequest pageRequest, Set<String> secretManagerIdentifiers) {
     Criteria criteria = Criteria.where(SecretKeys.accountIdentifier).is(accountIdentifier);
     addCriteriaForRequestedScopes(criteria, orgIdentifier, projectIdentifier, includeAllSecretsAccessibleAtScope,
         includeSecretsFromEverySubScope);
@@ -421,6 +445,8 @@ public class SecretCrudServiceImpl implements SecretCrudService {
     if (Objects.nonNull(identifiers) && !identifiers.isEmpty()) {
       criteria.and(SecretKeys.identifier).in(identifiers);
     }
+
+    addCriteriaForSecretManagerIdentifiers(criteria, secretManagerIdentifiers);
 
     if (accessControlClient.hasAccess(ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
             Resource.of(SECRET_RESOURCE_TYPE, null), SECRET_VIEW_PERMISSION)) {
@@ -466,6 +492,23 @@ public class SecretCrudServiceImpl implements SecretCrudService {
       } else {
         criteria.andOperator(superScopeCriteria);
       }
+    }
+  }
+
+  private void addCriteriaForSecretManagerIdentifiers(Criteria criteria, Set<String> secretManagerScopedIdentifiers) {
+    if (isEmpty(secretManagerScopedIdentifiers)) {
+      return;
+    }
+    Set<String> secretManagerIdentifiersForCriteria = new HashSet<>();
+    for (String secretManagerScopedIdentifier : secretManagerScopedIdentifiers) {
+      secretManagerIdentifiersForCriteria.add(secretManagerScopedIdentifier);
+
+      String nonScopedIdentifier = IdentifierRefHelper.getIdentifier(secretManagerScopedIdentifier);
+      secretManagerIdentifiersForCriteria.add(nonScopedIdentifier);
+    }
+
+    if (isNotEmpty(secretManagerIdentifiersForCriteria)) {
+      criteria.and(SecretKeys.secretManagerIdentifier).in(secretManagerIdentifiersForCriteria);
     }
   }
 

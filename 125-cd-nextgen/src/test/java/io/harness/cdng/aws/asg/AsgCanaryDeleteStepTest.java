@@ -16,6 +16,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 
 import io.harness.CategoryTest;
@@ -56,6 +57,7 @@ import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.steps.StepHelper;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import software.wings.beans.TaskType;
 
@@ -96,6 +98,7 @@ public class AsgCanaryDeleteStepTest extends CategoryTest {
   @Mock private StepHelper stepHelper;
   @Mock private OutcomeService outcomeService;
   @Spy private InstanceInfoService instanceInfoService;
+  @Mock private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
 
   @Test
   @Owner(developers = LOVISH_BANSAL)
@@ -221,6 +224,9 @@ public class AsgCanaryDeleteStepTest extends CategoryTest {
     doReturn(AsgInfraConfig.builder().build())
         .when(asgStepCommonHelper)
         .getAsgInfraConfig(infrastructureOutcome, ambiance);
+    doReturn(mock(InfrastructureOutcome.class))
+        .when(asgStepCommonHelper)
+        .getInfrastructureOutcomeWithUpdatedExpressions(any());
 
     AsgExecutionPassThroughData asgExecutionPassThroughData =
         AsgExecutionPassThroughData.builder().infrastructure(infrastructureOutcome).build();

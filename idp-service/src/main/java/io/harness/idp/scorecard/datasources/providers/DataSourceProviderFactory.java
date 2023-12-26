@@ -19,15 +19,16 @@ import static io.harness.idp.common.Constants.PAGERDUTY_IDENTIFIER;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.envvariable.repositories.BackstageEnvVariableRepository;
 import io.harness.idp.proxy.services.IdpAuthInterceptor;
 import io.harness.idp.scorecard.datapoints.parser.factory.DataSourceDataPointParserFactory;
 import io.harness.idp.scorecard.datapoints.service.DataPointService;
 import io.harness.idp.scorecard.datasourcelocations.locations.DataSourceLocationFactory;
 import io.harness.idp.scorecard.datasourcelocations.repositories.DataSourceLocationRepository;
+import io.harness.idp.scorecard.datasources.providers.scm.BitbucketProvider;
+import io.harness.idp.scorecard.datasources.providers.scm.GithubProvider;
+import io.harness.idp.scorecard.datasources.providers.scm.GitlabProvider;
 import io.harness.idp.scorecard.datasources.repositories.DataSourceRepository;
 import io.harness.idp.scorecard.datasources.utils.ConfigReader;
-import io.harness.secretmanagerclient.services.api.SecretManagerClientService;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -39,11 +40,9 @@ public class DataSourceProviderFactory {
   @Inject DataSourceLocationRepository dataSourceLocationRepository;
   @Inject DataSourceDataPointParserFactory dataSourceDataPointParserFactory;
 
-  @Inject BackstageEnvVariableRepository backstageEnvVariableRepository;
-  @Inject SecretManagerClientService ngSecretService;
-
   @Inject IdpAuthInterceptor idpAuthInterceptor;
   @Inject @Named("env") private String env;
+  @Inject @Named("base") private String base;
 
   @Inject ConfigReader configReader;
   @Inject DataSourceRepository dataSourceRepository;
@@ -55,8 +54,8 @@ public class DataSourceProviderFactory {
             dataSourceDataPointParserFactory.getDataPointParserFactory(CATALOG_IDENTIFIER), dataSourceRepository);
       case GITHUB_IDENTIFIER:
         return new GithubProvider(dataPointService, dataSourceLocationFactory, dataSourceLocationRepository,
-            dataSourceDataPointParserFactory.getDataPointParserFactory(GITHUB_IDENTIFIER),
-            backstageEnvVariableRepository, ngSecretService, configReader, dataSourceRepository);
+            dataSourceDataPointParserFactory.getDataPointParserFactory(GITHUB_IDENTIFIER), configReader,
+            dataSourceRepository);
       case BITBUCKET_IDENTIFIER:
         return new BitbucketProvider(dataPointService, dataSourceLocationFactory, dataSourceLocationRepository,
             dataSourceDataPointParserFactory.getDataPointParserFactory(BITBUCKET_IDENTIFIER), configReader,
@@ -68,7 +67,7 @@ public class DataSourceProviderFactory {
       case HARNESS_IDENTIFIER:
         return new HarnessProvider(dataPointService, dataSourceLocationFactory, dataSourceLocationRepository,
             dataSourceDataPointParserFactory.getDataPointParserFactory(HARNESS_IDENTIFIER), idpAuthInterceptor, env,
-            dataSourceRepository);
+            base, dataSourceRepository);
       case CUSTOM_IDENTIFIER:
         return new CustomProvider(dataPointService, dataSourceLocationFactory, dataSourceLocationRepository,
             dataSourceDataPointParserFactory.getDataPointParserFactory(CUSTOM_IDENTIFIER), dataSourceRepository);
@@ -83,7 +82,7 @@ public class DataSourceProviderFactory {
       case KUBERNETES_IDENTIFIER:
         return new KubernetesProvider(dataPointService, dataSourceLocationFactory, dataSourceLocationRepository,
             dataSourceDataPointParserFactory.getDataPointParserFactory(KUBERNETES_IDENTIFIER), configReader,
-            idpAuthInterceptor, env, dataSourceRepository);
+            idpAuthInterceptor, env, base, dataSourceRepository);
       default:
         throw new IllegalArgumentException("DataSource provider " + dataSource + " is not supported yet");
     }

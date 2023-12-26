@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
     components = {HarnessModuleComponent.CDS_EXPRESSION_ENGINE})
@@ -41,7 +42,7 @@ public class StringReplacer {
     }
 
     StringBuffer buf = new StringBuffer(source);
-    return substitute(buf, source, false, false).getFinalExpressionValue();
+    return substitute(buf, source, false).getFinalExpressionValue();
   }
 
   public StringReplacerResponse replaceWithRenderCheck(String source) {
@@ -50,20 +51,10 @@ public class StringReplacer {
     }
 
     StringBuffer buf = new StringBuffer(source);
-    return substitute(buf, source, true, false);
+    return substitute(buf, source, true);
   }
 
-  public StringReplacerResponse replaceWithRenderCheckAndNewMethodInvocation(String source) {
-    if (source == null) {
-      return null;
-    }
-
-    StringBuffer buf = new StringBuffer(source);
-    return substitute(buf, source, true, true);
-  }
-
-  private StringReplacerResponse substitute(
-      StringBuffer buf, String source, boolean checkRenderExpression, boolean isNewMethodInvocation) {
+  private StringReplacerResponse substitute(StringBuffer buf, String source, boolean checkRenderExpression) {
     boolean altered = false;
     boolean onlyRenderedExpressions = true;
     int bufEnd = buf.length();
@@ -124,8 +115,7 @@ public class StringReplacer {
         // Resolve the expression
         String expressionValue = expressionResolver.resolve(expression);
         if (checkRenderExpression
-            && checkIfExpressionValueCanBeConcatenated(
-                expressionValue, expressionStartPos, expressionEndPos, buf, isNewMethodInvocation)) {
+            && checkIfExpressionValueCanBeConcatenated(expressionValue, expressionStartPos, expressionEndPos, buf)) {
           expressionValue = (String) expressionResolver.getContextValue(expressionValue);
         } else {
           onlyRenderedExpressions = false;
@@ -157,8 +147,8 @@ public class StringReplacer {
    * @param buf
    * @return
    */
-  private boolean checkIfExpressionValueCanBeConcatenated(String expressionValue, int expressionStartPos,
-      int expressionEndPos, StringBuffer buf, boolean isNewMethodInvocation) {
+  private boolean checkIfExpressionValueCanBeConcatenated(
+      String expressionValue, int expressionStartPos, int expressionEndPos, StringBuffer buf) {
     Object contextValue = expressionResolver.getContextValue(expressionValue);
     if (expressionValue == null || contextValue == null) {
       return false;
@@ -173,7 +163,7 @@ public class StringReplacer {
     }
 
     // Check if right substring has method invocation, then return false
-    if (checkIfValueHasMethodInvocation(buf, expressionEndPos, isNewMethodInvocation)) {
+    if (checkIfValueHasMethodInvocation(buf, expressionEndPos)) {
       return false;
     }
 
@@ -181,20 +171,30 @@ public class StringReplacer {
     expressionStartPos--;
     while (expressionStartPos >= 0) {
       char c = buf.charAt(expressionStartPos);
-      if (c == '(' || c == '[' || c == ',') {
+      if (c == '[') {
+        // Expression inside [], square brackets denote get method for list/map, thus don't take decision of concatenate
+        // from left substring
+        if (checkIfSquareBracketIsGetMethod(buf, expressionStartPos)) {
+          break;
+        }
+        // if there's no alphabet character before [ then it can't be used as a get method for list/map hence it can be
+        // concatenated
+        return true;
+      } else if (c == '(') {
         // expression is inside a method invocation, thus don't take decision of concatenate from left substring
+        break;
+      } else if (c == ',') {
         // , denotes it could be part of parameter in method, example <+json.list("$", <+var1>)>, then var1 shouldn't be
         // concatenated.
-        // Expression inside [], square brackets denote get method, thus should be also be considered.
-        break;
+        if (checkIfCommaIsInMethodInvocationInLeftSubstring(buf, expressionStartPos)) {
+          break;
+        }
+        return true;
       } else if (c == ':') {
         // Checking : belongs to ternary operator or not, if not concatenate it
-        if (!buf.toString().contains("?")) {
-          return true;
-        } else {
-          return false;
-        }
-      } else if (checkIfStringMathematicalOperator(c) || checkBooleanOperators(buf, expressionStartPos, true)) {
+        return !checkIfColonBelongsToTernaryOperator(buf);
+      } else if (checkIfStringMathematicalOperator(c) || checkBooleanOperators(buf, expressionStartPos, true)
+          || checkConditionalOrLoopOperators(buf, expressionStartPos)) {
         return false;
       } else if (!skipNonCriticalCharacters(c)) {
         return true;
@@ -205,19 +205,21 @@ public class StringReplacer {
     // Check on right if any first string mathematical operator found or not
     while (expressionEndPos <= buf.length() - 1) {
       char c = buf.charAt(expressionEndPos);
-      if (c == ')' || c == ']' || c == ',') {
-        // expression is inside a method invocation, thus don't take decision of concatenate from right substring
+      if (c == ',') {
         // , denotes it could be part of parameter in method, example <+json.list("$", <+var1>)>, then var1 shouldn't be
         // concatenated.
+        if (checkIfCommaIsInMethodInvocationInRightSubstring(buf, expressionStartPos, expressionEndPos)) {
+          break;
+        }
+        return true;
+      }
+      if (c == ')' || c == ']') {
+        // expression is inside a method invocation, thus don't take decision of concatenate from right substring
         // Expression inside [], square brackets denote get method, thus should be also be considered.
         break;
       } else if (c == ':') {
         // Checking : belongs to ternary operator or not, if not concatenate it
-        if (!buf.toString().contains("?")) {
-          return true;
-        } else {
-          return false;
-        }
+        return !checkIfColonBelongsToTernaryOperator(buf);
       } else if (checkIfStringMathematicalOperator(c) || checkBooleanOperators(buf, expressionEndPos, false)) {
         return false;
       } else if (!skipNonCriticalCharacters(c)) {
@@ -229,15 +231,9 @@ public class StringReplacer {
     return false;
   }
 
-  private boolean checkIfValueHasMethodInvocation(
-      StringBuffer buf, int expressionEndPos, boolean isNewMethodInvocation) {
+  private boolean checkIfValueHasMethodInvocation(StringBuffer buf, int expressionEndPos) {
     // Right substring
     CharSequence charSequence = buf.subSequence(expressionEndPos, buf.length());
-    if (!isNewMethodInvocation) {
-      Pattern pattern = Pattern.compile("\\.\\w+\\(");
-      Matcher matcher = pattern.matcher(charSequence);
-      return matcher.find();
-    }
     // method invocation should be true for <+expr> in <+expr>.method()
     Pattern pattern = Pattern.compile("^\\.\\w+\\(");
     Matcher matcher = pattern.matcher(charSequence);
@@ -287,6 +283,26 @@ public class StringReplacer {
     return false;
   }
 
+  private boolean checkConditionalOrLoopOperators(StringBuffer s, int currentPos) {
+    String leftSubString = s.substring(0, currentPos + 1);
+    Set<String> jexlKeywordOperators =
+        Set.of("if (", "if(", "else {", "else{", "for(", "for (", "while (", "while(", "do {", "do{");
+    int minLength = 3;
+    int maxLength = 7;
+    // checking if any of the jexl operators are present in the left substring as the whole word
+    for (int i = 0; i < leftSubString.length(); i++) {
+      for (int j = minLength; j <= maxLength; j++) {
+        if (i + j <= leftSubString.length()) {
+          String substring = leftSubString.substring(i, i + j);
+          if (jexlKeywordOperators.contains(substring) && (i == 0 || s.charAt(i - 1) == ' ')) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   private boolean checkIfStringMathematicalOperator(char c) {
     // + operator for string addition
     // = -> for == comparison operation
@@ -297,8 +313,51 @@ public class StringReplacer {
     // =~ and !~ regex match and its negate jexl operators
     // =^ and !^ startsWith and its negate operator
     // =$ and !$ endsWith and its negate operator
-    return c == '+' || c == '=' || c == '?' || c == '&' || c == '|' || c == '!' || c == '~' || c == '^' || c == '$'
-        || c == '>';
+    return c == '+' || c == '=' || c == '?' || c == '&' || c == '|' || c == '!' || c == '~' || c == '^' || c == '$';
+  }
+
+  private boolean checkIfCommaIsInMethodInvocationInLeftSubstring(StringBuffer buf, int currentPos) {
+    int i = currentPos - 1;
+    int x = 0;
+    for (; i >= 0; i--) {
+      if (buf.charAt(i) == ')') {
+        x--;
+      } else if (buf.charAt(i) == '(') {
+        x++;
+      }
+      if (x > 0) {
+        break;
+      }
+    }
+    if (i > 0) {
+      return StringUtils.isAlpha(String.valueOf(buf.charAt(i - 1)));
+    }
+    return false;
+  }
+
+  private boolean checkIfCommaIsInMethodInvocationInRightSubstring(
+      StringBuffer buf, int currentPos, int expressionEndPos) {
+    int i = currentPos + 1;
+    int x = 0;
+    for (; i < expressionEndPos; i++) {
+      if (buf.charAt(i) == '(') {
+        x++;
+      } else if (buf.charAt(i) == ')') {
+        x--;
+      }
+      if (x < 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean checkIfSquareBracketIsGetMethod(StringBuffer buf, int currentPos) {
+    return currentPos > 0 && StringUtils.isAlpha(String.valueOf(buf.charAt(currentPos - 1)));
+  }
+
+  private boolean checkIfColonBelongsToTernaryOperator(StringBuffer buf) {
+    return buf.toString().contains("?");
   }
 
   private boolean skipNonCriticalCharacters(char c) {

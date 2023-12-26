@@ -7,6 +7,8 @@
 
 package io.harness.cvng.core.utils.template;
 
+import static io.harness.cvng.core.services.CVNextGenConstants.ACCOUNT_IDENTIFIER_PREFIX;
+import static io.harness.cvng.core.services.CVNextGenConstants.ORG_IDENTIFIER_PREFIX;
 import static io.harness.gitcaching.GitCachingConstants.BOOLEAN_FALSE_VALUE;
 
 import io.harness.cvng.core.beans.params.ProjectParams;
@@ -49,5 +51,48 @@ public class TemplateFacade {
       monitoredServiceData.put(TEMPLATE_KEY, inputMonitoredServiceData.get(TEMPLATE_KEY));
     }
     return yamlObject.dump(data);
+  }
+
+  public Long getTemplateVersionNumber(ProjectParams projectParams, String templateRef, String versionLabel) {
+    projectParams = getTemplateProjectParams(projectParams, templateRef);
+    String templateRefExtracted = extractTemplateRef(templateRef);
+    return NGRestUtils
+        .getResponse(templateResourceClient.get(templateRefExtracted, projectParams.getAccountIdentifier(),
+            projectParams.getOrgIdentifier(), projectParams.getProjectIdentifier(), versionLabel, false))
+        .getVersion();
+  }
+
+  public String getTemplateInputs(ProjectParams projectParams, String templateRef, String versionLabel) {
+    projectParams = getTemplateProjectParams(projectParams, templateRef);
+    String templateRefExtracted = extractTemplateRef(templateRef);
+    return NGRestUtils.getResponse(
+        templateResourceClient.getTemplateInputsYaml(templateRefExtracted, projectParams.getAccountIdentifier(),
+            projectParams.getOrgIdentifier(), projectParams.getProjectIdentifier(), versionLabel, false));
+  }
+
+  private ProjectParams getTemplateProjectParams(ProjectParams projectParams, String templateRef) {
+    String accountIdentifier = projectParams.getAccountIdentifier();
+    String orgIdentifier = projectParams.getOrgIdentifier();
+    String projectIdentifier = projectParams.getProjectIdentifier();
+    if (templateRef.contains(ACCOUNT_IDENTIFIER_PREFIX)) {
+      orgIdentifier = null;
+      projectIdentifier = null;
+    } else if (templateRef.contains(ORG_IDENTIFIER_PREFIX)) {
+      projectIdentifier = null;
+    }
+    return ProjectParams.builder()
+        .accountIdentifier(accountIdentifier)
+        .orgIdentifier(orgIdentifier)
+        .projectIdentifier(projectIdentifier)
+        .build();
+  }
+
+  private String extractTemplateRef(String templateRef) {
+    if (templateRef.contains(ACCOUNT_IDENTIFIER_PREFIX)) {
+      templateRef = templateRef.replace(ACCOUNT_IDENTIFIER_PREFIX, "");
+    } else if (templateRef.contains(ORG_IDENTIFIER_PREFIX)) {
+      templateRef = templateRef.replace(ORG_IDENTIFIER_PREFIX, "");
+    }
+    return templateRef;
   }
 }

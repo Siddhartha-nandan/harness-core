@@ -21,6 +21,7 @@ import io.harness.cdng.ecs.beans.EcsPrepareRollbackDataPassThroughData;
 import io.harness.cdng.ecs.beans.EcsS3FetchFailurePassThroughData;
 import io.harness.cdng.ecs.beans.EcsStepExceptionPassThroughData;
 import io.harness.cdng.ecs.beans.EcsStepExecutorParams;
+import io.harness.cdng.executables.CdTaskChainExecutable;
 import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.instance.info.InstanceInfoService;
@@ -38,7 +39,6 @@ import io.harness.delegate.task.ecs.request.EcsTaskArnBlueGreenCreateServiceRequ
 import io.harness.delegate.task.ecs.response.EcsBlueGreenCreateServiceResponse;
 import io.harness.executions.steps.ExecutionNodeType;
 import io.harness.logging.CommandExecutionStatus;
-import io.harness.plancreator.steps.common.rollback.TaskChainExecutableWithRollbackAndRbac;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.steps.StepCategory;
@@ -54,6 +54,7 @@ import io.harness.pms.sdk.core.steps.io.StepResponse.StepResponseBuilder;
 import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import software.wings.beans.TaskType;
 
@@ -65,7 +66,7 @@ import lombok.extern.slf4j.Slf4j;
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_ECS})
 @OwnedBy(HarnessTeam.CDP)
 @Slf4j
-public class EcsBlueGreenCreateServiceStep extends TaskChainExecutableWithRollbackAndRbac implements EcsStepExecutor {
+public class EcsBlueGreenCreateServiceStep extends CdTaskChainExecutable implements EcsStepExecutor {
   public static final StepType STEP_TYPE = StepType.newBuilder()
                                                .setType(ExecutionNodeType.ECS_BLUE_GREEN_CREATE_SERVICE.getYamlType())
                                                .setStepCategory(StepCategory.STEP)
@@ -131,6 +132,8 @@ public class EcsBlueGreenCreateServiceStep extends TaskChainExecutableWithRollba
                 && ecsStepExecutorParams.getProdTargetGroupArn().equals(ecsStepExecutorParams.getStageTargetGroupArn()))
             .sameAsAlreadyRunningInstances(ParameterFieldHelper.getBooleanParameterFieldValue(
                 ecsBlueGreenCreateServiceStepParameters.getSameAsAlreadyRunningInstances()))
+            .updateGreenService(ParameterFieldHelper.getBooleanParameterFieldValue(
+                ecsBlueGreenCreateServiceStepParameters.getUpdateGreenService()))
             .build();
     return ecsStepCommonHelper.queueEcsTask(stepParameters, ecsBlueGreenCreateServiceRequest, ambiance,
         executionPassThroughData, true, TaskType.ECS_COMMAND_TASK_NG);
@@ -163,6 +166,8 @@ public class EcsBlueGreenCreateServiceStep extends TaskChainExecutableWithRollba
             .ecsLoadBalancerConfig(ecsLoadBalancerConfig)
             .greenServiceRollbackEnabled(cdFeatureFlagHelper.isEnabled(
                 AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_ECS_BG_GREEN_SERVICE_ROLLBACK))
+            .validateBlueGreenService(
+                cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_ECS_BG_VALIDATION))
             .build();
     return ecsStepCommonHelper.queueEcsTask(stepParameters, ecsBlueGreenPrepareRollbackRequest, ambiance,
         ecsStepPassThroughData, false, TaskType.ECS_COMMAND_TASK_NG);
@@ -179,17 +184,24 @@ public class EcsBlueGreenCreateServiceStep extends TaskChainExecutableWithRollba
   }
 
   @Override
-  public TaskChainResponse executeNextLinkWithSecurityContext(Ambiance ambiance, StepBaseParameters stepParameters,
-      StepInputPackage inputPackage, PassThroughData passThroughData, ThrowingSupplier<ResponseData> responseSupplier)
-      throws Exception {
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
+  }
+
+  @Override
+  public TaskChainResponse executeNextLinkWithSecurityContextAndNodeInfo(Ambiance ambiance,
+      StepBaseParameters stepParameters, StepInputPackage inputPackage, PassThroughData passThroughData,
+      ThrowingSupplier<ResponseData> responseSupplier) throws Exception {
     log.info("Calling executeNextLink");
     return ecsStepCommonHelper.executeNextLinkBlueGreen(
         this, ambiance, stepParameters, passThroughData, responseSupplier);
   }
 
   @Override
-  public StepResponse finalizeExecutionWithSecurityContext(Ambiance ambiance, StepBaseParameters stepParameters,
-      PassThroughData passThroughData, ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
+  public StepResponse finalizeExecutionWithSecurityContextAndNodeInfo(Ambiance ambiance,
+      StepBaseParameters stepParameters, PassThroughData passThroughData,
+      ThrowingSupplier<ResponseData> responseDataSupplier) throws Exception {
     if (passThroughData instanceof EcsGitFetchFailurePassThroughData) {
       return ecsStepCommonHelper.handleGitTaskFailure((EcsGitFetchFailurePassThroughData) passThroughData);
     } else if (passThroughData instanceof EcsS3FetchFailurePassThroughData) {
@@ -280,6 +292,8 @@ public class EcsBlueGreenCreateServiceStep extends TaskChainExecutableWithRollba
                 && ecsStepExecutorParams.getProdTargetGroupArn().equals(ecsStepExecutorParams.getStageTargetGroupArn()))
             .sameAsAlreadyRunningInstances(ParameterFieldHelper.getBooleanParameterFieldValue(
                 ecsBlueGreenCreateServiceStepParameters.getSameAsAlreadyRunningInstances()))
+            .updateGreenService(ParameterFieldHelper.getBooleanParameterFieldValue(
+                ecsBlueGreenCreateServiceStepParameters.getUpdateGreenService()))
             .build();
 
     return ecsStepCommonHelper.queueEcsTask(stepElementParameters, ecsTaskArnBlueGreenCreateServiceRequest, ambiance,

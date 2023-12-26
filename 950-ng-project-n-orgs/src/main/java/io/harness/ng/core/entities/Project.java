@@ -102,6 +102,27 @@ public class Project implements PersistentEntity, NGAccountAccess, UniqueIdAware
                  .sortField(ProjectKeys.lastModifiedAt)
                  .unique(false)
                  .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("parentUniqueIdIdentifierIdx")
+                 .field(ProjectKeys.parentUniqueId)
+                 .field(ProjectKeys.identifier)
+                 .unique(true)
+                 .collation(
+                     Collation.builder().locale(CollationLocale.ENGLISH).strength(CollationStrength.PRIMARY).build())
+                 .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("accountIdentifierParentUniqueIdIdentifierIdx")
+                 .field(ProjectKeys.accountIdentifier)
+                 .field(ProjectKeys.parentUniqueId)
+                 .field(ProjectKeys.identifier)
+                 .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("accountIdentifierParentUniqueIdIdentifierDeletedIdx")
+                 .field(ProjectKeys.accountIdentifier)
+                 .field(ProjectKeys.parentUniqueId)
+                 .field(ProjectKeys.identifier)
+                 .field(ProjectKeys.deleted)
+                 .build())
         .build();
   }
 
@@ -110,6 +131,7 @@ public class Project implements PersistentEntity, NGAccountAccess, UniqueIdAware
 
   @FdUniqueIndex String uniqueId;
   String parentId;
+  String parentUniqueId;
   @EntityIdentifier(allowBlank = false) String identifier;
   @EntityIdentifier(allowBlank = false) String orgIdentifier;
 

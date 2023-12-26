@@ -6,6 +6,7 @@
  */
 
 package io.harness.pms.ngpipeline.inputset.service;
+
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
@@ -21,6 +22,7 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.FeatureName;
 import io.harness.common.EntityYamlRootNames;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.eventsframework.schemas.entity.EntityDetailProtoDTO;
@@ -44,6 +46,7 @@ import io.harness.gitsync.common.utils.GitEntityFilePath;
 import io.harness.gitsync.common.utils.GitSyncFilePathUtils;
 import io.harness.gitsync.helpers.GitContextHelper;
 import io.harness.gitsync.interceptor.GitEntityInfo;
+import io.harness.gitsync.interceptor.GitSyncConstants;
 import io.harness.gitsync.persistance.GitSyncSdkService;
 import io.harness.gitsync.scm.EntityObjectIdUtils;
 import io.harness.gitsync.scm.beans.ScmGitMetaData;
@@ -70,12 +73,15 @@ import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.repositories.inputset.PMSInputSetRepository;
 import io.harness.repositories.pipeline.PMSPipelineRepository;
+import io.harness.utils.PmsFeatureFlagHelper;
 import io.harness.yaml.validator.InvalidYamlException;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -105,20 +111,23 @@ public class PMSInputSetServiceImpl implements PMSInputSetService {
   @Inject private PMSPipelineRepository pmsPipelineRepository;
   @Inject private InputSetsApiUtils inputSetsApiUtils;
   @Inject GitXSettingsHelper gitXSettingsHelper;
+  @Inject private PmsFeatureFlagHelper pmsFeatureFlagHelper;
 
   private static final String DUP_KEY_EXP_FORMAT_STRING =
       "Input set [%s] under Project[%s], Organization [%s] for Pipeline [%s] already exists";
 
   private static final int MAX_LIST_SIZE = 1000;
   private static final String REPO_LIST_SIZE_EXCEPTION = "The size of unique repository list is greater than [%d]";
-  private static final String EXPLANATION_INPUT_SET_ACCOUNT_SETTING =
-      "As per the account level setting: [Enforce same repo for Pipeline and InputSets], the input set repository is not same as the linked pipeline repository";
+  private static final String EXPLANATION_INPUT_SET_ACCOUNT_SETTING = "As the account level setting: ["
+      + GitSyncConstants.ALLOW_DIFFERENT_REPO_FOR_PIPELINE_AND_INPUTSETS_SETTING
+      + "] is disabled, the input set repository and the linked pipeline repository cannot be different";
 
   @Override
   public InputSetEntity create(InputSetEntity inputSetEntity, boolean hasNewYamlStructure) {
     boolean isOldGitSync = gitSyncSdkService.isGitSyncEnabled(inputSetEntity.getAccountIdentifier(),
         inputSetEntity.getOrgIdentifier(), inputSetEntity.getProjectIdentifier());
-    InputSetValidationHelper.validateInputSet(this, inputSetEntity, hasNewYamlStructure);
+    InputSetValidationHelper.validateInputSet(this, inputSetEntity, hasNewYamlStructure,
+        pmsFeatureFlagHelper.isEnabled(inputSetEntity.getAccountId(), FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER));
     if (!isOldGitSync) {
       applyGitXSettingsIfApplicable(inputSetEntity.getAccountIdentifier(), inputSetEntity.getOrgIdentifier(),
           inputSetEntity.getProjectIdentifier());
@@ -163,7 +172,7 @@ public class PMSInputSetServiceImpl implements PMSInputSetService {
     if (inputSetEntity.getStoreType() == StoreType.REMOTE) {
       ScmGitMetaData inputSetScmGitMetaData = GitAwareContextHelper.getScmGitMetaData();
       try {
-        InputSetValidationHelper.validateInputSet(this, inputSetEntity, hasNewYamlStructure);
+        InputSetValidationHelper.validateInputSet(this, inputSetEntity, hasNewYamlStructure, false);
       } finally {
         // input set validation involves fetching the pipeline, which can change the global scm metadata to that of the
         // pipeline. Hence, it needs to be changed back to that of the input set once validation is complete,
@@ -235,7 +244,8 @@ public class PMSInputSetServiceImpl implements PMSInputSetService {
   public InputSetEntity update(ChangeType changeType, InputSetEntity inputSetEntity, boolean hasNewYamlStructure) {
     boolean isOldGitSync = gitSyncSdkService.isGitSyncEnabled(inputSetEntity.getAccountIdentifier(),
         inputSetEntity.getOrgIdentifier(), inputSetEntity.getProjectIdentifier());
-    InputSetValidationHelper.validateInputSet(this, inputSetEntity, hasNewYamlStructure);
+    InputSetValidationHelper.validateInputSet(this, inputSetEntity, hasNewYamlStructure,
+        pmsFeatureFlagHelper.isEnabled(inputSetEntity.getAccountId(), FeatureName.CDS_VALIDATE_INPUT_SET_IDENTIFIER));
     if (isOldGitSync) {
       return updateForOldGitSync(inputSetEntity, changeType);
     }
@@ -556,6 +566,19 @@ public class PMSInputSetServiceImpl implements PMSInputSetService {
     return inputSetAfterUpdate.getIdentifier();
   }
 
+  @Override
+  public List<JsonNode> getSanitizedInputsFromInputSetV1(List<JsonNode> inputSetJsonNodeList) {
+    List<JsonNode> sanitizedInputSet = new ArrayList<>();
+    for (JsonNode inputSet : inputSetJsonNodeList) {
+      if (inputSet.has(YAMLFieldNameConstants.SPEC)) {
+        sanitizedInputSet.add(inputSet.get(YAMLFieldNameConstants.SPEC));
+      } else {
+        sanitizedInputSet.add(inputSet);
+      }
+    }
+    return sanitizedInputSet;
+  }
+
   private void validateRepo(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       String pipelineIdentifier, String inputSetIdentifier, PMSUpdateGitDetailsParams updateGitDetailsParams) {
     if (isEmpty(updateGitDetailsParams.getRepoName())) {
@@ -776,8 +799,7 @@ public class PMSInputSetServiceImpl implements PMSInputSetService {
   private void validatePipelineAndInputSetRepos(String pipelineRepo, String inputSetRepo) {
     if (EmptyPredicate.isNotEmpty(pipelineRepo) && EmptyPredicate.isNotEmpty(inputSetRepo)
         && pipelineRepo.equals(inputSetRepo)) {
-      log.info(
-          "The InputSet and the Pipeline are created in the same repo as per the account setting, Enforce same repo for Pipeline and InputSets.");
+      log.info("The InputSet and the Pipeline are created in the same repo.");
     } else {
       throw NestedExceptionUtils.hintWithExplanationException(HINT_INPUT_SET_ACCOUNT_SETTING,
           EXPLANATION_INPUT_SET_ACCOUNT_SETTING,

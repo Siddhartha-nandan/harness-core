@@ -17,6 +17,7 @@ import io.harness.dto.PollingResponseDTO;
 import io.harness.exception.InvalidRequestException;
 import io.harness.polling.bean.PolledResponse;
 import io.harness.polling.bean.PollingDocument;
+import io.harness.polling.bean.PollingType;
 import io.harness.polling.contracts.PollingItem;
 
 import java.util.List;
@@ -46,7 +47,7 @@ public interface PollingService {
   PollingResponseDTO subscribe(PollingItem pollingItem) throws InvalidRequestException;
 
   boolean unsubscribe(PollingItem pollingItem);
-
+  Boolean deletePollingDocAndPerpetualTask(String accountId, String orgId, String projectId, PollingType pollingType);
   void deleteAtAllScopes(Scope scope);
 
   void resetPerpetualTasksForConnector(String accountId, String connectorRef);
@@ -54,5 +55,5 @@ public interface PollingService {
   PollingInfoForTriggers getPollingInfoForTriggers(String accountId, String pollingDocId);
 
   boolean updateTriggerPollingStatus(String accountId, List<String> signatures, boolean status, String errorMessage,
-      List<String> lastCollectedVersions);
+      List<String> lastCollectedVersions, Long validityIntervalForErrorStatusMillis);
 }

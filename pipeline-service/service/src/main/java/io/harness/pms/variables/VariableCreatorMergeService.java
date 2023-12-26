@@ -15,8 +15,10 @@ import static java.lang.String.format;
 import io.harness.NGCommonEntityConstants;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.FeatureName;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.UnexpectedException;
+import io.harness.ff.FeatureFlagService;
 import io.harness.network.SafeHttpCall;
 import io.harness.ng.core.dto.AccountDTO;
 import io.harness.ng.core.dto.OrganizationDTO;
@@ -65,6 +67,7 @@ public class VariableCreatorMergeService {
   @Inject private OrganizationClient organizationClient;
   @Inject private ProjectClient projectClient;
   @Inject private VariableClient variableClient;
+  @Inject private FeatureFlagService featureFlagService;
 
   private static final int MAX_DEPTH = 10;
   private final Executor executor = Executors.newFixedThreadPool(5);
@@ -134,8 +137,8 @@ public class VariableCreatorMergeService {
         responseYaml, response, serviceExpressionMap, newVersion);
   }
 
-  public VariableMergeServiceResponse createVariablesResponseV2(@NotNull String accountId,
-      @NotNull String orgIdentifier, @NotNull String projectIdentifier, @NotNull String yaml) throws IOException {
+  public VariableMergeServiceResponse createVariablesResponseV2(@NotNull String accountId, String orgIdentifier,
+      String projectIdentifier, @NotNull String yaml) throws IOException {
     Map<String, PlanCreatorServiceInfo> services = pmsSdkHelper.getServices();
 
     YamlField processedYaml = YamlUtils.injectUuidInYamlField(yaml);
@@ -157,8 +160,18 @@ public class VariableCreatorMergeService {
     metadataBuilder.putMetadata("newVersion", "newVersion");
 
     metadataBuilder.putMetadata(NGCommonEntityConstants.ACCOUNT_KEY, accountId);
-    metadataBuilder.putMetadata(NGCommonEntityConstants.ORG_KEY, orgIdentifier);
-    metadataBuilder.putMetadata(NGCommonEntityConstants.PROJECT_KEY, projectIdentifier);
+    if (isNotEmpty(orgIdentifier)) {
+      metadataBuilder.putMetadata(NGCommonEntityConstants.ORG_KEY, orgIdentifier);
+    }
+    if (isNotEmpty(projectIdentifier)) {
+      metadataBuilder.putMetadata(NGCommonEntityConstants.PROJECT_KEY, projectIdentifier);
+    }
+
+    // This is the FF that will decide the flow in VariableCreatorService, this should be removed once we GA the flag.
+    boolean mergeOptimizedFlow = featureFlagService.isGlobalEnabled(FeatureName.CDS_VARIABLES_MERGE_V2_OPTIMIZED_FLOW);
+    metadataBuilder.putMetadata(
+        FeatureName.CDS_VARIABLES_MERGE_V2_OPTIMIZED_FLOW.name(), String.valueOf(mergeOptimizedFlow));
+
     VariablesCreationBlobResponse response =
         createVariablesForDependenciesRecursive(services, dependencies, metadataBuilder.build());
 
@@ -244,7 +257,7 @@ public class VariableCreatorMergeService {
   }
 
   private Map<String, List<String>> getPipelineMetadataExpressions(
-      @NotNull String accountId, @NotNull String orgIdentifier, @NotNull String projectIdentifier) {
+      @NotNull String accountId, String orgIdentifier, String projectIdentifier) {
     Map<String, List<String>> resultMap = new HashMap<>();
     for (Map.Entry<String, List<String>> entry : serviceExpressionMap.entrySet()) {
       resultMap.put(entry.getKey(), entry.getValue());
@@ -253,22 +266,27 @@ public class VariableCreatorMergeService {
     // Adding account expressions
     resultMap.put("account", VariableCreatorHelper.getExpressionsInObject(AccountDTO.builder().build(), "account"));
     // Adding org expressions
-    try {
-      Optional<OrganizationResponse> resp =
-          SafeHttpCall.execute(organizationClient.getOrganization(orgIdentifier, accountId)).getData();
-      OrganizationDTO organizationDTO = resp.map(OrganizationResponse::getOrganization).orElse(null);
-      resultMap.put("org", VariableCreatorHelper.getExpressionsInObject(organizationDTO, "org"));
-    } catch (Exception ex) {
-      log.error("Couldn't get organisation details", ex);
+    if (isNotEmpty(orgIdentifier)) {
+      try {
+        Optional<OrganizationResponse> resp =
+            SafeHttpCall.execute(organizationClient.getOrganization(orgIdentifier, accountId)).getData();
+        OrganizationDTO organizationDTO = resp.map(OrganizationResponse::getOrganization).orElse(null);
+        resultMap.put("org", VariableCreatorHelper.getExpressionsInObject(organizationDTO, "org"));
+      } catch (Exception ex) {
+        log.error("Couldn't get organisation details", ex);
+      }
     }
     // Adding project details
-    try {
-      Optional<ProjectResponse> resp =
-          SafeHttpCall.execute(projectClient.getProject(projectIdentifier, accountId, orgIdentifier)).getData();
-      ProjectDTO projectDTO = resp.map(ProjectResponse::getProject).orElse(null);
-      resultMap.put("project", VariableCreatorHelper.getExpressionsInObject(projectDTO, "project"));
-    } catch (Exception ex) {
-      log.error("Couldn't get project details", ex);
+
+    if (isNotEmpty(projectIdentifier)) {
+      try {
+        Optional<ProjectResponse> resp =
+            SafeHttpCall.execute(projectClient.getProject(projectIdentifier, accountId, orgIdentifier)).getData();
+        ProjectDTO projectDTO = resp.map(ProjectResponse::getProject).orElse(null);
+        resultMap.put("project", VariableCreatorHelper.getExpressionsInObject(projectDTO, "project"));
+      } catch (Exception ex) {
+        log.error("Couldn't get project details", ex);
+      }
     }
     // Adding variable details
     try {

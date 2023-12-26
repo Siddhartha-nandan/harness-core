@@ -93,6 +93,7 @@ import io.harness.lock.PersistentLockModule;
 import io.harness.manage.ManagedScheduledExecutorService;
 import io.harness.mongo.MongoPersistence;
 import io.harness.ng.core.event.MessageListener;
+import io.harness.ngsettings.client.remote.NGSettingsClientModule;
 import io.harness.opaclient.OpaClientModule;
 import io.harness.outbox.TransactionOutboxModule;
 import io.harness.persistence.HPersistence;
@@ -116,6 +117,7 @@ import io.harness.timescaledb.TimeScaleDBConfig;
 import io.harness.timescaledb.TimeScaleDBService;
 import io.harness.timescaledb.TimeScaleDBServiceImpl;
 import io.harness.token.TokenClientModule;
+import io.harness.tunnel.TunnelResourceClientModule;
 import io.harness.user.UserClientModule;
 import io.harness.version.VersionInfoManager;
 import io.harness.waiter.AsyncWaitEngineImpl;
@@ -302,6 +304,8 @@ public class CIManagerServiceModule extends AbstractModule {
     bind(CIAccountValidationService.class).to(CIAccountValidationServiceImpl.class).in(Singleton.class);
     install(NgLicenseHttpClientModule.getInstance(ciManagerConfiguration.getNgManagerClientConfig(),
         ciManagerConfiguration.getNgManagerServiceSecret(), serviceId));
+    install(new NGSettingsClientModule(ciManagerConfiguration.getNgManagerClientConfig(),
+        ciManagerConfiguration.getNgManagerServiceSecret(), serviceId));
 
     bind(ExecutorService.class)
         .annotatedWith(Names.named("ciInitTaskExecutor"))
@@ -453,6 +457,8 @@ public class CIManagerServiceModule extends AbstractModule {
     } else {
       bind(FeatureFlagService.class).toProvider(Providers.of(null));
     }
+    install(new TunnelResourceClientModule(ciManagerConfiguration.getNgManagerClientConfig(),
+        ciManagerConfiguration.getNgManagerServiceSecret(), serviceId));
   }
 
   private void registerEventListeners() {

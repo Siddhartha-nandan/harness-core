@@ -8,6 +8,7 @@
 package io.harness.ng.core.artifacts.resources.ecr;
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.cdng.artifact.NGArtifactConstants.REGISTRY_ID;
+import static io.harness.cdng.service.steps.constants.ServiceStepV3Constants.SERVICE_GIT_BRANCH;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
@@ -27,9 +28,11 @@ import io.harness.cdng.artifact.resources.ecr.dtos.EcrResponseDTO;
 import io.harness.cdng.artifact.resources.ecr.service.EcrResourceService;
 import io.harness.common.NGExpressionUtils;
 import io.harness.data.structure.EmptyPredicate;
+import io.harness.evaluators.CDYamlExpressionEvaluator;
 import io.harness.exception.InvalidRequestException;
 import io.harness.gitsync.interceptor.GitEntityFindInfoDTO;
 import io.harness.ng.core.artifacts.resources.util.ArtifactResourceUtils;
+import io.harness.ng.core.artifacts.resources.util.YamlExpressionEvaluatorWithContext;
 import io.harness.ng.core.dto.ErrorDTO;
 import io.harness.ng.core.dto.FailureDTO;
 import io.harness.ng.core.dto.ResponseDTO;
@@ -101,9 +104,19 @@ public class EcrArtifactResource {
       @NotNull @QueryParam("fqnPath") String fqnPath, @NotNull String runtimeInputYaml,
       @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo,
       @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceRef) {
+    YamlExpressionEvaluatorWithContext baseEvaluatorWithContext = null;
+
+    if (isNotEmpty(serviceRef)
+        && artifactResourceUtils.isRemoteService(accountId, orgIdentifier, projectIdentifier, serviceRef)) {
+      baseEvaluatorWithContext = artifactResourceUtils.getYamlExpressionEvaluatorWithContext(accountId, orgIdentifier,
+          projectIdentifier, pipelineIdentifier, runtimeInputYaml, fqnPath, gitEntityBasicInfo, serviceRef);
+    }
+
     if (isNotEmpty(serviceRef)) {
-      final ArtifactConfig artifactSpecFromService = artifactResourceUtils.locateArtifactInService(
-          accountId, orgIdentifier, projectIdentifier, serviceRef, fqnPath);
+      final ArtifactConfig artifactSpecFromService = artifactResourceUtils.locateArtifactInService(accountId,
+          orgIdentifier, projectIdentifier, serviceRef, fqnPath,
+          baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getContextMap().get(SERVICE_GIT_BRANCH));
+
       EcrArtifactConfig ecrArtifactConfig = (EcrArtifactConfig) artifactSpecFromService;
       if (isEmpty(registryId) && ParameterField.isNotNull(ecrArtifactConfig.getRegistryId())) {
         registryId = (String) ecrArtifactConfig.getRegistryId().fetchFinalValue();
@@ -120,30 +133,35 @@ public class EcrArtifactResource {
       }
     }
 
+    CDYamlExpressionEvaluator yamlExpressionEvaluator =
+        baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getYamlExpressionEvaluator();
+
     ecrConnectorIdentifier = artifactResourceUtils
                                  .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier,
                                      projectIdentifier, pipelineIdentifier, runtimeInputYaml, ecrConnectorIdentifier,
-                                     fqnPath, gitEntityBasicInfo, serviceRef, null)
+                                     fqnPath, gitEntityBasicInfo, serviceRef, yamlExpressionEvaluator)
                                  .getValue();
 
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(ecrConnectorIdentifier, accountId, orgIdentifier, projectIdentifier);
 
-    registryId =
-        artifactResourceUtils
-            .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
-                pipelineIdentifier, runtimeInputYaml, registryId, fqnPath, gitEntityBasicInfo, serviceRef, null)
-            .getValue();
+    registryId = artifactResourceUtils
+                     .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
+                         pipelineIdentifier, runtimeInputYaml, registryId, fqnPath, gitEntityBasicInfo, serviceRef,
+                         yamlExpressionEvaluator)
+                     .getValue();
 
     imagePath = artifactResourceUtils
                     .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
-                        pipelineIdentifier, runtimeInputYaml, imagePath, fqnPath, gitEntityBasicInfo, serviceRef, null)
+                        pipelineIdentifier, runtimeInputYaml, imagePath, fqnPath, gitEntityBasicInfo, serviceRef,
+                        yamlExpressionEvaluator)
                     .getValue();
 
     // resolving region
     region = artifactResourceUtils
                  .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
-                     pipelineIdentifier, runtimeInputYaml, region, fqnPath, gitEntityBasicInfo, serviceRef, null)
+                     pipelineIdentifier, runtimeInputYaml, region, fqnPath, gitEntityBasicInfo, serviceRef,
+                     yamlExpressionEvaluator)
                  .getValue();
 
     EcrResponseDTO buildDetails = ecrResourceService.getBuildDetails(
@@ -277,9 +295,19 @@ public class EcrArtifactResource {
       @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceRef,
       @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo,
       @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier) {
+    YamlExpressionEvaluatorWithContext baseEvaluatorWithContext = null;
+
+    if (isNotEmpty(serviceRef)
+        && artifactResourceUtils.isRemoteService(accountId, orgIdentifier, projectIdentifier, serviceRef)) {
+      baseEvaluatorWithContext = artifactResourceUtils.getYamlExpressionEvaluatorWithContext(accountId, orgIdentifier,
+          projectIdentifier, pipelineIdentifier, runtimeInputYaml, fqnPath, gitEntityBasicInfo, serviceRef);
+    }
+
     if (isNotEmpty(serviceRef)) {
-      final ArtifactConfig artifactSpecFromService = artifactResourceUtils.locateArtifactInService(
-          accountId, orgIdentifier, projectIdentifier, serviceRef, fqnPath);
+      final ArtifactConfig artifactSpecFromService = artifactResourceUtils.locateArtifactInService(accountId,
+          orgIdentifier, projectIdentifier, serviceRef, fqnPath,
+          baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getContextMap().get(SERVICE_GIT_BRANCH));
+
       EcrArtifactConfig ecrArtifactConfig = (EcrArtifactConfig) artifactSpecFromService;
       if (isEmpty(registryId) && ParameterField.isNotNull(ecrArtifactConfig.getRegistryId())) {
         registryId = (String) ecrArtifactConfig.getRegistryId().fetchFinalValue();
@@ -294,19 +322,24 @@ public class EcrArtifactResource {
         ecrConnectorIdentifier = (String) ecrArtifactConfig.getConnectorRef().fetchFinalValue();
       }
     }
+
+    CDYamlExpressionEvaluator yamlExpressionEvaluator =
+        baseEvaluatorWithContext == null ? null : baseEvaluatorWithContext.getYamlExpressionEvaluator();
+
     ecrConnectorIdentifier = artifactResourceUtils
                                  .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier,
                                      projectIdentifier, pipelineIdentifier, runtimeInputYaml, ecrConnectorIdentifier,
-                                     fqnPath, gitEntityBasicInfo, serviceRef, null)
+                                     fqnPath, gitEntityBasicInfo, serviceRef, yamlExpressionEvaluator)
                                  .getValue();
-    registryId =
-        artifactResourceUtils
-            .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
-                pipelineIdentifier, runtimeInputYaml, registryId, fqnPath, gitEntityBasicInfo, serviceRef, null)
-            .getValue();
+    registryId = artifactResourceUtils
+                     .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
+                         pipelineIdentifier, runtimeInputYaml, registryId, fqnPath, gitEntityBasicInfo, serviceRef,
+                         yamlExpressionEvaluator)
+                     .getValue();
     region = artifactResourceUtils
                  .getResolvedFieldValueWithYamlExpressionEvaluator(accountId, orgIdentifier, projectIdentifier,
-                     pipelineIdentifier, runtimeInputYaml, region, fqnPath, gitEntityBasicInfo, serviceRef, null)
+                     pipelineIdentifier, runtimeInputYaml, region, fqnPath, gitEntityBasicInfo, serviceRef,
+                     yamlExpressionEvaluator)
                  .getValue();
     IdentifierRef connectorRef =
         IdentifierRefHelper.getIdentifierRef(ecrConnectorIdentifier, accountId, orgIdentifier, projectIdentifier);

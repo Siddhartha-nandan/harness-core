@@ -9,9 +9,11 @@ package io.harness.idp.app;
 
 import static io.harness.audit.ResourceTypeConstants.IDP_ALLOW_LIST;
 import static io.harness.audit.ResourceTypeConstants.IDP_APP_CONFIGS;
+import static io.harness.audit.ResourceTypeConstants.IDP_BACKSTAGE_CATALOG_ENTITY;
 import static io.harness.audit.ResourceTypeConstants.IDP_CATALOG_CONNECTOR;
 import static io.harness.audit.ResourceTypeConstants.IDP_CHECKS;
 import static io.harness.audit.ResourceTypeConstants.IDP_CONFIG_ENV_VARIABLES;
+import static io.harness.audit.ResourceTypeConstants.IDP_LAYOUT;
 import static io.harness.audit.ResourceTypeConstants.IDP_OAUTH_CONFIG;
 import static io.harness.audit.ResourceTypeConstants.IDP_PROXY_HOST;
 import static io.harness.audit.ResourceTypeConstants.IDP_SCORECARDS;
@@ -37,6 +39,7 @@ import io.harness.cache.NoOpCache;
 import io.harness.callback.DelegateCallback;
 import io.harness.callback.DelegateCallbackToken;
 import io.harness.callback.MongoDatabase;
+import io.harness.cdstage.CDStageConfigResourceClientModule;
 import io.harness.ci.CIExecutionServiceModule;
 import io.harness.ci.beans.entities.EncryptedDataDetails;
 import io.harness.ci.beans.entities.LogServiceConfig;
@@ -66,6 +69,8 @@ import io.harness.cistatus.service.gitlab.GitlabServiceImpl;
 import io.harness.client.NgConnectorManagerClientModule;
 import io.harness.clients.BackstageResourceClientModule;
 import io.harness.connector.ConnectorResourceClientModule;
+import io.harness.core.ci.dashboard.CIOverviewDashboardService;
+import io.harness.core.ci.dashboard.CIOverviewDashboardServiceImpl;
 import io.harness.creditcard.CreditCardClientModule;
 import io.harness.dashboard.DashboardResourceClientModule;
 import io.harness.delegate.beans.DelegateAsyncTaskResponse;
@@ -73,7 +78,6 @@ import io.harness.delegate.beans.DelegateSyncTaskResponse;
 import io.harness.delegate.beans.DelegateTaskProgressResponse;
 import io.harness.enforcement.client.EnforcementClientConfiguration;
 import io.harness.enforcement.client.EnforcementClientModule;
-import io.harness.entitysetupusageclient.EntitySetupUsageClientModule;
 import io.harness.exception.exceptionmanager.ExceptionModule;
 import io.harness.git.GitClientV2;
 import io.harness.git.GitClientV2Impl;
@@ -85,13 +89,18 @@ import io.harness.idp.allowlist.services.AllowListService;
 import io.harness.idp.allowlist.services.AllowListServiceImpl;
 import io.harness.idp.audittrails.eventhandlers.AllowListEventHandler;
 import io.harness.idp.audittrails.eventhandlers.AppConfigEventHandler;
+import io.harness.idp.audittrails.eventhandlers.BackstageCatalogEntityEventHandler;
 import io.harness.idp.audittrails.eventhandlers.BackstageSecretEnvEventHandler;
 import io.harness.idp.audittrails.eventhandlers.CatalogConnectorEventHandler;
 import io.harness.idp.audittrails.eventhandlers.CheckEventHandler;
 import io.harness.idp.audittrails.eventhandlers.IDPNextGenOutboxEventHandler;
+import io.harness.idp.audittrails.eventhandlers.LayoutEventHandler;
 import io.harness.idp.audittrails.eventhandlers.OAuthConfigEventHandler;
 import io.harness.idp.audittrails.eventhandlers.ProxyHostDetailsEventHandler;
 import io.harness.idp.audittrails.eventhandlers.ScorecardEventHandler;
+import io.harness.idp.backstage.resources.BackstageHarnessApiImpl;
+import io.harness.idp.backstage.service.BackstageService;
+import io.harness.idp.backstage.service.impl.BackstageServiceImpl;
 import io.harness.idp.common.delegateselectors.cache.DelegateSelectorsCache;
 import io.harness.idp.common.delegateselectors.cache.memory.DelegateSelectorsInMemoryCache;
 import io.harness.idp.common.delegateselectors.cache.redis.DelegateSelectorsRedisCache;
@@ -133,10 +142,18 @@ import io.harness.idp.onboarding.resources.OnboardingResourceApiImpl;
 import io.harness.idp.onboarding.service.OnboardingService;
 import io.harness.idp.onboarding.service.impl.OnboardingServiceImpl;
 import io.harness.idp.pipeline.IDPBuildEnforcerImpl;
+import io.harness.idp.plugin.config.CustomPluginsConfig;
+import io.harness.idp.plugin.mappers.CustomPluginDetailedInfoMapper;
+import io.harness.idp.plugin.mappers.DefaultPluginDetailedInfoMapper;
+import io.harness.idp.plugin.mappers.PluginDetailedInfoMapper;
 import io.harness.idp.plugin.resources.AuthInfoApiImpl;
+import io.harness.idp.plugin.resources.PluginFileUploadApi;
+import io.harness.idp.plugin.resources.PluginFileUploadApiImpl;
 import io.harness.idp.plugin.resources.PluginInfoApiImpl;
 import io.harness.idp.plugin.services.AuthInfoService;
 import io.harness.idp.plugin.services.AuthInfoServiceImpl;
+import io.harness.idp.plugin.services.CustomPluginService;
+import io.harness.idp.plugin.services.CustomPluginServiceImpl;
 import io.harness.idp.plugin.services.PluginInfoService;
 import io.harness.idp.plugin.services.PluginInfoServiceImpl;
 import io.harness.idp.provision.ProvisionModuleConfig;
@@ -146,7 +163,9 @@ import io.harness.idp.provision.service.ProvisionServiceImpl;
 import io.harness.idp.proxy.config.ProxyAllowListConfig;
 import io.harness.idp.proxy.delegate.DelegateProxyApi;
 import io.harness.idp.proxy.delegate.DelegateProxyApiImpl;
-import io.harness.idp.proxy.layout.LayoutProxyApiImpl;
+import io.harness.idp.proxy.layout.resource.LayoutProxyApiImpl;
+import io.harness.idp.proxy.layout.service.LayoutService;
+import io.harness.idp.proxy.layout.service.LayoutServiceImpl;
 import io.harness.idp.proxy.services.ProxyApi;
 import io.harness.idp.proxy.services.ProxyApiImpl;
 import io.harness.idp.scorecard.checks.resources.ChecksApiImpl;
@@ -156,10 +175,9 @@ import io.harness.idp.scorecard.datapoints.service.DataPointService;
 import io.harness.idp.scorecard.datapoints.service.DataPointServiceImpl;
 import io.harness.idp.scorecard.datapointsdata.resource.HarnessDataPointsApiImpl;
 import io.harness.idp.scorecard.datapointsdata.resource.KubernetesDataPointsApiImpl;
+import io.harness.idp.scorecard.datapointsdata.resource.ScmDataPointsApiImpl;
 import io.harness.idp.scorecard.datapointsdata.service.DataPointDataValueService;
 import io.harness.idp.scorecard.datapointsdata.service.DataPointDataValueServiceImpl;
-import io.harness.idp.scorecard.datapointsdata.service.KubernetesDataPointsService;
-import io.harness.idp.scorecard.datapointsdata.service.KubernetesDataPointsServiceImpl;
 import io.harness.idp.scorecard.datasourcelocations.service.DataSourceLocationService;
 import io.harness.idp.scorecard.datasourcelocations.service.DataSourceLocationServiceImpl;
 import io.harness.idp.scorecard.datasources.resources.DataSourceApiImpl;
@@ -169,10 +187,15 @@ import io.harness.idp.scorecard.scorecards.resources.ScorecardsApiImpl;
 import io.harness.idp.scorecard.scorecards.service.ScorecardService;
 import io.harness.idp.scorecard.scorecards.service.ScorecardServiceImpl;
 import io.harness.idp.scorecard.scores.resources.ScoreApiImpl;
+import io.harness.idp.scorecard.scores.resources.ScoresV2ApiImpl;
+import io.harness.idp.scorecard.scores.service.AsyncScoreComputationService;
+import io.harness.idp.scorecard.scores.service.AsyncScoreComputationServiceImpl;
 import io.harness.idp.scorecard.scores.service.ScoreComputerService;
 import io.harness.idp.scorecard.scores.service.ScoreComputerServiceImpl;
 import io.harness.idp.scorecard.scores.service.ScoreService;
 import io.harness.idp.scorecard.scores.service.ScoreServiceImpl;
+import io.harness.idp.scorecard.scores.service.StatsComputeService;
+import io.harness.idp.scorecard.scores.service.StatsComputeServiceImpl;
 import io.harness.idp.serializer.IdpServiceRegistrars;
 import io.harness.idp.settings.resources.BackstagePermissionsApiImpl;
 import io.harness.idp.settings.service.BackstagePermissionsService;
@@ -195,7 +218,6 @@ import io.harness.mongo.MongoConfig;
 import io.harness.mongo.MongoPersistence;
 import io.harness.mongo.iterator.IteratorConfig;
 import io.harness.morphia.MorphiaRegistrar;
-import io.harness.ng.core.entitysetupusage.EntitySetupUsageModule;
 import io.harness.ng.core.event.MessageListener;
 import io.harness.ngsettings.client.remote.NGSettingsClientModule;
 import io.harness.opaclient.OpaClientModule;
@@ -227,6 +249,7 @@ import io.harness.spec.server.idp.v1.AllowListApi;
 import io.harness.spec.server.idp.v1.AppConfigApi;
 import io.harness.spec.server.idp.v1.AuthInfoApi;
 import io.harness.spec.server.idp.v1.BackstageEnvVariableApi;
+import io.harness.spec.server.idp.v1.BackstageHarnessApi;
 import io.harness.spec.server.idp.v1.BackstagePermissionsApi;
 import io.harness.spec.server.idp.v1.ChecksApi;
 import io.harness.spec.server.idp.v1.ConnectorInfoApi;
@@ -240,10 +263,13 @@ import io.harness.spec.server.idp.v1.NamespaceApi;
 import io.harness.spec.server.idp.v1.OnboardingResourceApi;
 import io.harness.spec.server.idp.v1.PluginInfoApi;
 import io.harness.spec.server.idp.v1.ProvisionApi;
+import io.harness.spec.server.idp.v1.ScmDataPointsApi;
 import io.harness.spec.server.idp.v1.ScorecardsApi;
 import io.harness.spec.server.idp.v1.ScoresApi;
+import io.harness.spec.server.idp.v1.ScoresV2Api;
 import io.harness.spec.server.idp.v1.StatusInfoApi;
 import io.harness.spec.server.idp.v1.StatusInfoV2Api;
+import io.harness.spec.server.idp.v1.model.PluginInfo;
 import io.harness.ssca.beans.entities.SSCAServiceConfig;
 import io.harness.ssca.client.SSCAServiceClientModuleV2;
 import io.harness.sto.beans.entities.STOServiceConfig;
@@ -254,7 +280,11 @@ import io.harness.telemetry.segment.SegmentConfiguration;
 import io.harness.threading.ThreadPool;
 import io.harness.threading.ThreadPoolConfig;
 import io.harness.time.TimeModule;
+import io.harness.timescaledb.TimeScaleDBConfig;
+import io.harness.timescaledb.TimeScaleDBService;
+import io.harness.timescaledb.TimeScaleDBServiceImpl;
 import io.harness.token.TokenClientModule;
+import io.harness.tunnel.TunnelResourceClientModule;
 import io.harness.user.UserClientModule;
 import io.harness.version.VersionModule;
 import io.harness.waiter.AsyncWaitEngineImpl;
@@ -437,9 +467,13 @@ public class IdpModule extends AbstractModule {
     install(
         new CIExecutionServiceModule(appConfig.getCiExecutionServiceConfig(), appConfig.getShouldConfigureWithPMS()));
     install(new IACMServiceClientModule(appConfig.getIacmServiceConfig()));
-    install(EnforcementClientModule.getInstance(appConfig.getManagerClientConfig(), // Licencing
+    install(EnforcementClientModule.getInstance(appConfig.getNgManagerServiceHttpClientConfig(), // Licencing
         appConfig.getNgManagerServiceSecret(), IDP_SERVICE.getServiceId(),
         appConfig.getEnforcementClientConfiguration()));
+    install(new CDStageConfigResourceClientModule(appConfig.getNgManagerServiceHttpClientConfig(),
+        appConfig.getNgManagerServiceSecret(), IDP_SERVICE.getServiceId()));
+    install(new TunnelResourceClientModule(appConfig.getNgManagerServiceHttpClientConfig(),
+        appConfig.getNgManagerServiceSecret(), IDP_SERVICE.getServiceId()));
     // Keeping it to 1 thread to start with. Assuming executor service is used only to
     // serve health checks. If it's being used for other tasks also, max pool size should be increased.
     bind(ExecutorService.class)
@@ -479,8 +513,10 @@ public class IdpModule extends AbstractModule {
     bind(LayoutProxyApi.class).to(LayoutProxyApiImpl.class);
     bind(ProxyApi.class).to(ProxyApiImpl.class);
     bind(PluginInfoApi.class).to(PluginInfoApiImpl.class);
+    bind(PluginFileUploadApi.class).to(PluginFileUploadApiImpl.class);
     bind(DelegateProxyApi.class).to(DelegateProxyApiImpl.class);
     bind(PluginInfoService.class).to(PluginInfoServiceImpl.class);
+    bind(CustomPluginService.class).to(CustomPluginServiceImpl.class);
     bind(ConnectorInfoApi.class).to(ConnectorInfoApiImpl.class);
     bind(MergedPluginsConfigApi.class).to(MergedPluginsConfigApiImpl.class);
     bind(ConfigEnvVariablesService.class).to(ConfigEnvVariablesServiceImpl.class);
@@ -494,17 +530,22 @@ public class IdpModule extends AbstractModule {
     bind(ChecksApi.class).to(ChecksApiImpl.class);
     bind(CheckService.class).to(CheckServiceImpl.class);
     bind(ScoresApi.class).to(ScoreApiImpl.class);
+    bind(ScoresV2Api.class).to(ScoresV2ApiImpl.class);
     bind(DataSourceApi.class).to(DataSourceApiImpl.class);
     bind(DataSourceService.class).to(DataSourceServiceImpl.class);
     bind(DataPointService.class).to(DataPointServiceImpl.class);
     bind(DataSourceLocationService.class).to(DataSourceLocationServiceImpl.class);
     bind(ScoreService.class).to(ScoreServiceImpl.class);
     bind(ScoreComputerService.class).to(ScoreComputerServiceImpl.class);
+    bind(StatsComputeService.class).to(StatsComputeServiceImpl.class);
+    bind(AsyncScoreComputationService.class).to(AsyncScoreComputationServiceImpl.class);
     bind(DataPointService.class).to(DataPointServiceImpl.class);
+    bind(LayoutService.class).to(LayoutServiceImpl.class);
     bind(HarnessDataPointsApi.class).to(HarnessDataPointsApiImpl.class);
     bind(KubernetesDataPointsApi.class).to(KubernetesDataPointsApiImpl.class);
     bind(DataPointDataValueService.class).to(DataPointDataValueServiceImpl.class);
-    bind(KubernetesDataPointsService.class).to(KubernetesDataPointsServiceImpl.class);
+    bind(ScmDataPointsApi.class).to(ScmDataPointsApiImpl.class);
+    bind(CIOverviewDashboardService.class).to(CIOverviewDashboardServiceImpl.class);
     bind(ScheduledExecutorService.class)
         .annotatedWith(Names.named("backstageEnvVariableSyncer"))
         .toInstance(new ManagedScheduledExecutorService("backstageEnvVariableSyncer"));
@@ -515,7 +556,7 @@ public class IdpModule extends AbstractModule {
         .annotatedWith(Names.named("AppConfigPurger"))
         .toInstance(new ManagedScheduledExecutorService("AppConfigPurger"));
     bind(ExecutorService.class)
-        .annotatedWith(Names.named("DefaultPREnvAccountIdToNamespaceMappingCreator"))
+        .annotatedWith(Names.named("DefaultDevSpaceEnvProvisioner"))
         .toInstance(new ManagedExecutorService(Executors.newSingleThreadExecutor()));
     bind(ExecutorService.class)
         .annotatedWith(Names.named("ScoreComputer"))
@@ -564,8 +605,8 @@ public class IdpModule extends AbstractModule {
         .annotatedWith(Names.named("licenseUsageDailyCountJob"))
         .toInstance(new ManagedScheduledExecutorService("licenseUsageDailyCountJob"));
     bind(ScheduledExecutorService.class)
-        .annotatedWith(Names.named("checkStatusDailyRunJob"))
-        .toInstance(new ManagedScheduledExecutorService("checkStatusDailyRunJob"));
+        .annotatedWith(Names.named("statsComputeDailyRunJob"))
+        .toInstance(new ManagedScheduledExecutorService("statsComputeDailyRunJob"));
     install(new AbstractTelemetryModule() {
       @Override
       public TelemetryConfiguration telemetryConfiguration() {
@@ -579,6 +620,23 @@ public class IdpModule extends AbstractModule {
                 .setNameFormat("idp-telemetry-publisher-Thread-%d")
                 .setPriority(Thread.NORM_PRIORITY)
                 .build()));
+    bind(TimeScaleDBConfig.class)
+        .annotatedWith(Names.named("TimeScaleDBConfig"))
+        .toInstance(TimeScaleDBConfig.builder().build());
+    try {
+      bind(TimeScaleDBService.class)
+          .toConstructor(TimeScaleDBServiceImpl.class.getConstructor(TimeScaleDBConfig.class));
+    } catch (NoSuchMethodException e) {
+      log.error("TimeScaleDbServiceImpl Initialization Failed in due to missing constructor", e);
+    }
+
+    MapBinder<PluginInfo.PluginTypeEnum, PluginDetailedInfoMapper> pluginInfoMapBinder =
+        MapBinder.newMapBinder(binder(), PluginInfo.PluginTypeEnum.class, PluginDetailedInfoMapper.class);
+    pluginInfoMapBinder.addBinding(PluginInfo.PluginTypeEnum.DEFAULT).to(DefaultPluginDetailedInfoMapper.class);
+    pluginInfoMapBinder.addBinding(PluginInfo.PluginTypeEnum.CUSTOM).to(CustomPluginDetailedInfoMapper.class);
+
+    bind(BackstageHarnessApi.class).to(BackstageHarnessApiImpl.class);
+    bind(BackstageService.class).to(BackstageServiceImpl.class);
   }
 
   private void registerOutboxEventHandlers() {
@@ -592,6 +650,8 @@ public class IdpModule extends AbstractModule {
     outboxEventHandlerMapBinder.addBinding(IDP_CHECKS).to(CheckEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(IDP_ALLOW_LIST).to(AllowListEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(IDP_OAUTH_CONFIG).to(OAuthConfigEventHandler.class);
+    outboxEventHandlerMapBinder.addBinding(IDP_LAYOUT).to(LayoutEventHandler.class);
+    outboxEventHandlerMapBinder.addBinding(IDP_BACKSTAGE_CATALOG_ENTITY).to(BackstageCatalogEntityEventHandler.class);
   }
 
   @Provides
@@ -709,9 +769,23 @@ public class IdpModule extends AbstractModule {
 
   @Provides
   @Singleton
-  @Named("prEnvDefaultBackstageNamespace")
-  public String prEnvDefaultBackstageNamespace() {
-    return this.appConfig.getPrEnvDefaultBackstageNamespace();
+  @Named("base")
+  public String base() {
+    return this.appConfig.getBase();
+  }
+
+  @Provides
+  @Singleton
+  @Named("devSpaceDefaultBackstageNamespace")
+  public String devSpaceDefaultBackstageNamespace() {
+    return this.appConfig.getDevSpaceDefaultBackstageNamespace();
+  }
+
+  @Provides
+  @Singleton
+  @Named("devSpaceDefaultAccountId")
+  public String devSpaceDefaultAccountId() {
+    return this.appConfig.getDevSpaceDefaultAccountId();
   }
 
   @Provides
@@ -964,6 +1038,13 @@ public class IdpModule extends AbstractModule {
 
   @Provides
   @Singleton
+  @Named("enableMetrics")
+  public Boolean enableMetrics() {
+    return this.appConfig.isEnableMetrics();
+  }
+
+  @Provides
+  @Singleton
   @Named("harnessCodeGitBaseUrl")
   String getHarnessCodeGitBaseUrl() {
     String gitUrl = this.appConfig.getHarnessCodeGitUrl();
@@ -971,5 +1052,19 @@ public class IdpModule extends AbstractModule {
       return gitUrl.substring(0, gitUrl.length() - 1);
     }
     return gitUrl;
+  }
+
+  @Provides
+  @Singleton
+  @Named("allowedKindsForCatalogSync")
+  public List<String> allowedKindsForCatalogSync() {
+    return this.appConfig.getAllowedKindsForCatalogSync();
+  }
+
+  @Provides
+  @Singleton
+  @Named("customPlugins")
+  public CustomPluginsConfig customPluginsConfig() {
+    return this.appConfig.getCustomPluginsConfig();
   }
 }

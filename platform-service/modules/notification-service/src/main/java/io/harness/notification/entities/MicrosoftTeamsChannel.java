@@ -8,12 +8,14 @@
 package io.harness.notification.entities;
 
 import static io.harness.annotations.dev.HarnessTeam.PL;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.notification.NotificationRequest.MSTeam;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.notification.NotificationChannelType;
 import io.harness.notification.dtos.UserGroup;
 import io.harness.notification.mapper.NotificationUserGroupMapper;
+import io.harness.spec.server.notification.v1.model.ChannelDTO;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeName;
@@ -33,15 +35,19 @@ public class MicrosoftTeamsChannel implements Channel {
   List<UserGroup> userGroups;
   Map<String, String> templateData;
   String templateId;
+  String message;
 
   @Override
   public Object toObjectofProtoSchema() {
-    return MSTeam.newBuilder()
-        .addAllMsTeamKeys(msTeamKeys)
-        .putAllTemplateData(templateData)
-        .setTemplateId(templateId)
-        .addAllUserGroup(NotificationUserGroupMapper.toProto(userGroups))
-        .build();
+    MSTeam.Builder builder = MSTeam.newBuilder()
+                                 .addAllMsTeamKeys(msTeamKeys)
+                                 .putAllTemplateData(templateData)
+                                 .setTemplateId(templateId)
+                                 .addAllUserGroup(NotificationUserGroupMapper.toProto(userGroups));
+    if (isNotEmpty(message)) {
+      builder.setMessage(message);
+    }
+    return builder.build();
   }
 
   @Override
@@ -50,12 +56,18 @@ public class MicrosoftTeamsChannel implements Channel {
     return NotificationChannelType.MSTEAMS;
   }
 
+  @Override
+  public ChannelDTO dto() {
+    return new ChannelDTO().msTeamKeys(msTeamKeys);
+  }
+
   public static MicrosoftTeamsChannel toMicrosoftTeamsEntity(MSTeam msTeamDetails) {
     return MicrosoftTeamsChannel.builder()
         .msTeamKeys(msTeamDetails.getMsTeamKeysList())
         .templateData(msTeamDetails.getTemplateDataMap())
         .templateId(msTeamDetails.getTemplateId())
         .userGroups(NotificationUserGroupMapper.toEntity(msTeamDetails.getUserGroupList()))
+        .message(msTeamDetails.getMessage())
         .build();
   }
 }

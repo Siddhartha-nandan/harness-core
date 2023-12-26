@@ -758,7 +758,8 @@ public class PMSExecutionServiceImpl implements PMSExecutionService {
       return "";
     }
 
-    return InputSetMergeHelper.mergeInputSetIntoPipeline(pipelineTemplate, inputSetYaml, false);
+    return InputSetMergeHelper.mergeInputSetIntoPipeline(
+        pipelineTemplate, inputSetYaml == null ? "" : inputSetYaml, false);
   }
 
   private String resolveExpressionsInYaml(PipelineExecutionSummaryEntity pipelineExecutionSummaryEntity,
@@ -774,8 +775,12 @@ public class PMSExecutionServiceImpl implements PMSExecutionService {
         planExecutionId, Set.of(PlanExecutionMetadataKeys.inputSetYaml));
     yaml = planExecutionMetadata.getInputSetYaml();
     if (resolveExpressions && EmptyPredicate.isNotEmpty(yaml)) {
-      yaml = yamlExpressionResolveHelper.resolveExpressionsInYaml(
-          yaml, planExecutionId, ResolveInputYamlType.RESOLVE_ALL_EXPRESSIONS);
+      try {
+        yaml = yamlExpressionResolveHelper.resolveExpressionsInYaml(
+            yaml, planExecutionId, ResolveInputYamlType.RESOLVE_ALL_EXPRESSIONS);
+      } catch (InvalidRequestException exception) {
+        log.info(exception.getMessage());
+      }
     }
 
     if (!resolveExpressions && EmptyPredicate.isNotEmpty(yaml)) {

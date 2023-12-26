@@ -89,14 +89,11 @@ import io.harness.encryption.Scope;
 import io.harness.encryption.SecretRefData;
 import io.harness.exception.AccessDeniedException;
 import io.harness.exception.InvalidRequestException;
-import io.harness.gitaware.helper.GitAwareContextHelper;
 import io.harness.gitsync.beans.StoreType;
-import io.harness.gitsync.interceptor.GitEntityInfo;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.UnitStatus;
 import io.harness.logstreaming.NGLogCallback;
 import io.harness.ng.core.entitydetail.EntityDetailProtoToRestMapper;
-import io.harness.ng.core.environment.beans.Environment;
 import io.harness.ng.core.environment.services.EnvironmentService;
 import io.harness.ng.core.infrastructure.InfrastructureKind;
 import io.harness.ng.core.infrastructure.InfrastructureType;
@@ -445,7 +442,7 @@ public class InfrastructureTaskExecutableStepV2Test extends CategoryTest {
             .build())
         .when(cdStepHelper)
         .getSshInfraDelegateConfig(any(InfrastructureOutcome.class), any(Ambiance.class));
-    when(infrastructureOutcomeProvider.getOutcome(any(), any(), any(), any(), any(), any(), any(), anyMap()))
+    when(infrastructureOutcomeProvider.getOutcome(any(), any(), any(), any(), any(), any(), any(), anyMap(), any()))
         .thenReturn(SshWinRmAwsInfrastructureOutcome.builder()
                         .connectorRef("awsconnector")
                         .hostConnectionType("PrivateIP")
@@ -493,7 +490,7 @@ public class InfrastructureTaskExecutableStepV2Test extends CategoryTest {
         .getSshInfraDelegateConfig(any(InfrastructureOutcome.class), any(Ambiance.class));
 
     mockInfra(azureInfra);
-    when(infrastructureOutcomeProvider.getOutcome(any(), any(), any(), any(), any(), any(), any(), anyMap()))
+    when(infrastructureOutcomeProvider.getOutcome(any(), any(), any(), any(), any(), any(), any(), anyMap(), any()))
         .thenReturn(SshWinRmAzureInfrastructureOutcome.builder()
                         .connectorRef("azureconnector")
                         .subscriptionId("dev-subscription")
@@ -849,32 +846,6 @@ public class InfrastructureTaskExecutableStepV2Test extends CategoryTest {
     assertThat(emptyHostDelegateConfig.getHosts()).isEmpty();
   }
 
-  @Test
-  @Owner(developers = OwnerRule.VIVEK_DIXIT)
-  @Category(UnitTests.class)
-  public void testGetGitContextForInfraForTransientBranch() {
-    doReturn(
-        Optional.of(
-            InfrastructureEntity.builder().identifier("infra").repo("test-repo").storeType(StoreType.REMOTE).build()))
-        .when(infrastructureEntityService)
-        .getMetadata(anyString(), anyString(), anyString(), anyString(), anyString());
-    doReturn(Optional.of(Environment.builder().identifier("env").repo("test-repo").storeType(StoreType.REMOTE).build()))
-        .when(environmentService)
-        .getMetadata(anyString(), anyString(), anyString(), anyString(), anyBoolean());
-
-    GitEntityInfo gitEntityInfo = GitEntityInfo.builder().storeType(StoreType.INLINE).build();
-    GitAwareContextHelper.populateGitDetails(gitEntityInfo);
-
-    GitEntityInfo modifiedGitEntityInfo = step.getGitContextForInfra(buildAmbiance(),
-        InfrastructureTaskExecutableStepV2Params.builder()
-            .envRef(ParameterField.createValueField("env"))
-            .infraRef(ParameterField.createValueField("infra"))
-            .build(),
-        "infraBranch");
-
-    assertThat(modifiedGitEntityInfo.getTransientBranch()).isEqualTo("infraBranch");
-  }
-
   private AwsEC2Instance mockAwsInstance(String id) {
     return AwsEC2Instance.builder().instanceId(id).privateIp("10.0.0." + id).publicIp("1.1.1." + id).build();
   }
@@ -1011,13 +982,15 @@ public class InfrastructureTaskExecutableStepV2Test extends CategoryTest {
                 .projectIdentifier("projectId")
                 .identifier("infra-id")
                 .type(InfrastructureType.SSH_WINRM_AWS)
-                .spec(SshWinRmAwsInfrastructure.builder()
-                          .connectorRef(ParameterField.createValueField("awsconnector"))
-                          .credentialsRef(ParameterField.createValueField("sshkey"))
-                          .region(ParameterField.createValueField("us-east-2"))
-                          .awsInstanceFilter(AwsInstanceFilter.builder().vpcs(List.of("vpc1")).build())
-                          .hostConnectionType(ParameterField.createValueField(HostConnectionTypeKind.PRIVATE_IP))
-                          .build())
+                .spec(
+                    SshWinRmAwsInfrastructure.builder()
+                        .connectorRef(ParameterField.createValueField("awsconnector"))
+                        .credentialsRef(ParameterField.createValueField("sshkey"))
+                        .region(ParameterField.createValueField("us-east-2"))
+                        .awsInstanceFilter(
+                            AwsInstanceFilter.builder().vpcs(ParameterField.createValueField(List.of("vpc1"))).build())
+                        .hostConnectionType(ParameterField.createValueField(HostConnectionTypeKind.PRIVATE_IP))
+                        .build())
                 .build())
         .build();
   }

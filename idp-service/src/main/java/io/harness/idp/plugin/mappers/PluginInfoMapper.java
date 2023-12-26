@@ -9,7 +9,8 @@ package io.harness.idp.plugin.mappers;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.plugin.beans.PluginInfoEntity;
+import io.harness.idp.plugin.entities.DefaultPluginInfoEntity;
+import io.harness.idp.plugin.entities.PluginInfoEntity;
 import io.harness.spec.server.idp.v1.model.PluginInfo;
 import io.harness.spec.server.idp.v1.model.PluginInfoResponse;
 
@@ -24,15 +25,21 @@ public class PluginInfoMapper {
     PluginInfo pluginInfo = new PluginInfo();
     pluginInfo.setId(pluginInfoEntity.getIdentifier());
     pluginInfo.setName(pluginInfoEntity.getName());
-    pluginInfo.setCreatedBy(pluginInfoEntity.getCreatedBy());
+    pluginInfo.setCreatedBy(pluginInfoEntity.getCreator());
     pluginInfo.setIconUrl(pluginInfoEntity.getIconUrl());
     pluginInfo.setImageUrl(pluginInfoEntity.getImageUrl());
+    pluginInfo.setImages(pluginInfoEntity.getImages());
     pluginInfo.setDocumentation(pluginInfoEntity.getDocumentation());
     pluginInfo.setDescription(pluginInfoEntity.getDescription());
     pluginInfo.setCategory(pluginInfoEntity.getCategory());
     pluginInfo.setSource(pluginInfoEntity.getSource());
-    pluginInfo.setCore(pluginInfoEntity.isCore());
+    if (PluginInfo.PluginTypeEnum.DEFAULT.equals(pluginInfoEntity.getType())) {
+      pluginInfo.setCore(((DefaultPluginInfoEntity) pluginInfoEntity).isCore());
+    }
+    pluginInfo.setPluginType(pluginInfoEntity.getType());
     pluginInfo.setEnabled(isEnabled);
+    pluginInfo.setPluginType(
+        pluginInfoEntity.getType() == null ? PluginInfo.PluginTypeEnum.DEFAULT : pluginInfoEntity.getType());
     return pluginInfo;
   }
 

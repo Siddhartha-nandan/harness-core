@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import io.harness.CategoryTest;
@@ -25,6 +26,7 @@ import io.harness.category.element.UnitTests;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.common.beans.SetupAbstractionKeys;
 import io.harness.cdng.infra.beans.AsgInfrastructureOutcome;
+import io.harness.cdng.infra.beans.InfrastructureOutcome;
 import io.harness.cdng.instance.info.InstanceInfoService;
 import io.harness.cdng.instance.outcome.DeploymentInfoOutcome;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
@@ -53,6 +55,7 @@ import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.rule.Owner;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
 
 import software.wings.beans.TaskType;
 
@@ -109,6 +112,7 @@ public class AsgBlueGreenSwapServiceStepTest extends CategoryTest {
   @Spy @InjectMocks private AsgBlueGreenSwapServiceStep asgBlueGreenSwapServiceStep;
   @Spy private InstanceInfoService instanceInfoService;
   @Mock ExecutionSweepingOutputService executionSweepingOutputService;
+  @Mock DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
   @Spy private OutcomeService outcomeService;
 
   @BeforeClass
@@ -168,6 +172,10 @@ public class AsgBlueGreenSwapServiceStepTest extends CategoryTest {
         .when(instanceInfoService)
         .saveServerInstancesIntoSweepingOutput(any(), any());
 
+    doReturn(mock(InfrastructureOutcome.class))
+        .when(asgStepCommonHelper)
+        .getInfrastructureOutcomeWithUpdatedExpressions(any());
+
     StepResponse stepResponse = asgBlueGreenSwapServiceStep.handleTaskResultWithSecurityContext(
         ambiance, stepElementParameters, () -> (AsgCommandResponse) responseData);
 
@@ -219,6 +227,9 @@ public class AsgBlueGreenSwapServiceStepTest extends CategoryTest {
 
     doReturn(asgInfrastructureOutcome1).when(outcomeService).resolve(any(), any());
     doReturn(asgInfraConfig).when(asgStepCommonHelper).getAsgInfraConfig(any(), any());
+    doReturn(mock(InfrastructureOutcome.class))
+        .when(asgStepCommonHelper)
+        .getInfrastructureOutcomeWithUpdatedExpressions(any());
 
     AsgExecutionPassThroughData asgExecutionPassThroughData =
         AsgExecutionPassThroughData.builder().infrastructure(asgInfrastructureOutcome1).build();

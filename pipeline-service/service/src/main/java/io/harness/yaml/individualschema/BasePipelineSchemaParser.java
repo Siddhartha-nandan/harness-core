@@ -10,7 +10,6 @@ package io.harness.yaml.individualschema;
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.data.structure.EmptyPredicate;
 import io.harness.plancreator.steps.StepGroupElementConfig;
 import io.harness.plancreator.strategy.StrategyConfig;
 import io.harness.pms.contracts.steps.StepCategory;
@@ -28,12 +27,13 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @OwnedBy(PIPELINE)
 public abstract class BasePipelineSchemaParser extends AbstractStaticSchemaParser {
-  static final String STEP_NODE_REF_SUFFIX_UNDER_EXECUTIONS_WRAPPER_CONFIG = "ExecutionWrapperConfig/step/oneOf";
-  static final String STAGES_NODE_ONE_OF_PATH = "#/definitions/pipeline/stages/stages/stage/oneOf";
   @Inject SchemaFetcher schemaFetcher;
 
   abstract void parseAndIngestSchema();
   abstract String getYamlVersion();
+
+  abstract ObjectNodeWithMetadata getRootStageNode(String currentFqn, ObjectNode objectNode);
+  abstract ObjectNodeWithMetadata getRootStepNode(String currentFqn, ObjectNode objectNode);
 
   @Override
   void init() {
@@ -47,16 +47,18 @@ public abstract class BasePipelineSchemaParser extends AbstractStaticSchemaParse
 
   @Override
   public JsonNode getFieldNode(InputFieldMetadata inputFieldMetadata) {
-    String[] fqnParts = inputFieldMetadata.getFqnFromParentNode().split("\\.");
+    String fqnFromParentNode = inputFieldMetadata.getFqnFromParentNode();
     PipelineSchemaRequest pipelineSchemaRequest =
         PipelineSchemaRequest.builder()
-            .individualSchemaMetadata(PipelineSchemaMetadata.builder()
-                                          .nodeGroup(getFormattedNodeGroup(fqnParts[0]))
-                                          .nodeType(inputFieldMetadata.getParentNodeType())
-                                          .build())
+            .individualSchemaMetadata(
+                PipelineSchemaMetadata.builder()
+                    .nodeGroup(getFormattedNodeGroup(inputFieldMetadata.getParentTypeOfNodeGroup()))
+                    .nodeType(inputFieldMetadata.getParentNodeType())
+                    .build())
+            .fqnFromParentNode(fqnFromParentNode)
             .build();
 
-    return super.getFieldNode(inputFieldMetadata.getFieldName(), pipelineSchemaRequest);
+    return super.getFieldNode(pipelineSchemaRequest);
   }
 
   @Override
@@ -81,36 +83,6 @@ public abstract class BasePipelineSchemaParser extends AbstractStaticSchemaParse
       fqnToNodeMap.put(childNodeRefValue, strategyNode);
       return;
     }
-  }
-
-  private ObjectNodeWithMetadata getRootStageNode(String currentFqn, ObjectNode objectNode) {
-    if (currentFqn.endsWith(STAGES_NODE_ONE_OF_PATH)) {
-      String stageType = getTypeFromObjectNode(objectNode);
-      if (EmptyPredicate.isNotEmpty(stageType)) {
-        return ObjectNodeWithMetadata.builder()
-            .isRootNode(true)
-            .nodeGroup(StepCategory.STAGE.name().toLowerCase())
-            .nodeType(stageType)
-            .objectNode(objectNode)
-            .build();
-      }
-    }
-    return null;
-  }
-
-  private ObjectNodeWithMetadata getRootStepNode(String currentFqn, ObjectNode objectNode) {
-    if (currentFqn.endsWith(STEP_NODE_REF_SUFFIX_UNDER_EXECUTIONS_WRAPPER_CONFIG)) {
-      String stepType = getTypeFromObjectNode(objectNode);
-      if (EmptyPredicate.isNotEmpty(stepType)) {
-        return ObjectNodeWithMetadata.builder()
-            .isRootNode(true)
-            .nodeGroup(StepCategory.STEP.name().toLowerCase())
-            .nodeType(stepType)
-            .objectNode(objectNode)
-            .build();
-      }
-    }
-    return null;
   }
 
   private ObjectNodeWithMetadata getRootStrategyNode(String currentFqn, ObjectNode objectNode) {
@@ -161,5 +133,15 @@ public abstract class BasePipelineSchemaParser extends AbstractStaticSchemaParse
       return "stage";
     }
     return nodeGroup;
+  }
+
+  @Override
+  Boolean checkIfParserReinitializationNeeded() {
+    if (schemaFetcher.useSchemaFromHarnessSchemaRepo()) {
+      // We will reinitialise the individual schema in 15 min for stress env or for env where
+      // useSchemaFromHarnessSchemaRepo is enabled (dev-space/local)
+      return System.currentTimeMillis() - lastInitializedTime >= MAX_TIME_TO_REINITIALIZE_PARSER;
+    }
+    return false;
   }
 }
