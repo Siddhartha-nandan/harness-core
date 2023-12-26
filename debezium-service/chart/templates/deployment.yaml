@@ -141,6 +141,16 @@ spec:
             {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD") | indent 10 }}
             {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "CACHE_CONFIG_REDIS_USERNAME" "passwordVariableName" "CACHE_CONFIG_REDIS_PASSWORD") | indent 10 }}
             {{- include "harnesscommon.dbconnectionv2.redisEnv" (dict "ctx" $ "userVariableName" "REDIS_LOCK_CONFIG_REDIS_USERNAME" "passwordVariableName" "REDIS_LOCK_CONFIG_REDIS_PASSWORD") | indent 10 }}
+            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "ng-harness") | indent 10 }}
+            {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "ng-harness" "connectionURIVariableName" "MONGODB_CONNECTION_STRING_PLG") | indent 10 }}
+            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "pms-harness") | indent 10 }}
+            {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "pms-harness" "connectionURIVariableName" "MONGODB_CONNECTION_STRING_PIPELINE") | indent 10 }}
+            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "pms-harness") | indent 10 }}
+            {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "pms-harness" "connectionURIVariableName" "MONGODB_CONNECTION_STRING_PIPELINE_SNAPSHOT") | indent 10 }}
+            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "harness") | indent 10 }}
+            {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "harness" "connectionURIVariableName" "MONGODB_CONNECTION_STRING_APPLICATIONS") | indent 10 }}
+            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "ng-harness") | indent 10 } }
+            {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "ng-harness" "connectionURIVariableName" "MONGODB_CONNECTION_STRING_SSCA") | indent 10 }}
 
           envFrom:
           - configMapRef:
