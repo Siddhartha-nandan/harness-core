@@ -89,7 +89,6 @@ import javax.ws.rs.NotFoundException;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
 import org.springframework.transaction.support.TransactionTemplate;
 
