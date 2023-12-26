@@ -1,0 +1,11 @@
+#Any edit in this file should accompany an increment in version.
+name : userSettingsConfiguration
+version : 1
+userSettings :
+  - identifier: enable_new_nav
+    name: Enable new nav for the user in Account
+    category: CORE
+    defaultValue: false
+    valueType: BOOLEAN
+    allowedScopes:
+      - ACCOUNT
