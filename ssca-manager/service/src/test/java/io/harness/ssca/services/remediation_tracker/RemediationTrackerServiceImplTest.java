@@ -398,7 +398,85 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
   @Test
   @Owner(developers = VARSHA_LALWANI)
   @Category(UnitTests.class)
-  public void listRemediations() {
+  public void testListRemediations() {
+    createRemediations();
+
+    Pageable pageable = PageResponseUtils.getPageable(0, 3, ArtifactApiUtils.getSortFieldMapping("component"), "ASC");
+    List<RemediationListingResponse> response =
+        remediationTrackerService
+            .listRemediations(builderFactory.getContext().getAccountId(),
+                builderFactory.getContext().getOrgIdentifier(), builderFactory.getContext().getProjectIdentifier(),
+                new RemediationListingRequestBody(), pageable)
+            .getContent();
+
+    assertThat(response).isNotNull();
+    assertThat(response).hasSize(3);
+    assertThat(response.get(0).getStatus()).isEqualTo(RemediationStatus.COMPLETED);
+    assertThat(response.get(0).getComponent()).isEqualTo("remediation1");
+    assertThat(response.get(0).getRemediationCondition().getOperator())
+        .isEqualTo(RemediationCondition.OperatorEnum.ALL);
+    assertThat(response.get(0).getScheduleStatus()).isEqualTo("On time");
+    assertThat(response.get(0).getCve()).isNull();
+    assertThat(response.get(0).getSeverity()).isEqualTo(VulnerabilitySeverity.HIGH);
+    assertThat(response.get(0).getContact().getName()).isEqualTo("test");
+    assertThat(response.get(0).getContact().getEmail()).isEqualTo("test@gmail.com");
+    assertThat(response.get(0).getDeploymentsCount().getPatchedProdCount()).isEqualTo(1);
+    assertThat(response.get(0).getDeploymentsCount().getPatchedNonProdCount()).isZero();
+    assertThat(response.get(0).getDeploymentsCount().getPendingProdCount()).isEqualTo(1);
+    assertThat(response.get(0).getDeploymentsCount().getPendingNonProdCount()).isZero();
+
+    assertThat(response.get(1).getCve()).isNotNull();
+    assertThat(response.get(1).getCve()).isEqualTo("CVE-2021-44228");
+  }
+
+  @Test
+  @Owner(developers = VARSHA_LALWANI)
+  @Category(UnitTests.class)
+  public void testListRemediationsWithBothFilters() {
+    createRemediations();
+
+    Pageable pageable = PageResponseUtils.getPageable(0, 3, ArtifactApiUtils.getSortFieldMapping("component"), "ASC");
+    List<RemediationListingResponse> response =
+        remediationTrackerService
+            .listRemediations(builderFactory.getContext().getAccountId(),
+                builderFactory.getContext().getOrgIdentifier(), builderFactory.getContext().getProjectIdentifier(),
+                new RemediationListingRequestBody()
+                    .cveFilter(new RemediationListingRequestBodyCveFilter().cve("CVE-").operator(NameOperator.CONTAINS))
+                    .componentNameFilter(new RemediationListingRequestBodyComponentNameFilter()
+                                             .componentName("remediation2")
+                                             .operator(NameOperator.EQUALS)),
+                pageable)
+            .getContent();
+    assertThat(response).isNotNull();
+    assertThat(response).hasSize(1);
+    assertThat(response.get(0).getComponent()).isEqualTo("remediation2");
+  }
+
+  @Test
+  @Owner(developers = VARSHA_LALWANI)
+  @Category(UnitTests.class)
+  public void testListRemediationsWithOneFilter() {
+    createRemediations();
+
+    Pageable pageable = PageResponseUtils.getPageable(0, 3, ArtifactApiUtils.getSortFieldMapping("component"), "ASC");
+    List<RemediationListingResponse> response =
+        remediationTrackerService
+            .listRemediations(builderFactory.getContext().getAccountId(),
+                builderFactory.getContext().getOrgIdentifier(), builderFactory.getContext().getProjectIdentifier(),
+                new RemediationListingRequestBody().cveFilter(
+                    new RemediationListingRequestBodyCveFilter().cve("CVE-").operator(NameOperator.CONTAINS)),
+                pageable)
+            .getContent();
+
+    assertThat(response).isNotNull();
+    assertThat(response).hasSize(2);
+    assertThat(response.get(0).getComponent()).isEqualTo("remediation2");
+    assertThat(response.get(1).getComponent()).isEqualTo("remediation3");
+  }
+
+  private void createRemediations() {
+    // This creates three different remediation trackers, two completed, one on-going. one completed and one on-going
+    // are with CVE.
     RemediationTrackerCreateRequestBody remediationTrackerCreateRequestBody =
         builderFactory.getRemediationTrackerCreateRequestBody();
     String remediationTrackerId = remediationTrackerService.createRemediationTracker(
@@ -423,7 +501,6 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
             .type(VulnerabilityInfoType.CVE)
             .cve("CVE-2021-44228")
             .component("log4j")
-            .version("1.2.3")
             .severity(io.harness.ssca.entities.remediation_tracker.VulnerabilitySeverity.HIGH)
             .build();
     remediationTrackerEntity.setVulnerabilityInfo(cveVulnerability);
@@ -443,61 +520,5 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
     remediationTrackerEntity.setVulnerabilityInfo(cveVulnerability);
     remediationTrackerEntity.getVulnerabilityInfo().setComponent("remediation3");
     repository.save(remediationTrackerEntity);
-
-    Pageable pageable = PageResponseUtils.getPageable(0, 3, ArtifactApiUtils.getSortFieldMapping("component"), "ASC");
-    List<RemediationListingResponse> response =
-        remediationTrackerService
-            .listRemediations(builderFactory.getContext().getAccountId(),
-                builderFactory.getContext().getOrgIdentifier(), builderFactory.getContext().getProjectIdentifier(),
-                new RemediationListingRequestBody(), pageable)
-            .getContent();
-
-    assertThat(response).isNotNull();
-    assertThat(response.size()).isEqualTo(3);
-    assertThat(response.get(0).getStatus()).isEqualTo(RemediationStatus.COMPLETED);
-    assertThat(response.get(0).getComponent()).isEqualTo("remediation1");
-    assertThat(response.get(0).getRemediationCondition().getOperator())
-        .isEqualTo(RemediationCondition.OperatorEnum.ALL);
-    assertThat(response.get(0).getScheduleStatus()).isEqualTo("On time");
-    assertThat(response.get(0).getCve()).isNull();
-    assertThat(response.get(0).getVersion()).isEqualTo("1.0.17-1.0.18");
-    assertThat(response.get(0).getSeverity()).isEqualTo(VulnerabilitySeverity.HIGH);
-    assertThat(response.get(0).getContact().getName()).isEqualTo("test");
-    assertThat(response.get(0).getContact().getEmail()).isEqualTo("test@gmail.com");
-    assertThat(response.get(0).getDeploymentsCount().getPatchedProdCount()).isEqualTo(1);
-    assertThat(response.get(0).getDeploymentsCount().getPatchedNonProdCount()).isZero();
-    assertThat(response.get(0).getDeploymentsCount().getPendingProdCount()).isEqualTo(1);
-    assertThat(response.get(0).getDeploymentsCount().getPendingNonProdCount()).isZero();
-
-    assertThat(response.get(1).getCve()).isNotNull();
-    assertThat(response.get(1).getCve()).isEqualTo("CVE-2021-44228");
-
-    response =
-        remediationTrackerService
-            .listRemediations(builderFactory.getContext().getAccountId(),
-                builderFactory.getContext().getOrgIdentifier(), builderFactory.getContext().getProjectIdentifier(),
-                new RemediationListingRequestBody().cveFilter(
-                    new RemediationListingRequestBodyCveFilter().cve("CVE-").operator(NameOperator.CONTAINS)),
-                pageable)
-            .getContent();
-    assertThat(response).isNotNull();
-    assertThat(response.size()).isEqualTo(2);
-    assertThat(response.get(0).getComponent()).isEqualTo("remediation2");
-    assertThat(response.get(1).getComponent()).isEqualTo("remediation3");
-
-    response =
-        remediationTrackerService
-            .listRemediations(builderFactory.getContext().getAccountId(),
-                builderFactory.getContext().getOrgIdentifier(), builderFactory.getContext().getProjectIdentifier(),
-                new RemediationListingRequestBody()
-                    .cveFilter(new RemediationListingRequestBodyCveFilter().cve("CVE-").operator(NameOperator.CONTAINS))
-                    .componentNameFilter(new RemediationListingRequestBodyComponentNameFilter()
-                                             .componentName("remediation2")
-                                             .operator(NameOperator.EQUALS)),
-                pageable)
-            .getContent();
-    assertThat(response).isNotNull();
-    assertThat(response.size()).isEqualTo(1);
-    assertThat(response.get(0).getComponent()).isEqualTo("remediation2");
   }
 }
