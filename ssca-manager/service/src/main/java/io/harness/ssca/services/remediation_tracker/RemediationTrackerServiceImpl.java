@@ -15,11 +15,10 @@ import io.harness.persistence.UserProvider;
 import io.harness.repositories.remediation_tracker.RemediationTrackerRepository;
 import io.harness.spec.server.ssca.v1.model.ComponentFilter;
 import io.harness.spec.server.ssca.v1.model.ExcludeArtifactRequestBody;
+import io.harness.spec.server.ssca.v1.model.NameOperator;
 import io.harness.spec.server.ssca.v1.model.Operator;
 import io.harness.spec.server.ssca.v1.model.RemediationCount;
 import io.harness.spec.server.ssca.v1.model.RemediationListingRequestBody;
-import io.harness.spec.server.ssca.v1.model.RemediationListingRequestBodyComponentNameFilter;
-import io.harness.spec.server.ssca.v1.model.RemediationListingRequestBodyCveFilter;
 import io.harness.spec.server.ssca.v1.model.RemediationListingResponse;
 import io.harness.spec.server.ssca.v1.model.RemediationTrackerCreateRequestBody;
 import io.harness.spec.server.ssca.v1.model.RemediationTrackersOverallSummaryResponseBody;
@@ -236,14 +235,15 @@ public class RemediationTrackerServiceImpl implements RemediationTrackerService 
 
     List<Criteria> filterCriteria = new ArrayList<>();
     if (body.getCveFilter() != null) {
-      filterCriteria.add(getCveFilterCriteria(
-          RemediationTrackerEntityKeys.vulnerabilityInfo + "." + CVEVulnerabilityInfoKeys.cve, body.getCveFilter()));
+      filterCriteria.add(
+          getFilterCriteria(RemediationTrackerEntityKeys.vulnerabilityInfo + "." + CVEVulnerabilityInfoKeys.cve,
+              body.getCveFilter().getCve(), body.getCveFilter().getOperator()));
     }
 
     if (body.getComponentNameFilter() != null) {
-      filterCriteria.add(getComponentNameFilterCriteria(
-          RemediationTrackerEntityKeys.vulnerabilityInfo + "." + VulnerabilityInfoKeys.component,
-          body.getComponentNameFilter()));
+      filterCriteria.add(
+          getFilterCriteria(RemediationTrackerEntityKeys.vulnerabilityInfo + "." + VulnerabilityInfoKeys.component,
+              body.getComponentNameFilter().getComponentName(), body.getComponentNameFilter().getOperator()));
     }
     if (!filterCriteria.isEmpty()) {
       criteria = criteria.andOperator(filterCriteria.toArray(Criteria[] ::new));
@@ -356,33 +356,18 @@ public class RemediationTrackerServiceImpl implements RemediationTrackerService 
         .collect(Collectors.toList());
   }
 
-  private Criteria getComponentNameFilterCriteria(
-      String fieldName, RemediationListingRequestBodyComponentNameFilter filter) {
-    switch (filter.getOperator()) {
+  private Criteria getFilterCriteria(String fieldName, String value, NameOperator operator) {
+    switch (operator) {
       case EQUALS:
-        return Criteria.where(fieldName).is(filter.getComponentName());
+        return Criteria.where(fieldName).is(value);
       case CONTAINS:
-        return Criteria.where(fieldName).regex(filter.getComponentName());
+        return Criteria.where(fieldName).regex(value);
       case STARTSWITH:
-        return Criteria.where(fieldName).regex(Pattern.compile("^".concat(filter.getComponentName())));
+        return Criteria.where(fieldName).regex(Pattern.compile("^".concat(value)));
       default:
-        throw new InvalidRequestException(
-            String.format("Component name filter does not support %s operator", filter.getOperator()));
+        throw new InvalidRequestException(String.format("Filter does not support %s operator", operator));
     }
   }
-
-  private Criteria getCveFilterCriteria(String fieldName, RemediationListingRequestBodyCveFilter filter) {
-    switch (filter.getOperator()) {
-      case EQUALS:
-        return Criteria.where(fieldName).is(filter.getCve());
-      case CONTAINS:
-        return Criteria.where(fieldName).regex(filter.getCve());
-      default:
-        throw new InvalidRequestException(
-            String.format("CVE filter does not support %s operator", filter.getOperator()));
-    }
-  }
-
   private List<ComponentFilter> getComponentFilters(RemediationTrackerEntity entity) {
     List<ComponentFilter> componentFilter = new ArrayList<>();
     componentFilter.add(new ComponentFilter()

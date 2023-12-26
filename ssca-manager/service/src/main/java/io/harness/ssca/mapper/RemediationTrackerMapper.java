@@ -139,8 +139,8 @@ public class RemediationTrackerMapper {
   private io.harness.spec.server.ssca.v1.model.VulnerabilitySeverity mapSeverityToVulnerabilitySeverity(
       VulnerabilitySeverity severity) {
     switch (severity) {
-      case NONE:
-        return io.harness.spec.server.ssca.v1.model.VulnerabilitySeverity.NONE;
+      case INFO:
+        return io.harness.spec.server.ssca.v1.model.VulnerabilitySeverity.INFO;
       case LOW:
         return io.harness.spec.server.ssca.v1.model.VulnerabilitySeverity.LOW;
       case MEDIUM:
@@ -177,7 +177,6 @@ public class RemediationTrackerMapper {
     return new RemediationListingResponse()
         .id(remediationTrackerEntity.getUuid())
         .component(remediationTrackerEntity.getVulnerabilityInfo().getComponent())
-        .version(remediationTrackerEntity.getVulnerabilityInfo().getVersion())
         .cve(getCveFromVulnerabilityInfo(remediationTrackerEntity.getVulnerabilityInfo()))
         .remediationCondition(mapRemediationCondition(remediationTrackerEntity.getCondition()))
         .severity(mapSeverityToVulnerabilitySeverity(remediationTrackerEntity.getVulnerabilityInfo().getSeverity()))
