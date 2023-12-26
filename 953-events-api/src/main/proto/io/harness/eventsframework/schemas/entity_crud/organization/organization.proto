@@ -4,13 +4,15 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt.
 
 syntax = "proto3";
+import "970-ng-commons/src/main/proto/io/harness/eventsframework/schemas/entity/scope_info.proto";
 
 package io.harness.eventsframework.entity_crud.organization;
-
 option java_multiple_files = true;
 option go_package = "953_events_api";
 
 message OrganizationEntityChangeDTO {
   string accountIdentifier = 1;
   string identifier = 2;
+  string uniqueId = 3;
+  io.harness.eventsframework.schemas.entity.ScopeInfo scopeinfp = 4;
 }
