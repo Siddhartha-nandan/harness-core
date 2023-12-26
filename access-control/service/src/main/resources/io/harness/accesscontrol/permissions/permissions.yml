@@ -1,6 +1,6 @@
 # Any edit in this file should accompany an increment in version.
 name: permissionsConfiguration
-version: 69
+version: 70
 permissions:
   - identifier: core_project_delete
     name: Delete Project
@@ -1426,7 +1426,7 @@ permissions:
       - account
   - identifier: idp_plugin_view
     name: View IDP custom plugins
-    status: EXPERIMENTAL
+    status: ACTIVE
     includedInAllRoles: false
     allowedScopeLevels:
       - account

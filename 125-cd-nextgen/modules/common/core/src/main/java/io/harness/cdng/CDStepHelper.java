@@ -7,7 +7,6 @@
 
 package io.harness.cdng;
 
-import static io.harness.beans.FeatureName.CDS_GITHUB_APP_AUTHENTICATION;
 import static io.harness.beans.FeatureName.CDS_NG_K8S_PASS_RELEASE_METADATA;
 import static io.harness.beans.FeatureName.OPTIMIZED_GIT_FETCH_FILES;
 import static io.harness.cdng.ReleaseNameAutoCorrector.isDnsCompliant;
@@ -510,8 +509,7 @@ public class CDStepHelper {
         (ScmConnector) connectorDTO.getConnectorConfig(), sshKeySpecDTO, basicNGAccessObject);
 
     boolean githubAppAuthentication =
-        GitAuthenticationDecryptionHelper.isGitHubAppAuthentication((ScmConnector) connectorDTO.getConnectorConfig())
-        && cdFeatureFlagHelper.isEnabled(basicNGAccessObject.getAccountIdentifier(), CDS_GITHUB_APP_AUTHENTICATION);
+        GitAuthenticationDecryptionHelper.isGitHubAppAuthentication((ScmConnector) connectorDTO.getConnectorConfig());
 
     scmConnector = (ScmConnector) connectorDTO.getConnectorConfig();
     addApiAuthIfRequired(scmConnector);
@@ -559,8 +557,7 @@ public class CDStepHelper {
 
     scmConnector = gitConfigDTO;
     boolean githubAppAuthentication =
-        GitAuthenticationDecryptionHelper.isGitHubAppAuthentication((ScmConnector) connectorDTO.getConnectorConfig())
-        && cdFeatureFlagHelper.isEnabled(basicNGAccessObject.getAccountIdentifier(), CDS_GITHUB_APP_AUTHENTICATION);
+        GitAuthenticationDecryptionHelper.isGitHubAppAuthentication((ScmConnector) connectorDTO.getConnectorConfig());
 
     if (optimizedFilesFetch) {
       scmConnector = (ScmConnector) connectorDTO.getConnectorConfig();
@@ -604,16 +601,17 @@ public class CDStepHelper {
     GitStoreDelegateConfig gitStoreDelegateConfig = getGitStoreDelegateConfig(
         gitStoreConfig, connectorDTO, paths, ambiance, manifestType, manifestIdentifier, useOptimizedFilesFetch);
 
-    return getGitFetchFilesConfigFromBuilder(manifestIdentifier, manifestType, false, gitStoreDelegateConfig);
+    return getGitFetchFilesConfigFromBuilder(manifestIdentifier, manifestType, false, gitStoreDelegateConfig, false);
   }
 
   public GitFetchFilesConfig getGitFetchFilesConfigFromBuilder(String identifier, String manifestType,
-      boolean succeedIfFileNotFound, GitStoreDelegateConfig gitStoreDelegateConfig) {
+      boolean succeedIfFileNotFound, GitStoreDelegateConfig gitStoreDelegateConfig, boolean supportFolders) {
     return GitFetchFilesConfig.builder()
         .identifier(identifier)
         .manifestType(manifestType)
         .succeedIfFileNotFound(succeedIfFileNotFound)
         .gitStoreDelegateConfig(gitStoreDelegateConfig)
+        .supportFolders(supportFolders)
         .build();
   }
 
@@ -942,7 +940,7 @@ public class CDStepHelper {
 
   public UnitProgressData completeUnitProgressData(
       UnitProgressData currentProgressData, Ambiance ambiance, String exceptionMessage) {
-    if (currentProgressData == null) {
+    if (currentProgressData == null || isEmpty(currentProgressData.getUnitProgresses())) {
       return UnitProgressData.builder().unitProgresses(new ArrayList<>()).build();
     }
 
@@ -1276,8 +1274,7 @@ public class CDStepHelper {
 
   public ScmConnector getScmConnector(
       ScmConnector scmConnector, String accountIdentifier, GitConfigDTO gitConfigDTO, String repoName) {
-    if (scmConnector instanceof GithubConnectorDTO && isGithubAppAuth((GithubConnectorDTO) scmConnector)
-        && cdFeatureFlagHelper.isEnabled(accountIdentifier, CDS_GITHUB_APP_AUTHENTICATION)) {
+    if (scmConnector instanceof GithubConnectorDTO && isGithubAppAuth((GithubConnectorDTO) scmConnector)) {
       convertToRepoGitConfig(null, scmConnector, repoName);
       return scmConnector;
     } else {

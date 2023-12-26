@@ -11,6 +11,4 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class ProvisionConstants {
   public static final String PROVISION_MODULE_CONFIG = "provisionModuleConfig";
-  public static final String ACCOUNT_ID = "account_id";
-  public static final String NAMESPACE = "namespace";
 }
