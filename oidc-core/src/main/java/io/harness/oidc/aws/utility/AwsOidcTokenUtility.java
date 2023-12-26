@@ -7,13 +7,13 @@
 
 package io.harness.oidc.aws.utility;
 
+import static io.harness.oidc.aws.constants.AwsOidcConstants.CONVERSION_FACTOR_FOR_MS;
 import static io.harness.oidc.idtoken.OidcIdTokenConstants.ACCOUNT_ID;
 import static io.harness.oidc.idtoken.OidcIdTokenUtility.capturePlaceholderContents;
 import static io.harness.oidc.idtoken.OidcIdTokenUtility.generateOidcIdToken;
 
 import static java.lang.System.currentTimeMillis;
 
-import io.harness.oidc.aws.credential.AwsOidcCredentialUtility;
 import io.harness.oidc.aws.dto.AwsOidcTokenRequestDto;
 import io.harness.oidc.config.OidcConfigurationUtility;
 import io.harness.oidc.entities.OidcJwks;
@@ -32,8 +32,6 @@ public class AwsOidcTokenUtility {
   @Inject private OidcConfigurationUtility oidcConfigurationUtility;
   @Inject private OidcJwksUtility oidcJwksUtility;
   @Inject private OidcRsaKeyService oidcRsaKeyService;
-  AwsOidcCredentialUtility awsOidcCredentialUtility;
-
   /**
    * Utility function to generate the OIDC ID Token for AWS.
    *
@@ -81,44 +79,31 @@ public class AwsOidcTokenUtility {
    */
   private OidcIdTokenPayloadStructure parseOidcIdTokenPayload(
       OidcIdTokenPayloadStructure baseOidcIdTokenPayloadStructure, AwsOidcTokenRequestDto awsOidcTokenRequestDto) {
-    // First parse all the mandatory claims.
-    String baseSub = baseOidcIdTokenPayloadStructure.getSub();
-    String finalSub = updateBaseClaims(baseSub, awsOidcTokenRequestDto);
+    String sub = updateBaseClaims(baseOidcIdTokenPayloadStructure.getSub(), awsOidcTokenRequestDto);
 
-    String baseAud = baseOidcIdTokenPayloadStructure.getAud();
-    String finalAud = updateBaseClaims(baseAud, awsOidcTokenRequestDto);
+    String aud = updateBaseClaims(baseOidcIdTokenPayloadStructure.getAud(), awsOidcTokenRequestDto);
 
-    String baseIss = baseOidcIdTokenPayloadStructure.getIss();
-    String finalIss = updateBaseClaims(baseIss, awsOidcTokenRequestDto);
+    String iss = updateBaseClaims(baseOidcIdTokenPayloadStructure.getIss(), awsOidcTokenRequestDto);
 
-    Long iat = currentTimeMillis() / 1000;
-    Long exp = baseOidcIdTokenPayloadStructure.getExp();
-    exp = iat + exp;
+    Long iat = currentTimeMillis() / CONVERSION_FACTOR_FOR_MS;
+    Long expiryDurattion = baseOidcIdTokenPayloadStructure.getExp();
+    Long exp = iat + expiryDurattion;
 
-    // Now parse the optional claims.
     String accountId = null;
     if (!StringUtils.isEmpty(baseOidcIdTokenPayloadStructure.getAccountId())) {
       accountId = updateBaseClaims(baseOidcIdTokenPayloadStructure.getAccountId(), awsOidcTokenRequestDto);
     }
 
     return OidcIdTokenPayloadStructure.builder()
-        .sub(finalSub)
-        .aud(finalAud)
-        .iss(finalIss)
+        .sub(sub)
+        .aud(aud)
+        .iss(iss)
         .iat(iat)
         .exp(exp)
         .accountId(accountId)
         .build();
   }
 
-  /**
-   * Utility function to update the given base claim
-   * by replacing the placeholders with the given values.
-   *
-   * @param claim base claim to be updated
-   * @param awsOidcTokenRequestDto provides values for updating the base claims
-   * @return fully resolved final claim
-   */
   private String updateBaseClaims(String claim, AwsOidcTokenRequestDto awsOidcTokenRequestDto) {
     List<String> placeHolders = capturePlaceholderContents(claim);
     for (String placeholder : placeHolders) {

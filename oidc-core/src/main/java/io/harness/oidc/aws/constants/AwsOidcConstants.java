@@ -18,4 +18,5 @@ public class AwsOidcConstants {
   public static final int BASE_DELAY_IN_MS = 100;
   public static final int THROTTLED_BASE_DELAY_IN_MS = 500;
   public static final int MAX_BACKOFF_IN_MS = 20000;
+  public static final int CONVERSION_FACTOR_FOR_MS = 1000;
 }

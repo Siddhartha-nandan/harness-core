@@ -59,13 +59,6 @@ public class AwsOidcCredentialUtility {
         oidcToken, null, requestDto.getIamRoleArn(), clientConfiguration);
   }
 
-  /**
-   * Utility function to exchange for the OIDC AWS IAM Role Credential.
-   *
-   * @param oidcToken The OIDC Token for aws connector.
-   * @param requestDto The Token exchange request body.
-   * @return AWS IAM Role Credential Provider
-   */
   private RetryPolicy getRetryPolicy(AwsSdkCallRetryPolicy retryPolicy) {
     if (retryPolicy == null) {
       return getDefaultRetryPolicy();
