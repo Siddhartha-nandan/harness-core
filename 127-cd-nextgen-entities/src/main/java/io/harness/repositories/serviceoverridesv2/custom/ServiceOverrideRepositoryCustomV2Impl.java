@@ -10,6 +10,10 @@ package io.harness.repositories.serviceoverridesv2.custom;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.Scope;
+import io.harness.gitaware.helper.GitAwareContextHelper;
+import io.harness.gitaware.helper.GitAwareEntityHelper;
+import io.harness.gitsync.interceptor.GitEntityInfo;
 import io.harness.ng.core.serviceoverride.beans.NGServiceOverridesEntity;
 import io.harness.springdata.PersistenceUtils;
 
@@ -35,6 +39,7 @@ import org.springframework.data.repository.support.PageableExecutionUtils;
 @Slf4j
 public class ServiceOverrideRepositoryCustomV2Impl implements ServiceOverrideRepositoryCustomV2 {
   private final MongoTemplate mongoTemplate;
+  private final GitAwareEntityHelper gitAwareEntityHelper;
 
   @Override
   public NGServiceOverridesEntity update(Criteria criteria, NGServiceOverridesEntity serviceOverridesEntity) {
@@ -69,6 +74,25 @@ public class ServiceOverrideRepositoryCustomV2Impl implements ServiceOverrideRep
   public List<NGServiceOverridesEntity> findAll(Criteria criteria) {
     Query query = new Query(criteria);
     return mongoTemplate.find(query, NGServiceOverridesEntity.class);
+  }
+
+  @Override
+  public NGServiceOverridesEntity saveGitAware(NGServiceOverridesEntity overrideToSave) {
+    GitEntityInfo gitEntityInfo = GitAwareContextHelper.getGitRequestParamsInfo();
+
+    if (GitAwareContextHelper.isRemoteEntity(gitEntityInfo)) {
+      createOverridesOnGit(overrideToSave);
+    }
+
+    // save in db
+    return mongoTemplate.save(overrideToSave);
+  }
+
+  private void createOverridesOnGit(NGServiceOverridesEntity overrideToSave) {
+    Scope scope = Scope.of(
+        overrideToSave.getAccountId(), overrideToSave.getOrgIdentifier(), overrideToSave.getProjectIdentifier());
+    String yamlToPush = overrideToSave.getYamlV2();
+    gitAwareEntityHelper.createEntityOnGit(overrideToSave, yamlToPush, scope);
   }
 
   private RetryPolicy<Object> getRetryPolicy(String failedAttemptMessage, String failureMessage) {
