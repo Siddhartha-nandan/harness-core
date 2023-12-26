@@ -12,6 +12,7 @@ import static io.harness.remote.client.NGRestUtils.getResponse;
 import io.harness.cdstage.remote.CDNGStageSummaryResourceClient;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.ng.core.cdstage.CDStageSummaryResponseDTO;
+import io.harness.notification.PipelineEventType;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.steps.StepCategory;
@@ -34,13 +35,14 @@ public class WebhookNotificationServiceImpl implements WebhookNotificationServic
     this.cdngStageSummaryResourceClient = cdngStageSummaryResourceClient;
   }
   @Override
-  public ModuleInfo getModuleInfo(Ambiance ambiance, PipelineExecutionSummaryEntity executionSummaryEntity) {
+  public ModuleInfo getModuleInfo(
+      Ambiance ambiance, PipelineExecutionSummaryEntity executionSummaryEntity, PipelineEventType eventType) {
     Level currentLevel = AmbianceUtils.obtainCurrentLevel(ambiance);
     if (currentLevel == null || currentLevel.getStepType().getStepCategory() == StepCategory.PIPELINE) {
       return getModuleInfoForPipelineLevel(executionSummaryEntity);
     }
     if (currentLevel.getStepType().getStepCategory() == StepCategory.STAGE) {
-      return getModuleInfoForStage(executionSummaryEntity, currentLevel);
+      return getModuleInfoForStage(executionSummaryEntity, currentLevel, eventType);
     }
     return null;
   }
@@ -67,10 +69,11 @@ public class WebhookNotificationServiceImpl implements WebhookNotificationServic
   }
 
   // TODO: Make this generic
-  private ModuleInfo getModuleInfoForStage(PipelineExecutionSummaryEntity executionSummaryEntity, Level currentLevel) {
+  private ModuleInfo getModuleInfoForStage(
+      PipelineExecutionSummaryEntity executionSummaryEntity, Level currentLevel, PipelineEventType pipelineEventType) {
     Map<String, CDStageSummaryResponseDTO> stageSummaryResponseDTOMap = null;
     try {
-      if (StatusUtils.isFinalStatus(executionSummaryEntity.getInternalStatus())) {
+      if (pipelineEventType != PipelineEventType.STAGE_START) {
         stageSummaryResponseDTOMap = getResponse(cdngStageSummaryResourceClient.listStageExecutionFormattedSummary(
             executionSummaryEntity.getAccountId(), executionSummaryEntity.getOrgIdentifier(),
             executionSummaryEntity.getProjectIdentifier(), Lists.newArrayList(currentLevel.getRuntimeId())));

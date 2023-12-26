@@ -284,7 +284,8 @@ public class NotificationHelper {
     WebhookNotificationEventBuilder webhookNotificationEvent =
         WebhookNotificationEvent.builder()
             .triggeredBy(getTriggerExecutionInfo(pipelineExecutionSummaryEntity))
-            .moduleInfo(webhookNotificationService.getModuleInfo(ambiance, pipelineExecutionSummaryEntity))
+            .moduleInfo(
+                webhookNotificationService.getModuleInfo(ambiance, pipelineExecutionSummaryEntity, pipelineEventType))
             .accountIdentifier(AmbianceUtils.getAccountId(ambiance))
             .orgIdentifier(orgIdentifier)
             .projectIdentifier(projectIdentifier)

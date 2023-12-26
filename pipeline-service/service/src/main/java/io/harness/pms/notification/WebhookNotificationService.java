@@ -7,9 +7,11 @@
 
 package io.harness.pms.notification;
 
+import io.harness.notification.PipelineEventType;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity;
 
 public interface WebhookNotificationService {
-  ModuleInfo getModuleInfo(Ambiance ambiance, PipelineExecutionSummaryEntity executionSummaryEntity);
+  ModuleInfo getModuleInfo(
+      Ambiance ambiance, PipelineExecutionSummaryEntity executionSummaryEntity, PipelineEventType eventType);
 }
