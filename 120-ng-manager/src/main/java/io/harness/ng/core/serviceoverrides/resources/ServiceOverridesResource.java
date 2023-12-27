@@ -63,6 +63,7 @@ import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesSpec;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesType;
 import io.harness.ng.core.serviceoverridev2.mappers.ServiceOverridesMapperV2;
 import io.harness.ng.core.serviceoverridev2.service.ServiceOverridesServiceV2;
+import io.harness.ng.core.utils.GitXUtils;
 import io.harness.ng.core.utils.OrgAndProjectValidationHelper;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.remote.client.CGRestUtils;
@@ -188,7 +189,8 @@ public class ServiceOverridesResource {
       @Parameter(description = "Specifies whether to load the entity from fallback branch", hidden = true) @QueryParam(
           "loadFromFallbackBranch") @DefaultValue("false") boolean loadFromFallbackBranch) {
     Optional<NGServiceOverridesEntity> serviceOverridesEntityOptional =
-        serviceOverridesServiceV2.get(accountId, orgIdentifier, projectIdentifier, identifier);
+        serviceOverridesServiceV2.get(accountId, orgIdentifier, projectIdentifier, identifier,
+            GitXUtils.parseLoadFromCacheHeaderParam(loadFromCache), loadFromFallbackBranch, false);
     if (serviceOverridesEntityOptional.isEmpty()) {
       throw new NotFoundException(
           format("ServiceOverride entity with identifier [%s] in project [%s], org [%s] not found", identifier,
@@ -334,7 +336,7 @@ public class ServiceOverridesResource {
           NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier) {
     orgAndProjectValidationHelper.checkThatTheOrganizationAndProjectExists(orgIdentifier, projectIdentifier, accountId);
     Optional<NGServiceOverridesEntity> ngServiceOverridesEntityOptional =
-        serviceOverridesServiceV2.get(accountId, orgIdentifier, projectIdentifier, identifier);
+        serviceOverridesServiceV2.getMetadata(accountId, orgIdentifier, projectIdentifier, identifier);
     if (ngServiceOverridesEntityOptional.isEmpty()) {
       throw new InvalidRequestException(format("Service Override [%s], Project[%s], Organization [%s] does not exist",
           identifier, projectIdentifier, orgIdentifier));
@@ -638,8 +640,9 @@ public class ServiceOverridesResource {
           NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
       @Parameter(description = NGCommonEntityConstants.PROJECT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PROJECT_KEY) @ResourceIdentifier String projectIdentifier) {
+    // todo(@hinger): support git params here
     Optional<NGServiceOverridesEntity> serviceOverridesEntityOptional =
-        serviceOverridesServiceV2.get(accountId, orgIdentifier, projectIdentifier, identifier);
+        serviceOverridesServiceV2.getMetadata(accountId, orgIdentifier, projectIdentifier, identifier);
     if (serviceOverridesEntityOptional.isEmpty()) {
       throw new NotFoundException(
           format("ServiceOverrides entity with identifier [%s] in project [%s], org [%s] not found", identifier,

@@ -128,10 +128,29 @@ public class ServiceOverridesServiceV2Impl implements ServiceOverridesServiceV2 
 
   @Override
   public Optional<NGServiceOverridesEntity> get(@NonNull String accountId, String orgIdentifier,
+      String projectIdentifier, @NonNull String serviceOverridesIdentifier, boolean loadFromCache,
+      boolean loadFromFallbackBranch, boolean getMetadataOnly) {
+    // fetch entity from db
+    Optional<NGServiceOverridesEntity> optionalOverrides =
+        serviceOverrideRepositoryV2
+            .getNGServiceOverridesEntityByAccountIdAndOrgIdentifierAndProjectIdentifierAndIdentifierAndSpecExistsAndSpecNotNull(
+                accountId, orgIdentifier, projectIdentifier, serviceOverridesIdentifier);
+
+    // return if only metadata is needed
+    if (optionalOverrides.isEmpty() || getMetadataOnly
+        || !StoreType.REMOTE.equals(optionalOverrides.get().getStoreType())) {
+      return optionalOverrides;
+    }
+
+    // populate YAML from remote
+    return Optional.of(serviceOverrideRepositoryV2.getRemoteOverridesWithYaml(
+        optionalOverrides.get(), loadFromCache, loadFromFallbackBranch));
+  }
+
+  @Override
+  public Optional<NGServiceOverridesEntity> getMetadata(@NonNull String accountId, String orgIdentifier,
       String projectIdentifier, @NonNull String serviceOverridesIdentifier) {
-    return serviceOverrideRepositoryV2
-        .getNGServiceOverridesEntityByAccountIdAndOrgIdentifierAndProjectIdentifierAndIdentifierAndSpecExistsAndSpecNotNull(
-            accountId, orgIdentifier, projectIdentifier, serviceOverridesIdentifier);
+    return get(accountId, orgIdentifier, projectIdentifier, serviceOverridesIdentifier, false, false, true);
   }
 
   @Override
@@ -153,7 +172,7 @@ public class ServiceOverridesServiceV2Impl implements ServiceOverridesServiceV2 
     }
     modifyRequestedServiceOverride(requestedEntity);
 
-    Optional<NGServiceOverridesEntity> existingEntity = get(requestedEntity.getAccountId(),
+    Optional<NGServiceOverridesEntity> existingEntity = getMetadata(requestedEntity.getAccountId(),
         requestedEntity.getOrgIdentifier(), requestedEntity.getProjectIdentifier(), requestedEntity.getIdentifier());
 
     if (existingEntity.isEmpty() && ServiceOverridesType.ENV_SERVICE_OVERRIDE == requestedEntity.getType()) {
@@ -196,7 +215,7 @@ public class ServiceOverridesServiceV2Impl implements ServiceOverridesServiceV2 
     Criteria equalityCriteria = ServiceOverrideRepositoryHelper.getEqualityCriteriaForServiceOverride(
         requestedEntity.getAccountId(), requestedEntity.getOrgIdentifier(), requestedEntity.getProjectIdentifier(),
         requestedEntity.getIdentifier());
-    Optional<NGServiceOverridesEntity> existingEntity = get(requestedEntity.getAccountId(),
+    Optional<NGServiceOverridesEntity> existingEntity = getMetadata(requestedEntity.getAccountId(),
         requestedEntity.getOrgIdentifier(), requestedEntity.getProjectIdentifier(), requestedEntity.getIdentifier());
 
     if (existingEntity.isEmpty() && ServiceOverridesType.ENV_SERVICE_OVERRIDE == requestedEntity.getType()) {
@@ -274,7 +293,7 @@ public class ServiceOverridesServiceV2Impl implements ServiceOverridesServiceV2 
     Criteria equalityCriteria = ServiceOverrideRepositoryHelper.getEqualityCriteriaForServiceOverride(
         requestedEntity.getAccountId(), requestedEntity.getOrgIdentifier(), requestedEntity.getProjectIdentifier(),
         requestedEntity.getIdentifier());
-    Optional<NGServiceOverridesEntity> existingEntityInDb = get(requestedEntity.getAccountId(),
+    Optional<NGServiceOverridesEntity> existingEntityInDb = getMetadata(requestedEntity.getAccountId(),
         requestedEntity.getOrgIdentifier(), requestedEntity.getProjectIdentifier(), requestedEntity.getIdentifier());
 
     if (existingEntityInDb.isEmpty() && ServiceOverridesType.ENV_SERVICE_OVERRIDE == requestedEntity.getType()) {
