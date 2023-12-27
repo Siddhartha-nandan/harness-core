@@ -29,6 +29,7 @@ import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.sdk.core.plan.creation.creators.PlanCreatorService;
 import io.harness.pms.yaml.YamlField;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
@@ -88,10 +89,10 @@ public class CreatePartialPlanEventHandler
   }
 
   @Override
-  public Dependencies handleDependencies(
-      PlanCreationContext ctx, AsyncCreatorResponse finalUncastedResponse, Dependencies dependencies) {
+  public Dependencies handleDependencies(PlanCreationContext ctx, AsyncCreatorResponse finalUncastedResponse,
+      Dependencies dependencies, YamlField fullField, Map<String, JsonNode> fqnToJsonMap) {
     return planCreatorService.createPlanForDependencies(
-        ctx, (MergePlanCreationResponse) finalUncastedResponse, dependencies, new HashMap<>());
+        ctx, (MergePlanCreationResponse) finalUncastedResponse, dependencies, new HashMap<>(), fullField, fqnToJsonMap);
   }
 
   @Override

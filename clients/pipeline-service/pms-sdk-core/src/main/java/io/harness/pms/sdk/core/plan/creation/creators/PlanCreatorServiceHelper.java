@@ -32,6 +32,7 @@ import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlUtils;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -108,6 +109,55 @@ public class PlanCreatorServiceHelper {
     }
     return dependencies.toBuilder()
         .setYaml(updatedYaml)
+        .clearDependencies()
+        .putAllDependencies(newDependencies)
+        .putAllDependencyMetadata(newMetadataDependency)
+        .build();
+  }
+
+  public Dependencies handlePlanCreationResponses(List<PlanCreationResponse> planCreationResponses,
+      MergePlanCreationResponse finalResponse, String currentYaml, Dependencies dependencies,
+      List<Map.Entry<String, String>> dependenciesList, YamlField fullYaml, Map<String, JsonNode> fqnToJsonMap) {
+    List<String> errorMessages = planCreationResponses.stream()
+                                     .filter(resp -> resp != null && EmptyPredicate.isNotEmpty(resp.getErrorMessages()))
+                                     .flatMap(resp -> resp.getErrorMessages().stream())
+                                     .collect(Collectors.toList());
+    if (EmptyPredicate.isNotEmpty(errorMessages)) {
+      finalResponse.setErrorMessages(errorMessages);
+      return dependencies.toBuilder().clearDependencies().build();
+    }
+
+    Map<String, String> newDependencies = new HashMap<>();
+    Map<String, Dependency> newMetadataDependency = new HashMap<>();
+    for (int i = 0; i < dependenciesList.size(); i++) {
+      Map.Entry<String, String> entry = dependenciesList.get(i);
+      String fieldYamlPath = entry.getValue();
+      PlanCreationResponse response = planCreationResponses.get(i);
+      if (response == null) {
+        finalResponse.addDependency(currentYaml, entry.getKey(), fieldYamlPath);
+        finalResponse.addDependencyMetadata(
+            currentYaml, entry.getKey(), dependencies.getDependencyMetadataMap().get(entry.getKey()));
+        continue;
+      }
+
+      finalResponse.mergeWithoutDependencies(response);
+
+      if (response.getDependencies() != null
+          && EmptyPredicate.isNotEmpty(response.getDependencies().getDependenciesMap())) {
+        newDependencies.putAll(response.getDependencies().getDependenciesMap());
+
+        if (EmptyPredicate.isNotEmpty(response.getDependencies().getDependencyMetadataMap())) {
+          newMetadataDependency.putAll(response.getDependencies().getDependencyMetadataMap());
+        }
+      }
+      if (response.getYamlUpdates() != null && EmptyPredicate.isNotEmpty(response.getYamlUpdates().getFqnToYamlMap())) {
+        PlanCreationBlobResponseUtils.updateFqnYamlNodeMap(
+            fqnToJsonMap, finalResponse.getYamlUpdates().getFqnToYamlMap());
+        PlanCreationBlobResponseUtils.mergeYamlUpdates(fullYaml, fqnToJsonMap);
+      }
+    }
+    return dependencies.toBuilder()
+        .setYaml(currentYaml)
         .clearDependencies()
         .putAllDependencies(newDependencies)
         .putAllDependencyMetadata(newMetadataDependency)
