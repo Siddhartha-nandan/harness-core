@@ -45,8 +45,10 @@ public class StepExecutionMetricsObserverTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testOnEnd() {
     stepExecutionMetricsObserver.onNodeStatusUpdate(
-        NodeUpdateInfo.builder().nodeExecution(NodeExecution.builder().status(Status.SUCCEEDED).build()).build());
+        NodeUpdateInfo.builder()
+            .nodeExecution(NodeExecution.builder().status(Status.SUCCEEDED).module("cd").build())
+            .build());
     verify(pipelineMetricUtils)
-        .publishStepExecutionMetrics(eq("step_execution_end_count"), any(), eq(Status.SUCCEEDED));
+        .publishStepExecutionMetrics(eq("step_execution_end_count"), any(), eq(Status.SUCCEEDED), eq("cd"));
   }
 }

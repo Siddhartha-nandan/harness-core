@@ -34,10 +34,11 @@ public class PipelineMetricUtils {
     }
   }
 
-  public void publishStepExecutionMetrics(String metricName, StepType stepType, Status status) {
+  public void publishStepExecutionMetrics(String metricName, StepType stepType, Status status, String module) {
     ImmutableMap<String, String> metricContextMap = ImmutableMap.<String, String>builder()
                                                         .put(PmsEventMonitoringConstants.STATUS, status.toString())
                                                         .put(PmsEventMonitoringConstants.STEP_TYPE, stepType.getType())
+                                                        .put(PmsEventMonitoringConstants.MODULE, module)
                                                         .build();
 
     try (PmsMetricContextGuard pmsMetricContextGuard = new PmsMetricContextGuard(metricContextMap)) {

@@ -31,8 +31,9 @@ public class StepExecutionMetricsObserver implements NodeStatusUpdateObserver {
   @Override
   public void onNodeStatusUpdate(NodeUpdateInfo nodeUpdateInfo) {
     if (StatusUtils.isFinalStatus(nodeUpdateInfo.getStatus())) {
-      pipelineMetricUtils.publishStepExecutionMetrics(
-          STEP_EXECUTION_END_COUNT, nodeUpdateInfo.getNodeExecution().getStepType(), nodeUpdateInfo.getStatus());
+      pipelineMetricUtils.publishStepExecutionMetrics(STEP_EXECUTION_END_COUNT,
+          nodeUpdateInfo.getNodeExecution().getStepType(), nodeUpdateInfo.getStatus(),
+          nodeUpdateInfo.getNodeExecution().getModule());
     }
   }
 }

@@ -3,3 +3,4 @@ identifier: StepExecutionMetricsGroup
 labels:
   - status
   - stepType
+  - module
