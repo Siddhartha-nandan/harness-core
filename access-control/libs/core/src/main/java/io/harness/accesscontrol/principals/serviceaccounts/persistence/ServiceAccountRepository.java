@@ -15,12 +15,14 @@ import io.harness.annotations.dev.OwnedBy;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(PL)
 @HarnessRepo
 public interface ServiceAccountRepository
-    extends PagingAndSortingRepository<ServiceAccountDBO, String>, ServiceAccountCustomRepository {
+    extends PagingAndSortingRepository<ServiceAccountDBO, String>, CrudRepository<ServiceAccountDBO, String>,
+            ServiceAccountCustomRepository {
   Optional<ServiceAccountDBO> findByIdentifierAndScopeIdentifier(String identifier, String scopeIdentifier);
 
   Page<ServiceAccountDBO> findByScopeIdentifier(String scopeIdentifier, Pageable pageable);

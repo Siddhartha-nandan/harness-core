@@ -48,6 +48,7 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import com.google.protobuf.InvalidProtocolBufferException;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -196,19 +197,19 @@ public class PipelineEntityCRUDStreamListener implements MessageListener {
     Set<String> toBeDeletedPlanExecutions = new HashSet<>();
     int executionCount = 0;
 
-    try (CloseableIterator<PipelineExecutionSummaryEntity> iterator =
-             pmsExecutionSummaryService.fetchPlanExecutionIdsFromAnalytics(
-                 accountId, orgIdentifier, projectIdentifier, pipelineIdentifier)) {
-      while (iterator.hasNext()) {
-        toBeDeletedPlanExecutions.add(iterator.next().getPlanExecutionId());
-        executionCount++;
+    Iterator<PipelineExecutionSummaryEntity> iterator =
+        pmsExecutionSummaryService
+            .fetchPlanExecutionIdsFromAnalytics(accountId, orgIdentifier, projectIdentifier, pipelineIdentifier)
+            .iterator();
+    while (iterator.hasNext()) {
+      toBeDeletedPlanExecutions.add(iterator.next().getPlanExecutionId());
+      executionCount++;
 
-        // If max deletion batch is reached, delete all its related entities
-        // We don't want to delete all executions for a pipeline together as total delete could be very high
-        if (toBeDeletedPlanExecutions.size() >= MAX_DELETION_BATCH_PROCESSING) {
-          deletePipelineExecutionsDetailsInternal(toBeDeletedPlanExecutions, retainPipelineExecutionDetailsAfterDelete);
-          toBeDeletedPlanExecutions.clear();
-        }
+      // If max deletion batch is reached, delete all its related entities
+      // We don't want to delete all executions for a pipeline together as total delete could be very high
+      if (toBeDeletedPlanExecutions.size() >= MAX_DELETION_BATCH_PROCESSING) {
+        deletePipelineExecutionsDetailsInternal(toBeDeletedPlanExecutions, retainPipelineExecutionDetailsAfterDelete);
+        toBeDeletedPlanExecutions.clear();
       }
     }
 

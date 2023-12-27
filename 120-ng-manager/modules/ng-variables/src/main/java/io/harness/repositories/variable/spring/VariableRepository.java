@@ -16,11 +16,13 @@ import io.harness.repositories.variable.custom.VariableRepositoryCustom;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(PL)
 @HarnessRepo
-public interface VariableRepository extends PagingAndSortingRepository<Variable, String>, VariableRepositoryCustom {
+public interface VariableRepository
+    extends PagingAndSortingRepository<Variable, String>, CrudRepository<Variable, String>, VariableRepositoryCustom {
   Optional<Variable> findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier);
   List<Variable> findAllByAccountIdentifierAndOrgIdentifierAndProjectIdentifier(

@@ -66,7 +66,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(HarnessTeam.PIPELINE)
@@ -335,12 +334,9 @@ public class GraphGenerationServiceImpl implements GraphGenerationService {
             new InvalidRequestException("Graph could not be generated for planExecutionId [" + planExecutionId + "]."));
       }
       List<NodeExecution> nodeExecutions = new LinkedList<>();
-      try (CloseableIterator<NodeExecution> iterator =
-               nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesIterator(planExecutionId)) {
-        while (iterator.hasNext()) {
-          nodeExecutions.add(iterator.next());
-        }
-      }
+
+      nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesIterator(planExecutionId)
+          .forEach(nodeExecution -> nodeExecutions.add(nodeExecution));
       log.warn(String.format(
           "[GRAPH_ERROR]: Trying to build orchestration graph from scratch for planExecutionId [%s] with nodeExecutionsCount [%d]",
           planExecutionId, nodeExecutions.size()));

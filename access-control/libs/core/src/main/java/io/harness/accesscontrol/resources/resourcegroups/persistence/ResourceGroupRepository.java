@@ -14,12 +14,14 @@ import io.harness.annotations.dev.OwnedBy;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(HarnessTeam.PL)
 @HarnessRepo
 public interface ResourceGroupRepository
-    extends PagingAndSortingRepository<ResourceGroupDBO, String>, ResourceGroupCustomRepository {
+    extends PagingAndSortingRepository<ResourceGroupDBO, String>, CrudRepository<ResourceGroupDBO, String>,
+            ResourceGroupCustomRepository {
   Optional<ResourceGroupDBO> findByIdentifierAndScopeIdentifier(String identifier, String scopeIdentifier);
 
   Page<ResourceGroupDBO> findByScopeIdentifier(String scopeIdentifier, Pageable pageable);

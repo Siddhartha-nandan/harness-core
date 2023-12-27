@@ -15,12 +15,14 @@ import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity;
 
 import java.util.Optional;
 import java.util.Set;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(PIPELINE)
 public interface PmsExecutionSummaryRepository
-    extends PagingAndSortingRepository<PipelineExecutionSummaryEntity, String>, PmsExecutionSummaryRepositoryCustom {
+    extends PagingAndSortingRepository<PipelineExecutionSummaryEntity, String>,
+            CrudRepository<PipelineExecutionSummaryEntity, String>, PmsExecutionSummaryRepositoryCustom {
   Optional<PipelineExecutionSummaryEntity> findByAccountIdAndOrgIdentifierAndProjectIdentifierAndPlanExecutionId(
       String accountId, String orgIdentifier, String projectIdentifier, String planExecutionId);
 

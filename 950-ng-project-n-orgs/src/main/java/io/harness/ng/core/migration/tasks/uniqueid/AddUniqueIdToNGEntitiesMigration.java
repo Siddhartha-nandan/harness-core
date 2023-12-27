@@ -24,13 +24,13 @@ import io.harness.persistence.UniqueIdAware;
 
 import com.google.inject.Inject;
 import java.lang.reflect.ParameterizedType;
+import java.util.Iterator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(PL)
 @Slf4j
@@ -63,9 +63,11 @@ public class AddUniqueIdToNGEntitiesMigration<T extends UniqueIdAware> {
 
     BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, persistentClass);
     String idValue = null;
-    try (CloseableIterator<? extends UniqueIdAware> iterator =
-             mongoTemplate.stream(documentQuery.limit(MongoConfig.NO_LIMIT).maxTimeMsec(MAX_VALUE), persistentClass)) {
-      while (iterator.hasNext()) {
+    try {
+      for (Iterator<? extends UniqueIdAware> iterator =
+               mongoTemplate.stream(documentQuery.limit(MongoConfig.NO_LIMIT).maxTimeMsec(MAX_VALUE), persistentClass)
+                   .iterator();
+           iterator.hasNext();) {
         totalCounter++;
         UniqueIdAware entity = iterator.next();
         if (isEmpty(entity.getUniqueId())) {

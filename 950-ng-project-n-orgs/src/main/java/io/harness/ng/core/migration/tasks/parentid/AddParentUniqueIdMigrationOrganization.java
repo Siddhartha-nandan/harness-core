@@ -21,13 +21,13 @@ import io.harness.ng.core.entities.Organization;
 import io.harness.ng.core.entities.Organization.OrganizationKeys;
 
 import com.google.inject.Inject;
+import java.util.Iterator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 @OwnedBy(PL)
@@ -57,10 +57,12 @@ public class AddParentUniqueIdMigrationOrganization implements NGMigration {
 
     BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Organization.class);
 
-    String idValue = null;
-    try (CloseableIterator<Organization> iterator =
-             mongoTemplate.stream(documentQuery.limit(NO_LIMIT).maxTimeMsec(MAX_VALUE), Organization.class)) {
-      while (iterator.hasNext()) {
+    try {
+      String idValue = null;
+      for (Iterator<Organization> iterator =
+               mongoTemplate.stream(documentQuery.limit(NO_LIMIT).maxTimeMsec(MAX_VALUE), Organization.class)
+                   .iterator();
+           iterator.hasNext();) {
         totalCounter++;
         Organization nextOrg = iterator.next();
         if (null != nextOrg && isNotEmpty(nextOrg.getParentId()) && isEmpty(nextOrg.getParentUniqueId())) {
@@ -76,6 +78,7 @@ public class AddParentUniqueIdMigrationOrganization implements NGMigration {
           }
         }
       }
+
       if (batchSizeCounter > 0) {
         migratedCounter += bulkOperations.execute().getModifiedCount();
       }

@@ -14,13 +14,15 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.ng.userprofile.entities.SourceCodeManager;
 
 import java.util.List;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 @OwnedBy(PL)
 @HarnessRepo
 @Transactional
-public interface SourceCodeManagerRepository extends PagingAndSortingRepository<SourceCodeManager, String> {
+public interface SourceCodeManagerRepository
+    extends PagingAndSortingRepository<SourceCodeManager, String>, CrudRepository<SourceCodeManager, String> {
   List<SourceCodeManager> findByUserIdentifierAndAccountIdentifier(String userIdentifier, String accountIdentifier);
   long deleteByUserIdentifierAndNameAndAccountIdentifier(String userIdentifier, String name, String accountIdentifier);
   long deleteAllByAccountIdentifier(String accountIdentifier);

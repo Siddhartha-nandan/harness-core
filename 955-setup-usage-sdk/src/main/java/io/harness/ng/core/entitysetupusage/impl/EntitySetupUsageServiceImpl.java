@@ -37,6 +37,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -48,7 +49,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.util.CloseableIterator;
 
 @Singleton
 @AllArgsConstructor(access = AccessLevel.PRIVATE, onConstructor = @__({ @Inject }))
@@ -289,9 +289,8 @@ public class EntitySetupUsageServiceImpl implements EntitySetupUsageService {
   }
 
   @Override
-  public CloseableIterator<EntitySetupUsage> streamAllEntityUsagePerReferredEntityScope(Scope scope,
-      String referredEntityFQScope, EntityType referredEntityType, @NotNull EntityType referredByEntityType,
-      String referredByEntityName) {
+  public Stream<EntitySetupUsage> streamAllEntityUsagePerReferredEntityScope(Scope scope, String referredEntityFQScope,
+      EntityType referredEntityType, @NotNull EntityType referredByEntityType, String referredByEntityName) {
     Criteria criteria;
     if (EntityType.INFRASTRUCTURE.equals(referredByEntityType)) {
       criteria = entitySetupUsageFilterHelper.createCriteriaForReferredEntitiesInScopeWithScopeName(

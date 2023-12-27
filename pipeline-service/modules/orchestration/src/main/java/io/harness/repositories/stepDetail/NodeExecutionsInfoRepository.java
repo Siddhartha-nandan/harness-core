@@ -14,11 +14,13 @@ import io.harness.beans.stepDetail.NodeExecutionsInfo;
 
 import java.util.Optional;
 import java.util.Set;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 @HarnessRepo
-public interface NodeExecutionsInfoRepository extends PagingAndSortingRepository<NodeExecutionsInfo, String> {
+public interface NodeExecutionsInfoRepository
+    extends PagingAndSortingRepository<NodeExecutionsInfo, String>, CrudRepository<NodeExecutionsInfo, String> {
   Optional<NodeExecutionsInfo> findByNodeExecutionId(String nodeExecutionId);
 
   /**

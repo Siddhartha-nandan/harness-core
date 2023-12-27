@@ -15,12 +15,14 @@ import io.harness.annotations.dev.OwnedBy;
 import java.util.Optional;
 import javax.validation.constraints.NotNull;
 import javax.validation.executable.ValidateOnExecution;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(HarnessTeam.PL)
 @HarnessRepo
 @ValidateOnExecution
-public interface RoleRepository extends PagingAndSortingRepository<RoleDBO, String>, RoleCustomRepository {
+public interface RoleRepository
+    extends PagingAndSortingRepository<RoleDBO, String>, CrudRepository<RoleDBO, String>, RoleCustomRepository {
   Optional<RoleDBO> deleteByIdentifierAndScopeIdentifierAndManaged(
       @NotNull String identifier, String parentIdentifier, boolean managed);
 }

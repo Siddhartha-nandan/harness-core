@@ -20,6 +20,7 @@ import io.harness.ng.core.user.entities.UserMetadata.UserMetadataKeys;
 import com.google.inject.Inject;
 import com.mongodb.MongoBulkWriteException;
 import java.util.List;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,8 +32,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.repository.support.PageableExecutionUtils;
-import org.springframework.data.util.CloseableIterator;
+import org.springframework.data.support.PageableExecutionUtils;
 
 @AllArgsConstructor(access = AccessLevel.PROTECTED, onConstructor = @__({ @Inject }))
 @Slf4j
@@ -94,7 +94,7 @@ public class UserMetadataRepositoryCustomImpl implements UserMetadataRepositoryC
   }
 
   @Override
-  public CloseableIterator<UserMetadata> stream(Criteria criteria) {
+  public Stream<UserMetadata> stream(Criteria criteria) {
     Query query = new Query(criteria);
     return mongoTemplate.stream(query, UserMetadata.class);
   }

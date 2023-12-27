@@ -15,10 +15,12 @@ import io.harness.eula.entity.Eula;
 import io.harness.repositories.eula.custom.EulaRepositoryCustom;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(PL)
 @HarnessRepo
-public interface EulaRepository extends PagingAndSortingRepository<Eula, String>, EulaRepositoryCustom {
+public interface EulaRepository
+    extends PagingAndSortingRepository<Eula, String>, CrudRepository<Eula, String>, EulaRepositoryCustom {
   Optional<Eula> findByAccountIdentifier(String accountIdentifier);
 }

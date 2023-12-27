@@ -53,12 +53,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(HarnessTeam.PIPELINE)
@@ -319,7 +319,7 @@ public class PmsExecutionSummaryServiceImpl implements PmsExecutionSummaryServic
   }
 
   @Override
-  public CloseableIterator<PipelineExecutionSummaryEntity> fetchPlanExecutionIdsFromAnalytics(
+  public Stream<PipelineExecutionSummaryEntity> fetchPlanExecutionIdsFromAnalytics(
       String accountId, String orgIdentifier, String projectIdentifier, String pipelineIdentifier) {
     // Uses - accountId_organizationId_projectId_pipelineId idx
     Criteria criteria = Criteria.where(PlanExecutionSummaryKeys.accountId)

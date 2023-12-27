@@ -6,6 +6,7 @@
  */
 
 package io.harness.engine.executions.plan;
+
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
 import io.harness.annotations.dev.CodePulse;
@@ -23,9 +24,9 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 import lombok.NonNull;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(PIPELINE)
@@ -82,8 +83,7 @@ public interface PlanExecutionService extends NodeStatusUpdateObserver {
    * @param fieldNames
    * @return
    */
-  CloseableIterator<PlanExecution> fetchPlanExecutionsByStatusFromAnalytics(
-      Set<Status> statuses, Set<String> fieldNames);
+  Stream<PlanExecution> fetchPlanExecutionsByStatusFromAnalytics(Set<Status> statuses, Set<String> fieldNames);
 
   // Todo: Remove
   List<PlanExecution> findAllByAccountIdAndOrgIdAndProjectIdAndLastUpdatedAtInBetweenTimestamps(

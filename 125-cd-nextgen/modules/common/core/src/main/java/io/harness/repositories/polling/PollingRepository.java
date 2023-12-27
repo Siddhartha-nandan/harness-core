@@ -15,12 +15,13 @@ import io.harness.polling.bean.PollingInfo;
 
 import java.util.List;
 import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(HarnessTeam.CDC)
-public interface PollingRepository
-    extends PagingAndSortingRepository<PollingDocument, String>, PollingRepositoryCustom {
+public interface PollingRepository extends PagingAndSortingRepository<PollingDocument, String>,
+                                           CrudRepository<PollingDocument, String>, PollingRepositoryCustom {
   PollingDocument findByUuidAndAccountId(String uuid, String accountId);
   PollingDocument findByAccountIdAndOrgIdentifierAndProjectIdentifierAndPollingInfo(
       String accountId, String orgIdentifier, String projectIdentifier, PollingInfo pollingInfo);

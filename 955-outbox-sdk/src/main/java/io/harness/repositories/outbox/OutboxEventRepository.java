@@ -15,11 +15,12 @@ import io.harness.outbox.OutboxEvent;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(PL)
 @HarnessRepo
-public interface OutboxEventRepository
-    extends PagingAndSortingRepository<OutboxEvent, String>, OutboxEventCustomRepository {
+public interface OutboxEventRepository extends PagingAndSortingRepository<OutboxEvent, String>,
+                                               CrudRepository<OutboxEvent, String>, OutboxEventCustomRepository {
   Page<OutboxEvent> findByBlockedFalseOrBlockedNull(Pageable pageable);
 }

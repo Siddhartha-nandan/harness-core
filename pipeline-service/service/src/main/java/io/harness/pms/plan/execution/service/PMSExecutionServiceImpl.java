@@ -95,6 +95,7 @@ import com.mongodb.client.result.UpdateResult;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -288,13 +289,12 @@ public class PMSExecutionServiceImpl implements PMSExecutionService {
   @Override
   public PMSPipelineListRepoResponse getListOfRepo(Criteria criteria) {
     Set<String> repoList = new HashSet<>();
-    try (CloseableIterator<PipelineExecutionSummaryEntity> iterator =
-             pmsExecutionSummaryRespository.findListOfRepositories(criteria)) {
-      while (iterator.hasNext()) {
-        EntityGitDetails entityGitDetails = iterator.next().getEntityGitDetails();
-        if (entityGitDetails != null && EmptyPredicate.isNotEmpty(entityGitDetails.getRepoName())) {
-          repoList.add(entityGitDetails.getRepoName());
-        }
+    Iterator<PipelineExecutionSummaryEntity> iterator =
+        pmsExecutionSummaryRespository.findListOfRepositories(criteria).iterator();
+    while (iterator.hasNext()) {
+      EntityGitDetails entityGitDetails = iterator.next().getEntityGitDetails();
+      if (entityGitDetails != null && EmptyPredicate.isNotEmpty(entityGitDetails.getRepoName())) {
+        repoList.add(entityGitDetails.getRepoName());
       }
     }
 
@@ -306,13 +306,12 @@ public class PMSExecutionServiceImpl implements PMSExecutionService {
   @Override
   public PMSPipelineListBranchesResponse getListOfBranches(Criteria criteria) {
     Set<String> branchList = new HashSet<>();
-    try (CloseableIterator<PipelineExecutionSummaryEntity> iterator =
-             pmsExecutionSummaryRespository.findListOfBranches(criteria)) {
-      while (iterator.hasNext()) {
-        EntityGitDetails entityGitDetails = iterator.next().getEntityGitDetails();
-        if (entityGitDetails != null && EmptyPredicate.isNotEmpty(entityGitDetails.getBranch())) {
-          branchList.add(entityGitDetails.getBranch());
-        }
+    Iterator<PipelineExecutionSummaryEntity> iterator =
+        pmsExecutionSummaryRespository.findListOfBranches(criteria).iterator();
+    while (iterator.hasNext()) {
+      EntityGitDetails entityGitDetails = iterator.next().getEntityGitDetails();
+      if (entityGitDetails != null && EmptyPredicate.isNotEmpty(entityGitDetails.getBranch())) {
+        branchList.add(entityGitDetails.getBranch());
       }
     }
 

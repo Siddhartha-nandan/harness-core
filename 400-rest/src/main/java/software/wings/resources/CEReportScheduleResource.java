@@ -46,7 +46,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.support.CronSequenceGenerator;
+import org.springframework.scheduling.support.CronExpression;
 import org.springframework.web.bind.annotation.RequestBody;
 
 @Api("ceReportSchedule")
@@ -123,7 +123,7 @@ public class CEReportScheduleResource {
       @PathParam("accountId") String accountId, @Valid @RequestBody CEReportSchedule schedule) {
     List<CEReportSchedule> ceList = new ArrayList<>();
     try {
-      CronSequenceGenerator cronSequenceGenerator = new CronSequenceGenerator(schedule.getUserCron());
+      CronExpression cronSequenceGenerator = CronExpression.parse(schedule.getUserCron());
       ceList.add(ceReportScheduleService.createReportSetting(accountId, schedule));
       RestResponse rr = new RestResponse<List<CEReportSchedule>>(ceList);
       return prepareResponse(rr, Response.Status.OK);
@@ -143,7 +143,7 @@ public class CEReportScheduleResource {
   public Response updateReportSetting(
       @PathParam("accountId") String accountId, @Valid @RequestBody CEReportSchedule schedule) {
     try {
-      CronSequenceGenerator cronSequenceGenerator = new CronSequenceGenerator(schedule.getUserCron());
+      CronExpression cronSequenceGenerator = CronExpression.parse(schedule.getUserCron());
       RestResponse rr = new RestResponse<List<CEReportSchedule>>(ceReportScheduleService.update(accountId, schedule));
       return prepareResponse(rr, Response.Status.OK);
     } catch (IllegalArgumentException e) {

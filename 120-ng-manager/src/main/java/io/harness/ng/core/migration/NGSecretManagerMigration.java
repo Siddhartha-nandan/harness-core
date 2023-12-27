@@ -79,8 +79,10 @@ import io.harness.security.encryption.EncryptionType;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import java.lang.reflect.Field;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import javax.ws.rs.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -88,7 +90,6 @@ import org.jetbrains.annotations.Nullable;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 @OwnedBy(PL)
@@ -140,7 +141,7 @@ public class NGSecretManagerMigration {
     // Run for each account in a loop
     log.info("[NGSecretManagerMigration] Starting to process non HarnessManaged KMS. Batch Size: " + BATCH_SIZE);
 
-    CloseableIterator<Connector> iterator = runQueryWithBatch(getAllConnectors(), BATCH_SIZE);
+    Iterator<Connector> iterator = runQueryWithBatch(getAllConnectors(), BATCH_SIZE).iterator();
     while (iterator.hasNext()) {
       Connector nonHMConnector = iterator.next();
       processNonHMConnector(nonHMConnector);
@@ -435,7 +436,7 @@ public class NGSecretManagerMigration {
     return mongoTemplate.find(query, Connector.class);
   }
 
-  private CloseableIterator<Connector> runQueryWithBatch(Criteria criteria, int batchSize) {
+  private Stream<Connector> runQueryWithBatch(Criteria criteria, int batchSize) {
     Query query = new Query(criteria);
     query.cursorBatchSize(batchSize);
     return mongoTemplate.stream(query, Connector.class);

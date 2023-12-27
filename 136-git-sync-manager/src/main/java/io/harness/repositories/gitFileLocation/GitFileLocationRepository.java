@@ -15,12 +15,14 @@ import io.harness.gitsync.common.beans.GitFileLocation;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(HarnessTeam.DX)
 public interface GitFileLocationRepository
-    extends PagingAndSortingRepository<GitFileLocation, String>, GitFileLocationRepositoryCustom {
+    extends PagingAndSortingRepository<GitFileLocation, String>, CrudRepository<GitFileLocation, String>,
+            GitFileLocationRepositoryCustom {
   long countByProjectIdAndOrganizationIdAndAccountIdAndScopeAndEntityType(
       String projectId, String orgId, String accountId, Scope scope, String entityType);
 

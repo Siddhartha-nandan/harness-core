@@ -14,12 +14,13 @@ import io.harness.gitsync.common.beans.YamlChangeSet;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(HarnessTeam.DX)
-public interface YamlChangeSetRepository
-    extends PagingAndSortingRepository<YamlChangeSet, String>, YamlChangeSetRepositoryCustom {
+public interface YamlChangeSetRepository extends PagingAndSortingRepository<YamlChangeSet, String>,
+                                                 CrudRepository<YamlChangeSet, String>, YamlChangeSetRepositoryCustom {
   int countByAccountIdAndStatusIn(String accountId, List<String> status);
 
   int countByAccountIdAndStatusInAndQueueKey(String accountId, List<String> status, String queueKey);

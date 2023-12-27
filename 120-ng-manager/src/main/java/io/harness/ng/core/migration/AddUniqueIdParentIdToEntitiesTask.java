@@ -32,6 +32,7 @@ import io.harness.persistence.UniqueIdAware;
 import com.google.inject.Inject;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +42,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 @OwnedBy(HarnessTeam.PL)
@@ -112,8 +112,9 @@ public class AddUniqueIdParentIdToEntitiesTask implements Runnable {
         Query documentQuery = new Query(new Criteria());
         BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, clazz);
         String idValue = null;
-        try (CloseableIterator<? extends UniqueIdAware> iterator =
-                 mongoTemplate.stream(documentQuery.limit(MongoConfig.NO_LIMIT).maxTimeMsec(MAX_VALUE), clazz)) {
+        try {
+          Iterator<? extends UniqueIdAware> iterator =
+              mongoTemplate.stream(documentQuery.limit(MongoConfig.NO_LIMIT).maxTimeMsec(MAX_VALUE), clazz).iterator();
           while (iterator.hasNext()) {
             UniqueIdAware entity = iterator.next();
             if (isEmpty(entity.getUniqueId())) {
@@ -189,8 +190,9 @@ public class AddUniqueIdParentIdToEntitiesTask implements Runnable {
         Query documentQuery = new Query(new Criteria());
         BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, clazz);
         // iterate over all Project documents
-        try (CloseableIterator<? extends UniqueIdAware> iterator =
-                 mongoTemplate.stream(documentQuery.limit(NO_LIMIT).maxTimeMsec(MAX_VALUE), clazz)) {
+        try {
+          Iterator<? extends UniqueIdAware> iterator =
+              mongoTemplate.stream(documentQuery.limit(NO_LIMIT).maxTimeMsec(MAX_VALUE), clazz).iterator();
           while (iterator.hasNext()) {
             UniqueIdAware nextEntity = iterator.next();
             if (nextEntity instanceof Project) {
@@ -276,8 +278,9 @@ public class AddUniqueIdParentIdToEntitiesTask implements Runnable {
         BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Organization.class);
 
         String idValue = null;
-        try (CloseableIterator<Organization> iterator =
-                 mongoTemplate.stream(documentQuery.limit(NO_LIMIT).maxTimeMsec(MAX_VALUE), Organization.class)) {
+        try {
+          Iterator<Organization> iterator =
+              mongoTemplate.stream(documentQuery.limit(NO_LIMIT).maxTimeMsec(MAX_VALUE), Organization.class).iterator();
           while (iterator.hasNext()) {
             Organization nextOrg = iterator.next();
             if (null != nextOrg && isEmpty(nextOrg.getParentUniqueId())) {

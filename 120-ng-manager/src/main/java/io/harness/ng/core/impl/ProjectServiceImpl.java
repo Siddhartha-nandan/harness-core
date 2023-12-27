@@ -109,6 +109,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -131,7 +132,6 @@ import org.springframework.data.mongodb.core.aggregation.MatchOperation;
 import org.springframework.data.mongodb.core.aggregation.ProjectionOperation;
 import org.springframework.data.mongodb.core.aggregation.SortOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.util.CloseableIterator;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @OwnedBy(PL)
@@ -343,17 +343,16 @@ public class ProjectServiceImpl implements ProjectService {
 
     Criteria projectCriteria = Criteria.where(ProjectKeys.accountIdentifier).is(accountId);
     List<Criteria> criteriaList = new ArrayList<>();
-    try (CloseableIterator<UserMembership> iterator = ngUserService.streamUserMemberships(criteria)) {
-      while (iterator.hasNext()) {
-        UserMembership userMembership = iterator.next();
-        Scope scope = userMembership.getScope();
-        criteriaList.add(Criteria.where(ProjectKeys.orgIdentifier)
-                             .is(scope.getOrgIdentifier())
-                             .and(ProjectKeys.identifier)
-                             .is(scope.getProjectIdentifier())
-                             .and(ProjectKeys.deleted)
-                             .is(false));
-      }
+    Iterator<UserMembership> iterator = ngUserService.streamUserMemberships(criteria).iterator();
+    while (iterator.hasNext()) {
+      UserMembership userMembership = iterator.next();
+      Scope scope = userMembership.getScope();
+      criteriaList.add(Criteria.where(ProjectKeys.orgIdentifier)
+                           .is(scope.getOrgIdentifier())
+                           .and(ProjectKeys.identifier)
+                           .is(scope.getProjectIdentifier())
+                           .and(ProjectKeys.deleted)
+                           .is(false));
     }
 
     if (criteriaList.isEmpty()) {
@@ -377,17 +376,16 @@ public class ProjectServiceImpl implements ProjectService {
 
     Criteria projectCriteria = Criteria.where(ProjectKeys.accountIdentifier).is(accountId);
     List<Criteria> criteriaList = new ArrayList<>();
-    try (CloseableIterator<UserMembership> iterator = ngUserService.streamUserMemberships(criteria)) {
-      while (iterator.hasNext()) {
-        UserMembership userMembership = iterator.next();
-        Scope scope = userMembership.getScope();
-        criteriaList.add(Criteria.where(ProjectKeys.orgIdentifier)
-                             .is(scope.getOrgIdentifier())
-                             .and(ProjectKeys.identifier)
-                             .is(scope.getProjectIdentifier())
-                             .and(ProjectKeys.deleted)
-                             .is(false));
-      }
+    Iterator<UserMembership> iterator = ngUserService.streamUserMemberships(criteria).iterator();
+    while (iterator.hasNext()) {
+      UserMembership userMembership = iterator.next();
+      Scope scope = userMembership.getScope();
+      criteriaList.add(Criteria.where(ProjectKeys.orgIdentifier)
+                           .is(scope.getOrgIdentifier())
+                           .and(ProjectKeys.identifier)
+                           .is(scope.getProjectIdentifier())
+                           .and(ProjectKeys.deleted)
+                           .is(false));
     }
     if (criteriaList.isEmpty()) {
       return Collections.emptyList();
@@ -411,15 +409,14 @@ public class ProjectServiceImpl implements ProjectService {
 
     Criteria projectCriteria = Criteria.where(ProjectKeys.accountIdentifier).is(accountId);
     List<Criteria> criteriaList = new ArrayList<>();
-    try (CloseableIterator<UserMembership> iterator = ngUserService.streamUserMemberships(criteria)) {
-      while (iterator.hasNext()) {
-        UserMembership userMembership = iterator.next();
-        Scope scope = userMembership.getScope();
-        criteriaList.add(Criteria.where(ProjectKeys.orgIdentifier)
-                             .is(scope.getOrgIdentifier())
-                             .and(ProjectKeys.identifier)
-                             .is(scope.getProjectIdentifier()));
-      }
+    Iterator<UserMembership> iterator = ngUserService.streamUserMemberships(criteria).iterator();
+    while (iterator.hasNext()) {
+      UserMembership userMembership = iterator.next();
+      Scope scope = userMembership.getScope();
+      criteriaList.add(Criteria.where(ProjectKeys.orgIdentifier)
+                           .is(scope.getOrgIdentifier())
+                           .and(ProjectKeys.identifier)
+                           .is(scope.getProjectIdentifier()));
     }
     if (isEmpty(criteriaList)) {
       return ActiveProjectsCountDTO.builder().count(0).build();

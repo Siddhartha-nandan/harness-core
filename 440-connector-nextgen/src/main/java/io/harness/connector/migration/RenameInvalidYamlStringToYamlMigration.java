@@ -13,11 +13,12 @@ import io.harness.connector.entities.Connector;
 import io.harness.migration.NGMigration;
 
 import com.google.inject.Inject;
+import java.util.Iterator;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 @OwnedBy(HarnessTeam.PL)
@@ -25,7 +26,7 @@ public class RenameInvalidYamlStringToYamlMigration implements NGMigration {
   @Inject private MongoTemplate mongoTemplate;
   private static final int BATCH_SIZE = 100;
 
-  private CloseableIterator<Connector> getIterator(Query query) {
+  private Stream<Connector> getIterator(Query query) {
     return mongoTemplate.stream(query, Connector.class);
   }
 
@@ -33,7 +34,7 @@ public class RenameInvalidYamlStringToYamlMigration implements NGMigration {
   public void migrate() {
     Query query = new Query(new Criteria());
     query.cursorBatchSize(BATCH_SIZE);
-    CloseableIterator<Connector> iterator = getIterator(query);
+    Iterator<Connector> iterator = getIterator(query).iterator();
 
     log.info("Starting migration to rename invalid yaml string field to yaml for connectors");
     while (iterator.hasNext()) {

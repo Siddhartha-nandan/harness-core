@@ -14,12 +14,14 @@ import io.harness.gitsync.common.beans.UserSourceCodeManager;
 import io.harness.ng.userprofile.commons.SCMType;
 
 import java.util.List;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(HarnessTeam.PIPELINE)
 public interface UserSourceCodeManagerRepository
-    extends PagingAndSortingRepository<UserSourceCodeManager, String>, UserSourceCodeManagerRepositoryCustom {
+    extends PagingAndSortingRepository<UserSourceCodeManager, String>, CrudRepository<UserSourceCodeManager, String>,
+            UserSourceCodeManagerRepositoryCustom {
   List<UserSourceCodeManager> findByAccountIdentifierAndUserIdentifier(String accountIdentifier, String userIdentifier);
   UserSourceCodeManager findByAccountIdentifierAndUserIdentifierAndType(
       String accountIdentifier, String userIdentifier, SCMType type);

@@ -15,12 +15,12 @@ import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityKeys;
 
 import com.google.inject.Inject;
+import java.util.Iterator;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 @OwnedBy(HarnessTeam.SSCA)
@@ -35,7 +35,7 @@ public class AddInvalidFieldToArtifactEntity implements NGMigration {
     log.info(DEBUG_LOG + "Starting migration to add invalid field to ssca artifacts");
     Criteria criteria = Criteria.where(ArtifactEntityKeys.invalid).is(null);
 
-    CloseableIterator<ArtifactEntity> iterator = mongoTemplate.stream(new Query(criteria), ArtifactEntity.class);
+    Iterator<ArtifactEntity> iterator = mongoTemplate.stream(new Query(criteria), ArtifactEntity.class).iterator();
 
     while (iterator.hasNext()) {
       ArtifactEntity artifact = iterator.next();

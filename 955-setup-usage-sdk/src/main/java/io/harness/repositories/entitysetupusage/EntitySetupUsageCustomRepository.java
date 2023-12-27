@@ -13,12 +13,12 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.ng.core.entitysetupusage.entity.EntitySetupUsage;
 
 import java.util.List;
+import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(DX)
 public interface EntitySetupUsageCustomRepository {
@@ -32,7 +32,7 @@ public interface EntitySetupUsageCustomRepository {
 
   <T> AggregationResults<T> aggregate(Aggregation aggregation, Class<T> classToFillResultIn);
 
-  CloseableIterator<EntitySetupUsage> stream(Criteria criteria);
+  Stream<EntitySetupUsage> stream(Criteria criteria);
 
   List<String> findAllReferredEntityIds(Criteria criteria);
 }

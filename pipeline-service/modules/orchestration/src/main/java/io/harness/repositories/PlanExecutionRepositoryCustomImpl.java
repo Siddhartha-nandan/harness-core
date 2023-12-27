@@ -6,6 +6,7 @@
  */
 
 package io.harness.repositories;
+
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
 import io.harness.annotations.dev.CodePulse;
@@ -23,13 +24,13 @@ import io.harness.pms.execution.utils.StatusUtils;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.List;
+import java.util.stream.Stream;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(PIPELINE)
@@ -88,7 +89,7 @@ public class PlanExecutionRepositoryCustomImpl implements PlanExecutionRepositor
     return mongoTemplate.findOne(query, PlanExecution.class);
   }
 
-  public CloseableIterator<PlanExecution> fetchPlanExecutionsFromAnalytics(Query query) {
+  public Stream<PlanExecution> fetchPlanExecutionsFromAnalytics(Query query) {
     query.cursorBatchSize(MAX_BATCH_SIZE);
     validatePlanExecutionStreamQuery(query);
     return analyticsMongoTemplate.stream(query, PlanExecution.class);

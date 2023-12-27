@@ -42,11 +42,13 @@ import com.google.inject.Singleton;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
@@ -175,8 +177,9 @@ public class RollbackModeExecutionHelper {
   Map<String, Node> buildIdentityNodes(String previousExecutionId, List<Node> createdPlanNodes) {
     Map<String, Node> planNodeIDToUpdatedNodes = new HashMap<>();
 
-    CloseableIterator<NodeExecution> nodeExecutions = getNodeExecutionsWithProjections(
-        previousExecutionId, createdPlanNodes, NodeProjectionUtils.fieldsForRollbackIdentityNodeCreation);
+    Iterator<NodeExecution> nodeExecutions = getNodeExecutionsWithProjections(
+        previousExecutionId, createdPlanNodes, NodeProjectionUtils.fieldsForRollbackIdentityNodeCreation)
+                                                 .iterator();
 
     while (nodeExecutions.hasNext()) {
       NodeExecution nodeExecution = nodeExecutions.next();
@@ -201,7 +204,7 @@ public class RollbackModeExecutionHelper {
     return planNodeIDToUpdatedNodes;
   }
 
-  CloseableIterator<NodeExecution> getNodeExecutionsWithProjections(
+  Stream<NodeExecution> getNodeExecutionsWithProjections(
       String previousExecutionId, List<Node> createdPlanNodes, Set<String> projections) {
     List<String> stageFQNs = createdPlanNodes.stream()
                                  .filter(n -> n.getStepCategory() == StepCategory.STAGE)

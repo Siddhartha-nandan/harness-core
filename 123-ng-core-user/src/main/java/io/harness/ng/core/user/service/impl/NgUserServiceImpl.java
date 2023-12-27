@@ -134,6 +134,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -143,6 +144,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
@@ -153,7 +155,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Singleton
@@ -576,7 +577,7 @@ public class NgUserServiceImpl implements NgUserService {
   }
 
   @Override
-  public CloseableIterator<UserMetadata> streamUserMetadata(List<String> userIds) {
+  public Stream<UserMetadata> streamUserMetadata(List<String> userIds) {
     return userMetadataRepository.stream(Criteria.where(UserMetadataKeys.userId).in(userIds));
   }
 
@@ -588,7 +589,7 @@ public class NgUserServiceImpl implements NgUserService {
   }
 
   @Override
-  public CloseableIterator<UserMembership> streamUserMemberships(Criteria criteria) {
+  public Stream<UserMembership> streamUserMemberships(Criteria criteria) {
     return userMembershipRepository.stream(criteria);
   }
 
@@ -927,16 +928,15 @@ public class NgUserServiceImpl implements NgUserService {
       String publicIdentifier = userMetadata.map(UserMetadata::getEmail).orElse(userId);
       String userName = userMetadata.map(UserMetadata::getName).orElse(null);
 
-      try (CloseableIterator<UserMembership> iterator = userMembershipRepository.stream(userMembershipCriteria)) {
-        while (iterator.hasNext()) {
-          UserMembership userMembership = iterator.next();
-          Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
-            userMembershipRepository.delete(userMembership);
-            outboxService.save(new RemoveCollaboratorEvent(
-                scope.getAccountIdentifier(), userMembership.getScope(), publicIdentifier, userId, userName, source));
-            return userMembership;
-          }));
-        }
+      Iterator<UserMembership> iterator = userMembershipRepository.stream(userMembershipCriteria).iterator();
+      while (iterator.hasNext()) {
+        UserMembership userMembership = iterator.next();
+        Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
+          userMembershipRepository.delete(userMembership);
+          outboxService.save(new RemoveCollaboratorEvent(
+              scope.getAccountIdentifier(), userMembership.getScope(), publicIdentifier, userId, userName, source));
+          return userMembership;
+        }));
       }
     }
     return true;
@@ -950,16 +950,15 @@ public class NgUserServiceImpl implements NgUserService {
       String publicIdentifier = userMetadata.map(UserMetadata::getEmail).orElse(userId);
       String userName = userMetadata.map(UserMetadata::getName).orElse(null);
 
-      try (CloseableIterator<UserMembership> iterator = userMembershipRepository.stream(criteria)) {
-        while (iterator.hasNext()) {
-          UserMembership userMembership = iterator.next();
-          Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
-            userMembershipRepository.delete(userMembership);
-            outboxService.save(new RemoveCollaboratorEvent(userMembership.getScope().getAccountIdentifier(),
-                userMembership.getScope(), publicIdentifier, userId, userName, source));
-            return userMembership;
-          }));
-        }
+      Iterator<UserMembership> iterator = userMembershipRepository.stream(criteria).iterator();
+      while (iterator.hasNext()) {
+        UserMembership userMembership = iterator.next();
+        Failsafe.with(transactionRetryPolicy).get(() -> transactionTemplate.execute(status -> {
+          userMembershipRepository.delete(userMembership);
+          outboxService.save(new RemoveCollaboratorEvent(userMembership.getScope().getAccountIdentifier(),
+              userMembership.getScope(), publicIdentifier, userId, userName, source));
+          return userMembership;
+        }));
       }
     }
     return true;

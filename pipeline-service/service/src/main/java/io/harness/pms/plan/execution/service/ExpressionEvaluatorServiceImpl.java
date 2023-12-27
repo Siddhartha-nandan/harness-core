@@ -38,6 +38,7 @@ import com.google.inject.Singleton;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -77,8 +78,9 @@ public class ExpressionEvaluatorServiceImpl implements ExpressionEvaluatorServic
     }
 
     // This fetches all the leaf node executions for the given plan execution id.
-    CloseableIterator<NodeExecution> nodeExecutions =
-        nodeExecutionService.fetchAllLeavesUsingPlanExecutionId(planExecutionId, NodeProjectionUtils.withAmbiance);
+    Iterator<NodeExecution> nodeExecutions =
+        nodeExecutionService.fetchAllLeavesUsingPlanExecutionId(planExecutionId, NodeProjectionUtils.withAmbiance)
+            .iterator();
     Map<String, Ambiance> fqnToAmbianceMap = getFQNToAmbianceMap(nodeExecutions, unresolvedAmbianceFqns);
 
     for (Map.Entry<FQN, String> entry : fqnObjectMap.entrySet()) {
@@ -152,7 +154,7 @@ public class ExpressionEvaluatorServiceImpl implements ExpressionEvaluatorServic
    * @return
    */
   public Map<String, Ambiance> getFQNToAmbianceMap(
-      CloseableIterator<NodeExecution> nodeExecutions, List<String> unresolvedFqnSet) {
+      Iterator<NodeExecution> nodeExecutions, List<String> unresolvedFqnSet) {
     Map<String, Ambiance> fqnToAmbianceMap = new HashMap<>();
 
     while (nodeExecutions.hasNext()) {

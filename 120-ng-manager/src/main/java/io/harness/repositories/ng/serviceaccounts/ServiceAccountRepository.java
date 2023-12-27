@@ -14,12 +14,14 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.ng.serviceaccounts.entities.ServiceAccount;
 
 import java.util.List;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(PL)
 public interface ServiceAccountRepository
-    extends PagingAndSortingRepository<ServiceAccount, String>, ServiceAccountCustomRepository {
+    extends PagingAndSortingRepository<ServiceAccount, String>, CrudRepository<ServiceAccount, String>,
+            ServiceAccountCustomRepository {
   ServiceAccount findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier);
   List<ServiceAccount> findAllByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifierIsIn(

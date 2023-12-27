@@ -6,6 +6,7 @@
  */
 
 package io.harness.repositories;
+
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 
 import io.harness.annotation.HarnessRepo;
@@ -15,10 +16,12 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.execution.stage.StageExecutionEntity;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_DASHBOARD})
 @HarnessRepo
 @OwnedBy(CDP)
 public interface StageExecutionEntityRepository
-    extends PagingAndSortingRepository<StageExecutionEntity, String>, StageExecutionEntityRepositoryCustom {}
+    extends PagingAndSortingRepository<StageExecutionEntity, String>, CrudRepository<StageExecutionEntity, String>,
+            StageExecutionEntityRepositoryCustom {}

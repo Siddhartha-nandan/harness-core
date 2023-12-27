@@ -13,9 +13,10 @@ import io.harness.annotation.HarnessRepo;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.ssca.entities.CdInstanceSummary;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(SSCA)
-public interface CdInstanceSummaryRepo
-    extends PagingAndSortingRepository<CdInstanceSummary, String>, CdInstanceSummaryRepoCustom {}
+public interface CdInstanceSummaryRepo extends PagingAndSortingRepository<CdInstanceSummary, String>,
+                                               CrudRepository<CdInstanceSummary, String>, CdInstanceSummaryRepoCustom {}

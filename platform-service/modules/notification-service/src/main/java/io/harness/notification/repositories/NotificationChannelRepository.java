@@ -10,8 +10,10 @@ package io.harness.notification.repositories;
 import io.harness.annotation.HarnessRepo;
 import io.harness.notification.entities.NotificationChannel;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 public interface NotificationChannelRepository
-    extends PagingAndSortingRepository<NotificationChannel, String>, NotificationChannelRepositoryCustom {}
+    extends PagingAndSortingRepository<NotificationChannel, String>, CrudRepository<NotificationChannel, String>,
+            NotificationChannelRepositoryCustom {}

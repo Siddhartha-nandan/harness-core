@@ -27,12 +27,12 @@ import com.google.inject.Inject;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.util.CloseableIterator;
 
 /**
  * This serves as base class for the interrupts that are registered with parent but they recursively need to traverse
@@ -60,14 +60,15 @@ public abstract class InterruptPropagatorHandler {
     Interrupt updatedInterrupt = interruptService.markProcessing(interrupt.getUuid());
     // Find all the nodeExecutions for this plan
     List<NodeExecution> allExecutions = new LinkedList<>();
-    try (
-        CloseableIterator<NodeExecution> iterator =
-            nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(interrupt.getPlanExecutionId(),
-                StatusUtils.abortAndExpireStatuses(), NodeProjectionUtils.fieldsForInterruptPropagatorHandler)) {
-      while (iterator.hasNext()) {
-        allExecutions.add(iterator.next());
-      }
+    Iterator<NodeExecution> iterator =
+        nodeExecutionService
+            .fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(interrupt.getPlanExecutionId(),
+                StatusUtils.abortAndExpireStatuses(), NodeProjectionUtils.fieldsForInterruptPropagatorHandler)
+            .iterator();
+    while (iterator.hasNext()) {
+      allExecutions.add(iterator.next());
     }
+
     Map<String, String> metadata =
         updatedInterrupt.getMetadata() != null ? updatedInterrupt.getMetadata() : new HashMap<>();
 
@@ -100,14 +101,10 @@ public abstract class InterruptPropagatorHandler {
       return updatedInterrupt;
     } else {
       List<NodeExecution> discontinuingNodeExecutions = new LinkedList<>();
-      try (CloseableIterator<NodeExecution> iterator =
-               nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(
-                   updatedInterrupt.getPlanExecutionId(), EnumSet.of(DISCONTINUING),
-                   NodeProjectionUtils.fieldsForDiscontinuingNodes)) {
-        while (iterator.hasNext()) {
-          discontinuingNodeExecutions.add(iterator.next());
-        }
-      }
+      nodeExecutionService
+          .fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(updatedInterrupt.getPlanExecutionId(),
+              EnumSet.of(DISCONTINUING), NodeProjectionUtils.fieldsForDiscontinuingNodes)
+          .forEach(nodeExecution -> discontinuingNodeExecutions.add(nodeExecution));
 
       if (isEmpty(discontinuingNodeExecutions)) {
         log.warn(updatedInterrupt.getType()

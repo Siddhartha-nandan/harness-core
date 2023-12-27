@@ -14,11 +14,11 @@ import io.harness.ng.core.user.entities.UserMembership;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(PL)
 public interface UserMembershipRepositoryCustom {
@@ -34,7 +34,7 @@ public interface UserMembershipRepositoryCustom {
 
   long insertAllIgnoringDuplicates(List<UserMembership> userMemberships);
 
-  CloseableIterator<UserMembership> stream(Criteria criteria);
+  Stream<UserMembership> stream(Criteria criteria);
 
   long count(Criteria criteria);
 

@@ -6,6 +6,7 @@
  */
 
 package io.harness.repositories.favorites.spring;
+
 import static io.harness.annotations.dev.HarnessTeam.PL;
 
 import io.harness.annotation.HarnessRepo;
@@ -19,12 +20,14 @@ import io.harness.repositories.favorites.custom.FavoriteRepositoryCustom;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 @OwnedBy(PL)
 @HarnessRepo
-public interface FavoriteRepository extends PagingAndSortingRepository<Favorite, String>, FavoriteRepositoryCustom {
+public interface FavoriteRepository
+    extends PagingAndSortingRepository<Favorite, String>, CrudRepository<Favorite, String>, FavoriteRepositoryCustom {
   List<Favorite> findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndUserIdentifierAndResourceType(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String userIdentifier,
       ResourceType resourceType);

@@ -16,11 +16,13 @@ import io.harness.ng.core.entities.Token;
 import io.harness.repositories.ng.core.custom.TokenCustomRepository;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(PL)
 @HarnessRepo
-public interface TokenRepository extends PagingAndSortingRepository<Token, String>, TokenCustomRepository {
+public interface TokenRepository
+    extends PagingAndSortingRepository<Token, String>, CrudRepository<Token, String>, TokenCustomRepository {
   long deleteAllByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndApiKeyTypeAndParentIdentifier(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, ApiKeyType apiKeyType,
       String parentIdentifier);

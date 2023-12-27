@@ -23,6 +23,7 @@ import io.harness.ng.core.entities.Project.ProjectKeys;
 
 import com.google.inject.Inject;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.BulkOperations;
@@ -30,7 +31,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 @OwnedBy(PL)
@@ -64,9 +64,10 @@ public class AddParentIdToProjectMigration implements NGMigration {
     BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Project.class);
 
     // iterate over all Project documents
-    try (CloseableIterator<Project> iterator =
-             mongoTemplate.stream(documentQuery.limit(NO_LIMIT).maxTimeMsec(MAX_VALUE), Project.class)) {
-      while (iterator.hasNext()) {
+    try {
+      for (Iterator<Project> iterator =
+               mongoTemplate.stream(documentQuery.limit(NO_LIMIT).maxTimeMsec(MAX_VALUE), Project.class).iterator();
+           iterator.hasNext();) {
         totalCounter++;
         Project nextProject = iterator.next();
         if (null != nextProject && isEmpty(nextProject.getParentId())) {

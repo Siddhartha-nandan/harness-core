@@ -12,11 +12,13 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(HarnessTeam.PL)
 @HarnessRepo
-public interface SupportPreferenceRepository extends PagingAndSortingRepository<SupportPreferenceDBO, String> {
+public interface SupportPreferenceRepository
+    extends PagingAndSortingRepository<SupportPreferenceDBO, String>, CrudRepository<SupportPreferenceDBO, String> {
   Optional<SupportPreferenceDBO> findByAccountIdentifier(String accountIdentifier);
   Optional<SupportPreferenceDBO> deleteByAccountIdentifier(String accountIdentifier);
 }

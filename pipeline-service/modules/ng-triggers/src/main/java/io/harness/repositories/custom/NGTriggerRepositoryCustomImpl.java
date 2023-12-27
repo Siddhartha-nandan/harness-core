@@ -6,6 +6,7 @@
  */
 
 package io.harness.repositories.custom;
+
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
 import io.harness.annotations.dev.CodePulse;
@@ -30,6 +31,7 @@ import com.google.inject.Inject;
 import com.mongodb.client.result.DeleteResult;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,8 +45,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.repository.support.PageableExecutionUtils;
-import org.springframework.data.util.CloseableIterator;
+import org.springframework.data.support.PageableExecutionUtils;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_TRIGGERS})
 @AllArgsConstructor(access = AccessLevel.PRIVATE, onConstructor = @__({ @Inject }))
@@ -54,7 +55,7 @@ public class NGTriggerRepositoryCustomImpl implements NGTriggerRepositoryCustom 
   private final MongoTemplate mongoTemplate;
   private static final int MAX_BATCH_SIZE = 1000;
   @Override
-  public CloseableIterator<NGTriggerEntity> findAll(Criteria criteria) {
+  public Stream<NGTriggerEntity> findAll(Criteria criteria) {
     Query query = new Query(criteria);
     query.cursorBatchSize(MAX_BATCH_SIZE);
     return mongoTemplate.stream(query, NGTriggerEntity.class);

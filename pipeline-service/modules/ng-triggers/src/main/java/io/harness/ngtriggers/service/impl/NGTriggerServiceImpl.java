@@ -140,6 +140,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -161,7 +162,6 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.util.CloseableIterator;
 import org.springframework.util.CollectionUtils;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_TRIGGERS})
@@ -583,7 +583,7 @@ public class NGTriggerServiceImpl implements NGTriggerService {
     long successfullyUpdated = 0;
     long failedToUpdate = 0;
 
-    CloseableIterator<NGTriggerEntity> iterator = ngTriggerRepository.findAll(criteria);
+    Iterator<NGTriggerEntity> iterator = ngTriggerRepository.findAll(criteria).iterator();
 
     while (iterator.hasNext()) {
       NGTriggerEntity ngTriggerEntity = iterator.next();

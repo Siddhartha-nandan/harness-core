@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,8 +46,7 @@ import org.springframework.data.mongodb.core.aggregation.ProjectionOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.repository.support.PageableExecutionUtils;
-import org.springframework.data.util.CloseableIterator;
+import org.springframework.data.support.PageableExecutionUtils;
 
 @AllArgsConstructor(access = AccessLevel.PROTECTED, onConstructor = @__({ @Inject }))
 @OwnedBy(PL)
@@ -118,7 +118,7 @@ public class UserMembershipRepositoryCustomImpl implements UserMembershipReposit
   }
 
   @Override
-  public CloseableIterator<UserMembership> stream(Criteria criteria) {
+  public Stream<UserMembership> stream(Criteria criteria) {
     Query query = new Query(criteria);
     return mongoTemplate.stream(query, UserMembership.class);
   }

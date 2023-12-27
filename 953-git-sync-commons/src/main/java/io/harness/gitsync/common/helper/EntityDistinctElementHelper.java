@@ -6,6 +6,7 @@
  */
 
 package io.harness.gitsync.common.helper;
+
 import static io.harness.annotations.dev.HarnessTeam.DX;
 
 import io.harness.annotations.dev.CodePulse;
@@ -29,7 +30,7 @@ import org.springframework.data.mongodb.core.aggregation.GroupOperation;
 import org.springframework.data.mongodb.core.aggregation.MatchOperation;
 import org.springframework.data.mongodb.core.query.Collation;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.repository.support.PageableExecutionUtils;
+import org.springframework.data.support.PageableExecutionUtils;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @UtilityClass

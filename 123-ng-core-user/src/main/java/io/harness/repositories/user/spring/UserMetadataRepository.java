@@ -15,12 +15,13 @@ import io.harness.ng.core.user.entities.UserMetadata;
 import io.harness.repositories.user.custom.UserMetadataRepositoryCustom;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(PL)
-public interface UserMetadataRepository
-    extends PagingAndSortingRepository<UserMetadata, String>, UserMetadataRepositoryCustom {
+public interface UserMetadataRepository extends PagingAndSortingRepository<UserMetadata, String>,
+                                                CrudRepository<UserMetadata, String>, UserMetadataRepositoryCustom {
   Optional<UserMetadata> findDistinctByUserId(String userId);
 
   Optional<UserMetadata> findDistinctByEmailIgnoreCase(String email);

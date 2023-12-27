@@ -119,16 +119,15 @@ public class PmsExecutionSummaryRepositoryCustomImplTest extends OrchestrationVi
             .status(ExecutionStatus.SKIPPED)
             .build();
     mongoTemplate.save(pipelineExecutionSummaryEntity);
-    try (
-        CloseableIterator<PipelineExecutionSummaryEntity> iterator =
-            pmsExecutionSummaryRepositoryCustom.fetchPipelineSummaryEntityFromRootParentIdUsingSecondaryMongo("root")) {
-      int count = 0;
-      while (iterator.hasNext()) {
-        count++;
-        iterator.next();
-      }
-      assertEquals(count, 1);
+    Iterator<PipelineExecutionSummaryEntity> iterator =
+        pmsExecutionSummaryRepositoryCustom.fetchPipelineSummaryEntityFromRootParentIdUsingSecondaryMongo("root")
+            .iterator();
+    int count = 0;
+    while (iterator.hasNext()) {
+      count++;
+      iterator.next();
     }
+    assertEquals(count, 1);
   }
 
   @Test
@@ -172,15 +171,14 @@ public class PmsExecutionSummaryRepositoryCustomImplTest extends OrchestrationVi
     criteria.and(PlanExecutionSummaryKeys.pipelineIdentifier).is("test");
     criteria.and(PlanExecutionSummaryKeys.entityGitDetailsRepoName).is("test-repo");
 
-    try (CloseableIterator<PipelineExecutionSummaryEntity> iterator =
-             pmsExecutionSummaryRepositoryCustom.findListOfBranches(criteria)) {
-      int count = 0;
-      while (iterator.hasNext()) {
-        count++;
-        iterator.next();
-      }
-      assertEquals(count, 1);
+    Iterator<PipelineExecutionSummaryEntity> iterator =
+        pmsExecutionSummaryRepositoryCustom.findListOfBranches(criteria).iterator();
+    int count = 0;
+    while (iterator.hasNext()) {
+      count++;
+      iterator.next();
     }
+    assertEquals(count, 1);
   }
 
   @Test
@@ -278,7 +276,6 @@ public class PmsExecutionSummaryRepositoryCustomImplTest extends OrchestrationVi
         pmsExecutionSummaryRepositoryCustom
             .findAllWithRequiredProjectionUsingAnalyticsNode(
                 criteria, PageRequest.of(0, 10), Collections.singletonList(PlanExecutionSummaryKeys.planExecutionId))
-            .stream()
             .collect(Collectors.toList());
 
     assertThat(response.size()).isEqualTo(planExecutionIds.size());
@@ -344,7 +341,7 @@ public class PmsExecutionSummaryRepositoryCustomImplTest extends OrchestrationVi
                            .build());
 
     List<PipelineExecutionSummaryEntity> response =
-        pmsExecutionSummaryRepositoryCustom.findListOfRepositories(criteria).stream().collect(Collectors.toList());
+        pmsExecutionSummaryRepositoryCustom.findListOfRepositories(criteria).collect(Collectors.toList());
     assertThat(response.size()).isEqualTo(planExecutionIds.size());
     assertThat(response.get(0).getPlanExecutionId()).isNull();
 

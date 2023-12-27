@@ -24,6 +24,7 @@ import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity.PlanEx
 import io.harness.rule.Owner;
 
 import com.google.inject.Inject;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import org.junit.Before;
@@ -131,12 +132,8 @@ public class PmsExecutionSummaryReadHelperTest extends OrchestrationVisualizatio
                             .is("pip1");
     Query q = new Query(criteria);
     q.fields().include(PlanExecutionSummaryKeys.planExecutionId);
-    try (CloseableIterator<PipelineExecutionSummaryEntity> iterator =
-             pmsExecutionSummaryReadHelper.fetchExecutionSummaryEntityFromAnalytics(q)) {
-      while (iterator.hasNext()) {
-        pipelineExecutionSummaryEntityList.add(iterator.next());
-      }
-    }
+    pmsExecutionSummaryReadHelper.fetchExecutionSummaryEntityFromAnalytics(q).forEach(
+        pipelineExecutionSummaryEntity -> pipelineExecutionSummaryEntityList.add(pipelineExecutionSummaryEntity));
     assertThat(pipelineExecutionSummaryEntityList.size()).isEqualTo(2);
   }
 
@@ -158,11 +155,10 @@ public class PmsExecutionSummaryReadHelperTest extends OrchestrationVisualizatio
                             .is("pip1");
     Query q = new Query(criteria);
     q.fields().include(PlanExecutionSummaryKeys.planExecutionId);
-    try (CloseableIterator<PipelineExecutionSummaryEntity> iterator =
-             pmsExecutionSummaryReadHelper.fetchExecutionSummaryEntityFromSecondary(q)) {
-      while (iterator.hasNext()) {
-        pipelineExecutionSummaryEntityList.add(iterator.next());
-      }
+    Iterator<PipelineExecutionSummaryEntity> iterator =
+        pmsExecutionSummaryReadHelper.fetchExecutionSummaryEntityFromSecondary(q).iterator();
+    while (iterator.hasNext()) {
+      pipelineExecutionSummaryEntityList.add(iterator.next());
     }
     assertThat(pipelineExecutionSummaryEntityList.size()).isEqualTo(2);
   }

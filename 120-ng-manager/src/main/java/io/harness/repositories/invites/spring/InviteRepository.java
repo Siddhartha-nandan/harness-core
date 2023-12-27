@@ -15,11 +15,13 @@ import io.harness.ng.core.invites.entities.Invite;
 import io.harness.repositories.invites.custom.InviteRepositoryCustom;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(PL)
-public interface InviteRepository extends PagingAndSortingRepository<Invite, String>, InviteRepositoryCustom {
+public interface InviteRepository
+    extends PagingAndSortingRepository<Invite, String>, CrudRepository<Invite, String>, InviteRepositoryCustom {
   Optional<Invite> findFirstByIdAndDeleted(String id, Boolean notDeleted);
 
   Optional<Invite> findFirstByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndEmailAndDeletedFalse(

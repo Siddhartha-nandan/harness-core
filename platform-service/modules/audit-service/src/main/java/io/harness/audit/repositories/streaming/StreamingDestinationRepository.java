@@ -11,10 +11,12 @@ import io.harness.annotation.HarnessRepo;
 import io.harness.audit.entities.streaming.StreamingDestination;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 public interface StreamingDestinationRepository
-    extends PagingAndSortingRepository<StreamingDestination, String>, StreamingDestinationRepositoryCustom {
+    extends PagingAndSortingRepository<StreamingDestination, String>, CrudRepository<StreamingDestination, String>,
+            StreamingDestinationRepositoryCustom {
   Optional<StreamingDestination> findByAccountIdentifierAndIdentifier(String accountIdentifier, String identifier);
 }

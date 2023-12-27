@@ -53,6 +53,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -63,7 +64,6 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.util.CloseableIterator;
 
 @AllArgsConstructor(onConstructor = @__({ @Inject }))
 @Slf4j
@@ -162,16 +162,15 @@ public class NGScimGroupServiceImpl implements ScimGroupService {
                         .projectIdentifier(userGroup.getProjectIdentifier())
                         .build();
 
-      try (CloseableIterator<UserMetadata> iterator =
-               userGroupService.getUsersInUserGroup(scope, userGroup.getIdentifier())) {
-        while (null != iterator && iterator.hasNext()) {
-          UserMetadata member = iterator.next();
-          Member memberTemp = new Member();
-          memberTemp.setValue(member.getUserId());
-          memberTemp.setDisplay(member.getEmail());
-          memberTemp.setRef(URI.create(""));
-          memberList.add(memberTemp);
-        }
+      Iterator<UserMetadata> iterator =
+          userGroupService.getUsersInUserGroup(scope, userGroup.getIdentifier()).iterator();
+      while (null != iterator && iterator.hasNext()) {
+        UserMetadata member = iterator.next();
+        Member memberTemp = new Member();
+        memberTemp.setValue(member.getUserId());
+        memberTemp.setDisplay(member.getEmail());
+        memberTemp.setRef(URI.create(""));
+        memberList.add(memberTemp);
       }
 
       if (ngFeatureFlagHelperService.isEnabled(accountId, PL_NEW_SCIM_STANDARDS)) {

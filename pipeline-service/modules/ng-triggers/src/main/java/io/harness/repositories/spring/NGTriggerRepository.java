@@ -16,12 +16,13 @@ import io.harness.repositories.custom.NGTriggerRepositoryCustom;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(PIPELINE)
-public interface NGTriggerRepository
-    extends PagingAndSortingRepository<NGTriggerEntity, String>, NGTriggerRepositoryCustom {
+public interface NGTriggerRepository extends PagingAndSortingRepository<NGTriggerEntity, String>,
+                                             CrudRepository<NGTriggerEntity, String>, NGTriggerRepositoryCustom {
   Optional<NGTriggerEntity>
   findByAccountIdAndOrgIdentifierAndProjectIdentifierAndTargetIdentifierAndIdentifierAndDeletedNot(String accountId,
       String orgIdentifier, String projectIdentifier, String targetIdentifier, String identifier, boolean notDeleted);

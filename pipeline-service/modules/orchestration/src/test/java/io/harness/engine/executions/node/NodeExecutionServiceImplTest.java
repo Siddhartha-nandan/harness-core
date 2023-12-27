@@ -74,6 +74,7 @@ import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -470,12 +471,8 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
     nodeExecutionService.save(nodeExecution1);
 
     List<NodeExecution> nodeExecutions = new LinkedList<>();
-    try (CloseableIterator<NodeExecution> iterator = nodeExecutionService.fetchChildrenNodeExecutionsIterator(
-             parentId, NodeProjectionUtils.fieldsForResponseNotifyData)) {
-      while (iterator.hasNext()) {
-        nodeExecutions.add(iterator.next());
-      }
-    }
+    nodeExecutionService.fetchChildrenNodeExecutionsIterator(parentId, NodeProjectionUtils.fieldsForResponseNotifyData)
+        .forEach(nodeExec -> nodeExecutions.add(nodeExec));
     assertThat(nodeExecutions).isNotEmpty();
 
     assertThat(nodeExecutions.size()).isEqualTo(2);
@@ -921,8 +918,10 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
     Query query = query(criteria);
     query.fields().include("node");
     doReturn(iterator).when(nodeExecutionReadHelperMock).fetchNodeExecutions(query);
-    CloseableIterator<NodeExecution> fetchedIterator = nodeExecutionService.fetchNodeExecutionsForGivenStageFQNs(
-        planExecutionId, stageFQNs, Collections.singletonList("node"));
+    Iterator<NodeExecution> fetchedIterator =
+        nodeExecutionService
+            .fetchNodeExecutionsForGivenStageFQNs(planExecutionId, stageFQNs, Collections.singletonList("node"))
+            .iterator();
     assertThat(fetchedIterator).isEqualTo(iterator);
   }
 
@@ -956,8 +955,9 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
     List<String> parentId = new ArrayList<>();
     doReturn(iterator).when(nodeExecutionReadHelperMock).fetchNodeExecutionsIteratorWithoutProjections(any());
 
-    CloseableIterator<NodeExecution> actualResult =
-        nodeExecutionService.fetchChildrenNodeExecutionsIteratorWithoutProjection("planExecutionId", parentId);
+    Iterator<NodeExecution> actualResult =
+        nodeExecutionService.fetchChildrenNodeExecutionsIteratorWithoutProjection("planExecutionId", parentId)
+            .iterator();
     verify(nodeExecutionReadHelperMock, times(1)).fetchNodeExecutionsIteratorWithoutProjections(any());
     assertThat(actualResult).isEqualTo(iterator);
   }
@@ -1128,8 +1128,8 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
         OrchestrationTestHelper.createCloseableIterator(nodeExecutionList.iterator());
     doReturn(iterator).when(nodeExecutionReadHelperMock).fetchNodeExecutionsFromAnalytics(any());
     Set<String> fieldsToBeIncluded = new HashSet<>();
-    CloseableIterator<NodeExecution> actualNodeExecution =
-        nodeExecutionService.fetchAllLeavesUsingPlanExecutionId("placeExecutionID", fieldsToBeIncluded);
+    Iterator<NodeExecution> actualNodeExecution =
+        nodeExecutionService.fetchAllLeavesUsingPlanExecutionId("placeExecutionID", fieldsToBeIncluded).iterator();
     verify(nodeExecutionReadHelperMock, times(1)).fetchNodeExecutionsFromAnalytics(any());
     assertThat(actualNodeExecution).isEqualTo(iterator);
   }

@@ -12,11 +12,13 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(HarnessTeam.PL)
 @HarnessRepo
-public interface ResourceTypeRepository extends PagingAndSortingRepository<ResourceTypeDBO, String> {
+public interface ResourceTypeRepository
+    extends PagingAndSortingRepository<ResourceTypeDBO, String>, CrudRepository<ResourceTypeDBO, String> {
   Optional<ResourceTypeDBO> findByIdentifier(String identifier);
   Optional<ResourceTypeDBO> findByPermissionKey(String permissionKey);
 }

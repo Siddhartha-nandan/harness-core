@@ -24,6 +24,7 @@ import io.harness.steps.approval.step.entities.ApprovalInstance.ApprovalInstance
 
 import com.google.inject.Inject;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
@@ -70,8 +71,9 @@ public class PopulateAmbianceFieldsAtFirstLevelInApprovalInstancesMigration impl
       // saveAll in mongo will lead to n update operations in this case, hence bulkOps is being used.
       BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, ApprovalInstance.class);
 
-      try (CloseableIterator<ApprovalInstance> approvalInstancesIterator =
-               mongoTemplate.stream(query, ApprovalInstance.class)) {
+      try {
+        Iterator<ApprovalInstance> approvalInstancesIterator =
+            mongoTemplate.stream(query, ApprovalInstance.class).iterator();
         while (approvalInstancesIterator.hasNext()) {
           ApprovalInstance approvalInstance = approvalInstancesIterator.next();
 

@@ -32,10 +32,10 @@ import io.harness.user.remote.UserFilterNG;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(PL)
 public interface NgUserService {
@@ -77,14 +77,14 @@ public interface NgUserService {
 
   List<UserMetadataDTO> getUserMetadata(List<String> userIds);
 
-  CloseableIterator<UserMetadata> streamUserMetadata(List<String> userIds);
+  Stream<UserMetadata> streamUserMetadata(List<String> userIds);
 
   void addServiceAccountToScope(
       String serviceAccountId, Scope scope, RoleBinding roleBinding, UserMembershipUpdateSource source);
 
   List<String> getUserIdsByEmails(List<String> emailIds);
 
-  CloseableIterator<UserMembership> streamUserMemberships(Criteria criteria);
+  Stream<UserMembership> streamUserMemberships(Criteria criteria);
 
   void addUserToScope(String userId, Scope scope, List<RoleBinding> roleBindings, List<String> userGroups,
       UserMembershipUpdateSource source);

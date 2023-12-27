@@ -16,12 +16,14 @@ import io.harness.repositories.custom.TriggerEventHistoryRepositoryCustom;
 
 import java.util.List;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(PIPELINE)
 public interface TriggerEventHistoryRepository
-    extends PagingAndSortingRepository<TriggerEventHistory, String>, TriggerEventHistoryRepositoryCustom {
+    extends PagingAndSortingRepository<TriggerEventHistory, String>, CrudRepository<TriggerEventHistory, String>,
+            TriggerEventHistoryRepositoryCustom {
   List<TriggerEventHistory> findFirst1ByAccountIdAndOrgIdentifierAndProjectIdentifierAndTriggerIdentifier(
       String accountId, String orgIdentifier, String projectIdentifier, String triggerIdentifier, Sort sort);
 

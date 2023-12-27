@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import org.springframework.data.domain.Sort;
@@ -58,7 +59,6 @@ import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Slf4j
@@ -146,7 +146,7 @@ public class SpringPersistenceWrapper implements PersistenceWrapper {
    * @param limit
    * @return
    */
-  public CloseableIterator<NotifyResponse> fetchNotifyResponseKeysFromSecondary(long limit) {
+  public Stream<NotifyResponse> fetchNotifyResponseKeysFromSecondary(long limit) {
     Query query = query(where(NotifyResponseKeys.createdAt).lt(limit));
     query.fields().include(NotifyResponseKeys.uuid);
     query.cursorBatchSize(MAX_BATCH_SIZE);
@@ -159,7 +159,7 @@ public class SpringPersistenceWrapper implements PersistenceWrapper {
     return mongoTemplate.find(query, WaitInstance.class);
   }
 
-  public CloseableIterator<WaitInstance> fetchWaitInstancesFromSecondary(String correlationId) {
+  public Stream<WaitInstance> fetchWaitInstancesFromSecondary(String correlationId) {
     Query query = query(where(WaitInstanceKeys.correlationIds).is(correlationId));
     query.cursorBatchSize(MAX_BATCH_SIZE);
     return secondaryMongoTemplate.stream(query, WaitInstance.class);

@@ -18,12 +18,14 @@ import io.harness.repositories.ngsettings.custom.SettingConfigurationRepositoryC
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(PL)
 @HarnessRepo
 public interface SettingConfigurationRepository
-    extends PagingAndSortingRepository<SettingConfiguration, String>, SettingConfigurationRepositoryCustom {
+    extends PagingAndSortingRepository<SettingConfiguration, String>, CrudRepository<SettingConfiguration, String>,
+            SettingConfigurationRepositoryCustom {
   List<SettingConfiguration> findByCategoryAndAllowedScopesIn(SettingCategory category, List<ScopeLevel> scopes);
   List<SettingConfiguration> findByCategoryAndGroupIdentifierAndAllowedScopesIn(
       SettingCategory category, String groupIdentifier, List<ScopeLevel> scopes);

@@ -10,8 +10,10 @@ package io.harness.repositories.pipeline.validation.async;
 import io.harness.annotation.HarnessRepo;
 import io.harness.pms.pipeline.validation.async.beans.PipelineValidationEvent;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 public interface PipelineValidationEventRepository
-    extends PagingAndSortingRepository<PipelineValidationEvent, String>, PipelineValidationEventRepositoryCustom {}
+    extends PagingAndSortingRepository<PipelineValidationEvent, String>,
+            CrudRepository<PipelineValidationEvent, String>, PipelineValidationEventRepositoryCustom {}
