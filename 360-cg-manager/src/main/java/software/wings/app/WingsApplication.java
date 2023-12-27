@@ -222,7 +222,6 @@ import software.wings.resources.AppResource;
 import software.wings.resources.SearchResource;
 import software.wings.resources.graphql.GraphQLResource;
 import software.wings.scheduler.AccessRequestHandler;
-import software.wings.scheduler.AccountDeletionJob;
 import software.wings.scheduler.AccountPasswordExpirationJob;
 import software.wings.scheduler.DelegateDisconnectAlertHelper;
 import software.wings.scheduler.DeletedEntityHandler;
@@ -1380,10 +1379,6 @@ public class WingsApplication extends Application<MainConfiguration> {
     taskPollExecutor.scheduleWithFixedDelay(
         new Schedulable("Failed cleaning up manager versions.", injector.getInstance(ManagerVersionsCleanUpJob.class)),
         1, 5L, TimeUnit.MINUTES);
-
-    ScheduledExecutorService cgJobExecutor =
-        injector.getInstance(Key.get(ScheduledExecutorService.class, Names.named("cgJobExecutor")));
-    cgJobExecutor.scheduleWithFixedDelay(injector.getInstance(AccountDeletionJob.class), 0, 1, TimeUnit.HOURS);
   }
 
   private void scheduleJobsDelegateService(
