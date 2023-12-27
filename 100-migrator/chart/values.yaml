@@ -223,6 +223,15 @@ global:
                 name: ""
                 property: ""
   ha: false
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
 
 redis:
   protocol: ""
@@ -317,15 +326,6 @@ image:
   digest: ""
   imagePullSecrets:
   - gcr-io-secret
-
-waitForInitContainer:
-  image:
-    registry: docker.io
-    repository: harness/helm-init-container
-    pullPolicy: IfNotPresent
-    tag: "latest"
-    digest: ""
-    imagePullSecrets: []
 
 initContainer:
   image:
