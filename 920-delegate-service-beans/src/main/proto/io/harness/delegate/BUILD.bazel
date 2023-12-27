@@ -21,6 +21,7 @@ proto_library(
         "schedule_task.proto",
         "schedule_task_service.proto",
         "secrets.proto",
+        "connector.proto",
         "security_context.proto",
         "task.proto",
     ],

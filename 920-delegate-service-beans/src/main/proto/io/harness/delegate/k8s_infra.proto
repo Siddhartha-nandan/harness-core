@@ -7,6 +7,7 @@ syntax = "proto3";
 
 package io.harness.delegate;
 
+import "920-delegate-service-beans/src/main/proto/io/harness/delegate/connector.proto";
 import "920-delegate-service-beans/src/main/proto/io/harness/delegate/resource.proto";
 import "920-delegate-service-beans/src/main/proto/io/harness/delegate/security_context.proto";
 import "920-delegate-service-beans/src/main/proto/io/harness/delegate/secrets.proto";
@@ -16,12 +17,13 @@ option go_package = "920_delegate_service_beans";
 option java_multiple_files = true;
 
 message K8sInfraSpec {
-  repeated StepSpec steps = 1;             // Step specs for task containers
-  map<string, string> env = 2;             // Any global env variables. These envs will be applied to all steps
-  repeated Resource resources = 3;         // Any global resources like shared volumes
-  ComputingResource compute_resource = 4;  // Global resource setting for k8s infra. The sum of task compute resources
+  repeated StepSpec steps = 1;             // Step specs for task containers.
+  map<string, string> env = 2;             // Any global env variables. These envs will be applied to all steps.
+  repeated Resource resources = 3;         // Any global resources like shared volumes.
+  ComputingResource compute_resource = 4;  // Global resource setting for k8s infra. The sum of task compute resources.
                                            // will be used if this field is not set.
-  SecurityContext security_context = 5;    // Global security context which applies to all steps
+  SecurityContext security_context = 5;    // Global security context which applies to all steps.
+  Connector image_connector = 6;           // Connector for pulling LE and ci-addon images.
 }
 
 message StepSpec {
