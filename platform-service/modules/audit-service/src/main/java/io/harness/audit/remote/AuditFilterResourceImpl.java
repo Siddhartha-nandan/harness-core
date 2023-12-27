@@ -45,7 +45,7 @@ public class AuditFilterResourceImpl implements AuditFilterResource {
   }
 
   public ResponseDTO<PageResponse<FilterDTO>> list(
-      int page, int size, String accountIdentifier, String orgIdentifier, String projectIdentifier) {
+      int page, int size, String accountIdentifier, String orgIdentifier, String projectIdentifier, String searchTerm) {
     auditPermissionValidator.validate(accountIdentifier,
         ResourceScopeDTO.builder()
             .accountIdentifier(accountIdentifier)
@@ -53,7 +53,7 @@ public class AuditFilterResourceImpl implements AuditFilterResource {
             .projectIdentifier(projectIdentifier)
             .build());
     return ResponseDTO.newResponse(getNGPageResponse(
-        filterService.list(page, size, accountIdentifier, orgIdentifier, projectIdentifier, null, AUDIT)));
+        filterService.list(page, size, accountIdentifier, orgIdentifier, projectIdentifier, null, AUDIT, searchTerm)));
   }
 
   public ResponseDTO<FilterDTO> create(FilterDTO filterDTO, String accountIdentifier) {

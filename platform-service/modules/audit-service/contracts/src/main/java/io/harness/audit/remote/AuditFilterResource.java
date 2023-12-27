@@ -106,7 +106,9 @@ public interface AuditFilterResource {
           NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
       @Parameter(description = ORG_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier);
+          NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
+      @Parameter(description = NGResourceFilterConstants.SEARCH_TERM) @QueryParam(
+          NGResourceFilterConstants.SEARCH_TERM_KEY) String searchTerm);
 
   @POST
   @ApiOperation(value = "Create a Filter of type Audit", nickname = "postAuditFilter")
