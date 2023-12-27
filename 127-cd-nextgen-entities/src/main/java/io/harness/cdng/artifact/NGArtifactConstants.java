@@ -26,6 +26,7 @@ public class NGArtifactConstants {
   public static final String REGISTRY_HOST_NAME = "registryHostname";
   public static final String REGISTRY = "registry";
   public static final String REGION = "region";
+  public static final String PLAN_NAME = "planName";
   public static final String TAG = "tag";
   public static final String FEED = "feed";
   public static final String TAG_INPUT = "tagInput";

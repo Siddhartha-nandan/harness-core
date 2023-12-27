@@ -14,8 +14,10 @@ import static io.harness.logging.CommandExecutionStatus.SUCCESS;
 import io.harness.beans.DelegateTaskRequest;
 import io.harness.beans.DelegateTaskRequest.DelegateTaskRequestBuilder;
 import io.harness.beans.IdentifierRef;
+import io.harness.cdng.artifact.NGArtifactConstants;
 import io.harness.cdng.artifact.resources.bamboo.dtos.BambooPlanKeysDTO;
 import io.harness.cdng.artifact.resources.bamboo.mappers.BambooResourceMapper;
+import io.harness.cdng.artifact.utils.ArtifactUtils;
 import io.harness.common.NGTaskType;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.connector.ConnectorResponseDTO;
@@ -60,6 +62,7 @@ import javax.annotation.Nonnull;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.MutablePair;
 
 @Slf4j
 public class BambooResourceServiceImpl implements BambooResourceService {
@@ -132,6 +135,7 @@ public class BambooResourceServiceImpl implements BambooResourceService {
   @Override
   public List<BuildDetails> getBuilds(IdentifierRef bambooConnectorRef, String orgIdentifier, String projectIdentifier,
       String planName, List<String> artifactPath) {
+    ArtifactUtils.validateIfAllValuesAssigned(MutablePair.of(NGArtifactConstants.PLAN_NAME, planName));
     BambooConnectorDTO connector = getConnector(bambooConnectorRef);
     BaseNGAccess baseNGAccess =
         getBaseNGAccess(bambooConnectorRef.getAccountIdentifier(), orgIdentifier, projectIdentifier);
@@ -241,7 +245,7 @@ public class BambooResourceServiceImpl implements BambooResourceService {
     if (responseData instanceof RemoteMethodReturnValueData) {
       RemoteMethodReturnValueData remoteMethodReturnValueData = (RemoteMethodReturnValueData) responseData;
       if (remoteMethodReturnValueData.getException() instanceof InvalidRequestException) {
-        throw(InvalidRequestException)(remoteMethodReturnValueData.getException());
+        throw (InvalidRequestException) (remoteMethodReturnValueData.getException());
       } else {
         throw new ArtifactServerException(
             "Unexpected error during authentication to bamboo server " + remoteMethodReturnValueData.getReturnValue(),
