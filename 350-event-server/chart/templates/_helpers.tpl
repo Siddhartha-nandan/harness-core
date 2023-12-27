@@ -72,5 +72,5 @@ Create the name of the service account to use
 {{- end }}
 
 {{- define "event-service.pullSecrets" -}}
-{{ include "common.images.pullSecrets" (dict "images" (list .Values.image .Values.waitForInitContainer.image) "global" .Values.global ) }}
+{{ include "common.images.pullSecrets" (dict "images" (list .Values.image .Values.global.waitForInitContainer.image) "global" .Values.global ) }}
 {{- end -}}
