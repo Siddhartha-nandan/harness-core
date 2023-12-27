@@ -49,30 +49,32 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       initContainers:
-    #waits only for mongo & timescale to start
-      {{- if .Values.global.database.mongo.installed }}
-      - name: wait-for-mongo
-        image: {{ include "common.images.image" (dict "imageRoot" .Values.waitForInitContainer.image "global" .Values.global) }}
-        imagePullPolicy: IfNotPresent
-        args:
-          - "pod"
-          - "-lapp=mongodb-replicaset"
-      {{- end }}
-      {{- if .Values.global.database.timescaledb.installed }}
-      - name: wait-for-timescale
-        image: {{ include "common.images.image" (dict "imageRoot" .Values.waitForInitContainer.image "global" .Values.global) }}
-        imagePullPolicy: IfNotPresent
-        args:
-          - "pod"
-          - "-lapp=timescaledb-single-chart"
-      {{- end }}
-      {{- if .Values.global.database.clickhouse.enabled }}
-      - name: wait-for-clickhouse
-        image: {{ include "common.images.image" (dict "imageRoot" .Values.waitForInitContainer.image "global" .Values.global) }}
-        imagePullPolicy: IfNotPresent
-        args:
-          - "pod"
-          - "-lapp=clickhouse"
+      {{- if .Values.global.waitForInitContainer.enabled }}
+      #waits only for mongo & timescale to start
+        {{- if .Values.global.database.mongo.installed }}
+        - name: wait-for-mongo
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.global.waitForInitContainer.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.global.waitForInitContainer.image.pullPolicy }}
+          args:
+            - "pod"
+            - "-lapp=mongodb-replicaset"
+        {{- end }}
+        {{- if .Values.global.database.timescaledb.installed }}
+        - name: wait-for-timescale
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.global.waitForInitContainer.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.global.waitForInitContainer.image.pullPolicy }}
+          args:
+            - "pod"
+            - "-lapp=timescaledb-single-chart"
+        {{- end }}
+        {{- if .Values.global.database.clickhouse.enabled }}
+        - name: wait-for-clickhouse
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.global.waitForInitContainer.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.global.waitForInitContainer.image.pullPolicy }}
+          args:
+            - "pod"
+            - "-lapp=clickhouse"
+        {{- end }}
       {{- end }}
       containers:
         - name: nextgen-ce

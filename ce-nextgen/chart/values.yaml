@@ -170,6 +170,16 @@ global:
     ecsEndPointUrl: https://ecs.us-east-2.amazonaws.com
     cloudwatchEndPointUrl: https://monitoring.us-east-2.amazonaws.com
   deployMode: KUBERNETES_ONPREM
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      # image pull secrets to use for helm-init-container image
+      imagePullSecrets: []
 
 replicaCount: 2
 
@@ -301,16 +311,6 @@ imageClickhouseEnabled:
   digest: ""
 # image pull secrets to use for ce-nextgen image
   imagePullSecrets: []
-
-waitForInitContainer:
-  image:
-    registry: docker.io
-    repository: harness/helm-init-container
-    pullPolicy: IfNotPresent
-    tag: "latest"
-    digest: ""
-  # image pull secrets to use for helm-init-container image
-    imagePullSecrets: []
 
 mongoSecrets:
   userName:
