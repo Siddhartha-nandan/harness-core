@@ -28,7 +28,6 @@ import io.harness.eventsframework.EventsFrameworkConstants;
 import io.harness.eventsframework.EventsFrameworkMetadataConstants;
 import io.harness.eventsframework.api.EventsFrameworkDownException;
 import io.harness.eventsframework.api.Producer;
-import io.harness.eventsframework.entity_crud.EntityChangeDTO;
 import io.harness.eventsframework.entity_crud.serviceaccount.ServiceAccountEntityChangeDTO;
 import io.harness.eventsframework.producer.Message;
 import io.harness.exception.InvalidArgumentsException;
@@ -45,7 +44,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import com.google.protobuf.StringValue;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 

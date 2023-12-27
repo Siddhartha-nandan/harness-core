@@ -17,7 +17,6 @@ import io.harness.accesscontrol.scopes.harness.ScopeMapper;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.eventsframework.consumer.Message;
-import io.harness.eventsframework.entity_crud.EntityChangeDTO;
 import io.harness.eventsframework.entity_crud.serviceaccount.ServiceAccountEntityChangeDTO;
 
 import com.google.inject.Inject;
