@@ -27,7 +27,7 @@ import io.harness.gitsync.scm.beans.ScmGitMetaData;
 import io.harness.gitsync.scm.beans.ScmGitMetaDataContext;
 import io.harness.gitsync.sdk.CacheResponse;
 import io.harness.gitsync.sdk.EntityGitDetails;
-import io.harness.gitsync.sdk.EntityGitInfo;
+import io.harness.gitx.EntityGitInfo;
 import io.harness.logging.AutoLogContext;
 import io.harness.manage.GlobalContextManager;
 import io.harness.persistence.gitaware.GitAware;
@@ -269,7 +269,7 @@ public class GitAwareContextHelper {
 
   public boolean isRemoteEntity() {
     GitEntityInfo gitEntityInfo = getGitRequestParamsInfo();
-    return gitEntityInfo != null && StoreType.REMOTE.equals(gitEntityInfo.getStoreType());
+    return isRemoteEntity(gitEntityInfo);
   }
 
   public boolean isDefaultBranch() {
