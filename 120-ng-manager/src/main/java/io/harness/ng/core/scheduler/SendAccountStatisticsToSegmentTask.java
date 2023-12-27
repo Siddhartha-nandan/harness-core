@@ -21,6 +21,7 @@ import io.harness.ng.core.services.ProjectService;
 import io.harness.remote.client.CGRestUtils;
 import io.harness.repositories.user.custom.UserMembershipRepositoryCustom;
 import io.harness.telemetry.Category;
+import io.harness.telemetry.TelemetryOption;
 import io.harness.telemetry.TelemetryReporter;
 
 import com.google.inject.Inject;
@@ -101,18 +102,13 @@ public class SendAccountStatisticsToSegmentTask implements Runnable {
   }
 
   private void sendAccountStatisticsMetricsEventToSegment(String accountIdentifier, int projectCount, int userCount) {
-    HashMap<String, Object> identifyEventProperties = new HashMap<>();
-    identifyEventProperties.put("accountId", accountIdentifier);
-
-    telemetryReporter.sendIdentifyEvent(
-        accountIdentifier, identifyEventProperties, Collections.singletonMap(AMPLITUDE, true));
-
     HashMap<String, Object> properties = new HashMap<>();
+    properties.put("group_type", "Account");
+    properties.put("group_id", accountIdentifier);
     properties.put("projectCount", projectCount);
     properties.put("userCount", userCount);
 
-    telemetryReporter.sendTrackEvent("account_statistics_metrics",
-        TelemetryConstants.SEGMENT_DUMMY_ACCOUNT_PREFIX + accountIdentifier, accountIdentifier, properties,
-        Collections.singletonMap(AMPLITUDE, true), Category.GLOBAL);
+    telemetryReporter.sendGroupEvent(accountIdentifier, null, properties, Collections.singletonMap(AMPLITUDE, true),
+        TelemetryOption.builder().sendForCommunity(true).build());
   }
 }

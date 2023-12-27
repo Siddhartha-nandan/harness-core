@@ -21,6 +21,7 @@ import io.harness.logging.ResponseTimeRecorder;
 import io.harness.ng.core.dto.AccountDTO;
 import io.harness.remote.client.CGRestUtils;
 import io.harness.telemetry.Category;
+import io.harness.telemetry.TelemetryOption;
 import io.harness.telemetry.TelemetryReporter;
 
 import com.google.inject.Inject;
@@ -107,19 +108,13 @@ public class AccountActivityMetricsPublisherJob implements Runnable {
 
   private void sendAccountActivityEventMetricsToSegment(
       String accountIdentifier, int uniqueActiveProjects, int uniqueUserLogins) {
-    HashMap<String, Object> identifyEventProperties = new HashMap<>();
-    identifyEventProperties.put("accountId", accountIdentifier);
-
-    telemetryReporter.sendIdentifyEvent(
-        accountIdentifier, identifyEventProperties, Collections.singletonMap(AMPLITUDE, true));
-
     HashMap<String, Object> properties = new HashMap<>();
+    properties.put("group_type", "Account");
+    properties.put("group_id", accountIdentifier);
     properties.put("activeProjects", uniqueActiveProjects);
     properties.put("uniqueLogins", uniqueUserLogins);
-
-    telemetryReporter.sendTrackEvent("account_activity_metrics",
-        TelemetryConstants.SEGMENT_DUMMY_ACCOUNT_PREFIX + accountIdentifier, accountIdentifier, properties,
-        Collections.singletonMap(AMPLITUDE, true), Category.GLOBAL);
+    telemetryReporter.sendGroupEvent(accountIdentifier, null, properties, Collections.singletonMap(AMPLITUDE, true),
+        TelemetryOption.builder().sendForCommunity(true).build());
   }
 
   private void sendAccountActivityEventMetricsToPrometheus(
