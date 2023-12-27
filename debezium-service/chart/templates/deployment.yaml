@@ -149,7 +149,7 @@ spec:
             {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "pms-harness" "connectionURIVariableName" "MONGODB_CONNECTION_STRING_PIPELINE_SNAPSHOT") | indent 10 }}
             {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "harness") | indent 10 }}
             {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "harness" "connectionURIVariableName" "MONGODB_CONNECTION_STRING_APPLICATIONS") | indent 10 }}
-            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "ng-harness") | indent 10 } }
+            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "ng-harness") | indent 10 }}
             {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "ng-harness" "connectionURIVariableName" "MONGODB_CONNECTION_STRING_SSCA") | indent 10 }}
 
           envFrom:
