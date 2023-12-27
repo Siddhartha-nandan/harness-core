@@ -240,7 +240,7 @@ global:
     image:
       registry: docker.io
       repository: harness/helm-init-container
-      pullPolicy: IfNotPresent
+      pullPolicy: Always
       tag: "latest"
       digest: ""
       imagePullSecrets: []
