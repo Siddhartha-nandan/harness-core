@@ -85,7 +85,7 @@ public class ServiceOverridesMapperV2 {
         .connectorRef(entity.getConnectorRef())
         .fallbackBranch(entity.getFallBackBranch())
         .cacheResponseMetadataDTO(getCacheResponse(entity))
-        .yaml(entity.getYamlV2())
+        .yaml(getYamlFromOverridesV2(entity))
         .build();
   }
 
@@ -235,5 +235,15 @@ public class ServiceOverridesMapperV2 {
       String yamlV2 = YamlUtils.writeYamlString(specConfig);
       requestedEntity.setYamlV2(yamlV2);
     }
+  }
+
+  public String getYamlFromOverridesV2(NGServiceOverridesEntity requestedEntity) {
+    if (isEmpty(requestedEntity.getYamlV2())) {
+      ServiceOverridesSpec serviceOverrideSpec = requestedEntity.getSpec();
+      ServiceOverrideSpecConfig specConfig = ServiceOverrideSpecConfig.builder().spec(serviceOverrideSpec).build();
+      return YamlUtils.writeYamlString(specConfig);
+    }
+
+    return requestedEntity.getYamlV2();
   }
 }

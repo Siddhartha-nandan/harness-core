@@ -13,7 +13,6 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.Scope;
 import io.harness.gitaware.helper.GitAwareContextHelper;
 import io.harness.gitaware.helper.GitAwareEntityHelper;
-import io.harness.gitsync.interceptor.GitEntityInfo;
 import io.harness.ng.core.serviceoverride.beans.NGServiceOverridesEntity;
 import io.harness.springdata.PersistenceUtils;
 
@@ -78,9 +77,7 @@ public class ServiceOverrideRepositoryCustomV2Impl implements ServiceOverrideRep
 
   @Override
   public NGServiceOverridesEntity saveGitAware(NGServiceOverridesEntity overrideToSave) {
-    GitEntityInfo gitEntityInfo = GitAwareContextHelper.getGitRequestParamsInfo();
-
-    if (GitAwareContextHelper.isRemoteEntity(gitEntityInfo)) {
+    if (GitAwareContextHelper.isRemoteEntity()) {
       createOverridesOnGit(overrideToSave);
     }
 
