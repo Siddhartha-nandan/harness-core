@@ -230,10 +230,7 @@ public class ServiceOverridesMapperV2 {
 
   public void setYamlV2IfNotPresent(NGServiceOverridesEntity requestedEntity) {
     if (isEmpty(requestedEntity.getYamlV2())) {
-      ServiceOverridesSpec serviceOverrideSpec = requestedEntity.getSpec();
-      ServiceOverrideSpecConfig specConfig = ServiceOverrideSpecConfig.builder().spec(serviceOverrideSpec).build();
-      String yamlV2 = YamlUtils.writeYamlString(specConfig);
-      requestedEntity.setYamlV2(yamlV2);
+      requestedEntity.setYamlV2(getYamlFromOverridesV2(requestedEntity));
     }
   }
 
