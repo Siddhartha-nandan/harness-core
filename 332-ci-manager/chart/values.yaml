@@ -142,8 +142,17 @@ global:
     virtualService:
       gateways:
       hosts:
-  ssca: 
+  ssca:
     enabled: false
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
 enableAuth: true
 replicaCount: 1
 maxSurge: 1
@@ -161,14 +170,6 @@ securityImage:
     registry: docker.io
     repository: harness/sto-plugin
     tag: 1.21.0
-    digest: ""
-    imagePullSecrets: []
-waitForInitContainer:
-  image:
-    registry: docker.io
-    repository: harness/helm-init-container
-    pullPolicy: IfNotPresent
-    tag: "latest"
     digest: ""
     imagePullSecrets: []
 ci_images:
