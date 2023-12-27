@@ -117,6 +117,14 @@ global:
     virtualService:
       gateways:
       hosts:
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
 replicaCount: 1
 maxSurge: 1
 maxUnavailable: 0
@@ -187,13 +195,6 @@ timescaleSecret:
   password:
     name: harness-secrets
     key: timescaledbPostgresPassword
-waitForInitContainer:
-  image:
-    registry: docker.io
-    repository: harness/helm-init-container
-    pullPolicy: IfNotPresent
-    tag: "latest"
-    digest: ""
 appLogLevel: INFO
 java:
   memory: "1024m"
