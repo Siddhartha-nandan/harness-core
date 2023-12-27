@@ -10,6 +10,7 @@ package io.harness.cdng.visitor.helpers.store;
 import static io.harness.cdng.visitor.YamlTypes.PATH_CONNECTOR;
 
 import io.harness.beans.FileReference;
+import io.harness.beans.IdentifierRef;
 import io.harness.cdng.manifest.yaml.harness.HarnessStore;
 import io.harness.common.ParameterFieldHelper;
 import io.harness.data.structure.EmptyPredicate;
@@ -22,7 +23,10 @@ import io.harness.filters.FilterCreatorHelper;
 import io.harness.ng.core.filestore.dto.FileDTO;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
+import io.harness.utils.IdentifierRefHelper;
 import io.harness.walktree.visitor.entityreference.EntityReferenceExtractor;
+import io.harness.walktree.visitor.entityreference.SecretReferenceExtractor;
+import io.harness.walktree.visitor.entityreference.beans.VisitedSecretReference;
 import io.harness.walktree.visitor.utilities.VisitorParentPathUtils;
 
 import com.google.inject.Inject;
@@ -35,7 +39,7 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class HarnessStoreVisitorHelper implements EntityReferenceExtractor {
+public class HarnessStoreVisitorHelper implements EntityReferenceExtractor, SecretReferenceExtractor {
   @Inject private FileStoreService fileStoreService;
 
   @Override
@@ -66,6 +70,33 @@ public class HarnessStoreVisitorHelper implements EntityReferenceExtractor {
     });
 
     return result;
+  }
+
+  @Override
+  public Set<VisitedSecretReference> addSecretReference(Object object, String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, Map<String, Object> contextMap) {
+    if (!(object instanceof HarnessStore)) {
+      throw new InvalidRequestException(
+          String.format("Not supported implementation for %s class type for extracting secret references",
+              object.getClass().toString()));
+    }
+
+    final Set<VisitedSecretReference> secretReferences = new HashSet<>();
+    HarnessStore harnessStore = (HarnessStore) object;
+    List<String> secretFiles = ParameterFieldHelper.getParameterFieldListValue(harnessStore.getSecretFiles(), false);
+
+    secretFiles.forEach(secretFile -> {
+      IdentifierRef secretRef =
+          IdentifierRefHelper.getIdentifierRef(secretFile, accountIdentifier, orgIdentifier, projectIdentifier);
+
+      secretReferences.add(
+          VisitedSecretReference.builder()
+              .secretRef(secretRef)
+              .referredBy(EntityDetailProtoDTO.newBuilder().setType(EntityTypeProtoEnum.PIPELINES).build())
+              .build());
+    });
+
+    return secretReferences;
   }
 
   public Set<EntityDetailProtoDTO> getEntityDetailsProtoDTO(ParameterField<List<String>> valuesFiles,

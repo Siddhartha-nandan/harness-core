@@ -49,8 +49,10 @@ import io.harness.delegate.task.gitcommon.GitRequestFileConfig;
 import io.harness.delegate.task.gitcommon.GitTaskNGRequest;
 import io.harness.delegate.task.gitcommon.GitTaskNGResponse;
 import io.harness.eventsframework.protohelper.IdentifierRefProtoDTOHelper;
+import io.harness.eventsframework.schemas.entity.EntityDetailProtoDTO;
 import io.harness.eventsframework.schemas.entity.EntityTypeProtoEnum;
 import io.harness.eventsframework.schemas.entity.EntityUsageDetailProto;
+import io.harness.eventsframework.schemas.entity.IdentifierRefProtoDTO;
 import io.harness.eventsframework.schemas.entity.PipelineExecutionUsageDataProto;
 import io.harness.exception.InvalidRequestException;
 import io.harness.executions.steps.ExecutionNodeType;
@@ -278,7 +280,26 @@ public class ConfigFilesStepV2 extends AbstractConfigFileStep
       Set<VisitedSecretReference> secretReferences =
           configFile == null ? Set.of() : entityReferenceExtractorUtils.extractReferredSecrets(ambiance, configFile);
 
-      secretRuntimeUsageService.createSecretRuntimeUsage(secretReferences,
+      IdentifierRefProtoDTO pipelineIdentifierRef = IdentifierRefProtoDTOHelper.createIdentifierRefProtoDTO(
+          AmbianceUtils.getAccountId(ambiance), AmbianceUtils.getOrgIdentifier(ambiance),
+          AmbianceUtils.getProjectIdentifier(ambiance), AmbianceUtils.getPipelineIdentifier(ambiance));
+
+      Set<VisitedSecretReference> finalSecretReferences = new HashSet<>(secretReferences.size());
+      secretReferences.forEach(secretReference -> {
+        EntityDetailProtoDTO referredBy = secretReference.getReferredBy();
+        if (referredBy.getType() == EntityTypeProtoEnum.PIPELINES && !referredBy.hasIdentifierRef()) {
+          finalSecretReferences.add(secretReference.toBuilder()
+                                        .referredBy(EntityDetailProtoDTO.newBuilder()
+                                                        .setType(EntityTypeProtoEnum.PIPELINES)
+                                                        .setIdentifierRef(pipelineIdentifierRef)
+                                                        .build())
+                                        .build());
+        } else {
+          finalSecretReferences.add(secretReference);
+        }
+      });
+
+      secretRuntimeUsageService.createSecretRuntimeUsage(finalSecretReferences,
           EntityUsageDetailProto.newBuilder()
               .setPipelineExecutionUsageData(PipelineExecutionUsageDataProto.newBuilder()
                                                  .setPlanExecutionId(ambiance.getPlanExecutionId())
@@ -286,9 +307,7 @@ public class ConfigFilesStepV2 extends AbstractConfigFileStep
                                                  .build())
               .setUsageType(PIPELINE_EXECUTION)
               .setEntityType(EntityTypeProtoEnum.PIPELINES)
-              .setIdentifierRef(IdentifierRefProtoDTOHelper.createIdentifierRefProtoDTO(
-                  AmbianceUtils.getAccountId(ambiance), AmbianceUtils.getOrgIdentifier(ambiance),
-                  AmbianceUtils.getProjectIdentifier(ambiance), AmbianceUtils.getPipelineIdentifier(ambiance)))
+              .setIdentifierRef(pipelineIdentifierRef)
               .build());
     }
   }

@@ -12,6 +12,7 @@ import static io.harness.cdng.ssh.utils.CommandStepUtils.prepareOutputVariables;
 import static io.harness.common.ParameterFieldHelper.getParameterFieldValue;
 import static io.harness.data.structure.CollectionUtils.emptyIfNull;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.ng.core.entityusageactivity.EntityUsageTypes.PIPELINE_EXECUTION;
 
 import static java.util.Collections.emptyList;
 
@@ -38,6 +39,12 @@ import io.harness.delegate.beans.instancesync.mapper.PdcToServiceInstanceInfoMap
 import io.harness.delegate.task.shell.CommandTaskParameters;
 import io.harness.delegate.task.shell.CommandTaskResponse;
 import io.harness.delegate.task.ssh.NgCommandUnit;
+import io.harness.eventsframework.protohelper.IdentifierRefProtoDTOHelper;
+import io.harness.eventsframework.schemas.entity.EntityDetailProtoDTO;
+import io.harness.eventsframework.schemas.entity.EntityTypeProtoEnum;
+import io.harness.eventsframework.schemas.entity.EntityUsageDetailProto;
+import io.harness.eventsframework.schemas.entity.IdentifierRefProtoDTO;
+import io.harness.eventsframework.schemas.entity.PipelineExecutionUsageDataProto;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.SkipRollbackException;
 import io.harness.executions.steps.ExecutionNodeType;
@@ -51,12 +58,14 @@ import io.harness.pms.contracts.execution.tasks.SkipTaskRequest;
 import io.harness.pms.contracts.execution.tasks.TaskRequest;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
+import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.sdk.core.resolver.RefObjectUtils;
 import io.harness.pms.sdk.core.resolver.outcome.OutcomeService;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
 import io.harness.pms.sdk.core.steps.io.StepResponse.StepResponseBuilder;
 import io.harness.pms.sdk.core.steps.io.v1.StepBaseParameters;
+import io.harness.secretusage.SecretRuntimeUsageService;
 import io.harness.serializer.KryoSerializer;
 import io.harness.shell.ShellExecutionData;
 import io.harness.steps.StepHelper;
@@ -64,6 +73,7 @@ import io.harness.steps.StepUtils;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
+import io.harness.utils.IdentifierRefHelper;
 
 import software.wings.beans.TaskType;
 
@@ -89,6 +99,7 @@ public class CommandStep extends CdTaskExecutable<CommandTaskResponse> {
   @Inject private CDStepHelper cdStepHelper;
   @Inject private SshCommandStepHelper sshCommandStepHelper;
   @Inject private InstanceInfoService instanceInfoService;
+  @Inject private SecretRuntimeUsageService secretRuntimeUsageService;
   @Inject private OutcomeService outcomeService;
   @Inject private CommandTaskDataFactory commandTaskDataFactory;
 
@@ -114,6 +125,7 @@ public class CommandStep extends CdTaskExecutable<CommandTaskResponse> {
     try {
       CommandStepParameters executeCommandStepParameters = (CommandStepParameters) stepParameters.getSpec();
       validateStepParameters(executeCommandStepParameters);
+      publishSecretRuntimeUsage(ambiance, executeCommandStepParameters);
 
       CommandTaskParameters taskParameters =
           sshCommandStepHelper.buildCommandTaskParameters(ambiance, executeCommandStepParameters,
@@ -135,6 +147,31 @@ public class CommandStep extends CdTaskExecutable<CommandTaskResponse> {
           .setSkipTaskRequest(SkipTaskRequest.newBuilder().setMessage(e.getMessage()).build())
           .build();
     }
+  }
+
+  private void publishSecretRuntimeUsage(Ambiance ambiance, CommandStepParameters commandStepParameters) {
+    IdentifierRefProtoDTO pipelineIdentifierRef = IdentifierRefProtoDTOHelper.createIdentifierRefProtoDTO(
+        AmbianceUtils.getAccountId(ambiance), AmbianceUtils.getOrgIdentifier(ambiance),
+        AmbianceUtils.getProjectIdentifier(ambiance), AmbianceUtils.getPipelineIdentifier(ambiance));
+
+    commandStepParameters.getSecretOutputVariablesNames().forEach(secretRef -> {
+      secretRuntimeUsageService.createSecretRuntimeUsage(
+          IdentifierRefHelper.getIdentifierRef(secretRef, AmbianceUtils.getAccountId(ambiance),
+              AmbianceUtils.getOrgIdentifier(ambiance), AmbianceUtils.getProjectIdentifier(ambiance)),
+          EntityDetailProtoDTO.newBuilder()
+              .setType(EntityTypeProtoEnum.PIPELINES)
+              .setIdentifierRef(pipelineIdentifierRef)
+              .build(),
+          EntityUsageDetailProto.newBuilder()
+              .setPipelineExecutionUsageData(PipelineExecutionUsageDataProto.newBuilder()
+                                                 .setPlanExecutionId(ambiance.getPlanExecutionId())
+                                                 .setStageExecutionId(ambiance.getStageExecutionId())
+                                                 .build())
+              .setUsageType(PIPELINE_EXECUTION)
+              .setEntityType(EntityTypeProtoEnum.PIPELINES)
+              .setIdentifierRef(pipelineIdentifierRef)
+              .build());
+    });
   }
 
   @Override
