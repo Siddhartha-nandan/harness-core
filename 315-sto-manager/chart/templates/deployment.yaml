@@ -48,28 +48,30 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       initContainers:
-      {{- if .Values.global.database.mongo.installed }}
-      - name: wait-for-mongo
-        image: {{ include "common.images.image" (dict "imageRoot" .Values.waitForInitContainer.image "global" .Values.global) }}
-        imagePullPolicy: IfNotPresent
-        args:
-          - "pod"
-          - "-lapp=mongodb-replicaset"
+      {{- if .Values.global.waitForInitContainer.enabled }}
+        {{- if .Values.global.database.mongo.installed }}
+        - name: wait-for-mongo
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.global.waitForInitContainer.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.global.waitForInitContainer.image.pullPolicy }}
+          args:
+            - "pod"
+            - "-lapp=mongodb-replicaset"
+        {{- end }}
+        {{- if .Values.global.database.timescaledb.installed }}
+        - name: wait-for-timescale
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.global.waitForInitContainer.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.global.waitForInitContainer.image.pullPolicy }}
+          args:
+            - "pod"
+            - "-lapp=timescaledb-single-chart"
+        {{- end }}
+        - name: wait-for-pipeline-service
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.global.waitForInitContainer.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.global.waitForInitContainer.image.pullPolicy }}
+          args:
+            - "pod"
+            - "-lapp=pipeline-service"
       {{- end }}
-      {{- if .Values.global.database.timescaledb.installed }}
-      - name: wait-for-timescale
-        image: {{ include "common.images.image" (dict "imageRoot" .Values.waitForInitContainer.image "global" .Values.global) }}
-        imagePullPolicy: IfNotPresent
-        args:
-          - "pod"
-          - "-lapp=timescaledb-single-chart"
-      {{- end }}
-      - name: wait-for-pipeline-service
-        image: {{ include "common.images.image" (dict "imageRoot" .Values.waitForInitContainer.image "global" .Values.global) }}
-        imagePullPolicy: IfNotPresent
-        args:
-          - "pod"
-          - "-lapp=pipeline-service"
       containers:
         - name: sto-manager
           securityContext:

@@ -129,7 +129,7 @@ global:
             keys:
               REDIS_USERNAME: ""
               REDIS_PASSWORD: ""
-        secretManagement: 
+        secretManagement:
           externalSecretsOperator:
             - secretStore:
                 name: ""
@@ -143,6 +143,15 @@ global:
                   property: ""
   opa:
     enabled: false
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
 
 
 replicaCount: 1
@@ -159,14 +168,6 @@ image:
   tag: "81700-000"
   digest: ""
   imagePullSecrets: []
-waitForInitContainer:
-  image:
-    registry: docker.io
-    repository: harness/helm-init-container
-    pullPolicy: IfNotPresent
-    tag: "latest"
-    digest: ""
-    imagePullSecrets: []
 securityImage:
   image:
     registry: docker.io
