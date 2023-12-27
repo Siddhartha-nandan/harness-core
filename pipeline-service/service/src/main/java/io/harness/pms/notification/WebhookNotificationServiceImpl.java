@@ -17,13 +17,13 @@ import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.execution.utils.AmbianceUtils;
-import io.harness.pms.execution.utils.StatusUtils;
 import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity;
 
 import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -42,7 +42,7 @@ public class WebhookNotificationServiceImpl implements WebhookNotificationServic
       return getModuleInfoForPipelineLevel(executionSummaryEntity);
     }
     if (currentLevel.getStepType().getStepCategory() == StepCategory.STAGE) {
-      return getModuleInfoForStage(executionSummaryEntity, currentLevel, eventType);
+      return getModuleInfoForStage(executionSummaryEntity, ambiance, eventType);
     }
     return null;
   }
@@ -70,8 +70,12 @@ public class WebhookNotificationServiceImpl implements WebhookNotificationServic
 
   // TODO: Make this generic
   private ModuleInfo getModuleInfoForStage(
-      PipelineExecutionSummaryEntity executionSummaryEntity, Level currentLevel, PipelineEventType pipelineEventType) {
+      PipelineExecutionSummaryEntity executionSummaryEntity, Ambiance ambiance, PipelineEventType pipelineEventType) {
+    Level currentLevel = AmbianceUtils.obtainCurrentLevel(ambiance);
     Map<String, CDStageSummaryResponseDTO> stageSummaryResponseDTOMap = null;
+    Optional<Level> strategyLevel = AmbianceUtils.getStrategyLevelFromAmbiance(ambiance);
+    String stageIdentifier =
+        strategyLevel.isEmpty() ? currentLevel.getIdentifier() : strategyLevel.get().getIdentifier();
     try {
       if (pipelineEventType != PipelineEventType.STAGE_START) {
         stageSummaryResponseDTOMap = getResponse(cdngStageSummaryResourceClient.listStageExecutionFormattedSummary(
@@ -81,7 +85,7 @@ public class WebhookNotificationServiceImpl implements WebhookNotificationServic
         stageSummaryResponseDTOMap = getResponse(
             cdngStageSummaryResourceClient.listStagePlanCreationFormattedSummary(executionSummaryEntity.getAccountId(),
                 executionSummaryEntity.getOrgIdentifier(), executionSummaryEntity.getProjectIdentifier(),
-                executionSummaryEntity.getPlanExecutionId(), Lists.newArrayList(currentLevel.getIdentifier())));
+                executionSummaryEntity.getPlanExecutionId(), Lists.newArrayList(stageIdentifier)));
       }
     } catch (Exception ex) {
       log.error("Exception occurred while updating module info during webhook notification", ex);
@@ -92,13 +96,19 @@ public class WebhookNotificationServiceImpl implements WebhookNotificationServic
     }
     CDStageSummaryResponseDTO stageSummaryResponseDTO = stageSummaryResponseDTOMap.get(currentLevel.getRuntimeId());
     if (stageSummaryResponseDTO == null) {
-      stageSummaryResponseDTO = stageSummaryResponseDTOMap.get(currentLevel.getIdentifier());
+      stageSummaryResponseDTO = stageSummaryResponseDTOMap.get(stageIdentifier);
     }
     return ModuleInfo.builder()
-        .services(Lists.newArrayList(stageSummaryResponseDTO.getService()))
+        .services(EmptyPredicate.isEmpty(stageSummaryResponseDTO.getServices())
+                ? Lists.newArrayList(stageSummaryResponseDTO.getService())
+                : Lists.newArrayList(stageSummaryResponseDTO.getServices()))
         .artifactInfo(Lists.newArrayList(stageSummaryResponseDTO.getArtifactDisplayName()))
-        .environments(Lists.newArrayList(stageSummaryResponseDTO.getEnvironment()))
-        .infrastructures(Lists.newArrayList(stageSummaryResponseDTO.getInfra()))
+        .environments(EmptyPredicate.isEmpty(stageSummaryResponseDTO.getEnvironments())
+                ? Lists.newArrayList(stageSummaryResponseDTO.getEnvironment())
+                : Lists.newArrayList(stageSummaryResponseDTO.getEnvironments()))
+        .infrastructures(EmptyPredicate.isEmpty(stageSummaryResponseDTO.getInfras())
+                ? Lists.newArrayList(stageSummaryResponseDTO.getInfra())
+                : Lists.newArrayList(stageSummaryResponseDTO.getInfras()))
         .build();
   }
 }
