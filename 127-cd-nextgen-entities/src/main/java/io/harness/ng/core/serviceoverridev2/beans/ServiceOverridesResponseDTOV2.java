@@ -13,7 +13,7 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.gitsync.beans.StoreType;
-import io.harness.gitsync.sdk.EntityGitInfo;
+import io.harness.gitx.EntityGitInfo;
 import io.harness.ng.core.template.CacheResponseMetadataDTO;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

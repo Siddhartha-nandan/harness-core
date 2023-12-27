@@ -5,9 +5,9 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.gitsync.sdk;
+package io.harness.gitx;
 
-import static io.harness.annotations.dev.HarnessTeam.DX;
+import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
 import io.harness.annotations.dev.OwnedBy;
 
@@ -23,7 +23,7 @@ import lombok.experimental.FieldNameConstants;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @FieldNameConstants(innerTypeName = "EntityGitInfoKeys")
 @Schema(name = "EntityGitInfo", description = "This contains git info of the entity")
-@OwnedBy(DX)
+@OwnedBy(PIPELINE)
 public class EntityGitInfo {
   @Schema(description = "Object Id of the Entity") String objectId;
   @Schema(description = "Branch Name") String branch;
