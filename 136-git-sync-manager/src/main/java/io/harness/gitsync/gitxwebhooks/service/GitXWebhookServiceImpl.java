@@ -285,7 +285,7 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
                 deleteGitXWebhookRequestDTO.getScope().getOrgIdentifier(),
                 deleteGitXWebhookRequestDTO.getScope().getProjectIdentifier()),
             Resource.of("GitXWebhook", deleteGitXWebhookRequestDTO.getWebhookIdentifier()),
-            GitXWebhhookRbacPermissionsConstants.GitXWebhhook_CREATE_AND_EDIT);
+            GitXWebhhookRbacPermissionsConstants.GitXWebhhook_DELETE);
       }
       try {
         log.info(String.format("Deleting Webhook with identifier %s in account %s",
