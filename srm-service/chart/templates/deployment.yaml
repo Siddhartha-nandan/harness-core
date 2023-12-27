@@ -47,12 +47,14 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       initContainers:
+      {{- if .Values.global.waitForInitContainer.enabled }}
       - name: wait-for-harness-manager
-        image: {{ include "common.images.image" (dict "imageRoot" .Values.waitForInitContainer.image "global" .Values.global) }}
-        imagePullPolicy: IfNotPresent
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.global.waitForInitContainer.image "global" .Values.global) }}
+        imagePullPolicy: {{ .Values.global.waitForInitContainer.image.pullPolicy }}
         args:
           - "pod"
           - "-lapp=harness-manager"
+      {{- end }}
       containers:
         - name: cv-nextgen
           image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}

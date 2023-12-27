@@ -142,6 +142,16 @@ global:
   ha: false
   imagePullSecrets: []
   stackDriverLoggingEnabled: false
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+
+
 
 replicaCount: 1
 maxSurge: 1
@@ -191,16 +201,6 @@ timescaleSecret:
   password:
     name: harness-secrets
     key: timescaledbPostgresPassword
-
-waitForInitContainer:
-  image:
-    registry: docker.io
-    repository: harness/helm-init-container
-    pullPolicy: IfNotPresent
-    tag: "latest"
-    digest: ""
-
-
 redis:
   protocol: ""
   hosts: []
