@@ -21,7 +21,6 @@ import lombok.Builder;
 import lombok.Data;
 import org.eclipse.jgit.transport.http.HttpConnection;
 import org.eclipse.jgit.transport.http.HttpConnectionFactory;
-import org.eclipse.jgit.transport.http.apache.HttpClientConnectionFactory;
 
 @Data
 @Builder
@@ -30,6 +29,8 @@ import org.eclipse.jgit.transport.http.apache.HttpClientConnectionFactory;
 public class ProxyHttpConnectionFactory implements HttpConnectionFactory {
   @NotNull private String proxyHost;
   @NotNull private int proxyPort;
+  private String proxyUsername;
+  private String proxyPassword;
 
   @Override
   public HttpConnection create(URL url) throws IOException {
@@ -38,7 +39,9 @@ public class ProxyHttpConnectionFactory implements HttpConnectionFactory {
 
   @Override
   public HttpConnection create(URL url, Proxy proxy) throws IOException {
-    return new HttpClientConnectionFactory().create(
-        url, new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort)));
+    HttpConnection connection =
+        new ProxyHttpConnection(url.toString(), new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort)),
+            proxyHost, proxyPort, proxyUsername, proxyPassword);
+    return connection;
   }
 }

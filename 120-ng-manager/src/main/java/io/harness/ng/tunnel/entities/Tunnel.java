@@ -42,4 +42,5 @@ public class Tunnel implements UuidAware, PersistentEntity {
   @NotEmpty protected String port;
   @CreatedDate Long createdAt;
   @LastModifiedDate Long lastModifiedAt;
+  protected String uniqueSha;
 }

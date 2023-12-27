@@ -10,6 +10,7 @@ package io.harness.utils;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
 import java.net.URL;
+import java.util.Optional;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
@@ -49,6 +50,36 @@ public class ProxyUtils {
     try {
       URL url = new URL(urlString);
       return url.getProtocol();
+    } catch (Exception e) {
+      log.error("Unable to parse proxy url to get protocol", e);
+    }
+    return null;
+  }
+
+  public String getProxyUsername(String urlString) {
+    if (isEmpty(urlString)) {
+      return null;
+    }
+    try {
+      URL url = new URL(urlString);
+      String uname = url.getUserInfo();
+
+      return Optional.ofNullable(uname).orElse(":").split(":")[0];
+    } catch (Exception e) {
+      log.error("Unable to parse proxy url to get protocol", e);
+    }
+    return null;
+  }
+
+  public String getProxyPassword(String urlString) {
+    if (isEmpty(urlString)) {
+      return null;
+    }
+    try {
+      URL url = new URL(urlString);
+      String uname = url.getUserInfo();
+
+      return Optional.ofNullable(uname).orElse(":").split(":")[1];
     } catch (Exception e) {
       log.error("Unable to parse proxy url to get protocol", e);
     }

@@ -67,6 +67,8 @@ public class DockerArtifactTaskHandler {
         .password(password)
         .proxyHost(ProxyUtils.getProxyHost(request.getDockerConnectorDTO().getProxyUrl()))
         .proxyPort(ProxyUtils.getProxyPort(request.getDockerConnectorDTO().getProxyUrl()))
+        .proxyUsername(ProxyUtils.getProxyUsername(request.getDockerConnectorDTO().getProxyUrl()))
+        .proxyPassword(ProxyUtils.getProxyUsername(request.getDockerConnectorDTO().getProxyUrl()))
         .build();
   }
 }

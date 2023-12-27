@@ -46,14 +46,18 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.Authenticator;
 import okhttp3.ConnectionPool;
 import okhttp3.Credentials;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.Route;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.apache.http.HttpHost;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 @CodePulse(
     module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_COMMON_STEPS})
@@ -460,6 +464,26 @@ public class Http {
       okHttpClientBuilder.proxy(proxy);
     } else if (isNotEmpty(proxyHost) && proxyPort != null) {
       okHttpClientBuilder.proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort)));
+    }
+    return okHttpClientBuilder.build();
+  }
+
+  public OkHttpClient getOkHttpClient(String url, String proxyHost, Integer proxyPort, String proxyUsername,
+      String proxyPassword, boolean isCertValidationRequired) {
+    OkHttpClient.Builder okHttpClientBuilder = getOkHttpClientBuilder(url, isCertValidationRequired);
+    Proxy proxy = Http.checkAndGetNonProxyIfApplicable(url);
+    if (proxy != null) {
+      okHttpClientBuilder.proxy(proxy);
+    } else if (isNotEmpty(proxyHost) && proxyPort != null) {
+      okHttpClientBuilder.proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort)));
+      okHttpClientBuilder.proxyAuthenticator(new Authenticator() {
+        @Nullable
+        @Override
+        public Request authenticate(@Nullable Route route, @NotNull Response response) throws IOException {
+          String credential = Credentials.basic(proxyUsername, proxyPassword);
+          return response.request().newBuilder().header("Proxy-Authorization", credential).build();
+        }
+      });
     }
     return okHttpClientBuilder.build();
   }

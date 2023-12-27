@@ -39,6 +39,7 @@ import io.harness.ng.core.dto.TunnelResponseDTO;
 import io.harness.ng.core.mapper.TagMapper;
 import io.harness.services.TunnelService;
 import io.harness.utils.FullyQualifiedIdentifierHelper;
+import io.harness.utils.ProxyUtils;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
@@ -223,7 +224,13 @@ public class ConnectorMapper {
         withProxy.setProxy(true);
         TunnelResponseDTO tunnelResponseDTO = tunnelService.getTunnel(connector.getAccountIdentifier());
         if (isNotBlank(tunnelResponseDTO.getServerUrl()) && isNotBlank(tunnelResponseDTO.getPort())) {
-          withProxy.setProxyUrl(tunnelResponseDTO.getServerUrl() + ":" + tunnelResponseDTO.getPort());
+          String proxyUrl =
+              ProxyUtils.getProxyHost(tunnelResponseDTO.getServerUrl()) + ":" + tunnelResponseDTO.getPort();
+          if (isNotBlank(tunnelResponseDTO.getUniqueSha())) {
+            proxyUrl = tunnelResponseDTO.getUniqueSha() + "@" + proxyUrl;
+          }
+          proxyUrl = ProxyUtils.getProxyProtocol(tunnelResponseDTO.getServerUrl()) + "://" + proxyUrl;
+          withProxy.setProxyUrl(proxyUrl);
         }
       }
     }

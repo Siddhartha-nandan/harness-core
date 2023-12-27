@@ -45,9 +45,11 @@ public class TunnelServiceImpl implements TunnelService {
       return Boolean.FALSE;
     }
 
-    UpdateOperations<Tunnel> updateOperations = persistence.createUpdateOperations(Tunnel.class)
-                                                    .setOnInsert(TunnelKeys.accountIdentifier, accountId)
-                                                    .set(TunnelKeys.port, tunnelRegisterRequestDTO.getPort());
+    UpdateOperations<Tunnel> updateOperations =
+        persistence.createUpdateOperations(Tunnel.class)
+            .setOnInsert(TunnelKeys.accountIdentifier, accountId)
+            .set(TunnelKeys.port, tunnelRegisterRequestDTO.getPort())
+            .set(TunnelKeys.uniqueSha, Optional.ofNullable(tunnelRegisterRequestDTO.getUniqueSha()).orElse(""));
     Query<Tunnel> upsertQuery =
         persistence.createQuery(Tunnel.class, excludeAuthority).filter(TunnelKeys.accountIdentifier, accountId);
     persistence.upsert(upsertQuery, updateOperations);
@@ -69,6 +71,7 @@ public class TunnelServiceImpl implements TunnelService {
     return TunnelResponseDTO.builder()
         .serverUrl(nextGenConfiguration.getFrpsTunnelConfig().getHost())
         .port(optionalTunnel.get().getPort())
+        .uniqueSha(optionalTunnel.get().getUniqueSha())
         .build();
   }
 

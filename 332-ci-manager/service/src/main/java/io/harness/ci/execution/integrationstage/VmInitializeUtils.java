@@ -279,10 +279,12 @@ public class VmInitializeUtils {
         NGRestUtils.getResponse(tunnelResourceClient.getTunnel(ngAccess.getAccountIdentifier()));
     if (tunnelResponseDTO != null && isNotEmpty(tunnelResponseDTO.getServerUrl())
         && isNotEmpty(tunnelResponseDTO.getPort())) {
-      envVars.put(HARNESS_HTTP_PROXY,
-          "http://" + ProxyUtils.getProxyHost(tunnelResponseDTO.getServerUrl()) + ":" + tunnelResponseDTO.getPort());
-      envVars.put(HARNESS_HTTPS_PROXY,
-          "https://" + ProxyUtils.getProxyHost(tunnelResponseDTO.getServerUrl()) + ":" + tunnelResponseDTO.getPort());
+      String proxyUrl = ProxyUtils.getProxyHost(tunnelResponseDTO.getServerUrl()) + ":" + tunnelResponseDTO.getPort();
+      if (isNotEmpty(tunnelResponseDTO.getUniqueSha())) {
+        proxyUrl = tunnelResponseDTO.getUniqueSha() + "@" + proxyUrl;
+      }
+      envVars.put(HARNESS_HTTP_PROXY, "http://" + proxyUrl);
+      envVars.put(HARNESS_HTTPS_PROXY, "https://" + proxyUrl);
     } else {
       return envVars;
     }

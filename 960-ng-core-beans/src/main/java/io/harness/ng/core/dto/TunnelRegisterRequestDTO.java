@@ -29,4 +29,5 @@ import lombok.experimental.FieldDefaults;
 @OwnedBy(CI)
 public class TunnelRegisterRequestDTO {
   @NotNull String port;
+  String uniqueSha;
 }

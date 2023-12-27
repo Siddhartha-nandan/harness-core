@@ -98,6 +98,8 @@ public class NGGitServiceImpl implements NGGitService {
     if (EmptyPredicate.isNotEmpty(gitConfig.getProxyUrl())) {
       gitBaseRequest.setProxyHost(ProxyUtils.getProxyHost(gitConfig.getProxyUrl()));
       gitBaseRequest.setProxyPort(ProxyUtils.getProxyPort(gitConfig.getProxyUrl()));
+      gitBaseRequest.setProxyUsername(ProxyUtils.getProxyUsername(gitConfig.getProxyUrl()));
+      gitBaseRequest.setProxyPassword(ProxyUtils.getProxyPassword(gitConfig.getProxyUrl()));
     }
   }
 

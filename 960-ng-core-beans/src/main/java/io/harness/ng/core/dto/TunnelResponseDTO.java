@@ -23,4 +23,5 @@ import lombok.Data;
 public class TunnelResponseDTO {
   @NotNull String serverUrl;
   @NotNull String port;
+  String uniqueSha;
 }

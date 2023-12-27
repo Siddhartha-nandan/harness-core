@@ -34,6 +34,8 @@ public class DockerInternalConfig {
   DockerRegistryProviderType providerType;
   String proxyHost;
   Integer proxyPort;
+  String proxyUsername;
+  String proxyPassword;
 
   public boolean hasCredentials() {
     return isNotEmpty(username);

@@ -31,7 +31,8 @@ public class DockerRestClientFactoryImpl implements DockerRestClientFactory {
   @Override
   public DockerRegistryRestClient getDockerRegistryRestClient(DockerInternalConfig dockerConfig) {
     OkHttpClient okHttpClient = Http.getOkHttpClient(dockerConfig.getDockerRegistryUrl(), dockerConfig.getProxyHost(),
-        dockerConfig.getProxyPort(), dockerConfig.isCertValidationRequired());
+        dockerConfig.getProxyPort(), dockerConfig.getProxyUsername(), dockerConfig.getProxyPassword(),
+        dockerConfig.isCertValidationRequired());
     Retrofit retrofit = new Retrofit.Builder()
                             .client(okHttpClient)
                             .baseUrl(dockerConfig.getDockerRegistryUrl())

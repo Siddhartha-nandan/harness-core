@@ -1676,6 +1676,8 @@ public class GitClientV2Impl implements GitClientV2 {
             HttpConnectionFactory httpConnectionFactory = ProxyHttpConnectionFactory.builder()
                                                               .proxyHost(gitBaseRequest.getProxyHost())
                                                               .proxyPort(gitBaseRequest.getProxyPort())
+                                                              .proxyUsername(gitBaseRequest.getProxyUsername())
+                                                              .proxyPassword(gitBaseRequest.getProxyPassword())
                                                               .build();
             http.setHttpConnectionFactory(httpConnectionFactory);
           } else {

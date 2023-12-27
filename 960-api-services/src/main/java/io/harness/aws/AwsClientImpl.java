@@ -273,6 +273,8 @@ public class AwsClientImpl implements AwsClient {
       ClientConfiguration clientConfiguration = new ClientConfiguration();
       clientConfiguration.setProxyHost(ProxyUtils.getProxyHost(awsConfig.getProxyUrl()));
       clientConfiguration.setProxyPort(ProxyUtils.getProxyPort(awsConfig.getProxyUrl()));
+      clientConfiguration.setProxyPassword(ProxyUtils.getProxyPassword(awsConfig.getProxyUrl()));
+      clientConfiguration.setProxyUsername(ProxyUtils.getProxyUsername(awsConfig.getProxyUrl()));
       String protocol = ProxyUtils.getProxyProtocol(awsConfig.getProxyUrl());
       clientConfiguration.setProxyProtocol("http".equalsIgnoreCase(protocol) ? Protocol.HTTP : Protocol.HTTPS);
       amazonEC2ClientBuilder.withClientConfiguration(clientConfiguration);
