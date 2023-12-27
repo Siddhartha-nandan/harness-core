@@ -13,8 +13,10 @@ import io.harness.annotation.HarnessRepo;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.audit.entities.AuditEvent;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(PL)
 @HarnessRepo
-public interface AuditRepository extends PagingAndSortingRepository<AuditEvent, String>, AuditRepositoryCustom {}
+public interface AuditRepository
+    extends PagingAndSortingRepository<AuditEvent, String>, CrudRepository<AuditEvent, String>, AuditRepositoryCustom {}

@@ -32,7 +32,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Value;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(CDC)
 @Value
@@ -106,12 +105,9 @@ public class NodeExecutionsCache {
     } else {
       fieldsForExpressionEngine = NodeProjectionUtils.fieldsForExpressionEngine;
     }
-    try (CloseableIterator<NodeExecution> iterator = nodeExecutionService.fetchChildrenNodeExecutionsIterator(
-             ambiance.getPlanExecutionId(), parentId, fieldsForExpressionEngine)) {
-      while (iterator.hasNext()) {
-        childExecutions.add(iterator.next());
-      }
-    }
+    nodeExecutionService
+        .fetchChildrenNodeExecutionsIterator(ambiance.getPlanExecutionId(), parentId, fieldsForExpressionEngine)
+        .forEach(nodeExecution -> childExecutions.add(nodeExecution));
     if (EmptyPredicate.isEmpty(childExecutions)) {
       childrenMap.put(parentId, Collections.emptyList());
       return Collections.emptyList();

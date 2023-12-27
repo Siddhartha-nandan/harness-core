@@ -10,8 +10,10 @@ package io.harness.repositories;
 import io.harness.annotation.HarnessRepo;
 import io.harness.app.beans.entities.PluginMetadataConfig;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 public interface PluginMetadataRepository
-    extends PagingAndSortingRepository<PluginMetadataConfig, String>, PluginMetadataRepositoryCustom {}
+    extends PagingAndSortingRepository<PluginMetadataConfig, String>, CrudRepository<PluginMetadataConfig, String>,
+            PluginMetadataRepositoryCustom {}

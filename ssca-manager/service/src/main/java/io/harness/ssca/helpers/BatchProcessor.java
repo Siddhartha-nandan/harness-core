@@ -10,6 +10,7 @@ package io.harness.ssca.helpers;
 import io.harness.exception.GeneralException;
 
 import com.google.inject.Singleton;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Spliterator;
@@ -17,11 +18,11 @@ import java.util.Spliterators;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.AllArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.util.CloseableIterator;
 
 @Singleton
 @AllArgsConstructor
@@ -31,13 +32,13 @@ public class BatchProcessor<T> {
   private final MongoTemplate mongoTemplate;
   private final Class<T> entityClass;
 
-  private CloseableIterator<T> runQueryWithBatch(Query query, int batchSize) {
+  private Stream<T> runQueryWithBatch(Query query, int batchSize) {
     query.cursorBatchSize(batchSize);
     return mongoTemplate.stream(query, entityClass);
   }
 
-  private void processEntitiesInBatches(CloseableIterator<T> iterator, int batchSize,
-      Function<T, String> groupingFunction, BiConsumer<String, List<T>> processBatchFunction) {
+  private void processEntitiesInBatches(Iterator<T> iterator, int batchSize, Function<T, String> groupingFunction,
+      BiConsumer<String, List<T>> processBatchFunction) {
     while (iterator.hasNext()) {
       Map<String, List<T>> batch =
           StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED), false)
@@ -57,7 +58,7 @@ public class BatchProcessor<T> {
       Query query, Function<T, String> groupingFunction, BiConsumer<String, List<T>> processBatchFunction) {
     try {
       processEntitiesInBatches(
-          runQueryWithBatch(query, BATCH_SIZE), BATCH_SIZE, groupingFunction, processBatchFunction);
+          runQueryWithBatch(query, BATCH_SIZE).iterator(), BATCH_SIZE, groupingFunction, processBatchFunction);
     } catch (Exception e) {
       throw new GeneralException("Could not process the batch", e);
     }

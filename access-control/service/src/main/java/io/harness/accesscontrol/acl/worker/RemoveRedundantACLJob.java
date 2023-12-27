@@ -35,13 +35,14 @@ import io.harness.security.dto.ServicePrincipal;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import java.util.Iterator;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 @Singleton
@@ -96,90 +97,86 @@ public class RemoveRedundantACLJob implements Runnable {
       }
 
       // First remove all disabled ACLs
-      try (CloseableIterator<ACL> iterator = runQueryWithBatchForDisabledAcls()) {
-        String offset = null;
-        int totalRemoved = 0;
-        BulkOperations bulkOperations = mongoTemplate.bulkOps(UNORDERED, ACL.class);
+      String offset = null;
+      int totalRemoved = 0;
+      BulkOperations bulkOperations = mongoTemplate.bulkOps(UNORDERED, ACL.class);
 
-        while (iterator.hasNext()) {
-          ACL acl = iterator.next();
-          offset = acl.getId();
+      for (Iterator<ACL> iterator = runQueryWithBatchForDisabledAcls().iterator(); iterator.hasNext();) {
+        ACL acl = iterator.next();
+        offset = acl.getId();
 
-          // Create a query to remove the ACL
-          Query query = new Query();
-          query.addCriteria(where(ACLKeys.id).is(acl.getId()));
-          bulkOperations.remove(query);
+        // Create a query to remove the ACL
+        Query query = new Query();
+        query.addCriteria(where(ACLKeys.id).is(acl.getId()));
+        bulkOperations.remove(query);
 
-          totalRemoved++;
+        totalRemoved++;
 
-          // Check if it's time to execute the bulk removal
-          if (totalRemoved % BATCH_SIZE == 0) {
-            log.info(DEBUG_MESSAGE + "Removing disabled ACLs. total: {}, removed: {}", bulkOperations.execute(),
-                totalRemoved);
-
-            // Reset bulkOperations for the next batch
-            bulkOperations = mongoTemplate.bulkOps(UNORDERED, ACL.class);
-
-            // Update the offset
-            updateOffset(offset);
-
-            // Take a pause
-            Thread.sleep(1000);
-          }
-        }
-
-        // Execute any remaining removals
-        if (totalRemoved % BATCH_SIZE != 0) {
+        // Check if it's time to execute the bulk removal
+        if (totalRemoved % BATCH_SIZE == 0) {
           log.info(
               DEBUG_MESSAGE + "Removing disabled ACLs. total: {}, removed: {}", bulkOperations.execute(), totalRemoved);
-        }
 
-        // Update the offset
-        if (offset != null) {
+          // Reset bulkOperations for the next batch
+          bulkOperations = mongoTemplate.bulkOps(UNORDERED, ACL.class);
+
+          // Update the offset
           updateOffset(offset);
+
+          // Take a pause
+          Thread.sleep(1000);
         }
+      }
+
+      // Execute any remaining removals
+      if (totalRemoved % BATCH_SIZE != 0) {
+        log.info(
+            DEBUG_MESSAGE + "Removing disabled ACLs. total: {}, removed: {}", bulkOperations.execute(), totalRemoved);
+      }
+
+      // Update the offset
+      if (offset != null) {
+        updateOffset(offset);
       }
 
       // We already marked ACLs disabled and have offset for last disabled ACL
       // Using that offset to start removing redundant ACLs which got created after this offset
-      try (CloseableIterator<ACL> iterator = runQueryWithBatch()) {
-        String offset = null;
-        int totalRemoved = 0;
-        BulkOperations bulkOperations = mongoTemplate.bulkOps(UNORDERED, ACL.class);
+      offset = null;
+      totalRemoved = 0;
+      bulkOperations = mongoTemplate.bulkOps(UNORDERED, ACL.class);
 
-        while (iterator.hasNext()) {
-          ACL acl = iterator.next();
-          offset = acl.getId();
+      for (Iterator<ACL> iterator = runQueryWithBatch().iterator(); iterator.hasNext();) {
+        ACL acl = iterator.next();
+        offset = acl.getId();
 
-          Query query = new Query().addCriteria(where(ACLKeys.id).is(acl.getId()));
+        Query query = new Query().addCriteria(where(ACLKeys.id).is(acl.getId()));
 
-          if (!inMemoryPermissionRepository.isPermissionCompatibleWithResourceSelector(
-                  acl.getPermissionIdentifier(), acl.getResourceSelector())) {
-            bulkOperations.remove(query);
-            totalRemoved++;
-          }
-
-          if (totalRemoved != 0 && totalRemoved % BATCH_SIZE == 0) {
-            log.info(DEBUG_MESSAGE + "Removing redundant ACLs. total: {}, removed: {}", bulkOperations.execute(),
-                totalRemoved);
-            bulkOperations = mongoTemplate.bulkOps(UNORDERED, ACL.class);
-
-            updateOffset(offset);
-            Thread.sleep(1000);
-          }
+        if (!inMemoryPermissionRepository.isPermissionCompatibleWithResourceSelector(
+                acl.getPermissionIdentifier(), acl.getResourceSelector())) {
+          bulkOperations.remove(query);
+          totalRemoved++;
         }
 
-        if (totalRemoved % BATCH_SIZE != 0) {
+        if (totalRemoved != 0 && totalRemoved % BATCH_SIZE == 0) {
           log.info(DEBUG_MESSAGE + "Removing redundant ACLs. total: {}, removed: {}", bulkOperations.execute(),
               totalRemoved);
-        }
+          bulkOperations = mongoTemplate.bulkOps(UNORDERED, ACL.class);
 
-        if (offset != null) {
           updateOffset(offset);
+          Thread.sleep(1000);
         }
-
-        markJobAsSuccessful();
       }
+
+      if (totalRemoved % BATCH_SIZE != 0) {
+        log.info(
+            DEBUG_MESSAGE + "Removing redundant ACLs. total: {}, removed: {}", bulkOperations.execute(), totalRemoved);
+      }
+
+      if (offset != null) {
+        updateOffset(offset);
+      }
+
+      markJobAsSuccessful();
     } catch (Exception ex) {
       log.error(DEBUG_MESSAGE + "Exception occurred while processing ACLs ", ex);
     }
@@ -204,7 +201,7 @@ public class RemoveRedundantACLJob implements Runnable {
     return false;
   }
 
-  private CloseableIterator<ACL> runQueryWithBatch() {
+  private Stream<ACL> runQueryWithBatch() {
     String offset = REFERENCE_TIMESTAMP;
     ACLOptimizationMigrationOffset state = mongoTemplate.findOne(
         new Query().with(by(ASC, ACLOptimizationMigrationOffsetKey.id)).limit(1), ACLOptimizationMigrationOffset.class);
@@ -227,7 +224,7 @@ public class RemoveRedundantACLJob implements Runnable {
     return mongoTemplate.stream(aclQuery, ACL.class);
   }
 
-  private CloseableIterator<ACL> runQueryWithBatchForDisabledAcls() {
+  private Stream<ACL> runQueryWithBatchForDisabledAcls() {
     String offset = REFERENCE_TIMESTAMP;
     RemoveRedundantACLJobState state = mongoTemplate.findOne(
         new Query().with(by(ASC, RemoveRedundantACLJobStateKey.id)).limit(1), RemoveRedundantACLJobState.class);

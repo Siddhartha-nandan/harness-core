@@ -266,9 +266,9 @@ logging:
 licenseUsageTimescaleSocketTimeout: 60
 
 timescaledb:
-  timescaledbUrl: ""
-  timescaledbUsername: ""
-  timescaledbPassword: ""
+  timescaledbUrl: jdbc:postgresql://localhost:5432/harness
+  timescaledbUsername: admin
+  timescaledbPassword: password
   connectTimeout: 10
   socketTimeout: 30
   logUnclosedConnections: false

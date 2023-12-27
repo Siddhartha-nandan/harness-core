@@ -6,6 +6,7 @@
  */
 
 package io.harness.engine.interrupts.handlers;
+
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
@@ -43,7 +44,6 @@ import java.util.stream.Collectors;
 import javax.validation.Valid;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.util.CloseableIterator;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
     components = {HarnessModuleComponent.CDS_PIPELINE, HarnessModuleComponent.CDS_COMMON_STEPS})
@@ -122,14 +122,10 @@ public class UserMarkedFailAllInterruptHandler extends InterruptPropagatorHandle
     Interrupt updatedInterrupt = interruptService.markProcessing(interrupt.getUuid());
     // Find all the nodeExecutions for this plan
     List<NodeExecution> allExecutions = new LinkedList<>();
-    try (
-        CloseableIterator<NodeExecution> iterator =
-            nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(interrupt.getPlanExecutionId(),
-                StatusUtils.userMarkedFailureStatuses(), NodeProjectionUtils.fieldsForInterruptPropagatorHandler)) {
-      while (iterator.hasNext()) {
-        allExecutions.add(iterator.next());
-      }
-    }
+    nodeExecutionService
+        .fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(interrupt.getPlanExecutionId(),
+            StatusUtils.userMarkedFailureStatuses(), NodeProjectionUtils.fieldsForInterruptPropagatorHandler)
+        .forEach(nodeExecution -> allExecutions.add(nodeExecution));
 
     List<NodeExecution> finalList = new ArrayList<>();
     // Extract all the running leaf nodes and queued nodeswith the parent id as nodeExecutionId passed in as param

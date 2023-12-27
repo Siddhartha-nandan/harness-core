@@ -13,10 +13,11 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.freeze.entity.FreezeConfigEntity;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = false,
     components = {HarnessModuleComponent.CDS_DEPLOYMENT_FREEZE})
 @HarnessRepo
-public interface FreezeConfigRepository
-    extends PagingAndSortingRepository<FreezeConfigEntity, String>, FreezeRepositoryCustom {}
+public interface FreezeConfigRepository extends PagingAndSortingRepository<FreezeConfigEntity, String>,
+                                                CrudRepository<FreezeConfigEntity, String>, FreezeRepositoryCustom {}

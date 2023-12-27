@@ -13,11 +13,13 @@ import io.harness.annotation.HarnessRepo;
 import io.harness.annotations.dev.OwnedBy;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(PL)
 @HarnessRepo
-public interface ScopeRepository extends PagingAndSortingRepository<ScopeDBO, String>, ScopeRepositoryCustom {
+public interface ScopeRepository
+    extends PagingAndSortingRepository<ScopeDBO, String>, CrudRepository<ScopeDBO, String>, ScopeRepositoryCustom {
   Optional<ScopeDBO> findByIdentifier(String identifier);
 
   Optional<ScopeDBO> deleteByIdentifier(String identifier);

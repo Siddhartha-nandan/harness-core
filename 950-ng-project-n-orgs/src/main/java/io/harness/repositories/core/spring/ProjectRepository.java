@@ -15,11 +15,13 @@ import io.harness.ng.core.entities.Project;
 import io.harness.repositories.core.custom.ProjectRepositoryCustom;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(PL)
 @HarnessRepo
-public interface ProjectRepository extends PagingAndSortingRepository<Project, String>, ProjectRepositoryCustom {
+public interface ProjectRepository
+    extends PagingAndSortingRepository<Project, String>, CrudRepository<Project, String>, ProjectRepositoryCustom {
   Optional<Project> findByAccountIdentifierAndOrgIdentifierAndIdentifierIgnoreCaseAndDeletedNot(
       String accountIdentifier, String orgIdentifier, String identifier, boolean notDeleted);
 

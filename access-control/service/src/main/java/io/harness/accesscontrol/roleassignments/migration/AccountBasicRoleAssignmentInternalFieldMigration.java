@@ -18,11 +18,12 @@ import io.harness.migration.NGMigration;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import java.util.Iterator;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 @Singleton
@@ -47,7 +48,7 @@ public class AccountBasicRoleAssignmentInternalFieldMigration implements NGMigra
 
     try {
       Criteria criteria = Criteria.where(RoleAssignmentDBOKeys.roleIdentifier).is(ACCOUNT_BASIC);
-      CloseableIterator<RoleAssignmentDBO> iterator = runQueryWithBatch(criteria, BATCH_SIZE);
+      Iterator<RoleAssignmentDBO> iterator = runQueryWithBatch(criteria, BATCH_SIZE).iterator();
 
       while (iterator.hasNext()) {
         RoleAssignmentDBO roleAssignment = iterator.next();
@@ -67,7 +68,7 @@ public class AccountBasicRoleAssignmentInternalFieldMigration implements NGMigra
     log.info("AccountBasicRoleAssignmentInternalFieldMigration completed.");
   }
 
-  private CloseableIterator<RoleAssignmentDBO> runQueryWithBatch(Criteria criteria, int batchSize) {
+  private Stream<RoleAssignmentDBO> runQueryWithBatch(Criteria criteria, int batchSize) {
     Query query = new Query(criteria);
     query.cursorBatchSize(batchSize);
     return mongoTemplate.stream(query, RoleAssignmentDBO.class);

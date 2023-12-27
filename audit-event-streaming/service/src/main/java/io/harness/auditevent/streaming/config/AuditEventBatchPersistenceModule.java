@@ -45,7 +45,7 @@ public class AuditEventBatchPersistenceModule extends AbstractModule {
   protected MongoTemplate getSecondaryPreferredMongoTemplate(
       MongoTemplate mongoTemplate, MongoConfig primaryMongoConfig) {
     HMongoTemplate template =
-        new HMongoTemplate(mongoTemplate.getMongoDbFactory(), mongoTemplate.getConverter(), primaryMongoConfig);
+        new HMongoTemplate(mongoTemplate.getMongoDatabaseFactory(), mongoTemplate.getConverter(), primaryMongoConfig);
     template.setReadPreference(ReadPreference.secondaryPreferred());
     return template;
   }
@@ -55,7 +55,7 @@ public class AuditEventBatchPersistenceModule extends AbstractModule {
   @Singleton
   protected MongoTemplate getAnalyticsMongoTemplate(MongoTemplate mongoTemplate, MongoConfig primaryMongoConfig) {
     HMongoTemplate template =
-        new HMongoTemplate(mongoTemplate.getMongoDbFactory(), mongoTemplate.getConverter(), primaryMongoConfig);
+        new HMongoTemplate(mongoTemplate.getMongoDatabaseFactory(), mongoTemplate.getConverter(), primaryMongoConfig);
     template.setReadPreference(ReadPreference.secondaryPreferred(Arrays.asList(
         new TagSet(new Tag("nodeType", "ANALYTICS")), new TagSet(new Tag("nodeType", "ELECTABLE")), new TagSet())));
     return template;

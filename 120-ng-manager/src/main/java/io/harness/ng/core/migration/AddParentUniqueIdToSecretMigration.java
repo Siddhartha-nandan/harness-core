@@ -26,6 +26,7 @@ import io.harness.ng.core.models.Secret.SecretKeys;
 
 import com.google.inject.Inject;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.BulkOperations;
@@ -33,7 +34,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 @OwnedBy(PL)
@@ -68,8 +68,9 @@ public class AddParentUniqueIdToSecretMigration implements NGMigration {
     BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Secret.class);
 
     // iterate over all Secret documents
-    try (CloseableIterator<Secret> iterator =
-             mongoTemplate.stream(documentQuery.limit(NO_LIMIT).maxTimeMsec(MAX_VALUE), Secret.class)) {
+    try {
+      Iterator<Secret> iterator =
+          mongoTemplate.stream(documentQuery.limit(NO_LIMIT).maxTimeMsec(MAX_VALUE), Secret.class).iterator();
       while (iterator.hasNext()) {
         totalCounter++;
         Secret nextSecret = iterator.next();

@@ -13,6 +13,7 @@ import io.harness.annotation.HarnessRepo;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.ng.core.entitysetupusage.entity.EntitySetupUsage;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 @OwnedBy(DX)
 public interface EntitySetupUsageRepository
-    extends PagingAndSortingRepository<EntitySetupUsage, String>, EntitySetupUsageCustomRepository {
+    extends PagingAndSortingRepository<EntitySetupUsage, String>, CrudRepository<EntitySetupUsage, String>,
+            EntitySetupUsageCustomRepository {
   long deleteByReferredEntityFQNAndReferredEntityTypeAndReferredByEntityFQNAndReferredByEntityTypeAndAccountIdentifier(
       String referredEntityFQN, String referredEntityType, String referredByEntityFQN, String referredByEntityType,
       String accountIdentifier);

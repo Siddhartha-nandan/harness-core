@@ -28,11 +28,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 import lombok.NonNull;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(PIPELINE)
@@ -45,7 +45,7 @@ public interface NodeExecutionService {
    */
   NodeExecution get(String nodeExecutionId);
 
-  CloseableIterator<NodeExecution> get(List<String> nodeExecutionIds);
+  Stream<NodeExecution> get(List<String> nodeExecutionIds);
 
   /**
    * Fetches nodeExecution and uses id Index
@@ -91,7 +91,7 @@ public interface NodeExecutionService {
    * @param fieldsToInclude
    * @return
    */
-  CloseableIterator<NodeExecution> fetchAllStepNodeExecutions(String planExecutionId, Set<String> fieldsToInclude);
+  Stream<NodeExecution> fetchAllStepNodeExecutions(String planExecutionId, Set<String> fieldsToInclude);
 
   /**
    * Fetches all statuses for nodeExecutions for give planExecutionId and oldRetry false
@@ -119,7 +119,7 @@ public interface NodeExecutionService {
    * @param planExecutionId
    * @return
    */
-  CloseableIterator<NodeExecution> fetchNodeExecutionsWithoutOldRetriesIterator(String planExecutionId);
+  Stream<NodeExecution> fetchNodeExecutionsWithoutOldRetriesIterator(String planExecutionId);
 
   /**
    * Returns iterator for nodeExecution without old retries and statusIn defined in param
@@ -127,7 +127,7 @@ public interface NodeExecutionService {
    * @param planExecutionId
    * @return
    */
-  CloseableIterator<NodeExecution> fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(
+  Stream<NodeExecution> fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(
       String planExecutionId, EnumSet<Status> statuses, @NotNull Set<String> fieldsToInclude);
 
   /**
@@ -136,7 +136,7 @@ public interface NodeExecutionService {
    * @param planExecutionId
    * @return
    */
-  CloseableIterator<NodeExecution> fetchNodeExecutionsWithoutOldRetriesIterator(
+  Stream<NodeExecution> fetchNodeExecutionsWithoutOldRetriesIterator(
       String planExecutionId, @NotNull Set<String> fieldsToInclude);
 
   /**
@@ -148,7 +148,7 @@ public interface NodeExecutionService {
    * @param fieldsToBeIncluded
    * @return
    */
-  CloseableIterator<NodeExecution> fetchChildrenNodeExecutionsIterator(
+  Stream<NodeExecution> fetchChildrenNodeExecutionsIterator(
       String planExecutionId, String parentId, Set<String> fieldsToBeIncluded);
 
   /**
@@ -160,7 +160,7 @@ public interface NodeExecutionService {
    * @param fieldsToBeIncluded
    * @return
    */
-  CloseableIterator<NodeExecution> fetchChildrenNodeExecutionsIterator(
+  Stream<NodeExecution> fetchChildrenNodeExecutionsIterator(
       String planExecutionId, String parentId, Direction sortOrderOfCreatedAt, Set<String> fieldsToBeIncluded);
 
   /**
@@ -180,7 +180,7 @@ public interface NodeExecutionService {
    * @param fieldsToBeIncluded
    * @return
    */
-  CloseableIterator<NodeExecution> fetchChildrenNodeExecutionsIterator(String parentId, Set<String> fieldsToBeIncluded);
+  Stream<NodeExecution> fetchChildrenNodeExecutionsIterator(String parentId, Set<String> fieldsToBeIncluded);
 
   /**
    * Fetches all nodes with given status with fieldsToBeIncluded as projections from analytics node
@@ -189,7 +189,7 @@ public interface NodeExecutionService {
    * @param fieldsToBeIncluded
    * @return
    */
-  CloseableIterator<NodeExecution> fetchAllNodeExecutionsByStatusIteratorFromAnalytics(
+  Stream<NodeExecution> fetchAllNodeExecutionsByStatusIteratorFromAnalytics(
       EnumSet<Status> statuses, Set<String> fieldsToBeIncluded);
 
   /**
@@ -379,14 +379,13 @@ public interface NodeExecutionService {
   // TODO(Projection): Make it paginated, has projection
   List<NodeExecution> fetchStageExecutionsWithEndTsAndStatusProjection(String planExecutionId);
 
-  CloseableIterator<NodeExecution> fetchNodeExecutionsForGivenStageFQNs(
+  Stream<NodeExecution> fetchNodeExecutionsForGivenStageFQNs(
       String planExecutionId, List<String> stageFQNs, Collection<String> requiredFields);
 
   NodeExecution fetchNodeExecutionForPlanNodeAndRetriedId(
       String planExecutionId, String planNode, boolean oldRetry, List<String> retriedId);
 
-  CloseableIterator<NodeExecution> fetchAllLeavesUsingPlanExecutionId(
-      String planExecutionId, Set<String> fieldsToBeIncluded);
+  Stream<NodeExecution> fetchAllLeavesUsingPlanExecutionId(String planExecutionId, Set<String> fieldsToBeIncluded);
 
   ExecutionStatistics aggregateRunningNodeExecutionsCount();
 }

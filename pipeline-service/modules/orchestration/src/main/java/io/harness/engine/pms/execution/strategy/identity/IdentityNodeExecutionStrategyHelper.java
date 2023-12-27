@@ -36,12 +36,12 @@ import com.google.inject.Inject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.data.util.CloseableIterator;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(HarnessTeam.PIPELINE)
@@ -56,7 +56,8 @@ public class IdentityNodeExecutionStrategyHelper {
     String uuid = AmbianceUtils.obtainCurrentRuntimeId(ambiance);
     NodeExecution originalExecution;
     if (EmptyPredicate.isEmpty(node.getOriginalNodeExecutionId())) {
-      CloseableIterator<NodeExecution> nodeExecutions = nodeExecutionService.get(node.getAllOriginalNodeExecutionIds());
+      Iterator<NodeExecution> nodeExecutions =
+          nodeExecutionService.get(node.getAllOriginalNodeExecutionIds()).iterator();
       originalExecution = getCorrectNodeExecution(nodeExecutions, ambiance.getLevelsList());
     } else {
       originalExecution = nodeExecutionService.get(node.getOriginalNodeExecutionId());
@@ -104,7 +105,7 @@ public class IdentityNodeExecutionStrategyHelper {
   }
 
   // if a list of node execution IDs is provided, the fqn should match the fqn for the selected node execution
-  NodeExecution getCorrectNodeExecution(CloseableIterator<NodeExecution> nodeExecutions, List<Level> currLevels) {
+  NodeExecution getCorrectNodeExecution(Iterator<NodeExecution> nodeExecutions, List<Level> currLevels) {
     String levelCombinedIteration = AmbianceUtils.getCombinedIndexes(currLevels);
     while (nodeExecutions.hasNext()) {
       NodeExecution nodeExecution = nodeExecutions.next();

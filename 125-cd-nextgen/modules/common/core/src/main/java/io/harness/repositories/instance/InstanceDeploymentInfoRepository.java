@@ -13,9 +13,11 @@ import io.harness.annotation.HarnessRepo;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.cdng.instance.InstanceDeploymentInfo;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(CDP)
 public interface InstanceDeploymentInfoRepository
-    extends PagingAndSortingRepository<InstanceDeploymentInfo, String>, InstanceDeploymentInfoRepositoryCustom {}
+    extends PagingAndSortingRepository<InstanceDeploymentInfo, String>, CrudRepository<InstanceDeploymentInfo, String>,
+            InstanceDeploymentInfoRepositoryCustom {}

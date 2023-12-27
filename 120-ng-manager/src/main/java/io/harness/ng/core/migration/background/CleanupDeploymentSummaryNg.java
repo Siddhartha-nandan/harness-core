@@ -20,11 +20,11 @@ import io.harness.repositories.deploymentsummary.DeploymentSummaryRepository;
 
 import com.google.inject.Inject;
 import java.util.HashSet;
+import java.util.Iterator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(HarnessTeam.CDP)
 @Slf4j
@@ -44,7 +44,8 @@ public class CleanupDeploymentSummaryNg implements NGMigration {
 
     HashSet<String> existingAccounts = new HashSet<>(accountUtils.getAllNGAccountIds());
     Query query = new Query(new Criteria()).limit(NO_LIMIT).cursorBatchSize(BATCH_SIZE);
-    try (CloseableIterator<DeploymentSummary> iterator = mongoTemplate.stream(query, DeploymentSummary.class)) {
+    try {
+      Iterator<DeploymentSummary> iterator = mongoTemplate.stream(query, DeploymentSummary.class).iterator();
       while (iterator.hasNext()) {
         iterationCounter++;
         DeploymentSummary deploymentSummary = iterator.next();

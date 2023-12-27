@@ -19,6 +19,7 @@ import io.harness.user.remote.UserClient;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import java.util.Iterator;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +27,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(PL)
 @Slf4j
@@ -47,8 +47,8 @@ public class UserMetadataTwoFactorAuthenticationMigration implements NGMigration
     log.info(
         "UserMetadataTwoFactorAuthenticationMigration: Starting migration to add Two Factor Authentication field in UserMetadata collection");
 
-    CloseableIterator<UserMetadata> iterator =
-        mongoTemplate.stream(new Query().cursorBatchSize(BATCH_SIZE), UserMetadata.class);
+    Iterator<UserMetadata> iterator =
+        mongoTemplate.stream(new Query().cursorBatchSize(BATCH_SIZE), UserMetadata.class).iterator();
 
     int count = 0;
     while (iterator.hasNext()) {

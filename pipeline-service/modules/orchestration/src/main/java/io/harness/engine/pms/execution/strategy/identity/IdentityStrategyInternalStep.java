@@ -39,11 +39,11 @@ import io.harness.tasks.ResponseData;
 import com.google.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort.Direction;
-import org.springframework.data.util.CloseableIterator;
 
 /**
  * This step is used during retry-failed-pipeline for running any step/stage that is inside the strategy.
@@ -76,19 +76,20 @@ public class IdentityStrategyInternalStep
     NodeExecution originalNodeExecution = nodeExecutionService.getWithFieldsIncluded(
         identityParams.getOriginalNodeExecutionId(), NodeProjectionUtils.fieldsForIdentityStrategyStep);
     NodeExecution childNodeExecution = null;
-    try (CloseableIterator<NodeExecution> iterator =
-             // Use original planExecutionId that belongs to the originalNodeExecutionId and not current
-             // planExecutionId(ambiance.getPlanExecutionId)
-        nodeExecutionService.fetchChildrenNodeExecutionsIterator(originalNodeExecution.getPlanExecutionId(),
-            identityParams.getOriginalNodeExecutionId(), Direction.ASC,
-            NodeProjectionUtils.fieldsForIdentityStrategyStep)) {
-      while (iterator.hasNext()) {
-        NodeExecution next = iterator.next();
-        if (Boolean.FALSE.equals(next.getOldRetry())) {
-          // Getting first child with oldRetry false
-          childNodeExecution = next;
-          break;
-        }
+    Iterator<NodeExecution> iterator =
+        // Use original planExecutionId that belongs to the originalNodeExecutionId and not current
+        // planExecutionId(ambiance.getPlanExecutionId)
+        nodeExecutionService
+            .fetchChildrenNodeExecutionsIterator(originalNodeExecution.getPlanExecutionId(),
+                identityParams.getOriginalNodeExecutionId(), Direction.ASC,
+                NodeProjectionUtils.fieldsForIdentityStrategyStep)
+            .iterator();
+    while (iterator.hasNext()) {
+      NodeExecution next = iterator.next();
+      if (Boolean.FALSE.equals(next.getOldRetry())) {
+        // Getting first child with oldRetry false
+        childNodeExecution = next;
+        break;
       }
     }
     if (childNodeExecution == null) {
@@ -117,18 +118,18 @@ public class IdentityStrategyInternalStep
         identityParams.getOriginalNodeExecutionId(), NodeProjectionUtils.fieldsForIdentityStrategyStep);
     List<NodeExecution> childrenNodeExecutions = new ArrayList<>();
 
-    try (CloseableIterator<NodeExecution> iterator =
-             // Use original planExecutionId that belongs to the originalNodeExecutionId and not current
-             // planExecutionId(ambiance.getPlanExecutionId)
-        nodeExecutionService.fetchChildrenNodeExecutionsIterator(
-            originalStrategyNodeExecution.getAmbiance().getPlanExecutionId(),
-            identityParams.getOriginalNodeExecutionId(), NodeProjectionUtils.fieldsForIdentityStrategyStep)) {
-      while (iterator.hasNext()) {
-        NodeExecution next = iterator.next();
-        // Don't want to include retried nodeIds
-        if (Boolean.FALSE.equals(next.getOldRetry())) {
-          childrenNodeExecutions.add(next);
-        }
+    Iterator<NodeExecution> iterator =
+        // Use original planExecutionId that belongs to the originalNodeExecutionId and not current
+        // planExecutionId(ambiance.getPlanExecutionId)
+        nodeExecutionService
+            .fetchChildrenNodeExecutionsIterator(originalStrategyNodeExecution.getAmbiance().getPlanExecutionId(),
+                identityParams.getOriginalNodeExecutionId(), NodeProjectionUtils.fieldsForIdentityStrategyStep)
+            .iterator();
+    while (iterator.hasNext()) {
+      NodeExecution next = iterator.next();
+      // Don't want to include retried nodeIds
+      if (Boolean.FALSE.equals(next.getOldRetry())) {
+        childrenNodeExecutions.add(next);
       }
     }
 

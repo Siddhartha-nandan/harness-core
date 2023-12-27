@@ -13,11 +13,11 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.ng.core.user.entities.UserMetadata;
 
 import java.util.List;
+import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(PL)
 public interface UserMetadataRepositoryCustom {
@@ -31,5 +31,5 @@ public interface UserMetadataRepositoryCustom {
 
   long insertAllIgnoringDuplicates(List<UserMetadata> userMetadata);
 
-  CloseableIterator<UserMetadata> stream(Criteria criteria);
+  Stream<UserMetadata> stream(Criteria criteria);
 }

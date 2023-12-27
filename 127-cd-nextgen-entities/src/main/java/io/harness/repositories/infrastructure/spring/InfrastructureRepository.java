@@ -12,11 +12,13 @@ import io.harness.ng.core.infrastructure.entity.InfrastructureEntity;
 import io.harness.repositories.infrastructure.custom.InfrastructureRepositoryCustom;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 public interface InfrastructureRepository
-    extends PagingAndSortingRepository<InfrastructureEntity, String>, InfrastructureRepositoryCustom {
+    extends PagingAndSortingRepository<InfrastructureEntity, String>, CrudRepository<InfrastructureEntity, String>,
+            InfrastructureRepositoryCustom {
   Optional<InfrastructureEntity> findByAccountIdAndOrgIdentifierAndProjectIdentifierAndEnvIdentifierAndIdentifier(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String envIdentifier,
       String infraIdentifier, boolean loadFromCache, boolean loadFromFallbackBranch, boolean getMetadataOnly);

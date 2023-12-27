@@ -43,6 +43,7 @@ import io.harness.utils.IdentifierRefHelper;
 
 import com.google.inject.Inject;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -183,34 +184,33 @@ public class ServiceOverrideV2MigrationServiceImpl implements ServiceOverrideV2M
       totalEnvCount = mongoTemplate.count(queryForTargetedEnvs, Environment.class);
 
       if (totalEnvCount > 0L) {
-        try (CloseableIterator<Environment> iterator = mongoTemplate.stream(queryForTargetedEnvs, Environment.class)) {
-          while (iterator.hasNext()) {
-            Environment envEntity = iterator.next();
-            Optional<SingleEnvMigrationResponse> singleMigrationResponseOp =
-                doMigrationForSingleEnvironment(envEntity, isRevert);
-            if (singleMigrationResponseOp.isEmpty()) {
-              migratedEnvCount++;
-              migratedEnvInfos.add(SingleEnvMigrationResponse.builder()
-                                       .accountId(envEntity.getAccountId())
-                                       .orgId(envEntity.getOrgIdentifier())
-                                       .projectId(envEntity.getProjectIdentifier())
-                                       .envIdentifier(envEntity.getIdentifier())
-                                       .isSuccessful(true)
-                                       .build());
+        Iterator<Environment> iterator = mongoTemplate.stream(queryForTargetedEnvs, Environment.class).iterator();
+        while (iterator.hasNext()) {
+          Environment envEntity = iterator.next();
+          Optional<SingleEnvMigrationResponse> singleMigrationResponseOp =
+              doMigrationForSingleEnvironment(envEntity, isRevert);
+          if (singleMigrationResponseOp.isEmpty()) {
+            migratedEnvCount++;
+            migratedEnvInfos.add(SingleEnvMigrationResponse.builder()
+                                     .accountId(envEntity.getAccountId())
+                                     .orgId(envEntity.getOrgIdentifier())
+                                     .projectId(envEntity.getProjectIdentifier())
+                                     .envIdentifier(envEntity.getIdentifier())
+                                     .isSuccessful(true)
+                                     .build());
+          } else {
+            SingleEnvMigrationResponse singleMigrationResponse = singleMigrationResponseOp.get();
+            migratedEnvInfos.add(singleMigrationResponse);
+            if (!singleMigrationResponse.isSuccessful()) {
+              isSuccessFul = false;
             } else {
-              SingleEnvMigrationResponse singleMigrationResponse = singleMigrationResponseOp.get();
-              migratedEnvInfos.add(singleMigrationResponse);
-              if (!singleMigrationResponse.isSuccessful()) {
-                isSuccessFul = false;
-              } else {
-                migratedEnvCount++;
-              }
+              migratedEnvCount++;
             }
           }
         }
-        if (totalEnvCount != migratedEnvCount) {
-          isSuccessFul = false;
-        }
+      }
+      if (totalEnvCount != migratedEnvCount) {
+        isSuccessFul = false;
       }
 
     } catch (Exception e) {
@@ -573,18 +573,17 @@ public class ServiceOverrideV2MigrationServiceImpl implements ServiceOverrideV2M
       Query queryForEntitiesToBeUpdated = new Query(criteria);
       totalServiceOverride = mongoTemplate.count(queryForEntitiesToBeUpdated, NGServiceOverridesEntity.class);
       if (totalServiceOverride > 0L) {
-        try (CloseableIterator<NGServiceOverridesEntity> iterator =
-                 mongoTemplate.stream(queryForEntitiesToBeUpdated, NGServiceOverridesEntity.class)) {
-          while (iterator.hasNext()) {
-            NGServiceOverridesEntity overridesEntity = iterator.next();
-            SingleServiceOverrideMigrationResponse singleMigrationResponse =
-                doMigrationForSingleOverrideEntity(overridesEntity, isRevert);
-            migratedServiceOverridesInfos.add(singleMigrationResponse);
-            if (!singleMigrationResponse.isSuccessful()) {
-              isSuccessFul = false;
-            } else {
-              migratedServiceOverridesCount++;
-            }
+        Iterator<NGServiceOverridesEntity> iterator =
+            mongoTemplate.stream(queryForEntitiesToBeUpdated, NGServiceOverridesEntity.class).iterator();
+        while (iterator.hasNext()) {
+          NGServiceOverridesEntity overridesEntity = iterator.next();
+          SingleServiceOverrideMigrationResponse singleMigrationResponse =
+              doMigrationForSingleOverrideEntity(overridesEntity, isRevert);
+          migratedServiceOverridesInfos.add(singleMigrationResponse);
+          if (!singleMigrationResponse.isSuccessful()) {
+            isSuccessFul = false;
+          } else {
+            migratedServiceOverridesCount++;
           }
         }
         if (totalServiceOverride != migratedServiceOverridesCount) {

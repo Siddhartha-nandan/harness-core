@@ -64,6 +64,7 @@ import com.google.inject.Singleton;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -493,31 +494,30 @@ public class RetryExecutionHelper {
     return filteredPlanNodesList;
   }
   public RetryHistoryResponseDto getRetryHistory(String rootParentId, String currentPlanExecutionId) {
-    try (CloseableIterator<PipelineExecutionSummaryEntity> iterator =
-             pmsExecutionSummaryRespository.fetchPipelineSummaryEntityFromRootParentIdUsingSecondaryMongo(
-                 rootParentId)) {
-      List<ExecutionInfo> executionInfos = new ArrayList<>();
-      while (iterator.hasNext()) {
-        executionInfos.add(convertToExecutionInfo(iterator.next()));
-      }
-      if (executionInfos.size() <= 1) {
-        return RetryHistoryResponseDto.builder().errorMessage("Nothing to show in retry history").build();
-      }
-      String latestRetryExecutionId = executionInfos.get(0).getUuid();
-      RetryStagesMetadata retryStagesMetadata =
-          planExecutionMetadataService.getRetryStagesMetadata(currentPlanExecutionId);
-      if (retryStagesMetadata != null) {
-        return RetryHistoryResponseDto.builder()
-            .executionInfos(executionInfos)
-            .latestExecutionId(latestRetryExecutionId)
-            .retryStagesMetadata(toRetryStagesMetadataDTO(retryStagesMetadata))
-            .build();
-      } else {
-        return RetryHistoryResponseDto.builder()
-            .executionInfos(executionInfos)
-            .latestExecutionId(latestRetryExecutionId)
-            .build();
-      }
+    Iterator<PipelineExecutionSummaryEntity> iterator =
+        pmsExecutionSummaryRespository.fetchPipelineSummaryEntityFromRootParentIdUsingSecondaryMongo(rootParentId)
+            .iterator();
+    List<ExecutionInfo> executionInfos = new ArrayList<>();
+    while (iterator.hasNext()) {
+      executionInfos.add(convertToExecutionInfo(iterator.next()));
+    }
+    if (executionInfos.size() <= 1) {
+      return RetryHistoryResponseDto.builder().errorMessage("Nothing to show in retry history").build();
+    }
+    String latestRetryExecutionId = executionInfos.get(0).getUuid();
+    RetryStagesMetadata retryStagesMetadata =
+        planExecutionMetadataService.getRetryStagesMetadata(currentPlanExecutionId);
+    if (retryStagesMetadata != null) {
+      return RetryHistoryResponseDto.builder()
+          .executionInfos(executionInfos)
+          .latestExecutionId(latestRetryExecutionId)
+          .retryStagesMetadata(toRetryStagesMetadataDTO(retryStagesMetadata))
+          .build();
+    } else {
+      return RetryHistoryResponseDto.builder()
+          .executionInfos(executionInfos)
+          .latestExecutionId(latestRetryExecutionId)
+          .build();
     }
   }
 
@@ -556,21 +556,18 @@ public class RetryExecutionHelper {
   }
 
   public RetryLatestExecutionResponseDto getRetryLatestExecutionId(String rootParentId) {
-    try (CloseableIterator<PipelineExecutionSummaryEntity> iterator =
-             pmsExecutionSummaryRespository.fetchPipelineSummaryEntityFromRootParentIdUsingSecondaryMongo(
-                 rootParentId)) {
-      if (iterator.hasNext()) {
-        // We want more than one entry therefore checking if iterator has next or not.
-        PipelineExecutionSummaryEntity entity = iterator.next();
-        if (!iterator.hasNext()) {
-          return RetryLatestExecutionResponseDto.builder()
-              .errorMessage("This is not a part of retry execution")
-              .build();
-        }
-        return RetryLatestExecutionResponseDto.builder().latestExecutionId(entity.getPlanExecutionId()).build();
+    Iterator<PipelineExecutionSummaryEntity> iterator =
+        pmsExecutionSummaryRespository.fetchPipelineSummaryEntityFromRootParentIdUsingSecondaryMongo(rootParentId)
+            .iterator();
+    if (iterator.hasNext()) {
+      // We want more than one entry therefore checking if iterator has next or not.
+      PipelineExecutionSummaryEntity entity = iterator.next();
+      if (!iterator.hasNext()) {
+        return RetryLatestExecutionResponseDto.builder().errorMessage("This is not a part of retry execution").build();
       }
-      return RetryLatestExecutionResponseDto.builder().errorMessage("This is not a part of retry execution").build();
+      return RetryLatestExecutionResponseDto.builder().latestExecutionId(entity.getPlanExecutionId()).build();
     }
+    return RetryLatestExecutionResponseDto.builder().errorMessage("This is not a part of retry execution").build();
   }
 
   private List<ExecutionInfo> fetchExecutionInfoFromPipelineEntities(

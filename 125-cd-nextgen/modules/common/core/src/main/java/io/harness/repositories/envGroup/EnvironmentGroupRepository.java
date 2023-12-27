@@ -11,6 +11,7 @@ import io.harness.annotation.HarnessRepo;
 import io.harness.cdng.envGroup.beans.EnvironmentGroupEntity;
 import io.harness.gitsync.persistance.GitSyncableHarnessRepo;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,4 +19,5 @@ import org.springframework.transaction.annotation.Transactional;
 @GitSyncableHarnessRepo
 @Transactional
 public interface EnvironmentGroupRepository
-    extends PagingAndSortingRepository<EnvironmentGroupEntity, String>, EnvironmentGroupRepositoryCustom {}
+    extends PagingAndSortingRepository<EnvironmentGroupEntity, String>, CrudRepository<EnvironmentGroupEntity, String>,
+            EnvironmentGroupRepositoryCustom {}

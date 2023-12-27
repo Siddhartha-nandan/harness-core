@@ -13,9 +13,10 @@ import io.harness.annotation.HarnessRepo;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.gitsync.common.beans.GitBranch;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(DX)
-public interface GitBranchesRepository
-    extends PagingAndSortingRepository<GitBranch, String>, GitBranchesRepositoryCustom {}
+public interface GitBranchesRepository extends PagingAndSortingRepository<GitBranch, String>,
+                                               CrudRepository<GitBranch, String>, GitBranchesRepositoryCustom {}

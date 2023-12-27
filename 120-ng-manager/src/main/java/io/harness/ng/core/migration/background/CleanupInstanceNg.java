@@ -6,6 +6,7 @@
  */
 
 package io.harness.ng.core.migration.background;
+
 import static io.harness.mongo.MongoConfig.NO_LIMIT;
 
 import static java.lang.String.format;
@@ -23,11 +24,11 @@ import io.harness.repositories.instance.InstanceRepository;
 
 import com.google.inject.Inject;
 import java.util.HashSet;
+import java.util.Iterator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.util.CloseableIterator;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 @OwnedBy(HarnessTeam.CDP)
@@ -50,7 +51,8 @@ public class CleanupInstanceNg implements NGMigration {
     Query query = new Query(new Criteria()).limit(NO_LIMIT).cursorBatchSize(BATCH_SIZE);
     query.fields().include("_id", InstanceKeys.accountIdentifier, InstanceKeys.instanceType,
         InstanceKeys.lastDeployedAt, InstanceKeys.isDeleted, InstanceKeys.deletedAt);
-    try (CloseableIterator<Instance> iterator = mongoTemplate.stream(query, Instance.class)) {
+    try {
+      Iterator<Instance> iterator = mongoTemplate.stream(query, Instance.class).iterator();
       while (iterator.hasNext()) {
         iterationCounter++;
         Instance instance = iterator.next();

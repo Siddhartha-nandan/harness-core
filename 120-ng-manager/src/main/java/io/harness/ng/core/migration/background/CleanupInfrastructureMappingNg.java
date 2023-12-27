@@ -20,11 +20,11 @@ import io.harness.repositories.infrastructuremapping.InfrastructureMappingReposi
 
 import com.google.inject.Inject;
 import java.util.HashSet;
+import java.util.Iterator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(HarnessTeam.CDP)
 @Slf4j
@@ -44,7 +44,8 @@ public class CleanupInfrastructureMappingNg implements NGMigration {
 
     HashSet<String> existingAccounts = new HashSet<>(accountUtils.getAllNGAccountIds());
     Query query = new Query(new Criteria()).limit(NO_LIMIT).cursorBatchSize(BATCH_SIZE);
-    try (CloseableIterator<InfrastructureMapping> iterator = mongoTemplate.stream(query, InfrastructureMapping.class)) {
+    try {
+      Iterator<InfrastructureMapping> iterator = mongoTemplate.stream(query, InfrastructureMapping.class).iterator();
       while (iterator.hasNext()) {
         iterationCounter++;
         InfrastructureMapping infrastructureMapping = iterator.next();

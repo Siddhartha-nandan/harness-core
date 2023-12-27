@@ -56,6 +56,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -66,7 +67,6 @@ import net.jodah.failsafe.RetryPolicy;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.util.CloseableIterator;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Slf4j
@@ -244,7 +244,8 @@ public class FixInconsistentUserDataMigrationService implements Runnable {
                             .and(UserMembershipKeys.scope + "." + ScopeKeys.accountIdentifier)
                             .is(accountIdentifier);
 
-    try (CloseableIterator<UserMembership> iterator = userMembershipRepository.stream(criteria)) {
+    try {
+      Iterator<UserMembership> iterator = userMembershipRepository.stream(criteria).iterator();
       while (iterator.hasNext()) {
         UserMembership userMembership = iterator.next();
         Scope scope = userMembership.getScope();

@@ -18,11 +18,12 @@ import io.harness.user.remote.UserClient;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import java.util.Iterator;
 import java.util.Optional;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 @Singleton
@@ -40,7 +41,7 @@ public class UserInfoMigration implements NGMigration {
     this.userRepository = userRepository;
   }
 
-  private CloseableIterator<UserDBO> runQueryWithBatch(int batchSize) {
+  private Stream<UserDBO> runQueryWithBatch(int batchSize) {
     Query query = new Query();
     query.cursorBatchSize(batchSize);
     return mongoTemplate.stream(query, UserDBO.class);
@@ -51,7 +52,7 @@ public class UserInfoMigration implements NGMigration {
     log.info("User Info Migration started");
 
     try {
-      CloseableIterator<UserDBO> iterator = runQueryWithBatch(BATCH_SIZE);
+      Iterator<UserDBO> iterator = runQueryWithBatch(BATCH_SIZE).iterator();
 
       while (iterator.hasNext()) {
         UserDBO userDBO = iterator.next();

@@ -14,12 +14,14 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.audit.entities.AuditSettings;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(PL)
 @HarnessRepo
 public interface AuditRetentionRepository
-    extends PagingAndSortingRepository<AuditSettings, String>, AuditRetentionRepositoryCustom {
+    extends PagingAndSortingRepository<AuditSettings, String>, CrudRepository<AuditSettings, String>,
+            AuditRetentionRepositoryCustom {
   Optional<AuditSettings> findByAccountIdentifier(String accountIdentifier);
   void deleteByAccountIdentifier(String accountIdentifier);
 }

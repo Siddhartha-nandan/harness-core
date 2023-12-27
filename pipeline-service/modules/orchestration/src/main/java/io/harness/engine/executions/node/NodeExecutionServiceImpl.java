@@ -75,6 +75,7 @@ import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -82,6 +83,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -94,7 +96,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @Slf4j
@@ -132,7 +133,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   }
 
   @Override
-  public CloseableIterator<NodeExecution> get(List<String> nodeExecutionIds) {
+  public Stream<NodeExecution> get(List<String> nodeExecutionIds) {
     Query query = query(where(NodeExecutionKeys.uuid).in(nodeExecutionIds));
     return nodeExecutionReadHelper.fetchNodeExecutionsWithAllFields(query);
   }
@@ -214,8 +215,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   }
 
   @Override
-  public CloseableIterator<NodeExecution> fetchAllStepNodeExecutions(
-      String planExecutionId, Set<String> fieldsToInclude) {
+  public Stream<NodeExecution> fetchAllStepNodeExecutions(String planExecutionId, Set<String> fieldsToInclude) {
     // Uses - planExecutionId_stepCategory_identifier_idx
     Query query = query(where(NodeExecutionKeys.planExecutionId).is(planExecutionId))
                       .addCriteria(where(NodeExecutionKeys.stepCategory).is(StepCategory.STEP));
@@ -238,11 +238,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
     // Exclude so that it can use Projection covered from index without scanning documents.
     query.fields().exclude(NodeExecutionKeys.id).include(NodeExecutionKeys.status);
     List<NodeExecution> nodeExecutions = new LinkedList<>();
-    try (CloseableIterator<NodeExecution> iterator = nodeExecutionReadHelper.fetchNodeExecutions(query)) {
-      while (iterator.hasNext()) {
-        nodeExecutions.add(iterator.next());
-      }
-    }
+    nodeExecutionReadHelper.fetchNodeExecutions(query).forEach(nodeExecution -> nodeExecutions.add(nodeExecution));
     return nodeExecutions.stream().map(NodeExecution::getStatus).collect(Collectors.toList());
   }
 
@@ -255,16 +251,12 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
     // Exclude so that it can use Projection simplified from index without scanning documents.
     query.fields().exclude(NodeExecutionKeys.id).include(NodeExecutionKeys.status);
     List<NodeExecution> nodeExecutions = new LinkedList<>();
-    try (CloseableIterator<NodeExecution> iterator = nodeExecutionReadHelper.fetchNodeExecutions(query)) {
-      while (iterator.hasNext()) {
-        nodeExecutions.add(iterator.next());
-      }
-    }
+    nodeExecutionReadHelper.fetchNodeExecutions(query).forEach(nodeExecution -> nodeExecutions.add(nodeExecution));
     return nodeExecutions.stream().map(NodeExecution::getStatus).collect(Collectors.toList());
   }
 
   @Override
-  public CloseableIterator<NodeExecution> fetchNodeExecutionsWithoutOldRetriesIterator(String planExecutionId) {
+  public Stream<NodeExecution> fetchNodeExecutionsWithoutOldRetriesIterator(String planExecutionId) {
     // Uses - planExecutionId_oldRetry_idx
     Query query = query(where(NodeExecutionKeys.planExecutionId).is(planExecutionId))
                       .addCriteria(where(NodeExecutionKeys.oldRetry).is(false));
@@ -273,7 +265,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   }
 
   @Override
-  public CloseableIterator<NodeExecution> fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(
+  public Stream<NodeExecution> fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(
       String planExecutionId, EnumSet<Status> statuses, @NotNull Set<String> fieldsToInclude) {
     // Uses - planExecutionId_status_idx
     Query query = query(where(NodeExecutionKeys.planExecutionId).is(planExecutionId))
@@ -288,14 +280,14 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   }
 
   @Override
-  public CloseableIterator<NodeExecution> fetchNodeExecutionsWithoutOldRetriesIterator(
+  public Stream<NodeExecution> fetchNodeExecutionsWithoutOldRetriesIterator(
       String planExecutionId, @NotNull Set<String> fieldsToInclude) {
     return fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(
         planExecutionId, EnumSet.noneOf(Status.class), fieldsToInclude);
   }
 
   @Override
-  public CloseableIterator<NodeExecution> fetchChildrenNodeExecutionsIterator(
+  public Stream<NodeExecution> fetchChildrenNodeExecutionsIterator(
       String planExecutionId, String parentId, Set<String> fieldsToBeIncluded) {
     // Uses planExecutionId_parentId_createdAt_idx
     Query query = query(where(NodeExecutionKeys.planExecutionId).is(planExecutionId))
@@ -308,7 +300,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   }
 
   @Override
-  public CloseableIterator<NodeExecution> fetchChildrenNodeExecutionsIterator(
+  public Stream<NodeExecution> fetchChildrenNodeExecutionsIterator(
       String planExecutionId, String parentId, Direction sortOrderOfCreatedAt, Set<String> fieldsToBeIncluded) {
     // Uses planExecutionId_parentId_createdAt_idx
     Query query = query(where(NodeExecutionKeys.planExecutionId).is(planExecutionId))
@@ -321,7 +313,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   }
 
   @VisibleForTesting
-  CloseableIterator<NodeExecution> fetchChildrenNodeExecutionsIteratorWithoutProjection(
+  Stream<NodeExecution> fetchChildrenNodeExecutionsIteratorWithoutProjection(
       String planExecutionId, List<String> parentIds) {
     // Uses planExecutionId_parentId_createdAt_idx
     Query query = query(where(NodeExecutionKeys.planExecutionId).is(planExecutionId))
@@ -345,12 +337,12 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
       return new ArrayList<>();
     }
     List<NodeExecution> recursiveChildrenNodeExecutions = new LinkedList<>();
-    try (CloseableIterator<NodeExecution> iterator =
-             fetchChildrenNodeExecutionsIteratorWithoutProjection(planExecutionId, parentIds)) {
-      while (iterator.hasNext()) {
-        recursiveChildrenNodeExecutions.add(iterator.next());
-      }
+    Iterator<NodeExecution> iterator =
+        fetchChildrenNodeExecutionsIteratorWithoutProjection(planExecutionId, parentIds).iterator();
+    while (iterator.hasNext()) {
+      recursiveChildrenNodeExecutions.add(iterator.next());
     }
+
     List<String> childParentIds = new LinkedList<>();
     if (EmptyPredicate.isEmpty(recursiveChildrenNodeExecutions)) {
       return new ArrayList<>();
@@ -368,8 +360,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   }
 
   @Override
-  public CloseableIterator<NodeExecution> fetchChildrenNodeExecutionsIterator(
-      String parentId, Set<String> fieldsToBeIncluded) {
+  public Stream<NodeExecution> fetchChildrenNodeExecutionsIterator(String parentId, Set<String> fieldsToBeIncluded) {
     // Uses planExecutionId_parentId_createdAt_idx
     Query query = query(where(NodeExecutionKeys.parentId).is(parentId));
     for (String field : fieldsToBeIncluded) {
@@ -379,7 +370,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   }
 
   @Override
-  public CloseableIterator<NodeExecution> fetchAllNodeExecutionsByStatusIteratorFromAnalytics(
+  public Stream<NodeExecution> fetchAllNodeExecutionsByStatusIteratorFromAnalytics(
       EnumSet<Status> statuses, Set<String> fieldsToBeIncluded) {
     // Uses status_idx index
     Query query = query(where(NodeExecutionKeys.status).in(statuses));
@@ -454,12 +445,8 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
     }
     List<NodeExecution> allExecutions = new LinkedList<>();
 
-    try (CloseableIterator<NodeExecution> iterator = fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(
-             planExecutionId, flowingStatuses, finalFieldsToBeIncluded)) {
-      while (iterator.hasNext()) {
-        allExecutions.add(iterator.next());
-      }
-    }
+    fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(planExecutionId, flowingStatuses, finalFieldsToBeIncluded)
+        .forEach(nodeExecution -> allExecutions.add(nodeExecution));
     return extractChildExecutions(parentId, includeParent, finalList, allExecutions, includeChildrenOfStrategy);
   }
 
@@ -704,19 +691,19 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
     // Fetches all nodeExecutions from analytics for given planExecutionIds
     List<NodeExecution> batchNodeExecutionList = new LinkedList<>();
     Set<String> nodeExecutionsIdsToDelete = new HashSet<>();
-    try (CloseableIterator<NodeExecution> iterator =
-             fetchNodeExecutionsFromAnalytics(planExecutionIds, NodeProjectionUtils.fieldsForNodeExecutionDelete)) {
-      while (iterator.hasNext()) {
-        NodeExecution next = iterator.next();
-        nodeExecutionsIdsToDelete.add(next.getUuid());
-        batchNodeExecutionList.add(next);
-        if (batchNodeExecutionList.size() >= MAX_BATCH_SIZE) {
-          // delete node Executions in batches of 1000
-          deleteNodeExecutionsMetadataInternal(batchNodeExecutionList);
-          deleteNodeExecutionsInternal(nodeExecutionsIdsToDelete);
-          batchNodeExecutionList.clear();
-          nodeExecutionsIdsToDelete.clear();
-        }
+    for (Iterator<NodeExecution> iterator =
+             fetchNodeExecutionsFromAnalytics(planExecutionIds, NodeProjectionUtils.fieldsForNodeExecutionDelete)
+                 .iterator();
+         iterator.hasNext();) {
+      NodeExecution next = iterator.next();
+      nodeExecutionsIdsToDelete.add(next.getUuid());
+      batchNodeExecutionList.add(next);
+      if (batchNodeExecutionList.size() >= MAX_BATCH_SIZE) {
+        // delete node Executions in batches of 1000
+        deleteNodeExecutionsMetadataInternal(batchNodeExecutionList);
+        deleteNodeExecutionsInternal(nodeExecutionsIdsToDelete);
+        batchNodeExecutionList.clear();
+        nodeExecutionsIdsToDelete.clear();
       }
     }
     // delete the remaining node Executions
@@ -802,8 +789,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   }
 
   @VisibleForTesting
-  CloseableIterator<NodeExecution> fetchNodeExecutionsFromAnalytics(
-      String planExecutionId, @NotNull Set<String> fieldsToInclude) {
+  Stream<NodeExecution> fetchNodeExecutionsFromAnalytics(String planExecutionId, @NotNull Set<String> fieldsToInclude) {
     // Uses - id_idx
     Query query = query(where(NodeExecutionKeys.planExecutionId).is(planExecutionId));
     for (String field : fieldsToInclude) {
@@ -813,7 +799,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   }
 
   @VisibleForTesting
-  CloseableIterator<NodeExecution> fetchNodeExecutionsFromAnalytics(
+  Stream<NodeExecution> fetchNodeExecutionsFromAnalytics(
       Set<String> planExecutionIds, @NotNull Set<String> fieldsToInclude) {
     // Uses - id_idx
     Query query = query(where(NodeExecutionKeys.planExecutionId).in(planExecutionIds));
@@ -1084,7 +1070,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   }
 
   @Override
-  public CloseableIterator<NodeExecution> fetchNodeExecutionsForGivenStageFQNs(
+  public Stream<NodeExecution> fetchNodeExecutionsForGivenStageFQNs(
       String planExecutionId, List<String> stageFQNs, Collection<String> requiredFields) {
     Criteria criteria = Criteria.where(NodeExecutionKeys.planExecutionId)
                             .is(planExecutionId)
@@ -1119,7 +1105,7 @@ public class NodeExecutionServiceImpl implements NodeExecutionService {
   }
 
   @Override
-  public CloseableIterator<NodeExecution> fetchAllLeavesUsingPlanExecutionId(
+  public Stream<NodeExecution> fetchAllLeavesUsingPlanExecutionId(
       String planExecutionId, Set<String> fieldsToBeIncluded) {
     // Uses - planExecutionId_mode_status_oldRetry_idx
     Criteria criteria = Criteria.where(NodeExecutionKeys.planExecutionId)

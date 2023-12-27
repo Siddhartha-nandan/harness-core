@@ -21,6 +21,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -95,10 +96,11 @@ public class SyncPipelineExecutionsWithWrongStatusInTimescale implements NGMigra
     projections.add(PipelineExecutionSummaryEntity.PlanExecutionSummaryKeys.status);
     projections.add(PipelineExecutionSummaryEntity.PlanExecutionSummaryKeys.endTs);
 
-    try (CloseableIterator<PipelineExecutionSummaryEntity> iterator =
-             pmsExecutionSummaryRepository.findAllWithRequiredProjectionUsingAnalyticsNode(
-                 criteria, pageable, projections);
-         PreparedStatement updateStatement = connection.prepareStatement(UPDATE_STATEMENT)) {
+    try {
+      Iterator<PipelineExecutionSummaryEntity> iterator =
+          pmsExecutionSummaryRepository.findAllWithRequiredProjectionUsingAnalyticsNode(criteria, pageable, projections)
+              .iterator();
+      PreparedStatement updateStatement = connection.prepareStatement(UPDATE_STATEMENT);
       boolean update = false;
       while (iterator.hasNext()) {
         PipelineExecutionSummaryEntity pipelineExecutionSummaryEntity = iterator.next();

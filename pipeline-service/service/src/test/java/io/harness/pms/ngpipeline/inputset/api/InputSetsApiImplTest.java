@@ -65,7 +65,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
-import org.springframework.data.repository.support.PageableExecutionUtils;
+import org.springframework.data.support.PageableExecutionUtils;
 
 @OwnedBy(PIPELINE)
 @PrepareForTest({InputSetValidationHelper.class})

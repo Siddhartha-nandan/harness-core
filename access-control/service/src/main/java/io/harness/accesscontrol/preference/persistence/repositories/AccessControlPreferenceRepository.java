@@ -13,10 +13,12 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(HarnessTeam.PL)
-public interface AccessControlPreferenceRepository extends PagingAndSortingRepository<AccessControlPreference, String> {
+public interface AccessControlPreferenceRepository extends PagingAndSortingRepository<AccessControlPreference, String>,
+                                                           CrudRepository<AccessControlPreference, String> {
   Optional<AccessControlPreference> findByAccountId(String accountId);
 }

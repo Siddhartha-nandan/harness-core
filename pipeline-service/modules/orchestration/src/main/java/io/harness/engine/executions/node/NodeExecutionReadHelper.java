@@ -30,6 +30,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
@@ -39,7 +40,6 @@ import org.springframework.data.mongodb.core.aggregation.MatchOperation;
 import org.springframework.data.mongodb.core.aggregation.ProjectionOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.util.CloseableIterator;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @Slf4j
@@ -71,18 +71,18 @@ public class NodeExecutionReadHelper {
     return Optional.ofNullable(mongoTemplate.findOne(query, NodeExecution.class));
   }
 
-  public CloseableIterator<NodeExecution> fetchNodeExecutions(Query query) {
+  public Stream<NodeExecution> fetchNodeExecutions(Query query) {
     query.cursorBatchSize(MAX_BATCH_SIZE);
     validateNodeExecutionStreamQuery(query);
     return mongoTemplate.stream(query, NodeExecution.class);
   }
 
-  public CloseableIterator<NodeExecution> fetchNodeExecutionsWithAllFields(Query query) {
+  public Stream<NodeExecution> fetchNodeExecutionsWithAllFields(Query query) {
     query.cursorBatchSize(MAX_BATCH_SIZE);
     return mongoTemplate.stream(query, NodeExecution.class);
   }
 
-  public CloseableIterator<NodeExecution> fetchNodeExecutionsFromAnalytics(Query query) {
+  public Stream<NodeExecution> fetchNodeExecutionsFromAnalytics(Query query) {
     query.cursorBatchSize(MAX_BATCH_SIZE);
     validateNodeExecutionStreamQuery(query);
     return analyticsMongoTemplate.stream(query, NodeExecution.class);
@@ -91,8 +91,9 @@ public class NodeExecutionReadHelper {
   /**
    * Should be used only for nodeExecutionReads where there is no projection
    * Get approval before using this method
+   * @return
    */
-  public CloseableIterator<NodeExecution> fetchNodeExecutionsIteratorWithoutProjections(Query query) {
+  public Stream<NodeExecution> fetchNodeExecutionsIteratorWithoutProjections(Query query) {
     query.cursorBatchSize(MAX_BATCH_SIZE);
     return mongoTemplate.stream(query, NodeExecution.class);
   }

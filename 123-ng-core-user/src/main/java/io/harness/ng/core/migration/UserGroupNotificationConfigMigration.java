@@ -19,14 +19,15 @@ import io.harness.repositories.ng.core.spring.UserGroupRepository;
 import io.harness.springdata.PersistenceUtils;
 
 import com.google.inject.Inject;
+import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 @OwnedBy(SPG)
@@ -47,7 +48,7 @@ public class UserGroupNotificationConfigMigration implements NGMigration {
   @Override
   public void migrate() {
     log.info("{} starts ...", DEBUG_LINE);
-    CloseableIterator<UserGroup> iterator = runQueryWithBatch(new Criteria(), BATCH_SIZE);
+    Iterator<UserGroup> iterator = runQueryWithBatch(new Criteria(), BATCH_SIZE).iterator();
     while (iterator.hasNext()) {
       UserGroup userGroup = iterator.next();
       handleWithRetries(userGroup);
@@ -91,7 +92,7 @@ public class UserGroupNotificationConfigMigration implements NGMigration {
     }
   }
 
-  private CloseableIterator<UserGroup> runQueryWithBatch(Criteria criteria, int batchSize) {
+  private Stream<UserGroup> runQueryWithBatch(Criteria criteria, int batchSize) {
     Query query = new Query(criteria);
     query.cursorBatchSize(batchSize);
     return mongoTemplate.stream(query, UserGroup.class);

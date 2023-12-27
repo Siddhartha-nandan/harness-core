@@ -18,10 +18,10 @@ import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.List;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 @OwnedBy(PIPELINE)
@@ -46,13 +46,13 @@ public class PmsExecutionSummaryReadHelper {
     return secondaryMongoTemplate.find(query, PipelineExecutionSummaryEntity.class);
   }
 
-  public CloseableIterator<PipelineExecutionSummaryEntity> fetchExecutionSummaryEntityFromAnalytics(Query query) {
+  public Stream<PipelineExecutionSummaryEntity> fetchExecutionSummaryEntityFromAnalytics(Query query) {
     query.cursorBatchSize(MAX_BATCH_SIZE);
     validatePipelineExecutionSummaryStreamQuery(query);
     return analyticsMongoTemplate.stream(query, PipelineExecutionSummaryEntity.class);
   }
 
-  public CloseableIterator<PipelineExecutionSummaryEntity> fetchExecutionSummaryEntityFromSecondary(Query query) {
+  public Stream<PipelineExecutionSummaryEntity> fetchExecutionSummaryEntityFromSecondary(Query query) {
     query.cursorBatchSize(MAX_BATCH_SIZE);
     validatePipelineExecutionSummaryStreamQuery(query);
     return secondaryMongoTemplate.stream(query, PipelineExecutionSummaryEntity.class);

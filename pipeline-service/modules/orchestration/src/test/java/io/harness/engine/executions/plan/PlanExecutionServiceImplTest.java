@@ -282,14 +282,10 @@ public class PlanExecutionServiceImplTest extends OrchestrationTestBase {
                                   .build());
 
     List<PlanExecution> finalList = new LinkedList<>();
-    try (CloseableIterator<PlanExecution> iterator =
-             planExecutionService.fetchPlanExecutionsByStatusFromAnalytics(StatusUtils.activeStatuses(),
-                 ImmutableSet.of(PlanExecutionKeys.setupAbstractions, PlanExecutionKeys.metadata))) {
-      while (iterator.hasNext()) {
-        finalList.add(iterator.next());
-      }
-    }
-
+    planExecutionService
+        .fetchPlanExecutionsByStatusFromAnalytics(StatusUtils.activeStatuses(),
+            ImmutableSet.of(PlanExecutionKeys.setupAbstractions, PlanExecutionKeys.metadata))
+        .forEach(planExecution -> finalList.add(planExecution));
     assertEquals(finalList.size(), 4);
   }
 

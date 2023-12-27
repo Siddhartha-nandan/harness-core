@@ -56,12 +56,14 @@ import java.time.Duration;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -72,7 +74,6 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Field;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(PIPELINE)
@@ -333,8 +334,7 @@ public class PlanExecutionServiceImpl implements PlanExecutionService {
   }
 
   @Override
-  public CloseableIterator<PlanExecution> fetchPlanExecutionsByStatusFromAnalytics(
-      Set<Status> statuses, Set<String> fieldNames) {
+  public Stream<PlanExecution> fetchPlanExecutionsByStatusFromAnalytics(Set<Status> statuses, Set<String> fieldNames) {
     // Uses status_idx index
     Query query = query(where(PlanExecutionKeys.status).in(statuses));
     for (String fieldName : fieldNames) {
@@ -403,14 +403,13 @@ public class PlanExecutionServiceImpl implements PlanExecutionService {
       query.fields().include(fieldName);
     }
     List<PlanExecution> batchPlanExecutions = new LinkedList<>();
-    try (CloseableIterator<PlanExecution> iterator = planExecutionRepository.fetchPlanExecutionsFromAnalytics(query)) {
-      while (iterator.hasNext()) {
-        PlanExecution next = iterator.next();
-        batchPlanExecutions.add(next);
-        if (batchPlanExecutions.size() >= PersistenceModule.MAX_BATCH_SIZE) {
-          deletePlanExecutionMetadataInternal(batchPlanExecutions, retainPipelineExecutionDetailsAfterDelete);
-          batchPlanExecutions.clear();
-        }
+    for (Iterator<PlanExecution> iterator = planExecutionRepository.fetchPlanExecutionsFromAnalytics(query).iterator();
+         iterator.hasNext();) {
+      PlanExecution next = iterator.next();
+      batchPlanExecutions.add(next);
+      if (batchPlanExecutions.size() >= PersistenceModule.MAX_BATCH_SIZE) {
+        deletePlanExecutionMetadataInternal(batchPlanExecutions, retainPipelineExecutionDetailsAfterDelete);
+        batchPlanExecutions.clear();
       }
     }
     if (EmptyPredicate.isNotEmpty(batchPlanExecutions)) {

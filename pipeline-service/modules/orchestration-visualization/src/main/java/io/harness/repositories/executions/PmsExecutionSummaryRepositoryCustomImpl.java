@@ -28,6 +28,7 @@ import com.google.inject.Inject;
 import com.mongodb.client.result.UpdateResult;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,8 +42,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.repository.support.PageableExecutionUtils;
-import org.springframework.data.util.CloseableIterator;
+import org.springframework.data.support.PageableExecutionUtils;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @AllArgsConstructor(access = AccessLevel.PRIVATE, onConstructor = @__({ @Inject }))
@@ -118,7 +118,7 @@ public class PmsExecutionSummaryRepositoryCustomImpl implements PmsExecutionSumm
 
   // Required in a migration . May be removed in the future.
   @Override
-  public CloseableIterator<PipelineExecutionSummaryEntity> findAllWithRequiredProjectionUsingAnalyticsNode(
+  public Stream<PipelineExecutionSummaryEntity> findAllWithRequiredProjectionUsingAnalyticsNode(
       Criteria criteria, Pageable pageable, List<String> projections) {
     try {
       Query query = new Query(criteria).with(pageable);
@@ -181,8 +181,8 @@ public class PmsExecutionSummaryRepositoryCustomImpl implements PmsExecutionSumm
   }
 
   @Override
-  public CloseableIterator<PipelineExecutionSummaryEntity>
-  fetchPipelineSummaryEntityFromRootParentIdUsingSecondaryMongo(String rootParentId) {
+  public Stream<PipelineExecutionSummaryEntity> fetchPipelineSummaryEntityFromRootParentIdUsingSecondaryMongo(
+      String rootParentId) {
     Query query = query(where(PlanExecutionSummaryKeys.rootExecutionId).is(rootParentId));
 
     queryFieldsForPipelineExecutionSummaryEntity(query);
@@ -197,14 +197,14 @@ public class PmsExecutionSummaryRepositoryCustomImpl implements PmsExecutionSumm
   }
 
   @Override
-  public CloseableIterator<PipelineExecutionSummaryEntity> findListOfBranches(Criteria criteria) {
+  public Stream<PipelineExecutionSummaryEntity> findListOfBranches(Criteria criteria) {
     Query query = new Query(criteria);
     query.fields().include(PlanExecutionSummaryKeys.entityGitDetailsBranch);
     return pmsExecutionSummaryReadHelper.fetchExecutionSummaryEntityFromSecondary(query);
   }
 
   @Override
-  public CloseableIterator<PipelineExecutionSummaryEntity> findListOfRepositories(Criteria criteria) {
+  public Stream<PipelineExecutionSummaryEntity> findListOfRepositories(Criteria criteria) {
     Query query = new Query(criteria);
     query.fields().include(PlanExecutionSummaryKeys.entityGitDetailsRepoName);
     return pmsExecutionSummaryReadHelper.fetchExecutionSummaryEntityFromSecondary(query);
@@ -214,7 +214,7 @@ public class PmsExecutionSummaryRepositoryCustomImpl implements PmsExecutionSumm
     return PersistenceUtils.getRetryPolicy(failedAttemptMessage, failureMessage);
   }
 
-  public CloseableIterator<PipelineExecutionSummaryEntity> fetchExecutionSummaryEntityFromAnalytics(Query query) {
+  public Stream<PipelineExecutionSummaryEntity> fetchExecutionSummaryEntityFromAnalytics(Query query) {
     return pmsExecutionSummaryReadHelper.fetchExecutionSummaryEntityFromAnalytics(query);
   }
 

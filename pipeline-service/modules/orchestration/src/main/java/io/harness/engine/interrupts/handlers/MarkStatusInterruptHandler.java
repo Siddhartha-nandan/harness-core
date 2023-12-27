@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 import lombok.NonNull;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 public abstract class MarkStatusInterruptHandler implements InterruptHandler {
@@ -103,13 +102,10 @@ public abstract class MarkStatusInterruptHandler implements InterruptHandler {
 
   private void handlePlanStatus(String planExecutionId, String nodeExecutionId) {
     List<NodeExecution> nodeExecutions = new LinkedList<>();
-    try (CloseableIterator<NodeExecution> iterator =
-             nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(
-                 planExecutionId, StatusUtils.activeStatuses(), NodeProjectionUtils.withStatus)) {
-      while (iterator.hasNext()) {
-        nodeExecutions.add(iterator.next());
-      }
-    }
+    nodeExecutionService
+        .fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(
+            planExecutionId, StatusUtils.activeStatuses(), NodeProjectionUtils.withStatus)
+        .forEach(nodeExecution -> nodeExecutions.add(nodeExecution));
     List<Status> filteredExecutions = nodeExecutions.stream()
                                           .filter(ne -> !ne.getUuid().equals(nodeExecutionId))
                                           .map(NodeExecution::getStatus)

@@ -64,6 +64,7 @@ import com.google.inject.name.Named;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -99,20 +100,21 @@ public class InstrumentationPipelineEndEventHandler implements OrchestrationEndO
     List<String> failedSteps = new LinkedList<>();
     List<String> failedStepTypes = new LinkedList<>();
 
-    try (CloseableIterator<NodeExecution> iterator = nodeExecutionService.fetchAllStepNodeExecutions(
-             planExecutionId, NodeProjectionUtils.fieldsForInstrumentationHandler)) {
-      while (iterator.hasNext()) {
-        NodeExecution currentNodeExecution = iterator.next();
+    Iterator<NodeExecution> iterator =
+        nodeExecutionService
+            .fetchAllStepNodeExecutions(planExecutionId, NodeProjectionUtils.fieldsForInstrumentationHandler)
+            .iterator();
+    while (iterator.hasNext()) {
+      NodeExecution currentNodeExecution = iterator.next();
 
-        String currentStepType = currentNodeExecution.getStepType().getType();
-        if (allSdkSteps.contains(currentStepType)) {
-          stepTypes.add(currentStepType);
-          // If step is in broken status then only add to results
-          if (StatusUtils.brokeStatuses().contains(currentNodeExecution.getStatus())) {
-            // Add step identifier
-            failedSteps.add(currentNodeExecution.getIdentifier());
-            failedStepTypes.add(currentStepType);
-          }
+      String currentStepType = currentNodeExecution.getStepType().getType();
+      if (allSdkSteps.contains(currentStepType)) {
+        stepTypes.add(currentStepType);
+        // If step is in broken status then only add to results
+        if (StatusUtils.brokeStatuses().contains(currentNodeExecution.getStatus())) {
+          // Add step identifier
+          failedSteps.add(currentNodeExecution.getIdentifier());
+          failedStepTypes.add(currentStepType);
         }
       }
     }

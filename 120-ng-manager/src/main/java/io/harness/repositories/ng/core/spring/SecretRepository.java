@@ -15,11 +15,13 @@ import io.harness.ng.core.models.Secret;
 import io.harness.repositories.ng.core.custom.SecretRepositoryCustom;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(PL)
 @HarnessRepo
-public interface SecretRepository extends PagingAndSortingRepository<Secret, String>, SecretRepositoryCustom {
+public interface SecretRepository
+    extends PagingAndSortingRepository<Secret, String>, CrudRepository<Secret, String>, SecretRepositoryCustom {
   Optional<Secret> findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier);
 

@@ -6,6 +6,7 @@
  */
 
 package io.harness.engine.interrupts;
+
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.interrupts.Interrupt.State.PROCESSED_SUCCESSFULLY;
@@ -60,7 +61,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.data.mapping.model.MappingInstantiationException;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.util.CloseableIterator;
 
 /**
  * This monitor runs and try to clean up any stuck executions there are many edge cases which are not handled right now
@@ -134,13 +134,10 @@ public class InterruptMonitor implements Handler<Interrupt> {
       }
 
       List<NodeExecution> nodeExecutions = new LinkedList<>();
-      try (
-          CloseableIterator<NodeExecution> iterator = nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesIterator(
-              interrupt.getPlanExecutionId(), NodeProjectionUtils.fieldsForDiscontinuingNodes)) {
-        while (iterator.hasNext()) {
-          nodeExecutions.add(iterator.next());
-        }
-      }
+      nodeExecutionService
+          .fetchNodeExecutionsWithoutOldRetriesIterator(
+              interrupt.getPlanExecutionId(), NodeProjectionUtils.fieldsForDiscontinuingNodes)
+          .forEach(nodeExecution -> nodeExecutions.add(nodeExecution));
       Set<NodeExecution> leaves = findAllLeaves(nodeExecutions);
 
       // There are no leaves in the execution then something weird happened

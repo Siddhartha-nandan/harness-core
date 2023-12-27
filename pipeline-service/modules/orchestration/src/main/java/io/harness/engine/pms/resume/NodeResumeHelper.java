@@ -27,12 +27,12 @@ import com.google.common.base.Preconditions;
 import com.google.inject.Inject;
 import com.google.protobuf.ByteString;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 public class NodeResumeHelper {
@@ -52,14 +52,15 @@ public class NodeResumeHelper {
     Map<String, ResponseDataProto> byteResponseMap = new HashMap<>();
     if (accumulationRequired(resumeMetadata)) {
       List<NodeExecution> childExecutions = new LinkedList<>();
-      try (CloseableIterator<NodeExecution> iterator = nodeExecutionService.fetchChildrenNodeExecutionsIterator(
-               resumeMetadata.getNodeExecutionUuid(), NodeProjectionUtils.fieldsForResponseNotifyData)) {
-        while (iterator.hasNext()) {
-          NodeExecution next = iterator.next();
-          // Only oldRetry false nodes to be added
-          if (Boolean.FALSE.equals(next.getOldRetry())) {
-            childExecutions.add(next);
-          }
+      Iterator<NodeExecution> iterator = nodeExecutionService
+                                             .fetchChildrenNodeExecutionsIterator(resumeMetadata.getNodeExecutionUuid(),
+                                                 NodeProjectionUtils.fieldsForResponseNotifyData)
+                                             .iterator();
+      while (iterator.hasNext()) {
+        NodeExecution next = iterator.next();
+        // Only oldRetry false nodes to be added
+        if (Boolean.FALSE.equals(next.getOldRetry())) {
+          childExecutions.add(next);
         }
       }
 

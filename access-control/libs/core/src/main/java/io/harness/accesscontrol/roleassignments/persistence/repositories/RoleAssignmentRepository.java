@@ -15,12 +15,14 @@ import io.harness.annotations.dev.OwnedBy;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(HarnessTeam.PL)
 @HarnessRepo
 public interface RoleAssignmentRepository
-    extends PagingAndSortingRepository<RoleAssignmentDBO, String>, RoleAssignmentCustomRepository {
+    extends PagingAndSortingRepository<RoleAssignmentDBO, String>, CrudRepository<RoleAssignmentDBO, String>,
+            RoleAssignmentCustomRepository {
   Optional<RoleAssignmentDBO> findByIdentifierAndScopeIdentifier(String identifier, String parentIdentifier);
 
   Optional<RoleAssignmentDBO> deleteByIdentifierAndScopeIdentifier(String identifier, String parentIdentifier);

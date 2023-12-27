@@ -32,11 +32,11 @@ import io.harness.utils.ExecutionModeUtils;
 
 import com.google.inject.Inject;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort.Direction;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 public class IdentityStrategyStep implements ChildrenExecutable<IdentityStepParameters> {
@@ -53,19 +53,19 @@ public class IdentityStrategyStep implements ChildrenExecutable<IdentityStepPara
     NodeExecution originalStrategyNodeExecution = nodeExecutionService.getWithFieldsIncluded(
         stepParameters.getOriginalNodeExecutionId(), NodeProjectionUtils.fieldsForIdentityStrategyStep);
     List<NodeExecution> childrenNodeExecutions = new ArrayList<>();
-    try (CloseableIterator<NodeExecution> iterator =
-             // Use original planExecutionId that belongs to the originalNodeExecutionId and not current
-             // planExecutionId(ambiance.getPlanExecutionId)
-        nodeExecutionService.fetchChildrenNodeExecutionsIterator(
-            originalStrategyNodeExecution.getAmbiance().getPlanExecutionId(),
-            stepParameters.getOriginalNodeExecutionId(), Direction.ASC,
-            NodeProjectionUtils.fieldsForIdentityStrategyStep)) {
-      while (iterator.hasNext()) {
-        NodeExecution next = iterator.next();
-        // Don't want to include retried nodeIds
-        if (Boolean.FALSE.equals(next.getOldRetry())) {
-          childrenNodeExecutions.add(next);
-        }
+    Iterator<NodeExecution> iterator =
+        // Use original planExecutionId that belongs to the originalNodeExecutionId and not current
+        // planExecutionId(ambiance.getPlanExecutionId)
+        nodeExecutionService
+            .fetchChildrenNodeExecutionsIterator(originalStrategyNodeExecution.getAmbiance().getPlanExecutionId(),
+                stepParameters.getOriginalNodeExecutionId(), Direction.ASC,
+                NodeProjectionUtils.fieldsForIdentityStrategyStep)
+            .iterator();
+    while (iterator.hasNext()) {
+      NodeExecution next = iterator.next();
+      // Don't want to include retried nodeIds
+      if (Boolean.FALSE.equals(next.getOldRetry())) {
+        childrenNodeExecutions.add(next);
       }
     }
 

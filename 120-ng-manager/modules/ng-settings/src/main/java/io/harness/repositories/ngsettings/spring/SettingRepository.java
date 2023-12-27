@@ -17,11 +17,13 @@ import io.harness.repositories.ngsettings.custom.SettingRepositoryCustom;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(PL)
 @HarnessRepo
-public interface SettingRepository extends PagingAndSortingRepository<Setting, String>, SettingRepositoryCustom {
+public interface SettingRepository
+    extends PagingAndSortingRepository<Setting, String>, CrudRepository<Setting, String>, SettingRepositoryCustom {
   List<Setting> findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndCategory(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, SettingCategory category);
   Optional<Setting> findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(

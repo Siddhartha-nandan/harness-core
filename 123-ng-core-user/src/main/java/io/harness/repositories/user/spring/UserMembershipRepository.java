@@ -14,9 +14,11 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.ng.core.user.entities.UserMembership;
 import io.harness.repositories.user.custom.UserMembershipRepositoryCustom;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(PL)
 public interface UserMembershipRepository
-    extends PagingAndSortingRepository<UserMembership, String>, UserMembershipRepositoryCustom {}
+    extends PagingAndSortingRepository<UserMembership, String>, CrudRepository<UserMembership, String>,
+            UserMembershipRepositoryCustom {}

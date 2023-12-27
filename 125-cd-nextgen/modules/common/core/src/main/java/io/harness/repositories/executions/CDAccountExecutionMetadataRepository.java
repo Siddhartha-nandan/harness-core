@@ -14,11 +14,13 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.cdng.pipeline.executions.CDAccountExecutionMetadata;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(PIPELINE)
 public interface CDAccountExecutionMetadataRepository
-    extends PagingAndSortingRepository<CDAccountExecutionMetadata, String>, CDAccountExecutionMetadataRepositoryCustom {
+    extends PagingAndSortingRepository<CDAccountExecutionMetadata, String>,
+            CrudRepository<CDAccountExecutionMetadata, String>, CDAccountExecutionMetadataRepositoryCustom {
   Optional<CDAccountExecutionMetadata> findByAccountId(String accountId);
 }

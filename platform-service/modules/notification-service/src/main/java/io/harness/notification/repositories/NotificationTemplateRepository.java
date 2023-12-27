@@ -13,10 +13,12 @@ import io.harness.notification.entities.NotificationTemplate;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
-public interface NotificationTemplateRepository extends PagingAndSortingRepository<NotificationTemplate, String> {
+public interface NotificationTemplateRepository
+    extends PagingAndSortingRepository<NotificationTemplate, String>, CrudRepository<NotificationTemplate, String> {
   List<NotificationTemplate> findByTeam(Team team);
 
   Optional<NotificationTemplate> findByIdentifierAndTeam(String identifier, Team team);

@@ -15,12 +15,14 @@ import io.harness.pms.plan.execution.beans.GraphUpdateInfo;
 
 import java.util.Optional;
 import java.util.Set;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(PIPELINE)
 public interface GraphUpdateInfoRepository
-    extends PagingAndSortingRepository<GraphUpdateInfo, String>, GraphUpdateInfoRepositoryCustom {
+    extends PagingAndSortingRepository<GraphUpdateInfo, String>, CrudRepository<GraphUpdateInfo, String>,
+            GraphUpdateInfoRepositoryCustom {
   Optional<GraphUpdateInfo> findByPlanExecutionIdAndExecutionSummaryUpdateInfo_StepCategory(
       String planExecutionId, StepCategory stepCategory);
 

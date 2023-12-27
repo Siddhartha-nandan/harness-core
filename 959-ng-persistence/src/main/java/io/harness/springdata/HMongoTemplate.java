@@ -28,6 +28,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
@@ -49,7 +50,6 @@ import org.springframework.data.mongodb.core.mapreduce.MapReduceOptions;
 import org.springframework.data.mongodb.core.mapreduce.MapReduceResults;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.UpdateDefinition;
-import org.springframework.data.util.CloseableIterator;
 import org.springframework.lang.Nullable;
 
 @SuppressWarnings("NullableProblems")
@@ -298,7 +298,7 @@ public class HMongoTemplate extends MongoTemplate implements HealthMonitor {
   }
 
   @Override
-  public <T> CloseableIterator<T> stream(Query query, Class<T> entityType, String collectionName) {
+  public <T> Stream<T> stream(Query query, Class<T> entityType, String collectionName) {
     try {
       traceQuery(query, entityType);
       if (query.getMeta().getMaxTimeMsec() == null) {
@@ -344,12 +344,6 @@ public class HMongoTemplate extends MongoTemplate implements HealthMonitor {
           aggregation, results.getMappedResults().size(), collectionName, new Exception());
     }
     return results;
-  }
-
-  @Override
-  protected <O> CloseableIterator<O> aggregateStream(Aggregation aggregation, String collectionName,
-      Class<O> outputType, @Nullable AggregationOperationContext context) {
-    return super.aggregateStream(applyLimitsAndMaxTimeToAggregation(aggregation), collectionName, outputType, context);
   }
 
   private Aggregation applyLimitsAndMaxTimeToAggregation(Aggregation aggregation) {

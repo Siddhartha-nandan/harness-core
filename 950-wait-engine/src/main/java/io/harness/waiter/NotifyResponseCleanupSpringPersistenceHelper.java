@@ -23,10 +23,10 @@ import com.google.inject.Singleton;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 @OwnedBy(HarnessTeam.PIPELINE)
@@ -53,15 +53,14 @@ public class NotifyResponseCleanupSpringPersistenceHelper {
     final long limit = System.currentTimeMillis() - Duration.ofSeconds(15).toMillis();
 
     Set<String> keys = new HashSet<>();
-    try (CloseableIterator<NotifyResponse> notifyResponseIterator =
-             persistenceWrapper.fetchNotifyResponseKeysFromSecondary(limit)) {
-      while (notifyResponseIterator.hasNext()) {
-        keys.add(notifyResponseIterator.next().getUuid());
+    for (Iterator<NotifyResponse> notifyResponseIterator =
+             persistenceWrapper.fetchNotifyResponseKeysFromSecondary(limit).iterator();
+         notifyResponseIterator.hasNext();) {
+      keys.add(notifyResponseIterator.next().getUuid());
 
-        if (keys.size() >= MAX_BATCH_SIZE) {
-          sendAndHandleNotifyResponses(keys);
-          keys.clear();
-        }
+      if (keys.size() >= MAX_BATCH_SIZE) {
+        sendAndHandleNotifyResponses(keys);
+        keys.clear();
       }
     }
     sendAndHandleNotifyResponses(keys);
@@ -72,19 +71,18 @@ public class NotifyResponseCleanupSpringPersistenceHelper {
     for (String key : keys) {
       try (NotifyResponseLogContext ignore = new NotifyResponseLogContext(key, OVERRIDE_ERROR)) {
         boolean needHandling = false;
-        try (CloseableIterator<WaitInstance> iterator = persistenceWrapper.fetchWaitInstancesFromSecondary(key)) {
-          if (!iterator.hasNext()) {
-            deleteResponses.add(key);
-          } else {
-            while (iterator.hasNext()) {
-              WaitInstance waitInstance = iterator.next();
-              if (isEmpty(waitInstance.getWaitingOnCorrelationIds())) {
-                if (waitInstance.getCallbackProcessingAt() < System.currentTimeMillis()) {
-                  waitNotifyEngine.sendNotification(waitInstance);
-                }
-              } else if (waitInstance.getWaitingOnCorrelationIds().contains(key)) {
-                needHandling = true;
+        Iterator<WaitInstance> iterator = persistenceWrapper.fetchWaitInstancesFromSecondary(key).iterator();
+        if (!iterator.hasNext()) {
+          deleteResponses.add(key);
+        } else {
+          while (iterator.hasNext()) {
+            WaitInstance waitInstance = iterator.next();
+            if (isEmpty(waitInstance.getWaitingOnCorrelationIds())) {
+              if (waitInstance.getCallbackProcessingAt() < System.currentTimeMillis()) {
+                waitNotifyEngine.sendNotification(waitInstance);
               }
+            } else if (waitInstance.getWaitingOnCorrelationIds().contains(key)) {
+              needHandling = true;
             }
           }
         }

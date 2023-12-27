@@ -17,10 +17,10 @@ import io.harness.ng.core.entitysetupusage.dto.EntitySetupUsageDTO;
 import io.harness.ng.core.entitysetupusage.entity.EntitySetupUsage;
 
 import java.util.List;
+import java.util.stream.Stream;
 import javax.validation.constraints.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(DX)
 public interface EntitySetupUsageService {
@@ -60,9 +60,8 @@ public interface EntitySetupUsageService {
   List<String> listAllReferredEntityIdentifiersPerReferredEntityScope(Scope scope, String referredEntityFQScope,
       EntityType referredEntityType, EntityType referredByEntityType, String referredByEntityName, Sort sort);
 
-  CloseableIterator<EntitySetupUsage> streamAllEntityUsagePerReferredEntityScope(Scope scope,
-      String referredEntityFQScope, EntityType referredEntityType, @NotNull EntityType referredByEntityType,
-      String referredByEntityName);
+  Stream<EntitySetupUsage> streamAllEntityUsagePerReferredEntityScope(Scope scope, String referredEntityFQScope,
+      EntityType referredEntityType, @NotNull EntityType referredByEntityType, String referredByEntityName);
 
   Long countReferredByEntitiesByFQNsIn(String accountIdentifier, List<String> referredEntityFQNs);
 }

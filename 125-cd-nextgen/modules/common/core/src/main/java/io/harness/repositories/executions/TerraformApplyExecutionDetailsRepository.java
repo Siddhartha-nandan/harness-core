@@ -6,6 +6,7 @@
  */
 
 package io.harness.repositories.executions;
+
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 
 import io.harness.annotation.HarnessRepo;
@@ -15,6 +16,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.cdng.provision.terraform.executions.TerraformApplyExecutionDetails;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
@@ -23,4 +25,4 @@ import org.springframework.data.repository.PagingAndSortingRepository;
 @OwnedBy(CDP)
 public interface TerraformApplyExecutionDetailsRepository
     extends PagingAndSortingRepository<TerraformApplyExecutionDetails, String>,
-            TFApplyExecutionDetailsRepositoryCustom {}
+            CrudRepository<TerraformApplyExecutionDetails, String>, TFApplyExecutionDetailsRepositoryCustom {}

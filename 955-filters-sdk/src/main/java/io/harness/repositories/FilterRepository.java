@@ -15,13 +15,15 @@ import io.harness.filter.FilterType;
 import io.harness.filter.entity.Filter;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 @HarnessRepo
 @Transactional
 @OwnedBy(DX)
-public interface FilterRepository extends FilterCustomRepository, PagingAndSortingRepository<Filter, String> {
+public interface FilterRepository
+    extends FilterCustomRepository, PagingAndSortingRepository<Filter, String>, CrudRepository<Filter, String> {
   long deleteByFullyQualifiedIdentifierAndFilterType(String fullyQualifiedIdentifier, FilterType filterType);
 
   Optional<Filter> findByFullyQualifiedIdentifierAndFilterType(String fullyQualifiedIdentifier, FilterType filterType);

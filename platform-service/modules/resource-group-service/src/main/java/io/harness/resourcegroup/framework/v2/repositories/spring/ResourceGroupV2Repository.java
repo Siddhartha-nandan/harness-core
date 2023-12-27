@@ -15,12 +15,14 @@ import io.harness.resourcegroup.framework.v2.repositories.custom.ResourceGroupV2
 import io.harness.resourcegroup.v2.model.ResourceGroup;
 
 import java.util.List;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(PL)
 public interface ResourceGroupV2Repository
-    extends PagingAndSortingRepository<ResourceGroup, String>, ResourceGroupV2RepositoryCustom {
+    extends PagingAndSortingRepository<ResourceGroup, String>, CrudRepository<ResourceGroup, String>,
+            ResourceGroupV2RepositoryCustom {
   List<ResourceGroup> deleteByAccountIdentifierAndOrgIdentifierAndProjectIdentifier(
       String accountIdentifier, String orgIdentifier, String projectIdentifier);
 }

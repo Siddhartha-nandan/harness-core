@@ -13,10 +13,11 @@ import io.harness.annotation.HarnessRepo;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.cdng.provision.terraform.executions.TerraformCloudPlanExecutionDetails;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(CDP)
 public interface TerraformCloudPlanExecutionDetailsRepository
     extends PagingAndSortingRepository<TerraformCloudPlanExecutionDetails, String>,
-            TFCloudPlanExecutionDetailsRepositoryCustom {}
+            CrudRepository<TerraformCloudPlanExecutionDetails, String>, TFCloudPlanExecutionDetailsRepositoryCustom {}

@@ -15,11 +15,13 @@ import io.harness.ngtriggers.beans.entity.TriggerWebhookEvent;
 import io.harness.repositories.custom.TriggerWebhookEventRepositoryCustom;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(PIPELINE)
 public interface TriggerWebhookEventRepository
-    extends PagingAndSortingRepository<TriggerWebhookEvent, String>, TriggerWebhookEventRepositoryCustom {
+    extends PagingAndSortingRepository<TriggerWebhookEvent, String>, CrudRepository<TriggerWebhookEvent, String>,
+            TriggerWebhookEventRepositoryCustom {
   Optional<TriggerWebhookEvent> findByAccountIdAndUuid(String accountId, String uuid);
 }

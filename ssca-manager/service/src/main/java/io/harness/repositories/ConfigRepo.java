@@ -13,8 +13,10 @@ import io.harness.annotation.HarnessRepo;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.ssca.entities.ConfigEntity;
 
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(SSCA)
-public interface ConfigRepo extends PagingAndSortingRepository<ConfigEntity, String>, ConfigRepoCustom {}
+public interface ConfigRepo
+    extends PagingAndSortingRepository<ConfigEntity, String>, CrudRepository<ConfigEntity, String>, ConfigRepoCustom {}

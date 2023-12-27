@@ -28,12 +28,12 @@ import software.wings.beans.sso.SSOType;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import javax.validation.constraints.NotNull;
 import org.hibernate.validator.constraints.NotBlank;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.util.CloseableIterator;
 
 /**
  * This interface exposes methods needed for User Group operations.
@@ -80,7 +80,7 @@ public interface UserGroupService {
   PageResponse<UserMetadataDTO> listUsersInUserGroup(
       Scope scope, String userGroupIdentifier, UserFilter userFilter, PageRequest pageRequest);
 
-  CloseableIterator<UserMetadata> getUsersInUserGroup(Scope scope, String userGroupIdentifier);
+  Stream<UserMetadata> getUsersInUserGroup(Scope scope, String userGroupIdentifier);
 
   UserGroup delete(Scope scope, String identifier);
 

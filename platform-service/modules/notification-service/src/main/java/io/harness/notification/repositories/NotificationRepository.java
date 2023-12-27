@@ -14,12 +14,13 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.notification.entities.Notification;
 
 import java.util.Optional;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(PL)
-public interface NotificationRepository
-    extends PagingAndSortingRepository<Notification, String>, NotificationRepositoryCustom {
+public interface NotificationRepository extends PagingAndSortingRepository<Notification, String>,
+                                                CrudRepository<Notification, String>, NotificationRepositoryCustom {
   Optional<Notification> findDistinctById(String id);
 
   void deleteByAccountIdentifier(String accountIdentifier);

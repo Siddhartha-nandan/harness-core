@@ -18,12 +18,12 @@ import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity;
 import com.mongodb.client.result.UpdateResult;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 @OwnedBy(PIPELINE)
@@ -38,15 +38,15 @@ public interface PmsExecutionSummaryRepositoryCustom {
   Page<PipelineExecutionSummaryEntity> findAllWithProjection(
       Criteria criteria, Pageable pageable, List<String> projections);
 
-  CloseableIterator<PipelineExecutionSummaryEntity> findAllWithRequiredProjectionUsingAnalyticsNode(
+  Stream<PipelineExecutionSummaryEntity> findAllWithRequiredProjectionUsingAnalyticsNode(
       Criteria criteria, Pageable pageable, List<String> projections);
 
   long getCountOfExecutionSummary(Criteria criteria);
   String fetchRootRetryExecutionId(String planExecutionId);
 
-  CloseableIterator<PipelineExecutionSummaryEntity> findListOfBranches(Criteria criteria);
+  Stream<PipelineExecutionSummaryEntity> findListOfBranches(Criteria criteria);
 
-  CloseableIterator<PipelineExecutionSummaryEntity> findListOfRepositories(Criteria criteria);
+  Stream<PipelineExecutionSummaryEntity> findListOfRepositories(Criteria criteria);
 
   /**
    * Returns iterator on PipelineExecutionSummaryEntity for given query having projection fields else throws exception
@@ -54,7 +54,7 @@ public interface PmsExecutionSummaryRepositoryCustom {
    * @param query
    * @return
    */
-  CloseableIterator<PipelineExecutionSummaryEntity> fetchExecutionSummaryEntityFromAnalytics(Query query);
+  Stream<PipelineExecutionSummaryEntity> fetchExecutionSummaryEntityFromAnalytics(Query query);
 
   /**
    * Fetches PipelineExecutionSummaryEntity from DB using projections.
@@ -74,6 +74,6 @@ public interface PmsExecutionSummaryRepositoryCustom {
    * @param rootParentId
    * @return
    */
-  CloseableIterator<PipelineExecutionSummaryEntity> fetchPipelineSummaryEntityFromRootParentIdUsingSecondaryMongo(
+  Stream<PipelineExecutionSummaryEntity> fetchPipelineSummaryEntityFromRootParentIdUsingSecondaryMongo(
       String rootParentId);
 }

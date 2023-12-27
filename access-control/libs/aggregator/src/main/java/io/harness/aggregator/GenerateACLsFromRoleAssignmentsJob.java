@@ -22,13 +22,14 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.util.CloseableIterator;
 
 @Slf4j
 @Singleton
@@ -49,7 +50,7 @@ public class GenerateACLsFromRoleAssignmentsJob {
     this.userGroupRepository = userGroupRepository;
   }
 
-  private CloseableIterator<RoleAssignmentDBO> runQueryWithBatch(
+  private Stream<RoleAssignmentDBO> runQueryWithBatch(
       String scopeIdentifier, List<String> roleAssignments, int batchSize) {
     Pattern startsWithScope = Pattern.compile("^" + scopeIdentifier);
     Criteria criteria = Criteria.where(RoleAssignmentDBOKeys.scopeIdentifier).regex(startsWithScope);
@@ -73,17 +74,16 @@ public class GenerateACLsFromRoleAssignmentsJob {
   public void run(String accountIdentifier, List<String> roleAssignments) {
     String scopeIdentifier = "/ACCOUNT/" + accountIdentifier;
     log.info("[CreateACLsFromRoleAssignmentsMigration] starting migration for scope {}....", scopeIdentifier);
-    try (CloseableIterator<RoleAssignmentDBO> iterator =
-             runQueryWithBatch(scopeIdentifier, roleAssignments, BATCH_SIZE)) {
-      while (iterator.hasNext()) {
-        RoleAssignmentDBO roleAssignmentDBO = iterator.next();
-        try {
-          log.info("[CreateACLsFromRoleAssignmentsMigration] Number of ACLs created for roleAssignment {} is : {}",
-              roleAssignmentDBO.getIdentifier(), upsertACLs(roleAssignmentDBO));
-        } catch (Exception e) {
-          log.info("[CreateACLsFromRoleAssignmentsMigration] Unable to process roleassignment: {} due to exception {}",
-              roleAssignmentDBO.getIdentifier(), e);
-        }
+    for (Iterator<RoleAssignmentDBO> iterator =
+             runQueryWithBatch(scopeIdentifier, roleAssignments, BATCH_SIZE).iterator();
+         iterator.hasNext();) {
+      RoleAssignmentDBO roleAssignmentDBO = iterator.next();
+      try {
+        log.info("[CreateACLsFromRoleAssignmentsMigration] Number of ACLs created for roleAssignment {} is : {}",
+            roleAssignmentDBO.getIdentifier(), upsertACLs(roleAssignmentDBO));
+      } catch (Exception e) {
+        log.info("[CreateACLsFromRoleAssignmentsMigration] Unable to process roleassignment: {} due to exception {}",
+            roleAssignmentDBO.getIdentifier(), e);
       }
     }
     log.info("[CreateACLsFromRoleAssignmentsMigration] migration successful for scope {}....", scopeIdentifier);

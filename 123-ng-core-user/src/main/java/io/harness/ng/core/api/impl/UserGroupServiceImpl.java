@@ -109,6 +109,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.validation.ConstraintViolation;
 import javax.validation.Validator;
 import javax.validation.constraints.NotNull;
@@ -120,7 +121,6 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.util.CloseableIterator;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @OwnedBy(PL)
@@ -512,7 +512,7 @@ public class UserGroupServiceImpl implements UserGroupService {
   }
 
   @Override
-  public CloseableIterator<UserMetadata> getUsersInUserGroup(Scope scope, String userGroupIdentifier) {
+  public Stream<UserMetadata> getUsersInUserGroup(Scope scope, String userGroupIdentifier) {
     Optional<UserGroup> userGroupOptional =
         get(scope.getAccountIdentifier(), scope.getOrgIdentifier(), scope.getProjectIdentifier(), userGroupIdentifier);
     if (!userGroupOptional.isPresent()) {

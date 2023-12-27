@@ -15,12 +15,13 @@ import io.harness.ssca.entities.ArtifactEntity;
 
 import java.util.Optional;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(SSCA)
-public interface ArtifactRepository
-    extends PagingAndSortingRepository<ArtifactEntity, String>, ArtifactRepositoryCustom {
+public interface ArtifactRepository extends PagingAndSortingRepository<ArtifactEntity, String>,
+                                            CrudRepository<ArtifactEntity, String>, ArtifactRepositoryCustom {
   Optional<ArtifactEntity> findByAccountIdAndOrgIdAndProjectIdAndOrchestrationId(
       String accountId, String orgId, String projectId, String orchestrationId);
 

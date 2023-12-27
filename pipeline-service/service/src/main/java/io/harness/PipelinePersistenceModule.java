@@ -47,7 +47,7 @@ public class PipelinePersistenceModule extends SpringPersistenceModule {
   @Named("secondary-mongo")
   protected MongoTemplate getSecondaryMongoTemplate(MongoTemplate mongoTemplate, MongoConfig primaryMongoConfig) {
     HMongoTemplate template =
-        new HMongoTemplate(mongoTemplate.getMongoDbFactory(), mongoTemplate.getConverter(), primaryMongoConfig);
+        new HMongoTemplate(mongoTemplate.getMongoDatabaseFactory(), mongoTemplate.getConverter(), primaryMongoConfig);
     template.setReadPreference(ReadPreference.secondary());
     return template;
   }

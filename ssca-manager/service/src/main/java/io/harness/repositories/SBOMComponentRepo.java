@@ -15,12 +15,14 @@ import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @HarnessRepo
 @OwnedBy(SSCA)
 public interface SBOMComponentRepo
-    extends PagingAndSortingRepository<NormalizedSBOMComponentEntity, String>, SBOMComponentRepoCustom {
+    extends PagingAndSortingRepository<NormalizedSBOMComponentEntity, String>,
+            CrudRepository<NormalizedSBOMComponentEntity, String>, SBOMComponentRepoCustom {
   Page<NormalizedSBOMComponentEntity> findByAccountIdAndOrgIdentifierAndProjectIdentifierAndOrchestrationId(
       String accountId, String orgIdentifier, String projectIdentifier, String orchestrationId, Pageable page);
 }

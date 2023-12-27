@@ -16,12 +16,13 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 
 @OwnedBy(PL)
 @HarnessRepo
-public interface UserGroupRepository
-    extends PagingAndSortingRepository<UserGroupDBO, String>, UserGroupCustomRepository {
+public interface UserGroupRepository extends PagingAndSortingRepository<UserGroupDBO, String>,
+                                             CrudRepository<UserGroupDBO, String>, UserGroupCustomRepository {
   Optional<UserGroupDBO> findByIdentifierAndScopeIdentifier(String identifier, String scopeIdentifier);
 
   List<UserGroupDBO> findByScopeIdentifierAndUsersIn(String scopeIdentifier, String userIdentifier);

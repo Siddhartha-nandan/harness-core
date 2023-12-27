@@ -18,6 +18,7 @@ import com.google.inject.Inject;
 import com.mongodb.client.result.DeleteResult;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,8 +28,7 @@ import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.repository.support.PageableExecutionUtils;
-import org.springframework.data.util.CloseableIterator;
+import org.springframework.data.support.PageableExecutionUtils;
 
 @HarnessRepo
 @AllArgsConstructor(access = AccessLevel.PRIVATE, onConstructor = @__({ @Inject }))
@@ -68,7 +68,7 @@ public class EntitySetupUsageCustomRepositoryImpl implements EntitySetupUsageCus
   }
 
   @Override
-  public CloseableIterator<EntitySetupUsage> stream(Criteria criteria) {
+  public Stream<EntitySetupUsage> stream(Criteria criteria) {
     Query query = new Query(criteria);
     return mongoTemplate.stream(query, EntitySetupUsage.class);
   }

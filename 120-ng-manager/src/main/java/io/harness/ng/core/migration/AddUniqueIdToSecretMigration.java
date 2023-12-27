@@ -22,13 +22,13 @@ import io.harness.ng.core.models.Secret;
 import io.harness.persistence.UniqueIdAccess;
 
 import com.google.inject.Inject;
+import java.util.Iterator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(PL)
 @Slf4j
@@ -58,8 +58,10 @@ public class AddUniqueIdToSecretMigration implements NGMigration {
 
     BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Secret.class);
     String idValue = null;
-    try (CloseableIterator<Secret> iterator =
-             mongoTemplate.stream(documentQuery.limit(MongoConfig.NO_LIMIT).maxTimeMsec(MAX_VALUE), Secret.class)) {
+    try {
+      Iterator<Secret> iterator =
+          mongoTemplate.stream(documentQuery.limit(MongoConfig.NO_LIMIT).maxTimeMsec(MAX_VALUE), Secret.class)
+              .iterator();
       while (iterator.hasNext()) {
         totalCounter++;
         Secret secret = iterator.next();
