@@ -516,19 +516,17 @@ public class ServiceOverridesServiceV2Impl implements ServiceOverridesServiceV2 
   }
 
   private NGServiceOverridesEntity saveAndSendOutBoxEvent(@NonNull NGServiceOverridesEntity requestedEntity) {
-    // set yamlV2 from spec
+    // set yamlV2 from spec if not present
     ServiceOverridesMapperV2.setYamlV2IfNotPresent(requestedEntity);
-    GitAwareContextHelper.initDefaultScmGitMetaData();
-    GitEntityInfo gitEntityInfo = GitAwareContextHelper.getGitRequestParamsInfo();
 
-    if (GitAwareContextHelper.isRemoteEntity(gitEntityInfo)) {
+    if (GitAwareContextHelper.isRemoteEntity()) {
       // check if gitX is enabled
       if (!cdGitXService.isNewGitXEnabled(requestedEntity.getAccountId(), requestedEntity.getOrgIdentifier(),
               requestedEntity.getProjectIdentifier())) {
         throw new InvalidRequestException(GitXUtils.getErrorMessageForGitSimplificationNotEnabled(
             requestedEntity.getOrgIdentifier(), requestedEntity.getProjectIdentifier()));
       }
-      addGitParamsToOverrideEntity(requestedEntity, gitEntityInfo);
+      addGitParamsToOverrideEntity(requestedEntity);
     }
 
     NGServiceOverridesEntity tempCreateResult = serviceOverrideRepositoryV2.saveGitAware(requestedEntity);
@@ -557,8 +555,8 @@ public class ServiceOverridesServiceV2Impl implements ServiceOverridesServiceV2 
     return tempCreateResult;
   }
 
-  private void addGitParamsToOverrideEntity(
-      @NonNull NGServiceOverridesEntity overrideEntity, GitEntityInfo gitEntityInfo) {
+  private void addGitParamsToOverrideEntity(@NonNull NGServiceOverridesEntity overrideEntity) {
+    GitEntityInfo gitEntityInfo = GitAwareContextHelper.getGitRequestParamsInfo();
     overrideEntity.setStoreType(StoreType.REMOTE);
     if (EmptyPredicate.isEmpty(overrideEntity.getRepoURL())) {
       overrideEntity.setRepoURL(gitAwareEntityHelper.getRepoUrl(

@@ -233,6 +233,11 @@ public class GitAwareContextHelper {
     return gitEntityInfo != null && StoreType.REMOTE.equals(gitEntityInfo.getStoreType());
   }
 
+  public boolean isRemoteEntity() {
+    GitEntityInfo gitEntityInfo = getGitRequestParamsInfo();
+    return gitEntityInfo != null && StoreType.REMOTE.equals(gitEntityInfo.getStoreType());
+  }
+
   public boolean isDefaultBranch() {
     GitEntityInfo gitEntityInfo = GitAwareContextHelper.getGitRequestParamsInfo();
     if (gitEntityInfo != null && gitEntityInfo.getIsDefaultBranch() != null) {
