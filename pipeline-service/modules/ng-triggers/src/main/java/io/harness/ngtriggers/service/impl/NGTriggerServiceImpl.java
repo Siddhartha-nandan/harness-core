@@ -1443,21 +1443,18 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   public void updatePollingInterval(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String triggerType) {
     Boolean deletePollingDocs = false;
-    Criteria criteria =
-        TriggerFilterHelper.getCriteriaAccountIdAndOrgIdentifierAndProjectIdentifierTypeEnabledDeletedNot(
-            accountIdentifier, orgIdentifier, projectIdentifier, NGTriggerType.valueOf(triggerType));
     List<NGTriggerEntity> ngTriggerEntityList = new ArrayList<>();
-
-    CloseableIterator<NGTriggerEntity> iterator = ngTriggerRepository.findAll(criteria);
-    while (iterator.hasNext()) {
-      ngTriggerEntityList.add(iterator.next());
-    }
-    if (ngTriggerEntityList.size() == 0) {
-      return;
-    }
     try {
       deletePollingDocs = NGRestUtils.getGeneralResponse(
           pollingResourceClient.delete(accountIdentifier, orgIdentifier, projectIdentifier, triggerType));
+      Criteria criteria =
+          TriggerFilterHelper.getCriteriaAccountIdAndOrgIdentifierAndProjectIdentifierTypeEnabledDeletedNot(
+              accountIdentifier, orgIdentifier, projectIdentifier, NGTriggerType.valueOf(triggerType));
+
+      CloseableIterator<NGTriggerEntity> iterator = ngTriggerRepository.findAll(criteria);
+      while (iterator.hasNext()) {
+        ngTriggerEntityList.add(iterator.next());
+      }
       updatePollingStatus(ngTriggerEntityList);
     } catch (Exception exception) {
       String msg = "Reset polling interval request failed " + exception;
