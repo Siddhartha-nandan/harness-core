@@ -83,6 +83,7 @@ public class ServiceAccountEventHandlerTest extends CategoryTest {
         .identifier(identifier)
         .name(randomAlphabetic(10))
         .description(randomAlphabetic(50))
+        .uniqueId("uniqueId")
         .build();
   }
 
