@@ -19,7 +19,7 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.gitaware.helper.GitAwareContextHelper;
 import io.harness.gitsync.beans.StoreType;
 import io.harness.gitsync.sdk.CacheResponse;
-import io.harness.gitsync.sdk.EntityGitDetails;
+import io.harness.gitsync.sdk.EntityGitInfo;
 import io.harness.ng.core.environment.beans.NGEnvironmentGlobalOverride;
 import io.harness.ng.core.environment.yaml.NGEnvironmentConfig;
 import io.harness.ng.core.environment.yaml.NGEnvironmentInfoConfig;
@@ -80,7 +80,7 @@ public class ServiceOverridesMapperV2 {
         .type(entity.getType())
         .isNewlyCreated(isNewlyCreated)
         .yamlInternal(entity.getYamlInternal())
-        .entityGitDetails(getEntityGitDetails(entity))
+        .entityGitInfo(getEntityGitInfo(entity))
         .storeType(entity.getStoreType())
         .connectorRef(entity.getConnectorRef())
         .fallbackBranch(entity.getFallBackBranch())
@@ -89,10 +89,10 @@ public class ServiceOverridesMapperV2 {
         .build();
   }
 
-  public EntityGitDetails getEntityGitDetails(NGServiceOverridesEntity overridesEntity) {
+  public EntityGitInfo getEntityGitInfo(NGServiceOverridesEntity overridesEntity) {
     if (StoreType.REMOTE.equals(overridesEntity.getStoreType())) {
-      EntityGitDetails entityGitDetails = GitAwareContextHelper.getEntityGitDetails(overridesEntity);
-      return GitAwareContextHelper.updateEntityGitDetailsFromScmGitMetadata(entityGitDetails);
+      EntityGitInfo entityGitInfo = GitAwareContextHelper.getEntityInfo(overridesEntity);
+      return GitAwareContextHelper.updateEntityGitInfoFromScmGitMetadata(entityGitInfo);
     }
 
     return null;
