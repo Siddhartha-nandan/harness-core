@@ -83,7 +83,7 @@ IDENTITY_SERVICE_SECRET: '{{ .ctx.Values.secrets.default.IDENTITY_SERVICE_SECRET
 Helper function for pullSecrets at chart level or global level.
 */}}
 {{- define "access-control.pullSecrets" -}}
-{{ include "common.images.pullSecrets" (dict "images" (list .Values.image .Values.waitForInitContainer.image) "global" .Values.global ) }}
+{{ include "common.images.pullSecrets" (dict "images" (list .Values.image .Values.global.waitForInitContainer.image) "global" .Values.global ) }}
 {{- end -}}
 
 {{/* 
