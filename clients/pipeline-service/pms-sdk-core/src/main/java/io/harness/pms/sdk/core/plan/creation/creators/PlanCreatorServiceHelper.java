@@ -67,56 +67,6 @@ public class PlanCreatorServiceHelper {
 
   public Dependencies handlePlanCreationResponses(List<PlanCreationResponse> planCreationResponses,
       MergePlanCreationResponse finalResponse, String currentYaml, Dependencies dependencies,
-      List<Map.Entry<String, String>> dependenciesList) {
-    String updatedYaml = currentYaml;
-    List<String> errorMessages = planCreationResponses.stream()
-                                     .filter(resp -> resp != null && EmptyPredicate.isNotEmpty(resp.getErrorMessages()))
-                                     .flatMap(resp -> resp.getErrorMessages().stream())
-                                     .collect(Collectors.toList());
-    if (EmptyPredicate.isNotEmpty(errorMessages)) {
-      finalResponse.setErrorMessages(errorMessages);
-      return dependencies.toBuilder().clearDependencies().build();
-    }
-
-    Map<String, String> newDependencies = new HashMap<>();
-    Map<String, Dependency> newMetadataDependency = new HashMap<>();
-    for (int i = 0; i < dependenciesList.size(); i++) {
-      Map.Entry<String, String> entry = dependenciesList.get(i);
-      String fieldYamlPath = entry.getValue();
-      PlanCreationResponse response = planCreationResponses.get(i);
-      if (response == null) {
-        finalResponse.addDependency(currentYaml, entry.getKey(), fieldYamlPath);
-        finalResponse.addDependencyMetadata(
-            currentYaml, entry.getKey(), dependencies.getDependencyMetadataMap().get(entry.getKey()));
-        continue;
-      }
-
-      finalResponse.mergeWithoutDependencies(response);
-
-      if (response.getDependencies() != null
-          && EmptyPredicate.isNotEmpty(response.getDependencies().getDependenciesMap())) {
-        newDependencies.putAll(response.getDependencies().getDependenciesMap());
-
-        if (EmptyPredicate.isNotEmpty(response.getDependencies().getDependencyMetadataMap())) {
-          newMetadataDependency.putAll(response.getDependencies().getDependencyMetadataMap());
-        }
-      }
-      if (response.getYamlUpdates() != null && EmptyPredicate.isNotEmpty(response.getYamlUpdates().getFqnToYamlMap())) {
-        updatedYaml = PlanCreationBlobResponseUtils.mergeYamlUpdates(
-            currentYaml, finalResponse.getYamlUpdates().getFqnToYamlMap());
-        finalResponse.updateYamlInDependencies(updatedYaml);
-      }
-    }
-    return dependencies.toBuilder()
-        .setYaml(updatedYaml)
-        .clearDependencies()
-        .putAllDependencies(newDependencies)
-        .putAllDependencyMetadata(newMetadataDependency)
-        .build();
-  }
-
-  public Dependencies handlePlanCreationResponses(List<PlanCreationResponse> planCreationResponses,
-      MergePlanCreationResponse finalResponse, String currentYaml, Dependencies dependencies,
       List<Map.Entry<String, String>> dependenciesList, YamlField fullYaml, Map<String, JsonNode> fqnToJsonMap) {
     List<String> errorMessages = planCreationResponses.stream()
                                      .filter(resp -> resp != null && EmptyPredicate.isNotEmpty(resp.getErrorMessages()))
