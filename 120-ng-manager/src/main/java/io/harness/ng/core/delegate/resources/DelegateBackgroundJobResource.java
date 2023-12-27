@@ -12,6 +12,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.delegate.beans.SupportedDelegateVersion;
 import io.harness.ng.core.delegate.client.DelegateNgManagerCgManagerClient;
 import io.harness.rest.RestResponse;
+import io.harness.security.annotations.InternalApi;
 
 import com.codahale.metrics.annotation.ExceptionMetered;
 import com.codahale.metrics.annotation.Timed;
@@ -51,9 +52,10 @@ public class DelegateBackgroundJobResource {
   @POST
   @Timed
   @ExceptionMetered
-  @ApiOperation(value = "Disable perpetual task for the account", nickname = "disablePerpetualTask")
+  @ApiOperation(value = "Disable perpetual task for the account", nickname = "disablePerpetualTask", hidden = true)
   @Operation(operationId = "disablePerpetualTask", summary = "Disable perpetual task for the account",
       responses = { @ApiResponse(responseCode = "default", description = "Disable perpetual task for the account") })
+  @InternalApi
   public RestResponse<SupportedDelegateVersion>
   disableBackgroundJobs(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @QueryParam(
                             NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
@@ -68,9 +70,10 @@ public class DelegateBackgroundJobResource {
   @DELETE
   @Timed
   @ExceptionMetered
-  @ApiOperation(value = "Enable perpetual task for the account", nickname = "enablePerpetualTask")
+  @ApiOperation(value = "Enable perpetual task for the account", nickname = "enablePerpetualTask", hidden = true)
   @Operation(operationId = "enablePerpetualTask", summary = "Enabled perpetual task for the account",
       responses = { @ApiResponse(responseCode = "default", description = "Enable perpetual task for the account") })
+  @InternalApi
   public RestResponse<SupportedDelegateVersion>
   enableBackgroundJobs(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @QueryParam(
                            NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
