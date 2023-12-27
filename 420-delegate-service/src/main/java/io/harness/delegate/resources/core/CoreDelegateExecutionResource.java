@@ -21,8 +21,10 @@ import io.harness.delegate.beans.DelegateTaskResponse;
 import io.harness.delegate.beans.scheduler.CleanupInfraResponse;
 import io.harness.delegate.beans.scheduler.ExecutionStatus;
 import io.harness.delegate.beans.scheduler.InitializeExecutionInfraResponse;
+import io.harness.delegate.core.beans.ExecutionStatusResponse;
 import io.harness.delegate.core.beans.ResponseCode;
 import io.harness.delegate.core.beans.SetupInfraResponse;
+import io.harness.delegate.core.beans.StatusCode;
 import io.harness.delegate.task.tasklogging.ExecutionLogContext;
 import io.harness.delegate.task.tasklogging.TaskLogContext;
 import io.harness.executionInfra.ExecutionInfrastructureService;
@@ -30,6 +32,7 @@ import io.harness.logging.AccountLogContext;
 import io.harness.logging.AutoLogContext;
 import io.harness.security.annotations.DelegateAuth;
 import io.harness.service.intfc.DelegateTaskService;
+import io.harness.taskresponse.TaskResponseService;
 
 import software.wings.security.annotations.Scope;
 import software.wings.service.intfc.DelegateTaskServiceClassic;
@@ -62,18 +65,18 @@ import lombok.extern.slf4j.Slf4j;
 public class CoreDelegateExecutionResource {
   private final DelegateTaskServiceClassic delegateTaskServiceClassic;
   private final ExecutionInfrastructureService infraService;
+  private final TaskResponseService responseService;
   private final DelegateTaskService taskService;
 
   @DelegateAuth
   @GET
-  @Path("payload/{executionId}")
+  @Path("{executionId}/payload")
   @Produces(ProtocolBufferMediaType.APPLICATION_PROTOBUF)
   @Timed
   @ExceptionMetered
   public Response acquireRequestPayload(@PathParam("executionId") final String taskId,
-      @QueryParam("accountId") @NotEmpty final String accountId,
-      @QueryParam("delegateInstanceId") final String delegateInstanceId,
-      @QueryParam("delegateId") final String delegateId) {
+      @QueryParam("accountId") @NotEmpty final String accountId, @QueryParam("delegateId") final String delegateId,
+      @QueryParam("delegateInstanceId") final String delegateInstanceId) {
     try (AutoLogContext ignore1 = new TaskLogContext(taskId, OVERRIDE_ERROR);
          AutoLogContext ignore2 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
       final var optionalDelegateTask =
@@ -90,13 +93,13 @@ public class CoreDelegateExecutionResource {
 
   @DelegateAuth
   @POST
-  @Path("response/{executionId}/infra-setup")
+  @Path("{executionId}/infra-setup/{infraId}")
   @Consumes(ProtocolBufferMediaType.APPLICATION_PROTOBUF)
   @Timed
   @ExceptionMetered
-  public Response handleSetupInfraResponse(@QueryParam("delegateId") final String delegateId,
-      @PathParam("executionId") final String executionId, @QueryParam("accountId") @NotEmpty final String accountId,
-      final SetupInfraResponse response) {
+  public Response handleSetupInfraResponse(@PathParam("executionId") final String executionId,
+      @PathParam("infraId") final String infraId, @QueryParam("accountId") @NotEmpty final String accountId,
+      @QueryParam("delegateId") final String delegateId, final SetupInfraResponse response) {
     try (AutoLogContext ignore1 = new ExecutionLogContext(executionId, OVERRIDE_ERROR);
          AutoLogContext ignore2 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
       if (response.getResponseCode() == ResponseCode.RESPONSE_UNKNOWN) {
@@ -147,7 +150,33 @@ public class CoreDelegateExecutionResource {
 
   @DelegateAuth
   @POST
-  @Path("response/{executionId}/infra-cleanup/{infraId}")
+  @Path("{executionId}/status")
+  @Consumes(ProtocolBufferMediaType.APPLICATION_PROTOBUF)
+  @Timed
+  @ExceptionMetered
+  public Response handleExecutionResponse(@PathParam("executionId") final String taskId,
+      @QueryParam("accountId") @NotEmpty final String accountId, @QueryParam("delegateId") final String delegateId,
+      final ExecutionStatusResponse response) {
+    try (AutoLogContext ignore1 = new ExecutionLogContext(taskId, OVERRIDE_ERROR);
+         AutoLogContext ignore2 = new AccountLogContext(accountId, OVERRIDE_ERROR)) {
+      if (!response.hasStatus() || response.getStatus().getCode() == StatusCode.CODE_UNKNOWN) {
+        log.warn("Unknown execute response from delegate {} for execution {}", delegateId, taskId);
+        // Don't send the callback, let the client retry
+        return Response.status(BAD_REQUEST).build();
+      }
+
+      responseService.handleResponse(accountId, taskId, response.getStatus(), delegateId);
+      return Response.ok().build();
+    } catch (final Exception e) {
+      log.error("Exception handling execution response for account {}, with delegate {}, for execution {}", accountId,
+          delegateId, taskId, e);
+      return Response.serverError().build();
+    }
+  }
+
+  @DelegateAuth
+  @POST
+  @Path("{executionId}/infra-cleanup/{infraId}")
   @Consumes(ProtocolBufferMediaType.APPLICATION_PROTOBUF)
   @Timed
   @ExceptionMetered
