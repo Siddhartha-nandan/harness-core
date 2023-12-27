@@ -126,6 +126,15 @@ global:
     virtualService:
       gateways:
       hosts:
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
 replicaCount: 1
 maxSurge: 1
 maxUnavailable: 0
@@ -138,15 +147,6 @@ image:
   tag: "80209"
   digest: ""
   imagePullSecrets: []
-
-waitForInitContainer:
-  image:
-    registry: docker.io
-    repository: harness/helm-init-container
-    pullPolicy: IfNotPresent
-    tag: "latest"
-    digest: ""
-    imagePullSecrets: []
 
 mongoSecrets:
   userName:
