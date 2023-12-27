@@ -89,7 +89,7 @@ public class ServiceOverridesMapperV2 {
         .build();
   }
 
-  public EntityGitInfo getEntityGitInfo(NGServiceOverridesEntity overridesEntity) {
+  private EntityGitInfo getEntityGitInfo(NGServiceOverridesEntity overridesEntity) {
     if (StoreType.REMOTE.equals(overridesEntity.getStoreType())) {
       EntityGitInfo entityGitInfo = GitAwareContextHelper.getEntityInfo(overridesEntity);
       return GitAwareContextHelper.updateEntityGitInfoFromScmGitMetadata(entityGitInfo);
