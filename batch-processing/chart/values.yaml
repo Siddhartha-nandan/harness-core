@@ -171,6 +171,14 @@ global:
     ecsEndPointUrl: https://ecs.us-east-2.amazonaws.com
     cloudwatchEndPointUrl: https://monitoring.us-east-2.amazonaws.com
   deployMode: KUBERNETES_ONPREM
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
 
 replicaCount: 1
 
@@ -293,14 +301,6 @@ imageGCPDataPipeline:
   tag: "10057"
   digest: ""
   imagePullSecrets: []
-
-waitForInitContainer:
-  image:
-    registry: docker.io
-    repository: harness/helm-init-container
-    pullPolicy: IfNotPresent
-    tag: "latest"
-    digest: ""
 
 mongoSecrets:
   userName:
