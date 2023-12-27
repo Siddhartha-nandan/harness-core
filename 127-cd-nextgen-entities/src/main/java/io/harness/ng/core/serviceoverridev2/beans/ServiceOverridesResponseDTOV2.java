@@ -13,7 +13,7 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.gitsync.beans.StoreType;
-import io.harness.gitsync.sdk.EntityGitDetails;
+import io.harness.gitsync.sdk.EntityGitInfo;
 import io.harness.ng.core.template.CacheResponseMetadataDTO;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -51,7 +51,7 @@ public class ServiceOverridesResponseDTOV2 {
   // this is for onboarding override v2 yaml version
   String yaml;
 
-  @Schema(hidden = true) EntityGitDetails entityGitDetails;
+  @Schema(hidden = true) EntityGitInfo entityGitInfo;
   @Schema(hidden = true) String connectorRef;
   @Schema(hidden = true) StoreType storeType;
   @Schema(hidden = true) String fallbackBranch;
