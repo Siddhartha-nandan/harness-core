@@ -42,20 +42,22 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       initContainers:
-      {{- if .Values.global.database.mongo.installed }}
-      - name: wait-for-mongo
-        image: {{ include "common.images.image" (dict "imageRoot" .Values.waitForInitContainer.image "global" .Values.global) }}
-        imagePullPolicy: IfNotPresent
-        args:
-          - "pod"
-          - "-lapp=mongodb-replicaset"
+      {{- if .Values.global.waitForInitContainer.enabled }}
+        {{- if .Values.global.database.mongo.installed }}
+        - name: wait-for-mongo
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.global.waitForInitContainer.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.global.waitForInitContainer.image.pullPolicy }}
+          args:
+            - "pod"
+            - "-lapp=mongodb-replicaset"
+        {{- end }}
+        - name: wait-for-pipeline-service
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.global.waitForInitContainer.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.global.waitForInitContainer.image.pullPolicy }}
+          args:
+            - "pod"
+            - "-lapp=pipeline-service"
       {{- end }}
-      - name: wait-for-pipeline-service
-        image: {{ include "common.images.image" (dict "imageRoot" .Values.waitForInitContainer.image "global" .Values.global) }}
-        imagePullPolicy: IfNotPresent
-        args:
-          - "pod"
-          - "-lapp=pipeline-service"
       containers:
         - name: idp-service
           securityContext:
