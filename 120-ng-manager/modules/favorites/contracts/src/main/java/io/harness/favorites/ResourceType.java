@@ -10,4 +10,13 @@ package io.harness.favorites;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 
-@OwnedBy(HarnessTeam.PL) public enum ResourceType { PROJECT, CONNECTOR, PIPELINE, DELEGATE, SECRET, ENTITY, FLOWS }
+@OwnedBy(HarnessTeam.PL)
+public enum ResourceType {
+  PROJECT,
+  CONNECTOR,
+  PIPELINE,
+  DELEGATE,
+  SECRET,
+  IDPENTITY,
+  IDPFLOWS
+}

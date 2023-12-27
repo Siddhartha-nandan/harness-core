@@ -118,9 +118,9 @@ public class FavoritesValidator {
         break;
       case DELEGATE:
         break;
-      case ENTITY:
+      case IDPENTITY:
         break;
-      case FLOWS:
+      case IDPFLOWS:
         break;
       default:
         throw new InvalidRequestException("Please check the resource type provided");

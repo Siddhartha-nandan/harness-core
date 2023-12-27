@@ -2296,8 +2296,8 @@ components:
         - PIPELINE
         - SECRET
         - PROJECT
-        - ENTITY
-        - FLOWS
+        - IDPENTITY
+        - IDPFLOWS
     CreateProjectRequest:
       description: Create project request
       type: object
