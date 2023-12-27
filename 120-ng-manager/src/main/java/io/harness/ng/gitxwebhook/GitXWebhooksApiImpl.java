@@ -6,6 +6,7 @@
  */
 
 package io.harness.ng.gitxwebhook;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
@@ -13,6 +14,7 @@ import io.harness.beans.Scope;
 import io.harness.gitsync.gitxwebhooks.dtos.CreateGitXWebhookRequestDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.CreateGitXWebhookResponseDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.DeleteGitXWebhookRequestDTO;
+import io.harness.gitsync.gitxwebhooks.dtos.DeleteGitXWebhookResponseDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.GetGitXWebhookRequestDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.GetGitXWebhookResponseDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.GitXEventsListRequestDTO;
@@ -28,6 +30,7 @@ import io.harness.gitsync.gitxwebhooks.service.GitXWebhookService;
 import io.harness.spec.server.ng.v1.GitXWebhooksApi;
 import io.harness.spec.server.ng.v1.model.CreateGitXWebhookRequest;
 import io.harness.spec.server.ng.v1.model.CreateGitXWebhookResponse;
+import io.harness.spec.server.ng.v1.model.DeleteGitXWebhookResponse;
 import io.harness.spec.server.ng.v1.model.GitXWebhookEventResponse;
 import io.harness.spec.server.ng.v1.model.GitXWebhookResponse;
 import io.harness.spec.server.ng.v1.model.UpdateGitXWebhookRequest;
@@ -101,8 +104,11 @@ public class GitXWebhooksApiImpl implements GitXWebhooksApi {
   public Response deleteGitxWebhook(String gitXWebhookIdentifier, String harnessAccount) {
     DeleteGitXWebhookRequestDTO deleteGitXWebhookRequestDTO =
         GitXWebhookMapper.buildDeleteGitXWebhookRequestDTO(Scope.of(harnessAccount), gitXWebhookIdentifier);
-    gitXWebhookService.deleteGitXWebhook(deleteGitXWebhookRequestDTO);
-    return Response.status(HTTP_204).build();
+    DeleteGitXWebhookResponseDTO deleteGitXWebhookResponse =
+        gitXWebhookService.deleteGitXWebhook(deleteGitXWebhookRequestDTO);
+    DeleteGitXWebhookResponse responseBody =
+        GitXWebhookMapper.buildDeleteGitXWebhookResponse(deleteGitXWebhookResponse);
+    return Response.ok().entity(responseBody).build();
   }
 
   @Override

@@ -25,4 +25,5 @@ import lombok.experimental.FieldDefaults;
 @OwnedBy(HarnessTeam.PIPELINE)
 public class DeleteGitXWebhookResponseDTO {
   boolean successfullyDeleted;
+  String webhookIdentifier;
 }

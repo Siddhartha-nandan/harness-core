@@ -98,15 +98,8 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
   @Override
   public CreateGitXWebhookResponseDTO createGitXWebhook(CreateGitXWebhookRequestDTO createGitXWebhookRequestDTO) {
     try (GitXWebhookLogContext context = new GitXWebhookLogContext(createGitXWebhookRequestDTO)) {
-      if (ngFeatureFlagHelperService.isEnabled(createGitXWebhookRequestDTO.getScope().getAccountIdentifier(),
-              FeatureName.PIE_GITXWEBHOOKS_RBAC_PERMISSIONS)) {
-        accessControlClient.checkForAccessOrThrow(
-            ResourceScope.of(createGitXWebhookRequestDTO.getScope().getAccountIdentifier(),
-                createGitXWebhookRequestDTO.getScope().getOrgIdentifier(),
-                createGitXWebhookRequestDTO.getScope().getProjectIdentifier()),
-            Resource.of("GitXWebhook", createGitXWebhookRequestDTO.getWebhookIdentifier()),
-            GitXWebhhookRbacPermissionsConstants.GitXWebhhook_CREATE_AND_EDIT);
-      }
+      checkForRbacAccess(createGitXWebhookRequestDTO.getScope(), createGitXWebhookRequestDTO.getWebhookIdentifier(),
+          GitXWebhhookRbacPermissionsConstants.GitXWebhhook_CREATE_AND_EDIT);
       try {
         clearCache(
             createGitXWebhookRequestDTO.getScope().getAccountIdentifier(), createGitXWebhookRequestDTO.getRepoName());
@@ -151,15 +144,8 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
   @Override
   public Optional<GetGitXWebhookResponseDTO> getGitXWebhook(GetGitXWebhookRequestDTO getGitXWebhookRequestDTO) {
     try (GitXWebhookLogContext context = new GitXWebhookLogContext(getGitXWebhookRequestDTO)) {
-      if (ngFeatureFlagHelperService.isEnabled(getGitXWebhookRequestDTO.getScope().getAccountIdentifier(),
-              FeatureName.PIE_GITXWEBHOOKS_RBAC_PERMISSIONS)) {
-        accessControlClient.checkForAccessOrThrow(
-            ResourceScope.of(getGitXWebhookRequestDTO.getScope().getAccountIdentifier(),
-                getGitXWebhookRequestDTO.getScope().getOrgIdentifier(),
-                getGitXWebhookRequestDTO.getScope().getProjectIdentifier()),
-            Resource.of("GitXWebhook", getGitXWebhookRequestDTO.getWebhookIdentifier()),
-            GitXWebhhookRbacPermissionsConstants.GitXWebhhook_VIEW);
-      }
+      checkForRbacAccess(getGitXWebhookRequestDTO.getScope(), getGitXWebhookRequestDTO.getWebhookIdentifier(),
+          GitXWebhhookRbacPermissionsConstants.GitXWebhhook_VIEW);
       try {
         log.info(String.format("Retrieving Webhook with identifier %s in account %s.",
             getGitXWebhookRequestDTO.getWebhookIdentifier(),
@@ -167,6 +153,9 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
         Criteria criteria =
             buildCriteria(getGitXWebhookRequestDTO.getScope(), getGitXWebhookRequestDTO.getWebhookIdentifier());
         GitXWebhook gitXWebhook = gitXWebhookRepository.find(new Query(criteria));
+        if (gitXWebhook == null) {
+          return Optional.empty();
+        }
         return Optional.of(prepareGitXWebhooks(gitXWebhook));
       } catch (Exception exception) {
         log.error(String.format(WEBHOOK_FAILURE_ERROR_MESSAGE, FETCHING), exception);
@@ -209,15 +198,8 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
       UpdateGitXWebhookRequestDTO updateGitXWebhookRequestDTO) {
     try (GitXWebhookLogContext context =
              new GitXWebhookLogContext(updateGitXWebhookCriteriaDTO, updateGitXWebhookRequestDTO)) {
-      if (ngFeatureFlagHelperService.isEnabled(updateGitXWebhookCriteriaDTO.getScope().getAccountIdentifier(),
-              FeatureName.PIE_GITXWEBHOOKS_RBAC_PERMISSIONS)) {
-        accessControlClient.checkForAccessOrThrow(
-            ResourceScope.of(updateGitXWebhookCriteriaDTO.getScope().getAccountIdentifier(),
-                updateGitXWebhookCriteriaDTO.getScope().getOrgIdentifier(),
-                updateGitXWebhookCriteriaDTO.getScope().getProjectIdentifier()),
-            Resource.of("GitXWebhook", updateGitXWebhookCriteriaDTO.getWebhookIdentifier()),
-            GitXWebhhookRbacPermissionsConstants.GitXWebhhook_CREATE_AND_EDIT);
-      }
+      checkForRbacAccess(updateGitXWebhookCriteriaDTO.getScope(), updateGitXWebhookCriteriaDTO.getWebhookIdentifier(),
+          GitXWebhhookRbacPermissionsConstants.GitXWebhhook_CREATE_AND_EDIT);
       try {
         log.info(String.format("Updating Webhook with identifier %s in account %s",
             updateGitXWebhookCriteriaDTO.getWebhookIdentifier(),
@@ -278,15 +260,8 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
   @Override
   public DeleteGitXWebhookResponseDTO deleteGitXWebhook(DeleteGitXWebhookRequestDTO deleteGitXWebhookRequestDTO) {
     try (GitXWebhookLogContext context = new GitXWebhookLogContext(deleteGitXWebhookRequestDTO)) {
-      if (ngFeatureFlagHelperService.isEnabled(deleteGitXWebhookRequestDTO.getScope().getAccountIdentifier(),
-              FeatureName.PIE_GITXWEBHOOKS_RBAC_PERMISSIONS)) {
-        accessControlClient.checkForAccessOrThrow(
-            ResourceScope.of(deleteGitXWebhookRequestDTO.getScope().getAccountIdentifier(),
-                deleteGitXWebhookRequestDTO.getScope().getOrgIdentifier(),
-                deleteGitXWebhookRequestDTO.getScope().getProjectIdentifier()),
-            Resource.of("GitXWebhook", deleteGitXWebhookRequestDTO.getWebhookIdentifier()),
-            GitXWebhhookRbacPermissionsConstants.GitXWebhhook_DELETE);
-      }
+      checkForRbacAccess(deleteGitXWebhookRequestDTO.getScope(), deleteGitXWebhookRequestDTO.getWebhookIdentifier(),
+          GitXWebhhookRbacPermissionsConstants.GitXWebhhook_DELETE);
       try {
         log.info(String.format("Deleting Webhook with identifier %s in account %s",
             deleteGitXWebhookRequestDTO.getWebhookIdentifier(),
@@ -294,11 +269,23 @@ public class GitXWebhookServiceImpl implements GitXWebhookService {
         Criteria criteria =
             buildCriteria(deleteGitXWebhookRequestDTO.getScope(), deleteGitXWebhookRequestDTO.getWebhookIdentifier());
         DeleteResult deleteResult = gitXWebhookRepository.delete(criteria);
-        return DeleteGitXWebhookResponseDTO.builder().successfullyDeleted(deleteResult.getDeletedCount() == 1).build();
+        return DeleteGitXWebhookResponseDTO.builder()
+            .successfullyDeleted(deleteResult.getDeletedCount() == 1)
+            .webhookIdentifier(deleteGitXWebhookRequestDTO.getWebhookIdentifier())
+            .build();
       } catch (Exception exception) {
         log.error(String.format(WEBHOOK_FAILURE_ERROR_MESSAGE, DELETING), exception);
         throw new InternalServerErrorException(String.format(WEBHOOK_FAILURE_ERROR_MESSAGE, DELETING));
       }
+    }
+  }
+
+  private void checkForRbacAccess(Scope scope, String gitXWebhookIdentifier, String requestedPermission) {
+    if (ngFeatureFlagHelperService.isEnabled(
+            scope.getAccountIdentifier(), FeatureName.PIE_GITXWEBHOOKS_RBAC_PERMISSIONS)) {
+      accessControlClient.checkForAccessOrThrow(
+          ResourceScope.of(scope.getAccountIdentifier(), scope.getOrgIdentifier(), scope.getProjectIdentifier()),
+          Resource.of("GitXWebhook", gitXWebhookIdentifier), requestedPermission);
     }
   }
 
