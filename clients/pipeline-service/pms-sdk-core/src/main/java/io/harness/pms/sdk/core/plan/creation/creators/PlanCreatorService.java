@@ -25,7 +25,6 @@ import io.harness.exception.InvalidYamlException;
 import io.harness.exception.UnexpectedException;
 import io.harness.exception.WingsException;
 import io.harness.exception.exceptionmanager.ExceptionManager;
-import io.harness.ff.FeatureFlagService;
 import io.harness.logging.AutoLogContext;
 import io.harness.pms.contracts.plan.Dependencies;
 import io.harness.pms.contracts.plan.Dependency;
@@ -78,8 +77,6 @@ public class PlanCreatorService extends PlanCreationServiceImplBase {
   @Inject @Named(PLAN_CREATOR_SERVICE_EXECUTOR) private Executor executor;
   @Inject ExceptionManager exceptionManager;
   @Inject @Named(PmsSdkModuleUtils.SDK_SERVICE_NAME) String serviceName;
-
-  @Inject private FeatureFlagService featureFlagService;
   private final FilterCreatorService filterCreatorService;
   private final VariableCreatorService variableCreatorService;
   private final List<PartialPlanCreator<?>> planCreators;
@@ -151,18 +148,16 @@ public class PlanCreatorService extends PlanCreationServiceImplBase {
     try (PmsGitSyncBranchContextGuard ignore =
              pmsGitSyncHelper.createGitSyncBranchContextGuardFromBytes(ctx.getGitSyncBranchContext(), true)) {
       Dependencies dependencies = initialDependencies.toBuilder().build();
-      YamlField fullField = null;
-      // This is the FF that will decide the flow, this should be removed once we GA the flag.
-      boolean isOptimizedFlow = featureFlagService.isGlobalEnabled(FeatureName.CDS_PLAN_CREATOR_OPTIMIZED_FLOW);
-      if (isOptimizedFlow) {
-        try {
-          fullField = YamlUtils.readTree(dependencies.getYaml());
-        } catch (IOException ex) {
-          String message = "Invalid yaml during plan creation";
-          log.error(message, ex);
-          throw new InvalidRequestException(message);
-        }
+      YamlField fullField;
+
+      try {
+        fullField = YamlUtils.readTree(dependencies.getYaml());
+      } catch (IOException ex) {
+        String message = "Invalid yaml during plan creation";
+        log.error(message, ex);
+        throw new InvalidRequestException(message);
       }
+
       Map<String, JsonNode> fqnToJsonMap = new HashMap<>();
       while (!dependencies.getDependenciesMap().isEmpty()) {
         dependencies = createPlanForDependencies(
@@ -190,25 +185,10 @@ public class PlanCreatorService extends PlanCreationServiceImplBase {
     String currentYaml = dependencies.getYaml();
     long start = System.currentTimeMillis();
 
-    // This is the FF that will decide the flow, this should be removed once we GA the flag.
-    boolean isOptimizedFlow = featureFlagService.isGlobalEnabled(FeatureName.CDS_PLAN_CREATOR_OPTIMIZED_FLOW);
-
-    // THe old flow uses this, so adding NOT for the FF.
-    if (!isOptimizedFlow) {
-      try {
-        fullField = YamlUtils.readTree(currentYaml);
-      } catch (IOException ex) {
-        String message = "Invalid yaml during plan creation";
-        log.error(message, ex);
-        throw new InvalidRequestException(message);
-      }
-    }
-
-    YamlField fullField1 = fullField;
     // Iterating dependencies to create plan for each dependency by submitting parallel threads of executor thread.
     dependenciesList.forEach(key -> completableFutures.supplyAsync(() -> {
       try {
-        return createPlanForDependencyInternal(currentYaml, fullField1.fromYamlPath(key.getValue()), ctx,
+        return createPlanForDependencyInternal(currentYaml, fullField.fromYamlPath(key.getValue()), ctx,
             dependencies.getDependencyMetadataMap().get(key.getKey()), serviceAffinityMap.get(key.getKey()));
       } catch (IOException e) {
         throw new InvalidRequestException("Unable to parse the field in the path:" + key.getValue());
@@ -218,13 +198,8 @@ public class PlanCreatorService extends PlanCreationServiceImplBase {
     try {
       List<PlanCreationResponse> planCreationResponses = completableFutures.allOf().get(5, TimeUnit.MINUTES);
 
-      if (isOptimizedFlow) {
-        return PlanCreatorServiceHelper.handlePlanCreationResponses(
-            planCreationResponses, finalResponse, currentYaml, dependencies, dependenciesList, fullField, fqnToJsonMap);
-      } else {
-        return PlanCreatorServiceHelper.handlePlanCreationResponses(
-            planCreationResponses, finalResponse, currentYaml, dependencies, dependenciesList);
-      }
+      return PlanCreatorServiceHelper.handlePlanCreationResponses(
+          planCreationResponses, finalResponse, currentYaml, dependencies, dependenciesList, fullField, fqnToJsonMap);
 
     } catch (Exception ex) {
       throw new UnexpectedException(format("Unexpected plan creation error: %s", ex.getMessage()), ex);

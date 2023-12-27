@@ -903,7 +903,6 @@ public enum FeatureName {
   CDS_DIVIDE_SDK_RESPONSE_EVENTS_IN_DIFF_STREAMS(
       "FF to enable usage of new streams for few sdk response events", PIPELINE),
   CDS_VARIABLES_MERGE_V2_OPTIMIZED_FLOW("FF to switch the v2/variables flow to a new optimized one", CDC, Scope.GLOBAL),
-  CDS_PLAN_CREATOR_OPTIMIZED_FLOW("FF to switch the plan creator flow to a new optimized one", CDC, Scope.GLOBAL),
   CDS_OVERRIDES_GITX("Onboard Overrides entity to GitX", HarnessTeam.CDC),
   CDS_SUPPORT_DIFFERENT_INFRA_DURING_ENV_PROPAGATION(
       "FF to suppport selecting different infrastructure during environment propagation", CDC),
