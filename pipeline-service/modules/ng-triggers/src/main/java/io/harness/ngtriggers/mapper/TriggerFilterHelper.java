@@ -10,6 +10,9 @@ package io.harness.ngtriggers.mapper;
 import static io.harness.NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS;
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+import static io.harness.ngtriggers.beans.source.NGTriggerType.ARTIFACT;
+import static io.harness.ngtriggers.beans.source.NGTriggerType.MANIFEST;
+import static io.harness.ngtriggers.beans.source.NGTriggerType.MULTI_REGION_ARTIFACT;
 import static io.harness.springdata.SpringDataMongoUtils.populateInFilter;
 
 import static java.util.Collections.emptyList;
@@ -32,6 +35,7 @@ import io.harness.ngtriggers.beans.entity.TriggerWebhookEvent.TriggerWebhookEven
 import io.harness.ngtriggers.beans.source.NGTriggerType;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.validation.constraints.NotNull;
@@ -259,6 +263,31 @@ public class TriggerFilterHelper {
     criteria.and(TriggerEventHistoryKeys.targetIdentifier).is(targetIdentifier);
     criteria.and(TriggerEventHistoryKeys.executionNotAttempted).ne(true);
     criteria.and(TriggerEventHistoryKeys.createdAt).gte(startTime);
+
+    return criteria;
+  }
+
+  public Criteria getCriteriaAccountIdAndOrgIdentifierAndProjectIdentifierTypeEnabledDeletedNot(
+      String accountIdentifier, String orgIdentifier, String projectIdentifier, NGTriggerType type) {
+    Criteria criteria = new Criteria();
+    criteria.and(NGTriggerEntityKeys.accountId).is(accountIdentifier);
+    criteria.and(NGTriggerEntityKeys.deleted).is(false);
+    criteria.and(NGTriggerEntityKeys.enabled).is(true);
+
+    if (StringUtils.isNotBlank(orgIdentifier)) {
+      criteria.and(NGTriggerEntityKeys.orgIdentifier).is(orgIdentifier);
+    }
+    if (StringUtils.isNotBlank(projectIdentifier)) {
+      criteria.and(NGTriggerEntityKeys.projectIdentifier).is(projectIdentifier);
+    }
+    if (MANIFEST.equals(type)) {
+      criteria.and(NGTriggerEntityKeys.type).is(type);
+    } else if (ARTIFACT.equals(type)) {
+      List<NGTriggerType> ngTriggerTypeList = new ArrayList<>();
+      ngTriggerTypeList.add(ARTIFACT);
+      ngTriggerTypeList.add(MULTI_REGION_ARTIFACT);
+      criteria.and(NGTriggerEntityKeys.type).in(ngTriggerTypeList);
+    }
 
     return criteria;
   }

@@ -1654,6 +1654,11 @@ public class NGTriggerServiceImplTest extends CategoryTest {
                           .build())
             .enabled(true)
             .build();
+    List<NGTriggerEntity> ngTriggerEntityList = Collections.singletonList(ngTriggerEntity);
+
+    CloseableIterator<NGTriggerEntity> iterator = createCloseableIterator(ngTriggerEntityList.iterator());
+    when(ngTriggerRepository.findAll(any(Criteria.class))).thenReturn(iterator);
+
     Call<Boolean> call = mock(Call.class);
     when(pollingResourceClient.delete(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, "ARTIFACT")).thenReturn(call);
     mockStatic(NGRestUtils.class);

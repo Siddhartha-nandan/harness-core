@@ -1443,18 +1443,14 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   public void updatePollingInterval(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String triggerType) {
     Boolean deletePollingDocs = false;
-    Optional<List<NGTriggerEntity>> ngTriggerEntityListOptional =
-        ngTriggerRepository.findByAccountIdAndOrgIdentifierAndProjectIdentifierAndTypeAndEnabledAndDeletedNot(
-            accountIdentifier, orgIdentifier, projectIdentifier, NGTriggerType.valueOf(triggerType), true, true);
+    Criteria criteria =
+        TriggerFilterHelper.getCriteriaAccountIdAndOrgIdentifierAndProjectIdentifierTypeEnabledDeletedNot(
+            accountIdentifier, orgIdentifier, projectIdentifier, NGTriggerType.valueOf(triggerType));
     List<NGTriggerEntity> ngTriggerEntityList = new ArrayList<>();
-    if (ngTriggerEntityListOptional.isPresent()) {
-      ngTriggerEntityList = ngTriggerEntityListOptional.get();
-    }
-    if (ARTIFACT.equals(NGTriggerType.valueOf(triggerType))) {
-      Optional<List<NGTriggerEntity>> ngTriggerEntityListMultiRegionArtifactOptional =
-          ngTriggerRepository.findByAccountIdAndOrgIdentifierAndProjectIdentifierAndTypeAndEnabledAndDeletedNot(
-              accountIdentifier, orgIdentifier, projectIdentifier, MULTI_REGION_ARTIFACT, true, true);
-      ngTriggerEntityListMultiRegionArtifactOptional.ifPresent(ngTriggerEntityList::addAll);
+
+    CloseableIterator<NGTriggerEntity> iterator = ngTriggerRepository.findAll(criteria);
+    while (iterator.hasNext()) {
+      ngTriggerEntityList.add(iterator.next());
     }
     if (ngTriggerEntityList.size() == 0) {
       return;
