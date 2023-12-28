@@ -408,7 +408,6 @@ public class PerpetualTaskServiceImpl implements PerpetualTaskService, DelegateO
 
   @VisibleForTesting
   long getTaskTimeInterval(PerpetualTaskSchedule schedule, String accountId, String perpetualTaskType) {
-    long intervalSeconds = schedule.getInterval().getSeconds();
-    return intervalSeconds;
+    return schedule.getInterval().getSeconds();
   }
 }
