@@ -7,15 +7,16 @@
 
 package io.harness.beans;
 
+import static io.harness.annotations.dev.HarnessTeam.CDC;
+
+import io.harness.annotations.dev.OwnedBy;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import io.harness.annotations.dev.OwnedBy;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Value;
 import lombok.experimental.FieldDefaults;
-
-import static io.harness.annotations.dev.HarnessTeam.CDC;
 
 @OwnedBy(CDC)
 @Value

@@ -23,12 +23,8 @@ import io.harness.pms.sdk.core.events.OrchestrationEventHandler;
 import io.harness.pms.sdk.core.execution.events.node.facilitate.Facilitator;
 import io.harness.pms.sdk.core.execution.expression.SdkFunctor;
 import io.harness.pms.sdk.core.governance.JsonExpansionHandlerInfo;
-import io.harness.pms.sdk.core.registries.AdviserRegistry;
-import io.harness.pms.sdk.core.registries.FacilitatorRegistry;
-import io.harness.pms.sdk.core.registries.FunctorRegistry;
-import io.harness.pms.sdk.core.registries.JsonExpansionHandlerRegistry;
-import io.harness.pms.sdk.core.registries.OrchestrationEventHandlerRegistry;
-import io.harness.pms.sdk.core.registries.StepRegistry;
+import io.harness.pms.sdk.core.inputmetadata.InputsMetadataHandlerInfo;
+import io.harness.pms.sdk.core.registries.*;
 import io.harness.pms.sdk.core.steps.Step;
 import io.harness.pms.sdk.registries.registrar.local.PmsSdkAdviserRegistrar;
 import io.harness.pms.sdk.registries.registrar.local.PmsSdkFacilitatorRegistrar;
@@ -110,6 +106,19 @@ public class PmsSdkRegistryModule extends AbstractModule {
               handlerInfo.getJsonExpansionInfo().getKey(), injector.getInstance(handlerInfo.getExpansionHandler())));
     }
     return jsonExpansionHandlerRegistry;
+  }
+
+  @Provides
+  @Singleton
+  InputsMetadataHandlerRegistry providesInputsMetadataHandlerRegistry(Injector injector) {
+    InputsMetadataHandlerRegistry inputsMetadataHandlerRegistry = new InputsMetadataHandlerRegistry();
+    List<InputsMetadataHandlerInfo> inputsMetadataHandlers = config.getInputsMetadataHandlers();
+    if (EmptyPredicate.isNotEmpty(inputsMetadataHandlers)) {
+      inputsMetadataHandlers.forEach(handlerInfo
+          -> inputsMetadataHandlerRegistry.register(handlerInfo.getInputsMetadataInfo().getEntityType(),
+              injector.getInstance(handlerInfo.getInputsMetadataHandler())));
+    }
+    return inputsMetadataHandlerRegistry;
   }
 
   @Provides

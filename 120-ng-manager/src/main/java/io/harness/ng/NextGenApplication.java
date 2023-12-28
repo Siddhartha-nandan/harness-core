@@ -182,6 +182,7 @@ import io.harness.outbox.OutboxEventPollService;
 import io.harness.persistence.HPersistence;
 import io.harness.pms.contracts.execution.events.OrchestrationEventType;
 import io.harness.pms.contracts.plan.ExpansionRequestType;
+import io.harness.pms.contracts.plan.InputsMetadataInfo;
 import io.harness.pms.contracts.plan.JsonExpansionInfo;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
@@ -198,6 +199,7 @@ import io.harness.pms.governance.EnvironmentGroupExpandedHandler;
 import io.harness.pms.governance.EnvironmentRefExpansionHandler;
 import io.harness.pms.governance.MultiEnvironmentExpansionHandler;
 import io.harness.pms.governance.ServiceRefExpansionHandler;
+import io.harness.pms.inputmetadata.ServiceInputsMetadataHandler;
 import io.harness.pms.listener.NgOrchestrationNotifyEventListener;
 import io.harness.pms.redisConsumer.PipelineExecutionSummaryCDRedisEventConsumer;
 import io.harness.pms.sdk.PmsSdkConfiguration;
@@ -207,6 +209,7 @@ import io.harness.pms.sdk.core.SdkDeployMode;
 import io.harness.pms.sdk.core.events.OrchestrationEventHandler;
 import io.harness.pms.sdk.core.execution.expression.SdkFunctor;
 import io.harness.pms.sdk.core.governance.JsonExpansionHandlerInfo;
+import io.harness.pms.sdk.core.inputmetadata.InputsMetadataHandlerInfo;
 import io.harness.pms.sdk.execution.events.facilitators.FacilitatorEventRedisConsumer;
 import io.harness.pms.sdk.execution.events.facilitators.FacilitatorEventRedisConsumerV2;
 import io.harness.pms.sdk.execution.events.interrupts.InterruptEventRedisConsumer;
@@ -800,6 +803,7 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
         .staticAliases(getStaticAliases())
         .sdkFunctors(getSdkFunctors())
         .jsonExpansionHandlers(getJsonExpansionHandlers())
+        .inputsMetadataHandlers(getInputsMetadataHandlers())
         .filterCreationResponseMerger(new CDNGFilterCreationResponseMerger())
         .engineSteps(NgStepRegistrar.getEngineSteps())
         .engineAdvisers(CDServiceAdviserRegistrar.getEngineAdvisers())
@@ -910,6 +914,18 @@ public class NextGenApplication extends Application<NextGenConfiguration> {
     jsonExpansionHandlers.add(multiEnvironmentHandlerInfo);
     jsonExpansionHandlers.add(environmentGroupHandlerInfo);
     return jsonExpansionHandlers;
+  }
+
+  private List<InputsMetadataHandlerInfo> getInputsMetadataHandlers() {
+    List<InputsMetadataHandlerInfo> inputsMetadataHandlers = new ArrayList<>();
+    InputsMetadataInfo serviceInfo =
+        InputsMetadataInfo.newBuilder().setEntityType(YAMLFieldNameConstants.SERVICE).build();
+    InputsMetadataHandlerInfo serviceHandlerInfo = InputsMetadataHandlerInfo.builder()
+                                                       .inputsMetadataInfo(serviceInfo)
+                                                       .inputsMetadataHandler(ServiceInputsMetadataHandler.class)
+                                                       .build();
+    inputsMetadataHandlers.add(serviceHandlerInfo);
+    return inputsMetadataHandlers;
   }
 
   private Map<OrchestrationEventType, Set<Class<? extends OrchestrationEventHandler>>> getOrchestrationEventHandlers() {

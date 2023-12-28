@@ -30,10 +30,8 @@ import io.harness.pms.yaml.YamlNode;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.TextNode;
-
 import java.util.*;
 import java.util.stream.Collectors;
-
 import lombok.experimental.UtilityClass;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
@@ -93,7 +91,8 @@ public class RuntimeInputFormHelper {
     return createRuntimeInputFormJsonNode(jsonNode, true, true);
   }
 
-  public Map<String, InputsMetadata> createRuntimeFqnToInputsMetadataMap(String inputFormYaml, String entityYaml, String prefix) {
+  public Map<String, InputsMetadata> createRuntimeFqnToInputsMetadataMap(
+      String inputFormYaml, String entityYaml, String prefix) {
     YamlConfig entityYamlConfig = new YamlConfig(entityYaml);
     Map<FQN, Object> entityYamlMap = entityYamlConfig.getFqnToValueMap();
     YamlConfig inputFormYamlConfig = new YamlConfig(inputFormYaml);
@@ -104,12 +103,15 @@ public class RuntimeInputFormHelper {
       if (NGExpressionUtils.matchesRawInputSetPatternV2(value)) {
         InputsMetadata.InputsMetadataBuilder inputsMetadata = InputsMetadata.builder();
         Object required = entityYamlMap.get(key.getSiblingFQN(YAMLFieldNameConstants.REQUIRED));
-        if (required != null && "true".equals(HarnessStringUtils.removeLeadingAndTrailingQuotesBothOrNone(required.toString().toLowerCase()))) {
+        if (required != null
+            && "true".equals(
+                HarnessStringUtils.removeLeadingAndTrailingQuotesBothOrNone(required.toString().toLowerCase()))) {
           inputsMetadata.required(true);
         }
         Object description = entityYamlMap.get(key.getSiblingFQN(YAMLFieldNameConstants.DESCRIPTION));
         if (description != null) {
-          inputsMetadata.description(HarnessStringUtils.removeLeadingAndTrailingQuotesBothOrNone(description.toString()));
+          inputsMetadata.description(
+              HarnessStringUtils.removeLeadingAndTrailingQuotesBothOrNone(description.toString()));
         }
         String expressionFqn = key.getExpressionFqn();
         if (prefix != null) {

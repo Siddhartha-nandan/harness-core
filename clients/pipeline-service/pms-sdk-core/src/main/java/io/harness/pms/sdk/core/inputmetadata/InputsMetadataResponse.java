@@ -5,21 +5,22 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.pms.sdk.core.registries;
+package io.harness.pms.sdk.core.inputmetadata;
 
-import static io.harness.annotations.dev.HarnessTeam.CDC;
+import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.InputsMetadata;
 
-@OwnedBy(CDC)
-public enum RegistryType {
-  STEP,
-  ADVISER,
-  RESOLVER,
-  FACILITATOR,
-  ORCHESTRATION_EVENT,
-  ORCHESTRATION_FIELD,
-  SDK_FUNCTOR,
-  JSON_EXPANSION_HANDLERS,
-  RUNTIME_INPUTS_METADATA_HANDLERS
+import java.util.Map;
+import lombok.Builder;
+import lombok.Value;
+
+@OwnedBy(PIPELINE)
+@Value
+@Builder
+public class InputsMetadataResponse {
+  Map<String, InputsMetadata> result;
+  boolean success;
+  String errorMessage;
 }

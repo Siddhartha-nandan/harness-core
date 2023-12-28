@@ -1,0 +1,52 @@
+// Copyright 2021 Harness Inc. All rights reserved.
+// Use of this source code is governed by the PolyForm Shield 1.0.0 license
+// that can be found in the licenses directory at the root of this repository, also available at
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt.
+
+syntax = "proto3";
+
+package io.harness.pms.contracts.inputmetadata;
+
+option java_multiple_files = true;
+
+service InputsMetadataService {
+  rpc generateInputsMetadata(InputsMetadataRequestBatch) returns (InputsMetadataResponseBatch);
+}
+
+message InputsMetadataRequestBatch {
+  repeated InputsMetadataRequestProto inputsMetadataRequestProto = 1;
+  InputsMetadataRequestMetadata inputsMetadataRequestMetadata = 2;
+}
+
+message InputsMetadataRequestProto {
+  string fqn = 1;
+  string entityType = 2;
+  string entityId = 3;
+  bytes gitSyncBranchContext = 4;
+  bytes yaml = 5;
+}
+
+message InputsMetadataRequestMetadata {
+  string accountId = 1;
+  string projectId = 2;
+  string orgId = 3;
+  bytes gitSyncBranchContext = 4;
+}
+
+message InputsMetadataResponseBatch {
+  repeated InputsMetadataResponseProto inputsMetadataResponseProto = 1;
+}
+
+message InputsMetadataResponseProto {
+  map<string, InputsMetadataProto> result = 1;
+  string fqn = 2;
+  bool success = 3;
+  string errorMessage = 4;
+}
+
+message InputsMetadataProto {
+  bool required = 1;
+  string description = 2;
+}
+
+

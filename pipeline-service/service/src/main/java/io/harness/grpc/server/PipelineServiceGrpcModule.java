@@ -15,6 +15,7 @@ import io.harness.engine.interrupts.InterruptGrpcService;
 import io.harness.grpc.client.GrpcClientConfig;
 import io.harness.pms.contracts.expression.RemoteFunctorServiceGrpc;
 import io.harness.pms.contracts.governance.JsonExpansionServiceGrpc;
+import io.harness.pms.contracts.inputmetadata.InputsMetadataServiceGrpc;
 import io.harness.pms.contracts.plan.PlanCreationServiceGrpc;
 import io.harness.pms.contracts.plan.PlanCreationServiceGrpc.PlanCreationServiceBlockingStub;
 import io.harness.pms.contracts.plan.PluginInfoProviderServiceGrpc;
@@ -122,6 +123,20 @@ public class PipelineServiceGrpcModule extends AbstractModule {
     }
     map.put(ModuleType.PMS,
         JsonExpansionServiceGrpc.newBlockingStub(InProcessChannelBuilder.forName("pmsSdkInternal").build()));
+    return map;
+  }
+
+  @Provides
+  @Singleton
+  public Map<ModuleType, InputsMetadataServiceGrpc.InputsMetadataServiceBlockingStub> getInputsMetadataHandlerClients(
+      PipelineServiceConfiguration configuration) throws SSLException {
+    Map<ModuleType, InputsMetadataServiceGrpc.InputsMetadataServiceBlockingStub> map = new HashMap<>();
+
+    for (Map.Entry<String, GrpcClientConfig> entry : configuration.getGrpcClientConfigs().entrySet()) {
+      map.put(ModuleType.fromString(entry.getKey()),
+          InputsMetadataServiceGrpc.newBlockingStub(
+              getChannel(entry.getValue(), configuration.getGrpcNegotiationType())));
+    }
     return map;
   }
 

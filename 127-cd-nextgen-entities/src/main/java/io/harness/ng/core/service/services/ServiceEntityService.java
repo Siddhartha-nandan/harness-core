@@ -142,4 +142,6 @@ public interface ServiceEntityService {
 
   ServiceMoveConfigResponse moveServiceStoreTypeConfig(String accountIdentifier, String orgIdentifier,
       String projectIdentifier, String serviceIdentifier, ServiceMoveConfigOperationDTO serviceRequestDTO);
+
+  ServiceV2YamlMetadata createServiceV2YamlMetadata(ServiceEntity serviceEntity);
 }

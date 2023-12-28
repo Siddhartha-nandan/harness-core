@@ -33,19 +33,14 @@ import io.harness.eventsframework.EventsFrameworkConfiguration;
 import io.harness.exception.InvalidRequestException;
 import io.harness.metrics.jobs.RecordMetricsJob;
 import io.harness.metrics.service.api.MetricService;
-import io.harness.pms.contracts.plan.ConsumerConfig;
-import io.harness.pms.contracts.plan.InitializeSdkRequest;
-import io.harness.pms.contracts.plan.JsonExpansionInfo;
-import io.harness.pms.contracts.plan.PmsServiceGrpc;
-import io.harness.pms.contracts.plan.Redis;
-import io.harness.pms.contracts.plan.SdkModuleInfo;
-import io.harness.pms.contracts.plan.Types;
+import io.harness.pms.contracts.plan.*;
 import io.harness.pms.contracts.steps.SdkStep;
 import io.harness.pms.contracts.steps.StepInfo;
 import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.events.base.PmsEventCategory;
 import io.harness.pms.exception.InitializeSdkException;
 import io.harness.pms.sdk.core.governance.JsonExpansionHandlerInfo;
+import io.harness.pms.sdk.core.inputmetadata.InputsMetadataHandlerInfo;
 import io.harness.pms.sdk.core.plan.creation.creators.PartialPlanCreator;
 import io.harness.pms.sdk.core.plan.creation.creators.PipelineServiceInfoDecoratorImpl;
 import io.harness.pms.sdk.core.plan.creation.creators.PipelineServiceInfoProvider;
@@ -155,6 +150,7 @@ public class PmsSdkInitHelper {
         .putAllStaticAliases(CollectionUtils.emptyIfNull(sdkConfiguration.getStaticAliases()))
         .addAllSdkFunctors(PmsSdkInitHelper.getSupportedSdkFunctorsList(sdkConfiguration))
         .addAllJsonExpansionInfo(getJsonExpansionInfo(sdkConfiguration))
+        .addAllInputsMetadataInfo(getInputsMetadataInfo(sdkConfiguration))
         .setNodeStartEventConsumerConfig(buildConsumerConfig(eventsConfig, PmsEventCategory.NODE_START,
             sdkConfiguration.getServiceName(), sdkConfiguration.isStreamPerServiceConfiguration()))
         .setProgressEventConsumerConfig(buildConsumerConfig(eventsConfig, PmsEventCategory.PROGRESS_EVENT,
@@ -174,6 +170,16 @@ public class PmsSdkInitHelper {
       return new ArrayList<>();
     }
     return expansionHandlers.stream().map(JsonExpansionHandlerInfo::getJsonExpansionInfo).collect(Collectors.toList());
+  }
+
+  static List<InputsMetadataInfo> getInputsMetadataInfo(PmsSdkConfiguration sdkConfiguration) {
+    List<InputsMetadataHandlerInfo> inputsMetadataHandlers = sdkConfiguration.getInputsMetadataHandlers();
+    if (EmptyPredicate.isEmpty(inputsMetadataHandlers)) {
+      return new ArrayList<>();
+    }
+    return inputsMetadataHandlers.stream()
+        .map(InputsMetadataHandlerInfo::getInputsMetadataInfo)
+        .collect(Collectors.toList());
   }
 
   @VisibleForTesting

@@ -697,7 +697,7 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
     return servicesYamlMetadata;
   }
 
-  private ServiceV2YamlMetadata createServiceV2YamlMetadata(ServiceEntity serviceEntity) {
+  public ServiceV2YamlMetadata createServiceV2YamlMetadata(ServiceEntity serviceEntity) {
     if (featureFlagService.isEnabled(
             serviceEntity.getAccountId(), FeatureName.CDS_ARTIFACTORY_REPOSITORY_URL_MANDATORY)) {
       serviceEntity = updateArtifactoryRegistryUrlIfEmpty(serviceEntity, serviceEntity.getAccountId(),
@@ -1532,15 +1532,25 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
     gitXSettingsHelper.setDefaultRepoForRemoteEntity(accountIdentifier, orgIdentifier, projIdentifier);
   }
 
-  private Map<String, InputsMetadata> getServiceInputsMetadata(String serviceInputSetYaml, ServiceEntity serviceEntity) {
+  private Map<String, InputsMetadata> getServiceInputsMetadata(
+      String serviceInputSetYaml, ServiceEntity serviceEntity) {
     Map<String, InputsMetadata> serviceInputsMetadata = null;
     try {
       serviceInputsMetadata = RuntimeInputFormHelper.createRuntimeFqnToInputsMetadataMap(
-              YamlPipelineUtils.writeYamlString(YamlUtils.readTree(serviceInputSetYaml).getNode().getField(YamlTypes.SERVICE_INPUTS).getNode().getCurrJsonNode()),
-              YamlPipelineUtils.writeYamlString(YamlUtils.readTree(serviceEntity.getYaml()).getNode().getField(YamlTypes.SERVICE_ENTITY).getNode().getCurrJsonNode()),
-              YamlTypes.SERVICE_INPUTS);
+          YamlPipelineUtils.writeYamlString(YamlUtils.readTree(serviceInputSetYaml)
+                                                .getNode()
+                                                .getField(YamlTypes.SERVICE_INPUTS)
+                                                .getNode()
+                                                .getCurrJsonNode()),
+          YamlPipelineUtils.writeYamlString(YamlUtils.readTree(serviceEntity.getYaml())
+                                                .getNode()
+                                                .getField(YamlTypes.SERVICE_ENTITY)
+                                                .getNode()
+                                                .getCurrJsonNode()),
+          YamlTypes.SERVICE_INPUTS);
     } catch (Exception ex) {
-      log.error(String.format("Error generating service InputsMetadata for service [%s]", serviceEntity.getIdentifier()), ex);
+      log.error(
+          String.format("Error generating service InputsMetadata for service [%s]", serviceEntity.getIdentifier()), ex);
     }
     return serviceInputsMetadata;
   }
