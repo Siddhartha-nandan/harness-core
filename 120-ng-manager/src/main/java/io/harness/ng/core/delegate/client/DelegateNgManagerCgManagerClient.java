@@ -184,18 +184,13 @@ public interface DelegateNgManagerCgManagerClient {
   Call<RestResponse<SupportedDelegateVersion>> getPublishedDelegateVersion(
       @Query(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier);
 
-
   @POST("delegate-background-job")
   Call<RestResponse<String>> disableBackgroundJobs(
-          @Query(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
-          @Query(NGCommonEntityConstants.PERPETUALTASK_TYPE_KEY) String perpetualTaskType);
-
+      @Query(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
+      @Query(NGCommonEntityConstants.PERPETUALTASK_TYPE_KEY) String perpetualTaskType);
 
   @DELETE("delegate-background-job")
   Call<RestResponse<String>> enableBackgroundJobs(
-          @Query(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
-          @Query(NGCommonEntityConstants.PERPETUALTASK_TYPE_KEY) String perpetualTaskType);
-
-
-
+      @Query(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
+      @Query(NGCommonEntityConstants.PERPETUALTASK_TYPE_KEY) String perpetualTaskType);
 }

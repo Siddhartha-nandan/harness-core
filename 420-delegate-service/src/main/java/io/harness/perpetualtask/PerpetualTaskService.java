@@ -46,11 +46,9 @@ public interface PerpetualTaskService {
   void markStateAndNonAssignedReason_OnAssignTryCount(PerpetualTaskRecord perpetualTaskRecord,
       PerpetualTaskUnassignedReason reason, PerpetualTaskState perpetualTaskState, String exception);
 
-
   String createPerpetualTaskInternal(String perpetualTaskType, String accountId,
       PerpetualTaskClientContext clientContext, PerpetualTaskSchedule schedule, boolean allowDuplicate,
       String taskDescription);
 
-  void updateTasksState(
-          String accountId, String perpetualTaskType, PerpetualTaskState perpetualTaskState);
+  void updateTasksState(String accountId, String perpetualTaskType, PerpetualTaskState perpetualTaskState);
 }
