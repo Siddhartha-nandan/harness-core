@@ -612,7 +612,9 @@ public class NextGenModule extends AbstractModule {
   @Provides
   @Singleton
   AwsSdkDefaultBackOffStrategyConfiguration awsSdkDefaultBackOffStrategyConfiguration() {
-    return this.appConfig.getAwsSdkDefaultBackOffStrategyConfiguration();
+    return appConfig.getAwsSdkDefaultBackOffStrategyConfiguration() != null
+        ? appConfig.getAwsSdkDefaultBackOffStrategyConfiguration()
+        : AwsSdkDefaultBackOffStrategyConfiguration.builder().build();
   }
 
   @Provides
