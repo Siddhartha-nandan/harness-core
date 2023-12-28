@@ -7,11 +7,12 @@
 
 package io.harness.plancreator.steps.pluginstep;
 
-import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.plancreator.steps.pluginstep.KubernetesInfraOutput.KUBERNETES_INFRA_OUTPUT;
-import static io.harness.steps.TaskRequestsUtils.SHELL_SCRIPT_TASK_IDENTIFIER;
+
+import static java.lang.String.format;
 
 import io.harness.beans.FeatureName;
+import io.harness.common.ParameterFieldHelper;
 import io.harness.delegate.ComputingResource;
 import io.harness.delegate.ExecutionInfrastructure;
 import io.harness.delegate.K8sInfraSpec;
@@ -22,6 +23,7 @@ import io.harness.delegate.StepSpec;
 import io.harness.delegate.TaskSelector;
 import io.harness.delegate.beans.scheduler.InitializeExecutionInfraResponse;
 import io.harness.encryption.Scope;
+import io.harness.exception.InvalidArgumentsException;
 import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.tasks.TaskCategory;
@@ -38,19 +40,26 @@ import io.harness.steps.TaskRequestsUtils;
 import io.harness.steps.container.execution.ContainerStepRbacHelper;
 import io.harness.steps.container.utils.ContainerSpecUtils;
 import io.harness.steps.executable.TaskExecutableWithRbac;
+import io.harness.steps.plugin.ContainerStepInfo;
 import io.harness.steps.plugin.ContainerStepSpec;
+import io.harness.steps.plugin.infrastructure.ContainerK8sInfra;
+import io.harness.steps.plugin.infrastructure.ContainerStepInfra;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.utils.InitialiseTaskUtils;
 import io.harness.utils.PmsFeatureFlagService;
 import io.harness.yaml.core.timeout.Timeout;
+import io.harness.yaml.extended.ci.container.ContainerResource;
 
 import com.google.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class InitKubernetesInfraContainerStep
     implements TaskExecutableWithRbac<StepElementParameters, InitializeExecutionInfraResponse> {
   public static final StepType STEP_TYPE = StepSpecTypeConstants.INIT_KUBERNETES_INFRA_CONTAINER_STEP_TYPE;
+  private static final String DEFAULT_CONTAINER_RESOURCE_MEMORY = "100Mi";
+  private static final String DEFAULT_CONTAINER_RESOURCE_CPU = "100m";
 
   @Inject private ContainerStepRbacHelper containerStepRbacHelper;
   @Inject private InitialiseTaskUtils initialiseTaskUtils;
@@ -103,24 +112,49 @@ public class InitKubernetesInfraContainerStep
     // iterate over the steps and populate step specs. The values are hardcoded for POC
     List<StepSpec> stepSpecList = new ArrayList<>();
     for (StepElementParameters stepElementParameters : stepElementParametersList) {
-      StepSpec stepSpec =
-          StepSpec.newBuilder()
-              .setImage("imijailovic/shell-task-ng-linux-amd64:6.0")
-              .setStepId(SHELL_SCRIPT_TASK_IDENTIFIER)
-              .setComputeResource(ComputingResource.newBuilder().setCpu("100m").setMemory("100Mi").build())
-              .setSecrets(
-                  Secrets.newBuilder()
-                      .addSecrets(Secret.newBuilder().setScopeSecretIdentifier("org.shell_script_secret").build())
-                      .build())
-              .build();
+      if (stepElementParameters.getSpec() instanceof ContainerStepInfo) {
+        ContainerStepInfo containerStepInfo = (ContainerStepInfo) stepElementParameters.getSpec();
+        if (containerStepInfo.getInfrastructure().getType() != ContainerStepInfra.Type.KUBERNETES_DIRECT) {
+          throw new InvalidArgumentsException(format("Not supported infrastructure type for container step, %s",
+              containerStepInfo.getInfrastructure().getType()));
+        }
+        String image = ParameterFieldHelper.getParameterFieldValue(containerStepInfo.getImage());
+        ContainerK8sInfra infrastructure = (ContainerK8sInfra) containerStepInfo.getInfrastructure();
+        Map<String, String> envVariables =
+            ParameterFieldHelper.getParameterFieldValue(containerStepInfo.getEnvVariables());
 
-      stepSpecList.add(stepSpec);
+        stepSpecList.add(
+            StepSpec.newBuilder()
+                .setImage(image)
+                .putAllEnv(envVariables)
+                .setStepId(containerStepInfo.getIdentifier())
+                .setComputeResource(getComputingResource(infrastructure))
+                .setSecrets(
+                    Secrets.newBuilder()
+                        .addSecrets(Secret.newBuilder().setScopeSecretIdentifier("org.shell_script_secret").build())
+                        .build())
+                .build());
+      }
     }
 
     String logPrefix = initialiseTaskUtils.getLogPrefix(ambiance, "STEP");
     return ExecutionInfrastructure.newBuilder()
         .setLogConfig(LogConfig.newBuilder().setLogPrefix(logPrefix).build())
         .setK8S(K8sInfraSpec.newBuilder().addAllSteps(stepSpecList).build())
+        .build();
+  }
+
+  private ComputingResource getComputingResource(ContainerK8sInfra infrastructure) {
+    ContainerResource.Limits limits = infrastructure.getSpec().getResources().getLimits();
+    if (limits != null) {
+      String cpu = ParameterFieldHelper.getParameterFieldValue(limits.getCpu());
+      String memory = ParameterFieldHelper.getParameterFieldValue(limits.getMemory());
+      return ComputingResource.newBuilder().setCpu(cpu).setMemory(memory).build();
+    }
+
+    return ComputingResource.newBuilder()
+        .setCpu(DEFAULT_CONTAINER_RESOURCE_CPU)
+        .setMemory(DEFAULT_CONTAINER_RESOURCE_MEMORY)
         .build();
   }
 

@@ -11,7 +11,6 @@ package io.harness.steps.container.execution;
 import static io.harness.beans.FeatureName.CDS_USE_DELEGATE_BIJOU_API_CONTAINER_STEPS;
 import static io.harness.plancreator.NGCommonUtilPlanCreationConstants.STEP_GROUP;
 import static io.harness.plancreator.steps.pluginstep.KubernetesInfraOutput.KUBERNETES_INFRA_OUTPUT;
-import static io.harness.steps.TaskRequestsUtils.SHELL_SCRIPT_TASK_IDENTIFIER;
 import static io.harness.steps.TaskRequestsUtils.prepareExecuteTaskRequest;
 
 import static java.util.Collections.singletonList;
@@ -22,17 +21,17 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.FeatureName;
+import io.harness.beans.yaml.extended.CIShellType;
+import io.harness.common.ParameterFieldHelper;
 import io.harness.data.structure.CollectionUtils;
 import io.harness.delegate.Entrypoint;
 import io.harness.delegate.Execution;
 import io.harness.delegate.K8sExecutionSpec;
-import io.harness.delegate.ShellType;
 import io.harness.delegate.TaskSelector;
 import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.TaskData;
 import io.harness.delegate.beans.ci.k8s.K8sTaskExecutionResponse;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
-import io.harness.delegate.task.shell.ShellScriptTaskParametersNG;
 import io.harness.engine.pms.data.PmsSweepingOutputService;
 import io.harness.engine.pms.tasks.TaskExecutor;
 import io.harness.exception.InvalidRequestException;
@@ -54,12 +53,12 @@ import io.harness.pms.sdk.core.resolver.RefObjectUtils;
 import io.harness.pms.sdk.core.resolver.outputs.ExecutionSweepingOutputService;
 import io.harness.pms.sdk.core.steps.io.StepInputPackage;
 import io.harness.pms.sdk.core.steps.io.StepResponse;
+import io.harness.pms.yaml.ParameterField;
 import io.harness.serializer.KryoSerializer;
-import io.harness.shell.ScriptType;
-import io.harness.steps.StepUtils;
 import io.harness.steps.container.utils.ConnectorUtils;
 import io.harness.steps.container.utils.ContainerSpecUtils;
 import io.harness.steps.executable.AsyncExecutableWithRbac;
+import io.harness.steps.plugin.ContainerStepInfo;
 import io.harness.steps.plugin.ContainerStepSpec;
 import io.harness.steps.plugin.infrastructure.ContainerK8sInfra;
 import io.harness.steps.plugin.infrastructure.ContainerStepInfra;
@@ -69,8 +68,7 @@ import io.harness.tasks.ResponseData;
 import io.harness.utils.PmsFeatureFlagService;
 import io.harness.waiter.WaitNotifyEngine;
 import io.harness.yaml.core.timeout.Timeout;
-
-import software.wings.beans.TaskType;
+import io.harness.yaml.core.variables.OutputNGVariable;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -139,13 +137,7 @@ public abstract class AbstractContainerStep implements AsyncExecutableWithRbac<S
     if (featureFlagService.isEnabled(
             AmbianceUtils.getAccountId(ambiance), CDS_USE_DELEGATE_BIJOU_API_CONTAINER_STEPS)) {
       TaskExecutor taskExecutor = taskExecutorMap.get(TaskCategory.DELEGATE_TASK_V2);
-      OptionalSweepingOutput optionalCleanupSweepingOutput = executionSweepingOutputService.resolveOptional(
-          ambiance, RefObjectUtils.getSweepingOutputRefObject(KUBERNETES_INFRA_OUTPUT));
-      if (!optionalCleanupSweepingOutput.isFound()) {
-        throw new InvalidRequestException("Not found k8sInfra infraRefId");
-      }
-      KubernetesInfraOutput k8sInfra = (KubernetesInfraOutput) optionalCleanupSweepingOutput.getOutput();
-      Execution execution = getExecution(logPrefix, SHELL_SCRIPT_TASK_IDENTIFIER, k8sInfra.getInfraRefId());
+      Execution execution = getExecution(logPrefix, (ContainerStepInfo) containerStepInfo, getK8sInfraRefId(ambiance));
       String queueExecuteTaskId =
           taskExecutor.queueExecuteTask(prepareExecuteTaskRequest(ambiance, execution, timeout,
                                             TaskCategory.DELEGATE_TASK_V2, true, delegateSelectors),
@@ -171,34 +163,36 @@ public abstract class AbstractContainerStep implements AsyncExecutableWithRbac<S
         .build();
   }
 
-  private TaskData getTaskData(Ambiance ambiance) {
-    ShellScriptTaskParametersNG parametersNG = ShellScriptTaskParametersNG.builder()
-                                                   .accountId(ambiance.getSetupAbstractionsMap().get("accountId"))
-                                                   .executeOnDelegate(false)
-                                                   .script("echo 'POC FOR BIJOU API'")
-                                                   .executionId(ambiance.getPlanExecutionId())
-                                                   .scriptType(ScriptType.BASH)
-                                                   .build();
+  private String getK8sInfraRefId(Ambiance ambiance) {
+    OptionalSweepingOutput optionalCleanupSweepingOutput = executionSweepingOutputService.resolveOptional(
+        ambiance, RefObjectUtils.getSweepingOutputRefObject(KUBERNETES_INFRA_OUTPUT));
+    if (!optionalCleanupSweepingOutput.isFound()) {
+      throw new InvalidRequestException("Not found k8sInfra infraRefId");
+    }
+    KubernetesInfraOutput k8sInfra = (KubernetesInfraOutput) optionalCleanupSweepingOutput.getOutput();
+    return k8sInfra.getInfraRefId();
+  }
 
-    return TaskData.builder()
-        .async(true)
-        .parameters(new Object[] {parametersNG})
-        .taskType(TaskType.SHELL_SCRIPT_TASK_NG.name())
-        .timeout(StepUtils.getTimeoutMillis(null, StepUtils.DEFAULT_STEP_TIMEOUT))
+  private Execution getExecution(String logPrefix, ContainerStepInfo containerStepInfo, String infraRefId) {
+    String command = ParameterFieldHelper.getParameterFieldValue(containerStepInfo.getCommand());
+    CIShellType shellType = ParameterFieldHelper.getParameterFieldValue(containerStepInfo.getShell());
+    List<OutputNGVariable> outputVariables =
+        ParameterFieldHelper.getParameterFieldValue(containerStepInfo.getOutputVariables());
+    List<String> outVars = outputVariables.stream().map(OutputNGVariable::getName).collect(Collectors.toList());
+
+    return Execution.newBuilder()
+        .setInfraRefId(infraRefId)
+        .setStepId(containerStepInfo.getIdentifier())
+        .setStepLogKey(logPrefix)
+        .setK8S(K8sExecutionSpec.newBuilder()
+                    .addAllEnvVarOutputs(outVars)
+                    .setEntryPoint(getEntryPoint(command, shellType))
+                    .build())
         .build();
   }
 
-  private Execution getExecution(String logPrefix, String stepId, String infraRefId) {
-    return Execution.newBuilder()
-        .setInfraRefId(infraRefId)
-        .setStepId(stepId)
-        .setStepLogKey(logPrefix)
-        .setK8S(
-            K8sExecutionSpec.newBuilder()
-                .setEntryPoint(
-                    Entrypoint.newBuilder().setShellType(ShellType.BASH).setCommand("echo 'POC FOR BIJOU API'").build())
-                .build())
-        .build();
+  private Entrypoint getEntryPoint(String command, CIShellType shellType) {
+    return Entrypoint.newBuilder().setShellType(ContainerSpecUtils.mapShellType(shellType)).setCommand(command).build();
   }
 
   @Override

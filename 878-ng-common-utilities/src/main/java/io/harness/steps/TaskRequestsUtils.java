@@ -69,7 +69,6 @@ import org.apache.commons.collections4.ListUtils;
 @OwnedBy(HarnessTeam.PIPELINE)
 @Slf4j
 public class TaskRequestsUtils {
-  public static final String SHELL_SCRIPT_TASK_IDENTIFIER = "shellStepIdentifier";
   public static TaskRequest prepareTaskRequest(Ambiance ambiance, TaskData taskData, KryoSerializer kryoSerializer,
       boolean executeOnHarnessHostedDelegates, List<String> eligibleToExecuteDelegateIds, boolean emitEvent,
       String stageId) {
