@@ -79,6 +79,7 @@ public class BillingCalculationService {
           new SystemCostData(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO), 0, 0, 0, 0, 0,
           PricingSource.PUBLIC_API);
     }
+    //changes in method to see the diff in reviewable 
     if (null == parentInstanceActiveSecond || parentInstanceActiveSecond == 0) {
       parentInstanceActiveSecond = instanceActiveSeconds;
       if (instanceData.getInstanceType() == InstanceType.K8S_POD) {
@@ -121,7 +122,6 @@ public class BillingCalculationService {
         .pricePerHour(pricingData.getPricePerHour() * conversionFactor)
         .cpuPricePerHour(pricingData.getCpuPricePerHour() * conversionFactor)
         .memoryPricePerHour(pricingData.getMemoryPricePerHour() * conversionFactor)
-        .cpuUnit(pricingData.getCpuUnit())
         .memoryMb(pricingData.getMemoryMb())
         .storageMb(pricingData.getStorageMb())
         .pricingSource(pricingData.getPricingSource())
@@ -224,6 +224,7 @@ public class BillingCalculationService {
       Double parentInstanceMemory =
           Double.valueOf(instanceMetaData.get(InstanceMetaDataConstants.PARENT_RESOURCE_MEMORY));
 
+      //calculate the cpu and memory fraction 
       double cpuFraction = parentInstanceCpu == 0 ? 0 : (instanceCpu / parentInstanceCpu);
       double memoryFraction = parentInstanceMemory == 0 ? 0 : (instanceMemory / parentInstanceMemory);
       BigDecimal cpuFractionAmount =
