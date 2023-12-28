@@ -132,7 +132,7 @@ public enum STOStepType {
   OPENVAS(
       "Openvas", null, FeatureName.STO_STEPS_TEST_MODE, OpenvasScanNode.class, EntityType.OPENVAS, new String[] {DAST}),
   OSV_SCANNER("OsvScanner", null, FeatureName.STO_STEP_PALETTE_OSV, OsvScannerScanNode.class, EntityType.OSV_SCANNER,
-      new String[] {SAST, CONTAINER_SECURITY}),
+      new String[] {SCA, CONTAINER_SECURITY}),
   OWASP("Owasp", null, null, OwaspScanNode.class, EntityType.OWASP, new String[] {SCA}),
   PRISMA_CLOUD("PrismaCloud", "Prisma Cloud", null, PrismaCloudScanNode.class, EntityType.PRISMA_CLOUD,
       new String[] {CONTAINER_SECURITY}),
