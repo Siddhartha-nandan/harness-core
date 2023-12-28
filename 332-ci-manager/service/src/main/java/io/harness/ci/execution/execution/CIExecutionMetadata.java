@@ -72,6 +72,13 @@ public class CIExecutionMetadata {
                  .field(CIExecutionMetadataKeys.accountId)
                  .field(CIExecutionMetadataKeys.status)
                  .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("accountIdAndStatusAndInfraType")
+                 .field(CIExecutionMetadataKeys.accountId)
+                 .field(CIExecutionMetadataKeys.status)
+                 .field(CIExecutionMetadataKeys.infraType)
+                 .build())
+
         .build();
   }
 }

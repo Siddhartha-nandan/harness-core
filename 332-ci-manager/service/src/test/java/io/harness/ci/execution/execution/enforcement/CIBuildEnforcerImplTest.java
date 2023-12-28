@@ -61,10 +61,10 @@ public class CIBuildEnforcerImplTest extends CIExecutionTestBase {
                                                   .build())
                                         .build();
     when(queueExecutionUtils.getActiveExecutionsCount(
-             accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString())))
+             accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString()), infrastructure.getType()))
         .thenReturn(5L);
     when(queueExecutionUtils.getActiveMacExecutionsCount(
-             accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString())))
+             accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString()), infrastructure.getType()))
         .thenReturn(0L);
     doReturn(
         Optional.of(
@@ -81,7 +81,7 @@ public class CIBuildEnforcerImplTest extends CIExecutionTestBase {
                                    .build())
                          .build();
     when(queueExecutionUtils.getActiveMacExecutionsCount(
-             accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString())))
+             accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString()), infrastructure.getType()))
         .thenReturn(3L);
     actual = ciBuildEnforcer.shouldQueue(accountID, infrastructure);
     assertThat(actual).isTrue();
@@ -98,10 +98,10 @@ public class CIBuildEnforcerImplTest extends CIExecutionTestBase {
                                                   .build())
                                         .build();
     when(queueExecutionUtils.getActiveExecutionsCount(
-             accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString())))
+             accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString()), infrastructure.getType()))
         .thenReturn(4L);
     when(queueExecutionUtils.getActiveMacExecutionsCount(
-             accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString())))
+             accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString()), infrastructure.getType()))
         .thenReturn(0L);
     doReturn(
         Optional.of(
@@ -118,7 +118,7 @@ public class CIBuildEnforcerImplTest extends CIExecutionTestBase {
                                    .build())
                          .build();
     when(queueExecutionUtils.getActiveMacExecutionsCount(
-             accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString())))
+             accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString()), infrastructure.getType()))
         .thenReturn(2L);
     actual = ciBuildEnforcer.shouldQueue(accountID, infrastructure);
     assertThat(actual).isFalse();
@@ -134,8 +134,12 @@ public class CIBuildEnforcerImplTest extends CIExecutionTestBase {
                                                   .platform(ParameterField.createValueField(platform))
                                                   .build())
                                         .build();
-    when(queueExecutionUtils.getActiveExecutionsCount(accountID, List.of(Status.RUNNING.toString()))).thenReturn(3L);
-    when(queueExecutionUtils.getActiveMacExecutionsCount(accountID, List.of(Status.RUNNING.toString()))).thenReturn(0L);
+    when(queueExecutionUtils.getActiveExecutionsCount(
+             accountID, List.of(Status.RUNNING.toString()), infrastructure.getType()))
+        .thenReturn(3L);
+    when(queueExecutionUtils.getActiveMacExecutionsCount(
+             accountID, List.of(Status.RUNNING.toString()), infrastructure.getType()))
+        .thenReturn(0L);
     doReturn(
         Optional.of(
             ExecutionQueueLimit.builder().accountIdentifier(accountID).totalExecLimit("4").macExecLimit("2").build()))
@@ -150,7 +154,9 @@ public class CIBuildEnforcerImplTest extends CIExecutionTestBase {
                                    .platform(ParameterField.createValueField(platform))
                                    .build())
                          .build();
-    when(queueExecutionUtils.getActiveMacExecutionsCount(accountID, List.of(Status.RUNNING.toString()))).thenReturn(1L);
+    when(queueExecutionUtils.getActiveMacExecutionsCount(
+             accountID, List.of(Status.RUNNING.toString()), infrastructure.getType()))
+        .thenReturn(1L);
     actual = ciBuildEnforcer.shouldRun(accountID, infrastructure);
     assertThat(actual).isTrue();
   }
@@ -165,8 +171,12 @@ public class CIBuildEnforcerImplTest extends CIExecutionTestBase {
                                                   .platform(ParameterField.createValueField(platform))
                                                   .build())
                                         .build();
-    when(queueExecutionUtils.getActiveExecutionsCount(accountID, List.of(Status.RUNNING.toString()))).thenReturn(4L);
-    when(queueExecutionUtils.getActiveMacExecutionsCount(accountID, List.of(Status.RUNNING.toString()))).thenReturn(0L);
+    when(queueExecutionUtils.getActiveExecutionsCount(
+             accountID, List.of(Status.RUNNING.toString()), infrastructure.getType()))
+        .thenReturn(4L);
+    when(queueExecutionUtils.getActiveMacExecutionsCount(
+             accountID, List.of(Status.RUNNING.toString()), infrastructure.getType()))
+        .thenReturn(0L);
     doReturn(
         Optional.of(
             ExecutionQueueLimit.builder().accountIdentifier(accountID).totalExecLimit("4").macExecLimit("2").build()))
@@ -181,7 +191,9 @@ public class CIBuildEnforcerImplTest extends CIExecutionTestBase {
                                    .platform(ParameterField.createValueField(platform))
                                    .build())
                          .build();
-    when(queueExecutionUtils.getActiveMacExecutionsCount(accountID, List.of(Status.RUNNING.toString()))).thenReturn(2L);
+    when(queueExecutionUtils.getActiveMacExecutionsCount(
+             accountID, List.of(Status.RUNNING.toString()), infrastructure.getType()))
+        .thenReturn(2L);
     actual = ciBuildEnforcer.shouldRun(accountID, infrastructure);
     assertThat(actual).isFalse();
   }

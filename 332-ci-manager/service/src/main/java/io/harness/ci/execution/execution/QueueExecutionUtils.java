@@ -12,6 +12,7 @@ import io.harness.beans.yaml.extended.infrastrucutre.Infrastructure;
 import io.harness.beans.yaml.extended.infrastrucutre.OSType;
 import io.harness.ci.config.CIExecutionServiceConfig;
 import io.harness.ci.execution.integrationstage.IntegrationStageUtils;
+import io.harness.ng.core.infrastructure.InfrastructureType;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.repositories.CIExecutionRepository;
 
@@ -37,12 +38,13 @@ public class QueueExecutionUtils {
     }
   }
 
-  public long getActiveExecutionsCount(String accountID, List<String> status) {
-    return ciExecutionRepository.countByAccountIdAndStatusIn(accountID, status);
+  public long getActiveExecutionsCount(String accountID, List<String> status, Infrastructure.Type infraType) {
+    return ciExecutionRepository.countByAccountIdAndStatusInAndInfraType(accountID, status, infraType);
   }
 
-  public long getActiveMacExecutionsCount(String accountID, List<String> status) {
-    return ciExecutionRepository.countByAccountIdAndBuildTypeAndStatusIn(accountID, OSType.MacOS, status);
+  public long getActiveMacExecutionsCount(String accountID, List<String> status, Infrastructure.Type infraType) {
+    return ciExecutionRepository.countByAccountIdAndBuildTypeAndStatusInAndInfraType(
+        accountID, OSType.MacOS, status, infraType);
   }
 
   public CIExecutionMetadata deleteActiveExecutionRecord(String stageExecutionID) {

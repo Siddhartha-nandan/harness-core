@@ -10,6 +10,7 @@ package io.harness.repositories;
 import io.harness.annotation.HarnessRepo;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.yaml.extended.infrastrucutre.Infrastructure;
 import io.harness.beans.yaml.extended.infrastrucutre.OSType;
 import io.harness.ci.execution.execution.CIExecutionMetadata;
 
@@ -21,9 +22,10 @@ import org.springframework.data.repository.CrudRepository;
 public interface CIExecutionRepository
     extends CrudRepository<CIExecutionMetadata, String>, CIExecutionRepositoryCustom {
   long countByAccountId(String accountID);
-  int countByAccountIdAndStatusIn(String accountId, List<String> status);
+  int countByAccountIdAndStatusInAndInfraType(String accountId, List<String> status, Infrastructure.Type infraType);
   long countByAccountIdAndStatus(String accountID, String status);
-  long countByAccountIdAndBuildTypeAndStatusIn(String accountID, OSType buildType, List<String> status);
+  long countByAccountIdAndBuildTypeAndStatusInAndInfraType(
+      String accountID, OSType buildType, List<String> status, Infrastructure.Type infraType);
   CIExecutionMetadata findByStageExecutionId(String stageExecutionId);
   void deleteByStageExecutionId(String stageExecutionId);
   void deleteAllByAccountId(String accountId);

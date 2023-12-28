@@ -44,9 +44,9 @@ public class CIBuildEnforcerImpl implements CIBuildEnforcer {
   @Override
   public boolean shouldQueue(String accountID, Infrastructure infrastructure) {
     long activeExecutionsCount = queueExecutionUtils.getActiveExecutionsCount(
-        accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString()));
+        accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString()), infrastructure.getType());
     long macExecutionsCount = queueExecutionUtils.getActiveMacExecutionsCount(
-        accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString()));
+        accountID, List.of(Status.QUEUED.toString(), Status.RUNNING.toString()), infrastructure.getType());
     long currExecutionCountNonMac = activeExecutionsCount - macExecutionsCount;
     OSType osType = getOSType(infrastructure);
     ExecutionLimitSpec executionLimitSpec = getExecutionLimit(accountID);
@@ -61,10 +61,10 @@ public class CIBuildEnforcerImpl implements CIBuildEnforcer {
 
   @Override
   public boolean shouldRun(String accountID, Infrastructure infrastructure) {
-    long activeExecutionsCount =
-        queueExecutionUtils.getActiveExecutionsCount(accountID, List.of(Status.RUNNING.toString()));
-    long macExecutionsCount =
-        queueExecutionUtils.getActiveMacExecutionsCount(accountID, List.of(Status.RUNNING.toString()));
+    long activeExecutionsCount = queueExecutionUtils.getActiveExecutionsCount(
+        accountID, List.of(Status.RUNNING.toString()), infrastructure.getType());
+    long macExecutionsCount = queueExecutionUtils.getActiveMacExecutionsCount(
+        accountID, List.of(Status.RUNNING.toString()), infrastructure.getType());
     long currExecutionCountNonMac = activeExecutionsCount - macExecutionsCount;
     OSType osType = getOSType(infrastructure);
     ExecutionLimitSpec executionLimitSpec = getExecutionLimit(accountID);

@@ -8,6 +8,7 @@ cache {"name": "unique_commutative", "unique": true} {"_id": 1, "contextValue": 
 cache {"name": "validUntil_1", "background": true, "expireAfterSeconds": 0} {"validUntil": 1}
 ciExecutionMetadata {"name": "accountIdAndBuildType", "background": true} {"accountId": 1, "buildType": 1}
 ciExecutionMetadata {"name": "accountIdAndStatus", "background": true} {"accountId": 1, "status": 1}
+ciExecutionMetadata {"name": "accountIdAndStatusAndInfraType", "background": true} {"accountId": 1, "status": 1, "infraType" : 1}
 ciExecutionMetadata {"name": "expireAfter_1", "background": true, "expireAfterSeconds": 0} {"expireAfter": 1}
 ciExecutionMetadata {"name": "stageExecutionIdAndAccountId", "background": true} {"stageExecutionId": 1, "accountId": 1}
 ciLogKeyMetadata {"name": "expireAfter_1", "background": true, "expireAfterSeconds": 0} {"expireAfter": 1}
