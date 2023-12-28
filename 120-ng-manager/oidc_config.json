@@ -19,7 +19,7 @@
     },
     "payload": {
       "sub": "{account_id}",
-      "aud": "https://app.harness.io/{account_id}",
+      "aud": "https://sts.amazonaws.com",
       "iss": "https://localhost:7457/oidc/account/kmpySmUISimoRrJL6NL73w",
       "exp": 3600,
       "iat": 0,
