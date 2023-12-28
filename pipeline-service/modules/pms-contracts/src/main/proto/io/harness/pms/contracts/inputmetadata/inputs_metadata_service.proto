@@ -47,5 +47,3 @@ message InputsMetadataProto {
   bool required = 1;
   string description = 2;
 }
-
-
