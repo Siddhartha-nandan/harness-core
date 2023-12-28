@@ -10,7 +10,6 @@ package io.harness.pms.sdk.core.registries;
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.pms.sdk.core.governance.JsonExpansionHandler;
 import io.harness.pms.sdk.core.inputmetadata.InputsMetadataHandler;
 import io.harness.registries.Registry;
 import io.harness.registries.exceptions.DuplicateRegistryException;

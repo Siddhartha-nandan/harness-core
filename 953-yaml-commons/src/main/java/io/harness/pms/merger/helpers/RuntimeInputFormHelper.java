@@ -17,6 +17,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.InputsMetadata;
+import io.harness.beans.InputsMetadata.InputsMetadataBuilder;
 import io.harness.common.NGExpressionUtils;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.data.structure.HarnessStringUtils;
@@ -105,7 +106,7 @@ public class RuntimeInputFormHelper {
     inputFormMap.keySet().forEach(key -> {
       String value = HarnessStringUtils.removeLeadingAndTrailingQuotesBothOrNone(inputFormMap.get(key).toString());
       if (NGExpressionUtils.matchesRawInputSetPatternV2(value)) {
-        InputsMetadata.InputsMetadataBuilder inputsMetadata = InputsMetadata.builder();
+        InputsMetadataBuilder inputsMetadata = InputsMetadata.builder();
         Object required = entityYamlMap.get(key.getSiblingFQN(YAMLFieldNameConstants.REQUIRED));
         if (required != null
             && "true".equals(
