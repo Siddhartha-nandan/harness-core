@@ -12,6 +12,7 @@ java_library(
     visibility = ["//visibility:public"],
     deps = [
         "//:lombok",
+        "//980-commons/src/main/java/io/harness/aws/retrypolicy:module",
         "//oidc-core/src/main/java/io/harness/oidc/aws/constants:module",
         "@maven//:com_fasterxml_jackson_core_jackson_annotations",
         "@maven//:io_swagger_core_v3_swagger_annotations",

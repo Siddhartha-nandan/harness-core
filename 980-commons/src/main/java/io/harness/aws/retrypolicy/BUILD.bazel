@@ -10,7 +10,13 @@ java_library(
     name = "module",
     srcs = glob(["*.java"]),
     visibility = ["//visibility:public"],
-    deps = [],
+    deps = [
+        "//999-annotations/src/main/java/io/harness/annotations/dev:module",
+        "//:lombok",
+        "@maven//:com_amazonaws_aws_java_sdk_core",
+        "@maven//:com_fasterxml_jackson_core_jackson_annotations",
+        "@maven//:io_swagger_core_v3_swagger_annotations",
+    ],
 )
 
 run_analysis_per_module()

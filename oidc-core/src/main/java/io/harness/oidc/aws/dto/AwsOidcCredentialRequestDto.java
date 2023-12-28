@@ -7,11 +7,12 @@
 
 package io.harness.oidc.aws.dto;
 
+import io.harness.aws.retrypolicy.AwsSdkRetryPolicySpec;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,6 +28,6 @@ import lombok.NoArgsConstructor;
 public class AwsOidcCredentialRequestDto {
   @Schema(description = "The OIDC ID Token") private String oidcIdToken;
   @NotEmpty @Schema(description = "IAM Role ARN") private String iamRoleArn;
-  @Schema(description = "Retry policy for aws sdk calls") private AwsSdkCallRetryPolicy retryPolicy;
-  @NotNull private AwsOidcTokenRequestDto awsOidcTokenRequestDto;
+  @Schema(description = "Retry policy for aws sdk calls") private AwsSdkRetryPolicySpec retryPolicy;
+  private AwsOidcTokenRequestDto awsOidcTokenRequestDto;
 }

@@ -132,7 +132,7 @@ public class NgOidcAccessTokenResource {
   }
 
   @POST
-  @Path("aws/iam-role-credential")
+  @Path("aws/webidentity-session-access")
   @Consumes({"application/json", "application/yaml"})
   @ApiOperation(
       value = "Generate an OIDC IAM Role Credential for AWS", nickname = "generateOidcIAMRoleCredentialForAws")

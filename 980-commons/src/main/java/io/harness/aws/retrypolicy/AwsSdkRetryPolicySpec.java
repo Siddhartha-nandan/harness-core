@@ -5,7 +5,7 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.oidc.aws.dto;
+package io.harness.aws.retrypolicy;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.Builder;
@@ -13,9 +13,9 @@ import lombok.Data;
 
 @Data
 @Builder
-public class AwsSdkCallRetryPolicy {
+public class AwsSdkRetryPolicySpec {
   private String backOffStrategyType;
   @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "backOffStrategyType",
       include = JsonTypeInfo.As.EXTERNAL_PROPERTY, visible = true)
-  private AwsSdkBackOffStrategy backOffStrategy;
+  private AwsSdkBackoffStrategySpec backOffStrategy;
 }

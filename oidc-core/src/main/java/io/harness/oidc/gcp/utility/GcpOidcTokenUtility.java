@@ -16,8 +16,8 @@ import static io.harness.oidc.gcp.constants.GcpOidcIdTokenConstants.PROVIDER_ID;
 import static io.harness.oidc.gcp.constants.GcpOidcIdTokenConstants.SERVICE_ACCOUNT_EMAIL;
 import static io.harness.oidc.gcp.constants.GcpOidcIdTokenConstants.WORKLOAD_POOL_ID;
 import static io.harness.oidc.idtoken.OidcIdTokenConstants.ACCOUNT_ID;
-import static io.harness.oidc.idtoken.OidcIdTokenUtility.capturePlaceholderContents;
 import static io.harness.oidc.idtoken.OidcIdTokenUtility.generateOidcIdToken;
+import static io.harness.oidc.idtoken.OidcIdTokenUtility.updateClaim;
 
 import static java.lang.System.currentTimeMillis;
 
@@ -38,7 +38,6 @@ import io.harness.oidc.rsa.OidcRsaKeyService;
 import com.google.inject.Inject;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -286,28 +285,10 @@ public class GcpOidcTokenUtility {
    * @return fully resolved final claim
    */
   private String updateBaseClaims(String claim, GcpOidcTokenRequestDTO gcpOidcTokenRequestDTO) {
-    List<String> placeHolders = capturePlaceholderContents(claim);
-    for (String placeholder : placeHolders) {
-      String replaceValue = "";
-      switch (placeholder) {
-        case ACCOUNT_ID:
-          replaceValue = gcpOidcTokenRequestDTO.getAccountId();
-          break;
-        case WORKLOAD_POOL_ID:
-          replaceValue = gcpOidcTokenRequestDTO.getWorkloadPoolId();
-          break;
-        case PROVIDER_ID:
-          replaceValue = gcpOidcTokenRequestDTO.getProviderId();
-          break;
-        case GCP_PROJECT_ID:
-          replaceValue = gcpOidcTokenRequestDTO.getGcpProjectId();
-          break;
-        case SERVICE_ACCOUNT_EMAIL:
-          replaceValue = gcpOidcTokenRequestDTO.getServiceAccountEmail();
-      }
-      // Include {} in the captured placeholder while replacing values.
-      claim = claim.replace("{" + placeholder + "}", replaceValue);
-    }
-    return claim;
+    claim = updateClaim(claim, ACCOUNT_ID, gcpOidcTokenRequestDTO.getAccountId());
+    claim = updateClaim(claim, WORKLOAD_POOL_ID, gcpOidcTokenRequestDTO.getAccountId());
+    claim = updateClaim(claim, PROVIDER_ID, gcpOidcTokenRequestDTO.getAccountId());
+    claim = updateClaim(claim, GCP_PROJECT_ID, gcpOidcTokenRequestDTO.getAccountId());
+    return updateClaim(claim, SERVICE_ACCOUNT_EMAIL, gcpOidcTokenRequestDTO.getAccountId());
   }
 }

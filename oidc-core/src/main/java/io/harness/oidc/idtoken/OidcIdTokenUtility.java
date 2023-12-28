@@ -100,6 +100,17 @@ public class OidcIdTokenUtility {
     return capturedValues;
   }
 
+  public static String updateClaim(String claim, String replacement, String replaceValue) {
+    List<String> placeHolders = capturePlaceholderContents(claim);
+    for (String placeholder : placeHolders) {
+      if (placeholder.equals(replacement)) {
+        // Include {} in the captured placeholder while replacing values.
+        claim = claim.replace("{" + placeholder + "}", replaceValue);
+      }
+    }
+    return claim;
+  }
+
   /**
    * Function to load private key from PEM.
    * @param privateKeyPEM private key in PEM format

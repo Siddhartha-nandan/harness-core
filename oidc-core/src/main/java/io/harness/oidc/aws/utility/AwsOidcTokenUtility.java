@@ -9,8 +9,8 @@ package io.harness.oidc.aws.utility;
 
 import static io.harness.oidc.aws.constants.AwsOidcConstants.CONVERSION_FACTOR_FOR_MS;
 import static io.harness.oidc.idtoken.OidcIdTokenConstants.ACCOUNT_ID;
-import static io.harness.oidc.idtoken.OidcIdTokenUtility.capturePlaceholderContents;
 import static io.harness.oidc.idtoken.OidcIdTokenUtility.generateOidcIdToken;
+import static io.harness.oidc.idtoken.OidcIdTokenUtility.updateClaim;
 
 import static java.lang.System.currentTimeMillis;
 
@@ -23,7 +23,6 @@ import io.harness.oidc.jwks.OidcJwksUtility;
 import io.harness.oidc.rsa.OidcRsaKeyService;
 
 import com.google.inject.Inject;
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -86,8 +85,8 @@ public class AwsOidcTokenUtility {
     String iss = updateBaseClaims(baseOidcIdTokenPayloadStructure.getIss(), awsOidcTokenRequestDto);
 
     Long iat = currentTimeMillis() / CONVERSION_FACTOR_FOR_MS;
-    Long expiryDurattion = baseOidcIdTokenPayloadStructure.getExp();
-    Long exp = iat + expiryDurattion;
+    Long expiryDuration = baseOidcIdTokenPayloadStructure.getExp();
+    Long exp = iat + expiryDuration;
 
     String accountId = null;
     if (!StringUtils.isEmpty(baseOidcIdTokenPayloadStructure.getAccountId())) {
@@ -105,17 +104,6 @@ public class AwsOidcTokenUtility {
   }
 
   private String updateBaseClaims(String claim, AwsOidcTokenRequestDto awsOidcTokenRequestDto) {
-    List<String> placeHolders = capturePlaceholderContents(claim);
-    for (String placeholder : placeHolders) {
-      String replaceValue = "";
-      switch (placeholder) {
-        case ACCOUNT_ID:
-          replaceValue = awsOidcTokenRequestDto.getAccountId();
-          break;
-      }
-      // Include {} in the captured placeholder while replacing values.
-      claim = claim.replace("{" + placeholder + "}", replaceValue);
-    }
-    return claim;
+    return updateClaim(claim, ACCOUNT_ID, awsOidcTokenRequestDto.getAccountId());
   }
 }
