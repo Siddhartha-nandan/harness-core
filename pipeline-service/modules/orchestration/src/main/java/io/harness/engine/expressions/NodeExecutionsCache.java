@@ -66,14 +66,8 @@ public class NodeExecutionsCache {
       return map.get(nodeExecutionId);
     }
 
-    NodeExecution nodeExecution;
-    if (AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_USE_AMBIANCE_IN_EXPRESSION_ENGINE.name())) {
-      nodeExecution = nodeExecutionService.getWithFieldsIncluded(
-          nodeExecutionId, NodeProjectionUtils.fieldsForExpressionEngineWithAmbiance);
-    } else {
-      nodeExecution =
-          nodeExecutionService.getWithFieldsIncluded(nodeExecutionId, NodeProjectionUtils.fieldsForExpressionEngine);
-    }
+    NodeExecution nodeExecution =
+        nodeExecutionService.getWithFieldsIncluded(nodeExecutionId, NodeProjectionUtils.fieldsForExpressionEngine);
     map.put(nodeExecutionId, nodeExecution);
     return nodeExecution;
   }
@@ -100,12 +94,7 @@ public class NodeExecutionsCache {
     }
 
     List<NodeExecution> childExecutions = new LinkedList<>();
-    Set<String> fieldsForExpressionEngine;
-    if (AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_USE_AMBIANCE_IN_EXPRESSION_ENGINE.name())) {
-      fieldsForExpressionEngine = NodeProjectionUtils.fieldsForExpressionEngineWithAmbiance;
-    } else {
-      fieldsForExpressionEngine = NodeProjectionUtils.fieldsForExpressionEngine;
-    }
+    Set<String> fieldsForExpressionEngine = NodeProjectionUtils.fieldsForExpressionEngine;
     try (CloseableIterator<NodeExecution> iterator = nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              ambiance.getPlanExecutionId(), parentId, fieldsForExpressionEngine)) {
       while (iterator.hasNext()) {

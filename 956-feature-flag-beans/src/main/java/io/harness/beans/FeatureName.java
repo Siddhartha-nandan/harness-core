@@ -875,9 +875,6 @@ public enum FeatureName {
   CDS_K8S_TRAFFIC_ROUTING_NG(
       "Providing Traffic Routing functionality for K8s - BG, Canary and TrafficRouting steps", HarnessTeam.CDP),
 
-  CDS_USE_AMBIANCE_IN_EXPRESSION_ENGINE(
-      "Uses ambiance in expression engine. Should be enabled only if we see any issues", PIPELINE),
-
   CDS_PRESERVE_WINRM_WORKING_DIR_FOR_COMMAND_UNITS("Use the correct working directory for WinRm deployments", CDC),
   CDS_K8S_APPLY_MANIFEST_WITHOUT_SERVICE_NG(
       "Allows users to apply manifests from sources that are not related to the service", HarnessTeam.CDP),
