@@ -144,8 +144,8 @@ public class NgOidcAccessTokenResource {
         ApiResponse(responseCode = "default", description = "Generate an OIDC IAM Role Credential for AWS")
       })
   public ResponseDTO<AwsOidcCredentialResponseDto>
-  getOidcIamRoleCredentialForAws(
-      @RequestBody(required = true) @Valid AwsOidcCredentialRequestDto awsOidcCredentialRequestDto) {
+  getOidcIamRoleCredentialForAws(@RequestBody(required = true, description = "Details of AWS WebIdentity credential")
+      @Valid AwsOidcCredentialRequestDto awsOidcCredentialRequestDto) {
     // Check if the ID Token is empty.
     String oidcToken = awsOidcCredentialRequestDto.getOidcIdToken();
     if (StringUtils.isEmpty(oidcToken)) {

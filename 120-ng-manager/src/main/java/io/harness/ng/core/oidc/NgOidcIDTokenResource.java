@@ -102,7 +102,8 @@ public class NgOidcIDTokenResource {
         ApiResponse(responseCode = "default", description = "Returns OIDC ID Token as a JWT")
       })
   public ResponseDTO<String>
-  getOidcIdTokenForAws(@RequestBody(required = true) @Valid AwsOidcTokenRequestDto awsOidcTokenRequestDto) {
+  getOidcIdTokenForAws(@RequestBody(required = true,
+      description = "contains oidc fields for aws") @Valid AwsOidcTokenRequestDto awsOidcTokenRequestDto) {
     String idToken = awsOidcTokenUtility.generateAwsOidcIdToken(awsOidcTokenRequestDto);
     return ResponseDTO.newResponse(idToken);
   }
