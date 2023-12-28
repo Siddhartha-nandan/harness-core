@@ -700,7 +700,7 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
     return servicesYamlMetadata;
   }
 
-  public ServiceV2YamlMetadata createServiceV2YamlMetadata(ServiceEntity serviceEntity) {
+  private ServiceV2YamlMetadata createServiceV2YamlMetadata(ServiceEntity serviceEntity) {
     if (featureFlagService.isEnabled(
             serviceEntity.getAccountId(), FeatureName.CDS_ARTIFACTORY_REPOSITORY_URL_MANDATORY)) {
       serviceEntity = updateArtifactoryRegistryUrlIfEmpty(serviceEntity, serviceEntity.getAccountId(),
