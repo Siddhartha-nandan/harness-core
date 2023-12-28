@@ -347,6 +347,10 @@ public class TriggerExecutionHelper {
             sourceEventId = parsedPayload.getRelease().getRelease().getTag();
             sourceEventLink = parsedPayload.getRelease().getRelease().getLink();
           }
+        } else if (parsedPayload.hasBranch()) {
+          sender = parsedPayload.getBranch().getSender();
+        } else if (parsedPayload.hasTag()) {
+          sender = parsedPayload.getTag().getSender();
         }
         if (sender != null) {
           if (triggerPayload.getSourceType() == SourceType.HARNESS_REPO) {

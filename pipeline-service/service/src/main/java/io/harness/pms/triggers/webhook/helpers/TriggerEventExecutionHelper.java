@@ -87,6 +87,7 @@ import io.harness.pms.contracts.triggers.Type;
 import io.harness.pms.triggers.TriggerExecutionHelper;
 import io.harness.pms.utils.CompletableFutures;
 import io.harness.polling.contracts.PollingResponse;
+import io.harness.product.ci.scm.proto.Action;
 import io.harness.product.ci.scm.proto.ParseWebhookResponse;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.repositories.spring.NGTriggerRepository;
@@ -281,6 +282,12 @@ public class TriggerEventExecutionHelper {
       if (parseWebhookResponse.hasRelease()) {
         builder.setParsedPayload(ParsedPayload.newBuilder().setRelease(parseWebhookResponse.getRelease()).build())
             .build();
+      } else if (parseWebhookResponse.hasBranch()
+          && Action.DELETE.equals(parseWebhookResponse.getBranch().getAction())) {
+        builder.setParsedPayload(ParsedPayload.newBuilder().setBranch(parseWebhookResponse.getBranch()).build())
+            .build();
+      } else if (parseWebhookResponse.hasTag() && Action.DELETE.equals(parseWebhookResponse.getTag().getAction())) {
+        builder.setParsedPayload(ParsedPayload.newBuilder().setTag(parseWebhookResponse.getTag()).build()).build();
       } else if (parseWebhookResponse.hasPr()) {
         builder.setParsedPayload(ParsedPayload.newBuilder().setPr(parseWebhookResponse.getPr()).build()).build();
       } else {

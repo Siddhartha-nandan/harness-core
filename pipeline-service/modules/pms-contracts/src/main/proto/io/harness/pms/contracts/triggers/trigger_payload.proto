@@ -39,6 +39,8 @@ message ParsedPayload {
     product.ci.scm.proto.PullRequestHook pr = 1;
     product.ci.scm.proto.PushHook push = 2;
     product.ci.scm.proto.ReleaseHook release = 3;
+    product.ci.scm.proto.BranchHook branch = 4;
+    product.ci.scm.proto.TagHook tag = 5;
   }
 }
 

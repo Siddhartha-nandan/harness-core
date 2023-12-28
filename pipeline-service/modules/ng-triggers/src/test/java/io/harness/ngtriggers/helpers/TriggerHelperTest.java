@@ -15,6 +15,7 @@ import static io.harness.ngtriggers.Constants.ARTIFACT_TYPE;
 import static io.harness.ngtriggers.Constants.BRANCH;
 import static io.harness.ngtriggers.Constants.COMMIT_SHA;
 import static io.harness.ngtriggers.Constants.CUSTOM_TYPE;
+import static io.harness.ngtriggers.Constants.DELETE_EVENT_TYPE;
 import static io.harness.ngtriggers.Constants.EVENT;
 import static io.harness.ngtriggers.Constants.GIT_USER;
 import static io.harness.ngtriggers.Constants.MANIFEST_EXPR;
@@ -38,6 +39,7 @@ import static io.harness.ngtriggers.beans.source.WebhookTriggerType.GITHUB;
 import static io.harness.pms.contracts.triggers.SourceType.GITHUB_REPO;
 import static io.harness.pms.contracts.triggers.Type.SCHEDULED;
 import static io.harness.rule.OwnerRule.HARSH;
+import static io.harness.rule.OwnerRule.MEET;
 import static io.harness.rule.OwnerRule.SAHITHI;
 import static io.harness.rule.OwnerRule.VINICIUS;
 
@@ -51,12 +53,15 @@ import io.harness.pms.contracts.triggers.ManifestData;
 import io.harness.pms.contracts.triggers.ParsedPayload;
 import io.harness.pms.contracts.triggers.TriggerPayload;
 import io.harness.product.ci.scm.proto.Action;
+import io.harness.product.ci.scm.proto.BranchHook;
 import io.harness.product.ci.scm.proto.PullRequest;
 import io.harness.product.ci.scm.proto.PullRequestHook;
 import io.harness.product.ci.scm.proto.PushHook;
+import io.harness.product.ci.scm.proto.Reference;
 import io.harness.product.ci.scm.proto.Release;
 import io.harness.product.ci.scm.proto.ReleaseHook;
 import io.harness.product.ci.scm.proto.Repository;
+import io.harness.product.ci.scm.proto.TagHook;
 import io.harness.product.ci.scm.proto.User;
 import io.harness.rule.Owner;
 
@@ -116,6 +121,46 @@ public class TriggerHelperTest extends CategoryTest {
     assertThat(jsonObject.get(TARGET_BRANCH)).isEqualTo("branch");
     assertThat(jsonObject.get(EVENT)).isEqualTo(PUSH);
     assertThat(jsonObject.get(COMMIT_SHA)).isEqualTo("sha");
+    assertThat(jsonObject.get(TYPE)).isEqualTo(WEBHOOK_TYPE);
+    assertThat(jsonObject.get(REPO_URL)).isEqualTo("repo_link");
+    assertThat(jsonObject.get(GIT_USER)).isEqualTo("user");
+    assertThat(jsonObject.get(SOURCE_TYPE)).isEqualTo(GITHUB.getValue());
+  }
+
+  @Test
+  @Owner(developers = MEET)
+  @Category(UnitTests.class)
+  public void testBuildJsonObjectFromAmbianceWebhookDelete() {
+    User sender = User.newBuilder().setLogin("user").build();
+    Repository repo = Repository.newBuilder().setLink("repo_link").build();
+    BranchHook branch = BranchHook.newBuilder()
+                            .setRepo(repo)
+                            .setRef(Reference.newBuilder().setName("refs/heads/branch").build())
+                            .setSender(sender)
+                            .build();
+    ParsedPayload branchParsedPayload = ParsedPayload.newBuilder().setBranch(branch).build();
+    TriggerPayload branchPayload =
+        TriggerPayload.newBuilder().setParsedPayload(branchParsedPayload).setSourceType(GITHUB_REPO).build();
+    Map<String, Object> jsonObject = TriggerHelper.buildJsonObjectFromAmbiance(branchPayload);
+    assertThat(jsonObject.get(BRANCH)).isEqualTo("branch");
+    assertThat(jsonObject.get(EVENT)).isEqualTo(DELETE_EVENT_TYPE);
+    assertThat(jsonObject.get(TYPE)).isEqualTo(WEBHOOK_TYPE);
+    assertThat(jsonObject.get(REPO_URL)).isEqualTo("repo_link");
+    assertThat(jsonObject.get(GIT_USER)).isEqualTo("user");
+    assertThat(jsonObject.get(SOURCE_TYPE)).isEqualTo(GITHUB.getValue());
+    jsonObject.clear();
+
+    TagHook tag = TagHook.newBuilder()
+                      .setRepo(repo)
+                      .setRef(Reference.newBuilder().setName("refs/tags/tag").build())
+                      .setSender(sender)
+                      .build();
+    ParsedPayload tagParsedPayload = ParsedPayload.newBuilder().setTag(tag).build();
+    TriggerPayload tagPayload =
+        TriggerPayload.newBuilder().setParsedPayload(tagParsedPayload).setSourceType(GITHUB_REPO).build();
+    jsonObject = TriggerHelper.buildJsonObjectFromAmbiance(tagPayload);
+    assertThat(jsonObject.get(TAG)).isEqualTo("tag");
+    assertThat(jsonObject.get(EVENT)).isEqualTo(DELETE_EVENT_TYPE);
     assertThat(jsonObject.get(TYPE)).isEqualTo(WEBHOOK_TYPE);
     assertThat(jsonObject.get(REPO_URL)).isEqualTo("repo_link");
     assertThat(jsonObject.get(GIT_USER)).isEqualTo("user");

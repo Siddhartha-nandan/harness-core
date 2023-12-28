@@ -27,6 +27,7 @@ import io.harness.pms.contracts.triggers.ArtifactData;
 import io.harness.pms.contracts.triggers.ParsedPayload;
 import io.harness.pms.contracts.triggers.TriggerPayload;
 import io.harness.pms.plan.execution.SetupAbstractionKeys;
+import io.harness.product.ci.scm.proto.Action;
 import io.harness.product.ci.scm.proto.ParseWebhookResponse;
 
 import java.util.List;
@@ -51,6 +52,12 @@ public class TriggerExpressionEvaluator extends EngineExpressionEvaluator {
       } else if (parseWebhookResponse.hasRelease()) {
         builder.setParsedPayload(ParsedPayload.newBuilder().setRelease(parseWebhookResponse.getRelease()).build())
             .build();
+      } else if (parseWebhookResponse.hasBranch()
+          && Action.DELETE.equals(parseWebhookResponse.getBranch().getAction())) {
+        builder.setParsedPayload(ParsedPayload.newBuilder().setBranch(parseWebhookResponse.getBranch()).build())
+            .build();
+      } else if (parseWebhookResponse.hasTag() && Action.DELETE.equals(parseWebhookResponse.getTag().getAction())) {
+        builder.setParsedPayload(ParsedPayload.newBuilder().setTag(parseWebhookResponse.getTag()).build()).build();
       } else {
         builder.setParsedPayload(ParsedPayload.newBuilder().setPush(parseWebhookResponse.getPush()).build()).build();
       }

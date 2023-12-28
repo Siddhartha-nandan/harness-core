@@ -17,6 +17,7 @@ import static io.harness.ngtriggers.Constants.BRANCH;
 import static io.harness.ngtriggers.Constants.COMMIT_SHA;
 import static io.harness.ngtriggers.Constants.CONNECTOR_REF;
 import static io.harness.ngtriggers.Constants.CUSTOM_TYPE;
+import static io.harness.ngtriggers.Constants.DELETE_EVENT_TYPE;
 import static io.harness.ngtriggers.Constants.EVENT;
 import static io.harness.ngtriggers.Constants.GIT_USER;
 import static io.harness.ngtriggers.Constants.HEADER;
@@ -127,6 +128,20 @@ public class TriggerHelper {
         jsonObject.put(REPO_URL, parsedPayload.getRelease().getRepo().getLink());
         jsonObject.put(GIT_USER, parsedPayload.getRelease().getSender().getLogin());
         jsonObject.put(TAG, parsedPayload.getRelease().getRelease().getTag());
+        break;
+      case BRANCH:
+        jsonObject.put(BRANCH, parsedPayload.getBranch().getRef().getName().replaceFirst("^refs/heads/", ""));
+        jsonObject.put(EVENT, DELETE_EVENT_TYPE);
+        jsonObject.put(TYPE, WEBHOOK_TYPE);
+        jsonObject.put(REPO_URL, parsedPayload.getBranch().getRepo().getLink());
+        jsonObject.put(GIT_USER, parsedPayload.getBranch().getSender().getLogin());
+        break;
+      case TAG:
+        jsonObject.put(EVENT, DELETE_EVENT_TYPE);
+        jsonObject.put(TYPE, WEBHOOK_TYPE);
+        jsonObject.put(REPO_URL, parsedPayload.getTag().getRepo().getLink());
+        jsonObject.put(GIT_USER, parsedPayload.getTag().getSender().getLogin());
+        jsonObject.put(TAG, parsedPayload.getTag().getRef().getName().replaceFirst("refs/tags/", ""));
         break;
       default:
         if (SCHEDULED == triggerPayload.getType()) {
