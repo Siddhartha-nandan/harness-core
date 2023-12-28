@@ -32,6 +32,7 @@ import com.google.common.io.Resources;
 import java.io.IOException;
 import java.net.URL;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.Before;
@@ -90,7 +91,7 @@ public class SMITrafficRoutingResourceCreatorTest extends CategoryTest {
     SMITrafficRoutingResourceCreator smiTrafficRoutingResourceCreator =
         new SMITrafficRoutingResourceCreator(k8sTrafficRoutingConfig);
     List<KubernetesResource> trafficRoutingManifests = smiTrafficRoutingResourceCreator.createTrafficRoutingResources(
-        namespace, releaseName, null, null, apiVersions, logCallback);
+        namespace, releaseName, apiVersions, logCallback);
 
     assertThat(trafficRoutingManifests.size()).isEqualTo(1);
     assertEqualYaml(trafficRoutingManifests.get(0), path);
@@ -111,8 +112,7 @@ public class SMITrafficRoutingResourceCreatorTest extends CategoryTest {
 
     SMITrafficRoutingResourceCreator smiTrafficRoutingResourceCreator =
         new SMITrafficRoutingResourceCreator(k8sTrafficRoutingConfig);
-    smiTrafficRoutingResourceCreator.createTrafficRoutingResources(
-        namespace, releaseName, null, null, apiVersions, logCallback);
+    smiTrafficRoutingResourceCreator.createTrafficRoutingResources(namespace, releaseName, apiVersions, logCallback);
   }
 
   @Test
@@ -196,6 +196,41 @@ public class SMITrafficRoutingResourceCreatorTest extends CategoryTest {
     testK8sResourceCreation(k8sTrafficRoutingConfig, path1, path2, path3);
   }
 
+  @Test
+  @Owner(developers = BUHA)
+  @Category(UnitTests.class)
+  public void testGetMainResourceKind() {
+    assertThat(new SMITrafficRoutingResourceCreator().getMainResourceKind()).isEqualTo("TrafficSplit");
+  }
+
+  @Test
+  @Owner(developers = BUHA)
+  @Category(UnitTests.class)
+  public void testGetMainResourceKindPlural() {
+    assertThat(new SMITrafficRoutingResourceCreator().getMainResourceKindPlural()).isEqualTo("trafficsplits");
+  }
+
+  @Test
+  @Owner(developers = BUHA)
+  @Category(UnitTests.class)
+  public void testGetSwapTrafficRoutingPatch() {
+    String expectedPatch =
+        "[ { \"op\": \"replace\", \"path\": \"/spec/backends\", \"value\": [{\"service\":\"service\",\"weight\":100},{\"service\":\"service-stage\",\"weight\":0}] }]";
+
+    Optional<String> optionalPatch =
+        new SMITrafficRoutingResourceCreator().getSwapTrafficRoutingPatch("service", "service-stage");
+    assertThat(optionalPatch).isPresent();
+    assertThat(optionalPatch.get()).contains(expectedPatch);
+  }
+
+  @Test
+  @Owner(developers = BUHA)
+  @Category(UnitTests.class)
+  public void testGetSwapTrafficRoutingPatchIsEmpty() {
+    assertThat(new SMITrafficRoutingResourceCreator().getSwapTrafficRoutingPatch("stable", null)).isNotPresent();
+    assertThat(new SMITrafficRoutingResourceCreator().getSwapTrafficRoutingPatch(null, "stage")).isNotPresent();
+    assertThat(new SMITrafficRoutingResourceCreator().getSwapTrafficRoutingPatch(null, null)).isNotPresent();
+  }
   private void testK8sResourceCreation(K8sTrafficRoutingConfig k8sTrafficRoutingConfig, String... paths)
       throws IOException {
     SMITrafficRoutingResourceCreator smiTrafficRoutingResourceCreator =

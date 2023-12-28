@@ -34,6 +34,7 @@ import com.google.common.io.Resources;
 import java.io.IOException;
 import java.net.URL;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
@@ -180,8 +181,7 @@ public class IstioTrafficRoutingResourceCreatorTest extends CategoryTest {
 
     IstioTrafficRoutingResourceCreator istioTrafficRoutingResourceCreator =
         new IstioTrafficRoutingResourceCreator(istioProviderConfig);
-    istioTrafficRoutingResourceCreator.createTrafficRoutingResources(
-        namespace, releaseName, null, null, apiVersions, logCallback);
+    istioTrafficRoutingResourceCreator.createTrafficRoutingResources(namespace, releaseName, apiVersions, logCallback);
   }
 
   @Test
@@ -203,7 +203,7 @@ public class IstioTrafficRoutingResourceCreatorTest extends CategoryTest {
         new IstioTrafficRoutingResourceCreator(istioProviderConfig);
 
     List<KubernetesResource> trafficRoutingManifests = istioTrafficRoutingResourceCreator.createTrafficRoutingResources(
-        namespace, releaseName, null, null, apiVersions, logCallback);
+        namespace, releaseName, apiVersions, logCallback);
 
     assertThat(trafficRoutingManifests.size()).isEqualTo(1);
     assertEqualYaml(trafficRoutingManifests.get(0), path);
@@ -255,6 +255,42 @@ public class IstioTrafficRoutingResourceCreatorTest extends CategoryTest {
             .build();
 
     testK8sResourceCreation(istioProviderConfig, null);
+  }
+
+  @Test
+  @Owner(developers = BUHA)
+  @Category(UnitTests.class)
+  public void testGetMainResourceKind() {
+    assertThat(new IstioTrafficRoutingResourceCreator().getMainResourceKind()).isEqualTo("VirtualService");
+  }
+
+  @Test
+  @Owner(developers = BUHA)
+  @Category(UnitTests.class)
+  public void testGetMainResourceKindPlural() {
+    assertThat(new IstioTrafficRoutingResourceCreator().getMainResourceKindPlural()).isEqualTo("virtualservices");
+  }
+
+  @Test
+  @Owner(developers = BUHA)
+  @Category(UnitTests.class)
+  public void testGetSwapTrafficRoutingPatch() {
+    String expectedPatch =
+        "[ { \"op\": \"replace\", \"path\": \"/spec/http\", \"value\": [{\"route\":[{\"destination\":{\"host\":\"service\"},\"weight\":100},{\"destination\":{\"host\":\"service-stage\"},\"weight\":0}]}]}]";
+
+    Optional<String> optionalPatch =
+        new IstioTrafficRoutingResourceCreator().getSwapTrafficRoutingPatch("service", "service-stage");
+    assertThat(optionalPatch).isPresent();
+    assertThat(optionalPatch.get()).contains(expectedPatch);
+  }
+
+  @Test
+  @Owner(developers = BUHA)
+  @Category(UnitTests.class)
+  public void testGetSwapTrafficRoutingPatchIsEmpty() {
+    assertThat(new IstioTrafficRoutingResourceCreator().getSwapTrafficRoutingPatch(null, "stage")).isNotPresent();
+    assertThat(new IstioTrafficRoutingResourceCreator().getSwapTrafficRoutingPatch("stable", null)).isNotPresent();
+    assertThat(new IstioTrafficRoutingResourceCreator().getSwapTrafficRoutingPatch(null, null)).isNotPresent();
   }
 
   private void testK8sResourceCreation(K8sTrafficRoutingConfig istioProviderConfig, String path) throws IOException {

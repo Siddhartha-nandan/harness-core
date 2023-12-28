@@ -8,6 +8,7 @@
 package io.harness.delegate.k8s.trafficrouting;
 
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.delegate.task.k8s.trafficrouting.RouteType.HTTP;
 
 import static java.lang.String.format;
@@ -34,21 +35,30 @@ import io.harness.k8s.model.istio.VirtualService;
 import io.harness.k8s.model.istio.VirtualServiceDetails;
 import io.harness.k8s.model.istio.VirtualServiceSpec;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kubernetes.client.util.Yaml;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 
+@NoArgsConstructor
 @Slf4j
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 public class IstioTrafficRoutingResourceCreator extends TrafficRoutingResourceCreator {
+  public static final String PLURAL = "virtualservices";
+
   private static final String VS_SUFFIX = "-virtual-service";
   // toDo this needs to be revisited, should not be hardcoded
   private static final String TRAFFIC_ROUTING_STEP_VIRTUAL_SERVICE = "harness-traffic-routing-virtual-service";
   private static final String NETWORKING = "networking";
+  private static final String PATCH_FORMAT = "[ { \"op\": \"replace\", \"path\": \"/spec/http\", \"value\": %s}]";
   private static final Map<String, List<String>> SUPPORTED_API_MAP =
       Map.of(NETWORKING, List.of("networking.istio.io/v1alpha3", "networking.istio.io/v1beta1"));
 
@@ -76,6 +86,43 @@ public class IstioTrafficRoutingResourceCreator extends TrafficRoutingResourceCr
   @Override
   protected Map<String, List<String>> getProviderVersionMap() {
     return SUPPORTED_API_MAP;
+  }
+
+  @Override
+  protected String getMainResourceKind() {
+    return "VirtualService";
+  }
+
+  @Override
+  protected String getMainResourceKindPlural() {
+    return PLURAL;
+  }
+
+  @Override
+  public Optional<String> getSwapTrafficRoutingPatch(String stable, String stage) {
+    if (isNotEmpty(stable) && isNotEmpty(stage)) {
+      List<VirtualServiceDetails> virtualServiceDetails =
+          List.of(VirtualServiceDetails.builder()
+                      .route(List.of(HttpRouteDestination.builder()
+                                         .destination(Destination.builder().host(stable).build())
+                                         .weight(100)
+                                         .build(),
+                          HttpRouteDestination.builder()
+                              .destination(Destination.builder().host(stage).build())
+                              .weight(0)
+                              .build()))
+                      .build());
+
+      try {
+        return Optional.of(format(PATCH_FORMAT,
+            new ObjectMapper()
+                .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+                .writeValueAsString(virtualServiceDetails)));
+      } catch (JsonProcessingException e) {
+        log.warn("Failed to Deserialize List of VirtualServiceDetails", e);
+      }
+    }
+    return Optional.empty();
   }
 
   private VirtualServiceSpec getVirtualServiceSpec(String stableName, String stageName) {
