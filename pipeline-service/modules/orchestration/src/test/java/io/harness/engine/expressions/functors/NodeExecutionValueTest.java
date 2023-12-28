@@ -49,6 +49,7 @@ import com.google.common.collect.Sets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.apache.commons.jexl3.JexlBuilder;
 import org.apache.commons.jexl3.JexlEngine;
 import org.apache.commons.logging.impl.NoOpLog;
@@ -60,7 +61,6 @@ import org.junit.experimental.categories.Category;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 public class NodeExecutionValueTest extends OrchestrationTestBase {
@@ -284,42 +284,36 @@ public class NodeExecutionValueTest extends OrchestrationTestBase {
         .thenReturn(nodeExecution8);
 
     List<NodeExecution> nodeExecutionsList1 = Collections.singletonList(nodeExecution1);
-    CloseableIterator<NodeExecution> iterator1 =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionsList1.iterator());
+    Stream<NodeExecution> iterator1 = OrchestrationTestHelper.createStream(nodeExecutionsList1.iterator());
     when(nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              planExecutionId, null, NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(iterator1);
 
     List<NodeExecution> nodeExecutionList2 = asList(nodeExecution2, nodeExecution3);
-    CloseableIterator<NodeExecution> iterator2 =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList2.iterator());
+    Stream<NodeExecution> iterator2 = OrchestrationTestHelper.createStream(nodeExecutionList2.iterator());
     when(nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              planExecutionId, nodeExecution1.getUuid(), NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(iterator2);
 
     List<NodeExecution> nodeExecutionList3 = asList(nodeExecution4, nodeExecution5);
-    CloseableIterator<NodeExecution> iterator3 =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList3.iterator());
+    Stream<NodeExecution> iterator3 = OrchestrationTestHelper.createStream(nodeExecutionList3.iterator());
     when(nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              planExecutionId, nodeExecution3.getUuid(), NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(iterator3);
 
     List<NodeExecution> nodeExecutionList4 = Collections.singletonList(nodeExecution6);
-    CloseableIterator<NodeExecution> iterator4 =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList4.iterator());
+    Stream<NodeExecution> iterator4 = OrchestrationTestHelper.createStream(nodeExecutionList4.iterator());
     when(nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              planExecutionId, nodeExecution4.getUuid(), NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(iterator4);
 
     List<NodeExecution> nodeExecutionList5 = asList(nodeExecution7, nodeExecution8);
-    CloseableIterator<NodeExecution> iterator5 =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList5.iterator());
+    Stream<NodeExecution> iterator5 = OrchestrationTestHelper.createStream(nodeExecutionList5.iterator());
     when(nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              planExecutionId, nodeExecution6.getUuid(), NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(iterator5);
 
-    CloseableIterator<NodeExecution> emptyIterator =
-        OrchestrationTestHelper.createCloseableIterator(Collections.emptyListIterator());
+    Stream<NodeExecution> emptyIterator = OrchestrationTestHelper.createStream(Collections.emptyListIterator());
     when(nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              planExecutionId, nodeExecution2.getUuid(), NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(emptyIterator);

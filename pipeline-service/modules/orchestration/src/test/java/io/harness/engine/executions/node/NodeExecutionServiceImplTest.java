@@ -80,6 +80,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.joor.Reflect;
 import org.junit.Before;
 import org.junit.Test;
@@ -94,7 +95,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
@@ -242,8 +242,7 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
 
     List<NodeExecution> nodeExecutions = Arrays.asList(
         pipelineNode, stageNode, forkNode, child1, child2, child3, strategyNode, strategyChildNode, strategyParent);
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutions.iterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(nodeExecutions.iterator());
     doReturn(iterator).when(service).fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(any(), any(), any());
 
     List<NodeExecution> stageChildList =
@@ -255,7 +254,7 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
         .containsExactlyInAnyOrder(stageNode, forkNode, child1, child2, child3, strategyNode, strategyParent);
 
     // Iterator cannot be reused again, thus initialise again
-    iterator = OrchestrationTestHelper.createCloseableIterator(nodeExecutions.iterator());
+    iterator = OrchestrationTestHelper.createStream(nodeExecutions.iterator());
     doReturn(iterator).when(service).fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(any(), any(), any());
     List<NodeExecution> stageChildListWithoutParent =
         service.findAllChildrenWithStatusInAndWithoutOldRetries(ambiance.getPlanExecutionId(), stageNode.getUuid(),
@@ -266,7 +265,7 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
         .containsExactlyInAnyOrder(forkNode, child1, child2, child3, strategyNode, strategyParent);
 
     // Iterator cannot be reused again, thus initialise again
-    iterator = OrchestrationTestHelper.createCloseableIterator(nodeExecutions.iterator());
+    iterator = OrchestrationTestHelper.createStream(nodeExecutions.iterator());
     doReturn(iterator).when(service).fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(any(), any(), any());
     List<NodeExecution> forkChildList =
         service.findAllChildrenWithStatusInAndWithoutOldRetries(ambiance.getPlanExecutionId(), forkNode.getUuid(),
@@ -275,7 +274,7 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
     assertThat(forkChildList).hasSize(4);
     assertThat(forkChildList).containsExactlyInAnyOrder(forkNode, child1, child2, child3);
 
-    iterator = OrchestrationTestHelper.createCloseableIterator(nodeExecutions.iterator());
+    iterator = OrchestrationTestHelper.createStream(nodeExecutions.iterator());
     doReturn(iterator).when(service).fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(any(), any(), any());
     List<NodeExecution> strategyChildList =
         service.findAllChildrenWithStatusInAndWithoutOldRetries(ambiance.getPlanExecutionId(), stageNode.getUuid(),
@@ -286,7 +285,7 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
         .containsExactlyInAnyOrder(
             forkNode, child1, child2, child3, strategyNode, strategyChildNode, stageNode, strategyParent);
 
-    iterator = OrchestrationTestHelper.createCloseableIterator(nodeExecutions.iterator());
+    iterator = OrchestrationTestHelper.createStream(nodeExecutions.iterator());
     doReturn(iterator).when(service).fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(any(), any(), any());
     strategyChildList = service.findAllChildrenWithStatusInAndWithoutOldRetries(ambiance.getPlanExecutionId(),
         stageNode.getUuid(), EnumSet.of(Status.RUNNING), true, Collections.emptySet(), false);
@@ -865,8 +864,7 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
         secondBatchNodeExecutionIds.add(uuid);
       }
     }
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList.iterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(nodeExecutionList.iterator());
     doReturn(iterator)
         .when(nodeExecutionService)
         .fetchNodeExecutionsFromAnalytics(
@@ -907,8 +905,7 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
       String uuid = generateUuid();
       nodeExecutionList.add(NodeExecution.builder().uuid(uuid).build());
     }
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList.iterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(nodeExecutionList.iterator());
     String planExecutionId = "planId";
     List<String> stageFQNs = Collections.singletonList("s1");
     Criteria criteria = Criteria.where(NodeExecutionKeys.planExecutionId)
@@ -950,8 +947,7 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
       String uuid = generateUuid();
       nodeExecutionList.add(NodeExecution.builder().uuid(uuid).build());
     }
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList.iterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(nodeExecutionList.iterator());
     List<String> parentId = new ArrayList<>();
     doReturn(iterator).when(nodeExecutionReadHelperMock).fetchNodeExecutionsIteratorWithoutProjections(any());
 
@@ -1124,8 +1120,7 @@ public class NodeExecutionServiceImplTest extends OrchestrationTestBase {
       String uuid = generateUuid();
       nodeExecutionList.add(NodeExecution.builder().uuid(uuid).build());
     }
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList.iterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(nodeExecutionList.iterator());
     doReturn(iterator).when(nodeExecutionReadHelperMock).fetchNodeExecutionsFromAnalytics(any());
     Set<String> fieldsToBeIncluded = new HashSet<>();
     Iterator<NodeExecution> actualNodeExecution =

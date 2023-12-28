@@ -49,12 +49,12 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 public class UserMarkedFailAllInterruptHandlerTest extends OrchestrationTestBase {
@@ -151,8 +151,7 @@ public class UserMarkedFailAllInterruptHandlerTest extends OrchestrationTestBase
     when(nodeExecutionService.markAllLeavesAndQueuedNodesDiscontinuing(
              planExecutionId, StatusUtils.finalizableStatuses()))
         .thenReturn(0L);
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(Collections.emptyListIterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(Collections.emptyListIterator());
     when(nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(
              interruptWithNodeExecutionId.getPlanExecutionId(), StatusUtils.userMarkedFailureStatuses(),
              NodeProjectionUtils.fieldsForInterruptPropagatorHandler))
@@ -201,8 +200,7 @@ public class UserMarkedFailAllInterruptHandlerTest extends OrchestrationTestBase
     when(nodeExecutionService.markAllLeavesAndQueuedNodesDiscontinuing(
              planExecutionId, StatusUtils.userMarkedFailureStatuses()))
         .thenReturn(1L);
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(Collections.emptyListIterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(Collections.emptyListIterator());
     when(nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(
              planExecutionId, EnumSet.of(DISCONTINUING), NodeProjectionUtils.fieldsForDiscontinuingNodes))
         .thenReturn(iterator);
@@ -242,8 +240,7 @@ public class UserMarkedFailAllInterruptHandlerTest extends OrchestrationTestBase
 
     when(nodeExecutionService.markLeavesDiscontinuing(any())).thenReturn(1L);
 
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList1.iterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(nodeExecutionList1.iterator());
 
     when(nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(anyString(), any(), any()))
         .thenReturn(iterator);

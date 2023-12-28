@@ -68,6 +68,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import lombok.Builder;
 import lombok.Data;
 import org.joor.Reflect;
@@ -76,7 +77,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 public class PMSExpressionEvaluatorTest extends PipelineServiceTestBase {
@@ -206,35 +206,30 @@ public class PMSExpressionEvaluatorTest extends PipelineServiceTestBase {
     when(pmsFeatureFlagService.isEnabled(anyString(), any(FeatureName.class))).thenReturn(false);
 
     List<NodeExecution> nodeExecutionsList1 = Collections.singletonList(nodeExecution1);
-    CloseableIterator<NodeExecution> iterator1 =
-        PipelineServiceTestHelper.createCloseableIterator(nodeExecutionsList1.iterator());
+    Stream<NodeExecution> iterator1 = PipelineServiceTestHelper.createStream(nodeExecutionsList1.iterator());
     when(nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              planExecutionId, null, NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(iterator1);
 
     List<NodeExecution> nodeExecutionsList2 = Collections.singletonList(nodeExecution2);
-    CloseableIterator<NodeExecution> iterator2 =
-        PipelineServiceTestHelper.createCloseableIterator(nodeExecutionsList2.iterator());
+    Stream<NodeExecution> iterator2 = PipelineServiceTestHelper.createStream(nodeExecutionsList2.iterator());
     when(nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              planExecutionId, nodeExecution1.getUuid(), NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(iterator2);
 
     List<NodeExecution> nodeExecutionList3 = Collections.singletonList(nodeExecution3);
-    CloseableIterator<NodeExecution> iterator3 =
-        PipelineServiceTestHelper.createCloseableIterator(nodeExecutionList3.iterator());
+    Stream<NodeExecution> iterator3 = PipelineServiceTestHelper.createStream(nodeExecutionList3.iterator());
     when(nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              planExecutionId, nodeExecution2.getUuid(), NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(iterator3);
 
     List<NodeExecution> nodeExecutionList4 = asList(nodeExecution4, nodeExecution5);
-    CloseableIterator<NodeExecution> iterator4 =
-        PipelineServiceTestHelper.createCloseableIterator(nodeExecutionList4.iterator());
+    Stream<NodeExecution> iterator4 = PipelineServiceTestHelper.createStream(nodeExecutionList4.iterator());
     when(nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              planExecutionId, nodeExecution3.getUuid(), NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(iterator4);
 
-    CloseableIterator<NodeExecution> emptyIterator =
-        PipelineServiceTestHelper.createCloseableIterator(Collections.emptyListIterator());
+    Stream<NodeExecution> emptyIterator = PipelineServiceTestHelper.createStream(Collections.emptyListIterator());
     when(nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              planExecutionId, nodeExecution4.getUuid(), NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(emptyIterator);
@@ -342,8 +337,7 @@ public class PMSExpressionEvaluatorTest extends PipelineServiceTestBase {
              nodeExecution.getUuid(), NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(nodeExecution);
     List<NodeExecution> nodeExecutionsList = Collections.singletonList(nodeExecution);
-    CloseableIterator<NodeExecution> iterator =
-        PipelineServiceTestHelper.createCloseableIterator(nodeExecutionsList.iterator());
+    Stream<NodeExecution> iterator = PipelineServiceTestHelper.createStream(nodeExecutionsList.iterator());
     when(nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              planExecutionId, uuid, NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(iterator);
@@ -377,8 +371,7 @@ public class PMSExpressionEvaluatorTest extends PipelineServiceTestBase {
              nodeExecution.getUuid(), NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(nodeExecution);
     List<NodeExecution> nodeExecutionsList = Collections.singletonList(nodeExecution);
-    CloseableIterator<NodeExecution> iterator =
-        PipelineServiceTestHelper.createCloseableIterator(nodeExecutionsList.iterator());
+    Stream<NodeExecution> iterator = PipelineServiceTestHelper.createStream(nodeExecutionsList.iterator());
     when(nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              planExecutionId, uuid, NodeProjectionUtils.fieldsForExpressionEngine))
         .thenReturn(iterator);

@@ -169,8 +169,8 @@ public class ExpressionEvaluatorServiceImplTest extends CategoryTest {
     Ambiance ambiance = Ambiance.newBuilder().addAllLevels(prepareLevel()).build();
     String expectedFqn = "pipeline.stages.stage1.execution.steps.step1";
     Map<String, Ambiance> fqnToAmbianceMap = expressionEvaluatorService.getFQNToAmbianceMap(
-        PipelineServiceTestHelper.createCloseableIterator(
-            List.of(NodeExecution.builder().ambiance(ambiance).build()).iterator()),
+        PipelineServiceTestHelper.createStream(List.of(NodeExecution.builder().ambiance(ambiance).build()).iterator())
+            .iterator(),
         ListUtils.newArrayList(expectedFqn));
     assertThat(fqnToAmbianceMap.containsKey(expectedFqn)).isTrue();
     assertThat(fqnToAmbianceMap.get(expectedFqn)).isEqualTo(ambiance);

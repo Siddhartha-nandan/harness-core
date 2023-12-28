@@ -65,6 +65,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.stream.Stream;
 import org.joor.Reflect;
 import org.junit.Before;
 import org.junit.Test;
@@ -72,7 +73,6 @@ import org.junit.experimental.categories.Category;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(PIPELINE)
 public class PipelineEntityCRUDStreamListenerTest extends CategoryTest {
@@ -184,8 +184,7 @@ public class PipelineEntityCRUDStreamListenerTest extends CategoryTest {
                                           .build())
                           .build();
 
-    CloseableIterator<PipelineExecutionSummaryEntity> executionsIterator =
-        PipelineServiceTestHelper.createCloseableIterator(Collections.emptyIterator());
+    Stream<Object> executionsIterator = PipelineServiceTestHelper.createStream(Collections.emptyIterator());
     doReturn(executionsIterator)
         .when(pmsExecutionSummaryService)
         .fetchPlanExecutionIdsFromAnalytics(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID);
@@ -234,8 +233,8 @@ public class PipelineEntityCRUDStreamListenerTest extends CategoryTest {
       executionIds.add(entity);
     }
 
-    CloseableIterator<PipelineExecutionSummaryEntity> executionsIterator =
-        PipelineServiceTestHelper.createCloseableIterator(executionIds.iterator());
+    Stream<PipelineExecutionSummaryEntity> executionsIterator =
+        PipelineServiceTestHelper.createStream(executionIds.iterator());
     doReturn(executionsIterator)
         .when(pmsExecutionSummaryService)
         .fetchPlanExecutionIdsFromAnalytics(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID);
@@ -319,8 +318,8 @@ public class PipelineEntityCRUDStreamListenerTest extends CategoryTest {
       executionIds.add(entity);
     }
 
-    CloseableIterator<PipelineExecutionSummaryEntity> executionsIterator =
-        PipelineServiceTestHelper.createCloseableIterator(executionIds.iterator());
+    Stream<PipelineExecutionSummaryEntity> executionsIterator =
+        PipelineServiceTestHelper.createStream(executionIds.iterator());
     doReturn(executionsIterator)
         .when(pmsExecutionSummaryService)
         .fetchPlanExecutionIdsFromAnalytics(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID);
@@ -368,8 +367,8 @@ public class PipelineEntityCRUDStreamListenerTest extends CategoryTest {
       executionIds.add(entity);
     }
 
-    CloseableIterator<PipelineExecutionSummaryEntity> executionsIterator =
-        PipelineServiceTestHelper.createCloseableIterator(executionIds.iterator());
+    Stream<PipelineExecutionSummaryEntity> executionsIterator =
+        PipelineServiceTestHelper.createStream(executionIds.iterator());
     doReturn(executionsIterator)
         .when(pmsExecutionSummaryService)
         .fetchPlanExecutionIdsFromAnalytics(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID);
@@ -409,8 +408,8 @@ public class PipelineEntityCRUDStreamListenerTest extends CategoryTest {
       executionIds.add(entity);
     }
 
-    CloseableIterator<PipelineExecutionSummaryEntity> executionsIterator =
-        PipelineServiceTestHelper.createCloseableIterator(executionIds.iterator());
+    Stream<PipelineExecutionSummaryEntity> executionsIterator =
+        PipelineServiceTestHelper.createStream(executionIds.iterator());
     doReturn(executionsIterator)
         .when(pmsExecutionSummaryService)
         .fetchPlanExecutionIdsFromAnalytics(ACCOUNT_ID, ORG_ID, PROJECT_ID, PIPELINE_ID);

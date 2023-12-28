@@ -47,6 +47,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.ArgumentCaptor;
@@ -54,7 +55,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.springframework.data.mapping.model.MappingInstantiationException;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 public class InterruptMonitorTest extends OrchestrationTestBase {
@@ -176,8 +176,7 @@ public class InterruptMonitorTest extends OrchestrationTestBase {
         .thenReturn(planExecution);
 
     List<NodeExecution> nodeExecutionList = Arrays.asList(pipeline, stages, stage, execution, step);
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList.iterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(nodeExecutionList.iterator());
     when(nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesIterator(
              planExecutionId, NodeProjectionUtils.fieldsForDiscontinuingNodes))
         .thenReturn(iterator);
@@ -375,8 +374,7 @@ public class InterruptMonitorTest extends OrchestrationTestBase {
         .thenReturn(planExecution);
     List<NodeExecution> nodeExecutionList =
         Arrays.asList(pipeline, stages, stage, execution, fork, sg1, sg2, stepSg1, stepSg2);
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList.iterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(nodeExecutionList.iterator());
     when(nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesIterator(
              planExecutionId, NodeProjectionUtils.fieldsForDiscontinuingNodes))
         .thenReturn(iterator);
@@ -592,8 +590,7 @@ public class InterruptMonitorTest extends OrchestrationTestBase {
 
     List<NodeExecution> nodeExecutionList =
         Arrays.asList(pipeline, stages, stage, execution, fork, sg1, sg2, stepSg1, stepSg2);
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList.iterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(nodeExecutionList.iterator());
     when(nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesIterator(
              planExecutionId, NodeProjectionUtils.fieldsForDiscontinuingNodes))
         .thenReturn(iterator);
@@ -788,8 +785,7 @@ public class InterruptMonitorTest extends OrchestrationTestBase {
 
     List<NodeExecution> nodeExecutionList =
         Arrays.asList(pipeline, stages, stage, execution, fork, sg1, sg2, stepSg1, stepSg2);
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList.iterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(nodeExecutionList.iterator());
     when(nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesIterator(
              planExecutionId, NodeProjectionUtils.fieldsForDiscontinuingNodes))
         .thenReturn(iterator);
@@ -974,8 +970,7 @@ public class InterruptMonitorTest extends OrchestrationTestBase {
 
     List<NodeExecution> nodeExecutionList =
         Arrays.asList(pipeline, stages, stage, execution, fork, sg1, sg2, stepSg1, stepSg2);
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList.iterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(nodeExecutionList.iterator());
     when(nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesIterator(
              planExecutionId, NodeProjectionUtils.fieldsForDiscontinuingNodes))
         .thenReturn(iterator);
@@ -1162,8 +1157,7 @@ public class InterruptMonitorTest extends OrchestrationTestBase {
 
     List<NodeExecution> nodeExecutionList =
         Arrays.asList(pipeline, stages, stage, execution, fork, sg1, sg2, stepSg1, stepSg2);
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList.iterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(nodeExecutionList.iterator());
     when(nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesIterator(
              planExecutionId, NodeProjectionUtils.fieldsForDiscontinuingNodes))
         .thenReturn(iterator);

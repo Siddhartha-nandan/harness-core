@@ -38,11 +38,11 @@ import com.google.inject.Inject;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.springframework.data.util.CloseableIterator;
 
 public class NodeResumeHelperTest extends OrchestrationTestBase {
   @Mock NodeExecutionService nodeExecutionService;
@@ -95,8 +95,8 @@ public class NodeResumeHelperTest extends OrchestrationTestBase {
             .nodeId(childSetupId)
             .build();
 
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(Collections.singletonList(child).listIterator());
+    Stream<NodeExecution> iterator =
+        OrchestrationTestHelper.createStream(Collections.singletonList(child).listIterator());
     when(nodeExecutionService.fetchChildrenNodeExecutionsIterator(
              nodeExecutionId, NodeProjectionUtils.fieldsForResponseNotifyData))
         .thenReturn(iterator);

@@ -60,6 +60,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -67,7 +68,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 public class InstrumentationPipelineEndEventHandlerTest extends CategoryTest {
@@ -137,8 +137,7 @@ public class InstrumentationPipelineEndEventHandlerTest extends CategoryTest {
                           .stepType(StepType.newBuilder().setStepCategory(StepCategory.STEP).setType("Http").build())
                           .build());
 
-    CloseableIterator<NodeExecution> iterator =
-        PipelineServiceTestHelper.createCloseableIterator(nodeExecutionList.iterator());
+    Stream<NodeExecution> iterator = PipelineServiceTestHelper.createStream(nodeExecutionList.iterator());
     doReturn(iterator).when(nodeExecutionService).fetchAllStepNodeExecutions(any(), any());
     doReturn(new HashSet() {
       { add("Http"); }
