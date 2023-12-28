@@ -97,7 +97,10 @@ import io.harness.ng.core.utils.GitXUtils;
 import io.harness.ng.core.utils.ServiceOverrideV2ValidationHelper;
 import io.harness.outbox.api.OutboxService;
 import io.harness.pms.merger.helpers.RuntimeInputFormHelper;
-import io.harness.pms.yaml.*;
+import io.harness.pms.yaml.YamlField;
+import io.harness.pms.yaml.YamlNode;
+import io.harness.pms.yaml.YamlNodeUtils;
+import io.harness.pms.yaml.YamlUtils;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.repositories.UpsertOptions;
 import io.harness.repositories.service.spring.ServiceRepository;
@@ -727,7 +730,7 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
         .storeType(serviceEntity.getStoreType())
         .fallbackBranch(serviceEntity.getFallBackBranch())
         .entityGitDetails(ServiceElementMapper.getEntityGitDetails(serviceEntity))
-        .fqnToInputsMetadataMap(getServiceInputsMetadata(serviceInputSetYaml, serviceEntity))
+        .inputsMetadata(getServiceInputsMetadata(serviceInputSetYaml, serviceEntity))
         .build();
   }
 
@@ -1532,11 +1535,9 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
     gitXSettingsHelper.setDefaultRepoForRemoteEntity(accountIdentifier, orgIdentifier, projIdentifier);
   }
 
-  private Map<String, InputsMetadata> getServiceInputsMetadata(
-      String serviceInputSetYaml, ServiceEntity serviceEntity) {
-    Map<String, InputsMetadata> serviceInputsMetadata = null;
+  public Map<String, InputsMetadata> getServiceInputsMetadata(String serviceInputSetYaml, ServiceEntity serviceEntity) {
     try {
-      serviceInputsMetadata = RuntimeInputFormHelper.createRuntimeFqnToInputsMetadataMap(
+      return RuntimeInputFormHelper.createRuntimeFqnToInputsMetadataMap(
           YamlPipelineUtils.writeYamlString(YamlUtils.readTree(serviceInputSetYaml)
                                                 .getNode()
                                                 .getField(YamlTypes.SERVICE_INPUTS)
@@ -1551,7 +1552,7 @@ public class ServiceEntityServiceImpl implements ServiceEntityService {
     } catch (Exception ex) {
       log.error(
           String.format("Error generating service InputsMetadata for service [%s]", serviceEntity.getIdentifier()), ex);
+      return new HashMap<>();
     }
-    return serviceInputsMetadata;
   }
 }

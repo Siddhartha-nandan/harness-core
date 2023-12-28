@@ -23,6 +23,7 @@ import lombok.Data;
 @Builder
 @OwnedBy(HarnessTeam.PIPELINE)
 public class FQN {
+  public static final char DISPLAY_DELIMITER = '.';
   private List<FQNNode> fqnList;
 
   public static FQN duplicateAndAddNode(FQN base, FQNNode newNode) {
@@ -35,7 +36,7 @@ public class FQN {
     StringBuilder res = new StringBuilder();
     for (FQNNode node : fqnList) {
       if (node.getNodeType() == FQNNode.NodeType.KEY) {
-        res.append(node.getKey()).append('.');
+        res.append(node.getKey()).append(DISPLAY_DELIMITER);
       } else if (node.getNodeType() == FQNNode.NodeType.KEY_WITH_UUID) {
         res.append(node.getKey())
             .append('[')
@@ -56,7 +57,7 @@ public class FQN {
     StringBuilder res = new StringBuilder();
     for (FQNNode node : fqnList) {
       if (node.getNodeType() == FQNNode.NodeType.KEY) {
-        res.append(node.getKey()).append('.');
+        res.append(node.getKey()).append(DISPLAY_DELIMITER);
       } else if (node.getNodeType() == FQNNode.NodeType.KEY_WITH_UUID) {
         res.append(node.getKey())
             .append('[')
@@ -77,11 +78,11 @@ public class FQN {
       FQNNode currNode = fqnList.get(i);
       if (currNode.getNodeType() == FQNNode.NodeType.KEY
           && !YamlUtils.shouldNotIncludeInQualifiedName(currNode.getKey())) {
-        res.append(currNode.getKey()).append('.');
+        res.append(currNode.getKey()).append(DISPLAY_DELIMITER);
       } else if (currNode.getNodeType() == FQNNode.NodeType.KEY_WITH_UUID) {
-        res.append(currNode.getUuidValue()).append('.');
+        res.append(currNode.getUuidValue()).append(DISPLAY_DELIMITER);
       } else if (currNode.getNodeType() == FQNNode.NodeType.UUID) {
-        res.append(currNode.getUuidValue()).append('.');
+        res.append(currNode.getUuidValue()).append(DISPLAY_DELIMITER);
         if (i < fqnList.size() - 1 && shouldSkipNextNode(currNode, fqnList.get(i + 1))) {
           i++;
         }
@@ -99,11 +100,11 @@ public class FQN {
     for (int i = 0; i < fqnList.size(); i++) {
       FQNNode currNode = fqnList.get(i);
       if (currNode.getNodeType() == FQNNode.NodeType.KEY) {
-        res.append(currNode.getKey()).append('.');
+        res.append(currNode.getKey()).append(DISPLAY_DELIMITER);
       } else if (currNode.getNodeType() == FQNNode.NodeType.KEY_WITH_UUID) {
-        res.append(currNode.getUuidValue()).append('.');
+        res.append(currNode.getUuidValue()).append(DISPLAY_DELIMITER);
       } else if (currNode.getNodeType() == FQNNode.NodeType.UUID) {
-        res.append(currNode.getUuidValue()).append('.');
+        res.append(currNode.getUuidValue()).append(DISPLAY_DELIMITER);
         if (i < fqnList.size() - 1 && shouldSkipNextNode(currNode, fqnList.get(i + 1))) {
           i++;
         }
@@ -145,16 +146,6 @@ public class FQN {
   public boolean isDefault() {
     FQNNode lastNode = fqnList.get(fqnList.size() - 1);
     return lastNode.getKey().equals(YAMLFieldNameConstants.DEFAULT);
-  }
-
-  public boolean isDescription() {
-    FQNNode lastNode = fqnList.get(fqnList.size() - 1);
-    return lastNode.getKey().equals(YAMLFieldNameConstants.DESCRIPTION);
-  }
-
-  public boolean isRequired() {
-    FQNNode lastNode = fqnList.get(fqnList.size() - 1);
-    return lastNode.getKey().equals(YAMLFieldNameConstants.REQUIRED);
   }
 
   public boolean isVariableName() {

@@ -36,7 +36,7 @@ public class ServiceV2YamlMetadata {
   @NotNull String serviceIdentifier;
   String serviceYaml;
   String inputSetTemplateYaml;
-  Map<String, InputsMetadata> fqnToInputsMetadataMap;
+  Map<String, InputsMetadata> inputsMetadata;
   // scope identifiers
   String orgIdentifier;
   String projectIdentifier;

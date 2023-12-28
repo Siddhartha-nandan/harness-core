@@ -24,7 +24,6 @@ import io.harness.exception.InvalidYamlException;
 import io.harness.pms.merger.YamlConfig;
 import io.harness.pms.merger.fqn.FQN;
 import io.harness.pms.merger.fqn.FQNNode;
-import io.harness.pms.merger.helpers.YamlSubMapExtractor;
 import io.harness.serializer.AnnotationAwareJsonSubtypeResolver;
 import io.harness.yaml.utils.YamlConstants;
 

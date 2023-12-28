@@ -39,4 +39,5 @@ public class InputSetSchemaConstants {
   public static final String INPUT_SET_COUNT_MESSAGE =
       "Tells whether there are any Input Sets for this Pipeline or not.";
   public static final String INPUT_SET_ID_WITH_PIPELINE_ID = "InputSet Identifier prefixed with Pipeline Identifier.";
+  public static final String INPUTS_METADATA = "Metadata for runtime input FQNs.";
 }

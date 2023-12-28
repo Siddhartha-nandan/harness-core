@@ -163,9 +163,6 @@ public class ValidateAndMergeHelper {
             yaml, pipelineYaml, stageIdentifiers);
       }
 
-      inputsMetadataHelper.getRuntimeInputsMetadata(
-          accountId, orgIdentifier, projectIdentifier, pipelineIdentifier, pipelineYaml, template);
-
       boolean hasInputSets = pmsInputSetService.checkForInputSetsForPipeline(
           accountId, orgIdentifier, projectIdentifier, pipelineIdentifier);
 
@@ -174,6 +171,8 @@ public class ValidateAndMergeHelper {
           .replacedExpressions(replacedExpressions)
           .modules(optionalPipelineEntity.get().getFilters().keySet())
           .hasInputSets(hasInputSets)
+          .inputsMetadata(inputsMetadataHelper.getRuntimeInputsMetadata(
+              accountId, orgIdentifier, projectIdentifier, pipelineIdentifier, pipelineYaml, template))
           .build();
     } else {
       throw new InvalidRequestException(PipelineCRUDErrorResponse.errorMessageForPipelineNotFound(

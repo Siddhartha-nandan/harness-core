@@ -16,27 +16,26 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.exception.ExceptionUtils;
 import io.harness.exception.UnexpectedException;
-import io.harness.pms.contracts.governance.ExpansionRequestBatch;
-import io.harness.pms.contracts.governance.ExpansionRequestMetadata;
-import io.harness.pms.contracts.governance.ExpansionRequestProto;
-import io.harness.pms.contracts.governance.ExpansionResponseBatch;
-import io.harness.pms.contracts.governance.JsonExpansionServiceGrpc.JsonExpansionServiceBlockingStub;
-import io.harness.pms.contracts.inputmetadata.*;
+import io.harness.pms.contracts.inputmetadata.InputsMetadataRequestBatch;
+import io.harness.pms.contracts.inputmetadata.InputsMetadataRequestMetadata;
+import io.harness.pms.contracts.inputmetadata.InputsMetadataRequestProto;
+import io.harness.pms.contracts.inputmetadata.InputsMetadataResponseBatch;
+import io.harness.pms.contracts.inputmetadata.InputsMetadataResponseProto;
 import io.harness.pms.contracts.inputmetadata.InputsMetadataServiceGrpc.InputsMetadataServiceBlockingStub;
-import io.harness.pms.governance.ExpansionRequest;
-import io.harness.pms.sdk.core.inputmetadata.InputsMetadataResponse;
 import io.harness.pms.utils.CompletableFutures;
 import io.harness.pms.utils.PmsGrpcClientUtils;
-import io.harness.pms.yaml.YamlUtils;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.google.protobuf.ByteString;
-import java.util.*;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -48,17 +47,14 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class InputsMetadataGenerator {
   @Inject Map<ModuleType, InputsMetadataServiceBlockingStub> inputsMetadataServiceBlockingStubMap;
-  @Inject
-  @Named("jsonExpansionRequestBatchSize")
-  Integer inputsMetadataRequestBatchSize; // TODO: change these @Named annotations
-  @Inject @Named("JsonExpansionExecutorService") Executor executor; // TODO: change these @Named annotations
+  @Inject @Named("inputsMetadataRequestBatchSize") Integer inputsMetadataRequestBatchSize;
+  @Inject @Named("InputsMetadataExecutorService") Executor executor;
 
   @Inject
-  InputsMetadataGenerator(Map<ModuleType, InputsMetadataServiceBlockingStub> jsonExpansionServiceBlockingStubMap,
-      @Named("jsonExpansionRequestBatchSize")
-      Integer inputsMetadataRequestBatchSize, // TODO: change these @Named annotations
-      @Named("JsonExpansionExecutorService") Executor executor) { // TODO: change these @Named annotations
-    this.inputsMetadataServiceBlockingStubMap = jsonExpansionServiceBlockingStubMap;
+  InputsMetadataGenerator(Map<ModuleType, InputsMetadataServiceBlockingStub> inputsMetadataServiceBlockingStubMap,
+      @Named("inputsMetadataRequestBatchSize") Integer inputsMetadataRequestBatchSize,
+      @Named("InputsMetadataExecutorService") Executor executor) {
+    this.inputsMetadataServiceBlockingStubMap = inputsMetadataServiceBlockingStubMap;
     this.inputsMetadataRequestBatchSize = inputsMetadataRequestBatchSize;
     this.executor = executor;
   }
@@ -112,6 +108,7 @@ public class InputsMetadataGenerator {
                          .setFqn(request.getFqn())
                          .setEntityType(request.getEntityType())
                          .setEntityId(request.getEntityId())
+                         .setInputFormYaml(convertToByteString(request.getInputFormYaml()))
                          .build())
               .sorted(Comparator.comparing(InputsMetadataRequestProto::getFqn))
               .collect(Collectors.toList());
@@ -126,5 +123,9 @@ public class InputsMetadataGenerator {
       }
     }
     return inputsMetadataRequestBatches;
+  }
+
+  ByteString convertToByteString(String s) {
+    return ByteString.copyFromUtf8(s);
   }
 }

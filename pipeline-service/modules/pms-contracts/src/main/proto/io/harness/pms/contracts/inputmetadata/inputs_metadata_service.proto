@@ -22,8 +22,7 @@ message InputsMetadataRequestProto {
   string fqn = 1;
   string entityType = 2;
   string entityId = 3;
-  bytes gitSyncBranchContext = 4;
-  bytes yaml = 5;
+  bytes inputFormYaml = 4;
 }
 
 message InputsMetadataRequestMetadata {

@@ -12,6 +12,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.InputsMetadata;
 import io.harness.ng.core.beans.ServiceV2YamlMetadata;
 import io.harness.ng.core.dto.RepoListResponseDTO;
 import io.harness.ng.core.service.entity.ArtifactSourcesResponseDTO;
@@ -25,6 +26,7 @@ import io.harness.repositories.UpsertOptions;
 import io.harness.spec.server.ng.v1.model.ManifestsResponseDTO;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -144,4 +146,6 @@ public interface ServiceEntityService {
       String projectIdentifier, String serviceIdentifier, ServiceMoveConfigOperationDTO serviceRequestDTO);
 
   ServiceV2YamlMetadata createServiceV2YamlMetadata(ServiceEntity serviceEntity);
+
+  Map<String, InputsMetadata> getServiceInputsMetadata(String serviceInputSetYaml, ServiceEntity serviceEntity);
 }

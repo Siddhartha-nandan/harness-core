@@ -827,6 +827,17 @@ public class PipelineServiceModule extends AbstractModule {
         new ThreadFactoryBuilder().setNameFormat("JsonExpansionExecutorService-%d").build());
   }
 
+  @Provides
+  @Singleton
+  @Named("InputsMetadataExecutorService")
+  public Executor inputsMetadataExecutorService() {
+    return ThreadPool.create(configuration.getInputsMetadataPoolConfig().getCorePoolSize(),
+        configuration.getInputsMetadataPoolConfig().getMaxPoolSize(),
+        configuration.getInputsMetadataPoolConfig().getIdleTime(),
+        configuration.getInputsMetadataPoolConfig().getTimeUnit(),
+        new ThreadFactoryBuilder().setNameFormat("InputsMetadataExecutorService-%d").build());
+  }
+
   /**
    * To be used for async validations of Pipelines. Because pipeline fetch calls can be frequent, max pool size needs to
    * be high
@@ -915,6 +926,13 @@ public class PipelineServiceModule extends AbstractModule {
   @Named("jsonExpansionRequestBatchSize")
   public Integer getjsonExpansionRequestBatchSize() {
     return configuration.getJsonExpansionBatchSize();
+  }
+
+  @Provides
+  @Singleton
+  @Named("inputsMetadataRequestBatchSize")
+  public Integer getInputsMetadataRequestBatchSize() {
+    return configuration.getInputsMetadataBatchSize();
   }
 
   @Provides

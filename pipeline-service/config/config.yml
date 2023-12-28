@@ -550,6 +550,18 @@ jsonExpansionRequestBatchSize: ${JSON_EXPANSION_BATCH_SIZE:-50}
 
 #############################################################
 
+############ Inputs Metadata Config variables #################
+
+inputsMetadataPoolConfig:
+  corePoolSize: ${INPUTS_METADATA_EXECUTOR_POOL_CORE_SIZE:-5}
+  maxPoolSize: ${INPUTS_METADATA_EXECUTOR_POOL_MAX_SIZE:-10}
+  idleTime: ${INPUTS_METADATA_EXECUTOR_POOL_IDLE_TIME:-30}
+  timeUnit: ${INPUTS_METADATA_EXECUTOR_POOL_IDLE_TIME_TIME_UNIT:-SECONDS}
+
+inputsMetadataRequestBatchSize: ${INPUTS_METADATA_BATCH_SIZE:-50}
+
+#############################################################
+
 orchestrationRestrictionConfiguration:
   maxNestedLevelsCount: ${MAX_NESTED_LEVELS_COUNT:-25}
   useRestrictionForFree: ${USE_RESTRICTION_FOR_FREE:-false}

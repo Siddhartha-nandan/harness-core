@@ -10,6 +10,7 @@ package io.harness.pms.ngpipeline.inputset.beans.resource;
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.InputsMetadata;
 import io.harness.pms.inputset.InputSetSchemaConstants;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -17,6 +18,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.annotations.ApiModel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -38,4 +40,5 @@ public class InputSetTemplateResponseDTOPMS {
   List<String> replacedExpressions;
   @Schema(description = InputSetSchemaConstants.INPUT_SET_MODULES_MESSAGE) Set<String> modules;
   @Schema(description = InputSetSchemaConstants.INPUT_SET_COUNT_MESSAGE) Boolean hasInputSets;
+  @Schema(description = InputSetSchemaConstants.INPUTS_METADATA) Map<String, InputsMetadata> inputsMetadata;
 }
