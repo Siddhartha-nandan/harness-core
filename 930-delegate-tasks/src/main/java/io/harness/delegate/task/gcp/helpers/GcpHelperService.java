@@ -23,6 +23,9 @@ import io.harness.gcp.helpers.GcpHttpTransportHelperService;
 import io.harness.globalcontex.ErrorHandlingGlobalContextData;
 import io.harness.manage.GlobalContextManager;
 import io.harness.network.Http;
+import io.harness.oidc.exception.OidcException;
+import io.harness.oidc.gcp.constants.GcpOidcServiceAccountAccessTokenResponse;
+import io.harness.oidc.gcp.delegate.GcpOidcTokenExchangeDetailsForDelegate;
 import io.harness.serializer.JsonUtils;
 
 import software.wings.beans.TaskType;
@@ -79,14 +82,17 @@ public class GcpHelperService {
    *
    * @param serviceAccountKeyFileContent
    * @param isUseDelegate
-   *
+   * @param gcpOidcTokenExchangeDetailsForDelegate
+   * @param isUseOidcAuth
    * @return the gke container service
    */
-  public Container getGkeContainerService(char[] serviceAccountKeyFileContent, boolean isUseDelegate) {
+  public Container getGkeContainerService(char[] serviceAccountKeyFileContent, boolean isUseDelegate,
+      GcpOidcTokenExchangeDetailsForDelegate gcpOidcTokenExchangeDetailsForDelegate, boolean isUseOidcAuth) {
     try {
       JacksonFactory jsonFactory = JacksonFactory.getDefaultInstance();
       HttpTransport transport = gcpHttpTransportHelperService.checkIfUseProxyAndGetHttpTransport();
-      GoogleCredential credential = getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate);
+      GoogleCredential credential = getGoogleCredential(
+          serviceAccountKeyFileContent, isUseDelegate, gcpOidcTokenExchangeDetailsForDelegate, isUseOidcAuth);
       return new Container.Builder(transport, jsonFactory, credential).setApplicationName("Harness").build();
     } catch (GeneralSecurityException e) {
       log.error("Security exception getting Google container service", e);
@@ -111,7 +117,7 @@ public class GcpHelperService {
     try {
       JacksonFactory jsonFactory = JacksonFactory.getDefaultInstance();
       HttpTransport transport = gcpHttpTransportHelperService.checkIfUseProxyAndGetHttpTransport();
-      GoogleCredential credential = getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate);
+      GoogleCredential credential = getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate, null, false);
       return new Storage.Builder(transport, jsonFactory, credential).setApplicationName("Harness").build();
     } catch (GeneralSecurityException e) {
       log.error("Security exception getting Google storage service", e);
@@ -137,7 +143,7 @@ public class GcpHelperService {
     try {
       JacksonFactory jsonFactory = JacksonFactory.getDefaultInstance();
       HttpTransport transport = gcpHttpTransportHelperService.checkIfUseProxyAndGetHttpTransport();
-      GoogleCredential credential = getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate);
+      GoogleCredential credential = getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate, null, false);
       return new CloudResourceManager.Builder(transport, jsonFactory, credential).setApplicationName("Harness").build();
     } catch (GeneralSecurityException e) {
       log.error("Security exception getting Google storage service", e);
@@ -154,7 +160,7 @@ public class GcpHelperService {
     try {
       JacksonFactory jsonFactory = JacksonFactory.getDefaultInstance();
       HttpTransport transport = gcpHttpTransportHelperService.checkIfUseProxyAndGetHttpTransport();
-      GoogleCredential credential = getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate);
+      GoogleCredential credential = getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate, null, false);
       return new Compute.Builder(transport, jsonFactory, credential).setApplicationName(projectId).build();
     } catch (GeneralSecurityException e) {
       log.error("Security exception getting Google storage service", e);
@@ -171,7 +177,7 @@ public class GcpHelperService {
     try {
       JacksonFactory jsonFactory = JacksonFactory.getDefaultInstance();
       HttpTransport transport = gcpHttpTransportHelperService.checkIfUseProxyAndGetHttpTransport();
-      GoogleCredential credential = getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate);
+      GoogleCredential credential = getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate, null, false);
       return new Monitoring.Builder(transport, jsonFactory, credential).setApplicationName(projectId).build();
     } catch (GeneralSecurityException e) {
       log.error("Security exception getting Google storage service", e);
@@ -188,7 +194,7 @@ public class GcpHelperService {
     try {
       JacksonFactory jsonFactory = JacksonFactory.getDefaultInstance();
       HttpTransport transport = gcpHttpTransportHelperService.checkIfUseProxyAndGetHttpTransport();
-      GoogleCredential credential = getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate);
+      GoogleCredential credential = getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate, null, false);
       return new Logging.Builder(transport, jsonFactory, credential).setApplicationName(projectId).build();
     } catch (GeneralSecurityException e) {
       log.error("Security exception getting Google storage service", e);
@@ -201,10 +207,23 @@ public class GcpHelperService {
     }
   }
 
-  public GoogleCredential getGoogleCredential(char[] serviceAccountKeyFileContent, boolean isUseDelegate)
+  public GoogleCredential getGoogleCredential(char[] serviceAccountKeyFileContent, boolean isUseDelegate,
+      GcpOidcTokenExchangeDetailsForDelegate gcpOidcTokenExchangeDetailsForDelegate, boolean isUseOidc)
       throws IOException {
     if (isUseDelegate) {
       return GcpCredentialsHelperService.getApplicationDefaultCredentials();
+    }
+    if (isUseOidc) {
+      try {
+        GcpOidcServiceAccountAccessTokenResponse oidcServiceAccountAccessTokenResponse =
+            gcpOidcTokenExchangeDetailsForDelegate.exchangeOidcServiceAccountAccessToken();
+        if (oidcServiceAccountAccessTokenResponse.getExpireTime() > 0) {
+          String accessTokenValue = oidcServiceAccountAccessTokenResponse.getAccessToken();
+          return new GoogleCredential().setAccessToken(accessTokenValue);
+        }
+      } catch (OidcException ex) {
+        throw ex;
+      }
     }
     validateServiceAccountKey(serviceAccountKeyFileContent);
     return checkIfUseProxyAndGetGoogleCredentials(serviceAccountKeyFileContent);
@@ -280,7 +299,7 @@ public class GcpHelperService {
     if (isUseDelegate) {
       return getDefaultCredentialsAccessToken(TaskType.GCP_TASK.name());
     }
-    GoogleCredential gc = getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate);
+    GoogleCredential gc = getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate, null, false);
     try {
       if (gc.refreshToken()) {
         return Credentials.basic("_token", gc.getAccessToken());

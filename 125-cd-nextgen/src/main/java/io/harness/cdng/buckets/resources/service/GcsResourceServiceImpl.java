@@ -54,6 +54,8 @@ public class GcsResourceServiceImpl implements GcsResourceService {
             .useDelegate(INHERIT_FROM_DELEGATE == gcpConnectorDTO.getCredential().getGcpCredentialType())
             .delegateSelectors(gcpConnectorDTO.getDelegateSelectors())
             .encryptionDetails(encryptionDetails)
+            .gcpOidcDetailsDTO(gcpHelperService.getOidcDetailsDTO(gcpConnectorDTO))
+            .gcpOidcTokenExchangeDetailsForDelegate(gcpOidcTokenExchangeDetailsForDelegate)
             .build();
 
     GcpListBucketsResponse listBucketsResponse =

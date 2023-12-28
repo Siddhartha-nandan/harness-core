@@ -191,6 +191,7 @@ public class K8sEntityHelper {
               .cluster(k8sGcpInfrastructure.getCluster())
               .gcpConnectorDTO((GcpConnectorDTO) connectorDTO.getConnectorConfig())
               .encryptionDataDetails(getEncryptionDataDetails(connectorDTO, ngAccess))
+              .gcpOidcTokenExchangeDetailsForDelegate(gcpOidcTokenExchangeDetailsForDelegate)
               .build();
 
         case KUBERNETES_AZURE:

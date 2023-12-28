@@ -23,6 +23,7 @@ import io.harness.delegate.beans.executioncapability.ExecutionCapability;
 import io.harness.delegate.beans.executioncapability.ExecutionCapabilityDemander;
 import io.harness.delegate.beans.executioncapability.SelectorCapability;
 import io.harness.expression.ExpressionEvaluator;
+import io.harness.oidc.gcp.delegate.GcpOidcTokenExchangeDetailsForDelegate;
 import io.harness.security.encryption.EncryptedDataDetail;
 
 import java.time.Duration;
@@ -40,6 +41,7 @@ public abstract class GcpRequest extends ConnectorTaskParams implements Executio
   private List<EncryptedDataDetail> encryptionDetails;
   private GcpManualDetailsDTO gcpManualDetailsDTO;
   private GcpOidcDetailsDTO gcpOidcDetailsDTO;
+  private GcpOidcTokenExchangeDetailsForDelegate gcpOidcTokenExchangeDetailsForDelegate;
 
   public Duration getExecutionTimeout() {
     return Duration.ofSeconds(30);

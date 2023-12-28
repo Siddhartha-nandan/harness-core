@@ -167,11 +167,12 @@ public class GkeClusterHelperTest extends CategoryTest {
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
-    when(gcpHelperService.getGkeContainerService(eq(DUMMY_GCP_KEY_CHARS), anyBoolean())).thenReturn(container);
+    when(gcpHelperService.getGkeContainerService(eq(DUMMY_GCP_KEY_CHARS), anyBoolean(), null, false))
+        .thenReturn(container);
     when(gcpHelperService.getSleepIntervalSecs()).thenReturn(0);
     when(gcpHelperService.getTimeoutMins()).thenReturn(1);
     when(gcpHelperService.getClusterProjectId(any())).thenReturn("project-a");
-    when(gcpHelperService.getGoogleCredential(any(), anyBoolean()))
+    when(gcpHelperService.getGoogleCredential(any(), anyBoolean(), null, false))
         .thenReturn(
             GoogleCredential.fromStream(new ByteArrayInputStream(DUMMY_GCP_KEY.getBytes(StandardCharsets.UTF_8))));
     when(container.projects()).thenReturn(projects);
@@ -297,7 +298,7 @@ public class GkeClusterHelperTest extends CategoryTest {
 
     GoogleCredential creds =
         GoogleCredential.fromStream(new ByteArrayInputStream(DUMMY_GCP_KEY.getBytes(StandardCharsets.UTF_8)));
-    when(gcpHelperService.getGoogleCredential(eq(DUMMY_GCP_KEY_CHARS), eq(false))).thenReturn(creds);
+    when(gcpHelperService.getGoogleCredential(eq(DUMMY_GCP_KEY_CHARS), eq(false), null, false)).thenReturn(creds);
     MockedStatic mockedStaticAuthPlugin = mockStatic(KubeConfigAuthPluginHelper.class);
     when(KubeConfigAuthPluginHelper.isExecAuthPluginBinaryAvailable(any(), any())).thenReturn(false);
     when(KubeConfigAuthPluginHelper.runCommand(any(), any(), any())).thenReturn(true);
@@ -434,7 +435,7 @@ public class GkeClusterHelperTest extends CategoryTest {
     List<Cluster> clusterList = ImmutableList.of(CLUSTER_1, CLUSTER_2);
     when(clustersList.execute()).thenReturn(new ListClustersResponse().setClusters(clusterList));
 
-    List<String> result = gkeClusterHelper.listClusters(DUMMY_GCP_KEY_CHARS, false);
+    List<String> result = gkeClusterHelper.listClusters(DUMMY_GCP_KEY_CHARS, false, null, false, null);
 
     verify(clusters).list(anyString());
     assertThat(result).containsExactlyInAnyOrder(CLUSTER_1.getZone() + LOCATION_DELIMITER + CLUSTER_1.getName(),
@@ -447,7 +448,7 @@ public class GkeClusterHelperTest extends CategoryTest {
   public void shouldNotListClustersIfError() throws Exception {
     when(clustersList.execute()).thenThrow(new IOException());
 
-    assertThatThrownBy(() -> gkeClusterHelper.listClusters(DUMMY_GCP_KEY_CHARS, false))
+    assertThatThrownBy(() -> gkeClusterHelper.listClusters(DUMMY_GCP_KEY_CHARS, false, null, false, null))
         .isInstanceOf(GcpServerException.class);
 
     verify(clusters).list(anyString());
@@ -464,7 +465,7 @@ public class GkeClusterHelperTest extends CategoryTest {
         new HttpResponseException.Builder(HttpStatusCodes.STATUS_CODE_BAD_REQUEST, "Forbidden", httpHeaders),
         googleJsonError);
     when(clustersList.execute()).thenThrow(responseException);
-    assertThatThrownBy(() -> gkeClusterHelper.listClusters(DUMMY_GCP_KEY_CHARS, false))
+    assertThatThrownBy(() -> gkeClusterHelper.listClusters(DUMMY_GCP_KEY_CHARS, false, null, false, null))
         .isInstanceOf(GcpServerException.class);
   }
 
@@ -476,7 +477,7 @@ public class GkeClusterHelperTest extends CategoryTest {
 
     GoogleCredential creds =
         GoogleCredential.fromStream(new ByteArrayInputStream(DUMMY_GCP_KEY.getBytes(StandardCharsets.UTF_8)));
-    when(gcpHelperService.getGoogleCredential(eq(DUMMY_GCP_KEY_CHARS), eq(false))).thenReturn(creds);
+    when(gcpHelperService.getGoogleCredential(eq(DUMMY_GCP_KEY_CHARS), eq(false), null, false)).thenReturn(creds);
     MockedStatic mockedStaticAuthPlugin = mockStatic(KubeConfigAuthPluginHelper.class);
     when(KubeConfigAuthPluginHelper.isExecAuthPluginBinaryAvailable(any(), any())).thenReturn(true);
     when(KubeConfigAuthPluginHelper.runCommand(any(), any(), any())).thenReturn(true);
@@ -518,7 +519,7 @@ public class GkeClusterHelperTest extends CategoryTest {
 
     GoogleCredential creds =
         GoogleCredential.fromStream(new ByteArrayInputStream(DUMMY_GCP_KEY.getBytes(StandardCharsets.UTF_8)));
-    when(gcpHelperService.getGoogleCredential(eq(DUMMY_GCP_KEY_CHARS), eq(false))).thenReturn(creds);
+    when(gcpHelperService.getGoogleCredential(eq(DUMMY_GCP_KEY_CHARS), eq(false), null, false)).thenReturn(creds);
     MockedStatic mockedStaticAuthPlugin = mockStatic(KubeConfigAuthPluginHelper.class);
     when(KubeConfigAuthPluginHelper.isExecAuthPluginBinaryAvailable(any(), any())).thenReturn(true);
     when(KubeConfigAuthPluginHelper.runCommand(any(), any(), any())).thenReturn(true);

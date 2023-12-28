@@ -75,6 +75,6 @@ public class GkeClusterServiceImpl implements GkeClusterService {
     // Decrypt gcpConfig
     encryptionService.decrypt(gcpConfig, encryptedDataDetails, false);
     return gkeClusterHelper.listClusters(
-        gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors());
+        gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors(), null, false, null);
   }
 }

@@ -15,6 +15,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorDTO;
+import io.harness.oidc.gcp.delegate.GcpOidcTokenExchangeDetailsForDelegate;
 import io.harness.security.encryption.EncryptedDataDetail;
 import io.harness.taskcontext.infra.GcpK8sInfraContext;
 import io.harness.taskcontext.infra.InfraContext;
@@ -33,6 +34,7 @@ public class GcpK8sInfraDelegateConfig implements K8sInfraDelegateConfig {
   String cluster;
   GcpConnectorDTO gcpConnectorDTO;
   List<EncryptedDataDetail> encryptionDataDetails;
+  GcpOidcTokenExchangeDetailsForDelegate gcpOidcTokenExchangeDetailsForDelegate;
 
   @Override
   public InfraContext toInfraContext(String delegateId) {

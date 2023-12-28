@@ -271,7 +271,7 @@ public class GcbServiceImpl implements GcbService {
     }
     encryptionService.decrypt(gcpConfig, encryptionDetails, false);
     GoogleCredential gc = gcpHelperService.getGoogleCredential(
-        gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors());
+        gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors(), null, false);
     return retry(() -> {
       try {
         if (gc.refreshToken()) {

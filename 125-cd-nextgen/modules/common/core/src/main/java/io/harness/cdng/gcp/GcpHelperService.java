@@ -31,6 +31,7 @@ import io.harness.delegate.beans.connector.ConnectorType;
 import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorDTO;
 import io.harness.delegate.beans.connector.gcpconnector.GcpCredentialType;
 import io.harness.delegate.beans.connector.gcpconnector.GcpManualDetailsDTO;
+import io.harness.delegate.beans.connector.gcpconnector.GcpOidcDetailsDTO;
 import io.harness.delegate.task.gcp.GcpTaskType;
 import io.harness.delegate.task.gcp.request.GcpRequest;
 import io.harness.delegate.task.gcp.request.GcpTaskParameters;
@@ -109,6 +110,14 @@ public class GcpHelperService {
   public GcpManualDetailsDTO getManualDetailsDTO(GcpConnectorDTO gcpConnectorDTO) {
     if (gcpConnectorDTO.getCredential().getGcpCredentialType() == GcpCredentialType.MANUAL_CREDENTIALS) {
       return (GcpManualDetailsDTO) gcpConnectorDTO.getCredential().getConfig();
+    }
+
+    return null;
+  }
+
+  public GcpOidcDetailsDTO getOidcDetailsDTO(GcpConnectorDTO gcpConnectorDTO) {
+    if (gcpConnectorDTO.getCredential().getGcpCredentialType() == GcpCredentialType.OIDC_AUTHENTICATION) {
+      return (GcpOidcDetailsDTO) gcpConnectorDTO.getCredential().getConfig();
     }
 
     return null;

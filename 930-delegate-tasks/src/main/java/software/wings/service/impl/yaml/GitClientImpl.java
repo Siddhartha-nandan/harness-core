@@ -1113,6 +1113,8 @@ public class GitClientImpl implements GitClient {
 
     boolean exceptionOccured = false;
     File repoDir = new File(gitClientHelper.getFileDownloadRepoDirectory(gitConfig, connectorId));
+    long startTime = System.currentTimeMillis();
+
     // If repo already exists, update references
     if (repoDir.exists()) {
       // Check URL change (ssh, https) and update in .git/config
@@ -1150,6 +1152,9 @@ public class GitClientImpl implements GitClient {
     }
 
     clone(gitConfig, gitClientHelper.getFileDownloadRepoDirectory(gitConfig, connectorId), branch, true);
+    long endTime = System.currentTimeMillis();
+
+    log.info("Time taken to clone the repo is " + (endTime - startTime) + " repo name " + repoDir.getAbsolutePath());
   }
 
   private FetchResult performGitFetchOperation(GitConfig gitConfig, LogCallback logCallback, Git git)

@@ -12,6 +12,7 @@ import static io.harness.azure.model.AzureConstants.REPOSITORY_DIR_PATH;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.delegate.beans.connector.gcpconnector.GcpCredentialType.INHERIT_FROM_DELEGATE;
 import static io.harness.delegate.beans.connector.gcpconnector.GcpCredentialType.MANUAL_CREDENTIALS;
+import static io.harness.delegate.beans.connector.gcpconnector.GcpCredentialType.OIDC_AUTHENTICATION;
 
 import static com.google.common.base.Charsets.UTF_8;
 import static java.lang.String.format;
@@ -52,6 +53,7 @@ import io.harness.filesystem.LazyAutoCloseableWorkingDirectory;
 import io.harness.k8s.KubernetesContainerService;
 import io.harness.k8s.model.KubernetesConfig;
 import io.harness.logging.LogCallback;
+import io.harness.oidc.gcp.delegate.GcpOidcTokenExchangeDetailsForDelegate;
 import io.harness.security.encryption.EncryptedDataDetail;
 import io.harness.security.encryption.SecretDecryptionService;
 
@@ -144,9 +146,14 @@ public class ContainerDeploymentDelegateBaseHelper {
     } else if (clusterConfigDTO instanceof GcpK8sInfraDelegateConfig) {
       GcpK8sInfraDelegateConfig gcpK8sInfraDelegateConfig = (GcpK8sInfraDelegateConfig) clusterConfigDTO;
       GcpConnectorCredentialDTO gcpCredentials = gcpK8sInfraDelegateConfig.getGcpConnectorDTO().getCredential();
+      GcpOidcTokenExchangeDetailsForDelegate gcpOidcTokenExchangeDetailsForDelegate = null;
+      if (gcpK8sInfraDelegateConfig.getGcpOidcTokenExchangeDetailsForDelegate() != null) {
+        gcpOidcTokenExchangeDetailsForDelegate = gcpK8sInfraDelegateConfig.getGcpOidcTokenExchangeDetailsForDelegate();
+      }
       return gkeClusterHelper.getCluster(getGcpServiceAccountKeyFileContent(gcpCredentials),
           gcpCredentials.getGcpCredentialType() == INHERIT_FROM_DELEGATE, gcpK8sInfraDelegateConfig.getCluster(),
-          gcpK8sInfraDelegateConfig.getNamespace(), logCallback);
+          gcpK8sInfraDelegateConfig.getNamespace(), logCallback, gcpOidcTokenExchangeDetailsForDelegate,
+          gcpCredentials.getGcpCredentialType() == OIDC_AUTHENTICATION, null);
     } else if (clusterConfigDTO instanceof AzureK8sInfraDelegateConfig) {
       try (LazyAutoCloseableWorkingDirectory workingDirectory =
                new LazyAutoCloseableWorkingDirectory(REPOSITORY_DIR_PATH, AZURE_AUTH_CERT_DIR_PATH)) {

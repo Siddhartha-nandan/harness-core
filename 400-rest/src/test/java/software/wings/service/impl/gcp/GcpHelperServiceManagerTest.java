@@ -65,7 +65,8 @@ public class GcpHelperServiceManagerTest extends WingsBaseTest {
     final GcpConfig gcpConfig = GcpConfig.builder().serviceAccountKeyFileContent("secret".toCharArray()).build();
     gcpHelperServiceManager.validateCredential(gcpConfig, Collections.emptyList());
     verify(gcpHelperService)
-        .getGkeContainerService(gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors());
+        .getGkeContainerService(
+            gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors(), null, false);
   }
 
   @Test
