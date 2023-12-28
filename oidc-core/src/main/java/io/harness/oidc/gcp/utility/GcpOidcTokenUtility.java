@@ -286,9 +286,9 @@ public class GcpOidcTokenUtility {
    */
   private String updateBaseClaims(String claim, GcpOidcTokenRequestDTO gcpOidcTokenRequestDTO) {
     claim = updateClaim(claim, ACCOUNT_ID, gcpOidcTokenRequestDTO.getAccountId());
-    claim = updateClaim(claim, WORKLOAD_POOL_ID, gcpOidcTokenRequestDTO.getAccountId());
-    claim = updateClaim(claim, PROVIDER_ID, gcpOidcTokenRequestDTO.getAccountId());
-    claim = updateClaim(claim, GCP_PROJECT_ID, gcpOidcTokenRequestDTO.getAccountId());
-    return updateClaim(claim, SERVICE_ACCOUNT_EMAIL, gcpOidcTokenRequestDTO.getAccountId());
+    claim = updateClaim(claim, WORKLOAD_POOL_ID, gcpOidcTokenRequestDTO.getWorkloadPoolId());
+    claim = updateClaim(claim, PROVIDER_ID, gcpOidcTokenRequestDTO.getProviderId());
+    claim = updateClaim(claim, GCP_PROJECT_ID, gcpOidcTokenRequestDTO.getGcpProjectId());
+    return updateClaim(claim, SERVICE_ACCOUNT_EMAIL, gcpOidcTokenRequestDTO.getServiceAccountEmail());
   }
 }
