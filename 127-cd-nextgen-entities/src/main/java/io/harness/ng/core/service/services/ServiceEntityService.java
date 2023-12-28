@@ -26,7 +26,6 @@ import io.harness.repositories.UpsertOptions;
 import io.harness.spec.server.ng.v1.model.ManifestsResponseDTO;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
