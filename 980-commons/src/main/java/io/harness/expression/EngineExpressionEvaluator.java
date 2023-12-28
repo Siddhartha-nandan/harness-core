@@ -85,9 +85,7 @@ public class EngineExpressionEvaluator {
   @Getter private final Map<String, Object> contextMap;
   @Getter private final Map<String, String> staticAliases;
   private boolean initialized;
-  private JexlSandbox sandbox;
-
-  private Map<String, JexlSandbox.Permissions> map;
+  @Getter private final JexlSandbox sandbox;
 
   public EngineExpressionEvaluator(VariableResolverTracker variableResolverTracker) {
     sandbox = new JexlSandbox();
