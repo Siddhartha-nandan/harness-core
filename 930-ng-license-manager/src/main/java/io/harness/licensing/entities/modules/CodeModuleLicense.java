@@ -30,7 +30,5 @@ import org.springframework.data.annotation.TypeAlias;
 public class CodeModuleLicense extends ModuleLicense {
   Integer numberOfDevelopers;
   Integer numberOfRepositories;
-  String maxRepoSizeString;
-
   Long maxRepoSizeInBytes;
 }
