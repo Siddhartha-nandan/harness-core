@@ -26,6 +26,8 @@ import io.harness.cdng.artifact.resources.bamboo.dtos.BambooPlanKeysDTO;
 import io.harness.connector.ConnectorInfoDTO;
 import io.harness.connector.ConnectorResponseDTO;
 import io.harness.connector.services.ConnectorService;
+import io.harness.data.structure.ListUtils;
+import io.harness.delegate.beans.ErrorNotifyResponseData;
 import io.harness.delegate.beans.connector.ConnectorType;
 import io.harness.delegate.beans.connector.bamboo.BambooAuthType;
 import io.harness.delegate.beans.connector.bamboo.BambooAuthenticationDTO;
@@ -34,7 +36,12 @@ import io.harness.delegate.task.artifacts.ArtifactTaskType;
 import io.harness.delegate.task.artifacts.request.ArtifactTaskParameters;
 import io.harness.delegate.task.artifacts.response.ArtifactTaskExecutionResponse;
 import io.harness.delegate.task.artifacts.response.ArtifactTaskResponse;
+import io.harness.eraro.ErrorCode;
+import io.harness.exception.ArtifactServerException;
+import io.harness.exception.DelegateServiceDriverException;
 import io.harness.exception.InvalidRequestException;
+import io.harness.exception.WingsException;
+import io.harness.exception.exceptionmanager.ExceptionManager;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.rule.Owner;
 import io.harness.secretmanagerclient.services.api.SecretManagerClientService;
@@ -76,6 +83,7 @@ public class BambooResourceServiceImplTest extends CategoryTest {
   @Mock private ConnectorService connectorService;
   @Mock private SecretManagerClientService secretManagerClientService;
   @Mock private DelegateGrpcClientWrapper delegateGrpcClientWrapper;
+  @Mock ExceptionManager exceptionManager;
   @InjectMocks private BambooResourceServiceImpl bambooResourceService;
 
   @Before
@@ -133,6 +141,87 @@ public class BambooResourceServiceImplTest extends CategoryTest {
     ArtifactTaskParameters artifactTaskParameters = (ArtifactTaskParameters) delegateTaskRequest.getTaskParameters();
     assertThat(artifactTaskParameters.getArtifactTaskType()).isEqualTo(ArtifactTaskType.GET_PLANS);
   }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void TestErrorNotifyResponseDataException_GetPlanName() {
+    IdentifierRef connectorRef = IdentifierRef.builder()
+                                     .accountIdentifier(ACCOUNT_ID)
+                                     .identifier(IDENTIFIER)
+                                     .projectIdentifier(PROJECT_IDENTIFIER)
+                                     .orgIdentifier(ORG_IDENTIFIER)
+                                     .build();
+
+    ConnectorResponseDTO connectorResponse = getConnector();
+    when(connectorService.get(ACCOUNT_ID, ORG_IDENTIFIER, PROJECT_IDENTIFIER, IDENTIFIER))
+        .thenReturn(Optional.of(connectorResponse));
+    EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
+    when(secretManagerClientService.getEncryptionDetails(any(), any()))
+        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(ErrorNotifyResponseData.builder().errorMessage("Testing").build());
+    assertThatThrownBy(() -> bambooResourceService.getPlanName(connectorRef, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .isInstanceOf(ArtifactServerException.class)
+        .hasMessage("Bamboo Get Plans task failure due to error - Testing");
+  }
+
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void TestDelegateServiceDriverException_GetPlanName() {
+    IdentifierRef connectorRef = IdentifierRef.builder()
+                                     .accountIdentifier(ACCOUNT_ID)
+                                     .identifier("identifier")
+                                     .projectIdentifier(PROJECT_IDENTIFIER)
+                                     .orgIdentifier(ORG_IDENTIFIER)
+                                     .build();
+    ConnectorResponseDTO connectorResponse = getConnector();
+    when(connectorService.get(ACCOUNT_ID, ORG_IDENTIFIER, PROJECT_IDENTIFIER, "identifier"))
+        .thenReturn(Optional.of(connectorResponse));
+    EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
+    when(secretManagerClientService.getEncryptionDetails(any(), any()))
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
+    Object obj = new Object();
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenThrow(new DelegateServiceDriverException("DelegateServiceDriverException"));
+    when(exceptionManager.processException(any(), any(), any()))
+        .thenThrow(new WingsException("wings exception message"));
+
+    assertThatThrownBy(() -> bambooResourceService.getPlanName(connectorRef, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .isInstanceOf(WingsException.class)
+        .hasMessage("wings exception message");
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void TestFailureException_GetPlanName() {
+    IdentifierRef connectorRef = IdentifierRef.builder()
+                                     .accountIdentifier(ACCOUNT_ID)
+                                     .identifier(IDENTIFIER)
+                                     .projectIdentifier(PROJECT_IDENTIFIER)
+                                     .orgIdentifier(ORG_IDENTIFIER)
+                                     .build();
+
+    ConnectorResponseDTO connectorResponse = getConnector();
+    when(connectorService.get(ACCOUNT_ID, ORG_IDENTIFIER, PROJECT_IDENTIFIER, IDENTIFIER))
+        .thenReturn(Optional.of(connectorResponse));
+    EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
+    when(secretManagerClientService.getEncryptionDetails(any(), any()))
+        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(ArtifactTaskResponse.builder()
+                        .commandExecutionStatus(CommandExecutionStatus.FAILURE)
+                        .errorCode(ErrorCode.DEFAULT_ERROR_CODE)
+                        .errorMessage("Test Failed")
+                        .artifactTaskExecutionResponse(ArtifactTaskExecutionResponse.builder()
+                                                           .plans(Collections.EMPTY_MAP)
+                                                           .artifactDelegateResponses(new ArrayList<>())
+                                                           .build())
+                        .build());
+    assertThatThrownBy(() -> bambooResourceService.getPlanName(connectorRef, ORG_IDENTIFIER, PROJECT_IDENTIFIER))
+        .isInstanceOf(WingsException.class)
+        .hasMessage("Bamboo Get Plans task failure due to error - Test failed with error code: DEFAULT_ERROR_CODE");
+  }
 
   @Test
   @Owner(developers = RAKSHIT_AGARWAL)
@@ -169,6 +258,92 @@ public class BambooResourceServiceImplTest extends CategoryTest {
     ArtifactTaskParameters artifactTaskParameters = (ArtifactTaskParameters) delegateTaskRequest.getTaskParameters();
     assertThat(artifactTaskParameters.getArtifactTaskType()).isEqualTo(ArtifactTaskType.GET_ARTIFACT_PATH);
   }
+
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void TestErrorNotifyResponseDataException_GetArtifactPath() {
+    IdentifierRef connectorRef = IdentifierRef.builder()
+                                     .accountIdentifier(ACCOUNT_ID)
+                                     .identifier(IDENTIFIER)
+                                     .projectIdentifier(PROJECT_IDENTIFIER)
+                                     .orgIdentifier(ORG_IDENTIFIER)
+                                     .build();
+
+    ConnectorResponseDTO connectorResponse = getConnector();
+    when(connectorService.get(ACCOUNT_ID, ORG_IDENTIFIER, PROJECT_IDENTIFIER, IDENTIFIER))
+        .thenReturn(Optional.of(connectorResponse));
+    EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
+    when(secretManagerClientService.getEncryptionDetails(any(), any()))
+        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(ErrorNotifyResponseData.builder().errorMessage("Testing").build());
+    assertThatThrownBy(
+        () -> bambooResourceService.getArtifactPath(connectorRef, ORG_IDENTIFIER, PROJECT_IDENTIFIER, PLAN_NAME))
+        .isInstanceOf(ArtifactServerException.class)
+        .hasMessage("Bamboo Get Artifact Paths task failure due to error - Testing");
+  }
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void TestDelegateServiceDriverException_GetArtifactPath() {
+    IdentifierRef connectorRef = IdentifierRef.builder()
+                                     .accountIdentifier(ACCOUNT_ID)
+                                     .identifier("identifier")
+                                     .projectIdentifier(PROJECT_IDENTIFIER)
+                                     .orgIdentifier(ORG_IDENTIFIER)
+                                     .build();
+    ConnectorResponseDTO connectorResponse = getConnector();
+    when(connectorService.get(ACCOUNT_ID, ORG_IDENTIFIER, PROJECT_IDENTIFIER, "identifier"))
+        .thenReturn(Optional.of(connectorResponse));
+    EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
+    when(secretManagerClientService.getEncryptionDetails(any(), any()))
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
+    Object obj = new Object();
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenThrow(new DelegateServiceDriverException("DelegateServiceDriverException"));
+    when(exceptionManager.processException(any(), any(), any()))
+        .thenThrow(new WingsException("wings exception message"));
+
+    assertThatThrownBy(
+        () -> bambooResourceService.getArtifactPath(connectorRef, ORG_IDENTIFIER, PROJECT_IDENTIFIER, PLAN_NAME))
+        .isInstanceOf(WingsException.class)
+        .hasMessage("wings exception message");
+  }
+
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void TestFailureException_GetArtifactPath() {
+    IdentifierRef connectorRef = IdentifierRef.builder()
+                                     .accountIdentifier(ACCOUNT_ID)
+                                     .identifier(IDENTIFIER)
+                                     .projectIdentifier(PROJECT_IDENTIFIER)
+                                     .orgIdentifier(ORG_IDENTIFIER)
+                                     .build();
+
+    ConnectorResponseDTO connectorResponse = getConnector();
+    when(connectorService.get(ACCOUNT_ID, ORG_IDENTIFIER, PROJECT_IDENTIFIER, IDENTIFIER))
+        .thenReturn(Optional.of(connectorResponse));
+    EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
+    when(secretManagerClientService.getEncryptionDetails(any(), any()))
+        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(ArtifactTaskResponse.builder()
+                        .commandExecutionStatus(CommandExecutionStatus.FAILURE)
+                        .errorCode(ErrorCode.DEFAULT_ERROR_CODE)
+                        .errorMessage("Test Failed")
+                        .artifactTaskExecutionResponse(ArtifactTaskExecutionResponse.builder()
+                                                           .artifactPath(Collections.emptyList())
+                                                           .artifactDelegateResponses(new ArrayList<>())
+                                                           .build())
+                        .build());
+    assertThatThrownBy(
+        () -> bambooResourceService.getArtifactPath(connectorRef, ORG_IDENTIFIER, PROJECT_IDENTIFIER, PLAN_NAME))
+        .isInstanceOf(WingsException.class)
+        .hasMessage(
+            "Bamboo Get Artifact Paths task failure due to error - Test Failed with error code: DEFAULT_ERROR_CODE");
+  }
   @Test
   @Owner(developers = RAKSHIT_AGARWAL)
   @Category(UnitTests.class)
@@ -203,6 +378,96 @@ public class BambooResourceServiceImplTest extends CategoryTest {
     DelegateTaskRequest delegateTaskRequest = delegateTaskRequestCaptor.getValue();
     ArtifactTaskParameters artifactTaskParameters = (ArtifactTaskParameters) delegateTaskRequest.getTaskParameters();
     assertThat(artifactTaskParameters.getArtifactTaskType()).isEqualTo(ArtifactTaskType.GET_BUILDS);
+  }
+
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void TestErrorNotifyResponseDataException_GetBuilds() {
+    IdentifierRef connectorRef = IdentifierRef.builder()
+                                     .accountIdentifier(ACCOUNT_ID)
+                                     .identifier(IDENTIFIER)
+                                     .projectIdentifier(PROJECT_IDENTIFIER)
+                                     .orgIdentifier(ORG_IDENTIFIER)
+                                     .build();
+
+    ConnectorResponseDTO connectorResponse = getConnector();
+    when(connectorService.get(ACCOUNT_ID, ORG_IDENTIFIER, PROJECT_IDENTIFIER, IDENTIFIER))
+        .thenReturn(Optional.of(connectorResponse));
+    EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
+    when(secretManagerClientService.getEncryptionDetails(any(), any()))
+        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(ErrorNotifyResponseData.builder().errorMessage("Testing").build());
+    assertThatThrownBy(()
+                           -> bambooResourceService.getBuilds(
+                               connectorRef, ORG_IDENTIFIER, PROJECT_IDENTIFIER, PLAN_NAME, ARTIFACT_PATH))
+        .isInstanceOf(ArtifactServerException.class)
+        .hasMessage("Bamboo Get Artifact Paths task failure due to error - Testing");
+  }
+
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void TestDelegateServiceDriverException_GetBuilds() {
+    IdentifierRef connectorRef = IdentifierRef.builder()
+                                     .accountIdentifier(ACCOUNT_ID)
+                                     .identifier("identifier")
+                                     .projectIdentifier(PROJECT_IDENTIFIER)
+                                     .orgIdentifier(ORG_IDENTIFIER)
+                                     .build();
+    ConnectorResponseDTO connectorResponse = getConnector();
+    when(connectorService.get(ACCOUNT_ID, ORG_IDENTIFIER, PROJECT_IDENTIFIER, "identifier"))
+        .thenReturn(Optional.of(connectorResponse));
+    EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
+    when(secretManagerClientService.getEncryptionDetails(any(), any()))
+        .thenReturn(ListUtils.newArrayList(encryptedDataDetail));
+    Object obj = new Object();
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenThrow(new DelegateServiceDriverException("DelegateServiceDriverException"));
+    when(exceptionManager.processException(any(), any(), any()))
+        .thenThrow(new WingsException("wings exception message"));
+
+    assertThatThrownBy(()
+                           -> bambooResourceService.getBuilds(
+                               connectorRef, ORG_IDENTIFIER, PROJECT_IDENTIFIER, PLAN_NAME, ARTIFACT_PATH))
+        .isInstanceOf(WingsException.class)
+        .hasMessage("wings exception message");
+  }
+
+  @Test
+  @Owner(developers = RAKSHIT_AGARWAL)
+  @Category(UnitTests.class)
+  public void TestFailureException_GetBuilds() {
+    IdentifierRef connectorRef = IdentifierRef.builder()
+                                     .accountIdentifier(ACCOUNT_ID)
+                                     .identifier(IDENTIFIER)
+                                     .projectIdentifier(PROJECT_IDENTIFIER)
+                                     .orgIdentifier(ORG_IDENTIFIER)
+                                     .build();
+
+    ConnectorResponseDTO connectorResponse = getConnector();
+    when(connectorService.get(ACCOUNT_ID, ORG_IDENTIFIER, PROJECT_IDENTIFIER, IDENTIFIER))
+        .thenReturn(Optional.of(connectorResponse));
+    EncryptedDataDetail encryptedDataDetail = EncryptedDataDetail.builder().build();
+    when(secretManagerClientService.getEncryptionDetails(any(), any()))
+        .thenReturn(Lists.newArrayList(encryptedDataDetail));
+    when(delegateGrpcClientWrapper.executeSyncTaskV2(any()))
+        .thenReturn(ArtifactTaskResponse.builder()
+                        .commandExecutionStatus(CommandExecutionStatus.FAILURE)
+                        .errorCode(ErrorCode.DEFAULT_ERROR_CODE)
+                        .errorMessage("Test Failed")
+                        .artifactTaskExecutionResponse(ArtifactTaskExecutionResponse.builder()
+                                                           .buildDetails(Collections.emptyList())
+                                                           .artifactDelegateResponses(new ArrayList<>())
+                                                           .build())
+                        .build());
+    assertThatThrownBy(()
+                           -> bambooResourceService.getBuilds(
+                               connectorRef, ORG_IDENTIFIER, PROJECT_IDENTIFIER, PLAN_NAME, ARTIFACT_PATH))
+        .isInstanceOf(WingsException.class)
+        .hasMessage(
+            "Bamboo Get Artifact Paths task failure due to error - Test failed with error code: DEFAULT_ERROR_CODE");
   }
 
   @Test
