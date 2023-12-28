@@ -31,6 +31,6 @@ public class BaseInputDTO {
   private Map<NGMigrationEntityType, InputDefaults> defaults;
   @JsonDeserialize(keyUsing = CgEntityIdDeserializer.class) private Map<CgEntityId, BaseProvidedInput> overrides;
   private Map<String, Object> expressions;
-
+  private Map<String, Object> replace;
   private List<MigrationInputSettings> settings;
 }

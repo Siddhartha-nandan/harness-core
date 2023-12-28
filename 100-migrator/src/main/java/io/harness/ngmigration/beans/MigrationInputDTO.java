@@ -45,6 +45,7 @@ public class MigrationInputDTO {
   private boolean migrateReferencedEntities;
   @JsonDeserialize(keyUsing = CgEntityIdDeserializer.class) private Map<CgEntityId, BaseProvidedInput> overrides;
   private Map<String, Object> customExpressions;
+  private Map<String, Object> replace;
   private CaseFormat identifierCaseFormat;
   private List<MigrationInputSettings> settings;
   private NGMigrationEntityType root;

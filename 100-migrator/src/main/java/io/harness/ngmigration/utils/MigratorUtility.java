@@ -812,6 +812,7 @@ public class MigratorUtility {
         .migrateReferencedEntities(importDTO.isMigrateReferencedEntities())
         .overrides(overrides)
         .defaults(defaults)
+        .replace(importDTO.getInputs().getReplace())
         .customExpressions(expressions)
         .settings(settings)
         .identifierCaseFormat(

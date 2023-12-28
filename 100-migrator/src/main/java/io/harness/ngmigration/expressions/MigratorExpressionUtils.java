@@ -10,6 +10,7 @@ package io.harness.ngmigration.expressions;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.ngmigration.dto.Flag.LONG_RELEASE_NAME;
 import static io.harness.ngmigration.utils.MigratorUtility.isEnabled;
+import static io.harness.reflection.CodeUtils.isHarnessClass;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -26,6 +27,8 @@ import io.harness.ngmigration.beans.NGYamlFile;
 import io.harness.ngmigration.utils.CaseFormat;
 import io.harness.ngmigration.utils.MigratorUtility;
 
+import software.wings.beans.appmanifest.ApplicationManifest;
+import software.wings.beans.template.Template;
 import software.wings.ngmigration.CgEntityId;
 import software.wings.ngmigration.CgEntityNode;
 import software.wings.ngmigration.NGMigrationEntityType;
@@ -34,6 +37,9 @@ import com.google.inject.Singleton;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -52,12 +58,16 @@ import org.jetbrains.annotations.NotNull;
 @Singleton
 public class MigratorExpressionUtils {
   private static final int MAX_DEPTH = 32;
+  private static final int MAX_RECURSION_DEPTH = 250;
 
   public static Object render(MigrationContext context, Object object, Map<String, Object> customExpressions) {
     return render(context, object, MigExpressionOverrides.builder().customExpressions(customExpressions).build());
   }
 
   public static Object render(MigrationContext context, Object object, MigExpressionOverrides overrides) {
+    if (context.getInputDTO().getReplace().size() > 0) {
+      replace(object, context.getInputDTO().getReplace());
+    }
     try {
       Map<CgEntityId, CgEntityNode> cgEntities = context.getEntities();
       Map<CgEntityId, NGYamlFile> migratedEntities = context.getMigratedEntities();
@@ -259,6 +269,11 @@ public class MigratorExpressionUtils {
       context.putAll(overrides.getCustomExpressions());
     }
 
+    if (migrationContext.getInputDTO().getReplace() != null
+        && isNotEmpty(migrationContext.getInputDTO().getReplace())) {
+      context.putAll(migrationContext.getInputDTO().getReplace());
+    }
+
     if (migrationContext.getInputDTO() != null && isNotEmpty(migrationContext.getInputDTO().getCustomExpressions())) {
       context.putAll(migrationContext.getInputDTO().getCustomExpressions());
     }
@@ -400,5 +415,118 @@ public class MigratorExpressionUtils {
       return CaseFormat.CAMEL_CASE;
     }
     return context.getInputDTO().getIdentifierCaseFormat();
+  }
+
+  public static void replace(Object object, Map<String, Object> replace) {
+    if (replace.size() == 0) {
+      return;
+    }
+
+    try {
+      replaceStringInObject(object, replace, 0);
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static void replaceStringInObject(Object obj, Map<String, Object> replace, int depth)
+      throws IllegalAccessException {
+    if (depth >= MAX_RECURSION_DEPTH) {
+      return; // Stop recursion if maximum depth is reached
+    }
+
+    if (obj == null) {
+      return;
+    }
+
+    Class<?> clazz = obj.getClass();
+
+    // For non-collection objects and strings
+    if ((isHarnessClass(clazz)) && !clazz.isArray() && !clazz.isPrimitive() && !clazz.isEnum()
+        && !(obj instanceof CharSequence)) {
+      Field[] fields = clazz.getDeclaredFields();
+      for (Field field : fields) {
+        try {
+          field.setAccessible(true);
+          Object fieldValue = field.get(obj);
+          if (fieldValue instanceof String) {
+            String strValue = (String) fieldValue;
+            for (Map.Entry<String, Object> entry : replace.entrySet()) {
+              strValue = strValue.replace(entry.getKey(), entry.getValue().toString());
+              field.set(obj, strValue);
+            }
+          } else {
+            replaceStringInObject(fieldValue, replace, depth + 1); // Recursively check non-string fields
+          }
+        } catch (Exception e) {
+          // Handle the exception (e.g., log it or take appropriate action)
+          e.printStackTrace(); // Example: print the stack trace
+        }
+      }
+    } else if (obj instanceof Set) {
+      Set<Object> set = (Set<Object>) obj;
+      Set<Object> elementsToRemove = new HashSet<>();
+
+      for (Object element : set) {
+        if (element instanceof String) {
+          String strValue = (String) element;
+          for (Map.Entry<String, Object> entryMap : replace.entrySet()) {
+            strValue = strValue.replace(entryMap.getKey(), entryMap.getValue().toString());
+          }
+          elementsToRemove.add(element);
+          elementsToRemove.add(strValue);
+        } else if (element instanceof Map) {
+          replaceStringInObject(element, replace, depth + 1);
+        } else {
+          replaceStringInObject(element, replace, depth + 1); // Recursively check other types of elements
+        }
+      }
+
+      // Remove old elements from the set
+      set.removeAll(elementsToRemove);
+
+      // Add new elements to the set
+      set.addAll(elementsToRemove);
+    } else if (obj instanceof List) {
+      List<Object> list = (List<Object>) obj;
+      List<Object> elementsToRemove = new ArrayList<>();
+
+      for (int i = 0; i < list.size(); i++) {
+        Object element = list.get(i);
+
+        if (element instanceof String) {
+          String strValue = (String) element;
+          for (Map.Entry<String, Object> entryMap : replace.entrySet()) {
+            strValue = strValue.replace(entryMap.getKey(), entryMap.getValue().toString());
+          }
+          elementsToRemove.add(element);
+          elementsToRemove.add(strValue);
+        } else if (element instanceof Map) {
+          replaceStringInObject(element, replace, depth + 1);
+        } else {
+          replaceStringInObject(element, replace, depth + 1); // Recursively check other types of elements
+        }
+      }
+
+      // Remove old elements from the list
+      list.removeAll(elementsToRemove);
+
+      // Add new elements to the list
+      list.addAll(elementsToRemove);
+    } else if (obj instanceof Map) {
+      Map<Object, Object> map = (Map<Object, Object>) obj;
+      for (Map.Entry<?, ?> entry : map.entrySet()) {
+        if (entry.getValue() instanceof String) {
+          String strValue = (String) entry.getValue();
+          for (Map.Entry<String, Object> entryMap : replace.entrySet()) {
+            strValue = strValue.replace(entryMap.getKey(), entryMap.getValue().toString());
+          }
+          map.put(entry.getKey(), strValue);
+        } else {
+          replaceStringInObject(entry.getKey(), replace, depth + 1); // Recursively check map keys
+          replaceStringInObject(entry.getValue(), replace, depth + 1); // Recursively check map values
+        }
+      }
+    }
   }
 }
