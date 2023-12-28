@@ -6,17 +6,28 @@
  */
 package io.harness.ssca.services.remediation_tracker;
 
+import static io.harness.spec.server.ssca.v1.model.Operator.EQUALS;
+
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidArgumentsException;
+import io.harness.exception.InvalidRequestException;
+import io.harness.persistence.UserProvider;
 import io.harness.repositories.remediation_tracker.RemediationTrackerRepository;
 import io.harness.spec.server.ssca.v1.model.ComponentFilter;
+import io.harness.spec.server.ssca.v1.model.ExcludeArtifactRequestBody;
+import io.harness.spec.server.ssca.v1.model.NameOperator;
 import io.harness.spec.server.ssca.v1.model.Operator;
+import io.harness.spec.server.ssca.v1.model.RemediationCount;
+import io.harness.spec.server.ssca.v1.model.RemediationListingRequestBody;
+import io.harness.spec.server.ssca.v1.model.RemediationListingResponse;
 import io.harness.spec.server.ssca.v1.model.RemediationTrackerCreateRequestBody;
+import io.harness.spec.server.ssca.v1.model.RemediationTrackersOverallSummaryResponseBody;
 import io.harness.ssca.beans.remediation_tracker.PatchedPendingArtifactEntitiesResult;
 import io.harness.ssca.enforcement.executors.mongo.filter.denylist.fields.VersionField;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.CdInstanceSummary;
 import io.harness.ssca.entities.remediation_tracker.ArtifactInfo;
+import io.harness.ssca.entities.remediation_tracker.CVEVulnerability.CVEVulnerabilityInfoKeys;
 import io.harness.ssca.entities.remediation_tracker.DeploymentsCount;
 import io.harness.ssca.entities.remediation_tracker.EnvironmentInfo;
 import io.harness.ssca.entities.remediation_tracker.Pipeline;
@@ -24,6 +35,7 @@ import io.harness.ssca.entities.remediation_tracker.RemediationCondition;
 import io.harness.ssca.entities.remediation_tracker.RemediationStatus;
 import io.harness.ssca.entities.remediation_tracker.RemediationTrackerEntity;
 import io.harness.ssca.entities.remediation_tracker.RemediationTrackerEntity.RemediationTrackerEntityKeys;
+import io.harness.ssca.entities.remediation_tracker.VulnerabilityInfo.VulnerabilityInfoKeys;
 import io.harness.ssca.mapper.RemediationTrackerMapper;
 import io.harness.ssca.services.ArtifactService;
 import io.harness.ssca.services.CdInstanceSummaryService;
@@ -31,6 +43,8 @@ import io.harness.ssca.services.NormalisedSbomComponentService;
 
 import com.google.inject.Inject;
 import com.nimbusds.oauth2.sdk.util.CollectionUtils;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,10 +52,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.Builder;
 import lombok.Data;
+import org.bson.types.ObjectId;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -54,6 +75,10 @@ public class RemediationTrackerServiceImpl implements RemediationTrackerService 
   @Inject CdInstanceSummaryService cdInstanceSummaryService;
 
   @Inject NormalisedSbomComponentService normalisedSbomComponentService;
+
+  @Inject MongoTemplate mongoTemplate;
+
+  @Inject UserProvider userProvider;
   @Override
   public String createRemediationTracker(
       String accountId, String orgId, String projectId, RemediationTrackerCreateRequestBody body) {
@@ -64,16 +89,55 @@ public class RemediationTrackerServiceImpl implements RemediationTrackerService 
             .orgIdentifier(orgId)
             .projectIdentifier(projectId)
             .comments(body.getComments())
-            .contactInfo(RemediationTrackerMapper.getContactInfo(body.getContact()))
-            .condition(RemediationTrackerMapper.getRemediationCondition(body.getRemediationCondition()))
-            .vulnerabilityInfo(RemediationTrackerMapper.getVulnerabilityInfo(body.getVulnerabilityInfo()))
+            .contactInfo(RemediationTrackerMapper.mapContactInfo(body.getContact()))
+            .condition(RemediationTrackerMapper.mapRemediationCondition(body.getRemediationCondition()))
+            .vulnerabilityInfo(RemediationTrackerMapper.mapVulnerabilityInfo(body.getVulnerabilityInfo()))
             .status(RemediationStatus.ON_GOING)
             .startTimeMilli(System.currentTimeMillis())
+            .targetEndDateEpochDay(body.getTargetEndDate() != null ? body.getTargetEndDate().toEpochDay() : null)
             .build();
     remediationTracker = repository.save(remediationTracker);
     // If this increases API latency, we can move this to a separate thread or a job.
     updateArtifactsAndEnvironments(remediationTracker);
     return remediationTracker.getUuid();
+  }
+
+  @Override
+  public boolean close(String accountId, String orgId, String projectId, String remediationTrackerId) {
+    RemediationTrackerEntity remediationTracker =
+        repository
+            .findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndUuid(
+                accountId, orgId, projectId, new ObjectId(remediationTrackerId))
+            .orElseThrow(() -> new InvalidArgumentsException("Remediation Tracker not found"));
+    if (remediationTracker.getStatus() == RemediationStatus.COMPLETED) {
+      return false;
+    }
+    closeTracker(remediationTracker);
+    remediationTracker.setClosedManually(true);
+    remediationTracker.setClosedBy(userProvider.activeUser());
+    repository.save(remediationTracker);
+    return true;
+  }
+
+  @Override
+  public boolean excludeArtifact(
+      String accountId, String orgId, String projectId, String remediationTrackerId, ExcludeArtifactRequestBody body) {
+    RemediationTrackerEntity remediationTracker =
+        repository
+            .findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndUuid(
+                accountId, orgId, projectId, new ObjectId(remediationTrackerId))
+            .orElseThrow(() -> new InvalidArgumentsException("Remediation Tracker not found"));
+    if (remediationTracker.getStatus() == RemediationStatus.COMPLETED) {
+      throw new InvalidArgumentsException(
+          String.format("Remediation Tracker: %s is already closed.", remediationTrackerId));
+    }
+    ArtifactInfo artifactInfo = remediationTracker.getArtifactInfos().get(body.getArtifactId());
+    if (artifactInfo == null) {
+      throw new InvalidArgumentsException(String.format("ArtifactId: %s not present.", body.getArtifactId()));
+    }
+    artifactInfo.setExcluded(true);
+    repository.save(remediationTracker);
+    return true;
   }
 
   @Override
@@ -111,17 +175,103 @@ public class RemediationTrackerServiceImpl implements RemediationTrackerService 
         .orElseThrow(() -> new InvalidArgumentsException("Remediation Tracker not found"));
   }
 
+  @Override
+  public RemediationTrackersOverallSummaryResponseBody getOverallSummaryForRemediationTrackers(
+      String accountId, String orgId, String projectId) {
+    Aggregation aggregationForMeanTime =
+        Aggregation.newAggregation(Aggregation.match(Criteria.where(RemediationTrackerEntityKeys.accountIdentifier)
+                                                         .is(accountId)
+                                                         .and(RemediationTrackerEntityKeys.orgIdentifier)
+                                                         .is(orgId)
+                                                         .and(RemediationTrackerEntityKeys.projectIdentifier)
+                                                         .is(projectId)
+                                                         .and(RemediationTrackerEntityKeys.endTimeMilli)
+                                                         .exists(true)
+                                                         .and(RemediationTrackerEntityKeys.status)
+                                                         .is(RemediationStatus.COMPLETED)),
+            Aggregation.project().andExpression("$endTimeMilli - $startTimeMilli").as("remediationTimeInMilliseconds"),
+            Aggregation.group().avg("remediationTimeInMilliseconds").as("meanTimeToRemediateInMilliseconds"),
+            Aggregation.project("meanTimeToRemediateInMilliseconds")
+                .andExpression("meanTimeToRemediateInMilliseconds / 3600000")
+                .as("meanTimeToRemediateInHours"));
+
+    RemediationTrackersOverallSummaryResponseBody overallSummary =
+        new RemediationTrackersOverallSummaryResponseBody().meanTimeToRemediateInHours(null).remediationCounts(
+            new ArrayList<>());
+    List<RemediationTrackersOverallSummaryResponseBody> remediationTrackersOverallSummaryResponseBodies =
+        mongoTemplate
+            .aggregate(aggregationForMeanTime, RemediationTrackerEntity.class,
+                RemediationTrackersOverallSummaryResponseBody.class)
+            .getMappedResults();
+    if (EmptyPredicate.isNotEmpty(remediationTrackersOverallSummaryResponseBodies)) {
+      overallSummary.setMeanTimeToRemediateInHours(roundOffTwoDecimalPlace(
+          remediationTrackersOverallSummaryResponseBodies.get(0).getMeanTimeToRemediateInHours()));
+    }
+
+    Aggregation aggregationForRemediationCount =
+        Aggregation.newAggregation(Aggregation.match(Criteria.where(RemediationTrackerEntityKeys.accountIdentifier)
+                                                         .is(accountId)
+                                                         .and(RemediationTrackerEntityKeys.orgIdentifier)
+                                                         .is(orgId)
+                                                         .and(RemediationTrackerEntityKeys.projectIdentifier)
+                                                         .is(projectId)),
+            Aggregation.group(RemediationTrackerEntityKeys.status).count().as("count"),
+            Aggregation.project("status", "count").and("status").previousOperation());
+    overallSummary.setRemediationCounts(
+        mongoTemplate.aggregate(aggregationForRemediationCount, RemediationTrackerEntity.class, RemediationCount.class)
+            .getMappedResults());
+    return overallSummary;
+  }
+
+  @Override
+  public Page<RemediationListingResponse> listRemediations(
+      String accountId, String orgId, String projectId, RemediationListingRequestBody body, Pageable pageable) {
+    Criteria criteria = Criteria.where(RemediationTrackerEntityKeys.accountIdentifier)
+                            .is(accountId)
+                            .and(RemediationTrackerEntityKeys.orgIdentifier)
+                            .is(orgId)
+                            .and(RemediationTrackerEntityKeys.projectIdentifier)
+                            .is(projectId);
+
+    List<Criteria> filterCriteria = new ArrayList<>();
+    if (body.getCveFilter() != null) {
+      filterCriteria.add(
+          getFilterCriteria(RemediationTrackerEntityKeys.vulnerabilityInfo + "." + CVEVulnerabilityInfoKeys.cve,
+              body.getCveFilter().getCve(), body.getCveFilter().getOperator()));
+    }
+
+    if (body.getComponentNameFilter() != null) {
+      filterCriteria.add(
+          getFilterCriteria(RemediationTrackerEntityKeys.vulnerabilityInfo + "." + VulnerabilityInfoKeys.component,
+              body.getComponentNameFilter().getComponentName(), body.getComponentNameFilter().getOperator()));
+    }
+    if (!filterCriteria.isEmpty()) {
+      criteria = criteria.andOperator(filterCriteria.toArray(Criteria[] ::new));
+    }
+
+    Page<RemediationTrackerEntity> remediationTrackerEntities = repository.findAll(criteria, pageable);
+
+    List<RemediationListingResponse> remediationListingResponses =
+        getRemediationListingResponses(remediationTrackerEntities.toList());
+
+    return new PageImpl<>(remediationListingResponses, pageable, remediationTrackerEntities.getTotalElements());
+  }
+
   private void validateRemediationCreateRequest(RemediationTrackerCreateRequestBody body) {
     if ((body.getRemediationCondition().getOperator()
             != io.harness.spec.server.ssca.v1.model.RemediationCondition.OperatorEnum.ALL)
         && (body.getRemediationCondition().getOperator()
             != io.harness.spec.server.ssca.v1.model.RemediationCondition.OperatorEnum.MATCHES)) {
-      List<Integer> versions = VersionField.getVersion(body.getVulnerabilityInfo().getComponentVersion());
+      List<Integer> versions = VersionField.getVersion(body.getRemediationCondition().getVersion());
       if (versions.size() != 3 || versions.get(0) == -1) {
         throw new InvalidArgumentsException(
             "Unsupported Version Format. Semantic Versioning is required for LessThan and LessThanEquals operator.");
       }
     }
+  }
+
+  public double roundOffTwoDecimalPlace(final double value) {
+    return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();
   }
 
   private void closeTrackerIfNoOrchestrations(
@@ -199,11 +349,30 @@ public class RemediationTrackerServiceImpl implements RemediationTrackerService 
         : Collections.emptyList();
   }
 
+  private List<RemediationListingResponse> getRemediationListingResponses(
+      List<RemediationTrackerEntity> remediationTrackerEntities) {
+    return remediationTrackerEntities.stream()
+        .map(RemediationTrackerMapper::mapRemediationListResponse)
+        .collect(Collectors.toList());
+  }
+
+  private Criteria getFilterCriteria(String fieldName, String value, NameOperator operator) {
+    switch (operator) {
+      case EQUALS:
+        return Criteria.where(fieldName).is(value);
+      case CONTAINS:
+        return Criteria.where(fieldName).regex(value);
+      case STARTSWITH:
+        return Criteria.where(fieldName).regex(Pattern.compile("^".concat(value)));
+      default:
+        throw new InvalidRequestException(String.format("Filter does not support %s operator", operator));
+    }
+  }
   private List<ComponentFilter> getComponentFilters(RemediationTrackerEntity entity) {
     List<ComponentFilter> componentFilter = new ArrayList<>();
     componentFilter.add(new ComponentFilter()
                             .fieldName(ComponentFilter.FieldNameEnum.COMPONENTNAME)
-                            .operator(Operator.EQUALS)
+                            .operator(EQUALS)
                             .value(entity.getVulnerabilityInfo().getComponent()));
 
     Operator mappedOperator = mapOperator(entity.getCondition().getOperator());
@@ -310,7 +479,7 @@ public class RemediationTrackerServiceImpl implements RemediationTrackerService 
       case LESS_THAN_EQUALS:
         return Operator.LESSTHANEQUALS;
       case EQUALS:
-        return Operator.EQUALS;
+        return EQUALS;
       case ALL:
         return null;
       default:

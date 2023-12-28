@@ -69,6 +69,7 @@ import io.harness.gitsync.scm.EntityObjectIdUtils;
 import io.harness.gitx.GitXSettingsHelper;
 import io.harness.governance.GovernanceMetadata;
 import io.harness.grpc.utils.StringValueUtils;
+import io.harness.ng.core.template.TemplateMergeResponseDTO;
 import io.harness.ngsettings.SettingIdentifiers;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.organization.remote.OrganizationClient;
@@ -102,6 +103,7 @@ import io.harness.pms.rbac.PipelineRbacPermissions;
 import io.harness.pms.sdk.PmsSdkInstanceService;
 import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.NGYamlHelper;
+import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.project.remote.ProjectClient;
 import io.harness.remote.client.NGRestUtils;
@@ -339,47 +341,53 @@ public class PMSPipelineServiceImpl implements PMSPipelineService {
   }
 
   @Override
-  public PipelineGetResult getAndValidatePipeline(String accountId, String orgIdentifier, String projectIdentifier,
-      String pipelineId, boolean deleted, boolean getMetadataOnly, boolean loadFromFallbackBranch,
-      boolean loadFromCache, boolean validateAsync) {
-    Optional<PipelineEntity> pipelineEntity;
+  public PipelineGetResult validatePipeline(String accountId, String orgIdentifier, String projectIdentifier,
+      String pipelineId, boolean loadFromCache, boolean validateAsync,
+      TemplateMergeResponseDTO templateMergeResponseDTO, PipelineEntity pipelineEntity) {
     // if validateAsync is true, then this ID wil be of the event started for the async validation process, which can be
     // queried on using another API to get the result of the async validation. If validateAsync is false, then this ID
     // is not needed and will be null
     String validationUUID = null;
     if (validateAsync) {
-      PipelineGetResult pipelineEventPair = getPipelineAndAsyncValidationId(
-          accountId, orgIdentifier, projectIdentifier, pipelineId, loadFromFallbackBranch, loadFromCache);
-      pipelineEntity = pipelineEventPair.getPipelineEntity();
-      validationUUID = pipelineEventPair.getAsyncValidationUUID();
+      validationUUID = validateAsync(PipelineGetParams.builder()
+                                         .accountId(accountId)
+                                         .orgId(orgIdentifier)
+                                         .projectId(projectIdentifier)
+                                         .pipelineEntity(pipelineEntity)
+                                         .loadFromCache(loadFromCache)
+                                         .build())
+                           .getAsyncValidationUUID();
+    } else if (templateMergeResponseDTO == null) {
+      validatePipelineSync(orgIdentifier, projectIdentifier, pipelineId, loadFromCache, pipelineEntity);
     } else {
-      pipelineEntity = getAndValidatePipeline(
-          accountId, orgIdentifier, projectIdentifier, pipelineId, false, loadFromFallbackBranch, loadFromCache);
+      validatePipelineSync(
+          orgIdentifier, projectIdentifier, pipelineId, loadFromCache, pipelineEntity, templateMergeResponseDTO);
     }
-    if (pipelineEntity.isPresent()
-        && PipelineGitXHelper.shouldPublishSetupUsages(loadFromCache, pipelineEntity.get().getStoreType())) {
-      pmsPipelineServiceHelper.computePipelineReferences(pipelineEntity.get());
+    if (PipelineGitXHelper.shouldPublishSetupUsages(loadFromCache, pipelineEntity.getStoreType())) {
+      pmsPipelineServiceHelper.computePipelineReferences(pipelineEntity);
     }
-    return PipelineGetResult.builder().pipelineEntity(pipelineEntity).asyncValidationUUID(validationUUID).build();
+    return PipelineGetResult.builder()
+        .pipelineEntity(Optional.of(pipelineEntity))
+        .asyncValidationUUID(validationUUID)
+        .build();
+  }
+
+  public PipelineGetResult validateAsync(PipelineGetParams pipelineGetParams) {
+    String validationUUID = getAsyncValidationIdAndValidatePipeline(pipelineGetParams.getAccountId(),
+        pipelineGetParams.getOrgId(), pipelineGetParams.getProjectId(), pipelineGetParams.isLoadFromCache(),
+        pipelineGetParams.getPipelineEntity());
+    return PipelineGetResult.builder()
+        .pipelineEntity(Optional.of(pipelineGetParams.getPipelineEntity()))
+        .asyncValidationUUID(validationUUID)
+        .build();
   }
 
   @Override
   public String validatePipeline(String accountId, String orgIdentifier, String projectIdentifier, String pipelineId,
       boolean loadFromFallbackBranch, boolean loadFromCache, boolean validateAsync, PipelineEntity pipelineEntity) {
-    // if validateAsync is true, then this ID wil be of the event started for the async validation process, which can be
-    // queried on using another API to get the result of the async validation. If validateAsync is false, then this ID
-    // is not needed and will be null
-    String validationUUID = null;
-    if (validateAsync) {
-      validationUUID = getAsyncValidationIdAndValidatePipeline(
-          accountId, orgIdentifier, projectIdentifier, loadFromCache, pipelineEntity);
-    } else {
-      validatePipelineSync(orgIdentifier, projectIdentifier, pipelineId, loadFromCache, pipelineEntity);
-    }
-    if (PipelineGitXHelper.shouldPublishSetupUsages(loadFromCache, pipelineEntity.getStoreType())) {
-      pmsPipelineServiceHelper.computePipelineReferences(pipelineEntity);
-    }
-    return validationUUID;
+    return validatePipeline(
+        accountId, orgIdentifier, projectIdentifier, pipelineId, loadFromCache, validateAsync, null, pipelineEntity)
+        .getAsyncValidationUUID();
   }
 
   @Override
@@ -415,6 +423,27 @@ public class PMSPipelineServiceImpl implements PMSPipelineService {
             errorMessage, errorWrapperDTO, pipelineEntity.getData());
       }
       pmsPipelineServiceHelper.resolveTemplatesAndValidatePipelineEntity(pipelineEntity, loadFromCache);
+    }
+  }
+
+  void validatePipelineSync(String orgIdentifier, String projectIdentifier, String identifier, boolean loadFromCache,
+      PipelineEntity pipelineEntity, TemplateMergeResponseDTO templateMergeResponseDTO) {
+    if (pipelineEntity.getStoreType() == null || pipelineEntity.getStoreType() == StoreType.INLINE) {
+      // This is added to add validation for stored invalid yaml (duplicate yaml fields)
+      validateStoredYaml(pipelineEntity);
+    } else {
+      if (EmptyPredicate.isEmpty(pipelineEntity.getData())) {
+        String errorMessage = PipelineCRUDErrorResponse.errorMessageForEmptyYamlOnGit(
+            orgIdentifier, projectIdentifier, identifier, GitAwareContextHelper.getBranchInRequest());
+        YamlSchemaErrorWrapperDTO errorWrapperDTO =
+            YamlSchemaErrorWrapperDTO.builder()
+                .schemaErrors(Collections.singletonList(
+                    YamlSchemaErrorDTO.builder().message(errorMessage).fqn("$.pipeline").build()))
+                .build();
+        throw new io.harness.yaml.validator.InvalidYamlException(
+            errorMessage, errorWrapperDTO, pipelineEntity.getData());
+      }
+      pmsPipelineServiceHelper.validatePipelineEntity(pipelineEntity, loadFromCache, templateMergeResponseDTO);
     }
   }
 
@@ -833,6 +862,18 @@ public class PMSPipelineServiceImpl implements PMSPipelineService {
     String importedPipelineYAML =
         pmsPipelineServiceHelper.importPipelineFromRemote(accountId, orgIdentifier, projectIdentifier, true);
     String pipelineVersion = pipelineVersion(accountId, importedPipelineYAML);
+    YamlField pipelineRootYamlField = YamlUtils.readYamlTree(importedPipelineYAML).getNode().getField("pipeline");
+    if (EmptyPredicate.isEmpty(pipelineIdentifier)
+        || (!EmptyPredicate.isEmpty(pipelineIdentifier)
+            && pipelineIdentifier.equals(pipelineRootYamlField.getNode().getIdentifier()))) {
+      pipelineIdentifier = pipelineRootYamlField.getNode().getIdentifier();
+    }
+    if (EmptyPredicate.isEmpty(pipelineImportRequest.getPipelineName())) {
+      pipelineImportRequest = PipelineImportRequestDTO.builder()
+                                  .pipelineName(pipelineRootYamlField.getNode().getName())
+                                  .pipelineDescription(pipelineImportRequest.getPipelineDescription())
+                                  .build();
+    }
     PMSPipelineServiceHelper.checkAndThrowMismatchInImportedPipelineMetadata(orgIdentifier, projectIdentifier,
         pipelineIdentifier, pipelineImportRequest, importedPipelineYAML, pipelineVersion);
     PipelineEntity pipelineEntity = PMSPipelineDtoMapper.toPipelineEntity(accountId, orgIdentifier, projectIdentifier,
@@ -869,28 +910,18 @@ public class PMSPipelineServiceImpl implements PMSPipelineService {
   }
 
   @Override
-  public StepCategory getSteps(String module, String category, String accountId) {
-    Map<String, StepPalleteInfo> serviceInstanceNameToSupportedSteps =
-        pmsSdkInstanceService.getModuleNameToStepPalleteInfo();
-    StepCategory stepCategory = pmsPipelineServiceStepHelper.calculateStepsForModuleBasedOnCategory(
-        category, serviceInstanceNameToSupportedSteps.get(module).getStepTypes(), accountId);
-    for (Map.Entry<String, StepPalleteInfo> entry : serviceInstanceNameToSupportedSteps.entrySet()) {
-      if (entry.getKey().equals(module) || EmptyPredicate.isEmpty(entry.getValue().getStepTypes())) {
-        continue;
-      }
-      stepCategory.addStepCategory(pmsPipelineServiceStepHelper.calculateStepsForCategory(
-          entry.getValue().getModuleName(), entry.getValue().getStepTypes(), accountId));
-    }
-    return stepCategory;
+  public StepCategory getStepsV2(String accountId, StepPalleteFilterWrapper stepPalleteFilterWrapper) {
+    return getStepsWithVersion(accountId, stepPalleteFilterWrapper, HarnessYamlVersion.V0);
   }
 
   @Override
-  public StepCategory getStepsV2(String accountId, StepPalleteFilterWrapper stepPalleteFilterWrapper) {
+  public StepCategory getStepsWithVersion(
+      String accountId, StepPalleteFilterWrapper stepPalleteFilterWrapper, String version) {
     Map<String, StepPalleteInfo> serviceInstanceNameToSupportedSteps =
         pmsSdkInstanceService.getModuleNameToStepPalleteInfo();
     if (stepPalleteFilterWrapper.getStepPalleteModuleInfos().isEmpty()) {
       // Return all the steps.
-      return pmsPipelineServiceStepHelper.getAllSteps(accountId, serviceInstanceNameToSupportedSteps);
+      return pmsPipelineServiceStepHelper.getAllSteps(accountId, serviceInstanceNameToSupportedSteps, version);
     }
     StepCategory stepCategory = StepCategory.builder().name(LIBRARY).build();
     for (StepPalleteModuleInfo request : stepPalleteFilterWrapper.getStepPalleteModuleInfos()) {
@@ -909,15 +940,15 @@ public class PMSPipelineServiceImpl implements PMSPipelineService {
       StepCategory moduleCategory;
       if (EmptyPredicate.isNotEmpty(category)) {
         moduleCategory = pmsPipelineServiceStepHelper.calculateStepsForModuleBasedOnCategoryV2(
-            displayModuleName, category, stepInfoList, accountId);
+            displayModuleName, category, stepInfoList, accountId, version);
       } else {
         moduleCategory =
-            pmsPipelineServiceStepHelper.calculateStepsForCategory(displayModuleName, stepInfoList, accountId);
+            pmsPipelineServiceStepHelper.calculateStepsForCategory(displayModuleName, stepInfoList, accountId, version);
       }
       stepCategory.addStepCategory(moduleCategory);
       if (request.isShouldShowCommonSteps()) {
         pmsPipelineServiceStepHelper.addStepsToStepCategory(
-            moduleCategory, commonStepInfo.getCommonSteps(request.getCommonStepCategory()), accountId);
+            moduleCategory, commonStepInfo.getCommonSteps(request.getCommonStepCategory()), accountId, version);
       }
     }
 
