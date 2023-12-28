@@ -7,8 +7,6 @@
 
 package io.harness.cdng.provision.terraform.steps.rolllback;
 
-import static io.harness.beans.FeatureName.CDS_TF_TG_SKIP_ERROR_LOGS_COLORING;
-
 import static java.lang.String.format;
 
 import io.harness.account.services.AccountService;
@@ -63,6 +61,7 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.StepUtils;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -218,8 +217,7 @@ public class TerraformRollbackStepV2 extends CdTaskChainExecutable {
                 ? new HashMap<>()
                 : rollbackConfig.getEnvironmentVariables())
         .timeoutInMillis(StepUtils.getTimeoutMillis(stepParameters.getTimeout(), TerraformConstants.DEFAULT_TIMEOUT))
-        .skipColorLogs(
-            cdFeatureFlagHelper.isEnabled(AmbianceUtils.getAccountId(ambiance), CDS_TF_TG_SKIP_ERROR_LOGS_COLORING));
+        .skipColorLogs(true);
 
     ParameterField<Boolean> skipTerraformRefreshCommandParameter = stepParametersSpec.getSkipRefreshCommand();
 
@@ -238,6 +236,12 @@ public class TerraformRollbackStepV2 extends CdTaskChainExecutable {
 
     return terraformStepHelper.executeNextLink(ambiance, responseSupplier, passThroughData,
         stepParameters.getDelegateSelectors(), stepElementParameters, TerraformCommandUnit.Rollback.name());
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 
   @Override

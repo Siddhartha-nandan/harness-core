@@ -15,13 +15,13 @@ import static org.mockito.ArgumentMatchers.any;
 import io.harness.BuilderFactory;
 import io.harness.SSCAManagerTestBase;
 import io.harness.category.element.UnitTests;
-import io.harness.entities.ArtifactDetails;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.repositories.CdInstanceSummaryRepo;
 import io.harness.rule.Owner;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewRequestBody.PolicyViolationEnum;
 import io.harness.ssca.beans.EnvType;
+import io.harness.ssca.beans.instance.ArtifactDetailsDTO;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.CdInstanceSummary;
 import io.harness.ssca.entities.CdInstanceSummary.CdInstanceSummaryBuilder;
@@ -53,12 +53,14 @@ import org.springframework.data.mongodb.core.query.Query;
 public class CdInstanceSummaryServiceImplTest extends SSCAManagerTestBase {
   @Inject CdInstanceSummaryService cdInstanceSummaryService;
   @Mock CdInstanceSummaryRepo cdInstanceSummaryRepo;
+  @Mock ArtifactService artifactService;
   private BuilderFactory builderFactory;
 
   @Before
   public void setup() throws IllegalAccessException {
     MockitoAnnotations.initMocks(this);
     FieldUtils.writeField(cdInstanceSummaryService, "cdInstanceSummaryRepo", cdInstanceSummaryRepo, true);
+    FieldUtils.writeField(cdInstanceSummaryService, "artifactService", artifactService, true);
     builderFactory = BuilderFactory.getDefault();
   }
 
@@ -68,7 +70,8 @@ public class CdInstanceSummaryServiceImplTest extends SSCAManagerTestBase {
   public void testUpsertInstance_noArtifactIdentity() {
     Boolean response = cdInstanceSummaryService.upsertInstance(
         builderFactory.getInstanceNGEntityBuilder()
-            .primaryArtifact(ArtifactDetails.builder().artifactId("artifactId").displayName("image").tag("tag").build())
+            .primaryArtifact(
+                ArtifactDetailsDTO.builder().artifactId("artifactId").displayName("image").tag("tag").build())
             .build());
     assertThat(response).isEqualTo(true);
   }
@@ -79,7 +82,8 @@ public class CdInstanceSummaryServiceImplTest extends SSCAManagerTestBase {
   public void testUpsertInstance() {
     Boolean response = cdInstanceSummaryService.upsertInstance(
         builderFactory.getInstanceNGEntityBuilder()
-            .primaryArtifact(ArtifactDetails.builder().artifactId("artifactId").displayName("image").tag("tag").build())
+            .primaryArtifact(
+                ArtifactDetailsDTO.builder().artifactId("artifactId").displayName("image").tag("tag").build())
             .build());
     assertThat(response).isEqualTo(true);
   }
@@ -92,6 +96,9 @@ public class CdInstanceSummaryServiceImplTest extends SSCAManagerTestBase {
     assertThat(response).isEqualTo(true);
     Mockito.when(cdInstanceSummaryRepo.findOne(Mockito.any()))
         .thenReturn(builderFactory.getCdInstanceSummaryBuilder().build());
+
+    Mockito.when(artifactService.getArtifactByCorrelationId(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any()))
+        .thenReturn(builderFactory.getArtifactEntityBuilder().build());
 
     response = cdInstanceSummaryService.removeInstance(builderFactory.getInstanceNGEntityBuilder().build());
     assertThat(response).isEqualTo(true);

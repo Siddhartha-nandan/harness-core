@@ -7,6 +7,7 @@
 
 package io.harness.ng.core.environment.resources;
 
+import static io.harness.NGCommonEntityConstants.ENVIRONMENT_IDENTIFIER_KEY;
 import static io.harness.NGCommonEntityConstants.FORCE_DELETE_MESSAGE;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
@@ -66,6 +67,7 @@ import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.WingsException;
 import io.harness.expression.EngineExpressionEvaluator;
+import io.harness.gitaware.helper.MoveConfigOperationType;
 import io.harness.gitsync.interceptor.GitEntityCreateInfoDTO;
 import io.harness.gitsync.interceptor.GitEntityFindInfoDTO;
 import io.harness.gitsync.interceptor.GitEntityUpdateInfoDTO;
@@ -82,6 +84,9 @@ import io.harness.ng.core.environment.beans.EnvironmentFilterPropertiesDTO;
 import io.harness.ng.core.environment.beans.EnvironmentInputSetYamlAndServiceOverridesMetadataDTO;
 import io.harness.ng.core.environment.beans.EnvironmentInputsMergedResponseDto;
 import io.harness.ng.core.environment.beans.EnvironmentInputsetYamlAndServiceOverridesMetadataInput;
+import io.harness.ng.core.environment.beans.EnvironmentMoveConfigOperationDTO;
+import io.harness.ng.core.environment.beans.EnvironmentMoveConfigRequestDTO;
+import io.harness.ng.core.environment.beans.EnvironmentMoveConfigResponse;
 import io.harness.ng.core.environment.dto.EnvironmentRequestDTO;
 import io.harness.ng.core.environment.dto.EnvironmentResponse;
 import io.harness.ng.core.environment.dto.ScopedEnvironmentRequestDTO;
@@ -332,15 +337,11 @@ public class EnvironmentResourceV2 {
           environmentEntity.getOrgIdentifier(), environmentEntity.getProjectIdentifier(), envGlobalOverrideIdentifier);
 
       if (envGlobalOverridesEntity.isPresent()) {
-        serviceOverridesResource.update(accountId, requestDTOV2.get());
+        serviceOverridesResource.update(accountId, requestDTOV2.get(), null);
       } else {
-        serviceOverridesResource.create(accountId, requestDTOV2.get());
+        serviceOverridesResource.create(accountId, requestDTOV2.get(), null);
       }
     }
-  }
-
-  private boolean checkFeatureFlagForOverridesV2(String accountId) {
-    return featureFlagHelperService.isEnabled(accountId, FeatureName.CDS_SERVICE_OVERRIDES_2_0);
   }
 
   @DELETE
@@ -523,6 +524,8 @@ public class EnvironmentResourceV2 {
   @Hidden
   @ApiOperation(hidden = true, value = "Get Scope Filtered Environment List", nickname = "getScopedEnvironments")
   @InternalApi
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PageResponse<ScopedEnvironmentResponseDTO>> getScopedEnvironments(
       @Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
@@ -549,6 +552,8 @@ public class EnvironmentResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(description = "Gets Environment list filtered by scoped env refs")
       })
+  @Timed
+  @ResponseMetered
   public ResponseDTO<PageResponse<EnvironmentResponse>>
   getEnvironmentsFilteredByRefs(@Parameter(description = NGCommonEntityConstants.PAGE_PARAM_MESSAGE) @QueryParam(
                                     NGCommonEntityConstants.PAGE) @DefaultValue("0") int page,
@@ -587,6 +592,8 @@ public class EnvironmentResourceV2 {
   @ApiOperation(value = "Get list of instances grouped by service for particular environment",
       nickname = "getActiveServiceInstancesForEnvironment")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<InstanceGroupedByServiceList>
   getActiveServiceInstancesForEnvironment(
       @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
@@ -808,6 +815,8 @@ public class EnvironmentResourceV2 {
   @Path("/mergeEnvironmentInputs/{environmentIdentifier}")
   @ApiOperation(value = "This api merges old and new environment inputs YAML", nickname = "mergeEnvironmentInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<EnvironmentInputsMergedResponseDto> mergeEnvironmentInputs(
       @Parameter(description = ENVIRONMENT_PARAM_MESSAGE) @PathParam(
           NGCommonEntityConstants.ENVIRONMENT_IDENTIFIER_KEY) @ResourceIdentifier String environmentIdentifier,
@@ -882,9 +891,9 @@ public class EnvironmentResourceV2 {
         overridesEntity.getServiceRef());
     ResponseDTO<ServiceOverridesResponseDTOV2> apiResponseV2 = null;
     if (overrideEntityInDB.isPresent()) {
-      apiResponseV2 = serviceOverridesResource.update(accountId, requestV2);
+      apiResponseV2 = serviceOverridesResource.update(accountId, requestV2, null);
     } else {
-      apiResponseV2 = serviceOverridesResource.create(accountId, requestV2);
+      apiResponseV2 = serviceOverridesResource.create(accountId, requestV2, null);
     }
     return apiResponseV2.getData();
   }
@@ -894,6 +903,8 @@ public class EnvironmentResourceV2 {
   @ApiOperation(value = "This api returns environments runtime input YAML and serviceOverrides Yaml",
       nickname = "getEnvironmentsInputYamlAndServiceOverrides")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<EnvironmentInputSetYamlAndServiceOverridesMetadataDTO>
   getEnvironmentsInputYamlAndServiceOverrides(
       @Parameter(description = ENVIRONMENT_YAML_METADATA_INPUT_PARAM_MESSAGE) @Valid
@@ -929,6 +940,8 @@ public class EnvironmentResourceV2 {
   @ApiOperation(value = "This api returns environments runtime input YAML and serviceOverrides Yaml",
       nickname = "getEnvironmentsInputYamlAndServiceOverridesV2")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<EnvironmentInputSetYamlAndServiceOverridesMetadataDTO>
   getEnvironmentsInputYamlAndServiceOverridesV2(
       @Parameter(description = ENVIRONMENT_YAML_METADATA_INPUT_PARAM_MESSAGE) @Valid
@@ -1119,6 +1132,8 @@ public class EnvironmentResourceV2 {
   @Path("/runtimeInputs")
   @ApiOperation(value = "This api returns Environment inputs YAML", nickname = "getEnvironmentInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<NGEntityTemplateResponseDTO> getEnvironmentInputs(
       @Parameter(description = ENVIRONMENT_PARAM_MESSAGE) @NotNull @QueryParam(
           "environmentIdentifier") @ResourceIdentifier String environmentIdentifier,
@@ -1139,6 +1154,8 @@ public class EnvironmentResourceV2 {
   @Path("/serviceOverrides/runtimeInputs")
   @ApiOperation(value = "This api returns Service Override inputs YAML", nickname = "getServiceOverrideInputs")
   @Hidden
+  @Timed
+  @ResponseMetered
   public ResponseDTO<NGEntityTemplateResponseDTO> getServiceOverrideInputs(
       @Parameter(description = ENVIRONMENT_PARAM_MESSAGE) @NotNull @QueryParam(
           NGCommonEntityConstants.ENVIRONMENT_IDENTIFIER_KEY) @ResourceIdentifier String environmentIdentifier,
@@ -1161,6 +1178,8 @@ public class EnvironmentResourceV2 {
   @Path("/attributes")
   @ApiOperation(hidden = true, value = "Get Environments Attributes", nickname = "getEnvironmentsAttributes")
   @InternalApi
+  @Timed
+  @ResponseMetered
   public ResponseDTO<List<Map<String, String>>> getEnvironmentsAttributes(
       @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
       @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
@@ -1168,6 +1187,47 @@ public class EnvironmentResourceV2 {
       @QueryParam("envIdentifiers") List<String> envIdentifiers) {
     return ResponseDTO.newResponse(
         environmentService.getAttributes(accountId, orgIdentifier, projectIdentifier, envIdentifiers));
+  }
+
+  @POST
+  @Path("/move-config/{environmentIdentifier}")
+  @ApiOperation(value = "Move environment YAML from inline to remote", nickname = "moveEnvironmentConfigs")
+  @Operation(operationId = "moveEnvironmentConfigs", summary = "Move environment YAML from inline to remote",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(responseCode = "default", description = "Move environment YAML from inline to remote")
+      })
+  public ResponseDTO<EnvironmentMoveConfigResponse>
+  moveConfig(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
+                 NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
+      @Parameter(description = NGCommonEntityConstants.ORG_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
+      @Parameter(description = NGCommonEntityConstants.PROJECT_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier,
+      @Parameter(description = ENVIRONMENT_PARAM_MESSAGE) @PathParam(
+          ENVIRONMENT_IDENTIFIER_KEY) @ResourceIdentifier String environmentIdentifier,
+      @BeanParam EnvironmentMoveConfigRequestDTO environmentRequestDTO) {
+    // check for environment update permission
+    accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier),
+        Resource.of(ENVIRONMENT, environmentIdentifier), ENVIRONMENT_UPDATE_PERMISSION);
+
+    EnvironmentMoveConfigOperationDTO moveConfigOperationDTO =
+        EnvironmentMoveConfigOperationDTO.builder()
+            .repoName(environmentRequestDTO.getRepoName())
+            .branch(environmentRequestDTO.getBranch())
+            .moveConfigOperationType(
+                MoveConfigOperationType.getMoveConfigType(environmentRequestDTO.getMoveConfigOperationType()))
+            .connectorRef(environmentRequestDTO.getConnectorRef())
+            .baseBranch(environmentRequestDTO.getBaseBranch())
+            .commitMessage(environmentRequestDTO.getCommitMsg())
+            .isNewBranch(environmentRequestDTO.getIsNewBranch())
+            .filePath(environmentRequestDTO.getFilePath())
+            .build();
+
+    EnvironmentMoveConfigResponse environmentMoveConfigResponse = environmentService.moveEnvironment(
+        accountIdentifier, orgIdentifier, projectIdentifier, environmentIdentifier, moveConfigOperationDTO);
+    return ResponseDTO.newResponse(environmentMoveConfigResponse);
   }
 
   private void checkAccessForListingAtScope(

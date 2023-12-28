@@ -87,6 +87,7 @@ import io.harness.lock.PersistentLockModule;
 import io.harness.manage.ManagedScheduledExecutorService;
 import io.harness.mongo.MongoPersistence;
 import io.harness.ng.core.event.MessageListener;
+import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.opaclient.OpaClientModule;
 import io.harness.persistence.HPersistence;
 import io.harness.pms.sdk.core.plugin.PluginInfoProvider;
@@ -109,6 +110,7 @@ import io.harness.timescaledb.TimeScaleDBConfig;
 import io.harness.timescaledb.TimeScaleDBService;
 import io.harness.timescaledb.TimeScaleDBServiceImpl;
 import io.harness.token.TokenClientModule;
+import io.harness.tunnel.TunnelResourceClient;
 import io.harness.user.UserClientModule;
 import io.harness.version.VersionInfoManager;
 import io.harness.waiter.AsyncWaitEngineImpl;
@@ -278,6 +280,8 @@ public class CIManagerServiceTestModule extends AbstractModule {
     bind(CIYAMLSanitizationService.class).to(CIYAMLSanitizationServiceImpl.class).in(Singleton.class);
     bind(CIAccountValidationService.class).to(CIAccountValidationServiceImpl.class).in(Singleton.class);
     bind(CodeResourceClient.class).toInstance(mock(CodeResourceClient.class));
+    bind(TunnelResourceClient.class).toInstance(mock(TunnelResourceClient.class));
+    bind(NGSettingsClient.class).toInstance(mock(NGSettingsClient.class));
     install(NgLicenseHttpClientModule.getInstance(ciManagerConfiguration.getNgManagerClientConfig(),
         ciManagerConfiguration.getNgManagerServiceSecret(), serviceId));
     bind(TimeScaleDBService.class).toInstance(new TimeScaleDBServiceImpl(null));

@@ -28,7 +28,6 @@ import static io.harness.rule.OwnerRule.ANKIT;
 import static io.harness.rule.OwnerRule.ANSHUL;
 import static io.harness.rule.OwnerRule.ANUPAM;
 import static io.harness.rule.OwnerRule.ARPIT;
-import static io.harness.rule.OwnerRule.BHARAT_GOEL;
 import static io.harness.rule.OwnerRule.BOJAN;
 import static io.harness.rule.OwnerRule.BRETT;
 import static io.harness.rule.OwnerRule.DESCRIPTION;
@@ -145,6 +144,7 @@ import io.harness.outbox.api.OutboxService;
 import io.harness.persistence.HPersistence;
 import io.harness.rule.Owner;
 import io.harness.security.encryption.EncryptedDataDetail;
+import io.harness.service.impl.DelegateRbacHelper;
 import io.harness.service.intfc.DelegateCache;
 import io.harness.service.intfc.DelegateProfileObserver;
 import io.harness.service.intfc.DelegateTaskRetryObserver;
@@ -305,6 +305,7 @@ public class DelegateServiceTest extends WingsBaseTest {
   @Mock private Subject<DelegateProfileObserver> delegateProfileSubject;
   @Mock private Subject<DelegateTaskRetryObserver> retryObserverSubject;
   @Mock private Subject<DelegateObserver> subject;
+  @Mock private DelegateRbacHelper delegateRbacHelper;
 
   public static final Duration TEST_EXPIRY_TIME = ofMinutes(6);
 
@@ -836,6 +837,7 @@ public class DelegateServiceTest extends WingsBaseTest {
     delegateService.delete(ACCOUNT_ID, id);
     assertThat(persistence.get(Delegate.class, id)).isNull();
   }
+
   @Test
   @Owner(developers = MARKO)
   @Category(UnitTests.class)
@@ -2422,73 +2424,6 @@ public class DelegateServiceTest extends WingsBaseTest {
   }
 
   @Test
-  @Owner(developers = BHARAT_GOEL)
-  @Category(UnitTests.class)
-  public void shouldNotGenerateKubernetesNamespaceAdminImmutable() {
-    when(accountService.get(ACCOUNT_ID))
-        .thenReturn(anAccount().withAccountKey("ACCOUNT_KEY").withUuid(ACCOUNT_ID).build());
-    when(delegateVersionService.getImmutableDelegateImageTag(ACCOUNT_ID)).thenReturn(DELEGATE_IMAGE_TAG);
-    when(delegateVersionService.getUpgraderImageTag(ACCOUNT_ID, true)).thenReturn(UPGRADER_IMAGE_TAG);
-    when(delegateProfileService.get(ACCOUNT_ID, "delConfigId")).thenReturn(DelegateProfile.builder().build());
-    when(accountService.isImmutableDelegateEnabled(ACCOUNT_ID)).thenReturn(Boolean.TRUE);
-    DelegateSetupDetails setupDetails = DelegateSetupDetails.builder()
-                                            .orgIdentifier("9S5HMP0xROugl3_QgO62rQO")
-                                            .projectIdentifier("9S5HMP0xROugl3_QgO62rQP")
-                                            .delegateConfigurationId("delConfigId")
-                                            .name("QWE")
-                                            .identifier("_delegateGroupId1")
-                                            .size(DelegateSize.LARGE)
-                                            .description("desc")
-                                            .delegateType(DelegateType.KUBERNETES)
-                                            .k8sConfigDetails(K8sConfigDetails.builder()
-                                                                  .k8sPermissionType(K8sPermissionType.NAMESPACE_ADMIN)
-                                                                  .namespace("test-namespace")
-                                                                  .build())
-                                            .tokenName(TOKEN_NAME)
-                                            .build();
-    assertThatThrownBy(()
-                           -> delegateService.generateKubernetesYaml(ACCOUNT_ID, setupDetails, "https://localhost:9090",
-                               "https://localhost:7070", MediaType.MULTIPART_FORM_DATA_TYPE))
-        .isInstanceOf(InvalidRequestException.class)
-        .hasMessage(
-            "Delegate name should be lowercase and can include only dash(-) between letters and cannot start or end with a number");
-  }
-
-  @Test
-  @Owner(developers = BHARAT_GOEL)
-  @Category(UnitTests.class)
-  public void shouldNotGenerateKubernetes() {
-    when(accountService.get(ACCOUNT_ID))
-        .thenReturn(anAccount().withAccountKey("ACCOUNT_KEY").withUuid(ACCOUNT_ID).build());
-    when(delegateVersionService.getImmutableDelegateImageTag(ACCOUNT_ID)).thenReturn(DELEGATE_IMAGE_TAG);
-    when(delegateVersionService.getUpgraderImageTag(ACCOUNT_ID, true)).thenReturn(UPGRADER_IMAGE_TAG);
-    when(delegateProfileService.get(ACCOUNT_ID, "delConfigId")).thenReturn(DelegateProfile.builder().build());
-    when(accountService.isImmutableDelegateEnabled(ACCOUNT_ID)).thenReturn(Boolean.TRUE);
-    DelegateSetupDetails setupDetails =
-        DelegateSetupDetails.builder()
-            .orgIdentifier("9S5HMP0xROugl3_QgO62rQO")
-            .projectIdentifier("9S5HMP0xROugl3_QgO62rQP")
-            .delegateConfigurationId("delConfigId")
-            .name(
-                "thisismorethan63characterpleasedeletefewchartacrterask8willnotallowthisthenyourwillgoingtofaceanissueinprod")
-            .identifier("_delegateGroupId1")
-            .size(DelegateSize.LARGE)
-            .description("desc")
-            .delegateType(DelegateType.KUBERNETES)
-            .k8sConfigDetails(K8sConfigDetails.builder()
-                                  .k8sPermissionType(K8sPermissionType.NAMESPACE_ADMIN)
-                                  .namespace("test-namespace")
-                                  .build())
-            .tokenName(TOKEN_NAME)
-            .build();
-    assertThatThrownBy(()
-                           -> delegateService.generateKubernetesYaml(ACCOUNT_ID, setupDetails, "https://localhost:9090",
-                               "https://localhost:7070", MediaType.MULTIPART_FORM_DATA_TYPE))
-        .isInstanceOf(InvalidRequestException.class)
-        .hasMessage("Delegate name must be at most 63 characters");
-  }
-
-  @Test
   @Owner(developers = BRETT)
   @Category(UnitTests.class)
   public void shouldGetLatestVersion() {
@@ -2776,7 +2711,7 @@ public class DelegateServiceTest extends WingsBaseTest {
 
     persistence.saveBatch(Arrays.asList(acctGroup, orgGroup, projectGroup));
 
-    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, null, null);
+    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, null, null, false);
     assertThat(actual).containsExactlyInAnyOrder("acctgrp");
   }
 
@@ -2804,7 +2739,7 @@ public class DelegateServiceTest extends WingsBaseTest {
 
     persistence.saveBatch(Arrays.asList(acctGroup, orgGroup, projectGroup));
 
-    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, null);
+    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, null, false);
     assertThat(actual).containsExactlyInAnyOrder("acctgrp", "orggrp");
   }
 
@@ -2839,7 +2774,8 @@ public class DelegateServiceTest extends WingsBaseTest {
 
     persistence.saveBatch(Arrays.asList(acctGroup, orgGroup, projectGroup));
 
-    final Set<String> actual = delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, projectId);
+    final Set<String> actual =
+        delegateService.getAllDelegateSelectorsUpTheHierarchy(accountId, orgId, projectId, false);
     assertThat(actual).containsExactlyInAnyOrder(
         "acctgrp", "orggrp", "projectgrp", "custom-acct", "custom-org", "custom-proj");
   }

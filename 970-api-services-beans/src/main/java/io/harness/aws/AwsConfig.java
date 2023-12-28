@@ -25,6 +25,9 @@ import lombok.experimental.FieldDefaults;
 public class AwsConfig {
   boolean isEc2IamCredentials;
   boolean isIRSA;
+  boolean isOidc;
+  AwsOidcAttributes oidcAttributes;
   CrossAccountAccess crossAccountAccess;
   AwsAccessKeyCredential awsAccessKeyCredential;
+  String proxyUrl;
 }

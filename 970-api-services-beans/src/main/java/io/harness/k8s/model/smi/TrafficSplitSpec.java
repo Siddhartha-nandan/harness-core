@@ -26,4 +26,5 @@ import lombok.NoArgsConstructor;
 public class TrafficSplitSpec {
   @NotNull String service;
   @NotNull List<Backend> backends;
+  List<RouteMatch> matches;
 }

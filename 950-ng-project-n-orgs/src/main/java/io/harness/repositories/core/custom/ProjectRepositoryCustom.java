@@ -11,6 +11,7 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.Scope;
+import io.harness.beans.ScopeInfo;
 import io.harness.ng.core.entities.Project;
 
 import java.util.List;
@@ -32,11 +33,11 @@ public interface ProjectRepositoryCustom {
 
   Project hardDelete(String accountIdentifier, String orgIdentifier, String identifier, Long version);
 
-  @Deprecated Project delete(String accountIdentifier, String orgIdentifier, String identifier, Long version);
+  Project hardDelete(String accountIdentifier, ScopeInfo scopeInfo, String identifier, Long version);
 
   List<Project> findAll(Criteria criteria);
 
-  Project restore(String accountIdentifier, String orgIdentifier, String identifier);
+  Project restore(String accountIdentifier, String parentUniqueId, String identifier);
 
   <T> AggregationResults<T> aggregate(Aggregation aggregation, Class<T> classToFillResultIn);
 

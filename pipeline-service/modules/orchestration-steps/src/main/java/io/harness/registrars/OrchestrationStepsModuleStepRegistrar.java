@@ -69,6 +69,8 @@ public class OrchestrationStepsModuleStepRegistrar {
     engineSteps.put(PipelineSetupStep.STEP_TYPE, PipelineSetupStep.class);
 
     engineSteps.put(ApprovalStageStep.STEP_TYPE, ApprovalStageStep.class);
+    engineSteps.put(io.harness.steps.approval.stage.v1.ApprovalStageStep.STEP_TYPE,
+        io.harness.steps.approval.stage.v1.ApprovalStageStep.class);
     engineSteps.put(HarnessApprovalStep.STEP_TYPE, HarnessApprovalStep.class);
     engineSteps.put(CustomApprovalStep.STEP_TYPE, CustomApprovalStep.class);
     engineSteps.put(JiraApprovalStep.STEP_TYPE, JiraApprovalStep.class);
@@ -101,6 +103,7 @@ public class OrchestrationStepsModuleStepRegistrar {
 
     engineSteps.putAll(NGCommonUtilStepsRegistrar.getEngineSteps());
     engineSteps.put(WaitStep.STEP_TYPE, WaitStep.class);
+    engineSteps.put(io.harness.steps.wait.v1.WaitStep.STEP_TYPE, io.harness.steps.wait.v1.WaitStep.class);
     engineSteps.put(GroupStepV1.STEP_TYPE, GroupStepV1.class);
     engineSteps.put(InitContainerStep.STEP_TYPE, InitContainerStep.class);
     engineSteps.put(RunContainerStep.STEP_TYPE, RunContainerStep.class);

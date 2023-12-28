@@ -17,6 +17,7 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.data.validator.EntityIdentifier;
 import io.harness.data.validator.Trimmed;
+import io.harness.gitsync.beans.StoreType;
 import io.harness.mongo.index.CompoundMongoIndex;
 import io.harness.mongo.index.MongoIndex;
 import io.harness.ng.DbAliases;
@@ -24,6 +25,7 @@ import io.harness.ng.core.ScopeAware;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesSpec;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesType;
 import io.harness.persistence.PersistentEntity;
+import io.harness.persistence.gitaware.GitAware;
 
 import com.google.common.collect.ImmutableList;
 import dev.morphia.annotations.Entity;
@@ -31,7 +33,10 @@ import java.util.List;
 import javax.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Setter;
+import lombok.With;
 import lombok.experimental.FieldNameConstants;
+import lombok.experimental.NonFinal;
 import lombok.experimental.Wither;
 import org.hibernate.validator.constraints.NotEmpty;
 import org.springframework.data.annotation.CreatedDate;
@@ -51,7 +56,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @TypeAlias("io.harness.ng.core.serviceoverride.beans.NGServiceOverridesEntity")
 @RecasterAlias("io.harness.ng.core.serviceoverride.beans.NGServiceOverridesEntity")
 @OwnedBy(CDC)
-public class NGServiceOverridesEntity implements PersistentEntity, ScopeAware {
+public class NGServiceOverridesEntity implements PersistentEntity, ScopeAware, GitAware {
   public static List<MongoIndex> mongoIndexes() {
     return ImmutableList.<MongoIndex>builder()
         .add(CompoundMongoIndex.builder()
@@ -82,13 +87,37 @@ public class NGServiceOverridesEntity implements PersistentEntity, ScopeAware {
   ServiceOverridesSpec spec;
   ServiceOverridesType type;
   /*
-  yamlInternal - This field is only used for create and update API calls via terraform provider.
-  We take overrides spec yaml from user and then convert it to the spec object for further processing.
+  yamlInternal - This field is only used for create and update API calls via terraform provider (as well as to handle
+  override v1 automation). We take overrides spec yaml from user and then convert it to the spec object for further
+  processing.
    */
   String yamlInternal;
+
+  /*
+  yamlV2 - new field introduced to onboard yaml version of override v2
+   */
+  String yamlV2;
 
   @Builder.Default Boolean isV2 = Boolean.FALSE;
 
   @Wither @CreatedDate Long createdAt;
   @Wither @LastModifiedDate Long lastModifiedAt;
+
+  // GitX field
+  @With @Setter @NonFinal StoreType storeType;
+  @With @Setter @NonFinal String repo;
+  @With @Setter @NonFinal String connectorRef;
+  @With @Setter @NonFinal String repoURL;
+  @With @Setter @NonFinal String fallBackBranch;
+  @Setter @NonFinal String filePath;
+
+  @Override
+  public String getData() {
+    return yamlV2;
+  }
+
+  @Override
+  public void setData(String data) {
+    this.yamlV2 = data;
+  }
 }

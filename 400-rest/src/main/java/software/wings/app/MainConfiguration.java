@@ -247,8 +247,6 @@ public class MainConfiguration extends Configuration implements AssetsBundleConf
   @JsonProperty(value = "disableInstanceSyncIterator") private Boolean disableInstanceSyncIterator;
   @JsonProperty("delegateQueueServiceConfig") private DelegateQueueServiceConfig queueServiceConfig;
   @JsonProperty("debeziumConsumersConfigs") DebeziumConsumersConfig debeziumConsumerConfigs;
-  // If this flag is enabled event framework is utilized for wait engine notification mechanism
-  @JsonProperty(value = "redisNotifyEvent") private boolean redisNotifyEvent;
 
   // If flag is enabled, only one thread does Notify response cleanup.
   @JsonProperty(value = "lockNotifyResponseCleanup") private boolean lockNotifyResponseCleanup;
@@ -261,6 +259,7 @@ public class MainConfiguration extends Configuration implements AssetsBundleConf
   @JsonProperty("proxy") private CEProxyConfig ceProxyConfig;
   @JsonProperty("awsServiceEndpointUrls") private CEAwsServiceEndpointConfig ceAwsServiceEndpointConfig;
   @JsonProperty("maxAccountsToDeleteInParallel") private int maxAccountsToDeleteInParallel;
+  @JsonProperty("runAccountDeletionOnWeekdays") private boolean runAccountDeletionOnWeekdays;
   @JsonProperty(value = "disableNotificationTemplateRegister") private boolean disableNotificationTemplateRegister;
 
   private int applicationPort;

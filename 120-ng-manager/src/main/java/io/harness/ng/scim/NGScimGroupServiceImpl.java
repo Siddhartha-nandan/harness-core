@@ -441,10 +441,10 @@ public class NGScimGroupServiceImpl implements ScimGroupService {
           log.info("NGSCIM: Skipping group creation unidentified scope");
           continue;
         }
-        userGroupCreated = userGroupService.create(userGroupDTOBuilder.build());
+        userGroupCreated = userGroupService.createForSCIM(userGroupDTOBuilder.build());
       }
     } else {
-      userGroupCreated = userGroupService.create(userGroupDTOBuilder.build());
+      userGroupCreated = userGroupService.createForSCIM(userGroupDTOBuilder.build());
     }
 
     ScimGroup scimGroup = buildGroupResponse(userGroupCreated, accountId);

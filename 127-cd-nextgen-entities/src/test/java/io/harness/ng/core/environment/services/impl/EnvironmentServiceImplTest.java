@@ -36,6 +36,7 @@ import io.harness.data.structure.UUIDGenerator;
 import io.harness.eventsframework.api.Producer;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ReferencedEntityException;
+import io.harness.gitaware.helper.MoveConfigOperationType;
 import io.harness.gitsync.beans.StoreType;
 import io.harness.gitx.GitXSettingsHelper;
 import io.harness.ng.core.EntityDetail;
@@ -43,12 +44,16 @@ import io.harness.ng.core.entitysetupusage.dto.EntitySetupUsageDTO;
 import io.harness.ng.core.entitysetupusage.service.EntitySetupUsageService;
 import io.harness.ng.core.environment.beans.Environment;
 import io.harness.ng.core.environment.beans.Environment.EnvironmentKeys;
+import io.harness.ng.core.environment.beans.EnvironmentInputSetYamlAndServiceOverridesMetadataDTO;
 import io.harness.ng.core.environment.beans.EnvironmentInputsMergedResponseDto;
+import io.harness.ng.core.environment.beans.EnvironmentMoveConfigOperationDTO;
+import io.harness.ng.core.environment.beans.EnvironmentMoveConfigResponse;
 import io.harness.ng.core.environment.dto.EnvironmentResponseDTO;
 import io.harness.ng.core.environment.mappers.EnvironmentMapper;
 import io.harness.ng.core.infrastructure.services.InfrastructureEntityService;
 import io.harness.ng.core.serviceoverride.services.ServiceOverrideService;
 import io.harness.ng.core.serviceoverridev2.service.ServiceOverridesServiceV2;
+import io.harness.ng.core.utils.CDGitXService;
 import io.harness.ng.core.utils.CoreCriteriaUtils;
 import io.harness.ng.core.utils.ServiceOverrideV2ValidationHelper;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
@@ -111,6 +116,7 @@ public class EnvironmentServiceImplTest extends CDNGEntitiesTestBase {
   @Mock NGFeatureFlagHelperService featureFlagHelperService;
   @Mock ServiceOverrideV2ValidationHelper overrideV2ValidationHelper;
   @Mock GitXSettingsHelper gitXSettingsHelper;
+  @Mock CDGitXService cdGitXService;
   @InjectMocks private EnvironmentServiceImpl environmentService;
   @InjectMocks private EnvironmentServiceImpl environmentServiceUsingMocks;
 
@@ -127,11 +133,13 @@ public class EnvironmentServiceImplTest extends CDNGEntitiesTestBase {
     Reflect.on(environmentService).set("environmentRepository", environmentRepository);
     Reflect.on(environmentService).set("outboxService", outboxService);
     Reflect.on(environmentService).set("gitXSettingsHelper", gitXSettingsHelper);
+    Reflect.on(environmentService).set("cdGitXService", cdGitXService);
     when(entitySetupUsageService.listAllEntityUsage(anyInt(), anyInt(), anyString(), anyString(), any(), anyString()))
         .thenReturn(new PageImpl<>(Collections.emptyList()));
     MockedStatic<NGRestUtils> mockRestStatic = Mockito.mockStatic(NGRestUtils.class);
     SettingValueResponseDTO settingValueResponseDTO = SettingValueResponseDTO.builder().value("false").build();
     mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(settingValueResponseDTO);
+    when(cdGitXService.isNewGitXEnabled(anyString(), anyString(), anyString())).thenReturn(true);
   }
 
   @Test
@@ -627,6 +635,81 @@ public class EnvironmentServiceImplTest extends CDNGEntitiesTestBase {
     assertThat(environments).contains(accEnv);
     assertThat(environments).contains(orgEnv);
     assertThat(environments).contains(projectEnv);
+  }
+
+  @Test
+  @Owner(developers = HINGER)
+  @Category(UnitTests.class)
+  public void testCreateEnvironmentMetadataInAccountLevelStageTemplate() {
+    String filename = "env-with-runtime-inputs.yaml";
+    String yaml = readFile(filename);
+    Environment createEnvironmentRequest =
+        Environment.builder().accountId("ACCOUNT_ID").identifier("IDENTIFIER").yaml(yaml).build();
+
+    environmentService.create(createEnvironmentRequest);
+
+    // account level stage template using account level environment
+    // will make calls without orgId and projectId and with envRef: account.IDENTIFIER
+    EnvironmentInputSetYamlAndServiceOverridesMetadataDTO environmentMetadata =
+        environmentService.getEnvironmentsInputYamlAndServiceOverridesMetadata("ACCOUNT_ID", null, null,
+            List.of("account.IDENTIFIER"), Collections.singletonMap("account.IDENTIFIER", null),
+            Collections.emptyList(), false, false);
+
+    String metadataYamlForAccountLevelTemplate =
+        environmentMetadata.getEnvironmentsInputYamlAndServiceOverrides().get(0).getEnvRuntimeInputYaml();
+    String resFile = "env-with-runtime-inputs-res.yaml";
+    String expectedYaml = readFile(resFile);
+    assertThat(metadataYamlForAccountLevelTemplate).isEqualTo(expectedYaml);
+
+    // project level stage template using account level environment
+    // will make calls with some orgId and projectId and with envRef: account.IDENTIFIER
+    environmentMetadata = environmentService.getEnvironmentsInputYamlAndServiceOverridesMetadata("ACCOUNT_ID", "ORG_ID",
+        "PROJECT_ID", List.of("account.IDENTIFIER"), Collections.singletonMap("account.IDENTIFIER", null),
+        Collections.emptyList(), false, false);
+    String metadataYamlForProjectLevelTemplate =
+        environmentMetadata.getEnvironmentsInputYamlAndServiceOverrides().get(0).getEnvRuntimeInputYaml();
+    assertThat(metadataYamlForProjectLevelTemplate).isEqualTo(expectedYaml);
+  }
+
+  @Test
+  @Owner(developers = HINGER)
+  @Category(UnitTests.class)
+  public void testMoveStoreTypeConfigProjectLevelEnvironment() {
+    String filename = "env-with-runtime-inputs.yaml";
+    String yaml = readFile(filename);
+    Environment createEnvironmentRequest = Environment.builder()
+                                               .accountId("ACCOUNT_ID")
+                                               .orgIdentifier("default")
+                                               .projectIdentifier("neo")
+                                               .identifier("prod")
+                                               .yaml(yaml)
+                                               .build();
+
+    environmentService.create(createEnvironmentRequest);
+
+    EnvironmentMoveConfigOperationDTO moveConfigOperationDTO =
+        EnvironmentMoveConfigOperationDTO.builder()
+            .repoName("test_repo")
+            .branch("feature")
+            .moveConfigOperationType(
+                MoveConfigOperationType.getMoveConfigType(MoveConfigOperationType.INLINE_TO_REMOTE))
+            .connectorRef("test_github_connector")
+            .commitMessage("Moving%20Env%20%5Bprod%5D%20to%20Git")
+            .isNewBranch(false)
+            .filePath(".harness%2Fprod.yaml")
+            .build();
+    EnvironmentMoveConfigResponse moveConfigResponse =
+        environmentService.moveEnvironment("ACCOUNT_ID", "default", "neo", "prod", moveConfigOperationDTO);
+
+    assertThat(moveConfigResponse.getIdentifier()).isEqualTo("prod");
+
+    Optional<Environment> optionalEnvironment =
+        environmentService.getMetadata("ACCOUNT_ID", "default", "neo", "prod", false);
+    assertThat(optionalEnvironment.isPresent()).isTrue();
+    assertThat(optionalEnvironment.get().getStoreType()).isEqualTo(StoreType.REMOTE);
+    assertThat(optionalEnvironment.get().getConnectorRef()).isEqualTo("test_github_connector");
+    assertThat(optionalEnvironment.get().getRepo()).isEqualTo("test_repo");
+    assertThat(optionalEnvironment.get().getFallBackBranch()).isEqualTo("feature");
   }
 
   private Object[][] data() {

@@ -7,13 +7,13 @@
 
 package io.harness.ng.core;
 
+import static io.harness.NGConstants.DEFAULT_ORG_IDENTIFIER;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
-import static io.harness.remote.client.CGRestUtils.getResponse;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 
 import io.harness.account.AccountClient;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
 
@@ -31,18 +31,15 @@ public class AccountOrgProjectValidator {
   private final ProjectService projectService;
   private final AccountClient accountClient;
 
-  @DefaultOrganization
-  public boolean isPresent(
-      String accountIdentifier, @OrgIdentifier String orgIdentifier, @ProjectIdentifier String projectIdentifier) {
-    if (isEmpty(accountIdentifier)) {
+  public boolean isPresent(String accountIdentifier, String orgIdentifier, String projectIdentifier) {
+    boolean isProjectIdentifierPresent = isNotEmpty(projectIdentifier);
+    boolean isOrgIdentifierEmpty = isEmpty(orgIdentifier);
+    if (isProjectIdentifierPresent && isOrgIdentifierEmpty) {
+      orgIdentifier = DEFAULT_ORG_IDENTIFIER;
+    }
+
+    if (isEmpty(accountIdentifier) || isEmpty(orgIdentifier)) {
       return true;
-    } else if (isEmpty(orgIdentifier)) {
-      try {
-        return getResponse(accountClient.getAccountDTO(accountIdentifier)) != null;
-      } catch (InvalidRequestException exception) {
-        log.error(String.format("Account with accountIdentifier %s not found", accountIdentifier));
-        return false;
-      }
     } else if (isEmpty(projectIdentifier)) {
       return organizationService.get(accountIdentifier, orgIdentifier).isPresent();
     } else {

@@ -6,6 +6,7 @@
  */
 
 package io.harness.kryo.registrars;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
@@ -31,6 +32,7 @@ import io.harness.delegate.beans.connector.awsconnector.AwsFixedDelayBackoffStra
 import io.harness.delegate.beans.connector.awsconnector.AwsFullJitterBackoffStrategySpecDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsInheritFromDelegateSpecDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsManualConfigSpecDTO;
+import io.harness.delegate.beans.connector.awsconnector.AwsOidcSpecDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsSdkClientBackoffStrategyDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsSdkClientBackoffStrategySpecDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsSdkClientBackoffStrategyType;
@@ -159,6 +161,8 @@ import io.harness.delegate.task.k8s.K8sScaleRequest;
 import io.harness.delegate.task.k8s.K8sScaleResponse;
 import io.harness.delegate.task.k8s.K8sSwapServiceSelectorsRequest;
 import io.harness.delegate.task.k8s.K8sTaskType;
+import io.harness.delegate.task.k8s.K8sTrafficRoutingRequest;
+import io.harness.delegate.task.k8s.K8sTrafficRoutingResponse;
 import io.harness.delegate.task.k8s.KustomizeManifestDelegateConfig;
 import io.harness.delegate.task.k8s.OpenshiftManifestDelegateConfig;
 import io.harness.delegate.task.k8s.RancherK8sInfraDelegateConfig;
@@ -166,6 +170,7 @@ import io.harness.delegate.task.k8s.ReleaseMetadata;
 import io.harness.delegate.task.k8s.trafficrouting.HeaderConfig;
 import io.harness.delegate.task.k8s.trafficrouting.IstioProviderConfig;
 import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfig;
+import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfigType;
 import io.harness.delegate.task.k8s.trafficrouting.MatchType;
 import io.harness.delegate.task.k8s.trafficrouting.ProviderType;
 import io.harness.delegate.task.k8s.trafficrouting.RouteType;
@@ -528,6 +533,7 @@ public class K8sNgTaskRegister implements KryoRegistrar {
     kryo.register(AwsSdkClientBackoffStrategyDTO.class, 10000458);
     kryo.register(AwsSdkClientBackoffStrategySpecDTO.class, 10000459);
     kryo.register(AwsSdkClientBackoffStrategyType.class, 10000460);
+    kryo.register(AwsOidcSpecDTO.class, 10000461);
 
     // k8s traffic routing
     kryo.register(HeaderConfig.class, 20002000);
@@ -545,5 +551,8 @@ public class K8sNgTaskRegister implements KryoRegistrar {
     kryo.register(LinkedHashSet.class, 100030);
     kryo.register(TaskNGDataException.class, 543440);
     kryo.register(ReleaseMetadata.class, 20001002);
+    kryo.register(K8sTrafficRoutingRequest.class, 20002012);
+    kryo.register(K8sTrafficRoutingResponse.class, 20002013);
+    kryo.register(K8sTrafficRoutingConfigType.class, 20002014);
   }
 }

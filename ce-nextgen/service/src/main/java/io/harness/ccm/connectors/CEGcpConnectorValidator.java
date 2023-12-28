@@ -12,6 +12,7 @@ import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.ccm.CENextGenConfiguration;
+import io.harness.configuration.DeployMode;
 import io.harness.connector.ConnectivityStatus;
 import io.harness.connector.ConnectorResponseDTO;
 import io.harness.connector.ConnectorValidationResult;
@@ -131,6 +132,9 @@ public class CEGcpConnectorValidator extends io.harness.ccm.connectors.AbstractC
         }
         if (featuresEnabled.contains(CEFeatures.OPTIMIZATION)) {
           requiredPermissions.addAll(getRequiredPermissionsForOptimization());
+        }
+        if (featuresEnabled.contains(CEFeatures.GOVERNANCE)) {
+          requiredPermissions.addAll(getRequiredPermissionsForGovernance());
         }
         ConnectorValidationResult permissionsValidationResult = validatePermissionsList(
             service, projectId, new ArrayList<>(requiredPermissions), impersonatedServiceAccount);
@@ -295,6 +299,11 @@ public class CEGcpConnectorValidator extends io.harness.ccm.connectors.AbstractC
         "compute.regions.get", "compute.regions.list", "secretmanager.versions.access");
   }
 
+  public List<String> getRequiredPermissionsForGovernance() {
+    // We can add it later once we decide on recommendation for GCP Governance
+    return Arrays.asList();
+  }
+
   public ConnectorValidationResult validateAccessToBillingReport(
       String projectId, String datasetId, String gcpTableName, String impersonatedServiceAccount) throws IOException {
     boolean isTablePresent = false;
@@ -441,7 +450,7 @@ public class CEGcpConnectorValidator extends io.harness.ccm.connectors.AbstractC
 
   public Credentials getGcpImpersonatedCredentials(
       GoogleCredentials sourceCredentials, String impersonatedServiceAccount) {
-    if (impersonatedServiceAccount == null) {
+    if (DeployMode.isOnPrem(configuration.getDeployMode().name()) || impersonatedServiceAccount == null) {
       return sourceCredentials;
     } else {
       return ImpersonatedCredentials.create(sourceCredentials, impersonatedServiceAccount, null,

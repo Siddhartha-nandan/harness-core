@@ -7,6 +7,14 @@
 
 package io.harness.delegate.app.modules;
 
+import static io.harness.delegate.task.scm.ScmDelegateClientConstants.DEFAULT_SCM_SERVER_CORE_POOL_SIZE;
+import static io.harness.delegate.task.scm.ScmDelegateClientConstants.DEFAULT_SCM_SERVER_MAX_POOL_SIZE;
+import static io.harness.delegate.task.scm.ScmDelegateClientConstants.DEFAULT_SCM_SERVER_POOL_IDLE_TIME_UNIT;
+import static io.harness.delegate.task.scm.ScmDelegateClientConstants.DEFAULT_SCM_SERVER_POOL_IDLE_TIME_VALUE;
+import static io.harness.delegate.task.scm.ScmDelegateClientConstants.SCM_SERVER_CORE_POOL_SIZE_ENV_VAR;
+import static io.harness.delegate.task.scm.ScmDelegateClientConstants.SCM_SERVER_MAX_POOL_SIZE_ENV_VAR;
+import static io.harness.delegate.task.scm.ScmDelegateClientConstants.SCM_SERVER_POOL_IDLE_TIME_IN_SECONDS_ENV_VAR;
+
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
 import io.harness.annotations.dev.BreakDependencyOn;
@@ -173,6 +181,7 @@ import io.harness.delegate.k8s.K8sRollingRequestHandler;
 import io.harness.delegate.k8s.K8sRollingRollbackRequestHandler;
 import io.harness.delegate.k8s.K8sScaleRequestHandler;
 import io.harness.delegate.k8s.K8sSwapServiceSelectorsHandler;
+import io.harness.delegate.k8s.K8sTrafficRoutingRequestHandler;
 import io.harness.delegate.message.MessageService;
 import io.harness.delegate.message.MessageServiceImpl;
 import io.harness.delegate.message.MessengerType;
@@ -523,6 +532,7 @@ import io.harness.googlefunctions.GoogleCloudFunctionGenOneClient;
 import io.harness.googlefunctions.GoogleCloudFunctionGenOneClientImpl;
 import io.harness.googlefunctions.GoogleCloudRunClient;
 import io.harness.googlefunctions.GoogleCloudRunClientImpl;
+import io.harness.helm.HelmCliExecutorFactory;
 import io.harness.helm.HelmClient;
 import io.harness.helm.HelmClientImpl;
 import io.harness.helpers.EncryptDecryptHelperImpl;
@@ -536,6 +546,8 @@ import io.harness.manifest.CustomManifestService;
 import io.harness.manifest.CustomManifestServiceImpl;
 import io.harness.nexus.service.NexusRegistryService;
 import io.harness.nexus.service.NexusRegistryServiceImpl;
+import io.harness.oidc.gcp.connector.GcpOidcConnectorValidatorUtility;
+import io.harness.oidc.gcp.connector.GcpOidcDelegateConnectorValidatorUtility;
 import io.harness.openshift.OpenShiftClient;
 import io.harness.openshift.OpenShiftClientImpl;
 import io.harness.pcf.CfCliClient;
@@ -577,6 +589,7 @@ import io.harness.terragrunt.TerragruntClient;
 import io.harness.terragrunt.TerragruntClientImpl;
 import io.harness.threading.ThreadPool;
 import io.harness.time.TimeModule;
+import io.harness.utils.system.SystemWrapper;
 import io.harness.version.VersionModule;
 
 import software.wings.api.DeploymentType;
@@ -935,7 +948,6 @@ import org.asynchttpclient.DefaultAsyncHttpClientConfig;
 @RequiredArgsConstructor
 public class DelegateModule extends AbstractModule {
   private final DelegateConfiguration configuration;
-
   /*
    * Creates and return ScheduledExecutorService object, which can be used for health monitoring purpose.
    * This threadpool currently being used for various below operations:
@@ -1080,6 +1092,28 @@ public class DelegateModule extends AbstractModule {
   public ExecutorService k8sSteadyStateExecutor() {
     return Executors.newCachedThreadPool(
         new ThreadFactoryBuilder().setNameFormat("k8sSteadyState-%d").setPriority(Thread.MAX_PRIORITY).build());
+  }
+
+  @Provides
+  @Singleton
+  @Named("scmServerExecutor")
+  public ExecutorService scmServerExecutor() {
+    int scmExecutorCorePoolSize =
+        SystemWrapper.getOrDefaultInt(SCM_SERVER_CORE_POOL_SIZE_ENV_VAR, DEFAULT_SCM_SERVER_CORE_POOL_SIZE);
+    int scmExecutorMaxPoolSize =
+        SystemWrapper.getOrDefaultInt(SCM_SERVER_MAX_POOL_SIZE_ENV_VAR, DEFAULT_SCM_SERVER_MAX_POOL_SIZE);
+    int poolIdleTimeInSeconds = SystemWrapper.getOrDefaultInt(
+        SCM_SERVER_POOL_IDLE_TIME_IN_SECONDS_ENV_VAR, DEFAULT_SCM_SERVER_POOL_IDLE_TIME_VALUE);
+    return ThreadPool.create(scmExecutorCorePoolSize, scmExecutorMaxPoolSize, poolIdleTimeInSeconds,
+        DEFAULT_SCM_SERVER_POOL_IDLE_TIME_UNIT,
+        new ThreadFactoryBuilder().setNameFormat("scm-server-executor-%d").setPriority(Thread.MIN_PRIORITY).build());
+  }
+
+  @Provides
+  @Singleton
+  @Named("helmCliExecutor")
+  public ExecutorService helmCliExecutor() {
+    return HelmCliExecutorFactory.create();
   }
 
   @Provides
@@ -1326,6 +1360,9 @@ public class DelegateModule extends AbstractModule {
     bind(RancherConnectionHelperService.class).to(RancherConnectionHelperServiceImpl.class);
     bind(RancherClusterClient.class).to(RancherClusterClientImpl.class);
 
+    // OIDC Bindings
+    bind(GcpOidcConnectorValidatorUtility.class).toInstance(new GcpOidcDelegateConnectorValidatorUtility());
+
     MapBinder<String, CommandUnitExecutorService> serviceCommandExecutorServiceMapBinder =
         MapBinder.newMapBinder(binder(), String.class, CommandUnitExecutorService.class);
     serviceCommandExecutorServiceMapBinder.addBinding(DeploymentType.ECS.name())
@@ -1457,6 +1494,8 @@ public class DelegateModule extends AbstractModule {
         .to(K8sDryRunManifestRequestHandler.class);
     k8sTaskTypeToRequestHandler.addBinding(K8sTaskType.BLUE_GREEN_STAGE_SCALE_DOWN.name())
         .to(K8sBlueGreenStageScaleDownRequestHandler.class);
+    k8sTaskTypeToRequestHandler.addBinding(K8sTaskType.TRAFFIC_ROUTING.name())
+        .to(K8sTrafficRoutingRequestHandler.class);
 
     // Terraform Task Handlers
     MapBinder<TFTaskType, TerraformAbstractTaskHandler> tfTaskTypeToHandlerMap =

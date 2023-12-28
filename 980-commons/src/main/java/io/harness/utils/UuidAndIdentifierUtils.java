@@ -13,6 +13,8 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -37,6 +39,7 @@ public final class UuidAndIdentifierUtils {
   }
 
   public static String generateHarnessUIFormatIdentifier(String name) {
+    name = generateFormattedIdentifier(name);
     if (StringUtils.isBlank(name)) {
       return "";
     }
@@ -45,5 +48,27 @@ public final class UuidAndIdentifierUtils {
         .replaceAll("^[0-9-$]*", "") // remove starting digits, dashes and $
         .replaceAll("[^0-9a-zA-Z_$ ]", "") // remove special chars except _ and $
         .replaceAll("\\s", "_"); // replace spaces with _
+  }
+
+  public static String generateHarnessUIFormatName(String str) {
+    if (StringUtils.isEmpty(str)) {
+      return str;
+    }
+    str = StringUtils.stripAccents(str.trim());
+    Pattern p = Pattern.compile("[^-./0-9a-zA-Z_\\s]", Pattern.CASE_INSENSITIVE);
+    Matcher m = p.matcher(str);
+    String generated = m.replaceAll("_");
+    return !Character.isLetter(generated.charAt(0)) ? "_" + generated : generated;
+  }
+
+  /**
+   * Bring back SCIM usergroup name formatting in lieu of https://harness.atlassian.net/browse/PL-43576
+   * This method will convert space, dot and hyphen to underscore.
+   * @param name
+   * @return
+   */
+  private static String generateFormattedIdentifier(String name) {
+    return StringUtils.isBlank(name) ? name : name.trim().replaceAll("\\.", "_").replaceAll("-", "_");
+    // replace dot and hyphen with underscore
   }
 }

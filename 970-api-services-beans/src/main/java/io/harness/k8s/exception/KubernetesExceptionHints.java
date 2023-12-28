@@ -24,6 +24,10 @@ public class KubernetesExceptionHints {
       "Please connect remotely to Harness delegate and verify network connection between Kubernetes cluster and Harness delegate.";
   public final String K8S_API_SOCKET_TIMEOUT_EXCEPTION =
       "Please connect remotely to Harness delegate and verify if Harness delegate is whitelisted to access Kubernetes API.";
+  public static final String K8S_KUBECTL_AUTH_HINT_TEMPLATE =
+      "Check the following command via Shell Script step: 'kubectl --kubeconfig=${HARNESS_KUBE_CONFIG_PATH} auth can-i %s %s --as=%s --namespace=%s'";
+  public final String K8S_KUBECTL_AUTH_DEFAULT_HINT =
+      "Check authentication to cluster with kubectl cli directly via Shell Script step by using ${HARNESS_KUBE_CONFIG_PATH} \n For more details please refer to: \nhttps://kubernetes.io/docs/reference/access-authn-authz/authorization/#checking-api-access and \nhttps://developer.harness.io/docs/continuous-delivery/x-platform-cd-features/cd-steps/utilities/shell-script-step/#running-kubernetes-commands-in-the-shell-script";
   public final String K8S_API_FORBIDDEN_EXCEPTION =
       "Check configured Kubernetes user permissions and authorization policies. \nTo know more about Roles, ClusterRoles and ClusterRoleBindings, refer: https://kubernetes.io/docs/reference/access-authn-authz/rbac/";
   public final String K8S_API_UNAUTHORIZED_EXCEPTION = "Check Kubernetes connector credentials.";
@@ -75,7 +79,10 @@ public class KubernetesExceptionHints {
   public final String BG_CONFLICTING_SERVICE = "Delete existing service [%s] to proceed";
   public final String BG_SWAP_SERVICES_SERVICE_NOT_FOUND =
       "Swap services requires primary and stage services to be present.";
-
+  public final String PATCHING_TRAFFIC_ROUTING_RESOURCE_FAILED =
+      "Failed to patch traffic routing resource. \nPlease check that resource Version:[%s], Kind:[%s], Name:[%s] exists and can be patched.";
+  public final String FAILED_TO_CREATE_PATCH =
+      "Failed to create patch for traffic routing resource Version:[%s], Kind:[%s], Name:[%s]. Please check Traffic Routing Configuration in step.";
   public final String SCALE_CLI_FAILED_GENERIC =
       "Failed to scale resource. \nPlease check the inputs to the scale step: namespace(if provided), resource type or resource name.";
   public final String ROLLBACK_CLI_FAILED = "Check if resource %s exists";
@@ -102,7 +109,7 @@ public class KubernetesExceptionHints {
   public final String MANIFEST_RENDER_ERROR_GO_TEMPLATE =
       "Please check if the given manifests are valid and can be rendered by Go template. To know more about Go templating, refer: \nhttps://community.harness.io/t/harness-local-go-templating/460 \nhttps://docs.harness.io/article/mwy6zgz8gu-use-go-templating-in-kubernetes-manifests#notes";
   public final String MANIFEST_RENDER_ERROR_HELM =
-      "Please check if the given manifests are valid and can be rendered by the `helm template` command.";
+      "Please check if the given manifests are valid and can be rendered by the `helm template` command. \n- The templates folder should not be a part of the specified path for the helm chart.\nFor more info check the chart file structure: https://helm.sh/docs/topics/charts/#the-chart-file-structure";
   public final String IMMUTABLE_FIELD = "Please delete the conflicting resource from the cluster and try again.";
   public final String MISSING_RESOURCE =
       "Please check manifest(s) for any references to missing resources and create them.";
@@ -122,4 +129,6 @@ public class KubernetesExceptionHints {
       "Check manifest folder/file path in manifest configuration";
   public final String HASH_CALCULATION_FAILED_ERROR =
       "Failed to create manifests file to be used for generating hash. Please check resources";
+  public final String TRAFFIC_ROUTING_MISSING_FIELD =
+      "Please check if %s is/are provided in the Traffic Routing configuration. This field is mandatory for provider type %s";
 }

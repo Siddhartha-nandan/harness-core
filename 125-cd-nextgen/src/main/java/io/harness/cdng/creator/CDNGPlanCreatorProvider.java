@@ -122,6 +122,7 @@ import io.harness.cdng.creator.plan.steps.K8sDryRunManifestStepPlanCreator;
 import io.harness.cdng.creator.plan.steps.K8sRollingRollbackStepPlanCreator;
 import io.harness.cdng.creator.plan.steps.K8sRollingStepPlanCreator;
 import io.harness.cdng.creator.plan.steps.K8sScaleStepPlanCreator;
+import io.harness.cdng.creator.plan.steps.K8sTrafficRoutingStepPlanCreator;
 import io.harness.cdng.creator.plan.steps.ShellScriptProvisionStepPlanCreator;
 import io.harness.cdng.creator.plan.steps.TasAppResizeStepPlanCreator;
 import io.harness.cdng.creator.plan.steps.TasBGAppSetupStepPlanCreator;
@@ -163,6 +164,8 @@ import io.harness.cdng.creator.plan.steps.azure.webapp.AzureWebAppRollbackStepPl
 import io.harness.cdng.creator.plan.steps.azure.webapp.AzureWebAppSlotDeploymentStepPlanCreator;
 import io.harness.cdng.creator.plan.steps.azure.webapp.AzureWebAppSlotSwapSlotPlanCreator;
 import io.harness.cdng.creator.plan.steps.azure.webapp.AzureWebAppTrafficShiftStepPlanCreator;
+import io.harness.cdng.creator.plan.steps.containerStepGroup.DownloadAwsS3StepPlanCreator;
+import io.harness.cdng.creator.plan.steps.containerStepGroup.DownloadHarnessStoreStepPlanCreator;
 import io.harness.cdng.creator.plan.steps.ecs.EcsBasicRollbackStepPlanCreator;
 import io.harness.cdng.creator.plan.steps.ecs.EcsBlueGreenCreateServiceStepPlanCreator;
 import io.harness.cdng.creator.plan.steps.ecs.EcsBlueGreenRollbackStepPlanCreator;
@@ -241,6 +244,7 @@ import io.harness.cdng.creator.variables.K8sDryRunManifestStepVariableCreator;
 import io.harness.cdng.creator.variables.K8sRollingRollbackStepVariableCreator;
 import io.harness.cdng.creator.variables.K8sRollingStepVariableCreator;
 import io.harness.cdng.creator.variables.K8sScaleStepVariableCreator;
+import io.harness.cdng.creator.variables.K8sTrafficRoutingStepVariableCreator;
 import io.harness.cdng.creator.variables.ServerlessAwsLambdaDeployStepVariableCreator;
 import io.harness.cdng.creator.variables.ServerlessAwsLambdaDeployV2StepVariableCreator;
 import io.harness.cdng.creator.variables.ServerlessAwsLambdaPackageV2StepVariableCreator;
@@ -264,6 +268,8 @@ import io.harness.cdng.creator.variables.aws.AwsLambdaRollbackStepVariableCreato
 import io.harness.cdng.creator.variables.aws.sam.AwsSamBuildStepVariableCreator;
 import io.harness.cdng.creator.variables.aws.sam.AwsSamDeployStepVariableCreator;
 import io.harness.cdng.creator.variables.aws.sam.AwsSamRollbackStepVariableCreator;
+import io.harness.cdng.creator.variables.containerStepGroup.DownloadAwsS3StepVariableCreator;
+import io.harness.cdng.creator.variables.containerStepGroup.DownloadHarnessStoreStepVariableCreator;
 import io.harness.cdng.creator.variables.googlefunctions.GoogleFunctionsDeployStepVariableCreator;
 import io.harness.cdng.creator.variables.googlefunctions.GoogleFunctionsDeployWithoutTrafficStepVariableCreator;
 import io.harness.cdng.creator.variables.googlefunctions.GoogleFunctionsGenOneDeployStepVariableCreator;
@@ -340,6 +346,8 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
 
   private static final String CLOUDFORMATION_STEP_METADATA = "Cloudformation";
   private static final String AWS_CDK_STEP_METADATA = "AWS CDK";
+
+  private static final String CD_STEP_GROUP_CONTAINER_STEPS_METADATA = "CD Common Steps";
   private static final String AZURE = "Azure";
   private static final String HELM = "Helm";
   private static final String PROVISIONER = "Provisioner";
@@ -365,6 +373,9 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
   private static final List<String> TERRAFORM_CLOUD_CATEGORY = Arrays.asList(KUBERNETES, PROVISIONER, HELM, ECS,
       COMMANDS, SERVERLESS_AWS_LAMBDA, ASG, GOOGLE_CLOUD_FUNCTIONS, ServiceSpecType.AWS_LAMBDA);
   private static final String BUILD_STEP = "Builds";
+
+  private static final List<String> CD_STEP_GROUP_CONTAINER_STEPS_CATEGORY =
+      Arrays.asList(CD_STEP_GROUP_CONTAINER_STEPS_METADATA, PLUGIN);
 
   private static final List<String> AZURE_RESOURCE_CATEGORY =
       Arrays.asList(KUBERNETES, PROVISIONER, AZURE, HELM, AZURE_WEBAPP, COMMANDS);
@@ -429,6 +440,7 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
     planCreators.add(new K8sDeleteStepPlanCreator());
     planCreators.add(new K8sBGSwapServicesStepPlanCreator());
     planCreators.add(new K8sCanaryDeleteStepPlanCreator());
+    planCreators.add(new K8sTrafficRoutingStepPlanCreator());
     planCreators.add(new TerraformApplyStepPlanCreator());
     planCreators.add(new FetchInstanceScriptStepPlanCreator());
     planCreators.add(new TerraformPlanStepPlanCreator());
@@ -564,6 +576,10 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
     planCreators.add(new CustomStagePlanCreator());
     planCreators.add(new io.harness.cdng.creator.plan.stage.v1.CustomStagePlanCreator());
 
+    // CD Container Step Group Common Steps
+    planCreators.add(new DownloadAwsS3StepPlanCreator());
+    planCreators.add(new DownloadHarnessStoreStepPlanCreator());
+
     injectorUtils.injectMembers(planCreators);
     return planCreators;
   }
@@ -620,6 +636,7 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
     variableCreators.add(new K8sRollingRollbackStepVariableCreator());
     variableCreators.add(new K8sRollingStepVariableCreator());
     variableCreators.add(new K8sScaleStepVariableCreator());
+    variableCreators.add(new K8sTrafficRoutingStepVariableCreator());
     variableCreators.add(new TerraformApplyStepVariableCreator());
     variableCreators.add(new TerraformPlanStepVariableCreator());
     variableCreators.add(new TerraformDestroyStepVariableCreator());
@@ -731,6 +748,10 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
     variableCreators.add(new AwsCdkDestroyVariableCreator());
     variableCreators.add(new AwsCdkRollbackVariableCreator());
 
+    // CD Container Step Group Common Steps
+    variableCreators.add(new DownloadAwsS3StepVariableCreator());
+    variableCreators.add(new DownloadHarnessStoreStepVariableCreator());
+
     variableCreators.add(customStageVariableCreator);
 
     return variableCreators;
@@ -777,7 +798,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
         StepInfo.newBuilder()
             .setName("Update GitOps App")
             .setType(StepSpecTypeConstants.UPDATE_GITOPS_APP)
-            .setFeatureFlag(FeatureName.GITOPS_UPDATE_APP_STEP.name())
             .setStepMetaData(StepMetaData.newBuilder().addCategory("Kubernetes").setFolderPath("GitOps").build())
             .build();
 
@@ -846,6 +866,13 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
         StepInfo.newBuilder()
             .setName("Rolling Rollback")
             .setType(StepSpecTypeConstants.K8S_ROLLING_ROLLBACK)
+            .setStepMetaData(StepMetaData.newBuilder().addCategory("Kubernetes").addFolderPaths("Kubernetes").build())
+            .build();
+
+    StepInfo k8sTrafficRouting =
+        StepInfo.newBuilder()
+            .setName("K8s Traffic Routing")
+            .setType(StepSpecTypeConstants.K8S_TRAFFIC_ROUTING)
             .setStepMetaData(StepMetaData.newBuilder().addCategory("Kubernetes").addFolderPaths("Kubernetes").build())
             .build();
 
@@ -994,7 +1021,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
             .setName("ECS Service Setup")
             .setType(StepSpecTypeConstants.ECS_SERVICE_SETUP)
             .setStepMetaData(StepMetaData.newBuilder().addCategory("ECS").setFolderPath("ECS").build())
-            .setFeatureFlag(FeatureName.CDS_ECS_BASIC_DEPLOYMENT_STRATEGY.name())
             .build();
 
     StepInfo ecsUpgradeContainer =
@@ -1002,7 +1028,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
             .setName("ECS Upgrade Container")
             .setType(StepSpecTypeConstants.ECS_UPGRADE_CONTAINER)
             .setStepMetaData(StepMetaData.newBuilder().addCategory("ECS").setFolderPath("ECS").build())
-            .setFeatureFlag(FeatureName.CDS_ECS_BASIC_DEPLOYMENT_STRATEGY.name())
             .build();
 
     StepInfo ecsBasicRollback =
@@ -1010,7 +1035,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
             .setName("ECS Basic Rollback")
             .setType(StepSpecTypeConstants.ECS_BASIC_ROLLBACK)
             .setStepMetaData(StepMetaData.newBuilder().addCategory("ECS").setFolderPath("ECS").build())
-            .setFeatureFlag(FeatureName.CDS_ECS_BASIC_DEPLOYMENT_STRATEGY.name())
             .build();
 
     StepInfo googleFunctionDeploy =
@@ -1427,6 +1451,7 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
             .setName("ASG Shift Traffic")
             .setType(StepSpecTypeConstants.ASG_SHIFT_TRAFFIC)
             .setStepMetaData(StepMetaData.newBuilder().addAllCategory(ASG_CATEGORY).setFolderPath(ASG).build())
+            .setFeatureFlag(FeatureName.CDS_ASG_SHIFT_TRAFFIC_STEP_NG.name())
             .build();
 
     StepInfo tasRouteMapping =
@@ -1515,7 +1540,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
                                  .addCategory(PLUGIN)
                                  .setFolderPath("Serverless Lambda")
                                  .build())
-            .setFeatureFlag(FeatureName.CDS_SERVERLESS_V2.name())
             .build();
 
     StepInfo serverlessAwsLambdaRollbackV2 = StepInfo.newBuilder()
@@ -1526,7 +1550,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
                                                                       .addCategory(PLUGIN)
                                                                       .setFolderPath("Serverless Lambda")
                                                                       .build())
-                                                 .setFeatureFlag(FeatureName.CDS_SERVERLESS_V2.name())
                                                  .build();
 
     StepInfo serverlessAwsLambdaDeployV2 = StepInfo.newBuilder()
@@ -1537,7 +1560,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
                                                                     .addCategory(PLUGIN)
                                                                     .setFolderPath("Serverless Lambda")
                                                                     .build())
-                                               .setFeatureFlag(FeatureName.CDS_SERVERLESS_V2.name())
                                                .build();
 
     StepInfo serverlessAwsLambdaPackageV2 = StepInfo.newBuilder()
@@ -1548,7 +1570,6 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
                                                                      .addCategory(PLUGIN)
                                                                      .setFolderPath("Serverless Lambda")
                                                                      .build())
-                                                .setFeatureFlag(FeatureName.CDS_SERVERLESS_V2.name())
                                                 .build();
 
     StepInfo awsCdkBootstrap =
@@ -1599,6 +1620,26 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
                 StepMetaData.newBuilder().addAllCategory(AWS_CDK_CATEGORY).setFolderPath(AWS_CDK_STEP_METADATA).build())
             .build();
 
+    StepInfo downloadAwsS3 = StepInfo.newBuilder()
+                                 .setName("DOWNLOAD AWS S3")
+                                 .setType(StepSpecTypeConstants.DOWNLOAD_AWS_S3)
+                                 .setStepMetaData(StepMetaData.newBuilder()
+                                                      .addAllCategory(CD_STEP_GROUP_CONTAINER_STEPS_CATEGORY)
+                                                      .setFolderPath(CD_STEP_GROUP_CONTAINER_STEPS_METADATA)
+                                                      .build())
+                                 .setFeatureFlag(FeatureName.CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD.name())
+                                 .build();
+
+    StepInfo downloadHarnessStore = StepInfo.newBuilder()
+                                        .setName("Download Harness File Store")
+                                        .setType(StepSpecTypeConstants.DOWNLOAD_HARNESS_STORE)
+                                        .setStepMetaData(StepMetaData.newBuilder()
+                                                             .addAllCategory(CD_STEP_GROUP_CONTAINER_STEPS_CATEGORY)
+                                                             .setFolderPath(CD_STEP_GROUP_CONTAINER_STEPS_METADATA)
+                                                             .build())
+                                        .setFeatureFlag(FeatureName.CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD.name())
+                                        .build();
+
     List<StepInfo> stepInfos = new ArrayList<>();
 
     stepInfos.add(gitOpsMergePR);
@@ -1616,6 +1657,7 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
     stepInfos.add(apply);
     stepInfos.add(scale);
     stepInfos.add(k8sRollingRollback);
+    stepInfos.add(k8sTrafficRouting);
     stepInfos.add(terraformApply);
     stepInfos.add(terraformPlan);
     stepInfos.add(terraformRollback);
@@ -1705,6 +1747,8 @@ public class CDNGPlanCreatorProvider implements PipelineServiceInfoProvider {
     stepInfos.add(ecsServiceSetup);
     stepInfos.add(ecsUpgradeContainer);
     stepInfos.add(ecsBasicRollback);
+    stepInfos.add(downloadAwsS3);
+    stepInfos.add(downloadHarnessStore);
     return stepInfos;
   }
 }

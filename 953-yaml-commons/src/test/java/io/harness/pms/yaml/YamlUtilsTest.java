@@ -13,11 +13,14 @@ import static io.harness.rule.OwnerRule.BRIJESH;
 import static io.harness.rule.OwnerRule.DEV_MITTAL;
 import static io.harness.rule.OwnerRule.PRASHANTSHARMA;
 import static io.harness.rule.OwnerRule.SAHIL;
+import static io.harness.rule.OwnerRule.SANDESH_SALUNKHE;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 
 import io.harness.CategoryTest;
 import io.harness.annotations.dev.OwnedBy;
@@ -976,5 +979,67 @@ public class YamlUtilsTest extends CategoryTest {
     assertEquals(ngVariableV1Wrapper.getMap().size(), 1);
     StringNGVariableV1 stringNGVariableV1 = (StringNGVariableV1) ngVariableV1Wrapper.getMap().get("var1");
     assertEquals(stringNGVariableV1.getValue().getValue(), "abc");
+  }
+
+  @Test
+  @Owner(developers = OwnerRule.VINICIUS)
+  @Category(UnitTests.class)
+  public void testReplaceFieldInJsonNodeFromAnotherJsonNode() throws IOException {
+    String previousYaml = "someNode:\n"
+        + "  stringNode: managerServiceDeployment\n"
+        + "  listNode: someValue\n";
+    String currentYaml = "someNode:\n"
+        + "  stringNode: managerServiceDeployment\n"
+        + "  listNode:\n"
+        + "    - name: entry1\n"
+        + "      type: Number\n"
+        + "      default: 1\n"
+        + "      value: someValue\n"
+        + "  additionalNode: Manager Service Deployment\n";
+    YamlField previousYamlField = YamlUtils.readTree(YamlUtils.injectUuid(previousYaml));
+    YamlField currentYamlField = YamlUtils.readTree(YamlUtils.injectUuid(currentYaml));
+    String expectedSomeNodeUuid = previousYamlField.getNode().getField("someNode").getNode().getUuid();
+    String expectedStringNode =
+        previousYamlField.getNode().getField("someNode").getNode().getField("stringNode").toString();
+    String expectedListNodeFirstEntryUuid = currentYamlField.getNode()
+                                                .getField("someNode")
+                                                .getNode()
+                                                .getField("listNode")
+                                                .getNode()
+                                                .asArray()
+                                                .get(0)
+                                                .getUuid();
+    String expectedAdditionalNode =
+        currentYamlField.getNode().getField("someNode").getNode().getField("additionalNode").toString();
+    YamlUtils.replaceFieldInJsonNodeFromAnotherJsonNode(currentYamlField.getNode().getCurrJsonNode(),
+        previousYamlField.getNode().getCurrJsonNode(), YAMLFieldNameConstants.UUID);
+    assertThat(currentYamlField.getNode().getField("someNode").getNode().getUuid()).isEqualTo(expectedSomeNodeUuid);
+    assertThat(currentYamlField.getNode().getField("someNode").getNode().getField("stringNode").toString())
+        .isEqualTo(expectedStringNode);
+    assertThat(currentYamlField.getNode()
+                   .getField("someNode")
+                   .getNode()
+                   .getField("listNode")
+                   .getNode()
+                   .asArray()
+                   .get(0)
+                   .getUuid())
+        .isEqualTo(expectedListNodeFirstEntryUuid);
+    assertThat(currentYamlField.getNode().getField("someNode").getNode().getField("additionalNode").toString())
+        .isEqualTo(expectedAdditionalNode);
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testIsUUIDPresent() {
+    assertThat(YamlUtils.isUUIDPresent(null)).isFalse();
+    YamlField strategyField = mock(YamlField.class);
+    assertThat(YamlUtils.isUUIDPresent(strategyField)).isFalse();
+    YamlNode yamlNode = mock(YamlNode.class);
+    doReturn(yamlNode).when(strategyField).getNode();
+    assertThat(YamlUtils.isUUIDPresent(strategyField)).isFalse();
+    doReturn("uuid").when(yamlNode).getUuid();
+    assertThat(YamlUtils.isUUIDPresent(strategyField)).isTrue();
   }
 }

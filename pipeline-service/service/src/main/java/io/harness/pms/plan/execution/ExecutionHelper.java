@@ -8,7 +8,7 @@
 package io.harness.pms.plan.execution;
 
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
-import static io.harness.beans.FeatureName.CDS_METHOD_INVOCATION_NEW_FLOW_EXPRESSION_ENGINE;
+import static io.harness.beans.FeatureName.CDS_DIVIDE_SDK_RESPONSE_EVENTS_IN_DIFF_STREAMS;
 import static io.harness.beans.FeatureName.CDS_NG_BARRIER_STEPS_WITHIN_LOOPING_STRATEGIES;
 import static io.harness.beans.FeatureName.CDS_REMOVE_RESUME_EVENT_FOR_ASYNC_AND_ASYNCCHAIN_MODE;
 import static io.harness.beans.FeatureName.CDS_USE_AMBIANCE_IN_EXPRESSION_ENGINE;
@@ -20,6 +20,7 @@ import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.data.structure.UUIDGenerator.generateUuid;
 import static io.harness.gitcaching.GitCachingConstants.BOOLEAN_FALSE_VALUE;
+import static io.harness.ngsettings.SettingIdentifiers.RUN_RBAC_VALIDATION_BEFORE_EXECUTING_INLINE_PIPELINES;
 import static io.harness.pms.contracts.plan.TriggerType.MANUAL;
 import static io.harness.utils.ExecutionModeUtils.isRollbackMode;
 
@@ -61,6 +62,7 @@ import io.harness.ngsettings.dto.SettingResponseDTO;
 import io.harness.ngsettings.dto.SettingValueResponseDTO;
 import io.harness.notification.bean.NotificationRules;
 import io.harness.opaclient.model.OpaConstants;
+import io.harness.plan.Node;
 import io.harness.plan.Plan;
 import io.harness.pms.contracts.plan.ExecutionMetadata;
 import io.harness.pms.contracts.plan.ExecutionMode;
@@ -90,6 +92,7 @@ import io.harness.pms.pipeline.service.PipelineEnforcementService;
 import io.harness.pms.pipeline.service.PipelineMetadataService;
 import io.harness.pms.pipeline.yaml.BasicPipeline;
 import io.harness.pms.pipelinestage.helper.PipelineStageHelper;
+import io.harness.pms.plan.creation.NodeTypeLookupService;
 import io.harness.pms.plan.creation.PlanCreatorMergeService;
 import io.harness.pms.plan.creation.PlanCreatorUtils;
 import io.harness.pms.plan.execution.beans.ExecArgs;
@@ -128,6 +131,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.InternalServerErrorException;
 import lombok.AccessLevel;
@@ -170,11 +174,13 @@ public class ExecutionHelper {
   RollbackModeExecutionHelper rollbackModeExecutionHelper;
   RollbackGraphGenerator rollbackGraphGenerator;
   YamlPreProcessorFactory yamlPreProcessorFactory;
+  NodeTypeLookupService nodeTypeLookupService;
+
   // Add all FFs to this list that we want to use during pipeline execution
-  public final List<FeatureName> featureNames = List.of(PIE_EXPRESSION_CONCATENATION,
-      PIE_EXPRESSION_DISABLE_COMPLEX_JSON_SUPPORT, PIE_SIMPLIFY_LOG_BASE_KEY,
-      CDS_NG_BARRIER_STEPS_WITHIN_LOOPING_STRATEGIES, CDS_REMOVE_RESUME_EVENT_FOR_ASYNC_AND_ASYNCCHAIN_MODE,
-      PIE_SECRETS_OBSERVER, CDS_METHOD_INVOCATION_NEW_FLOW_EXPRESSION_ENGINE, CDS_USE_AMBIANCE_IN_EXPRESSION_ENGINE);
+  public final List<FeatureName> featureNames =
+      List.of(PIE_EXPRESSION_CONCATENATION, PIE_EXPRESSION_DISABLE_COMPLEX_JSON_SUPPORT, PIE_SIMPLIFY_LOG_BASE_KEY,
+          CDS_NG_BARRIER_STEPS_WITHIN_LOOPING_STRATEGIES, CDS_REMOVE_RESUME_EVENT_FOR_ASYNC_AND_ASYNCCHAIN_MODE,
+          PIE_SECRETS_OBSERVER, CDS_USE_AMBIANCE_IN_EXPRESSION_ENGINE, CDS_DIVIDE_SDK_RESPONSE_EVENTS_IN_DIFF_STREAMS);
   public static final String PMS_EXECUTION_SETTINGS_GROUP_IDENTIFIER = "pms_execution_settings";
 
   public PipelineEntity fetchPipelineEntity(@NotNull String accountId, @NotNull String orgIdentifier,
@@ -258,9 +264,13 @@ public class ExecutionHelper {
       String pipelineYamlWithTemplateRef = pipelineMetadataInternalDTO.getPipelineYamlWithTemplateRef();
       List<NotificationRules> notificationRules = new ArrayList<>();
       boolean allowedStageExecution = false;
-      if (basicPipeline != null) {
-        notificationRules = basicPipeline.getNotificationRules();
-        allowedStageExecution = pipelineMetadataInternalDTO.getBasicPipeline().isAllowStageExecutions();
+      if (HarnessYamlVersion.V0.equals(pipelineEntity.getHarnessVersion())) {
+        if (basicPipeline != null) {
+          notificationRules = basicPipeline.getNotificationRules();
+          allowedStageExecution = pipelineMetadataInternalDTO.getBasicPipeline().isAllowStageExecutions();
+        }
+      } else {
+        allowedStageExecution = true;
       }
 
       // TODO(Shalini): Change these methods to use jsonNode instead of yaml in processing.
@@ -348,11 +358,14 @@ public class ExecutionHelper {
       RetryExecutionInfo retryExecutionInfo) throws Exception {
     Builder planExecutionMetadataBuilder = obtainPlanExecutionMetadata(mergedRuntimeInputYaml, executionId,
         stagesExecutionInfo, originalExecutionId, retryExecutionParameters, notifyOnlyUser, notes, pipelineEntity);
-    if (stagesExecutionInfo.isStagesExecution()) {
-      pipelineEnforcementService.validateExecutionEnforcementsBasedOnStage(pipelineEntity.getAccountId(),
-          YamlUtils.extractPipelineField(planExecutionMetadataBuilder.build().getProcessedYaml()));
-    } else {
-      pipelineEnforcementService.validateExecutionEnforcementsBasedOnStage(pipelineEntity);
+    // TODO - @utkarsh @brijesh - CDS-85458 - Add Enforcement Check for V1 Pipelines
+    if (HarnessYamlVersion.V0.equals(pipelineEntity.getHarnessVersion())) {
+      if (stagesExecutionInfo.isStagesExecution()) {
+        pipelineEnforcementService.validateExecutionEnforcementsBasedOnStage(pipelineEntity.getAccountId(),
+            YamlUtils.extractPipelineField(planExecutionMetadataBuilder.build().getProcessedYaml()));
+      } else {
+        pipelineEnforcementService.validateExecutionEnforcementsBasedOnStage(pipelineEntity);
+      }
     }
 
     String branch = GitAwareContextHelper.getBranchInRequestOrFromSCMGitMetadata();
@@ -452,6 +465,19 @@ public class ExecutionHelper {
     }
     return getPipelineYamlAndValidateStaticallyReferredEntities(pipelineJsonNode, pipelineEntity, start);
   }
+  public boolean shouldRunRbacValidationBeforeExecutingInlinePipelines(PipelineEntity pipelineEntity) {
+    String shouldRunRbacValidationBeforeExecutingInlinePipelines = "true";
+    try {
+      shouldRunRbacValidationBeforeExecutingInlinePipelines =
+          NGRestUtils
+              .getResponse(settingsClient.getSetting(
+                  RUN_RBAC_VALIDATION_BEFORE_EXECUTING_INLINE_PIPELINES, pipelineEntity.getAccountId(), null, null))
+              .getValue();
+    } catch (Exception ex) {
+      log.error("Failed to fetch setting value for {}", RUN_RBAC_VALIDATION_BEFORE_EXECUTING_INLINE_PIPELINES, ex);
+    }
+    return Boolean.TRUE.equals(Boolean.valueOf(shouldRunRbacValidationBeforeExecutingInlinePipelines));
+  }
 
   TemplateMergeResponseDTO getPipelineYamlAndValidateStaticallyReferredEntities(
       JsonNode pipelineJsonNode, PipelineEntity pipelineEntity, long start) {
@@ -475,7 +501,8 @@ public class ExecutionHelper {
           : templateMergeResponseDTO.getMergedPipelineYamlWithTemplateRef();
       processedYamlVersion = templateMergeResponseDTO.getProcessedYamlVersion();
     }
-    if (pipelineEntity.getStoreType() == null || pipelineEntity.getStoreType() == StoreType.INLINE) {
+    if ((pipelineEntity.getStoreType() == null || pipelineEntity.getStoreType() == StoreType.INLINE)
+        && shouldRunRbacValidationBeforeExecutingInlinePipelines(pipelineEntity)) {
       // For REMOTE Pipelines, entity setup usage framework cannot be relied upon. That is because the setup usages can
       // be outdated wrt the YAML we find on Git during execution. This means the fail fast approach that we have for
       // RBAC checks can't be provided for remote pipelines
@@ -586,6 +613,15 @@ public class ExecutionHelper {
                                                       .build();
       long endTs = System.currentTimeMillis();
       log.info("[PMS_PLAN] Time taken to complete plan: {}ms ", endTs - startTs);
+
+      List<Node> planNodesList = plan.getPlanNodes();
+      // Fetches the modules based on the steps in the pipeline using the stepType in the planeNodes
+      Set<String> modules = nodeTypeLookupService.modulesThatSupportStepTypes(planNodesList);
+      // Setting all the modules based on the steps in the pipeline
+      if (!modules.isEmpty()) {
+        plan = plan.withStepModules(modules);
+      }
+
       ExecutionMode executionMode = executionMetadata.getExecutionMode();
       List<String> rollbackStageIds = Collections.emptyList();
       if (planExecutionMetadata.getStagesExecutionMetadata() != null) {

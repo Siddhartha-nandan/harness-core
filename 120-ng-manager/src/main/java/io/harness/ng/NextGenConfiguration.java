@@ -220,6 +220,7 @@ public class NextGenConfiguration extends Configuration {
   @JsonProperty("seiServiceClientConfig") private ServiceHttpClientConfig seiServiceClientConfig;
   @JsonProperty("serviceDiscoveryServiceClientConfig")
   private ServiceHttpClientConfig serviceDiscoveryServiceClientConfig;
+  @JsonProperty("idpServiceClientConfig") private ServiceHttpClientConfig idpServiceClientConfig;
   @JsonProperty("eventsFramework") @ConfigSecret private EventsFrameworkConfiguration eventsFrameworkConfiguration;
   @JsonProperty("redisLockConfig") @ConfigSecret private RedisConfig redisLockConfig;
   @JsonProperty(value = "enableAuth", defaultValue = "true") private boolean enableAuth;
@@ -311,6 +312,7 @@ public class NextGenConfiguration extends Configuration {
   @JsonProperty("deploymentStagePlanCreationInfoThreadConfig")
   private DeploymentStagePlanCreationInfoThreadPoolConfiguration deploymentStagePlanCreationInfoThreadPoolConfiguration;
   @JsonProperty("frpsTunnel") private FRPSTunnelConfig frpsTunnelConfig;
+  @JsonProperty("publishAccountActivityMetrics") private boolean publishAccountActivityMetrics;
 
   // [secondary-db]: Uncomment this and the corresponding config in yaml file if you want to connect to another database
   //  @JsonProperty("secondary-mongo") MongoConfig secondaryMongoConfig;

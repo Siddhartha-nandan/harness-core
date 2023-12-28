@@ -6,6 +6,7 @@
  */
 
 package io.harness;
+
 import static io.harness.TemplateServiceConfiguration.getResourceClasses;
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 import static io.harness.authorization.AuthorizationServiceHeader.TEMPLATE_SERVICE;
@@ -42,7 +43,9 @@ import io.harness.health.HealthMonitor;
 import io.harness.health.HealthService;
 import io.harness.maintenance.MaintenanceController;
 import io.harness.metrics.MetricRegistryModule;
+import io.harness.metrics.jobs.RecordMetricsJob;
 import io.harness.metrics.modules.MetricsModule;
+import io.harness.metrics.service.api.MetricService;
 import io.harness.migration.MigrationProvider;
 import io.harness.migration.NGMigrationSdkInitHelper;
 import io.harness.migration.NGMigrationSdkModule;
@@ -79,13 +82,12 @@ import io.harness.template.resources.beans.yaml.NGTemplateConfig;
 import io.harness.threading.ExecutorModule;
 import io.harness.threading.ThreadPool;
 import io.harness.token.remote.TokenClient;
-import io.harness.yaml.YamlSdkConfiguration;
-import io.harness.yaml.YamlSdkInitHelper;
 
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Key;
@@ -166,6 +168,7 @@ public class TemplateServiceApplication extends Application<TemplateServiceConfi
         return templateServiceConfiguration.getSwaggerBundleConfiguration();
       }
     });
+    bootstrap.setMetricRegistry(metricRegistry);
   }
 
   public static void configureObjectMapper(final ObjectMapper mapper) {
@@ -215,6 +218,12 @@ public class TemplateServiceApplication extends Application<TemplateServiceConfi
       }
     });
     modules.add(TemplateServiceModule.getInstance(templateServiceConfiguration));
+    modules.add(new AbstractModule() {
+      @Override
+      protected void configure() {
+        bind(MetricRegistry.class).toInstance(metricRegistry);
+      }
+    });
     modules.add(new MetricRegistryModule(metricRegistry));
     modules.add(NGMigrationSdkModule.getInstance());
     modules.add(new MetricsModule());
@@ -258,6 +267,7 @@ public class TemplateServiceApplication extends Application<TemplateServiceConfi
     registerCorrelationFilter(environment, injector);
     registerApiResponseFilter(environment, injector);
     registerAPIAuthTelemetryFilters(templateServiceConfiguration, environment, injector);
+    initializeMetrics(injector);
 
     if (isTrue(templateServiceConfiguration.getEnableOpentelemetry())) {
       registerTraceFilter(environment, injector);
@@ -267,7 +277,6 @@ public class TemplateServiceApplication extends Application<TemplateServiceConfi
       registerGitSyncSdk(templateServiceConfiguration, injector, environment);
     }
     registerMigrations(injector);
-    registerYamlSdk(injector);
 
     injector.getInstance(PrimaryVersionChangeScheduler.class).registerExecutors();
     MaintenanceController.forceMaintenance(false);
@@ -407,15 +416,6 @@ public class TemplateServiceApplication extends Application<TemplateServiceConfi
     }
   }
 
-  private void registerYamlSdk(Injector injector) {
-    YamlSdkConfiguration yamlSdkConfiguration = YamlSdkConfiguration.builder()
-                                                    .requireSchemaInit(true)
-                                                    .requireSnippetInit(true)
-                                                    .requireValidatorInit(false)
-                                                    .build();
-    YamlSdkInitHelper.initialize(injector, yamlSdkConfiguration);
-  }
-
   private void registerAPIAuthTelemetryFilters(
       TemplateServiceConfiguration configuration, Environment environment, Injector injector) {
     if (configuration.getSegmentConfiguration() != null && configuration.getSegmentConfiguration().isEnabled()) {
@@ -441,5 +441,10 @@ public class TemplateServiceApplication extends Application<TemplateServiceConfi
     TelemetryReporter telemetryReporter = injector.getInstance(TelemetryReporter.class);
     environment.jersey().register(
         new APIErrorsTelemetrySenderFilter(telemetryReporter, TEMPLATE_SERVICE.getServiceId()));
+  }
+
+  private void initializeMetrics(Injector injector) {
+    injector.getInstance(MetricService.class).initializeMetrics();
+    injector.getInstance(RecordMetricsJob.class).scheduleMetricsTasks();
   }
 }

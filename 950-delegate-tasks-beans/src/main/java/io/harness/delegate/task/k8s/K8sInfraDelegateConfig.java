@@ -9,16 +9,23 @@ package io.harness.delegate.task.k8s;
 
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.security.encryption.EncryptedDataDetail;
+import io.harness.taskcontext.infra.InfraContext;
 
 import java.util.List;
 
 @OwnedBy(CDP)
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_K8S})
 public interface K8sInfraDelegateConfig {
   String getNamespace();
   List<EncryptedDataDetail> getEncryptionDataDetails();
   default boolean useSocketCapability() {
     return false;
   }
+
+  InfraContext toInfraContext(String delegateId);
 }

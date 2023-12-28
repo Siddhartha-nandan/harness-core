@@ -6,6 +6,7 @@
  */
 
 package io.harness.template.resources;
+
 import static io.harness.annotations.dev.HarnessTeam.CDC;
 
 import io.harness.accesscontrol.AccountIdentifier;
@@ -22,6 +23,7 @@ import io.harness.spec.server.template.v1.model.GitFindDetails;
 import io.harness.spec.server.template.v1.model.GitUpdateDetails;
 import io.harness.spec.server.template.v1.model.TemplateCreateRequestBody;
 import io.harness.spec.server.template.v1.model.TemplateImportRequestBody;
+import io.harness.spec.server.template.v1.model.TemplateUpdateGitMetadataRequest;
 import io.harness.spec.server.template.v1.model.TemplateUpdateRequestBody;
 
 import com.google.inject.Inject;
@@ -91,6 +93,12 @@ public class OrgTemplateApiImpl implements OrgTemplateApi {
       @Valid TemplateImportRequestBody body, @AccountIdentifier String harnessAccount) {
     return templateResourceApiHelper.importTemplate(
         harnessAccount, org, null, template, body.getGitImportDetails(), body.getTemplateImportRequest());
+  }
+
+  @Override
+  public Response updateGitMetadataDetailsOrg(String templateIdentifier, String org,
+      @Valid List<TemplateUpdateGitMetadataRequest> body, String harnessAccount) {
+    return templateResourceApiHelper.updateGitMetaData(harnessAccount, org, null, templateIdentifier, body);
   }
 
   @Override

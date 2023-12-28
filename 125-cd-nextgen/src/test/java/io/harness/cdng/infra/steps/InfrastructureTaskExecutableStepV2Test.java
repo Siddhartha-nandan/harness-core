@@ -442,7 +442,7 @@ public class InfrastructureTaskExecutableStepV2Test extends CategoryTest {
             .build())
         .when(cdStepHelper)
         .getSshInfraDelegateConfig(any(InfrastructureOutcome.class), any(Ambiance.class));
-    when(infrastructureOutcomeProvider.getOutcome(any(), any(), any(), any(), any(), any(), any(), anyMap()))
+    when(infrastructureOutcomeProvider.getOutcome(any(), any(), any(), any(), any(), any(), any(), anyMap(), any()))
         .thenReturn(SshWinRmAwsInfrastructureOutcome.builder()
                         .connectorRef("awsconnector")
                         .hostConnectionType("PrivateIP")
@@ -490,7 +490,7 @@ public class InfrastructureTaskExecutableStepV2Test extends CategoryTest {
         .getSshInfraDelegateConfig(any(InfrastructureOutcome.class), any(Ambiance.class));
 
     mockInfra(azureInfra);
-    when(infrastructureOutcomeProvider.getOutcome(any(), any(), any(), any(), any(), any(), any(), anyMap()))
+    when(infrastructureOutcomeProvider.getOutcome(any(), any(), any(), any(), any(), any(), any(), anyMap(), any()))
         .thenReturn(SshWinRmAzureInfrastructureOutcome.builder()
                         .connectorRef("azureconnector")
                         .subscriptionId("dev-subscription")
@@ -982,13 +982,15 @@ public class InfrastructureTaskExecutableStepV2Test extends CategoryTest {
                 .projectIdentifier("projectId")
                 .identifier("infra-id")
                 .type(InfrastructureType.SSH_WINRM_AWS)
-                .spec(SshWinRmAwsInfrastructure.builder()
-                          .connectorRef(ParameterField.createValueField("awsconnector"))
-                          .credentialsRef(ParameterField.createValueField("sshkey"))
-                          .region(ParameterField.createValueField("us-east-2"))
-                          .awsInstanceFilter(AwsInstanceFilter.builder().vpcs(List.of("vpc1")).build())
-                          .hostConnectionType(ParameterField.createValueField(HostConnectionTypeKind.PRIVATE_IP))
-                          .build())
+                .spec(
+                    SshWinRmAwsInfrastructure.builder()
+                        .connectorRef(ParameterField.createValueField("awsconnector"))
+                        .credentialsRef(ParameterField.createValueField("sshkey"))
+                        .region(ParameterField.createValueField("us-east-2"))
+                        .awsInstanceFilter(
+                            AwsInstanceFilter.builder().vpcs(ParameterField.createValueField(List.of("vpc1"))).build())
+                        .hostConnectionType(ParameterField.createValueField(HostConnectionTypeKind.PRIVATE_IP))
+                        .build())
                 .build())
         .build();
   }

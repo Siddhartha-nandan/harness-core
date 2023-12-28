@@ -21,6 +21,7 @@ import io.harness.secretmanagerclient.SecretType;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 
 @OwnedBy(PL)
@@ -30,6 +31,8 @@ public interface SecretCrudService {
 
   SecretResponseWrapper create(String accountIdentifier, SecretDTOV2 dto);
 
+  SecretResponseWrapper create(String accountIdentifier, SecretDTOV2 dto, String encryptionKey, String encryptedValue);
+
   SecretResponseWrapper createViaYaml(String accountIdentifier, SecretDTOV2 dto);
 
   Optional<SecretResponseWrapper> get(
@@ -38,7 +41,7 @@ public interface SecretCrudService {
   Page<SecretResponseWrapper> list(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       List<String> identifiers, List<SecretType> secretTypes, boolean includeSecretsFromEverySubScope,
       String searchTerm, ConnectorCategory sourceCategory, boolean includeAllSecretsAccessibleAtScope,
-      PageRequest pageRequest);
+      PageRequest pageRequest, Set<String> secretManagerIdentifiers);
 
   boolean delete(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier, boolean forceDelete);
@@ -48,8 +51,8 @@ public interface SecretCrudService {
 
   SecretResponseWrapper createFile(String accountIdentifier, SecretDTOV2 dto, InputStream inputStream);
 
-  SecretResponseWrapper createFile(
-      String accountIdentifier, SecretDTOV2 dto, String encryptionKey, String encryptedValue);
+  SecretResponseWrapper createFile(String accountIdentifier, SecretDTOV2 dto, String encryptionKey,
+      String encryptedValue, String encryptedFileContent);
 
   SecretResponseWrapper updateFile(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       String identifier, SecretDTOV2 updateDTO, InputStream inputStream);

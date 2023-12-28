@@ -16,12 +16,14 @@ import static io.harness.delegate.beans.storeconfig.StoreDelegateConfigType.AMAZ
 import static io.harness.delegate.beans.storeconfig.StoreDelegateConfigType.ARTIFACTORY;
 import static io.harness.delegate.task.terraform.TerraformCommand.APPLY;
 import static io.harness.delegate.task.terraform.TerraformCommand.DESTROY;
+import static io.harness.delegate.task.terraform.TerraformExceptionConstants.Explanation.EXPLANATION_ERROR_FOLDER_PATH_DOES_NOT_EXIST;
 import static io.harness.delegate.task.terraform.TerraformExceptionConstants.Explanation.EXPLANATION_FAILED_TO_DOWNLOAD_FROM_ARTIFACTORY;
 import static io.harness.delegate.task.terraform.TerraformExceptionConstants.Explanation.EXPLANATION_FILES_NOT_FOUND_IN_S3_CONFIG;
 import static io.harness.delegate.task.terraform.TerraformExceptionConstants.Explanation.EXPLANATION_NO_ARTIFACT_DETAILS_FOR_ARTIFACTORY_CONFIG;
 import static io.harness.delegate.task.terraform.TerraformExceptionConstants.Hints.HINT_FAILED_TO_DOWNLOAD_FROM_ARTIFACTORY;
 import static io.harness.delegate.task.terraform.TerraformExceptionConstants.Hints.HINT_FILES_NOT_FOUND_IN_S3_CONFIG;
 import static io.harness.delegate.task.terraform.TerraformExceptionConstants.Hints.HINT_NO_ARTIFACT_DETAILS_FOR_ARTIFACTORY_CONFIG;
+import static io.harness.delegate.task.terraform.TerraformExceptionConstants.Message.MESSAGE_REPO_FOLDER_PATH_DOES_NOT_EXIST;
 import static io.harness.eraro.ErrorCode.DEFAULT_ERROR_CODE;
 import static io.harness.filesystem.FileIo.deleteDirectoryAndItsContentIfExists;
 import static io.harness.logging.LogLevel.ERROR;
@@ -165,6 +167,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.input.NullInputStream;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -801,6 +804,18 @@ public class TerraformBaseHelperImpl implements TerraformBaseHelper {
     copyConfigFilestoWorkingDirectory(logCallback, gitBaseRequestForConfigFile, baseDir, workingDir);
 
     String scriptDirectory = resolveScriptDirectory(workingDir, scriptPath);
+
+    Path scriptDirectoryPath = Paths.get(scriptDirectory).toAbsolutePath();
+    boolean repoFolderPathExists = scriptDirectoryPath.toFile().exists();
+
+    if (!repoFolderPathExists) {
+      throw NestedExceptionUtils.hintWithExplanationException(
+          format(EXPLANATION_ERROR_FOLDER_PATH_DOES_NOT_EXIST, scriptPath),
+          format(MESSAGE_REPO_FOLDER_PATH_DOES_NOT_EXIST, scriptPath),
+          new TerraformCommandExecutionException(
+              format(EXPLANATION_ERROR_FOLDER_PATH_DOES_NOT_EXIST, scriptPath), WingsException.USER));
+    }
+
     log.info("Script Directory: " + scriptDirectory);
     logCallback.saveExecutionLog(
         format("Script Directory: [%s]", scriptDirectory), INFO, CommandExecutionStatus.RUNNING);
@@ -1044,7 +1059,7 @@ public class TerraformBaseHelperImpl implements TerraformBaseHelper {
   }
 
   public String getBaseDir(String entityId) {
-    return TF_WORKING_DIR + entityId;
+    return TF_WORKING_DIR + entityId + RandomStringUtils.randomAlphanumeric(8);
   }
 
   public void fetchConfigFileAndCloneLocally(GitBaseRequest gitBaseRequestForConfigFile, LogCallback logCallback) {
@@ -1415,9 +1430,9 @@ public class TerraformBaseHelperImpl implements TerraformBaseHelper {
     logCallback.saveExecutionLog(color("\n   Successfully Exported SSH Key:", White), INFO);
   }
 
-  public void performCleanupOfTfDirs(TerraformTaskNGParameters parameters, LogCallback logCallback) {
+  public void performCleanupOfTfDirs(TerraformTaskNGParameters parameters, LogCallback logCallback, String baseDir) {
     {
-      FileUtils.deleteQuietly(new File(getBaseDir(parameters.getEntityId())));
+      FileUtils.deleteQuietly(new File(baseDir));
       if (parameters.getEncryptedTfPlan() != null) {
         try {
           boolean isSafelyDeleted = encryptDecryptHelper.deleteEncryptedRecord(

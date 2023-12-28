@@ -38,10 +38,7 @@ import lombok.experimental.FieldDefaults;
 @OwnedBy(PL)
 @Schema(name = "Account", description = "Account details defined in Harness.")
 public class AccountDTO {
-  @Schema(description = "Account Identifier.")
-  @EntityIdentifier(allowBlank = false)
-  @VariableExpression(skipVariableExpression = true)
-  String identifier;
+  @Schema(description = "Account Identifier.") @EntityIdentifier(allowBlank = false) String identifier;
   @Schema(description = "Name of the Account.") @NGEntityName String name;
   @Schema(description = "Name of the Company.") String companyName;
   @Schema(description = "Name of the cluster associated with this Account.")
@@ -79,6 +76,10 @@ public class AccountDTO {
   @VariableExpression(skipVariableExpression = true)
   private String ringName;
 
+  @Schema(description = "Specifies subdomain url for account")
+  @VariableExpression(skipVariableExpression = true)
+  private String subdomainURL;
+
   @Schema(description = "SessionTimeout in minutes")
   @VariableExpression(skipVariableExpression = true)
   private Integer sessionTimeoutInMinutes;
@@ -97,7 +98,7 @@ public class AccountDTO {
       boolean isCannyUsernameAbbreviationEnabled, AuthenticationMechanism authenticationMechanism,
       ServiceAccountConfig serviceAccountConfig, boolean isNextGenEnabled, boolean isProductLed,
       boolean isTwoFactorAdminEnforced, long createdAt, String ringName, Integer sessionTimeoutInMinutes,
-      boolean publicAccessEnabled) {
+      boolean publicAccessEnabled, String subdomainURL) {
     this.identifier = identifier;
     this.name = name;
     this.companyName = companyName;
@@ -114,5 +115,6 @@ public class AccountDTO {
     this.createdAt = createdAt;
     this.sessionTimeoutInMinutes = sessionTimeoutInMinutes;
     this.publicAccessEnabled = publicAccessEnabled;
+    this.subdomainURL = subdomainURL;
   }
 }

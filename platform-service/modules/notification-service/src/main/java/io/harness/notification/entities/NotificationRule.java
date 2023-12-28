@@ -12,13 +12,18 @@ import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.EmbeddedUser;
+import io.harness.data.validator.EntityIdentifier;
+import io.harness.data.validator.NGEntityName;
 import io.harness.iterator.PersistentRegularIterable;
+import io.harness.mongo.index.CompoundMongoIndex;
 import io.harness.mongo.index.FdIndex;
+import io.harness.mongo.index.MongoIndex;
 import io.harness.ng.DbAliases;
 import io.harness.notification.entities.NotificationCondition.NotificationConditionKeys;
 import io.harness.notification.entities.NotificationEventConfig.NotificationEventConfigKeys;
 import io.harness.persistence.PersistentEntity;
 
+import com.google.common.collect.ImmutableList;
 import dev.morphia.annotations.Entity;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,6 +36,7 @@ import lombok.Data;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.FieldNameConstants;
 import lombok.experimental.UtilityClass;
+import org.hibernate.validator.constraints.NotEmpty;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
@@ -45,14 +51,27 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @StoreIn(DbAliases.NOTIFICATION)
 @Entity(value = "notificationRule", noClassnameStored = true)
-@Document("NotificationRule")
+@Document("notificationRule")
 @TypeAlias("notificationRule")
 @HarnessEntity(exportable = true)
 @OwnedBy(HarnessTeam.PL)
 public class NotificationRule implements PersistentEntity, PersistentRegularIterable {
-  @Id @dev.morphia.annotations.Id String uuid;
+  public static List<MongoIndex> mongoIndexes() {
+    return ImmutableList.<MongoIndex>builder()
+        .add(CompoundMongoIndex.builder()
+                 .name("unique_rule_identifier_idx")
+                 .unique(true)
+                 .field(NotificationRuleKeys.accountIdentifier)
+                 .field(NotificationRuleKeys.orgIdentifier)
+                 .field(NotificationRuleKeys.projectIdentifier)
+                 .field(NotificationRuleKeys.identifier)
+                 .build())
+        .build();
+  }
 
-  String identifier;
+  @Id @dev.morphia.annotations.Id String uuid;
+  @NotEmpty @EntityIdentifier String identifier;
+  @NotEmpty @NGEntityName String name;
 
   String accountIdentifier;
   String orgIdentifier;
@@ -118,7 +137,7 @@ public class NotificationRule implements PersistentEntity, PersistentRegularIter
     public static final String notificationEventConfig =
         NotificationRuleKeys.notificationConditions + "." + NotificationConditionKeys.notificationEventConfigs;
     public static final String notificationEntity =
-        notificationEventConfig + NotificationEventConfigKeys.notificationEntity;
+        notificationEventConfig + "." + NotificationEventConfigKeys.notificationEntity;
     public static final String notificationEvent =
         notificationEventConfig + "." + NotificationEventConfigKeys.notificationEvent;
   }

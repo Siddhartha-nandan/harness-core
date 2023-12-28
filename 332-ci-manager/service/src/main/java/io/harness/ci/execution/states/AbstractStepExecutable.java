@@ -394,12 +394,13 @@ public abstract class AbstractStepExecutable extends CommonAbstractStepExecutabl
     }
 
     if (taskResponse.getCommandExecutionStatus() == CommandExecutionStatus.SUCCESS) {
-      populateCIStageOutputs(
-          taskResponse.getOutputVars(), AmbianceUtils.getAccountId(ambiance), ambiance.getStageExecutionId());
-      if (isNotEmpty(taskResponse.getOutputVars())) {
+      Map<String, String> outputVariables = getOutputVariables(taskResponse.getOutputs(), taskResponse.getOutputVars());
+
+      populateCIStageOutputs(outputVariables, AmbianceUtils.getAccountId(ambiance), ambiance.getStageExecutionId());
+      if (isNotEmpty(outputVariables)) {
         StepResponse.StepOutcome stepOutcome =
             StepResponse.StepOutcome.builder()
-                .outcome(CIStepOutcome.builder().outputVariables(taskResponse.getOutputVars()).build())
+                .outcome(CIStepOutcome.builder().outputVariables(outputVariables).build())
                 .name("output")
                 .build();
         stepResponseBuilder.stepOutcome(stepOutcome);
@@ -471,8 +472,12 @@ public abstract class AbstractStepExecutable extends CommonAbstractStepExecutabl
       case IACM_TERRAFORM_PLUGIN:
       case IACM_APPROVAL:
       case PROVENANCE:
-      case IDP_COOKIECUTTER:
-      case IDP_CREATE_REPO:
+      case COOKIECUTTER:
+      case CREATE_REPO:
+      case DIRECT_PUSH:
+      case REGISTER_CATALOG:
+      case CREATE_CATALOG:
+      case SLACK_NOTIFY:
       case SLSA_VERIFICATION:
         return pluginCompatibleStepSerializer.serializeStepWithStepParameters((PluginCompatibleStep) ciStepInfo, port,
             taskId, logKey, stepIdentifier, ParameterField.createValueField(Timeout.fromString(timeout)), accountId,

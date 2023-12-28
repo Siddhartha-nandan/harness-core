@@ -36,6 +36,8 @@ import io.harness.ng.core.dto.PollingTriggerStatusUpdateDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
+import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
+import io.harness.ngtriggers.beans.dto.BulkTriggersResponseDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerCatalogDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerDetailsResponseDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerEventHistoryDTO;
@@ -49,6 +51,7 @@ import io.harness.ngtriggers.beans.entity.metadata.catalog.TriggerCatalogItem;
 import io.harness.ngtriggers.beans.source.GitMoveOperationType;
 import io.harness.ngtriggers.beans.source.TriggerUpdateCount;
 import io.harness.ngtriggers.exceptions.InvalidTriggerYamlException;
+import io.harness.ngtriggers.instrumentation.TriggerTelemetryHelper;
 import io.harness.ngtriggers.mapper.NGTriggerElementMapper;
 import io.harness.ngtriggers.mapper.TriggerFilterHelper;
 import io.harness.ngtriggers.service.NGTriggerEventsService;
@@ -79,6 +82,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
+import retrofit2.http.Body;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_TRIGGERS})
 @AllArgsConstructor(access = AccessLevel.PACKAGE, onConstructor = @__({ @Inject }))
@@ -97,6 +101,7 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
   private final NGSettingsClient settingsClient;
   private final FilterService filterService;
   private final PmsFeatureFlagService pmsFeatureFlagService;
+  private final TriggerTelemetryHelper triggerTelemetryHelper;
 
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_EXECUTE)
   public ResponseDTO<NGTriggerResponseDTO> create(@NotNull @AccountIdentifier String accountIdentifier,
@@ -319,5 +324,24 @@ public class NGTriggerResourceImpl implements NGTriggerResource {
             "true");
 
     return mandatoryAuth;
+  }
+
+  public ResponseDTO<BulkTriggersResponseDTO> bulkToggleTriggers(@NotNull @AccountIdentifier String accountIdentifier,
+      @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO) {
+    long timeStart = System.currentTimeMillis();
+
+    BulkTriggersResponseDTO bulkTriggersResponseDTO =
+        ngTriggerService.toggleTriggersInBulk(accountIdentifier, bulkTriggersRequestDTO);
+
+    long timeTaken = System.currentTimeMillis() - timeStart;
+
+    try {
+      triggerTelemetryHelper.sendBulkToggleTriggersApiEvent(
+          accountIdentifier, bulkTriggersRequestDTO, bulkTriggersResponseDTO, timeTaken);
+    } catch (Exception e) {
+      log.error("Error while publishing telemetry for the Bulk Toggle Triggers API.");
+    }
+
+    return ResponseDTO.newResponse(bulkTriggersResponseDTO);
   }
 }

@@ -6,7 +6,9 @@
  */
 
 package io.harness.workers.background.critical.iterator;
+
 import static io.harness.annotations.dev.HarnessTeam.CDC;
+import static io.harness.beans.FeatureName.CDS_DISABLE_CG_ITERATORS;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.exception.WingsException.ExecutionContext.MANAGER;
 import static io.harness.logging.AutoLogContext.OverrideBehavior.OVERRIDE_ERROR;
@@ -23,6 +25,7 @@ import io.harness.annotations.dev.TargetModule;
 import io.harness.exception.ExceptionLogger;
 import io.harness.exception.FunctorException;
 import io.harness.exception.WingsException;
+import io.harness.ff.FeatureFlagService;
 import io.harness.iterator.IteratorExecutionHandler;
 import io.harness.iterator.IteratorPumpAndRedisModeHandler;
 import io.harness.iterator.PersistenceIteratorFactory;
@@ -68,6 +71,7 @@ public class ArtifactCollectionHandler extends IteratorPumpAndRedisModeHandler i
   @Inject @Named("AsyncArtifactCollectionService") private ArtifactCollectionService artifactCollectionServiceAsync;
   @Inject private ArtifactCollectionUtils artifactCollectionUtils;
   @Inject private MorphiaPersistenceRequiredProvider<ArtifactStream> persistenceProvider;
+  @Inject private FeatureFlagService featureFlagService;
 
   @Override
   public void createAndStartIterator(
@@ -120,7 +124,9 @@ public class ArtifactCollectionHandler extends IteratorPumpAndRedisModeHandler i
   public void handle(ArtifactStream artifactStream) {
     try (AutoLogContext ignore2 = new ArtifactStreamLogContext(
              artifactStream.getUuid(), artifactStream.getArtifactStreamType(), OVERRIDE_ERROR)) {
-      executeInternal(artifactStream);
+      if (featureFlagService.isNotEnabled(CDS_DISABLE_CG_ITERATORS, artifactStream.getAccountId())) {
+        executeInternal(artifactStream);
+      }
     }
   }
 
@@ -131,8 +137,9 @@ public class ArtifactCollectionHandler extends IteratorPumpAndRedisModeHandler i
         return;
       }
 
-      int leaseDuration = (int) (TimeUnit.MINUTES.toMillis(2)
-          * PermitServiceImpl.getBackoffMultiplier(artifactStream.getFailedCronAttempts()));
+      var failedAttempts = artifactStream.getFailedCronAttempts();
+      int leaseDuration = (int) (TimeUnit.MINUTES.toMillis(failedAttempts == 0 ? 5 : 2)
+          * PermitServiceImpl.getBackoffMultiplier(failedAttempts));
       String permitId = permitService.acquirePermit(Permit.builder()
                                                         .appId(artifactStream.fetchAppId())
                                                         .group(GROUP)

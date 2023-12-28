@@ -26,6 +26,7 @@ import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.delegate.beans.ci.vm.steps.VmJunitTestReport;
 import io.harness.delegate.beans.ci.vm.steps.VmRunTestStep;
 import io.harness.delegate.beans.ci.vm.steps.VmRunTestStep.VmRunTestStepBuilder;
+import io.harness.delegate.task.stepstatus.StepOutputV2;
 import io.harness.exception.ngexception.CIStageExecutionException;
 import io.harness.ng.core.NGAccess;
 import io.harness.pms.contracts.ambiance.Ambiance;
@@ -33,7 +34,7 @@ import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.utils.TimeoutUtils;
 import io.harness.yaml.core.timeout.Timeout;
-import io.harness.yaml.core.variables.OutputNGVariable;
+import io.harness.yaml.core.variables.NGVariable;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -65,12 +66,15 @@ public class VmRunTestStepSerializer {
       throw new CIStageExecutionException("language cannot be null");
     }
     List<String> outputVarNames = new ArrayList<>();
+    List<StepOutputV2> outputVariables = new ArrayList<>();
     if (isNotEmpty(runTestsStepInfo.getOutputVariables().getValue())) {
       outputVarNames = runTestsStepInfo.getOutputVariables()
                            .getValue()
                            .stream()
-                           .map(OutputNGVariable::getName)
+                           .map(NGVariable::getName)
                            .collect(Collectors.toList());
+      outputVariables = SerializerUtils.getStepOutputV2FromNGVar(
+          runTestsStepInfo.getOutputVariables().getValue(), runTestsStepInfo.getIdentifier());
     }
     String image =
         RunTimeInputHandler.resolveStringParameter("Image", stepName, identifier, runTestsStepInfo.getImage(), false);
@@ -143,6 +147,7 @@ public class VmRunTestStepSerializer {
             .postCommand(postCommand)
             .envVariables(envVars)
             .outputVariables(outputVarNames)
+            .outputs(outputVariables)
             .timeoutSecs(timeout)
             .buildEnvironment(buildEnvironment)
             .frameworkVersion(frameworkVersion)

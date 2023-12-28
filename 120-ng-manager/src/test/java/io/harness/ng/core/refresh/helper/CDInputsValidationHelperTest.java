@@ -130,7 +130,8 @@ public class CDInputsValidationHelperTest extends NgManagerTestBase {
     environmentService = spy(new EnvironmentServiceImpl(environmentRepository, entitySetupUsageService, eventProducer,
         outboxService, transactionTemplate, infrastructureEntityService, clusterService, serviceOverrideService,
         serviceOverridesServiceV2, serviceEntityService, accountClient, settingsClient,
-        environmentEntitySetupUsageHelper, overrideV2ValidationHelper, environmentFilterHelper, gitXSettingsHelper));
+        environmentEntitySetupUsageHelper, overrideV2ValidationHelper, environmentFilterHelper, gitXSettingsHelper,
+        cdGitXService));
     environmentRefreshHelper = spy(new EnvironmentRefreshHelper(environmentService, infrastructureEntityService,
         serviceOverrideService, serviceOverridesServiceV2, accountClient, overrideV2ValidationHelper));
     on(entityFetchHelper).set("serviceEntityService", serviceEntityService);
@@ -313,7 +314,7 @@ public class CDInputsValidationHelperTest extends NgManagerTestBase {
     InputsValidationResponse validationResponse =
         CDInputsValidationHelper.validateInputsForYaml(ACCOUNT_ID, ORG_ID, PROJECT_ID, pipelineYmlWithService, null);
     assertThat(validationResponse).isNotNull();
-    assertThat(validationResponse.isValid()).isFalse();
+    assertThat(validationResponse.isValid()).isTrue();
     assertThat(validationResponse.getChildrenErrorNodes()).isNullOrEmpty();
   }
 

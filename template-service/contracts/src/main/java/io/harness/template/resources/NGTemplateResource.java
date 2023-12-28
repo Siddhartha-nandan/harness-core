@@ -32,6 +32,7 @@ import io.harness.ng.core.dto.ErrorDTO;
 import io.harness.ng.core.dto.FailureDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.entitysetupusage.dto.EntitySetupUsageDTO;
+import io.harness.ng.core.template.MergeTemplateRequestDTO;
 import io.harness.ng.core.template.TemplateApplyRequestDTO;
 import io.harness.ng.core.template.TemplateListType;
 import io.harness.ng.core.template.TemplateMergeResponseDTO;
@@ -42,6 +43,7 @@ import io.harness.ng.core.template.TemplateRetainVariablesRequestDTO;
 import io.harness.ng.core.template.TemplateRetainVariablesResponse;
 import io.harness.ng.core.template.TemplateSummaryResponseDTO;
 import io.harness.ng.core.template.TemplateWithInputsResponseDTO;
+import io.harness.pms.pipeline.PipelineResourceConstants;
 import io.harness.pms.variables.VariableMergeServiceResponse;
 import io.harness.security.annotations.NextGenManagerAuth;
 import io.harness.template.resources.beans.NGTemplateConstants;
@@ -56,6 +58,8 @@ import io.harness.template.resources.beans.TemplateUpdateGitMetadataResponse;
 import io.harness.template.resources.beans.TemplateWrapperResponseDTO;
 import io.harness.template.resources.beans.yaml.NGTemplateConfig;
 
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -127,6 +131,8 @@ public interface NGTemplateResource {
   @GET
   @Path("{templateIdentifier}")
   @ApiOperation(value = "Gets Template", nickname = "getTemplate")
+  @Timed
+  @ResponseMetered
   @Operation(operationId = "getTemplate", summary = "Get Template",
       responses =
       {
@@ -153,6 +159,8 @@ public interface NGTemplateResource {
 
   @POST
   @ApiOperation(value = "Creates a Template", nickname = "createTemplate")
+  @Timed
+  @ResponseMetered
   @Operation(operationId = "createTemplate", summary = "Create a Template",
       responses =
       {
@@ -184,6 +192,8 @@ public interface NGTemplateResource {
 
   @PUT
   @Path("/updateStableTemplate/{templateIdentifier}/{versionLabel}")
+  @Timed
+  @ResponseMetered
   @ApiOperation(value = "Updating stable template version", nickname = "updateStableTemplate")
   @Operation(operationId = "updateStableTemplate", summary = "Update Stable Template Version",
       responses =
@@ -208,6 +218,8 @@ public interface NGTemplateResource {
 
   @PUT
   @Path("/update/{templateIdentifier}/{versionLabel}")
+  @Timed
+  @ResponseMetered
   @ApiOperation(value = "Updating existing template version", nickname = "updateExistingTemplateVersion")
   @Operation(operationId = "updateExistingTemplateVersion", summary = "Update Template Version",
       responses =
@@ -241,6 +253,8 @@ public interface NGTemplateResource {
 
   @DELETE
   @Path("/{templateIdentifier}/{versionLabel}")
+  @Timed
+  @ResponseMetered
   @ApiOperation(value = "Deletes template version", nickname = "deleteTemplateVersion")
   @Operation(operationId = "deleteTemplateVersion", summary = "Delete Template Version",
       responses =
@@ -334,6 +348,8 @@ public interface NGTemplateResource {
 
   @POST
   @Path("/list-metadata")
+  @Timed
+  @ResponseMetered
   @ApiOperation(value = "Gets all template list", nickname = "getTemplateMetadataList")
   @Operation(operationId = "getTemplateMetadataList", summary = "Gets all metadata of template list",
       responses =
@@ -399,6 +415,8 @@ public interface NGTemplateResource {
 
   @GET
   @Path("/templateInputs/{templateIdentifier}")
+  @Timed
+  @ResponseMetered
   @ApiOperation(value = "Gets template input set yaml", nickname = "getTemplateInputSetYaml")
   @Operation(operationId = "getTemplateInputSetYaml", summary = "Gets Template Input Set YAML",
       responses =
@@ -644,6 +662,8 @@ public interface NGTemplateResource {
 
   @POST
   @Path("/move-config/{templateIdentifier}")
+  @Timed
+  @ResponseMetered
   @ApiOperation(value = "Move Template YAML from inline to remote", nickname = "moveTemplateConfigs")
   @Operation(operationId = "moveTemplateConfigs", summary = "Move Template YAML from inline to remote",
       responses =
@@ -664,6 +684,8 @@ public interface NGTemplateResource {
 
   @POST
   @Path("/update/git-metadata/{templateIdentifier}/{versionLabel}")
+  @Timed
+  @ResponseMetered
   @ApiOperation(value = "Update git metadata details for a remote template", nickname = "updateGitDetails")
   @Operation(operationId = "updateGitDetails", summary = "Update git metadata details for a remote template",
       responses =
@@ -684,4 +706,27 @@ public interface NGTemplateResource {
           NGCommonEntityConstants.VERSION_LABEL_KEY) String versionLabel,
       @Parameter(description = "This contains details of Git Entity like Git Branch info to be updated")
       TemplateUpdateGitMetadataRequest request);
+
+  @POST
+  @Path("/get-resolved-template/{templateIdentifier}")
+  @ApiOperation(value = "Fetch resolved template by identifier", nickname = "Get Resolved Template")
+  @Timed
+  @ResponseMetered
+  @Hidden
+  ResponseDTO<TemplateResponseDTO> getResolvedTemplate(
+      @Parameter(description = PipelineResourceConstants.ACCOUNT_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
+          NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountId,
+      @Parameter(description = PipelineResourceConstants.ORG_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
+          NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgId,
+      @Parameter(description = PipelineResourceConstants.PROJECT_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
+          NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectId,
+      @Parameter(description = TEMPLATE_PARAM_MESSAGE) @PathParam(
+          "templateIdentifier") @ResourceIdentifier String templateIdentifier,
+      @Parameter(description = "Version Label") @QueryParam(
+          NGCommonEntityConstants.VERSION_LABEL_KEY) String versionLabel,
+      @Parameter(description = "Specifies whether Template is deleted or not") @QueryParam(
+          NGCommonEntityConstants.DELETED_KEY) @DefaultValue("false") boolean deleted,
+      @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo, @NotNull MergeTemplateRequestDTO mergeTemplateRequestDTO,
+      @QueryParam("loadFromFallbackBranch") @DefaultValue("false") boolean loadFromFallbackBranch,
+      @HeaderParam("Load-From-Cache") @DefaultValue("false") String loadFromCache);
 }

@@ -41,6 +41,7 @@ public class ParameterField<T> {
   private boolean jsonResponseField;
   private String responseField;
 
+  @Deprecated
   public T getValue() {
     return value != null ? value : defaultValue;
   }
@@ -166,6 +167,10 @@ public class ParameterField<T> {
 
   public static boolean isNotNull(ParameterField<?> actualField) {
     return !isNull(actualField);
+  }
+
+  public static boolean isNotBlank(ParameterField<?> actualField) {
+    return !isBlank(actualField);
   }
 
   public static boolean isNull(ParameterField<?> actualField) {

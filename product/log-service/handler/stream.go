@@ -9,16 +9,25 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
+	"fmt"
 
 	"github.com/harness/harness-core/product/log-service/logger"
+	"github.com/harness/harness-core/product/log-service/metric"
 	"github.com/harness/harness-core/product/log-service/store"
 	"github.com/harness/harness-core/product/log-service/stream"
 
 	"golang.org/x/sync/errgroup"
+)
+
+const (
+	defaultKeyExpiryTimeSeconds = 5 * 60 * 60   // 5*60*60 seconds = 5 hours
+	maximumKeyExpiryTimeSeconds = 24 * 60 * 60 // 24*60*60 seconds = 24 hours
 )
 
 var pingInterval = time.Second * 30
@@ -47,7 +56,32 @@ func HandleOpen(stream stream.Stream) http.HandlerFunc {
 		accountID := r.FormValue(accountIDParam)
 		key := CreateAccountSeparatedKey(accountID, r.FormValue(keyParam))
 
-		if err := stream.Create(ctx, key); err != nil {
+		keyExpiryTimeSecondsString := r.URL.Query().Get("timeout_seconds")
+		var keyExpiryTimeSeconds int
+
+		if keyExpiryTimeSecondsString == "" {
+			keyExpiryTimeSeconds = defaultKeyExpiryTimeSeconds
+		} else {
+			var err error
+			keyExpiryTimeSeconds, err = strconv.Atoi(keyExpiryTimeSecondsString)
+
+			if err != nil {
+				WriteBadRequest(w, fmt.Errorf("unable to parse timeout_secs: %w", err))
+				return
+			}
+
+			if keyExpiryTimeSeconds < 0 {
+				WriteBadRequest(w, errors.New("key expiry timeout cannot be negative"))
+				return
+			}
+		}
+
+		//Here our maximum keyExpiryTime is of 1 day, so setting keyExpiryTime more than that will set it to 1 day automatically
+		if keyExpiryTimeSeconds > maximumKeyExpiryTimeSeconds {
+			keyExpiryTimeSeconds = maximumKeyExpiryTimeSeconds
+		}
+
+		if err := stream.Create(ctx, key, keyExpiryTimeSeconds); err != nil {
 			WriteInternalError(w, err)
 			logger.FromRequest(r).
 				WithError(err).
@@ -171,8 +205,10 @@ func HandleClose(logStream stream.Stream, store store.Store, scanBatch int64) ht
 
 // HandleWrite returns an http.HandlerFunc that writes
 // to the live stream.
-func HandleWrite(s stream.Stream) http.HandlerFunc {
+func HandleWrite(s stream.Stream, metrics *metric.Metrics) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Increment the Stream write count
+		metrics.StreamWriteCount.Inc()
 		ctx := r.Context()
 		st := time.Now()
 
@@ -189,16 +225,14 @@ func HandleWrite(s stream.Stream) http.HandlerFunc {
 			return
 		}
 
-		// write to stream only if it exists
-		if err := s.Exists(ctx, key); err != nil {
-			return
-		}
 		if err := s.Write(ctx, key, in...); err != nil {
 			if err == stream.ErrNotFound {
 				WriteBadRequest(w, err)
 				return
 			}
 			if err != nil {
+				// increment error metric for write stream
+				metrics.StreamWriteErrorCount.Inc()
 				WriteInternalError(w, err)
 				logger.FromRequest(r).
 					WithError(err).
@@ -214,13 +248,16 @@ func HandleWrite(s stream.Stream) http.HandlerFunc {
 			WithField("num_lines", len(in)).
 			Infoln("api: successfully wrote to stream")
 		w.WriteHeader(http.StatusNoContent)
+		metrics.StreamWriteLatency.Observe(float64(time.Since(st).Microseconds()))
 	}
 }
 
 // HandleTail returns an http.HandlerFunc that tails
 // the live stream.
-func HandleTail(s stream.Stream) http.HandlerFunc {
+func HandleTail(s stream.Stream, metrics *metric.Metrics) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Increment the Stream tail count
+		metrics.StreamTailCount.Inc()
 
 		accountID := r.FormValue(accountIDParam)
 		key := CreateAccountSeparatedKey(accountID, r.FormValue(keyParam))
@@ -251,6 +288,8 @@ func HandleTail(s stream.Stream) http.HandlerFunc {
 		enc := json.NewEncoder(w)
 		linec, errc := s.Tail(ctx, key)
 		if errc == nil {
+			// Increment error metrics for stream tail
+			metrics.StreamTailErrorCount.Inc()
 			io.WriteString(w, "event: error\ndata: eof\n")
 			return
 		}

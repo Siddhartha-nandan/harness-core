@@ -8,7 +8,6 @@
 package io.harness.cdng.tas;
 
 import static io.harness.cdng.manifest.ManifestStoreType.ARTIFACT_BUNDLE;
-import static io.harness.cdng.manifest.ManifestType.TAS_MANIFEST;
 import static io.harness.common.ParameterFieldHelper.getParameterFieldValue;
 
 import static java.util.Objects.isNull;
@@ -77,6 +76,7 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import software.wings.beans.TaskType;
 
@@ -252,6 +252,12 @@ public class TasRollingDeployStep extends CdTaskChainExecutable implements TasSt
   }
 
   @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
+  }
+
+  @Override
   public TaskChainResponse executeTasTask(ManifestOutcome tasManifestOutcome, Ambiance ambiance,
       StepBaseParameters stepParameters, TasExecutionPassThroughData executionPassThroughData,
       boolean shouldOpenFetchFilesLogStream, UnitProgressData unitProgressData) {
@@ -264,17 +270,7 @@ public class TasRollingDeployStep extends CdTaskChainExecutable implements TasSt
         getParameterFieldValue(tasRollingDeployStepParameters.getAdditionalRoutes()));
     TasInfraConfig tasInfraConfig = cdStepHelper.getTasInfraConfig(infrastructureOutcome, ambiance);
 
-    ArtifactBundleDetails artifactBundleDetails = null;
-    if (tasManifestOutcome != null && tasManifestOutcome.getType().equals(TAS_MANIFEST)
-        && tasManifestOutcome.getStore().getKind().equals(ARTIFACT_BUNDLE)) {
-      ArtifactBundleStore artifactBundleStore = (ArtifactBundleStore) tasManifestOutcome.getStore();
-      artifactBundleDetails =
-          ArtifactBundleDetails.builder()
-              .artifactBundleType(artifactBundleStore.getArtifactBundleType().toString())
-              .deployableUnitPath(getParameterFieldValue(artifactBundleStore.getDeployableUnitPath()))
-              .activityId(ambiance.getStageExecutionId())
-              .build();
-    }
+    ArtifactBundleDetails artifactBundleDetails = tasStepHelper.getArtifactBundleDetails(ambiance, tasManifestOutcome);
 
     TaskParameters taskParameters =
         CfRollingDeployRequestNG.builder()
@@ -305,6 +301,7 @@ public class TasRollingDeployStep extends CdTaskChainExecutable implements TasSt
             .cfCliVersion(executionPassThroughData.getCfCliVersion())
             .tasStageExecutionDetails(tasStageExecutionDetails)
             .build();
+
     executionSweepingOutputService.consume(ambiance, OutcomeExpressionConstants.TAS_ROLLING_DEPLOY_OUTCOME,
         tasRollingDeployOutcome, StepCategory.STEP.name());
 

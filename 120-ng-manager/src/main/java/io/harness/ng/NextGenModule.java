@@ -16,6 +16,7 @@ import static io.harness.audit.ResourceTypeConstants.ENVIRONMENT_GROUP;
 import static io.harness.audit.ResourceTypeConstants.EULA;
 import static io.harness.audit.ResourceTypeConstants.FILE;
 import static io.harness.audit.ResourceTypeConstants.IP_ALLOWLIST_CONFIG;
+import static io.harness.audit.ResourceTypeConstants.MODULE_LICENSE;
 import static io.harness.audit.ResourceTypeConstants.ORGANIZATION;
 import static io.harness.audit.ResourceTypeConstants.PROJECT;
 import static io.harness.audit.ResourceTypeConstants.SECRET;
@@ -155,6 +156,7 @@ import io.harness.grpc.client.GrpcClientConfig;
 import io.harness.hsqs.client.beans.HsqsDequeueConfig;
 import io.harness.licensing.LicenseModule;
 import io.harness.licensing.event.ModuleLicenseEventListener;
+import io.harness.licensing.outbox.ModuleLicenseOutboxEventHandler;
 import io.harness.lock.DistributedLockImplementation;
 import io.harness.lock.PersistentLockModule;
 import io.harness.logstreaming.LogStreamingServiceConfiguration;
@@ -176,7 +178,6 @@ import io.harness.ng.chaos.AbstractChaosModule;
 import io.harness.ng.core.AccountOrgProjectHelper;
 import io.harness.ng.core.AccountOrgProjectHelperImpl;
 import io.harness.ng.core.CoreModule;
-import io.harness.ng.core.DefaultOrganizationModule;
 import io.harness.ng.core.DelegateServiceModule;
 import io.harness.ng.core.InviteModule;
 import io.harness.ng.core.NGAggregateModule;
@@ -463,6 +464,14 @@ public class NextGenModule extends AbstractModule {
   public ExecutorService templateRegistrationExecutionServiceThreadPool() {
     return ThreadPool.create(1, 1, 10, TimeUnit.SECONDS,
         new ThreadFactoryBuilder().setNameFormat("FreezeTemplateRegistrationService-%d").build());
+  }
+
+  @Provides
+  @Singleton
+  @Named("chaosTemplateRegistrationExecutorService")
+  public ExecutorService chaosTemplateRegistrationExecutionServiceThreadPool() {
+    return ThreadPool.create(1, 1, 10, TimeUnit.SECONDS,
+        new ThreadFactoryBuilder().setNameFormat("ChaosTemplateRegistrationService-%d").build());
   }
 
   @Provides
@@ -807,6 +816,7 @@ public class NextGenModule extends AbstractModule {
     bind(ScimUserService.class).to(NGScimUserServiceImpl.class);
     bind(ScimGroupService.class).to(NGScimGroupServiceImpl.class);
     bind(ModuleVersionInfoService.class).to(ModuleVersionInfoServiceImpl.class);
+    bind(ScopeInfoService.class).to(ScopeInfoServiceImpl.class);
 
     install(new ValidationModule(getValidatorFactory()));
     install(new AbstractMongoModule() {
@@ -837,7 +847,6 @@ public class NextGenModule extends AbstractModule {
     install(new CdLicenseUsageCgModule(appConfig.getManagerClientConfig(),
         appConfig.getNextGenConfig().getManagerServiceSecret(), NG_MANAGER.getServiceId()));
     install(JooqModule.getInstance());
-    install(new DefaultOrganizationModule());
     install(new ScopeInfoModule());
     install(new NGAggregateModule());
     install(new DelegateServiceModule());
@@ -944,6 +953,20 @@ public class NextGenModule extends AbstractModule {
       @Singleton
       List<YamlSchemaRootClass> yamlSchemaRootClasses() {
         return ImmutableList.<YamlSchemaRootClass>builder().addAll(NextGenRegistrars.yamlSchemaRegistrars).build();
+      }
+
+      @Provides
+      @Singleton
+      @Named("scmServiceBaseUrl")
+      String getScmServiceBaseUrl() {
+        return getBaseUrls().getScmServiceBaseUrl();
+      }
+
+      @Provides
+      @Singleton
+      @Named("harnessCodeGitUrl")
+      String getHarnessCodeGitUrl() {
+        return getBaseUrls().getHarnessCodeGitUrl();
       }
 
       @Provides
@@ -1056,7 +1079,6 @@ public class NextGenModule extends AbstractModule {
     bind(WebhookService.class).to(WebhookServiceImpl.class);
     bind(WebhookEventProcessingService.class).to(WebhookEventProcessingServiceImpl.class);
     bind(NGHostValidationService.class).to(NGHostValidationServiceImpl.class);
-    bind(ScopeInfoService.class).to(ScopeInfoServiceImpl.class);
     bind(MessageListener.class)
         .annotatedWith(Names.named(USER_ENTITY + ENTITY_CRUD))
         .to(UserEntityCrudStreamListener.class);
@@ -1201,6 +1223,7 @@ public class NextGenModule extends AbstractModule {
     outboxEventHandlerMapBinder.addBinding(DEPLOYMENT_FREEZE).to(FreezeOutboxEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(IP_ALLOWLIST_CONFIG).to(IPAllowlistConfigEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(EULA).to(EulaEventHandler.class);
+    outboxEventHandlerMapBinder.addBinding(MODULE_LICENSE).to(ModuleLicenseOutboxEventHandler.class);
   }
 
   private void registerEventsFrameworkMessageListeners() {

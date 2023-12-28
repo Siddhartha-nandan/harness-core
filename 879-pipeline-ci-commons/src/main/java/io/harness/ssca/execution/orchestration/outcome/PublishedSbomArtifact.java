@@ -10,9 +10,13 @@ package io.harness.ssca.execution.orchestration.outcome;
 import io.harness.annotation.RecasterAlias;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.delegate.task.stepstatus.artifact.ssca.DriftSummary;
+import io.harness.delegate.task.stepstatus.artifact.ssca.Scorecard;
 
 import lombok.Builder;
+import lombok.Setter;
 import lombok.Value;
+import lombok.experimental.NonFinal;
 import org.springframework.data.annotation.TypeAlias;
 
 @Value
@@ -32,4 +36,6 @@ public class PublishedSbomArtifact {
   boolean isSbomAttested;
   int allowListViolationCount;
   int denyListViolationCount;
+  @NonFinal @Setter Scorecard scorecard;
+  @NonFinal @Setter DriftSummary drift;
 }

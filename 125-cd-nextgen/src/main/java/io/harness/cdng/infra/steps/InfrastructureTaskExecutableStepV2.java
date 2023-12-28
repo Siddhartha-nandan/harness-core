@@ -165,6 +165,8 @@ public class InfrastructureTaskExecutableStepV2 extends AbstractInfrastructureTa
   @Inject private InfrastructureProvisionerHelper infrastructureProvisionerHelper;
   @Inject private SecretRuntimeUsageService secretRuntimeUsageService;
   @Inject private EnvironmentService environmentService;
+  private final String RESOURCE_CONSTRAINTS_DOCS_LINK =
+      "https://developer.harness.io/docs/continuous-delivery/manage-deployments/controlling-deployments-with-barriers-resource-constraints-and-queue-steps/";
 
   @Override
   public Class<InfrastructureTaskExecutableStepV2Params> getStepParametersClass() {
@@ -197,7 +199,8 @@ public class InfrastructureTaskExecutableStepV2 extends AbstractInfrastructureTa
     if (isTaskStep(infraSpec.getKind())) {
       final TaskRequestData taskRequest = obtainTaskInternal(ambiance, infraSpec, logCallback,
           !infrastructureConfig.getInfrastructureDefinitionConfig().isAllowSimultaneousDeployments(), skipInstances,
-          infrastructureConfig.getInfrastructureDefinitionConfig().getTags());
+          infrastructureConfig.getInfrastructureDefinitionConfig().getTags(),
+          infrastructureConfig.getInfrastructureDefinitionConfig().getDescription());
       final DelegateTaskRequest delegateTaskRequest =
           cdStepHelper.mapTaskRequestToDelegateTaskRequest(taskRequest.getTaskRequest(), taskRequest.getTaskData(),
               CollectionUtils.emptyIfNull(taskRequest.getTaskSelectorYamls())
@@ -346,6 +349,16 @@ public class InfrastructureTaskExecutableStepV2 extends AbstractInfrastructureTa
       infrastructureProvisionerHelper.resolveProvisionerExpressions(ambiance, spec);
     }
     validateInfrastructure(spec, ambiance, logCallback);
+    if (infrastructure.getInfrastructureDefinitionConfig().isAllowSimultaneousDeployments()) {
+      saveExecutionLog(logCallback,
+          format("Simultaneous Deployments enabled for Infrastructure : %s",
+              infrastructure.getInfrastructureDefinitionConfig().getName()));
+    } else {
+      saveExecutionLog(logCallback,
+          format(
+              "Simultaneous Deployments disabled for Infrastructure : %s. Deployments will get queued as a result. %n%s",
+              infrastructure.getInfrastructureDefinitionConfig().getName(), RESOURCE_CONSTRAINTS_DOCS_LINK));
+    }
     publishRuntimeSecretUsage(ambiance, spec);
 
     final OutcomeSet outcomeSet = fetchRequiredOutcomes(ambiance);
@@ -361,7 +374,8 @@ public class InfrastructureTaskExecutableStepV2 extends AbstractInfrastructureTa
 
     final InfrastructureOutcome infrastructureOutcome = infrastructureOutcomeProvider.getOutcome(ambiance, spec,
         environmentOutcome, serviceOutcome, ngAccess.getAccountIdentifier(), ngAccess.getOrgIdentifier(),
-        ngAccess.getProjectIdentifier(), infrastructure.getInfrastructureDefinitionConfig().getTags());
+        ngAccess.getProjectIdentifier(), infrastructure.getInfrastructureDefinitionConfig().getTags(),
+        infrastructure.getInfrastructureDefinitionConfig().getDescription());
 
     // save spec sweeping output for further use within the step
     executionSweepingOutputService.consume(ambiance, INFRA_TASK_EXECUTABLE_STEP_OUTPUT,

@@ -31,6 +31,7 @@ import io.harness.spec.server.pipeline.v1.model.HarnessApprovalActivityRequestBo
 import io.harness.steps.approval.step.beans.ApprovalInstanceResponseDTO;
 import io.harness.steps.approval.step.beans.ApprovalStatus;
 import io.harness.steps.approval.step.beans.ApprovalType;
+import io.harness.telemetry.helpers.ApprovalApiInstrumentationHelper;
 
 import com.google.inject.Inject;
 import java.util.Arrays;
@@ -50,12 +51,13 @@ import lombok.extern.slf4j.Slf4j;
 public class ApprovalsApiImpl implements ApprovalsApi {
   private final ApprovalResourceService approvalResourceService;
   private final PMSExecutionService pmsExecutionService;
+  @Inject ApprovalApiInstrumentationHelper instrumentationHelper;
 
   @Override
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_EXECUTE)
   public Response addHarnessApprovalActivityByPipelineExecutionId(@OrgIdentifier String org,
       @ProjectIdentifier String project, String executionId, @Valid HarnessApprovalActivityRequestBody body,
-      @AccountIdentifier String harnessAccount) {
+      @AccountIdentifier String harnessAccount, String callbackId) {
     if (isNull(harnessAccount)) {
       // harnessAccount is required to passed when using bearer token for rbac check
       throw new InvalidRequestException("harnessAccount param value is required");
@@ -64,6 +66,8 @@ public class ApprovalsApiImpl implements ApprovalsApi {
       pmsExecutionService.getPipelineExecutionSummaryEntity(harnessAccount, org, project, executionId, false);
     } catch (EntityNotFoundException ex) {
       log.warn("Invalid execution id provided", ex);
+      instrumentationHelper.sendApprovalApiEvent(harnessAccount, org, project, executionId,
+          ApprovalApiInstrumentationHelper.FAILURE, ApprovalApiInstrumentationHelper.EXECUTION_ID_NOT_FOUND);
       throw new InvalidRequestException(String.format(
           "execution_id param value provided doesn't belong to Account: %s, Org: %s, Project: %s or the pipeline has been deleted",
           harnessAccount, org, project));
@@ -73,9 +77,11 @@ public class ApprovalsApiImpl implements ApprovalsApi {
     }
 
     ApprovalInstanceResponseDTO approvalInstanceResponseDTO =
-        approvalResourceService.addHarnessApprovalActivityByPlanExecutionId(
-            harnessAccount, org, project, executionId, ApprovalsAPIUtils.toHarnessApprovalActivityRequestDTO(body));
+        approvalResourceService.addHarnessApprovalActivityByPlanExecutionId(harnessAccount, org, project, executionId,
+            ApprovalsAPIUtils.toHarnessApprovalActivityRequestDTO(body), callbackId);
 
+    instrumentationHelper.sendApprovalApiEvent(
+        harnessAccount, org, project, executionId, ApprovalApiInstrumentationHelper.SUCCESS, null);
     return Response.ok().entity(ApprovalsAPIUtils.toApprovalInstanceResponseBody(approvalInstanceResponseDTO)).build();
   }
 
@@ -123,7 +129,7 @@ public class ApprovalsApiImpl implements ApprovalsApi {
     }
 
     List<ApprovalInstanceResponseDTO> approvalInstances = approvalResourceService.getApprovalInstancesByExecutionId(
-        executionId, approvalStatusEnum, approvalTypeEnum, nodeExecutionId);
+        executionId, approvalStatusEnum, approvalTypeEnum, nodeExecutionId, null);
 
     List<ApprovalInstanceResponseBody> approvalInstanceResponseBodyList =
         approvalInstances.stream().map(ApprovalsAPIUtils::toApprovalInstanceResponseBody).collect(Collectors.toList());
