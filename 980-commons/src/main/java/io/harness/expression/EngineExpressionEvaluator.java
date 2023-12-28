@@ -52,6 +52,7 @@ import org.apache.commons.jexl3.JexlBuilder;
 import org.apache.commons.jexl3.JexlEngine;
 import org.apache.commons.jexl3.JexlException;
 import org.apache.commons.jexl3.JexlExpression;
+import org.apache.commons.jexl3.introspection.JexlSandbox;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.logging.impl.NoOpLog;
 import org.hibernate.validator.constraints.NotEmpty;
@@ -73,16 +74,26 @@ public class EngineExpressionEvaluator {
   public static final String PIE_EXPRESSION_CONCATENATION = "PIE_EXPRESSION_CONCATENATION";
   public static final String PIE_EXPRESSION_DISABLE_COMPLEX_JSON_SUPPORT =
       "PIE_EXPRESSION_DISABLE_COMPLEX_JSON_SUPPORT";
+  public static final String CDS_DISABLE_SANDBOX_ENGINE_FALLBACK = "CDS_DISABLE_SANDBOX_ENGINE_FALLBACK";
 
   private static final int MAX_DEPTH = 15;
 
   @Getter private final JexlEngine engine;
+
+  @Getter private final JexlEngine sandBoxEngine;
   @Getter private final VariableResolverTracker variableResolverTracker;
   @Getter private final Map<String, Object> contextMap;
   @Getter private final Map<String, String> staticAliases;
   private boolean initialized;
+  private JexlSandbox sandbox;
+
+  private Map<String, JexlSandbox.Permissions> map;
 
   public EngineExpressionEvaluator(VariableResolverTracker variableResolverTracker) {
+    sandbox = new JexlSandbox();
+    sandbox.permissions("java.lang.Runtime", false, false, false);
+    this.sandBoxEngine = new JexlBuilder().logger(new NoOpLog()).sandbox(sandbox).create();
+
     this.engine = new JexlBuilder().logger(new NoOpLog()).create();
     this.variableResolverTracker =
         variableResolverTracker == null ? new VariableResolverTracker() : variableResolverTracker;
@@ -650,10 +661,34 @@ public class EngineExpressionEvaluator {
 
   protected Object evaluateByCreatingExpression(@NotNull String expression, @NotNull EngineJexlContext ctx) {
     if (ctx.isFeatureFlagEnabled(PIE_EXECUTION_JSON_SUPPORT)) {
-      return engine.createScript(expression).execute(ctx);
+      Object expr = sandBoxEngine.createScript(expression).execute(ctx);
+
+      if (expr != null) {
+        return expr;
+      }
+      if (!ctx.isFeatureFlagEnabled(CDS_DISABLE_SANDBOX_ENGINE_FALLBACK)) {
+        log.warn(String.format(
+            "Could not resolve via Sandbox expression engine: %s. Falling back to expression engine without sandbox",
+            expression));
+        return engine.createScript(expression).execute(ctx);
+      }
     }
-    JexlExpression jexlExpression = engine.createExpression(expression);
-    return jexlExpression.evaluate(ctx);
+
+    JexlExpression sandBoxJexlExpr = sandBoxEngine.createExpression(expression);
+    Object expr = sandBoxJexlExpr.evaluate(ctx);
+
+    if (expr != null) {
+      return expr;
+    }
+    if (!ctx.isFeatureFlagEnabled(CDS_DISABLE_SANDBOX_ENGINE_FALLBACK)) {
+      log.warn(String.format(
+          "Could not resolve via Sandbox expression engine: %s. Falling back to expression engine without sandbox",
+          expression));
+
+      JexlExpression jexlExpression = engine.createExpression(expression);
+      return jexlExpression.evaluate(ctx);
+    }
+    return null;
   }
 
   /**
@@ -672,7 +707,17 @@ public class EngineExpressionEvaluator {
 
     if (ctx.isFeatureFlagEnabled(PIE_EXECUTION_JSON_SUPPORT)) {
       try {
-        return engine.createScript(expression).execute(ctx);
+        Object expr = sandBoxEngine.createScript(expression).execute(ctx);
+        if (expr != null) {
+          return expr;
+        }
+        if (!ctx.isFeatureFlagEnabled(CDS_DISABLE_SANDBOX_ENGINE_FALLBACK)) {
+          log.warn(String.format(
+              "Could not resolve via Sandbox expression engine: %s. Falling back to expression engine without sandbox",
+              expression));
+
+          return engine.createScript(expression).execute(ctx);
+        }
       } catch (Exception e) {
         if (response.isOnlyRenderedExpressions()) {
           return null;
@@ -681,17 +726,31 @@ public class EngineExpressionEvaluator {
       }
     }
     try {
-      JexlExpression jexlExpression = engine.createExpression(expression);
-      return jexlExpression.evaluate(ctx);
+      Object expr = sandBoxEngine.createExpression(expression);
+      if (expr != null) {
+        return expr;
+      }
+      if (!ctx.isFeatureFlagEnabled(CDS_DISABLE_SANDBOX_ENGINE_FALLBACK)) {
+        log.warn(String.format(
+            "Could not resolve via Sandbox expression engine: %s. Falling back to expression engine without sandbox",
+            expression));
+        JexlExpression jexlExpression = engine.createExpression(expression);
+        return jexlExpression.evaluate(ctx);
+      }
     } catch (Exception e) {
       if (response.isOnlyRenderedExpressions()) {
         return null;
       }
       throw e;
     }
+    return null;
   }
 
   protected Object evaluateByCreatingScript(@NotNull String expression, @NotNull EngineJexlContext ctx) {
+    Object expr = sandBoxEngine.createScript(expression).execute(ctx);
+    if (expr != null) {
+      return expr;
+    }
     return engine.createScript(expression).execute(ctx);
   }
 
