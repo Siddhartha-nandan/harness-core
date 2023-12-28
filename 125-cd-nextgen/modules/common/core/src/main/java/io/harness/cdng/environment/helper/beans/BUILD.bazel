@@ -13,7 +13,7 @@ java_library(
     deps = [
         "//:lombok",
         "//953-yaml-commons:module",
-        "//970-ng-commons:module",
+        "//970-ng-commons/src/main/java/io/harness/pms/yaml:module",
         "//979-recaster/src/main/java/io/harness/annotation:module",
     ],
 )

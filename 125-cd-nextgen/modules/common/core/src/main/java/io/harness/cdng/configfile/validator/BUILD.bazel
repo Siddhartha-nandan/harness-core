@@ -21,7 +21,7 @@ java_library(
         "//127-cd-nextgen-entities:module",
         "//878-ng-common-utilities:module",
         "//950-delegate-tasks-beans:module",
-        "//970-ng-commons:module",
+        "//970-ng-commons/src/main/java/io/harness/pms/yaml:module",
         "//980-commons/src/main/java/io/harness/data/structure:module",
         "//980-commons/src/main/java/io/harness/exception:module",
         "//999-annotations/src/main/java/io/harness/annotations/dev:module",

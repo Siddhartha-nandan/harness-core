@@ -24,7 +24,7 @@ java_library(
         "//127-cd-nextgen-entities:module",
         "//870-cg-orchestration:module",
         "//878-ng-common-utilities:module",
-        "//970-ng-commons:module",
+        "//970-ng-commons/src/main/java/io/harness/ng/core/dto:module",
         "//999-annotations/src/main/java/io/harness/annotations/dev:module",
         "//clients/access-control/sdk:module",
         "@maven//:com_google_guava_guava",
