@@ -39,9 +39,8 @@ public class ProxyHttpConnectionFactory implements HttpConnectionFactory {
 
   @Override
   public HttpConnection create(URL url, Proxy proxy) throws IOException {
-    HttpConnection connection =
-        new ProxyHttpConnection(url.toString(), new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort)),
-            proxyHost, proxyPort, proxyUsername, proxyPassword);
-    return connection;
+    return new ProxyHttpConnection(url.toString(),
+        new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort)), proxyHost, proxyPort, proxyUsername,
+        proxyPassword);
   }
 }
