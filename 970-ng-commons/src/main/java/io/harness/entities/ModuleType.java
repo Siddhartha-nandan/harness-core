@@ -36,9 +36,9 @@ public enum ModuleType {
   @JsonProperty("IACM") IACM("Infrastructure as Code Manager", PUBLIC, ONBOARDED),
   @JsonProperty("CET") CET("Continuous Error Tracking", PUBLIC, ONBOARDED),
   @JsonProperty("IDP") IDP("Internal Developer Portal", PUBLIC, ONBOARDED),
+  @JsonProperty("CODE") CODE("Code", PUBLIC, ONBOARDED),
 
   // Internal modules which have been onboarded
-  @JsonProperty("CODE") CODE("Code", PUBLIC, ONBOARDED),
   @JsonProperty("CORE") CORE("Core", INTERNAL, ONBOARDED),
   @JsonProperty("PMS") PMS("Pipelines", INTERNAL, ONBOARDED),
   @JsonProperty("TEMPLATESERVICE") TEMPLATESERVICE("TemplateService", INTERNAL, ONBOARDED),

@@ -23,7 +23,7 @@ import io.dropwizard.util.DataSize;
 @Singleton
 public class CodeLicenseObjectMapper implements LicenseObjectMapper<CodeModuleLicense, CodeModuleLicenseDTO> {
   @Inject private ModuleLicenseHelper moduleLicenseHelper;
-  private String GIBSuffix = "GiB";
+  private static final String GIBSuffix = "GiB";
 
   @Override
   public CodeModuleLicenseDTO toDTO(CodeModuleLicense moduleLicense) {
