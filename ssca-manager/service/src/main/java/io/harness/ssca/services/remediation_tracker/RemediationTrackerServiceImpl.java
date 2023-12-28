@@ -384,10 +384,10 @@ public class RemediationTrackerServiceImpl implements RemediationTrackerService 
             .findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndUuid(
                 accountId, orgId, projectId, new ObjectId(remediationTrackerId))
             .orElseThrow(() -> new InvalidArgumentsException("Remediation Tracker not found"));
-    if (remediationTracker.getStatus() == RemediationStatus.COMPLETED) {
-      throw new InvalidArgumentsException(
-          String.format("Remediation Tracker: %s is already closed.", remediationTrackerId));
-    }
+    //    if (remediationTracker.getStatus() == RemediationStatus.COMPLETED) {
+    //      throw new InvalidArgumentsException(
+    //          String.format("Remediation Tracker: %s is already closed.", remediationTrackerId));
+    //    }
 
     SecurityContextBuilder.setContext(new ServicePrincipal(SSCA_SERVICE.getServiceId()));
     String authToken = tokenGenerator.getServiceTokenWithDuration(
