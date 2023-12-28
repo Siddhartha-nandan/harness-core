@@ -73,6 +73,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.joor.Reflect;
 import org.junit.Before;
 import org.junit.Test;
@@ -86,7 +87,6 @@ import org.mockito.Spy;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 public class PlanExecutionServiceImplTest extends OrchestrationTestBase {
@@ -444,8 +444,7 @@ public class PlanExecutionServiceImplTest extends OrchestrationTestBase {
       planExecutionList.add(PlanExecution.builder().uuid(uuid).build());
     }
 
-    CloseableIterator<PlanExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(planExecutionList.iterator());
+    Stream<PlanExecution> iterator = OrchestrationTestHelper.createStream(planExecutionList.iterator());
     Query query = query(where(PlanExecutionKeys.uuid).in(planExecutionIds));
     for (String fieldName : PlanExecutionProjectionConstants.fieldsForPlanExecutionDelete) {
       query.fields().include(fieldName);

@@ -31,6 +31,7 @@ import io.harness.steps.approval.step.entities.ApprovalInstance.ApprovalInstance
 import io.harness.steps.approval.step.harness.entities.HarnessApprovalInstance;
 
 import com.mongodb.bulk.BulkWriteResult;
+import java.util.stream.Stream;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -49,6 +50,7 @@ public class PopulateAmbianceFieldsAtFirstLevelInApprovalInstancesMigrationTest 
   @Mock private BulkOperations bulkOperations;
   @Mock private BulkWriteResult bulkWriteResult;
   @Mock private CloseableIterator closeableIterator;
+  @Mock private Stream stream;
   @InjectMocks PopulateAmbianceFieldsAtFirstLevelInApprovalInstancesMigration migration;
   private static final String accountIdentifier = "accId";
   private static final String orgIdentifier = "orgId";
@@ -60,7 +62,8 @@ public class PopulateAmbianceFieldsAtFirstLevelInApprovalInstancesMigrationTest 
   @Before
   public void setup() {
     when(mongoTemplate.bulkOps(any(), eq(ApprovalInstance.class))).thenReturn(bulkOperations);
-    when(mongoTemplate.stream(any(), any())).thenReturn(closeableIterator);
+    when(mongoTemplate.stream(any(), any())).thenReturn(stream);
+    when(stream.iterator()).thenReturn(closeableIterator);
     when(bulkOperations.execute()).thenReturn(bulkWriteResult);
   }
 

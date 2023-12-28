@@ -96,6 +96,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.bson.Document;
 import org.junit.Before;
 import org.junit.Test;
@@ -111,7 +112,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
 @RunWith(MockitoJUnitRunner.class)
 @OwnedBy(PIPELINE)
@@ -966,14 +966,12 @@ public class PMSExecutionServiceImplTest extends CategoryTest {
 
     List<PipelineExecutionSummaryEntity> list = new ArrayList<>();
     list.add(pipelineExecutionSummaryEntity);
-    CloseableIterator<PipelineExecutionSummaryEntity> iterator =
-        PipelineServiceTestHelper.createCloseableIterator(list.iterator());
+    Stream<PipelineExecutionSummaryEntity> iterator = PipelineServiceTestHelper.createStream(list.iterator());
 
     doReturn(iterator).when(pmsExecutionSummaryRepository).findListOfRepositories(any());
 
     assertThatCode(() -> pmsExecutionService.getListOfRepo(criteria)).doesNotThrowAnyException();
-    CloseableIterator<PipelineExecutionSummaryEntity> iterator1 =
-        PipelineServiceTestHelper.createCloseableIterator(list.iterator());
+    Stream<PipelineExecutionSummaryEntity> iterator1 = PipelineServiceTestHelper.createStream(list.iterator());
 
     doReturn(iterator1).when(pmsExecutionSummaryRepository).findListOfBranches(any());
 
@@ -1004,8 +1002,7 @@ public class PMSExecutionServiceImplTest extends CategoryTest {
 
     List<PipelineExecutionSummaryEntity> list = new ArrayList<>();
     list.add(pipelineExecutionSummaryEntity);
-    CloseableIterator<PipelineExecutionSummaryEntity> iterator =
-        PipelineServiceTestHelper.createCloseableIterator(list.iterator());
+    Stream<PipelineExecutionSummaryEntity> iterator = PipelineServiceTestHelper.createStream(list.iterator());
 
     doReturn(iterator).when(pmsExecutionSummaryRepository).findListOfRepositories(any());
     PMSPipelineListRepoResponse response = pmsExecutionService.getListOfRepo(criteria);
@@ -1013,8 +1010,7 @@ public class PMSExecutionServiceImplTest extends CategoryTest {
     assertEquals(response.getRepositories().size(), 1);
     assertEquals(response.getRepositories().get(0), "test-repo");
 
-    CloseableIterator<PipelineExecutionSummaryEntity> iterator1 =
-        PipelineServiceTestHelper.createCloseableIterator(list.iterator());
+    Stream<PipelineExecutionSummaryEntity> iterator1 = PipelineServiceTestHelper.createStream(list.iterator());
 
     doReturn(iterator1).when(pmsExecutionSummaryRepository).findListOfBranches(any());
     PMSPipelineListBranchesResponse response1 = pmsExecutionService.getListOfBranches(criteria);

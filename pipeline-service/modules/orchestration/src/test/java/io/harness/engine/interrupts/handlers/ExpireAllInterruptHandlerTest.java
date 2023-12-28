@@ -45,12 +45,12 @@ import com.google.inject.Inject;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 public class ExpireAllInterruptHandlerTest extends OrchestrationTestBase {
@@ -236,8 +236,7 @@ public class ExpireAllInterruptHandlerTest extends OrchestrationTestBase {
 
     when(nodeExecutionService.markLeavesDiscontinuing(any())).thenReturn(1L);
 
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(nodeExecutionList1.iterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(nodeExecutionList1.iterator());
 
     when(nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(anyString(), any(), any()))
         .thenReturn(iterator);

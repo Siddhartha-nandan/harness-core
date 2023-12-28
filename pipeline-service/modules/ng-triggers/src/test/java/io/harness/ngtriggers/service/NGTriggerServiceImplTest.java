@@ -150,13 +150,32 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Spliterator;
 import java.util.concurrent.ExecutorService;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.function.ToDoubleFunction;
+import java.util.function.ToIntFunction;
+import java.util.function.ToLongFunction;
+import java.util.stream.Collector;
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -171,7 +190,6 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.util.CloseableIterator;
 import retrofit2.Call;
 import retrofit2.Response;
 
@@ -1958,7 +1976,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
 
     TriggerUpdateCount triggerUpdateCount = TriggerUpdateCount.builder().successCount(5l).failureCount(0l).build();
 
-    CloseableIterator<NGTriggerEntity> iterator = createCloseableIterator(ngTriggerEntityList.iterator());
+    Stream<NGTriggerEntity> iterator = createStream(ngTriggerEntityList.iterator());
 
     // Mock the behavior of ngTriggerElementMapper.updateEntityYmlWithEnabledValue
     doNothing().when(ngTriggerElementMapper).updateEntityYmlWithEnabledValue(any(NGTriggerEntity.class));
@@ -2045,7 +2063,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
 
     TriggerUpdateCount triggerUpdateCount = TriggerUpdateCount.builder().successCount(5l).failureCount(0l).build();
 
-    CloseableIterator<NGTriggerEntity> iterator = createCloseableIterator(ngTriggerEntityList.iterator());
+    Stream<NGTriggerEntity> iterator = createStream(ngTriggerEntityList.iterator());
 
     // Mock the behavior of ngTriggerElementMapper.updateEntityYmlWithEnabledValue
     doNothing().when(ngTriggerElementMapper).updateEntityYmlWithEnabledValue(any(NGTriggerEntity.class));
@@ -2133,7 +2151,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
 
     TriggerUpdateCount triggerUpdateCount = TriggerUpdateCount.builder().successCount(5l).failureCount(0l).build();
 
-    CloseableIterator<NGTriggerEntity> iterator = createCloseableIterator(ngTriggerEntityList.iterator());
+    Stream<NGTriggerEntity> iterator = createStream(ngTriggerEntityList.iterator());
 
     // Mock the behavior of ngTriggerElementMapper.updateEntityYmlWithEnabledValue
     doNothing().when(ngTriggerElementMapper).updateEntityYmlWithEnabledValue(any(NGTriggerEntity.class));
@@ -2223,7 +2241,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
 
     TriggerUpdateCount triggerUpdateCount = TriggerUpdateCount.builder().successCount(5l).failureCount(0l).build();
 
-    CloseableIterator<NGTriggerEntity> iterator = createCloseableIterator(ngTriggerEntityList.iterator());
+    Stream<NGTriggerEntity> iterator = createStream(ngTriggerEntityList.iterator());
 
     // Mock the behavior of ngTriggerElementMapper.updateEntityYmlWithEnabledValue
     doNothing().when(ngTriggerElementMapper).updateEntityYmlWithEnabledValue(any(NGTriggerEntity.class));
@@ -2313,7 +2331,7 @@ public class NGTriggerServiceImplTest extends CategoryTest {
 
     TriggerUpdateCount triggerUpdateCount = TriggerUpdateCount.builder().successCount(5l).failureCount(0l).build();
 
-    CloseableIterator<NGTriggerEntity> iterator = createCloseableIterator(ngTriggerEntityList.iterator());
+    Stream<NGTriggerEntity> iterator = createStream(ngTriggerEntityList.iterator());
 
     // Mock the behavior of ngTriggerElementMapper.updateEntityYmlWithEnabledValue
     doNothing().when(ngTriggerElementMapper).updateEntityYmlWithEnabledValue(any(NGTriggerEntity.class));
@@ -2491,19 +2509,213 @@ public class NGTriggerServiceImplTest extends CategoryTest {
         .hasMessage("Empty signatures list provided for trigger polling status update");
   }
 
-  private static <T> CloseableIterator<T> createCloseableIterator(Iterator<T> iterator) {
-    return new CloseableIterator<T>() {
+  private static <T> Stream<T> createStream(Iterator<T> iterator) {
+    return new Stream<T>() {
+      @NotNull
+      @Override
+      public Iterator<T> iterator() {
+        return iterator;
+      }
+
+      @NotNull
+      @Override
+      public Spliterator<T> spliterator() {
+        return null;
+      }
+
+      @Override
+      public boolean isParallel() {
+        return false;
+      }
+
+      @NotNull
+      @Override
+      public Stream<T> sequential() {
+        return null;
+      }
+
+      @NotNull
+      @Override
+      public Stream<T> parallel() {
+        return null;
+      }
+
+      @NotNull
+      @Override
+      public Stream<T> unordered() {
+        return null;
+      }
+
+      @NotNull
+      @Override
+      public Stream<T> onClose(Runnable closeHandler) {
+        return null;
+      }
+
       @Override
       public void close() {}
 
       @Override
-      public boolean hasNext() {
-        return iterator.hasNext();
+      public Stream<T> filter(Predicate<? super T> predicate) {
+        return null;
       }
 
       @Override
-      public T next() {
-        return iterator.next();
+      public <R> Stream<R> map(Function<? super T, ? extends R> mapper) {
+        return null;
+      }
+
+      @Override
+      public IntStream mapToInt(ToIntFunction<? super T> mapper) {
+        return null;
+      }
+
+      @Override
+      public LongStream mapToLong(ToLongFunction<? super T> mapper) {
+        return null;
+      }
+
+      @Override
+      public DoubleStream mapToDouble(ToDoubleFunction<? super T> mapper) {
+        return null;
+      }
+
+      @Override
+      public <R> Stream<R> flatMap(Function<? super T, ? extends Stream<? extends R>> mapper) {
+        return null;
+      }
+
+      @Override
+      public IntStream flatMapToInt(Function<? super T, ? extends IntStream> mapper) {
+        return null;
+      }
+
+      @Override
+      public LongStream flatMapToLong(Function<? super T, ? extends LongStream> mapper) {
+        return null;
+      }
+
+      @Override
+      public DoubleStream flatMapToDouble(Function<? super T, ? extends DoubleStream> mapper) {
+        return null;
+      }
+
+      @Override
+      public Stream<T> distinct() {
+        return null;
+      }
+
+      @Override
+      public Stream<T> sorted() {
+        return null;
+      }
+
+      @Override
+      public Stream<T> sorted(Comparator<? super T> comparator) {
+        return null;
+      }
+
+      @Override
+      public Stream<T> peek(Consumer<? super T> action) {
+        return null;
+      }
+
+      @Override
+      public Stream<T> limit(long maxSize) {
+        return null;
+      }
+
+      @Override
+      public Stream<T> skip(long n) {
+        return null;
+      }
+
+      @Override
+      public void forEach(Consumer<? super T> action) {}
+
+      @Override
+      public void forEachOrdered(Consumer<? super T> action) {}
+
+      @NotNull
+      @Override
+      public Object[] toArray() {
+        return new Object[0];
+      }
+
+      @NotNull
+      @Override
+      public <A> A[] toArray(IntFunction<A[]> generator) {
+        return null;
+      }
+
+      @Override
+      public T reduce(T identity, BinaryOperator<T> accumulator) {
+        return null;
+      }
+
+      @NotNull
+      @Override
+      public Optional<T> reduce(BinaryOperator<T> accumulator) {
+        return Optional.empty();
+      }
+
+      @Override
+      public <U> U reduce(U identity, BiFunction<U, ? super T, U> accumulator, BinaryOperator<U> combiner) {
+        return null;
+      }
+
+      @Override
+      public <R> R collect(Supplier<R> supplier, BiConsumer<R, ? super T> accumulator, BiConsumer<R, R> combiner) {
+        return null;
+      }
+
+      @Override
+      public <R, A> R collect(Collector<? super T, A, R> collector) {
+        return null;
+      }
+
+      @NotNull
+      @Override
+      public Optional<T> min(Comparator<? super T> comparator) {
+        return Optional.empty();
+      }
+
+      @NotNull
+      @Override
+      public Optional<T> max(Comparator<? super T> comparator) {
+        return Optional.empty();
+      }
+
+      @Override
+      public long count() {
+        return 0;
+      }
+
+      @Override
+      public boolean anyMatch(Predicate<? super T> predicate) {
+        return false;
+      }
+
+      @Override
+      public boolean allMatch(Predicate<? super T> predicate) {
+        return false;
+      }
+
+      @Override
+      public boolean noneMatch(Predicate<? super T> predicate) {
+        return false;
+      }
+
+      @NotNull
+      @Override
+      public Optional<T> findFirst() {
+        return Optional.empty();
+      }
+
+      @NotNull
+      @Override
+      public Optional<T> findAny() {
+        return Optional.empty();
       }
     };
   }

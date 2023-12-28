@@ -41,6 +41,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
+import org.springframework.data.mongodb.MongoManagedTypes;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
@@ -88,7 +89,7 @@ public class PipelineOutboxPersistenceConfigTest extends CategoryTest {
     assertThatCode(() -> {
       MongoDatabaseFactory databaseFactory = persistenceConfig.mongoDbFactory();
       MongoCustomConversions conversions = persistenceConfig.customConversions();
-      MongoMappingContext context = persistenceConfig.mongoMappingContext(conversions);
+      MongoMappingContext context = persistenceConfig.mongoMappingContext(conversions, MongoManagedTypes.from());
       MappingMongoConverter converter = persistenceConfig.mappingMongoConverter(databaseFactory, conversions, context);
       persistenceConfig.mongoTemplate(databaseFactory, converter);
     }).doesNotThrowAnyException();

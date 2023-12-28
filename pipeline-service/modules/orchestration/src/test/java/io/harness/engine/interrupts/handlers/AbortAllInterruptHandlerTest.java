@@ -42,12 +42,12 @@ import io.harness.rule.Owner;
 import com.google.inject.Inject;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.stream.Stream;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.util.CloseableIterator;
 
 @OwnedBy(HarnessTeam.PIPELINE)
 public class AbortAllInterruptHandlerTest extends OrchestrationTestBase {
@@ -143,8 +143,7 @@ public class AbortAllInterruptHandlerTest extends OrchestrationTestBase {
              planExecutionId, StatusUtils.finalizableStatuses()))
         .thenReturn(0L);
     when(nodeExecutionService.getWithFieldsIncluded(anyString(), any())).thenReturn(NodeExecution.builder().build());
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(Collections.emptyListIterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(Collections.emptyListIterator());
     when(nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(
              interruptWithNodeExecutionId.getPlanExecutionId(), StatusUtils.abortAndExpireStatuses(),
              NodeProjectionUtils.fieldsForInterruptPropagatorHandler))
@@ -192,8 +191,7 @@ public class AbortAllInterruptHandlerTest extends OrchestrationTestBase {
     when(nodeExecutionService.markAllLeavesAndQueuedNodesDiscontinuing(
              planExecutionId, StatusUtils.finalizableStatuses()))
         .thenReturn(0L);
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(Collections.emptyListIterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(Collections.emptyListIterator());
     when(nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(
              interruptWithNodeExecutionId.getPlanExecutionId(), StatusUtils.abortAndExpireStatuses(),
              NodeProjectionUtils.fieldsForInterruptPropagatorHandler))
@@ -298,8 +296,7 @@ public class AbortAllInterruptHandlerTest extends OrchestrationTestBase {
     when(nodeExecutionService.markAllLeavesAndQueuedNodesDiscontinuing(
              planExecutionId, StatusUtils.abortAndExpireStatuses()))
         .thenReturn(1L);
-    CloseableIterator<NodeExecution> iterator =
-        OrchestrationTestHelper.createCloseableIterator(Collections.emptyListIterator());
+    Stream<NodeExecution> iterator = OrchestrationTestHelper.createStream(Collections.emptyListIterator());
     when(nodeExecutionService.fetchNodeExecutionsWithoutOldRetriesAndStatusInIterator(
              planExecutionId, EnumSet.of(DISCONTINUING), NodeProjectionUtils.fieldsForDiscontinuingNodes))
         .thenReturn(iterator);

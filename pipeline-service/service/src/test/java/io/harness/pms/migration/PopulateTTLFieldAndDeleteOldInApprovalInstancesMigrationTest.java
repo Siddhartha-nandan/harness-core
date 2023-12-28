@@ -34,6 +34,7 @@ import com.mongodb.client.result.DeleteResult;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Date;
+import java.util.stream.Stream;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -52,6 +53,7 @@ public class PopulateTTLFieldAndDeleteOldInApprovalInstancesMigrationTest extend
   @Mock private BulkOperations bulkOperations;
   @Mock private BulkWriteResult bulkWriteResult;
   @Mock private CloseableIterator closeableIterator;
+  @Mock private Stream stream;
   @Mock private DeleteResult deleteResult;
   @InjectMocks PopulateTTLFieldAndDeleteOldInApprovalInstancesMigration migration;
   private static final Long createdAt = 1650170397000L;
@@ -63,7 +65,8 @@ public class PopulateTTLFieldAndDeleteOldInApprovalInstancesMigrationTest extend
   @Before
   public void setup() {
     when(mongoTemplate.bulkOps(any(), eq(ApprovalInstance.class))).thenReturn(bulkOperations);
-    when(mongoTemplate.stream(any(), any())).thenReturn(closeableIterator);
+    when(mongoTemplate.stream(any(), any())).thenReturn(stream);
+    when(stream.iterator()).thenReturn(closeableIterator);
     when(bulkOperations.execute()).thenReturn(bulkWriteResult);
   }
 
