@@ -162,4 +162,18 @@ public class DelegateNgSetupInternalResource {
           accountIdentifier, orgIdentifier, projectIdentifier, delegateFilterPropertiesDTO));
     }
   }
+
+  @POST
+  @Path("filter-healthy-delegates")
+  @Timed
+  @ExceptionMetered
+  @InternalApi
+  public RestResponse<List<String>> filterHealthyDelegates(
+      @Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
+      @Body @RequestBody(description = "list of delegate ids") List<String> delegateIds) {
+    try (AutoLogContext ignore1 = new AccountLogContext(accountIdentifier, OVERRIDE_ERROR)) {
+      return new RestResponse<>(delegateSetupService.filterHealthyDelegates(accountIdentifier, delegateIds));
+    }
+  }
 }

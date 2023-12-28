@@ -67,6 +67,8 @@ public interface DelegateSetupService {
   List<DelegateListResponse> listDelegates(
       String accountId, String orgId, String projectId, DelegateFilterPropertiesDTO delegateFilterPropertiesDTO);
 
+  List<String> filterHealthyDelegates(String accountId, List<String> delegateIds);
+
   DelegateGroupListing listDelegateGroupDetails(
       String accountId, String orgId, String projectId, String delegateTokenName, boolean applyRbacFilter);
 

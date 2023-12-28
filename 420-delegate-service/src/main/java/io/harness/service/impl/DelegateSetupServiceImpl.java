@@ -67,6 +67,8 @@ import com.google.inject.Singleton;
 import dev.morphia.query.Criteria;
 import dev.morphia.query.Query;
 import dev.morphia.query.UpdateOperations;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -111,6 +113,8 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
   private static final int DELEGATE_EXPIRY_TIME_IN_WEEKS = 24;
 
   private static final long AUTO_UPGRADE_CHECK_TIME_IN_MINUTES = 90;
+
+  private static final Duration HEALTHY_DELEGATE_HEARTBEAT_EXPIRY = Duration.ofMinutes(5);
 
   // TODO: remove after resolving PL-40073
   private static final String ACCOUNTID_FOR_DEBUG = "pitvBmtSMKNZU3gANq01Q";
@@ -643,6 +647,21 @@ public class DelegateSetupServiceImpl implements DelegateSetupService, OwnedByAc
         })
         .sorted(Comparator.comparing(DelegateListResponse::isConnected, Comparator.reverseOrder()))
         .collect(toList());
+  }
+
+  @Override
+  public List<String> filterHealthyDelegates(String accountId, List<String> delegateIds) {
+    return persistence.createQuery(Delegate.class)
+        .filter(DelegateKeys.accountId, accountId)
+        .field(DelegateKeys.uuid)
+        .in(delegateIds)
+        .field(DelegateKeys.lastHeartBeat)
+        .greaterThanOrEq(Instant.now().minus(HEALTHY_DELEGATE_HEARTBEAT_EXPIRY))
+        .project(DelegateKeys.uuid, true)
+        .asList()
+        .stream()
+        .map(delegate -> delegate.getUuid())
+        .collect(Collectors.toList());
   }
 
   private DelegateListResponse buildDelegateGroupResponse(DelegateGroup delegateGroup, List<Delegate> groupDelegates) {
