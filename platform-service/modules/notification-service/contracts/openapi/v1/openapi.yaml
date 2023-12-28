@@ -820,6 +820,7 @@ components:
             id: yuwrnh5pkqjj6
     ChannelType:
       title: ChannelType
+      type: string
       x-stoplight:
         id: 1cb1x0lbm508g
       enum:
@@ -831,6 +832,7 @@ components:
       description: Notification Channel Type
     Status:
       title: Status
+      type: string
       x-stoplight:
         id: 4zviuwyihw2es
       enum:
