@@ -14,12 +14,14 @@ import io.harness.oidc.aws.dto.AwsOidcCredentialResponseDto;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.WebIdentityFederationSessionCredentialsProvider;
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Singleton
 public class AwsOidcCredentialUtility {
+  @Inject private AwsSdkRetryPolicyUtil awsSdkRetryPolicyUtil;
   /**
    * Utility function to exchange for the OIDC AWS IAM Role Credential.
    *
@@ -48,7 +50,7 @@ public class AwsOidcCredentialUtility {
   public AWSCredentialsProvider getOidcIamRoleCredentialProvider(
       String oidcToken, AwsOidcCredentialRequestDto requestDto) {
     ClientConfiguration clientConfiguration = new ClientConfiguration();
-    clientConfiguration.setRetryPolicy(AwsSdkRetryPolicyUtil.getRetryPolicy(requestDto.getRetryPolicy()));
+    clientConfiguration.setRetryPolicy(awsSdkRetryPolicyUtil.getRetryPolicy(requestDto.getRetryPolicy()));
     return new WebIdentityFederationSessionCredentialsProvider(
         oidcToken, null, requestDto.getIamRoleArn(), clientConfiguration);
   }

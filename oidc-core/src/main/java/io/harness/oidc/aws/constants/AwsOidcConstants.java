@@ -11,12 +11,5 @@ public class AwsOidcConstants {
   public static final String ACCESS_KEY = "access_key";
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
   public static final String SESSION_TOKEN = "session_token";
-  public static final String FIXED_DELAY_BACKOFF_STRATEGY = "FixedDelayBackoffStrategy";
-  public static final String EQUAL_JITTER_BACKOFF_STRATEGY = "EqualJitterBackoffStrategy";
-  public static final String FULL_JITTER_BACKOFF_STRATEGY = "FullJitterBackoffStrategy";
-  public static final int DEFAULT_BACKOFF_MAX_ERROR_RETRIES = 5;
-  public static final int BASE_DELAY_IN_MS = 100;
-  public static final int THROTTLED_BASE_DELAY_IN_MS = 500;
-  public static final int MAX_BACKOFF_IN_MS = 20000;
   public static final int CONVERSION_FACTOR_FOR_MS = 1000;
 }

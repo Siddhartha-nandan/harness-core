@@ -21,6 +21,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.aws.retrypolicy.AwsSdkDefaultBackOffStrategyConfiguration;
 import io.harness.cache.CacheConfig;
 import io.harness.cdng.creator.plan.stage.DeploymentStagePlanCreationInfoThreadPoolConfiguration;
 import io.harness.cdng.plugininfoproviders.PluginExecutionConfig;
@@ -313,6 +314,8 @@ public class NextGenConfiguration extends Configuration {
   private DeploymentStagePlanCreationInfoThreadPoolConfiguration deploymentStagePlanCreationInfoThreadPoolConfiguration;
   @JsonProperty("frpsTunnel") private FRPSTunnelConfig frpsTunnelConfig;
   @JsonProperty("publishAccountActivityMetrics") private boolean publishAccountActivityMetrics;
+  @JsonProperty("awsSdkDefaultBackOffStrategyConfiguration")
+  private AwsSdkDefaultBackOffStrategyConfiguration awsSdkDefaultBackOffStrategyConfiguration;
 
   // [secondary-db]: Uncomment this and the corresponding config in yaml file if you want to connect to another database
   //  @JsonProperty("secondary-mongo") MongoConfig secondaryMongoConfig;

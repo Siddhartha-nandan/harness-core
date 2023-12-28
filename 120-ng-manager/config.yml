@@ -637,3 +637,9 @@ frpsTunnel:
   host: ${FRPS_TUNNEL_HOST:-http://localhost}
 
 publishAccountActivityMetrics: ${PUBLISH_ACCOUNT_ACTIVITY_METRICS:-false}
+
+awsSdkDefaultBackOffStrategyConfiguration:
+  backoffMaxErrorRetries: ${BACKOFF_MAX_ERROR_RETRIES_FOR_AWS_SDK_CALL:-5}
+  baseDelayInMs: ${BASE_DELAY_IN_MS_FOR_AWS_SDK_CALL:-100}
+  throttledBaseDelayInMs: ${THROTTLED_BASE_DELAY_IN_MS_FOR_AWS_SDK_CALL:-500}
+  maxBackoffInMs: ${MAX_BACKOFF_IN_MS_FOR_AWS_SDK_CALL:-20000}

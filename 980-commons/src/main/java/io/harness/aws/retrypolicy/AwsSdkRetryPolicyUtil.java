@@ -10,11 +10,13 @@ package io.harness.aws.retrypolicy;
 import com.amazonaws.retry.PredefinedBackoffStrategies;
 import com.amazonaws.retry.PredefinedRetryPolicies;
 import com.amazonaws.retry.RetryPolicy;
-import lombok.experimental.UtilityClass;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 
-@UtilityClass
+@Singleton
 public class AwsSdkRetryPolicyUtil {
-  public static RetryPolicy getRetryPolicy(AwsSdkRetryPolicySpec retryPolicy) {
+  private @Inject AwsSdkDefaultBackOffStrategyConfiguration awsSdkDefaultBackOffStrategyConfiguration;
+  public RetryPolicy getRetryPolicy(AwsSdkRetryPolicySpec retryPolicy) {
     if (retryPolicy == null) {
       return getDefaultRetryPolicy();
     }
@@ -42,9 +44,11 @@ public class AwsSdkRetryPolicyUtil {
   }
 
   private RetryPolicy getDefaultRetryPolicy() {
-    return getRetryPolicy(new PredefinedBackoffStrategies.SDKDefaultBackoffStrategy(Constants.BASE_DELAY_IN_MS,
-                              Constants.THROTTLED_BASE_DELAY_IN_MS, Constants.MAX_BACKOFF_IN_MS),
-        Constants.DEFAULT_BACKOFF_MAX_ERROR_RETRIES);
+    return getRetryPolicy(new PredefinedBackoffStrategies.SDKDefaultBackoffStrategy(
+                              awsSdkDefaultBackOffStrategyConfiguration.getBaseDelayInMs(),
+                              awsSdkDefaultBackOffStrategyConfiguration.getThrottledBaseDelayInMs(),
+                              awsSdkDefaultBackOffStrategyConfiguration.getMaxBackoffInMs()),
+        awsSdkDefaultBackOffStrategyConfiguration.getBackoffMaxErrorRetries());
   }
 
   private RetryPolicy getRetryPolicy(RetryPolicy.BackoffStrategy backoffStrategy, int retryCount) {

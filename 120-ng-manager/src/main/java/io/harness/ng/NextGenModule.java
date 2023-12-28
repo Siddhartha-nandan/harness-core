@@ -81,6 +81,7 @@ import io.harness.app.PrimaryVersionManagerModule;
 import io.harness.audit.ResourceTypeConstants;
 import io.harness.audit.client.remote.AuditClientModule;
 import io.harness.authorization.AuthorizationServiceHeader;
+import io.harness.aws.retrypolicy.AwsSdkDefaultBackOffStrategyConfiguration;
 import io.harness.beans.ScopeInfo;
 import io.harness.cache.HarnessCacheManager;
 import io.harness.callback.DelegateCallback;
@@ -606,6 +607,12 @@ public class NextGenModule extends AbstractModule {
   @Singleton
   CEGcpSetupConfig ceGcpSetupConfig() {
     return this.appConfig.getCeGcpSetupConfig();
+  }
+
+  @Provides
+  @Singleton
+  AwsSdkDefaultBackOffStrategyConfiguration awsSdkDefaultBackOffStrategyConfiguration() {
+    return this.appConfig.getAwsSdkDefaultBackOffStrategyConfiguration();
   }
 
   @Provides
