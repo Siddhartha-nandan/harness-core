@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.TransientDataAccessException;
+import org.springframework.data.mongodb.UncategorizedMongoDbException;
 import org.springframework.transaction.TransactionException;
 
 @OwnedBy(PL)
@@ -33,7 +34,7 @@ public class PersistenceUtils {
         .handleIf(ex -> {
           if ((ex instanceof TransactionException) || (ex instanceof TransientDataAccessException)) {
             return true;
-          } else if (ex instanceof MongoException || ex instanceof MongoCommandException) {
+          } else if (ex instanceof MongoException || ex instanceof UncategorizedMongoDbException) {
             return ((MongoException) ex).hasErrorLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL);
           }
           return false;
