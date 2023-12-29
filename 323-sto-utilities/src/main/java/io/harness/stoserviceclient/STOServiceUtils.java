@@ -7,28 +7,31 @@
 
 package io.harness.stoserviceclient;
 
-import io.harness.annotations.dev.HarnessTeam;
-import io.harness.annotations.dev.OwnedBy;
-import io.harness.exception.GeneralException;
-import io.harness.sto.beans.entities.STOServiceConfig;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import io.harness.annotations.dev.HarnessTeam;
+import io.harness.annotations.dev.OwnedBy;
+import io.harness.exception.GeneralException;
+import io.harness.sto.beans.entities.STOServiceConfig;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
+import org.jetbrains.annotations.NotNull;
+import retrofit2.Call;
+import retrofit2.Response;
+
 import java.io.IOException;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
-import retrofit2.Call;
-import retrofit2.Response;
 
 @Getter
 @Setter
@@ -36,6 +39,12 @@ import retrofit2.Response;
 @Singleton
 @OwnedBy(HarnessTeam.STO)
 public class STOServiceUtils {
+  private static final int MAX_ATTEMPTS = 3;
+  private static final long INITIAL_DELAY_MS = 1000;
+  private static final long MAX_DELAY_MS = 5000;
+  private static final long DELAY_FACTOR = 2;
+  private static final RetryPolicy<Object> RETRY_POLICY =
+          getSTORetryPolicy("Retrying STO Call Operation. Attempt No. {}", "Operation Failed. Attempt No. {}");
   private static final String DEFAULT_PAGE_SIZE = "100";
   private final STOServiceClient stoServiceClient;
   private final STOServiceConfig stoServiceConfig;
@@ -51,9 +60,9 @@ public class STOServiceUtils {
     log.info("Initiating token request to STO service: {}", this.stoServiceConfig.getInternalUrl());
     JsonObject responseBody;
     if (accountId == null) {
-      responseBody = makeAPICall(stoServiceClient.generateTokenAllAccounts(this.stoServiceConfig.getGlobalToken()));
+      responseBody = makeAPICallWithRetry(stoServiceClient.generateTokenAllAccounts(this.stoServiceConfig.getGlobalToken()));
     } else {
-      responseBody = makeAPICall(stoServiceClient.generateToken(accountId, this.stoServiceConfig.getGlobalToken()));
+      responseBody = makeAPICallWithRetry(stoServiceClient.generateToken(accountId, this.stoServiceConfig.getGlobalToken()));
     }
 
     if (responseBody.has("token")) {
@@ -83,7 +92,7 @@ public class STOServiceUtils {
     JsonObject matchingScan = null;
 
     for (int page = 0; page <= totalPages && matchingScan == null; page++) {
-      JsonObject scansResponseBody = makeAPICall(
+      JsonObject scansResponseBody = makeAPICallWithRetry(
           stoServiceClient.getScans(accessToken, accountId, executionId, String.valueOf(page), DEFAULT_PAGE_SIZE));
 
       if (scansResponseBody == null) {
@@ -128,7 +137,7 @@ public class STOServiceUtils {
     String scanStatus = matchingScan.get("status").getAsString();
 
     JsonObject responseBody =
-        makeAPICall(stoServiceClient.getOutputVariables(accessToken, scanId, accountId, orgId, projectId));
+            makeAPICallWithRetry(stoServiceClient.getOutputVariables(accessToken, scanId, accountId, orgId, projectId));
 
     result.put("JOB_ID", scanId);
     result.put("JOB_STATUS", scanStatus);
@@ -158,7 +167,7 @@ public class STOServiceUtils {
     String token = getSTOServiceToken(null);
     String accessToken = "ApiKey " + token;
 
-    return makeAPICall(stoServiceClient.deleteAccountData(accessToken, accountId)).get("status").toString();
+    return makeAPICallWithRetry(stoServiceClient.deleteAccountData(accessToken, accountId)).get("status").toString();
   }
 
   @NotNull
@@ -166,15 +175,20 @@ public class STOServiceUtils {
     String token = getSTOServiceToken(null);
     String accessToken = "ApiKey " + token;
 
-    return makeAPICall(stoServiceClient.getUsageAllAccounts(accessToken, String.valueOf(timestamp)))
+    return makeAPICallWithRetry(stoServiceClient.getUsageAllAccounts(accessToken, String.valueOf(timestamp)))
         .get("usage")
         .toString();
+  }
+
+  private JsonObject makeAPICallWithRetry(Call<JsonObject> apiCall) {
+    log.error("STO CALL FROM makeAPICallWithRetry");
+    return Failsafe.with(RETRY_POLICY).get(() -> makeAPICall(apiCall));
   }
 
   private JsonObject makeAPICall(Call<JsonObject> apiCall) {
     Response<JsonObject> response = null;
     try {
-      response = apiCall.execute();
+      response = apiCall.clone().execute();
     } catch (IOException e) {
       throw new GeneralException("API request to STO service call failed", e);
     }
@@ -215,5 +229,17 @@ public class STOServiceUtils {
     } catch (NumberFormatException e) {
       return 0;
     }
+  }
+
+  private static RetryPolicy<Object> getSTORetryPolicy(String failedAttemptMessage, String failureMessage) {
+    return new RetryPolicy<>()
+            .handle(Exception.class)
+            .withBackoff(INITIAL_DELAY_MS, MAX_DELAY_MS, ChronoUnit.MILLIS, DELAY_FACTOR)
+            .withMaxAttempts(MAX_ATTEMPTS)
+            .onFailedAttempt(event -> log.warn(failedAttemptMessage, event.getAttemptCount(), event.getLastFailure()))
+            .onFailure(event -> {
+              log.error(failureMessage, event.getAttemptCount(), event.getFailure());
+              throw new GeneralException(event.getFailure().getMessage(), event.getFailure());
+            });
   }
 }
