@@ -38,9 +38,16 @@ public class PersistenceUtils {
           log.info("inside retry policy object");
           if ((ex instanceof TransactionException) || (ex instanceof TransientDataAccessException)) {
             return true;
-          } else if (ex instanceof MongoException || ex instanceof UncategorizedMongoDbException) {
-            log.info(format("encountered exception: %s, retrying.", ex));
+          } else if (ex instanceof MongoException) {
+            log.info(format("encountered MongoException exception: %s, retrying.", ex));
             return ((MongoException) ex).hasErrorLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL);
+          } else if (ex instanceof UncategorizedMongoDbException) {
+            log.info(format("encountered UncategorizedMongoDbException exception: %s, retrying.", ex));
+            boolean b =
+                ((MongoCommandException) ex.getCause()).hasErrorLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL);
+            log.info(format("has transienterror label: %s", b));
+            log.info(format("ex.getCause(): %s", ex.getCause().toString()));
+            return true;
           }
           return false;
         })
