@@ -34,8 +34,10 @@ import io.harness.spec.server.ssca.v1.model.ArtifactDetailResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingResponse.ActivityEnum;
+import io.harness.spec.server.ssca.v1.model.ArtifactListingResponseScorecard;
 import io.harness.spec.server.ssca.v1.model.ComponentFilter;
 import io.harness.spec.server.ssca.v1.model.LicenseFilter;
+import io.harness.spec.server.ssca.v1.model.PipelineInfo;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
 import io.harness.spec.server.ssca.v1.model.Slsa;
 import io.harness.ssca.beans.EnforcementSummaryDBO.EnforcementSummaryDBOKeys;
@@ -214,6 +216,27 @@ public class ArtifactServiceImpl implements ArtifactService {
   }
 
   @Override
+  public ArtifactEntity getLatestArtifactByImageNameAndTag(
+      String accountId, String orgIdentifier, String projectIdentifier, String imageName, String tag) {
+    // regex for image name ^(.*\/)?<IMAGE NAME>$
+    String nameEndingWithImageNameRegex = "^(.*\\/)?" + imageName + "$";
+    Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
+                            .is(accountId)
+                            .and(ArtifactEntityKeys.orgId)
+                            .is(orgIdentifier)
+                            .and(ArtifactEntityKeys.projectId)
+                            .is(projectIdentifier)
+                            .and(ArtifactEntityKeys.name)
+                            .regex(nameEndingWithImageNameRegex)
+                            .and(ArtifactEntityKeys.tag)
+                            .is(tag)
+                            .and(ArtifactEntityKeys.invalid)
+                            .is(false);
+    Sort sort = Sort.by(Direction.DESC, ArtifactEntityKeys.createdOn);
+    return artifactRepository.findOne(criteria, sort, new ArrayList<>());
+  }
+
+  @Override
   public ArtifactEntity getLatestArtifact(
       String accountId, String orgIdentifier, String projectIdentifier, String artifactId, String tag) {
     Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
@@ -232,6 +255,23 @@ public class ArtifactServiceImpl implements ArtifactService {
   }
 
   @Override
+  public ArtifactEntity getLatestArtifact(
+      String accountId, String orgIdentifier, String projectIdentifier, String artifactId) {
+    Criteria criteria = Criteria.where(ArtifactEntityKeys.accountId)
+                            .is(accountId)
+                            .and(ArtifactEntityKeys.orgId)
+                            .is(orgIdentifier)
+                            .and(ArtifactEntityKeys.projectId)
+                            .is(projectIdentifier)
+                            .and(ArtifactEntityKeys.artifactId)
+                            .is(artifactId)
+                            .and(ArtifactEntityKeys.invalid)
+                            .is(false);
+    return artifactRepository.findOne(
+        criteria, Sort.by(Direction.DESC, ArtifactEntityKeys.createdOn.toLowerCase()), new ArrayList<>());
+  }
+
+  @Override
   public ArtifactDetailResponse getArtifactDetails(
       String accountId, String orgIdentifier, String projectIdentifier, String artifactId, String tag) {
     ArtifactEntity artifact = getLatestArtifact(accountId, orgIdentifier, projectIdentifier, artifactId, tag);
@@ -239,8 +279,7 @@ public class ArtifactServiceImpl implements ArtifactService {
       throw new NotFoundException(
           String.format("Artifact with artifactId [%s] and tag [%s] is not found", artifactId, tag));
     }
-    JsonNode node = pipelineUtils.getPipelineExecutionSummaryResponse(
-        artifact.getPipelineExecutionId(), accountId, orgIdentifier, projectIdentifier);
+    PipelineInfo pipelineInfo = getPipelineInfo(accountId, orgIdentifier, projectIdentifier, artifact);
     return new ArtifactDetailResponse()
         .id(artifact.getArtifactId())
         .name(artifact.getName())
@@ -250,10 +289,21 @@ public class ArtifactServiceImpl implements ArtifactService {
         .updated(String.format("%d", artifact.getLastUpdatedAt()))
         .prodEnvCount(artifact.getProdEnvCount().intValue())
         .nonProdEnvCount(artifact.getNonProdEnvCount().intValue())
-        .buildPipelineId(artifact.getPipelineId())
-        .buildPipelineName(pipelineUtils.parsePipelineName(node))
-        .buildPipelineExecutionId(artifact.getPipelineExecutionId())
+        .buildPipelineId(pipelineInfo.getId())
+        .buildPipelineName(pipelineInfo.getName())
+        .buildPipelineExecutionId(pipelineInfo.getExecutionId())
         .orchestrationId(artifact.getOrchestrationId());
+  }
+
+  @Override
+  public PipelineInfo getPipelineInfo(
+      String accountId, String orgIdentifier, String projectIdentifier, ArtifactEntity artifact) {
+    JsonNode node = pipelineUtils.getPipelineExecutionSummaryResponse(
+        artifact.getPipelineExecutionId(), accountId, orgIdentifier, projectIdentifier);
+    return new PipelineInfo()
+        .id(artifact.getPipelineId())
+        .name(pipelineUtils.parsePipelineName(node))
+        .executionId(artifact.getPipelineExecutionId());
   }
 
   @Override
@@ -579,6 +629,11 @@ public class ArtifactServiceImpl implements ArtifactService {
       if (baselineEntityOrchestrationIds.contains(artifact.getOrchestrationId())) {
         baseline = true;
       }
+      ArtifactListingResponseScorecard scorecard = new ArtifactListingResponseScorecard();
+      if (artifact.getScorecard() != null) {
+        scorecard.setAvgScore(artifact.getScorecard().getAvgScore());
+        scorecard.setMaxScore(artifact.getScorecard().getMaxScore());
+      }
 
       responses.add(
           new ArtifactListingResponse()
@@ -598,7 +653,8 @@ public class ArtifactServiceImpl implements ArtifactService {
               .orchestrationId(artifact.getOrchestrationId())
               .buildPipelineId(artifact.getPipelineId())
               .buildPipelineExecutionId(artifact.getPipelineExecutionId())
-              .baseline(baseline));
+              .baseline(baseline)
+              .scorecard(scorecard));
     }
     return responses;
   }
