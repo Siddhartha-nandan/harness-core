@@ -7,24 +7,31 @@
 
 package io.harness.depanalyzer;
 
+import io.harness.buildcleaner.MavenManifest;
 import io.harness.buildcleaner.bazel.BuildFile;
 import io.harness.buildcleaner.common.SymbolDependencyMap;
 import io.harness.buildcleaner.javaparser.ClassMetadata;
 import io.harness.buildcleaner.javaparser.ClasspathParser;
 import io.harness.buildcleaner.javaparser.PackageParser;
 import io.harness.buildcleaner.proto.ProtoBuildMapper;
-import io.harness.depanalyzer.DirectoryGraphBuilder;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Stream;
-
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.cli.CommandLine;
@@ -33,17 +40,30 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.StringUtils;
 import com.google.common.graph.MutableGraph;
-import com.google.common.graph.GraphBuilder;
 
 @Slf4j
 public class DependecyAnalyzer {
     private static final String BUILD_CLEANER_INDEX_FILE_NAME = ".build-cleaner-index";
     private CommandLine options;
+    private MavenManifest mavenManifest;
+    private MavenManifest mavenManifestOverride;
     private PackageParser packageParser;
 
     DependecyAnalyzer(String[] args) {
         this.options = getCommandLineOptions(args);
+
+        Path mavenManifestFileLocation = mavenManifestFile();
+        if (Files.exists(mavenManifestFileLocation)) {
+            this.mavenManifest = MavenManifest.loadFromFile(mavenManifestFileLocation);
+        }
+
+        Path mavenManifestOverrideFileLocation = mavenManifestOverrideFile();
+        if (Files.exists(mavenManifestOverrideFileLocation)) {
+            this.mavenManifestOverride = MavenManifest.loadFromOverrideFile(mavenManifestOverrideFileLocation);
+        }
+
         this.packageParser = new PackageParser(workspace());
     }
 
@@ -65,16 +85,14 @@ public class DependecyAnalyzer {
         MutableGraph<Path> graph = graphBuilder.getGraph();
 
 
-        // Craete Graph
+        // Create Graph
         buildGraph(graph, module(), harnessSymbolMap);
 
-        for (Path node : graph.nodes()) {
-            System.out.print("Node " + node.toString() + " has edges to: ");
-            for (Path adjacentNode : graph.successors(node)) {
-                System.out.print(adjacentNode.toString() + ", ");
-            }
-            System.out.println();
-        }
+        GraphUtils.printIndependentPackages(graph, module());
+
+//        GraphUtils.printDisconnectedComponents(graph);
+//
+//        GraphUtils.findAllCycles(graph);
     }
 
     public void buildGraph(MutableGraph<Path> graph, Path sourceDirectory, SymbolDependencyMap harnessSymbolMap) throws IOException {
@@ -85,21 +103,29 @@ public class DependecyAnalyzer {
         if (!Files.isDirectory(workspace().resolve(path))) {
             return;
         }
+        Set<String> sourceFiles = getSourceFiles(workspace().resolve(path));
+        if (sourceFiles.isEmpty()) {
+            log.warn("No sources found for {}", path);
+        }
+        else {
+            // Add the node if it's not already in the graph
+            graph.addNode(path);
 
-        // Add the node if it's not already in the graph
-        graph.addNode(path);
+            ClasspathParser classpathParser = this.packageParser.getClassPathParser();
+            String parseClassPattern = path.toString().isEmpty() ? srcsGlob() : path + "/" + srcsGlob();
+            classpathParser.parseClasses(parseClassPattern, new HashSet<>());
 
-        ClasspathParser classpathParser = this.packageParser.getClassPathParser();
-        String parseClassPattern = path.toString().isEmpty() ? srcsGlob() : path + "/" + srcsGlob();
-        classpathParser.parseClasses(parseClassPattern, new HashSet<>());
-
-        // Get dependencies and add edges
-        Set<String> dependencies = getModuleDependencies(path, classpathParser, harnessSymbolMap);
-        for (String destination : dependencies) {
-            Path destinationPath = Paths.get(destination);
-            graph.putEdge(path, destinationPath);
-            if (!graph.nodes().contains(destinationPath)) {
-                buildGraphRecursive(graph, destinationPath, harnessSymbolMap);
+            // Get dependencies and add edges
+            Set<String> dependencies = getModuleDependencies(path, classpathParser, harnessSymbolMap);
+            for (String destination : dependencies) {
+                Path destinationPath = Paths.get(destination);
+                if(destinationPath.equals(path)){
+                    continue;
+                }
+                if (!graph.nodes().contains(destinationPath)) {
+                    graph.addNode(destinationPath);
+                }
+                graph.putEdge(path, destinationPath);
             }
         }
 
@@ -182,7 +208,6 @@ public class DependecyAnalyzer {
             Path path, ClasspathParser classpathParser, SymbolDependencyMap harnessSymbolMap) {
         Set<String> dependencies = new TreeSet<>();
         for (String importStatement : classpathParser.getUsedTypes()) {
-            System.out.println(importStatement);
             if (importStatement.startsWith("java.")) {
                 continue;
             }
@@ -226,6 +251,13 @@ public class DependecyAnalyzer {
     private Optional<String> resolve(String importStatement, SymbolDependencyMap harnessSymbolMap) {
         Optional<String> resolvedSymbol = Optional.empty();
 
+        if (mavenManifestOverride != null) {
+            resolvedSymbol = mavenManifestOverride.getTarget(importStatement);
+            if (resolvedSymbol.isPresent()) {
+                return resolvedSymbol;
+            }
+        }
+
         // Look up symbol in the harness symbol map.
         resolvedSymbol = harnessSymbolMap.getTarget(importStatement);
         if (resolvedSymbol.isPresent()) {
@@ -237,7 +269,32 @@ public class DependecyAnalyzer {
             return resolvedSymbol;
         }
 
+        // Look up symbol in the maven manifest.
+        if (mavenManifest != null) {
+            resolvedSymbol = mavenManifest.getTarget(importStatement);
+            if (resolvedSymbol.isPresent() && !resolvedSymbol.get().equals("@maven//:io_harness_ng_license_beans")) {
+                return resolvedSymbol;
+            }
+        }
+
         return Optional.empty();
+    }
+
+    /**
+     * Finds java source files present in the directory.
+     * @param directory to search.
+     * @return Set of java files in the input folder.
+     * @throws IOException
+     */
+    private Set<String> getSourceFiles(Path directory) throws IOException {
+        final var syntaxAndPattern = "glob:" + directory + "/" + srcsGlob();
+        log.info("Scanning for files using pattern {}", syntaxAndPattern);
+        PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher(syntaxAndPattern);
+        Set<String> sourceFileNames = new HashSet<>();
+        try (Stream<Path> paths = Files.find(directory, Integer.MAX_VALUE, (path, f) -> pathMatcher.matches(path))) {
+            paths.forEach(path -> sourceFileNames.add(path.getFileName().toString()));
+        }
+        return sourceFileNames;
     }
 
     private boolean indexFileExists() {
@@ -268,6 +325,17 @@ public class DependecyAnalyzer {
                 : new HashSet<String>();
     }
 
+    private Path mavenManifestFile() {
+        return options.hasOption("mavenManifestFile") ? Paths.get(options.getOptionValue("mavenManifestFile"))
+                : Paths.get(workspace() + "/maven-manifest.json");
+    }
+
+    private Path mavenManifestOverrideFile() {
+        return options.hasOption("mavenManifestOverrideFile")
+                ? Paths.get(options.getOptionValue("mavenManifestOverrideFile"))
+                : Paths.get(workspace() + "/maven-manifest-override.txt");
+    }
+
     private String indexSourceGlob() {
         return options.hasOption("indexSourceGlob") ? options.getOptionValue("indexSourceGlob") : "**/src/**/*";
     }
@@ -283,6 +351,11 @@ public class DependecyAnalyzer {
         options.addOption(new Option(null, "srcsGlob", true, "Pattern to match for finding source files."));
         options.addOption(
                 new Option(null, "indexFile", true, "Index file having cache, defaults to $workspace/.build-cleaner-path-index"));
+        options.addOption(new Option(null, "mavenManifestFile", true,
+                "Absolute path of the manifest file having java package to maven target mapping."
+                        + "Defaults to workspace/maven_manifest.json"));
+        options.addOption(
+                new Option(null, "mavenManifestOverrideFile", true, "Specify overrides for conflicting imports."));
         options.addOption(new Option(null, "assumedPackagePrefixesWithBuildFile", true,
                 "Comma separate list of module prefixes for which we can assume BUILD file to be present. "
                         + "Set to 'all' if need same behavior for all folders"));

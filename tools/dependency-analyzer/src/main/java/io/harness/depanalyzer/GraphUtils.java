@@ -21,55 +21,44 @@ import java.nio.file.Paths;
 
 public class GraphUtils {
 
-    public static void printGraph(Graph<String> graph) {
-        System.out.println("Graph:");
-        for (String node : graph.nodes()) {
-            System.out.print(node + " -> ");
-            for (String adjacentNode : graph.successors(node)) {
-                System.out.print(adjacentNode + " ");
+    public static void printGraph(Graph<Path> graph) {
+        System.out.println("Printing graph showing dependencies");
+        for (Path node : graph.nodes()) {
+            System.out.print("Node " + node.toString() + " depends on: ");
+            for (Path adjacentNode : graph.successors(node)) {
+                System.out.print(adjacentNode.toString() + ", ");
             }
             System.out.println();
         }
     }
 
-    public static void printDisconnectedComponents(MutableGraph<String> graph) {
-        List<Set<String>> disconnectedComponents = new ArrayList<>();
-        Set<String> visited = new HashSet<>();
+    public static void printDisconnectedComponents(MutableGraph<Path> graph) {
+        List<Set<Path>> disconnectedComponents = new ArrayList<>();
+        Set<Path> visited = new HashSet<>();
 
-        for (String node : graph.nodes()) {
+        for (Path node : graph.nodes()) {
             if (!visited.contains(node)) {
-                Set<String> component = new HashSet<>();
+                Set<Path> component = new HashSet<>();
                 depthFirstSearch(graph, node, visited, component);
                 disconnectedComponents.add(component);
             }
         }
 
         System.out.println("Disconnected Components:");
-        for (Set<String> component : disconnectedComponents) {
+        for (Set<Path> component : disconnectedComponents) {
             System.out.println("- " + component);
         }
     }
 
-    private static void depthFirstSearch(MutableGraph<String> graph, String node, Set<String> visited, Set<String> component) {
+    private static void depthFirstSearch(MutableGraph<Path> graph, Path node, Set<Path> visited, Set<Path> component) {
         visited.add(node);
         component.add(node);
 
-        for (String neighbor : graph.successors(node)) {
+        for (Path neighbor : graph.successors(node)) {
             if (!visited.contains(neighbor)) {
                 depthFirstSearch(graph, neighbor, visited, component);
             }
         }
-    }
-
-
-    public static void printIndependentNodes(MutableGraph<String> graph) {
-        Set<String> independentNodes = graph.nodes();
-        for (EndpointPair<String> edge : graph.edges()) {
-            String source = edge.source();
-            independentNodes.remove(source); // Remove nodes with outgoing edges
-        }
-        System.out.println("Independent Nodes (no outgoing dependencies):");
-        System.out.println(independentNodes);
     }
 
     public static void printNodesByLevel(MutableGraph<String> graph) {
@@ -77,51 +66,49 @@ public class GraphUtils {
         // (implementation not shown for brevity)
     }
 
-    public static MutableGraph<String> createPackageGraph(MutableGraph<String> fileGraph, Map<String, Set<String>> packageFiles) {
-        MutableGraph<String> packageGraph = GraphBuilder.directed().build();
-        for (String packageName : packageFiles.keySet()) {
-            packageGraph.addNode(packageName);
-        }
-
-        for (EndpointPair<String> edge : fileGraph.edges()) {
-            String sourceFile = edge.source();
-            String targetFile = edge.target();
-            Path sourceParentDirPath = Paths.get(sourceFile).getParent();
-            Path targetParentDirPath = Paths.get(targetFile).getParent();
-
-            // Use the path strings directly as package
-            String sourcePackage = sourceParentDirPath.toString();
-            String targetPackage = targetParentDirPath.toString();
-
-            if (!sourcePackage.equals(targetPackage)) {
-                packageGraph.putEdge(sourcePackage, targetPackage);
+    public static void printIndependentPackages(MutableGraph<Path> graph, Path filterDirectory) {
+        System.out.println("Independent Packages:");
+//        for (Path node : graph.nodes()) {
+//            if (graph.successors(node).isEmpty() && node.startsWith(filterDirectory)) {
+//                System.out.println(node);
+//            }
+//        }
+        // Step 1: Identify nodes in the specific directory
+        Set<Path> nodesInDirectory = new HashSet<>();
+        for (Path node : graph.nodes()) {
+            if (node.startsWith(filterDirectory)) {
+                nodesInDirectory.add(node);
             }
         }
 
-        return packageGraph;
-    }
-
-    public static void printIndependentPackages(MutableGraph<String> packageGraph, Map<String, Set<String>> packageFiles, String targetDirectory) {
-        Set<String> independentPackages = new HashSet<>(packageGraph.nodes()); // Start with all packages
-
-        for (String packageNode : packageGraph.nodes()) {
-            if (packageGraph.successors(packageNode).stream()
-                    // Check for incoming edges from packages within the target directory
-                    .anyMatch(source -> packageFiles.get(source).stream()
-                            .anyMatch(file -> file.startsWith(targetDirectory)))) {
-                independentPackages.remove(packageNode); // Remove dependent packages
+        // Step 2: Check for dependencies and print nodes
+        List<Path> eligibleNodes = new ArrayList<>();
+        for (Path node : graph.nodes()) {
+            boolean hasDependencyInDirectory = false;
+            for (Path successor : graph.successors(node)) {
+                if (nodesInDirectory.contains(successor)) {
+                    hasDependencyInDirectory = true;
+                    break;
+                }
+            }
+            if (!hasDependencyInDirectory && node.startsWith(filterDirectory)) {
+                eligibleNodes.add(node);
             }
         }
 
-        System.out.println("Independent Packages (no dependencies within " + targetDirectory + "):");
-        System.out.println(independentPackages);
+        Collections.sort(eligibleNodes);
+
+        // Step 4: Print sorted nodes
+        for (Path node : eligibleNodes) {
+            System.out.println(node);
+        }
     }
 
-    public static void findAllCycles(MutableGraph<String> graph) {
-        List<Set<String>> cycles = new ArrayList<>();
-        Set<String> visited = new HashSet<>();
+    public static void findAllCycles(MutableGraph<Path> graph) {
+        List<Set<Path>> cycles = new ArrayList<>();
+        Set<Path> visited = new HashSet<>();
 
-        for (String node : graph.nodes()) {
+        for (Path node : graph.nodes()) {
             if (!visited.contains(node)) {
                 findCycles(graph, node, visited, new HashSet<>(), new ArrayList<>(), cycles);
             }
@@ -137,12 +124,12 @@ public class GraphUtils {
         }
     }
 
-    private static void findCycles(MutableGraph<String> graph, String node, Set<String> visited, Set<String> currentPath, List<String> currentCycle, List<Set<String>> cycles) {
+    private static void findCycles(MutableGraph<Path> graph, Path node, Set<Path> visited, Set<Path> currentPath, List<Path> currentCycle, List<Set<Path>> cycles) {
         visited.add(node);
         currentPath.add(node);
         currentCycle.add(node); // Track nodes in the current cycle
 
-        for (String neighbor : graph.successors(node)) {
+        for (Path neighbor : graph.successors(node)) {
             if (visited.contains(neighbor)) {
                 if (currentCycle.contains(neighbor)) { // Cycle found
                     cycles.add(new HashSet<>(currentCycle.subList(currentCycle.indexOf(neighbor), currentCycle.size())));

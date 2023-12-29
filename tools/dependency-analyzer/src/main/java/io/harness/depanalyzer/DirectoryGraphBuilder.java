@@ -20,14 +20,8 @@ public class DirectoryGraphBuilder {
     private MutableGraph<Path> graph;
 
     public DirectoryGraphBuilder() {
-        this.graph = GraphBuilder.directed().allowsSelfLoops(true).build();
+        this.graph = GraphBuilder.directed().allowsSelfLoops(false).build();
     }
-
-//    private List<Path> getDependencies(Path source) {
-//        // Implement the logic to determine dependencies for the source directory
-//        // This is a stub and needs to be filled in based on your specific logic
-//        return List.of();
-//    }
 
     public MutableGraph<Path> getGraph() {
         return graph;

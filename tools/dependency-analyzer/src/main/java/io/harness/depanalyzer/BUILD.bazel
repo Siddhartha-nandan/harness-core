@@ -8,14 +8,15 @@ load("@rules_java//java:defs.bzl", "java_binary")
 java_library(
     name = "module",
     srcs = [
-#        "DepAnalyzer.java",
-#        "GraphUtils.java",
+#        "CachingUtils.java",
+        "GraphUtils.java",
         "DependecyAnalyzer.java",
         "DirectoryGraphBuilder.java",
         ],
     visibility = ["//visibility:public"],
     deps = [
         "//:lombok",
+        "//tools/build-cleaner/src/main/java/io/harness/buildcleaner:module",
         "//tools/build-cleaner/src/main/java/io/harness/buildcleaner/bazel:module",
         "//tools/build-cleaner/src/main/java/io/harness/buildcleaner/common:module",
         "//tools/build-cleaner/src/main/java/io/harness/buildcleaner/javaparser:module",

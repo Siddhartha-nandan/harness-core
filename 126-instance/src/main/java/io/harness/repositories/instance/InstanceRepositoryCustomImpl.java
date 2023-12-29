@@ -676,7 +676,7 @@ public class InstanceRepositoryCustomImpl implements InstanceRepositoryCustom {
     return result;
   }
 
-  public record serviceIdentifierEnvTypeRecord(String serviceIdentifier, EnvironmentType envType) {}
+//  public record serviceIdentifierEnvTypeRecord(String serviceIdentifier, EnvironmentType envType) {}
 
   /*
     Create criteria to query for all active service instances for given accountIdentifier, orgIdentifier,
