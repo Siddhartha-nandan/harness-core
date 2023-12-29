@@ -182,10 +182,6 @@ pipelineServiceClientConfig:
 pmsSdkGrpcServerConfig:
   connectors:
     - port: 12401
-      secure: true
-      keyFilePath: key.pem
-      certFilePath: cert.pem
-    - port: 12402
 
 pmsGrpcClientConfig:
   target: localhost:12011

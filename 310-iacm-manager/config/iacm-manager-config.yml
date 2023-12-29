@@ -296,10 +296,6 @@ asyncDelegateResponseConsumption:
 pmsSdkGrpcServerConfig:
   connectors:
     - port: 15301
-      secure: true
-      keyFilePath: key.pem
-      certFilePath: cert.pem
-    - port: 15302
 
 pmsGrpcClientConfig:
   target: localhost:12011

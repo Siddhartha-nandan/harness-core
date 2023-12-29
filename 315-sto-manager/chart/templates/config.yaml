@@ -65,6 +65,9 @@ data:
   S3_UPLOAD_IMAGE: '{{ .Values.s3UploadImage.image.repository }}:{{ .Values.s3UploadImage.image.tag }}'
   USE_DMS: "false"
   SECURITY_IMAGE: '{{ .Values.securityImage.image.repository }}:{{ .Values.securityImage.image.tag }}'
+  #Changes to use internal connection urls for PMS client gRPC
+  INTERNAL_PMS_TARGET: pipeline-service:12011
+  INTERNAL_PMS_AUTHORITY: pipeline-service:12011
   {{- if .Values.additionalConfigs }}
   {{- toYaml .Values.additionalConfigs | nindent 2 }}
   {{- end }}

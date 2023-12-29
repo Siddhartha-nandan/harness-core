@@ -83,10 +83,6 @@ mongo:
 grpcServerConfig:
   connectors:
     - port: 12011
-      secure: true
-      keyFilePath: key.pem
-      certFilePath: cert.pem
-    - port: 12012
 
 grpcClientConfigs:
   cd:
