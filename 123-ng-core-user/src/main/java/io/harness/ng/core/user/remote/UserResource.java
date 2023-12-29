@@ -64,6 +64,8 @@ import io.harness.ng.core.user.remote.dto.UserMetadataDTO;
 import io.harness.ng.core.user.remote.mapper.UserMetadataMapper;
 import io.harness.ng.core.user.service.NgUserService;
 import io.harness.ng.userprofile.services.api.UserInfoService;
+import io.harness.ngsettings.client.remote.NGSettingsClient;
+import io.harness.remote.client.NGRestUtils;
 import io.harness.rest.RestResponse;
 import io.harness.security.SourcePrincipalContextBuilder;
 import io.harness.security.annotations.InternalApi;
@@ -142,7 +144,7 @@ public class UserResource {
   UserInfoService userInfoService;
   AccessControlClient accessControlClient;
   NGFeatureFlagHelperService ngFeatureFlagHelperService;
-
+  NGSettingsClient ngSettingsClient;
   @GET
   @Path("currentUser")
   @ApiOperation(value = "get current user information", nickname = "getCurrentUserInfo")
@@ -156,7 +158,9 @@ public class UserResource {
   public ResponseDTO<UserInfo>
   getUserInfo(@Parameter(description = ACCOUNT_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
       NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier) {
-    return ResponseDTO.newResponse(userInfoService.getCurrentUser(accountIdentifier));
+    UserInfo userInfo = userInfoService.getCurrentUser();
+    userInfo.setUserPreferences(NGRestUtils.getResponse(ngSettingsClient.getUserPreferences(accountIdentifier)));
+    return ResponseDTO.newResponse(userInfo);
   }
 
   @GET

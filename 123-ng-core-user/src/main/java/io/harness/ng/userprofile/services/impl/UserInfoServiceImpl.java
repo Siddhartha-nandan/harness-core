@@ -52,12 +52,10 @@ public class UserInfoServiceImpl implements UserInfoService {
   @Inject private UserSettingsService userSettingsService;
 
   @Override
-  public UserInfo getCurrentUser(String accountIdentifier) {
+  public UserInfo getCurrentUser() {
     Optional<String> userEmail = getUserEmail();
     if (userEmail.isPresent()) {
       Optional<UserInfo> userInfo = CGRestUtils.getResponse(userClient.getUserByEmailId(userEmail.get()));
-      userInfo.get().setUserPreferences(
-          userSettingsService.getUserPreferences(accountIdentifier, userInfo.get().getUuid()));
       return userInfo.get();
     } else {
       throw new IllegalStateException("user login required");
