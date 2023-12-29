@@ -26,6 +26,7 @@ import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.entities.Project.ProjectKeys;
 import io.harness.ng.core.entities.migration.NGManagerUniqueIdParentIdMigrationStatus;
 import io.harness.ng.core.entities.migration.NGManagerUniqueIdParentIdMigrationStatus.NGManagerUniqueIdParentIdMigrationStatusKeys;
+import io.harness.ng.serviceaccounts.entities.ServiceAccount;
 import io.harness.persistence.UniqueIdAccess;
 import io.harness.persistence.UniqueIdAware;
 
@@ -51,7 +52,8 @@ public class AddUniqueIdParentIdToEntitiesTask implements Runnable {
   private static final String LOCK_NAME_PREFIX = "NGEntitiesPeriodicMigrationTaskLock";
   private static final String NG_MANAGER_ENTITIES_MIGRATION_LOG = "[NGManagerAddUniqueIdAndParentIdToEntitiesTask]:";
   private static final int BATCH_SIZE = 500;
-  private static final Set<Class<? extends UniqueIdAware>> entitiesSet = Set.of(Organization.class, Project.class);
+  private static final Set<Class<? extends UniqueIdAware>> entitiesSet =
+      Set.of(Organization.class, Project.class, ServiceAccount.class);
 
   @Inject
   public AddUniqueIdParentIdToEntitiesTask(MongoTemplate mongoTemplate, PersistentLocker persistentLocker) {
@@ -121,6 +123,8 @@ public class AddUniqueIdParentIdToEntitiesTask implements Runnable {
                 idValue = ((Project) entity).getId();
               } else if (entity instanceof Organization) {
                 idValue = ((Organization) entity).getId();
+              } else if (entity instanceof ServiceAccount) {
+                idValue = ((ServiceAccount) entity).getUuid();
               }
               if (isNotEmpty(idValue)) {
                 toUpdateCounter++;

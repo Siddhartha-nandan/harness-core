@@ -30,7 +30,6 @@ import io.harness.ng.core.migration.background.PopulateYamlAuthFieldInNGServiceN
 import io.harness.ng.core.migration.background.PopulateYamlFieldInNGServiceEntityMigration;
 import io.harness.ng.core.migration.background.UpdateEnvironmentRefValueInServiceOverrideNGMigration;
 import io.harness.ng.core.migration.background.UserMetadataTwoFactorAuthenticationMigration;
-import io.harness.ng.serviceaccounts.migration.AddUniqueIdToServiceAccountMigration;
 
 import com.google.common.collect.ImmutableList;
 import java.util.List;
@@ -71,7 +70,6 @@ public class NGCoreBackgroundMigrationDetails implements MigrationDetails {
         .add(Pair.of(18, CleanupInfrastructureMappingNg.class))
         .add(Pair.of(19, CleanupInstanceNg.class))
         .add(Pair.of(20, PopulateSettingsForHelmSteadyStateCheckFFMigration.class))
-        .add(Pair.of(21, AddUniqueIdToServiceAccountMigration.class))
         .build();
   }
 }
