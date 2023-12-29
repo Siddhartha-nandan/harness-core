@@ -907,7 +907,10 @@ public enum FeatureName {
   CDS_OVERRIDES_GITX("Onboard Overrides entity to GitX", HarnessTeam.CDC),
   CDS_SUPPORT_DIFFERENT_INFRA_DURING_ENV_PROPAGATION(
       "FF to suppport selecting different infrastructure during environment propagation", CDC),
-  SSCA_ENFORCEMENT_EXEMPTIONS_ENABLED("FF to enable exemption workflow in the SSCA enforcement step", SSCA);
+  SSCA_ENFORCEMENT_EXEMPTIONS_ENABLED("FF to enable exemption workflow in the SSCA enforcement step", SSCA),
+  CDS_ENABLE_SANDBOX_ENGINE_FALLBACK(
+      "FF to enable for falling back to default engine when expression evaluation using sandbox engine fails", CDC,
+      Scope.GLOBAL);
 
   // keep-sorted end
 

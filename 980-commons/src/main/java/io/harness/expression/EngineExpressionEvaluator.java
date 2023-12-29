@@ -51,7 +51,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.jexl3.JexlBuilder;
 import org.apache.commons.jexl3.JexlEngine;
 import org.apache.commons.jexl3.JexlException;
-import org.apache.commons.jexl3.JexlExpression;
+import org.apache.commons.jexl3.introspection.JexlSandbox;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.logging.impl.NoOpLog;
 import org.hibernate.validator.constraints.NotEmpty;
@@ -75,6 +75,8 @@ public class EngineExpressionEvaluator {
       "PIE_EXPRESSION_DISABLE_COMPLEX_JSON_SUPPORT";
 
   private static final int MAX_DEPTH = 15;
+  private static final String CDS_ENABLE_SANDBOX_ENGINE_FALLBACK = "CDS_ENABLE_SANDBOX_ENGINE_FALLBACK";
+  private static final String JAVA_LANG_RUNTIME_CLASS = "java.lang.Runtime";
 
   @Getter private final JexlEngine engine;
   @Getter private final VariableResolverTracker variableResolverTracker;
@@ -82,12 +84,24 @@ public class EngineExpressionEvaluator {
   @Getter private final Map<String, String> staticAliases;
   private boolean initialized;
 
+  @Getter private final JexlEngine sandBoxEngine;
+  @Getter private final JexlSandbox sandbox;
+
   public EngineExpressionEvaluator(VariableResolverTracker variableResolverTracker) {
     this.engine = new JexlBuilder().logger(new NoOpLog()).create();
+
+    sandbox = new JexlSandbox();
+    setFullRestrictedPermissions(sandbox, JAVA_LANG_RUNTIME_CLASS);
+    sandBoxEngine = new JexlBuilder().logger(new NoOpLog()).sandbox(sandbox).create();
+
     this.variableResolverTracker =
         variableResolverTracker == null ? new VariableResolverTracker() : variableResolverTracker;
     this.contextMap = new LateBindingMap();
     this.staticAliases = new HashMap<>();
+  }
+
+  private void setFullRestrictedPermissions(JexlSandbox sandbox, String clazz) {
+    sandbox.permissions(clazz, false, false, false);
   }
 
   /**
@@ -650,10 +664,9 @@ public class EngineExpressionEvaluator {
 
   protected Object evaluateByCreatingExpression(@NotNull String expression, @NotNull EngineJexlContext ctx) {
     if (ctx.isFeatureFlagEnabled(PIE_EXECUTION_JSON_SUPPORT)) {
-      return engine.createScript(expression).execute(ctx);
+      return evaluateByCreatingScript(expression, ctx);
     }
-    JexlExpression jexlExpression = engine.createExpression(expression);
-    return jexlExpression.evaluate(ctx);
+    return evaluateWithoutCreatingScript(expression, ctx);
   }
 
   /**
@@ -669,20 +682,12 @@ public class EngineExpressionEvaluator {
       @NotNull StringReplacerResponse response, @NotNull EngineJexlContext ctx) {
     // All expressions in the input are rendered thus no jexl evaluation required.
     String expression = response.getFinalExpressionValue();
-
-    if (ctx.isFeatureFlagEnabled(PIE_EXECUTION_JSON_SUPPORT)) {
-      try {
-        return engine.createScript(expression).execute(ctx);
-      } catch (Exception e) {
-        if (response.isOnlyRenderedExpressions()) {
-          return null;
-        }
-        throw e;
-      }
-    }
     try {
-      JexlExpression jexlExpression = engine.createExpression(expression);
-      return jexlExpression.evaluate(ctx);
+      if (ctx.isFeatureFlagEnabled(PIE_EXECUTION_JSON_SUPPORT)) {
+        return evaluateByCreatingScript(expression, ctx);
+      } else {
+        return evaluateWithoutCreatingScript(expression, ctx);
+      }
     } catch (Exception e) {
       if (response.isOnlyRenderedExpressions()) {
         return null;
@@ -691,8 +696,72 @@ public class EngineExpressionEvaluator {
     }
   }
 
+  protected Object evaluateWithoutCreatingScript(@NotNull String expression, @NotNull EngineJexlContext ctx) {
+    Object expr;
+    try {
+      expr = sandBoxEngine.createExpression(expression).evaluate(ctx);
+      if (expr != null) {
+        return expr;
+      }
+    } catch (JexlException ex) {
+      if (ex.getInfo() != null && String.valueOf(ex.getInfo().getDetail()).contains(JAVA_LANG_RUNTIME_CLASS)) {
+        return null;
+      }
+      if (!shouldFallbackWhenSandboxEngineEvalFails(ctx)) {
+        throw ex;
+      }
+    }
+
+    // below executes when expression resolved but is null or when expression resolved and an exception was thrown
+    if (shouldFallbackWhenSandboxEngineEvalFails(ctx)) {
+      return evaluateWithoutCreatingScriptFallback(expression, ctx);
+    }
+    return null;
+  }
+
+  protected Object evaluateWithoutCreatingScriptFallback(@NotNull String expression, @NotNull EngineJexlContext ctx) {
+    Object expr = engine.createExpression(expression).evaluate(ctx);
+    if (expr != null) {
+      // fallback called and is successful
+      log.info(format("Expression %s resolved successfully using jexl engine without sandbox", expression));
+    }
+    return expr;
+  }
+
+  protected Object evaluateByCreatingScriptFallback(@NotNull String expression, @NotNull EngineJexlContext ctx) {
+    Object expr = engine.createScript(expression).execute(ctx);
+    if (expr != null) {
+      // fallback called and is successful
+      log.info(format("Expression %s resolved successfully using jexl engine without sandbox", expression));
+    }
+    return expr;
+  }
+
   protected Object evaluateByCreatingScript(@NotNull String expression, @NotNull EngineJexlContext ctx) {
-    return engine.createScript(expression).execute(ctx);
+    Object expr;
+    try {
+      expr = sandBoxEngine.createScript(expression).execute(ctx);
+      if (expr != null) {
+        return expr;
+      }
+    } catch (JexlException ex) {
+      if (ex.getInfo() != null && String.valueOf(ex.getInfo().getDetail()).contains(JAVA_LANG_RUNTIME_CLASS)) {
+        return null;
+      }
+      if (!shouldFallbackWhenSandboxEngineEvalFails(ctx)) {
+        throw ex;
+      }
+    }
+
+    // below executes when expression resolved but is null or when expression resolved and an exception was thrown
+    if (shouldFallbackWhenSandboxEngineEvalFails(ctx)) {
+      return evaluateByCreatingScriptFallback(expression, ctx);
+    }
+    return null;
+  }
+
+  private boolean shouldFallbackWhenSandboxEngineEvalFails(EngineJexlContext ctx) {
+    return ctx.isFeatureFlagEnabled(CDS_ENABLE_SANDBOX_ENGINE_FALLBACK);
   }
 
   private EngineJexlContext prepareContext(Map<String, Object> ctx) {
