@@ -36,9 +36,13 @@ public class GcpAccessTokenSupplier implements Supplier<String> {
 
   @Builder
   public GcpAccessTokenSupplier(String serviceAccountJsonKey, Function<String, GoogleCredential> jsonKeyToCredential,
-      DataStore<StoredCredential> cache, Clock clock) {
+      DataStore<StoredCredential> cache, Clock clock, String oidcAccessToken) {
     this.serviceAccountJsonKey = serviceAccountJsonKey;
-    this.googleCredential = copyAndAddRefreshListener(jsonKeyToCredential.apply(serviceAccountJsonKey), clock, cache);
+    if (oidcAccessToken != null) {
+      this.googleCredential = new GoogleCredential().setAccessToken(oidcAccessToken);
+    } else {
+      this.googleCredential = copyAndAddRefreshListener(jsonKeyToCredential.apply(serviceAccountJsonKey), clock, cache);
+    }
     this.cache = cache;
     this.clock = clock;
   }

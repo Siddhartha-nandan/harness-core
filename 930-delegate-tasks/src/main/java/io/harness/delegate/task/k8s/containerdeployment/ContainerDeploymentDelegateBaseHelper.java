@@ -31,6 +31,7 @@ import io.harness.delegate.beans.connector.awsconnector.AwsCredentialType;
 import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorCredentialDTO;
 import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorDTO;
 import io.harness.delegate.beans.connector.gcpconnector.GcpManualDetailsDTO;
+import io.harness.delegate.beans.connector.gcpconnector.GcpOidcDetailsDTO;
 import io.harness.delegate.beans.connector.k8Connector.KubernetesAuthCredentialDTO;
 import io.harness.delegate.beans.connector.k8Connector.KubernetesClusterConfigDTO;
 import io.harness.delegate.beans.connector.k8Connector.KubernetesClusterDetailsDTO;
@@ -147,13 +148,15 @@ public class ContainerDeploymentDelegateBaseHelper {
       GcpK8sInfraDelegateConfig gcpK8sInfraDelegateConfig = (GcpK8sInfraDelegateConfig) clusterConfigDTO;
       GcpConnectorCredentialDTO gcpCredentials = gcpK8sInfraDelegateConfig.getGcpConnectorDTO().getCredential();
       GcpOidcTokenExchangeDetailsForDelegate gcpOidcTokenExchangeDetailsForDelegate = null;
+      String oidcProjectId = null;
       if (gcpK8sInfraDelegateConfig.getGcpOidcTokenExchangeDetailsForDelegate() != null) {
         gcpOidcTokenExchangeDetailsForDelegate = gcpK8sInfraDelegateConfig.getGcpOidcTokenExchangeDetailsForDelegate();
+        oidcProjectId = ((GcpOidcDetailsDTO) gcpCredentials.getConfig()).getGcpProjectId();
       }
       return gkeClusterHelper.getCluster(getGcpServiceAccountKeyFileContent(gcpCredentials),
           gcpCredentials.getGcpCredentialType() == INHERIT_FROM_DELEGATE, gcpK8sInfraDelegateConfig.getCluster(),
           gcpK8sInfraDelegateConfig.getNamespace(), logCallback, gcpOidcTokenExchangeDetailsForDelegate,
-          gcpCredentials.getGcpCredentialType() == OIDC_AUTHENTICATION, null);
+          gcpCredentials.getGcpCredentialType() == OIDC_AUTHENTICATION, oidcProjectId);
     } else if (clusterConfigDTO instanceof AzureK8sInfraDelegateConfig) {
       try (LazyAutoCloseableWorkingDirectory workingDirectory =
                new LazyAutoCloseableWorkingDirectory(REPOSITORY_DIR_PATH, AZURE_AUTH_CERT_DIR_PATH)) {

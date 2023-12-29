@@ -113,6 +113,26 @@ public interface K8sConstants {
       + "  user:\n"
       + "    auth-provider:\n"
       + "      name: gcp\n";
+  String GCP_OIDC_KUBE_CONFIG_TEMPLATE = "apiVersion: v1\n"
+      + "clusters:\n"
+      + "- cluster:\n"
+      + "    server: ${MASTER_URL}\n"
+      + "    ${INSECURE_SKIP_TLS_VERIFY}\n"
+      + "    ${CERTIFICATE_AUTHORITY_DATA}\n"
+      + "  name: CLUSTER_NAME\n"
+      + "contexts:\n"
+      + "- context:\n"
+      + "    cluster: CLUSTER_NAME\n"
+      + "    user: HARNESS_USER\n"
+      + "    ${NAMESPACE}\n"
+      + "  name: CURRENT_CONTEXT\n"
+      + "current-context: CURRENT_CONTEXT\n"
+      + "kind: Config\n"
+      + "preferences: {}\n"
+      + "users:\n"
+      + "- name: HARNESS_USER\n"
+      + "  user:\n"
+      + "    token: ${ACCESS_TOKEN}";
 
   String AZURE_KUBE_CONFIG_TEMPLATE = "apiVersion: v1\n"
       + "clusters:\n"
@@ -162,8 +182,7 @@ public interface K8sConstants {
       + "users:\n"
       + "- name: HARNESS_USER\n"
       + "  user:\n"
-      + "    ${EXEC}";
-
+      + "    token: ${ACCESS_TOKEN}";
   String eventOutputFormat =
       "custom-columns=KIND:involvedObject.kind,NAME:.involvedObject.name,MESSAGE:.message,REASON:.reason";
   int FETCH_FILES_DISPLAY_LIMIT = 100;

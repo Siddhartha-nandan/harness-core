@@ -21,6 +21,7 @@ import static io.harness.k8s.K8sConstants.AZURE_KUBE_CONFIG_TEMPLATE;
 import static io.harness.k8s.K8sConstants.CLIENT_ID_KEY;
 import static io.harness.k8s.K8sConstants.CLIENT_SECRET_KEY;
 import static io.harness.k8s.K8sConstants.GCP_KUBE_CONFIG_TEMPLATE;
+import static io.harness.k8s.K8sConstants.GCP_OIDC_KUBE_CONFIG_TEMPLATE;
 import static io.harness.k8s.K8sConstants.HARNESS_KUBERNETES_REVISION_LABEL_KEY;
 import static io.harness.k8s.K8sConstants.ID_TOKEN_KEY;
 import static io.harness.k8s.K8sConstants.ISSUER_URL_KEY;
@@ -2008,6 +2009,9 @@ public class KubernetesContainerServiceImpl implements KubernetesContainerServic
     if (KubernetesClusterAuthType.AZURE_OAUTH == config.getAuthType()) {
       return generateKubeConfigStringForAzure(config);
     }
+    if (KubernetesClusterAuthType.GCP_OIDC == config.getAuthType()) {
+      return generateKubeConfigStringForGcpOidc(config);
+    }
 
     if (KubernetesClusterAuthType.EXEC_OAUTH == config.getAuthType()) {
       return K8sApiClientHelper.generateExecFormatKubeconfig(config);
@@ -2083,6 +2087,19 @@ public class KubernetesContainerServiceImpl implements KubernetesContainerServic
         .replace("${INSECURE_SKIP_TLS_VERIFY}", insecureSkipTlsVerify)
         .replace("${CERTIFICATE_AUTHORITY_DATA}", certificateAuthorityData)
         .replace("${NAMESPACE}", namespace);
+  }
+
+  private String generateKubeConfigStringForGcpOidc(KubernetesConfig config) {
+    String insecureSkipTlsVerify = isEmpty(config.getCaCert()) ? "insecure-skip-tls-verify: true" : "";
+    String certificateAuthorityData =
+        isNotEmpty(config.getCaCert()) ? "certificate-authority-data: " + new String(config.getCaCert()) : "";
+    String namespace = isNotEmpty(config.getNamespace()) ? "namespace: " + config.getNamespace() : "";
+
+    return GCP_OIDC_KUBE_CONFIG_TEMPLATE.replace("${MASTER_URL}", config.getMasterUrl())
+        .replace("${INSECURE_SKIP_TLS_VERIFY}", insecureSkipTlsVerify)
+        .replace("${CERTIFICATE_AUTHORITY_DATA}", certificateAuthorityData)
+        .replace("${NAMESPACE}", namespace)
+        .replace("${ACCESS_TOKEN}", config.getServiceAccountTokenSupplier().get());
   }
 
   private String generateKubeConfigStringForAzure(KubernetesConfig config) {

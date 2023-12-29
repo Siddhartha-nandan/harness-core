@@ -20,8 +20,10 @@ import io.harness.cdng.k8s.resources.gcp.dtos.GcpProjectDetails;
 import io.harness.cdng.k8s.resources.gcp.service.GcpResourceService;
 import io.harness.cdng.oidc.OidcHelperUtility;
 import io.harness.delegate.beans.connector.gcpconnector.GcpConnectorDTO;
+import io.harness.delegate.beans.connector.gcpconnector.GcpOidcDetailsDTO;
 import io.harness.delegate.task.gcp.GcpTaskType;
 import io.harness.delegate.task.gcp.request.GcpListClustersRequest;
+import io.harness.delegate.task.gcp.request.GcpListClustersRequest.GcpListClustersRequestBuilder;
 import io.harness.delegate.task.gcp.request.GcpListProjectsRequest;
 import io.harness.delegate.task.gcp.request.GcpTaskParameters;
 import io.harness.delegate.task.gcp.response.GcpClusterListTaskResponse;
@@ -59,17 +61,22 @@ public class GcpResourceServiceImpl implements GcpResourceService {
     GcpOidcTokenExchangeDetailsForDelegate gcpOidcTokenExchangeDetailsForDelegate =
         oidcHelperUtility.getOidcTokenExchangeDetailsForDelegate(accountId, connector);
 
-    GcpListClustersRequest request =
+    GcpListClustersRequestBuilder request =
         GcpListClustersRequest.builder()
             .gcpManualDetailsDTO(gcpHelperService.getManualDetailsDTO(connector))
             .useDelegate(INHERIT_FROM_DELEGATE == connector.getCredential().getGcpCredentialType())
             .delegateSelectors(connector.getDelegateSelectors())
             .encryptionDetails(encryptionDetails)
-            .gcpOidcTokenExchangeDetailsForDelegate(gcpOidcTokenExchangeDetailsForDelegate)
-            .build();
+            .gcpOidcTokenExchangeDetailsForDelegate(gcpOidcTokenExchangeDetailsForDelegate);
+
+    if (connector.getCredential().getConfig() != null) {
+      if (connector.getCredential().getConfig() instanceof GcpOidcDetailsDTO) {
+        request.gcpOidcDetailsDTO((GcpOidcDetailsDTO) connector.getCredential().getConfig());
+      }
+    }
 
     GcpClusterListTaskResponse gcpClusterListTaskResponse =
-        gcpHelperService.executeSyncTask(baseNGAccess, request, GcpTaskType.LIST_CLUSTERS, "list GCP clusters");
+        gcpHelperService.executeSyncTask(baseNGAccess, request.build(), GcpTaskType.LIST_CLUSTERS, "list GCP clusters");
     return GcpResponseDTO.builder().clusterNames(gcpClusterListTaskResponse.getClusterNames()).build();
   }
 

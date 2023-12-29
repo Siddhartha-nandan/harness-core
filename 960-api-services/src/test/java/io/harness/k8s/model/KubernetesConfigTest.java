@@ -54,8 +54,8 @@ public class KubernetesConfigTest {
   @Category(UnitTests.class)
   public void shouldGetServiceAccountIfGcp() {
     // given
-    Supplier<String> gkeTokenSupplier =
-        new GcpAccessTokenSupplier(DUMMY_GCP_KEY, s -> googleCredential, mock(DataStore.class), Clock.systemUTC());
+    Supplier<String> gkeTokenSupplier = new GcpAccessTokenSupplier(
+        DUMMY_GCP_KEY, s -> googleCredential, mock(DataStore.class), Clock.systemUTC(), null);
 
     KubernetesConfig kubernetesConfig = KubernetesConfig.builder()
                                             .authType(KubernetesClusterAuthType.GCP_OAUTH)

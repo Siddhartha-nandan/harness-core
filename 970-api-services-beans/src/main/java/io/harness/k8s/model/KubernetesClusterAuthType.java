@@ -15,5 +15,6 @@ public enum KubernetesClusterAuthType {
   USER_PASSWORD,
   GCP_OAUTH,
   AZURE_OAUTH,
-  EXEC_OAUTH
+  EXEC_OAUTH,
+  GCP_OIDC,
 }
