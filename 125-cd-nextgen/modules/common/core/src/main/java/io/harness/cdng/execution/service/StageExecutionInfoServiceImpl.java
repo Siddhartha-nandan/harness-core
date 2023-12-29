@@ -276,8 +276,7 @@ public class StageExecutionInfoServiceImpl implements StageExecutionInfoService 
         .service(StringUtils.defaultIfBlank(service, NOT_AVAILABLE))
         .infra(StringUtils.defaultIfBlank(infra, NOT_AVAILABLE))
         .environment(StringUtils.defaultIfBlank(environment, NOT_AVAILABLE))
-        .artifactDisplayName(
-            StringUtils.defaultIfBlank(getDisplayName(stageExecutionBasicSummaryProjection), NOT_AVAILABLE))
+        .artifactDisplayName(StringUtils.defaultIfBlank(getDisplayName(stageExecutionBasicSummaryProjection), null))
         .build();
   }
 

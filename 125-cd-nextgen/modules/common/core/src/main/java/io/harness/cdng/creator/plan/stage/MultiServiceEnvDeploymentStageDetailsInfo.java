@@ -64,7 +64,7 @@ public class MultiServiceEnvDeploymentStageDetailsInfo implements DeploymentStag
         .infras(StringUtils.defaultIfBlank(infraFormattedString, NOT_AVAILABLE))
         .environments(StringUtils.defaultIfBlank(environmentFormattedString, NOT_AVAILABLE))
         .envGroup(envGroupFormattedString)
-        .artifactDisplayName(StringUtils.defaultIfBlank(artifactDisplayName, NOT_AVAILABLE))
+        .artifactDisplayName(StringUtils.defaultIfBlank(artifactDisplayName, null))
         .build();
   }
 
