@@ -9,6 +9,8 @@ package io.harness.springdata;
 
 import static io.harness.annotations.dev.HarnessTeam.PL;
 
+import static java.lang.String.format;
+
 import io.harness.annotations.dev.OwnedBy;
 
 import com.mongodb.MongoCommandException;
@@ -30,11 +32,14 @@ public class PersistenceUtils {
       getRetryPolicy("Retrying Operation. Attempt No. {}", "Operation Failed. Attempt No. {}");
 
   public static RetryPolicy<Object> getRetryPolicy(String failedAttemptMessage, String failureMessage) {
+    log.info("inside retry function");
     return new RetryPolicy<>()
         .handleIf(ex -> {
+          log.info("inside retry policy object");
           if ((ex instanceof TransactionException) || (ex instanceof TransientDataAccessException)) {
             return true;
           } else if (ex instanceof MongoException || ex instanceof UncategorizedMongoDbException) {
+            log.info(format("encountered exception: %s, retrying.", ex));
             return ((MongoException) ex).hasErrorLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL);
           }
           return false;
