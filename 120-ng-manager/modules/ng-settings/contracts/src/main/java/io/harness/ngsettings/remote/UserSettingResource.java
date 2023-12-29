@@ -116,6 +116,7 @@ public interface UserSettingResource {
       @NotNull List<UserSettingRequestDTO> userSettingRequestDTOList);
 
     @GET
+    @Path("/get-user-preferences")
     @ApiOperation(value = "Get list of user preferences ", nickname = "getUserPreferencesList")
     @Operation(operationId = "getUserPreferencesList", summary = "Get list of user preferences ",
             responses =

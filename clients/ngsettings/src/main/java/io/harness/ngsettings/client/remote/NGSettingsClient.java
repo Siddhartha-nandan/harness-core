@@ -49,6 +49,6 @@ public interface NGSettingsClient {
       @Query(value = ORG_KEY) String orgIdentifier, @Query(value = PROJECT_KEY) String projectIdentifier,
       @Body List<SettingRequestDTO> settingRequestDTOList);
 
-  @GET(USER_SETTINGS)
+  @GET(USER_SETTINGS+"/get-user-preferences")
   Call<ResponseDTO<Map<String, String>>> getUserPreferences(@Query(value = ACCOUNT_KEY) String accountIdentifier);
 }

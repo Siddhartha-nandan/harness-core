@@ -160,7 +160,7 @@ public class UserResource {
       NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier) {
     UserInfo userInfo = userInfoService.getCurrentUser();
     userInfo.setUserPreferences( NGRestUtils.getResponse(ngSettingsClient.getUserPreferences(accountIdentifier)));
-    return ResponseDTO.newResponse(userInfoService.getCurrentUser());
+    return ResponseDTO.newResponse(userInfo);
   }
 
   @GET
