@@ -28,11 +28,7 @@ import io.harness.repositories.ngsettings.spring.UserSettingConfigurationReposit
 import io.harness.repositories.ngsettings.spring.UserSettingRepository;
 
 import com.google.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -158,6 +154,15 @@ public class UserSettingsServiceImpl implements UserSettingsService {
     });
 
     return userSettingUpdateResponseDTOS;
+  }
+
+  @Override
+  public Map<String, String> getUserPreferences(String accountIdentifier, String userIdentifier) {
+    List<UserSetting> userSettings = listUserSettingForAccount(accountIdentifier, userIdentifier, null, null);
+
+    Map<String, String> userPreferences =
+        userSettings.stream().collect(Collectors.toMap(UserSetting::getIdentifier, UserSetting::getValue));
+    return userPreferences;
   }
 
   private List<UserSetting> listUserSettingForAccount(

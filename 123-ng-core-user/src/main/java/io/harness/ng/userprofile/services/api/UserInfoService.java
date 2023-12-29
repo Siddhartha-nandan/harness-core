@@ -18,7 +18,7 @@ import io.harness.ng.core.user.UserInfoUpdateDTO;
 
 @OwnedBy(HarnessTeam.PL)
 public interface UserInfoService {
-  UserInfo getCurrentUser();
+  UserInfo getCurrentUser(String accountIdentifier);
   UserInfo update(UserInfo userInfo, String accountIdentifier);
   UserInfo update(UserInfoUpdateDTO userInfoUpdateDTO, String userId, String accountIdentifier);
   TwoFactorAuthSettingsInfo getTwoFactorAuthSettingsInfo(TwoFactorAuthMechanismInfo twoFactorAuthMechanismInfo);

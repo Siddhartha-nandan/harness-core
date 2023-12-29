@@ -42,6 +42,7 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.exception.WingsException;
 import io.harness.ng.core.user.UserInfo;
 import io.harness.ng.core.user.service.NgUserService;
+import io.harness.ngsettings.services.UserSettingsService;
 import io.harness.rest.RestResponse;
 import io.harness.rule.Owner;
 import io.harness.security.SourcePrincipalContextBuilder;
@@ -76,12 +77,14 @@ public class UserInfoServiceImplTest extends CategoryTest {
   private UserInfo userInfoWithNameAndEmailAndUuid;
   private UserInfo userInfoWithDiffNameAndEmailAndUuid;
   private ServiceAccountPrincipal serviceAccountPrincipal;
+  private UserSettingsService userSettingsService;
   @Before
   public void setup() {
     userClient = mock(UserClient.class);
     ngUserService = mock(NgUserService.class);
     accessControlClient = mock(AccessControlClient.class);
-    userInfoServiceImpl = spy(new UserInfoServiceImpl(userClient, ngUserService, accessControlClient));
+    userInfoServiceImpl =
+        spy(new UserInfoServiceImpl(userClient, ngUserService, accessControlClient, userSettingsService));
     userPrincipal = new UserPrincipal("ABC", "abc@harness.io", "abc", randomAlphabetic(10));
     userInfoWithName = UserInfo.builder().name("abc").build();
     userInfoWithDiffName = UserInfo.builder().name("abcx").build();

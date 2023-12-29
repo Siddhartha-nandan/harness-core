@@ -15,6 +15,7 @@ import io.harness.ngsettings.dto.UserSettingUpdateResponseDTO;
 import io.harness.ngsettings.entities.UserSettingConfiguration;
 
 import java.util.List;
+import java.util.Map;
 
 public interface UserSettingsService {
   SettingValueResponseDTO get(String identifier, String accountIdentifier, String userIdentifier);
@@ -30,4 +31,6 @@ public interface UserSettingsService {
 
   List<UserSettingUpdateResponseDTO> update(
       String accountIdentifier, String userIdentifier, List<UserSettingRequestDTO> userSettingRequestDTOList);
+
+  Map<String, String> getUserPreferences(String accountIdentifier, String userIdentifier);
 }

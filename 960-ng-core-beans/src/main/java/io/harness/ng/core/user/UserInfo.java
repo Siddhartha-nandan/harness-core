@@ -15,6 +15,7 @@ import io.harness.ng.core.dto.GatewayAccountRequestDTO;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.annotations.ApiModelProperty;
 import java.util.List;
+import java.util.Map;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -51,6 +52,7 @@ public class UserInfo {
   String externalId;
   long createdAt;
   long lastUpdatedAt;
+  Map<String, String> userPreferences;
 
   public boolean isLocked() {
     return this.locked;

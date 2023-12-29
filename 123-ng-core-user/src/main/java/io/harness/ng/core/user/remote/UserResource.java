@@ -156,7 +156,7 @@ public class UserResource {
   public ResponseDTO<UserInfo>
   getUserInfo(@Parameter(description = ACCOUNT_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
       NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier) {
-    return ResponseDTO.newResponse(userInfoService.getCurrentUser());
+    return ResponseDTO.newResponse(userInfoService.getCurrentUser(accountIdentifier));
   }
 
   @GET
