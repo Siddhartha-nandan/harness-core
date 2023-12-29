@@ -632,3 +632,7 @@ if [[ "" != "$ALLOWED_KINDS_FOR_CATALOG_SYNC" ]]; then
   yq -i 'del(.allowedKindsForCatalogSync)' $CONFIG_FILE
   export ALLOWED_KINDS_FOR_CATALOG_SYNC; yq -i '.allowedKindsForCatalogSync=(env(ALLOWED_KINDS_FOR_CATALOG_SYNC) | split(",") | map(trim))' $CONFIG_FILE
 fi
+
+#Changes to use internal connection urls for PMS client gRPC
+replace_key_value pmsGrpcClientConfig.target "$INTERNAL_PMS_TARGET"
+replace_key_value pmsGrpcClientConfig.authority "$INTERNAL_PMS_AUTHORITY"

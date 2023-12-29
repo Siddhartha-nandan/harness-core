@@ -450,11 +450,7 @@ asyncDelegateResponseConsumption:
 
 pmsSdkGrpcServerConfig:
   connectors:
-    - port: ${PMS_SDK_SERVER_CONFIG_SECURE_PORT:-12301}
-      secure: true
-      keyFilePath: key.pem
-      certFilePath: cert.pem
-    - port: ${PMS_SDK_SERVER_CONFIG_PORT:-12302}
+    - port: ${PMS_SDK_SERVER_CONFIG_PORT:-12301}
 
 pmsGrpcClientConfig:
   target: localhost:12011
