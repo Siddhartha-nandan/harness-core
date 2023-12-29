@@ -19,10 +19,9 @@ java_library(
     deps = [
         "//:lombok",
         "//126-instance:module",
-        "//960-persistence:module",
         "//960-persistence/src/main/java/io/harness/annotation:module",
+        "//960-persistence/src/main/java/io/harness/mongo/index:module",
         "//960-persistence/src/main/java/io/harness/ng:module",
-        "//960-persistence/src/main/java/io/harness/persistence/api:module",
         "//980-commons/src/main/java/io/harness/annotations:module",
         "//999-annotations/src/main/java/io/harness/annotations/dev:module",
         "@maven//:com_fasterxml_jackson_core_jackson_annotations",

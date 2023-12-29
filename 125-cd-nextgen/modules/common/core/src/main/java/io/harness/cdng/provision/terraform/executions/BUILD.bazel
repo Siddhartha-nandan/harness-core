@@ -23,7 +23,6 @@ java_library(
         "//960-persistence/src/main/java/io/harness/ng:module",
         "//960-persistence/src/main/java/io/harness/persistence/api:module",
         "//970-api-services-beans/src/main/java/io/harness/security/encryption:module",
-        "//970-ng-commons:module",
         "//980-commons/src/main/java/io/harness/annotations:module",
         "//999-annotations/src/main/java/io/harness/annotations/dev:module",
         "@maven//:com_google_guava_guava",

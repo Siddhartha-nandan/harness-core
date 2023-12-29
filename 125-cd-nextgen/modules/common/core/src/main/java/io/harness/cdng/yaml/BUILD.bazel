@@ -24,7 +24,7 @@ java_library(
         "//953-yaml-commons:module",
         "//956-feature-flag-beans:module",
         "//960-yaml-sdk:module",
-        "//970-ng-commons:module",
+        "//970-ng-commons/src/main/java/io/harness/remote/client:module",
         "//980-commons/src/main/java/io/harness/encryption:module",
         "//999-annotations/src/main/java/io/harness/annotations/dev:module",
         "@maven//:com_fasterxml_jackson_core_jackson_annotations",

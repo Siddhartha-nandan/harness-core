@@ -19,9 +19,10 @@ java_library(
     deps = [
         "//:lombok",
         "//127-cd-nextgen-entities:module",
-        "//970-ng-commons:module",
-        "//980-commons/src/main/java/io/harness/data/structure:module",
-        "//980-commons/src/main/java/io/harness/exception:module",
+        "//960-ng-core-beans/src/main/java/io/harness/ng/core/infrastructure/dto:module",
+        "//960-ng-core-beans/src/main/java/io/harness/ng/core/template:module",
+        "//970-ng-commons/src/main/java/io/harness/gitsync/beans:module",
+        "//970-ng-commons/src/main/java/io/harness/gitsync/sdk:module",
         "//999-annotations/src/main/java/io/harness/annotations/dev:module",
         "@maven//:javax_validation_validation_api",
     ],

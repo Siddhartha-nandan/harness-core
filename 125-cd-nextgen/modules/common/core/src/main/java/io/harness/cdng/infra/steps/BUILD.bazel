@@ -25,7 +25,7 @@ java_library(
         "//127-cd-nextgen-entities:module",
         "//878-ng-common-utilities:module",
         "//884-pms-commons:module",
-        "//956-feature-flag-beans:module",
+        "//970-ng-commons/src/main/java/io/harness/pms/yaml:module",
         "//980-commons/src/main/java/io/harness/eraro:module",
         "//999-annotations/src/main/java/io/harness/annotations/dev:module",
         "//clients/access-control/sdk:module",

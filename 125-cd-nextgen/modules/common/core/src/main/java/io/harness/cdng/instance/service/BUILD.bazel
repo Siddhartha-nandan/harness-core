@@ -23,7 +23,6 @@ java_library(
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/repositories/instance:module",
         "//126-instance:module",
         "//960-persistence:module",
-        "//970-ng-commons:module",
         "//980-commons/src/main/java/io/harness/data/structure:module",
         "//980-commons/src/main/java/io/harness/exception:module",
         "//999-annotations/src/main/java/io/harness/annotations/dev:module",

@@ -21,7 +21,7 @@ java_library(
         "//125-cd-nextgen/modules/common/core/src/main/java/io/harness/cdng/service/beans:module",
         "//127-cd-nextgen-entities:module",
         "//953-yaml-commons:module",
-        "//970-ng-commons:module",
+        "//970-ng-commons/src/main/java/io/harness/pms/yaml:module",
         "//979-recaster/src/main/java/io/harness/annotation:module",
         "//999-annotations/src/main/java/io/harness/annotations/dev:module",
         "@maven//:javax_validation_validation_api",
