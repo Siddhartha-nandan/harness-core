@@ -19,6 +19,7 @@ java_library(
     deps = [
         "//:lombok",
         "//970-api-services-beans/src/main/java/io/harness/helm:module",
+        "//970-api-services-beans/src/main/java/io/harness/taskcontext:module",
         "//980-commons/src/main/java/io/harness/eraro:module",
         "//999-annotations/src/main/java/io/harness/annotations/dev:module",
         "@maven//:javax_validation_validation_api",

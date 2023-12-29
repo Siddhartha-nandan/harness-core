@@ -400,7 +400,6 @@ public enum FeatureName {
       "Enables the error return when the database transaction was not completed due to reaching the transaction limit.",
       SPG),
   SPG_CG_FIXING_PIPELINE_RESUME("This fixes pipeline resume when a loop state is skipped", HarnessTeam.SPG),
-  GITOPS_GITHUB_RESTRAINT_FOR_STEPS("Add restraining on git steps for GitOps", HarnessTeam.GITOPS),
   GIT_HOST_CONNECTIVITY,
   GLOBAL_COMMAND_LIBRARY,
   GLOBAL_DISABLE_HEALTH_CHECK(Scope.GLOBAL),
@@ -908,6 +907,10 @@ public enum FeatureName {
   CDS_SUPPORT_DIFFERENT_INFRA_DURING_ENV_PROPAGATION(
       "FF to suppport selecting different infrastructure during environment propagation", CDC),
   SSCA_ENFORCEMENT_EXEMPTIONS_ENABLED("FF to enable exemption workflow in the SSCA enforcement step", SSCA),
+  SSCA_MATCH_INSTANCE_IMAGE_NAME(
+      "Enable matching K8s instance image name with SSCA artifact to determine artifacts deployed", SSCA),
+  CDS_INPUT_YAML_IN_WEBHOOK_NOTIFICATION(
+      "FF to enable sending input set yaml as part of pipeline webhook notification", PIPELINE),
   CDS_ENABLE_SANDBOX_ENGINE_FALLBACK(
       "FF to enable for falling back to default engine when expression evaluation using sandbox engine fails", CDC,
       Scope.GLOBAL);
