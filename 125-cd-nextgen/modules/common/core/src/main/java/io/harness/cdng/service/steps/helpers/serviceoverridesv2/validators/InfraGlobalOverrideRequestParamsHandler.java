@@ -23,6 +23,7 @@ import io.harness.ng.core.serviceoverridev2.beans.ServiceOverrideRequestDTOV2;
 import io.harness.utils.IdentifierRefHelper;
 
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import java.util.Optional;
 import javax.ws.rs.NotFoundException;
 import lombok.AllArgsConstructor;
@@ -31,6 +32,7 @@ import lombok.NonNull;
     components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
 @OwnedBy(HarnessTeam.CDC)
 @AllArgsConstructor(onConstructor = @__({ @Inject }))
+@Singleton
 public class InfraGlobalOverrideRequestParamsHandler implements ServiceOverrideTypeBasedRequestParamsHandler {
   @Inject private InfrastructureEntityService infrastructureEntityService;
   @Inject ServiceOverrideValidatorService overrideValidatorService;

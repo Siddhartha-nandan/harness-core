@@ -23,12 +23,14 @@ import io.harness.ng.core.serviceoverridev2.beans.ServiceOverrideRequestDTOV2;
 import io.harness.utils.IdentifierRefHelper;
 
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import java.util.Optional;
 import javax.ws.rs.NotFoundException;
 import lombok.NonNull;
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
     components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
 @OwnedBy(HarnessTeam.CDC)
+@Singleton
 public class InfraServiceOverrideRequestParamsHandler implements ServiceOverrideTypeBasedRequestParamsHandler {
   @Inject OverrideV2AccessControlCheckHelper overrideV2AccessControlCheckHelper;
   @Inject private ServiceEntityValidationHelper serviceEntityValidationHelper;

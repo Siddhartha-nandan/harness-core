@@ -9,14 +9,19 @@ package io.harness.cdng.service.steps.helpers.serviceoverridesv2.validators;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
+import io.harness.annotations.dev.HarnessTeam;
+import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.ng.core.serviceoverride.beans.NGServiceOverridesEntity;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverrideRequestDTOV2;
 
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import lombok.NonNull;
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
     components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
+@OwnedBy(HarnessTeam.CDC)
+@Singleton
 public class EnvGlobalOverrideRequestParamsHandler implements ServiceOverrideTypeBasedRequestParamsHandler {
   @Inject ServiceOverrideValidatorService overrideValidatorService;
 
