@@ -65,6 +65,8 @@ import io.harness.ng.overview.dto.SequenceToggleDTO;
 import io.harness.ng.overview.dto.ServiceDeploymentInfoDTO;
 import io.harness.ng.overview.dto.ServiceDeploymentListInfo;
 import io.harness.ng.overview.dto.ServiceDeploymentListInfoV2;
+import io.harness.ng.overview.dto.ServiceDeploymentMetrics;
+import io.harness.ng.overview.dto.ServiceDeploymentsList;
 import io.harness.ng.overview.dto.ServiceDetailsInfoDTO;
 import io.harness.ng.overview.dto.ServiceDetailsInfoDTOV2;
 import io.harness.ng.overview.dto.ServiceHeaderInfo;
@@ -230,6 +232,40 @@ public class CDDashboardOverviewResource {
       @QueryParam(NGServiceConstants.BUCKET_SIZE_IN_DAYS) @DefaultValue("1") long bucketSizeInDays) throws Exception {
     cdOverviewDashboardService.validateDashboardRequestDuration(startTime, endTime);
     return ResponseDTO.newResponse(cdOverviewDashboardService.getServiceDeploymentsInfoV2(
+        accountIdentifier, orgIdentifier, projectIdentifier, startTime, endTime, serviceIdentifier, bucketSizeInDays));
+  }
+
+  @GET
+  @Path("/serviceDeploymentMetrics")
+  @ApiOperation(value = "Get service deployment metrics", nickname = "getServiceDeploymentMetrics")
+  @Hidden
+  public ResponseDTO<ServiceDeploymentMetrics> getServiceDeploymentMetrics(
+      @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
+      @NotNull @OrgIdentifier @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
+      @NotNull @ProjectIdentifier @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
+      @NotNull @QueryParam(NGServiceConstants.START_TIME) long startTime,
+      @NotNull @QueryParam(NGServiceConstants.END_TIME) long endTime,
+      @QueryParam(NGServiceConstants.SERVICE_IDENTIFIER) String serviceIdentifier,
+      @QueryParam(NGServiceConstants.BUCKET_SIZE_IN_DAYS) @DefaultValue("1") long bucketSizeInDays) throws Exception {
+    cdOverviewDashboardService.validateDashboardRequestDuration(startTime, endTime);
+    return ResponseDTO.newResponse(cdOverviewDashboardService.getServiceDeploymentMetrics(
+        accountIdentifier, orgIdentifier, projectIdentifier, startTime, endTime, serviceIdentifier, bucketSizeInDays));
+  }
+
+  @GET
+  @Path("/serviceDeploymentsList")
+  @ApiOperation(value = "Get service deployments list", nickname = "getServiceDeploymentsList")
+  @Hidden
+  public ResponseDTO<ServiceDeploymentsList> getServiceDeploymentsList(
+      @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
+      @NotNull @OrgIdentifier @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
+      @NotNull @ProjectIdentifier @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
+      @NotNull @QueryParam(NGServiceConstants.START_TIME) long startTime,
+      @NotNull @QueryParam(NGServiceConstants.END_TIME) long endTime,
+      @QueryParam(NGServiceConstants.SERVICE_IDENTIFIER) String serviceIdentifier,
+      @QueryParam(NGServiceConstants.BUCKET_SIZE_IN_DAYS) @DefaultValue("1") long bucketSizeInDays) throws Exception {
+    cdOverviewDashboardService.validateDashboardRequestDuration(startTime, endTime);
+    return ResponseDTO.newResponse(cdOverviewDashboardService.getServiceDeploymentsList(
         accountIdentifier, orgIdentifier, projectIdentifier, startTime, endTime, serviceIdentifier, bucketSizeInDays));
   }
 

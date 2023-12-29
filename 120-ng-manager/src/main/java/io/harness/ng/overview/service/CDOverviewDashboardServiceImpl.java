@@ -124,7 +124,9 @@ import io.harness.ng.overview.dto.ServiceDeploymentInfoDTO;
 import io.harness.ng.overview.dto.ServiceDeploymentInfoDTOV2;
 import io.harness.ng.overview.dto.ServiceDeploymentListInfo;
 import io.harness.ng.overview.dto.ServiceDeploymentListInfoV2;
+import io.harness.ng.overview.dto.ServiceDeploymentMetrics;
 import io.harness.ng.overview.dto.ServiceDeploymentV2;
+import io.harness.ng.overview.dto.ServiceDeploymentsList;
 import io.harness.ng.overview.dto.ServiceDetailsDTO;
 import io.harness.ng.overview.dto.ServiceDetailsDTO.ServiceDetailsDTOBuilder;
 import io.harness.ng.overview.dto.ServiceDetailsDTOV2;
@@ -2207,6 +2209,65 @@ public class CDOverviewDashboardServiceImpl implements CDOverviewDashboardServic
         .failureRateChangeRate(failureRateChangeRate)
         .frequencyChangeRate(frequencyChangeRate)
         .serviceDeploymentList(serviceDeploymentList)
+        .build();
+  }
+
+  @Override
+  public ServiceDeploymentsList getServiceDeploymentsList(String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, long startTime, long endTime, String serviceIdentifier, long bucketSizeInDays)
+      throws Exception {
+    String serviceRef = IdentifierRefHelper.getRefFromIdentifierOrRef(
+        accountIdentifier, orgIdentifier, projectIdentifier, serviceIdentifier);
+    long numberOfDays = getNumberOfDays(startTime, endTime);
+    validateBucketSize(numberOfDays, bucketSizeInDays);
+
+    ServiceDeploymentInfoDTOV2 serviceDeployments = getServiceDeploymentsV2(
+        accountIdentifier, orgIdentifier, projectIdentifier, startTime, endTime, serviceRef, bucketSizeInDays);
+    List<ServiceDeploymentV2> serviceDeploymentList = serviceDeployments.getServiceDeploymentList();
+    calculateRatesV2(serviceDeploymentList);
+
+    return ServiceDeploymentsList.builder()
+        .startTime(startTime)
+        .endTime(endTime == -1 ? null : endTime)
+        .serviceDeploymentList(serviceDeploymentList)
+        .build();
+  }
+
+  @Override
+  public ServiceDeploymentMetrics getServiceDeploymentMetrics(String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, long startTime, long endTime, String serviceIdentifier, long bucketSizeInDays)
+      throws Exception {
+    String serviceRef = IdentifierRefHelper.getRefFromIdentifierOrRef(
+        accountIdentifier, orgIdentifier, projectIdentifier, serviceIdentifier);
+    long numberOfDays = getNumberOfDays(startTime, endTime);
+    validateBucketSize(numberOfDays, bucketSizeInDays);
+    long prevStartTime = getStartTimeOfPreviousInterval(startTime, numberOfDays);
+
+    ServiceDeploymentInfoDTOV2 serviceDeployments = getServiceDeploymentsV2(
+        accountIdentifier, orgIdentifier, projectIdentifier, startTime, endTime, serviceRef, bucketSizeInDays);
+    List<ServiceDeploymentV2> serviceDeploymentList = serviceDeployments.getServiceDeploymentList();
+
+    ServiceDeploymentInfoDTOV2 prevServiceDeployment = getServiceDeploymentsV2(
+        accountIdentifier, orgIdentifier, projectIdentifier, prevStartTime, startTime, serviceRef, bucketSizeInDays);
+    List<ServiceDeploymentV2> prevServiceDeploymentList = prevServiceDeployment.getServiceDeploymentList();
+
+    long totalDeployments = getTotalDeploymentsV2(serviceDeploymentList);
+    long prevTotalDeployments = getTotalDeploymentsV2(prevServiceDeploymentList);
+    double failureRate = getFailureRateV2(serviceDeploymentList);
+    double frequency = totalDeployments / (double) numberOfDays;
+    double prevFrequency = prevTotalDeployments / (double) numberOfDays;
+
+    ChangeRate totalDeploymentChangeRate = calculateChangeRateV2(prevTotalDeployments, totalDeployments);
+    ChangeRate failureRateChangeRate = getFailureRateChangeRateV2(serviceDeploymentList, prevServiceDeploymentList);
+    ChangeRate frequencyChangeRate = calculateChangeRateV2(prevFrequency, frequency);
+
+    return ServiceDeploymentMetrics.builder()
+        .totalDeployments(totalDeployments)
+        .failureRate(failureRate)
+        .frequency(frequency)
+        .totalDeploymentsChangeRate(totalDeploymentChangeRate)
+        .failureRateChangeRate(failureRateChangeRate)
+        .frequencyChangeRate(frequencyChangeRate)
         .build();
   }
 
