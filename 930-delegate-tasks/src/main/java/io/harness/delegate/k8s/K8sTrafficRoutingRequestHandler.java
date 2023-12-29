@@ -234,8 +234,7 @@ public class K8sTrafficRoutingRequestHandler extends K8sRequestHandler {
 
   Optional<String> prepareTrafficRoutingPatch(K8sInfraDelegateConfig k8sInfraDelegateConfig,
       K8sTrafficRoutingConfig trafficRoutingConfig, TrafficRoutingInfoDTO trafficRoutingInfo,
-      ILogStreamingTaskClient logStreamingTaskClient, CommandUnitsProgress commandUnitsProgress)
-      throws JsonProcessingException {
+      ILogStreamingTaskClient logStreamingTaskClient, CommandUnitsProgress commandUnitsProgress) {
     LogCallback logCallback =
         k8sTaskHelperBase.getLogCallback(logStreamingTaskClient, TrafficRouting, true, commandUnitsProgress);
 

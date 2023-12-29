@@ -268,8 +268,8 @@ public abstract class TrafficRoutingResourceCreator {
   protected abstract String getMainResourceKindPlural();
   public abstract Optional<String> getSwapTrafficRoutingPatch(String stable, String stage);
 
-  public abstract Optional<String> generateTrafficRoutingPatch(K8sTrafficRoutingConfig k8sTrafficRoutingConfig,
-      Object trafficRoutingClusterResource, LogCallback logCallback) throws JsonProcessingException;
+  public abstract Optional<String> generateTrafficRoutingPatch(
+      K8sTrafficRoutingConfig k8sTrafficRoutingConfig, Object trafficRoutingClusterResource, LogCallback logCallback);
 
   protected List mapToDestinations(Map<String, Pair<Integer, Integer>> sourceDestinations) {
     List<TrafficRoutingDestination> outDestinations = new ArrayList<>();
