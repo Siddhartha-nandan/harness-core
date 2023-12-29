@@ -84,7 +84,7 @@ public class UserInfoServiceImplTest extends CategoryTest {
     ngUserService = mock(NgUserService.class);
     accessControlClient = mock(AccessControlClient.class);
     userInfoServiceImpl =
-        spy(new UserInfoServiceImpl(userClient, ngUserService, accessControlClient, userSettingsService));
+        spy(new UserInfoServiceImpl(userClient, ngUserService, accessControlClient));
     userPrincipal = new UserPrincipal("ABC", "abc@harness.io", "abc", randomAlphabetic(10));
     userInfoWithName = UserInfo.builder().name("abc").build();
     userInfoWithDiffName = UserInfo.builder().name("abcx").build();

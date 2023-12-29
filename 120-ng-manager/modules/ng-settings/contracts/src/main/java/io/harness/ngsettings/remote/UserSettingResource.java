@@ -37,6 +37,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import java.util.Map;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -113,4 +114,18 @@ public interface UserSettingResource {
              NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
       @RequestBody(description = SETTING_UPDATE_REQUEST_LIST) @Body
       @NotNull List<UserSettingRequestDTO> userSettingRequestDTOList);
+
+    @GET
+    @ApiOperation(value = "Get list of user preferences ", nickname = "getUserPreferencesList")
+    @Operation(operationId = "getUserPreferencesList", summary = "Get list of user preferences ",
+            responses =
+                    {
+                            @io.swagger.v3.oas.annotations.responses.
+                                    ApiResponse(responseCode = "default", description = "This contains a list of user settings")
+                    })
+    ResponseDTO<Map<String, String>>
+    userPreferences(@Parameter(description = ACCOUNT_PARAM_MESSAGE, required = true) @NotNull @QueryParam(
+            NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier);
+
+
 }

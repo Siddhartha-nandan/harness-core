@@ -17,6 +17,8 @@ import io.harness.utils.UserHelperService;
 
 import com.google.inject.Inject;
 import java.util.List;
+import java.util.Map;
+
 import lombok.AllArgsConstructor;
 
 @AllArgsConstructor(onConstructor = @__({ @Inject }))
@@ -43,4 +45,10 @@ public class UserSettingsResourceImpl implements UserSettingResource {
     return ResponseDTO.newResponse(
         userSettingsService.update(accountIdentifier, userHelperService.getUserId(), userSettingRequestDTOList));
   }
+
+  @Override
+  public ResponseDTO<Map<String, String>> userPreferences(String accountIdentifier) {
+    return ResponseDTO.newResponse(userSettingsService.getUserPreferences(accountIdentifier,  userHelperService.getUserId()));
+  }
+
 }

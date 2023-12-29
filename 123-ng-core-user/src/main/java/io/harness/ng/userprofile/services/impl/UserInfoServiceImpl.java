@@ -29,7 +29,6 @@ import io.harness.ng.core.user.UserInfoUpdateDTO;
 import io.harness.ng.core.user.remote.dto.UserMetadataDTO;
 import io.harness.ng.core.user.service.NgUserService;
 import io.harness.ng.userprofile.services.api.UserInfoService;
-import io.harness.ngsettings.services.UserSettingsService;
 import io.harness.remote.client.CGRestUtils;
 import io.harness.security.SourcePrincipalContextBuilder;
 import io.harness.security.dto.PrincipalType;
@@ -49,16 +48,13 @@ public class UserInfoServiceImpl implements UserInfoService {
   @Inject private NgUserService ngUserService;
   @Inject private AccessControlClient accessControlClient;
 
-  @Inject private UserSettingsService userSettingsService;
 
   @Override
-  public UserInfo getCurrentUser(String accountIdentifier) {
+  public UserInfo getCurrentUser() {
     Optional<String> userEmail = getUserEmail();
     if (userEmail.isPresent()) {
       Optional<UserInfo> userInfo = CGRestUtils.getResponse(userClient.getUserByEmailId(userEmail.get()));
-      userInfo.get().setUserPreferences(
-          userSettingsService.getUserPreferences(accountIdentifier, userInfo.get().getUuid()));
-      return userInfo.get();
+     return userInfo.get();
     } else {
       throw new IllegalStateException("user login required");
     }

@@ -21,6 +21,8 @@ import io.harness.ngsettings.dto.SettingResponseDTO;
 import io.harness.ngsettings.dto.SettingValueResponseDTO;
 
 import java.util.List;
+import java.util.Map;
+
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
@@ -31,6 +33,7 @@ import retrofit2.http.Query;
 @OwnedBy(PL)
 public interface NGSettingsClient {
   String SETTINGS = "settings";
+  String USER_SETTINGS = "user-settings";
   @GET(SETTINGS + "/{identifier}")
   Call<ResponseDTO<SettingValueResponseDTO>> getSetting(
       @Path(value = SettingConstants.IDENTIFIER_KEY) String identifier,
@@ -45,4 +48,7 @@ public interface NGSettingsClient {
   Call<ResponseDTO<List<SettingResponseDTO>>> updateSettings(@Query(value = ACCOUNT_KEY) String accountIdentifier,
       @Query(value = ORG_KEY) String orgIdentifier, @Query(value = PROJECT_KEY) String projectIdentifier,
       @Body List<SettingRequestDTO> settingRequestDTOList);
+
+  @GET(USER_SETTINGS)
+  Call<ResponseDTO<Map<String, String>>> getUserPreferences(@Query(value = ACCOUNT_KEY) String accountIdentifier);
 }
