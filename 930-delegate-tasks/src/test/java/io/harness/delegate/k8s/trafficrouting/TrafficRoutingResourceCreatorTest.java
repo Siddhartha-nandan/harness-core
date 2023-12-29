@@ -18,7 +18,7 @@ import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfig;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.k8s.model.KubernetesResource;
 import io.harness.k8s.model.KubernetesResourceId;
-import io.harness.k8s.releasehistory.TrafficRoutingInfoDTO;
+import io.harness.k8s.trafficrouting.TrafficRoutingInfoDTO;
 import io.harness.logging.LogCallback;
 import io.harness.rule.Owner;
 
@@ -216,6 +216,11 @@ public class TrafficRoutingResourceCreatorTest extends CategoryTest {
       @Override
       protected String getMainResourceKindPlural() {
         return "kinds";
+      }
+
+      @Override
+      public Optional<String> getSwapTrafficRoutingPatch(String stable, String stage) {
+        return Optional.of("patch");
       }
     };
   }

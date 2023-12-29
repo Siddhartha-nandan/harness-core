@@ -12,6 +12,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.InputSetValidatorType;
 import io.harness.common.NGExpressionUtils;
+import io.harness.data.structure.EmptyPredicate;
 import io.harness.expression.EngineExpressionEvaluator;
 import io.harness.jackson.JsonNodeUtils;
 import io.harness.pms.yaml.ParameterField;
@@ -39,7 +40,9 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_PIPELINE})
 public class ParameterFieldDeserializer extends StdDeserializer<ParameterField<?>> implements ContextualDeserializer {
   private static final long serialVersionUID = 1L;
@@ -98,6 +101,16 @@ public class ParameterFieldDeserializer extends StdDeserializer<ParameterField<?
 
     InputSetValidator inputSetValidator = getInputSetValidator(text);
 
+    if (EmptyPredicate.isNotEmpty(text) && text.contains("null.")) {
+      try {
+        String defaultValue = NGRuntimeInputUtils.extractDefaultValueFromNullInput(text);
+        log.warn(String.format(
+            "Text containing null with default is: %s and extracted default value is: %s test", text, defaultValue));
+      } catch (Exception e) {
+        log.error(String.format("Exception while extracting default value from text: %s", text), e);
+      }
+    }
+
     if (NGExpressionUtils.matchesInputSetPattern(text)) {
       String defaultValue = NGRuntimeInputUtils.extractParameters(text, "default");
       boolean isExecutionInput = NGExpressionUtils.matchesExecutionInputPattern(text);
@@ -126,13 +139,12 @@ public class ParameterFieldDeserializer extends StdDeserializer<ParameterField<?
     if (EngineExpressionEvaluator.hasExpressions(text)) {
       return ParameterField.createExpressionField(true, text, null, isTypeString);
     }
-
-    try {
-      // Adding this handling for the case when text is a jsonList and needs to be deserialized as a list
-      // For eg: text: ["abc","def"], the deserialized object should be a list of size 2 with elements abc and def
-      // valueDeserializer.deserialize() deserializes it to a list of size 1 with element abc,def.
-      // That is why this if block is needed here before valueDeserializer.deserialize().
-      if (JsonUtils.isJsonList(text)) {
+    // Adding this handling for the case when text is a jsonList and needs to be deserialized as a list
+    // For eg: text: ["abc","def"], the deserialized object should be a list of size 2 with elements abc and def
+    // valueDeserializer.deserialize() deserializes it to a list of size 1 with element abc,def.
+    // That is why this if block is needed here before valueDeserializer.deserialize().
+    if (JsonUtils.isJsonList(text) && referenceType.getRawClass() == List.class) {
+      try {
         return ParameterField.createValueField(JsonUtils.asList(text, new TypeReference<>() {
           @Override
           public Type getType() {
@@ -140,18 +152,30 @@ public class ParameterFieldDeserializer extends StdDeserializer<ParameterField<?
           }
         }));
       }
+      // Deserializing using the older flow if an exception is caught in above method
+      catch (Exception ex) {
+        log.warn("Exception while deserializing parameter field string with list value", ex);
+        return deserialize(p, ctxt, text);
+      }
+    } else {
+      return deserialize(p, ctxt, text);
+    }
+  }
+
+  private ParameterField<?> deserialize(JsonParser p, DeserializationContext ctxt, String text) throws IOException {
+    try {
       Object refd = (valueTypeDeserializer == null)
           ? valueDeserializer.deserialize(p, ctxt)
           : valueDeserializer.deserializeWithType(p, ctxt, valueTypeDeserializer);
       return ParameterField.createValueField(refd);
-    } catch (Exception ex) {
+    } catch (Exception e) {
       if (NGExpressionUtils.NULL.equals(text) || NGExpressionUtils.EMPTY.equals(text)) {
         return getNullValue(ctxt);
       }
       if (referenceType.getRawClass() == List.class) {
         return ParameterField.createValueField(JsonUtils.read(text, ArrayList.class));
       }
-      throw ex;
+      throw e;
     }
   }
 
