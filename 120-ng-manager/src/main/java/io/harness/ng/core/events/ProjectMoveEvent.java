@@ -6,6 +6,7 @@
  */
 
 package io.harness.ng.core.events;
+
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.audit.ResourceTypeConstants.PROJECT;
 
@@ -20,22 +21,19 @@ import io.harness.ng.core.dto.ProjectDTO;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.HashMap;
 import java.util.Map;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @OwnedBy(PL)
 @Getter
 @NoArgsConstructor
+@AllArgsConstructor
 public class ProjectMoveEvent implements Event {
+  public static final String PROJECT_MOVED = "ProjectMoved";
   private String accountIdentifier;
   ProjectDTO newProject;
   ProjectDTO oldProject;
-
-  public ProjectMoveEvent(String accountIdentifier, ProjectDTO newProject, ProjectDTO oldProject) {
-    this.newProject = newProject;
-    this.oldProject = oldProject;
-    this.accountIdentifier = accountIdentifier;
-  }
 
   @Override
   @JsonIgnore
@@ -61,6 +59,6 @@ public class ProjectMoveEvent implements Event {
   @Override
   @JsonIgnore
   public String getEventType() {
-    return "ProjectMoved";
+    return PROJECT_MOVED;
   }
 }

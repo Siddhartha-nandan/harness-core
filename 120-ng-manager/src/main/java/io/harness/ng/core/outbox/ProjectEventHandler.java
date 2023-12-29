@@ -8,6 +8,7 @@
 package io.harness.ng.core.outbox;
 
 import static io.harness.annotations.dev.HarnessTeam.PL;
+import static io.harness.ng.core.events.ProjectMoveEvent.PROJECT_MOVED;
 import static io.harness.ng.core.utils.NGYamlUtils.getYamlString;
 
 import static io.serializer.HObjectMapper.NG_DEFAULT_OBJECT_MAPPER;
@@ -70,7 +71,7 @@ public class ProjectEventHandler implements OutboxEventHandler {
           return handleProjectDeleteEvent(outboxEvent);
         case "ProjectRestored":
           return handleProjectRestoreEvent(outboxEvent);
-        case "ProjectMoved":
+        case PROJECT_MOVED:
           return handleProjectMoveEvent(outboxEvent);
         default:
           throw new InvalidArgumentsException(String.format("Not supported event type %s", outboxEvent.getEventType()));

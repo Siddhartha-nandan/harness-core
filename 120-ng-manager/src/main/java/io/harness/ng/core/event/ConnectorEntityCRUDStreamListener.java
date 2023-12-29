@@ -196,11 +196,18 @@ public class ConnectorEntityCRUDStreamListener implements MessageListener {
 
   private boolean processProjectMoveEvent(ProjectEntityChangeDTO projectEntityChangeDTO) {
     String accountIdentifier = projectEntityChangeDTO.getAccountIdentifier();
-    Boolean isBuiltInSMDisabled =
-        parseBoolean(NGRestUtils
-                         .getResponse(settingsClient.getSetting(
-                             SettingIdentifiers.DISABLE_HARNESS_BUILT_IN_SECRET_MANAGER, accountIdentifier, null, null))
-                         .getValue());
+    Boolean isBuiltInSMDisabled = Boolean.FALSE;
+
+    try {
+      isBuiltInSMDisabled = parseBoolean(
+          NGRestUtils
+              .getResponse(settingsClient.getSetting(
+                  SettingIdentifiers.DISABLE_HARNESS_BUILT_IN_SECRET_MANAGER, accountIdentifier, null, null))
+              .getValue());
+    } catch (Exception ex) {
+      log.error("For account {} and setting identifier {} getting account setting value failed with exception: ",
+          accountIdentifier, SettingIdentifiers.DISABLE_HARNESS_BUILT_IN_SECRET_MANAGER, ex);
+    }
 
     if (!isBuiltInSMDisabled) {
       harnessSMManager.createHarnessSecretManager(projectEntityChangeDTO.getAccountIdentifier(),
