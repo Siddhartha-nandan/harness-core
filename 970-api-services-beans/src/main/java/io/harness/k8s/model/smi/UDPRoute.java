@@ -22,7 +22,6 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
-
 public class UDPRoute extends SMIRoute {
   @Builder
   public UDPRoute(String apiVersion, Metadata metadata, RouteSpec spec) {

@@ -22,7 +22,6 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
-
 public class TCPRoute extends SMIRoute {
   @Builder
   public TCPRoute(String apiVersion, Metadata metadata, RouteSpec spec) {

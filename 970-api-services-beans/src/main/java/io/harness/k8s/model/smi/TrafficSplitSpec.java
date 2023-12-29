@@ -23,7 +23,6 @@ import lombok.NoArgsConstructor;
 @Data
 @Builder
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_K8S})
-
 public class TrafficSplitSpec {
   @NotNull String service;
   @NotNull List<Backend> backends;

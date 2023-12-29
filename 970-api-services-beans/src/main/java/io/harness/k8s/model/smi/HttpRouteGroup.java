@@ -22,7 +22,6 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
-
 public class HttpRouteGroup extends SMIRoute {
   @Builder
   private HttpRouteGroup(String apiVersion, Metadata metadata, RouteSpec spec) {

@@ -22,7 +22,6 @@ import lombok.experimental.SuperBuilder;
 @Data
 @NoArgsConstructor
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_K8S})
-
 public class HeaderMatch extends Match {
   Map<String, String> headers;
 }
