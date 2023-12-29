@@ -6,6 +6,7 @@
  */
 
 package io.harness.delegate.k8s;
+
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.delegate.task.k8s.K8sTaskHelperBase.getTimeoutMillisFromMinutes;
@@ -51,7 +52,6 @@ import io.harness.data.structure.EmptyPredicate;
 import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
 import io.harness.delegate.k8s.trafficrouting.TrafficRoutingResourceCreator;
-import io.harness.delegate.k8s.trafficrouting.TrafficRoutingResourceCreatorFactory;
 import io.harness.delegate.task.helm.HelmChartInfo;
 import io.harness.delegate.task.k8s.ContainerDeploymentDelegateBaseHelper;
 import io.harness.delegate.task.k8s.HelmChartManifestDelegateConfig;
@@ -137,6 +137,7 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
   @Inject private KubernetesContainerService kubernetesContainerService;
   @Inject private K8sManifestHashGenerator k8sManifestHashGenerator;
   @Inject private K8sApiClient kubernetesApiClient;
+  @Inject private Map<String, TrafficRoutingResourceCreator> k8sTrafficRoutingCreators;
   private KubernetesConfig kubernetesConfig;
   private Kubectl client;
   private IK8sReleaseHistory releaseHistory;
@@ -585,11 +586,11 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
               k8sDelegateTaskParams.getWorkingDirectory(), kubernetesConfig, logCallback);
 
       TrafficRoutingResourceCreator trafficRoutingResourceCreator =
-          TrafficRoutingResourceCreatorFactory.create(trafficRoutingConfig);
+          k8sTrafficRoutingCreators.get(trafficRoutingConfig.getProviderConfig().getProviderType().name());
 
-      List<KubernetesResource> trafficRoutingResources =
-          trafficRoutingResourceCreator.createTrafficRoutingResources(kubernetesConfig.getNamespace(), releaseName,
-              primaryService, stageService, availableApiVersions, logCallback);
+      List<KubernetesResource> trafficRoutingResources = trafficRoutingResourceCreator.createTrafficRoutingResources(
+          trafficRoutingConfig, kubernetesConfig.getNamespace(), releaseName, primaryService, stageService,
+          availableApiVersions, logCallback);
 
       Optional<TrafficRoutingInfoDTO> trafficRoutingInfo =
           trafficRoutingResourceCreator.getTrafficRoutingInfo(trafficRoutingResources);

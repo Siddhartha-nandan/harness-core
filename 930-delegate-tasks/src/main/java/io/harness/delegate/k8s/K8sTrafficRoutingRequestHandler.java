@@ -30,10 +30,10 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
 import io.harness.delegate.k8s.trafficrouting.TrafficRoutingResourceCreator;
-import io.harness.delegate.k8s.trafficrouting.TrafficRoutingResourceCreatorFactory;
 import io.harness.delegate.task.k8s.ContainerDeploymentDelegateBaseHelper;
 import io.harness.delegate.task.k8s.K8sDeployRequest;
 import io.harness.delegate.task.k8s.K8sDeployResponse;
+import io.harness.delegate.task.k8s.K8sInfraDelegateConfig;
 import io.harness.delegate.task.k8s.K8sTaskHelperBase;
 import io.harness.delegate.task.k8s.K8sTrafficRoutingRequest;
 import io.harness.delegate.task.k8s.K8sTrafficRoutingResponse;
@@ -41,10 +41,12 @@ import io.harness.delegate.task.k8s.K8sTrafficRoutingResponse.K8sTrafficRoutingR
 import io.harness.delegate.task.k8s.client.K8sApiClient;
 import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfig;
 import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfigType;
+import io.harness.delegate.task.k8s.trafficrouting.util.HarnessTrafficRoutingUtils;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.KubernetesTaskException;
 import io.harness.exception.NestedExceptionUtils;
 import io.harness.helpers.k8s.releasehistory.K8sReleaseHandler;
+import io.harness.k8s.K8sApiVersion;
 import io.harness.k8s.KubernetesContainerService;
 import io.harness.k8s.exception.KubernetesExceptionExplanation;
 import io.harness.k8s.exception.KubernetesExceptionHints;
@@ -58,10 +60,15 @@ import io.harness.k8s.releasehistory.IK8sReleaseHistory;
 import io.harness.k8s.trafficrouting.TrafficRoutingInfoDTO;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.LogCallback;
+import io.harness.logging.LogLevel;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
+import io.kubernetes.client.util.Yaml;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import lombok.NoArgsConstructor;
@@ -78,6 +85,8 @@ public class K8sTrafficRoutingRequestHandler extends K8sRequestHandler {
   @Inject private K8sTaskHelperBase k8sTaskHelperBase;
   @Inject private K8sApiClient kubernetesApiClient;
   @Inject private KubernetesContainerService kubernetesContainerService;
+  @Inject private HarnessTrafficRoutingUtils harnessTrafficRoutingUtils;
+  @Inject private Map<String, TrafficRoutingResourceCreator> k8sTrafficRoutingCreators;
   private KubernetesConfig kubernetesConfig;
   private String releaseName;
   private Kubectl client;
@@ -120,6 +129,19 @@ public class K8sTrafficRoutingRequestHandler extends K8sRequestHandler {
       }
 
       applyTrafficRouting(k8sDelegateTaskParams, logStreamingTaskClient, commandUnitsProgress);
+    } else if (K8sTrafficRoutingConfigType.INHERIT.equals(k8sTrafficRoutingConfigType)) {
+      if (trafficRoutingInfo == null) {
+        if (latestRelease == null || latestRelease.getTrafficRoutingInfo() == null) {
+          throw new InvalidArgumentsException("There is not a valid info on which to do traffic routing");
+        }
+        trafficRoutingInfo = latestRelease.getTrafficRoutingInfo();
+      }
+
+      Optional<String> patch = prepareTrafficRoutingPatch(k8sTrafficRoutingRequest.getK8sInfraDelegateConfig(),
+          k8sTrafficRoutingRequest.getTrafficRoutingConfig(), trafficRoutingInfo, logStreamingTaskClient,
+          commandUnitsProgress);
+
+      patchTrafficRoutingResource(patch, trafficRoutingInfo, logStreamingTaskClient, commandUnitsProgress);
     } else {
       throw new UnsupportedOperationException(
           format("Traffic Routing task option [%s] is not yet supported", k8sTrafficRoutingConfigType));
@@ -178,12 +200,12 @@ public class K8sTrafficRoutingRequestHandler extends K8sRequestHandler {
               k8sDelegateTaskParams.getWorkingDirectory(), kubernetesConfig, logCallback);
 
       TrafficRoutingResourceCreator trafficRoutingResourceCreator =
-          TrafficRoutingResourceCreatorFactory.create(trafficRoutingConfig);
+          k8sTrafficRoutingCreators.get(trafficRoutingConfig.getProviderConfig().getProviderType().name());
 
       checkForDestinationNormalization(trafficRoutingConfig, logCallback);
 
       List<KubernetesResource> trafficRoutingResources = trafficRoutingResourceCreator.createTrafficRoutingResources(
-          kubernetesConfig.getNamespace(), releaseName, availableApiVersions, logCallback);
+          trafficRoutingConfig, kubernetesConfig.getNamespace(), releaseName, availableApiVersions, logCallback);
 
       resources.addAll(trafficRoutingResources);
 
@@ -210,14 +232,84 @@ public class K8sTrafficRoutingRequestHandler extends K8sRequestHandler {
   }
 
   void checkForDestinationNormalization(K8sTrafficRoutingConfig trafficRoutingConfig, LogCallback logCallback) {
-    if (trafficRoutingConfig.isNormalizationNeeded()) {
+    if (harnessTrafficRoutingUtils.isNormalizationNeeded(trafficRoutingConfig.getDestinations())) {
       List<Triple<String, Integer, Integer>> destinationsNormalizationInfo =
-          trafficRoutingConfig.getDestinationsNormalizationInfo();
+          harnessTrafficRoutingUtils.getTrafficRoutingDestinationNormalizationInfo(
+              trafficRoutingConfig.getDestinations());
       logCallback.saveExecutionLog("Configured destinations weights will be normalized:", WARN);
       destinationsNormalizationInfo.stream().forEach(triplet
           -> logCallback.saveExecutionLog(format("[%s] destination weight [%s] will be normalized to value [%s].",
               color(triplet.getLeft(), Yellow, Bold), color(String.valueOf(triplet.getMiddle()), Yellow, Bold),
               color(String.valueOf(triplet.getRight()), Yellow, Bold))));
     }
+  }
+
+  Optional<String> prepareTrafficRoutingPatch(K8sInfraDelegateConfig k8sInfraDelegateConfig,
+      K8sTrafficRoutingConfig trafficRoutingConfig, TrafficRoutingInfoDTO trafficRoutingInfo,
+      ILogStreamingTaskClient logStreamingTaskClient, CommandUnitsProgress commandUnitsProgress)
+      throws JsonProcessingException {
+    LogCallback logCallback =
+        k8sTaskHelperBase.getLogCallback(logStreamingTaskClient, TrafficRouting, true, commandUnitsProgress);
+
+    logCallback.saveExecutionLog(
+        format("Preparing to update Traffic Routing resource %s based on inherited configuration.%n",
+            trafficRoutingInfo.getName()));
+
+    Object trafficRoutingClusterResource = kubernetesContainerService.getCustomObject(kubernetesConfig,
+        trafficRoutingInfo.getName(), k8sInfraDelegateConfig.getNamespace(), trafficRoutingInfo.getPlural(),
+        K8sApiVersion.fromApiVersion(trafficRoutingInfo.getVersion()));
+
+    Optional<String> patch = k8sTrafficRoutingCreators.get(trafficRoutingInfo.getPlural())
+                                 .getTrafficRoutingPatch(trafficRoutingConfig, trafficRoutingClusterResource);
+
+    if (patch.isEmpty()) {
+      logCallback.saveExecutionLog(format("Failed to create patch object, therefore resource %s will not be updated",
+                                       trafficRoutingInfo.getName()),
+          LogLevel.ERROR, CommandExecutionStatus.FAILURE);
+      throw NestedExceptionUtils.hintWithExplanationException(
+          format(KubernetesExceptionHints.FAILED_TO_CREATE_PATCH, trafficRoutingInfo.getVersion(),
+              trafficRoutingInfo.getPlural(), trafficRoutingInfo.getName()),
+          format(KubernetesExceptionExplanation.UPDATING_TRAFFIC_ROUTING_RESOURCE_FAILED, trafficRoutingInfo.getName()),
+          new KubernetesTaskException(TRAFFIC_ROUTING_FAILED));
+    }
+
+    logCallback.saveExecutionLog("Done.", INFO, SUCCESS);
+
+    return patch;
+  }
+
+  void patchTrafficRoutingResource(Optional<String> patch, TrafficRoutingInfoDTO trafficRoutingInfo,
+      ILogStreamingTaskClient logStreamingTaskClient, CommandUnitsProgress commandUnitsProgress) {
+    LogCallback logCallback =
+        k8sTaskHelperBase.getLogCallback(logStreamingTaskClient, Apply, true, commandUnitsProgress);
+
+    logCallback.saveExecutionLog(format("Patching %s resource with:%n%s%n", trafficRoutingInfo.getName(), patch.get()));
+
+    Object patchedObject;
+    try {
+      patchedObject = kubernetesContainerService.patchCustomObject(kubernetesConfig, trafficRoutingInfo.getName(),
+          K8sApiVersion.fromApiVersion(trafficRoutingInfo.getVersion()), trafficRoutingInfo.getPlural(), patch.get());
+    } catch (Exception e) {
+      logCallback.saveExecutionLog(
+          format("Patching failed. Resource: %s is not updated.", trafficRoutingInfo.getName()), LogLevel.ERROR,
+          CommandExecutionStatus.FAILURE);
+      throw NestedExceptionUtils.hintWithExplanationException(
+          format(KubernetesExceptionHints.PATCHING_TRAFFIC_ROUTING_RESOURCE_FAILED, trafficRoutingInfo.getVersion(),
+              trafficRoutingInfo.getPlural(), trafficRoutingInfo.getName()),
+          format(KubernetesExceptionExplanation.UPDATING_TRAFFIC_ROUTING_RESOURCE_FAILED, trafficRoutingInfo.getName()),
+          e);
+    }
+
+    String patchedObjectYaml = removeMetadataAndConvertToYaml(patchedObject);
+    logCallback.saveExecutionLog(
+        format("Patch applied successfully.%nThe resource is updated:%n%s%n", patchedObjectYaml));
+
+    logCallback.saveExecutionLog("\nDone.", INFO, CommandExecutionStatus.SUCCESS);
+  }
+
+  private String removeMetadataAndConvertToYaml(Object patchedObject) {
+    Map<String, Object> map = new ObjectMapper().convertValue(patchedObject, Map.class);
+    map.remove("metadata");
+    return Yaml.dump(map);
   }
 }

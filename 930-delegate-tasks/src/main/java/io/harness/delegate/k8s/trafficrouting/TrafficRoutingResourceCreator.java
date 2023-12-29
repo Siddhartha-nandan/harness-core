@@ -25,17 +25,17 @@ import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.LogCallback;
 import io.harness.logging.LogLevel;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 
-@NoArgsConstructor
 @AllArgsConstructor
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 public abstract class TrafficRoutingResourceCreator {
@@ -43,21 +43,21 @@ public abstract class TrafficRoutingResourceCreator {
   private static final String STABLE_PLACE_HOLDER = "stable";
   private static final String STAGE_PLACE_HOLDER = "stage";
   private static final String CANARY_PLACE_HOLDER = "canary";
+  protected static final String PATCH_REPLACE_JSON_FORMAT = "{ \"op\": \"replace\", \"path\": \"%s\", \"value\": %s}";
 
-  protected K8sTrafficRoutingConfig k8sTrafficRoutingConfig;
-
-  public List<KubernetesResource> createTrafficRoutingResources(
+  public List<KubernetesResource> createTrafficRoutingResources(K8sTrafficRoutingConfig k8sTrafficRoutingConfig,
       String namespace, String releaseName, Set<String> availableApiVersions, LogCallback logCallback) {
-    return createTrafficRoutingResources(namespace, releaseName, null, null, availableApiVersions, logCallback);
+    return createTrafficRoutingResources(
+        k8sTrafficRoutingConfig, namespace, releaseName, null, null, availableApiVersions, logCallback);
   }
 
-  public List<KubernetesResource> createTrafficRoutingResources(String namespace, String releaseName,
-      KubernetesResource primaryService, KubernetesResource secondaryService, Set<String> availableApiVersions,
-      LogCallback logCallback) {
+  public List<KubernetesResource> createTrafficRoutingResources(K8sTrafficRoutingConfig k8sTrafficRoutingConfig,
+      String namespace, String releaseName, KubernetesResource primaryService, KubernetesResource secondaryService,
+      Set<String> availableApiVersions, LogCallback logCallback) {
     Map<String, String> apiVersions = getApiVersions(availableApiVersions, logCallback);
 
-    List<String> trafficRoutingManifests =
-        getTrafficRoutingManifests(namespace, releaseName, primaryService, secondaryService, apiVersions);
+    List<String> trafficRoutingManifests = getTrafficRoutingManifests(
+        k8sTrafficRoutingConfig, namespace, releaseName, primaryService, secondaryService, apiVersions);
 
     logCallback.saveExecutionLog(
         format("Traffic Routing resources created: %n%s", String.join("\n---", trafficRoutingManifests)), INFO,
@@ -65,19 +65,20 @@ public abstract class TrafficRoutingResourceCreator {
     return trafficRoutingManifests.stream()
         .map(ManifestHelper::getKubernetesResourcesFromSpec)
         .flatMap(List::stream)
-        .toList();
+        .collect(Collectors.toList());
   }
 
-  private List<String> getTrafficRoutingManifests(String namespace, String releaseName,
-      KubernetesResource stableService, KubernetesResource stageService, Map<String, String> apiVersions) {
+  private List<String> getTrafficRoutingManifests(K8sTrafficRoutingConfig k8sTrafficRoutingConfig, String namespace,
+      String releaseName, KubernetesResource stableService, KubernetesResource stageService,
+      Map<String, String> apiVersions) {
     String stableName = stableService != null ? stableService.getResourceId().getName() : null;
     String stageName = stageService != null ? stageService.getResourceId().getName() : null;
 
-    return getManifests(namespace, releaseName, stableName, stageName, apiVersions);
+    return getManifests(k8sTrafficRoutingConfig, namespace, releaseName, stableName, stageName, apiVersions);
   }
 
-  protected abstract List<String> getManifests(
-      String namespace, String releaseName, String stableName, String stageName, Map<String, String> apiVersions);
+  protected abstract List<String> getManifests(K8sTrafficRoutingConfig k8sTrafficRoutingConfig, String namespace,
+      String releaseName, String stableName, String stageName, Map<String, String> apiVersions);
   protected abstract Map<String, List<String>> getProviderVersionMap();
 
   public String updatePlaceHoldersIfExist(String host, String stable, String stage) {
@@ -133,4 +134,7 @@ public abstract class TrafficRoutingResourceCreator {
 
   protected abstract String getMainResourceKindPlural();
   public abstract Optional<String> getSwapTrafficRoutingPatch(String stable, String stage);
+
+  public abstract Optional<String> getTrafficRoutingPatch(K8sTrafficRoutingConfig k8sTrafficRoutingConfig,
+      Object trafficRoutingClusterResource) throws JsonProcessingException;
 }

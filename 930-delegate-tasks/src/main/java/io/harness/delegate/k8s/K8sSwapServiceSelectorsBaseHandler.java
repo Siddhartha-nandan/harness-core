@@ -19,7 +19,7 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
-import io.harness.delegate.k8s.trafficrouting.TrafficRoutingResourceCreatorFactory;
+import io.harness.delegate.k8s.trafficrouting.TrafficRoutingResourceCreator;
 import io.harness.exception.KubernetesTaskException;
 import io.harness.exception.NestedExceptionUtils;
 import io.harness.k8s.K8sApiVersion;
@@ -50,6 +50,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class K8sSwapServiceSelectorsBaseHandler {
   @Inject private KubernetesContainerService kubernetesContainerService;
+  @Inject private Map<String, TrafficRoutingResourceCreator> k8sTrafficRoutingCreators;
 
   public boolean swapServiceSelectors(
       KubernetesConfig kubernetesConfig, String serviceOne, String serviceTwo, LogCallback logCallback) {
@@ -156,8 +157,7 @@ public class K8sSwapServiceSelectorsBaseHandler {
     logCallback.saveExecutionLog(
         format("%nTraffic routing configuration found in the Blue Green step. Switch all traffic to the %s service%n",
             stable));
-    Optional<String> swapServicePatch =
-        TrafficRoutingResourceCreatorFactory.create(plural).getSwapTrafficRoutingPatch(stable, stage);
+    Optional<String> swapServicePatch = k8sTrafficRoutingCreators.get(plural).getSwapTrafficRoutingPatch(stable, stage);
 
     if (swapServicePatch.isEmpty()) {
       logCallback.saveExecutionLog(

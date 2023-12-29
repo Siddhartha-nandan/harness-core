@@ -1440,6 +1440,31 @@ public class KubernetesContainerServiceImpl implements KubernetesContainerServic
   }
 
   @Override
+  public Object getCustomObject(
+      KubernetesConfig kubernetesConfig, String name, String namespace, String plural, K8sApiVersion apiVersion) {
+    if (kubernetesConfig == null || isBlank(name) || apiVersion == null) {
+      return null;
+    }
+    final Supplier<Object> customObjectSupplier = Retry.decorateSupplier(retry, () -> {
+      try {
+        ApiClient apiClient = kubernetesHelperService.getApiClientWithReadTimeout(kubernetesConfig);
+        CustomObjectsApi customObjectsApi = new CustomObjectsApi(apiClient);
+        return customObjectsApi.getNamespacedCustomObject(
+            apiVersion.getGroup(), apiVersion.getVersion(), kubernetesConfig.getNamespace(), plural, name);
+      } catch (ApiException exception) {
+        if (isResourceNotFoundException(exception.getCode())) {
+          return null;
+        }
+        String message = format("Unable to get %s/Virtual Service/%s. Code: %s, message: %s", namespace, name,
+            exception.getCode(), getErrorMessage(exception));
+        log.error(message);
+        throw new InvalidRequestException(message, exception, USER);
+      }
+    });
+    return customObjectSupplier.get();
+  }
+
+  @Override
   public VirtualService getVirtualServiceUsingFabric8Client(KubernetesConfig kubernetesConfig, String name) {
     try (KubernetesClient kubernetesClient = kubernetesHelperService.getKubernetesClient(kubernetesConfig)) {
       return kubernetesClient.resources(VirtualService.class, VirtualServiceList.class)

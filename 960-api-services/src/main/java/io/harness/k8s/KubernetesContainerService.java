@@ -163,4 +163,7 @@ public interface KubernetesContainerService {
 
   Object patchCustomObject(
       KubernetesConfig kubernetesConfig, String name, K8sApiVersion apiVersion, String plural, String patch);
+
+  Object getCustomObject(
+      KubernetesConfig kubernetesConfig, String name, String namespace, String plural, K8sApiVersion apiVersion);
 }

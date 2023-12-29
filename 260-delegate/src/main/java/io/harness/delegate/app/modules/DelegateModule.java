@@ -182,6 +182,9 @@ import io.harness.delegate.k8s.K8sRollingRollbackRequestHandler;
 import io.harness.delegate.k8s.K8sScaleRequestHandler;
 import io.harness.delegate.k8s.K8sSwapServiceSelectorsHandler;
 import io.harness.delegate.k8s.K8sTrafficRoutingRequestHandler;
+import io.harness.delegate.k8s.trafficrouting.IstioTrafficRoutingResourceCreator;
+import io.harness.delegate.k8s.trafficrouting.SMITrafficRoutingResourceCreator;
+import io.harness.delegate.k8s.trafficrouting.TrafficRoutingResourceCreator;
 import io.harness.delegate.message.MessageService;
 import io.harness.delegate.message.MessageServiceImpl;
 import io.harness.delegate.message.MessengerType;
@@ -389,6 +392,7 @@ import io.harness.delegate.task.k8s.exception.KubernetesApiClientRuntimeExceptio
 import io.harness.delegate.task.k8s.exception.KubernetesApiExceptionHandler;
 import io.harness.delegate.task.k8s.exception.KubernetesCliRuntimeExceptionHandler;
 import io.harness.delegate.task.k8s.exception.RancherRuntimeExceptionHandler;
+import io.harness.delegate.task.k8s.trafficrouting.ProviderType;
 import io.harness.delegate.task.ldap.NGLdapGroupSearchTask;
 import io.harness.delegate.task.ldap.NGLdapGroupSyncTask;
 import io.harness.delegate.task.ldap.NGLdapTestAuthenticationTask;
@@ -1756,6 +1760,15 @@ public class DelegateModule extends AbstractModule {
     artifactCommandHandlers.addBinding(SshWinRmArtifactType.GITHUB_PACKAGE.name())
         .to(GithubPackageArtifactCommandUnitHandler.class);
     artifactCommandHandlers.addBinding(SshWinRmArtifactType.GCS.name()).to(GcsArtifactCommandUnitHandler.class);
+
+    MapBinder<String, TrafficRoutingResourceCreator> k8sTrafficRoutingCreators =
+        MapBinder.newMapBinder(binder(), String.class, TrafficRoutingResourceCreator.class);
+    k8sTrafficRoutingCreators.addBinding(ProviderType.ISTIO.name()).to(IstioTrafficRoutingResourceCreator.class);
+    k8sTrafficRoutingCreators.addBinding(IstioTrafficRoutingResourceCreator.PLURAL)
+        .to(IstioTrafficRoutingResourceCreator.class);
+    k8sTrafficRoutingCreators.addBinding(ProviderType.SMI.name()).to(SMITrafficRoutingResourceCreator.class);
+    k8sTrafficRoutingCreators.addBinding(SMITrafficRoutingResourceCreator.PLURAL)
+        .to(SMITrafficRoutingResourceCreator.class);
 
     registerSecretManagementBindings();
     registerConnectorValidatorsBindings();
