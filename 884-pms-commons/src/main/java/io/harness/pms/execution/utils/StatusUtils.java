@@ -99,7 +99,7 @@ public class StatusUtils {
       EnumSet.of(FAILED, EXPIRED, APPROVAL_REJECTED, ABORTED, FREEZE_FAILED);
 
   private final EnumSet<Status> ADVISING_STATUSES = EnumSet.of(INPUT_WAITING);
-  private final EnumSet<Status> ABORTING_STATUSES = EnumSet.of(QUEUED, QUEUED_LICENSE_LIMIT_REACHED);
+  private final EnumSet<Status> ABORTING_STATUSES = EnumSet.of(QUEUED, QUEUED_LICENSE_LIMIT_REACHED, INPUT_WAITING);
 
   private final EnumSet<Status> ABORT_IN_PROGRESS_STATUSES = EnumSet.of(DISCONTINUING, EXPIRED, ABORTED);
 
