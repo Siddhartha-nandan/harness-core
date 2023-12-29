@@ -76,7 +76,7 @@ public class EngineExpressionEvaluator {
 
   private static final int MAX_DEPTH = 15;
   private static final String CDS_ENABLE_SANDBOX_ENGINE_FALLBACK = "CDS_ENABLE_SANDBOX_ENGINE_FALLBACK";
-  private static final String JAVA_LANG_RUNTIME_CLASS = "java.lang.Runtime";
+  private static final Set<String> blacklistedClasses = Set.of("java.lang.Runtime");
 
   @Getter private final JexlEngine engine;
   @Getter private final VariableResolverTracker variableResolverTracker;
@@ -85,13 +85,12 @@ public class EngineExpressionEvaluator {
   private boolean initialized;
 
   @Getter private final JexlEngine sandBoxEngine;
-  @Getter private final JexlSandbox sandbox;
 
   public EngineExpressionEvaluator(VariableResolverTracker variableResolverTracker) {
     this.engine = new JexlBuilder().logger(new NoOpLog()).create();
 
-    sandbox = new JexlSandbox();
-    setFullRestrictedPermissions(sandbox, JAVA_LANG_RUNTIME_CLASS);
+    JexlSandbox sandbox = new JexlSandbox();
+    setFullRestrictedPermissions(sandbox);
     sandBoxEngine = new JexlBuilder().logger(new NoOpLog()).sandbox(sandbox).create();
 
     this.variableResolverTracker =
@@ -100,8 +99,10 @@ public class EngineExpressionEvaluator {
     this.staticAliases = new HashMap<>();
   }
 
-  private void setFullRestrictedPermissions(JexlSandbox sandbox, String clazz) {
-    sandbox.permissions(clazz, false, false, false);
+  private void setFullRestrictedPermissions(JexlSandbox sandbox) {
+    for (String clazz : blacklistedClasses) {
+      sandbox.permissions(clazz, false, false, false);
+    }
   }
 
   /**
@@ -704,7 +705,7 @@ public class EngineExpressionEvaluator {
         return expr;
       }
     } catch (JexlException ex) {
-      if (ex.getInfo() != null && String.valueOf(ex.getInfo().getDetail()).contains(JAVA_LANG_RUNTIME_CLASS)) {
+      if (ex.getInfo() != null && isBlacklisted(String.valueOf(ex.getInfo().getDetail()))) {
         return null;
       }
       if (!shouldFallbackWhenSandboxEngineEvalFails(ctx)) {
@@ -717,6 +718,10 @@ public class EngineExpressionEvaluator {
       return evaluateWithoutCreatingScriptFallback(expression, ctx);
     }
     return null;
+  }
+
+  private boolean isBlacklisted(String message) {
+    return blacklistedClasses.stream().anyMatch(message::contains);
   }
 
   protected Object evaluateWithoutCreatingScriptFallback(@NotNull String expression, @NotNull EngineJexlContext ctx) {
@@ -745,7 +750,7 @@ public class EngineExpressionEvaluator {
         return expr;
       }
     } catch (JexlException ex) {
-      if (ex.getInfo() != null && String.valueOf(ex.getInfo().getDetail()).contains(JAVA_LANG_RUNTIME_CLASS)) {
+      if (ex.getInfo() != null && isBlacklisted(String.valueOf(ex.getInfo().getDetail()))) {
         return null;
       }
       if (!shouldFallbackWhenSandboxEngineEvalFails(ctx)) {
