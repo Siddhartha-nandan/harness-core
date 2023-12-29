@@ -65,7 +65,7 @@ public class WebhookNotificationServiceImpl implements WebhookNotificationServic
           planExecutionMetadataService.getWithFieldsIncludedFromSecondary(executionSummaryEntity.getPlanExecutionId(),
               Sets.newHashSet(PipelineExecutionSummaryEntity.PlanExecutionSummaryKeys.inputSetYaml));
       if (planExecutionMetadata != null) {
-        moduleInfo.inputSetYaml(planExecutionMetadata.getInputSetYaml());
+        moduleInfo.inputYaml(planExecutionMetadata.getInputSetYaml());
       }
     }
     if (EmptyPredicate.isEmpty(moduleInfoMap)) {
@@ -101,7 +101,7 @@ public class WebhookNotificationServiceImpl implements WebhookNotificationServic
           planExecutionMetadataService.getWithFieldsIncludedFromSecondary(executionSummaryEntity.getPlanExecutionId(),
               Sets.newHashSet(PipelineExecutionSummaryEntity.PlanExecutionSummaryKeys.inputSetYaml));
       if (planExecutionMetadata != null) {
-        moduleInfoBuilder.inputSetYaml(planExecutionMetadata.getInputSetYaml());
+        moduleInfoBuilder.inputYaml(planExecutionMetadata.getInputSetYaml());
       }
     }
     try {
