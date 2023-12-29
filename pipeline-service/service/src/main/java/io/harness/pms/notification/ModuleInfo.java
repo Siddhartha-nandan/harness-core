@@ -37,6 +37,7 @@ public class ModuleInfo {
   List<String> envGroups;
   List<String> infrastructures;
   List<String> artifactInfo;
+  String inputSetYaml;
 
   public static ModuleInfo getModuleInfo(Ambiance ambiance, PipelineExecutionSummaryEntity executionSummaryEntity) {
     Level currentLevel = AmbianceUtils.obtainCurrentLevel(ambiance);
