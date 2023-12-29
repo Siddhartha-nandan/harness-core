@@ -63,7 +63,7 @@ public class InitContainerStepPlanCreater {
         .stepParameters(stepElementParameters)
         .facilitatorObtainment(
             FacilitatorObtainment.newBuilder()
-                .setType(FacilitatorType.newBuilder().setType(OrchestrationFacilitatorType.TASK).build())
+                .setType(FacilitatorType.newBuilder().setType(OrchestrationFacilitatorType.ASYNC).build())
                 .build())
         .adviserObtainment(
             AdviserObtainment.newBuilder()

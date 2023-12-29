@@ -6,15 +6,13 @@
  */
 
 package io.harness.steps.container.utils;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
-import io.harness.beans.yaml.extended.CIShellType;
-import io.harness.delegate.ShellType;
 import io.harness.delegate.TaskSelector;
 import io.harness.delegate.beans.ci.pod.ConnectorDetails;
 import io.harness.delegate.beans.connector.k8Connector.KubernetesClusterConfigDTO;
-import io.harness.exception.InvalidArgumentsException;
 import io.harness.plancreator.steps.TaskSelectorYaml;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.steps.plugin.ContainerStepSpec;
@@ -71,22 +69,5 @@ public class ContainerSpecUtils {
     finalSelectors.addAll(connectorSelector);
     finalSelectors.addAll(stepSelector);
     return finalSelectors;
-  }
-
-  public static ShellType mapShellType(CIShellType shellType) {
-    switch (shellType) {
-      case BASH:
-        return ShellType.BASH;
-      case POWERSHELL:
-        return ShellType.POWERSHELL;
-      case SH:
-        return ShellType.SH;
-      case PWSH:
-        return ShellType.PWSH;
-      case PYTHON:
-        return ShellType.PYTHON;
-      default:
-        throw new InvalidArgumentsException("Not supported shell type");
-    }
   }
 }

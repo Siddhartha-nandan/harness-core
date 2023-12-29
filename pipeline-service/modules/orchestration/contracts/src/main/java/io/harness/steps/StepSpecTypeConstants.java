@@ -40,7 +40,7 @@ public interface StepSpecTypeConstants {
   String WAIT_STEP = "Wait";
   String INIT_CONTAINER_STEP = "InitContainer";
 
-  String INIT_KUBERNETES_INFRA_CONTAINER_STEP = "InitKubernetesInfrastructure";
+  String INIT_KUBERNETES_INFRA_STEP = "InitKubernetesInfrastructure";
   String RUN_CONTAINER_STEP = "RunContainer";
   String INIT_CONTAINER_STEP_V2 = "InitializeContainer";
   //  String INIT_CONTAINER_STEP_V2 = "InitContainer";
@@ -108,9 +108,8 @@ public interface StepSpecTypeConstants {
                                              .setStepCategory(StepCategory.STEP)
                                              .build();
 
-  StepType INIT_KUBERNETES_INFRA_CONTAINER_STEP_TYPE =
-      StepType.newBuilder()
-          .setType(StepSpecTypeConstants.INIT_KUBERNETES_INFRA_CONTAINER_STEP)
-          .setStepCategory(StepCategory.STEP)
-          .build();
+  StepType INIT_KUBERNETES_INFRA_STEP_TYPE = StepType.newBuilder()
+                                                 .setType(StepSpecTypeConstants.INIT_KUBERNETES_INFRA_STEP)
+                                                 .setStepCategory(StepCategory.STEP)
+                                                 .build();
 }

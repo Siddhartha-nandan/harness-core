@@ -11,6 +11,7 @@ import static io.harness.beans.FeatureName.CDS_USE_DELEGATE_BIJOU_API_CONTAINER_
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.container.execution.K8sInfraCleanupService;
 import io.harness.engine.observers.NodeStatusUpdateObserver;
 import io.harness.engine.observers.NodeUpdateInfo;
 import io.harness.observer.AsyncInformObserver;
@@ -18,7 +19,6 @@ import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.execution.utils.StatusUtils;
 import io.harness.steps.common.steps.stepgroup.StepGroupStep;
 import io.harness.steps.container.execution.ContainerStepCleanupHelper;
-import io.harness.steps.container.execution.K8sInfraCleanupHelper;
 import io.harness.utils.PmsFeatureFlagService;
 
 import com.google.inject.Inject;
@@ -31,7 +31,7 @@ import java.util.concurrent.ExecutorService;
 public class PodCleanupUpdateEventHandler implements NodeStatusUpdateObserver, AsyncInformObserver {
   @Inject ContainerStepCleanupHelper containerStepCleanupHelper;
   @Inject private PmsFeatureFlagService featureFlagService;
-  @Inject private K8sInfraCleanupHelper k8sInfraCleanupHelper;
+  @Inject private K8sInfraCleanupService k8SInfraCleanupService;
 
   @Inject @Named("PodCleanUpExecutorService") private ExecutorService podCleanUpExecutorService;
 
@@ -42,7 +42,7 @@ public class PodCleanupUpdateEventHandler implements NodeStatusUpdateObserver, A
         && StatusUtils.isFinalStatus(nodeUpdateInfo.getStatus())) {
       String accountId = AmbianceUtils.getAccountId(nodeUpdateInfo.getNodeExecution().getAmbiance());
       if (featureFlagService.isEnabled(accountId, CDS_USE_DELEGATE_BIJOU_API_CONTAINER_STEPS)) {
-        k8sInfraCleanupHelper.cleanupInfra(nodeUpdateInfo.getNodeExecution().getAmbiance());
+        k8SInfraCleanupService.cleanupInfra(nodeUpdateInfo.getNodeExecution().getAmbiance());
       } else {
         containerStepCleanupHelper.sendCleanupRequest(nodeUpdateInfo.getNodeExecution().getAmbiance());
       }

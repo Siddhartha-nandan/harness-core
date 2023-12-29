@@ -16,22 +16,14 @@ import io.harness.delegate.AccountId;
 import io.harness.delegate.CancelTaskRequest;
 import io.harness.delegate.CancelTaskResponse;
 import io.harness.delegate.DelegateServiceGrpc.DelegateServiceBlockingStub;
-import io.harness.delegate.ScheduleTaskRequest;
-import io.harness.delegate.ScheduleTaskResponse;
-import io.harness.delegate.ScheduleTaskServiceGrpc.ScheduleTaskServiceBlockingStub;
-import io.harness.delegate.SchedulingConfig;
-import io.harness.delegate.SetupExecutionInfrastructureRequest;
-import io.harness.delegate.SetupExecutionInfrastructureResponse;
 import io.harness.delegate.SubmitTaskRequest;
 import io.harness.delegate.SubmitTaskResponse;
 import io.harness.delegate.TaskId;
 import io.harness.delegate.TaskMode;
 import io.harness.exception.InvalidRequestException;
 import io.harness.grpc.utils.HTimestamps;
-import io.harness.pms.contracts.execution.tasks.DelegateTaskRequest;
 import io.harness.pms.contracts.execution.tasks.TaskRequest;
 import io.harness.pms.contracts.execution.tasks.TaskRequest.RequestCase;
-import io.harness.pms.contracts.execution.tasks.Type;
 import io.harness.pms.plan.execution.SetupAbstractionKeys;
 import io.harness.pms.utils.PmsGrpcClientUtils;
 import io.harness.service.intfc.DelegateAsyncService;
@@ -52,7 +44,6 @@ import org.apache.commons.lang3.NotImplementedException;
 @Slf4j
 public class NgDelegate2TaskExecutor implements TaskExecutor {
   @Inject private DelegateServiceBlockingStub delegateServiceBlockingStub;
-  @Inject private ScheduleTaskServiceBlockingStub scheduleTaskServiceBlockingStub;
   @Inject private DelegateSyncService delegateSyncService;
   @Inject private DelegateAsyncService delegateAsyncService;
   @Inject private Supplier<DelegateCallbackToken> tokenSupplier;
@@ -70,37 +61,6 @@ public class NgDelegate2TaskExecutor implements TaskExecutor {
     delegateAsyncService.setupTimeoutForTask(submitTaskResponse.getTaskId().getId(),
         Timestamps.toMillis(submitTaskResponse.getTotalExpiry()), currentTimeMillis() + holdFor.toMillis());
     return submitTaskResponse.getTaskId().getId();
-  }
-
-  @Override
-  public String queueInitTask(TaskRequest taskRequest, Duration holdFor) {
-    TaskRequestValidityCheck check = validateTaskRequest(taskRequest, TaskMode.ASYNC);
-    if (!check.isValid()) {
-      throw new InvalidRequestException(check.getMessage());
-    }
-
-    SetupExecutionInfrastructureResponse setupExecutionInfrastructureResponse =
-        PmsGrpcClientUtils.retryAndProcessException(scheduleTaskServiceBlockingStub::initTask,
-            buildTaskRequestWithToken(taskRequest.getDelegateTaskRequest().getInitRequest()));
-    //    delegateAsyncService.setupTimeoutForTask(setupExecutionInfrastructureResponse.getTaskId().getId(),
-    //        Timestamps.toMillis(setupExecutionInfrastructureResponse.getTotalExpiry()), currentTimeMillis() +
-    //        holdFor.toMillis());
-    return setupExecutionInfrastructureResponse.getTaskId().getId();
-  }
-
-  @Override
-  public String queueExecuteTask(TaskRequest taskRequest, Duration holdFor) {
-    TaskRequestValidityCheck check = validateTaskRequest(taskRequest, TaskMode.ASYNC);
-    if (!check.isValid()) {
-      throw new InvalidRequestException(check.getMessage());
-    }
-
-    ScheduleTaskResponse scheduleTaskResponse =
-        PmsGrpcClientUtils.retryAndProcessException(scheduleTaskServiceBlockingStub::executeTask,
-            buildTaskRequestWithToken(taskRequest.getDelegateTaskRequest().getExecuteRequest()));
-    //    delegateAsyncService.setupTimeoutForTask(scheduleTaskResponse.getTaskId().getId(),
-    //        Timestamps.toMillis(scheduleTaskResponse.getTotalExpiry()), currentTimeMillis() + holdFor.toMillis());
-    return scheduleTaskResponse.getTaskId().getId();
   }
 
   @Override
@@ -125,18 +85,13 @@ public class NgDelegate2TaskExecutor implements TaskExecutor {
           .build();
     }
     String message = null;
-    DelegateTaskRequest delegateTaskRequest = taskRequest.getDelegateTaskRequest();
-    if (delegateTaskRequest.getType().equals(Type.SUBMIT)) {
-      SubmitTaskRequest submitTaskRequest = delegateTaskRequest.getRequest();
-      TaskMode mode = submitTaskRequest.getDetails().getMode();
-      boolean valid = mode == validMode;
-      if (!valid) {
-        message = String.format("DelegateTaskRequest Mode %s Not Supported", mode);
-      }
-      return TaskRequestValidityCheck.builder().valid(valid).message(message).build();
+    SubmitTaskRequest submitTaskRequest = taskRequest.getDelegateTaskRequest().getRequest();
+    TaskMode mode = submitTaskRequest.getDetails().getMode();
+    boolean valid = mode == validMode;
+    if (!valid) {
+      message = String.format("DelegateTaskRequest Mode %s Not Supported", mode);
     }
-
-    return TaskRequestValidityCheck.builder().valid(true).build();
+    return TaskRequestValidityCheck.builder().valid(valid).message(message).build();
   }
 
   @Override
@@ -146,16 +101,6 @@ public class NgDelegate2TaskExecutor implements TaskExecutor {
 
   private SubmitTaskRequest buildTaskRequestWithToken(SubmitTaskRequest request) {
     return request.toBuilder().setCallbackToken(tokenSupplier.get()).build();
-  }
-
-  private SetupExecutionInfrastructureRequest buildTaskRequestWithToken(SetupExecutionInfrastructureRequest request) {
-    SchedulingConfig schedulingConfig = request.getConfig().toBuilder().setCallbackToken(tokenSupplier.get()).build();
-    return request.toBuilder().setConfig(schedulingConfig).build();
-  }
-
-  private ScheduleTaskRequest buildTaskRequestWithToken(ScheduleTaskRequest request) {
-    SchedulingConfig schedulingConfig = request.getConfig().toBuilder().setCallbackToken(tokenSupplier.get()).build();
-    return request.toBuilder().setConfig(schedulingConfig).build();
   }
 
   @Override

@@ -29,7 +29,6 @@ import io.harness.pms.contracts.execution.events.QueueTaskRequest;
 import io.harness.pms.contracts.execution.events.SdkResponseEventProto;
 import io.harness.pms.contracts.execution.tasks.TaskCategory;
 import io.harness.pms.contracts.execution.tasks.TaskRequest;
-import io.harness.pms.contracts.execution.tasks.Type;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.execution.utils.SdkResponseEventUtils;
 import io.harness.waiter.ProgressCallback;
@@ -106,8 +105,8 @@ public class QueueTaskRequestProcessor implements SdkResponseProcessor {
     String nodeExecutionId = AmbianceUtils.obtainCurrentRuntimeId(ambiance);
     try {
       TaskExecutor taskExecutor = taskExecutorMap.get(taskRequest.getTaskCategory());
-
-      String taskId = Preconditions.checkNotNull(queueTask(taskRequest, setupAbstractionsMap, taskExecutor));
+      String taskId =
+          Preconditions.checkNotNull(taskExecutor.queueTask(setupAbstractionsMap, taskRequest, Duration.ofSeconds(0)));
       log.info("TaskRequestQueued for NodeExecutionId : {}, TaskId; {}", nodeExecutionId, taskId);
       return taskId;
     } catch (Exception ex) {
@@ -115,17 +114,5 @@ public class QueueTaskRequestProcessor implements SdkResponseProcessor {
       orchestrationEngine.handleError(ambiance, ex);
       return null;
     }
-  }
-
-  private String queueTask(
-      TaskRequest taskRequest, Map<String, String> setupAbstractionsMap, TaskExecutor taskExecutor) {
-    if (taskRequest.hasDelegateTaskRequest() && taskRequest.getDelegateTaskRequest().getType().equals(Type.INIT)) {
-      return taskExecutor.queueInitTask(taskRequest, Duration.ofSeconds(0));
-    } else if (taskRequest.hasDelegateTaskRequest()
-        && taskRequest.getDelegateTaskRequest().getType().equals(Type.EXECUTE)) {
-      return taskExecutor.queueExecuteTask(taskRequest, Duration.ofSeconds(0));
-    }
-
-    return taskExecutor.queueTask(setupAbstractionsMap, taskRequest, Duration.ofSeconds(0));
   }
 }

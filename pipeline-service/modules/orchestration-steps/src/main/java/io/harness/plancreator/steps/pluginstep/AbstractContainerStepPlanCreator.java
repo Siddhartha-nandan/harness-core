@@ -105,8 +105,8 @@ public abstract class AbstractContainerStepPlanCreator<T extends PmsAbstractStep
     }
     PlanNode initPlanNode;
     if (featureFlagService.isEnabled(ctx.getAccountIdentifier(), CDS_USE_DELEGATE_BIJOU_API_CONTAINER_STEPS)) {
-      initPlanNode = InitContainerStepPlanCreater.createPlanForK8sInfraField(initStepNodeId, stepParameters,
-          advisorParametersInitStep, StepSpecTypeConstants.INIT_KUBERNETES_INFRA_CONTAINER_STEP);
+      initPlanNode = InitContainerStepPlanCreater.createPlanForK8sInfraField(
+          initStepNodeId, stepParameters, advisorParametersInitStep, StepSpecTypeConstants.INIT_KUBERNETES_INFRA_STEP);
     } else {
       initPlanNode = InitContainerStepPlanCreater.createPlanForK8sInfraField(
           initStepNodeId, stepParameters, advisorParametersInitStep, StepSpecTypeConstants.INIT_CONTAINER_STEP);

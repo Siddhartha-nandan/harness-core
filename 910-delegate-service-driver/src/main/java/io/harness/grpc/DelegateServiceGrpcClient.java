@@ -15,38 +15,15 @@ import static java.util.stream.Collectors.toList;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.DelegateTaskRequest;
+import io.harness.beans.Scope;
 import io.harness.callback.DelegateCallback;
 import io.harness.callback.DelegateCallbackToken;
+import io.harness.data.structure.CollectionUtils;
 import io.harness.data.structure.HarnessStringUtils;
-import io.harness.delegate.AccountId;
-import io.harness.delegate.CancelTaskRequest;
-import io.harness.delegate.CancelTaskResponse;
-import io.harness.delegate.Capability;
-import io.harness.delegate.CreatePerpetualTaskRequest;
-import io.harness.delegate.CreatePerpetualTaskResponse;
+import io.harness.delegate.*;
 import io.harness.delegate.DelegateServiceGrpc.DelegateServiceBlockingStub;
-import io.harness.delegate.DeletePerpetualTaskRequest;
-import io.harness.delegate.ObtainDocumentRequest;
-import io.harness.delegate.ObtainDocumentResponse;
-import io.harness.delegate.PerpetualTaskInfoRequest;
-import io.harness.delegate.PerpetualTaskInfoResponse;
-import io.harness.delegate.RegisterCallbackRequest;
-import io.harness.delegate.RegisterCallbackResponse;
-import io.harness.delegate.ResetPerpetualTaskRequest;
-import io.harness.delegate.SubmitTaskRequest;
-import io.harness.delegate.SubmitTaskResponse;
-import io.harness.delegate.SupportedTaskTypeRequest;
-import io.harness.delegate.SupportedTaskTypeResponse;
-import io.harness.delegate.TaskDetails;
-import io.harness.delegate.TaskExecutionStage;
-import io.harness.delegate.TaskId;
-import io.harness.delegate.TaskLogAbstractions;
-import io.harness.delegate.TaskMode;
-import io.harness.delegate.TaskProgressRequest;
-import io.harness.delegate.TaskProgressResponse;
-import io.harness.delegate.TaskSelector;
-import io.harness.delegate.TaskSetupAbstractions;
-import io.harness.delegate.TaskType;
+import io.harness.delegate.ScheduleTaskServiceGrpc.ScheduleTaskServiceBlockingStub;
+import io.harness.delegate.beans.RunnerType;
 import io.harness.delegate.beans.executioncapability.ExecutionCapability;
 import io.harness.delegate.beans.executioncapability.ExecutionCapabilityDemander;
 import io.harness.delegate.task.TaskParameters;
@@ -94,8 +71,8 @@ import org.apache.commons.lang3.tuple.Pair;
 @OwnedBy(HarnessTeam.DEL)
 public class DelegateServiceGrpcClient {
   private final DelegateServiceBlockingStub delegateServiceBlockingStub;
+  private final ScheduleTaskServiceBlockingStub scheduleTaskServiceBlockingStub;
   private final DelegateAsyncService delegateAsyncService;
-
   private final KryoSerializer referenceFalseKryoSerializer;
   private final DelegateSyncService delegateSyncService;
   private final boolean isDriverInstalledInNgService;
@@ -106,12 +83,14 @@ public class DelegateServiceGrpcClient {
       DelegateAsyncService delegateAsyncService,
       @Named("referenceFalseKryoSerializer") KryoSerializer referenceFalseKryoSerializer,
       DelegateSyncService delegateSyncService,
-      @Named("driver-installed-in-ng-service") BooleanSupplier isDriverInstalledInNgService) {
+      @Named("driver-installed-in-ng-service") BooleanSupplier isDriverInstalledInNgService,
+      ScheduleTaskServiceBlockingStub scheduleTaskServiceBlockingStub) {
     this.delegateServiceBlockingStub = delegateServiceBlockingStub;
     this.delegateAsyncService = delegateAsyncService;
     this.referenceFalseKryoSerializer = referenceFalseKryoSerializer;
     this.delegateSyncService = delegateSyncService;
     this.isDriverInstalledInNgService = isDriverInstalledInNgService.getAsBoolean();
+    this.scheduleTaskServiceBlockingStub = scheduleTaskServiceBlockingStub;
   }
 
   public String submitAsyncTaskV2(DelegateTaskRequest taskRequest, DelegateCallbackToken delegateCallbackToken,
@@ -250,6 +229,104 @@ public class DelegateServiceGrpcClient {
         taskRequest.isForceExecute(), taskRequest.isExecuteOnHarnessHostedDelegates(),
         taskRequest.getEligibleToExecuteDelegateIds(), taskRequest.isEmitEvent(), taskRequest.getStageId(),
         delegateSelectionTrackingLogEnabled, taskRequest.getSelectors());
+  }
+
+  public String submitInitTaskAsync(Scope scope, DelegateCallbackToken delegateCallbackToken,
+      ExecutionInfrastructure executionInfrastructure, List<TaskSelector> selectors, Duration holdFor,
+      Duration executionTimeout) {
+    SetupExecutionInfrastructureResponse setupExecutionInfrastructureResponse = submitInitTask(
+        scope, delegateCallbackToken, executionInfrastructure, selectors, TaskMode.ASYNC, holdFor, executionTimeout);
+    return setupExecutionInfrastructureResponse.getTaskId().getId();
+  }
+
+  public SetupExecutionInfrastructureResponse submitInitTask(Scope scope, DelegateCallbackToken delegateCallbackToken,
+      ExecutionInfrastructure executionInfrastructure, List<TaskSelector> selectors, TaskMode mode, Duration holdFor,
+      Duration executionTimeout) {
+    SchedulingConfig schedulingConfig =
+        SchedulingConfig.newBuilder()
+            .setCallbackToken(delegateCallbackToken)
+            .addAllSelectors(CollectionUtils.emptyIfNull(selectors))
+            .setRunnerType(RunnerType.RUNNER_TYPE_K8S)
+            .setOrgId(scope.getOrgIdentifier())
+            .setProjectId(scope.getProjectIdentifier())
+            .setExecutionTimeout(
+                com.google.protobuf.Duration.newBuilder().setSeconds(executionTimeout.getSeconds()).build())
+            .setSelectionTrackingLogEnabled(true)
+            .build();
+
+    SetupExecutionInfrastructureRequest setupExecutionInfrastructureRequest =
+        SetupExecutionInfrastructureRequest.newBuilder()
+            .setConfig(schedulingConfig)
+            .setAccountId(scope.getAccountIdentifier())
+            .setInfra(executionInfrastructure)
+            .build();
+
+    try {
+      return scheduleTaskServiceBlockingStub.withDeadlineAfter(30, TimeUnit.SECONDS)
+          .initTask(setupExecutionInfrastructureRequest);
+    } catch (StatusRuntimeException ex) {
+      if (ex.getStatus() != null && isNotEmpty(ex.getStatus().getDescription())) {
+        throw new DelegateServiceDriverException(ex.getStatus().getDescription());
+      }
+      throw new DelegateServiceDriverException("Unexpected error occurred while submitting init task.", ex);
+    }
+  }
+
+  public String submitExecuteTaskAsync(DelegateCallbackToken delegateCallbackToken, String accountId,
+      Execution stepExecution, Duration holdFor, List<TaskSelector> selectors, Duration executionTimeout) {
+    ScheduleTaskResponse scheduleTaskResponse = submitExecuteTask(
+        delegateCallbackToken, accountId, stepExecution, TaskMode.ASYNC, holdFor, selectors, executionTimeout);
+    return scheduleTaskResponse.getTaskId().getId();
+  }
+
+  public ScheduleTaskResponse submitExecuteTask(DelegateCallbackToken delegateCallbackToken, String accountId,
+      Execution stepExecution, TaskMode mode, Duration holdFor, List<TaskSelector> selectors,
+      Duration executionTimeout) {
+    SchedulingConfig schedulingConfig =
+        SchedulingConfig.newBuilder()
+            .addAllSelectors(CollectionUtils.emptyIfNull(selectors))
+            .setRunnerType(RunnerType.RUNNER_TYPE_K8S)
+            .setCallbackToken(delegateCallbackToken)
+            .setExecutionTimeout(
+                com.google.protobuf.Duration.newBuilder().setSeconds(executionTimeout.getSeconds()).build())
+            .setSelectionTrackingLogEnabled(true)
+            .build();
+
+    ScheduleTaskRequest scheduleTaskRequest = ScheduleTaskRequest.newBuilder()
+                                                  .setExecution(stepExecution)
+                                                  .setAccountId(accountId)
+                                                  .setConfig(schedulingConfig)
+                                                  .build();
+
+    try {
+      return scheduleTaskServiceBlockingStub.withDeadlineAfter(30, TimeUnit.SECONDS).executeTask(scheduleTaskRequest);
+    } catch (StatusRuntimeException ex) {
+      if (ex.getStatus() != null && isNotEmpty(ex.getStatus().getDescription())) {
+        throw new DelegateServiceDriverException(ex.getStatus().getDescription());
+      }
+      throw new DelegateServiceDriverException("Unexpected error occurred while submitting execute task.", ex);
+    }
+  }
+
+  public String submitCleanupTaskAsync(
+      DelegateCallbackToken delegateCallbackToken, String accountId, String infraRefId, Duration holdFor) {
+    CleanupInfraResponse cleanupInfraResponse =
+        submitCleanupTask(delegateCallbackToken, accountId, infraRefId, TaskMode.ASYNC, holdFor);
+    return cleanupInfraResponse.getTaskId().getId();
+  }
+
+  public CleanupInfraResponse submitCleanupTask(DelegateCallbackToken delegateCallbackToken, String accountId,
+      String infraRefId, TaskMode mode, Duration holdFor) {
+    CleanupInfraRequest cleanupInfraRequest =
+        CleanupInfraRequest.newBuilder().setAccountId(accountId).setInfraRefId(infraRefId).build();
+    try {
+      return scheduleTaskServiceBlockingStub.withDeadlineAfter(30, TimeUnit.SECONDS).cleanupInfra(cleanupInfraRequest);
+    } catch (StatusRuntimeException ex) {
+      if (ex.getStatus() != null && isNotEmpty(ex.getStatus().getDescription())) {
+        throw new DelegateServiceDriverException(ex.getStatus().getDescription());
+      }
+      throw new DelegateServiceDriverException("Unexpected error occurred while submitting cleanup task.", ex);
+    }
   }
 
   public TaskExecutionStage cancelTaskV2(AccountId accountId, TaskId taskId) {

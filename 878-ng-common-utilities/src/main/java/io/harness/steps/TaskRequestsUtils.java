@@ -17,11 +17,6 @@ import io.harness.beans.EnvironmentType;
 import io.harness.data.structure.CollectionUtils;
 import io.harness.delegate.AccountId;
 import io.harness.delegate.Capability;
-import io.harness.delegate.Execution;
-import io.harness.delegate.ExecutionInfrastructure;
-import io.harness.delegate.ScheduleTaskRequest;
-import io.harness.delegate.SchedulingConfig;
-import io.harness.delegate.SetupExecutionInfrastructureRequest;
 import io.harness.delegate.SubmitTaskRequest;
 import io.harness.delegate.TaskDetails;
 import io.harness.delegate.TaskLogAbstractions;
@@ -29,7 +24,6 @@ import io.harness.delegate.TaskMode;
 import io.harness.delegate.TaskSelector;
 import io.harness.delegate.TaskSetupAbstractions;
 import io.harness.delegate.TaskType;
-import io.harness.delegate.beans.RunnerType;
 import io.harness.delegate.beans.TaskData;
 import io.harness.delegate.beans.executioncapability.ExecutionCapability;
 import io.harness.delegate.beans.executioncapability.ExecutionCapabilityDemander;
@@ -42,7 +36,6 @@ import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.tasks.DelegateTaskRequest;
 import io.harness.pms.contracts.execution.tasks.TaskCategory;
 import io.harness.pms.contracts.execution.tasks.TaskRequest;
-import io.harness.pms.contracts.execution.tasks.Type;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.serializer.KryoSerializer;
 
@@ -269,83 +262,5 @@ public class TaskRequestsUtils {
           "Sending following command units to delegate task: [" + Joiner.on(", ").skipNulls().join(units) + "]";
       log.info(commandUnits);
     }
-  }
-
-  public static TaskRequest prepareInitTaskRequest(Ambiance ambiance, ExecutionInfrastructure executionInfrastructure,
-      long timeout, TaskCategory taskCategory, boolean withLogs, List<TaskSelector> selectors, Scope taskScope) {
-    String accountId = Preconditions.checkNotNull(ambiance.getSetupAbstractionsMap().get("accountId"));
-
-    LinkedHashMap<String, String> logAbstractionMap =
-        withLogs ? StepUtils.generateLogAbstractions(ambiance) : new LinkedHashMap<>();
-
-    SchedulingConfig schedulingConfig =
-        SchedulingConfig.newBuilder()
-            .addAllSelectors(CollectionUtils.emptyIfNull(selectors))
-            .setRunnerType(RunnerType.RUNNER_TYPE_K8S)
-            .setOrgId(AmbianceUtils.getOrgIdentifier(ambiance))
-            .setProjectId(AmbianceUtils.getProjectIdentifier(ambiance))
-            .setExecutionTimeout(Duration.newBuilder().setSeconds(timeout / 1000).build())
-            .setSelectionTrackingLogEnabled(true)
-            .build();
-
-    SetupExecutionInfrastructureRequest setupExecutionInfrastructureRequest =
-        SetupExecutionInfrastructureRequest.newBuilder()
-            .setConfig(schedulingConfig)
-            .setAccountId(accountId)
-            .setInfra(executionInfrastructure)
-            .build();
-
-    DelegateTaskRequest delegateTaskRequest =
-        DelegateTaskRequest.newBuilder()
-            .addAllUnits(Collections.emptyList())
-            .addAllLogKeys(
-                CollectionUtils.emptyIfNull(StepUtils.generateLogKeys(logAbstractionMap, Collections.emptyList())))
-            .setInitRequest(setupExecutionInfrastructureRequest)
-            .setTaskName(Type.INIT.name())
-            .setType(Type.INIT)
-            .build();
-
-    return TaskRequest.newBuilder()
-        .setUseReferenceFalseKryoSerializer(true)
-        .setDelegateTaskRequest(delegateTaskRequest)
-        .setTaskCategory(taskCategory)
-        .build();
-  }
-
-  public static TaskRequest prepareExecuteTaskRequest(Ambiance ambiance, Execution stepExecution, long timeout,
-      TaskCategory taskCategory, boolean withLogs, List<TaskSelector> selectors) {
-    String accountId = Preconditions.checkNotNull(ambiance.getSetupAbstractionsMap().get("accountId"));
-    LinkedHashMap<String, String> logAbstractionMap =
-        withLogs ? StepUtils.generateLogAbstractions(ambiance) : new LinkedHashMap<>();
-
-    SchedulingConfig schedulingConfig =
-        SchedulingConfig.newBuilder()
-            .addAllSelectors(CollectionUtils.emptyIfNull(selectors))
-            .setRunnerType(RunnerType.RUNNER_TYPE_K8S)
-            .setExecutionTimeout(Duration.newBuilder().setSeconds(timeout / 1000).build())
-            .setSelectionTrackingLogEnabled(true)
-            .build();
-
-    ScheduleTaskRequest scheduleTaskRequest = ScheduleTaskRequest.newBuilder()
-                                                  .setExecution(stepExecution)
-                                                  .setAccountId(accountId)
-                                                  .setConfig(schedulingConfig)
-                                                  .build();
-
-    DelegateTaskRequest delegateTaskRequest =
-        DelegateTaskRequest.newBuilder()
-            .addAllUnits(Collections.emptyList())
-            .addAllLogKeys(
-                CollectionUtils.emptyIfNull(StepUtils.generateLogKeys(logAbstractionMap, Collections.emptyList())))
-            .setExecuteRequest(scheduleTaskRequest)
-            .setTaskName(Type.EXECUTE.name())
-            .setType(Type.EXECUTE)
-            .build();
-
-    return TaskRequest.newBuilder()
-        .setUseReferenceFalseKryoSerializer(true)
-        .setDelegateTaskRequest(delegateTaskRequest)
-        .setTaskCategory(taskCategory)
-        .build();
   }
 }

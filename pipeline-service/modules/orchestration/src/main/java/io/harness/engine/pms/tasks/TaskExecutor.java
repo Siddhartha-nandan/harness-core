@@ -9,7 +9,6 @@ package io.harness.engine.pms.tasks;
 
 import io.harness.pms.contracts.execution.tasks.TaskRequest;
 import io.harness.tasks.ResponseData;
-import io.harness.tasks.SubmitTaskResponseData;
 
 import java.time.Duration;
 import java.util.Map;
@@ -23,8 +22,4 @@ public interface TaskExecutor {
 
   <T extends ResponseData> T executeTask(Map<String, String> setupAbstractions, TaskRequest taskRequest)
       throws InterruptedException;
-
-  String queueInitTask(TaskRequest taskRequest, Duration holdFor);
-
-  String queueExecuteTask(TaskRequest taskRequest, Duration holdFor);
 }

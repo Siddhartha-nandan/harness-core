@@ -5,7 +5,7 @@
  * https://polyformproject.org/wp-content/uploads/2020/05/PolyForm-Free-Trial-1.0.0.txt.
  */
 
-package io.harness.plancreator.steps.pluginstep;
+package io.harness.container.output;
 
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.annotations.dev.HarnessTeam.CI;
@@ -29,7 +29,7 @@ import org.springframework.data.annotation.TypeAlias;
 @TypeAlias("KubernetesInfraOutput")
 @JsonTypeName("KubernetesInfraOutput")
 @OwnedBy(CDP)
-@RecasterAlias("io.harness.plancreator.steps.pluginstep.KubernetesInfraOutput")
+@RecasterAlias("io.harness.container.output.KubernetesInfraOutput")
 public class KubernetesInfraOutput implements ExecutionSweepingOutput, Outcome {
   public static final String KUBERNETES_INFRA_OUTPUT = "KubernetesInfraOutput";
   @Id @NotNull(groups = {Update.class}) @SchemaIgnore String uuid;
