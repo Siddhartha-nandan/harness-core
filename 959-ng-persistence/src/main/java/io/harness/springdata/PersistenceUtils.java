@@ -11,6 +11,7 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 
 import io.harness.annotations.dev.OwnedBy;
 
+import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
 import java.time.temporal.ChronoUnit;
 import lombok.experimental.UtilityClass;
@@ -32,7 +33,7 @@ public class PersistenceUtils {
         .handleIf(ex -> {
           if ((ex instanceof TransactionException) || (ex instanceof TransientDataAccessException)) {
             return true;
-          } else if (ex instanceof MongoException) {
+          } else if (ex instanceof MongoException || ex instanceof MongoCommandException) {
             return ((MongoException) ex).hasErrorLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL);
           }
           return false;
