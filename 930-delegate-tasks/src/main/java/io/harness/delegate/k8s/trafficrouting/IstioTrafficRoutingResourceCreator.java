@@ -10,6 +10,7 @@ package io.harness.delegate.k8s.trafficrouting;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.delegate.task.k8s.trafficrouting.RouteType.HTTP;
+import static io.harness.logging.LogLevel.WARN;
 
 import static java.lang.String.format;
 
@@ -22,8 +23,6 @@ import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfig;
 import io.harness.delegate.task.k8s.trafficrouting.TrafficRoute;
 import io.harness.delegate.task.k8s.trafficrouting.TrafficRouteRule;
 import io.harness.delegate.task.k8s.trafficrouting.TrafficRoutingDestination;
-import io.harness.delegate.task.k8s.trafficrouting.util.HarnessTrafficRoutingUtils;
-import io.harness.delegate.task.k8s.trafficrouting.util.IstioTrafficRoutingUtils;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.NestedExceptionUtils;
 import io.harness.k8s.exception.KubernetesExceptionExplanation;
@@ -35,18 +34,20 @@ import io.harness.k8s.model.istio.Match;
 import io.harness.k8s.model.istio.Metadata;
 import io.harness.k8s.model.istio.VirtualService;
 import io.harness.k8s.model.istio.VirtualServiceDetails;
+import io.harness.k8s.model.istio.VirtualServiceDetailsGsonDeserializer;
 import io.harness.k8s.model.istio.VirtualServiceSpec;
+import io.harness.logging.LogCallback;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
-import com.google.inject.Inject;
+import com.google.gson.GsonBuilder;
 import io.kubernetes.client.util.Yaml;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -59,8 +60,6 @@ import org.apache.commons.lang3.tuple.Pair;
 @Slf4j
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 public class IstioTrafficRoutingResourceCreator extends TrafficRoutingResourceCreator {
-  @Inject IstioTrafficRoutingUtils istioTrafficRoutingUtils;
-  @Inject HarnessTrafficRoutingUtils harnessTrafficRoutingUtils;
   public static final String PLURAL = "virtualservices";
 
   private static final String VS_SUFFIX = "-virtual-service";
@@ -72,6 +71,9 @@ public class IstioTrafficRoutingResourceCreator extends TrafficRoutingResourceCr
       format("%s%s", HTTP_ROUTE_TYPE_PATH, "/%d/route");
   private static final Map<String, List<String>> SUPPORTED_API_MAP =
       Map.of(NETWORKING, List.of("networking.istio.io/v1alpha3", "networking.istio.io/v1beta1"));
+  private Gson gson = new GsonBuilder()
+                          .registerTypeAdapter(VirtualServiceDetails.class, new VirtualServiceDetailsGsonDeserializer())
+                          .create();
 
   @Override
   protected List<String> getManifests(K8sTrafficRoutingConfig k8sTrafficRoutingConfig, String namespace,
@@ -132,86 +134,6 @@ public class IstioTrafficRoutingResourceCreator extends TrafficRoutingResourceCr
     return Optional.empty();
   }
 
-  @Override
-  public Optional<String> getTrafficRoutingPatch(K8sTrafficRoutingConfig k8sTrafficRoutingConfig,
-      Object trafficRoutingClusterResource) throws JsonProcessingException {
-    List<String> listOfPatches = new ArrayList<>();
-    String trafficRoutingClusterResourceJson = new Gson().toJson(trafficRoutingClusterResource);
-    VirtualService virtualService =
-        new ObjectMapper().readValue(trafficRoutingClusterResourceJson, VirtualService.class);
-
-    listOfPatches.addAll(createPatchForTrafficRoutingResourceDestinations(
-        k8sTrafficRoutingConfig.getDestinations(), virtualService.getSpec().getHttp()));
-    listOfPatches.addAll(createPatchForTrafficRoutingResourceDestinations(
-        k8sTrafficRoutingConfig.getDestinations(), virtualService.getSpec().getTcp()));
-    listOfPatches.addAll(createPatchForTrafficRoutingResourceDestinations(
-        k8sTrafficRoutingConfig.getDestinations(), virtualService.getSpec().getTls()));
-
-    if (listOfPatches.size() > 0) {
-      return Optional.of(listOfPatches.toString());
-    }
-
-    return Optional.empty();
-  }
-
-  private Collection<String> createPatchForTrafficRoutingResourceDestinations(
-      List<TrafficRoutingDestination> configuredDestinations, List<VirtualServiceDetails> virtualServiceDetailsList) {
-    List<String> patches = new ArrayList<>();
-    if (virtualServiceDetailsList != null) {
-      for (int i = 0; i < virtualServiceDetailsList.size(); i++) {
-        List<HttpRouteDestination> allDestinations = new LinkedList<>();
-        List<HttpRouteDestination> matchedDestinations = new LinkedList<>();
-        List<HttpRouteDestination> nonMatchedDestinations = new LinkedList<>();
-
-        int matchedDestinationsSum = 0;
-        // looping through destinations and checking for matching destinations
-        for (HttpRouteDestination httpRouteDestination : virtualServiceDetailsList.get(i).getRoute()) {
-          for (TrafficRoutingDestination trafficRoutingDestination : configuredDestinations) {
-            if (httpRouteDestination.getDestination().getHost().equals(trafficRoutingDestination.getHost())) {
-              if (!matchedDestinations.contains(httpRouteDestination)) {
-                httpRouteDestination.setWeight(trafficRoutingDestination.getWeight());
-                matchedDestinations.add(httpRouteDestination);
-                matchedDestinationsSum +=
-                    trafficRoutingDestination.getWeight() == null ? 0 : trafficRoutingDestination.getWeight();
-              }
-              if (nonMatchedDestinations.contains(httpRouteDestination)) {
-                nonMatchedDestinations.remove(httpRouteDestination);
-              }
-              break;
-            } else {
-              if (!nonMatchedDestinations.contains(httpRouteDestination)) {
-                nonMatchedDestinations.add(httpRouteDestination);
-              }
-            }
-          }
-        }
-
-        // updating matched destinations weights and normalize remaining ones
-        if (matchedDestinations.size() > 0) {
-          if (matchedDestinationsSum < 100) {
-            allDestinations.addAll(
-                istioTrafficRoutingUtils.normalizeDestinations(nonMatchedDestinations, 100 - matchedDestinationsSum));
-            allDestinations.addAll(matchedDestinations);
-          } else {
-            allDestinations.addAll(istioTrafficRoutingUtils.normalizeDestinations(matchedDestinations, 100));
-            allDestinations.addAll(istioTrafficRoutingUtils.normalizeDestinations(nonMatchedDestinations, 0));
-          }
-
-          // creating a patch for this particular route type and route with updated destinations
-          try {
-            patches.add(format(PATCH_REPLACE_JSON_FORMAT, format(HTTP_ROUTE_TYPE_ROUTE_DESTINATION_PATH, i),
-                new ObjectMapper()
-                    .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                    .writeValueAsString(allDestinations)));
-          } catch (JsonProcessingException e) {
-            log.warn("Failed to Deserialize List of VirtualServiceDetails", e);
-          }
-        }
-      }
-    }
-    return patches;
-  }
-
   private VirtualServiceSpec getVirtualServiceSpec(
       K8sTrafficRoutingConfig k8sTrafficRoutingConfig, String stableName, String stageName) {
     IstioProviderConfig providerConfig = (IstioProviderConfig) k8sTrafficRoutingConfig.getProviderConfig();
@@ -222,13 +144,15 @@ public class IstioTrafficRoutingResourceCreator extends TrafficRoutingResourceCr
       }
       hosts = List.of(stableName);
     }
+    Map<String, Pair<Integer, Integer>> destinations =
+        super.destinationsToMap(k8sTrafficRoutingConfig.getDestinations());
+    normalizeDestinations(destinations);
 
     return VirtualServiceSpec.builder()
         .gateways(providerConfig.getGateways())
         .hosts(hosts)
-        .http(getHttpRouteSpec(k8sTrafficRoutingConfig.getRoutes(),
-            harnessTrafficRoutingUtils.normalizeDestinations(k8sTrafficRoutingConfig.getDestinations()), stableName,
-            stageName))
+        .http(getHttpRouteSpec(
+            k8sTrafficRoutingConfig.getRoutes(), super.mapToDestinations(destinations), stableName, stageName))
         .build();
   }
 
@@ -278,5 +202,105 @@ public class IstioTrafficRoutingResourceCreator extends TrafficRoutingResourceCr
                                     .build())
                    .build())
         .collect(Collectors.toList());
+  }
+
+  @Override
+  public Optional<String> generateTrafficRoutingPatch(
+      K8sTrafficRoutingConfig k8sTrafficRoutingConfig, Object trafficRoutingClusterResource, LogCallback logCallback) {
+    List<String> listOfPatches = new ArrayList<>();
+
+    try {
+      String trafficRoutingClusterResourceJson = gson.toJson(trafficRoutingClusterResource);
+      VirtualService virtualService = gson.fromJson(trafficRoutingClusterResourceJson, VirtualService.class);
+
+      listOfPatches.addAll(createPatchForTrafficRoutingResourceDestinations(
+          super.destinationsToMap(k8sTrafficRoutingConfig.getDestinations()), virtualService.getSpec().getHttp(),
+          logCallback));
+      listOfPatches.addAll(createPatchForTrafficRoutingResourceDestinations(
+          super.destinationsToMap(k8sTrafficRoutingConfig.getDestinations()), virtualService.getSpec().getTcp(),
+          logCallback));
+      listOfPatches.addAll(createPatchForTrafficRoutingResourceDestinations(
+          super.destinationsToMap(k8sTrafficRoutingConfig.getDestinations()), virtualService.getSpec().getTls(),
+          logCallback));
+    } catch (Exception e) {
+      log.error("Failed to parse Virtual Service resource from the cluster.", e);
+    }
+
+    if (listOfPatches.size() > 0) {
+      return Optional.of(listOfPatches.toString());
+    }
+
+    return Optional.empty();
+  }
+
+  private Collection<String> createPatchForTrafficRoutingResourceDestinations(
+      Map<String, Pair<Integer, Integer>> configuredDestinations, List<VirtualServiceDetails> virtualServiceDetailsList,
+      LogCallback logCallback) {
+    List<String> patches = new ArrayList<>();
+    if (virtualServiceDetailsList != null) {
+      for (int i = 0; i < virtualServiceDetailsList.size(); i++) {
+        // looping through destinations and checking for matching destinations
+        Map<String, Pair<Integer, Integer>> clusterResourceDestinations =
+            destinationsToMap(virtualServiceDetailsList.get(i).getRoute());
+
+        for (String trafficRoutingDestinationHost : configuredDestinations.keySet()) {
+          if (clusterResourceDestinations.containsKey(trafficRoutingDestinationHost)) {
+            clusterResourceDestinations.put(trafficRoutingDestinationHost,
+                Pair.of(clusterResourceDestinations.get(trafficRoutingDestinationHost).getLeft(),
+                    configuredDestinations.get(trafficRoutingDestinationHost).getLeft()));
+          } else {
+            String warningMessage = format("Traffic Routing Destination [%s] not found in the Virtual Service resource",
+                trafficRoutingDestinationHost);
+            log.warn(warningMessage);
+            logCallback.saveExecutionLog(warningMessage, WARN);
+          }
+        }
+
+        if (normalizeDestinations(clusterResourceDestinations)) {
+          logDestinationsNormalization(clusterResourceDestinations, logCallback);
+          // creating a patch for this particular route type and route with updated destinations
+          try {
+            patches.add(format(PATCH_REPLACE_JSON_FORMAT, format(HTTP_ROUTE_TYPE_ROUTE_DESTINATION_PATH, i),
+                new ObjectMapper()
+                    .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+                    .writeValueAsString(mapToDestinations(clusterResourceDestinations))));
+          } catch (JsonProcessingException e) {
+            log.warn("Failed to Deserialize List of VirtualServiceDetails", e);
+          }
+        }
+      }
+    }
+
+    return patches;
+  }
+
+  @Override
+  public Map<String, Pair<Integer, Integer>> destinationsToMap(List sourceDestinations) {
+    Map<String, Pair<Integer, Integer>> outDestinations = new HashMap<>();
+    if (sourceDestinations != null) {
+      if (sourceDestinations.get(0) instanceof TrafficRoutingDestination) {
+        return super.destinationsToMap(sourceDestinations);
+      }
+
+      ((List<HttpRouteDestination>) sourceDestinations).forEach(sourceDestination -> {
+        outDestinations.put(sourceDestination.getDestination().getHost(), Pair.of(sourceDestination.getWeight(), null));
+      });
+    }
+    return outDestinations;
+  }
+
+  @Override
+  protected List<HttpRouteDestination> mapToDestinations(Map<String, Pair<Integer, Integer>> sourceDestinations) {
+    List<HttpRouteDestination> outDestinations = new ArrayList<>();
+    if (sourceDestinations != null) {
+      for (String sourceDestinationKey : sourceDestinations.keySet()) {
+        Pair<Integer, Integer> weights = sourceDestinations.get(sourceDestinationKey);
+        outDestinations.add(HttpRouteDestination.builder()
+                                .destination(Destination.builder().host(sourceDestinationKey).build())
+                                .weight(weights.getRight() != null ? weights.getRight() : weights.getLeft())
+                                .build());
+      }
+    }
+    return outDestinations;
   }
 }

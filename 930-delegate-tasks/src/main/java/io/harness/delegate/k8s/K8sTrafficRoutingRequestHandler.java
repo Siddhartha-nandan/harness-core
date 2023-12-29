@@ -15,7 +15,6 @@ import static io.harness.k8s.exception.KubernetesExceptionMessages.TRAFFIC_ROUTI
 import static io.harness.logging.CommandExecutionStatus.SUCCESS;
 import static io.harness.logging.LogLevel.ERROR;
 import static io.harness.logging.LogLevel.INFO;
-import static io.harness.logging.LogLevel.WARN;
 
 import static software.wings.beans.LogColor.Yellow;
 import static software.wings.beans.LogHelper.color;
@@ -41,7 +40,6 @@ import io.harness.delegate.task.k8s.K8sTrafficRoutingResponse.K8sTrafficRoutingR
 import io.harness.delegate.task.k8s.client.K8sApiClient;
 import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfig;
 import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfigType;
-import io.harness.delegate.task.k8s.trafficrouting.util.HarnessTrafficRoutingUtils;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.KubernetesTaskException;
 import io.harness.exception.NestedExceptionUtils;
@@ -74,7 +72,6 @@ import java.util.Set;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.Triple;
 
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 @OwnedBy(CDP)
@@ -85,7 +82,6 @@ public class K8sTrafficRoutingRequestHandler extends K8sRequestHandler {
   @Inject private K8sTaskHelperBase k8sTaskHelperBase;
   @Inject private K8sApiClient kubernetesApiClient;
   @Inject private KubernetesContainerService kubernetesContainerService;
-  @Inject private HarnessTrafficRoutingUtils harnessTrafficRoutingUtils;
   @Inject private Map<String, TrafficRoutingResourceCreator> k8sTrafficRoutingCreators;
   private KubernetesConfig kubernetesConfig;
   private String releaseName;
@@ -202,7 +198,12 @@ public class K8sTrafficRoutingRequestHandler extends K8sRequestHandler {
       TrafficRoutingResourceCreator trafficRoutingResourceCreator =
           k8sTrafficRoutingCreators.get(trafficRoutingConfig.getProviderConfig().getProviderType().name());
 
-      checkForDestinationNormalization(trafficRoutingConfig, logCallback);
+      Map<String, Pair<Integer, Integer>> dests =
+          trafficRoutingResourceCreator.destinationsToMap(trafficRoutingConfig.getDestinations());
+      if (trafficRoutingResourceCreator.sumDestinationsWeights(dests) != 100) {
+        trafficRoutingResourceCreator.normalizeDestinations(dests, 100);
+        trafficRoutingResourceCreator.logDestinationsNormalization(dests, logCallback);
+      }
 
       List<KubernetesResource> trafficRoutingResources = trafficRoutingResourceCreator.createTrafficRoutingResources(
           trafficRoutingConfig, kubernetesConfig.getNamespace(), releaseName, availableApiVersions, logCallback);
@@ -231,19 +232,6 @@ public class K8sTrafficRoutingRequestHandler extends K8sRequestHandler {
     logCallback.saveExecutionLog("\nDone.", INFO, CommandExecutionStatus.SUCCESS);
   }
 
-  void checkForDestinationNormalization(K8sTrafficRoutingConfig trafficRoutingConfig, LogCallback logCallback) {
-    if (harnessTrafficRoutingUtils.isNormalizationNeeded(trafficRoutingConfig.getDestinations())) {
-      List<Triple<String, Integer, Integer>> destinationsNormalizationInfo =
-          harnessTrafficRoutingUtils.getTrafficRoutingDestinationNormalizationInfo(
-              trafficRoutingConfig.getDestinations());
-      logCallback.saveExecutionLog("Configured destinations weights will be normalized:", WARN);
-      destinationsNormalizationInfo.stream().forEach(triplet
-          -> logCallback.saveExecutionLog(format("[%s] destination weight [%s] will be normalized to value [%s].",
-              color(triplet.getLeft(), Yellow, Bold), color(String.valueOf(triplet.getMiddle()), Yellow, Bold),
-              color(String.valueOf(triplet.getRight()), Yellow, Bold))));
-    }
-  }
-
   Optional<String> prepareTrafficRoutingPatch(K8sInfraDelegateConfig k8sInfraDelegateConfig,
       K8sTrafficRoutingConfig trafficRoutingConfig, TrafficRoutingInfoDTO trafficRoutingInfo,
       ILogStreamingTaskClient logStreamingTaskClient, CommandUnitsProgress commandUnitsProgress)
@@ -259,8 +247,11 @@ public class K8sTrafficRoutingRequestHandler extends K8sRequestHandler {
         trafficRoutingInfo.getName(), k8sInfraDelegateConfig.getNamespace(), trafficRoutingInfo.getPlural(),
         K8sApiVersion.fromApiVersion(trafficRoutingInfo.getVersion()));
 
-    Optional<String> patch = k8sTrafficRoutingCreators.get(trafficRoutingInfo.getPlural())
-                                 .getTrafficRoutingPatch(trafficRoutingConfig, trafficRoutingClusterResource);
+    TrafficRoutingResourceCreator trafficRoutingResourceCreator =
+        k8sTrafficRoutingCreators.get(trafficRoutingInfo.getPlural());
+
+    Optional<String> patch = trafficRoutingResourceCreator.generateTrafficRoutingPatch(
+        trafficRoutingConfig, trafficRoutingClusterResource, logCallback);
 
     if (patch.isEmpty()) {
       logCallback.saveExecutionLog(format("Failed to create patch object, therefore resource %s will not be updated",

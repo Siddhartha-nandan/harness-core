@@ -11,12 +11,17 @@ import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.logging.LogLevel.INFO;
 
+import static software.wings.beans.LogColor.Yellow;
+import static software.wings.beans.LogHelper.color;
+import static software.wings.beans.LogWeight.Bold;
+
 import static java.lang.String.format;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfig;
+import io.harness.delegate.task.k8s.trafficrouting.TrafficRoutingDestination;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.k8s.manifest.ManifestHelper;
 import io.harness.k8s.model.KubernetesResource;
@@ -26,15 +31,18 @@ import io.harness.logging.LogCallback;
 import io.harness.logging.LogLevel;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 @AllArgsConstructor
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
@@ -130,11 +138,150 @@ public abstract class TrafficRoutingResourceCreator {
                    .build());
   }
 
+  public void logDestinationsNormalization(Map<String, Pair<Integer, Integer>> destinations, LogCallback logCallback) {
+    if (destinations != null) {
+      for (String destinationHost : destinations.keySet()) {
+        Pair<Integer, Integer> weights = destinations.get(destinationHost);
+        if (weights.getLeft() != null && weights.getRight() != null
+            && weights.getLeft().compareTo(weights.getRight()) != 0) {
+          logCallback.saveExecutionLog(format("Destination [%s] weight will be normalized from [%s] to [%s].",
+              color(destinationHost, Yellow, Bold), color(String.valueOf(weights.getLeft()), Yellow, Bold),
+              color(String.valueOf(weights.getRight()), Yellow, Bold)));
+        }
+      }
+    }
+  }
+
+  public Map<String, Pair<Integer, Integer>> destinationsToMap(List sourceDestinations) {
+    Map<String, Pair<Integer, Integer>> outDestinations = new HashMap<>();
+    if (sourceDestinations != null) {
+      ((List<TrafficRoutingDestination>) sourceDestinations).forEach(sourceDestination -> {
+        outDestinations.put(sourceDestination.getHost(), Pair.of(sourceDestination.getWeight(), null));
+      });
+    }
+    return outDestinations;
+  }
+
+  public boolean normalizeDestinations(Map<String, Pair<Integer, Integer>> destinations) {
+    // recognizing matched and unmatched destinations
+    int matchedDestinationsWeightsSum = 0;
+    Map<String, Pair<Integer, Integer>> matchedDestinations = new HashMap<>();
+    Map<String, Pair<Integer, Integer>> nonMatchedDestinations = new HashMap<>();
+    for (String destinationHost : destinations.keySet()) {
+      Pair<Integer, Integer> destWeights = destinations.get(destinationHost);
+      if (destWeights.getRight() != null) {
+        matchedDestinationsWeightsSum += destWeights.getRight();
+        matchedDestinations.put(destinationHost, Pair.of(destWeights.getLeft(), destWeights.getRight()));
+      } else {
+        nonMatchedDestinations.put(destinationHost, Pair.of(destWeights.getLeft(), null));
+      }
+    }
+
+    return normalizeDestinations(
+        destinations, matchedDestinationsWeightsSum, matchedDestinations, nonMatchedDestinations);
+  }
+
+  protected boolean normalizeDestinations(Map<String, Pair<Integer, Integer>> destinations,
+      int matchedDestinationsWeightsSum, Map<String, Pair<Integer, Integer>> matchedDestinations,
+      Map<String, Pair<Integer, Integer>> nonMatchedDestinations) {
+    // normalizing matched and unmatched destinations
+    if (matchedDestinations.size() > 0) {
+      if (matchedDestinationsWeightsSum < 100) {
+        destinations.putAll(normalizeDestinations(nonMatchedDestinations, 100 - matchedDestinationsWeightsSum));
+        destinations.putAll(matchedDestinations);
+      } else {
+        destinations.putAll(normalizeDestinations(matchedDestinations, 100));
+        destinations.putAll(normalizeDestinations(nonMatchedDestinations, 0));
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+  public int sumDestinationsWeights(Map<String, Pair<Integer, Integer>> destinations) {
+    return destinations != null
+        ? destinations.keySet()
+              .stream()
+              .mapToInt(host
+                  -> destinations.get(host).getRight() != null ? destinations.get(host).getRight()
+                                                               : destinations.get(host).getLeft())
+              .sum()
+        : 0;
+  }
+
+  public Map<String, Pair<Integer, Integer>> normalizeDestinations(
+      Map<String, Pair<Integer, Integer>> sourceDestinations, int cap) {
+    int sum = sumDestinationsWeights(sourceDestinations);
+
+    Map<String, Pair<Integer, Integer>> normalizedDestinations = new HashMap<>();
+    AtomicInteger normalizedSum = new AtomicInteger();
+    for (String host : sourceDestinations.keySet()) {
+      Pair<Integer, Integer> weights = sourceDestinations.get(host);
+      int normalizedWeight = normalizeWeight(
+          sum, weights.getRight() != null ? weights.getRight() : weights.getLeft(), sourceDestinations.size(), cap);
+      normalizedDestinations.put(host, Pair.of(weights.getLeft(), normalizedWeight));
+      normalizedSum.addAndGet(normalizedWeight);
+    }
+    return normalizeDestinations(normalizedDestinations, normalizedSum.get(), cap);
+  }
+
+  private Map<String, Pair<Integer, Integer>> normalizeDestinations(
+      Map<String, Pair<Integer, Integer>> normalizedDestinations, int normalizedSum, int cap) {
+    int correctionCount = Math.abs(cap - normalizedSum);
+    int step = 1;
+    if (normalizedSum > cap) {
+      step = -1;
+    }
+
+    Map<String, Pair<Integer, Integer>> normalizedCorrectedDestinations = new HashMap<>();
+    for (String host : normalizedDestinations.keySet()) {
+      Pair<Integer, Integer> weights = normalizedDestinations.get(host);
+      if (weights.getRight() != null && weights.getRight() > 0 && correctionCount > 0) {
+        normalizedCorrectedDestinations.put(host, Pair.of(weights.getLeft(), weights.getRight() + step));
+        correctionCount--;
+      } else {
+        normalizedCorrectedDestinations.put(host, Pair.of(weights.getLeft(), weights.getRight()));
+      }
+    }
+
+    return normalizedCorrectedDestinations;
+  }
+
+  protected int normalizeWeight(int sum, Integer weight, int groupSize, int cap) {
+    if (sum == 0) {
+      return (int) Math.round((double) cap / (double) groupSize);
+    }
+    return weight == null ? 0 : (int) Math.round((double) weight * (double) cap / (double) sum);
+  }
+
+  public boolean isNormalizationNeeded(List destinations, int cap) {
+    return sumDestinationsWeights(destinationsToMap(destinations)) != cap;
+  }
+
+  public boolean isNormalizationNeeded(List destinations) {
+    return isNormalizationNeeded(destinations, 100);
+  }
+
   protected abstract String getMainResourceKind();
 
   protected abstract String getMainResourceKindPlural();
   public abstract Optional<String> getSwapTrafficRoutingPatch(String stable, String stage);
 
-  public abstract Optional<String> getTrafficRoutingPatch(K8sTrafficRoutingConfig k8sTrafficRoutingConfig,
-      Object trafficRoutingClusterResource) throws JsonProcessingException;
+  public abstract Optional<String> generateTrafficRoutingPatch(K8sTrafficRoutingConfig k8sTrafficRoutingConfig,
+      Object trafficRoutingClusterResource, LogCallback logCallback) throws JsonProcessingException;
+
+  protected List mapToDestinations(Map<String, Pair<Integer, Integer>> sourceDestinations) {
+    List<TrafficRoutingDestination> outDestinations = new ArrayList<>();
+    if (sourceDestinations != null) {
+      for (String sourceDestinationKey : sourceDestinations.keySet()) {
+        Pair<Integer, Integer> weights = sourceDestinations.get(sourceDestinationKey);
+        outDestinations.add(TrafficRoutingDestination.builder()
+                                .host(sourceDestinationKey)
+                                .weight(weights.getLeft() != null ? weights.getLeft() : weights.getRight())
+                                .build());
+      }
+    }
+    return outDestinations;
+  }
 }

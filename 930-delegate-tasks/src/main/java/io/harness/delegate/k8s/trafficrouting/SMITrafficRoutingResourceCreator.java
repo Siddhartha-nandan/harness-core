@@ -9,6 +9,7 @@ package io.harness.delegate.k8s.trafficrouting;
 
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+import static io.harness.logging.LogLevel.WARN;
 
 import static java.lang.String.format;
 
@@ -22,8 +23,6 @@ import io.harness.delegate.task.k8s.trafficrouting.SMIProviderConfig;
 import io.harness.delegate.task.k8s.trafficrouting.TrafficRoute;
 import io.harness.delegate.task.k8s.trafficrouting.TrafficRouteRule;
 import io.harness.delegate.task.k8s.trafficrouting.TrafficRoutingDestination;
-import io.harness.delegate.task.k8s.trafficrouting.util.HarnessTrafficRoutingUtils;
-import io.harness.delegate.task.k8s.trafficrouting.util.SMITrafficRoutingUtils;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.NestedExceptionUtils;
 import io.harness.k8s.exception.KubernetesExceptionExplanation;
@@ -35,19 +34,21 @@ import io.harness.k8s.model.smi.Match;
 import io.harness.k8s.model.smi.Metadata;
 import io.harness.k8s.model.smi.RouteMatch;
 import io.harness.k8s.model.smi.RouteSpec;
+import io.harness.k8s.model.smi.RouteSpecGsonDeserializer;
 import io.harness.k8s.model.smi.SMIRoute;
 import io.harness.k8s.model.smi.TrafficSplit;
 import io.harness.k8s.model.smi.TrafficSplitSpec;
+import io.harness.logging.LogCallback;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
-import com.google.inject.Inject;
+import com.google.gson.GsonBuilder;
 import io.kubernetes.client.util.Yaml;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -56,13 +57,12 @@ import java.util.stream.Stream;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 @NoArgsConstructor
 @Slf4j
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_K8S})
 public class SMITrafficRoutingResourceCreator extends TrafficRoutingResourceCreator {
-  @Inject SMITrafficRoutingUtils smiTrafficRoutingUtils;
-  @Inject HarnessTrafficRoutingUtils harnessTrafficRoutingUtils;
   public static final String PLURAL = "trafficsplits";
 
   private static final String TRAFFIC_SPLIT_SUFFIX = "-traffic-split";
@@ -79,6 +79,7 @@ public class SMITrafficRoutingResourceCreator extends TrafficRoutingResourceCrea
       SPECS,
       List.of("specs.smi-spec.io/v1alpha1", "specs.smi-spec.io/v1alpha2", "specs.smi-spec.io/v1alpha3",
           "specs.smi-spec.io/v1alpha4"));
+  private Gson gson = new GsonBuilder().registerTypeAdapter(RouteSpec.class, new RouteSpecGsonDeserializer()).create();
 
   @Override
   protected List<String> getManifests(K8sTrafficRoutingConfig k8sTrafficRoutingConfig, String namespace,
@@ -128,78 +129,6 @@ public class SMITrafficRoutingResourceCreator extends TrafficRoutingResourceCrea
     return Optional.empty();
   }
 
-  @Override
-  public Optional<String> getTrafficRoutingPatch(K8sTrafficRoutingConfig k8sTrafficRoutingConfig,
-      Object trafficRoutingClusterResource) throws JsonProcessingException {
-    List<String> listOfPatches = new ArrayList<>();
-    String trafficRoutingClusterResourceJson = new Gson().toJson(trafficRoutingClusterResource);
-    TrafficSplit trafficSplit = new ObjectMapper().readValue(trafficRoutingClusterResourceJson, TrafficSplit.class);
-    listOfPatches.addAll(createPatchForTrafficRoutingResourceDestinations(
-        k8sTrafficRoutingConfig.getDestinations(), trafficSplit.getSpec().getBackends()));
-
-    if (listOfPatches.size() > 0) {
-      return Optional.of(listOfPatches.toString());
-    }
-
-    return Optional.empty();
-  }
-
-  private Collection<String> createPatchForTrafficRoutingResourceDestinations(
-      List<TrafficRoutingDestination> configuredDestinations, List<Backend> backendList) {
-    List<String> patches = new ArrayList<>();
-    if (backendList != null) {
-      List<Backend> allDestinations = new LinkedList<>();
-      List<Backend> matchedDestinations = new LinkedList<>();
-      List<Backend> nonMatchedDestinations = new LinkedList<>();
-
-      int matchedDestinationsSum = 0;
-      // looping through destinations and checking for matching destinations
-      for (Backend backend : backendList) {
-        for (TrafficRoutingDestination trafficRoutingDestination : configuredDestinations) {
-          if (backend.getService().equals(trafficRoutingDestination.getHost())) {
-            if (!matchedDestinations.contains(backend)) {
-              backend.setWeight(trafficRoutingDestination.getWeight());
-              matchedDestinations.add(backend);
-              matchedDestinationsSum +=
-                  trafficRoutingDestination.getWeight() == null ? 0 : trafficRoutingDestination.getWeight();
-            }
-            if (nonMatchedDestinations.contains(backend)) {
-              nonMatchedDestinations.remove(backend);
-            }
-            break;
-          } else {
-            if (!nonMatchedDestinations.contains(backend)) {
-              nonMatchedDestinations.add(backend);
-            }
-          }
-        }
-      }
-
-      // updating matched destinations weights and normalize remaining ones
-      if (matchedDestinations.size() > 0) {
-        if (matchedDestinationsSum < 100) {
-          allDestinations.addAll(
-              smiTrafficRoutingUtils.normalizeDestinations(nonMatchedDestinations, 100 - matchedDestinationsSum));
-          allDestinations.addAll(matchedDestinations);
-        } else {
-          allDestinations.addAll(smiTrafficRoutingUtils.normalizeDestinations(matchedDestinations, 100));
-          allDestinations.addAll(smiTrafficRoutingUtils.normalizeDestinations(nonMatchedDestinations, 0));
-        }
-
-        // creating a patch for this particular route type and route with updated destinations
-        try {
-          patches.add(format(PATCH_REPLACE_JSON_FORMAT, BACKENDS_PATH,
-              new ObjectMapper()
-                  .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                  .writeValueAsString(allDestinations)));
-        } catch (JsonProcessingException e) {
-          log.warn("Failed to Deserialize List of VirtualServiceDetails", e);
-        }
-      }
-    }
-    return patches;
-  }
-
   private TrafficSplit getTrafficSplit(K8sTrafficRoutingConfig k8sTrafficRoutingConfig, String namespace,
       String releaseName, String stableName, String stageName, String apiVersion) {
     String name = getTrafficRoutingResourceName(stableName, TRAFFIC_SPLIT_SUFFIX, TRAFFIC_SPLIT_DEFAULT_NAME);
@@ -207,25 +136,29 @@ public class SMITrafficRoutingResourceCreator extends TrafficRoutingResourceCrea
     String rootService = getRootService((SMIProviderConfig) k8sTrafficRoutingConfig.getProviderConfig(), stableName);
     rootService = updatePlaceHoldersIfExist(rootService, stableName, stageName);
 
+    Map<String, Pair<Integer, Integer>> destinations = destinationsToMap(k8sTrafficRoutingConfig.getDestinations());
+    normalizeDestinations(destinations);
+
     return TrafficSplit.builder()
         .metadata(metadata)
         .apiVersion(apiVersion)
         .spec(TrafficSplitSpec.builder()
-                  .backends(getBackends(
-                      harnessTrafficRoutingUtils.normalizeDestinations(k8sTrafficRoutingConfig.getDestinations()),
-                      stableName, stageName))
+                  .backends(getBackends(destinations, stableName, stageName))
                   .service(rootService)
                   .build())
         .build();
   }
 
   private List<Backend> getBackends(
-      List<TrafficRoutingDestination> normalizedDestinations, String stableName, String stageName) {
-    return normalizedDestinations.stream()
-        .map(dest
+      Map<String, Pair<Integer, Integer>> normalizedDestinations, String stableName, String stageName) {
+    return normalizedDestinations.keySet()
+        .stream()
+        .map(host
             -> Backend.builder()
-                   .service(updatePlaceHoldersIfExist(dest.getHost(), stableName, stageName))
-                   .weight(dest.getWeight())
+                   .service(updatePlaceHoldersIfExist(host, stableName, stageName))
+                   .weight(normalizedDestinations.get(host).getRight() != null
+                           ? normalizedDestinations.get(host).getRight()
+                           : normalizedDestinations.get(host).getLeft())
                    .build())
         .collect(Collectors.toList());
   }
@@ -299,5 +232,93 @@ public class SMITrafficRoutingResourceCreator extends TrafficRoutingResourceCrea
               .map(route -> RouteMatch.builder().kind(route.getKind()).name(route.getMetadata().getName()).build())
               .collect(Collectors.toList()));
     }
+  }
+
+  @Override
+  public Optional<String> generateTrafficRoutingPatch(
+      K8sTrafficRoutingConfig k8sTrafficRoutingConfig, Object trafficRoutingClusterResource, LogCallback logCallback) {
+    List<String> listOfPatches = new ArrayList<>();
+    try {
+      String trafficRoutingClusterResourceJson = gson.toJson(trafficRoutingClusterResource);
+      TrafficSplit trafficSplit = gson.fromJson(trafficRoutingClusterResourceJson, TrafficSplit.class);
+
+      listOfPatches.addAll(createPatchForTrafficRoutingResourceDestinations(
+          super.destinationsToMap(k8sTrafficRoutingConfig.getDestinations()), trafficSplit.getSpec().getBackends(),
+          logCallback));
+    } catch (Exception e) {
+      log.error("Failed to parse Traffic Split resource from the cluster.", e);
+    }
+
+    if (listOfPatches.size() > 0) {
+      return Optional.of(listOfPatches.toString());
+    }
+
+    return Optional.empty();
+  }
+
+  private Collection<String> createPatchForTrafficRoutingResourceDestinations(
+      Map<String, Pair<Integer, Integer>> configuredDestinations, List<Backend> backendList, LogCallback logCallback) {
+    List<String> patches = new ArrayList<>();
+    if (backendList != null) {
+      // looping through destinations and checking for matching destinations
+      Map<String, Pair<Integer, Integer>> clusterResourceDestinations = destinationsToMap(backendList);
+
+      for (String trafficRoutingDestinationHost : configuredDestinations.keySet()) {
+        if (clusterResourceDestinations.containsKey(trafficRoutingDestinationHost)) {
+          clusterResourceDestinations.put(trafficRoutingDestinationHost,
+              Pair.of(clusterResourceDestinations.get(trafficRoutingDestinationHost).getLeft(),
+                  configuredDestinations.get(trafficRoutingDestinationHost).getLeft()));
+        } else {
+          String warningMessage = format("Traffic Routing Destination [%s] not found in the Virtual Service resource",
+              trafficRoutingDestinationHost);
+          log.warn(warningMessage);
+          logCallback.saveExecutionLog(warningMessage, WARN);
+        }
+      }
+
+      if (normalizeDestinations(clusterResourceDestinations)) {
+        logDestinationsNormalization(clusterResourceDestinations, logCallback);
+        // creating a patch for this particular route type and route with updated destinations
+        try {
+          patches.add(format(PATCH_REPLACE_JSON_FORMAT, BACKENDS_PATH,
+              new ObjectMapper()
+                  .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+                  .writeValueAsString(mapToDestinations(clusterResourceDestinations))));
+        } catch (JsonProcessingException e) {
+          log.warn("Failed to Deserialize List of VirtualServiceDetails", e);
+        }
+      }
+    }
+    return patches;
+  }
+
+  @Override
+  public Map<String, Pair<Integer, Integer>> destinationsToMap(List sourceDestinations) {
+    Map<String, Pair<Integer, Integer>> outDestinations = new HashMap<>();
+    if (sourceDestinations != null) {
+      if (sourceDestinations.get(0) instanceof TrafficRoutingDestination) {
+        return super.destinationsToMap(sourceDestinations);
+      }
+
+      ((List<Backend>) sourceDestinations).forEach(sourceDestination -> {
+        outDestinations.put(sourceDestination.getService(), Pair.of(sourceDestination.getWeight(), null));
+      });
+    }
+    return outDestinations;
+  }
+
+  @Override
+  protected List<Backend> mapToDestinations(Map<String, Pair<Integer, Integer>> sourceDestinations) {
+    List<Backend> outDestinations = new ArrayList<>();
+    if (sourceDestinations != null) {
+      for (String sourceDestinationKey : sourceDestinations.keySet()) {
+        Pair<Integer, Integer> weights = sourceDestinations.get(sourceDestinationKey);
+        outDestinations.add(Backend.builder()
+                                .service(sourceDestinationKey)
+                                .weight(weights.getRight() != null ? weights.getRight() : weights.getLeft())
+                                .build());
+      }
+    }
+    return outDestinations;
   }
 }
