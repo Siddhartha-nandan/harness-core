@@ -9,8 +9,6 @@ package io.harness.depanalyzer;
 
 import io.harness.buildcleaner.MavenManifest;
 import io.harness.buildcleaner.bazel.BuildFile;
-import io.harness.buildcleaner.bazel.JavaBinary;
-import io.harness.buildcleaner.bazel.JavaLibrary;
 import io.harness.buildcleaner.common.SymbolDependencyMap;
 import io.harness.buildcleaner.javaparser.ClassMetadata;
 import io.harness.buildcleaner.javaparser.ClasspathParser;
@@ -29,7 +27,6 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -48,9 +45,7 @@ import com.google.common.graph.MutableGraph;
 
 @Slf4j
 public class DependecyAnalyzer {
-    private static final String DEFAULT_VISIBILITY = "//visibility:public";
     private static final String BUILD_CLEANER_INDEX_FILE_NAME = ".build-cleaner-index";
-    private static final String DEFAULT_JAVA_LIBRARY_NAME = "module";
     private CommandLine options;
     private MavenManifest mavenManifest;
     private MavenManifest mavenManifestOverride;
@@ -84,7 +79,7 @@ public class DependecyAnalyzer {
         log.debug("Total Java classes found: " + harnessSymbolMap.getCacheSize());
 
 //        Path dirPath = Paths.get("950-delegate-tasks-beans/src/main/java/io/harness/connector/helper");
-//        printModuleDependencies(module(), harnessSymbolMap);
+        printModuleDependencies(module(), harnessSymbolMap);
 
         DirectoryGraphBuilder graphBuilder = new DirectoryGraphBuilder();
         MutableGraph<Path> graph = graphBuilder.getGraph();
@@ -93,8 +88,8 @@ public class DependecyAnalyzer {
         // Create Graph
         buildGraph(graph, module(), harnessSymbolMap);
 
-//        GraphUtils.printIndependentPackages(graph, module());
-        generateBuildForIndependentModule(graph, harnessSymbolMap);
+        GraphUtils.printIndependentPackages(graph, module());
+
 //        GraphUtils.printDisconnectedComponents(graph);
 //
 //        GraphUtils.findAllCycles(graph);
@@ -121,7 +116,7 @@ public class DependecyAnalyzer {
             classpathParser.parseClasses(parseClassPattern, new HashSet<>());
 
             // Get dependencies and add edges
-            Set<String> dependencies = getModuleDependenciesDirectory(path, classpathParser, harnessSymbolMap);
+            Set<String> dependencies = getModuleDependencies(path, classpathParser, harnessSymbolMap);
             for (String destination : dependencies) {
                 Path destinationPath = Paths.get(destination);
                 if(destinationPath.equals(path)){
@@ -144,41 +139,6 @@ public class DependecyAnalyzer {
                     throw new RuntimeException(e);
                 }
             });
-    }
-
-    private void generateBuildForIndependentModule(MutableGraph<Path> graph, SymbolDependencyMap harnessSymbolMap)
-            throws IOException, FileNotFoundException {
-        Set<Path> independentModules = GraphUtils.getIndependentPackages(graph, module());
-        for (Path path : independentModules) {
-            try {
-                Optional<BuildFile> buildFile = generateBuildForModule(path, harnessSymbolMap);
-
-                if (buildFile.isEmpty()) {
-                    log.error("Could not generate build file for {}", path);
-                    return;
-                }
-
-                Path packagePath = workspace().resolve(path);
-                Path buildFilePath = Paths.get(packagePath.toString(), "/BUILD.bazel");
-
-                if (!Files.exists(buildFilePath) || options.hasOption("overwriteExistingBuildFiles")) {
-                    log.info("Writing Build file for Module: {}", path);
-                    buildFile.get().writeToPackage(workspace().resolve(path));
-                    return;
-                }
-
-                log.info("Updating dependencies for the existing buildFile at: {}", buildFilePath);
-                // Need to update the existing file with new content, after replacing the dependencies.
-                // Assumptions:
-                // - The BUILD file has at most one java_library rule
-                // - The BUILD file has at most one java_binary rule.
-                // - Empty dependencies are explicitly mentioned in the rules: Eg: deps = [] and runtime_deps = []
-                buildFile.get().updateDependencies(buildFilePath);
-
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
     }
     /**
      * Creates symbol to package path index using package parser. If an index file already exists, directly
@@ -235,33 +195,6 @@ public class DependecyAnalyzer {
         }
     }
 
-    private Set<String> getModuleDependencies(
-            Path path, ClasspathParser classpathParser, SymbolDependencyMap harnessSymbolMap) {
-        Set<String> dependencies = new TreeSet<>();
-        for (String importStatement : classpathParser.getUsedTypes()) {
-            if (importStatement.startsWith("java.")) {
-                continue;
-            }
-
-            Optional<String> resolvedSymbol = resolve(importStatement, harnessSymbolMap);
-
-            // Skip the symbols from the same package. Resolved symbol starts with "//" and ends with ":module" and rest of
-            // it is just a path - therefore, removing first two characters before comparing.
-            if (resolvedSymbol.isPresent()
-                    && resolvedSymbol.get().substring(2, resolvedSymbol.get().length() - 7).equals(path.toString())) {
-                continue;
-            }
-
-            resolvedSymbol.ifPresent(symbol -> log.debug("Adding dependency to {} for import {}", symbol, importStatement));
-            resolvedSymbol.ifPresent(dependencies::add);
-            if (resolvedSymbol.isEmpty()) {
-                log.error("No build dependency found for {}", importStatement);
-            }
-        }
-
-        return dependencies;
-    }
-
     /**
      * Helper method to resolve the import statement to get
      * the dependencies for the module using the symbol map.
@@ -271,7 +204,7 @@ public class DependecyAnalyzer {
      * @param harnessSymbolMap having mapping from Harness classes to build paths.
      * @return dependencies for the module as a set.
      */
-    private Set<String> getModuleDependenciesDirectory(
+    private Set<String> getModuleDependencies(
             Path path, ClasspathParser classpathParser, SymbolDependencyMap harnessSymbolMap) {
         Set<String> dependencies = new TreeSet<>();
         for (String importStatement : classpathParser.getUsedTypes()) {
@@ -279,7 +212,7 @@ public class DependecyAnalyzer {
                 continue;
             }
 
-            Optional<String> resolvedSymbol = resolveImportToDirectory(importStatement, harnessSymbolMap);
+            Optional<String> resolvedSymbol = resolve(importStatement, harnessSymbolMap);
             // Skip the symbols from the same package. Resolved symbol starts with "//" and ends with ":module" and rest of
             // it is just a path - therefore, removing first two characters before comparing.
             if (resolvedSymbol.isPresent()
@@ -297,54 +230,16 @@ public class DependecyAnalyzer {
         return dependencies;
     }
 
-    /**
-     * Generate build file for the path relative the workspace. Takes care of resolving symbols for
-     * all source files matching the srcsGlob pattern.
-     *
-     * @param path relative to the workspace.
-     * @param harnessSymbolMap having mapping from Harness classes to build paths.
-     * @return optionally build file if source files are > 1.
-     * @throws IOException
-     * @throws FileNotFoundException
-     */
-    @VisibleForTesting
-    protected Optional<BuildFile> generateBuildForModule(Path path, SymbolDependencyMap harnessSymbolMap)
-            throws IOException, FileNotFoundException {
-        // Create build for the package.
-        Set<String> sourceFiles = getSourceFiles(workspace().resolve(path));
-        if (sourceFiles.isEmpty()) {
-            log.warn("No sources found for {}", path);
-            return Optional.empty();
-        }
-
-        // Setup classpath parser to get imports for java files for the module in context and try
-        // resolving each of the imports.
-        // Set "findBuildInParent" to false, as we only need import statements for the files in this folder
-        // and don't care about the BUILD file paths.
+    public void printModuleDependencies(Path path, SymbolDependencyMap harnessSymbolMap) throws IOException, FileNotFoundException{
         ClasspathParser classpathParser = this.packageParser.getClassPathParser();
         String parseClassPattern = path.toString().isEmpty() ? srcsGlob() : path + "/" + srcsGlob();
         classpathParser.parseClasses(parseClassPattern, new HashSet<>());
 
         Set<String> dependencies = getModuleDependencies(path, classpathParser, harnessSymbolMap);
 
-        final BuildFile buildFile = new BuildFile();
-        // We run analysis even for test only targets, but it will skip PMD & sonar. Will run only checkstyle
-        buildFile.enableAnalysisPerModule();
-
-        final JavaLibrary javaLibrary =
-                new JavaLibrary(DEFAULT_JAVA_LIBRARY_NAME, DEFAULT_VISIBILITY, srcsGlob(), dependencies);
-        buildFile.addJavaLibrary(javaLibrary);
-        // TODO: For root level targets add additional test library
-
-        // Find main files in the folder and create java binary targets.
-        for (final String className : classpathParser.getMainClasses()) {
-            final JavaBinary javaBinary = new JavaBinary(className, DEFAULT_VISIBILITY,
-                    getPackageName(classpathParser) + "." + className, /*runTimeDeps=*/Collections.singleton(":module"),
-                    /*deps=*/Collections.emptySet());
-            buildFile.addJavaBinary(javaBinary);
+        for (String dep: dependencies){
+            System.out.println(dep);
         }
-
-        return Optional.of(buildFile);
     }
 
     /**
@@ -353,7 +248,7 @@ public class DependecyAnalyzer {
      * @param harnessSymbolMap containing java symbols to build dependency map.
      * @return Optional build target name which has the import symbol.
      */
-    private Optional<String> resolveImportToDirectory(String importStatement, SymbolDependencyMap harnessSymbolMap) {
+    private Optional<String> resolve(String importStatement, SymbolDependencyMap harnessSymbolMap) {
         Optional<String> resolvedSymbol = Optional.empty();
 
         if (mavenManifestOverride != null) {
@@ -386,43 +281,6 @@ public class DependecyAnalyzer {
     }
 
     /**
-     * Find the dependency to include for the import statement.
-     * @param importStatement to resolve.
-     * @param harnessSymbolMap containing java symbols to build dependency map.
-     * @return Optional build target name which has the import symbol.
-     */
-    private Optional<String> resolve(String importStatement, SymbolDependencyMap harnessSymbolMap) {
-        Optional<String> resolvedSymbol = Optional.empty();
-
-        // Look up symbol in the maven manifest override.
-        if (mavenManifestOverride != null) {
-            resolvedSymbol = mavenManifestOverride.getTarget(importStatement);
-            if (resolvedSymbol.isPresent()) {
-                return resolvedSymbol;
-            }
-        }
-
-        // Look up symbol in the harness symbol map.
-        resolvedSymbol = harnessSymbolMap.getTarget(importStatement);
-        if (resolvedSymbol.isPresent()) {
-            // For Java targets, we don't have java_library name in the Symbol dependency map.
-            if (!resolvedSymbol.get().contains(":")) {
-                return Optional.of(String.format("//%s:%s", resolvedSymbol.get(), DEFAULT_JAVA_LIBRARY_NAME));
-            }
-            return resolvedSymbol;
-        }
-
-        // Look up symbol in the maven manifest.
-        if (mavenManifest != null) {
-            resolvedSymbol = mavenManifest.getTarget(importStatement);
-            if (resolvedSymbol.isPresent() && !resolvedSymbol.get().equals("@maven//:io_harness_ng_license_beans")) {
-                return resolvedSymbol;
-            }
-        }
-        return Optional.empty();
-    }
-
-    /**
      * Finds java source files present in the directory.
      * @param directory to search.
      * @return Set of java files in the input folder.
@@ -437,21 +295,6 @@ public class DependecyAnalyzer {
             paths.forEach(path -> sourceFileNames.add(path.getFileName().toString()));
         }
         return sourceFileNames;
-    }
-
-    private String getPackageName(ClasspathParser classpathParser) {
-        Set<String> packageNames = classpathParser.getPackages();
-        if (packageNames.size() == 0) {
-            log.error("No package name found for module: " + module());
-            return "";
-        }
-
-        if (packageNames.size() > 1) {
-            log.error(
-                    "Package name not consistent across files in the module: " + module() + ". Found packages: " + packageNames);
-        }
-
-        return packageNames.stream().findFirst().get();
     }
 
     private boolean indexFileExists() {

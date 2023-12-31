@@ -9,9 +9,13 @@ package io.harness.depanalyzer;
 
 import com.google.common.graph.*;
 
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.util.*;
+import java.io.File;
 import java.nio.file.Files;
+import java.io.FileNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -62,9 +66,13 @@ public class GraphUtils {
         // (implementation not shown for brevity)
     }
 
-    public static Set<Path> getIndependentPackages(MutableGraph<Path> graph, Path filterDirectory) {
+    public static void printIndependentPackages(MutableGraph<Path> graph, Path filterDirectory) {
         System.out.println("Independent Packages:");
-
+//        for (Path node : graph.nodes()) {
+//            if (graph.successors(node).isEmpty() && node.startsWith(filterDirectory)) {
+//                System.out.println(node);
+//            }
+//        }
         // Step 1: Identify nodes in the specific directory
         Set<Path> nodesInDirectory = new HashSet<>();
         for (Path node : graph.nodes()) {
@@ -73,8 +81,8 @@ public class GraphUtils {
             }
         }
 
-        // Step 2: Collect eligible nodes
-        Set<Path> independentNodes = new TreeSet<>();
+        // Step 2: Check for dependencies and print nodes
+        List<Path> eligibleNodes = new ArrayList<>();
         for (Path node : graph.nodes()) {
             boolean hasDependencyInDirectory = false;
             for (Path successor : graph.successors(node)) {
@@ -84,15 +92,16 @@ public class GraphUtils {
                 }
             }
             if (!hasDependencyInDirectory && node.startsWith(filterDirectory)) {
-                independentNodes.add(node);
+                eligibleNodes.add(node);
             }
         }
 
-        // Step 3: Print sorted nodes
-        for (Path node : independentNodes) {
+        Collections.sort(eligibleNodes);
+
+        // Step 4: Print sorted nodes
+        for (Path node : eligibleNodes) {
             System.out.println(node);
         }
-        return independentNodes;
     }
 
     public static void findAllCycles(MutableGraph<Path> graph) {
