@@ -56,7 +56,6 @@ import io.harness.ssca.search.beans.ArtifactFilter;
 import io.harness.ssca.utils.PipelineUtils;
 import io.harness.ssca.utils.SBOMUtils;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -279,7 +278,7 @@ public class ArtifactServiceImpl implements ArtifactService {
       throw new NotFoundException(
           String.format("Artifact with artifactId [%s] and tag [%s] is not found", artifactId, tag));
     }
-    PipelineInfo pipelineInfo = getPipelineInfo(accountId, orgIdentifier, projectIdentifier, artifact);
+    PipelineInfo pipelineInfo = pipelineUtils.getPipelineInfo(accountId, orgIdentifier, projectIdentifier, artifact);
     return new ArtifactDetailResponse()
         .id(artifact.getArtifactId())
         .name(artifact.getName())
@@ -293,17 +292,6 @@ public class ArtifactServiceImpl implements ArtifactService {
         .buildPipelineName(pipelineInfo.getName())
         .buildPipelineExecutionId(pipelineInfo.getExecutionId())
         .orchestrationId(artifact.getOrchestrationId());
-  }
-
-  @Override
-  public PipelineInfo getPipelineInfo(
-      String accountId, String orgIdentifier, String projectIdentifier, ArtifactEntity artifact) {
-    JsonNode node = pipelineUtils.getPipelineExecutionSummaryResponse(
-        artifact.getPipelineExecutionId(), accountId, orgIdentifier, projectIdentifier);
-    return new PipelineInfo()
-        .id(artifact.getPipelineId())
-        .name(pipelineUtils.parsePipelineName(node))
-        .executionId(artifact.getPipelineExecutionId());
   }
 
   @Override

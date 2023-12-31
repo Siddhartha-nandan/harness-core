@@ -6,14 +6,33 @@
  */
 package io.harness.ssca.mapper;
 
+import static io.harness.spec.server.ssca.v1.model.Operator.EQUALS;
+
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.exception.InvalidArgumentsException;
 import io.harness.exception.InvalidRequestException;
+import io.harness.spec.server.ssca.v1.model.CreateTicketRequest;
+import io.harness.spec.server.ssca.v1.model.EnvironmentType;
+import io.harness.spec.server.ssca.v1.model.Operator;
+import io.harness.spec.server.ssca.v1.model.PipelineInfo;
+import io.harness.spec.server.ssca.v1.model.RemediationArtifactDeploymentsListingRequestBody;
+import io.harness.spec.server.ssca.v1.model.RemediationArtifactDeploymentsListingResponse;
+import io.harness.spec.server.ssca.v1.model.RemediationArtifactDetailsResponse;
+import io.harness.spec.server.ssca.v1.model.RemediationArtifactListingRequestBody;
+import io.harness.spec.server.ssca.v1.model.RemediationArtifactListingResponse;
+import io.harness.spec.server.ssca.v1.model.RemediationDetailsResponse;
 import io.harness.spec.server.ssca.v1.model.RemediationListingResponse;
+import io.harness.ssca.beans.EnvType;
+import io.harness.ssca.beans.ticket.TicketRequestDto;
+import io.harness.ssca.entities.CdInstanceSummary;
+import io.harness.ssca.entities.remediation_tracker.ArtifactInfo;
 import io.harness.ssca.entities.remediation_tracker.CVEVulnerability;
 import io.harness.ssca.entities.remediation_tracker.ContactInfo;
 import io.harness.ssca.entities.remediation_tracker.DefaultVulnerability;
 import io.harness.ssca.entities.remediation_tracker.DeploymentsCount;
+import io.harness.ssca.entities.remediation_tracker.EnvironmentInfo;
+import io.harness.ssca.entities.remediation_tracker.Pipeline;
 import io.harness.ssca.entities.remediation_tracker.RemediationCondition;
 import io.harness.ssca.entities.remediation_tracker.RemediationStatus;
 import io.harness.ssca.entities.remediation_tracker.RemediationTrackerEntity;
@@ -23,6 +42,10 @@ import io.harness.ssca.entities.remediation_tracker.VulnerabilitySeverity;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.experimental.UtilityClass;
 
 @OwnedBy(HarnessTeam.SSCA)
@@ -31,7 +54,7 @@ public class RemediationTrackerMapper {
   private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
   private static final long DAY_TO_MILLI = 24 * 60 * 60 * 1000L;
 
-  public RemediationCondition.Operator mapOperatorToRemediationConditionOperator(
+  public RemediationCondition.Operator mapOperator(
       io.harness.spec.server.ssca.v1.model.RemediationCondition condition) {
     switch (condition.getOperator()) {
       case LESSTHAN:
@@ -47,9 +70,9 @@ public class RemediationTrackerMapper {
     }
   }
 
-  public io.harness.spec.server.ssca.v1.model.RemediationCondition.OperatorEnum
-  mapOperatorToRemediationConditionOperator(RemediationCondition condition) {
-    switch (condition.getOperator()) {
+  public io.harness.spec.server.ssca.v1.model.RemediationCondition.OperatorEnum mapOperator(
+      RemediationCondition.Operator operator) {
+    switch (operator) {
       case LESS_THAN:
         return io.harness.spec.server.ssca.v1.model.RemediationCondition.OperatorEnum.LESSTHAN;
       case LESS_THAN_EQUALS:
@@ -59,8 +82,31 @@ public class RemediationTrackerMapper {
       case ALL:
         return io.harness.spec.server.ssca.v1.model.RemediationCondition.OperatorEnum.ALL;
       default:
-        throw new InvalidRequestException("Invalid operator: " + condition.getOperator());
+        throw new InvalidRequestException("Invalid operator: " + operator);
     }
+  }
+
+  public TicketRequestDto mapToTicketRequestDto(String remediationId, CreateTicketRequest requestBody) {
+    Map<String, List<String>> identifiersCopy = new HashMap<>();
+
+    // If identifiers is not null, add it to identifiersCopy
+    if (requestBody.getIdentifiers() != null) {
+      identifiersCopy.putAll((Map<? extends String, ? extends List<String>>) requestBody.getIdentifiers());
+    }
+
+    // Add or update the remediationId in the identifiers map
+    identifiersCopy.put("remediationId", List.of(remediationId));
+
+    return TicketRequestDto.builder()
+        .description(requestBody.getDescription())
+        .exists(requestBody.isExists())
+        .externalId(requestBody.getExternalId())
+        .identifiers(identifiersCopy)
+        .issueType(requestBody.getIssueType())
+        .priority(requestBody.getPriority())
+        .projectKey(requestBody.getProjectKey())
+        .title(requestBody.getTitle())
+        .build();
   }
 
   public ContactInfo mapContactInfo(io.harness.spec.server.ssca.v1.model.ContactInfo contactInfo) {
@@ -80,7 +126,7 @@ public class RemediationTrackerMapper {
       io.harness.spec.server.ssca.v1.model.RemediationCondition remediationCondition) {
     return RemediationCondition.builder()
         .version(remediationCondition.getVersion())
-        .operator(mapOperatorToRemediationConditionOperator(remediationCondition))
+        .operator(mapOperator(remediationCondition))
         .build();
   }
 
@@ -88,7 +134,7 @@ public class RemediationTrackerMapper {
       RemediationCondition remediationCondition) {
     return new io.harness.spec.server.ssca.v1.model.RemediationCondition()
         .version(remediationCondition.getVersion())
-        .operator(mapOperatorToRemediationConditionOperator(remediationCondition));
+        .operator(mapOperator(remediationCondition.getOperator()));
   }
 
   public VulnerabilityInfo mapVulnerabilityInfo(
@@ -118,7 +164,7 @@ public class RemediationTrackerMapper {
     }
   }
 
-  private VulnerabilitySeverity mapSeverityToVulnerabilitySeverity(
+  public VulnerabilitySeverity mapSeverityToVulnerabilitySeverity(
       io.harness.spec.server.ssca.v1.model.VulnerabilitySeverity severity) {
     switch (severity) {
       case INFO:
@@ -173,6 +219,62 @@ public class RemediationTrackerMapper {
         .patchedNonProdCount(deploymentsCount.getPatchedNonProdCount());
   }
 
+  private io.harness.spec.server.ssca.v1.model.DeploymentsCount mapDeploymentsCount(DeploymentsCount deploymentsCount,
+      RemediationArtifactListingRequestBody.DeploymentStatusEnum deploymentStatusEnum) {
+    return new io.harness.spec.server.ssca.v1.model.DeploymentsCount()
+        .pendingProdCount(deploymentStatusEnum == null
+                    || deploymentStatusEnum.equals(RemediationArtifactListingRequestBody.DeploymentStatusEnum.PROD)
+                ? deploymentsCount.getPendingProdCount()
+                : null)
+        .pendingNonProdCount(deploymentStatusEnum == null
+                    || deploymentStatusEnum.equals(RemediationArtifactListingRequestBody.DeploymentStatusEnum.PREPROD)
+                ? deploymentsCount.getPendingNonProdCount()
+                : null)
+        .patchedProdCount(deploymentStatusEnum == null
+                    || deploymentStatusEnum.equals(RemediationArtifactListingRequestBody.DeploymentStatusEnum.PROD)
+                ? deploymentsCount.getPatchedProdCount()
+                : null)
+        .patchedNonProdCount(deploymentStatusEnum == null
+                    || deploymentStatusEnum.equals(RemediationArtifactListingRequestBody.DeploymentStatusEnum.PREPROD)
+                ? deploymentsCount.getPatchedNonProdCount()
+                : null);
+  }
+
+  private io.harness.spec.server.ssca.v1.model.EnvironmentTypeFilter mapEnvTypeFilter(EnvironmentType envType) {
+    switch (envType) {
+      case PREPROD:
+        return io.harness.spec.server.ssca.v1.model.EnvironmentTypeFilter.PREPROD;
+      case PROD:
+        return io.harness.spec.server.ssca.v1.model.EnvironmentTypeFilter.PROD;
+      default:
+        throw new InvalidRequestException("Invalid environment type: " + envType);
+    }
+  }
+  public io.harness.spec.server.ssca.v1.model.EnvironmentType mapEnvType(EnvType environmentType) {
+    switch (environmentType) {
+      case PreProduction:
+        return EnvironmentType.PREPROD;
+      case Production:
+        return EnvironmentType.PROD;
+      default:
+        throw new InvalidRequestException("Invalid environment type: " + environmentType);
+    }
+  }
+
+  public EnvType mapEnvType(String environmentType) {
+    if (environmentType == null) {
+      return null;
+    }
+    switch (environmentType) {
+      case "Prod":
+        return EnvType.Production;
+      case "PreProd":
+        return EnvType.PreProduction;
+      default:
+        throw new InvalidRequestException("Invalid environment type: " + environmentType);
+    }
+  }
+
   public RemediationListingResponse mapRemediationListResponse(RemediationTrackerEntity remediationTrackerEntity) {
     return new RemediationListingResponse()
         .id(remediationTrackerEntity.getUuid())
@@ -189,6 +291,154 @@ public class RemediationTrackerMapper {
         .scheduleStatus(calculateScheduleStatus(remediationTrackerEntity));
   }
 
+  public RemediationDetailsResponse mapRemediationDetailsResponse(RemediationTrackerEntity remediationTrackerEntity) {
+    return new RemediationDetailsResponse()
+        .id(remediationTrackerEntity.getUuid())
+        .component(remediationTrackerEntity.getVulnerabilityInfo().getComponent())
+        .cve(getCveFromVulnerabilityInfo(remediationTrackerEntity.getVulnerabilityInfo()))
+        .severity(mapSeverityToVulnerabilitySeverity(remediationTrackerEntity.getVulnerabilityInfo().getSeverity()))
+        .status(mapStatus(remediationTrackerEntity.getStatus()))
+        .contact(mapContactInfo(remediationTrackerEntity.getContactInfo()))
+        .artifacts(countNonExcludedArtifacts(remediationTrackerEntity))
+        .artifactsExcluded(countExcludedArtifacts(remediationTrackerEntity))
+        .deploymentsCount(mapDeploymentsCount(remediationTrackerEntity.getDeploymentsCount()))
+        .comments(remediationTrackerEntity.getComments())
+        .endTimeMilli(remediationTrackerEntity.getEndTimeMilli())
+        .startTimeMilli(remediationTrackerEntity.getStartTimeMilli())
+        .environments(countEnvironments(remediationTrackerEntity))
+        .remediationCondition(mapRemediationCondition(remediationTrackerEntity.getCondition()))
+        .vulnerabilityDescription(remediationTrackerEntity.getVulnerabilityInfo().getVulnerabilityDescription());
+  }
+
+  public RemediationArtifactDetailsResponse mapArtifactInfoToArtifactDetailsResponse(
+      RemediationTrackerEntity remediationTracker, ArtifactInfo artifactInfo) {
+    return new RemediationArtifactDetailsResponse()
+        .id(artifactInfo.getArtifactId())
+        .remediationId(remediationTracker.getUuid())
+        .component(remediationTracker.getVulnerabilityInfo().getComponent())
+        .cve(getCveFromVulnerabilityInfo(remediationTracker.getVulnerabilityInfo()))
+        .severity(mapSeverityToVulnerabilitySeverity(remediationTracker.getVulnerabilityInfo().getSeverity()))
+        .status(mapStatus(remediationTracker.getStatus()))
+        .contact(mapContactInfo(remediationTracker.getContactInfo()))
+        .deploymentsCount(mapDeploymentsCount(artifactInfo.getDeploymentsCount()))
+        .artifactName(artifactInfo.getArtifactName())
+        .latestFixedArtifact(artifactInfo.getLatestTagWithFix());
+  }
+
+  public RemediationArtifactDeploymentsListingResponse mapEnvironmentInfoToArtifactDeploymentsListingResponse(
+      EnvironmentInfo environmentInfo, RemediationArtifactDeploymentsListingRequestBody body) {
+    RemediationArtifactDeploymentsListingResponse response =
+        new RemediationArtifactDeploymentsListingResponse()
+            .identifier(environmentInfo.getEnvIdentifier())
+            .name(environmentInfo.getEnvName())
+            .type(mapEnvType(environmentInfo.getEnvType()))
+            .tag(environmentInfo.getTag())
+            .status(environmentInfo.isPatched() ? io.harness.spec.server.ssca.v1.model.RemediationStatus.COMPLETED
+                                                : io.harness.spec.server.ssca.v1.model.RemediationStatus.ON_GOING)
+            .deploymentPipeline(mapDeploymentPipeline(environmentInfo.getDeploymentPipeline()));
+    if (shouldIncludeEnvironment(response, body)) {
+      return response;
+    } else {
+      return null;
+    }
+  }
+
+  public RemediationArtifactListingResponse mapArtifactInfoToArtifactListingResponse(
+      ArtifactInfo artifactInfo, RemediationArtifactListingRequestBody body) {
+    RemediationArtifactListingResponse response =
+        new RemediationArtifactListingResponse()
+            .id(artifactInfo.getArtifactId())
+            .name(artifactInfo.getArtifactName())
+            .isExcluded(artifactInfo.isExcluded())
+            .deployments(mapDeploymentsCount(artifactInfo.getDeploymentsCount(), body.getDeploymentStatus()));
+    if (shouldIncludeArtifact(response, body.getRemediationStatus())) {
+      return response;
+    } else {
+      return null;
+    }
+  }
+
+  private boolean shouldIncludeEnvironment(
+      RemediationArtifactDeploymentsListingResponse response, RemediationArtifactDeploymentsListingRequestBody body) {
+    boolean matchesEnvType =
+        body.getEnvType() == null || body.getEnvType().equals(mapEnvTypeFilter(response.getType()));
+    boolean matchesEnvIdentifier =
+        body.getEnvIdentifier() == null || body.getEnvIdentifier().equals(response.getIdentifier());
+    return matchesEnvType && matchesEnvIdentifier;
+  }
+
+  private boolean shouldIncludeArtifact(RemediationArtifactListingResponse response,
+      RemediationArtifactListingRequestBody.RemediationStatusEnum remediationStatus) {
+    return remediationStatus == null
+        || (remediationStatus.equals(RemediationArtifactListingRequestBody.RemediationStatusEnum.COMPLETED)
+            && allCountsAreZero(response.getDeployments()))
+        || (remediationStatus.equals(RemediationArtifactListingRequestBody.RemediationStatusEnum.PENDING)
+            && anyCountIsGreaterThanZero(response.getDeployments()));
+  }
+
+  private boolean allCountsAreZero(io.harness.spec.server.ssca.v1.model.DeploymentsCount deployments) {
+    return (deployments.getPendingProdCount() == null || deployments.getPendingProdCount() == 0)
+        && (deployments.getPendingNonProdCount() == null || deployments.getPendingNonProdCount() == 0)
+        && (deployments.getPatchedProdCount() == null || deployments.getPatchedProdCount() == 0)
+        && (deployments.getPatchedNonProdCount() == null || deployments.getPatchedNonProdCount() == 0);
+  }
+
+  private boolean anyCountIsGreaterThanZero(io.harness.spec.server.ssca.v1.model.DeploymentsCount deployments) {
+    return (deployments.getPendingProdCount() != null && deployments.getPendingProdCount() > 0)
+        || (deployments.getPendingNonProdCount() != null && deployments.getPendingNonProdCount() > 0)
+        || (deployments.getPatchedProdCount() != null && deployments.getPatchedProdCount() > 0)
+        || (deployments.getPatchedNonProdCount() != null && deployments.getPatchedNonProdCount() > 0);
+  }
+
+  public Operator mapConditionOperator(RemediationCondition.Operator operator) {
+    switch (operator) {
+      case LESS_THAN:
+        return Operator.LESSTHAN;
+      case LESS_THAN_EQUALS:
+        return Operator.LESSTHANEQUALS;
+      case EQUALS:
+        return EQUALS;
+      case ALL:
+        return null;
+      default:
+        throw new InvalidArgumentsException("Unsupported Operator " + operator);
+    }
+  }
+
+  public List<io.harness.spec.server.ssca.v1.model.EnvironmentInfo> buildEnvironmentInfos(
+      List<EnvironmentInfo> infos, EnvType environmentType) {
+    return infos.stream()
+        .filter(info -> environmentType == null || environmentType == info.getEnvType())
+        .map(info
+            -> new io.harness.spec.server.ssca.v1.model.EnvironmentInfo()
+                   .identifier(info.getEnvIdentifier())
+                   .name(info.getEnvName())
+                   .type(RemediationTrackerMapper.mapEnvType(info.getEnvType())))
+        .distinct()
+        .collect(Collectors.toList());
+  }
+
+  public Pipeline buildDeploymentPipeline(CdInstanceSummary summary) {
+    return Pipeline.builder()
+        .pipelineName(summary.getLastPipelineName())
+        .pipelineId(summary.getLastPipelineExecutionName())
+        .pipelineExecutionId(summary.getLastPipelineExecutionId())
+        .triggeredById(summary.getLastDeployedById())
+        .triggeredBy(summary.getLastDeployedByName())
+        .triggeredAt(summary.getLastDeployedAt())
+        .build();
+  }
+
+  private PipelineInfo mapDeploymentPipeline(io.harness.ssca.entities.remediation_tracker.Pipeline deploymentPipeline) {
+    return (deploymentPipeline == null) ? null
+                                        : new PipelineInfo()
+                                              .id(deploymentPipeline.getPipelineId())
+                                              .name(deploymentPipeline.getPipelineName())
+                                              .triggeredBy(deploymentPipeline.getTriggeredBy())
+                                              .triggeredAt(deploymentPipeline.getTriggeredAt())
+                                              .triggeredById(deploymentPipeline.getTriggeredById())
+                                              .executionId(deploymentPipeline.getPipelineExecutionId());
+  }
   private String getCveFromVulnerabilityInfo(VulnerabilityInfo vulnerabilityInfo) {
     return (vulnerabilityInfo.getType().equals(VulnerabilityInfoType.CVE))
         ? ((CVEVulnerability) vulnerabilityInfo).getCve()
@@ -205,6 +455,19 @@ public class RemediationTrackerMapper {
         .stream()
         .filter(artifactInfo -> !artifactInfo.isExcluded())
         .count();
+  }
+
+  private long countExcludedArtifacts(RemediationTrackerEntity remediationTrackerEntity) {
+    return remediationTrackerEntity.getArtifactInfos().values().stream().filter(ArtifactInfo::isExcluded).count();
+  }
+
+  private long countEnvironments(RemediationTrackerEntity remediationTrackerEntity) {
+    return remediationTrackerEntity.getArtifactInfos()
+        .values()
+        .stream()
+        .filter(artifactInfo -> !artifactInfo.isExcluded())
+        .map(artifactInfo -> artifactInfo.getEnvironments().size())
+        .reduce(0, Integer::sum);
   }
 
   private String calculateScheduleStatus(RemediationTrackerEntity remediationTrackerEntity) {

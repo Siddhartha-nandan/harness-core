@@ -243,7 +243,7 @@ public class BuilderFactory {
   public PatchedPendingArtifactEntitiesResult getPatchedPendingArtifactEntitiesResult() {
     return PatchedPendingArtifactEntitiesResult.builder()
         .patchedArtifacts(
-            Collections.singletonList(getArtifactEntityBuilder().artifactCorrelationId("patched").build()))
+            Collections.singletonList(getArtifactEntityBuilder().artifactCorrelationId("patched").tag("tag1").build()))
         .pendingArtifacts(
             Collections.singletonList(getArtifactEntityBuilder().artifactCorrelationId("pending").build()))
         .build();

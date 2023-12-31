@@ -10,6 +10,8 @@ package io.harness.ssca.utils;
 import io.harness.pipeline.remote.PipelineServiceClient;
 import io.harness.remote.client.NGRestUtils;
 import io.harness.serializer.JsonUtils;
+import io.harness.spec.server.ssca.v1.model.PipelineInfo;
+import io.harness.ssca.entities.ArtifactEntity;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
@@ -55,5 +57,15 @@ public class PipelineUtils {
       return null;
     }
     return pmsExecutionSummaryNode.get(PIPELINE_EXECUTION_SUMMARY).get(PIPELINE_NAME).asText();
+  }
+
+  public PipelineInfo getPipelineInfo(
+      String accountId, String orgIdentifier, String projectIdentifier, ArtifactEntity artifact) {
+    JsonNode node = getPipelineExecutionSummaryResponse(
+        artifact.getPipelineExecutionId(), accountId, orgIdentifier, projectIdentifier);
+    return new PipelineInfo()
+        .id(artifact.getPipelineId())
+        .name(parsePipelineName(node))
+        .executionId(artifact.getPipelineExecutionId());
   }
 }

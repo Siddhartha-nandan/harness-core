@@ -13,7 +13,7 @@ import io.harness.ssca.entities.remediation_tracker.VulnerabilityInfo.Vulnerabil
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class RemediationTrackerApiUtils {
+public class RemediationTrackerApiMapperUtils {
   public static String getSortFieldMapping(String field) {
     switch (field) {
       case "component":
