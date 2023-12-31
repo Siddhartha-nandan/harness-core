@@ -3269,7 +3269,7 @@ components:
                 id: vof1ccaymi456
           required:
             - operator
-            - component_name
+            - value
         cve_filter:
           x-stoplight:
             id: 7l39pnr6quzi8
@@ -3284,7 +3284,7 @@ components:
                 id: ib4i6p3weisqo
           required:
             - operator
-            - cve
+            - value
     RemediationListingResponse:
       title: RemediationListingResponse
       x-stoplight:
