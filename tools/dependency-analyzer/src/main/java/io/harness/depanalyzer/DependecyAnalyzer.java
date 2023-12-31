@@ -45,7 +45,7 @@ import com.google.common.graph.MutableGraph;
 
 @Slf4j
 public class DependecyAnalyzer {
-    private static final String BUILD_CLEANER_INDEX_FILE_NAME = ".build-cleaner-index";
+    private static final String BUILD_CLEANER_INDEX_FILE_NAME = ".build-cleaner-path-index";
     private CommandLine options;
     private MavenManifest mavenManifest;
     private MavenManifest mavenManifestOverride;
@@ -93,6 +93,9 @@ public class DependecyAnalyzer {
 //        GraphUtils.printDisconnectedComponents(graph);
 //
 //        GraphUtils.findAllCycles(graph);
+        String dotFilename = "/Users/pankajkumar/Downloads/harness_dependency_graph.dot";
+
+        GraphUtils.exportGraphToDot(graph, dotFilename);
     }
 
     public void buildGraph(MutableGraph<Path> graph, Path sourceDirectory, SymbolDependencyMap harnessSymbolMap) throws IOException {

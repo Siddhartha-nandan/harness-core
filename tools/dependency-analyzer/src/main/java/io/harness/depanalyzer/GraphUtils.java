@@ -68,11 +68,6 @@ public class GraphUtils {
 
     public static void printIndependentPackages(MutableGraph<Path> graph, Path filterDirectory) {
         System.out.println("Independent Packages:");
-//        for (Path node : graph.nodes()) {
-//            if (graph.successors(node).isEmpty() && node.startsWith(filterDirectory)) {
-//                System.out.println(node);
-//            }
-//        }
         // Step 1: Identify nodes in the specific directory
         Set<Path> nodesInDirectory = new HashSet<>();
         for (Path node : graph.nodes()) {
@@ -145,17 +140,28 @@ public class GraphUtils {
         currentCycle.remove(currentCycle.size() - 1); // Backtrack in cycle tracking
     }
 
-    public static void exportGraphToDot(MutableGraph<String> graph, String filename) throws IOException {
+    private static String quote(String str) {
+        // Add quotes if the string contains special characters or spaces
+        if (str.matches(".*[^a-zA-Z0-9_].*")) {
+            return "\"" + str.replace("\"", "\\\"") + "\"";
+        }
+        return str;
+    }
+
+    public static void exportGraphToDot(MutableGraph<Path> graph, String filename) throws IOException {
         StringBuilder dotString = new StringBuilder("digraph G {\n");
 
         // Add nodes
-        for (String node : graph.nodes()) {
-            dotString.append("  ").append(node).append(";\n");
+        for (Path node : graph.nodes()) {
+            String safeNode = quote(node.toString());
+            dotString.append("  ").append(safeNode).append(";\n");
         }
 
         // Add edges
-        for (EndpointPair<String> edge : graph.edges()) {
-            dotString.append("  ").append(edge.nodeU()).append(" -> ").append(edge.nodeV()).append(";\n");
+        for (EndpointPair<Path> edge : graph.edges()) {
+            String nodeU = quote(edge.nodeU().toString());
+            String nodeV = quote(edge.nodeV().toString());
+            dotString.append("  ").append(nodeU).append(" -> ").append(nodeV).append(";\n");
         }
 
         dotString.append("}\n");
