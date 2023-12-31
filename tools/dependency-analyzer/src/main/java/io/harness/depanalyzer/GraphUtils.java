@@ -33,30 +33,36 @@ public class GraphUtils {
     }
 
     public static void printDisconnectedComponents(MutableGraph<Path> graph) {
-        List<Set<Path>> disconnectedComponents = new ArrayList<>();
         Set<Path> visited = new HashSet<>();
+        int componentId = 0;
 
         for (Path node : graph.nodes()) {
             if (!visited.contains(node)) {
-                Set<Path> component = new HashSet<>();
-                depthFirstSearch(graph, node, visited, component);
-                disconnectedComponents.add(component);
+                componentId++;
+                System.out.println("Component " + componentId + ":");
+                exploreComponent(graph, node, visited);
+                System.out.println(); // New line after each component
             }
-        }
-
-        System.out.println("Disconnected Components:");
-        for (Set<Path> component : disconnectedComponents) {
-            System.out.println("- " + component);
         }
     }
 
-    private static void depthFirstSearch(MutableGraph<Path> graph, Path node, Set<Path> visited, Set<Path> component) {
-        visited.add(node);
-        component.add(node);
+    private static void exploreComponent(MutableGraph<Path> graph, Path start, Set<Path> visited) {
+        Stack<Path> stack = new Stack<>();
+        stack.push(start);
 
-        for (Path neighbor : graph.successors(node)) {
-            if (!visited.contains(neighbor)) {
-                depthFirstSearch(graph, neighbor, visited, component);
+        while (!stack.isEmpty()) {
+            Path node = stack.pop();
+
+            if (!visited.contains(node)) {
+                visited.add(node);
+                System.out.println("  Node: " + node); // Print node in the component
+
+                for (Path neighbor : graph.successors(node)) {
+                    System.out.println("    Edge: " + node + " -> " + neighbor); // Print edge
+                    if (!visited.contains(neighbor)) {
+                        stack.push(neighbor);
+                    }
+                }
             }
         }
     }
