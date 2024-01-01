@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,6 +35,9 @@ import io.harness.ssca.enforcement.constants.ViolationType;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.EnforcementResultEntity;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
+import io.harness.ssca.entities.OperatorEntity;
+import io.harness.ssca.entities.exemption.Exemption;
+import io.harness.ssca.services.exemption.ExemptionService;
 
 import com.google.inject.Inject;
 import java.util.ArrayList;
@@ -58,6 +62,7 @@ public class EnforcementStepServiceImplTest extends SSCAManagerTestBase {
   @Mock NormalisedSbomComponentService normalisedSbomComponentService;
   @Mock FeatureFlagService featureFlagService;
   @Mock EnforcementResultRepo enforcementResultRepo;
+  @Mock ExemptionService exemptionService;
   private BuilderFactory builderFactory;
   private String accountId;
   private String orgIdentifier;
@@ -75,6 +80,7 @@ public class EnforcementStepServiceImplTest extends SSCAManagerTestBase {
     FieldUtils.writeField(enforcementStepService, "enforcementSummaryService", enforcementSummaryService, true);
     FieldUtils.writeField(enforcementStepService, "enforcementResultService", enforcementResultService, true);
     FieldUtils.writeField(enforcementStepService, "featureFlagService", featureFlagService, true);
+    FieldUtils.writeField(enforcementStepService, "exemptionService", exemptionService, true);
     builderFactory = BuilderFactory.getDefault();
     accountId = builderFactory.getContext().getAccountId();
     orgIdentifier = builderFactory.getContext().getOrgIdentifier();
@@ -84,7 +90,7 @@ public class EnforcementStepServiceImplTest extends SSCAManagerTestBase {
   @Test
   @Owner(developers = DHRUVX)
   @Category(UnitTests.class)
-  public void testEnforceSbom_featureFlagIsOff_sscaPolicyNotConfigured() {
+  public void testEnforceSbom_opaFeatureFlagIsOff_sscaPolicyNotConfigured() {
     ArtifactEntity artifactEntity = builderFactory.getArtifactEntityBuilder().build();
     EnforceSbomRequestBody enforceSbomRequestBody = getEnforcementSbomRequestBody();
     enforceSbomRequestBody.setPolicyFileId(null);
@@ -102,7 +108,7 @@ public class EnforcementStepServiceImplTest extends SSCAManagerTestBase {
   @Test
   @Owner(developers = DHRUVX)
   @Category(UnitTests.class)
-  public void testEnforceSbom_featureFlagIsOn_bothOpaAndSscaPolicyConfigured() {
+  public void testEnforceSbom_opaFeatureFlagIsOn_bothOpaAndSscaPolicyConfigured() {
     ArtifactEntity artifactEntity = builderFactory.getArtifactEntityBuilder().build();
     EnforceSbomRequestBody enforceSbomRequestBody = getEnforcementSbomRequestBody();
     OpaPolicyEvaluationResult opaPolicyEvaluationResult = getOpaPolicyEvaluationResult();
@@ -139,7 +145,7 @@ public class EnforcementStepServiceImplTest extends SSCAManagerTestBase {
   @Test
   @Owner(developers = DHRUVX)
   @Category(UnitTests.class)
-  public void testEnforceSbom_featureFlagIsOn_onlyOpaPolicyIsConfigured() {
+  public void testEnforceSbom_opaFeatureFlagIsOn_onlyOpaPolicyIsConfigured() {
     ArtifactEntity artifactEntity = builderFactory.getArtifactEntityBuilder().build();
     EnforceSbomRequestBody enforceSbomRequestBody = getEnforcementSbomRequestBody();
     enforceSbomRequestBody.setPolicyFileId(null);
@@ -171,6 +177,54 @@ public class EnforcementStepServiceImplTest extends SSCAManagerTestBase {
         .isEqualTo(ViolationType.ALLOWLIST_VIOLATION.getViolation());
     assertThat(capturedViolations.get(3).getViolationType())
         .isEqualTo(ViolationType.ALLOWLIST_VIOLATION.getViolation());
+    assertThat(enforceSbomResponseBody.getStatus()).isEqualTo("status");
+  }
+
+  @Test
+  @Owner(developers = DHRUVX)
+  @Category(UnitTests.class)
+  public void testEnforceSbom_exemptionFeatureFlagIsOn() {
+    ArtifactEntity artifactEntity = builderFactory.getArtifactEntityBuilder().build();
+    EnforceSbomRequestBody enforceSbomRequestBody = getEnforcementSbomRequestBody();
+    enforceSbomRequestBody.setPolicyFileId(null);
+    OpaPolicyEvaluationResult opaPolicyEvaluationResult = getOpaPolicyEvaluationResult();
+    when(featureFlagService.isFeatureFlagEnabled(accountId, FeatureName.SSCA_ENFORCEMENT_OPA.name())).thenReturn(true);
+    when(featureFlagService.isFeatureFlagEnabled(accountId, FeatureName.SSCA_ENFORCEMENT_EXEMPTIONS_ENABLED.name()))
+        .thenReturn(true);
+    when(artifactService.generateArtifactId(any(), any())).thenReturn(artifactEntity.getArtifactId());
+    when(artifactService.getArtifact(any(), any(), any(), any(), any())).thenReturn(Optional.of(artifactEntity));
+    when(
+        normalisedSbomComponentService.getNormalizedSbomComponentsForOrchestrationId(any(), any(), any(), any(), any()))
+        .thenReturn(getNormalizedSBOMComponentEntities());
+    when(policyMgmtService.evaluate(any(), any(), any(), any(), any())).thenReturn(opaPolicyEvaluationResult);
+    when(enforcementSummaryService.persistEnforcementSummary(any(), any(), any(), any(), any(), anyInt()))
+        .thenReturn("status");
+    when(exemptionService.getApplicableExemptionsForEnforcement(any(), any(), any(), any(), anyList()))
+        .thenReturn(getExemptions());
+    EnforceSbomResponseBody enforceSbomResponseBody =
+        enforcementStepService.enforceSbom(accountId, orgIdentifier, projectIdentifier, enforceSbomRequestBody);
+    ArgumentCaptor<List<EnforcementResultEntity>> argument = ArgumentCaptor.forClass(List.class);
+
+    verify(normalisedSbomComponentService, times(1))
+        .getNormalizedSbomComponentsForOrchestrationId(any(), any(), any(), any(), any());
+    verify(policyMgmtService, times(1)).evaluate(any(), any(), any(), any(), any());
+    verify(enforcementResultRepo, times(1)).saveAll(argument.capture());
+    List<EnforcementResultEntity> capturedViolations = argument.getAllValues().get(0);
+    assertThat(capturedViolations.size()).isEqualTo(4);
+    assertThat(capturedViolations.get(0).getViolationType()).isEqualTo(ViolationType.DENYLIST_VIOLATION.getViolation());
+    assertThat(capturedViolations.get(0).isExempted()).isTrue();
+    assertThat(capturedViolations.get(0).getExemptionId()).isNotBlank();
+    assertThat(capturedViolations.get(1).getViolationType()).isEqualTo(ViolationType.DENYLIST_VIOLATION.getViolation());
+    assertThat(capturedViolations.get(1).isExempted()).isTrue();
+    assertThat(capturedViolations.get(1).getExemptionId()).isNotBlank();
+    assertThat(capturedViolations.get(2).getViolationType())
+        .isEqualTo(ViolationType.ALLOWLIST_VIOLATION.getViolation());
+    assertThat(capturedViolations.get(2).isExempted()).isTrue();
+    assertThat(capturedViolations.get(2).getExemptionId()).isNotBlank();
+    assertThat(capturedViolations.get(3).getViolationType())
+        .isEqualTo(ViolationType.ALLOWLIST_VIOLATION.getViolation());
+    assertThat(capturedViolations.get(3).isExempted()).isTrue();
+    assertThat(capturedViolations.get(3).getExemptionId()).isNotBlank();
     assertThat(enforceSbomResponseBody.getStatus()).isEqualTo("status");
   }
 
@@ -196,8 +250,16 @@ public class EnforcementStepServiceImplTest extends SSCAManagerTestBase {
 
   private static List<NormalizedSBOMComponentEntity> getNormalizedSBOMComponentEntities() {
     List<NormalizedSBOMComponentEntity> entities = new ArrayList<>();
-    entities.add(NormalizedSBOMComponentEntity.builder().uuid("artifactId1").build());
-    entities.add(NormalizedSBOMComponentEntity.builder().uuid("artifactId2").build());
+    entities.add(NormalizedSBOMComponentEntity.builder()
+                     .uuid("artifactId1")
+                     .packageName("packageName1")
+                     .packageVersion("1.2.3")
+                     .build());
+    entities.add(NormalizedSBOMComponentEntity.builder()
+                     .uuid("artifactId2")
+                     .packageName("packageName2")
+                     .packageVersion("2")
+                     .build());
     return entities;
   }
 
@@ -226,5 +288,16 @@ public class EnforcementStepServiceImplTest extends SSCAManagerTestBase {
         .allowListViolations(getAllowListViolations())
         .denyListViolations(getDenyListViolations())
         .build();
+  }
+  private static List<Exemption> getExemptions() {
+    List<Exemption> exemptions = new ArrayList<>();
+    exemptions.add(Exemption.builder().componentName("packageName1").uuid("uuid1").build());
+    exemptions.add(Exemption.builder()
+                       .componentName("packageName2")
+                       .componentVersion("5.5.5")
+                       .versionOperator(OperatorEntity.LESSTHAN)
+                       .uuid("uuid2")
+                       .build());
+    return exemptions;
   }
 }

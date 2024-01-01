@@ -57,6 +57,7 @@ shared_dependencies = [
     "@maven//:com_amazonaws_aws_java_sdk_s3",
     "@maven//:co_elastic_clients_elasticsearch_java",
     "@maven//:com_fasterxml_jackson_core_jackson_databind",
+    "@maven//:org_apache_maven_maven_artifact",
 ]
 
 java_binary(

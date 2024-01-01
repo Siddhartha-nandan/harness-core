@@ -139,12 +139,11 @@ public class ExemptionServiceImpl implements ExemptionService {
   @Override
   public ExemptionResponseDTO reviewExemption(String accountId, String orgIdentifier, String projectIdentifier,
       String artifactId, String exemptionId, ExemptionReviewRequestDTO exemptionReviewRequestDTO) {
+    Exemption existingExemption =
+        getExemptionByScopeAndUuid(accountId, orgIdentifier, projectIdentifier, artifactId, exemptionId);
     validateReviewStatus(exemptionReviewRequestDTO);
     Instant now = Instant.now();
     String userId = userProvider.activeUser().getUuid();
-    Exemption existingExemption =
-        getExemptionByScopeAndUuid(accountId, orgIdentifier, projectIdentifier, artifactId, exemptionId);
-
     ExemptionStatus updatedStatus = ExemptionMapper.toExemptionStatus(exemptionReviewRequestDTO.getExemptionStatus());
     existingExemption.setExemptionStatus(updatedStatus);
     existingExemption.setReviewedBy(userId);

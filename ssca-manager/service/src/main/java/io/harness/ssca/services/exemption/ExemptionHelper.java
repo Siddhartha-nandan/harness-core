@@ -7,9 +7,12 @@
 
 package io.harness.ssca.services.exemption;
 
+import io.harness.annotations.dev.HarnessTeam;
+import io.harness.annotations.dev.OwnedBy;
 import io.harness.ssca.entities.EnforcementResultEntity;
 import io.harness.ssca.entities.OperatorEntity;
 import io.harness.ssca.entities.exemption.Exemption;
+import io.harness.ssca.utils.VersionUtils;
 
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +21,7 @@ import java.util.Set;
 import lombok.experimental.UtilityClass;
 import org.apache.commons.lang3.StringUtils;
 
+@OwnedBy(HarnessTeam.SSCA)
 @UtilityClass
 public class ExemptionHelper {
   private static final String COMPONENT_KEY_DELIMITER = ",";
@@ -62,7 +66,6 @@ public class ExemptionHelper {
     if (StringUtils.isBlank(componentVersion)) {
       return false;
     }
-    // TODO: Add logic to compare semantic and non-semantic versions using operatorEntity
-    return false;
+    return VersionUtils.compareVersions(componentVersion, operatorEntity, exemptionVersion);
   }
 }
