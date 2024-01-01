@@ -528,7 +528,9 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   }
 
   private void checkAndEnableWebhookPolling(NGTriggerEntity ngTriggerEntity) {
-    if (pmsFeatureFlagService.isEnabled(ngTriggerEntity.getAccountId(), FeatureName.CD_GIT_WEBHOOK_POLLING)
+    if ((pmsFeatureFlagService.isEnabled(ngTriggerEntity.getAccountId(), FeatureName.CD_GIT_WEBHOOK_POLLING)
+            || (ngTriggerElementMapper.shouldGitWebhookPolling(ngTriggerEntity.getAccountId(),
+                ngTriggerEntity.getOrgIdentifier(), ngTriggerEntity.getProjectIdentifier())))
         && GITHUB.getEntityMetadataName().equalsIgnoreCase(ngTriggerEntity.getMetadata().getWebhook().getType())) {
       String webhookId = ngTriggerEntity.getTriggerStatus().getWebhookInfo().getWebhookId();
       String pollInterval = ngTriggerEntity.getPollInterval();
@@ -704,7 +706,9 @@ public class NGTriggerServiceImpl implements NGTriggerService {
   private boolean isWebhookGitPollingEnabled(NGTriggerEntity foundTriggerEntity) {
     if (foundTriggerEntity.getType() == WEBHOOK
         && GITHUB.getEntityMetadataName().equalsIgnoreCase(foundTriggerEntity.getMetadata().getWebhook().getType())
-        && pmsFeatureFlagService.isEnabled(foundTriggerEntity.getAccountId(), FeatureName.CD_GIT_WEBHOOK_POLLING)) {
+        && (pmsFeatureFlagService.isEnabled(foundTriggerEntity.getAccountId(), FeatureName.CD_GIT_WEBHOOK_POLLING)
+            || (ngTriggerElementMapper.shouldGitWebhookPolling(foundTriggerEntity.getAccountId(),
+                foundTriggerEntity.getOrgIdentifier(), foundTriggerEntity.getProjectIdentifier())))) {
       if (foundTriggerEntity.getTriggerStatus().getWebhookInfo() != null) {
         String webhookId = foundTriggerEntity.getTriggerStatus().getWebhookInfo().getWebhookId();
         String pollInterval = foundTriggerEntity.getPollInterval();

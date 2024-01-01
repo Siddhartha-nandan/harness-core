@@ -96,7 +96,7 @@ public interface Constants {
   String SOURCE_EVENT_ID = "sourceEventId";
   String SOURCE_EVENT_LINK = "sourceEventLink";
   String EMAIL = "email";
-
+  String GIT_WEBHOOK_POLLING_FOR_TRIGGERS = "git_webhook_polling_for_triggers";
   String WEBHOOK_TYPE = "Webhook";
   String SCHEDULED_TYPE = "Scheduled";
   String CUSTOM_TYPE = "Custom";
