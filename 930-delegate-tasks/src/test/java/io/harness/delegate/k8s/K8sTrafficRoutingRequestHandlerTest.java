@@ -33,7 +33,6 @@ import io.harness.category.element.UnitTests;
 import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
 import io.harness.delegate.k8s.trafficrouting.TrafficRoutingResourceCreator;
-import io.harness.delegate.k8s.trafficrouting.TrafficRoutingResourceCreatorFactory;
 import io.harness.delegate.task.k8s.ContainerDeploymentDelegateBaseHelper;
 import io.harness.delegate.task.k8s.K8sDeployResponse;
 import io.harness.delegate.task.k8s.K8sInfraDelegateConfig;
@@ -42,10 +41,18 @@ import io.harness.delegate.task.k8s.K8sTaskHelperBase;
 import io.harness.delegate.task.k8s.K8sTrafficRoutingRequest;
 import io.harness.delegate.task.k8s.K8sTrafficRoutingResponse;
 import io.harness.delegate.task.k8s.client.K8sApiClient;
+import io.harness.delegate.task.k8s.trafficrouting.IstioProviderConfig;
 import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfig;
 import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfigType;
+import io.harness.delegate.task.k8s.trafficrouting.TrafficRoutingDestination;
+import io.harness.exception.ExplanationException;
+import io.harness.exception.HintException;
 import io.harness.exception.InvalidArgumentsException;
+import io.harness.exception.InvalidRequestException;
+import io.harness.exception.KubernetesTaskException;
 import io.harness.helpers.k8s.releasehistory.K8sReleaseHandler;
+import io.harness.k8s.K8sApiVersion;
+import io.harness.k8s.KubernetesContainerService;
 import io.harness.k8s.kubectl.Kubectl;
 import io.harness.k8s.model.K8sDelegateTaskParams;
 import io.harness.k8s.model.KubernetesConfig;
@@ -58,6 +65,7 @@ import io.harness.logging.LogCallback;
 import io.harness.rule.Owner;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -69,8 +77,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 
@@ -89,6 +95,8 @@ public class K8sTrafficRoutingRequestHandlerTest extends CategoryTest {
   @Mock IK8sRelease release;
   @Mock TrafficRoutingResourceCreator trafficRoutingResourceCreator;
   @Mock K8sApiClient kubernetesApiClient;
+  @Mock private Map<String, TrafficRoutingResourceCreator> k8sTrafficRoutingCreators;
+  @Mock private KubernetesContainerService kubernetesContainerService;
   @Spy @InjectMocks K8sTrafficRoutingRequestHandler k8sTrafficRoutingRequestHandler;
   K8sDelegateTaskParams k8sDelegateTaskParams;
   CommandUnitsProgress commandUnitsProgress;
@@ -169,7 +177,12 @@ public class K8sTrafficRoutingRequestHandlerTest extends CategoryTest {
   @Owner(developers = MLUKIC)
   @Category(UnitTests.class)
   public void testPrepareForTrafficRouting() {
-    K8sTrafficRoutingConfig trafficRoutingProvider = K8sTrafficRoutingConfig.builder().build();
+    K8sTrafficRoutingConfig trafficRoutingProvider =
+        K8sTrafficRoutingConfig.builder()
+            .providerConfig(IstioProviderConfig.builder().build())
+            .type(K8sTrafficRoutingConfigType.CONFIG)
+            .destinations(List.of(TrafficRoutingDestination.builder().build()))
+            .build();
     Set<String> availableApis =
         Set.of("networking.istio.io/v1alpha1", "networking.istio.io/v1alpha2", "networking.istio.io/v1alpha3");
     final List<KubernetesResource> resources = new ArrayList<>();
@@ -182,50 +195,43 @@ public class K8sTrafficRoutingRequestHandlerTest extends CategoryTest {
 
     doReturn("default").when(kubernetesConfig).getNamespace();
     doReturn(availableApis).when(kubernetesApiClient).getApiVersions(any(), any(), any(), any());
-    doNothing()
-        .when(k8sTrafficRoutingRequestHandler)
-        .checkForDestinationNormalization(any(K8sTrafficRoutingConfig.class), eq(logCallback));
-
     final K8sTrafficRoutingRequest k8sTrafficRoutingRequest = K8sTrafficRoutingRequest.builder()
                                                                   .trafficRoutingConfig(trafficRoutingProvider)
                                                                   .k8sInfraDelegateConfig(k8sInfraDelegateConfig)
                                                                   .build();
 
-    try (MockedStatic<TrafficRoutingResourceCreatorFactory> utilities =
-             Mockito.mockStatic(TrafficRoutingResourceCreatorFactory.class)) {
-      utilities.when(() -> TrafficRoutingResourceCreatorFactory.create(trafficRoutingProvider))
-          .thenReturn(trafficRoutingResourceCreator);
+    doReturn(trafficRoutingResourceCreator).when(k8sTrafficRoutingCreators).get(any());
+    doReturn(new HashMap()).when(trafficRoutingResourceCreator).destinationsToMap(any());
 
-      List<KubernetesResource> tfResources = List.of(KubernetesResource.builder()
-                                                         .resourceId(KubernetesResourceId.builder()
-                                                                         .name("test-virtual-service")
-                                                                         .kind("VirtualService")
-                                                                         .namespace("default")
-                                                                         .build())
-                                                         .value(Map.of("apiVersion", "networking.istio.io/v1alpha3"))
-                                                         .build());
+    List<KubernetesResource> tfResources = List.of(KubernetesResource.builder()
+                                                       .resourceId(KubernetesResourceId.builder()
+                                                                       .name("test-virtual-service")
+                                                                       .kind("VirtualService")
+                                                                       .namespace("default")
+                                                                       .build())
+                                                       .value(Map.of("apiVersion", "networking.istio.io/v1alpha3"))
+                                                       .build());
 
-      doReturn(tfResources)
-          .when(trafficRoutingResourceCreator)
-          .createTrafficRoutingResources(anyString(), anyString(), any(), any());
+    doReturn(tfResources)
+        .when(trafficRoutingResourceCreator)
+        .createTrafficRoutingResources(any(K8sTrafficRoutingConfig.class), anyString(), anyString(), any(), any());
 
-      Optional<TrafficRoutingInfoDTO> optionalTrafficRoutingInfoDTO =
-          Optional.of(TrafficRoutingInfoDTO.builder()
-                          .name("test-virtual-service")
-                          .plural("virtualservices")
-                          .version("networking.istio.io/v1alpha3")
-                          .build());
+    Optional<TrafficRoutingInfoDTO> optionalTrafficRoutingInfoDTO =
+        Optional.of(TrafficRoutingInfoDTO.builder()
+                        .name("test-virtual-service")
+                        .plural("virtualservices")
+                        .version("networking.istio.io/v1alpha3")
+                        .build());
 
-      doReturn(optionalTrafficRoutingInfoDTO).when(trafficRoutingResourceCreator).getTrafficRoutingInfo(tfResources);
-      Optional<TrafficRoutingInfoDTO> result = k8sTrafficRoutingRequestHandler.prepareForTrafficRouting(
-          k8sTrafficRoutingRequest, k8sDelegateTaskParams, logStreamingTaskClient, commandUnitsProgress);
+    doReturn(optionalTrafficRoutingInfoDTO).when(trafficRoutingResourceCreator).getTrafficRoutingInfo(tfResources);
+    Optional<TrafficRoutingInfoDTO> result = k8sTrafficRoutingRequestHandler.prepareForTrafficRouting(
+        k8sTrafficRoutingRequest, k8sDelegateTaskParams, logStreamingTaskClient, commandUnitsProgress);
 
-      verify(trafficRoutingResourceCreator).getTrafficRoutingInfo(any());
-      assertThat(result).isPresent();
-      assertThat(result.get().getName()).isEqualTo("test-virtual-service");
-      assertThat(result.get().getPlural()).isEqualTo("virtualservices");
-      assertThat(result.get().getVersion()).isEqualTo("networking.istio.io/v1alpha3");
-    }
+    verify(trafficRoutingResourceCreator).getTrafficRoutingInfo(any());
+    assertThat(result).isPresent();
+    assertThat(result.get().getName()).isEqualTo("test-virtual-service");
+    assertThat(result.get().getPlural()).isEqualTo("virtualservices");
+    assertThat(result.get().getVersion()).isEqualTo("networking.istio.io/v1alpha3");
   }
 
   @Test
@@ -337,9 +343,133 @@ public class K8sTrafficRoutingRequestHandlerTest extends CategoryTest {
   @Test
   @Owner(developers = MLUKIC)
   @Category(UnitTests.class)
-  public void testExecuteTaskInternal() throws Exception {
+  public void testPrepareTrafficRoutingPatch() {
+    doReturn("default").when(k8sInfraDelegateConfig).getNamespace();
+    TrafficRoutingInfoDTO trafficRoutingInfoDTO =
+        TrafficRoutingInfoDTO.builder().name("name").plural("names").version("group/version").build();
+    K8sTrafficRoutingConfig k8sTrafficRoutingConfig = K8sTrafficRoutingConfig.builder().build();
+    Object customObject = new Object();
+
+    doReturn(customObject)
+        .when(kubernetesContainerService)
+        .getCustomObject(any(KubernetesConfig.class), anyString(), anyString(), anyString(), any(K8sApiVersion.class));
+    doReturn(trafficRoutingResourceCreator).when(k8sTrafficRoutingCreators).get(any());
+
+    doReturn(
+        Optional.of(
+            "{ \"op\": \"replace\", \"path\": \"/spec/destinations\", \"value\": [{\"destination\":{\"host\":\"svc\",\"weight\":10}}]}"))
+        .when(trafficRoutingResourceCreator)
+        .generateTrafficRoutingPatch(eq(k8sTrafficRoutingConfig), eq(customObject), eq(logCallback));
+
+    Optional<String> response = k8sTrafficRoutingRequestHandler.prepareTrafficRoutingPatch(k8sInfraDelegateConfig,
+        k8sTrafficRoutingConfig, trafficRoutingInfoDTO, logStreamingTaskClient, commandUnitsProgress);
+
+    verify(kubernetesContainerService).getCustomObject(any(), any(), any(), any(), any());
+    verify(k8sTrafficRoutingCreators).get(any());
+    verify(trafficRoutingResourceCreator).generateTrafficRoutingPatch(any(), any(), any());
+    assertThat(response).isNotNull();
+    assertThat(response).isNotEmpty();
+    assertThat(response.get())
+        .isEqualTo(
+            "{ \"op\": \"replace\", \"path\": \"/spec/destinations\", \"value\": [{\"destination\":{\"host\":\"svc\",\"weight\":10}}]}");
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testPrepareTrafficRoutingPatchEmptyPatch() {
+    doReturn("default").when(k8sInfraDelegateConfig).getNamespace();
+    TrafficRoutingInfoDTO trafficRoutingInfoDTO =
+        TrafficRoutingInfoDTO.builder().name("name").plural("names").version("group/version").build();
+    K8sTrafficRoutingConfig k8sTrafficRoutingConfig = K8sTrafficRoutingConfig.builder().build();
+    Object customObject = new Object();
+
+    doReturn(customObject)
+        .when(kubernetesContainerService)
+        .getCustomObject(any(KubernetesConfig.class), anyString(), anyString(), anyString(), any(K8sApiVersion.class));
+    doReturn(trafficRoutingResourceCreator).when(k8sTrafficRoutingCreators).get(any());
+
+    doReturn(Optional.empty())
+        .when(trafficRoutingResourceCreator)
+        .generateTrafficRoutingPatch(eq(k8sTrafficRoutingConfig), eq(customObject), eq(logCallback));
+
+    assertThatThrownBy(
+        ()
+            -> k8sTrafficRoutingRequestHandler.prepareTrafficRoutingPatch(k8sInfraDelegateConfig,
+                k8sTrafficRoutingConfig, trafficRoutingInfoDTO, logStreamingTaskClient, commandUnitsProgress))
+        .isInstanceOf(HintException.class)
+        .hasMessage(
+            "Failed to create patch for traffic routing resource Version:[group/version], Kind:[names], Name:[name]. Please check Traffic Routing Configuration in step.")
+        .getCause()
+        .isInstanceOf(ExplanationException.class)
+        .hasMessage("Failed to update traffic routing resource: name with new destinations")
+        .getCause()
+        .isInstanceOf(KubernetesTaskException.class)
+        .hasMessage("Failed to execute traffic routing");
+
+    verify(kubernetesContainerService).getCustomObject(any(), any(), any(), any(), any());
+    verify(k8sTrafficRoutingCreators).get(any());
+    verify(trafficRoutingResourceCreator).generateTrafficRoutingPatch(any(), any(), any());
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testPatchTrafficRoutingResource() {
+    TrafficRoutingInfoDTO trafficRoutingInfoDTO =
+        TrafficRoutingInfoDTO.builder().name("name").plural("names").version("group/version").build();
+    Optional<String> patch = Optional.of(
+        "[{ \"op\": \"replace\", \"path\": \"/spec/destinations\", \"value\": [{\"destination\":{\"host\":\"svc\",\"weight\":10}}]}]");
+    Map patchedObject = new HashMap<>();
+    doReturn(patchedObject)
+        .when(kubernetesContainerService)
+        .patchCustomObject(eq(kubernetesConfig), anyString(), any(K8sApiVersion.class), anyString(), anyString());
+
+    k8sTrafficRoutingRequestHandler.patchTrafficRoutingResource(
+        patch, trafficRoutingInfoDTO, logStreamingTaskClient, commandUnitsProgress);
+
+    verify(kubernetesContainerService).patchCustomObject(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testPatchTrafficRoutingResourceWithException() {
+    TrafficRoutingInfoDTO trafficRoutingInfoDTO =
+        TrafficRoutingInfoDTO.builder().name("name").plural("names").version("group/version").build();
+    Optional<String> patch = Optional.of(
+        "[{ \"op\": \"replace\", \"path\": \"/spec/destinations\", \"value\": [{\"destination\":{\"host\":\"svc\",\"weight\":10}}]}]");
+
+    doThrow(new InvalidRequestException("patching failed"))
+        .when(kubernetesContainerService)
+        .patchCustomObject(eq(kubernetesConfig), anyString(), any(K8sApiVersion.class), anyString(), anyString());
+
+    assertThatThrownBy(()
+                           -> k8sTrafficRoutingRequestHandler.patchTrafficRoutingResource(
+                               patch, trafficRoutingInfoDTO, logStreamingTaskClient, commandUnitsProgress))
+        .isInstanceOf(HintException.class)
+        .hasMessage(
+            "Failed to patch traffic routing resource. \nPlease check that resource Version:[group/version], Kind:[names], Name:[name] exists and can be patched.")
+        .getCause()
+        .isInstanceOf(ExplanationException.class)
+        .hasMessage("Failed to update traffic routing resource: name with new destinations")
+        .getCause()
+        .isInstanceOf(InvalidRequestException.class)
+        .hasMessage("patching failed");
+
+    verify(kubernetesContainerService).patchCustomObject(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testExecuteTaskInternalWithConfigOption() throws Exception {
     K8sTrafficRoutingConfig k8sTrafficRoutingConfig =
-        K8sTrafficRoutingConfig.builder().type(K8sTrafficRoutingConfigType.CONFIG).build();
+        K8sTrafficRoutingConfig.builder()
+            .type(K8sTrafficRoutingConfigType.CONFIG)
+            .providerConfig(IstioProviderConfig.builder().build())
+            .destinations(List.of(TrafficRoutingDestination.builder().build()))
+            .build();
     final List<KubernetesResource> resources = new ArrayList<>();
     final IK8sReleaseHistory releaseHistory = mock(IK8sReleaseHistory.class);
     final Kubectl client = Kubectl.client("", "");
@@ -359,41 +489,90 @@ public class K8sTrafficRoutingRequestHandlerTest extends CategoryTest {
     doReturn(Set.of("networking.istio.io/v1alpha1", "networking.istio.io/v1alpha2", "networking.istio.io/v1alpha3"))
         .when(kubernetesApiClient)
         .getApiVersions(any(), any(), any(), any());
-    doNothing()
-        .when(k8sTrafficRoutingRequestHandler)
-        .checkForDestinationNormalization(any(K8sTrafficRoutingConfig.class), eq(logCallback));
 
-    try (MockedStatic<TrafficRoutingResourceCreatorFactory> utilities =
-             Mockito.mockStatic(TrafficRoutingResourceCreatorFactory.class)) {
-      utilities.when(() -> TrafficRoutingResourceCreatorFactory.create(k8sTrafficRoutingConfig))
-          .thenReturn(trafficRoutingResourceCreator);
+    doReturn(trafficRoutingResourceCreator).when(k8sTrafficRoutingCreators).get(any());
+    doReturn(new HashMap()).when(trafficRoutingResourceCreator).destinationsToMap(any());
+    doReturn(List.of(KubernetesResource.builder().build()))
+        .when(trafficRoutingResourceCreator)
+        .createTrafficRoutingResources(
+            any(K8sTrafficRoutingConfig.class), anyString(), anyString(), any(), any(), any(), any());
 
-      doReturn(List.of(KubernetesResource.builder().build()))
-          .when(trafficRoutingResourceCreator)
-          .createTrafficRoutingResources(anyString(), anyString(), any(), any(), any(), any());
+    Optional<TrafficRoutingInfoDTO> optionalTrafficRoutingInfoDTO =
+        Optional.of(TrafficRoutingInfoDTO.builder()
+                        .name("test-virtual-service")
+                        .plural("virtualservices")
+                        .version("networking.istio.io/v1alpha3")
+                        .build());
 
-      Optional<TrafficRoutingInfoDTO> optionalTrafficRoutingInfoDTO =
-          Optional.of(TrafficRoutingInfoDTO.builder()
-                          .name("test-virtual-service")
-                          .plural("virtualservices")
-                          .version("networking.istio.io/v1alpha3")
-                          .build());
+    doReturn(optionalTrafficRoutingInfoDTO).when(trafficRoutingResourceCreator).getTrafficRoutingInfo(any());
 
-      doReturn(optionalTrafficRoutingInfoDTO).when(trafficRoutingResourceCreator).getTrafficRoutingInfo(any());
+    doReturn(true)
+        .when(k8sTaskHelperBase)
+        .applyManifests(
+            any(Kubectl.class), anyList(), eq(k8sDelegateTaskParams), eq(logCallback), anyBoolean(), eq(null));
 
-      doReturn(true)
-          .when(k8sTaskHelperBase)
-          .applyManifests(
-              any(Kubectl.class), anyList(), eq(k8sDelegateTaskParams), eq(logCallback), anyBoolean(), eq(null));
+    K8sDeployResponse response = k8sTrafficRoutingRequestHandler.executeTaskInternal(
+        k8sTrafficRoutingRequest, k8sDelegateTaskParams, logStreamingTaskClient, commandUnitsProgress);
 
-      K8sDeployResponse response = k8sTrafficRoutingRequestHandler.executeTaskInternal(
-          k8sTrafficRoutingRequest, k8sDelegateTaskParams, logStreamingTaskClient, commandUnitsProgress);
+    assertThat(response.getCommandExecutionStatus()).isEqualTo(SUCCESS);
+    assertThat(response.getK8sNGTaskResponse()).isInstanceOf(K8sTrafficRoutingResponse.class);
+    assertThat(response.getK8sNGTaskResponse()).isNotNull();
+    assertThat(((K8sTrafficRoutingResponse) response.getK8sNGTaskResponse()).getInfo())
+        .isEqualTo(optionalTrafficRoutingInfoDTO.get());
+  }
 
-      assertThat(response.getCommandExecutionStatus()).isEqualTo(SUCCESS);
-      assertThat(response.getK8sNGTaskResponse()).isInstanceOf(K8sTrafficRoutingResponse.class);
-      assertThat(response.getK8sNGTaskResponse()).isNotNull();
-      assertThat(((K8sTrafficRoutingResponse) response.getK8sNGTaskResponse()).getInfo())
-          .isEqualTo(optionalTrafficRoutingInfoDTO.get());
-    }
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testExecuteTaskInternalWithInheritOption() throws Exception {
+    K8sTrafficRoutingConfig k8sTrafficRoutingConfig =
+        K8sTrafficRoutingConfig.builder()
+            .type(K8sTrafficRoutingConfigType.INHERIT)
+            .providerConfig(IstioProviderConfig.builder().build())
+            .destinations(List.of(TrafficRoutingDestination.builder().build()))
+            .build();
+    final List<KubernetesResource> resources = new ArrayList<>();
+    final IK8sReleaseHistory releaseHistory = mock(IK8sReleaseHistory.class);
+    final Kubectl client = Kubectl.client("", "");
+
+    on(k8sTrafficRoutingRequestHandler).set("resources", resources);
+    on(k8sTrafficRoutingRequestHandler).set("releaseName", "releaseName");
+    on(k8sTrafficRoutingRequestHandler).set("releaseHistory", releaseHistory);
+    on(k8sTrafficRoutingRequestHandler).set("client", client);
+
+    final TrafficRoutingInfoDTO trafficRoutingInfoDTO =
+        TrafficRoutingInfoDTO.builder().name("name").plural("names").version("group/version").build();
+    final K8sTrafficRoutingRequest k8sTrafficRoutingRequest = K8sTrafficRoutingRequest.builder()
+                                                                  .k8sInfraDelegateConfig(k8sInfraDelegateConfig)
+                                                                  .releaseName("releaseName")
+                                                                  .trafficRoutingConfig(k8sTrafficRoutingConfig)
+                                                                  .trafficRoutingInfo(trafficRoutingInfoDTO)
+                                                                  .build();
+
+    doReturn(false).when(releaseHistory).isEmpty();
+
+    doReturn("default").when(k8sInfraDelegateConfig).getNamespace();
+    Object customObject = new Object();
+
+    doReturn(customObject)
+        .when(kubernetesContainerService)
+        .getCustomObject(any(KubernetesConfig.class), anyString(), anyString(), anyString(), any(K8sApiVersion.class));
+    doReturn(trafficRoutingResourceCreator).when(k8sTrafficRoutingCreators).get(any());
+
+    String patch =
+        "[{ \"op\": \"replace\", \"path\": \"/spec/destinations\", \"value\": [{\"destination\":{\"host\":\"svc\",\"weight\":10}}]}]";
+    doReturn(Optional.of(patch))
+        .when(trafficRoutingResourceCreator)
+        .generateTrafficRoutingPatch(eq(k8sTrafficRoutingConfig), eq(customObject), eq(logCallback));
+
+    Map patchedObject = new HashMap<>();
+    doReturn(patchedObject)
+        .when(kubernetesContainerService)
+        .patchCustomObject(eq(kubernetesConfig), anyString(), any(K8sApiVersion.class), anyString(), eq(patch));
+
+    K8sDeployResponse response = k8sTrafficRoutingRequestHandler.executeTaskInternal(
+        k8sTrafficRoutingRequest, k8sDelegateTaskParams, logStreamingTaskClient, commandUnitsProgress);
+
+    assertThat(response.getCommandExecutionStatus()).isEqualTo(SUCCESS);
   }
 }
