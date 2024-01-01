@@ -29,6 +29,7 @@ import com.google.common.collect.ImmutableList;
 import dev.morphia.annotations.Entity;
 import dev.morphia.annotations.Id;
 import java.util.List;
+import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -47,7 +48,12 @@ import org.hibernate.validator.constraints.NotBlank;
 public final class BusinessMapping implements PersistentEntity, UuidAware, CreatedAtAware, UpdatedAtAware,
                                               AccountAccess, CreatedByAware, UpdatedByAware {
   @Id String uuid;
-  @Size(min = 1, max = 32, message = "Name must be between 1 and 32 characters long") @NotBlank String name;
+
+  @Size(min = 1, max = 32, message = "Name must be between 1 and 32 characters long")
+  @NotBlank
+  @Pattern(regexp = "['\";(),*%!\\-$]")
+  String name;
+
   String accountId;
 
   List<CostTarget> costTargets;
