@@ -20,7 +20,6 @@ import com.google.inject.Singleton;
 import java.util.HashSet;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 
 @OwnedBy(PL)
 @Singleton
@@ -42,21 +41,7 @@ public class RoleAssignmentChangeConsumerImpl implements ChangeConsumer<RoleAssi
 
   @Override
   public boolean consumeUpdateEvent(String id, RoleAssignmentDBO updatedRoleAssignmentDBO) {
-    if (!StringUtils.isEmpty(updatedRoleAssignmentDBO.getRoleIdentifier())
-        || !StringUtils.isEmpty(updatedRoleAssignmentDBO.getResourceGroupIdentifier())
-        || !StringUtils.isEmpty(updatedRoleAssignmentDBO.getPrincipalIdentifier())
-        || updatedRoleAssignmentDBO.getDisabled() != null) {
-      log.info("Number of ACLs deleted: {} for roleassignment: id: {}, identifier: {}, scope: {}", deleteACLs(id), id,
-          updatedRoleAssignmentDBO.getIdentifier(), updatedRoleAssignmentDBO.getScopeIdentifier());
-      Optional<RoleAssignmentDBO> roleAssignment = roleAssignmentRepository.findById(id);
-      if (roleAssignment.isPresent()) {
-        long createdCount = createACLs(roleAssignment.get());
-        log.info("Number of ACLs created: {} for roleassignment: id: {}, identifier: {}, scope: {}", createdCount, id,
-            updatedRoleAssignmentDBO.getIdentifier(), updatedRoleAssignmentDBO.getScopeIdentifier());
-      }
-      return true;
-    }
-    return false;
+    return true;
   }
 
   @Override
